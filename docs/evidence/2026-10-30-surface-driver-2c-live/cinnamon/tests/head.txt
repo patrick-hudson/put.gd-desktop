@@ -1,0 +1,1 @@
+f0210884 fix(lab): mask Wayland secret fields scrolled past the window edge

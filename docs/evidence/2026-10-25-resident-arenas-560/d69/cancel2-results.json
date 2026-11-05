@@ -1,0 +1,202 @@
+{
+ "p560qa": {
+  "build": "26.1025.1293-dev+g80ffa2e6c0d3",
+  "gitCommit": "80ffa2e6c0d34223d2cc0f31254f2e60ac2bd247",
+  "thpOff": true,
+  "exit": 0,
+  "cancel2": [
+   {
+    "kind": "cancel2-control",
+    "queuedTargets": [
+     "6e080cba-049c-4307-b776-8508ae56b126",
+     "f057a32e-d7bd-432c-bc3e-f2ced235c942"
+    ],
+    "transferTargets": [
+     "4472dcf7-92ad-48c6-8457-df2bb396efe2",
+     "35824430-56ee-48ff-966e-7367e46fda73"
+    ],
+    "witnesses": [
+     {
+      "id": "6e080cba-049c-4307-b776-8508ae56b126",
+      "expected": "queued",
+      "state": "acquiring",
+      "phase": "queued",
+      "items": [],
+      "witnessToCancelSeconds": 0.0004
+     },
+     {
+      "id": "f057a32e-d7bd-432c-bc3e-f2ced235c942",
+      "expected": "queued",
+      "state": "acquiring",
+      "phase": "queued",
+      "items": [],
+      "witnessToCancelSeconds": 0.0004
+     },
+     {
+      "id": "4472dcf7-92ad-48c6-8457-df2bb396efe2",
+      "expected": "transferring",
+      "state": "running",
+      "phase": "uploading",
+      "items": [
+       {
+        "uploadStatus": "uploading",
+        "phase": "uploading"
+       }
+      ],
+      "witnessToCancelSeconds": 0.0003
+     },
+     {
+      "id": "35824430-56ee-48ff-966e-7367e46fda73",
+      "expected": "transferring",
+      "state": "running",
+      "phase": "uploading",
+      "items": [
+       {
+        "uploadStatus": "uploading",
+        "phase": "uploading"
+       }
+      ],
+      "witnessToCancelSeconds": 0.0004
+     }
+    ],
+    "cancelSettleSeconds": {
+     "6e080cba-049c-4307-b776-8508ae56b126": 0.053,
+     "f057a32e-d7bd-432c-bc3e-f2ced235c942": 0.053,
+     "4472dcf7-92ad-48c6-8457-df2bb396efe2": 22.817,
+     "35824430-56ee-48ff-966e-7367e46fda73": 1.246
+    },
+    "outcomes": {
+     "4472dcf7-92ad-48c6-8457-df2bb396efe2": "cancelled",
+     "35824430-56ee-48ff-966e-7367e46fda73": "cancelled",
+     "6e080cba-049c-4307-b776-8508ae56b126": "cancelled",
+     "f057a32e-d7bd-432c-bc3e-f2ced235c942": "cancelled",
+     "08f58d66-465e-4535-b640-14eb4a3ebda8": "completed",
+     "c8844121-feaf-4012-bbee-48ca591a5176": "completed"
+    },
+    "queuedTargetPuts": {
+     "6e080cba-049c-4307-b776-8508ae56b126": 0,
+     "f057a32e-d7bd-432c-bc3e-f2ced235c942": 0
+    },
+    "queuedTargetObjects": {
+     "6e080cba-049c-4307-b776-8508ae56b126": 0,
+     "f057a32e-d7bd-432c-bc3e-f2ced235c942": 0
+    },
+    "transferTargetObjectsAfterCancel": {
+     "4472dcf7-92ad-48c6-8457-df2bb396efe2": 0,
+     "35824430-56ee-48ff-966e-7367e46fda73": 0
+    },
+    "wireRequests": 10,
+    "limitation": "Witness and cancel are separate requests; a held 30 s transfer makes promotion in between implausible, not impossible. Transfer-target objects are reported, not asserted: an in-flight PUT may have taken effect."
+   }
+  ],
+  "cleanup": [
+   {
+    "kind": "cleanup",
+    "remaining": [],
+    "residentExit": 0,
+    "fixtureExit": -15
+   }
+  ],
+  "verified": 2
+ },
+ "p560qb": {
+  "build": "26.1025.1294-dev+g98878cfe31c2",
+  "gitCommit": "98878cfe31c2506d25ea6cbec97af002210319d2",
+  "thpOff": true,
+  "exit": 0,
+  "cancel2": [
+   {
+    "kind": "cancel2-control",
+    "queuedTargets": [
+     "5a4877bf-2a4d-4e7a-9135-e6682ab3d127",
+     "e374222f-cb84-4aa5-ab15-85dc096699e7"
+    ],
+    "transferTargets": [
+     "5d484046-b2bc-453c-9d4c-614ed1c26b4d",
+     "dfa0d554-a04f-4079-9884-c4b11bbb3511"
+    ],
+    "witnesses": [
+     {
+      "id": "5a4877bf-2a4d-4e7a-9135-e6682ab3d127",
+      "expected": "queued",
+      "state": "acquiring",
+      "phase": "queued",
+      "items": [],
+      "witnessToCancelSeconds": 0.0004
+     },
+     {
+      "id": "e374222f-cb84-4aa5-ab15-85dc096699e7",
+      "expected": "queued",
+      "state": "acquiring",
+      "phase": "queued",
+      "items": [],
+      "witnessToCancelSeconds": 0.0004
+     },
+     {
+      "id": "5d484046-b2bc-453c-9d4c-614ed1c26b4d",
+      "expected": "transferring",
+      "state": "running",
+      "phase": "uploading",
+      "items": [
+       {
+        "uploadStatus": "uploading",
+        "phase": "uploading"
+       }
+      ],
+      "witnessToCancelSeconds": 0.0003
+     },
+     {
+      "id": "dfa0d554-a04f-4079-9884-c4b11bbb3511",
+      "expected": "transferring",
+      "state": "running",
+      "phase": "uploading",
+      "items": [
+       {
+        "uploadStatus": "uploading",
+        "phase": "uploading"
+       }
+      ],
+      "witnessToCancelSeconds": 0.0003
+     }
+    ],
+    "cancelSettleSeconds": {
+     "5a4877bf-2a4d-4e7a-9135-e6682ab3d127": 0.005,
+     "e374222f-cb84-4aa5-ab15-85dc096699e7": 0.005,
+     "5d484046-b2bc-453c-9d4c-614ed1c26b4d": 22.88,
+     "dfa0d554-a04f-4079-9884-c4b11bbb3511": 1.246
+    },
+    "outcomes": {
+     "5d484046-b2bc-453c-9d4c-614ed1c26b4d": "cancelled",
+     "dfa0d554-a04f-4079-9884-c4b11bbb3511": "cancelled",
+     "5a4877bf-2a4d-4e7a-9135-e6682ab3d127": "cancelled",
+     "e374222f-cb84-4aa5-ab15-85dc096699e7": "cancelled",
+     "85650a76-f299-4b16-8f7e-335db59d3922": "completed",
+     "38dad1e8-edf7-473a-b5a4-9289a737b5d6": "completed"
+    },
+    "queuedTargetPuts": {
+     "5a4877bf-2a4d-4e7a-9135-e6682ab3d127": 0,
+     "e374222f-cb84-4aa5-ab15-85dc096699e7": 0
+    },
+    "queuedTargetObjects": {
+     "5a4877bf-2a4d-4e7a-9135-e6682ab3d127": 0,
+     "e374222f-cb84-4aa5-ab15-85dc096699e7": 0
+    },
+    "transferTargetObjectsAfterCancel": {
+     "5d484046-b2bc-453c-9d4c-614ed1c26b4d": 0,
+     "dfa0d554-a04f-4079-9884-c4b11bbb3511": 0
+    },
+    "wireRequests": 10,
+    "limitation": "Witness and cancel are separate requests; a held 30 s transfer makes promotion in between implausible, not impossible. Transfer-target objects are reported, not asserted: an in-flight PUT may have taken effect."
+   }
+  ],
+  "cleanup": [
+   {
+    "kind": "cleanup",
+    "remaining": [],
+    "residentExit": 0,
+    "fixtureExit": -15
+   }
+  ],
+  "verified": 2
+ }
+}

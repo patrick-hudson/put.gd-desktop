@@ -1,0 +1,10 @@
+# "Upload with put.gd" under Thunar's Send To (#1105). %U: Thunar hides a Send
+# To entry that takes no URIs once any selected item is not local. No MimeType:
+# Thunar compares each listed type exactly (thunar-sendto-model.c), so a list
+# would hide the entry for most files; without one it shows for files and folders.
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=Upload with put.gd
+Icon=putgd
+Exec=/usr/bin/putgd-launcher --upload -- %U

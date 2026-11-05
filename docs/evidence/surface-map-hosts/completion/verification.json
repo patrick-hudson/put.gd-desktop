@@ -1,0 +1,34 @@
+{
+  "source": "9ad7a2c9085e066407bd1c3f6c05c9d50ea0b9b0",
+  "nightly": "5985e9043ea81a3ac33d2931203384e40bde035e",
+  "before": "9cd26ff96a9da6ec3d52ebb770ffeb0a03d44852",
+  "workstation": "patrick-Precision-5540",
+  "session": "headless Chromium, file:// offline generated map; no application/desktop session",
+  "python": "system /usr/bin/python3 3.12.3 in /tmp/putgd-smh-py",
+  "command": "/tmp/putgd-smh-py/bin/python -m pytest tests/desktop/test_surface_map.py",
+  "tests": "39 passed; no skips",
+  "model": "9 desktops, 22 surfaces, 394 interactions",
+  "rawEvidencePrivate": "/tmp/putgd-smh-replay",
+  "scope": "Python/HTML synthetic map only; no C++ build, VM, storage or native desktop acceptance",
+  "sha256": {
+    "v1-snapshots.json.gz": "2a87afe9839a1c406085bd27c49b4a0d0cbef7ef34008d4eb05bf3584b6c2774",
+    "README.md": "0eb71565aa36f9b685a2ba1d33760c9a757e43827b4a771ef355f4c4519a2bc8",
+    "after-900-annotated.png": "dfad30ca5180f33ece61014f7ef528b9c35469abedee739bd7f0ddbfbead8ed4",
+    "first-attempt.txt": "46101167df8e0b47effc88e97d5b1f4c14a8a497852f1f90ccab63f6960514d4",
+    "before-900-annotated.png": "9e7dda315d536380c6750da21f8c56699202a50f29a3c132adc49e545f5bae65",
+    "pytest.txt": "b613e8ad4494f16dfb0f912d6a16cf466d92dc0155e28399d13d062634256825",
+    "after-1900-annotated.png": "b0bbff7f1115c58900f1b799b34b17fc872beb4e9e340273f550780fb49e4d63",
+    "v1.json": "7cc2336e34ddf907be318e4be5f6866886b38074e47cadeba91f7be9fa2cf753",
+    "model-check.txt": "3541ee7b44e2010c6c91a111a536950dca8675dd22391d6b8c7fb227dde6c154",
+    "browser-checks.json": "fe3bcf322ea77a7aa602b5423b167c83e6db1bbe5d2dbbe5a1cc4253559d4a8b",
+    "render-check.py": "f4b175f3e6330182e8ea20c45f9217a9011b1d6df202e9fd317259dfa2e13267",
+    "before-1900-annotated.png": "fb51d333a51fefd999352691aea8f245641e03506803685c8e8a0e15b596751f"
+  },
+  "rawSha256": {
+    "before-1900-raw.png": "c7be8a401b8d95193f959d736092713693f73bb2d4b1a80919857c474fb4dc01",
+    "before-900-raw.png": "04d17f935a00eea31ed191b44817927fffa673797cb5e5aa750f8dce2fdf0492",
+    "after-900-raw.png": "f5dfcbf12b07e1ee98a8cc8b2a6c3139353bbda6b36c7917a0bedd35c38b76bf",
+    "after-1900-raw.png": "01c50cbbc8577c6c5276ea06584912e372db61feff101e4b43320ac9b9fc9e1c"
+  },
+  "replay": "Passed the committed render-check.py against the exact code HEAD; all v1, sticky resize/hit-target, and Matrix popover assertions passed."
+}

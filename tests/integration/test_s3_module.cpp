@@ -27,6 +27,7 @@ extern "C" Q_DECL_EXPORT const putgd::S3ModuleApi* putgd_s3_module_v1() {
 }
 #else
 #include "fixtures/S3Fixture.h"
+#include "fixtures/Waits.h"
 #include "core/HistoryStore.h"
 #include "core/LocalArchive.h"
 #include "core/SettingsService.h"
@@ -81,7 +82,7 @@ private slots:
         std::atomic_bool replied = false;
         Error error;
         provider.upload(request, [&](UploadResult result) { error = result.error; replied.store(true); });
-        QTRY_VERIFY(replied.load());
+        PUTGD_TRY_VERIFY(replied.load());
         QCOMPARE(error.code, QString("cancelled"));
         QTemporaryDir local;
         ProviderRegistry providers;
@@ -169,7 +170,7 @@ private slots:
             if (!value.error.message.contains("restart put.gd") || !value.error.message.contains("reinstall")) ++failures;
             ++callbacks;
         });
-        QTRY_COMPARE(callbacks.load(), 2);
+        PUTGD_TRY_COMPARE(callbacks.load(), 2);
         QCOMPARE(failures.load(), 0);
         QVERIFY(!sdkMapped());
     }
@@ -215,7 +216,8 @@ private slots:
 #endif
     }
     void callbackAdmissionKeepsDriverUntilSuccessorDrains() {
-        test::S3Fixture fixture;
+        // One lane: the shared permanent module worker runs every job in order.
+        test::S3Fixture fixture({}, 1);
         auto module = S3Module::acquire();
         QCOMPARE(module->liveDriverCount(), 0);
         struct Observations {
@@ -272,8 +274,8 @@ private slots:
         QCOMPARE(fixture.events("HEAD").size(), 2);
     }
     void concurrentProvidersAndPermanentWorker() {
-        test::S3Fixture fixture;
-        auto other = std::make_unique<S3Provider>(fixture.credentials);
+        test::S3Fixture fixture({}, 1);
+        auto other = std::make_unique<S3Provider>(fixture.credentials, S3UploadPolicy{}, 1);
         std::atomic_int callbacks = 0;
         std::atomic_int failures = 0;
         std::mutex mutex;
@@ -290,7 +292,7 @@ private slots:
         std::thread first([&] { for (int i = 0; i < 8; ++i) fixture.provider.checkName(fixture.destination, "first.txt", reply); });
         std::thread second([&] { for (int i = 0; i < 8; ++i) other->checkName(fixture.destination, "second.txt", reply); });
         first.join(); second.join();
-        QTRY_COMPARE(callbacks.load(), 16);
+        PUTGD_TRY_COMPARE(callbacks.load(), 16);
         QCOMPARE(failures.load(), 0);
         QVERIFY(worker != std::this_thread::get_id());
 #ifdef Q_OS_LINUX
@@ -298,18 +300,18 @@ private slots:
 #endif
         // QThreadPool's old default idle expiry is 30 seconds. SDK ownership must
         // still use the same permanent worker after this interval.
-        QTest::qWait(31000);
+        putgd::test::settle(31000);
         other->checkName(fixture.destination, "after-idle.txt", reply);
         other.reset(); // Drain its accepted callback and clients before returning.
         QCOMPARE(callbacks.load(), 17);
         QCOMPARE(failures.load(), 0);
         fixture.provider.checkName(fixture.destination, "remaining-provider.txt", reply);
-        QTRY_COMPARE(callbacks.load(), 18);
+        PUTGD_TRY_COMPARE(callbacks.load(), 18);
         QCOMPARE(failures.load(), 0);
     }
     void boundedQueueDrainsExactlyOnce() {
         test::S3Fixture fixture;
-        auto provider = std::make_unique<S3Provider>(fixture.credentials);
+        auto provider = std::make_unique<S3Provider>(fixture.credentials, S3UploadPolicy{}, 1);
         auto module = S3Module::acquire();
         std::promise<void> blocked;
         auto started = blocked.get_future();

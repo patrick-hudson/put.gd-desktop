@@ -12,8 +12,8 @@ and the pinned official AWS SDK described in `docs/build.md`. Provision the SDK
 separately; no dependencies or substitute compiler/Qt distribution are bundled.
 
 An extracted archive has no Git checkout. Configure it with `BUILD_TESTING=OFF`
-and the generated `PUTGD_SOURCE_COMMIT`, `PUTGD_SOURCE_TREE`, and
-`PUTGD_SOURCE_COMMIT_COUNT` arguments. Leave lab/physical benchmark options off.
+and the generated `PUTGD_SOURCE_COMMIT`, `PUTGD_SOURCE_TREE`,
+`PUTGD_SOURCE_COMMIT_COUNT` and `PUTGD_SOURCE_COMMIT_TIME` arguments. Leave lab/physical benchmark options off.
 For an existing SDK, also provide `CMAKE_PREFIX_PATH`, `PUTGD_AWS_RUNTIME_DIR`,
 and `PUTGD_AWS_SOURCE_DIR`, including the verified source/component licenses.
 

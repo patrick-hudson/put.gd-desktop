@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="Linux-c++"
+	tests="1"
+	failures="0"
+	disabled="0"
+	skipped="0"
+	hostname="42f5a9df95e9"
+	time="87"
+	timestamp="2026-10-24T00:57:41"
+	>
+	<testcase name="operations_contract" classname="operations_contract" time="86.9999" status="run">
+		<properties>
+			<property name="cmake_labels" value="integration"/>
+		</properties>
+		<system-out>********* Start testing of OperationsTest *********
+Config: Using QtTest library 6.4.2, Qt 6.4.2 (x86_64-little_endian-lp64 shared (dynamic) release build; by GCC 13.2.0), ubuntu 24.04
+PASS   : OperationsTest::initTestCase()
+PASS   : OperationsTest::historyImageCopiesSelectedUploadedOriginalAndRejectsChangedFiles()
+PASS   : OperationsTest::historyImageCopiesSixteenBitOriginalAboveFourBytePixelBudget()
+PASS   : OperationsTest::historyImagePreparationHonorsClipboardAndInvocationChanges(clipboard-owner)
+PASS   : OperationsTest::historyImagePreparationHonorsClipboardAndInvocationChanges(newer-copy)
+PASS   : OperationsTest::historyImageQueuedAfterCommittedCopyRebasesOnlyResidentAcknowledgements(resident-ack)
+PASS   : OperationsTest::historyImageQueuedAfterCommittedCopyRebasesOnlyResidentAcknowledgements(external-owner-after-ack)
+PASS   : OperationsTest::historyImageSupersededWorkerReleasesNewerCopy()
+PASS   : OperationsTest::destinationAndLocalCopiesAreIndependent(destination-0-local-0-inherit-0)
+PASS   : Operatio...
+[This part of the test output was removed since it exceeds the threshold of 1024 bytes.]
+</system-out>
+	</testcase>
+</testsuite>

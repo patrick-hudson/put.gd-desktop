@@ -1,0 +1,42 @@
+{
+  "schemaVersion": 1,
+  "tag": "proton-sources-0.23.0-crypto2.2.0-bun1.4.4",
+  "releaseId": 430114839,
+  "prerelease": true,
+  "latestRequested": false,
+  "gitCommit": "7b0b7badc78e273d2b59f3258f5f97aa371866ec",
+  "published": true,
+  "releaseUrl": "https://github.com/patrick-hudson/put.gd-desktop/releases/tag/proton-sources-0.23.0-crypto2.2.0-bun1.4.4",
+  "publishedUtc": "2026-10-31T19:33:02Z",
+  "assets": [
+    {
+      "id": 696246309,
+      "name": "putgd-proton-corresponding-source.tar.gz.part1",
+      "size": 1300000000,
+      "state": "uploaded",
+      "digest": "sha256:b5ff5d79324a57e3d51c573c2f77b68bee0dd1e80b84c885e5c177c0e744f85f",
+      "browser_download_url": "https://github.com/patrick-hudson/put.gd-desktop/releases/download/proton-sources-0.23.0-crypto2.2.0-bun1.4.4/putgd-proton-corresponding-source.tar.gz.part1"
+    },
+    {
+      "id": 696246311,
+      "name": "putgd-proton-corresponding-source.tar.gz.part2",
+      "size": 1094441755,
+      "state": "uploaded",
+      "digest": "sha256:78ac53ae7970d5ef2757801762dd6794bd7d471e0c7022026f63323485a8c361",
+      "browser_download_url": "https://github.com/patrick-hudson/put.gd-desktop/releases/download/proton-sources-0.23.0-crypto2.2.0-bun1.4.4/putgd-proton-corresponding-source.tar.gz.part2"
+    }
+  ],
+  "helperSha256": "9fd4d72f86352cfcf2c8b6ba1db4102ed6f7b22660077698c700989e9fda8586",
+  "transportSha256": "d002d29acbdb4a8a7becb0754b8ca63d4e1bdd0ff6bb1ddb276de05cc49e2f5b",
+  "transportBytes": 2394441755,
+  "uploadTransport": "gh concurrent HTTPS uploads with GODEBUG=http2client=0; checksum and prerelease guards remain enabled",
+  "earlierUnpublishedAttempts": {
+    "supersededPreNodeTypeCandidate": true,
+    "sigtermExitCodes": [
+      143,
+      143
+    ],
+    "http2SharedConnectionAttemptInterrupted": true,
+    "publishedAssetsOverwritten": false
+  }
+}

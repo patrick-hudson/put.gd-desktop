@@ -1,0 +1,1 @@
+{"passed": true, "cases": 1, "assertions": "exact decoded pixels match; one-channel mutation rejected; tolerance zero", "decoder": "guest distro PyQt6 QImage", "exitCode": 0}

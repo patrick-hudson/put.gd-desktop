@@ -1,0 +1,30 @@
+{
+  "completed": true,
+  "files": {
+    "app-started.ppm": "ba51f18ddcd58dc006e104afbe20c0e53abb40005e3a02ef8549a23df8c09bd7",
+    "capacity.json": "acb4dfb34edb071c13b6846bc50202151d8e2fe0389eb718b897e17904ff8acb",
+    "cleanup-evidence.json": "ddf98e186b24aff1138d24f4da2e63bf8df3da76cdf87a8a377d28a796e356ec",
+    "completion.json": "19021aedda1f557959156b0b594bf12f2f0605226ae441c8c94f7f870bc7f8fd",
+    "controller.json": "aac7725ac718c06739fa3b2f25bd576d38c3daf1fd35768ee7fe85de80391614",
+    "desktop-after.ppm": "624ee9aa95ae10ca24cf2613a1dbbec45fe690230d4ad95bdee110918c39a040",
+    "desktop.ppm": "7579c74b5f210d1fb6d3e11b59ce081be830fe09ac8fc13e600f4ac74b37846d",
+    "golden.json": "9668ead695a49ff68a028d6ced098d2b575ada369926a8dcceeaecfd90a1e389",
+    "guest-capacity.json": "482fbf25025c5ad5278957cc99e85471f44c553190eaea2badcf59c2f1e5424a",
+    "held-overlay-refusal.json": "9f05726e6d6877058e373e9bc923c52cb11b071fffd5a8c0b761efcce9eaa825",
+    "idle-policy.json": "8b8d2e53fe3423e407d7395f736e9c2a5e08303269d6fac05cb94b299a5e601f",
+    "install.json": "7c596eb67eef642795425b968cbcdd778ca30f3bf11e48cd41aa7ee19e731444",
+    "installed-version.json": "644bb06e9eddd7326be742d40336d75c147f86342b06938b5f7e4e13aab64b1c",
+    "launch.json": "174f41cb90090664dc45cb03a889ef23b8e44542776c2b62f5728722e7c720d7",
+    "package-artifact.json": "57f2c922e5f9bfef92f094295868b43409dbc4fcdc84d475583affea24357660",
+    "platform.json": "70a3ef14b24ce31b97152fbd97e370fd4bbc25030a80a8393965c93041e157b1",
+    "probes.log": "593f32125fdfa63f38b3fff5c37dfa2c3f2148812ec1f9a8076bad1a4cde4bd7",
+    "reset.json": "49b4c8bb99803f560d17584b2da5fefa281e8dfcdcef12caf325e365377eb33d",
+    "socket-preflight.json": "e3377549b2523cc41b750e154717766159af0230d64385a931a3c384b7317b82",
+    "start.json": "452d016c84dad1ff99d0c65a01bdbf0635df819ce2c314493a2bfe05ce047bda"
+  },
+  "kind": "vm-overlay-cleanup-evidence",
+  "outcome": "passed",
+  "run": "/home/user/lab-driver/work/lab-runs/pg3c",
+  "runId": "b82333d6-1a11-4954-82ae-91305f85f309",
+  "schemaVersion": 1
+}

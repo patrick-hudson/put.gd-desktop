@@ -1,0 +1,20 @@
+{
+ "restored": {
+  "https": [
+   "Default application for \u201cx-scheme-handler/https\u201d: firefox.desktop"
+  ],
+  "http": [
+   "Default application for \u201cx-scheme-handler/http\u201d: firefox.desktop"
+  ]
+ },
+ "before": {
+  "https": [
+   "Default application for \u201cx-scheme-handler/https\u201d: firefox.desktop"
+  ],
+  "http": [
+   "Default application for \u201cx-scheme-handler/http\u201d: firefox.desktop"
+  ]
+ },
+ "same": true,
+ "filesMatch": true
+}

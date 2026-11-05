@@ -1,0 +1,101 @@
+{
+ "notificationsOn": true,
+ "operation": {
+  "id": "71645781-cf03-43a1-9dd6-8fbf93a2fe86",
+  "state": "completed",
+  "copyStatus": "copied",
+  "items": [
+   {
+    "name": "Screen-Capture-2026-10-22-02-04-39.png",
+    "mime": "image/png",
+    "uploadStatus": "uploaded",
+    "link": "https://put.gd/acceptance/afa2/k72/Screen-Capture-2026-10-22-02-04-39.png",
+    "local": {
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     },
+     "path": "/home/patrick/work/put.gd-afa2/runs/k72-F/archive/images/Screen-Capture-2026-10-22-02-04-39.png",
+     "status": "saved"
+    }
+   }
+  ],
+  "error": {
+   "code": "",
+   "details": {},
+   "message": ""
+  }
+ },
+ "notification": {
+  "logged": [
+   {
+    "category": "putgd.ui",
+    "fields": {
+     "itemId": null,
+     "notificationId": 1,
+     "notificationText": "Uploaded. Link copied to the clipboard. Click to open in browser.",
+     "operationId": null,
+     "summary": "operation_completed",
+     "title": "put.gd \u2014 completed",
+     "warning": false
+    },
+    "level": "info",
+    "message": "Notification shown",
+    "pid": 1263918,
+    "process": "putgd",
+    "time": "2026-10-22T07:04:40.911Z",
+    "v": 1
+   }
+  ],
+  "banner": {
+   "label": "k72-F-F-notify-notification",
+   "components": [
+    {
+     "blocks": 546,
+     "box": [
+      1552,
+      888,
+      1888,
+      992
+     ]
+    }
+   ],
+   "colour": [
+    24,
+    32,
+    44
+   ],
+   "inner": [
+    1554,
+    891,
+    1884,
+    990
+   ],
+   "changedShare": 1.0,
+   "kept": "/home/patrick/work/put.gd-afa2/runs/k72-F/crops/k72-F-F-notify-notification.png"
+  },
+  "full": "/home/patrick/work/put.gd-afa2/runs/k72-F/full/k72-F-F-notify-notification.png",
+  "clicked": [
+   1719,
+   924
+  ],
+  "dbusMembers": [
+   "NameAcquired",
+   "NameLost",
+   "Notify",
+   "ActivationToken",
+   "ActionInvoked",
+   "NotificationClosed"
+  ],
+  "notifyActions": [
+   "default",
+   "Open in browser"
+  ],
+  "actionInvoked": [
+   "default"
+  ],
+  "openedUrls": []
+ },
+ "notificationsOff": true
+}

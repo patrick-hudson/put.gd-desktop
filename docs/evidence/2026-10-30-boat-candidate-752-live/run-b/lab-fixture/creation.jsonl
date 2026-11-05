@@ -1,0 +1,5 @@
+{"event":"created","hostedPorts":null,"id":"bx_pm48s29k","org":null,"team":null,"ttlSeconds":10800}
+{"event":"state","id":"bx_pm48s29k","state":"starting"}
+{"event":"state","id":"bx_pm48s29k","state":"cloning"}
+{"event":"state","id":"bx_pm48s29k","state":"idle"}
+{"archiveAfter":"2026-10-30T07:03:25.814Z","commands":{"forward":"boat forward bx_pm48s29k --remote 3000 --local 3000","ssh":"boat ssh bx_pm48s29k"},"desktopUrl":null,"event":"ready","id":"bx_pm48s29k","ip":"2001:41d0:303:1dae:100::24","state":"idle","url":"https://box-node-e15981869d09339a.on.boat.dev"}

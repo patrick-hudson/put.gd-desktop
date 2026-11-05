@@ -1,0 +1,1346 @@
+{
+ "p560c1": {
+  "product": {
+   "path": "/home/patrick/work/i560o/putgd_26.1025.1294~dev+g98878cfe31c2_amd64.deb",
+   "sha256": "bab4d09225f7ed620102b25ca0e7d812a28a53ff09e65f4a6b30b0fe498f103b",
+   "binaries": {
+    "app": {
+     "path": "/usr/bin/putgd",
+     "sha256": "e6ea7836ddc8240e01db1a9a42989bce5c99f02b8cb1ddc2e2be9633818f7c41",
+     "build": {
+      "schemaVersion": 1,
+      "version": "26.1025.1294-dev+g98878cfe31c2",
+      "baseVersion": "26.1025.1294",
+      "packageVersion": "26.1025.1294~dev+g98878cfe31c2",
+      "gitCommit": "98878cfe31c2506d25ea6cbec97af002210319d2",
+      "gitTree": "1a4c7e6d116a911d50dfbb52fc0ed2304cf627c8",
+      "commitCount": 1294,
+      "dirty": false,
+      "sourceProvenance": "git"
+     }
+    },
+    "capture_helper": {
+     "path": "/usr/bin/putgd-capture",
+     "sha256": "c1c42c99758e00aec0a6691f7156d79668629d64fd44aca110cb8d375053dad2",
+     "build": {
+      "schemaVersion": 1,
+      "version": "26.1025.1294-dev+g98878cfe31c2",
+      "baseVersion": "26.1025.1294",
+      "packageVersion": "26.1025.1294~dev+g98878cfe31c2",
+      "gitCommit": "98878cfe31c2506d25ea6cbec97af002210319d2",
+      "gitTree": "1a4c7e6d116a911d50dfbb52fc0ed2304cf627c8",
+      "commitCount": 1294,
+      "dirty": false,
+      "sourceProvenance": "git"
+     }
+    },
+    "cli": {
+     "path": "/usr/bin/putgd-cli",
+     "sha256": "64f1ea804f802ee4d42b5c7faa96bbe3faa01dac4e5a3e7c43211bff92ec8f2d",
+     "build": {
+      "schemaVersion": 1,
+      "version": "26.1025.1294-dev+g98878cfe31c2",
+      "baseVersion": "26.1025.1294",
+      "packageVersion": "26.1025.1294~dev+g98878cfe31c2",
+      "gitCommit": "98878cfe31c2506d25ea6cbec97af002210319d2",
+      "gitTree": "1a4c7e6d116a911d50dfbb52fc0ed2304cf627c8",
+      "commitCount": 1294,
+      "dirty": false,
+      "sourceProvenance": "git"
+     }
+    },
+    "helper": {
+     "path": "/usr/bin/putgd-ui",
+     "sha256": "3baaed7d8a0764cf342fc09ea77909538babd39be0fde6de445dacde5f0ee4a0",
+     "build": {
+      "schemaVersion": 1,
+      "version": "26.1025.1294-dev+g98878cfe31c2",
+      "baseVersion": "26.1025.1294",
+      "packageVersion": "26.1025.1294~dev+g98878cfe31c2",
+      "gitCommit": "98878cfe31c2506d25ea6cbec97af002210319d2",
+      "gitTree": "1a4c7e6d116a911d50dfbb52fc0ed2304cf627c8",
+      "commitCount": 1294,
+      "dirty": false,
+      "sourceProvenance": "git"
+     }
+    }
+   }
+  },
+  "driver": {
+   "sha256": "3cb511e0f0e7e4de63afa68d0ae66a56a8f6abcc028aa0f2df426e27d21a6676",
+   "revision": "00ab777f2413a1fbd7670a7259dc614eced896e6",
+   "revisionSource": "explicit-declaration",
+   "sourceFiles": {
+    "tests/performance/physical_campaign.py": "3cb511e0f0e7e4de63afa68d0ae66a56a8f6abcc028aa0f2df426e27d21a6676",
+    "tests/performance/bench_ui_process.py": "a28c94b075036ea65f8eca8e068d480cff46ee959d4680593f5c4d55cce3fc40",
+    "tests/performance/observe_idle.py": "33fab955eb36d617ee0a2fd5de67cf0a54aab0994a3dccb3f70dac5111398efe",
+    "tests/performance/campaign_fixture.py": "330632490f68fb3621f19261f35e64643849b26190de256c969cdc89e79d41d9",
+    "tests/performance/campaign_ui.py": "86dd179d7ee6c4c0cae9728270dca133dbaf9b15975f05fb13965231669937dc",
+    "tests/performance/campaign_workloads.py": "179e837eab64ebc7f82c3a6237067070d208a75cf255b7cd4d5d970492337bf9",
+    "tests/performance/campaign_proxy.py": "39973a4603cedf82ae89250c222ae5f508f36aa127be4d501f2ee3c3eae0e98b",
+    "tests/performance/campaign_lifecycle.py": "e86141e204105fe6834d90933dd065377df0b444786eec5cc1340c11eabe6668",
+    "tests/performance/build_current_capture.py": "dfab0d0aefc471cd13eb3ec6e1bb6b0c57614ac424d2067eca4c5846de0f95bd",
+    "tests/performance/campaign_frames.py": "6c013f4cbce53b96ce6c2dd1b0b1d396f449d5017621654ae2e291a6c5cb6a97",
+    "tools/diagnostics/check_socket_paths.py": "7e8797ec6ea0014eeacd428f822ef3fe545a276247a7ad7e6de9b557a0937f55"
+   }
+  },
+  "parameters": {
+   "scenario": "burst",
+   "output": "/tmp/p560c1",
+   "package": "/home/patrick/work/i560o/putgd_26.1025.1294~dev+g98878cfe31c2_amd64.deb",
+   "package_sha256": "bab4d09225f7ed620102b25ca0e7d812a28a53ff09e65f4a6b30b0fe498f103b",
+   "version": "26.1025.1294-dev+g98878cfe31c2",
+   "source_revision": "98878cfe31c2506d25ea6cbec97af002210319d2",
+   "desktop_session": "c89",
+   "lock_session": "t3-i560-opus-native1",
+   "app": "/usr/bin/putgd",
+   "cli": "/usr/bin/putgd-cli",
+   "helper": "/usr/bin/putgd-ui",
+   "capture_helper": "/usr/bin/putgd-capture",
+   "driver": null,
+   "capture_driver_manifest": null,
+   "fixture_root": null,
+   "driver_revision": "00ab777f2413a1fbd7670a7259dc614eced896e6",
+   "open_seconds": 30,
+   "vnc_port": 5900,
+   "endpoint": "http://127.0.0.1:44633",
+   "fixture_pid": 746385,
+   "fixture_source": "/home/patrick/work/i560o/driver/tests/fixtures/s3_server.py",
+   "enable_accessibility": true,
+   "native_driver": "/home/patrick/work/i560o/native495/native_acceptance.py",
+   "native_driver_revision": "72afd00bf2dbdaaa7e4bd3f847dc54f1da715f0e",
+   "native_driver_sha256": "347934c226f99cb0e509d5466c5df8116896e6bfac07d75fdfa4f4c2d06ca053",
+   "threshold_policy": null,
+   "settle_seconds": 300,
+   "history_pages": 200
+  },
+  "status": "complete",
+  "gates": {
+   "captureBurst": {
+    "status": "unassessed",
+    "reason": "50-upload workload uses explicit synthetic file editors; actual capture burst is not exercised"
+   },
+   "historyOpenUpperBoundMs": {
+    "status": "unassessed",
+    "reason": "content_endpoint_not_witnessed"
+   },
+   "burstVisualAttribution": {
+    "status": "pass",
+    "attempted": 4,
+    "succeeded": 4,
+    "refused": 0
+   },
+   "settleGrowthBytes": {
+    "status": "unassessed",
+    "reason": "no_explicit_approved_threshold"
+   },
+   "settled-rssBytes": {
+    "status": "pass",
+    "limitBytes": 41943040
+   },
+   "settled-pssBytes": {
+    "status": "pass",
+    "limitBytes": 30408704
+   },
+   "cleanup": {
+    "status": "pass"
+   }
+  },
+  "metrics": {
+   "historyOpenFirstGenericDrawableObservationMs": 640.4732019873336,
+   "historyOpenUpperBoundMs": null,
+   "burst": {
+    "acceptedFileEditorUploads": 50,
+    "nativeCapturesExercised": 0,
+    "source": "production editor.open(source=file) then explicit editor.submit",
+    "sourceGeometry": [
+     320,
+     180
+    ],
+    "fixturePutDelaySeconds": 10,
+    "concurrentUploadPeakObserved": 4,
+    "queuedOperationPeakObserved": 39,
+    "linksIndependentlyVerified": 50,
+    "finalTrayStatus": "Active"
+   },
+   "postUploadFinalFamily": {
+    "rssBytes": 36057088,
+    "pssBytes": 24264704,
+    "privateBytes": 23539712
+   },
+   "settleGrowthBytes": 5327872,
+   "sampledProcessFamily": {
+    "peakTotals": {
+     "rssBytes": 280301568,
+     "pssBytes": 111457280,
+     "privateBytes": 84971520
+    },
+    "cpuPercentOneCoreLowerBound": 4.5734701850268165,
+    "observedProcessGenerations": 80,
+    "samplingSpanSeconds": 507.05479781900067,
+    "shortLivedChildrenMayBeMissed": true
+   }
+  },
+  "residentCleanup": [
+   {
+    "gracefulRequest": true,
+    "exitCode": 0,
+    "forced": false,
+    "remaining": [],
+    "socketAbsent": true,
+    "passed": true,
+    "errors": [],
+    "inventoryComplete": true,
+    "absenceVerified": true,
+    "inventoryDefinition": "observed PID/start/UID generations + resident process group + exact isolated runtime/data environment; no command lines exported"
+   },
+   {
+    "gracefulRequest": true,
+    "exitCode": 0,
+    "forced": false,
+    "remaining": [],
+    "socketAbsent": true,
+    "passed": true,
+    "errors": [],
+    "inventoryComplete": true,
+    "absenceVerified": true,
+    "inventoryDefinition": "observed PID/start/UID generations + resident process group + exact isolated runtime/data environment; no command lines exported"
+   }
+  ],
+  "limitations": [
+   "Capture witness observes X11 drawable paint, not compositor presentation.",
+   "CLI acknowledgements do not prove painted response.",
+   "Sequential sampled process memory can miss short-lived descendants.",
+   "Family CPU is a lower bound when a child exits between samples.",
+   "Shared desktop daemons are outside the resident process family.",
+   "Host quietness and reviewed sanitized visuals require coordinator evidence.",
+   "Burst measures 50 explicit synthetic file-editor Uploads, not desktop or native capture acceptance.",
+   "Post-upload sampled growth/plateau is measured; a finite settle does not prove absence of all leaks."
+  ],
+  "settleSeries": [
+   {
+    "elapsedSeconds": 210.715,
+    "processCount": 1,
+    "rssBytes": 36155392,
+    "pssBytes": 24321024,
+    "privateBytes": 23638016
+   },
+   {
+    "elapsedSeconds": 215.754,
+    "processCount": 1,
+    "rssBytes": 36155392,
+    "pssBytes": 24321024,
+    "privateBytes": 23638016
+   },
+   {
+    "elapsedSeconds": 220.79,
+    "processCount": 1,
+    "rssBytes": 36155392,
+    "pssBytes": 24321024,
+    "privateBytes": 23638016
+   },
+   {
+    "elapsedSeconds": 225.83,
+    "processCount": 1,
+    "rssBytes": 36155392,
+    "pssBytes": 24321024,
+    "privateBytes": 23638016
+   },
+   {
+    "elapsedSeconds": 230.867,
+    "processCount": 1,
+    "rssBytes": 36155392,
+    "pssBytes": 24321024,
+    "privateBytes": 23638016
+   },
+   {
+    "elapsedSeconds": 235.904,
+    "processCount": 1,
+    "rssBytes": 36057088,
+    "pssBytes": 24222720,
+    "privateBytes": 23539712
+   },
+   {
+    "elapsedSeconds": 240.942,
+    "processCount": 1,
+    "rssBytes": 36057088,
+    "pssBytes": 24222720,
+    "privateBytes": 23539712
+   },
+   {
+    "elapsedSeconds": 245.981,
+    "processCount": 1,
+    "rssBytes": 36057088,
+    "pssBytes": 24222720,
+    "privateBytes": 23539712
+   },
+   {
+    "elapsedSeconds": 251.019,
+    "processCount": 1,
+    "rssBytes": 36057088,
+    "pssBytes": 24222720,
+    "privateBytes": 23539712
+   },
+   {
+    "elapsedSeconds": 256.057,
+    "processCount": 1,
+    "rssBytes": 36057088,
+    "pssBytes": 24222720,
+    "privateBytes": 23539712
+   },
+   {
+    "elapsedSeconds": 261.095,
+    "processCount": 1,
+    "rssBytes": 36057088,
+    "pssBytes": 24222720,
+    "privateBytes": 23539712
+   },
+   {
+    "elapsedSeconds": 266.133,
+    "processCount": 1,
+    "rssBytes": 36057088,
+    "pssBytes": 24222720,
+    "privateBytes": 23539712
+   },
+   {
+    "elapsedSeconds": 271.167,
+    "processCount": 1,
+    "rssBytes": 36057088,
+    "pssBytes": 24222720,
+    "privateBytes": 23539712
+   },
+   {
+    "elapsedSeconds": 276.212,
+    "processCount": 1,
+    "rssBytes": 36057088,
+    "pssBytes": 24222720,
+    "privateBytes": 23539712
+   },
+   {
+    "elapsedSeconds": 281.249,
+    "processCount": 1,
+    "rssBytes": 36057088,
+    "pssBytes": 24222720,
+    "privateBytes": 23539712
+   },
+   {
+    "elapsedSeconds": 286.287,
+    "processCount": 1,
+    "rssBytes": 36057088,
+    "pssBytes": 24222720,
+    "privateBytes": 23539712
+   },
+   {
+    "elapsedSeconds": 291.35,
+    "processCount": 1,
+    "rssBytes": 36057088,
+    "pssBytes": 24222720,
+    "privateBytes": 23539712
+   },
+   {
+    "elapsedSeconds": 296.388,
+    "processCount": 1,
+    "rssBytes": 36057088,
+    "pssBytes": 24222720,
+    "privateBytes": 23539712
+   },
+   {
+    "elapsedSeconds": 301.456,
+    "processCount": 1,
+    "rssBytes": 36057088,
+    "pssBytes": 24222720,
+    "privateBytes": 23539712
+   },
+   {
+    "elapsedSeconds": 306.521,
+    "processCount": 1,
+    "rssBytes": 36057088,
+    "pssBytes": 24264704,
+    "privateBytes": 23539712
+   },
+   {
+    "elapsedSeconds": 311.56,
+    "processCount": 1,
+    "rssBytes": 36057088,
+    "pssBytes": 24264704,
+    "privateBytes": 23539712
+   },
+   {
+    "elapsedSeconds": 316.599,
+    "processCount": 1,
+    "rssBytes": 36057088,
+    "pssBytes": 24264704,
+    "privateBytes": 23539712
+   },
+   {
+    "elapsedSeconds": 321.637,
+    "processCount": 1,
+    "rssBytes": 36057088,
+    "pssBytes": 24264704,
+    "privateBytes": 23539712
+   },
+   {
+    "elapsedSeconds": 326.675,
+    "processCount": 1,
+    "rssBytes": 36057088,
+    "pssBytes": 24264704,
+    "privateBytes": 23539712
+   },
+   {
+    "elapsedSeconds": 331.714,
+    "processCount": 1,
+    "rssBytes": 36057088,
+    "pssBytes": 24264704,
+    "privateBytes": 23539712
+   },
+   {
+    "elapsedSeconds": 336.752,
+    "processCount": 1,
+    "rssBytes": 36057088,
+    "pssBytes": 24264704,
+    "privateBytes": 23539712
+   },
+   {
+    "elapsedSeconds": 341.79,
+    "processCount": 1,
+    "rssBytes": 36057088,
+    "pssBytes": 24264704,
+    "privateBytes": 23539712
+   },
+   {
+    "elapsedSeconds": 346.828,
+    "processCount": 1,
+    "rssBytes": 36057088,
+    "pssBytes": 24264704,
+    "privateBytes": 23539712
+   },
+   {
+    "elapsedSeconds": 351.866,
+    "processCount": 1,
+    "rssBytes": 36057088,
+    "pssBytes": 24264704,
+    "privateBytes": 23539712
+   },
+   {
+    "elapsedSeconds": 356.905,
+    "processCount": 1,
+    "rssBytes": 36057088,
+    "pssBytes": 24264704,
+    "privateBytes": 23539712
+   },
+   {
+    "elapsedSeconds": 361.943,
+    "processCount": 1,
+    "rssBytes": 36057088,
+    "pssBytes": 24264704,
+    "privateBytes": 23539712
+   },
+   {
+    "elapsedSeconds": 366.981,
+    "processCount": 1,
+    "rssBytes": 36057088,
+    "pssBytes": 24264704,
+    "privateBytes": 23539712
+   },
+   {
+    "elapsedSeconds": 372.021,
+    "processCount": 1,
+    "rssBytes": 36057088,
+    "pssBytes": 24264704,
+    "privateBytes": 23539712
+   },
+   {
+    "elapsedSeconds": 377.059,
+    "processCount": 1,
+    "rssBytes": 36057088,
+    "pssBytes": 24264704,
+    "privateBytes": 23539712
+   },
+   {
+    "elapsedSeconds": 382.098,
+    "processCount": 1,
+    "rssBytes": 36057088,
+    "pssBytes": 24264704,
+    "privateBytes": 23539712
+   },
+   {
+    "elapsedSeconds": 387.136,
+    "processCount": 1,
+    "rssBytes": 36057088,
+    "pssBytes": 24264704,
+    "privateBytes": 23539712
+   },
+   {
+    "elapsedSeconds": 392.175,
+    "processCount": 1,
+    "rssBytes": 36057088,
+    "pssBytes": 24264704,
+    "privateBytes": 23539712
+   },
+   {
+    "elapsedSeconds": 397.211,
+    "processCount": 1,
+    "rssBytes": 36057088,
+    "pssBytes": 24264704,
+    "privateBytes": 23539712
+   },
+   {
+    "elapsedSeconds": 402.248,
+    "processCount": 1,
+    "rssBytes": 36057088,
+    "pssBytes": 24264704,
+    "privateBytes": 23539712
+   },
+   {
+    "elapsedSeconds": 407.286,
+    "processCount": 1,
+    "rssBytes": 36057088,
+    "pssBytes": 24264704,
+    "privateBytes": 23539712
+   },
+   {
+    "elapsedSeconds": 412.325,
+    "processCount": 1,
+    "rssBytes": 36057088,
+    "pssBytes": 24264704,
+    "privateBytes": 23539712
+   },
+   {
+    "elapsedSeconds": 417.389,
+    "processCount": 1,
+    "rssBytes": 36057088,
+    "pssBytes": 24264704,
+    "privateBytes": 23539712
+   },
+   {
+    "elapsedSeconds": 422.456,
+    "processCount": 1,
+    "rssBytes": 36057088,
+    "pssBytes": 24264704,
+    "privateBytes": 23539712
+   },
+   {
+    "elapsedSeconds": 427.494,
+    "processCount": 1,
+    "rssBytes": 36057088,
+    "pssBytes": 24264704,
+    "privateBytes": 23539712
+   },
+   {
+    "elapsedSeconds": 432.557,
+    "processCount": 1,
+    "rssBytes": 36057088,
+    "pssBytes": 24264704,
+    "privateBytes": 23539712
+   },
+   {
+    "elapsedSeconds": 437.596,
+    "processCount": 1,
+    "rssBytes": 36057088,
+    "pssBytes": 24264704,
+    "privateBytes": 23539712
+   },
+   {
+    "elapsedSeconds": 442.634,
+    "processCount": 1,
+    "rssBytes": 36057088,
+    "pssBytes": 24264704,
+    "privateBytes": 23539712
+   },
+   {
+    "elapsedSeconds": 447.671,
+    "processCount": 1,
+    "rssBytes": 36057088,
+    "pssBytes": 24264704,
+    "privateBytes": 23539712
+   },
+   {
+    "elapsedSeconds": 452.709,
+    "processCount": 1,
+    "rssBytes": 36057088,
+    "pssBytes": 24264704,
+    "privateBytes": 23539712
+   },
+   {
+    "elapsedSeconds": 457.747,
+    "processCount": 1,
+    "rssBytes": 36057088,
+    "pssBytes": 24264704,
+    "privateBytes": 23539712
+   },
+   {
+    "elapsedSeconds": 462.785,
+    "processCount": 1,
+    "rssBytes": 36057088,
+    "pssBytes": 24264704,
+    "privateBytes": 23539712
+   },
+   {
+    "elapsedSeconds": 467.823,
+    "processCount": 1,
+    "rssBytes": 36057088,
+    "pssBytes": 24264704,
+    "privateBytes": 23539712
+   },
+   {
+    "elapsedSeconds": 472.862,
+    "processCount": 1,
+    "rssBytes": 36057088,
+    "pssBytes": 24264704,
+    "privateBytes": 23539712
+   },
+   {
+    "elapsedSeconds": 477.9,
+    "processCount": 1,
+    "rssBytes": 36057088,
+    "pssBytes": 24264704,
+    "privateBytes": 23539712
+   },
+   {
+    "elapsedSeconds": 482.935,
+    "processCount": 1,
+    "rssBytes": 36057088,
+    "pssBytes": 24264704,
+    "privateBytes": 23539712
+   },
+   {
+    "elapsedSeconds": 487.973,
+    "processCount": 1,
+    "rssBytes": 36057088,
+    "pssBytes": 24264704,
+    "privateBytes": 23539712
+   },
+   {
+    "elapsedSeconds": 493.012,
+    "processCount": 1,
+    "rssBytes": 36057088,
+    "pssBytes": 24264704,
+    "privateBytes": 23539712
+   },
+   {
+    "elapsedSeconds": 498.077,
+    "processCount": 1,
+    "rssBytes": 36057088,
+    "pssBytes": 24264704,
+    "privateBytes": 23539712
+   },
+   {
+    "elapsedSeconds": 503.139,
+    "processCount": 1,
+    "rssBytes": 36057088,
+    "pssBytes": 24264704,
+    "privateBytes": 23539712
+   },
+   {
+    "elapsedSeconds": 508.178,
+    "processCount": 1,
+    "rssBytes": 36057088,
+    "pssBytes": 24264704,
+    "privateBytes": 23539712
+   },
+   {
+    "elapsedSeconds": 510.822,
+    "processCount": 1,
+    "rssBytes": 36057088,
+    "pssBytes": 24264704,
+    "privateBytes": 23539712
+   }
+  ]
+ },
+ "p560t2": {
+  "product": {
+   "path": "/home/patrick/work/i560o/putgd_26.1025.1293~dev+g80ffa2e6c0d3_amd64.deb",
+   "sha256": "864062f35e57176688a80da3516dfdead493b1b8da73f2192fb98a87f09746a2",
+   "binaries": {
+    "app": {
+     "path": "/usr/bin/putgd",
+     "sha256": "c8d59a0b3a62919ee63310d79eca3a5afeb8d3f946c1b29f87b3067471b07b4b",
+     "build": {
+      "schemaVersion": 1,
+      "version": "26.1025.1293-dev+g80ffa2e6c0d3",
+      "baseVersion": "26.1025.1293",
+      "packageVersion": "26.1025.1293~dev+g80ffa2e6c0d3",
+      "gitCommit": "80ffa2e6c0d34223d2cc0f31254f2e60ac2bd247",
+      "gitTree": "8e1abcea6b16634af938f14e94b9eff0de1d02b5",
+      "commitCount": 1293,
+      "dirty": false,
+      "sourceProvenance": "git"
+     }
+    },
+    "capture_helper": {
+     "path": "/usr/bin/putgd-capture",
+     "sha256": "21371e1450d2ce63027f8d26341f4da7a179be0661a70060b6c007902b3bbc2b",
+     "build": {
+      "schemaVersion": 1,
+      "version": "26.1025.1293-dev+g80ffa2e6c0d3",
+      "baseVersion": "26.1025.1293",
+      "packageVersion": "26.1025.1293~dev+g80ffa2e6c0d3",
+      "gitCommit": "80ffa2e6c0d34223d2cc0f31254f2e60ac2bd247",
+      "gitTree": "8e1abcea6b16634af938f14e94b9eff0de1d02b5",
+      "commitCount": 1293,
+      "dirty": false,
+      "sourceProvenance": "git"
+     }
+    },
+    "cli": {
+     "path": "/usr/bin/putgd-cli",
+     "sha256": "a87d886e3d7aa3977cb2564e45dfca736ca35e727c1586d94d253fd60a6669f9",
+     "build": {
+      "schemaVersion": 1,
+      "version": "26.1025.1293-dev+g80ffa2e6c0d3",
+      "baseVersion": "26.1025.1293",
+      "packageVersion": "26.1025.1293~dev+g80ffa2e6c0d3",
+      "gitCommit": "80ffa2e6c0d34223d2cc0f31254f2e60ac2bd247",
+      "gitTree": "8e1abcea6b16634af938f14e94b9eff0de1d02b5",
+      "commitCount": 1293,
+      "dirty": false,
+      "sourceProvenance": "git"
+     }
+    },
+    "helper": {
+     "path": "/usr/bin/putgd-ui",
+     "sha256": "69818d4724fa8308abe90094ea00620a5ee2320ba253e11c01859eccf8c6e74e",
+     "build": {
+      "schemaVersion": 1,
+      "version": "26.1025.1293-dev+g80ffa2e6c0d3",
+      "baseVersion": "26.1025.1293",
+      "packageVersion": "26.1025.1293~dev+g80ffa2e6c0d3",
+      "gitCommit": "80ffa2e6c0d34223d2cc0f31254f2e60ac2bd247",
+      "gitTree": "8e1abcea6b16634af938f14e94b9eff0de1d02b5",
+      "commitCount": 1293,
+      "dirty": false,
+      "sourceProvenance": "git"
+     }
+    }
+   }
+  },
+  "driver": {
+   "sha256": "3cb511e0f0e7e4de63afa68d0ae66a56a8f6abcc028aa0f2df426e27d21a6676",
+   "revision": "00ab777f2413a1fbd7670a7259dc614eced896e6",
+   "revisionSource": "explicit-declaration",
+   "sourceFiles": {
+    "tests/performance/physical_campaign.py": "3cb511e0f0e7e4de63afa68d0ae66a56a8f6abcc028aa0f2df426e27d21a6676",
+    "tests/performance/bench_ui_process.py": "a28c94b075036ea65f8eca8e068d480cff46ee959d4680593f5c4d55cce3fc40",
+    "tests/performance/observe_idle.py": "33fab955eb36d617ee0a2fd5de67cf0a54aab0994a3dccb3f70dac5111398efe",
+    "tests/performance/campaign_fixture.py": "330632490f68fb3621f19261f35e64643849b26190de256c969cdc89e79d41d9",
+    "tests/performance/campaign_ui.py": "86dd179d7ee6c4c0cae9728270dca133dbaf9b15975f05fb13965231669937dc",
+    "tests/performance/campaign_workloads.py": "179e837eab64ebc7f82c3a6237067070d208a75cf255b7cd4d5d970492337bf9",
+    "tests/performance/campaign_proxy.py": "39973a4603cedf82ae89250c222ae5f508f36aa127be4d501f2ee3c3eae0e98b",
+    "tests/performance/campaign_lifecycle.py": "e86141e204105fe6834d90933dd065377df0b444786eec5cc1340c11eabe6668",
+    "tests/performance/build_current_capture.py": "dfab0d0aefc471cd13eb3ec6e1bb6b0c57614ac424d2067eca4c5846de0f95bd",
+    "tests/performance/campaign_frames.py": "6c013f4cbce53b96ce6c2dd1b0b1d396f449d5017621654ae2e291a6c5cb6a97",
+    "tools/diagnostics/check_socket_paths.py": "7e8797ec6ea0014eeacd428f822ef3fe545a276247a7ad7e6de9b557a0937f55"
+   }
+  },
+  "parameters": {
+   "scenario": "burst",
+   "output": "/tmp/p560t2",
+   "package": "/home/patrick/work/i560o/putgd_26.1025.1293~dev+g80ffa2e6c0d3_amd64.deb",
+   "package_sha256": "864062f35e57176688a80da3516dfdead493b1b8da73f2192fb98a87f09746a2",
+   "version": "26.1025.1293-dev+g80ffa2e6c0d3",
+   "source_revision": "80ffa2e6c0d34223d2cc0f31254f2e60ac2bd247",
+   "desktop_session": "c89",
+   "lock_session": "t3-i560-opus-native1",
+   "app": "/usr/bin/putgd",
+   "cli": "/usr/bin/putgd-cli",
+   "helper": "/usr/bin/putgd-ui",
+   "capture_helper": "/usr/bin/putgd-capture",
+   "driver": null,
+   "capture_driver_manifest": null,
+   "fixture_root": null,
+   "driver_revision": "00ab777f2413a1fbd7670a7259dc614eced896e6",
+   "open_seconds": 30,
+   "vnc_port": 5900,
+   "endpoint": "http://127.0.0.1:38803",
+   "fixture_pid": 756646,
+   "fixture_source": "/home/patrick/work/i560o/driver/tests/fixtures/s3_server.py",
+   "enable_accessibility": true,
+   "native_driver": "/home/patrick/work/i560o/native495/native_acceptance.py",
+   "native_driver_revision": "72afd00bf2dbdaaa7e4bd3f847dc54f1da715f0e",
+   "native_driver_sha256": "347934c226f99cb0e509d5466c5df8116896e6bfac07d75fdfa4f4c2d06ca053",
+   "threshold_policy": null,
+   "settle_seconds": 300,
+   "history_pages": 200
+  },
+  "status": "complete",
+  "gates": {
+   "captureBurst": {
+    "status": "unassessed",
+    "reason": "50-upload workload uses explicit synthetic file editors; actual capture burst is not exercised"
+   },
+   "historyOpenUpperBoundMs": {
+    "status": "unassessed",
+    "reason": "content_endpoint_not_witnessed"
+   },
+   "burstVisualAttribution": {
+    "status": "pass",
+    "attempted": 4,
+    "succeeded": 4,
+    "refused": 0
+   },
+   "settleGrowthBytes": {
+    "status": "unassessed",
+    "reason": "no_explicit_approved_threshold"
+   },
+   "settled-rssBytes": {
+    "status": "pass",
+    "limitBytes": 41943040
+   },
+   "settled-pssBytes": {
+    "status": "pass",
+    "limitBytes": 30408704
+   },
+   "cleanup": {
+    "status": "pass"
+   }
+  },
+  "metrics": {
+   "historyOpenFirstGenericDrawableObservationMs": 652.2580129676498,
+   "historyOpenUpperBoundMs": null,
+   "burst": {
+    "acceptedFileEditorUploads": 50,
+    "nativeCapturesExercised": 0,
+    "source": "production editor.open(source=file) then explicit editor.submit",
+    "sourceGeometry": [
+     320,
+     180
+    ],
+    "fixturePutDelaySeconds": 10,
+    "concurrentUploadPeakObserved": 4,
+    "queuedOperationPeakObserved": 39,
+    "linksIndependentlyVerified": 50,
+    "finalTrayStatus": "Active"
+   },
+   "postUploadFinalFamily": {
+    "rssBytes": 40570880,
+    "pssBytes": 28607488,
+    "privateBytes": 27865088
+   },
+   "settleGrowthBytes": 9341952,
+   "sampledProcessFamily": {
+    "peakTotals": {
+     "rssBytes": 293740544,
+     "pssBytes": 124908544,
+     "privateBytes": 98373632
+    },
+    "cpuPercentOneCoreLowerBound": 4.148497839728101,
+    "observedProcessGenerations": 82,
+    "samplingSpanSeconds": 507.412581933022,
+    "shortLivedChildrenMayBeMissed": true
+   }
+  },
+  "residentCleanup": [
+   {
+    "gracefulRequest": true,
+    "exitCode": 0,
+    "forced": false,
+    "remaining": [],
+    "socketAbsent": true,
+    "passed": true,
+    "errors": [],
+    "inventoryComplete": true,
+    "absenceVerified": true,
+    "inventoryDefinition": "observed PID/start/UID generations + resident process group + exact isolated runtime/data environment; no command lines exported"
+   },
+   {
+    "gracefulRequest": true,
+    "exitCode": 0,
+    "forced": false,
+    "remaining": [],
+    "socketAbsent": true,
+    "passed": true,
+    "errors": [],
+    "inventoryComplete": true,
+    "absenceVerified": true,
+    "inventoryDefinition": "observed PID/start/UID generations + resident process group + exact isolated runtime/data environment; no command lines exported"
+   }
+  ],
+  "limitations": [
+   "Capture witness observes X11 drawable paint, not compositor presentation.",
+   "CLI acknowledgements do not prove painted response.",
+   "Sequential sampled process memory can miss short-lived descendants.",
+   "Family CPU is a lower bound when a child exits between samples.",
+   "Shared desktop daemons are outside the resident process family.",
+   "Host quietness and reviewed sanitized visuals require coordinator evidence.",
+   "Burst measures 50 explicit synthetic file-editor Uploads, not desktop or native capture acceptance.",
+   "Post-upload sampled growth/plateau is measured; a finite settle does not prove absence of all leaks."
+  ],
+  "settleSeries": [
+   {
+    "elapsedSeconds": 210.979,
+    "processCount": 1,
+    "rssBytes": 40665088,
+    "pssBytes": 28701696,
+    "privateBytes": 27959296
+   },
+   {
+    "elapsedSeconds": 216.018,
+    "processCount": 1,
+    "rssBytes": 40665088,
+    "pssBytes": 28701696,
+    "privateBytes": 27959296
+   },
+   {
+    "elapsedSeconds": 221.057,
+    "processCount": 1,
+    "rssBytes": 40665088,
+    "pssBytes": 28701696,
+    "privateBytes": 27959296
+   },
+   {
+    "elapsedSeconds": 226.096,
+    "processCount": 1,
+    "rssBytes": 40665088,
+    "pssBytes": 28701696,
+    "privateBytes": 27959296
+   },
+   {
+    "elapsedSeconds": 231.143,
+    "processCount": 1,
+    "rssBytes": 40665088,
+    "pssBytes": 28701696,
+    "privateBytes": 27959296
+   },
+   {
+    "elapsedSeconds": 236.181,
+    "processCount": 1,
+    "rssBytes": 40570880,
+    "pssBytes": 28607488,
+    "privateBytes": 27865088
+   },
+   {
+    "elapsedSeconds": 241.22,
+    "processCount": 1,
+    "rssBytes": 40570880,
+    "pssBytes": 28607488,
+    "privateBytes": 27865088
+   },
+   {
+    "elapsedSeconds": 246.26,
+    "processCount": 1,
+    "rssBytes": 40570880,
+    "pssBytes": 28607488,
+    "privateBytes": 27865088
+   },
+   {
+    "elapsedSeconds": 251.298,
+    "processCount": 1,
+    "rssBytes": 40570880,
+    "pssBytes": 28607488,
+    "privateBytes": 27865088
+   },
+   {
+    "elapsedSeconds": 256.337,
+    "processCount": 1,
+    "rssBytes": 40570880,
+    "pssBytes": 28607488,
+    "privateBytes": 27865088
+   },
+   {
+    "elapsedSeconds": 261.375,
+    "processCount": 1,
+    "rssBytes": 40570880,
+    "pssBytes": 28607488,
+    "privateBytes": 27865088
+   },
+   {
+    "elapsedSeconds": 266.414,
+    "processCount": 1,
+    "rssBytes": 40570880,
+    "pssBytes": 28607488,
+    "privateBytes": 27865088
+   },
+   {
+    "elapsedSeconds": 271.452,
+    "processCount": 1,
+    "rssBytes": 40570880,
+    "pssBytes": 28607488,
+    "privateBytes": 27865088
+   },
+   {
+    "elapsedSeconds": 276.49,
+    "processCount": 1,
+    "rssBytes": 40570880,
+    "pssBytes": 28607488,
+    "privateBytes": 27865088
+   },
+   {
+    "elapsedSeconds": 281.528,
+    "processCount": 1,
+    "rssBytes": 40570880,
+    "pssBytes": 28607488,
+    "privateBytes": 27865088
+   },
+   {
+    "elapsedSeconds": 286.567,
+    "processCount": 1,
+    "rssBytes": 40570880,
+    "pssBytes": 28607488,
+    "privateBytes": 27865088
+   },
+   {
+    "elapsedSeconds": 291.604,
+    "processCount": 1,
+    "rssBytes": 40570880,
+    "pssBytes": 28607488,
+    "privateBytes": 27865088
+   },
+   {
+    "elapsedSeconds": 296.643,
+    "processCount": 1,
+    "rssBytes": 40570880,
+    "pssBytes": 28607488,
+    "privateBytes": 27865088
+   },
+   {
+    "elapsedSeconds": 301.709,
+    "processCount": 1,
+    "rssBytes": 40570880,
+    "pssBytes": 28607488,
+    "privateBytes": 27865088
+   },
+   {
+    "elapsedSeconds": 306.748,
+    "processCount": 1,
+    "rssBytes": 40570880,
+    "pssBytes": 28607488,
+    "privateBytes": 27865088
+   },
+   {
+    "elapsedSeconds": 311.783,
+    "processCount": 1,
+    "rssBytes": 40570880,
+    "pssBytes": 28607488,
+    "privateBytes": 27865088
+   },
+   {
+    "elapsedSeconds": 316.824,
+    "processCount": 1,
+    "rssBytes": 40570880,
+    "pssBytes": 28607488,
+    "privateBytes": 27865088
+   },
+   {
+    "elapsedSeconds": 321.861,
+    "processCount": 1,
+    "rssBytes": 40570880,
+    "pssBytes": 28607488,
+    "privateBytes": 27865088
+   },
+   {
+    "elapsedSeconds": 326.926,
+    "processCount": 1,
+    "rssBytes": 40570880,
+    "pssBytes": 28607488,
+    "privateBytes": 27865088
+   },
+   {
+    "elapsedSeconds": 331.963,
+    "processCount": 1,
+    "rssBytes": 40570880,
+    "pssBytes": 28607488,
+    "privateBytes": 27865088
+   },
+   {
+    "elapsedSeconds": 337.03,
+    "processCount": 1,
+    "rssBytes": 40570880,
+    "pssBytes": 28607488,
+    "privateBytes": 27865088
+   },
+   {
+    "elapsedSeconds": 342.095,
+    "processCount": 1,
+    "rssBytes": 40570880,
+    "pssBytes": 28607488,
+    "privateBytes": 27865088
+   },
+   {
+    "elapsedSeconds": 347.159,
+    "processCount": 1,
+    "rssBytes": 40570880,
+    "pssBytes": 28607488,
+    "privateBytes": 27865088
+   },
+   {
+    "elapsedSeconds": 352.197,
+    "processCount": 1,
+    "rssBytes": 40570880,
+    "pssBytes": 28607488,
+    "privateBytes": 27865088
+   },
+   {
+    "elapsedSeconds": 357.263,
+    "processCount": 1,
+    "rssBytes": 40570880,
+    "pssBytes": 28607488,
+    "privateBytes": 27865088
+   },
+   {
+    "elapsedSeconds": 362.302,
+    "processCount": 1,
+    "rssBytes": 40570880,
+    "pssBytes": 28607488,
+    "privateBytes": 27865088
+   },
+   {
+    "elapsedSeconds": 367.366,
+    "processCount": 1,
+    "rssBytes": 40570880,
+    "pssBytes": 28607488,
+    "privateBytes": 27865088
+   },
+   {
+    "elapsedSeconds": 372.401,
+    "processCount": 1,
+    "rssBytes": 40570880,
+    "pssBytes": 28607488,
+    "privateBytes": 27865088
+   },
+   {
+    "elapsedSeconds": 377.439,
+    "processCount": 1,
+    "rssBytes": 40570880,
+    "pssBytes": 28607488,
+    "privateBytes": 27865088
+   },
+   {
+    "elapsedSeconds": 382.474,
+    "processCount": 1,
+    "rssBytes": 40570880,
+    "pssBytes": 28607488,
+    "privateBytes": 27865088
+   },
+   {
+    "elapsedSeconds": 387.512,
+    "processCount": 1,
+    "rssBytes": 40570880,
+    "pssBytes": 28607488,
+    "privateBytes": 27865088
+   },
+   {
+    "elapsedSeconds": 392.576,
+    "processCount": 1,
+    "rssBytes": 40570880,
+    "pssBytes": 28607488,
+    "privateBytes": 27865088
+   },
+   {
+    "elapsedSeconds": 397.614,
+    "processCount": 1,
+    "rssBytes": 40570880,
+    "pssBytes": 28607488,
+    "privateBytes": 27865088
+   },
+   {
+    "elapsedSeconds": 402.656,
+    "processCount": 1,
+    "rssBytes": 40570880,
+    "pssBytes": 28607488,
+    "privateBytes": 27865088
+   },
+   {
+    "elapsedSeconds": 407.695,
+    "processCount": 1,
+    "rssBytes": 40570880,
+    "pssBytes": 28607488,
+    "privateBytes": 27865088
+   },
+   {
+    "elapsedSeconds": 412.732,
+    "processCount": 1,
+    "rssBytes": 40570880,
+    "pssBytes": 28607488,
+    "privateBytes": 27865088
+   },
+   {
+    "elapsedSeconds": 417.775,
+    "processCount": 1,
+    "rssBytes": 40570880,
+    "pssBytes": 28607488,
+    "privateBytes": 27865088
+   },
+   {
+    "elapsedSeconds": 422.813,
+    "processCount": 1,
+    "rssBytes": 40570880,
+    "pssBytes": 28607488,
+    "privateBytes": 27865088
+   },
+   {
+    "elapsedSeconds": 427.851,
+    "processCount": 1,
+    "rssBytes": 40570880,
+    "pssBytes": 28607488,
+    "privateBytes": 27865088
+   },
+   {
+    "elapsedSeconds": 432.887,
+    "processCount": 1,
+    "rssBytes": 40570880,
+    "pssBytes": 28607488,
+    "privateBytes": 27865088
+   },
+   {
+    "elapsedSeconds": 437.925,
+    "processCount": 1,
+    "rssBytes": 40570880,
+    "pssBytes": 28607488,
+    "privateBytes": 27865088
+   },
+   {
+    "elapsedSeconds": 442.99,
+    "processCount": 1,
+    "rssBytes": 40570880,
+    "pssBytes": 28607488,
+    "privateBytes": 27865088
+   },
+   {
+    "elapsedSeconds": 448.034,
+    "processCount": 1,
+    "rssBytes": 40570880,
+    "pssBytes": 28607488,
+    "privateBytes": 27865088
+   },
+   {
+    "elapsedSeconds": 453.076,
+    "processCount": 1,
+    "rssBytes": 40570880,
+    "pssBytes": 28607488,
+    "privateBytes": 27865088
+   },
+   {
+    "elapsedSeconds": 458.112,
+    "processCount": 1,
+    "rssBytes": 40570880,
+    "pssBytes": 28607488,
+    "privateBytes": 27865088
+   },
+   {
+    "elapsedSeconds": 463.151,
+    "processCount": 1,
+    "rssBytes": 40570880,
+    "pssBytes": 28607488,
+    "privateBytes": 27865088
+   },
+   {
+    "elapsedSeconds": 468.198,
+    "processCount": 1,
+    "rssBytes": 40570880,
+    "pssBytes": 28607488,
+    "privateBytes": 27865088
+   },
+   {
+    "elapsedSeconds": 473.237,
+    "processCount": 1,
+    "rssBytes": 40570880,
+    "pssBytes": 28607488,
+    "privateBytes": 27865088
+   },
+   {
+    "elapsedSeconds": 478.301,
+    "processCount": 1,
+    "rssBytes": 40570880,
+    "pssBytes": 28607488,
+    "privateBytes": 27865088
+   },
+   {
+    "elapsedSeconds": 483.339,
+    "processCount": 1,
+    "rssBytes": 40570880,
+    "pssBytes": 28607488,
+    "privateBytes": 27865088
+   },
+   {
+    "elapsedSeconds": 488.405,
+    "processCount": 1,
+    "rssBytes": 40570880,
+    "pssBytes": 28607488,
+    "privateBytes": 27865088
+   },
+   {
+    "elapsedSeconds": 493.443,
+    "processCount": 1,
+    "rssBytes": 40570880,
+    "pssBytes": 28607488,
+    "privateBytes": 27865088
+   },
+   {
+    "elapsedSeconds": 498.482,
+    "processCount": 1,
+    "rssBytes": 40570880,
+    "pssBytes": 28607488,
+    "privateBytes": 27865088
+   },
+   {
+    "elapsedSeconds": 503.521,
+    "processCount": 1,
+    "rssBytes": 40570880,
+    "pssBytes": 28607488,
+    "privateBytes": 27865088
+   },
+   {
+    "elapsedSeconds": 508.564,
+    "processCount": 1,
+    "rssBytes": 40570880,
+    "pssBytes": 28607488,
+    "privateBytes": 27865088
+   },
+   {
+    "elapsedSeconds": 511.134,
+    "processCount": 1,
+    "rssBytes": 40570880,
+    "pssBytes": 28607488,
+    "privateBytes": 27865088
+   }
+  ]
+ },
+ "p560t1": {
+  "status": "failed-or-interrupted",
+  "errorCode": "ProcessLookupError",
+  "errorDetail": {
+   "type": "ProcessLookupError",
+   "filename": null,
+   "traceback": [
+    "Traceback (most recent call last):\n",
+    "  File \"/home/patrick/work/i560o/driver/tests/performance/physical_campaign.py\", line 1190, in main\n    getattr(campaign_workloads, args.scenario)(campaign)\n",
+    "  File \"/home/patrick/work/i560o/driver/tests/performance/campaign_workloads.py\", line 641, in burst\n    operation = run.wait_operation(operation_id)\n                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n",
+    "  File \"/home/patrick/work/i560o/driver/tests/performance/physical_campaign.py\", line 680, in wait_operation\n    self.sample('operation-active')\n",
+    "  File \"/home/patrick/work/i560o/driver/tests/performance/physical_campaign.py\", line 765, in sample\n    row = self.family.sample()\n          ^^^^^^^^^^^^^^^^^^^^\n",
+    "  File \"/home/patrick/work/i560o/driver/tests/performance/bench_ui_process.py\", line 237, in sample\n    after = self._discover()\n            ^^^^^^^^^^^^^^^^\n",
+    "  File \"/home/patrick/work/i560o/driver/tests/performance/bench_ui_process.py\", line 202, in _discover\n    walk((item['pid'], item) for item in list(self.known.values()))\n",
+    "  File \"/home/patrick/work/i560o/driver/tests/performance/bench_ui_process.py\", line 165, in walk\n    item = identity(pid)\n           ^^^^^^^^^^^^^\n",
+    "  File \"/home/patrick/work/i560o/driver/tests/performance/bench_ui_process.py\", line 68, in identity\n    stat = stat_fields((root / 'stat').read_text())\n                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^\n",
+    "  File \"/usr/lib/python3.12/pathlib.py\", line 1030, in read_text\n    return f.read()\n           ^^^^^^^^\n",
+    "ProcessLookupError: [Errno 3] No such process\n"
+   ]
+  },
+  "residentCleanup": [
+   {
+    "gracefulRequest": true,
+    "exitCode": 0,
+    "forced": false,
+    "remaining": [],
+    "socketAbsent": true,
+    "passed": true,
+    "errors": [],
+    "inventoryComplete": true,
+    "absenceVerified": true,
+    "inventoryDefinition": "observed PID/start/UID generations + resident process group + exact isolated runtime/data environment; no command lines exported"
+   },
+   {
+    "gracefulRequest": true,
+    "exitCode": 0,
+    "forced": false,
+    "remaining": [],
+    "socketAbsent": true,
+    "passed": true,
+    "errors": [],
+    "inventoryComplete": true,
+    "absenceVerified": true,
+    "inventoryDefinition": "observed PID/start/UID generations + resident process group + exact isolated runtime/data environment; no command lines exported"
+   }
+  ],
+  "elapsedSeconds": 72.27672619698569
+ }
+}

@@ -1,0 +1,5 @@
+plasmashell 6.6.6
+kwin 6.6.6
+kwin-wayland	4:6.6.6-0ubuntu0.1
+libqt6core6t64:amd64	6.10.2+dfsg-7
+plasma-workspace	4:6.6.6-0ubuntu0.1

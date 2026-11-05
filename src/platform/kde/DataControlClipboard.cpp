@@ -5,6 +5,7 @@
 #include "KdeClipboardFormats.h"
 #include "core/ImageFormat.h"
 #include "core/ImageJob.h"
+#include "core/Log.h"
 #include "platform/NativeSession.h"
 #include <QCoreApplication>
 #include "ext-data-control-v1-client-protocol.h"
@@ -190,7 +191,7 @@ struct DataControlClipboard::Impl:QObject {
  }
  void complete(PayloadResult result){++generation;auto request=std::move(active);active.reset();if(request)request->cancelled->store(true);if(reader){auto* transfer=reader.data();reader=nullptr;transfer->cancel();transfer->deleteLater();}QPointer<Impl> self(this);if(request&&request->reply){auto cb=std::move(request->reply);cb(std::move(result));}if(self)QTimer::singleShot(0,this,[this]{pump();});}
  void cancel(){++generation;auto queued=std::move(pending);pending.clear();if(active)complete(failure("cancelled","Clipboard acquisition cancelled"));for(auto& request:queued)request->reply(failure("cancelled","Clipboard acquisition cancelled"));}
- void finishCopy(Error e){if(!e)lastCopyRevision=revision;copyTimer.stop();if(copyFence){wl_callback_destroy(copyFence);copyFence=nullptr;}pendingCopyData.clear();copyCommitted=false;auto cb=std::move(copyReply);copyReply={};copyToken.clear();if(cb)cb(std::move(e));}
+ void finishCopy(Error e){if(!e)lastCopyRevision=revision;copyTimer.stop();if(copyFence){wl_callback_destroy(copyFence);copyFence=nullptr;}pendingCopyData.clear();copyCommitted=false;auto cb=std::move(copyReply);copyReply={};copyToken.clear();if(cb){logging::debug(logClipboard(),"Native copy finished",{{"writer","data-control"},{"ok",!e},{"code",e.code}});cb(std::move(e));}}
  void invalidateCopy(){++copyEpoch;if(copyReply&&!copyCommitted)finishCopy({"copy_suppressed","A newer sharing invocation superseded this unsent native result copy",{}});}
  void commitCopy(){
   if(!copyReply)return;

@@ -1,0 +1,601 @@
+{
+ "name": "f44-hop",
+ "runtime": "/tmp/ua-pkg.CDmvY9",
+ "session": {
+  "HOME": "/home/patrick",
+  "PATH": "/home/patrick/.local/bin:/home/patrick/bin:/usr/lib64/ccache:/usr/local/bin:/usr/bin",
+  "USER": "patrick",
+  "LANG": "en_US.UTF-8",
+  "DBUS_SESSION_BUS_ADDRESS": "unix:path=/run/user/1000/bus",
+  "XDG_SESSION_TYPE": "wayland",
+  "XDG_CURRENT_DESKTOP": "GNOME",
+  "XDG_SESSION_DESKTOP": "gnome",
+  "DESKTOP_SESSION": "gnome",
+  "XDG_DATA_DIRS": "/home/patrick/.local/share/flatpak/exports/share:/var/lib/flatpak/exports/share:/usr/local/share/:/usr/share/",
+  "WAYLAND_DISPLAY": "/run/user/1000/wayland-0",
+  "DISPLAY": ":0",
+  "XAUTHORITY": "/run/user/1000/.mutter-Xwaylandauth.4MMJX3"
+ },
+ "shell": "gnome-shell",
+ "vnc": 5901,
+ "input": "uinput",
+ "profile": "private",
+ "feed": "live",
+ "hostPath": "/home/patrick/.local/bin:/home/patrick/bin:/usr/lib64/ccache:/usr/local/bin:/usr/bin",
+ "host": "fedora",
+ "created": "2026-10-22T22:57:34Z",
+ "pids": {
+  "launch": 2925993
+ },
+ "log": [
+  {
+   "at": "2026-10-22T22:57:40Z",
+   "hop-1-996-settings": {
+    "pid": 2923657,
+    "reply": {
+     "ok": true,
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     }
+    },
+    "status": {
+     "build": "26.1022.996-nightly",
+     "buildChannel": "nightly",
+     "channel": "nightly",
+     "channelSource": null,
+     "channelSetting": "build",
+     "latest": "26.1022.1017-nightly",
+     "updateAvailable": true,
+     "notifies": false,
+     "action": {
+      "kind": "software-updates",
+      "manager": "dnf",
+      "updater": {
+       "arguments": [
+        "--mode=updates"
+       ],
+       "id": "gnome-software",
+       "name": "GNOME Software",
+       "program": "/usr/bin/gnome-software"
+      },
+      "channel": "nightly",
+      "file": "/etc/yum.repos.d/putgd.repo",
+      "command": "sudo dnf upgrade --refresh",
+      "repository": "managed",
+      "otherChannel": null,
+      "older": null
+     },
+     "installKind": "update",
+     "installAvailable": false,
+     "installReason": "not_appimage",
+     "error": null
+    },
+    "repo": {
+     "file": "/etc/yum.repos.d/putgd.repo",
+     "exists": true,
+     "sha256": "5399dba05eefd1826094a5226b12285d58da08460b5b8d8b9229e0fe7848a0f4",
+     "lines": [
+      "[putgd-nightly]",
+      "baseurl=https://pkg.put.gd/rpm/fedora/44/x86_64/nightly",
+      "enabled=1",
+      "gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-putgd"
+     ],
+     "installed": "putgd-26.1022.996~nightly-1.fc44.x86_64",
+     "selinux": "system_u:object_r:system_conf_t:s0 /etc/yum.repos.d/putgd.repo"
+    },
+    "frame": "/home/patrick/work/put.gd-ua/pkg/runs/f44-hop/frames/hop-1-996-settings.png"
+   }
+  },
+  {
+   "at": "2026-10-22T22:58:04Z",
+   "click": {
+    "x": 797,
+    "y": 854,
+    "keys": null,
+    "frame": "/home/patrick/work/put.gd-ua/pkg/runs/f44-hop/frames/hop-2-gnome-software.png"
+   }
+  },
+  {
+   "at": "2026-10-22T22:58:27Z",
+   "click": {
+    "x": 520,
+    "y": 700,
+    "keys": null,
+    "frame": null
+   }
+  },
+  {
+   "at": "2026-10-22T22:58:28Z",
+   "key": {
+    "x": null,
+    "y": null,
+    "keys": [
+     "tab"
+    ],
+    "frame": null
+   }
+  },
+  {
+   "at": "2026-10-22T22:58:28Z",
+   "key": {
+    "x": null,
+    "y": null,
+    "keys": [
+     "tab"
+    ],
+    "frame": null
+   }
+  },
+  {
+   "at": "2026-10-22T22:58:29Z",
+   "key": {
+    "x": null,
+    "y": null,
+    "keys": [
+     "tab"
+    ],
+    "frame": null
+   }
+  },
+  {
+   "at": "2026-10-22T22:58:30Z",
+   "key": {
+    "x": null,
+    "y": null,
+    "keys": [
+     "pgdn"
+    ],
+    "frame": null
+   }
+  },
+  {
+   "at": "2026-10-22T22:58:31Z",
+   "key": {
+    "x": null,
+    "y": null,
+    "keys": [
+     "pgdn"
+    ],
+    "frame": null
+   }
+  },
+  {
+   "at": "2026-10-22T22:58:32Z",
+   "hop-3-gs-scrolled": {
+    "repo": {
+     "file": "/etc/yum.repos.d/putgd.repo",
+     "exists": true,
+     "sha256": "5399dba05eefd1826094a5226b12285d58da08460b5b8d8b9229e0fe7848a0f4",
+     "lines": [
+      "[putgd-nightly]",
+      "baseurl=https://pkg.put.gd/rpm/fedora/44/x86_64/nightly",
+      "enabled=1",
+      "gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-putgd"
+     ],
+     "installed": "putgd-26.1022.996~nightly-1.fc44.x86_64",
+     "selinux": "system_u:object_r:system_conf_t:s0 /etc/yum.repos.d/putgd.repo"
+    },
+    "frame": "/home/patrick/work/put.gd-ua/pkg/runs/f44-hop/frames/hop-3-gs-scrolled.png"
+   }
+  },
+  {
+   "at": "2026-10-22T22:58:42Z",
+   "key": {
+    "x": null,
+    "y": null,
+    "keys": [
+     "down"
+    ],
+    "frame": null
+   }
+  },
+  {
+   "at": "2026-10-22T22:58:42Z",
+   "key": {
+    "x": null,
+    "y": null,
+    "keys": [
+     "down"
+    ],
+    "frame": null
+   }
+  },
+  {
+   "at": "2026-10-22T22:58:43Z",
+   "key": {
+    "x": null,
+    "y": null,
+    "keys": [
+     "down"
+    ],
+    "frame": null
+   }
+  },
+  {
+   "at": "2026-10-22T22:58:44Z",
+   "key": {
+    "x": null,
+    "y": null,
+    "keys": [
+     "down"
+    ],
+    "frame": null
+   }
+  },
+  {
+   "at": "2026-10-22T22:58:44Z",
+   "key": {
+    "x": null,
+    "y": null,
+    "keys": [
+     "down"
+    ],
+    "frame": null
+   }
+  },
+  {
+   "at": "2026-10-22T22:58:45Z",
+   "key": {
+    "x": null,
+    "y": null,
+    "keys": [
+     "down"
+    ],
+    "frame": null
+   }
+  },
+  {
+   "at": "2026-10-22T22:58:45Z",
+   "key": {
+    "x": null,
+    "y": null,
+    "keys": [
+     "down"
+    ],
+    "frame": null
+   }
+  },
+  {
+   "at": "2026-10-22T22:58:46Z",
+   "key": {
+    "x": null,
+    "y": null,
+    "keys": [
+     "down"
+    ],
+    "frame": null
+   }
+  },
+  {
+   "at": "2026-10-22T22:58:46Z",
+   "key": {
+    "x": null,
+    "y": null,
+    "keys": [
+     "down"
+    ],
+    "frame": null
+   }
+  },
+  {
+   "at": "2026-10-22T22:58:47Z",
+   "key": {
+    "x": null,
+    "y": null,
+    "keys": [
+     "down"
+    ],
+    "frame": null
+   }
+  },
+  {
+   "at": "2026-10-22T22:58:48Z",
+   "key": {
+    "x": null,
+    "y": null,
+    "keys": [
+     "down"
+    ],
+    "frame": null
+   }
+  },
+  {
+   "at": "2026-10-22T22:58:50Z",
+   "hop-3-gs-scrolled": {
+    "repo": {
+     "file": "/etc/yum.repos.d/putgd.repo",
+     "exists": true,
+     "sha256": "5399dba05eefd1826094a5226b12285d58da08460b5b8d8b9229e0fe7848a0f4",
+     "lines": [
+      "[putgd-nightly]",
+      "baseurl=https://pkg.put.gd/rpm/fedora/44/x86_64/nightly",
+      "enabled=1",
+      "gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-putgd"
+     ],
+     "installed": "putgd-26.1022.996~nightly-1.fc44.x86_64",
+     "selinux": "system_u:object_r:system_conf_t:s0 /etc/yum.repos.d/putgd.repo"
+    },
+    "frame": "/home/patrick/work/put.gd-ua/pkg/runs/f44-hop/frames/hop-3-gs-scrolled.png"
+   }
+  },
+  {
+   "at": "2026-10-22T22:59:34Z",
+   "snapshot:hop-4-running-after-upgrade": {
+    "build": {
+     "baseVersion": "26.1022.996",
+     "commitCount": 996,
+     "dirty": false,
+     "gitCommit": "1887c4c9a90dfd0d0bc37ef031757aab56bc04f7",
+     "gitTree": "2c23817eb29af4b94bf3bbd367ad2965c88cbe9f",
+     "packageVersion": "26.1022.996~nightly",
+     "schemaVersion": 1,
+     "sourceProvenance": "git",
+     "version": "26.1022.996-nightly"
+    },
+    "pid": 2923657,
+    "exe": "/usr/bin/putgd (deleted)",
+    "config": {
+     "path": "/home/patrick/work/put.gd-ua/pkg/runs/f44-hop/config/putgd/config.json",
+     "sha256": "a5332aa19e7c2316c937fe4ca4af4b4bac9a555dfb17edf8851fa839d4dbd639"
+    },
+    "settingsRevision": "a5332aa19e7c2316c937fe4ca4af4b4bac9a555dfb17edf8851fa839d4dbd639",
+    "preferences": {
+     "launchAtLogin": false,
+     "notifications": false,
+     "unlockCredentialsAtStartup": false,
+     "updates": {
+      "channel": "build",
+      "check": true
+     },
+     "uploadClipboardBehavior": "each_link"
+    },
+    "history": {
+     "total": 0,
+     "records": []
+    },
+    "repo": {
+     "file": "/etc/yum.repos.d/putgd.repo",
+     "exists": true,
+     "sha256": "5399dba05eefd1826094a5226b12285d58da08460b5b8d8b9229e0fe7848a0f4",
+     "lines": [
+      "[putgd-nightly]",
+      "baseurl=https://pkg.put.gd/rpm/fedora/44/x86_64/nightly",
+      "enabled=1",
+      "gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-putgd"
+     ],
+     "installed": "putgd-26.1022.1017~nightly-1.fc44.x86_64",
+     "selinux": "system_u:object_r:system_conf_t:s0 /etc/yum.repos.d/putgd.repo"
+    },
+    "frame": "/home/patrick/work/put.gd-ua/pkg/runs/f44-hop/frames/hop-4-running-after-upgrade.png"
+   }
+  },
+  {
+   "at": "2026-10-22T22:59:41Z",
+   "hop-5-1017-settings": {
+    "pid": 2925993,
+    "reply": {
+     "ok": true,
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     }
+    },
+    "status": {
+     "build": "26.1022.1017-nightly",
+     "buildChannel": "nightly",
+     "channel": "nightly",
+     "channelSource": "repository",
+     "channelSetting": "build",
+     "latest": "26.1022.1017-nightly",
+     "updateAvailable": false,
+     "notifies": false,
+     "action": {
+      "kind": "software-updates",
+      "manager": "dnf",
+      "updater": {
+       "arguments": [
+        "--mode=updates"
+       ],
+       "id": "gnome-software",
+       "name": "GNOME Software",
+       "program": "/usr/bin/gnome-software"
+      },
+      "channel": "nightly",
+      "file": "/etc/yum.repos.d/putgd.repo",
+      "command": "sudo dnf upgrade --refresh",
+      "repository": "managed",
+      "otherChannel": {
+       "channel": "stable",
+       "commands": [
+        "sudo install -m 644 /usr/share/putgd/repo/putgd-stable.repo /etc/yum.repos.d/putgd.repo",
+        "sudo dnf distro-sync --refresh putgd"
+       ],
+       "docs": "https://github.com/patrick-hudson/put.gd-desktop/blob/main/docs/package-repositories.md#switching-channels"
+      },
+      "older": null
+     },
+     "installKind": "update",
+     "installAvailable": false,
+     "installReason": "not_appimage",
+     "error": null
+    },
+    "repo": {
+     "file": "/etc/yum.repos.d/putgd.repo",
+     "exists": true,
+     "sha256": "5399dba05eefd1826094a5226b12285d58da08460b5b8d8b9229e0fe7848a0f4",
+     "lines": [
+      "[putgd-nightly]",
+      "baseurl=https://pkg.put.gd/rpm/fedora/44/x86_64/nightly",
+      "enabled=1",
+      "gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-putgd"
+     ],
+     "installed": "putgd-26.1022.1017~nightly-1.fc44.x86_64",
+     "selinux": "system_u:object_r:system_conf_t:s0 /etc/yum.repos.d/putgd.repo"
+    },
+    "frame": "/home/patrick/work/put.gd-ua/pkg/runs/f44-hop/frames/hop-5-1017-settings.png"
+   }
+  },
+  {
+   "at": "2026-10-22T23:00:10Z",
+   "click": {
+    "x": 1527,
+    "y": 922,
+    "keys": null,
+    "frame": null
+   }
+  },
+  {
+   "at": "2026-10-22T23:00:39Z",
+   "hop-6-stable-empty": {
+    "pid": 2925993,
+    "reply": {
+     "ok": true,
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     }
+    },
+    "status": {
+     "build": "26.1022.1017-nightly",
+     "buildChannel": "nightly",
+     "channel": "stable",
+     "channelSource": "repository",
+     "channelSetting": "build",
+     "latest": null,
+     "updateAvailable": false,
+     "notifies": false,
+     "action": {
+      "kind": "software-updates",
+      "manager": "dnf",
+      "updater": {
+       "arguments": [
+        "--mode=updates"
+       ],
+       "id": "gnome-software",
+       "name": "GNOME Software",
+       "program": "/usr/bin/gnome-software"
+      },
+      "channel": "stable",
+      "file": "/etc/yum.repos.d/putgd.repo",
+      "command": "sudo dnf upgrade --refresh",
+      "repository": "managed",
+      "otherChannel": {
+       "channel": "nightly",
+       "commands": [
+        "sudo install -m 644 /usr/share/putgd/repo/putgd-nightly.repo /etc/yum.repos.d/putgd.repo",
+        "sudo dnf distro-sync --refresh putgd"
+       ],
+       "docs": "https://github.com/patrick-hudson/put.gd-desktop/blob/main/docs/package-repositories.md#switching-channels"
+      },
+      "older": null
+     },
+     "installKind": "update",
+     "installAvailable": false,
+     "installReason": "not_appimage",
+     "error": null
+    },
+    "repo": {
+     "file": "/etc/yum.repos.d/putgd.repo",
+     "exists": true,
+     "sha256": "c25c4691b71baf3fa5b9566f99c9517e5db5f5e7c17bb132620baf57f11be8ff",
+     "sameAs": "/usr/share/putgd/repo/putgd-stable.repo",
+     "lines": [
+      "[putgd-stable]",
+      "baseurl=https://pkg.put.gd/rpm/fedora/44/x86_64/stable",
+      "enabled=1",
+      "gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-stable"
+     ],
+     "installed": "putgd-26.1022.1017~nightly-1.fc44.x86_64",
+     "selinux": "system_u:object_r:system_conf_t:s0 /etc/yum.repos.d/putgd.repo"
+    },
+    "frame": "/home/patrick/work/put.gd-ua/pkg/runs/f44-hop/frames/hop-6-stable-empty.png"
+   }
+  },
+  {
+   "at": "2026-10-22T23:00:58Z",
+   "hop-7-back-on-nightly": {
+    "pid": 2925993,
+    "reply": {
+     "ok": true,
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     }
+    },
+    "status": {
+     "build": "26.1022.1017-nightly",
+     "buildChannel": "nightly",
+     "channel": "nightly",
+     "channelSource": "repository",
+     "channelSetting": "build",
+     "latest": "26.1022.1017-nightly",
+     "updateAvailable": false,
+     "notifies": false,
+     "action": {
+      "kind": "software-updates",
+      "manager": "dnf",
+      "updater": {
+       "arguments": [
+        "--mode=updates"
+       ],
+       "id": "gnome-software",
+       "name": "GNOME Software",
+       "program": "/usr/bin/gnome-software"
+      },
+      "channel": "nightly",
+      "file": "/etc/yum.repos.d/putgd.repo",
+      "command": "sudo dnf upgrade --refresh",
+      "repository": "managed",
+      "otherChannel": {
+       "channel": "stable",
+       "commands": [
+        "sudo install -m 644 /usr/share/putgd/repo/putgd-stable.repo /etc/yum.repos.d/putgd.repo",
+        "sudo dnf distro-sync --refresh putgd"
+       ],
+       "docs": "https://github.com/patrick-hudson/put.gd-desktop/blob/main/docs/package-repositories.md#switching-channels"
+      },
+      "older": null
+     },
+     "installKind": "update",
+     "installAvailable": false,
+     "installReason": "not_appimage",
+     "error": null
+    },
+    "repo": {
+     "file": "/etc/yum.repos.d/putgd.repo",
+     "exists": true,
+     "sha256": "1d6c2195c06eef968bbc4fd30ba9cb3efb2aa6ba6fe00ac9f0b9e08df5082e22",
+     "sameAs": "/usr/share/putgd/repo/putgd-nightly.repo",
+     "lines": [
+      "[putgd-nightly]",
+      "baseurl=https://pkg.put.gd/rpm/fedora/44/x86_64/nightly",
+      "enabled=1",
+      "gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-nightly"
+     ],
+     "installed": "putgd-26.1022.1017~nightly-1.fc44.x86_64",
+     "selinux": "system_u:object_r:system_conf_t:s0 /etc/yum.repos.d/putgd.repo"
+    },
+    "frame": "/home/patrick/work/put.gd-ua/pkg/runs/f44-hop/frames/hop-7-back-on-nightly.png"
+   }
+  }
+ ],
+ "before": {
+  "defaultProfile": {
+   "/home/patrick/.config/putgd": false,
+   "/home/patrick/.local/state/putgd": true,
+   "/home/patrick/.cache/putgd": false,
+   "/home/patrick/.local/share/putgd": false
+  }
+ },
+ "restarts": [
+  {
+   "old": 2923657,
+   "oldExe": "/usr/bin/putgd (deleted)"
+  }
+ ]
+}

@@ -1,0 +1,112 @@
+{
+ "item": "Screen-Capture-2026-10-23-00-41-11.png",
+ "prepare": {
+  "acknowledgement": "68be634fcfe6b917942d3d99b52d5bd700c48ecdefcf6b0bcf04a0aa610ffb5e",
+  "cacheNotice": "Origin deletion does not invalidate browser or CDN caches",
+  "localCopiesPreserved": true,
+  "targets": [
+   {
+    "effect": "Guarded origin removal; selected versions only; browser/CDN caches may retain bytes",
+    "historyId": "9b4d42a1-5dfc-4c65-8df6-4ffbb4c42c9d",
+    "receipt": {
+     "concurrencyToken": "\"e7e4d05c7354b7e2e8c40513bda0e090\"",
+     "destination": {
+      "credentials": {
+       "mode": "session",
+       "reference": null
+      },
+      "profileId": "live-s3",
+      "profileRevision": "5758818562dbf573b86afa995902b0eb28323a788911e0226f6137929725b3ab",
+      "providerId": "s3",
+      "settings": {
+       "aclMode": "public-read",
+       "addressing": "path",
+       "bucket": "put.gd",
+       "connectTimeoutMs": 10000,
+       "endpoint": "https://s3.us-east-2.amazonaws.com",
+       "lowSpeedBytesPerSecond": 1,
+       "lowSpeedTimeSeconds": 120,
+       "objectPrefix": "acceptance/nfa/k72/",
+       "publicUrlBase": "https://put.gd",
+       "region": "us-east-2",
+       "requestTimeoutMs": 120000,
+       "storageClass": "STANDARD"
+      }
+     },
+     "directUrl": "https://put.gd/acceptance/nfa/k72/Screen-Capture-2026-10-23-00-41-11.png",
+     "objectReference": {
+      "bytes": 5171,
+      "key": "acceptance/nfa/k72/Screen-Capture-2026-10-23-00-41-11.png",
+      "schemaVersion": 1,
+      "sha256": "dc2ce87c8dd1053dbe8e4b804e000b6ae9aae510106b82ad92c078f4e52bc070",
+      "versionId": ""
+     },
+     "publicationId": "9e933918-e634-4a18-b78e-bade0a212ebe",
+     "schemaVersion": 1
+    }
+   }
+  ]
+ },
+ "confirm": {
+  "deleteOperationId": "e7531c7e-1e79-412f-9ddc-698d19128adb",
+  "deletion": {
+   "acknowledgement": "68be634fcfe6b917942d3d99b52d5bd700c48ecdefcf6b0bcf04a0aa610ffb5e",
+   "cancelled": false,
+   "created": "2026-10-23T05:41:52.875Z",
+   "id": "e7531c7e-1e79-412f-9ddc-698d19128adb",
+   "items": [
+    {
+     "effect": "Guarded origin removal; selected versions only; browser/CDN caches may retain bytes",
+     "historyId": "9b4d42a1-5dfc-4c65-8df6-4ffbb4c42c9d",
+     "progress": {
+      "schemaVersion": 1
+     },
+     "receipt": {
+      "concurrencyToken": "\"e7e4d05c7354b7e2e8c40513bda0e090\"",
+      "destination": {
+       "credentials": {
+        "mode": "session",
+        "reference": null
+       },
+       "profileId": "live-s3",
+       "profileRevision": "5758818562dbf573b86afa995902b0eb28323a788911e0226f6137929725b3ab",
+       "providerId": "s3",
+       "settings": {
+        "aclMode": "public-read",
+        "addressing": "path",
+        "bucket": "put.gd",
+        "connectTimeoutMs": 10000,
+        "endpoint": "https://s3.us-east-2.amazonaws.com",
+        "lowSpeedBytesPerSecond": 1,
+        "lowSpeedTimeSeconds": 120,
+        "objectPrefix": "acceptance/nfa/k72/",
+        "publicUrlBase": "https://put.gd",
+        "region": "us-east-2",
+        "requestTimeoutMs": 120000,
+        "storageClass": "STANDARD"
+       }
+      },
+      "directUrl": "https://put.gd/acceptance/nfa/k72/Screen-Capture-2026-10-23-00-41-11.png",
+      "objectReference": {
+       "bytes": 5171,
+       "key": "acceptance/nfa/k72/Screen-Capture-2026-10-23-00-41-11.png",
+       "schemaVersion": 1,
+       "sha256": "dc2ce87c8dd1053dbe8e4b804e000b6ae9aae510106b82ad92c078f4e52bc070",
+       "versionId": ""
+      },
+      "publicationId": "9e933918-e634-4a18-b78e-bade0a212ebe",
+      "schemaVersion": 1
+     },
+     "status": "pending"
+    }
+   ],
+   "state": "accepted"
+  }
+ },
+ "final": null,
+ "remoteAfter": "HTTP 403",
+ "remoteStatus": "removed",
+ "localPath": "/home/patrick/work/put.gd-nfa/runs/P/archive/images/Screen-Capture-2026-10-23-00-41-11.png",
+ "localExistsAfter": true,
+ "historyRowKept": true
+}

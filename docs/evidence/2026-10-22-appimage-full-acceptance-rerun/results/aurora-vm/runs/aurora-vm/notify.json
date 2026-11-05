@@ -1,0 +1,98 @@
+{
+ "notificationsOn": true,
+ "operation": {
+  "id": "4945ee62-fbe4-407b-9a09-b76a00d976af",
+  "state": "completed",
+  "copyStatus": "copied",
+  "items": [
+   {
+    "name": "Screen-Capture-2026-10-22-01-02-43.png",
+    "mime": "image/png",
+    "uploadStatus": "uploaded",
+    "link": "http://127.0.0.1:42355/fixture/afa/Screen-Capture-2026-10-22-01-02-43.png",
+    "local": {
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     },
+     "path": "/var/home/lab/work/put.gd-afa2/runs/aurora-vm/archive/images/Screen-Capture-2026-10-22-01-02-43.png",
+     "status": "saved"
+    }
+   }
+  ],
+  "error": {
+   "code": "",
+   "details": {},
+   "message": ""
+  }
+ },
+ "notification": {
+  "logged": [
+   {
+    "category": "putgd.ui",
+    "fields": {
+     "itemId": null,
+     "notificationId": 5,
+     "notificationText": "Uploaded. Link copied to the clipboard. Click to open in browser.",
+     "operationId": null,
+     "summary": "operation_completed",
+     "title": "put.gd \u2014 completed",
+     "warning": false
+    },
+    "level": "info",
+    "message": "Notification shown",
+    "pid": 3523,
+    "process": "putgd",
+    "time": "2026-10-22T06:02:45.065Z",
+    "v": 1
+   }
+  ],
+  "banner": {
+   "label": "aurora-vm-notify-notification",
+   "components": [
+    {
+     "blocks": 328,
+     "box": [
+      912,
+      568,
+      1248,
+      704
+     ]
+    }
+   ],
+   "colour": [
+    28,
+    32,
+    36
+   ],
+   "inner": null
+  },
+  "full": "/var/home/lab/work/put.gd-afa2/runs/aurora-vm/full/aurora-vm-notify-notification.png",
+  "clicked": [
+   1080,
+   613
+  ],
+  "dbusMembers": [
+   "NameAcquired",
+   "NameLost",
+   "Notify",
+   "NotificationClosed",
+   "ActivationToken",
+   "ActionInvoked",
+   "NotificationClosed",
+   "Notify"
+  ],
+  "notifyActions": [
+   "default",
+   "Open in browser"
+  ],
+  "actionInvoked": [
+   "default"
+  ],
+  "openedUrls": [
+   "2026-10-22T06:02:48Z http://127.0.0.1:42355/fixture/afa/Screen-Capture-2026-10-22-01-02-43.png lib=unset plugins=unset appdir=unset parent=systemd"
+  ]
+ },
+ "notificationsOff": true
+}

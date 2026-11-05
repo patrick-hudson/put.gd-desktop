@@ -1,0 +1,67 @@
+
+### host (2026-10-22T05:54:30Z)
+6.14.0-37-generic
+PRETTY_NAME="Linux Mint 22.3"
+
+### before (2026-10-22T05:54:30Z)
+putgd 0.1.1~dev.895+g8718bf34f5e1 deinstall ok config-files
+ls: cannot access '/etc/apt/sources.list.d/putgd-lab373.sources': No such file or directory
+-rw-r--r-- 1 root root 2036 Oct 21 13:37 /etc/apt/sources.list.d/putgd.sources
+
+### download putgd-0.1.1-nightly.925-ubuntu24.04-x86_64.deb and the release's SHA256SUMS from GitHub (2026-10-22T05:54:30Z)
+putgd-0.1.1-nightly.925-ubuntu24.04-x86_64.deb: OK
+
+### install putgd-0.1.1-nightly.925-ubuntu24.04-x86_64.deb from the file (it adds the live nightly repository) (2026-10-22T05:54:32Z)
+Processing triggers for gnome-menus (3.36.0-1.1ubuntu3)…
+Processing triggers for mate-menus (1.26.1+mint1)…
+Processing triggers for mailcap (3.70+nmu1ubuntu1.24.04.1)…
+putgd 0.1.1~nightly.925 install ok installed
+putgd 0.1.1-nightly.925
+-rw-r--r-- 1 root root 2036 Oct 21 13:37 /etc/apt/sources.list.d/putgd.sources
+# put.gd nightly packages from pkg.put.gd, added by the putgd package.
+# To stop updates from this repository, delete this file or add "Enabled: no";
+# upgrades leave your change alone and `apt purge putgd` removes the file.
+Types: deb
+URIs: https://pkg.put.gd/apt/ubuntu24.04
+Suites: nightly
+Components: main
+Architectures: amd64
+
+### add the lab repository beside the live one (2026-10-22T05:54:38Z)
+URIs: https://pkg.put.gd/lab/apt/ubuntu24.04
+Suites: nightly
+
+### what the package manager sees (2026-10-22T05:54:38Z)
+Get:5 https://pkg.put.gd/lab/apt/ubuntu24.04 nightly InRelease [1,807 B]
+Hit:7 https://pkg.put.gd/apt/ubuntu24.04 nightly InRelease
+Get:11 https://pkg.put.gd/lab/apt/ubuntu24.04 nightly/main amd64 Packages [606 B]
+putgd:
+  Installed: 0.1.1~nightly.925
+  Candidate: 26.1022.949~nightly
+  Version table:
+     26.1022.949~nightly 500
+        500 https://pkg.put.gd/lab/apt/ubuntu24.04 nightly/main amd64 Packages
+     0.1.1~nightly.947 500
+        500 https://pkg.put.gd/apt/ubuntu24.04 nightly/main amd64 Packages
+ *** 0.1.1~nightly.925 100
+        100 /var/lib/dpkg/status
+
+### upgrade through the repository (2026-10-22T05:54:41Z)
+Processing triggers for hicolor-icon-theme (0.17-2)…
+Processing triggers for gnome-menus (3.36.0-1.1ubuntu3)…
+Processing triggers for mate-menus (1.26.1+mint1)…
+Processing triggers for mailcap (3.70+nmu1ubuntu1.24.04.1)…
+rc=0
+
+### after (2026-10-22T05:54:45Z)
+putgd 26.1022.949~nightly install ok installed
+putgd 26.1022.949-nightly
+dpkg: 26.1022.949~nightly > 0.1.1~nightly.925
+{'version': '26.1022.949-nightly', 'baseVersion': '26.1022.949', 'packageVersion': '26.1022.949~nightly', 'gitCommit': '3166555243e5d691a8a6346ee54175dc726a114b'}
+
+### remove putgd and the lab repository (2026-10-22T05:54:45Z)
+(Reading database… (Reading database… 5%(Reading database… 10%(Reading database… 15%(Reading database… 20%(Reading database… 25%(Reading database… 30%(Reading database… 35%(Reading database… 40%(Reading database… 45%(Reading database… 50%(Reading database… 55%(Reading database… 60%(Reading database… 65%(Reading database… 70%(Reading database… 75%(Reading database… 80%(Reading database… 85%(Reading database… 90%(Reading database… 95%(Reading database… 100%(Reading database… 498305 files and directories currently installed.)
+Purging configuration files for putgd (26.1022.949~nightly)…
+dpkg-query: no packages found matching putgd
+ls: cannot access '/etc/apt/sources.list.d/putgd.sources': No such file or directory
+ls: cannot access '/etc/apt/sources.list.d/putgd-lab373.sources': No such file or directory

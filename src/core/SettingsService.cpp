@@ -1,4 +1,6 @@
+#include "core/ByteSize.h"
 #include "SettingsService.h"
+#include "Log.h"
 #include <QCryptographicHash>
 #include <QDir>
 #include <QFile>
@@ -19,10 +21,10 @@ Error readConfig(const QString& path, QByteArray& bytes, bool& exists) {
     if (!exists) return {};
     QFile file(path);
     if (!file.open(QIODevice::ReadOnly)) return {"config_unreadable", "Cannot read the configuration file.", {}};
-    if (file.size() > maximumConfigBytes) return {"config_too_large", "Configuration exceeds the 1 MiB limit.", {}};
+    if (file.size() > maximumConfigBytes) return {"config_too_large", ByteSize::labels("Configuration exceeds the 1 MiB limit."), {}};
     bytes = file.read(maximumConfigBytes + 1);
     if (file.error() != QFile::NoError) return {"config_unreadable", "Cannot read the configuration file.", {}};
-    if (bytes.size() > maximumConfigBytes) return {"config_too_large", "Configuration exceeds the 1 MiB limit.", {}};
+    if (bytes.size() > maximumConfigBytes) return {"config_too_large", ByteSize::labels("Configuration exceeds the 1 MiB limit."), {}};
     return {};
 }
 QJsonObject overlay(const QJsonObject& original, const QJsonObject& patch) {
@@ -57,7 +59,7 @@ LoadedSettings loadValidated(const QString& path,const ProfileValidator& validat
 Error writeCandidate(const QString& path,const ProfileValidator& validator,const CredentialValidator& credentialValidator,const QJsonObject& candidate,const QString& expectedRevision) {
     if (auto error = Settings::validate(candidate, validator, credentialValidator)) return error;
     const auto bytes = QJsonDocument(candidate).toJson(QJsonDocument::Indented);
-    if (bytes.size() > maximumConfigBytes) return {"config_too_large", "Configuration exceeds the 1 MiB limit.", {}};
+    if (bytes.size() > maximumConfigBytes) return {"config_too_large", ByteSize::labels("Configuration exceeds the 1 MiB limit."), {}};
     const auto parent = QFileInfo(path).absolutePath();
     if (!QDir(parent).exists()) {
         if (!QDir().mkpath(parent) || !QFile::setPermissions(parent, QFile::ReadOwner | QFile::WriteOwner | QFile::ExeOwner))
@@ -117,19 +119,31 @@ QJsonObject SettingsService::metadata() const {
         {"validation", QJsonObject{{"ok", !lastError_}, {"error", lastError_.toJson()}}}};
 }
 
+// The JSON pointer and message only: a rejected value never reaches the log.
+static void logRejected(const Error& error,const char* stage) {
+    // A stale expected revision or a busy lock is an ordinary retry, not a rejection.
+    if(error.code=="config_conflict"||error.code=="config_busy")return;
+    logging::warning(logSettings(),"Configuration rejected",{{"stage",stage},{"code",error.code},{"pointer",error.details["path"]},{"message",error.message.left(512)}});
+}
 Result SettingsService::acceptLoaded(const QJsonObject& candidate,const QString& revision,const Error& error,quint64 sequence) {
     if(sequence<appliedSequence_)return {error,false};
+    if(error&&(error.code!=lastError_.code||error.details!=lastError_.details||revision!=observedRevision_))logRejected(error,"load");
+    const auto before=metadata();
     appliedSequence_=sequence;observedRevision_=revision;
     bool changed=false;
     if(!error&&revision!=acceptedRevision_) {settings_=Settings::fromValidated(candidate);acceptedRevision_=revision;changed=true;}
-    lastError_=error;armWatcher();if(changed)emit accepted(acceptedRevision_);emit statusChanged();return {error,changed};
+    lastError_=error;armWatcher();if(changed)emit accepted(acceptedRevision_);
+    // An unchanged rescan (the fallback timer, or a watcher event for a
+    // neighbouring file) is not news: each emission refreshes every open view (#234).
+    if(changed||metadata()!=before)emit statusChanged();
+    return {error,changed};
 }
 Result SettingsService::reload() {
     std::lock_guard guard(ioMutex_);auto loaded=loadValidated(path_,validator_,credentialValidator_);
     return acceptLoaded(loaded.candidate,loaded.revision,loaded.error,++sequence_);
 }
 Result SettingsService::save(const QJsonObject& candidate,const QString& expectedRevision) {
-    std::lock_guard guard(ioMutex_);if(auto error=writeCandidate(path_,validator_,credentialValidator_,candidate,expectedRevision))return {error};return reload();
+    std::lock_guard guard(ioMutex_);if(auto error=writeCandidate(path_,validator_,credentialValidator_,candidate,expectedRevision)){logRejected(error,"save");return {error};}return reload();
 }
 Result SettingsService::patch(const QJsonObject& patchObject, const QString& expectedRevision) {
     return save(overlay(document(), patchObject), expectedRevision);
@@ -145,6 +159,7 @@ void SettingsService::asyncLoad(const QJsonObject& candidate,const QString& expe
         const auto sequence=++guarded->sequence_;
         QMetaObject::invokeMethod(guarded,[guarded,loaded,error,sequence,callback] {
             if(!guarded)return;
+            if(error)logRejected(error,"save");
             const auto result=error?Result{error}:guarded->acceptLoaded(loaded.candidate,loaded.revision,loaded.error,sequence);
             if(callback)callback(result);
         },Qt::QueuedConnection);

@@ -1,0 +1,240 @@
+2.8.0
+/bin/sh: warning: setlocale: LC_ALL: cannot change locale (en_US.UTF-8): No such file or directory
+/bin/sh: warning: setlocale: LC_ALL: cannot change locale (en_US.UTF-8): No such file or directory
+/bin/sh: warning: setlocale: LC_ALL: cannot change locale (en_US.UTF-8): No such file or directory
+============================ rpmlint session starts ============================
+rpmlint: 2.8.0
+configuration:
+    /usr/lib/python3.14/site-packages/rpmlint/configdefaults.toml
+    /etc/xdg/rpmlint/fedora-spdx-licenses.toml
+    /etc/xdg/rpmlint/fedora.toml
+    /etc/xdg/rpmlint/scoring.toml
+    /etc/xdg/rpmlint/users-groups.toml
+    /etc/xdg/rpmlint/warn-on-functions.toml
+checks: 32, packages: 1
+
+putgd.x86_64: W: unstripped-binary-or-object /usr/bin/putgd
+putgd.x86_64: W: unstripped-binary-or-object /usr/bin/putgd-b2-worker
+putgd.x86_64: W: unstripped-binary-or-object /usr/bin/putgd-capture
+putgd.x86_64: W: unstripped-binary-or-object /usr/bin/putgd-cli
+putgd.x86_64: W: unstripped-binary-or-object /usr/bin/putgd-kde-region
+putgd.x86_64: W: unstripped-binary-or-object /usr/bin/putgd-record
+putgd.x86_64: W: unstripped-binary-or-object /usr/bin/putgd-s3-worker
+putgd.x86_64: W: unstripped-binary-or-object /usr/bin/putgd-ui
+putgd.x86_64: W: unstripped-binary-or-object /usr/lib64/putgd/libaws-c-auth.so.1.0.0
+putgd.x86_64: W: unstripped-binary-or-object /usr/lib64/putgd/libaws-c-cal.so.1.0.0
+putgd.x86_64: W: unstripped-binary-or-object /usr/lib64/putgd/libaws-c-common.so.0.14.5
+putgd.x86_64: W: unstripped-binary-or-object /usr/lib64/putgd/libaws-c-compression.so.1.0.0
+putgd.x86_64: W: unstripped-binary-or-object /usr/lib64/putgd/libaws-c-event-stream.so.1.0.0
+putgd.x86_64: W: unstripped-binary-or-object /usr/lib64/putgd/libaws-c-http.so.1.0.0
+putgd.x86_64: W: unstripped-binary-or-object /usr/lib64/putgd/libaws-c-io.so.1.0.0
+putgd.x86_64: W: unstripped-binary-or-object /usr/lib64/putgd/libaws-c-mqtt.so.1.0.0
+putgd.x86_64: W: unstripped-binary-or-object /usr/lib64/putgd/libaws-c-s3.so.1.0.0
+putgd.x86_64: W: unstripped-binary-or-object /usr/lib64/putgd/libaws-c-sdkutils.so.1.0.0
+putgd.x86_64: W: unstripped-binary-or-object /usr/lib64/putgd/libaws-checksums.so.1.0.0
+putgd.x86_64: W: unstripped-binary-or-object /usr/lib64/putgd/libaws-cpp-sdk-core.so
+putgd.x86_64: W: unstripped-binary-or-object /usr/lib64/putgd/libaws-cpp-sdk-s3.so
+putgd.x86_64: W: unstripped-binary-or-object /usr/lib64/putgd/libaws-crt-cpp.so
+putgd.x86_64: W: unstripped-binary-or-object /usr/lib64/putgd/libputgd-s3.so
+putgd.x86_64: W: unstripped-binary-or-object /usr/lib64/putgd/libs2n.so.1.0.0
+putgd.x86_64: W: unstripped-binary-or-object /usr/libexec/putgd/proton/putgd-proton-runtime
+This executable should be stripped of debugging symbols, in order to take less
+space and be loaded faster. This is usually done automatically at buildtime by
+rpm.
+
+putgd.x86_64: E: standard-dir-owned-by-package /usr/share/icons
+This package owns a directory that is part of the standard hierarchy, which
+can lead to default directory permissions or ownerships being changed to
+something non-standard.
+
+putgd.x86_64: W: position-independent-executable-suggested /usr/bin/putgd
+putgd.x86_64: W: position-independent-executable-suggested /usr/bin/putgd-b2-worker
+putgd.x86_64: W: position-independent-executable-suggested /usr/bin/putgd-capture
+putgd.x86_64: W: position-independent-executable-suggested /usr/bin/putgd-cli
+putgd.x86_64: W: position-independent-executable-suggested /usr/bin/putgd-kde-region
+putgd.x86_64: W: position-independent-executable-suggested /usr/bin/putgd-record
+putgd.x86_64: W: position-independent-executable-suggested /usr/bin/putgd-s3-worker
+putgd.x86_64: W: position-independent-executable-suggested /usr/bin/putgd-ui
+putgd.x86_64: W: position-independent-executable-suggested /usr/libexec/putgd/proton/putgd-proton-runtime
+This executable should be position independent (all binaries should).  Check
+that it is built with -fPIE/-fpie in compiler flags and -pie in linker flags.
+
+putgd.x86_64: W: non-coherent-filename putgd-26.1022.1017-nightly-fedora44-x86_64.rpm putgd-26.1022.1017~nightly-1.fc44.x86_64.rpm
+The file which contains the package should be named
+<NAME>-<VERSION>-<RELEASE>.<ARCH>.rpm.
+
+putgd.x86_64: W: no-manual-page-for-binary putgd
+putgd.x86_64: W: no-manual-page-for-binary putgd-b2-worker
+putgd.x86_64: W: no-manual-page-for-binary putgd-capture
+putgd.x86_64: W: no-manual-page-for-binary putgd-cli
+putgd.x86_64: W: no-manual-page-for-binary putgd-kde-region
+putgd.x86_64: W: no-manual-page-for-binary putgd-launcher
+putgd.x86_64: W: no-manual-page-for-binary putgd-record
+putgd.x86_64: W: no-manual-page-for-binary putgd-s3-worker
+putgd.x86_64: W: no-manual-page-for-binary putgd-ui
+Each executable in standard binary directories should have a man page.
+
+putgd.x86_64: W: invalid-license GPL-3.0
+The value of the License tag was not recognized.  Known values are:
+'0BSD, AAL, ADSL, AFL-2.0, AFL-2.1, AFL-3.0, AGPL-1.0-only, AGPL-3.0-only,
+AGPL-3.0-or-later, ALGLIB-Documentation, AMD-newlib, AMDPLPA, AML,
+AML-glslang, AMPAS, ANTLR-PD, APAFML, APSL-2.0, ARL, Abstyles, AdaCore-doc,
+Adobe-2006, Adobe-Display-Postscript, Adobe-Glyph, Adobe-Utopia,
+Advanced-Cryptics-Dictionary, Afmparse, Apache-1.0, Apache-1.1, Apache-2.0,
+App-s2p, Arphic-1999, Artistic-2.0, Aspell-RU, BSD-1-Clause, BSD-2-Clause,
+BSD-2-Clause-Darwin, BSD-2-Clause-FreeBSD, BSD-2-Clause-Patent,
+BSD-2-Clause-Views, BSD-2-Clause-first-lines, BSD-2-Clause-pkgconf-disclaimer,
+BSD-3-Clause, BSD-3-Clause-Attribution, BSD-3-Clause-HP, BSD-3-Clause-LBNL,
+BSD-3-Clause-Modification, BSD-3-Clause-No-Nuclear-Warranty,
+BSD-3-Clause-Open-MPI, BSD-3-Clause-Sun, BSD-3-Clause-acpica,
+BSD-3-Clause-flex, BSD-4-Clause, BSD-4-Clause-UC, BSD-4.3RENO, BSD-4.3TAHOE,
+BSD-Advertising-Acknowledgement, BSD-Attribution-HPND-disclaimer,
+BSD-Inferno-Nettverk, BSD-Mark-Modifications, BSD-Protection, BSD-Source-Code,
+BSD-Systemics, BSD-Systemics-W3Works, BSL-1.0, Baekmuk, Bahyph, Barr,
+Beerware, BitTorrent-1.1, Bitstream-Charter, Bitstream-Vera, BlueOak-1.0.0,
+Boehm-GC, Boehm-GC-without-fee, Borceux, Brian-Gladman-2-Clause,
+Brian-Gladman-3-Clause, CATOSL-1.1, CC-BY-1.0, CC-BY-2.0, CC-BY-2.5,
+CC-BY-2.5-AU, CC-BY-3.0, CC-BY-3.0-AT, CC-BY-3.0-DE, CC-BY-3.0-NL,
+CC-BY-3.0-US, CC-BY-4.0, CC-BY-ND-1.0, CC-BY-ND-2.0, CC-BY-ND-2.5,
+CC-BY-ND-3.0, CC-BY-ND-3.0-DE, CC-BY-ND-4.0, CC-BY-SA-1.0, CC-BY-SA-2.0,
+CC-BY-SA-2.0-UK, CC-BY-SA-2.1-JP, CC-BY-SA-2.5, CC-BY-SA-3.0, CC-BY-SA-3.0-AT,
+CC-BY-SA-3.0-DE, CC-BY-SA-4.0, CC-PDDC, CC-SA-1.0, CC0-1.0, CDDL-1.0,
+CDDL-1.1, CDLA-Permissive-2.0, CECILL-1.1, CECILL-2.0, CECILL-2.1, CECILL-B,
+CECILL-C, CERN-OHL-P-2.0, CFITSIO, CMU-Mach, CMU-Mach-nodoc, CNRI-Python,
+CPAL-1.0, CPL-1.0, CUA-OPL-1.0, Caldera-no-preamble, Catharon, ClArtistic,
+Condor-1.1, Cronyx, Crossword, CrystalStacker, Cube, DEC-3-Clause,
+DL-DE-BY-2.0, DOC, DSDP, DocBook-DTD, DocBook-Schema, DocBook-Stylesheet,
+DocBook-XML, Dotseqn, ECL-1.0, ECL-2.0, EFL-2.0, EPICS, EPL-1.0, EPL-2.0,
+EUDatagrid, EUPL-1.1, EUPL-1.2, Entessa, ErlPL-1.1, Eurosym, FBM, FSFAP,
+FSFAP-no-warranty-disclaimer, FSFUL, FSFULLR, FSFULLRWD, FTL, Fair,
+Ferguson-Twofish, FreeBSD-DOC, FreeImage, GCR-docs, GD,
+GFDL-1.1-invariants-only, GFDL-1.1-invariants-or-later,
+GFDL-1.1-no-invariants-only, GFDL-1.1-no-invariants-or-later, GFDL-1.1-only,
+GFDL-1.1-or-later, GFDL-1.2-invariants-only, GFDL-1.2-invariants-or-later,
+GFDL-1.2-no-invariants-only, GFDL-1.2-no-invariants-or-later, GFDL-1.2-only,
+GFDL-1.2-or-later, GFDL-1.3-invariants-only, GFDL-1.3-invariants-or-later,
+GFDL-1.3-no-invariants-only, GFDL-1.3-no-invariants-or-later, GFDL-1.3-only,
+GFDL-1.3-or-later, GL2PS, GPL-1.0-only, GPL-1.0-or-later, GPL-1.0-or-later OR
+Artistic-1.0-Perl, GPL-2.0-only, GPL-2.0-or-later, GPL-2.0-or-later OR
+Artistic-1.0-Perl, GPL-3.0-only, GPL-3.0-or-later, Game-Programming-Gems,
+Giftware, Glide, Glulxe, Gnuplot, Gutmann, HIDAPI, HP-1986, HP-1989, HPND,
+HPND-DEC, HPND-Fenneberg-Livingston, HPND-INRIA-IMAG, HPND-Intel,
+HPND-Kevlin-Henney, HPND-MIT-disclaimer, HPND-Markus-Kuhn, HPND-Netrek,
+HPND-Pbmplus, HPND-SMC, HPND-UC, HPND-UC-export-US, HPND-doc, HPND-doc-sell,
+HPND-export-US, HPND-export-US-acknowledgement, HPND-export-US-modify,
+HPND-export2-US, HPND-merchantability-variant,
+HPND-sell-MIT-disclaimer-xserver, HPND-sell-regexpr, HPND-sell-variant,
+HPND-sell-variant-MIT-disclaimer, HPND-sell-variant-MIT-disclaimer-rev,
+HaskellReport, ICU, IJG, IJG-short, IPA, IPL-1.0, ISC, ISC-Veillard,
+ImageMagick, Imlib2, Info-ZIP, Informatica, Inner-Net-2.0, Intel-ACPI,
+Interbase-1.0, JPL-image, Jam, JasPer-2.0, Kastrup, Kazlib, Knuth-CTAN,
+LAL-1.3, LGPL-2.0-only, LGPL-2.0-or-later, LGPL-2.1-only, LGPL-2.1-or-later,
+LGPL-3.0-only, LGPL-3.0-or-later, LLGPL, LOOP, LPD-document, LPL-1.02,
+LPPL-1.3a, LPPL-1.3a+, LPPL-1.3c, Latex2e, Latex2e-translated-notice,
+Leptonica, LicenseRef-AHFL, LicenseRef-AMS, LicenseRef-Array,
+LicenseRef-BSD-2-Clause-WITH-AdditionRef-AOMPL-1.0,
+LicenseRef-BSD-3-Clause-Clear-WITH-AdditionRef-AOMPL-1.0, LicenseRef-Bacula,
+LicenseRef-BeOpen, LicenseRef-Bibtex, LicenseRef-CCLP1, LicenseRef-CCLP2,
+LicenseRef-CDL, LicenseRef-CPM, LicenseRef-CRC32, LicenseRef-Charter,
+LicenseRef-DMIT, LicenseRef-DMTF, LicenseRef-DSL, LicenseRef-DoubleStroke,
+LicenseRef-ECMA-spec, LicenseRef-EFML, LicenseRef-Elvish,
+LicenseRef-Fedora-Firmware, LicenseRef-Fedora-Public-Domain,
+LicenseRef-Fedora-UltraPermissive, LicenseRef-Fedora-Wadalab,
+LicenseRef-GeoGratis, LicenseRef-HOFL, LicenseRef-Hershey, LicenseRef-IEEE,
+LicenseRef-Intel-firmware, LicenseRef-JPython, LicenseRef-Jabber,
+LicenseRef-LDPL, LicenseRef-LOSLA, LicenseRef-LPPL, LicenseRef-Lhcyr,
+LicenseRef-Liberation, LicenseRef-License-of-Licenses, LicenseRef-Logica,
+LicenseRef-Lucida, LicenseRef-MgOpen, LicenseRef-Newmat,
+LicenseRef-Not-Copyrightable, LicenseRef-OAL, LicenseRef-OASIS-spec,
+LicenseRef-OFSFDL, LicenseRef-OpenData, LicenseRef-OpenMusic-green,
+LicenseRef-PTFL, LicenseRef-Par, LicenseRef-PlainTeX, LicenseRef-Public-use,
+LicenseRef-Punknova, LicenseRef-REX, LicenseRef-RSA, LicenseRef-RiceBSD,
+LicenseRef-Rsfs, LicenseRef-SCRIP, LicenseRef-SLIB, LicenseRef-STIX,
+LicenseRef-STMPL, LicenseRef-Tolua, LicenseRef-Utopia, LicenseRef-VNLSL,
+LicenseRef-W3C-Document-2023, LicenseRef-Wadalab, LicenseRef-XANO,
+LicenseRef-ZPLv1.0, LicenseRef-compface, LicenseRef-docbook-dtds,
+LicenseRef-ec, LicenseRef-libzmq, LicenseRef-midnight, LicenseRef-mod_macro,
+LicenseRef-qmail, LicenseRef-radvd, LicenseRef-softSurfer, Linux-OpenIB,
+Linux-man-pages-1-para, Linux-man-pages-copyleft,
+Linux-man-pages-copyleft-2-para, Linux-man-pages-copyleft-var,
+Lucida-Bitmap-Fonts, MIPS, MIT, MIT-0, MIT-CMU, MIT-Click, MIT-Festival,
+MIT-Khronos-old, MIT-Modern-Variant, MIT-Wu, MIT-advertising, MIT-enna,
+MIT-feh, MIT-open-group, MIT-testregex, MITNFA, MMIXware, MPEG-SSG, MPL-1.0,
+MPL-1.1, MPL-2.0, MPL-2.0+, MS-PL, MS-RL, MTLL, Mackerras-3-Clause,
+Mackerras-3-Clause-acknowledgment, MakeIndex, Martin-Birgmeier,
+McPhee-slideshow, Minpack, MirOS, Motosoto, MulanPSL-2.0, Mup, NAIST-2003,
+NCL, NCSA, NGPL, NIST-PD, NIST-PD-fallback, NIST-Software, NLPL, NOSL,
+NPL-1.0, NPL-1.1, NRL, NTP, Naumen, Newsletr, Nokia, Noweb, OAR, ODbL-1.0,
+OFFIS, OFL-1.1, OFL-1.1-RFN, OGL-UK-3.0, OLDAP-2.7, OLDAP-2.8, OML, OSL-1.0,
+OSL-1.1, OSL-2.0, OSL-2.1, OSL-3.0, OSSP, OpenPBS-2.3, OpenSSL, OpenVision,
+PDDL-1.0, PHP-3.0, PHP-3.01, PSF-2.0, Pixar, Plexus, PostgreSQL, Python-2.0.1,
+QPL-1.0, QPL-1.0-INRIA-2004, Qhull, RPSL-1.0, Rdisc, Ruby, Ruby-pty,
+SAX-PD-2.0, SCEA, SGI-B-2.0, SGI-OpenGL, SGP4, SISSL, SL, SMLNJ, SNIA,
+SPL-1.0, SSH-OpenSSH, SSH-short, SSLeay-standalone, SWL, Saxpath,
+Sendmail-8.23, Sendmail-Open-Source-1.1, Sleepycat, Soundex, Spencer-86,
+Spencer-94, Spencer-99, Sun-PPP, Sun-PPP-2000, SunPro, Symlinks, TCL,
+TCP-wrappers, TGPPL-1.0, TMate, TORQUE-1.1, TOSL, TPDL, TPL-1.0, TTWL, TTYP0,
+TU-Berlin-1.0, TU-Berlin-2.0, TermReadKey, ThirdEye, TrustedQSL, UCAR,
+UMich-Merit, UPL-1.0, URT-RLE, Unicode-3.0, Unicode-DFS-2015,
+Unicode-DFS-2016, UnixCrypt, Unlicense, Unlicense-libtelnet,
+Unlicense-libwhirlpool, VOSTROM, VSL-1.0, Vim, W3C, W3C-19980720,
+W3C-20150513, WTFNMFPL, WTFPL, WordNet, Wsuipa, X11,
+X11-distribute-modifications-variant, XSkat, Xdebug-1.03, Xerox, Xfig,
+YPL-1.1, ZPL-2.0, ZPL-2.1, Zed, Zeeff, Zend-2.0, Zlib, any-OSI,
+any-OSI-perl-modules, atc-game, bcrypt-Solar-Designer, blessing, bzip2-1.0.6,
+check-cvs, checkmk, copyleft-next-0.3.1, curl, diffmark, dtoa, dvipdfm,
+eGenix, etalab-2.0, fwlw, generic-xts, gtkbook, hdparm, hyphen-bulgarian,
+iMatix, jove, libpng-1.6.35, libpng-2.0, libtiff, libutil-David-Nugent, lsof,
+magaz, mailprio, man2html, metamail, mpich2, mplus, ngrep, pkgconf, pnmstitch,
+psfrag, psutils, python-ldap, radvd, snprintf, softSurfer, sprintf,
+ssh-keyscan, swrule, threeparttable, ulem, wwl, xinetd,
+xkeyboard-config-Zinoviev, xlock, xpp, zlib-acknowledgement'.
+
+putgd.x86_64: E: files-duplicated-waste 124858
+Your package contains duplicated files that are not hard- or symlinks. You
+should use the %fdupes macro to link the files to one.
+
+putgd.x86_64: W: files-duplicate /etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-nightly /etc/pki/rpm-gpg/RPM-GPG-KEY-putgd
+putgd.x86_64: W: files-duplicate /usr/share/putgd/autostart/putgd.desktop /usr/share/applications/putgd.desktop
+putgd.x86_64: W: files-duplicate /usr/share/doc/putgd/aws-crt-cpp-crt-s2n-LICENSE /usr/share/doc/putgd/aws-crt-cpp-LICENSE:/usr/share/doc/putgd/aws-crt-cpp-crt-aws-c-auth-LICENSE:/usr/share/doc/putgd/aws-crt-cpp-crt-aws-c-common-LICENSE:/usr/share/doc/putgd/aws-crt-cpp-crt-aws-c-compression-LICENSE:/usr/share/doc/putgd/aws-crt-cpp-crt-aws-c-event-stream-LICENSE:(and 3 more)
+putgd.x86_64: W: files-duplicate /usr/share/doc/putgd/aws-crt-cpp-crt-aws-c-sdkutils-LICENSE /usr/share/doc/putgd/aws-crt-cpp-crt-aws-c-cal-LICENSE:/usr/share/doc/putgd/aws-crt-cpp-crt-aws-c-s3-LICENSE
+putgd.x86_64: W: files-duplicate /usr/share/doc/putgd/aws-sdk-LICENSE /usr/share/doc/putgd/aws-crt-cpp-crt-aws-checksums-LICENSE
+putgd.x86_64: W: files-duplicate /usr/share/putgd/repo/putgd.repo /usr/share/putgd/repo/putgd-nightly.repo
+Your package contains duplicated files that are not hard- or symlinks. You
+should use the %fdupes macro to link the files to one.
+
+putgd.x86_64: E: explicit-lib-dependency glib2
+putgd.x86_64: E: explicit-lib-dependency libsecret
+You must let rpm find the library dependencies by itself. Do not put unneeded
+explicit Requires: tags.
+
+putgd.x86_64: W: devel-file-in-non-devel-package /usr/lib64/putgd/libaws-c-auth.so
+putgd.x86_64: W: devel-file-in-non-devel-package /usr/lib64/putgd/libaws-c-cal.so
+putgd.x86_64: W: devel-file-in-non-devel-package /usr/lib64/putgd/libaws-c-common.so
+putgd.x86_64: W: devel-file-in-non-devel-package /usr/lib64/putgd/libaws-c-compression.so
+putgd.x86_64: W: devel-file-in-non-devel-package /usr/lib64/putgd/libaws-c-event-stream.so
+putgd.x86_64: W: devel-file-in-non-devel-package /usr/lib64/putgd/libaws-c-http.so
+putgd.x86_64: W: devel-file-in-non-devel-package /usr/lib64/putgd/libaws-c-io.so
+putgd.x86_64: W: devel-file-in-non-devel-package /usr/lib64/putgd/libaws-c-mqtt.so
+putgd.x86_64: W: devel-file-in-non-devel-package /usr/lib64/putgd/libaws-c-s3.so
+putgd.x86_64: W: devel-file-in-non-devel-package /usr/lib64/putgd/libaws-c-sdkutils.so
+putgd.x86_64: W: devel-file-in-non-devel-package /usr/lib64/putgd/libaws-checksums.so
+putgd.x86_64: W: devel-file-in-non-devel-package /usr/lib64/putgd/libs2n.so
+A file that is needed only e.g. when developing or building software is
+included in a non-devel package. These files should go in devel packages.
+
+putgd.x86_64: E: description-line-too-long This is an installer created using CPack (https://cmake.org). No additional installation instructions provided.
+Your description lines must not exceed 80 characters. If a line is exceeding
+this number, cut it to fit in two lines.
+
+putgd.x86_64: W: dangerous-command-in-%postun rm
+putgd.x86_64: W: dangerous-command-in-%post install
+putgd.x86_64: W: conffile-without-noreplace-flag /etc/pki/rpm-gpg/RPM-GPG-KEY-putgd
+putgd.x86_64: W: conffile-without-noreplace-flag /etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-nightly
+putgd.x86_64: W: conffile-without-noreplace-flag /etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-stable
+A configuration file is stored in your package without the noreplace flag.
+This flag tells RPM not to overwrite or replace a configuration file to
+protect local modifications. A way to resolve this is to put the following in
+your SPEC file: %config(noreplace) /etc/your_config_file_here
+
+ 1 packages and 0 specfiles checked; 5 errors, 68 warnings, 2 filtered, 5 badness; has taken 8.1 s 

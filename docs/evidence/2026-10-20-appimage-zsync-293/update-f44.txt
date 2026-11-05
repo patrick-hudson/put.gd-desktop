@@ -1,0 +1,91 @@
+# Fedora Linux 44 (Workstation Edition), 2026-10-20T23:49:16Z
+# SSL_CERT_FILE=/etc/pki/tls/certs/ca-bundle.crt (appimageupdatetool does not find Fedora's CA bundle on its own)
+
+$ ./putgd-0.1.1-dev.783+gd012b2df18d2.dirty-x86_64.AppImage --appimage-updateinformation
+zsync|http://127.0.0.1:8765/appimage.zsync
+[exit 0]
+
+$ sha256sum putgd-0.1.1-dev.783+gd012b2df18d2.dirty-x86_64.AppImage out/B/putgd-0.1.1-dev.784+ge5032ed6cbff-x86_64.AppImage
+1e603db4c2e820d1f1bb58be987386509584ebd42a63b6b95109bbd882e159ca  putgd-0.1.1-dev.783+gd012b2df18d2.dirty-x86_64.AppImage
+1ec7710b0e93a9a9dd48f02513abd16f9d279d7aba9b6ebbfe2bb1b3c747074c  out/B/putgd-0.1.1-dev.784+ge5032ed6cbff-x86_64.AppImage
+[exit 0]
+
+$ head -8 serve/appimage.zsync
+zsync: 0.6.2
+Filename: putgd-0.1.1-dev.784+ge5032ed6cbff-x86_64.AppImage
+MTime: Tue, 20 Oct 2026 23:45:38 +0000
+Blocksize: 4096
+Length: 114792952
+Hash-Lengths: 2,2,5
+URL: http://127.0.0.1:8765/putgd-0.1.1-dev.784+ge5032ed6cbff-x86_64.AppImage
+SHA-1: df664b2a39f1e5dd31782f6b1955ed67f50defe6
+
+$ appimageupdatetool --check-for-update putgd-0.1.1-dev.783+gd012b2df18d2.dirty-x86_64.AppImage
+zsync2: Using CA bundle found on system: /etc/pki/tls/certs/ca-bundle.crt
+[exit 1]
+
+$ appimageupdatetool putgd-0.1.1-dev.783+gd012b2df18d2.dirty-x86_64.AppImage
+Checking for updates...
+zsync2: Using CA bundle found on system: /etc/pki/tls/certs/ca-bundle.crt
+... done!
+Starting update...
+
+Updating from generic server via ZSync
+zsync2: Using CA bundle found on system: /etc/pki/tls/certs/ca-bundle.crt
+zsync2: Target file: putgd-0.1.1-dev.784+ge5032ed6cbff-x86_64.AppImage
+zsync2: Reading seed file: putgd-0.1.1-dev.783+gd012b2df18d2.dirty-x86_64.AppImage
+
+zsync2: Usable data from seed files: 95.482766%
+zsync2: Renaming temp file
+zsync2: Fetching remaining blocks
+zsync2: Downloading from http://127.0.0.1:8765/putgd-0.1.1-dev.784+ge5032ed6cbff-x86_64.AppImage
+zsync2: optimized ranges, old requests count 22, new requests count 4
+
+zsync2: Verifying downloaded file
+
+zsync2: checksum matches OK
+zsync2: used 109608960 local, fetched 5855736
+
+Validation warning: AppImage not signed
+Update successful. New file created: putgd-0.1.1-dev.784+ge5032ed6cbff-x86_64.AppImage
+[exit 0]
+
+$ ls -l
+total 224208
+-rwxr-xr-x. 1 patrick patrick 114792952 Oct 20 18:49 putgd-0.1.1-dev.783+gd012b2df18d2.dirty-x86_64.AppImage
+-rwxr-xr-x. 1 patrick patrick 114792952 Oct 20  2026 putgd-0.1.1-dev.784+ge5032ed6cbff-x86_64.AppImage
+[exit 0]
+
+$ sha256sum ./putgd-0.1.1-dev.783+gd012b2df18d2.dirty-x86_64.AppImage ./putgd-0.1.1-dev.784+ge5032ed6cbff-x86_64.AppImage
+1e603db4c2e820d1f1bb58be987386509584ebd42a63b6b95109bbd882e159ca  ./putgd-0.1.1-dev.783+gd012b2df18d2.dirty-x86_64.AppImage
+1ec7710b0e93a9a9dd48f02513abd16f9d279d7aba9b6ebbfe2bb1b3c747074c  ./putgd-0.1.1-dev.784+ge5032ed6cbff-x86_64.AppImage
+[exit 0]
+
+$ ./putgd-0.1.1-dev.784+ge5032ed6cbff-x86_64.AppImage --appimage-updateinformation
+zsync|http://127.0.0.1:8765/appimage.zsync
+[exit 0]
+
+$ appimageupdatetool --check-for-update putgd-0.1.1-dev.784+ge5032ed6cbff-x86_64.AppImage
+zsync2: Using CA bundle found on system: /etc/pki/tls/certs/ca-bundle.crt
+[exit 0]
+
+$ cat http.log
+20/Oct/2026 18:49:17 "GET /appimage.zsync HTTP/1.1" 200 -
+20/Oct/2026 18:49:17 "GET /appimage.zsync HTTP/1.1" 200 -
+20/Oct/2026 18:49:17 "GET /appimage.zsync HTTP/1.1" 200 -
+20/Oct/2026 18:49:17 "GET /appimage.zsync HTTP/1.1" 200 -
+20/Oct/2026 18:49:18 "GET /appimage.zsync HTTP/1.1" 200 -
+20/Oct/2026 18:49:18 "GET /appimage.zsync HTTP/1.1" 200 -
+20/Oct/2026 18:49:18 "HEAD /putgd-0.1.1-dev.784+ge5032ed6cbff-x86_64.AppImage HTTP/1.1" 200 -
+20/Oct/2026 18:49:18 "GET /putgd-0.1.1-dev.784+ge5032ed6cbff-x86_64.AppImage HTTP/1.1" 206 -
+20/Oct/2026 18:49:18   1 range(s), 5738496 file bytes
+20/Oct/2026 18:49:18 "GET /putgd-0.1.1-dev.784+ge5032ed6cbff-x86_64.AppImage HTTP/1.1" 206 -
+20/Oct/2026 18:49:18   1 range(s), 32768 file bytes
+20/Oct/2026 18:49:18 "GET /putgd-0.1.1-dev.784+ge5032ed6cbff-x86_64.AppImage HTTP/1.1" 206 -
+20/Oct/2026 18:49:18   1 range(s), 8192 file bytes
+20/Oct/2026 18:49:18 "GET /putgd-0.1.1-dev.784+ge5032ed6cbff-x86_64.AppImage HTTP/1.1" 206 -
+20/Oct/2026 18:49:18   1 range(s), 76280 file bytes
+20/Oct/2026 18:49:20 "GET /appimage.zsync HTTP/1.1" 200 -
+20/Oct/2026 18:49:20 "GET /appimage.zsync HTTP/1.1" 200 -
+
+# image bytes fetched by range: 5855736 of 114792952

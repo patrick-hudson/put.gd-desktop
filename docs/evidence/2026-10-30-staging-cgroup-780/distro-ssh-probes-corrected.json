@@ -1,0 +1,22 @@
+{
+  "k72": {
+    "exitCode": 0,
+    "stdout": "systemd 259 (259.5-0ubuntu3.4)\ncgroup2fs\ncpuset cpu io memory hugetlb pids rdma misc dmem\n",
+    "stderr": ""
+  },
+  "f44": {
+    "exitCode": 0,
+    "stdout": "systemd 259 (259.10-1.fc44)\ncgroup2fs\ncpuset cpu io memory hugetlb pids rdma misc dmem\n",
+    "stderr": ""
+  },
+  "d69": {
+    "exitCode": 0,
+    "stdout": "systemd 257 (257.13-1~deb13u1)\ncgroup2fs\ncpuset cpu io memory hugetlb pids rdma misc\n",
+    "stderr": ""
+  },
+  "aurora-amd": {
+    "exitCode": 0,
+    "stdout": "systemd 262 (262-3.fc45)\ncgroup2fs\ncpuset cpu io memory hugetlb pids rdma misc dmem\nrpm-ostree-host\n",
+    "stderr": ""
+  }
+}

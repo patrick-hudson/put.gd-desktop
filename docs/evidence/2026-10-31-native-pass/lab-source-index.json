@@ -1,0 +1,144 @@
+[
+  {
+    "path": "lab/assess.py",
+    "sha256": "09b253adcdf919c553a65fc25dcb6d101ff20c753f77b1267938c546ee4066d3",
+    "bytes": 4914
+  },
+  {
+    "path": "lab/attempts/b1-hash-restored-b_native.py",
+    "sha256": "c048ca988888528657c1b9566d32797f1d24c452546fc9fc2f4575cd9f2a469c",
+    "bytes": 12754
+  },
+  {
+    "path": "lab/attempts/b2-exact-b_campaign.py",
+    "sha256": "78ba99b2382bfe0d74680d57f6d623f4b3823a6c52a8da9685481ce9c885147f",
+    "bytes": 7924
+  },
+  {
+    "path": "lab/attempts/b2-exact-b_history.py",
+    "sha256": "0e973047db9d312022f31a83ea1d2c11c31afd7ae1713d61e6de5b833762c1ad",
+    "bytes": 13034
+  },
+  {
+    "path": "lab/attempts/b2-exact-b_native.py",
+    "sha256": "3c8a4633f73464c998fe065736b0baa2b9f0428802f3ceab6392029a139a36f9",
+    "bytes": 13088
+  },
+  {
+    "path": "lab/attempts/b2-exact-b_tc.py",
+    "sha256": "1854cc0a639c1c3afeece8182d699f8e555d41dc184d3010dfc32e8f05ed4e98",
+    "bytes": 3713
+  },
+  {
+    "path": "lab/attempts/b3-b_campaign.py",
+    "sha256": "067018740c6a4c2f9b24a4c5ae1a205ff37555542313c94791e747a0f3a89371",
+    "bytes": 8036
+  },
+  {
+    "path": "lab/attempts/b3-b_history.py",
+    "sha256": "875a6f230aa346d60bb3dc7cbaf07b25b3c2d51191ec1dca9f9b0ad4d6a84117",
+    "bytes": 14918
+  },
+  {
+    "path": "lab/attempts/b3-b_native.py",
+    "sha256": "0cf3b2eb366c4158892f34242c4f513952fafeff24d5066440ecae1a790092b7",
+    "bytes": 13364
+  },
+  {
+    "path": "lab/attempts/b3-b_tc.py",
+    "sha256": "bd9819f080527baa527b1fb487a20d2401bccc3f6fc0d59a649a6cc978bb6504",
+    "bytes": 3686
+  },
+  {
+    "path": "lab/attempts/b_campaign-first-attempt-final.py",
+    "sha256": "60c63041e7608cea38c84bab16a9727e581cc692ffe2665a586693ef24547b9a",
+    "bytes": 7212
+  },
+  {
+    "path": "lab/attempts/b_campaign-initial.py",
+    "sha256": "a04d89933148733a8dc415a64f212bfb16cb4b1a38e969c862d29a3fdd386b3e",
+    "bytes": 6867
+  },
+  {
+    "path": "lab/attempts/b_campaign-third-attempt.py",
+    "sha256": "067018740c6a4c2f9b24a4c5ae1a205ff37555542313c94791e747a0f3a89371",
+    "bytes": 8036
+  },
+  {
+    "path": "lab/attempts/b_history-before-functionals.py",
+    "sha256": "e54db26d03bebecdc57e497e7617ccea157e2b50fb4653acd0d5cdcef0a0b933",
+    "bytes": 8188
+  },
+  {
+    "path": "lab/attempts/b_history-first-content-attempt.py",
+    "sha256": "9305ffb94239742a8a1d61725b9da49f668937d4aa6450c3825156654d4a19e9",
+    "bytes": 13033
+  },
+  {
+    "path": "lab/attempts/b_history-third-attempt.py",
+    "sha256": "875a6f230aa346d60bb3dc7cbaf07b25b3c2d51191ec1dca9f9b0ad4d6a84117",
+    "bytes": 14918
+  },
+  {
+    "path": "lab/attempts/b_native-first-attempt.py",
+    "sha256": "2c87608fca3fa821dcc672995e4191636f49c670ad2a52f6175a99102cc843e8",
+    "bytes": 12753
+  },
+  {
+    "path": "lab/attempts/b_native-second-attempt.py",
+    "sha256": "d01a75a65d71e47b863d51ddbe12bb4effdae184899856d7b17507c3fe7ad95d",
+    "bytes": 13087
+  },
+  {
+    "path": "lab/attempts/b_native-third-attempt.py",
+    "sha256": "0cf3b2eb366c4158892f34242c4f513952fafeff24d5066440ecae1a790092b7",
+    "bytes": 13364
+  },
+  {
+    "path": "lab/attempts/growth-native_acceptance.py",
+    "sha256": "ef9c28a5db91cd57fb41f9e4e3a5d88c53baf53fe77a9fff87ec234b148a792c",
+    "bytes": 41917
+  },
+  {
+    "path": "lab/b_campaign.py",
+    "sha256": "14ca4dc5600fe9602c9566eb22b7bfb09a4550b50773cc9589c55c2ac1733503",
+    "bytes": 8273
+  },
+  {
+    "path": "lab/b_history.py",
+    "sha256": "f8ce3cd128b84692be772857d863386be78b4337cb2765d6dac83e198c29610e",
+    "bytes": 15729
+  },
+  {
+    "path": "lab/b_native.py",
+    "sha256": "ab5381d3145e055305e015fed52b620511ff974653d24458d67048d0bf9f95f2",
+    "bytes": 14010
+  },
+  {
+    "path": "lab/b_tc.py",
+    "sha256": "bd9819f080527baa527b1fb487a20d2401bccc3f6fc0d59a649a6cc978bb6504",
+    "bytes": 3686
+  },
+  {
+    "path": "lab/checksum_chain_checks.py",
+    "sha256": "f59cee1d67d72b16afd607dcfb8f802074d8d84c6fe58aa09c58296bb59f2b4f",
+    "bytes": 10341
+  },
+  {
+    "path": "lab/native-local.patch",
+    "sha256": "086a91d6110d0d2ae927ef02d14ec932cdead6937f094d7aaa2a2d0400086741",
+    "bytes": 7986,
+    "originalPublishedSha256": "5cbe8bcd430b13295e11859a4d5389c2080f88ba476740eb5f041344d2d158b4",
+    "publicationNote": "Later fail-closed frame masking; not historical tested patch bytes."
+  },
+  {
+    "path": "lab/native_admission_checks.py",
+    "sha256": "296d9c9104baaf4a805578bf9fabbe517fe1d4d1df4298cae616a5f61fe239f1",
+    "bytes": 1585
+  },
+  {
+    "path": "lab/publication_checks.py",
+    "sha256": "b17120f011e9004f5a513a471cc7e351ccab569ca09314371e7790915d673131",
+    "bytes": 4441
+  }
+]

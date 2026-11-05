@@ -1,0 +1,93 @@
+{
+    "class": "QMenu",
+    "controls": [
+        {
+            "class": "QAction",
+            "enabled": true,
+            "kind": "menu-item",
+            "name": "trayOutputregion",
+            "rect": [
+                6,
+                6,
+                280,
+                50
+            ],
+            "submenu": false,
+            "text": "Capture region: Shared link · Proton Drive + local copy"
+        },
+        {
+            "class": "QAction",
+            "enabled": true,
+            "kind": "menu-item",
+            "name": "trayOutputwindow",
+            "rect": [
+                6,
+                56,
+                280,
+                50
+            ],
+            "submenu": false,
+            "text": "Capture window: Shared link · Proton Drive + local copy"
+        },
+        {
+            "class": "QAction",
+            "enabled": true,
+            "kind": "menu-item",
+            "name": "trayOutputdesktop",
+            "rect": [
+                6,
+                106,
+                280,
+                50
+            ],
+            "submenu": false,
+            "text": "Capture desktop: Shared link · Proton Drive + local copy"
+        },
+        {
+            "class": "QAction",
+            "enabled": true,
+            "kind": "menu-item",
+            "name": "trayOutputedit",
+            "rect": [
+                6,
+                156,
+                280,
+                50
+            ],
+            "submenu": false,
+            "text": "Capture region && edit: Shared link · Proton Drive + local copy"
+        },
+        {
+            "class": "QAction",
+            "enabled": true,
+            "kind": "menu-item",
+            "name": "trayOutputrecord",
+            "rect": [
+                6,
+                206,
+                280,
+                50
+            ],
+            "submenu": false,
+            "text": "Record screen: Shared link · Proton Drive + local copy"
+        },
+        {
+            "class": "QAction",
+            "enabled": true,
+            "kind": "menu-item",
+            "name": "trayOutputclipboard",
+            "rect": [
+                6,
+                256,
+                280,
+                50
+            ],
+            "submenu": false,
+            "text": "Upload clipboard: Shared link · Proton Drive + local copy"
+        }
+    ],
+    "height": 312,
+    "keys": [
+    ],
+    "width": 292
+}

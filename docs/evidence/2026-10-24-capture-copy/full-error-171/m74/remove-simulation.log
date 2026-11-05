@@ -1,0 +1,11 @@
+Reading package lists...
+Building dependency tree...
+Reading state information...
+The following packages were automatically installed and are no longer required:
+  libmng2 qt6-image-formats-plugins
+Use 'sudo apt autoremove' to remove them.
+The following packages will be REMOVED:
+  gir1.2-gtk-4.0* putgd*
+0 upgraded, 0 newly installed, 2 to remove and 30 not upgraded.
+Purg gir1.2-gtk-4.0 [4.14.5+ds-0ubuntu0.10]
+Purg putgd [26.1024.1140~dev+g171b506e02ca]

@@ -1,0 +1,1077 @@
+{
+ "pkg:remove": {
+  "label": "remove",
+  "command": [
+   "dnf",
+   "remove",
+   "-y",
+   "putgd"
+  ],
+  "before": {
+   "at": "2026-10-23T05:58:44Z",
+   "host": "fedora",
+   "package": {
+    "manager": "rpm",
+    "version": "26.1023.1058~nightly-1.fc44"
+   },
+   "files": {
+    "/etc/apt/sources.list.d/putgd.sources": null,
+    "/usr/share/keyrings/putgd-archive-keyring.gpg": null,
+    "/etc/yum.repos.d/putgd.repo": {
+     "sha256": "5399dba05eefd1826094a5226b12285d58da08460b5b8d8b9229e0fe7848a0f4",
+     "bytes": 421,
+     "mode": "0o644",
+     "mtime": "2026-10-23T05:54:05Z"
+    },
+    "/etc/yum.repos.d/putgd.repo.rpmsave": null,
+    "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd": {
+     "sha256": "1a79015c14a4907ac6812658204fa3cc2b2e4bbbbf63f04a4c1eec4623165e80",
+     "bytes": 1664,
+     "mode": "0o644",
+     "mtime": "2010-07-04T00:00:00Z"
+    },
+    "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-nightly": {
+     "sha256": "1a79015c14a4907ac6812658204fa3cc2b2e4bbbbf63f04a4c1eec4623165e80",
+     "bytes": 1664,
+     "mode": "0o644",
+     "mtime": "2010-07-04T00:00:00Z"
+    },
+    "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-stable": {
+     "sha256": "dd17348889ca55ae6956b902530e14f31e8cf88c052768190a4577b7949d4c77",
+     "bytes": 1668,
+     "mode": "0o644",
+     "mtime": "2010-07-04T00:00:00Z"
+    },
+    "/usr/share/gnome-shell/extensions/putgd@put.gd/metadata.json": {
+     "sha256": "690be5bcfd1ee05783cd57a78851c56c0fe624131711b254cb46d062d0cb8046",
+     "bytes": 248,
+     "mode": "0o644",
+     "mtime": "2010-07-04T00:00:00Z"
+    }
+   },
+   "defaultProfile": {
+    "/home/patrick/.config/putgd": 1,
+    "/home/patrick/.local/state/putgd": 29,
+    "/home/patrick/.cache/putgd": null,
+    "/home/patrick/.local/share/putgd": 13
+   },
+   "autostart": "[Desktop Entry]\nType=Application\nName=put.gd\nExec=\"/usr/bin/putgd-launcher\" --background\nTerminal=false\nX-putgd-Managed=true\n",
+   "userExtension": false,
+   "processes": [
+    {
+     "pid": 3142877,
+     "ppid": 1397,
+     "exe": "/usr/bin/putgd",
+     "comm": "putgd",
+     "cmd": "/usr/bin/putgd --background ",
+     "qtPlatformPlugins": []
+    }
+   ],
+   "enabledExtensions": "['background-logo@fedorahosted.org', 'appindicatorsupport@rgcjonas.gmail.com', 'putgd@put.gd']",
+   "openh264": {
+    "openh264": "openh264-2.6.0-3.fc44.x86_64",
+    "noopenh264": "package noopenh264 is not installed",
+    "gstreamer1-plugin-openh264": "gstreamer1-plugin-openh264-1.28.1-1.fc44.x86_64",
+    "mozilla-openh264": "mozilla-openh264-2.6.0-3.fc44.x86_64"
+   }
+  },
+  "startedAt": "2026-10-23T05:58:44Z",
+  "simulation": {
+   "command": [
+    "sudo",
+    "-n",
+    "dnf",
+    "--assumeno",
+    "remove",
+    "putgd"
+   ],
+   "exit": 1,
+   "changes": [
+    {
+     "op": "Removing",
+     "package": "putgd"
+    },
+    {
+     "op": "Removing",
+     "package": "jasper-libs"
+    },
+    {
+     "op": "Removing",
+     "package": "libmng"
+    },
+    {
+     "op": "Removing",
+     "package": "qt6-qtimageformats"
+    }
+   ],
+   "tail": "Package             Arch   Version                       Repository         Size\nRemoving:\n putgd              x86_64 0:26.1023.1058~nightly-1.fc44 putgd-nightly 115.4 MiB\nRemoving unused dependencies:\n jasper-libs        x86_64 0:4.2.8-2.fc44                fedora        349.7 KiB\n libmng             x86_64 0:2.0.3-25.fc44               fedora        553.8 KiB\n qt6-qtimageformats x86_64 0:6.11.2-1.fc44               updates       435.3 KiB\n\nTransaction Summary:\n Removing:           4 packages\n\nAfter this operation, 117 MiB will be freed (install 0 B, remove 117 MiB).\nWarning: A pending offline transaction initiated by the following command will be invalidated: dnf5daemon-server\nOperation aborted by the user.\n"
+  },
+  "otherPackages": [
+   {
+    "op": "Removing",
+    "package": "jasper-libs"
+   },
+   {
+    "op": "Removing",
+    "package": "libmng"
+   },
+   {
+    "op": "Removing",
+    "package": "qt6-qtimageformats"
+   }
+  ],
+  "exit": 0,
+  "seconds": 1.5,
+  "log": "/home/patrick/work/put.gd-nfa/runs/M2/logs/pkg-remove.log",
+  "conffilePrompt": false,
+  "signature": [],
+  "fetched": [],
+  "tail": "Package             Arch   Version                       Repository         Size\nRemoving:\n putgd              x86_64 0:26.1023.1058~nightly-1.fc44 putgd-nightly 115.4 MiB\nRemoving unused dependencies:\n jasper-libs        x86_64 0:4.2.8-2.fc44                fedora        349.7 KiB\n libmng             x86_64 0:2.0.3-25.fc44               fedora        553.8 KiB\n qt6-qtimageformats x86_64 0:6.11.2-1.fc44               updates       435.3 KiB\n\nTransaction Summary:\n Removing:           4 packages\n\nAfter this operation, 117 MiB will be freed (install 0 B, remove 117 MiB).\nWarning: A pending offline transaction initiated by the following command will be invalidated: dnf5daemon-server\nRunning transaction\n[1/5] Prepare transaction               100% |  15.0   B/s |   4.0   B |  00m00s\n[2/5] Removing putgd-0:26.1023.1058~nig 100% |   2.1 KiB/s | 138.0   B |  00m00s\n[3/5] Removing qt6-qtimageformats-0:6.1 100% |   7.7 KiB/s |  79.0   B |  00m00s\n[4/5] Removing jasper-libs-0:4.2.8-2.fc 100% |   1.6 KiB/s |  10.0   B |  00m00s\n[5/5] Removing libmng-0:2.0.3-25.fc44.x 100% |  36.0   B/s |  17.0   B |  00m00s\nWarning: Pending offline transaction has been invalidated.\nTo reschedule, run: dnf5daemon-server\nComplete!\n",
+  "after": {
+   "at": "2026-10-23T05:58:46Z",
+   "host": "fedora",
+   "package": {
+    "manager": "rpm",
+    "version": null
+   },
+   "files": {
+    "/etc/apt/sources.list.d/putgd.sources": null,
+    "/usr/share/keyrings/putgd-archive-keyring.gpg": null,
+    "/etc/yum.repos.d/putgd.repo": null,
+    "/etc/yum.repos.d/putgd.repo.rpmsave": null,
+    "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd": null,
+    "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-nightly": null,
+    "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-stable": null,
+    "/usr/share/gnome-shell/extensions/putgd@put.gd/metadata.json": null
+   },
+   "defaultProfile": {
+    "/home/patrick/.config/putgd": 1,
+    "/home/patrick/.local/state/putgd": 29,
+    "/home/patrick/.cache/putgd": null,
+    "/home/patrick/.local/share/putgd": 13
+   },
+   "autostart": "[Desktop Entry]\nType=Application\nName=put.gd\nExec=\"/usr/bin/putgd-launcher\" --background\nTerminal=false\nX-putgd-Managed=true\n",
+   "userExtension": false,
+   "processes": [
+    {
+     "pid": 3142877,
+     "ppid": 1397,
+     "exe": "/usr/bin/putgd (deleted)",
+     "comm": "putgd",
+     "cmd": "/usr/bin/putgd --background ",
+     "qtPlatformPlugins": []
+    }
+   ],
+   "enabledExtensions": "['background-logo@fedorahosted.org', 'appindicatorsupport@rgcjonas.gmail.com', 'putgd@put.gd']",
+   "openh264": {
+    "openh264": "openh264-2.6.0-3.fc44.x86_64",
+    "noopenh264": "package noopenh264 is not installed",
+    "gstreamer1-plugin-openh264": "gstreamer1-plugin-openh264-1.28.1-1.fc44.x86_64",
+    "mozilla-openh264": "mozilla-openh264-2.6.0-3.fc44.x86_64"
+   }
+  }
+ },
+ "pkg:install-947": {
+  "label": "install-947",
+  "command": [
+   "dnf",
+   "install",
+   "-y",
+   "/home/patrick/work/put.gd-nfa/assets/putgd-0.1.1-nightly.947-fedora44-x86_64.rpm"
+  ],
+  "before": {
+   "at": "2026-10-23T05:53:59Z",
+   "host": "fedora",
+   "package": {
+    "manager": "rpm",
+    "version": null
+   },
+   "files": {
+    "/etc/apt/sources.list.d/putgd.sources": null,
+    "/usr/share/keyrings/putgd-archive-keyring.gpg": null,
+    "/etc/yum.repos.d/putgd.repo": null,
+    "/etc/yum.repos.d/putgd.repo.rpmsave": null,
+    "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd": null,
+    "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-nightly": null,
+    "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-stable": null,
+    "/usr/share/gnome-shell/extensions/putgd@put.gd/metadata.json": null
+   },
+   "defaultProfile": {
+    "/home/patrick/.config/putgd": null,
+    "/home/patrick/.local/state/putgd": 21,
+    "/home/patrick/.cache/putgd": null,
+    "/home/patrick/.local/share/putgd": null
+   },
+   "autostart": null,
+   "userExtension": false,
+   "processes": [],
+   "enabledExtensions": "['background-logo@fedorahosted.org', 'appindicatorsupport@rgcjonas.gmail.com', 'putgd@put.gd']",
+   "openh264": {
+    "openh264": "openh264-2.6.0-3.fc44.x86_64",
+    "noopenh264": "package noopenh264 is not installed",
+    "gstreamer1-plugin-openh264": "gstreamer1-plugin-openh264-1.28.1-1.fc44.x86_64",
+    "mozilla-openh264": "mozilla-openh264-2.6.0-3.fc44.x86_64"
+   }
+  },
+  "startedAt": "2026-10-23T05:53:59Z",
+  "simulation": {
+   "command": [
+    "sudo",
+    "-n",
+    "dnf",
+    "--assumeno",
+    "install",
+    "/home/patrick/work/put.gd-nfa/assets/putgd-0.1.1-nightly.947-fedora44-x86_64.rpm"
+   ],
+   "exit": 1,
+   "changes": [
+    {
+     "op": "Installing",
+     "package": "putgd"
+    },
+    {
+     "op": "Installing",
+     "package": "jasper-libs"
+    },
+    {
+     "op": "Installing",
+     "package": "libmng"
+    },
+    {
+     "op": "Installing",
+     "package": "qt6-qtimageformats"
+    }
+   ],
+   "tail": "Package             Arch   Version                    Repository        Size\nInstalling:\n putgd              x86_64 0:0.1.1~nightly.947-1.fc44 @commandline 115.2 MiB\nInstalling dependencies:\n jasper-libs        x86_64 0:4.2.8-2.fc44             fedora       349.7 KiB\n libmng             x86_64 0:2.0.3-25.fc44            fedora       553.8 KiB\n qt6-qtimageformats x86_64 0:6.11.2-1.fc44            updates      435.3 KiB\n\nTransaction Summary:\n Installing:         4 packages\n\nUpdating and loading repositories:\nRepositories loaded.\nTotal size of inbound packages is 39 MiB. Need to download 493 KiB.\nAfter this operation, 117 MiB extra will be used (install 117 MiB, remove 0 B).\nWarning: A pending offline transaction initiated by the following command will be invalidated: dnf5daemon-server\nOperation aborted by the user.\n"
+  },
+  "otherPackages": [
+   {
+    "op": "Installing",
+    "package": "jasper-libs"
+   },
+   {
+    "op": "Installing",
+    "package": "libmng"
+   },
+   {
+    "op": "Installing",
+    "package": "qt6-qtimageformats"
+   }
+  ],
+  "exit": 0,
+  "seconds": 6.0,
+  "log": "/home/patrick/work/put.gd-nfa/runs/M2/logs/pkg-install-947.log",
+  "conffilePrompt": false,
+  "signature": [
+   "Warning: skipped OpenPGP checks for 1 package from repository: @commandline"
+  ],
+  "fetched": [],
+  "tail": "Package             Arch   Version                    Repository        Size\nInstalling:\n putgd              x86_64 0:0.1.1~nightly.947-1.fc44 @commandline 115.2 MiB\nInstalling dependencies:\n jasper-libs        x86_64 0:4.2.8-2.fc44             fedora       349.7 KiB\n libmng             x86_64 0:2.0.3-25.fc44            fedora       553.8 KiB\n qt6-qtimageformats x86_64 0:6.11.2-1.fc44            updates      435.3 KiB\n\nTransaction Summary:\n Installing:         4 packages\n\nUpdating and loading repositories:\nRepositories loaded.\nTotal size of inbound packages is 39 MiB. Need to download 493 KiB.\nAfter this operation, 117 MiB extra will be used (install 117 MiB, remove 0 B).\nWarning: A pending offline transaction initiated by the following command will be invalidated: dnf5daemon-server\n[1/3] qt6-qtimageformats-0:6.11.2-1.fc4 100% | 395.5 KiB/s | 128.5 KiB |  00m00s\n[2/3] jasper-libs-0:4.2.8-2.fc44.x86_64 100% | 353.8 KiB/s | 170.2 KiB |  00m00s\n[3/3] libmng-0:2.0.3-25.fc44.x86_64     100% | 344.6 KiB/s | 194.0 KiB |  00m01s\n--------------------------------------------------------------------------------\n[3/3] Total                             100% | 410.6 KiB/s | 492.7 KiB |  00m01s\nRunning transaction\n[1/6] Verify package files              100% |   9.0   B/s |   4.0   B |  00m00s\n[2/6] Prepare transaction               100% |   7.0   B/s |   4.0   B |  00m01s\n[3/6] Installing libmng-0:2.0.3-25.fc44 100% |  32.0 MiB/s | 556.3 KiB |  00m00s\n[4/6] Installing jasper-libs-0:4.2.8-2. 100% |  38.1 MiB/s | 351.2 KiB |  00m00s\n[5/6] Installing qt6-qtimageformats-0:6 100% |  21.9 MiB/s | 448.3 KiB |  00m00s\n[6/6] Installing putgd-0:0.1.1~nightly. 100% |  67.6 MiB/s | 115.3 MiB |  00m02s\nWarning: skipped OpenPGP checks for 1 package from repository: @commandline\nWarning: Pending offline transaction has been invalidated.\nTo reschedule, run: dnf5daemon-server\nComplete!\n",
+  "after": {
+   "at": "2026-10-23T05:54:06Z",
+   "host": "fedora",
+   "package": {
+    "manager": "rpm",
+    "version": "0.1.1~nightly.947-1.fc44"
+   },
+   "files": {
+    "/etc/apt/sources.list.d/putgd.sources": null,
+    "/usr/share/keyrings/putgd-archive-keyring.gpg": null,
+    "/etc/yum.repos.d/putgd.repo": {
+     "sha256": "5399dba05eefd1826094a5226b12285d58da08460b5b8d8b9229e0fe7848a0f4",
+     "bytes": 421,
+     "mode": "0o644",
+     "mtime": "2026-10-23T05:54:05Z"
+    },
+    "/etc/yum.repos.d/putgd.repo.rpmsave": null,
+    "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd": {
+     "sha256": "1a79015c14a4907ac6812658204fa3cc2b2e4bbbbf63f04a4c1eec4623165e80",
+     "bytes": 1664,
+     "mode": "0o644",
+     "mtime": "2010-07-04T00:00:00Z"
+    },
+    "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-nightly": null,
+    "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-stable": null,
+    "/usr/share/gnome-shell/extensions/putgd@put.gd/metadata.json": {
+     "sha256": "690be5bcfd1ee05783cd57a78851c56c0fe624131711b254cb46d062d0cb8046",
+     "bytes": 248,
+     "mode": "0o644",
+     "mtime": "2010-07-04T00:00:00Z"
+    }
+   },
+   "defaultProfile": {
+    "/home/patrick/.config/putgd": null,
+    "/home/patrick/.local/state/putgd": 21,
+    "/home/patrick/.cache/putgd": null,
+    "/home/patrick/.local/share/putgd": null
+   },
+   "autostart": null,
+   "userExtension": false,
+   "processes": [],
+   "enabledExtensions": "['background-logo@fedorahosted.org', 'appindicatorsupport@rgcjonas.gmail.com', 'putgd@put.gd']",
+   "openh264": {
+    "openh264": "openh264-2.6.0-3.fc44.x86_64",
+    "noopenh264": "package noopenh264 is not installed",
+    "gstreamer1-plugin-openh264": "gstreamer1-plugin-openh264-1.28.1-1.fc44.x86_64",
+    "mozilla-openh264": "mozilla-openh264-2.6.0-3.fc44.x86_64"
+   }
+  }
+ },
+ "snapshot:before": {
+  "label": "before",
+  "at": "2026-10-23T05:54:53Z",
+  "package": {
+   "manager": "rpm",
+   "version": "0.1.1~nightly.947-1.fc44"
+  },
+  "config": {
+   "sha256": "8f5e79b9d50b1abee8064e9adefb1ca0d2bc1524129931daca11ba394f7316cd",
+   "bytes": 3306,
+   "mode": "0o600",
+   "mtime": "2026-10-23T05:54:51Z"
+  },
+  "configFiles": {
+   "/home/patrick/.config/putgd/config.json": {
+    "sha256": "8f5e79b9d50b1abee8064e9adefb1ca0d2bc1524129931daca11ba394f7316cd",
+    "bytes": 3306,
+    "mode": "0o600",
+    "mtime": "2026-10-23T05:54:51Z"
+   },
+   "/home/patrick/.config/putgd/putgd/config.json": null
+  },
+  "dataRoots": {
+   "/home/patrick/.local/share/putgd": [
+    "artifacts",
+    "history.sqlite",
+    "previews",
+    "resident.lock"
+   ],
+   "/home/patrick/.local/share/putgd/putgd": null
+  },
+  "processes": [
+   {
+    "pid": 3138635,
+    "ppid": 1397,
+    "exe": "/usr/bin/putgd",
+    "comm": "putgd",
+    "cmd": "/usr/bin/putgd --background ",
+    "qtPlatformPlugins": []
+   },
+   {
+    "pid": 3138646,
+    "ppid": 3138635,
+    "exe": "/usr/bin/putgd-ui",
+    "comm": "putgd-ui",
+    "cmd": "/usr/bin/putgd-ui ",
+    "qtPlatformPlugins": [
+     "libqwayland.so"
+    ]
+   }
+  ],
+  "history": {
+   "db": "/home/patrick/.local/share/putgd/history.sqlite",
+   "userVersion": 7,
+   "integrity": "ok",
+   "tables": {
+    "history": 2,
+    "operations": 2,
+    "deletions": 0,
+    "deletion_targets": 0,
+    "cleared_history": 0,
+    "item_state": 2,
+    "sharing_operations": 0
+   },
+   "upload_status": {
+    "uploaded": 2
+   },
+   "local_status": {
+    "saved": 2
+   },
+   "remote_status": {
+    "not_requested": 2
+   },
+   "itemStateRemote": {
+    "not_requested": 2
+   }
+  },
+  "outputs": {
+   "archive/images/Screen-Capture-2026-10-23-00-54-22.png": "60423ee286155339803e8afe0ffb10dd6187a1351bd770d6a53b2b10ed06a2ab",
+   "archive/images/Screen-Capture-2026-10-23-00-54-38.png": "d36eefdd9b2d587db2ae1dbf7f87cc4140e3e8f52acc838d8ef4aa661532f1e3"
+  },
+  "historyList": {
+   "ok": true,
+   "total": 2,
+   "seconds": 0.03
+  },
+  "build": {
+   "baseVersion": "0.1.1",
+   "commitCount": 947,
+   "dirty": false,
+   "gitCommit": "476e5c7b8a39fdc7f3582ede1a58976ff1a874ca",
+   "gitTree": "f189999548f35ff7de4cedbe432be1337bf1e1ec",
+   "packageVersion": "0.1.1~nightly.947",
+   "schemaVersion": 1,
+   "sourceProvenance": "git",
+   "version": "0.1.1-nightly.947"
+  },
+  "storage": {
+   "locations": {
+    "config": {
+     "path": "/home/patrick/.config/putgd",
+     "state": "current"
+    },
+    "data": {
+     "path": "/home/patrick/.local/share/putgd",
+     "state": "current"
+    },
+    "schemaVersion": 1
+   },
+   "storage": {
+    "backblaze-b2": {
+     "activeHelpers": 0,
+     "protocolVersion": 1
+    },
+    "proton-drive": {
+     "activeHelpers": 0,
+     "protocolVersion": 1
+    },
+    "s3": {
+     "lanes": 1,
+     "moduleLiveDrivers": 0,
+     "queuedRequests": 0,
+     "retainedDrivers": 0,
+     "workerStarted": true
+    }
+   }
+  }
+ },
+ "pkg:upgrade": {
+  "label": "upgrade",
+  "command": [
+   "dnf",
+   "upgrade",
+   "-y",
+   "--refresh",
+   "putgd"
+  ],
+  "before": {
+   "at": "2026-10-23T05:55:03Z",
+   "host": "fedora",
+   "package": {
+    "manager": "rpm",
+    "version": "0.1.1~nightly.947-1.fc44"
+   },
+   "files": {
+    "/etc/apt/sources.list.d/putgd.sources": null,
+    "/usr/share/keyrings/putgd-archive-keyring.gpg": null,
+    "/etc/yum.repos.d/putgd.repo": {
+     "sha256": "5399dba05eefd1826094a5226b12285d58da08460b5b8d8b9229e0fe7848a0f4",
+     "bytes": 421,
+     "mode": "0o644",
+     "mtime": "2026-10-23T05:54:05Z"
+    },
+    "/etc/yum.repos.d/putgd.repo.rpmsave": null,
+    "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd": {
+     "sha256": "1a79015c14a4907ac6812658204fa3cc2b2e4bbbbf63f04a4c1eec4623165e80",
+     "bytes": 1664,
+     "mode": "0o644",
+     "mtime": "2010-07-04T00:00:00Z"
+    },
+    "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-nightly": null,
+    "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-stable": null,
+    "/usr/share/gnome-shell/extensions/putgd@put.gd/metadata.json": {
+     "sha256": "690be5bcfd1ee05783cd57a78851c56c0fe624131711b254cb46d062d0cb8046",
+     "bytes": 248,
+     "mode": "0o644",
+     "mtime": "2010-07-04T00:00:00Z"
+    }
+   },
+   "defaultProfile": {
+    "/home/patrick/.config/putgd": 1,
+    "/home/patrick/.local/state/putgd": 25,
+    "/home/patrick/.cache/putgd": null,
+    "/home/patrick/.local/share/putgd": 12
+   },
+   "autostart": null,
+   "userExtension": false,
+   "processes": [
+    {
+     "pid": 3138635,
+     "ppid": 1397,
+     "exe": "/usr/bin/putgd",
+     "comm": "putgd",
+     "cmd": "/usr/bin/putgd --background ",
+     "qtPlatformPlugins": []
+    },
+    {
+     "pid": 3138646,
+     "ppid": 3138635,
+     "exe": "/usr/bin/putgd-ui",
+     "comm": "putgd-ui",
+     "cmd": "/usr/bin/putgd-ui ",
+     "qtPlatformPlugins": [
+      "libqwayland.so"
+     ]
+    }
+   ],
+   "enabledExtensions": "['background-logo@fedorahosted.org', 'appindicatorsupport@rgcjonas.gmail.com', 'putgd@put.gd']",
+   "openh264": {
+    "openh264": "openh264-2.6.0-3.fc44.x86_64",
+    "noopenh264": "package noopenh264 is not installed",
+    "gstreamer1-plugin-openh264": "gstreamer1-plugin-openh264-1.28.1-1.fc44.x86_64",
+    "mozilla-openh264": "mozilla-openh264-2.6.0-3.fc44.x86_64"
+   }
+  },
+  "startedAt": "2026-10-23T05:55:03Z",
+  "simulation": {
+   "command": [
+    "sudo",
+    "-n",
+    "dnf",
+    "--assumeno",
+    "upgrade",
+    "--refresh",
+    "putgd"
+   ],
+   "exit": 1,
+   "changes": [
+    {
+     "op": "Upgrading",
+     "package": "putgd"
+    }
+   ],
+   "tail": "Package            Arch   Version                       Repository         Size\nUpgrading:\n putgd             x86_64 0:26.1023.1058~nightly-1.fc44 putgd-nightly 115.4 MiB\n   replacing putgd x86_64 0:0.1.1~nightly.947-1.fc44    @commandline  115.2 MiB\n\nTransaction Summary:\n Upgrading:          1 package\n Replacing:          1 package\n\nUpdating and loading repositories:\n Fedora 44 - x86_64 - Updates           100% |   2.0 KiB/s |  20.7 KiB |  00m10s\n RPM Fusion for Fedora 44 - Nonfree - S 100% | 582.0   B/s |   5.6 KiB |  00m10s\n RPM Fusion for Fedora 44 - Nonfree - N 100% | 649.0   B/s |   5.8 KiB |  00m09s\n put.gd (nightly)                       100% | 292.0   B/s |   2.4 KiB |  00m09s\n Fedora 44 openh264 (From Cisco) - x86_ 100% | 109.0   B/s | 986.0   B |  00m09s\n Fedora 44 - x86_64                     100% |   2.7 KiB/s |  23.8 KiB |  00m09s\n Copr repo for PyCharm owned by phracek 100% | 260.0   B/s |   2.1 KiB |  00m08s\nRepositories loaded.\nTotal size of inbound packages is 39 MiB. Need to download 39 MiB.\nAfter this operation, 131 KiB extra will be used (install 115 MiB, remove 115 MiB).\nWarning: A pending offline transaction initiated by the following command will be invalidated: dnf5daemon-server\nOperation aborted by the user.\n"
+  },
+  "otherPackages": [],
+  "exit": 0,
+  "seconds": 10.7,
+  "log": "/home/patrick/work/put.gd-nfa/runs/M2/logs/pkg-upgrade.log",
+  "conffilePrompt": false,
+  "signature": [],
+  "fetched": [],
+  "tail": "Package            Arch   Version                       Repository         Size\nUpgrading:\n putgd             x86_64 0:26.1023.1058~nightly-1.fc44 putgd-nightly 115.4 MiB\n   replacing putgd x86_64 0:0.1.1~nightly.947-1.fc44    @commandline  115.2 MiB\n\nTransaction Summary:\n Upgrading:          1 package\n Replacing:          1 package\n\nUpdating and loading repositories:\n Fedora 44 - x86_64 - Updates           100% |   4.0 KiB/s |  20.7 KiB |  00m05s\n>>> Curl error (35): SSL connect error for https://mirrors.fedoraproject.org/metalink?repo=updates-released-f44&arch=x86_64 [Recv failure: Connection reset by peer] - https://mirrors.fedoraproject.org/metalink?repo=updates-released-f44&arch=x86_64\n RPM Fusion for Fedora 44 - Nonfree - S 100% |   1.2 KiB/s |   5.6 KiB |  00m05s\n RPM Fusion for Fedora 44 - Nonfree - N 100% |   1.3 KiB/s |   5.8 KiB |  00m04s\n put.gd (nightly)                       100% | 712.0   B/s |   2.4 KiB |  00m03s\n Fedora 44 openh264 (From Cisco) - x86_ 100% | 252.0   B/s | 986.0   B |  00m04s\n Fedora 44 - x86_64                     100% |   6.4 KiB/s |  23.8 KiB |  00m04s\n Copr repo for PyCharm owned by phracek 100% | 652.0   B/s |   2.1 KiB |  00m03s\nRepositories loaded.\nTotal size of inbound packages is 39 MiB. Need to download 39 MiB.\nAfter this operation, 131 KiB extra will be used (install 115 MiB, remove 115 MiB).\nWarning: A pending offline transaction initiated by the following command will be invalidated: dnf5daemon-server\n[1/1] putgd-0:26.1023.1058~nightly-1.fc 100% |  42.0 MiB/s |  38.7 MiB |  00m01s\n--------------------------------------------------------------------------------\n[1/1] Total                             100% |  42.0 MiB/s |  38.7 MiB |  00m01s\nRunning transaction\n[1/4] Verify package files              100% |   2.0   B/s |   1.0   B |  00m00s\n[2/4] Prepare transaction               100% |   9.0   B/s |   2.0   B |  00m00s\n[3/4] Upgrading putgd-0:26.1023.1058~ni 100% | 132.2 MiB/s | 115.4 MiB |  00m01s\n[4/4] Removing putgd-0:0.1.1~nightly.94 100% | 179.0   B/s | 123.0   B |  00m01s\nWarning: Pending offline transaction has been invalidated.\nTo reschedule, run: dnf5daemon-server\nComplete!\n",
+  "after": {
+   "at": "2026-10-23T05:55:29Z",
+   "host": "fedora",
+   "package": {
+    "manager": "rpm",
+    "version": "26.1023.1058~nightly-1.fc44"
+   },
+   "files": {
+    "/etc/apt/sources.list.d/putgd.sources": null,
+    "/usr/share/keyrings/putgd-archive-keyring.gpg": null,
+    "/etc/yum.repos.d/putgd.repo": {
+     "sha256": "5399dba05eefd1826094a5226b12285d58da08460b5b8d8b9229e0fe7848a0f4",
+     "bytes": 421,
+     "mode": "0o644",
+     "mtime": "2026-10-23T05:54:05Z"
+    },
+    "/etc/yum.repos.d/putgd.repo.rpmsave": null,
+    "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd": {
+     "sha256": "1a79015c14a4907ac6812658204fa3cc2b2e4bbbbf63f04a4c1eec4623165e80",
+     "bytes": 1664,
+     "mode": "0o644",
+     "mtime": "2010-07-04T00:00:00Z"
+    },
+    "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-nightly": {
+     "sha256": "1a79015c14a4907ac6812658204fa3cc2b2e4bbbbf63f04a4c1eec4623165e80",
+     "bytes": 1664,
+     "mode": "0o644",
+     "mtime": "2010-07-04T00:00:00Z"
+    },
+    "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-stable": {
+     "sha256": "dd17348889ca55ae6956b902530e14f31e8cf88c052768190a4577b7949d4c77",
+     "bytes": 1668,
+     "mode": "0o644",
+     "mtime": "2010-07-04T00:00:00Z"
+    },
+    "/usr/share/gnome-shell/extensions/putgd@put.gd/metadata.json": {
+     "sha256": "690be5bcfd1ee05783cd57a78851c56c0fe624131711b254cb46d062d0cb8046",
+     "bytes": 248,
+     "mode": "0o644",
+     "mtime": "2010-07-04T00:00:00Z"
+    }
+   },
+   "defaultProfile": {
+    "/home/patrick/.config/putgd": 1,
+    "/home/patrick/.local/state/putgd": 25,
+    "/home/patrick/.cache/putgd": null,
+    "/home/patrick/.local/share/putgd": 12
+   },
+   "autostart": null,
+   "userExtension": false,
+   "processes": [
+    {
+     "pid": 3138635,
+     "ppid": 1397,
+     "exe": "/usr/bin/putgd (deleted)",
+     "comm": "putgd",
+     "cmd": "/usr/bin/putgd --background ",
+     "qtPlatformPlugins": []
+    },
+    {
+     "pid": 3138646,
+     "ppid": 3138635,
+     "exe": "/usr/bin/putgd-ui (deleted)",
+     "comm": "putgd-ui",
+     "cmd": "/usr/bin/putgd-ui ",
+     "qtPlatformPlugins": [
+      "libqwayland.so"
+     ]
+    }
+   ],
+   "enabledExtensions": "['background-logo@fedorahosted.org', 'appindicatorsupport@rgcjonas.gmail.com', 'putgd@put.gd']",
+   "openh264": {
+    "openh264": "openh264-2.6.0-3.fc44.x86_64",
+    "noopenh264": "package noopenh264 is not installed",
+    "gstreamer1-plugin-openh264": "gstreamer1-plugin-openh264-1.28.1-1.fc44.x86_64",
+    "mozilla-openh264": "mozilla-openh264-2.6.0-3.fc44.x86_64"
+   }
+  }
+ },
+ "quit:old-resident": {
+  "pids": [
+   3138635
+  ],
+  "reply": true,
+  "gone": true,
+  "left": []
+ },
+ "launch:after-upgrade": {
+  "seconds": 0.35,
+  "processes": [
+   {
+    "pid": 3139458,
+    "ppid": 1397,
+    "exe": "/usr/bin/putgd",
+    "comm": "putgd",
+    "cmd": "/usr/bin/putgd --background ",
+    "qtPlatformPlugins": []
+   }
+  ],
+  "build": {
+   "baseVersion": "26.1023.1058",
+   "commitCount": 1058,
+   "dirty": false,
+   "gitCommit": "05991d9d42aad68d3bd233a609cf294d839835ed",
+   "gitTree": "5e53f777b912ef958678b2f23b400847c7cb4d33",
+   "packageVersion": "26.1023.1058~nightly",
+   "schemaVersion": 1,
+   "sourceProvenance": "git",
+   "version": "26.1023.1058-nightly"
+  },
+  "package": {
+   "manager": "rpm",
+   "version": "26.1023.1058~nightly-1.fc44"
+  }
+ },
+ "snapshot:after": {
+  "label": "after",
+  "at": "2026-10-23T05:55:41Z",
+  "package": {
+   "manager": "rpm",
+   "version": "26.1023.1058~nightly-1.fc44"
+  },
+  "config": {
+   "sha256": "8f5e79b9d50b1abee8064e9adefb1ca0d2bc1524129931daca11ba394f7316cd",
+   "bytes": 3306,
+   "mode": "0o600",
+   "mtime": "2026-10-23T05:54:51Z"
+  },
+  "configFiles": {
+   "/home/patrick/.config/putgd/config.json": {
+    "sha256": "8f5e79b9d50b1abee8064e9adefb1ca0d2bc1524129931daca11ba394f7316cd",
+    "bytes": 3306,
+    "mode": "0o600",
+    "mtime": "2026-10-23T05:54:51Z"
+   },
+   "/home/patrick/.config/putgd/putgd/config.json": null
+  },
+  "dataRoots": {
+   "/home/patrick/.local/share/putgd": [
+    "artifacts",
+    "history.sqlite",
+    "previews",
+    "resident.lock"
+   ],
+   "/home/patrick/.local/share/putgd/putgd": null
+  },
+  "processes": [
+   {
+    "pid": 3139458,
+    "ppid": 1397,
+    "exe": "/usr/bin/putgd",
+    "comm": "putgd",
+    "cmd": "/usr/bin/putgd --background ",
+    "qtPlatformPlugins": []
+   }
+  ],
+  "history": {
+   "db": "/home/patrick/.local/share/putgd/history.sqlite",
+   "userVersion": 7,
+   "integrity": "ok",
+   "tables": {
+    "history": 2,
+    "operations": 2,
+    "deletions": 0,
+    "deletion_targets": 0,
+    "cleared_history": 0,
+    "item_state": 2,
+    "sharing_operations": 0
+   },
+   "upload_status": {
+    "uploaded": 2
+   },
+   "local_status": {
+    "saved": 2
+   },
+   "remote_status": {
+    "not_requested": 2
+   },
+   "itemStateRemote": {
+    "not_requested": 2
+   }
+  },
+  "outputs": {
+   "archive/images/Screen-Capture-2026-10-23-00-54-22.png": "60423ee286155339803e8afe0ffb10dd6187a1351bd770d6a53b2b10ed06a2ab",
+   "archive/images/Screen-Capture-2026-10-23-00-54-38.png": "d36eefdd9b2d587db2ae1dbf7f87cc4140e3e8f52acc838d8ef4aa661532f1e3"
+  },
+  "historyList": {
+   "ok": true,
+   "total": 2,
+   "seconds": 0.06
+  },
+  "build": {
+   "baseVersion": "26.1023.1058",
+   "commitCount": 1058,
+   "dirty": false,
+   "gitCommit": "05991d9d42aad68d3bd233a609cf294d839835ed",
+   "gitTree": "5e53f777b912ef958678b2f23b400847c7cb4d33",
+   "packageVersion": "26.1023.1058~nightly",
+   "schemaVersion": 1,
+   "sourceProvenance": "git",
+   "version": "26.1023.1058-nightly"
+  },
+  "storage": {
+   "locations": {
+    "config": {
+     "path": "/home/patrick/.config/putgd",
+     "state": "current"
+    },
+    "data": {
+     "path": "/home/patrick/.local/share/putgd",
+     "state": "current"
+    },
+    "schemaVersion": 1
+   },
+   "storage": {
+    "backblaze-b2": {
+     "activeHelpers": 0,
+     "protocolVersion": 1
+    },
+    "proton-drive": {
+     "activeHelpers": 0,
+     "protocolVersion": 1
+    },
+    "s3": {
+     "lanes": 1,
+     "moduleLiveDrivers": 0,
+     "queuedRequests": 0,
+     "retainedDrivers": 0,
+     "workerStarted": false
+    }
+   }
+  }
+ },
+ "compare:before->after": {
+  "configSame": true,
+  "userVersion": [
+   7,
+   7
+  ],
+  "integrity": "ok",
+  "historyRows": [
+   2,
+   2
+  ],
+  "statusCounts": {
+   "upload_status": [
+    {
+     "uploaded": 2
+    },
+    {
+     "uploaded": 2
+    }
+   ],
+   "local_status": [
+    {
+     "saved": 2
+    },
+    {
+     "saved": 2
+    }
+   ],
+   "remote_status": [
+    {
+     "not_requested": 2
+    },
+    {
+     "not_requested": 2
+    }
+   ]
+  },
+  "tablesAdded": [],
+  "outputsSame": true,
+  "rowsPreserved": true
+ },
+ "quit:pre-noh264": {
+  "pids": [
+   3139458
+  ],
+  "reply": true,
+  "gone": true,
+  "left": []
+ },
+ "launch:noh264": {
+  "seconds": 0.34,
+  "processes": [
+   {
+    "pid": 3139947,
+    "ppid": 1397,
+    "exe": "/usr/bin/putgd",
+    "comm": "putgd",
+    "cmd": "/usr/bin/putgd --background ",
+    "qtPlatformPlugins": []
+   }
+  ],
+  "build": {
+   "baseVersion": "26.1023.1058",
+   "commitCount": 1058,
+   "dirty": false,
+   "gitCommit": "05991d9d42aad68d3bd233a609cf294d839835ed",
+   "gitTree": "5e53f777b912ef958678b2f23b400847c7cb4d33",
+   "packageVersion": "26.1023.1058~nightly",
+   "schemaVersion": 1,
+   "sourceProvenance": "git",
+   "version": "26.1023.1058-nightly"
+  },
+  "package": {
+   "manager": "rpm",
+   "version": "26.1023.1058~nightly-1.fc44"
+  }
+ },
+ "key:": {
+  "chords": [
+   "Escape"
+  ],
+  "text": null,
+  "frame": null
+ },
+ "quit:post-noh264": {
+  "pids": [
+   3139947
+  ],
+  "reply": true,
+  "gone": true,
+  "left": []
+ },
+ "launch:normal": {
+  "seconds": 0.34,
+  "processes": [
+   {
+    "pid": 3140289,
+    "ppid": 1397,
+    "exe": "/usr/bin/putgd",
+    "comm": "putgd",
+    "cmd": "/usr/bin/putgd --background ",
+    "qtPlatformPlugins": []
+   }
+  ],
+  "build": {
+   "baseVersion": "26.1023.1058",
+   "commitCount": 1058,
+   "dirty": false,
+   "gitCommit": "05991d9d42aad68d3bd233a609cf294d839835ed",
+   "gitTree": "5e53f777b912ef958678b2f23b400847c7cb4d33",
+   "packageVersion": "26.1023.1058~nightly",
+   "schemaVersion": 1,
+   "sourceProvenance": "git",
+   "version": "26.1023.1058-nightly"
+  },
+  "package": {
+   "manager": "rpm",
+   "version": "26.1023.1058~nightly-1.fc44"
+  }
+ },
+ "loginEnable": {
+  "patch": true,
+  "entry": "[Desktop Entry]\nType=Application\nName=put.gd\nExec=\"/usr/bin/putgd-launcher\" --background\nTerminal=false\nX-putgd-Managed=true\n",
+  "loginStartup": {
+   "applied": true,
+   "enabled": true
+  }
+ },
+ "loginCheck:I": {
+  "entry": "[Desktop Entry]\nType=Application\nName=put.gd\nExec=\"/usr/bin/putgd-launcher\" --background\nTerminal=false\nX-putgd-Managed=true\n",
+  "processes": [
+   {
+    "pid": 3142877,
+    "ppid": 1397,
+    "exe": "/usr/bin/putgd",
+    "comm": "putgd",
+    "cmd": "/usr/bin/putgd --background ",
+    "qtPlatformPlugins": [],
+    "started": "2026-10-23T05:58:18Z"
+   }
+  ],
+  "shellStarted": "2026-10-23T05:58:16Z",
+  "fromPackage": true,
+  "package": {
+   "manager": "rpm",
+   "version": "26.1023.1058~nightly-1.fc44"
+  }
+ },
+ "frame:f44-I-after-login": {
+  "at": "2026-10-23T05:58:29Z",
+  "full": "/home/patrick/work/put.gd-nfa/runs/M2/full/f44-I-after-login.png",
+  "processes": [
+   {
+    "pid": 3142877,
+    "ppid": 1397,
+    "exe": "/usr/bin/putgd",
+    "comm": "putgd",
+    "cmd": "/usr/bin/putgd --background ",
+    "qtPlatformPlugins": []
+   }
+  ]
+ },
+ "quit:before-I": {
+  "pids": [
+   3140289
+  ],
+  "reply": true,
+  "gone": true,
+  "left": []
+ },
+ "loginCheck:P": {
+  "entry": "[Desktop Entry]\nType=Application\nName=put.gd\nExec=\"/usr/bin/putgd-launcher\" --background\nTerminal=false\nX-putgd-Managed=true\n",
+  "processes": [],
+  "shellStarted": "2026-10-23T05:58:57Z",
+  "fromPackage": false,
+  "package": {
+   "manager": "rpm",
+   "version": null
+  }
+ },
+ "autostart:after-removal": {
+  "label": "after-removal",
+  "entry": "[Desktop Entry]\nType=Application\nName=put.gd\nExec=\"/usr/bin/putgd-launcher\" --background\nTerminal=false\nX-putgd-Managed=true\n",
+  "entryInfo": {
+   "sha256": "4662cdb185a7ab7eea947549bc21e9a38fa9d4fd197e7dc9660323446812307a",
+   "bytes": 125,
+   "mode": "0o600",
+   "mtime": "2026-10-23T05:57:44Z"
+  },
+  "execTargetExists": false,
+  "shellStarted": "2026-10-23T05:56:57Z",
+  "journal": [
+   "user 2026-10-23T00:57:17-05:00 fedora systemd[1397]: Started putgd-nfa-M2-normal-1792735037.service - [systemd-run] /usr/bin/putgd --background.",
+   "user 2026-10-23T00:58:57-05:00 fedora gnome-session-service[3144489]: Desktop file /home/patrick/.config/autostart/putgd.desktop couldn't be parsed, or references a missing TryExec binary",
+   "system 2026-10-23T00:57:17-05:00 fedora systemd[1397]: Started putgd-nfa-M2-normal-1792735037.service - [systemd-run] /usr/bin/putgd --background.",
+   "system 2026-10-23T00:58:57-05:00 fedora gnome-session-service[3144489]: Desktop file /home/patrick/.config/autostart/putgd.desktop couldn't be parsed, or references a missing TryExec binary"
+  ],
+  "failedUnits": [],
+  "autostartUnits": [],
+  "generatorUnit": [],
+  "processes": [],
+  "package": {
+   "manager": "rpm",
+   "version": null
+  }
+ },
+ "frame:f44-P-after-login": {
+  "at": "2026-10-23T05:59:14Z",
+  "full": "/home/patrick/work/put.gd-nfa/runs/M2/full/f44-P-after-login.png",
+  "processes": []
+ },
+ "tryexec": {
+  "before": "[Desktop Entry]\nType=Application\nName=put.gd\nExec=\"/usr/bin/putgd-launcher\" --background\nTerminal=false\nX-putgd-Managed=true\n",
+  "after": "[Desktop Entry]\nType=Application\nName=put.gd\nTryExec=/usr/bin/putgd-launcher\nExec=\"/usr/bin/putgd-launcher\" --background\nTerminal=false\nX-putgd-Managed=true\n"
+ },
+ "autostart:tryexec": {
+  "label": "tryexec",
+  "entry": "[Desktop Entry]\nType=Application\nName=put.gd\nTryExec=/usr/bin/putgd-launcher\nExec=\"/usr/bin/putgd-launcher\" --background\nTerminal=false\nX-putgd-Managed=true\n",
+  "entryInfo": {
+   "sha256": "c460a4f33cd4bdcac7eb612ef683f1914a54cf4363f0d6ae9aaa2882509556ce",
+   "bytes": 157,
+   "mode": "0o600",
+   "mtime": "2026-10-23T05:59:25Z"
+  },
+  "execTargetExists": false,
+  "shellStarted": "2026-10-23T05:57:27Z",
+  "journal": [
+   "user 2026-10-23T00:58:57-05:00 fedora gnome-session-service[3144489]: Desktop file /home/patrick/.config/autostart/putgd.desktop couldn't be parsed, or references a missing TryExec binary",
+   "user 2026-10-23T00:59:27-05:00 fedora gnome-session-service[3146105]: Desktop file /home/patrick/.config/autostart/putgd.desktop couldn't be parsed, or references a missing TryExec binary",
+   "system 2026-10-23T00:58:57-05:00 fedora gnome-session-service[3144489]: Desktop file /home/patrick/.config/autostart/putgd.desktop couldn't be parsed, or references a missing TryExec binary",
+   "system 2026-10-23T00:59:27-05:00 fedora gnome-session-service[3146105]: Desktop file /home/patrick/.config/autostart/putgd.desktop couldn't be parsed, or references a missing TryExec binary"
+  ],
+  "failedUnits": [],
+  "autostartUnits": [],
+  "generatorUnit": [],
+  "processes": [],
+  "package": {
+   "manager": "rpm",
+   "version": null
+  }
+ },
+ "teardown": {
+  "removed": [
+   "/home/patrick/.config/putgd",
+   "/home/patrick/.local/state/putgd/running.json",
+   "/home/patrick/.local/state/putgd/running.crash",
+   "/home/patrick/.local/state/putgd/logs/putgd-20261023T055818719Z-3142877-1.jsonl",
+   "/home/patrick/.local/state/putgd/logs/putgd-20261023T055717547Z-3140289-1.jsonl",
+   "/home/patrick/.local/state/putgd/logs/putgd-20261023T055644775Z-3139947-1.jsonl",
+   "/home/patrick/.local/state/putgd/logs/putgd-20261023T055541220Z-3139458-1.jsonl",
+   "/home/patrick/.local/state/putgd/logs/putgd-20261023T055419488Z-3138635-1.jsonl",
+   "/home/patrick/.local/share/putgd",
+   "/home/patrick/.config/autostart/putgd.desktop",
+   "/tmp/nfa.M4jZOb"
+  ],
+  "kept": [],
+  "after": {
+   "at": "2026-10-23T06:00:00Z",
+   "host": "fedora",
+   "package": {
+    "manager": "rpm",
+    "version": null
+   },
+   "files": {
+    "/etc/apt/sources.list.d/putgd.sources": null,
+    "/usr/share/keyrings/putgd-archive-keyring.gpg": null,
+    "/etc/yum.repos.d/putgd.repo": null,
+    "/etc/yum.repos.d/putgd.repo.rpmsave": null,
+    "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd": null,
+    "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-nightly": null,
+    "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-stable": null,
+    "/usr/share/gnome-shell/extensions/putgd@put.gd/metadata.json": null
+   },
+   "defaultProfile": {
+    "/home/patrick/.config/putgd": null,
+    "/home/patrick/.local/state/putgd": 21,
+    "/home/patrick/.cache/putgd": null,
+    "/home/patrick/.local/share/putgd": null
+   },
+   "autostart": null,
+   "userExtension": false,
+   "processes": [],
+   "enabledExtensions": "['background-logo@fedorahosted.org', 'appindicatorsupport@rgcjonas.gmail.com', 'putgd@put.gd']",
+   "openh264": {
+    "openh264": "openh264-2.6.0-3.fc44.x86_64",
+    "noopenh264": "package noopenh264 is not installed",
+    "gstreamer1-plugin-openh264": "gstreamer1-plugin-openh264-1.28.1-1.fc44.x86_64",
+    "mozilla-openh264": "mozilla-openh264-2.6.0-3.fc44.x86_64"
+   }
+  }
+ }
+}

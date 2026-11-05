@@ -1,0 +1,339 @@
+{
+ "startSeconds": 0.32,
+ "credentials": "completed",
+ "sessionSock": true,
+ "processes": [
+  {
+   "pid": 3320584,
+   "ppid": 3320579,
+   "exe": "/usr/bin/bash",
+   "comm": "AppRun",
+   "cmd": "/bin/sh /tmp/.mount_putgd-ngOcBd/AppRun --background",
+   "qtPlatformPlugins": [],
+   "QT_QPA_PLATFORM": null,
+   "APPIMAGE": "/home/patrick/work/put.gd-qt418r/afa/images/putgd-26.1023.1101-dev+gaa047473ad2e-x86_64.AppImage"
+  },
+  {
+   "pid": 3320588,
+   "ppid": 1,
+   "exe": "/home/patrick/work/put.gd-qt418r/afa/images/putgd-26.1023.1101-dev+gaa047473ad2e-x86_64.AppImage",
+   "comm": "putgd-26.1023.1",
+   "cmd": "/home/patrick/work/put.gd-qt418r/afa/images/putgd-26.1023.1101-dev+gaa047473ad2e-x86_64.AppImage --background",
+   "qtPlatformPlugins": [],
+   "QT_QPA_PLATFORM": null,
+   "APPIMAGE": null
+  },
+  {
+   "pid": 3320620,
+   "ppid": 3320584,
+   "exe": "/tmp/.mount_putgd-ngOcBd/usr/bin/putgd",
+   "comm": "putgd",
+   "cmd": "/tmp/.mount_putgd-ngOcBd/usr/bin/putgd --background",
+   "qtPlatformPlugins": [],
+   "QT_QPA_PLATFORM": null,
+   "APPIMAGE": "/home/patrick/work/put.gd-qt418r/afa/images/putgd-26.1023.1101-dev+gaa047473ad2e-x86_64.AppImage"
+  }
+ ],
+ "diagnostics": {
+  "backend": "Qt",
+  "build": {
+   "baseVersion": "26.1023.1101",
+   "commitCount": 1101,
+   "dirty": false,
+   "gitCommit": "aa047473ad2e3bcce7bf884c15d3155509096e7e",
+   "gitTree": "b3602592497bda967554b80893dad950ade22cfa",
+   "packageVersion": "26.1023.1101~dev+gaa047473ad2e",
+   "schemaVersion": 1,
+   "sourceProvenance": "git",
+   "version": "26.1023.1101-dev+gaa047473ad2e"
+  },
+  "capabilities": {
+   "editor": {
+    "admissionPixels": 24000000,
+    "available": true,
+    "commands": [
+     "inspect",
+     "apply",
+     "preview",
+     "saveCopy",
+     "fileDialog",
+     "submit",
+     "cancel",
+     "raise"
+    ],
+    "fileFormats": [
+     "png",
+     "jpeg"
+    ],
+    "open": false,
+    "output": "png",
+    "shapes": [
+     "redact",
+     "blur",
+     "arrow",
+     "rectangle",
+     "text",
+     "highlight"
+    ],
+    "sources": [
+     "region",
+     "window",
+     "desktop",
+     "clipboard",
+     "file"
+    ]
+   },
+   "providers": {
+    "backblaze-b2": {
+     "conditionalCreate": true,
+     "conditionalDelete": false,
+     "conditionalReplace": false,
+     "delete": true,
+     "deletionEffect": "Deletes exactly the uploaded B2 file version by its ID. put.gd never uploads over a visible file, so the name then shows nothing, or an older version that was hidden before the upload. Authorized links stop working when they expire.",
+     "maximumNameBytes": 1023,
+     "maximumObjectBytes": 10000000000000,
+     "privateUploads": false,
+     "sharing": false,
+     "stat": true,
+     "urls": true,
+     "versionAddressing": true
+    },
+    "proton-drive": {
+     "conditionalCreate": true,
+     "conditionalDelete": false,
+     "conditionalReplace": false,
+     "delete": false,
+     "deletionEffect": "Safe remote deletion is unavailable: Proton does not expose an atomic revision-guarded file deletion. Revoke share links separately.",
+     "maximumNameBytes": 255,
+     "maximumObjectBytes": null,
+     "privateUploads": true,
+     "sharing": true,
+     "stat": true,
+     "urls": true,
+     "versionAddressing": false
+    },
+    "s3": {
+     "conditionalCreate": true,
+     "conditionalDelete": true,
+     "conditionalReplace": true,
+     "delete": true,
+     "deletionEffect": "Guarded origin removal; selected versions only; browser/CDN caches may retain bytes",
+     "maximumNameBytes": 1024,
+     "maximumObjectBytes": 5497558138880,
+     "privateUploads": false,
+     "sharing": false,
+     "stat": true,
+     "urls": true,
+     "versionAddressing": true
+    }
+   },
+   "recording": {
+    "active": null,
+    "audio": {
+     "microphone": false,
+     "system": false
+    },
+    "available": false,
+    "codecs": {},
+    "commands": [
+     "prepare",
+     "start",
+     "pause",
+     "resume",
+     "stop",
+     "cancel",
+     "inspect",
+     "select",
+     "raise",
+     "overlay",
+     "edit",
+     "preview",
+     "review",
+     "saveCopy",
+     "upload"
+    ],
+    "editCommands": [
+     "setTrim",
+     "resetTrim",
+     "addMask",
+     "updateMask",
+     "removeMask"
+    ],
+    "formats": [],
+    "limits": {
+     "animationMaxEdge": 1280,
+     "animationMaxUs": 60000000,
+     "maxFileBytes": 1099511627776,
+     "maxMasks": 64
+    },
+    "maskKinds": [
+     "blur",
+     "solid"
+    ],
+    "overlayExclusion": {},
+    "reason": "recording_not_probed",
+    "states": [
+     "preparing",
+     "ready",
+     "starting",
+     "recording",
+     "paused",
+     "stopping",
+     "reviewing",
+     "exporting",
+     "submitted",
+     "cancelled",
+     "failed"
+    ],
+    "targets": [],
+    "timeUnit": "microseconds"
+   },
+   "source": {
+    "adapter": "gnome-wayland",
+    "capture": {
+     "desktop": {
+      "available": true,
+      "consent": "one-time-extension-setup",
+      "mode": "compositor-native"
+     },
+     "region": {
+      "available": true,
+      "consent": "one-time-extension-setup",
+      "mode": "compositor-native"
+     },
+     "window": {
+      "available": true,
+      "consent": "one-time-extension-setup",
+      "mode": "compositor-native"
+     }
+    },
+    "clipboard": {
+     "available": true,
+     "import": "bounded-mutter-selection",
+     "result": "st-clipboard-only",
+     "types": [
+      "files",
+      "image",
+      "text"
+     ]
+    },
+    "helper": {
+     "available": true,
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     },
+     "extensionVersion": 2,
+     "outdated": false,
+     "packagedExtensionVersion": 2,
+     "protocol": 1,
+     "recordingVersion": 1,
+     "shellMajor": 50,
+     "uuid": "putgd@put.gd"
+    },
+    "shortcuts": {
+     "available": true,
+     "bindings": {
+      "clipboard": {
+       "bound": false,
+       "error": "disabled",
+       "requested": ""
+      },
+      "desktop": {
+       "actual": "Ctrl+Shift+3",
+       "bound": true,
+       "requested": "Ctrl+Shift+3"
+      },
+      "edit": {
+       "bound": false,
+       "error": "disabled",
+       "requested": ""
+      },
+      "record": {
+       "bound": false,
+       "error": "disabled",
+       "requested": ""
+      },
+      "region": {
+       "actual": "Ctrl+Shift+1",
+       "bound": true,
+       "requested": "Ctrl+Shift+1"
+      },
+      "window": {
+       "actual": "Ctrl+Shift+2",
+       "bound": true,
+       "requested": "Ctrl+Shift+2"
+      }
+     }
+    }
+   }
+  },
+  "journalReady": true,
+  "qtVersion": "6.12.0",
+  "release": {
+   "kind": "none",
+   "url": "",
+   "version": "26.1023.1101-dev+gaa047473ad2e"
+  }
+ },
+ "ui": {
+  "ui": {
+   "checkpointBytes": 0,
+   "lastExit": {},
+   "pid": 0,
+   "state": "stopped"
+  },
+  "trayAvailable": true,
+  "trayTint": {
+   "color": "#9bbcff",
+   "panel": "dark",
+   "source": "gnome-shell"
+  },
+  "loginStartup": {
+   "applied": true,
+   "enabled": false
+  },
+  "update": {
+   "action": null,
+   "attemptedAt": null,
+   "build": {
+    "channel": null,
+    "kind": "none",
+    "packageTarget": "appimage",
+    "reason": "development_build",
+    "supported": false,
+    "version": "26.1023.1101-dev+gaa047473ad2e"
+   },
+   "channel": null,
+   "channelSetting": "build",
+   "channelSource": "setting",
+   "check": true,
+   "checkedAt": null,
+   "checking": false,
+   "enabled": false,
+   "error": null,
+   "install": {
+    "available": false,
+    "backup": null,
+    "image": "/home/patrick/work/put.gd-qt418r/afa/images/putgd-26.1023.1101-dev+gaa047473ad2e-x86_64.AppImage",
+    "installed": null,
+    "kind": "update",
+    "reason": "development_build",
+    "restartRequired": false,
+    "running": false,
+    "state": "idle",
+    "switch": null
+   },
+   "nextCheckAt": null,
+   "notifies": false,
+   "reason": "development_build",
+   "result": null,
+   "supported": false
+  }
+ },
+ "kdeEntries": [
+  "putgd-record.desktop",
+  "putgd-ui.desktop"
+ ]
+}

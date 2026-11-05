@@ -1,0 +1,309 @@
+{
+ "name": "m74-ann",
+ "tool": null,
+ "live": false,
+ "image": "/home/patrick/work/put.gd-ua/app/runs/m74-ann/apps/putgd-26.1018.1020-x86_64.AppImage",
+ "imageSha256": "23eab368592a5b599cc0b1da8431124c609311a4742e540c0749bb5611aaea64",
+ "cliDir": "/home/patrick/work/put.gd-ua/app/runs/m74-ann/cli/squashfs-root",
+ "runtime": "/tmp/ua-app.2NQMAs",
+ "session": {
+  "HOME": "/home/patrick",
+  "PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin",
+  "USER": "patrick",
+  "LANG": "en_US.UTF-8",
+  "DISPLAY": ":0",
+  "XAUTHORITY": "/home/patrick/.Xauthority",
+  "DBUS_SESSION_BUS_ADDRESS": "unix:path=/run/user/1000/bus",
+  "XDG_SESSION_TYPE": "x11",
+  "XDG_CURRENT_DESKTOP": "X-Cinnamon",
+  "XDG_SESSION_DESKTOP": "cinnamon",
+  "DESKTOP_SESSION": "cinnamon",
+  "XDG_DATA_DIRS": "/usr/share/cinnamon:/home/patrick/.local/share/flatpak/exports/share:/var/lib/flatpak/exports/share:/usr/local/share:/usr/share"
+ },
+ "shell": "cinnamon",
+ "hostPath": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin",
+ "host": "mint-builder",
+ "vnc": 5900,
+ "urls": {
+  "PUTGD_UPDATE_FEED_URL": "https://pkg.put.gd/lab/update/v1/",
+  "PUTGD_UPDATE_RELEASE_URL": "https://pkg.put.gd/lab/releases",
+  "PUTGD_UPDATE_MIRROR_URL": "https://pkg.put.gd/lab/releases"
+ },
+ "input": "xdotool",
+ "before": {
+  "dataPutgd": false,
+  "homePutgd": {
+   "/home/patrick/.config/putgd": false,
+   "/home/patrick/.local/state/putgd": true,
+   "/home/patrick/.cache/putgd": false
+  },
+  "autostart": []
+ },
+ "pids": {
+  "apprun": 451150,
+  "watch-u14stable": 439254
+ },
+ "created": "2026-10-23T00:35:38Z",
+ "watchStart-u14stable": "2026-10-23T00:35:39Z",
+ "log": [
+  {
+   "at": "2026-10-23T00:35:39Z",
+   "watch": {
+    "label": "u14stable",
+    "pid": 439254,
+    "started": "2026-10-23T00:35:39Z"
+   }
+  },
+  {
+   "at": "2026-10-23T00:46:59Z",
+   "age": {
+    "attemptedAt": [
+     "2026-10-23T00:43:46Z",
+     "2026-10-21T23:46:59Z"
+    ],
+    "state": {
+     "attemptedChannel": "stable",
+     "checkedAt": "2026-10-23T00:43:46Z",
+     "error": null,
+     "notifiedVersion": "",
+     "notifiedVersions": {},
+     "result": {
+      "action": {
+       "kind": "download",
+       "repository": "none"
+      },
+      "asset": {
+       "name": "putgd-26.1018.1020-x86_64.AppImage",
+       "sha256": "23eab368592a5b599cc0b1da8431124c609311a4742e540c0749bb5611aaea64",
+       "size": 115255800
+      },
+      "channel": "stable",
+      "channelSource": "setting",
+      "checkedAt": "2026-10-23T00:43:46Z",
+      "current": "26.1018.1020",
+      "downloadUrl": "https://github.com/patrick-hudson/put.gd-desktop/releases/download/v26.1018.1020/putgd-26.1018.1020-x86_64.AppImage",
+      "latest": "26.1018.1020",
+      "notesUrl": "https://github.com/patrick-hudson/put.gd-desktop/releases/tag/v26.1018.1020",
+      "packageTarget": "appimage",
+      "publishedAt": "2026-10-23T00:32:01Z",
+      "tag": "v26.1018.1020",
+      "updateAvailable": false
+     },
+     "schemaVersion": 1
+    }
+   }
+  },
+  {
+   "at": "2026-10-23T00:47:04Z",
+   "start": {
+    "pid": 440937,
+    "status": {
+     "build": "26.1018.1020",
+     "channel": "stable",
+     "latest": "26.1018.1020",
+     "updateAvailable": false,
+     "install": {
+      "available": true,
+      "backup": null,
+      "image": "/home/patrick/work/put.gd-ua/app/runs/m74-ann/apps/putgd-26.1018.1020-x86_64.AppImage",
+      "installed": null,
+      "kind": "update",
+      "reason": null,
+      "restartRequired": false,
+      "running": false,
+      "state": "idle",
+      "switch": null
+     }
+    },
+    "frame": "/home/patrick/work/put.gd-ua/app/runs/m74-ann/frames/u14-1-S1-restarted.png"
+   }
+  },
+  {
+   "at": "2026-10-23T00:57:05Z",
+   "frame": {
+    "label": "u14-2-S2-announced",
+    "frame": "/home/patrick/work/put.gd-ua/app/runs/m74-ann/frames/u14-2-S2-announced.png"
+   }
+  },
+  {
+   "at": "2026-10-23T00:58:52Z",
+   "age": {
+    "attemptedAt": [
+     "2026-10-23T00:57:03Z",
+     "2026-10-21T23:58:52Z"
+    ],
+    "state": {
+     "attemptedChannel": "stable",
+     "checkedAt": "2026-10-23T00:57:03Z",
+     "error": null,
+     "notifiedVersion": "26.1020.1021",
+     "notifiedVersions": {
+      "stable": "26.1020.1021"
+     },
+     "result": {
+      "action": {
+       "kind": "download",
+       "repository": "none"
+      },
+      "asset": {
+       "name": "putgd-26.1020.1021-x86_64.AppImage",
+       "sha256": "36876b9341308229bf3a6389396353731a077634932806479c369a9cbf26fb86",
+       "size": 115255800
+      },
+      "channel": "stable",
+      "channelSource": "setting",
+      "checkedAt": "2026-10-23T00:57:03Z",
+      "current": "26.1018.1020",
+      "downloadUrl": "https://github.com/patrick-hudson/put.gd-desktop/releases/download/v26.1020.1021/putgd-26.1020.1021-x86_64.AppImage",
+      "latest": "26.1020.1021",
+      "notesUrl": "https://github.com/patrick-hudson/put.gd-desktop/releases/tag/v26.1020.1021",
+      "packageTarget": "appimage",
+      "publishedAt": "2026-10-23T00:45:20Z",
+      "tag": "v26.1020.1021",
+      "updateAvailable": true
+     },
+     "schemaVersion": 1
+    }
+   }
+  },
+  {
+   "at": "2026-10-23T00:58:57Z",
+   "start": {
+    "pid": 447856,
+    "status": {
+     "build": "26.1018.1020",
+     "channel": "stable",
+     "latest": "26.1020.1021",
+     "updateAvailable": true,
+     "install": {
+      "available": true,
+      "backup": null,
+      "image": "/home/patrick/work/put.gd-ua/app/runs/m74-ann/apps/putgd-26.1018.1020-x86_64.AppImage",
+      "installed": null,
+      "kind": "update",
+      "reason": null,
+      "restartRequired": false,
+      "running": false,
+      "state": "idle",
+      "switch": null
+     }
+    },
+    "frame": "/home/patrick/work/put.gd-ua/app/runs/m74-ann/frames/u14-3-S1-restarted-again.png"
+   }
+  },
+  {
+   "at": "2026-10-23T01:04:13Z",
+   "check": {
+    "reply": {
+     "ok": true,
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     }
+    },
+    "status": {
+     "build": "26.1018.1020",
+     "channel": "stable",
+     "latest": "26.1020.1021",
+     "updateAvailable": true,
+     "install": {
+      "available": true,
+      "backup": null,
+      "image": "/home/patrick/work/put.gd-ua/app/runs/m74-ann/apps/putgd-26.1018.1020-x86_64.AppImage",
+      "installed": null,
+      "kind": "update",
+      "reason": null,
+      "restartRequired": false,
+      "running": false,
+      "state": "idle",
+      "switch": null
+     }
+    },
+    "frame": "/home/patrick/work/put.gd-ua/app/runs/m74-ann/frames/u14-4-check-now-no-repeat.png"
+   }
+  },
+  {
+   "at": "2026-10-23T01:20:52Z",
+   "age": {
+    "attemptedAt": [
+     "2026-10-23T01:04:09Z",
+     "2026-10-22T00:20:52Z"
+    ],
+    "state": {
+     "attemptedChannel": "stable",
+     "checkedAt": "2026-10-23T01:04:09Z",
+     "error": null,
+     "notifiedVersion": "26.1020.1021",
+     "notifiedVersions": {
+      "stable": "26.1020.1021"
+     },
+     "result": {
+      "action": {
+       "kind": "download",
+       "repository": "none"
+      },
+      "asset": {
+       "name": "putgd-26.1020.1021-x86_64.AppImage",
+       "sha256": "36876b9341308229bf3a6389396353731a077634932806479c369a9cbf26fb86",
+       "size": 115255800
+      },
+      "channel": "stable",
+      "channelSource": "setting",
+      "checkedAt": "2026-10-23T01:04:09Z",
+      "current": "26.1018.1020",
+      "downloadUrl": "https://github.com/patrick-hudson/put.gd-desktop/releases/download/v26.1020.1021/putgd-26.1020.1021-x86_64.AppImage",
+      "latest": "26.1020.1021",
+      "notesUrl": "https://github.com/patrick-hudson/put.gd-desktop/releases/tag/v26.1020.1021",
+      "packageTarget": "appimage",
+      "publishedAt": "2026-10-23T00:45:20Z",
+      "tag": "v26.1020.1021",
+      "updateAvailable": true
+     },
+     "schemaVersion": 1
+    }
+   }
+  },
+  {
+   "at": "2026-10-23T01:20:57Z",
+   "start": {
+    "pid": 451150,
+    "status": {
+     "build": "26.1018.1020",
+     "channel": "stable",
+     "latest": "26.1020.1021",
+     "updateAvailable": true,
+     "install": {
+      "available": true,
+      "backup": null,
+      "image": "/home/patrick/work/put.gd-ua/app/runs/m74-ann/apps/putgd-26.1018.1020-x86_64.AppImage",
+      "installed": null,
+      "kind": "update",
+      "reason": null,
+      "restartRequired": false,
+      "running": false,
+      "state": "idle",
+      "switch": null
+     }
+    },
+    "frame": "/home/patrick/work/put.gd-ua/app/runs/m74-ann/frames/u14-5-S2-restarted.png"
+   }
+  },
+  {
+   "at": "2026-10-23T01:33:56Z",
+   "frame": {
+    "label": "u14-6-S3-announced",
+    "frame": "/home/patrick/work/put.gd-ua/app/runs/m74-ann/frames/u14-6-S3-announced.png"
+   }
+  },
+  {
+   "at": "2026-10-23T01:34:12Z",
+   "click": {
+    "x": 1660,
+    "y": 60,
+    "keys": null,
+    "frame": "/home/patrick/work/put.gd-ua/app/runs/m74-ann/frames/u14-7-notification-clicked.png"
+   }
+  }
+ ]
+}

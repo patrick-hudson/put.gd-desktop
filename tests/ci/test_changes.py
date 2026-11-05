@@ -3,10 +3,13 @@ import importlib.util
 import os
 from pathlib import Path
 import subprocess
+import sys
 import tempfile
 import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT / 'tests/releases'))
+import quiet_git  # noqa: E402,F401  (disables git background maintenance, #99)
 spec = importlib.util.spec_from_file_location('ci_changes', ROOT / 'tools/ci/changes.py')
 changes = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(changes)
@@ -18,14 +21,24 @@ class Selection(unittest.TestCase):
         self.assertEqual((result['build'], result['packages']), (build, packages), paths)
 
     def test_documentation_runs_contracts_only(self):
-        self.assertSelects(['docs/ci.md', 'README.md', 'AGENTS.md', 'CLAUDE.md',
+        self.assertSelects(['docs/ci.md', 'README.md', 'AGENTS.md', 'CLAUDE.md', 'CHANGELOG.md',
                             'docs/evidence/live-s3-memory/source114/manifest.json'], False, False)
 
     def test_python_lab_and_release_tests_run_contracts_only(self):
         self.assertSelects(['tools/lab/lab.py', 'tests/desktop/test_lab.py', 'tests/desktop/kde.yaml',
                             'tests/releases/test_publish.py', 'tests/ci/test_changes.py',
-                            'tests/performance/observe_cold_family.py', 'tools/mcp/share_mcp/server.py'],
+                            'tests/performance/observe_cold_family.py', 'tools/mcp/share_mcp/server.py',
+                            '.github/renovate.json', '.github/dependabot.yml', 'tools/maintenance/refresh_pins.py',
+                            '.gitleaks.toml'],
                            False, False)
+
+    def test_surface_driver_pin_and_classifier_render_the_catalog(self):
+        # The build matrix's 26.04 job renders the catalog and runs gate check-catalog.
+        for path in ('tools/lab/surface_driver/secret-states.json', 'tools/lab/surface_driver/redact.py',
+                     'tools/lab/surface_driver/gate.py'):
+            with self.subTest(path=path):
+                self.assertSelects([path], True, False)
+        self.assertSelects(['tools/lab/surface_driver/context.py'], False, False)
 
     def test_compiled_or_ctest_inputs_build(self):
         for path in ('src/core/Settings.cpp', 'tests/unit/test_settings.cpp', 'tests/desktop/x11/test_x11.cpp',
@@ -43,6 +56,39 @@ class Selection(unittest.TestCase):
                      'docs/proton-drive.md', '.gitignore'):
             with self.subTest(path=path):
                 self.assertSelects([path], True, True)
+
+    def test_core_app_and_their_tests_select_the_sanitizer_job(self):
+        for path in ('src/core/Settings.cpp', 'src/app/OperationService.cpp', 'tests/unit/test_settings.cpp',
+                     'tests/integration/test_storage_locations.cpp', 'tests/fixtures/U2Fixtures.h',
+                     'CMakeLists.txt', 'CMakePresets.json', 'cmake/Proton.cmake', '.github/workflows/ci.yml',
+                     'tools/ci/sdk_cache.py'):
+            with self.subTest(path=path):
+                self.assertTrue(changes.select([path])['sanitizers'])
+        for path in ('src/ui/SettingsWindow.cpp', 'src/storage/s3/S3Driver.cpp', 'tests/gui/test_settings.cpp',
+                     'tests/unit/test_portable_appimage.py', 'packaging/appimage/AppRun',
+                     '.github/workflows/package.yml', 'docs/ci.md'):
+            with self.subTest(path=path):
+                self.assertFalse(changes.select([path])['sanitizers'])
+
+    def test_recorder_sources_and_the_pipewire_check_select_the_pipewire_job(self):
+        for path in ('src/record/WaylandAcquisition.cpp', 'src/record/RecordingPipeline.cpp'):
+            with self.subTest(path=path):
+                self.assertTrue(changes.select([path])['pipewire'])
+                self.assertSelects([path], True, False)
+        # The check's own scripts are read by that job alone.
+        for path in ('tests/desktop/pipewire/run_buffers.sh', 'tests/desktop/pipewire/ci_check.sh',
+                     'tests/desktop/pipewire/recorder_properties.cpp'):
+            with self.subTest(path=path):
+                self.assertTrue(changes.select([path])['pipewire'])
+                self.assertSelects([path], False, False)
+        # Packaging builds a new AppImage, which the job checks.
+        for path in ('packaging/appimage/media.json', 'tools/releases/build-appimage.sh', '.github/workflows/ci.yml'):
+            with self.subTest(path=path):
+                self.assertTrue(changes.select([path])['pipewire'])
+        for path in ('src/core/Settings.cpp', 'src/ui/SettingsWindow.cpp', 'tests/desktop/x11/test_x11.cpp',
+                     'docs/ci.md', 'tools/lab/lab.py'):
+            with self.subTest(path=path):
+                self.assertFalse(changes.select([path])['pipewire'])
 
     def test_mixed_change_takes_the_union(self):
         self.assertSelects(['docs/ci.md', 'src/main.cpp'], True, False)

@@ -1,0 +1,260 @@
+{
+ "schemes": {
+  "dark": {
+   "patch": true,
+   "appearance": {
+    "theme": "dark",
+    "scheme": "dark",
+    "desktop": "light",
+    "desktopSource": "qt"
+   },
+   "shot": {
+    "label": "settings-dark",
+    "components": [
+     {
+      "blocks": 18413,
+      "box": [
+       296,
+       72,
+       1624,
+       960
+      ]
+     }
+    ],
+    "colour": [
+     24,
+     24,
+     32
+    ],
+    "inner": [
+     299,
+     74,
+     1619,
+     954
+    ],
+    "changedShare": 1.0,
+    "ownShare": 0.968,
+    "kept": "/home/patrick/work/put.gd-afa2/runs/m74/crops/settings-dark.png"
+   },
+   "full": "/home/patrick/work/put.gd-afa2/runs/m74/full/settings-dark.png"
+  },
+  "light": {
+   "patch": true,
+   "appearance": {
+    "theme": "light",
+    "scheme": "light",
+    "desktop": "light",
+    "desktopSource": "qt"
+   },
+   "shot": {
+    "label": "settings-light",
+    "components": [
+     {
+      "blocks": 4164,
+      "box": [
+       528,
+       96,
+       1600,
+       904
+      ]
+     },
+     {
+      "blocks": 137,
+      "box": [
+       312,
+       584,
+       496,
+       632
+      ]
+     },
+     {
+      "blocks": 137,
+      "box": [
+       312,
+       488,
+       496,
+       536
+      ]
+     },
+     {
+      "blocks": 88,
+      "box": [
+       1168,
+       824,
+       1576,
+       912
+      ]
+     },
+     {
+      "blocks": 13,
+      "box": [
+       728,
+       112,
+       792,
+       128
+      ]
+     },
+     {
+      "blocks": 12,
+      "box": [
+       824,
+       112,
+       888,
+       128
+      ]
+     }
+    ],
+    "colour": [
+     252,
+     252,
+     252
+    ],
+    "inner": [
+     530,
+     98,
+     1598,
+     902
+    ],
+    "changedShare": 0.857,
+    "ownShare": 0.969,
+    "kept": "/home/patrick/work/put.gd-afa2/runs/m74/crops/settings-light.png"
+   },
+   "full": "/home/patrick/work/put.gd-afa2/runs/m74/full/settings-light.png"
+  },
+  "system": {
+   "patch": true,
+   "appearance": {
+    "theme": "system",
+    "scheme": "light",
+    "desktop": "light",
+    "desktopSource": "qt"
+   },
+   "shot": {
+    "label": "settings-system",
+    "components": [
+     {
+      "blocks": 4179,
+      "box": [
+       528,
+       96,
+       1600,
+       904
+      ]
+     },
+     {
+      "blocks": 137,
+      "box": [
+       312,
+       584,
+       496,
+       632
+      ]
+     },
+     {
+      "blocks": 137,
+      "box": [
+       312,
+       488,
+       496,
+       536
+      ]
+     },
+     {
+      "blocks": 88,
+      "box": [
+       1168,
+       824,
+       1576,
+       912
+      ]
+     },
+     {
+      "blocks": 13,
+      "box": [
+       728,
+       112,
+       792,
+       128
+      ]
+     },
+     {
+      "blocks": 12,
+      "box": [
+       824,
+       112,
+       888,
+       128
+      ]
+     }
+    ],
+    "colour": [
+     252,
+     252,
+     252
+    ],
+    "inner": [
+     530,
+     98,
+     1598,
+     902
+    ],
+    "changedShare": 0.857,
+    "ownShare": 0.968,
+    "kept": "/home/patrick/work/put.gd-afa2/runs/m74/crops/settings-system.png"
+   },
+   "full": "/home/patrick/work/put.gd-afa2/runs/m74/full/settings-system.png"
+  }
+ },
+ "updateStatus": {
+  "channel": "nightly",
+  "channelSetting": "build",
+  "enabled": true,
+  "supported": true,
+  "reason": null,
+  "notifies": false,
+  "checkedAt": null,
+  "nextCheckAt": "2026-10-22T05:30:04Z",
+  "error": null,
+  "result": null,
+  "build": {
+   "channel": "nightly",
+   "kind": "nightly",
+   "packageTarget": "appimage",
+   "reason": null,
+   "supported": true,
+   "version": "0.1.1-nightly.942"
+  }
+ },
+ "checkNow": {
+  "ok": true,
+  "seconds": 0.43,
+  "result": {
+   "action": {
+    "kind": "download",
+    "repository": "none"
+   },
+   "asset": {
+    "name": "putgd-0.1.1-nightly.942-x86_64.AppImage",
+    "sha256": "3594d1bd8a291f7d4c2caa7ef15c6bcc5b7bcc5036b872d9334e5dc487c2a47b",
+    "size": 115370488
+   },
+   "channel": "nightly",
+   "checkedAt": "2026-10-22T05:28:15Z",
+   "current": "0.1.1-nightly.942",
+   "downloadUrl": "https://github.com/patrick-hudson/put.gd-desktop/releases/download/v0.1.1-nightly.942/putgd-0.1.1-nightly.942-x86_64.AppImage",
+   "latest": "0.1.1-nightly.942",
+   "notesUrl": "https://github.com/patrick-hudson/put.gd-desktop/releases/tag/v0.1.1-nightly.942",
+   "packageTarget": "appimage",
+   "publishedAt": "2026-10-22T05:13:42Z",
+   "tag": "v0.1.1-nightly.942",
+   "updateAvailable": false
+  },
+  "error": {
+   "code": "",
+   "details": {},
+   "message": ""
+  }
+ },
+ "notificationsAfterCheck": [],
+ "liveFeed": "{\n  \"schema\": 1,\n  \"channel\": \"nightly\",\n  \"generatedAt\": \"2026-10-22T05:21:37Z\",\n  \"release\": {\n    \"tag\": \"v0.1.1-nightly.942\",\n    \"version\": \"0.1.1-nightly.942\",\n    \"publishedAt\": \"2026-10-22T05:13:42Z\",\n    \"notesUrl\": \"https://github.com/patrick-hudson/put.gd-desktop/releases/tag/v0.1.1-nightly.942\",\n    \"assets\": {\n      \"ubuntu24.04\": {\n        \"name\": \"putgd-0.1.1-nightly.942-ubuntu24.04-x86_64.deb\",\n        \"url\": \"https://github.com/patrick-hudson/put.gd-desktop/releases/download/v0.1.1-nightly.942/putgd-0.1.1-nightly.942-ubuntu24.04-x86_64.deb\",\n        \"size\": 54158952,\n        \"sha256\": \"e2cbeca1412c499fb6c58fac0d607cea9b52d14eaf9f77463d4a1de9db4c3b9f\"\n      },\n      \"ubuntu26.04\": {\n        \"name\": \"putgd-0.1.1-nightly.942-ubuntu26.04-x86_64.deb\",\n        \"url\": \"https://github.com/patrick-hudson/put.gd-desktop/releases/download/v0.1.1-nightly.942/putgd-0.1.1-nightly.942-ubuntu26.04-x86_64.deb\",\n        \"size\": 54501306,\n        \"sha256\": \"02e382cef032cbce3f60c94b26c87c218eafba039599132b61e7956fd33440ed\"\n      },\n      \"debian13\": {\n        \"name\": \"putgd-0.1.1-nightly.942-debian13-x86_64.deb\",\n        \"url\": \"https://github.com/patrick-hudson/put.gd-desktop/releases/download/v0.1.1-nightly.942/putgd-0.1.1-nightly.942-debian13-x86_64.deb\",\n        \"size\": 54044766,\n        \"sha256\": \"f5b78986cfc18beee3607365712ef487cf47696f6c0e96c7b1c9a901bff09b78\"\n      },\n      \"fedora44\": {\n        \"name\": \"putgd-0.1.1-nightly.942-fedora44-x86_64.rpm\",\n        \"url\": \"https://github.com/patrick-hudson/put.gd-desktop/releases/download/v0.1.1-nightly.942/putgd-0.1.1-nightly.942-fedora44-x86_64.rpm\",\n        \"size\": 40513932,\n        \"sha256\": \"b4245942b8f095a06acbcc3781abc084ddd299558fe63991bfca979a5e375203\"\n      },\n      \"appimage\": {\n        \"name\": \"putgd-0.1.1-nightly.942-x86_64.AppImage\",\n        \"url\": \"https://github.com/patrick-hudson/put.gd-desktop/releases/download/v0.1.1-nightly.942/putgd-0.1.1-nightly.942-x86_64.AppImage\",\n        \"size\": 115370488,\n   "
+}

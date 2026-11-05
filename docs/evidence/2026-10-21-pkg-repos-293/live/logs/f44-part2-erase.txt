@@ -1,0 +1,10 @@
+
+### erase putgd
+Complete!
+package putgd is not installed
+ls: cannot access '/etc/yum.repos.d/putgd.repo': No such file or directory
+ls: cannot access '/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd': No such file or directory
+warning: erasing gpg-pubkey packages is deprecated; use rpmkeys --delete 4032e28d893baf66f4ac23d9a11d38d55536b371
+putgd keys in rpmdb: 0
+ls: cannot access '/home/patrick/work/put.gd-pkg293-live': No such file or directory
+ls: cannot access '/home/patrick/.gnupg': No such file or directory 

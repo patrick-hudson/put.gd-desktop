@@ -1,0 +1,182 @@
+{
+  "schemaVersion": 1,
+  "kind": "surface-driver-fixture-evidence-restore",
+  "scope": "Boat development evidence; no acceptance promotion",
+  "sandboxes": {
+    "cin": {
+      "archive": {
+        "at": "2026-10-30T10:37:04.453261+00:00",
+        "archive": "/home/patrick/.t3/worktrees/put.gd/t3-ea39ade9/work/r3-fixtures/exports/cin-evidence.tgz",
+        "sha256": "5d354c03dc3783c72e1e10ffe1a9890ed43ee9e48584f6efe88af44d88eff770",
+        "bytes": 915101158,
+        "verifiedMembers": 1206,
+        "manifestSha256": "3e81a783c7a7bcc5d70f35e94a871f8da695d0a4241ff1abdc6a2432c58bd45f",
+        "extracted": "/home/patrick/.t3/worktrees/put.gd/t3-ea39ade9/work/r3-fixtures/evidence/cin",
+        "rawPpm": "Retained losslessly inside archive; stream-hashed without expanding duplicate raw pixels on workstation."
+      },
+      "retirement": {
+        "sha256": "450d998a2f899b7986b1c93a44c7e470ff42bb1c1b3632a336e5663e3961aed0",
+        "verifiedMembers": 11,
+        "final": {
+          "runId": "0d66503c-ff03-4e8f-be4c-a72f4a140136",
+          "ownedQemuRunning": false,
+          "overlayDiskPresent": false,
+          "goldenPresent": true,
+          "cleanupStatus": "completed",
+          "evidenceManifestSha256": "3e81a783c7a7bcc5d70f35e94a871f8da695d0a4241ff1abdc6a2432c58bd45f",
+          "sourceCleanupHead": "2127447a4662ff0c244ad6a87bab0ff1b2423148"
+        }
+      },
+      "deletion": {
+        "attemptCount": 1,
+        "completedAt": "2026-10-30T10:45:53.724Z",
+        "expectedBy": null,
+        "id": "bdop_d2bb7ad9d35941cdbd503b1abc120c3a",
+        "kind": "sandbox",
+        "reason": "explicit",
+        "requestedAt": "2026-10-30T10:44:29.519Z",
+        "stage": "completed",
+        "status": "completed",
+        "targetId": "bx_42saka4g"
+      },
+      "golden": {
+        "runId": "0d66503c-ff03-4e8f-be4c-a72f4a140136",
+        "golden": "/home/user/work/put.gd/work/lab-images/cinnamon-x11-probes-v3-session/image.qcow2",
+        "recordedSha256": "23b3e37571bdc7b452fdc30d53e70386423d75cb377e59653eed8a652c8bfab7",
+        "actualSha256": "23b3e37571bdc7b452fdc30d53e70386423d75cb377e59653eed8a652c8bfab7",
+        "unchanged": true,
+        "mode": "0o444"
+      },
+      "timings": [
+        {
+          "phase": "dry-run",
+          "returncode": 0,
+          "elapsedSeconds": 20.426596073000837
+        },
+        {
+          "phase": "actual",
+          "returncode": 0,
+          "elapsedSeconds": 5.383539699000721
+        }
+      ]
+    },
+    "gno": {
+      "archive": {
+        "at": "2026-10-30T10:42:24.111582+00:00",
+        "archive": "/home/patrick/.t3/worktrees/put.gd/t3-ea39ade9/work/r3-fixtures/exports/gno-evidence.tgz",
+        "sha256": "27c574ef4acbac570a70e3230ab7a26ddc71779a26a1320767d4cbfe5d1ee3d8",
+        "bytes": 955467012,
+        "verifiedMembers": 882,
+        "manifestSha256": "9540d25b33f9ef5390d997f039269a5fe7265645fc3387085c3946470b945592",
+        "extracted": "/home/patrick/.t3/worktrees/put.gd/t3-ea39ade9/work/r3-fixtures/evidence/gno",
+        "rawPpm": "Retained losslessly inside archive; stream-hashed without expanding duplicate raw pixels on workstation."
+      },
+      "retirement": {
+        "sha256": "78fb9e81dc1c4205b5d219c62f08e381f1a00b91d84d71812b246a2c332671a1",
+        "verifiedMembers": 11,
+        "final": {
+          "runId": "d925aa26-3ddd-4f49-818f-7f36cc58b963",
+          "ownedQemuRunning": false,
+          "overlayDiskPresent": false,
+          "goldenPresent": true,
+          "cleanupStatus": "completed",
+          "evidenceManifestSha256": "9540d25b33f9ef5390d997f039269a5fe7265645fc3387085c3946470b945592",
+          "sourceCleanupHead": "2127447a4662ff0c244ad6a87bab0ff1b2423148"
+        }
+      },
+      "deletion": {
+        "attemptCount": 1,
+        "completedAt": "2026-10-30T10:47:20.020Z",
+        "expectedBy": null,
+        "id": "bdop_36316aa16bf64561a3a5000093c0567c",
+        "kind": "sandbox",
+        "reason": "explicit",
+        "requestedAt": "2026-10-30T10:46:45.368Z",
+        "stage": "completed",
+        "status": "completed",
+        "targetId": "bx_wzh5dxjk"
+      },
+      "golden": {
+        "runId": "d925aa26-3ddd-4f49-818f-7f36cc58b963",
+        "golden": "/home/user/work/put.gd/work/lab-images/gnome-wayland-probes-v4/image.qcow2",
+        "recordedSha256": "8666b7dd8b98932e2fa794ec7bb4ccf0e82a8195e97a8580997ad70ed593a6c4",
+        "actualSha256": "8666b7dd8b98932e2fa794ec7bb4ccf0e82a8195e97a8580997ad70ed593a6c4",
+        "unchanged": true,
+        "mode": "0o444"
+      },
+      "timings": [
+        {
+          "phase": "dry-run",
+          "returncode": 0,
+          "elapsedSeconds": 49.99894709199998
+        },
+        {
+          "phase": "actual",
+          "returncode": 0,
+          "elapsedSeconds": 4.341482564999751
+        }
+      ]
+    }
+  },
+  "wallCleanup": {
+    "removed": [
+      {
+        "name": "Core R3 fixtures Cinnamon bx_42saka4g",
+        "port": 6314,
+        "type": "vm"
+      },
+      {
+        "name": "Core R3 fixtures GNOME bx_wzh5dxjk",
+        "port": 6315,
+        "type": "vm"
+      }
+    ],
+    "preservedEntries": 7,
+    "beforeSha256": "c64b0c5295be9ab7f6ad33965dc1a5deddf84484c2e1a31c958aabd4b1fe56dc",
+    "afterSha256": "22582ba87fabd4e87e84ef1e4a83c6941a20e717b1fa1a1983c1c0147dd29e79",
+    "processes": [
+      {
+        "pid": 2331254,
+        "start": "136002075",
+        "status": "already-gone"
+      },
+      {
+        "pid": 2331255,
+        "start": "136002075",
+        "status": "already-gone"
+      }
+    ],
+    "agentStopped": true
+  },
+  "additionalLocalSourceRoot": "/home/patrick/.t3/worktrees/put.gd/t3-ea39ade9/work/r3-fixtures",
+  "localUnitLogs": {
+    "unit-combined.log": "32fe6e4a4e48021624afc852935211020c03f3179b400946028ee3a60a3cee1c",
+    "unit-r3-fixed.log": "5d2b7a48692b4ba7efe6392ff400b81c2618926449c5e97ff3003695edd2dbb4",
+    "unit-initial.log": "25c25c266e19f991d747c62c02f6273feb2557c47da03fd5f326592321ceed15",
+    "unit-core3.log": "f6ad82d6841bd7a751de2fd9df97311ad93bb5934b7f23fcfe62c0e140b81d3a",
+    "unit-r3-final.log": "04cbe78ccc46c3c02386cccfa76e415de1eb4a477856c94d5ae25e9d1d1a180d",
+    "unit-core.log": "e9e911dd60a919cfa949b2a713f3925d9b0ee0aec21a6b865fe81836dd9dec90",
+    "unit-tray-fixtures.log": "14753bbd5b05e3539e6dcf0b2699187d9cc35d164fc681976958812ebea3f4e2",
+    "unit-ledger.log": "3ef29253a48c535a63b1fff866a1921d1d4cc6b2daa5817be567ffc9a79397b1",
+    "unit-all.log": "b72695fcb3e2889d64484497e2ea8079822f1532c2505f226cde970957bedf7d",
+    "unit-r3.log": "a12e28986d4382b7a37702b177d5325e78fbf78c60949ccc09c2dac2b4679be9",
+    "unit-native-observations.log": "79f9185026e849f2805a203b13c5e9dffe80874f3b2616bd0a81e5ccd421ffe2",
+    "unit-tray-observations.log": "a3163f8ae37c79e11933349c1860dc53ef7279ad3f9dc680b5504fbcee041461",
+    "unit-tray-fixtures2.log": "d3458f0120c07e8f33623d4c60c7d598f84f47db9de5af58a1e9de2b3a19703e",
+    "unit-cleanup.log": "1c660e613b24c1cfb8bd218590a4f3c9d9cb280f1c69b92280a1eda969b92ba7",
+    "unit-core2.log": "a734fbc33a1a13784e0d188b5c007cbc2c6ff7fcbb344f7223dbdbfddf6564ea",
+    "unit-tray2.log": "2b0bac88e59928966df347497cc3e389de0eca2d1b66c1ac6bff60afa2df05a3",
+    "unit-core4.log": "87520c2a8e124729a0144b60b32eb0bc0fc42a464f193ea83225eb9cafc22524",
+    "unit-all-stdlib.log": "7a2f639474405e4b0b11e859b648990b7fc9aa7e7822842f743be3880e708a8f",
+    "unit-native-observations2.log": "100548024afa722c768674a948320815806ed183849b7c0c99f1ce5a0fad9adb"
+  },
+  "outage": {
+    "observed525At": [
+      "2026-10-30T10:13:47Z",
+      "2026-10-30T10:19:11Z",
+      "2026-10-30T10:24:23Z"
+    ],
+    "limitsRecoveredAt": "2026-10-30T10:29:49Z",
+    "retainedSandboxes": []
+  }
+}

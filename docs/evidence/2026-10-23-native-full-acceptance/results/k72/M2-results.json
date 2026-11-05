@@ -1,0 +1,2183 @@
+{
+ "pkg:purge": {
+  "label": "purge",
+  "command": [
+   "apt-get",
+   "purge",
+   "-y",
+   "putgd"
+  ],
+  "before": {
+   "at": "2026-10-23T05:57:26Z",
+   "host": "kubuntu",
+   "package": {
+    "manager": "dpkg",
+    "status": "rc",
+    "version": "26.1023.1058~nightly"
+   },
+   "files": {
+    "/etc/apt/sources.list.d/putgd.sources": {
+     "sha256": "5d5b79d0154fed9099c42beea5183e41876ba36920bed6ed45a747523d5cc852",
+     "bytes": 2036,
+     "mode": "0o644",
+     "mtime": "2026-10-22T05:19:16Z"
+    },
+    "/usr/share/keyrings/putgd-archive-keyring.gpg": null,
+    "/etc/yum.repos.d/putgd.repo": null,
+    "/etc/yum.repos.d/putgd.repo.rpmsave": null,
+    "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd": null,
+    "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-nightly": null,
+    "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-stable": null,
+    "/usr/share/gnome-shell/extensions/putgd@put.gd/metadata.json": null
+   },
+   "defaultProfile": {
+    "/home/patrick/.config/putgd": 1,
+    "/home/patrick/.local/state/putgd": 82,
+    "/home/patrick/.cache/putgd": null,
+    "/home/patrick/.local/share/putgd": 17
+   },
+   "autostart": "[Desktop Entry]\nType=Application\nName=put.gd\nExec=\"/usr/bin/putgd-launcher\" --background\nTerminal=false\nX-putgd-Managed=true\n",
+   "userExtension": false,
+   "processes": [
+    {
+     "pid": 1507871,
+     "ppid": 1261,
+     "exe": "/usr/bin/putgd (deleted)",
+     "comm": "putgd",
+     "cmd": "/usr/bin/putgd --background ",
+     "qtPlatformPlugins": []
+    }
+   ]
+  },
+  "startedAt": "2026-10-23T05:57:26Z",
+  "simulation": {
+   "command": [
+    "apt-get",
+    "-s",
+    "purge",
+    "putgd"
+   ],
+   "exit": 0,
+   "changes": [
+    {
+     "op": "Purg",
+     "package": "putgd",
+     "from": null,
+     "to": null
+    }
+   ],
+   "tail": "NOTE: This is only a simulation!\n      apt-get needs root privileges for real execution.\n      Keep also in mind that locking is deactivated,\n      so don't depend on the relevance to the real current situation!\nReading package lists...\nBuilding dependency tree...\nReading state information...\nSolving dependencies...\nThe following packages will be REMOVED:\n  putgd*\n0 upgraded, 0 newly installed, 1 to remove and 63 not upgraded.\nPurg putgd\n"
+  },
+  "otherPackages": [],
+  "exit": 0,
+  "seconds": 5.2,
+  "log": "/home/patrick/work/put.gd-nfa/runs/M2/logs/pkg-purge.log",
+  "conffilePrompt": false,
+  "signature": [],
+  "fetched": [],
+  "tail": "Reading package lists...\nBuilding dependency tree...\nReading state information...\nSolving dependencies...\nThe following packages will be REMOVED:\n  putgd*\n0 upgraded, 0 newly installed, 1 to remove and 63 not upgraded.\nAfter this operation, 0 B of additional disk space will be used.\n(Reading database\u2026 \n(Reading database\u2026 5%\n(Reading database\u2026 10%\n(Reading database\u2026 15%\n(Reading database\u2026 20%\n(Reading database\u2026 25%\n(Reading database\u2026 30%\n(Reading database\u2026 35%\n(Reading database\u2026 40%\n(Reading database\u2026 45%\n(Reading database\u2026 50%\n(Reading database\u2026 55%\n(Reading database\u2026 60%\n(Reading database\u2026 65%\n(Reading database\u2026 70%\n(Reading database\u2026 75%\n(Reading database\u2026 80%\n(Reading database\u2026 85%\n(Reading database\u2026 90%\n(Reading database\u2026 95%\n(Reading database\u2026 100%\n(Reading database\u2026 301598 files and directories currently installed.)\nPurging configuration files for putgd (26.1023.1058~nightly)\u2026\n",
+  "after": {
+   "at": "2026-10-23T05:57:34Z",
+   "host": "kubuntu",
+   "package": {
+    "manager": "dpkg",
+    "status": null,
+    "version": null
+   },
+   "files": {
+    "/etc/apt/sources.list.d/putgd.sources": null,
+    "/usr/share/keyrings/putgd-archive-keyring.gpg": null,
+    "/etc/yum.repos.d/putgd.repo": null,
+    "/etc/yum.repos.d/putgd.repo.rpmsave": null,
+    "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd": null,
+    "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-nightly": null,
+    "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-stable": null,
+    "/usr/share/gnome-shell/extensions/putgd@put.gd/metadata.json": null
+   },
+   "defaultProfile": {
+    "/home/patrick/.config/putgd": 1,
+    "/home/patrick/.local/state/putgd": 82,
+    "/home/patrick/.cache/putgd": null,
+    "/home/patrick/.local/share/putgd": 17
+   },
+   "autostart": "[Desktop Entry]\nType=Application\nName=put.gd\nExec=\"/usr/bin/putgd-launcher\" --background\nTerminal=false\nX-putgd-Managed=true\n",
+   "userExtension": false,
+   "processes": [
+    {
+     "pid": 1507871,
+     "ppid": 1261,
+     "exe": "/usr/bin/putgd (deleted)",
+     "comm": "putgd",
+     "cmd": "/usr/bin/putgd --background ",
+     "qtPlatformPlugins": []
+    }
+   ]
+  }
+ },
+ "pkg:install-947": {
+  "label": "install-947",
+  "command": [
+   "apt-get",
+   "install",
+   "-y",
+   "/home/patrick/work/put.gd-nfa/assets/putgd-0.1.1-nightly.947-ubuntu26.04-x86_64.deb"
+  ],
+  "before": {
+   "at": "2026-10-23T05:52:27Z",
+   "host": "kubuntu",
+   "package": {
+    "manager": "dpkg",
+    "status": null,
+    "version": null
+   },
+   "files": {
+    "/etc/apt/sources.list.d/putgd.sources": null,
+    "/usr/share/keyrings/putgd-archive-keyring.gpg": null,
+    "/etc/yum.repos.d/putgd.repo": null,
+    "/etc/yum.repos.d/putgd.repo.rpmsave": null,
+    "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd": null,
+    "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-nightly": null,
+    "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-stable": null,
+    "/usr/share/gnome-shell/extensions/putgd@put.gd/metadata.json": null
+   },
+   "defaultProfile": {
+    "/home/patrick/.config/putgd": null,
+    "/home/patrick/.local/state/putgd": 75,
+    "/home/patrick/.cache/putgd": null,
+    "/home/patrick/.local/share/putgd": null
+   },
+   "autostart": null,
+   "userExtension": false,
+   "processes": []
+  },
+  "startedAt": "2026-10-23T05:52:27Z",
+  "simulation": {
+   "command": [
+    "apt-get",
+    "-s",
+    "install",
+    "/home/patrick/work/put.gd-nfa/assets/putgd-0.1.1-nightly.947-ubuntu26.04-x86_64.deb"
+   ],
+   "exit": 0,
+   "changes": [
+    {
+     "op": "Inst",
+     "package": "putgd",
+     "from": null,
+     "to": "0.1.1~nightly.947"
+    }
+   ],
+   "tail": "NOTE: This is only a simulation!\n      apt-get needs root privileges for real execution.\n      Keep also in mind that locking is deactivated,\n      so don't depend on the relevance to the real current situation!\nReading package lists...\nBuilding dependency tree...\nReading state information...\nSolving dependencies...\nThe following NEW packages will be installed:\n  putgd\n0 upgraded, 1 newly installed, 0 to remove and 63 not upgraded.\nInst putgd (0.1.1~nightly.947 local-deb [amd64])\nConf putgd (0.1.1~nightly.947 local-deb [amd64])\n"
+  },
+  "otherPackages": [],
+  "exit": 0,
+  "seconds": 6.9,
+  "log": "/home/patrick/work/put.gd-nfa/runs/M2/logs/pkg-install-947.log",
+  "conffilePrompt": false,
+  "signature": [],
+  "fetched": [
+   "Get:1 /home/patrick/work/put.gd-nfa/assets/putgd-0.1.1-nightly.947-ubuntu26.04-x86_64.deb putgd amd64 0.1.1~nightly.947 [54.5 MB]",
+   "Preparing to unpack \u2026/putgd-0.1.1-nightly.947-ubuntu26.04-x86_64.deb\u2026"
+  ],
+  "tail": "Reading package lists...\nBuilding dependency tree...\nReading state information...\nSolving dependencies...\nThe following NEW packages will be installed:\n  putgd\n0 upgraded, 1 newly installed, 0 to remove and 63 not upgraded.\nNeed to get 0 B/54.5 MB of archives.\nAfter this operation, 129 MB of additional disk space will be used.\nGet:1 /home/patrick/work/put.gd-nfa/assets/putgd-0.1.1-nightly.947-ubuntu26.04-x86_64.deb putgd amd64 0.1.1~nightly.947 [54.5 MB]\nSelecting previously unselected package putgd.\n(Reading database\u2026 \n(Reading database\u2026 5%\n(Reading database\u2026 10%\n(Reading database\u2026 15%\n(Reading database\u2026 20%\n(Reading database\u2026 25%\n(Reading database\u2026 30%\n(Reading database\u2026 35%\n(Reading database\u2026 40%\n(Reading database\u2026 45%\n(Reading database\u2026 50%\n(Reading database\u2026 55%\n(Reading database\u2026 60%\n(Reading database\u2026 65%\n(Reading database\u2026 70%\n(Reading database\u2026 75%\n(Reading database\u2026 80%\n(Reading database\u2026 85%\n(Reading database\u2026 90%\n(Reading database\u2026 95%\n(Reading database\u2026 100%\n(Reading database\u2026 301599 files and directories currently installed.)\nPreparing to unpack \u2026/putgd-0.1.1-nightly.947-ubuntu26.04-x86_64.deb\u2026\nUnpacking putgd (0.1.1~nightly.947)\u2026\nSetting up putgd (0.1.1~nightly.947)\u2026\nProcessing triggers for hicolor-icon-theme (0.18-2build1)\u2026\nProcessing triggers for desktop-file-utils (0.28-1build1)\u2026\ndebconf: unable to initialize frontend: Dialog\ndebconf: (Dialog frontend will not work on a dumb terminal, an emacs shell buffer, or without a controlling terminal.)\ndebconf: falling back to frontend: Readline\ndebconf: unable to initialize frontend: Readline\ndebconf: (This frontend requires a controlling tty.)\ndebconf: falling back to frontend: Teletype\ndebconf: unable to initialize frontend: Teletype\ndebconf: (This frontend requires a controlling tty.)\ndebconf: falling back to frontend: Noninteractive\n",
+  "after": {
+   "at": "2026-10-23T05:52:36Z",
+   "host": "kubuntu",
+   "package": {
+    "manager": "dpkg",
+    "status": "ii",
+    "version": "0.1.1~nightly.947"
+   },
+   "files": {
+    "/etc/apt/sources.list.d/putgd.sources": {
+     "sha256": "5d5b79d0154fed9099c42beea5183e41876ba36920bed6ed45a747523d5cc852",
+     "bytes": 2036,
+     "mode": "0o644",
+     "mtime": "2026-10-22T05:19:16Z"
+    },
+    "/usr/share/keyrings/putgd-archive-keyring.gpg": {
+     "sha256": "76ab1b64e8a1d9504d3922fa44b116d6eb3c680e788be9cec46e106cd5258339",
+     "bytes": 1170,
+     "mode": "0o644",
+     "mtime": "2026-10-22T05:15:32Z"
+    },
+    "/etc/yum.repos.d/putgd.repo": null,
+    "/etc/yum.repos.d/putgd.repo.rpmsave": null,
+    "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd": null,
+    "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-nightly": null,
+    "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-stable": null,
+    "/usr/share/gnome-shell/extensions/putgd@put.gd/metadata.json": {
+     "sha256": "690be5bcfd1ee05783cd57a78851c56c0fe624131711b254cb46d062d0cb8046",
+     "bytes": 248,
+     "mode": "0o644",
+     "mtime": "2026-10-22T05:19:16Z"
+    }
+   },
+   "defaultProfile": {
+    "/home/patrick/.config/putgd": null,
+    "/home/patrick/.local/state/putgd": 75,
+    "/home/patrick/.cache/putgd": null,
+    "/home/patrick/.local/share/putgd": null
+   },
+   "autostart": null,
+   "userExtension": false,
+   "processes": []
+  }
+ },
+ "capture:region": {
+  "kind": "region",
+  "operation": {
+   "id": "1103abb9-6211-4378-80b6-f8ff37716f3e",
+   "state": "completed",
+   "copyStatus": "copied",
+   "items": [
+    {
+     "name": "Screen-Capture-2026-10-23-00-52-54.png",
+     "mime": "image/png",
+     "uploadStatus": "uploaded",
+     "link": "http://127.0.0.1:44781/fixture/afa/Screen-Capture-2026-10-23-00-52-54.png",
+     "local": {
+      "error": {
+       "code": "",
+       "details": {},
+       "message": ""
+      },
+      "path": "/home/patrick/work/put.gd-nfa/runs/M2/archive/images/Screen-Capture-2026-10-23-00-52-54.png",
+      "status": "saved"
+     }
+    }
+   ],
+   "error": {
+    "code": "",
+    "details": {},
+    "message": ""
+   }
+  },
+  "png": {
+   "bytes": 5171,
+   "sha256": "dc69fa6ecd89e90454e9e6e705049a3809d7900d6ab17116fa5f4ea577c50dce",
+   "magic": true,
+   "size": [
+    1320,
+    680
+   ]
+  },
+  "coverCheck": {
+   "edges": {
+    "bottom": 1.0,
+    "left": 1.0,
+    "right": 1.0,
+    "top": 1.0
+   },
+   "fraction": 0.7433,
+   "kept": "/home/patrick/work/put.gd-nfa/runs/M2/out/capture-region.png",
+   "minFraction": 0.5,
+   "ok": true,
+   "rect": [
+    0,
+    0,
+    1320,
+    680
+   ],
+   "sha256": "dc69fa6ecd89e90454e9e6e705049a3809d7900d6ab17116fa5f4ea577c50dce",
+   "size": [
+    1320,
+    680
+   ]
+  },
+  "clipboard": "http://127.0.0.1:44781/fixture/afa/Screen-Capture-2026-10-23-00-52-54.png",
+  "linkCopied": true,
+  "linkServes": {
+   "status": 200,
+   "sha256": "dc69fa6ecd89e90454e9e6e705049a3809d7900d6ab17116fa5f4ea577c50dce",
+   "matchesLocal": true
+  },
+  "historyEntry": {
+   "id": "f1c6dc63-f5a3-4a8b-b808-22a33d463d85",
+   "name": "Screen-Capture-2026-10-23-00-52-54.png",
+   "uploadStatus": "uploaded",
+   "local": "saved",
+   "linkAvailable": true
+  },
+  "notifications": []
+ },
+ "capture:desktop": {
+  "kind": "desktop",
+  "operation": {
+   "id": "3b293fcf-0dea-4738-abdd-19bd0d74ed37",
+   "state": "completed",
+   "copyStatus": "copied",
+   "items": [
+    {
+     "name": "Screen-Capture-2026-10-23-00-53-01.png",
+     "mime": "image/png",
+     "uploadStatus": "uploaded",
+     "link": "http://127.0.0.1:44781/fixture/afa/Screen-Capture-2026-10-23-00-53-01.png",
+     "local": {
+      "error": {
+       "code": "",
+       "details": {},
+       "message": ""
+      },
+      "path": "/home/patrick/work/put.gd-nfa/runs/M2/archive/images/Screen-Capture-2026-10-23-00-53-01.png",
+      "status": "saved"
+     }
+    }
+   ],
+   "error": {
+    "code": "",
+    "details": {},
+    "message": ""
+   }
+  },
+  "png": {
+   "bytes": 10723,
+   "sha256": "7dff5a2c2513e30c3e0939d42ebece2deec4112b58733213068e1b4cf22873ff",
+   "magic": true,
+   "size": [
+    1920,
+    1080
+   ]
+  },
+  "coverCheck": {
+   "edges": {
+    "bottom": 1.0,
+    "left": 1.0,
+    "right": 1.0,
+    "top": 1.0
+   },
+   "fraction": 0.8889,
+   "kept": "/home/patrick/work/put.gd-nfa/runs/M2/out/capture-desktop.png",
+   "minFraction": 0.5,
+   "ok": true,
+   "rect": [
+    0,
+    0,
+    1920,
+    1080
+   ],
+   "sha256": "7dff5a2c2513e30c3e0939d42ebece2deec4112b58733213068e1b4cf22873ff",
+   "size": [
+    1920,
+    1080
+   ]
+  },
+  "clipboard": "http://127.0.0.1:44781/fixture/afa/Screen-Capture-2026-10-23-00-53-01.png",
+  "linkCopied": true,
+  "linkServes": {
+   "status": 200,
+   "sha256": "7dff5a2c2513e30c3e0939d42ebece2deec4112b58733213068e1b4cf22873ff",
+   "matchesLocal": true
+  },
+  "historyEntry": {
+   "id": "dd7dfe89-c4b4-4edd-b702-559e254245fc",
+   "name": "Screen-Capture-2026-10-23-00-53-01.png",
+   "uploadStatus": "uploaded",
+   "local": "saved",
+   "linkAvailable": true
+  },
+  "notifications": []
+ },
+ "snapshot:before": {
+  "label": "before",
+  "at": "2026-10-23T05:53:08Z",
+  "package": {
+   "manager": "dpkg",
+   "status": "ii",
+   "version": "0.1.1~nightly.947"
+  },
+  "config": {
+   "sha256": "0c24294846da9fc613194279aae2c5b4523fd8d12d7d225c30e848dbbb79b5a3",
+   "bytes": 3306,
+   "mode": "0o600",
+   "mtime": "2026-10-23T05:53:06Z"
+  },
+  "configFiles": {
+   "/home/patrick/.config/putgd/config.json": {
+    "sha256": "0c24294846da9fc613194279aae2c5b4523fd8d12d7d225c30e848dbbb79b5a3",
+    "bytes": 3306,
+    "mode": "0o600",
+    "mtime": "2026-10-23T05:53:06Z"
+   },
+   "/home/patrick/.config/putgd/putgd/config.json": null
+  },
+  "dataRoots": {
+   "/home/patrick/.local/share/putgd": [
+    "artifacts",
+    "history.sqlite",
+    "previews",
+    "resident.lock"
+   ],
+   "/home/patrick/.local/share/putgd/putgd": null
+  },
+  "processes": [
+   {
+    "pid": 1501446,
+    "ppid": 1261,
+    "exe": "/usr/bin/putgd",
+    "comm": "putgd",
+    "cmd": "/usr/bin/putgd --background ",
+    "qtPlatformPlugins": []
+   },
+   {
+    "pid": 1501457,
+    "ppid": 1501446,
+    "exe": "/usr/bin/putgd-ui",
+    "comm": "putgd-ui",
+    "cmd": "/usr/bin/putgd-ui ",
+    "qtPlatformPlugins": [
+     "libqwayland.so"
+    ]
+   }
+  ],
+  "history": {
+   "db": "/home/patrick/.local/share/putgd/history.sqlite",
+   "userVersion": 7,
+   "integrity": "ok",
+   "tables": {
+    "history": 2,
+    "operations": 2,
+    "deletions": 0,
+    "deletion_targets": 0,
+    "cleared_history": 0,
+    "item_state": 2,
+    "sharing_operations": 0
+   },
+   "upload_status": {
+    "uploaded": 2
+   },
+   "local_status": {
+    "saved": 2
+   },
+   "remote_status": {
+    "not_requested": 2
+   },
+   "itemStateRemote": {
+    "not_requested": 2
+   }
+  },
+  "outputs": {
+   "archive/images/Screen-Capture-2026-10-23-00-52-54.png": "dc69fa6ecd89e90454e9e6e705049a3809d7900d6ab17116fa5f4ea577c50dce",
+   "archive/images/Screen-Capture-2026-10-23-00-53-01.png": "7dff5a2c2513e30c3e0939d42ebece2deec4112b58733213068e1b4cf22873ff"
+  },
+  "historyList": {
+   "ok": true,
+   "total": 2,
+   "seconds": 0.02
+  },
+  "build": {
+   "baseVersion": "0.1.1",
+   "commitCount": 947,
+   "dirty": false,
+   "gitCommit": "476e5c7b8a39fdc7f3582ede1a58976ff1a874ca",
+   "gitTree": "f189999548f35ff7de4cedbe432be1337bf1e1ec",
+   "packageVersion": "0.1.1~nightly.947",
+   "schemaVersion": 1,
+   "sourceProvenance": "git",
+   "version": "0.1.1-nightly.947"
+  },
+  "storage": {
+   "locations": {
+    "config": {
+     "path": "/home/patrick/.config/putgd",
+     "state": "current"
+    },
+    "data": {
+     "path": "/home/patrick/.local/share/putgd",
+     "state": "current"
+    },
+    "schemaVersion": 1
+   },
+   "storage": {
+    "backblaze-b2": {
+     "activeHelpers": 0,
+     "protocolVersion": 1
+    },
+    "proton-drive": {
+     "activeHelpers": 0,
+     "protocolVersion": 1
+    },
+    "s3": {
+     "lanes": 1,
+     "moduleLiveDrivers": 0,
+     "queuedRequests": 0,
+     "retainedDrivers": 0,
+     "workerStarted": true
+    }
+   }
+  }
+ },
+ "pkg:update": {
+  "label": "update",
+  "command": [
+   "apt-get",
+   "update"
+  ],
+  "before": {
+   "at": "2026-10-23T05:53:08Z",
+   "host": "kubuntu",
+   "package": {
+    "manager": "dpkg",
+    "status": "ii",
+    "version": "0.1.1~nightly.947"
+   },
+   "files": {
+    "/etc/apt/sources.list.d/putgd.sources": {
+     "sha256": "5d5b79d0154fed9099c42beea5183e41876ba36920bed6ed45a747523d5cc852",
+     "bytes": 2036,
+     "mode": "0o644",
+     "mtime": "2026-10-22T05:19:16Z"
+    },
+    "/usr/share/keyrings/putgd-archive-keyring.gpg": {
+     "sha256": "76ab1b64e8a1d9504d3922fa44b116d6eb3c680e788be9cec46e106cd5258339",
+     "bytes": 1170,
+     "mode": "0o644",
+     "mtime": "2026-10-22T05:15:32Z"
+    },
+    "/etc/yum.repos.d/putgd.repo": null,
+    "/etc/yum.repos.d/putgd.repo.rpmsave": null,
+    "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd": null,
+    "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-nightly": null,
+    "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-stable": null,
+    "/usr/share/gnome-shell/extensions/putgd@put.gd/metadata.json": {
+     "sha256": "690be5bcfd1ee05783cd57a78851c56c0fe624131711b254cb46d062d0cb8046",
+     "bytes": 248,
+     "mode": "0o644",
+     "mtime": "2026-10-22T05:19:16Z"
+    }
+   },
+   "defaultProfile": {
+    "/home/patrick/.config/putgd": 1,
+    "/home/patrick/.local/state/putgd": 79,
+    "/home/patrick/.cache/putgd": null,
+    "/home/patrick/.local/share/putgd": 12
+   },
+   "autostart": null,
+   "userExtension": false,
+   "processes": [
+    {
+     "pid": 1501446,
+     "ppid": 1261,
+     "exe": "/usr/bin/putgd",
+     "comm": "putgd",
+     "cmd": "/usr/bin/putgd --background ",
+     "qtPlatformPlugins": []
+    },
+    {
+     "pid": 1501457,
+     "ppid": 1501446,
+     "exe": "/usr/bin/putgd-ui",
+     "comm": "putgd-ui",
+     "cmd": "/usr/bin/putgd-ui ",
+     "qtPlatformPlugins": [
+      "libqwayland.so"
+     ]
+    }
+   ]
+  },
+  "startedAt": "2026-10-23T05:53:08Z",
+  "exit": 0,
+  "seconds": 1.9,
+  "log": "/home/patrick/work/put.gd-nfa/runs/M2/logs/pkg-update.log",
+  "conffilePrompt": false,
+  "signature": [
+   "Hit:3 http://us.archive.ubuntu.com/ubuntu resolute InRelease",
+   "Hit:4 http://us.archive.ubuntu.com/ubuntu resolute-updates InRelease",
+   "Hit:5 http://security.ubuntu.com/ubuntu resolute-security InRelease",
+   "Hit:6 http://us.archive.ubuntu.com/ubuntu resolute-backports InRelease",
+   "Hit:7 https://pkg.put.gd/apt/ubuntu26.04 nightly InRelease"
+  ],
+  "fetched": [
+   "Hit:3 http://us.archive.ubuntu.com/ubuntu resolute InRelease",
+   "Hit:4 http://us.archive.ubuntu.com/ubuntu resolute-updates InRelease",
+   "Hit:5 http://security.ubuntu.com/ubuntu resolute-security InRelease",
+   "Hit:6 http://us.archive.ubuntu.com/ubuntu resolute-backports InRelease",
+   "Hit:7 https://pkg.put.gd/apt/ubuntu26.04 nightly InRelease"
+  ],
+  "tail": "Hit:3 http://us.archive.ubuntu.com/ubuntu resolute InRelease\nHit:4 http://us.archive.ubuntu.com/ubuntu resolute-updates InRelease\nHit:5 http://security.ubuntu.com/ubuntu resolute-security InRelease\nHit:6 http://us.archive.ubuntu.com/ubuntu resolute-backports InRelease\nHit:7 https://pkg.put.gd/apt/ubuntu26.04 nightly InRelease\nFetched 6,652 B in 1s (12.9 kB/s)\nReading package lists...\n",
+  "after": {
+   "at": "2026-10-23T05:53:10Z",
+   "host": "kubuntu",
+   "package": {
+    "manager": "dpkg",
+    "status": "ii",
+    "version": "0.1.1~nightly.947"
+   },
+   "files": {
+    "/etc/apt/sources.list.d/putgd.sources": {
+     "sha256": "5d5b79d0154fed9099c42beea5183e41876ba36920bed6ed45a747523d5cc852",
+     "bytes": 2036,
+     "mode": "0o644",
+     "mtime": "2026-10-22T05:19:16Z"
+    },
+    "/usr/share/keyrings/putgd-archive-keyring.gpg": {
+     "sha256": "76ab1b64e8a1d9504d3922fa44b116d6eb3c680e788be9cec46e106cd5258339",
+     "bytes": 1170,
+     "mode": "0o644",
+     "mtime": "2026-10-22T05:15:32Z"
+    },
+    "/etc/yum.repos.d/putgd.repo": null,
+    "/etc/yum.repos.d/putgd.repo.rpmsave": null,
+    "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd": null,
+    "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-nightly": null,
+    "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-stable": null,
+    "/usr/share/gnome-shell/extensions/putgd@put.gd/metadata.json": {
+     "sha256": "690be5bcfd1ee05783cd57a78851c56c0fe624131711b254cb46d062d0cb8046",
+     "bytes": 248,
+     "mode": "0o644",
+     "mtime": "2026-10-22T05:19:16Z"
+    }
+   },
+   "defaultProfile": {
+    "/home/patrick/.config/putgd": 1,
+    "/home/patrick/.local/state/putgd": 79,
+    "/home/patrick/.cache/putgd": null,
+    "/home/patrick/.local/share/putgd": 12
+   },
+   "autostart": null,
+   "userExtension": false,
+   "processes": [
+    {
+     "pid": 1501446,
+     "ppid": 1261,
+     "exe": "/usr/bin/putgd",
+     "comm": "putgd",
+     "cmd": "/usr/bin/putgd --background ",
+     "qtPlatformPlugins": []
+    },
+    {
+     "pid": 1501457,
+     "ppid": 1501446,
+     "exe": "/usr/bin/putgd-ui",
+     "comm": "putgd-ui",
+     "cmd": "/usr/bin/putgd-ui ",
+     "qtPlatformPlugins": [
+      "libqwayland.so"
+     ]
+    }
+   ]
+  }
+ },
+ "pkg:upgrade": {
+  "label": "upgrade",
+  "command": [
+   "apt-get",
+   "install",
+   "-y",
+   "--only-upgrade",
+   "putgd"
+  ],
+  "before": {
+   "at": "2026-10-23T05:53:10Z",
+   "host": "kubuntu",
+   "package": {
+    "manager": "dpkg",
+    "status": "ii",
+    "version": "0.1.1~nightly.947"
+   },
+   "files": {
+    "/etc/apt/sources.list.d/putgd.sources": {
+     "sha256": "5d5b79d0154fed9099c42beea5183e41876ba36920bed6ed45a747523d5cc852",
+     "bytes": 2036,
+     "mode": "0o644",
+     "mtime": "2026-10-22T05:19:16Z"
+    },
+    "/usr/share/keyrings/putgd-archive-keyring.gpg": {
+     "sha256": "76ab1b64e8a1d9504d3922fa44b116d6eb3c680e788be9cec46e106cd5258339",
+     "bytes": 1170,
+     "mode": "0o644",
+     "mtime": "2026-10-22T05:15:32Z"
+    },
+    "/etc/yum.repos.d/putgd.repo": null,
+    "/etc/yum.repos.d/putgd.repo.rpmsave": null,
+    "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd": null,
+    "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-nightly": null,
+    "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-stable": null,
+    "/usr/share/gnome-shell/extensions/putgd@put.gd/metadata.json": {
+     "sha256": "690be5bcfd1ee05783cd57a78851c56c0fe624131711b254cb46d062d0cb8046",
+     "bytes": 248,
+     "mode": "0o644",
+     "mtime": "2026-10-22T05:19:16Z"
+    }
+   },
+   "defaultProfile": {
+    "/home/patrick/.config/putgd": 1,
+    "/home/patrick/.local/state/putgd": 79,
+    "/home/patrick/.cache/putgd": null,
+    "/home/patrick/.local/share/putgd": 12
+   },
+   "autostart": null,
+   "userExtension": false,
+   "processes": [
+    {
+     "pid": 1501446,
+     "ppid": 1261,
+     "exe": "/usr/bin/putgd",
+     "comm": "putgd",
+     "cmd": "/usr/bin/putgd --background ",
+     "qtPlatformPlugins": []
+    },
+    {
+     "pid": 1501457,
+     "ppid": 1501446,
+     "exe": "/usr/bin/putgd-ui",
+     "comm": "putgd-ui",
+     "cmd": "/usr/bin/putgd-ui ",
+     "qtPlatformPlugins": [
+      "libqwayland.so"
+     ]
+    }
+   ]
+  },
+  "startedAt": "2026-10-23T05:53:10Z",
+  "simulation": {
+   "command": [
+    "apt-get",
+    "-s",
+    "install",
+    "--only-upgrade",
+    "putgd"
+   ],
+   "exit": 0,
+   "changes": [
+    {
+     "op": "Inst",
+     "package": "putgd",
+     "from": "0.1.1~nightly.947",
+     "to": "26.1023.1058~nightly"
+    }
+   ],
+   "tail": "NOTE: This is only a simulation!\n      apt-get needs root privileges for real execution.\n      Keep also in mind that locking is deactivated,\n      so don't depend on the relevance to the real current situation!\nReading package lists...\nBuilding dependency tree...\nReading state information...\nSolving dependencies...\nThe following packages will be upgraded:\n  putgd\n1 upgraded, 0 newly installed, 0 to remove and 63 not upgraded.\nInst putgd [0.1.1~nightly.947] (26.1023.1058~nightly put.gd:nightly [amd64])\nConf putgd (26.1023.1058~nightly put.gd:nightly [amd64])\n"
+  },
+  "otherPackages": [],
+  "exit": 0,
+  "seconds": 5.6,
+  "log": "/home/patrick/work/put.gd-nfa/runs/M2/logs/pkg-upgrade.log",
+  "conffilePrompt": false,
+  "signature": [],
+  "fetched": [
+   "Preparing to unpack \u2026/putgd_26.1023.1058~nightly_amd64.deb\u2026"
+  ],
+  "tail": "Reading package lists...\nBuilding dependency tree...\nReading state information...\nSolving dependencies...\nThe following packages will be upgraded:\n  putgd\n1 upgraded, 0 newly installed, 0 to remove and 63 not upgraded.\nNeed to get 0 B/54.6 MB of archives.\nAfter this operation, 151 kB of additional disk space will be used.\n(Reading database\u2026 \n(Reading database\u2026 5%\n(Reading database\u2026 10%\n(Reading database\u2026 15%\n(Reading database\u2026 20%\n(Reading database\u2026 25%\n(Reading database\u2026 30%\n(Reading database\u2026 35%\n(Reading database\u2026 40%\n(Reading database\u2026 45%\n(Reading database\u2026 50%\n(Reading database\u2026 55%\n(Reading database\u2026 60%\n(Reading database\u2026 65%\n(Reading database\u2026 70%\n(Reading database\u2026 75%\n(Reading database\u2026 80%\n(Reading database\u2026 85%\n(Reading database\u2026 90%\n(Reading database\u2026 95%\n(Reading database\u2026 100%\n(Reading database\u2026 301713 files and directories currently installed.)\nPreparing to unpack \u2026/putgd_26.1023.1058~nightly_amd64.deb\u2026\nUnpacking putgd (26.1023.1058~nightly) over (0.1.1~nightly.947)\u2026\nSetting up putgd (26.1023.1058~nightly)\u2026\nProcessing triggers for hicolor-icon-theme (0.18-2build1)\u2026\nProcessing triggers for desktop-file-utils (0.28-1build1)\u2026\ndebconf: unable to initialize frontend: Dialog\ndebconf: (Dialog frontend will not work on a dumb terminal, an emacs shell buffer, or without a controlling terminal.)\ndebconf: falling back to frontend: Readline\ndebconf: unable to initialize frontend: Readline\ndebconf: (This frontend requires a controlling tty.)\ndebconf: falling back to frontend: Teletype\ndebconf: unable to initialize frontend: Teletype\ndebconf: (This frontend requires a controlling tty.)\ndebconf: falling back to frontend: Noninteractive\n",
+  "after": {
+   "at": "2026-10-23T05:53:17Z",
+   "host": "kubuntu",
+   "package": {
+    "manager": "dpkg",
+    "status": "ii",
+    "version": "26.1023.1058~nightly"
+   },
+   "files": {
+    "/etc/apt/sources.list.d/putgd.sources": {
+     "sha256": "5d5b79d0154fed9099c42beea5183e41876ba36920bed6ed45a747523d5cc852",
+     "bytes": 2036,
+     "mode": "0o644",
+     "mtime": "2026-10-22T05:19:16Z"
+    },
+    "/usr/share/keyrings/putgd-archive-keyring.gpg": {
+     "sha256": "76ab1b64e8a1d9504d3922fa44b116d6eb3c680e788be9cec46e106cd5258339",
+     "bytes": 1170,
+     "mode": "0o644",
+     "mtime": "2026-10-23T03:42:11Z"
+    },
+    "/etc/yum.repos.d/putgd.repo": null,
+    "/etc/yum.repos.d/putgd.repo.rpmsave": null,
+    "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd": null,
+    "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-nightly": null,
+    "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-stable": null,
+    "/usr/share/gnome-shell/extensions/putgd@put.gd/metadata.json": {
+     "sha256": "690be5bcfd1ee05783cd57a78851c56c0fe624131711b254cb46d062d0cb8046",
+     "bytes": 248,
+     "mode": "0o644",
+     "mtime": "2026-10-23T03:45:19Z"
+    }
+   },
+   "defaultProfile": {
+    "/home/patrick/.config/putgd": 1,
+    "/home/patrick/.local/state/putgd": 79,
+    "/home/patrick/.cache/putgd": null,
+    "/home/patrick/.local/share/putgd": 12
+   },
+   "autostart": null,
+   "userExtension": false,
+   "processes": [
+    {
+     "pid": 1501446,
+     "ppid": 1261,
+     "exe": "/usr/bin/putgd (deleted)",
+     "comm": "putgd",
+     "cmd": "/usr/bin/putgd --background ",
+     "qtPlatformPlugins": []
+    },
+    {
+     "pid": 1501457,
+     "ppid": 1501446,
+     "exe": "/usr/bin/putgd-ui (deleted)",
+     "comm": "putgd-ui",
+     "cmd": "/usr/bin/putgd-ui ",
+     "qtPlatformPlugins": [
+      "libqwayland.so"
+     ]
+    }
+   ]
+  }
+ },
+ "quit:old-resident": {
+  "pids": [
+   1501446
+  ],
+  "reply": true,
+  "gone": true,
+  "left": []
+ },
+ "launch:after-upgrade": {
+  "seconds": 0.36,
+  "processes": [
+   {
+    "pid": 1502023,
+    "ppid": 1261,
+    "exe": "/usr/bin/putgd",
+    "comm": "putgd",
+    "cmd": "/usr/bin/putgd --background ",
+    "qtPlatformPlugins": []
+   }
+  ],
+  "build": {
+   "baseVersion": "26.1023.1058",
+   "commitCount": 1058,
+   "dirty": false,
+   "gitCommit": "05991d9d42aad68d3bd233a609cf294d839835ed",
+   "gitTree": "5e53f777b912ef958678b2f23b400847c7cb4d33",
+   "packageVersion": "26.1023.1058~nightly",
+   "schemaVersion": 1,
+   "sourceProvenance": "git",
+   "version": "26.1023.1058-nightly"
+  },
+  "package": {
+   "manager": "dpkg",
+   "status": "ii",
+   "version": "26.1023.1058~nightly"
+  }
+ },
+ "snapshot:after": {
+  "label": "after",
+  "at": "2026-10-23T05:53:27Z",
+  "package": {
+   "manager": "dpkg",
+   "status": "ii",
+   "version": "26.1023.1058~nightly"
+  },
+  "config": {
+   "sha256": "0c24294846da9fc613194279aae2c5b4523fd8d12d7d225c30e848dbbb79b5a3",
+   "bytes": 3306,
+   "mode": "0o600",
+   "mtime": "2026-10-23T05:53:06Z"
+  },
+  "configFiles": {
+   "/home/patrick/.config/putgd/config.json": {
+    "sha256": "0c24294846da9fc613194279aae2c5b4523fd8d12d7d225c30e848dbbb79b5a3",
+    "bytes": 3306,
+    "mode": "0o600",
+    "mtime": "2026-10-23T05:53:06Z"
+   },
+   "/home/patrick/.config/putgd/putgd/config.json": null
+  },
+  "dataRoots": {
+   "/home/patrick/.local/share/putgd": [
+    "artifacts",
+    "history.sqlite",
+    "previews",
+    "resident.lock"
+   ],
+   "/home/patrick/.local/share/putgd/putgd": null
+  },
+  "processes": [
+   {
+    "pid": 1502023,
+    "ppid": 1261,
+    "exe": "/usr/bin/putgd",
+    "comm": "putgd",
+    "cmd": "/usr/bin/putgd --background ",
+    "qtPlatformPlugins": []
+   }
+  ],
+  "history": {
+   "db": "/home/patrick/.local/share/putgd/history.sqlite",
+   "userVersion": 7,
+   "integrity": "ok",
+   "tables": {
+    "history": 2,
+    "operations": 2,
+    "deletions": 0,
+    "deletion_targets": 0,
+    "cleared_history": 0,
+    "item_state": 2,
+    "sharing_operations": 0
+   },
+   "upload_status": {
+    "uploaded": 2
+   },
+   "local_status": {
+    "saved": 2
+   },
+   "remote_status": {
+    "not_requested": 2
+   },
+   "itemStateRemote": {
+    "not_requested": 2
+   }
+  },
+  "outputs": {
+   "archive/images/Screen-Capture-2026-10-23-00-52-54.png": "dc69fa6ecd89e90454e9e6e705049a3809d7900d6ab17116fa5f4ea577c50dce",
+   "archive/images/Screen-Capture-2026-10-23-00-53-01.png": "7dff5a2c2513e30c3e0939d42ebece2deec4112b58733213068e1b4cf22873ff"
+  },
+  "historyList": {
+   "ok": true,
+   "total": 2,
+   "seconds": 0.02
+  },
+  "build": {
+   "baseVersion": "26.1023.1058",
+   "commitCount": 1058,
+   "dirty": false,
+   "gitCommit": "05991d9d42aad68d3bd233a609cf294d839835ed",
+   "gitTree": "5e53f777b912ef958678b2f23b400847c7cb4d33",
+   "packageVersion": "26.1023.1058~nightly",
+   "schemaVersion": 1,
+   "sourceProvenance": "git",
+   "version": "26.1023.1058-nightly"
+  },
+  "storage": {
+   "locations": {
+    "config": {
+     "path": "/home/patrick/.config/putgd",
+     "state": "current"
+    },
+    "data": {
+     "path": "/home/patrick/.local/share/putgd",
+     "state": "current"
+    },
+    "schemaVersion": 1
+   },
+   "storage": {
+    "backblaze-b2": {
+     "activeHelpers": 0,
+     "protocolVersion": 1
+    },
+    "proton-drive": {
+     "activeHelpers": 0,
+     "protocolVersion": 1
+    },
+    "s3": {
+     "lanes": 1,
+     "moduleLiveDrivers": 0,
+     "queuedRequests": 0,
+     "retainedDrivers": 0,
+     "workerStarted": false
+    }
+   }
+  }
+ },
+ "compare:before->after": {
+  "configSame": true,
+  "userVersion": [
+   7,
+   7
+  ],
+  "integrity": "ok",
+  "historyRows": [
+   2,
+   2
+  ],
+  "statusCounts": {
+   "upload_status": [
+    {
+     "uploaded": 2
+    },
+    {
+     "uploaded": 2
+    }
+   ],
+   "local_status": [
+    {
+     "saved": 2
+    },
+    {
+     "saved": 2
+    }
+   ],
+   "remote_status": [
+    {
+     "not_requested": 2
+    },
+    {
+     "not_requested": 2
+    }
+   ]
+  },
+  "tablesAdded": [],
+  "outputsSame": true,
+  "rowsPreserved": true
+ },
+ "loginEnable": {
+  "patch": true,
+  "entry": "[Desktop Entry]\nType=Application\nName=put.gd\nExec=\"/usr/bin/putgd-launcher\" --background\nTerminal=false\nX-putgd-Managed=true\n",
+  "loginStartup": {
+   "applied": true,
+   "enabled": true
+  }
+ },
+ "loginCheck:I-x11": {
+  "entry": "[Desktop Entry]\nType=Application\nName=put.gd\nExec=\"/usr/bin/putgd-launcher\" --background\nTerminal=false\nX-putgd-Managed=true\n",
+  "processes": [
+   {
+    "pid": 1502023,
+    "ppid": 1261,
+    "exe": "/usr/bin/putgd",
+    "comm": "putgd",
+    "cmd": "/usr/bin/putgd --background ",
+    "qtPlatformPlugins": [],
+    "started": "2026-10-23T05:53:26Z"
+   }
+  ],
+  "shellStarted": "2026-10-23T05:54:29Z",
+  "fromPackage": true,
+  "package": {
+   "manager": "dpkg",
+   "status": "ii",
+   "version": "26.1023.1058~nightly"
+  }
+ },
+ "quit:pre-x11": {
+  "pids": [
+   1502023
+  ],
+  "reply": true,
+  "gone": true,
+  "left": []
+ },
+ "launch:x11": {
+  "seconds": 0.36,
+  "processes": [
+   {
+    "pid": 1503612,
+    "ppid": 1261,
+    "exe": "/usr/bin/putgd",
+    "comm": "putgd",
+    "cmd": "/usr/bin/putgd --background ",
+    "qtPlatformPlugins": [
+     "libqxcb.so"
+    ]
+   }
+  ],
+  "build": {
+   "baseVersion": "26.1023.1058",
+   "commitCount": 1058,
+   "dirty": false,
+   "gitCommit": "05991d9d42aad68d3bd233a609cf294d839835ed",
+   "gitTree": "5e53f777b912ef958678b2f23b400847c7cb4d33",
+   "packageVersion": "26.1023.1058~nightly",
+   "schemaVersion": 1,
+   "sourceProvenance": "git",
+   "version": "26.1023.1058-nightly"
+  },
+  "package": {
+   "manager": "dpkg",
+   "status": "ii",
+   "version": "26.1023.1058~nightly"
+  }
+ },
+ "record": {
+  "capabilities": {
+   "available": true,
+   "reason": null,
+   "acquisition": "x11",
+   "gstreamer": {
+    "audioSources": [
+     "pulsesrc",
+     "pipewiresrc"
+    ],
+    "available": true,
+    "elements": {
+     "aacparse": "1.28.2",
+     "appsink": "1.28.2",
+     "audioconvert": "1.28.2",
+     "audioresample": "1.28.2",
+     "avenc_aac": "1.28.2",
+     "compositor": "1.28.2",
+     "fdkaacenc": null,
+     "h264parse": "1.28.2",
+     "matroskamux": "1.28.2",
+     "mp4mux": "1.28.2",
+     "openh264enc": "1.28.2",
+     "pipewiresrc": "1.6.2",
+     "pulsesrc": "1.28.2",
+     "vaapih264enc": "1.26.8",
+     "vah264enc": null,
+     "vah264lpenc": "1.28.2",
+     "videoconvert": "1.28.2",
+     "videocrop": "1.28.2",
+     "videorate": "1.28.2",
+     "videoscale": "1.28.2",
+     "voaacenc": "1.28.2",
+     "vp9enc": "1.28.2",
+     "webmmux": "1.28.2",
+     "webpenc": "1.28.2",
+     "x264enc": "1.28.2",
+     "x265enc": "1.28.2",
+     "ximagesrc": "1.28.2"
+    },
+    "encoderFailures": {},
+    "liveAacEncoders": [
+     "avenc_aac",
+     "voaacenc"
+    ],
+    "liveH264Encoders": [
+     "vah264lpenc",
+     "vaapih264enc",
+     "x264enc",
+     "openh264enc"
+    ],
+    "liveSources": [
+     "ximagesrc",
+     "pipewiresrc"
+    ],
+    "pluginDirectories": [
+     "/usr/lib/x86_64-linux-gnu/gstreamer-1.0"
+    ],
+    "usableH264Encoders": [
+     "vah264lpenc",
+     "vaapih264enc",
+     "x264enc",
+     "openh264enc"
+    ],
+    "version": "GStreamer 1.28.2",
+    "webpAnimated": true
+   },
+   "exportEncoders": {
+    "h264": [
+     "h264_vaapi",
+     "libx264"
+    ],
+    "h265": [
+     "libx265"
+    ],
+    "vp9": [
+     "libvpx-vp9"
+    ]
+   },
+   "liveCapture": {
+    "audio": true,
+    "encoder": true,
+    "source": true
+   },
+   "kdeScreencast": null,
+   "formats": [
+    "mp4",
+    "webm",
+    "gif",
+    "webp"
+   ]
+  },
+  "entriesDuring": [
+   "putgd326-url.desktop"
+  ],
+  "patternRect": [
+   640,
+   360,
+   1280,
+   720
+  ],
+  "prepare": {
+   "state": "ready",
+   "target": {
+    "kind": "region",
+    "rect": [
+     640,
+     360,
+     640,
+     360
+    ]
+   }
+  },
+  "readyShot": {
+   "label": "record-ready",
+   "components": [
+    {
+     "blocks": 443,
+     "box": [
+      640,
+      728,
+      1232,
+      776
+     ]
+    }
+   ],
+   "colour": [
+    16,
+    16,
+    20
+   ],
+   "inner": [
+    642,
+    730,
+    1226,
+    773
+   ],
+   "changedShare": 1.0,
+   "kept": "/home/patrick/work/put.gd-nfa/runs/M2/crops/record-ready.png"
+  },
+  "liveEncoder": "vah264lpenc",
+  "recordingShot": {
+   "label": "recording",
+   "components": [
+    {
+     "blocks": 28546,
+     "box": [
+      0,
+      0,
+      1920,
+      1080
+     ]
+    }
+   ],
+   "colour": [
+    144,
+    0,
+    144
+   ],
+   "inner": [
+    2,
+    2,
+    1918,
+    1078
+   ],
+   "changedShare": 1.0,
+   "coverHueShare": 0.983,
+   "kept": "/home/patrick/work/put.gd-nfa/runs/M2/crops/recording.png"
+  },
+  "recordingFull": "/home/patrick/work/put.gd-nfa/runs/M2/full/recording.png",
+  "paused": true,
+  "stopped": {
+   "durationUs": 12358410,
+   "wallSeconds": 14.5,
+   "state": "reviewing"
+  },
+  "reviewSteps": [
+   {
+    "action": "seek",
+    "time": 1000000,
+    "ok": true,
+    "error": {
+     "code": "",
+     "details": {},
+     "message": ""
+    }
+   },
+   {
+    "action": "setIn",
+    "ok": true,
+    "error": {
+     "code": "",
+     "details": {},
+     "message": ""
+    }
+   },
+   {
+    "action": "seek",
+    "time": 11358410,
+    "ok": true,
+    "error": {
+     "code": "",
+     "details": {},
+     "message": ""
+    }
+   },
+   {
+    "action": "setOut",
+    "ok": true,
+    "error": {
+     "code": "",
+     "details": {},
+     "message": ""
+    }
+   },
+   {
+    "action": "seek",
+    "time": 2000000,
+    "ok": true,
+    "error": {
+     "code": "",
+     "details": {},
+     "message": ""
+    }
+   },
+   {
+    "action": "addMask",
+    "kind": "blur",
+    "rect": [
+     160,
+     90,
+     320,
+     180
+    ],
+    "ok": true,
+    "error": {
+     "code": "",
+     "details": {},
+     "message": ""
+    }
+   },
+   {
+    "action": "setMaskIn",
+    "ok": true,
+    "error": {
+     "code": "",
+     "details": {},
+     "message": ""
+    }
+   },
+   {
+    "action": "seek",
+    "time": 5000000,
+    "ok": true,
+    "error": {
+     "code": "",
+     "details": {},
+     "message": ""
+    }
+   },
+   {
+    "action": "setMaskOut",
+    "ok": true,
+    "error": {
+     "code": "",
+     "details": {},
+     "message": ""
+    }
+   },
+   {
+    "action": "strength",
+    "strength": 24,
+    "ok": true,
+    "error": {
+     "code": "",
+     "details": {},
+     "message": ""
+    }
+   },
+   {
+    "action": "seek",
+    "time": 3000000,
+    "ok": true,
+    "error": {
+     "code": "",
+     "details": {},
+     "message": ""
+    }
+   },
+   {
+    "action": "format",
+    "format": "mp4",
+    "codec": "h264",
+    "ok": true,
+    "error": {
+     "code": "",
+     "details": {},
+     "message": ""
+    }
+   },
+   {
+    "action": "format",
+    "format": "webm",
+    "codec": "vp9",
+    "ok": true,
+    "error": {
+     "code": "",
+     "details": {},
+     "message": ""
+    }
+   },
+   {
+    "action": "format",
+    "format": "gif",
+    "codec": "",
+    "ok": true,
+    "error": {
+     "code": "",
+     "details": {},
+     "message": ""
+    }
+   },
+   {
+    "action": "format",
+    "format": "webp",
+    "codec": "",
+    "ok": true,
+    "error": {
+     "code": "",
+     "details": {},
+     "message": ""
+    }
+   },
+   {
+    "action": "format",
+    "format": "mp4",
+    "codec": "h264",
+    "ok": true,
+    "error": {
+     "code": "",
+     "details": {},
+     "message": ""
+    }
+   }
+  ],
+  "edit": {
+   "masks": [
+    {
+     "end": 5000000,
+     "id": "f929c0c7-e1c3-4516-8de3-269ec7195d0b",
+     "kind": "blur",
+     "rect": [
+      160,
+      90,
+      320,
+      180
+     ],
+     "start": 2000000,
+     "strength": 24
+    }
+   ],
+   "revision": 7,
+   "trimEnd": 11358410,
+   "trimStart": 1000000
+  },
+  "reviewShot": {
+   "label": "review",
+   "components": [
+    {
+     "blocks": 7201,
+     "box": [
+      448,
+      176,
+      1472,
+      872
+     ]
+    },
+    {
+     "blocks": 1680,
+     "box": [
+      0,
+      1024,
+      1920,
+      1080
+     ]
+    }
+   ],
+   "colour": [
+    16,
+    16,
+    20
+   ],
+   "inner": [
+    480,
+    227,
+    1440,
+    827
+   ],
+   "changedShare": 1.0,
+   "ownShare": 0.291,
+   "kept": "/home/patrick/work/put.gd-nfa/runs/M2/crops/review.png"
+  },
+  "reviewFull": "/home/patrick/work/put.gd-nfa/runs/M2/full/review.png",
+  "exports": {
+   "mp4": {
+    "formatChosen": true,
+    "request": true,
+    "requestError": {
+     "code": "",
+     "details": {},
+     "message": ""
+    },
+    "status": "saved",
+    "bytes": 115135,
+    "error": null,
+    "durationUs": 10333333,
+    "motion": {
+     "motion": 68.039,
+     "compared": 7,
+     "durationMs": 10333,
+     "size": "640x360",
+     "by": "putgd-record"
+    },
+    "sha256": "a7f9b748f40563552d59978ba3a67653d7fdd228817d24f908f7bbee1f32a6c2"
+   },
+   "webm": {
+    "formatChosen": true,
+    "request": true,
+    "requestError": {
+     "code": "",
+     "details": {},
+     "message": ""
+    },
+    "status": "saved",
+    "bytes": 98773,
+    "error": null,
+    "durationUs": 10333333,
+    "motion": {
+     "motion": 68.233,
+     "compared": 7,
+     "durationMs": 10333,
+     "size": "640x360",
+     "by": "putgd-record"
+    },
+    "sha256": "abfc693757193a18529fcbc076b2f29a16f6992fe0b737ea1a33e66abe26e470"
+   },
+   "gif": {
+    "formatChosen": true,
+    "request": true,
+    "requestError": {
+     "code": "",
+     "details": {},
+     "message": ""
+    },
+    "status": "saved",
+    "bytes": 3688060,
+    "error": null,
+    "durationUs": 10333333,
+    "motion": {
+     "motion": 68.457,
+     "compared": 7,
+     "durationMs": 10340,
+     "size": "640x360",
+     "by": "putgd-record"
+    },
+    "sha256": "a5a3380472e0bc4dd61cbbabdfb5ba5512284c5ba10130572cbf51cfbe039d59"
+   },
+   "webp": {
+    "formatChosen": true,
+    "request": true,
+    "requestError": {
+     "code": "",
+     "details": {},
+     "message": ""
+    },
+    "status": "saved",
+    "bytes": 219950,
+    "error": null,
+    "durationUs": 10333333,
+    "motion": {
+     "motion": 80.579,
+     "frames": 155,
+     "size": "640x360",
+     "by": "pillow"
+    },
+    "sha256": "b9846a08622cd0eb7b986fcf244fddfb50639a054a3fe58be7f9746ef48b5510"
+   }
+  },
+  "saveCopyDialog": {
+   "open": {
+    "error": {
+     "code": "",
+     "details": {},
+     "message": ""
+    },
+    "ok": true,
+    "requestId": "96ad3b2d-6eaf-4577-878a-9e0fcce80881",
+    "result": {
+     "armed": null,
+     "edit": {
+      "masks": [
+       {
+        "end": 5000000,
+        "id": "f929c0c7-e1c3-4516-8de3-269ec7195d0b",
+        "kind": "blur",
+        "rect": [
+         160,
+         90,
+         320,
+         180
+        ],
+        "start": 2000000,
+        "strength": 24
+       }
+      ],
+      "revision": 7,
+      "trimEnd": 11358410,
+      "trimStart": 1000000
+     },
+     "exporting": false,
+     "fileDialog": {
+      "backend": "portal",
+      "fallbackReason": null,
+      "last": null,
+      "mode": "save",
+      "open": true,
+      "parentWindow": "x11:4200064",
+      "title": "Save a copy"
+     },
+     "format": {
+      "codec": "h264",
+      "format": "mp4"
+     },
+     "maskControls": {
+      "list": true,
+      "remove": true,
+      "strength": true,
+      "times": true
+     },
+     "masks": [
+      {
+       "id": "f929c0c7-e1c3-4516-8de3-269ec7195d0b",
+       "kind": "blur",
+       "timeline": [
+        170,
+        509,
+        174,
+        5
+       ]
+      }
+     ],
+     "minimumSize": [
+      713,
+      305
+     ],
+     "notice": null,
+     "playheadUs": 3000000,
+     "playing": false,
+     "revision": 7,
+     "scheme": "dark",
+     "selectedMaskId": "f929c0c7-e1c3-4516-8de3-269ec7195d0b",
+     "size": [
+      960,
+      600
+     ],
+     "speed": 1,
+     "state": "reviewing",
+     "status": "No audio",
+     "timeline": {
+      "lanes": 1,
+      "rect": [
+       47,
+       489,
+       732,
+       30
+      ]
+     },
+     "trim": {
+      "end": 11358410,
+      "start": 1000000
+     },
+     "video": {
+      "rect": [
+       58,
+       8,
+       844,
+       475
+      ],
+      "share": 0.6960069444444444
+     },
+     "visible": true
+    },
+    "schemaVersion": 1
+   },
+   "shot": {
+    "label": "review-save-dialog",
+    "components": [
+     {
+      "blocks": 9728,
+      "box": [
+       464,
+       192,
+       1456,
+       856
+      ]
+     },
+     {
+      "blocks": 5,
+      "box": [
+       1816,
+       1032,
+       1832,
+       1056
+      ]
+     }
+    ],
+    "colour": [
+     252,
+     252,
+     252
+    ],
+    "inner": [
+     756,
+     304,
+     1283,
+     701
+    ],
+    "changedShare": 1.0,
+    "kept": "/home/patrick/work/put.gd-nfa/runs/M2/crops/review-save-dialog.png"
+   },
+   "full": "/home/patrick/work/put.gd-nfa/runs/M2/full/review-save-dialog.png",
+   "inspect": {
+    "backend": null,
+    "fallbackReason": null,
+    "last": {
+     "backend": "portal",
+     "error": null,
+     "fallbackReason": null,
+     "mode": "save",
+     "path": "/home/patrick/afa-M2-review.mp4",
+     "status": "chosen"
+    },
+    "mode": null,
+    "open": false,
+    "parentWindow": null,
+    "title": null
+   },
+   "lastExport": {
+    "bytes": 115135,
+    "command": "saveCopy",
+    "durationUs": 10333333,
+    "path": "/home/patrick/afa-M2-review.mp4",
+    "revision": 7,
+    "status": "saved"
+   },
+   "exists": true,
+   "bytes": 115135,
+   "motion": {
+    "motion": 68.039,
+    "compared": 7,
+    "durationMs": 10333,
+    "size": "640x360",
+    "by": "putgd-record"
+   }
+  },
+  "upload": {
+   "id": "f35f2d1b-6bca-4461-ad29-d967a92c4909",
+   "state": "partial",
+   "copyStatus": "no_result",
+   "items": [
+    {
+     "name": "Screen-Recording-2026-10-23-00-55-25.mp4",
+     "mime": "video/mp4",
+     "uploadStatus": "failed",
+     "link": "",
+     "local": {
+      "error": {
+       "code": "",
+       "details": {},
+       "message": ""
+      },
+      "path": "/home/patrick/work/put.gd-nfa/runs/M2/archive/videos/Screen-Recording-2026-10-23-00-55-25.mp4",
+      "status": "saved"
+     }
+    }
+   ],
+   "error": {
+    "code": "",
+    "details": {},
+    "message": ""
+   }
+  },
+  "uploadNotifications": [],
+  "entriesAfter": [
+   "putgd326-url.desktop"
+  ]
+ },
+ "control": {
+  "mp4": {
+   "bytes": 5571,
+   "motion": {
+    "motion": 0.0,
+    "compared": 7,
+    "durationMs": 6100,
+    "size": "640x360",
+    "by": "putgd-record"
+   }
+  },
+  "gif": {
+   "bytes": 3901,
+   "motion": {
+    "motion": 0.0,
+    "compared": 7,
+    "durationMs": 6070,
+    "size": "640x360",
+    "by": "putgd-record"
+   }
+  }
+ },
+ "quit:pre-wayland": {
+  "pids": [
+   1503612
+  ],
+  "reply": true,
+  "gone": true,
+  "left": []
+ },
+ "loginCheck:I": {
+  "entry": "[Desktop Entry]\nType=Application\nName=put.gd\nExec=\"/usr/bin/putgd-launcher\" --background\nTerminal=false\nX-putgd-Managed=true\n",
+  "processes": [
+   {
+    "pid": 1507871,
+    "ppid": 1261,
+    "exe": "/usr/bin/putgd",
+    "comm": "putgd",
+    "cmd": "/usr/bin/putgd --background ",
+    "qtPlatformPlugins": [],
+    "started": "2026-10-23T05:56:42Z"
+   }
+  ],
+  "shellStarted": "2026-10-23T05:56:41Z",
+  "fromPackage": true,
+  "package": {
+   "manager": "dpkg",
+   "status": "ii",
+   "version": "26.1023.1058~nightly"
+  }
+ },
+ "frame:k72-I-after-login": {
+  "at": "2026-10-23T05:57:07Z",
+  "full": "/home/patrick/work/put.gd-nfa/runs/M2/full/k72-I-after-login.png",
+  "processes": [
+   {
+    "pid": 1507871,
+    "ppid": 1261,
+    "exe": "/usr/bin/putgd",
+    "comm": "putgd",
+    "cmd": "/usr/bin/putgd --background ",
+    "qtPlatformPlugins": []
+   }
+  ]
+ },
+ "pkg:remove": {
+  "label": "remove",
+  "command": [
+   "apt-get",
+   "remove",
+   "-y",
+   "putgd"
+  ],
+  "before": {
+   "at": "2026-10-23T05:57:21Z",
+   "host": "kubuntu",
+   "package": {
+    "manager": "dpkg",
+    "status": "ii",
+    "version": "26.1023.1058~nightly"
+   },
+   "files": {
+    "/etc/apt/sources.list.d/putgd.sources": {
+     "sha256": "5d5b79d0154fed9099c42beea5183e41876ba36920bed6ed45a747523d5cc852",
+     "bytes": 2036,
+     "mode": "0o644",
+     "mtime": "2026-10-22T05:19:16Z"
+    },
+    "/usr/share/keyrings/putgd-archive-keyring.gpg": {
+     "sha256": "76ab1b64e8a1d9504d3922fa44b116d6eb3c680e788be9cec46e106cd5258339",
+     "bytes": 1170,
+     "mode": "0o644",
+     "mtime": "2026-10-23T03:42:11Z"
+    },
+    "/etc/yum.repos.d/putgd.repo": null,
+    "/etc/yum.repos.d/putgd.repo.rpmsave": null,
+    "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd": null,
+    "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-nightly": null,
+    "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-stable": null,
+    "/usr/share/gnome-shell/extensions/putgd@put.gd/metadata.json": {
+     "sha256": "690be5bcfd1ee05783cd57a78851c56c0fe624131711b254cb46d062d0cb8046",
+     "bytes": 248,
+     "mode": "0o644",
+     "mtime": "2026-10-23T03:45:19Z"
+    }
+   },
+   "defaultProfile": {
+    "/home/patrick/.config/putgd": 1,
+    "/home/patrick/.local/state/putgd": 82,
+    "/home/patrick/.cache/putgd": null,
+    "/home/patrick/.local/share/putgd": 17
+   },
+   "autostart": "[Desktop Entry]\nType=Application\nName=put.gd\nExec=\"/usr/bin/putgd-launcher\" --background\nTerminal=false\nX-putgd-Managed=true\n",
+   "userExtension": false,
+   "processes": [
+    {
+     "pid": 1507871,
+     "ppid": 1261,
+     "exe": "/usr/bin/putgd",
+     "comm": "putgd",
+     "cmd": "/usr/bin/putgd --background ",
+     "qtPlatformPlugins": []
+    }
+   ]
+  },
+  "startedAt": "2026-10-23T05:57:21Z",
+  "simulation": {
+   "command": [
+    "apt-get",
+    "-s",
+    "remove",
+    "putgd"
+   ],
+   "exit": 0,
+   "changes": [
+    {
+     "op": "Remv",
+     "package": "putgd",
+     "from": "26.1023.1058~nightly",
+     "to": null
+    }
+   ],
+   "tail": "NOTE: This is only a simulation!\n      apt-get needs root privileges for real execution.\n      Keep also in mind that locking is deactivated,\n      so don't depend on the relevance to the real current situation!\nReading package lists...\nBuilding dependency tree...\nReading state information...\nSolving dependencies...\nThe following packages will be REMOVED:\n  putgd\n0 upgraded, 0 newly installed, 1 to remove and 63 not upgraded.\nRemv putgd [26.1023.1058~nightly]\n"
+  },
+  "otherPackages": [],
+  "exit": 0,
+  "seconds": 4.4,
+  "log": "/home/patrick/work/put.gd-nfa/runs/M2/logs/pkg-remove.log",
+  "conffilePrompt": false,
+  "signature": [],
+  "fetched": [],
+  "tail": "Reading package lists...\nBuilding dependency tree...\nReading state information...\nSolving dependencies...\nThe following packages will be REMOVED:\n  putgd\n0 upgraded, 0 newly installed, 1 to remove and 63 not upgraded.\nAfter this operation, 129 MB disk space will be freed.\n(Reading database\u2026 \n(Reading database\u2026 5%\n(Reading database\u2026 10%\n(Reading database\u2026 15%\n(Reading database\u2026 20%\n(Reading database\u2026 25%\n(Reading database\u2026 30%\n(Reading database\u2026 35%\n(Reading database\u2026 40%\n(Reading database\u2026 45%\n(Reading database\u2026 50%\n(Reading database\u2026 55%\n(Reading database\u2026 60%\n(Reading database\u2026 65%\n(Reading database\u2026 70%\n(Reading database\u2026 75%\n(Reading database\u2026 80%\n(Reading database\u2026 85%\n(Reading database\u2026 90%\n(Reading database\u2026 95%\n(Reading database\u2026 100%\n(Reading database\u2026 301732 files and directories currently installed.)\nRemoving putgd (26.1023.1058~nightly)\u2026\nProcessing triggers for hicolor-icon-theme (0.18-2build1)\u2026\nProcessing triggers for desktop-file-utils (0.28-1build1)\u2026\n",
+  "after": {
+   "at": "2026-10-23T05:57:26Z",
+   "host": "kubuntu",
+   "package": {
+    "manager": "dpkg",
+    "status": "rc",
+    "version": "26.1023.1058~nightly"
+   },
+   "files": {
+    "/etc/apt/sources.list.d/putgd.sources": {
+     "sha256": "5d5b79d0154fed9099c42beea5183e41876ba36920bed6ed45a747523d5cc852",
+     "bytes": 2036,
+     "mode": "0o644",
+     "mtime": "2026-10-22T05:19:16Z"
+    },
+    "/usr/share/keyrings/putgd-archive-keyring.gpg": null,
+    "/etc/yum.repos.d/putgd.repo": null,
+    "/etc/yum.repos.d/putgd.repo.rpmsave": null,
+    "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd": null,
+    "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-nightly": null,
+    "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-stable": null,
+    "/usr/share/gnome-shell/extensions/putgd@put.gd/metadata.json": null
+   },
+   "defaultProfile": {
+    "/home/patrick/.config/putgd": 1,
+    "/home/patrick/.local/state/putgd": 82,
+    "/home/patrick/.cache/putgd": null,
+    "/home/patrick/.local/share/putgd": 17
+   },
+   "autostart": "[Desktop Entry]\nType=Application\nName=put.gd\nExec=\"/usr/bin/putgd-launcher\" --background\nTerminal=false\nX-putgd-Managed=true\n",
+   "userExtension": false,
+   "processes": [
+    {
+     "pid": 1507871,
+     "ppid": 1261,
+     "exe": "/usr/bin/putgd (deleted)",
+     "comm": "putgd",
+     "cmd": "/usr/bin/putgd --background ",
+     "qtPlatformPlugins": []
+    }
+   ]
+  }
+ },
+ "loginCheck:P": {
+  "entry": "[Desktop Entry]\nType=Application\nName=put.gd\nExec=\"/usr/bin/putgd-launcher\" --background\nTerminal=false\nX-putgd-Managed=true\n",
+  "processes": [],
+  "shellStarted": "2026-10-23T05:57:53Z",
+  "fromPackage": false,
+  "package": {
+   "manager": "dpkg",
+   "status": null,
+   "version": null
+  }
+ },
+ "autostart:after-removal": {
+  "label": "after-removal",
+  "entry": "[Desktop Entry]\nType=Application\nName=put.gd\nExec=\"/usr/bin/putgd-launcher\" --background\nTerminal=false\nX-putgd-Managed=true\n",
+  "entryInfo": {
+   "sha256": "4662cdb185a7ab7eea947549bc21e9a38fa9d4fd197e7dc9660323446812307a",
+   "bytes": 125,
+   "mode": "0o600",
+   "mtime": "2026-10-23T05:54:17Z"
+  },
+  "execTargetExists": false,
+  "shellStarted": "2026-10-23T05:55:53Z",
+  "journal": [
+   "user 2026-10-23T00:56:42-05:00 kubuntu systemd[1261]: Starting app-putgd@autostart.service - put.gd...",
+   "user 2026-10-23T00:56:42-05:00 kubuntu systemd[1261]: Started app-putgd@autostart.service - put.gd.",
+   "user 2026-10-23T00:57:42-05:00 kubuntu drkonqi-coredump-processor[1507744]: \"/tmp/.mount_putgd-NELjpP/usr/bin/putgd-ui\" 659089 \"/var/lib/systemd/coredump/core.putgd-ui.1000.46fa7ebe245447bd8bf910a425593a05.659089.1792373107000000.zst\"",
+   "user 2026-10-23T00:57:43-05:00 kubuntu drkonqi-coredump-processor[1507744]: \"/tmp/.mount_putgd-NELjpP/usr/bin/putgd-ui\" 660728 \"/var/lib/systemd/coredump/core.putgd-ui.1000.46fa7ebe245447bd8bf910a425593a05.660728.1792373134000000.zst\"",
+   "user 2026-10-23T00:57:43-05:00 kubuntu drkonqi-coredump-processor[1507744]: \"/tmp/.mount_putgd-kkgCMA/usr/bin/putgd-ui\" 693497 \"/var/lib/systemd/coredump/core.putgd-ui.1000.46fa7ebe245447bd8bf910a425593a05.693497.1792376075000000.zst\"",
+   "user 2026-10-23T00:57:43-05:00 kubuntu drkonqi-coredump-processor[1507744]: \"/tmp/.mount_putgd-kkgCMA/usr/bin/putgd-ui\" 694689 \"/var/lib/systemd/coredump/core.putgd-ui.1000.46fa7ebe245447bd8bf910a425593a05.694689.1792376095000000.zst\"",
+   "user 2026-10-23T00:57:43-05:00 kubuntu drkonqi-coredump-processor[1507744]: \"/tmp/.mount_putgd-LAeakp/usr/bin/putgd-ui\" 746767 \"/var/lib/systemd/coredump/core.putgd-ui.1000.46fa7ebe245447bd8bf910a425593a05.746767.1792377736000000.zst\"",
+   "user 2026-10-23T00:57:43-05:00 kubuntu drkonqi-coredump-processor[1507744]: \"/tmp/.mount_putgd-LAeakp/usr/bin/putgd-ui\" 748073 \"/var/lib/systemd/coredump/core.putgd-ui.1000.46fa7ebe245447bd8bf910a425593a05.748073.1792377753000000.zst\"",
+   "user 2026-10-23T00:57:44-05:00 kubuntu drkonqi-coredump-processor[1507744]: \"/tmp/.mount_putgd-CbamLO/usr/bin/putgd-ui\" 791408 \"/var/lib/systemd/coredump/core.putgd-ui.1000.46fa7ebe245447bd8bf910a425593a05.791408.1792380298000000.zst\"",
+   "user 2026-10-23T00:57:44-05:00 kubuntu drkonqi-coredump-processor[1507744]: \"/tmp/.mount_putgd-CbamLO/usr/bin/putgd-ui\" 792589 \"/var/lib/systemd/coredump/core.putgd-ui.1000.46fa7ebe245447bd8bf910a425593a05.792589.1792380317000000.zst\"",
+   "user 2026-10-23T00:57:44-05:00 kubuntu drkonqi-coredump-processor[1507744]: \"/tmp/.mount_putgd-boDJEB/usr/bin/putgd-ui\" 793669 \"/var/lib/systemd/coredump/core.putgd-ui.1000.46fa7ebe245447bd8bf910a425593a05.793669.1792380655000000.zst\"",
+   "user 2026-10-23T00:57:44-05:00 kubuntu drkonqi-coredump-processor[1507744]: \"/tmp/.mount_putgd-boDJEB/usr/bin/putgd-ui\" 793688 \"/var/lib/systemd/coredump/core.putgd-ui.1000.46fa7ebe245447bd8bf910a425593a05.793688.1792380656000000.zst\"",
+   "user 2026-10-23T00:57:45-05:00 kubuntu systemd[1261]: Stopping app-putgd@autostart.service - put.gd...",
+   "user 2026-10-23T00:57:45-05:00 kubuntu systemd[1261]: Stopped app-putgd@autostart.service - put.gd.",
+   "user 2026-10-23T00:57:52-05:00 kubuntu systemd-xdg-autostart-generator[1509076]: Exec binary '/usr/bin/putgd-launcher' does not exist: No such file or directory",
+   "user 2026-10-23T00:57:52-05:00 kubuntu systemd-xdg-autostart-generator[1509076]: /home/patrick/.config/autostart/putgd.desktop: not generating unit, executable specified in Exec= does not exist.",
+   "system 2026-10-23T00:56:42-05:00 kubuntu systemd[1261]: Starting app-putgd@autostart.service - put.gd...",
+   "system 2026-10-23T00:56:42-05:00 kubuntu systemd[1261]: Started app-putgd@autostart.service - put.gd.",
+   "system 2026-10-23T00:57:42-05:00 kubuntu drkonqi-coredump-processor[1507744]: \"/tmp/.mount_putgd-NELjpP/usr/bin/putgd-ui\" 659089 \"/var/lib/systemd/coredump/core.putgd-ui.1000.46fa7ebe245447bd8bf910a425593a05.659089.1792373107000000.zst\"",
+   "system 2026-10-23T00:57:43-05:00 kubuntu drkonqi-coredump-processor[1507744]: \"/tmp/.mount_putgd-NELjpP/usr/bin/putgd-ui\" 660728 \"/var/lib/systemd/coredump/core.putgd-ui.1000.46fa7ebe245447bd8bf910a425593a05.660728.1792373134000000.zst\"",
+   "system 2026-10-23T00:57:43-05:00 kubuntu drkonqi-coredump-processor[1507744]: \"/tmp/.mount_putgd-kkgCMA/usr/bin/putgd-ui\" 693497 \"/var/lib/systemd/coredump/core.putgd-ui.1000.46fa7ebe245447bd8bf910a425593a05.693497.1792376075000000.zst\"",
+   "system 2026-10-23T00:57:43-05:00 kubuntu drkonqi-coredump-processor[1507744]: \"/tmp/.mount_putgd-kkgCMA/usr/bin/putgd-ui\" 694689 \"/var/lib/systemd/coredump/core.putgd-ui.1000.46fa7ebe245447bd8bf910a425593a05.694689.1792376095000000.zst\"",
+   "system 2026-10-23T00:57:43-05:00 kubuntu drkonqi-coredump-processor[1507744]: \"/tmp/.mount_putgd-LAeakp/usr/bin/putgd-ui\" 746767 \"/var/lib/systemd/coredump/core.putgd-ui.1000.46fa7ebe245447bd8bf910a425593a05.746767.1792377736000000.zst\"",
+   "system 2026-10-23T00:57:43-05:00 kubuntu drkonqi-coredump-processor[1507744]: \"/tmp/.mount_putgd-LAeakp/usr/bin/putgd-ui\" 748073 \"/var/lib/systemd/coredump/core.putgd-ui.1000.46fa7ebe245447bd8bf910a425593a05.748073.1792377753000000.zst\"",
+   "system 2026-10-23T00:57:44-05:00 kubuntu drkonqi-coredump-processor[1507744]: \"/tmp/.mount_putgd-CbamLO/usr/bin/putgd-ui\" 791408 \"/var/lib/systemd/coredump/core.putgd-ui.1000.46fa7ebe245447bd8bf910a425593a05.791408.1792380298000000.zst\"",
+   "system 2026-10-23T00:57:44-05:00 kubuntu drkonqi-coredump-processor[1507744]: \"/tmp/.mount_putgd-CbamLO/usr/bin/putgd-ui\" 792589 \"/var/lib/systemd/coredump/core.putgd-ui.1000.46fa7ebe245447bd8bf910a425593a05.792589.1792380317000000.zst\"",
+   "system 2026-10-23T00:57:44-05:00 kubuntu drkonqi-coredump-processor[1507744]: \"/tmp/.mount_putgd-boDJEB/usr/bin/putgd-ui\" 793669 \"/var/lib/systemd/coredump/core.putgd-ui.1000.46fa7ebe245447bd8bf910a425593a05.793669.1792380655000000.zst\"",
+   "system 2026-10-23T00:57:44-05:00 kubuntu drkonqi-coredump-processor[1507744]: \"/tmp/.mount_putgd-boDJEB/usr/bin/putgd-ui\" 793688 \"/var/lib/systemd/coredump/core.putgd-ui.1000.46fa7ebe245447bd8bf910a425593a05.793688.1792380656000000.zst\"",
+   "system 2026-10-23T00:57:45-05:00 kubuntu systemd[1261]: Stopping app-putgd@autostart.service - put.gd...",
+   "system 2026-10-23T00:57:45-05:00 kubuntu systemd[1261]: Stopped app-putgd@autostart.service - put.gd.",
+   "system 2026-10-23T00:57:52-05:00 kubuntu systemd-xdg-autostart-generator[1509076]: Exec binary '/usr/bin/putgd-launcher' does not exist: No such file or directory",
+   "system 2026-10-23T00:57:52-05:00 kubuntu systemd-xdg-autostart-generator[1509076]: /home/patrick/.config/autostart/putgd.desktop: not generating unit, executable specified in Exec= does not exist."
+  ],
+  "failedUnits": [],
+  "autostartUnits": [],
+  "generatorUnit": [],
+  "processes": [],
+  "package": {
+   "manager": "dpkg",
+   "status": null,
+   "version": null
+  }
+ },
+ "userDataAfterPurge": {
+  "configSameAsAfterUpgrade": false,
+  "historyRows": 3,
+  "userVersion": 7
+ },
+ "frame:k72-Q-autostart-kcm": {
+  "at": "2026-10-23T05:58:36Z",
+  "full": "/home/patrick/work/put.gd-nfa/runs/M2/full/k72-Q-autostart-kcm.png",
+  "processes": []
+ },
+ "tryexec": {
+  "before": "[Desktop Entry]\nType=Application\nName=put.gd\nExec=\"/usr/bin/putgd-launcher\" --background\nTerminal=false\nX-putgd-Managed=true\n",
+  "after": "[Desktop Entry]\nType=Application\nName=put.gd\nTryExec=/usr/bin/putgd-launcher\nExec=\"/usr/bin/putgd-launcher\" --background\nTerminal=false\nX-putgd-Managed=true\n"
+ },
+ "autostart:tryexec": {
+  "label": "tryexec",
+  "entry": "[Desktop Entry]\nType=Application\nName=put.gd\nTryExec=/usr/bin/putgd-launcher\nExec=\"/usr/bin/putgd-launcher\" --background\nTerminal=false\nX-putgd-Managed=true\n",
+  "entryInfo": {
+   "sha256": "c460a4f33cd4bdcac7eb612ef683f1914a54cf4363f0d6ae9aaa2882509556ce",
+   "bytes": 157,
+   "mode": "0o600",
+   "mtime": "2026-10-23T05:58:59Z"
+  },
+  "execTargetExists": false,
+  "shellStarted": "2026-10-23T05:57:08Z",
+  "journal": [
+   "user 2026-10-23T00:57:42-05:00 kubuntu drkonqi-coredump-processor[1507744]: \"/tmp/.mount_putgd-NELjpP/usr/bin/putgd-ui\" 659089 \"/var/lib/systemd/coredump/core.putgd-ui.1000.46fa7ebe245447bd8bf910a425593a05.659089.1792373107000000.zst\"",
+   "user 2026-10-23T00:57:43-05:00 kubuntu drkonqi-coredump-processor[1507744]: \"/tmp/.mount_putgd-NELjpP/usr/bin/putgd-ui\" 660728 \"/var/lib/systemd/coredump/core.putgd-ui.1000.46fa7ebe245447bd8bf910a425593a05.660728.1792373134000000.zst\"",
+   "user 2026-10-23T00:57:43-05:00 kubuntu drkonqi-coredump-processor[1507744]: \"/tmp/.mount_putgd-kkgCMA/usr/bin/putgd-ui\" 693497 \"/var/lib/systemd/coredump/core.putgd-ui.1000.46fa7ebe245447bd8bf910a425593a05.693497.1792376075000000.zst\"",
+   "user 2026-10-23T00:57:43-05:00 kubuntu drkonqi-coredump-processor[1507744]: \"/tmp/.mount_putgd-kkgCMA/usr/bin/putgd-ui\" 694689 \"/var/lib/systemd/coredump/core.putgd-ui.1000.46fa7ebe245447bd8bf910a425593a05.694689.1792376095000000.zst\"",
+   "user 2026-10-23T00:57:43-05:00 kubuntu drkonqi-coredump-processor[1507744]: \"/tmp/.mount_putgd-LAeakp/usr/bin/putgd-ui\" 746767 \"/var/lib/systemd/coredump/core.putgd-ui.1000.46fa7ebe245447bd8bf910a425593a05.746767.1792377736000000.zst\"",
+   "user 2026-10-23T00:57:43-05:00 kubuntu drkonqi-coredump-processor[1507744]: \"/tmp/.mount_putgd-LAeakp/usr/bin/putgd-ui\" 748073 \"/var/lib/systemd/coredump/core.putgd-ui.1000.46fa7ebe245447bd8bf910a425593a05.748073.1792377753000000.zst\"",
+   "user 2026-10-23T00:57:44-05:00 kubuntu drkonqi-coredump-processor[1507744]: \"/tmp/.mount_putgd-CbamLO/usr/bin/putgd-ui\" 791408 \"/var/lib/systemd/coredump/core.putgd-ui.1000.46fa7ebe245447bd8bf910a425593a05.791408.1792380298000000.zst\"",
+   "user 2026-10-23T00:57:44-05:00 kubuntu drkonqi-coredump-processor[1507744]: \"/tmp/.mount_putgd-CbamLO/usr/bin/putgd-ui\" 792589 \"/var/lib/systemd/coredump/core.putgd-ui.1000.46fa7ebe245447bd8bf910a425593a05.792589.1792380317000000.zst\"",
+   "user 2026-10-23T00:57:44-05:00 kubuntu drkonqi-coredump-processor[1507744]: \"/tmp/.mount_putgd-boDJEB/usr/bin/putgd-ui\" 793669 \"/var/lib/systemd/coredump/core.putgd-ui.1000.46fa7ebe245447bd8bf910a425593a05.793669.1792380655000000.zst\"",
+   "user 2026-10-23T00:57:44-05:00 kubuntu drkonqi-coredump-processor[1507744]: \"/tmp/.mount_putgd-boDJEB/usr/bin/putgd-ui\" 793688 \"/var/lib/systemd/coredump/core.putgd-ui.1000.46fa7ebe245447bd8bf910a425593a05.793688.1792380656000000.zst\"",
+   "user 2026-10-23T00:57:45-05:00 kubuntu systemd[1261]: Stopping app-putgd@autostart.service - put.gd...",
+   "user 2026-10-23T00:57:45-05:00 kubuntu systemd[1261]: Stopped app-putgd@autostart.service - put.gd.",
+   "user 2026-10-23T00:57:52-05:00 kubuntu systemd-xdg-autostart-generator[1509076]: Exec binary '/usr/bin/putgd-launcher' does not exist: No such file or directory",
+   "user 2026-10-23T00:57:52-05:00 kubuntu systemd-xdg-autostart-generator[1509076]: /home/patrick/.config/autostart/putgd.desktop: not generating unit, executable specified in Exec= does not exist.",
+   "user 2026-10-23T00:58:54-05:00 kubuntu drkonqi-coredump-processor[1509272]: \"/tmp/.mount_putgd-NELjpP/usr/bin/putgd-ui\" 659089 \"/var/lib/systemd/coredump/core.putgd-ui.1000.46fa7ebe245447bd8bf910a425593a05.659089.1792373107000000.zst\"",
+   "user 2026-10-23T00:58:54-05:00 kubuntu drkonqi-coredump-processor[1509272]: \"/tmp/.mount_putgd-NELjpP/usr/bin/putgd-ui\" 660728 \"/var/lib/systemd/coredump/core.putgd-ui.1000.46fa7ebe245447bd8bf910a425593a05.660728.1792373134000000.zst\"",
+   "user 2026-10-23T00:58:55-05:00 kubuntu drkonqi-coredump-processor[1509272]: \"/tmp/.mount_putgd-kkgCMA/usr/bin/putgd-ui\" 693497 \"/var/lib/systemd/coredump/core.putgd-ui.1000.46fa7ebe245447bd8bf910a425593a05.693497.1792376075000000.zst\"",
+   "user 2026-10-23T00:58:55-05:00 kubuntu drkonqi-coredump-processor[1509272]: \"/tmp/.mount_putgd-kkgCMA/usr/bin/putgd-ui\" 694689 \"/var/lib/systemd/coredump/core.putgd-ui.1000.46fa7ebe245447bd8bf910a425593a05.694689.1792376095000000.zst\"",
+   "user 2026-10-23T00:58:55-05:00 kubuntu drkonqi-coredump-processor[1509272]: \"/tmp/.mount_putgd-LAeakp/usr/bin/putgd-ui\" 746767 \"/var/lib/systemd/coredump/core.putgd-ui.1000.46fa7ebe245447bd8bf910a425593a05.746767.1792377736000000.zst\"",
+   "user 2026-10-23T00:58:55-05:00 kubuntu drkonqi-coredump-processor[1509272]: \"/tmp/.mount_putgd-LAeakp/usr/bin/putgd-ui\" 748073 \"/var/lib/systemd/coredump/core.putgd-ui.1000.46fa7ebe245447bd8bf910a425593a05.748073.1792377753000000.zst\"",
+   "user 2026-10-23T00:58:55-05:00 kubuntu drkonqi-coredump-processor[1509272]: \"/tmp/.mount_putgd-CbamLO/usr/bin/putgd-ui\" 791408 \"/var/lib/systemd/coredump/core.putgd-ui.1000.46fa7ebe245447bd8bf910a425593a05.791408.1792380298000000.zst\"",
+   "user 2026-10-23T00:58:55-05:00 kubuntu drkonqi-coredump-processor[1509272]: \"/tmp/.mount_putgd-CbamLO/usr/bin/putgd-ui\" 792589 \"/var/lib/systemd/coredump/core.putgd-ui.1000.46fa7ebe245447bd8bf910a425593a05.792589.1792380317000000.zst\"",
+   "user 2026-10-23T00:58:56-05:00 kubuntu drkonqi-coredump-processor[1509272]: \"/tmp/.mount_putgd-boDJEB/usr/bin/putgd-ui\" 793669 \"/var/lib/systemd/coredump/core.putgd-ui.1000.46fa7ebe245447bd8bf910a425593a05.793669.1792380655000000.zst\"",
+   "user 2026-10-23T00:58:56-05:00 kubuntu drkonqi-coredump-processor[1509272]: \"/tmp/.mount_putgd-boDJEB/usr/bin/putgd-ui\" 793688 \"/var/lib/systemd/coredump/core.putgd-ui.1000.46fa7ebe245447bd8bf910a425593a05.793688.1792380656000000.zst\"",
+   "system 2026-10-23T00:57:42-05:00 kubuntu drkonqi-coredump-processor[1507744]: \"/tmp/.mount_putgd-NELjpP/usr/bin/putgd-ui\" 659089 \"/var/lib/systemd/coredump/core.putgd-ui.1000.46fa7ebe245447bd8bf910a425593a05.659089.1792373107000000.zst\"",
+   "system 2026-10-23T00:57:43-05:00 kubuntu drkonqi-coredump-processor[1507744]: \"/tmp/.mount_putgd-NELjpP/usr/bin/putgd-ui\" 660728 \"/var/lib/systemd/coredump/core.putgd-ui.1000.46fa7ebe245447bd8bf910a425593a05.660728.1792373134000000.zst\"",
+   "system 2026-10-23T00:57:43-05:00 kubuntu drkonqi-coredump-processor[1507744]: \"/tmp/.mount_putgd-kkgCMA/usr/bin/putgd-ui\" 693497 \"/var/lib/systemd/coredump/core.putgd-ui.1000.46fa7ebe245447bd8bf910a425593a05.693497.1792376075000000.zst\"",
+   "system 2026-10-23T00:57:43-05:00 kubuntu drkonqi-coredump-processor[1507744]: \"/tmp/.mount_putgd-kkgCMA/usr/bin/putgd-ui\" 694689 \"/var/lib/systemd/coredump/core.putgd-ui.1000.46fa7ebe245447bd8bf910a425593a05.694689.1792376095000000.zst\"",
+   "system 2026-10-23T00:57:43-05:00 kubuntu drkonqi-coredump-processor[1507744]: \"/tmp/.mount_putgd-LAeakp/usr/bin/putgd-ui\" 746767 \"/var/lib/systemd/coredump/core.putgd-ui.1000.46fa7ebe245447bd8bf910a425593a05.746767.1792377736000000.zst\"",
+   "system 2026-10-23T00:57:43-05:00 kubuntu drkonqi-coredump-processor[1507744]: \"/tmp/.mount_putgd-LAeakp/usr/bin/putgd-ui\" 748073 \"/var/lib/systemd/coredump/core.putgd-ui.1000.46fa7ebe245447bd8bf910a425593a05.748073.1792377753000000.zst\"",
+   "system 2026-10-23T00:57:44-05:00 kubuntu drkonqi-coredump-processor[1507744]: \"/tmp/.mount_putgd-CbamLO/usr/bin/putgd-ui\" 791408 \"/var/lib/systemd/coredump/core.putgd-ui.1000.46fa7ebe245447bd8bf910a425593a05.791408.1792380298000000.zst\"",
+   "system 2026-10-23T00:57:44-05:00 kubuntu drkonqi-coredump-processor[1507744]: \"/tmp/.mount_putgd-CbamLO/usr/bin/putgd-ui\" 792589 \"/var/lib/systemd/coredump/core.putgd-ui.1000.46fa7ebe245447bd8bf910a425593a05.792589.1792380317000000.zst\"",
+   "system 2026-10-23T00:57:44-05:00 kubuntu drkonqi-coredump-processor[1507744]: \"/tmp/.mount_putgd-boDJEB/usr/bin/putgd-ui\" 793669 \"/var/lib/systemd/coredump/core.putgd-ui.1000.46fa7ebe245447bd8bf910a425593a05.793669.1792380655000000.zst\"",
+   "system 2026-10-23T00:57:44-05:00 kubuntu drkonqi-coredump-processor[1507744]: \"/tmp/.mount_putgd-boDJEB/usr/bin/putgd-ui\" 793688 \"/var/lib/systemd/coredump/core.putgd-ui.1000.46fa7ebe245447bd8bf910a425593a05.793688.1792380656000000.zst\"",
+   "system 2026-10-23T00:57:45-05:00 kubuntu systemd[1261]: Stopping app-putgd@autostart.service - put.gd...",
+   "system 2026-10-23T00:57:45-05:00 kubuntu systemd[1261]: Stopped app-putgd@autostart.service - put.gd.",
+   "system 2026-10-23T00:57:52-05:00 kubuntu systemd-xdg-autostart-generator[1509076]: Exec binary '/usr/bin/putgd-launcher' does not exist: No such file or directory",
+   "system 2026-10-23T00:57:52-05:00 kubuntu systemd-xdg-autostart-generator[1509076]: /home/patrick/.config/autostart/putgd.desktop: not generating unit, executable specified in Exec= does not exist.",
+   "system 2026-10-23T00:58:54-05:00 kubuntu drkonqi-coredump-processor[1509272]: \"/tmp/.mount_putgd-NELjpP/usr/bin/putgd-ui\" 659089 \"/var/lib/systemd/coredump/core.putgd-ui.1000.46fa7ebe245447bd8bf910a425593a05.659089.1792373107000000.zst\"",
+   "system 2026-10-23T00:58:54-05:00 kubuntu drkonqi-coredump-processor[1509272]: \"/tmp/.mount_putgd-NELjpP/usr/bin/putgd-ui\" 660728 \"/var/lib/systemd/coredump/core.putgd-ui.1000.46fa7ebe245447bd8bf910a425593a05.660728.1792373134000000.zst\"",
+   "system 2026-10-23T00:58:55-05:00 kubuntu drkonqi-coredump-processor[1509272]: \"/tmp/.mount_putgd-kkgCMA/usr/bin/putgd-ui\" 693497 \"/var/lib/systemd/coredump/core.putgd-ui.1000.46fa7ebe245447bd8bf910a425593a05.693497.1792376075000000.zst\"",
+   "system 2026-10-23T00:58:55-05:00 kubuntu drkonqi-coredump-processor[1509272]: \"/tmp/.mount_putgd-kkgCMA/usr/bin/putgd-ui\" 694689 \"/var/lib/systemd/coredump/core.putgd-ui.1000.46fa7ebe245447bd8bf910a425593a05.694689.1792376095000000.zst\"",
+   "system 2026-10-23T00:58:55-05:00 kubuntu drkonqi-coredump-processor[1509272]: \"/tmp/.mount_putgd-LAeakp/usr/bin/putgd-ui\" 746767 \"/var/lib/systemd/coredump/core.putgd-ui.1000.46fa7ebe245447bd8bf910a425593a05.746767.1792377736000000.zst\"",
+   "system 2026-10-23T00:58:55-05:00 kubuntu drkonqi-coredump-processor[1509272]: \"/tmp/.mount_putgd-LAeakp/usr/bin/putgd-ui\" 748073 \"/var/lib/systemd/coredump/core.putgd-ui.1000.46fa7ebe245447bd8bf910a425593a05.748073.1792377753000000.zst\"",
+   "system 2026-10-23T00:58:55-05:00 kubuntu drkonqi-coredump-processor[1509272]: \"/tmp/.mount_putgd-CbamLO/usr/bin/putgd-ui\" 791408 \"/var/lib/systemd/coredump/core.putgd-ui.1000.46fa7ebe245447bd8bf910a425593a05.791408.1792380298000000.zst\"",
+   "system 2026-10-23T00:58:55-05:00 kubuntu drkonqi-coredump-processor[1509272]: \"/tmp/.mount_putgd-CbamLO/usr/bin/putgd-ui\" 792589 \"/var/lib/systemd/coredump/core.putgd-ui.1000.46fa7ebe245447bd8bf910a425593a05.792589.1792380317000000.zst\"",
+   "system 2026-10-23T00:58:56-05:00 kubuntu drkonqi-coredump-processor[1509272]: \"/tmp/.mount_putgd-boDJEB/usr/bin/putgd-ui\" 793669 \"/var/lib/systemd/coredump/core.putgd-ui.1000.46fa7ebe245447bd8bf910a425593a05.793669.1792380655000000.zst\"",
+   "system 2026-10-23T00:58:56-05:00 kubuntu drkonqi-coredump-processor[1509272]: \"/tmp/.mount_putgd-boDJEB/usr/bin/putgd-ui\" 793688 \"/var/lib/systemd/coredump/core.putgd-ui.1000.46fa7ebe245447bd8bf910a425593a05.793688.1792380656000000.zst\""
+  ],
+  "failedUnits": [],
+  "autostartUnits": [],
+  "generatorUnit": [],
+  "processes": [],
+  "package": {
+   "manager": "dpkg",
+   "status": null,
+   "version": null
+  },
+  "journalSinceLogin": [],
+  "note": "re-queried: user+system journal since 2026-10-23T05:59:05Z (this login) has no putgd/autostart lines; no failed units; no app-putgd unit"
+ },
+ "frame:k72-Q-autostart-kcm-tryexec": {
+  "at": "2026-10-23T06:01:38Z",
+  "full": "/home/patrick/work/put.gd-nfa/runs/M2/full/k72-Q-autostart-kcm-tryexec.png",
+  "processes": []
+ },
+ "teardown": {
+  "removed": [
+   "/home/patrick/.config/putgd",
+   "/home/patrick/.local/state/putgd/running.json",
+   "/home/patrick/.local/state/putgd/running.crash",
+   "/home/patrick/.local/state/putgd/logs/putgd-20261023T055643257Z-1507871-1.jsonl",
+   "/home/patrick/.local/state/putgd/logs/putgd-20261023T055511140Z-1503612-1.jsonl",
+   "/home/patrick/.local/state/putgd/logs/putgd-20261023T055327033Z-1502023-1.jsonl",
+   "/home/patrick/.local/state/putgd/logs/putgd-20261023T055237099Z-1501446-1.jsonl",
+   "/home/patrick/.local/share/putgd",
+   "/home/patrick/.config/autostart/putgd.desktop",
+   "/tmp/nfa.EAWpVi"
+  ],
+  "kept": [],
+  "after": {
+   "at": "2026-10-23T06:01:58Z",
+   "host": "kubuntu",
+   "package": {
+    "manager": "dpkg",
+    "status": null,
+    "version": null
+   },
+   "files": {
+    "/etc/apt/sources.list.d/putgd.sources": null,
+    "/usr/share/keyrings/putgd-archive-keyring.gpg": null,
+    "/etc/yum.repos.d/putgd.repo": null,
+    "/etc/yum.repos.d/putgd.repo.rpmsave": null,
+    "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd": null,
+    "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-nightly": null,
+    "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-stable": null,
+    "/usr/share/gnome-shell/extensions/putgd@put.gd/metadata.json": null
+   },
+   "defaultProfile": {
+    "/home/patrick/.config/putgd": null,
+    "/home/patrick/.local/state/putgd": 75,
+    "/home/patrick/.cache/putgd": null,
+    "/home/patrick/.local/share/putgd": null
+   },
+   "autostart": null,
+   "userExtension": false,
+   "processes": []
+  }
+ }
+}

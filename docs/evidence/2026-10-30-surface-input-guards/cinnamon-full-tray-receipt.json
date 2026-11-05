@@ -1,0 +1,2522 @@
+{
+  "schemaVersion": 2,
+  "environment": {
+    "desktop": "mint-cinnamon-x11",
+    "host": "boat",
+    "placement": "boat",
+    "guest": "cinnamon-x11",
+    "package": "deb",
+    "destination": "local",
+    "build": "6ad9f957e6544f30c5e45c08af2306db77a9ff64",
+    "placement_details": {
+      "boat_sandbox_id": "bx_ftjc74at",
+      "run_id": "4cd3d592-2451-4ad3-ab17-2ba5e1d692e8",
+      "lab_profile": "cinnamon-x11",
+      "run_directory": "/home/user/v3",
+      "session_root": "/tmp/sd-2a3416db",
+      "socket": "/tmp/sd-2a3416db/runtime/putgd/session.sock",
+      "input_backend": "qmp",
+      "frame_backend": "qmp"
+    },
+    "target": {
+      "hostname": "putgd-lab",
+      "kernel": "6.14.0-37-generic",
+      "machine": "x86_64",
+      "os": {
+        "ID": "linuxmint",
+        "VERSION_ID": "22.3",
+        "VARIANT_ID": null
+      },
+      "session_type": "x11",
+      "desktop": "X-Cinnamon",
+      "qt_platform": "xcb"
+    },
+    "observed_build": {
+      "baseVersion": "26.1030.2481",
+      "commitCount": 2481,
+      "dirty": false,
+      "gitCommit": "6ad9f957e6544f30c5e45c08af2306db77a9ff64",
+      "gitTree": "d823723c8759dae8db7c57cee59476ac7a3b4f90",
+      "packageVersion": "26.1030.2481~dev+g6ad9f957e654",
+      "schemaVersion": 1,
+      "sourceProvenance": "git",
+      "version": "26.1030.2481-dev+g6ad9f957e654"
+    }
+  },
+  "interactions": [
+    {
+      "interaction": "tray.activate",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/e3/tray1/receipt.json",
+      "issue": 670,
+      "note": "Desktop tray icon selector is missing or ambiguous; needs an owned panel rectangle",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/tray.activate/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/tray.activate/01-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/tray.activate/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "tray.activate",
+      "build": "6ad9f957e6544f30c5e45c08af2306db77a9ff64",
+      "at": "2026-10-30T09:22:47Z"
+    },
+    {
+      "interaction": "tray.context-menu",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/e3/tray1/receipt.json",
+      "issue": 670,
+      "note": "Desktop tray icon selector is missing or ambiguous; needs an owned panel rectangle",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/tray.context_menu/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/tray.context_menu/01-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/tray.context_menu/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "tray.context_menu",
+      "build": "6ad9f957e6544f30c5e45c08af2306db77a9ff64",
+      "at": "2026-10-30T09:23:05Z"
+    },
+    {
+      "interaction": "tray.menu-history",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/e3/tray1/receipt.json",
+      "issue": 670,
+      "note": "Desktop tray icon selector is missing or ambiguous; needs an owned panel rectangle",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/tray.tray_menu_history/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/tray.tray_menu_history/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "tray.tray_menu_history",
+      "build": "6ad9f957e6544f30c5e45c08af2306db77a9ff64",
+      "at": "2026-10-30T09:23:23Z"
+    },
+    {
+      "interaction": "tray.menu-settings",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/e3/tray1/receipt.json",
+      "issue": 670,
+      "note": "Desktop tray icon selector is missing or ambiguous; needs an owned panel rectangle",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/tray.tray_menu_settings/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/tray.tray_menu_settings/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "tray.tray_menu_settings",
+      "build": "6ad9f957e6544f30c5e45c08af2306db77a9ff64",
+      "at": "2026-10-30T09:23:51Z"
+    },
+    {
+      "interaction": "tray.menu-destinations",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/e3/tray1/receipt.json",
+      "issue": 670,
+      "note": "Desktop tray icon selector is missing or ambiguous; needs an owned panel rectangle",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/tray.tray_menu_destinations/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/tray.tray_menu_destinations/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "tray.tray_menu_destinations",
+      "build": "6ad9f957e6544f30c5e45c08af2306db77a9ff64",
+      "at": "2026-10-30T09:24:07Z"
+    },
+    {
+      "interaction": "tray.menu-about",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/e3/tray1/receipt.json",
+      "issue": 670,
+      "note": "Desktop tray icon selector is missing or ambiguous; needs an owned panel rectangle",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/tray.tray_menu_about/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/tray.tray_menu_about/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "tray.tray_menu_about",
+      "build": "6ad9f957e6544f30c5e45c08af2306db77a9ff64",
+      "at": "2026-10-30T09:24:23Z"
+    },
+    {
+      "interaction": "tray.menu-change-output",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/e3/tray1/receipt.json",
+      "issue": 670,
+      "note": "Desktop tray icon selector is missing or ambiguous; needs an owned panel rectangle",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/tray.tray_menu_change_output/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/tray.tray_menu_change_output/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "tray.tray_menu_change_output",
+      "build": "6ad9f957e6544f30c5e45c08af2306db77a9ff64",
+      "at": "2026-10-30T09:24:39Z"
+    },
+    {
+      "interaction": "tray.menu-output-submenu",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/e3/tray1/receipt.json",
+      "issue": 670,
+      "note": "Desktop tray icon selector is missing or ambiguous; needs an owned panel rectangle",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/tray.output_submenu/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/tray.output_submenu/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "tray.output_submenu",
+      "build": "6ad9f957e6544f30c5e45c08af2306db77a9ff64",
+      "at": "2026-10-30T09:24:56Z"
+    },
+    {
+      "interaction": "tray.menu-edit-file",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/e3/tray1/receipt.json",
+      "issue": 670,
+      "note": "Desktop tray icon selector is missing or ambiguous; needs an owned panel rectangle",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/tray.edit_file/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/tray.edit_file/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "tray.edit_file",
+      "build": "6ad9f957e6544f30c5e45c08af2306db77a9ff64",
+      "at": "2026-10-30T09:25:22Z"
+    },
+    {
+      "interaction": "tray.menu-capture-region",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/user/e3/tray1/receipt.json",
+      "note": "resident settings.patch: transport_failed",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/tray.tray_menu_capture_region/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/tray.tray_menu_capture_region/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "tray.tray_menu_capture_region",
+      "build": "6ad9f957e6544f30c5e45c08af2306db77a9ff64",
+      "at": "2026-10-30T09:26:19Z"
+    },
+    {
+      "interaction": "shortcut.region",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "/home/user/e3/tray1/receipt.json",
+      "note": "desktop catalog reference=00-tray-menu-idle; operation=782a101b-49ab-4930-a28d-3154936e8c66 action=region; operation=782a101b-49ab-4930-a28d-3154936e8c66 state=cancelled artifacts=",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/tray.shortcut_region/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/tray.shortcut_region/01-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/tray.shortcut_region/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/tray.shortcut_region/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "tray.shortcut_region",
+      "build": "6ad9f957e6544f30c5e45c08af2306db77a9ff64",
+      "at": "2026-10-30T09:26:42Z"
+    },
+    {
+      "interaction": "tray.menu-capture-window",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/user/e3/tray1/receipt.json",
+      "note": "input target 'trayFixture' is obscured by 'put.gd' (window 75497478)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/tray.tray_menu_capture_window/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/tray.tray_menu_capture_window/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "tray.tray_menu_capture_window",
+      "build": "6ad9f957e6544f30c5e45c08af2306db77a9ff64",
+      "at": "2026-10-30T09:27:29Z"
+    },
+    {
+      "interaction": "shortcut.window",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/user/e3/tray1/receipt.json",
+      "note": "input target 'trayFixture' is obscured by 'put.gd' (window 75497478)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/tray.shortcut_window/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/tray.shortcut_window/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "tray.shortcut_window",
+      "build": "6ad9f957e6544f30c5e45c08af2306db77a9ff64",
+      "at": "2026-10-30T09:28:08Z"
+    },
+    {
+      "interaction": "tray.menu-capture-desktop",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/e3/tray1/receipt.json",
+      "issue": 670,
+      "note": "Desktop tray icon selector is missing or ambiguous; needs an owned panel rectangle",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/tray.tray_menu_capture_desktop/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/tray.tray_menu_capture_desktop/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "tray.tray_menu_capture_desktop",
+      "build": "6ad9f957e6544f30c5e45c08af2306db77a9ff64",
+      "at": "2026-10-30T09:28:36Z"
+    },
+    {
+      "interaction": "shortcut.desktop",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "/home/user/e3/tray1/receipt.json",
+      "note": "desktop catalog reference=00-tray-menu-idle; operation=66b96b47-e09d-4e26-a2c1-a202fd679045 action=desktop; operation=66b96b47-e09d-4e26-a2c1-a202fd679045 state=completed artifacts=a0cb8c3f-d2c8-49c6-ad30-f9526f188ec6",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/tray.shortcut_desktop/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/tray.shortcut_desktop/01-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/tray.shortcut_desktop/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/tray.shortcut_desktop/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "tray.shortcut_desktop",
+      "build": "6ad9f957e6544f30c5e45c08af2306db77a9ff64",
+      "at": "2026-10-30T09:29:07Z"
+    },
+    {
+      "interaction": "tray.menu-capture-region-edit",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/e3/tray1/receipt.json",
+      "issue": 670,
+      "note": "Desktop tray icon selector is missing or ambiguous; needs an owned panel rectangle",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/tray.tray_menu_capture_region_edit/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/tray.tray_menu_capture_region_edit/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "tray.tray_menu_capture_region_edit",
+      "build": "6ad9f957e6544f30c5e45c08af2306db77a9ff64",
+      "at": "2026-10-30T09:29:27Z"
+    },
+    {
+      "interaction": "shortcut.edit",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "/home/user/e3/tray1/receipt.json",
+      "note": "desktop catalog reference=00-tray-menu-idle; operation=54cdad57-f223-4475-83a6-d4a863d9df28 action=edit; operation=54cdad57-f223-4475-83a6-d4a863d9df28 state=cancelled artifacts=",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/tray.shortcut_edit/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/tray.shortcut_edit/01-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/tray.shortcut_edit/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/tray.shortcut_edit/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "tray.shortcut_edit",
+      "build": "6ad9f957e6544f30c5e45c08af2306db77a9ff64",
+      "at": "2026-10-30T09:29:50Z"
+    },
+    {
+      "interaction": "tray.menu-record",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/e3/tray1/receipt.json",
+      "issue": 670,
+      "note": "Desktop tray icon selector is missing or ambiguous; needs an owned panel rectangle",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/tray.tray_menu_record/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/tray.tray_menu_record/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "tray.tray_menu_record",
+      "build": "6ad9f957e6544f30c5e45c08af2306db77a9ff64",
+      "at": "2026-10-30T09:30:09Z"
+    },
+    {
+      "interaction": "shortcut.record",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/e3/tray1/receipt.json",
+      "note": "desktop catalog reference=00-tray-menu-idle; operation=0d912e69-0ade-4927-98fa-9c86d55e369e action=record; geometry: RuntimeError: live window match is missing or ambiguous (0 matches)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/tray.shortcut_record/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/tray.shortcut_record/01-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/tray.shortcut_record/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/tray.shortcut_record/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "tray.shortcut_record",
+      "build": "6ad9f957e6544f30c5e45c08af2306db77a9ff64",
+      "at": "2026-10-30T09:30:31Z"
+    },
+    {
+      "interaction": "tray.menu-upload-clipboard",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/e3/tray1/receipt.json",
+      "issue": 670,
+      "note": "Desktop tray icon selector is missing or ambiguous; needs an owned panel rectangle",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/tray.tray_menu_upload_clipboard/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/tray.tray_menu_upload_clipboard/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "tray.tray_menu_upload_clipboard",
+      "build": "6ad9f957e6544f30c5e45c08af2306db77a9ff64",
+      "at": "2026-10-30T09:31:01Z"
+    },
+    {
+      "interaction": "shortcut.clipboard",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "/home/user/e3/tray1/receipt.json",
+      "note": "desktop catalog reference=00-tray-menu-idle; operation=3b94236d-d00f-4a11-b83a-4603956de53b action=clipboard; operation=3b94236d-d00f-4a11-b83a-4603956de53b state=completed artifacts=c57f7814-f297-4fe1-920c-81e73ff957f2",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/tray.shortcut_clipboard/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/tray.shortcut_clipboard/01-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/tray.shortcut_clipboard/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/tray.shortcut_clipboard/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "tray.shortcut_clipboard",
+      "build": "6ad9f957e6544f30c5e45c08af2306db77a9ff64",
+      "at": "2026-10-30T09:31:34Z"
+    },
+    {
+      "interaction": "shortcut.closes-tray-menu",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/e3/tray1/receipt.json",
+      "issue": 670,
+      "note": "Desktop tray icon selector is missing or ambiguous; needs an owned panel rectangle",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/tray.shortcut_closes_tray_menu/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/tray.shortcut_closes_tray_menu/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "tray.shortcut_closes_tray_menu",
+      "build": "6ad9f957e6544f30c5e45c08af2306db77a9ff64",
+      "at": "2026-10-30T09:32:28Z"
+    },
+    {
+      "interaction": "tray.menu-edit-clipboard",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/e3/tray1/receipt.json",
+      "issue": 670,
+      "note": "Core has no native image clipboard owner descriptor; text fixture cannot prove image editing",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/tray.edit_clipboard/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/tray.edit_clipboard/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "tray.edit_clipboard",
+      "build": "6ad9f957e6544f30c5e45c08af2306db77a9ff64",
+      "at": "2026-10-30T09:33:34Z"
+    },
+    {
+      "interaction": "notification.saved-locally",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "/home/user/e3/tray1/receipt.json",
+      "note": "operation=199bbe21-3b34-4e00-a7f9-b8b93a0ff8e9 action=clipboard; operation=199bbe21-3b34-4e00-a7f9-b8b93a0ff8e9 state=completed artifacts=3c232854-b050-4868-bf71-82f4f58f5a99",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/tray.saved_locally/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/tray.saved_locally/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/tray.saved_locally/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "tray.saved_locally",
+      "build": "6ad9f957e6544f30c5e45c08af2306db77a9ff64",
+      "at": "2026-10-30T09:34:51Z"
+    },
+    {
+      "interaction": "notification.local-save-failed",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/e3/tray1/receipt.json",
+      "issue": 670,
+      "note": "operation=a52bc442-cd26-4677-82b5-0906d8a62216 action=clipboard; operation=a52bc442-cd26-4677-82b5-0906d8a62216 state=failed artifacts=393ca314-e194-4f51-81b5-6b095d040b2f; Desktop tray icon selector is missing or ambiguous; needs an owned panel rectangle",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/tray.local_failure_attention/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "failure-notification",
+          "path": "frames/tray.local_failure_attention/01-failure-notification.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/tray.local_failure_attention/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "tray.local_failure_attention",
+      "build": "6ad9f957e6544f30c5e45c08af2306db77a9ff64",
+      "at": "2026-10-30T09:35:55Z"
+    },
+    {
+      "interaction": "tray.icon-attention",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/e3/tray1/receipt.json",
+      "issue": 670,
+      "note": "operation=a52bc442-cd26-4677-82b5-0906d8a62216 action=clipboard; operation=a52bc442-cd26-4677-82b5-0906d8a62216 state=failed artifacts=393ca314-e194-4f51-81b5-6b095d040b2f; Desktop tray icon selector is missing or ambiguous; needs an owned panel rectangle",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/tray.local_failure_attention/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "failure-notification",
+          "path": "frames/tray.local_failure_attention/01-failure-notification.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/tray.local_failure_attention/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "tray.local_failure_attention",
+      "build": "6ad9f957e6544f30c5e45c08af2306db77a9ff64",
+      "at": "2026-10-30T09:35:55Z"
+    },
+    {
+      "interaction": "tray.menu-attention",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/e3/tray1/receipt.json",
+      "issue": 670,
+      "note": "local S3 cannot emit proton_account_busy; provider fault adapter belongs to the builder lane",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/tray.attention_with_busy_latch/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/tray.attention_with_busy_latch/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "tray.attention_with_busy_latch",
+      "build": "6ad9f957e6544f30c5e45c08af2306db77a9ff64",
+      "at": "2026-10-30T09:35:57Z"
+    },
+    {
+      "interaction": "notification.preference-off",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "/home/user/e3/tray1/receipt.json",
+      "note": "operation=9f60c3e9-bd7c-4d3e-8a3b-8098af08a29f action=clipboard; operation=9f60c3e9-bd7c-4d3e-8a3b-8098af08a29f state=completed artifacts=27d872ad-3790-430c-990d-ea0f65a377f3",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/tray.notifications_off/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/tray.notifications_off/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/tray.notifications_off/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "tray.notifications_off",
+      "build": "6ad9f957e6544f30c5e45c08af2306db77a9ff64",
+      "at": "2026-10-30T09:36:40Z"
+    },
+    {
+      "interaction": "notification.save-diagnostics",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/user/e3/tray1/receipt.json",
+      "note": "desktop input is obscured by 'compositor shell stage did not pick the expected notification control'",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/tray.save_diagnostics/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/tray.save_diagnostics/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "tray.save_diagnostics",
+      "build": "6ad9f957e6544f30c5e45c08af2306db77a9ff64",
+      "at": "2026-10-30T09:37:08Z"
+    },
+    {
+      "interaction": "notification.diagnostics-saved",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/user/e3/tray1/receipt.json",
+      "note": "desktop input is obscured by 'compositor shell stage did not pick the expected notification control'",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/tray.save_diagnostics/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/tray.save_diagnostics/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "tray.save_diagnostics",
+      "build": "6ad9f957e6544f30c5e45c08af2306db77a9ff64",
+      "at": "2026-10-30T09:37:08Z"
+    },
+    {
+      "interaction": "notification.show-in-folder",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/user/e3/tray1/receipt.json",
+      "note": "desktop input is obscured by 'compositor shell stage did not pick the expected notification control'",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/tray.show_in_folder/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/tray.show_in_folder/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "tray.show_in_folder",
+      "build": "6ad9f957e6544f30c5e45c08af2306db77a9ff64",
+      "at": "2026-10-30T09:37:39Z"
+    },
+    {
+      "interaction": "notification.resident-close",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/user/e3/tray1/receipt.json",
+      "note": "resident hint agrees with desktop policy",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/tray.resident_close/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/tray.resident_close/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "tray.resident_close",
+      "build": "6ad9f957e6544f30c5e45c08af2306db77a9ff64",
+      "at": "2026-10-30T09:38:08Z"
+    },
+    {
+      "interaction": "notification.diagnostics-not-saved",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/user/e3/tray1/receipt.json",
+      "note": "desktop input is obscured by 'compositor shell stage did not pick the expected notification control'",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/tray.diagnostics_not_saved/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/tray.diagnostics_not_saved/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "tray.diagnostics_not_saved",
+      "build": "6ad9f957e6544f30c5e45c08af2306db77a9ff64",
+      "at": "2026-10-30T09:38:34Z"
+    },
+    {
+      "interaction": "notification.recording-stopped",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "/home/user/e3/tray1/receipt.json",
+      "note": "operationId=6e8891c6-cf8b-4d47-aeeb-3ca608e70c02; operationId=6c9099bb-a135-43dc-8ee6-e5be086ab32b",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/tray.recording_stopped/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/tray.recording_stopped/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/tray.recording_stopped/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "tray.recording_stopped",
+      "build": "6ad9f957e6544f30c5e45c08af2306db77a9ff64",
+      "at": "2026-10-30T09:40:11Z"
+    },
+    {
+      "interaction": "notification.incomplete-uploads",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/user/e3/tray1/receipt.json",
+      "note": "operationId=452f3b29-5b41-42f5-a616-32e121fb4b10; timeout: desktop notification: put.gd — incomplete uploads left",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/tray.incomplete_uploads/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/tray.incomplete_uploads/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "tray.incomplete_uploads",
+      "build": "6ad9f957e6544f30c5e45c08af2306db77a9ff64",
+      "at": "2026-10-30T09:40:56Z"
+    },
+    {
+      "interaction": "tray.scroll-noop",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/e3/tray1/receipt.json",
+      "note": "accessible: RuntimeError: fresh accessibility probe timed out",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/tray.scroll_noop/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/tray.scroll_noop/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "tray.scroll_noop",
+      "build": "6ad9f957e6544f30c5e45c08af2306db77a9ff64",
+      "at": "2026-10-30T09:41:24Z"
+    },
+    {
+      "interaction": "tray.icon-idle",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/e3/tray1/receipt.json",
+      "issue": 670,
+      "note": "Desktop tray icon selector is missing or ambiguous; needs an owned panel rectangle",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/tray.idle/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/tray.idle/01-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/tray.idle/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "tray.idle",
+      "build": "6ad9f957e6544f30c5e45c08af2306db77a9ff64",
+      "at": "2026-10-30T09:41:44Z"
+    },
+    {
+      "interaction": "tray.tooltip",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/e3/tray1/receipt.json",
+      "issue": 670,
+      "note": "Desktop tray icon selector is missing or ambiguous; needs an owned panel rectangle",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/tray.tooltip/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/tray.tooltip/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "tray.tooltip",
+      "build": "6ad9f957e6544f30c5e45c08af2306db77a9ff64",
+      "at": "2026-10-30T09:42:17Z"
+    },
+    {
+      "interaction": "tray.menu-shortcut-suffix",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/e3/tray1/receipt.json",
+      "issue": 670,
+      "note": "Desktop tray icon selector is missing or ambiguous; needs an owned panel rectangle",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/tray.shortcut_suffix/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/tray.shortcut_suffix/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "tray.shortcut_suffix",
+      "build": "6ad9f957e6544f30c5e45c08af2306db77a9ff64",
+      "at": "2026-10-30T09:42:56Z"
+    },
+    {
+      "interaction": "tray.icon-uploading",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/e3/tray1/receipt.json",
+      "issue": 670,
+      "note": "operationId=264d6396-82a6-4ef0-a696-5a1d6734c9cc; upload operation=264d6396-82a6-4ef0-a696-5a1d6734c9cc icon=[{\"width\": 24, \"height\": 24, \"bytes\": 2304, \"sha256\": \"da4ea0ead667f3e03c61dd52fbfae0e64a21ba01df8b5b636cad598bca3b97fd\"}, {\"width\": 48, \"height\": 48, \"bytes\": 9216, \"sha256\": \"644917fd2ad9ec6647940f0c75c3be66344be1e211802b96c68614bbda12c0ad\"}, {\"width\": 72, \"height\": 72, \"bytes\": 20736, \"sha256\": \"17488a78f8bd6eac255be17e26a528024957ac1431d4421edffd0f22e6eb3ecc\"}]; Desktop tray icon selector is missing or ambiguous; needs an owned panel rectangle",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/tray.uploading/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/tray.uploading/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "tray.uploading",
+      "build": "6ad9f957e6544f30c5e45c08af2306db77a9ff64",
+      "at": "2026-10-30T09:44:01Z"
+    },
+    {
+      "interaction": "tray.menu-upload-status",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/e3/tray1/receipt.json",
+      "issue": 670,
+      "note": "operationId=264d6396-82a6-4ef0-a696-5a1d6734c9cc; upload operation=264d6396-82a6-4ef0-a696-5a1d6734c9cc icon=[{\"width\": 24, \"height\": 24, \"bytes\": 2304, \"sha256\": \"da4ea0ead667f3e03c61dd52fbfae0e64a21ba01df8b5b636cad598bca3b97fd\"}, {\"width\": 48, \"height\": 48, \"bytes\": 9216, \"sha256\": \"644917fd2ad9ec6647940f0c75c3be66344be1e211802b96c68614bbda12c0ad\"}, {\"width\": 72, \"height\": 72, \"bytes\": 20736, \"sha256\": \"17488a78f8bd6eac255be17e26a528024957ac1431d4421edffd0f22e6eb3ecc\"}]; Desktop tray icon selector is missing or ambiguous; needs an owned panel rectangle",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/tray.uploading/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/tray.uploading/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "tray.uploading",
+      "build": "6ad9f957e6544f30c5e45c08af2306db77a9ff64",
+      "at": "2026-10-30T09:44:01Z"
+    },
+    {
+      "interaction": "notification.upload-complete",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/e3/tray1/receipt.json",
+      "note": "operationId=cc25f8a1-3631-42b7-a75e-6f66aa856df8; notification is not uniquely drawn in the desktop accessibility tree",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/tray.upload_complete/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/tray.upload_complete/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "tray.upload_complete",
+      "build": "6ad9f957e6544f30c5e45c08af2306db77a9ff64",
+      "at": "2026-10-30T09:44:57Z"
+    },
+    {
+      "interaction": "tray.icon-complete",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/e3/tray1/receipt.json",
+      "issue": 670,
+      "note": "upload fixture completes before control returns; needs a held completion state and sub-600-ms icon sampling; upload fixture completes before control returns; needs a held completion state and sub-600-ms icon sampling",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/tray.tray_icon_complete/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/tray.tray_icon_complete/01-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/tray.tray_icon_complete/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/tray.tray_icon_complete/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "tray.tray_icon_complete",
+      "build": "6ad9f957e6544f30c5e45c08af2306db77a9ff64",
+      "at": "2026-10-30T09:44:58Z"
+    },
+    {
+      "interaction": "tray.icon-recording",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/e3/tray1/receipt.json",
+      "issue": 670,
+      "note": "recording fixture ends at review; needs active/paused state holds and icon-pixel sampling; recording fixture ends at review; needs active/paused state holds and icon-pixel sampling",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/tray.tray_icon_recording/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/tray.tray_icon_recording/01-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/tray.tray_icon_recording/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/tray.tray_icon_recording/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "tray.tray_icon_recording",
+      "build": "6ad9f957e6544f30c5e45c08af2306db77a9ff64",
+      "at": "2026-10-30T09:45:00Z"
+    },
+    {
+      "interaction": "tray.menu-cancel-upload",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/e3/tray1/receipt.json",
+      "issue": 670,
+      "note": "Core tray-offline supplies one active upload; full row also needs two concurrent uploads and native confirmation controls; Core tray-offline supplies one active upload; full row also needs two concurrent uploads and native confirmation controls",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/tray.tray_menu_cancel_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/tray.tray_menu_cancel_upload/01-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/tray.tray_menu_cancel_upload/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/tray.tray_menu_cancel_upload/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "tray.tray_menu_cancel_upload",
+      "build": "6ad9f957e6544f30c5e45c08af2306db77a9ff64",
+      "at": "2026-10-30T09:45:01Z"
+    },
+    {
+      "interaction": "tray.menu-update-available",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/e3/tray1/receipt.json",
+      "issue": 670,
+      "note": "Needs a stable-tagged local build with isolated update-result fixture; no live update query; Needs a stable-tagged local build with isolated update-result fixture; no live update query",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/tray.tray_menu_update_available/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/tray.tray_menu_update_available/01-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/tray.tray_menu_update_available/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/tray.tray_menu_update_available/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "tray.tray_menu_update_available",
+      "build": "6ad9f957e6544f30c5e45c08af2306db77a9ff64",
+      "at": "2026-10-30T09:45:03Z"
+    },
+    {
+      "interaction": "tray.menu-quit",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/e3/tray1/receipt.json",
+      "issue": 670,
+      "note": "Needs core resident restart ownership after real Quit; do not terminate the shared run mid-lane; Needs core resident restart ownership after real Quit; do not terminate the shared run mid-lane",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/tray.tray_menu_quit/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/tray.tray_menu_quit/01-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/tray.tray_menu_quit/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/tray.tray_menu_quit/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "tray.tray_menu_quit",
+      "build": "6ad9f957e6544f30c5e45c08af2306db77a9ff64",
+      "at": "2026-10-30T09:45:07Z"
+    },
+    {
+      "interaction": "tray.qt-fallback",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/e3/tray1/receipt.json",
+      "issue": 670,
+      "note": "Needs a graphical-resident launch profile; the production Qt Core resident uses NativeTray; Needs a graphical-resident launch profile; the production Qt Core resident uses NativeTray",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/tray.tray_qt_fallback/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/tray.tray_qt_fallback/01-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/tray.tray_qt_fallback/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/tray.tray_qt_fallback/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "tray.tray_qt_fallback",
+      "build": "6ad9f957e6544f30c5e45c08af2306db77a9ff64",
+      "at": "2026-10-30T09:45:09Z"
+    },
+    {
+      "interaction": "shortcut.over-open-menu",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/e3/tray1/receipt.json",
+      "issue": 670,
+      "note": "Needs an independently owned other-client popup fixture with keyboard-grab witness; Needs an independently owned other-client popup fixture with keyboard-grab witness",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/tray.shortcut_over_open_menu/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/tray.shortcut_over_open_menu/01-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/tray.shortcut_over_open_menu/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/tray.shortcut_over_open_menu/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "tray.shortcut_over_open_menu",
+      "build": "6ad9f957e6544f30c5e45c08af2306db77a9ff64",
+      "at": "2026-10-30T09:45:10Z"
+    },
+    {
+      "interaction": "shortcut.ignored-while-recording",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/e3/tray1/receipt.json",
+      "issue": 670,
+      "note": "Needs current-build shortcut recorder controls plus a bounded no-operation observation window; Needs current-build shortcut recorder controls plus a bounded no-operation observation window",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/tray.shortcut_ignored_while_recording/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/tray.shortcut_ignored_while_recording/01-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/tray.shortcut_ignored_while_recording/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/tray.shortcut_ignored_while_recording/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "tray.shortcut_ignored_while_recording",
+      "build": "6ad9f957e6544f30c5e45c08af2306db77a9ff64",
+      "at": "2026-10-30T09:45:11Z"
+    },
+    {
+      "interaction": "shortcut.paused-while-settings-records",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/e3/tray1/receipt.json",
+      "issue": 670,
+      "note": "Needs native shortcut-grab observation during recorder focus and restoration; Needs native shortcut-grab observation during recorder focus and restoration",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/tray.shortcut_paused_while_settings_records/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/tray.shortcut_paused_while_settings_records/01-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/tray.shortcut_paused_while_settings_records/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/tray.shortcut_paused_while_settings_records/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "tray.shortcut_paused_while_settings_records",
+      "build": "6ad9f957e6544f30c5e45c08af2306db77a9ff64",
+      "at": "2026-10-30T09:45:12Z"
+    },
+    {
+      "interaction": "shortcut.locked-session",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/e3/tray1/receipt.json",
+      "issue": 670,
+      "note": "Needs core-owned visible session lock/unlock lifecycle and protected login handling; Needs core-owned visible session lock/unlock lifecycle and protected login handling",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/tray.shortcut_locked_session/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/tray.shortcut_locked_session/01-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/tray.shortcut_locked_session/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/tray.shortcut_locked_session/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "tray.shortcut_locked_session",
+      "build": "6ad9f957e6544f30c5e45c08af2306db77a9ff64",
+      "at": "2026-10-30T09:45:14Z"
+    },
+    {
+      "interaction": "shortcut.layout-change",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/e3/tray1/receipt.json",
+      "issue": 670,
+      "note": "Needs isolated keyboard-layout change/restore and native rebinding witness; Needs isolated keyboard-layout change/restore and native rebinding witness",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/tray.shortcut_layout_change/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/tray.shortcut_layout_change/01-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/tray.shortcut_layout_change/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/tray.shortcut_layout_change/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "tray.shortcut_layout_change",
+      "build": "6ad9f957e6544f30c5e45c08af2306db77a9ff64",
+      "at": "2026-10-30T09:45:15Z"
+    },
+    {
+      "interaction": "notification.completed-with-problem",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/e3/tray1/receipt.json",
+      "issue": 670,
+      "note": "Needs offline mixed-success batch fixture with inspected per-item outcomes; Needs offline mixed-success batch fixture with inspected per-item outcomes",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/tray.notification_completed_with_problem/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/tray.notification_completed_with_problem/01-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/tray.notification_completed_with_problem/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/tray.notification_completed_with_problem/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "tray.notification_completed_with_problem",
+      "build": "6ad9f957e6544f30c5e45c08af2306db77a9ff64",
+      "at": "2026-10-30T09:45:17Z"
+    },
+    {
+      "interaction": "notification.upload-failed",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/e3/tray1/receipt.json",
+      "issue": 670,
+      "note": "tray-failed supplies one failure; full row still needs interrupted-upload and retained-local-copy variants; tray-failed supplies one failure; full row still needs interrupted-upload and retained-local-copy variants",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/tray.notification_upload_failed/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/tray.notification_upload_failed/01-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/tray.notification_upload_failed/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/tray.notification_upload_failed/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "tray.notification_upload_failed",
+      "build": "6ad9f957e6544f30c5e45c08af2306db77a9ff64",
+      "at": "2026-10-30T09:45:18Z"
+    },
+    {
+      "interaction": "notification.action-rejected",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/e3/tray1/receipt.json",
+      "issue": 670,
+      "note": "Needs deterministic pre-admission rejection fixture without configuration recovery stealing popup focus; Needs deterministic pre-admission rejection fixture without configuration recovery stealing popup focus",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/tray.notification_action_rejected/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/tray.notification_action_rejected/01-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/tray.notification_action_rejected/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/tray.notification_action_rejected/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "tray.notification_action_rejected",
+      "build": "6ad9f957e6544f30c5e45c08af2306db77a9ff64",
+      "at": "2026-10-30T09:45:19Z"
+    },
+    {
+      "interaction": "notification.in-flight-limit",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/e3/tray1/receipt.json",
+      "issue": 670,
+      "note": "Needs a delayed-reply notification server fixture; eight outstanding Notify calls are not eight visible toasts; Needs a delayed-reply notification server fixture; eight outstanding Notify calls are not eight visible toasts",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/tray.notification_in_flight_limit/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/tray.notification_in_flight_limit/01-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/tray.notification_in_flight_limit/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/tray.notification_in_flight_limit/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "tray.notification_in_flight_limit",
+      "build": "6ad9f957e6544f30c5e45c08af2306db77a9ff64",
+      "at": "2026-10-30T09:45:20Z"
+    }
+  ]
+}

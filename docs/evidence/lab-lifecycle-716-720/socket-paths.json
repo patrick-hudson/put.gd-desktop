@@ -1,0 +1,1 @@
+{"schemaVersion": 1, "passed": true, "limitBytesExcludingNul": 107, "paths": [{"path": "/home/user/t716/work/lab-runs/c3/qmp.sock", "utf8Bytes": 41, "passed": true}, {"path": "/run/user/1000/putgd/session.sock", "utf8Bytes": 33, "passed": true}]}

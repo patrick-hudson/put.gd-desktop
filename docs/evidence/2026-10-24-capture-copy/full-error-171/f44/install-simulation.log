@@ -1,0 +1,16 @@
+Updating and loading repositories:
+Repositories loaded.
+Package             Arch   Version                                 Repository        Size
+Installing:
+ putgd              x86_64 0:26.1024.1140~dev+g171b506e02ca-1.fc44 @commandline  30.0 MiB
+Installing dependencies:
+ jasper-libs        x86_64 0:4.2.8-2.fc44                          fedora       349.7 KiB
+ libmng             x86_64 0:2.0.3-25.fc44                         fedora       553.8 KiB
+ qt6-qtimageformats x86_64 0:6.11.2-1.fc44                         updates      435.3 KiB
+
+Transaction Summary:
+ Installing:         4 packages
+
+Total size of inbound packages is 7 MiB. Need to download 493 KiB.
+After this operation, 31 MiB extra will be used (install 31 MiB, remove 0 B).
+Operation aborted by the user.

@@ -1,0 +1,96 @@
+{
+  "checkedAt": "2026-10-30T06:16:31.750421+00:00",
+  "verification": "boat list --all",
+  "ownedCount": 12,
+  "remainingOwnedIds": [],
+  "peakActive": 3,
+  "workers": {
+    "fgnome": {
+      "id": "bx_kywgfsas",
+      "createdAt": "2026-10-30T05:50:30.011Z",
+      "deletedAt": "2026-10-30T06:16:31.708153+00:00",
+      "receipt": "fgnome-deleted.json",
+      "sha256": "4c8b475b13221b8cb993e2dce26dda5c466c6f4253ed24fc1055481e079f450b"
+    },
+    "fcinnamon": {
+      "id": "bx_wsvvktyu",
+      "createdAt": "2026-10-30T05:42:05.389Z",
+      "deletedAt": "2026-10-30T05:56:52.923484+00:00",
+      "receipt": "fcinnamon-deleted.json",
+      "sha256": "4e1b19ece2ef911d7a9f847e03a21753e6ade7cf9eee8584ea4726428cf72416"
+    },
+    "fbase2": {
+      "id": "bx_rxgaakqm",
+      "createdAt": "2026-10-30T05:40:47.581Z",
+      "deletedAt": "2026-10-30T05:46:24.949711+00:00",
+      "receipt": "fbase2-deleted.json",
+      "sha256": "cda6297ff8a4b8f6e1db4ff336166361f9bdcde972fdfb8c14f62f4ddccaa0b3"
+    },
+    "fbase": {
+      "id": "bx_pvwpzwe7",
+      "createdAt": "2026-10-30T05:25:04.510Z",
+      "deletedAt": "2026-10-30T05:33:28.021605+00:00",
+      "receipt": "fbase-deleted.json",
+      "sha256": "cc5b0a8942192bde363e0e757cb46a2c17f768382328c30ee5ac60cf28e93cc4"
+    },
+    "pbuild": {
+      "id": "bx_vvh4xqcg",
+      "createdAt": "2026-10-30T04:34:44.051Z",
+      "deletedAt": "2026-10-30T05:05:12.896406+00:00",
+      "receipt": "pbuild-deleted.json",
+      "sha256": "046959888b1dfa2dac99614c6f1a205ce2eb9eaea2d419a3737ab71cbf344a52"
+    },
+    "pcinnamon": {
+      "id": "bx_enwtrazx",
+      "createdAt": "2026-10-30T04:34:45.213Z",
+      "deletedAt": "2026-10-30T05:41:53.436723+00:00",
+      "receipt": "pcinnamon-deleted.json",
+      "sha256": "63f5ebeaba59687bc8c3fb46342fcb5105aad3d6c1e019fe13f60c99331a3cad"
+    },
+    "vgnome": {
+      "id": "bx_zpyhj8nd",
+      "createdAt": "2026-10-30T04:25:53.172Z",
+      "deletedAt": "2026-10-30T05:49:50.600782+00:00",
+      "receipt": "vgnome-deleted.json",
+      "sha256": "a4b8f9cede006cf80c7ac5bbc921ec38276f9dc99aa6fe3de43e6e4aa9966805"
+    },
+    "vcinnamon": {
+      "id": "bx_c794aq9q",
+      "createdAt": "2026-10-30T04:18:04.851Z",
+      "deletedAt": "2026-10-30T04:25:08.941123+00:00",
+      "receipt": "vcinnamon-deleted.json",
+      "sha256": "f157487e89c109b3a0c6900515af7067f27485452bfa3584b118bf678886332c"
+    },
+    "vbuild": {
+      "id": "bx_q5wgf24n",
+      "createdAt": "2026-10-30T04:17:40.352Z",
+      "deletedAt": "2026-10-30T04:25:53.521794+00:00",
+      "receipt": "vbuild-deleted.json",
+      "sha256": "d91fdb82190c71291d284419c140e924ff196f3481934a361bf9f3be23fc66bf"
+    },
+    "build": {
+      "id": "bx_atjnynnc",
+      "createdAt": "2026-10-30T03:54:54.686Z",
+      "deletedAt": "2026-10-30T04:17:37.033647+00:00",
+      "receipt": "build-deleted.json",
+      "sha256": "9fd8ca394e6daa3450c40b79d81567f18e0daa145fe33907e708455bd7063ed5"
+    },
+    "cinnamon": {
+      "id": "bx_qwgf4p9f",
+      "createdAt": "2026-10-30T03:55:05.012Z",
+      "deletedAt": "2026-10-30T04:17:39.989157+00:00",
+      "receipt": "cinnamon-deleted.json",
+      "sha256": "692ee8e58a6eb97a27cffa6bcd6ecbeea911fda7e83a5266d62c88ce5fbcea93"
+    },
+    "gnome": {
+      "id": "bx_nkwgnay9",
+      "createdAt": "2026-10-30T03:55:10.885Z",
+      "deletedAt": "2026-10-30T04:25:52.859012+00:00",
+      "receipt": "gnome-deleted.json",
+      "sha256": "a6fdbbd6c24f1b348168d0b40b385b5a35dd276a5bf75fe80245565f831a9f4f"
+    }
+  },
+  "stopResumeCount": 0,
+  "gnomeReplacementCount": 0,
+  "unsupportedRecover": "bx_nkwgnay9: recover_unsupported; no state change"
+}

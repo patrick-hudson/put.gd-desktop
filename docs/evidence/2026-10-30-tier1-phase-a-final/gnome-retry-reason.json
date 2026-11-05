@@ -1,0 +1,1 @@
+{"firstAttemptIssue":968,"cause":"Snap Firefox changes private XDG runtime; merged stage_firefox fallback was not staged in first GNOME setup","correction":"Run existing stage_firefox.py and set browser.command/profile_root in an overlay-only profile fragment","driverChanged":false,"nextAttempt":"One full GNOME rerun after a slot frees; retain first blocked receipt"}

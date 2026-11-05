@@ -1,0 +1,586 @@
+{
+  "scope": "Targeted Linux managed startup-link uninstall lifecycle; development CI artifacts, not a stable-release campaign",
+  "target": "m74",
+  "mode": "native",
+  "build": {
+    "baseVersion": "26.1024.1186",
+    "commitCount": 1186,
+    "dirty": false,
+    "gitCommit": "d5b561ddb94f8255b8bc754c1382552d983a6fa9",
+    "gitTree": "797721fa0672581562a8675d0d2010eced7c6bd4",
+    "packageVersion": "26.1024.1186~dev+gd5b561ddb94f",
+    "schemaVersion": 1,
+    "sourceProvenance": "git",
+    "version": "26.1024.1186-dev+gd5b561ddb94f"
+  },
+  "sourceTree": "797721fa0672581562a8675d0d2010eced7c6bd4",
+  "artifact": {
+    "file": "putgd_26.1024.1186~dev+gd5b561ddb94f_amd64.deb",
+    "sha256": "ff3cd261d6159d0e52acd01aa80b8eae9618694c7bf609e4a108531cfedd2730",
+    "bytes": 57552460,
+    "ciRun": 40068126465,
+    "artifactId": 12549999661
+  },
+  "os": "NAME=\"Linux Mint\"\nVERSION=\"22.3 (Zena)\"\nID=linuxmint\nID_LIKE=\"ubuntu debian\"\nPRETTY_NAME=\"Linux Mint 22.3\"\nVERSION_ID=\"22.3\"\nHOME_URL=\"https://www.linuxmint.com/\"\nSUPPORT_URL=\"https://forums.linuxmint.com/\"\nBUG_REPORT_URL=\"http://linuxmint-troubleshooting-guide.readthedocs.io/en/latest/\"\nPRIVACY_POLICY_URL=\"https://www.linuxmint.com/\"\nVERSION_CODENAME=zena\nUBUNTU_CODENAME=noble\n",
+  "desktopVersions": {
+    "cinnamon": {
+      "command": [
+        "cinnamon",
+        "--version"
+      ],
+      "exit": 0,
+      "stdout": "Cinnamon 6.6.9\n",
+      "stderr": ""
+    },
+    "Xorg": {
+      "command": [
+        "Xorg",
+        "--version"
+      ],
+      "exit": 1,
+      "stdout": "",
+      "stderr": "/usr/lib/xorg/Xorg.wrap: Only console users are allowed to run the X server\n"
+    }
+  },
+  "kernel": {
+    "command": [
+      "uname",
+      "-r"
+    ],
+    "exit": 0,
+    "stdout": "6.14.0-37-generic\n",
+    "stderr": ""
+  },
+  "displayEnvironment": {
+    "DISPLAY": ":0",
+    "XAUTHORITY": "/home/patrick/.Xauthority",
+    "DBUS_SESSION_BUS_ADDRESS": "unix:path=/run/user/1000/bus",
+    "XDG_RUNTIME_DIR": "/run/user/1000",
+    "XDG_SESSION_ID": "c73",
+    "XDG_CURRENT_DESKTOP": "X-Cinnamon",
+    "XDG_SESSION_TYPE": "x11",
+    "XDG_SESSION_DESKTOP": "cinnamon",
+    "DESKTOP_SESSION": "cinnamon"
+  },
+  "socketPreflight": {
+    "command": [
+      "/usr/bin/python3",
+      "/home/patrick/work/p382n/check_socket_paths.py",
+      "--socket",
+      "/run/user/1000/bus",
+      "/run/user/1000/putgd/session.sock",
+      "/tmp/.X11-unix/X0"
+    ],
+    "exit": 0,
+    "stdout": "{\"schemaVersion\": 1, \"passed\": true, \"limitBytesExcludingNul\": 107, \"paths\": [{\"path\": \"/run/user/1000/bus\", \"utf8Bytes\": 18, \"passed\": true}, {\"path\": \"/run/user/1000/putgd/session.sock\", \"utf8Bytes\": 33, \"passed\": true}, {\"path\": \"/tmp/.X11-unix/X0\", \"utf8Bytes\": 17, \"passed\": true}]}\n",
+    "stderr": ""
+  },
+  "installedPackageVerification": {
+    "command": [
+      "dpkg",
+      "--verify",
+      "putgd"
+    ],
+    "exit": 0,
+    "stdout": "",
+    "stderr": ""
+  },
+  "enabledLogin": {
+    "sessionId": "c75",
+    "session": {
+      "User": "1000",
+      "Display": ":0",
+      "Leader": "611314",
+      "Type": "x11",
+      "Active": "yes",
+      "State": "active",
+      "LockedHint": "no"
+    },
+    "pass": true,
+    "startupJournalErrors": [],
+    "residents": [
+      {
+        "pid": 611874,
+        "exe": "/usr/bin/putgd",
+        "ppid": 611319,
+        "start": 22029767,
+        "session": "c75",
+        "sessionState": "active",
+        "sessionType": "x11",
+        "cgroup": "/user.slice/user-1000.slice/session-c75.scope",
+        "display": ":0",
+        "sessionIdEnv": "c75",
+        "exeSha256": "433d9aee9fc442d7299ddc1fd8b4637aaf0d5725721118d469507d003e089605",
+        "appImageEnvironment": {},
+        "qtPlatformPlugins": []
+      }
+    ]
+  },
+  "uiProcesses": [
+    {
+      "pid": 612411,
+      "exe": "/usr/bin/putgd-ui",
+      "ppid": 611874,
+      "start": 22048258,
+      "session": "c75",
+      "sessionState": "active",
+      "sessionType": "x11",
+      "cgroup": "/user.slice/user-1000.slice/session-c75.scope",
+      "display": ":0",
+      "sessionIdEnv": "c75",
+      "exeSha256": "fba8b38c0e2873e550680314541abf955495c58072a50c54dc6a72675058fbb7",
+      "appImageEnvironment": {},
+      "qtPlatformPlugins": [
+        "/usr/lib/x86_64-linux-gnu/qt6/plugins/platforms/libqxcb.so"
+      ]
+    }
+  ],
+  "memory": {
+    "at": "2026-10-24T06:16:13Z",
+    "mode": "native",
+    "host": "mint-builder",
+    "idleSeconds": 180,
+    "pid": 611874,
+    "rssMiB": 28.90234375,
+    "peakRssMiB": 28.90234375,
+    "pssMiB": 18.2578125,
+    "samples": [
+      {
+        "seconds": 0.0,
+        "rssMiB": 28.6953125
+      },
+      {
+        "seconds": 10.0,
+        "rssMiB": 28.6953125
+      },
+      {
+        "seconds": 20.0,
+        "rssMiB": 28.6953125
+      },
+      {
+        "seconds": 30.0,
+        "rssMiB": 28.66015625
+      },
+      {
+        "seconds": 40.0,
+        "rssMiB": 28.66015625
+      },
+      {
+        "seconds": 50.0,
+        "rssMiB": 28.66015625
+      },
+      {
+        "seconds": 60.0,
+        "rssMiB": 28.90234375
+      },
+      {
+        "seconds": 70.0,
+        "rssMiB": 28.90234375
+      },
+      {
+        "seconds": 80.0,
+        "rssMiB": 28.90234375
+      },
+      {
+        "seconds": 90.0,
+        "rssMiB": 28.90234375
+      },
+      {
+        "seconds": 100.0,
+        "rssMiB": 28.90234375
+      },
+      {
+        "seconds": 110.01,
+        "rssMiB": 28.90234375
+      },
+      {
+        "seconds": 120.01,
+        "rssMiB": 28.90234375
+      },
+      {
+        "seconds": 130.01,
+        "rssMiB": 28.90234375
+      },
+      {
+        "seconds": 140.01,
+        "rssMiB": 28.90234375
+      },
+      {
+        "seconds": 150.01,
+        "rssMiB": 28.90234375
+      },
+      {
+        "seconds": 160.01,
+        "rssMiB": 28.90234375
+      },
+      {
+        "seconds": 170.01,
+        "rssMiB": 28.90234375
+      },
+      {
+        "seconds": 180.0,
+        "rssMiB": 28.90234375
+      }
+    ],
+    "forbiddenMaps": [],
+    "pass": true,
+    "loadBefore": "1.14 1.05 1.13 7/1059 612246",
+    "loadAfter": "0.95 1.01 1.09 1/977 612394",
+    "evidenceFile": "memory.json"
+  },
+  "memoryAssessment": {
+    "strictPass": true,
+    "budgetPass": true,
+    "baselineException": null
+  },
+  "removalPhases": {
+    "inactive": {
+      "sessionId": "c77",
+      "session": {
+        "User": "1000",
+        "Display": ":0",
+        "Leader": "613233",
+        "Type": "x11",
+        "Active": "yes",
+        "State": "active",
+        "LockedHint": "no"
+      },
+      "residentAbsent": true,
+      "entryAbsent": true,
+      "scriptAbsent": true,
+      "savedPreference": true,
+      "startupJournalErrors": [],
+      "startupJournal": {
+        "command": [
+          "journalctl",
+          "--user",
+          "--since",
+          "Sat 2026-10-24 01:16:32 CDT",
+          "--no-pager",
+          "-o",
+          "short-iso"
+        ],
+        "exit": 0,
+        "stdout": "\n",
+        "stderr": "",
+        "unfilteredStdoutSha256": "57c5e47d9cf4161d218c31d69ce9b1f280be9a819da20627d0a1a5c40bc286b6",
+        "unfilteredLineCount": 3,
+        "scope": "Only app-putgd autostart/scope and managed login-watch messages; original full result retained privately under exportReceipt"
+      },
+      "failedUnits": {
+        "command": [
+          "systemctl",
+          "--user",
+          "--failed",
+          "--no-legend",
+          "--no-pager"
+        ],
+        "exit": 0,
+        "stdout": "\u25cf xdg-desktop-portal-gtk.service loaded failed failed Portal service (GTK/GNOME implementation)\n",
+        "stderr": ""
+      },
+      "retention": {
+        "at": "2026-10-24T06:16:50Z",
+        "mode": "native",
+        "host": "mint-builder",
+        "files": {
+          "/home/patrick/.config/putgd/config.json": {
+            "sha256": "7dae963b14b2ca7721ce551d67a30ce8345bad441da5aaae044841220be00686",
+            "mode": 384
+          },
+          "/home/patrick/.local/share/putgd/i382-user-data.txt": {
+            "sha256": "309413a8236143e7ea0e6cba5d20c8716ab50ebce323d56bd4f92b73b90af11a",
+            "mode": 436
+          },
+          "/home/patrick/.local/share/putgd/history.sqlite": {
+            "sha256": "589777e524a9062529d66a42d0c700f56c659e19280808728354fadfbaca07cd",
+            "mode": 384
+          },
+          "/home/patrick/.local/state/putgd/logs/putgd-20261024T061252414Z-610462-1.jsonl": {
+            "sha256": "307fc6fefd17218d3031b690cbc3e7eca8ce5ca59ef6379992a421386bd3abcc",
+            "mode": 384
+          },
+          "/home/patrick/.local/state/putgd/logs/putgd-20261024T061309725Z-611874-1.jsonl": {
+            "sha256": "1749ed05cb845a96eed5ca37281e3d9e7171ae309de7cb7b9e09e42095e29156",
+            "mode": 384
+          }
+        },
+        "entrySha256": null,
+        "scriptSha256": null,
+        "preference": true,
+        "unchanged": true,
+        "evidenceFile": "retention-after-inactive.json"
+      }
+    },
+    "active": {
+      "sessionId": "c79",
+      "session": {
+        "User": "1000",
+        "Display": ":0",
+        "Leader": "615297",
+        "Type": "x11",
+        "Active": "yes",
+        "State": "active",
+        "LockedHint": "no"
+      },
+      "residentAbsent": true,
+      "entryAbsent": true,
+      "scriptAbsent": true,
+      "savedPreference": true,
+      "startupJournalErrors": [],
+      "startupJournal": {
+        "command": [
+          "journalctl",
+          "--user",
+          "--since",
+          "Sat 2026-10-24 01:17:21 CDT",
+          "--no-pager",
+          "-o",
+          "short-iso"
+        ],
+        "exit": 0,
+        "stdout": "\n",
+        "stderr": "",
+        "unfilteredStdoutSha256": "2c111fc5b1ff0b42f5e17f752f9a8eb8063b645127f0da896957fb50165d77ef",
+        "unfilteredLineCount": 3,
+        "scope": "Only app-putgd autostart/scope and managed login-watch messages; original full result retained privately under exportReceipt"
+      },
+      "failedUnits": {
+        "command": [
+          "systemctl",
+          "--user",
+          "--failed",
+          "--no-legend",
+          "--no-pager"
+        ],
+        "exit": 0,
+        "stdout": "\u25cf xdg-desktop-portal-gtk.service loaded failed failed Portal service (GTK/GNOME implementation)\n",
+        "stderr": ""
+      },
+      "retention": {
+        "at": "2026-10-24T06:17:12Z",
+        "mode": "native",
+        "host": "mint-builder",
+        "files": {
+          "/home/patrick/.config/putgd/config.json": {
+            "sha256": "7dae963b14b2ca7721ce551d67a30ce8345bad441da5aaae044841220be00686",
+            "mode": 384
+          },
+          "/home/patrick/.local/share/putgd/i382-user-data.txt": {
+            "sha256": "309413a8236143e7ea0e6cba5d20c8716ab50ebce323d56bd4f92b73b90af11a",
+            "mode": 436
+          },
+          "/home/patrick/.local/share/putgd/history.sqlite": {
+            "sha256": "589777e524a9062529d66a42d0c700f56c659e19280808728354fadfbaca07cd",
+            "mode": 384
+          },
+          "/home/patrick/.local/state/putgd/logs/putgd-20261024T061252414Z-610462-1.jsonl": {
+            "sha256": "307fc6fefd17218d3031b690cbc3e7eca8ce5ca59ef6379992a421386bd3abcc",
+            "mode": 384
+          },
+          "/home/patrick/.local/state/putgd/logs/putgd-20261024T061659166Z-614279-1.jsonl": {
+            "sha256": "08651fb184bc804d546dec63440f222b0233acf3d2de9d601cb368a20041f334",
+            "mode": 384
+          },
+          "/home/patrick/.local/state/putgd/logs/putgd-20261024T061309725Z-611874-1.jsonl": {
+            "sha256": "1749ed05cb845a96eed5ca37281e3d9e7171ae309de7cb7b9e09e42095e29156",
+            "mode": 384
+          }
+        },
+        "entrySha256": null,
+        "scriptSha256": null,
+        "preference": true,
+        "unchanged": true,
+        "evidenceFile": "retention-after-active.json"
+      }
+    },
+    "disabled": {
+      "sessionId": "c81",
+      "session": {
+        "User": "1000",
+        "Display": ":0",
+        "Leader": "617287",
+        "Type": "x11",
+        "Active": "yes",
+        "State": "active",
+        "LockedHint": "no"
+      },
+      "residentAbsent": true,
+      "entryAbsent": true,
+      "scriptAbsent": true,
+      "savedPreference": false,
+      "startupJournalErrors": [],
+      "startupJournal": {
+        "command": [
+          "journalctl",
+          "--user",
+          "--since",
+          "Sat 2026-10-24 01:18:07 CDT",
+          "--no-pager",
+          "-o",
+          "short-iso"
+        ],
+        "exit": 0,
+        "stdout": "\n",
+        "stderr": "",
+        "unfilteredStdoutSha256": "3c4aa08b49fad230fb39f5d7c1f4d37d09ce9547d39bb2c3a856c32b398a1361",
+        "unfilteredLineCount": 3,
+        "scope": "Only app-putgd autostart/scope and managed login-watch messages; original full result retained privately under exportReceipt"
+      },
+      "failedUnits": {
+        "command": [
+          "systemctl",
+          "--user",
+          "--failed",
+          "--no-legend",
+          "--no-pager"
+        ],
+        "exit": 0,
+        "stdout": "\u25cf xdg-desktop-portal-gtk.service loaded failed failed Portal service (GTK/GNOME implementation)\n",
+        "stderr": ""
+      }
+    }
+  },
+  "activeRemovalObservation": {
+    "at": "2026-10-24T06:17:12Z",
+    "mode": "native",
+    "host": "mint-builder",
+    "secondsAfterRemovalReturned": 1.501,
+    "state": {
+      "sessionId": "c77",
+      "session": {
+        "User": "1000",
+        "Display": ":0",
+        "Leader": "613233",
+        "Type": "x11",
+        "Active": "yes",
+        "State": "active",
+        "LockedHint": "no"
+      },
+      "residents": [],
+      "configSha256": "7dae963b14b2ca7721ce551d67a30ce8345bad441da5aaae044841220be00686",
+      "preference": true,
+      "entry": null,
+      "entrySha256": null,
+      "scriptSha256": null,
+      "personalApps": [],
+      "load": "1.93 1.29 1.18 1/981 614688"
+    },
+    "evidenceFile": "active-removal.json"
+  },
+  "explicitDisable": {
+    "applied": true,
+    "enabled": false
+  },
+  "cleanup": {
+    "at": "2026-10-24T06:18:27Z",
+    "mode": "native",
+    "host": "mint-builder",
+    "residents": [],
+    "entryAbsent": true,
+    "scriptAbsent": true,
+    "profileAbsent": true,
+    "personalApps": [],
+    "evidenceFile": "cleanup.json"
+  },
+  "exportReceipt": {
+    "host": "m74",
+    "mode": "native",
+    "remoteRoot": "/home/patrick/work/p382n/native",
+    "verifiedFiles": {
+      "quit-prep-login.json": "1639f71e258a60f00128e43a9b73960c7b6ffa7dbef1822e04ce0ceb54ac537e",
+      "quit-inactive.json": "a33f22d2636902e1b141bda229339dceb15724bf6a85a0ffb12e215486c3dfe6",
+      "active-removal.json": "6a047abf5d16ddc1dea5e4061a9caaaa8c94fc28faf794859e001dd675679c76",
+      "quit-disabled.json": "3ce62aa24f27af22b006d94301d582b629e51bfabe501d43a2db24da12a8f8bd",
+      "status-frame-inactive-cleaned-login.json": "ef96170d81ffa5b3119b0d79f21113b64d7579f9098546a0460d1d189804e55e",
+      "pkg-sim-inactive.json": "d1e54dcd2a9f622362ba91cac942a9473d4ba25b9a544ef9fe6c043a900342f6",
+      "logout-active.json": "1db5126efc04b16e0ef8b727b63bf7079e5c3164fca3bafd944eb56114c046bb",
+      "show-login-enabled.json": "d9cb97f862ceae36c6217e089d92f80036b8a5711d98de84988cc3f45b3fbda7",
+      "logout-inactive.json": "6b05b5125d8d41ca54e615150f3553e24ce8a7c29a7895a0c3358d44e7cb1498",
+      "retention-before-active.json": "d69d0f22704bc1c99038593c8858347eec31a38df75036dca5dd37f9af86c366",
+      "status-frame-login-settings.json": "b5efeeb49c03966afb54b1215dc1bc216c85a5459b3ab2e30dd76b2878f4d521",
+      "status-frame-disabled-settings.json": "0089b32c5e07b67a6c1b7d2ec0e396157f8b30629c1e9b16a191e27634406095",
+      "show-rearmed.json": "4a0f0885fad6758622e7d140a9985946cabf81375bf1ee7b0daed3f153172e81",
+      "show-disabled.json": "77664c9b61a7121ffbc2ba4c30d52f32d7c2c26725a417b8448be645e153c933",
+      "pkg-inactive.attempt2.json": "7fb4792625c2ee1747c63772274abba8ed9986762ee003daaa65aad7b1c7474e",
+      "check-active.json": "147c32654c77340f1beb2f43c8841d08f58c1d28ada7f944af06ae8f8f9d85b6",
+      "pkg-inactive.json": "6328a35d12cd73f63f5f73e825450d2ddd694ea7e814ec782c4850895cc0375e",
+      "launch-active-rearm.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "cleanup.json": "88f532760b47e8f9a35d25def938148afe6ef701a9a3174d861c32fc1289cbe2",
+      "launch-active-rearm.json": "e47591532f524d9039ba55018e126302fcc79e8842c5cea3fcdbeda49c239c87",
+      "stop-watch.json": "6e91aacdcd6c9d0d24c2c01745900c99423352bb8745fc7c25bf77b3b8b3784c",
+      "launch-disable-rearm.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "disable.json": "70e4f02571a4eb51f18eedcdf1a345867a6f32b7da3bfd9c20924773c5260893",
+      "identity.json": "8a733852c1bab699d2666a19abd6e1d56c2022806d11508cc15477fb844c7f82",
+      "pkg-sim-inactive.attempt2.json": "874732b9884630213a410faf3ff5c3ea554af59283f32ab8d803256510cce500",
+      "status-frame-disabled-clean-login.json": "48cdcf07ec85be76f0b8dfa1d9afe72a64593d0f8287b4b1247af3a9495188b3",
+      "prepare.json": "c87fd39ddf54d50c7824b63890e1d5ffe753f766117667d847959305496b3d1d",
+      "pkg-active.attempt2.json": "5817980af04fd0f487961604f50470628b2fa2ebc652753f94fb4dc78a85bf5e",
+      "status-frame-active-cleaned.json": "b32c78bb3e00546dabb21cb8fe6c9e0ba385a681297861fe186e6247055e7470",
+      "retention-after-active.json": "4f7704880511240d8d6c8f9c0d7f467eb294b1a0f67731430b2a763747d41deb",
+      "status-frame-enabled-login.json": "4d620079caf0d3e150abd8bc07d2d32ff9f3553dca8cde1e453c7af29774ad26",
+      "pkg-sim-active.json": "4132f6356c259925abfa374b1219b59d741c49611ad9f474186d6cddac504aa5",
+      "launch-initial.json": "8e2501faeec0168a61ffd4670769a3d19a43898b076ed994e2d558d4bc0f715e",
+      "relogin-disabled.json": "a587c17271c69512e687446eae2089ee191c365ad853e1af2b96cb6b19526d01",
+      "relogin-enabled.json": "f0fa0fd14190fb728d7b06aa8fda6e53f45f16f87745d773303d84c030bfbd52",
+      "quit-active.json": "82823738b976a1d9b417d845233070c856eb7b57295cf09126151de2e8fb4f55",
+      "inactive-before-removal.json": "758a2e1df831a97a0f7d160a58509e078fe632324bf49b5b057f484be179982d",
+      "pkg-sim-disabled.json": "5b3fefd4ca1fc2dcbe8136cfcf74f78111364d76b55b71c84d1cb62d4e52f14b",
+      "launch-initial.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "enable.json": "b27b6f98c714e4c5b6a1f740da55f0ae52a15607c3659539327ecb9ef460b25b",
+      "retention-after-inactive.json": "eb093866b2be7c37c94a53dd836717f9917676c03246698322d9d9959ad8f89d",
+      "logout-disabled.json": "3d899c4f8ffaf295948b64150671efdce800e1a352b3486f581dbaf9dd9b96d9",
+      "check-enabled.json": "7adbeedfded1e9c0879298988879322bcd6d3902100b76f97af0a27657090496",
+      "check-disabled.json": "d5abfe8de4f9e6da3bbd891a82db73efde952dbf101541e996400e8c313f3d35",
+      "status-frame-active-cleaned-login.json": "58b1e8c9e9d80cfcda94bee02ae2e93a35510d8a59c2f5bde4a8a317b30e92ce",
+      "launch-disable-rearm.json": "2bdd319a74f8b9d73a1c18791f8483e22e81c6e793fe697b3267ad3d1a92c4c5",
+      "status-frame-rearmed-settings.json": "34e330ccb0072699d84c37f721255e2a4d863b8ffbfb719d87b8fffc3062d857",
+      "relogin-active.json": "d4d00be012b8cbee7b25bbdea97827e7ba446e5ed47211b927897c4702b78085",
+      "show-enabled.json": "a4ab3358ee99e843ac9b3912554a0576b788e2e3676a6778ef724defd67c89fc",
+      "check-inactive.json": "a771c27cf5063c0093d96103263dba34e67c6d08c4a282c4e38293a95c8d362a",
+      "pkg-sim-active.attempt2.json": "19f1b8bb0acea2ecf9f6c7af697a2e229f345b398840e6cd38996cd69f60019c",
+      "retention-before-inactive.json": "4f1bd1475a52ab186613cfcefd0ca1c1fb0b1da601e3f71941312bbdec38cc35",
+      "pkg-active.json": "047396e3483191dd6df412485c9972e839e62bf46b64958724a002a7cec03ab4",
+      "status-frame-enabled-settings.json": "5f04d4cc36eedcd3bf58effd15bb8b799bf0faeaf85967f7b7f26d9747f77017",
+      "pkg-initial.json": "ecc8aa4c0a6b4975ffd3da1b403c484e168e5f7b0ac8422dc7dda2cef3ee2278",
+      "logout-enabled.json": "7c46a91cc55fb85d352c35bd5ea31ad124f061c3031291fc0cf22d3f86a81df3",
+      "memory.json": "94a297e60574ce80f371332f82ee57d3b6e8858348d81dd77a66f4ef30d8fb78",
+      "pkg-disabled.json": "6f8b47dc5fe654a7a24bf280073b1fef044ab732fef294e1ad02cd78632a0781",
+      "relogin-inactive.json": "bd6f9e5025bdf3f07d0026cf726e1e1a2d486eac79b7d2f2ac6720bbaaf2a5ad",
+      "pkg-sim-initial.json": "ff226afbe65de0209da5dc97969c7eea90b475ada71f1f7e4d8729699284b26f"
+    },
+    "allHashesVerified": true
+  },
+  "visualReview": {
+    "reviewed": true,
+    "accepted": true,
+    "sourceCommit": "d5b561ddb94f8255b8bc754c1382552d983a6fa9",
+    "invalidVisuals": [],
+    "notes": "All nine complete frames inspected: actual Settings on/rearmed/off and real login/removal desktops. Stock Mint Welcome, KDE remote-control and Debian IBus notices are unrelated and retained. No protected login value or personal app content appears. Machine receipts establish file/process absence and settings preservation; screenshots supply desktop context.",
+    "files": {
+      "enabled-login.png": "a95b7a05113ab1e6f83dd6523ebd94a3b13f76275c3aa79e6f5f1381473747c5",
+      "disabled-settings.png": "fb45ff233add4969e14ebbdfd4ebdc2c76fc6b6a4843d91fb0766c0a3781e37c",
+      "login-settings.png": "1af0bfdcf62c4a770ddbe3c0a1d45a84daa6c8244ad1a0cc28b6e2cfa9903eb8",
+      "rearmed-settings.png": "6244560cf6d8219d07689cd7eadfa0989f0328dd0c09c8498d2438f3ee5c49f0",
+      "enabled-settings.png": "333f1e0fe1e9d9c05d709c3deab2d0177cd91d5f50cf8c7100c8e1fa460cfdf4",
+      "active-cleaned.png": "f993d7542dde147eb4dad465b0b9e6dd1c12a95c3408a8d31101b7b8b817a2ea",
+      "active-cleaned-login.png": "465c878fd6c4f6fe9be57227210e7b58440ed886220daf1097f9da896d6f3fee",
+      "disabled-clean-login.png": "3ae68715a540baec17ad1f84c4dbe33a59fa0a52f2e16964cf602299b028fa48",
+      "inactive-cleaned-login.png": "d39fb3271486137139216552d38fe765a531aceb14990f9097aaf835cd4ce560"
+    }
+  },
+  "completion": {
+    "target": "m74",
+    "mode": "native",
+    "sourceCommit": "d5b561ddb94f8255b8bc754c1382552d983a6fa9",
+    "functionalPassed": true,
+    "memoryPassed": true,
+    "memoryAssessment": {
+      "strictPass": true,
+      "budgetPass": true,
+      "baselineException": null
+    },
+    "seconds": 344.3,
+    "visualReviewPending": true
+  }
+}

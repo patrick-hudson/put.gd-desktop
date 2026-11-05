@@ -1,0 +1,190 @@
+{
+  "schemaVersion": 2,
+  "environment": {
+    "desktop": "mint-cinnamon-x11",
+    "host": "boat",
+    "placement": "boat",
+    "guest": "cinnamon-x11",
+    "package": "deb",
+    "destination": "s3",
+    "build": "e02f46e2b20400c45ba644487eddc744e28f0f3e",
+    "driver_source": "7577c2e6424d296dcafb02529d1d390c114d5018",
+    "placement_details": {
+      "boat_sandbox_id": "bx_nhk7d37m",
+      "run_id": "7adcf68d-63c6-48db-92b2-08491dcf61bc"
+    },
+    "operation_ids": [
+      {
+        "operationId": "32380ecd-15e9-4159-a4cf-9ea89ef2e687"
+      },
+      {
+        "operationId": "08302822-3e30-4611-8415-ccbbc802c426"
+      },
+      {
+        "operationId": "304e5107-c615-4017-a339-21b113dc589a"
+      },
+      {
+        "operationId": "354e53cd-8f74-42cd-950c-b1fc5d12fbd4"
+      }
+    ],
+    "coverage_export": {
+      "scanned_before_copy": true,
+      "copy_scan_passed": true,
+      "published": true
+    }
+  },
+  "interactions": [
+    {
+      "interaction": "editor.undo",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/user/sd726/live-c5/live/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; desktop frame after masked by live evidence policy; session token [redacted] rejected",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "s3",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/__main__.registered/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/__main__.registered/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "__main__.registered",
+      "build": "e02f46e2b20400c45ba644487eddc744e28f0f3e",
+      "at": "2026-10-30T08:07:57Z"
+    },
+    {
+      "interaction": "editor.redo",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/user/sd726/live-c5/live/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; desktop frame after masked by live evidence policy; History shows [url {\"hash\": \"d7785839742b5e72b92be4e01c5374bb81006ee15e8bc0bf16761cf5b3157ac6\", \"host\": \"f004.backblazeb2.com\", \"length\": 64, \"present\": true}] and [url {\"hash\": \"c8103ecd826af8a04c7ffb0ae2e8ac6845387425ce86a7960aedc9196a9693a5\", \"host\": \"objects.sd726.internal\", \"length\": 66, \"present\": true}]",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "s3",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/__main__.schemeless/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/__main__.schemeless/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "__main__.schemeless",
+      "build": "e02f46e2b20400c45ba644487eddc744e28f0f3e",
+      "at": "2026-10-30T08:08:02Z"
+    },
+    {
+      "interaction": "editor.tool-text",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/user/sd726/live-c5/live/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; desktop frame after masked by live evidence policy; driver error: RuntimeError",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "s3",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/__main__.raw/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/__main__.raw/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "__main__.raw",
+      "build": "e02f46e2b20400c45ba644487eddc744e28f0f3e",
+      "at": "2026-10-30T08:08:08Z"
+    },
+    {
+      "interaction": "editor.tool-redact",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "/home/user/sd726/live-c5/live/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; desktop frame after masked by live evidence policy",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "s3",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/__main__.framed/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "recipe-history",
+          "path": "frames/__main__.framed/01-recipe-history.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/__main__.framed/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "__main__.framed",
+      "build": "e02f46e2b20400c45ba644487eddc744e28f0f3e",
+      "at": "2026-10-30T08:08:19Z"
+    }
+  ],
+  "secret_scan": {
+    "quarantine": [],
+    "passed": true,
+    "files": 46,
+    "pngs": 41,
+    "image_audit": "ocr-and-known-regions",
+    "findings": []
+  }
+}

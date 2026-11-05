@@ -63,7 +63,7 @@ one lacked timely independent paste evidence; another hit the clipboard-change
 guard with a late producer acknowledgment. The later unchanged controlled matrix
 passed. Its numeric XFixes trace does not establish either historical cause.
 
-[Transport diagnosis](../../../testing-live-s3-transport.md) records the controlled
+[Transport diagnosis](../../../history/testing-live-s3-transport.md) records the controlled
 TLS comparison, policy guard and missing-optional-include correction. The
 resetting peer was not identified; successful SDK tests do not prove a particular
 firewall or packet-fragmentation cause. [Memory strategy](../../../memory-strategy.md)

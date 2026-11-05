@@ -1,0 +1,878 @@
+{
+ "matched": {
+  "usr/lib/gstreamer-1.0/libgstaudioconvert.so": "gstreamer1.0-plugins-base",
+  "usr/lib/gstreamer-1.0/libgstaudioparsers.so": "gstreamer1.0-plugins-good",
+  "usr/lib/gstreamer-1.0/libgstaudioresample.so": "gstreamer1.0-plugins-base",
+  "usr/lib/gstreamer-1.0/libgstcoreelements.so": "libgstreamer1.0-0",
+  "usr/lib/gstreamer-1.0/libgstmatroska.so": "gstreamer1.0-plugins-good",
+  "usr/lib/gstreamer-1.0/libgstpipewire.so": "gstreamer1.0-pipewire",
+  "usr/lib/gstreamer-1.0/libgstpulseaudio.so": "gstreamer1.0-plugins-good",
+  "usr/lib/gstreamer-1.0/libgstva.so": "gstreamer1.0-plugins-bad",
+  "usr/lib/gstreamer-1.0/libgstvaapi.so": "gstreamer1.0-vaapi",
+  "usr/lib/gstreamer-1.0/libgstvideoconvertscale.so": "gstreamer1.0-plugins-base",
+  "usr/lib/gstreamer-1.0/libgstvideocrop.so": "gstreamer1.0-plugins-good",
+  "usr/lib/gstreamer-1.0/libgstvideoparsersbad.so": "gstreamer1.0-plugins-bad",
+  "usr/lib/gstreamer-1.0/libgstvideorate.so": "gstreamer1.0-plugins-base",
+  "usr/lib/gstreamer-1.0/libgstvideotestsrc.so": "gstreamer1.0-plugins-base",
+  "usr/lib/gstreamer-1.0/libgstvoaacenc.so": "gstreamer1.0-plugins-bad",
+  "usr/lib/gstreamer-1.0/libgstx264.so": "gstreamer1.0-plugins-ugly",
+  "usr/lib/gstreamer-1.0/libgstximagesrc.so": "gstreamer1.0-plugins-good",
+  "usr/lib/libFLAC.so.12": "libflac12t64",
+  "usr/lib/libGLESv2.so.2": "libgles2",
+  "usr/lib/libXau.so.6": "libxau6",
+  "usr/lib/libXcomposite.so.1": "libxcomposite1",
+  "usr/lib/libXcursor.so.1": "libxcursor1",
+  "usr/lib/libXdamage.so.1": "libxdamage1",
+  "usr/lib/libXdmcp.so.6": "libxdmcp6",
+  "usr/lib/libXext.so.6": "libxext6",
+  "usr/lib/libXfixes.so.3": "libxfixes3",
+  "usr/lib/libXi.so.6": "libxi6",
+  "usr/lib/libXinerama.so.1": "libxinerama1",
+  "usr/lib/libXrandr.so.2": "libxrandr2",
+  "usr/lib/libXrender.so.1": "libxrender1",
+  "usr/lib/libXtst.so.6": "libxtst6",
+  "usr/lib/libapparmor.so.1": "libapparmor1",
+  "usr/lib/libasyncns.so.0": "libasyncns0",
+  "usr/lib/libatk-1.0.so.0": "libatk1.0-0t64",
+  "usr/lib/libatk-bridge-2.0.so.0": "libatk-bridge2.0-0t64",
+  "usr/lib/libatspi.so.0": "libatspi2.0-0t64",
+  "usr/lib/libblkid.so.1": "libblkid1",
+  "usr/lib/libbrotlicommon.so.1": "libbrotli1",
+  "usr/lib/libbrotlidec.so.1": "libbrotli1",
+  "usr/lib/libbsd.so.0": "libbsd0",
+  "usr/lib/libbz2.so.1.0": "libbz2-1.0",
+  "usr/lib/libcairo-gobject.so.2": "libcairo-gobject2",
+  "usr/lib/libcairo.so.2": "libcairo2",
+  "usr/lib/libcap.so.2": "libcap2",
+  "usr/lib/libcrypto.so.3": "libssl3t64",
+  "usr/lib/libcurl.so.4": "libcurl4t64",
+  "usr/lib/libdatrie.so.1": "libdatrie1",
+  "usr/lib/libdbus-1.so.3": "libdbus-1-3",
+  "usr/lib/libdw.so.1": "libdw1t64",
+  "usr/lib/libelf.so.1": "libelf1t64",
+  "usr/lib/libepoxy.so.0": "libepoxy0",
+  "usr/lib/libffi.so.8": "libffi8",
+  "usr/lib/libgcrypt.so.20": "libgcrypt20",
+  "usr/lib/libgdk-3.so.0": "libgtk-3-0t64",
+  "usr/lib/libgdk_pixbuf-2.0.so.0": "libgdk-pixbuf-2.0-0",
+  "usr/lib/libgio-2.0.so.0": "libglib2.0-0t64",
+  "usr/lib/libglib-2.0.so.0": "libglib2.0-0t64",
+  "usr/lib/libgmodule-2.0.so.0": "libglib2.0-0t64",
+  "usr/lib/libgnutls.so.30": "libgnutls30t64",
+  "usr/lib/libgobject-2.0.so.0": "libglib2.0-0t64",
+  "usr/lib/libgraphite2.so.3": "libgraphite2-3",
+  "usr/lib/libgssapi_krb5.so.2": "libgssapi-krb5-2",
+  "usr/lib/libgstallocators-1.0.so.0": "libgstreamer-plugins-base1.0-0",
+  "usr/lib/libgstaudio-1.0.so.0": "libgstreamer-plugins-base1.0-0",
+  "usr/lib/libgstbase-1.0.so.0": "libgstreamer1.0-0",
+  "usr/lib/libgstcodecparsers-1.0.so.0": "libgstreamer-plugins-bad1.0-0",
+  "usr/lib/libgstcodecs-1.0.so.0": "libgstreamer-plugins-bad1.0-0",
+  "usr/lib/libgstgl-1.0.so.0": "libgstreamer-gl1.0-0",
+  "usr/lib/libgstpbutils-1.0.so.0": "libgstreamer-plugins-base1.0-0",
+  "usr/lib/libgstreamer-1.0.so.0": "libgstreamer1.0-0",
+  "usr/lib/libgstriff-1.0.so.0": "libgstreamer-plugins-base1.0-0",
+  "usr/lib/libgsttag-1.0.so.0": "libgstreamer-plugins-base1.0-0",
+  "usr/lib/libgstva-1.0.so.0": "libgstreamer-plugins-bad1.0-0",
+  "usr/lib/libgstvideo-1.0.so.0": "libgstreamer-plugins-base1.0-0",
+  "usr/lib/libgthread-2.0.so.0": "libglib2.0-0t64",
+  "usr/lib/libgtk-3.so.0": "libgtk-3-0t64",
+  "usr/lib/libgudev-1.0.so.0": "libgudev-1.0-0",
+  "usr/lib/libhogweed.so.6": "libhogweed6t64",
+  "usr/lib/libidn2.so.0": "libidn2-0",
+  "usr/lib/libjpeg.so.8": "libjpeg-turbo8",
+  "usr/lib/libk5crypto.so.3": "libk5crypto3",
+  "usr/lib/libkeyutils.so.1": "libkeyutils1",
+  "usr/lib/libkrb5.so.3": "libkrb5-3",
+  "usr/lib/libkrb5support.so.0": "libkrb5support0",
+  "usr/lib/liblber.so.2": "libldap2",
+  "usr/lib/libldap.so.2": "libldap2",
+  "usr/lib/liblz4.so.1": "liblz4-1",
+  "usr/lib/liblzma.so.5": "liblzma5",
+  "usr/lib/libmd.so.0": "libmd0",
+  "usr/lib/libmount.so.1": "libmount1",
+  "usr/lib/libmp3lame.so.0": "libmp3lame0",
+  "usr/lib/libmpg123.so.0": "libmpg123-0t64",
+  "usr/lib/libnettle.so.8": "libnettle8t64",
+  "usr/lib/libnghttp2.so.14": "libnghttp2-14",
+  "usr/lib/libnuma.so.1": "libnuma1",
+  "usr/lib/libogg.so.0": "libogg0",
+  "usr/lib/libopus.so.0": "libopus0",
+  "usr/lib/liborc-0.4.so.0": "liborc-0.4-0t64",
+  "usr/lib/libp11-kit.so.0": "libp11-kit0",
+  "usr/lib/libpango-1.0.so.0": "libpango-1.0-0",
+  "usr/lib/libpangocairo-1.0.so.0": "libpangocairo-1.0-0",
+  "usr/lib/libpangoft2-1.0.so.0": "libpangoft2-1.0-0",
+  "usr/lib/libpcre2-8.so.0": "libpcre2-8-0",
+  "usr/lib/libpixman-1.so.0": "libpixman-1-0",
+  "usr/lib/libpng16.so.16": "libpng16-16t64",
+  "usr/lib/libpsl.so.5": "libpsl5t64",
+  "usr/lib/libpulse.so.0": "libpulse0",
+  "usr/lib/libpulsecommon-16.1.so": "libpulse0",
+  "usr/lib/librtmp.so.1": "librtmp1",
+  "usr/lib/libsasl2.so.2": "libsasl2-2",
+  "usr/lib/libselinux.so.1": "libselinux1",
+  "usr/lib/libsharpyuv.so.0": "libsharpyuv0",
+  "usr/lib/libsndfile.so.1": "libsndfile1",
+  "usr/lib/libssh.so.4": "libssh-4",
+  "usr/lib/libssl.so.3": "libssl3t64",
+  "usr/lib/libsystemd.so.0": "libsystemd0",
+  "usr/lib/libtasn1.so.6": "libtasn1-6",
+  "usr/lib/libthai.so.0": "libthai0",
+  "usr/lib/libudev.so.1": "libudev1",
+  "usr/lib/libunistring.so.5": "libunistring5",
+  "usr/lib/libunwind.so.8": "libunwind8",
+  "usr/lib/libvo-aacenc.so.0": "libvo-aacenc0",
+  "usr/lib/libvorbis.so.0": "libvorbis0a",
+  "usr/lib/libvorbisenc.so.2": "libvorbisenc2",
+  "usr/lib/libvpx.so.9": "libvpx9",
+  "usr/lib/libwayland-cursor.so.0": "libwayland-cursor0",
+  "usr/lib/libwayland-egl.so.1": "libwayland-egl1",
+  "usr/lib/libwebp.so.7": "libwebp7",
+  "usr/lib/libwebpmux.so.3": "libwebpmux3",
+  "usr/lib/libx264.so.164": "libx264-164",
+  "usr/lib/libx265.so.199": "libx265-199",
+  "usr/lib/libxcb-cursor.so.0": "libxcb-cursor0",
+  "usr/lib/libxcb-damage.so.0": "libxcb-damage0",
+  "usr/lib/libxcb-glx.so.0": "libxcb-glx0",
+  "usr/lib/libxcb-icccm.so.4": "libxcb-icccm4",
+  "usr/lib/libxcb-image.so.0": "libxcb-image0",
+  "usr/lib/libxcb-keysyms.so.1": "libxcb-keysyms1",
+  "usr/lib/libxcb-randr.so.0": "libxcb-randr0",
+  "usr/lib/libxcb-render-util.so.0": "libxcb-render-util0",
+  "usr/lib/libxcb-render.so.0": "libxcb-render0",
+  "usr/lib/libxcb-shape.so.0": "libxcb-shape0",
+  "usr/lib/libxcb-shm.so.0": "libxcb-shm0",
+  "usr/lib/libxcb-sync.so.1": "libxcb-sync1",
+  "usr/lib/libxcb-util.so.1": "libxcb-util1",
+  "usr/lib/libxcb-xfixes.so.0": "libxcb-xfixes0",
+  "usr/lib/libxcb-xinput.so.0": "libxcb-xinput0",
+  "usr/lib/libxcb-xkb.so.1": "libxcb-xkb1",
+  "usr/lib/libxkbcommon-x11.so.0": "libxkbcommon-x11-0",
+  "usr/lib/libxkbcommon.so.0": "libxkbcommon0",
+  "usr/lib/libzstd.so.1": "libzstd1",
+  "usr/lib/putgd-host-fallback/libva-drm.so.2": "libva-drm2",
+  "usr/lib/putgd-host-fallback/libva.so.2": "libva2",
+  "usr/libexec/gstreamer-1.0/gst-plugin-scanner": "libgstreamer1.0-0"
+ },
+ "other": [
+  "usr/bin/putgd",
+  "usr/bin/putgd-b2-worker",
+  "usr/bin/putgd-capture",
+  "usr/bin/putgd-cli",
+  "usr/bin/putgd-kde-region",
+  "usr/bin/putgd-record",
+  "usr/bin/putgd-s3-worker",
+  "usr/bin/putgd-ui",
+  "usr/lib/libLayerShellQtInterface.so.6",
+  "usr/lib/libQt6Core.so.6",
+  "usr/lib/libQt6DBus.so.6",
+  "usr/lib/libQt6Gui.so.6",
+  "usr/lib/libQt6Network.so.6",
+  "usr/lib/libQt6OpenGL.so.6",
+  "usr/lib/libQt6Sql.so.6",
+  "usr/lib/libQt6Svg.so.6",
+  "usr/lib/libQt6WaylandClient.so.6",
+  "usr/lib/libQt6WaylandEglClientHwIntegration.so.6",
+  "usr/lib/libQt6Widgets.so.6",
+  "usr/lib/libQt6XcbQpa.so.6",
+  "usr/lib/libadwaita.so",
+  "usr/lib/libavcodec.so.61",
+  "usr/lib/libavfilter.so.10",
+  "usr/lib/libavformat.so.61",
+  "usr/lib/libavutil.so.59",
+  "usr/lib/libaws-c-auth.so.1.0.0",
+  "usr/lib/libaws-c-cal.so.1.0.0",
+  "usr/lib/libaws-c-common.so.1",
+  "usr/lib/libaws-c-compression.so.1.0.0",
+  "usr/lib/libaws-c-event-stream.so.1.0.0",
+  "usr/lib/libaws-c-http.so.1.0.0",
+  "usr/lib/libaws-c-io.so.1.0.0",
+  "usr/lib/libaws-c-mqtt.so.1.0.0",
+  "usr/lib/libaws-c-s3.so.0unstable",
+  "usr/lib/libaws-c-sdkutils.so.1.0.0",
+  "usr/lib/libaws-checksums.so.1.0.0",
+  "usr/lib/libaws-cpp-sdk-core.so",
+  "usr/lib/libaws-cpp-sdk-s3.so",
+  "usr/lib/libaws-crt-cpp.so",
+  "usr/lib/libbradient.so",
+  "usr/lib/libicudata.so.73",
+  "usr/lib/libicui18n.so.73",
+  "usr/lib/libicuuc.so.73",
+  "usr/lib/liblayer-shell.so",
+  "usr/lib/libputgd-s3.so",
+  "usr/lib/libqgtk3.so",
+  "usr/lib/libqt-plugin-wayland-egl.so",
+  "usr/lib/libqt6keychain.so.1",
+  "usr/lib/libs2n.so.1",
+  "usr/lib/libswresample.so.5",
+  "usr/lib/libswscale.so.8",
+  "usr/lib/libxdg-shell.so",
+  "usr/lib/putgd/libaws-c-auth.so.1.0.0",
+  "usr/lib/putgd/libaws-c-cal.so.1.0.0",
+  "usr/lib/putgd/libaws-c-common.so.0.14.5",
+  "usr/lib/putgd/libaws-c-compression.so.1.0.0",
+  "usr/lib/putgd/libaws-c-event-stream.so.1.0.0",
+  "usr/lib/putgd/libaws-c-http.so.1.0.0",
+  "usr/lib/putgd/libaws-c-io.so.1.0.0",
+  "usr/lib/putgd/libaws-c-mqtt.so.1.0.0",
+  "usr/lib/putgd/libaws-c-s3.so.1.0.0",
+  "usr/lib/putgd/libaws-c-sdkutils.so.1.0.0",
+  "usr/lib/putgd/libaws-checksums.so.1.0.0",
+  "usr/lib/putgd/libaws-cpp-sdk-core.so",
+  "usr/lib/putgd/libaws-cpp-sdk-s3.so",
+  "usr/lib/putgd/libaws-crt-cpp.so",
+  "usr/lib/putgd/libputgd-s3.so",
+  "usr/lib/putgd/libs2n.so.1.0.0",
+  "usr/libexec/putgd/proton/putgd-proton-runtime",
+  "usr/plugins/imageformats/libqgif.so",
+  "usr/plugins/imageformats/libqicns.so",
+  "usr/plugins/imageformats/libqico.so",
+  "usr/plugins/imageformats/libqjpeg.so",
+  "usr/plugins/imageformats/libqsvg.so",
+  "usr/plugins/imageformats/libqtga.so",
+  "usr/plugins/imageformats/libqtiff.so",
+  "usr/plugins/imageformats/libqwbmp.so",
+  "usr/plugins/imageformats/libqwebp.so",
+  "usr/plugins/platforminputcontexts/libcomposeplatforminputcontextplugin.so",
+  "usr/plugins/platforminputcontexts/libibusplatforminputcontextplugin.so",
+  "usr/plugins/platforms/libqoffscreen.so",
+  "usr/plugins/platforms/libqwayland-egl.so",
+  "usr/plugins/platforms/libqwayland-generic.so",
+  "usr/plugins/platforms/libqxcb.so",
+  "usr/plugins/platformthemes/libqgtk3.so",
+  "usr/plugins/platformthemes/libqxdgdesktopportal.so",
+  "usr/plugins/sqldrivers/libqsqlite.so",
+  "usr/plugins/tls/libqcertonlybackend.so",
+  "usr/plugins/tls/libqopensslbackend.so",
+  "usr/plugins/wayland-decoration-client/libadwaita.so",
+  "usr/plugins/wayland-decoration-client/libbradient.so",
+  "usr/plugins/wayland-graphics-integration-client/libqt-plugin-wayland-egl.so",
+  "usr/plugins/wayland-shell-integration/liblayer-shell.so",
+  "usr/plugins/wayland-shell-integration/libxdg-shell.so",
+  "usr/plugins/xcbglintegrations/libqxcb-egl-integration.so",
+  "usr/plugins/xcbglintegrations/libqxcb-glx-integration.so"
+ ],
+ "packages": {
+  "gstreamer1.0-pipewire": {
+   "source": "pipewire",
+   "sourceVersion": "1.0.5-1ubuntu3.3",
+   "version": "1.0.5-1ubuntu3.3"
+  },
+  "gstreamer1.0-plugins-bad": {
+   "source": "gst-plugins-bad1.0",
+   "sourceVersion": "1.24.2-1ubuntu4",
+   "version": "1.24.2-1ubuntu4"
+  },
+  "gstreamer1.0-plugins-base": {
+   "source": "gst-plugins-base1.0",
+   "sourceVersion": "1.24.2-1ubuntu0.5",
+   "version": "1.24.2-1ubuntu0.5"
+  },
+  "gstreamer1.0-plugins-good": {
+   "source": "gst-plugins-good1.0",
+   "sourceVersion": "1.24.2-1ubuntu1.8",
+   "version": "1.24.2-1ubuntu1.8"
+  },
+  "gstreamer1.0-plugins-ugly": {
+   "source": "gst-plugins-ugly1.0",
+   "sourceVersion": "1.24.1-1build1",
+   "version": "1.24.1-1build1"
+  },
+  "gstreamer1.0-vaapi": {
+   "source": "gstreamer-vaapi",
+   "sourceVersion": "1.24.2-1",
+   "version": "1.24.2-1"
+  },
+  "libapparmor1": {
+   "source": "apparmor",
+   "sourceVersion": "4.0.1really4.0.1-0ubuntu0.24.04.9",
+   "version": "4.0.1really4.0.1-0ubuntu0.24.04.9"
+  },
+  "libasyncns0": {
+   "source": "libasyncns",
+   "sourceVersion": "0.8-6build4",
+   "version": "0.8-6build4"
+  },
+  "libatk-bridge2.0-0t64": {
+   "source": "at-spi2-core",
+   "sourceVersion": "2.52.0-1build1",
+   "version": "2.52.0-1build1"
+  },
+  "libatk1.0-0t64": {
+   "source": "at-spi2-core",
+   "sourceVersion": "2.52.0-1build1",
+   "version": "2.52.0-1build1"
+  },
+  "libatspi2.0-0t64": {
+   "source": "at-spi2-core",
+   "sourceVersion": "2.52.0-1build1",
+   "version": "2.52.0-1build1"
+  },
+  "libblkid1": {
+   "source": "util-linux",
+   "sourceVersion": "2.39.3-9ubuntu6.6",
+   "version": "2.39.3-9ubuntu6.6"
+  },
+  "libbrotli1": {
+   "source": "brotli",
+   "sourceVersion": "1.1.0-2build2",
+   "version": "1.1.0-2build2"
+  },
+  "libbsd0": {
+   "source": "libbsd",
+   "sourceVersion": "0.12.1-1build1.1",
+   "version": "0.12.1-1build1.1"
+  },
+  "libbz2-1.0": {
+   "source": "bzip2",
+   "sourceVersion": "1.0.8-5.1ubuntu0.1",
+   "version": "1.0.8-5.1ubuntu0.1"
+  },
+  "libcairo-gobject2": {
+   "source": "cairo",
+   "sourceVersion": "1.18.0-3build1",
+   "version": "1.18.0-3build1"
+  },
+  "libcairo2": {
+   "source": "cairo",
+   "sourceVersion": "1.18.0-3build1",
+   "version": "1.18.0-3build1"
+  },
+  "libcap2": {
+   "source": "libcap2",
+   "sourceVersion": "1:2.66-5ubuntu2.4",
+   "version": "1:2.66-5ubuntu2.4"
+  },
+  "libcurl4t64": {
+   "source": "curl",
+   "sourceVersion": "8.5.0-2ubuntu10.16",
+   "version": "8.5.0-2ubuntu10.16"
+  },
+  "libdatrie1": {
+   "source": "libdatrie",
+   "sourceVersion": "0.2.13-3build1",
+   "version": "0.2.13-3build1"
+  },
+  "libdbus-1-3": {
+   "source": "dbus",
+   "sourceVersion": "1.14.10-4ubuntu4.1",
+   "version": "1.14.10-4ubuntu4.1"
+  },
+  "libdw1t64": {
+   "source": "elfutils",
+   "sourceVersion": "0.190-1.1ubuntu0.1",
+   "version": "0.190-1.1ubuntu0.1"
+  },
+  "libelf1t64": {
+   "source": "elfutils",
+   "sourceVersion": "0.190-1.1ubuntu0.1",
+   "version": "0.190-1.1ubuntu0.1"
+  },
+  "libepoxy0": {
+   "source": "libepoxy",
+   "sourceVersion": "1.5.10-1build1",
+   "version": "1.5.10-1build1"
+  },
+  "libffi8": {
+   "source": "libffi",
+   "sourceVersion": "3.4.6-1build1",
+   "version": "3.4.6-1build1"
+  },
+  "libflac12t64": {
+   "source": "flac",
+   "sourceVersion": "1.4.3+ds-2.1ubuntu2",
+   "version": "1.4.3+ds-2.1ubuntu2"
+  },
+  "libgcrypt20": {
+   "source": "libgcrypt20",
+   "sourceVersion": "1.10.3-2ubuntu0.2",
+   "version": "1.10.3-2ubuntu0.2"
+  },
+  "libgdk-pixbuf-2.0-0": {
+   "source": "gdk-pixbuf",
+   "sourceVersion": "2.42.10+dfsg-3ubuntu3.3",
+   "version": "2.42.10+dfsg-3ubuntu3.3"
+  },
+  "libgles2": {
+   "source": "libglvnd",
+   "sourceVersion": "1.7.0-1build1",
+   "version": "1.7.0-1build1"
+  },
+  "libglib2.0-0t64": {
+   "source": "glib2.0",
+   "sourceVersion": "2.80.0-6ubuntu3.10",
+   "version": "2.80.0-6ubuntu3.10"
+  },
+  "libgnutls30t64": {
+   "source": "gnutls28",
+   "sourceVersion": "3.8.3-1.1ubuntu3.6",
+   "version": "3.8.3-1.1ubuntu3.6"
+  },
+  "libgraphite2-3": {
+   "source": "graphite2",
+   "sourceVersion": "1.3.14-2ubuntu0.24.04.1",
+   "version": "1.3.14-2ubuntu0.24.04.1"
+  },
+  "libgssapi-krb5-2": {
+   "source": "krb5",
+   "sourceVersion": "1.20.1-6ubuntu2.10",
+   "version": "1.20.1-6ubuntu2.10"
+  },
+  "libgstreamer-gl1.0-0": {
+   "source": "gst-plugins-base1.0",
+   "sourceVersion": "1.24.2-1ubuntu0.5",
+   "version": "1.24.2-1ubuntu0.5"
+  },
+  "libgstreamer-plugins-bad1.0-0": {
+   "source": "gst-plugins-bad1.0",
+   "sourceVersion": "1.24.2-1ubuntu4",
+   "version": "1.24.2-1ubuntu4"
+  },
+  "libgstreamer-plugins-base1.0-0": {
+   "source": "gst-plugins-base1.0",
+   "sourceVersion": "1.24.2-1ubuntu0.5",
+   "version": "1.24.2-1ubuntu0.5"
+  },
+  "libgstreamer1.0-0": {
+   "source": "gstreamer1.0",
+   "sourceVersion": "1.24.2-1ubuntu0.1",
+   "version": "1.24.2-1ubuntu0.1"
+  },
+  "libgtk-3-0t64": {
+   "source": "gtk+3.0",
+   "sourceVersion": "3.24.41-4ubuntu1.3",
+   "version": "3.24.41-4ubuntu1.3"
+  },
+  "libgudev-1.0-0": {
+   "source": "libgudev",
+   "sourceVersion": "238-5ubuntu1",
+   "version": "1:238-5ubuntu1"
+  },
+  "libhogweed6t64": {
+   "source": "nettle",
+   "sourceVersion": "3.9.1-2.2build1.1",
+   "version": "3.9.1-2.2build1.1"
+  },
+  "libidn2-0": {
+   "source": "libidn2",
+   "sourceVersion": "2.3.7-2build1.1",
+   "version": "2.3.7-2build1.1"
+  },
+  "libjpeg-turbo8": {
+   "source": "libjpeg-turbo",
+   "sourceVersion": "2.1.5-2ubuntu2",
+   "version": "2.1.5-2ubuntu2"
+  },
+  "libk5crypto3": {
+   "source": "krb5",
+   "sourceVersion": "1.20.1-6ubuntu2.10",
+   "version": "1.20.1-6ubuntu2.10"
+  },
+  "libkeyutils1": {
+   "source": "keyutils",
+   "sourceVersion": "1.6.3-3build1",
+   "version": "1.6.3-3build1"
+  },
+  "libkrb5-3": {
+   "source": "krb5",
+   "sourceVersion": "1.20.1-6ubuntu2.10",
+   "version": "1.20.1-6ubuntu2.10"
+  },
+  "libkrb5support0": {
+   "source": "krb5",
+   "sourceVersion": "1.20.1-6ubuntu2.10",
+   "version": "1.20.1-6ubuntu2.10"
+  },
+  "libldap2": {
+   "source": "openldap",
+   "sourceVersion": "2.6.10+dfsg-0ubuntu0.24.04.1",
+   "version": "2.6.10+dfsg-0ubuntu0.24.04.1"
+  },
+  "liblz4-1": {
+   "source": "lz4",
+   "sourceVersion": "1.9.4-1build1.1",
+   "version": "1.9.4-1build1.1"
+  },
+  "liblzma5": {
+   "source": "xz-utils",
+   "sourceVersion": "5.6.1+really5.4.5-1ubuntu0.4",
+   "version": "5.6.1+really5.4.5-1ubuntu0.4"
+  },
+  "libmd0": {
+   "source": "libmd",
+   "sourceVersion": "1.1.0-2build1.1",
+   "version": "1.1.0-2build1.1"
+  },
+  "libmount1": {
+   "source": "util-linux",
+   "sourceVersion": "2.39.3-9ubuntu6.6",
+   "version": "2.39.3-9ubuntu6.6"
+  },
+  "libmp3lame0": {
+   "source": "lame",
+   "sourceVersion": "3.100-6build1",
+   "version": "3.100-6build1"
+  },
+  "libmpg123-0t64": {
+   "source": "mpg123",
+   "sourceVersion": "1.32.5-1ubuntu1.1",
+   "version": "1.32.5-1ubuntu1.1"
+  },
+  "libnettle8t64": {
+   "source": "nettle",
+   "sourceVersion": "3.9.1-2.2build1.1",
+   "version": "3.9.1-2.2build1.1"
+  },
+  "libnghttp2-14": {
+   "source": "nghttp2",
+   "sourceVersion": "1.59.0-1ubuntu0.4",
+   "version": "1.59.0-1ubuntu0.4"
+  },
+  "libnuma1": {
+   "source": "numactl",
+   "sourceVersion": "2.0.18-1ubuntu0.24.04.1",
+   "version": "2.0.18-1ubuntu0.24.04.1"
+  },
+  "libogg0": {
+   "source": "libogg",
+   "sourceVersion": "1.3.5-3build1",
+   "version": "1.3.5-3build1"
+  },
+  "libopus0": {
+   "source": "opus",
+   "sourceVersion": "1.4-1build1",
+   "version": "1.4-1build1"
+  },
+  "liborc-0.4-0t64": {
+   "source": "orc",
+   "sourceVersion": "1:0.4.38-1ubuntu0.1",
+   "version": "1:0.4.38-1ubuntu0.1"
+  },
+  "libp11-kit0": {
+   "source": "p11-kit",
+   "sourceVersion": "0.25.3-4ubuntu2.2",
+   "version": "0.25.3-4ubuntu2.2"
+  },
+  "libpango-1.0-0": {
+   "source": "pango1.0",
+   "sourceVersion": "1.52.1+ds-1build1",
+   "version": "1.52.1+ds-1build1"
+  },
+  "libpangocairo-1.0-0": {
+   "source": "pango1.0",
+   "sourceVersion": "1.52.1+ds-1build1",
+   "version": "1.52.1+ds-1build1"
+  },
+  "libpangoft2-1.0-0": {
+   "source": "pango1.0",
+   "sourceVersion": "1.52.1+ds-1build1",
+   "version": "1.52.1+ds-1build1"
+  },
+  "libpcre2-8-0": {
+   "source": "pcre2",
+   "sourceVersion": "10.42-4ubuntu2.1",
+   "version": "10.42-4ubuntu2.1"
+  },
+  "libpixman-1-0": {
+   "source": "pixman",
+   "sourceVersion": "0.42.2-1build1",
+   "version": "0.42.2-1build1"
+  },
+  "libpng16-16t64": {
+   "source": "libpng1.6",
+   "sourceVersion": "1.6.43-5ubuntu0.7",
+   "version": "1.6.43-5ubuntu0.7"
+  },
+  "libpsl5t64": {
+   "source": "libpsl",
+   "sourceVersion": "0.21.2-1.1build1",
+   "version": "0.21.2-1.1build1"
+  },
+  "libpulse0": {
+   "source": "pulseaudio",
+   "sourceVersion": "1:16.1+dfsg1-2ubuntu10.1",
+   "version": "1:16.1+dfsg1-2ubuntu10.1"
+  },
+  "librtmp1": {
+   "source": "rtmpdump",
+   "sourceVersion": "2.4+20151223.gitfa8646d.1-2build7",
+   "version": "2.4+20151223.gitfa8646d.1-2build7"
+  },
+  "libsasl2-2": {
+   "source": "cyrus-sasl2",
+   "sourceVersion": "2.1.28+dfsg1-5ubuntu3.1",
+   "version": "2.1.28+dfsg1-5ubuntu3.1"
+  },
+  "libselinux1": {
+   "source": "libselinux",
+   "sourceVersion": "3.5-2ubuntu2.1",
+   "version": "3.5-2ubuntu2.1"
+  },
+  "libsharpyuv0": {
+   "source": "libwebp",
+   "sourceVersion": "1.3.2-0.4build3",
+   "version": "1.3.2-0.4build3"
+  },
+  "libsndfile1": {
+   "source": "libsndfile",
+   "sourceVersion": "1.2.2-1ubuntu5.24.04.1",
+   "version": "1.2.2-1ubuntu5.24.04.1"
+  },
+  "libssh-4": {
+   "source": "libssh",
+   "sourceVersion": "0.10.6-2ubuntu0.5",
+   "version": "0.10.6-2ubuntu0.5"
+  },
+  "libssl3t64": {
+   "source": "openssl",
+   "sourceVersion": "3.0.13-0ubuntu3.16",
+   "version": "3.0.13-0ubuntu3.16"
+  },
+  "libsystemd0": {
+   "source": "systemd",
+   "sourceVersion": "255.4-1ubuntu8.18",
+   "version": "255.4-1ubuntu8.18"
+  },
+  "libtasn1-6": {
+   "source": "libtasn1-6",
+   "sourceVersion": "4.19.0-3ubuntu0.24.04.2",
+   "version": "4.19.0-3ubuntu0.24.04.2"
+  },
+  "libthai0": {
+   "source": "libthai",
+   "sourceVersion": "0.1.29-2build1",
+   "version": "0.1.29-2build1"
+  },
+  "libudev1": {
+   "source": "systemd",
+   "sourceVersion": "255.4-1ubuntu8.18",
+   "version": "255.4-1ubuntu8.18"
+  },
+  "libunistring5": {
+   "source": "libunistring",
+   "sourceVersion": "1.1-2build1.1",
+   "version": "1.1-2build1.1"
+  },
+  "libunwind8": {
+   "source": "libunwind",
+   "sourceVersion": "1.6.2-3build1.1",
+   "version": "1.6.2-3build1.1"
+  },
+  "libva-drm2": {
+   "source": "libva",
+   "sourceVersion": "2.20.0-2ubuntu0.2",
+   "version": "2.20.0-2ubuntu0.2"
+  },
+  "libva2": {
+   "source": "libva",
+   "sourceVersion": "2.20.0-2ubuntu0.2",
+   "version": "2.20.0-2ubuntu0.2"
+  },
+  "libvo-aacenc0": {
+   "source": "vo-aacenc",
+   "sourceVersion": "0.1.3-2build1",
+   "version": "0.1.3-2build1"
+  },
+  "libvorbis0a": {
+   "source": "libvorbis",
+   "sourceVersion": "1.3.7-1build3",
+   "version": "1.3.7-1build3"
+  },
+  "libvorbisenc2": {
+   "source": "libvorbis",
+   "sourceVersion": "1.3.7-1build3",
+   "version": "1.3.7-1build3"
+  },
+  "libvpx9": {
+   "source": "libvpx",
+   "sourceVersion": "1.14.0-1ubuntu2.3",
+   "version": "1.14.0-1ubuntu2.3"
+  },
+  "libwayland-cursor0": {
+   "source": "wayland",
+   "sourceVersion": "1.22.0-2.1build1",
+   "version": "1.22.0-2.1build1"
+  },
+  "libwayland-egl1": {
+   "source": "wayland",
+   "sourceVersion": "1.22.0-2.1build1",
+   "version": "1.22.0-2.1build1"
+  },
+  "libwebp7": {
+   "source": "libwebp",
+   "sourceVersion": "1.3.2-0.4build3",
+   "version": "1.3.2-0.4build3"
+  },
+  "libwebpmux3": {
+   "source": "libwebp",
+   "sourceVersion": "1.3.2-0.4build3",
+   "version": "1.3.2-0.4build3"
+  },
+  "libx264-164": {
+   "source": "x264",
+   "sourceVersion": "2:0.164.3108+git31e19f9-1",
+   "version": "2:0.164.3108+git31e19f9-1"
+  },
+  "libx265-199": {
+   "source": "x265",
+   "sourceVersion": "3.5-2build1",
+   "version": "3.5-2build1"
+  },
+  "libxau6": {
+   "source": "libxau",
+   "sourceVersion": "1:1.0.9-1build6",
+   "version": "1:1.0.9-1build6"
+  },
+  "libxcb-cursor0": {
+   "source": "xcb-util-cursor",
+   "sourceVersion": "0.1.4-1build1",
+   "version": "0.1.4-1build1"
+  },
+  "libxcb-damage0": {
+   "source": "libxcb",
+   "sourceVersion": "1.15-1ubuntu2",
+   "version": "1.15-1ubuntu2"
+  },
+  "libxcb-glx0": {
+   "source": "libxcb",
+   "sourceVersion": "1.15-1ubuntu2",
+   "version": "1.15-1ubuntu2"
+  },
+  "libxcb-icccm4": {
+   "source": "xcb-util-wm",
+   "sourceVersion": "0.4.1-1.1build3",
+   "version": "0.4.1-1.1build3"
+  },
+  "libxcb-image0": {
+   "source": "xcb-util-image",
+   "sourceVersion": "0.4.0-2build1",
+   "version": "0.4.0-2build1"
+  },
+  "libxcb-keysyms1": {
+   "source": "xcb-util-keysyms",
+   "sourceVersion": "0.4.0-1build4",
+   "version": "0.4.0-1build4"
+  },
+  "libxcb-randr0": {
+   "source": "libxcb",
+   "sourceVersion": "1.15-1ubuntu2",
+   "version": "1.15-1ubuntu2"
+  },
+  "libxcb-render-util0": {
+   "source": "xcb-util-renderutil",
+   "sourceVersion": "0.3.9-1build4",
+   "version": "0.3.9-1build4"
+  },
+  "libxcb-render0": {
+   "source": "libxcb",
+   "sourceVersion": "1.15-1ubuntu2",
+   "version": "1.15-1ubuntu2"
+  },
+  "libxcb-shape0": {
+   "source": "libxcb",
+   "sourceVersion": "1.15-1ubuntu2",
+   "version": "1.15-1ubuntu2"
+  },
+  "libxcb-shm0": {
+   "source": "libxcb",
+   "sourceVersion": "1.15-1ubuntu2",
+   "version": "1.15-1ubuntu2"
+  },
+  "libxcb-sync1": {
+   "source": "libxcb",
+   "sourceVersion": "1.15-1ubuntu2",
+   "version": "1.15-1ubuntu2"
+  },
+  "libxcb-util1": {
+   "source": "xcb-util",
+   "sourceVersion": "0.4.0-1build3",
+   "version": "0.4.0-1build3"
+  },
+  "libxcb-xfixes0": {
+   "source": "libxcb",
+   "sourceVersion": "1.15-1ubuntu2",
+   "version": "1.15-1ubuntu2"
+  },
+  "libxcb-xinput0": {
+   "source": "libxcb",
+   "sourceVersion": "1.15-1ubuntu2",
+   "version": "1.15-1ubuntu2"
+  },
+  "libxcb-xkb1": {
+   "source": "libxcb",
+   "sourceVersion": "1.15-1ubuntu2",
+   "version": "1.15-1ubuntu2"
+  },
+  "libxcomposite1": {
+   "source": "libxcomposite",
+   "sourceVersion": "1:0.4.5-1build3",
+   "version": "1:0.4.5-1build3"
+  },
+  "libxcursor1": {
+   "source": "libxcursor",
+   "sourceVersion": "1:1.2.1-1build1",
+   "version": "1:1.2.1-1build1"
+  },
+  "libxdamage1": {
+   "source": "libxdamage",
+   "sourceVersion": "1:1.1.6-1build1",
+   "version": "1:1.1.6-1build1"
+  },
+  "libxdmcp6": {
+   "source": "libxdmcp",
+   "sourceVersion": "1:1.1.3-0ubuntu6",
+   "version": "1:1.1.3-0ubuntu6"
+  },
+  "libxext6": {
+   "source": "libxext",
+   "sourceVersion": "2:1.3.4-1build2",
+   "version": "2:1.3.4-1build2"
+  },
+  "libxfixes3": {
+   "source": "libxfixes",
+   "sourceVersion": "1:6.0.0-2build1",
+   "version": "1:6.0.0-2build1"
+  },
+  "libxi6": {
+   "source": "libxi",
+   "sourceVersion": "2:1.8.1-1build1",
+   "version": "2:1.8.1-1build1"
+  },
+  "libxinerama1": {
+   "source": "libxinerama",
+   "sourceVersion": "2:1.1.4-3build1",
+   "version": "2:1.1.4-3build1"
+  },
+  "libxkbcommon-x11-0": {
+   "source": "libxkbcommon",
+   "sourceVersion": "1.6.0-1build1",
+   "version": "1.6.0-1build1"
+  },
+  "libxkbcommon0": {
+   "source": "libxkbcommon",
+   "sourceVersion": "1.6.0-1build1",
+   "version": "1.6.0-1build1"
+  },
+  "libxrandr2": {
+   "source": "libxrandr",
+   "sourceVersion": "2:1.5.2-2build1",
+   "version": "2:1.5.2-2build1"
+  },
+  "libxrender1": {
+   "source": "libxrender",
+   "sourceVersion": "1:0.9.10-1.1build1",
+   "version": "1:0.9.10-1.1build1"
+  },
+  "libxtst6": {
+   "source": "libxtst",
+   "sourceVersion": "2:1.2.3-1.1ubuntu0.1",
+   "version": "2:1.2.3-1.1ubuntu0.1"
+  },
+  "libzstd1": {
+   "source": "libzstd",
+   "sourceVersion": "1.5.5+dfsg2-2build1.1",
+   "version": "1.5.5+dfsg2-2build1.1"
+  }
+ },
+ "unmatchedSameName": {}
+}

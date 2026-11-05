@@ -1,0 +1,144 @@
+{
+  "schemaVersion": 2,
+  "environment": {
+    "desktop": "kubuntu-kde-wayland",
+    "host": "f44",
+    "placement": "guest",
+    "guest": "kde-wayland",
+    "package": "deb",
+    "destination": "s3",
+    "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+    "placement_details": {
+      "run_id": "e8d7c156-58b8-4a6c-90a0-b4d7cdb82f5e",
+      "lab_profile": "kde-wayland",
+      "run_directory": "/home/patrick/t1b/work/lab-runs/bk1",
+      "session_root": "/run/user/1000/bks1",
+      "socket": "/run/user/1000/bks1/runtime/putgd/session.sock",
+      "input_backend": "qmp",
+      "frame_backend": "vnc-in-memory"
+    },
+    "target": {
+      "hostname": "putgd-kde-lab",
+      "kernel": "7.0.0-38-generic",
+      "machine": "x86_64",
+      "os": {
+        "ID": "ubuntu",
+        "VERSION_ID": "26.04",
+        "VARIANT_ID": null
+      },
+      "session_type": "wayland",
+      "desktop": "KDE",
+      "qt_platform": "wayland"
+    },
+    "blocked": "surface preflight missing target tools: python3-pyatspi; provision distro packages before starting recipes",
+    "failure_frames": [
+      "startup-failed.png"
+    ],
+    "private_cleanup": "not-owned-or-retained",
+    "coverage_export": {
+      "scanned_before_copy": true,
+      "copy_scan_passed": true,
+      "published": true
+    }
+  },
+  "interactions": [
+    {
+      "interaction": "region.to-upload",
+      "desktop": "kubuntu-kde-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "receipt": "/home/patrick/t1e/kde-s3a/receipt.json",
+      "note": "surface preflight missing target tools: python3-pyatspi; provision distro packages before starting recipes",
+      "host": "f44",
+      "placement": "guest",
+      "guest": "kde-wayland",
+      "destination": "s3",
+      "recipe": "outcomes_live.s3_region_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T03:59:43Z"
+    },
+    {
+      "interaction": "region.drag",
+      "desktop": "kubuntu-kde-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "receipt": "/home/patrick/t1e/kde-s3a/receipt.json",
+      "note": "surface preflight missing target tools: python3-pyatspi; provision distro packages before starting recipes",
+      "host": "f44",
+      "placement": "guest",
+      "guest": "kde-wayland",
+      "destination": "s3",
+      "recipe": "outcomes_live.s3_region_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T03:59:43Z"
+    },
+    {
+      "interaction": "history.copy-link",
+      "desktop": "kubuntu-kde-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "receipt": "/home/patrick/t1e/kde-s3a/receipt.json",
+      "note": "surface preflight missing target tools: python3-pyatspi; provision distro packages before starting recipes",
+      "host": "f44",
+      "placement": "guest",
+      "guest": "kde-wayland",
+      "destination": "s3",
+      "recipe": "outcomes_live.s3_region_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T03:59:43Z"
+    },
+    {
+      "interaction": "history.open-link",
+      "desktop": "kubuntu-kde-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "receipt": "/home/patrick/t1e/kde-s3a/receipt.json",
+      "note": "surface preflight missing target tools: python3-pyatspi; provision distro packages before starting recipes",
+      "host": "f44",
+      "placement": "guest",
+      "guest": "kde-wayland",
+      "destination": "s3",
+      "recipe": "outcomes_live.s3_region_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T03:59:43Z"
+    },
+    {
+      "interaction": "history.delete-remote",
+      "desktop": "kubuntu-kde-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "receipt": "/home/patrick/t1e/kde-s3a/receipt.json",
+      "note": "surface preflight missing target tools: python3-pyatspi; provision distro packages before starting recipes",
+      "host": "f44",
+      "placement": "guest",
+      "guest": "kde-wayland",
+      "destination": "s3",
+      "recipe": "outcomes_live.s3_region_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T03:59:43Z"
+    },
+    {
+      "interaction": "confirm.history-delete",
+      "desktop": "kubuntu-kde-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "receipt": "/home/patrick/t1e/kde-s3a/receipt.json",
+      "note": "surface preflight missing target tools: python3-pyatspi; provision distro packages before starting recipes",
+      "host": "f44",
+      "placement": "guest",
+      "guest": "kde-wayland",
+      "destination": "s3",
+      "recipe": "outcomes_live.s3_region_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T03:59:43Z"
+    }
+  ],
+  "secret_scan": {
+    "quarantine": [],
+    "passed": true,
+    "files": 5,
+    "pngs": 1,
+    "image_audit": "ocr-and-known-regions",
+    "findings": []
+  }
+}

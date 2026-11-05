@@ -1,0 +1,19 @@
+{
+  "cases": [
+    {
+      "case": "signed-fallback",
+      "exitCode": 0
+    },
+    {
+      "case": "tampered-signature",
+      "exitCode": 100
+    }
+  ],
+  "httpRequests": [
+    "/archive/ubuntu/dists/noble/InRelease",
+    "/security/ubuntu/dists/noble/InRelease",
+    "/archive/ubuntu/dists/noble/InRelease",
+    "/security/ubuntu/dists/noble/InRelease"
+  ],
+  "scope": "Private signed loopback repository; official URI transport mapped to loopback after rewrite; no system APT changes"
+}

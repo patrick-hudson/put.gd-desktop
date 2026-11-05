@@ -1,0 +1,110 @@
+{
+ "watcherItemCount": 1,
+ "ours": [
+  "org.kde.StatusNotifierItem.putgd_1533b9793574414c960458ad09019bde"
+ ],
+ "menu": [
+  {
+   "id": 1,
+   "label": "Capture Region",
+   "visible": true,
+   "enabled": true,
+   "type": "standard"
+  },
+  {
+   "id": 5,
+   "label": "Capture Region & Edit",
+   "visible": true,
+   "enabled": true,
+   "type": "standard"
+  },
+  {
+   "id": 2,
+   "label": "Capture Window",
+   "visible": true,
+   "enabled": true,
+   "type": "standard"
+  },
+  {
+   "id": 3,
+   "label": "Capture Desktop",
+   "visible": true,
+   "enabled": true,
+   "type": "standard"
+  },
+  {
+   "id": 16,
+   "label": "Capture Screen Recording",
+   "visible": true,
+   "enabled": true,
+   "type": "standard"
+  },
+  {
+   "id": 13,
+   "label": "Edit Image",
+   "visible": true,
+   "enabled": true,
+   "type": "standard"
+  },
+  {
+   "id": 4,
+   "label": "Upload Clipboard",
+   "visible": true,
+   "enabled": true,
+   "type": "standard"
+  },
+  {
+   "id": 6,
+   "label": null,
+   "visible": true,
+   "enabled": true,
+   "type": "separator"
+  },
+  {
+   "id": 7,
+   "label": "Settings and setup",
+   "visible": true,
+   "enabled": true,
+   "type": "standard"
+  },
+  {
+   "id": 8,
+   "label": "Upload history",
+   "visible": true,
+   "enabled": true,
+   "type": "standard"
+  },
+  {
+   "id": 17,
+   "label": "Update available",
+   "visible": false,
+   "enabled": true,
+   "type": "standard"
+  },
+  {
+   "id": 10,
+   "label": null,
+   "visible": true,
+   "enabled": true,
+   "type": "separator"
+  },
+  {
+   "id": 11,
+   "label": "About put.gd",
+   "visible": true,
+   "enabled": true,
+   "type": "standard"
+  },
+  {
+   "id": 12,
+   "label": "Quit",
+   "visible": true,
+   "enabled": true,
+   "type": "standard"
+  }
+ ],
+ "Id": "putgd",
+ "Title": "put.gd",
+ "Status": "Active",
+ "IconName": ""
+}

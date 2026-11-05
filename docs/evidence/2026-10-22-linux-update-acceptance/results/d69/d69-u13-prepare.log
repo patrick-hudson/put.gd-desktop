@@ -1,0 +1,8 @@
+### apt-get purge -y putgd
+Removing putgd (26.1022.1017~nightly) ...
+Purging configuration files for putgd (26.1022.1017~nightly) ...
+ls: cannot access '/etc/apt/sources.list.d/putgd.sources': No such file or directory
+### extract putgd-nightly.sources from the 1017 DEB (not installed)
+11b30f1c9733b307cb1028e8a05d956a251d15a797173dcffd1e2bc9f165416f  /etc/apt/sources.list.d/putgd.sources
+1
+pkg.put.gd_apt_debian13_dists_nightly_main_dep11_Components-amd64.yml.gz

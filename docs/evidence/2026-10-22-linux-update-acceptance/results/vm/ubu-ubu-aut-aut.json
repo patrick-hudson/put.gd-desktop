@@ -1,0 +1,30 @@
+{
+ "appimageupdatetool": {
+  "tool": "appimageupdatetool-x86_64.AppImage",
+  "toolSha256": "8d17a50e2f7502edacab48216d1b491de3669935858591ea0026cc2db375967c",
+  "sslCertFile": null,
+  "check": {
+   "exit": 1,
+   "output": "zsync2: Using CA bundle found on system: /etc/ssl/certs/ca-certificates.crt\n"
+  },
+  "update": {
+   "exit": 0,
+   "seconds": 3.1,
+   "output": "Checking for updates...\nzsync2: Using CA bundle found on system: /etc/ssl/certs/ca-certificates.crt\n... done!\n\nUpdating from generic server via ZSync\nzsync2: Using CA bundle found on system: /etc/ssl/certs/ca-certificates.crt\n\u001b[2K\n0% done\nzsync2: Target file: /home/lab/ua/app/runs/ubu-aut/apps/putgd-26.1022.1019-nightly-x86_64.AppImage\nzsync2: Reading seed file: /home/lab/ua/app/runs/ubu-aut/apps/putgd-26.1022.1017-nightly-x86_64.AppImage\n\u001b[2K\n3.95522% done (4.35 of 109.92 MiB)...\u001b[2K\n28.40% done (31.22 of 109.92 MiB)...\u001b[2K\n49.13% done (54.01 of 109.92 MiB)...\u001b[2K\n60.59% done (66.60 of 109.92 MiB)...\u001b[2K\n77.17% done (84.82 of 109.92 MiB)...\u001b[2K\n93.40% done (102.67 of 109.92 MiB)...\u001b[2K\n99.71% done (109.60 of 109.92 MiB)...\nzsync2: Usable data from seed files: 99.705046%\nzsync2: Renaming temp file\nzsync2: Fetching remaining blocks\n\u001b[2K\n99.71% done (109.60 of 109.92 MiB)...\nzsync2: Downloading from https://pkg.put.gd/releases/v26.1022.1019-nightly/putgd-26.1022.1019-nightly-x86_64.AppImage\nzsync2: optimized ranges, old requests count 26, new requests count 12\n\n\u001b[2K\n99.71% done (109.60 of 109.92 MiB)...\u001b[2K\n99.71% done (109.60 of 109.92 MiB)...\u001b[2K\n99.74% done (109.63 of 109.92 MiB)...\u001b[2K\n99.81% done (109.71 of 109.92 MiB)...\u001b[2K\n99.89% done (109.80 of 109.92 MiB)...\u001b[2K\n99.95% done (109.86 of 109.92 MiB)...\nzsync2: Verifying downloaded file\n\u001b[2K\n100.00% done (109.92 of 109.92 MiB)...\u001b[2K\n100.00% done (109.92 of 109.92 MiB)...\u001b[2K\n100.00% done (109.92 of 109.92 MiB)...\nzsync2: checksum matches OK\nzsync2: used 114921472 local, fetched 1071608\n\u001b[2K\n100.00% done (109.92 of 109.92 MiB)...\nStarting update...\nValidation warning: AppImage not signed\nUpdate successful. New file created: /home/lab/ua/app/runs/ubu-aut/apps/putgd-26.1022.1019-nightly-x86_64.AppImage\n"
+  },
+  "before": [
+   "putgd-26.1022.1017-nightly-x86_64.AppImage"
+  ],
+  "after": [
+   "putgd-26.1022.1017-nightly-x86_64.AppImage",
+   "putgd-26.1022.1019-nightly-x86_64.AppImage"
+  ],
+  "new": {
+   "putgd-26.1022.1019-nightly-x86_64.AppImage": "e5b7ad2caecaa7f5737bdfb5d2f0fd4e3c74ce5d98a8a68142caf4efd43525bc"
+  },
+  "matchesSums": {
+   "putgd-26.1022.1019-nightly-x86_64.AppImage": true
+  },
+  "oldUnchanged": true
+ }
+}

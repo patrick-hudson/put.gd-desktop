@@ -1,0 +1,9 @@
+# "Upload with put.gd" in Nemo (#1105): files and folders in any location. Nemo
+# escapes each %F path itself; quotes around it would break names.
+[Nemo Action]
+Name=Upload with put.gd
+Comment=Upload the selected items with put.gd
+Exec=/usr/bin/putgd-launcher --upload -- %F
+Icon-Name=putgd
+Selection=notnone
+Extensions=any;

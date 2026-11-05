@@ -1,0 +1,231 @@
+{
+  "schemaVersion": 1,
+  "scope": "physical GNOME wayland idle resident, private local-only profile; windows before and after update.check",
+  "session": {
+    "XDG_CURRENT_DESKTOP": "GNOME",
+    "XDG_SESSION_TYPE": "wayland",
+    "WAYLAND_DISPLAY": "/run/user/1000/wayland-0",
+    "DISPLAY": ":0"
+  },
+  "appSha256": "28132aa92e1fc78f3215dff471e6c88121606170c4ac36ec564b5bbc2ae92a82",
+  "version": "0.1.1-nightly.781",
+  "updateInfo": null,
+  "host": "fedora",
+  "kernel": "6.19.10-300.fc44.x86_64",
+  "loadBefore": [
+    0.06591796875,
+    0.20166015625,
+    0.77978515625
+  ],
+  "before": {
+    "window": "before",
+    "seconds": 180.1,
+    "samples": [
+      {
+        "elapsedSeconds": 0.0,
+        "rssBytes": 35991552
+      },
+      {
+        "elapsedSeconds": 10.0,
+        "rssBytes": 35995648
+      },
+      {
+        "elapsedSeconds": 20.0,
+        "rssBytes": 35995648
+      },
+      {
+        "elapsedSeconds": 30.0,
+        "rssBytes": 35995648
+      },
+      {
+        "elapsedSeconds": 40.0,
+        "rssBytes": 35995648
+      },
+      {
+        "elapsedSeconds": 50.0,
+        "rssBytes": 35995648
+      },
+      {
+        "elapsedSeconds": 60.0,
+        "rssBytes": 36315136
+      },
+      {
+        "elapsedSeconds": 70.0,
+        "rssBytes": 36315136
+      },
+      {
+        "elapsedSeconds": 80.0,
+        "rssBytes": 36315136
+      },
+      {
+        "elapsedSeconds": 90.0,
+        "rssBytes": 36315136
+      },
+      {
+        "elapsedSeconds": 100.0,
+        "rssBytes": 36315136
+      },
+      {
+        "elapsedSeconds": 110.0,
+        "rssBytes": 36315136
+      },
+      {
+        "elapsedSeconds": 120.0,
+        "rssBytes": 36315136
+      },
+      {
+        "elapsedSeconds": 130.0,
+        "rssBytes": 36315136
+      },
+      {
+        "elapsedSeconds": 140.1,
+        "rssBytes": 36315136
+      },
+      {
+        "elapsedSeconds": 150.1,
+        "rssBytes": 36315136
+      },
+      {
+        "elapsedSeconds": 160.1,
+        "rssBytes": 36315136
+      },
+      {
+        "elapsedSeconds": 170.1,
+        "rssBytes": 36315136
+      },
+      {
+        "elapsedSeconds": 180.1,
+        "rssBytes": 36315136
+      }
+    ],
+    "medianRssMiB": 34.633,
+    "peakRssMiB": 34.633,
+    "finalRssMiB": 34.633,
+    "cpuPercentOneCore": 0.0278,
+    "smapsRollup": {
+      "Rss": 36315136,
+      "Pss": 21729280,
+      "Private_Clean": 16715776,
+      "Private_Dirty": 4096000,
+      "Anonymous": 4096000
+    },
+    "tlsNetworkLibraries": [
+      "libcrypto.so.3.5.9"
+    ]
+  },
+  "check": {
+    "error": {
+      "code": "unknown_method",
+      "details": {},
+      "message": "Unknown session method"
+    },
+    "ok": false,
+    "requestId": "cf85d271-6842-4cb3-9b13-a5f7a9a7b08a",
+    "result": {},
+    "schemaVersion": 1
+  },
+  "checkSeconds": 0.02,
+  "childrenAfterSettle": [],
+  "after": {
+    "window": "after",
+    "seconds": 180.1,
+    "samples": [
+      {
+        "elapsedSeconds": 0.0,
+        "rssBytes": 36323328
+      },
+      {
+        "elapsedSeconds": 10.0,
+        "rssBytes": 36323328
+      },
+      {
+        "elapsedSeconds": 20.0,
+        "rssBytes": 36323328
+      },
+      {
+        "elapsedSeconds": 30.0,
+        "rssBytes": 36323328
+      },
+      {
+        "elapsedSeconds": 40.0,
+        "rssBytes": 36323328
+      },
+      {
+        "elapsedSeconds": 50.0,
+        "rssBytes": 36323328
+      },
+      {
+        "elapsedSeconds": 60.0,
+        "rssBytes": 36323328
+      },
+      {
+        "elapsedSeconds": 70.0,
+        "rssBytes": 36323328
+      },
+      {
+        "elapsedSeconds": 80.0,
+        "rssBytes": 36323328
+      },
+      {
+        "elapsedSeconds": 90.0,
+        "rssBytes": 36323328
+      },
+      {
+        "elapsedSeconds": 100.1,
+        "rssBytes": 36323328
+      },
+      {
+        "elapsedSeconds": 110.1,
+        "rssBytes": 36323328
+      },
+      {
+        "elapsedSeconds": 120.1,
+        "rssBytes": 36323328
+      },
+      {
+        "elapsedSeconds": 130.1,
+        "rssBytes": 36323328
+      },
+      {
+        "elapsedSeconds": 140.1,
+        "rssBytes": 36323328
+      },
+      {
+        "elapsedSeconds": 150.1,
+        "rssBytes": 36323328
+      },
+      {
+        "elapsedSeconds": 160.1,
+        "rssBytes": 36323328
+      },
+      {
+        "elapsedSeconds": 170.1,
+        "rssBytes": 36323328
+      },
+      {
+        "elapsedSeconds": 180.1,
+        "rssBytes": 36323328
+      }
+    ],
+    "medianRssMiB": 34.641,
+    "peakRssMiB": 34.641,
+    "finalRssMiB": 34.641,
+    "cpuPercentOneCore": 0.0222,
+    "smapsRollup": {
+      "Rss": 36323328,
+      "Pss": 21737472,
+      "Private_Clean": 16715776,
+      "Private_Dirty": 4104192,
+      "Anonymous": 4104192
+    },
+    "tlsNetworkLibraries": [
+      "libcrypto.so.3.5.9"
+    ]
+  },
+  "deltaMedianRssMiB": 0.008,
+  "loadAfter": [
+    0.009765625,
+    0.05615234375,
+    0.50244140625
+  ]
+}

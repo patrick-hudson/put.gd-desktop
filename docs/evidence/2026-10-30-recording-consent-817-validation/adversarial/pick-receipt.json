@@ -1,0 +1,91 @@
+{
+  "schemaVersion": 2,
+  "environment": {
+    "desktop": "ubuntu-gnome-wayland",
+    "host": "boat",
+    "placement": "boat",
+    "guest": "gnome-wayland",
+    "package": "deb",
+    "destination": "local",
+    "build": "26.1030.2572-dev+gf7a6dd503ced",
+    "placement_details": {
+      "boat_sandbox_id": "bx_ghkyz7d2",
+      "run_id": "a8dfda8b-7101-461f-8020-734d8e61762f",
+      "lab_profile": "gnome-wayland",
+      "run_directory": "/home/user/rc817/src/work/lab-runs/g1",
+      "session_root": "/tmp/sd-3a5df088",
+      "socket": "/tmp/sd-3a5df088/runtime/putgd/session.sock",
+      "input_backend": "qmp",
+      "frame_backend": "qmp"
+    },
+    "target": {
+      "hostname": "putgd-ubuntu-lab",
+      "kernel": "7.0.0-38-generic",
+      "machine": "x86_64",
+      "os": {
+        "ID": "ubuntu",
+        "VERSION_ID": "26.04",
+        "VARIANT_ID": null
+      },
+      "session_type": "wayland",
+      "desktop": "ubuntu:GNOME",
+      "qt_platform": "wayland"
+    },
+    "observed_build": {
+      "baseVersion": "26.1030.2572",
+      "commitCount": 2572,
+      "dirty": false,
+      "gitCommit": "f7a6dd503cedb5730d72c140a2d77cb80e3f2f29",
+      "gitTree": "f32e498197a37cb748b4676944584ca1d38cb8a7",
+      "packageVersion": "26.1030.2572~dev+gf7a6dd503ced",
+      "schemaVersion": 1,
+      "sourceProvenance": "git",
+      "version": "26.1030.2572-dev+gf7a6dd503ced"
+    }
+  },
+  "interactions": [
+    {
+      "interaction": "review.preview-error",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/rc817/out/adv-pick/run/receipt.json",
+      "issue": 791,
+      "note": "operationId=965ee11e-eb18-4c2b-9818-306c64bbf798; screencast consent not yet driven: waiting for the consent dialog to settle; recording media retained privately: 0/0 files (private-media/review.preview_error/30cee63c); ScreenCast consent: the portal request state changed before the click (a ScreenCast/RemoteDesktop dialog for a different request is pending (unknown app))",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/review.preview_error/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "screencast-consent-before",
+          "path": "frames/review.preview_error/01-screencast-consent-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/review.preview_error/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.preview_error",
+      "build": "26.1030.2572-dev+gf7a6dd503ced",
+      "at": "2026-10-30T09:09:25Z"
+    }
+  ]
+}

@@ -1,5 +1,8 @@
 #include "ImageEditor.h"
+#include "core/ByteSize.h"
 #include "EditorWindow.h"
+#include "FileDialog.h"
+#include "WindowActivation.h"
 #include "app/UiControl.h"
 #include "core/BuildInfo.h"
 #include "editor/EditDocument.h"
@@ -9,7 +12,7 @@
 #include <QBuffer>
 #include <QDir>
 #include <QImageWriter>
-#include <QSaveFile>
+#include <QLocale>
 #include <QApplication>
 #include <QCryptographicHash>
 #include <QFile>
@@ -111,7 +114,7 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
 #else
  UiControl control(pipes);StagedFiles files;
  std::unique_ptr<editor::EditDocument> document;std::unique_ptr<EditorWindow> window;
- QString nonce,destination;QStringList recentColors;bool bootstrapped=false,active=false,terminal=false;qint64 maxPixels=0,outputBytes=0;
+ Error submissionError;QString nonce,destination;QStringList recentColors;bool bootstrapped=false,active=false,terminal=false;qint64 maxPixels=0,outputBytes=0;
  const auto build=QJsonDocument::fromJson(buildManifestJson()).object();
  // Only startup is time limited; a legitimate edit may stay open indefinitely.
  QTimer deadline;deadline.setSingleShot(true);deadline.start(10000);
@@ -125,17 +128,33 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
  };
  const auto refuse=[&](const QString& code){auto result=envelope(nonce);result["ok"]=false;result["code"]=code;finish(result);};
  bool finalizing=false;
+ // The last Upload that could not be prepared, for editor.inspect; null otherwise.
+ QJsonValue preparation=QJsonValue::Null;
+ // An encoding failure or an oversized result hands nothing off: editing
+ // resumes (the resident's phase too) with the reason in the window.
+ const auto recover=[&](const QString& code,const QString& reason){
+  finalizing=false;preparation=QJsonObject{{"status","failed"},{"code",code},{"reason",reason}};
+  if(control.send("editing",envelope(nonce)).isEmpty()){fail();return;}
+  window->showPreparationFailed(reason);
+ };
  const std::function<void()> submit=[&]{
   if(terminal||finalizing||!window)return;
-  finalizing=true;window->setBusy("Preparing the edited image…");
+  if(submissionError){preparation=QJsonObject{{"status","failed"},{"code",submissionError.code},{"reason",submissionError.message}};window->showPreparationFailed(submissionError.message);return;}
+  // Agents submit through here too: the same pending edits as the button.
+  window->finishPendingEdits();
+  finalizing=true;preparation=QJsonValue::Null;window->setBusy("Preparing the edited image…");
   if(control.send("finalizing",envelope(nonce)).isEmpty()){fail();return;}
   // Let the busy state paint before the single full-resolution export.
   QTimer::singleShot(0,&app,[&]{
    if(terminal)return;
    int width=0,height=0;QByteArray png;
    {const auto crop=document->crop();width=crop.width();height=crop.height();png=document->exportPng();}
-   if(png.isEmpty()){window->setFailure("The edited image could not be prepared.");refuse("edit_export_failed");return;}
-   if(png.size()>outputBytes){window->setFailure("The edited image is too large to upload.");refuse("input_excessive");return;}
+   if(png.isEmpty()){recover("edit_export_failed","The edited image could not be encoded as PNG. Your edits are kept: try again, or save a copy.");return;}
+   if(png.size()>outputBytes){
+    recover("input_excessive",QString("The edited image is %1, over the %2 limit for this output. Your edits are kept: crop it and try again, or save a copy.").arg(ByteSize::localized(png.size(),1),ByteSize::localized(outputBytes,1)));
+    return;
+   }
+   // Staging that can't be written is not recoverable here: the session ends.
    const auto digest=files.write(png);const auto bytes=png.size();png.clear();png.squeeze();
    if(digest.isEmpty()){refuse("image_job_io");return;}
    auto result=envelope(nonce);result["ok"]=true;result["bytes"]=QString::number(bytes);result["sha256"]=digest;result["width"]=width;result["height"]=height;
@@ -143,14 +162,35 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
   });
  };
  // Agent commands arrive from the resident's editor.* session methods.
- const auto command=[&](const QString& name,const QJsonObject& params,QString& code,QString& message)->QJsonObject{
+ const auto command=[&](const QString& name,const QJsonObject& params,QString& code,QString& message,bool& deferred,std::function<void(QJsonObject,QString,QString)> done)->QJsonObject{
   auto denied=[&](const QString& c,const QString& m){code=c;message=m;return QJsonObject{};};
   const bool open=!terminal&&!finalizing;
+  if(window->savingCopy()&&QStringList{"saveCopy","submit","cancel"}.contains(name))return denied("editor_busy","A copy is still being saved");
   if(name=="inspect"){
    if(!params.isEmpty())return denied("invalid_request","inspect has no parameters");
-   auto state=editor::Commands::state(*document);state["phase"]=terminal?"closing":finalizing?"finalizing":"editing";state["destination"]=destination;return state;
+   auto state=editor::Commands::state(*document);state["phase"]=terminal?"closing":finalizing?"finalizing":"editing";state["destination"]=destination;
+   state["preparation"]=preparation;state["view"]=window->viewState();return state;
   }
-  if(name=="raise"){if(!params.isEmpty())return denied("invalid_request","raise has no parameters");window->showNormal();window->raise();window->activateWindow();return {{"raised",true}};}
+  if(name=="view"){
+   // The window's own controls: tool, selection, crop draft, zoom and pan.
+   if(!open&&params["action"].toString("inspect")!="inspect")return denied("editor_finalizing","The edit was already submitted or discarded");
+   return window->viewCommand(params,code,message);
+  }
+  if(name=="raise"){
+   // An optional xdg-activation token, such as a tray click's (#657).
+   const auto token=params["activationToken"].toString();
+   if(!(params.isEmpty()||(params.size()==1&&validActivationToken(token))))return denied("invalid_request","raise takes only an optional activationToken");
+   putgd::activateWindow(window.get(),token);
+   // Answer with what the desktop did (#911). Without a token from user input,
+   // GNOME and KWin may leave the window where it is, a minimised one hidden,
+   // and show "… is ready" or flag it instead.
+   deferred=true;
+   whenActivated(window.get(),1500,[done](bool active){
+    if(active){done({{"raised",true}},{},{});return;}
+    done({{"raised",false},{"reason","activation_refused"},{"message","The desktop did not bring the editor forward; it may show a \"ready\" notice or highlight its taskbar entry. Click that to show the editor."}},{},{});
+   });
+   return {};
+  }
   if(name=="apply"){
    if(!open)return denied("editor_finalizing","The edit was already submitted or discarded");
    if(params.size()!=1||!params["commands"].isArray())return denied("invalid_request","apply needs only a commands array");
@@ -175,11 +215,24 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
    const QFileInfo target(path);
    if(QFileInfo(target.absolutePath()).canonicalFilePath()==QFileInfo(files.directory()).canonicalFilePath())return denied("invalid_request","Choose a path outside private editor staging");
    if(target.exists()&&(!params["overwrite"].toBool()||!target.isFile()))return denied("file_exists","The file exists; pass overwrite to replace it");
-   const auto png=document->exportPng();QSaveFile file(path);file.setDirectWriteFallback(false);
-   if(png.isEmpty()||!file.open(QIODevice::WriteOnly)||file.write(png)!=png.size()||!file.commit())return denied("save_failed","The copy could not be saved");
-   return {{"saved",true},{"path",path},{"bytes",double(png.size())},{"sha256",QString::fromLatin1(QCryptographicHash::hash(png,QCryptographicHash::Sha256).toHex())}};
+   // The window's own Save a copy… path: pending edits, export, outcome shown.
+   deferred=window->writeCopy(path,[path,done](const QByteArray& png,const QString& reason){
+    if(png.isEmpty()){done({},"save_failed","The copy could not be saved: "+reason);return;}
+    done({{"saved",true},{"path",path},{"bytes",double(png.size())},{"sha256",QString::fromLatin1(QCryptographicHash::hash(png,QCryptographicHash::Sha256).toHex())}},{},{});
+   });
+   if(!deferred)return denied("editor_busy","A copy is still being saved");
+   return {};
   }
-  if(name=="submit"){if(!params.isEmpty())return denied("invalid_request","submit has no parameters");if(!open)return denied("editor_finalizing","The edit was already submitted or discarded");QTimer::singleShot(0,&app,submit);return {{"submitted",true}};}
+  if(name=="fileDialog"){
+   // #259: Save a copy… as the button opens it (the desktop's chooser, or the
+   // themed fallback), its state, or a cancel; editor.saveCopy saves to a path.
+   const auto action=params["action"].toString();
+   if(params.size()!=1||!QStringList{"open","inspect","cancel"}.contains(action))return denied("invalid_request","fileDialog needs action open, inspect or cancel");
+   if(action=="open"){if(!open)return denied("editor_finalizing","The edit was already submitted or discarded");if(window->fileDialog().isOpen())return denied("file_dialog_open","Save a copy is already open");window->saveCopy();}
+   if(action=="cancel")window->fileDialog().cancel();
+   return window->fileDialog().state();
+  }
+  if(name=="submit"){if(!params.isEmpty())return denied("invalid_request","submit has no parameters");if(!open)return denied("editor_finalizing","The edit was already submitted or discarded");if(submissionError){submit();return denied(submissionError.code,submissionError.message);}QTimer::singleShot(0,&app,submit);return {{"submitted",true}};}
   if(name=="cancel"){if(!params.isEmpty())return denied("invalid_request","cancel has no parameters");if(!open)return denied("editor_finalizing","The edit was already submitted or discarded");QTimer::singleShot(0,&app,[&]{if(!terminal&&!finalizing){window->setBusy("Discarding…");refuse("edit_cancelled");}});return {{"cancelled",true}};}
   return denied("invalid_request","Unknown editor command");
  };
@@ -192,15 +245,25 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
    nonce=object["nonce"].toString();const auto limits=object["limits"].toObject();destination=object["destination"].toString();
    const QUuid id(nonce);
    if(!recentColorList(object["recentColors"],recentColors)){fail();return;}
-   if(object.size()!=9||nonce.isEmpty()||id.isNull()||id.toString(QUuid::WithoutBraces)!=nonce||!validEnvelope(object,nonce)||object["build"].toObject()!=build
+   const auto scheme=object["appearance"].toString();
+   const auto submission=object["submissionError"].toObject();if(object.contains("submissionError")){if(submission.size()!=2||submission["code"]!="output_required"||!submission["message"].isString()){fail();return;}submissionError={submission["code"].toString(),submission["message"].toString(),{}};}
+   if(object.size()!=(object.contains("submissionError")?11:10)||(scheme!="dark"&&scheme!="light")||nonce.isEmpty()||id.isNull()||id.toString(QUuid::WithoutBraces)!=nonce||!validEnvelope(object,nonce)||object["build"].toObject()!=build
       ||limits.size()!=2||!number(limits["imagePixels"],maxPixels)||maxPixels<1||maxPixels>1000000000LL||!number(limits["outputBytes"],outputBytes)||outputBytes<1||outputBytes>maximumBytes
       ||!object["destination"].isString()||destination.isEmpty()||destination.size()>200||!object["input"].isObject()||!object["output"].isObject()
       ||!files.open(object["input"].toObject(),object["output"].toObject(),maxPixels*8+64*1024*1024)){fail();return;}
+   // The interface's resolved scheme, before any window exists.
+   putgd::Theme::setScheme(scheme=="light"?putgd::Theme::Scheme::Light:putgd::Theme::Scheme::Dark);
    bootstrapped=true;auto ready=envelope(nonce);ready["build"]=build;
    if(control.send("ready",ready).isEmpty())fail();
    return;
   }
-  if(!bootstrapped||!validEnvelope(object,nonce)||(type!="command"&&object.size()!=3)){fail();return;}
+  if(!bootstrapped||!validEnvelope(object,nonce)){fail();return;}
+  if(type=="appearance"){
+   const auto scheme=object["scheme"].toString();
+   if(object.size()!=4||(scheme!="dark"&&scheme!="light")){fail();return;}
+   Theme::setScheme(scheme=="light"?Theme::Scheme::Light:Theme::Scheme::Dark);return;
+  }
+  if(type!="command"&&object.size()!=3){fail();return;}
   if(type=="activate"&&!active&&!terminal){
    active=true;
    if(!files.intact()||!files.checkInput()){refuse("image_job_io");return;}
@@ -219,7 +282,7 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
    const auto image=reader.read();if(image.isNull()){refuse("source_unsupported");return;}
    // Keep the pinned input descriptor open: final identity checks use it.
    document=std::make_unique<editor::EditDocument>(image);
-   window=std::make_unique<EditorWindow>(*document);window->setRecentColors(recentColors);
+   window=std::make_unique<EditorWindow>(*document);window->setRecentColors(recentColors);window->setDestination(destination);
    QObject::connect(window.get(),&EditorWindow::cancelRequested,&app,[&]{window->setBusy("Discarding…");refuse("edit_cancelled");});
    QObject::connect(window.get(),&EditorWindow::uploadRequested,&app,submit);
    deadline.stop();
@@ -230,10 +293,14 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
   if(type=="command"&&active&&window){
    const auto requestId=object["requestId"].toString();
    if(object.size()!=6||requestId.isEmpty()||requestId.size()>64||!object["command"].isString()||!object["params"].isObject()){fail();return;}
-   QString code,message;auto result=command(object["command"].toString(),object["params"].toObject(),code,message);
-   auto reply=envelope(nonce);reply["requestId"]=requestId;reply["ok"]=code.isEmpty();
-   if(code.isEmpty())reply["result"]=result;else{reply["code"]=code;reply["message"]=message.left(512);}
-   if(control.send("commandResult",reply).isEmpty())fail();
+   const auto done=[&,requestId](QJsonObject result,QString code,QString message){
+    auto reply=envelope(nonce);reply["requestId"]=requestId;reply["ok"]=code.isEmpty();
+    if(code.isEmpty())reply["result"]=result;else{reply["code"]=code;reply["message"]=message.left(512);}
+    if(control.send("commandResult",reply).isEmpty())fail();
+   };
+   QString code,message;bool deferred=false;
+   auto result=command(object["command"].toString(),object["params"].toObject(),code,message,deferred,done);
+   if(!deferred)done(result,code,message);
    return;
   }
   if(type=="checkpointAccepted"&&active&&terminal){

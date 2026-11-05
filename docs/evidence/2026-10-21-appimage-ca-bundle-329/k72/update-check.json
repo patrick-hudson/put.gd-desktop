@@ -1,0 +1,50 @@
+{
+ "check": {
+  "error": {
+   "code": "update_check_unavailable",
+   "details": {
+    "reason": "development_build"
+   },
+   "message": "This build does not check for updates"
+  },
+  "ok": false,
+  "requestId": "3ffdbfe0-1158-451f-be4a-c9a5a47ddb67",
+  "result": {},
+  "schemaVersion": 1
+ },
+ "status": {
+  "error": {
+   "code": "",
+   "details": {},
+   "message": ""
+  },
+  "ok": true,
+  "requestId": "6cd7231f-fb26-48c4-95be-52429aa8892a",
+  "result": {
+   "action": null,
+   "attemptedAt": null,
+   "build": {
+    "channel": null,
+    "kind": "none",
+    "packageTarget": "appimage",
+    "reason": "development_build",
+    "supported": false,
+    "version": "0.1.1-dev.863+g8d71e4148e7c"
+   },
+   "channel": "nightly",
+   "channelSetting": "nightly",
+   "check": true,
+   "checkedAt": null,
+   "checking": false,
+   "enabled": false,
+   "error": null,
+   "nextCheckAt": null,
+   "notifies": false,
+   "reason": "development_build",
+   "result": null,
+   "supported": false
+  },
+  "schemaVersion": 1
+ },
+ "seconds": 0.02
+}

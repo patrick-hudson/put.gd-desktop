@@ -1,0 +1,6 @@
+ActiveState=inactive
+331 60578 gdm-greeter -     26026 manager-early -    no -
+396     0 root        -     29624 manager-early -    no -
+398     0 root        -     29873 user          -    no -
+ c4 60578 gdm-greeter seat0 25898 greeter       tty1 no -
+install-active-absent

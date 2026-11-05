@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "profile": "kde-x11",
+  "createdUtc": "2026-10-25T05:07:53Z",
+  "sha256": "5306a311c69220421d3efbbb8929300634c3812214edef3b9203b830ce300826",
+  "standalone": true,
+  "virtualBytes": 34359738368,
+  "sourceGolden": "/home/patrick/work/put.gd/work/lab-images/transfer-541c1316ab6b/image.qcow2",
+  "sourceGoldenSha256": "49fcacff969b81ac38e36fefdf21407d20c82187e1725c58f128a3b76065a81c",
+  "sourceRun": "/home/patrick/work/i559/work/lab-runs/k559",
+  "sourceRunId": "c4ab03ba-34d8-4d00-8a3d-33b38a671465",
+  "sessionVerified": {
+    "Type": "x11",
+    "Desktop": "KDE",
+    "compositor": "kwin_x11",
+    "lockedHint": false
+  },
+  "defaultDisposableLogin": "documented lab default, visibly verified",
+  "bootstrapKey": "/home/patrick/work/put.gd/work/lab-bootstrap-d69/rec-ws/identity",
+  "knownHostsEndpoint": "[127.0.0.1]:22260",
+  "packages": {
+    "plasma-session-x11": "4:6.6.6-0ubuntu0.1",
+    "kwin-x11": "4:6.6.4-0ubuntu1",
+    "QtCore": "6.10.2+dfsg-7"
+  },
+  "sourceWorktree": "9f382fd0b07d7c1237d8a47a25b87ee3d6129535",
+  "productAcceptance": "none: golden provisioning only; no issue559 app installed",
+  "check": "No errors were found on the image.\n426139/524288 = 81.28% allocated, 0.00% fragmented, 0.00% compressed clusters\nImage end offset: 27932360704",
+  "compare": "Images are identical."
+}

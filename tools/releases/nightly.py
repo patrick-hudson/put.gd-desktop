@@ -13,11 +13,13 @@ from pathlib import Path
 import re
 import subprocess
 
-from github_api import GitHub, full_sha, remote_tag_commit, tag_exists
+from github_api import GitHub, full_sha, matching_tags, remote_tag_commit, tag_exists
 from release_bundle import expected_members
 from proton_sources import PART_NAMES
-from release_identity import parse_tag
+from debug_symbols import asset_name as debug_asset_name
+from release_identity import calendar_base, parse_tag
 from verify_tag import verify
+import support_assets
 
 NIGHTLY_REF = 'refs/heads/nightly'
 
@@ -26,27 +28,28 @@ def git(root, *args):
     return subprocess.check_output(['git', '-C', str(root), *args], text=True).strip()
 
 
-def project_base(root):
-    project = re.search(r'project\(\s*putgd\s+VERSION\s+([0-9.]+)', (root / 'CMakeLists.txt').read_text())
-    if not project:
-        raise ValueError('Missing project base version')
-    return project[1]
-
-
 def prepare(root):
-    """Derive the immutable nightly identity from the clean full-history checkout."""
+    """Derive the immutable nightly identity from the clean full-history checkout.
+
+    The tag is `vYY.MDD.N-nightly` (#373): HEAD's UTC committer date and commit count.
+    """
     if (git(root, 'rev-parse', '--is-shallow-repository') != 'false'
             or git(root, 'status', '--porcelain', '--untracked-files=normal')):
         raise ValueError('Preparation requires clean source and full Git history')
     sha = full_sha(git(root, 'rev-parse', 'HEAD'))
-    base = project_base(root)
     count = int(git(root, 'rev-list', '--count', 'HEAD'))
-    utc = datetime.datetime.fromtimestamp(int(git(root, 'show', '-s', '--format=%ct', 'HEAD')),
-                                         datetime.timezone.utc).strftime('%Y%m%d%H%M%S')
-    tag = f'v{base}-dev.{count}.{utc}+g{sha[:12]}'
+    base = calendar_base(int(git(root, 'show', '-s', '--format=%ct', 'HEAD')), count)
+    tag = f'v{base}-nightly'
     parse_tag(tag)
-    return {'schemaVersion': 2, 'tag': tag, 'sourceSha': sha, 'baseVersion': base,
-            'gitTree': git(root, 'rev-parse', 'HEAD^{tree}'), 'commitCount': count, 'committerUtc': utc}
+    return {'schemaVersion': 4, 'tag': tag, 'sourceSha': sha, 'baseVersion': base,
+            'gitTree': git(root, 'rev-parse', 'HEAD^{tree}'), 'commitCount': count,
+            'committerDate': committer_date(root, 'HEAD')}
+
+
+def committer_date(root, revision):
+    """UTC calendar date of a source commit, for release titles and summaries."""
+    return datetime.datetime.fromtimestamp(int(git(root, 'show', '-s', '--format=%ct', revision)),
+                                           datetime.timezone.utc).strftime('%Y-%m-%d')
 
 
 def ensure_tag(api, root, tag, source_sha):
@@ -65,9 +68,14 @@ def ensure_tag(api, root, tag, source_sha):
     return verify(root, tag)
 
 
-def public_inventory(tag):
+def public_inventory(tag, layout=None):
     identity = parse_tag(tag)
-    return set(expected_members(identity.version) + ['putgd-' + identity.version + '-release.zip', 'SHA256SUMS', *PART_NAMES])
+    if layout == support_assets.LAYOUT:
+        return support_assets.inventory(identity.version)
+    if layout is not None:
+        raise ValueError('Unknown release asset layout')
+    return set(expected_members(identity.version) + ['putgd-' + identity.version + '-release.zip', 'SHA256SUMS', *PART_NAMES,
+                                                      debug_asset_name(identity.version)])
 
 
 def published_nightly(api, tag, release):
@@ -87,7 +95,13 @@ def published_nightly(api, tag, release):
     if remote_tag_commit(api, tag) != release['gitCommit']:
         raise ValueError('Public tag differs from pinned source')
     assets = value['assets']
-    inventory = public_inventory(tag)
+    manifests = [a for a in assets if a['name'] == 'release-builds.json']
+    if (len(manifests) != 1 or manifests[0].get('state') != 'uploaded'
+            or type(manifests[0].get('size')) is not int or manifests[0]['size'] <= 0):
+        raise ValueError('Public nightly has no unique source manifest')
+    manifest_bytes = api.asset_bytes(manifests[0]['id'])
+    manifest = json.loads(manifest_bytes)
+    inventory = public_inventory(tag, manifest.get('assetLayout'))
     if (len(assets) != len(inventory) or {asset['name'] for asset in assets} != inventory
             or any(asset.get('state') != 'uploaded' or type(asset.get('size')) is not int
                    or asset['size'] <= 0 or type(asset.get('id')) is not int or asset['id'] <= 0 for asset in assets)):
@@ -107,7 +121,9 @@ def published_nightly(api, tag, release):
         expected[match[2]] = match[1]
     if set(expected) != inventory - {'SHA256SUMS'}:
         raise ValueError('Incomplete public nightly checksum inventory')
-    downloaded = {'SHA256SUMS': checksums, 'release-builds.json': download('release-builds.json')}
+    if len(manifest_bytes) != by_name['release-builds.json']['size']:
+        raise ValueError('Public nightly manifest size mismatch')
+    downloaded = {'SHA256SUMS': checksums, 'release-builds.json': manifest_bytes}
     expected['SHA256SUMS'] = hashlib.sha256(checksums).hexdigest()
     for name, asset in by_name.items():
         digest = asset.get('digest')
@@ -120,6 +136,15 @@ def published_nightly(api, tag, release):
     source = json.loads(downloaded['release-builds.json'])['release']
     if any(source.get(key) != val for key, val in release.items()):
         raise ValueError('Public nightly channel/source receipt differs from pinned source')
+    if manifest.get('assetLayout') == support_assets.LAYOUT:
+        linked = {name: download(name) for name in ('source-delivery.json', 'proton-source-catalog.json')}
+        if any(hashlib.sha256(data).hexdigest() != expected[name] for name, data in linked.items()):
+            raise ValueError('Linked source metadata differs from checksum')
+        delivery = json.loads(linked['source-delivery.json'])
+        if delivery != manifest.get('sources'):
+            raise ValueError('Linked source receipt differs from release manifest')
+        support_assets.verify_public(api, delivery, release)
+        support_assets.verify_proton(api, json.loads(linked['proton-source-catalog.json']))
     def snapshot(metadata):
         return {**{key: metadata.get(key) for key in ('id', 'tag_name', 'draft', 'prerelease')},
                 'assets': sorted(({key: asset.get(key) for key in
@@ -131,8 +156,21 @@ def published_nightly(api, tag, release):
     return {'releaseId': value['id'], 'tag': tag, 'sourceSha': release['gitCommit'], 'assetSha256': expected}
 
 
+def newest_nightly(api):
+    """The newest existing nightly tag, by version (pre-#373 ones included), or None."""
+    found = []
+    for name in matching_tags(api, 'v'):
+        try:
+            identity = parse_tag(name)
+        except ValueError:
+            continue
+        if identity.channel == 'nightly':
+            found.append((identity.key, name))
+    return max(found)[1] if found else None
+
+
 def plan(api, root, ref):
-    """Skip a published source; otherwise refuse a released base, then tag HEAD."""
+    """Skip a published source; otherwise tag HEAD, which must sort after every earlier nightly."""
     if ref != NIGHTLY_REF:
         raise ValueError('Nightlies are cut from the nightly branch only, not ' + ref)
     prepared = prepare(root)
@@ -141,10 +179,12 @@ def plan(api, root, ref):
         public = published_nightly(api, tag, ensure_tag(api, root, tag, prepared['sourceSha']))
         if public:
             return {**prepared, 'skip': True, 'publishedNightly': public}
-    stable = 'v' + prepared['baseVersion']
-    if tag_exists(api, stable):
-        raise ValueError(stable + ' is already a stable tag. Merge the pull request that starts the next '
-                         'version on nightly (project(putgd VERSION ...)) before publishing more nightlies')
+    else:
+        # A rewritten committer date could name a version older than a published nightly.
+        newest = newest_nightly(api)
+        if newest and parse_tag(newest).key >= parse_tag(tag).key:
+            raise ValueError(f'{tag} would not sort after the existing nightly {newest}; '
+                             'check the committer date of nightly HEAD')
     ensure_tag(api, root, tag, prepared['sourceSha'])
     return {**prepared, 'skip': False, 'publishedNightly': None}
 
@@ -159,7 +199,8 @@ def write_outputs(result):
             if result['skip']:
                 stream.write(f"Nightly unchanged: `{result['tag']}` is already published. Nothing to build.\n")
             else:
-                stream.write(f"Building nightly `{result['tag']}` from `{result['sourceSha']}`.\n")
+                stream.write(f"Building nightly `{result['tag']}` from `{result['sourceSha'][:12]}`, "
+                             f"committed {result['committerDate']}.\n")
 
 
 def main():

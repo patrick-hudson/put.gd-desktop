@@ -1,0 +1,15 @@
+{
+  "source": "171b506e02ca37ba75b27dbbbe859502380926ef",
+  "host": "m74",
+  "archive": "/home/patrick/work/pgcc-fullerror-m74-native-roots.tar.gz",
+  "sha256": "e8264ba000d5fe17d7baa6fc3ebe31731d229f7e6223d166860f69842e87fa88",
+  "bytes": 2762344,
+  "roots": [
+    "/tmp/hfmc",
+    "/tmp/hfmf"
+  ],
+  "excluded": "runtime directories/sockets only; path preflight and process identities retained",
+  "verified": "Every regular archived file matched original source bytes after owned producers stopped",
+  "createdUtc": "2026-10-24T03:32:42.301214+00:00",
+  "restore": "Verify SHA256, extract into a NEW private directory with tar -xzf. Never overwrite old campaigns; do not launch archived profiles."
+}

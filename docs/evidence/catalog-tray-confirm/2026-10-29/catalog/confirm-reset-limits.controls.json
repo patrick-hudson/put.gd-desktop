@@ -1,0 +1,65 @@
+{
+    "class": "QMessageBox",
+    "controls": [
+        {
+            "class": "QLabel",
+            "enabled": true,
+            "kind": "focusable",
+            "name": "qt_msgbox_label",
+            "rect": [
+                24,
+                20,
+                420,
+                38
+            ],
+            "text": "Reset the limits on this page to their defaults: uploads, images and clipboard, memory and cache, and history retention?"
+        },
+        {
+            "checkable": false,
+            "checked": false,
+            "class": "QPushButton",
+            "enabled": true,
+            "kind": "button",
+            "name": "confirmDiscard",
+            "rect": [
+                338,
+                120,
+                106,
+                36
+            ],
+            "text": "Reset limits"
+        },
+        {
+            "checkable": false,
+            "checked": false,
+            "class": "QPushButton",
+            "enabled": true,
+            "kind": "button",
+            "name": "",
+            "rect": [
+                259,
+                120,
+                73,
+                36
+            ],
+            "text": "Cancel"
+        },
+        {
+            "class": "QLabel",
+            "enabled": true,
+            "kind": "focusable",
+            "name": "qt_msgbox_informativelabel",
+            "rect": [
+                24,
+                70,
+                420,
+                34
+            ],
+            "text": "Debug logging, diagnostics, the config file and every other setting stay as they are."
+        }
+    ],
+    "height": 172,
+    "keys": [
+    ],
+    "width": 468
+}

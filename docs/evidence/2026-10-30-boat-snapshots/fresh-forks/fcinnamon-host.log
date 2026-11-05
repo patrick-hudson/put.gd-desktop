@@ -1,0 +1,1165 @@
+PUTGD_CI_TMPDIR=/dev/shm TMPDIR=/dev/shm
+tmpfs:1021994
+ 05:46:40 up 5 min,  2 users,  load average: 2.37, 3.18, 1.60
+Filesystem      Size  Used Avail Use% Mounted on
+/dev/vda1       147G   66G   75G  48% /home
+Filesystem      Inodes  IUsed   IFree IUse% Mounted on
+/dev/vda1      9623280 910034 8713246   10% /home
+{"availableBytes": 79843188736, "availableInodes": 8713246}
+build-essential=12.10ubuntu1
+ca-certificates=20260816ubuntu0.24.04.1
+ccache=4.9.1-1
+cmake=3.28.3-1build7
+dbus-daemon=1.14.10-4ubuntu4.1
+git=1:2.43.0-1ubuntu7.4
+gstreamer1.0-libav:amd64=1.24.1-1build1
+gstreamer1.0-plugins-bad:amd64=1.24.2-1ubuntu4
+gstreamer1.0-plugins-good:amd64=1.24.2-1ubuntu1.8
+gstreamer1.0-plugins-ugly:amd64=1.24.1-1build1
+libavcodec-dev:amd64=7:6.1.1-3ubuntu5
+libavfilter-dev:amd64=7:6.1.1-3ubuntu5
+libavformat-dev:amd64=7:6.1.1-3ubuntu5
+libavutil-dev:amd64=7:6.1.1-3ubuntu5
+libcurl4-openssl-dev:amd64=8.5.0-2ubuntu10.16
+libgstreamer-plugins-base1.0-dev=1.24.2-1ubuntu0.5
+libgstreamer1.0-dev:amd64=1.24.2-1ubuntu0.1
+libqt6sql6-sqlite:amd64=6.4.2+dfsg-21.1build5
+libssl-dev:amd64=3.0.13-0ubuntu3.16
+libswresample-dev:amd64=7:6.1.1-3ubuntu5
+libswscale-dev:amd64=7:6.1.1-3ubuntu5
+libwayland-dev:amd64=1.22.0-2.1build1
+libxcb-damage0-dev:amd64=1.15-1ubuntu2
+libxcb-image0-dev:amd64=0.4.0-2build1
+libxcb-keysyms1-dev:amd64=0.4.0-1build4
+libxcb-randr0-dev:amd64=1.15-1ubuntu2
+libxcb-shape0-dev:amd64=1.15-1ubuntu2
+libxcb-util-dev:amd64=0.4.0-1build3
+libxcb-xfixes0-dev:amd64=1.15-1ubuntu2
+libxcb-xinput-dev:amd64=1.15-1ubuntu2
+libxcb-xtest0-dev:amd64=1.15-1ubuntu2
+libxcb1-dev:amd64=1.15-1ubuntu2
+libxcursor-dev:amd64=1:1.2.1-1build1
+libxkbcommon-dev:amd64=1.6.0-1build1
+libxkbcommon-x11-dev:amd64=1.6.0-1build1
+ninja-build=1.11.1-2
+nodejs=18.19.1+dfsg-6ubuntu5
+npm=9.2.0~ds1-2
+passwd=1:4.13+dfsg1-4ubuntu3.2
+pkg-config:amd64=1.8.1-2build1
+python3=3.12.3-0ubuntu2.1
+qemu-utils=1:8.2.2+ds-0ubuntu1.18
+qt6-base-dev:amd64=6.4.2+dfsg-21.1build5
+qt6-base-dev-tools=6.4.2+dfsg-21.1build5
+qt6-wayland-dev:amd64=6.4.2-5build3
+qtkeychain-qt6-dev:amd64=0.14.2-1build5
+util-linux=2.39.3-9ubuntu6.6
+wayland-protocols=1.45-1~ubuntu0.24.04.2
+xauth=1:1.1.2-1build1
+xvfb=2:21.1.12-1ubuntu1.9
+zlib1g-dev:amd64=1:1.3.dfsg-3.1ubuntu2.3
+Preset CMake variables:
+
+  BUILD_TESTING="ON"
+  CMAKE_BUILD_TYPE="Debug"
+  CMAKE_EXPORT_COMPILE_COMMANDS="ON"
+  CMAKE_PREFIX_PATH="/home/user/work/put.gd/src/build/sdk"
+
+-- Found AWS SDK for C++, Version: 1.11.907, Install Root:/home/user/work/put.gd/src/build/sdk, Platform Prefix:, Platform Dependent Libraries: pthread;curl
+-- Components specified for AWSSDK: s3, application will be depending on libs: aws-cpp-sdk-s3;aws-cpp-sdk-core
+-- Try finding aws-cpp-sdk-core
+-- LibCrypto Include Dir: /usr/include
+-- LibCrypto Shared Lib:  /usr/lib/x86_64-linux-gnu/libcrypto.so
+-- LibCrypto Static Lib:  /usr/lib/x86_64-linux-gnu/libcrypto.a
+-- Found OpenSSL: /usr/lib/x86_64-linux-gnu/libcrypto.so (found version "3.0.13")  
+-- Found aws-cpp-sdk-core
+-- Try finding aws-cpp-sdk-s3
+-- Found aws-cpp-sdk-s3
+-- Found OpenSSL: /usr/lib/x86_64-linux-gnu/libcrypto.so (found suitable version "3.0.13", minimum required is "1.1.1") found components: Crypto 
+-- GNOME extension ownership contract runs in the GNOME lab with its native GJS runtime
+-- Configuring done (1.5s)
+-- Generating done (0.3s)
+-- Build files have been written to: /home/user/work/put.gd/src/build/dev
+[1/110] cd /home/user/work/put.gd/src/build/dev && /usr/bin/cmake -DSOURCE_DIR=/home/user/work/put.gd/src -DOUTPUT_DIR=/home/user/work/put.gd/src/build/dev/build-identity -DRELEASE_TAG= -DSUPPLIED_COMMIT= -DSUPPLIED_TREE= -DSUPPLIED_COUNT= -DSUPPLIED_TIME= -P /home/user/work/put.gd/src/cmake/GenerateBuildInfo.cmake
+{
+  "schemaVersion": 1,
+  "version": "26.1030.2481-dev+g6ad9f957e654",
+  "baseVersion": "26.1030.2481",
+  "packageVersion": "26.1030.2481~dev+g6ad9f957e654",
+  "gitCommit": "6ad9f957e6544f30c5e45c08af2306db77a9ff64",
+  "gitTree": "d823723c8759dae8db7c57cee59476ac7a3b4f90",
+  "commitCount": 2481,
+  "dirty": false,
+  "sourceProvenance": "git"
+}
+
+Filesystem      Size  Used Avail Use% Mounted on
+tmpfs           7.9G   12K  7.9G   1% /dev/shm
+Test project /home/user/work/put.gd/src/build/dev
+        Start 101: gui_settings
+        Start  83: operations_contract
+        Start  61: native_background_startup_integration
+        Start 102: gui_history_view
+        Start  76: s3_worker_supervision
+        Start  43: gui_tray
+        Start  40: gui_application
+        Start  71: s3_module_integration
+        Start  86: cli_integration
+        Start  66: x11_isolated
+        Start  73: s3_multipart_integration
+        Start  17: x11_core_clipboard
+  1/114 Test  #17: x11_core_clipboard ......................   Passed   17.70 sec
+        Start  37: session_client_integration
+  2/114 Test  #66: x11_isolated ............................   Passed   21.70 sec
+        Start  10: gui_review_window
+  3/114 Test  #73: s3_multipart_integration ................   Passed   23.00 sec
+        Start  14: native_tray_integration
+  4/114 Test  #43: gui_tray ................................   Passed   33.90 sec
+        Start  39: gui_editor_window
+  5/114 Test  #37: session_client_integration ..............   Passed   17.11 sec
+        Start  31: ui_process_integration
+  6/114 Test  #14: native_tray_integration .................   Passed   15.81 sec
+        Start  72: s3_integration
+  7/114 Test  #71: s3_module_integration ...................   Passed   39.08 sec
+        Start  70: s3_delete_integration
+  8/114 Test  #86: cli_integration .........................   Passed   40.72 sec
+        Start 106: local_ipc_contract
+  9/114 Test  #40: gui_application .........................   Passed   43.38 sec
+        Start  34: edit_operations_integration
+ 10/114 Test  #76: s3_worker_supervision ...................   Passed   48.82 sec
+        Start  97: crash_handler_contract
+ 11/114 Test  #31: ui_process_integration ..................   Passed   15.18 sec
+        Start  91: gnome_core_transport_integration
+ 12/114 Test #106: local_ipc_contract ......................   Passed   13.32 sec
+        Start  94: recording_helper_integration
+ 13/114 Test  #72: s3_integration ..........................   Passed   16.51 sec
+        Start  69: collision_policy_integration
+ 14/114 Test  #70: s3_delete_integration ...................   Passed   17.48 sec
+        Start 114: b2_integration
+ 15/114 Test  #39: gui_editor_window .......................   Passed   23.46 sec
+        Start  95: settings_contract
+ 16/114 Test  #34: edit_operations_integration .............   Passed   14.83 sec
+        Start  12: kde_region_control
+ 17/114 Test  #97: crash_handler_contract ..................   Passed   13.12 sec
+        Start  26: kde_ownership_integration
+ 18/114 Test  #91: gnome_core_transport_integration ........   Passed   12.09 sec
+        Start 110: native_region_overlay
+ 19/114 Test  #10: gui_review_window .......................   Passed   41.03 sec
+        Start  16: capture_process_integration
+ 20/114 Test  #94: recording_helper_integration ............   Passed   12.43 sec
+        Start 113: proton_transport
+ 21/114 Test  #95: settings_contract .......................   Passed    9.53 sec
+        Start 103: gui_history_view_text150
+ 22/114 Test  #69: collision_policy_integration ............   Passed   12.17 sec
+        Start   4: export_av_sync_contract
+ 23/114 Test  #12: kde_region_control ......................   Passed    9.60 sec
+        Start  93: recording_service_integration
+ 24/114 Test #114: b2_integration ..........................   Passed   12.90 sec
+        Start  21: version_contract
+ 25/114 Test  #61: native_background_startup_integration ...   Passed   69.72 sec
+        Start 112: proton_contract
+ 26/114 Test  #26: kde_ownership_integration ...............   Passed    8.12 sec
+        Start   1: recording_storage_integration
+ 27/114 Test  #16: capture_process_integration .............   Passed    7.96 sec
+        Start 111: capture_preparation_x11
+ 28/114 Test #110: native_region_overlay ...................   Passed   11.83 sec
+        Start  23: kde_shortcuts_integration
+ 29/114 Test #112: proton_contract .........................   Passed    4.41 sec
+        Start  33: editor_job_integration
+ 30/114 Test #103: gui_history_view_text150 ................   Passed    7.36 sec
+        Start  85: storage_contract_integration
+ 31/114 Test #113: proton_transport ........................   Passed    8.25 sec
+        Start  64: host_open_integration
+ 32/114 Test  #93: recording_service_integration ...........   Passed    7.13 sec
+        Start  58: resident_retire_integration
+ 33/114 Test  #83: operations_contract .....................   Passed   75.91 sec
+        Start  51: update_service_schedule
+ 34/114 Test   #1: recording_storage_integration ...........   Passed    6.83 sec
+        Start 108: region_selection_contract
+ 35/114 Test #111: capture_preparation_x11 .................   Passed    6.31 sec
+        Start  98: diagnostics_upload_contract
+ 36/114 Test  #85: storage_contract_integration ............   Passed    3.88 sec
+        Start 105: resident_session_contract
+ 37/114 Test  #58: resident_retire_integration .............   Passed    3.54 sec
+        Start  62: file_dialog_integration
+ 38/114 Test  #64: host_open_integration ...................   Passed    3.80 sec
+        Start  60: gui_theme_cinnamon_dconf
+ 39/114 Test  #98: diagnostics_upload_contract .............   Passed    1.60 sec
+        Start  44: gui_version
+ 40/114 Test #108: region_selection_contract ...............   Passed    2.07 sec
+        Start  88: storage_locations_integration
+ 41/114 Test  #23: kde_shortcuts_integration ...............   Passed    5.29 sec
+        Start  57: native_shortcut_rejection_integration
+ 42/114 Test  #51: update_service_schedule .................   Passed    3.66 sec
+        Start  36: ui_control_integration
+ 43/114 Test #105: resident_session_contract ...............   Passed    1.73 sec
+        Start  35: ui_endpoints_integration
+ 44/114 Test  #88: storage_locations_integration ...........   Passed    0.93 sec
+        Start   5: poster_contract
+ 45/114 Test  #62: file_dialog_integration .................   Passed    1.54 sec
+        Start  18: x11_clipboard_import
+ 46/114 Test  #60: gui_theme_cinnamon_dconf ................   Passed    1.52 sec
+        Start  59: resident_display_loss_integration
+ 47/114 Test  #35: ui_endpoints_integration ................   Passed    0.49 sec
+        Start  87: config_reload_integration
+ 48/114 Test  #36: ui_control_integration ..................   Passed    0.90 sec
+        Start  96: logging_contract
+ 49/114 Test  #33: editor_job_integration ..................   Passed    6.56 sec
+        Start  30: ui_split_services_integration
+ 50/114 Test  #57: native_shortcut_rejection_integration ...   Passed    1.56 sec
+        Start  42: gui_theme
+ 51/114 Test  #44: gui_version .............................   Passed    2.17 sec
+        Start  54: geometry_contract
+ 52/114 Test  #59: resident_display_loss_integration .......   Passed    0.85 sec
+        Start 100: json_ref_lifetime_contract
+ 53/114 Test  #87: config_reload_integration ...............   Passed    0.66 sec
+        Start  78: sdk_contract
+ 54/114 Test  #96: logging_contract ........................   Passed    0.60 sec
+        Start  19: x11_capture_decode
+ 55/114 Test  #18: x11_clipboard_import ....................   Passed    1.04 sec
+        Start  41: gui_window_buttons
+ 56/114 Test  #41: gui_window_buttons ......................   Passed    0.32 sec
+        Start  92: kwin_transfer_contract
+ 57/114 Test  #19: x11_capture_decode ......................   Passed    0.33 sec
+        Start  50: update_appimage_install_child
+ 58/114 Test  #30: ui_split_services_integration ...........   Passed    0.71 sec
+        Start  77: s3_worker_protocol
+ 59/114 Test #100: json_ref_lifetime_contract ..............   Passed    0.56 sec
+        Start   9: bar_placement_single_monitor_contract
+ 60/114 Test   #5: poster_contract .........................   Passed    1.55 sec
+        Start  27: kde_clipboard_import
+ 61/114 Test  #54: geometry_contract .......................   Passed    0.70 sec
+        Start  63: file_dialog_x11_parent
+ 62/114 Test #102: gui_history_view ........................***Failed   81.56 sec
+********* Start testing of HistoryGui *********
+Config: Using QtTest library 6.4.2, Qt 6.4.2 (x86_64-little_endian-lp64 shared (dynamic) release build; by GCC 13.2.0), ubuntu 24.04
+PASS   : HistoryGui::initTestCase()
+QWARN  : HistoryGui::cancelAllCapturesExactIdsAndRequiresConfirmation() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::cancelAllCapturesExactIdsAndRequiresConfirmation() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::cancelAllCapturesExactIdsAndRequiresConfirmation() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::cancelAllCapturesExactIdsAndRequiresConfirmation() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::cancelAllCapturesExactIdsAndRequiresConfirmation() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::cancelAllCapturesExactIdsAndRequiresConfirmation() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::cancelAllCapturesExactIdsAndRequiresConfirmation() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::cancelAllCapturesExactIdsAndRequiresConfirmation() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::cancelAllCapturesExactIdsAndRequiresConfirmation() This plugin does not support propagateSizeHints()
+PASS   : HistoryGui::cancelAllCapturesExactIdsAndRequiresConfirmation()
+QWARN  : HistoryGui::failedCategoryLocksTheUploadFilter() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::failedCategoryLocksTheUploadFilter() This plugin does not support propagateSizeHints()
+PASS   : HistoryGui::failedCategoryLocksTheUploadFilter()
+QWARN  : HistoryGui::primaryActionsRequireAPressAndSupportKeyboardActivation() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::primaryActionsRequireAPressAndSupportKeyboardActivation() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::primaryActionsRequireAPressAndSupportKeyboardActivation() This plugin does not support raise()
+QWARN  : HistoryGui::primaryActionsRequireAPressAndSupportKeyboardActivation() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::primaryActionsRequireAPressAndSupportKeyboardActivation() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::primaryActionsRequireAPressAndSupportKeyboardActivation() This plugin does not support raise()
+QWARN  : HistoryGui::primaryActionsRequireAPressAndSupportKeyboardActivation() This plugin does not support grabbing the keyboard
+QWARN  : HistoryGui::primaryActionsRequireAPressAndSupportKeyboardActivation() This plugin does not support propagateSizeHints()
+PASS   : HistoryGui::primaryActionsRequireAPressAndSupportKeyboardActivation()
+QWARN  : HistoryGui::corruptPreviewRetriesThroughTheSession() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::corruptPreviewRetriesThroughTheSession() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::corruptPreviewRetriesThroughTheSession() This plugin does not support propagateSizeHints()
+libpng error: Not a PNG file
+QWARN  : HistoryGui::corruptPreviewRetriesThroughTheSession() This plugin does not support propagateSizeHints()
+PASS   : HistoryGui::corruptPreviewRetriesThroughTheSession()
+PASS   : HistoryGui::rowActionsNeverCoverFilenameOrStatus(300-Copy link-hovered)
+PASS   : HistoryGui::rowActionsNeverCoverFilenameOrStatus(300-Copy link-selected)
+PASS   : HistoryGui::rowActionsNeverCoverFilenameOrStatus(300-Retry local save-hovered)
+PASS   : HistoryGui::rowActionsNeverCoverFilenameOrStatus(300-Retry local save-selected)
+PASS   : HistoryGui::rowActionsNeverCoverFilenameOrStatus(300-menu-hovered)
+PASS   : HistoryGui::rowActionsNeverCoverFilenameOrStatus(300-menu-selected)
+PASS   : HistoryGui::rowActionsNeverCoverFilenameOrStatus(430-Copy link-hovered)
+PASS   : HistoryGui::rowActionsNeverCoverFilenameOrStatus(430-Copy link-selected)
+PASS   : HistoryGui::rowActionsNeverCoverFilenameOrStatus(430-Retry local save-hovered)
+PASS   : HistoryGui::rowActionsNeverCoverFilenameOrStatus(430-Retry local save-selected)
+PASS   : HistoryGui::rowActionsNeverCoverFilenameOrStatus(430-menu-hovered)
+PASS   : HistoryGui::rowActionsNeverCoverFilenameOrStatus(430-menu-selected)
+PASS   : HistoryGui::rowActionsNeverCoverFilenameOrStatus(594-Copy link-hovered)
+PASS   : HistoryGui::rowActionsNeverCoverFilenameOrStatus(594-Copy link-selected)
+PASS   : HistoryGui::rowActionsNeverCoverFilenameOrStatus(594-Retry local save-hovered)
+PASS   : HistoryGui::rowActionsNeverCoverFilenameOrStatus(594-Retry local save-selected)
+PASS   : HistoryGui::rowActionsNeverCoverFilenameOrStatus(594-menu-hovered)
+PASS   : HistoryGui::rowActionsNeverCoverFilenameOrStatus(594-menu-selected)
+PASS   : HistoryGui::rowActionsNeverCoverFilenameOrStatus(840-Copy link-hovered)
+PASS   : HistoryGui::rowActionsNeverCoverFilenameOrStatus(840-Copy link-selected)
+PASS   : HistoryGui::rowActionsNeverCoverFilenameOrStatus(840-Retry local save-hovered)
+PASS   : HistoryGui::rowActionsNeverCoverFilenameOrStatus(840-Retry local save-selected)
+PASS   : HistoryGui::rowActionsNeverCoverFilenameOrStatus(840-menu-hovered)
+PASS   : HistoryGui::rowActionsNeverCoverFilenameOrStatus(840-menu-selected)
+PASS   : HistoryGui::separatedMetadataBreaksOnlyBetweenSegments()
+PASS   : HistoryGui::compactMetadataDropsWholeSegmentsAndKeepsStatusColour()
+PASS   : HistoryGui::compactFailureKeepsTimeWhileItsSummaryYields()
+PASS   : HistoryGui::compactFailureUsesTheClearWidthBelowActions()
+PASS   : HistoryGui::failedMetadataShowsAgeWithoutDisplacingDetails(list)
+PASS   : HistoryGui::failedMetadataShowsAgeWithoutDisplacingDetails(gallery)
+QWARN  : HistoryGui::metadataSeparatorsKeepWhitespace(uploaded-dark) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::metadataSeparatorsKeepWhitespace(uploaded-dark) This plugin does not support propagateSizeHints()
+PASS   : HistoryGui::metadataSeparatorsKeepWhitespace(uploaded-dark)
+QWARN  : HistoryGui::metadataSeparatorsKeepWhitespace(uploaded-light) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::metadataSeparatorsKeepWhitespace(uploaded-light) This plugin does not support propagateSizeHints()
+PASS   : HistoryGui::metadataSeparatorsKeepWhitespace(uploaded-light)
+QWARN  : HistoryGui::metadataSeparatorsKeepWhitespace(failed-dark) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::metadataSeparatorsKeepWhitespace(failed-dark) This plugin does not support propagateSizeHints()
+PASS   : HistoryGui::metadataSeparatorsKeepWhitespace(failed-dark)
+QWARN  : HistoryGui::metadataSeparatorsKeepWhitespace(failed-light) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::metadataSeparatorsKeepWhitespace(failed-light) This plugin does not support propagateSizeHints()
+PASS   : HistoryGui::metadataSeparatorsKeepWhitespace(failed-light)
+PASS   : HistoryGui::compactRowsKeepTitlesClearAndTimesVisible(body280-uploaded)
+PASS   : HistoryGui::compactRowsKeepTitlesClearAndTimesVisible(body280-failed)
+PASS   : HistoryGui::compactRowsKeepTitlesClearAndTimesVisible(body479-uploaded)
+PASS   : HistoryGui::compactRowsKeepTitlesClearAndTimesVisible(body479-failed)
+PASS   : HistoryGui::compactRowsKeepTitlesClearAndTimesVisible(body480-uploaded)
+PASS   : HistoryGui::compactRowsKeepTitlesClearAndTimesVisible(body480-failed)
+QWARN  : HistoryGui::compactFailureWrapsBeforeTheActionFooter(compact) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::compactFailureWrapsBeforeTheActionFooter(compact) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::compactFailureWrapsBeforeTheActionFooter(compact) This plugin does not support propagateSizeHints()
+PASS   : HistoryGui::compactFailureWrapsBeforeTheActionFooter(compact)
+QWARN  : HistoryGui::compactFailureWrapsBeforeTheActionFooter(wide) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::compactFailureWrapsBeforeTheActionFooter(wide) This plugin does not support propagateSizeHints()
+PASS   : HistoryGui::compactFailureWrapsBeforeTheActionFooter(wide)
+PASS   : HistoryGui::compactFailureDetailIsNeverShortenedBesideItsActions(300-Offline)
+PASS   : HistoryGui::compactFailureDetailIsNeverShortenedBesideItsActions(300-Connection interrupted)
+PASS   : HistoryGui::compactFailureDetailIsNeverShortenedBesideItsActions(300-Connection interrupted · Saved locally)
+PASS   : HistoryGui::compactFailureDetailIsNeverShortenedBesideItsActions(360-Offline)
+PASS   : HistoryGui::compactFailureDetailIsNeverShortenedBesideItsActions(360-Connection interrupted)
+PASS   : HistoryGui::compactFailureDetailIsNeverShortenedBesideItsActions(360-Connection interrupted · Saved locally)
+PASS   : HistoryGui::compactFailureDetailIsNeverShortenedBesideItsActions(430-Offline)
+PASS   : HistoryGui::compactFailureDetailIsNeverShortenedBesideItsActions(430-Connection interrupted)
+PASS   : HistoryGui::compactFailureDetailIsNeverShortenedBesideItsActions(430-Connection interrupted · Saved locally)
+PASS   : HistoryGui::compactFailureDetailIsNeverShortenedBesideItsActions(470-Offline)
+PASS   : HistoryGui::compactFailureDetailIsNeverShortenedBesideItsActions(470-Connection interrupted)
+PASS   : HistoryGui::compactFailureDetailIsNeverShortenedBesideItsActions(470-Connection interrupted · Saved locally)
+QWARN  : HistoryGui::compactRowsSpendTheirWidthOnTitles() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::compactRowsSpendTheirWidthOnTitles() This plugin does not support propagateSizeHints()
+PASS   : HistoryGui::compactRowsSpendTheirWidthOnTitles()
+QWARN  : HistoryGui::listRowsReserveOnlyTheActionsTheyNeed() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::listRowsReserveOnlyTheActionsTheyNeed() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::listRowsReserveOnlyTheActionsTheyNeed() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::listRowsReserveOnlyTheActionsTheyNeed() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::listRowsReserveOnlyTheActionsTheyNeed() This plugin does not support propagateSizeHints()
+PASS   : HistoryGui::listRowsReserveOnlyTheActionsTheyNeed()
+QWARN  : HistoryGui::failedRowsAlwaysShowRecovery(upload-failed) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::failedRowsAlwaysShowRecovery(upload-failed) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::failedRowsAlwaysShowRecovery(upload-failed) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::failedRowsAlwaysShowRecovery(upload-failed) This plugin does not support raise()
+QWARN  : HistoryGui::failedRowsAlwaysShowRecovery(upload-failed) This plugin does not support grabbing the keyboard
+QWARN  : HistoryGui::failedRowsAlwaysShowRecovery(upload-failed) QFSFileEngine::open: No file name specified
+PASS   : HistoryGui::failedRowsAlwaysShowRecovery(upload-failed)
+QWARN  : HistoryGui::failedRowsAlwaysShowRecovery(local-failed-after-upload) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::failedRowsAlwaysShowRecovery(local-failed-after-upload) This plugin does not support propagateSizeHints()
+PASS   : HistoryGui::failedRowsAlwaysShowRecovery(local-failed-after-upload)
+QWARN  : HistoryGui::missingLocalCopyUsesKnownRemoteState(video/mp4-uploaded) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::missingLocalCopyUsesKnownRemoteState(video/mp4-uploaded) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::missingLocalCopyUsesKnownRemoteState(video/mp4-uploaded) This plugin does not support propagateSizeHints()
+PASS   : HistoryGui::missingLocalCopyUsesKnownRemoteState(video/mp4-uploaded)
+QWARN  : HistoryGui::missingLocalCopyUsesKnownRemoteState(video/mp4-removed) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::missingLocalCopyUsesKnownRemoteState(video/mp4-removed) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::missingLocalCopyUsesKnownRemoteState(video/mp4-removed) This plugin does not support propagateSizeHints()
+PASS   : HistoryGui::missingLocalCopyUsesKnownRemoteState(video/mp4-removed)
+QWARN  : HistoryGui::missingLocalCopyUsesKnownRemoteState(video/mp4-already-missing) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::missingLocalCopyUsesKnownRemoteState(video/mp4-already-missing) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::missingLocalCopyUsesKnownRemoteState(video/mp4-already-missing) This plugin does not support propagateSizeHints()
+PASS   : HistoryGui::missingLocalCopyUsesKnownRemoteState(video/mp4-already-missing)
+QWARN  : HistoryGui::missingLocalCopyUsesKnownRemoteState(video/mp4-local-only) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::missingLocalCopyUsesKnownRemoteState(video/mp4-local-only) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::missingLocalCopyUsesKnownRemoteState(video/mp4-local-only) This plugin does not support propagateSizeHints()
+PASS   : HistoryGui::missingLocalCopyUsesKnownRemoteState(video/mp4-local-only)
+QWARN  : HistoryGui::missingLocalCopyUsesKnownRemoteState(video/mp4-retained-version) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::missingLocalCopyUsesKnownRemoteState(video/mp4-retained-version) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::missingLocalCopyUsesKnownRemoteState(video/mp4-retained-version) This plugin does not support propagateSizeHints()
+PASS   : HistoryGui::missingLocalCopyUsesKnownRemoteState(video/mp4-retained-version)
+QWARN  : HistoryGui::missingLocalCopyUsesKnownRemoteState(video/mp4-changed) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::missingLocalCopyUsesKnownRemoteState(video/mp4-changed) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::missingLocalCopyUsesKnownRemoteState(video/mp4-changed) This plugin does not support propagateSizeHints()
+PASS   : HistoryGui::missingLocalCopyUsesKnownRemoteState(video/mp4-changed)
+QWARN  : HistoryGui::missingLocalCopyUsesKnownRemoteState(video/mp4-deletion-pending) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::missingLocalCopyUsesKnownRemoteState(video/mp4-deletion-pending) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::missingLocalCopyUsesKnownRemoteState(video/mp4-deletion-pending) This plugin does not support propagateSizeHints()
+PASS   : HistoryGui::missingLocalCopyUsesKnownRemoteState(video/mp4-deletion-pending)
+QWARN  : HistoryGui::missingLocalCopyUsesKnownRemoteState(video/mp4-deleting) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::missingLocalCopyUsesKnownRemoteState(video/mp4-deleting) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::missingLocalCopyUsesKnownRemoteState(video/mp4-deleting) This plugin does not support propagateSizeHints()
+PASS   : HistoryGui::missingLocalCopyUsesKnownRemoteState(video/mp4-deleting)
+QWARN  : HistoryGui::missingLocalCopyUsesKnownRemoteState(video/mp4-remote-unknown) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::missingLocalCopyUsesKnownRemoteState(video/mp4-remote-unknown) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::missingLocalCopyUsesKnownRemoteState(video/mp4-remote-unknown) This plugin does not support propagateSizeHints()
+PASS   : HistoryGui::missingLocalCopyUsesKnownRemoteState(video/mp4-remote-unknown)
+QWARN  : HistoryGui::missingLocalCopyUsesKnownRemoteState(video/mp4-upload-unknown) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::missingLocalCopyUsesKnownRemoteState(video/mp4-upload-unknown) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::missingLocalCopyUsesKnownRemoteState(video/mp4-upload-unknown) This plugin does not support propagateSizeHints()
+PASS   : HistoryGui::missingLocalCopyUsesKnownRemoteState(video/mp4-upload-unknown)
+QWARN  : HistoryGui::missingLocalCopyUsesKnownRemoteState(image/png-uploaded) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::missingLocalCopyUsesKnownRemoteState(image/png-uploaded) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::missingLocalCopyUsesKnownRemoteState(image/png-uploaded) This plugin does not support propagateSizeHints()
+PASS   : HistoryGui::missingLocalCopyUsesKnownRemoteState(image/png-uploaded)
+QWARN  : HistoryGui::missingLocalCopyUsesKnownRemoteState(image/png-removed) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::missingLocalCopyUsesKnownRemoteState(image/png-removed) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::missingLocalCopyUsesKnownRemoteState(image/png-removed) This plugin does not support propagateSizeHints()
+PASS   : HistoryGui::missingLocalCopyUsesKnownRemoteState(image/png-removed)
+QWARN  : HistoryGui::missingLocalCopyUsesKnownRemoteState(image/png-already-missing) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::missingLocalCopyUsesKnownRemoteState(image/png-already-missing) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::missingLocalCopyUsesKnownRemoteState(image/png-already-missing) This plugin does not support propagateSizeHints()
+PASS   : HistoryGui::missingLocalCopyUsesKnownRemoteState(image/png-already-missing)
+QWARN  : HistoryGui::missingLocalCopyUsesKnownRemoteState(image/png-local-only) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::missingLocalCopyUsesKnownRemoteState(image/png-local-only) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::missingLocalCopyUsesKnownRemoteState(image/png-local-only) This plugin does not support propagateSizeHints()
+PASS   : HistoryGui::missingLocalCopyUsesKnownRemoteState(image/png-local-only)
+QWARN  : HistoryGui::missingLocalCopyUsesKnownRemoteState(image/png-retained-version) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::missingLocalCopyUsesKnownRemoteState(image/png-retained-version) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::missingLocalCopyUsesKnownRemoteState(image/png-retained-version) This plugin does not support propagateSizeHints()
+PASS   : HistoryGui::missingLocalCopyUsesKnownRemoteState(image/png-retained-version)
+QWARN  : HistoryGui::missingLocalCopyUsesKnownRemoteState(image/png-changed) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::missingLocalCopyUsesKnownRemoteState(image/png-changed) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::missingLocalCopyUsesKnownRemoteState(image/png-changed) This plugin does not support propagateSizeHints()
+PASS   : HistoryGui::missingLocalCopyUsesKnownRemoteState(image/png-changed)
+QWARN  : HistoryGui::missingLocalCopyUsesKnownRemoteState(image/png-deletion-pending) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::missingLocalCopyUsesKnownRemoteState(image/png-deletion-pending) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::missingLocalCopyUsesKnownRemoteState(image/png-deletion-pending) This plugin does not support propagateSizeHints()
+PASS   : HistoryGui::missingLocalCopyUsesKnownRemoteState(image/png-deletion-pending)
+QWARN  : HistoryGui::missingLocalCopyUsesKnownRemoteState(image/png-deleting) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::missingLocalCopyUsesKnownRemoteState(image/png-deleting) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::missingLocalCopyUsesKnownRemoteState(image/png-deleting) This plugin does not support propagateSizeHints()
+PASS   : HistoryGui::missingLocalCopyUsesKnownRemoteState(image/png-deleting)
+QWARN  : HistoryGui::missingLocalCopyUsesKnownRemoteState(image/png-remote-unknown) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::missingLocalCopyUsesKnownRemoteState(image/png-remote-unknown) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::missingLocalCopyUsesKnownRemoteState(image/png-remote-unknown) This plugin does not support propagateSizeHints()
+PASS   : HistoryGui::missingLocalCopyUsesKnownRemoteState(image/png-remote-unknown)
+QWARN  : HistoryGui::missingLocalCopyUsesKnownRemoteState(image/png-upload-unknown) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::missingLocalCopyUsesKnownRemoteState(image/png-upload-unknown) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::missingLocalCopyUsesKnownRemoteState(image/png-upload-unknown) This plugin does not support propagateSizeHints()
+PASS   : HistoryGui::missingLocalCopyUsesKnownRemoteState(image/png-upload-unknown)
+QWARN  : HistoryGui::missingLocalCopyUsesKnownRemoteState(application/pdf-uploaded) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::missingLocalCopyUsesKnownRemoteState(application/pdf-uploaded) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::missingLocalCopyUsesKnownRemoteState(application/pdf-uploaded) This plugin does not support propagateSizeHints()
+PASS   : HistoryGui::missingLocalCopyUsesKnownRemoteState(application/pdf-uploaded)
+QWARN  : HistoryGui::missingLocalCopyUsesKnownRemoteState(application/pdf-removed) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::missingLocalCopyUsesKnownRemoteState(application/pdf-removed) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::missingLocalCopyUsesKnownRemoteState(application/pdf-removed) This plugin does not support propagateSizeHints()
+PASS   : HistoryGui::missingLocalCopyUsesKnownRemoteState(application/pdf-removed)
+QWARN  : HistoryGui::missingLocalCopyUsesKnownRemoteState(application/pdf-already-missing) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::missingLocalCopyUsesKnownRemoteState(application/pdf-already-missing) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::missingLocalCopyUsesKnownRemoteState(application/pdf-already-missing) This plugin does not support propagateSizeHints()
+PASS   : HistoryGui::missingLocalCopyUsesKnownRemoteState(application/pdf-already-missing)
+QWARN  : HistoryGui::missingLocalCopyUsesKnownRemoteState(application/pdf-local-only) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::missingLocalCopyUsesKnownRemoteState(application/pdf-local-only) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::missingLocalCopyUsesKnownRemoteState(application/pdf-local-only) This plugin does not support propagateSizeHints()
+PASS   : HistoryGui::missingLocalCopyUsesKnownRemoteState(application/pdf-local-only)
+QWARN  : HistoryGui::missingLocalCopyUsesKnownRemoteState(application/pdf-retained-version) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::missingLocalCopyUsesKnownRemoteState(application/pdf-retained-version) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::missingLocalCopyUsesKnownRemoteState(application/pdf-retained-version) This plugin does not support propagateSizeHints()
+PASS   : HistoryGui::missingLocalCopyUsesKnownRemoteState(application/pdf-retained-version)
+QWARN  : HistoryGui::missingLocalCopyUsesKnownRemoteState(application/pdf-changed) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::missingLocalCopyUsesKnownRemoteState(application/pdf-changed) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::missingLocalCopyUsesKnownRemoteState(application/pdf-changed) This plugin does not support propagateSizeHints()
+PASS   : HistoryGui::missingLocalCopyUsesKnownRemoteState(application/pdf-changed)
+QWARN  : HistoryGui::missingLocalCopyUsesKnownRemoteState(application/pdf-deletion-pending) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::missingLocalCopyUsesKnownRemoteState(application/pdf-deletion-pending) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::missingLocalCopyUsesKnownRemoteState(application/pdf-deletion-pending) This plugin does not support propagateSizeHints()
+PASS   : HistoryGui::missingLocalCopyUsesKnownRemoteState(application/pdf-deletion-pending)
+QWARN  : HistoryGui::missingLocalCopyUsesKnownRemoteState(application/pdf-deleting) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::missingLocalCopyUsesKnownRemoteState(application/pdf-deleting) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::missingLocalCopyUsesKnownRemoteState(application/pdf-deleting) This plugin does not support propagateSizeHints()
+PASS   : HistoryGui::missingLocalCopyUsesKnownRemoteState(application/pdf-deleting)
+QWARN  : HistoryGui::missingLocalCopyUsesKnownRemoteState(application/pdf-remote-unknown) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::missingLocalCopyUsesKnownRemoteState(application/pdf-remote-unknown) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::missingLocalCopyUsesKnownRemoteState(application/pdf-remote-unknown) This plugin does not support propagateSizeHints()
+PASS   : HistoryGui::missingLocalCopyUsesKnownRemoteState(application/pdf-remote-unknown)
+QWARN  : HistoryGui::missingLocalCopyUsesKnownRemoteState(application/pdf-upload-unknown) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::missingLocalCopyUsesKnownRemoteState(application/pdf-upload-unknown) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::missingLocalCopyUsesKnownRemoteState(application/pdf-upload-unknown) This plugin does not support propagateSizeHints()
+PASS   : HistoryGui::missingLocalCopyUsesKnownRemoteState(application/pdf-upload-unknown)
+QWARN  : HistoryGui::localAvailabilityFollowsTheFileWithoutChangingTheReceipt() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::localAvailabilityFollowsTheFileWithoutChangingTheReceipt() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::localAvailabilityFollowsTheFileWithoutChangingTheReceipt() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::localAvailabilityFollowsTheFileWithoutChangingTheReceipt() This plugin does not support propagateSizeHints()
+PASS   : HistoryGui::localAvailabilityFollowsTheFileWithoutChangingTheReceipt()
+QWARN  : HistoryGui::expandedFiltersKeepTwoWholeResults() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::expandedFiltersKeepTwoWholeResults() This plugin does not support propagateSizeHints()
+PASS   : HistoryGui::expandedFiltersKeepTwoWholeResults()
+PASS   : HistoryGui::inspectorFactsUseBodyType(dark-14)
+PASS   : HistoryGui::inspectorFactsUseBodyType(dark-21)
+PASS   : HistoryGui::inspectorFactsUseBodyType(light-14)
+PASS   : HistoryGui::inspectorFactsUseBodyType(light-21)
+PASS   : HistoryGui::inspectorSummaryReflowsAndExplainsUnavailableEditing()
+QWARN  : HistoryGui::inspectorDeduplicatesNamesAndOutcomes() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::inspectorDeduplicatesNamesAndOutcomes() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::inspectorDeduplicatesNamesAndOutcomes() This plugin does not support propagateSizeHints()
+PASS   : HistoryGui::inspectorDeduplicatesNamesAndOutcomes()
+QWARN  : HistoryGui::inspectorActionsFillVisibleCellsAndExposeMore() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::inspectorActionsFillVisibleCellsAndExposeMore() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::inspectorActionsFillVisibleCellsAndExposeMore() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::inspectorActionsFillVisibleCellsAndExposeMore() This plugin does not support raise()
+QWARN  : HistoryGui::inspectorActionsFillVisibleCellsAndExposeMore() This plugin does not support grabbing the keyboard
+QWARN  : HistoryGui::inspectorActionsFillVisibleCellsAndExposeMore() This plugin does not support raise()
+QWARN  : HistoryGui::inspectorActionsFillVisibleCellsAndExposeMore() This plugin does not support grabbing the keyboard
+QWARN  : HistoryGui::inspectorActionsFillVisibleCellsAndExposeMore() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::inspectorActionsFillVisibleCellsAndExposeMore() This plugin does not support propagateSizeHints()
+PASS   : HistoryGui::inspectorActionsFillVisibleCellsAndExposeMore()
+QWARN  : HistoryGui::failedInspectorKeepsOneQuietActionRow() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::failedInspectorKeepsOneQuietActionRow() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::failedInspectorKeepsOneQuietActionRow() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::failedInspectorKeepsOneQuietActionRow() This plugin does not support propagateSizeHints()
+PASS   : HistoryGui::failedInspectorKeepsOneQuietActionRow()
+QWARN  : HistoryGui::previewReadFailureCanRetryWithoutLosingSelection() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::previewReadFailureCanRetryWithoutLosingSelection() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::previewReadFailureCanRetryWithoutLosingSelection() This plugin does not support propagateSizeHints()
+PASS   : HistoryGui::previewReadFailureCanRetryWithoutLosingSelection()
+PASS   : HistoryGui::recordingsHavePhaseSpecificStatus()
+QWARN  : HistoryGui::allFileKindsExplainLocalAbsenceWithoutOfferingRevokedLinks() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::allFileKindsExplainLocalAbsenceWithoutOfferingRevokedLinks() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::allFileKindsExplainLocalAbsenceWithoutOfferingRevokedLinks() This plugin does not support propagateSizeHints()
+PASS   : HistoryGui::allFileKindsExplainLocalAbsenceWithoutOfferingRevokedLinks()
+QWARN  : HistoryGui::browserFailureOffersCopyAndClearsOnSelection() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::browserFailureOffersCopyAndClearsOnSelection() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::browserFailureOffersCopyAndClearsOnSelection() This plugin does not support propagateSizeHints()
+PASS   : HistoryGui::browserFailureOffersCopyAndClearsOnSelection()
+QWARN  : HistoryGui::matchingCountsDescribeTheDisplayedFileRange() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::matchingCountsDescribeTheDisplayedFileRange() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::matchingCountsDescribeTheDisplayedFileRange() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::matchingCountsDescribeTheDisplayedFileRange() This plugin does not support propagateSizeHints()
+PASS   : HistoryGui::matchingCountsDescribeTheDisplayedFileRange()
+QWARN  : HistoryGui::galleryDetailsRestoreOriginAndScroll() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::galleryDetailsRestoreOriginAndScroll() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::galleryDetailsRestoreOriginAndScroll() This plugin does not support raise()
+PASS   : HistoryGui::galleryDetailsRestoreOriginAndScroll()
+QWARN  : HistoryGui::managementMenuDoesNotConsumeListHeight() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::managementMenuDoesNotConsumeListHeight() This plugin does not support raise()
+QWARN  : HistoryGui::managementMenuDoesNotConsumeListHeight() This plugin does not support grabbing the keyboard
+PASS   : HistoryGui::managementMenuDoesNotConsumeListHeight()
+QWARN  : HistoryGui::revokeConfirmationNamesItsFileAndDestination() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::revokeConfirmationNamesItsFileAndDestination() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::revokeConfirmationNamesItsFileAndDestination() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::revokeConfirmationNamesItsFileAndDestination() This plugin does not support propagateSizeHints()
+PASS   : HistoryGui::revokeConfirmationNamesItsFileAndDestination()
+QWARN  : HistoryGui::loadingFailureRetriesCurrentQuery() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::loadingFailureRetriesCurrentQuery() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::loadingFailureRetriesCurrentQuery() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::loadingFailureRetriesCurrentQuery() This plugin does not support propagateSizeHints()
+PASS   : HistoryGui::loadingFailureRetriesCurrentQuery()
+PASS   : HistoryGui::preflightStatusDescribesDestinationCheck()
+PASS   : HistoryGui::queuedEditorStatusTakesPrecedence(editing)
+PASS   : HistoryGui::queuedEditorStatusTakesPrecedence(acquiring)
+PASS   : HistoryGui::queuedEditorStatusTakesPrecedence(stored)
+PASS   : HistoryGui::queuedEditorStatusTakesPrecedence(running)
+QWARN  : HistoryGui::longFailureMetadataKeepsDetailsAndWrapsListRows(list-1000-gnome-guide) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::longFailureMetadataKeepsDetailsAndWrapsListRows(list-1000-gnome-guide) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::longFailureMetadataKeepsDetailsAndWrapsListRows(list-1000-gnome-guide) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::longFailureMetadataKeepsDetailsAndWrapsListRows(list-1000-gnome-guide) This plugin does not support propagateSizeHints()
+PASS   : HistoryGui::longFailureMetadataKeepsDetailsAndWrapsListRows(list-1000-gnome-guide)
+QWARN  : HistoryGui::longFailureMetadataKeepsDetailsAndWrapsListRows(list-1000-long-token) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::longFailureMetadataKeepsDetailsAndWrapsListRows(list-1000-long-token) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::longFailureMetadataKeepsDetailsAndWrapsListRows(list-1000-long-token) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::longFailureMetadataKeepsDetailsAndWrapsListRows(list-1000-long-token) This plugin does not support propagateSizeHints()
+PASS   : HistoryGui::longFailureMetadataKeepsDetailsAndWrapsListRows(list-1000-long-token)
+QWARN  : HistoryGui::longFailureMetadataKeepsDetailsAndWrapsListRows(list-760-gnome-guide) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::longFailureMetadataKeepsDetailsAndWrapsListRows(list-760-gnome-guide) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::longFailureMetadataKeepsDetailsAndWrapsListRows(list-760-gnome-guide) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::longFailureMetadataKeepsDetailsAndWrapsListRows(list-760-gnome-guide) This plugin does not support propagateSizeHints()
+PASS   : HistoryGui::longFailureMetadataKeepsDetailsAndWrapsListRows(list-760-gnome-guide)
+QWARN  : HistoryGui::longFailureMetadataKeepsDetailsAndWrapsListRows(list-760-long-token) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::longFailureMetadataKeepsDetailsAndWrapsListRows(list-760-long-token) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::longFailureMetadataKeepsDetailsAndWrapsListRows(list-760-long-token) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::longFailureMetadataKeepsDetailsAndWrapsListRows(list-760-long-token) This plugin does not support propagateSizeHints()
+PASS   : HistoryGui::longFailureMetadataKeepsDetailsAndWrapsListRows(list-760-long-token)
+QWARN  : HistoryGui::longFailureMetadataKeepsDetailsAndWrapsListRows(gallery-1000-gnome-guide) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::longFailureMetadataKeepsDetailsAndWrapsListRows(gallery-1000-gnome-guide) This plugin does not support propagateSizeHints()
+PASS   : HistoryGui::longFailureMetadataKeepsDetailsAndWrapsListRows(gallery-1000-gnome-guide)
+QWARN  : HistoryGui::longFailureMetadataKeepsDetailsAndWrapsListRows(gallery-1000-long-token) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::longFailureMetadataKeepsDetailsAndWrapsListRows(gallery-1000-long-token) This plugin does not support propagateSizeHints()
+PASS   : HistoryGui::longFailureMetadataKeepsDetailsAndWrapsListRows(gallery-1000-long-token)
+QWARN  : HistoryGui::longFailureMetadataKeepsDetailsAndWrapsListRows(gallery-760-gnome-guide) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::longFailureMetadataKeepsDetailsAndWrapsListRows(gallery-760-gnome-guide) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::longFailureMetadataKeepsDetailsAndWrapsListRows(gallery-760-gnome-guide) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::longFailureMetadataKeepsDetailsAndWrapsListRows(gallery-760-gnome-guide) This plugin does not support propagateSizeHints()
+PASS   : HistoryGui::longFailureMetadataKeepsDetailsAndWrapsListRows(gallery-760-gnome-guide)
+QWARN  : HistoryGui::longFailureMetadataKeepsDetailsAndWrapsListRows(gallery-760-long-token) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::longFailureMetadataKeepsDetailsAndWrapsListRows(gallery-760-long-token) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::longFailureMetadataKeepsDetailsAndWrapsListRows(gallery-760-long-token) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::longFailureMetadataKeepsDetailsAndWrapsListRows(gallery-760-long-token) This plugin does not support propagateSizeHints()
+PASS   : HistoryGui::longFailureMetadataKeepsDetailsAndWrapsListRows(gallery-760-long-token)
+QWARN  : HistoryGui::externalDeletionAndClearRefreshOpenViews() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::externalDeletionAndClearRefreshOpenViews() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::externalDeletionAndClearRefreshOpenViews() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::externalDeletionAndClearRefreshOpenViews() This plugin does not support propagateSizeHints()
+PASS   : HistoryGui::externalDeletionAndClearRefreshOpenViews()
+QWARN  : HistoryGui::singleFileKeepsItsUploadOutcomeVisible() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::singleFileKeepsItsUploadOutcomeVisible() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::singleFileKeepsItsUploadOutcomeVisible() This plugin does not support propagateSizeHints()
+PASS   : HistoryGui::singleFileKeepsItsUploadOutcomeVisible()
+QWARN  : HistoryGui::longHeadingKeepsSearchAndViewsReachable() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::longHeadingKeepsSearchAndViewsReachable() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::longHeadingKeepsSearchAndViewsReachable() This plugin does not support propagateSizeHints()
+PASS   : HistoryGui::longHeadingKeepsSearchAndViewsReachable()
+QWARN  : HistoryGui::batchCapturesFoldFilesAndKeepOriginalDetailsRoutedById() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::batchCapturesFoldFilesAndKeepOriginalDetailsRoutedById() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::batchCapturesFoldFilesAndKeepOriginalDetailsRoutedById() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::batchCapturesFoldFilesAndKeepOriginalDetailsRoutedById() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::batchCapturesFoldFilesAndKeepOriginalDetailsRoutedById() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::batchCapturesFoldFilesAndKeepOriginalDetailsRoutedById() This plugin does not support propagateSizeHints()
+PASS   : HistoryGui::batchCapturesFoldFilesAndKeepOriginalDetailsRoutedById()
+PASS   : HistoryGui::groupedLocalFailureSurvivesRecentOperationEviction(recent)
+PASS   : HistoryGui::groupedLocalFailureSurvivesRecentOperationEviction(evicted)
+PASS   : HistoryGui::recreatedHistoryAppliesPendingFiltersAndRestoresSelection()
+QWARN  : HistoryGui::restoringHistoryKeepsActiveDeletionCancellation() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::restoringHistoryKeepsActiveDeletionCancellation() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::restoringHistoryKeepsActiveDeletionCancellation() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::restoringHistoryKeepsActiveDeletionCancellation() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::restoringHistoryKeepsActiveDeletionCancellation() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::restoringHistoryKeepsActiveDeletionCancellation() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::restoringHistoryKeepsActiveDeletionCancellation() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::restoringHistoryKeepsActiveDeletionCancellation() This plugin does not support propagateSizeHints()
+PASS   : HistoryGui::restoringHistoryKeepsActiveDeletionCancellation()
+QWARN  : HistoryGui::recreatedHistoryResumesSharingInspectionWithoutReplay(shared) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::recreatedHistoryResumesSharingInspectionWithoutReplay(shared) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::recreatedHistoryResumesSharingInspectionWithoutReplay(shared) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::recreatedHistoryResumesSharingInspectionWithoutReplay(shared) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::recreatedHistoryResumesSharingInspectionWithoutReplay(shared) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::recreatedHistoryResumesSharingInspectionWithoutReplay(shared) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::recreatedHistoryResumesSharingInspectionWithoutReplay(shared) This plugin does not support propagateSizeHints()
+PASS   : HistoryGui::recreatedHistoryResumesSharingInspectionWithoutReplay(shared)
+QWARN  : HistoryGui::recreatedHistoryResumesSharingInspectionWithoutReplay(failed) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::recreatedHistoryResumesSharingInspectionWithoutReplay(failed) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::recreatedHistoryResumesSharingInspectionWithoutReplay(failed) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::recreatedHistoryResumesSharingInspectionWithoutReplay(failed) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::recreatedHistoryResumesSharingInspectionWithoutReplay(failed) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::recreatedHistoryResumesSharingInspectionWithoutReplay(failed) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::recreatedHistoryResumesSharingInspectionWithoutReplay(failed) This plugin does not support propagateSizeHints()
+PASS   : HistoryGui::recreatedHistoryResumesSharingInspectionWithoutReplay(failed)
+QWARN  : HistoryGui::linkRowShowsTheConfirmedExpiry() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::linkRowShowsTheConfirmedExpiry() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::linkRowShowsTheConfirmedExpiry() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::linkRowShowsTheConfirmedExpiry() This plugin does not support propagateSizeHints()
+PASS   : HistoryGui::linkRowShowsTheConfirmedExpiry()
+QWARN  : HistoryGui::stoppedSharingJournalCanBeInspectedAfterStorageRecovers() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::stoppedSharingJournalCanBeInspectedAfterStorageRecovers() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::stoppedSharingJournalCanBeInspectedAfterStorageRecovers() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::stoppedSharingJournalCanBeInspectedAfterStorageRecovers() This plugin does not support propagateSizeHints()
+PASS   : HistoryGui::stoppedSharingJournalCanBeInspectedAfterStorageRecovers()
+QWARN  : HistoryGui::imageInspectorAndExpandedControlsFitCompactWindow() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::imageInspectorAndExpandedControlsFitCompactWindow() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::imageInspectorAndExpandedControlsFitCompactWindow() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::imageInspectorAndExpandedControlsFitCompactWindow() This plugin does not support raise()
+QWARN  : HistoryGui::imageInspectorAndExpandedControlsFitCompactWindow() This plugin does not support grabbing the keyboard
+PASS   : HistoryGui::imageInspectorAndExpandedControlsFitCompactWindow()
+QWARN  : HistoryGui::videoPosterCarriesPlayGlyphAndLength() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::videoPosterCarriesPlayGlyphAndLength() This plugin does not support propagateSizeHints()
+PASS   : HistoryGui::videoPosterCarriesPlayGlyphAndLength()
+QWARN  : HistoryGui::missingPreviewIsMadeOnSelection() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::missingPreviewIsMadeOnSelection() This plugin does not support propagateSizeHints()
+PASS   : HistoryGui::missingPreviewIsMadeOnSelection()
+QWARN  : HistoryGui::idleHistoryDoesNotReload() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::idleHistoryDoesNotReload() This plugin does not support propagateSizeHints()
+PASS   : HistoryGui::idleHistoryDoesNotReload()
+PASS   : HistoryGui::openingHistoryDuringInitializationRefreshesWhenReady()
+PASS   : HistoryGui::tenThousandEntryLedgerPagesAndFiltersOffline()
+QWARN  : HistoryGui::cancellingExactDeletionConfirmationSendsNoDelete() This plugin does not support propagateSizeHints()
+PASS   : HistoryGui::cancellingExactDeletionConfirmationSendsNoDelete()
+QWARN  : HistoryGui::unifiedActivityCancelRetryAndCopyUseResidentActions() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::unifiedActivityCancelRetryAndCopyUseResidentActions() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::unifiedActivityCancelRetryAndCopyUseResidentActions() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::unifiedActivityCancelRetryAndCopyUseResidentActions() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::unifiedActivityCancelRetryAndCopyUseResidentActions() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::unifiedActivityCancelRetryAndCopyUseResidentActions() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::unifiedActivityCancelRetryAndCopyUseResidentActions() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::unifiedActivityCancelRetryAndCopyUseResidentActions() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::unifiedActivityCancelRetryAndCopyUseResidentActions() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::unifiedActivityCancelRetryAndCopyUseResidentActions() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::unifiedActivityCancelRetryAndCopyUseResidentActions() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::unifiedActivityCancelRetryAndCopyUseResidentActions() This plugin does not support propagateSizeHints()
+PASS   : HistoryGui::unifiedActivityCancelRetryAndCopyUseResidentActions()
+QWARN  : HistoryGui::uploadProgressRendersBeforeCompletionDuringDelayedRecentReplies() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::uploadProgressRendersBeforeCompletionDuringDelayedRecentReplies() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::uploadProgressRendersBeforeCompletionDuringDelayedRecentReplies() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::uploadProgressRendersBeforeCompletionDuringDelayedRecentReplies() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::uploadProgressRendersBeforeCompletionDuringDelayedRecentReplies() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::uploadProgressRendersBeforeCompletionDuringDelayedRecentReplies() This plugin does not support propagateSizeHints()
+PASS   : HistoryGui::uploadProgressRendersBeforeCompletionDuringDelayedRecentReplies()
+QWARN  : HistoryGui::manyActiveOperationsKeepOneBannerLine() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::manyActiveOperationsKeepOneBannerLine() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::manyActiveOperationsKeepOneBannerLine() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::manyActiveOperationsKeepOneBannerLine() This plugin does not support propagateSizeHints()
+PASS   : HistoryGui::manyActiveOperationsKeepOneBannerLine()
+QWARN  : HistoryGui::activitySurvivesFiltersAndPaging() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::activitySurvivesFiltersAndPaging() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::activitySurvivesFiltersAndPaging() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::activitySurvivesFiltersAndPaging() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::activitySurvivesFiltersAndPaging() This plugin does not support propagateSizeHints()
+PASS   : HistoryGui::activitySurvivesFiltersAndPaging()
+QWARN  : HistoryGui::queuedRetryRetainsOriginalIdentityAndCanBeCancelledFromHistory() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::queuedRetryRetainsOriginalIdentityAndCanBeCancelledFromHistory() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::queuedRetryRetainsOriginalIdentityAndCanBeCancelledFromHistory() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::queuedRetryRetainsOriginalIdentityAndCanBeCancelledFromHistory() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::queuedRetryRetainsOriginalIdentityAndCanBeCancelledFromHistory() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::queuedRetryRetainsOriginalIdentityAndCanBeCancelledFromHistory() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::queuedRetryRetainsOriginalIdentityAndCanBeCancelledFromHistory() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::queuedRetryRetainsOriginalIdentityAndCanBeCancelledFromHistory() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::queuedRetryRetainsOriginalIdentityAndCanBeCancelledFromHistory() This plugin does not support propagateSizeHints()
+PASS   : HistoryGui::queuedRetryRetainsOriginalIdentityAndCanBeCancelledFromHistory()
+QWARN  : HistoryGui::failedAutomaticCopyCanRetryTheFullResultWithoutAnotherUpload() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::failedAutomaticCopyCanRetryTheFullResultWithoutAnotherUpload() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::failedAutomaticCopyCanRetryTheFullResultWithoutAnotherUpload() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::failedAutomaticCopyCanRetryTheFullResultWithoutAnotherUpload() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::failedAutomaticCopyCanRetryTheFullResultWithoutAnotherUpload() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::failedAutomaticCopyCanRetryTheFullResultWithoutAnotherUpload() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::failedAutomaticCopyCanRetryTheFullResultWithoutAnotherUpload() This plugin does not support raise()
+QWARN  : HistoryGui::failedAutomaticCopyCanRetryTheFullResultWithoutAnotherUpload() This plugin does not support grabbing the keyboard
+QWARN  : HistoryGui::failedAutomaticCopyCanRetryTheFullResultWithoutAnotherUpload() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::failedAutomaticCopyCanRetryTheFullResultWithoutAnotherUpload() This plugin does not support raise()
+QWARN  : HistoryGui::failedAutomaticCopyCanRetryTheFullResultWithoutAnotherUpload() This plugin does not support grabbing the keyboard
+PASS   : HistoryGui::failedAutomaticCopyCanRetryTheFullResultWithoutAnotherUpload()
+QWARN  : HistoryGui::suppressedAutomaticCopyNamesTheClipboardChangeAndCopyLinkRecovers() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::suppressedAutomaticCopyNamesTheClipboardChangeAndCopyLinkRecovers() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::suppressedAutomaticCopyNamesTheClipboardChangeAndCopyLinkRecovers() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::suppressedAutomaticCopyNamesTheClipboardChangeAndCopyLinkRecovers() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::suppressedAutomaticCopyNamesTheClipboardChangeAndCopyLinkRecovers() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::suppressedAutomaticCopyNamesTheClipboardChangeAndCopyLinkRecovers() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::suppressedAutomaticCopyNamesTheClipboardChangeAndCopyLinkRecovers() This plugin does not support propagateSizeHints()
+PASS   : HistoryGui::suppressedAutomaticCopyNamesTheClipboardChangeAndCopyLinkRecovers()
+QWARN  : HistoryGui::failedUploadSavesDiagnosticsForThatOperation() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::failedUploadSavesDiagnosticsForThatOperation() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::failedUploadSavesDiagnosticsForThatOperation() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::failedUploadSavesDiagnosticsForThatOperation() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::failedUploadSavesDiagnosticsForThatOperation() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::failedUploadSavesDiagnosticsForThatOperation() putgd wait: rule->mapTo(&window,QPoint()).y()-actions->mapTo(&window,QPoint(0,actions->height())).y() == Ui::space(Ui::Space::m) still false after 15283 ms (budget 5000 ms x scale 3.00) at /home/user/work/put.gd/src/tests/gui/test_history_view.cpp:832
+FAIL!  : HistoryGui::failedUploadSavesDiagnosticsForThatOperation() Compared values are not the same
+   Actual   (rule->mapTo(&window,QPoint()).y()-actions->mapTo(&window,QPoint(0,actions->height())).y()): 53
+   Expected (Ui::space(Ui::Space::m))                                                                  : 12
+   Loc: [/home/user/work/put.gd/src/tests/gui/test_history_view.cpp(832)]
+QWARN  : HistoryGui::localSaveRetryUsesRetainedArtifactWithoutRecaptureOrUpload() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::localSaveRetryUsesRetainedArtifactWithoutRecaptureOrUpload() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::localSaveRetryUsesRetainedArtifactWithoutRecaptureOrUpload() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::localSaveRetryUsesRetainedArtifactWithoutRecaptureOrUpload() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::localSaveRetryUsesRetainedArtifactWithoutRecaptureOrUpload() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::localSaveRetryUsesRetainedArtifactWithoutRecaptureOrUpload() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::localSaveRetryUsesRetainedArtifactWithoutRecaptureOrUpload() This plugin does not support raise()
+QWARN  : HistoryGui::localSaveRetryUsesRetainedArtifactWithoutRecaptureOrUpload() This plugin does not support grabbing the keyboard
+QWARN  : HistoryGui::localSaveRetryUsesRetainedArtifactWithoutRecaptureOrUpload() This plugin does not support propagateSizeHints()
+PASS   : HistoryGui::localSaveRetryUsesRetainedArtifactWithoutRecaptureOrUpload()
+QWARN  : HistoryGui::localOnlyFailureRetriesLocalSaveAndRecoveredResultCanBeCopied() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::localOnlyFailureRetriesLocalSaveAndRecoveredResultCanBeCopied() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::localOnlyFailureRetriesLocalSaveAndRecoveredResultCanBeCopied() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::localOnlyFailureRetriesLocalSaveAndRecoveredResultCanBeCopied() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::localOnlyFailureRetriesLocalSaveAndRecoveredResultCanBeCopied() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::localOnlyFailureRetriesLocalSaveAndRecoveredResultCanBeCopied() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::localOnlyFailureRetriesLocalSaveAndRecoveredResultCanBeCopied() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::localOnlyFailureRetriesLocalSaveAndRecoveredResultCanBeCopied() This plugin does not support propagateSizeHints()
+PASS   : HistoryGui::localOnlyFailureRetriesLocalSaveAndRecoveredResultCanBeCopied()
+QWARN  : HistoryGui::originalImageCopyUsesResidentOriginalNotPreview() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::originalImageCopyUsesResidentOriginalNotPreview() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::originalImageCopyUsesResidentOriginalNotPreview() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::originalImageCopyUsesResidentOriginalNotPreview() This plugin does not support propagateSizeHints()
+PASS   : HistoryGui::originalImageCopyUsesResidentOriginalNotPreview()
+QWARN  : HistoryGui::editAgainOpensTheRetainedLocalImageAndHeaderMenuOffersOtherSources() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::editAgainOpensTheRetainedLocalImageAndHeaderMenuOffersOtherSources() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::editAgainOpensTheRetainedLocalImageAndHeaderMenuOffersOtherSources() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::editAgainOpensTheRetainedLocalImageAndHeaderMenuOffersOtherSources() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::editAgainOpensTheRetainedLocalImageAndHeaderMenuOffersOtherSources() This plugin does not support propagateSizeHints()
+PASS   : HistoryGui::editAgainOpensTheRetainedLocalImageAndHeaderMenuOffersOtherSources()
+QWARN  : HistoryGui::failureThatStoredNothingOffersNoRetry() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::failureThatStoredNothingOffersNoRetry() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::failureThatStoredNothingOffersNoRetry() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::failureThatStoredNothingOffersNoRetry() This plugin does not support raise()
+QWARN  : HistoryGui::failureThatStoredNothingOffersNoRetry() This plugin does not support grabbing the keyboard
+QWARN  : HistoryGui::failureThatStoredNothingOffersNoRetry() This plugin does not support raise()
+QWARN  : HistoryGui::failureThatStoredNothingOffersNoRetry() This plugin does not support grabbing the keyboard
+PASS   : HistoryGui::failureThatStoredNothingOffersNoRetry()
+QWARN  : HistoryGui::offlineSearchUsesOriginalReceiptsAndRemovedLinksAreDisabled() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::offlineSearchUsesOriginalReceiptsAndRemovedLinksAreDisabled() This plugin does not support propagateSizeHints()
+PASS   : HistoryGui::offlineSearchUsesOriginalReceiptsAndRemovedLinksAreDisabled()
+PASS   : HistoryGui::openLinkUsesTheResidentOpenerForAvailableLinks()
+QWARN  : HistoryGui::selectedRowLeavesItsPrimaryActionToTheInspector() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::selectedRowLeavesItsPrimaryActionToTheInspector() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::selectedRowLeavesItsPrimaryActionToTheInspector() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::selectedRowLeavesItsPrimaryActionToTheInspector() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::selectedRowLeavesItsPrimaryActionToTheInspector() This plugin does not support raise()
+QWARN  : HistoryGui::selectedRowLeavesItsPrimaryActionToTheInspector() This plugin does not support grabbing the keyboard
+QWARN  : HistoryGui::selectedRowLeavesItsPrimaryActionToTheInspector() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::selectedRowLeavesItsPrimaryActionToTheInspector() This plugin does not support raise()
+QWARN  : HistoryGui::selectedRowLeavesItsPrimaryActionToTheInspector() This plugin does not support grabbing the keyboard
+QWARN  : HistoryGui::selectedRowLeavesItsPrimaryActionToTheInspector() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::selectedRowLeavesItsPrimaryActionToTheInspector() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::selectedRowLeavesItsPrimaryActionToTheInspector() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::selectedRowLeavesItsPrimaryActionToTheInspector() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::selectedRowLeavesItsPrimaryActionToTheInspector() This plugin does not support propagateSizeHints()
+PASS   : HistoryGui::selectedRowLeavesItsPrimaryActionToTheInspector()
+QWARN  : HistoryGui::collapsedFiltersShowActiveRestrictionsAndClear() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::collapsedFiltersShowActiveRestrictionsAndClear() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::collapsedFiltersShowActiveRestrictionsAndClear() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::collapsedFiltersShowActiveRestrictionsAndClear() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::collapsedFiltersShowActiveRestrictionsAndClear() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::collapsedFiltersShowActiveRestrictionsAndClear() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::collapsedFiltersShowActiveRestrictionsAndClear() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::collapsedFiltersShowActiveRestrictionsAndClear() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::collapsedFiltersShowActiveRestrictionsAndClear() This plugin does not support propagateSizeHints()
+PASS   : HistoryGui::collapsedFiltersShowActiveRestrictionsAndClear()
+QWARN  : HistoryGui::mixedSelectionCopiesOnlyEligibleLinksWithoutChangingSelection() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::mixedSelectionCopiesOnlyEligibleLinksWithoutChangingSelection() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::mixedSelectionCopiesOnlyEligibleLinksWithoutChangingSelection() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::mixedSelectionCopiesOnlyEligibleLinksWithoutChangingSelection() This plugin does not support propagateSizeHints()
+PASS   : HistoryGui::mixedSelectionCopiesOnlyEligibleLinksWithoutChangingSelection()
+QWARN  : HistoryGui::galleryRoutineActionsRevealWithoutChangingFooterGeometry() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::galleryRoutineActionsRevealWithoutChangingFooterGeometry() This plugin does not support propagateSizeHints()
+PASS   : HistoryGui::galleryRoutineActionsRevealWithoutChangingFooterGeometry()
+QWARN  : HistoryGui::multiSelectionOffersBatchActionsWithExactIds() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::multiSelectionOffersBatchActionsWithExactIds() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::multiSelectionOffersBatchActionsWithExactIds() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::multiSelectionOffersBatchActionsWithExactIds() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::multiSelectionOffersBatchActionsWithExactIds() This plugin does not support raise()
+QWARN  : HistoryGui::multiSelectionOffersBatchActionsWithExactIds() This plugin does not support grabbing the keyboard
+QWARN  : HistoryGui::multiSelectionOffersBatchActionsWithExactIds() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::multiSelectionOffersBatchActionsWithExactIds() This plugin does not support propagateSizeHints()
+PASS   : HistoryGui::multiSelectionOffersBatchActionsWithExactIds()
+QWARN  : HistoryGui::rowMenuOffersOnlyApplicableCommands() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::rowMenuOffersOnlyApplicableCommands() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::rowMenuOffersOnlyApplicableCommands() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::rowMenuOffersOnlyApplicableCommands() This plugin does not support raise()
+QWARN  : HistoryGui::rowMenuOffersOnlyApplicableCommands() This plugin does not support grabbing the keyboard
+QWARN  : HistoryGui::rowMenuOffersOnlyApplicableCommands() This plugin does not support raise()
+QWARN  : HistoryGui::rowMenuOffersOnlyApplicableCommands() This plugin does not support grabbing the keyboard
+QWARN  : HistoryGui::rowMenuOffersOnlyApplicableCommands() This plugin does not support raise()
+QWARN  : HistoryGui::rowMenuOffersOnlyApplicableCommands() This plugin does not support grabbing the keyboard
+QWARN  : HistoryGui::rowMenuOffersOnlyApplicableCommands() This plugin does not support propagateSizeHints()
+PASS   : HistoryGui::rowMenuOffersOnlyApplicableCommands()
+QWARN  : HistoryGui::galleryInspectorUsesTheVisibleCardAndKeepsItsActionSpace() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::galleryInspectorUsesTheVisibleCardAndKeepsItsActionSpace() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::galleryInspectorUsesTheVisibleCardAndKeepsItsActionSpace() This plugin does not support propagateSizeHints()
+PASS   : HistoryGui::galleryInspectorUsesTheVisibleCardAndKeepsItsActionSpace()
+QWARN  : HistoryGui::galleryFailuresRetainTheMeasuredReasonAndLocalCopy() This plugin does not support propagateSizeHints()
+PASS   : HistoryGui::galleryFailuresRetainTheMeasuredReasonAndLocalCopy()
+QWARN  : HistoryGui::galleryCardsReserveTextBeforeTheirActions() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::galleryCardsReserveTextBeforeTheirActions() This plugin does not support propagateSizeHints()
+PASS   : HistoryGui::galleryCardsReserveTextBeforeTheirActions()
+QWARN  : HistoryGui::galleryActionsStayStableAcrossInteraction(14-gallery) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::galleryActionsStayStableAcrossInteraction(14-gallery) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::galleryActionsStayStableAcrossInteraction(14-gallery) This plugin does not support raise()
+QWARN  : HistoryGui::galleryActionsStayStableAcrossInteraction(14-gallery) This plugin does not support raise()
+QWARN  : HistoryGui::galleryActionsStayStableAcrossInteraction(14-gallery) This plugin does not support grabbing the keyboard
+PASS   : HistoryGui::galleryActionsStayStableAcrossInteraction(14-gallery)
+QWARN  : HistoryGui::galleryActionsStayStableAcrossInteraction(14-inspector) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::galleryActionsStayStableAcrossInteraction(14-inspector) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::galleryActionsStayStableAcrossInteraction(14-inspector) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::galleryActionsStayStableAcrossInteraction(14-inspector) This plugin does not support raise()
+QWARN  : HistoryGui::galleryActionsStayStableAcrossInteraction(14-inspector) This plugin does not support raise()
+QWARN  : HistoryGui::galleryActionsStayStableAcrossInteraction(14-inspector) This plugin does not support grabbing the keyboard
+PASS   : HistoryGui::galleryActionsStayStableAcrossInteraction(14-inspector)
+QWARN  : HistoryGui::galleryActionsStayStableAcrossInteraction(21-gallery) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::galleryActionsStayStableAcrossInteraction(21-gallery) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::galleryActionsStayStableAcrossInteraction(21-gallery) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::galleryActionsStayStableAcrossInteraction(21-gallery) This plugin does not support raise()
+QWARN  : HistoryGui::galleryActionsStayStableAcrossInteraction(21-gallery) This plugin does not support raise()
+QWARN  : HistoryGui::galleryActionsStayStableAcrossInteraction(21-gallery) This plugin does not support grabbing the keyboard
+PASS   : HistoryGui::galleryActionsStayStableAcrossInteraction(21-gallery)
+QWARN  : HistoryGui::galleryActionsStayStableAcrossInteraction(21-inspector) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::galleryActionsStayStableAcrossInteraction(21-inspector) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::galleryActionsStayStableAcrossInteraction(21-inspector) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::galleryActionsStayStableAcrossInteraction(21-inspector) This plugin does not support raise()
+QWARN  : HistoryGui::galleryActionsStayStableAcrossInteraction(21-inspector) This plugin does not support raise()
+QWARN  : HistoryGui::galleryActionsStayStableAcrossInteraction(21-inspector) This plugin does not support grabbing the keyboard
+PASS   : HistoryGui::galleryActionsStayStableAcrossInteraction(21-inspector)
+QWARN  : HistoryGui::galleryInlineActionsLeaveNoEmptyBand(standard) This plugin does not support propagateSizeHints()
+PASS   : HistoryGui::galleryInlineActionsLeaveNoEmptyBand(standard)
+QWARN  : HistoryGui::galleryInlineActionsLeaveNoEmptyBand(text150) This plugin does not support propagateSizeHints()
+PASS   : HistoryGui::galleryInlineActionsLeaveNoEmptyBand(text150)
+PASS   : HistoryGui::historyMetadataColoursOnlyStatusWords()
+QWARN  : HistoryGui::galleryPaintedActionsKeepTheirOwnRole() This plugin does not support propagateSizeHints()
+PASS   : HistoryGui::galleryPaintedActionsKeepTheirOwnRole()
+PASS   : HistoryGui::galleryActionsKeepReadableTextOverBrightMedia()
+QWARN  : HistoryGui::galleryCropsContentAndKeepsEqualCardHeights() This plugin does not support propagateSizeHints()
+PASS   : HistoryGui::galleryCropsContentAndKeepsEqualCardHeights()
+QWARN  : HistoryGui::compactGalleryKeepsCaptionsInTheViewportWithoutUpscaling() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::compactGalleryKeepsCaptionsInTheViewportWithoutUpscaling() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::compactGalleryKeepsCaptionsInTheViewportWithoutUpscaling() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::compactGalleryKeepsCaptionsInTheViewportWithoutUpscaling() This plugin does not support propagateSizeHints()
+PASS   : HistoryGui::compactGalleryKeepsCaptionsInTheViewportWithoutUpscaling()
+QWARN  : HistoryGui::columnHeadingsMatchRowColumns(current-font) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::columnHeadingsMatchRowColumns(current-font) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::columnHeadingsMatchRowColumns(current-font) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::columnHeadingsMatchRowColumns(current-font) This plugin does not support propagateSizeHints()
+PASS   : HistoryGui::columnHeadingsMatchRowColumns(current-font)
+QWARN  : HistoryGui::columnHeadingsMatchRowColumns(distro-sans) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::columnHeadingsMatchRowColumns(distro-sans) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::columnHeadingsMatchRowColumns(distro-sans) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::columnHeadingsMatchRowColumns(distro-sans) This plugin does not support propagateSizeHints()
+PASS   : HistoryGui::columnHeadingsMatchRowColumns(distro-sans)
+PASS   : HistoryGui::captureOutputStaysWithCommandsOnEveryPage()
+QWARN  : HistoryGui::commandAvailabilityUsesEachEffectiveRoute() This plugin does not support raise()
+PASS   : HistoryGui::commandAvailabilityUsesEachEffectiveRoute()
+QWARN  : HistoryGui::remoteGroupsUseTheProductionQueryAndRestoreExactStates() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::remoteGroupsUseTheProductionQueryAndRestoreExactStates() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::remoteGroupsUseTheProductionQueryAndRestoreExactStates() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::remoteGroupsUseTheProductionQueryAndRestoreExactStates() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::remoteGroupsUseTheProductionQueryAndRestoreExactStates() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::remoteGroupsUseTheProductionQueryAndRestoreExactStates() This plugin does not support propagateSizeHints()
+PASS   : HistoryGui::remoteGroupsUseTheProductionQueryAndRestoreExactStates()
+QWARN  : HistoryGui::historyToolbarKeepsItsControlsTogether() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::historyToolbarKeepsItsControlsTogether() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::historyToolbarKeepsItsControlsTogether() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::historyToolbarKeepsItsControlsTogether() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::historyToolbarKeepsItsControlsTogether() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::historyToolbarKeepsItsControlsTogether() This plugin does not support propagateSizeHints()
+PASS   : HistoryGui::historyToolbarKeepsItsControlsTogether()
+QWARN  : HistoryGui::historyHeadingKeepsItsWordsBeforeSearchYields() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::historyHeadingKeepsItsWordsBeforeSearchYields() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::historyHeadingKeepsItsWordsBeforeSearchYields() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::historyHeadingKeepsItsWordsBeforeSearchYields() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::historyHeadingKeepsItsWordsBeforeSearchYields() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::historyHeadingKeepsItsWordsBeforeSearchYields() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::historyHeadingKeepsItsWordsBeforeSearchYields() This plugin does not support propagateSizeHints()
+PASS   : HistoryGui::historyHeadingKeepsItsWordsBeforeSearchYields()
+PASS   : HistoryGui::rowsReserveOnlyTheirOwnPrimaryAction()
+PASS   : HistoryGui::rowTimeStaysInMetadataWhenListActionsAppear()
+QWARN  : HistoryGui::filtersUseNamedChoicesAndExplicitDates() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::filtersUseNamedChoicesAndExplicitDates() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::filtersUseNamedChoicesAndExplicitDates() This plugin does not support propagateSizeHints()
+PASS   : HistoryGui::filtersUseNamedChoicesAndExplicitDates()
+QWARN  : HistoryGui::inspectorElidesFilesAndPreservesFullLinks() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::inspectorElidesFilesAndPreservesFullLinks() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::inspectorElidesFilesAndPreservesFullLinks() This plugin does not support propagateSizeHints()
+PASS   : HistoryGui::inspectorElidesFilesAndPreservesFullLinks()
+QWARN  : HistoryGui::filtersFitTheirContentAndKeepFourColumns() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::filtersFitTheirContentAndKeepFourColumns() This plugin does not support propagateSizeHints()
+PASS   : HistoryGui::filtersFitTheirContentAndKeepFourColumns()
+QWARN  : HistoryGui::filteringRejectsStaleActionsAndKeepsLatestQuery() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::filteringRejectsStaleActionsAndKeepsLatestQuery() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::filteringRejectsStaleActionsAndKeepsLatestQuery() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::filteringRejectsStaleActionsAndKeepsLatestQuery() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::filteringRejectsStaleActionsAndKeepsLatestQuery() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::filteringRejectsStaleActionsAndKeepsLatestQuery() This plugin does not support propagateSizeHints()
+PASS   : HistoryGui::filteringRejectsStaleActionsAndKeepsLatestQuery()
+QWARN  : HistoryGui::deletionRecoveryFollowsOnlyTheSelectedTarget() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::deletionRecoveryFollowsOnlyTheSelectedTarget() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::deletionRecoveryFollowsOnlyTheSelectedTarget() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::deletionRecoveryFollowsOnlyTheSelectedTarget() This plugin does not support propagateSizeHints()
+PASS   : HistoryGui::deletionRecoveryFollowsOnlyTheSelectedTarget()
+PASS   : HistoryGui::deletionConfirmationRejectsStaleProtonEffects(one)
+PASS   : HistoryGui::deletionConfirmationRejectsStaleProtonEffects(several)
+QWARN  : HistoryGui::homogeneousDestinationsCollapseButDistinctIdentitiesDoNot() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::homogeneousDestinationsCollapseButDistinctIdentitiesDoNot() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::homogeneousDestinationsCollapseButDistinctIdentitiesDoNot() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::homogeneousDestinationsCollapseButDistinctIdentitiesDoNot() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::homogeneousDestinationsCollapseButDistinctIdentitiesDoNot() This plugin does not support propagateSizeHints()
+PASS   : HistoryGui::homogeneousDestinationsCollapseButDistinctIdentitiesDoNot()
+QWARN  : HistoryGui::deletionDetailsCopyUsesTheVisiblePreparation() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::deletionDetailsCopyUsesTheVisiblePreparation() This plugin does not support propagateSizeHints()
+PASS   : HistoryGui::deletionDetailsCopyUsesTheVisiblePreparation()
+QWARN  : HistoryGui::deletionConfirmationKeepsButtonsInsideAvailableHeight() This plugin does not support propagateSizeHints()
+PASS   : HistoryGui::deletionConfirmationKeepsButtonsInsideAvailableHeight()
+PASS   : HistoryGui::historyTitlesPreserveBeginningsOrFileExtensions()
+PASS   : HistoryGui::historyPageHeadingStartsAtSharedInset(text100)
+PASS   : HistoryGui::historyPageHeadingStartsAtSharedInset(text150)
+QINFO  : HistoryGui::enlargedHistoryKeepsFourRowsAtMinimumSize(text100-six-rows) History density 100 percent: 6 whole rows, viewport 488 heading 36
+PASS   : HistoryGui::enlargedHistoryKeepsFourRowsAtMinimumSize(text100-six-rows)
+QINFO  : HistoryGui::enlargedHistoryKeepsFourRowsAtMinimumSize(text150-four-rows) History density 150 percent: 4 whole rows, viewport 385 heading 36
+PASS   : HistoryGui::enlargedHistoryKeepsFourRowsAtMinimumSize(text150-four-rows)
+PASS   : HistoryGui::compactNavigationAndSavedFeedbackNeverIntersect(text100-six-rows)
+PASS   : HistoryGui::compactNavigationAndSavedFeedbackNeverIntersect(text150-four-rows)
+QWARN  : HistoryGui::rowAccessibilityAndCanceledFilterRetainCommands() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::rowAccessibilityAndCanceledFilterRetainCommands() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::rowAccessibilityAndCanceledFilterRetainCommands() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::rowAccessibilityAndCanceledFilterRetainCommands() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::rowAccessibilityAndCanceledFilterRetainCommands() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::rowAccessibilityAndCanceledFilterRetainCommands() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::rowAccessibilityAndCanceledFilterRetainCommands() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::rowAccessibilityAndCanceledFilterRetainCommands() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::rowAccessibilityAndCanceledFilterRetainCommands() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::rowAccessibilityAndCanceledFilterRetainCommands() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::rowAccessibilityAndCanceledFilterRetainCommands() This plugin does not support propagateSizeHints()
+PASS   : HistoryGui::rowAccessibilityAndCanceledFilterRetainCommands()
+PASS   : HistoryGui::metadataModelPlacesStatusBeforeTime()
+QWARN  : HistoryGui::currentRemoteOutcomesPrecedeClipboardFeedback() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::currentRemoteOutcomesPrecedeClipboardFeedback() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::currentRemoteOutcomesPrecedeClipboardFeedback() This plugin does not support propagateSizeHints()
+PASS   : HistoryGui::currentRemoteOutcomesPrecedeClipboardFeedback()
+QWARN  : HistoryGui::compactInspectorSpendsSpaceOnTheImageWithoutHidingFacts(standard) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::compactInspectorSpendsSpaceOnTheImageWithoutHidingFacts(standard) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::compactInspectorSpendsSpaceOnTheImageWithoutHidingFacts(standard) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::compactInspectorSpendsSpaceOnTheImageWithoutHidingFacts(standard) This plugin does not support propagateSizeHints()
+PASS   : HistoryGui::compactInspectorSpendsSpaceOnTheImageWithoutHidingFacts(standard)
+QWARN  : HistoryGui::compactInspectorSpendsSpaceOnTheImageWithoutHidingFacts(text150) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::compactInspectorSpendsSpaceOnTheImageWithoutHidingFacts(text150) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::compactInspectorSpendsSpaceOnTheImageWithoutHidingFacts(text150) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::compactInspectorSpendsSpaceOnTheImageWithoutHidingFacts(text150) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::compactInspectorSpendsSpaceOnTheImageWithoutHidingFacts(text150) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::compactInspectorSpendsSpaceOnTheImageWithoutHidingFacts(text150) This plugin does not support propagateSizeHints()
+PASS   : HistoryGui::compactInspectorSpendsSpaceOnTheImageWithoutHidingFacts(text150)
+QWARN  : HistoryGui::compactDetailsKeepFactsAndPrimaryOnTheFirstScreen() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::compactDetailsKeepFactsAndPrimaryOnTheFirstScreen() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::compactDetailsKeepFactsAndPrimaryOnTheFirstScreen() This plugin does not support propagateSizeHints()
+PASS   : HistoryGui::compactDetailsKeepFactsAndPrimaryOnTheFirstScreen()
+QWARN  : HistoryGui::previewDialogRefitsAndClosesByKeyboard(dark) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::previewDialogRefitsAndClosesByKeyboard(dark) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::previewDialogRefitsAndClosesByKeyboard(dark) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::previewDialogRefitsAndClosesByKeyboard(dark) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::previewDialogRefitsAndClosesByKeyboard(dark) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::previewDialogRefitsAndClosesByKeyboard(dark) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::previewDialogRefitsAndClosesByKeyboard(dark) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::previewDialogRefitsAndClosesByKeyboard(dark) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::previewDialogRefitsAndClosesByKeyboard(dark) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::previewDialogRefitsAndClosesByKeyboard(dark) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::previewDialogRefitsAndClosesByKeyboard(dark) This plugin does not support propagateSizeHints()
+PASS   : HistoryGui::previewDialogRefitsAndClosesByKeyboard(dark)
+QWARN  : HistoryGui::previewDialogRefitsAndClosesByKeyboard(light) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::previewDialogRefitsAndClosesByKeyboard(light) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::previewDialogRefitsAndClosesByKeyboard(light) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::previewDialogRefitsAndClosesByKeyboard(light) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::previewDialogRefitsAndClosesByKeyboard(light) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::previewDialogRefitsAndClosesByKeyboard(light) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::previewDialogRefitsAndClosesByKeyboard(light) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::previewDialogRefitsAndClosesByKeyboard(light) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::previewDialogRefitsAndClosesByKeyboard(light) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::previewDialogRefitsAndClosesByKeyboard(light) This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::previewDialogRefitsAndClosesByKeyboard(light) This plugin does not support propagateSizeHints()
+PASS   : HistoryGui::previewDialogRefitsAndClosesByKeyboard(light)
+QWARN  : HistoryGui::savedCopyRetainsExactPathAndOffersFollowupActions() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::savedCopyRetainsExactPathAndOffersFollowupActions() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::savedCopyRetainsExactPathAndOffersFollowupActions() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::savedCopyRetainsExactPathAndOffersFollowupActions() This plugin does not support propagateSizeHints()
+QINFO  : HistoryGui::savedCopyRetainsExactPathAndOffersFollowupActions() putgd.filedialog: fallback dialog, reason disabled
+QWARN  : HistoryGui::savedCopyRetainsExactPathAndOffersFollowupActions() This plugin does not support propagateSizeHints()
+QINFO  : HistoryGui::savedCopyRetainsExactPathAndOffersFollowupActions() putgd.filedialog: file dialog chosen via fallback
+QWARN  : HistoryGui::savedCopyRetainsExactPathAndOffersFollowupActions() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::savedCopyRetainsExactPathAndOffersFollowupActions() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::savedCopyRetainsExactPathAndOffersFollowupActions() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::savedCopyRetainsExactPathAndOffersFollowupActions() This plugin does not support propagateSizeHints()
+QINFO  : HistoryGui::savedCopyRetainsExactPathAndOffersFollowupActions() putgd.filedialog: fallback dialog, reason disabled
+QWARN  : HistoryGui::savedCopyRetainsExactPathAndOffersFollowupActions() This plugin does not support propagateSizeHints()
+QINFO  : HistoryGui::savedCopyRetainsExactPathAndOffersFollowupActions() putgd.filedialog: file dialog chosen via fallback
+PASS   : HistoryGui::savedCopyRetainsExactPathAndOffersFollowupActions()
+QWARN  : HistoryGui::compactLayoutOpensDetailsOverTheList() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::compactLayoutOpensDetailsOverTheList() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::compactLayoutOpensDetailsOverTheList() This plugin does not support raise()
+QWARN  : HistoryGui::compactLayoutOpensDetailsOverTheList() This plugin does not support grabbing the keyboard
+QWARN  : HistoryGui::compactLayoutOpensDetailsOverTheList() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::compactLayoutOpensDetailsOverTheList() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::compactLayoutOpensDetailsOverTheList() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::compactLayoutOpensDetailsOverTheList() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::compactLayoutOpensDetailsOverTheList() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::compactLayoutOpensDetailsOverTheList() This plugin does not support raise()
+QWARN  : HistoryGui::compactLayoutOpensDetailsOverTheList() This plugin does not support grabbing the keyboard
+QWARN  : HistoryGui::compactLayoutOpensDetailsOverTheList() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::compactLayoutOpensDetailsOverTheList() This plugin does not support propagateSizeHints()
+PASS   : HistoryGui::compactLayoutOpensDetailsOverTheList()
+PASS   : HistoryGui::cleanupTestCase()
+Totals: 215 passed, 1 failed, 0 skipped, 0 blacklisted, 81435ms
+********* Finished testing of HistoryGui *********
+
+        Start  79: payload_contract
+ 63/114 Test  #92: kwin_transfer_contract ..................   Passed    0.19 sec
+        Start   8: bar_placement_contract
+ 64/114 Test   #9: bar_placement_single_monitor_contract ...   Passed    0.17 sec
+        Start  38: version_integration
+ 65/114 Test  #50: update_appimage_install_child ...........   Passed    0.25 sec
+        Start  68: keychain_integration
+ 66/114 Test  #27: kde_clipboard_import ....................   Passed    0.20 sec
+        Start  89: gnome_image_decode
+ 67/114 Test  #79: payload_contract ........................   Passed    0.10 sec
+        Start  20: x11_native_snapshot
+ 68/114 Test  #77: s3_worker_protocol ......................   Passed    0.27 sec
+        Start  75: build_contract
+ 69/114 Test  #78: sdk_contract ............................   Passed    0.64 sec
+        Start  52: host_environment_contract
+ 70/114 Test  #63: file_dialog_x11_parent ..................   Passed    0.24 sec
+        Start  55: allocator_policy_contract
+ 71/114 Test   #8: bar_placement_contract ..................   Passed    0.16 sec
+        Start  81: upload_naming_contract
+ 72/114 Test  #52: host_environment_contract ...............   Passed    0.08 sec
+        Start  67: keychain_backend_integration
+ 73/114 Test  #68: keychain_integration ....................   Passed    0.13 sec
+        Start 109: kde_region_overlay
+ 74/114 Test  #20: x11_native_snapshot .....................   Passed    0.14 sec
+        Start  11: record_identity_contract
+ 75/114 Test  #67: keychain_backend_integration ............   Passed    0.06 sec
+        Start  47: update_check_request
+ 76/114 Test  #81: upload_naming_contract ..................   Passed    0.10 sec
+        Start 104: login_startup_contract
+ 77/114 Test  #38: version_integration .....................   Passed    0.23 sec
+        Start  90: gnome_bridge_contract
+ 78/114 Test  #11: record_identity_contract ................   Passed    0.06 sec
+        Start  84: recording_model_contract
+ 79/114 Test  #89: gnome_image_decode ......................   Passed    0.22 sec
+        Start  48: update_appimage_install_files
+ 80/114 Test  #75: build_contract ..........................   Passed    0.21 sec
+        Start  80: archive_contract
+ 81/114 Test #104: login_startup_contract ..................   Passed    0.06 sec
+        Start 107: ip_address_contract
+ 82/114 Test  #55: allocator_policy_contract ...............   Passed    0.18 sec
+ 83/114 Test  #84: recording_model_contract ................   Passed    0.05 sec
+ 84/114 Test  #48: update_appimage_install_files ...........   Passed    0.03 sec
+        Start   2: portal_streams_contract
+        Start  24: kde_keyboard_map
+        Start  53: update_system_repository
+ 85/114 Test  #80: archive_contract ........................   Passed    0.02 sec
+        Start  45: release_link_contract
+ 86/114 Test   #2: portal_streams_contract .................   Passed    0.01 sec
+        Start  46: update_feed_contract
+ 87/114 Test  #24: kde_keyboard_map ........................   Passed    0.02 sec
+        Start  22: kde_shortcut_normalization
+ 88/114 Test  #90: gnome_bridge_contract ...................   Passed    0.08 sec
+ 89/114 Test  #53: update_system_repository ................   Passed    0.02 sec
+        Start   7: record_runtime_contract
+        Start  13: native_session_guards
+ 90/114 Test  #45: release_link_contract ...................   Passed    0.02 sec
+        Start  49: update_minisign_verify
+ 91/114 Test #107: ip_address_contract .....................   Passed    0.04 sec
+ 92/114 Test  #46: update_feed_contract ....................   Passed    0.02 sec
+        Start   3: wayland_acquisition_contract
+        Start   6: pause_timeline_contract
+ 93/114 Test   #7: record_runtime_contract .................   Passed    0.01 sec
+ 94/114 Test  #13: native_session_guards ...................   Passed    0.01 sec
+        Start  74: public_url
+        Start  15: capture_control_integration
+ 95/114 Test #109: kde_region_overlay ......................   Passed    0.17 sec
+ 96/114 Test  #22: kde_shortcut_normalization ..............   Passed    0.03 sec
+ 97/114 Test   #3: wayland_acquisition_contract ............   Passed    0.01 sec
+ 98/114 Test   #6: pause_timeline_contract .................   Passed    0.01 sec
+        Start  25: shortcut_keyboard
+        Start  56: x11_raw_key_matcher
+ 99/114 Test  #49: update_minisign_verify ..................   Passed    0.02 sec
+100/114 Test  #15: capture_control_integration .............   Passed    0.01 sec
+101/114 Test  #74: public_url ..............................   Passed    0.01 sec
+102/114 Test  #25: shortcut_keyboard .......................   Passed    0.01 sec
+103/114 Test  #56: x11_raw_key_matcher .....................   Passed    0.01 sec
+104/114 Test  #42: gui_theme ...............................   Passed    1.29 sec
+105/114 Test  #47: update_check_request ....................   Passed    0.24 sec
+106/114 Test  #21: version_contract ........................   Passed   14.64 sec
+        Start  99: diagnostics_bundle_contract
+107/114 Test   #4: export_av_sync_contract .................   Passed   17.58 sec
+        Start  82: history_contract
+        Start  29: poster_job_integration
+108/114 Test  #82: history_contract ........................   Passed    4.05 sec
+        Start  28: image_job_integration
+109/114 Test  #99: diagnostics_bundle_contract .............   Passed    5.20 sec
+        Start  65: ui_native_lifecycle_integration
+110/114 Test  #29: poster_job_integration ..................   Passed    5.34 sec
+        Start  32: editor_contract
+111/114 Test  #65: ui_native_lifecycle_integration .........   Passed    2.86 sec
+112/114 Test  #28: image_job_integration ...................   Passed    3.21 sec
+113/114 Test  #32: editor_contract .........................   Passed    2.39 sec
+114/114 Test #101: gui_settings ............................   Passed  148.74 sec
+
+99% tests passed, 1 tests failed out of 114
+
+Label Time Summary:
+integration    = 1050.32 sec*proc (83 tests)
+unit           =  28.40 sec*proc (31 tests)
+
+Total Test time (real) = 148.75 sec
+
+The following tests FAILED:
+	102 - gui_history_view (Failed)                         integration
+Errors while running CTest
+{
+  "tests": 114,
+  "failedFirst": [
+    "gui_history_view"
+  ],
+  "failed": [
+    "gui_history_view"
+  ],
+  "retried": [],
+  "passedOnRetry": [],
+  "blocking": [
+    "gui_history_view"
+  ],
+  "unexplainedCtestFailure": false,
+  "ok": false
+}

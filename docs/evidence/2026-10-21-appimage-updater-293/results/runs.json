@@ -1,0 +1,4616 @@
+{
+ "aurora-a": {
+  "host": "aurora-lab",
+  "scenario": "a",
+  "session": "wayland",
+  "desktop": "KDE",
+  "shell": "plasmashell",
+  "imageSha256": "e31f1f0d47b330416aafbebbe27833dce8adc3c1439201415d8d10896cb87d4e",
+  "before": {
+   "dataPutgd": false,
+   "autostart": []
+  },
+  "steps": [
+   {
+    "at": "2026-10-21T23:18:36Z",
+    "step": "check",
+    "result": {
+     "status": {
+      "build": "0.1.1-nightly.886",
+      "channel": "nightly",
+      "latest": "0.1.1-nightly.887",
+      "updateAvailable": true,
+      "install": {
+       "available": true,
+       "backup": null,
+       "image": "~/work/put.gd-i293acc/runs/aurora-a/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+       "installed": null,
+       "reason": null,
+       "restartRequired": false,
+       "running": false,
+       "state": "idle"
+      }
+     },
+     "frame": "~/work/put.gd-i293acc/runs/aurora-a/frames/check.png"
+    }
+   },
+   {
+    "at": "2026-10-21T23:18:45Z",
+    "step": "install",
+    "result": {
+     "seconds": 7.7,
+     "phases": [
+      {
+       "at": 0.1,
+       "phase": [
+        "starting",
+        "auto"
+       ],
+       "bytes": 0,
+       "total": 0
+      },
+      {
+       "at": 0.5,
+       "phase": [
+        "verifying",
+        null
+       ],
+       "bytes": 0,
+       "total": 0
+      },
+      {
+       "at": 1.8,
+       "phase": [
+        "zsync",
+        "appimageupdatetool"
+       ],
+       "bytes": 0,
+       "total": 115223032
+      },
+      {
+       "at": 4.4,
+       "phase": [
+        "verifying",
+        "appimageupdatetool"
+       ],
+       "bytes": 115223032,
+       "total": 115223032
+      },
+      {
+       "at": 5.2,
+       "phase": [
+        "installing",
+        "zsync"
+       ],
+       "bytes": 115223032,
+       "total": 115223032
+      },
+      {
+       "at": 5.6,
+       "phase": [
+        "done",
+        "zsync"
+       ],
+       "bytes": 115223032,
+       "total": 115223032
+      }
+     ],
+     "install": {
+      "available": true,
+      "backup": "~/work/put.gd-i293acc/runs/aurora-a/apps/.putgd-update-backup-0.1.1-nightly.886.AppImage",
+      "bytes": 115223032,
+      "finishedAt": "2026-10-21T23:18:42Z",
+      "image": "~/work/put.gd-i293acc/runs/aurora-a/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+      "installed": {
+       "image": "~/work/put.gd-i293acc/runs/aurora-a/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+       "installedAt": "2026-10-21T23:18:42Z",
+       "method": "zsync",
+       "previousVersion": "0.1.1-nightly.886",
+       "sha256": "250acc5c4a022a2c8a135c10aa7e767738f7e2d3d571c5de496c5795d08cd9d5",
+       "version": "0.1.1-nightly.887"
+      },
+      "method": "zsync",
+      "phase": "done",
+      "reason": null,
+      "restartRequired": true,
+      "result": {
+       "backup": "~/work/put.gd-i293acc/runs/aurora-a/apps/.putgd-update-backup-0.1.1-nightly.886.AppImage",
+       "image": "~/work/put.gd-i293acc/runs/aurora-a/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+       "installed": true,
+       "method": "zsync",
+       "previousVersion": "0.1.1-nightly.886",
+       "sha256": "250acc5c4a022a2c8a135c10aa7e767738f7e2d3d571c5de496c5795d08cd9d5",
+       "signature": {
+        "trustedComment": "put.gd v0.1.1-nightly.887 nightly"
+       },
+       "tag": "v0.1.1-nightly.887",
+       "version": "0.1.1-nightly.887",
+       "zsync": {
+        "output": "zsync2: used 114933760 local, fetched 1251832 | \u001b[2K\r100.00% done (109.89 of 109.89 MiB)... | Validation warning: AppImage not signed | Update successful. New file created: ~/work/put.gd-i293acc/runs/aurora-a/apps/.putgd-update-FviGJZ/putgd-0.1.1-nightly.887-x86_64.AppImage",
+        "tool": "appimageupdatetool",
+        "used": true
+       }
+      },
+      "running": false,
+      "startedAt": "2026-10-21T23:18:37Z",
+      "state": "installed",
+      "total": 115223032
+     },
+     "frames": {
+      "zsync": "~/work/put.gd-i293acc/runs/aurora-a/frames/install-zsync.png",
+      "result": "~/work/put.gd-i293acc/runs/aurora-a/frames/install-result.png"
+     },
+     "imageSha256": "250acc5c4a022a2c8a135c10aa7e767738f7e2d3d571c5de496c5795d08cd9d5",
+     "backup": "~/work/put.gd-i293acc/runs/aurora-a/apps/.putgd-update-backup-0.1.1-nightly.886.AppImage",
+     "backupSha256": "e31f1f0d47b330416aafbebbe27833dce8adc3c1439201415d8d10896cb87d4e",
+     "folder": [
+      ".putgd-update-backup-0.1.1-nightly.886.AppImage",
+      "putgd-0.1.1-nightly.886-x86_64.AppImage"
+     ],
+     "stateFile": {
+      "backup": {
+       "copied": false,
+       "device": "58",
+       "inode": "7870",
+       "mtime": 1792624707,
+       "path": "~/work/put.gd-i293acc/runs/aurora-a/apps/.putgd-update-backup-0.1.1-nightly.886.AppImage",
+       "size": 115223032
+      },
+      "installed": {
+       "image": "~/work/put.gd-i293acc/runs/aurora-a/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+       "installedAt": "2026-10-21T23:18:42Z",
+       "method": "zsync",
+       "previousVersion": "0.1.1-nightly.886",
+       "sha256": "250acc5c4a022a2c8a135c10aa7e767738f7e2d3d571c5de496c5795d08cd9d5",
+       "version": "0.1.1-nightly.887"
+      },
+      "schemaVersion": 1,
+      "staging": null
+     }
+    }
+   },
+   {
+    "at": "2026-10-21T23:18:50Z",
+    "step": "restart",
+    "result": {
+     "reply": {
+      "error": {
+       "code": "",
+       "details": {},
+       "message": ""
+      },
+      "ok": true,
+      "requestId": "b938571f-bb2b-447f-a825-3dfe3527cce3",
+      "result": {
+       "restarting": true,
+       "version": "0.1.1-nightly.887"
+      },
+      "schemaVersion": 1
+     },
+     "oldPid": 2424,
+     "oldGone": true,
+     "newPid": 2605,
+     "newExe": "/tmp/.mount_putgd-kDKoPf/usr/bin/putgd",
+     "newAppimage": "~/work/put.gd-i293acc/runs/aurora-a/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+     "version": "0.1.1-nightly.887",
+     "install": {
+      "available": true,
+      "backup": null,
+      "image": "~/work/put.gd-i293acc/runs/aurora-a/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+      "installed": {
+       "backupRemoved": true,
+       "image": "~/work/put.gd-i293acc/runs/aurora-a/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+       "installedAt": "2026-10-21T23:18:42Z",
+       "method": "zsync",
+       "previousVersion": "0.1.1-nightly.886",
+       "sha256": "250acc5c4a022a2c8a135c10aa7e767738f7e2d3d571c5de496c5795d08cd9d5",
+       "version": "0.1.1-nightly.887"
+      },
+      "reason": null,
+      "restartRequired": false,
+      "running": false,
+      "state": "idle"
+     },
+     "imageSha256": "250acc5c4a022a2c8a135c10aa7e767738f7e2d3d571c5de496c5795d08cd9d5",
+     "afterRestart": {
+      "current": "0.1.1-nightly.887",
+      "latest": "0.1.1-nightly.887",
+      "updateAvailable": false
+     },
+     "folder": [
+      "putgd-0.1.1-nightly.886-x86_64.AppImage"
+     ],
+     "frame": "~/work/put.gd-i293acc/runs/aurora-a/frames/restarted.png"
+    }
+   }
+  ]
+ },
+ "aurora-b": {
+  "host": "aurora-lab",
+  "scenario": "b",
+  "session": "wayland",
+  "desktop": "KDE",
+  "shell": "plasmashell",
+  "imageSha256": "e31f1f0d47b330416aafbebbe27833dce8adc3c1439201415d8d10896cb87d4e",
+  "before": {
+   "dataPutgd": false,
+   "autostart": []
+  },
+  "steps": [
+   {
+    "at": "2026-10-21T23:18:57Z",
+    "step": "check",
+    "result": {
+     "status": {
+      "build": "0.1.1-nightly.886",
+      "channel": "nightly",
+      "latest": "0.1.1-nightly.887",
+      "updateAvailable": true,
+      "install": {
+       "available": true,
+       "backup": null,
+       "image": "~/work/put.gd-i293acc/runs/aurora-b/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+       "installed": null,
+       "reason": null,
+       "restartRequired": false,
+       "running": false,
+       "state": "idle"
+      }
+     },
+     "frame": "~/work/put.gd-i293acc/runs/aurora-b/frames/check.png"
+    }
+   },
+   {
+    "at": "2026-10-21T23:19:05Z",
+    "step": "install",
+    "result": {
+     "seconds": 6.9,
+     "phases": [
+      {
+       "at": 0.1,
+       "phase": [
+        "starting",
+        "auto"
+       ],
+       "bytes": 0,
+       "total": 0
+      },
+      {
+       "at": 0.5,
+       "phase": [
+        "verifying",
+        null
+       ],
+       "bytes": 0,
+       "total": 0
+      },
+      {
+       "at": 1.4,
+       "phase": [
+        "download",
+        "release"
+       ],
+       "bytes": 0,
+       "total": 115223032
+      },
+      {
+       "at": 4.0,
+       "phase": [
+        "verifying",
+        "release"
+       ],
+       "bytes": 115223032,
+       "total": 115223032
+      },
+      {
+       "at": 4.5,
+       "phase": [
+        "installing",
+        "download"
+       ],
+       "bytes": 115223032,
+       "total": 115223032
+      },
+      {
+       "at": 4.9,
+       "phase": [
+        "done",
+        "download"
+       ],
+       "bytes": 115223032,
+       "total": 115223032
+      }
+     ],
+     "install": {
+      "available": true,
+      "backup": "~/work/put.gd-i293acc/runs/aurora-b/apps/.putgd-update-backup-0.1.1-nightly.886.AppImage",
+      "bytes": 115223032,
+      "finishedAt": "2026-10-21T23:19:02Z",
+      "image": "~/work/put.gd-i293acc/runs/aurora-b/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+      "installed": {
+       "image": "~/work/put.gd-i293acc/runs/aurora-b/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+       "installedAt": "2026-10-21T23:19:02Z",
+       "method": "download",
+       "previousVersion": "0.1.1-nightly.886",
+       "sha256": "250acc5c4a022a2c8a135c10aa7e767738f7e2d3d571c5de496c5795d08cd9d5",
+       "version": "0.1.1-nightly.887"
+      },
+      "method": "download",
+      "phase": "done",
+      "reason": null,
+      "restartRequired": true,
+      "result": {
+       "backup": "~/work/put.gd-i293acc/runs/aurora-b/apps/.putgd-update-backup-0.1.1-nightly.886.AppImage",
+       "downloads": [
+        {
+         "source": "release",
+         "transfer": {
+          "httpStatus": 200,
+          "network": null,
+          "tooLarge": false,
+          "url": "https://pkg.put.gd/lab/releases/v0.1.1-nightly.887/putgd-0.1.1-nightly.887-x86_64.AppImage"
+         }
+        }
+       ],
+       "image": "~/work/put.gd-i293acc/runs/aurora-b/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+       "installed": true,
+       "method": "download",
+       "previousVersion": "0.1.1-nightly.886",
+       "sha256": "250acc5c4a022a2c8a135c10aa7e767738f7e2d3d571c5de496c5795d08cd9d5",
+       "signature": {
+        "trustedComment": "put.gd v0.1.1-nightly.887 nightly"
+       },
+       "source": "release",
+       "tag": "v0.1.1-nightly.887",
+       "version": "0.1.1-nightly.887",
+       "zsync": {
+        "fallbackReason": "not_installed",
+        "tool": null,
+        "used": false
+       }
+      },
+      "running": false,
+      "startedAt": "2026-10-21T23:18:57Z",
+      "state": "installed",
+      "total": 115223032
+     },
+     "frames": {
+      "download": "~/work/put.gd-i293acc/runs/aurora-b/frames/install-download.png",
+      "result": "~/work/put.gd-i293acc/runs/aurora-b/frames/install-result.png"
+     },
+     "imageSha256": "250acc5c4a022a2c8a135c10aa7e767738f7e2d3d571c5de496c5795d08cd9d5",
+     "backup": "~/work/put.gd-i293acc/runs/aurora-b/apps/.putgd-update-backup-0.1.1-nightly.886.AppImage",
+     "backupSha256": "e31f1f0d47b330416aafbebbe27833dce8adc3c1439201415d8d10896cb87d4e",
+     "folder": [
+      ".putgd-update-backup-0.1.1-nightly.886.AppImage",
+      "putgd-0.1.1-nightly.886-x86_64.AppImage"
+     ],
+     "stateFile": {
+      "backup": {
+       "copied": false,
+       "device": "58",
+       "inode": "9162",
+       "mtime": 1792624707,
+       "path": "~/work/put.gd-i293acc/runs/aurora-b/apps/.putgd-update-backup-0.1.1-nightly.886.AppImage",
+       "size": 115223032
+      },
+      "installed": {
+       "image": "~/work/put.gd-i293acc/runs/aurora-b/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+       "installedAt": "2026-10-21T23:19:02Z",
+       "method": "download",
+       "previousVersion": "0.1.1-nightly.886",
+       "sha256": "250acc5c4a022a2c8a135c10aa7e767738f7e2d3d571c5de496c5795d08cd9d5",
+       "version": "0.1.1-nightly.887"
+      },
+      "schemaVersion": 1,
+      "staging": null
+     }
+    }
+   },
+   {
+    "at": "2026-10-21T23:19:09Z",
+    "step": "restart",
+    "result": {
+     "reply": {
+      "error": {
+       "code": "",
+       "details": {},
+       "message": ""
+      },
+      "ok": true,
+      "requestId": "e4265453-f0ee-46f1-8073-69610a044fb1",
+      "result": {
+       "restarting": true,
+       "version": "0.1.1-nightly.887"
+      },
+      "schemaVersion": 1
+     },
+     "oldPid": 2699,
+     "oldGone": true,
+     "newPid": 2838,
+     "newExe": "/tmp/.mount_putgd-hcciOa/usr/bin/putgd",
+     "newAppimage": "~/work/put.gd-i293acc/runs/aurora-b/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+     "version": "0.1.1-nightly.887",
+     "install": {
+      "available": true,
+      "backup": null,
+      "image": "~/work/put.gd-i293acc/runs/aurora-b/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+      "installed": {
+       "backupRemoved": true,
+       "image": "~/work/put.gd-i293acc/runs/aurora-b/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+       "installedAt": "2026-10-21T23:19:02Z",
+       "method": "download",
+       "previousVersion": "0.1.1-nightly.886",
+       "sha256": "250acc5c4a022a2c8a135c10aa7e767738f7e2d3d571c5de496c5795d08cd9d5",
+       "version": "0.1.1-nightly.887"
+      },
+      "reason": null,
+      "restartRequired": false,
+      "running": false,
+      "state": "idle"
+     },
+     "imageSha256": "250acc5c4a022a2c8a135c10aa7e767738f7e2d3d571c5de496c5795d08cd9d5",
+     "afterRestart": {
+      "current": "0.1.1-nightly.887",
+      "latest": "0.1.1-nightly.887",
+      "updateAvailable": false
+     },
+     "folder": [
+      "putgd-0.1.1-nightly.886-x86_64.AppImage"
+     ],
+     "frame": "~/work/put.gd-i293acc/runs/aurora-b/frames/restarted.png"
+    }
+   }
+  ]
+ },
+ "aurora-c": {
+  "host": "aurora-lab",
+  "scenario": "c",
+  "session": "wayland",
+  "desktop": "KDE",
+  "shell": "plasmashell",
+  "imageSha256": "e31f1f0d47b330416aafbebbe27833dce8adc3c1439201415d8d10896cb87d4e",
+  "before": {
+   "dataPutgd": false,
+   "autostart": []
+  },
+  "steps": [
+   {
+    "at": "2026-10-21T23:19:17Z",
+    "step": "check",
+    "result": {
+     "status": {
+      "build": "0.1.1-nightly.886",
+      "channel": "nightly",
+      "latest": "0.1.1-nightly.887",
+      "updateAvailable": true,
+      "install": {
+       "available": true,
+       "backup": null,
+       "image": "~/work/put.gd-i293acc/runs/aurora-c/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+       "installed": null,
+       "reason": null,
+       "restartRequired": false,
+       "running": false,
+       "state": "idle"
+      }
+     },
+     "frame": "~/work/put.gd-i293acc/runs/aurora-c/frames/check.png"
+    }
+   },
+   {
+    "at": "2026-10-21T23:19:26Z",
+    "step": "install",
+    "result": {
+     "seconds": 8.0,
+     "phases": [
+      {
+       "at": 0.1,
+       "phase": [
+        "starting",
+        "auto"
+       ],
+       "bytes": 0,
+       "total": 0
+      },
+      {
+       "at": 0.5,
+       "phase": [
+        "verifying",
+        null
+       ],
+       "bytes": 0,
+       "total": 0
+      },
+      {
+       "at": 1.9,
+       "phase": [
+        "download",
+        "release"
+       ],
+       "bytes": 0,
+       "total": 115223032
+      },
+      {
+       "at": 5.0,
+       "phase": [
+        "verifying",
+        "release"
+       ],
+       "bytes": 115223032,
+       "total": 115223032
+      },
+      {
+       "at": 5.4,
+       "phase": [
+        "installing",
+        "download"
+       ],
+       "bytes": 115223032,
+       "total": 115223032
+      },
+      {
+       "at": 5.8,
+       "phase": [
+        "done",
+        "download"
+       ],
+       "bytes": 115223032,
+       "total": 115223032
+      }
+     ],
+     "install": {
+      "available": true,
+      "backup": "~/work/put.gd-i293acc/runs/aurora-c/apps/.putgd-update-backup-0.1.1-nightly.886.AppImage",
+      "bytes": 115223032,
+      "finishedAt": "2026-10-21T23:19:23Z",
+      "image": "~/work/put.gd-i293acc/runs/aurora-c/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+      "installed": {
+       "image": "~/work/put.gd-i293acc/runs/aurora-c/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+       "installedAt": "2026-10-21T23:19:23Z",
+       "method": "download",
+       "previousVersion": "0.1.1-nightly.886",
+       "sha256": "250acc5c4a022a2c8a135c10aa7e767738f7e2d3d571c5de496c5795d08cd9d5",
+       "version": "0.1.1-nightly.887"
+      },
+      "method": "download",
+      "phase": "done",
+      "reason": null,
+      "restartRequired": true,
+      "result": {
+       "backup": "~/work/put.gd-i293acc/runs/aurora-c/apps/.putgd-update-backup-0.1.1-nightly.886.AppImage",
+       "downloads": [
+        {
+         "source": "release",
+         "transfer": {
+          "httpStatus": 200,
+          "network": null,
+          "tooLarge": false,
+          "url": "https://pkg.put.gd/lab/releases/v0.1.1-nightly.887/putgd-0.1.1-nightly.887-x86_64.AppImage"
+         }
+        }
+       ],
+       "image": "~/work/put.gd-i293acc/runs/aurora-c/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+       "installed": true,
+       "method": "download",
+       "previousVersion": "0.1.1-nightly.886",
+       "sha256": "250acc5c4a022a2c8a135c10aa7e767738f7e2d3d571c5de496c5795d08cd9d5",
+       "signature": {
+        "trustedComment": "put.gd v0.1.1-nightly.887 nightly"
+       },
+       "source": "release",
+       "tag": "v0.1.1-nightly.887",
+       "version": "0.1.1-nightly.887",
+       "zsync": {
+        "fallbackReason": "crashed",
+        "output": "zsync2: Unknown error while checking whether file (null) exists: Bad address (lab shim)",
+        "tool": "appimageupdatetool",
+        "used": false
+       }
+      },
+      "running": false,
+      "startedAt": "2026-10-21T23:19:17Z",
+      "state": "installed",
+      "total": 115223032
+     },
+     "frames": {
+      "download": "~/work/put.gd-i293acc/runs/aurora-c/frames/install-download.png",
+      "result": "~/work/put.gd-i293acc/runs/aurora-c/frames/install-result.png"
+     },
+     "imageSha256": "250acc5c4a022a2c8a135c10aa7e767738f7e2d3d571c5de496c5795d08cd9d5",
+     "backup": "~/work/put.gd-i293acc/runs/aurora-c/apps/.putgd-update-backup-0.1.1-nightly.886.AppImage",
+     "backupSha256": "e31f1f0d47b330416aafbebbe27833dce8adc3c1439201415d8d10896cb87d4e",
+     "folder": [
+      ".putgd-update-backup-0.1.1-nightly.886.AppImage",
+      "putgd-0.1.1-nightly.886-x86_64.AppImage"
+     ],
+     "stateFile": {
+      "backup": {
+       "copied": false,
+       "device": "58",
+       "inode": "10434",
+       "mtime": 1792624707,
+       "path": "~/work/put.gd-i293acc/runs/aurora-c/apps/.putgd-update-backup-0.1.1-nightly.886.AppImage",
+       "size": 115223032
+      },
+      "installed": {
+       "image": "~/work/put.gd-i293acc/runs/aurora-c/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+       "installedAt": "2026-10-21T23:19:23Z",
+       "method": "download",
+       "previousVersion": "0.1.1-nightly.886",
+       "sha256": "250acc5c4a022a2c8a135c10aa7e767738f7e2d3d571c5de496c5795d08cd9d5",
+       "version": "0.1.1-nightly.887"
+      },
+      "schemaVersion": 1,
+      "staging": null
+     }
+    }
+   },
+   {
+    "at": "2026-10-21T23:19:31Z",
+    "step": "restart",
+    "result": {
+     "reply": {
+      "error": {
+       "code": "",
+       "details": {},
+       "message": ""
+      },
+      "ok": true,
+      "requestId": "4f0e7b2b-3ca9-4d5d-b739-46341d14ddd4",
+      "result": {
+       "restarting": true,
+       "version": "0.1.1-nightly.887"
+      },
+      "schemaVersion": 1
+     },
+     "oldPid": 2931,
+     "oldGone": true,
+     "newPid": 3203,
+     "newExe": "/tmp/.mount_putgd-DEiOdd/usr/bin/putgd",
+     "newAppimage": "~/work/put.gd-i293acc/runs/aurora-c/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+     "version": "0.1.1-nightly.887",
+     "install": {
+      "available": true,
+      "backup": null,
+      "image": "~/work/put.gd-i293acc/runs/aurora-c/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+      "installed": {
+       "backupRemoved": true,
+       "image": "~/work/put.gd-i293acc/runs/aurora-c/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+       "installedAt": "2026-10-21T23:19:23Z",
+       "method": "download",
+       "previousVersion": "0.1.1-nightly.886",
+       "sha256": "250acc5c4a022a2c8a135c10aa7e767738f7e2d3d571c5de496c5795d08cd9d5",
+       "version": "0.1.1-nightly.887"
+      },
+      "reason": null,
+      "restartRequired": false,
+      "running": false,
+      "state": "idle"
+     },
+     "imageSha256": "250acc5c4a022a2c8a135c10aa7e767738f7e2d3d571c5de496c5795d08cd9d5",
+     "afterRestart": {
+      "current": "0.1.1-nightly.887",
+      "latest": "0.1.1-nightly.887",
+      "updateAvailable": false
+     },
+     "folder": [
+      "putgd-0.1.1-nightly.886-x86_64.AppImage"
+     ],
+     "frame": "~/work/put.gd-i293acc/runs/aurora-c/frames/restarted.png"
+    }
+   }
+  ]
+ },
+ "aurora-pic": {
+  "host": "aurora-lab",
+  "scenario": "a",
+  "session": "wayland",
+  "desktop": "KDE",
+  "shell": "plasmashell",
+  "imageSha256": "e31f1f0d47b330416aafbebbe27833dce8adc3c1439201415d8d10896cb87d4e",
+  "before": {
+   "dataPutgd": false,
+   "autostart": []
+  },
+  "steps": [
+   {
+    "at": "2026-10-21T23:20:29Z",
+    "step": "check",
+    "result": {
+     "status": {
+      "build": "0.1.1-nightly.886",
+      "channel": "nightly",
+      "latest": "0.1.1-nightly.887",
+      "updateAvailable": true,
+      "install": {
+       "available": true,
+       "backup": null,
+       "image": "~/work/put.gd-i293acc/runs/aurora-pic/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+       "installed": null,
+       "reason": null,
+       "restartRequired": false,
+       "running": false,
+       "state": "idle"
+      }
+     },
+     "frame": "~/work/put.gd-i293acc/runs/aurora-pic/frames/check.png"
+    }
+   },
+   {
+    "at": "2026-10-21T23:20:38Z",
+    "step": "install",
+    "result": {
+     "seconds": 8.5,
+     "phases": [
+      {
+       "at": 0.1,
+       "phase": [
+        "starting",
+        "auto"
+       ],
+       "bytes": 0,
+       "total": 0
+      },
+      {
+       "at": 0.5,
+       "phase": [
+        "verifying",
+        null
+       ],
+       "bytes": 0,
+       "total": 0
+      },
+      {
+       "at": 1.8,
+       "phase": [
+        "zsync",
+        "appimageupdatetool"
+       ],
+       "bytes": 0,
+       "total": 115223032
+      },
+      {
+       "at": 4.5,
+       "phase": [
+        "verifying",
+        "appimageupdatetool"
+       ],
+       "bytes": 115223032,
+       "total": 115223032
+      },
+      {
+       "at": 5.3,
+       "phase": [
+        "done",
+        "zsync"
+       ],
+       "bytes": 115223032,
+       "total": 115223032
+      }
+     ],
+     "install": {
+      "available": true,
+      "backup": "~/work/put.gd-i293acc/runs/aurora-pic/apps/.putgd-update-backup-0.1.1-nightly.886.AppImage",
+      "bytes": 115223032,
+      "finishedAt": "2026-10-21T23:20:34Z",
+      "image": "~/work/put.gd-i293acc/runs/aurora-pic/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+      "installed": {
+       "image": "~/work/put.gd-i293acc/runs/aurora-pic/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+       "installedAt": "2026-10-21T23:20:34Z",
+       "method": "zsync",
+       "previousVersion": "0.1.1-nightly.886",
+       "sha256": "250acc5c4a022a2c8a135c10aa7e767738f7e2d3d571c5de496c5795d08cd9d5",
+       "version": "0.1.1-nightly.887"
+      },
+      "method": "zsync",
+      "phase": "done",
+      "reason": null,
+      "restartRequired": true,
+      "result": {
+       "backup": "~/work/put.gd-i293acc/runs/aurora-pic/apps/.putgd-update-backup-0.1.1-nightly.886.AppImage",
+       "image": "~/work/put.gd-i293acc/runs/aurora-pic/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+       "installed": true,
+       "method": "zsync",
+       "previousVersion": "0.1.1-nightly.886",
+       "sha256": "250acc5c4a022a2c8a135c10aa7e767738f7e2d3d571c5de496c5795d08cd9d5",
+       "signature": {
+        "trustedComment": "put.gd v0.1.1-nightly.887 nightly"
+       },
+       "tag": "v0.1.1-nightly.887",
+       "version": "0.1.1-nightly.887",
+       "zsync": {
+        "output": "zsync2: used 114933760 local, fetched 1251832 | \u001b[2K\r100.00% done (109.89 of 109.89 MiB)... | Validation warning: AppImage not signed | Update successful. New file created: ~/work/put.gd-i293acc/runs/aurora-pic/apps/.putgd-update-elkhgx/putgd-0.1.1-nightly.887-x86_64.AppImage",
+        "tool": "appimageupdatetool",
+        "used": true
+       }
+      },
+      "running": false,
+      "startedAt": "2026-10-21T23:20:29Z",
+      "state": "installed",
+      "total": 115223032
+     },
+     "frames": {
+      "zsync": "~/work/put.gd-i293acc/runs/aurora-pic/frames/install-zsync.png",
+      "result": "~/work/put.gd-i293acc/runs/aurora-pic/frames/install-result.png"
+     },
+     "imageSha256": "250acc5c4a022a2c8a135c10aa7e767738f7e2d3d571c5de496c5795d08cd9d5",
+     "backup": "~/work/put.gd-i293acc/runs/aurora-pic/apps/.putgd-update-backup-0.1.1-nightly.886.AppImage",
+     "backupSha256": "e31f1f0d47b330416aafbebbe27833dce8adc3c1439201415d8d10896cb87d4e",
+     "folder": [
+      ".putgd-update-backup-0.1.1-nightly.886.AppImage",
+      "putgd-0.1.1-nightly.886-x86_64.AppImage"
+     ],
+     "stateFile": {
+      "backup": {
+       "copied": false,
+       "device": "58",
+       "inode": "11712",
+       "mtime": 1792624707,
+       "path": "~/work/put.gd-i293acc/runs/aurora-pic/apps/.putgd-update-backup-0.1.1-nightly.886.AppImage",
+       "size": 115223032
+      },
+      "installed": {
+       "image": "~/work/put.gd-i293acc/runs/aurora-pic/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+       "installedAt": "2026-10-21T23:20:34Z",
+       "method": "zsync",
+       "previousVersion": "0.1.1-nightly.886",
+       "sha256": "250acc5c4a022a2c8a135c10aa7e767738f7e2d3d571c5de496c5795d08cd9d5",
+       "version": "0.1.1-nightly.887"
+      },
+      "schemaVersion": 1,
+      "staging": null
+     }
+    }
+   },
+   {
+    "at": "2026-10-21T23:20:44Z",
+    "step": "restart",
+    "result": {
+     "reply": {
+      "error": {
+       "code": "",
+       "details": {},
+       "message": ""
+      },
+      "ok": true,
+      "requestId": "1bcb4243-4164-4882-943d-14e6c3d35f35",
+      "result": {
+       "restarting": true,
+       "version": "0.1.1-nightly.887"
+      },
+      "schemaVersion": 1
+     },
+     "oldPid": 3482,
+     "oldGone": true,
+     "newPid": 3649,
+     "newExe": "/tmp/.mount_putgd-bjLMcE/usr/bin/putgd",
+     "newAppimage": "~/work/put.gd-i293acc/runs/aurora-pic/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+     "version": "0.1.1-nightly.887",
+     "install": {
+      "available": true,
+      "backup": null,
+      "image": "~/work/put.gd-i293acc/runs/aurora-pic/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+      "installed": {
+       "backupRemoved": true,
+       "image": "~/work/put.gd-i293acc/runs/aurora-pic/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+       "installedAt": "2026-10-21T23:20:34Z",
+       "method": "zsync",
+       "previousVersion": "0.1.1-nightly.886",
+       "sha256": "250acc5c4a022a2c8a135c10aa7e767738f7e2d3d571c5de496c5795d08cd9d5",
+       "version": "0.1.1-nightly.887"
+      },
+      "reason": null,
+      "restartRequired": false,
+      "running": false,
+      "state": "idle"
+     },
+     "imageSha256": "250acc5c4a022a2c8a135c10aa7e767738f7e2d3d571c5de496c5795d08cd9d5",
+     "afterRestart": {
+      "current": "0.1.1-nightly.887",
+      "latest": "0.1.1-nightly.887",
+      "updateAvailable": false
+     },
+     "folder": [
+      "putgd-0.1.1-nightly.886-x86_64.AppImage"
+     ],
+     "frame": "~/work/put.gd-i293acc/runs/aurora-pic/frames/restarted.png"
+    }
+   }
+  ]
+ },
+ "d69-a": {
+  "host": "debian",
+  "scenario": "a",
+  "session": "wayland",
+  "desktop": "KDE",
+  "shell": "plasmashell",
+  "imageSha256": "e31f1f0d47b330416aafbebbe27833dce8adc3c1439201415d8d10896cb87d4e",
+  "before": {
+   "dataPutgd": false,
+   "autostart": []
+  },
+  "steps": [
+   {
+    "at": "2026-10-21T23:11:06Z",
+    "step": "check",
+    "result": {
+     "status": {
+      "build": "0.1.1-nightly.886",
+      "channel": "nightly",
+      "latest": "0.1.1-nightly.887",
+      "updateAvailable": true,
+      "install": {
+       "available": true,
+       "backup": null,
+       "image": "~/work/put.gd-i293acc/runs/d69-a/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+       "installed": null,
+       "reason": null,
+       "restartRequired": false,
+       "running": false,
+       "state": "idle"
+      }
+     },
+     "frame": "~/work/put.gd-i293acc/runs/d69-a/frames/check.png"
+    }
+   },
+   {
+    "at": "2026-10-21T23:11:16Z",
+    "step": "install",
+    "result": {
+     "seconds": 8.5,
+     "phases": [
+      {
+       "at": 0.0,
+       "phase": [
+        "starting",
+        "auto"
+       ],
+       "bytes": 0,
+       "total": 0
+      },
+      {
+       "at": 0.5,
+       "phase": [
+        "verifying",
+        null
+       ],
+       "bytes": 0,
+       "total": 0
+      },
+      {
+       "at": 2.1,
+       "phase": [
+        "zsync",
+        "appimageupdatetool"
+       ],
+       "bytes": 0,
+       "total": 115223032
+      },
+      {
+       "at": 5.3,
+       "phase": [
+        "verifying",
+        "appimageupdatetool"
+       ],
+       "bytes": 115223032,
+       "total": 115223032
+      },
+      {
+       "at": 6.1,
+       "phase": [
+        "done",
+        "zsync"
+       ],
+       "bytes": 115223032,
+       "total": 115223032
+      }
+     ],
+     "install": {
+      "available": true,
+      "backup": "~/work/put.gd-i293acc/runs/d69-a/apps/.putgd-update-backup-0.1.1-nightly.886.AppImage",
+      "bytes": 115223032,
+      "finishedAt": "2026-10-21T23:11:13Z",
+      "image": "~/work/put.gd-i293acc/runs/d69-a/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+      "installed": {
+       "image": "~/work/put.gd-i293acc/runs/d69-a/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+       "installedAt": "2026-10-21T23:11:13Z",
+       "method": "zsync",
+       "previousVersion": "0.1.1-nightly.886",
+       "sha256": "250acc5c4a022a2c8a135c10aa7e767738f7e2d3d571c5de496c5795d08cd9d5",
+       "version": "0.1.1-nightly.887"
+      },
+      "method": "zsync",
+      "phase": "done",
+      "reason": null,
+      "restartRequired": true,
+      "result": {
+       "backup": "~/work/put.gd-i293acc/runs/d69-a/apps/.putgd-update-backup-0.1.1-nightly.886.AppImage",
+       "image": "~/work/put.gd-i293acc/runs/d69-a/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+       "installed": true,
+       "method": "zsync",
+       "previousVersion": "0.1.1-nightly.886",
+       "sha256": "250acc5c4a022a2c8a135c10aa7e767738f7e2d3d571c5de496c5795d08cd9d5",
+       "signature": {
+        "trustedComment": "put.gd v0.1.1-nightly.887 nightly"
+       },
+       "tag": "v0.1.1-nightly.887",
+       "version": "0.1.1-nightly.887",
+       "zsync": {
+        "output": "zsync2: used 114933760 local, fetched 1251832 | \u001b[2K\r100.00% done (109.89 of 109.89 MiB)... | Validation warning: AppImage not signed | Update successful. New file created: ~/work/put.gd-i293acc/runs/d69-a/apps/.putgd-update-xfKLNU/putgd-0.1.1-nightly.887-x86_64.AppImage",
+        "tool": "appimageupdatetool",
+        "used": true
+       }
+      },
+      "running": false,
+      "startedAt": "2026-10-21T23:11:07Z",
+      "state": "installed",
+      "total": 115223032
+     },
+     "frames": {
+      "zsync": "~/work/put.gd-i293acc/runs/d69-a/frames/install-zsync.png",
+      "result": "~/work/put.gd-i293acc/runs/d69-a/frames/install-result.png"
+     },
+     "imageSha256": "250acc5c4a022a2c8a135c10aa7e767738f7e2d3d571c5de496c5795d08cd9d5",
+     "backup": "~/work/put.gd-i293acc/runs/d69-a/apps/.putgd-update-backup-0.1.1-nightly.886.AppImage",
+     "backupSha256": "e31f1f0d47b330416aafbebbe27833dce8adc3c1439201415d8d10896cb87d4e",
+     "folder": [
+      ".putgd-update-backup-0.1.1-nightly.886.AppImage",
+      "putgd-0.1.1-nightly.886-x86_64.AppImage"
+     ],
+     "stateFile": {
+      "backup": {
+       "copied": false,
+       "device": "2050",
+       "inode": "6562971",
+       "mtime": 1792623930,
+       "path": "~/work/put.gd-i293acc/runs/d69-a/apps/.putgd-update-backup-0.1.1-nightly.886.AppImage",
+       "size": 115223032
+      },
+      "installed": {
+       "image": "~/work/put.gd-i293acc/runs/d69-a/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+       "installedAt": "2026-10-21T23:11:13Z",
+       "method": "zsync",
+       "previousVersion": "0.1.1-nightly.886",
+       "sha256": "250acc5c4a022a2c8a135c10aa7e767738f7e2d3d571c5de496c5795d08cd9d5",
+       "version": "0.1.1-nightly.887"
+      },
+      "schemaVersion": 1,
+      "staging": null
+     }
+    }
+   },
+   {
+    "at": "2026-10-21T23:11:20Z",
+    "step": "restart",
+    "result": {
+     "reply": {
+      "error": {
+       "code": "",
+       "details": {},
+       "message": ""
+      },
+      "ok": true,
+      "requestId": "f4bb83d9-560a-4158-838d-b29c7938b719",
+      "result": {
+       "restarting": true,
+       "version": "0.1.1-nightly.887"
+      },
+      "schemaVersion": 1
+     },
+     "oldPid": 2016828,
+     "oldGone": true,
+     "newPid": 2017025,
+     "newExe": "/tmp/.mount_putgd-kiDbGM/usr/bin/putgd",
+     "newAppimage": "~/work/put.gd-i293acc/runs/d69-a/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+     "version": "0.1.1-nightly.887",
+     "install": {
+      "available": true,
+      "backup": null,
+      "image": "~/work/put.gd-i293acc/runs/d69-a/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+      "installed": {
+       "backupRemoved": true,
+       "image": "~/work/put.gd-i293acc/runs/d69-a/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+       "installedAt": "2026-10-21T23:11:13Z",
+       "method": "zsync",
+       "previousVersion": "0.1.1-nightly.886",
+       "sha256": "250acc5c4a022a2c8a135c10aa7e767738f7e2d3d571c5de496c5795d08cd9d5",
+       "version": "0.1.1-nightly.887"
+      },
+      "reason": null,
+      "restartRequired": false,
+      "running": false,
+      "state": "idle"
+     },
+     "imageSha256": "250acc5c4a022a2c8a135c10aa7e767738f7e2d3d571c5de496c5795d08cd9d5",
+     "afterRestart": {
+      "current": "0.1.1-nightly.887",
+      "latest": "0.1.1-nightly.887",
+      "updateAvailable": false
+     },
+     "folder": [
+      "putgd-0.1.1-nightly.886-x86_64.AppImage"
+     ],
+     "frame": "~/work/put.gd-i293acc/runs/d69-a/frames/restarted.png"
+    }
+   }
+  ]
+ },
+ "d69-b": {
+  "host": "debian",
+  "scenario": "b",
+  "session": "wayland",
+  "desktop": "KDE",
+  "shell": "plasmashell",
+  "imageSha256": "e31f1f0d47b330416aafbebbe27833dce8adc3c1439201415d8d10896cb87d4e",
+  "before": {
+   "dataPutgd": false,
+   "autostart": []
+  },
+  "steps": [
+   {
+    "at": "2026-10-21T23:11:27Z",
+    "step": "check",
+    "result": {
+     "status": {
+      "build": "0.1.1-nightly.886",
+      "channel": "nightly",
+      "latest": "0.1.1-nightly.887",
+      "updateAvailable": true,
+      "install": {
+       "available": true,
+       "backup": null,
+       "image": "~/work/put.gd-i293acc/runs/d69-b/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+       "installed": null,
+       "reason": null,
+       "restartRequired": false,
+       "running": false,
+       "state": "idle"
+      }
+     },
+     "frame": "~/work/put.gd-i293acc/runs/d69-b/frames/check.png"
+    }
+   },
+   {
+    "at": "2026-10-21T23:11:36Z",
+    "step": "install",
+    "result": {
+     "seconds": 8.7,
+     "phases": [
+      {
+       "at": 0.0,
+       "phase": [
+        "starting",
+        "auto"
+       ],
+       "bytes": 0,
+       "total": 0
+      },
+      {
+       "at": 0.5,
+       "phase": [
+        "verifying",
+        null
+       ],
+       "bytes": 0,
+       "total": 0
+      },
+      {
+       "at": 1.7,
+       "phase": [
+        "download",
+        "release"
+       ],
+       "bytes": 0,
+       "total": 115223032
+      },
+      {
+       "at": 5.1,
+       "phase": [
+        "verifying",
+        "release"
+       ],
+       "bytes": 115223032,
+       "total": 115223032
+      },
+      {
+       "at": 6.4,
+       "phase": [
+        "done",
+        "download"
+       ],
+       "bytes": 115223032,
+       "total": 115223032
+      }
+     ],
+     "install": {
+      "available": true,
+      "backup": "~/work/put.gd-i293acc/runs/d69-b/apps/.putgd-update-backup-0.1.1-nightly.886.AppImage",
+      "bytes": 115223032,
+      "finishedAt": "2026-10-21T23:11:33Z",
+      "image": "~/work/put.gd-i293acc/runs/d69-b/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+      "installed": {
+       "image": "~/work/put.gd-i293acc/runs/d69-b/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+       "installedAt": "2026-10-21T23:11:33Z",
+       "method": "download",
+       "previousVersion": "0.1.1-nightly.886",
+       "sha256": "250acc5c4a022a2c8a135c10aa7e767738f7e2d3d571c5de496c5795d08cd9d5",
+       "version": "0.1.1-nightly.887"
+      },
+      "method": "download",
+      "phase": "done",
+      "reason": null,
+      "restartRequired": true,
+      "result": {
+       "backup": "~/work/put.gd-i293acc/runs/d69-b/apps/.putgd-update-backup-0.1.1-nightly.886.AppImage",
+       "downloads": [
+        {
+         "source": "release",
+         "transfer": {
+          "httpStatus": 200,
+          "network": null,
+          "tooLarge": false,
+          "url": "https://pkg.put.gd/lab/releases/v0.1.1-nightly.887/putgd-0.1.1-nightly.887-x86_64.AppImage"
+         }
+        }
+       ],
+       "image": "~/work/put.gd-i293acc/runs/d69-b/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+       "installed": true,
+       "method": "download",
+       "previousVersion": "0.1.1-nightly.886",
+       "sha256": "250acc5c4a022a2c8a135c10aa7e767738f7e2d3d571c5de496c5795d08cd9d5",
+       "signature": {
+        "trustedComment": "put.gd v0.1.1-nightly.887 nightly"
+       },
+       "source": "release",
+       "tag": "v0.1.1-nightly.887",
+       "version": "0.1.1-nightly.887",
+       "zsync": {
+        "fallbackReason": "not_installed",
+        "tool": null,
+        "used": false
+       }
+      },
+      "running": false,
+      "startedAt": "2026-10-21T23:11:27Z",
+      "state": "installed",
+      "total": 115223032
+     },
+     "frames": {
+      "download": "~/work/put.gd-i293acc/runs/d69-b/frames/install-download.png",
+      "result": "~/work/put.gd-i293acc/runs/d69-b/frames/install-result.png"
+     },
+     "imageSha256": "250acc5c4a022a2c8a135c10aa7e767738f7e2d3d571c5de496c5795d08cd9d5",
+     "backup": "~/work/put.gd-i293acc/runs/d69-b/apps/.putgd-update-backup-0.1.1-nightly.886.AppImage",
+     "backupSha256": "e31f1f0d47b330416aafbebbe27833dce8adc3c1439201415d8d10896cb87d4e",
+     "folder": [
+      ".putgd-update-backup-0.1.1-nightly.886.AppImage",
+      "putgd-0.1.1-nightly.886-x86_64.AppImage"
+     ],
+     "stateFile": {
+      "backup": {
+       "copied": false,
+       "device": "2050",
+       "inode": "6562972",
+       "mtime": 1792623930,
+       "path": "~/work/put.gd-i293acc/runs/d69-b/apps/.putgd-update-backup-0.1.1-nightly.886.AppImage",
+       "size": 115223032
+      },
+      "installed": {
+       "image": "~/work/put.gd-i293acc/runs/d69-b/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+       "installedAt": "2026-10-21T23:11:33Z",
+       "method": "download",
+       "previousVersion": "0.1.1-nightly.886",
+       "sha256": "250acc5c4a022a2c8a135c10aa7e767738f7e2d3d571c5de496c5795d08cd9d5",
+       "version": "0.1.1-nightly.887"
+      },
+      "schemaVersion": 1,
+      "staging": null
+     }
+    }
+   },
+   {
+    "at": "2026-10-21T23:11:41Z",
+    "step": "restart",
+    "result": {
+     "reply": {
+      "error": {
+       "code": "",
+       "details": {},
+       "message": ""
+      },
+      "ok": true,
+      "requestId": "05515208-bacf-465c-989b-b83c59c02a82",
+      "result": {
+       "restarting": true,
+       "version": "0.1.1-nightly.887"
+      },
+      "schemaVersion": 1
+     },
+     "oldPid": 2017122,
+     "oldGone": true,
+     "newPid": 2017284,
+     "newExe": "/tmp/.mount_putgd-iAeEaB/usr/bin/putgd",
+     "newAppimage": "~/work/put.gd-i293acc/runs/d69-b/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+     "version": "0.1.1-nightly.887",
+     "install": {
+      "available": true,
+      "backup": null,
+      "image": "~/work/put.gd-i293acc/runs/d69-b/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+      "installed": {
+       "backupRemoved": true,
+       "image": "~/work/put.gd-i293acc/runs/d69-b/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+       "installedAt": "2026-10-21T23:11:33Z",
+       "method": "download",
+       "previousVersion": "0.1.1-nightly.886",
+       "sha256": "250acc5c4a022a2c8a135c10aa7e767738f7e2d3d571c5de496c5795d08cd9d5",
+       "version": "0.1.1-nightly.887"
+      },
+      "reason": null,
+      "restartRequired": false,
+      "running": false,
+      "state": "idle"
+     },
+     "imageSha256": "250acc5c4a022a2c8a135c10aa7e767738f7e2d3d571c5de496c5795d08cd9d5",
+     "afterRestart": {
+      "current": "0.1.1-nightly.887",
+      "latest": "0.1.1-nightly.887",
+      "updateAvailable": false
+     },
+     "folder": [
+      "putgd-0.1.1-nightly.886-x86_64.AppImage"
+     ],
+     "frame": "~/work/put.gd-i293acc/runs/d69-b/frames/restarted.png"
+    }
+   }
+  ]
+ },
+ "d69-c": {
+  "host": "debian",
+  "scenario": "c",
+  "session": "wayland",
+  "desktop": "KDE",
+  "shell": "plasmashell",
+  "imageSha256": "e31f1f0d47b330416aafbebbe27833dce8adc3c1439201415d8d10896cb87d4e",
+  "before": {
+   "dataPutgd": false,
+   "autostart": []
+  },
+  "steps": [
+   {
+    "at": "2026-10-21T23:11:47Z",
+    "step": "check",
+    "result": {
+     "status": {
+      "build": "0.1.1-nightly.886",
+      "channel": "nightly",
+      "latest": "0.1.1-nightly.887",
+      "updateAvailable": true,
+      "install": {
+       "available": true,
+       "backup": null,
+       "image": "~/work/put.gd-i293acc/runs/d69-c/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+       "installed": null,
+       "reason": null,
+       "restartRequired": false,
+       "running": false,
+       "state": "idle"
+      }
+     },
+     "frame": "~/work/put.gd-i293acc/runs/d69-c/frames/check.png"
+    }
+   },
+   {
+    "at": "2026-10-21T23:11:55Z",
+    "step": "install",
+    "result": {
+     "seconds": 6.9,
+     "phases": [
+      {
+       "at": 0.0,
+       "phase": [
+        "starting",
+        "auto"
+       ],
+       "bytes": 0,
+       "total": 0
+      },
+      {
+       "at": 0.5,
+       "phase": [
+        "verifying",
+        null
+       ],
+       "bytes": 0,
+       "total": 0
+      },
+      {
+       "at": 1.7,
+       "phase": [
+        "download",
+        "release"
+       ],
+       "bytes": 0,
+       "total": 115223032
+      },
+      {
+       "at": 4.6,
+       "phase": [
+        "done",
+        "download"
+       ],
+       "bytes": 115223032,
+       "total": 115223032
+      }
+     ],
+     "install": {
+      "available": true,
+      "backup": "~/work/put.gd-i293acc/runs/d69-c/apps/.putgd-update-backup-0.1.1-nightly.886.AppImage",
+      "bytes": 115223032,
+      "finishedAt": "2026-10-21T23:11:52Z",
+      "image": "~/work/put.gd-i293acc/runs/d69-c/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+      "installed": {
+       "image": "~/work/put.gd-i293acc/runs/d69-c/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+       "installedAt": "2026-10-21T23:11:52Z",
+       "method": "download",
+       "previousVersion": "0.1.1-nightly.886",
+       "sha256": "250acc5c4a022a2c8a135c10aa7e767738f7e2d3d571c5de496c5795d08cd9d5",
+       "version": "0.1.1-nightly.887"
+      },
+      "method": "download",
+      "phase": "done",
+      "reason": null,
+      "restartRequired": true,
+      "result": {
+       "backup": "~/work/put.gd-i293acc/runs/d69-c/apps/.putgd-update-backup-0.1.1-nightly.886.AppImage",
+       "downloads": [
+        {
+         "source": "release",
+         "transfer": {
+          "httpStatus": 200,
+          "network": null,
+          "tooLarge": false,
+          "url": "https://pkg.put.gd/lab/releases/v0.1.1-nightly.887/putgd-0.1.1-nightly.887-x86_64.AppImage"
+         }
+        }
+       ],
+       "image": "~/work/put.gd-i293acc/runs/d69-c/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+       "installed": true,
+       "method": "download",
+       "previousVersion": "0.1.1-nightly.886",
+       "sha256": "250acc5c4a022a2c8a135c10aa7e767738f7e2d3d571c5de496c5795d08cd9d5",
+       "signature": {
+        "trustedComment": "put.gd v0.1.1-nightly.887 nightly"
+       },
+       "source": "release",
+       "tag": "v0.1.1-nightly.887",
+       "version": "0.1.1-nightly.887",
+       "zsync": {
+        "fallbackReason": "crashed",
+        "output": "zsync2: Unknown error while checking whether file (null) exists: Bad address (lab shim)",
+        "tool": "appimageupdatetool",
+        "used": false
+       }
+      },
+      "running": false,
+      "startedAt": "2026-10-21T23:11:48Z",
+      "state": "installed",
+      "total": 115223032
+     },
+     "frames": {
+      "download": "~/work/put.gd-i293acc/runs/d69-c/frames/install-download.png",
+      "result": "~/work/put.gd-i293acc/runs/d69-c/frames/install-result.png"
+     },
+     "imageSha256": "250acc5c4a022a2c8a135c10aa7e767738f7e2d3d571c5de496c5795d08cd9d5",
+     "backup": "~/work/put.gd-i293acc/runs/d69-c/apps/.putgd-update-backup-0.1.1-nightly.886.AppImage",
+     "backupSha256": "e31f1f0d47b330416aafbebbe27833dce8adc3c1439201415d8d10896cb87d4e",
+     "folder": [
+      ".putgd-update-backup-0.1.1-nightly.886.AppImage",
+      "putgd-0.1.1-nightly.886-x86_64.AppImage"
+     ],
+     "stateFile": {
+      "backup": {
+       "copied": false,
+       "device": "2050",
+       "inode": "6562973",
+       "mtime": 1792623930,
+       "path": "~/work/put.gd-i293acc/runs/d69-c/apps/.putgd-update-backup-0.1.1-nightly.886.AppImage",
+       "size": 115223032
+      },
+      "installed": {
+       "image": "~/work/put.gd-i293acc/runs/d69-c/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+       "installedAt": "2026-10-21T23:11:52Z",
+       "method": "download",
+       "previousVersion": "0.1.1-nightly.886",
+       "sha256": "250acc5c4a022a2c8a135c10aa7e767738f7e2d3d571c5de496c5795d08cd9d5",
+       "version": "0.1.1-nightly.887"
+      },
+      "schemaVersion": 1,
+      "staging": null
+     }
+    }
+   },
+   {
+    "at": "2026-10-21T23:12:00Z",
+    "step": "restart",
+    "result": {
+     "reply": {
+      "error": {
+       "code": "",
+       "details": {},
+       "message": ""
+      },
+      "ok": true,
+      "requestId": "059eab6d-84c5-4e27-9081-b0821b6622a1",
+      "result": {
+       "restarting": true,
+       "version": "0.1.1-nightly.887"
+      },
+      "schemaVersion": 1
+     },
+     "oldPid": 2017379,
+     "oldGone": true,
+     "newPid": 2017520,
+     "newExe": "/tmp/.mount_putgd-BKhdNl/usr/bin/putgd",
+     "newAppimage": "~/work/put.gd-i293acc/runs/d69-c/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+     "version": "0.1.1-nightly.887",
+     "install": {
+      "available": true,
+      "backup": null,
+      "image": "~/work/put.gd-i293acc/runs/d69-c/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+      "installed": {
+       "backupRemoved": true,
+       "image": "~/work/put.gd-i293acc/runs/d69-c/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+       "installedAt": "2026-10-21T23:11:52Z",
+       "method": "download",
+       "previousVersion": "0.1.1-nightly.886",
+       "sha256": "250acc5c4a022a2c8a135c10aa7e767738f7e2d3d571c5de496c5795d08cd9d5",
+       "version": "0.1.1-nightly.887"
+      },
+      "reason": null,
+      "restartRequired": false,
+      "running": false,
+      "state": "idle"
+     },
+     "imageSha256": "250acc5c4a022a2c8a135c10aa7e767738f7e2d3d571c5de496c5795d08cd9d5",
+     "afterRestart": {
+      "current": "0.1.1-nightly.887",
+      "latest": "0.1.1-nightly.887",
+      "updateAvailable": false
+     },
+     "folder": [
+      "putgd-0.1.1-nightly.886-x86_64.AppImage"
+     ],
+     "frame": "~/work/put.gd-i293acc/runs/d69-c/frames/restarted.png"
+    }
+   }
+  ]
+ },
+ "d69-l": {
+  "host": "debian",
+  "scenario": "a",
+  "session": "wayland",
+  "desktop": "KDE",
+  "shell": "plasmashell",
+  "imageSha256": "e31f1f0d47b330416aafbebbe27833dce8adc3c1439201415d8d10896cb87d4e",
+  "before": {
+   "dataPutgd": false,
+   "autostart": []
+  },
+  "steps": [
+   {
+    "at": "2026-10-21T23:12:52Z",
+    "step": "loginEnable",
+    "result": {
+     "entry": "[Desktop Entry]\nType=Application\nName=put.gd\nExec=/bin/sh \"/home/patrick/.local/share/putgd/login/appimage-start.sh\" --background\nTerminal=false\nX-putgd-Managed=true\n",
+     "script": "#!/bin/sh\n# put.gd start at login for an AppImage (#307). put.gd writes this file while\n# Launch at login is on and rewrites it at every start; edits are replaced.\n# X-putgd-Managed=true\n#\n# Updaters that follow the image's .zsync write the new version under the\n# .zsync's versioned file name, beside the old image (AppImageLauncher), and may\n# remove the old one (appimageupdatetool --remove-old). So start the newest\n# put.gd AppImage in the configured image's folder that embeds the same update\n# information. Gear Lever replaces the configured file in place, which needs\n# nothing extra. Only the user's own files in the user's own folder qualify\n# as newer images.\nset -u\nconfigured='~/work/put.gd-i293acc/runs/d69-l/apps/putgd-0.1.1-nightly.886-x86_64.AppImage'\nupdate_information='zsync|https://pkg.put.gd/lab/dl/nightly/appimage.zsync'\n\nsay() {\n    printf 'put.gd login start: %s\\n' \"$*\" >&2\n}\n\n# The user's private group: named after the user, with no other members. With\n# umask 002 (the desktop default on Debian 13, Kubuntu 26.04 and Mint 22.3) the\n# user's files are group-writable.\nown_group=\nuser=$(id -un 2>/dev/null) && group=$(id -g 2>/dev/null) && entry=$(getent group \"$group\" 2>/dev/null) &&\n    case $entry in\n        \"$user\":*:\"$group\": | \"$user\":*:\"$group\":\"$user\") own_group=$group ;;\n    esac\n\n# Owned by the user and writable by nobody else.\nprivate() {\n    [ -O \"$1\" ] || return 1\n    set -- $(stat -L -c '%a %g' -- \"$1\" 2>/dev/null)\n    [ $# -eq 2 ] || return 1\n    case $1 in\n        *[2367]) return 1 ;;\n        *[2367]?) [ \"$2\" = \"$own_group\" ] || return 1 ;;\n    esac\n}\n\n# A private executable regular file, not a symbolic link, with the AppImage\n# type 2 magic at offset 8.\nappimage() {\n    [ -f \"$1\" ] && [ ! -L \"$1\" ] && [ -x \"$1\" ] && private \"$1\" || return 1\n    [ \"$(head -c 11 -- \"$1\" 2>/dev/null | tail -c 3 | od -An -tx1 | tr -d ' \\n')\" = 414902 ]\n}\n\nbounded() {\n    if command -v timeout >/dev/null 2>&1; then\n        timeout 20 \"$@\"\n    else\n        \"$@\"\n    fi\n}\n\n# The version in putgd-VERSION-x86_64.AppImage, as the .zsync names the image,\n# or in AppImageLauncher's putgd-VERSION-x86_64_<md5>.AppImage.\nname_version() {\n    name=${1##*/}\n    case $name in\n        putgd-?*-x86_64.AppImage | putgd-?*-x86_64_*.AppImage) ;;\n        *) return 1 ;;\n    esac\n    version=${name#putgd-}\n    version=${version%%-x86_64*}\n    case $version in\n        [0-9]*) ;;\n        *) return 1 ;;\n    esac\n    case $version in\n        *[!0-9A-Za-z.+-]*) return 1 ;;\n    esac\n    printf '%s\\n' \"$version\"\n}\n\n# Prereleases order before their release: 0.1.2-rc.1 < 0.1.2 (sort -V, ~).\nsortable() {\n    case $1 in\n        *-*) printf '%s~%s\\n' \"${1%%-*}\" \"${1#*-}\" ;;\n        *) printf '%s\\n' \"$1\" ;;\n    esac\n}\n\n# Is version $1 newer than version $2?\nnewer() {\n    [ \"$1\" != \"$2\" ] && [ \"$(printf '%s\\n%s\\n' \"$1\" \"$2\" | sort -V | tail -n 1)\" = \"$1\" ]\n}\n\nbest=\nbest_version=\ndirectory=${configured%/*}\nif [ -n \"$update_information\" ] && [ -d \"$directory\" ] && private \"$directory\"; then\n    for candidate in \"$directory\"/putgd-*.AppImage; do\n        [ \"$candidate\" != \"$configured\" ] || continue\n        version=$(name_version \"$candidate\") || continue\n        version=$(sortable \"$version\")\n        if [ -n \"$best\" ] && ! newer \"$version\" \"$best_version\"; then\n            continue\n        fi\n        appimage \"$candidate\" || continue\n        [ \"$(bounded \"$candidate\" --appimage-updateinformation 2>/dev/null)\" = \"$update_information\" ] || continue\n        best=$candidate\n        best_version=$version\n    done\nfi\n# The configured image is the one put.gd last ran from; like the autostart entry\n# before #307, it only has to be an executable file.\nif [ -f \"$configured\" ] && [ -x \"$configured\" ]; then\n    [ -n \"$best\" ] || exec \"$configured\" \"$@\"\n    # Ask the image which version it is. put.gd's own update (#293) and Gear\n    # Lever replace the file in place, so its name can be older than what it\n    # holds, or carry no version; the name is only the fallback.\n    version=$(bounded \"$configured\" --version 2>/dev/null | sed -n '1s/^putgd //p')\n    [ -n \"$version\" ] || version=$(name_version \"$configured\") || version=\n    if [ -z \"$version\" ] || ! newer \"$best_version\" \"$(sortable \"$version\")\"; then\n        exec \"$configured\" \"$@\"\n    fi\n    say \"starting $best, which is newer than $configured\"\n    exec \"$best\" \"$@\"\nfi\nif [ -n \"$best\" ]; then\n    say \"$configured is missing; starting $best\"\n    exec \"$best\" \"$@\"\nfi\nsay \"cannot start $configured: it is missing or not executable, and no put.gd AppImage with its update information is beside it\"\nexit 1\n"
+    }
+   },
+   {
+    "at": "2026-10-21T23:12:56Z",
+    "step": "check",
+    "result": {
+     "status": {
+      "build": "0.1.1-nightly.886",
+      "channel": "nightly",
+      "latest": "0.1.1-nightly.887",
+      "updateAvailable": true,
+      "install": {
+       "available": true,
+       "backup": null,
+       "image": "~/work/put.gd-i293acc/runs/d69-l/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+       "installed": null,
+       "reason": null,
+       "restartRequired": false,
+       "running": false,
+       "state": "idle"
+      }
+     },
+     "frame": "~/work/put.gd-i293acc/runs/d69-l/frames/check.png"
+    }
+   },
+   {
+    "at": "2026-10-21T23:13:04Z",
+    "step": "install",
+    "result": {
+     "seconds": 7.3,
+     "phases": [
+      {
+       "at": 0.0,
+       "phase": [
+        "starting",
+        "auto"
+       ],
+       "bytes": 0,
+       "total": 0
+      },
+      {
+       "at": 0.5,
+       "phase": [
+        "verifying",
+        null
+       ],
+       "bytes": 0,
+       "total": 0
+      },
+      {
+       "at": 1.7,
+       "phase": [
+        "zsync",
+        "appimageupdatetool"
+       ],
+       "bytes": 0,
+       "total": 115223032
+      },
+      {
+       "at": 4.6,
+       "phase": [
+        "done",
+        "zsync"
+       ],
+       "bytes": 115223032,
+       "total": 115223032
+      }
+     ],
+     "install": {
+      "available": true,
+      "backup": "~/work/put.gd-i293acc/runs/d69-l/apps/.putgd-update-backup-0.1.1-nightly.886.AppImage",
+      "bytes": 115223032,
+      "finishedAt": "2026-10-21T23:13:01Z",
+      "image": "~/work/put.gd-i293acc/runs/d69-l/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+      "installed": {
+       "image": "~/work/put.gd-i293acc/runs/d69-l/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+       "installedAt": "2026-10-21T23:13:01Z",
+       "method": "zsync",
+       "previousVersion": "0.1.1-nightly.886",
+       "sha256": "250acc5c4a022a2c8a135c10aa7e767738f7e2d3d571c5de496c5795d08cd9d5",
+       "version": "0.1.1-nightly.887"
+      },
+      "method": "zsync",
+      "phase": "done",
+      "reason": null,
+      "restartRequired": true,
+      "result": {
+       "backup": "~/work/put.gd-i293acc/runs/d69-l/apps/.putgd-update-backup-0.1.1-nightly.886.AppImage",
+       "image": "~/work/put.gd-i293acc/runs/d69-l/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+       "installed": true,
+       "method": "zsync",
+       "previousVersion": "0.1.1-nightly.886",
+       "sha256": "250acc5c4a022a2c8a135c10aa7e767738f7e2d3d571c5de496c5795d08cd9d5",
+       "signature": {
+        "trustedComment": "put.gd v0.1.1-nightly.887 nightly"
+       },
+       "tag": "v0.1.1-nightly.887",
+       "version": "0.1.1-nightly.887",
+       "zsync": {
+        "output": "zsync2: used 114933760 local, fetched 1251832 | \u001b[2K\r100.00% done (109.89 of 109.89 MiB)... | Validation warning: AppImage not signed | Update successful. New file created: ~/work/put.gd-i293acc/runs/d69-l/apps/.putgd-update-tfZTid/putgd-0.1.1-nightly.887-x86_64.AppImage",
+        "tool": "appimageupdatetool",
+        "used": true
+       }
+      },
+      "running": false,
+      "startedAt": "2026-10-21T23:12:56Z",
+      "state": "installed",
+      "total": 115223032
+     },
+     "frames": {
+      "zsync": "~/work/put.gd-i293acc/runs/d69-l/frames/install-zsync.png",
+      "result": "~/work/put.gd-i293acc/runs/d69-l/frames/install-result.png"
+     },
+     "imageSha256": "250acc5c4a022a2c8a135c10aa7e767738f7e2d3d571c5de496c5795d08cd9d5",
+     "backup": "~/work/put.gd-i293acc/runs/d69-l/apps/.putgd-update-backup-0.1.1-nightly.886.AppImage",
+     "backupSha256": "e31f1f0d47b330416aafbebbe27833dce8adc3c1439201415d8d10896cb87d4e",
+     "folder": [
+      ".putgd-update-backup-0.1.1-nightly.886.AppImage",
+      "putgd-0.1.1-nightly.886-x86_64.AppImage"
+     ],
+     "stateFile": {
+      "backup": {
+       "copied": false,
+       "device": "2050",
+       "inode": "6562976",
+       "mtime": 1792623930,
+       "path": "~/work/put.gd-i293acc/runs/d69-l/apps/.putgd-update-backup-0.1.1-nightly.886.AppImage",
+       "size": 115223032
+      },
+      "installed": {
+       "image": "~/work/put.gd-i293acc/runs/d69-l/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+       "installedAt": "2026-10-21T23:13:01Z",
+       "method": "zsync",
+       "previousVersion": "0.1.1-nightly.886",
+       "sha256": "250acc5c4a022a2c8a135c10aa7e767738f7e2d3d571c5de496c5795d08cd9d5",
+       "version": "0.1.1-nightly.887"
+      },
+      "schemaVersion": 1,
+      "staging": null
+     }
+    }
+   },
+   {
+    "at": "2026-10-21T23:14:28Z",
+    "step": "loginCheck",
+    "result": {
+     "residents": [
+      {
+       "pid": 2018603,
+       "appimage": "~/work/put.gd-i293acc/runs/d69-l/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+       "parent": "AppRun",
+       "started": "18:14:11"
+      }
+     ],
+     "version": "putgd 0.1.1-nightly.887",
+     "imageSha256": "250acc5c4a022a2c8a135c10aa7e767738f7e2d3d571c5de496c5795d08cd9d5",
+     "journal": ""
+    }
+   }
+  ]
+ },
+ "f44-a": {
+  "host": "fedora",
+  "scenario": "a",
+  "session": "wayland",
+  "desktop": "GNOME",
+  "shell": "gnome-shell",
+  "imageSha256": "e31f1f0d47b330416aafbebbe27833dce8adc3c1439201415d8d10896cb87d4e",
+  "before": {
+   "dataPutgd": false,
+   "autostart": []
+  },
+  "steps": [
+   {
+    "at": "2026-10-21T23:11:07Z",
+    "step": "check",
+    "result": {
+     "status": {
+      "build": "0.1.1-nightly.886",
+      "channel": "nightly",
+      "latest": "0.1.1-nightly.887",
+      "updateAvailable": true,
+      "install": {
+       "available": true,
+       "backup": null,
+       "image": "~/work/put.gd-i293acc/runs/f44-a/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+       "installed": null,
+       "reason": null,
+       "restartRequired": false,
+       "running": false,
+       "state": "idle"
+      }
+     },
+     "frame": "~/work/put.gd-i293acc/runs/f44-a/frames/check.png"
+    }
+   },
+   {
+    "at": "2026-10-21T23:11:16Z",
+    "step": "install",
+    "result": {
+     "seconds": 9.0,
+     "phases": [
+      {
+       "at": 0.0,
+       "phase": [
+        "starting",
+        "auto"
+       ],
+       "bytes": 0,
+       "total": 0
+      },
+      {
+       "at": 0.5,
+       "phase": [
+        "verifying",
+        null
+       ],
+       "bytes": 0,
+       "total": 0
+      },
+      {
+       "at": 1.7,
+       "phase": [
+        "zsync",
+        "appimageupdatetool"
+       ],
+       "bytes": 0,
+       "total": 115223032
+      },
+      {
+       "at": 4.9,
+       "phase": [
+        "verifying",
+        "appimageupdatetool"
+       ],
+       "bytes": 115223032,
+       "total": 115223032
+      },
+      {
+       "at": 6.2,
+       "phase": [
+        "installing",
+        "zsync"
+       ],
+       "bytes": 115223032,
+       "total": 115223032
+      },
+      {
+       "at": 6.6,
+       "phase": [
+        "done",
+        "zsync"
+       ],
+       "bytes": 115223032,
+       "total": 115223032
+      }
+     ],
+     "install": {
+      "available": true,
+      "backup": "~/work/put.gd-i293acc/runs/f44-a/apps/.putgd-update-backup-0.1.1-nightly.886.AppImage",
+      "bytes": 115223032,
+      "finishedAt": "2026-10-21T23:11:13Z",
+      "image": "~/work/put.gd-i293acc/runs/f44-a/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+      "installed": {
+       "image": "~/work/put.gd-i293acc/runs/f44-a/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+       "installedAt": "2026-10-21T23:11:13Z",
+       "method": "zsync",
+       "previousVersion": "0.1.1-nightly.886",
+       "sha256": "250acc5c4a022a2c8a135c10aa7e767738f7e2d3d571c5de496c5795d08cd9d5",
+       "version": "0.1.1-nightly.887"
+      },
+      "method": "zsync",
+      "phase": "done",
+      "reason": null,
+      "restartRequired": true,
+      "result": {
+       "backup": "~/work/put.gd-i293acc/runs/f44-a/apps/.putgd-update-backup-0.1.1-nightly.886.AppImage",
+       "image": "~/work/put.gd-i293acc/runs/f44-a/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+       "installed": true,
+       "method": "zsync",
+       "previousVersion": "0.1.1-nightly.886",
+       "sha256": "250acc5c4a022a2c8a135c10aa7e767738f7e2d3d571c5de496c5795d08cd9d5",
+       "signature": {
+        "trustedComment": "put.gd v0.1.1-nightly.887 nightly"
+       },
+       "tag": "v0.1.1-nightly.887",
+       "version": "0.1.1-nightly.887",
+       "zsync": {
+        "output": "zsync2: used 114933760 local, fetched 1251832 | \u001b[2K\r100.00% done (109.89 of 109.89 MiB)... | Validation warning: AppImage not signed | Update successful. New file created: ~/work/put.gd-i293acc/runs/f44-a/apps/.putgd-update-vcNTwa/putgd-0.1.1-nightly.887-x86_64.AppImage",
+        "tool": "appimageupdatetool",
+        "used": true
+       }
+      },
+      "running": false,
+      "startedAt": "2026-10-21T23:11:07Z",
+      "state": "installed",
+      "total": 115223032
+     },
+     "frames": {
+      "zsync": "~/work/put.gd-i293acc/runs/f44-a/frames/install-zsync.png",
+      "result": "~/work/put.gd-i293acc/runs/f44-a/frames/install-result.png"
+     },
+     "imageSha256": "250acc5c4a022a2c8a135c10aa7e767738f7e2d3d571c5de496c5795d08cd9d5",
+     "backup": "~/work/put.gd-i293acc/runs/f44-a/apps/.putgd-update-backup-0.1.1-nightly.886.AppImage",
+     "backupSha256": "e31f1f0d47b330416aafbebbe27833dce8adc3c1439201415d8d10896cb87d4e",
+     "folder": [
+      ".putgd-update-backup-0.1.1-nightly.886.AppImage",
+      "putgd-0.1.1-nightly.886-x86_64.AppImage"
+     ],
+     "stateFile": {
+      "backup": {
+       "copied": false,
+       "device": "49",
+       "inode": "2638354",
+       "mtime": 1792623930,
+       "path": "~/work/put.gd-i293acc/runs/f44-a/apps/.putgd-update-backup-0.1.1-nightly.886.AppImage",
+       "size": 115223032
+      },
+      "installed": {
+       "image": "~/work/put.gd-i293acc/runs/f44-a/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+       "installedAt": "2026-10-21T23:11:13Z",
+       "method": "zsync",
+       "previousVersion": "0.1.1-nightly.886",
+       "sha256": "250acc5c4a022a2c8a135c10aa7e767738f7e2d3d571c5de496c5795d08cd9d5",
+       "version": "0.1.1-nightly.887"
+      },
+      "schemaVersion": 1,
+      "staging": null
+     }
+    }
+   },
+   {
+    "at": "2026-10-21T23:11:21Z",
+    "step": "restart",
+    "result": {
+     "reply": {
+      "error": {
+       "code": "",
+       "details": {},
+       "message": ""
+      },
+      "ok": true,
+      "requestId": "2ea4e1fb-58ef-4d28-a467-bcc4ee7380b2",
+      "result": {
+       "restarting": true,
+       "version": "0.1.1-nightly.887"
+      },
+      "schemaVersion": 1
+     },
+     "oldPid": 2090033,
+     "oldGone": true,
+     "newPid": 2090318,
+     "newExe": "/tmp/.mount_putgd-ofIDkL/usr/bin/putgd",
+     "newAppimage": "~/work/put.gd-i293acc/runs/f44-a/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+     "version": "0.1.1-nightly.887",
+     "install": {
+      "available": true,
+      "backup": null,
+      "image": "~/work/put.gd-i293acc/runs/f44-a/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+      "installed": {
+       "backupRemoved": true,
+       "image": "~/work/put.gd-i293acc/runs/f44-a/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+       "installedAt": "2026-10-21T23:11:13Z",
+       "method": "zsync",
+       "previousVersion": "0.1.1-nightly.886",
+       "sha256": "250acc5c4a022a2c8a135c10aa7e767738f7e2d3d571c5de496c5795d08cd9d5",
+       "version": "0.1.1-nightly.887"
+      },
+      "reason": null,
+      "restartRequired": false,
+      "running": false,
+      "state": "idle"
+     },
+     "imageSha256": "250acc5c4a022a2c8a135c10aa7e767738f7e2d3d571c5de496c5795d08cd9d5",
+     "afterRestart": {
+      "current": "0.1.1-nightly.887",
+      "latest": "0.1.1-nightly.887",
+      "updateAvailable": false
+     },
+     "folder": [
+      "putgd-0.1.1-nightly.886-x86_64.AppImage"
+     ],
+     "frame": "~/work/put.gd-i293acc/runs/f44-a/frames/restarted.png"
+    }
+   }
+  ]
+ },
+ "f44-b": {
+  "host": "fedora",
+  "scenario": "b",
+  "session": "wayland",
+  "desktop": "GNOME",
+  "shell": "gnome-shell",
+  "imageSha256": "e31f1f0d47b330416aafbebbe27833dce8adc3c1439201415d8d10896cb87d4e",
+  "before": {
+   "dataPutgd": false,
+   "autostart": []
+  },
+  "steps": [
+   {
+    "at": "2026-10-21T23:11:27Z",
+    "step": "check",
+    "result": {
+     "status": {
+      "build": "0.1.1-nightly.886",
+      "channel": "nightly",
+      "latest": "0.1.1-nightly.887",
+      "updateAvailable": true,
+      "install": {
+       "available": true,
+       "backup": null,
+       "image": "~/work/put.gd-i293acc/runs/f44-b/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+       "installed": null,
+       "reason": null,
+       "restartRequired": false,
+       "running": false,
+       "state": "idle"
+      }
+     },
+     "frame": "~/work/put.gd-i293acc/runs/f44-b/frames/check.png"
+    }
+   },
+   {
+    "at": "2026-10-21T23:11:37Z",
+    "step": "install",
+    "result": {
+     "seconds": 9.0,
+     "phases": [
+      {
+       "at": 0.0,
+       "phase": [
+        "starting",
+        "auto"
+       ],
+       "bytes": 0,
+       "total": 0
+      },
+      {
+       "at": 0.5,
+       "phase": [
+        "verifying",
+        null
+       ],
+       "bytes": 0,
+       "total": 0
+      },
+      {
+       "at": 1.7,
+       "phase": [
+        "download",
+        "release"
+       ],
+       "bytes": 8192,
+       "total": 115223032
+      },
+      {
+       "at": 5.4,
+       "phase": [
+        "verifying",
+        "release"
+       ],
+       "bytes": 115223032,
+       "total": 115223032
+      },
+      {
+       "at": 6.2,
+       "phase": [
+        "installing",
+        "download"
+       ],
+       "bytes": 115223032,
+       "total": 115223032
+      },
+      {
+       "at": 6.7,
+       "phase": [
+        "done",
+        "download"
+       ],
+       "bytes": 115223032,
+       "total": 115223032
+      }
+     ],
+     "install": {
+      "available": true,
+      "backup": "~/work/put.gd-i293acc/runs/f44-b/apps/.putgd-update-backup-0.1.1-nightly.886.AppImage",
+      "bytes": 115223032,
+      "finishedAt": "2026-10-21T23:11:34Z",
+      "image": "~/work/put.gd-i293acc/runs/f44-b/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+      "installed": {
+       "image": "~/work/put.gd-i293acc/runs/f44-b/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+       "installedAt": "2026-10-21T23:11:34Z",
+       "method": "download",
+       "previousVersion": "0.1.1-nightly.886",
+       "sha256": "250acc5c4a022a2c8a135c10aa7e767738f7e2d3d571c5de496c5795d08cd9d5",
+       "version": "0.1.1-nightly.887"
+      },
+      "method": "download",
+      "phase": "done",
+      "reason": null,
+      "restartRequired": true,
+      "result": {
+       "backup": "~/work/put.gd-i293acc/runs/f44-b/apps/.putgd-update-backup-0.1.1-nightly.886.AppImage",
+       "downloads": [
+        {
+         "source": "release",
+         "transfer": {
+          "httpStatus": 200,
+          "network": null,
+          "tooLarge": false,
+          "url": "https://pkg.put.gd/lab/releases/v0.1.1-nightly.887/putgd-0.1.1-nightly.887-x86_64.AppImage"
+         }
+        }
+       ],
+       "image": "~/work/put.gd-i293acc/runs/f44-b/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+       "installed": true,
+       "method": "download",
+       "previousVersion": "0.1.1-nightly.886",
+       "sha256": "250acc5c4a022a2c8a135c10aa7e767738f7e2d3d571c5de496c5795d08cd9d5",
+       "signature": {
+        "trustedComment": "put.gd v0.1.1-nightly.887 nightly"
+       },
+       "source": "release",
+       "tag": "v0.1.1-nightly.887",
+       "version": "0.1.1-nightly.887",
+       "zsync": {
+        "fallbackReason": "not_installed",
+        "tool": null,
+        "used": false
+       }
+      },
+      "running": false,
+      "startedAt": "2026-10-21T23:11:27Z",
+      "state": "installed",
+      "total": 115223032
+     },
+     "frames": {
+      "download": "~/work/put.gd-i293acc/runs/f44-b/frames/install-download.png",
+      "result": "~/work/put.gd-i293acc/runs/f44-b/frames/install-result.png"
+     },
+     "imageSha256": "250acc5c4a022a2c8a135c10aa7e767738f7e2d3d571c5de496c5795d08cd9d5",
+     "backup": "~/work/put.gd-i293acc/runs/f44-b/apps/.putgd-update-backup-0.1.1-nightly.886.AppImage",
+     "backupSha256": "e31f1f0d47b330416aafbebbe27833dce8adc3c1439201415d8d10896cb87d4e",
+     "folder": [
+      ".putgd-update-backup-0.1.1-nightly.886.AppImage",
+      "putgd-0.1.1-nightly.886-x86_64.AppImage"
+     ],
+     "stateFile": {
+      "backup": {
+       "copied": false,
+       "device": "49",
+       "inode": "2639604",
+       "mtime": 1792623930,
+       "path": "~/work/put.gd-i293acc/runs/f44-b/apps/.putgd-update-backup-0.1.1-nightly.886.AppImage",
+       "size": 115223032
+      },
+      "installed": {
+       "image": "~/work/put.gd-i293acc/runs/f44-b/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+       "installedAt": "2026-10-21T23:11:34Z",
+       "method": "download",
+       "previousVersion": "0.1.1-nightly.886",
+       "sha256": "250acc5c4a022a2c8a135c10aa7e767738f7e2d3d571c5de496c5795d08cd9d5",
+       "version": "0.1.1-nightly.887"
+      },
+      "schemaVersion": 1,
+      "staging": null
+     }
+    }
+   },
+   {
+    "at": "2026-10-21T23:11:41Z",
+    "step": "restart",
+    "result": {
+     "reply": {
+      "error": {
+       "code": "",
+       "details": {},
+       "message": ""
+      },
+      "ok": true,
+      "requestId": "ffbb6939-9abc-4b2d-b190-caed069cdb35",
+      "result": {
+       "restarting": true,
+       "version": "0.1.1-nightly.887"
+      },
+      "schemaVersion": 1
+     },
+     "oldPid": 2090425,
+     "oldGone": true,
+     "newPid": 2090621,
+     "newExe": "/tmp/.mount_putgd-apfiMm/usr/bin/putgd",
+     "newAppimage": "~/work/put.gd-i293acc/runs/f44-b/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+     "version": "0.1.1-nightly.887",
+     "install": {
+      "available": true,
+      "backup": null,
+      "image": "~/work/put.gd-i293acc/runs/f44-b/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+      "installed": {
+       "backupRemoved": true,
+       "image": "~/work/put.gd-i293acc/runs/f44-b/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+       "installedAt": "2026-10-21T23:11:34Z",
+       "method": "download",
+       "previousVersion": "0.1.1-nightly.886",
+       "sha256": "250acc5c4a022a2c8a135c10aa7e767738f7e2d3d571c5de496c5795d08cd9d5",
+       "version": "0.1.1-nightly.887"
+      },
+      "reason": null,
+      "restartRequired": false,
+      "running": false,
+      "state": "idle"
+     },
+     "imageSha256": "250acc5c4a022a2c8a135c10aa7e767738f7e2d3d571c5de496c5795d08cd9d5",
+     "afterRestart": {
+      "current": "0.1.1-nightly.887",
+      "latest": "0.1.1-nightly.887",
+      "updateAvailable": false
+     },
+     "folder": [
+      "putgd-0.1.1-nightly.886-x86_64.AppImage"
+     ],
+     "frame": "~/work/put.gd-i293acc/runs/f44-b/frames/restarted.png"
+    }
+   }
+  ]
+ },
+ "f44-c": {
+  "host": "fedora",
+  "scenario": "c",
+  "session": "wayland",
+  "desktop": "GNOME",
+  "shell": "gnome-shell",
+  "imageSha256": "e31f1f0d47b330416aafbebbe27833dce8adc3c1439201415d8d10896cb87d4e",
+  "before": {
+   "dataPutgd": false,
+   "autostart": []
+  },
+  "steps": [
+   {
+    "at": "2026-10-21T23:11:48Z",
+    "step": "check",
+    "result": {
+     "status": {
+      "build": "0.1.1-nightly.886",
+      "channel": "nightly",
+      "latest": "0.1.1-nightly.887",
+      "updateAvailable": true,
+      "install": {
+       "available": true,
+       "backup": null,
+       "image": "~/work/put.gd-i293acc/runs/f44-c/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+       "installed": null,
+       "reason": null,
+       "restartRequired": false,
+       "running": false,
+       "state": "idle"
+      }
+     },
+     "frame": "~/work/put.gd-i293acc/runs/f44-c/frames/check.png"
+    }
+   },
+   {
+    "at": "2026-10-21T23:11:57Z",
+    "step": "install",
+    "result": {
+     "seconds": 8.7,
+     "phases": [
+      {
+       "at": 0.0,
+       "phase": [
+        "starting",
+        "auto"
+       ],
+       "bytes": 0,
+       "total": 0
+      },
+      {
+       "at": 0.5,
+       "phase": [
+        "verifying",
+        null
+       ],
+       "bytes": 0,
+       "total": 0
+      },
+      {
+       "at": 1.7,
+       "phase": [
+        "download",
+        "release"
+       ],
+       "bytes": 0,
+       "total": 115223032
+      },
+      {
+       "at": 5.0,
+       "phase": [
+        "verifying",
+        "release"
+       ],
+       "bytes": 115223032,
+       "total": 115223032
+      },
+      {
+       "at": 5.9,
+       "phase": [
+        "installing",
+        "download"
+       ],
+       "bytes": 115223032,
+       "total": 115223032
+      },
+      {
+       "at": 6.3,
+       "phase": [
+        "done",
+        "download"
+       ],
+       "bytes": 115223032,
+       "total": 115223032
+      }
+     ],
+     "install": {
+      "available": true,
+      "backup": "~/work/put.gd-i293acc/runs/f44-c/apps/.putgd-update-backup-0.1.1-nightly.886.AppImage",
+      "bytes": 115223032,
+      "finishedAt": "2026-10-21T23:11:54Z",
+      "image": "~/work/put.gd-i293acc/runs/f44-c/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+      "installed": {
+       "image": "~/work/put.gd-i293acc/runs/f44-c/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+       "installedAt": "2026-10-21T23:11:54Z",
+       "method": "download",
+       "previousVersion": "0.1.1-nightly.886",
+       "sha256": "250acc5c4a022a2c8a135c10aa7e767738f7e2d3d571c5de496c5795d08cd9d5",
+       "version": "0.1.1-nightly.887"
+      },
+      "method": "download",
+      "phase": "done",
+      "reason": null,
+      "restartRequired": true,
+      "result": {
+       "backup": "~/work/put.gd-i293acc/runs/f44-c/apps/.putgd-update-backup-0.1.1-nightly.886.AppImage",
+       "downloads": [
+        {
+         "source": "release",
+         "transfer": {
+          "httpStatus": 200,
+          "network": null,
+          "tooLarge": false,
+          "url": "https://pkg.put.gd/lab/releases/v0.1.1-nightly.887/putgd-0.1.1-nightly.887-x86_64.AppImage"
+         }
+        }
+       ],
+       "image": "~/work/put.gd-i293acc/runs/f44-c/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+       "installed": true,
+       "method": "download",
+       "previousVersion": "0.1.1-nightly.886",
+       "sha256": "250acc5c4a022a2c8a135c10aa7e767738f7e2d3d571c5de496c5795d08cd9d5",
+       "signature": {
+        "trustedComment": "put.gd v0.1.1-nightly.887 nightly"
+       },
+       "source": "release",
+       "tag": "v0.1.1-nightly.887",
+       "version": "0.1.1-nightly.887",
+       "zsync": {
+        "fallbackReason": "crashed",
+        "output": "zsync2: Unknown error while checking whether file (null) exists: Bad address (lab shim)",
+        "tool": "appimageupdatetool",
+        "used": false
+       }
+      },
+      "running": false,
+      "startedAt": "2026-10-21T23:11:48Z",
+      "state": "installed",
+      "total": 115223032
+     },
+     "frames": {
+      "download": "~/work/put.gd-i293acc/runs/f44-c/frames/install-download.png",
+      "result": "~/work/put.gd-i293acc/runs/f44-c/frames/install-result.png"
+     },
+     "imageSha256": "250acc5c4a022a2c8a135c10aa7e767738f7e2d3d571c5de496c5795d08cd9d5",
+     "backup": "~/work/put.gd-i293acc/runs/f44-c/apps/.putgd-update-backup-0.1.1-nightly.886.AppImage",
+     "backupSha256": "e31f1f0d47b330416aafbebbe27833dce8adc3c1439201415d8d10896cb87d4e",
+     "folder": [
+      ".putgd-update-backup-0.1.1-nightly.886.AppImage",
+      "putgd-0.1.1-nightly.886-x86_64.AppImage"
+     ],
+     "stateFile": {
+      "backup": {
+       "copied": false,
+       "device": "49",
+       "inode": "2640852",
+       "mtime": 1792623930,
+       "path": "~/work/put.gd-i293acc/runs/f44-c/apps/.putgd-update-backup-0.1.1-nightly.886.AppImage",
+       "size": 115223032
+      },
+      "installed": {
+       "image": "~/work/put.gd-i293acc/runs/f44-c/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+       "installedAt": "2026-10-21T23:11:54Z",
+       "method": "download",
+       "previousVersion": "0.1.1-nightly.886",
+       "sha256": "250acc5c4a022a2c8a135c10aa7e767738f7e2d3d571c5de496c5795d08cd9d5",
+       "version": "0.1.1-nightly.887"
+      },
+      "schemaVersion": 1,
+      "staging": null
+     }
+    }
+   },
+   {
+    "at": "2026-10-21T23:12:02Z",
+    "step": "restart",
+    "result": {
+     "reply": {
+      "error": {
+       "code": "",
+       "details": {},
+       "message": ""
+      },
+      "ok": true,
+      "requestId": "4b6ea3df-bb97-43ec-8c3b-cc44dbeb5b17",
+      "result": {
+       "restarting": true,
+       "version": "0.1.1-nightly.887"
+      },
+      "schemaVersion": 1
+     },
+     "oldPid": 2090730,
+     "oldGone": true,
+     "newPid": 2090936,
+     "newExe": "/tmp/.mount_putgd-LJckpE/usr/bin/putgd",
+     "newAppimage": "~/work/put.gd-i293acc/runs/f44-c/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+     "version": "0.1.1-nightly.887",
+     "install": {
+      "available": true,
+      "backup": null,
+      "image": "~/work/put.gd-i293acc/runs/f44-c/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+      "installed": {
+       "backupRemoved": true,
+       "image": "~/work/put.gd-i293acc/runs/f44-c/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+       "installedAt": "2026-10-21T23:11:54Z",
+       "method": "download",
+       "previousVersion": "0.1.1-nightly.886",
+       "sha256": "250acc5c4a022a2c8a135c10aa7e767738f7e2d3d571c5de496c5795d08cd9d5",
+       "version": "0.1.1-nightly.887"
+      },
+      "reason": null,
+      "restartRequired": false,
+      "running": false,
+      "state": "idle"
+     },
+     "imageSha256": "250acc5c4a022a2c8a135c10aa7e767738f7e2d3d571c5de496c5795d08cd9d5",
+     "afterRestart": {
+      "current": "0.1.1-nightly.887",
+      "latest": "0.1.1-nightly.887",
+      "updateAvailable": false
+     },
+     "folder": [
+      "putgd-0.1.1-nightly.886-x86_64.AppImage"
+     ],
+     "frame": "~/work/put.gd-i293acc/runs/f44-c/frames/restarted.png"
+    }
+   }
+  ]
+ },
+ "f44-t": {
+  "host": "fedora",
+  "scenario": "b",
+  "session": "wayland",
+  "desktop": "GNOME",
+  "shell": "gnome-shell",
+  "imageSha256": "e31f1f0d47b330416aafbebbe27833dce8adc3c1439201415d8d10896cb87d4e",
+  "before": {
+   "dataPutgd": false,
+   "autostart": []
+  },
+  "steps": [
+   {
+    "at": "2026-10-21T23:13:09Z",
+    "step": "tamper",
+    "result": {
+     "base": "http://127.0.0.1:46269/releases",
+     "results": {
+      "image": {
+       "reply": true,
+       "state": "failed",
+       "error": {
+        "code": "update_verification_failed",
+        "details": {
+         "actual": "2c54a4a3c3031a32a892a247086ecc2d06a505137f705580a818935d422ea153",
+         "check": "sha256",
+         "expected": "250acc5c4a022a2c8a135c10aa7e767738f7e2d3d571c5de496c5795d08cd9d5",
+         "source": "release"
+        },
+        "message": "The download doesn't match the release's SHA256SUMS; nothing was changed"
+       },
+       "imageSha256": "e31f1f0d47b330416aafbebbe27833dce8adc3c1439201415d8d10896cb87d4e",
+       "folder": [
+        "putgd-0.1.1-nightly.886-x86_64.AppImage"
+       ],
+       "frame": "~/work/put.gd-i293acc/runs/f44-t/frames/tamper-image.png"
+      },
+      "unsigned": {
+       "reply": true,
+       "state": "failed",
+       "error": {
+        "code": "update_signature_invalid",
+        "details": {
+         "check": "missing",
+         "httpStatus": 404,
+         "network": "Error transferring http://127.0.0.1:46269/releases/v0.1.1-nightly.887/SHA256SUMS.minisig - server replied: Not Found",
+         "tooLarge": false,
+         "url": "http://127.0.0.1:46269/releases/v0.1.1-nightly.887/SHA256SUMS.minisig"
+        },
+        "message": "The release's SHA256SUMS has no signature; nothing was changed"
+       },
+       "imageSha256": "e31f1f0d47b330416aafbebbe27833dce8adc3c1439201415d8d10896cb87d4e",
+       "folder": [
+        "putgd-0.1.1-nightly.886-x86_64.AppImage"
+       ],
+       "frame": "~/work/put.gd-i293acc/runs/f44-t/frames/tamper-unsigned.png"
+      },
+      "sums": {
+       "reply": true,
+       "state": "failed",
+       "error": {
+        "code": "update_signature_invalid",
+        "details": {
+         "check": "signature"
+        },
+        "message": "The release's SHA256SUMS signature isn't valid (the signature doesn't match); nothing was changed"
+       },
+       "imageSha256": "e31f1f0d47b330416aafbebbe27833dce8adc3c1439201415d8d10896cb87d4e",
+       "folder": [
+        "putgd-0.1.1-nightly.886-x86_64.AppImage"
+       ],
+       "frame": "~/work/put.gd-i293acc/runs/f44-t/frames/tamper-sums.png"
+      }
+     },
+     "unchanged": true
+    }
+   }
+  ]
+ },
+ "k72-a": {
+  "host": "kubuntu",
+  "scenario": "a",
+  "session": "wayland",
+  "desktop": "KDE",
+  "shell": "plasmashell",
+  "imageSha256": "e31f1f0d47b330416aafbebbe27833dce8adc3c1439201415d8d10896cb87d4e",
+  "before": {
+   "dataPutgd": false,
+   "autostart": [
+    "patrick-vnc.desktop"
+   ]
+  },
+  "steps": [
+   {
+    "at": "2026-10-21T23:11:06Z",
+    "step": "check",
+    "result": {
+     "status": {
+      "build": "0.1.1-nightly.886",
+      "channel": "nightly",
+      "latest": "0.1.1-nightly.887",
+      "updateAvailable": true,
+      "install": {
+       "available": true,
+       "backup": null,
+       "image": "~/work/put.gd-i293acc/runs/k72-a/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+       "installed": null,
+       "reason": null,
+       "restartRequired": false,
+       "running": false,
+       "state": "idle"
+      }
+     },
+     "frame": "~/work/put.gd-i293acc/runs/k72-a/frames/check.png"
+    }
+   },
+   {
+    "at": "2026-10-21T23:11:16Z",
+    "step": "install",
+    "result": {
+     "seconds": 8.8,
+     "phases": [
+      {
+       "at": 0.0,
+       "phase": [
+        "starting",
+        "auto"
+       ],
+       "bytes": 0,
+       "total": 0
+      },
+      {
+       "at": 0.5,
+       "phase": [
+        "verifying",
+        null
+       ],
+       "bytes": 0,
+       "total": 0
+      },
+      {
+       "at": 2.2,
+       "phase": [
+        "zsync",
+        "appimageupdatetool"
+       ],
+       "bytes": 0,
+       "total": 115223032
+      },
+      {
+       "at": 5.3,
+       "phase": [
+        "verifying",
+        "appimageupdatetool"
+       ],
+       "bytes": 115223032,
+       "total": 115223032
+      },
+      {
+       "at": 6.1,
+       "phase": [
+        "installing",
+        "zsync"
+       ],
+       "bytes": 115223032,
+       "total": 115223032
+      },
+      {
+       "at": 6.5,
+       "phase": [
+        "done",
+        "zsync"
+       ],
+       "bytes": 115223032,
+       "total": 115223032
+      }
+     ],
+     "install": {
+      "available": true,
+      "backup": "~/work/put.gd-i293acc/runs/k72-a/apps/.putgd-update-backup-0.1.1-nightly.886.AppImage",
+      "bytes": 115223032,
+      "finishedAt": "2026-10-21T23:11:13Z",
+      "image": "~/work/put.gd-i293acc/runs/k72-a/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+      "installed": {
+       "image": "~/work/put.gd-i293acc/runs/k72-a/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+       "installedAt": "2026-10-21T23:11:13Z",
+       "method": "zsync",
+       "previousVersion": "0.1.1-nightly.886",
+       "sha256": "250acc5c4a022a2c8a135c10aa7e767738f7e2d3d571c5de496c5795d08cd9d5",
+       "version": "0.1.1-nightly.887"
+      },
+      "method": "zsync",
+      "phase": "done",
+      "reason": null,
+      "restartRequired": true,
+      "result": {
+       "backup": "~/work/put.gd-i293acc/runs/k72-a/apps/.putgd-update-backup-0.1.1-nightly.886.AppImage",
+       "image": "~/work/put.gd-i293acc/runs/k72-a/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+       "installed": true,
+       "method": "zsync",
+       "previousVersion": "0.1.1-nightly.886",
+       "sha256": "250acc5c4a022a2c8a135c10aa7e767738f7e2d3d571c5de496c5795d08cd9d5",
+       "signature": {
+        "trustedComment": "put.gd v0.1.1-nightly.887 nightly"
+       },
+       "tag": "v0.1.1-nightly.887",
+       "version": "0.1.1-nightly.887",
+       "zsync": {
+        "output": "zsync2: used 114933760 local, fetched 1251832 | \u001b[2K\r100.00% done (109.89 of 109.89 MiB)... | Validation warning: AppImage not signed | Update successful. New file created: ~/work/put.gd-i293acc/runs/k72-a/apps/.putgd-update-pEkIPU/putgd-0.1.1-nightly.887-x86_64.AppImage",
+        "tool": "appimageupdatetool",
+        "used": true
+       }
+      },
+      "running": false,
+      "startedAt": "2026-10-21T23:11:06Z",
+      "state": "installed",
+      "total": 115223032
+     },
+     "frames": {
+      "zsync": "~/work/put.gd-i293acc/runs/k72-a/frames/install-zsync.png",
+      "result": "~/work/put.gd-i293acc/runs/k72-a/frames/install-result.png"
+     },
+     "imageSha256": "250acc5c4a022a2c8a135c10aa7e767738f7e2d3d571c5de496c5795d08cd9d5",
+     "backup": "~/work/put.gd-i293acc/runs/k72-a/apps/.putgd-update-backup-0.1.1-nightly.886.AppImage",
+     "backupSha256": "e31f1f0d47b330416aafbebbe27833dce8adc3c1439201415d8d10896cb87d4e",
+     "folder": [
+      ".putgd-update-backup-0.1.1-nightly.886.AppImage",
+      "putgd-0.1.1-nightly.886-x86_64.AppImage"
+     ],
+     "stateFile": {
+      "backup": {
+       "copied": false,
+       "device": "2050",
+       "inode": "3960599",
+       "mtime": 1792623930,
+       "path": "~/work/put.gd-i293acc/runs/k72-a/apps/.putgd-update-backup-0.1.1-nightly.886.AppImage",
+       "size": 115223032
+      },
+      "installed": {
+       "image": "~/work/put.gd-i293acc/runs/k72-a/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+       "installedAt": "2026-10-21T23:11:13Z",
+       "method": "zsync",
+       "previousVersion": "0.1.1-nightly.886",
+       "sha256": "250acc5c4a022a2c8a135c10aa7e767738f7e2d3d571c5de496c5795d08cd9d5",
+       "version": "0.1.1-nightly.887"
+      },
+      "schemaVersion": 1,
+      "staging": null
+     }
+    }
+   },
+   {
+    "at": "2026-10-21T23:11:20Z",
+    "step": "restart",
+    "result": {
+     "reply": {
+      "error": {
+       "code": "",
+       "details": {},
+       "message": ""
+      },
+      "ok": true,
+      "requestId": "9db3d364-79ab-45b4-8a49-78c5249a9195",
+      "result": {
+       "restarting": true,
+       "version": "0.1.1-nightly.887"
+      },
+      "schemaVersion": 1
+     },
+     "oldPid": 418189,
+     "oldGone": true,
+     "newPid": 418440,
+     "newExe": "/tmp/.mount_putgd-jBohHm/usr/bin/putgd",
+     "newAppimage": "~/work/put.gd-i293acc/runs/k72-a/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+     "version": "0.1.1-nightly.887",
+     "install": {
+      "available": true,
+      "backup": null,
+      "image": "~/work/put.gd-i293acc/runs/k72-a/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+      "installed": {
+       "backupRemoved": true,
+       "image": "~/work/put.gd-i293acc/runs/k72-a/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+       "installedAt": "2026-10-21T23:11:13Z",
+       "method": "zsync",
+       "previousVersion": "0.1.1-nightly.886",
+       "sha256": "250acc5c4a022a2c8a135c10aa7e767738f7e2d3d571c5de496c5795d08cd9d5",
+       "version": "0.1.1-nightly.887"
+      },
+      "reason": null,
+      "restartRequired": false,
+      "running": false,
+      "state": "idle"
+     },
+     "imageSha256": "250acc5c4a022a2c8a135c10aa7e767738f7e2d3d571c5de496c5795d08cd9d5",
+     "afterRestart": {
+      "current": "0.1.1-nightly.887",
+      "latest": "0.1.1-nightly.887",
+      "updateAvailable": false
+     },
+     "folder": [
+      "putgd-0.1.1-nightly.886-x86_64.AppImage"
+     ],
+     "frame": "~/work/put.gd-i293acc/runs/k72-a/frames/restarted.png"
+    }
+   }
+  ]
+ },
+ "k72-b": {
+  "host": "kubuntu",
+  "scenario": "b",
+  "session": "wayland",
+  "desktop": "KDE",
+  "shell": "plasmashell",
+  "imageSha256": "e31f1f0d47b330416aafbebbe27833dce8adc3c1439201415d8d10896cb87d4e",
+  "before": {
+   "dataPutgd": false,
+   "autostart": [
+    "patrick-vnc.desktop"
+   ]
+  },
+  "steps": [
+   {
+    "at": "2026-10-21T23:11:26Z",
+    "step": "check",
+    "result": {
+     "status": {
+      "build": "0.1.1-nightly.886",
+      "channel": "nightly",
+      "latest": "0.1.1-nightly.887",
+      "updateAvailable": true,
+      "install": {
+       "available": true,
+       "backup": null,
+       "image": "~/work/put.gd-i293acc/runs/k72-b/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+       "installed": null,
+       "reason": null,
+       "restartRequired": false,
+       "running": false,
+       "state": "idle"
+      }
+     },
+     "frame": "~/work/put.gd-i293acc/runs/k72-b/frames/check.png"
+    }
+   },
+   {
+    "at": "2026-10-21T23:11:34Z",
+    "step": "install",
+    "result": {
+     "seconds": 6.9,
+     "phases": [
+      {
+       "at": 0.0,
+       "phase": [
+        "starting",
+        "auto"
+       ],
+       "bytes": 0,
+       "total": 0
+      },
+      {
+       "at": 0.5,
+       "phase": [
+        "verifying",
+        null
+       ],
+       "bytes": 0,
+       "total": 0
+      },
+      {
+       "at": 1.7,
+       "phase": [
+        "download",
+        "release"
+       ],
+       "bytes": 713189,
+       "total": 115223032
+      },
+      {
+       "at": 4.5,
+       "phase": [
+        "done",
+        "download"
+       ],
+       "bytes": 115223032,
+       "total": 115223032
+      }
+     ],
+     "install": {
+      "available": true,
+      "backup": "~/work/put.gd-i293acc/runs/k72-b/apps/.putgd-update-backup-0.1.1-nightly.886.AppImage",
+      "bytes": 115223032,
+      "finishedAt": "2026-10-21T23:11:31Z",
+      "image": "~/work/put.gd-i293acc/runs/k72-b/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+      "installed": {
+       "image": "~/work/put.gd-i293acc/runs/k72-b/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+       "installedAt": "2026-10-21T23:11:31Z",
+       "method": "download",
+       "previousVersion": "0.1.1-nightly.886",
+       "sha256": "250acc5c4a022a2c8a135c10aa7e767738f7e2d3d571c5de496c5795d08cd9d5",
+       "version": "0.1.1-nightly.887"
+      },
+      "method": "download",
+      "phase": "done",
+      "reason": null,
+      "restartRequired": true,
+      "result": {
+       "backup": "~/work/put.gd-i293acc/runs/k72-b/apps/.putgd-update-backup-0.1.1-nightly.886.AppImage",
+       "downloads": [
+        {
+         "source": "release",
+         "transfer": {
+          "httpStatus": 200,
+          "network": null,
+          "tooLarge": false,
+          "url": "https://pkg.put.gd/lab/releases/v0.1.1-nightly.887/putgd-0.1.1-nightly.887-x86_64.AppImage"
+         }
+        }
+       ],
+       "image": "~/work/put.gd-i293acc/runs/k72-b/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+       "installed": true,
+       "method": "download",
+       "previousVersion": "0.1.1-nightly.886",
+       "sha256": "250acc5c4a022a2c8a135c10aa7e767738f7e2d3d571c5de496c5795d08cd9d5",
+       "signature": {
+        "trustedComment": "put.gd v0.1.1-nightly.887 nightly"
+       },
+       "source": "release",
+       "tag": "v0.1.1-nightly.887",
+       "version": "0.1.1-nightly.887",
+       "zsync": {
+        "fallbackReason": "not_installed",
+        "tool": null,
+        "used": false
+       }
+      },
+      "running": false,
+      "startedAt": "2026-10-21T23:11:26Z",
+      "state": "installed",
+      "total": 115223032
+     },
+     "frames": {
+      "download": "~/work/put.gd-i293acc/runs/k72-b/frames/install-download.png",
+      "result": "~/work/put.gd-i293acc/runs/k72-b/frames/install-result.png"
+     },
+     "imageSha256": "250acc5c4a022a2c8a135c10aa7e767738f7e2d3d571c5de496c5795d08cd9d5",
+     "backup": "~/work/put.gd-i293acc/runs/k72-b/apps/.putgd-update-backup-0.1.1-nightly.886.AppImage",
+     "backupSha256": "e31f1f0d47b330416aafbebbe27833dce8adc3c1439201415d8d10896cb87d4e",
+     "folder": [
+      ".putgd-update-backup-0.1.1-nightly.886.AppImage",
+      "putgd-0.1.1-nightly.886-x86_64.AppImage"
+     ],
+     "stateFile": {
+      "backup": {
+       "copied": false,
+       "device": "2050",
+       "inode": "3960600",
+       "mtime": 1792623930,
+       "path": "~/work/put.gd-i293acc/runs/k72-b/apps/.putgd-update-backup-0.1.1-nightly.886.AppImage",
+       "size": 115223032
+      },
+      "installed": {
+       "image": "~/work/put.gd-i293acc/runs/k72-b/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+       "installedAt": "2026-10-21T23:11:31Z",
+       "method": "download",
+       "previousVersion": "0.1.1-nightly.886",
+       "sha256": "250acc5c4a022a2c8a135c10aa7e767738f7e2d3d571c5de496c5795d08cd9d5",
+       "version": "0.1.1-nightly.887"
+      },
+      "schemaVersion": 1,
+      "staging": null
+     }
+    }
+   },
+   {
+    "at": "2026-10-21T23:11:38Z",
+    "step": "restart",
+    "result": {
+     "reply": {
+      "error": {
+       "code": "",
+       "details": {},
+       "message": ""
+      },
+      "ok": true,
+      "requestId": "bf92841c-b60a-4914-9e01-3db6251d7af0",
+      "result": {
+       "restarting": true,
+       "version": "0.1.1-nightly.887"
+      },
+      "schemaVersion": 1
+     },
+     "oldPid": 418535,
+     "oldGone": true,
+     "newPid": 418714,
+     "newExe": "/tmp/.mount_putgd-amoGJk/usr/bin/putgd",
+     "newAppimage": "~/work/put.gd-i293acc/runs/k72-b/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+     "version": "0.1.1-nightly.887",
+     "install": {
+      "available": true,
+      "backup": null,
+      "image": "~/work/put.gd-i293acc/runs/k72-b/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+      "installed": {
+       "backupRemoved": true,
+       "image": "~/work/put.gd-i293acc/runs/k72-b/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+       "installedAt": "2026-10-21T23:11:31Z",
+       "method": "download",
+       "previousVersion": "0.1.1-nightly.886",
+       "sha256": "250acc5c4a022a2c8a135c10aa7e767738f7e2d3d571c5de496c5795d08cd9d5",
+       "version": "0.1.1-nightly.887"
+      },
+      "reason": null,
+      "restartRequired": false,
+      "running": false,
+      "state": "idle"
+     },
+     "imageSha256": "250acc5c4a022a2c8a135c10aa7e767738f7e2d3d571c5de496c5795d08cd9d5",
+     "afterRestart": {
+      "current": "0.1.1-nightly.887",
+      "latest": "0.1.1-nightly.887",
+      "updateAvailable": false
+     },
+     "folder": [
+      "putgd-0.1.1-nightly.886-x86_64.AppImage"
+     ],
+     "frame": "~/work/put.gd-i293acc/runs/k72-b/frames/restarted.png"
+    }
+   }
+  ]
+ },
+ "k72-c": {
+  "host": "kubuntu",
+  "scenario": "c",
+  "session": "wayland",
+  "desktop": "KDE",
+  "shell": "plasmashell",
+  "imageSha256": "e31f1f0d47b330416aafbebbe27833dce8adc3c1439201415d8d10896cb87d4e",
+  "before": {
+   "dataPutgd": false,
+   "autostart": [
+    "patrick-vnc.desktop"
+   ]
+  },
+  "steps": [
+   {
+    "at": "2026-10-21T23:11:44Z",
+    "step": "check",
+    "result": {
+     "status": {
+      "build": "0.1.1-nightly.886",
+      "channel": "nightly",
+      "latest": "0.1.1-nightly.887",
+      "updateAvailable": true,
+      "install": {
+       "available": true,
+       "backup": null,
+       "image": "~/work/put.gd-i293acc/runs/k72-c/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+       "installed": null,
+       "reason": null,
+       "restartRequired": false,
+       "running": false,
+       "state": "idle"
+      }
+     },
+     "frame": "~/work/put.gd-i293acc/runs/k72-c/frames/check.png"
+    }
+   },
+   {
+    "at": "2026-10-21T23:11:52Z",
+    "step": "install",
+    "result": {
+     "seconds": 7.0,
+     "phases": [
+      {
+       "at": 0.0,
+       "phase": [
+        "starting",
+        "auto"
+       ],
+       "bytes": 0,
+       "total": 0
+      },
+      {
+       "at": 0.5,
+       "phase": [
+        "verifying",
+        null
+       ],
+       "bytes": 0,
+       "total": 0
+      },
+      {
+       "at": 1.7,
+       "phase": [
+        "download",
+        "release"
+       ],
+       "bytes": 0,
+       "total": 115223032
+      },
+      {
+       "at": 4.5,
+       "phase": [
+        "done",
+        "download"
+       ],
+       "bytes": 115223032,
+       "total": 115223032
+      }
+     ],
+     "install": {
+      "available": true,
+      "backup": "~/work/put.gd-i293acc/runs/k72-c/apps/.putgd-update-backup-0.1.1-nightly.886.AppImage",
+      "bytes": 115223032,
+      "finishedAt": "2026-10-21T23:11:48Z",
+      "image": "~/work/put.gd-i293acc/runs/k72-c/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+      "installed": {
+       "image": "~/work/put.gd-i293acc/runs/k72-c/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+       "installedAt": "2026-10-21T23:11:48Z",
+       "method": "download",
+       "previousVersion": "0.1.1-nightly.886",
+       "sha256": "250acc5c4a022a2c8a135c10aa7e767738f7e2d3d571c5de496c5795d08cd9d5",
+       "version": "0.1.1-nightly.887"
+      },
+      "method": "download",
+      "phase": "done",
+      "reason": null,
+      "restartRequired": true,
+      "result": {
+       "backup": "~/work/put.gd-i293acc/runs/k72-c/apps/.putgd-update-backup-0.1.1-nightly.886.AppImage",
+       "downloads": [
+        {
+         "source": "release",
+         "transfer": {
+          "httpStatus": 200,
+          "network": null,
+          "tooLarge": false,
+          "url": "https://pkg.put.gd/lab/releases/v0.1.1-nightly.887/putgd-0.1.1-nightly.887-x86_64.AppImage"
+         }
+        }
+       ],
+       "image": "~/work/put.gd-i293acc/runs/k72-c/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+       "installed": true,
+       "method": "download",
+       "previousVersion": "0.1.1-nightly.886",
+       "sha256": "250acc5c4a022a2c8a135c10aa7e767738f7e2d3d571c5de496c5795d08cd9d5",
+       "signature": {
+        "trustedComment": "put.gd v0.1.1-nightly.887 nightly"
+       },
+       "source": "release",
+       "tag": "v0.1.1-nightly.887",
+       "version": "0.1.1-nightly.887",
+       "zsync": {
+        "fallbackReason": "crashed",
+        "output": "zsync2: Unknown error while checking whether file (null) exists: Bad address (lab shim)",
+        "tool": "appimageupdatetool",
+        "used": false
+       }
+      },
+      "running": false,
+      "startedAt": "2026-10-21T23:11:44Z",
+      "state": "installed",
+      "total": 115223032
+     },
+     "frames": {
+      "download": "~/work/put.gd-i293acc/runs/k72-c/frames/install-download.png",
+      "result": "~/work/put.gd-i293acc/runs/k72-c/frames/install-result.png"
+     },
+     "imageSha256": "250acc5c4a022a2c8a135c10aa7e767738f7e2d3d571c5de496c5795d08cd9d5",
+     "backup": "~/work/put.gd-i293acc/runs/k72-c/apps/.putgd-update-backup-0.1.1-nightly.886.AppImage",
+     "backupSha256": "e31f1f0d47b330416aafbebbe27833dce8adc3c1439201415d8d10896cb87d4e",
+     "folder": [
+      ".putgd-update-backup-0.1.1-nightly.886.AppImage",
+      "putgd-0.1.1-nightly.886-x86_64.AppImage"
+     ],
+     "stateFile": {
+      "backup": {
+       "copied": false,
+       "device": "2050",
+       "inode": "3960610",
+       "mtime": 1792623930,
+       "path": "~/work/put.gd-i293acc/runs/k72-c/apps/.putgd-update-backup-0.1.1-nightly.886.AppImage",
+       "size": 115223032
+      },
+      "installed": {
+       "image": "~/work/put.gd-i293acc/runs/k72-c/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+       "installedAt": "2026-10-21T23:11:48Z",
+       "method": "download",
+       "previousVersion": "0.1.1-nightly.886",
+       "sha256": "250acc5c4a022a2c8a135c10aa7e767738f7e2d3d571c5de496c5795d08cd9d5",
+       "version": "0.1.1-nightly.887"
+      },
+      "schemaVersion": 1,
+      "staging": null
+     }
+    }
+   },
+   {
+    "at": "2026-10-21T23:11:56Z",
+    "step": "restart",
+    "result": {
+     "reply": {
+      "error": {
+       "code": "",
+       "details": {},
+       "message": ""
+      },
+      "ok": true,
+      "requestId": "3cb9fa17-1a3f-4985-89da-2a7b27b07b5f",
+      "result": {
+       "restarting": true,
+       "version": "0.1.1-nightly.887"
+      },
+      "schemaVersion": 1
+     },
+     "oldPid": 418807,
+     "oldGone": true,
+     "newPid": 418983,
+     "newExe": "/tmp/.mount_putgd-BPkfao/usr/bin/putgd",
+     "newAppimage": "~/work/put.gd-i293acc/runs/k72-c/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+     "version": "0.1.1-nightly.887",
+     "install": {
+      "available": true,
+      "backup": null,
+      "image": "~/work/put.gd-i293acc/runs/k72-c/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+      "installed": {
+       "backupRemoved": true,
+       "image": "~/work/put.gd-i293acc/runs/k72-c/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+       "installedAt": "2026-10-21T23:11:48Z",
+       "method": "download",
+       "previousVersion": "0.1.1-nightly.886",
+       "sha256": "250acc5c4a022a2c8a135c10aa7e767738f7e2d3d571c5de496c5795d08cd9d5",
+       "version": "0.1.1-nightly.887"
+      },
+      "reason": null,
+      "restartRequired": false,
+      "running": false,
+      "state": "idle"
+     },
+     "imageSha256": "250acc5c4a022a2c8a135c10aa7e767738f7e2d3d571c5de496c5795d08cd9d5",
+     "afterRestart": {
+      "current": "0.1.1-nightly.887",
+      "latest": "0.1.1-nightly.887",
+      "updateAvailable": false
+     },
+     "folder": [
+      "putgd-0.1.1-nightly.886-x86_64.AppImage"
+     ],
+     "frame": "~/work/put.gd-i293acc/runs/k72-c/frames/restarted.png"
+    }
+   }
+  ]
+ },
+ "k72-mb": {
+  "host": "kubuntu",
+  "scenario": "b",
+  "session": "wayland",
+  "desktop": "KDE",
+  "shell": "plasmashell",
+  "imageSha256": "9e3071157f47bb72deea81da3f3d132ea7121be6359f5f69122c1c5d3f959b7e",
+  "before": {
+   "dataPutgd": false,
+   "autostart": [
+    "patrick-vnc.desktop"
+   ]
+  },
+  "steps": [
+   {
+    "at": "2026-10-21T23:30:24Z",
+    "step": "mem",
+    "result": {
+     "version": "0.1.1-nightly.874",
+     "imageSha256": "9e3071157f47bb72deea81da3f3d132ea7121be6359f5f69122c1c5d3f959b7e",
+     "pid": 420847,
+     "host": "kubuntu",
+     "session": "wayland",
+     "desktop": "KDE",
+     "A": {
+      "window": "A cold idle",
+      "seconds": 180.1,
+      "rssMedianMiB": 29.66,
+      "rssMinMiB": 29.41,
+      "rssMaxMiB": 29.66,
+      "every10s": [
+       29.41,
+       29.41,
+       29.41,
+       29.66,
+       29.66,
+       29.66,
+       29.66,
+       29.66,
+       29.66,
+       29.66,
+       29.66,
+       29.66,
+       29.66,
+       29.66,
+       29.66,
+       29.66,
+       29.66,
+       29.66
+      ],
+      "pssMiB": 23.25,
+      "privateMiB": 22.91,
+      "tlsNetworkLibraries": [],
+      "load": [
+       0.00927734375,
+       0.06884765625,
+       0.09619140625
+      ]
+     },
+     "action": {
+      "check": true
+     },
+     "B": {
+      "window": "B idle after check",
+      "seconds": 180.1,
+      "rssMedianMiB": 29.7,
+      "rssMinMiB": 29.7,
+      "rssMaxMiB": 29.7,
+      "every10s": [
+       29.7,
+       29.7,
+       29.7,
+       29.7,
+       29.7,
+       29.7,
+       29.7,
+       29.7,
+       29.7,
+       29.7,
+       29.7,
+       29.7,
+       29.7,
+       29.7,
+       29.7,
+       29.7,
+       29.7,
+       29.7
+      ],
+      "pssMiB": 23.28,
+      "privateMiB": 22.94,
+      "tlsNetworkLibraries": [],
+      "load": [
+       0.06689453125,
+       0.04296875,
+       0.07861328125
+      ]
+     }
+    }
+   }
+  ]
+ },
+ "k72-mh": {
+  "host": "kubuntu",
+  "scenario": "b",
+  "session": "wayland",
+  "desktop": "KDE",
+  "shell": "plasmashell",
+  "imageSha256": "e31f1f0d47b330416aafbebbe27833dce8adc3c1439201415d8d10896cb87d4e",
+  "before": {
+   "dataPutgd": false,
+   "autostart": [
+    "patrick-vnc.desktop"
+   ]
+  },
+  "steps": [
+   {
+    "at": "2026-10-21T23:37:34Z",
+    "step": "mem",
+    "result": {
+     "version": "0.1.1-nightly.886",
+     "imageSha256": "e31f1f0d47b330416aafbebbe27833dce8adc3c1439201415d8d10896cb87d4e",
+     "pid": 421700,
+     "host": "kubuntu",
+     "session": "wayland",
+     "desktop": "KDE",
+     "A": {
+      "window": "A cold idle",
+      "seconds": 180.1,
+      "rssMedianMiB": 29.86,
+      "rssMinMiB": 29.59,
+      "rssMaxMiB": 29.86,
+      "every10s": [
+       29.59,
+       29.59,
+       29.59,
+       29.86,
+       29.86,
+       29.86,
+       29.86,
+       29.86,
+       29.86,
+       29.86,
+       29.86,
+       29.86,
+       29.86,
+       29.86,
+       29.86,
+       29.86,
+       29.86,
+       29.86
+      ],
+      "pssMiB": 23.46,
+      "privateMiB": 23.12,
+      "tlsNetworkLibraries": [],
+      "load": [
+       0.00146484375,
+       0.0234375,
+       0.0634765625
+      ]
+     },
+     "action": {
+      "install": "installed"
+     },
+     "B": {
+      "window": "B idle after install",
+      "seconds": 180.1,
+      "rssMedianMiB": 29.95,
+      "rssMinMiB": 29.95,
+      "rssMaxMiB": 29.95,
+      "every10s": [
+       29.95,
+       29.95,
+       29.95,
+       29.95,
+       29.95,
+       29.95,
+       29.95,
+       29.95,
+       29.95,
+       29.95,
+       29.95,
+       29.95,
+       29.95,
+       29.95,
+       29.95,
+       29.95,
+       29.95,
+       29.95
+      ],
+      "pssMiB": 23.54,
+      "privateMiB": 23.2,
+      "tlsNetworkLibraries": [],
+      "load": [
+       0.0078125,
+       0.0234375,
+       0.05419921875
+      ]
+     }
+    }
+   }
+  ]
+ },
+ "m74-a": {
+  "host": "mint-builder",
+  "scenario": "a",
+  "session": "x11",
+  "desktop": "X-Cinnamon",
+  "shell": "cinnamon",
+  "imageSha256": "e31f1f0d47b330416aafbebbe27833dce8adc3c1439201415d8d10896cb87d4e",
+  "before": {
+   "dataPutgd": false,
+   "autostart": []
+  },
+  "steps": [
+   {
+    "at": "2026-10-21T23:11:07Z",
+    "step": "check",
+    "result": {
+     "status": {
+      "build": "0.1.1-nightly.886",
+      "channel": "nightly",
+      "latest": "0.1.1-nightly.887",
+      "updateAvailable": true,
+      "install": {
+       "available": true,
+       "backup": null,
+       "image": "~/work/put.gd-i293acc/runs/m74-a/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+       "installed": null,
+       "reason": null,
+       "restartRequired": false,
+       "running": false,
+       "state": "idle"
+      }
+     },
+     "frame": "~/work/put.gd-i293acc/runs/m74-a/frames/check.png"
+    }
+   },
+   {
+    "at": "2026-10-21T23:11:17Z",
+    "step": "install",
+    "result": {
+     "seconds": 9.4,
+     "phases": [
+      {
+       "at": 0.0,
+       "phase": [
+        "starting",
+        "auto"
+       ],
+       "bytes": 0,
+       "total": 0
+      },
+      {
+       "at": 0.5,
+       "phase": [
+        "verifying",
+        null
+       ],
+       "bytes": 0,
+       "total": 0
+      },
+      {
+       "at": 1.7,
+       "phase": [
+        "zsync",
+        "appimageupdatetool"
+       ],
+       "bytes": 0,
+       "total": 115223032
+      },
+      {
+       "at": 5.2,
+       "phase": [
+        "verifying",
+        "appimageupdatetool"
+       ],
+       "bytes": 115223032,
+       "total": 115223032
+      },
+      {
+       "at": 6.0,
+       "phase": [
+        "installing",
+        "zsync"
+       ],
+       "bytes": 115223032,
+       "total": 115223032
+      },
+      {
+       "at": 6.9,
+       "phase": [
+        "done",
+        "zsync"
+       ],
+       "bytes": 115223032,
+       "total": 115223032
+      }
+     ],
+     "install": {
+      "available": true,
+      "backup": "~/work/put.gd-i293acc/runs/m74-a/apps/.putgd-update-backup-0.1.1-nightly.886.AppImage",
+      "bytes": 115223032,
+      "finishedAt": "2026-10-21T23:11:13Z",
+      "image": "~/work/put.gd-i293acc/runs/m74-a/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+      "installed": {
+       "image": "~/work/put.gd-i293acc/runs/m74-a/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+       "installedAt": "2026-10-21T23:11:13Z",
+       "method": "zsync",
+       "previousVersion": "0.1.1-nightly.886",
+       "sha256": "250acc5c4a022a2c8a135c10aa7e767738f7e2d3d571c5de496c5795d08cd9d5",
+       "version": "0.1.1-nightly.887"
+      },
+      "method": "zsync",
+      "phase": "done",
+      "reason": null,
+      "restartRequired": true,
+      "result": {
+       "backup": "~/work/put.gd-i293acc/runs/m74-a/apps/.putgd-update-backup-0.1.1-nightly.886.AppImage",
+       "image": "~/work/put.gd-i293acc/runs/m74-a/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+       "installed": true,
+       "method": "zsync",
+       "previousVersion": "0.1.1-nightly.886",
+       "sha256": "250acc5c4a022a2c8a135c10aa7e767738f7e2d3d571c5de496c5795d08cd9d5",
+       "signature": {
+        "trustedComment": "put.gd v0.1.1-nightly.887 nightly"
+       },
+       "tag": "v0.1.1-nightly.887",
+       "version": "0.1.1-nightly.887",
+       "zsync": {
+        "output": "zsync2: used 114933760 local, fetched 1251832 | \u001b[2K\r100.00% done (109.89 of 109.89 MiB)... | Validation warning: AppImage not signed | Update successful. New file created: ~/work/put.gd-i293acc/runs/m74-a/apps/.putgd-update-bnesRJ/putgd-0.1.1-nightly.887-x86_64.AppImage",
+        "tool": "appimageupdatetool",
+        "used": true
+       }
+      },
+      "running": false,
+      "startedAt": "2026-10-21T23:11:07Z",
+      "state": "installed",
+      "total": 115223032
+     },
+     "frames": {
+      "zsync": "~/work/put.gd-i293acc/runs/m74-a/frames/install-zsync.png",
+      "result": "~/work/put.gd-i293acc/runs/m74-a/frames/install-result.png"
+     },
+     "imageSha256": "250acc5c4a022a2c8a135c10aa7e767738f7e2d3d571c5de496c5795d08cd9d5",
+     "backup": "~/work/put.gd-i293acc/runs/m74-a/apps/.putgd-update-backup-0.1.1-nightly.886.AppImage",
+     "backupSha256": "e31f1f0d47b330416aafbebbe27833dce8adc3c1439201415d8d10896cb87d4e",
+     "folder": [
+      ".putgd-update-backup-0.1.1-nightly.886.AppImage",
+      "putgd-0.1.1-nightly.886-x86_64.AppImage"
+     ],
+     "stateFile": {
+      "backup": {
+       "copied": false,
+       "device": "2050",
+       "inode": "14024753",
+       "mtime": 1792623930,
+       "path": "~/work/put.gd-i293acc/runs/m74-a/apps/.putgd-update-backup-0.1.1-nightly.886.AppImage",
+       "size": 115223032
+      },
+      "installed": {
+       "image": "~/work/put.gd-i293acc/runs/m74-a/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+       "installedAt": "2026-10-21T23:11:13Z",
+       "method": "zsync",
+       "previousVersion": "0.1.1-nightly.886",
+       "sha256": "250acc5c4a022a2c8a135c10aa7e767738f7e2d3d571c5de496c5795d08cd9d5",
+       "version": "0.1.1-nightly.887"
+      },
+      "schemaVersion": 1,
+      "staging": null
+     }
+    }
+   },
+   {
+    "at": "2026-10-21T23:11:21Z",
+    "step": "restart",
+    "result": {
+     "reply": {
+      "error": {
+       "code": "",
+       "details": {},
+       "message": ""
+      },
+      "ok": true,
+      "requestId": "83fd730e-fc6d-49ee-89f3-8ff09e5a8b10",
+      "result": {
+       "restarting": true,
+       "version": "0.1.1-nightly.887"
+      },
+      "schemaVersion": 1
+     },
+     "oldPid": 35280,
+     "oldGone": true,
+     "newPid": 35431,
+     "newExe": "/tmp/.mount_putgd-fJFJMM/usr/bin/putgd",
+     "newAppimage": "~/work/put.gd-i293acc/runs/m74-a/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+     "version": "0.1.1-nightly.887",
+     "install": {
+      "available": true,
+      "backup": null,
+      "image": "~/work/put.gd-i293acc/runs/m74-a/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+      "installed": {
+       "backupRemoved": true,
+       "image": "~/work/put.gd-i293acc/runs/m74-a/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+       "installedAt": "2026-10-21T23:11:13Z",
+       "method": "zsync",
+       "previousVersion": "0.1.1-nightly.886",
+       "sha256": "250acc5c4a022a2c8a135c10aa7e767738f7e2d3d571c5de496c5795d08cd9d5",
+       "version": "0.1.1-nightly.887"
+      },
+      "reason": null,
+      "restartRequired": false,
+      "running": false,
+      "state": "idle"
+     },
+     "imageSha256": "250acc5c4a022a2c8a135c10aa7e767738f7e2d3d571c5de496c5795d08cd9d5",
+     "afterRestart": {
+      "current": "0.1.1-nightly.887",
+      "latest": "0.1.1-nightly.887",
+      "updateAvailable": false
+     },
+     "folder": [
+      "putgd-0.1.1-nightly.886-x86_64.AppImage"
+     ],
+     "frame": "~/work/put.gd-i293acc/runs/m74-a/frames/restarted.png"
+    }
+   }
+  ]
+ },
+ "m74-b": {
+  "host": "mint-builder",
+  "scenario": "b",
+  "session": "x11",
+  "desktop": "X-Cinnamon",
+  "shell": "cinnamon",
+  "imageSha256": "e31f1f0d47b330416aafbebbe27833dce8adc3c1439201415d8d10896cb87d4e",
+  "before": {
+   "dataPutgd": false,
+   "autostart": []
+  },
+  "steps": [
+   {
+    "at": "2026-10-21T23:11:28Z",
+    "step": "check",
+    "result": {
+     "status": {
+      "build": "0.1.1-nightly.886",
+      "channel": "nightly",
+      "latest": "0.1.1-nightly.887",
+      "updateAvailable": true,
+      "install": {
+       "available": true,
+       "backup": null,
+       "image": "~/work/put.gd-i293acc/runs/m74-b/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+       "installed": null,
+       "reason": null,
+       "restartRequired": false,
+       "running": false,
+       "state": "idle"
+      }
+     },
+     "frame": "~/work/put.gd-i293acc/runs/m74-b/frames/check.png"
+    }
+   },
+   {
+    "at": "2026-10-21T23:11:37Z",
+    "step": "install",
+    "result": {
+     "seconds": 8.8,
+     "phases": [
+      {
+       "at": 0.0,
+       "phase": [
+        "starting",
+        "auto"
+       ],
+       "bytes": 0,
+       "total": 0
+      },
+      {
+       "at": 0.5,
+       "phase": [
+        "verifying",
+        null
+       ],
+       "bytes": 0,
+       "total": 0
+      },
+      {
+       "at": 1.7,
+       "phase": [
+        "download",
+        "release"
+       ],
+       "bytes": 0,
+       "total": 115223032
+      },
+      {
+       "at": 5.0,
+       "phase": [
+        "verifying",
+        "release"
+       ],
+       "bytes": 115223032,
+       "total": 115223032
+      },
+      {
+       "at": 5.4,
+       "phase": [
+        "installing",
+        "download"
+       ],
+       "bytes": 115223032,
+       "total": 115223032
+      },
+      {
+       "at": 6.2,
+       "phase": [
+        "done",
+        "download"
+       ],
+       "bytes": 115223032,
+       "total": 115223032
+      }
+     ],
+     "install": {
+      "available": true,
+      "backup": "~/work/put.gd-i293acc/runs/m74-b/apps/.putgd-update-backup-0.1.1-nightly.886.AppImage",
+      "bytes": 115223032,
+      "finishedAt": "2026-10-21T23:11:34Z",
+      "image": "~/work/put.gd-i293acc/runs/m74-b/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+      "installed": {
+       "image": "~/work/put.gd-i293acc/runs/m74-b/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+       "installedAt": "2026-10-21T23:11:34Z",
+       "method": "download",
+       "previousVersion": "0.1.1-nightly.886",
+       "sha256": "250acc5c4a022a2c8a135c10aa7e767738f7e2d3d571c5de496c5795d08cd9d5",
+       "version": "0.1.1-nightly.887"
+      },
+      "method": "download",
+      "phase": "done",
+      "reason": null,
+      "restartRequired": true,
+      "result": {
+       "backup": "~/work/put.gd-i293acc/runs/m74-b/apps/.putgd-update-backup-0.1.1-nightly.886.AppImage",
+       "downloads": [
+        {
+         "source": "release",
+         "transfer": {
+          "httpStatus": 200,
+          "network": null,
+          "tooLarge": false,
+          "url": "https://pkg.put.gd/lab/releases/v0.1.1-nightly.887/putgd-0.1.1-nightly.887-x86_64.AppImage"
+         }
+        }
+       ],
+       "image": "~/work/put.gd-i293acc/runs/m74-b/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+       "installed": true,
+       "method": "download",
+       "previousVersion": "0.1.1-nightly.886",
+       "sha256": "250acc5c4a022a2c8a135c10aa7e767738f7e2d3d571c5de496c5795d08cd9d5",
+       "signature": {
+        "trustedComment": "put.gd v0.1.1-nightly.887 nightly"
+       },
+       "source": "release",
+       "tag": "v0.1.1-nightly.887",
+       "version": "0.1.1-nightly.887",
+       "zsync": {
+        "fallbackReason": "not_installed",
+        "tool": null,
+        "used": false
+       }
+      },
+      "running": false,
+      "startedAt": "2026-10-21T23:11:28Z",
+      "state": "installed",
+      "total": 115223032
+     },
+     "frames": {
+      "download": "~/work/put.gd-i293acc/runs/m74-b/frames/install-download.png",
+      "result": "~/work/put.gd-i293acc/runs/m74-b/frames/install-result.png"
+     },
+     "imageSha256": "250acc5c4a022a2c8a135c10aa7e767738f7e2d3d571c5de496c5795d08cd9d5",
+     "backup": "~/work/put.gd-i293acc/runs/m74-b/apps/.putgd-update-backup-0.1.1-nightly.886.AppImage",
+     "backupSha256": "e31f1f0d47b330416aafbebbe27833dce8adc3c1439201415d8d10896cb87d4e",
+     "folder": [
+      ".putgd-update-backup-0.1.1-nightly.886.AppImage",
+      "putgd-0.1.1-nightly.886-x86_64.AppImage"
+     ],
+     "stateFile": {
+      "backup": {
+       "copied": false,
+       "device": "2050",
+       "inode": "14024754",
+       "mtime": 1792623930,
+       "path": "~/work/put.gd-i293acc/runs/m74-b/apps/.putgd-update-backup-0.1.1-nightly.886.AppImage",
+       "size": 115223032
+      },
+      "installed": {
+       "image": "~/work/put.gd-i293acc/runs/m74-b/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+       "installedAt": "2026-10-21T23:11:34Z",
+       "method": "download",
+       "previousVersion": "0.1.1-nightly.886",
+       "sha256": "250acc5c4a022a2c8a135c10aa7e767738f7e2d3d571c5de496c5795d08cd9d5",
+       "version": "0.1.1-nightly.887"
+      },
+      "schemaVersion": 1,
+      "staging": null
+     }
+    }
+   },
+   {
+    "at": "2026-10-21T23:11:42Z",
+    "step": "restart",
+    "result": {
+     "reply": {
+      "error": {
+       "code": "",
+       "details": {},
+       "message": ""
+      },
+      "ok": true,
+      "requestId": "926c4db9-cca4-4d68-9691-5a47e890fa67",
+      "result": {
+       "restarting": true,
+       "version": "0.1.1-nightly.887"
+      },
+      "schemaVersion": 1
+     },
+     "oldPid": 35502,
+     "oldGone": true,
+     "newPid": 35620,
+     "newExe": "/tmp/.mount_putgd-dkDdCn/usr/bin/putgd",
+     "newAppimage": "~/work/put.gd-i293acc/runs/m74-b/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+     "version": "0.1.1-nightly.887",
+     "install": {
+      "available": true,
+      "backup": null,
+      "image": "~/work/put.gd-i293acc/runs/m74-b/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+      "installed": {
+       "backupRemoved": true,
+       "image": "~/work/put.gd-i293acc/runs/m74-b/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+       "installedAt": "2026-10-21T23:11:34Z",
+       "method": "download",
+       "previousVersion": "0.1.1-nightly.886",
+       "sha256": "250acc5c4a022a2c8a135c10aa7e767738f7e2d3d571c5de496c5795d08cd9d5",
+       "version": "0.1.1-nightly.887"
+      },
+      "reason": null,
+      "restartRequired": false,
+      "running": false,
+      "state": "idle"
+     },
+     "imageSha256": "250acc5c4a022a2c8a135c10aa7e767738f7e2d3d571c5de496c5795d08cd9d5",
+     "afterRestart": {
+      "current": "0.1.1-nightly.887",
+      "latest": "0.1.1-nightly.887",
+      "updateAvailable": false
+     },
+     "folder": [
+      "putgd-0.1.1-nightly.886-x86_64.AppImage"
+     ],
+     "frame": "~/work/put.gd-i293acc/runs/m74-b/frames/restarted.png"
+    }
+   }
+  ]
+ },
+ "m74-c": {
+  "host": "mint-builder",
+  "scenario": "c",
+  "session": "x11",
+  "desktop": "X-Cinnamon",
+  "shell": "cinnamon",
+  "imageSha256": "e31f1f0d47b330416aafbebbe27833dce8adc3c1439201415d8d10896cb87d4e",
+  "before": {
+   "dataPutgd": false,
+   "autostart": []
+  },
+  "steps": [
+   {
+    "at": "2026-10-21T23:11:48Z",
+    "step": "check",
+    "result": {
+     "status": {
+      "build": "0.1.1-nightly.886",
+      "channel": "nightly",
+      "latest": "0.1.1-nightly.887",
+      "updateAvailable": true,
+      "install": {
+       "available": true,
+       "backup": null,
+       "image": "~/work/put.gd-i293acc/runs/m74-c/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+       "installed": null,
+       "reason": null,
+       "restartRequired": false,
+       "running": false,
+       "state": "idle"
+      }
+     },
+     "frame": "~/work/put.gd-i293acc/runs/m74-c/frames/check.png"
+    }
+   },
+   {
+    "at": "2026-10-21T23:11:57Z",
+    "step": "install",
+    "result": {
+     "seconds": 8.2,
+     "phases": [
+      {
+       "at": 0.0,
+       "phase": [
+        "starting",
+        "auto"
+       ],
+       "bytes": 0,
+       "total": 0
+      },
+      {
+       "at": 0.5,
+       "phase": [
+        "verifying",
+        null
+       ],
+       "bytes": 0,
+       "total": 0
+      },
+      {
+       "at": 1.7,
+       "phase": [
+        "download",
+        "release"
+       ],
+       "bytes": 0,
+       "total": 115223032
+      },
+      {
+       "at": 4.8,
+       "phase": [
+        "installing",
+        "download"
+       ],
+       "bytes": 115223032,
+       "total": 115223032
+      },
+      {
+       "at": 5.7,
+       "phase": [
+        "done",
+        "download"
+       ],
+       "bytes": 115223032,
+       "total": 115223032
+      }
+     ],
+     "install": {
+      "available": true,
+      "backup": "~/work/put.gd-i293acc/runs/m74-c/apps/.putgd-update-backup-0.1.1-nightly.886.AppImage",
+      "bytes": 115223032,
+      "finishedAt": "2026-10-21T23:11:54Z",
+      "image": "~/work/put.gd-i293acc/runs/m74-c/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+      "installed": {
+       "image": "~/work/put.gd-i293acc/runs/m74-c/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+       "installedAt": "2026-10-21T23:11:54Z",
+       "method": "download",
+       "previousVersion": "0.1.1-nightly.886",
+       "sha256": "250acc5c4a022a2c8a135c10aa7e767738f7e2d3d571c5de496c5795d08cd9d5",
+       "version": "0.1.1-nightly.887"
+      },
+      "method": "download",
+      "phase": "done",
+      "reason": null,
+      "restartRequired": true,
+      "result": {
+       "backup": "~/work/put.gd-i293acc/runs/m74-c/apps/.putgd-update-backup-0.1.1-nightly.886.AppImage",
+       "downloads": [
+        {
+         "source": "release",
+         "transfer": {
+          "httpStatus": 200,
+          "network": null,
+          "tooLarge": false,
+          "url": "https://pkg.put.gd/lab/releases/v0.1.1-nightly.887/putgd-0.1.1-nightly.887-x86_64.AppImage"
+         }
+        }
+       ],
+       "image": "~/work/put.gd-i293acc/runs/m74-c/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+       "installed": true,
+       "method": "download",
+       "previousVersion": "0.1.1-nightly.886",
+       "sha256": "250acc5c4a022a2c8a135c10aa7e767738f7e2d3d571c5de496c5795d08cd9d5",
+       "signature": {
+        "trustedComment": "put.gd v0.1.1-nightly.887 nightly"
+       },
+       "source": "release",
+       "tag": "v0.1.1-nightly.887",
+       "version": "0.1.1-nightly.887",
+       "zsync": {
+        "fallbackReason": "crashed",
+        "output": "zsync2: Unknown error while checking whether file (null) exists: Bad address (lab shim)",
+        "tool": "appimageupdatetool",
+        "used": false
+       }
+      },
+      "running": false,
+      "startedAt": "2026-10-21T23:11:48Z",
+      "state": "installed",
+      "total": 115223032
+     },
+     "frames": {
+      "download": "~/work/put.gd-i293acc/runs/m74-c/frames/install-download.png",
+      "result": "~/work/put.gd-i293acc/runs/m74-c/frames/install-result.png"
+     },
+     "imageSha256": "250acc5c4a022a2c8a135c10aa7e767738f7e2d3d571c5de496c5795d08cd9d5",
+     "backup": "~/work/put.gd-i293acc/runs/m74-c/apps/.putgd-update-backup-0.1.1-nightly.886.AppImage",
+     "backupSha256": "e31f1f0d47b330416aafbebbe27833dce8adc3c1439201415d8d10896cb87d4e",
+     "folder": [
+      ".putgd-update-backup-0.1.1-nightly.886.AppImage",
+      "putgd-0.1.1-nightly.886-x86_64.AppImage"
+     ],
+     "stateFile": {
+      "backup": {
+       "copied": false,
+       "device": "2050",
+       "inode": "14024755",
+       "mtime": 1792623930,
+       "path": "~/work/put.gd-i293acc/runs/m74-c/apps/.putgd-update-backup-0.1.1-nightly.886.AppImage",
+       "size": 115223032
+      },
+      "installed": {
+       "image": "~/work/put.gd-i293acc/runs/m74-c/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+       "installedAt": "2026-10-21T23:11:54Z",
+       "method": "download",
+       "previousVersion": "0.1.1-nightly.886",
+       "sha256": "250acc5c4a022a2c8a135c10aa7e767738f7e2d3d571c5de496c5795d08cd9d5",
+       "version": "0.1.1-nightly.887"
+      },
+      "schemaVersion": 1,
+      "staging": null
+     }
+    }
+   },
+   {
+    "at": "2026-10-21T23:12:02Z",
+    "step": "restart",
+    "result": {
+     "reply": {
+      "error": {
+       "code": "",
+       "details": {},
+       "message": ""
+      },
+      "ok": true,
+      "requestId": "c6782e9e-7474-4454-baff-680093e76b6b",
+      "result": {
+       "restarting": true,
+       "version": "0.1.1-nightly.887"
+      },
+      "schemaVersion": 1
+     },
+     "oldPid": 35697,
+     "oldGone": true,
+     "newPid": 35819,
+     "newExe": "/tmp/.mount_putgd-aLfCBj/usr/bin/putgd",
+     "newAppimage": "~/work/put.gd-i293acc/runs/m74-c/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+     "version": "0.1.1-nightly.887",
+     "install": {
+      "available": true,
+      "backup": null,
+      "image": "~/work/put.gd-i293acc/runs/m74-c/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+      "installed": {
+       "backupRemoved": true,
+       "image": "~/work/put.gd-i293acc/runs/m74-c/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+       "installedAt": "2026-10-21T23:11:54Z",
+       "method": "download",
+       "previousVersion": "0.1.1-nightly.886",
+       "sha256": "250acc5c4a022a2c8a135c10aa7e767738f7e2d3d571c5de496c5795d08cd9d5",
+       "version": "0.1.1-nightly.887"
+      },
+      "reason": null,
+      "restartRequired": false,
+      "running": false,
+      "state": "idle"
+     },
+     "imageSha256": "250acc5c4a022a2c8a135c10aa7e767738f7e2d3d571c5de496c5795d08cd9d5",
+     "afterRestart": {
+      "current": "0.1.1-nightly.887",
+      "latest": "0.1.1-nightly.887",
+      "updateAvailable": false
+     },
+     "folder": [
+      "putgd-0.1.1-nightly.886-x86_64.AppImage"
+     ],
+     "frame": "~/work/put.gd-i293acc/runs/m74-c/frames/restarted.png"
+    }
+   }
+  ]
+ },
+ "m74-l": {
+  "host": "mint-builder",
+  "scenario": "a",
+  "session": "x11",
+  "desktop": "X-Cinnamon",
+  "shell": "cinnamon",
+  "imageSha256": "e31f1f0d47b330416aafbebbe27833dce8adc3c1439201415d8d10896cb87d4e",
+  "before": {
+   "dataPutgd": false,
+   "autostart": []
+  },
+  "steps": [
+   {
+    "at": "2026-10-21T23:13:13Z",
+    "step": "loginEnable",
+    "result": {
+     "entry": "[Desktop Entry]\nType=Application\nName=put.gd\nExec=/bin/sh \"/home/patrick/.local/share/putgd/login/appimage-start.sh\" --background\nTerminal=false\nX-putgd-Managed=true\n",
+     "script": "#!/bin/sh\n# put.gd start at login for an AppImage (#307). put.gd writes this file while\n# Launch at login is on and rewrites it at every start; edits are replaced.\n# X-putgd-Managed=true\n#\n# Updaters that follow the image's .zsync write the new version under the\n# .zsync's versioned file name, beside the old image (AppImageLauncher), and may\n# remove the old one (appimageupdatetool --remove-old). So start the newest\n# put.gd AppImage in the configured image's folder that embeds the same update\n# information. Gear Lever replaces the configured file in place, which needs\n# nothing extra. Only the user's own files in the user's own folder qualify\n# as newer images.\nset -u\nconfigured='~/work/put.gd-i293acc/runs/m74-l/apps/putgd-0.1.1-nightly.886-x86_64.AppImage'\nupdate_information='zsync|https://pkg.put.gd/lab/dl/nightly/appimage.zsync'\n\nsay() {\n    printf 'put.gd login start: %s\\n' \"$*\" >&2\n}\n\n# The user's private group: named after the user, with no other members. With\n# umask 002 (the desktop default on Debian 13, Kubuntu 26.04 and Mint 22.3) the\n# user's files are group-writable.\nown_group=\nuser=$(id -un 2>/dev/null) && group=$(id -g 2>/dev/null) && entry=$(getent group \"$group\" 2>/dev/null) &&\n    case $entry in\n        \"$user\":*:\"$group\": | \"$user\":*:\"$group\":\"$user\") own_group=$group ;;\n    esac\n\n# Owned by the user and writable by nobody else.\nprivate() {\n    [ -O \"$1\" ] || return 1\n    set -- $(stat -L -c '%a %g' -- \"$1\" 2>/dev/null)\n    [ $# -eq 2 ] || return 1\n    case $1 in\n        *[2367]) return 1 ;;\n        *[2367]?) [ \"$2\" = \"$own_group\" ] || return 1 ;;\n    esac\n}\n\n# A private executable regular file, not a symbolic link, with the AppImage\n# type 2 magic at offset 8.\nappimage() {\n    [ -f \"$1\" ] && [ ! -L \"$1\" ] && [ -x \"$1\" ] && private \"$1\" || return 1\n    [ \"$(head -c 11 -- \"$1\" 2>/dev/null | tail -c 3 | od -An -tx1 | tr -d ' \\n')\" = 414902 ]\n}\n\nbounded() {\n    if command -v timeout >/dev/null 2>&1; then\n        timeout 20 \"$@\"\n    else\n        \"$@\"\n    fi\n}\n\n# The version in putgd-VERSION-x86_64.AppImage, as the .zsync names the image,\n# or in AppImageLauncher's putgd-VERSION-x86_64_<md5>.AppImage.\nname_version() {\n    name=${1##*/}\n    case $name in\n        putgd-?*-x86_64.AppImage | putgd-?*-x86_64_*.AppImage) ;;\n        *) return 1 ;;\n    esac\n    version=${name#putgd-}\n    version=${version%%-x86_64*}\n    case $version in\n        [0-9]*) ;;\n        *) return 1 ;;\n    esac\n    case $version in\n        *[!0-9A-Za-z.+-]*) return 1 ;;\n    esac\n    printf '%s\\n' \"$version\"\n}\n\n# Prereleases order before their release: 0.1.2-rc.1 < 0.1.2 (sort -V, ~).\nsortable() {\n    case $1 in\n        *-*) printf '%s~%s\\n' \"${1%%-*}\" \"${1#*-}\" ;;\n        *) printf '%s\\n' \"$1\" ;;\n    esac\n}\n\n# Is version $1 newer than version $2?\nnewer() {\n    [ \"$1\" != \"$2\" ] && [ \"$(printf '%s\\n%s\\n' \"$1\" \"$2\" | sort -V | tail -n 1)\" = \"$1\" ]\n}\n\nbest=\nbest_version=\ndirectory=${configured%/*}\nif [ -n \"$update_information\" ] && [ -d \"$directory\" ] && private \"$directory\"; then\n    for candidate in \"$directory\"/putgd-*.AppImage; do\n        [ \"$candidate\" != \"$configured\" ] || continue\n        version=$(name_version \"$candidate\") || continue\n        version=$(sortable \"$version\")\n        if [ -n \"$best\" ] && ! newer \"$version\" \"$best_version\"; then\n            continue\n        fi\n        appimage \"$candidate\" || continue\n        [ \"$(bounded \"$candidate\" --appimage-updateinformation 2>/dev/null)\" = \"$update_information\" ] || continue\n        best=$candidate\n        best_version=$version\n    done\nfi\n# The configured image is the one put.gd last ran from; like the autostart entry\n# before #307, it only has to be an executable file.\nif [ -f \"$configured\" ] && [ -x \"$configured\" ]; then\n    [ -n \"$best\" ] || exec \"$configured\" \"$@\"\n    # Ask the image which version it is. put.gd's own update (#293) and Gear\n    # Lever replace the file in place, so its name can be older than what it\n    # holds, or carry no version; the name is only the fallback.\n    version=$(bounded \"$configured\" --version 2>/dev/null | sed -n '1s/^putgd //p')\n    [ -n \"$version\" ] || version=$(name_version \"$configured\") || version=\n    if [ -z \"$version\" ] || ! newer \"$best_version\" \"$(sortable \"$version\")\"; then\n        exec \"$configured\" \"$@\"\n    fi\n    say \"starting $best, which is newer than $configured\"\n    exec \"$best\" \"$@\"\nfi\nif [ -n \"$best\" ]; then\n    say \"$configured is missing; starting $best\"\n    exec \"$best\" \"$@\"\nfi\nsay \"cannot start $configured: it is missing or not executable, and no put.gd AppImage with its update information is beside it\"\nexit 1\n"
+    }
+   },
+   {
+    "at": "2026-10-21T23:13:16Z",
+    "step": "check",
+    "result": {
+     "status": {
+      "build": "0.1.1-nightly.886",
+      "channel": "nightly",
+      "latest": "0.1.1-nightly.887",
+      "updateAvailable": true,
+      "install": {
+       "available": true,
+       "backup": null,
+       "image": "~/work/put.gd-i293acc/runs/m74-l/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+       "installed": null,
+       "reason": null,
+       "restartRequired": false,
+       "running": false,
+       "state": "idle"
+      }
+     },
+     "frame": "~/work/put.gd-i293acc/runs/m74-l/frames/check.png"
+    }
+   },
+   {
+    "at": "2026-10-21T23:13:25Z",
+    "step": "install",
+    "result": {
+     "seconds": 8.2,
+     "phases": [
+      {
+       "at": 0.0,
+       "phase": [
+        "starting",
+        "auto"
+       ],
+       "bytes": 0,
+       "total": 0
+      },
+      {
+       "at": 0.5,
+       "phase": [
+        "verifying",
+        null
+       ],
+       "bytes": 0,
+       "total": 0
+      },
+      {
+       "at": 1.7,
+       "phase": [
+        "zsync",
+        "appimageupdatetool"
+       ],
+       "bytes": 0,
+       "total": 115223032
+      },
+      {
+       "at": 4.8,
+       "phase": [
+        "installing",
+        "zsync"
+       ],
+       "bytes": 115223032,
+       "total": 115223032
+      },
+      {
+       "at": 5.7,
+       "phase": [
+        "done",
+        "zsync"
+       ],
+       "bytes": 115223032,
+       "total": 115223032
+      }
+     ],
+     "install": {
+      "available": true,
+      "backup": "~/work/put.gd-i293acc/runs/m74-l/apps/.putgd-update-backup-0.1.1-nightly.886.AppImage",
+      "bytes": 115223032,
+      "finishedAt": "2026-10-21T23:13:22Z",
+      "image": "~/work/put.gd-i293acc/runs/m74-l/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+      "installed": {
+       "image": "~/work/put.gd-i293acc/runs/m74-l/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+       "installedAt": "2026-10-21T23:13:22Z",
+       "method": "zsync",
+       "previousVersion": "0.1.1-nightly.886",
+       "sha256": "250acc5c4a022a2c8a135c10aa7e767738f7e2d3d571c5de496c5795d08cd9d5",
+       "version": "0.1.1-nightly.887"
+      },
+      "method": "zsync",
+      "phase": "done",
+      "reason": null,
+      "restartRequired": true,
+      "result": {
+       "backup": "~/work/put.gd-i293acc/runs/m74-l/apps/.putgd-update-backup-0.1.1-nightly.886.AppImage",
+       "image": "~/work/put.gd-i293acc/runs/m74-l/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+       "installed": true,
+       "method": "zsync",
+       "previousVersion": "0.1.1-nightly.886",
+       "sha256": "250acc5c4a022a2c8a135c10aa7e767738f7e2d3d571c5de496c5795d08cd9d5",
+       "signature": {
+        "trustedComment": "put.gd v0.1.1-nightly.887 nightly"
+       },
+       "tag": "v0.1.1-nightly.887",
+       "version": "0.1.1-nightly.887",
+       "zsync": {
+        "output": "zsync2: used 114933760 local, fetched 1251832 | \u001b[2K\r100.00% done (109.89 of 109.89 MiB)... | Validation warning: AppImage not signed | Update successful. New file created: ~/work/put.gd-i293acc/runs/m74-l/apps/.putgd-update-zqnxfZ/putgd-0.1.1-nightly.887-x86_64.AppImage",
+        "tool": "appimageupdatetool",
+        "used": true
+       }
+      },
+      "running": false,
+      "startedAt": "2026-10-21T23:13:16Z",
+      "state": "installed",
+      "total": 115223032
+     },
+     "frames": {
+      "zsync": "~/work/put.gd-i293acc/runs/m74-l/frames/install-zsync.png",
+      "result": "~/work/put.gd-i293acc/runs/m74-l/frames/install-result.png"
+     },
+     "imageSha256": "250acc5c4a022a2c8a135c10aa7e767738f7e2d3d571c5de496c5795d08cd9d5",
+     "backup": "~/work/put.gd-i293acc/runs/m74-l/apps/.putgd-update-backup-0.1.1-nightly.886.AppImage",
+     "backupSha256": "e31f1f0d47b330416aafbebbe27833dce8adc3c1439201415d8d10896cb87d4e",
+     "folder": [
+      ".putgd-update-backup-0.1.1-nightly.886.AppImage",
+      "putgd-0.1.1-nightly.886-x86_64.AppImage"
+     ],
+     "stateFile": {
+      "backup": {
+       "copied": false,
+       "device": "2050",
+       "inode": "14024757",
+       "mtime": 1792623930,
+       "path": "~/work/put.gd-i293acc/runs/m74-l/apps/.putgd-update-backup-0.1.1-nightly.886.AppImage",
+       "size": 115223032
+      },
+      "installed": {
+       "image": "~/work/put.gd-i293acc/runs/m74-l/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+       "installedAt": "2026-10-21T23:13:22Z",
+       "method": "zsync",
+       "previousVersion": "0.1.1-nightly.886",
+       "sha256": "250acc5c4a022a2c8a135c10aa7e767738f7e2d3d571c5de496c5795d08cd9d5",
+       "version": "0.1.1-nightly.887"
+      },
+      "schemaVersion": 1,
+      "staging": null
+     }
+    }
+   },
+   {
+    "at": "2026-10-21T23:13:48Z",
+    "step": "loginCheck",
+    "result": {
+     "residents": [
+      {
+       "pid": 36772,
+       "appimage": "~/work/put.gd-i293acc/runs/m74-l/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+       "parent": "cinnamon-sessio",
+       "started": "18:13:32"
+      }
+     ],
+     "version": "putgd 0.1.1-nightly.887",
+     "imageSha256": "250acc5c4a022a2c8a135c10aa7e767738f7e2d3d571c5de496c5795d08cd9d5",
+     "journal": ""
+    }
+   },
+   {
+    "at": "2026-10-21T23:15:00Z",
+    "step": "start",
+    "result": {
+     "pid": 37166,
+     "status": {
+      "build": "0.1.1-nightly.887",
+      "channel": "nightly",
+      "latest": "0.1.1-nightly.887",
+      "updateAvailable": false,
+      "install": {
+       "available": true,
+       "backup": null,
+       "image": "~/work/put.gd-i293acc/runs/m74-l/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+       "installed": {
+        "backupRemoved": true,
+        "image": "~/work/put.gd-i293acc/runs/m74-l/apps/putgd-0.1.1-nightly.886-x86_64.AppImage",
+        "installedAt": "2026-10-21T23:13:22Z",
+        "method": "zsync",
+        "previousVersion": "0.1.1-nightly.886",
+        "sha256": "250acc5c4a022a2c8a135c10aa7e767738f7e2d3d571c5de496c5795d08cd9d5",
+        "version": "0.1.1-nightly.887"
+       },
+       "reason": null,
+       "restartRequired": false,
+       "running": false,
+       "state": "idle"
+      }
+     },
+     "frame": "~/work/put.gd-i293acc/runs/m74-l/frames/after-login.png"
+    }
+   }
+  ]
+ },
+ "m74-mb": {
+  "host": "mint-builder",
+  "scenario": "b",
+  "session": "x11",
+  "desktop": "X-Cinnamon",
+  "shell": "cinnamon",
+  "imageSha256": "9e3071157f47bb72deea81da3f3d132ea7121be6359f5f69122c1c5d3f959b7e",
+  "before": {
+   "dataPutgd": false,
+   "autostart": []
+  },
+  "steps": [
+   {
+    "at": "2026-10-21T23:30:24Z",
+    "step": "mem",
+    "result": {
+     "version": "0.1.1-nightly.874",
+     "imageSha256": "9e3071157f47bb72deea81da3f3d132ea7121be6359f5f69122c1c5d3f959b7e",
+     "pid": 37532,
+     "host": "mint-builder",
+     "session": "x11",
+     "desktop": "X-Cinnamon",
+     "A": {
+      "window": "A cold idle",
+      "seconds": 180.1,
+      "rssMedianMiB": 29.22,
+      "rssMinMiB": 28.95,
+      "rssMaxMiB": 29.22,
+      "every10s": [
+       28.95,
+       28.95,
+       28.95,
+       29.22,
+       29.22,
+       29.22,
+       29.22,
+       29.22,
+       29.22,
+       29.22,
+       29.22,
+       29.22,
+       29.22,
+       29.22,
+       29.22,
+       29.22,
+       29.22,
+       29.22
+      ],
+      "pssMiB": 23.38,
+      "privateMiB": 23.25,
+      "tlsNetworkLibraries": [],
+      "load": [
+       0.9482421875,
+       0.5625,
+       0.31494140625
+      ]
+     },
+     "action": {
+      "check": true
+     },
+     "B": {
+      "window": "B idle after check",
+      "seconds": 180.1,
+      "rssMedianMiB": 29.31,
+      "rssMinMiB": 29.31,
+      "rssMaxMiB": 29.31,
+      "every10s": [
+       29.31,
+       29.31,
+       29.31,
+       29.31,
+       29.31,
+       29.31,
+       29.31,
+       29.31,
+       29.31,
+       29.31,
+       29.31,
+       29.31,
+       29.31,
+       29.31,
+       29.31,
+       29.31,
+       29.31,
+       29.31
+      ],
+      "pssMiB": 23.46,
+      "privateMiB": 23.34,
+      "tlsNetworkLibraries": [],
+      "load": [
+       0.0595703125,
+       0.353515625,
+       0.28564453125
+      ]
+     }
+    }
+   }
+  ]
+ },
+ "m74-mh": {
+  "host": "mint-builder",
+  "scenario": "b",
+  "session": "x11",
+  "desktop": "X-Cinnamon",
+  "shell": "cinnamon",
+  "imageSha256": "e31f1f0d47b330416aafbebbe27833dce8adc3c1439201415d8d10896cb87d4e",
+  "before": {
+   "dataPutgd": false,
+   "autostart": []
+  },
+  "steps": [
+   {
+    "at": "2026-10-21T23:37:34Z",
+    "step": "mem",
+    "result": {
+     "version": "0.1.1-nightly.886",
+     "imageSha256": "e31f1f0d47b330416aafbebbe27833dce8adc3c1439201415d8d10896cb87d4e",
+     "pid": 38129,
+     "host": "mint-builder",
+     "session": "x11",
+     "desktop": "X-Cinnamon",
+     "A": {
+      "window": "A cold idle",
+      "seconds": 180.1,
+      "rssMedianMiB": 29.33,
+      "rssMinMiB": 29.03,
+      "rssMaxMiB": 29.33,
+      "every10s": [
+       29.03,
+       29.03,
+       29.03,
+       29.33,
+       29.33,
+       29.33,
+       29.33,
+       29.33,
+       29.33,
+       29.33,
+       29.33,
+       29.33,
+       29.33,
+       29.33,
+       29.33,
+       29.33,
+       29.33,
+       29.33
+      ],
+      "pssMiB": 23.45,
+      "privateMiB": 23.32,
+      "tlsNetworkLibraries": [],
+      "load": [
+       0.00390625,
+       0.181640625,
+       0.2275390625
+      ]
+     },
+     "action": {
+      "install": "installed"
+     },
+     "B": {
+      "window": "B idle after install",
+      "seconds": 180.1,
+      "rssMedianMiB": 29.36,
+      "rssMinMiB": 29.36,
+      "rssMaxMiB": 29.36,
+      "every10s": [
+       29.36,
+       29.36,
+       29.36,
+       29.36,
+       29.36,
+       29.36,
+       29.36,
+       29.36,
+       29.36,
+       29.36,
+       29.36,
+       29.36,
+       29.36,
+       29.36,
+       29.36,
+       29.36,
+       29.36,
+       29.36
+      ],
+      "pssMiB": 23.47,
+      "privateMiB": 23.34,
+      "tlsNetworkLibraries": [],
+      "load": [
+       0.005859375,
+       0.107421875,
+       0.181640625
+      ]
+     }
+    }
+   }
+  ]
+ },
+ "m74-t": {
+  "host": "mint-builder",
+  "scenario": "b",
+  "session": "x11",
+  "desktop": "X-Cinnamon",
+  "shell": "cinnamon",
+  "imageSha256": "e31f1f0d47b330416aafbebbe27833dce8adc3c1439201415d8d10896cb87d4e",
+  "before": {
+   "dataPutgd": false,
+   "autostart": []
+  },
+  "steps": [
+   {
+    "at": "2026-10-21T23:13:10Z",
+    "step": "tamper",
+    "result": {
+     "base": "http://127.0.0.1:33967/releases",
+     "results": {
+      "image": {
+       "reply": true,
+       "state": "failed",
+       "error": {
+        "code": "update_verification_failed",
+        "details": {
+         "actual": "2c54a4a3c3031a32a892a247086ecc2d06a505137f705580a818935d422ea153",
+         "check": "sha256",
+         "expected": "250acc5c4a022a2c8a135c10aa7e767738f7e2d3d571c5de496c5795d08cd9d5",
+         "source": "release"
+        },
+        "message": "The download doesn't match the release's SHA256SUMS; nothing was changed"
+       },
+       "imageSha256": "e31f1f0d47b330416aafbebbe27833dce8adc3c1439201415d8d10896cb87d4e",
+       "folder": [
+        "putgd-0.1.1-nightly.886-x86_64.AppImage"
+       ],
+       "frame": "~/work/put.gd-i293acc/runs/m74-t/frames/tamper-image.png"
+      },
+      "unsigned": {
+       "reply": true,
+       "state": "failed",
+       "error": {
+        "code": "update_signature_invalid",
+        "details": {
+         "check": "missing",
+         "httpStatus": 404,
+         "network": "Error transferring http://127.0.0.1:33967/releases/v0.1.1-nightly.887/SHA256SUMS.minisig - server replied: Not Found",
+         "tooLarge": false,
+         "url": "http://127.0.0.1:33967/releases/v0.1.1-nightly.887/SHA256SUMS.minisig"
+        },
+        "message": "The release's SHA256SUMS has no signature; nothing was changed"
+       },
+       "imageSha256": "e31f1f0d47b330416aafbebbe27833dce8adc3c1439201415d8d10896cb87d4e",
+       "folder": [
+        "putgd-0.1.1-nightly.886-x86_64.AppImage"
+       ],
+       "frame": "~/work/put.gd-i293acc/runs/m74-t/frames/tamper-unsigned.png"
+      },
+      "sums": {
+       "reply": true,
+       "state": "failed",
+       "error": {
+        "code": "update_signature_invalid",
+        "details": {
+         "check": "signature"
+        },
+        "message": "The release's SHA256SUMS signature isn't valid (the signature doesn't match); nothing was changed"
+       },
+       "imageSha256": "e31f1f0d47b330416aafbebbe27833dce8adc3c1439201415d8d10896cb87d4e",
+       "folder": [
+        "putgd-0.1.1-nightly.886-x86_64.AppImage"
+       ],
+       "frame": "~/work/put.gd-i293acc/runs/m74-t/frames/tamper-sums.png"
+      }
+     },
+     "unchanged": true
+    }
+   }
+  ]
+ }
+}

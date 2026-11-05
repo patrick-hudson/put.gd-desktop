@@ -1,0 +1,14 @@
+2026-10-22T21:45:25Z installed 987 extension user copy; enabled-extensions += putgd@put.gd
+2026-10-22T21:45:33Z shell gnome-shell pid 2461502
+2026-10-22T21:45:33Z logout requested (gnome-session-quit --logout)
+2026-10-22T21:45:34Z old shell gone
+2026-10-22T21:45:34Z systemctl restart gdm
+2026-10-22T21:45:35Z new shell pid 2648682
+13083  1000 patrick     seat0 2648601 user          tty2 no -
+2026-10-22T21:47:43Z uninstalled putgd@put.gd user copy; enabled-extensions restored
+2026-10-22T21:47:43Z shell gnome-shell pid 2648682
+2026-10-22T21:47:43Z logout requested (gnome-session-quit --logout)
+2026-10-22T21:47:44Z old shell gone
+2026-10-22T21:47:44Z systemctl restart gdm
+2026-10-22T21:47:46Z new shell pid 2654265
+13095  1000 patrick     seat0 2654166 user          tty2 no -

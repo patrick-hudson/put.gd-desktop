@@ -1,0 +1,44 @@
+{
+  "run": 40068130492,
+  "artifactId": 12550184602,
+  "name": "release-appimage",
+  "zipBytes": 900946203,
+  "transferredBytes": 4195156,
+  "members": {
+    "appimage-build.json": {
+      "sha256": "9aa8ff5289a1382439244d88f6f380bfc5f0230f8fbecfa228530b80b1156506",
+      "bytes": 340631,
+      "zipCrc32": 2356895683
+    },
+    "appimage-dependencies.json": {
+      "sha256": "95878404320034308eaf7c9bdfcc6901a4835cfc73cf73ca795cb27fd0ee727f",
+      "bytes": 3599,
+      "zipCrc32": 1845796357
+    },
+    "appimage-complete-source.json": {
+      "sha256": "88cfd20bac8b050da3171ac397cb4b0bbe0514f5e7cfb68e298136f7968c24ec",
+      "bytes": 41564,
+      "zipCrc32": 822097206
+    },
+    "appimage-notices.json": {
+      "sha256": "3f2ff361c3a1d77de711b149ecf435713ed4201008d854824e06e28123d91bf8",
+      "bytes": 784,
+      "zipCrc32": 1164330816
+    },
+    "build-info.json": {
+      "sha256": "5c1069248cfe6faed7e1d2d9407d1c737e57d477e133f48260c6a241657f6c25",
+      "bytes": 345,
+      "zipCrc32": 619878702
+    },
+    "debug-symbols-appimage.json": {
+      "sha256": "c00637e5dce6ba11758a6aadb9b177acc7ed23cc501c7729882470dacb1c768b",
+      "bytes": 3241,
+      "zipCrc32": 2218380708
+    },
+    "ci-sdk-environment.json": {
+      "sha256": "bdb0951aa5dcfcc778f90fcfd99c660fcd4091093442663e231cfed74350761d",
+      "bytes": 74013,
+      "zipCrc32": 1380055569
+    }
+  }
+}

@@ -1,91 +1,57 @@
 #!/usr/bin/env python3
-"""Choose and create the candidate or stable tag for the main branch HEAD.
+"""Create the stable release tag for the main branch HEAD.
 
-Every push to main cuts the next candidate `vBASE-rc.N`, or reuses the
-candidate already on HEAD so reruns are idempotent. A stable `vBASE` is cut
-only on a commit that already carries a candidate for the same base.
-Existing tags are never moved.
+Every push to main cuts the stable release `vYY.MDD.N` (#373): HEAD's UTC
+committer date and full-history commit count. A rerun reuses the tag already
+on HEAD. The tag stages a draft; it is published only after exact-asset
+acceptance, and a commit whose acceptance fails is never released (the next
+promotion is a new commit and so a new version). Existing tags are never moved.
 """
 import argparse
 import json
 import os
 from pathlib import Path
-import re
 import sys
 
-from github_api import GitHub, full_sha, matching_tags, remote_tag_commit
-from nightly import ensure_tag, git, project_base
-from release_identity import parse_tag
+from github_api import GitHub, full_sha, remote_tag_commit, tag_exists
+from nightly import ensure_tag, git
+from release_identity import calendar_base
 
 MAIN_REF = 'refs/heads/main'
-_CANDIDATE = re.compile(r'-rc\.([1-9][0-9]*)$')
 
 
-def candidate_number(tag):
-    return int(_CANDIDATE.search(tag)[1])
-
-
-def release_tags(api, base):
-    """Map each existing candidate/stable tag for base to its commit."""
-    tags = {}
-    for name in matching_tags(api, 'v' + base):
-        try:
-            identity = parse_tag(name)
-        except ValueError:
-            continue
-        if identity.base_version == base and identity.channel in ('candidate', 'stable'):
-            tags[name] = remote_tag_commit(api, name)
-    return tags
-
-
-def choose(channel, base, head, existing):
-    """Return (tag, create) for the requested channel without touching the remote."""
+def choose(root, head):
+    """Return the stable tag of head, from its committer date and commit count."""
     full_sha(head)
-    stable = 'v' + base
-    candidates = {tag: commit for tag, commit in existing.items() if parse_tag(tag).channel == 'candidate'}
-    if channel == 'candidate':
-        if stable in existing:
-            raise ValueError(stable + ' is already released. Bump project(putgd VERSION ...) in this '
-                             'change before cutting another candidate')
-        on_head = sorted((candidate_number(tag), tag) for tag, commit in candidates.items() if commit == head)
-        if on_head:
-            return on_head[-1][1], False
-        number = max((candidate_number(tag) for tag in candidates), default=0) + 1
-        return f'{stable}-rc.{number}', True
-    if channel != 'stable':
-        raise ValueError('Unknown release channel: ' + str(channel))
-    if stable in existing:
-        if existing[stable] != head:
-            raise ValueError(stable + ' already identifies ' + existing[stable])
-        return stable, False
-    if not any(commit == head for commit in candidates.values()):
-        raise ValueError('Stable releases are cut only on a candidate commit. Run the candidate channel '
-                         'on this main commit, run acceptance, then cut stable')
-    return stable, True
+    if git(root, 'rev-parse', '--is-shallow-repository') != 'false':
+        raise ValueError('The release version needs the full Git history')
+    count = int(git(root, 'rev-list', '--count', head))
+    return 'v' + calendar_base(int(git(root, 'show', '-s', '--format=%ct', head)), count)
 
 
-def cut(api, root, ref, channel):
+def cut(api, root, ref):
     if ref != MAIN_REF:
-        raise ValueError('Candidate and stable releases are cut from main only, not ' + ref)
+        raise ValueError('Stable releases are cut from main only, not ' + ref)
     if git(root, 'status', '--porcelain', '--untracked-files=normal'):
         raise ValueError('Release source must be clean')
     head = full_sha(git(root, 'rev-parse', 'HEAD'))
-    base = project_base(root)
-    tag, create = choose(channel, base, head, release_tags(api, base))
+    tag = choose(root, head)
+    create = not tag_exists(api, tag)
+    if not create and remote_tag_commit(api, tag) != head:
+        raise ValueError(tag + ' already identifies another commit')
     release = ensure_tag(api, root, tag, head)
-    if release['channel'] != channel:
+    if release['channel'] != 'stable':
         raise ValueError('Created tag has the wrong channel: ' + tag)
-    return {'schemaVersion': 1, 'tag': tag, 'channel': channel, 'created': create,
-            'sourceSha': head, 'baseVersion': base, 'release': release}
+    return {'schemaVersion': 2, 'tag': tag, 'channel': 'stable', 'created': create,
+            'sourceSha': head, 'baseVersion': release['baseVersion'], 'release': release}
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--channel', choices=('candidate', 'stable'), required=True)
     parser.add_argument('--root', type=Path, default=Path.cwd())
     parser.add_argument('--output', type=Path)
     args = parser.parse_args()
-    result = cut(GitHub(os.environ['GITHUB_REPOSITORY']), args.root, os.environ['GITHUB_REF'], args.channel)
+    result = cut(GitHub(os.environ['GITHUB_REPOSITORY']), args.root, os.environ['GITHUB_REF'])
     if args.output:
         args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output.write_text(json.dumps(result, indent=2) + '\n')

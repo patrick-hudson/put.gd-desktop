@@ -1,0 +1,22 @@
+{
+  "name": "cinnamon-x11-appimage",
+  "desktop": "X-Cinnamon",
+  "session": "x11",
+  "qt_platform": "xcb",
+  "image": "cinnamon-x11",
+  "memory_mib": 6144,
+  "cpus": 2,
+  "install_timeout": 900,
+  "install_recovery_timeout": 600,
+  "video": "virtio-vga",
+  "display_heads": 1,
+  "guest_user": "lab",
+  "status": "requires-graphical-acceptance",
+  "session_process": "cinnamon",
+  "tray_menu": {
+    "button": "right",
+    "openSeconds": 0.8,
+    "firstRowSelected": false
+  },
+  "install": "appimage"
+}

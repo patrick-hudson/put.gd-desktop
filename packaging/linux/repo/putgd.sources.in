@@ -1,0 +1,10 @@
+# put.gd @PUTGD_REPO_CHANNEL@ packages from pkg.put.gd, added by the putgd package.
+# To stop updates from this repository, delete this file or add "Enabled: no";
+# upgrades leave your change alone and `apt purge putgd` removes the file.
+Types: deb
+URIs: @PUTGD_REPO_URL@/apt/@PUTGD_PACKAGE_TARGET@
+Suites: @PUTGD_REPO_CHANNEL@
+Components: main
+Architectures: amd64
+Signed-By:
+@PUTGD_REPO_KEY_BLOCK@

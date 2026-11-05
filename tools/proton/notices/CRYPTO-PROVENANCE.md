@@ -1,3 +1,22 @@
+# Current Crypto 2.2.0 selection
+
+The current helper selects official WebPackages version commit
+`68b93b7d2cadd043cd08203710af382706ed1458` and integrity-locked npm
+`@protontech/crypto@2.2.0`. Its `packages/crypto/src` matches the npm source
+byte for byte before the guarded full-OpenPGP patches. Both version records now
+say 2.2.0; the registry bootstrap is no longer 2.0.0. Root GPL text is unchanged.
+The complete preferred repository source, build configuration and lock are in
+the current crypto packet. The earlier source/provenance packet is retained
+inside it, preserving the evidence below without applying a later grant to 2.0.0.
+
+Crypto 2.2.0 adds jsmimeparser. Preserve its original MIT directory LICENSE,
+MPL-2.0 header on mailParser.js and complete preferred source. Accompanying
+`LICENSE.jsmimeparser-MIT` and `LICENSE.MPL-2.0` supply those texts. The MPL text
+was obtained from https://www.mozilla.org/media/MPL/2.0/index.txt.
+
+The following investigation and approved selection describe the historical
+2.0.0/2.0.1 helper, not the current dependency resolution.
+
 # Crypto redistribution provenance resolution candidate
 
 This investigation concerns public official Proton JavaScript sources only. It made no canonical repository edits, no account requests and no other-provider operations.

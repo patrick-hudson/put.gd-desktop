@@ -1,0 +1,29 @@
+{
+ "host": "aurora-lab",
+ "profile": "aws",
+ "store": "completed",
+ "upload": {
+  "state": "completed",
+  "uploadStatus": "uploaded",
+  "error": {
+   "code": "source_unsupported",
+   "details": {},
+   "message": "Native desktop adapter is not available"
+  },
+  "link": "https://s3.us-east-2.amazonaws.com/put.gd/acceptance/i329/ac/Screen-Capture-2026-10-21-16-19-28.png",
+  "seconds": 1.62
+ },
+ "linkFetch": {
+  "status": 403,
+  "png": false,
+  "bytes": 0
+ },
+ "delete": {
+  "state": "completed",
+  "items": [
+   "removed"
+  ],
+  "remoteStatus": "removed",
+  "linkAfter": 403
+ }
+}

@@ -1,0 +1,75 @@
+Preset CMake variables:
+
+  BUILD_TESTING="ON"
+  CMAKE_BUILD_TYPE="Debug"
+  CMAKE_EXPORT_COMPILE_COMMANDS="ON"
+
+-- The C compiler identification is GNU 14.2.0
+-- The CXX compiler identification is GNU 14.2.0
+-- Detecting C compiler ABI info
+-- Detecting C compiler ABI info - done
+-- Check for working C compiler: /usr/bin/cc - skipped
+-- Detecting C compile features
+-- Detecting C compile features - done
+-- Detecting CXX compiler ABI info
+-- Detecting CXX compiler ABI info - done
+-- Check for working CXX compiler: /usr/bin/c++ - skipped
+-- Detecting CXX compile features
+-- Detecting CXX compile features - done
+-- Performing Test CMAKE_HAVE_LIBC_PTHREAD
+-- Performing Test CMAKE_HAVE_LIBC_PTHREAD - Success
+-- Found Threads: TRUE
+-- Performing Test HAVE_STDATOMIC
+-- Performing Test HAVE_STDATOMIC - Success
+-- Found WrapAtomic: TRUE
+-- Found OpenGL: /usr/lib/x86_64-linux-gnu/libOpenGL.so
+-- Found WrapOpenGL: TRUE
+-- Found XKB: /usr/lib/x86_64-linux-gnu/libxkbcommon.so (found suitable version "1.7.0", minimum required is "0.5.0")
+-- Found WrapVulkanHeaders: /usr/include
+-- Found AWS SDK for C++, Version: 1.11.907, Install Root:/home/patrick/work/put.gd/build/sdk, Platform Prefix:, Platform Dependent Libraries: pthread;curl
+-- Components specified for AWSSDK: s3, application will be depending on libs: aws-cpp-sdk-s3;aws-cpp-sdk-core
+-- Try finding aws-cpp-sdk-core
+-- Found crypto: /usr/lib/x86_64-linux-gnu/libcrypto.so
+-- LibCrypto Include Dir: /usr/include
+-- LibCrypto Shared Lib:  /usr/lib/x86_64-linux-gnu/libcrypto.so
+-- LibCrypto Static Lib:  /usr/lib/x86_64-linux-gnu/libcrypto.a
+-- Found OpenSSL: /usr/lib/x86_64-linux-gnu/libcrypto.so (found version "3.5.7")
+-- Found aws-cpp-sdk-core
+-- Try finding aws-cpp-sdk-s3
+-- Found aws-cpp-sdk-s3
+-- Performing Test PUTGD_SDK_CURL_TRANSPORT
+-- Performing Test PUTGD_SDK_CURL_TRANSPORT - Success
+-- Found PkgConfig: /usr/bin/pkg-config (found version "1.8.1")
+-- Checking for modules 'xcb;xcb-randr;xcb-keysyms;xcb-xfixes;xcb-render'
+--   Found xcb, version 1.17.0
+--   Found xcb-randr, version 1.17.0
+--   Found xcb-keysyms, version 0.4.1
+--   Found xcb-xfixes, version 1.17.0
+--   Found xcb-render, version 1.17.0
+-- Checking for module 'xcb-xinput'
+--   Found xcb-xinput, version 1.17.0
+-- Checking for module 'xcb-damage'
+--   Found xcb-damage, version 1.17.0
+-- Checking for module 'wayland-client'
+--   Found wayland-client, version 1.23.1
+-- Checking for module 'xkbcommon>=1.0.0'
+--   Found xkbcommon, version 1.7.0
+-- Found OpenSSL: /usr/lib/x86_64-linux-gnu/libcrypto.so (found suitable version "3.5.7", minimum required is "1.1.1") found components: Crypto
+-- Checking for module 'xcursor'
+--   Found xcursor, version 1.2.3
+-- Checking for modules 'gstreamer-1.0>=1.24;gstreamer-video-1.0>=1.24;gstreamer-app-1.0>=1.24'
+--   Found gstreamer-1.0, version 1.26.2
+--   Found gstreamer-video-1.0, version 1.26.2
+--   Found gstreamer-app-1.0, version 1.26.2
+-- Checking for modules 'libavcodec>=60.31;libavformat>=60.16;libavfilter>=9.12;libavutil>=58.29;libswscale>=7.5;libswresample>=4.12'
+--   Found libavcodec, version 61.19.101
+--   Found libavformat, version 61.7.103
+--   Found libavfilter, version 10.5.100
+--   Found libavutil, version 59.39.100
+--   Found libswscale, version 8.3.100
+--   Found libswresample, version 5.3.100
+CMake Error at packaging/linux/CMakeLists.txt:85 (message):
+  Pinned SDK LICENSE required for packaging
+
+
+-- Configuring incomplete, errors occurred!

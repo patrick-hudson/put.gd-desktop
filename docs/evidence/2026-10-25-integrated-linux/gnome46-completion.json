@@ -1,0 +1,647 @@
+{
+  "run": "ia25x",
+  "source": {
+    "url": "https://cloud-images.ubuntu.com/noble/20261017/noble-server-cloudimg-amd64.img",
+    "sha256": "04e8f2461a16a44e78a370284471f29616cdd9baf1893df25807b71f985b6c94",
+    "signatureVerified": true,
+    "role": "immutable downloaded cloud source, not a desktop acceptance golden"
+  },
+  "bulk": {
+    "schemaVersion": 1,
+    "createdUtc": "2026-10-26T02:28:56.198400+00:00",
+    "run": "/home/patrick/work/put.gd/work/lab-runs/ia25x",
+    "runId": "6d7e98f6-f7d7-44f0-89c0-0f5a6483fa23",
+    "archive": "xnf1-xaf1-xni1-xai1-xai2-xnr1-xnr2-xar1-xar2-xnr3-xnr4-xar3-xar4.tar.gz",
+    "sha256": "4992c92ebd5f8d732484923b40aa21a4f25ce7ffdf4a481a6548827a69797992",
+    "exclusions": "Private config/cache and reproducible AppImage extractions; exact asset retained separately. All other regular synthetic run files exported, including failures and media."
+  },
+  "cleanup": {
+    "schemaVersion": 1,
+    "status": "completed",
+    "run": "/home/patrick/work/put.gd/work/lab-runs/ia25x",
+    "disk": "/home/patrick/work/put.gd/work/lab-runs/ia25x/disk.qcow2",
+    "diskIdentity": {
+      "device": 2050,
+      "inode": 14288622,
+      "size": 8032026624,
+      "mtimeNs": 1792981770139455181,
+      "ctimeNs": 1792981770139455181,
+      "allocatedBytes": 8032129024
+    },
+    "base": "/home/patrick/work/put.gd/work/lab-images/ubuntu-noble-cloud-20261017/noble-server-cloudimg-amd64.img",
+    "stateSha256": "87480fe6a66a95a76bd3db041d8abe9a3c6842dfd3b01d2c9672e4af9bf8ce0e",
+    "evidence": {
+      "manifest": "/home/patrick/work/ia25/vm-collected/x/cleanup-manifest.json",
+      "sha256": "c5d360632d5ddd5439923805043b29561e8c79d841f4cca531aa0683cdbb794d",
+      "runId": "6d7e98f6-f7d7-44f0-89c0-0f5a6483fa23",
+      "mode": "explicit"
+    },
+    "preparedUtc": "2026-10-26T02:29:36.431220+00:00",
+    "completedUtc": "2026-10-26T02:29:36.745214+00:00"
+  },
+  "preflightBefore": {
+    "schemaVersion": 1,
+    "runId": "6d7e98f6-f7d7-44f0-89c0-0f5a6483fa23",
+    "stage": "corrected-c180-immediately-before",
+    "apply": false,
+    "timestampUtc": "2026-10-26T02:02:57.558955+00:00",
+    "ok": true,
+    "helperSha256": "613d394460f7131cbbebea964f89eef9f2bc73f878de6bbf8c8bb9a0efe5c937",
+    "policy": {
+      "ok": true,
+      "desktop": "GNOME",
+      "session": {
+        "User": "1000",
+        "Seat": "seat0",
+        "Type": "x11",
+        "Active": "yes",
+        "State": "active",
+        "LockedHint": "no",
+        "id": "2"
+      },
+      "configurationHome": "/home/lab/.config",
+      "policy": [
+        {
+          "schema": "org.gnome.desktop.session",
+          "key": "idle-delay",
+          "value": "uint32 0"
+        },
+        {
+          "schema": "org.gnome.desktop.screensaver",
+          "key": "lock-enabled",
+          "value": "false"
+        },
+        {
+          "schema": "org.gnome.desktop.screensaver",
+          "key": "idle-activation-enabled",
+          "value": "false"
+        },
+        {
+          "schema": "org.gnome.settings-daemon.plugins.power",
+          "key": "sleep-inactive-ac-timeout",
+          "value": "0"
+        },
+        {
+          "schema": "org.gnome.settings-daemon.plugins.power",
+          "key": "sleep-inactive-ac-type",
+          "value": "'nothing'"
+        },
+        {
+          "schema": "org.gnome.settings-daemon.plugins.power",
+          "key": "sleep-inactive-battery-timeout",
+          "value": "0"
+        },
+        {
+          "schema": "org.gnome.settings-daemon.plugins.power",
+          "key": "sleep-inactive-battery-type",
+          "value": "'nothing'"
+        },
+        {
+          "schema": "org.gnome.settings-daemon.plugins.power",
+          "key": "idle-dim",
+          "value": "false"
+        }
+      ],
+      "inhibitor": {
+        "what": "sleep:idle",
+        "who": "putgd-lab-guest",
+        "mode": "block",
+        "uid": 1000,
+        "pid": 33568
+      },
+      "x11": "Keyboard Control:\n  auto repeat:  on    key click percent:  0    LED mask:  00000000\n  XKB indicators:\n    00: Caps Lock:   off    01: Num Lock:    off    02: Scroll Lock: off\n    03: Compose:     off    04: Kana:        off    05: Sleep:       off\n    06: Suspend:     off    07: Mute:        off    08: Misc:        off\n    09: Mail:        off    10: Charging:    off    11: Shift Lock:  off\n    12: Group 2:     off    13: Mouse Keys:  off\n  auto repeat delay:  500    repeat rate:  33\n  auto repeating keys:  00ffffffdffffbbf\n                        fadfffefffedffff\n                        9fffffffffffffff\n                        fff7ffffffffffff\n  bell percent:  50    bell pitch:  400    bell duration:  100\nPointer Control:\n  acceleration:  2/1    threshold:  4\nScreen Saver:\n  prefer blanking:  no    allow exposures:  yes\n  timeout:  0    cycle:  0\nColors:\n  default colormap:  0x20    BlackPixel:  0x0    WhitePixel:  0xffffff\nFont Path:\n  /usr/share/fonts/X11/misc,/usr/share/fonts/X11/Type1,built-ins\nDPMS (Display Power Management Signaling):\n  Standby: 0    Suspend: 0    Off: 0\n  DPMS is Disabled"
+    },
+    "outputs": {
+      "ok": true,
+      "errors": [],
+      "outputs": [
+        {
+          "name": "Virtual-1",
+          "enabled": true,
+          "primary": true,
+          "width": 1280,
+          "height": 800,
+          "x": 0,
+          "y": 0
+        }
+      ]
+    },
+    "visuals": [
+      {
+        "path": "/home/patrick/work/put.gd/work/lab-runs/ia25x/guest-preflight-20e87cf0774540288f81d80f510ccfda-head0.ppm",
+        "sha256": "7586953e587386c61d7abd2c9f3bda34d4b2f4c00f9d0d264c3e215d800fa92b",
+        "width": 1280,
+        "height": 800,
+        "head": 0
+      }
+    ],
+    "afterVisuals": {
+      "ok": true,
+      "desktop": "GNOME",
+      "session": {
+        "User": "1000",
+        "Seat": "seat0",
+        "Type": "x11",
+        "Active": "yes",
+        "State": "active",
+        "LockedHint": "no",
+        "id": "2"
+      },
+      "configurationHome": "/home/lab/.config",
+      "policy": [
+        {
+          "schema": "org.gnome.desktop.session",
+          "key": "idle-delay",
+          "value": "uint32 0"
+        },
+        {
+          "schema": "org.gnome.desktop.screensaver",
+          "key": "lock-enabled",
+          "value": "false"
+        },
+        {
+          "schema": "org.gnome.desktop.screensaver",
+          "key": "idle-activation-enabled",
+          "value": "false"
+        },
+        {
+          "schema": "org.gnome.settings-daemon.plugins.power",
+          "key": "sleep-inactive-ac-timeout",
+          "value": "0"
+        },
+        {
+          "schema": "org.gnome.settings-daemon.plugins.power",
+          "key": "sleep-inactive-ac-type",
+          "value": "'nothing'"
+        },
+        {
+          "schema": "org.gnome.settings-daemon.plugins.power",
+          "key": "sleep-inactive-battery-timeout",
+          "value": "0"
+        },
+        {
+          "schema": "org.gnome.settings-daemon.plugins.power",
+          "key": "sleep-inactive-battery-type",
+          "value": "'nothing'"
+        },
+        {
+          "schema": "org.gnome.settings-daemon.plugins.power",
+          "key": "idle-dim",
+          "value": "false"
+        }
+      ],
+      "inhibitor": {
+        "what": "sleep:idle",
+        "who": "putgd-lab-guest",
+        "mode": "block",
+        "uid": 1000,
+        "pid": 33568
+      },
+      "x11": "Keyboard Control:\n  auto repeat:  on    key click percent:  0    LED mask:  00000000\n  XKB indicators:\n    00: Caps Lock:   off    01: Num Lock:    off    02: Scroll Lock: off\n    03: Compose:     off    04: Kana:        off    05: Sleep:       off\n    06: Suspend:     off    07: Mute:        off    08: Misc:        off\n    09: Mail:        off    10: Charging:    off    11: Shift Lock:  off\n    12: Group 2:     off    13: Mouse Keys:  off\n  auto repeat delay:  500    repeat rate:  33\n  auto repeating keys:  00ffffffdffffbbf\n                        fadfffefffedffff\n                        9fffffffffffffff\n                        fff7ffffffffffff\n  bell percent:  50    bell pitch:  400    bell duration:  100\nPointer Control:\n  acceleration:  2/1    threshold:  4\nScreen Saver:\n  prefer blanking:  no    allow exposures:  yes\n  timeout:  0    cycle:  0\nColors:\n  default colormap:  0x20    BlackPixel:  0x0    WhitePixel:  0xffffff\nFont Path:\n  /usr/share/fonts/X11/misc,/usr/share/fonts/X11/Type1,built-ins\nDPMS (Display Power Management Signaling):\n  Standby: 0    Suspend: 0    Off: 0\n  DPMS is Disabled"
+    }
+  },
+  "preflightAfter": {
+    "schemaVersion": 1,
+    "runId": "6d7e98f6-f7d7-44f0-89c0-0f5a6483fa23",
+    "stage": "corrected-c180-immediately-after",
+    "apply": false,
+    "timestampUtc": "2026-10-26T02:06:10.590099+00:00",
+    "ok": true,
+    "helperSha256": "613d394460f7131cbbebea964f89eef9f2bc73f878de6bbf8c8bb9a0efe5c937",
+    "policy": {
+      "ok": true,
+      "desktop": "GNOME",
+      "session": {
+        "User": "1000",
+        "Seat": "seat0",
+        "Type": "x11",
+        "Active": "yes",
+        "State": "active",
+        "LockedHint": "no",
+        "id": "2"
+      },
+      "configurationHome": "/home/lab/.config",
+      "policy": [
+        {
+          "schema": "org.gnome.desktop.session",
+          "key": "idle-delay",
+          "value": "uint32 0"
+        },
+        {
+          "schema": "org.gnome.desktop.screensaver",
+          "key": "lock-enabled",
+          "value": "false"
+        },
+        {
+          "schema": "org.gnome.desktop.screensaver",
+          "key": "idle-activation-enabled",
+          "value": "false"
+        },
+        {
+          "schema": "org.gnome.settings-daemon.plugins.power",
+          "key": "sleep-inactive-ac-timeout",
+          "value": "0"
+        },
+        {
+          "schema": "org.gnome.settings-daemon.plugins.power",
+          "key": "sleep-inactive-ac-type",
+          "value": "'nothing'"
+        },
+        {
+          "schema": "org.gnome.settings-daemon.plugins.power",
+          "key": "sleep-inactive-battery-timeout",
+          "value": "0"
+        },
+        {
+          "schema": "org.gnome.settings-daemon.plugins.power",
+          "key": "sleep-inactive-battery-type",
+          "value": "'nothing'"
+        },
+        {
+          "schema": "org.gnome.settings-daemon.plugins.power",
+          "key": "idle-dim",
+          "value": "false"
+        }
+      ],
+      "inhibitor": {
+        "what": "sleep:idle",
+        "who": "putgd-lab-guest",
+        "mode": "block",
+        "uid": 1000,
+        "pid": 33568
+      },
+      "x11": "Keyboard Control:\n  auto repeat:  on    key click percent:  0    LED mask:  00000000\n  XKB indicators:\n    00: Caps Lock:   off    01: Num Lock:    off    02: Scroll Lock: off\n    03: Compose:     off    04: Kana:        off    05: Sleep:       off\n    06: Suspend:     off    07: Mute:        off    08: Misc:        off\n    09: Mail:        off    10: Charging:    off    11: Shift Lock:  off\n    12: Group 2:     off    13: Mouse Keys:  off\n  auto repeat delay:  500    repeat rate:  33\n  auto repeating keys:  00ffffffdffffbbf\n                        fadfffefffedffff\n                        9fffffffffffffff\n                        fff7ffffffffffff\n  bell percent:  50    bell pitch:  400    bell duration:  100\nPointer Control:\n  acceleration:  2/1    threshold:  4\nScreen Saver:\n  prefer blanking:  no    allow exposures:  yes\n  timeout:  0    cycle:  0\nColors:\n  default colormap:  0x20    BlackPixel:  0x0    WhitePixel:  0xffffff\nFont Path:\n  /usr/share/fonts/X11/misc,/usr/share/fonts/X11/Type1,built-ins\nDPMS (Display Power Management Signaling):\n  Standby: 0    Suspend: 0    Off: 0\n  DPMS is Disabled"
+    },
+    "outputs": {
+      "ok": true,
+      "errors": [],
+      "outputs": [
+        {
+          "name": "Virtual-1",
+          "enabled": true,
+          "primary": true,
+          "width": 1280,
+          "height": 800,
+          "x": 0,
+          "y": 0
+        }
+      ]
+    },
+    "visuals": [
+      {
+        "path": "/home/patrick/work/put.gd/work/lab-runs/ia25x/guest-preflight-531743cac64042f7a1819e6b47bec8fb-head0.ppm",
+        "sha256": "c5710e3a93b520f4d22aa87f306f649474213755db96b42c0db565e494738745",
+        "width": 1280,
+        "height": 800,
+        "head": 0
+      }
+    ],
+    "afterVisuals": {
+      "ok": true,
+      "desktop": "GNOME",
+      "session": {
+        "User": "1000",
+        "Seat": "seat0",
+        "Type": "x11",
+        "Active": "yes",
+        "State": "active",
+        "LockedHint": "no",
+        "id": "2"
+      },
+      "configurationHome": "/home/lab/.config",
+      "policy": [
+        {
+          "schema": "org.gnome.desktop.session",
+          "key": "idle-delay",
+          "value": "uint32 0"
+        },
+        {
+          "schema": "org.gnome.desktop.screensaver",
+          "key": "lock-enabled",
+          "value": "false"
+        },
+        {
+          "schema": "org.gnome.desktop.screensaver",
+          "key": "idle-activation-enabled",
+          "value": "false"
+        },
+        {
+          "schema": "org.gnome.settings-daemon.plugins.power",
+          "key": "sleep-inactive-ac-timeout",
+          "value": "0"
+        },
+        {
+          "schema": "org.gnome.settings-daemon.plugins.power",
+          "key": "sleep-inactive-ac-type",
+          "value": "'nothing'"
+        },
+        {
+          "schema": "org.gnome.settings-daemon.plugins.power",
+          "key": "sleep-inactive-battery-timeout",
+          "value": "0"
+        },
+        {
+          "schema": "org.gnome.settings-daemon.plugins.power",
+          "key": "sleep-inactive-battery-type",
+          "value": "'nothing'"
+        },
+        {
+          "schema": "org.gnome.settings-daemon.plugins.power",
+          "key": "idle-dim",
+          "value": "false"
+        }
+      ],
+      "inhibitor": {
+        "what": "sleep:idle",
+        "who": "putgd-lab-guest",
+        "mode": "block",
+        "uid": 1000,
+        "pid": 33568
+      },
+      "x11": "Keyboard Control:\n  auto repeat:  on    key click percent:  0    LED mask:  00000000\n  XKB indicators:\n    00: Caps Lock:   off    01: Num Lock:    off    02: Scroll Lock: off\n    03: Compose:     off    04: Kana:        off    05: Sleep:       off\n    06: Suspend:     off    07: Mute:        off    08: Misc:        off\n    09: Mail:        off    10: Charging:    off    11: Shift Lock:  off\n    12: Group 2:     off    13: Mouse Keys:  off\n  auto repeat delay:  500    repeat rate:  33\n  auto repeating keys:  00ffffffdffffbbf\n                        fadfffefffedffff\n                        9fffffffffffffff\n                        fff7ffffffffffff\n  bell percent:  50    bell pitch:  400    bell duration:  100\nPointer Control:\n  acceleration:  2/1    threshold:  4\nScreen Saver:\n  prefer blanking:  no    allow exposures:  yes\n  timeout:  0    cycle:  0\nColors:\n  default colormap:  0x20    BlackPixel:  0x0    WhitePixel:  0xffffff\nFont Path:\n  /usr/share/fonts/X11/misc,/usr/share/fonts/X11/Type1,built-ins\nDPMS (Display Power Management Signaling):\n  Standby: 0    Suspend: 0    Off: 0\n  DPMS is Disabled"
+    }
+  },
+  "startup": {
+    "ok": true,
+    "desktop": "GNOME",
+    "session": {
+      "User": "1000",
+      "Seat": "seat0",
+      "Type": "x11",
+      "Active": "yes",
+      "State": "active",
+      "LockedHint": "no",
+      "id": "66"
+    },
+    "configurationHome": "/home/lab/.config",
+    "policy": [
+      {
+        "schema": "org.gnome.desktop.session",
+        "key": "idle-delay",
+        "value": "uint32 0"
+      },
+      {
+        "schema": "org.gnome.desktop.screensaver",
+        "key": "lock-enabled",
+        "value": "false"
+      },
+      {
+        "schema": "org.gnome.desktop.screensaver",
+        "key": "idle-activation-enabled",
+        "value": "false"
+      },
+      {
+        "schema": "org.gnome.settings-daemon.plugins.power",
+        "key": "sleep-inactive-ac-timeout",
+        "value": "0"
+      },
+      {
+        "schema": "org.gnome.settings-daemon.plugins.power",
+        "key": "sleep-inactive-ac-type",
+        "value": "'nothing'"
+      },
+      {
+        "schema": "org.gnome.settings-daemon.plugins.power",
+        "key": "sleep-inactive-battery-timeout",
+        "value": "0"
+      },
+      {
+        "schema": "org.gnome.settings-daemon.plugins.power",
+        "key": "sleep-inactive-battery-type",
+        "value": "'nothing'"
+      },
+      {
+        "schema": "org.gnome.settings-daemon.plugins.power",
+        "key": "idle-dim",
+        "value": "false"
+      }
+    ],
+    "inhibitor": {
+      "what": "sleep:idle",
+      "who": "putgd-lab-guest",
+      "mode": "block",
+      "uid": 1000,
+      "pid": 33568
+    },
+    "x11": "Keyboard Control:\n  auto repeat:  on    key click percent:  0    LED mask:  00000000\n  XKB indicators:\n    00: Caps Lock:   off    01: Num Lock:    off    02: Scroll Lock: off\n    03: Compose:     off    04: Kana:        off    05: Sleep:       off\n    06: Suspend:     off    07: Mute:        off    08: Misc:        off\n    09: Mail:        off    10: Charging:    off    11: Shift Lock:  off\n    12: Group 2:     off    13: Mouse Keys:  off\n  auto repeat delay:  500    repeat rate:  33\n  auto repeating keys:  00ffffffdffffbbf\n                        fadfffefffedffff\n                        9fffffffffffffff\n                        fff7ffffffffffff\n  bell percent:  50    bell pitch:  400    bell duration:  100\nPointer Control:\n  acceleration:  2/1    threshold:  4\nScreen Saver:\n  prefer blanking:  no    allow exposures:  yes\n  timeout:  0    cycle:  600\nColors:\n  default colormap:  0x20    BlackPixel:  0x0    WhitePixel:  0xffffff\nFont Path:\n  /usr/share/fonts/X11/misc,/usr/share/fonts/X11/Type1,built-ins\nDPMS (Display Power Management Signaling):\n  Standby: 600    Suspend: 600    Off: 600\n  DPMS is Disabled"
+  },
+  "startupCheck": {
+    "schemaVersion": 1,
+    "runId": "6d7e98f6-f7d7-44f0-89c0-0f5a6483fa23",
+    "stage": "after-real-login-startup",
+    "apply": false,
+    "timestampUtc": "2026-10-26T02:27:31.640884+00:00",
+    "ok": true,
+    "helperSha256": "a6322f30d50ba0e5c87360e8c316a4d5b6396bdccfc5b9a90a3aa37ea8594835",
+    "policy": {
+      "ok": true,
+      "desktop": "GNOME",
+      "session": {
+        "User": "1000",
+        "Seat": "seat0",
+        "Type": "x11",
+        "Active": "yes",
+        "State": "active",
+        "LockedHint": "no",
+        "id": "66"
+      },
+      "configurationHome": "/home/lab/.config",
+      "policy": [
+        {
+          "schema": "org.gnome.desktop.session",
+          "key": "idle-delay",
+          "value": "uint32 0"
+        },
+        {
+          "schema": "org.gnome.desktop.screensaver",
+          "key": "lock-enabled",
+          "value": "false"
+        },
+        {
+          "schema": "org.gnome.desktop.screensaver",
+          "key": "idle-activation-enabled",
+          "value": "false"
+        },
+        {
+          "schema": "org.gnome.settings-daemon.plugins.power",
+          "key": "sleep-inactive-ac-timeout",
+          "value": "0"
+        },
+        {
+          "schema": "org.gnome.settings-daemon.plugins.power",
+          "key": "sleep-inactive-ac-type",
+          "value": "'nothing'"
+        },
+        {
+          "schema": "org.gnome.settings-daemon.plugins.power",
+          "key": "sleep-inactive-battery-timeout",
+          "value": "0"
+        },
+        {
+          "schema": "org.gnome.settings-daemon.plugins.power",
+          "key": "sleep-inactive-battery-type",
+          "value": "'nothing'"
+        },
+        {
+          "schema": "org.gnome.settings-daemon.plugins.power",
+          "key": "idle-dim",
+          "value": "false"
+        }
+      ],
+      "inhibitor": {
+        "what": "sleep:idle",
+        "who": "putgd-lab-guest",
+        "mode": "block",
+        "uid": 1000,
+        "pid": 33568
+      },
+      "x11": "Keyboard Control:\n  auto repeat:  on    key click percent:  0    LED mask:  00000000\n  XKB indicators:\n    00: Caps Lock:   off    01: Num Lock:    off    02: Scroll Lock: off\n    03: Compose:     off    04: Kana:        off    05: Sleep:       off\n    06: Suspend:     off    07: Mute:        off    08: Misc:        off\n    09: Mail:        off    10: Charging:    off    11: Shift Lock:  off\n    12: Group 2:     off    13: Mouse Keys:  off\n  auto repeat delay:  500    repeat rate:  33\n  auto repeating keys:  00ffffffdffffbbf\n                        fadfffefffedffff\n                        9fffffffffffffff\n                        fff7ffffffffffff\n  bell percent:  50    bell pitch:  400    bell duration:  100\nPointer Control:\n  acceleration:  2/1    threshold:  4\nScreen Saver:\n  prefer blanking:  no    allow exposures:  yes\n  timeout:  0    cycle:  600\nColors:\n  default colormap:  0x20    BlackPixel:  0x0    WhitePixel:  0xffffff\nFont Path:\n  /usr/share/fonts/X11/misc,/usr/share/fonts/X11/Type1,built-ins\nDPMS (Display Power Management Signaling):\n  Standby: 0    Suspend: 0    Off: 0\n  DPMS is Disabled"
+    },
+    "outputs": {
+      "ok": true,
+      "errors": [],
+      "outputs": [
+        {
+          "name": "Virtual-1",
+          "enabled": true,
+          "primary": true,
+          "width": 1280,
+          "height": 800,
+          "x": 0,
+          "y": 0
+        }
+      ]
+    },
+    "visuals": [
+      {
+        "path": "/home/patrick/work/put.gd/work/lab-runs/ia25x/guest-preflight-0765f68cc7e54cc080156c469bfc8040-head0.ppm",
+        "sha256": "ab70f0d110e01e4307cf7d66c79fbf463486015fdc7d969606f590b546345c42",
+        "width": 1280,
+        "height": 800,
+        "head": 0
+      }
+    ],
+    "afterVisuals": {
+      "ok": true,
+      "desktop": "GNOME",
+      "session": {
+        "User": "1000",
+        "Seat": "seat0",
+        "Type": "x11",
+        "Active": "yes",
+        "State": "active",
+        "LockedHint": "no",
+        "id": "66"
+      },
+      "configurationHome": "/home/lab/.config",
+      "policy": [
+        {
+          "schema": "org.gnome.desktop.session",
+          "key": "idle-delay",
+          "value": "uint32 0"
+        },
+        {
+          "schema": "org.gnome.desktop.screensaver",
+          "key": "lock-enabled",
+          "value": "false"
+        },
+        {
+          "schema": "org.gnome.desktop.screensaver",
+          "key": "idle-activation-enabled",
+          "value": "false"
+        },
+        {
+          "schema": "org.gnome.settings-daemon.plugins.power",
+          "key": "sleep-inactive-ac-timeout",
+          "value": "0"
+        },
+        {
+          "schema": "org.gnome.settings-daemon.plugins.power",
+          "key": "sleep-inactive-ac-type",
+          "value": "'nothing'"
+        },
+        {
+          "schema": "org.gnome.settings-daemon.plugins.power",
+          "key": "sleep-inactive-battery-timeout",
+          "value": "0"
+        },
+        {
+          "schema": "org.gnome.settings-daemon.plugins.power",
+          "key": "sleep-inactive-battery-type",
+          "value": "'nothing'"
+        },
+        {
+          "schema": "org.gnome.settings-daemon.plugins.power",
+          "key": "idle-dim",
+          "value": "false"
+        }
+      ],
+      "inhibitor": {
+        "what": "sleep:idle",
+        "who": "putgd-lab-guest",
+        "mode": "block",
+        "uid": 1000,
+        "pid": 33568
+      },
+      "x11": "Keyboard Control:\n  auto repeat:  on    key click percent:  0    LED mask:  00000000\n  XKB indicators:\n    00: Caps Lock:   off    01: Num Lock:    off    02: Scroll Lock: off\n    03: Compose:     off    04: Kana:        off    05: Sleep:       off\n    06: Suspend:     off    07: Mute:        off    08: Misc:        off\n    09: Mail:        off    10: Charging:    off    11: Shift Lock:  off\n    12: Group 2:     off    13: Mouse Keys:  off\n  auto repeat delay:  500    repeat rate:  33\n  auto repeating keys:  00ffffffdffffbbf\n                        fadfffefffedffff\n                        9fffffffffffffff\n                        fff7ffffffffffff\n  bell percent:  50    bell pitch:  400    bell duration:  100\nPointer Control:\n  acceleration:  2/1    threshold:  4\nScreen Saver:\n  prefer blanking:  no    allow exposures:  yes\n  timeout:  0    cycle:  600\nColors:\n  default colormap:  0x20    BlackPixel:  0x0    WhitePixel:  0xffffff\nFont Path:\n  /usr/share/fonts/X11/misc,/usr/share/fonts/X11/Type1,built-ins\nDPMS (Display Power Management Signaling):\n  Standby: 0    Suspend: 0    Off: 0\n  DPMS is Disabled"
+    }
+  },
+  "retainedSetup": {
+    "attempts": [
+      "wrong wrapper scp_args API; no guest mutation",
+      "startup installed and timeout drift set, missing private profile in scratch; no policy verdict",
+      "profile restored: readback mismatch refused as expected",
+      "policy restored but output blank and ScreenSaver active; refused",
+      "visible RFB pointer/Shift restored desktop; preflight pass",
+      "deliberate timeout300 then guest GDM restart; startup helper restored0, inhibitor active, native X11session66 unlocked; v3 check pass"
+    ],
+    "startupHelperVersion": "v2",
+    "afterLoginVerifier": "v3",
+    "originalC180": "separate before/after preflight receipts; no repeated measurement"
+  },
+  "correctedC180": {
+    "scope": "C180 owned process-family RSS/PSS, includes AppImage runtime; not physical #379 CPU gate",
+    "asset": {
+      "kind": "appimage",
+      "file": "putgd-26.1025.1362-dev+g6b7949f5cab8-x86_64.AppImage",
+      "sha256": "b88350ff4ca89d9bba2c76769fb5a864370828b9c90a0072f58d7f7f8cb7b9f3"
+    },
+    "build": {
+      "baseVersion": "26.1025.1362",
+      "commitCount": 1362,
+      "dirty": false,
+      "gitCommit": "6b7949f5cab8ee9d9564d5ebb4f2cee81881cbf8",
+      "gitTree": "2911da34467c4d0b062a9c79d72baa39a79d7640",
+      "packageVersion": "26.1025.1362~dev+g6b7949f5cab8",
+      "schemaVersion": 1,
+      "sourceProvenance": "git",
+      "version": "26.1025.1362-dev+g6b7949f5cab8"
+    },
+    "peakRssBytes": 48484352,
+    "peakPssBytes": 41856000,
+    "gates": {
+      "peakRssBytes": "fail",
+      "peakPssBytes": "pass"
+    },
+    "status": "complete",
+    "scopedPeaks": {
+      "resident": {
+        "rssBytes": 39915520,
+        "pssBytes": 33291264,
+        "swapBytes": 0
+      },
+      "runtime": {
+        "rssBytes": 8568832,
+        "pssBytes": 8564736,
+        "swapBytes": 0
+      },
+      "family": {
+        "rssBytes": 48484352,
+        "pssBytes": 41856000,
+        "swapBytes": 0
+      }
+    },
+    "remaining": [],
+    "socketAbsent": true
+  }
+}

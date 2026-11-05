@@ -1,0 +1,59 @@
+[
+  {
+    "lock": {
+      "owner": "Codex561",
+      "session": "codex-561-d69",
+      "host": "d69",
+      "purpose": "#561 targeted native preflight cancel/retry; notes ~/work/i561; functional only",
+      "acquired": "2026-10-25T04:33:23Z",
+      "expires": "2026-10-25T04:48:23Z",
+      "heartbeat": "2026-10-25T04:33:23Z"
+    },
+    "releasedBy": "codex-561-d69",
+    "event": "release",
+    "host": "d69",
+    "at": "2026-10-25T04:33:59Z",
+    "left": [],
+    "notMine": [],
+    "preexistingCount": 1,
+    "originalSha256": "5302b5c3ca5685ca47e82706214e779ea900a9d185a7a0e96398f64354fe4c2a"
+  },
+  {
+    "lock": {
+      "owner": "Codex561",
+      "session": "codex-561-d69-2",
+      "host": "d69",
+      "purpose": "#561 private window geometry correction and native cancellation; ~/work/i561",
+      "acquired": "2026-10-25T04:35:30Z",
+      "expires": "2026-10-25T04:50:30Z",
+      "heartbeat": "2026-10-25T04:35:30Z"
+    },
+    "releasedBy": "codex-561-d69-2",
+    "event": "release",
+    "host": "d69",
+    "at": "2026-10-25T04:37:00Z",
+    "left": [],
+    "notMine": [],
+    "preexistingCount": 1,
+    "originalSha256": "66f52a562eaa79cd29e710f0d19ce6584f825b3598fec31c87bd01b838426362"
+  },
+  {
+    "lock": {
+      "owner": "Codex561",
+      "session": "codex-561-m74",
+      "host": "m74",
+      "purpose": "#561 unchanged approved #379 slow scenario; quiet physical Cinnamon slot; ~/work/i561",
+      "acquired": "2026-10-25T04:36:37Z",
+      "expires": "2026-10-25T05:01:37Z",
+      "heartbeat": "2026-10-25T04:36:37Z"
+    },
+    "releasedBy": "codex-561-m74",
+    "event": "release",
+    "host": "m74",
+    "at": "2026-10-25T04:43:28Z",
+    "left": [],
+    "notMine": [],
+    "preexistingCount": 0,
+    "originalSha256": "2962ce1c9bf155ff1dc521af691658fb77d341f4d8129823044a5398294e8c91"
+  }
+]

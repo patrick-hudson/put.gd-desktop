@@ -1,0 +1,97 @@
+{
+  "schemaVersion": 2,
+  "timestampUtc": "2026-10-31T01:50:55.736359+00:00",
+  "hostAvailableBytes": 8634089472,
+  "hostPassed": false,
+  "hostAvailableInodes": 4241556,
+  "hostFilesystem": {
+    "path": "/home/user/t1",
+    "device": 64769,
+    "filesystemType": "ext2/ext3",
+    "filesystemMagic": "ef53",
+    "identificationErrorType": null,
+    "statvfs": {
+      "f_bavail": 2107932,
+      "f_bfree": 2958079,
+      "f_blocks": 20557651,
+      "f_bsize": 4096,
+      "f_favail": 4241556,
+      "f_ffree": 4241556,
+      "f_files": 5155040,
+      "f_flag": 4096,
+      "f_frsize": 4096,
+      "f_fsid": 1680253000807562931,
+      "f_namemax": 255
+    },
+    "availableBytes": 8634089472,
+    "totalBytes": 84204138496,
+    "availableInodes": 4241556,
+    "inodeAccounting": "reported",
+    "inodeCheckPassed": true
+  },
+  "hostErrorType": null,
+  "hostExpectedGrowthBytes": 0,
+  "hostReserveGiB": 10,
+  "guestReserveGiB": 2,
+  "expectedBuildGiB": 0,
+  "guests": [
+    {
+      "run": "/home/user/t1/work/lab-runs/ae1",
+      "filesystems": {
+        "home": {
+          "path": "/home/lab",
+          "device": 64771,
+          "filesystemType": "ext2/ext3",
+          "filesystemMagic": "ef53",
+          "identificationErrorType": null,
+          "statvfs": {
+            "f_bavail": 5115453,
+            "f_bfree": 5532374,
+            "f_blocks": 8081868,
+            "f_bsize": 4096,
+            "f_favail": 1582548,
+            "f_ffree": 1582548,
+            "f_files": 2064384,
+            "f_flag": 4096,
+            "f_frsize": 4096,
+            "f_fsid": 9855963986932123218,
+            "f_namemax": 255
+          },
+          "availableBytes": 20952895488,
+          "totalBytes": 33103331328,
+          "availableInodes": 1582548,
+          "inodeAccounting": "reported",
+          "inodeCheckPassed": true
+        },
+        "tmp": {
+          "path": "/tmp",
+          "device": 64771,
+          "filesystemType": "ext2/ext3",
+          "filesystemMagic": "ef53",
+          "identificationErrorType": null,
+          "statvfs": {
+            "f_bavail": 5115453,
+            "f_bfree": 5532374,
+            "f_blocks": 8081868,
+            "f_bsize": 4096,
+            "f_favail": 1582548,
+            "f_ffree": 1582548,
+            "f_files": 2064384,
+            "f_flag": 4096,
+            "f_frsize": 4096,
+            "f_fsid": 9855963986932123218,
+            "f_namemax": 255
+          },
+          "availableBytes": 20952895488,
+          "totalBytes": 33103331328,
+          "availableInodes": 1582548,
+          "inodeAccounting": "reported",
+          "inodeCheckPassed": true
+        }
+      },
+      "passed": true
+    }
+  ],
+  "passed": false,
+  "readOnly": true
+}

@@ -18,11 +18,20 @@ Region selection also needs the current distro LayerShellQt interface developmen
 package with Qt 6.5 or later for per-window shell integration: ScreenShot2's interactive method selects a **window or whole screen**,
 not a rectangular region. The adapter uses compositor-positioned overlay layer
 surfaces to show the required crosshair and rectangle over the live desktop.
+Each output has its own selector surface placed at that output's logical
+rectangle and bound to its QWindow screen, including secondary and portrait
+heads and layouts with gaps. A surface on the wrong output is refused with
+`display_changed` (PR #1056).
 After selection, it hides those surfaces and awaits a Wayland display sync before
 requesting current screen pixels. The selected layout stays fixed throughout;
 layout changes cancel acquisition. Native compositor evidence must verify that
 neither the current nor a previous selection outline appears in the saved image.
 It never substitutes a screen picker for region selection.
+Wayland pointer positions are fractional. Each drag end becomes the logical pixel
+that contains the hotspot (floor), so a drag from pixel A to pixel B selects B−A,
+as on X11 and in the GNOME extension's selector. Rounding to the nearest edge added
+a pixel whenever a drag ended in the right half of its pixel ([#333](https://github.com/patrick-hudson/put.gd-desktop/issues/333)).
+On fractional-scale outputs the logical edges map to native pixels, rounded outwards.
 The Qt 6.4 compatibility build reports region selection unavailable when the
 per-window LayerShellQt API cannot be used; the Plasma 6.6 native profile needs
 the current distro library. An app-global shell-plugin override is not used.
@@ -34,6 +43,17 @@ resident binary and includes:
 X-KDE-DBUS-Restricted-Interfaces=org.kde.KWin.ScreenShot2;
 ```
 
+The screen-recording helper has its own entry, `putgd-record.desktop`, whose
+`Exec` names the helper binary and whose `X-KDE-Wayland-Interfaces` lists
+`zkde_screencast_unstable_v1`; KWin advertises its screencast protocol only to
+executables matched that way (see `docs/recording.md`, "Wayland acquisition").
+The helper also links the layer-shell region selector: a recording of a
+region without a rectangle shows the same `KdeRegionOverlay` as a region
+screenshot before any stream exists, and the ready ring, dimming and control
+bar are overlay layer surfaces placed outside the recorded rectangle. KWin 6.6
+and later leave every window of the client that requested a screencast stream
+out of that stream, which also keeps the bar out of monitor recordings; KWin
+6.3 (Debian 13) does not.
 A desktop entry naming a different build executable does not grant permission.
 Restart the resident application after installing/updating its entry. Do not
 set `KWIN_SCREENSHOT_NO_PERMISSION_CHECKS` or other permission bypasses.

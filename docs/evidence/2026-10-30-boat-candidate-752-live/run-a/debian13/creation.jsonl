@@ -1,0 +1,5 @@
+{"event":"created","hostedPorts":null,"id":"bx_v424zbpc","org":null,"team":null,"ttlSeconds":10800}
+{"event":"state","id":"bx_v424zbpc","state":"starting"}
+{"event":"state","id":"bx_v424zbpc","state":"ready"}
+{"event":"state","id":"bx_v424zbpc","state":"idle"}
+{"archiveAfter":"2026-10-30T07:03:25.728Z","commands":{"forward":"boat forward bx_v424zbpc --remote 3000 --local 3000","ssh":"boat ssh bx_v424zbpc"},"desktopUrl":null,"event":"ready","id":"bx_v424zbpc","ip":"2001:41d0:1004:2872:100::2b","state":"idle","url":"https://box-node-30f2fbef27996874.on.boat.dev"}

@@ -1,0 +1,9 @@
+{
+  "originalRun": "/home/user/s2c/run",
+  "run": "/home/user/s2c/src/work/lab-runs/core2c",
+  "runId": "b4654b96-382d-4359-bf72-9cc18b3163e0",
+  "stoppedAndUnreferencedVerified": true,
+  "diskIdentityPreserved": true,
+  "diskSha256": "17ee0a42793a324a0858556e27c081cac16c628ea9b77444fb45c95cfb3dab4b",
+  "baseUnchanged": "/home/user/work/put.gd/work/lab-images/cinnamon-x11/image.qcow2"
+}

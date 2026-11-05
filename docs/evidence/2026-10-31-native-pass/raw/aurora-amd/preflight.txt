@@ -1,0 +1,30 @@
+ 10:34:52 up 1 day, 20:18,  8 users,  load average: 3.25, 10.79, 8.89
+12
+  1 1000 patrick seat0 2479   user    tty1 no -
+  2 1000 patrick -     2645   manager -    no -
+ 36 1000 patrick -     7269   user    -    no -
+497 1000 patrick -     207953 user    -    no -
+510 1000 patrick -     210102 user    -    no -
+  6 1000 patrick -     4457   user    -    no -
+632 1000 patrick -     853395 user    -    no -
+  7 1000 patrick -     4461   user    -    no -
+  8 1000 patrick -     4528   user    -    no -
+    PID COMMAND         %CPU
+ 853395 sshd-session     2.2
+   3341 kwin_wayland     0.9
+   4532 python3          0.7
+   5008 w0vncserver      0.4
+   5089 systemsettings   0.3
+   4465 python3          0.3
+ 220982 kworker/u48:5-f  0.1
+/sys/class/drm/card1-DP-1/status disconnected
+/sys/class/drm/card1-DP-2/status connected
+/sys/class/drm/card1-DP-3/status disconnected
+/sys/class/drm/card1-DP-4/status disconnected
+/sys/class/drm/card1-DP-5/status disconnected
+/sys/class/drm/card1-DP-6/status disconnected
+/sys/class/drm/card1-DP-7/status disconnected
+/sys/class/drm/card1-HDMI-A-1/status disconnected
+/sys/class/drm/card1-Writeback-1/status unknown
+State  Recv-Q Send-Q Local Address:Port Peer Address:PortProcess
+LISTEN 0      5          127.0.0.1:5900      0.0.0.0:*    users:(("w0vncserver",pid=5008,fd=3))

@@ -1,0 +1,31 @@
+{
+  "at": "2026-10-25T18:51:02.901729+00:00",
+  "host": "f44",
+  "sameDirectory": "/home/patrick/work/i254-docs-r3.OXdy3t",
+  "runs": [
+    {
+      "iteration": 1,
+      "exit": 0,
+      "passed": true,
+      "testsRun": 5
+    },
+    {
+      "iteration": 2,
+      "exit": 0,
+      "passed": true,
+      "testsRun": 5
+    }
+  ],
+  "distinctRetainedFixtures": [
+    "/home/patrick/work/i254-docs-r3.OXdy3t/bad-version-lxzoo0f_",
+    "/home/patrick/work/i254-docs-r3.OXdy3t/bad-version-tr__kny_"
+  ],
+  "priorFixturePreserved": true,
+  "remainingTestMounts": [],
+  "sourceHashes": {
+    "reproducer.py": "fc9982e52350d56b8d6d0308f27e1820c7398224c41fb595620da4aacdeccce2",
+    "reproducer_checks.py": "b03cae4e818f28c6975c771d260120806e8ae6c9ce309188a743afb9c1b69e80",
+    "reproducer_mount.py": "3fe6e9ebaa73c5f89b048e8dd2b6af807e6a35c792ab2b6fa815a549783a3fe2",
+    "test_reproducer_mount.py": "f2b112ad189ddb06992b39559afe735a1ec7439233f6e723d682ad08531a9c7d"
+  }
+}

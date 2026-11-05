@@ -1,0 +1,38 @@
+saved gated annotated own-window visual
+native window closed and UI helper exited
+stored link independently pasted from native clipboard
+{"operationId": "30941a81-9e51-4025-9e99-a131f9f644f0", "historyId": "d008ea25-c3c5-499e-bb19-e551fcdff223"}
+native window closed and UI helper exited
+CLI recovery persisted copied
+stored link independently pasted from native clipboard
+{"operationId": "30941a81-9e51-4025-9e99-a131f9f644f0", "historyId": "d008ea25-c3c5-499e-bb19-e551fcdff223"}
+Processing request of type ListToolsRequest
+Processing request of type CallToolRequest
+Processing request of type CallToolRequest
+Processing request of type CallToolRequest
+native MCP forwarding persisted copied
+native window closed and UI helper exited
+stored link independently pasted from native clipboard
+native independent Qt fixture restored
+window capture + independent native paste passed
+native region capture passed
+synthetic covered desktop capture + independent paste passed
+native clipboard text/image/files + independent paste passed
+native region cancellation passed: cancel-right
+native region cancellation passed: cancel-zero
+native region cancellation passed: cancel-escape-final
+independent native GTK fixture ready
+window capture + independent native paste passed
+native region capture passed
+synthetic covered desktop capture + independent paste passed
+native clipboard text/image/files + independent paste passed
+native independent Qt fixture restored
+saved gated annotated own-window visual
+saved gated annotated own-window visual
+saved gated annotated own-window visual
+saved gated annotated own-window visual
+saved gated annotated own-window visual
+saved gated annotated own-window visual
+six native Settings/History reopens with normal helper exit passed
+300-second frozen sampler completed; numeric gates require evaluation
+300-second frozen sampler completed; numeric gates require evaluation

@@ -1,0 +1,21 @@
+rpm keys before: 4032e28d893baf66f4ac23d9a11d38d55536b371 put.gd nightly packages <packages@put.gd> public key
+### install putgd-0.1.1-nightly.810-fedora44-x86_64.rpm from the file
+[6/6] Installing putgd-0:0.1.1~nightly. 100% |  36.7 MiB/s |  28.7 MiB |  00m01s
+putgd-0.1.1~nightly.810-1.fc44.x86_64
+/etc/yum.repos.d/putgd.repo present sha256=55c3e23e73b06d19
+### pkcon refresh force
+Status: 	Finished
+Results:
+
+### pkcon update putgd (only trusted)
+Package:	putgd_0.1.1~nightly.810-1.fc44.x86_64
+Percentage:	100
+Status: 	Finished
+Results:
+Updated      putgd-0.1.1~nightly.811-1.fc44.x86_64 (putgd-nightly)
+Cleaned up   putgd-0.1.1~nightly.810-1.fc44.x86_64 (installed)
+rc=0
+putgd-0.1.1~nightly.811-1.fc44.x86_64
+### rpm keys after pkcon: 4032e28d893baf66f4ac23d9a11d38d55536b371 put.gd nightly packages <packages@put.gd> public key
+rc=0
+/etc/yum.repos.d/putgd.repo ABSENT

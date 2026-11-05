@@ -1,0 +1,87 @@
+{
+ "setup": true,
+ "run": {
+  "name": "aurora-vm-lab1058",
+  "scenario": "a",
+  "image": "/var/home/lab/work/put.gd-qt418/afa/upd/runs/aurora-vm-lab1058/apps/putgd-26.1023.1058-nightly-x86_64.AppImage",
+  "imageSha256": "ce707fcf4e693b5ca9024da539e5510e149c5edf8a6a17bca28d815e0e20e6db",
+  "cliDir": "/var/home/lab/work/put.gd-qt418/afa/upd/runs/aurora-vm-lab1058/cli/squashfs-root",
+  "runtime": "/tmp/upd293.bgTgyU",
+  "session": {
+   "HOME": "/var/home/lab",
+   "PATH": "/var/home/lab/.local/bin:/var/home/lab/bin:/usr/local/bin:/usr/bin",
+   "USER": "lab",
+   "LANG": "en_US.UTF-8",
+   "DISPLAY": ":0",
+   "XAUTHORITY": "/run/user/1000/xauth_icLszb",
+   "DBUS_SESSION_BUS_ADDRESS": "unix:path=/run/user/1000/bus",
+   "XDG_SESSION_TYPE": "wayland",
+   "XDG_CURRENT_DESKTOP": "KDE",
+   "WAYLAND_DISPLAY": "/run/user/1000/wayland-0",
+   "XDG_SESSION_DESKTOP": "KDE",
+   "DESKTOP_SESSION": "/usr/share/wayland-sessions/plasma.desktop",
+   "KDE_FULL_SESSION": "true",
+   "KDE_SESSION_VERSION": "6",
+   "XDG_DATA_DIRS": "/var/home/lab/.local/share/flatpak/exports/share:/var/lib/flatpak/exports/share:/usr/local/share:/usr/share"
+  },
+  "shell": "plasmashell",
+  "hostPath": "/var/home/lab/.local/bin:/var/home/lab/bin:/usr/local/bin:/usr/bin",
+  "host": "aurora-lab",
+  "vnc": 5927,
+  "urls": {
+   "PUTGD_UPDATE_FEED_URL": "https://pkg.put.gd/lab/update/v1/",
+   "PUTGD_UPDATE_RELEASE_URL": "https://pkg.put.gd/lab/releases",
+   "PUTGD_UPDATE_MIRROR_URL": "https://pkg.put.gd/lab/releases"
+  },
+  "before": {
+   "dataPutgd": false,
+   "homePutgd": {
+    "/var/home/lab/.config/putgd": false,
+    "/var/home/lab/.local/state/putgd": false,
+    "/var/home/lab/.cache/putgd": false
+   },
+   "autostart": []
+  },
+  "pids": {
+   "apprun": 3732
+  },
+  "created": "2026-10-23T20:48:42Z"
+ },
+ "status": {
+  "action": null,
+  "attemptedAt": null,
+  "build": {
+   "channel": "nightly",
+   "kind": "nightly",
+   "packageTarget": "appimage",
+   "reason": null,
+   "supported": true,
+   "version": "26.1023.1058-nightly"
+  },
+  "channel": "nightly",
+  "channelSetting": "build",
+  "channelSource": "setting",
+  "check": true,
+  "checkedAt": null,
+  "checking": false,
+  "enabled": true,
+  "error": null,
+  "install": {
+   "available": true,
+   "backup": null,
+   "image": "/var/home/lab/put.gd-qt418/afa/upd/runs/aurora-vm-lab1058/apps/putgd-26.1023.1058-nightly-x86_64.AppImage",
+   "installed": null,
+   "kind": "update",
+   "reason": null,
+   "restartRequired": false,
+   "running": false,
+   "state": "idle",
+   "switch": null
+  },
+  "nextCheckAt": "2026-10-23T20:59:14Z",
+  "notifies": false,
+  "reason": null,
+  "result": null,
+  "supported": true
+ }
+}

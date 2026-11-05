@@ -1,0 +1,23 @@
+{
+  "independentPatternSha256": "b02ddff45824a8ac1607f38e4ace72f3534727e4c80a72297e750800a08ad1eb",
+  "patternBounds": [
+    320,
+    240,
+    960,
+    560
+  ],
+  "cropRect": [
+    340,
+    260,
+    940,
+    540
+  ],
+  "size": [
+    600,
+    280
+  ],
+  "pixelTolerance": 0,
+  "equal": true,
+  "uploadedPngSha256": "79f71825161bd298cf22bbab31c73fd842a5e7d9ff656169cd03951c6fee4226",
+  "rgbPixelsSha256": "c576b2950ae0f10346da0a3a0e1c442086a2c9ccc37f4c5684e0c17aa753a1f7"
+}

@@ -1,0 +1,67 @@
+[
+  {
+    "id": "0cbbf6c8-61c2-42c7-bc58-021e421afcd0",
+    "state": "acquiring",
+    "phase": "queued",
+    "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+    },
+    "items": [],
+    "copyStatus": "pending",
+    "copyError": null
+  },
+  {
+    "id": "0430a320-741d-4249-8434-826d2ce242c4",
+    "state": "acquiring",
+    "phase": "queued",
+    "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+    },
+    "items": [],
+    "copyStatus": "pending",
+    "copyError": null
+  },
+  {
+    "id": "5036ac34-09e8-4a47-9d0a-a7cc5f8fd3d1",
+    "state": "acquiring",
+    "phase": "queued",
+    "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+    },
+    "items": [],
+    "copyStatus": "pending",
+    "copyError": null
+  },
+  {
+    "id": "1eacb6d3-c229-41ae-912b-aa7a9a63d680",
+    "state": "acquiring",
+    "phase": "queued",
+    "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+    },
+    "items": [],
+    "copyStatus": "pending",
+    "copyError": null
+  },
+  {
+    "id": "bb379a61-ef13-45db-acf3-4be23b268631",
+    "state": "acquiring",
+    "phase": "queued",
+    "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+    },
+    "items": [],
+    "copyStatus": "pending",
+    "copyError": null
+  }
+]

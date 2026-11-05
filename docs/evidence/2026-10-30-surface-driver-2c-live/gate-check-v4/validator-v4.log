@@ -1,0 +1,60 @@
+=================================== FAILURES ===================================
+_ BuildIdentity.test_resident_reporting_other_build_is_refused_before_settings_or_recipes _
+self = <test_v4.BuildIdentity testMethod=test_resident_reporting_other_build_is_refused_before_settings_or_recipes>
+>           self.assertEqual([c[1] for c in calls], ['ui.snapshot'], observed)
+../../../sd726/v4/test_v4.py:126: AssertionError
+____________________ CatalogPin.test_pin_unreadable_refused ____________________
+self = <test_v4.CatalogPin testMethod=test_pin_unreadable_refused>
+>           self.assertIn('catalog-pin-unavailable', self.blockers(catalog))
+../../../sd726/v4/test_v4.py:242: AssertionError
+______ CatalogPin.test_real_ci_catalog_is_admitted_against_committed_pin _______
+self = <test_v4.CatalogPin testMethod=test_real_ci_catalog_is_admitted_against_committed_pin>
+>       self.assertEqual(len(gate.catalog_states(catalog)[1]), 29)
+../../../sd726/v4/test_v4.py:141: AssertionError
+____________ ContextBypass.test_admitted_context_other_destination _____________
+self = <test_v4.ContextBypass testMethod=test_admitted_context_other_destination>
+>       ctx, env = self.ctx('s3', admitted=True)
+../../../sd726/v4/test_v4.py:403: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+../../../sd726/v4/test_v4.py:357: in ctx
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+self = <tools.lab.surface_driver.context.DriverContext object at 0x71bcb515d7f0>
+target = <test_v4.FakeTarget object at 0x71bcb51b7980>
+environment = {'build': 'abcdef012345', 'desktop': 'mint-cinnamon-x11', 'destination': 's3', 'guest': 'g', ...}
+profile = {'at_spi': {'available': True}, 'catalog_tolerance': 0.025, 'evidence': {}, 'session': 'x11'}
+catalog = PosixPath('/dev/shm/tmptqr73_gl/catalog')
+out = PosixPath('/dev/shm/tmptqr73_gl/o-s3')
+>               raise LiveEvidenceRefused('live destination '+str(self.destination)+' blocked by secret-safe evidence: '
+tools/lab/surface_driver/context.py:37: LiveEvidenceRefused
+==================================== PASSES ====================================
+=========================== short test summary info ============================
+PASSED ../../../sd726/v4/test_v4.py::BuildIdentity::test_build_shapes
+PASSED ../../../sd726/v4/test_v4.py::BuildIdentity::test_main_refuses_bad_builds_before_target_and_writes_nothing
+PASSED ../../../sd726/v4/test_v4.py::BuildIdentity::test_resident_omitting_dirty_flag
+PASSED ../../../sd726/v4/test_v4.py::BuildIdentity::test_wrong_full_build_refused_by_catalog
+PASSED ../../../sd726/v4/test_v4.py::CatalogPin::test_added_secret_field_is_refused_until_pin_updated
+PASSED ../../../sd726/v4/test_v4.py::CatalogPin::test_dirty_or_missing_identity_refused
+PASSED ../../../sd726/v4/test_v4.py::CatalogPin::test_edited_pin_admits_reduced_catalog
+PASSED ../../../sd726/v4/test_v4.py::CatalogPin::test_removing_any_one_secret_state_with_manifest_edited_is_refused
+PASSED ../../../sd726/v4/test_v4.py::CatalogPin::test_removing_or_reclassifying_any_secret_control_is_refused
+PASSED ../../../sd726/v4/test_v4.py::CatalogPin::test_secret_field_not_matching_name_rule_and_unflagged_slips
+PASSED ../../../sd726/v4/test_v4.py::CatalogPin::test_traversal_and_missing_controls
+PASSED ../../../sd726/v4/test_v4.py::Ocr::test_fake_binaries_refused
+PASSED ../../../sd726/v4/test_v4.py::Ocr::test_missing
+PASSED ../../../sd726/v4/test_v4.py::Ocr::test_off_by_one_glyph_reader
+PASSED ../../../sd726/v4/test_v4.py::Ocr::test_partial_reader_one_polarity
+PASSED ../../../sd726/v4/test_v4.py::Ocr::test_self_test_exception_refused
+PASSED ../../../sd726/v4/test_v4.py::Placement::test_main_native_live_refused_before_target
+PASSED ../../../sd726/v4/test_v4.py::Placement::test_placements
+PASSED ../../../sd726/v4/test_v4.py::ContextBypass::test_direct_construction_refused_for_every_live_destination_nothing_written
+PASSED ../../../sd726/v4/test_v4.py::ContextBypass::test_gate_self_check_detects_patched_live_gate
+PASSED ../../../sd726/v4/test_v4.py::ContextBypass::test_local_context_relabelled_live_refused
+PASSED ../../../sd726/v4/test_v4.py::ContextBypass::test_non_driver_context_objects_refused
+PASSED ../../../sd726/v4/test_v4.py::ContextBypass::test_patching_gate_module_attr_does_not_disarm
+PASSED ../../../sd726/v4/test_v4.py::ContextBypass::test_recipe_monkeypatches_class_gate_and_builds_live_context
+PASSED ../../../sd726/v4/test_v4.py::ContextBypass::test_recipe_sets_admitted_flag
+FAILED ../../../sd726/v4/test_v4.py::BuildIdentity::test_resident_reporting_other_build_is_refused_before_settings_or_recipes
+FAILED ../../../sd726/v4/test_v4.py::CatalogPin::test_pin_unreadable_refused
+FAILED ../../../sd726/v4/test_v4.py::CatalogPin::test_real_ci_catalog_is_admitted_against_committed_pin
+FAILED ../../../sd726/v4/test_v4.py::ContextBypass::test_admitted_context_other_destination
+4 failed, 25 passed in 6.11s

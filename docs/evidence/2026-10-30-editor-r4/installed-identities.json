@@ -1,0 +1,98 @@
+{
+  "cin": {
+    "putgd": {
+      "identity": {
+        "schemaVersion": 1,
+        "version": "26.1030.3075-dev+g8d06f9947ea0",
+        "baseVersion": "26.1030.3075",
+        "packageVersion": "26.1030.3075~dev+g8d06f9947ea0",
+        "gitCommit": "8d06f9947ea05ed183ca2c0689785cbcd0c10c9e",
+        "gitTree": "c13fe1c825758cc35c5a8b2055c68acbfe64e86c",
+        "commitCount": 3075,
+        "dirty": false,
+        "sourceProvenance": "git"
+      },
+      "path": "/usr/bin/putgd",
+      "sha256": "e535f469edd88bf44f734eb6cdd35cd0ae9cc6d58c3decf1b24da1ad74a83787"
+    },
+    "putgd-cli": {
+      "identity": {
+        "schemaVersion": 1,
+        "version": "26.1030.3075-dev+g8d06f9947ea0",
+        "baseVersion": "26.1030.3075",
+        "packageVersion": "26.1030.3075~dev+g8d06f9947ea0",
+        "gitCommit": "8d06f9947ea05ed183ca2c0689785cbcd0c10c9e",
+        "gitTree": "c13fe1c825758cc35c5a8b2055c68acbfe64e86c",
+        "commitCount": 3075,
+        "dirty": false,
+        "sourceProvenance": "git"
+      },
+      "path": "/usr/bin/putgd-cli",
+      "sha256": "ac3420af35abc298e8116cbc466dccf603e385068aa5d3eeb450cde43ebfdff3"
+    }
+  },
+  "kde": {
+    "putgd": {
+      "identity": {
+        "schemaVersion": 1,
+        "version": "26.1030.3075-dev+g8d06f9947ea0",
+        "baseVersion": "26.1030.3075",
+        "packageVersion": "26.1030.3075~dev+g8d06f9947ea0",
+        "gitCommit": "8d06f9947ea05ed183ca2c0689785cbcd0c10c9e",
+        "gitTree": "c13fe1c825758cc35c5a8b2055c68acbfe64e86c",
+        "commitCount": 3075,
+        "dirty": false,
+        "sourceProvenance": "git"
+      },
+      "path": "/usr/bin/putgd",
+      "sha256": "f4f7679700f4e99a31a8ced0834e391144cfa3b449f134270b7249ad63d6acb1"
+    },
+    "putgd-cli": {
+      "identity": {
+        "schemaVersion": 1,
+        "version": "26.1030.3075-dev+g8d06f9947ea0",
+        "baseVersion": "26.1030.3075",
+        "packageVersion": "26.1030.3075~dev+g8d06f9947ea0",
+        "gitCommit": "8d06f9947ea05ed183ca2c0689785cbcd0c10c9e",
+        "gitTree": "c13fe1c825758cc35c5a8b2055c68acbfe64e86c",
+        "commitCount": 3075,
+        "dirty": false,
+        "sourceProvenance": "git"
+      },
+      "path": "/usr/bin/putgd-cli",
+      "sha256": "a82b637fb57b7ff2181aac301e4ced5f0ccc576ff168dbcca62cbd2c404a4bd3"
+    }
+  },
+  "gno": {
+    "putgd": {
+      "identity": {
+        "schemaVersion": 1,
+        "version": "26.1030.3075-dev+g8d06f9947ea0",
+        "baseVersion": "26.1030.3075",
+        "packageVersion": "26.1030.3075~dev+g8d06f9947ea0",
+        "gitCommit": "8d06f9947ea05ed183ca2c0689785cbcd0c10c9e",
+        "gitTree": "c13fe1c825758cc35c5a8b2055c68acbfe64e86c",
+        "commitCount": 3075,
+        "dirty": false,
+        "sourceProvenance": "git"
+      },
+      "path": "/usr/bin/putgd",
+      "sha256": "f4f7679700f4e99a31a8ced0834e391144cfa3b449f134270b7249ad63d6acb1"
+    },
+    "putgd-cli": {
+      "identity": {
+        "schemaVersion": 1,
+        "version": "26.1030.3075-dev+g8d06f9947ea0",
+        "baseVersion": "26.1030.3075",
+        "packageVersion": "26.1030.3075~dev+g8d06f9947ea0",
+        "gitCommit": "8d06f9947ea05ed183ca2c0689785cbcd0c10c9e",
+        "gitTree": "c13fe1c825758cc35c5a8b2055c68acbfe64e86c",
+        "commitCount": 3075,
+        "dirty": false,
+        "sourceProvenance": "git"
+      },
+      "path": "/usr/bin/putgd-cli",
+      "sha256": "a82b637fb57b7ff2181aac301e4ced5f0ccc576ff168dbcca62cbd2c404a4bd3"
+    }
+  }
+}

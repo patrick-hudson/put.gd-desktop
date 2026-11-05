@@ -1,0 +1,15 @@
+{
+ "schemaVersion": 1,
+ "kind": "vm-overlay-cleanup-evidence",
+ "run": "/home/user/rc817/src/work/lab-runs/c2",
+ "runId": "30790d5a-7095-45bb-86cf-04aeb2f0cfde",
+ "completed": true,
+ "outcome": "failed",
+ "files": {
+  "c2-install.json": "61f1218b454acdf959e65be488a0cfcb7816bed4ad93895e6a89f055d0fc35ac",
+  "c2-lane-redecode.json": "b1a5e6eea84bb5047adcf8d5dc158b36d1500889fd01c318eee52e424018e7be",
+  "c2-launch.json": "c68a1857c8311bccf8c5cdb5b5b9dacb871618e5502a3c327c5f7215b39b4e9a",
+  "completion.json": "22454343aa46e9c125f6186e3efee450dfaa82c07fc45ac4868b22c44168ba2d",
+  "receipt.json": "af9ff4f061ff34da141b511cba49bd879f3b98cf32f2757da47bb758b8bb74e4"
+ }
+}

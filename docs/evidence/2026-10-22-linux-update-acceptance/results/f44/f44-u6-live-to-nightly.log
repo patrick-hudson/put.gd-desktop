@@ -1,0 +1,8 @@
+### sudo install -m 644 /usr/share/putgd/repo/putgd-nightly.repo /etc/yum.repos.d/putgd.repo
+rc=0
+### dnf distro-sync --refresh -y putgd
+ put.gd (nightly)                       100% |  29.9 KiB/s |   4.4 KiB |  00m00s
+Repositories loaded.
+Nothing to do.
+rc=0
+putgd-26.1022.1017~nightly-1.fc44.x86_64

@@ -1,0 +1,41 @@
+2026-10-23T18:39:38Z ac.sh start
+2026-10-23T18:43:32Z ac.sh done rc=0
+2026-10-23T18:48:21Z dk.sh done rc=0
+2026-10-23T18:48:21Z badfile done rc=0
+AK1-DONE
+2026-10-23T18:58:04Z installed wl-clipboard 2.2.1 (builder tool, for the clipfile step)
+2026-10-23T18:58:06Z clipfile (4 samples via Upload clipboard) start
+2026-10-23T18:58:55Z clipfile done rc=0
+2026-10-23T18:59:27Z clipfile again for the first sample (its first History click found no card)
+2026-10-23T19:00:31Z B tray picture from put.gd's tray icon (1553,1053)
+2026-10-23T19:00:36Z #341 start
+2026-10-23T19:01:01Z #341 done
+2026-10-23T19:03:03Z I: launch at login enabled
+2026-10-23T19:03:03Z I: real logout/login:
+  2026-10-23T19:03:03Z shell plasmashell pid 1511141
+  2026-10-23T19:03:03Z logout requested (org.kde.Shutdown.logout)
+  2026-10-23T19:03:05Z old shell gone
+  2026-10-23T19:03:10Z systemctl restart sddm
+  2026-10-23T19:03:13Z new shell pid 1534525
+  9474 1000 patrick seat0 1534230 user    tty7 no -
+2026-10-23T19:03:58Z I: login check done
+2026-10-23T19:04:37Z K prep: quit this run's private resident (ui.quit); the login-started instance stays for K
+2026-10-23T19:04:58Z wall w0vncserver.service was inactive after the re-login; started it (systemctl --user start)
+2026-10-23T19:05:35Z wall: w0vncserver failed after the re-login while xdg-desktop-portal took ~2 min to start; restarted it once the portal was up (active)
+2026-10-23T19:05:47Z K: quit from put.gd's tray icon (1582,1052) with a real click
+2026-10-23T19:07:26Z K note: the black Settings area in the VNC frames was the freshly restarted w0vncserver (Spectacle showed the window drawn: full/k72-K-spectacle.png); quit-tray found no menu by frame diff
+2026-10-23T19:07:47Z K mis-click: (1582,1052) was the screen-sharing indicator (wall VNC), its End menu opened and was dismissed with Escape, nothing chosen
+2026-10-23T19:08:12Z K: quit from put.gd tray icon (1552,1052) -> Quit (1570,1007) with real clicks
+2026-10-23T19:08:27Z cleanup: my leftover 1058 runtime PID 1524582 (mem-k72-old-1 setup launch, stale FUSE mount seen at 19:06Z) had exited by itself before the kill; mount gone
+2026-10-23T19:08:36Z K cleanup: login disable + afa cleanup (autostart entry, data home, profile, caches)
+2026-10-23T19:14:02Z F: ffdefault on ({"profile": "/home/patrick/work/put.gd-qt418/afa/ff/putgd-qt418-1b6da495", "entry": "/home/patrick/.local/share/applications/putgd-qt418-firefox.desktop", "gioBefore": "Default application for \u201cx-scheme-handler/https\u201d: chatgpt.desktop", "gioNow": "Default application for \u201cx-scheme-han)
+2026-10-23T19:14:45Z F: run k72-F, live S3 public-read to put.gd/acceptance/qt418/k72/, banner click (uinput)
+2026-10-23T19:18:37Z F phase B: browser PIDs 1542626 closed; Delete from destination; run cleaned; ffdefault off (); new Firefox paths: n/a
+2026-10-23T19:18:46Z F phase B fix: ffdefault off run separately (the script passed it the wrong argument); restored: {"restored": true, "entryRemoved": true, "profileRemoved": true, "gioBefore": "Default application for \u201cx-scheme-handler/https\u201d: chatgpt.desktop", "gi
+2026-10-23T19:21:02Z uinput agent stopped (recorded PIDs); host checked; lock released --verified-clean until the lab leg
+2026-10-23T20:26:03Z lock acquire (30 min) for the lab leg; Patrick apps: none
+2026-10-23T20:26:03Z J: in-app update 1058 -> lab v26.1023.1068-nightly (run k72-lab1058) start
+2026-10-23T20:26:25Z J: in-app update done; run quit and cleaned
+2026-10-23T20:26:25Z H/J on the lab nightly (run k72-labh) start
+2026-10-23T20:27:50Z H/J on the lab nightly done; run quit and cleaned
+2026-10-23T20:28:17Z lab leg done; uinput agent stopped, socket removed; host checked; lock released --verified-clean

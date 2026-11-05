@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "kind": "vm-overlay-cleanup-evidence",
+  "run": "/home/user/s2c/src/work/lab-runs/core2c",
+  "runId": "b4654b96-382d-4359-bf72-9cc18b3163e0",
+  "completed": true,
+  "outcome": "passed",
+  "files": {
+    "completion.json": "27437e0869f66e56408d47f9eceef6f5452498f9473789e1e98930786ba4a143",
+    "migration.json": "6314374dac13128b7474ed819685e5c98768a7acc7fd3f63e861e565960a3064",
+    "core-demo-receipt.json": "e48d3f8a670619a50028b94018a8e2d6c6f0afe3ad64166842940bc42342acd2",
+    "state-after-migration.json": "9dd0ee355c8a717a29fcb9d2b518f9f6ba34a36e3829e1e4bdf6cd29fbfd7943",
+    "state-before-migration.json": "843b86580d02d06caf42a7ba7f1f4f7cb232a583242adf72bebe329785fdc6e9",
+    "original-cleanup-refusal.json": "544e92b9efc197c268ec3a53f9037e31da3f72884c0a1639fbe9277f7fa65589",
+    "privacy-receipt.json": "3798ae7d86f004f319d05471892fc4961c56d5563b2a1a0d09cf7a6622219e07",
+    "summary.json": "9d1dbf36cff1626cac4a5902684d5695c532019cc8b5dedfd9dda40e5bae5fd0"
+  }
+}

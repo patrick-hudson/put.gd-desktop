@@ -1,0 +1,107 @@
+{
+ "check": {
+  "error": {
+   "code": "",
+   "details": {},
+   "message": ""
+  },
+  "ok": true,
+  "requestId": "524acb59-f07e-467d-b7ee-5ea6c9b7f3a9",
+  "result": {
+   "action": {
+    "kind": "download",
+    "repository": "none"
+   },
+   "attemptedAt": "2026-10-21T22:22:30Z",
+   "build": {
+    "channel": "nightly",
+    "kind": "nightly",
+    "packageTarget": "appimage",
+    "reason": null,
+    "supported": true,
+    "version": "0.1.1-nightly.874"
+   },
+   "channel": "nightly",
+   "channelSetting": "nightly",
+   "check": true,
+   "checkedAt": "2026-10-21T22:22:30Z",
+   "checking": false,
+   "enabled": true,
+   "error": null,
+   "nextCheckAt": "2026-10-22T20:32:04Z",
+   "notifies": false,
+   "reason": null,
+   "result": {
+    "action": {
+     "kind": "download",
+     "repository": "none"
+    },
+    "channel": "nightly",
+    "checkedAt": "2026-10-21T22:22:30Z",
+    "current": "0.1.1-nightly.874",
+    "downloadUrl": "https://github.com/patrick-hudson/put.gd-desktop/releases/download/v0.1.1-nightly.847/putgd-0.1.1-nightly.847-x86_64.AppImage",
+    "latest": "0.1.1-nightly.847",
+    "notesUrl": "https://github.com/patrick-hudson/put.gd-desktop/releases/tag/v0.1.1-nightly.847",
+    "packageTarget": "appimage",
+    "publishedAt": "2026-10-21T18:59:30Z",
+    "tag": "v0.1.1-nightly.847",
+    "updateAvailable": false
+   },
+   "supported": true
+  },
+  "schemaVersion": 1
+ },
+ "status": {
+  "error": {
+   "code": "",
+   "details": {},
+   "message": ""
+  },
+  "ok": true,
+  "requestId": "287c8037-1a7f-4d23-89ee-37cdc25013ce",
+  "result": {
+   "action": {
+    "kind": "download",
+    "repository": "none"
+   },
+   "attemptedAt": "2026-10-21T22:22:30Z",
+   "build": {
+    "channel": "nightly",
+    "kind": "nightly",
+    "packageTarget": "appimage",
+    "reason": null,
+    "supported": true,
+    "version": "0.1.1-nightly.874"
+   },
+   "channel": "nightly",
+   "channelSetting": "nightly",
+   "check": true,
+   "checkedAt": "2026-10-21T22:22:30Z",
+   "checking": false,
+   "enabled": true,
+   "error": null,
+   "nextCheckAt": "2026-10-22T20:32:04Z",
+   "notifies": false,
+   "reason": null,
+   "result": {
+    "action": {
+     "kind": "download",
+     "repository": "none"
+    },
+    "channel": "nightly",
+    "checkedAt": "2026-10-21T22:22:30Z",
+    "current": "0.1.1-nightly.874",
+    "downloadUrl": "https://github.com/patrick-hudson/put.gd-desktop/releases/download/v0.1.1-nightly.847/putgd-0.1.1-nightly.847-x86_64.AppImage",
+    "latest": "0.1.1-nightly.847",
+    "notesUrl": "https://github.com/patrick-hudson/put.gd-desktop/releases/tag/v0.1.1-nightly.847",
+    "packageTarget": "appimage",
+    "publishedAt": "2026-10-21T18:59:30Z",
+    "tag": "v0.1.1-nightly.847",
+    "updateAvailable": false
+   },
+   "supported": true
+  },
+  "schemaVersion": 1
+ },
+ "seconds": 0.56
+}

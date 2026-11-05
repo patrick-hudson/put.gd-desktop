@@ -1,0 +1,3023 @@
+{
+ "iterations": [
+  {
+   "exitCode": 0,
+   "failed": [],
+   "iteration": 1,
+   "loadavg": [
+    "2.80",
+    "3.28",
+    "2.89"
+   ],
+   "seconds": 137.17,
+   "tests": 102
+  },
+  {
+   "exitCode": 0,
+   "failed": [],
+   "iteration": 2,
+   "loadavg": [
+    "2.76",
+    "2.98",
+    "2.83"
+   ],
+   "seconds": 137.51,
+   "tests": 102
+  },
+  {
+   "exitCode": 0,
+   "failed": [],
+   "iteration": 3,
+   "loadavg": [
+    "3.97",
+    "3.09",
+    "2.87"
+   ],
+   "seconds": 145.62,
+   "tests": 102
+  }
+ ],
+ "schemaVersion": 1,
+ "source": {
+  "PUTGD_TEST_TIME_SCALE": "3",
+  "commit": "4984e806 with the aa872c5f CPU pool",
+  "contention": "0 busy loops",
+  "cpus": 4,
+  "ctestArgs": [
+   "--preset",
+   "dev",
+   "--parallel",
+   "6",
+   "--resource-spec-file",
+   "/home/patrick/work/put.gd-flake/tools/ci/ctest-resources.json"
+  ],
+  "ended": "2026-10-22T01:58:35+00:00",
+  "host": "kubuntu",
+  "interrupted": false,
+  "iterations": 3,
+  "kind": "stress",
+  "label": "parallel 6, profiled cpu pool, 3 slots",
+  "requestedIterations": 3,
+  "started": "2026-10-22T01:51:35+00:00"
+ },
+ "tests": {
+  "archive_contract": {
+   "attempts": [
+    {
+     "details": [],
+     "iteration": 1,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.0164216
+    },
+    {
+     "details": [],
+     "iteration": 2,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.0138127
+    },
+    {
+     "details": [],
+     "iteration": 3,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.0211114
+    }
+   ],
+   "labels": [
+    "unit"
+   ],
+   "outcome": "passed"
+  },
+  "b2_integration": {
+   "attempts": [
+    {
+     "details": [],
+     "iteration": 1,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 14.0132
+    },
+    {
+     "details": [],
+     "iteration": 2,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 13.8657
+    },
+    {
+     "details": [],
+     "iteration": 3,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 15.6906
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "bar_placement_contract": {
+   "attempts": [
+    {
+     "details": [],
+     "iteration": 1,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.113407
+    },
+    {
+     "details": [],
+     "iteration": 2,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.118742
+    },
+    {
+     "details": [],
+     "iteration": 3,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.198837
+    }
+   ],
+   "labels": [
+    "unit"
+   ],
+   "outcome": "passed"
+  },
+  "bar_placement_single_monitor_contract": {
+   "attempts": [
+    {
+     "details": [],
+     "iteration": 1,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.112984
+    },
+    {
+     "details": [],
+     "iteration": 2,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.149915
+    },
+    {
+     "details": [],
+     "iteration": 3,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.205179
+    }
+   ],
+   "labels": [
+    "unit"
+   ],
+   "outcome": "passed"
+  },
+  "build_contract": {
+   "attempts": [
+    {
+     "details": [],
+     "iteration": 1,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.0738935
+    },
+    {
+     "details": [],
+     "iteration": 2,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.0813994
+    },
+    {
+     "details": [],
+     "iteration": 3,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.0985935
+    }
+   ],
+   "labels": [
+    "unit"
+   ],
+   "outcome": "passed"
+  },
+  "capture_control_integration": {
+   "attempts": [
+    {
+     "details": [],
+     "iteration": 1,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.0116876
+    },
+    {
+     "details": [],
+     "iteration": 2,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.00721548
+    },
+    {
+     "details": [],
+     "iteration": 3,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.00931928
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "capture_preparation_x11": {
+   "attempts": [
+    {
+     "details": [],
+     "iteration": 1,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 5.4856
+    },
+    {
+     "details": [],
+     "iteration": 2,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 5.39576
+    },
+    {
+     "details": [],
+     "iteration": 3,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 5.82314
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "capture_process_integration": {
+   "attempts": [
+    {
+     "details": [],
+     "iteration": 1,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 7.45492
+    },
+    {
+     "details": [],
+     "iteration": 2,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 7.90902
+    },
+    {
+     "details": [],
+     "iteration": 3,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 7.50934
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "cli_integration": {
+   "attempts": [
+    {
+     "details": [],
+     "iteration": 1,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 21.0945
+    },
+    {
+     "details": [],
+     "iteration": 2,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 21.0865
+    },
+    {
+     "details": [],
+     "iteration": 3,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 21.1979
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "collision_policy_integration": {
+   "attempts": [
+    {
+     "details": [],
+     "iteration": 1,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 9.82221
+    },
+    {
+     "details": [],
+     "iteration": 2,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 9.76442
+    },
+    {
+     "details": [],
+     "iteration": 3,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 10.4533
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "config_reload_integration": {
+   "attempts": [
+    {
+     "details": [],
+     "iteration": 1,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.642144
+    },
+    {
+     "details": [],
+     "iteration": 2,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.641914
+    },
+    {
+     "details": [],
+     "iteration": 3,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.714287
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "crash_handler_contract": {
+   "attempts": [
+    {
+     "details": [],
+     "iteration": 1,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 13.2861
+    },
+    {
+     "details": [],
+     "iteration": 2,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 13.3444
+    },
+    {
+     "details": [],
+     "iteration": 3,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 13.8446
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "diagnostics_bundle_contract": {
+   "attempts": [
+    {
+     "details": [],
+     "iteration": 1,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 12.3505
+    },
+    {
+     "details": [],
+     "iteration": 2,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 12.2568
+    },
+    {
+     "details": [],
+     "iteration": 3,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 12.6754
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "diagnostics_upload_contract": {
+   "attempts": [
+    {
+     "details": [],
+     "iteration": 1,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 3.10977
+    },
+    {
+     "details": [],
+     "iteration": 2,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 3.15475
+    },
+    {
+     "details": [],
+     "iteration": 3,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 2.82906
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "edit_operations_integration": {
+   "attempts": [
+    {
+     "details": [],
+     "iteration": 1,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 13.2287
+    },
+    {
+     "details": [],
+     "iteration": 2,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 13.4398
+    },
+    {
+     "details": [],
+     "iteration": 3,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 15.2054
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "editor_contract": {
+   "attempts": [
+    {
+     "details": [],
+     "iteration": 1,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 7.35634
+    },
+    {
+     "details": [],
+     "iteration": 2,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 7.28857
+    },
+    {
+     "details": [],
+     "iteration": 3,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 7.62502
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "editor_job_integration": {
+   "attempts": [
+    {
+     "details": [],
+     "iteration": 1,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 3.70478
+    },
+    {
+     "details": [],
+     "iteration": 2,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 3.71204
+    },
+    {
+     "details": [],
+     "iteration": 3,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 4.09518
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "export_av_sync_contract": {
+   "attempts": [
+    {
+     "details": [],
+     "iteration": 1,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 13.2973
+    },
+    {
+     "details": [],
+     "iteration": 2,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 13.3234
+    },
+    {
+     "details": [],
+     "iteration": 3,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 14.5857
+    }
+   ],
+   "labels": [
+    "unit"
+   ],
+   "outcome": "passed"
+  },
+  "file_dialog_integration": {
+   "attempts": [
+    {
+     "details": [],
+     "iteration": 1,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 1.90886
+    },
+    {
+     "details": [],
+     "iteration": 2,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 1.78549
+    },
+    {
+     "details": [],
+     "iteration": 3,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 2.26662
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "file_dialog_x11_parent": {
+   "attempts": [
+    {
+     "details": [],
+     "iteration": 1,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.215958
+    },
+    {
+     "details": [],
+     "iteration": 2,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.229619
+    },
+    {
+     "details": [],
+     "iteration": 3,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.298416
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "geometry_contract": {
+   "attempts": [
+    {
+     "details": [],
+     "iteration": 1,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 1.1133
+    },
+    {
+     "details": [],
+     "iteration": 2,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 1.0378
+    },
+    {
+     "details": [],
+     "iteration": 3,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 1.33647
+    }
+   ],
+   "labels": [
+    "unit"
+   ],
+   "outcome": "passed"
+  },
+  "gnome_bridge_contract": {
+   "attempts": [
+    {
+     "details": [],
+     "iteration": 1,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.0707494
+    },
+    {
+     "details": [],
+     "iteration": 2,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.0748535
+    },
+    {
+     "details": [],
+     "iteration": 3,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.109002
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "gnome_core_transport_integration": {
+   "attempts": [
+    {
+     "details": [],
+     "iteration": 1,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 11.2027
+    },
+    {
+     "details": [],
+     "iteration": 2,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 11.0366
+    },
+    {
+     "details": [],
+     "iteration": 3,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 11.5557
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "gnome_image_decode": {
+   "attempts": [
+    {
+     "details": [],
+     "iteration": 1,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.22487
+    },
+    {
+     "details": [],
+     "iteration": 2,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.197353
+    },
+    {
+     "details": [],
+     "iteration": 3,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.265378
+    }
+   ],
+   "labels": [
+    "unit"
+   ],
+   "outcome": "passed"
+  },
+  "gui_application": {
+   "attempts": [
+    {
+     "details": [],
+     "iteration": 1,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 39.6111
+    },
+    {
+     "details": [],
+     "iteration": 2,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 39.393
+    },
+    {
+     "details": [],
+     "iteration": 3,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 39.9358
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "gui_editor_window": {
+   "attempts": [
+    {
+     "details": [],
+     "iteration": 1,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.300466
+    },
+    {
+     "details": [],
+     "iteration": 2,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.330402
+    },
+    {
+     "details": [],
+     "iteration": 3,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.366714
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "gui_history_view": {
+   "attempts": [
+    {
+     "details": [],
+     "iteration": 1,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 25.4976
+    },
+    {
+     "details": [],
+     "iteration": 2,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 25.9312
+    },
+    {
+     "details": [],
+     "iteration": 3,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 25.9194
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "gui_review_window": {
+   "attempts": [
+    {
+     "details": [],
+     "iteration": 1,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.437177
+    },
+    {
+     "details": [],
+     "iteration": 2,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.455592
+    },
+    {
+     "details": [],
+     "iteration": 3,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.521278
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "gui_settings": {
+   "attempts": [
+    {
+     "details": [],
+     "iteration": 1,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 76.4108
+    },
+    {
+     "details": [],
+     "iteration": 2,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 76.3584
+    },
+    {
+     "details": [],
+     "iteration": 3,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 76.3012
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "gui_theme": {
+   "attempts": [
+    {
+     "details": [],
+     "iteration": 1,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.142925
+    },
+    {
+     "details": [],
+     "iteration": 2,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.139583
+    },
+    {
+     "details": [],
+     "iteration": 3,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.185138
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "gui_tray": {
+   "attempts": [
+    {
+     "details": [],
+     "iteration": 1,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 47.7836
+    },
+    {
+     "details": [],
+     "iteration": 2,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 47.7871
+    },
+    {
+     "details": [],
+     "iteration": 3,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 47.8484
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "gui_version": {
+   "attempts": [
+    {
+     "details": [],
+     "iteration": 1,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.0475369
+    },
+    {
+     "details": [],
+     "iteration": 2,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.0477554
+    },
+    {
+     "details": [],
+     "iteration": 3,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.066155
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "history_contract": {
+   "attempts": [
+    {
+     "details": [],
+     "iteration": 1,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 7.34096
+    },
+    {
+     "details": [],
+     "iteration": 2,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 7.21917
+    },
+    {
+     "details": [],
+     "iteration": 3,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 7.79522
+    }
+   ],
+   "labels": [
+    "unit"
+   ],
+   "outcome": "passed"
+  },
+  "host_environment_contract": {
+   "attempts": [
+    {
+     "details": [],
+     "iteration": 1,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.0681496
+    },
+    {
+     "details": [],
+     "iteration": 2,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.0670789
+    },
+    {
+     "details": [],
+     "iteration": 3,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.0846956
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "host_open_integration": {
+   "attempts": [
+    {
+     "details": [],
+     "iteration": 1,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 3.68798
+    },
+    {
+     "details": [],
+     "iteration": 2,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 3.68999
+    },
+    {
+     "details": [],
+     "iteration": 3,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 3.68313
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "image_job_integration": {
+   "attempts": [
+    {
+     "details": [],
+     "iteration": 1,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 4.96133
+    },
+    {
+     "details": [],
+     "iteration": 2,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 4.95232
+    },
+    {
+     "details": [],
+     "iteration": 3,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 5.05977
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "ip_address_contract": {
+   "attempts": [
+    {
+     "details": [],
+     "iteration": 1,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.0412486
+    },
+    {
+     "details": [],
+     "iteration": 2,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.042784
+    },
+    {
+     "details": [],
+     "iteration": 3,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.0743384
+    }
+   ],
+   "labels": [
+    "unit"
+   ],
+   "outcome": "passed"
+  },
+  "json_ref_lifetime_contract": {
+   "attempts": [
+    {
+     "details": [],
+     "iteration": 1,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.351939
+    },
+    {
+     "details": [],
+     "iteration": 2,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.331779
+    },
+    {
+     "details": [],
+     "iteration": 3,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.51008
+    }
+   ],
+   "labels": [
+    "unit"
+   ],
+   "outcome": "passed"
+  },
+  "kde_clipboard_import": {
+   "attempts": [
+    {
+     "details": [],
+     "iteration": 1,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.276297
+    },
+    {
+     "details": [],
+     "iteration": 2,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.273512
+    },
+    {
+     "details": [],
+     "iteration": 3,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.285131
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "kde_keyboard_map": {
+   "attempts": [
+    {
+     "details": [],
+     "iteration": 1,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.0230857
+    },
+    {
+     "details": [],
+     "iteration": 2,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.0205005
+    },
+    {
+     "details": [],
+     "iteration": 3,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.0334607
+    }
+   ],
+   "labels": [
+    "unit"
+   ],
+   "outcome": "passed"
+  },
+  "kde_ownership_integration": {
+   "attempts": [
+    {
+     "details": [],
+     "iteration": 1,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 8.95836
+    },
+    {
+     "details": [],
+     "iteration": 2,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 9.31506
+    },
+    {
+     "details": [],
+     "iteration": 3,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 9.03832
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "kde_region_control": {
+   "attempts": [
+    {
+     "details": [],
+     "iteration": 1,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 9.26611
+    },
+    {
+     "details": [],
+     "iteration": 2,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 9.27118
+    },
+    {
+     "details": [],
+     "iteration": 3,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 9.27131
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "kde_shortcut_normalization": {
+   "attempts": [
+    {
+     "details": [],
+     "iteration": 1,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.0196105
+    },
+    {
+     "details": [],
+     "iteration": 2,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.0160979
+    },
+    {
+     "details": [],
+     "iteration": 3,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.0167182
+    }
+   ],
+   "labels": [
+    "unit"
+   ],
+   "outcome": "passed"
+  },
+  "kde_shortcuts_integration": {
+   "attempts": [
+    {
+     "details": [],
+     "iteration": 1,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 5.3681
+    },
+    {
+     "details": [],
+     "iteration": 2,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 5.3662
+    },
+    {
+     "details": [],
+     "iteration": 3,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 5.46877
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "keychain_backend_integration": {
+   "attempts": [
+    {
+     "details": [],
+     "iteration": 1,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.352441
+    },
+    {
+     "details": [],
+     "iteration": 2,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.337887
+    },
+    {
+     "details": [],
+     "iteration": 3,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.351928
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "keychain_integration": {
+   "attempts": [
+    {
+     "details": [],
+     "iteration": 1,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.120837
+    },
+    {
+     "details": [],
+     "iteration": 2,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.127988
+    },
+    {
+     "details": [],
+     "iteration": 3,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.127628
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "kwin_transfer_contract": {
+   "attempts": [
+    {
+     "details": [],
+     "iteration": 1,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.184141
+    },
+    {
+     "details": [],
+     "iteration": 2,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.197416
+    },
+    {
+     "details": [],
+     "iteration": 3,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.198789
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "local_ipc_contract": {
+   "attempts": [
+    {
+     "details": [],
+     "iteration": 1,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 12.9
+    },
+    {
+     "details": [],
+     "iteration": 2,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 12.9514
+    },
+    {
+     "details": [],
+     "iteration": 3,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 12.9117
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "logging_contract": {
+   "attempts": [
+    {
+     "details": [],
+     "iteration": 1,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.771049
+    },
+    {
+     "details": [],
+     "iteration": 2,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.832365
+    },
+    {
+     "details": [],
+     "iteration": 3,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 1.10084
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "login_startup_contract": {
+   "attempts": [
+    {
+     "details": [],
+     "iteration": 1,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.0150488
+    },
+    {
+     "details": [],
+     "iteration": 2,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.0158221
+    },
+    {
+     "details": [],
+     "iteration": 3,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.0263693
+    }
+   ],
+   "labels": [
+    "unit"
+   ],
+   "outcome": "passed"
+  },
+  "native_background_startup_integration": {
+   "attempts": [
+    {
+     "details": [],
+     "iteration": 1,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 70.5145
+    },
+    {
+     "details": [],
+     "iteration": 2,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 70.3771
+    },
+    {
+     "details": [],
+     "iteration": 3,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 70.7133
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "native_region_overlay": {
+   "attempts": [
+    {
+     "details": [],
+     "iteration": 1,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 1.00852
+    },
+    {
+     "details": [],
+     "iteration": 2,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 1.09344
+    },
+    {
+     "details": [],
+     "iteration": 3,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 1.3262
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "native_session_guards": {
+   "attempts": [
+    {
+     "details": [],
+     "iteration": 1,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.00902795
+    },
+    {
+     "details": [],
+     "iteration": 2,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.01561
+    },
+    {
+     "details": [],
+     "iteration": 3,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.0189045
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "native_shortcut_rejection_integration": {
+   "attempts": [
+    {
+     "details": [],
+     "iteration": 1,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.881893
+    },
+    {
+     "details": [],
+     "iteration": 2,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.915278
+    },
+    {
+     "details": [],
+     "iteration": 3,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 1.15615
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "native_tray_integration": {
+   "attempts": [
+    {
+     "details": [],
+     "iteration": 1,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 15.3384
+    },
+    {
+     "details": [],
+     "iteration": 2,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 15.1736
+    },
+    {
+     "details": [],
+     "iteration": 3,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 15.5173
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "operations_contract": {
+   "attempts": [
+    {
+     "details": [],
+     "iteration": 1,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 74.1211
+    },
+    {
+     "details": [],
+     "iteration": 2,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 73.8854
+    },
+    {
+     "details": [],
+     "iteration": 3,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 73.8781
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "pause_timeline_contract": {
+   "attempts": [
+    {
+     "details": [],
+     "iteration": 1,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.0114741
+    },
+    {
+     "details": [],
+     "iteration": 2,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.00829702
+    },
+    {
+     "details": [],
+     "iteration": 3,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.0173291
+    }
+   ],
+   "labels": [
+    "unit"
+   ],
+   "outcome": "passed"
+  },
+  "payload_contract": {
+   "attempts": [
+    {
+     "details": [],
+     "iteration": 1,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.136743
+    },
+    {
+     "details": [],
+     "iteration": 2,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.129076
+    },
+    {
+     "details": [],
+     "iteration": 3,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.183859
+    }
+   ],
+   "labels": [
+    "unit"
+   ],
+   "outcome": "passed"
+  },
+  "portal_streams_contract": {
+   "attempts": [
+    {
+     "details": [],
+     "iteration": 1,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.0185081
+    },
+    {
+     "details": [],
+     "iteration": 2,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.0199431
+    },
+    {
+     "details": [],
+     "iteration": 3,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.0288502
+    }
+   ],
+   "labels": [
+    "unit"
+   ],
+   "outcome": "passed"
+  },
+  "poster_contract": {
+   "attempts": [
+    {
+     "details": [],
+     "iteration": 1,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 1.16265
+    },
+    {
+     "details": [],
+     "iteration": 2,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 1.10041
+    },
+    {
+     "details": [],
+     "iteration": 3,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 1.53652
+    }
+   ],
+   "labels": [
+    "unit"
+   ],
+   "outcome": "passed"
+  },
+  "poster_job_integration": {
+   "attempts": [
+    {
+     "details": [],
+     "iteration": 1,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 5.54296
+    },
+    {
+     "details": [],
+     "iteration": 2,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 5.53603
+    },
+    {
+     "details": [],
+     "iteration": 3,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 6.03338
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "proton_contract": {
+   "attempts": [
+    {
+     "details": [],
+     "iteration": 1,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 4.22569
+    },
+    {
+     "details": [],
+     "iteration": 2,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 4.0927
+    },
+    {
+     "details": [],
+     "iteration": 3,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 4.18721
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "proton_transport": {
+   "attempts": [
+    {
+     "details": [],
+     "iteration": 1,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 7.7931
+    },
+    {
+     "details": [],
+     "iteration": 2,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 7.78093
+    },
+    {
+     "details": [],
+     "iteration": 3,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 7.7878
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "public_url": {
+   "attempts": [
+    {
+     "details": [],
+     "iteration": 1,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.0162112
+    },
+    {
+     "details": [],
+     "iteration": 2,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.0105961
+    },
+    {
+     "details": [],
+     "iteration": 3,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.0241218
+    }
+   ],
+   "labels": [
+    "unit"
+   ],
+   "outcome": "passed"
+  },
+  "record_identity_contract": {
+   "attempts": [
+    {
+     "details": [],
+     "iteration": 1,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.0370054
+    },
+    {
+     "details": [],
+     "iteration": 2,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.0349317
+    },
+    {
+     "details": [],
+     "iteration": 3,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.0671623
+    }
+   ],
+   "labels": [
+    "unit"
+   ],
+   "outcome": "passed"
+  },
+  "record_runtime_contract": {
+   "attempts": [
+    {
+     "details": [],
+     "iteration": 1,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.00680961
+    },
+    {
+     "details": [],
+     "iteration": 2,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.00632245
+    },
+    {
+     "details": [],
+     "iteration": 3,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.00811236
+    }
+   ],
+   "labels": [
+    "unit"
+   ],
+   "outcome": "passed"
+  },
+  "recording_helper_integration": {
+   "attempts": [
+    {
+     "details": [],
+     "iteration": 1,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 5.57173
+    },
+    {
+     "details": [],
+     "iteration": 2,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 5.71857
+    },
+    {
+     "details": [],
+     "iteration": 3,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 5.81247
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "recording_model_contract": {
+   "attempts": [
+    {
+     "details": [],
+     "iteration": 1,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.0222558
+    },
+    {
+     "details": [],
+     "iteration": 2,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.0183797
+    },
+    {
+     "details": [],
+     "iteration": 3,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.0520174
+    }
+   ],
+   "labels": [
+    "unit"
+   ],
+   "outcome": "passed"
+  },
+  "recording_service_integration": {
+   "attempts": [
+    {
+     "details": [],
+     "iteration": 1,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 3.78691
+    },
+    {
+     "details": [],
+     "iteration": 2,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 3.83711
+    },
+    {
+     "details": [],
+     "iteration": 3,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 3.76473
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "release_link_contract": {
+   "attempts": [
+    {
+     "details": [],
+     "iteration": 1,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.016844
+    },
+    {
+     "details": [],
+     "iteration": 2,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.0205875
+    },
+    {
+     "details": [],
+     "iteration": 3,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.0313179
+    }
+   ],
+   "labels": [
+    "unit"
+   ],
+   "outcome": "passed"
+  },
+  "s3_delete_integration": {
+   "attempts": [
+    {
+     "details": [],
+     "iteration": 1,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 15.3707
+    },
+    {
+     "details": [],
+     "iteration": 2,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 15.2851
+    },
+    {
+     "details": [],
+     "iteration": 3,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 15.488
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "s3_integration": {
+   "attempts": [
+    {
+     "details": [],
+     "iteration": 1,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 13.851
+    },
+    {
+     "details": [],
+     "iteration": 2,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 13.7993
+    },
+    {
+     "details": [],
+     "iteration": 3,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 16.3164
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "s3_module_integration": {
+   "attempts": [
+    {
+     "details": [],
+     "iteration": 1,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 36.5432
+    },
+    {
+     "details": [],
+     "iteration": 2,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 36.6998
+    },
+    {
+     "details": [],
+     "iteration": 3,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 36.472
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "s3_multipart_integration": {
+   "attempts": [
+    {
+     "details": [],
+     "iteration": 1,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 27.5706
+    },
+    {
+     "details": [],
+     "iteration": 2,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 27.8179
+    },
+    {
+     "details": [],
+     "iteration": 3,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 27.5712
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "s3_worker_protocol": {
+   "attempts": [
+    {
+     "details": [],
+     "iteration": 1,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.282223
+    },
+    {
+     "details": [],
+     "iteration": 2,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.26447
+    },
+    {
+     "details": [],
+     "iteration": 3,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.407417
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "s3_worker_supervision": {
+   "attempts": [
+    {
+     "details": [],
+     "iteration": 1,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 47.4948
+    },
+    {
+     "details": [],
+     "iteration": 2,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 47.69
+    },
+    {
+     "details": [],
+     "iteration": 3,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 47.6025
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "sdk_contract": {
+   "attempts": [
+    {
+     "details": [],
+     "iteration": 1,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.318959
+    },
+    {
+     "details": [],
+     "iteration": 2,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.286572
+    },
+    {
+     "details": [],
+     "iteration": 3,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.365021
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "session_client_integration": {
+   "attempts": [
+    {
+     "details": [],
+     "iteration": 1,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 18.5632
+    },
+    {
+     "details": [],
+     "iteration": 2,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 18.5616
+    },
+    {
+     "details": [],
+     "iteration": 3,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 18.555
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "settings_contract": {
+   "attempts": [
+    {
+     "details": [],
+     "iteration": 1,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 9.4748
+    },
+    {
+     "details": [],
+     "iteration": 2,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 9.60999
+    },
+    {
+     "details": [],
+     "iteration": 3,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 9.42476
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "storage_contract_integration": {
+   "attempts": [
+    {
+     "details": [],
+     "iteration": 1,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 4.06066
+    },
+    {
+     "details": [],
+     "iteration": 2,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 3.99481
+    },
+    {
+     "details": [],
+     "iteration": 3,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 3.86639
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "storage_locations_integration": {
+   "attempts": [
+    {
+     "details": [],
+     "iteration": 1,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.981489
+    },
+    {
+     "details": [],
+     "iteration": 2,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.970877
+    },
+    {
+     "details": [],
+     "iteration": 3,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 1.45116
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "ui_control_integration": {
+   "attempts": [
+    {
+     "details": [],
+     "iteration": 1,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 1.0922
+    },
+    {
+     "details": [],
+     "iteration": 2,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.935342
+    },
+    {
+     "details": [],
+     "iteration": 3,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 1.45583
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "ui_endpoints_integration": {
+   "attempts": [
+    {
+     "details": [],
+     "iteration": 1,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.455171
+    },
+    {
+     "details": [],
+     "iteration": 2,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.483162
+    },
+    {
+     "details": [],
+     "iteration": 3,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.525105
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "ui_native_lifecycle_integration": {
+   "attempts": [
+    {
+     "details": [],
+     "iteration": 1,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 4.28847
+    },
+    {
+     "details": [],
+     "iteration": 2,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 4.16207
+    },
+    {
+     "details": [],
+     "iteration": 3,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 4.28716
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "ui_process_integration": {
+   "attempts": [
+    {
+     "details": [],
+     "iteration": 1,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 13.9827
+    },
+    {
+     "details": [],
+     "iteration": 2,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 14.9902
+    },
+    {
+     "details": [],
+     "iteration": 3,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 14.3839
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "ui_split_services_integration": {
+   "attempts": [
+    {
+     "details": [],
+     "iteration": 1,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 1.04139
+    },
+    {
+     "details": [],
+     "iteration": 2,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 1.04319
+    },
+    {
+     "details": [],
+     "iteration": 3,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 1.32891
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "update_appimage_install_child": {
+   "attempts": [
+    {
+     "details": [],
+     "iteration": 1,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.127417
+    },
+    {
+     "details": [],
+     "iteration": 2,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.165063
+    },
+    {
+     "details": [],
+     "iteration": 3,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.187613
+    }
+   ],
+   "labels": [
+    "unit"
+   ],
+   "outcome": "passed"
+  },
+  "update_appimage_install_files": {
+   "attempts": [
+    {
+     "details": [],
+     "iteration": 1,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.0179617
+    },
+    {
+     "details": [],
+     "iteration": 2,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.0221726
+    },
+    {
+     "details": [],
+     "iteration": 3,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.0347985
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "update_check_request": {
+   "attempts": [
+    {
+     "details": [],
+     "iteration": 1,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.101114
+    },
+    {
+     "details": [],
+     "iteration": 2,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.110479
+    },
+    {
+     "details": [],
+     "iteration": 3,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.127801
+    }
+   ],
+   "labels": [
+    "unit"
+   ],
+   "outcome": "passed"
+  },
+  "update_feed_contract": {
+   "attempts": [
+    {
+     "details": [],
+     "iteration": 1,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.0171058
+    },
+    {
+     "details": [],
+     "iteration": 2,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.0265746
+    },
+    {
+     "details": [],
+     "iteration": 3,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.0298816
+    }
+   ],
+   "labels": [
+    "unit"
+   ],
+   "outcome": "passed"
+  },
+  "update_minisign_verify": {
+   "attempts": [
+    {
+     "details": [],
+     "iteration": 1,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.0191915
+    },
+    {
+     "details": [],
+     "iteration": 2,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.0250281
+    },
+    {
+     "details": [],
+     "iteration": 3,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.029971
+    }
+   ],
+   "labels": [
+    "unit"
+   ],
+   "outcome": "passed"
+  },
+  "update_service_schedule": {
+   "attempts": [
+    {
+     "details": [],
+     "iteration": 1,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 1.41538
+    },
+    {
+     "details": [],
+     "iteration": 2,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 1.39984
+    },
+    {
+     "details": [],
+     "iteration": 3,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 1.53855
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "update_system_repository": {
+   "attempts": [
+    {
+     "details": [],
+     "iteration": 1,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.0131572
+    },
+    {
+     "details": [],
+     "iteration": 2,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.0138955
+    },
+    {
+     "details": [],
+     "iteration": 3,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.020303
+    }
+   ],
+   "labels": [
+    "unit"
+   ],
+   "outcome": "passed"
+  },
+  "upload_naming_contract": {
+   "attempts": [
+    {
+     "details": [],
+     "iteration": 1,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.0402
+    },
+    {
+     "details": [],
+     "iteration": 2,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.0311347
+    },
+    {
+     "details": [],
+     "iteration": 3,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.0646944
+    }
+   ],
+   "labels": [
+    "unit"
+   ],
+   "outcome": "passed"
+  },
+  "version_contract": {
+   "attempts": [
+    {
+     "details": [],
+     "iteration": 1,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 10.0317
+    },
+    {
+     "details": [],
+     "iteration": 2,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 10.071
+    },
+    {
+     "details": [],
+     "iteration": 3,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 11.1111
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "version_integration": {
+   "attempts": [
+    {
+     "details": [],
+     "iteration": 1,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.113525
+    },
+    {
+     "details": [],
+     "iteration": 2,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.0985714
+    },
+    {
+     "details": [],
+     "iteration": 3,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.131212
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "wayland_acquisition_contract": {
+   "attempts": [
+    {
+     "details": [],
+     "iteration": 1,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.00682612
+    },
+    {
+     "details": [],
+     "iteration": 2,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.00724557
+    },
+    {
+     "details": [],
+     "iteration": 3,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.0089338
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "x11_capture_decode": {
+   "attempts": [
+    {
+     "details": [],
+     "iteration": 1,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.291581
+    },
+    {
+     "details": [],
+     "iteration": 2,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.290194
+    },
+    {
+     "details": [],
+     "iteration": 3,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.391854
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "x11_clipboard_import": {
+   "attempts": [
+    {
+     "details": [],
+     "iteration": 1,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.920337
+    },
+    {
+     "details": [],
+     "iteration": 2,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 1.0858
+    },
+    {
+     "details": [],
+     "iteration": 3,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 1.70375
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "x11_core_clipboard": {
+   "attempts": [
+    {
+     "details": [],
+     "iteration": 1,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 18.3047
+    },
+    {
+     "details": [],
+     "iteration": 2,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 18.2071
+    },
+    {
+     "details": [],
+     "iteration": 3,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 18.2239
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "x11_isolated": {
+   "attempts": [
+    {
+     "details": [],
+     "iteration": 1,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 20.8871
+    },
+    {
+     "details": [],
+     "iteration": 2,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 21.2104
+    },
+    {
+     "details": [],
+     "iteration": 3,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 20.6992
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "x11_native_snapshot": {
+   "attempts": [
+    {
+     "details": [],
+     "iteration": 1,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.118472
+    },
+    {
+     "details": [],
+     "iteration": 2,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.107441
+    },
+    {
+     "details": [],
+     "iteration": 3,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.151572
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  }
+ }
+}

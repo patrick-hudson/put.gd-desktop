@@ -7,6 +7,7 @@
 #include <QFile>
 #include <QScopeGuard>
 #include <memory>
+#include "fixtures/Waits.h"
 using namespace putgd;
 namespace {
 // Image plugins whose code is mapped into this process; dlopen maps an
@@ -39,7 +40,7 @@ QList<qint64> imageJobs(){
 }
 bool importInto(X11Clipboard& importer,PayloadResult& result){
  bool done=false;importer.acquire({},[&](PayloadResult value){result=std::move(value);done=true;});
- return QTest::qWaitFor([&]{return done;},20000);
+ return putgd::test::waitFor([&]{return done;},20000);
 }
 bool expectedPixels(const QImage& image){
  return image.size()==QSize(3,2)&&image.pixelColor(0,0)==QColor(Qt::red)&&image.pixelColor(1,0)==QColor(Qt::green)&&image.pixelColor(2,0)==QColor(Qt::blue)
@@ -115,8 +116,8 @@ private slots:
   X11SelectionFixture owner({{"image/bmp",bmp}});
   auto importer=std::make_unique<X11Clipboard>();bool done=false;PayloadResult result;
   importer->acquire({},[&](PayloadResult value){result=std::move(value);done=true;});
-  QTRY_VERIFY(!imageJobs().isEmpty());QVERIFY(!done);importer->cancel();
-  QTRY_VERIFY(done);QCOMPARE(result.error.code,QString("cancelled"));
+  PUTGD_TRY_VERIFY(!imageJobs().isEmpty());QVERIFY(!done);importer->cancel();
+  PUTGD_TRY_VERIFY(done);QCOMPARE(result.error.code,QString("cancelled"));
   // Destruction waits for workers; a cancelled image job must stop promptly.
   QElapsedTimer clock;clock.start();importer.reset();QVERIFY2(clock.elapsed()<2500,qPrintable(QString::number(clock.elapsed())));
   QCOMPARE(imageJobs(),QList<qint64>{});QVERIFY(owner.requested.isEmpty());

@@ -1,0 +1,6 @@
+m74 (Linux Mint 22.3 Cinnamon X11): released
+  capture-copy-466-492-493-474 (t3-0aa1b31c), acquired 2026-10-24T01:23:19Z
+  purpose: Quiet current-head #474 native Cinnamon exact U24 package functional and cold/post-use memory; w11b preserved
+  note: 3 process(es) outside the desktop session (no DISPLAY or WAYLAND_DISPLAY; shared SSH work): 2067 313646 313651
+  receipt on the host: /home/patrick/putgd-lab/locks/history/2026-10-24T01-57-32Z-release.json
+  Tell the next session in the queue and your coordinator

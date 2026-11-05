@@ -1,0 +1,110 @@
+{
+  "frames": {
+    "frames/core_demo.text_tool/00-before.png": {
+      "sha256": "ecf13ec66535bb9cf212a425e2508b7ce535e991445298eafb8763c581c718cb",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true
+    },
+    "frames/core_demo.text_tool/01-text-tool.png": {
+      "sha256": "6b29a49213bb5618fc475ff66e469d18d93c17a05177f87dd42cda007cfd80e3",
+      "size": [
+        900,
+        620
+      ],
+      "regions": [
+        [
+          686,
+          399,
+          170,
+          32
+        ]
+      ],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true
+    },
+    "frames/core_demo.text_tool/02-after.png": {
+      "sha256": "ecf13ec66535bb9cf212a425e2508b7ce535e991445298eafb8763c581c718cb",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true
+    },
+    "frames/core_demo.redact_tool/00-before.png": {
+      "sha256": "ecf13ec66535bb9cf212a425e2508b7ce535e991445298eafb8763c581c718cb",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true
+    },
+    "frames/core_demo.redact_tool/01-redact-tool.png": {
+      "sha256": "9c6294ef99e13f39706464ad86a16a16e526968cb484aef1b455119b407bf3e3",
+      "size": [
+        900,
+        620
+      ],
+      "regions": [],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true
+    },
+    "frames/core_demo.redact_tool/02-after.png": {
+      "sha256": "0d36cfa77c85f449aa81e1542d07a6c75a3c4992a8671562d0b967cfa3573bce",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true
+    },
+    "frames/core_demo.undo_redo/00-before.png": {
+      "sha256": "0d36cfa77c85f449aa81e1542d07a6c75a3c4992a8671562d0b967cfa3573bce",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true
+    },
+    "frames/core_demo.undo_redo/01-redone.png": {
+      "sha256": "65b0a3d518e3f9e95ee8c5632a1d82517d8ca86cf61a9928d72fab5d98a3bef6",
+      "size": [
+        900,
+        620
+      ],
+      "regions": [],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true
+    },
+    "frames/core_demo.undo_redo/02-after.png": {
+      "sha256": "0d36cfa77c85f449aa81e1542d07a6c75a3c4992a8671562d0b967cfa3573bce",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true
+    }
+  }
+}

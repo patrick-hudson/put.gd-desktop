@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "run": "/home/user/t1/work/lab-runs/fa1",
+  "golden": "/home/user/work/put.gd/src/work/lab-images/aurora-testing-45.20261022.1-ec2-20261029-a1/image.qcow2",
+  "goldenSha256": "a71cdd0cc8b485ee7e384670245293dbafd7fe46b8cbb05b4fbccf0d1f0d8128",
+  "keySeed": "/home/user/t1/work/lab-images/keyseed-fa1/image.qcow2",
+  "keySeedSha256": "2d60e7bca86cf40780c96d44f2cd9abccc178734129b5c8281813c53d7ddb445",
+  "bootstrapKeyReference": "/home/user/aurora-builder/runs/fa1/bootstrap",
+  "guest": "lab",
+  "profile": "aurora-kde-wayland",
+  "sshPort": 22220,
+  "vncDisplay": 20,
+  "bootstrapReadiness": "One Plasma shell and no splash for 10 seconds before SSH handoff; full official lab preflight unchanged",
+  "scope": "Per-run public-key and readiness-gate delta in a disposable read-only parent; original golden unchanged"
+}

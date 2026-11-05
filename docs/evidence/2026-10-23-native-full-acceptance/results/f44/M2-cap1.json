@@ -1,0 +1,37 @@
+Traceback (most recent call last):
+  File "/home/patrick/work/put.gd-nfa/tool/nfa.py", line 1054, in <module>
+    main()
+    ~~~~^^
+  File "/home/patrick/work/put.gd-nfa/tool/nfa.py", line 1013, in main
+    return afa.main()
+           ~~~~~~~~^^
+  File "/home/patrick/work/put.gd-nfa/tool/afa.py", line 1465, in main
+    {'identity': identity, 'versions': versions, 'setup': setup, 'start': start, 'memory': memory, 'tray-menu': tray_menu, 'history': history,
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+     'delete': delete, 'settings': settings, 'cleanup': cleanup, 'processes': processes, 'baseline': baseline, 'shot': shot, 'click': click,
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+     'tray-click': tray_click, 'switcher': switcher, 'find-tray': find_tray, 'allow-full': allow_full, 'window': window, 'cover': cover, 'capture': capture, 'edit': edit, 'notify': notify, 'record': record,
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+     'control': control, 'update-check': update_check, 'login': login, 'quit-tray': quit_tray, 'recorder-check': recorder_check}[args.cmd](args)
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "/home/patrick/work/put.gd-nfa/tool/nfa.py", line 239, in guarded
+    return _original(args)
+  File "/home/patrick/work/put.gd-nfa/tool/afa.py", line 917, in capture
+    clip = clipboard(run, 'text/plain;charset=utf-8') or clipboard(run, 'text/plain')
+           ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/patrick/work/put.gd-nfa/tool/afa.py", line 852, in clipboard
+    r = subprocess.run(['wl-paste', '--no-newline', '--type', mime], env=env, capture_output=True, timeout=10)
+  File "/usr/lib64/python3.14/subprocess.py", line 556, in run
+    stdout, stderr = process.communicate(input, timeout=timeout)
+                     ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib64/python3.14/subprocess.py", line 1220, in communicate
+    stdout, stderr = self._communicate(input, endtime, timeout)
+                     ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib64/python3.14/subprocess.py", line 2153, in _communicate
+    self._check_timeout(endtime, orig_timeout, stdout, stderr)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib64/python3.14/subprocess.py", line 1267, in _check_timeout
+    raise TimeoutExpired(
+    ...<2 lines>...
+            stderr=b''.join(stderr_seq) if stderr_seq else None)
+subprocess.TimeoutExpired: Command '['wl-paste', '--no-newline', '--type', 'text/plain;charset=utf-8']' timed out after 10 seconds

@@ -1,0 +1,95 @@
+{
+ "name": "ubu-sched",
+ "tool": null,
+ "live": true,
+ "image": "/home/lab/ua/app/runs/ubu-sched/apps/putgd-26.1022.1017-nightly-x86_64.AppImage",
+ "imageSha256": "005762e9ede991c78fce115707a41617d899d7870738fb525151c182357b7c3a",
+ "cliDir": "/home/lab/ua/app/runs/ubu-sched/cli/squashfs-root",
+ "runtime": "/tmp/ua-app.9IxTlk",
+ "session": {
+  "HOME": "/home/lab",
+  "PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin",
+  "USER": "lab",
+  "LANG": "en_US.UTF-8",
+  "DBUS_SESSION_BUS_ADDRESS": "unix:path=/run/user/1000/bus",
+  "XDG_SESSION_TYPE": "wayland",
+  "XDG_CURRENT_DESKTOP": "ubuntu:GNOME",
+  "XDG_SESSION_DESKTOP": "ubuntu",
+  "DESKTOP_SESSION": "ubuntu",
+  "XDG_DATA_DIRS": "/usr/share/ubuntu:/usr/share/gnome:/usr/local/share/:/usr/share/:/var/lib/snapd/desktop",
+  "WAYLAND_DISPLAY": "/run/user/1000/wayland-0",
+  "DISPLAY": ":0",
+  "XAUTHORITY": "/run/user/1000/.mutter-Xwaylandauth.JQOBX3"
+ },
+ "shell": "gnome-shell",
+ "hostPath": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin",
+ "host": "putgd-ubuntu-lab",
+ "vnc": 5922,
+ "urls": {},
+ "input": "vnc",
+ "before": {
+  "dataPutgd": false,
+  "homePutgd": {
+   "/home/lab/.config/putgd": false,
+   "/home/lab/.local/state/putgd": false,
+   "/home/lab/.cache/putgd": false
+  },
+  "autostart": []
+ },
+ "pids": {
+  "apprun": 6237
+ },
+ "created": "2026-10-23T01:32:34Z",
+ "watchStart-u14": "2026-10-23T01:32:35Z",
+ "log": [
+  {
+   "at": "2026-10-23T01:32:35Z",
+   "watch": {
+    "label": "u14",
+    "pid": 6358,
+    "started": "2026-10-23T01:32:35Z"
+   }
+  },
+  {
+   "at": "2026-10-23T01:46:02Z",
+   "watch": {
+    "label": "u14",
+    "from": "2026-10-23T01:32:35Z",
+    "to": "2026-10-23T01:46:02Z",
+    "notifyCalls": [
+     {
+      "app": "Disk Usage Analyzer",
+      "summary": "Low Disk Space",
+      "body": "This computer has only 812.2\u00a0MB disk space remaining."
+     },
+     {
+      "app": "Disk Usage Analyzer",
+      "summary": "Low Disk Space",
+      "body": "This computer has only 812.2\u00a0MB disk space remaining."
+     }
+    ],
+    "putgdNotifyCalls": [],
+    "journal": [
+     {
+      "time": "2026-10-23T01:45:22.239Z",
+      "message": "Update check finished",
+      "fields": {
+       "channel": "nightly",
+       "itemId": null,
+       "latest": "26.1022.1019-nightly",
+       "operationId": null,
+       "updateAvailable": true
+      }
+     }
+    ]
+   }
+  },
+  {
+   "at": "2026-10-23T01:46:03Z",
+   "frame": {
+    "label": "u14-sched-1017-no-notification",
+    "frame": "/home/lab/ua/app/runs/ubu-sched/frames/u14-sched-1017-no-notification.png"
+   }
+  }
+ ]
+}

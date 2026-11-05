@@ -1,0 +1,10 @@
+{
+  "entries": [
+    {
+      "path": "tests/performance/bench_theme_switch.cpp",
+      "rule": "qwait",
+      "count": 5,
+      "reason": "A manual benchmark, not a CTest test: its fixed settle times are part of the measured protocol and must not scale with PUTGD_TEST_TIME_SCALE."
+    }
+  ]
+}

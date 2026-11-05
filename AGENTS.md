@@ -1,24 +1,51 @@
 # Working on put.gd
 
+put.gd is Linux only: DEB, RPM and AppImage. Flatpak and Windows are out of
+scope and must not be planned.
+
 Build with C++20, Qt 6 Widgets, CMake presets, Ninja, and the official AWS C++ SDK.
 The minimum Qt API is 6.4.2. Keep Qt dynamically linked to distro libraries.
+AppImage's bundled-runtime exception is documented in `docs/release.md`.
 Use standard system development packages; ask the user to install missing packages
 when administrator authentication is required. Do not assemble a substitute toolchain.
 
-Prefer Patrick's Fedora 44 (`192.168.68.70`), Debian 13 (`192.168.68.69`) and
-Kubuntu 26.04 (`192.168.68.72`) physical build/test servers for builds, VM hosting
-and graphical acceptance.
-Their existing GNOME and Plasma sessions are graphical acceptance targets too:
+Prefer Patrick's Fedora 44 (`192.168.68.70`, lock host `f44`), Debian 13
+(`192.168.68.69`, `d69`), Kubuntu 26.04 (`192.168.68.72`, `k72`),
+Linux Mint 22.3 (`192.168.68.74`, `m74`) and
+Aurora Fedora 45 (`192.168.68.71`, lock host `aurora-amd`) physical build/test
+servers for builds, VM hosting and graphical acceptance.
+Their existing GNOME, Plasma and Cinnamon sessions are graphical acceptance targets too:
 run and verify the app directly on the appropriate physical desktop, visible on
 its host wall tile, with saved visuals and exact host/session/source/build identities.
 Use local workstation VMs as a fallback when those hosts cannot run the required
 profile; record the reason. Connection pins, host selection, visual evidence and
-golden-image transfer rules are in `docs/remote-builders.md`. On these three servers,
+golden-image transfer rules are in `docs/remote-builders.md`. On these five servers,
 the user authorizes dependency/tool setup and testing with passwordless
 `sudo -n`; preserve existing projects and desktop work. Keep the SSH private key
 on the workstation. Verify host capacity, KVM and display access before VM runs;
 host preference does not change the required guest versions.
-Linux goldens and Windows bases are not kept on the workstation. They live on the
+
+Aurora uses the Fedora 45 Toolbx `putgd-build`: build with
+`~/.local/bin/putgd-build-env` from the canonical `/var/home/patrick/work/put.gd`
+checkout. Its native Plasma Wayland session is the graphical target. Use
+`~/.local/bin/putgd-proton-lab` for its existing Proton lab session; the Atomic
+home and KWallet details are in `docs/remote-builders.md`.
+
+The five physical desktops serve one session at a time. Before any GUI work on
+one, take its lock with `python3 tools/lab/desktop_lock.py acquire`, heartbeat it,
+and release it only after its cleanup check passes. Never wait for another
+session's reply while holding a lock: notify the affected session and coordinator
+of the exact PIDs, intended action and a deadline at least 10 minutes ahead;
+silence means go after that deadline. Before any logout or display-server restart,
+check for Patrick's own apps. If any are present, ask Patrick first; his apps are
+never leftovers, and silence never means go.
+SSH builds and VMs on the builders are shared; heavy work stays off the workstation.
+The full rules, including one coordinator per session family, are in
+`docs/remote-builders.md` under "Sharing the lab between concurrent sessions".
+The automatic nightly desktop check runs from a d69 timer across all five
+builders and posts to pinned issue #1003. Release lab leases before 07:15 UTC
+for that check; see the same sharing rules.
+Linux goldens are not kept on the workstation. They live on the
 Fedora and Debian builders and in a private S3 bucket. Find, copy and restore
 them using `docs/remote-golden-images.md`, and expose
 each remote VM on the wall using `docs/remote-vm-displays.md`. Provision new remote
@@ -33,9 +60,10 @@ and new VMs as needed; fall back locally with a recorded reason. Run any release
 gate requiring physical/native hardware on the appropriate physical machine.
 Provision missing profiles; never substitute VM or XWayland evidence for such gates.
 
-The implementation contract is in GitHub issue #1 and
-`docs/plans/2026-10-07-1926-feat-qt-linux-share-plan.md` when present locally.
-Preserve its user-approved choices and explicit non-goals. Implement in dependency order.
+The current design is in `docs/overview.md` and `docs/architecture.md`.
+The original 2026-10-07 plan is kept under `docs/history/plans/` as the origin
+record, not a work list. Preserve user-approved choices and explicit non-goals;
+implement changes in dependency order.
 
 Use `cmake --preset dev`, `cmake --build --preset dev`, and `ctest --preset dev`.
 See `docs/build.md` for SDK provisioning and sanitizer builds. Keep AWS headers under
@@ -43,16 +71,17 @@ See `docs/build.md` for SDK provisioning and sanitizer builds. Keep AWS headers 
 Offscreen tests prove widget/core behavior only. Real desktop support requires graphical
 acceptance evidence for each declared compositor. Never report a mock as desktop proof.
 
-Run a new candidate's Cinnamon, GNOME and KDE checks in parallel on the build
+Run a new release's Cinnamon, GNOME and KDE checks in parallel on the build
 machines, each with its own functional and memory gates. Every declared desktop
-still requires current-version evidence on that exact candidate before acceptance.
+still requires current-version evidence on that exact build before acceptance.
 A failure on any desktop blocks acceptance until it is fixed or shown to predate
-the candidate; retest a fix on every desktop.
+the build; retest a fix on every desktop.
 
-Use synthetic payloads and an isolated test destination. Never commit `credentials.txt`, including with force-add. It is user-provided local
-test input only; never include its contents in logs, diagnostics, or review packets.
-Never put credentials in source,
-configuration, logs, history, command lines, or review packets. Never modify bucket policy,
+Use synthetic payloads and an isolated test destination. Never commit
+`credentials.txt`, including with force-add. It is user-provided local test input
+only; never include its contents in logs, diagnostics, or review packets.
+Never put credentials in source, configuration, logs, diagnostics, history,
+command lines, or review packets. Never modify bucket policy,
 versioning, or existing user objects during tests. Configuration contains credential references.
 
 The user grants standing permission to send implementation and planning material to
@@ -63,31 +92,42 @@ Branch from `nightly` and open pull requests against `nightly`, the default bran
 and integration trunk. Never push to `nightly` or `main` directly; rulesets require
 a pull request and the `CI` check. CI selects jobs from the changed paths, and the
 `CI` summary is the only required check; a cancelled or skipped-by-failure job is
-not a pass. Leave `project(putgd VERSION ...)` alone in feature pull requests.
-Promote to `main` only through `tools/releases/promote.py --open` (a `release: vX.Y.Z`
-pull request from `nightly`, merged with a merge commit); its merge cuts the next
-candidate draft. Stable and candidate publication stay manual after exact-asset
-acceptance. Never create, move or delete `v*` tags by hand. Hotfixes target `main`
-with a patch bump and are merged back into `nightly` by pull request. The release
-runbook is `docs/release.md`; CI coverage is `docs/ci.md`.
+not a pass. Versions are CalVer `YY.MDD.N` taken from the tagged commit
+(`docs/versioning.md`); nothing is bumped by hand.
+Keep documentation out of code pull requests: changes to `docs/`, `README.md`,
+`AGENTS.md` and `CLAUDE.md` go in a separate documentation-only pull request,
+which CI checks with `contracts` alone. A doc edit pushed to a code pull request
+re-runs its whole build. Open the documentation pull request alongside its code
+pull request, link the two, and merge it after the code. `docs/build.md` and
+`docs/proton-drive.md` are package inputs and select every job anyway.
+Promote `nightly` to `main` only through `tools/releases/promote.py --open` (a `release:
+promote nightly YY.MDD.N` pull request from `nightly`, merged with a merge commit);
+its merge tags the stable `vYY.MDD.N` and stages its draft. There is no candidate
+channel; stable publication stays manual after exact-asset acceptance. Never
+create, move or delete `v*` tags by hand. Hotfixes target `main` and are merged
+back into `nightly` by pull request. When the user asks for a release, follow
+`docs/release-runbook.md` step by step.
+Channels and assets are in `docs/release.md`; CI coverage is in `docs/ci.md`.
 
 Record what was actually built/tested and any blocked acceptance gates. Commit explicit
-owned paths, preserving unrelated pre-existing changes. Do not add recording or OCR
-features: future video support currently means finalized video files in the shared pipeline.
-The user-approved Edit & upload image editor (#51) is the only editing feature; its
+owned paths, preserving unrelated pre-existing changes. Do not add OCR features.
+Screen recording (#50) is user-approved and ships in the DEB, RPM and AppImage
+(X11 and Wayland capture with region selection, system audio, private review,
+export, explicit upload). Follow `docs/recording.md`; finalized files enter the
+shared pipeline only through the explicit Upload action.
+The user-approved Edit & upload image editor (#51) is the still-image editing feature; its
 contract, privacy boundaries and agent control are in `docs/image-editor.md`.
-New windows reuse the redesign theme and IconArt glyphs, and every interactive
+New windows reuse the app style (`putgd::Ui`, `src/ui/Ui.h`) and IconArt glyphs, and every interactive
 capability stays controllable through session methods, `putgd-cli` and the MCP helper.
 
 Agent source, workflow and acceptance maps are in `docs/agents.md`. The optional Python
 3.12+ official-SDK stdio helper is under `tools/mcp/`; follow `docs/mcp.md` for locked
 setup and its separate integration suite. It forwards only to the production CLI.
 Inspect actual capabilities/configuration before acting; retain operation IDs and prepare
-exact history IDs/effects before acknowledging deletion. U6 lab and package interfaces
-are implemented; use `docs/vm-lab.md` and `docs/build.md` for their actual commands.
-Full U9 acceptance still requires current-version real Cinnamon evidence and the
-complete fresh-agent walkthrough gates recorded in `docs/verification.md`;
-headless parity or an earlier partial walkthrough alone cannot establish those gates.
+exact history IDs/effects before acknowledging deletion. Use `docs/vm-lab.md`
+and `docs/build.md` for lab and package commands, and `docs/verification.md`
+for observed acceptance and blocked gates. Headless parity or an earlier partial
+walkthrough cannot establish current desktop acceptance.
 
 Keep graphical lab interactions visible through each VM or physical desktop's
 localhost VNC listener and the workstation's SSH tunnels.
@@ -119,20 +159,13 @@ or review material; never use `credentials.txt` as a desktop login source.
 Verify the unlocked desktop visibly before acceptance, and ask the user only
 if the protected login input is actually unavailable or rejected.
 
-Windows VM bases under `work/windows/bases/` are sealed: never boot, modify,
-move, overwrite, or delete them while test overlays reference them. Run every
-Windows test in an independent copy under `work/windows/runs/`, created with
-`tools/lab/windows.py clone`; preserve the base disk, UEFI variables, TPM state,
-identity and manifest together. Provision a new base directory for updates.
-See `docs/windows-vm-lab.md` for lifecycle commands and verification evidence.
-
-Apply the same immutable-base rule to provisioned Linux golden disks under
-`work/lab-images/`: never boot or modify them directly, and never move, overwrite
-or delete a disk referenced by overlays. Linux tests use fresh disks under
+Linux golden disks under `work/lab-images/` are immutable: never boot or modify
+them directly, and never move, overwrite or delete a disk referenced by overlays.
+Linux tests use fresh disks under
 `work/lab-runs/` through `tools/lab/lab.py`; provision a new golden disk for updates.
-See `docs/vm-lab.md`. Goldens and Windows bases each have Fedora, Debian and S3
-copies. Never delete any copy without Patrick's approval and two other copies
-verified against the same SHA-256.
+See `docs/vm-lab.md`. Goldens have Fedora, Debian and S3 copies. Never delete
+any copy without Patrick's approval and two other copies verified against the
+same SHA-256.
 
 Retire completed disposable VM overlays after their evidence is exported and
 verified. Normal successful `tools/lab/lab.py run` calls do this automatically;

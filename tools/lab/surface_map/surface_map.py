@@ -1,0 +1,916 @@
+#!/usr/bin/env python3
+"""Surface map: every surface and interaction of put.gd, coloured by acceptance coverage.
+
+  surface_map.py build --catalog DIR --coverage FILE... --output DIR [--label TEXT] [--index] [--open] [--watch]
+  surface_map.py mark INTERACTION --coverage FILE --desktop ID --package deb|rpm|appimage|source
+                 [--functional passed|failed|blocked] [--visual frames|reviewed-ok|reviewed-wrong]
+                 [--receipt PATH] [--issue N] [--note TEXT]
+                 [--host ID] [--placement native|guest|boat] [--guest NAME]
+                 [--destination local|s3|b2|proton] [--review-reason TEXT]
+  surface_map.py import --coverage FILE [--desktop ID] [--package PKG] RECEIPT...
+    Import defaults are optional when receipt rows carry desktop and package.
+  surface_map.py checklist --coverage FILE... [--desktop ID]
+  surface_map.py check [--catalog DIR]
+
+The inventory is `model.json` beside this file: desktops, surfaces, interactions
+(buttons, menu items, keys, global shortcuts, CLI/MCP entries, OS events, edges
+between surfaces) and how lab receipts map onto them. Pictures and hotspot
+rectangles come from a `putgd-ui-catalog` output directory (`*.controls.json`);
+coverage comes from campaign files written by `mark` and `import`. The page is
+a single offline HTML file next to copies of the captures it shows. Nothing
+here touches a desktop, a resident or a network; it reads receipts and draws.
+"""
+import argparse
+import base64
+import datetime as dt
+import fnmatch
+import hashlib
+import html
+import json
+import os
+from pathlib import Path
+import re
+import shutil
+import sys
+import time
+
+HERE = Path(__file__).resolve().parent
+ROOT = HERE.parents[2]
+MODEL_PATH = HERE / 'model.json'
+TEMPLATE_PATH = HERE / 'surface_map.html'
+
+KINDS = ('button', 'menu-item', 'field', 'key', 'shortcut', 'gesture', 'state', 'cli', 'mcp', 'event', 'edge')
+FUNCTIONAL = ('passed', 'failed', 'blocked')
+VISUAL = ('frames', 'reviewed-ok', 'reviewed-wrong')
+PACKAGES = ('deb', 'rpm', 'appimage', 'source')
+HOSTS = ('m74', 'f44', 'd69', 'k72', 'aurora-amd', 'boat')
+PLACEMENTS = ('native', 'guest', 'boat')
+DESTINATIONS = ('local', 's3', 'b2', 'proton')
+ROW_FIELDS = ('host', 'placement', 'guest', 'destination', 'review', 'review_reason',
+              'frames', 'recipe', 'build')
+# Synthetic captures putgd-ui-catalog draws only offscreen (tests/gui/ui_catalog.cpp).
+OFFSCREEN_ONLY_CAPTURES = {
+    '00-tray-upload-status', '00-tray-menu-idle', '00-tray-menu-uploading',
+    '00-tray-menu-proton-busy', '00-tray-output-submenu', '00-tray-edit-submenu',
+}
+
+
+class ModelError(ValueError):
+    pass
+
+
+# ---------------------------------------------------------------- model
+
+def load_model(path=MODEL_PATH):
+    model = json.loads(Path(path).read_text(encoding='utf-8'))
+    validate_model(model)
+    return model
+
+
+def validate_model(model):
+    problems = []
+    if model.get('schemaVersion') != 1:
+        problems.append('schemaVersion must be 1')
+    desktops = {d['id'] for d in model.get('desktops', [])}
+    for desktop in model.get('desktops', []):
+        for row in desktop.get('rows', []):
+            validate_row(row)
+            if not row.get('host') or not row.get('placement'):
+                problems.append(desktop['id'] + ': rows need host and placement')
+    surfaces = {}
+    for surface in model.get('surfaces', []):
+        if surface['id'] in surfaces:
+            problems.append('duplicate surface ' + surface['id'])
+        surfaces[surface['id']] = surface
+    ids = set()
+    for item in model.get('interactions', []):
+        iid = item.get('id', '')
+        if not re.fullmatch(r'[a-z0-9]+(?:[.-][a-z0-9]+)*', iid):
+            problems.append('bad interaction id %r' % iid)
+        if iid in ids:
+            problems.append('duplicate interaction ' + iid)
+        ids.add(iid)
+        if item.get('surface') not in surfaces:
+            problems.append('%s: unknown surface %r' % (iid, item.get('surface')))
+        if item.get('kind') not in KINDS:
+            problems.append('%s: unknown kind %r' % (iid, item.get('kind')))
+        if item.get('to') and item['to'] not in surfaces:
+            problems.append('%s: unknown target surface %r' % (iid, item['to']))
+        if not item.get('label'):
+            problems.append(iid + ': missing label')
+        if 'visual' in item and not isinstance(item['visual'], bool):
+            problems.append(iid + ': visual must be a boolean')
+        for key in item.get('keys', []):
+            if not isinstance(key, str) or not key:
+                problems.append(iid + ': keys must be non-empty strings')
+        if 'capture' in item:
+            captures = item['capture'] if isinstance(item['capture'], list) else [item['capture']]
+            if not captures or any(not isinstance(c, str) or not re.fullmatch(r'[a-zA-Z0-9_.-]+', c) for c in captures):
+                problems.append(iid + ': capture must be a non-empty name or list of names')
+        for selector in selectors(item):
+            if not isinstance(selector, str) or not selector:
+                problems.append(iid + ': control selectors must be non-empty strings')
+    for source, mapping in model.get('receipts', {}).items():
+        for selector, targets in mapping.items():
+            for target in targets:
+                if target not in ids:
+                    problems.append('receipts.%s.%s: unknown interaction %s' % (source, selector, target))
+    if not desktops:
+        problems.append('no desktops')
+    if problems:
+        raise ModelError('\n'.join(problems))
+
+
+def drivers_by_interaction(model):
+    """interaction id -> sorted receipt sources (lab drivers) that can report it."""
+    out = {}
+    for source, mapping in model.get('receipts', {}).items():
+        for targets in mapping.values():
+            for target in targets:
+                out.setdefault(target, set()).add(source)
+    return {k: sorted(v) for k, v in out.items()}
+
+
+def interaction_visual(item):
+    """Whether a visual (frames + human review) result applies to this interaction."""
+    if 'visual' in item:
+        return item['visual']
+    return item['kind'] not in ('cli', 'mcp')
+
+
+# ------------------------------------------------------------- coverage
+
+def load_coverage(paths, model=None):
+    entries = []
+    for path in paths:
+        path = Path(path)
+        if not path.exists():
+            continue
+        doc = json.loads(path.read_text(encoding='utf-8'))
+        if doc.get('schemaVersion') not in (1, 2):
+            raise ModelError('%s: schemaVersion must be 1 or 2' % path)
+        for index, entry in enumerate(doc.get('entries', []), 1):
+            entry = dict(entry)
+            validate_row(entry, require_placement=False)
+            if entry.get('host') and not entry.get('placement'):
+                if model is None:
+                    model = load_model()
+                native = [r for d in model['desktops'] if d['id'] == entry.get('desktop')
+                          for r in d.get('rows', [])
+                          if r['host'] == entry['host'] and r['placement'] == 'native']
+                if len(native) == 1 and entry.get('guest') is None:
+                    # Inferred on every load from the current model; never written back.
+                    entry['placement'] = 'native'
+                    entry['_inferred_placement'] = True
+                else:
+                    entry['_desktop_only'] = True
+                    print('%s: entry %d (%s, %s, host %s): missing placement; '
+                          'keeping desktop rollup only' %
+                          (path, index, entry.get('interaction'), entry.get('desktop'), entry['host']),
+                          file=sys.stderr)
+            entry.setdefault('campaign', doc.get('campaign', path.stem))
+            entry['_file'] = path.as_posix()
+            entries.append(entry)
+    return entries
+
+
+def write_coverage(path, campaign, entries):
+    path = Path(path)
+    doc = {'schemaVersion': 2, 'campaign': campaign,
+           'entries': [{k: v for k, v in e.items()
+                        if not k.startswith('_') and not (k == 'placement' and e.get('_inferred_placement'))}
+                       for e in entries]}
+    tmp = path.with_suffix(path.suffix + '.tmp')
+    tmp.write_text(json.dumps(doc, indent=1, sort_keys=True) + '\n', encoding='utf-8')
+    os.replace(tmp, path)
+
+
+def validate_row(row, require_placement=True):
+    if require_placement and row.get('host') and not row.get('placement'):
+        raise ModelError('host requires placement')
+    if row.get('placement') == 'native' and row.get('guest') is not None:
+        raise ModelError('guest cannot be used with native placement')
+    for field, choices in (('host', HOSTS), ('placement', PLACEMENTS),
+                           ('destination', DESTINATIONS), ('package', PACKAGES),
+                           ('functional', FUNCTIONAL), ('visual', VISUAL)):
+        if row.get(field) is not None and row[field] not in choices:
+            raise ModelError('%s must be one of %s' % (field, ', '.join(choices)))
+    if 'review' in row and not isinstance(row['review'], bool):
+        raise ModelError('review must be a boolean')
+    for field in ('guest', 'review_reason', 'recipe', 'build'):
+        if row.get(field) is not None and not isinstance(row[field], str):
+            raise ModelError(field + ' must be a string')
+    if 'frames' in row:
+        if not isinstance(row['frames'], list) or any(
+                not isinstance(f, dict) or not isinstance(f.get('label'), str)
+                or not isinstance(f.get('path'), str) for f in row['frames']):
+            raise ModelError('frames must be objects with label and path strings')
+
+
+def make_entry(interaction, desktop, package, functional=None, visual=None, receipt=None,
+               issue=None, note=None, source='mark', at=None, **metadata):
+    if functional is not None and functional not in FUNCTIONAL:
+        raise ModelError('functional must be one of ' + ', '.join(FUNCTIONAL))
+    if visual is not None and visual not in VISUAL:
+        raise ModelError('visual must be one of ' + ', '.join(VISUAL))
+    if package not in PACKAGES:
+        raise ModelError('package must be one of ' + ', '.join(PACKAGES))
+    entry = {'interaction': interaction, 'desktop': desktop, 'package': package, 'source': source,
+             'at': at or dt.datetime.now(dt.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')}
+    for key, value in (('functional', functional), ('visual', visual), ('receipt', receipt),
+                       ('issue', issue), ('note', note)):
+        if value not in (None, ''):
+            entry[key] = value
+    entry.update({k: v for k, v in metadata.items() if k in ROW_FIELDS and v is not None})
+    validate_row(entry)
+    return entry
+
+
+def cell_key(entry):
+    return tuple(entry.get(k) for k in ('desktop', 'host', 'placement', 'guest'))
+
+
+def latest_run_entries(entries):
+    """Current metadata per cell; only an identified run can supply missing fields."""
+    latest = {}
+    for entry in sorted(entries, key=lambda e: e.get('at', '')):
+        key = (entry['interaction'], cell_key(entry))
+        previous = latest.get(key, {})
+        same_run = any(entry.get(k) and entry[k] == previous.get(k)
+                       for k in ('build', 'receipt'))
+        carry = ('build', 'recipe', 'frames')
+        # Only a verdict or explicit review update supersedes a same-run request;
+        # saved frames alone do not mean anyone reviewed them.
+        verdict = entry.get('functional') in FUNCTIONAL or entry.get('visual') in ('reviewed-ok', 'reviewed-wrong')
+        if not verdict and entry.get('review') is None:
+            carry += ('review', 'review_reason')
+        current = {k: previous[k] for k in carry if same_run and k in previous}
+        current.update({k: v for k, v in entry.items() if v is not None})
+        latest[key] = current
+    return list(latest.values())
+
+
+def latest_per_cell(entries, by_host=False):
+    """Newest nonempty verdict per dimension; historical evidence stays available."""
+    cells = {}
+    for entry in sorted(entries, key=lambda e: e.get('at', '')):
+        if by_host and entry.get('_desktop_only'):
+            continue
+        key = cell_key(entry) if by_host else entry['desktop']
+        cell = cells.setdefault(entry['interaction'], {}).setdefault(key, {
+            'functional': None, 'visual': None, 'packages': set(), 'receipts': [], 'issues': [], 'notes': []})
+        if entry.get('functional'):
+            cell['functional'] = entry['functional']
+        if entry.get('visual'):
+            cell['visual'] = entry['visual']
+        cell['packages'].add(entry['package'])
+        if entry.get('receipt'):
+            cell['receipts'].append(entry['receipt'])
+        if entry.get('issue'):
+            cell['issues'].append(entry['issue'])
+        if entry.get('note'):
+            cell['notes'].append(entry['note'])
+        if by_host:
+            cell.setdefault('destinations', set())
+            if entry.get('destination'):
+                cell['destinations'].add(entry['destination'])
+    if by_host:
+        for entry in latest_run_entries(entries):
+            if entry.get('_desktop_only'):
+                continue
+            cells[entry['interaction']][cell_key(entry)].update(
+                {k: entry[k] for k in ROW_FIELDS if k != 'destination' and k in entry})
+    return cells
+
+
+def aggregate_functional(states):
+    states = [s for s in states if s]
+    if not states:
+        return 'untested'
+    if 'failed' in states:
+        return 'failed'
+    if all(s == 'passed' for s in states):
+        return 'passed'
+    if 'blocked' in states and 'passed' not in states:
+        return 'blocked'
+    return 'partial'
+
+
+def aggregate_visual(states, applies):
+    if not applies:
+        return 'n/a'
+    states = [s for s in states if s]
+    if not states:
+        return 'none'
+    if 'reviewed-wrong' in states:
+        return 'reviewed-wrong'
+    if all(s == 'reviewed-ok' for s in states):
+        return 'reviewed-ok'
+    return 'frames'
+
+
+def summarise(model, entries):
+    """Per interaction: per-desktop cells and an aggregate across required desktops."""
+    cells = latest_per_cell(entries)
+    host_cells = latest_per_cell(entries, by_host=True)
+    has_hosts = any(any(cell_key(e)[1:]) for e in entries if not e.get('_desktop_only'))
+    desktop_only = latest_per_cell([e for e in entries if e.get('_desktop_only')])
+    required = [d['id'] for d in model['desktops'] if d.get('required', True)]
+    out = {}
+    for item in model['interactions']:
+        per_desktop = cells.get(item['id'], {})
+        applies = interaction_visual(item)
+        hosted = host_cells.get(item['id'], {})
+        # A newer pass on another builder must not hide this builder's failure.
+        for desktop in per_desktop:
+            siblings = [c for key, c in hosted.items() if key[0] == desktop]
+            unplaced = desktop_only.get(item['id'], {}).get(desktop)
+            if unplaced:
+                siblings.append(unplaced)
+            if any(key[0] == desktop and any(key[1:]) for key in hosted):
+                fs, vs = [c['functional'] for c in siblings], [c['visual'] for c in siblings]
+                f, v = aggregate_functional(fs), aggregate_visual(vs, applies)
+                per_desktop[desktop]['functional'] = ('partial' if f == 'passed' and not all(fs) else f) if any(fs) else None
+                per_desktop[desktop]['visual'] = ('frames' if v == 'reviewed-ok' and not all(vs) else v) if any(vs) else None
+        # A required desktop without a result for a dimension counts as missing for that
+        # dimension, even when it has an entry for the other one.
+        functional_states = [per_desktop.get(d, {}).get('functional') for d in required]
+        functional = aggregate_functional(functional_states)
+        if functional == 'passed' and not all(functional_states):
+            functional = 'partial'
+        visual_states = [per_desktop.get(d, {}).get('visual') for d in required]
+        visual = aggregate_visual(visual_states, applies)
+        if visual == 'reviewed-ok' and not all(visual_states):
+            visual = 'frames'
+        out[item['id']] = {
+            'functional': functional, 'visual': visual,
+            'desktops': {d: {**c, 'packages': sorted(c['packages'])} for d, c in per_desktop.items()}}
+        if has_hosts:
+            out[item['id']]['cells'] = [
+                {**dict(zip(('desktop', 'host', 'placement', 'guest'), key)), **c,
+                 'packages': sorted(c['packages']), 'destinations': sorted(c['destinations'])}
+                for key, c in hosted.items()]
+    return out
+
+
+# -------------------------------------------------------------- catalog
+
+def interaction_captures(item, surface):
+    """Explicit state(s) override the surface default; old models need no changes."""
+    capture = item.get('capture', surface.get('capture'))
+    return capture if isinstance(capture, list) else ([capture] if capture else [])
+
+
+def surface_captures(surface, items):
+    return list(dict.fromkeys(([surface['capture']] if surface.get('capture') else []) +
+                             [c for item in items for c in interaction_captures(item, surface)]))
+
+
+def load_controls(catalog, capture):
+    if not catalog or not capture:
+        return None
+    path = Path(catalog) / (capture + '.controls.json')
+    if not path.exists():
+        return None
+    return json.loads(path.read_text(encoding='utf-8'))
+
+
+def plain_label(text):
+    """A Qt label without mnemonics: `&&` is a literal ampersand, a lone `&` marks a mnemonic."""
+    return (text or '').replace('&&', '\0').replace('&', '').replace('\0', '&')
+
+
+def selectors(item):
+    """An interaction's control selectors: `control` may be one string or a list."""
+    control = item.get('control')
+    if not control:
+        return []
+    return list(control) if isinstance(control, list) else [control]
+
+
+def control_matches(control, selector):
+    """Selector forms: objectName, `text:LABEL`, `text-glob:LABEL*`, `class:QtClass`, `glob:objectName*`."""
+    if selector.startswith('text:'):
+        return plain_label(control.get('text')) == selector[5:]
+    if selector.startswith('text-glob:'):
+        return fnmatch.fnmatchcase(plain_label(control.get('text')), selector[10:])
+    if selector.startswith('class:'):
+        return control.get('class') == selector[6:]
+    if selector.startswith('glob:'):
+        return bool(control.get('name')) and fnmatch.fnmatchcase(control['name'], selector[5:])
+    return control.get('name') == selector
+
+
+def match_control(controls, selector):
+    """The first control a selector names, or None."""
+    if not controls or not selector:
+        return None
+    for control in controls.get('controls', []):
+        if control_matches(control, selector):
+            return control
+    return None
+
+
+# Key names Qt reports for the same binding, or platform StandardKey aliases the
+# app registers beside the explicit chord (QKeySequence::Undo beside Ctrl+Z).
+KEY_ALIASES = {
+    'Enter': 'Return', 'Ctrl+Enter': 'Ctrl+Return', 'Ctrl++': 'Ctrl+=', 'Zoom In': 'Ctrl+=', 'Zoom Out': 'Ctrl+-',
+    'Undo': 'Ctrl+Z', 'Alt+Backspace': 'Ctrl+Z', 'Redo': 'Ctrl+Shift+Z', 'Alt+Shift+Backspace': 'Ctrl+Shift+Z',
+    'Save': 'Ctrl+S', 'Del': 'Delete', 'Backtab': 'Shift+Tab', 'Shift+Backtab': 'Shift+Tab',
+}
+
+
+def canonical_key(key):
+    return KEY_ALIASES.get(key, key)
+
+
+def unmodelled(controls, interactions):
+    """Controls and keys the build shows that no interaction (of any surface) claims.
+
+    Claims are global: the main window's chrome appears in every page capture and
+    is claimed once, by the shell. Arrow families (`Arrows`, `Ctrl+Arrows`) claim
+    the four arrow keys with that modifier.
+    """
+    claimed_selectors, claimed_keys = [], set()
+    for item in interactions:
+        claimed_selectors.extend(selectors(item))
+        for key in item.get('keys', []):
+            if key.endswith('Arrows'):
+                prefix = key[:-len('Arrows')]
+                claimed_keys.update(prefix + arrow for arrow in ('Left', 'Right', 'Up', 'Down'))
+            claimed_keys.add(canonical_key(key))
+    missing_controls = []
+    for control in controls.get('controls', []) if controls else []:
+        name = control.get('name') or ''
+        text = plain_label(control.get('text'))
+        if control.get('kind') in ('list', 'focusable', 'text-area') and not name:
+            continue
+        if not name and not text:
+            continue
+        if any(control_matches(control, selector) for selector in claimed_selectors):
+            continue
+        missing_controls.append({'name': name, 'text': text, 'kind': control.get('kind'), 'rect': control.get('rect')})
+    missing_keys = []
+    for binding in controls.get('keys', []) if controls else []:
+        keys = binding.get('keys', [])
+        if any(canonical_key(key) in claimed_keys for key in keys):
+            continue
+        missing_keys.append({'keys': ' / '.join(keys), 'text': binding.get('text') or binding.get('name') or ''})
+    return missing_controls, missing_keys
+
+
+# ----------------------------------------------------------------- page
+
+def build_page_data(model, entries, catalog, output, embed=False, label=''):
+    summary = summarise(model, entries)
+    by_surface = {}
+    for item in model['interactions']:
+        by_surface.setdefault(item['surface'], []).append(item)
+    captures_dir = Path(output) / 'captures'
+    surfaces = []
+    for surface in model['surfaces']:
+        items = by_surface.get(surface['id'], [])
+        states = []
+        for capture in surface_captures(surface, items):
+            controls = load_controls(catalog, capture)
+            image = None
+            if catalog and capture:
+                source = Path(catalog) / (capture + '.png')
+                if source.exists():
+                    if embed:
+                        image = 'data:image/png;base64,' + base64.b64encode(source.read_bytes()).decode('ascii')
+                    else:
+                        captures_dir.mkdir(parents=True, exist_ok=True)
+                        # Content-hashed name: a changed capture gets a new URL, so a cached
+                        # old picture never sits under new hotspots.
+                        digest = hashlib.sha256(source.read_bytes()).hexdigest()[:12]
+                        name = '%s.%s.png' % (source.stem, digest)
+                        shutil.copyfile(source, captures_dir / name)
+                        image = 'captures/' + name
+            hotspots = []
+            for item in items:
+                if capture not in interaction_captures(item, surface):
+                    continue
+                for selector in selectors(item):
+                    for control in (controls or {}).get('controls', []):
+                        if control_matches(control, selector) and not any(h['interaction'] == item['id'] and h['rect'] == control['rect'] for h in hotspots):
+                            hotspots.append({'interaction': item['id'], 'rect': control['rect'], 'text': control.get('text', '')})
+            missing_controls, missing_keys = unmodelled(controls, model['interactions'])
+            states.append({
+                'capture': capture, 'image': image, 'placeholder': surface.get('placeholder'),
+                'imageSize': [controls['width'], controls['height']] if controls else None,
+                'hotspots': hotspots, 'unmodelledControls': missing_controls,
+                'unmodelledKeys': missing_keys, 'hasControls': controls is not None,
+            })
+        default = states[0] if states else dict(image=None, imageSize=None, hotspots=[],
+                                               unmodelledControls=[], unmodelledKeys=[], hasControls=False)
+        surfaces.append({**surface, **default, 'captures': states})
+    drivers = drivers_by_interaction(model)
+    interactions = []
+    for item in model['interactions']:
+        interactions.append({**item, 'drivers': drivers.get(item['id'], []),
+                             'visualApplies': interaction_visual(item), **summary[item['id']]})
+    counts = {'total': len(interactions)}
+    for state in ('passed', 'partial', 'failed', 'blocked', 'untested'):
+        counts[state] = sum(1 for i in interactions if i['functional'] == state)
+    for state in ('frames', 'reviewed-ok', 'reviewed-wrong', 'none'):
+        counts['visual-' + state] = sum(1 for i in interactions if i['visual'] == state)
+    rows = {cell_key({'desktop': d['id'], **r}) for d in model['desktops'] for r in d.get('rows', [])}
+    evidence_rows = {cell_key(e) for e in entries if not e.get('_desktop_only')}
+    rows.update(evidence_rows)
+    # A named golden refines an empty planned guest placement. Keep every row
+    # backed by evidence, including unnamed guests, so no failure disappears.
+    rows = {r for r in rows if r in evidence_rows or r[3]
+            or not any(other[:3] == r[:3] and other[3] for other in rows)}
+    required = {d['id']: d.get('required', True) for d in model['desktops']}
+    return {
+        'generated': dt.datetime.now(dt.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'),
+        'label': label,
+        'catalog': str(catalog) if catalog else None,
+        'desktops': model['desktops'],
+        'packages': list(PACKAGES),
+        'hosts': list(HOSTS),
+        'rows': [{**dict(zip(('desktop', 'host', 'placement', 'guest'), r)),
+                  'required': required.get(r[0], True)}
+                 for r in sorted(rows, key=lambda r: tuple(v or '' for v in r))],
+        'hostCoverage': any(any(cell_key(e)[1:]) for e in entries if not e.get('_desktop_only')),
+        'reviews': [{k: v for k, v in e.items() if not k.startswith('_')}
+                    for e in latest_run_entries(entries) if e.get('review') is True],
+        'surfaces': surfaces,
+        'interactions': interactions,
+        'counts': counts,
+        'campaigns': sorted({e.get('campaign', '') for e in entries}),
+    }
+
+
+def render(data, template_path=TEMPLATE_PATH):
+    template = Path(template_path).read_text(encoding='utf-8')
+    payload = json.dumps(data, separators=(',', ':')).replace('</', '<\\/')
+    return template.replace('/*__DATA__*/null', payload).replace('__GENERATED__', html.escape(data['generated'])) \
+        .replace('__LABEL__', html.escape(data.get('label') or ''))
+
+
+def build(args):
+    model = load_model(args.model)
+    entries = load_coverage(args.coverage, model)
+    output = Path(args.output)
+    output.mkdir(parents=True, exist_ok=True)
+    data = build_page_data(model, entries, args.catalog, output, embed=args.embed, label=getattr(args, 'label', '') or '')
+    page = output / ('index.html' if getattr(args, 'index', False) else 'map.html')
+    page.write_text(render(data), encoding='utf-8')
+    (output / 'map.json').write_text(json.dumps(data, indent=1, sort_keys=True), encoding='utf-8')
+    if getattr(args, 'open', False) and not getattr(args, '_opened', False):
+        open_in_browser(page)
+        args._opened = True
+    return data
+
+
+def open_in_browser(path):
+    """Open the page in the desktop's browser; file:// is enough, nothing is served."""
+    import subprocess
+    import webbrowser
+    url = Path(path).resolve().as_uri()
+    try:
+        subprocess.Popen(['xdg-open', url], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    except OSError:
+        webbrowser.open(url)
+
+
+def watch(args):
+    """Rebuild whenever a coverage file, the model or the catalog changes. Polling, no daemon."""
+    tracked = [Path(args.model), TEMPLATE_PATH] + [Path(p) for p in args.coverage]
+    if args.catalog:
+        tracked.append(Path(args.catalog) / 'manifest.json')
+
+    def stamp():
+        return tuple((p.stat().st_mtime_ns if p.exists() else None) for p in tracked)
+
+    last = None
+    while True:
+        current = stamp()
+        if current != last:
+            try:
+                data = build(args)
+                counts = data['counts']
+                print('%s rebuilt: %d interactions, %d passed, %d partial, %d failed, %d untested' % (
+                    data['generated'], counts['total'], counts['passed'], counts['partial'],
+                    counts['failed'], counts['untested']), flush=True)
+            except (ModelError, json.JSONDecodeError) as error:
+                print('not rebuilt: %s' % error, file=sys.stderr, flush=True)
+            last = current
+        time.sleep(args.interval)
+
+
+# -------------------------------------------------------------- receipts
+
+def classify_receipt(doc):
+    """Which lab driver wrote this receipt, from its content alone."""
+    if not isinstance(doc, dict):
+        return None
+    if doc.get('scenario') == 'edit-region-independent-paste' and isinstance(doc.get('checks'), dict):
+        return 'edit_acceptance'
+    if doc.get('scenario') == 'mcp-editor-e2e' and isinstance(doc.get('checks'), dict):
+        return 'mcp_editor_e2e'
+    if 'testId' in doc and str(doc.get('scenario', '')).endswith('-independent-paste'):
+        return 'lab_run'
+    if 'protocolPassed' in doc and ('coverage' in doc or 'witnesses' in doc):
+        return 'tray_progress'
+    if 'driverSha256' in doc and 'command' in doc:
+        return 'native_acceptance'
+    if isinstance(doc.get('rounds'), list) and 'builds' in doc:
+        return 'record_run'
+    if isinstance(doc.get('interactions'), list):
+        return 'surface_map'
+    return None
+
+
+def import_receipt(model, path, desktop=None, package=None):
+    """Coverage entries for one receipt file, through the model's receipt mapping."""
+    path = Path(path)
+    doc = json.loads(path.read_text(encoding='utf-8'))
+    source = classify_receipt(doc)
+    if source is None:
+        raise ModelError('%s: not a receipt this importer knows' % path)
+    if source != 'surface_map' and (desktop is None or package is None):
+        raise ModelError('legacy receipts require --desktop and --package')
+    mapping = model.get('receipts', {}).get(source, {})
+    at = doc.get('finishedAt') or doc.get('at') or dt.datetime.fromtimestamp(
+        path.stat().st_mtime, dt.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+    entries = []
+    if source in ('edit_acceptance', 'mcp_editor_e2e'):
+        frames = 'frames' if doc.get('witnesses') and source == 'edit_acceptance' else None
+        for check, result in doc.get('checks', {}).items():
+            for target in mapping.get('checks.' + check, []):
+                ok = result.get('ok') if isinstance(result, dict) else bool(result)
+                entries.append(make_entry(target, desktop, package, 'passed' if ok else 'failed', frames,
+                                          path.as_posix(), source=source, at=at))
+    elif source == 'lab_run':
+        scenario = str(doc.get('scenario', ''))[:-len('-independent-paste')]
+        state = 'passed' if doc.get('ok') else 'failed'
+        for target in mapping.get('scenario:' + scenario, []):
+            entries.append(make_entry(target, desktop, package, state, 'frames' if doc.get('witness') else None,
+                                      path.as_posix(), source='lab_run', at=at))
+    elif source == 'tray_progress':
+        passed = doc.get('protocolPassed')
+        state = 'passed' if passed else 'failed'
+        for target in mapping.get('protocolPassed', []):
+            entries.append(make_entry(target, desktop, package, state, 'frames', path.as_posix(),
+                                      source='tray_progress', at=at))
+        coverage = doc.get('coverage') or {}
+        for scenario in (coverage.keys() if isinstance(coverage, dict) else coverage):
+            for target in mapping.get('scenario:' + str(scenario), []):
+                entries.append(make_entry(target, desktop, package, state, 'frames', path.as_posix(),
+                                          source='tray_progress', at=at))
+        for item in doc.get('attention', []) or []:
+            opened = item.get('openedBy')
+            if not opened:
+                continue
+            blocked = opened != 'visible-menu'
+            for target in mapping.get('attention:' + opened, []):
+                entries.append(make_entry(target, desktop, package, 'blocked' if blocked else state, 'frames',
+                                          path.as_posix(), note='opened through the D-Bus fallback' if blocked else None,
+                                          source='tray_progress', at=at))
+    elif source == 'native_acceptance':
+        command = str(doc.get('command') or '')
+        result = doc.get('result') if isinstance(doc.get('result'), dict) else {}
+        candidates = {command}
+        if result.get('action'):
+            candidates.add(command + ' ' + str(result['action']))
+        if isinstance(doc.get('argv'), list):
+            candidates.add(' '.join(str(a) for a in doc['argv']))
+        ok = bool(doc.get('ok')) and not doc.get('error')
+        for candidate in candidates:
+            for target in mapping.get('command:' + candidate, []):
+                entries.append(make_entry(target, desktop, package, 'passed' if ok else 'failed', None,
+                                          path.as_posix(), source='native_acceptance', at=at))
+    elif source == 'record_run':
+        rounds = doc.get('rounds') or []
+        ok = bool(rounds) and not doc.get('error') and all(not r.get('error') for r in rounds)
+        for target in mapping.get('rounds', []):
+            entries.append(make_entry(target, desktop, package, 'passed' if ok else 'failed',
+                                      'frames' if any(r.get('frame') for r in rounds) else None,
+                                      path.as_posix(), source='record_run', at=at))
+    elif source == 'surface_map':
+        # A driver that already speaks this tool's language.
+        for row in doc['interactions']:
+            row_desktop, row_package = row.get('desktop') or desktop, row.get('package') or package
+            if row_desktop not in {d['id'] for d in model['desktops']}:
+                raise ModelError('unknown desktop %s' % row_desktop)
+            if row['interaction'] not in {i['id'] for i in model['interactions']}:
+                raise ModelError('unknown interaction %s' % row['interaction'])
+            entries.append(make_entry(row['interaction'], row_desktop, row_package,
+                                      row.get('functional'), row.get('visual'), row.get('receipt', path.as_posix()),
+                                      row.get('issue'), row.get('note'), source=row.get('source', 'driver'), at=row.get('at') or at,
+                                      **{k: row[k] for k in ROW_FIELDS if k in row}))
+    return entries
+
+
+def do_import(args):
+    model = load_model(args.model)
+    existing = load_coverage([args.coverage], model)
+    campaign = args.campaign or (existing[0]['campaign'] if existing else Path(args.coverage).stem)
+    added = []
+    for receipt in args.receipts:
+        added.extend(import_receipt(model, receipt, args.desktop, args.package))
+    if not added:
+        print('no interactions mapped; check model receipts for these receipt kinds', file=sys.stderr)
+        return 1
+    write_coverage(args.coverage, campaign, existing + added)
+    print('%d entries added to %s' % (len(added), args.coverage))
+    return 0
+
+
+def do_mark(args):
+    model = load_model(args.model)
+    ids = {i['id'] for i in model['interactions']}
+    desktops = {d['id'] for d in model['desktops']}
+    if args.interaction not in ids:
+        raise ModelError('unknown interaction %s' % args.interaction)
+    if args.desktop not in desktops:
+        raise ModelError('unknown desktop %s; known: %s' % (args.desktop, ', '.join(sorted(desktops))))
+    if not args.functional and not args.visual and not args.review_reason:
+        raise ModelError('give --functional, --visual and/or --review-reason')
+    existing = load_coverage([args.coverage], model)
+    campaign = args.campaign or (existing[0]['campaign'] if existing else Path(args.coverage).stem)
+    entry = make_entry(args.interaction, args.desktop, args.package, args.functional, args.visual,
+                       args.receipt, args.issue, args.note, host=args.host, placement=args.placement,
+                       guest=args.guest, destination=args.destination,
+                       review=True if args.review_reason else None, review_reason=args.review_reason)
+    write_coverage(args.coverage, campaign, existing + [entry])
+    print(json.dumps(entry))
+    return 0
+
+
+def checklist(args):
+    model = load_model(args.model)
+    entries = load_coverage(args.coverage, model)
+    summary = summarise(model, entries)
+    required = [d for d in model['desktops'] if d.get('required', True)]
+    if args.desktop:
+        required = [d for d in required if d['id'] == args.desktop]
+    surfaces = {s['id']: s for s in model['surfaces']}
+    drivers = drivers_by_interaction(model)
+    lines = ['# Surface map checklist', '']
+    for desktop in required:
+        rows = []
+        for item in model['interactions']:
+            cell = summary[item['id']]['desktops'].get(desktop['id'], {})
+            functional = cell.get('functional') or 'untested'
+            visual = cell.get('visual') or ('n/a' if not interaction_visual(item) else 'none')
+            if functional == 'passed' and visual in ('reviewed-ok', 'n/a'):
+                continue
+            rows.append('- [ ] %s · %s (%s) — functional: %s, visual: %s%s' % (
+                surfaces[item['surface']]['label'], item['label'], item['kind'], functional, visual,
+                ' · driver: ' + ', '.join(drivers[item['id']]) if drivers.get(item['id']) else ' · manual'))
+        lines += ['## %s (%d open)' % (desktop['label'], len(rows)), ''] + (rows or ['- nothing open']) + ['']
+    text = '\n'.join(lines)
+    if args.output:
+        Path(args.output).write_text(text, encoding='utf-8')
+    else:
+        print(text)
+    return 0
+
+
+def check(args):
+    model = load_model(args.model)
+    print('model ok: %d desktops, %d surfaces, %d interactions' % (
+        len(model['desktops']), len(model['surfaces']), len(model['interactions'])))
+    if args.catalog:
+        # putgd-ui-catalog always finishes by writing manifest.json; without it the run did
+        # not complete (or this is not a catalog), so nothing below can be trusted.
+        manifest = Path(args.catalog) / 'manifest.json'
+        if not manifest.is_file():
+            print('not a complete putgd-ui-catalog output (no manifest.json): ' + args.catalog, file=sys.stderr)
+            return 1
+        meta = json.loads(manifest.read_text(encoding='utf-8'))
+        if meta.get('kind') != 'synthetic-ui-catalog' or not meta.get('captures'):
+            print('catalog manifest lists no captures: ' + args.catalog, file=sys.stderr)
+            return 1
+        # Every capture the producer declares with a controls sidecar must have it: without the
+        # sidecar, selector validation and hotspots silently disappear for that capture.
+        lost = [c['controls'] for c in meta['captures'] if c.get('controls')
+                and not (Path(args.catalog) / c['controls']).is_file()]
+        if lost:
+            print('declared controls files missing from catalog: ' + ', '.join(lost), file=sys.stderr)
+            return 1
+        platform = meta.get('platform')
+        missing = sorted({c for s in model['surfaces']
+                          for c in surface_captures(s, [i for i in model['interactions'] if i['surface'] == s['id']])
+                          if not (Path(args.catalog) / (c + '.png')).exists()})
+        # Only the documented offscreen-only synthetic states may be absent, and only from a
+        # native (PUTGD_CATALOG_HANDSHAKE) catalog; the map shows them as placeholders.
+        allowed = OFFSCREEN_ONLY_CAPTURES if platform != 'offscreen' else set()
+        unexpected = [c for c in missing if c not in allowed]
+        if unexpected:
+            print('captures missing from the %s catalog: %s' % (platform, ', '.join(unexpected)), file=sys.stderr)
+            return 1
+        if missing:
+            print('offscreen-only captures not in this %s catalog (placeholders): %s' % (platform, ', '.join(missing)))
+        # A control missing from the surface's own capture but present in another
+        # state is fine (no hotspot, listed as an action); one found nowhere is drift.
+        everywhere = [json.loads(p.read_text(encoding='utf-8')) for p in sorted(Path(args.catalog).glob('*.controls.json'))]
+        elsewhere, nowhere = [], []
+        for surface in model['surfaces']:
+            for item in model['interactions']:
+                if item['surface'] != surface['id']:
+                    continue
+                states = interaction_captures(item, surface)
+                controls = [load_controls(args.catalog, c) for c in states]
+                if 'capture' in item and selectors(item):
+                    absent = [name for name, inventory in zip(states, controls) if inventory is None and name not in allowed]
+                    if absent:
+                        nowhere.append(item['id'] + ': missing controls for ' + ', '.join(absent))
+                if not any(c is not None for c in controls):
+                    continue
+                for selector in selectors(item):
+                    if any(match_control(c, selector) for c in controls):
+                        continue
+                    if 'capture' not in item and any(match_control(other, selector) for other in everywhere):
+                        elsewhere.append('%s -> %s' % (item['id'], selector))
+                    else:
+                        nowhere.append('%s -> %s' % (item['id'], selector))
+        if elsewhere:
+            print('controls only in other states (no hotspot): ' + ', '.join(elsewhere))
+        if nowhere:
+            print('controls found in no capture:\n  ' + '\n  '.join(nowhere), file=sys.stderr)
+            return 1
+        print('catalog ok: %d captures with controls' % len(everywhere))
+    return 0
+
+
+def main(argv=None):
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument('--model', default=str(MODEL_PATH))
+    sub = parser.add_subparsers(dest='command', required=True)
+
+    p = sub.add_parser('build', help='write map.html and map.json')
+    p.add_argument('--catalog', help='putgd-ui-catalog output directory')
+    p.add_argument('--coverage', nargs='*', default=[], help='campaign coverage files')
+    p.add_argument('--output', required=True)
+    p.add_argument('--embed', action='store_true', help='inline the pictures (one portable file)')
+    p.add_argument('--open', action='store_true', help='open the page in the browser after building')
+    p.add_argument('--label', default='', help='what this map describes, shown in the header (a nightly tag)')
+    p.add_argument('--index', action='store_true', help='name the page index.html (for a web root)')
+    p.add_argument('--watch', action='store_true', help='rebuild when the inputs change')
+    p.add_argument('--interval', type=float, default=2.0)
+
+    p = sub.add_parser('mark', help='record a manual result')
+    p.add_argument('interaction')
+    p.add_argument('--coverage', required=True)
+    p.add_argument('--campaign')
+    p.add_argument('--desktop', required=True)
+    p.add_argument('--package', required=True, choices=PACKAGES)
+    p.add_argument('--functional', choices=FUNCTIONAL)
+    p.add_argument('--visual', choices=VISUAL)
+    p.add_argument('--receipt')
+    p.add_argument('--issue', type=int)
+    p.add_argument('--note')
+    p.add_argument('--host', choices=HOSTS)
+    p.add_argument('--placement', choices=PLACEMENTS)
+    p.add_argument('--guest')
+    p.add_argument('--destination', choices=DESTINATIONS)
+    p.add_argument('--review-reason')
+
+    p = sub.add_parser('import', help='map lab receipts onto interactions')
+    p.add_argument('receipts', nargs='+')
+    p.add_argument('--coverage', required=True)
+    p.add_argument('--campaign')
+    p.add_argument('--desktop', help='fallback for receipts without a desktop')
+    p.add_argument('--package', choices=PACKAGES, help='fallback for receipts without a package')
+
+    p = sub.add_parser('checklist', help='what is still open, per desktop, as markdown')
+    p.add_argument('--coverage', nargs='*', default=[])
+    p.add_argument('--desktop')
+    p.add_argument('--output')
+
+    p = sub.add_parser('check', help='validate the model, and the catalog against it')
+    p.add_argument('--catalog')
+
+    args = parser.parse_args(argv)
+    try:
+        if args.command == 'build':
+            if args.watch:
+                watch(args)
+                return 0
+            data = build(args)
+            counts = data['counts']
+            print('%s/%s: %d interactions, %d passed, %d partial, %d failed, %d blocked, %d untested' % (
+                args.output, 'index.html' if args.index else 'map.html', counts['total'], counts['passed'], counts['partial'], counts['failed'],
+                counts['blocked'], counts['untested']))
+            return 0
+        if args.command == 'mark':
+            return do_mark(args)
+        if args.command == 'import':
+            return do_import(args)
+        if args.command == 'checklist':
+            return checklist(args)
+        if args.command == 'check':
+            return check(args)
+    except ModelError as error:
+        print('error: %s' % error, file=sys.stderr)
+        return 2
+    return 0
+
+
+if __name__ == '__main__':
+    sys.exit(main())

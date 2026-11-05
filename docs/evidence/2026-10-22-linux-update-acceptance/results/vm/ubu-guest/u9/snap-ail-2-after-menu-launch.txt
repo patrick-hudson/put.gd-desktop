@@ -1,0 +1,21 @@
+## ail-2-after-menu-launch 2026-10-23T02:00:50Z
+### ls -la /home/lab/Applications
+total 112576
+drwxrwxr-x  3 lab lab      4096 2026-10-22 21:00:40.130412673 -0500 .
+drwxr-x--- 46 lab lab      4096 2026-10-22 21:00:27.455484313 -0500 ..
+drwxrwxr-x  2 lab lab      4096 2026-10-22 21:00:28.878476270 -0500 .trash
+-rwxr-xr-x  1 lab lab 115259896 2026-10-22 21:00:36.147435185 -0500 putgd-26.1022.1017-nightly-x86_64_c23f10f49b6edb98d83f0c1a28526f20.AppImage
+### sha256 / inode
+2028899 e5b7ad2caecaa7f5737bdfb5d2f0fd4e3c74ce5d98a8a68142caf4efd43525bc  /home/lab/Applications/putgd-26.1022.1017-nightly-x86_64_c23f10f49b6edb98d83f0c1a28526f20.AppImage
+### desktop entries
+#### /home/lab/.local/share/applications/appimagekit_1ffd3f45fd5fe531427c7a99b2433899-put.gd.desktop
+Name=put.gd (1)
+Exec=/home/lab/Applications/putgd-26.1022.1017-nightly-x86_64_c23f10f49b6edb98d83f0c1a28526f20.AppImage
+TryExec=/home/lab/Applications/putgd-26.1022.1017-nightly-x86_64_c23f10f49b6edb98d83f0c1a28526f20.AppImage
+Name=Delete this AppImage
+Exec=/opt/appimagelauncher.AppDir/usr/lib/x86_64-linux-gnu/appimagelauncher/remove "/home/lab/Applications/putgd-26.1022.1017-nightly-x86_64_c23f10f49b6edb98d83f0c1a28526f20.AppImage"
+Name=Update this AppImage
+Exec=/opt/appimagelauncher.AppDir/usr/lib/x86_64-linux-gnu/appimagelauncher/update "/home/lab/Applications/putgd-26.1022.1017-nightly-x86_64_c23f10f49b6edb98d83f0c1a28526f20.AppImage"
+fc54b55ee545bc0bb2aa5e0f9351777b9e3dd036962c9d943f78a75a83604093  /home/lab/.local/share/applications/appimagekit_1ffd3f45fd5fe531427c7a99b2433899-put.gd.desktop
+### residents
+14402 DESKTOPINTEGRATION=AppImageLauncher APPIMAGE=/home/lab/Applications/putgd-26.1022.1017-nightly-x86_64_c23f10f49b6edb98d83f0c1a28526f20.AppImage 

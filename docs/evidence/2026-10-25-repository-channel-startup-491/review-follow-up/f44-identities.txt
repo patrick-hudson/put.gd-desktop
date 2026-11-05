@@ -1,0 +1,19 @@
+7743cc4bb9186db69bfd6935569de979d20b8c28
+d227590f429e3b71c460f90eb01025aff108f250
+{
+  "schemaVersion": 1,
+  "version": "26.1025.1257-dev+g7743cc4bb918",
+  "baseVersion": "26.1025.1257",
+  "packageVersion": "26.1025.1257~dev+g7743cc4bb918",
+  "gitCommit": "7743cc4bb9186db69bfd6935569de979d20b8c28",
+  "gitTree": "d227590f429e3b71c460f90eb01025aff108f250",
+  "commitCount": 1257,
+  "dirty": false,
+  "sourceProvenance": "git"
+}
+
+6f29fd560afb6b6296c210b71cc68e58acc50fab37f0c1950631c69a763a0d63  build/dev/putgd
+81793dab2e83a9fa0f440486e26f4c01538decfc6b391b080a2c0f930fce3390  build/dev/putgd-cli
+e25f0b3fa83daf30af238a83af8c61ba1c9030e45c2f9aa9fc5d92056ceb6c6f  build/dev/putgd-ui
+a2a16b937b37a3498fe3ec106cd600752fdfac5bb857fae00422e64636c590b0  build/dev/test_update_service
+b63c712701ec3f7a25b959b158821cc9ac37dbaf86f41d23ff65fabf169f504c  build/dev/test_gui_settings

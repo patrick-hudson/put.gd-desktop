@@ -1,0 +1,10 @@
+u6lab-4-S2-available 26.1018.1020 stable repository latest 26.1020.1021 available True older None repo /usr/share/putgd/repo/putgd-stable.sources 26.1018.1020
+### the system's upgrade
+The following packages will be upgraded:
+  putgd
+1 upgraded, 0 newly installed, 0 to remove and 63 not upgraded.
+Get:1 https://pkg.put.gd/lab/apt/ubuntu26.04 stable/main amd64 putgd amd64 26.1020.1021 [11.2 MB]
+Preparing to unpack …/putgd_26.1020.1021_amd64.deb…
+Unpacking putgd (26.1020.1021) over (26.1018.1020)…
+Setting up putgd (26.1020.1021)…
+u6lab-5-S2 26.1020.1021 stable repository latest 26.1020.1021 available False older None repo /usr/share/putgd/repo/putgd-stable.sources 26.1020.1021

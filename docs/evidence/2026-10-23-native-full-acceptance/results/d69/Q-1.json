@@ -1,0 +1,33 @@
+{
+ "label": "after-removal",
+ "entry": "[Desktop Entry]\nType=Application\nName=put.gd\nExec=\"/usr/bin/putgd-launcher\" --background\nTerminal=false\nX-putgd-Managed=true\n",
+ "entryInfo": {
+  "sha256": "4662cdb185a7ab7eea947549bc21e9a38fa9d4fd197e7dc9660323446812307a",
+  "bytes": 125,
+  "mode": "0o600",
+  "mtime": "2026-10-23T05:58:03Z"
+ },
+ "execTargetExists": false,
+ "shellStarted": "2026-10-23T05:58:26Z",
+ "journal": [
+  "user 2026-10-23T00:59:14-05:00 debian systemd[937]: Starting app-putgd@autostart.service - put.gd...",
+  "user 2026-10-23T00:59:14-05:00 debian systemd[937]: Started app-putgd@autostart.service - put.gd.",
+  "user 2026-10-23T00:59:14-05:00 debian dbus-daemon[959]: [session uid=1000 pid=959 pidfd=5] Activating service name='org.freedesktop.Notifications' requested by ':1.5074' (uid=1000 pid=2522475 comm=\"/usr/bin/putgd --background\")",
+  "user 2026-10-23T01:00:24-05:00 debian systemd-xdg-autostart-generator[2523088]: Exec binary '/usr/bin/putgd-launcher' does not exist: No such file or directory",
+  "user 2026-10-23T01:00:24-05:00 debian systemd-xdg-autostart-generator[2523088]: /home/patrick/.config/autostart/putgd.desktop: not generating unit, executable specified in Exec= does not exist.",
+  "system 2026-10-23T00:59:14-05:00 debian systemd[937]: Starting app-putgd@autostart.service - put.gd...",
+  "system 2026-10-23T00:59:14-05:00 debian systemd[937]: Started app-putgd@autostart.service - put.gd.",
+  "system 2026-10-23T00:59:14-05:00 debian dbus-daemon[959]: [session uid=1000 pid=959 pidfd=5] Activating service name='org.freedesktop.Notifications' requested by ':1.5074' (uid=1000 pid=2522475 comm=\"/usr/bin/putgd --background\")",
+  "system 2026-10-23T01:00:24-05:00 debian systemd-xdg-autostart-generator[2523088]: Exec binary '/usr/bin/putgd-launcher' does not exist: No such file or directory",
+  "system 2026-10-23T01:00:24-05:00 debian systemd-xdg-autostart-generator[2523088]: /home/patrick/.config/autostart/putgd.desktop: not generating unit, executable specified in Exec= does not exist."
+ ],
+ "failedUnits": [],
+ "autostartUnits": [],
+ "generatorUnit": [],
+ "processes": [],
+ "package": {
+  "manager": "dpkg",
+  "status": null,
+  "version": null
+ }
+}

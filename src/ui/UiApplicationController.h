@@ -1,6 +1,7 @@
 #pragma once
 #include "app/UiControl.h"
 #include "UiSession.h"
+#include "Appearance.h"
 #include <QPointer>
 #include <QTimer>
 #include <QSet>
@@ -26,6 +27,11 @@ private:
  void clearPendingAction(bool restore);void requestAction(const QString&);void requestEdit(const QString& source,const QString& path);void prepareAction();void invokeAction();
  void requestQuit();void requestClose(QWidget*);void submitClose();void checkpoint();void notify(const Error&);void allowClose();
  UiSession& session_;UiControl& control_;QJsonObject saved_;
+ // The colour scheme in use: the appearance setting, or the desktop's (#60).
+ Appearance appearance_;
+ // A theme picked in Settings and shown before the resident accepts it (#237).
+ QString themePreview_;
+ void followAppearance();
  std::unique_ptr<MainWindow> main_;
  std::unique_ptr<AboutWindow> about_;
  struct RecordingRequest {bool active;std::function<void(Error)> reply;};

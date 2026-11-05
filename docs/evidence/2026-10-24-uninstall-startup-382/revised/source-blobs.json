@@ -1,0 +1,12 @@
+{
+  "commit": "b15f47d589e8f695fddcb93bc1b6130d42c57b43",
+  "testedBuildMetadata": "91864c41 dirty; these six source blobs exactly match b15f47d5",
+  "blobs": {
+    "src/app/LoginStartup.cpp": "ae1b14095ef41ee7aa342084582475a7cef846c1",
+    "src/app/LoginStartup.h": "71798c7b2a7424ec562aab13cfdd85aa56a3dc09",
+    "src/app/appimage-login-start.sh": "ae22bb8ce35512c70c2161d3f0a8461d6fb3849d",
+    "src/main.cpp": "95a76063b6a13f3757d1c83cbe708dae44a18a4d",
+    "tests/unit/test_appimage_login_start.py": "df98730b1a242c15858fba1cc8e13d533c0cdefe",
+    "tests/unit/test_login_startup.cpp": "812f11f429269eae26f8661068587c46733b6d3a"
+  }
+}

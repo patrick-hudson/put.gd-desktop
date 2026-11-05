@@ -1,0 +1,8 @@
+aut setup
+aut check 1 update 0 3.7 s new {'putgd-26.1022.1019-nightly-x86_64.AppImage': 'e5b7ad2caecaa7f5737bdfb5d2f0fd4e3c74ce5d98a8a68142caf4efd43525bc'} sums {'putgd-26.1022.1019-nightly-x86_64.AppImage': True} N unchanged True ssl None
+zsync2: Using CA bundle found on system: /etc/ssl/cert.pem | 
+cleanup True
+aut setup
+aut check 1 update 0 2.9 s new {'putgd-26.1022.1019-nightly-x86_64.AppImage': 'e5b7ad2caecaa7f5737bdfb5d2f0fd4e3c74ce5d98a8a68142caf4efd43525bc'} sums {'putgd-26.1022.1019-nightly-x86_64.AppImage': True} N unchanged True ssl /etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem
+zsync2: Using CA bundle found on system: /etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem | 
+cleanup True

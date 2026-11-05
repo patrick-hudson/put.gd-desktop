@@ -1,0 +1,16 @@
+{
+ "storedChannel": "build",
+ "status": {
+  "channel": "nightly",
+  "channelSetting": "build",
+  "build": {
+   "channel": "nightly",
+   "kind": "nightly",
+   "packageTarget": "appimage",
+   "reason": null,
+   "supported": true,
+   "version": "0.1.1-nightly.942"
+  }
+ },
+ "closed": "/home/patrick/work/put.gd-afa2/runs/f44/full/f44-channel-noov-closed.png"
+}

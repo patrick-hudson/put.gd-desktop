@@ -1,0 +1,39 @@
+{
+  "placement": "boat",
+  "sandboxId": "bx_wsvvktyu",
+  "snapshotName": "putgd-lab-cinnamon-v3",
+  "builtTreeCommit": "6ad9f957e6544f30c5e45c08af2306db77a9ff64",
+  "ctestSummary": {
+    "tests": 114,
+    "failedFirst": [
+      "gui_history_view"
+    ],
+    "failed": [
+      "gui_history_view"
+    ],
+    "retried": [],
+    "passedOnRetry": [],
+    "blocking": [
+      "gui_history_view"
+    ],
+    "unexplainedCtestFailure": false,
+    "ok": false
+  },
+  "retryEnabled": false,
+  "parallel": 12,
+  "timeScale": 3,
+  "automaticScratch": "/dev/shm",
+  "configureBuildWithoutInstallOrReprovision": true,
+  "inheritedManifestUnchanged": true,
+  "protonRuntimeUnchanged": true,
+  "bootstrapUnchanged": true,
+  "focusedRetest": {
+    "test": "gui_history_view",
+    "passed": true,
+    "issue": 635,
+    "originalFailure": "53 vs 12 at tests/gui/test_history_view.cpp:832",
+    "changedAssertionsOrTimeouts": false
+  },
+  "overallTestsPassed": 114,
+  "fullSuiteFirstPass": false
+}

@@ -1,0 +1,24 @@
+Preset CMake variables:
+
+  BUILD_TESTING="ON"
+  CMAKE_BUILD_TYPE="Debug"
+  CMAKE_EXPORT_COMPILE_COMMANDS="ON"
+
+-- Found AWS SDK for C++, Version: 1.11.907, Install Root:/home/patrick/work/put.gd/build/sdk, Platform Prefix:, Platform Dependent Libraries: pthread;curl
+-- Components specified for AWSSDK: s3, application will be depending on libs: aws-cpp-sdk-s3;aws-cpp-sdk-core
+-- Try finding aws-cpp-sdk-core
+-- LibCrypto Include Dir: /usr/include
+-- LibCrypto Shared Lib:  /usr/lib/x86_64-linux-gnu/libcrypto.so
+-- LibCrypto Static Lib:  /usr/lib/x86_64-linux-gnu/libcrypto.a
+-- Found OpenSSL: /usr/lib/x86_64-linux-gnu/libcrypto.so (found version "3.5.7")
+-- Found aws-cpp-sdk-core
+-- Try finding aws-cpp-sdk-s3
+-- Found aws-cpp-sdk-s3
+-- Found OpenSSL: /usr/lib/x86_64-linux-gnu/libcrypto.so (found suitable version "3.5.7", minimum required is "1.1.1") found components: Crypto
+-- Checking for module 'wayland-server'
+--   Found wayland-server, version 1.23.1
+-- Checking for module 'xcb-xtest'
+--   Found xcb-xtest, version 1.17.0
+-- Configuring done (0.6s)
+-- Generating done (0.9s)
+-- Build files have been written to: /home/patrick/work/pgcc-fullerror/build/dev

@@ -1,0 +1,47 @@
+{
+  "source": "result.png retained host-only",
+  "crop": [
+    0,
+    200,
+    1920,
+    880
+  ],
+  "edgeCoverage": {
+    "top": 1.0,
+    "bottom": 1.0,
+    "left": 1.0,
+    "right": 1.0
+  },
+  "sourceCommit": "25b36396ea408c53ff2b0d2daa9572a2faad9cd6",
+  "host": "f44",
+  "session": "Fedora44 GNOME Shell50.6 Wayland",
+  "run": "d254g3",
+  "binarySha256": {
+    "putgd": "0528890ea4bce6b27a0ecc604e03cb8d09ecb41a41f476eb78d310142b68342a",
+    "putgd-cli": "80fc4b8aa4140f9af049283418c4b6107f22cc5c9eb42d5025a9ca88d650a013",
+    "putgd-record": "f6684ef821aaa8cb2bf8ac725f9d813e3c39f3fad3689a9503a27bc72ae4fbfa"
+  },
+  "captureFrameGate": {
+    "edges": {
+      "bottom": 1.0,
+      "left": 1.0,
+      "right": 1.0,
+      "top": 1.0
+    },
+    "fraction": 0.715,
+    "kept": "/tmp/d254g3/preview.png",
+    "minFraction": 0.5,
+    "ok": true,
+    "rect": [
+      0,
+      0,
+      320,
+      240
+    ],
+    "sha256": "7a081b77c1a68e45f628bccf6c98df732caa97c2d1c4dc370fee4d42c09a8cd8",
+    "size": [
+      320,
+      240
+    ]
+  }
+}

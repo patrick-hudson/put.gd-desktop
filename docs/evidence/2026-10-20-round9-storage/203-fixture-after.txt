@@ -1,0 +1,9 @@
+QINFO  : S3MultipartTest::cancelCutsPartsInFlight() cancel with 4 parts in flight: 404 ms
+QINFO  : S3MultipartTest::failedLaneCutsThePartsInFlight() one lane refused, three in flight: 1791 ms
+Totals: 5 passed, 0 failed, 0 skipped, 0 blacklisted, 5459ms
+QINFO  : S3MultipartTest::cancelCutsPartsInFlight() cancel with 4 parts in flight: 405 ms
+QINFO  : S3MultipartTest::failedLaneCutsThePartsInFlight() one lane refused, three in flight: 1818 ms
+Totals: 5 passed, 0 failed, 0 skipped, 0 blacklisted, 5800ms
+QINFO  : S3MultipartTest::cancelCutsPartsInFlight() cancel with 4 parts in flight: 404 ms
+QINFO  : S3MultipartTest::failedLaneCutsThePartsInFlight() one lane refused, three in flight: 1801 ms
+Totals: 5 passed, 0 failed, 0 skipped, 0 blacklisted, 5481ms

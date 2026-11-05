@@ -1,0 +1,52 @@
+{
+  "origin/feat/surface-driver-core": "97d335ec9f2bb6a9fb74fb81f3bf121ddb082760",
+  "feat/surface-core-r3-fixtures": "a8cc74ea3692df85715739f5e1669de64f56c536",
+  "test/surface-core-r3-replay": "23613d789b356e0e72645c8711dae1314e0eea7a",
+  "fix/lab-cleanup-chain-timeout-844": "2127447a4662ff0c244ad6a87bab0ff1b2423148",
+  "origin/feat/surface-recipes-settings": "a89238ae2c403b529e28a58b85ad45dbf3627920",
+  "origin/feat/surface-recipes-destinations": "bf9da487645c9546adc75aeb34670c0dc69e35c2",
+  "origin/feat/surface-recipes-events": "fda0175dc7a20e6ce6fb85afe87b89249abbe1ad",
+  "origin/feat/surface-recipes-review": "32d673ede00dfd742ed0d573b94987909920882f",
+  "origin/feat/surface-recipes-editor": "326a41c25407bd1d2e6670659837b141b6210a6a",
+  "origin/feat/surface-recipes-tray": "ebce60530770f4fc58cec106c23c9e0f04b6486f",
+  "app": {
+    "commit": "88928c0b59f3938098067e88913bc077b1e46d89",
+    "tree": "59017513d373a0053268a5c13dc020ec6a53eecc",
+    "count": "2582",
+    "time": "1793349226"
+  },
+  "origin/feat/surface-recipes-dialogs": "8702e57b63c18119aaf31e1b55b22605615626b7",
+  "sixLaneInitialAfterArchive": "driver-latest2.tgz",
+  "sixLaneInitialAfterMerge": "ac97ca53f8c9bc573438d9e3d5504e5940ce0741",
+  "sevenLaneArchive": "driver-seven-head.tgz",
+  "archives": {
+    "driver-seven-release.tgz": "c21a4857ab734b271443d23433ff607aa6a3c6305d3fdcc55d70a02053375cf8",
+    "driver-latest2.tgz": "b480e7c02b0a4e59587a5e103abb01d9367d621856d5cbd9530c240476d5126e",
+    "driver-seven.tgz": "9e5477ac67b6276f68439540b78231f687d19236c6ad5ea120c21c45cd1277ad",
+    "driver-final.tgz": "b62e30a86932f30a026b6d2e51e3e579a6197df3ac414edde217c2c8b5a299f8",
+    "driver4.tgz": "3ee81d2b26ec1de98208a14bea8c15a33e95ac4a481cc419570e2c84afdf04f0",
+    "driver2.tgz": "694bed3c3ae1ab56cc79d533dd1401a9aea949080b1279254bfcea3181116817",
+    "driver3.tgz": "bd54fca71079ece67bde0c8d7b5d55f0f4ebff1afc49f8850cf067ec24b36ae2",
+    "driver-latest3.tgz": "e4531175dcd81c54a39e48477dc1f2fcc679e7c6a217eec1553eb83dcfadef2e",
+    "app-compact.tgz": "eab9a6f6a6c3580062f4dbd0acef1ef69fb8dceafc07c411591457029670e4ec",
+    "driver-latest.tgz": "2b1059cdccab03a513c7c482e59633f4cc385b95c88f84860ed57e75a5de76e8",
+    "driver-seven-final.tgz": "a5e059d175748fa9462404f57b0ef55beacdc58e1e9804b90e390b0199caa8e1",
+    "driver5.tgz": "969570bae4ded0d1f2b64c62056dbc1918dae44727c2b010d905b99dd243659b",
+    "driver.tgz": "e5876b5a0c004e36641725a8a554f9b9000265a7b2c74c81b60cbe6654093348",
+    "driver-seven-head.tgz": "1339801787cc493213d5e776e3922fb37a49de21a18b7f0a8c2d0773a155b1ac",
+    "baseline-core.tgz": "91c32a40f8bc015238505c0912bcabbf72ca185569afe2a67a1449a4397d29b4"
+  },
+  "liveControllerSources": {
+    "cin/after": "core 1f1c3ec0, merge ac97ca53, driver-latest2.tgz",
+    "cin/selectors-dialogs-after": "core 2a94c169, merge 3a7e9397, driver-seven-head.tgz",
+    "gno/after": "core 2a94c169, merge 3a7e9397, driver-seven-head.tgz",
+    "cin/fixture-probes3,4,5": "core 2a94c169, driver-seven-head.tgz",
+    "gno/fixture-probes1": "core 2a94c169, driver-seven-head.tgz",
+    "gno/fixture-probes2": "core a8cc74ea, driver-seven-release.tgz",
+    "all baselines": "origin/feat/surface-driver-core 97d335ec; same lane recipes; baseline-core.tgz"
+  },
+  "standaloneLocalSourceArchives": {
+    "app-compact.tgz": "eab9a6f6a6c3580062f4dbd0acef1ef69fb8dceafc07c411591457029670e4ec",
+    "app-source.tgz": "60fcbf0fef7edb1e9eabcd9e58eb17fb130a7356eba0ed602658addc6a1068e1"
+  }
+}

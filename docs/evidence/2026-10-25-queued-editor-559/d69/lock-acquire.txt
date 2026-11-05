@@ -1,0 +1,6 @@
+d69 (Debian 13 Plasma Wayland): locked
+  Codex559 (mcp:c39a8c24-bbd0-435b-9072-429ab19b3f10), acquired 2026-10-25T04:38:02Z
+  purpose: #559 short native queued-editor burst, own PID-scoped geometry, ~/work/i559
+  already on the host (not yours; leave them and tell your coordinator):
+    process 2008860: gpg-agent --homedir /home/patrick/.local/share/putgd-signer/gnupg --use-standard-socket --daemon
+  note: 1 process(es) outside the desktop session (no DISPLAY or WAYLAND_DISPLAY; shared SSH work): 978298

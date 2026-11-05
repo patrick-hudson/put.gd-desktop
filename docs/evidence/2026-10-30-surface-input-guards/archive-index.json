@@ -1,0 +1,56 @@
+{
+  "schemaVersion": 1,
+  "retainedAt": "/home/patrick/work/put.gd/work/campaigns/surface-driver-20261029/core-r3-input",
+  "archives": [
+    {
+      "name": "cinnamon-evidence.tar.gz",
+      "bytes": 498132517,
+      "sha256": "bd33825c461df413549556a2873730f7463a91a0e663af0046d6f6d4421450f3",
+      "original": "/home/patrick/.t3/worktrees/put.gd/t3-92ed5b64/work/r3/cinnamon-evidence.tar.gz",
+      "retainedCopy": "/home/patrick/work/put.gd/work/campaigns/surface-driver-20261029/core-r3-input/cinnamon-evidence.tar.gz"
+    },
+    {
+      "name": "gnome-evidence.tar.gz",
+      "bytes": 937550121,
+      "sha256": "bdceaa3201c80a0387ae7fc3b7110fc28474254a3e6a4c5dac8be4cb91d049ca",
+      "original": "/home/patrick/.t3/worktrees/put.gd/t3-92ed5b64/work/r3/gnome-evidence.tar.gz",
+      "retainedCopy": "/home/patrick/work/put.gd/work/campaigns/surface-driver-20261029/core-r3-input/gnome-evidence.tar.gz"
+    },
+    {
+      "name": "cinnamon-retirement.tar.gz",
+      "bytes": 775689,
+      "sha256": "271971913aa73f5e25731da559df2e9f29c2180a922e3ed2e5bbd4c20a15d33f",
+      "original": "/home/patrick/.t3/worktrees/put.gd/t3-92ed5b64/work/r3/cinnamon-retirement.tar.gz",
+      "retainedCopy": "/home/patrick/work/put.gd/work/campaigns/surface-driver-20261029/core-r3-input/cinnamon-retirement.tar.gz"
+    },
+    {
+      "name": "gnome-retirement.tar.gz",
+      "bytes": 1860795,
+      "sha256": "9ddd4aa8485e555287cee73e29585aa42605ff062f5424ead4dc60871c8967be",
+      "original": "/home/patrick/.t3/worktrees/put.gd/t3-92ed5b64/work/r3/gnome-retirement.tar.gz",
+      "retainedCopy": "/home/patrick/work/put.gd/work/campaigns/surface-driver-20261029/core-r3-input/gnome-retirement.tar.gz"
+    },
+    {
+      "name": "source-final.tar",
+      "bytes": 15882240,
+      "sha256": "32107e605434ac217324022398b1bb1f64ba7627ef8749dcf9aea0bfaf85f3c6",
+      "original": "/home/patrick/.t3/worktrees/put.gd/t3-92ed5b64/work/r3/source-final.tar",
+      "retainedCopy": "/home/patrick/work/put.gd/work/campaigns/surface-driver-20261029/core-r3-input/source-final.tar"
+    },
+    {
+      "name": "proof-source-v2.tar",
+      "bytes": 16189440,
+      "sha256": "13ac7c28fb748aea00287138120c6ad0f5e0cc74c00d47843afca58bdb9b077c",
+      "original": "/home/patrick/.t3/worktrees/put.gd/t3-92ed5b64/work/r3/proof-source-v2.tar",
+      "retainedCopy": "/home/patrick/work/put.gd/work/campaigns/surface-driver-20261029/core-r3-input/proof-source-v2.tar"
+    },
+    {
+      "name": "proof-source-final.tar",
+      "bytes": 16199680,
+      "sha256": "ec90b7c861599200eda0b0b0150643e89a5e45d20aabe250dfc48a7600f69f17",
+      "original": "/home/patrick/.t3/worktrees/put.gd/t3-92ed5b64/work/r3/proof-source-final.tar",
+      "retainedCopy": "/home/patrick/work/put.gd/work/campaigns/surface-driver-20261029/core-r3-input/proof-source-final.tar"
+    }
+  ],
+  "restore": "Verify archive SHA-256; extract into a new private directory. e3/export-manifest.json hashes every raw exported member; retirement/export-manifest.json hashes the post-stop receipt packet. Never restore disks or private SSH identities; neither is included."
+}

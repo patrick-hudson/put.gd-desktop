@@ -1,0 +1,71 @@
+{
+ "drag": [
+  600,
+  350,
+  680,
+  410
+ ],
+ "expected": [
+  80,
+  60
+ ],
+ "coords": false,
+ "operation": {
+  "id": "e58521d3-d7a5-4321-9933-e3bd9fa6b172",
+  "state": "completed",
+  "copyStatus": "copied",
+  "items": [
+   {
+    "name": "Screen-Capture-2026-10-22-00-55-40.png",
+    "mime": "image/png",
+    "uploadStatus": "uploaded",
+    "link": "http://127.0.0.1:42355/fixture/afa/Screen-Capture-2026-10-22-00-55-40.png",
+    "local": {
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     },
+     "path": "/var/home/lab/work/put.gd-afa2/runs/aurora-vm/archive/images/Screen-Capture-2026-10-22-00-55-40.png",
+     "status": "saved"
+    }
+   }
+  ],
+  "error": {
+   "code": "",
+   "details": {},
+   "message": ""
+  }
+ },
+ "png": [
+  80,
+  60
+ ],
+ "coverCheck": {
+  "deleted": true,
+  "edges": {
+   "bottom": 0.0,
+   "left": 0.0,
+   "right": 0.0,
+   "top": 0.0
+  },
+  "fraction": 0.0,
+  "minFraction": 0.5,
+  "ok": false,
+  "reason": "uncovered",
+  "rect": [
+   0,
+   0,
+   80,
+   60
+  ],
+  "size": [
+   80,
+   60
+  ]
+ },
+ "newHistory": [
+  "52230b97-ebff-4072-84b3-5b2cc9d49e6d"
+ ],
+ "sizePass": true
+}

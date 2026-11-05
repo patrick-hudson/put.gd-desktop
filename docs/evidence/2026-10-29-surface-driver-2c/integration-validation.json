@@ -1,0 +1,25 @@
+{
+  "driver_source": "fa114b3f0cd477023c334917e6e21c8b37719c37",
+  "integration_base": "c1410fd4",
+  "before_rebase_source": "64dc9b8b00d788b060e7dcb54b09bea8e8d05e79",
+  "unit_tests": {
+    "passed": true,
+    "count": 115
+  },
+  "without_Pillow": {
+    "passed": true,
+    "total": 17,
+    "image_skips": 8,
+    "nonimage_passes": 9
+  },
+  "integration": [
+    "Rebased/squashed only owned evidence changes onto 2a merge; kept input guards, foreground witnesses and held-key cleanup.",
+    "Kept 2a notification unique-server resolution and method-return/signal correlation; changed only the body transport to bounded RAM/private socket.",
+    "Catalog masks use the existing 2a _live_control selector/candidates/rect witness even when window dimensions are unchanged."
+  ],
+  "first_attempt": "One redaction test called type_text without a focused input window, which 2a correctly blocks. The test now registers the one-character synthetic secret directly because it tests serialization identity. Initial failed log retained.",
+  "native_evidence_driver_source": "94c2f7fae366abe426066bb4b5201ca04bf364c6",
+  "native_limit": "No new GUI run is claimed after the Python-only review/integration corrections. Actual boat native driver/app identities remain preserved unchanged.",
+  "original_source_archive": "work/s2c/core2c-before-integration.bundle",
+  "archive_sha256": "57246a439fe4bedc0f4d3e0efdd2aacb52f835d2445fb9cac283618f2a6b7f54"
+}

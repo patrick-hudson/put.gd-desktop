@@ -1,0 +1,111 @@
+{
+  "schemaVersion": 1,
+  "privateRoot": "/home/patrick/work/put.gd/work/campaigns/surface-driver-20261029/tier1-phase-a-final",
+  "restore": "Verify archive SHA-256, extract to a new private directory, and verify every member against the archive manifest.json; no disk or credential input is included.",
+  "archives": [
+    {
+      "attempt": "aurora",
+      "archive": "aurora-evidence.tgz",
+      "sha256": "d7475f58d8160a43c7e2a40ddfae325a3588dc16ae72dd69ec19e31ae7fb7c7c",
+      "files": 276,
+      "sandbox": "bx_5m42qrbk",
+      "runId": "8b2fa3e5-89e5-4df0-9ece-f14512d25bb3",
+      "exitCode": null,
+      "finalAuditPassed": false,
+      "coverageExport": null,
+      "collectionIssue": 969,
+      "retirementReceipt": "aurora-cleanup.json",
+      "deletionReceipt": "aurora-deletion-final.json"
+    },
+    {
+      "attempt": "aurora-retry",
+      "archive": "aurora-retry-evidence.tgz",
+      "sha256": "43a9747270708c691fea8fb0f16a82186f389b91852572022f89c4a732a351bb",
+      "files": 280,
+      "sandbox": "bx_wtrrs85y",
+      "runId": "1e02440e-3609-4c2d-a34d-cb9a53c5a2c6",
+      "exitCode": 0,
+      "finalAuditPassed": true,
+      "coverageExport": {
+        "scanned_before_copy": true,
+        "copy_scan_passed": true,
+        "published": true
+      },
+      "collectionIssue": null,
+      "retirementReceipt": "aurora-retry-cleanup.json",
+      "deletionReceipt": "aurora-retry-deletion-final.json"
+    },
+    {
+      "attempt": "cinnamon",
+      "archive": "cinnamon-evidence.tgz",
+      "sha256": "ae87d1ef7d76001d3c82f801aa9c96bb3b59e5ca32f4440a672ea9582e8aae39",
+      "files": 202,
+      "sandbox": "bx_s8jxdf93",
+      "runId": "c57e7946-fcf4-4122-8d32-94ed08f5a0a2",
+      "exitCode": 1,
+      "finalAuditPassed": true,
+      "coverageExport": {
+        "scanned_before_copy": true,
+        "copy_scan_passed": true,
+        "published": true
+      },
+      "collectionIssue": null,
+      "retirementReceipt": "cinnamon-cleanup.json",
+      "deletionReceipt": "cinnamon-deletion-final.json"
+    },
+    {
+      "attempt": "gnome",
+      "archive": "gnome-evidence.tgz",
+      "sha256": "4922b175b0bfaea76a819729816de51e017ff7d5f7849ee97cdd1baf9ef209e4",
+      "files": 210,
+      "sandbox": "bx_7a9zcrmx",
+      "runId": "a9200c1e-3dc0-4707-921d-0256556fc824",
+      "exitCode": 1,
+      "finalAuditPassed": true,
+      "coverageExport": {
+        "scanned_before_copy": true,
+        "copy_scan_passed": true,
+        "published": true
+      },
+      "collectionIssue": null,
+      "retirementReceipt": "gnome-cleanup.json",
+      "deletionReceipt": "gnome-deletion-final.json"
+    },
+    {
+      "attempt": "gnome-retry",
+      "archive": "gnome-retry-evidence.tgz",
+      "sha256": "d8357d42e4025e17cb3b497b830ae9a05e7977fa901bfed53c6f1f948f4ec344",
+      "files": 276,
+      "sandbox": "bx_ng72wuxu",
+      "runId": "55e464d7-59ce-4fb3-aa91-f78eac19b639",
+      "exitCode": 0,
+      "finalAuditPassed": true,
+      "coverageExport": {
+        "scanned_before_copy": true,
+        "copy_scan_passed": true,
+        "published": true
+      },
+      "collectionIssue": null,
+      "retirementReceipt": "gnome-retry-cleanup.json",
+      "deletionReceipt": "gnome-retry-deletion-final.json"
+    },
+    {
+      "attempt": "kde",
+      "archive": "kde-evidence.tgz",
+      "sha256": "04dea575297fa4bb0ae73d63a183ba502366c70d965abe4a8cc3f31a455001ec",
+      "files": 282,
+      "sandbox": "bx_unbdwyhb",
+      "runId": "6852fe21-74d6-4d14-93c3-cd3e49fcc4c5",
+      "exitCode": 0,
+      "finalAuditPassed": true,
+      "coverageExport": {
+        "scanned_before_copy": true,
+        "copy_scan_passed": true,
+        "published": true
+      },
+      "collectionIssue": null,
+      "retirementReceipt": "kde-cleanup.json",
+      "deletionReceipt": "kde-deletion-final.json"
+    }
+  ]
+}

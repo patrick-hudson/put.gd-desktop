@@ -1,0 +1,222 @@
+{
+  "schemaVersion": 2,
+  "environment": {
+    "desktop": "aurora-kde-wayland",
+    "host": "aurora-amd",
+    "placement": "native",
+    "guest": null,
+    "package": "appimage",
+    "destination": "local",
+    "build": "4d3840c6108c22546d83c43a1b7d4c77b1df9d6d",
+    "placement_details": {
+      "run_id": "np31-aurora-amd",
+      "lab_profile": "aurora-kde-wayland",
+      "run_directory": "/tmp/np31/r",
+      "session_root": "/tmp/n31",
+      "socket": "/tmp/n31/runtime/putgd/session.sock",
+      "input_backend": "vnc",
+      "frame_backend": "vnc-in-memory"
+    },
+    "target": {
+      "hostname": "aurora-amd",
+      "kernel": "7.2.11-300.fc45.x86_64",
+      "machine": "x86_64",
+      "os": {
+        "ID": "aurora",
+        "VERSION_ID": "45",
+        "VARIANT_ID": "aurora"
+      },
+      "session_type": "wayland",
+      "desktop": "KDE",
+      "qt_platform": "wayland"
+    },
+    "blocked": "surface preflight missing target tools: python3-pyqt6; provision distro packages before starting recipes",
+    "failure_frames": [
+      "startup-failed.png"
+    ],
+    "private_cleanup": "not-owned-or-retained",
+    "coverage_export": {
+      "scanned_before_copy": true,
+      "copy_scan_passed": true,
+      "published": true
+    }
+  },
+  "interactions": [
+    {
+      "interaction": "region.to-upload",
+      "desktop": "aurora-kde-wayland",
+      "package": "appimage",
+      "functional": "blocked",
+      "receipt": "/tmp/np31/a1/receipt.json",
+      "note": "surface preflight missing target tools: python3-pyqt6; provision distro packages before starting recipes",
+      "host": "aurora-amd",
+      "placement": "native",
+      "destination": "local",
+      "recipe": "outcomes.region_upload",
+      "build": "4d3840c6108c22546d83c43a1b7d4c77b1df9d6d",
+      "at": "2026-10-31T15:40:42Z"
+    },
+    {
+      "interaction": "region.drag",
+      "desktop": "aurora-kde-wayland",
+      "package": "appimage",
+      "functional": "blocked",
+      "receipt": "/tmp/np31/a1/receipt.json",
+      "note": "surface preflight missing target tools: python3-pyqt6; provision distro packages before starting recipes",
+      "host": "aurora-amd",
+      "placement": "native",
+      "destination": "local",
+      "recipe": "outcomes.region_upload",
+      "build": "4d3840c6108c22546d83c43a1b7d4c77b1df9d6d",
+      "at": "2026-10-31T15:40:42Z"
+    },
+    {
+      "interaction": "shell.command-capture-window",
+      "desktop": "aurora-kde-wayland",
+      "package": "appimage",
+      "functional": "blocked",
+      "receipt": "/tmp/np31/a1/receipt.json",
+      "note": "surface preflight missing target tools: python3-pyqt6; provision distro packages before starting recipes",
+      "host": "aurora-amd",
+      "placement": "native",
+      "destination": "local",
+      "recipe": "outcomes.window_desktop",
+      "build": "4d3840c6108c22546d83c43a1b7d4c77b1df9d6d",
+      "at": "2026-10-31T15:40:42Z"
+    },
+    {
+      "interaction": "shell.command-capture-desktop",
+      "desktop": "aurora-kde-wayland",
+      "package": "appimage",
+      "functional": "blocked",
+      "receipt": "/tmp/np31/a1/receipt.json",
+      "note": "surface preflight missing target tools: python3-pyqt6; provision distro packages before starting recipes",
+      "host": "aurora-amd",
+      "placement": "native",
+      "destination": "local",
+      "recipe": "outcomes.window_desktop",
+      "build": "4d3840c6108c22546d83c43a1b7d4c77b1df9d6d",
+      "at": "2026-10-31T15:40:42Z"
+    },
+    {
+      "interaction": "review.upload",
+      "desktop": "aurora-kde-wayland",
+      "package": "appimage",
+      "functional": "blocked",
+      "receipt": "/tmp/np31/a1/receipt.json",
+      "note": "surface preflight missing target tools: python3-pyqt6; provision distro packages before starting recipes",
+      "host": "aurora-amd",
+      "placement": "native",
+      "destination": "local",
+      "recipe": "outcomes.recording_upload",
+      "build": "4d3840c6108c22546d83c43a1b7d4c77b1df9d6d",
+      "at": "2026-10-31T15:40:42Z"
+    },
+    {
+      "interaction": "editor.upload",
+      "desktop": "aurora-kde-wayland",
+      "package": "appimage",
+      "functional": "blocked",
+      "receipt": "/tmp/np31/a1/receipt.json",
+      "note": "surface preflight missing target tools: python3-pyqt6; provision distro packages before starting recipes",
+      "host": "aurora-amd",
+      "placement": "native",
+      "destination": "local",
+      "recipe": "outcomes.edit_upload",
+      "build": "4d3840c6108c22546d83c43a1b7d4c77b1df9d6d",
+      "at": "2026-10-31T15:40:42Z"
+    },
+    {
+      "interaction": "editor.mouse-draw",
+      "desktop": "aurora-kde-wayland",
+      "package": "appimage",
+      "functional": "blocked",
+      "receipt": "/tmp/np31/a1/receipt.json",
+      "note": "surface preflight missing target tools: python3-pyqt6; provision distro packages before starting recipes",
+      "host": "aurora-amd",
+      "placement": "native",
+      "destination": "local",
+      "recipe": "outcomes.edit_upload",
+      "build": "4d3840c6108c22546d83c43a1b7d4c77b1df9d6d",
+      "at": "2026-10-31T15:40:42Z"
+    },
+    {
+      "interaction": "editor.text-typing",
+      "desktop": "aurora-kde-wayland",
+      "package": "appimage",
+      "functional": "blocked",
+      "receipt": "/tmp/np31/a1/receipt.json",
+      "note": "surface preflight missing target tools: python3-pyqt6; provision distro packages before starting recipes",
+      "host": "aurora-amd",
+      "placement": "native",
+      "destination": "local",
+      "recipe": "outcomes.edit_upload",
+      "build": "4d3840c6108c22546d83c43a1b7d4c77b1df9d6d",
+      "at": "2026-10-31T15:40:42Z"
+    },
+    {
+      "interaction": "history.copy-link",
+      "desktop": "aurora-kde-wayland",
+      "package": "appimage",
+      "functional": "blocked",
+      "receipt": "/tmp/np31/a1/receipt.json",
+      "note": "surface preflight missing target tools: python3-pyqt6; provision distro packages before starting recipes",
+      "host": "aurora-amd",
+      "placement": "native",
+      "destination": "local",
+      "recipe": "outcomes.link_browser",
+      "build": "4d3840c6108c22546d83c43a1b7d4c77b1df9d6d",
+      "at": "2026-10-31T15:40:42Z"
+    },
+    {
+      "interaction": "history.open-link",
+      "desktop": "aurora-kde-wayland",
+      "package": "appimage",
+      "functional": "blocked",
+      "receipt": "/tmp/np31/a1/receipt.json",
+      "note": "surface preflight missing target tools: python3-pyqt6; provision distro packages before starting recipes",
+      "host": "aurora-amd",
+      "placement": "native",
+      "destination": "local",
+      "recipe": "outcomes.link_browser",
+      "build": "4d3840c6108c22546d83c43a1b7d4c77b1df9d6d",
+      "at": "2026-10-31T15:40:42Z"
+    },
+    {
+      "interaction": "history.delete-remote",
+      "desktop": "aurora-kde-wayland",
+      "package": "appimage",
+      "functional": "blocked",
+      "receipt": "/tmp/np31/a1/receipt.json",
+      "note": "surface preflight missing target tools: python3-pyqt6; provision distro packages before starting recipes",
+      "host": "aurora-amd",
+      "placement": "native",
+      "destination": "local",
+      "recipe": "outcomes.history_delete",
+      "build": "4d3840c6108c22546d83c43a1b7d4c77b1df9d6d",
+      "at": "2026-10-31T15:40:42Z"
+    },
+    {
+      "interaction": "confirm.history-delete",
+      "desktop": "aurora-kde-wayland",
+      "package": "appimage",
+      "functional": "blocked",
+      "receipt": "/tmp/np31/a1/receipt.json",
+      "note": "surface preflight missing target tools: python3-pyqt6; provision distro packages before starting recipes",
+      "host": "aurora-amd",
+      "placement": "native",
+      "destination": "local",
+      "recipe": "outcomes.history_delete",
+      "build": "4d3840c6108c22546d83c43a1b7d4c77b1df9d6d",
+      "at": "2026-10-31T15:40:42Z"
+    }
+  ],
+  "secret_scan": {
+    "quarantine": [],
+    "passed": true,
+    "files": 5,
+    "pngs": 1,
+    "image_audit": "known-regions",
+    "findings": []
+  }
+}

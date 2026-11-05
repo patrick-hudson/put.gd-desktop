@@ -1,0 +1,39 @@
+{
+ "menu": {
+  "label": "m74-after-b-tray-menu",
+  "components": [
+   {
+    "blocks": 1022,
+    "box": [
+     1704,
+     744,
+     1920,
+     1080
+    ]
+   },
+   {
+    "blocks": 1,
+    "box": [
+     1896,
+     1056,
+     1904,
+     1064
+    ]
+   }
+  ],
+  "colour": [
+   252,
+   252,
+   252
+  ],
+  "inner": [
+   1715,
+   746,
+   1904,
+   1039
+  ],
+  "changedShare": 1.0,
+  "kept": "/home/patrick/work/put.gd-tray374lab/p-m74-after/crops/m74-after-b-tray-menu.png"
+ },
+ "ui": null
+}

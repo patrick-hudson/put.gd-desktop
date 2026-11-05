@@ -1,0 +1,31 @@
+{
+  "completed": true,
+  "files": {
+    "app-started.ppm": "f43643b20405351e09fc1e2adcb774da5a601a457639f5fec880c5a9c3546112",
+    "capacity.json": "3458211da95413e8b666c43d9610eb3772577821d0de1e8c604894f34c1a98cd",
+    "completion.json": "9742a6b38beaa8d6f2b7a9cce6407b99a7a803854f5a8d3372af6f7d1bd956b5",
+    "controller.json": "aac7725ac718c06739fa3b2f25bd576d38c3daf1fd35768ee7fe85de80391614",
+    "desktop-after.ppm": "7770bb3f3a37144ab02ef0f5e99fcde9726bdd095c828be76adb3344ffde4474",
+    "desktop.ppm": "d8a6ec2ca8a844e6ce64d870e6b35a86f921c78642ef4ba06a02deff185a231b",
+    "golden.json": "dcfa8cf2d5841dd85ed0645c212319e2ec99a955c3008f9ae878af57a6ea9123",
+    "guest-capacity.json": "2a9b35535ca883599706e256fca0e326286349e560243cc086fb0b7e7ee10733",
+    "idle-policy.json": "1379939c681d946c75627941d9f19dd7adcd11e672f276806052dd0c3fbffd37",
+    "install.json": "451c56bd4493c70c08eae2f434c55848fff74b28e31f3a8a7ac84edf66609c2d",
+    "installed-version.json": "644bb06e9eddd7326be742d40336d75c147f86342b06938b5f7e4e13aab64b1c",
+    "launch.json": "00d955fb799382f1400ce1380dc0ea823987f1bd5fe14535070786cbff1e7a6b",
+    "package-artifact.json": "57f2c922e5f9bfef92f094295868b43409dbc4fcdc84d475583affea24357660",
+    "platform.json": "70a3ef14b24ce31b97152fbd97e370fd4bbc25030a80a8393965c93041e157b1",
+    "probes.log": "86ebd107a618285388fb94aac982de45a5d53c9679d56e50596ca2aefed43081",
+    "reset.json": "fb1facefb1854255500c466dcdb34070a29fc95386b9157e14f220ca3913c885",
+    "session-policy.json": "8ac1c6ce0307d45e6f0bc4b6998ed6c7fba579050ab18e86183944c92175e86b",
+    "show.json": "18ddc57dfcb931d142fbbc5a07a320bb0a26c92918a587aa8de796bd8dd91742",
+    "socket-preflight.json": "a64b611ba31c764be57f54404cda9c33e0abf48ac7372e6d23f724a5f592e15c",
+    "start.json": "ee7f9b59eb18924e8647dd02a295597edf4ceaf78e1360b7a978971c70972af4",
+    "view-state.json": "31aea98ba33c11b435d452d6c8f03920c3781871a1952671b16e513abdb9157b"
+  },
+  "kind": "vm-overlay-cleanup-evidence",
+  "outcome": "passed",
+  "run": "/home/user/lab-driver/work/lab-runs/ps3",
+  "runId": "207f8d6f-4deb-47f3-91bb-4933e86b9e2a",
+  "schemaVersion": 1
+}

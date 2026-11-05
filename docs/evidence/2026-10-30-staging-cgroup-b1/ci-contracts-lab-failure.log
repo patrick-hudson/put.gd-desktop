@@ -1,0 +1,266 @@
+$ python3 tests/desktop/test_boat_candidate.py
+................................................
+----------------------------------------------------------------------
+Ran 48 tests in 1.402s
+
+OK
+
+$ python3 tests/desktop/test_boat_snapshots.py
+..................................
+----------------------------------------------------------------------
+Ran 34 tests in 0.026s
+
+OK
+
+$ python3 tests/desktop/test_cover_player.py
+................s..
+----------------------------------------------------------------------
+Ran 19 tests in 0.022s
+
+OK (skipped=1)
+
+$ python3 tests/desktop/test_desktop_lock.py
+.............................
+----------------------------------------------------------------------
+Ran 29 tests in 0.455s
+
+OK
+
+$ python3 tests/desktop/test_guest_idle.py
+.............................
+----------------------------------------------------------------------
+Ran 29 tests in 0.020s
+
+OK
+
+$ python3 tests/desktop/test_headless_output.py
+......
+----------------------------------------------------------------------
+Ran 6 tests in 0.004s
+
+OK
+
+$ python3 tests/desktop/test_host_input.py
+...
+----------------------------------------------------------------------
+Ran 3 tests in 0.000s
+
+OK
+
+$ python3 tests/desktop/test_lab.py
+...........................Guest staging uses session-only tracking: system manager bus probe failed. Session-scan limits apply.
+.Guest staging uses session-only tracking: system manager bus probe failed. Session-scan limits apply.
+......................................
+----------------------------------------------------------------------
+Ran 66 tests in 4.864s
+
+OK
+
+$ python3 tests/desktop/test_lab_ui_contract.py
+.....
+----------------------------------------------------------------------
+Ran 5 tests in 0.101s
+
+OK
+
+$ python3 tests/desktop/test_live_credentials_lab.py
+...........................
+----------------------------------------------------------------------
+Ran 27 tests in 0.144s
+
+OK
+
+$ python3 tests/desktop/test_multi_output.py
+.....
+----------------------------------------------------------------------
+Ran 5 tests in 0.025s
+
+OK
+
+$ python3 tests/desktop/test_multi_output_review.py
+...............
+----------------------------------------------------------------------
+Ran 15 tests in 0.354s
+
+OK
+
+$ python3 tests/desktop/test_native_acceptance.py
+.......................................
+----------------------------------------------------------------------
+Ran 39 tests in 1.315s
+
+OK
+
+$ python3 tests/desktop/test_neon_autologin.py
+........
+----------------------------------------------------------------------
+Ran 8 tests in 0.436s
+
+OK
+
+$ python3 tests/desktop/test_overlay_cleanup.py
+.............................
+----------------------------------------------------------------------
+Ran 29 tests in 0.970s
+
+OK
+
+$ python3 tests/desktop/test_package_install.py
+........
+----------------------------------------------------------------------
+Ran 8 tests in 5.770s
+
+OK
+
+$ python3 tests/desktop/test_proton_lab.py
+..............................
+----------------------------------------------------------------------
+Ran 30 tests in 0.072s
+
+OK
+
+$ python3 tests/desktop/test_record_run.py
+............
+----------------------------------------------------------------------
+Ran 12 tests in 0.000s
+
+OK
+
+$ python3 tests/desktop/test_restore_evidence.py
+...
+----------------------------------------------------------------------
+Ran 3 tests in 0.004s
+
+OK
+
+$ python3 tests/desktop/test_rfb_frames.py
+..
+----------------------------------------------------------------------
+Ran 2 tests in 0.000s
+
+OK
+
+$ python3 tests/desktop/test_staging_recovery.py
+..putgd-staging-fallback {"tracking": "session", "fallbackReason": "passwordless sudo for systemd-run probe failed"}
+putgd-staging-fallback {"tracking": "session", "fallbackReason": "passwordless sudo for systemd-run probe failed"}
+...........................E...
+======================================================================
+ERROR: test_validator_orphaned_grandchild_and_reused_session_leader_refuse (__main__.StagingRecoveryContracts.test_validator_orphaned_grandchild_and_reused_session_leader_refuse)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/runner/work/put.gd-desktop/put.gd-desktop/tests/desktop/test_staging_recovery.py", line 744, in test_validator_orphaned_grandchild_and_reused_session_leader_refuse
+    wait_for(lambda: dead(grandchild))
+  File "/home/runner/work/put.gd-desktop/put.gd-desktop/tests/desktop/test_staging_recovery.py", line 37, in wait_for
+    while not predicate():
+              ^^^^^^^^^^^
+  File "/home/runner/work/put.gd-desktop/put.gd-desktop/tests/desktop/test_staging_recovery.py", line 744, in <lambda>
+    wait_for(lambda: dead(grandchild))
+                     ^^^^^^^^^^^^^^^^
+  File "/home/runner/work/put.gd-desktop/put.gd-desktop/tests/desktop/test_staging_recovery.py", line 45, in dead
+    return Path(f'/proc/{pid}/stat').read_text().rsplit(')', 1)[1].split()[0] in ('Z', 'X')
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/pathlib.py", line 1030, in read_text
+    return f.read()
+           ^^^^^^^^
+ProcessLookupError: [Errno 3] No such process
+
+----------------------------------------------------------------------
+Ran 33 tests in 6.491s
+
+FAILED (errors=1)
+
+$ python3 tests/desktop/test_storage_preflight.py
+..............
+----------------------------------------------------------------------
+Ran 14 tests in 0.056s
+
+OK
+
+$ python3 tests/desktop/test_surface_driver.py
+...............{"blocked": "physical VNC/input endpoint binding cannot be verified"}
+.......................................{"recipe": "__main__.expired", "functional": "failed", "visual": "frames", "review": false}
+{"recipe": "__main__.following", "functional": "passed", "visual": "frames", "review": false}
+....{"recipe": "__main__.action", "functional": "failed", "visual": "frames", "review": true}
+{"recipe": "__main__.following", "functional": "blocked", "visual": "frames", "review": false}
+.{"recipe": "__main__.<lambda>", "functional": "passed", "visual": "frames", "review": false}
+{"recipe": "__main__.<lambda>", "functional": "passed", "visual": "frames", "review": false}
+.........{"recipe": "__main__.good", "functional": "passed", "visual": "frames", "review": false}
+{"recipe": "__main__.bad", "functional": "failed", "visual": "frames", "review": false}
+{"recipe": "__main__.blocked", "functional": "blocked", "visual": "frames", "review": false}
+..{"recipe": "__main__.good", "functional": "passed", "visual": "reviewed-ok", "review": false}
+{"recipe": "__main__.bad", "functional": "passed", "visual": "frames", "review": true}
+....{"blocked": "builder host-profile requires its actual --host f44 and placement=native"}
+{"blocked": "--host-profile cannot use placement=guest"}
+{"blocked": "physical desktop input requires its held --lock-session"}
+{"blocked": "unverified host-profile is a physical target; no matching builder desktop lock"}
+{"blocked": "lock is not held by this session"}
+.........
+----------------------------------------------------------------------
+Ran 83 tests in 0.601s
+
+OK
+
+$ python3 tests/desktop/test_surface_map.py
+....................................................
+----------------------------------------------------------------------
+Ran 52 tests in 0.277s
+
+OK
+/tmp/tmp8rw0fwt1/native/map.html: 396 interactions, 0 passed, 1 partial, 0 failed, 0 blocked, 395 untested
+/tmp/tmpatnv0gbr/unresolved/map.html: 396 interactions, 0 passed, 0 partial, 1 failed, 0 blocked, 395 untested
+/tmp/tmpatnv0gbr/unresolved/map.html: 396 interactions, 0 passed, 0 partial, 1 failed, 0 blocked, 395 untested
+{"interaction": "editor.undo", "desktop": "aurora-kde-wayland", "package": "source", "source": "mark", "at": "2026-10-30T07:43:09Z", "host": "aurora-amd", "placement": "native", "destination": "local", "review": true, "review_reason": "Desktop drawn"}
+
+$ python3 tests/desktop/test_tray_progress_lab.py
+.....................................................
+----------------------------------------------------------------------
+Ran 53 tests in 0.627s
+
+OK
+
+$ python3 tests/desktop/test_wall_vnc_watchdog.py
+........
+----------------------------------------------------------------------
+Ran 8 tests in 0.343s
+
+OK
+
+$ python3 tests/desktop/test_windows_lab.py
+........Checking disk integrity and hashing the clean base...
+Sealed base; use clone for every test. Evaluation expiry is unchanged by cloning.
+Verifying sealed base disk, firmware and TPM hashes...
+Verifying sealed base disk, firmware and TPM hashes...
+.Checking disk integrity and hashing the clean base...
+Sealed base; use clone for every test. Evaluation expiry is unchanged by cloning.
+Verifying sealed base disk, firmware and TPM hashes...
+.Checking disk integrity and hashing the clean base...
+Sealed base; use clone for every test. Evaluation expiry is unchanged by cloning.
+Verifying sealed base disk, firmware and TPM hashes...
+..
+----------------------------------------------------------------------
+Ran 12 tests in 0.189s
+
+OK
+
+$ python3 tests/maintenance/test_archive_evidence.py
+.......
+----------------------------------------------------------------------
+Ran 7 tests in 0.011s
+
+OK
+
+$ python3 tests/maintenance/test_refresh_pins.py
+........
+----------------------------------------------------------------------
+Ran 8 tests in 0.002s
+
+OK
+
+$ python3 tests/performance/test_bench_ui_process.py
+{"label": "existing-process-0", "elapsedSeconds": 0.03003928700002234, "totals": {"rssBytes": 39436288, "pssBytes": 27333632, "privateBytes": 25907200}, "processCount": 2, "uiProcessCount": 1, "escapedProcessCount": 0, "sampleSeconds": 0.017481340999978556}
+..........UI process measurement failed; inspect its private evidence. No memory result was accepted.
+.....
+----------------------------------------------------------------------
+Ran 15 tests in 0.520s
+
+OK

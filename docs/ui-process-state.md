@@ -1,8 +1,22 @@
 # U11 C view state
 
-`validateUiState` is QtCore-only. Version 1 accepts only `schemaVersion: 1` and optional `settings`, `history`, legacy `activity`, and `main` objects. The redesign keeps legacy activity checkpoints readable, but opens History/Activity/Settings in one main window. It enforces the 8 MiB compact-JSON limit. State stays in resident RAM; this implementation writes no payload or state files.
+`validateUiState` is QtCore-only. Version 1 accepts only `schemaVersion: 1` and optional `settings`, `history`, legacy `activity`, and `main` objects. The interface keeps legacy activity checkpoints readable, but opens History and Settings in one main window; the `activity` view is the same as History. It enforces the 8 MiB compact-JSON limit. State stays in resident RAM; this implementation writes no payload or state files.
 
-Settings keys: `draft`, `numbers`, `profileEditors`, `baseRevision`, `observedRevision`, `dirty`, `conflict`, `initialProfile`, `profileIndex`, `section`, `advanced`, `geometry`, `setupJobs`, `provisionalProfile`.
+The state also carries a derived, read-only `appearance` object: `theme` (the setting), `desktop` (`dark`, `light` or null), `desktopSource`, the resolved `scheme` and its `tokens` (name to `#rrggbb`). `ui.viewState` returns it unchanged; see [appearance](appearance.md).
+
+Opening History creates its own controls and the shared window shell. Settings and
+Destinations are constructed on their first navigation or agent command. Clean
+retained Settings state stays recoverable without constructing those hidden
+controls; its old `captureRouting` projection is omitted from new checkpoints
+until Settings exists again. Restoration reconciles the retained state with the
+current resident configuration. Dirty/conflicted/blocked drafts, provisional or
+alternate-provider drafts, and accepted setup jobs retain their eager restoration
+and inspection lifecycle. Once constructed, Settings stays alive for the helper's
+lifetime so navigation preserves edits and accepted jobs.
+
+Settings keys: `draft`, `numbers`, `profileEditors`, `baseRevision`, `observedRevision`, `dirty`, `conflict`, `initialProfile`, `profileIndex`, `section`, `advanced`, `geometry`, `setupJobs`, `provisionalProfile`, and the optional derived `captureRouting`.
+
+- `captureRouting` presents Settings → Capture as shown: `default` (Default capture output) and one entry per capture action (region, window, desktop, clipboard, edit). Each has `profileId` (empty for no destination), the displayed `destination` and `sharing` texts, `publicationMode` (default/share/private), `effectivePublicationMode` (share/private, with "Use destination default" resolved for the selected destination; empty without an upload), the `status` line, and `destinationEnabled`/`sharingEnabled`; actions add `inherited` (Use default). An inherited action keeps its card visible with both controls disabled and showing the default's values. The resident returns only this projection and `section` through `ui.viewState` (MCP `get_view_state`), from the last accepted checkpoint; open windows checkpoint 250 ms after a change. Restoring ignores it and recomputes it from `draft`.
 
 - `draft` retains the versioned configuration structure with explicit shared field lists. S3 profile settings are classified explicitly: bucket, region, endpoint, objectPrefix, storageClass, aclMode, publicUrlBase, addressing, connectTimeoutMs, requestTimeoutMs, lowSpeedBytesPerSecond, lowSpeedTimeSeconds. Proton fields are limited to accountRootUid, folderUid, folderName, shareByDefault, linkExpirationDays, sharePasswordReference and requestTimeoutMs. Credential metadata is limited to mode/reference. Unknown providers/settings keys reject retention and keep the window open. A future provider must deliberately extend this policy.
 - `numbers` retains raw strings for the declared limits/retention fields, including invalid/incomplete text and exact display formatting (GiB/MiB/megapixels); config bytes/pixels are unchanged.
@@ -26,4 +40,4 @@ The main window debounces finished field/toggle/selection changes by 400 ms, reu
 
 Transient autosave failures retain the draft and block automatic replay. The optional boolean `settings.autosaveBlocked` preserves that state across helper recreation; Retry saving is an explicit action. Validation errors may still allow independent valid fields to persist. A close with finished edits waiting for an accepted setup job keeps the helper open until those edits can flush.
 
-The redesign experiment also classifies the optional `draft.captureDefaults` object. Only scalar `destination`, `profileId` and `publicationMode` fields are allowed. Inherited action output is encoded in its existing destination field; credentials remain excluded from checkpoints.
+The validator also classifies the optional `draft.captureDefaults` object. Only scalar `destination`, `profileId` and `publicationMode` fields are allowed. Inherited action output is encoded in its existing destination field; credentials remain excluded from checkpoints.

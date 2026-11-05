@@ -1,0 +1,314 @@
+{
+ "p560ra": {
+  "build": "26.1025.1293-dev+g80ffa2e6c0d3",
+  "thpOff": true,
+  "exit": 0,
+  "harnessRevision": "r1",
+  "cancel3": [],
+  "failure": [
+   {
+    "kind": "failure",
+    "errorCode": "TimeoutError"
+   }
+  ],
+  "cleanup": [
+   {
+    "kind": "cleanup",
+    "remaining": [],
+    "residentExit": 0,
+    "fixtureExit": -15
+   }
+  ],
+  "verified": 2
+ },
+ "p560rb": {
+  "build": "26.1025.1294-dev+g98878cfe31c2",
+  "thpOff": true,
+  "exit": 0,
+  "harnessRevision": "r1",
+  "cancel3": [],
+  "failure": [
+   {
+    "kind": "failure",
+    "errorCode": "TimeoutError"
+   }
+  ],
+  "cleanup": [
+   {
+    "kind": "cleanup",
+    "remaining": [],
+    "residentExit": 0,
+    "fixtureExit": -15
+   }
+  ],
+  "verified": 2
+ },
+ "p560sa": {
+  "build": "26.1025.1293-dev+g80ffa2e6c0d3",
+  "thpOff": true,
+  "exit": 0,
+  "harnessRevision": "r2",
+  "cancel3": [
+   {
+    "kind": "cancel3-control",
+    "queuedTargets": [
+     "9d6b6005-9cbc-41d7-a383-5cd903761bc6",
+     "8061748b-8a43-48a4-9db7-320842bbfe30"
+    ],
+    "transferTargets": [
+     "2898a1d1-4c26-462a-8aca-2457bd8e794e",
+     "7624fbf3-5f9e-4fd9-a295-9b7283c22749"
+    ],
+    "survivors": [
+     "c1f77684-42be-40dd-acd5-7058a15e21d2",
+     "8563d90f-d0fc-4544-9c55-f79cc04ab132"
+    ],
+    "witnesses": [
+     {
+      "id": "9d6b6005-9cbc-41d7-a383-5cd903761bc6",
+      "expected": "queued",
+      "state": "acquiring",
+      "phase": "queued",
+      "items": [],
+      "witnessToCancelSeconds": 0.0004
+     },
+     {
+      "id": "8061748b-8a43-48a4-9db7-320842bbfe30",
+      "expected": "queued",
+      "state": "acquiring",
+      "phase": "queued",
+      "items": [],
+      "witnessToCancelSeconds": 0.0004
+     },
+     {
+      "id": "2898a1d1-4c26-462a-8aca-2457bd8e794e",
+      "expected": "transferring",
+      "state": "running",
+      "phase": "uploading",
+      "items": [
+       {
+        "uploadStatus": "uploading",
+        "phase": "uploading"
+       }
+      ],
+      "witnessToCancelSeconds": 0.0003
+     },
+     {
+      "id": "7624fbf3-5f9e-4fd9-a295-9b7283c22749",
+      "expected": "transferring",
+      "state": "running",
+      "phase": "uploading",
+      "items": [
+       {
+        "uploadStatus": "uploading",
+        "phase": "uploading"
+       }
+      ],
+      "witnessToCancelSeconds": 0.0003
+     }
+    ],
+    "cancelSettleSeconds": {
+     "9d6b6005-9cbc-41d7-a383-5cd903761bc6": 0.005,
+     "8061748b-8a43-48a4-9db7-320842bbfe30": 0.005,
+     "2898a1d1-4c26-462a-8aca-2457bd8e794e": 22.874,
+     "7624fbf3-5f9e-4fd9-a295-9b7283c22749": 1.245
+    },
+    "outcomes": {
+     "2898a1d1-4c26-462a-8aca-2457bd8e794e": "cancelled",
+     "7624fbf3-5f9e-4fd9-a295-9b7283c22749": "cancelled",
+     "9d6b6005-9cbc-41d7-a383-5cd903761bc6": "cancelled",
+     "8061748b-8a43-48a4-9db7-320842bbfe30": "cancelled",
+     "c1f77684-42be-40dd-acd5-7058a15e21d2": "completed",
+     "8563d90f-d0fc-4544-9c55-f79cc04ab132": "completed"
+    },
+    "objectsInventoried": 4,
+    "putRequestsInventoried": 4,
+    "unattributed": 0,
+    "survivorAttribution": {
+     "c1f77684-42be-40dd-acd5-7058a15e21d2": {
+      "objects": 1,
+      "puts": 1
+     },
+     "8563d90f-d0fc-4544-9c55-f79cc04ab132": {
+      "objects": 1,
+      "puts": 1
+     }
+    },
+    "queuedTargetHits": {
+     "9d6b6005-9cbc-41d7-a383-5cd903761bc6": {
+      "objects": 0,
+      "puts": 0
+     },
+     "8061748b-8a43-48a4-9db7-320842bbfe30": {
+      "objects": 0,
+      "puts": 0
+     }
+    },
+    "transferTargetHits": {
+     "2898a1d1-4c26-462a-8aca-2457bd8e794e": {
+      "objects": 1,
+      "puts": 1
+     },
+     "7624fbf3-5f9e-4fd9-a295-9b7283c22749": {
+      "objects": 1,
+      "puts": 1
+     }
+    },
+    "injectionSelfTest": {
+     "victim": "9d6b6005-9cbc-41d7-a383-5cd903761bc6",
+     "key": "fixture/i560/Screen-Capture-INJECTED-self-test.png",
+     "detected": {
+      "objects": 1,
+      "puts": 1
+     },
+     "recordedAfterRealResult": true
+    },
+    "limitation": "Attribution is by decoded pixel SHA-256 of every stored object version and PUT body in the fixture state; witness and cancel are separate requests. Transfer-target hits are reported, not asserted: an in-flight PUT may have taken effect."
+   }
+  ],
+  "failure": [],
+  "cleanup": [
+   {
+    "kind": "cleanup",
+    "remaining": [],
+    "residentExit": 0,
+    "fixtureExit": -15
+   }
+  ],
+  "verified": 2
+ },
+ "p560sb": {
+  "build": "26.1025.1294-dev+g98878cfe31c2",
+  "thpOff": true,
+  "exit": 0,
+  "harnessRevision": "r2",
+  "cancel3": [
+   {
+    "kind": "cancel3-control",
+    "queuedTargets": [
+     "aa8d6cbd-d775-4bc8-b2b7-8df4895ab04a",
+     "3bd077a3-4ea2-494c-97b6-eb04ce64ddb6"
+    ],
+    "transferTargets": [
+     "7c2702aa-c4a6-489e-a60b-f2d45fcabf65",
+     "9cfd55e3-b2ec-4fe7-b2d0-5d9a382bb79b"
+    ],
+    "survivors": [
+     "6af68f09-3706-4e00-9f0a-43e11df3a6a0",
+     "69cc254d-e82d-4354-87ba-95b95c9d23ad"
+    ],
+    "witnesses": [
+     {
+      "id": "aa8d6cbd-d775-4bc8-b2b7-8df4895ab04a",
+      "expected": "queued",
+      "state": "acquiring",
+      "phase": "queued",
+      "items": [],
+      "witnessToCancelSeconds": 0.0004
+     },
+     {
+      "id": "3bd077a3-4ea2-494c-97b6-eb04ce64ddb6",
+      "expected": "queued",
+      "state": "acquiring",
+      "phase": "queued",
+      "items": [],
+      "witnessToCancelSeconds": 0.0004
+     },
+     {
+      "id": "7c2702aa-c4a6-489e-a60b-f2d45fcabf65",
+      "expected": "transferring",
+      "state": "running",
+      "phase": "uploading",
+      "items": [
+       {
+        "uploadStatus": "uploading",
+        "phase": "uploading"
+       }
+      ],
+      "witnessToCancelSeconds": 0.0012
+     },
+     {
+      "id": "9cfd55e3-b2ec-4fe7-b2d0-5d9a382bb79b",
+      "expected": "transferring",
+      "state": "running",
+      "phase": "uploading",
+      "items": [
+       {
+        "uploadStatus": "uploading",
+        "phase": "uploading"
+       }
+      ],
+      "witnessToCancelSeconds": 0.0003
+     }
+    ],
+    "cancelSettleSeconds": {
+     "aa8d6cbd-d775-4bc8-b2b7-8df4895ab04a": 0.053,
+     "3bd077a3-4ea2-494c-97b6-eb04ce64ddb6": 0.005,
+     "7c2702aa-c4a6-489e-a60b-f2d45fcabf65": 22.832,
+     "9cfd55e3-b2ec-4fe7-b2d0-5d9a382bb79b": 1.248
+    },
+    "outcomes": {
+     "7c2702aa-c4a6-489e-a60b-f2d45fcabf65": "cancelled",
+     "9cfd55e3-b2ec-4fe7-b2d0-5d9a382bb79b": "cancelled",
+     "aa8d6cbd-d775-4bc8-b2b7-8df4895ab04a": "cancelled",
+     "3bd077a3-4ea2-494c-97b6-eb04ce64ddb6": "cancelled",
+     "6af68f09-3706-4e00-9f0a-43e11df3a6a0": "completed",
+     "69cc254d-e82d-4354-87ba-95b95c9d23ad": "completed"
+    },
+    "objectsInventoried": 4,
+    "putRequestsInventoried": 4,
+    "unattributed": 0,
+    "survivorAttribution": {
+     "6af68f09-3706-4e00-9f0a-43e11df3a6a0": {
+      "objects": 1,
+      "puts": 1
+     },
+     "69cc254d-e82d-4354-87ba-95b95c9d23ad": {
+      "objects": 1,
+      "puts": 1
+     }
+    },
+    "queuedTargetHits": {
+     "aa8d6cbd-d775-4bc8-b2b7-8df4895ab04a": {
+      "objects": 0,
+      "puts": 0
+     },
+     "3bd077a3-4ea2-494c-97b6-eb04ce64ddb6": {
+      "objects": 0,
+      "puts": 0
+     }
+    },
+    "transferTargetHits": {
+     "7c2702aa-c4a6-489e-a60b-f2d45fcabf65": {
+      "objects": 1,
+      "puts": 1
+     },
+     "9cfd55e3-b2ec-4fe7-b2d0-5d9a382bb79b": {
+      "objects": 1,
+      "puts": 1
+     }
+    },
+    "injectionSelfTest": {
+     "victim": "aa8d6cbd-d775-4bc8-b2b7-8df4895ab04a",
+     "key": "fixture/i560/Screen-Capture-INJECTED-self-test.png",
+     "detected": {
+      "objects": 1,
+      "puts": 1
+     },
+     "recordedAfterRealResult": true
+    },
+    "limitation": "Attribution is by decoded pixel SHA-256 of every stored object version and PUT body in the fixture state; witness and cancel are separate requests. Transfer-target hits are reported, not asserted: an in-flight PUT may have taken effect."
+   }
+  ],
+  "failure": [],
+  "cleanup": [
+   {
+    "kind": "cleanup",
+    "remaining": [],
+    "residentExit": 0,
+    "fixtureExit": -15
+   }
+  ],
+  "verified": 2
+ }
+}

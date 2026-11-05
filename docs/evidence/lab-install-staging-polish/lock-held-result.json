@@ -1,0 +1,18 @@
+{
+  "ok": true,
+  "placement": "boat",
+  "sandbox": "bx_chwa2hdm",
+  "sourceCommit": "d22d53f76bd884108faa17d1e35e273514d2ec23",
+  "run": "/tmp/sp/work/lab-runs/c1",
+  "runId": "b97ada46-ec0d-493d-a784-7fbe5d0f65ab",
+  "holder": {
+    "pid": 2096,
+    "startTicks": 6730,
+    "uid": 1000
+  },
+  "message": "Guest helper staging blocked by apt lists lock /var/lib/apt/lists/lock: holder PID 2096 (python3); apt-daily or Mint Update may be active. Wait for the holder to finish; inspect ~/putgd-lab/install-c10ee0be9fc54fe3a5ff127163d4bf95/staging.log.",
+  "elapsedSeconds": 2.7238824449999584,
+  "stagingLog": "/tmp/sp/work/lab-runs/c1/install-c10ee0be9fc54fe3a5ff127163d4bf95/staging.log",
+  "controllerSha256": "18814ef6d9ca398837ce942cfd3f60d4578ad4a05ded17897aacbe6f5b5b3a25",
+  "helperSha256": "fa7abaf534a74dae0f2a15053a2b4b1cfeeaad683494010621a00137bf4c4844"
+}

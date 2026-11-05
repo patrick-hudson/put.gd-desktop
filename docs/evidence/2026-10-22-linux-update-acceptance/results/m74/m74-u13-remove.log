@@ -1,0 +1,14 @@
+### after Software Manager Remove:
+deinstall ok config-files 26.1022.1017~nightly
+install ok installed
+install ok installed
+2026-10-22 15:15:30 remove putgd:amd64 26.1021.991~nightly <none>
+2026-10-22 15:15:31 purge putgd:amd64 26.1021.991~nightly <none>
+2026-10-22 18:20:31 remove putgd:amd64 26.1022.1017~nightly <none>
+2026-10-22 18:20:32 purge putgd:amd64 26.1022.1017~nightly <none>
+2026-10-22 18:24:18 remove putgd:amd64 26.1022.1017~nightly <none>
+### purge leftover conffile, restore the orphans to automatic
+Purging configuration files for putgd (26.1022.1017~nightly)…
+ls: cannot access '/etc/apt/sources.list.d/putgd.sources': No such file or directory
+qt6-image-formats-plugins set to automatically installed.
+libmng2 set to automatically installed.

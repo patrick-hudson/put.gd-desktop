@@ -1,0 +1,24 @@
+{
+  "run": 40068130492,
+  "artifactId": 12550184602,
+  "name": "release-appimage",
+  "zipBytes": 900946203,
+  "transferredBytes": 123843034,
+  "members": {
+    "build-info.json": {
+      "sha256": "5c1069248cfe6faed7e1d2d9407d1c737e57d477e133f48260c6a241657f6c25",
+      "bytes": 345,
+      "zipCrc32": 619878702
+    },
+    "ci-sdk-environment.json": {
+      "sha256": "bdb0951aa5dcfcc778f90fcfd99c660fcd4091093442663e231cfed74350761d",
+      "bytes": 74013,
+      "zipCrc32": 1380055569
+    },
+    "putgd-26.1024.1191-dev+gccbd7d4ac576-x86_64.AppImage": {
+      "sha256": "6f4046734dc8dd468b4d1035c254cc58ace9096289ccc695f40a0338981da5ef",
+      "bytes": 116505080,
+      "zipCrc32": 554507327
+    }
+  }
+}

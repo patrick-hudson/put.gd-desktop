@@ -1,0 +1,70 @@
+{
+ "sessionCredentials": true,
+ "profiles": [
+  {
+   "id": "nfa-fixture",
+   "credentials": {
+    "mode": "session",
+    "reference": null
+   }
+  },
+  {
+   "id": "nfa-keychain",
+   "credentials": {
+    "mode": "keychain",
+    "reference": "putgd-nfa-M1"
+   }
+  }
+ ],
+ "listSeconds": 0.03,
+ "total": 10000,
+ "search": {
+  "term": "Screen",
+  "ok": true,
+  "total": 10000
+ },
+ "linkedEntry": {
+  "name": "Screen-Capture-2026-10-22-23-55-35.png",
+  "remoteStatus": "not_requested"
+ },
+ "copyLink": true,
+ "copyImage": true,
+ "delete": {
+  "confirm": {
+   "id": null,
+   "state": null
+  },
+  "remoteStatus": "pending",
+  "link": "http://127.0.0.1:37355/fixture/nfa/Screen-Capture-2026-10-22-23-55-35.png",
+  "remoteAfter": "HTTP 404"
+ },
+ "preview": {
+  "state": null,
+  "previewPath": null,
+  "mime": null,
+  "width": null,
+  "height": null
+ },
+ "testConnection": {
+  "nfa-fixture": {
+   "started": true,
+   "error": "",
+   "state": "completed",
+   "result": {
+    "code": "",
+    "details": {},
+    "message": ""
+   }
+  },
+  "nfa-keychain": {
+   "started": true,
+   "error": "",
+   "state": "failed",
+   "result": {
+    "code": "credential_setup_required",
+    "details": {},
+    "message": "Restore explicit credentials for this original destination"
+   }
+  }
+ }
+}

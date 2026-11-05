@@ -1,5 +1,7 @@
 """Extracted native-package checks; actual ELF/desktop validation is separate."""
+import gzip
 import json
+import re
 from pathlib import Path
 import sys
 import tempfile
@@ -9,6 +11,7 @@ from unittest.mock import patch
 REPO = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO / "tools/releases"))
 import audit_native as audit
+import native
 
 class NativeInventoryTests(unittest.TestCase):
     def setUp(self):
@@ -22,6 +25,9 @@ class NativeInventoryTests(unittest.TestCase):
         for license_name in audit.SDK_LICENSES:
             self.write("usr/share/doc/putgd/" + license_name, "license")
         self.write("usr/share/doc/putgd/runtime-notices.txt", "notice")
+        self.write("usr/share/doc/putgd/copyright", "Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/\n")
+        path = self.root / "usr/share/doc/putgd/changelog.gz"
+        path.write_bytes(gzip.compress(b"putgd (0.1.2-rc.1) unstable; urgency=medium\n"))
         self.write("usr/share/doc/putgd/wayland-ext-data-control-v1.xml", "protocol")
         self.write("usr/share/doc/putgd/wayland-wlr-data-control-unstable-v1.xml", "protocol")
         for asset in audit.DESKTOP_ASSETS:
@@ -31,7 +37,7 @@ class NativeInventoryTests(unittest.TestCase):
         self.write("usr/lib64/putgd/libaws-c-common.so", "SDK")
         self.write("usr/lib64/putgd/libputgd-s3.so", "module")
         runtime = {"libraries": [{"file": "libaws-c-common.so", "sha256": audit.sha256(self.root / "usr/lib64/putgd/libaws-c-common.so")}],
-                   "module": {"file": "libputgd-s3.so", "contractVersion": 1, "buildIdentity": "b" * 64,
+                   "module": {"file": "libputgd-s3.so", "contractVersion": 2, "buildIdentity": "b" * 64,
                               "sha256": audit.sha256(self.root / "usr/lib64/putgd/libputgd-s3.so")}}
         self.write("usr/share/putgd/aws-runtime-manifest.json", json.dumps(runtime))
 
@@ -46,6 +52,14 @@ class NativeInventoryTests(unittest.TestCase):
         result = audit.validate_inventory(self.root, self.manifest)
         self.assertEqual(result["manifest"], self.manifest)
         self.assertEqual(result["privateLibraryDirectory"], "usr/lib64/putgd")
+
+    def test_previous_s3_contract_is_rejected(self):
+        path = self.root / "usr/share/putgd/aws-runtime-manifest.json"
+        runtime = json.loads(path.read_text())
+        runtime["module"]["contractVersion"] = 1
+        path.write_text(json.dumps(runtime))
+        with self.assertRaisesRegex(ValueError, "Incomplete AWS runtime/module manifest"):
+            audit.validate_inventory(self.root, self.manifest)
 
     def test_release_excludes_credentials_and_fixtures(self):
         for name in ("usr/share/putgd/credentials.txt", "usr/bin/putgd-desktop-fixture", "usr/bin/putgd-view-bench"):
@@ -84,18 +98,100 @@ class NativeInventoryTests(unittest.TestCase):
             audit.validate_inventory(self.root, self.manifest, require_kde=True)
 
     def commands(self, argv, *, env=None):
+        if argv[:2] == ["readelf", "--dyn-syms"]:
+            return ("     5: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND pthread_create@GLIBC_2.34 (2)\n"
+                    "    42: 00000000000109ee   180 FUNC    GLOBAL DEFAULT   16 pthread_create")
+        if argv[:2] == ["readelf", "-hW"]:
+            return "Type: DYN (Position-Independent Executable file)"
+        if argv[:2] == ["readelf", "-lW"]:
+            return "GNU_RELRO"
+        if argv[:2] == ["readelf", "-dW"]:
+            return "(FLAGS) BIND_NOW"
         if argv[0] == "readelf":
             return " 0x000000000000000f (RPATH) Library rpath: [$ORIGIN]"
         if argv[0] == "ldd":
             return "libc.so.6 => /lib/libc.so.6 (0x1234)"
         if argv[1] == "--version-json":
             return json.dumps(self.manifest)
+        if argv[1] == "--update-info":
+            return json.dumps({"packageTarget": "debian13", "supported": False, "reason": "development_build"})
         return Path(argv[0]).name + " " + self.manifest["version"]
+
+    def test_non_pie_or_partial_relro_is_rejected(self):
+        for option, output, error in (("-hW", "Type: EXEC", "not PIE"),
+                                      ("-lW", "LOAD", "full RELRO"),
+                                      ("-dW", "NEEDED", "full RELRO")):
+            def commands(argv, *, env=None):
+                if argv[:2] == ["readelf", option]:
+                    return output
+                return self.commands(argv, env=env)
+            with self.subTest(option=option), patch.object(audit, "command", side_effect=commands):
+                with self.assertRaisesRegex(ValueError, error):
+                    audit.audit_tree(self.root, self.manifest)
+
+    def test_resident_must_not_link_networking_or_tls(self):
+        # Gate C of the acceptance matrix (#1149): the resident maps no
+        # QtNetwork or OpenSSL at idle, so neither may be a direct dependency.
+        for soname in ("libQt6Network.so.6", "libssl.so.3", "libcrypto.so.3", "libgtk-3.so.0"):
+            def commands(argv, *, env=None):
+                if argv[:2] == ["readelf", "-d"] and argv[2].endswith("usr/bin/putgd"):
+                    return f" 0x0000000000000001 (NEEDED) Shared library: [{soname}]\n 0x000000000000000f (RPATH) Library rpath: [$ORIGIN]"
+                return self.commands(argv, env=env)
+            with self.subTest(soname=soname), patch.object(audit, "command", side_effect=commands):
+                with self.assertRaisesRegex(ValueError, "gate C forbids: " + re.escape(soname)):
+                    audit.audit_tree(self.root, self.manifest)
+
+    def test_interface_helper_must_not_link_qtnetwork(self):
+        # putgd-ui speaks to the resident over a native Unix socket (#1161).
+        def commands(argv, *, env=None):
+            if argv[:2] == ["readelf", "-d"] and argv[2].endswith("usr/bin/putgd-ui"):
+                return " 0x0000000000000001 (NEEDED) Shared library: [libQt6Network.so.6]\n 0x000000000000000f (RPATH) Library rpath: [$ORIGIN]"
+            return self.commands(argv, env=env)
+        with patch.object(audit, "command", side_effect=commands):
+            with self.assertRaisesRegex(ValueError, "Interface helper links a networking library: libQt6Network.so.6"):
+                audit.audit_tree(self.root, self.manifest)
+
+    def test_workers_may_link_networking(self):
+        def commands(argv, *, env=None):
+            if argv[:2] == ["readelf", "-d"] and argv[2].endswith("usr/bin/putgd-cli"):
+                return " 0x0000000000000001 (NEEDED) Shared library: [libQt6Network.so.6]\n 0x000000000000000f (RPATH) Library rpath: [$ORIGIN]"
+            return self.commands(argv, env=env)
+        with patch.object(audit, "command", side_effect=commands):
+            result = audit.audit_tree(self.root, self.manifest)
+        self.assertIn("libQt6Network.so.6", result["elfDependencies"]["usr/bin/putgd-cli"]["needed"])
 
     def test_full_audit_compares_every_compiled_identity(self):
         with patch.object(audit, "command", side_effect=self.commands):
             result = audit.audit_tree(self.root, self.manifest)
         self.assertEqual(set(result["compiledIdentities"]), set(audit.PROGRAMS) - {"putgd-launcher"})
+        self.assertEqual(result["updateCheck"]["packageTarget"], "debian13")
+
+    def test_package_target_must_match_the_package_job(self):
+        # #293: a package built without its target would never check for updates.
+        with patch.object(audit, "command", side_effect=self.commands):
+            audit.audit_tree(self.root, self.manifest, package_target="debian13")
+            with self.assertRaisesRegex(ValueError, "Update check package target mismatch"):
+                audit.audit_tree(self.root, self.manifest, package_target="fedora44")
+
+    def test_test_only_crash_trigger_rejected(self):
+        # Development builds read PUTGD_TEST_CRASH (#124); release builds never contain it.
+        self.write("usr/bin/putgd-ui", "binary PUTGD_TEST_CRASH", 0o755)
+        with patch.object(audit, "command", side_effect=self.commands):
+            with self.assertRaisesRegex(ValueError, "test-only crash trigger: putgd-ui"):
+                audit.audit_tree(self.root, self.manifest)
+
+    def test_crash_handled_programs_export_their_thread_wrapper(self):
+        # Without it, threads have no alternate signal stack (#156). The CLI has no crash handler.
+        def commands(argv, *, env=None):
+            if argv[:2] == ["readelf", "--dyn-syms"]:
+                if Path(argv[-1]).name == "putgd-cli":
+                    raise AssertionError("putgd-cli has no crash handler")
+                if Path(argv[-1]).name == "putgd-capture":
+                    return "     5: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND pthread_create@GLIBC_2.34 (2)"
+            return self.commands(argv, env=env)
+        with patch.object(audit, "command", side_effect=commands):
+            with self.assertRaisesRegex(ValueError, "export the crash handler's pthread_create: putgd-capture"):
+                audit.audit_tree(self.root, self.manifest)
 
     def test_mixed_helper_manifest_rejected(self):
         def commands(argv, *, env=None):
@@ -117,12 +213,48 @@ class NativeInventoryTests(unittest.TestCase):
 
     def test_transitive_module_rpath_required(self):
         def commands(argv, *, env=None):
-            if argv[0] == "readelf":
+            if argv[:2] == ["readelf", "-d"]:
                 return " 0x000000000000001d (RUNPATH) Library runpath: [$ORIGIN]"
             return self.commands(argv, env=env)
         with patch.object(audit, "command", side_effect=commands):
             with self.assertRaisesRegex(ValueError, r"transitive \$ORIGIN RPATH"):
                 audit.audit_tree(self.root, self.manifest)
+
+class RpmLicenseMetadataTests(unittest.TestCase):
+    def test_license_flag_and_empty_directory_flags_are_preserved(self):
+        def query(argv):
+            if "%{FILENAMES}" in argv[3]:
+                return "/usr/share/doc/putgd/LICENSE\t100644\troot\troot\tl\t.\n/usr/share/putgd\t40755\troot\troot\t\t."
+            return "putgd"
+        with patch.object(native, "command", side_effect=query):
+            self.assertEqual(native.package_metadata(Path("synthetic.rpm"), "RPM")["format"], "RPM")
+        def missing(argv):
+            if "%{FILENAMES}" in argv[3]:
+                return "/usr/share/doc/putgd/LICENSE\t100644\troot\troot\td\t."
+            return "putgd"
+        with patch.object(native, "command", side_effect=missing), self.assertRaisesRegex(ValueError, "%license"):
+            native.package_metadata(Path("synthetic.rpm"), "RPM")
+
+
+class RuntimePackageTests(unittest.TestCase):
+    """Qt image plugins the distros package apart from Qt GUI (#189)."""
+    def test_deb_and_rpm_require_the_webp_plugin_package(self):
+        native.require_runtime_packages({"format": "DEB", "requires": "libqt6sql6-sqlite, qt6-qpa-plugins, qt6-wayland, "
+                                         "qt6-image-formats-plugins, libc6 (>= 2.38) | libc6-alt"})
+        native.require_runtime_packages({"format": "RPM", "requires": ["qt6-qtbase-gui", "qt6-qtimageformats", "libc.so.6()(64bit)"]})
+
+    def test_missing_plugin_package_is_rejected(self):
+        with self.assertRaisesRegex(ValueError, "DEB does not require qt6-image-formats-plugins"):
+            native.require_runtime_packages({"format": "DEB", "requires": "qt6-qpa-plugins, qt6-image-formats-plugins-extra"})
+        with self.assertRaisesRegex(ValueError, "RPM does not require qt6-qtimageformats"):
+            native.require_runtime_packages({"format": "RPM", "requires": ["qt6-qtbase-gui"]})
+
+    def test_package_configuration_declares_them(self):
+        text = (REPO / "packaging/linux/CMakeLists.txt").read_text()
+        for names in native.RUNTIME_PACKAGES.values():
+            for name in names:
+                self.assertRegex(text, r"CPACK_(DEBIAN_PACKAGE_DEPENDS|RPM_PACKAGE_REQUIRES) \"[^\"]*\b" + name + r"\b")
+
 
 if __name__ == "__main__":
     unittest.main()

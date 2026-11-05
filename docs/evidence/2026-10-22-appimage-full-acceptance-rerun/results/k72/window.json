@@ -1,0 +1,111 @@
+{
+ "processes": [
+  {
+   "pid": 1243067,
+   "ppid": 1243025,
+   "exe": "/tmp/.mount_putgd-MPeLDp/usr/bin/putgd",
+   "comm": "putgd",
+   "cmd": "/tmp/.mount_putgd-MPeLDp/usr/bin/putgd --background",
+   "qtPlatformPlugins": [],
+   "QT_QPA_PLATFORM": null,
+   "APPIMAGE": "/home/patrick/work/put.gd-afa2/images/putgd-0.1.1-nightly.942-x86_64.AppImage"
+  },
+  {
+   "pid": 1243190,
+   "ppid": 1243067,
+   "exe": "/tmp/.mount_putgd-MPeLDp/usr/bin/putgd-ui",
+   "comm": "putgd-ui",
+   "cmd": "/tmp/.mount_putgd-MPeLDp/usr/bin/putgd-ui",
+   "qtPlatformPlugins": [
+    "libqwayland-generic.so"
+   ],
+   "QT_QPA_PLATFORM": null,
+   "APPIMAGE": "/home/patrick/work/put.gd-afa2/images/putgd-0.1.1-nightly.942-x86_64.AppImage"
+  }
+ ],
+ "entries": [
+  "putgd-appimage-FMwZ6uqI.desktop",
+  "putgd-record-appimage-NiHJ6G4u.desktop",
+  "putgd-record.desktop",
+  "putgd-ui.desktop"
+ ],
+ "window": {
+  "label": "k72-settings-window",
+  "components": [
+   {
+    "blocks": 32400,
+    "box": [
+     0,
+     0,
+     1920,
+     1080
+    ]
+   }
+  ],
+  "colour": [
+   252,
+   252,
+   252
+  ],
+  "inner": [
+   300,
+   245,
+   1620,
+   844
+  ],
+  "changedShare": 1.0,
+  "ownShare": 0.965,
+  "kept": "/home/patrick/work/put.gd-afa2/runs/k72/crops/k72-settings-window.png"
+ },
+ "full": "/home/patrick/work/put.gd-afa2/runs/k72/full/k72-settings-window.png",
+ "titlebar": {
+  "label": "k72-settings-titlebar",
+  "components": [
+   {
+    "blocks": 1680,
+    "box": [
+     0,
+     0,
+     1920,
+     56
+    ]
+   }
+  ],
+  "colour": [
+   0,
+   4,
+   12
+  ],
+  "inner": null
+ },
+ "switcher": {
+  "label": "k72-settings-switcher",
+  "components": [
+   {
+    "blocks": 763,
+    "box": [
+     808,
+     432,
+     1120,
+     656
+    ]
+   },
+   {
+    "blocks": 234,
+    "box": [
+     656,
+     688,
+     1560,
+     728
+    ]
+   }
+  ],
+  "colour": [
+   252,
+   252,
+   252
+  ],
+  "inner": null
+ },
+ "switcherFull": "/home/patrick/work/put.gd-afa2/runs/k72/full/k72-settings-switcher.png"
+}

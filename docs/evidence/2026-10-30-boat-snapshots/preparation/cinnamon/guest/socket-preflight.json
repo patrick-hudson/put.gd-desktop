@@ -1,0 +1,1 @@
+{"schemaVersion": 1, "passed": true, "limitBytesExcludingNul": 107, "paths": [{"path": "/home/user/lab-driver/work/lab-runs/ps3/qmp.sock", "utf8Bytes": 48, "passed": true}, {"path": "/home/user/lab-driver/work/lab-runs/ps3/vnc.sock", "utf8Bytes": 48, "passed": true}]}

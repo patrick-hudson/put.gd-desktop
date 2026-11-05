@@ -1,0 +1,78 @@
+{
+ "before-light-empty": {
+  "window": [
+   900,
+   700
+  ],
+  "frameView": [
+   14,
+   12,
+   872,
+   319
+  ],
+  "video": [
+   165,
+   12,
+   570,
+   319
+  ],
+  "videoShare": 0.2886
+ },
+ "after-light-empty": {
+  "window": [
+   960,
+   600
+  ],
+  "frameView": [
+   10,
+   8,
+   940,
+   475
+  ],
+  "video": [
+   55,
+   8,
+   849,
+   475
+  ],
+  "videoShare": 0.7001
+ },
+ "before-light-masks": {
+  "window": [
+   900,
+   700
+  ],
+  "frameView": [
+   14,
+   12,
+   872,
+   319
+  ],
+  "video": [
+   165,
+   12,
+   570,
+   319
+  ],
+  "videoShare": 0.2886
+ },
+ "after-light-masks": {
+  "window": [
+   960,
+   600
+  ],
+  "frameView": [
+   10,
+   8,
+   940,
+   469
+  ],
+  "video": [
+   61,
+   8,
+   838,
+   469
+  ],
+  "videoShare": 0.6823
+ }
+}

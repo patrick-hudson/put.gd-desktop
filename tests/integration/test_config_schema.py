@@ -11,7 +11,7 @@ import sys
 import tempfile
 import time
 import unittest
-from jsonschema import Draft202012Validator
+from jsonschema import Draft202012Validator, ValidationError
 
 
 class ConfigurationSchema(unittest.TestCase):
@@ -46,6 +46,50 @@ class ConfigurationSchema(unittest.TestCase):
         for mode in ('latest', True, None, 42):
             self.assertFalse(validator.is_valid(legacy | {'uploadClipboardBehavior': mode}))
 
+    def test_region_selection_modes(self):
+        # #629: live by default (omitted), or screenshot_first.
+        schema = json.loads((Path(__file__).resolve().parents[2] / 'schemas/config.schema.json').read_text())
+        validator = Draft202012Validator(schema['properties']['preferences'])
+        legacy = {'notifications': True, 'launchAtLogin': False}
+        for mode in ('live', 'screenshot_first'):
+            self.assertTrue(validator.is_valid(legacy | {'regionSelectionMode': mode}))
+        for mode in ('frozen', 'screenshot', True, None, 1):
+            self.assertFalse(validator.is_valid(legacy | {'regionSelectionMode': mode}))
+
+    def test_recording_frame_rate(self):
+        # #984: 30 by default (omitted), or 60.
+        schema = json.loads((Path(__file__).resolve().parents[2] / 'schemas/config.schema.json').read_text())
+        validator = Draft202012Validator(schema['properties']['preferences'])
+        legacy = {'notifications': True, 'launchAtLogin': False}
+        for rate in (30, 60):
+            self.assertTrue(validator.is_valid(legacy | {'recordingFrameRate': rate}))
+        for rate in (0, 15, 24, 59, 61, 30.5, '60', None):
+            self.assertFalse(validator.is_valid(legacy | {'recordingFrameRate': rate}))
+
+    def test_update_check_preferences(self):
+        # #293: optional; check and channel each optional inside it.
+        schema = json.loads((Path(__file__).resolve().parents[2] / 'schemas/config.schema.json').read_text())
+        validator = Draft202012Validator(schema['properties']['preferences'])
+        legacy = {'notifications': True, 'launchAtLogin': False}
+        for updates in ({}, {'check': False}, {'channel': 'build'}, {'check': True, 'channel': 'nightly'}, {'channel': 'stable'}):
+            self.assertTrue(validator.is_valid(legacy | {'updates': updates}))
+        for updates in ({'check': 'yes'}, {'channel': 'beta'}, {'interval': 1}, True, None):
+            self.assertFalse(validator.is_valid(legacy | {'updates': updates}))
+
+    def test_appearance_theme_and_reserved_custom_colours(self):
+        # #60: theme now; accent and overrides keep their shape for phase 2.
+        schema = json.loads((Path(__file__).resolve().parents[2] / 'schemas/config.schema.json').read_text())
+        validator = Draft202012Validator(schema['properties']['preferences'])
+        legacy = {'notifications': True, 'launchAtLogin': False}
+        for theme in ('system', 'dark', 'light'):
+            self.assertTrue(validator.is_valid(legacy | {'appearance': {'theme': theme}}))
+        full = {'theme': 'system', 'accent': None, 'overrides': {'dark': {}, 'light': {}}}
+        self.assertTrue(validator.is_valid(legacy | {'appearance': full}))
+        for appearance in ({}, {'theme': 'auto'}, {'theme': 'dark', 'accent': '#123456'},
+                           {'theme': 'dark', 'overrides': {'dark': {'accent': '#123456'}, 'light': {}}},
+                           {'theme': 'dark', 'overrides': {'dark': {}}}, {'theme': 'dark', 'colour': 'red'}):
+            self.assertFalse(validator.is_valid(legacy | {'appearance': appearance}), appearance)
+
     def test_optional_proton_folder_name_keeps_legacy_settings_valid(self):
         schema = json.loads((Path(__file__).resolve().parents[2] / 'schemas/config.schema.json').read_text())
         validator = Draft202012Validator(schema['$defs']['protonSettings'])
@@ -58,6 +102,44 @@ class ConfigurationSchema(unittest.TestCase):
         for name in (None, 42, '', 'x' * 256, '\x00', 'Synthetic folder\n', 'Synthetic\nfolder'):
             with self.subTest(name=name):
                 self.assertFalse(validator.is_valid(settings | {'folderName': name}))
+
+    def test_optional_recording_route_template_and_limits(self):
+        root = Path(__file__).resolve().parents[2]
+        schema = json.loads((root / 'schemas/config.schema.json').read_text())
+        validator = Draft202012Validator(schema)
+        document = json.loads((root / 'config/development.example.json').read_text())
+        validator.validate(document)
+        # Absent record action, template and limits stay valid (older documents).
+        recorded = copy.deepcopy(document)
+        recorded['actions']['record'] = {'destination': 'local', 'profileId': None, 'shortcut': 'Ctrl+Shift+9'}
+        recorded['naming']['recordingTemplate'] = 'Rec-{yyyy}-{uuid}.{ext}'
+        recorded['limits']['recordingAnimationSeconds'] = 15
+        recorded['limits']['recordingAnimationEdge'] = 640
+        validator.validate(recorded)
+        inherited = copy.deepcopy(recorded)
+        inherited['captureDefaults'] = {'destination': 'local', 'profileId': None, 'publicationMode': 'default'}
+        inherited['actions']['record'] = {'destination': 'default', 'profileId': None, 'shortcut': ''}
+        validator.validate(inherited)
+        # A shortcut-only record entry keeps following the region route; a route needs both fields.
+        keyed = copy.deepcopy(document)
+        keyed['actions']['record'] = {'shortcut': 'Ctrl+Shift+9'}
+        validator.validate(keyed)
+        unpaired = copy.deepcopy(document)
+        unpaired['actions']['record'] = {'destination': 'local', 'shortcut': ''}
+        with self.assertRaises(ValidationError):
+            validator.validate(unpaired)
+        inherited.pop('captureDefaults')
+        self.assertFalse(validator.is_valid(inherited))
+        for field, value in (('recordingAnimationSeconds', 0), ('recordingAnimationEdge', 8), ('recordingAnimationSeconds', 'long')):
+            invalid = copy.deepcopy(recorded)
+            invalid['limits'][field] = value
+            self.assertFalse(validator.is_valid(invalid), field)
+        invalid = copy.deepcopy(recorded)
+        invalid['naming']['recordingTemplate'] = '{bogus}'
+        self.assertFalse(validator.is_valid(invalid))
+        invalid = copy.deepcopy(recorded)
+        invalid['actions']['record'] = {'destination': 'upload', 'profileId': None}
+        self.assertFalse(validator.is_valid(invalid))
 
     def test_production_defaults_templates_and_legacy_fields(self):
         app = os.environ.get('PUTGD_APP')
@@ -72,7 +154,7 @@ class ConfigurationSchema(unittest.TestCase):
             runtime = root / 'runtime'
             runtime.mkdir(mode=0o700)
             environment = os.environ | {'QT_QPA_PLATFORM': 'offscreen', 'XDG_RUNTIME_DIR': str(runtime),
-                'XDG_CONFIG_HOME': str(root / 'config'), 'XDG_DATA_HOME': str(root / 'data'),
+                'XDG_CONFIG_HOME': str(root / 'config'), 'XDG_DATA_HOME': str(root / 'data'), 'XDG_STATE_HOME': str(root / 'state'),
                 'XDG_SESSION_TYPE': 'unspecified', 'XDG_CURRENT_DESKTOP': 'putgd-schema-fixture'}
             for key in ('DISPLAY', 'WAYLAND_DISPLAY', 'DBUS_SESSION_BUS_ADDRESS', 'SESSION_MANAGER'):
                 environment.pop(key, None)

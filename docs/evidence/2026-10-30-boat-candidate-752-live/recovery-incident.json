@@ -1,0 +1,13 @@
+{
+  "recordedAt": 1793333796.0321863,
+  "cause": "Recovery helper imported candidate.py, whose concurrent.futures import resolved the campaign concurrent.py supervisor instead of the standard library. Renamed supervisor to campaign-supervisor.py before further imports.",
+  "extraControllerAttempts": [
+    1842797,
+    1842798
+  ],
+  "extraSandboxStarts": 0,
+  "guards": "Both attempts reached prepare_output, rejected the already-existing run directories, and issued no new/delete commands. Audit still contains exactly 21 new commands.",
+  "metadata": "concurrent.json was overwritten by the accidental supervisor; the original supervisor retains its original metadata in memory and will restore it on completion. Accidental metadata is preserved separately.",
+  "logs": "Accidental attempts wrote existing controller logs before original controllers emitted final stdout. Copies are preserved as accidental-import-*-controller.log; logs were truncated before the original controllers final output (their descriptors were still at offset zero).",
+  "failedWorker": "bx_2mxrfaus had already been verified absent at 1793333672.5269845, before SIGSTOP at 1793333684.5512407. No retry is claimed in that deleted sandbox."
+}

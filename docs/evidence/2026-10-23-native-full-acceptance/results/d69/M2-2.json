@@ -1,0 +1,151 @@
+{
+ "label": "update",
+ "command": [
+  "apt-get",
+  "update"
+ ],
+ "before": {
+  "at": "2026-10-23T05:57:41Z",
+  "host": "debian",
+  "package": {
+   "manager": "dpkg",
+   "status": "ii",
+   "version": "0.1.1~nightly.947"
+  },
+  "files": {
+   "/etc/apt/sources.list.d/putgd.sources": {
+    "sha256": "11b30f1c9733b307cb1028e8a05d956a251d15a797173dcffd1e2bc9f165416f",
+    "bytes": 2033,
+    "mode": "0o644",
+    "mtime": "2026-10-22T05:18:00Z"
+   },
+   "/usr/share/keyrings/putgd-archive-keyring.gpg": {
+    "sha256": "76ab1b64e8a1d9504d3922fa44b116d6eb3c680e788be9cec46e106cd5258339",
+    "bytes": 1170,
+    "mode": "0o644",
+    "mtime": "2026-10-22T05:15:18Z"
+   },
+   "/etc/yum.repos.d/putgd.repo": null,
+   "/etc/yum.repos.d/putgd.repo.rpmsave": null,
+   "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd": null,
+   "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-nightly": null,
+   "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-stable": null,
+   "/usr/share/gnome-shell/extensions/putgd@put.gd/metadata.json": {
+    "sha256": "690be5bcfd1ee05783cd57a78851c56c0fe624131711b254cb46d062d0cb8046",
+    "bytes": 248,
+    "mode": "0o644",
+    "mtime": "2026-10-22T05:18:00Z"
+   }
+  },
+  "defaultProfile": {
+   "/home/patrick/.config/putgd": 1,
+   "/home/patrick/.local/state/putgd": 98,
+   "/home/patrick/.cache/putgd": null,
+   "/home/patrick/.local/share/putgd": 12
+  },
+  "autostart": null,
+  "userExtension": false,
+  "processes": [
+   {
+    "pid": 2520591,
+    "ppid": 937,
+    "exe": "/usr/bin/putgd",
+    "comm": "putgd",
+    "cmd": "/usr/bin/putgd --background ",
+    "qtPlatformPlugins": []
+   },
+   {
+    "pid": 2520602,
+    "ppid": 2520591,
+    "exe": "/usr/bin/putgd-ui",
+    "comm": "putgd-ui",
+    "cmd": "/usr/bin/putgd-ui ",
+    "qtPlatformPlugins": [
+     "libqwayland-generic.so"
+    ]
+   }
+  ],
+  "enabledExtensions": "@as []"
+ },
+ "startedAt": "2026-10-23T05:57:41Z",
+ "exit": 0,
+ "seconds": 3.7,
+ "log": "/home/patrick/work/put.gd-nfa/runs/M2/logs/pkg-update.log",
+ "conffilePrompt": false,
+ "signature": [
+  "Hit:1 http://security.debian.org/debian-security trixie-security InRelease",
+  "Get:2 http://deb.debian.org/debian trixie InRelease [140 kB]",
+  "Hit:3 http://deb.debian.org/debian trixie-updates InRelease",
+  "Hit:6 https://pkg.put.gd/apt/debian13 nightly InRelease"
+ ],
+ "fetched": [
+  "Hit:1 http://security.debian.org/debian-security trixie-security InRelease",
+  "Get:2 http://deb.debian.org/debian trixie InRelease [140 kB]",
+  "Hit:3 http://deb.debian.org/debian trixie-updates InRelease",
+  "Hit:6 https://pkg.put.gd/apt/debian13 nightly InRelease"
+ ],
+ "tail": "Hit:1 http://security.debian.org/debian-security trixie-security InRelease\nGet:2 http://deb.debian.org/debian trixie InRelease [140 kB]\nHit:3 http://deb.debian.org/debian trixie-updates InRelease\nHit:6 https://pkg.put.gd/apt/debian13 nightly InRelease\nFetched 147 kB in 0s (326 kB/s)\nReading package lists...\n",
+ "after": {
+  "at": "2026-10-23T05:57:45Z",
+  "host": "debian",
+  "package": {
+   "manager": "dpkg",
+   "status": "ii",
+   "version": "0.1.1~nightly.947"
+  },
+  "files": {
+   "/etc/apt/sources.list.d/putgd.sources": {
+    "sha256": "11b30f1c9733b307cb1028e8a05d956a251d15a797173dcffd1e2bc9f165416f",
+    "bytes": 2033,
+    "mode": "0o644",
+    "mtime": "2026-10-22T05:18:00Z"
+   },
+   "/usr/share/keyrings/putgd-archive-keyring.gpg": {
+    "sha256": "76ab1b64e8a1d9504d3922fa44b116d6eb3c680e788be9cec46e106cd5258339",
+    "bytes": 1170,
+    "mode": "0o644",
+    "mtime": "2026-10-22T05:15:18Z"
+   },
+   "/etc/yum.repos.d/putgd.repo": null,
+   "/etc/yum.repos.d/putgd.repo.rpmsave": null,
+   "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd": null,
+   "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-nightly": null,
+   "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-stable": null,
+   "/usr/share/gnome-shell/extensions/putgd@put.gd/metadata.json": {
+    "sha256": "690be5bcfd1ee05783cd57a78851c56c0fe624131711b254cb46d062d0cb8046",
+    "bytes": 248,
+    "mode": "0o644",
+    "mtime": "2026-10-22T05:18:00Z"
+   }
+  },
+  "defaultProfile": {
+   "/home/patrick/.config/putgd": 1,
+   "/home/patrick/.local/state/putgd": 98,
+   "/home/patrick/.cache/putgd": null,
+   "/home/patrick/.local/share/putgd": 12
+  },
+  "autostart": null,
+  "userExtension": false,
+  "processes": [
+   {
+    "pid": 2520591,
+    "ppid": 937,
+    "exe": "/usr/bin/putgd",
+    "comm": "putgd",
+    "cmd": "/usr/bin/putgd --background ",
+    "qtPlatformPlugins": []
+   },
+   {
+    "pid": 2520602,
+    "ppid": 2520591,
+    "exe": "/usr/bin/putgd-ui",
+    "comm": "putgd-ui",
+    "cmd": "/usr/bin/putgd-ui ",
+    "qtPlatformPlugins": [
+     "libqwayland-generic.so"
+    ]
+   }
+  ],
+  "enabledExtensions": "@as []"
+ }
+}

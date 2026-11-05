@@ -1,0 +1,38 @@
+[
+  {
+    "host": "k72",
+    "remotePath": "/home/patrick/work/p382n/putgd_26.1024.1186~dev+gd5b561ddb94f_amd64.deb",
+    "sha256": "475eab6afb2ec1e2d5d021443df40f30bf6605c6e890825ad5869c0beeb2777f",
+    "build": {
+      "schemaVersion": 1,
+      "version": "26.1024.1186-dev+gd5b561ddb94f",
+      "baseVersion": "26.1024.1186",
+      "packageVersion": "26.1024.1186~dev+gd5b561ddb94f",
+      "gitCommit": "d5b561ddb94f8255b8bc754c1382552d983a6fa9",
+      "gitTree": "797721fa0672581562a8675d0d2010eced7c6bd4",
+      "commitCount": 1186,
+      "dirty": false,
+      "sourceProvenance": "git"
+    },
+    "artifactRun": 40068126465,
+    "artifactId": 12549738396
+  },
+  {
+    "host": "u382a",
+    "remotePath": "/home/lab/work/p382n/putgd_26.1024.1186~dev+gd5b561ddb94f_amd64.deb",
+    "sha256": "475eab6afb2ec1e2d5d021443df40f30bf6605c6e890825ad5869c0beeb2777f",
+    "build": {
+      "schemaVersion": 1,
+      "version": "26.1024.1186-dev+gd5b561ddb94f",
+      "baseVersion": "26.1024.1186",
+      "packageVersion": "26.1024.1186~dev+gd5b561ddb94f",
+      "gitCommit": "d5b561ddb94f8255b8bc754c1382552d983a6fa9",
+      "gitTree": "797721fa0672581562a8675d0d2010eced7c6bd4",
+      "commitCount": 1186,
+      "dirty": false,
+      "sourceProvenance": "git"
+    },
+    "artifactRun": 40068126465,
+    "artifactId": 12549738396
+  }
+]

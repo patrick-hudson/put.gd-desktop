@@ -1,0 +1,592 @@
+{
+  "scope": "Targeted Linux managed startup-link uninstall lifecycle; development CI artifacts, not a stable-release campaign",
+  "target": "f44",
+  "mode": "native",
+  "build": {
+    "baseVersion": "26.1024.1186",
+    "commitCount": 1186,
+    "dirty": false,
+    "gitCommit": "d5b561ddb94f8255b8bc754c1382552d983a6fa9",
+    "gitTree": "797721fa0672581562a8675d0d2010eced7c6bd4",
+    "packageVersion": "26.1024.1186~dev+gd5b561ddb94f",
+    "schemaVersion": 1,
+    "sourceProvenance": "git",
+    "version": "26.1024.1186-dev+gd5b561ddb94f"
+  },
+  "sourceTree": "797721fa0672581562a8675d0d2010eced7c6bd4",
+  "artifact": {
+    "file": "putgd-26.1024.1186~dev+gd5b561ddb94f-1.fc44.x86_64.rpm",
+    "sha256": "bdf31e37584da849b8afa28e0b73e2fe451d8be99a9d5671c0d1db9ded32c274",
+    "bytes": 45629523,
+    "ciRun": 40068126465,
+    "artifactId": 12550586059
+  },
+  "os": "NAME=\"Fedora Linux\"\nVERSION=\"44 (Workstation Edition)\"\nRELEASE_TYPE=stable\nID=fedora\nVERSION_ID=44\nVERSION_CODENAME=\"\"\nPRETTY_NAME=\"Fedora Linux 44 (Workstation Edition)\"\nANSI_COLOR=\"0;38;2;60;110;180\"\nLOGO=fedora-logo-icon\nCPE_NAME=\"cpe:/o:fedoraproject:fedora:44\"\nDEFAULT_HOSTNAME=\"fedora\"\nHOME_URL=\"https://fedoraproject.org/\"\nDOCUMENTATION_URL=\"https://docs.fedoraproject.org/en-US/fedora/f44/\"\nSUPPORT_URL=\"https://ask.fedoraproject.org/\"\nBUG_REPORT_URL=\"https://bugzilla.redhat.com/\"\nREDHAT_BUGZILLA_PRODUCT=\"Fedora\"\nREDHAT_BUGZILLA_PRODUCT_VERSION=44\nREDHAT_SUPPORT_PRODUCT=\"Fedora\"\nREDHAT_SUPPORT_PRODUCT_VERSION=44\nSUPPORT_END=2027-05-19\nVARIANT=\"Workstation Edition\"\nVARIANT_ID=workstation\n",
+  "desktopVersions": {
+    "gnome-shell": {
+      "command": [
+        "gnome-shell",
+        "--version"
+      ],
+      "exit": 0,
+      "stdout": "GNOME Shell 50.6\n",
+      "stderr": ""
+    }
+  },
+  "kernel": {
+    "command": [
+      "uname",
+      "-r"
+    ],
+    "exit": 0,
+    "stdout": "7.2.11-200.fc44.x86_64\n",
+    "stderr": ""
+  },
+  "displayEnvironment": {
+    "DISPLAY": ":0",
+    "WAYLAND_DISPLAY": "wayland-0",
+    "XAUTHORITY": "/run/user/1000/.mutter-Xwaylandauth.8ZVQX3",
+    "DBUS_SESSION_BUS_ADDRESS": "unix:path=/run/user/1000/bus",
+    "XDG_RUNTIME_DIR": "/run/user/1000",
+    "XDG_CURRENT_DESKTOP": "GNOME",
+    "XDG_SESSION_TYPE": "wayland",
+    "XDG_SESSION_DESKTOP": "gnome",
+    "DESKTOP_SESSION": "gnome"
+  },
+  "socketPreflight": {
+    "command": [
+      "/usr/bin/python3",
+      "/home/patrick/work/p382n/check_socket_paths.py",
+      "--socket",
+      "/run/user/1000/bus",
+      "/run/user/1000/putgd/session.sock",
+      "/run/user/1000/wayland-0",
+      "/tmp/.X11-unix/X0"
+    ],
+    "exit": 0,
+    "stdout": "{\"schemaVersion\": 1, \"passed\": true, \"limitBytesExcludingNul\": 107, \"paths\": [{\"path\": \"/run/user/1000/bus\", \"utf8Bytes\": 18, \"passed\": true}, {\"path\": \"/run/user/1000/putgd/session.sock\", \"utf8Bytes\": 33, \"passed\": true}, {\"path\": \"/run/user/1000/wayland-0\", \"utf8Bytes\": 24, \"passed\": true}, {\"path\": \"/tmp/.X11-unix/X0\", \"utf8Bytes\": 17, \"passed\": true}]}\n",
+    "stderr": ""
+  },
+  "installedPackageVerification": {
+    "command": [
+      "rpm",
+      "-V",
+      "putgd"
+    ],
+    "exit": 0,
+    "stdout": "",
+    "stderr": ""
+  },
+  "enabledLogin": {
+    "sessionId": "916",
+    "session": {
+      "User": "1000",
+      "Display": "",
+      "Leader": "116178",
+      "Type": "wayland",
+      "Active": "yes",
+      "State": "active",
+      "LockedHint": "no"
+    },
+    "pass": true,
+    "startupJournalErrors": [],
+    "residents": [
+      {
+        "pid": 116763,
+        "exe": "/usr/bin/putgd",
+        "ppid": 1063,
+        "start": 1349861,
+        "session": null,
+        "sessionState": null,
+        "sessionType": null,
+        "cgroup": "/user.slice/user-1000.slice/user@1000.service/app.slice/app-gnome-putgd-116763.scope",
+        "display": ":0",
+        "sessionIdEnv": null,
+        "exeSha256": "6a6d989164fd4bec7a1ce7513f46c33870c314c0eccbab01d57c8e9a0fa4fabc",
+        "appImageEnvironment": {},
+        "qtPlatformPlugins": []
+      }
+    ]
+  },
+  "uiProcesses": [
+    {
+      "pid": 117994,
+      "exe": "/usr/bin/putgd-ui",
+      "ppid": 116763,
+      "start": 1368434,
+      "session": null,
+      "sessionState": null,
+      "sessionType": null,
+      "cgroup": "/user.slice/user-1000.slice/user@1000.service/app.slice/app-gnome-putgd-116763.scope",
+      "display": ":0",
+      "sessionIdEnv": null,
+      "exeSha256": "f0bda16f03ca9d4d4de9e62ca0a195bf2147d96d292663c0bb9f24bcaf841d1c",
+      "appImageEnvironment": {},
+      "qtPlatformPlugins": [
+        "/usr/lib64/qt6/plugins/platforms/libqwayland.so"
+      ]
+    }
+  ],
+  "memory": {
+    "at": "2026-10-24T06:13:06Z",
+    "mode": "native",
+    "host": "fedora",
+    "idleSeconds": 180,
+    "pid": 116763,
+    "rssMiB": 35.609375,
+    "peakRssMiB": 35.609375,
+    "pssMiB": 21.400390625,
+    "samples": [
+      {
+        "seconds": 0.0,
+        "rssMiB": 35.37890625
+      },
+      {
+        "seconds": 10.0,
+        "rssMiB": 35.37890625
+      },
+      {
+        "seconds": 20.0,
+        "rssMiB": 35.37890625
+      },
+      {
+        "seconds": 30.0,
+        "rssMiB": 35.37890625
+      },
+      {
+        "seconds": 40.0,
+        "rssMiB": 35.37890625
+      },
+      {
+        "seconds": 50.0,
+        "rssMiB": 35.37890625
+      },
+      {
+        "seconds": 60.0,
+        "rssMiB": 35.609375
+      },
+      {
+        "seconds": 70.0,
+        "rssMiB": 35.609375
+      },
+      {
+        "seconds": 80.0,
+        "rssMiB": 35.609375
+      },
+      {
+        "seconds": 90.0,
+        "rssMiB": 35.609375
+      },
+      {
+        "seconds": 100.0,
+        "rssMiB": 35.609375
+      },
+      {
+        "seconds": 110.0,
+        "rssMiB": 35.609375
+      },
+      {
+        "seconds": 120.0,
+        "rssMiB": 35.609375
+      },
+      {
+        "seconds": 130.0,
+        "rssMiB": 35.609375
+      },
+      {
+        "seconds": 140.0,
+        "rssMiB": 35.609375
+      },
+      {
+        "seconds": 150.0,
+        "rssMiB": 35.609375
+      },
+      {
+        "seconds": 160.01,
+        "rssMiB": 35.609375
+      },
+      {
+        "seconds": 170.01,
+        "rssMiB": 35.609375
+      },
+      {
+        "seconds": 180.0,
+        "rssMiB": 35.609375
+      }
+    ],
+    "forbiddenMaps": [
+      "/usr/lib64/libcrypto.so.3.5.9"
+    ],
+    "pass": false,
+    "loadBefore": "2.13 1.31 1.42 6/858 117648",
+    "loadAfter": "1.15 1.34 1.42 1/677 117904",
+    "evidenceFile": "memory.json"
+  },
+  "memoryAssessment": {
+    "strictPass": false,
+    "budgetPass": true,
+    "baselineException": {
+      "mapping": "/usr/lib64/libcrypto.so.3.5.9",
+      "priorSource": "05991d9d (v26.1023.1058-nightly)",
+      "priorEvidence": "docs/evidence/2026-10-23-native-full-acceptance/README.md, item C",
+      "currentEvidence": "fedora-qt-dependencies.txt",
+      "reason": "Pre-existing direct dependency of Fedora Qt6Core; not introduced by the uninstall change. Raw strict failure retained."
+    }
+  },
+  "removalPhases": {
+    "inactive": {
+      "sessionId": "935",
+      "session": {
+        "User": "1000",
+        "Display": "",
+        "Leader": "120016",
+        "Type": "wayland",
+        "Active": "yes",
+        "State": "active",
+        "LockedHint": "no"
+      },
+      "residentAbsent": true,
+      "entryAbsent": true,
+      "scriptAbsent": true,
+      "savedPreference": true,
+      "startupJournalErrors": [],
+      "startupJournal": {
+        "command": [
+          "journalctl",
+          "--user",
+          "--since",
+          "Sat 2026-10-24 01:13:20 CDT",
+          "--no-pager",
+          "-o",
+          "short-iso"
+        ],
+        "exit": 0,
+        "stdout": "2026-10-24T01:13:22-05:00 fedora systemd[1063]: Started app-gnome-putgd-120576.scope - Application launched by gnome-session-service.\n",
+        "stderr": "",
+        "unfilteredStdoutSha256": "f6bbf3e23cb81722be3980066506d19c4bac7fde742642aa13ef892a3444f275",
+        "unfilteredLineCount": 2,
+        "scope": "Only app-putgd autostart/scope and managed login-watch messages; original full result retained privately under exportReceipt"
+      },
+      "failedUnits": {
+        "command": [
+          "systemctl",
+          "--user",
+          "--failed",
+          "--no-legend",
+          "--no-pager"
+        ],
+        "exit": 0,
+        "stdout": "",
+        "stderr": ""
+      },
+      "retention": {
+        "at": "2026-10-24T06:13:37Z",
+        "mode": "native",
+        "host": "fedora",
+        "files": {
+          "/home/patrick/.config/putgd/config.json": {
+            "sha256": "7dae963b14b2ca7721ce551d67a30ce8345bad441da5aaae044841220be00686",
+            "mode": 384
+          },
+          "/home/patrick/.local/share/putgd/history.sqlite": {
+            "sha256": "5a7a310f8a779116a2f096259f401b628db39c3e54ed514b02fccd39f9cc82bf",
+            "mode": 384
+          },
+          "/home/patrick/.local/share/putgd/i382-user-data.txt": {
+            "sha256": "309413a8236143e7ea0e6cba5d20c8716ab50ebce323d56bd4f92b73b90af11a",
+            "mode": 420
+          },
+          "/home/patrick/.local/state/putgd/logs/putgd-20261024T060947144Z-114147-1.jsonl": {
+            "sha256": "56864fa97d97641917977f5b903548636b19e9b4d6087c64d36307a59e6515be",
+            "mode": 384
+          },
+          "/home/patrick/.local/state/putgd/logs/putgd-20261024T061002911Z-116763-1.jsonl": {
+            "sha256": "93550f3f45dd38b1984af2163caa9a6fd1463a039d5b1815fc3464776a1ad9be",
+            "mode": 384
+          }
+        },
+        "entrySha256": null,
+        "scriptSha256": null,
+        "preference": true,
+        "unchanged": true,
+        "evidenceFile": "retention-after-inactive.json"
+      }
+    },
+    "active": {
+      "sessionId": "964",
+      "session": {
+        "User": "1000",
+        "Display": "",
+        "Leader": "124440",
+        "Type": "wayland",
+        "Active": "yes",
+        "State": "active",
+        "LockedHint": "no"
+      },
+      "residentAbsent": true,
+      "entryAbsent": true,
+      "scriptAbsent": true,
+      "savedPreference": true,
+      "startupJournalErrors": [],
+      "startupJournal": {
+        "command": [
+          "journalctl",
+          "--user",
+          "--since",
+          "Sat 2026-10-24 01:14:06 CDT",
+          "--no-pager",
+          "-o",
+          "short-iso"
+        ],
+        "exit": 0,
+        "stdout": "\n",
+        "stderr": "",
+        "unfilteredStdoutSha256": "c11a25c307b3fd262ddaf0d6098c18909743764a7f3ff02134770c7073f43140",
+        "unfilteredLineCount": 1,
+        "scope": "Only app-putgd autostart/scope and managed login-watch messages; original full result retained privately under exportReceipt"
+      },
+      "failedUnits": {
+        "command": [
+          "systemctl",
+          "--user",
+          "--failed",
+          "--no-legend",
+          "--no-pager"
+        ],
+        "exit": 0,
+        "stdout": "",
+        "stderr": ""
+      },
+      "retention": {
+        "at": "2026-10-24T06:13:59Z",
+        "mode": "native",
+        "host": "fedora",
+        "files": {
+          "/home/patrick/.config/putgd/config.json": {
+            "sha256": "7dae963b14b2ca7721ce551d67a30ce8345bad441da5aaae044841220be00686",
+            "mode": 384
+          },
+          "/home/patrick/.local/share/putgd/history.sqlite": {
+            "sha256": "5a7a310f8a779116a2f096259f401b628db39c3e54ed514b02fccd39f9cc82bf",
+            "mode": 384
+          },
+          "/home/patrick/.local/share/putgd/i382-user-data.txt": {
+            "sha256": "309413a8236143e7ea0e6cba5d20c8716ab50ebce323d56bd4f92b73b90af11a",
+            "mode": 420
+          },
+          "/home/patrick/.local/state/putgd/logs/putgd-20261024T060947144Z-114147-1.jsonl": {
+            "sha256": "56864fa97d97641917977f5b903548636b19e9b4d6087c64d36307a59e6515be",
+            "mode": 384
+          },
+          "/home/patrick/.local/state/putgd/logs/putgd-20261024T061002911Z-116763-1.jsonl": {
+            "sha256": "93550f3f45dd38b1984af2163caa9a6fd1463a039d5b1815fc3464776a1ad9be",
+            "mode": 384
+          },
+          "/home/patrick/.local/state/putgd/logs/putgd-20261024T061347422Z-121980-1.jsonl": {
+            "sha256": "da501cdad80ae23664bcfd88db670f0cccdbf84cc8ee4e0d35cf31f72df7f022",
+            "mode": 384
+          }
+        },
+        "entrySha256": null,
+        "scriptSha256": null,
+        "preference": true,
+        "unchanged": true,
+        "evidenceFile": "retention-after-active.json"
+      }
+    },
+    "disabled": {
+      "sessionId": "995",
+      "session": {
+        "User": "1000",
+        "Display": "",
+        "Leader": "128780",
+        "Type": "wayland",
+        "Active": "yes",
+        "State": "active",
+        "LockedHint": "no"
+      },
+      "residentAbsent": true,
+      "entryAbsent": true,
+      "scriptAbsent": true,
+      "savedPreference": false,
+      "startupJournalErrors": [],
+      "startupJournal": {
+        "command": [
+          "journalctl",
+          "--user",
+          "--since",
+          "Sat 2026-10-24 01:14:48 CDT",
+          "--no-pager",
+          "-o",
+          "short-iso"
+        ],
+        "exit": 0,
+        "stdout": "\n",
+        "stderr": "",
+        "unfilteredStdoutSha256": "dc42a6e9b2f13bf74ec15a8d81335a5d3553476e628b3b3137b92f9c7124e8fe",
+        "unfilteredLineCount": 1,
+        "scope": "Only app-putgd autostart/scope and managed login-watch messages; original full result retained privately under exportReceipt"
+      },
+      "failedUnits": {
+        "command": [
+          "systemctl",
+          "--user",
+          "--failed",
+          "--no-legend",
+          "--no-pager"
+        ],
+        "exit": 0,
+        "stdout": "",
+        "stderr": ""
+      }
+    }
+  },
+  "activeRemovalObservation": {
+    "at": "2026-10-24T06:13:59Z",
+    "mode": "native",
+    "host": "fedora",
+    "secondsAfterRemovalReturned": 0.5,
+    "state": {
+      "sessionId": "935",
+      "session": {
+        "User": "1000",
+        "Display": "",
+        "Leader": "120016",
+        "Type": "wayland",
+        "Active": "yes",
+        "State": "active",
+        "LockedHint": "no"
+      },
+      "residents": [],
+      "configSha256": "7dae963b14b2ca7721ce551d67a30ce8345bad441da5aaae044841220be00686",
+      "preference": true,
+      "entry": null,
+      "entrySha256": null,
+      "scriptSha256": null,
+      "personalApps": [],
+      "load": "3.23 1.86 1.59 6/750 122943"
+    },
+    "evidenceFile": "active-removal.json"
+  },
+  "explicitDisable": {
+    "applied": true,
+    "enabled": false
+  },
+  "cleanup": {
+    "at": "2026-10-24T06:15:07Z",
+    "mode": "native",
+    "host": "fedora",
+    "residents": [],
+    "entryAbsent": true,
+    "scriptAbsent": true,
+    "profileAbsent": true,
+    "personalApps": [],
+    "evidenceFile": "cleanup.json"
+  },
+  "exportReceipt": {
+    "host": "f44",
+    "mode": "native",
+    "remoteRoot": "/home/patrick/work/p382n/native",
+    "verifiedFiles": {
+      "prepare.json": "571d6e3e7f478fe566754ba6641872dba63ebfb35eb68e404aab6a9a3ea6fe87",
+      "identity.json": "30d447cb149b5137417871c8b3dd16b59e5d13879340ee5f6bf89c71811c3958",
+      "pkg-sim-initial.json": "2263d762baa5b8174b157a70242d24c13ca110f983aa0b9d68e654bf6e832cb1",
+      "pkg-initial.json": "d16b2287bc26f70bd78b3af53e663427530d69414d69006e1ef3fa6fa18dd74a",
+      "launch-initial.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "launch-initial.json": "fdc871a8f4f7877c8093f6fd3b01c95da69e396d39efe7aa9ed4fa16a4866c5a",
+      "enable.json": "c59336393b23ff86ba7f9059acbcffcc2afc6a9c7bc7a620880808f6911e96fe",
+      "show-enabled.json": "83eb31f2e9237507b18ab60e21709f864380283c7093afa8b8e52c8fa910b842",
+      "status-frame-enabled-settings.json": "a6bac591886c9cae31213c9ceff869a4686e8b407de10bc278e1344817d4dfa1",
+      "quit-prep-login.json": "577f9f49cb6d65e8ad5f4ad821819b6f101835eb7867eb5e89131f7baf44a360",
+      "logout-enabled.json": "405f2a1396ec071e7adee2eb4109aba874da0b793725d58ed96d20f496760838",
+      "relogin-enabled.json": "acaf3c7aeed16943f01363f21617452bbb03377177ee44120e254d7a8a0a1258",
+      "check-enabled.json": "f07ffd74159b0ab45274269315b6c751372869251e01e938ae530c6896cdef45",
+      "status-frame-enabled-login.json": "f1dfdda28212fcb4b11f79737b221b9bf9a84893a5bd71853f197ab597effa51",
+      "memory.json": "a2d71a4d7e5f14278c5cc5d071a930d2e69c8531fe22d68641eedcfb3b25f581",
+      "show-login-enabled.json": "4c3b048e90d2ff027becafd292945de7bdd123e3c93366848e377e0a2278c94c",
+      "status-frame-login-settings.json": "033b462e1751876f17e4ccf7105a177aad960cda1046c733589bb93e1dd5282b",
+      "quit-inactive.json": "5973f8433e1174267516255e4d95d66d3b63fbd4bb8927e4f3912229641f096a",
+      "stop-watch.json": "ff9efdc01e4126673ab8d947ca79bf1eace5e0d9240961ce3306b05957e4c02b",
+      "retention-before-inactive.json": "2c1394e462e21d0e2bfb638a26236a2ac9e1c0ecdc1433e17ddf4bbeb69065e7",
+      "logout-inactive.json": "59bf9545c2c6840bd69abab5cc83eb9e66c0c7e9744b51c673a28ed7e4bc0cb5",
+      "inactive-before-removal.json": "5b04400d2298f8aa84b80ee643c2d4f565af035474f51056edbf50aeabc056bc",
+      "pkg-sim-inactive.json": "f3cb41ab717e9e5b216675a0f081a747fadc6865be1c3125519be57f93b15a59",
+      "pkg-inactive.json": "5cb52837841224e508da58b06460797e069e90d3fe49c24a521751d5a6faf9b0",
+      "relogin-inactive.json": "80fb9224715090f0f913a0756b134d796555af20561fe824a5e1a28862096e67",
+      "check-inactive.json": "c842beb1a1cffe9e93261c5584a2a47a5a404729418f6709da20491d03e7d68d",
+      "retention-after-inactive.json": "109a151be5b3940aab0ad5ac60baad8d1e0ee0b9da2dba32ba36f41f03490850",
+      "status-frame-inactive-cleaned-login.json": "55a180a08f7b543983541eed6956f84e8270b98273b27520e61e0a7eac3834e0",
+      "pkg-sim-inactive.attempt2.json": "46ae361d8b9703c4dadea17386e22e18dbb830b08870eb2b6ede9c526a0748ef",
+      "pkg-inactive.attempt2.json": "d40c2021b23643146bcf9594fc3779ef535d8c1d8566c2330ff3c9bc04b40a5b",
+      "launch-active-rearm.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "launch-active-rearm.json": "7500b4e37efbf7b496d919174c7a35b7217c917cd65d85c32d324e2c5de53191",
+      "show-rearmed.json": "99439d42b982f897c2794b27dc87c2ebe76cd81ca6ac58f6e7815a583d3d20f9",
+      "status-frame-rearmed-settings.json": "1cb3af3e49a74e5e9f729097e9d5f43dee9facf67e0b4281cc4dec101d820628",
+      "quit-active.json": "b3127e7bc5a269d06c898030b884b168f7e9e0c102809b1305de7de719c9d3d5",
+      "retention-before-active.json": "e5d7b71ebb610a319cf3f2ae501ad4fb07753ad2f09fffdc37b86f0b5acea0a8",
+      "pkg-sim-active.json": "8cf516c282e62b7ff11fa28fae1fbbfc0814f4e568830e4963311ab19da0db4d",
+      "pkg-active.json": "b8448ccb8b7b134e37cfca065f1b4c0fc5904d2d5943251252e11a70164d50df",
+      "active-removal.json": "a174664931ebcf7065db7ed5ac6231dc553f5c155af1446b648da378d4efce84",
+      "retention-after-active.json": "7f2fdefb024116f7fbb15e2c245fb25a5095465dd79df7d72cd71beba19ce835",
+      "status-frame-active-cleaned.json": "be891e4139e301a4269c2ada79190f34423fd538fcf4872ff34a5cd55171fdd4",
+      "logout-active.json": "bf05bbe77444c9920a15e3faf07c5fe8ff3f91fb2af32b254a47ca6326ba75bd",
+      "relogin-active.json": "7e2d54ec088d9b390e2578f88b4285e72ec963d549149e124223ff08593cebf6",
+      "check-active.json": "4a748c6d8f4f435588c5700db053e68971e062b9c7a52deb6d7e2c892a7fe03e",
+      "status-frame-active-cleaned-login.json": "192ccbf5cc611cbc0f885d85a540b5302643351b7649bd4ff1e7c9f3c7858851",
+      "pkg-sim-active.attempt2.json": "4b11c8773ad09206a3e2099883beccbf4ed9fcab067ce780ed253866edfe69c5",
+      "pkg-active.attempt2.json": "7403d2a479409084d45caa11895695d040a7564b7ee3d89d10f08da8070b106d",
+      "launch-disable-rearm.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "launch-disable-rearm.json": "08c9552d975e088cc1a3f6b989d5154c704586c81021503d4798f93d3c569107",
+      "disable.json": "02425f661bf9b62752dca93e75d9a0d9ccbb609a43ca5287292d1ac6d6d49302",
+      "show-disabled.json": "a83f03b2caed10c7708a4ab85fd9cd854f1dde4f051a7f01d893a566678f57e7",
+      "status-frame-disabled-settings.json": "b8c63f868fc766f2989302a20f7531b7cab0fc1873d76592ffe7b33a9868ed5a",
+      "quit-disabled.json": "ae71de3e99a680ce0017f2bae6087abb5673c46502c43a33cebb030a7586ca94",
+      "pkg-sim-disabled.json": "0f0e578a0d069698053255b2587d62af6a6993f89736f3ac1de2711b45c1df79",
+      "pkg-disabled.json": "45417968b8b9d7a66e92342ee5ac21e43ef919d43f04eac8469bdda2f735e8be",
+      "logout-disabled.json": "fadc4c504226ee20737c897e40edf674659821500d40eeb7256be45160700151",
+      "relogin-disabled.json": "052b12b3927b6aa4c4881fc466ce513f53e4c809b41f88a398948c4a2dcb1e23",
+      "check-disabled.json": "198dcc7b54c46fec0b0c0bae18c43f5f5bd18592560bc15cf012bdccfe3585d9",
+      "status-frame-disabled-clean-login.json": "4e96861d8e2b08e5ab2677899b0ec57d518a7bbc9de1f4252c09609d15153bdd",
+      "cleanup.json": "67f37a0c51acacd22d04465056ce327c3a25286a350bc91b79b84c6e97d1717f"
+    },
+    "allHashesVerified": true
+  },
+  "visualReview": {
+    "reviewed": true,
+    "accepted": true,
+    "sourceCommit": "d5b561ddb94f8255b8bc754c1382552d983a6fa9",
+    "invalidVisuals": [],
+    "notes": "All nine complete frames inspected: actual Settings on/rearmed/off and real login/removal desktops. Stock Mint Welcome, KDE remote-control and Debian IBus notices are unrelated and retained. No protected login value or personal app content appears. Machine receipts establish file/process absence and settings preservation; screenshots supply desktop context.",
+    "files": {
+      "enabled-login.png": "0a86394f6db570fa8c370646aec5d4d42d0261b9848567888aad7eb55c47744e",
+      "disabled-settings.png": "fa2573f411fc3cd1a8f86a28c342ab23d4d0d2b2171d163114b8e0541aa6cfcd",
+      "login-settings.png": "1e67dbdd44f379eae0d79ed43d031d3969bc6264aeb7040b7674493502cad74a",
+      "rearmed-settings.png": "e876442fa4361a832c3048de34f5f48328f1dc9e290df2f650fa5abc27397cb6",
+      "enabled-settings.png": "b8d3132d8f962823492abef024c53057f932c00a1a6273c92a861a590617a9c5",
+      "active-cleaned.png": "6a081c013601c621a93e9f3108670d005e3923387e8b5f7e1ea027f29c496727",
+      "active-cleaned-login.png": "6a081c013601c621a93e9f3108670d005e3923387e8b5f7e1ea027f29c496727",
+      "disabled-clean-login.png": "20175070c34324b1eed8fc7029175e3a74d93873767f8f908ec7205139304600",
+      "inactive-cleaned-login.png": "4f2f267c49a90f520a204fc819f9691329b02084f393d91be92b6e343287aa8d"
+    }
+  },
+  "completion": {
+    "target": "f44",
+    "mode": "native",
+    "sourceCommit": "d5b561ddb94f8255b8bc754c1382552d983a6fa9",
+    "functionalPassed": true,
+    "memoryPassed": false,
+    "memoryAssessment": {
+      "strictPass": false,
+      "budgetPass": true,
+      "baselineException": {
+        "mapping": "/usr/lib64/libcrypto.so.3.5.9",
+        "priorSource": "05991d9d (v26.1023.1058-nightly)",
+        "priorEvidence": "docs/evidence/2026-10-23-native-full-acceptance/README.md, item C",
+        "currentEvidence": "fedora-qt-dependencies.txt",
+        "reason": "Pre-existing direct dependency of Fedora Qt6Core; not introduced by the uninstall change. Raw strict failure retained."
+      }
+    },
+    "seconds": 330.4,
+    "visualReviewPending": true
+  }
+}

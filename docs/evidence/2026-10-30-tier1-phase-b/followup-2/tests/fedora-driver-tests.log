@@ -1,0 +1,16 @@
+............./home/patrick/t1b/tools/lab/surface_driver/recipes/outcomes.py:45: DeprecationWarning: Image.Image.getdata is deprecated and will be removed in Pillow 14 (2027-10-15). Use get_flattened_data instead.
+  if set(actual.crop((365, 195, 545, 275)).getdata()) != {(0, 0, 0)}:
+/home/patrick/t1b/tools/lab/surface_driver/recipes/outcomes.py:64: DeprecationWarning: Image.Image.getdata is deprecated and will be removed in Pillow 14 (2027-10-15). Use get_flattened_data instead.
+  if sum(a != b for a, b in zip(actual.crop(box).getdata(), original.crop(box).getdata())) < 20:
+...................................../usr/lib64/python3.14/site-packages/gi/overrides/__init__.py:159: PyGIDeprecationWarning: GLib.unix_signal_add_full is deprecated; use GLibUnix.signal_add_full instead
+  value = getattr(proxy, attr)
+/home/patrick/t1b/tests/desktop/test_surface_recipes_links.py:501: PyGIDeprecationWarning: Gio.DesktopAppInfo is deprecated; use GioUnix.DesktopAppInfo instead
+  self.assertIsNotNone(Gio.DesktopAppInfo.new_from_filename(str(candidate)))
+.....................................................................................04-destinations-s3: catalog None, pin ['credentialAccessKey', 'credentialSecretKey']
+the catalog's secret-control states differ from tools/lab/surface_driver/secret-states.json; if the UI change is intended, run `python3 -m tools.lab.surface_driver.gate write-pin CATALOG` and commit it
+............sssss.................
+----------------------------------------------------------------------
+Ran 169 tests in 53.592s
+
+OK (skipped=5)
+secret-control states match the pin (3 states)

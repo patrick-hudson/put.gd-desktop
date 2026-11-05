@@ -1,0 +1,21 @@
+# User unit for a KDE Wayland lab desktop (k72). Install:
+#   cp tools/lab/wall_vnc_watchdog.py ~/.local/bin/wall-vnc-watchdog
+#   cp tools/lab/wall-vnc-watchdog.service ~/.config/systemd/user/
+#   systemctl --user daemon-reload && systemctl --user enable --now wall-vnc-watchdog.service
+# See docs/remote-builders.md ("Visual results are required").
+[Unit]
+Description=Restart the wall VNC server when its screencast stream stops
+PartOf=graphical-session.target
+After=w0vncserver.service
+ConditionEnvironment=XDG_SESSION_TYPE=wayland
+ConditionEnvironment=XDG_CURRENT_DESKTOP=KDE
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 -I %h/.local/bin/wall-vnc-watchdog --unit w0vncserver.service --port 5900
+Restart=on-failure
+RestartSec=30
+
+[Install]
+WantedBy=plasma-workspace-wayland.target

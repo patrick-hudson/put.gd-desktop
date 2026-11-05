@@ -1,0 +1,7 @@
+{
+  "id": "linuxmint",
+  "packageTarget": "ubuntu24.04",
+  "qtVersion": "6.4.2",
+  "ubuntuCodename": "noble",
+  "versionId": "22.3"
+}

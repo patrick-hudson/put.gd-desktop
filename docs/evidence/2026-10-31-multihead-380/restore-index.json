@@ -1,0 +1,57 @@
+{
+  "schemaVersion": 1,
+  "archives": [
+    {
+      "archive": "/home/patrick/work/m380/work/c-evidence.tar.zst",
+      "bytes": 2724266,
+      "sha256": "1156cb5794d2da7c20679d46d1360c9684604f03205269babb67eebd45681748",
+      "zstdIntegrityPassed": true,
+      "uncompressedTarSha256": "43a58990322460dcef2c96572bffa50c609a8b029eecb9fabe3832adab38798b",
+      "memberCount": 329,
+      "memberIndex": "c-evidence.tar.zst.members.txt",
+      "memberIndexSha256": "a80d4b1399f14f75373ea3c41eb905faa5f200448537666c770129e7c60a3efa",
+      "host": "m74",
+      "workstationArchive": "/home/patrick/work/put.gd/work/campaigns/surface-driver-20261029/multihead-380-aca13938/c-evidence.tar.zst",
+      "restoreCommand": "mkdir -m 700 NEW_EMPTY_DIRECTORY && tar --zstd -xf ARCHIVE -C NEW_EMPTY_DIRECTORY"
+    },
+    {
+      "archive": "/home/patrick/work/m380/work/g-evidence.tar.zst",
+      "bytes": 4884839,
+      "sha256": "131823913dc528c3636e5b114655c3af2b4c9682249e525dbf6c8f9f0dc4a7e9",
+      "zstdIntegrityPassed": true,
+      "uncompressedTarSha256": "d32f9b02eba238d288ba98a2f338811a026dddaec61237555e99bb0b001e9bf3",
+      "memberCount": 414,
+      "memberIndex": "g-evidence.tar.zst.members.txt",
+      "memberIndexSha256": "57996ef7b6f55749fccab23332aae66817230adf71d5d0701e73e83db8235782",
+      "host": "d69",
+      "workstationArchive": "/home/patrick/work/put.gd/work/campaigns/surface-driver-20261029/multihead-380-aca13938/g-evidence.tar.zst",
+      "restoreCommand": "mkdir -m 700 NEW_EMPTY_DIRECTORY && tar --zstd -xf ARCHIVE -C NEW_EMPTY_DIRECTORY"
+    },
+    {
+      "archive": "/home/patrick/work/m380/work/g-failed-evidence.tar.zst",
+      "bytes": 1403888,
+      "sha256": "bcbfc095299bf3a359cd389c5c8378ed45b341cd35bdb199ecb5294ab28f565b",
+      "zstdIntegrityPassed": true,
+      "uncompressedTarSha256": "b333dfc68b9bc64375e178039d9af219c53f6c79ae38513da511e76dca83008a",
+      "memberCount": 5,
+      "memberIndex": "g-failed-evidence.tar.zst.members.txt",
+      "memberIndexSha256": "0a8564f5fca959c8f5531139802b69bf19f2ea601c08492a953e7b8b9960f32a",
+      "host": "d69",
+      "workstationArchive": "/home/patrick/work/put.gd/work/campaigns/surface-driver-20261029/multihead-380-aca13938/g-failed-evidence.tar.zst",
+      "restoreCommand": "mkdir -m 700 NEW_EMPTY_DIRECTORY && tar --zstd -xf ARCHIVE -C NEW_EMPTY_DIRECTORY"
+    },
+    {
+      "archive": "/home/patrick/work/m380/work/k-evidence.tar.zst",
+      "bytes": 6023946,
+      "sha256": "b773fe9af90d3217b65cc37ca448c8b42f684c1bd5b5a0e9bef454056308112c",
+      "zstdIntegrityPassed": true,
+      "uncompressedTarSha256": "5911e4c2c6b0a77464fecae7832c5bec73b4c70b7d5fac37f03d90bd51279aa6",
+      "memberCount": 791,
+      "memberIndex": "k-evidence.tar.zst.members.txt",
+      "memberIndexSha256": "73f024cdcccc059ebf54135f8103ec67c9bf21aa2462b654ac627c1f1196a795",
+      "host": "k72",
+      "workstationArchive": "/home/patrick/work/put.gd/work/campaigns/surface-driver-20261029/multihead-380-aca13938/k-evidence.tar.zst",
+      "restoreCommand": "mkdir -m 700 NEW_EMPTY_DIRECTORY && tar --zstd -xf ARCHIVE -C NEW_EMPTY_DIRECTORY"
+    }
+  ]
+}

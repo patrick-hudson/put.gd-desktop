@@ -1,0 +1,85 @@
+{
+  "frames": {
+    "frames/core_demo.text_tool/00-before.png": {
+      "sha256": "52dd0ae99563aae0e8297136d11ccdf6eb0216164fc7840e79a4c433087243bc",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [],
+      "fallback": false
+    },
+    "frames/core_demo.text_tool/01-_redacted_-tool.png": {
+      "sha256": "31d9a8dbbe70029c089f30b331d0c6ba4f6f319447d451dfee341cf6f3df7dde",
+      "size": [
+        900,
+        620
+      ],
+      "regions": [],
+      "fallback": false
+    },
+    "frames/core_demo.text_tool/02-after.png": {
+      "sha256": "ea36611622187e50f51f14eeb5d2c42d065c71e12d0459d47838f3f163767f3f",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [],
+      "fallback": false
+    },
+    "frames/core_demo.redact_tool/00-before.png": {
+      "sha256": "52dd0ae99563aae0e8297136d11ccdf6eb0216164fc7840e79a4c433087243bc",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [],
+      "fallback": false
+    },
+    "frames/core_demo.redact_tool/01-redact-tool.png": {
+      "sha256": "9c6294ef99e13f39706464ad86a16a16e526968cb484aef1b455119b407bf3e3",
+      "size": [
+        900,
+        620
+      ],
+      "regions": [],
+      "fallback": false
+    },
+    "frames/core_demo.redact_tool/02-after.png": {
+      "sha256": "f28b9c671efe22e5d3c160a2fb3b9c195cc5f9ec784213ec271211bbbb1ffcf8",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [],
+      "fallback": false
+    },
+    "frames/core_demo.undo_redo/00-before.png": {
+      "sha256": "52dd0ae99563aae0e8297136d11ccdf6eb0216164fc7840e79a4c433087243bc",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [],
+      "fallback": false
+    },
+    "frames/core_demo.undo_redo/01-redone.png": {
+      "sha256": "65b0a3d518e3f9e95ee8c5632a1d82517d8ca86cf61a9928d72fab5d98a3bef6",
+      "size": [
+        900,
+        620
+      ],
+      "regions": [],
+      "fallback": false
+    },
+    "frames/core_demo.undo_redo/02-after.png": {
+      "sha256": "b3c28ac0e3ef5f2829836755fa38d4555513e3f3b01da7d3a61ad6c5f7ac925c",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [],
+      "fallback": false
+    }
+  }
+}

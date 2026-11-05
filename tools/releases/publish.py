@@ -14,16 +14,32 @@ import sys
 import tempfile
 import time
 
+import changelog
 from collect import sha256
 from verify_tag import verify
 from github_api import GitHub
 from nightly import published_nightly, public_inventory
-from release_identity import parse_tag
+from release_identity import parse_tag, parse_version
+import support_assets
+import proton_sources
 
+# The release notes name the Qt the AppImage bundles (#418).
+APPIMAGE_QT = json.loads((Path(__file__).resolve().parents[2] / 'packaging/appimage/tools.lock.json')
+                         .read_text())['buildInputs']['qt']
 
 
 def github_json(*arguments):
     return json.loads(subprocess.check_output(['gh', 'api', *arguments], text=True))
+
+
+def verify_inventory(tag, listed, layout=None):
+    expected = public_inventory(tag, layout)
+    actual = set(listed) | {'SHA256SUMS'}
+    if actual != expected:
+        missing = ', '.join(sorted(expected - actual)) or 'none'
+        extra = ', '.join(sorted(actual - expected)) or 'none'
+        raise ValueError(f'Collected release inventory differs for {layout or "legacy"} '
+                         f'({len(expected)} assets expected): missing: {missing}; extra: {extra}')
 
 
 def remote_tag_commit(tag):
@@ -56,6 +72,8 @@ def asset_snapshot(metadata, expected, directory):
         if asset['state'] != 'uploaded' or asset['size'] != (directory / name).stat().st_size:
             raise ValueError('Remote draft asset is incomplete or has a different size')
         values[name] = {key: asset[key] for key in ('id', 'size', 'updated_at')}
+        if asset.get('digest') is not None:
+            values[name]['digest'] = asset['digest']
     return values
 
 
@@ -65,6 +83,10 @@ def verify_uploaded_assets(assets, expected):
             asset_id = asset['id']
             if type(asset_id) is not int or asset_id <= 0:
                 raise ValueError('Remote asset ID is invalid')
+            if asset.get('digest') is not None:
+                if asset['digest'] != 'sha256:' + expected[name]:
+                    raise ValueError('Remote draft digest differs from accepted assets: ' + name)
+                continue
             path = Path(temporary) / name
             with path.open('wb') as stream:
                 subprocess.run(['gh', 'api', '--method', 'GET', '-H', 'Accept: application/octet-stream',
@@ -98,6 +120,15 @@ def verify_remote_draft(tag, directory, listed, commit, *, nightly=False):
     return {'releaseId': before['id'], 'assets': assets, 'sha256': expected}
 
 
+def release_title(release):
+    """Name the GitHub release; nightlies say so in words rather than in a suffix."""
+    identity = parse_version(release['version'])
+    if identity.channel == 'nightly':
+        return (f'put.gd {identity.base_version} nightly {identity.count}' if identity.legacy
+                else f'put.gd {identity.base_version} nightly')
+    return 'put.gd ' + release['version']
+
+
 def stage_draft(tag, directory, listed, release, notes):
     """Resume only a matching draft; never replace unverified existing assets."""
     if remote_tag_commit(tag) != release['gitCommit']:
@@ -107,7 +138,7 @@ def stage_draft(tag, directory, listed, release, notes):
         raise ValueError('Staging requires a unique draft; published releases are immutable here')
     if not matches:
         command = ['gh', 'release', 'create', tag, '--verify-tag', '--draft',
-                   '--title', 'put.gd ' + release['version'], '--notes-file', str(notes)]
+                   '--title', release_title(release), '--notes-file', str(notes)]
         if release['prerelease']:
             command.append('--prerelease')
         if release.get('channel') == 'nightly':
@@ -162,10 +193,40 @@ def run_provenance():
             'url': f'{server}/{repository}/actions/runs/{run_id}'}
 
 
+def changes_section(tag, producer):
+    """List the pull requests merged since the previous release, or say why they can't be.
+
+    A missing or shallow history must not stop a verified release from being staged.
+    """
+    server = os.environ.get('GITHUB_SERVER_URL', 'https://github.com')
+    try:
+        return changelog.section(Path.cwd(), tag, producer['repository'], server,
+                                 released=changelog.released_tags) + '\n'
+    except (subprocess.CalledProcessError, OSError, ValueError) as error:
+        print(f'Warning: could not list the changes in {tag}: {error}', file=sys.stderr, flush=True)
+        return ("## What's changed\n\nThe changes could not be listed from this checkout; see the commit history.\n\n"
+                '## Downloads and sources\n\n')
+
+
+def installer_notes(directory, release, producer):
+    delivery = json.loads((directory / 'source-delivery.json').read_text())
+    catalog = proton_sources.catalog_value(directory / proton_sources.CATALOG_NAME)
+    links = '\n'.join(f'- [{part["file"]}]({part["url"]})' for part in catalog['delivery']['parts'])
+    return ('Downloads: AppImage, Ubuntu 24.04/26.04 and Debian 13 DEBs, and Fedora 44 RPM. '
+            'Checksums, update metadata and package SBOMs accompany the installers.\n\n'
+            f'AppImage bundles dynamically linked Qt {APPIMAGE_QT} and requires glibc 2.39 or newer. '
+            'Its GPL-2.0-or-later codec/runtime sources and put.gd source snapshot are available from '
+            f'[corresponding sources]({delivery["url"]}), together with the optional GNOME 50 extension. '
+            'Verify that release\'s SHA256SUMS. Developers can also clone this release tag.\n\n'
+            'Unchanged Proton dependency sources (checksums in proton-source-catalog.json; concatenate '
+            'part1 then part2 before unpacking):\n\n' + links + '\n\n'
+            f'Debug symbols are retained per build in [CI artifacts]({producer["url"]}) for 90 days.\n\n')
+
+
 def publish_nightly(args, release, listed):
     """Publish one automated nightly, retaining exact run and byte evidence."""
-    if set(listed) | {'SHA256SUMS'} != public_inventory(args.tag):
-        raise ValueError('Collected nightly inventory must contain all twelve public assets')
+    layout = getattr(args, 'asset_layout', None)
+    verify_inventory(args.tag, listed, layout)
     producer = run_provenance()
     api = GitHub(producer['repository'])
     expected = {**listed, 'SHA256SUMS': sha256(args.directory / 'SHA256SUMS')}
@@ -179,22 +240,40 @@ def publish_nightly(args, release, listed):
         receipt.update(published=True, unchanged=True, verifiedPublishedNightly=public)
     else:
         notes = args.directory / 'release-notes.md'
-        notes.write_text('Build-tested nightly development release.\n\n'
-            'Automated coverage: Linux test suites, Windows/macOS portable compilation, '
+        notes.write_text(f'Nightly {parse_tag(args.tag).base_version}: a build-tested development '
+            f'release of commit {release["gitCommit"]}.\n\n'
+            + changes_section(args.tag, producer) +
+            'Automated coverage: Linux test suites, '
             'Ubuntu 24.04/26.04 DEB and Fedora 44 RPM audits, AppImage packaging, '
             'and production compilation of the exact curated source tarball. '
             'This does not certify current graphical compositor behavior, memory acceptance or live S3 behavior.\n\n'
             'Individual DEBs, RPM, AppImage, source tarball, GNOME ZIP, release-builds.json, '
             'combined ZIP and SHA256SUMS are available separately. DEB/RPM use distro Qt. '
-            'AppImage bundles dynamically linked Qt 6.8.3 and requires glibc 2.39 or newer. '
+            f'AppImage bundles dynamically linked Qt {APPIMAGE_QT} and requires glibc 2.39 or newer. '
+            'Its screen recorder bundles x264, x265 and a GPL FFmpeg, so the AppImage is a GPL-2.0-or-later '
+            'combined work; their corresponding source is the appimage-complete-source tarball. '
+            'The AppImage carries zsync update information for the nightly channel, so AppImageUpdate, '
+            'Gear Lever and AppImageLauncher can update it with the .zsync asset. '
             'GNOME 50 requires the included host extension.\n\n'
             'Proton corresponding source is delivered as two separate transport parts plus '
             'proton-source-catalog.json. Verify SHA256SUMS, concatenate part1 then part2, '
             'and unpack the resulting tar.gz. The combined ZIP includes the catalog; '
             'download the two source parts separately.\n\n'
+            'The debug tar.zst holds every build\'s split debug files by GNU build ID, for symbolizing '
+            'crash records (docs/diagnostics.md); it is not part of the combined ZIP.\n\n'
+            'Each package has a CycloneDX SBOM (.cdx.json) of the components it bundles, for any SBOM-aware '
+            'vulnerability scanner (docs/release.md).\n\n'
             + 'Built, tested and packaged by ' + producer['url'] + '\n\n'
             + 'Channel/source and automated producer evidence:\n\n```json\n'
             + json.dumps(receipt, indent=2) + '\n```\n')
+        if layout == support_assets.LAYOUT:
+            notes.write_text(f'Nightly {release["version"]} from commit {release["gitCommit"]}.\n\n'
+                + changes_section(args.tag, producer) + installer_notes(args.directory, release, producer)
+                + 'Automated coverage: tagged native package audits, AppImage start/recording checks, '
+                  'PipeWire compatibility and component vulnerability scans. Source tests pass either '
+                  'in this run or in a verified CI run of this exact commit recorded by this run. '
+                  'This does not certify desktop, memory or live-service acceptance.\n\n'
+                + 'Built and packaged by ' + producer['url'] + '\n')
         stage_draft(args.tag, args.directory, listed, release, notes)
         verified = verify_remote_draft(args.tag, args.directory, listed, release['gitCommit'], nightly=True)
         final = matching_releases(args.tag)
@@ -211,6 +290,30 @@ def publish_nightly(args, release, listed):
             raise ValueError('Published nightly metadata or bytes could not be verified')
         receipt.update(verifiedRemoteDraft=verified, verifiedPublishedNightly=public, published=True)
     (args.directory / 'publication.json').write_text(json.dumps(receipt, indent=2) + '\n')
+
+
+SITE_REPOSITORY = 'patrick-hudson/put.gd-site'
+
+
+def notify_site(tag):
+    """Tell the download site a release is public; its six-hour schedule is the backstop.
+
+    Manual publication runs with the operator's own gh login, which can reach the
+    site repository. Nightlies are published with the workflow token, which cannot,
+    so nightly.yml sends this event itself after publish.py --nightly returns.
+    """
+    prerelease = 'true' if parse_tag(tag).prerelease else 'false'
+    command = ['gh', 'api', f'repos/{SITE_REPOSITORY}/dispatches', '-f', 'event_type=release-published',
+               '-f', f'client_payload[tag]={tag}', '-F', f'client_payload[prerelease]={prerelease}']
+    try:
+        subprocess.run(command, check=True)
+    except (subprocess.CalledProcessError, OSError) as error:
+        print(f'Warning: could not notify {SITE_REPOSITORY} of {tag}: {error}. '
+              'Its deploy refreshes within six hours, or run its deploy workflow by hand.',
+              file=sys.stderr, flush=True)
+        return False
+    print(f'Notified {SITE_REPOSITORY} of {tag}; its deploy refreshes the download links.', flush=True)
+    return True
 
 
 def main():
@@ -240,8 +343,27 @@ def main():
         if name in listed:
             raise ValueError('Duplicate collected release checksum')
         listed[name] = digest
-    if set(listed) | {'SHA256SUMS'} != public_inventory(args.tag):
-        raise ValueError('Collected release inventory must include all twelve public assets, including Proton sources')
+    args.asset_layout = bundle.get('assetLayout')
+    verify_inventory(args.tag, listed, args.asset_layout)
+    if args.asset_layout == support_assets.LAYOUT:
+        if args.publish:
+            # Manual acceptance runs use the same checkout/repository as the gh release commands.
+            repository = subprocess.check_output(
+                ['gh', 'repo', 'view', '--json', 'nameWithOwner', '--jq', '.nameWithOwner'],
+                text=True, timeout=60).strip()
+        else:
+            # Validate the automated caller before publishing any linked materials.
+            repository = run_provenance()['repository']
+        api = GitHub(repository)
+        delivery = json.loads((args.directory / 'source-delivery.json').read_text())
+        if delivery != bundle.get('sources'):
+            raise ValueError('Source delivery differs from collected release manifest')
+        support_assets.validate(delivery, release, api.repository)
+        support_assets.verify_proton(api, proton_sources.catalog_value(args.directory / proton_sources.CATALOG_NAME))
+        if args.publish:
+            support_assets.verify_public(api, delivery, release)
+        else:
+            support_assets.publish(api, delivery, release, args.directory / 'sources')
     if args.nightly:
         publish_nightly(args, release, listed)
         return
@@ -255,23 +377,42 @@ def main():
             raise ValueError('Acceptance must match every exact collected asset')
         verified = verify_remote_draft(args.tag, args.directory, listed, release['gitCommit'])
         subprocess.run(['gh', 'release', 'edit', args.tag, '--draft=false'], check=True)
-        (args.directory / 'publication.json').write_text(json.dumps({
-            'schemaVersion': 1, 'tag': args.tag, 'gitCommit': release['gitCommit'],
-            'verifiedRemoteDraft': verified, 'published': True}, indent=2) + '\n')
+        receipt = {'schemaVersion': 1, 'tag': args.tag, 'gitCommit': release['gitCommit'],
+                   'verifiedRemoteDraft': verified, 'published': True}
+        publication = args.directory / 'publication.json'
+        # The receipt records the publication before the site is told about it:
+        # a failed notification never turns a published release into a failed run.
+        publication.write_text(json.dumps(receipt, indent=2) + '\n')
+        receipt['siteNotified'] = notify_site(args.tag)
+        publication.write_text(json.dumps(receipt, indent=2) + '\n')
         return
     # Staging runs only after CI, packaging and collection passed in this same run.
     producer = run_provenance()
     kind = 'release candidate' if release['channel'] == 'candidate' else 'release'
     notes = args.directory / 'release-notes.md'
     notes.write_text('Linux x86_64 ' + kind + ' with individual Ubuntu DEBs, a Fedora RPM, an AppImage, a buildable source tarball and a combined ZIP.\n\n'
-                     'DEB/RPM use distro Qt. AppImage dynamically bundles Qt 6.8.3 and requires glibc 2.39 or newer. '
-                     'GNOME 50 requires the included host extension. Flatpak is tracked in issue #14.\n\n'
+                     + changes_section(args.tag, producer) +
+                     f'DEB/RPM use distro Qt. AppImage dynamically bundles Qt {APPIMAGE_QT} and requires glibc 2.39 or newer. '
+                     'Its screen recorder bundles x264, x265 and a GPL FFmpeg, so the AppImage is a GPL-2.0-or-later combined work; '
+                     'their corresponding source is the appimage-complete-source tarball. '
+                     'The AppImage carries zsync update information for the stable channel, so AppImageUpdate, '
+                     'Gear Lever and AppImageLauncher can update it with the .zsync asset. '
+                     'GNOME 50 requires the included host extension. Flatpak needs no host helper, except that Plasma Wayland loses direct screenshots; it is tracked in issue #83 (docs/flatpak.md).\n\n'
                      'Proton corresponding source accompanies the packages in two transport parts and proton-source-catalog.json. '
                      'Verify SHA256SUMS, concatenate part1 then part2, and unpack the resulting tar.gz. '
                      'The combined ZIP includes the catalog; download the two source parts separately.\n\n'
+                     'The debug tar.zst holds every build\'s split debug files by GNU build ID, for symbolizing crash records '
+                     '(docs/diagnostics.md); it is not part of the combined ZIP.\n\n'
+                     'Each package has a CycloneDX SBOM (.cdx.json) of the components it bundles, for any SBOM-aware '
+                     'vulnerability scanner (docs/release.md).\n\n'
                      'Compiled source identities, dependency inventories, licenses and SHA256 checksums accompany the builds. '
                      'Package-specific acceptance is recorded before this draft is published.\n\n'
                      'Built, tested and packaged by ' + producer['url'] + '\n')
+    if args.asset_layout == support_assets.LAYOUT:
+        notes.write_text('Linux x86_64 ' + kind + '.\n\n' + changes_section(args.tag, producer)
+                         + installer_notes(args.directory, release, producer)
+                         + 'Package-specific acceptance is required before this draft is published.\n\n'
+                         + 'Built, tested and packaged by ' + producer['url'] + '\n')
     stage_draft(args.tag, args.directory, listed, release, notes)
     (args.directory / 'staging.json').write_text(json.dumps({
         'schemaVersion': 1, 'tag': args.tag, 'channel': release['channel'],

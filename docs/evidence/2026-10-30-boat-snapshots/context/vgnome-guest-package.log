@@ -1,0 +1,9 @@
+Traceback (most recent call last):
+  File "/home/user/snapshot_recipe.py", line 700, in <module>
+    main()
+  File "/home/user/snapshot_recipe.py", line 689, in main
+    print(json.dumps(guest(a), indent=2))
+                     ^^^^^^^^
+  File "/home/user/snapshot_recipe.py", line 517, in guest
+    raise ValueError('guard did not explicitly refuse the still-held overlay')
+ValueError: guard did not explicitly refuse the still-held overlay

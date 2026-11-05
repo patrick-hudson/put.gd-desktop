@@ -1,0 +1,10 @@
+{
+  "release": "v26.1030.3203-nightly",
+  "appCommit": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+  "catalogCiRun": 41111404666,
+  "sha256": {
+    "putgd-26.1030.3203-nightly-ubuntu24.04-x86_64.deb": "2754650eb3c40d139630ff969bfc345d3ae182b457e8e660f7db73afff0a3cbe",
+    "putgd-26.1030.3203-nightly-ubuntu26.04-x86_64.deb": "adfe9f221271b936b33dccd32b073da7b791745911a36e609c7abf22ab652aee"
+  },
+  "recheckedOn": "d69"
+}

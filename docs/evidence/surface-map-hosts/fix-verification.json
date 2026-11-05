@@ -1,0 +1,75 @@
+{
+  "sourceCommit": "05a1ef263fd764177e8164ff40987a9c23045dc2",
+  "baseCommit": "a18d79e762dfa4780522e25d6e3f63df1b3a2258",
+  "kind": "Synthetic offline HTML acceptance only; no application builds, lab desktops or VMs",
+  "capturedAt": "2026-10-29T23:23:02.559446+00:00",
+  "browser": "Google Chrome 156.0.8078.47",
+  "viewport": [
+    1900,
+    1000
+  ],
+  "commands": {
+    "pytest": "PATH=/tmp/putgd-surface-hosts/venv/bin:$PATH python3 -m pytest tests/desktop/test_surface_map.py",
+    "model": "python3 tools/lab/surface_map/surface_map.py check"
+  },
+  "results": {
+    "pytest": "36 passed, 1 pre-existing test_receipt_selectors_name_real_checks failure (#661/#662)",
+    "subtestRun": "36 passed, 418 subtests passed, same single pre-existing failure",
+    "model": "model ok: 9 desktops, 22 surfaces, 394 interactions",
+    "browser": {
+      "v1": {
+        "matchedNightly": true,
+        "normalization": "Planned Aurora label removes (AppImage); no other differences normalized",
+        "views": [
+          "All required desktops/Map",
+          "All required desktops/Gaps",
+          "All required desktops/Matrix",
+          "Mint Cinnamon/X11/Map",
+          "Mint Cinnamon/X11/Gaps",
+          "Mint Cinnamon/X11/Matrix"
+        ],
+        "matrixDesktopColumns": 9
+      },
+      "unnamedGuest": {
+        "filteredGaps": "failed",
+        "headers": [
+          "Interaction",
+          "kind",
+          "driver",
+          "Aurora KDE/Wayland on f44 (VM)",
+          "Fedora GNOME/Wayland on f44 (native)",
+          "Kubuntu KDE/Wayland on f44 (VM)",
+          "Mint Cinnamon/X11 on f44 (VM)",
+          "Ubuntu GNOME/Wayland on f44 (VM)",
+          "Ubuntu GNOME/Wayland on f44 (VM) \u00b7 golden",
+          "Ubuntu GNOME/X11 on f44 (VM)"
+        ],
+        "matrixFunctional": [
+          "failed",
+          "passed"
+        ]
+      },
+      "optional": {
+        "hostRollup": "passed/reviewed-ok",
+        "popover": "\u2715\nImage editor \u00b7 Undo Ctrl+Z\neditor.undo \u00b7 button \u00b7 method editor.apply \u00b7 driver edit_acceptance \u00b7 src/ui/EditorWindow.cpp\n\tfunctional\tvisual\t\t\nAurora KDE/Wayland on d69 (VM)\t passed\t reviewed-ok\tdeb\t\nDebian KDE/Wayland on d69 (native)\t passed\t reviewed-ok\tdeb\t\nKubuntu KDE/Wayland on d69 (VM)\t passed\t reviewed-ok\tdeb\t\nMint Cinnamon/X11 on d69 (VM)\t passed\t reviewed-ok\tdeb\t\nKDE neon (Unstable/User) on d69 (VM) (optional)\t failed\t reviewed-wrong\tdeb\t\nUbuntu GNOME/Wayland on d69 (VM)\t passed\t reviewed-ok\tdeb\t\nUbuntu GNOME/X11 on d69 (VM)\t passed\t reviewed-ok\tdeb\t\noverall: passed on every required desktop \u00b7 frames reviewed and right",
+        "explicitOptionalChip": "failed/reviewed-wrong"
+      }
+    }
+  },
+  "screenshots": {
+    "fix-unnamed-annotated.png": "8006bf41deac2f1ed2d77fad2122234b30a22bdc38b5988774cc657b85f31129",
+    "fix-v1-matrix-annotated.png": "bc3326b1e5bea563c40972d54c4d9cf4539b8ae21d8277cf2a1b5aee3dd93ff1",
+    "fix-optional-annotated.png": "236d88ebe91c4a8134cd730f07e4c39ae4ce458f58aecbe3cdc524606ce20c6a"
+  },
+  "localEvidence": "/tmp/putgd-surface-fixes; raw captures, v1 snapshots, scripts and test logs retained",
+  "harnessCorrections": [
+    "Baseline module moved one directory deeper to satisfy its HERE.parents[2] path calculation.",
+    "V1 comparison normalizes only the planned Aurora label change removing (AppImage). Initial mismatch retained locally."
+  ],
+  "knownVisualLimit": "Matrix sticky column headings partly sit behind the wrapped toolbar after scrolling; screenshot asserts row verdicts through accessible button names.",
+  "followups": [
+    "https://github.com/patrick-hudson/put.gd-desktop/issues/661",
+    "https://github.com/patrick-hudson/put.gd-desktop/issues/662",
+    "https://github.com/patrick-hudson/put.gd-desktop/issues/689"
+  ]
+}

@@ -1,0 +1,1 @@
+test waits: every wait goes through tests/fixtures/Waits.h or is allowlisted

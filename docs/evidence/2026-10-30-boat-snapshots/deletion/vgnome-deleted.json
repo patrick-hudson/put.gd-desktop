@@ -1,0 +1,27 @@
+{
+  "name": null,
+  "requests": [
+    {
+      "sandboxId": "bx_zpyhj8nd",
+      "operation": {
+        "attemptCount": 0,
+        "completedAt": null,
+        "expectedBy": null,
+        "id": "bdop_62d75a3fc6e047a8b75bacdb854a3399",
+        "kind": "sandbox",
+        "reason": "explicit",
+        "requestedAt": "2026-10-30T05:49:48.302Z",
+        "stage": "removing",
+        "status": "pending",
+        "targetId": "bx_zpyhj8nd"
+      }
+    }
+  ],
+  "verified": true,
+  "finalState": "absent",
+  "verification": "boat list --all",
+  "deletedIds": [
+    "bx_zpyhj8nd"
+  ],
+  "verifiedAt": 1793339390.600782
+}

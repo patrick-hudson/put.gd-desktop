@@ -1,0 +1,32 @@
+{
+  "completed": true,
+  "files": {
+    "app-socket-preflight.json": "7c98c956e1c2c2d3731834a261ce2b33f852e25af7e1a41d51dbc3c5e9f7bd21",
+    "app-started.ppm": "7764778ca0f62adc94c545a30d99d82edfd710689ed0e4319ccecd595d83dc72",
+    "capacity.json": "9fa33e1db9972cddea0cee789e56370ff9805f8829a31393d0af06bb0cd8efe4",
+    "cleanup-evidence.json": "8dd50cfcb1b074a4e3d747b403beb4e5175e38635bfc5fdefc7f3a2a3555a73b",
+    "completion.json": "c258d480fb1f259debbb408865551965a8e9c10bbea73af1c8e7caee5facf6c7",
+    "controller.json": "aac7725ac718c06739fa3b2f25bd576d38c3daf1fd35768ee7fe85de80391614",
+    "desktop-after.ppm": "9b7f1d185bd2c5fb6040e8b815d9b79bdc2b008aeda626803d4a6d939ac92c64",
+    "desktop.ppm": "20a83186d61d5c5036844b6027eca6bf20816533718e08723f9248290663ac21",
+    "guest-capacity.json": "f35584c7b30534dbc978324402ac1b6487e6766917955e71d60f14819f9b6b3f",
+    "held-overlay-refusal.json": "98f4cbc78f626c519df350d4d764db4baac42937f266de9a09e2c3a5f68c0e0d",
+    "idle-policy.json": "9098f2c574b87e64286d032b7e743267d6c817292b48e74625bbde698cc93211",
+    "install.json": "3d4a469df62daa2545afb5c4b8a0203c314f2ed1a6fdf90266e035bea0cf6fde",
+    "installed-version.json": "644bb06e9eddd7326be742d40336d75c147f86342b06938b5f7e4e13aab64b1c",
+    "launch.json": "29372542cf5d54cc3facc00386136dcf0070a5aafc5522e7dca7311cba66b8b3",
+    "package-artifact.json": "00ebb1d443bb834a551b8c079aec7c9098b5c60f56f80ac41b2ea14a5cd0d7c9",
+    "platform.json": "b6acfdad7139f0e578a8a7369317d7f0c72fac1b95970956952ef1aea8ab127e",
+    "probes.log": "b58cb0d97a8fdffdbeca2e6b3f39741086776f5eb80eb7aa4521642a057b0708",
+    "reset.json": "7b26fefedf814cf3edd5fdf641a188f7d189f1266aad9c5081df897e8073a277",
+    "show.json": "18ddc57dfcb931d142fbbc5a07a320bb0a26c92918a587aa8de796bd8dd91742",
+    "socket-preflight.json": "49bffd7d293f412101c5968ae398c9a55058762b1f6ff43b11d4f177e67fb835",
+    "start.json": "ea258500572ef4441a40013861b4cdd17b09e0ffebe2890448ed771dfa410c41",
+    "view-state.json": "1a5666580c8c18c4e4c3a1183dffb608036ac55583426d29af445407ca4787dc"
+  },
+  "kind": "vm-overlay-cleanup-evidence",
+  "outcome": "passed",
+  "run": "/home/user/lab-driver/work/lab-runs/fv1",
+  "runId": "1e9c9192-0374-4c82-ab76-968db4ebd6f4",
+  "schemaVersion": 1
+}

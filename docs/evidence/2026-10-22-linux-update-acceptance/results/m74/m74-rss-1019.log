@@ -1,0 +1,4 @@
+start 02:03:40Z load 1.03 1.05 0.99
+appimage 26.1022.1019-nightly A median 29.39 pss 23.64 B median 29.48 pss 23.73 tls [] load [1.263671875, 1.0927734375, 1.01806640625]
+package 26.1022.1019-nightly A median 28.62 pss 18.3 B median 28.64 pss 18.39 tls [] load [1.13232421875, 1.16015625, 1.06982421875]
+end 02:18:02Z load 1.29 1.21 1.11; putgd /home/patrick/work/put.gd-ua/tool/rss_n.sh: line 29: rpm: command not found

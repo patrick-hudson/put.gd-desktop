@@ -1,0 +1,14 @@
+{
+  "name": "cinnamon-x11-dual",
+  "desktop": "X-Cinnamon",
+  "session": "x11",
+  "qt_platform": "xcb",
+  "image": "cinnamon-x11",
+  "memory_mib": 6144,
+  "cpus": 2,
+  "video": "virtio-vga,max_outputs=2",
+  "display_heads": 2,
+  "guest_user": "lab",
+  "status": "requires-graphical-acceptance",
+  "session_process": "cinnamon"
+}

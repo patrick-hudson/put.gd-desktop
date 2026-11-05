@@ -1,0 +1,8 @@
+2026-10-23T19:22:14Z Ubuntu VM overlay launch (lab.py launch gnome-wayland, golden transfer-0d2922e34f4b, run /home/patrick/work/put.gd-qt418/vm/ubu-qt418, ssh 22222, vnc 5922; fork of appimage-qt-bump-418)
+2026-10-23T19:24:32Z #487: typed d69 bootstrap public key into the guest authorized_keys over VNC (terminal, then exit)
+2026-10-23T19:27:50Z launch done (booted-not-accepted)
+2026-10-23T19:28:13Z guest prep: removed old putgd DEB 0.1.1~dev.63, installed gstreamer1.0-gtk3, copied run root to /home/lab/put.gd-qt418/afa (CI image verified), 1058 GNOME extension installed as a user copy (CI run has no GNOME ZIP artifact)
+2026-10-23T19:28:47Z guest: extension enabled; reboot through the session (gnome-session-quit --reboot --no-prompt)
+2026-10-23T19:30:18Z wall: tunnel putgd-vm-ubuntu-qt418 ws:5991 -> d69:5922 started; tile Ubuntu 26.04 GNOME VM qt418 (d69) added
+2026-10-23T19:49:00Z F (ubuntu-vm): prefix acceptance/qt418/ listed with key set 2 after phase B
+2026-10-23T19:53:46Z fork done: A-K + clipfile + F on the CI image, labh on the lab nightly; labupd refused by design (update information differs); VM overlay left RUNNING for the parent, tunnel putgd-vm-ubuntu-qt418 ws:5991 + tile left up; nothing of put.gd running in the guest

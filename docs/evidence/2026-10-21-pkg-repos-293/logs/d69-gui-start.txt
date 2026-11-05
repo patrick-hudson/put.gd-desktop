@@ -1,0 +1,30 @@
+{"patch": true}
+{
+ "check": true,
+ "error": {
+  "code": "",
+  "details": {},
+  "message": ""
+ },
+ "latest": "0.1.1-nightly.811",
+ "current": "0.1.1-nightly.810",
+ "notifies": false,
+ "action": {
+  "channel": "nightly",
+  "command": "sudo apt update && sudo apt upgrade",
+  "file": "/etc/apt/sources.list.d/putgd.sources",
+  "kind": "software-updates",
+  "manager": "apt",
+  "repository": "managed",
+  "updater": {
+   "arguments": [
+    "--mode=updates"
+   ],
+   "id": "gnome-software",
+   "name": "GNOME Software",
+   "program": "/usr/bin/gnome-software"
+  }
+ }
+}
+{"error": {"code": "", "details": {}, "message": ""}, "ok": true, "requestId": "153033a6-29d0-4b3f-8aff-01ca9fdd3d19", "result": {"shown": "settings"}, "schemaVersion": 1}
+{"ok": true, "frame": [1920, 1080], "crop": [237, 14, 1443, 1019], "edges": {"top": 1.0, "bottom": 1.0, "left": 1.0, "right": 1.0}, "file": "/home/patrick/work/put.gd-pkg293-lab/evidence/d69-p5-settin

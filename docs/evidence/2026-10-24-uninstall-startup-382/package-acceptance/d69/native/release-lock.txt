@@ -1,0 +1,7 @@
+d69 (Debian 13 Plasma Wayland): released
+  Codex (codex-i382n-acceptance), acquired 2026-10-24T06:09:38Z
+  purpose: #382 corrected startup-link uninstall/login acceptance; work/i382n
+  1 item(s) that were there before the lock stay
+  note: 1 process(es) outside the desktop session (no DISPLAY or WAYLAND_DISPLAY; shared SSH work): 978298
+  receipt on the host: /home/patrick/putgd-lab/locks/history/2026-10-24T06-14-51Z-release.json
+  Tell the next session in the queue and your coordinator

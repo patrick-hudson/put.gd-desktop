@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "receipt": "raw/m74/b2/growth.json",
+  "publishedSource": "lab/attempts/growth-native_acceptance.py",
+  "publishedSha256": "ef9c28a5db91cd57fb41f9e4e3a5d88c53baf53fe77a9fff87ec234b148a792c",
+  "frozenRevision": "00ab777f2413a1fbd7670a7259dc614eced896e6",
+  "frozenSha256": "7026a15a0ebcb5f6e25a0feb2679a8f6ee241624e8ed8c7bdd950b790a9a6333",
+  "recoveredFrom": "m74/evidence.tar.gz:staging/src/tools/lab/native_acceptance.py",
+  "changedTopLevelDefinitions": [
+    "quit_action"
+  ],
+  "compatibility": "Only quit_action and the new QUIT_LABEL constant differ; every other existing top-level function/class has identical AST, including fixture growth. Existing SQL integrity/count postchecks remain historical observations; no new fixture or campaign was run."
+}

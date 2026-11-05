@@ -1,0 +1,42 @@
+{
+  "host": "kubuntu",
+  "virtualization": "none",
+  "uptime": "142586.28 519792.50",
+  "load": [
+    "5.31",
+    "5.12",
+    "3.91"
+  ],
+  "gpu": [
+    "00:02.0 VGA compatible controller [0300]: Intel Corporation Skylake-S GT2 [HD Graphics 530] [8086:1912] (rev 06)"
+  ],
+  "outputs": {
+    "/sys/class/drm/card1-HDMI-A-3/status": "disconnected",
+    "/sys/class/drm/card1-HDMI-A-1/status": "connected",
+    "/sys/class/drm/card1-DP-2/status": "disconnected",
+    "/sys/class/drm/card1-HDMI-A-2/status": "disconnected",
+    "/sys/class/drm/card1-DP-3/status": "disconnected",
+    "/sys/class/drm/card1-DP-1/status": "disconnected"
+  },
+  "processes": [
+    {
+      "socket": "/tmp/n32/runtime/putgd/session.sock",
+      "pid": 362876,
+      "uid": 1000,
+      "start": "14248199",
+      "exe": "/usr/bin/putgd",
+      "exeSha256": "78b0b4ae80629f98b365c5c080691b3c77d4c8aace5ac24e11bf5f2c02a7f3fd",
+      "environment": {
+        "XDG_CONFIG_HOME": "/tmp/n32/config",
+        "XDG_DATA_HOME": "/tmp/n32/fx-211be3de/data",
+        "XDG_STATE_HOME": "/tmp/n32/state",
+        "XDG_CACHE_HOME": "/tmp/n32/cache",
+        "XDG_RUNTIME_DIR": "/tmp/n32/runtime",
+        "QT_QPA_PLATFORM": "wayland",
+        "XDG_SESSION_TYPE": "wayland",
+        "DISPLAY": ":0",
+        "WAYLAND_DISPLAY": "/run/user/1000/wayland-0"
+      }
+    }
+  ]
+}

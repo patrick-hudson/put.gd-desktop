@@ -1,0 +1,4 @@
+d69 (Debian 13 Plasma Wayland): Nothing new is left on the host. Finish the manual steps (workstation forwards, re-login after an extension copy), then rerun with --verified-clean
+  already there when the lock was taken:
+    process 2008860: gpg-agent --homedir /home/patrick/.local/share/putgd-signer/gnupg --use-standard-socket --daemon
+  note: 1 process(es) outside the desktop session (no DISPLAY or WAYLAND_DISPLAY; shared SSH work): 978298

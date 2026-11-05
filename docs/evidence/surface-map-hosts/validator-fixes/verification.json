@@ -1,0 +1,50 @@
+{
+  "codeCommit": "bd22544cdbd66e2f6f2d0831ff4a6d3adc8fcec1",
+  "beforeCommit": "9ad7a2c9085e066407bd1c3f6c05c9d50ea0b9b0",
+  "nightlyCommit": "5985e9043ea81a3ac33d2931203384e40bde035e",
+  "host": "patrick-Precision-5540",
+  "platform": "Linux-6.14.0-37-generic-x86_64-with-glibc2.39",
+  "session": "isolated headless Chromium, synthetic offline HTML",
+  "privateEvidenceRoot": "/tmp/smv-20261029",
+  "testedCheckout": "/home/patrick/.t3/worktrees/put.gd/t3-c30017f0",
+  "python": "3.12.3",
+  "testEnvironment": "Existing /tmp/putgd-surface-hosts/venv pytest and Playwright; distro Pillow and /usr/bin/google-chrome; no package installation",
+  "commands": [
+    "PATH=/tmp/putgd-surface-hosts/venv/bin:$PATH python3 -m pytest tests/desktop/test_surface_map.py",
+    "python3 tools/lab/surface_map/surface_map.py check",
+    "PYTHONPATH=/tmp/putgd-surface-hosts/venv/lib/python3.12/site-packages python3 /tmp/smv-20261029/render-check.py --output /tmp/smv-20261029/render-stable"
+  ],
+  "results": {
+    "testsPassed": 44,
+    "model": "9 desktops, 22 surfaces, 394 interactions",
+    "v1SemanticComparisons": 6,
+    "mapGeometryMeasurements": 10,
+    "afterOverlapPx": 0,
+    "pageErrors": []
+  },
+  "filesSha256": {
+    "README.md": "f1a5261605b26d2553bb791800a3aeebd3f34e1f2964bfd6011789693b602789",
+    "after-1600-annotated.png": "baed68b5b822058b971ada1248e9a356f48560d5fd5635dfc9dc41220aeaa6ca",
+    "after-520-annotated.png": "38712ec604504f3e3c56a37d6e8e4f16960b41c75d37ff8fb3052ae2dfad7c43",
+    "after-760-annotated.png": "38fef1c9492a6d105f9ce347213d2ecb6a6051097cba5297c13307b375973b98",
+    "before-1600-annotated.png": "4d7931489b9f117668faef72a73f4fa1d2c79805e019283eeee1c40ce59e5160",
+    "before-520-annotated.png": "2b77079d443ea99c0bf639c127a05e4b870bca342ef7c1c5a1c78cdc70519025",
+    "before-760-annotated.png": "9ba3236cb8f59d44053054fabb22ebd1d1bf29c8401ac294e58509707a4fe2cf",
+    "browser-checks.json": "e7a6c856215214d852c0e94c00c44dad5d0ab6cce76cba4f6aa399bdf3950a08",
+    "first-attempts.txt": "c0013aec6151fc7594322ac8b0afd4cc36a6ba4d495aeef54cfc366b866d501b",
+    "model-check.txt": "3541ee7b44e2010c6c91a111a536950dca8675dd22391d6b8c7fb227dde6c154",
+    "pytest.txt": "3106ebedd5ab28918f2cb035fe1d63a1e22a05fda587137592016ebab9c4f9d0",
+    "render-check.py": "a6a3c2b1fdc617ff51b184104344253bad805007fdf795655aeb7ac76688955d",
+    "v1-snapshots.json.gz": "1e3983aa34c74553d38206df3bca72fd839b11d2cce18699035d2a0e24fa1ab3",
+    "v1.json": "7cc2336e34ddf907be318e4be5f6866886b38074e47cadeba91f7be9fa2cf753"
+  },
+  "privateRawSha256": {
+    "after-1600-raw.png": "20f59478cf078d2dbbaadcf5f9c7722f3aeca3f66fcc7e3963a4cf8c7512e9e3",
+    "after-520-raw.png": "06119a05d1af4fece9e07349754adb1535c1de9a08f06587aaaa6c59593dcc6f",
+    "after-760-raw.png": "0febb1a7562eaebc993bbd4df35368dcb0a29297eafa6d7b8b5849d67f3ab5f6",
+    "before-1600-raw.png": "77f39a17c5bf6e697d1091c9f2ef0155cac54a9fc73e997c3bae7ea26f45571c",
+    "before-520-raw.png": "aa627e307aebc5cd50e62646fab4d79c74f432b70c25991e5fd29f3f9de021cb",
+    "before-760-raw.png": "6854626344755558e82f942307fbf9ae71d359b039801492b2b9899264334c77"
+  },
+  "scope": "Synthetic offline map only; no app builds, lab desktops, VMs, providers or session sockets."
+}

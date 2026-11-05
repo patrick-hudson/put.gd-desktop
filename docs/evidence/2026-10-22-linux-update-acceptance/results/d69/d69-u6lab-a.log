@@ -1,0 +1,20 @@
+### remove the live put.gd
+Removing putgd (26.1022.1019~nightly) ...
+Purging configuration files for putgd (26.1022.1019~nightly) ...
+### install lab nightly L1 from its file
+No VM guests are running outdated hypervisor (qemu) binaries on this host.
+u6lab-1-L1 26.1019.1019-nightly nightly repository latest 26.1019.1019-nightly available False older None repo /usr/share/putgd/repo/putgd-nightly.sources 26.1019.1019~nightly
+copied: sudo -n install -m 644 /usr/share/putgd/repo/putgd-stable.sources /etc/apt/sources.list.d/putgd.sources
+copied: sudo -n apt-get update
+copied: sudo -n apt-get install -y --allow-downgrades putgd/stable
+### sudo -n install -m 644 /usr/share/putgd/repo/putgd-stable.sources /etc/apt/sources.list.d/putgd.sources
+### sudo -n apt-get update
+Fetched 155 kB in 1s (244 kB/s)
+Reading package lists...
+u6lab-2-stable-older-wait 26.1019.1019-nightly stable repository latest 26.1018.1020 available False older {'command': 'sudo apt install --allow-downgrades putgd/stable', 'version': '26.1018.1020'} repo /usr/share/putgd/repo/putgd-stable.sources 26.1019.1019~nightly
+### sudo -n apt-get install -y --allow-downgrades putgd/stable
+ patrick @ user service: dbus.service[959,1572], evolution-addressbook-factory.service[1627], evolution-calendar-factory.service[1615], evolution-source-registry.service[1538], putgd-ua-d69-lab-u6lab-1-L1-1792715665.service[2492893], wireplumber.service[963]
+
+No VM guests are running outdated hypervisor (qemu) binaries on this host.
+u6lab-3-S1 26.1018.1020 stable repository latest 26.1018.1020 available False older None repo /usr/share/putgd/repo/putgd-stable.sources 26.1018.1020
+watch on

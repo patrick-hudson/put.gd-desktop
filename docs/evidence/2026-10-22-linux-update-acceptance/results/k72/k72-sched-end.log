@@ -1,0 +1,2 @@
+sched watch 2026-10-23T00:05:02Z 2026-10-23T00:21:00Z putgdNotify [] [('Update check finished', '26.1022.1019-nightly', None)]
+sched cleanup True

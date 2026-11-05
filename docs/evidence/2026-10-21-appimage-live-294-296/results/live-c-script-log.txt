@@ -1,0 +1,4 @@
+put.gd login start: starting /home/lab/Applications/putgd-0.1.1-nightly.847-x86_64.AppImage, which is newer than /home/lab/Applications/putgd-0.1.1-nightly.842-x86_64_5473bf3329fec6e0b37f1cea57a735ae.AppImage
+    PID    PPID COMMAND
+  11026   10690 /opt/appimagelauncher.AppDir/usr/lib/x86_64-linux-gnu/appimagelauncher/binfmt-bypass /home/lab/Applications/putgd-0.1.1-nightly.847-x8
+/usr/lib/x86_64-linux-gnu/cinnamon-session-binary --session cinnamon

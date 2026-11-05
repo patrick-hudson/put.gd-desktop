@@ -1,0 +1,12 @@
+{
+  "codeCommit": "0227cfa28565086dd79d2ac8f93407d0429f3513",
+  "baseCommit": "5985e9043ea81a3ac33d2931203384e40bde035e",
+  "files": {
+    "tools/lab/lab.py": "851e18ac7e4ec9406ed97b326d67bcf8f4d7563e8fd32f30718499393c0a4120",
+    "tools/lab/package_install.py": "be5ef95237fe94c21e19606bd7243f97d6c28f7f38d5c47ec1dcd1d1f6bda61c",
+    "tools/lab/overlay_cleanup.py": "4b541bd59df1e7067083095385d856a51851f761425749045551ebd9a76db84b"
+  },
+  "packageSha256": "f5bd05537d8e2931f464fe0a54a52dd638f6fd3b32b2134dfef5785812d1c5ec",
+  "packageVersion": "0.1.1~dev.907+g0071acafc975",
+  "scope": "Tooling validation with the named snapshot Debug DEB; no current product desktop or release acceptance"
+}

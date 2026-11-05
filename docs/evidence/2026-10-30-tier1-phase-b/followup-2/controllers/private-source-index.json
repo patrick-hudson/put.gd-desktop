@@ -1,0 +1,10 @@
+{
+  "files": [
+    {
+      "path": "work/tier1b/cin-delete-r3.py",
+      "sha256": "b87b72be0657e86df9a18d245366d5ddcfab698d36691f3f9f0a1f8f8df625cf",
+      "purpose": "Exact retained S3 History UI deletion, guarded clipboard, authenticated origin absence and fresh public status; no new upload",
+      "reasonPrivate": "SDK credential-argument source syntax triggers the conservative evidence scanner (#990); no credential values are in source"
+    }
+  ]
+}

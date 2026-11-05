@@ -1,0 +1,30 @@
+{
+ "menu": {
+  "label": "k72-after-tray-menu",
+  "components": [
+   {
+    "blocks": 1074,
+    "box": [
+     1504,
+     688,
+     1704,
+     1032
+    ]
+   }
+  ],
+  "colour": [
+   244,
+   244,
+   244
+  ],
+  "inner": [
+   1509,
+   690,
+   1702,
+   1025
+  ],
+  "changedShare": 1.0,
+  "kept": "/home/patrick/work/put.gd-tray374lab/p-k72-after/crops/k72-after-tray-menu.png"
+ },
+ "ui": null
+}

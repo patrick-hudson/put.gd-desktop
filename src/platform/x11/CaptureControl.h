@@ -9,6 +9,8 @@ class CaptureControl final:public QObject {
  Q_OBJECT
 public:
  static constexpr qsizetype maximumFrameBytes=128*1024;
+ // A helper's terminal error: its reason text and compact JSON details.
+ static constexpr qsizetype reasonChars=256,detailBytes=4096;
  explicit CaptureControl(QIODevice&,QObject* parent=nullptr);
  bool send(const QString&,const QJsonObject&);
  void stop();

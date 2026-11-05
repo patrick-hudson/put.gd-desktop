@@ -1,0 +1,396 @@
+{
+ "editorId": "2070f087-c278-4fb7-89f7-a2bfacdb84e9",
+ "size": [
+  1120,
+  680
+ ],
+ "blur": [
+  336,
+  217,
+  201,
+  231
+ ],
+ "solid": [
+  582,
+  244,
+  156,
+  149
+ ],
+ "apply": true,
+ "inspect": {
+  "canRedo": false,
+  "canUndo": true,
+  "crop": [
+   0,
+   0,
+   1120,
+   680
+  ],
+  "destination": "Upload to Loopback fixture",
+  "height": 680,
+  "historyTruncated": false,
+  "modified": true,
+  "operationId": "2070f087-c278-4fb7-89f7-a2bfacdb84e9",
+  "phase": "editing",
+  "shapes": [
+   {
+    "id": 1,
+    "kind": "blur",
+    "rect": [
+     336,
+     217,
+     201,
+     231
+    ],
+    "strength": 24
+   },
+   {
+    "id": 2,
+    "kind": "redact",
+    "rect": [
+     582,
+     244,
+     156,
+     149
+    ]
+   }
+  ],
+  "width": 1120
+ },
+ "window": {
+  "label": "editor",
+  "components": [
+   {
+    "blocks": 13738,
+    "box": [
+     48,
+     48,
+     1248,
+     912
+    ]
+   },
+   {
+    "blocks": 36,
+    "box": [
+     192,
+     1040,
+     280,
+     1080
+    ]
+   },
+   {
+    "blocks": 9,
+    "box": [
+     1312,
+     256,
+     1352,
+     280
+    ]
+   },
+   {
+    "blocks": 1,
+    "box": [
+     72,
+     352,
+     80,
+     360
+    ]
+   },
+   {
+    "blocks": 1,
+    "box": [
+     80,
+     808,
+     88,
+     816
+    ]
+   },
+   {
+    "blocks": 1,
+    "box": [
+     1280,
+     264,
+     1288,
+     272
+    ]
+   }
+  ],
+  "colour": [
+   252,
+   0,
+   252
+  ],
+  "inner": [
+   129,
+   200,
+   1167,
+   842
+  ],
+  "changedShare": 1.0,
+  "ownShare": 0.001,
+  "kept": null
+ },
+ "full": "/home/patrick/work/put.gd-afa/runs/m74/full/editor.png",
+ "editorCommands": [
+  "inspect",
+  "apply",
+  "preview",
+  "saveCopy",
+  "fileDialog",
+  "submit",
+  "cancel",
+  "raise"
+ ],
+ "dialogOpen": {
+  "error": {
+   "code": "",
+   "details": {},
+   "message": ""
+  },
+  "ok": true,
+  "requestId": "3c9610da-2e8a-4c35-b35c-494055f41f7d",
+  "result": {
+   "backend": "portal",
+   "fallbackReason": null,
+   "last": null,
+   "mode": "save",
+   "open": true,
+   "operationId": "2070f087-c278-4fb7-89f7-a2bfacdb84e9",
+   "parentWindow": "x11:4e00007",
+   "title": "Save a copy"
+  },
+  "schemaVersion": 1
+ },
+ "dialogState": {
+  "backend": "portal",
+  "fallbackReason": null,
+  "last": null,
+  "mode": "save",
+  "open": true,
+  "operationId": "2070f087-c278-4fb7-89f7-a2bfacdb84e9",
+  "parentWindow": "x11:4e00007",
+  "title": "Save a copy"
+ },
+ "dialogShot": {
+  "label": "save-copy-dialog",
+  "components": [
+   {
+    "blocks": 14728,
+    "box": [
+     48,
+     48,
+     1240,
+     912
+    ]
+   },
+   {
+    "blocks": 15,
+    "box": [
+     232,
+     1040,
+     280,
+     1080
+    ]
+   }
+  ],
+  "colour": [
+   252,
+   252,
+   252
+  ],
+  "inner": [
+   94,
+   95,
+   1183,
+   906
+  ],
+  "changedShare": 1.0,
+  "kept": "/home/patrick/work/put.gd-afa/runs/m74/crops/save-copy-dialog.png"
+ },
+ "dialogFull": "/home/patrick/work/put.gd-afa/runs/m74/full/save-copy-dialog.png",
+ "dialogResult": {
+  "backend": null,
+  "fallbackReason": null,
+  "last": {
+   "backend": "portal",
+   "error": null,
+   "fallbackReason": null,
+   "mode": "save",
+   "path": "/home/patrick/Pictures/afa-m74-edited.png",
+   "status": "chosen"
+  },
+  "mode": null,
+  "open": false,
+  "operationId": "2070f087-c278-4fb7-89f7-a2bfacdb84e9",
+  "parentWindow": null,
+  "title": null
+ },
+ "savedCopy": {
+  "exists": true,
+  "bytes": 3800,
+  "size": [
+   1120,
+   680
+  ],
+  "solidRegion": {
+   "mean": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "spread": 0
+  },
+  "blurChangedShare": 0.627
+ },
+ "upload": {
+  "id": "2070f087-c278-4fb7-89f7-a2bfacdb84e9",
+  "state": "completed",
+  "copyStatus": "copied",
+  "items": [
+   {
+    "name": "Screen-Capture-2026-10-21-13-43-37.png",
+    "mime": "image/png",
+    "uploadStatus": "uploaded",
+    "link": "http://127.0.0.1:34555/fixture/afa/Screen-Capture-2026-10-21-13-43-37.png",
+    "local": {
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     },
+     "path": "/home/patrick/work/put.gd-afa/runs/m74/archive/images/Screen-Capture-2026-10-21-13-43-37.png",
+     "status": "saved"
+    }
+   }
+  ],
+  "error": {
+   "code": "",
+   "details": {},
+   "message": ""
+  }
+ },
+ "uploaded": {
+  "size": [
+   1120,
+   680
+  ],
+  "solidRegion": {
+   "mean": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "spread": 0
+  },
+  "blurChangedShare": 0.627,
+  "unchangedOutsideShare": 1.0
+ },
+ "redactionVerified": true,
+ "clipboard": "http://127.0.0.1:34555/fixture/afa/Screen-Capture-2026-10-21-13-43-37.png",
+ "linkCopied": true,
+ "notification": {
+  "logged": [
+   {
+    "category": "putgd.ui",
+    "fields": {
+     "itemId": null,
+     "notificationId": 2,
+     "notificationText": "Uploaded. Link copied to the clipboard. Click to open in browser.",
+     "operationId": null,
+     "summary": "operation_completed",
+     "title": "put.gd \u2014 completed",
+     "warning": false
+    },
+    "level": "info",
+    "message": "Notification shown",
+    "pid": 9724,
+    "process": "putgd",
+    "time": "2026-10-21T18:43:54.002Z",
+    "v": 1
+   }
+  ],
+  "banner": {
+   "label": "edit-upload-notification",
+   "components": [
+    {
+     "blocks": 13752,
+     "box": [
+      48,
+      48,
+      1248,
+      912
+     ]
+    },
+    {
+     "blocks": 608,
+     "box": [
+      1416,
+      8,
+      1904,
+      88
+     ]
+    },
+    {
+     "blocks": 36,
+     "box": [
+      192,
+      1040,
+      280,
+      1080
+     ]
+    },
+    {
+     "blocks": 9,
+     "box": [
+      1312,
+      256,
+      1352,
+      280
+     ]
+    },
+    {
+     "blocks": 1,
+     "box": [
+      72,
+      352,
+      80,
+      360
+     ]
+    },
+    {
+     "blocks": 1,
+     "box": [
+      80,
+      808,
+      88,
+      816
+     ]
+    }
+   ],
+   "colour": [
+    32,
+    32,
+    36
+   ],
+   "inner": [
+    1421,
+    14,
+    1899,
+    82
+   ],
+   "changedShare": 1.0,
+   "kept": "/home/patrick/work/put.gd-afa/runs/m74/crops/edit-upload-notification.png"
+  },
+  "full": "/home/patrick/work/put.gd-afa/runs/m74/full/edit-upload-notification.png",
+  "clicked": [
+   1660,
+   36
+  ],
+  "dbusSignals": [
+   "NameAcquired",
+   "NameLost"
+  ],
+  "actionInvoked": [],
+  "openedUrls": []
+ }
+}

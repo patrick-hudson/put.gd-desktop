@@ -1,0 +1,113 @@
+{
+ "before": {
+  "settingsOpen": null,
+  "uiShownBefore": []
+ },
+ "show": true,
+ "seconds": 3.79,
+ "calls": 1,
+ "viewState": {
+  "appearance": {
+   "desktop": "dark",
+   "desktopSource": "portal",
+   "scheme": "dark",
+   "theme": "system",
+   "tokens": {
+    "accent": "#6ea8fe",
+    "accentHover": "#8dbbff",
+    "bg": "#111317",
+    "border": "#2a2f38",
+    "borderStrong": "#343a45",
+    "danger": "#f07a6a",
+    "dangerHover": "#f4a497",
+    "dangerSurface": "#3a2326",
+    "icon": "#9bbcff",
+    "iconSecondary": "#526386",
+    "link": "#8dbbff",
+    "onAccent": "#111317",
+    "selected": "#232838",
+    "success": "#4cc38a",
+    "successSurface": "#1c3328",
+    "surface": "#181b21",
+    "surfaceRaised": "#20242c",
+    "text": "#e7e9ee",
+    "textDisabled": "#6f7682",
+    "textMuted": "#9aa1ad",
+    "textSecondary": "#c4c9d2",
+    "warning": "#e5a443",
+    "warningSurface": "#3a3020"
+   }
+  },
+  "settings": {
+   "captureRouting": {
+    "clipboard": {
+     "destination": "Loopback fixture",
+     "destinationEnabled": false,
+     "effectivePublicationMode": "share",
+     "inherited": true,
+     "profileId": "afa-fixture",
+     "publicationMode": "default",
+     "sharing": "Share and copy a link (destination default)",
+     "sharingEnabled": false,
+     "status": "Uploads to the selected destination and saves a local copy."
+    },
+    "default": {
+     "destination": "Loopback fixture",
+     "destinationEnabled": true,
+     "effectivePublicationMode": "share",
+     "profileId": "afa-fixture",
+     "publicationMode": "default",
+     "sharing": "Use destination default",
+     "sharingEnabled": true,
+     "status": "Uploads to the selected destination and saves a local copy."
+    },
+    "desktop": {
+     "destination": "Loopback fixture",
+     "destinationEnabled": false,
+     "effectivePublicationMode": "share",
+     "inherited": true,
+     "profileId": "afa-fixture",
+     "publicationMode": "default",
+     "sharing": "Share and copy a link (destination default)",
+     "sharingEnabled": false,
+     "status": "Uploads to the selected destination and saves a local copy."
+    },
+    "edit": {
+     "destination": "Loopback fixture",
+     "destinationEnabled": false,
+     "effectivePublicationMode": "share",
+     "inherited": true,
+     "profileId": "afa-fixture",
+     "publicationMode": "default",
+     "sharing": "Share and copy a link (destination default)",
+     "sharingEnabled": false,
+     "status": "Uploads to the selected destination and saves a local copy."
+    },
+    "region": {
+     "destination": "Loopback fixture",
+     "destinationEnabled": false,
+     "effectivePublicationMode": "share",
+     "inherited": true,
+     "profileId": "afa-fixture",
+     "publicationMode": "default",
+     "sharing": "Share and copy a link (destination default)",
+     "sharingEnabled": false,
+     "status": "Uploads to the selected destination and saves a local copy."
+    },
+    "window": {
+     "destination": "Loopback fixture",
+     "destinationEnabled": false,
+     "effectivePublicationMode": "share",
+     "inherited": true,
+     "profileId": "afa-fixture",
+     "publicationMode": "default",
+     "sharing": "Share and copy a link (destination default)",
+     "sharingEnabled": false,
+     "status": "Uploads to the selected destination and saves a local copy."
+    }
+   },
+   "section": 0
+  }
+ },
+ "full": "/var/home/lab/work/put.gd-afa2/runs/aurora-vm/full/aurora-vm-348-first-open.png"
+}

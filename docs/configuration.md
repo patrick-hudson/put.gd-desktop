@@ -1,10 +1,108 @@
 # Configuration
 
-The resident app owns one `config.json` under Qt's `AppConfigLocation`. GUI and CLI
+The resident app owns one `config.json` in its configuration folder. GUI and CLI
 report the exact path. No separate YAML file or preferences database exists.
 The schema is [config.schema.json](../schemas/config.schema.json). The shared
 `SettingsService` is the authoritative validator, including registered provider rules,
 absolute paths, shortcut syntax, and cross-profile references.
+
+## Locations
+
+| Folder | Linux |
+| --- | --- |
+| Configuration: `config.json` and its `config.json.lock` | `$XDG_CONFIG_HOME/putgd`, normally `~/.config/putgd` |
+| Data: `history.sqlite`, `artifacts/`, `previews/`, `destination-tests/`, editor and recording staging, `resident.lock` | `$XDG_DATA_HOME/putgd`, normally `~/.local/share/putgd` |
+
+These are Qt's `GenericConfigLocation` and `GenericDataLocation` plus `putgd`, so they
+do not depend on Qt's organization or application name. The screen-recording helper
+keeps its portal restore token in `putgd-record/` inside the data folder
+([recording](recording.md)). The resident makes both folders owner-only.
+
+Releases up to 0.1.1 and earlier nightlies used Qt's app-scoped locations with the
+organization and application both named `putgd`, which doubled the name:
+`~/.config/putgd/putgd/config.json` and `~/.local/share/putgd/putgd/`. The resident
+moves that layout at startup, after a second launch has handed off to a running
+resident and before settings or the journal open. Each folder is decided on its own:
+
+- If the new folder is not yet in use (configuration: no `config.json`; data: no
+  `history.sqlite`), the earlier folder is renamed to `.putgd-migration` inside the new
+  folder, each entry is renamed into place, and the emptied staging folder is removed.
+  Every step is a rename on one filesystem; nothing is copied or replaced. If put.gd
+  stops part way, the next start finishes the move before opening anything.
+- If the new folder is already in use, neither folder changes. put.gd uses the new
+  one and reports the earlier folder as `legacyPath`.
+- An earlier folder that is a symbolic link, or that cannot be renamed, stays in use
+  (`legacy_active`). Move its contents yourself while put.gd is stopped.
+- A staged entry whose name already exists in the new folder stays staged
+  (`conflict`, with `stagingPath` and `conflicts`); nothing is replaced.
+- While an earlier resident still holds its journal lock, startup stops with
+  `storage_busy` and nothing moves. A stale lock from a crashed resident is released.
+
+Journal records store absolute artifact and preview paths. When the journal has moved
+with its folder, it reads them under the folder it is in now, so retained artifacts,
+previews and queued uploads keep working.
+
+`diagnostics.locations` reports `config` and `data`, each with `path` (the folder in
+use) and `state`: `current`, `migrated`, `legacy_retained`, `legacy_active` or
+`conflict`, plus `legacyPath`, `stagingPath`, `conflicts` or `reason` when they apply.
+The Settings window shows the same diagnostics and the configuration file path.
+
+## Launch at login and uninstall (Linux)
+
+**Settings → General → Launch at login** is off by default. Enabling it writes
+put.gd's managed entry at `$XDG_CONFIG_HOME/autostart/putgd.desktop` (normally
+`~/.config/autostart/putgd.desktop`) and a managed startup script at
+`$XDG_DATA_HOME/putgd/login/start.sh`.
+
+After this version has run with Launch at login enabled, uninstalling the
+DEB/RPM or deleting the last matching AppImage removes these managed startup
+files while preserving configuration and user data. For an
+active account, a user-session file watch performs cleanup even if put.gd has
+been quit, after a short settling delay of about two seconds. An inactive
+account removes the files at its next login. Package scripts do not search or
+delete files in user homes.
+
+Older managed entries are migrated when the updated app runs in that account.
+An account that has never run the updated version can still have a legacy entry
+pointing directly at the executable; that entry cannot clean itself after the
+executable is removed. Run the updated app in each such account before removing
+it, or disable Launch at login there first. No package hook migrates inactive
+accounts by accessing their homes.
+
+The saved **Launch at login** preference remains unchanged. After reinstalling,
+the first manual start reads that preference and recreates startup integration
+if it is still enabled. Removing the link does not delete history, local
+captures or saved credentials.
+
+For an AppImage, startup uses the persistent script rather than a temporary
+mount path. An eligible same-channel replacement beside the configured image
+keeps startup working. When none remains, cleanup exits quietly. An image that
+still exists but is not executable reports an error if no eligible replacement
+can start.
+
+To turn the saved preference off and remove startup integration before
+uninstalling, use **Launch at login** while put.gd is running. The CLI uses the
+same saved preference:
+
+```sh
+putgd-cli settings.get
+putgd-cli settings.patch '{"patch":{"preferences":{"launchAtLogin":false}},"expectedRevision":"RETURNED-OBSERVED-REVISION"}'
+putgd-cli ui.snapshot
+```
+
+Use `result.metadata.observedRevision` from `settings.get` for the patch. Startup
+integration is applied asynchronously after saving: wait until
+`ui.snapshot` reports `result.diagnostics.loginStartup` with `enabled: false`
+and `applied: true`. If it reports an error, correct it before uninstalling.
+The MCP equivalent is `patch_configuration` with
+`patch: {"preferences":{"launchAtLogin":false}}` and the current
+`expected_revision`. put.gd removes only its managed files; a user-created entry
+is preserved and reported as `autostart_conflict`.
+
+This contract, including active-account and next-login cleanup, was approved in
+[#382](https://github.com/patrick-hudson/put.gd-desktop/issues/382#issuecomment-6379948629).
+
+## Settings document
 
 The resident JSON CLI and Settings window use this service. Native acceptance must
 verify live edits in an installed desktop session; headless checks alone do not
@@ -25,7 +123,7 @@ the last accepted in-memory settings and the bad file so it can be corrected.
 | Each action's `shortcut` | One Qt PortableText combination; empty means unbound; independent of output inheritance |
 | Each action's `publicationMode` | Optional `default`, `share` or `private`; `default` uses the destination's sharing preference |
 | `captureDefaults` | Optional shared output: `destination` (`upload` or `local`), `profileId` (configured ID or `null`), and `publicationMode` (`default`, `share` or `private`) |
-| `profiles` | At most 32 provider destinations; empty on fresh startup |
+| `profiles` | At most 32 provider destinations; empty on fresh startup. Array order is the display order of Settings → Destinations and the Destination dropdowns only; everything else refers to profiles by `id`. Reorder with `settings.reorderProfiles` (see [cli.md](cli.md)) |
 | Each profile's `id`, `label`, `provider` | Unique stable ID, display label, registered adapter ID |
 | Each profile's `settings` | Non-secret settings validated by its provider adapter |
 | Each profile's `credentials` | `keychain` plus a nonempty `reference`, or `session` plus `null` reference |
@@ -37,21 +135,34 @@ the last accepted in-memory settings and the bad file so it can be corrected.
 | `naming.captureTemplate` | Optional screenshot pattern, default `Screen-Capture-{yyyy}-{MM}-{dd}-{HH}-{mm}-{ss}.{ext}` |
 | `naming.imageTemplate` / `naming.textTemplate` | Optional clipboard patterns, default timestamped `Image-…` / `Text-…` names |
 | `limits.pendingImageBytes` | Optional aggregate retained decoded-image budget, default 67,108,864 bytes (64 MiB); released after persistence/cancellation |
+| `naming.recordingTemplate` | Optional screen-recording pattern, default `Screen-Recording-{yyyy}-{MM}-{dd}-{HH}-{mm}-{ss}.{ext}` |
+| `limits.recordingAnimationSeconds` / `recordingAnimationEdge` | Optional animated GIF/WebP export budget: retained seconds (default 60) and output long edge (default 1280); see [recording](recording.md) |
+| `actions.record` | The screen-recording action. Saved documents carry it as a shortcut-only entry `{shortcut}` that keeps following the region route; a full entry (`destination`, `profileId`, `shortcut`, optional `publicationMode`) routes recordings separately. Absent entries read as shortcut-only with no key |
 | `naming.collisionPolicy` | `rename` by default; `skip` or explicit `overwrite` |
 | `limits.maxFiles` | 100; maximum clipboard batch file count |
 | `limits.pendingOperations` | 8 |
-| `limits.concurrentUploads` | 1 |
-| `limits.maxFileBytes`, `maxBatchBytes`, `pendingArtifactBytes` | 2 GiB each |
+| `limits.concurrentUploads` | 3 for new configurations (1–32): files transferring at once across every operation. A batch's files overlap, a new action starts while an earlier upload continues, and a free slot goes to the operation holding the fewest. A multipart file holds one slot for its whole transfer and may borrow idle slots for extra parallel parts, up to four parts at once, handing each back as soon as another file waits for it. Providers that take one request at a time per account (Proton Drive) stay sequential for that account. Existing configurations keep their saved value (the former default, 1, uploads one file at a time) |
+| `limits.maxFileBytes`, `maxBatchBytes`, `pendingArtifactBytes` | `"auto"` each. A byte count (1 byte to 1 TiB), `"auto"` or `null`. `"auto"` and `null` ("No limit") set no byte limit of put.gd's own: imports copy in 1 MiB chunks and uploads stream from disk, so memory does not grow with file size (the S3 worker stays near 39 MB from 60 MiB to 6 GiB). Every import is still bounded, before any byte is copied, by the destination's maximum object size (5 TiB for S3) and by free disk space in the data folder less a system reserve of min(5% of the filesystem, 4 GiB) and never under 1 GiB. GNOME warns of low disk space at 5% free, and 1 GiB keeps logs, the session and updates working on a small disk; 15% (journald's SystemKeepFree rule, used before #213) kept 4 GiB on any disk over 27 GiB, which stopped a 32 GiB VM with 2.36 GB free from recording at all. The reserve applies whatever these limits say, and concurrent imports reserve their bytes so two can't both pass the check. A saved value of exactly 2147483648, the default before `"auto"` existed, reads as `"auto"`; to keep a fixed 2 GiB limit, choose a different value such as 2047 MiB. `settings.get` reports the resolved values and the disk figures under `effectiveLimits`. Settings → Advanced → Uploads shows the same beside each field set to Auto, such as "Auto · no limit (keeps 4 GiB free)" (#149) |
 | `limits.clipboardTextBytes` | 16 MiB UTF-8 |
 | `limits.imagePixels`, `imageBytes` | 100 million pixels and 512 MiB |
-| `retention.failedArtifactDays` | 7; zero disables age expiry, not the pending-byte budget |
+| `retention.failedArtifactDays` | 7; zero disables age expiry, not the pending-byte budget. The resident applies it on its own a minute after start and then hourly (#202), as well as on **Clean artifacts** (`cache.clear`). When cleanup retires a failed item's artifact, it first aborts the item's incomplete multipart upload, best effort (see [s3.md](s3.md)) |
 | `retention.recentActivityLimit` | 100 visible recent entries; does not prune history |
-| `retention.previewCacheBytes` | 256 MiB; zero disables retained previews |
+| `retention.previewCacheBytes` | 256 MiB, image previews and video posters together; zero disables retained previews and History's previews made on selection (`history.preview`) |
 | `retention.historyRetentionDays` | `null` means no automatic record expiry |
+| `retention.logDays` | Optional, default 14 (1–365): days to keep persistent log files ([diagnostics.md](diagnostics.md#retention)) |
+| `retention.logBytes` | Optional, default 50 MiB (1 MiB–1 GiB): total size of persistent log files; the oldest go first |
 | `preferences.uploadClipboardBehavior` | `each_link` (default, including when absent in older configurations) copies every successful upload link individually; `list` copies an ordered list once overlapping uploads settle |
+| `preferences.regionSelectionMode` | Optional, default `live` (also when absent): region screenshots select over the live desktop, and an open menu must close first (#341). `screenshot_first` captures every monitor before the selector opens; you drag over that frozen frame, open menus included, and the result is cut from it with no second capture (#629). put.gd's own tray menu closes before either mode starts, on GNOME too (#924). Applies to Capture region and Capture region & edit; recording always selects live. Settings → Capture → Region selection, `settings.patch` and MCP `patch_configuration` set it |
+| `preferences.recordingFrameRate` | Optional integer, `30` (default when absent) or `60`. Settings → Capture → Screen recording → Frame rate, `settings.patch` and MCP `patch_configuration` set it. New recordings use it when `recording.prepare` omits `fps`; an explicit `fps` wins. See [adaptive rate and progress](recording.md#frame-rate) |
+| `preferences.fileManagerFolders` | Optional, `zip` (default, also when absent) or `files`: how a folder chosen with Upload with put.gd in a file manager, or passed to `upload.files` (CLI, MCP `upload_files`), uploads, as one `<folder>.zip` or file by file (`limits.maxFiles` counts the expanded files). Settings → General → File manager → Folders. See [file-manager-upload.md](file-manager-upload.md#folders) |
+| `preferences.fileManagerMenu` | Optional boolean, default `true`: the AppImage's per-user Upload with put.gd entries; `false` removes the files it wrote. DEB/RPM entries are system files and always on. See [file-manager-upload.md](file-manager-upload.md#turning-it-on) |
 | `preferences.notifications`, `launchAtLogin` | `true`, `false` |
+| `preferences.updates` | Optional, default `{"check": true, "channel": "build"}`, both keys optional. `check`: look for a newer version once a day (one request to app.put.gd with nothing identifying). `channel`: `build` follows this installation's channel (Settings stores it when you pick the build's own), or `stable` or `nightly` to watch that one; an AppImage then offers to switch to it ([updates.md](updates.md#switching-channels)). Stable notifies once per new version, remembered per channel; nightly only shows it in Settings. Development and source builds never check. Flatpak is not a shipped target, but a build stamped `flatpak` still never checks (reason `flatpak`); checks disabled at build time report `disabled_at_build` ([updates.md](updates.md)) |
 | `preferences.unlockCredentialsAtStartup` | Optional, default `true`: read saved keychain S3 credentials once when put.gd starts. A locked keyring shows its own unlock prompt then; uploads and shortcuts never unlock |
+| `preferences.appearance` | Optional. `theme`: `system` (default, also when absent) follows the desktop's light or dark preference, `dark` or `light`. `accent` (null) and `overrides` (`{"dark": {}, "light": {}}`) are reserved for custom colours (#197) and must keep those values. See [appearance](appearance.md) |
 | `preferences.editorRecentColors` | Optional, written by put.gd: up to 6 lowercase `#rrggbb` custom editor colors, most recent first |
+| `preferences.diagnostics.debugLogging` | Optional, default `false`: keep debug records in the persistent log. put.gd sets it back to `false` 24 hours after it was turned on ([diagnostics.md](diagnostics.md#debug-logging)) |
+| `preferences.diagnostics.packageFolder` | Optional absolute folder, or `null`: where **Create diagnostics package** and **Save diagnostics for this upload** save packages. Settings writes it when you choose a folder; omitted or `null` means `<archive root>/diagnostics/` ([diagnostics.md](diagnostics.md#diagnostics-package)) |
 
 Local saving and uploading are independent outputs. An upload route with a configured
 profile uploads; `archive.keepUploads: true` also saves a local copy before publication.
@@ -84,7 +195,9 @@ default. This extension remains schema version 1; older strict readers that do n
 it reject the new field, so use matching application/CLI/MCP versions.
 
 The first three shortcuts default to `Ctrl+Shift+1`, `Ctrl+Shift+2`, and `Ctrl+Shift+3`.
-Clipboard sharing starts unbound, allowing explicit setup on GNOME. Availability and
+Clipboard sharing, Capture region & edit and screen recording start unbound, allowing
+explicit setup on GNOME. The recording key toggles a recording (start a ready one, stop
+a running one) so the keyboard can end a capture without reaching for the bar. Availability and
 actual shortcut bindings must be reported by the native adapter; configuration validation
 does not claim a successful grab or resolve conflicts by taking another app's binding.
 
@@ -94,9 +207,12 @@ when saving output, so an unavailable archive folder does not prevent accepting 
 configuration or block a requested upload.
 
 The service watches both the file and parent directory, debounces notifications for 75 ms,
-and re-arms after atomic replacements. If watching fails, it rescans every two seconds.
+and re-arms after atomic replacements. If watching fails, it rescans every two seconds;
+that includes a fresh install whose configuration folder does not exist yet.
 Content SHA-256 revisions deduplicate accepted changes. Metadata distinguishes the
 accepted revision from observed file bytes and reports validation/watch status.
+A rescan reports a status change, which refreshes every open view, only when it
+accepted new settings or the metadata changed; an identical rescan is silent (#234).
 In CLI `settings.get`, these fields are under `result.metadata`, while
 `result.document` is the accepted configuration. When external bytes are invalid,
 `metadata.validation.ok` is false and its error identifies the failing JSON path;
@@ -156,6 +272,17 @@ Null derives an object URL from endpoint/bucket/addressing. `addressing` is path
 virtual or auto; virtual rejects dotted buckets and literal IP endpoints, and auto
 uses virtual only for an AWS host with an undotted bucket. Path mode is required for
 the development dotted bucket. Validation performs no network or secret-store IO.
+For S3-compatible services, the endpoint must support conditional writes. Cloudflare
+R2 works with its account endpoint, region `auto`, ACL omit and the bucket's r2.dev
+or custom domain as `publicUrlBase`. Backblaze B2's S3 API lacks conditional writes,
+so Test connection fails there; use the `backblaze-b2` provider instead. See
+[S3-compatible services](s3.md#s3-compatible-services).
+
+`backblaze-b2` profiles (#282) hold exactly `apiUrl`, `bucket`, `objectPrefix`,
+`linkMode` (`public` or `authorized`), `linkValidityDays` (1–7), `publicUrlBase`
+(null or HTTPS, public links only), `connectTimeoutMs` and `requestTimeoutMs`.
+Credentials are a keychain or session reference to the application key ID and key.
+See [Backblaze B2](b2.md).
 
 `connectTimeoutMs` bounds connection setup. `requestTimeoutMs` maps to the SDK whole
 Curl-request timeout (`httpRequestTimeoutMs`). `lowSpeedBytesPerSecond` maps to the

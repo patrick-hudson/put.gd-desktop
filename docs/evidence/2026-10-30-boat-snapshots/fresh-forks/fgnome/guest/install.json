@@ -1,0 +1,7 @@
+{
+  "format": "deb",
+  "installEvidence": "/home/user/lab-driver/work/lab-runs/fv1/install-7ff2bae27c4947658f5c907c9c58a6b7",
+  "sha256": "969c6899a1297b056ef45b2eb3c69150af7fbd554db8fcde5959172dc8a998cd",
+  "status": "installed",
+  "timedOut": false
+}

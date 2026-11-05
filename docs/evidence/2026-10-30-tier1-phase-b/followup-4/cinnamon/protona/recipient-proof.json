@@ -1,0 +1,64 @@
+{
+  "downloadList": [
+    {
+      "available": true,
+      "entries": [],
+      "partFileCount": 0,
+      "phase": "immediately-after-trusted-click"
+    },
+    {
+      "available": true,
+      "entries": [
+        {
+          "canceled": false,
+          "currentBytes": 1184,
+          "error": null,
+          "hasBlockedData": false,
+          "hasPartialData": false,
+          "partFilePath": "/dev/shm/t1-firefox/putgd-surface-6sgbrnfs/downloads/2XHy87I8.png.part",
+          "stopped": true,
+          "succeeded": true,
+          "target": "/dev/shm/t1-firefox/putgd-surface-6sgbrnfs/downloads/Screen-Capture-2026-10-31-07-15-32.png",
+          "targetExists": true,
+          "totalBytes": 1184
+        }
+      ],
+      "partFileCount": 0,
+      "phase": "after-visible-download-confirm-menu"
+    },
+    {
+      "available": true,
+      "entries": [
+        {
+          "canceled": false,
+          "currentBytes": 1184,
+          "error": null,
+          "hasBlockedData": false,
+          "hasPartialData": false,
+          "partFilePath": "/dev/shm/t1-firefox/putgd-surface-6sgbrnfs/downloads/2XHy87I8.png.part",
+          "stopped": true,
+          "succeeded": true,
+          "target": "/dev/shm/t1-firefox/putgd-surface-6sgbrnfs/downloads/Screen-Capture-2026-10-31-07-15-32.png",
+          "targetExists": true,
+          "totalBytes": 1184
+        }
+      ],
+      "phase": "completed"
+    }
+  ],
+  "preview": {
+    "comparison": "decoded-RGBA",
+    "height": 280,
+    "matches": true,
+    "naturalHeight": 280,
+    "naturalWidth": 600,
+    "previewPixelSha256": "8c33bc02496340edd3fcb29198f71ad5493d41f53a7ff23af31601db7ee3b1c6",
+    "savedPixelSha256": "8c33bc02496340edd3fcb29198f71ad5493d41f53a7ff23af31601db7ee3b1c6",
+    "scaling": "none",
+    "tolerance": 0,
+    "width": 600
+  },
+  "originalBytesHashVerified": true,
+  "proof": "P",
+  "pPreviewExceptionUsed": false
+}

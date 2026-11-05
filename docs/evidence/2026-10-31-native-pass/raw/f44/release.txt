@@ -1,0 +1,6 @@
+f44 (Fedora 44 GNOME Wayland): released
+  native-pass (np31-ddd3576a), acquired 2026-10-31T15:36:19Z
+  purpose: physical Tier1 local only; no builds
+  note: 15 process(es) outside the desktop session (no DISPLAY or WAYLAND_DISPLAY; shared SSH work): 1271 3289652 3289653 3309764 3309765 3309766 3309771 3309772 ...
+  receipt on the host: /home/patrick/putgd-lab/locks/history/2026-10-31T15-48-17Z-release.json
+  Tell the next session in the queue and your coordinator

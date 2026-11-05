@@ -1,0 +1,28 @@
+{
+  "crop": [
+    302,
+    137,
+    1618,
+    1013
+  ],
+  "cropMethod": "own-theme-pixels",
+  "ownThemeFraction": 0.8416815866538979,
+  "host": "f44-native-rpm-GNOME50.6",
+  "source": {
+    "schemaVersion": 1,
+    "version": "26.1024.1135-dev+g8a9415c540be",
+    "baseVersion": "26.1024.1135",
+    "packageVersion": "26.1024.1135~dev+g8a9415c540be",
+    "gitCommit": "8a9415c540bee2ac5a8caa0e7606681bafa528a7",
+    "gitTree": "9c2dcf250cf07b9d393a56a2533e3fbc069fb5b5",
+    "commitCount": 1135,
+    "dirty": false,
+    "sourceProvenance": "git"
+  },
+  "session": {
+    "XDG_CURRENT_DESKTOP": "GNOME",
+    "XDG_SESSION_TYPE": "wayland",
+    "QT_QPA_PLATFORM": "wayland"
+  },
+  "artifact": "copy-before-selected.png"
+}

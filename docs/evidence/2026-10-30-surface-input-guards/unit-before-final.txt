@@ -1,0 +1,200 @@
+.FFFFFEEEEFFFFE.EEEFE
+======================================================================
+ERROR: test_foreign_titlebar_names_the_frames_client (__main__.FrameClientNames.test_foreign_titlebar_names_the_frames_client)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/patrick/.t3/worktrees/put.gd/t3-92ed5b64/work/r3/baseline/tests/desktop/test_surface_input_guards.py", line 146, in test_foreign_titlebar_names_the_frames_client
+    hit=probe.x11_hit_identity(['20','21'])
+        ^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: module 'tools.lab.surface_driver.probe' has no attribute 'x11_hit_identity'
+
+======================================================================
+ERROR: test_requires_new_resize_begin_for_exact_client (__main__.GrabEvidence.test_requires_new_resize_begin_for_exact_client)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/patrick/.t3/worktrees/put.gd/t3-92ed5b64/work/r3/baseline/tests/desktop/test_surface_input_guards.py", line 251, in test_requires_new_resize_begin_for_exact_client
+    self.assertIsNone(probe.resize_started(self.before,after,self.target))
+                      ^^^^^^^^^^^^^^^^^^^^
+AttributeError: module 'tools.lab.surface_driver.probe' has no attribute 'resize_started'
+
+======================================================================
+ERROR: test_resize_drag_retains_mutter_proof_after_first_motion (__main__.GrabEvidence.test_resize_drag_retains_mutter_proof_after_first_motion)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/patrick/.t3/worktrees/put.gd/t3-92ed5b64/work/r3/baseline/tests/desktop/test_surface_input_guards.py", line 266, in test_resize_drag_retains_mutter_proof_after_first_motion
+    ctx.drag((109,99),(80,70),steps=2,require_resize=True)
+TypeError: DriverContext.drag() got an unexpected keyword argument 'require_resize'
+
+======================================================================
+ERROR: test_restarted_or_overflowed_witness_cannot_prove_gesture (__main__.GrabEvidence.test_restarted_or_overflowed_witness_cannot_prove_gesture)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/patrick/.t3/worktrees/put.gd/t3-92ed5b64/work/r3/baseline/tests/desktop/test_surface_input_guards.py", line 259, in test_restarted_or_overflowed_witness_cannot_prove_gesture
+    probe.resize_started(self.before,after,self.target)
+    ^^^^^^^^^^^^^^^^^^^^
+AttributeError: module 'tools.lab.surface_driver.probe' has no attribute 'resize_started'
+
+======================================================================
+ERROR: test_resize_request_without_witness_blocks_before_press (__main__.ResizeProof.test_resize_request_without_witness_blocks_before_press)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/patrick/.t3/worktrees/put.gd/t3-92ed5b64/work/r3/baseline/tests/desktop/test_surface_input_guards.py", line 107, in test_resize_request_without_witness_blocks_before_press
+    ctx.drag((109,99),(80,70),require_resize=True)
+TypeError: DriverContext.drag() got an unexpected keyword argument 'require_resize'
+
+======================================================================
+ERROR: test_nonreactive_notification_missed_by_stage_pick_still_refuses (__main__.ShellNotificationCover.test_nonreactive_notification_missed_by_stage_pick_still_refuses)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/patrick/.t3/worktrees/put.gd/t3-92ed5b64/work/r3/baseline/tests/desktop/test_surface_input_guards.py", line 121, in test_nonreactive_notification_missed_by_stage_pick_still_refuses
+    self.assertIn("notification 'Upload failed'",probe.shell_cover((1580,70),'cinnamon*'))
+  File "/usr/lib/python3.12/unittest/case.py", line 1149, in assertIn
+    if member not in container:
+       ^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: argument of type 'NoneType' is not iterable
+
+======================================================================
+ERROR: test_overlay_revalidated_at_install_boundary (__main__.StageOverlay.test_overlay_revalidated_at_install_boundary)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/patrick/.t3/worktrees/put.gd/t3-92ed5b64/work/r3/baseline/tests/desktop/test_surface_input_guards.py", line 161, in test_overlay_revalidated_at_install_boundary
+    from tools.lab.surface_driver.compositor import stage_gnome_witness as staging
+ImportError: cannot import name 'stage_gnome_witness' from 'tools.lab.surface_driver.compositor' (unknown location)
+
+======================================================================
+ERROR: test_real_desktop_and_golden_refused_before_any_install (__main__.StageOverlay.test_real_desktop_and_golden_refused_before_any_install)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/patrick/.t3/worktrees/put.gd/t3-92ed5b64/work/r3/baseline/tests/desktop/test_surface_input_guards.py", line 153, in test_real_desktop_and_golden_refused_before_any_install
+    from tools.lab.surface_driver.compositor import stage_gnome_witness as staging
+ImportError: cannot import name 'stage_gnome_witness' from 'tools.lab.surface_driver.compositor' (unknown location)
+
+======================================================================
+ERROR: test_native_grab_signal_lifecycle_and_bounded_history (__main__.WitnessSignals.test_native_grab_signal_lifecycle_and_bounded_history)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/patrick/.t3/worktrees/put.gd/t3-92ed5b64/work/r3/baseline/tests/desktop/test_surface_input_guards.py", line 279, in test_native_grab_signal_lifecycle_and_bounded_history
+    subprocess.run([node,str(Path(__file__).with_name('surface_gnome_witness.mjs')),
+  File "/usr/lib/python3.12/subprocess.py", line 571, in run
+    raise CalledProcessError(retcode, process.args,
+subprocess.CalledProcessError: Command '['/run/user/1000/fnm_multishells/931340_1792990487380/bin/node', '/home/patrick/.t3/worktrees/put.gd/t3-92ed5b64/work/r3/baseline/tests/desktop/surface_gnome_witness.mjs', '/home/patrick/.t3/worktrees/put.gd/t3-92ed5b64/work/r3/baseline/tools/lab/surface_driver/compositor/gnome-witness/extension.js']' returned non-zero exit status 1.
+
+======================================================================
+FAIL: test_one_identity_check_per_held_key_input (__main__.EndpointChecks.test_one_identity_check_per_held_key_input)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/patrick/.t3/worktrees/put.gd/t3-92ed5b64/work/r3/baseline/tests/desktop/test_surface_input_guards.py", line 74, in test_one_identity_check_per_held_key_input
+    target._verify_endpoints.assert_called_once()
+  File "/usr/lib/python3.12/unittest/mock.py", line 923, in assert_called_once
+    raise AssertionError(msg)
+AssertionError: Expected 'mock' to have been called once. Called 2 times.
+Calls: [call(), call()].
+
+======================================================================
+FAIL: test_one_identity_check_per_multihead_pointer_input (__main__.EndpointChecks.test_one_identity_check_per_multihead_pointer_input)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/patrick/.t3/worktrees/put.gd/t3-92ed5b64/work/r3/baseline/tests/desktop/test_surface_input_guards.py", line 81, in test_one_identity_check_per_multihead_pointer_input
+    target._verify_endpoints.assert_called_once()
+  File "/usr/lib/python3.12/unittest/mock.py", line 923, in assert_called_once
+    raise AssertionError(msg)
+AssertionError: Expected 'mock' to have been called once. Called 2 times.
+Calls: [call(), call()].
+
+======================================================================
+FAIL: test_accessibility_reports_the_server_role (__main__.FocusAndRoles.test_accessibility_reports_the_server_role)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/patrick/.t3/worktrees/put.gd/t3-92ed5b64/work/r3/baseline/tests/desktop/test_surface_input_guards.py", line 55, in test_accessibility_reports_the_server_role
+    self.assertEqual(rows[0]['role'],'button')
+AssertionError: 'push button' != 'button'
+- push button
++ button
+
+
+======================================================================
+FAIL: test_plain_kde_focus_verifies_without_requesting_unsupported_raise (__main__.FocusAndRoles.test_plain_kde_focus_verifies_without_requesting_unsupported_raise)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/patrick/.t3/worktrees/put.gd/t3-92ed5b64/work/r3/baseline/tests/desktop/test_surface_input_guards.py", line 36, in test_plain_kde_focus_verifies_without_requesting_unsupported_raise
+    self.assertFalse(ctx._probe.call_args.args[1]['raise'])
+AssertionError: True is not false
+
+======================================================================
+FAIL: test_raw_button_role_matches_both_spellings_and_catalog_class (__main__.FocusAndRoles.test_raw_button_role_matches_both_spellings_and_catalog_class)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/patrick/.t3/worktrees/put.gd/t3-92ed5b64/work/r3/baseline/tests/desktop/test_surface_input_guards.py", line 43, in test_raw_button_role_matches_both_spellings_and_catalog_class
+    self.assertTrue(probe.matches(row, {'role':role}))
+AssertionError: False is not true
+
+======================================================================
+FAIL: test_recipe_deadline_identifies_the_probe_budget (__main__.PersistentBudgets.test_recipe_deadline_identifies_the_probe_budget)
+----------------------------------------------------------------------
+tools.lab.surface_driver.api.RecipeBlocked: persistent desktop probe timed out; reply outstanding
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/patrick/.t3/worktrees/put.gd/t3-92ed5b64/work/r3/baseline/tests/desktop/test_surface_input_guards.py", line 238, in test_recipe_deadline_identifies_the_probe_budget
+    with self.assertRaisesRegex(RecipeBlocked,'recipe deadline exhausted during geometry probe'):
+AssertionError: "recipe deadline exhausted during geometry probe" does not match "persistent desktop probe timed out; reply outstanding"
+
+======================================================================
+FAIL: test_shell_cover_reads_are_fresh_without_restarting_channel (__main__.PersistentBudgets.test_shell_cover_reads_are_fresh_without_restarting_channel)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/patrick/.t3/worktrees/put.gd/t3-92ed5b64/work/r3/baseline/tests/desktop/test_surface_input_guards.py", line 223, in test_shell_cover_reads_are_fresh_without_restarting_channel
+    self.assertEqual((first['counter'],second['counter']),(1,1))
+AssertionError: Tuples differ: (1, 2) != (1, 1)
+
+First differing element 1:
+2
+1
+
+- (1, 2)
+?     ^
+
++ (1, 1)
+?     ^
+
+
+======================================================================
+FAIL: test_startup_does_not_renew_an_expired_request_budget (__main__.PersistentBudgets.test_startup_does_not_renew_an_expired_request_budget)
+----------------------------------------------------------------------
+tools.lab.surface_driver.api.RecipeBlocked: persistent desktop probe timed out; further input withheld
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/patrick/.t3/worktrees/put.gd/t3-92ed5b64/work/r3/baseline/tests/desktop/test_surface_input_guards.py", line 184, in test_startup_does_not_renew_an_expired_request_budget
+    with self.assertRaisesRegex(RecipeBlocked,'geometry.*before dispatch; no request sent'):
+AssertionError: "geometry.*before dispatch; no request sent" does not match "persistent desktop probe timed out; further input withheld"
+
+======================================================================
+FAIL: test_timeout_names_outstanding_probe_and_live_channel (__main__.PersistentBudgets.test_timeout_names_outstanding_probe_and_live_channel)
+----------------------------------------------------------------------
+tools.lab.surface_driver.api.RecipeBlocked: persistent desktop probe timed out; further input withheld
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/patrick/.t3/worktrees/put.gd/t3-92ed5b64/work/r3/baseline/tests/desktop/test_surface_input_guards.py", line 197, in test_timeout_names_outstanding_probe_and_live_channel
+    with self.assertRaisesRegex(RecipeBlocked,'geometry; elapsed .*budget .*SSH process still running; reply outstanding'):
+AssertionError: "geometry; elapsed .*budget .*SSH process still running; reply outstanding" does not match "persistent desktop probe timed out; further input withheld"
+
+======================================================================
+FAIL: test_foreign_window_arriving_before_activation_is_not_displaced (__main__.StartupRace.test_foreign_window_arriving_before_activation_is_not_displaced)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/patrick/.t3/worktrees/put.gd/t3-92ed5b64/work/r3/baseline/tests/desktop/test_surface_input_guards.py", line 98, in test_foreign_window_arriving_before_activation_is_not_displaced
+    activate.assert_not_called()
+  File "/usr/lib/python3.12/unittest/mock.py", line 905, in assert_not_called
+    raise AssertionError(msg)
+AssertionError: Expected 'run' to not have been called. Called 1 times.
+Calls: [call(['xdotool', 'windowactivate', '--sync', '10'], timeout=2, stdout=-3, stderr=-3)].
+
+----------------------------------------------------------------------
+Ran 21 tests in 0.439s
+
+FAILED (failures=10, errors=9)

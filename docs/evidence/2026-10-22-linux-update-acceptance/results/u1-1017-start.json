@@ -1,0 +1,286 @@
+{
+ "tag": "v26.1022.1017-nightly",
+ "ok": true,
+ "failed": [],
+ "checks": [
+  {
+   "name": "github release",
+   "ok": true,
+   "tag": "v26.1022.1017-nightly",
+   "commit": "nightly",
+   "published": "2026-10-22T22:47:17Z",
+   "assets": 16
+  },
+  {
+   "name": "github digest proton-source-catalog.json",
+   "ok": true,
+   "sums": "6d5d47988ce78c8d055f39920fa4da66435c3ce595b84f5e57f7a6238c820ef3",
+   "api": "sha256:6d5d47988ce78c8d055f39920fa4da66435c3ce595b84f5e57f7a6238c820ef3"
+  },
+  {
+   "name": "github digest putgd-26.1022.1017-nightly-appimage-media-source.tar.gz",
+   "ok": true,
+   "sums": "038519332d252c07361a9bc1e8819be6332c4af3b7425e447ed00bfa68dd4727",
+   "api": "sha256:038519332d252c07361a9bc1e8819be6332c4af3b7425e447ed00bfa68dd4727"
+  },
+  {
+   "name": "github digest putgd-26.1022.1017-nightly-debian13-x86_64.deb",
+   "ok": true,
+   "sums": "1241c317f153ab1b986441cd27f4700faed05490643ef534be968498507080c9",
+   "api": "sha256:1241c317f153ab1b986441cd27f4700faed05490643ef534be968498507080c9"
+  },
+  {
+   "name": "github digest putgd-26.1022.1017-nightly-debug-x86_64.tar.zst",
+   "ok": true,
+   "sums": "0d8f951a3bdc74f97a284342c17bd735e8ae4abbb06e4c8cf2ba11c54013deac",
+   "api": "sha256:0d8f951a3bdc74f97a284342c17bd735e8ae4abbb06e4c8cf2ba11c54013deac"
+  },
+  {
+   "name": "github digest putgd-26.1022.1017-nightly-fedora44-x86_64.rpm",
+   "ok": true,
+   "sums": "4f5a5c6355b1f138abf11ed1ded25213f5001996e61fd5d39f6882cbb1fb0a42",
+   "api": "sha256:4f5a5c6355b1f138abf11ed1ded25213f5001996e61fd5d39f6882cbb1fb0a42"
+  },
+  {
+   "name": "github digest putgd-26.1022.1017-nightly-release.zip",
+   "ok": true,
+   "sums": "2786eb9d6cfaabe07a9a9cf107c48f6c74159521c78f2ad3ad91ea1e7b186630",
+   "api": "sha256:2786eb9d6cfaabe07a9a9cf107c48f6c74159521c78f2ad3ad91ea1e7b186630"
+  },
+  {
+   "name": "github digest putgd-26.1022.1017-nightly-source.tar.gz",
+   "ok": true,
+   "sums": "c8caa469e25bab80251b60ac1eb5e33c3901c70a5149835ef1c17d05d5eadc63",
+   "api": "sha256:c8caa469e25bab80251b60ac1eb5e33c3901c70a5149835ef1c17d05d5eadc63"
+  },
+  {
+   "name": "github digest putgd-26.1022.1017-nightly-ubuntu24.04-x86_64.deb",
+   "ok": true,
+   "sums": "f28ab4aebae03d501f007dcfe20a05df6ec701c32e1127b91fd18dce4c0e15a5",
+   "api": "sha256:f28ab4aebae03d501f007dcfe20a05df6ec701c32e1127b91fd18dce4c0e15a5"
+  },
+  {
+   "name": "github digest putgd-26.1022.1017-nightly-ubuntu26.04-x86_64.deb",
+   "ok": true,
+   "sums": "6f89cd7b025fcc87a7a37459a3f227b490cb88b9282b55c921c88842f996464a",
+   "api": "sha256:6f89cd7b025fcc87a7a37459a3f227b490cb88b9282b55c921c88842f996464a"
+  },
+  {
+   "name": "github digest putgd-26.1022.1017-nightly-x86_64.AppImage",
+   "ok": true,
+   "sums": "005762e9ede991c78fce115707a41617d899d7870738fb525151c182357b7c3a",
+   "api": "sha256:005762e9ede991c78fce115707a41617d899d7870738fb525151c182357b7c3a"
+  },
+  {
+   "name": "github digest putgd-26.1022.1017-nightly-x86_64.AppImage.zsync",
+   "ok": true,
+   "sums": "2f88ac598e46a5fbe3d06454af21695c18f3da4b43fe34f676663ea2ff1f6581",
+   "api": "sha256:2f88ac598e46a5fbe3d06454af21695c18f3da4b43fe34f676663ea2ff1f6581"
+  },
+  {
+   "name": "github digest putgd-gnome50-26.1022.1017-nightly.zip",
+   "ok": true,
+   "sums": "b56df0802e0218ca51f39ef2c7ec0c3eb5882d0e1155b53166c805b016519b20",
+   "api": "sha256:b56df0802e0218ca51f39ef2c7ec0c3eb5882d0e1155b53166c805b016519b20"
+  },
+  {
+   "name": "github digest putgd-proton-corresponding-source.tar.gz.part1",
+   "ok": true,
+   "sums": "ed4ad0f31dc9a8e8e47f2e0ad7ce8b61bd812240640095866ae1ac036abab757",
+   "api": "sha256:ed4ad0f31dc9a8e8e47f2e0ad7ce8b61bd812240640095866ae1ac036abab757"
+  },
+  {
+   "name": "github digest putgd-proton-corresponding-source.tar.gz.part2",
+   "ok": true,
+   "sums": "9b47aab2e8229fda914fdb142812893c78fb04d51f91850b782f957868b36684",
+   "api": "sha256:9b47aab2e8229fda914fdb142812893c78fb04d51f91850b782f957868b36684"
+  },
+  {
+   "name": "github digest release-builds.json",
+   "ok": true,
+   "sums": "6a202f335eb7ab7b6482a31278d9c7816537a16f2766e13342fb3e4a4762ac0b",
+   "api": "sha256:6a202f335eb7ab7b6482a31278d9c7816537a16f2766e13342fb3e4a4762ac0b"
+  },
+  {
+   "name": "feed https://app.put.gd/nightly",
+   "ok": true,
+   "status": [
+    200,
+    200
+   ],
+   "signature": true,
+   "trustedComment": "put.gd v26.1022.1017-nightly nightly",
+   "names": "v26.1022.1017-nightly",
+   "generatedAt": "2026-10-22T22:51:49Z"
+  },
+  {
+   "name": "feed https://app.put.gd/stable",
+   "ok": true,
+   "status": [
+    200,
+    200
+   ],
+   "signature": true,
+   "trustedComment": "put.gd stable stable",
+   "names": null,
+   "generatedAt": "2026-10-21T15:19:34Z"
+  },
+  {
+   "name": "feed https://pkg.put.gd/nightly",
+   "ok": true,
+   "status": [
+    200,
+    200
+   ],
+   "signature": true,
+   "trustedComment": "put.gd v26.1022.1017-nightly nightly",
+   "names": "v26.1022.1017-nightly",
+   "generatedAt": "2026-10-22T22:51:49Z"
+  },
+  {
+   "name": "feed https://pkg.put.gd/stable",
+   "ok": true,
+   "status": [
+    200,
+    200
+   ],
+   "signature": true,
+   "trustedComment": "put.gd stable stable",
+   "names": null,
+   "generatedAt": "2026-10-21T15:19:34Z"
+  },
+  {
+   "name": "dl ubuntu24.04",
+   "ok": true,
+   "status": 302,
+   "location": "https://github.com/patrick-hudson/put.gd-desktop/releases/download/v26.1022.1017-nightly/putgd-26.1022.1017-nightly-ubuntu24.04-x86_64.deb"
+  },
+  {
+   "name": "dl ubuntu26.04",
+   "ok": true,
+   "status": 302,
+   "location": "https://github.com/patrick-hudson/put.gd-desktop/releases/download/v26.1022.1017-nightly/putgd-26.1022.1017-nightly-ubuntu26.04-x86_64.deb"
+  },
+  {
+   "name": "dl debian13",
+   "ok": true,
+   "status": 302,
+   "location": "https://github.com/patrick-hudson/put.gd-desktop/releases/download/v26.1022.1017-nightly/putgd-26.1022.1017-nightly-debian13-x86_64.deb"
+  },
+  {
+   "name": "dl fedora44",
+   "ok": true,
+   "status": 302,
+   "location": "https://github.com/patrick-hudson/put.gd-desktop/releases/download/v26.1022.1017-nightly/putgd-26.1022.1017-nightly-fedora44-x86_64.rpm"
+  },
+  {
+   "name": "dl appimage",
+   "ok": true,
+   "status": 302,
+   "location": "https://github.com/patrick-hudson/put.gd-desktop/releases/download/v26.1022.1017-nightly/putgd-26.1022.1017-nightly-x86_64.AppImage"
+  },
+  {
+   "name": "dl appimage.zsync",
+   "ok": true,
+   "status": 200,
+   "sameAsMirror": true,
+   "bytes": 197286
+  },
+  {
+   "name": "mirror SHA256SUMS",
+   "ok": true,
+   "status": [
+    200,
+    200
+   ],
+   "sameAsGithub": true,
+   "signature": true,
+   "trustedComment": "put.gd v26.1022.1017-nightly nightly"
+  },
+  {
+   "name": "mirror AppImage and .zsync",
+   "ok": true,
+   "status": [
+    200,
+    200
+   ],
+   "imageLength": 115259896,
+   "zsyncSha256": "2f88ac598e46a5fbe3d06454af21695c18f3da4b43fe34f676663ea2ff1f6581",
+   "zsyncURL": "https://pkg.put.gd/releases/v26.1022.1017-nightly/putgd-26.1022.1017-nightly-x86_64.AppImage",
+   "zsyncLength": "115259896",
+   "zsyncSha1": "b2d06a171f42018ae0ba1d266ff5d2850abc7bf7"
+  },
+  {
+   "name": "apt ubuntu24.04",
+   "ok": true,
+   "inRelease": true,
+   "packagesHash": true,
+   "version": "26.1022.1017~nightly",
+   "sha256": "f28ab4aebae03d501f007dcfe20a05df6ec701c32e1127b91fd18dce4c0e15a5",
+   "githubSha256": "f28ab4aebae03d501f007dcfe20a05df6ec701c32e1127b91fd18dce4c0e15a5",
+   "dep11Hash": true,
+   "dep11Component": true,
+   "pool": [
+    "pool/main/p/putgd/putgd_26.1022.1017~nightly_amd64.deb",
+    200
+   ]
+  },
+  {
+   "name": "apt ubuntu26.04",
+   "ok": true,
+   "inRelease": true,
+   "packagesHash": true,
+   "version": "26.1022.1017~nightly",
+   "sha256": "6f89cd7b025fcc87a7a37459a3f227b490cb88b9282b55c921c88842f996464a",
+   "githubSha256": "6f89cd7b025fcc87a7a37459a3f227b490cb88b9282b55c921c88842f996464a",
+   "dep11Hash": true,
+   "dep11Component": true,
+   "pool": [
+    "pool/main/p/putgd/putgd_26.1022.1017~nightly_amd64.deb",
+    200
+   ]
+  },
+  {
+   "name": "apt debian13",
+   "ok": true,
+   "inRelease": true,
+   "packagesHash": true,
+   "version": "26.1022.1017~nightly",
+   "sha256": "1241c317f153ab1b986441cd27f4700faed05490643ef534be968498507080c9",
+   "githubSha256": "1241c317f153ab1b986441cd27f4700faed05490643ef534be968498507080c9",
+   "dep11Hash": true,
+   "dep11Component": true,
+   "pool": [
+    "pool/main/p/putgd/putgd_26.1022.1017~nightly_amd64.deb",
+    200
+   ]
+  },
+  {
+   "name": "dnf fedora44",
+   "ok": true,
+   "versions": [
+    "26.1022.1017~nightly-1.fc44",
+    "26.1022.983~nightly-1.fc44",
+    "26.1022.996~nightly-1.fc44"
+   ],
+   "newest": [
+    "26.1022.1017~nightly",
+    "1.fc44",
+    "f51fcb12f723a70cf2e617fb1632b6163cfb871611b9a0a5d146adf012f8cf2a",
+    "Packages/putgd-26.1022.1017~nightly-1.fc44.x86_64.rpm"
+   ],
+   "primaryHash": true,
+   "receiptGithubSha256": "4f5a5c6355b1f138abf11ed1ded25213f5001996e61fd5d39f6882cbb1fb0a42",
+   "receiptCatalogPackageSha256": "f51fcb12f723a70cf2e617fb1632b6163cfb871611b9a0a5d146adf012f8cf2a",
+   "appstream": true,
+   "catalogComponent": true
+  },
+  {
+   "name": "receipt",
+   "ok": true,
+   "commit": "3582b30af88bb8158c49b92864c6eb3c48038b21",
+   "finishedAt": "2026-10-22T22:54:07Z",
+   "result": "published"
+  }
+ ]
+}

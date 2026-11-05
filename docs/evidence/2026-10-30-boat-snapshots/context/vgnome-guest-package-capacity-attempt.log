@@ -1,0 +1,9 @@
+Traceback (most recent call last):
+  File "/home/user/snapshot_recipe.py", line 668, in <module>
+    main()
+  File "/home/user/snapshot_recipe.py", line 657, in main
+    print(json.dumps(guest(a), indent=2))
+                     ^^^^^^^^
+  File "/home/user/snapshot_recipe.py", line 406, in guest
+    raise ValueError('Boat host capacity below reserve')
+ValueError: Boat host capacity below reserve

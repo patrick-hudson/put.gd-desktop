@@ -1,0 +1,171 @@
+{
+ "build": {
+  "baseVersion": "0.1.1",
+  "commitCount": 133,
+  "dirty": false,
+  "gitCommit": "b0ed0461c600de74e0a924057a59722f2b1851a3",
+  "gitTree": "7b09bbac32a640cc9dcfa7e223c54a26c5d6e92e",
+  "packageVersion": "0.1.1~dev.133.20261013004314+gb0ed0461c600",
+  "schemaVersion": 1,
+  "sourceProvenance": "git",
+  "version": "0.1.1-dev.133.20261013004314+gb0ed0461c600"
+ },
+ "credentials": {
+  "profile": "nfa-fixture",
+  "ok": true,
+  "state": "completed",
+  "error": "",
+  "mode": "session",
+  "reference": "putgd-nfa-M1"
+ },
+ "failed": {
+  "id": "e792d7e0-c117-4d52-bd4a-bc825af57f9e",
+  "state": "partial",
+  "copyStatus": "no_result",
+  "items": [
+   {
+    "name": "Screen-Capture-2026-10-23-00-51-31.png",
+    "mime": "image/png",
+    "uploadStatus": "failed",
+    "link": "",
+    "local": {
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     },
+     "path": "/home/patrick/work/put.gd-nfa/runs/M1/archive/images/Screen-Capture-2026-10-23-00-51-31.png",
+     "status": "saved"
+    }
+   }
+  ],
+  "error": {
+   "code": "",
+   "details": {},
+   "message": ""
+  }
+ },
+ "uploads": [
+  {
+   "id": "626e0d0a-88c7-4034-8069-faba5292a969",
+   "state": "completed",
+   "copyStatus": "failed",
+   "items": [
+    {
+     "name": "Screen-Capture-2026-10-23-00-51-27.png",
+     "mime": "image/png",
+     "uploadStatus": "uploaded",
+     "link": "http://127.0.0.1:45923/fixture/nfa/Screen-Capture-2026-10-23-00-51-27.png",
+     "local": {
+      "error": {
+       "code": "",
+       "details": {},
+       "message": ""
+      },
+      "path": "/home/patrick/work/put.gd-nfa/runs/M1/archive/images/Screen-Capture-2026-10-23-00-51-27.png",
+      "status": "saved"
+     }
+    }
+   ],
+   "error": {
+    "code": "clipboard_unavailable",
+    "details": {},
+    "message": "Native ext-data-control-v1 result copying is unavailable"
+   }
+  },
+  {
+   "id": "26974b20-7579-4773-8213-74094f61bc82",
+   "state": "completed",
+   "copyStatus": "failed",
+   "items": [
+    {
+     "name": "Screen-Capture-2026-10-23-00-51-28.png",
+     "mime": "image/png",
+     "uploadStatus": "uploaded",
+     "link": "http://127.0.0.1:45923/fixture/nfa/Screen-Capture-2026-10-23-00-51-28.png",
+     "local": {
+      "error": {
+       "code": "",
+       "details": {},
+       "message": ""
+      },
+      "path": "/home/patrick/work/put.gd-nfa/runs/M1/archive/images/Screen-Capture-2026-10-23-00-51-28.png",
+      "status": "saved"
+     }
+    }
+   ],
+   "error": {
+    "code": "clipboard_unavailable",
+    "details": {},
+    "message": "Native ext-data-control-v1 result copying is unavailable"
+   }
+  },
+  {
+   "id": "93baf740-c60d-4f13-a1f2-7fe1bcc21e94",
+   "state": "completed",
+   "copyStatus": "failed",
+   "items": [
+    {
+     "name": "Screen-Capture-2026-10-23-00-51-29.png",
+     "mime": "image/png",
+     "uploadStatus": "uploaded",
+     "link": "http://127.0.0.1:45923/fixture/nfa/Screen-Capture-2026-10-23-00-51-29.png",
+     "local": {
+      "error": {
+       "code": "",
+       "details": {},
+       "message": ""
+      },
+      "path": "/home/patrick/work/put.gd-nfa/runs/M1/archive/images/Screen-Capture-2026-10-23-00-51-29.png",
+      "status": "saved"
+     }
+    }
+   ],
+   "error": {
+    "code": "clipboard_unavailable",
+    "details": {},
+    "message": "Native ext-data-control-v1 result copying is unavailable"
+   }
+  },
+  {
+   "id": "886c4a0c-a10d-4c5a-bfb8-b4b1bc605e0f",
+   "state": "completed",
+   "copyStatus": "failed",
+   "items": [
+    {
+     "name": "Screen-Capture-2026-10-23-00-51-30.png",
+     "mime": "image/png",
+     "uploadStatus": "uploaded",
+     "link": "http://127.0.0.1:45923/fixture/nfa/Screen-Capture-2026-10-23-00-51-30.png",
+     "local": {
+      "error": {
+       "code": "",
+       "details": {},
+       "message": ""
+      },
+      "path": "/home/patrick/work/put.gd-nfa/runs/M1/archive/images/Screen-Capture-2026-10-23-00-51-30.png",
+      "status": "saved"
+     }
+    }
+   ],
+   "error": {
+    "code": "clipboard_unavailable",
+    "details": {},
+    "message": "Native ext-data-control-v1 result copying is unavailable"
+   }
+  }
+ ],
+ "deleted": null,
+ "deletedRow": {
+  "name": "Screen-Capture-2026-10-23-00-51-30.png",
+  "remoteStatus": "removed"
+ },
+ "history": 5,
+ "outputs": [
+  "archive/images/Screen-Capture-2026-10-23-00-51-27.png",
+  "archive/images/Screen-Capture-2026-10-23-00-51-28.png",
+  "archive/images/Screen-Capture-2026-10-23-00-51-29.png",
+  "archive/images/Screen-Capture-2026-10-23-00-51-30.png",
+  "archive/images/Screen-Capture-2026-10-23-00-51-31.png"
+ ]
+}

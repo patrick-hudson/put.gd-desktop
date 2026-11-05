@@ -1,0 +1,113 @@
+{
+ "menuComponents": [
+  {
+   "blocks": 322,
+   "box": [
+    1040,
+    128,
+    1256,
+    528
+   ]
+  },
+  {
+   "blocks": 68,
+   "box": [
+    1040,
+    328,
+    1216,
+    384
+   ]
+  },
+  {
+   "blocks": 60,
+   "box": [
+    1072,
+    0,
+    1272,
+    72
+   ]
+  }
+ ],
+ "hover": [
+  1148,
+  511
+ ],
+ "menu": {
+  "label": "tray-quit",
+  "components": [
+   {
+    "blocks": 332,
+    "box": [
+     1040,
+     128,
+     1256,
+     528
+    ]
+   },
+   {
+    "blocks": 68,
+    "box": [
+     1040,
+     328,
+     1216,
+     384
+    ]
+   },
+   {
+    "blocks": 60,
+    "box": [
+     1072,
+     0,
+     1272,
+     72
+    ]
+   },
+   {
+    "blocks": 27,
+    "box": [
+     1072,
+     272,
+     1200,
+     288
+    ]
+   },
+   {
+    "blocks": 22,
+    "box": [
+     1072,
+     88,
+     1224,
+     112
+    ]
+   },
+   {
+    "blocks": 15,
+    "box": [
+     1072,
+     232,
+     1152,
+     256
+    ]
+   }
+  ],
+  "colour": [
+   252,
+   252,
+   252
+  ],
+  "inner": [
+   1042,
+   130,
+   1233,
+   525
+  ],
+  "changedShare": 0.364,
+  "kept": "/home/lab/work/put.gd-afa2/runs/ubuntu-vm/crops/tray-quit.png"
+ },
+ "allGone": true,
+ "after": {
+  "processes": [],
+  "mounts": [],
+  "entries": []
+ }
+}

@@ -1,0 +1,5 @@
+{
+  "exit": 0,
+  "stdout": "{\"edges\": {\"bottom\": 1.0, \"left\": 1.0, \"right\": 1.0, \"top\": 1.0}, \"fraction\": 0.6485, \"kept\": \"/tmp/q559f4/03-drained-history.png\", \"minFraction\": 0.5, \"ok\": true, \"rect\": [0, 180, 1920, 900], \"sha256\": \"7aee945610d74265bcf1c52545538415b61f6e462e11263ff808bb0ca49c441b\", \"size\": [1920, 1080]}\n",
+  "stderr": ""
+}

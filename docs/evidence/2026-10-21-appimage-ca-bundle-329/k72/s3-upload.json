@@ -1,0 +1,29 @@
+{
+ "host": "kubuntu",
+ "profile": "aws",
+ "store": "completed",
+ "upload": {
+  "state": "completed",
+  "uploadStatus": "uploaded",
+  "error": {
+   "code": "source_unsupported",
+   "details": {},
+   "message": "Native desktop adapter is not available"
+  },
+  "link": "https://s3.us-east-2.amazonaws.com/put.gd/acceptance/i329/k72c/Screen-Capture-2026-10-21-16-18-46.png",
+  "seconds": 1.64
+ },
+ "linkFetch": {
+  "status": 403,
+  "png": false,
+  "bytes": 0
+ },
+ "delete": {
+  "state": "completed",
+  "items": [
+   "removed"
+  ],
+  "remoteStatus": "removed",
+  "linkAfter": 403
+ }
+}

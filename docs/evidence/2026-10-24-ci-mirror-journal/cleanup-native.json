@@ -1,0 +1,6 @@
+{
+  "at": "2026-10-24T01:18:43.666929+00:00",
+  "ownedExecutablePrefix": "/home/patrick/work/putgd-ci393/",
+  "remaining": [],
+  "scope": "Containers stopped by exact names separately; native repetition drivers terminate/wait their hog before result receipt"
+}

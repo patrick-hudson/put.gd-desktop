@@ -1,0 +1,37 @@
+{
+    "class": "QMenu",
+    "controls": [
+        {
+            "class": "QAction",
+            "enabled": true,
+            "kind": "menu-item",
+            "name": "trayMenuAction-3deabb1a41ce13d8",
+            "rect": [
+                6,
+                6,
+                157,
+                32
+            ],
+            "submenu": false,
+            "text": "Edit clipboard image"
+        },
+        {
+            "class": "QAction",
+            "enabled": true,
+            "kind": "menu-item",
+            "name": "trayMenuAction-672f6057ec40f3b4",
+            "rect": [
+                6,
+                38,
+                157,
+                32
+            ],
+            "submenu": false,
+            "text": "Edit an image file…"
+        }
+    ],
+    "height": 76,
+    "keys": [
+    ],
+    "width": 169
+}

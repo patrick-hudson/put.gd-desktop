@@ -35,7 +35,7 @@ def check_build(receipt_path, sdk_prefix, sdk_source, output, *, bundle_proton=F
                   'protonOffline': proton_offline,
                   'scope': 'Actual source-export production compilation; no desktop or memory acceptance'}
     (output / 'parameters.json').write_text(json.dumps(parameters, indent=2) + '\n')
-    result = {'schemaVersion': 1, 'passed': False, 'commands': []}
+    result = {'schemaVersion': 1, 'passed': False, 'archive': artifact, 'commands': []}
     started = time.monotonic()
     try:
         with tarfile.open(archive, 'r:gz') as stream:
@@ -51,7 +51,8 @@ def check_build(receipt_path, sdk_prefix, sdk_source, output, *, bundle_proton=F
              '-DPUTGD_AWS_RUNTIME_DIR=' + str(sdk_prefix / 'lib'),
              '-DPUTGD_SOURCE_COMMIT=' + identity['gitCommit'],
              '-DPUTGD_SOURCE_TREE=' + identity['gitTree'],
-             '-DPUTGD_SOURCE_COMMIT_COUNT=' + str(identity['commitCount'])],
+             '-DPUTGD_SOURCE_COMMIT_COUNT=' + str(identity['commitCount']),
+             '-DPUTGD_SOURCE_COMMIT_TIME=' + str(receipt['timestamp'])],
             ['cmake', '--build', '--preset', 'release'],
         ]
         if bundle_proton:
@@ -75,10 +76,12 @@ def check_build(receipt_path, sdk_prefix, sdk_source, output, *, bundle_proton=F
                 or manifest['version'] != receipt['localBuild']['version']):
             raise ValueError('Extracted source compiled identity differs from supplied provenance')
         verified = []
-        for name in ('putgd', 'putgd-cli', 'putgd-ui', 'putgd-capture', 'putgd-s3-worker', 'putgd-kde-region'):
+        for name in ('putgd', 'putgd-cli', 'putgd-ui', 'putgd-capture', 'putgd-s3-worker', 'putgd-b2-worker', 'putgd-kde-region', 'putgd-record'):
             program = build / name
             if name == 'putgd-kde-region' and not program.exists():
                 continue  # Minimum-Qt Cinnamon builder does not declare this optional target.
+            if name == 'putgd-record' and not program.exists():
+                continue  # Built only with GStreamer/FFmpeg development libraries.
             observed = json.loads(subprocess.check_output([str(program), '--version-json'], text=True))
             if observed != manifest:
                 raise ValueError('Archive-built helper identity mismatch: ' + name)

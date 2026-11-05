@@ -16,7 +16,7 @@ def main():
     identity = json.loads(version.stdout)
     assert not version.stderr and identity['runtime'] == 'putgd-proton-runtime'
     assert identity['appVersion'] == 'external-drive-put_gd@0.1.1-alpha'
-    assert identity['bunVersion'] == '1.4.2' and identity['sdkVersion'] == 'js@0.22.2'
+    assert identity['bunVersion'] == '1.4.4' and identity['sdkVersion'] == 'js@0.23.0'
     destination = {'providerId': 'proton-drive', 'profileId': 'smoke', 'profileRevision': 'smoke',
                    'settings': {}, 'credentials': {'mode': 'keychain', 'reference': 'smoke'}}
     request = {'schemaVersion': 1, 'method': 'remove', 'destination': destination}

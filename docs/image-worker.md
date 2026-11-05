@@ -2,7 +2,7 @@
 
 This contract describes implementation and repeatable checks. Desktop feature parity and memory acceptance require the exact current build on the supported compositor; host tests alone do not establish either.
 
-`putgd-ui --image-job` initializes the native `QApplication` and private parent pipes, then branches before VisualStyle, resident/session communication, configuration, providers, credentials, or windows. It uses the existing `UiControl` transport. The executable is the installed/build sibling of the calling binary; tests may explicitly supply a helper path and a shorter deadline through the `ImageJob` constructor. Production reads no helper-path or fault-mode environment override.
+`putgd-ui --image-job` initializes the native `QApplication` and private parent pipes, then branches before the app style (`putgd::Ui`), resident/session communication, configuration, providers, credentials, or windows. It uses the existing `UiControl` transport. The executable is the installed/build sibling of the calling binary; tests may explicitly supply a helper path and a shorter deadline through the `ImageJob` constructor. Production reads no helper-path or fault-mode environment override.
 
 The Core caller is synchronous and belongs on an acquisition/background worker. Discovery returns the Qt-supported MIME list in its original order, including aliases and duplicates. Decode returns a `QImage`, using explicit PNG decoding in the parent after the GUI child has converted the input. Preview returns PNG bytes with the existing 256×256 aspect-preserving smooth scaling, including upscaling. The original-image pixel admission limit does not incorrectly limit the resulting thumbnail pixel count.
 
@@ -22,7 +22,7 @@ The independent parent deadline starts before staging and remains fixed for the 
 
 Decode output uses the configured maximum file-byte admission budget; raw image bytes and pixels are checked separately. A raw-byte-plus-fixed-overhead estimate is not a valid PNG limit for all image shapes. Preview input staging copies the complete admitted regular file in bounded chunks, so it adds temporary disk I/O and can time out before decoding; this contract does not claim improved large-file preview latency.
 
-When all three display/platform variables (`QT_QPA_PLATFORM`, `DISPLAY`, `WAYLAND_DISPLAY`) are empty, the child uses Qt's offscreen platform so generic file previews still work without a display. A graphical session keeps its inherited native platform and font behavior. No production helper-path or fault environment override is added.
+`ImageJob` always sets `QT_QPA_PLATFORM=offscreen` in the child environment, including in graphical sessions. Codec jobs need no native display connection. No production helper-path or fault environment override is added.
 
 Qt's existing image allocation policy is retained. Only generic discovery/decode/preview go through this worker; the approved direct PNG path remains in the callers. Current RSS improvement is unknown until measured. No standalone region protocol, native output geometry or sibling capture route changes are part of this five-file implementation.
 
@@ -40,9 +40,9 @@ Standard text, local URI and PNG offers retain their direct paths. Unknown MIME 
 
 KDE full-output composition shares a single immutable frame only when selection equals its entire valid output geometry, density/identity/native size are valid, the pixel budget admits the image, and the original outward crop would cover every pixel. Partial, fractional or invalid cases delegate to the unchanged shared compositor. QImage copy-on-write keeps later source changes from changing the captured result. A 1280×800 ARGB frame avoids one 4,096,000-byte allocation; retained RSS savings must still be measured. Cinnamon and GNOME composition are unchanged.
 
-Repeat native KDE tests with the visible VNC desktop, synthetic payloads and independent paste/pixel witnesses. Include SVG clipboard, SVG bytes advertised as PNG and a regular SVG file preview, then the unchanged native workload and normal helper-exit checks. Drain all fixtures before measuring. Record every added operation in the workload and keep the frozen sampler/evaluator unchanged. Once KDE passes its functional and memory gates, run the exact candidate's Cinnamon and GNOME regressions.
+Repeat native KDE tests with the visible VNC desktop, synthetic payloads and independent paste/pixel witnesses. Include SVG clipboard, SVG bytes advertised as PNG and a regular SVG file preview, then the unchanged native workload and normal helper-exit checks. Drain all fixtures before measuring. Record every added operation in the workload and keep the frozen sampler/evaluator unchanged. Run the same build's Cinnamon, GNOME and KDE regressions in parallel, each with its own functional and memory gates.
 
-The native worker uses Unix file descriptors. Non-Unix residents retain their existing in-process generic preview route. The new process-cleanup integration suite is registered on Linux, where its `/proc` child-absence assertion is valid. These guards preserve source portability; they do not establish macOS or Windows desktop acceptance.
+The native worker uses Unix file descriptors. The process-cleanup integration suite runs on Linux, where its `/proc` child-absence assertion is valid. Generic non-Unix fallback code is outside supported desktop acceptance.
 
 ## X11 integration
 

@@ -1,0 +1,183 @@
+{
+ "os": "Linux Mint 22.3",
+ "osVersionId": "22.3",
+ "kernel": "6.14.0-37-generic",
+ "host": "mint-builder",
+ "sessionProcess": "cinnamon",
+ "graphicalSessions": [
+  {
+   "Seat": "seat0",
+   "Service": "lightdm-autologin",
+   "Desktop": "cinnamon",
+   "Leader": "1119",
+   "Type": "x11",
+   "Class": "user",
+   "State": "closing",
+   "Id": "c1"
+  },
+  {
+   "Seat": "seat0",
+   "Service": "lightdm-autologin",
+   "Desktop": "cinnamon",
+   "Leader": "260789",
+   "Type": "x11",
+   "Class": "user",
+   "State": "closing",
+   "Id": "c11"
+  },
+  {
+   "Seat": "seat0",
+   "Service": "lightdm-autologin",
+   "Desktop": "cinnamon",
+   "Leader": "437152",
+   "Type": "x11",
+   "Class": "user",
+   "State": "closing",
+   "Id": "c12"
+  },
+  {
+   "Seat": "seat0",
+   "Service": "lightdm-autologin",
+   "Desktop": "cinnamon",
+   "Leader": "474804",
+   "Type": "x11",
+   "Class": "user",
+   "State": "closing",
+   "Id": "c14"
+  },
+  {
+   "Seat": "seat0",
+   "Service": "lightdm-autologin",
+   "Desktop": "cinnamon",
+   "Leader": "492245",
+   "Type": "x11",
+   "Class": "user",
+   "State": "closing",
+   "Id": "c16"
+  },
+  {
+   "Seat": "seat0",
+   "Service": "lightdm-autologin",
+   "Desktop": "cinnamon",
+   "Leader": "493105",
+   "Type": "x11",
+   "Class": "user",
+   "State": "closing",
+   "Id": "c18"
+  },
+  {
+   "Seat": "seat0",
+   "Service": "lightdm-autologin",
+   "Desktop": "cinnamon",
+   "Leader": "494129",
+   "Type": "x11",
+   "Class": "user",
+   "State": "closing",
+   "Id": "c20"
+  },
+  {
+   "Seat": "seat0",
+   "Service": "lightdm-autologin",
+   "Desktop": "cinnamon",
+   "Leader": "495090",
+   "Type": "x11",
+   "Class": "user",
+   "State": "closing",
+   "Id": "c22"
+  },
+  {
+   "Seat": "seat0",
+   "Service": "lightdm-autologin",
+   "Desktop": "cinnamon",
+   "Leader": "496057",
+   "Type": "x11",
+   "Class": "user",
+   "State": "closing",
+   "Id": "c24"
+  },
+  {
+   "Seat": "seat0",
+   "Service": "lightdm-autologin",
+   "Desktop": "cinnamon",
+   "Leader": "496924",
+   "Type": "x11",
+   "Class": "user",
+   "State": "active",
+   "Id": "c26"
+  },
+  {
+   "Seat": "seat0",
+   "Service": "lightdm-autologin",
+   "Desktop": "cinnamon",
+   "Leader": "13588",
+   "Type": "x11",
+   "Class": "user",
+   "State": "closing",
+   "Id": "c3"
+  },
+  {
+   "Seat": "seat0",
+   "Service": "lightdm-autologin",
+   "Desktop": "cinnamon",
+   "Leader": "33690",
+   "Type": "x11",
+   "Class": "user",
+   "State": "closing",
+   "Id": "c5"
+  },
+  {
+   "Seat": "seat0",
+   "Service": "lightdm-autologin",
+   "Desktop": "cinnamon",
+   "Leader": "36399",
+   "Type": "x11",
+   "Class": "user",
+   "State": "closing",
+   "Id": "c7"
+  },
+  {
+   "Seat": "seat0",
+   "Service": "lightdm-autologin",
+   "Desktop": "cinnamon",
+   "Leader": "244370",
+   "Type": "x11",
+   "Class": "user",
+   "State": "closing",
+   "Id": "c9"
+  }
+ ],
+ "shellSession": "c26",
+ "envSessionType": "x11",
+ "currentDesktop": "X-Cinnamon",
+ "cinnamon": [
+  "Cinnamon 6.6.9"
+ ],
+ "muffin": [
+  "muffin 6.6.3"
+ ],
+ "Xorg": [
+  "/usr/lib/xorg/Xorg.wrap: Only console users are allowed to run the X server"
+ ],
+ "packages": {
+  "muffin": "6.6.3+zena",
+  "cinnamon": "6.6.9+zena",
+  "xserver-xorg-core": "2:21.1.12-1ubuntu1.9",
+  "xwayland": "2:23.2.6-1ubuntu0.8",
+  "libqt6core6t64": "6.4.2+dfsg-21.1build5",
+  "xdg-desktop-portal": "1.20.0+ds-2ubuntu1",
+  "xdg-desktop-portal-gtk": "1.15.1-1build2",
+  "xdg-desktop-portal-xapp": "1.1.3+zena",
+  "pipewire": "1.0.5-1ubuntu3.3",
+  "libpipewire-0.3-0t64": "1.0.5-1ubuntu3.3",
+  "fuse3": "3.14.0-5build1",
+  "libfuse2t64": "2.9.9-8.1build1"
+ },
+ "gpu": [
+  "00:02.0 VGA compatible controller: Intel Corporation HD Graphics 530 (rev 06)"
+ ],
+ "fuse": {
+  "fusermount": true,
+  "fusermount3": true
+ },
+ "libfuse2": true
+}

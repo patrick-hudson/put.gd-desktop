@@ -1,0 +1,29 @@
+.........................................{"recipe": "test_surface_driver.<lambda>", "functional": "passed", "visual": "frames", "review": false}
+{"recipe": "test_surface_driver.<lambda>", "functional": "passed", "visual": "frames", "review": false}
+......E.{"recipe": "test_surface_driver.good", "functional": "passed", "visual": "frames", "review": false}
+{"recipe": "test_surface_driver.bad", "functional": "failed", "visual": "frames", "review": false}
+{"recipe": "test_surface_driver.blocked", "functional": "blocked", "visual": "frames", "review": false}
+..{"recipe": "test_surface_driver.good", "functional": "passed", "visual": "reviewed-ok", "review": false}
+{"recipe": "test_surface_driver.bad", "functional": "passed", "visual": "frames", "review": true}
+......................................................../tmp/tmplyngbofe/native/map.html: 394 interactions, 0 passed, 1 partial, 0 failed, 0 blocked, 393 untested
+/tmp/tmpdodvni71/unresolved/map.html: 394 interactions, 0 passed, 0 partial, 1 failed, 0 blocked, 393 untested
+/tmp/tmpdodvni71/unresolved/map.html: 394 interactions, 0 passed, 0 partial, 1 failed, 0 blocked, 393 untested
+{"interaction": "editor.undo", "desktop": "aurora-kde-wayland", "package": "source", "source": "mark", "at": "2026-10-30T01:54:51Z", "host": "aurora-amd", "placement": "native", "destination": "local", "review": true, "review_reason": "Desktop drawn"}
+{"recipe": "test_surface_redact.plant", "functional": "passed", "visual": "frames", "review": false}
+........
+======================================================================
+ERROR: test_resident_operation_identity_is_retained (test_surface_driver.Running.test_resident_operation_identity_is_retained)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/patrick/.t3/worktrees/put.gd/t3-66674cc6/tests/desktop/test_surface_driver.py", line 275, in test_resident_operation_identity_is_retained
+    self.ctx.type_text('e')
+  File "/home/patrick/.t3/worktrees/put.gd/t3-66674cc6/tools/lab/surface_driver/context.py", line 372, in type_text
+    self._guard()
+  File "/home/patrick/.t3/worktrees/put.gd/t3-66674cc6/tools/lab/surface_driver/context.py", line 194, in _guard
+    raise RecipeBlocked('real input has no target window; use view(), focus(), or click(window=...)')
+tools.lab.surface_driver.api.RecipeBlocked: real input has no target window; use view(), focus(), or click(window=...)
+
+----------------------------------------------------------------------
+Ran 115 tests in 1.523s
+
+FAILED (errors=1)

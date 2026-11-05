@@ -1,0 +1,12 @@
+{
+  "artifacts": "dir",
+  "artifacts/231116d1-de68-4170-a028-1ac44c77ccb4": "dir",
+  "artifacts/231116d1-de68-4170-a028-1ac44c77ccb4/3e0b9b06-8b1c-4bfe-bb3b-c005f137e5d8": "8d5810dd5c9c8b1b5648e611d0e43971e01b6b03e2839bad028ad384ec998316",
+  "artifacts/231116d1-de68-4170-a028-1ac44c77ccb4/_manifest.json": "aa3d853179087aeb7fc2f26d4c82d13df215bdbb8e93a04b45334b82f0697a29",
+  "artifacts/5929a893-3b15-403a-bf7f-c9ac6f323aaa": "dir",
+  "artifacts/5929a893-3b15-403a-bf7f-c9ac6f323aaa/_manifest.json": "8d60997fac50640da9ff4e883155621fe2cfe8a9a72774f7c5fb1731c14eda41",
+  "artifacts/5929a893-3b15-403a-bf7f-c9ac6f323aaa/a8f1ae50-170e-4652-9cc8-e1e2f2a12bb6": "c7a4c2eea1d901cbc049d84dbba77e472576aafc27b49e4a1e188bb7dd176185",
+  "history.sqlite": "aa2186d523ebc538995041872038beb9dc3d596ff699b7f23dcbaa0ccdee194c",
+  "previews": "dir",
+  "previews/3e0b9b06-8b1c-4bfe-bb3b-c005f137e5d8.png": "1fe8f3bd9da2589bb5a123bc46833591751275bc7264be0ee6a39b6bf806bda3"
+}

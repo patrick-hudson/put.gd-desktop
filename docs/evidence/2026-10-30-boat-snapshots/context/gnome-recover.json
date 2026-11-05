@@ -1,0 +1,1 @@
+{"code":"recover_unsupported","error":"This sandbox runs on a machine that cannot be power-cycled. Wait for it to answer again, or run `boat stop --force` to stop it with its last good snapshot (anything written after it is lost; with no snapshot, everything is lost), then resume it.","event":"error","status":409}

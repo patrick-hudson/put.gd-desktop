@@ -1,0 +1,52 @@
+{
+    "class": "QMessageBox",
+    "controls": [
+        {
+            "class": "QLabel",
+            "enabled": true,
+            "kind": "focusable",
+            "name": "qt_msgbox_label",
+            "rect": [
+                24,
+                20,
+                420,
+                38
+            ],
+            "text": "Clear every local history record? Remote objects and user-owned local copies remain."
+        },
+        {
+            "checkable": false,
+            "checked": false,
+            "class": "QPushButton",
+            "enabled": true,
+            "kind": "button",
+            "name": "confirmDiscard",
+            "rect": [
+                284,
+                74,
+                160,
+                36
+            ],
+            "text": "Clear history records"
+        },
+        {
+            "checkable": false,
+            "checked": false,
+            "class": "QPushButton",
+            "enabled": true,
+            "kind": "button",
+            "name": "",
+            "rect": [
+                205,
+                74,
+                73,
+                36
+            ],
+            "text": "Cancel"
+        }
+    ],
+    "height": 126,
+    "keys": [
+    ],
+    "width": 468
+}

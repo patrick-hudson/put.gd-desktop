@@ -1,0 +1,505 @@
+{
+  "scope": "Scoped image-editor bug proof; offscreen widget contracts and boat KVM Cinnamon X11 replay; no physical/release acceptance claim.",
+  "codePr": "https://github.com/patrick-hudson/put.gd-desktop/pull/825",
+  "builds": {
+    "nightly": {
+      "schemaVersion": 1,
+      "version": "26.1030.2536-dev+gfdc52414043a",
+      "baseVersion": "26.1030.2536",
+      "packageVersion": "26.1030.2536~dev+gfdc52414043a",
+      "gitCommit": "fdc52414043a78b17148ed31f73fdf5b4573af5f",
+      "gitTree": "77c3ae36c9cde1d3b08918b0adaa8e193a80919d",
+      "commitCount": 2536,
+      "dirty": false,
+      "sourceProvenance": "git"
+    },
+    "head": {
+      "schemaVersion": 1,
+      "version": "26.1030.2537-dev+g382a623c5ad0",
+      "baseVersion": "26.1030.2537",
+      "packageVersion": "26.1030.2537~dev+g382a623c5ad0",
+      "gitCommit": "382a623c5ad0a14d53bc3efbd3ce1264d16d12b7",
+      "gitTree": "a975edba341948aa8834b8918d5059fb2edf5029",
+      "commitCount": 2537,
+      "dirty": false,
+      "sourceProvenance": "git"
+    }
+  },
+  "debSha256": {
+    "nightly": "1d721b40cf0f51d9b3a1d34684a6b10fce9d9e437e0d836865cc714e1d673108",
+    "head": "0338944023c1770997a225f10e87f16e7a65ee4e53d83fb9a7d53a4d6d2b67b4"
+  },
+  "buildSandbox": {
+    "id": "bx_agpb9q4z",
+    "snapshot": "putgd-build-base-v3",
+    "size": "large",
+    "placement": "boat"
+  },
+  "liveSandbox": {
+    "id": "bx_mq3wnphn",
+    "snapshot": "putgd-lab-cinnamon-v3",
+    "size": "large",
+    "placement": "boat",
+    "overlayId": "e8890770-09e0-4a65-bdb5-7608c6877ff1",
+    "goldenSha256": "23b3e37571bdc7b452fdc30d53e70386423d75cb377e59653eed8a652c8bfab7"
+  },
+  "identity": {
+    "hostname": "putgd-lab",
+    "kernel": "6.14.0-37-generic",
+    "machine": "x86_64",
+    "os": {
+      "ID": "linuxmint",
+      "VERSION_ID": "22.3",
+      "VARIANT_ID": null
+    },
+    "session_type": "x11",
+    "desktop": "X-Cinnamon",
+    "qt_platform": "xcb"
+  },
+  "geometry": {
+    "x": 59,
+    "y": 139,
+    "width": 900,
+    "height": 620,
+    "scale": 1,
+    "pid": 7308,
+    "window_id": "69206022",
+    "name": "Edit image \u2014 put.gd",
+    "coordinate_space": "framebuffer",
+    "frame": null,
+    "states": {
+      "active": true,
+      "minimized": false,
+      "maximized": false
+    }
+  },
+  "guiRegression": {
+    "nightly": "Escape + Ctrl+1 fails; saved-menu control passes; 3 passed including setup/cleanup, 1 expected failure",
+    "head": "30 data rows and window-scope control pass; 33 passed including setup/cleanup, 0 failed",
+    "keys": [
+      "Ctrl+0",
+      "Ctrl+1",
+      "Ctrl++",
+      "Ctrl+=",
+      "Ctrl+-"
+    ],
+    "dismissals": [
+      "Escape",
+      "outside click",
+      "choose item"
+    ],
+    "menus": [
+      "Zoom",
+      "Saved copy actions"
+    ]
+  },
+  "ctest": {
+    "retries": false,
+    "command": "ctest --preset dev --parallel 12 --resource-spec-file \"$PWD/tools/ci/ctest-resources.json\" --output-junit \"$PWD/build/dev/LABEL-junit.xml\"",
+    "user": "putgd-ci",
+    "environment": {
+      "PUTGD_TEST_TIME_SCALE": "3",
+      "LANG": "C.UTF-8",
+      "LC_ALL": "C.UTF-8",
+      "TMPDIR": "new private /tmp/c806.XXXXXX",
+      "DISPLAY": "unset",
+      "XAUTHORITY": "unset",
+      "WAYLAND_DISPLAY": "unset"
+    },
+    "configure": "cmake --preset dev -DPUTGD_TEST_TIMEOUT_SCALE=3 -DPUTGD_LAB_FIXTURE=OFF",
+    "nightly": {
+      "passed": 114,
+      "failed": 0,
+      "seconds": 141.05
+    },
+    "head": {
+      "passed": 114,
+      "failed": 0,
+      "seconds": 138.21
+    }
+  },
+  "native": {
+    "nightly": {
+      "version": "putgd 26.1030.2536-dev+gfdc52414043a",
+      "rows": [
+        {
+          "dismissal": "escape",
+          "key": "Ctrl+1",
+          "before": {
+            "zoomPercent": 98,
+            "fitted": true
+          },
+          "foreground": {
+            "ok": true,
+            "active": "69206022",
+            "target": "69206022",
+            "stacking": [
+              "52428803",
+              "69206022"
+            ],
+            "obscuring_window": "unknown foreground window",
+            "obscuring_window_id": null,
+            "backend": "ewmh"
+          },
+          "after": {
+            "zoomPercent": 98,
+            "fitted": true
+          },
+          "shortcutWorked": false
+        }
+      ],
+      "cleanupErrors": [],
+      "qtPlatformLibraries": [
+        {
+          "pid": 4846,
+          "platformLibraries": [
+            "/usr/lib/x86_64-linux-gnu/qt6/plugins/platforms/libqxcb.so"
+          ]
+        }
+      ]
+    },
+    "head": {
+      "version": "putgd 26.1030.2537-dev+g382a623c5ad0",
+      "rows": [
+        {
+          "dismissal": "escape",
+          "key": "Ctrl+1",
+          "before": {
+            "zoomPercent": 98,
+            "fitted": true
+          },
+          "foreground": {
+            "ok": true,
+            "active": "69206022",
+            "target": "69206022",
+            "stacking": [
+              "52428803",
+              "69206022"
+            ],
+            "obscuring_window": "unknown foreground window",
+            "obscuring_window_id": null,
+            "backend": "ewmh"
+          },
+          "after": {
+            "zoomPercent": 100,
+            "fitted": false
+          },
+          "shortcutWorked": true
+        },
+        {
+          "dismissal": "escape",
+          "key": "Ctrl+0",
+          "before": {
+            "zoomPercent": 200,
+            "fitted": false
+          },
+          "foreground": {
+            "ok": true,
+            "active": "69206022",
+            "target": "69206022",
+            "stacking": [
+              "52428803",
+              "69206022"
+            ],
+            "obscuring_window": "unknown foreground window",
+            "obscuring_window_id": null,
+            "backend": "ewmh"
+          },
+          "after": {
+            "zoomPercent": 98,
+            "fitted": true
+          },
+          "shortcutWorked": true
+        },
+        {
+          "dismissal": "escape",
+          "key": "Ctrl++",
+          "before": {
+            "zoomPercent": 200,
+            "fitted": false
+          },
+          "foreground": {
+            "ok": true,
+            "active": "69206022",
+            "target": "69206022",
+            "stacking": [
+              "52428803",
+              "69206022"
+            ],
+            "obscuring_window": "unknown foreground window",
+            "obscuring_window_id": null,
+            "backend": "ewmh"
+          },
+          "after": {
+            "zoomPercent": 250,
+            "fitted": false
+          },
+          "shortcutWorked": true
+        },
+        {
+          "dismissal": "escape",
+          "key": "Ctrl+=",
+          "before": {
+            "zoomPercent": 200,
+            "fitted": false
+          },
+          "foreground": {
+            "ok": true,
+            "active": "69206022",
+            "target": "69206022",
+            "stacking": [
+              "52428803",
+              "69206022"
+            ],
+            "obscuring_window": "unknown foreground window",
+            "obscuring_window_id": null,
+            "backend": "ewmh"
+          },
+          "after": {
+            "zoomPercent": 250,
+            "fitted": false
+          },
+          "shortcutWorked": true
+        },
+        {
+          "dismissal": "escape",
+          "key": "Ctrl+-",
+          "before": {
+            "zoomPercent": 200,
+            "fitted": false
+          },
+          "foreground": {
+            "ok": true,
+            "active": "69206022",
+            "target": "69206022",
+            "stacking": [
+              "52428803",
+              "69206022"
+            ],
+            "obscuring_window": "unknown foreground window",
+            "obscuring_window_id": null,
+            "backend": "ewmh"
+          },
+          "after": {
+            "zoomPercent": 160,
+            "fitted": false
+          },
+          "shortcutWorked": true
+        },
+        {
+          "dismissal": "outside",
+          "key": "Ctrl+1",
+          "before": {
+            "zoomPercent": 98,
+            "fitted": true
+          },
+          "foreground": {
+            "ok": true,
+            "active": "69206022",
+            "target": "69206022",
+            "stacking": [
+              "52428803",
+              "69206022"
+            ],
+            "obscuring_window": "unknown foreground window",
+            "obscuring_window_id": null,
+            "backend": "ewmh"
+          },
+          "after": {
+            "zoomPercent": 100,
+            "fitted": false
+          },
+          "shortcutWorked": true
+        },
+        {
+          "dismissal": "outside",
+          "key": "Ctrl+0",
+          "before": {
+            "zoomPercent": 200,
+            "fitted": false
+          },
+          "foreground": {
+            "ok": true,
+            "active": "69206022",
+            "target": "69206022",
+            "stacking": [
+              "52428803",
+              "69206022"
+            ],
+            "obscuring_window": "unknown foreground window",
+            "obscuring_window_id": null,
+            "backend": "ewmh"
+          },
+          "after": {
+            "zoomPercent": 98,
+            "fitted": true
+          },
+          "shortcutWorked": true
+        },
+        {
+          "dismissal": "outside",
+          "key": "Ctrl++",
+          "before": {
+            "zoomPercent": 200,
+            "fitted": false
+          },
+          "foreground": {
+            "ok": true,
+            "active": "69206022",
+            "target": "69206022",
+            "stacking": [
+              "52428803",
+              "69206022"
+            ],
+            "obscuring_window": "unknown foreground window",
+            "obscuring_window_id": null,
+            "backend": "ewmh"
+          },
+          "after": {
+            "zoomPercent": 250,
+            "fitted": false
+          },
+          "shortcutWorked": true
+        },
+        {
+          "dismissal": "outside",
+          "key": "Ctrl+=",
+          "before": {
+            "zoomPercent": 200,
+            "fitted": false
+          },
+          "foreground": {
+            "ok": true,
+            "active": "69206022",
+            "target": "69206022",
+            "stacking": [
+              "52428803",
+              "69206022"
+            ],
+            "obscuring_window": "unknown foreground window",
+            "obscuring_window_id": null,
+            "backend": "ewmh"
+          },
+          "after": {
+            "zoomPercent": 250,
+            "fitted": false
+          },
+          "shortcutWorked": true
+        },
+        {
+          "dismissal": "outside",
+          "key": "Ctrl+-",
+          "before": {
+            "zoomPercent": 200,
+            "fitted": false
+          },
+          "foreground": {
+            "ok": true,
+            "active": "69206022",
+            "target": "69206022",
+            "stacking": [
+              "52428803",
+              "69206022"
+            ],
+            "obscuring_window": "unknown foreground window",
+            "obscuring_window_id": null,
+            "backend": "ewmh"
+          },
+          "after": {
+            "zoomPercent": 160,
+            "fitted": false
+          },
+          "shortcutWorked": true
+        }
+      ],
+      "cleanupErrors": [],
+      "qtPlatformLibraries": [
+        {
+          "pid": 7308,
+          "platformLibraries": [
+            "/usr/lib/x86_64-linux-gnu/qt6/plugins/platforms/libqxcb.so"
+          ]
+        }
+      ]
+    }
+  },
+  "extraNativeItemProbe": {
+    "status": "inconclusive before sending zoom shortcut",
+    "intended": "QMP Home, Down, Return selects 50%",
+    "observed": "menu closed but editor.inspect remained fitted at 98%",
+    "followup": "https://github.com/patrick-hudson/put.gd-desktop/issues/827"
+  },
+  "notes": [
+    "Initial offscreen harness activation and saved-menu visibility prerequisites were corrected before the retained regression result.",
+    "Initial CTest launch lacked home traversal for putgd-ci; no tests ran. Log preserved; traversal ACL added, full run passed without test retries.",
+    "Initial native probe could not observe visible menu items via AT-SPI. Failure frame retained. Corrected observer uses native X11 popup geometry.",
+    "Native item-selection driver work stopped at the campaign two-attempt boundary; GUI item-selection cases pass.",
+    "Both sandbox deletion operations completed; named snapshots preserved.",
+    "Overlay guard dry-run passed; an apply wrapper reported TimeoutExpired. The subsequent guarded invocation verified/returned the existing completed retirement receipt. Original error and completed receipt are retained.",
+    "Workstation port-6806 tunnel stopped, only the issue806 wall entry removed, and the dedicated forwarded-key agent stopped."
+  ],
+  "privateEvidence": "work/campaigns/editor-shortcuts-806-20261030/",
+  "cleanup": {
+    "overlay": {
+      "schemaVersion": 1,
+      "status": "completed",
+      "run": "/home/user/work/put.gd/src/work/lab-runs/e806",
+      "disk": "/home/user/work/put.gd/src/work/lab-runs/e806/disk.qcow2",
+      "diskIdentity": {
+        "device": 64769,
+        "inode": 4783362,
+        "size": 1300889600,
+        "mtimeNs": 1793343951394592708,
+        "ctimeNs": 1793343951394592708,
+        "allocatedBytes": 1300832256
+      },
+      "base": "/home/user/work/put.gd/work/lab-images/cinnamon-x11-probes-v3-session/image.qcow2",
+      "stateSha256": "7494f07a172a15ce463e142a76550f449080b543b54c9a5d1faecf2367dd7409",
+      "evidence": {
+        "manifest": "/home/user/e806/completion-manifest.json",
+        "sha256": "a935486b868b56178096cace483a77efc58345eaf53b7236fa72f0578ae4302b",
+        "runId": "e8890770-09e0-4a65-bdb5-7608c6877ff1",
+        "mode": "explicit"
+      },
+      "preparedUtc": "2026-10-30T07:07:39.169638+00:00",
+      "completedUtc": "2026-10-30T07:07:40.370928+00:00"
+    },
+    "buildSandboxDeletion": {
+      "operation": {
+        "attemptCount": 1,
+        "completedAt": "2026-10-30T07:03:22.604Z",
+        "expectedBy": null,
+        "id": "bdop_93fc8a833fb34c74b42ae33ff861a5a7",
+        "kind": "sandbox",
+        "reason": "explicit",
+        "requestedAt": "2026-10-30T07:03:09.105Z",
+        "stage": "completed",
+        "status": "completed",
+        "targetId": "bx_agpb9q4z"
+      }
+    },
+    "liveSandboxDeletion": {
+      "operation": {
+        "attemptCount": 1,
+        "completedAt": "2026-10-30T07:09:18.432Z",
+        "expectedBy": null,
+        "id": "bdop_f9c2c80d814a455b89165194dc345e75",
+        "kind": "sandbox",
+        "reason": "explicit",
+        "requestedAt": "2026-10-30T07:09:04.487Z",
+        "stage": "completed",
+        "status": "completed",
+        "targetId": "bx_mq3wnphn"
+      }
+    }
+  },
+  "archiveSha256": {
+    "e806-build-evidence.tar.gz": "0108cc4f6546a86278209ec148d4a9a13c837cb3b6ee8832f2de5973a308bd95",
+    "e806-live-before-retirement.tar.gz": "7e003cdf90a5e02f35f3831580f971b7785d97ec12039a070540c72e78c32b1a",
+    "e806-live-final.tar.gz": "74558d1ae92727a20d2beee2fb6bdde5beb3ff91f8cee2065232e07ccddede5d"
+  },
+  "testArtifactSha256": {
+    "build/e806/head-junit.xml": "20e3e741804273e15c691b26d9ab3cc2a7e0ae3d63de339842cd48efef1f0bc6",
+    "build/e806/nightly-junit.xml": "99cdbb616f74448d9c7944fb53023f6bbd8b366569774e35dfefd2a9dd22cbf4"
+  }
+}

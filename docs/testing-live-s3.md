@@ -42,13 +42,21 @@ only. Never commit `credentials.txt`. Record the credential mode, not its values
 
 Restoring settings does not clear session credentials. End the resident normally
 before a credential-free cold run. Record cold, post-view, post-capture and
-post-upload memory separately using [the frozen memory protocol](testing-memory.md).
+post-upload memory as separate stages: use a fresh credential-free resident for
+cold idle; close the last view normally and verify UI-helper exit for post-view;
+finish acquisition and clipboard transfers before post-capture sampling, retaining
+any owned clipboard payload in the measurement; and wait for the operation and
+S3 worker to drain before post-upload sampling. Retain the
+whole process family, stage labels, exact identities and raw samples. Use the
+[performance observers](../tests/performance/) for sampling and the applicable
+[acceptance-matrix memory gates](acceptance-matrix.md#linux-update-profile-u1u16)
+for settle times, sample windows and limits; keep stage results distinct.
 A single `smaps_rollup` snapshot is a locator, not a five-minute acceptance run.
-The provider module remains pinned after first use, so cold savings do not prove
-post-upload savings. Origin deletion also does not establish browser/CDN cache
+The S3 worker exits after each driver call; measure post-upload residency
+separately from cold residency. Origin deletion also does not establish browser/CDN cache
 invalidation.
 
-The [source55 Cinnamon evidence](evidence/2026-10-09-live-s3-cinnamon.json) records
+The [2026-10-09 Cinnamon evidence](evidence/2026-10-09-live-s3-cinnamon.json) records
 one passing live workflow and its distinct 49.14 MiB post-cloud diagnostic.
 Use fresh IDs for each reproduction; historical deletion IDs are evidence only.
 See [CLI](cli.md), [S3](s3.md), [credentials](credentials.md) and

@@ -1,0 +1,65 @@
+[
+  {
+    "deletedIds": [],
+    "finalState": "absent",
+    "name": "putgd-905a42d801f6-appimage",
+    "requests": [],
+    "verification": "boat list --all",
+    "verified": true,
+    "verifiedAt": 1793321998.7834268
+  },
+  {
+    "deletedIds": [],
+    "finalState": "absent",
+    "name": "putgd-905a42d801f6-ubuntu24.04",
+    "requests": [],
+    "verification": "boat list --all",
+    "verified": true,
+    "verifiedAt": 1793322001.4704454
+  },
+  {
+    "deletedIds": [],
+    "finalState": "absent",
+    "name": "putgd-905a42d801f6-ubuntu26.04",
+    "requests": [],
+    "verification": "boat list --all",
+    "verified": true,
+    "verifiedAt": 1793322004.2733197
+  },
+  {
+    "deletedIds": [],
+    "finalState": "absent",
+    "name": "putgd-905a42d801f6-debian13",
+    "requests": [],
+    "verification": "boat list --all",
+    "verified": true,
+    "verifiedAt": 1793322006.997857
+  },
+  {
+    "deletedIds": [],
+    "finalState": "absent",
+    "name": "putgd-905a42d801f6-fedora44",
+    "requests": [],
+    "verification": "boat list --all",
+    "verified": true,
+    "verifiedAt": 1793322009.5887723
+  },
+  {
+    "deletedIds": [],
+    "finalState": "absent",
+    "name": "putgd-905a42d801f6-ui-catalog",
+    "requests": [],
+    "verification": "boat list --all",
+    "verified": true,
+    "verifiedAt": 1793322012.6391943
+  },
+  {
+    "deletedIds": [],
+    "finalState": "absent",
+    "name": "putgd-905a42d801f6-lab-fixture",
+    "requests": [],
+    "verification": "boat list --all",
+    "verified": true,
+    "verifiedAt": 1793322015.4193792
+  }
+]

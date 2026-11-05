@@ -1,0 +1,28 @@
+{
+  "crop": [
+    52,
+    84,
+    1368,
+    960
+  ],
+  "cropMethod": "own-theme-pixels",
+  "ownThemeFraction": 0.9269406392694064,
+  "host": "m74-native-full-errors",
+  "source": {
+    "schemaVersion": 1,
+    "version": "26.1024.1140-dev+g171b506e02ca",
+    "baseVersion": "26.1024.1140",
+    "packageVersion": "26.1024.1140~dev+g171b506e02ca",
+    "gitCommit": "171b506e02ca37ba75b27dbbbe859502380926ef",
+    "gitTree": "2942cc06bd2361cf915e9d5ffbeeadd7eaa75368",
+    "commitCount": 1140,
+    "dirty": false,
+    "sourceProvenance": "git"
+  },
+  "session": {
+    "XDG_CURRENT_DESKTOP": "X-Cinnamon",
+    "XDG_SESSION_TYPE": "x11",
+    "QT_QPA_PLATFORM": "xcb"
+  },
+  "artifact": "synthetic-guide-selected.png"
+}

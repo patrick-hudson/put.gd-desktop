@@ -12,7 +12,7 @@
     "/usr/share/putgd/aws-runtime-manifest.json": "1898b7425eae34f13371b3fd27709bf7cd3b294513caa57c9762c7f506bf83b8",
     "/usr/lib/x86_64-linux-gnu/putgd/libputgd-s3.so": "199e20a9f12f957af61104082a30575648e7c93aee4385787755352277833490"
   },
-  "bootId": "8d46b307-fd26-43eb-9261-ac53a23029d0",
+  "bootId": "[REDACTED]",
   "residentProcesses": [
     {
       "pid": 2775,

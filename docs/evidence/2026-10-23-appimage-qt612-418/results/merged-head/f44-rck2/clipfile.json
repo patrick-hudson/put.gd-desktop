@@ -1,0 +1,105 @@
+{
+ "at": "2026-10-23T21:51:20Z",
+ "before": {
+  "putgd": [
+   3323305
+  ],
+  "putgd-ui": [
+   3323517
+  ]
+ },
+ "entries": [
+  {
+   "sample": "cve-2025-10729-pattern-orphan.svg",
+   "sha256": "b1b7776ef367bc7e360ea559821347242979005e253df30c4cac5cc647708e54",
+   "bytes": 271,
+   "clipboardOwnerPid": 3323536,
+   "operation": {
+    "id": "bb8df187-e38e-4d02-93ba-dadcc46f692a",
+    "state": "completed",
+    "copyStatus": "copied",
+    "items": [
+     {
+      "name": "cve-2025-10729-pattern-orphan.svg",
+      "mime": "image/svg+xml",
+      "uploadStatus": "uploaded",
+      "link": "http://127.0.0.1:41523/fixture/afa/cve-2025-10729-pattern-orphan.svg",
+      "local": {
+       "error": {
+        "code": "",
+        "details": {},
+        "message": ""
+       },
+       "path": "/home/patrick/work/put.gd-qt418r/afa/runs/f44-rck2/archive/images/cve-2025-10729-pattern-orphan.svg",
+       "status": "saved"
+      }
+     }
+    ],
+    "error": {
+     "code": "",
+     "details": {},
+     "message": ""
+    }
+   },
+   "history": {
+    "id": "b7b62e24-84ee-4a2e-8ade-3467da219c3c",
+    "name": "cve-2025-10729-pattern-orphan.svg",
+    "mime": "image/svg+xml",
+    "uploadStatus": "uploaded",
+    "local": "saved",
+    "newest": true
+   },
+   "preview": {
+    "ok": true,
+    "state": "ready",
+    "error": {
+     "code": "",
+     "details": {},
+     "message": ""
+    },
+    "previewExists": true
+   },
+   "afterPreview": {
+    "putgd": [
+     3323305
+    ],
+    "putgd-ui": [
+     3323517
+    ]
+   },
+   "cards": 0,
+   "afterUi": {
+    "putgd": [
+     3323305
+    ],
+    "putgd-ui": [
+     3323517
+    ]
+   }
+  }
+ ],
+ "after": {
+  "putgd": [
+   3323305
+  ],
+  "putgd-ui": [
+   3323517
+  ]
+ },
+ "diagnostics": {
+  "build": {
+   "baseVersion": "26.1023.1101",
+   "commitCount": 1101,
+   "dirty": false,
+   "gitCommit": "aa047473ad2e3bcce7bf884c15d3155509096e7e",
+   "gitTree": "b3602592497bda967554b80893dad950ade22cfa",
+   "packageVersion": "26.1023.1101~dev+gaa047473ad2e",
+   "schemaVersion": 1,
+   "sourceProvenance": "git",
+   "version": "26.1023.1101-dev+gaa047473ad2e"
+  },
+  "journalReady": true,
+  "qtVersion": "6.12.0"
+ },
+ "survived": true
+}

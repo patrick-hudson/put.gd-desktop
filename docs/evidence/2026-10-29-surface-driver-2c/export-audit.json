@@ -1,0 +1,27 @@
+{
+  "source": "64dc9b8b00d788b060e7dcb54b09bea8e8d05e79",
+  "scope": "Checksum and known-region checks on exported evidence; boat receipts retain actual installed-OCR results.",
+  "runs": {
+    "privacy": {
+      "passed": true,
+      "files": 14,
+      "pngs": 4,
+      "image_audit": "known-regions",
+      "findings": []
+    },
+    "core-demo": {
+      "passed": true,
+      "files": 12,
+      "pngs": 9,
+      "image_audit": "known-regions",
+      "findings": []
+    },
+    "idle": {
+      "passed": true,
+      "files": 3,
+      "pngs": 1,
+      "image_audit": "known-regions",
+      "findings": []
+    }
+  }
+}

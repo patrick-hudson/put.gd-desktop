@@ -1,0 +1,10 @@
+### sudo install -m 644 /usr/share/putgd/repo/putgd-stable.sources /etc/apt/sources.list.d/putgd.sources
+rc=0
+### sudo apt update
+### sudo apt-get install -y --allow-downgrades putgd/stable
+This may mean that the package is missing, has been obsoleted, or
+is only available from another source
+
+E: Release 'stable' for 'putgd' was not found
+rc=0
+putgd	26.1022.1017~nightly

@@ -1,0 +1,31 @@
+{
+  "host": "fedora",
+  "buildDirectory": "/home/patrick/work/i559/build/dev",
+  "cache": {
+    "CMAKE_BUILD_TYPE:STRING": "Debug",
+    "CMAKE_CXX_COMPILER:FILEPATH": "/usr/lib64/ccache/c++",
+    "CMAKE_MAKE_PROGRAM:FILEPATH": "/usr/bin/ninja-build",
+    "PUTGD_AWS_RUNTIME_DIR:PATH": "/home/patrick/work/put.gd/build/sdk/lib64",
+    "PUTGD_SOURCE_COMMIT_COUNT:STRING": "1254",
+    "PUTGD_SOURCE_COMMIT_TIME:STRING": "1792901395"
+  },
+  "identity": {
+    "schemaVersion": 1,
+    "version": "26.1025.1254-dev+g9f382fd0b07d",
+    "baseVersion": "26.1025.1254",
+    "packageVersion": "26.1025.1254~dev+g9f382fd0b07d",
+    "gitCommit": "9f382fd0b07d7c1237d8a47a25b87ee3d6129535",
+    "gitTree": "368c787617a047d52087a16aefd328503aabf147",
+    "commitCount": 1254,
+    "dirty": null,
+    "sourceProvenance": "supplied"
+  },
+  "binaries": {
+    "putgd": "f74982b8ff162e3d333b857ada2a116bf97c2db06c8f0689f5b36a9a9a8fa82f",
+    "putgd-cli": "b79d65bbea9c5d7a5084d0722a9e02ccbad0093805c70458996eb7d8e2430747",
+    "putgd-ui": "e474892c411edb466937585839bffff81b821495f14d345e2805bcd916688fa8",
+    "putgd-s3-worker": "773d27cc5bc15f59d78257a144ef0e4b987c1b8ba759ab84e15edd7e783ea94f"
+  },
+  "compiler": "c++ (GCC) 16.2.1 20260819 (Red Hat 16.2.1-2)",
+  "sdk": "Verified AWS SDK 1.11.907 and 15 submodules\n"
+}

@@ -1,0 +1,13 @@
+********* Start testing of OperationsTest *********
+Config: Using QtTest library 6.8.2, Qt 6.8.2 (x86_64-little_endian-lp64 shared (dynamic) release build; by GCC 14.2.0), debian 13
+PASS   : OperationsTest::initTestCase()
+QINFO  : OperationsTest::resumableUploadJournalSurvivesForRetry() DIAGNOSTIC: durable partial observed with activeOperations=1
+QINFO  : OperationsTest::resumableUploadJournalSurvivesForRetry() DIAGNOSTIC: premature retry error=operation_busy
+FAIL!  : OperationsTest::resumableUploadJournalSurvivesForRetry() '!e' returned FALSE. ()
+   Loc: [/home/patrick/work/putgd-ci393/src/tests/unit/test_operations.cpp(1144)]
+QWARN  : OperationsTest::resumableUploadJournalSurvivesForRetry() putgd wait: retried still false after 15099 ms (budget 5000 ms x scale 3.00) at /home/patrick/work/putgd-ci393/src/tests/unit/test_operations.cpp:1153
+FAIL!  : OperationsTest::resumableUploadJournalSurvivesForRetry() 'retried' returned FALSE. ()
+   Loc: [/home/patrick/work/putgd-ci393/src/tests/unit/test_operations.cpp(1153)]
+PASS   : OperationsTest::cleanupTestCase()
+Totals: 2 passed, 1 failed, 0 skipped, 0 blacklisted, 15319ms
+********* Finished testing of OperationsTest *********

@@ -1,0 +1,165 @@
+{
+  "schemaVersion": 2,
+  "environment": {
+    "desktop": "mint-cinnamon-x11",
+    "host": "boat",
+    "placement": "guest",
+    "guest": "cinnamon-x11",
+    "package": "deb",
+    "destination": "s3",
+    "build": "219e43f40902",
+    "placement_details": {
+      "run_id": "88e0f156-f30f-4745-b6dc-3a5ac6d6378f",
+      "lab_profile": "cinnamon-x11",
+      "run_directory": "/home/user/work/put.gd/src/work/lab-runs/c800",
+      "session_root": "/tmp/sd-0a33e1e4",
+      "socket": "/tmp/sd-0a33e1e4/runtime/putgd/session.sock",
+      "input_backend": "qmp",
+      "frame_backend": "vnc-in-memory"
+    },
+    "target": {
+      "hostname": "putgd-lab",
+      "kernel": "6.14.0-37-generic",
+      "machine": "x86_64",
+      "os": {
+        "ID": "linuxmint",
+        "VERSION_ID": "22.3",
+        "VARIANT_ID": null
+      },
+      "session_type": "x11",
+      "desktop": "X-Cinnamon",
+      "qt_platform": "xcb"
+    },
+    "observed_build": {
+      "baseVersion": "26.1030.2491",
+      "commitCount": 2491,
+      "dirty": false,
+      "gitCommit": "219e43f4090246618c2da3f7e64a2bf11292c0cf",
+      "gitTree": "1475dd1e60619d25e98054faee22a983c7f277ed",
+      "packageVersion": "26.1030.2491~dev+g219e43f40902",
+      "schemaVersion": 1,
+      "sourceProvenance": "git",
+      "version": "26.1030.2491-dev+g219e43f40902"
+    },
+    "private_cleanup": "resident-log-and-state-root-removed",
+    "coverage_export": {
+      "scanned_before_copy": true,
+      "copy_scan_passed": true,
+      "published": true
+    }
+  },
+  "interactions": [
+    {
+      "interaction": "editor.tool-text",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/sd726/gate/out-admitted/receipt.json",
+      "note": "desktop frame after masked by live evidence policy; recipe does not support destination s3",
+      "host": "boat",
+      "placement": "guest",
+      "guest": "cinnamon-x11",
+      "destination": "s3",
+      "frames": [
+        {
+          "label": "after",
+          "path": "frames/core_demo.text_tool/00-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "core_demo.text_tool",
+      "build": "219e43f40902",
+      "at": "2026-10-30T09:48:33Z"
+    },
+    {
+      "interaction": "editor.tool-redact",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/sd726/gate/out-admitted/receipt.json",
+      "note": "desktop frame after masked by live evidence policy; recipe does not support destination s3",
+      "host": "boat",
+      "placement": "guest",
+      "guest": "cinnamon-x11",
+      "destination": "s3",
+      "frames": [
+        {
+          "label": "after",
+          "path": "frames/core_demo.redact_tool/00-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "core_demo.redact_tool",
+      "build": "219e43f40902",
+      "at": "2026-10-30T09:48:34Z"
+    },
+    {
+      "interaction": "editor.undo",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/sd726/gate/out-admitted/receipt.json",
+      "note": "desktop frame after masked by live evidence policy; recipe does not support destination s3",
+      "host": "boat",
+      "placement": "guest",
+      "guest": "cinnamon-x11",
+      "destination": "s3",
+      "frames": [
+        {
+          "label": "after",
+          "path": "frames/core_demo.undo_redo/00-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "core_demo.undo_redo",
+      "build": "219e43f40902",
+      "at": "2026-10-30T09:48:35Z"
+    },
+    {
+      "interaction": "editor.redo",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/sd726/gate/out-admitted/receipt.json",
+      "note": "desktop frame after masked by live evidence policy; recipe does not support destination s3",
+      "host": "boat",
+      "placement": "guest",
+      "guest": "cinnamon-x11",
+      "destination": "s3",
+      "frames": [
+        {
+          "label": "after",
+          "path": "frames/core_demo.undo_redo/00-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "core_demo.undo_redo",
+      "build": "219e43f40902",
+      "at": "2026-10-30T09:48:35Z"
+    }
+  ],
+  "secret_scan": {
+    "quarantine": [],
+    "passed": true,
+    "files": 8,
+    "pngs": 3,
+    "image_audit": "ocr-and-known-regions",
+    "findings": []
+  }
+}

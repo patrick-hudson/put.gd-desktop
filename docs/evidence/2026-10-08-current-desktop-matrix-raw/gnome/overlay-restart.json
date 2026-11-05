@@ -3,7 +3,7 @@
   "timestampUtc": "2026-10-08T20:46:38.279459+00:00",
   "scope": "Restart existing writable fresh GNOME test overlay only; discover installed system helper; no golden modification",
   "oldHostPid": 2204570,
-  "bootIdBefore": "5e43c72e-a65d-4f7c-8f32-88614ca7ae8c",
+  "bootIdBefore": "[REDACTED]",
   "vncPort": 5936,
   "initialAttempt": "GNOME session reboot command did not restart the locked session",
   "acpiPowerdownReply": {},
@@ -41,7 +41,7 @@
     "/home/patrick/work/put.gd/work/lab-runs/current-gnome-a3d70dc/qemu.pid"
   ],
   "oldHostProcessGone": true,
-  "bootIdAfter": "8d46b307-fd26-43eb-9261-ac53a23029d0",
+  "bootIdAfter": "[REDACTED]",
   "bootChanged": true,
   "correction": "The concurrently running reboot observer subsequently confirmed that the original GNOME command did complete a reboot before this additional graceful ACPI restart. The initialAttempt text records the provisional belief at dispatch, not a verified failure. This second restart was unnecessary; both affected only the writable test overlay."
 }

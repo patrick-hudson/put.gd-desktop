@@ -1,0 +1,13 @@
+{
+ "status": "completed",
+ "host": "kubuntu",
+ "ref": "claude/stress-lane-weekly-360-31d0ab",
+ "results": "~/work/flake-stress/weekly-2026-10-21-2",
+ "started": "2026-10-21T22:21:22-05:00",
+ "commit": "fe24932e722c6ac4b00f21bbabb54d5189efb961",
+ "buildSeconds": 601,
+ "stressExit": 0,
+ "stressSeconds": 3612,
+ "tracker": "skipped: token ~/.config/putgd-stress/github-token is missing",
+ "ended": "2026-10-21T23:31:40-05:00"
+}

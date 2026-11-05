@@ -1,0 +1,82 @@
+{
+  "schemaVersion": 2,
+  "scope": "coordinator-follow-up-5-final-s3-cells",
+  "release": "v26.1030.3203-nightly",
+  "appCommit": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+  "catalogCiRun": 41111404666,
+  "placement": "guest",
+  "completedUploads": 1,
+  "verifiedRemoteHashes": 1,
+  "verifiedGuestPublicHashes": 1,
+  "uiDeletions": 1,
+  "independentUnavailableLinks": 0,
+  "s3OriginAbsenceProofs": 1,
+  "s3MissingHead404": 2,
+  "verifiedBrowserHashes": 0,
+  "uiRevocations": 0,
+  "batonsLent": 0,
+  "batonsReturned": 0,
+  "overlaysRetired": 2,
+  "protonUsed": false,
+  "locksReleased": true,
+  "matrixResults": {
+    "gnome": {
+      "s3": "F",
+      "proton": "P"
+    },
+    "kde": {
+      "s3": "P",
+      "proton": "P"
+    },
+    "cinnamon": {
+      "s3": "P",
+      "proton": "P"
+    }
+  },
+  "cloudfrontAfterDeletion": {
+    "gnome": {
+      "notRun": true,
+      "reason": "pattern guard stopped before capture and upload"
+    },
+    "kde": {
+      "status": 200,
+      "informational": true
+    }
+  },
+  "coverageSha256": "33770a150c520613d2563fb748f3e94d902c33f0df69d203445664f5b6ecac62",
+  "issues": [
+    978,
+    992,
+    996,
+    997
+  ],
+  "previousCumulative": {
+    "verifiedRemoteHashes": 12,
+    "batonsLent": 24,
+    "overlaysRetired": 13,
+    "s3MissingHead404": 10,
+    "verifiedGuestPublicHashes": 1,
+    "uiRevocations": 13,
+    "completedUploads": 22,
+    "verifiedBrowserHashes": 3,
+    "uiDeletions": 9,
+    "independentUnavailableLinks": 12,
+    "s3OriginAbsenceProofs": 9,
+    "batonsReturned": 24
+  },
+  "cumulative": {
+    "overlaysRetired": 15,
+    "verifiedRemoteHashes": 13,
+    "uiDeletions": 10,
+    "s3MissingHead404": 12,
+    "completedUploads": 23,
+    "independentUnavailableLinks": 12,
+    "verifiedBrowserHashes": 3,
+    "verifiedGuestPublicHashes": 2,
+    "batonsLent": 24,
+    "uiRevocations": 13,
+    "batonsReturned": 24,
+    "s3OriginAbsenceProofs": 10
+  },
+  "finalAcceptedMatrix": null
+}

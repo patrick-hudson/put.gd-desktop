@@ -1,0 +1,107 @@
+#include "Update.h"
+#include "ReleaseLink.h"
+#include <QJsonDocument>
+#include <QRegularExpression>
+namespace putgd::update {
+namespace {
+const QString defaultFeedBase="https://app.put.gd/update/v1/";
+const QString releasePages="https://github.com/patrick-hudson/put.gd-desktop/releases/tag/";
+const QString releaseDownloads="https://github.com/patrick-hudson/put.gd-desktop/releases/download/";
+const QString mirrorDownloads="https://pkg.put.gd/releases/";
+const QStringList targets{"ubuntu24.04","ubuntu26.04","debian13","fedora44","appimage","flatpak"};
+Error invalidFeed(const QString& message) {return {"update_feed_invalid",message,{}};}
+}
+QJsonObject Build::toJson() const {
+ return {{"version",version},{"kind",kind},{"channel",channel.isEmpty()?QJsonValue():QJsonValue(channel)},{"packageTarget",target.isEmpty()?QJsonValue():QJsonValue(target)},
+  {"supported",supported},{"reason",reason.isEmpty()?QJsonValue():QJsonValue(reason)}};
+}
+Build build(const QJsonObject& manifest) {return build(manifest,packageTarget(),checkBuilt());}
+Build build(const QJsonObject& manifest,const QString& target,bool built) {
+ const auto link=releaseLink(manifest);
+ Build result;result.version=link.version;result.kind=link.kind;result.target=target;
+ result.channel=link.kind=="nightly"?QString("nightly"):link.kind=="stable"||link.kind=="candidate"?QString("stable"):QString();
+ // Flatpak updates itself from its repository; a distribution's own package
+ // turns checks off at build time; untagged builds have no feed to follow.
+ if(!built)result.reason="disabled_at_build";
+ else if(target=="flatpak")result.reason="flatpak";
+ else if(target.isEmpty()||!targets.contains(target))result.reason="no_package";
+ else if(result.channel.isEmpty())result.reason="development_build";
+ result.supported=result.reason.isEmpty();
+ return result;
+}
+std::optional<int> compareVersions(const QString& left,const QString& right) {
+ const auto a=parseReleaseVersion(left),b=parseReleaseVersion(right);if(!a||!b)return std::nullopt;
+ return a->key<b->key?-1:b->key<a->key?1:0;
+}
+namespace {
+// base (or the variable that replaces it) plus path: an https URL, or http on
+// a loopback address, without query, fragment or user information.
+QUrl located(const char* variable,const QString& defaultBase,const QString& path,const QString& code,Error& error) {
+ auto base=qEnvironmentVariable(variable,defaultBase);if(!base.endsWith('/'))base+='/';
+ const QUrl url(base+path,QUrl::StrictMode);
+ // Qt Network stays out of this library: the resident links it.
+ const bool loopback=url.scheme()=="http"&&QStringList{"localhost","127.0.0.1","::1"}.contains(url.host());
+ if(!url.isValid()||url.host().isEmpty()||url.hasQuery()||url.hasFragment()||!url.userInfo().isEmpty()||(url.scheme()!="https"&&!loopback)){
+  error={code,QString::fromLatin1(variable)+" must be an https URL, or http on a loopback address",{}};return {};
+ }
+ return url;
+}
+const QRegularExpression& safeFileName() {static const QRegularExpression name(R"(^[A-Za-z0-9][A-Za-z0-9._+~-]{0,199}$)");return name;}
+QUrl releaseFile(const char* variable,const QString& base,const QString& tag,const QString& name,Error& error) {
+ const auto version=tag.startsWith('v')?parseReleaseVersion(tag.mid(1)):std::nullopt;
+ if(!version||!safeFileName().match(name).hasMatch()){error={"update_install_failed","Invalid release file",{{"tag",tag.left(64)},{"name",name.left(200)}}};return {};}
+ return located(variable,base,tag+"/"+name,"update_download_failed",error);
+}
+}
+QUrl feedUrl(const QString& channel,Error& error) {
+ if(channel!="stable"&&channel!="nightly"){error={"invalid_request","The update channel is stable or nightly",{}};return {};}
+ return located("PUTGD_UPDATE_FEED_URL",defaultFeedBase,channel+".json","update_feed_unavailable",error);
+}
+QUrl releaseFileUrl(const QString& tag,const QString& name,Error& error) {return releaseFile("PUTGD_UPDATE_RELEASE_URL",releaseDownloads,tag,name,error);}
+QUrl mirrorFileUrl(const QString& tag,const QString& name,Error& error) {return releaseFile("PUTGD_UPDATE_MIRROR_URL",mirrorDownloads,tag,name,error);}
+QJsonObject evaluate(const QByteArray& feed,const Build& build,const QString& channel,Error& error) {
+ QJsonParseError parseError;const auto document=QJsonDocument::fromJson(feed,&parseError);
+ if(parseError.error!=QJsonParseError::NoError||!document.isObject()){error=invalidFeed("The update feed is not a JSON object");return {};}
+ const auto root=document.object();
+ if(root["schema"]!=1){error=invalidFeed("The update feed uses an unknown schema");return {};}
+ if(root["channel"]!=channel){error=invalidFeed("The update feed is for another channel");return {};}
+ QJsonObject result{{"channel",channel},{"current",build.version},{"packageTarget",build.target},{"latest",QJsonValue()},{"tag",QJsonValue()},{"publishedAt",QJsonValue()},
+  {"notesUrl",QJsonValue()},{"downloadUrl",QJsonValue()},{"asset",QJsonValue()},{"updateAvailable",false}};
+ const auto value=root["release"];
+ if(value.isNull())return result;
+ if(!value.isObject()){error=invalidFeed("The update feed's release is neither an object nor null");return {};}
+ const auto release=value.toObject();const auto latest=release["version"].toString();
+ const auto version=parseReleaseVersion(latest);
+ // A stable feed lists only stable versions and a nightly feed only nightlies.
+ if(!version||(channel=="nightly")!=(version->kind=="nightly")||(channel=="stable"&&version->kind!="stable")){error=invalidFeed("The update feed names an invalid version for its channel");return {};}
+ const auto tag="v"+latest;
+ if(release["tag"]!=tag){error=invalidFeed("The update feed's tag does not match its version");return {};}
+ result["latest"]=latest;result["tag"]=tag;
+ if(release["publishedAt"].isString())result["publishedAt"]=release["publishedAt"].toString().left(64);
+ // The links are built here, not taken from the feed: an unsigned feed may only
+ // pick which of the project's own release files to offer.
+ result["notesUrl"]=releasePages+tag;
+ const auto asset=release["assets"].toObject()[build.target].toObject();const auto name=asset["name"].toString();
+ const auto direct=releaseDownloads+tag+"/"+name;
+ const bool own=safeFileName().match(name).hasMatch()&&asset["url"]==direct;
+ result["downloadUrl"]=own?direct:QString("https://app.put.gd/dl/"+channel+"/"+build.target);
+ // What an install fetches and checks (#293 phase 3). The size bounds the
+ // download; the hash must also match the release's SHA256SUMS.
+ static const QRegularExpression hex(R"(^[0-9a-f]{64}$)");
+ if(own&&asset["size"].isDouble()&&asset["size"].toInteger()>0) {
+  QJsonObject described{{"name",name},{"size",asset["size"].toInteger()}};
+  if(hex.match(asset["sha256"].toString()).hasMatch())described["sha256"]=asset["sha256"].toString();
+  result["asset"]=described;
+ }
+ const auto order=compareVersions(latest,build.version);
+ result["updateAvailable"]=order&&*order>0;
+ return result;
+}
+QString switchedUpdateInformation(const QString& information,const QString& from,const QString& to) {
+ const QStringList channels{"stable","nightly"};
+ if(from==to||!channels.contains(from)||!channels.contains(to))return {};
+ const auto suffix="/dl/"+from+"/appimage.zsync";
+ if(!information.startsWith("zsync|")||!information.endsWith(suffix)||information.size()<=suffix.size()+6)return {};
+ return information.left(information.size()-suffix.size())+"/dl/"+to+"/appimage.zsync";
+}
+}

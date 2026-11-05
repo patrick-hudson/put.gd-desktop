@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "status": "dry-run",
+  "run": "/home/user/r3/work/lab-runs/core-r3",
+  "disk": "/home/user/r3/work/lab-runs/core-r3/disk.qcow2",
+  "diskIdentity": {
+    "device": 64769,
+    "inode": 4525390,
+    "size": 532283392,
+    "mtimeNs": 1793356878968119829,
+    "ctimeNs": 1793356878968119829,
+    "allocatedBytes": 532246528
+  },
+  "base": "/home/user/work/put.gd/work/lab-images/gnome-wayland-probes-v4/image.qcow2",
+  "stateSha256": "038b37455e4a20e015aee371d87e5e716cc99e64aa21b453085879fe1c0ecae5",
+  "evidence": {
+    "manifest": "/home/user/e3/retirement/manifest.json",
+    "sha256": "a71c8f7d38febfc282453ed58e0d5c1dfc456de1cd5da83b85bd6291cfb7c47b",
+    "runId": "68f9d2d3-bd17-40f7-86e9-33e0c3da2763",
+    "mode": "explicit"
+  },
+  "preparedUtc": "2026-10-30T10:41:43.797770+00:00"
+}

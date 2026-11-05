@@ -1,11 +1,13 @@
 # IBM Plex font sources
 
-Unmodified IBM Plex Sans Regular, Sans SemiBold and Mono Regular font files.
-Downloaded from IBM's official [plex repository](https://github.com/IBM/plex),
-commit `39276912b05f700ee1dd491950c35d8697214208` on 2026-10-15.
+Unmodified IBM Plex Sans Regular, Sans Medium, Sans SemiBold and Mono Regular font files.
+From IBM's official [plex repository](https://github.com/IBM/plex),
+commit `39276912b05f700ee1dd491950c35d8697214208`. Regular, SemiBold and
+Mono were downloaded on 2026-10-15; Sans Medium was added on 2026-10-27.
 
 Source paths:
 - `packages/plex-sans/fonts/complete/ttf/IBMPlexSans-Regular.ttf`
+- `packages/plex-sans/fonts/complete/ttf/IBMPlexSans-Medium.ttf`
 - `packages/plex-sans/fonts/complete/ttf/IBMPlexSans-SemiBold.ttf`
 - `packages/plex-mono/fonts/complete/ttf/IBMPlexMono-Regular.ttf`
 

@@ -1,0 +1,434 @@
+PUTGD_CI_TMPDIR=/dev/shm TMPDIR=/dev/shm
+tmpfs:1021994
+ 06:07:51 up 18 min,  2 users,  load average: 2.50, 2.89, 2.66
+Filesystem      Size  Used Avail Use% Mounted on
+/dev/vda1       147G  120G   21G  86% /home
+Filesystem      Inodes   IUsed   IFree IUse% Mounted on
+/dev/vda1      9623280 1149823 8473457   12% /home
+{"availableBytes": 22480179200, "availableInodes": 8473457}
+build-essential=12.10ubuntu1
+ca-certificates=20260816ubuntu0.24.04.1
+ccache=4.9.1-1
+cmake=3.28.3-1build7
+dbus-daemon=1.14.10-4ubuntu4.1
+git=1:2.43.0-1ubuntu7.4
+gstreamer1.0-libav:amd64=1.24.1-1build1
+gstreamer1.0-plugins-bad:amd64=1.24.2-1ubuntu4
+gstreamer1.0-plugins-good:amd64=1.24.2-1ubuntu1.8
+gstreamer1.0-plugins-ugly:amd64=1.24.1-1build1
+libavcodec-dev:amd64=7:6.1.1-3ubuntu5
+libavfilter-dev:amd64=7:6.1.1-3ubuntu5
+libavformat-dev:amd64=7:6.1.1-3ubuntu5
+libavutil-dev:amd64=7:6.1.1-3ubuntu5
+libcurl4-openssl-dev:amd64=8.5.0-2ubuntu10.16
+libgstreamer-plugins-base1.0-dev=1.24.2-1ubuntu0.5
+libgstreamer1.0-dev:amd64=1.24.2-1ubuntu0.1
+libqt6sql6-sqlite:amd64=6.4.2+dfsg-21.1build5
+libssl-dev:amd64=3.0.13-0ubuntu3.16
+libswresample-dev:amd64=7:6.1.1-3ubuntu5
+libswscale-dev:amd64=7:6.1.1-3ubuntu5
+libwayland-dev:amd64=1.22.0-2.1build1
+libxcb-damage0-dev:amd64=1.15-1ubuntu2
+libxcb-image0-dev:amd64=0.4.0-2build1
+libxcb-keysyms1-dev:amd64=0.4.0-1build4
+libxcb-randr0-dev:amd64=1.15-1ubuntu2
+libxcb-shape0-dev:amd64=1.15-1ubuntu2
+libxcb-util-dev:amd64=0.4.0-1build3
+libxcb-xfixes0-dev:amd64=1.15-1ubuntu2
+libxcb-xinput-dev:amd64=1.15-1ubuntu2
+libxcb-xtest0-dev:amd64=1.15-1ubuntu2
+libxcb1-dev:amd64=1.15-1ubuntu2
+libxcursor-dev:amd64=1:1.2.1-1build1
+libxkbcommon-dev:amd64=1.6.0-1build1
+libxkbcommon-x11-dev:amd64=1.6.0-1build1
+ninja-build=1.11.1-2
+nodejs=18.19.1+dfsg-6ubuntu5
+npm=9.2.0~ds1-2
+passwd=1:4.13+dfsg1-4ubuntu3.2
+pkg-config:amd64=1.8.1-2build1
+python3=3.12.3-0ubuntu2.1
+qemu-utils=1:8.2.2+ds-0ubuntu1.18
+qt6-base-dev:amd64=6.4.2+dfsg-21.1build5
+qt6-base-dev-tools=6.4.2+dfsg-21.1build5
+qt6-wayland-dev:amd64=6.4.2-5build3
+qtkeychain-qt6-dev:amd64=0.14.2-1build5
+util-linux=2.39.3-9ubuntu6.6
+wayland-protocols=1.45-1~ubuntu0.24.04.2
+xauth=1:1.1.2-1build1
+xvfb=2:21.1.12-1ubuntu1.9
+zlib1g-dev:amd64=1:1.3.dfsg-3.1ubuntu2.3
+Preset CMake variables:
+
+  BUILD_TESTING="ON"
+  CMAKE_BUILD_TYPE="Debug"
+  CMAKE_EXPORT_COMPILE_COMMANDS="ON"
+  CMAKE_PREFIX_PATH="/home/user/work/put.gd/src/build/sdk"
+
+-- Found AWS SDK for C++, Version: 1.11.907, Install Root:/home/user/work/put.gd/src/build/sdk, Platform Prefix:, Platform Dependent Libraries: pthread;curl
+-- Components specified for AWSSDK: s3, application will be depending on libs: aws-cpp-sdk-s3;aws-cpp-sdk-core
+-- Try finding aws-cpp-sdk-core
+-- LibCrypto Include Dir: /usr/include
+-- LibCrypto Shared Lib:  /usr/lib/x86_64-linux-gnu/libcrypto.so
+-- LibCrypto Static Lib:  /usr/lib/x86_64-linux-gnu/libcrypto.a
+-- Found OpenSSL: /usr/lib/x86_64-linux-gnu/libcrypto.so (found version "3.0.13")  
+-- Found aws-cpp-sdk-core
+-- Try finding aws-cpp-sdk-s3
+-- Found aws-cpp-sdk-s3
+-- Found OpenSSL: /usr/lib/x86_64-linux-gnu/libcrypto.so (found suitable version "3.0.13", minimum required is "1.1.1") found components: Crypto 
+-- GNOME extension ownership contract runs in the GNOME lab with its native GJS runtime
+-- Configuring done (2.6s)
+-- Generating done (1.3s)
+-- Build files have been written to: /home/user/work/put.gd/src/build/dev
+[1/110] cd /home/user/work/put.gd/src/build/dev && /usr/bin/cmake -DSOURCE_DIR=/home/user/work/put.gd/src -DOUTPUT_DIR=/home/user/work/put.gd/src/build/dev/build-identity -DRELEASE_TAG= -DSUPPLIED_COMMIT= -DSUPPLIED_TREE= -DSUPPLIED_COUNT= -DSUPPLIED_TIME= -P /home/user/work/put.gd/src/cmake/GenerateBuildInfo.cmake
+{
+  "schemaVersion": 1,
+  "version": "26.1030.2481-dev+g6ad9f957e654",
+  "baseVersion": "26.1030.2481",
+  "packageVersion": "26.1030.2481~dev+g6ad9f957e654",
+  "gitCommit": "6ad9f957e6544f30c5e45c08af2306db77a9ff64",
+  "gitTree": "d823723c8759dae8db7c57cee59476ac7a3b4f90",
+  "commitCount": 2481,
+  "dirty": false,
+  "sourceProvenance": "git"
+}
+
+Filesystem      Size  Used Avail Use% Mounted on
+tmpfs           7.9G   11M  7.8G   1% /dev/shm
+Test project /home/user/work/put.gd/src/build/dev
+        Start 101: gui_settings
+        Start  83: operations_contract
+        Start  61: native_background_startup_integration
+        Start  76: s3_worker_supervision
+        Start 102: gui_history_view
+        Start  43: gui_tray
+        Start  40: gui_application
+        Start  71: s3_module_integration
+        Start  86: cli_integration
+        Start  66: x11_isolated
+        Start  73: s3_multipart_integration
+        Start  17: x11_core_clipboard
+  1/114 Test  #17: x11_core_clipboard ......................   Passed   20.69 sec
+        Start  37: session_client_integration
+  2/114 Test  #66: x11_isolated ............................***Failed   27.86 sec
+********* Start testing of X11Test *********
+Config: Using QtTest library 6.4.2, Qt 6.4.2 (x86_64-little_endian-lp64 shared (dynamic) release build; by GCC 13.2.0), ubuntu 24.04
+PASS   : X11Test::initTestCase()
+FAIL!  : X11Test::compositorSettleFollowsRepaintsOverSelection() 'elapsed.elapsed()>=285&&elapsed.elapsed()<700' returned FALSE. (230)
+   Loc: [/home/user/work/put.gd/src/tests/desktop/x11/test_x11.cpp(116)]
+FAIL!  : X11Test::compositedRegionReadsAfterStaleSelectorFrames() Compared values are not the same
+   Actual   (captured.payload.image.pixelColor(x,y)): #ff000000
+   Expected (QColor(Qt::green))                     : #ff00ff00
+   Loc: [/home/user/work/put.gd/src/tests/desktop/x11/test_x11.cpp(135)]
+PASS   : X11Test::compositedRegionCancellationDuringSettle()
+PASS   : X11Test::nativeSelectionTextAndRevision()
+PASS   : X11Test::nativeFilesImageAndUrlPrecedence()
+PASS   : X11Test::remoteUriFallsThroughToText()
+PASS   : X11Test::bmpImageAndIncrementalSelection()
+PASS   : X11Test::incrementalText()
+PASS   : X11Test::invocationRevisionIncludesQueuedOwnerChange()
+PASS   : X11Test::nativeKeyActivationWithLocks()
+PASS   : X11Test::selectionOutlineStaysInsideTinyAndScaledBounds()
+PASS   : X11Test::regionCancellationAndExactSelection()
+PASS   : X11Test::cinnamonRegionCaptureDecodesMixedMonitors()
+PASS   : X11Test::cinnamonRegionCaptureWithoutCompletionWatch(complete)
+PASS   : X11Test::cinnamonRegionCaptureWithoutCompletionWatch(slow-writer)
+PASS   : X11Test::encodedImageResultIsServedToNativeClipboardConsumer()
+PASS   : X11Test::simultaneousClipboardImportsAreSerialized()
+PASS   : X11Test::cancellingRegionDoesNotCancelClipboardImport()
+PASS   : X11Test::regionRetainsExternalFocusAndNativeEscape()
+PASS   : X11Test::heldGlobalChordHandsKeyboardToSelector()
+PASS   : X11Test::clipboardQueueBoundAndFrozenOwner()
+PASS   : X11Test::liveDigitRebindRemovesOldChordAndKeepsOtherActions()
+PASS   : X11Test::asciiLetterShortcutNeedsNoImplicitShift()
+PASS   : X11Test::shiftedPrintableShortcutUsesActualChord()
+PASS   : X11Test::keyboardMappingChangeRebindsActualCodes()
+PASS   : X11Test::mappingRefreshKeepsUnchangedChordGrabbed()
+PASS   : X11Test::mappingConflictReleasesRejectedGrabsAndPreservesOtherActions()
+PASS   : X11Test::nonresponsiveOwnerKeepsEventLoopAlive()
+PASS   : X11Test::recordingDiscardsShortcutPressQueuedBeforeNativePause()
+PASS   : X11Test::recordingReleasesGrabsAndRestoresLatestSavedBindings()
+PASS   : X11Test::conflictsAreReported()
+PASS   : X11Test::residentWindowIsRejected()
+PASS   : X11Test::uiProcessWindowRejectedAndFrozenExternalPreserved()
+PASS   : X11Test::residentChildWindowRejectedWithoutRegistration()
+PASS   : X11Test::activeWindowFrozenAndMovedTargetRejected()
+PASS   : X11Test::desktopIsDetached()
+PASS   : X11Test::shortcutFiresOnceWhileAnotherClientHoldsTheKeyboard()
+PASS   : X11Test::rawShortcutIsIgnoredWhileTheSessionIsLocked()
+PASS   : X11Test::cleanupTestCase()
+Totals: 38 passed, 2 failed, 0 skipped, 0 blacklisted, 24828ms
+********* Finished testing of X11Test *********
+
+        Start  14: native_tray_integration
+  3/114 Test  #73: s3_multipart_integration ................   Passed   34.48 sec
+        Start  31: ui_process_integration
+  4/114 Test  #43: gui_tray ................................   Passed   39.54 sec
+        Start  10: gui_review_window
+  5/114 Test  #37: session_client_integration ..............   Passed   19.51 sec
+        Start  72: s3_integration
+  6/114 Test  #14: native_tray_integration .................   Passed   17.71 sec
+        Start  39: gui_editor_window
+  7/114 Test  #86: cli_integration .........................   Passed   47.71 sec
+        Start  70: s3_delete_integration
+  8/114 Test  #31: ui_process_integration ..................   Passed   14.89 sec
+        Start 106: local_ipc_contract
+  9/114 Test  #40: gui_application .........................   Passed   49.70 sec
+        Start  34: edit_operations_integration
+ 10/114 Test  #71: s3_module_integration ...................   Passed   49.80 sec
+        Start  97: crash_handler_contract
+ 11/114 Test  #76: s3_worker_supervision ...................   Passed   57.22 sec
+        Start  91: gnome_core_transport_integration
+ 12/114 Test #106: local_ipc_contract ......................   Passed   13.17 sec
+        Start  94: recording_helper_integration
+ 13/114 Test  #97: crash_handler_contract ..................   Passed   13.40 sec
+        Start  95: settings_contract
+ 14/114 Test  #72: s3_integration ..........................   Passed   25.96 sec
+        Start 114: b2_integration
+ 15/114 Test  #39: gui_editor_window .......................   Passed   25.81 sec
+        Start  12: kde_region_control
+ 16/114 Test  #91: gnome_core_transport_integration ........   Passed   14.70 sec
+        Start  26: kde_ownership_integration
+ 17/114 Test  #95: settings_contract .......................   Passed    9.95 sec
+        Start  16: capture_process_integration
+ 18/114 Test  #34: edit_operations_integration .............   Passed   26.44 sec
+        Start  69: collision_policy_integration
+ 19/114 Test  #70: s3_delete_integration ...................   Passed   28.58 sec
+        Start 113: proton_transport
+ 20/114 Test  #61: native_background_startup_integration ...   Passed   76.61 sec
+        Start 110: native_region_overlay
+ 21/114 Test #102: gui_history_view ........................   Passed   77.89 sec
+        Start  21: version_contract
+ 22/114 Test  #94: recording_helper_integration ............   Passed   16.76 sec
+        Start  93: recording_service_integration
+ 23/114 Test  #10: gui_review_window .......................   Passed   40.12 sec
+        Start 103: gui_history_view_text150
+ 24/114 Test  #26: kde_ownership_integration ...............   Passed    8.14 sec
+        Start   1: recording_storage_integration
+ 25/114 Test  #12: kde_region_control ......................   Passed   10.58 sec
+        Start 112: proton_contract
+ 26/114 Test  #16: capture_process_integration .............   Passed   10.99 sec
+        Start 111: capture_preparation_x11
+ 27/114 Test #114: b2_integration ..........................   Passed   18.49 sec
+        Start  23: kde_shortcuts_integration
+ 28/114 Test  #83: operations_contract .....................   Passed   86.15 sec
+        Start  85: storage_contract_integration
+ 29/114 Test #112: proton_contract .........................   Passed    4.45 sec
+        Start  33: editor_job_integration
+ 30/114 Test #103: gui_history_view_text150 ................   Passed    7.09 sec
+        Start  99: diagnostics_bundle_contract
+ 31/114 Test  #93: recording_service_integration ...........   Passed    7.66 sec
+        Start  64: host_open_integration
+ 32/114 Test   #1: recording_storage_integration ...........   Passed    8.08 sec
+        Start  58: resident_retire_integration
+ 33/114 Test #113: proton_transport ........................   Passed   11.81 sec
+        Start  51: update_service_schedule
+ 34/114 Test #110: native_region_overlay ...................   Passed   12.54 sec
+        Start  98: diagnostics_upload_contract
+ 35/114 Test  #23: kde_shortcuts_integration ...............   Passed    5.22 sec
+        Start 108: region_selection_contract
+ 36/114 Test  #85: storage_contract_integration ............   Passed    4.05 sec
+        Start 105: resident_session_contract
+ 37/114 Test  #64: host_open_integration ...................   Passed    4.64 sec
+        Start  60: gui_theme_cinnamon_dconf
+ 38/114 Test  #58: resident_retire_integration .............   Passed    3.80 sec
+        Start  62: file_dialog_integration
+ 39/114 Test #108: region_selection_contract ...............   Passed    2.07 sec
+        Start  44: gui_version
+ 40/114 Test #105: resident_session_contract ...............   Passed    2.28 sec
+        Start  88: storage_locations_integration
+ 41/114 Test #111: capture_preparation_x11 .................   Passed    9.17 sec
+        Start  57: native_shortcut_rejection_integration
+ 42/114 Test  #98: diagnostics_upload_contract .............   Passed    4.61 sec
+        Start  87: config_reload_integration
+ 43/114 Test  #69: collision_policy_integration ............   Passed   17.67 sec
+        Start  82: history_contract
+ 44/114 Test  #60: gui_theme_cinnamon_dconf ................   Passed    2.49 sec
+        Start  96: logging_contract
+ 45/114 Test  #44: gui_version .............................   Passed    2.27 sec
+        Start  35: ui_endpoints_integration
+ 46/114 Test  #87: config_reload_integration ...............   Passed    1.36 sec
+        Start  36: ui_control_integration
+ 47/114 Test  #51: update_service_schedule .................   Passed    7.63 sec
+        Start  18: x11_clipboard_import
+ 48/114 Test  #96: logging_contract ........................   Passed    2.27 sec
+        Start  59: resident_display_loss_integration
+ 49/114 Test  #62: file_dialog_integration .................   Passed    5.15 sec
+        Start  30: ui_split_services_integration
+ 50/114 Test  #35: ui_endpoints_integration ................   Passed    2.89 sec
+        Start   5: poster_contract
+ 51/114 Test  #88: storage_locations_integration ...........   Passed    8.32 sec
+        Start  54: geometry_contract
+ 52/114 Test  #59: resident_display_loss_integration .......   Passed    4.43 sec
+        Start 100: json_ref_lifetime_contract
+ 53/114 Test  #33: editor_job_integration ..................***Failed   15.17 sec
+********* Start testing of EditorJobTest *********
+Config: Using QtTest library 6.4.2, Qt 6.4.2 (x86_64-little_endian-lp64 shared (dynamic) release build; by GCC 13.2.0), ubuntu 24.04
+PASS   : EditorJobTest::initTestCase()
+PASS   : EditorJobTest::saveCopyRepliesAfterWorkerCompletionWhileViewStaysAvailable()
+PASS   : EditorJobTest::agentEditsPreviewSaveAndSubmitSanitizedResult()
+PASS   : EditorJobTest::oversizedResultReturnsToEditing()
+PASS   : EditorJobTest::agentCancelDiscardsWithoutOutput()
+PASS   : EditorJobTest::helperCrashWhileEditingFailsClosed()
+PASS   : EditorJobTest::misbehavingHelpersNeverHandOffAnImage(never ready (startup timeout))
+PASS   : EditorJobTest::misbehavingHelpersNeverHandOffAnImage(crash while editing)
+PASS   : EditorJobTest::misbehavingHelpersNeverHandOffAnImage(hang while finalizing (finalize timeout))
+PASS   : EditorJobTest::misbehavingHelpersNeverHandOffAnImage(output is not a PNG)
+FAIL!  : EditorJobTest::misbehavingHelpersNeverHandOffAnImage(output digest mismatch) Compared values are not the same
+   Actual   (result.error.code): "editor_timeout"
+   Expected (code)             : "editor_io"
+   Loc: [/home/user/work/put.gd/src/tests/integration/test_editor_job.cpp(190)]
+libpng error: Write Error
+PASS   : EditorJobTest::fullDiskWhileStagingIsReportedAsStorage()
+PASS   : EditorJobTest::residentCancellationTerminatesTheHelper()
+PASS   : EditorJobTest::oversizedInputIsRejectedBeforeStaging()
+PASS   : EditorJobTest::exportLargerThanBudgetKeepsEditingUntilDiscarded()
+PASS   : EditorJobTest::fileSourceIsDecodedOnlyByTheHelper()
+PASS   : EditorJobTest::missingHelperFailsClosed()
+PASS   : EditorJobTest::abandonedStagingIsDiscarded()
+PASS   : EditorJobTest::cleanupTestCase()
+Totals: 18 passed, 1 failed, 0 skipped, 0 blacklisted, 15111ms
+********* Finished testing of EditorJobTest *********
+
+        Start  42: gui_theme
+ 54/114 Test  #18: x11_clipboard_import ....................   Passed    5.92 sec
+        Start  78: sdk_contract
+ 55/114 Test #100: json_ref_lifetime_contract ..............   Passed    0.95 sec
+        Start  19: x11_capture_decode
+ 56/114 Test  #36: ui_control_integration ..................   Passed    6.71 sec
+        Start  41: gui_window_buttons
+ 57/114 Test  #54: geometry_contract .......................   Passed    1.14 sec
+        Start  50: update_appimage_install_child
+ 58/114 Test  #78: sdk_contract ............................   Passed    0.31 sec
+        Start  92: kwin_transfer_contract
+ 59/114 Test  #50: update_appimage_install_child ...........   Passed    0.10 sec
+        Start   9: bar_placement_single_monitor_contract
+ 60/114 Test   #9: bar_placement_single_monitor_contract ...   Passed    0.09 sec
+        Start  77: s3_worker_protocol
+ 61/114 Test  #19: x11_capture_decode ......................   Passed    0.34 sec
+        Start  27: kde_clipboard_import
+ 62/114 Test  #30: ui_split_services_integration ...........   Passed    5.31 sec
+ 63/114 Test   #5: poster_contract .........................   Passed    5.20 sec
+ 64/114 Test  #92: kwin_transfer_contract ..................   Passed    0.39 sec
+ 65/114 Test  #77: s3_worker_protocol ......................   Passed    0.27 sec
+        Start   8: bar_placement_contract
+        Start  63: file_dialog_x11_parent
+        Start  79: payload_contract
+        Start  38: version_integration
+ 66/114 Test  #57: native_shortcut_rejection_integration ...   Passed    9.07 sec
+ 67/114 Test  #41: gui_window_buttons ......................   Passed    0.58 sec
+        Start  89: gnome_image_decode
+        Start  68: keychain_integration
+ 68/114 Test  #79: payload_contract ........................   Passed    0.09 sec
+        Start  20: x11_native_snapshot
+ 69/114 Test   #8: bar_placement_contract ..................   Passed    0.11 sec
+        Start  75: build_contract
+ 70/114 Test  #38: version_integration .....................   Passed    0.12 sec
+        Start  55: allocator_policy_contract
+ 71/114 Test  #68: keychain_integration ....................   Passed    0.11 sec
+        Start  52: host_environment_contract
+ 72/114 Test  #27: kde_clipboard_import ....................   Passed    0.37 sec
+        Start  81: upload_naming_contract
+ 73/114 Test  #89: gnome_image_decode ......................   Passed    0.12 sec
+        Start 109: kde_region_overlay
+ 74/114 Test  #63: file_dialog_x11_parent ..................   Passed    0.14 sec
+        Start  67: keychain_backend_integration
+ 75/114 Test  #67: keychain_backend_integration ............   Passed    0.02 sec
+        Start  11: record_identity_contract
+ 76/114 Test  #20: x11_native_snapshot .....................   Passed    0.07 sec
+        Start 104: login_startup_contract
+ 77/114 Test  #11: record_identity_contract ................   Passed    0.03 sec
+        Start  47: update_check_request
+ 78/114 Test #104: login_startup_contract ..................   Passed    0.03 sec
+        Start  84: recording_model_contract
+ 79/114 Test  #52: host_environment_contract ...............   Passed    0.08 sec
+        Start  90: gnome_bridge_contract
+ 80/114 Test  #81: upload_naming_contract ..................   Passed    0.08 sec
+        Start  48: update_appimage_install_files
+ 81/114 Test  #55: allocator_policy_contract ...............   Passed    0.10 sec
+        Start  80: archive_contract
+ 82/114 Test  #84: recording_model_contract ................   Passed    0.03 sec
+ 83/114 Test  #48: update_appimage_install_files ...........   Passed    0.01 sec
+        Start  24: kde_keyboard_map
+        Start 107: ip_address_contract
+ 84/114 Test  #80: archive_contract ........................   Passed    0.01 sec
+        Start   2: portal_streams_contract
+ 85/114 Test  #24: kde_keyboard_map ........................   Passed    0.01 sec
+        Start  45: release_link_contract
+ 86/114 Test #109: kde_region_overlay ......................   Passed    0.11 sec
+        Start  53: update_system_repository
+ 87/114 Test  #75: build_contract ..........................   Passed    0.14 sec
+ 88/114 Test  #47: update_check_request ....................   Passed    0.06 sec
+ 89/114 Test   #2: portal_streams_contract .................   Passed    0.02 sec
+ 90/114 Test  #45: release_link_contract ...................   Passed    0.01 sec
+        Start  46: update_feed_contract
+        Start  22: kde_shortcut_normalization
+        Start   7: record_runtime_contract
+        Start  49: update_minisign_verify
+ 91/114 Test  #90: gnome_bridge_contract ...................   Passed    0.07 sec
+ 92/114 Test #107: ip_address_contract .....................   Passed    0.04 sec
+ 93/114 Test  #53: update_system_repository ................   Passed    0.02 sec
+        Start   6: pause_timeline_contract
+        Start  13: native_session_guards
+        Start   3: wayland_acquisition_contract
+ 94/114 Test  #46: update_feed_contract ....................   Passed    0.03 sec
+ 95/114 Test  #22: kde_shortcut_normalization ..............   Passed    0.03 sec
+ 96/114 Test   #7: record_runtime_contract .................   Passed    0.03 sec
+ 97/114 Test  #49: update_minisign_verify ..................   Passed    0.02 sec
+ 98/114 Test   #6: pause_timeline_contract .................   Passed    0.02 sec
+        Start  74: public_url
+        Start  15: capture_control_integration
+        Start  56: x11_raw_key_matcher
+        Start  25: shortcut_keyboard
+ 99/114 Test  #42: gui_theme ...............................   Passed    1.07 sec
+100/114 Test  #13: native_session_guards ...................   Passed    0.03 sec
+101/114 Test   #3: wayland_acquisition_contract ............   Passed    0.02 sec
+102/114 Test  #15: capture_control_integration .............   Passed    0.01 sec
+103/114 Test  #56: x11_raw_key_matcher .....................   Passed    0.01 sec
+104/114 Test  #74: public_url ..............................   Passed    0.02 sec
+105/114 Test  #25: shortcut_keyboard .......................   Passed    0.02 sec
+106/114 Test  #99: diagnostics_bundle_contract .............   Passed   17.83 sec
+        Start  29: poster_job_integration
+107/114 Test  #82: history_contract ........................   Passed   11.20 sec
+        Start  28: image_job_integration
+108/114 Test  #21: version_contract ........................   Passed   28.35 sec
+        Start  65: ui_native_lifecycle_integration
+109/114 Test  #28: image_job_integration ...................   Passed    2.79 sec
+        Start  32: editor_contract
+110/114 Test  #32: editor_contract .........................   Passed    2.85 sec
+111/114 Test  #65: ui_native_lifecycle_integration .........   Passed    5.93 sec
+        Start   4: export_av_sync_contract
+112/114 Test  #29: poster_job_integration ..................   Passed   11.45 sec
+113/114 Test   #4: export_av_sync_contract .................   Passed   12.45 sec
+114/114 Test #101: gui_settings ............................   Passed  152.44 sec
+
+98% tests passed, 2 tests failed out of 114
+
+Label Time Summary:
+integration    = 1290.77 sec*proc (83 tests)
+unit           =  34.20 sec*proc (31 tests)
+
+Total Test time (real) = 152.45 sec
+
+The following tests FAILED:
+	 33 - editor_job_integration (Failed)                   integration
+	 66 - x11_isolated (Failed)                             integration
+{
+  "tests": 114,
+  "failedFirst": [
+    "editor_job_integration",
+    "x11_isolated"
+  ],
+  "failed": [
+    "editor_job_integration",
+    "x11_isolated"
+  ],
+  "retried": [],
+  "passedOnRetry": [],
+  "blocking": [
+    "editor_job_integration",
+    "x11_isolated"
+  ],
+  "unexplainedCtestFailure": false,
+  "ok": false
+}
+Errors while running CTest

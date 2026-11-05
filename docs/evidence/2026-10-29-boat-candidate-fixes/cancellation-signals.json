@@ -1,0 +1,16 @@
+[
+  {
+    "event": "SIGINT-to-terminal-process-group",
+    "pid": 1205558,
+    "at": 1793321727.0391634
+  },
+  {
+    "event": "second-SIGINT-to-terminal-process-group",
+    "at": 1793321728.0393434
+  },
+  {
+    "event": "controller-exit",
+    "code": 1,
+    "at": 1793321730.208575
+  }
+]

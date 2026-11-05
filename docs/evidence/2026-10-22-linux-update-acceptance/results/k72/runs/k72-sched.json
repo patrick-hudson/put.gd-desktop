@@ -1,0 +1,94 @@
+{
+ "name": "k72-sched",
+ "tool": null,
+ "live": true,
+ "image": "/home/patrick/work/put.gd-ua/app/runs/k72-sched/apps/putgd-26.1022.1017-nightly-x86_64.AppImage",
+ "imageSha256": "005762e9ede991c78fce115707a41617d899d7870738fb525151c182357b7c3a",
+ "cliDir": "/home/patrick/work/put.gd-ua/app/runs/k72-sched/cli/squashfs-root",
+ "runtime": "/tmp/ua-app.v8fNXO",
+ "session": {
+  "HOME": "/home/patrick",
+  "PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin",
+  "USER": "patrick",
+  "LANG": "en_US.UTF-8",
+  "DISPLAY": ":0",
+  "XAUTHORITY": "/run/user/1000/xauth_DpCZom",
+  "DBUS_SESSION_BUS_ADDRESS": "unix:path=/run/user/1000/bus",
+  "XDG_SESSION_TYPE": "wayland",
+  "XDG_CURRENT_DESKTOP": "KDE",
+  "WAYLAND_DISPLAY": "/run/user/1000/wayland-0",
+  "XDG_SESSION_DESKTOP": "KDE",
+  "DESKTOP_SESSION": "plasma",
+  "KDE_FULL_SESSION": "true",
+  "KDE_SESSION_VERSION": "6",
+  "XDG_DATA_DIRS": "/home/patrick/.local/share/flatpak/exports/share:/var/lib/flatpak/exports/share:/usr/local/share:/usr/share:/var/lib/snapd/desktop"
+ },
+ "shell": "plasmashell",
+ "hostPath": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin",
+ "host": "kubuntu",
+ "vnc": 5900,
+ "urls": {},
+ "input": "uinput",
+ "before": {
+  "dataPutgd": false,
+  "homePutgd": {
+   "/home/patrick/.config/putgd": false,
+   "/home/patrick/.local/state/putgd": true,
+   "/home/patrick/.cache/putgd": false
+  },
+  "autostart": [
+   "patrick-vnc.desktop"
+  ]
+ },
+ "pids": {
+  "apprun": 1464037
+ },
+ "created": "2026-10-23T00:05:01Z",
+ "watchStart-u14": "2026-10-23T00:05:02Z",
+ "log": [
+  {
+   "at": "2026-10-23T00:05:02Z",
+   "watch": {
+    "label": "u14",
+    "pid": 1464091,
+    "started": "2026-10-23T00:05:02Z"
+   }
+  },
+  {
+   "at": "2026-10-23T00:21:00Z",
+   "watch": {
+    "label": "u14",
+    "from": "2026-10-23T00:05:02Z",
+    "to": "2026-10-23T00:21:00Z",
+    "notifyCalls": [
+     {
+      "app": "Crash Reporting System",
+      "summary": "Service Crash",
+      "body": "<html><tt>/usr/bin/dash</tt> has encountered a fatal error and was closed.</html>"
+     }
+    ],
+    "putgdNotifyCalls": [],
+    "journal": [
+     {
+      "time": "2026-10-23T00:17:28.973Z",
+      "message": "Update check finished",
+      "fields": {
+       "channel": "nightly",
+       "itemId": null,
+       "latest": "26.1022.1019-nightly",
+       "operationId": null,
+       "updateAvailable": true
+      }
+     }
+    ]
+   }
+  },
+  {
+   "at": "2026-10-23T00:21:01Z",
+   "frame": {
+    "label": "u14-sched-settings",
+    "frame": "/home/patrick/work/put.gd-ua/app/runs/k72-sched/frames/u14-sched-settings.png"
+   }
+  }
+ ]
+}

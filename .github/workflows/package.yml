@@ -13,12 +13,17 @@ permissions:
   contents: read
 env:
   RELEASE_TAG: ${{ inputs.release_tag }}
+  CCACHE_DIR: ${{ github.workspace }}/build/ccache-package
+  CCACHE_BASEDIR: ${{ github.workspace }}
+  CCACHE_MAXSIZE: 256M
 
 jobs:
   native:
     name: native (${{ matrix.name }})
     runs-on: ubuntu-24.04
     container: ${{ matrix.image }}
+    # Normally 8-17 minutes. Above four stopped install attempts plus the snapshot fallback (#467).
+    timeout-minutes: 90
     strategy:
       fail-fast: false
       matrix:
@@ -27,38 +32,79 @@ jobs:
             format: DEB
             image: ubuntu:24.04@sha256:534baea6a22c03a63003dbc8dbe78fe34bc0d7e595d9a9dc9834884ff530eb55
             kde: ''
+            # File-manager menu plugins (#1105), required in each package.
+            plugins: -DPUTGD_NAUTILUS_PLUGIN=ON -DPUTGD_CAJA_PLUGIN=ON -DPUTGD_PEONY_PLUGIN=ON
           - name: ubuntu26.04
             format: DEB
             image: ubuntu:26.04@sha256:f144425ff09be612d6d9ad965196e9cdc23dae1f42110a8a11a3e9a8198759f7
             kde: --require-kde
+            plugins: -DPUTGD_NAUTILUS_PLUGIN=ON -DPUTGD_CAJA_PLUGIN=ON -DPUTGD_PEONY_PLUGIN=ON
+          - name: debian13
+            format: DEB
+            image: debian:13@sha256:913f6706df59a68922d1dd08f78c2476560a8d367897200a6005b00e5f67c2d5
+            kde: --require-kde
+            plugins: -DPUTGD_NAUTILUS_PLUGIN=ON -DPUTGD_CAJA_PLUGIN=ON -DPUTGD_PEONY_PLUGIN=ON
           - name: fedora44
             format: RPM
             image: fedora:44@sha256:43b29f65a41eb9c35e1cd5323e3bdf3b655c2357a9f4f1ff2f9c2798e5045d80
             kde: --require-kde
+            # Fedora has no Peony.
+            plugins: -DPUTGD_NAUTILUS_PLUGIN=ON -DPUTGD_CAJA_PLUGIN=ON -DPUTGD_PEONY_PLUGIN=OFF
     steps:
       - name: Bootstrap checkout tools
+        # tools/ci/install-packages.sh is not checked out yet: the same bounded retry, inline (#368),
+        # each attempt stopped after 10 minutes (#467).
+        shell: bash
         run: |
-          if command -v apt-get >/dev/null; then
-            apt-get update
-            apt-get install -y git ca-certificates python3 tar gzip
-          else
-            dnf install -y git ca-certificates python3 tar gzip
-          fi
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+          apt=(-o Acquire::Retries=3 -o Acquire::http::Timeout=60 -o Acquire::https::Timeout=60)
+          bounded() { timeout --kill-after=30s 10m "$@"; }
+          for attempt in 1 2 3; do
+            if command -v apt-get >/dev/null; then
+              bounded apt-get update --error-on=any "${apt[@]}" && bounded apt-get install -y "${apt[@]}" git ca-certificates && exit 0
+            else
+              bounded dnf install -y --setopt=retries=10 --setopt=timeout=60 --setopt=minrate=1000 $([ "$attempt" = 1 ] || echo --refresh) git ca-certificates && exit 0
+            fi
+            echo "::warning::Package install (bootstrap): attempt $attempt of 3 failed"
+            [ "$attempt" != 1 ] || printf '### Package install retries (native (%s) bootstrap)\n\n| Attempt | Outcome |\n| --- | --- |\n' '${{ matrix.name }}' >> "$GITHUB_STEP_SUMMARY"
+            echo "| $attempt of 3 | failed |" >> "$GITHUB_STEP_SUMMARY"
+            [ "$attempt" = 3 ] || sleep $((attempt * 30))
+          done
+          exit 1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           ref: ${{ inputs.release_tag || github.sha }}
+      - name: Identify the package snapshot
+        # Downloaded packages and their metadata, refreshed weekly: installs reuse them, and
+        # when every mirror attempt fails the install runs offline from them (#368).
+        id: pkg-key
+        run: echo "week=$(date -u +%G-W%V)" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        id: pkg-cache
+        with:
+          path: /var/cache/putgd-packages
+          key: putgd-pkgs-v1-${{ matrix.name }}-${{ hashFiles('tools/releases/install-native-deps.sh', 'tools/ci/install-packages.sh') }}-${{ steps.pkg-key.outputs.week }}
+          restore-keys: putgd-pkgs-v1-${{ matrix.name }}-${{ hashFiles('tools/releases/install-native-deps.sh', 'tools/ci/install-packages.sh') }}-
       - name: Standard distro dependencies
+        env:
+          PUTGD_PKG_CACHE: /var/cache/putgd-packages
+          PUTGD_PKG_LABEL: native (${{ matrix.name }})
         run: |
           git config --global --add safe.directory "$GITHUB_WORKSPACE"
           bash tools/releases/install-native-deps.sh
+      - uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        # Only a snapshot an online install just refreshed, never one it fell back to.
+        if: env.PUTGD_PKG_CACHE_REFRESHED == 'true' && steps.pkg-cache.outputs.cache-hit != 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+        with:
+          path: /var/cache/putgd-packages
+          key: ${{ steps.pkg-cache.outputs.cache-primary-key }}
       - name: Validate exact release source
         if: inputs.release_tag != ''
         run: python3 tools/releases/verify_tag.py --tag "$RELEASE_TAG"
       - name: Identify release dependency environment
         id: sdk-key
         run: python3 tools/ci/sdk_cache.py key
-      - uses: actions/cache/restore@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+      - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         id: sdk-cache
         with:
           path: |
@@ -67,6 +113,7 @@ jobs:
           key: ${{ steps.sdk-key.outputs.key }}
       - name: Verify pinned SDK source
         # Packages ship the SDK licenses and the source export rebuilds against this tree.
+        timeout-minutes: 20
         run: bash tools/ci/sdk-source.sh
       - name: Verify restored prefix
         if: steps.sdk-cache.outputs.cache-hit == 'true'
@@ -76,7 +123,7 @@ jobs:
         run: |
           PUTGD_SDK_JOBS="$(nproc)" bash tools/releases/provision-sdk.sh
           python3 tools/ci/sdk_cache.py seal --key '${{ steps.sdk-key.outputs.key }}'
-      - uses: actions/cache/save@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+      - uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         if: steps.sdk-cache.outputs.cache-hit != 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
         with:
           path: |
@@ -84,47 +131,105 @@ jobs:
             build/sdk-cache.json
           key: ${{ steps.sdk-key.outputs.key }}
       - name: Provision pinned Proton helper
+        timeout-minutes: 15
+        env:
+          # npm's own per-request retries for registry errors (#368); #332's exit 152 is a CPU-time kill, not this.
+          npm_config_fetch_retries: '5'
         run: python3 tools/proton/provision_runtime.py
+      - name: Restore release compiler cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: build/ccache-package
+          key: ccache-package-${{ matrix.name }}-${{ steps.sdk-key.outputs.key }}-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: ccache-package-${{ matrix.name }}-${{ steps.sdk-key.outputs.key }}-
       - name: Build production release and audit native package
         env:
           FORMAT: ${{ matrix.format }}
+          CMAKE_C_COMPILER_LAUNCHER: ccache
+          CMAKE_CXX_COMPILER_LAUNCHER: ccache
           KDE_REQUIREMENT: ${{ matrix.kde }}
+          FILE_MANAGER_PLUGINS: ${{ matrix.plugins }}
+          # The update check offers this package's own download (#293).
+          PACKAGE_TARGET: ${{ matrix.name }}
         run: |
-          cmake --preset release -DBUILD_TESTING=OFF -DPUTGD_LAB_FIXTURE=OFF -DPUTGD_PHYSICAL_BENCHMARKS=OFF -DPUTGD_RELEASE_TAG="$RELEASE_TAG" -DPUTGD_BUNDLE_PROTON=ON -DCMAKE_INSTALL_PREFIX=/usr
+          ccache --zero-stats
+          cmake --preset release -DBUILD_TESTING=OFF -DPUTGD_LAB_FIXTURE=OFF -DPUTGD_PHYSICAL_BENCHMARKS=OFF -DPUTGD_RELEASE_TAG="$RELEASE_TAG" -DPUTGD_BUNDLE_PROTON=ON -DCMAKE_INSTALL_PREFIX=/usr -DPUTGD_PACKAGE_TARGET="$PACKAGE_TARGET" $FILE_MANAGER_PLUGINS
           cmake --build --preset release --parallel "$(nproc)"
-          python3 tools/releases/native.py --build build/release --format "$FORMAT" --output "$PWD/build/release-packages" --proton-manifest build/dependencies/proton-runtime/manifest.json --require-proton $KDE_REQUIREMENT
-      - name: Compile the curated source export with standard presets
+          python3 tools/releases/native.py --build build/release --format "$FORMAT" --output "$PWD/build/release-packages" --proton-manifest build/dependencies/proton-runtime/manifest.json --require-proton $KDE_REQUIREMENT --package-target "$PACKAGE_TARGET"
+          ccache --show-stats
+      - name: Save release compiler cache
+        if: github.event_name == 'push' && github.ref == 'refs/heads/nightly'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: build/ccache-package
+          key: ccache-package-${{ matrix.name }}-${{ steps.sdk-key.outputs.key }}-${{ github.run_id }}-${{ github.run_attempt }}
+      - name: Stage split debug symbols by build ID
+        # Each packaged binary's .debug file, checked against the package's build IDs (#124).
+        env:
+          LABEL: ${{ matrix.name }}
+        run: python3 tools/releases/debug_symbols.py stage --build build/release --installed build/release-packages/extracted --label "$LABEL" --output build/debug-symbols
+      - name: Export exact application source
         if: matrix.name == 'ubuntu24.04'
         run: |
           python3 tools/releases/source_archive.py --root "$PWD" --identity build/release/build-identity/build-info.json --output-dir build/source-export
+      - name: Compile the source export on development and stable builds
+        if: matrix.name == 'ubuntu24.04' && (inputs.release_tag == '' || !endsWith(inputs.release_tag, '-nightly'))
+        run: |
           python3 tools/releases/check_source_build.py --receipt build/source-export/source-archive.json --sdk-prefix "$PWD/build/sdk" --sdk-source "$PWD/build/dependencies/aws-sdk-cpp" --output build/source-build --bundle-proton --proton-source "$PWD/build/dependencies/proton-runtime/sdk-source" --proton-crypto-source "$PWD/build/dependencies/proton-runtime/crypto-source" --proton-offline
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: debug-symbols-${{ matrix.name }}
+          path: build/debug-symbols/
+          compression-level: 1
+          if-no-files-found: error
+          retention-days: 90
       - name: Stage flat native artifact evidence
         if: always()
-        run: python3 tools/releases/stage_artifacts.py --kind native
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        run: python3 tools/releases/stage_artifacts.py --kind native --packages-only
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
           name: release-native-${{ matrix.name }}
           path: build/release-artifact/
+          compression-level: 0
           if-no-files-found: warn
           retention-days: 30
 
   appimage:
     runs-on: ubuntu-24.04
+    # Package attempts are bounded and bypass the hosted runner's slow Azure mirror (#500).
+    timeout-minutes: 180
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           ref: ${{ inputs.release_tag || github.sha }}
+      - name: Use official Ubuntu archive mirrors
+        # Keep signed distro metadata and archive/security failover without adding
+        # a ~650-package snapshot to the repository's shared 10 GB cache (#500).
+        run: sudo python3 tools/ci/hosted_apt_mirrors.py
       - name: Standard build dependencies
+        env:
+          PUTGD_PKG_LABEL: appimage
+          PUTGD_PKG_TIMEOUT: '300'
+          PUTGD_PKG_STALL: '120'
+          PUTGD_PKG_ATTEMPTS: '3'
         run: |
-          sudo bash tools/releases/install-native-deps.sh
-          sudo apt-get install -y patchelf libgtk-3-dev libsecret-1-dev qt6-base-private-dev libx11-xcb-dev libxcb-cursor-dev libxcb-icccm4-dev libxcb-render-util0-dev libxcb-sync-dev
-      - uses: jurplel/install-qt-action@a9c63c7c123f3069cff414e7e482d95dfa9d8125 # v4.4.1
+          # Retried package installs (#368); sudo keeps the summary file for the retry report.
+          pkg_install() { sudo --preserve-env=GITHUB_STEP_SUMMARY,PUTGD_PKG_LABEL,PUTGD_PKG_TIMEOUT,PUTGD_PKG_STALL,PUTGD_PKG_ATTEMPTS bash tools/ci/install-packages.sh "$@"; }
+          sudo --preserve-env=GITHUB_STEP_SUMMARY,PUTGD_PKG_LABEL,PUTGD_PKG_TIMEOUT,PUTGD_PKG_STALL,PUTGD_PKG_ATTEMPTS bash tools/releases/install-native-deps.sh
+          # patchelf and the bundled libraries, then screen recording: the pinned FFmpeg's build inputs and the GStreamer plugins the image bundles.
+          pkg_install patchelf libgtk-3-dev libsecret-1-dev qt6-base-private-dev libx11-xcb-dev libxcb-cursor-dev libxcb-icccm4-dev libxcb-render-util0-dev libxcb-sync-dev \
+            nasm libva-dev libvpx-dev libwebp-dev libopus-dev libffmpeg-nvenc-dev libx264-dev libx265-dev gstreamer1.0-plugins-base gstreamer1.0-plugins-good gstreamer1.0-plugins-bad gstreamer1.0-plugins-ugly gstreamer1.0-pipewire gstreamer1.0-pulseaudio gstreamer1.0-vaapi
+      - name: The locked Qt version
+        # Renovate updates it in the lock (#420), where the AppImage tools read it too.
+        id: qt
+        run: echo "version=$(python3 -c 'import json; print(json.load(open("packaging/appimage/tools.lock.json"))["buildInputs"]["qt"])')" >> "$GITHUB_OUTPUT"
+      - uses: jurplel/install-qt-action@b344308e4483fc892e0d27b3cd1b173ebdd95f06 # v4.5.0
         env:
           LOG_CFG: ${{ github.workspace }}/tools/ci/aqt-logging.ini
         with:
-          version: '6.8.3'
+          version: ${{ steps.qt.outputs.version }}
           arch: linux_gcc_64
           modules: qtimageformats
           cache: true
@@ -132,11 +237,12 @@ jobs:
         if: inputs.release_tag != ''
         run: python3 tools/releases/verify_tag.py --tag "$RELEASE_TAG"
       - name: Verify pinned SDK source
+        timeout-minutes: 20
         run: bash tools/ci/sdk-source.sh
       - name: Identify AppImage dependency environment
         id: sdk-key
-        run: python3 tools/ci/sdk_cache.py key --contract tools/releases/provision-appimage.py --contract packaging/appimage/tools.lock.json
-      - uses: actions/cache/restore@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        run: python3 tools/ci/sdk_cache.py key --contract tools/releases/provision-appimage.py --contract packaging/appimage/tools.lock.json --contract packaging/appimage/media.json
+      - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         id: sdk-cache
         with:
           path: |
@@ -158,7 +264,7 @@ jobs:
           python3 tools/releases/provision-appimage.py --qt-root "$QT_ROOT_DIR"
           python3 tools/ci/sdk_cache.py seal --key '${{ steps.sdk-key.outputs.key }}'
           python3 tools/ci/sdk_cache.py seal --prefix build/appimage-deps --manifest build/appimage-deps-cache.json --key '${{ steps.sdk-key.outputs.key }}'
-      - uses: actions/cache/save@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+      - uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         if: steps.sdk-cache.outputs.cache-hit != 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
         with:
           path: |
@@ -168,40 +274,235 @@ jobs:
             build/appimage-deps-cache.json
           key: ${{ steps.sdk-key.outputs.key }}
       - name: Provision pinned Proton helper
+        timeout-minutes: 15
+        env:
+          # npm's own per-request retries for registry errors (#368); #332's exit 152 is a CPU-time kill, not this.
+          npm_config_fetch_retries: '5'
         run: python3 tools/proton/provision_runtime.py
+      - name: Headless Wayland compositor for the image's start check
+        run: sudo --preserve-env=GITHUB_STEP_SUMMARY bash tools/ci/install-packages.sh --no-install-recommends weston
+      - name: Restore release compiler cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: build/ccache-package
+          key: ccache-package-appimage-${{ steps.sdk-key.outputs.key }}-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: ccache-package-appimage-${{ steps.sdk-key.outputs.key }}-
       - name: Build and audit AppImage
-        run: PUTGD_BUILD_JOBS="$(nproc)" bash tools/releases/build-appimage.sh
+        env:
+          CMAKE_C_COMPILER_LAUNCHER: ccache
+          CMAKE_CXX_COMPILER_LAUNCHER: ccache
+        run: |
+          ccache --zero-stats
+          PUTGD_APPIMAGE_SOURCES=0 PUTGD_BUILD_JOBS="$(nproc)" bash tools/releases/build-appimage.sh
+          ccache --show-stats
+      - name: Save release compiler cache
+        if: github.event_name == 'push' && github.ref == 'refs/heads/nightly'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: build/ccache-package
+          key: ccache-package-appimage-${{ steps.sdk-key.outputs.key }}-${{ github.run_id }}-${{ github.run_attempt }}
+      - name: Stage split debug symbols by build ID
+        run: python3 tools/releases/debug_symbols.py stage --build build/release --installed build/appimage-stage --label appimage --output build/debug-symbols
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: debug-symbols-appimage
+          path: build/debug-symbols/
+          compression-level: 1
+          if-no-files-found: error
+          retention-days: 90
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: appimage-source-receipt
+          path: build/appimage-output/appimage-build.json
+          if-no-files-found: error
+          retention-days: 14
       - name: Stage flat AppImage artifact evidence
         if: always()
-        run: python3 tools/releases/stage_artifacts.py --kind appimage
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        run: python3 tools/releases/stage_artifacts.py --kind appimage --packages-only
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
           name: release-appimage
           path: build/release-artifact/
+          compression-level: 0
           if-no-files-found: warn
           retention-days: 30
 
-  collect:
-    if: inputs.release_tag != ''
+  appimage-sources:
+    # Corresponding source is required, but independent of image smoke tests/SBOMs.
+    needs: appimage
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.release_tag || github.sha }}
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: appimage-source-receipt
+          path: build/appimage-output
+      - name: Signed Ubuntu source indexes
+        env:
+          PUTGD_PKG_TIMEOUT: '300'
+          PUTGD_PKG_STALL: '120'
+          PUTGD_PKG_ATTEMPTS: '3'
+        run: |
+          sudo python3 tools/ci/hosted_apt_mirrors.py
+          # The AppImage's GPL corresponding source includes the bundled distro source packages.
+          printf 'Types: deb-src\nURIs: http://archive.ubuntu.com/ubuntu/\nSuites: noble noble-updates noble-security\nComponents: main restricted universe multiverse\nSigned-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg\n' | sudo tee /etc/apt/sources.list.d/putgd-appimage-src.sources > /dev/null
+          sudo --preserve-env=GITHUB_STEP_SUMMARY,PUTGD_PKG_TIMEOUT,PUTGD_PKG_STALL,PUTGD_PKG_ATTEMPTS bash tools/ci/install-packages.sh
+      - name: Restore authenticated distro source downloads
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        id: source-cache
+        with:
+          path: build/dependencies/appimage-complete-source/ubuntu
+          key: appimage-distro-sources-v1-${{ hashFiles('packaging/appimage/*.json') }}-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: appimage-distro-sources-v1-${{ hashFiles('packaging/appimage/*.json') }}-
+      - name: Collect exact bundled-component sources
+        run: |
+          python3 tools/releases/appimage_complete_sources.py --receipt build/appimage-output/appimage-build.json \
+            --output-dir build/appimage-output --timestamp "$(git show -s --format=%ct HEAD)"
+      - name: Save authenticated distro source downloads
+        if: github.event_name == 'push' && github.ref == 'refs/heads/nightly'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: build/dependencies/appimage-complete-source/ubuntu
+          key: ${{ steps.source-cache.outputs.cache-primary-key }}
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: appimage-sources
+          path: |
+            build/appimage-output/appimage-complete-source.json
+            build/appimage-output/*-appimage-complete-source.tar.gz
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 14
+
+  appimage-pipewire:
+    # Run against the exact new image while SBOM/source collection proceeds.
+    needs: appimage
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.release_tag || github.sha }}
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: release-appimage
+          path: build/pipewire
+      - name: Extract the AppImage
+        run: |
+          image=$(find "$PWD/build/pipewire" -maxdepth 1 -name '*-x86_64.AppImage' | head -n 1)
+          test -n "$image"
+          chmod +x "$image"
+          (cd build/pipewire && "$image" --appimage-extract > /dev/null)
+      - name: Link pipewiresrc on Ubuntu 26.04's PipeWire
+        run: |
+          docker run --rm --volume "$PWD:/src:ro" --workdir /src \
+            ubuntu:26.04@sha256:f144425ff09be612d6d9ad965196e9cdc23dae1f42110a8a11a3e9a8198759f7 \
+            bash tests/desktop/pipewire/ci_check.sh --install build/pipewire/squashfs-root
+
+  sbom:
+    # CycloneDX SBOMs of every package and their Grype report (#420, docs/release.md).
+    # packaging/sbom/policy.json decides which findings flag and which block this channel.
     needs: [native, appimage]
     runs-on: ubuntu-24.04
+    # Normally 3 minutes, most of it importing the Grype database.
+    timeout-minutes: 30
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          ref: ${{ inputs.release_tag || github.sha }}
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: 'release-{native-*,appimage}'
+          path: build/downloaded
+      - name: RPM extraction tools
+        run: sudo --preserve-env=GITHUB_STEP_SUMMARY bash tools/ci/install-packages.sh --no-install-recommends rpm2cpio cpio
+      - name: Pinned Syft and Grype
+        run: python3 tools/releases/sbom.py tools --output "$RUNNER_TEMP/sbom-tools"
+      - name: Identify the current Grype database
+        id: grype-db
+        run: |
+          python3 tools/releases/sbom.py database --listing-only --listing build/grype-db.json --output build/grype-db
+          echo "key=grype-db-v6-$(python3 -c 'import json; print(json.load(open("build/grype-db.json"))["sha256"])')" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        id: grype-cache
+        with:
+          path: build/grype-db
+          key: ${{ steps.grype-db.outputs.key }}
+      - name: Download, verify and import the Grype database
+        env:
+          GRYPE_DB_CACHE_DIR: ${{ runner.temp }}/grype-db
+          GRYPE_CHECK_FOR_APP_UPDATE: 'false'
+        run: |
+          python3 tools/releases/sbom.py database --listing build/grype-db.json --output build/grype-db
+          "$RUNNER_TEMP/sbom-tools/grype" db import build/grype-db/vulnerability-db_*.tar.zst
+          "$RUNNER_TEMP/sbom-tools/grype" db status
+      - uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        if: steps.grype-cache.outputs.cache-hit != 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+        with:
+          path: build/grype-db
+          key: ${{ steps.grype-db.outputs.key }}
+      - name: Generate the packages' SBOMs
+        run: |
+          python3 tools/releases/sbom.py generate --inputs build/downloaded --syft "$RUNNER_TEMP/sbom-tools/syft" \
+            --output build/release-sbom --timestamp "$(git show -s --format=%ct HEAD)"
+      - name: Scan the SBOMs and apply the vulnerability policy
+        env:
+          GRYPE_DB_CACHE_DIR: ${{ runner.temp }}/grype-db
+        run: |
+          python3 tools/releases/sbom.py scan --sboms build/release-sbom --grype "$RUNNER_TEMP/sbom-tools/grype" \
+            --output build/vulnerabilities --database build/grype-db.json --release-tag "$RELEASE_TAG" --summary "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: release-sbom
+          path: build/release-sbom/
+          if-no-files-found: error
+          retention-days: 30
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: vulnerability-report
+          path: build/vulnerabilities/
+          if-no-files-found: warn
+          retention-days: 90
+
+  collect:
+    if: inputs.release_tag != ''
+    needs: [native, appimage, appimage-sources, sbom]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           ref: ${{ inputs.release_tag }}
-      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
-          pattern: release-*
+          pattern: 'release-{native-*,appimage,sbom}'
           path: build/downloaded
-      - name: Verify Proton corresponding-source delivery
-        run: python3 tools/releases/proton_sources.py --catalog tools/proton/notices/SOURCES.json --output build/downloaded/proton-sources
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: appimage-sources
+          path: build/downloaded/release-appimage
       - name: Verify and collect exact release assets
-        run: python3 tools/releases/collect.py --tag "$RELEASE_TAG" --inputs build/downloaded --output build/publish
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        run: python3 tools/releases/collect.py --tag "$RELEASE_TAG" --inputs build/downloaded --output build/publish --installers-only
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: release-assets
-          path: build/publish/
+          path: |
+            build/publish/*
+            !build/publish/sources/**
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 14
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: release-source-assets
+          path: build/publish/sources/
+          compression-level: 0
           if-no-files-found: error
           retention-days: 14

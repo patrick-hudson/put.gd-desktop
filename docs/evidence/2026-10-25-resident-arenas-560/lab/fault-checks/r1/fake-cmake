@@ -1,0 +1,5 @@
+#!/bin/bash
+[[ $FAIL == build ]] && exit 1
+[[ $FAIL == stale ]] && exit 0
+rev=$(cat $FAKE_STATE/head); id=${rev:0:12}; [[ $FAIL == identity ]] && id=g000000000000 || id=g$id
+printf 'probe' > build/dev/operations_upload_probe; printf "worker $id" > build/dev/putgd-s3-worker

@@ -1,0 +1,13 @@
+{
+  "reason": "Limit tests-first preparation to History target; compiled objects retained for required final ordinary full build",
+  "ownedNinja": [
+    {
+      "pid": 2698243,
+      "args": [
+        "/usr/bin/ninja",
+        "-j",
+        "2"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,52 @@
+{
+  "privateRoot": "/home/patrick/work/put.gd/work/campaigns/surface-driver-20261029/clipboard-860-32892d2d",
+  "archives": {
+    "gnome": {
+      "archive": {
+        "file": "gnome-evidence.tar.gz",
+        "bytes": 42930152,
+        "sha256": "6d03d3ea7e7658724defbab69f7ce00ddac63beb0b765f84a869135000e6a875"
+      },
+      "verification": {
+        "archive": "gnome-evidence.tar.gz",
+        "sha256": "6d03d3ea7e7658724defbab69f7ce00ddac63beb0b765f84a869135000e6a875",
+        "verifiedFiles": 183,
+        "verified": true
+      },
+      "bundle": {
+        "file": "gnome-validation.bundle",
+        "bytes": 1588,
+        "sha256": "8da691f002d62ae4b1863ca1f615effe697aacb0ccca28fdb39acbda8b27cc47"
+      },
+      "retirement": {
+        "file": "gnome-retirement.tar.gz",
+        "bytes": 1149,
+        "sha256": "6bc4dc73527b7ef3aed42d5fe2ee3eeb20c82954fe2962c752c96baad2915747"
+      }
+    },
+    "cinnamon": {
+      "archive": {
+        "file": "cinnamon-evidence.tar.gz",
+        "bytes": 35379354,
+        "sha256": "8561c174185d697adf1e6967e4603b7264384840ece734ba64d1e385a56c0903"
+      },
+      "verification": {
+        "archive": "cinnamon-evidence.tar.gz",
+        "sha256": "8561c174185d697adf1e6967e4603b7264384840ece734ba64d1e385a56c0903",
+        "verifiedFiles": 260,
+        "verified": true
+      },
+      "bundle": {
+        "file": "cinnamon-validation.bundle",
+        "bytes": 1587,
+        "sha256": "989bffd7d33217b36eb3b85f1175a18cb8bc6a60f48197dd1c0b4a0938bc33e5"
+      },
+      "retirement": {
+        "file": "cinnamon-retirement.tar.gz",
+        "bytes": 1146,
+        "sha256": "c426c2388897cae621a4e567d62fddc07160343d0d752741696fcea4b5433af2"
+      }
+    }
+  },
+  "restore": "Verify archive SHA-256, then extract with tar -xzf; completion-manifest.json binds every member. Validation bundles require their public Git parent commits."
+}

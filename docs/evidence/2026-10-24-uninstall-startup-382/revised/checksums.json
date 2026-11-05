@@ -1,0 +1,13 @@
+{
+  "script-tests.log": "bbd7515afbccb1c312aca474378ceacadbc1b1b1e738423fe1deb0e9c417939f",
+  "native-script.sh": "0512f9e29e8b0e622a269a6ab23c58c5ee00747fe5f3463124a3d936ba4cfad8",
+  "native-entry.desktop": "db7de1ac6053a1e27a8aa6551961c8fd7ae996fa1f36a713f8dc016996a119b1",
+  "qt-cases.log": "8b7faa28ab880e2823fb91fff198d73e6b00896c803549e4bead5efd206df788",
+  "appimage-live-check.py": "ecdbf9ff54d7cae62c7788d8da8423903c8dc0b9d2cc7bf5a5226c66007518ab",
+  "native-live-check.py": "4a6d4c7002bf5d4fcf4b5ae3979ce2ec3fd8a4e03ccf4b0011010d938d8ec8ce",
+  "native-live-result.json": "e04e8e643143378fcad387ffcf62490da210fb656a6fa6509c19015d410df101",
+  "appimage-live-result.json": "d22e917c24616a5f49f95bafb2a9f0db4900d18eb86210f33d9df96b0429d459",
+  "source-blobs.json": "e789987e169da34f6c2c96caf3f0c5f60f22e0d257891edbb1d1ee32bbb04d45",
+  "ctest.log": "ae3491baad1ae880739c4ca9e3b0f1d0c030f4a0535fa2471009063410098bac",
+  "socket-preflight.log": "65bb54ea9a48801df5192b71116026008063c0c18379772fc0c22cf95ae72382"
+}

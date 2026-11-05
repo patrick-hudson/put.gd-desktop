@@ -1,0 +1,8 @@
+appimage: passed (1170.231s)
+debian13: passed (579.163s)
+fedora44: passed (909.191s)
+lab-fixture: passed (884.718s)
+ubuntu24.04: passed (720.064s)
+ubuntu26.04: passed (648.67s)
+ui-catalog: passed (794.648s)
+Manifest: /home/patrick/work/boat-candidates/issue752-f1-live-20261030/run-b/manifest.json (1170.538s)

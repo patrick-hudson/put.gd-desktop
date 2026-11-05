@@ -1,0 +1,37 @@
+{
+ "label": "m74-leftclick",
+ "components": [
+  {
+   "blocks": 18888,
+   "box": [
+    296,
+    40,
+    1624,
+    960
+   ]
+  },
+  {
+   "blocks": 25,
+   "box": [
+    192,
+    1040,
+    232,
+    1080
+   ]
+  }
+ ],
+ "colour": [
+  244,
+  244,
+  248
+ ],
+ "inner": [
+  299,
+  42,
+  1619,
+  954
+ ],
+ "changedShare": 1.0,
+ "themeShare": 0.94,
+ "kept": "/home/patrick/work/put.gd-tray374lab/p-m74-after/crops/m74-leftclick.png"
+}

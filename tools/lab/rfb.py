@@ -4,7 +4,7 @@ Provides real key/pointer input and raw framebuffer screenshots saved as PNG."""
 import socket, struct, time, zlib
 
 KEYSYMS = {'ctrl': 0xffe3, 'shift': 0xffe1, 'alt': 0xffe9, 'super': 0xffeb, 'ret': 0xff0d, 'esc': 0xff1b,
-           'tab': 0xff09, 'backspace': 0xff08, 'delete': 0xffff, 'left': 0xff51, 'up': 0xff52, 'right': 0xff53, 'down': 0xff54,
+           'tab': 0xff09, 'home': 0xff50, 'end': 0xff57, 'pageup': 0xff55, 'pagedown': 0xff56, 'insert': 0xff63, 'menu': 0xff67, 'backspace': 0xff08, 'delete': 0xffff, 'left': 0xff51, 'up': 0xff52, 'right': 0xff53, 'down': 0xff54,
            **{f'f{i}': 0xffbd + i for i in range(1, 13)}}
 
 class RFB:
@@ -32,6 +32,7 @@ class RFB:
         self.sock.sendall(struct.pack('>BxxxBBBBHHHBBBxxx', 0, 32, 24, 0, 1, 255, 255, 255, 16, 8, 0))
         self.sock.sendall(struct.pack('>BxHi', 2, 1, 0))  # raw encoding only
         self.buttons = 0
+        self.pixels = bytearray(self.width * self.height * 4)
 
     def _read(self, n):
         data = b''
@@ -61,6 +62,18 @@ class RFB:
         if down is False: self.buttons &= ~1
         self.sock.sendall(struct.pack('>BBHH', 5, self.buttons, max(0, min(self.width - 1, int(x))), max(0, min(self.height - 1, int(y)))))
 
+    def pointer_button(self, x, y, button='left', down=None):
+        """Real pointer input including non-left buttons and wheel pulses."""
+        mask = {'left': 1, 'middle': 2, 'right': 4, 'wheel-up': 8, 'wheel-down': 16}[button]
+        if down is True: self.buttons |= mask
+        if down is False: self.buttons &= ~mask
+        self.pointer(x, y)
+
+    def scroll(self, x, y, clicks):
+        for _ in range(abs(clicks)):
+            self.pointer_button(x, y, 'wheel-up' if clicks > 0 else 'wheel-down', True)
+            self.pointer_button(x, y, 'wheel-up' if clicks > 0 else 'wheel-down', False)
+
     def drag(self, x0, y0, x1, y1, steps=12, settle=.25):
         self.pointer(x0, y0); time.sleep(.1); self.pointer(x0, y0, True); time.sleep(settle)
         for i in range(1, steps + 1):
@@ -72,7 +85,10 @@ class RFB:
 
     def frame(self):
         self.sock.sendall(struct.pack('>BBHHHH', 3, 0, 0, 0, self.width, self.height))
-        pixels = bytearray(self.width * self.height * 4)
+        # Framebuffer updates may contain only damaged rectangles, including
+        # updates already queued before this nonincremental request. Retain the
+        # pixels outside those rectangles just as a normal VNC viewer does.
+        pixels = self.pixels
         while True:
             kind = self._read(1)[0]
             if kind == 0:
@@ -80,7 +96,9 @@ class RFB:
                 for _ in range(rects):
                     x, y, w, h, enc = struct.unpack('>HHHHi', self._read(12))
                     if enc == -223:  # DesktopSize
-                        self.width, self.height = w, h; pixels = bytearray(w * h * 4); continue
+                        self.width, self.height = w, h
+                        self.pixels = pixels = bytearray(w * h * 4)
+                        continue
                     if enc != 0:
                         raise RuntimeError(f'unexpected encoding {enc}')
                     data = self._read(w * h * 4)

@@ -1,0 +1,146 @@
+{
+  "frames": {
+    "s3a/frames/outcomes_live.s3_region_upload/00-before.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "s3a/frames/outcomes_live.s3_region_upload/01-after.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "protona/frames/outcomes_live.proton_region_upload/00-before.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "protona/frames/outcomes_live.proton_region_upload/01-independent-frozen-pattern.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "protona/frames/outcomes_live.proton_region_upload/02-after.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "protonb/frames/outcomes_live.proton_region_upload/00-before.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "protonb/frames/outcomes_live.proton_region_upload/01-after.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "setup/unlocked-before-live.png": {
+      "sha256": "a29b93b34e75cbe26519a81d8a7ccd3e7d57b8e7caca60da50139fcf50a1f772",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [],
+      "guard": "precredential-desktop-or-synthetic-functional-payload"
+    }
+  }
+}

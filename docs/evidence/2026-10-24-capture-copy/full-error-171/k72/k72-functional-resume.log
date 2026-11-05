@@ -1,0 +1,13 @@
+native window closed and UI helper exited
+synthetic long rendering fixture only
+/home/patrick/work/pgcc-fullerror-native/native_run.py:239: DeprecationWarning: Image.Image.getdata is deprecated and will be removed in Pillow 14 (2027-10-15). Use get_flattened_data instead.
+  colors={(17,19,23),(24,27,33),(32,36,44),(35,40,56),(42,47,56)};coords=[(i%w,i//w) for i,v in enumerate(image.getdata()) if v in colors]
+/home/patrick/work/pgcc-fullerror-native/native_run.py:243: DeprecationWarning: Image.Image.getdata is deprecated and will be removed in Pillow 14 (2027-10-15). Use get_flattened_data instead.
+  crop=image.crop((x0,y0,x1,y1));fraction=sum(v in colors for v in crop.getdata())/(crop.width*crop.height)
+saved gated annotated own-window visual
+/home/patrick/work/pgcc-fullerror-native/native_run.py:239: DeprecationWarning: Image.Image.getdata is deprecated and will be removed in Pillow 14 (2027-10-15). Use get_flattened_data instead.
+  colors={(17,19,23),(24,27,33),(32,36,44),(35,40,56),(42,47,56)};coords=[(i%w,i//w) for i,v in enumerate(image.getdata()) if v in colors]
+/home/patrick/work/pgcc-fullerror-native/native_run.py:243: DeprecationWarning: Image.Image.getdata is deprecated and will be removed in Pillow 14 (2027-10-15). Use get_flattened_data instead.
+  crop=image.crop((x0,y0,x1,y1));fraction=sum(v in colors for v in crop.getdata())/(crop.width*crop.height)
+saved gated annotated own-window visual
+native wheel scroll witness saved for visual tail review

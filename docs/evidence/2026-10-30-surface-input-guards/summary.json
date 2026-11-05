@@ -1,0 +1,54 @@
+{
+  "codePR": "https://github.com/patrick-hudson/put.gd-desktop/pull/859",
+  "driverHead": "29d1462eb8a2c049be54ff3c259eaf66b457ff59",
+  "developmentPlacement": "boat",
+  "releaseAcceptance": false,
+  "tests": {
+    "surfacePassed": 409,
+    "seconds": 20.03,
+    "newGuardCases": 23,
+    "newTrayCases": 11
+  },
+  "gates": {
+    "818": "passed: real named banner refusals then uncovered chrome effects",
+    "838": "20 final-head outward/return repetitions passed; earlier 20 also passed; controlled outstanding timeout retains alive SSH state and blocks later input; historical exact cause unconfirmed",
+    "843": "precise refusal passed; native move begin/end positive control passed; five resize begins unproven",
+    "802": "native Cinnamon selector keyboard proof passed",
+    "831": "unit guard/release and live double-click passed; wheel live replay blocked by fresh accessibility timeout",
+    "837": "native GNOME actor path and History/Destinations navigation passed; Settings and Change output fresh accessibility timeouts retained",
+    "767": "focus, frame naming, activation recheck, staging and role regression cases passed; no live KDE claim",
+    "785": "one endpoint check per held-key and multi-head input; direct events still checks"
+  },
+  "trayRows": {
+    "cinnamon": {
+      "passed": 7,
+      "failed": 9,
+      "blocked": 41
+    },
+    "gnome": {
+      "passed": 6,
+      "failed": 6,
+      "blocked": 45
+    },
+    "gnomeTargeted": {
+      "passed": 7,
+      "blocked": 3
+    }
+  },
+  "coreDemo": {
+    "cinnamonFunctionalPassed": 4,
+    "gnomeFunctionalPassed": 4,
+    "redactVisualReview": true
+  },
+  "cleanup": {
+    "bothOverlays": "guarded cleanup completed after verified export",
+    "bothSandboxes": "delete requested and confirmed not_found (404)",
+    "temporaryWallEntries": "removed only owned entries",
+    "forwardedLabKeyAgent": "stopped"
+  },
+  "followUps": [
+    850,
+    861
+  ],
+  "issuesClosed": []
+}

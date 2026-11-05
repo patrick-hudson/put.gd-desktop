@@ -1,4 +1,5 @@
 #include "EditorJob.h"
+#include "Log.h"
 #include "BuildInfo.h"
 #include "SanitizedPng.h"
 #include "Settings.h"
@@ -36,6 +37,8 @@ void EditorSession::request(const QString& command,const QJsonObject& params,Rep
  else if(phase()=="starting")reply({"editor_starting","The editor window is still opening",{}},{});
  else reply({"editor_finalizing","The edit was already submitted or discarded",{}},{});
 }
+void EditorSession::setAppearance(const QString& scheme){std::lock_guard lock(mutex_);pendingAppearance_=scheme=="light"?QStringLiteral("light"):QStringLiteral("dark");}
+QString EditorSession::takeAppearance(){std::lock_guard lock(mutex_);return std::exchange(pendingAppearance_,{});}
 QString EditorSession::phase() const {std::lock_guard lock(mutex_);return phase_;}
 void EditorSession::setPhase(const QString& phase){std::lock_guard lock(mutex_);phase_=phase;}
 QList<EditorSession::Pending> EditorSession::take(){std::lock_guard lock(mutex_);return std::exchange(queue_,{});}
@@ -149,8 +152,10 @@ EditorResult EditorJob::supervise(const std::function<bool(QFile&)>& stage,const
  auto request=envelope(nonce);request["build"]=build();
  request["input"]=descriptor(inputPath,inputIdentity,inputHash);request["output"]=descriptor(outputPath,outputIdentity,{});
  request["limits"]=QJsonObject{{"imagePixels",QString::number(admissionPixels)},{"outputBytes",QString::number(outputBytes)}};
+ if(submissionError_)request["submissionError"]=QJsonObject{{"code",submissionError_.code},{"message",submissionError_.message}};
  request["destination"]=destination.left(200).isEmpty()?QStringLiteral("Upload"):destination.left(200);
  request["recentColors"]=QJsonArray::fromStringList(recentColors_.mid(0,Settings::maximumRecentColors));
+ request["appearance"]=appearance_=="light"?QStringLiteral("light"):QStringLiteral("dark");
  QProcess process;process.setProcessChannelMode(QProcess::SeparateChannels);process.setReadChannel(QProcess::StandardOutput);
  UiControl control(process);
  bool ready=false,editing=false,finalizing=false,checkpoint=false,protocolFailed=false;QJsonObject reply;qint64 stderrBytes=0;
@@ -158,9 +163,10 @@ EditorResult EditorJob::supervise(const std::function<bool(QFile&)>& stage,const
  QHash<QString,Outstanding> outstanding;
  QElapsedTimer clock,phaseClock;clock.start();phaseClock.start();
  QObject::connect(&control,&UiControl::failed,&process,[&](Error){protocolFailed=true;});
+ HelperOutput helperOutput("putgd-ui --edit-image",logUi());
  QObject::connect(&process,&QProcess::readyReadStandardError,&process,[&]{
   process.setReadChannel(QProcess::StandardError);
-  while(process.bytesAvailable()>0){const auto discarded=process.read(16384);stderrBytes+=discarded.size();if(stderrBytes>1024*1024){protocolFailed=true;break;}}
+  while(process.bytesAvailable()>0){const auto bytes=process.read(16384);stderrBytes+=bytes.size();helperOutput.append(bytes);if(stderrBytes>1024*1024){protocolFailed=true;break;}}
   process.setReadChannel(QProcess::StandardOutput);
  });
  QObject::connect(&control,&UiControl::frame,&process,[&](const QString& type,const QString&,const QJsonObject& payload){
@@ -168,6 +174,9 @@ EditorResult EditorJob::supervise(const std::function<bool(QFile&)>& stage,const
   if(type=="ready"&&!ready&&payload.size()==4&&payload["build"].toObject()==build()){ready=true;if(control.send("activate",envelope(nonce)).isEmpty())protocolFailed=true;return;}
   if(type=="editing"&&ready&&!editing&&!checkpoint&&payload.size()==3){editing=true;session->setPhase("editing");return;}
   if(type=="finalizing"&&editing&&!finalizing&&!checkpoint&&payload.size()==3){finalizing=true;session->setPhase("finalizing");phaseClock.restart();return;}
+  // A preparation the helper could recover from (encoding, size): it handed
+  // nothing off and editing resumes, without a deadline again.
+  if(type=="editing"&&finalizing&&!checkpoint&&payload.size()==3){finalizing=false;session->setPhase("editing");phaseClock.restart();return;}
   if(type=="commandResult"&&editing){
    const auto id=payload["requestId"].toString();const auto found=outstanding.constFind(id);
    if(found==outstanding.cend()||!payload["ok"].isBool()){protocolFailed=true;return;}
@@ -200,13 +209,17 @@ EditorResult EditorJob::supervise(const std::function<bool(QFile&)>& stage,const
  }
  process.start(helperPath_,{"--edit-image"});
  QString error;
- if(!process.waitForStarted(5000))error="editor_start";
- else if(control.send("bootstrap",request).isEmpty())protocolFailed=true;
+ if(!process.waitForStarted(5000)){error="editor_start";helperOutput.failedToStart(process.errorString());}
+ else{helperOutput.started(process.processId());if(control.send("bootstrap",request).isEmpty())protocolFailed=true;}
  while(error.isEmpty()&&process.state()!=QProcess::NotRunning&&!protocolFailed){
   if(session->cancelled()&&!checkpoint){error="cancelled";break;}
   if(!editing&&!checkpoint&&phaseClock.elapsed()>startupTimeoutMs_){error="editor_timeout";break;}
   if(finalizing&&!checkpoint&&phaseClock.elapsed()>finalizeTimeoutMs_){error="editor_timeout";break;}
   if(checkpoint&&phaseClock.elapsed()>5000){error="editor_exit";break;}
+  if(ready&&!checkpoint){
+   const auto scheme=session->takeAppearance();
+   if(!scheme.isEmpty()){auto frame=envelope(nonce);frame["scheme"]=scheme;if(control.send("appearance",frame).isEmpty()){protocolFailed=true;break;}}
+  }
   for(auto& pending:session->take()){
    if(!editing||finalizing||checkpoint){pending.reply(failure("editor_finalizing"),{});continue;}
    const auto id=QUuid::createUuid().toString(QUuid::WithoutBraces);
@@ -221,7 +234,9 @@ EditorResult EditorJob::supervise(const std::function<bool(QFile&)>& stage,const
  outstanding.clear();session->setPhase("closed");
  for(auto& pending:session->take())pending.reply(failure("editor_finalizing"),{});
  if(protocolFailed&&error.isEmpty())error="editor_protocol";
- if(process.state()!=QProcess::NotRunning){control.stop();process.terminate();if(!process.waitForFinished(500)){process.kill();process.waitForFinished(1500);}}
+ const bool stopping=process.state()!=QProcess::NotRunning;
+ if(stopping){control.stop();process.terminate();if(!process.waitForFinished(500)){process.kill();process.waitForFinished(1500);}}
+ if(helperOutput.pid()>0){helperOutput.append(process.readAllStandardError());helperOutput.finished(process.exitCode(),process.exitStatus(),stopping);}
  if(error.isEmpty()&&(!checkpoint||process.exitStatus()!=QProcess::NormalExit||process.exitCode()!=0))error="editor_exit";
  control.stop();
  if(!error.isEmpty())return fail(error);

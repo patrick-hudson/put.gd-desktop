@@ -1,0 +1,8 @@
+{
+  "file_manager": {
+    "process": "nemo",
+    "command": ["nemo"],
+    "quit": ["nemo", "--quit"],
+    "view_keys": ["Ctrl+2"]
+  }
+}

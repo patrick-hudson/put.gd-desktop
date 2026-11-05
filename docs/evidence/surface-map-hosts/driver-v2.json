@@ -1,0 +1,63 @@
+{
+  "schemaVersion": 2,
+  "interactions": [
+    {
+      "interaction": "shortcut.region",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "host": "m74",
+      "placement": "guest",
+      "guest": "gnome-provisioned-20261016",
+      "destination": "local",
+      "review": true,
+      "review_reason": "Synthetic demo: compare region selection before and after",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/before.png"
+        },
+        {
+          "label": "after",
+          "path": "frames/after.png",
+          "reference": "44-region-keyboard",
+          "distance": 0.12,
+          "tolerance": 0.05
+        }
+      ],
+      "recipe": "demo.capture_region",
+      "build": "synthetic-demo",
+      "at": "2026-10-29T12:00:00Z"
+    },
+    {
+      "interaction": "shortcut.region",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "host": "f44",
+      "placement": "guest",
+      "guest": "gnome-provisioned-20261016",
+      "destination": "s3",
+      "review": false,
+      "review_reason": "Synthetic demo: compare region selection before and after",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/before.png"
+        },
+        {
+          "label": "after",
+          "path": "frames/after.png",
+          "reference": "44-region-keyboard",
+          "distance": 0.12,
+          "tolerance": 0.05
+        }
+      ],
+      "recipe": "demo.capture_region",
+      "build": "synthetic-demo",
+      "at": "2026-10-29T12:00:00Z"
+    }
+  ]
+}

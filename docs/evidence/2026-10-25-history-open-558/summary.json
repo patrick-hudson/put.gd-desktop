@@ -1,0 +1,262 @@
+{
+  "schemaVersion": 1,
+  "issue": 558,
+  "scope": "Controlled isolated Xvfb diagnostic; not physical desktop acceptance",
+  "host": {
+    "id": "k72",
+    "os": "Kubuntu 26.04",
+    "qt": "6.10.2",
+    "compiler": "GCC 15.2.0",
+    "preset": "dev"
+  },
+  "workload": {
+    "display": "private Xvfb 1920x1080x24",
+    "sessionBus": "private dbus-run-session",
+    "configuration": "empty profiles, local-only actions, no shortcuts, notifications/updates disabled",
+    "warmupSeconds": 3,
+    "samples": 5,
+    "spacingSeconds": 1,
+    "counting": "resident plus all observed descendants; no exclusions"
+  },
+  "acceptance": {
+    "physicalCinnamon300_30_300": "passed",
+    "parallelCinnamonGnomeKde": "pending",
+    "stableAssets": "pending"
+  },
+  "baseline": {
+    "build": {
+      "schemaVersion": 1,
+      "version": "26.1025.1293-dev+g80ffa2e6c0d3",
+      "baseVersion": "26.1025.1293",
+      "packageVersion": "26.1025.1293~dev+g80ffa2e6c0d3",
+      "gitCommit": "80ffa2e6c0d34223d2cc0f31254f2e60ac2bd247",
+      "gitTree": "8e1abcea6b16634af938f14e94b9eff0de1d02b5",
+      "commitCount": 1293,
+      "dirty": false,
+      "sourceProvenance": "git"
+    },
+    "peakFamilyPssBytes": 70081536,
+    "peakFamilyRssBytes": 183971840,
+    "samples": [
+      {
+        "totals": {
+          "rssBytes": 183971840,
+          "pssBytes": 70081536,
+          "privateBytes": 57696256
+        },
+        "processCount": 2,
+        "uiProcessCount": 1,
+        "escapedProcessCount": 0
+      },
+      {
+        "totals": {
+          "rssBytes": 183971840,
+          "pssBytes": 70081536,
+          "privateBytes": 57696256
+        },
+        "processCount": 2,
+        "uiProcessCount": 1,
+        "escapedProcessCount": 0
+      },
+      {
+        "totals": {
+          "rssBytes": 183971840,
+          "pssBytes": 70081536,
+          "privateBytes": 57696256
+        },
+        "processCount": 2,
+        "uiProcessCount": 1,
+        "escapedProcessCount": 0
+      },
+      {
+        "totals": {
+          "rssBytes": 183971840,
+          "pssBytes": 70081536,
+          "privateBytes": 57696256
+        },
+        "processCount": 2,
+        "uiProcessCount": 1,
+        "escapedProcessCount": 0
+      },
+      {
+        "totals": {
+          "rssBytes": 183971840,
+          "pssBytes": 70081536,
+          "privateBytes": 57696256
+        },
+        "processCount": 2,
+        "uiProcessCount": 1,
+        "escapedProcessCount": 0
+      }
+    ],
+    "identities": [
+      {
+        "role": "resident",
+        "pid": 354878,
+        "startTicks": 15578577,
+        "uid": 1000,
+        "sha256": "44b879aeb178ff51ae05549794aa113224c47c7cf8b66bdb582ac715c85d2b7a"
+      },
+      {
+        "role": "ui",
+        "pid": 354943,
+        "startTicks": 15578603,
+        "uid": 1000,
+        "sha256": "5bba5a412cf320e59ece326d5734337dee49b05fec826148796d56ab8f8f2103"
+      }
+    ],
+    "uiHeapPssBytes": 26804224,
+    "exitCode": 0,
+    "socketGone": true,
+    "forced": false
+  },
+  "candidate": {
+    "build": {
+      "schemaVersion": 1,
+      "version": "26.1025.1297-dev+g48fd6047b2a8",
+      "baseVersion": "26.1025.1297",
+      "packageVersion": "26.1025.1297~dev+g48fd6047b2a8",
+      "gitCommit": "48fd6047b2a8d7830296bc3de78f370719a1574f",
+      "gitTree": "6a25d37f135146a59cdcd8558033238690f1847b",
+      "commitCount": 1297,
+      "dirty": false,
+      "sourceProvenance": "git"
+    },
+    "peakFamilyPssBytes": 51537920,
+    "peakFamilyRssBytes": 165040128,
+    "samples": [
+      {
+        "totals": {
+          "rssBytes": 165040128,
+          "pssBytes": 51537920,
+          "privateBytes": 39239680
+        },
+        "processCount": 2,
+        "uiProcessCount": 1,
+        "escapedProcessCount": 0
+      },
+      {
+        "totals": {
+          "rssBytes": 165040128,
+          "pssBytes": 51537920,
+          "privateBytes": 39239680
+        },
+        "processCount": 2,
+        "uiProcessCount": 1,
+        "escapedProcessCount": 0
+      },
+      {
+        "totals": {
+          "rssBytes": 165040128,
+          "pssBytes": 51537920,
+          "privateBytes": 39239680
+        },
+        "processCount": 2,
+        "uiProcessCount": 1,
+        "escapedProcessCount": 0
+      },
+      {
+        "totals": {
+          "rssBytes": 165040128,
+          "pssBytes": 51537920,
+          "privateBytes": 39239680
+        },
+        "processCount": 2,
+        "uiProcessCount": 1,
+        "escapedProcessCount": 0
+      },
+      {
+        "totals": {
+          "rssBytes": 165040128,
+          "pssBytes": 51537920,
+          "privateBytes": 39239680
+        },
+        "processCount": 2,
+        "uiProcessCount": 1,
+        "escapedProcessCount": 0
+      }
+    ],
+    "identities": [
+      {
+        "role": "resident",
+        "pid": 362271,
+        "startTicks": 15652521,
+        "uid": 1000,
+        "sha256": "cd3a96d561af0debfc6e242943ae45869b25f3589795e01dca84caace4fc9eae"
+      },
+      {
+        "role": "ui",
+        "pid": 362335,
+        "startTicks": 15652541,
+        "uid": 1000,
+        "sha256": "2c04cdb72d25fe2cf014d23a3ff6964755b1b5992e00ab32bfd7fff9a6c538a8"
+      }
+    ],
+    "uiHeapPssBytes": 9121792,
+    "exitCode": 0,
+    "socketGone": true,
+    "forced": false
+  },
+  "familyPssReductionBytes": 18543616,
+  "mappedLibrariesUnchanged": {
+    "resident": true,
+    "ui": true
+  },
+  "tests": {
+    "focused": {
+      "command": "ctest --preset dev --parallel 2 -R '^(gui_application|gui_settings|gui_history_view|gui_theme)$'",
+      "passed": 4,
+      "failed": 0,
+      "elapsedSeconds": 103.41
+    },
+    "regressionBefore": {
+      "source": "80ffa2e6c0d34223d2cc0f31254f2e60ac2bd247",
+      "failedAsExpected": [
+        "historyCloseDoesNotAllocateSettings",
+        "historyDefersCleanSettingsAndUsesCurrentConfiguration"
+      ]
+    },
+    "remainingDev": {
+      "command": "ctest --preset dev --parallel 2 -E '^(gui_application|gui_settings|gui_history_view|gui_theme)$'",
+      "passed": 103,
+      "failed": 0,
+      "elapsedSeconds": 368.72
+    },
+    "qt642Release": {
+      "command": "ctest --preset release --parallel 1 -R '^(gui_application|gui_settings|gui_history_view|gui_theme)$'",
+      "passed": 4,
+      "failed": 0,
+      "elapsedSeconds": 174.33,
+      "qt": "6.4.2",
+      "compiler": "GCC 13.3",
+      "host": "f44 rootless Ubuntu 24.04 container",
+      "source": "48fd6047b2a8d7830296bc3de78f370719a1574f"
+    },
+    "configuredDevCoverage": {
+      "totalPassed": 107,
+      "separateInvocations": 2
+    },
+    "ci": {
+      "source": "coordinator verified T3 wake",
+      "head": "48fd6047b2a8d7830296bc3de78f370719a1574f",
+      "requiredCI": "SUCCESS",
+      "passed": [
+        "contracts",
+        "Linux24",
+        "Linux26",
+        "portable"
+      ],
+      "skippedBySelection": [
+        "ASan/UBSan",
+        "packages",
+        "pipewire",
+        "prune"
+      ]
+    }
+  },
+  "rawRecord": {
+    "host": "k72",
+    "path": "/home/patrick/work/i558/work/evidence/final-comparison.json",
+    "sha256": "a6e48f2039e65f37fd168dfcb8e5579e6d7df42c6515ee1bf53c724273107348"
+  }
+}

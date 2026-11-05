@@ -1,0 +1,113 @@
+{
+ "menuComponents": [
+  {
+   "blocks": 126,
+   "box": [
+    968,
+    640,
+    1168,
+    760
+   ]
+  },
+  {
+   "blocks": 63,
+   "box": [
+    968,
+    424,
+    1160,
+    472
+   ]
+  },
+  {
+   "blocks": 57,
+   "box": [
+    968,
+    488,
+    1160,
+    528
+   ]
+  }
+ ],
+ "hover": [
+  1066,
+  744
+ ],
+ "menu": {
+  "label": "tray-quit",
+  "components": [
+   {
+    "blocks": 126,
+    "box": [
+     968,
+     640,
+     1168,
+     760
+    ]
+   },
+   {
+    "blocks": 63,
+    "box": [
+     968,
+     424,
+     1160,
+     472
+    ]
+   },
+   {
+    "blocks": 57,
+    "box": [
+     968,
+     488,
+     1160,
+     528
+    ]
+   },
+   {
+    "blocks": 48,
+    "box": [
+     968,
+     384,
+     1168,
+     416
+    ]
+   },
+   {
+    "blocks": 27,
+    "box": [
+     984,
+     608,
+     1104,
+     624
+    ]
+   },
+   {
+    "blocks": 16,
+    "box": [
+     984,
+     576,
+     1096,
+     592
+    ]
+   }
+  ],
+  "colour": [
+   28,
+   28,
+   32
+  ],
+  "inner": [
+   970,
+   648,
+   1163,
+   758
+  ],
+  "changedShare": 1.0,
+  "kept": "/var/home/lab/work/put.gd-afa2/runs/aurora-vm/crops/tray-quit.png"
+ },
+ "allGone": true,
+ "after": {
+  "processes": [],
+  "mounts": [],
+  "entries": []
+ }
+}

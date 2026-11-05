@@ -1,6 +1,6 @@
 # GNOME 50 / native Wayland
 
-This profile uses the resident Qt Wayland process and the `putgd@put.gd` Shell extension. It never calls the restricted `org.gnome.Shell.Screenshot` service as a spoofed caller, enables unsafe mode, or substitutes a portal picker. The extension owns capture, Shell key bindings, and CLIPBOARD MIME transfer; storage, PNG decoding/composition, artifact files, secrets, and networking remain in the native shared pipeline.
+This profile uses the resident `QCoreApplication` process with a native session-bus bridge and the `putgd@put.gd` Shell extension. It never calls the restricted `org.gnome.Shell.Screenshot` service as a spoofed caller, enables unsafe mode, or substitutes a portal picker. The extension owns capture, Shell key bindings, and CLIPBOARD MIME transfer; storage, PNG decoding/composition, artifact files, secrets, and networking remain in the native shared pipeline.
 
 ## Native API evidence
 
@@ -21,9 +21,16 @@ These sources establish API intent. They do not establish graphical acceptance.
 Use normal distro packages: `gnome-shell` 50, its GJS/Mutter GI runtime, the `gnome-extensions` command supplied by Shell, and the standard GLib runtime. The extension preferences GUI is optional. The application additionally links the distro Qt DBus module (`qt6-base-dev`) and needs the distro Wayland platform plugin (`qt6-wayland`). Root packaging installs the extension files; do not install a substitute Shell/GJS runtime.
 
 Native packages install the helper under
-`/usr/share/gnome-shell/extensions/putgd@put.gd/`. After installing the package,
-enable it with `gnome-extensions enable putgd@put.gd`; do not also copy the source
-directory into your user extension directory. A user copy can shadow a newer
+`/usr/share/gnome-shell/extensions/putgd@put.gd/`. For a new installation:
+
+1. Install the matching DEB or RPM.
+2. Log out of GNOME and log back in, so Shell discovers the new system extension.
+3. Run `gnome-extensions enable putgd@put.gd` in the new session. It becomes active
+   immediately; another logout is unnecessary.
+
+Before that first re-login, `gnome-extensions enable` can report
+`Extension "putgd@put.gd" doesn't exist` even though the package installed it.
+Do not also copy the source directory into your user extension directory. A user copy can shadow a newer
 system package. Check `gnome-extensions info putgd@put.gd` and retain the loaded
 path/version in the acceptance receipt. If a previous manual installation exists,
 disable it and remove only that owned user copy before testing the package.
@@ -31,11 +38,20 @@ disable it and remove only that owned user copy before testing the package.
 After upgrading an enabled extension, log out of GNOME and log back in before
 verifying the new version. Replacing the installed files or checking their hashes
 alone does not establish which code the current Shell session has loaded.
+The resident compares the `extensionVersion` the loaded extension reports in
+`Hello` with the packaged `metadata.json` version (compiled in from
+`integrations/gnome/metadata.json`). While an older one is loaded,
+`capabilities` reports `helper.outdated: true` with `extensionVersion` and
+`packagedExtensionVersion`, screenshots keep working, and a region recording
+is refused with `helper_outdated`: "The put.gd GNOME Shell extension was
+updated; log out and back in to load the new version" (#131). Bump
+`metadata.json`'s `version` whenever the extension's D-Bus interface changes.
 
 For a standalone helper installation, install the release's matching GNOME ZIP
-with `gnome-extensions install /absolute/path/to/putgd-gnome50-VERSION.zip`, then
-enable it. Keep its identity aligned with the application. A fresh Wayland login
-may be needed for Shell to discover a newly installed extension. Run the resident application with `QT_QPA_PLATFORM=wayland`. Capture and clipboard actions remain available through the production CLI and GUI. Leave the clipboard shortcut unset until the user explicitly assigns one. Binding diagnostics report the actual result for every configured action; existing Shell/system bindings are never overwritten.
+with `gnome-extensions install /absolute/path/to/putgd-gnome50-VERSION.zip`, log out
+and back in so Shell discovers it, then run
+`gnome-extensions enable putgd@put.gd`. Keep its identity aligned with the
+application. The native resident does not initialize Qt Wayland; the on-demand graphical helper uses the session's Wayland platform. Capture and clipboard actions remain available through the production CLI and GUI. Leave the clipboard shortcut unset until the user explicitly assigns one. Binding diagnostics report the actual result for every configured action; existing Shell/system bindings are never overwritten.
 
 Disable with `gnome-extensions disable putgd@put.gd`. Remove a packaged helper
 through the package manager; remove only its owned user directory for a manual
@@ -70,7 +86,7 @@ or replacement-icon fallback is used.
 request metadata validation. It does not run GNOME, prove global shortcuts,
 capture real Wayland pixels, or paste into another application. Real GNOME 50
 single-display capture, native paste, live upload and post-upload memory evidence
-is recorded in [source114](../evidence/live-s3-memory/source114/README.md), with a
+was recorded in [the historical live-S3 campaign](../evidence/live-s3-memory/source114/README.md), with a
 later bounded current-main check in
 [issue #4](https://github.com/patrick-hudson/put.gd-desktop/issues/4#issuecomment-6152173663).
 Those receipts identify the actual tested versions and cases; they do not mark
@@ -82,7 +98,53 @@ helper/package lifecycle and release acceptance remain separate gates in
 
 The helper exports `org.putgd.Gnome50` at `/org/gnome/Shell/Extensions/Putgd` on Shell's own session-bus connection. The native adapter resolves and pins the unique owner of `org.gnome.Shell`; it owns `org.putgd.App.Gnome50`, and the extension accepts only that name's current unique owner. D-Bus authenticates the session user. This prevents other session-bus names from submitting capture/clipboard requests and avoids using a caller allow-list workaround. Same-user process compromise is outside this session IPC boundary.
 
+Extension **v18** (PR #1056) captures a window on its head's output pixel grid,
+the same grid used for desktop and region capture of that head. When
+`paint_to_content()` returns a backing texture at a ceiled scale (for example
+2× on a 1.5× head), the extension resamples it with linear filtering onto the
+head's grid. Integer-scale captures keep the previous path. A client already
+rendering at fractional scale can have slightly softer edges because Mutter
+upscales its actor before this downscale. Verify the loaded version after
+logging out and back in; installed files alone do not prove v18 is running.
+
 Shell hotkeys freeze their external window actor/frame or clipboard revision inside the compositor callback, then dispatch a prepared UUID ticket to the adapter. GUI/CLI requests freeze through Prepare before journal work yields. Protocol version 1 uses opaque UUID request IDs, frozen preparation tickets, one-time acquisition, explicit cancellation/release, bounded PNG/MIME bytes, and at most 64 KiB decoded bytes per base64 chunk. Metadata includes exact byte lengths and each capture frame's identity, logical/native rectangles, density, and orientation. The adapter validates metadata before decoding on a worker. Clipboard revisions come from CLIPBOARD owner changes without reading payloads. Result transfer checks a frozen CLIPBOARD revision and copy epoch at ownership commit, so changed owners or newer invocations return `copy_suppressed`. Missing endpoints, incompatible protocol/Shell versions, stale tickets, vanished external targets, changed monitor layouts, unsupported offers, oversized offers, cancellation, and transfer deadlines produce distinct actionable results.
+
+Window capture refuses put.gd's own windows with `capture_target` before any
+layout work. A focused window is put.gd's when Mutter's client PID is the
+authenticated resident's, the views helper's registered through
+`SetUiProcess`, or that of any other process whose parent (from
+`/proc/PID/stat`) is the resident. The last rule covers the Edit & upload
+editor (`putgd-ui --edit-image`) and the recording helper, which never register
+(#103). Links open through the portal's `OpenURI` request; folders go
+`ShowItems` → `OpenDirectory` → launcher. When a portal request fails for a
+reason other than the user cancelling or the portal not answering, the
+launcher runs `gio open` (or `xdg-open`) with `QProcess::startDetached`, so the
+opener runs in its own session and is not a child of the process that launched
+it; a cancelled or unanswered portal request skips the launcher (see
+[diagnostics](../diagnostics.md)). The browser or file manager is therefore
+never classified as put.gd's own window. The
+[editor refusal receipt](../evidence/2026-10-19-gnome-editor-refusal.md)
+records the physical Fedora 44 runs from the RPM and the AppImage.
+
+Recording protocol 1 (`recordingVersion: 1` in `Hello`) serves screen
+recording, which must not show its own surfaces on GNOME. `SelectArea(id)`
+runs the same St selector as a region screenshot and answers only the
+logical rectangle (no capture); `Release(id)` cancels it. `ShowRecordingFrame`
+takes `{rect, kind, state: ready|recording|paused, pid}` and draws the ready
+ring and, while recording or paused, dim strips as non-reactive Shell actors
+outside the rectangle, and moves the recording helper's control bar (window
+title `put.gd recording controls`) out of the rectangle with
+`move_frame`/`make_above`. The bar is accepted only when its process's parent
+(from `/proc/PID/stat`) is the authenticated resident, so a request cannot move
+another application's window. `HideRecordingFrame` removes the actors; a
+disable, a lock or the resident leaving the bus does the same. Mutter offers
+no per-window screencast exclusion: a recording of a whole monitor with no
+other monitor to hold the bar contains it. The resident then reports
+`overlayPlacement: handle` and has the helper shrink the bar to its dot-and-Stop
+handle from Record on; the extension follows the bar's size changes and keeps
+it in the corner (or, for a bar outside, on its monitor). Details are in `docs/recording.md`, "Wayland
+selection, bounds and bar". The synthetic `gnome_ui_ownership_contract` covers
+these methods; it is not graphical acceptance.
 
 ## UI ownership recovery test
 

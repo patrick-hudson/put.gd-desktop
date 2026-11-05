@@ -1,0 +1,103 @@
+{
+ "tag": "v26.1023.1058-nightly",
+ "installed": {
+  "manager": "dpkg",
+  "status": "ii",
+  "version": "26.1023.1058~nightly"
+ },
+ "versionJson": {
+  "schemaVersion": 1,
+  "version": "26.1023.1058-nightly",
+  "baseVersion": "26.1023.1058",
+  "packageVersion": "26.1023.1058~nightly",
+  "gitCommit": "05991d9d42aad68d3bd233a609cf294d839835ed",
+  "gitTree": "5e53f777b912ef958678b2f23b400847c7cb4d33",
+  "commitCount": 1058,
+  "dirty": false,
+  "sourceProvenance": "git"
+ },
+ "releaseCommit": "05991d9d42aad68d3bd233a609cf294d839835ed",
+ "commitDateUtc": "2026-10-23T03:39:29Z",
+ "calver": {
+  "expected": "26.1023.1058~nightly",
+  "tagDate": "26.1023",
+  "commitDate": "26.1023",
+  "installedMatches": true
+ },
+ "repositoryPackage": [
+  {
+   "file": "putgd_26.1023.1058~nightly_amd64.deb",
+   "sha256": "d56909f1703c8ca8225d059ac3a78bf1d7889ea610df82746e5b3ea5796fba0c",
+   "matchesRelease": true
+  }
+ ],
+ "releaseAsset": {
+  "name": "putgd-26.1023.1058-nightly-debian13-x86_64.deb",
+  "sha256": "d56909f1703c8ca8225d059ac3a78bf1d7889ea610df82746e5b3ea5796fba0c"
+ },
+ "verify": [
+  "",
+  ""
+ ],
+ "entries": {
+  "desktop": [
+   "/usr/share/applications/putgd-record.desktop",
+   "/usr/share/applications/putgd-ui.desktop",
+   "/usr/share/applications/putgd.desktop",
+   "/usr/share/putgd/autostart/putgd.desktop"
+  ],
+  "icons": [
+   "/usr/share/icons/hicolor",
+   "/usr/share/icons/hicolor/scalable",
+   "/usr/share/icons/hicolor/scalable/apps",
+   "/usr/share/icons/hicolor/scalable/apps/putgd.svg"
+  ],
+  "metainfo": [
+   "/usr/share/metainfo",
+   "/usr/share/metainfo/gd.put.Putgd.metainfo.xml"
+  ],
+  "extension": [
+   "/usr/share/gnome-shell/extensions",
+   "/usr/share/gnome-shell/extensions/putgd@put.gd",
+   "/usr/share/gnome-shell/extensions/putgd@put.gd/extension.js",
+   "/usr/share/gnome-shell/extensions/putgd@put.gd/metadata.json"
+  ],
+  "executables": [
+   "/usr/bin/putgd",
+   "/usr/bin/putgd-b2-worker",
+   "/usr/bin/putgd-capture",
+   "/usr/bin/putgd-cli",
+   "/usr/bin/putgd-kde-region",
+   "/usr/bin/putgd-launcher",
+   "/usr/bin/putgd-record",
+   "/usr/bin/putgd-s3-worker",
+   "/usr/bin/putgd-ui"
+  ],
+  "repo": [
+   "/etc/apt/sources.list.d",
+   "/etc/apt/sources.list.d/putgd.sources",
+   "/usr/share/putgd/repo/putgd-nightly.sources",
+   "/usr/share/putgd/repo/putgd-stable.sources"
+  ]
+ },
+ "appstream": [
+  0,
+  "\u2714 Validation was successful: pedantic: 1",
+  ""
+ ],
+ "menuEntry": {
+  "Name": "put.gd",
+  "Exec": "/usr/bin/putgd",
+  "Icon": "putgd",
+  "Categories": "Utility;Graphics;"
+ },
+ "policy": [
+  "putgd:",
+  "  Installed: 26.1023.1058~nightly",
+  "  Candidate: 26.1023.1058~nightly",
+  "  Version table:",
+  " *** 26.1023.1058~nightly 500",
+  "        500 https://pkg.put.gd/apt/debian13 nightly/main amd64 Packages",
+  "        100 /var/lib/dpkg/status"
+ ]
+}

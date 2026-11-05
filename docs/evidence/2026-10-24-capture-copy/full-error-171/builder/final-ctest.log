@@ -1,0 +1,225 @@
+Test project /home/patrick/work/pgcc-fullerror/build/dev
+        Start   1: portal_streams_contract
+  1/108 Test   #1: portal_streams_contract .................   Passed    0.01 sec
+        Start   2: wayland_acquisition_contract
+  2/108 Test   #2: wayland_acquisition_contract ............   Passed    0.01 sec
+        Start   3: export_av_sync_contract
+  3/108 Test   #3: export_av_sync_contract .................   Passed    9.94 sec
+        Start   4: poster_contract
+  4/108 Test   #4: poster_contract .........................   Passed    0.69 sec
+        Start   5: pause_timeline_contract
+  5/108 Test   #5: pause_timeline_contract .................   Passed    0.01 sec
+        Start   6: record_runtime_contract
+  6/108 Test   #6: record_runtime_contract .................   Passed    0.01 sec
+        Start   7: bar_placement_contract
+  7/108 Test   #7: bar_placement_contract ..................   Passed    0.16 sec
+        Start   8: bar_placement_single_monitor_contract
+  8/108 Test   #8: bar_placement_single_monitor_contract ...   Passed    0.16 sec
+        Start   9: gui_review_window
+  9/108 Test   #9: gui_review_window .......................   Passed    0.39 sec
+        Start  10: record_identity_contract
+ 10/108 Test  #10: record_identity_contract ................   Passed    0.03 sec
+        Start  11: kde_region_control
+ 11/108 Test  #11: kde_region_control ......................   Passed    9.24 sec
+        Start  12: native_session_guards
+ 12/108 Test  #12: native_session_guards ...................   Passed    0.01 sec
+        Start  13: native_tray_integration
+ 13/108 Test  #13: native_tray_integration .................   Passed   15.19 sec
+        Start  14: capture_control_integration
+ 14/108 Test  #14: capture_control_integration .............   Passed    0.01 sec
+        Start  15: capture_process_integration
+ 15/108 Test  #15: capture_process_integration .............   Passed    7.09 sec
+        Start  16: x11_core_clipboard
+ 16/108 Test  #16: x11_core_clipboard ......................   Passed   18.20 sec
+        Start  17: x11_clipboard_import
+ 17/108 Test  #17: x11_clipboard_import ....................   Passed    0.88 sec
+        Start  18: x11_capture_decode
+ 18/108 Test  #18: x11_capture_decode ......................   Passed    0.21 sec
+        Start  19: x11_native_snapshot
+ 19/108 Test  #19: x11_native_snapshot .....................   Passed    0.10 sec
+        Start  20: version_contract
+ 20/108 Test  #20: version_contract ........................   Passed    9.89 sec
+        Start  21: kde_shortcut_normalization
+ 21/108 Test  #21: kde_shortcut_normalization ..............   Passed    0.02 sec
+        Start  22: kde_shortcuts_integration
+ 22/108 Test  #22: kde_shortcuts_integration ...............   Passed    5.36 sec
+        Start  23: kde_keyboard_map
+ 23/108 Test  #23: kde_keyboard_map ........................   Passed    0.02 sec
+        Start  24: shortcut_keyboard
+ 24/108 Test  #24: shortcut_keyboard .......................   Passed    0.01 sec
+        Start  25: kde_ownership_integration
+ 25/108 Test  #25: kde_ownership_integration ...............   Passed    9.43 sec
+        Start  26: kde_clipboard_import
+ 26/108 Test  #26: kde_clipboard_import ....................   Passed    0.28 sec
+        Start  27: image_job_integration
+ 27/108 Test  #27: image_job_integration ...................   Passed    4.32 sec
+        Start  28: poster_job_integration
+ 28/108 Test  #28: poster_job_integration ..................   Passed    5.11 sec
+        Start  29: ui_split_services_integration
+ 29/108 Test  #29: ui_split_services_integration ...........   Passed    0.98 sec
+        Start  30: ui_process_integration
+ 30/108 Test  #30: ui_process_integration ..................   Passed   14.87 sec
+        Start  31: editor_contract
+ 31/108 Test  #31: editor_contract .........................   Passed    5.82 sec
+        Start  32: editor_job_integration
+ 32/108 Test  #32: editor_job_integration ..................   Passed    4.29 sec
+        Start  33: edit_operations_integration
+ 33/108 Test  #33: edit_operations_integration .............   Passed   12.89 sec
+        Start  34: ui_endpoints_integration
+ 34/108 Test  #34: ui_endpoints_integration ................   Passed    0.44 sec
+        Start  35: ui_control_integration
+ 35/108 Test  #35: ui_control_integration ..................   Passed    0.95 sec
+        Start  36: session_client_integration
+ 36/108 Test  #36: session_client_integration ..............   Passed   18.37 sec
+        Start  37: version_integration
+ 37/108 Test  #37: version_integration .....................   Passed    0.12 sec
+        Start  38: gui_editor_window
+ 38/108 Test  #38: gui_editor_window .......................   Passed    0.63 sec
+        Start  39: gui_application
+ 39/108 Test  #39: gui_application .........................   Passed   44.06 sec
+        Start  40: gui_theme
+ 40/108 Test  #40: gui_theme ...............................   Passed    0.18 sec
+        Start  41: gui_tray
+ 41/108 Test  #41: gui_tray ................................   Passed   47.85 sec
+        Start  42: gui_version
+ 42/108 Test  #42: gui_version .............................   Passed    0.10 sec
+        Start  43: release_link_contract
+ 43/108 Test  #43: release_link_contract ...................   Passed    0.01 sec
+        Start  44: update_feed_contract
+ 44/108 Test  #44: update_feed_contract ....................   Passed    0.02 sec
+        Start  45: update_check_request
+ 45/108 Test  #45: update_check_request ....................   Passed    0.11 sec
+        Start  46: update_appimage_install_files
+ 46/108 Test  #46: update_appimage_install_files ...........   Passed    0.02 sec
+        Start  47: update_minisign_verify
+ 47/108 Test  #47: update_minisign_verify ..................   Passed    0.01 sec
+        Start  48: update_appimage_install_child
+ 48/108 Test  #48: update_appimage_install_child ...........   Passed    0.13 sec
+        Start  49: update_service_schedule
+ 49/108 Test  #49: update_service_schedule .................   Passed    2.17 sec
+        Start  50: host_environment_contract
+ 50/108 Test  #50: host_environment_contract ...............   Passed    0.07 sec
+        Start  51: update_system_repository
+ 51/108 Test  #51: update_system_repository ................   Passed    0.02 sec
+        Start  52: geometry_contract
+ 52/108 Test  #52: geometry_contract .......................   Passed    0.76 sec
+        Start  53: x11_raw_key_matcher
+ 53/108 Test  #53: x11_raw_key_matcher .....................   Passed    0.01 sec
+        Start  54: native_shortcut_rejection_integration
+ 54/108 Test  #54: native_shortcut_rejection_integration ...   Passed    1.23 sec
+        Start  55: resident_retire_integration
+ 55/108 Test  #55: resident_retire_integration .............   Passed    3.54 sec
+        Start  56: resident_display_loss_integration
+ 56/108 Test  #56: resident_display_loss_integration .......   Passed    0.71 sec
+        Start  57: native_background_startup_integration
+ 57/108 Test  #57: native_background_startup_integration ...   Passed   70.54 sec
+        Start  58: file_dialog_integration
+ 58/108 Test  #58: file_dialog_integration .................   Passed    1.75 sec
+        Start  59: file_dialog_x11_parent
+ 59/108 Test  #59: file_dialog_x11_parent ..................   Passed    0.18 sec
+        Start  60: host_open_integration
+ 60/108 Test  #60: host_open_integration ...................   Passed    3.84 sec
+        Start  61: ui_native_lifecycle_integration
+ 61/108 Test  #61: ui_native_lifecycle_integration .........   Passed    4.34 sec
+        Start  62: x11_isolated
+ 62/108 Test  #62: x11_isolated ............................   Passed   21.68 sec
+        Start  63: keychain_backend_integration
+ 63/108 Test  #63: keychain_backend_integration ............   Passed    0.33 sec
+        Start  64: keychain_integration
+ 64/108 Test  #64: keychain_integration ....................   Passed    0.12 sec
+        Start  65: collision_policy_integration
+ 65/108 Test  #65: collision_policy_integration ............   Passed   12.44 sec
+        Start  66: s3_delete_integration
+ 66/108 Test  #66: s3_delete_integration ...................   Passed   17.08 sec
+        Start  67: s3_module_integration
+ 67/108 Test  #67: s3_module_integration ...................   Passed   38.04 sec
+        Start  68: s3_integration
+ 68/108 Test  #68: s3_integration ..........................   Passed   16.58 sec
+        Start  69: s3_multipart_integration
+ 69/108 Test  #69: s3_multipart_integration ................   Passed   28.90 sec
+        Start  70: public_url
+ 70/108 Test  #70: public_url ..............................   Passed    0.01 sec
+        Start  71: build_contract
+ 71/108 Test  #71: build_contract ..........................   Passed    0.09 sec
+        Start  72: s3_worker_supervision
+ 72/108 Test  #72: s3_worker_supervision ...................   Passed   48.11 sec
+        Start  73: s3_worker_protocol
+ 73/108 Test  #73: s3_worker_protocol ......................   Passed    0.14 sec
+        Start  74: sdk_contract
+ 74/108 Test  #74: sdk_contract ............................   Passed    0.26 sec
+        Start  75: payload_contract
+ 75/108 Test  #75: payload_contract ........................   Passed    0.12 sec
+        Start  76: archive_contract
+ 76/108 Test  #76: archive_contract ........................   Passed    0.02 sec
+        Start  77: upload_naming_contract
+ 77/108 Test  #77: upload_naming_contract ..................   Passed    0.03 sec
+        Start  78: history_contract
+ 78/108 Test  #78: history_contract ........................   Passed    7.12 sec
+        Start  79: operations_contract
+ 79/108 Test  #79: operations_contract .....................   Passed   74.62 sec
+        Start  80: recording_model_contract
+ 80/108 Test  #80: recording_model_contract ................   Passed    0.02 sec
+        Start  81: storage_contract_integration
+ 81/108 Test  #81: storage_contract_integration ............   Passed    3.70 sec
+        Start  82: cli_integration
+ 82/108 Test  #82: cli_integration .........................   Passed   22.12 sec
+        Start  83: config_reload_integration
+ 83/108 Test  #83: config_reload_integration ...............   Passed    0.66 sec
+        Start  84: storage_locations_integration
+ 84/108 Test  #84: storage_locations_integration ...........   Passed    0.95 sec
+        Start  85: gnome_image_decode
+ 85/108 Test  #85: gnome_image_decode ......................   Passed    0.18 sec
+        Start  86: gnome_bridge_contract
+ 86/108 Test  #86: gnome_bridge_contract ...................   Passed    0.08 sec
+        Start  87: gnome_core_transport_integration
+ 87/108 Test  #87: gnome_core_transport_integration ........   Passed   11.69 sec
+        Start  88: gnome_ui_ownership_contract
+ 88/108 Test  #88: gnome_ui_ownership_contract .............   Passed    0.13 sec
+        Start  89: kwin_transfer_contract
+ 89/108 Test  #89: kwin_transfer_contract ..................   Passed    0.18 sec
+        Start  90: recording_service_integration
+ 90/108 Test  #90: recording_service_integration ...........   Passed    3.90 sec
+        Start  91: recording_helper_integration
+ 91/108 Test  #91: recording_helper_integration ............   Passed    5.62 sec
+        Start  92: settings_contract
+ 92/108 Test  #92: settings_contract .......................   Passed    9.57 sec
+        Start  93: logging_contract
+ 93/108 Test  #93: logging_contract ........................   Passed    0.73 sec
+        Start  94: crash_handler_contract
+ 94/108 Test  #94: crash_handler_contract ..................   Passed   10.76 sec
+        Start  95: diagnostics_upload_contract
+ 95/108 Test  #95: diagnostics_upload_contract .............   Passed    1.53 sec
+        Start  96: diagnostics_bundle_contract
+ 96/108 Test  #96: diagnostics_bundle_contract .............   Passed   10.49 sec
+        Start  97: json_ref_lifetime_contract
+ 97/108 Test  #97: json_ref_lifetime_contract ..............   Passed    0.38 sec
+        Start  98: gui_settings
+ 98/108 Test  #98: gui_settings ............................   Passed   80.03 sec
+        Start  99: gui_history_view
+ 99/108 Test  #99: gui_history_view ........................   Passed   29.65 sec
+        Start 100: login_startup_contract
+100/108 Test #100: login_startup_contract ..................   Passed    0.02 sec
+        Start 101: resident_session_contract
+101/108 Test #101: resident_session_contract ...............   Passed    1.72 sec
+        Start 102: local_ipc_contract
+102/108 Test #102: local_ipc_contract ......................   Passed   13.36 sec
+        Start 103: ip_address_contract
+103/108 Test #103: ip_address_contract .....................   Passed    0.04 sec
+        Start 104: native_region_overlay
+104/108 Test #104: native_region_overlay ...................   Passed    7.45 sec
+        Start 105: capture_preparation_x11
+105/108 Test #105: capture_preparation_x11 .................   Passed    5.25 sec
+        Start 106: proton_contract
+106/108 Test #106: proton_contract .........................   Passed    3.91 sec
+        Start 107: proton_transport
+107/108 Test #107: proton_transport ........................   Passed    7.37 sec
+        Start 108: b2_integration
+108/108 Test #108: b2_integration ..........................   Passed   15.53 sec
+
+100% tests passed, 0 tests failed out of 108
+
+Label Time Summary:
+integration    = 830.33 sec*proc (78 tests)
+unit           =  20.19 sec*proc (30 tests)
+
+Total Test time (real) = 850.58 sec

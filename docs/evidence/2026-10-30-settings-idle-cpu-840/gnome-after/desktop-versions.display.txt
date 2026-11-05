@@ -1,0 +1,4 @@
+ubuntu 26.04
+GNOME Shell 50.1
+libqt6core6
+libqt6core6t64:amd64	6.10.2+dfsg-7

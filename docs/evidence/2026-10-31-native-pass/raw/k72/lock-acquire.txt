@@ -1,0 +1,4 @@
+k72 (Kubuntu 26.04 Plasma Wayland): locked
+  native-pass (np31-ddd3576a), acquired 2026-10-31T15:36:20Z
+  purpose: physical Tier1 local only; no builds
+  note: 1 process(es) outside the desktop session (no DISPLAY or WAYLAND_DISPLAY; shared SSH work): 1599

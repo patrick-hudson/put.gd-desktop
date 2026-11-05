@@ -1,0 +1,125 @@
+{
+ "label": "after",
+ "at": "2026-10-23T05:00:13Z",
+ "package": {
+  "manager": "dpkg",
+  "status": "ii",
+  "version": "26.1023.1058~nightly"
+ },
+ "config": {
+  "sha256": "4db3e1704fea5444dfb8903eb84b42de1cc3352a5e8c4866ee74bb1637bd95ac",
+  "bytes": 2668,
+  "mode": "0o664",
+  "mtime": "2026-10-23T04:55:28Z"
+ },
+ "configFiles": {
+  "/home/lab/.config/putgd/config.json": {
+   "sha256": "4db3e1704fea5444dfb8903eb84b42de1cc3352a5e8c4866ee74bb1637bd95ac",
+   "bytes": 2668,
+   "mode": "0o664",
+   "mtime": "2026-10-23T04:55:28Z"
+  },
+  "/home/lab/.config/putgd/putgd/config.json": null
+ },
+ "dataRoots": {
+  "/home/lab/.local/share/putgd": [
+   "artifacts",
+   "history.sqlite",
+   "previews",
+   "resident.lock"
+  ],
+  "/home/lab/.local/share/putgd/putgd": null
+ },
+ "processes": [
+  {
+   "pid": 5156,
+   "ppid": 1310,
+   "exe": "/usr/bin/putgd",
+   "comm": "putgd",
+   "cmd": "/usr/bin/putgd --background ",
+   "qtPlatformPlugins": []
+  }
+ ],
+ "history": {
+  "db": "/home/lab/.local/share/putgd/history.sqlite",
+  "userVersion": 7,
+  "integrity": "ok",
+  "tables": {
+   "history": 10000,
+   "operations": 5,
+   "deletions": 1,
+   "deletion_targets": 1,
+   "cleared_history": 0,
+   "item_state": 10000,
+   "sharing_operations": 0
+  },
+  "upload_status": {
+   "failed": 2000,
+   "uploaded": 8000
+  },
+  "local_status": {
+   "saved": 10000
+  },
+  "remote_status": {
+   "not_requested": 8000,
+   "removed": 2000
+  },
+  "itemStateRemote": {
+   "not_requested": 8000,
+   "removed": 2000
+  }
+ },
+ "outputs": {
+  "archive/images/Screen-Capture-2026-10-22-23-55-32.png": "14233b8d4782e5d854849e17f101903f6f308d4151aa2a3e9628b0d2c8d6195b",
+  "archive/images/Screen-Capture-2026-10-22-23-55-34.png": "e79467b8a9d4aac093d1e17b5affb215c32bbf6f4b32668ed04a211b5ceec590",
+  "archive/images/Screen-Capture-2026-10-22-23-55-35.png": "5b5ed7692c8837e34a6b1ad7f2c182c8cb0d7f925337619acabaf81d117adb0b",
+  "archive/images/Screen-Capture-2026-10-22-23-55-36.png": "1e9ec5e100155800d4000db71af9cc5043a106e29f3c87751c2f377015fb5a49",
+  "archive/images/Screen-Capture-2026-10-22-23-55-37.png": "dd30563cb5d1ccca744feffd1a1f2aa9f455a1a6f6b564cadb9e01a1368d045b"
+ },
+ "historyList": {
+  "ok": true,
+  "total": 10000,
+  "seconds": 0.03
+ },
+ "build": {
+  "baseVersion": "26.1023.1058",
+  "commitCount": 1058,
+  "dirty": false,
+  "gitCommit": "05991d9d42aad68d3bd233a609cf294d839835ed",
+  "gitTree": "5e53f777b912ef958678b2f23b400847c7cb4d33",
+  "packageVersion": "26.1023.1058~nightly",
+  "schemaVersion": 1,
+  "sourceProvenance": "git",
+  "version": "26.1023.1058-nightly"
+ },
+ "storage": {
+  "locations": {
+   "config": {
+    "path": "/home/lab/.config/putgd",
+    "state": "migrated"
+   },
+   "data": {
+    "path": "/home/lab/.local/share/putgd",
+    "state": "migrated"
+   },
+   "schemaVersion": 1
+  },
+  "storage": {
+   "backblaze-b2": {
+    "activeHelpers": 0,
+    "protocolVersion": 1
+   },
+   "proton-drive": {
+    "activeHelpers": 0,
+    "protocolVersion": 1
+   },
+   "s3": {
+    "lanes": 1,
+    "moduleLiveDrivers": 0,
+    "queuedRequests": 0,
+    "retainedDrivers": 0,
+    "workerStarted": false
+   }
+  }
+ }
+}

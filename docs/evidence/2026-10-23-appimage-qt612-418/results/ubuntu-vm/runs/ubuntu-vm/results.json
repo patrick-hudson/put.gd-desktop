@@ -1,0 +1,4392 @@
+{
+ "start": {
+  "startSeconds": 0.32,
+  "credentials": "completed",
+  "sessionSock": true,
+  "processes": [
+   {
+    "pid": 2993,
+    "ppid": 2990,
+    "exe": "/usr/bin/dash",
+    "comm": "AppRun",
+    "cmd": "/bin/sh /tmp/.mount_putgd-ObDMBC/AppRun --background",
+    "qtPlatformPlugins": [],
+    "QT_QPA_PLATFORM": null,
+    "APPIMAGE": "/home/lab/put.gd-qt418/afa/images/putgd-26.1023.1068-dev+g6a325a722afd-x86_64.AppImage"
+   },
+   {
+    "pid": 3000,
+    "ppid": 1,
+    "exe": "/home/lab/put.gd-qt418/afa/images/putgd-26.1023.1068-dev+g6a325a722afd-x86_64.AppImage",
+    "comm": "putgd-26.1023.1",
+    "cmd": "/home/lab/put.gd-qt418/afa/images/putgd-26.1023.1068-dev+g6a325a722afd-x86_64.AppImage --background",
+    "qtPlatformPlugins": [],
+    "QT_QPA_PLATFORM": null,
+    "APPIMAGE": null
+   },
+   {
+    "pid": 3027,
+    "ppid": 2993,
+    "exe": "/tmp/.mount_putgd-ObDMBC/usr/bin/putgd",
+    "comm": "putgd",
+    "cmd": "/tmp/.mount_putgd-ObDMBC/usr/bin/putgd --background",
+    "qtPlatformPlugins": [],
+    "QT_QPA_PLATFORM": null,
+    "APPIMAGE": "/home/lab/put.gd-qt418/afa/images/putgd-26.1023.1068-dev+g6a325a722afd-x86_64.AppImage"
+   }
+  ],
+  "diagnostics": {
+   "backend": "Qt",
+   "build": {
+    "baseVersion": "26.1023.1068",
+    "commitCount": 1068,
+    "dirty": false,
+    "gitCommit": "6a325a722afd946046a96480ca524db8aa6abcce",
+    "gitTree": "a0a449b23b4eb70f516e3c317b6d93b412aafbbb",
+    "packageVersion": "26.1023.1068~dev+g6a325a722afd",
+    "schemaVersion": 1,
+    "sourceProvenance": "git",
+    "version": "26.1023.1068-dev+g6a325a722afd"
+   },
+   "capabilities": {
+    "editor": {
+     "admissionPixels": 24000000,
+     "available": true,
+     "commands": [
+      "inspect",
+      "apply",
+      "preview",
+      "saveCopy",
+      "fileDialog",
+      "submit",
+      "cancel",
+      "raise"
+     ],
+     "fileFormats": [
+      "png",
+      "jpeg"
+     ],
+     "open": false,
+     "output": "png",
+     "shapes": [
+      "redact",
+      "blur",
+      "arrow",
+      "rectangle",
+      "text",
+      "highlight"
+     ],
+     "sources": [
+      "region",
+      "window",
+      "desktop",
+      "clipboard",
+      "file"
+     ]
+    },
+    "providers": {
+     "backblaze-b2": {
+      "conditionalCreate": true,
+      "conditionalDelete": false,
+      "conditionalReplace": false,
+      "delete": true,
+      "deletionEffect": "Deletes exactly the uploaded B2 file version by its ID. put.gd never uploads over a visible file, so the name then shows nothing, or an older version that was hidden before the upload. Authorized links stop working when they expire.",
+      "maximumNameBytes": 1023,
+      "maximumObjectBytes": 10000000000000,
+      "privateUploads": false,
+      "sharing": false,
+      "stat": true,
+      "urls": true,
+      "versionAddressing": true
+     },
+     "proton-drive": {
+      "conditionalCreate": true,
+      "conditionalDelete": false,
+      "conditionalReplace": false,
+      "delete": false,
+      "deletionEffect": "Safe remote deletion is unavailable: Proton does not expose an atomic revision-guarded file deletion. Revoke share links separately.",
+      "maximumNameBytes": 255,
+      "maximumObjectBytes": null,
+      "privateUploads": true,
+      "sharing": true,
+      "stat": true,
+      "urls": true,
+      "versionAddressing": false
+     },
+     "s3": {
+      "conditionalCreate": true,
+      "conditionalDelete": true,
+      "conditionalReplace": true,
+      "delete": true,
+      "deletionEffect": "Guarded origin removal; selected versions only; browser/CDN caches may retain bytes",
+      "maximumNameBytes": 1024,
+      "maximumObjectBytes": 5497558138880,
+      "privateUploads": false,
+      "sharing": false,
+      "stat": true,
+      "urls": true,
+      "versionAddressing": true
+     }
+    },
+    "recording": {
+     "active": null,
+     "audio": {
+      "microphone": false,
+      "system": false
+     },
+     "available": false,
+     "codecs": {},
+     "commands": [
+      "prepare",
+      "start",
+      "pause",
+      "resume",
+      "stop",
+      "cancel",
+      "inspect",
+      "select",
+      "raise",
+      "overlay",
+      "edit",
+      "preview",
+      "review",
+      "saveCopy",
+      "upload"
+     ],
+     "editCommands": [
+      "setTrim",
+      "resetTrim",
+      "addMask",
+      "updateMask",
+      "removeMask"
+     ],
+     "formats": [],
+     "limits": {
+      "animationMaxEdge": 1280,
+      "animationMaxUs": 60000000,
+      "maxFileBytes": 1099511627776,
+      "maxMasks": 64
+     },
+     "maskKinds": [
+      "blur",
+      "solid"
+     ],
+     "overlayExclusion": {},
+     "reason": "recording_not_probed",
+     "states": [
+      "preparing",
+      "ready",
+      "starting",
+      "recording",
+      "paused",
+      "stopping",
+      "reviewing",
+      "exporting",
+      "submitted",
+      "cancelled",
+      "failed"
+     ],
+     "targets": [],
+     "timeUnit": "microseconds"
+    },
+    "source": {
+     "adapter": "gnome-wayland",
+     "capture": {
+      "desktop": {
+       "available": true,
+       "consent": "one-time-extension-setup",
+       "mode": "compositor-native"
+      },
+      "region": {
+       "available": true,
+       "consent": "one-time-extension-setup",
+       "mode": "compositor-native"
+      },
+      "window": {
+       "available": true,
+       "consent": "one-time-extension-setup",
+       "mode": "compositor-native"
+      }
+     },
+     "clipboard": {
+      "available": true,
+      "import": "bounded-mutter-selection",
+      "result": "st-clipboard-only",
+      "types": [
+       "files",
+       "image",
+       "text"
+      ]
+     },
+     "helper": {
+      "available": true,
+      "error": {
+       "code": "",
+       "details": {},
+       "message": ""
+      },
+      "extensionVersion": 2,
+      "outdated": false,
+      "packagedExtensionVersion": 2,
+      "protocol": 1,
+      "recordingVersion": 1,
+      "shellMajor": 50,
+      "uuid": "putgd@put.gd"
+     },
+     "shortcuts": {
+      "available": true,
+      "bindings": {
+       "clipboard": {
+        "bound": false,
+        "error": "disabled",
+        "requested": ""
+       },
+       "desktop": {
+        "actual": "Ctrl+Shift+3",
+        "bound": true,
+        "requested": "Ctrl+Shift+3"
+       },
+       "edit": {
+        "bound": false,
+        "error": "disabled",
+        "requested": ""
+       },
+       "record": {
+        "bound": false,
+        "error": "disabled",
+        "requested": ""
+       },
+       "region": {
+        "actual": "Ctrl+Shift+1",
+        "bound": true,
+        "requested": "Ctrl+Shift+1"
+       },
+       "window": {
+        "actual": "Ctrl+Shift+2",
+        "bound": true,
+        "requested": "Ctrl+Shift+2"
+       }
+      }
+     }
+    }
+   },
+   "journalReady": true,
+   "qtVersion": "6.12.0",
+   "release": {
+    "kind": "none",
+    "url": "",
+    "version": "26.1023.1068-dev+g6a325a722afd"
+   }
+  },
+  "ui": {
+   "ui": {
+    "checkpointBytes": 0,
+    "lastExit": {},
+    "pid": 0,
+    "state": "stopped"
+   },
+   "trayAvailable": true,
+   "trayTint": {
+    "color": "#9bbcff",
+    "panel": "dark",
+    "source": "gnome-shell"
+   },
+   "loginStartup": {
+    "applied": true,
+    "enabled": false
+   },
+   "update": {
+    "action": null,
+    "attemptedAt": null,
+    "build": {
+     "channel": null,
+     "kind": "none",
+     "packageTarget": "appimage",
+     "reason": "development_build",
+     "supported": false,
+     "version": "26.1023.1068-dev+g6a325a722afd"
+    },
+    "channel": null,
+    "channelSetting": "build",
+    "channelSource": "setting",
+    "check": true,
+    "checkedAt": null,
+    "checking": false,
+    "enabled": false,
+    "error": null,
+    "install": {
+     "available": false,
+     "backup": null,
+     "image": "/home/lab/put.gd-qt418/afa/images/putgd-26.1023.1068-dev+g6a325a722afd-x86_64.AppImage",
+     "installed": null,
+     "kind": "update",
+     "reason": "development_build",
+     "restartRequired": false,
+     "running": false,
+     "state": "idle",
+     "switch": null
+    },
+    "nextCheckAt": null,
+    "notifies": false,
+    "reason": "development_build",
+    "result": null,
+    "supported": false
+   }
+  },
+  "kdeEntries": [
+   "putgd-record.desktop",
+   "putgd-ui.desktop"
+  ]
+ },
+ "memory": {
+  "pid": 3027,
+  "exe": "/tmp/.mount_putgd-ObDMBC/usr/bin/putgd",
+  "seconds": 180,
+  "samples": [
+   {
+    "t": 0.0,
+    "rssBytes": 30900224
+   },
+   {
+    "t": 10.0,
+    "rssBytes": 30797824
+   },
+   {
+    "t": 20.0,
+    "rssBytes": 30797824
+   },
+   {
+    "t": 30.0,
+    "rssBytes": 30797824
+   },
+   {
+    "t": 40.0,
+    "rssBytes": 30797824
+   },
+   {
+    "t": 50.0,
+    "rssBytes": 30797824
+   },
+   {
+    "t": 60.0,
+    "rssBytes": 31068160
+   },
+   {
+    "t": 70.0,
+    "rssBytes": 31068160
+   },
+   {
+    "t": 80.0,
+    "rssBytes": 31068160
+   },
+   {
+    "t": 90.0,
+    "rssBytes": 31068160
+   },
+   {
+    "t": 100.0,
+    "rssBytes": 31068160
+   },
+   {
+    "t": 110.0,
+    "rssBytes": 31068160
+   },
+   {
+    "t": 120.0,
+    "rssBytes": 31068160
+   },
+   {
+    "t": 130.0,
+    "rssBytes": 31068160
+   },
+   {
+    "t": 140.0,
+    "rssBytes": 31068160
+   },
+   {
+    "t": 150.0,
+    "rssBytes": 31068160
+   },
+   {
+    "t": 160.0,
+    "rssBytes": 31068160
+   },
+   {
+    "t": 170.0,
+    "rssBytes": 31068160
+   },
+   {
+    "t": 180.0,
+    "rssBytes": 31068160
+   }
+  ],
+  "finalRssMiB": 29.629,
+  "peakRssMiB": 29.629,
+  "pssMiB": 23.359,
+  "privateMiB": 22.922,
+  "budgetMiB": 40,
+  "flaggedLibraries": {
+   "gtk": [],
+   "kdePlatformTheme": [],
+   "libssl": [],
+   "qtNetwork": []
+  },
+  "libraryCount": 61,
+  "load": [
+   [
+    1.48486328125,
+    0.9609375,
+    0.37646484375
+   ],
+   [
+    0.29443359375,
+    0.6171875,
+    0.34423828125
+   ]
+  ],
+  "pass": true
+ },
+ "updatesFirstOpen": {
+  "before": {
+   "settingsOpen": null,
+   "uiShownBefore": []
+  },
+  "show": true,
+  "seconds": 3.85,
+  "calls": 1,
+  "viewState": {
+   "appearance": {
+    "desktop": "light",
+    "desktopSource": "qt",
+    "scheme": "light",
+    "theme": "system",
+    "tokens": {
+     "accent": "#1f64d6",
+     "accentHover": "#1753b5",
+     "bg": "#f5f6f8",
+     "border": "#d5d9e0",
+     "borderStrong": "#aeb5c1",
+     "danger": "#b4312a",
+     "dangerHover": "#96271f",
+     "dangerSurface": "#fbe7e5",
+     "icon": "#2759b8",
+     "iconSecondary": "#b4c8ee",
+     "link": "#1754bd",
+     "onAccent": "#ffffff",
+     "selected": "#dce7fa",
+     "success": "#146c42",
+     "successSurface": "#e3f4ea",
+     "surface": "#ffffff",
+     "surfaceRaised": "#edeff3",
+     "text": "#1b1e24",
+     "textDisabled": "#8b929d",
+     "textMuted": "#585f6b",
+     "textSecondary": "#3a414d",
+     "warning": "#8a5300",
+     "warningSurface": "#fbf0dc"
+    }
+   },
+   "settings": {
+    "captureRouting": {
+     "clipboard": {
+      "destination": "Loopback fixture",
+      "destinationEnabled": false,
+      "effectivePublicationMode": "share",
+      "inherited": true,
+      "profileId": "afa-fixture",
+      "publicationMode": "default",
+      "sharing": "Share and copy a link (destination default)",
+      "sharingEnabled": false,
+      "status": "Uploads to the selected destination and saves a local copy."
+     },
+     "default": {
+      "destination": "Loopback fixture",
+      "destinationEnabled": true,
+      "effectivePublicationMode": "share",
+      "profileId": "afa-fixture",
+      "publicationMode": "default",
+      "sharing": "Use destination default",
+      "sharingEnabled": true,
+      "status": "Uploads to the selected destination and saves a local copy."
+     },
+     "desktop": {
+      "destination": "Loopback fixture",
+      "destinationEnabled": false,
+      "effectivePublicationMode": "share",
+      "inherited": true,
+      "profileId": "afa-fixture",
+      "publicationMode": "default",
+      "sharing": "Share and copy a link (destination default)",
+      "sharingEnabled": false,
+      "status": "Uploads to the selected destination and saves a local copy."
+     },
+     "edit": {
+      "destination": "Loopback fixture",
+      "destinationEnabled": false,
+      "effectivePublicationMode": "share",
+      "inherited": true,
+      "profileId": "afa-fixture",
+      "publicationMode": "default",
+      "sharing": "Share and copy a link (destination default)",
+      "sharingEnabled": false,
+      "status": "Uploads to the selected destination and saves a local copy."
+     },
+     "region": {
+      "destination": "Loopback fixture",
+      "destinationEnabled": false,
+      "effectivePublicationMode": "share",
+      "inherited": true,
+      "profileId": "afa-fixture",
+      "publicationMode": "default",
+      "sharing": "Share and copy a link (destination default)",
+      "sharingEnabled": false,
+      "status": "Uploads to the selected destination and saves a local copy."
+     },
+     "window": {
+      "destination": "Loopback fixture",
+      "destinationEnabled": false,
+      "effectivePublicationMode": "share",
+      "inherited": true,
+      "profileId": "afa-fixture",
+      "publicationMode": "default",
+      "sharing": "Share and copy a link (destination default)",
+      "sharingEnabled": false,
+      "status": "Uploads to the selected destination and saves a local copy."
+     }
+    },
+    "section": 0
+   }
+  },
+  "full": "/home/lab/work/put.gd-qt418/afa/runs/ubuntu-vm/full/ubuntu-vm-348-first-open.png"
+ },
+ "statusClean:start": {
+  "statusControl": [],
+  "zsyncOutput": null,
+  "pass": true
+ },
+ "channelOptions:ubuntu-vm-channel": {
+  "storedChannel": "build",
+  "status": {
+   "channel": null,
+   "channelSetting": "build",
+   "build": {
+    "channel": null,
+    "kind": "none",
+    "packageTarget": "appimage",
+    "reason": "development_build",
+    "supported": false,
+    "version": "26.1023.1068-dev+g6a325a722afd"
+   }
+  },
+  "closed": "/home/lab/work/put.gd-qt418/afa/runs/ubuntu-vm/full/ubuntu-vm-channel-closed.png"
+ },
+ "findTray": {
+  "tint": "#9bbcff",
+  "size": [
+   1280,
+   800
+  ],
+  "found": {
+   "top": {
+    "pixels": 52,
+    "centre": [
+     1158,
+     19
+    ],
+    "box": [
+     1152,
+     11,
+     1163,
+     22
+    ]
+   },
+   "bottom": {
+    "pixels": 39,
+    "centre": [
+     127,
+     753
+    ],
+    "box": [
+     88,
+     737,
+     162,
+     796
+    ]
+   }
+  }
+ },
+ "tray:ubuntu-vm-tray-menu": {
+  "label": "ubuntu-vm-tray-menu",
+  "components": [
+   {
+    "blocks": 655,
+    "box": [
+     1040,
+     192,
+     1256,
+     488
+    ]
+   },
+   {
+    "blocks": 161,
+    "box": [
+     1040,
+     88,
+     1256,
+     184
+    ]
+   },
+   {
+    "blocks": 72,
+    "box": [
+     312,
+     232,
+     712,
+     336
+    ]
+   },
+   {
+    "blocks": 60,
+    "box": [
+     1072,
+     0,
+     1272,
+     72
+    ]
+   },
+   {
+    "blocks": 3,
+    "box": [
+     552,
+     616,
+     568,
+     632
+    ]
+   }
+  ],
+  "colour": [
+   252,
+   252,
+   252
+  ],
+  "inner": [
+   1042,
+   194,
+   1254,
+   485
+  ],
+  "changedShare": 0.62,
+  "kept": "/home/lab/work/put.gd-qt418/afa/runs/ubuntu-vm/crops/ubuntu-vm-tray-menu.png",
+  "full": "/home/lab/work/put.gd-qt418/afa/runs/ubuntu-vm/full/ubuntu-vm-tray-menu.png"
+ },
+ "trayMenu": {
+  "watcherItemCount": 4,
+  "ours": [
+   "org.kde.StatusNotifierItem.putgd_b6d4e2f099094ade88447607d29b12f8"
+  ],
+  "menu": [
+   {
+    "id": 1,
+    "label": "Capture Region",
+    "visible": true,
+    "enabled": true,
+    "type": "standard"
+   },
+   {
+    "id": 5,
+    "label": "Capture Region & Edit",
+    "visible": true,
+    "enabled": true,
+    "type": "standard"
+   },
+   {
+    "id": 2,
+    "label": "Capture Window",
+    "visible": true,
+    "enabled": true,
+    "type": "standard"
+   },
+   {
+    "id": 3,
+    "label": "Capture Desktop",
+    "visible": true,
+    "enabled": true,
+    "type": "standard"
+   },
+   {
+    "id": 16,
+    "label": "Capture Screen Recording",
+    "visible": true,
+    "enabled": true,
+    "type": "standard"
+   },
+   {
+    "id": 13,
+    "label": "Edit Image",
+    "visible": true,
+    "enabled": true,
+    "type": "standard"
+   },
+   {
+    "id": 4,
+    "label": "Upload Clipboard",
+    "visible": true,
+    "enabled": true,
+    "type": "standard"
+   },
+   {
+    "id": 6,
+    "label": null,
+    "visible": true,
+    "enabled": true,
+    "type": "separator"
+   },
+   {
+    "id": 7,
+    "label": "Settings and setup",
+    "visible": true,
+    "enabled": true,
+    "type": "standard"
+   },
+   {
+    "id": 8,
+    "label": "Upload history",
+    "visible": true,
+    "enabled": true,
+    "type": "standard"
+   },
+   {
+    "id": 17,
+    "label": "Update available",
+    "visible": false,
+    "enabled": true,
+    "type": "standard"
+   },
+   {
+    "id": 10,
+    "label": null,
+    "visible": true,
+    "enabled": true,
+    "type": "separator"
+   },
+   {
+    "id": 11,
+    "label": "About put.gd",
+    "visible": true,
+    "enabled": true,
+    "type": "standard"
+   },
+   {
+    "id": 12,
+    "label": "Quit",
+    "visible": true,
+    "enabled": true,
+    "type": "standard"
+   }
+  ],
+  "Id": "putgd",
+  "Title": "put.gd",
+  "Status": "Active",
+  "IconName": ""
+ },
+ "window:ubuntu-vm-settings": {
+  "processes": [
+   {
+    "pid": 3027,
+    "ppid": 2993,
+    "exe": "/tmp/.mount_putgd-ObDMBC/usr/bin/putgd",
+    "comm": "putgd",
+    "cmd": "/tmp/.mount_putgd-ObDMBC/usr/bin/putgd --background",
+    "qtPlatformPlugins": [],
+    "QT_QPA_PLATFORM": null,
+    "APPIMAGE": "/home/lab/put.gd-qt418/afa/images/putgd-26.1023.1068-dev+g6a325a722afd-x86_64.AppImage"
+   },
+   {
+    "pid": 4025,
+    "ppid": 3027,
+    "exe": "/tmp/.mount_putgd-ObDMBC/usr/bin/putgd-ui",
+    "comm": "putgd-ui",
+    "cmd": "/tmp/.mount_putgd-ObDMBC/usr/bin/putgd-ui",
+    "qtPlatformPlugins": [
+     "libqwayland.so"
+    ],
+    "QT_QPA_PLATFORM": null,
+    "APPIMAGE": "/home/lab/put.gd-qt418/afa/images/putgd-26.1023.1068-dev+g6a325a722afd-x86_64.AppImage"
+   }
+  ],
+  "entries": [
+   "putgd-record.desktop",
+   "putgd-ui.desktop"
+  ],
+  "window": {
+   "label": "ubuntu-vm-settings-window",
+   "components": [
+    {
+     "blocks": 16000,
+     "box": [
+      0,
+      0,
+      1280,
+      800
+     ]
+    }
+   ],
+   "colour": [
+    252,
+    252,
+    252
+   ],
+   "inner": [
+    67,
+    32,
+    1278,
+    798
+   ],
+   "changedShare": 1.0,
+   "ownShare": 0.965,
+   "kept": "/home/lab/work/put.gd-qt418/afa/runs/ubuntu-vm/crops/ubuntu-vm-settings-window.png"
+  },
+  "full": "/home/lab/work/put.gd-qt418/afa/runs/ubuntu-vm/full/ubuntu-vm-settings-window.png",
+  "titlebar": {
+   "label": "ubuntu-vm-settings-titlebar",
+   "components": [
+    {
+     "blocks": 1120,
+     "box": [
+      0,
+      0,
+      1280,
+      56
+     ]
+    }
+   ],
+   "colour": [
+    16,
+    16,
+    16
+   ],
+   "inner": [
+    2,
+    2,
+    1257,
+    32
+   ],
+   "changedShare": 1.0,
+   "kept": "/home/lab/work/put.gd-qt418/afa/runs/ubuntu-vm/crops/ubuntu-vm-settings-titlebar.png"
+  },
+  "switcher": {
+   "label": "ubuntu-vm-settings-switcher",
+   "components": [
+    {
+     "blocks": 483,
+     "box": [
+      552,
+      296,
+      728,
+      504
+     ]
+    }
+   ],
+   "colour": [
+    44,
+    44,
+    44
+   ],
+   "inner": [
+    562,
+    307,
+    718,
+    493
+   ],
+   "changedShare": 0.94,
+   "kept": "/home/lab/work/put.gd-qt418/afa/runs/ubuntu-vm/crops/ubuntu-vm-settings-switcher.png"
+  },
+  "switcherFull": "/home/lab/work/put.gd-qt418/afa/runs/ubuntu-vm/full/ubuntu-vm-settings-switcher.png"
+ },
+ "capture:region": {
+  "kind": "region",
+  "operation": {
+   "id": "465082a4-7538-433e-9235-b913be2f0cbf",
+   "state": "completed",
+   "copyStatus": "copied",
+   "items": [
+    {
+     "name": "Screen-Capture-2026-10-23-14-35-13.png",
+     "mime": "image/png",
+     "uploadStatus": "uploaded",
+     "link": "http://127.0.0.1:39955/fixture/afa/Screen-Capture-2026-10-23-14-35-13.png",
+     "local": {
+      "error": {
+       "code": "",
+       "details": {},
+       "message": ""
+      },
+      "path": "/home/lab/work/put.gd-qt418/afa/runs/ubuntu-vm/archive/images/Screen-Capture-2026-10-23-14-35-13.png",
+      "status": "saved"
+     }
+    }
+   ],
+   "error": {
+    "code": "",
+    "details": {},
+    "message": ""
+   }
+  },
+  "png": {
+   "bytes": 3783,
+   "sha256": "46b15589628e913ba61a62808be6655d2812b17ccf5c5850ee92fd92c31c5358",
+   "magic": true,
+   "size": [
+    980,
+    600
+   ]
+  },
+  "coverCheck": {
+   "edges": {
+    "bottom": 1.0,
+    "left": 1.0,
+    "right": 1.0,
+    "top": 1.0
+   },
+   "fraction": 0.6082,
+   "kept": "/home/lab/work/put.gd-qt418/afa/runs/ubuntu-vm/out/capture-region.png",
+   "minFraction": 0.5,
+   "ok": true,
+   "rect": [
+    0,
+    0,
+    980,
+    600
+   ],
+   "sha256": "46b15589628e913ba61a62808be6655d2812b17ccf5c5850ee92fd92c31c5358",
+   "size": [
+    980,
+    600
+   ]
+  },
+  "clipboard": null,
+  "linkCopied": false,
+  "linkServes": {
+   "status": 200,
+   "sha256": "46b15589628e913ba61a62808be6655d2812b17ccf5c5850ee92fd92c31c5358",
+   "matchesLocal": true
+  },
+  "historyEntry": {
+   "id": "898507b6-212f-4aee-9d1e-4c8b28aeb261",
+   "name": "Screen-Capture-2026-10-23-14-35-13.png",
+   "uploadStatus": "uploaded",
+   "local": "saved",
+   "linkAvailable": true
+  },
+  "notifications": []
+ },
+ "capture:window": {
+  "kind": "window",
+  "operation": {
+   "id": "4e986aca-a099-41ca-a2cb-cc4d0c09a43a",
+   "state": "completed",
+   "copyStatus": "copied",
+   "items": [
+    {
+     "name": "Screen-Capture-2026-10-23-14-35-24.png",
+     "mime": "image/png",
+     "uploadStatus": "uploaded",
+     "link": "http://127.0.0.1:39955/fixture/afa/Screen-Capture-2026-10-23-14-35-24.png",
+     "local": {
+      "error": {
+       "code": "",
+       "details": {},
+       "message": ""
+      },
+      "path": "/home/lab/work/put.gd-qt418/afa/runs/ubuntu-vm/archive/images/Screen-Capture-2026-10-23-14-35-24.png",
+      "status": "saved"
+     }
+    }
+   ],
+   "error": {
+    "code": "",
+    "details": {},
+    "message": ""
+   }
+  },
+  "png": {
+   "bytes": 6055,
+   "sha256": "6089f2957915077651a52fab615e071db2a9be84093798484d003285fa92916f",
+   "magic": true,
+   "size": [
+    1280,
+    800
+   ]
+  },
+  "coverCheck": {
+   "edges": {
+    "bottom": 1.0,
+    "left": 1.0,
+    "right": 1.0,
+    "top": 1.0
+   },
+   "fraction": 0.775,
+   "kept": "/home/lab/work/put.gd-qt418/afa/runs/ubuntu-vm/out/capture-window.png",
+   "minFraction": 0.5,
+   "ok": true,
+   "rect": [
+    0,
+    0,
+    1280,
+    800
+   ],
+   "sha256": "6089f2957915077651a52fab615e071db2a9be84093798484d003285fa92916f",
+   "size": [
+    1280,
+    800
+   ]
+  },
+  "clipboard": "http://127.0.0.1:39955/fixture/afa/Screen-Capture-2026-10-23-14-35-24.png",
+  "linkCopied": true,
+  "linkServes": {
+   "status": 200,
+   "sha256": "6089f2957915077651a52fab615e071db2a9be84093798484d003285fa92916f",
+   "matchesLocal": true
+  },
+  "historyEntry": {
+   "id": "d969d74d-f05d-480e-a2b5-da2cc0b266bc",
+   "name": "Screen-Capture-2026-10-23-14-35-24.png",
+   "uploadStatus": "uploaded",
+   "local": "saved",
+   "linkAvailable": true
+  },
+  "notifications": []
+ },
+ "capture:desktop": {
+  "kind": "desktop",
+  "operation": {
+   "id": "aba8f5c7-563a-420e-86a7-b6f16e99d726",
+   "state": "completed",
+   "copyStatus": "copied",
+   "items": [
+    {
+     "name": "Screen-Capture-2026-10-23-14-35-28.png",
+     "mime": "image/png",
+     "uploadStatus": "uploaded",
+     "link": "http://127.0.0.1:39955/fixture/afa/Screen-Capture-2026-10-23-14-35-28.png",
+     "local": {
+      "error": {
+       "code": "",
+       "details": {},
+       "message": ""
+      },
+      "path": "/home/lab/work/put.gd-qt418/afa/runs/ubuntu-vm/archive/images/Screen-Capture-2026-10-23-14-35-28.png",
+      "status": "saved"
+     }
+    }
+   ],
+   "error": {
+    "code": "",
+    "details": {},
+    "message": ""
+   }
+  },
+  "png": {
+   "bytes": 6056,
+   "sha256": "e5e7450ff17466fd9188a94dcc1b914f40ad8cd829175d739c82cb62b1c2d810",
+   "magic": true,
+   "size": [
+    1280,
+    800
+   ]
+  },
+  "coverCheck": {
+   "edges": {
+    "bottom": 1.0,
+    "left": 1.0,
+    "right": 1.0,
+    "top": 1.0
+   },
+   "fraction": 0.775,
+   "kept": "/home/lab/work/put.gd-qt418/afa/runs/ubuntu-vm/out/capture-desktop.png",
+   "minFraction": 0.5,
+   "ok": true,
+   "rect": [
+    0,
+    0,
+    1280,
+    800
+   ],
+   "sha256": "e5e7450ff17466fd9188a94dcc1b914f40ad8cd829175d739c82cb62b1c2d810",
+   "size": [
+    1280,
+    800
+   ]
+  },
+  "clipboard": "http://127.0.0.1:39955/fixture/afa/Screen-Capture-2026-10-23-14-35-28.png",
+  "linkCopied": true,
+  "linkServes": {
+   "status": 200,
+   "sha256": "e5e7450ff17466fd9188a94dcc1b914f40ad8cd829175d739c82cb62b1c2d810",
+   "matchesLocal": true
+  },
+  "historyEntry": {
+   "id": "6f520747-571c-4875-a60c-6dea2c7c029c",
+   "name": "Screen-Capture-2026-10-23-14-35-28.png",
+   "uploadStatus": "uploaded",
+   "local": "saved",
+   "linkAvailable": true
+  },
+  "notifications": []
+ },
+ "regionSize:80x60": {
+  "drag": [
+   600,
+   400,
+   680,
+   460
+  ],
+  "expected": [
+   80,
+   60
+  ],
+  "coords": false,
+  "operation": {
+   "id": "aa9e92ed-f6ec-49ae-ae43-3276361bb85b",
+   "state": "completed",
+   "copyStatus": "copied",
+   "items": [
+    {
+     "name": "Screen-Capture-2026-10-23-14-35-32.png",
+     "mime": "image/png",
+     "uploadStatus": "uploaded",
+     "link": "http://127.0.0.1:39955/fixture/afa/Screen-Capture-2026-10-23-14-35-32.png",
+     "local": {
+      "error": {
+       "code": "",
+       "details": {},
+       "message": ""
+      },
+      "path": "/home/lab/work/put.gd-qt418/afa/runs/ubuntu-vm/archive/images/Screen-Capture-2026-10-23-14-35-32.png",
+      "status": "saved"
+     }
+    }
+   ],
+   "error": {
+    "code": "",
+    "details": {},
+    "message": ""
+   }
+  },
+  "png": [
+   80,
+   60
+  ],
+  "coverCheck": {
+   "deleted": true,
+   "edges": {
+    "bottom": 0.0,
+    "left": 0.0,
+    "right": 0.0,
+    "top": 0.0
+   },
+   "fraction": 0.0,
+   "minFraction": 0.5,
+   "ok": false,
+   "reason": "uncovered",
+   "rect": [
+    0,
+    0,
+    80,
+    60
+   ],
+   "size": [
+    80,
+    60
+   ]
+  },
+  "newHistory": [
+   "7043d11b-0600-4de6-95a6-f17d07b353b4"
+  ],
+  "sizePass": true
+ },
+ "edit": {
+  "editorId": "4b9326cd-e7dc-4fb6-993e-26c84cc0c5fd",
+  "size": [
+   980,
+   600
+  ],
+  "blur": [
+   294,
+   192,
+   176,
+   204
+  ],
+  "solid": [
+   509,
+   216,
+   137,
+   132
+  ],
+  "apply": true,
+  "inspect": {
+   "canRedo": false,
+   "canUndo": true,
+   "crop": [
+    0,
+    0,
+    980,
+    600
+   ],
+   "destination": "Upload to Loopback fixture",
+   "height": 600,
+   "historyTruncated": false,
+   "modified": true,
+   "operationId": "4b9326cd-e7dc-4fb6-993e-26c84cc0c5fd",
+   "phase": "editing",
+   "shapes": [
+    {
+     "id": 1,
+     "kind": "blur",
+     "rect": [
+      294,
+      192,
+      176,
+      204
+     ],
+     "strength": 24
+    },
+    {
+     "id": 2,
+     "kind": "redact",
+     "rect": [
+      509,
+      216,
+      137,
+      132
+     ]
+    }
+   ],
+   "width": 980
+  },
+  "window": {
+   "label": "editor",
+   "components": [
+    {
+     "blocks": 8452,
+     "box": [
+      0,
+      0,
+      1280,
+      800
+     ]
+    },
+    {
+     "blocks": 3971,
+     "box": [
+      320,
+      216,
+      968,
+      624
+     ]
+    }
+   ],
+   "colour": [
+    252,
+    0,
+    252
+   ],
+   "inner": [
+    227,
+    180,
+    1120,
+    656
+   ],
+   "changedShare": 0.571,
+   "ownShare": 0.0,
+   "kept": null
+  },
+  "full": "/home/lab/work/put.gd-qt418/afa/runs/ubuntu-vm/full/editor.png",
+  "editorCommands": [
+   "inspect",
+   "apply",
+   "preview",
+   "saveCopy",
+   "fileDialog",
+   "submit",
+   "cancel",
+   "raise"
+  ],
+  "dialogOpen": {
+   "error": {
+    "code": "",
+    "details": {},
+    "message": ""
+   },
+   "ok": true,
+   "requestId": "cbca61e0-626a-4811-ba5e-40fc4742e41f",
+   "result": {
+    "backend": "portal",
+    "fallbackReason": null,
+    "last": null,
+    "mode": "save",
+    "open": true,
+    "operationId": "4b9326cd-e7dc-4fb6-993e-26c84cc0c5fd",
+    "parentWindow": "",
+    "title": "Save a copy"
+   },
+   "schemaVersion": 1
+  },
+  "dialogState": {
+   "backend": "portal",
+   "fallbackReason": null,
+   "last": null,
+   "mode": "save",
+   "open": true,
+   "operationId": "4b9326cd-e7dc-4fb6-993e-26c84cc0c5fd",
+   "parentWindow": "",
+   "title": "Save a copy"
+  },
+  "dialogShot": {
+   "label": "save-copy-dialog",
+   "components": [
+    {
+     "blocks": 8251,
+     "box": [
+      0,
+      96,
+      1280,
+      744
+     ]
+    },
+    {
+     "blocks": 10,
+     "box": [
+      608,
+      40,
+      680,
+      56
+     ]
+    },
+    {
+     "blocks": 9,
+     "box": [
+      696,
+      40,
+      744,
+      56
+     ]
+    },
+    {
+     "blocks": 2,
+     "box": [
+      1256,
+      40,
+      1272,
+      56
+     ]
+    },
+    {
+     "blocks": 1,
+     "box": [
+      1208,
+      48,
+      1216,
+      56
+     ]
+    }
+   ],
+   "colour": [
+    252,
+    252,
+    252
+   ],
+   "inner": null
+  },
+  "dialogFull": "/home/lab/work/put.gd-qt418/afa/runs/ubuntu-vm/full/save-copy-dialog.png",
+  "dialogResult": {
+   "backend": null,
+   "fallbackReason": null,
+   "last": {
+    "backend": "portal",
+    "error": null,
+    "fallbackReason": null,
+    "mode": "save",
+    "path": "/home/lab/Pictures/afa-ubuntu-vm-edited.png",
+    "status": "chosen"
+   },
+   "mode": null,
+   "open": false,
+   "operationId": "4b9326cd-e7dc-4fb6-993e-26c84cc0c5fd",
+   "parentWindow": null,
+   "title": null
+  },
+  "savedCopy": {
+   "exists": true,
+   "bytes": 3913,
+   "size": [
+    980,
+    600
+   ],
+   "solidRegion": {
+    "mean": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "spread": 0
+   },
+   "blurChangedShare": 0.627
+  },
+  "upload": {
+   "id": "4b9326cd-e7dc-4fb6-993e-26c84cc0c5fd",
+   "state": "completed",
+   "copyStatus": "copied",
+   "items": [
+    {
+     "name": "Screen-Capture-2026-10-23-14-35-38.png",
+     "mime": "image/png",
+     "uploadStatus": "uploaded",
+     "link": "http://127.0.0.1:39955/fixture/afa/Screen-Capture-2026-10-23-14-35-38.png",
+     "local": {
+      "error": {
+       "code": "",
+       "details": {},
+       "message": ""
+      },
+      "path": "/home/lab/work/put.gd-qt418/afa/runs/ubuntu-vm/archive/images/Screen-Capture-2026-10-23-14-35-38.png",
+      "status": "saved"
+     }
+    }
+   ],
+   "error": {
+    "code": "",
+    "details": {},
+    "message": ""
+   }
+  },
+  "uploaded": {
+   "size": [
+    980,
+    600
+   ],
+   "solidRegion": {
+    "mean": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "spread": 0
+   },
+   "blurChangedShare": 0.627,
+   "unchangedOutsideShare": 1.0
+  },
+  "redactionVerified": true,
+  "clipboard": "http://127.0.0.1:39955/fixture/afa/Screen-Capture-2026-10-23-14-35-38.png",
+  "linkCopied": true
+ },
+ "record": {
+  "capabilities": {
+   "available": true,
+   "reason": null,
+   "acquisition": "mutter-screencast",
+   "gstreamer": {
+    "audioSources": [
+     "pulsesrc",
+     "pipewiresrc"
+    ],
+    "available": true,
+    "elements": {
+     "aacparse": "1.24.2",
+     "appsink": null,
+     "audioconvert": "1.24.2",
+     "audioresample": "1.24.2",
+     "avenc_aac": null,
+     "compositor": null,
+     "fdkaacenc": null,
+     "h264parse": "1.24.2",
+     "matroskamux": "1.24.2",
+     "mp4mux": null,
+     "openh264enc": null,
+     "pipewiresrc": "1.0.5",
+     "pulsesrc": "1.24.2",
+     "vaapih264enc": null,
+     "vah264enc": null,
+     "vah264lpenc": null,
+     "videoconvert": "1.24.2",
+     "videocrop": "1.24.2",
+     "videorate": "1.24.2",
+     "videoscale": "1.24.2",
+     "voaacenc": "1.24.2",
+     "vp9enc": null,
+     "webmmux": "1.24.2",
+     "webpenc": null,
+     "x264enc": "1.24.1",
+     "x265enc": null,
+     "ximagesrc": "1.24.2"
+    },
+    "encoderFailures": {},
+    "liveAacEncoders": [
+     "voaacenc"
+    ],
+    "liveH264Encoders": [
+     "x264enc"
+    ],
+    "liveSources": [
+     "ximagesrc",
+     "pipewiresrc"
+    ],
+    "pluginDirectories": [
+     "/tmp/.mount_putgd-ObDMBC/usr/lib/gstreamer-1.0"
+    ],
+    "usableH264Encoders": [
+     "x264enc"
+    ],
+    "version": "GStreamer 1.24.2",
+    "webpAnimated": false
+   },
+   "exportEncoders": {
+    "h264": [
+     "libx264"
+    ],
+    "h265": [
+     "libx265"
+    ],
+    "vp9": [
+     "libvpx-vp9"
+    ]
+   },
+   "liveCapture": {
+    "audio": true,
+    "encoder": true,
+    "source": true
+   },
+   "kdeScreencast": null,
+   "formats": [
+    "mp4",
+    "webm",
+    "gif",
+    "webp"
+   ]
+  },
+  "entriesDuring": [
+   "putgd-record.desktop",
+   "putgd-ui.desktop"
+  ],
+  "patternRect": [
+   320,
+   220,
+   960,
+   580
+  ],
+  "prepare": {
+   "state": "ready",
+   "target": {
+    "kind": "region",
+    "rect": [
+     320,
+     200,
+     640,
+     360
+    ]
+   }
+  },
+  "readyShot": {
+   "label": "record-ready",
+   "components": [
+    {
+     "blocks": 222,
+     "box": [
+      320,
+      592,
+      912,
+      616
+     ]
+    },
+    {
+     "blocks": 85,
+     "box": [
+      312,
+      192,
+      968,
+      216
+     ]
+    }
+   ],
+   "colour": [
+    244,
+    244,
+    248
+   ],
+   "inner": null
+  },
+  "liveEncoder": "x264enc",
+  "recordingShot": {
+   "label": "recording",
+   "components": [
+    {
+     "blocks": 11986,
+     "box": [
+      0,
+      0,
+      1280,
+      800
+     ]
+    }
+   ],
+   "colour": [
+    144,
+    0,
+    144
+   ],
+   "inner": [
+    2,
+    2,
+    1278,
+    798
+   ],
+   "changedShare": 0.987,
+   "coverHueShare": 0.979,
+   "kept": "/home/lab/work/put.gd-qt418/afa/runs/ubuntu-vm/crops/recording.png"
+  },
+  "recordingFull": "/home/lab/work/put.gd-qt418/afa/runs/ubuntu-vm/full/recording.png",
+  "paused": true,
+  "stopped": {
+   "durationUs": 11433333,
+   "wallSeconds": 13.4,
+   "state": "reviewing"
+  },
+  "reviewSteps": [
+   {
+    "action": "seek",
+    "time": 1000000,
+    "ok": true,
+    "error": {
+     "code": "",
+     "details": {},
+     "message": ""
+    }
+   },
+   {
+    "action": "setIn",
+    "ok": true,
+    "error": {
+     "code": "",
+     "details": {},
+     "message": ""
+    }
+   },
+   {
+    "action": "seek",
+    "time": 10433333,
+    "ok": true,
+    "error": {
+     "code": "",
+     "details": {},
+     "message": ""
+    }
+   },
+   {
+    "action": "setOut",
+    "ok": true,
+    "error": {
+     "code": "",
+     "details": {},
+     "message": ""
+    }
+   },
+   {
+    "action": "seek",
+    "time": 2000000,
+    "ok": true,
+    "error": {
+     "code": "",
+     "details": {},
+     "message": ""
+    }
+   },
+   {
+    "action": "addMask",
+    "kind": "blur",
+    "rect": [
+     160,
+     90,
+     320,
+     180
+    ],
+    "ok": true,
+    "error": {
+     "code": "",
+     "details": {},
+     "message": ""
+    }
+   },
+   {
+    "action": "setMaskIn",
+    "ok": true,
+    "error": {
+     "code": "",
+     "details": {},
+     "message": ""
+    }
+   },
+   {
+    "action": "seek",
+    "time": 5000000,
+    "ok": true,
+    "error": {
+     "code": "",
+     "details": {},
+     "message": ""
+    }
+   },
+   {
+    "action": "setMaskOut",
+    "ok": true,
+    "error": {
+     "code": "",
+     "details": {},
+     "message": ""
+    }
+   },
+   {
+    "action": "strength",
+    "strength": 24,
+    "ok": true,
+    "error": {
+     "code": "",
+     "details": {},
+     "message": ""
+    }
+   },
+   {
+    "action": "seek",
+    "time": 3000000,
+    "ok": true,
+    "error": {
+     "code": "",
+     "details": {},
+     "message": ""
+    }
+   },
+   {
+    "action": "format",
+    "format": "mp4",
+    "codec": "h264",
+    "ok": true,
+    "error": {
+     "code": "",
+     "details": {},
+     "message": ""
+    }
+   },
+   {
+    "action": "format",
+    "format": "webm",
+    "codec": "vp9",
+    "ok": true,
+    "error": {
+     "code": "",
+     "details": {},
+     "message": ""
+    }
+   },
+   {
+    "action": "format",
+    "format": "gif",
+    "codec": "",
+    "ok": true,
+    "error": {
+     "code": "",
+     "details": {},
+     "message": ""
+    }
+   },
+   {
+    "action": "format",
+    "format": "webp",
+    "codec": "",
+    "ok": true,
+    "error": {
+     "code": "",
+     "details": {},
+     "message": ""
+    }
+   },
+   {
+    "action": "format",
+    "format": "mp4",
+    "codec": "h264",
+    "ok": true,
+    "error": {
+     "code": "",
+     "details": {},
+     "message": ""
+    }
+   }
+  ],
+  "edit": {
+   "masks": [
+    {
+     "end": 5000000,
+     "id": "4c98afd8-efa5-48d9-8384-855cbad2df23",
+     "kind": "blur",
+     "rect": [
+      160,
+      90,
+      320,
+      180
+     ],
+     "start": 2000000,
+     "strength": 24
+    }
+   ],
+   "revision": 7,
+   "trimEnd": 10433333,
+   "trimStart": 1000000
+  },
+  "reviewShot": {
+   "label": "review",
+   "components": [
+    {
+     "blocks": 5510,
+     "box": [
+      192,
+      96,
+      1160,
+      736
+     ]
+    }
+   ],
+   "colour": [
+    244,
+    244,
+    248
+   ],
+   "inner": [
+    194,
+    98,
+    1153,
+    734
+   ],
+   "changedShare": 1.0,
+   "ownShare": 0.364,
+   "kept": "/home/lab/work/put.gd-qt418/afa/runs/ubuntu-vm/crops/review.png"
+  },
+  "reviewFull": "/home/lab/work/put.gd-qt418/afa/runs/ubuntu-vm/full/review.png",
+  "exports": {
+   "mp4": {
+    "formatChosen": true,
+    "request": true,
+    "requestError": {
+     "code": "",
+     "details": {},
+     "message": ""
+    },
+    "status": "saved",
+    "bytes": 65589,
+    "error": null,
+    "durationUs": 9433333,
+    "motion": {
+     "motion": 64.96,
+     "compared": 7,
+     "durationMs": 9433,
+     "size": "640x360",
+     "by": "putgd-record"
+    },
+    "sha256": "d06c726801db04f29bec2066c2ec3fa591cca28d5baf38d6974e91c38f16977d"
+   },
+   "webm": {
+    "formatChosen": true,
+    "request": true,
+    "requestError": {
+     "code": "",
+     "details": {},
+     "message": ""
+    },
+    "status": "saved",
+    "bytes": 66193,
+    "error": null,
+    "durationUs": 9433333,
+    "motion": {
+     "motion": 64.962,
+     "compared": 7,
+     "durationMs": 9433,
+     "size": "640x360",
+     "by": "putgd-record"
+    },
+    "sha256": "a6ae2120ae28f0ab975a8509cf3600b023171934a466e834e692e302503be4cc"
+   },
+   "gif": {
+    "formatChosen": true,
+    "request": true,
+    "requestError": {
+     "code": "",
+     "details": {},
+     "message": ""
+    },
+    "status": "saved",
+    "bytes": 1982431,
+    "error": null,
+    "durationUs": 9400000,
+    "motion": {
+     "motion": 65.266,
+     "compared": 7,
+     "durationMs": 9400,
+     "size": "640x360",
+     "by": "putgd-record"
+    },
+    "sha256": "789f993b8e752d7672367d05d7cac04b160c140c3249affaaf0f6538611969f0"
+   },
+   "webp": {
+    "formatChosen": true,
+    "request": true,
+    "requestError": {
+     "code": "",
+     "details": {},
+     "message": ""
+    },
+    "status": "saved",
+    "bytes": 210968,
+    "error": null,
+    "durationUs": 9400000,
+    "motion": {
+     "motion": 74.033,
+     "frames": 139,
+     "size": "640x360",
+     "by": "pillow"
+    },
+    "sha256": "ade1097879c7fa7ba592c07abc2f66bf160c9acba880d886035f9328071a3f93"
+   }
+  },
+  "saveCopyDialog": {
+   "open": {
+    "error": {
+     "code": "",
+     "details": {},
+     "message": ""
+    },
+    "ok": true,
+    "requestId": "21f32366-c007-47e6-8ff1-ab6be7ce8736",
+    "result": {
+     "armed": null,
+     "edit": {
+      "masks": [
+       {
+        "end": 5000000,
+        "id": "4c98afd8-efa5-48d9-8384-855cbad2df23",
+        "kind": "blur",
+        "rect": [
+         160,
+         90,
+         320,
+         180
+        ],
+        "start": 2000000,
+        "strength": 24
+       }
+      ],
+      "revision": 7,
+      "trimEnd": 10433333,
+      "trimStart": 1000000
+     },
+     "exporting": false,
+     "fileDialog": {
+      "backend": "portal",
+      "fallbackReason": null,
+      "last": null,
+      "mode": "save",
+      "open": true,
+      "parentWindow": "",
+      "title": "Save a copy"
+     },
+     "format": {
+      "codec": "h264",
+      "format": "mp4"
+     },
+     "maskControls": {
+      "list": true,
+      "remove": true,
+      "strength": true,
+      "times": true
+     },
+     "masks": [
+      {
+       "id": "4c98afd8-efa5-48d9-8384-855cbad2df23",
+       "kind": "blur",
+       "timeline": [
+        180,
+        509,
+        188,
+        5
+       ]
+      }
+     ],
+     "minimumSize": [
+      713,
+      305
+     ],
+     "notice": null,
+     "playheadUs": 3000000,
+     "playing": false,
+     "revision": 7,
+     "scheme": "light",
+     "selectedMaskId": "4c98afd8-efa5-48d9-8384-855cbad2df23",
+     "size": [
+      960,
+      600
+     ],
+     "speed": 1,
+     "state": "reviewing",
+     "status": "No audio",
+     "timeline": {
+      "lanes": 1,
+      "rect": [
+       47,
+       489,
+       732,
+       30
+      ]
+     },
+     "trim": {
+      "end": 10433333,
+      "start": 1000000
+     },
+     "video": {
+      "rect": [
+       58,
+       8,
+       844,
+       475
+      ],
+      "share": 0.6960069444444444
+     },
+     "visible": true
+    },
+    "schemaVersion": 1
+   },
+   "shot": {
+    "label": "review-save-dialog",
+    "components": [
+     {
+      "blocks": 7296,
+      "box": [
+       216,
+       136,
+       1128,
+       696
+      ]
+     },
+     {
+      "blocks": 1,
+      "box": [
+       256,
+       664,
+       264,
+       672
+      ]
+     }
+    ],
+    "colour": [
+     252,
+     252,
+     252
+    ],
+    "inner": [
+     408,
+     257,
+     1118,
+     555
+    ],
+    "changedShare": 0.993,
+    "kept": "/home/lab/work/put.gd-qt418/afa/runs/ubuntu-vm/crops/review-save-dialog.png"
+   },
+   "full": "/home/lab/work/put.gd-qt418/afa/runs/ubuntu-vm/full/review-save-dialog.png",
+   "inspect": {
+    "backend": null,
+    "fallbackReason": null,
+    "last": {
+     "backend": "portal",
+     "error": null,
+     "fallbackReason": null,
+     "mode": "save",
+     "path": "/home/lab/afa-ubuntu-vm-review.mp4",
+     "status": "chosen"
+    },
+    "mode": null,
+    "open": false,
+    "parentWindow": null,
+    "title": null
+   },
+   "lastExport": {
+    "bytes": 65589,
+    "command": "saveCopy",
+    "durationUs": 9433333,
+    "path": "/home/lab/afa-ubuntu-vm-review.mp4",
+    "revision": 7,
+    "status": "saved"
+   },
+   "exists": true,
+   "bytes": 65589,
+   "motion": {
+    "motion": 64.96,
+    "compared": 7,
+    "durationMs": 9433,
+    "size": "640x360",
+    "by": "putgd-record"
+   }
+  },
+  "upload": {
+   "id": "46735ac2-2dab-452b-848b-650ae892da59",
+   "state": "completed",
+   "copyStatus": "copied",
+   "items": [
+    {
+     "name": "Screen-Recording-2026-10-23-14-35-57.mp4",
+     "mime": "video/mp4",
+     "uploadStatus": "uploaded",
+     "link": "http://127.0.0.1:39955/fixture/afa/Screen-Recording-2026-10-23-14-35-57.mp4",
+     "local": {
+      "error": {
+       "code": "",
+       "details": {},
+       "message": ""
+      },
+      "path": "/home/lab/work/put.gd-qt418/afa/runs/ubuntu-vm/archive/videos/Screen-Recording-2026-10-23-14-35-57.mp4",
+      "status": "saved"
+     }
+    }
+   ],
+   "error": {
+    "code": "",
+    "details": {},
+    "message": ""
+   }
+  },
+  "uploadNotifications": [],
+  "entriesAfter": [
+   "putgd-record.desktop",
+   "putgd-ui.desktop"
+  ]
+ },
+ "control": {
+  "mp4": {
+   "bytes": 6387,
+   "motion": {
+    "motion": 0.0,
+    "compared": 7,
+    "durationMs": 6633,
+    "size": "640x360",
+    "by": "putgd-record"
+   }
+  },
+  "gif": {
+   "bytes": 4101,
+   "motion": {
+    "motion": 0.0,
+    "compared": 7,
+    "durationMs": 6600,
+    "size": "640x360",
+    "by": "putgd-record"
+   }
+  }
+ },
+ "regionSize:980x600:coords": {
+  "drag": [
+   150,
+   100,
+   1130,
+   700
+  ],
+  "expected": [
+   980,
+   600
+  ],
+  "coords": true,
+  "screenDecodes": {
+   "0,0": [
+    0,
+    0
+   ],
+   "1279,799": [
+    1279,
+    799
+   ],
+   "150,100": [
+    150,
+    100
+   ],
+   "1129,699": [
+    1129,
+    699
+   ],
+   "640,400": [
+    640,
+    400
+   ]
+  },
+  "screenCovered": true,
+  "operation": {
+   "id": "6c0d03d3-2627-461c-9401-746947348d87",
+   "state": "completed",
+   "copyStatus": "copied",
+   "items": [
+    {
+     "name": "Screen-Capture-2026-10-23-14-37-00.png",
+     "mime": "image/png",
+     "uploadStatus": "uploaded",
+     "link": "http://127.0.0.1:39955/fixture/afa/Screen-Capture-2026-10-23-14-37-00.png",
+     "local": {
+      "error": {
+       "code": "",
+       "details": {},
+       "message": ""
+      },
+      "path": "/home/lab/work/put.gd-qt418/afa/runs/ubuntu-vm/archive/images/Screen-Capture-2026-10-23-14-37-00.png",
+      "status": "saved"
+     }
+    }
+   ],
+   "error": {
+    "code": "",
+    "details": {},
+    "message": ""
+   }
+  },
+  "png": [
+   980,
+   600
+  ],
+  "consistent": true,
+  "origin": [
+   149,
+   99
+  ],
+  "corners": {
+   "topLeft": [
+    149,
+    99
+   ],
+   "bottomRight": [
+    1128,
+    698
+   ]
+  },
+  "originOffset": [
+   -1,
+   -1
+  ],
+  "newHistory": [
+   "0005aa32-09ae-4309-955e-8ded5fe84cb8"
+  ],
+  "sizePass": true,
+  "originExact": false
+ },
+ "regionSize:80x60:coords": {
+  "drag": [
+   600,
+   400,
+   680,
+   460
+  ],
+  "expected": [
+   80,
+   60
+  ],
+  "coords": true,
+  "screenDecodes": {
+   "0,0": [
+    0,
+    0
+   ],
+   "1279,799": [
+    1279,
+    799
+   ],
+   "600,400": [
+    600,
+    400
+   ],
+   "679,459": [
+    679,
+    459
+   ],
+   "640,400": [
+    640,
+    400
+   ]
+  },
+  "screenCovered": true,
+  "operation": {
+   "id": "e0e48cf4-cc02-46d0-8649-cf554dd734d6",
+   "state": "completed",
+   "copyStatus": "copied",
+   "items": [
+    {
+     "name": "Screen-Capture-2026-10-23-14-37-10.png",
+     "mime": "image/png",
+     "uploadStatus": "uploaded",
+     "link": "http://127.0.0.1:39955/fixture/afa/Screen-Capture-2026-10-23-14-37-10.png",
+     "local": {
+      "error": {
+       "code": "",
+       "details": {},
+       "message": ""
+      },
+      "path": "/home/lab/work/put.gd-qt418/afa/runs/ubuntu-vm/archive/images/Screen-Capture-2026-10-23-14-37-10.png",
+      "status": "saved"
+     }
+    }
+   ],
+   "error": {
+    "code": "",
+    "details": {},
+    "message": ""
+   }
+  },
+  "png": [
+   80,
+   60
+  ],
+  "consistent": true,
+  "origin": [
+   599,
+   399
+  ],
+  "corners": {
+   "topLeft": [
+    599,
+    399
+   ],
+   "bottomRight": [
+    678,
+    458
+   ]
+  },
+  "originOffset": [
+   -1,
+   -1
+  ],
+  "newHistory": [
+   "54066bae-6926-4605-a3a6-1d1cf76503e2"
+  ],
+  "sizePass": true,
+  "originExact": false
+ },
+ "notify:ubuntu-vm-notify": {
+  "notificationsOn": true,
+  "operation": {
+   "id": "7f64bfc2-21e2-47f9-93c3-5cb2b801c9fc",
+   "state": "completed",
+   "copyStatus": "copied",
+   "items": [
+    {
+     "name": "Screen-Capture-2026-10-23-14-37-18.png",
+     "mime": "image/png",
+     "uploadStatus": "uploaded",
+     "link": "http://127.0.0.1:39955/fixture/afa/Screen-Capture-2026-10-23-14-37-18.png",
+     "local": {
+      "error": {
+       "code": "",
+       "details": {},
+       "message": ""
+      },
+      "path": "/home/lab/work/put.gd-qt418/afa/runs/ubuntu-vm/archive/images/Screen-Capture-2026-10-23-14-37-18.png",
+      "status": "saved"
+     }
+    }
+   ],
+   "error": {
+    "code": "",
+    "details": {},
+    "message": ""
+   }
+  },
+  "notification": {
+   "logged": [
+    {
+     "category": "putgd.ui",
+     "fields": {
+      "itemId": null,
+      "notificationId": 1,
+      "notificationText": "Uploaded. Link copied to the clipboard. Click to open in browser.",
+      "operationId": null,
+      "summary": "operation_completed",
+      "title": "put.gd \u2014 completed",
+      "warning": false
+     },
+     "level": "info",
+     "message": "Notification shown",
+     "pid": 3027,
+     "process": "putgd",
+     "time": "2026-10-23T19:37:19.150Z",
+     "v": 1
+    }
+   ],
+   "banner": {
+    "label": "ubuntu-vm-notify-notification",
+    "components": [
+     {
+      "blocks": 205,
+      "box": [
+       416,
+       32,
+       936,
+       128
+      ]
+     }
+    ],
+    "colour": [
+     252,
+     252,
+     252
+    ],
+    "inner": [
+     418,
+     34,
+     929,
+     126
+    ],
+    "changedShare": 0.684,
+    "kept": "/home/lab/work/put.gd-qt418/afa/runs/ubuntu-vm/crops/ubuntu-vm-notify-notification.png"
+   },
+   "full": "/home/lab/work/put.gd-qt418/afa/runs/ubuntu-vm/full/ubuntu-vm-notify-notification.png",
+   "clicked": [
+    673,
+    64
+   ],
+   "dbusMembers": [
+    "NameAcquired",
+    "NameLost",
+    "Notify",
+    "Notify",
+    "ActivationToken",
+    "ActionInvoked",
+    "NotificationClosed",
+    "ActivationToken",
+    "ActionInvoked",
+    "NotificationClosed"
+   ],
+   "notifyActions": [
+    "default",
+    "Open in browser"
+   ],
+   "actionInvoked": [
+    "default",
+    "default"
+   ],
+   "openedUrls": [
+    "2026-10-23T19:37:22Z http://127.0.0.1:39955/fixture/afa/Screen-Capture-2026-10-23-14-37-18.png lib=unset plugins=unset appdir=unset parent=systemd"
+   ]
+  },
+  "notificationsOff": true
+ },
+ "full:ubuntu-vm-link-opened": {
+  "full": "/home/lab/work/put.gd-qt418/afa/runs/ubuntu-vm/full/ubuntu-vm-link-opened.png",
+  "at": "2026-10-23T19:37:30Z"
+ },
+ "handlerOff": {
+  "restored": {
+   "https": [
+    "Default application for \u201cx-scheme-handler/https\u201d: firefox_firefox.desktop"
+   ],
+   "http": [
+    "Default application for \u201cx-scheme-handler/http\u201d: firefox_firefox.desktop"
+   ]
+  },
+  "before": {
+   "https": [
+    "Default application for \u201cx-scheme-handler/https\u201d: firefox_firefox.desktop"
+   ],
+   "http": [
+    "Default application for \u201cx-scheme-handler/http\u201d: firefox_firefox.desktop"
+   ]
+  },
+  "same": true,
+  "filesMatch": true
+ },
+ "history": {
+  "total": 9,
+  "records": [
+   {
+    "id": "d4e441f7-45d0-4543-8b42-85a67ec8ad1e",
+    "name": "Screen-Capture-2026-10-23-14-37-18.png",
+    "mime": "image/png",
+    "uploadStatus": "uploaded",
+    "local": "saved",
+    "linkAvailable": true
+   },
+   {
+    "id": "54066bae-6926-4605-a3a6-1d1cf76503e2",
+    "name": "Screen-Capture-2026-10-23-14-37-10.png",
+    "mime": "image/png",
+    "uploadStatus": "uploaded",
+    "local": "saved",
+    "linkAvailable": true
+   },
+   {
+    "id": "0005aa32-09ae-4309-955e-8ded5fe84cb8",
+    "name": "Screen-Capture-2026-10-23-14-37-00.png",
+    "mime": "image/png",
+    "uploadStatus": "uploaded",
+    "local": "saved",
+    "linkAvailable": true
+   },
+   {
+    "id": "d86590c8-6698-4974-84af-147600da4e12",
+    "name": "Screen-Recording-2026-10-23-14-35-57.mp4",
+    "mime": "video/mp4",
+    "uploadStatus": "uploaded",
+    "local": "saved",
+    "linkAvailable": true
+   },
+   {
+    "id": "fae66935-ffe7-4bc0-9547-255c8f996cf7",
+    "name": "Screen-Capture-2026-10-23-14-35-38.png",
+    "mime": "image/png",
+    "uploadStatus": "uploaded",
+    "local": "saved",
+    "linkAvailable": true
+   },
+   {
+    "id": "7043d11b-0600-4de6-95a6-f17d07b353b4",
+    "name": "Screen-Capture-2026-10-23-14-35-32.png",
+    "mime": "image/png",
+    "uploadStatus": "uploaded",
+    "local": "saved",
+    "linkAvailable": true
+   },
+   {
+    "id": "6f520747-571c-4875-a60c-6dea2c7c029c",
+    "name": "Screen-Capture-2026-10-23-14-35-28.png",
+    "mime": "image/png",
+    "uploadStatus": "uploaded",
+    "local": "saved",
+    "linkAvailable": true
+   },
+   {
+    "id": "d969d74d-f05d-480e-a2b5-da2cc0b266bc",
+    "name": "Screen-Capture-2026-10-23-14-35-24.png",
+    "mime": "image/png",
+    "uploadStatus": "uploaded",
+    "local": "saved",
+    "linkAvailable": true
+   },
+   {
+    "id": "898507b6-212f-4aee-9d1e-4c8b28aeb261",
+    "name": "Screen-Capture-2026-10-23-14-35-13.png",
+    "mime": "image/png",
+    "uploadStatus": "uploaded",
+    "local": "saved",
+    "linkAvailable": true
+   }
+  ],
+  "previews": {
+   "Screen-Capture-2026-10-23-14-37-18.png": {
+    "ok": true,
+    "state": "ready",
+    "source": null,
+    "exists": true,
+    "error": {
+     "code": "",
+     "details": {},
+     "message": ""
+    }
+   },
+   "Screen-Capture-2026-10-23-14-37-10.png": {
+    "ok": true,
+    "state": "ready",
+    "source": null,
+    "exists": true,
+    "error": {
+     "code": "",
+     "details": {},
+     "message": ""
+    }
+   },
+   "Screen-Capture-2026-10-23-14-37-00.png": {
+    "ok": true,
+    "state": "ready",
+    "source": null,
+    "exists": true,
+    "error": {
+     "code": "",
+     "details": {},
+     "message": ""
+    }
+   },
+   "Screen-Recording-2026-10-23-14-35-57.mp4": {
+    "ok": true,
+    "state": "ready",
+    "source": null,
+    "exists": true,
+    "error": {
+     "code": "",
+     "details": {},
+     "message": ""
+    }
+   },
+   "Screen-Capture-2026-10-23-14-35-38.png": {
+    "ok": true,
+    "state": "ready",
+    "source": null,
+    "exists": true,
+    "error": {
+     "code": "",
+     "details": {},
+     "message": ""
+    }
+   },
+   "Screen-Capture-2026-10-23-14-35-32.png": {
+    "ok": true,
+    "state": "ready",
+    "source": null,
+    "exists": true,
+    "error": {
+     "code": "",
+     "details": {},
+     "message": ""
+    }
+   },
+   "Screen-Capture-2026-10-23-14-35-28.png": {
+    "ok": true,
+    "state": "ready",
+    "source": null,
+    "exists": true,
+    "error": {
+     "code": "",
+     "details": {},
+     "message": ""
+    }
+   },
+   "Screen-Capture-2026-10-23-14-35-24.png": {
+    "ok": true,
+    "state": "ready",
+    "source": null,
+    "exists": true,
+    "error": {
+     "code": "",
+     "details": {},
+     "message": ""
+    }
+   },
+   "Screen-Capture-2026-10-23-14-35-13.png": {
+    "ok": true,
+    "state": "ready",
+    "source": null,
+    "exists": true,
+    "error": {
+     "code": "",
+     "details": {},
+     "message": ""
+    }
+   }
+  },
+  "copyImage": {
+   "reply": {
+    "error": {
+     "code": "",
+     "details": {},
+     "message": ""
+    },
+    "ok": true,
+    "requestId": "1c3a944a-09cf-4df2-b2fe-f5327c669f47",
+    "result": {
+     "copied": true
+    },
+    "schemaVersion": 1
+   },
+   "clipboardPng": true,
+   "clipboardBytes": 3689,
+   "sameSize": true,
+   "samePixels": true
+  },
+  "windowShot": {
+   "label": "history",
+   "components": [
+    {
+     "blocks": 2807,
+     "box": [
+      296,
+      96,
+      1256,
+      760
+     ]
+    },
+    {
+     "blocks": 159,
+     "box": [
+      80,
+      488,
+      264,
+      544
+     ]
+    },
+    {
+     "blocks": 152,
+     "box": [
+      408,
+      32,
+      936,
+      128
+     ]
+    },
+    {
+     "blocks": 136,
+     "box": [
+      80,
+      392,
+      264,
+      440
+     ]
+    },
+    {
+     "blocks": 61,
+     "box": [
+      1104,
+      88,
+      1248,
+      128
+     ]
+    },
+    {
+     "blocks": 47,
+     "box": [
+      944,
+      88,
+      1088,
+      128
+     ]
+    }
+   ],
+   "colour": [
+    244,
+    244,
+    248
+   ],
+   "inner": [
+    298,
+    139,
+    1248,
+    721
+   ],
+   "changedShare": 0.726,
+   "ownShare": 0.91,
+   "kept": "/home/lab/work/put.gd-qt418/afa/runs/ubuntu-vm/crops/history.png"
+  },
+  "full": "/home/lab/work/put.gd-qt418/afa/runs/ubuntu-vm/full/history.png"
+ },
+ "delete": {
+  "item": "Screen-Capture-2026-10-23-14-37-18.png",
+  "prepare": {
+   "acknowledgement": "c49766f35efb0a3f18fffce5cba06c83127567f4d705c7f4110bef5a273bc5bc",
+   "cacheNotice": "Origin deletion does not invalidate browser or CDN caches",
+   "localCopiesPreserved": true,
+   "targets": [
+    {
+     "effect": "Guarded origin removal; selected versions only; browser/CDN caches may retain bytes",
+     "historyId": "d4e441f7-45d0-4543-8b42-85a67ec8ad1e",
+     "receipt": {
+      "concurrencyToken": "\"656dcd0dc9901e7a84f82a26a44855dd\"",
+      "destination": {
+       "credentials": {
+        "mode": "session",
+        "reference": null
+       },
+       "profileId": "afa-fixture",
+       "profileRevision": "157508aff8221b19d93a6d07bb9cd7c11f6310d1884343136cd09cec2ed151bd",
+       "providerId": "s3",
+       "settings": {
+        "aclMode": "public-read",
+        "addressing": "path",
+        "bucket": "fixture",
+        "connectTimeoutMs": 5000,
+        "endpoint": "http://127.0.0.1:39955",
+        "lowSpeedBytesPerSecond": 1,
+        "lowSpeedTimeSeconds": 120,
+        "objectPrefix": "afa/",
+        "publicUrlBase": "http://127.0.0.1:39955/fixture",
+        "region": "us-east-1",
+        "requestTimeoutMs": 120000,
+        "storageClass": "STANDARD"
+       }
+      },
+      "directUrl": "http://127.0.0.1:39955/fixture/afa/Screen-Capture-2026-10-23-14-37-18.png",
+      "objectReference": {
+       "bytes": 3689,
+       "key": "afa/Screen-Capture-2026-10-23-14-37-18.png",
+       "schemaVersion": 1,
+       "sha256": "bedd05f10d962cbf5728b404faa5569761d5da9b09a1045d30eecb71bcbce03c",
+       "versionId": ""
+      },
+      "publicationId": "27b9ca61-f25f-4816-94d2-7e87ea59e5bf",
+      "schemaVersion": 1
+     }
+    }
+   ]
+  },
+  "confirm": {
+   "deleteOperationId": "b44dd2b4-9813-4cad-ba60-6a89f47260f9",
+   "deletion": {
+    "acknowledgement": "c49766f35efb0a3f18fffce5cba06c83127567f4d705c7f4110bef5a273bc5bc",
+    "cancelled": false,
+    "created": "2026-10-23T19:37:40.923Z",
+    "id": "b44dd2b4-9813-4cad-ba60-6a89f47260f9",
+    "items": [
+     {
+      "effect": "Guarded origin removal; selected versions only; browser/CDN caches may retain bytes",
+      "historyId": "d4e441f7-45d0-4543-8b42-85a67ec8ad1e",
+      "progress": {
+       "schemaVersion": 1
+      },
+      "receipt": {
+       "concurrencyToken": "\"656dcd0dc9901e7a84f82a26a44855dd\"",
+       "destination": {
+        "credentials": {
+         "mode": "session",
+         "reference": null
+        },
+        "profileId": "afa-fixture",
+        "profileRevision": "157508aff8221b19d93a6d07bb9cd7c11f6310d1884343136cd09cec2ed151bd",
+        "providerId": "s3",
+        "settings": {
+         "aclMode": "public-read",
+         "addressing": "path",
+         "bucket": "fixture",
+         "connectTimeoutMs": 5000,
+         "endpoint": "http://127.0.0.1:39955",
+         "lowSpeedBytesPerSecond": 1,
+         "lowSpeedTimeSeconds": 120,
+         "objectPrefix": "afa/",
+         "publicUrlBase": "http://127.0.0.1:39955/fixture",
+         "region": "us-east-1",
+         "requestTimeoutMs": 120000,
+         "storageClass": "STANDARD"
+        }
+       },
+       "directUrl": "http://127.0.0.1:39955/fixture/afa/Screen-Capture-2026-10-23-14-37-18.png",
+       "objectReference": {
+        "bytes": 3689,
+        "key": "afa/Screen-Capture-2026-10-23-14-37-18.png",
+        "schemaVersion": 1,
+        "sha256": "bedd05f10d962cbf5728b404faa5569761d5da9b09a1045d30eecb71bcbce03c",
+        "versionId": ""
+       },
+       "publicationId": "27b9ca61-f25f-4816-94d2-7e87ea59e5bf",
+       "schemaVersion": 1
+      },
+      "status": "pending"
+     }
+    ],
+    "state": "accepted"
+   }
+  },
+  "final": null,
+  "remoteAfter": "HTTP 404",
+  "remoteStatus": "removed",
+  "localPath": "/home/lab/work/put.gd-qt418/afa/runs/ubuntu-vm/archive/images/Screen-Capture-2026-10-23-14-37-18.png",
+  "localExistsAfter": true,
+  "historyRowKept": true
+ },
+ "settings": {
+  "schemes": {
+   "dark": {
+    "patch": true,
+    "appearance": {
+     "theme": "dark",
+     "scheme": "dark",
+     "desktop": "light",
+     "desktopSource": "qt"
+    },
+    "shot": {
+     "label": "settings-dark",
+     "components": [
+      {
+       "blocks": 13983,
+       "box": [
+        64,
+        64,
+        1280,
+        800
+       ]
+      }
+     ],
+     "colour": [
+      24,
+      24,
+      32
+     ],
+     "inner": [
+      66,
+      70,
+      1278,
+      798
+     ],
+     "changedShare": 0.998,
+     "ownShare": 0.965,
+     "kept": "/home/lab/work/put.gd-qt418/afa/runs/ubuntu-vm/crops/settings-dark.png"
+    },
+    "full": "/home/lab/work/put.gd-qt418/afa/runs/ubuntu-vm/full/settings-dark.png"
+   },
+   "light": {
+    "patch": true,
+    "appearance": {
+     "theme": "light",
+     "scheme": "light",
+     "desktop": "light",
+     "desktopSource": "qt"
+    },
+    "shot": {
+     "label": "settings-light",
+     "components": [
+      {
+       "blocks": 3328,
+       "box": [
+        296,
+        96,
+        1256,
+        760
+       ]
+      },
+      {
+       "blocks": 159,
+       "box": [
+        80,
+        488,
+        264,
+        544
+       ]
+      },
+      {
+       "blocks": 136,
+       "box": [
+        80,
+        392,
+        264,
+        440
+       ]
+      },
+      {
+       "blocks": 61,
+       "box": [
+        1104,
+        88,
+        1248,
+        128
+       ]
+      },
+      {
+       "blocks": 47,
+       "box": [
+        944,
+        88,
+        1088,
+        128
+       ]
+      },
+      {
+       "blocks": 15,
+       "box": [
+        496,
+        104,
+        560,
+        120
+       ]
+      }
+     ],
+     "colour": [
+      252,
+      252,
+      252
+     ],
+     "inner": [
+      298,
+      98,
+      1254,
+      758
+     ],
+     "changedShare": 0.839,
+     "ownShare": 0.968,
+     "kept": "/home/lab/work/put.gd-qt418/afa/runs/ubuntu-vm/crops/settings-light.png"
+    },
+    "full": "/home/lab/work/put.gd-qt418/afa/runs/ubuntu-vm/full/settings-light.png"
+   },
+   "system": {
+    "patch": true,
+    "appearance": {
+     "theme": "system",
+     "scheme": "light",
+     "desktop": "light",
+     "desktopSource": "qt"
+    },
+    "shot": {
+     "label": "settings-system",
+     "components": [
+      {
+       "blocks": 3342,
+       "box": [
+        296,
+        96,
+        1256,
+        760
+       ]
+      },
+      {
+       "blocks": 159,
+       "box": [
+        80,
+        488,
+        264,
+        544
+       ]
+      },
+      {
+       "blocks": 136,
+       "box": [
+        80,
+        392,
+        264,
+        440
+       ]
+      },
+      {
+       "blocks": 61,
+       "box": [
+        1104,
+        88,
+        1248,
+        128
+       ]
+      },
+      {
+       "blocks": 47,
+       "box": [
+        944,
+        88,
+        1088,
+        128
+       ]
+      },
+      {
+       "blocks": 15,
+       "box": [
+        496,
+        104,
+        560,
+        120
+       ]
+      }
+     ],
+     "colour": [
+      252,
+      252,
+      252
+     ],
+     "inner": [
+      298,
+      98,
+      1254,
+      758
+     ],
+     "changedShare": 0.839,
+     "ownShare": 0.968,
+     "kept": "/home/lab/work/put.gd-qt418/afa/runs/ubuntu-vm/crops/settings-system.png"
+    },
+    "full": "/home/lab/work/put.gd-qt418/afa/runs/ubuntu-vm/full/settings-system.png"
+   }
+  },
+  "updateStatus": {
+   "channel": null,
+   "channelSetting": "build",
+   "enabled": false,
+   "supported": false,
+   "reason": "development_build",
+   "notifies": false,
+   "checkedAt": null,
+   "nextCheckAt": null,
+   "error": null,
+   "result": null,
+   "build": {
+    "channel": null,
+    "kind": "none",
+    "packageTarget": "appimage",
+    "reason": "development_build",
+    "supported": false,
+    "version": "26.1023.1068-dev+g6a325a722afd"
+   }
+  },
+  "checkNow": {
+   "ok": false,
+   "seconds": 0.02,
+   "result": null,
+   "error": {
+    "code": "update_check_unavailable",
+    "details": {
+     "reason": "development_build"
+    },
+    "message": "This build does not check for updates"
+   }
+  },
+  "notificationsAfterCheck": [],
+  "liveFeed": "{\n  \"schema\": 1,\n  \"channel\": \"nightly\",\n  \"generatedAt\": \"2026-10-23T04:11:47Z\",\n  \"release\": {\n    \"tag\": \"v26.1023.1058-nightly\",\n    \"version\": \"26.1023.1058-nightly\",\n    \"publishedAt\": \"2026-10-23T04:10:17Z\",\n    \"notesUrl\": \"https://github.com/patrick-hudson/put.gd-desktop/releases/tag/v26.1023.1058-nightly\",\n    \"assets\": {\n      \"ubuntu24.04\": {\n        \"name\": \"putgd-26.1023.1058-nightly-ubuntu24.04-x86_64.deb\",\n        \"url\": \"https://github.com/patrick-hudson/put.gd-desktop/releases/download/v26.1023.1058-nightly/putgd-26.1023.1058-nightly-ubuntu24.04-x86_64.deb\",\n        \"size\": 54216822,\n        \"sha256\": \"f9b01cd26b3e3cbb3670658969e62f6a4c45e5c21b8a9029923d41ec56d75833\"\n      },\n      \"ubuntu26.04\": {\n        \"name\": \"putgd-26.1023.1058-nightly-ubuntu26.04-x86_64.deb\",\n        \"url\": \"https://github.com/patrick-hudson/put.gd-desktop/releases/download/v26.1023.1058-nightly/putgd-26.1023.1058-nightly-ubuntu26.04-x86_64.deb\",\n        \"size\": 54572542,\n        \"sha256\": \"a06b63f9e4ff0fc21c57392d5f34fc076ea9badca139e0dd87fe09ed73510feb\"\n      },\n      \"debian13\": {\n        \"name\": \"putgd-26.1023.1058-nightly-debian13-x86_64.deb\",\n        \"url\": \"https://github.com/patrick-hudson/put.gd-desktop/releases/download/v26.1023.1058-nightly/putgd-26.1023.1058-nightly-debian13-x86_64.deb\",\n        \"size\": 54108456,\n        \"sha256\": \"d56909f1703c8ca8225d059ac3a78bf1d7889ea610df82746e5b3ea5796fba0c\"\n      },\n      \"fedora44\": {\n        \"name\": \"putgd-26.1023.1058-nightly-fedora44-x86_64.rpm\",\n        \"url\": \"https://github.com/patrick-hudson/put.gd-desktop/releases/download/v26.1023.1058-nightly/putgd-26.1023.1058-nightly-fedora44-x86_64.rpm\",\n        \"size\": 40554170,\n        \"sha256\": \"d97d711687a4b9e04f77dd71bc87bcfd44529e01c2e7b180655a4a293b828937\"\n      },\n      \"appimage\": {\n        \"name\": \"putgd-26.1023.1058-nightly-x86_64.AppImage\",\n        \"url\": \"https://github.com/patrick-hudson/put.gd-desktop/releases/download/v26.1023.1058-nightly/putgd-26.1023.1058-ni"
+ },
+ "statusClean:settings": {
+  "statusControl": [],
+  "zsyncOutput": null,
+  "pass": true
+ },
+ "channel:ubuntu-vm-344:stable": {
+  "to": "stable",
+  "patch": true,
+  "patchError": {
+   "code": "",
+   "details": {},
+   "message": ""
+  },
+  "check": {
+   "ok": false,
+   "seconds": 1.55,
+   "result": {},
+   "error": {
+    "code": "update_check_unavailable",
+    "details": {
+     "reason": "development_build"
+    },
+    "message": "This build does not check for updates"
+   }
+  },
+  "status": {
+   "channel": "stable",
+   "channelSetting": "stable",
+   "supported": false,
+   "reason": "development_build",
+   "notifies": true,
+   "error": null,
+   "result": null,
+   "build": {
+    "channel": null,
+    "kind": "none",
+    "packageTarget": "appimage",
+    "reason": "development_build",
+    "supported": false,
+    "version": "26.1023.1068-dev+g6a325a722afd"
+   },
+   "install": {
+    "available": false,
+    "backup": null,
+    "image": "/home/lab/put.gd-qt418/afa/images/putgd-26.1023.1068-dev+g6a325a722afd-x86_64.AppImage",
+    "installed": null,
+    "kind": "update",
+    "reason": "development_build",
+    "restartRequired": false,
+    "running": false,
+    "state": "idle",
+    "switch": null
+   }
+  },
+  "notifications": [
+   {
+    "category": "putgd.ui",
+    "fields": {
+     "itemId": null,
+     "notificationId": 1,
+     "notificationText": "Uploaded. Link copied to the clipboard. Click to open in browser.",
+     "operationId": null,
+     "summary": "operation_completed",
+     "title": "put.gd \u2014 completed",
+     "warning": false
+    },
+    "level": "info",
+    "message": "Notification shown",
+    "pid": 3027,
+    "process": "putgd",
+    "time": "2026-10-23T19:37:19.150Z",
+    "v": 1
+   }
+  ],
+  "full": "/home/lab/work/put.gd-qt418/afa/runs/ubuntu-vm/full/ubuntu-vm-344-stable.png"
+ },
+ "channel:ubuntu-vm-344:nightly": {
+  "to": "nightly",
+  "patch": true,
+  "patchError": {
+   "code": "",
+   "details": {},
+   "message": ""
+  },
+  "check": {
+   "ok": false,
+   "seconds": 1.55,
+   "result": {},
+   "error": {
+    "code": "update_check_unavailable",
+    "details": {
+     "reason": "development_build"
+    },
+    "message": "This build does not check for updates"
+   }
+  },
+  "status": {
+   "channel": "nightly",
+   "channelSetting": "nightly",
+   "supported": false,
+   "reason": "development_build",
+   "notifies": false,
+   "error": null,
+   "result": null,
+   "build": {
+    "channel": null,
+    "kind": "none",
+    "packageTarget": "appimage",
+    "reason": "development_build",
+    "supported": false,
+    "version": "26.1023.1068-dev+g6a325a722afd"
+   },
+   "install": {
+    "available": false,
+    "backup": null,
+    "image": "/home/lab/put.gd-qt418/afa/images/putgd-26.1023.1068-dev+g6a325a722afd-x86_64.AppImage",
+    "installed": null,
+    "kind": "update",
+    "reason": "development_build",
+    "restartRequired": false,
+    "running": false,
+    "state": "idle",
+    "switch": null
+   }
+  },
+  "notifications": [
+   {
+    "category": "putgd.ui",
+    "fields": {
+     "itemId": null,
+     "notificationId": 1,
+     "notificationText": "Uploaded. Link copied to the clipboard. Click to open in browser.",
+     "operationId": null,
+     "summary": "operation_completed",
+     "title": "put.gd \u2014 completed",
+     "warning": false
+    },
+    "level": "info",
+    "message": "Notification shown",
+    "pid": 3027,
+    "process": "putgd",
+    "time": "2026-10-23T19:37:19.150Z",
+    "v": 1
+   }
+  ],
+  "full": "/home/lab/work/put.gd-qt418/afa/runs/ubuntu-vm/full/ubuntu-vm-344-nightly.png"
+ },
+ "clipfile": {
+  "at": "2026-10-23T19:40:54Z",
+  "before": {
+   "putgd": [
+    3027
+   ],
+   "putgd-ui": [
+    4025
+   ]
+  },
+  "entries": [
+   {
+    "sample": "cve-2026-8168-deep-nesting.svg",
+    "sha256": "c6980c19fc324275f07df6443eac1bdea38a4f9451c73ea0dd4f12b0c547ac5b",
+    "bytes": 1400111,
+    "clipboardOwnerPid": 8272,
+    "operation": {
+     "id": "657a973b-978b-4223-8f85-3bc437b0527f",
+     "state": "completed",
+     "copyStatus": "copied",
+     "items": [
+      {
+       "name": "cve-2026-8168-deep-nesting.svg",
+       "mime": "image/svg+xml",
+       "uploadStatus": "uploaded",
+       "link": "http://127.0.0.1:39955/fixture/afa/cve-2026-8168-deep-nesting-9526fa40-050b-4f62-9903-180b48e421e9.svg",
+       "local": {
+        "error": {
+         "code": "",
+         "details": {},
+         "message": ""
+        },
+        "path": "/home/lab/work/put.gd-qt418/afa/runs/ubuntu-vm/archive/images/cve-2026-8168-deep-nesting-c4779602-11ec-47f9-9d2d-4db7e4fcd7b8.svg",
+        "status": "saved"
+       }
+      }
+     ],
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     }
+    },
+    "history": {
+     "id": "cf9f9378-9294-4d98-b926-753b98c5c1e1",
+     "name": "cve-2026-8168-deep-nesting.svg",
+     "mime": "image/svg+xml",
+     "uploadStatus": "uploaded",
+     "local": "saved",
+     "newest": true
+    },
+    "preview": {
+     "ok": false,
+     "state": null,
+     "error": {
+      "code": "preview_failed",
+      "details": {},
+      "message": "The image preview could not be made"
+     },
+     "previewExists": false
+    },
+    "afterPreview": {
+     "putgd": [
+      3027
+     ],
+     "putgd-ui": [
+      4025
+     ]
+    },
+    "cards": 2,
+    "frame": "/home/lab/work/put.gd-qt418/afa/runs/ubuntu-vm/full/ubuntu-vm-clipfile-0.png",
+    "afterUi": {
+     "putgd": [
+      3027
+     ],
+     "putgd-ui": [
+      4025
+     ]
+    }
+   },
+   {
+    "sample": "cve-2025-5683-icns-block-length.icns",
+    "sha256": "e639bf43bd190e0660f20c6ae205c366c7b1a8ad9f06127d7837953fb8062717",
+    "bytes": 49,
+    "clipboardOwnerPid": 8359,
+    "operation": {
+     "id": "8a3caa43-b574-4317-90f3-b9c3787c403b",
+     "state": "completed",
+     "copyStatus": "copied",
+     "items": [
+      {
+       "name": "cve-2025-5683-icns-block-length.icns",
+       "mime": "image/x-icns",
+       "uploadStatus": "uploaded",
+       "link": "http://127.0.0.1:39955/fixture/afa/cve-2025-5683-icns-block-length.icns",
+       "local": {
+        "error": {
+         "code": "",
+         "details": {},
+         "message": ""
+        },
+        "path": "/home/lab/work/put.gd-qt418/afa/runs/ubuntu-vm/archive/images/cve-2025-5683-icns-block-length.icns",
+        "status": "saved"
+       }
+      }
+     ],
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     }
+    },
+    "history": {
+     "id": "0acea446-25ac-4922-88c5-bbcb11619d6a",
+     "name": "cve-2025-5683-icns-block-length.icns",
+     "mime": "image/x-icns",
+     "uploadStatus": "uploaded",
+     "local": "saved",
+     "newest": true
+    },
+    "preview": {
+     "ok": false,
+     "state": null,
+     "error": {
+      "code": "preview_failed",
+      "details": {},
+      "message": "The image preview could not be made"
+     },
+     "previewExists": false
+    },
+    "afterPreview": {
+     "putgd": [
+      3027
+     ],
+     "putgd-ui": [
+      4025
+     ]
+    },
+    "cards": 3,
+    "frame": "/home/lab/work/put.gd-qt418/afa/runs/ubuntu-vm/full/ubuntu-vm-clipfile-1.png",
+    "afterUi": {
+     "putgd": [
+      3027
+     ],
+     "putgd-ui": [
+      4025
+     ]
+    }
+   },
+   {
+    "sample": "fuzz-tiff-00.tiff",
+    "sha256": "6f6aa40023069e1f3a3b68cd1755979c8cb8381d176b5a9e37cc88f4f0e409c4",
+    "bytes": 3212,
+    "clipboardOwnerPid": 8443,
+    "operation": {
+     "id": "5a869055-feec-4ff3-b5c9-d71cc8318612",
+     "state": "completed",
+     "copyStatus": "copied",
+     "items": [
+      {
+       "name": "fuzz-tiff-00.tiff",
+       "mime": "image/tiff",
+       "uploadStatus": "uploaded",
+       "link": "http://127.0.0.1:39955/fixture/afa/fuzz-tiff-00.tiff",
+       "local": {
+        "error": {
+         "code": "",
+         "details": {},
+         "message": ""
+        },
+        "path": "/home/lab/work/put.gd-qt418/afa/runs/ubuntu-vm/archive/images/fuzz-tiff-00.tiff",
+        "status": "saved"
+       }
+      }
+     ],
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     }
+    },
+    "history": {
+     "id": "d4d749f3-cba0-417d-b04b-614dad17c522",
+     "name": "fuzz-tiff-00.tiff",
+     "mime": "image/tiff",
+     "uploadStatus": "uploaded",
+     "local": "saved",
+     "newest": true
+    },
+    "preview": {
+     "ok": false,
+     "state": null,
+     "error": {
+      "code": "preview_failed",
+      "details": {},
+      "message": "The image preview could not be made"
+     },
+     "previewExists": false
+    },
+    "afterPreview": {
+     "putgd": [
+      3027
+     ],
+     "putgd-ui": [
+      4025
+     ]
+    },
+    "cards": 3,
+    "frame": "/home/lab/work/put.gd-qt418/afa/runs/ubuntu-vm/full/ubuntu-vm-clipfile-2.png",
+    "afterUi": {
+     "putgd": [
+      3027
+     ],
+     "putgd-ui": [
+      4025
+     ]
+    }
+   },
+   {
+    "sample": "cve-2025-10729-pattern-orphan.svg",
+    "sha256": "b1b7776ef367bc7e360ea559821347242979005e253df30c4cac5cc647708e54",
+    "bytes": 271,
+    "clipboardOwnerPid": 8526,
+    "operation": {
+     "id": "ebd344a3-fc31-4d8c-8cd3-1992eb00dec2",
+     "state": "completed",
+     "copyStatus": "copied",
+     "items": [
+      {
+       "name": "cve-2025-10729-pattern-orphan.svg",
+       "mime": "image/svg+xml",
+       "uploadStatus": "uploaded",
+       "link": "http://127.0.0.1:39955/fixture/afa/cve-2025-10729-pattern-orphan.svg",
+       "local": {
+        "error": {
+         "code": "",
+         "details": {},
+         "message": ""
+        },
+        "path": "/home/lab/work/put.gd-qt418/afa/runs/ubuntu-vm/archive/images/cve-2025-10729-pattern-orphan.svg",
+        "status": "saved"
+       }
+      }
+     ],
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     }
+    },
+    "history": {
+     "id": "62966a45-7d7c-4b48-bc1e-f2a3f5448718",
+     "name": "cve-2025-10729-pattern-orphan.svg",
+     "mime": "image/svg+xml",
+     "uploadStatus": "uploaded",
+     "local": "saved",
+     "newest": true
+    },
+    "preview": {
+     "ok": true,
+     "state": "ready",
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     },
+     "previewExists": true
+    },
+    "afterPreview": {
+     "putgd": [
+      3027
+     ],
+     "putgd-ui": [
+      4025
+     ]
+    },
+    "cards": 2,
+    "frame": "/home/lab/work/put.gd-qt418/afa/runs/ubuntu-vm/full/ubuntu-vm-clipfile-3.png",
+    "afterUi": {
+     "putgd": [
+      3027
+     ],
+     "putgd-ui": [
+      4025
+     ]
+    }
+   }
+  ],
+  "after": {
+   "putgd": [
+    3027
+   ],
+   "putgd-ui": [
+    4025
+   ]
+  },
+  "diagnostics": {
+   "build": {
+    "baseVersion": "26.1023.1068",
+    "commitCount": 1068,
+    "dirty": false,
+    "gitCommit": "6a325a722afd946046a96480ca524db8aa6abcce",
+    "gitTree": "a0a449b23b4eb70f516e3c317b6d93b412aafbbb",
+    "packageVersion": "26.1023.1068~dev+g6a325a722afd",
+    "schemaVersion": 1,
+    "sourceProvenance": "git",
+    "version": "26.1023.1068-dev+g6a325a722afd"
+   },
+   "journalReady": true,
+   "qtVersion": "6.12.0"
+  },
+  "survived": true
+ },
+ "menuShortcut:ubuntu-vm-341-desktop-traymenu": {
+  "action": "desktop",
+  "shortcut": "Ctrl+Shift+3",
+  "opened": "click:1158,16",
+  "menuBox": [
+   1042,
+   194,
+   1254,
+   485
+  ],
+  "menuFull": "/home/lab/work/put.gd-qt418/afa/runs/ubuntu-vm/full/ubuntu-vm-341-desktop-traymenu-menu-open.png",
+  "seconds": 0.7,
+  "operations": [
+   {
+    "id": "e44083e2-c668-404a-9c2a-e8fb286b475a",
+    "state": "running",
+    "copyStatus": "pending",
+    "items": [
+     {
+      "name": "Screen-Capture-2026-10-23-14-42-15.png",
+      "mime": "image/png",
+      "uploadStatus": "uploading",
+      "link": "",
+      "local": {
+       "error": {
+        "code": "",
+        "details": {},
+        "message": ""
+       },
+       "path": "/home/lab/work/put.gd-qt418/afa/runs/ubuntu-vm/archive/images/Screen-Capture-2026-10-23-14-42-15.png",
+       "status": "saved"
+      }
+     }
+    ],
+    "error": {
+     "code": "",
+     "details": {},
+     "message": ""
+    }
+   }
+  ],
+  "newHistory": [
+   "cb3b15e9-b081-455b-8f29-532a7da04ef1"
+  ],
+  "notices": [
+   {
+    "itemId": null,
+    "notificationId": 1,
+    "notificationText": "Uploaded. Link copied to the clipboard. Click to open in browser.",
+    "operationId": null,
+    "summary": "operation_completed",
+    "title": "put.gd \u2014 completed",
+    "warning": false
+   }
+  ],
+  "shortcutLog": [
+   {
+    "message": "Resident started",
+    "fields": {
+     "architecture": "x86_64",
+     "build": {
+      "baseVersion": "26.1023.1068",
+      "commitCount": 1068,
+      "dirty": false,
+      "gitCommit": "6a325a722afd946046a96480ca524db8aa6abcce",
+      "gitTree": "a0a449b23b4eb70f516e3c317b6d93b412aafbbb",
+      "packageVersion": "26.1023.1068~dev+g6a325a722afd",
+      "schemaVersion": 1,
+      "sourceProvenance": "git",
+      "version": "26.1023.1068-dev+g6a325a722afd"
+     },
+     "capabilities": {
+      "adapter": "gnome-wayland",
+      "capture": {
+       "desktop": {
+        "available": false,
+        "consent": "one-time-extension-setup",
+        "error": {
+         "code": "",
+         "details": {},
+         "message": ""
+        },
+        "mode": "compositor-native"
+       },
+       "region": {
+        "available": false,
+        "consent": "one-time-extension-setup",
+        "error": {
+         "code": "",
+         "details": {},
+         "message": ""
+        },
+        "mode": "compositor-native"
+       },
+       "window": {
+        "available": false,
+        "consent": "one-time-extension-setup",
+        "error": {
+         "code": "",
+         "details": {},
+         "message": ""
+        },
+        "mode": "compositor-native"
+       }
+      },
+      "clipboard": "<redacted>",
+      "helper": {
+       "available": false,
+       "error": {
+        "code": "",
+        "details": {},
+        "message": ""
+       },
+       "outdated": false,
+       "packagedExtensionVersion": 2,
+       "protocol": 1,
+       "recordingVersion": 0,
+       "uuid": "putgd@put.gd"
+      },
+      "shortcuts": {
+       "available": false,
+       "bindings": {
+        "clipboard": "<redacted>",
+        "desktop": {
+         "bound": false,
+         "error": "helper_unavailable",
+         "requested": "Ctrl+Shift+3"
+        },
+        "edit": {
+         "bound": false,
+         "error": "disabled",
+         "requested": ""
+        },
+        "record": {
+         "bound": false,
+         "error": "disabled",
+         "requested": ""
+        },
+        "region": {
+         "bound": false,
+         "error": "helper_unavailable",
+         "requested": "Ctrl+Shift+1"
+        },
+        "window": {
+         "bound": false,
+         "error": "helper_unavailable",
+         "requested": "Ctrl+Shift+2"
+        }
+       }
+      }
+     },
+     "desktop": "ubuntu:GNOME",
+     "itemId": null,
+     "kernel": "7.0.0-38-generic",
+     "locations": {
+      "config": {
+       "path": "/home/lab/work/put.gd-qt418/afa/runs/ubuntu-vm/config/putgd",
+       "state": "current"
+      },
+      "data": {
+       "path": "/home/lab/.local/share/putgd",
+       "state": "current"
+      },
+      "schemaVersion": 1
+     },
+     "operationId": null,
+     "os": "Ubuntu 26.04.1 LTS",
+     "platform": "none",
+     "qtCompiled": "6.12.0",
+     "qtRuntime": "6.12.0",
+     "resident": "gnome-core",
+     "sessionType": "wayland",
+     "trayAvailable": false
+    }
+   },
+   {
+    "message": "Resident started",
+    "fields": {
+     "architecture": "x86_64",
+     "build": {
+      "baseVersion": "26.1023.1068",
+      "commitCount": 1068,
+      "dirty": false,
+      "gitCommit": "6a325a722afd946046a96480ca524db8aa6abcce",
+      "gitTree": "a0a449b23b4eb70f516e3c317b6d93b412aafbbb",
+      "packageVersion": "26.1023.1068~dev+g6a325a722afd",
+      "schemaVersion": 1,
+      "sourceProvenance": "git",
+      "version": "26.1023.1068-dev+g6a325a722afd"
+     },
+     "capabilities": {
+      "adapter": "gnome-wayland",
+      "capture": {
+       "desktop": {
+        "available": false,
+        "consent": "one-time-extension-setup",
+        "error": {
+         "code": "",
+         "details": {},
+         "message": ""
+        },
+        "mode": "compositor-native"
+       },
+       "region": {
+        "available": false,
+        "consent": "one-time-extension-setup",
+        "error": {
+         "code": "",
+         "details": {},
+         "message": ""
+        },
+        "mode": "compositor-native"
+       },
+       "window": {
+        "available": false,
+        "consent": "one-time-extension-setup",
+        "error": {
+         "code": "",
+         "details": {},
+         "message": ""
+        },
+        "mode": "compositor-native"
+       }
+      },
+      "clipboard": "<redacted>",
+      "helper": {
+       "available": false,
+       "error": {
+        "code": "",
+        "details": {},
+        "message": ""
+       },
+       "outdated": false,
+       "packagedExtensionVersion": 2,
+       "protocol": 1,
+       "recordingVersion": 0,
+       "uuid": "putgd@put.gd"
+      },
+      "shortcuts": {
+       "available": false,
+       "bindings": {
+        "clipboard": "<redacted>",
+        "desktop": {
+         "bound": false,
+         "error": "helper_unavailable",
+         "requested": "Ctrl+Shift+3"
+        },
+        "edit": {
+         "bound": false,
+         "error": "disabled",
+         "requested": ""
+        },
+        "record": {
+         "bound": false,
+         "error": "disabled",
+         "requested": ""
+        },
+        "region": {
+         "bound": false,
+         "error": "helper_unavailable",
+         "requested": "Ctrl+Shift+1"
+        },
+        "window": {
+         "bound": false,
+         "error": "helper_unavailable",
+         "requested": "Ctrl+Shift+2"
+        }
+       }
+      }
+     },
+     "desktop": "ubuntu:GNOME",
+     "itemId": null,
+     "kernel": "7.0.0-38-generic",
+     "locations": {
+      "config": {
+       "path": "/home/lab/work/put.gd-qt418/afa/runs/ubuntu-vm/config/putgd",
+       "state": "current"
+      },
+      "data": {
+       "path": "/home/lab/.local/share/putgd",
+       "state": "current"
+      },
+      "schemaVersion": 1
+     },
+     "operationId": null,
+     "os": "Ubuntu 26.04.1 LTS",
+     "platform": "none",
+     "qtCompiled": "6.12.0",
+     "qtRuntime": "6.12.0",
+     "resident": "gnome-core",
+     "sessionType": "wayland",
+     "trayAvailable": false
+    }
+   }
+  ],
+  "history": {
+   "id": "cb3b15e9-b081-455b-8f29-532a7da04ef1",
+   "name": "Screen-Capture-2026-10-23-14-42-15.png",
+   "uploadStatus": "uploading"
+  },
+  "png": {
+   "path": "/home/lab/work/put.gd-qt418/afa/runs/ubuntu-vm/out/ubuntu-vm-341-desktop-traymenu.png",
+   "size": [
+    1280,
+    800
+   ],
+   "sha256": "103921e45aba5cde5ade56f29b12e7780198bd5746d2ddaa7a769340d98f3527"
+  },
+  "menuInCapture": 1.0,
+  "after": "/home/lab/work/put.gd-qt418/afa/runs/ubuntu-vm/full/ubuntu-vm-341-desktop-traymenu-after.png"
+ },
+ "menuShortcut:ubuntu-vm-341-region-traymenu": {
+  "action": "region",
+  "shortcut": "Ctrl+Shift+1",
+  "opened": "click:1158,16",
+  "menuBox": [
+   1042,
+   194,
+   1254,
+   485
+  ],
+  "menuFull": "/home/lab/work/put.gd-qt418/afa/runs/ubuntu-vm/full/ubuntu-vm-341-region-traymenu-menu-open.png",
+  "selectorFull": "/home/lab/work/put.gd-qt418/afa/runs/ubuntu-vm/full/ubuntu-vm-341-region-traymenu-selector.png",
+  "drag": [
+   1000,
+   500,
+   1080,
+   560
+  ],
+  "seconds": 5.05,
+  "operations": [
+   {
+    "id": "d8ec9f95-83cf-49e4-8a97-367c88687696",
+    "state": "running",
+    "copyStatus": "pending",
+    "items": [
+     {
+      "name": "Screen-Capture-2026-10-23-14-42-26.png",
+      "mime": "image/png",
+      "uploadStatus": "uploading",
+      "link": "",
+      "local": {
+       "error": {
+        "code": "",
+        "details": {},
+        "message": ""
+       },
+       "path": "/home/lab/work/put.gd-qt418/afa/runs/ubuntu-vm/archive/images/Screen-Capture-2026-10-23-14-42-26.png",
+       "status": "saved"
+      }
+     }
+    ],
+    "error": {
+     "code": "",
+     "details": {},
+     "message": ""
+    }
+   }
+  ],
+  "newHistory": [
+   "42cb0567-b476-4c40-8ec7-0b1409ccd947"
+  ],
+  "notices": [
+   {
+    "itemId": null,
+    "notificationId": 1,
+    "notificationText": "Uploaded. Link copied to the clipboard. Click to open in browser.",
+    "operationId": null,
+    "summary": "operation_completed",
+    "title": "put.gd \u2014 completed",
+    "warning": false
+   }
+  ],
+  "shortcutLog": [
+   {
+    "message": "Resident started",
+    "fields": {
+     "architecture": "x86_64",
+     "build": {
+      "baseVersion": "26.1023.1068",
+      "commitCount": 1068,
+      "dirty": false,
+      "gitCommit": "6a325a722afd946046a96480ca524db8aa6abcce",
+      "gitTree": "a0a449b23b4eb70f516e3c317b6d93b412aafbbb",
+      "packageVersion": "26.1023.1068~dev+g6a325a722afd",
+      "schemaVersion": 1,
+      "sourceProvenance": "git",
+      "version": "26.1023.1068-dev+g6a325a722afd"
+     },
+     "capabilities": {
+      "adapter": "gnome-wayland",
+      "capture": {
+       "desktop": {
+        "available": false,
+        "consent": "one-time-extension-setup",
+        "error": {
+         "code": "",
+         "details": {},
+         "message": ""
+        },
+        "mode": "compositor-native"
+       },
+       "region": {
+        "available": false,
+        "consent": "one-time-extension-setup",
+        "error": {
+         "code": "",
+         "details": {},
+         "message": ""
+        },
+        "mode": "compositor-native"
+       },
+       "window": {
+        "available": false,
+        "consent": "one-time-extension-setup",
+        "error": {
+         "code": "",
+         "details": {},
+         "message": ""
+        },
+        "mode": "compositor-native"
+       }
+      },
+      "clipboard": "<redacted>",
+      "helper": {
+       "available": false,
+       "error": {
+        "code": "",
+        "details": {},
+        "message": ""
+       },
+       "outdated": false,
+       "packagedExtensionVersion": 2,
+       "protocol": 1,
+       "recordingVersion": 0,
+       "uuid": "putgd@put.gd"
+      },
+      "shortcuts": {
+       "available": false,
+       "bindings": {
+        "clipboard": "<redacted>",
+        "desktop": {
+         "bound": false,
+         "error": "helper_unavailable",
+         "requested": "Ctrl+Shift+3"
+        },
+        "edit": {
+         "bound": false,
+         "error": "disabled",
+         "requested": ""
+        },
+        "record": {
+         "bound": false,
+         "error": "disabled",
+         "requested": ""
+        },
+        "region": {
+         "bound": false,
+         "error": "helper_unavailable",
+         "requested": "Ctrl+Shift+1"
+        },
+        "window": {
+         "bound": false,
+         "error": "helper_unavailable",
+         "requested": "Ctrl+Shift+2"
+        }
+       }
+      }
+     },
+     "desktop": "ubuntu:GNOME",
+     "itemId": null,
+     "kernel": "7.0.0-38-generic",
+     "locations": {
+      "config": {
+       "path": "/home/lab/work/put.gd-qt418/afa/runs/ubuntu-vm/config/putgd",
+       "state": "current"
+      },
+      "data": {
+       "path": "/home/lab/.local/share/putgd",
+       "state": "current"
+      },
+      "schemaVersion": 1
+     },
+     "operationId": null,
+     "os": "Ubuntu 26.04.1 LTS",
+     "platform": "none",
+     "qtCompiled": "6.12.0",
+     "qtRuntime": "6.12.0",
+     "resident": "gnome-core",
+     "sessionType": "wayland",
+     "trayAvailable": false
+    }
+   },
+   {
+    "message": "Resident started",
+    "fields": {
+     "architecture": "x86_64",
+     "build": {
+      "baseVersion": "26.1023.1068",
+      "commitCount": 1068,
+      "dirty": false,
+      "gitCommit": "6a325a722afd946046a96480ca524db8aa6abcce",
+      "gitTree": "a0a449b23b4eb70f516e3c317b6d93b412aafbbb",
+      "packageVersion": "26.1023.1068~dev+g6a325a722afd",
+      "schemaVersion": 1,
+      "sourceProvenance": "git",
+      "version": "26.1023.1068-dev+g6a325a722afd"
+     },
+     "capabilities": {
+      "adapter": "gnome-wayland",
+      "capture": {
+       "desktop": {
+        "available": false,
+        "consent": "one-time-extension-setup",
+        "error": {
+         "code": "",
+         "details": {},
+         "message": ""
+        },
+        "mode": "compositor-native"
+       },
+       "region": {
+        "available": false,
+        "consent": "one-time-extension-setup",
+        "error": {
+         "code": "",
+         "details": {},
+         "message": ""
+        },
+        "mode": "compositor-native"
+       },
+       "window": {
+        "available": false,
+        "consent": "one-time-extension-setup",
+        "error": {
+         "code": "",
+         "details": {},
+         "message": ""
+        },
+        "mode": "compositor-native"
+       }
+      },
+      "clipboard": "<redacted>",
+      "helper": {
+       "available": false,
+       "error": {
+        "code": "",
+        "details": {},
+        "message": ""
+       },
+       "outdated": false,
+       "packagedExtensionVersion": 2,
+       "protocol": 1,
+       "recordingVersion": 0,
+       "uuid": "putgd@put.gd"
+      },
+      "shortcuts": {
+       "available": false,
+       "bindings": {
+        "clipboard": "<redacted>",
+        "desktop": {
+         "bound": false,
+         "error": "helper_unavailable",
+         "requested": "Ctrl+Shift+3"
+        },
+        "edit": {
+         "bound": false,
+         "error": "disabled",
+         "requested": ""
+        },
+        "record": {
+         "bound": false,
+         "error": "disabled",
+         "requested": ""
+        },
+        "region": {
+         "bound": false,
+         "error": "helper_unavailable",
+         "requested": "Ctrl+Shift+1"
+        },
+        "window": {
+         "bound": false,
+         "error": "helper_unavailable",
+         "requested": "Ctrl+Shift+2"
+        }
+       }
+      }
+     },
+     "desktop": "ubuntu:GNOME",
+     "itemId": null,
+     "kernel": "7.0.0-38-generic",
+     "locations": {
+      "config": {
+       "path": "/home/lab/work/put.gd-qt418/afa/runs/ubuntu-vm/config/putgd",
+       "state": "current"
+      },
+      "data": {
+       "path": "/home/lab/.local/share/putgd",
+       "state": "current"
+      },
+      "schemaVersion": 1
+     },
+     "operationId": null,
+     "os": "Ubuntu 26.04.1 LTS",
+     "platform": "none",
+     "qtCompiled": "6.12.0",
+     "qtRuntime": "6.12.0",
+     "resident": "gnome-core",
+     "sessionType": "wayland",
+     "trayAvailable": false
+    }
+   }
+  ],
+  "history": {
+   "id": "42cb0567-b476-4c40-8ec7-0b1409ccd947",
+   "name": "Screen-Capture-2026-10-23-14-42-26.png",
+   "uploadStatus": "uploading"
+  },
+  "png": {
+   "path": "/home/lab/work/put.gd-qt418/afa/runs/ubuntu-vm/out/ubuntu-vm-341-region-traymenu.png",
+   "size": [
+    80,
+    60
+   ],
+   "sha256": "d395f4f0b3302d761d18b90b08d640c9a09e6e4c47ce5721f9ff03a3d2136b59"
+  },
+  "expectedSize": [
+   80,
+   60
+  ],
+  "after": "/home/lab/work/put.gd-qt418/afa/runs/ubuntu-vm/full/ubuntu-vm-341-region-traymenu-after.png"
+ },
+ "loginEnable": {
+  "patch": true,
+  "loginStartup": {
+   "applied": true,
+   "enabled": true
+  },
+  "privateEntry": "[Desktop Entry]\nType=Application\nName=put.gd\nExec=/bin/sh \"/home/lab/.local/share/putgd/login/appimage-start.sh\" --background\nTerminal=false\nX-putgd-Managed=true\n",
+  "loginScript": "#!/bin/sh\n# put.gd start at login for an AppImage (#307). put.gd writes this file while\n# Launch at login is on and rewrites it at every start; edits are replaced.\n# X-putgd-Managed=true\n#\n# Updaters that follow the image's .zsync write the new version under the\n# .zsync's versioned file name, beside the old image (AppImageLauncher), and may\n# remove the old one (appimageupdatetool --remove-old). So start the newest\n# put.gd AppImage in the configured image's folder that embeds the same update\n# information. Gear Lever replaces the configured file in place, which needs\n# nothing extra. Only the user's own files in the user's own folder qualify\n# as newer images.\nset -u\nconfigured='/home/lab/put.gd-qt418/afa/images/putgd-26.1023.1068-dev+g6a325a722afd-x86_64.AppImage'\nupdate_information=''\n\nsay() {\n    printf 'put.gd login start: %s\\n' \"$*\" >&2\n}\n\n# The user's private group: named after the user, with no other members. With\n# umask 002 (the desktop default on Debian 13, Kubuntu 26.04 and Mint 22.3) the\n# user's files are group-writable.\nown_group=\nuser=$(id -un 2>/dev/null) && group=$(id -g 2>/dev/null) && entry=$(getent group \"$group\" 2>/dev/null) &&\n    case $entry in\n        \"$user\":*:\"$group\": | \"$user\":*:\"$group\":\"$user\") own_group=$group ;;\n    esac\n\n# Owned by the user and writable by nobody else.\nprivate() {\n    [ -O \"$1\" ] || return 1\n    set -- $(stat -L -c '%a %g' -- \"$1\" 2>/dev/null)\n    [ $# -eq 2 ] || return 1\n    case $1 in\n        *[2367]) return 1 ;;\n        *[2367]?) [ \"$2\" = \"$own_group\" ] || return 1 ;;\n    esac\n}\n\n# A private executable regular file, not a symbolic link, with the AppImage\n# type 2 magic at offset 8.\nappimage() {\n    [ -f \"$1\" ] && [ ! -L \"$1\" ] && [ -x \"$1\" ] && private \"$1\" || return 1\n    [ \"$(head -c 11 -- \"$1\" 2>/dev/null | tail -c 3 | od -An -tx1 | tr -d ' \\n')\" = 414902 ]\n}\n\nbounded() {\n    if command -v timeout >/dev/null 2>&1; then\n        timeout 20 \"$@\"\n    else\n        \"$@\"\n    fi\n}\n\n# The version in putgd-VERSION-x86_64.AppImage, as the .zsync names the image,\n# or in AppImageLauncher's putgd-VERSION-x86_64_<md5>.AppImage.\nname_version() {\n    name=${1##*/}\n    case $name in\n        putgd-?*-x86_64.AppImage | putgd-?*-x86_64_*.AppImage) ;;\n        *) return 1 ;;\n    esac\n    version=${name#putgd-}\n    version=${version%%-x86_64*}\n    case $version in\n        [0-9]*) ;;\n        *) return 1 ;;\n    esac\n    case $version in\n        *[!0-9A-Za-z.+-]*) return 1 ;;\n    esac\n    printf '%s\\n' \"$version\"\n}\n\n# Prereleases order before their release: 26.1101.960-nightly < 26.1101.960 (sort -V, ~).\nsortable() {\n    case $1 in\n        *-*) printf '%s~%s\\n' \"${1%%-*}\" \"${1#*-}\" ;;\n        *) printf '%s\\n' \"$1\" ;;\n    esac\n}\n\n# Is version $1 newer than version $2?\nnewer() {\n    [ \"$1\" != \"$2\" ] && [ \"$(printf '%s\\n%s\\n' \"$1\" \"$2\" | sort -V | tail -n 1)\" = \"$1\" ]\n}\n\nbest=\nbest_version=\ndirectory=${configured%/*}\nif [ -n \"$update_information\" ] && [ -d \"$directory\" ] && private \"$directory\"; then\n    for candidate in \"$directory\"/putgd-*.AppImage; do\n        [ \"$candidate\" != \"$configured\" ] || continue\n        version=$(name_version \"$candidate\") || continue\n        version=$(sortable \"$version\")\n        if [ -n \"$best\" ] && ! newer \"$version\" \"$best_version\"; then\n            continue\n        fi\n        appimage \"$candidate\" || continue\n        [ \"$(bounded \"$candidate\" --appimage-updateinformation 2>/dev/null)\" = \"$update_information\" ] || continue\n        best=$candidate\n        best_version=$version\n    done\nfi\n# The configured image is the one put.gd last ran from; like the autostart entry\n# before #307, it only has to be an executable file.\nif [ -f \"$configured\" ] && [ -x \"$configured\" ]; then\n    [ -n \"$best\" ] || exec \"$configured\" \"$@\"\n    # Ask the image which version it is. put.gd's own update (#293) and Gear\n    # Lever replace the file in place, so its name can be older than what it\n    # holds, or carry no version; the name is only the fallback.\n    version=$(bounded \"$configured\" --version 2>/dev/null | sed -n '1s/^putgd //p')\n    [ -n \"$version\" ] || version=$(name_version \"$configured\") || version=\n    if [ -z \"$version\" ] || ! newer \"$best_version\" \"$(sortable \"$version\")\"; then\n        exec \"$configured\" \"$@\"\n    fi\n    say \"starting $best, which is newer than $configured\"\n    exec \"$best\" \"$@\"\nfi\nif [ -n \"$best\" ]; then\n    say \"$configured is missing; starting $best\"\n    exec \"$best\" \"$@\"\nfi\nsay \"cannot start $configured: it is missing or not executable, and no put.gd AppImage with its update information is beside it\"\nexit 1\n",
+  "sessionEntry": "/home/lab/.config/autostart/putgd.desktop"
+ },
+ "loginCheck": {
+  "sessionEntryNow": null,
+  "processes": [
+   {
+    "pid": 1999,
+    "comm": "AppRun",
+    "exe": "/usr/bin/dash",
+    "APPIMAGE": "/home/lab/put.gd-qt418/afa/images/putgd-26.1023.1068-dev+g6a325a722afd-x86_64.AppImage",
+    "started": "2026-10-23T19:44:18Z",
+    "XDG_CONFIG_HOME": null
+   },
+   {
+    "pid": 2111,
+    "comm": "putgd",
+    "exe": "/tmp/.mount_putgd-HhIhgJ/usr/bin/putgd",
+    "APPIMAGE": "/home/lab/put.gd-qt418/afa/images/putgd-26.1023.1068-dev+g6a325a722afd-x86_64.AppImage",
+    "started": "2026-10-23T19:44:18Z",
+    "XDG_CONFIG_HOME": null
+   },
+   {
+    "pid": 2281,
+    "comm": "putgd-ui",
+    "exe": "/tmp/.mount_putgd-HhIhgJ/usr/bin/putgd-ui",
+    "APPIMAGE": "/home/lab/put.gd-qt418/afa/images/putgd-26.1023.1068-dev+g6a325a722afd-x86_64.AppImage",
+    "started": "2026-10-23T19:44:19Z",
+    "XDG_CONFIG_HOME": null
+   }
+  ],
+  "shellStarted": "2026-10-23T19:44:14Z",
+  "fromAppImage": true
+ },
+ "quit": {
+  "menuComponents": [
+   {
+    "blocks": 270,
+    "box": [
+     1040,
+     128,
+     1256,
+     488
+    ]
+   },
+   {
+    "blocks": 68,
+    "box": [
+     1040,
+     328,
+     1216,
+     384
+    ]
+   },
+   {
+    "blocks": 60,
+    "box": [
+     1072,
+     0,
+     1272,
+     72
+    ]
+   }
+  ],
+  "hover": [
+   1148,
+   471
+  ],
+  "menu": {
+   "label": "tray-quit",
+   "components": [
+    {
+     "blocks": 384,
+     "box": [
+      1040,
+      128,
+      1256,
+      488
+     ]
+    },
+    {
+     "blocks": 68,
+     "box": [
+      1040,
+      328,
+      1216,
+      384
+     ]
+    },
+    {
+     "blocks": 60,
+     "box": [
+      1072,
+      0,
+      1272,
+      72
+     ]
+    },
+    {
+     "blocks": 27,
+     "box": [
+      1072,
+      272,
+      1200,
+      288
+     ]
+    },
+    {
+     "blocks": 22,
+     "box": [
+      1072,
+      88,
+      1224,
+      112
+     ]
+    },
+    {
+     "blocks": 15,
+     "box": [
+      1072,
+      232,
+      1152,
+      256
+     ]
+    }
+   ],
+   "colour": [
+    252,
+    252,
+    252
+   ],
+   "inner": null
+  },
+  "allGone": true,
+  "after": {
+   "processes": [],
+   "mounts": [],
+   "entries": []
+  }
+ },
+ "cleanup": {
+  "removed": [
+   "/home/lab/.local/state/putgd",
+   "/home/lab/.local/share/putgd",
+   "/home/lab/Pictures/afa-ubuntu-vm-edited.png",
+   "/home/lab/afa-ubuntu-vm-review.mp4",
+   "/home/lab/work/put.gd-qt418/afa/runs/ubuntu-vm/appdir",
+   "/home/lab/work/put.gd-qt418/afa/runs/ubuntu-vm/frames",
+   "/home/lab/work/put.gd-qt418/afa/runs/ubuntu-vm/config",
+   "/home/lab/work/put.gd-qt418/afa/runs/ubuntu-vm/cache",
+   "/home/lab/work/put.gd-qt418/afa/runs/ubuntu-vm/archive",
+   "/home/lab/work/put.gd-qt418/afa/runs/ubuntu-vm/working",
+   "/home/lab/work/put.gd-qt418/afa/runs/ubuntu-vm/urldata"
+  ],
+  "leftovers": {
+   "processes": [],
+   "mounts": [],
+   "entries": []
+  },
+  "after": {
+   "processes": [],
+   "mounts": [],
+   "entries": []
+  }
+ }
+}

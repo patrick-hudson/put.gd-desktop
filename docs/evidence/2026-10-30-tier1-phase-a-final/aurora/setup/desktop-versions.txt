@@ -1,0 +1,5 @@
+plasma-workspace-6.7.5-2.fc45.x86_64
+kwin-6.7.5-1.fc45.x86_64
+qt6-qtbase-6.11.2-3.fc45.x86_64
+qt6-qtwayland-6.11.2-1.fc45.x86_64
+masked

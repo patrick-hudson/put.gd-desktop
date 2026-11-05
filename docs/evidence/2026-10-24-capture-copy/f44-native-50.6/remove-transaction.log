@@ -1,0 +1,18 @@
+Package             Arch   Version                                 Repository        Size
+Removing:
+ jasper-libs        x86_64 0:4.2.8-2.fc44                          fedora       349.7 KiB
+ libmng             x86_64 0:2.0.3-25.fc44                         fedora       553.8 KiB
+ putgd              x86_64 0:26.1024.1135~dev+g8a9415c540be-1.fc44 @commandline  30.0 MiB
+ qt6-qtimageformats x86_64 0:6.11.2-1.fc44                         updates      435.3 KiB
+
+Transaction Summary:
+ Removing:           4 packages
+
+After this operation, 31 MiB will be freed (install 0 B, remove 31 MiB).
+Running transaction
+[1/5] Prepare transaction               100% |  16.0   B/s |   4.0   B |  00m00s
+[2/5] Removing putgd-0:26.1024.1135~dev 100% |   2.8 KiB/s |  94.0   B |  00m00s
+[3/5] Removing qt6-qtimageformats-0:6.1 100% |   8.6 KiB/s |  79.0   B |  00m00s
+[4/5] Removing jasper-libs-0:4.2.8-2.fc 100% |   1.6 KiB/s |  10.0   B |  00m00s
+[5/5] Removing libmng-0:2.0.3-25.fc44.x 100% |  28.0   B/s |  17.0   B |  00m01s
+Complete!

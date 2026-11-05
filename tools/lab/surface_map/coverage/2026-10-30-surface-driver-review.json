@@ -1,0 +1,2602 @@
+{
+  "schemaVersion": 2,
+  "campaign": "surface-driver-review-r2",
+  "entries": [
+    {
+      "interaction": "review.play",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/cinnamon/c2/receipt.json",
+      "note": "operationId=8eb162d5-557e-4cbc-a95f-70903b240662; operationId=0b60969f-fbee-4cd1-a390-e687d1d21e28; Capture motion metrics: {\"movingMotion\": 47.66702835648148, \"frozenMotion\": 0.0}; control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches); Classification: Review control/dialog resolution refused input (#672).",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.544854, tolerance=0.025): actual=/home/user/rr2/c2/frames/review.playback/01-before.png reference=/home/user/rr2/catalog/30-review.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/cinnamon/c2/frames/review.playback/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/cinnamon/c2/frames/review.playback/01-before.png",
+          "window": "review",
+          "reference": "30-review",
+          "distance": 0.5448538737562599,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/cinnamon/c2/frames/review.playback/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.playback",
+      "build": "b19a915b70ea",
+      "at": "2026-10-30T04:28:49Z",
+      "issue": 672
+    },
+    {
+      "interaction": "review.speed",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/cinnamon/c2/receipt.json",
+      "note": "operationId=8eb162d5-557e-4cbc-a95f-70903b240662; operationId=0b60969f-fbee-4cd1-a390-e687d1d21e28; Capture motion metrics: {\"movingMotion\": 47.66702835648148, \"frozenMotion\": 0.0}; control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches); Classification: Review control/dialog resolution refused input (#672).",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.544854, tolerance=0.025): actual=/home/user/rr2/c2/frames/review.playback/01-before.png reference=/home/user/rr2/catalog/30-review.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/cinnamon/c2/frames/review.playback/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/cinnamon/c2/frames/review.playback/01-before.png",
+          "window": "review",
+          "reference": "30-review",
+          "distance": 0.5448538737562599,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/cinnamon/c2/frames/review.playback/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.playback",
+      "build": "b19a915b70ea",
+      "at": "2026-10-30T04:28:49Z",
+      "issue": 672
+    },
+    {
+      "interaction": "review.timeline",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/cinnamon/c2/receipt.json",
+      "note": "operationId=ec0e11af-e2ba-42ee-accd-523f3e54b0fb; operationId=89cdb27b-c449-466e-82ed-1dba03b8e3a5; Capture motion metrics: {\"movingMotion\": 47.89605034722222, \"frozenMotion\": 1.808449074074074e-05}; control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches); Classification: Review control/dialog resolution refused input (#672).",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.544942, tolerance=0.025): actual=/home/user/rr2/c2/frames/review.trim/01-before.png reference=/home/user/rr2/catalog/30-review.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/cinnamon/c2/frames/review.trim/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/cinnamon/c2/frames/review.trim/01-before.png",
+          "window": "review",
+          "reference": "30-review",
+          "distance": 0.5449420768118491,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/cinnamon/c2/frames/review.trim/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.trim",
+      "build": "b19a915b70ea",
+      "at": "2026-10-30T04:29:17Z",
+      "issue": 672
+    },
+    {
+      "interaction": "review.trim-in",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/cinnamon/c2/receipt.json",
+      "note": "operationId=ec0e11af-e2ba-42ee-accd-523f3e54b0fb; operationId=89cdb27b-c449-466e-82ed-1dba03b8e3a5; Capture motion metrics: {\"movingMotion\": 47.89605034722222, \"frozenMotion\": 1.808449074074074e-05}; control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches); Classification: Review control/dialog resolution refused input (#672).",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.544942, tolerance=0.025): actual=/home/user/rr2/c2/frames/review.trim/01-before.png reference=/home/user/rr2/catalog/30-review.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/cinnamon/c2/frames/review.trim/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/cinnamon/c2/frames/review.trim/01-before.png",
+          "window": "review",
+          "reference": "30-review",
+          "distance": 0.5449420768118491,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/cinnamon/c2/frames/review.trim/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.trim",
+      "build": "b19a915b70ea",
+      "at": "2026-10-30T04:29:17Z",
+      "issue": 672
+    },
+    {
+      "interaction": "review.trim-out",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/cinnamon/c2/receipt.json",
+      "note": "operationId=ec0e11af-e2ba-42ee-accd-523f3e54b0fb; operationId=89cdb27b-c449-466e-82ed-1dba03b8e3a5; Capture motion metrics: {\"movingMotion\": 47.89605034722222, \"frozenMotion\": 1.808449074074074e-05}; control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches); Classification: Review control/dialog resolution refused input (#672).",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.544942, tolerance=0.025): actual=/home/user/rr2/c2/frames/review.trim/01-before.png reference=/home/user/rr2/catalog/30-review.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/cinnamon/c2/frames/review.trim/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/cinnamon/c2/frames/review.trim/01-before.png",
+          "window": "review",
+          "reference": "30-review",
+          "distance": 0.5449420768118491,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/cinnamon/c2/frames/review.trim/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.trim",
+      "build": "b19a915b70ea",
+      "at": "2026-10-30T04:29:17Z",
+      "issue": 672
+    },
+    {
+      "interaction": "review.trim-reset",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/cinnamon/c2/receipt.json",
+      "note": "operationId=ec0e11af-e2ba-42ee-accd-523f3e54b0fb; operationId=89cdb27b-c449-466e-82ed-1dba03b8e3a5; Capture motion metrics: {\"movingMotion\": 47.89605034722222, \"frozenMotion\": 1.808449074074074e-05}; control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches); Classification: Review control/dialog resolution refused input (#672).",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.544942, tolerance=0.025): actual=/home/user/rr2/c2/frames/review.trim/01-before.png reference=/home/user/rr2/catalog/30-review.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/cinnamon/c2/frames/review.trim/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/cinnamon/c2/frames/review.trim/01-before.png",
+          "window": "review",
+          "reference": "30-review",
+          "distance": 0.5449420768118491,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/cinnamon/c2/frames/review.trim/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.trim",
+      "build": "b19a915b70ea",
+      "at": "2026-10-30T04:29:17Z",
+      "issue": 672
+    },
+    {
+      "interaction": "review.key-timeline",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/cinnamon/c2/receipt.json",
+      "note": "operationId=ec0e11af-e2ba-42ee-accd-523f3e54b0fb; operationId=89cdb27b-c449-466e-82ed-1dba03b8e3a5; Capture motion metrics: {\"movingMotion\": 47.89605034722222, \"frozenMotion\": 1.808449074074074e-05}; control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches); Classification: Review control/dialog resolution refused input (#672).",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.544942, tolerance=0.025): actual=/home/user/rr2/c2/frames/review.trim/01-before.png reference=/home/user/rr2/catalog/30-review.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/cinnamon/c2/frames/review.trim/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/cinnamon/c2/frames/review.trim/01-before.png",
+          "window": "review",
+          "reference": "30-review",
+          "distance": 0.5449420768118491,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/cinnamon/c2/frames/review.trim/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.trim",
+      "build": "b19a915b70ea",
+      "at": "2026-10-30T04:29:17Z",
+      "issue": 672
+    },
+    {
+      "interaction": "review.add-mask",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/cinnamon/c2/receipt.json",
+      "note": "operationId=7ca95016-bae6-44f7-9f12-74b4c86b6d69; operationId=100689a2-3b40-4dfe-98f7-bb0462f08501; Capture motion metrics: {\"movingMotion\": 47.66702835648148, \"frozenMotion\": 1.808449074074074e-05}; control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches); Classification: Review control/dialog resolution refused input (#672).",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.544855, tolerance=0.025): actual=/home/user/rr2/c2/frames/review.masks/01-before.png reference=/home/user/rr2/catalog/30-review.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/cinnamon/c2/frames/review.masks/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/cinnamon/c2/frames/review.masks/01-before.png",
+          "window": "review",
+          "reference": "30-review",
+          "distance": 0.5448546042365128,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/cinnamon/c2/frames/review.masks/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.masks",
+      "build": "b19a915b70ea",
+      "at": "2026-10-30T04:29:45Z",
+      "issue": 672
+    },
+    {
+      "interaction": "review.frame",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/cinnamon/c2/receipt.json",
+      "note": "operationId=7ca95016-bae6-44f7-9f12-74b4c86b6d69; operationId=100689a2-3b40-4dfe-98f7-bb0462f08501; Capture motion metrics: {\"movingMotion\": 47.66702835648148, \"frozenMotion\": 1.808449074074074e-05}; control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches); Classification: Review control/dialog resolution refused input (#672).",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.544855, tolerance=0.025): actual=/home/user/rr2/c2/frames/review.masks/01-before.png reference=/home/user/rr2/catalog/30-review.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/cinnamon/c2/frames/review.masks/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/cinnamon/c2/frames/review.masks/01-before.png",
+          "window": "review",
+          "reference": "30-review",
+          "distance": 0.5448546042365128,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/cinnamon/c2/frames/review.masks/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.masks",
+      "build": "b19a915b70ea",
+      "at": "2026-10-30T04:29:45Z",
+      "issue": 672
+    },
+    {
+      "interaction": "review.masks",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/cinnamon/c2/receipt.json",
+      "note": "operationId=7ca95016-bae6-44f7-9f12-74b4c86b6d69; operationId=100689a2-3b40-4dfe-98f7-bb0462f08501; Capture motion metrics: {\"movingMotion\": 47.66702835648148, \"frozenMotion\": 1.808449074074074e-05}; control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches); Classification: Review control/dialog resolution refused input (#672).",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.544855, tolerance=0.025): actual=/home/user/rr2/c2/frames/review.masks/01-before.png reference=/home/user/rr2/catalog/30-review.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/cinnamon/c2/frames/review.masks/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/cinnamon/c2/frames/review.masks/01-before.png",
+          "window": "review",
+          "reference": "30-review",
+          "distance": 0.5448546042365128,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/cinnamon/c2/frames/review.masks/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.masks",
+      "build": "b19a915b70ea",
+      "at": "2026-10-30T04:29:45Z",
+      "issue": 672
+    },
+    {
+      "interaction": "review.mask-in-out",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/cinnamon/c2/receipt.json",
+      "note": "operationId=7ca95016-bae6-44f7-9f12-74b4c86b6d69; operationId=100689a2-3b40-4dfe-98f7-bb0462f08501; Capture motion metrics: {\"movingMotion\": 47.66702835648148, \"frozenMotion\": 1.808449074074074e-05}; control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches); Classification: Review control/dialog resolution refused input (#672).",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.544855, tolerance=0.025): actual=/home/user/rr2/c2/frames/review.masks/01-before.png reference=/home/user/rr2/catalog/30-review.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/cinnamon/c2/frames/review.masks/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/cinnamon/c2/frames/review.masks/01-before.png",
+          "window": "review",
+          "reference": "30-review",
+          "distance": 0.5448546042365128,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/cinnamon/c2/frames/review.masks/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.masks",
+      "build": "b19a915b70ea",
+      "at": "2026-10-30T04:29:45Z",
+      "issue": 672
+    },
+    {
+      "interaction": "review.mask-delete",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/cinnamon/c2/receipt.json",
+      "note": "operationId=7ca95016-bae6-44f7-9f12-74b4c86b6d69; operationId=100689a2-3b40-4dfe-98f7-bb0462f08501; Capture motion metrics: {\"movingMotion\": 47.66702835648148, \"frozenMotion\": 1.808449074074074e-05}; control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches); Classification: Review control/dialog resolution refused input (#672).",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.544855, tolerance=0.025): actual=/home/user/rr2/c2/frames/review.masks/01-before.png reference=/home/user/rr2/catalog/30-review.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/cinnamon/c2/frames/review.masks/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/cinnamon/c2/frames/review.masks/01-before.png",
+          "window": "review",
+          "reference": "30-review",
+          "distance": 0.5448546042365128,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/cinnamon/c2/frames/review.masks/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.masks",
+      "build": "b19a915b70ea",
+      "at": "2026-10-30T04:29:45Z",
+      "issue": 672
+    },
+    {
+      "interaction": "review.mask-place",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/cinnamon/c2/receipt.json",
+      "note": "operationId=7ca95016-bae6-44f7-9f12-74b4c86b6d69; operationId=100689a2-3b40-4dfe-98f7-bb0462f08501; Capture motion metrics: {\"movingMotion\": 47.66702835648148, \"frozenMotion\": 1.808449074074074e-05}; control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches); Classification: Review control/dialog resolution refused input (#672).",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.544855, tolerance=0.025): actual=/home/user/rr2/c2/frames/review.masks/01-before.png reference=/home/user/rr2/catalog/30-review.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/cinnamon/c2/frames/review.masks/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/cinnamon/c2/frames/review.masks/01-before.png",
+          "window": "review",
+          "reference": "30-review",
+          "distance": 0.5448546042365128,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/cinnamon/c2/frames/review.masks/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.masks",
+      "build": "b19a915b70ea",
+      "at": "2026-10-30T04:29:45Z",
+      "issue": 672
+    },
+    {
+      "interaction": "review.mask-disarm",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/cinnamon/c2/receipt.json",
+      "note": "operationId=7ca95016-bae6-44f7-9f12-74b4c86b6d69; operationId=100689a2-3b40-4dfe-98f7-bb0462f08501; Capture motion metrics: {\"movingMotion\": 47.66702835648148, \"frozenMotion\": 1.808449074074074e-05}; control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches); Classification: Review control/dialog resolution refused input (#672).",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.544855, tolerance=0.025): actual=/home/user/rr2/c2/frames/review.masks/01-before.png reference=/home/user/rr2/catalog/30-review.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/cinnamon/c2/frames/review.masks/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/cinnamon/c2/frames/review.masks/01-before.png",
+          "window": "review",
+          "reference": "30-review",
+          "distance": 0.5448546042365128,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/cinnamon/c2/frames/review.masks/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.masks",
+      "build": "b19a915b70ea",
+      "at": "2026-10-30T04:29:45Z",
+      "issue": 672
+    },
+    {
+      "interaction": "review.key-frame-nudge",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/cinnamon/c2/receipt.json",
+      "note": "operationId=7ca95016-bae6-44f7-9f12-74b4c86b6d69; operationId=100689a2-3b40-4dfe-98f7-bb0462f08501; Capture motion metrics: {\"movingMotion\": 47.66702835648148, \"frozenMotion\": 1.808449074074074e-05}; control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches); Classification: Review control/dialog resolution refused input (#672).",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.544855, tolerance=0.025): actual=/home/user/rr2/c2/frames/review.masks/01-before.png reference=/home/user/rr2/catalog/30-review.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/cinnamon/c2/frames/review.masks/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/cinnamon/c2/frames/review.masks/01-before.png",
+          "window": "review",
+          "reference": "30-review",
+          "distance": 0.5448546042365128,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/cinnamon/c2/frames/review.masks/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.masks",
+      "build": "b19a915b70ea",
+      "at": "2026-10-30T04:29:45Z",
+      "issue": 672
+    },
+    {
+      "interaction": "review.mask-options",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/cinnamon/c2/receipt.json",
+      "note": "operationId=afbd84ed-6a96-4526-b750-7aeb297632f1; operationId=0b6dac4c-89f3-4eb8-b6fb-2e795f57ba65; Capture motion metrics: {\"movingMotion\": 47.61348017939815, \"frozenMotion\": 1.808449074074074e-05}; control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches); Classification: Review control/dialog resolution refused input (#672).",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.545812, tolerance=0.025): actual=/home/user/rr2/c2/frames/review.mask_options/01-before.png reference=/home/user/rr2/catalog/30-review.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/cinnamon/c2/frames/review.mask_options/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/cinnamon/c2/frames/review.mask_options/01-before.png",
+          "window": "review",
+          "reference": "30-review",
+          "distance": 0.5458122151492254,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/cinnamon/c2/frames/review.mask_options/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.mask_options",
+      "build": "b19a915b70ea",
+      "at": "2026-10-30T04:30:13Z",
+      "issue": 672
+    },
+    {
+      "interaction": "review.wheel-lanes",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/cinnamon/c2/receipt.json",
+      "note": "operationId=3872ee5e-9ef5-40ee-b841-7d215006d22d; operationId=af558d73-7712-4390-8e7e-a54309a3412f; Capture motion metrics: {\"movingMotion\": 47.16711877893519, \"frozenMotion\": 1.808449074074074e-05}; control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches); Classification: Review control/dialog resolution refused input (#672).",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.545849, tolerance=0.025): actual=/home/user/rr2/c2/frames/review.wheel_lanes/01-before.png reference=/home/user/rr2/catalog/30-review.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/cinnamon/c2/frames/review.wheel_lanes/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/cinnamon/c2/frames/review.wheel_lanes/01-before.png",
+          "window": "review",
+          "reference": "30-review",
+          "distance": 0.5458485565418013,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/cinnamon/c2/frames/review.wheel_lanes/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.wheel_lanes",
+      "build": "b19a915b70ea",
+      "at": "2026-10-30T04:30:42Z",
+      "issue": 672
+    },
+    {
+      "interaction": "review.format",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/cinnamon/c2/receipt.json",
+      "note": "operationId=2626ba00-7d81-4f95-b29c-ad99f76b43d6; operationId=3c9df7e6-de29-448e-9219-f76e637b30f6; Capture motion metrics: {\"movingMotion\": 47.435384114583336, \"frozenMotion\": 1.808449074074074e-05}; control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches); Classification: Review control/dialog resolution refused input (#672).",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.545834, tolerance=0.025): actual=/home/user/rr2/c2/frames/review.formats/01-before.png reference=/home/user/rr2/catalog/30-review.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/cinnamon/c2/frames/review.formats/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/cinnamon/c2/frames/review.formats/01-before.png",
+          "window": "review",
+          "reference": "30-review",
+          "distance": 0.5458339323271406,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/cinnamon/c2/frames/review.formats/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.formats",
+      "build": "b19a915b70ea",
+      "at": "2026-10-30T04:31:12Z",
+      "issue": 672
+    },
+    {
+      "interaction": "review.save-copy",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/cinnamon/c2/receipt.json",
+      "note": "operationId=52d25bc4-ebb7-4b68-aab0-c5833082046c; operationId=3ad79ac9-579d-437c-aaef-b8a4c7b9fea5; Capture motion metrics: {\"movingMotion\": 47.81763599537037, \"frozenMotion\": 1.808449074074074e-05}; geometry: RuntimeError: live window match is missing or ambiguous (0 matches); Classification: Review control/dialog resolution refused input (#672).",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.544120, tolerance=0.025): actual=/home/user/rr2/c2/frames/review.save_copy/01-before.png reference=/home/user/rr2/catalog/30-review.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/cinnamon/c2/frames/review.save_copy/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/cinnamon/c2/frames/review.save_copy/01-before.png",
+          "window": "review",
+          "reference": "30-review",
+          "distance": 0.5441197216227415,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/cinnamon/c2/frames/review.save_copy/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.save_copy",
+      "build": "b19a915b70ea",
+      "at": "2026-10-30T04:31:43Z",
+      "issue": 672
+    },
+    {
+      "interaction": "review.status-actions",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/cinnamon/c2/receipt.json",
+      "note": "operationId=de267b32-a1f8-4749-a58f-160d6402eae8; operationId=190f204a-bc02-473a-b1f7-6a2bc0ee13fa; Capture motion metrics: {\"movingMotion\": 47.66701027199074, \"frozenMotion\": 0.0}; control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches); Classification: Review control/dialog resolution refused input (#672).",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.543934, tolerance=0.025): actual=/home/user/rr2/c2/frames/review.status_actions/01-before.png reference=/home/user/rr2/catalog/30-review.png; catalog mismatch (distance=0.542441, tolerance=0.025): actual=/home/user/rr2/c2/frames/review.status_actions/02-export-failed.png reference=/home/user/rr2/catalog/39-review-status-errors.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/cinnamon/c2/frames/review.status_actions/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/cinnamon/c2/frames/review.status_actions/01-before.png",
+          "window": "review",
+          "reference": "30-review",
+          "distance": 0.5439338387477504,
+          "tolerance": 0.025
+        },
+        {
+          "label": "export-failed",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/cinnamon/c2/frames/review.status_actions/02-export-failed.png",
+          "window": "review",
+          "reference": "39-review-status-errors",
+          "distance": 0.5424410282519877,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/cinnamon/c2/frames/review.status_actions/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.status_actions",
+      "build": "b19a915b70ea",
+      "at": "2026-10-30T04:32:19Z",
+      "issue": 672
+    },
+    {
+      "interaction": "review.destination-menu",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/cinnamon/c2/receipt.json",
+      "note": "operationId=c6cff23a-70a3-4a77-97a6-1181cfaced1e; operationId=e223550e-ca52-41b8-b3f7-53f203816f48; Capture motion metrics: {\"movingMotion\": 47.61040581597222, \"frozenMotion\": 0.0}; control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches); Classification: Review control/dialog resolution refused input (#672).",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.544167, tolerance=0.025): actual=/home/user/rr2/c2/frames/review.upload/01-before.png reference=/home/user/rr2/catalog/30-review.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/cinnamon/c2/frames/review.upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/cinnamon/c2/frames/review.upload/01-before.png",
+          "window": "review",
+          "reference": "30-review",
+          "distance": 0.5441668083798357,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/cinnamon/c2/frames/review.upload/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.upload",
+      "build": "b19a915b70ea",
+      "at": "2026-10-30T04:32:53Z",
+      "issue": 672
+    },
+    {
+      "interaction": "review.upload",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/cinnamon/c2/receipt.json",
+      "note": "operationId=c6cff23a-70a3-4a77-97a6-1181cfaced1e; operationId=e223550e-ca52-41b8-b3f7-53f203816f48; Capture motion metrics: {\"movingMotion\": 47.61040581597222, \"frozenMotion\": 0.0}; control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches); Classification: Review control/dialog resolution refused input (#672).",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.544167, tolerance=0.025): actual=/home/user/rr2/c2/frames/review.upload/01-before.png reference=/home/user/rr2/catalog/30-review.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/cinnamon/c2/frames/review.upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/cinnamon/c2/frames/review.upload/01-before.png",
+          "window": "review",
+          "reference": "30-review",
+          "distance": 0.5441668083798357,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/cinnamon/c2/frames/review.upload/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.upload",
+      "build": "b19a915b70ea",
+      "at": "2026-10-30T04:32:53Z",
+      "issue": 672
+    },
+    {
+      "interaction": "confirm.review-discard",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/cinnamon/c2/receipt.json",
+      "note": "operationId=3fe651d2-d32c-4eb4-93d9-6c6a1aa860d7; operationId=8fb9298d-2a66-43df-9758-076d0eda4144; Capture motion metrics: {\"movingMotion\": 47.66702835648148, \"frozenMotion\": 1.808449074074074e-05}; geometry: RuntimeError: live window match is missing or ambiguous (0 matches); Classification: Review control/dialog resolution refused input (#672).",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.544612, tolerance=0.025): actual=/home/user/rr2/c2/frames/review.discard/01-before.png reference=/home/user/rr2/catalog/30-review.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/cinnamon/c2/frames/review.discard/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/cinnamon/c2/frames/review.discard/01-before.png",
+          "window": "review",
+          "reference": "30-review",
+          "distance": 0.5446116489393719,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/cinnamon/c2/frames/review.discard/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.discard",
+      "build": "b19a915b70ea",
+      "at": "2026-10-30T04:33:25Z",
+      "issue": 672
+    },
+    {
+      "interaction": "review.discard",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/cinnamon/c2/receipt.json",
+      "note": "operationId=3fe651d2-d32c-4eb4-93d9-6c6a1aa860d7; operationId=8fb9298d-2a66-43df-9758-076d0eda4144; Capture motion metrics: {\"movingMotion\": 47.66702835648148, \"frozenMotion\": 1.808449074074074e-05}; geometry: RuntimeError: live window match is missing or ambiguous (0 matches); Classification: Review control/dialog resolution refused input (#672).",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.544612, tolerance=0.025): actual=/home/user/rr2/c2/frames/review.discard/01-before.png reference=/home/user/rr2/catalog/30-review.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/cinnamon/c2/frames/review.discard/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/cinnamon/c2/frames/review.discard/01-before.png",
+          "window": "review",
+          "reference": "30-review",
+          "distance": 0.5446116489393719,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/cinnamon/c2/frames/review.discard/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.discard",
+      "build": "b19a915b70ea",
+      "at": "2026-10-30T04:33:25Z",
+      "issue": 672
+    },
+    {
+      "interaction": "review.window-close",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/cinnamon/c2/receipt.json",
+      "note": "operationId=ab7eb1b9-42b2-4fe2-95c2-0e736e0360db; operationId=21c7a91d-576e-4ee1-9fe5-ee7783b78e73; Capture motion metrics: {\"movingMotion\": 47.59257450810185, \"frozenMotion\": 1.808449074074074e-05}; control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches); Classification: Review control/dialog resolution refused input (#672).",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.544619, tolerance=0.025): actual=/home/user/rr2/c2/frames/review.window_close/01-before.png reference=/home/user/rr2/catalog/30-review.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/cinnamon/c2/frames/review.window_close/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/cinnamon/c2/frames/review.window_close/01-before.png",
+          "window": "review",
+          "reference": "30-review",
+          "distance": 0.5446186225908518,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/cinnamon/c2/frames/review.window_close/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.window_close",
+      "build": "b19a915b70ea",
+      "at": "2026-10-30T04:33:55Z",
+      "issue": 672
+    },
+    {
+      "interaction": "review.advice",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/cinnamon/c2/receipt.json",
+      "note": "operationId=27b17ea3-72a5-49ec-ae63-3db115d83389; operationId=f71459a5-e114-4d67-8d7d-301ecec3c14b; Capture motion metrics: {\"movingMotion\": 47.5951244212963, \"frozenMotion\": 1.808449074074074e-05}; control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches); Classification: Review control/dialog resolution refused input (#672).",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.547390, tolerance=0.025): actual=/home/user/rr2/c2/frames/review.advice/01-before.png reference=/home/user/rr2/catalog/30-review.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/cinnamon/c2/frames/review.advice/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/cinnamon/c2/frames/review.advice/01-before.png",
+          "window": "review",
+          "reference": "30-review",
+          "distance": 0.5473904542593719,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/cinnamon/c2/frames/review.advice/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.advice",
+      "build": "b19a915b70ea",
+      "at": "2026-10-30T04:34:21Z",
+      "issue": 672
+    },
+    {
+      "interaction": "review.notice",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/cinnamon/c2/receipt.json",
+      "note": "operationId=5d7f7cfd-09c0-4c0b-9cdd-058e37bff8fc; operationId=0000e090-9baa-458a-b94f-c93e594d4029; Capture motion metrics: {\"movingMotion\": 47.72451737998188, \"frozenMotion\": 1.808449074074074e-05}; control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches); Classification: Review control/dialog resolution refused input (#672).",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.519777, tolerance=0.025): actual=/home/user/rr2/c2/frames/review.stop_notice/01-before.png reference=/home/user/rr2/catalog/30-review.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/cinnamon/c2/frames/review.stop_notice/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/cinnamon/c2/frames/review.stop_notice/01-before.png",
+          "window": "review",
+          "reference": "30-review",
+          "distance": 0.5197768348738675,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/cinnamon/c2/frames/review.stop_notice/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.stop_notice",
+      "build": "b19a915b70ea",
+      "at": "2026-10-30T04:35:26Z",
+      "issue": 672
+    },
+    {
+      "interaction": "review.preview-error",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/cinnamon/c2/receipt.json",
+      "note": "operationId=06d9bd00-ff8b-4219-b260-522cab8aa229; operationId=65049f69-3d75-45c7-945c-f25ce8a08c71; Capture motion metrics: {\"movingMotion\": 47.640444155092595, \"frozenMotion\": 1.808449074074074e-05}",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.387691, tolerance=0.025): actual=/home/user/rr2/c2/frames/review.preview_error/01-before.png reference=/home/user/rr2/catalog/30-review.png; catalog mismatch (distance=0.394247, tolerance=0.025): actual=/home/user/rr2/c2/frames/review.preview_error/02-error.png reference=/home/user/rr2/catalog/40-review-preview-error.png; catalog mismatch (distance=0.524826, tolerance=0.025): actual=/home/user/rr2/c2/frames/review.preview_error/03-after.png reference=/home/user/rr2/catalog/30-review.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/cinnamon/c2/frames/review.preview_error/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/cinnamon/c2/frames/review.preview_error/01-before.png",
+          "window": "review",
+          "reference": "30-review",
+          "distance": 0.38769110337386425,
+          "tolerance": 0.025
+        },
+        {
+          "label": "error",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/cinnamon/c2/frames/review.preview_error/02-error.png",
+          "window": "review",
+          "reference": "40-review-preview-error",
+          "distance": 0.3942474726713559,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/cinnamon/c2/frames/review.preview_error/03-after.png",
+          "window": "review",
+          "reference": "30-review",
+          "distance": 0.5248259046413547,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/cinnamon/c2/frames/review.preview_error/04-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.preview_error",
+      "build": "b19a915b70ea",
+      "at": "2026-10-30T04:36:02Z"
+    },
+    {
+      "interaction": "cli.recording",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/cinnamon/c2/receipt.json",
+      "issue": 672,
+      "note": "operationId=962bc43c-4fdf-44ba-9db8-a12932000e87; operationId=3e8f59b6-2efa-46d6-bef4-b8d4ba9c0f5a; Capture motion metrics: {\"movingMotion\": 47.66704644097222, \"frozenMotion\": 1.808449074074074e-05}; Decoded export metrics: {\"duration\": 2.0, \"codec\": \"h264\", \"container\": \"mov,mp4,m4a,3gp,3g2,mj2\", \"movingMotion\": 47.66704644097222, \"frozenMotion\": 1.808449074074074e-05, \"exportMotion\": 45.74473741319445, \"masked\": 1}; CLI review-stage entries exercised; capture prepare/start/pause/resume/stop/select/overlay need a capture fixture (#672)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "API full-desktop frames require visual review",
+      "frames": [
+        {
+          "label": "before",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/cinnamon/c2/frames/review.cli_recording/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/cinnamon/c2/frames/review.cli_recording/01-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/cinnamon/c2/frames/review.cli_recording/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/cinnamon/c2/frames/review.cli_recording/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.cli_recording",
+      "build": "b19a915b70ea",
+      "at": "2026-10-30T04:36:38Z"
+    },
+    {
+      "interaction": "mcp.recording",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/cinnamon/c2/receipt.json",
+      "issue": 672,
+      "note": "operationId=249f2b1b-08a6-4b82-8a07-cc336a1918a3; operationId=dc902794-ed03-41ec-b338-f4a879b22039; Capture motion metrics: {\"movingMotion\": 47.769802517361114, \"frozenMotion\": 0.0}; Decoded export metrics: {\"duration\": 2.0, \"codec\": \"h264\", \"container\": \"mov,mp4,m4a,3gp,3g2,mj2\", \"movingMotion\": 47.769802517361114, \"frozenMotion\": 0.0, \"exportMotion\": 44.59185112847222, \"masked\": 1}; MCP review/edit/preview/save exercised; prepare/control/select/overlay capture lifecycle remains unexercised (#672)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "API full-desktop frames require visual review",
+      "frames": [
+        {
+          "label": "before",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/cinnamon/c2/frames/review.mcp_recording/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/cinnamon/c2/frames/review.mcp_recording/01-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/cinnamon/c2/frames/review.mcp_recording/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/cinnamon/c2/frames/review.mcp_recording/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.mcp_recording",
+      "build": "b19a915b70ea",
+      "at": "2026-10-30T04:37:29Z"
+    },
+    {
+      "interaction": "mcp.recording-review",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/cinnamon/c2/receipt.json",
+      "note": "operationId=cb71342b-5e7d-4284-a03b-770de2eed5dc; operationId=48e95b91-bbd9-41f4-a006-3ee951681ae3; Capture motion metrics: {\"movingMotion\": 47.65290436921296, \"frozenMotion\": 0.0}; Decoded export metrics: {\"duration\": 2.0, \"codec\": \"h264\", \"container\": \"mov,mp4,m4a,3gp,3g2,mj2\", \"movingMotion\": 47.65290436921296, \"frozenMotion\": 0.0, \"exportMotion\": 45.590494791666664, \"masked\": 1}; Decoded export metrics: {\"duration\": 2.0, \"codec\": \"h264\", \"container\": \"mov,mp4,m4a,3gp,3g2,mj2\", \"movingMotion\": 47.65290436921296, \"frozenMotion\": 0.0, \"exportMotion\": 45.590494791666664, \"masked\": 1}",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "API full-desktop frames require visual review",
+      "frames": [
+        {
+          "label": "before",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/cinnamon/c2/frames/review.mcp_recording_review/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/cinnamon/c2/frames/review.mcp_recording_review/01-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/cinnamon/c2/frames/review.mcp_recording_review/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "uploaded",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/cinnamon/c2/frames/review.mcp_recording_review/03-uploaded.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/cinnamon/c2/frames/review.mcp_recording_review/04-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.mcp_recording_review",
+      "build": "b19a915b70ea",
+      "at": "2026-10-30T04:38:32Z"
+    },
+    {
+      "interaction": "review.play",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/gnome/g2/receipt.json",
+      "note": "operationId=3c8d1dfa-24f2-45d7-8a69-03e6fa6f920b; timeout: synthetic recording ready; Classification: Shared recording fixture waits for ready while the real GNOME ScreenCast consent dialog awaits input (#791); review inputs and exports were not reached.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/gnome/g2/frames/review.playback/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/gnome/g2/frames/review.playback/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.playback",
+      "build": "a18d79e762df",
+      "at": "2026-10-30T04:51:42Z",
+      "issue": 791,
+      "review": true,
+      "review_reason": "GNOME ScreenCast consent block; original timeout and saved frames retained."
+    },
+    {
+      "interaction": "review.speed",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/gnome/g2/receipt.json",
+      "note": "operationId=3c8d1dfa-24f2-45d7-8a69-03e6fa6f920b; timeout: synthetic recording ready; Classification: Shared recording fixture waits for ready while the real GNOME ScreenCast consent dialog awaits input (#791); review inputs and exports were not reached.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/gnome/g2/frames/review.playback/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/gnome/g2/frames/review.playback/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.playback",
+      "build": "a18d79e762df",
+      "at": "2026-10-30T04:51:42Z",
+      "issue": 791,
+      "review": true,
+      "review_reason": "GNOME ScreenCast consent block; original timeout and saved frames retained."
+    },
+    {
+      "interaction": "review.timeline",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/gnome/g2/receipt.json",
+      "note": "operationId=b39bddc6-d2bd-4e32-846a-df066275101d; timeout: synthetic recording ready; Classification: Shared recording fixture waits for ready while the real GNOME ScreenCast consent dialog awaits input (#791); review inputs and exports were not reached.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/gnome/g2/frames/review.trim/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/gnome/g2/frames/review.trim/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.trim",
+      "build": "a18d79e762df",
+      "at": "2026-10-30T04:52:36Z",
+      "issue": 791,
+      "review": true,
+      "review_reason": "GNOME ScreenCast consent block; original timeout and saved frames retained."
+    },
+    {
+      "interaction": "review.trim-in",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/gnome/g2/receipt.json",
+      "note": "operationId=b39bddc6-d2bd-4e32-846a-df066275101d; timeout: synthetic recording ready; Classification: Shared recording fixture waits for ready while the real GNOME ScreenCast consent dialog awaits input (#791); review inputs and exports were not reached.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/gnome/g2/frames/review.trim/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/gnome/g2/frames/review.trim/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.trim",
+      "build": "a18d79e762df",
+      "at": "2026-10-30T04:52:36Z",
+      "issue": 791,
+      "review": true,
+      "review_reason": "GNOME ScreenCast consent block; original timeout and saved frames retained."
+    },
+    {
+      "interaction": "review.trim-out",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/gnome/g2/receipt.json",
+      "note": "operationId=b39bddc6-d2bd-4e32-846a-df066275101d; timeout: synthetic recording ready; Classification: Shared recording fixture waits for ready while the real GNOME ScreenCast consent dialog awaits input (#791); review inputs and exports were not reached.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/gnome/g2/frames/review.trim/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/gnome/g2/frames/review.trim/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.trim",
+      "build": "a18d79e762df",
+      "at": "2026-10-30T04:52:36Z",
+      "issue": 791,
+      "review": true,
+      "review_reason": "GNOME ScreenCast consent block; original timeout and saved frames retained."
+    },
+    {
+      "interaction": "review.trim-reset",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/gnome/g2/receipt.json",
+      "note": "operationId=b39bddc6-d2bd-4e32-846a-df066275101d; timeout: synthetic recording ready; Classification: Shared recording fixture waits for ready while the real GNOME ScreenCast consent dialog awaits input (#791); review inputs and exports were not reached.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/gnome/g2/frames/review.trim/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/gnome/g2/frames/review.trim/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.trim",
+      "build": "a18d79e762df",
+      "at": "2026-10-30T04:52:36Z",
+      "issue": 791,
+      "review": true,
+      "review_reason": "GNOME ScreenCast consent block; original timeout and saved frames retained."
+    },
+    {
+      "interaction": "review.key-timeline",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/gnome/g2/receipt.json",
+      "note": "operationId=b39bddc6-d2bd-4e32-846a-df066275101d; timeout: synthetic recording ready; Classification: Shared recording fixture waits for ready while the real GNOME ScreenCast consent dialog awaits input (#791); review inputs and exports were not reached.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/gnome/g2/frames/review.trim/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/gnome/g2/frames/review.trim/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.trim",
+      "build": "a18d79e762df",
+      "at": "2026-10-30T04:52:36Z",
+      "issue": 791,
+      "review": true,
+      "review_reason": "GNOME ScreenCast consent block; original timeout and saved frames retained."
+    },
+    {
+      "interaction": "review.add-mask",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/gnome/g2/receipt.json",
+      "note": "operationId=10508d95-ff93-45c2-8d64-774a9446e3c2; timeout: synthetic recording ready; Classification: Shared recording fixture waits for ready while the real GNOME ScreenCast consent dialog awaits input (#791); review inputs and exports were not reached.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/gnome/g2/frames/review.masks/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/gnome/g2/frames/review.masks/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.masks",
+      "build": "a18d79e762df",
+      "at": "2026-10-30T04:53:31Z",
+      "issue": 791,
+      "review": true,
+      "review_reason": "GNOME ScreenCast consent block; original timeout and saved frames retained."
+    },
+    {
+      "interaction": "review.frame",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/gnome/g2/receipt.json",
+      "note": "operationId=10508d95-ff93-45c2-8d64-774a9446e3c2; timeout: synthetic recording ready; Classification: Shared recording fixture waits for ready while the real GNOME ScreenCast consent dialog awaits input (#791); review inputs and exports were not reached.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/gnome/g2/frames/review.masks/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/gnome/g2/frames/review.masks/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.masks",
+      "build": "a18d79e762df",
+      "at": "2026-10-30T04:53:31Z",
+      "issue": 791,
+      "review": true,
+      "review_reason": "GNOME ScreenCast consent block; original timeout and saved frames retained."
+    },
+    {
+      "interaction": "review.masks",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/gnome/g2/receipt.json",
+      "note": "operationId=10508d95-ff93-45c2-8d64-774a9446e3c2; timeout: synthetic recording ready; Classification: Shared recording fixture waits for ready while the real GNOME ScreenCast consent dialog awaits input (#791); review inputs and exports were not reached.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/gnome/g2/frames/review.masks/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/gnome/g2/frames/review.masks/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.masks",
+      "build": "a18d79e762df",
+      "at": "2026-10-30T04:53:31Z",
+      "issue": 791,
+      "review": true,
+      "review_reason": "GNOME ScreenCast consent block; original timeout and saved frames retained."
+    },
+    {
+      "interaction": "review.mask-in-out",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/gnome/g2/receipt.json",
+      "note": "operationId=10508d95-ff93-45c2-8d64-774a9446e3c2; timeout: synthetic recording ready; Classification: Shared recording fixture waits for ready while the real GNOME ScreenCast consent dialog awaits input (#791); review inputs and exports were not reached.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/gnome/g2/frames/review.masks/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/gnome/g2/frames/review.masks/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.masks",
+      "build": "a18d79e762df",
+      "at": "2026-10-30T04:53:31Z",
+      "issue": 791,
+      "review": true,
+      "review_reason": "GNOME ScreenCast consent block; original timeout and saved frames retained."
+    },
+    {
+      "interaction": "review.mask-delete",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/gnome/g2/receipt.json",
+      "note": "operationId=10508d95-ff93-45c2-8d64-774a9446e3c2; timeout: synthetic recording ready; Classification: Shared recording fixture waits for ready while the real GNOME ScreenCast consent dialog awaits input (#791); review inputs and exports were not reached.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/gnome/g2/frames/review.masks/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/gnome/g2/frames/review.masks/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.masks",
+      "build": "a18d79e762df",
+      "at": "2026-10-30T04:53:31Z",
+      "issue": 791,
+      "review": true,
+      "review_reason": "GNOME ScreenCast consent block; original timeout and saved frames retained."
+    },
+    {
+      "interaction": "review.mask-place",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/gnome/g2/receipt.json",
+      "note": "operationId=10508d95-ff93-45c2-8d64-774a9446e3c2; timeout: synthetic recording ready; Classification: Shared recording fixture waits for ready while the real GNOME ScreenCast consent dialog awaits input (#791); review inputs and exports were not reached.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/gnome/g2/frames/review.masks/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/gnome/g2/frames/review.masks/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.masks",
+      "build": "a18d79e762df",
+      "at": "2026-10-30T04:53:31Z",
+      "issue": 791,
+      "review": true,
+      "review_reason": "GNOME ScreenCast consent block; original timeout and saved frames retained."
+    },
+    {
+      "interaction": "review.mask-disarm",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/gnome/g2/receipt.json",
+      "note": "operationId=10508d95-ff93-45c2-8d64-774a9446e3c2; timeout: synthetic recording ready; Classification: Shared recording fixture waits for ready while the real GNOME ScreenCast consent dialog awaits input (#791); review inputs and exports were not reached.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/gnome/g2/frames/review.masks/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/gnome/g2/frames/review.masks/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.masks",
+      "build": "a18d79e762df",
+      "at": "2026-10-30T04:53:31Z",
+      "issue": 791,
+      "review": true,
+      "review_reason": "GNOME ScreenCast consent block; original timeout and saved frames retained."
+    },
+    {
+      "interaction": "review.key-frame-nudge",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/gnome/g2/receipt.json",
+      "note": "operationId=10508d95-ff93-45c2-8d64-774a9446e3c2; timeout: synthetic recording ready; Classification: Shared recording fixture waits for ready while the real GNOME ScreenCast consent dialog awaits input (#791); review inputs and exports were not reached.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/gnome/g2/frames/review.masks/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/gnome/g2/frames/review.masks/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.masks",
+      "build": "a18d79e762df",
+      "at": "2026-10-30T04:53:31Z",
+      "issue": 791,
+      "review": true,
+      "review_reason": "GNOME ScreenCast consent block; original timeout and saved frames retained."
+    },
+    {
+      "interaction": "review.mask-options",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/gnome/g2/receipt.json",
+      "note": "operationId=1e46fe83-7375-47c4-b0e1-9a7f845bb13d; timeout: synthetic recording ready; Classification: Shared recording fixture waits for ready while the real GNOME ScreenCast consent dialog awaits input (#791); review inputs and exports were not reached.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/gnome/g2/frames/review.mask_options/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/gnome/g2/frames/review.mask_options/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.mask_options",
+      "build": "a18d79e762df",
+      "at": "2026-10-30T04:54:23Z",
+      "issue": 791,
+      "review": true,
+      "review_reason": "GNOME ScreenCast consent block; original timeout and saved frames retained."
+    },
+    {
+      "interaction": "review.wheel-lanes",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/gnome/g2/receipt.json",
+      "note": "operationId=342c21bd-6b16-485a-8ffb-4ff49bc96b3d; timeout: synthetic recording ready; Classification: Shared recording fixture waits for ready while the real GNOME ScreenCast consent dialog awaits input (#791); review inputs and exports were not reached.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/gnome/g2/frames/review.wheel_lanes/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/gnome/g2/frames/review.wheel_lanes/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.wheel_lanes",
+      "build": "a18d79e762df",
+      "at": "2026-10-30T04:55:17Z",
+      "issue": 791,
+      "review": true,
+      "review_reason": "GNOME ScreenCast consent block; original timeout and saved frames retained."
+    },
+    {
+      "interaction": "review.format",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/gnome/g2/receipt.json",
+      "note": "operationId=a03c3ced-30f7-462f-89fa-695771135dab; timeout: synthetic recording ready; Classification: Shared recording fixture waits for ready while the real GNOME ScreenCast consent dialog awaits input (#791); review inputs and exports were not reached.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/gnome/g2/frames/review.formats/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/gnome/g2/frames/review.formats/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.formats",
+      "build": "a18d79e762df",
+      "at": "2026-10-30T04:56:09Z",
+      "issue": 791,
+      "review": true,
+      "review_reason": "GNOME ScreenCast consent block; original timeout and saved frames retained."
+    },
+    {
+      "interaction": "review.save-copy",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/gnome/g2/receipt.json",
+      "note": "operationId=ec59f254-6806-43ba-acfd-7c7fa93838e3; timeout: synthetic recording ready; Classification: Shared recording fixture waits for ready while the real GNOME ScreenCast consent dialog awaits input (#791); review inputs and exports were not reached.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/gnome/g2/frames/review.save_copy/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/gnome/g2/frames/review.save_copy/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.save_copy",
+      "build": "a18d79e762df",
+      "at": "2026-10-30T04:57:03Z",
+      "issue": 791,
+      "review": true,
+      "review_reason": "GNOME ScreenCast consent block; original timeout and saved frames retained."
+    },
+    {
+      "interaction": "review.status-actions",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/gnome/g2/receipt.json",
+      "note": "operationId=e0c457ce-7539-4911-8e0d-ecf2789384a0; timeout: synthetic recording ready; Classification: Shared recording fixture waits for ready while the real GNOME ScreenCast consent dialog awaits input (#791); review inputs and exports were not reached.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/gnome/g2/frames/review.status_actions/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/gnome/g2/frames/review.status_actions/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.status_actions",
+      "build": "a18d79e762df",
+      "at": "2026-10-30T04:58:00Z",
+      "issue": 791,
+      "review": true,
+      "review_reason": "GNOME ScreenCast consent block; original timeout and saved frames retained."
+    },
+    {
+      "interaction": "review.destination-menu",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/gnome/g2/receipt.json",
+      "note": "operationId=62eb0df4-0fa0-4fc1-b3cf-c7525e406667; timeout: synthetic recording ready; Classification: Shared recording fixture waits for ready while the real GNOME ScreenCast consent dialog awaits input (#791); review inputs and exports were not reached.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/gnome/g2/frames/review.upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/gnome/g2/frames/review.upload/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.upload",
+      "build": "a18d79e762df",
+      "at": "2026-10-30T04:58:50Z",
+      "issue": 791,
+      "review": true,
+      "review_reason": "GNOME ScreenCast consent block; original timeout and saved frames retained."
+    },
+    {
+      "interaction": "review.upload",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/gnome/g2/receipt.json",
+      "note": "operationId=62eb0df4-0fa0-4fc1-b3cf-c7525e406667; timeout: synthetic recording ready; Classification: Shared recording fixture waits for ready while the real GNOME ScreenCast consent dialog awaits input (#791); review inputs and exports were not reached.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/gnome/g2/frames/review.upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/gnome/g2/frames/review.upload/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.upload",
+      "build": "a18d79e762df",
+      "at": "2026-10-30T04:58:50Z",
+      "issue": 791,
+      "review": true,
+      "review_reason": "GNOME ScreenCast consent block; original timeout and saved frames retained."
+    },
+    {
+      "interaction": "confirm.review-discard",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/gnome/g2/receipt.json",
+      "note": "operationId=2458756a-eaf4-4c07-9c06-64c9e58bbf9c; timeout: synthetic recording ready; Classification: Shared recording fixture waits for ready while the real GNOME ScreenCast consent dialog awaits input (#791); review inputs and exports were not reached.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/gnome/g2/frames/review.discard/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/gnome/g2/frames/review.discard/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.discard",
+      "build": "a18d79e762df",
+      "at": "2026-10-30T04:59:39Z",
+      "issue": 791,
+      "review": true,
+      "review_reason": "GNOME ScreenCast consent block; original timeout and saved frames retained."
+    },
+    {
+      "interaction": "review.discard",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/gnome/g2/receipt.json",
+      "note": "operationId=2458756a-eaf4-4c07-9c06-64c9e58bbf9c; timeout: synthetic recording ready; Classification: Shared recording fixture waits for ready while the real GNOME ScreenCast consent dialog awaits input (#791); review inputs and exports were not reached.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/gnome/g2/frames/review.discard/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/gnome/g2/frames/review.discard/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.discard",
+      "build": "a18d79e762df",
+      "at": "2026-10-30T04:59:39Z",
+      "issue": 791,
+      "review": true,
+      "review_reason": "GNOME ScreenCast consent block; original timeout and saved frames retained."
+    },
+    {
+      "interaction": "review.window-close",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/gnome/g2/receipt.json",
+      "note": "operationId=46190a4c-ac7f-48e2-a627-f14dd115f504; timeout: synthetic recording ready; Classification: Shared recording fixture waits for ready while the real GNOME ScreenCast consent dialog awaits input (#791); review inputs and exports were not reached.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/gnome/g2/frames/review.window_close/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/gnome/g2/frames/review.window_close/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.window_close",
+      "build": "a18d79e762df",
+      "at": "2026-10-30T05:00:32Z",
+      "issue": 791,
+      "review": true,
+      "review_reason": "GNOME ScreenCast consent block; original timeout and saved frames retained."
+    },
+    {
+      "interaction": "review.advice",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/gnome/g2/receipt.json",
+      "note": "operationId=81aaa74a-d579-4860-b6f2-2846b51ae9c7; timeout: synthetic recording ready; Classification: Shared recording fixture waits for ready while the real GNOME ScreenCast consent dialog awaits input (#791); review inputs and exports were not reached.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/gnome/g2/frames/review.advice/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/gnome/g2/frames/review.advice/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.advice",
+      "build": "a18d79e762df",
+      "at": "2026-10-30T05:01:25Z",
+      "issue": 791,
+      "review": true,
+      "review_reason": "GNOME ScreenCast consent block; original timeout and saved frames retained."
+    },
+    {
+      "interaction": "review.notice",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/gnome/g2/receipt.json",
+      "note": "operationId=722c8177-2caa-4fee-be0b-70ba37db2708; timeout: synthetic recording ready; Classification: Shared recording fixture waits for ready while the real GNOME ScreenCast consent dialog awaits input (#791); review inputs and exports were not reached.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/gnome/g2/frames/review.stop_notice/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/gnome/g2/frames/review.stop_notice/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.stop_notice",
+      "build": "a18d79e762df",
+      "at": "2026-10-30T05:02:19Z",
+      "issue": 791,
+      "review": true,
+      "review_reason": "GNOME ScreenCast consent block; original timeout and saved frames retained."
+    },
+    {
+      "interaction": "review.preview-error",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/gnome/g2/receipt.json",
+      "note": "operationId=c87d4512-07d2-49d7-8e9c-0726ed773a88; timeout: synthetic recording ready; Classification: Shared recording fixture waits for ready while the real GNOME ScreenCast consent dialog awaits input (#791); review inputs and exports were not reached.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/gnome/g2/frames/review.preview_error/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/gnome/g2/frames/review.preview_error/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.preview_error",
+      "build": "a18d79e762df",
+      "at": "2026-10-30T05:03:13Z",
+      "issue": 791,
+      "review": true,
+      "review_reason": "GNOME ScreenCast consent block; original timeout and saved frames retained."
+    },
+    {
+      "interaction": "cli.recording",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/gnome/g2/receipt.json",
+      "note": "operationId=fccdf9b3-f593-4c71-9833-243bf0fde67f; timeout: synthetic recording ready; Classification: Shared recording fixture waits for ready while the real GNOME ScreenCast consent dialog awaits input (#791); review inputs and exports were not reached.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/gnome/g2/frames/review.cli_recording/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/gnome/g2/frames/review.cli_recording/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.cli_recording",
+      "build": "a18d79e762df",
+      "at": "2026-10-30T05:04:07Z",
+      "issue": 791,
+      "review": true,
+      "review_reason": "GNOME ScreenCast consent block; original timeout and saved frames retained."
+    },
+    {
+      "interaction": "mcp.recording",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/gnome/g2/receipt.json",
+      "note": "operationId=442855da-17db-4c58-8c28-b25d65967d44; timeout: synthetic recording ready; Classification: Shared recording fixture waits for ready while the real GNOME ScreenCast consent dialog awaits input (#791); review inputs and exports were not reached.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/gnome/g2/frames/review.mcp_recording/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/gnome/g2/frames/review.mcp_recording/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.mcp_recording",
+      "build": "a18d79e762df",
+      "at": "2026-10-30T05:04:59Z",
+      "issue": 791,
+      "review": true,
+      "review_reason": "GNOME ScreenCast consent block; original timeout and saved frames retained."
+    },
+    {
+      "interaction": "mcp.recording-review",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/gnome/g2/receipt.json",
+      "note": "operationId=9af94d99-5864-485b-8cea-075e2e43a034; timeout: synthetic recording ready; Classification: Shared recording fixture waits for ready while the real GNOME ScreenCast consent dialog awaits input (#791); review inputs and exports were not reached.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/gnome/g2/frames/review.mcp_recording_review/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "https://github.com/patrick-hudson/put.gd-desktop/blob/2a24586559329db14272363fe33e8e210d942176/docs/evidence/2026-10-30-recording-review-r2/gnome/g2/frames/review.mcp_recording_review/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.mcp_recording_review",
+      "build": "a18d79e762df",
+      "at": "2026-10-30T05:05:52Z",
+      "issue": 791,
+      "review": true,
+      "review_reason": "GNOME ScreenCast consent block; original timeout and saved frames retained."
+    }
+  ]
+}

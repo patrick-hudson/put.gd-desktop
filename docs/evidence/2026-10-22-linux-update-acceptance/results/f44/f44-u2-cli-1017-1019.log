@@ -1,0 +1,13 @@
+### back to N: sudo dnf downgrade -y ./putgd-26.1022.1017-nightly-fedora44-x86_64.rpm
+To reschedule, run: dnf5daemon-server
+Complete!
+putgd-26.1022.1017~nightly-1.fc44.x86_64
+### U2: sudo dnf upgrade --refresh -y putgd
+Upgrading:
+ putgd             x86_64 0:26.1022.1019~nightly-1.fc44 putgd-nightly 115.3 MiB
+   replacing putgd x86_64 0:26.1022.1017~nightly-1.fc44 @commandline  115.3 MiB
+ Upgrading:          1 package
+[1/1] putgd-0:26.1022.1019~nightly-1.fc 100% |  32.4 MiB/s |  38.7 MiB |  00m01s
+[3/4] Upgrading putgd-0:26.1022.1019~ni 100% |  94.8 MiB/s | 115.3 MiB |  00m01s
+putgd-26.1022.1019~nightly-1.fc44.x86_64
+1d6c2195c06e

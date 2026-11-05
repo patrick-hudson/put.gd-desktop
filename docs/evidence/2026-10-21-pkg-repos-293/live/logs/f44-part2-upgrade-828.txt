@@ -1,0 +1,19 @@
+{"error": {"code": "", "details": {}, "message": ""}, "ok": true, "requestId": "ace1daf2-9
+{"stopped": true, "left": ""}
+updaters: 1671310 /usr/bin/gnome-software --gapplication-ser
+
+### upgrade putgd through pkg.put.gd
+ putgd             x86_64 0:0.1.1~nightly.828-1.fc44 putgd-nightly 114.2 MiB
+   replacing putgd x86_64 0:0.1.1~nightly.816-1.fc44 @commandline  114.2 MiB
+[1/1] putgd-0:0.1.1~nightly.828-1.fc44. 100% |  32.2 MiB/s |  38.3 MiB |  00m01s
+Importing OpenPGP key 0x5536B371:
+ From       : file:///etc/pki/rpm-gpg/RPM-GPG-KEY-putgd
+The key was successfully imported.
+[3/4] Upgrading putgd-0:0.1.1~nightly.8 100% | 133.4 MiB/s | 114.2 MiB |  00m01s
+[4/4] Removing putgd-0:0.1.1~nightly.81 100% | 149.0   B/s | 123.0   B |  00m01s
+Complete!
+putgd-0.1.1~nightly.828-1.fc44.x86_64
+-rw-r--r--. 1 root root 421 Oct 21 12:44 /etc/yum.repos.d/putgd.repo
+
+### the app afterwards
+ok True latest 0.1.1-nightly.828 available False | action software-updates managed

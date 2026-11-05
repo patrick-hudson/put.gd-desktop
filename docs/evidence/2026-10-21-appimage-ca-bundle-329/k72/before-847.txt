@@ -1,0 +1,3 @@
+update True  None 
+aws s3_permission_denied {"curlCode": -1, "elapsedMs": 293, "extendedRequestId": "UIvEg4xBZDT4ZUGteuFXpwCcTQNWQreGUd7V5FGmmP4JqW0Tea1tKYABf4zYAAjt3QYHzg+ko9k8Oxm9Of4S0Y7NCiSHjrq1", "httpStatus": 403, "requestId": "15ZV5EJ5N3CG7TQB", "requestStage": "name_head", "sdkErrorType": 15, "sdkRetryable": false, "serviceCode": "Unclassified"}
+b2 b2_authentication_failed {"httpStatus": 401, "requestStage": "authorize", "serviceCode": "bad_auth_token"}

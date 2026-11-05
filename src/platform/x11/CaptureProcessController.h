@@ -1,5 +1,6 @@
 #pragma once
 #include "app/OperationService.h"
+#include "core/Log.h"
 #include "CaptureControl.h"
 #include "CaptureArtifactLease.h"
 #include "CaptureCursorCache.h"
@@ -28,15 +29,30 @@ public:
  ~CaptureProcessController() override;
  bool busy()const;
  bool preparedReady()const;
- Ticket prepare(const QJsonObject& frozen,const ResourceLimits&,std::function<void(Error)> earlyTerminal={},std::function<void()> earlyReleased={});
+ // screenshotFirst (#629): the helper reads every monitor after begin, before
+ // its selector maps, and cuts the region from those frames.
+ Ticket prepare(const QJsonObject& frozen,const ResourceLimits&,std::function<void(Error)> earlyTerminal={},std::function<void()> earlyReleased={},QString outcome={},bool screenshotFirst=false,QJsonObject appearance={});
  void begin(const Ticket&,std::function<void(PayloadResult)>);
  void discard(const Ticket&);
- void start(const QJsonObject& frozen,const ResourceLimits&,std::function<void(PayloadResult)>);
+ void start(const QJsonObject& frozen,const ResourceLimits&,std::function<void(PayloadResult)>,QString outcome={},bool screenshotFirst=false,QJsonObject appearance={});
  void cancel();
+ // The crosshair at the key press, while the helper loads: the resident's server
+ // cursor and the pointer, handed to the helper's mapped surfaces with the clicks
+ // made meanwhile. Needs a cursor from an earlier selection.
+ bool holdCrosshair();
+ bool crosshairHeld()const{return cursorCache_.holding();}
+ // The press did not start a selection, so nothing will claim the hold.
+ void releaseUnclaimedCrosshair();
+ // A hold never outlasts this: the desktop gets the pointer and its cursor back,
+ // and a helper that arrives later selects as usual with the clicks already made.
+ static constexpr int crosshairHoldMs=5000;
  QJsonObject diagnostics()const;
  qint64 processId()const;
 private:
  void receive(const QString&,const QJsonObject&);
+ void releaseCrosshair();
+ void forgetHeldButtons();
+ void observedCursor(const QJsonObject&);
  void sendPreview();
  void sendBegin();
  void notifyEarlyTerminal();
@@ -48,14 +64,15 @@ private:
  QString helperPath_,nonce_,launchStartTicks_;quint64 generation_=0;qint64 launchPid_=0;
  QProcess* process_=nullptr;CaptureControl* control_=nullptr;
  CaptureArtifactLease artifact_;std::unique_ptr<QTemporaryDir> directory_;QString path_,device_,inode_;
- CaptureCursorCache cursorCache_;QString cursorFingerprint_;quint32 requestedCursor_=0,previewCursor_=0;
+ CaptureCursorCache cursorCache_;QString cursorFingerprint_;quint32 requestedCursor_=0,previewCursor_=0;QByteArray observedCursorHash_;QList<CaptureCursorCache::HeldButton> heldButtons_;
  ResourceLimits limits_;std::function<void(PayloadResult)> callback_;
  std::function<void(Error)> earlyTerminal_;
  std::function<void()> earlyReleased_;
  std::weak_ptr<Preparation> preparation_;
- QTimer deadline_,stopDeadline_;QThread* decoder_=nullptr;
+ QTimer deadline_,stopDeadline_,holdDeadline_;QThread* decoder_=nullptr;
  PayloadResult result_;Error failure_;QJsonObject lastExit_;
- bool prepared_=false,beginRequested_=false,begun_=false,region_=false,previewed_=false;
+ HelperOutput output_{"putgd-capture",logCapture()};
+ bool cursorCompatible_=false,prepared_=false,beginRequested_=false,begun_=false,region_=false,previewed_=false;
  bool ready_=false,resultReceived_=false,accepted_=false,exited_=false,cancelling_=false,closing_=false;
 };
 }

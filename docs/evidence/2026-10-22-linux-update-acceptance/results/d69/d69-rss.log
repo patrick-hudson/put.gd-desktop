@@ -1,0 +1,6 @@
+start 03:02:47Z load 1.08 1.03 0.93
+appimage 26.1022.1017-nightly A median 30.02 pss 24.4 B median 30.1 pss 24.47 tls [] load [0.5419921875, 0.81298828125, 0.87353515625]
+appimage 26.1022.1019-nightly A median 30.04 pss 24.39 B median 30.06 pss 24.4 tls [] load [0.59814453125, 0.7373046875, 0.81884765625]
+package 26.1022.1017-nightly A median 30.84 pss 9.24 B median 30.91 pss 9.34 tls [] load [0.8095703125, 0.68359375, 0.74658203125]
+package 26.1022.1019-nightly A median 30.65 pss 9.05 B median 30.67 pss 9.09 tls [] load [0.52685546875, 0.640625, 0.70849609375]
+end 03:31:25Z load 0.58 0.60 0.68; putgd package putgd is not installed

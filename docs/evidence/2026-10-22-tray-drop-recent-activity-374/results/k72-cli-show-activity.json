@@ -1,0 +1,19 @@
+{
+ "method": "ui.show",
+ "params": {
+  "view": "activity"
+ },
+ "response": {
+  "error": {
+   "code": "",
+   "details": {},
+   "message": ""
+  },
+  "ok": true,
+  "requestId": "d48aff61-23f2-460d-9342-1c415e2134d6",
+  "result": {
+   "shown": "activity"
+  },
+  "schemaVersion": 1
+ }
+}

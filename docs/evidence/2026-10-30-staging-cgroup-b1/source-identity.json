@@ -1,0 +1,12 @@
+{
+  "finalCodeHead": "ef64bfa5d37c17e9be7e5bcd5bfc1a880817e3d7",
+  "liveSourceCommit": "ac6e9bb2d15a9c60dbb9cac39a3a3236f8c0d7d6",
+  "productionFilesUnchangedBetweenLiveAndFinal": [
+    "tools/lab/lab.py",
+    "tools/lab/package_staging.py",
+    "tools/lab/package_install.py",
+    "tools/lab/bootstrap-guest.sh"
+  ],
+  "subsequentChanges": "Integrate exact closing-login adapter into maintained driver; unit fixture catches ESRCH during proc read",
+  "placement": "boat"
+}

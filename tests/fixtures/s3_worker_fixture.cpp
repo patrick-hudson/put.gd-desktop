@@ -6,10 +6,13 @@
 #include <QFile>
 #include <QJsonDocument>
 #include <QSaveFile>
+#include <QSocketNotifier>
 #include <QTimer>
 #include <csignal>
 #include <functional>
 #ifdef Q_OS_UNIX
+#include <cerrno>
+#include <fcntl.h>
 #include <unistd.h>
 #endif
 
@@ -19,6 +22,13 @@ QByteArray frame(const QString& type, const QString& sequence, const QJsonObject
     return QJsonDocument(QJsonObject{{"version", 1}, {"type", type}, {"sequence", sequence}, {"payload", payload}})
                .toJson(QJsonDocument::Compact) + '\n';
 }
+#ifdef Q_OS_UNIX
+int terminationPipe[2] = {-1, -1};
+void onTerminate(int) {
+    const char byte = 't';
+    while (::write(terminationPipe[1], &byte, 1) < 0 && errno == EINTR) {}
+}
+#endif
 }
 int main(int argc, char** argv) {
     // The fixture exercises the production private-pipe framing and has no SDK,
@@ -31,6 +41,28 @@ int main(int argc, char** argv) {
     UiControl control(pipes);
 #ifdef Q_OS_UNIX
     std::signal(SIGPIPE, SIG_IGN);
+    // The parent terminates a worker whose cancellation grace expires. On a
+    // loaded host that SIGTERM can land before this event loop has read the
+    // shutdown frame the parent already wrote, or while a state save is still
+    // syncing. Draining the pending frames first keeps the recorded state equal
+    // to what the parent actually sent, independent of child scheduling.
+    if (::pipe2(terminationPipe, O_CLOEXEC | O_NONBLOCK) != 0) return 2;
+    struct sigaction termination {};
+    termination.sa_handler = onTerminate;
+    sigemptyset(&termination.sa_mask);
+    termination.sa_flags = SA_RESTART;
+    if (::sigaction(SIGTERM, &termination, nullptr) != 0) return 2;
+    QSocketNotifier terminated(terminationPipe[0], QSocketNotifier::Read, &app);
+    QObject::connect(&terminated, &QSocketNotifier::activated, &app, [&] {
+        terminated.setEnabled(false);
+        char drained[8];
+        while (::read(terminationPipe[0], drained, sizeof drained) > 0) {}
+        // The parent closes its write end before terminating, so the reader
+        // observes EOF once every delivered frame has been handled.
+        for (int pass = 0; pass < 8 && !pipes.atEnd(); ++pass)
+            QCoreApplication::processEvents(QEventLoop::AllEvents);
+        app.exit(0);
+    });
 #endif
     const auto mode = qEnvironmentVariable("PUTGD_S3_FAULT");
     const auto statePath = qEnvironmentVariable("PUTGD_S3_FAULT_STATE");

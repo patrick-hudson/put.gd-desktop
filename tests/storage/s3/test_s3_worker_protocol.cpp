@@ -298,13 +298,16 @@ private slots:
     }
     void safeTransportDetailsRoundTripButRejectUnboundedInput() {
         Error original{"s3_transport_unknown", "S3 request failed", {{"httpStatus", -1}, {"serviceCode", "Unclassified"},
-            {"sdkErrorType", 99}, {"curlCode", 7}, {"sdkRetryable", true}, {"requestStage", "name_head"}, {"elapsedMs", 4}}};
+            {"sdkErrorType", 99}, {"curlCode", 7}, {"sdkRetryable", true}, {"requestStage", "name_head"}, {"elapsedMs", 4},
+            {"requestId", "SYNTHREQ0123ABCD"}, {"extendedRequestId", "synthetic+Extended/Id2="}}};
         Error decoded;
         QVERIFY(wire::decode(wire::encode(original), decoded));
         QCOMPARE(decoded.details, original.details);
         const QList<QPair<QString,QJsonValue>> invalid{{"sdkErrorType", "99"}, {"sdkErrorType", 65536},
             {"curlCode", "7, private SDK message"}, {"curlCode", -2}, {"curlCode", 1000}, {"curlCode", 7.5},
-            {"sdkRetryable", 1}, {"elapsedMs", -1}, {"elapsedMs", 86400001}, {"requestStage", "raw endpoint/header"}};
+            {"sdkRetryable", 1}, {"elapsedMs", -1}, {"elapsedMs", 86400001}, {"requestStage", "raw endpoint/header"},
+            {"requestId", ""}, {"requestId", "id with spaces"}, {"requestId", QString(129, 'A')}, {"requestId", 42},
+            {"extendedRequestId", "Authorization: synthetic"}, {"extendedRequestId", QString(257, 'A')}};
         for (const auto& item : invalid) {
             auto changed = original; changed.details[item.first] = item.second;
             QVERIFY(!wire::decode(wire::encode(changed), decoded));
@@ -348,6 +351,103 @@ private slots:
         QVERIFY(!wire::decodeTestDestinationResult(modified));
         QVERIFY(!wire::decodeTestDestinationResult({{"uploadStatus", "uploaded"}}));
         QVERIFY(!wire::decodeTestDestinationResult({{"uploadStatus", "failed"}, {"receipt", receipt().toJson()}}));
+        // The multipart permission probe: ok, or the stage S3 refused and whether its upload was removed.
+        for (const auto& probe : {QJsonObject{{"status", "ok"}, {"abort", "aborted"}},
+                                  QJsonObject{{"status", "denied"}, {"stage", "upload_abort"}, {"abort", "failed"}},
+                                  QJsonObject{{"status", "denied"}, {"stage", "upload_list_parts"}, {"abort", "aborted"}},
+                                  QJsonObject{{"status", "unknown"}, {"stage", "upload_create"}}}) {
+            modified = completed;
+            modified["multipart"] = probe;
+            QVERIFY(wire::decodeTestDestinationResult(modified));
+        }
+        for (const auto& probe : {QJsonObject{{"status", "ok"}, {"stage", "upload_abort"}}, QJsonObject{{"status", "denied"}},
+                                  QJsonObject{{"status", "denied"}, {"stage", "upload_part"}}, QJsonObject{{"status", "ok"}, {"abort", "maybe"}},
+                                  QJsonObject{{"status", "ok"}, {"extra", true}}}) {
+            modified = completed;
+            modified["multipart"] = probe;
+            QVERIFY(!wire::decodeTestDestinationResult(modified));
+        }
+    }
+    void multipartJournalRoundTripsAndStaysStrict() {
+        auto original = upload();
+        original.resume = {{"schemaVersion", 1}, {"partBytes", 16777216}};
+        original.checkpoint = [](const QJsonObject&, std::function<void(Error)> ack) { ack({}); };
+        UploadRequest decoded;
+        QVERIFY(wire::decode(wire::encode(original), decoded));
+        QCOMPARE(decoded.resume, original.resume);
+        QVERIFY(!decoded.checkpoint);
+        QVERIFY(!wire::encode(original).contains("checkpoint"));
+        QVERIFY(wire::validateRequest("upload", wire::encode(original)));
+        QVERIFY(wire::validateRequest("reconcile", wire::encode(original)));
+        const QJsonObject created{{"schemaVersion", 1}, {"partBytes", 16777216}, {"uploadId", "VXBsb2FkIElE-x.y_z~=/+"},
+                                  {"key", "prefix é/a b.txt"}, {"bytes", 17}, {"sha256", QString(64, 'a')}, {"phase", "completing"}};
+        original.resume = created;
+        QVERIFY(wire::decode(wire::encode(original), decoded));
+        QCOMPARE(decoded.resume, created);
+        // No journal is encoded at all; an explicit empty one is malformed.
+        original.resume = {};
+        QVERIFY(!wire::encode(original).contains("resume"));
+        auto encoded = wire::encode(original);
+        encoded["resume"] = QJsonObject{};
+        QVERIFY(!wire::decode(encoded, decoded));
+        auto reject = [&](const QJsonObject& journal) {
+            auto value = wire::encode(upload());
+            value["resume"] = journal;
+            UploadRequest untouched;
+            return !wire::decode(value, untouched) && !wire::validateRequest("upload", value);
+        };
+        auto partial = created;
+        partial.remove("phase");
+        QVERIFY(reject(partial));
+        QVERIFY(reject(QJsonObject{{"schemaVersion", 2}, {"partBytes", 16777216}}));
+        QVERIFY(reject(QJsonObject{{"schemaVersion", 1}, {"partBytes", 0}}));
+        QVERIFY(reject(QJsonObject{{"schemaVersion", 1}, {"partBytes", 5368709121.0}}));
+        QVERIFY(reject(QJsonObject{{"schemaVersion", 1}, {"partBytes", 16777216}, {"secret", "x"}}));
+        for (const auto& [field, value] : std::initializer_list<std::pair<const char*, QJsonValue>>{
+                 {"uploadId", "bad id"}, {"uploadId", ""}, {"phase", "done"}, {"sha256", "abc"}, {"bytes", -1}, {"key", ""}}) {
+            auto bad = created;
+            bad[QLatin1String(field)] = value;
+            QVERIFY2(reject(bad), field);
+        }
+        // Multipart failures name their stage and part; nothing else is added.
+        Error part{"s3_permission_denied", "denied", {{"requestStage", "upload_part"}, {"partNumber", 3}, {"incompleteUpload", true}, {"serviceCode", "NoSuchUpload"}}};
+        Error decodedError;
+        QVERIFY(wire::decode(wire::encode(part), decodedError));
+        QCOMPARE(decodedError.details, part.details);
+        part.details["partNumber"] = 10001;
+        QVERIFY(!wire::decode(wire::encode(part), decodedError));
+    }
+    void abandonCarriesOnlyACreatedUploadJournal() {
+        const QJsonObject journal{{"schemaVersion", 1}, {"partBytes", 16 * 1024 * 1024}, {"uploadId", "synthetic-upload-1"},
+                                  {"key", "prefix é/a b.txt"}, {"bytes", 70000000}, {"sha256", QString(64, 'a')}, {"phase", "parts"}};
+        QVERIFY(wire::validateRequest("abandon", {{"destination", destination().toJson()}, {"journal", journal}}));
+        // A plan alone names no upload; extra fields and other shapes are refused.
+        QVERIFY(!wire::validateRequest("abandon", {{"destination", destination().toJson()}, {"journal", QJsonObject{{"schemaVersion", 1}, {"partBytes", 16 * 1024 * 1024}}}}));
+        auto extra = journal;
+        extra["abortError"] = QJsonObject{};
+        QVERIFY(!wire::validateRequest("abandon", {{"destination", destination().toJson()}, {"journal", extra}}));
+        QVERIFY(!wire::validateRequest("abandon", {{"journal", journal}}));
+        QVERIFY(!wire::validateRequest("abandon", {{"destination", destination().toJson()}, {"journal", journal}, {"extra", 1}}));
+    }
+    void uploadTraceCarriesNumbersAndRequestIdsOnly() {
+        const QJsonObject part{{"event", "part"}, {"partNumber", 3}, {"bytes", 16 * 1024 * 1024}, {"attempt", 2}, {"elapsedMs", 812},
+                               {"lane", 1}, {"lanes", 4}, {"requestId", "SYNTHPART0003"}, {"extendedRequestId", "synthetic+Part/Id23="}};
+        QVERIFY(wire::decodeUploadTrace(part));
+        const QJsonObject complete{{"event", "complete"}, {"parts", 9}, {"bytes", 150000000}, {"attempt", 1}, {"elapsedMs", 40}};
+        QVERIFY(wire::decodeUploadTrace(complete));
+        // A key, URL or any other field never passes; IDs keep their alphabet and bounds.
+        for (const auto& [field, value] : QList<QPair<QString, QJsonValue>>{{"key", "prefix é/a b.txt"}, {"url", "http://127.0.0.1/x"}, {"uploadId", "synthetic-upload-1"}}) {
+            auto bad = part;
+            bad[field] = value;
+            QVERIFY(!wire::decodeUploadTrace(bad));
+        }
+        for (const auto& [field, value] : QList<QPair<QString, QJsonValue>>{{"requestId", "id with space"}, {"requestId", QString(129, 'a')}, {"extendedRequestId", "a?b=c"},
+                                                                           {"partNumber", 0}, {"partNumber", 10001}, {"attempt", 4}, {"lane", 4}, {"lanes", 5},
+                                                                           {"event", "other"}}) {
+            auto bad = part;
+            bad[field] = value;
+            QVERIFY2(!wire::decodeUploadTrace(bad), qPrintable(field));
+        }
     }
     void oversizedOpaqueObjectsAreRejected() {
         const auto oversized = QString(wire::maximumFrameBytes, 'x');

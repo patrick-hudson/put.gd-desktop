@@ -1,0 +1,7 @@
+********* Start testing of OperationsTest *********
+Config: Using QtTest library 6.8.2, Qt 6.8.2 (x86_64-little_endian-lp64 shared (dynamic) release build; by GCC 14.2.0), debian 13
+PASS   : OperationsTest::initTestCase()
+PASS   : OperationsTest::resumableUploadJournalSurvivesForRetry()
+PASS   : OperationsTest::cleanupTestCase()
+Totals: 3 passed, 0 failed, 0 skipped, 0 blacklisted, 272ms
+********* Finished testing of OperationsTest *********

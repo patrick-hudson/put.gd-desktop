@@ -1,0 +1,1536 @@
+{
+ "name": "k72-pkg",
+ "runtime": "/tmp/ua-pkg.eEiB9d",
+ "session": {
+  "HOME": "/home/patrick",
+  "PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin",
+  "USER": "patrick",
+  "LANG": "en_US.UTF-8",
+  "DISPLAY": ":0",
+  "XAUTHORITY": "/run/user/1000/xauth_DpCZom",
+  "DBUS_SESSION_BUS_ADDRESS": "unix:path=/run/user/1000/bus",
+  "XDG_SESSION_TYPE": "wayland",
+  "XDG_CURRENT_DESKTOP": "KDE",
+  "WAYLAND_DISPLAY": "/run/user/1000/wayland-0",
+  "XDG_SESSION_DESKTOP": "KDE",
+  "DESKTOP_SESSION": "plasma",
+  "KDE_FULL_SESSION": "true",
+  "KDE_SESSION_VERSION": "6",
+  "XDG_DATA_DIRS": "/home/patrick/.local/share/flatpak/exports/share:/var/lib/flatpak/exports/share:/usr/local/share:/usr/share:/var/lib/snapd/desktop"
+ },
+ "shell": "plasmashell",
+ "vnc": 5900,
+ "input": "uinput",
+ "profile": "default",
+ "feed": "live",
+ "hostPath": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin",
+ "host": "kubuntu",
+ "created": "2026-10-22T23:26:17Z",
+ "pids": {
+  "launch": "putgd-ua-k72-pkg-u5-3-restarted-1792713553"
+ },
+ "log": [
+  {
+   "at": "2026-10-22T23:26:21Z",
+   "u4-0-n-start": {
+    "pid": 1457786,
+    "reply": {
+     "ok": true,
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     }
+    },
+    "status": {
+     "build": "26.1022.1017-nightly",
+     "buildChannel": "nightly",
+     "channel": "nightly",
+     "channelSource": "repository",
+     "channelSetting": "build",
+     "latest": "26.1022.1017-nightly",
+     "updateAvailable": false,
+     "notifies": false,
+     "action": {
+      "kind": "software-updates",
+      "manager": "apt",
+      "updater": {
+       "arguments": [
+        "--mode",
+        "update"
+       ],
+       "id": "plasma-discover",
+       "name": "Discover",
+       "program": "/usr/bin/plasma-discover"
+      },
+      "channel": "nightly",
+      "file": "/etc/apt/sources.list.d/putgd.sources",
+      "command": "sudo apt update && sudo apt upgrade",
+      "repository": "managed",
+      "otherChannel": {
+       "channel": "stable",
+       "commands": [
+        "sudo install -m 644 /usr/share/putgd/repo/putgd-stable.sources /etc/apt/sources.list.d/putgd.sources",
+        "sudo apt update",
+        "sudo apt install --allow-downgrades putgd/stable"
+       ],
+       "docs": "https://github.com/patrick-hudson/put.gd-desktop/blob/main/docs/package-repositories.md#switching-channels"
+      },
+      "older": null
+     },
+     "installKind": "update",
+     "installAvailable": false,
+     "installReason": "not_appimage",
+     "error": null
+    },
+    "repo": {
+     "file": "/etc/apt/sources.list.d/putgd.sources",
+     "exists": true,
+     "sha256": "5d5b79d0154fed9099c42beea5183e41876ba36920bed6ed45a747523d5cc852",
+     "sameAs": "/usr/share/putgd/repo/putgd-nightly.sources",
+     "lines": [
+      "URIs: https://pkg.put.gd/apt/ubuntu26.04",
+      "Suites: nightly"
+     ],
+     "installed": "26.1022.1017~nightly",
+     "policy": [
+      "putgd:",
+      "  Installed: 26.1022.1017~nightly",
+      "  Candidate: 26.1022.1017~nightly",
+      "  Version table:",
+      " *** 26.1022.1017~nightly 100",
+      "        100 /var/lib/dpkg/status"
+     ],
+     "conffiles": "/etc/apt/sources.list.d/putgd.sources 0bddc60435085b83a461f59d1a549517"
+    },
+    "frame": "/home/patrick/work/put.gd-ua/pkg/runs/k72-pkg/frames/u4-0-n-start.png"
+   }
+  },
+  {
+   "at": "2026-10-22T23:26:22Z",
+   "watch": {
+    "label": "u14",
+    "pid": 1457854
+   }
+  },
+  {
+   "at": "2026-10-22T23:26:22Z",
+   "liveS3": {
+    "profile": {
+     "aclMode": "public-read",
+     "addressing": "path",
+     "bucket": "put.gd",
+     "connectTimeoutMs": 10000,
+     "endpoint": "https://s3.us-east-2.amazonaws.com",
+     "lowSpeedBytesPerSecond": 1,
+     "lowSpeedTimeSeconds": 120,
+     "objectPrefix": "acceptance/ua/k72/",
+     "publicUrlBase": "https://put.gd",
+     "region": "us-east-2",
+     "requestTimeoutMs": 120000,
+     "storageClass": "STANDARD"
+    },
+    "stored": true,
+    "storeError": "",
+    "credentials": "completed"
+   }
+  },
+  {
+   "at": "2026-10-22T23:26:22Z",
+   "patch": {
+    "patch": {
+     "preferences": {
+      "appearance": {
+       "theme": "dark"
+      }
+     }
+    },
+    "ok": true,
+    "error": {
+     "code": "",
+     "details": {},
+     "message": ""
+    }
+   }
+  },
+  {
+   "at": "2026-10-22T23:26:24Z",
+   "upload": {
+    "operation": {
+     "state": "completed",
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     }
+    },
+    "link": "https://put.gd/acceptance/ua/k72/Screen-Capture-2026-10-22-18-26-22.png",
+    "served": {
+     "status": 200,
+     "bytes": 757,
+     "type": "image/png"
+    }
+   }
+  },
+  {
+   "at": "2026-10-22T23:26:27Z",
+   "upload": {
+    "operation": {
+     "state": "completed",
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     }
+    },
+    "link": "https://put.gd/acceptance/ua/k72/Screen-Capture-2026-10-22-18-26-24.png",
+    "served": {
+     "status": 200,
+     "bytes": 757,
+     "type": "image/png"
+    }
+   }
+  },
+  {
+   "at": "2026-10-22T23:26:28Z",
+   "snapshot:u5-1-before": {
+    "build": {
+     "baseVersion": "26.1022.1017",
+     "commitCount": 1017,
+     "dirty": false,
+     "gitCommit": "3582b30af88bb8158c49b92864c6eb3c48038b21",
+     "gitTree": "e5265b28ef2441fe98d7ada12ff4589f7a67fc61",
+     "packageVersion": "26.1022.1017~nightly",
+     "schemaVersion": 1,
+     "sourceProvenance": "git",
+     "version": "26.1022.1017-nightly"
+    },
+    "pid": 1457786,
+    "exe": "/usr/bin/putgd",
+    "config": {
+     "path": "/home/patrick/.config/putgd/config.json",
+     "sha256": "3789f35bdec6b1be22c80d39658d7685fca5fd27dd644c8ae4624842a416bc03"
+    },
+    "settingsRevision": "3789f35bdec6b1be22c80d39658d7685fca5fd27dd644c8ae4624842a416bc03",
+    "preferences": {
+     "appearance": {
+      "theme": "dark"
+     },
+     "launchAtLogin": false,
+     "notifications": true,
+     "unlockCredentialsAtStartup": false,
+     "updates": {
+      "channel": "build",
+      "check": true
+     },
+     "uploadClipboardBehavior": "each_link"
+    },
+    "history": {
+     "total": 2,
+     "records": [
+      {
+       "id": "f0dc9141-be6e-4606-a3b9-7ef36247e8c8",
+       "name": "Screen-Capture-2026-10-22-18-26-24.png",
+       "mime": "image/png",
+       "uploadStatus": "uploaded",
+       "link": "https://put.gd/acceptance/ua/k72/Screen-Capture-2026-10-22-18-26-24.png",
+       "local": "disabled",
+       "preview": {
+        "state": "ready",
+        "exists": true
+       }
+      },
+      {
+       "id": "2dc33b0f-566d-474b-bd41-1195041f58b4",
+       "name": "Screen-Capture-2026-10-22-18-26-22.png",
+       "mime": "image/png",
+       "uploadStatus": "uploaded",
+       "link": "https://put.gd/acceptance/ua/k72/Screen-Capture-2026-10-22-18-26-22.png",
+       "local": "disabled",
+       "preview": {
+        "state": "ready",
+        "exists": true
+       }
+      }
+     ]
+    },
+    "repo": {
+     "file": "/etc/apt/sources.list.d/putgd.sources",
+     "exists": true,
+     "sha256": "5d5b79d0154fed9099c42beea5183e41876ba36920bed6ed45a747523d5cc852",
+     "sameAs": "/usr/share/putgd/repo/putgd-nightly.sources",
+     "lines": [
+      "URIs: https://pkg.put.gd/apt/ubuntu26.04",
+      "Suites: nightly"
+     ],
+     "installed": "26.1022.1017~nightly",
+     "policy": [
+      "putgd:",
+      "  Installed: 26.1022.1017~nightly",
+      "  Candidate: 26.1022.1017~nightly",
+      "  Version table:",
+      " *** 26.1022.1017~nightly 100",
+      "        100 /var/lib/dpkg/status"
+     ],
+     "conffiles": "/etc/apt/sources.list.d/putgd.sources 0bddc60435085b83a461f59d1a549517"
+    },
+    "frame": "/home/patrick/work/put.gd-ua/pkg/runs/k72-pkg/frames/u5-1-before.png"
+   }
+  },
+  {
+   "at": "2026-10-22T23:34:57Z",
+   "u4-1-n1-available": {
+    "pid": 1457786,
+    "reply": {
+     "ok": true,
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     }
+    },
+    "status": {
+     "build": "26.1022.1017-nightly",
+     "buildChannel": "nightly",
+     "channel": "nightly",
+     "channelSource": "repository",
+     "channelSetting": "build",
+     "latest": "26.1022.1019-nightly",
+     "updateAvailable": true,
+     "notifies": false,
+     "action": {
+      "kind": "software-updates",
+      "manager": "apt",
+      "updater": {
+       "arguments": [
+        "--mode",
+        "update"
+       ],
+       "id": "plasma-discover",
+       "name": "Discover",
+       "program": "/usr/bin/plasma-discover"
+      },
+      "channel": "nightly",
+      "file": "/etc/apt/sources.list.d/putgd.sources",
+      "command": "sudo apt update && sudo apt upgrade",
+      "repository": "managed",
+      "otherChannel": {
+       "channel": "stable",
+       "commands": [
+        "sudo install -m 644 /usr/share/putgd/repo/putgd-stable.sources /etc/apt/sources.list.d/putgd.sources",
+        "sudo apt update",
+        "sudo apt install --allow-downgrades putgd/stable"
+       ],
+       "docs": "https://github.com/patrick-hudson/put.gd-desktop/blob/main/docs/package-repositories.md#switching-channels"
+      },
+      "older": null
+     },
+     "installKind": "update",
+     "installAvailable": false,
+     "installReason": "not_appimage",
+     "error": null
+    },
+    "repo": {
+     "file": "/etc/apt/sources.list.d/putgd.sources",
+     "exists": true,
+     "sha256": "5d5b79d0154fed9099c42beea5183e41876ba36920bed6ed45a747523d5cc852",
+     "sameAs": "/usr/share/putgd/repo/putgd-nightly.sources",
+     "lines": [
+      "URIs: https://pkg.put.gd/apt/ubuntu26.04",
+      "Suites: nightly"
+     ],
+     "installed": "26.1022.1017~nightly",
+     "policy": [
+      "putgd:",
+      "  Installed: 26.1022.1017~nightly",
+      "  Candidate: 26.1022.1017~nightly",
+      "  Version table:",
+      " *** 26.1022.1017~nightly 100",
+      "        100 /var/lib/dpkg/status"
+     ],
+     "conffiles": "/etc/apt/sources.list.d/putgd.sources 0bddc60435085b83a461f59d1a549517"
+    },
+    "frame": "/home/patrick/work/put.gd-ua/pkg/runs/k72-pkg/frames/u4-1-n1-available.png"
+   }
+  },
+  {
+   "at": "2026-10-22T23:36:02Z",
+   "click": {
+    "x": 797,
+    "y": 825,
+    "keys": null,
+    "frame": "/home/patrick/work/put.gd-ua/pkg/runs/k72-pkg/frames/u3-1-updater-opened.png"
+   }
+  },
+  {
+   "at": "2026-10-22T23:37:58Z",
+   "u3-0-in-session": {
+    "pid": 1458661,
+    "reply": {
+     "ok": true,
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     }
+    },
+    "status": {
+     "build": "26.1022.1017-nightly",
+     "buildChannel": "nightly",
+     "channel": "nightly",
+     "channelSource": "repository",
+     "channelSetting": "build",
+     "latest": "26.1022.1019-nightly",
+     "updateAvailable": true,
+     "notifies": false,
+     "action": {
+      "kind": "software-updates",
+      "manager": "apt",
+      "updater": {
+       "arguments": [
+        "--mode",
+        "update"
+       ],
+       "id": "plasma-discover",
+       "name": "Discover",
+       "program": "/usr/bin/plasma-discover"
+      },
+      "channel": "nightly",
+      "file": "/etc/apt/sources.list.d/putgd.sources",
+      "command": "sudo apt update && sudo apt upgrade",
+      "repository": "managed",
+      "otherChannel": {
+       "channel": "stable",
+       "commands": [
+        "sudo install -m 644 /usr/share/putgd/repo/putgd-stable.sources /etc/apt/sources.list.d/putgd.sources",
+        "sudo apt update",
+        "sudo apt install --allow-downgrades putgd/stable"
+       ],
+       "docs": "https://github.com/patrick-hudson/put.gd-desktop/blob/main/docs/package-repositories.md#switching-channels"
+      },
+      "older": null
+     },
+     "installKind": "update",
+     "installAvailable": false,
+     "installReason": "not_appimage",
+     "error": null
+    },
+    "repo": {
+     "file": "/etc/apt/sources.list.d/putgd.sources",
+     "exists": true,
+     "sha256": "5d5b79d0154fed9099c42beea5183e41876ba36920bed6ed45a747523d5cc852",
+     "sameAs": "/usr/share/putgd/repo/putgd-nightly.sources",
+     "lines": [
+      "URIs: https://pkg.put.gd/apt/ubuntu26.04",
+      "Suites: nightly"
+     ],
+     "installed": "26.1022.1017~nightly",
+     "policy": [
+      "putgd:",
+      "  Installed: 26.1022.1017~nightly",
+      "  Candidate: 26.1022.1017~nightly",
+      "  Version table:",
+      " *** 26.1022.1017~nightly 100",
+      "        100 /var/lib/dpkg/status"
+     ],
+     "conffiles": "/etc/apt/sources.list.d/putgd.sources 0bddc60435085b83a461f59d1a549517"
+    },
+    "frame": "/home/patrick/work/put.gd-ua/pkg/runs/k72-pkg/frames/u3-0-in-session.png"
+   }
+  },
+  {
+   "at": "2026-10-22T23:38:13Z",
+   "u3-0b-before-click": {
+    "repo": {
+     "file": "/etc/apt/sources.list.d/putgd.sources",
+     "exists": true,
+     "sha256": "5d5b79d0154fed9099c42beea5183e41876ba36920bed6ed45a747523d5cc852",
+     "sameAs": "/usr/share/putgd/repo/putgd-nightly.sources",
+     "lines": [
+      "URIs: https://pkg.put.gd/apt/ubuntu26.04",
+      "Suites: nightly"
+     ],
+     "installed": "26.1022.1017~nightly",
+     "policy": [
+      "putgd:",
+      "  Installed: 26.1022.1017~nightly",
+      "  Candidate: 26.1022.1017~nightly",
+      "  Version table:",
+      " *** 26.1022.1017~nightly 100",
+      "        100 /var/lib/dpkg/status"
+     ],
+     "conffiles": "/etc/apt/sources.list.d/putgd.sources 0bddc60435085b83a461f59d1a549517"
+    },
+    "frame": "/home/patrick/work/put.gd-ua/pkg/runs/k72-pkg/frames/u3-0b-before-click.png"
+   }
+  },
+  {
+   "at": "2026-10-22T23:39:13Z",
+   "click": {
+    "x": 797,
+    "y": 831,
+    "keys": null,
+    "frame": "/home/patrick/work/put.gd-ua/pkg/runs/k72-pkg/frames/u3-1-updater-opened.png"
+   }
+  },
+  {
+   "at": "2026-10-22T23:45:27Z",
+   "u3-2-discover-state": {
+    "repo": {
+     "file": "/etc/apt/sources.list.d/putgd.sources",
+     "exists": true,
+     "sha256": "5d5b79d0154fed9099c42beea5183e41876ba36920bed6ed45a747523d5cc852",
+     "sameAs": "/usr/share/putgd/repo/putgd-nightly.sources",
+     "lines": [
+      "URIs: https://pkg.put.gd/apt/ubuntu26.04",
+      "Suites: nightly"
+     ],
+     "installed": "26.1022.1017~nightly",
+     "policy": [
+      "putgd:",
+      "  Installed: 26.1022.1017~nightly",
+      "  Candidate: 26.1022.1017~nightly",
+      "  Version table:",
+      " *** 26.1022.1017~nightly 100",
+      "        100 /var/lib/dpkg/status"
+     ],
+     "conffiles": "/etc/apt/sources.list.d/putgd.sources 0bddc60435085b83a461f59d1a549517"
+    },
+    "frame": "/home/patrick/work/put.gd-ua/pkg/runs/k72-pkg/frames/u3-2-discover-state.png"
+   }
+  },
+  {
+   "at": "2026-10-22T23:48:47Z",
+   "u3-3-discover-state": {
+    "repo": {
+     "file": "/etc/apt/sources.list.d/putgd.sources",
+     "exists": true,
+     "sha256": "5d5b79d0154fed9099c42beea5183e41876ba36920bed6ed45a747523d5cc852",
+     "sameAs": "/usr/share/putgd/repo/putgd-nightly.sources",
+     "lines": [
+      "URIs: https://pkg.put.gd/apt/ubuntu26.04",
+      "Suites: nightly"
+     ],
+     "installed": "26.1022.1017~nightly",
+     "policy": [
+      "putgd:",
+      "  Installed: 26.1022.1017~nightly",
+      "  Candidate: 26.1022.1017~nightly",
+      "  Version table:",
+      " *** 26.1022.1017~nightly 100",
+      "        100 /var/lib/dpkg/status"
+     ],
+     "conffiles": "/etc/apt/sources.list.d/putgd.sources 0bddc60435085b83a461f59d1a549517"
+    },
+    "frame": "/home/patrick/work/put.gd-ua/pkg/runs/k72-pkg/frames/u3-3-discover-state.png"
+   }
+  },
+  {
+   "at": "2026-10-22T23:50:02Z",
+   "click": {
+    "x": 797,
+    "y": 831,
+    "keys": null,
+    "frame": "/home/patrick/work/put.gd-ua/pkg/runs/k72-pkg/frames/u3-4-discover-reopened.png"
+   }
+  },
+  {
+   "at": "2026-10-22T23:51:16Z",
+   "click": {
+    "x": 797,
+    "y": 831,
+    "keys": null,
+    "frame": "/home/patrick/work/put.gd-ua/pkg/runs/k72-pkg/frames/u3-4-discover-reopened.png"
+   }
+  },
+  {
+   "at": "2026-10-22T23:51:37Z",
+   "click": {
+    "x": 797,
+    "y": 831,
+    "keys": null,
+    "frame": null
+   }
+  },
+  {
+   "at": "2026-10-22T23:51:52Z",
+   "dbg-now": {
+    "repo": {
+     "file": "/etc/apt/sources.list.d/putgd.sources",
+     "exists": true,
+     "sha256": "5d5b79d0154fed9099c42beea5183e41876ba36920bed6ed45a747523d5cc852",
+     "sameAs": "/usr/share/putgd/repo/putgd-nightly.sources",
+     "lines": [
+      "URIs: https://pkg.put.gd/apt/ubuntu26.04",
+      "Suites: nightly"
+     ],
+     "installed": "26.1022.1017~nightly",
+     "policy": [
+      "putgd:",
+      "  Installed: 26.1022.1017~nightly",
+      "  Candidate: 26.1022.1019~nightly",
+      "  Version table:",
+      "     26.1022.1019~nightly 500",
+      "        500 https://pkg.put.gd/apt/ubuntu26.04 nightly/main amd64 Packages",
+      " *** 26.1022.1017~nightly 100",
+      "        100 /var/lib/dpkg/status"
+     ],
+     "conffiles": "/etc/apt/sources.list.d/putgd.sources 0bddc60435085b83a461f59d1a549517"
+    },
+    "frame": "/home/patrick/work/put.gd-ua/pkg/runs/k72-pkg/frames/dbg-now.png"
+   }
+  },
+  {
+   "at": "2026-10-22T23:52:08Z",
+   "dbg-move": {
+    "repo": {
+     "file": "/etc/apt/sources.list.d/putgd.sources",
+     "exists": true,
+     "sha256": "5d5b79d0154fed9099c42beea5183e41876ba36920bed6ed45a747523d5cc852",
+     "sameAs": "/usr/share/putgd/repo/putgd-nightly.sources",
+     "lines": [
+      "URIs: https://pkg.put.gd/apt/ubuntu26.04",
+      "Suites: nightly"
+     ],
+     "installed": "26.1022.1017~nightly",
+     "policy": [
+      "putgd:",
+      "  Installed: 26.1022.1017~nightly",
+      "  Candidate: 26.1022.1019~nightly",
+      "  Version table:",
+      "     26.1022.1019~nightly 500",
+      "        500 https://pkg.put.gd/apt/ubuntu26.04 nightly/main amd64 Packages",
+      " *** 26.1022.1017~nightly 100",
+      "        100 /var/lib/dpkg/status"
+     ],
+     "conffiles": "/etc/apt/sources.list.d/putgd.sources 0bddc60435085b83a461f59d1a549517"
+    },
+    "frame": "/home/patrick/work/put.gd-ua/pkg/runs/k72-pkg/frames/dbg-move.png"
+   }
+  },
+  {
+   "at": "2026-10-22T23:52:24Z",
+   "click": {
+    "x": 797,
+    "y": 831,
+    "keys": null,
+    "frame": null
+   }
+  },
+  {
+   "at": "2026-10-22T23:53:06Z",
+   "u3-4-discover-reopened": {
+    "repo": {
+     "file": "/etc/apt/sources.list.d/putgd.sources",
+     "exists": true,
+     "sha256": "5d5b79d0154fed9099c42beea5183e41876ba36920bed6ed45a747523d5cc852",
+     "sameAs": "/usr/share/putgd/repo/putgd-nightly.sources",
+     "lines": [
+      "URIs: https://pkg.put.gd/apt/ubuntu26.04",
+      "Suites: nightly"
+     ],
+     "installed": "26.1022.1017~nightly",
+     "policy": [
+      "putgd:",
+      "  Installed: 26.1022.1017~nightly",
+      "  Candidate: 26.1022.1019~nightly",
+      "  Version table:",
+      "     26.1022.1019~nightly 500",
+      "        500 https://pkg.put.gd/apt/ubuntu26.04 nightly/main amd64 Packages",
+      " *** 26.1022.1017~nightly 100",
+      "        100 /var/lib/dpkg/status"
+     ],
+     "conffiles": "/etc/apt/sources.list.d/putgd.sources 0bddc60435085b83a461f59d1a549517"
+    },
+    "frame": "/home/patrick/work/put.gd-ua/pkg/runs/k72-pkg/frames/u3-4-discover-reopened.png"
+   }
+  },
+  {
+   "at": "2026-10-22T23:53:19Z",
+   "click": {
+    "x": 912,
+    "y": 854,
+    "keys": null,
+    "frame": null
+   }
+  },
+  {
+   "at": "2026-10-22T23:53:20Z",
+   "click": {
+    "x": 617,
+    "y": 200,
+    "keys": null,
+    "frame": null
+   }
+  },
+  {
+   "at": "2026-10-22T23:53:25Z",
+   "type": {
+    "x": null,
+    "y": null,
+    "keys": null,
+    "frame": "/home/patrick/work/put.gd-ua/pkg/runs/k72-pkg/frames/u3-5-discover-filtered.png"
+   }
+  },
+  {
+   "at": "2026-10-22T23:53:38Z",
+   "key": {
+    "x": null,
+    "y": null,
+    "keys": [
+     "Return"
+    ],
+    "frame": "/home/patrick/work/put.gd-ua/pkg/runs/k72-pkg/frames/u3-5-discover-filtered.png"
+   }
+  },
+  {
+   "at": "2026-10-22T23:53:52Z",
+   "click": {
+    "x": 592,
+    "y": 317,
+    "keys": null,
+    "frame": null
+   }
+  },
+  {
+   "at": "2026-10-22T23:53:53Z",
+   "click": {
+    "x": 1300,
+    "y": 470,
+    "keys": null,
+    "frame": null
+   }
+  },
+  {
+   "at": "2026-10-22T23:53:56Z",
+   "key": {
+    "x": null,
+    "y": null,
+    "keys": [
+     "End"
+    ],
+    "frame": "/home/patrick/work/put.gd-ua/pkg/runs/k72-pkg/frames/u3-6-discover-end.png"
+   }
+  },
+  {
+   "at": "2026-10-22T23:54:11Z",
+   "u3-6-discover-end": {
+    "repo": {
+     "file": "/etc/apt/sources.list.d/putgd.sources",
+     "exists": true,
+     "sha256": "5d5b79d0154fed9099c42beea5183e41876ba36920bed6ed45a747523d5cc852",
+     "sameAs": "/usr/share/putgd/repo/putgd-nightly.sources",
+     "lines": [
+      "URIs: https://pkg.put.gd/apt/ubuntu26.04",
+      "Suites: nightly"
+     ],
+     "installed": "26.1022.1017~nightly",
+     "policy": [
+      "putgd:",
+      "  Installed: 26.1022.1017~nightly",
+      "  Candidate: 26.1022.1019~nightly",
+      "  Version table:",
+      "     26.1022.1019~nightly 500",
+      "        500 https://pkg.put.gd/apt/ubuntu26.04 nightly/main amd64 Packages",
+      " *** 26.1022.1017~nightly 100",
+      "        100 /var/lib/dpkg/status"
+     ],
+     "conffiles": "/etc/apt/sources.list.d/putgd.sources 0bddc60435085b83a461f59d1a549517"
+    },
+    "frame": "/home/patrick/work/put.gd-ua/pkg/runs/k72-pkg/frames/u3-6-discover-end.png"
+   }
+  },
+  {
+   "at": "2026-10-22T23:54:25Z",
+   "u3-6-discover-putgd": {
+    "repo": {
+     "file": "/etc/apt/sources.list.d/putgd.sources",
+     "exists": true,
+     "sha256": "5d5b79d0154fed9099c42beea5183e41876ba36920bed6ed45a747523d5cc852",
+     "sameAs": "/usr/share/putgd/repo/putgd-nightly.sources",
+     "lines": [
+      "URIs: https://pkg.put.gd/apt/ubuntu26.04",
+      "Suites: nightly"
+     ],
+     "installed": "26.1022.1017~nightly",
+     "policy": [
+      "putgd:",
+      "  Installed: 26.1022.1017~nightly",
+      "  Candidate: 26.1022.1019~nightly",
+      "  Version table:",
+      "     26.1022.1019~nightly 500",
+      "        500 https://pkg.put.gd/apt/ubuntu26.04 nightly/main amd64 Packages",
+      " *** 26.1022.1017~nightly 100",
+      "        100 /var/lib/dpkg/status"
+     ],
+     "conffiles": "/etc/apt/sources.list.d/putgd.sources 0bddc60435085b83a461f59d1a549517"
+    },
+    "frame": "/home/patrick/work/put.gd-ua/pkg/runs/k72-pkg/frames/u3-6-discover-putgd.png"
+   }
+  },
+  {
+   "at": "2026-10-22T23:54:38Z",
+   "click": {
+    "x": 763,
+    "y": 310,
+    "keys": null,
+    "frame": "/home/patrick/work/put.gd-ua/pkg/runs/k72-pkg/frames/u3-7-discover-putgd-only.png"
+   }
+  },
+  {
+   "at": "2026-10-22T23:54:57Z",
+   "click": {
+    "x": 1255,
+    "y": 200,
+    "keys": null,
+    "frame": "/home/patrick/work/put.gd-ua/pkg/runs/k72-pkg/frames/u3-8-discover-update-prompt.png"
+   }
+  },
+  {
+   "at": "2026-10-22T23:55:31Z",
+   "click": {
+    "x": 960,
+    "y": 73,
+    "keys": null,
+    "frame": null
+   }
+  },
+  {
+   "at": "2026-10-22T23:55:33Z",
+   "click": {
+    "x": 797,
+    "y": 831,
+    "keys": null,
+    "frame": null
+   }
+  },
+  {
+   "at": "2026-10-22T23:57:23Z",
+   "u3-9-discover-fresh": {
+    "repo": {
+     "file": "/etc/apt/sources.list.d/putgd.sources",
+     "exists": true,
+     "sha256": "5d5b79d0154fed9099c42beea5183e41876ba36920bed6ed45a747523d5cc852",
+     "sameAs": "/usr/share/putgd/repo/putgd-nightly.sources",
+     "lines": [
+      "URIs: https://pkg.put.gd/apt/ubuntu26.04",
+      "Suites: nightly"
+     ],
+     "installed": "26.1022.1017~nightly",
+     "policy": [
+      "putgd:",
+      "  Installed: 26.1022.1017~nightly",
+      "  Candidate: 26.1022.1019~nightly",
+      "  Version table:",
+      "     26.1022.1019~nightly 500",
+      "        500 https://pkg.put.gd/apt/ubuntu26.04 nightly/main amd64 Packages",
+      " *** 26.1022.1017~nightly 100",
+      "        100 /var/lib/dpkg/status"
+     ],
+     "conffiles": "/etc/apt/sources.list.d/putgd.sources 0bddc60435085b83a461f59d1a549517"
+    },
+    "frame": "/home/patrick/work/put.gd-ua/pkg/runs/k72-pkg/frames/u3-9-discover-fresh.png"
+   }
+  },
+  {
+   "at": "2026-10-22T23:57:56Z",
+   "click": {
+    "x": 912,
+    "y": 854,
+    "keys": null,
+    "frame": null
+   }
+  },
+  {
+   "at": "2026-10-22T23:58:02Z",
+   "u3-10-discover-scrolled": {
+    "repo": {
+     "file": "/etc/apt/sources.list.d/putgd.sources",
+     "exists": true,
+     "sha256": "5d5b79d0154fed9099c42beea5183e41876ba36920bed6ed45a747523d5cc852",
+     "sameAs": "/usr/share/putgd/repo/putgd-nightly.sources",
+     "lines": [
+      "URIs: https://pkg.put.gd/apt/ubuntu26.04",
+      "Suites: nightly"
+     ],
+     "installed": "26.1022.1017~nightly",
+     "policy": [
+      "putgd:",
+      "  Installed: 26.1022.1017~nightly",
+      "  Candidate: 26.1022.1019~nightly",
+      "  Version table:",
+      "     26.1022.1019~nightly 500",
+      "        500 https://pkg.put.gd/apt/ubuntu26.04 nightly/main amd64 Packages",
+      " *** 26.1022.1017~nightly 100",
+      "        100 /var/lib/dpkg/status"
+     ],
+     "conffiles": "/etc/apt/sources.list.d/putgd.sources 0bddc60435085b83a461f59d1a549517"
+    },
+    "frame": "/home/patrick/work/put.gd-ua/pkg/runs/k72-pkg/frames/u3-10-discover-scrolled.png"
+   }
+  },
+  {
+   "at": "2026-10-22T23:58:14Z",
+   "click": {
+    "x": 763,
+    "y": 310,
+    "keys": null,
+    "frame": "/home/patrick/work/put.gd-ua/pkg/runs/k72-pkg/frames/u3-11-discover-ticked.png"
+   }
+  },
+  {
+   "at": "2026-10-22T23:58:47Z",
+   "u3-12-discover-update-selected": {
+    "repo": {
+     "file": "/etc/apt/sources.list.d/putgd.sources",
+     "exists": true,
+     "sha256": "5d5b79d0154fed9099c42beea5183e41876ba36920bed6ed45a747523d5cc852",
+     "sameAs": "/usr/share/putgd/repo/putgd-nightly.sources",
+     "lines": [
+      "URIs: https://pkg.put.gd/apt/ubuntu26.04",
+      "Suites: nightly"
+     ],
+     "installed": "26.1022.1019~nightly",
+     "policy": [
+      "putgd:",
+      "  Installed: 26.1022.1019~nightly",
+      "  Candidate: 26.1022.1019~nightly",
+      "  Version table:",
+      " *** 26.1022.1019~nightly 500",
+      "        500 https://pkg.put.gd/apt/ubuntu26.04 nightly/main amd64 Packages",
+      "        100 /var/lib/dpkg/status"
+     ],
+     "conffiles": "/etc/apt/sources.list.d/putgd.sources 0bddc60435085b83a461f59d1a549517"
+    },
+    "frame": "/home/patrick/work/put.gd-ua/pkg/runs/k72-pkg/frames/u3-12-discover-update-selected.png"
+   }
+  },
+  {
+   "at": "2026-10-22T23:59:12Z",
+   "snapshot:u5-2-running-after-upgrade": {
+    "build": {
+     "baseVersion": "26.1022.1017",
+     "commitCount": 1017,
+     "dirty": false,
+     "gitCommit": "3582b30af88bb8158c49b92864c6eb3c48038b21",
+     "gitTree": "e5265b28ef2441fe98d7ada12ff4589f7a67fc61",
+     "packageVersion": "26.1022.1017~nightly",
+     "schemaVersion": 1,
+     "sourceProvenance": "git",
+     "version": "26.1022.1017-nightly"
+    },
+    "pid": 1458661,
+    "exe": "/usr/bin/putgd (deleted)",
+    "config": {
+     "path": "/home/patrick/.config/putgd/config.json",
+     "sha256": "3789f35bdec6b1be22c80d39658d7685fca5fd27dd644c8ae4624842a416bc03"
+    },
+    "settingsRevision": "3789f35bdec6b1be22c80d39658d7685fca5fd27dd644c8ae4624842a416bc03",
+    "preferences": {
+     "appearance": {
+      "theme": "dark"
+     },
+     "launchAtLogin": false,
+     "notifications": true,
+     "unlockCredentialsAtStartup": false,
+     "updates": {
+      "channel": "build",
+      "check": true
+     },
+     "uploadClipboardBehavior": "each_link"
+    },
+    "history": {
+     "total": 2,
+     "records": [
+      {
+       "id": "f0dc9141-be6e-4606-a3b9-7ef36247e8c8",
+       "name": "Screen-Capture-2026-10-22-18-26-24.png",
+       "mime": "image/png",
+       "uploadStatus": "uploaded",
+       "link": "https://put.gd/acceptance/ua/k72/Screen-Capture-2026-10-22-18-26-24.png",
+       "local": "disabled",
+       "preview": {
+        "state": "ready",
+        "exists": true
+       }
+      },
+      {
+       "id": "2dc33b0f-566d-474b-bd41-1195041f58b4",
+       "name": "Screen-Capture-2026-10-22-18-26-22.png",
+       "mime": "image/png",
+       "uploadStatus": "uploaded",
+       "link": "https://put.gd/acceptance/ua/k72/Screen-Capture-2026-10-22-18-26-22.png",
+       "local": "disabled",
+       "preview": {
+        "state": "ready",
+        "exists": true
+       }
+      }
+     ]
+    },
+    "repo": {
+     "file": "/etc/apt/sources.list.d/putgd.sources",
+     "exists": true,
+     "sha256": "5d5b79d0154fed9099c42beea5183e41876ba36920bed6ed45a747523d5cc852",
+     "sameAs": "/usr/share/putgd/repo/putgd-nightly.sources",
+     "lines": [
+      "URIs: https://pkg.put.gd/apt/ubuntu26.04",
+      "Suites: nightly"
+     ],
+     "installed": "26.1022.1019~nightly",
+     "policy": [
+      "putgd:",
+      "  Installed: 26.1022.1019~nightly",
+      "  Candidate: 26.1022.1019~nightly",
+      "  Version table:",
+      " *** 26.1022.1019~nightly 500",
+      "        500 https://pkg.put.gd/apt/ubuntu26.04 nightly/main amd64 Packages",
+      "        100 /var/lib/dpkg/status"
+     ],
+     "conffiles": "/etc/apt/sources.list.d/putgd.sources 0bddc60435085b83a461f59d1a549517"
+    },
+    "frame": "/home/patrick/work/put.gd-ua/pkg/runs/k72-pkg/frames/u5-2-running-after-upgrade.png"
+   }
+  },
+  {
+   "at": "2026-10-22T23:59:18Z",
+   "u5-3-restarted": {
+    "pid": 1461880,
+    "reply": {
+     "ok": true,
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     }
+    },
+    "status": {
+     "build": "26.1022.1019-nightly",
+     "buildChannel": "nightly",
+     "channel": "nightly",
+     "channelSource": "repository",
+     "channelSetting": "build",
+     "latest": "26.1022.1019-nightly",
+     "updateAvailable": false,
+     "notifies": false,
+     "action": {
+      "kind": "software-updates",
+      "manager": "apt",
+      "updater": {
+       "arguments": [
+        "--mode",
+        "update"
+       ],
+       "id": "plasma-discover",
+       "name": "Discover",
+       "program": "/usr/bin/plasma-discover"
+      },
+      "channel": "nightly",
+      "file": "/etc/apt/sources.list.d/putgd.sources",
+      "command": "sudo apt update && sudo apt upgrade",
+      "repository": "managed",
+      "otherChannel": {
+       "channel": "stable",
+       "commands": [
+        "sudo install -m 644 /usr/share/putgd/repo/putgd-stable.sources /etc/apt/sources.list.d/putgd.sources",
+        "sudo apt update",
+        "sudo apt install --allow-downgrades putgd/stable"
+       ],
+       "docs": "https://github.com/patrick-hudson/put.gd-desktop/blob/main/docs/package-repositories.md#switching-channels"
+      },
+      "older": null
+     },
+     "installKind": "update",
+     "installAvailable": false,
+     "installReason": "not_appimage",
+     "error": null
+    },
+    "repo": {
+     "file": "/etc/apt/sources.list.d/putgd.sources",
+     "exists": true,
+     "sha256": "5d5b79d0154fed9099c42beea5183e41876ba36920bed6ed45a747523d5cc852",
+     "sameAs": "/usr/share/putgd/repo/putgd-nightly.sources",
+     "lines": [
+      "URIs: https://pkg.put.gd/apt/ubuntu26.04",
+      "Suites: nightly"
+     ],
+     "installed": "26.1022.1019~nightly",
+     "policy": [
+      "putgd:",
+      "  Installed: 26.1022.1019~nightly",
+      "  Candidate: 26.1022.1019~nightly",
+      "  Version table:",
+      " *** 26.1022.1019~nightly 500",
+      "        500 https://pkg.put.gd/apt/ubuntu26.04 nightly/main amd64 Packages",
+      "        100 /var/lib/dpkg/status"
+     ],
+     "conffiles": "/etc/apt/sources.list.d/putgd.sources 0bddc60435085b83a461f59d1a549517"
+    },
+    "frame": "/home/patrick/work/put.gd-ua/pkg/runs/k72-pkg/frames/u5-3-restarted.png"
+   }
+  },
+  {
+   "at": "2026-10-22T23:59:19Z",
+   "snapshot:u5-4-after": {
+    "build": {
+     "baseVersion": "26.1022.1019",
+     "commitCount": 1019,
+     "dirty": false,
+     "gitCommit": "5ba9de0e7ce413717e65893effaff5b9a67732ae",
+     "gitTree": "7aa1000578e923a75d84e88b65f347856f05ed56",
+     "packageVersion": "26.1022.1019~nightly",
+     "schemaVersion": 1,
+     "sourceProvenance": "git",
+     "version": "26.1022.1019-nightly"
+    },
+    "pid": 1461880,
+    "exe": "/usr/bin/putgd",
+    "config": {
+     "path": "/home/patrick/.config/putgd/config.json",
+     "sha256": "3789f35bdec6b1be22c80d39658d7685fca5fd27dd644c8ae4624842a416bc03"
+    },
+    "settingsRevision": "3789f35bdec6b1be22c80d39658d7685fca5fd27dd644c8ae4624842a416bc03",
+    "preferences": {
+     "appearance": {
+      "theme": "dark"
+     },
+     "launchAtLogin": false,
+     "notifications": true,
+     "unlockCredentialsAtStartup": false,
+     "updates": {
+      "channel": "build",
+      "check": true
+     },
+     "uploadClipboardBehavior": "each_link"
+    },
+    "history": {
+     "total": 2,
+     "records": [
+      {
+       "id": "f0dc9141-be6e-4606-a3b9-7ef36247e8c8",
+       "name": "Screen-Capture-2026-10-22-18-26-24.png",
+       "mime": "image/png",
+       "uploadStatus": "uploaded",
+       "link": "https://put.gd/acceptance/ua/k72/Screen-Capture-2026-10-22-18-26-24.png",
+       "local": "disabled",
+       "preview": {
+        "state": "ready",
+        "exists": true
+       }
+      },
+      {
+       "id": "2dc33b0f-566d-474b-bd41-1195041f58b4",
+       "name": "Screen-Capture-2026-10-22-18-26-22.png",
+       "mime": "image/png",
+       "uploadStatus": "uploaded",
+       "link": "https://put.gd/acceptance/ua/k72/Screen-Capture-2026-10-22-18-26-22.png",
+       "local": "disabled",
+       "preview": {
+        "state": "ready",
+        "exists": true
+       }
+      }
+     ]
+    },
+    "repo": {
+     "file": "/etc/apt/sources.list.d/putgd.sources",
+     "exists": true,
+     "sha256": "5d5b79d0154fed9099c42beea5183e41876ba36920bed6ed45a747523d5cc852",
+     "sameAs": "/usr/share/putgd/repo/putgd-nightly.sources",
+     "lines": [
+      "URIs: https://pkg.put.gd/apt/ubuntu26.04",
+      "Suites: nightly"
+     ],
+     "installed": "26.1022.1019~nightly",
+     "policy": [
+      "putgd:",
+      "  Installed: 26.1022.1019~nightly",
+      "  Candidate: 26.1022.1019~nightly",
+      "  Version table:",
+      " *** 26.1022.1019~nightly 500",
+      "        500 https://pkg.put.gd/apt/ubuntu26.04 nightly/main amd64 Packages",
+      "        100 /var/lib/dpkg/status"
+     ],
+     "conffiles": "/etc/apt/sources.list.d/putgd.sources 0bddc60435085b83a461f59d1a549517"
+    },
+    "frame": "/home/patrick/work/put.gd-ua/pkg/runs/k72-pkg/frames/u5-4-after.png"
+   }
+  },
+  {
+   "at": "2026-10-22T23:59:22Z",
+   "u5-5-history": {
+    "repo": {
+     "file": "/etc/apt/sources.list.d/putgd.sources",
+     "exists": true,
+     "sha256": "5d5b79d0154fed9099c42beea5183e41876ba36920bed6ed45a747523d5cc852",
+     "sameAs": "/usr/share/putgd/repo/putgd-nightly.sources",
+     "lines": [
+      "URIs: https://pkg.put.gd/apt/ubuntu26.04",
+      "Suites: nightly"
+     ],
+     "installed": "26.1022.1019~nightly",
+     "policy": [
+      "putgd:",
+      "  Installed: 26.1022.1019~nightly",
+      "  Candidate: 26.1022.1019~nightly",
+      "  Version table:",
+      " *** 26.1022.1019~nightly 500",
+      "        500 https://pkg.put.gd/apt/ubuntu26.04 nightly/main amd64 Packages",
+      "        100 /var/lib/dpkg/status"
+     ],
+     "conffiles": "/etc/apt/sources.list.d/putgd.sources 0bddc60435085b83a461f59d1a549517"
+    },
+    "frame": "/home/patrick/work/put.gd-ua/pkg/runs/k72-pkg/frames/u5-5-history.png"
+   }
+  },
+  {
+   "at": "2026-10-22T23:59:35Z",
+   "click": {
+    "x": 378,
+    "y": 526,
+    "keys": null,
+    "frame": null
+   }
+  },
+  {
+   "at": "2026-10-22T23:59:38Z",
+   "click": {
+    "x": 1566,
+    "y": 300,
+    "keys": null,
+    "frame": "/home/patrick/work/put.gd-ua/pkg/runs/k72-pkg/frames/u5-6-history-detail.png"
+   }
+  },
+  {
+   "at": "2026-10-23T00:00:02Z",
+   "click": {
+    "x": 1180,
+    "y": 663,
+    "keys": null,
+    "frame": "/home/patrick/work/put.gd-ua/pkg/runs/k72-pkg/frames/u5-7-history-link-in-firefox.png"
+   }
+  },
+  {
+   "at": "2026-10-23T00:01:01Z",
+   "watch": {
+    "label": "u14",
+    "from": "2026-10-22T23:26:22Z",
+    "to": "2026-10-23T00:01:01Z",
+    "notifyCalls": [
+     {
+      "app": "put.gd",
+      "summary": "put.gd \u2014 completed",
+      "body": "Uploaded. Link copied to the clipboard. Click to open in browser."
+     },
+     {
+      "app": "put.gd",
+      "summary": "put.gd \u2014 completed",
+      "body": "Uploaded. Link copied to the clipboard. Click to open in browser."
+     }
+    ],
+    "putgdNotifyCalls": [
+     {
+      "app": "put.gd",
+      "summary": "put.gd \u2014 completed",
+      "body": "Uploaded. Link copied to the clipboard. Click to open in browser."
+     },
+     {
+      "app": "put.gd",
+      "summary": "put.gd \u2014 completed",
+      "body": "Uploaded. Link copied to the clipboard. Click to open in browser."
+     }
+    ],
+    "journal": [
+     {
+      "time": "2026-10-21T16:42:56.074Z",
+      "message": "Notification shown",
+      "fields": {
+       "itemId": null,
+       "notificationId": 1,
+       "notificationText": "No output is enabled. Choose a destination in Settings \u2192 Capture or enable Keep a local copy in Settings \u2192 General.",
+       "operationId": null,
+       "summary": "output_required",
+       "title": "put.gd",
+       "warning": true
+      }
+     },
+     {
+      "time": "2026-10-22T01:06:28.206Z",
+      "message": "Notification shown",
+      "fields": {
+       "itemId": null,
+       "notificationId": 1,
+       "notificationText": "No output is enabled. Choose a destination in Settings \u2192 Capture or enable Keep a local copy in Settings \u2192 General.",
+       "operationId": null,
+       "summary": "output_required",
+       "title": "put.gd",
+       "warning": true
+      }
+     },
+     {
+      "time": "2026-10-22T01:16:26.047Z",
+      "message": "Notification shown",
+      "fields": {
+       "itemId": null,
+       "notificationId": 1,
+       "notificationText": "No output is enabled. Choose a destination in Settings \u2192 Capture or enable Keep a local copy in Settings \u2192 General.",
+       "operationId": null,
+       "summary": "output_required",
+       "title": "put.gd",
+       "warning": true
+      }
+     },
+     {
+      "time": "2026-10-22T01:24:33.481Z",
+      "message": "Notification shown",
+      "fields": {
+       "itemId": null,
+       "notificationId": 1,
+       "notificationText": "No output is enabled. Choose a destination in Settings \u2192 Capture or enable Keep a local copy in Settings \u2192 General.",
+       "operationId": null,
+       "summary": "output_required",
+       "title": "put.gd",
+       "warning": true
+      }
+     },
+     {
+      "time": "2026-10-22T23:26:18.524Z",
+      "message": "Update check finished",
+      "fields": {
+       "channel": "nightly",
+       "itemId": null,
+       "latest": "26.1022.1017-nightly",
+       "operationId": null,
+       "updateAvailable": false
+      }
+     },
+     {
+      "time": "2026-10-22T23:26:24.177Z",
+      "message": "Notification shown",
+      "fields": {
+       "itemId": null,
+       "notificationId": 1,
+       "notificationText": "Uploaded. Link copied to the clipboard. Click to open in browser.",
+       "operationId": null,
+       "summary": "operation_completed",
+       "title": "put.gd \u2014 completed",
+       "warning": false
+      }
+     },
+     {
+      "time": "2026-10-22T23:26:26.438Z",
+      "message": "Notification shown",
+      "fields": {
+       "itemId": null,
+       "notificationId": 2,
+       "notificationText": "Uploaded. Link copied to the clipboard. Click to open in browser.",
+       "operationId": null,
+       "summary": "operation_completed",
+       "title": "put.gd \u2014 completed",
+       "warning": false
+      }
+     },
+     {
+      "time": "2026-10-22T23:34:53.844Z",
+      "message": "Update check finished",
+      "fields": {
+       "channel": "nightly",
+       "itemId": null,
+       "latest": "26.1022.1019-nightly",
+       "operationId": null,
+       "updateAvailable": true
+      }
+     },
+     {
+      "time": "2026-10-22T23:37:54.404Z",
+      "message": "Update check finished",
+      "fields": {
+       "channel": "nightly",
+       "itemId": null,
+       "latest": "26.1022.1019-nightly",
+       "operationId": null,
+       "updateAvailable": true
+      }
+     },
+     {
+      "time": "2026-10-22T23:59:14.056Z",
+      "message": "Update check finished",
+      "fields": {
+       "channel": "nightly",
+       "itemId": null,
+       "latest": "26.1022.1019-nightly",
+       "operationId": null,
+       "updateAvailable": false
+      }
+     }
+    ]
+   }
+  },
+  {
+   "at": "2026-10-23T00:02:43Z",
+   "delete": {
+    "item": "Screen-Capture-2026-10-22-18-26-24.png",
+    "link": "https://put.gd/acceptance/ua/k72/Screen-Capture-2026-10-22-18-26-24.png",
+    "final": null,
+    "remoteAfter": "still served"
+   }
+  },
+  {
+   "at": "2026-10-23T00:03:32Z",
+   "liveS3": {
+    "profile": {
+     "aclMode": "public-read",
+     "addressing": "path",
+     "bucket": "put.gd",
+     "connectTimeoutMs": 10000,
+     "endpoint": "https://s3.us-east-2.amazonaws.com",
+     "lowSpeedBytesPerSecond": 1,
+     "lowSpeedTimeSeconds": 120,
+     "objectPrefix": "acceptance/ua/k72/",
+     "publicUrlBase": "https://put.gd",
+     "region": "us-east-2",
+     "requestTimeoutMs": 120000,
+     "storageClass": "STANDARD"
+    },
+    "stored": true,
+    "storeError": "",
+    "credentials": "completed"
+   }
+  },
+  {
+   "at": "2026-10-23T00:03:35Z",
+   "delete": [
+    {
+     "item": "Screen-Capture-2026-10-22-18-26-24.png",
+     "link": "https://put.gd/acceptance/ua/k72/Screen-Capture-2026-10-22-18-26-24.png",
+     "operation": "4fcfadcb-df25-4c73-a3bf-1f8c7a450f5a",
+     "started": true,
+     "startError": {
+      "code": "",
+      "details": {},
+      "message": ""
+     },
+     "state": "completed",
+     "remoteStatus": "removed",
+     "remoteAfter": "still served"
+    },
+    {
+     "item": "Screen-Capture-2026-10-22-18-26-22.png",
+     "link": "https://put.gd/acceptance/ua/k72/Screen-Capture-2026-10-22-18-26-22.png",
+     "operation": "8d65ec9a-86be-4883-bf4d-311e278dfdf4",
+     "started": true,
+     "startError": {
+      "code": "",
+      "details": {},
+      "message": ""
+     },
+     "state": "completed",
+     "remoteStatus": "removed",
+     "remoteAfter": "still served"
+    }
+   ]
+  }
+ ],
+ "before": {
+  "defaultProfile": {
+   "/home/patrick/.config/putgd": false,
+   "/home/patrick/.local/state/putgd": true,
+   "/home/patrick/.cache/putgd": false,
+   "/home/patrick/.local/share/putgd": false
+  },
+  "defaultFiles": {
+   "/home/patrick/.local/state/putgd": [
+    "/home/patrick/.local/state/putgd/logs",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261019T222239616Z-967989-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261019T222240223Z-968039-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261019T222251582Z-968146-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261019T222302998Z-968252-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261019T222314288Z-968397-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261019T222324889Z-968593-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261019T222337227Z-968761-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261019T222348518Z-968923-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261019T222349139Z-968960-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261019T222349759Z-968997-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261019T223814595Z-981568-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261019T223815175Z-981618-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261019T223826446Z-981723-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261019T223837827Z-981827-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261019T223849102Z-981932-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261019T223859696Z-982122-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261019T223912241Z-982248-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261019T223923444Z-982370-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261019T223924087Z-982407-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261019T223924708Z-982444-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261020T024110680Z-19425-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261020T024111421Z-19487-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261020T024122746Z-19802-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261020T024134157Z-20141-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261020T024145567Z-20484-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261020T024156522Z-21244-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261020T024208368Z-22651-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261020T024219688Z-23294-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261020T024220518Z-23387-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261020T024221403Z-23463-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261020T033314142Z-64455-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261020T033325533Z-64765-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261020T033336984Z-64962-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261020T033348328Z-65238-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261021T164255898Z-347613-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261021T164256723Z-347731-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261021T164308090Z-347896-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261021T164319355Z-348001-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261021T164330712Z-348146-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261021T164341381Z-348281-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261021T164353885Z-348447-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261021T164405127Z-348567-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261021T164405906Z-348605-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261021T164406575Z-348643-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261022T010627997Z-454308-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261022T010628271Z-454355-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261022T010639502Z-456101-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261022T010650751Z-457708-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261022T010701937Z-459088-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261022T010712645Z-460737-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261022T010724784Z-462093-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261022T010735951Z-463111-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261022T010736725Z-463215-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261022T010737537Z-463319-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261022T011439897Z-467766-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261022T011451146Z-468643-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261022T011502398Z-469635-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261022T011513607Z-470245-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261022T011524345Z-470955-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261022T011536790Z-472342-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261022T011548038Z-472914-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261022T011548941Z-473163-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261022T011550033Z-473362-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261022T011625878Z-480232-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261022T012321870Z-487490-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261022T012333189Z-487734-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261022T012344407Z-487875-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261022T012355751Z-488026-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261022T012406393Z-488191-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261022T012418807Z-488395-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261022T012429967Z-488591-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261022T012430652Z-488628-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261022T012431391Z-488665-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261022T012433387Z-488756-1.jsonl"
+   ]
+  }
+ },
+ "watchStart-u14": "2026-10-22T23:26:22Z",
+ "units": [
+  "putgd-ua-k72-pkg-u3-0-in-session-1792712273",
+  "putgd-ua-k72-pkg-u5-3-restarted-1792713553"
+ ],
+ "restarts": [
+  {
+   "old": 1457786,
+   "oldExe": "/usr/bin/putgd"
+  },
+  {
+   "old": 1458661,
+   "oldExe": "/usr/bin/putgd (deleted)"
+  }
+ ]
+}

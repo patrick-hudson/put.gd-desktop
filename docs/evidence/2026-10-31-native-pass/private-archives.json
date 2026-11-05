@@ -1,0 +1,54 @@
+{
+  "archives": [
+    {
+      "host": "f44",
+      "remoteArchive": "/home/patrick/work/archives/native-pass-20261031-ddd3576a/evidence.tar.gz",
+      "workstationArchive": "/home/patrick/work/put.gd/work/native-pass-20261031-ddd3576a/f44/evidence.tar.gz",
+      "archiveSha256": "94eab56ba3ce33bd0a206b53a3163338aa4484f0cdbdcd2e79ef195f73bf3060",
+      "verifiedMemberCount": 825,
+      "indexSha256": "a37b5cde6a5f4a268cccf50c9fea6e588744063f1c54bf49c280384450afd4ac",
+      "restore": "Verify archiveSha256; extract in a new private mode-0700 directory. Never overlay a live session root. No profiles, clipboard snapshot or private SSH key is included.",
+      "copies": "builder and workstation, archive bytes verified equal; original /tmp evidence retained",
+      "assetRetention": "Exact published asset separately preserved and SHA-256 verified under remote archive assets/; original staged file retained"
+    },
+    {
+      "host": "k72",
+      "remoteArchive": "/home/patrick/work/archives/native-pass-20261031-ddd3576a/evidence.tar.gz",
+      "workstationArchive": "/home/patrick/work/put.gd/work/native-pass-20261031-ddd3576a/k72/evidence.tar.gz",
+      "archiveSha256": "c98e5388e9484265f97fcf1c2c6b0274c0ea71517ecfd129903d02a783fec5d2",
+      "verifiedMemberCount": 893,
+      "indexSha256": "7980a0eecff5e8e91edcbaa29fc207bea816ca0829f013ec2b635e978247f6c8",
+      "restore": "Verify archiveSha256; extract in a new private mode-0700 directory. Never overlay a live session root. No profiles, clipboard snapshot or private SSH key is included.",
+      "copies": "builder and workstation, archive bytes verified equal; original /tmp evidence retained",
+      "assetRetention": "Exact published asset separately preserved and SHA-256 verified under remote archive assets/; original staged file retained"
+    },
+    {
+      "host": "aurora-amd",
+      "remoteArchive": "/home/patrick/work/archives/native-pass-20261031-ddd3576a/evidence.tar.gz",
+      "workstationArchive": "/home/patrick/work/put.gd/work/native-pass-20261031-ddd3576a/aurora-amd/evidence.tar.gz",
+      "archiveSha256": "7aab490562b8ad610cd8198646fd9a206791117be74bde1d05aee8d0c6269833",
+      "verifiedMemberCount": 818,
+      "indexSha256": "0019732a28a88c4b7e7c3e3f589a2a2ff4895432460a2c7aada54378511c99cd",
+      "restore": "Verify archiveSha256; extract in a new private mode-0700 directory. Never overlay a live session root. No profiles, clipboard snapshot or private SSH key is included.",
+      "copies": "builder and workstation, archive bytes verified equal; original /tmp evidence retained",
+      "assetRetention": "Exact published asset separately preserved and SHA-256 verified under remote archive assets/; original staged file retained"
+    },
+    {
+      "host": "m74",
+      "remoteArchive": "/home/patrick/work/archives/native-pass-20261031-ddd3576a/evidence.tar.gz",
+      "workstationArchive": "/home/patrick/work/put.gd/work/native-pass-20261031-ddd3576a/m74/evidence.tar.gz",
+      "archiveSha256": "c767a2f7cd5f54b97f099eb627952c1006e596eaef9e33b3c6e22f8b7d6fc9f6",
+      "indexSha256": "64b075ceaf95c8c7c7d606370e2c41baab21832210b98588fa376d88efaaea41",
+      "verifiedMemberCount": 1764,
+      "restore": "Verify archiveSha256 and member SHA-256/modes; extract into a NEW private mode-0700 directory, never overlay a live profile. Stop/revalidate fixture ownership before replay. Contains synthetic private profiles; no workstation private key, protected login input or real cloud credential.",
+      "copies": "builder and workstation archive bytes verified equal; original /tmp data retained"
+    }
+  ],
+  "frozenSource": {
+    "builderArchive": "/home/patrick/work/archives/native-pass-20261031-ddd3576a/frozen-source.tar.gz",
+    "workstationArchive": "/home/patrick/work/put.gd/work/native-pass-20261031-ddd3576a/m74/frozen-source.tar.gz",
+    "sha256": "88c614a90908dae6562551be27ab2d3b63b30c1ee48735e4600f7d8948af3976",
+    "verifiedFileCount": 44,
+    "restore": "Verify compressed and member checksums. Extract into a new private directory; source is unchanged frozen commit 00ab777f2413a1fbd7670a7259dc614eced896e6."
+  }
+}

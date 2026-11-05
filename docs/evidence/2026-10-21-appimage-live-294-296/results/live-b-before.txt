@@ -1,0 +1,10 @@
+== live B: N (nightly 842) started from ~/Apps  2026-10-21T14:04:08-0500
+login session:  80 1000 lab - - active no - | c1 1000 lab seat0 tty7 closing no - | c11 1000 lab seat0 tty7 active no - | c3 1000 lab seat0 tty7 closing no - | c5 1000 lab seat0 tty7 closing no - | c7 1000 lab seat0 tty7 closing no - | c9 1000 lab seat0 tty7 closing no -
+put.gd running: pid 8119, started Wed Oct 21 14:04:06 2026
+  version:      0.1.1-nightly.842
+  APPIMAGE:     /home/lab/Apps/putgd-0.1.1-nightly.842-x86_64.AppImage
+autostart:      Exec=/bin/sh "/home/lab/.local/share/putgd/login/appimage-start.sh" --background
+login script:   configured='/home/lab/Apps/putgd-0.1.1-nightly.842-x86_64.AppImage'
+                update_information='zsync|https://app.put.gd/dl/nightly/appimage.zsync'
+/home/lab/AppImages:
+/home/lab/Apps:

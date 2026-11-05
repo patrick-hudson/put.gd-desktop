@@ -1,0 +1,5 @@
+ffdefault : putgd-afa2-firefox.desktop
+S3 notification at 01:26:12Z, clicked
+{"category":"putgd.app","fields":{"channel":"stable","itemId":null,"latest":"26.1021.1023","operationId":null,"updateAvailable":true},"level":"info","message":"Update check finished","pid":3080912,"process":"putgd","time":"2026-10-23T01:25:55.929Z","v":1}
+{"category":"putgd.ui","fields":{"itemId":null,"notificationId":1,"notificationText":"put.gd 26.1021.1023 is available. Settings → Updates has the download.","operationId":null,"summary":"update_available","title":"put.gd — update available","warning":false},"
+3089680 /usr/lib64/firefox/firefox --profile /home/patrick/work/put.gd-ua/ff/putgd-afa2-811d3888 https://github.com/patrick-hudson/put.gd-de

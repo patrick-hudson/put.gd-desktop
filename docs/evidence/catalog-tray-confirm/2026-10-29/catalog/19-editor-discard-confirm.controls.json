@@ -1,0 +1,65 @@
+{
+    "class": "QMessageBox",
+    "controls": [
+        {
+            "class": "QLabel",
+            "enabled": true,
+            "kind": "focusable",
+            "name": "qt_msgbox_label",
+            "rect": [
+                24,
+                20,
+                356,
+                19
+            ],
+            "text": "Discard your edits and close the editor?"
+        },
+        {
+            "checkable": false,
+            "checked": false,
+            "class": "QPushButton",
+            "enabled": true,
+            "kind": "button",
+            "name": "confirmDiscard",
+            "rect": [
+                268,
+                84,
+                112,
+                36
+            ],
+            "text": "Discard edits"
+        },
+        {
+            "checkable": false,
+            "checked": false,
+            "class": "QPushButton",
+            "enabled": true,
+            "kind": "button",
+            "name": "keepEditingConfirm",
+            "rect": [
+                153,
+                84,
+                109,
+                36
+            ],
+            "text": "Keep editing"
+        },
+        {
+            "class": "QLabel",
+            "enabled": true,
+            "kind": "focusable",
+            "name": "qt_msgbox_informativelabel",
+            "rect": [
+                24,
+                51,
+                356,
+                17
+            ],
+            "text": "Nothing has been uploaded. Your marks and crop will be lost."
+        }
+    ],
+    "height": 136,
+    "keys": [
+    ],
+    "width": 404
+}

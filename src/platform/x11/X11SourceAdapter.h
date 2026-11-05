@@ -3,6 +3,7 @@
 #include "X11Capture.h"
 #include "X11Clipboard.h"
 #include "X11Shortcuts.h"
+#include "NativeRegionOverlay.h"
 #include "ui/RegionSelector.h"
 #include <QPointer>
 #include <QSet>
@@ -30,6 +31,11 @@ public:
  void selectRegionFrozen(const X11Target&,const ResourceLimits&,std::function<void(RegionSelectionResult)>);
  void acquireSelectedRegionFrozen(const X11Target&,const RegionSelectionResult&,const ResourceLimits&,std::function<void(PayloadResult)>);
  void setResidentRegionCursor(quint32 cursor){residentRegionCursor_=cursor;}
+ // See NativeRegionOverlay::setPointerHandoff. A selector without native
+ // surfaces asks for the pointer at once.
+ void setRegionPointerHandoff(quint32 cursor,std::function<void()> release){handoffCursor_=cursor;releasePointer_=std::move(release);}
+ void regionPointerReleased(QList<NativeRegionOverlay::HeldButton> buttons);
+ void setRegionCursorObserver(std::function<void(int,int,int,int,const uint32_t*)> observer){cursorObserver_=std::move(observer);}
  void cancelAcquisition() override;
  void copy(const CopyPayload&,std::function<void(Error)>) override;
  void setShortcutRecording(bool active,std::function<void(Error)> reply){shortcuts_.setRecording(active,std::move(reply));}
@@ -38,21 +44,30 @@ public:
 signals:
  void actionRequested(const QString&);
  void capabilitiesChanged();
+ // The display's X server went away, as it does when its session ends.
+ void displayLost();
 private:
  void capture(const X11Target&,const ResourceLimits&,std::function<void(PayloadResult)>);
  void captureSelected(const X11Target&,QRectF,const ResourceLimits&,std::function<void(PayloadResult)>,quint64);
  void compose(QList<CaptureFrame>,QRectF,const ResourceLimits&,std::function<void(PayloadResult)>);
+ // Reads every monitor of the target now: Cinnamon's scene, else the root.
+ void captureLayout(const X11Target&,const ResourceLimits&,quint64 generation,std::function<void(QList<CaptureFrame>,Error)>);
+ void openSelector(const X11Target&,const ResourceLimits&,quint64 generation,QList<CaptureFrame>,std::function<void(RegionSelectionResult)>);
  X11Capture capture_;
  X11Clipboard clipboard_;
  X11Shortcuts shortcuts_;
  QPointer<RegionSelector> overlay_;
  bool nativeRegionSelector_=false;
- quint32 residentRegionCursor_=0;
+ quint32 residentRegionCursor_=0,handoffCursor_=0;
+ std::function<void()> releasePointer_;
+ std::function<void(int,int,int,int,const uint32_t*)> cursorObserver_;
  QList<QThread*> workers_;
  QSet<CinnamonRegionCapture*> regionCaptures_;
  QSet<X11CompositorSettle*> settles_;
  quint64 generation_=0;
  quint64 selectedGeneration_=0;
  X11Target selectedTarget_;
+ // Pixels a Screenshot first selection was drawn over; consumed once.
+ QList<CaptureFrame> frozenFrames_;
 };
 }

@@ -1,0 +1,339 @@
+{
+  "frames": {
+    "frames/outcomes.region_upload/00-before.png": {
+      "sha256": "370f0689c1adb77bba0c8a95288131ef46647ec5cee891291ce2cb72e790ee93",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [],
+      "fallback": false,
+      "guard": "local-secret-fields-only",
+      "visible_pixels": true
+    },
+    "frames/outcomes.region_upload/01-independent-frozen-pattern.png": {
+      "sha256": "f83f19e85457a21d0810b61e572ee91df00498a3d3fec45ba6dbd25c65ba67e5",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [],
+      "fallback": false,
+      "guard": "local-secret-fields-only",
+      "visible_pixels": true,
+      "desktop_safe": "Disposable guest: synthetic moving pattern, selectors and recording controls; isolated loopback publications only; no live account or credentials"
+    },
+    "frames/outcomes.region_upload/02-publication-result.png": {
+      "sha256": "f83f19e85457a21d0810b61e572ee91df00498a3d3fec45ba6dbd25c65ba67e5",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [],
+      "fallback": false,
+      "guard": "local-secret-fields-only",
+      "visible_pixels": true,
+      "desktop_safe": "Disposable guest: synthetic moving pattern, selectors and recording controls; isolated loopback publications only; no live account or credentials"
+    },
+    "frames/outcomes.region_upload/03-after.png": {
+      "sha256": "f83f19e85457a21d0810b61e572ee91df00498a3d3fec45ba6dbd25c65ba67e5",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [],
+      "fallback": false,
+      "guard": "local-secret-fields-only",
+      "visible_pixels": true
+    },
+    "frames/outcomes.window_desktop/00-before.png": {
+      "sha256": "099da5bf072f66c83fe3c9366276e9c4c2e810401e58367d21e69920aed628f1",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [],
+      "fallback": false,
+      "guard": "local-secret-fields-only",
+      "visible_pixels": true
+    },
+    "frames/outcomes.window_desktop/01-independent-frozen-pattern.png": {
+      "sha256": "83777c96842e4ebf9cd2d1127d5e61a0ab88b518ab5b09f453c198a937330b68",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [],
+      "fallback": false,
+      "guard": "local-secret-fields-only",
+      "visible_pixels": true,
+      "desktop_safe": "Disposable guest: synthetic moving pattern, selectors and recording controls; isolated loopback publications only; no live account or credentials"
+    },
+    "frames/outcomes.window_desktop/02-publication-result.png": {
+      "sha256": "83777c96842e4ebf9cd2d1127d5e61a0ab88b518ab5b09f453c198a937330b68",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [],
+      "fallback": false,
+      "guard": "local-secret-fields-only",
+      "visible_pixels": true,
+      "desktop_safe": "Disposable guest: synthetic moving pattern, selectors and recording controls; isolated loopback publications only; no live account or credentials"
+    },
+    "frames/outcomes.window_desktop/03-independent-frozen-pattern.png": {
+      "sha256": "83777c96842e4ebf9cd2d1127d5e61a0ab88b518ab5b09f453c198a937330b68",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [],
+      "fallback": false,
+      "guard": "local-secret-fields-only",
+      "visible_pixels": true,
+      "desktop_safe": "Disposable guest: synthetic moving pattern, selectors and recording controls; isolated loopback publications only; no live account or credentials"
+    },
+    "frames/outcomes.window_desktop/04-publication-result.png": {
+      "sha256": "83777c96842e4ebf9cd2d1127d5e61a0ab88b518ab5b09f453c198a937330b68",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [],
+      "fallback": false,
+      "guard": "local-secret-fields-only",
+      "visible_pixels": true,
+      "desktop_safe": "Disposable guest: synthetic moving pattern, selectors and recording controls; isolated loopback publications only; no live account or credentials"
+    },
+    "frames/outcomes.window_desktop/05-after.png": {
+      "sha256": "83777c96842e4ebf9cd2d1127d5e61a0ab88b518ab5b09f453c198a937330b68",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [],
+      "fallback": false,
+      "guard": "local-secret-fields-only",
+      "visible_pixels": true
+    },
+    "frames/outcomes.recording_upload/00-before.png": {
+      "sha256": "9ef412de17d969fcc9e0511124f25746a70d1ae25026c1a242a3a0a00462f779",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [],
+      "fallback": false,
+      "guard": "local-secret-fields-only",
+      "visible_pixels": true
+    },
+    "frames/outcomes.recording_upload/01-recording-private-review.png": {
+      "sha256": "90f9ad92a8beea26236f72a4c3badc11219995a7aed3a92d806b82f2b0c208eb",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [],
+      "fallback": false,
+      "guard": "local-secret-fields-only",
+      "visible_pixels": true,
+      "desktop_safe": "Disposable guest: synthetic moving pattern, selectors and recording controls; isolated loopback publications only; no live account or credentials"
+    },
+    "frames/outcomes.recording_upload/02-publication-result.png": {
+      "sha256": "7951e040dbce312584a8335323d2021fd038aef1ba533de063e07897aef24ba3",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [],
+      "fallback": false,
+      "guard": "local-secret-fields-only",
+      "visible_pixels": true,
+      "desktop_safe": "Disposable guest: synthetic moving pattern, selectors and recording controls; isolated loopback publications only; no live account or credentials"
+    },
+    "frames/outcomes.recording_upload/03-after.png": {
+      "sha256": "7b822b693d7c10757087041aac69d49e1775b96754ad1bf1579e1d143e460dcb",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [],
+      "fallback": false,
+      "guard": "local-secret-fields-only",
+      "visible_pixels": true
+    },
+    "frames/outcomes.edit_upload/00-before.png": {
+      "sha256": "f653c0cf3e5a7df465711a1d5b06a5a7358cb1f4272082ac99e754f95d9bc422",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [],
+      "fallback": false,
+      "guard": "local-secret-fields-only",
+      "visible_pixels": true
+    },
+    "frames/outcomes.edit_upload/01-before.png": {
+      "sha256": "1bffc7c2b0d7f5d4b7ef568da8a6a2f70f32dc477a8468ad1cc67d0ffb384e3c",
+      "size": [
+        900,
+        620
+      ],
+      "regions": [],
+      "fallback": false,
+      "guard": "local-secret-fields-only",
+      "visible_pixels": true
+    },
+    "frames/outcomes.edit_upload/02-four-marks-before-upload.png": {
+      "sha256": "e941a77b985e6e21101926341a49f2b0737b87102ada4093fcc4d7971fa128f6",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [],
+      "fallback": false,
+      "guard": "local-secret-fields-only",
+      "visible_pixels": true,
+      "desktop_safe": "Disposable guest: synthetic moving pattern, selectors and recording controls; isolated loopback publications only; no live account or credentials"
+    },
+    "frames/outcomes.edit_upload/03-publication-result.png": {
+      "sha256": "02655063b86e1aa06d6043eb51d20f6984177ba4894ceb2c0b319c430ab44648",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [],
+      "fallback": false,
+      "guard": "local-secret-fields-only",
+      "visible_pixels": true,
+      "desktop_safe": "Disposable guest: synthetic moving pattern, selectors and recording controls; isolated loopback publications only; no live account or credentials"
+    },
+    "frames/outcomes.edit_upload/04-after.png": {
+      "sha256": "02655063b86e1aa06d6043eb51d20f6984177ba4894ceb2c0b319c430ab44648",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [],
+      "fallback": false,
+      "guard": "local-secret-fields-only",
+      "visible_pixels": true
+    },
+    "frames/outcomes.link_browser/00-before.png": {
+      "sha256": "edd4d0f5520faf4fb6dd305479c65cb54d1ffa3070c96d745d692d5f3d1ffe16",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [],
+      "fallback": false,
+      "guard": "local-secret-fields-only",
+      "visible_pixels": true
+    },
+    "frames/outcomes.link_browser/01-publication-result.png": {
+      "sha256": "5ddadc648918fcf1150414deb2e6caf66c6cc282c5950d9deb5dbacf2a3b2267",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [],
+      "fallback": false,
+      "guard": "local-secret-fields-only",
+      "visible_pixels": true,
+      "desktop_safe": "Disposable guest: synthetic moving pattern, selectors and recording controls; isolated loopback publications only; no live account or credentials"
+    },
+    "frames/outcomes.link_browser/02-browser-content.png": {
+      "sha256": "8028e4555cbb6586a83be9edd9b30f596bf862b112bbf94df39dfdf3be9486d6",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [],
+      "fallback": false,
+      "guard": "local-secret-fields-only",
+      "visible_pixels": true,
+      "desktop_safe": "private Firefox kiosk without address bar owns the verified foreground"
+    },
+    "frames/outcomes.link_browser/03-after.png": {
+      "sha256": "7db0db1918a5ac4e06dc637d93cd2930341e0bab1eb58ee14f58fdf8fb7e3c0c",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [],
+      "fallback": false,
+      "guard": "local-secret-fields-only",
+      "visible_pixels": true
+    },
+    "frames/outcomes.history_delete/00-before.png": {
+      "sha256": "d36012d44ae566d4bb5baf7a63afd0bca4eb83cf72bbf413eb54e7ed1810df83",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [],
+      "fallback": false,
+      "guard": "local-secret-fields-only",
+      "visible_pixels": true
+    },
+    "frames/outcomes.history_delete/01-publication-result.png": {
+      "sha256": "fc16defc1ead39c27ecfa8a5756f128af99a4ce1e525ea0b60adccff074c7040",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [],
+      "fallback": false,
+      "guard": "local-secret-fields-only",
+      "visible_pixels": true,
+      "desktop_safe": "Disposable guest: synthetic moving pattern, selectors and recording controls; isolated loopback publications only; no live account or credentials"
+    },
+    "frames/outcomes.history_delete/02-owned-history-row.png": {
+      "sha256": "46998edf3d2fb3582e6c61022ad8965ca7923403b8e42d9f35e1309f44487b51",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [],
+      "fallback": false,
+      "guard": "local-secret-fields-only",
+      "visible_pixels": true,
+      "desktop_safe": "Disposable guest: synthetic moving pattern, selectors and recording controls; isolated loopback publications only; no live account or credentials"
+    },
+    "frames/outcomes.history_delete/03-exact-deletion-confirmation.png": {
+      "sha256": "8f921b6a9835b49ee6a88d07b55ab90de5d28e1216da8c2e7bb1da27526fa5c4",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [],
+      "fallback": false,
+      "guard": "local-secret-fields-only",
+      "visible_pixels": true,
+      "desktop_safe": "Disposable guest: synthetic moving pattern, selectors and recording controls; isolated loopback publications only; no live account or credentials"
+    },
+    "frames/outcomes.history_delete/04-deleted-object-no-longer-resolves.png": {
+      "sha256": "1e260fc3e54ab9490f74363b0591da6484c29f3fadf1238248680adedb7191d3",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [],
+      "fallback": false,
+      "guard": "local-secret-fields-only",
+      "visible_pixels": true,
+      "desktop_safe": "Disposable guest: synthetic moving pattern, selectors and recording controls; isolated loopback publications only; no live account or credentials"
+    },
+    "frames/outcomes.history_delete/05-after.png": {
+      "sha256": "f943c3056858a44b6a9590025b9d34edf90429b9e8050467839a0af5b64d9479",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [],
+      "fallback": false,
+      "guard": "local-secret-fields-only",
+      "visible_pixels": true
+    }
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "sha256": "2754650eb3c40d139630ff969bfc345d3ae182b457e8e660f7db73afff0a3cbe",
+  "filename": "putgd-26.1030.3203-nightly-ubuntu24.04-x86_64.deb",
+  "installedBinarySha256": {
+    "/usr/bin/putgd-ui": "d550465a3742d23598dceeceb323927120e6ed603d4244a9fbad2038c7447f61",
+    "/usr/bin/putgd-s3-worker": "0844014733030a94bbfa02ad5277f454d6088b3d3e1a90816d50c1277da47855",
+    "/usr/bin/putgd-record": "f9875317efb1bd66720b61fa512bd388298ed1f01dfc95b66e84a6b8c555de64",
+    "/usr/bin/putgd-launcher": "f2b1462cb97419bec6c164b6626212f02e6377dc8ffee364c32bbcdaf7e38839",
+    "/usr/bin/putgd-kde-region": "97be95783ba39fc4980800d16e14e70aa69159573ed7d187dc2b1bdc4da00bf9",
+    "/usr/bin/putgd-cli": "4b3aa7fcdd45f69f53b561d90723c93ad2fcf10811804ccbc53b86b2cea023aa",
+    "/usr/bin/putgd-capture": "688573e0fd07863412035dffe016cefd66ccbae4ebdcaf44542ed87a43fce5e5",
+    "/usr/bin/putgd-b2-worker": "0c1df2ba5fc7dbb6e0ecef33f4ea927fa892a29235fb371945250634e0fffb8d",
+    "/usr/bin/putgd": "a0dba7380c1bbc31e5d97a70bea2eb10f2681afb26a664276fc5150521a215f3"
+  },
+  "installEvidence": "work/lab-runs/fa1/install-2a0ee3336c954ce98b597badd96b444a",
+  "timedOut": false
+}

@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "kind": "vm-overlay-cleanup-evidence",
+  "run": "/home/patrick/work/a382/work/lab-runs/u382a",
+  "runId": "23a76e17-9b10-474a-95f4-0dfe3c34107f",
+  "completed": true,
+  "outcome": "passed",
+  "files": {
+    "guest-files.json": "3dc1c33eb3d5ac99774bc44a943a9980d03cd0e0f278200a10696238d6eb2988",
+    "guest-work.tar": "35e1574b1c1aad6725b3ff8ebeeb2752bc5196e81b1a14cb1fa3591465c50ac8",
+    "archive-receipt.json": "b9d7e22c37128df5e3cd842eb6137330ede4602549075b9c8a2343920f58c4ac",
+    "workstation-evidence.tar": "53cd1a59e10effd422a03dddc288306fdc3df845ecc0125b8247d920e3c873d8",
+    "completion.json": "e998e5ca1c7104890c59d37d738c65428492e9f8c29f0ea8120a34a60697e802"
+  }
+}

@@ -1,0 +1,102 @@
+2.8.0
+/bin/sh: warning: setlocale: LC_ALL: cannot change locale (en_US.UTF-8): No such file or directory
+============================ rpmlint session starts ============================
+rpmlint: 2.8.0
+configuration:
+    /usr/lib/python3.14/site-packages/rpmlint/configdefaults.toml
+    /etc/xdg/rpmlint/fedora-spdx-licenses.toml
+    /etc/xdg/rpmlint/fedora.toml
+    /etc/xdg/rpmlint/scoring.toml
+    /etc/xdg/rpmlint/users-groups.toml
+    /etc/xdg/rpmlint/warn-on-functions.toml
+checks: 32, packages: 1
+
+putgd.x86_64: W: unstripped-binary-or-object /usr/bin/putgd
+putgd.x86_64: W: unstripped-binary-or-object /usr/bin/putgd-b2-worker
+putgd.x86_64: W: unstripped-binary-or-object /usr/bin/putgd-capture
+putgd.x86_64: W: unstripped-binary-or-object /usr/bin/putgd-cli
+putgd.x86_64: W: unstripped-binary-or-object /usr/bin/putgd-kde-region
+putgd.x86_64: W: unstripped-binary-or-object /usr/bin/putgd-record
+putgd.x86_64: W: unstripped-binary-or-object /usr/bin/putgd-s3-worker
+putgd.x86_64: W: unstripped-binary-or-object /usr/bin/putgd-ui
+putgd.x86_64: W: unstripped-binary-or-object /usr/lib64/putgd/libaws-c-auth.so.1.0.0
+putgd.x86_64: W: unstripped-binary-or-object /usr/lib64/putgd/libaws-c-cal.so.1.0.0
+putgd.x86_64: W: unstripped-binary-or-object /usr/lib64/putgd/libaws-c-common.so.0.14.5
+putgd.x86_64: W: unstripped-binary-or-object /usr/lib64/putgd/libaws-c-compression.so.1.0.0
+putgd.x86_64: W: unstripped-binary-or-object /usr/lib64/putgd/libaws-c-event-stream.so.1.0.0
+putgd.x86_64: W: unstripped-binary-or-object /usr/lib64/putgd/libaws-c-http.so.1.0.0
+putgd.x86_64: W: unstripped-binary-or-object /usr/lib64/putgd/libaws-c-io.so.1.0.0
+putgd.x86_64: W: unstripped-binary-or-object /usr/lib64/putgd/libaws-c-mqtt.so.1.0.0
+putgd.x86_64: W: unstripped-binary-or-object /usr/lib64/putgd/libaws-c-s3.so.1.0.0
+putgd.x86_64: W: unstripped-binary-or-object /usr/lib64/putgd/libaws-c-sdkutils.so.1.0.0
+putgd.x86_64: W: unstripped-binary-or-object /usr/lib64/putgd/libaws-checksums.so.1.0.0
+putgd.x86_64: W: unstripped-binary-or-object /usr/lib64/putgd/libaws-cpp-sdk-core.so
+putgd.x86_64: W: unstripped-binary-or-object /usr/lib64/putgd/libaws-cpp-sdk-s3.so
+putgd.x86_64: W: unstripped-binary-or-object /usr/lib64/putgd/libaws-crt-cpp.so
+putgd.x86_64: W: unstripped-binary-or-object /usr/lib64/putgd/libputgd-s3.so
+putgd.x86_64: W: unstripped-binary-or-object /usr/lib64/putgd/libs2n.so.1.0.0
+putgd.x86_64: W: unstripped-binary-or-object /usr/libexec/putgd/proton/putgd-proton-runtime
+This executable should be stripped of debugging symbols, in order to take less
+space and be loaded faster. This is usually done automatically at buildtime by
+rpm.
+
+putgd.x86_64: W: position-independent-executable-suggested /usr/bin/putgd
+putgd.x86_64: W: position-independent-executable-suggested /usr/bin/putgd-b2-worker
+putgd.x86_64: W: position-independent-executable-suggested /usr/bin/putgd-capture
+putgd.x86_64: W: position-independent-executable-suggested /usr/bin/putgd-cli
+putgd.x86_64: W: position-independent-executable-suggested /usr/bin/putgd-kde-region
+putgd.x86_64: W: position-independent-executable-suggested /usr/bin/putgd-record
+putgd.x86_64: W: position-independent-executable-suggested /usr/bin/putgd-s3-worker
+putgd.x86_64: W: position-independent-executable-suggested /usr/bin/putgd-ui
+putgd.x86_64: W: position-independent-executable-suggested /usr/libexec/putgd/proton/putgd-proton-runtime
+This executable should be position independent (all binaries should).  Check
+that it is built with -fPIE/-fpie in compiler flags and -pie in linker flags.
+
+putgd.x86_64: W: non-coherent-filename putgd-pr468-fedora44-x86_64.rpm putgd-26.1022.1019~dev+g6aa43c5089b9-1.fc44.x86_64.rpm
+The file which contains the package should be named
+<NAME>-<VERSION>-<RELEASE>.<ARCH>.rpm.
+
+putgd.x86_64: W: no-manual-page-for-binary putgd
+putgd.x86_64: W: no-manual-page-for-binary putgd-b2-worker
+putgd.x86_64: W: no-manual-page-for-binary putgd-capture
+putgd.x86_64: W: no-manual-page-for-binary putgd-cli
+putgd.x86_64: W: no-manual-page-for-binary putgd-kde-region
+putgd.x86_64: W: no-manual-page-for-binary putgd-launcher
+putgd.x86_64: W: no-manual-page-for-binary putgd-record
+putgd.x86_64: W: no-manual-page-for-binary putgd-s3-worker
+putgd.x86_64: W: no-manual-page-for-binary putgd-ui
+Each executable in standard binary directories should have a man page.
+
+putgd.x86_64: E: files-duplicated-waste 122832
+Your package contains duplicated files that are not hard- or symlinks. You
+should use the %fdupes macro to link the files to one.
+
+putgd.x86_64: W: files-duplicate /usr/share/putgd/autostart/putgd.desktop /usr/share/applications/putgd.desktop
+putgd.x86_64: W: files-duplicate /usr/share/doc/putgd/aws-crt-cpp-crt-s2n-LICENSE /usr/share/doc/putgd/aws-crt-cpp-LICENSE:/usr/share/doc/putgd/aws-crt-cpp-crt-aws-c-auth-LICENSE:/usr/share/doc/putgd/aws-crt-cpp-crt-aws-c-common-LICENSE:/usr/share/doc/putgd/aws-crt-cpp-crt-aws-c-compression-LICENSE:/usr/share/doc/putgd/aws-crt-cpp-crt-aws-c-event-stream-LICENSE:(and 3 more)
+putgd.x86_64: W: files-duplicate /usr/share/doc/putgd/aws-crt-cpp-crt-aws-c-sdkutils-LICENSE /usr/share/doc/putgd/aws-crt-cpp-crt-aws-c-cal-LICENSE:/usr/share/doc/putgd/aws-crt-cpp-crt-aws-c-s3-LICENSE
+putgd.x86_64: W: files-duplicate /usr/share/doc/putgd/aws-crt-cpp-crt-aws-c-sdkutils-NOTICE /usr/share/doc/putgd/aws-crt-cpp-crt-aws-c-s3-NOTICE
+putgd.x86_64: W: files-duplicate /usr/share/doc/putgd/aws-sdk-LICENSE /usr/share/doc/putgd/aws-crt-cpp-crt-aws-checksums-LICENSE
+Your package contains duplicated files that are not hard- or symlinks. You
+should use the %fdupes macro to link the files to one.
+
+putgd.x86_64: E: explicit-lib-dependency glib2
+putgd.x86_64: E: explicit-lib-dependency libsecret
+You must let rpm find the library dependencies by itself. Do not put unneeded
+explicit Requires: tags.
+
+putgd.x86_64: W: devel-file-in-non-devel-package /usr/lib64/putgd/libaws-c-auth.so
+putgd.x86_64: W: devel-file-in-non-devel-package /usr/lib64/putgd/libaws-c-cal.so
+putgd.x86_64: W: devel-file-in-non-devel-package /usr/lib64/putgd/libaws-c-common.so
+putgd.x86_64: W: devel-file-in-non-devel-package /usr/lib64/putgd/libaws-c-compression.so
+putgd.x86_64: W: devel-file-in-non-devel-package /usr/lib64/putgd/libaws-c-event-stream.so
+putgd.x86_64: W: devel-file-in-non-devel-package /usr/lib64/putgd/libaws-c-http.so
+putgd.x86_64: W: devel-file-in-non-devel-package /usr/lib64/putgd/libaws-c-io.so
+putgd.x86_64: W: devel-file-in-non-devel-package /usr/lib64/putgd/libaws-c-mqtt.so
+putgd.x86_64: W: devel-file-in-non-devel-package /usr/lib64/putgd/libaws-c-s3.so
+putgd.x86_64: W: devel-file-in-non-devel-package /usr/lib64/putgd/libaws-c-sdkutils.so
+putgd.x86_64: W: devel-file-in-non-devel-package /usr/lib64/putgd/libaws-checksums.so
+putgd.x86_64: W: devel-file-in-non-devel-package /usr/lib64/putgd/libs2n.so
+A file that is needed only e.g. when developing or building software is
+included in a non-devel package. These files should go in devel packages.
+
+ 1 packages and 0 specfiles checked; 3 errors, 61 warnings, 2 filtered, 3 badness; has taken 8.0 s 

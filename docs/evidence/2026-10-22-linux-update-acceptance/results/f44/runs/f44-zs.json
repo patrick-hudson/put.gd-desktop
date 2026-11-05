@@ -1,0 +1,307 @@
+{
+ "name": "f44-zs",
+ "tool": "real",
+ "live": true,
+ "image": "/home/patrick/work/put.gd-ua/app/runs/f44-zs/apps/putgd-26.1022.1017-nightly-x86_64.AppImage",
+ "imageSha256": "005762e9ede991c78fce115707a41617d899d7870738fb525151c182357b7c3a",
+ "cliDir": "/home/patrick/work/put.gd-ua/app/runs/f44-zs/cli/squashfs-root",
+ "runtime": "/tmp/ua-app.8wPHSo",
+ "session": {
+  "HOME": "/home/patrick",
+  "PATH": "/home/patrick/.local/bin:/home/patrick/bin:/usr/lib64/ccache:/usr/local/bin:/usr/bin",
+  "USER": "patrick",
+  "LANG": "en_US.UTF-8",
+  "DBUS_SESSION_BUS_ADDRESS": "unix:path=/run/user/1000/bus",
+  "XDG_SESSION_TYPE": "wayland",
+  "XDG_CURRENT_DESKTOP": "GNOME",
+  "XDG_SESSION_DESKTOP": "gnome",
+  "DESKTOP_SESSION": "gnome",
+  "XDG_DATA_DIRS": "/home/patrick/.local/share/flatpak/exports/share:/var/lib/flatpak/exports/share:/usr/local/share/:/usr/share/",
+  "WAYLAND_DISPLAY": "/run/user/1000/wayland-0",
+  "DISPLAY": ":0",
+  "XAUTHORITY": "/run/user/1000/.mutter-Xwaylandauth.4MMJX3"
+ },
+ "shell": "gnome-shell",
+ "hostPath": "/home/patrick/.local/bin:/home/patrick/bin:/usr/lib64/ccache:/usr/local/bin:/usr/bin",
+ "host": "fedora",
+ "vnc": 5901,
+ "urls": {},
+ "input": "uinput",
+ "before": {
+  "dataPutgd": false,
+  "homePutgd": {
+   "/home/patrick/.config/putgd": false,
+   "/home/patrick/.local/state/putgd": true,
+   "/home/patrick/.cache/putgd": false
+  },
+  "autostart": []
+ },
+ "pids": {
+  "apprun": 3049534
+ },
+ "created": "2026-10-23T00:21:28Z",
+ "log": [
+  {
+   "at": "2026-10-23T00:21:34Z",
+   "start": {
+    "pid": 3049485,
+    "status": {
+     "build": "26.1022.1017-nightly",
+     "channel": "nightly",
+     "latest": null,
+     "updateAvailable": null,
+     "install": {
+      "available": true,
+      "backup": null,
+      "image": "/home/patrick/work/put.gd-ua/app/runs/f44-zs/apps/putgd-26.1022.1017-nightly-x86_64.AppImage",
+      "installed": null,
+      "kind": "update",
+      "reason": null,
+      "restartRequired": false,
+      "running": false,
+      "state": "idle",
+      "switch": null
+     }
+    },
+    "frame": "/home/patrick/work/put.gd-ua/app/runs/f44-zs/frames/u7-zs-1-start.png"
+   }
+  },
+  {
+   "at": "2026-10-23T00:21:39Z",
+   "check": {
+    "reply": {
+     "ok": true,
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     }
+    },
+    "status": {
+     "build": "26.1022.1017-nightly",
+     "channel": "nightly",
+     "latest": "26.1022.1019-nightly",
+     "updateAvailable": true,
+     "install": {
+      "available": true,
+      "backup": null,
+      "image": "/home/patrick/work/put.gd-ua/app/runs/f44-zs/apps/putgd-26.1022.1017-nightly-x86_64.AppImage",
+      "installed": null,
+      "kind": "update",
+      "reason": null,
+      "restartRequired": false,
+      "running": false,
+      "state": "idle",
+      "switch": null
+     }
+    },
+    "frame": "/home/patrick/work/put.gd-ua/app/runs/f44-zs/frames/u7-zs-2-available.png"
+   }
+  },
+  {
+   "at": "2026-10-23T00:21:49Z",
+   "install": {
+    "params": {
+     "confirm": true
+    },
+    "seconds": 9.8,
+    "phases": [
+     {
+      "at": 0.1,
+      "phase": [
+       "starting",
+       "auto"
+      ],
+      "bytes": 0,
+      "total": 0
+     },
+     {
+      "at": 0.5,
+      "phase": [
+       "verifying",
+       null
+      ],
+      "bytes": 0,
+      "total": 0
+     },
+     {
+      "at": 2.2,
+      "phase": [
+       "zsync",
+       "appimageupdatetool"
+      ],
+      "bytes": 0,
+      "total": 115259896
+     },
+     {
+      "at": 5.4,
+      "phase": [
+       "installing",
+       "zsync"
+      ],
+      "bytes": 115259896,
+      "total": 115259896
+     },
+     {
+      "at": 6.3,
+      "phase": [
+       "done",
+       "zsync"
+      ],
+      "bytes": 115259896,
+      "total": 115259896
+     }
+    ],
+    "install": {
+     "available": true,
+     "backup": "/home/patrick/work/put.gd-ua/app/runs/f44-zs/apps/.putgd-update-backup-26.1022.1017-nightly.AppImage",
+     "bytes": 115259896,
+     "finishedAt": "2026-10-23T00:21:45Z",
+     "image": "/home/patrick/work/put.gd-ua/app/runs/f44-zs/apps/putgd-26.1022.1017-nightly-x86_64.AppImage",
+     "installed": {
+      "channel": "nightly",
+      "image": "/home/patrick/work/put.gd-ua/app/runs/f44-zs/apps/putgd-26.1022.1017-nightly-x86_64.AppImage",
+      "installedAt": "2026-10-23T00:21:45Z",
+      "method": "zsync",
+      "previousChannel": "nightly",
+      "previousVersion": "26.1022.1017-nightly",
+      "sha256": "e5b7ad2caecaa7f5737bdfb5d2f0fd4e3c74ce5d98a8a68142caf4efd43525bc",
+      "version": "26.1022.1019-nightly"
+     },
+     "kind": "update",
+     "method": "zsync",
+     "phase": "done",
+     "reason": null,
+     "restartRequired": true,
+     "result": {
+      "backup": "/home/patrick/work/put.gd-ua/app/runs/f44-zs/apps/.putgd-update-backup-26.1022.1017-nightly.AppImage",
+      "channel": "nightly",
+      "image": "/home/patrick/work/put.gd-ua/app/runs/f44-zs/apps/putgd-26.1022.1017-nightly-x86_64.AppImage",
+      "installed": true,
+      "method": "zsync",
+      "previousChannel": "nightly",
+      "previousVersion": "26.1022.1017-nightly",
+      "sha256": "e5b7ad2caecaa7f5737bdfb5d2f0fd4e3c74ce5d98a8a68142caf4efd43525bc",
+      "signature": {
+       "trustedComment": "put.gd v26.1022.1019-nightly nightly"
+      },
+      "switched": false,
+      "tag": "v26.1022.1019-nightly",
+      "version": "26.1022.1019-nightly",
+      "zsync": {
+       "output": "zsync2: used 114921472 local, fetched 1071608 | 100.00% done (109.92 of 109.92 MiB)... | Validation warning: AppImage not signed | Update successful. New file created: /home/patrick/work/put.gd-ua/app/runs/f44-zs/apps/.putgd-update-nMSHow/putgd-26.1022.1019-nightly-x86_64.AppImage",
+       "tool": "appimageupdatetool",
+       "used": true
+      }
+     },
+     "running": false,
+     "startedAt": "2026-10-23T00:21:39Z",
+     "state": "installed",
+     "switch": null,
+     "total": 115259896
+    },
+    "frames": {
+     "zsync": "/home/patrick/work/put.gd-ua/app/runs/f44-zs/frames/u7-zs-3-zsync.png",
+     "result": "/home/patrick/work/put.gd-ua/app/runs/f44-zs/frames/u7-zs-3-result.png"
+    },
+    "imageSha256": "e5b7ad2caecaa7f5737bdfb5d2f0fd4e3c74ce5d98a8a68142caf4efd43525bc",
+    "backup": "/home/patrick/work/put.gd-ua/app/runs/f44-zs/apps/.putgd-update-backup-26.1022.1017-nightly.AppImage",
+    "backupSha256": "005762e9ede991c78fce115707a41617d899d7870738fb525151c182357b7c3a",
+    "folder": [
+     ".putgd-update-backup-26.1022.1017-nightly.AppImage",
+     "putgd-26.1022.1017-nightly-x86_64.AppImage"
+    ],
+    "stateFile": {
+     "backup": {
+      "copied": false,
+      "device": "49",
+      "inode": "4801823",
+      "mtime": 1792709415,
+      "path": "/home/patrick/work/put.gd-ua/app/runs/f44-zs/apps/.putgd-update-backup-26.1022.1017-nightly.AppImage",
+      "size": 115259896
+     },
+     "installed": {
+      "channel": "nightly",
+      "image": "/home/patrick/work/put.gd-ua/app/runs/f44-zs/apps/putgd-26.1022.1017-nightly-x86_64.AppImage",
+      "installedAt": "2026-10-23T00:21:45Z",
+      "method": "zsync",
+      "previousChannel": "nightly",
+      "previousVersion": "26.1022.1017-nightly",
+      "sha256": "e5b7ad2caecaa7f5737bdfb5d2f0fd4e3c74ce5d98a8a68142caf4efd43525bc",
+      "version": "26.1022.1019-nightly"
+     },
+     "schemaVersion": 1,
+     "staging": null
+    }
+   }
+  },
+  {
+   "at": "2026-10-23T00:21:55Z",
+   "restart": {
+    "reply": {
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     },
+     "ok": true,
+     "requestId": "d47aec40-a0d8-40bd-9998-7ef193dc6dfb",
+     "result": {
+      "restarting": true,
+      "version": "26.1022.1019-nightly"
+     },
+     "schemaVersion": 1
+    },
+    "oldPid": 3049485,
+    "oldGone": true,
+    "newPid": 3049736,
+    "newExe": "/tmp/.mount_putgd-HmmDIC/usr/bin/putgd",
+    "newAppimage": "/home/patrick/work/put.gd-ua/app/runs/f44-zs/apps/putgd-26.1022.1017-nightly-x86_64.AppImage",
+    "version": "26.1022.1019-nightly",
+    "install": {
+     "available": true,
+     "backup": null,
+     "image": "/home/patrick/work/put.gd-ua/app/runs/f44-zs/apps/putgd-26.1022.1017-nightly-x86_64.AppImage",
+     "installed": {
+      "backupRemoved": true,
+      "channel": "nightly",
+      "image": "/home/patrick/work/put.gd-ua/app/runs/f44-zs/apps/putgd-26.1022.1017-nightly-x86_64.AppImage",
+      "installedAt": "2026-10-23T00:21:45Z",
+      "method": "zsync",
+      "previousChannel": "nightly",
+      "previousVersion": "26.1022.1017-nightly",
+      "sha256": "e5b7ad2caecaa7f5737bdfb5d2f0fd4e3c74ce5d98a8a68142caf4efd43525bc",
+      "version": "26.1022.1019-nightly"
+     },
+     "kind": "update",
+     "reason": null,
+     "restartRequired": false,
+     "running": false,
+     "state": "idle",
+     "switch": null
+    },
+    "imageSha256": "e5b7ad2caecaa7f5737bdfb5d2f0fd4e3c74ce5d98a8a68142caf4efd43525bc",
+    "afterRestart": {
+     "current": "26.1022.1019-nightly",
+     "latest": "26.1022.1019-nightly",
+     "updateAvailable": false
+    },
+    "channel": "nightly",
+    "channelSetting": "build",
+    "build": {
+     "channel": "nightly",
+     "kind": "nightly",
+     "packageTarget": "appimage",
+     "reason": null,
+     "supported": true,
+     "version": "26.1022.1019-nightly"
+    },
+    "loginScript": null,
+    "folder": [
+     "putgd-26.1022.1017-nightly-x86_64.AppImage"
+    ],
+    "frame": "/home/patrick/work/put.gd-ua/app/runs/f44-zs/frames/u7-zs-4-restarted.png"
+   }
+  }
+ ]
+}

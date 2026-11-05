@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "status": "dry-run",
+  "run": "/home/user/r3/work/lab-runs/core-r3",
+  "disk": "/home/user/r3/work/lab-runs/core-r3/disk.qcow2",
+  "diskIdentity": {
+    "device": 64769,
+    "inode": 4007690,
+    "size": 249823232,
+    "mtimeNs": 1793356308893398439,
+    "ctimeNs": 1793356308893398439,
+    "allocatedBytes": 249765888
+  },
+  "base": "/home/user/work/put.gd/work/lab-images/cinnamon-x11-probes-v3-session/image.qcow2",
+  "stateSha256": "e15f8f5d50e7426f8511239673c997c2ee3a89aeb2be79dc17dd1deec6f6c48b",
+  "evidence": {
+    "manifest": "/home/user/e3/retirement/manifest.json",
+    "sha256": "b98bc2be8e11199a34e80bc9993f0786e8fef31f3289cc0468be1987e1d44f28",
+    "runId": "4cd3d592-2451-4ad3-ab17-2ba5e1d692e8",
+    "mode": "explicit"
+  },
+  "preparedUtc": "2026-10-30T10:31:55.253871+00:00"
+}

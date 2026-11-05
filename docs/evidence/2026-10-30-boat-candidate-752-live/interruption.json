@@ -1,0 +1,120 @@
+{
+  "argv": [
+    "python3",
+    "/home/patrick/.t3/worktrees/put.gd/t3-c14e8bd4/tools/lab/boat/candidate.py",
+    "0c329b0692cadc52f03f91e59c06c5eda760bf04",
+    "--output",
+    "/home/patrick/work/boat-candidates/issue752-f1-live-20261030/interrupted"
+  ],
+  "pid": 1769447,
+  "startedAt": 1793333024.9395258,
+  "newCommandsAtSignal": [
+    {
+      "time": 1793333027.896835,
+      "pid": 1769953,
+      "controller": 1769447,
+      "argv": [
+        "--no-update",
+        "--json",
+        "new",
+        "--from",
+        "putgd-build-base",
+        "--no-env",
+        "--type",
+        "large",
+        "--ttl",
+        "10800",
+        "--name",
+        "putgd-0c329b0692ca-debian13-eda9d5e1835a48ad"
+      ]
+    },
+    {
+      "time": 1793333027.8970196,
+      "pid": 1769952,
+      "controller": 1769447,
+      "argv": [
+        "--no-update",
+        "--json",
+        "new",
+        "--from",
+        "putgd-build-base",
+        "--no-env",
+        "--type",
+        "large",
+        "--ttl",
+        "10800",
+        "--name",
+        "putgd-0c329b0692ca-fedora44-eda9d5e1835a48ad"
+      ]
+    },
+    {
+      "time": 1793333027.902357,
+      "pid": 1769958,
+      "controller": 1769447,
+      "argv": [
+        "--no-update",
+        "--json",
+        "new",
+        "--from",
+        "putgd-build-base",
+        "--no-env",
+        "--type",
+        "large",
+        "--ttl",
+        "10800",
+        "--name",
+        "putgd-0c329b0692ca-appimage-eda9d5e1835a48ad"
+      ]
+    },
+    {
+      "time": 1793333027.9028225,
+      "pid": 1769955,
+      "controller": 1769447,
+      "argv": [
+        "--no-update",
+        "--json",
+        "new",
+        "--from",
+        "putgd-build-base",
+        "--no-env",
+        "--type",
+        "large",
+        "--ttl",
+        "10800",
+        "--name",
+        "putgd-0c329b0692ca-ubuntu24.04-eda9d5e1835a48ad"
+      ]
+    },
+    {
+      "time": 1793333027.903623,
+      "pid": 1769954,
+      "controller": 1769447,
+      "argv": [
+        "--no-update",
+        "--json",
+        "new",
+        "--from",
+        "putgd-build-base",
+        "--no-env",
+        "--type",
+        "large",
+        "--ttl",
+        "10800",
+        "--name",
+        "putgd-0c329b0692ca-ui-catalog-eda9d5e1835a48ad"
+      ]
+    }
+  ],
+  "creationAtSignal": {
+    "interrupted/ubuntu24.04/creation.jsonl": "",
+    "interrupted/ubuntu26.04/creation.jsonl": "",
+    "interrupted/debian13/creation.jsonl": "",
+    "interrupted/fedora44/creation.jsonl": "",
+    "interrupted/appimage/creation.jsonl": "",
+    "interrupted/ui-catalog/creation.jsonl": "",
+    "interrupted/lab-fixture/creation.jsonl": ""
+  },
+  "signalAt": 1793333027.9065893,
+  "returncode": 1,
+  "finishedAt": 1793333157.9092102
+}

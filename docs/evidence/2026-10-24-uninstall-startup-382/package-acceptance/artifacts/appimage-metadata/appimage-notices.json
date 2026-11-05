@@ -1,0 +1,11 @@
+{
+  "components": 138,
+  "files": 641,
+  "appstreamLicense": "MIT AND Apache-2.0 AND GPL-3.0-or-later AND BSD-3-Clause AND (LGPL-2.1-only OR LGPL-3.0-only OR LicenseRef-KDE-Accepted-LGPL) AND GPL-2.0-or-later AND Unicode-DFS-2016 AND ICU AND NAIST-2003 AND (LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only) AND LGPL-2.1-or-later AND LGPL-2.0-or-later AND (BSD-3-Clause OR GPL-2.0-only) AND curl AND (GPL-2.0-or-later OR LGPL-2.1-or-later) AND CC0-1.0 AND (LGPL-2.1-or-later OR MPL-1.1 OR GPL-2.0-or-later) AND (LGPL-3.0-or-later OR GPL-2.0-or-later) AND OLDAP-2.8 AND BSD-2-Clause AND LGPL-2.1-only AND Libpng",
+  "licenseTextsPresent": true,
+  "nativeNoticeAbsent": true,
+  "linuxdeployLeftovers": [],
+  "secondCopies": [],
+  "identicalFiles": [],
+  "originRelativeSearchPaths": 225
+}

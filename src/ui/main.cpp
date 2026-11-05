@@ -3,9 +3,12 @@
 #include "ImageEditor.h"
 #include "StdioDevice.h"
 #include "ViewState.h"
-#include "VisualStyle.h"
+#include "Ui.h"
+#include "Fonts.h"
+#include "QuickBackend.h"
 #include "core/AllocatorPolicy.h"
 #include "core/BuildInfo.h"
+#include "core/HostEnvironment.h"
 #include <QApplication>
 #include <QJsonDocument>
 #include <QTimer>
@@ -28,13 +31,16 @@ int main(int argc,char** argv){
  // built-in generic theme, and derives candidates from the desktop identity, so
  // that identity is cleared as well.
  if(argc==2&&std::strcmp(argv[1],"--edit-image")==0){
+  // A host program it starts gets the desktop's own values (#326).
+  for(const char* name:{"QT_QPA_PLATFORMTHEME","XDG_CURRENT_DESKTOP","XDG_SESSION_DESKTOP","DESKTOP_SESSION","KDE_FULL_SESSION","GNOME_DESKTOP_SESSION_ID"})putgd::host::keep(name);
   qputenv("QT_QPA_PLATFORMTHEME","generic");
   for(const char* name:{"XDG_CURRENT_DESKTOP","XDG_SESSION_DESKTOP","DESKTOP_SESSION","KDE_FULL_SESSION","GNOME_DESKTOP_SESSION_ID"})qunsetenv(name);
   // Previews and exports allocate full-size rasters and PNG buffers. Without a
   // fixed mmap threshold the freed ones stay in the heap: on Fedora 44 one
   // 1920x1080 preview kept 36 MiB resident until the editor closed.
-  if(!putgd::applyResidentAllocatorPolicy())std::fputs("Could not apply the editor allocation threshold\n",stderr);
+  if(!putgd::applyResidentAllocatorPolicy())std::fputs("Could not apply the editor allocation policy\n",stderr);
  }
+ putgd::nameSoftwareSceneGraphBackend();
  QApplication app(argc,argv);
  QCoreApplication::setOrganizationName("putgd");QCoreApplication::setApplicationName("putgd-ui");
  QCoreApplication::setApplicationVersion(putgd::buildVersion());
@@ -43,7 +49,7 @@ int main(int argc,char** argv){
   putgd::StdioDevice pipes(handles.input(),handles.output());if(!pipes.isOpen())return 2;
   return putgd::runImageJob(app,pipes);
  }
- putgd::VisualStyle::apply(app);app.setWindowIcon(putgd::VisualStyle::icon("brand"));
+ putgd::Fonts::load();putgd::Ui::apply(app);app.setWindowIcon(putgd::Ui::icon("brand"));
  if(argc==2&&std::strcmp(argv[1],"--edit-image")==0){
   // A separate on-demand process: closing it frees the image regardless of other views.
   putgd::StdioDevice pipes(handles.input(),handles.output());if(!pipes.isOpen())return 2;

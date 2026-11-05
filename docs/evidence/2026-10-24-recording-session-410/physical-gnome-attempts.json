@@ -1,0 +1,192 @@
+{
+  "schemaVersion": 1,
+  "host": "physical f44",
+  "status": "failed prerequisite attempts; no final-source acceptance credit",
+  "numericReceipts": [
+    {
+      "run": "g1",
+      "rawPath": "/tmp/r410f/g1/summary.json",
+      "rawSha256": "3da5dcc9b4b8fb025f12a5e5d218e8bdac8aa36e08bcb4ec73fbee9b580cfbc3",
+      "source": [
+        "052d4363826fc01fa62a552f91db48b74667383b",
+        "05c1e65a2e14c5df3e28315dadaf36aa45da3d28"
+      ],
+      "sourceStatus": "",
+      "startedUtc": "2026-10-24T14:50:20Z",
+      "finishedUtc": "2026-10-24T14:50:22Z",
+      "passed": false,
+      "failurePhase": "bootstrap",
+      "failureType": "AssertionError",
+      "coverChecks": [
+        {
+          "fraction": 0.615,
+          "minimum": 0.98,
+          "ok": false
+        }
+      ],
+      "casesCompleted": 0
+    },
+    {
+      "run": "g2",
+      "rawPath": "/tmp/r410f/g2/summary.json",
+      "rawSha256": "dd03840ca738dc6c2faecb24f880f5ff92525a0db51c28d28c5438e38d362e63",
+      "source": [
+        "052d4363826fc01fa62a552f91db48b74667383b",
+        "05c1e65a2e14c5df3e28315dadaf36aa45da3d28"
+      ],
+      "sourceStatus": "",
+      "startedUtc": "2026-10-24T14:51:33Z",
+      "finishedUtc": "2026-10-24T14:51:39Z",
+      "passed": false,
+      "failurePhase": "bootstrap",
+      "failureType": "AssertionError",
+      "coverChecks": [
+        {
+          "fraction": 0.615,
+          "minimum": 0.98,
+          "ok": false
+        },
+        {
+          "fraction": 0.6219,
+          "minimum": 0.98,
+          "ok": false
+        },
+        {
+          "fraction": 0.6219,
+          "minimum": 0.98,
+          "ok": false
+        }
+      ],
+      "casesCompleted": 0
+    },
+    {
+      "run": "g3",
+      "rawPath": "/tmp/r410f/g3/summary.json",
+      "rawSha256": "d1a1119346430c93b8a886be90ec8b3b92e5e4580a26f0824cf83e596fde1d17",
+      "source": [
+        "052d4363826fc01fa62a552f91db48b74667383b",
+        "05c1e65a2e14c5df3e28315dadaf36aa45da3d28"
+      ],
+      "sourceStatus": "",
+      "startedUtc": "2026-10-24T14:52:31Z",
+      "finishedUtc": "2026-10-24T14:52:49Z",
+      "passed": false,
+      "failurePhase": "mode-open-ready-cancel",
+      "failureType": "RuntimeError",
+      "coverChecks": [
+        {
+          "fraction": 0.615,
+          "minimum": 0.98,
+          "ok": false
+        },
+        {
+          "fraction": 1.0,
+          "minimum": 0.98,
+          "ok": true
+        }
+      ],
+      "casesCompleted": 0
+    },
+    {
+      "run": "g5",
+      "rawPath": "/tmp/r410f/g5/summary.json",
+      "rawSha256": "c49a835da94f960eb40878288cf6f639746fd6bdb872473c8f613e88b796dccf",
+      "source": [
+        "102b67088abcd11ad3e77b68c17eda9b6fa2ae87",
+        "e50248c3c7eb9ffa75024efbefb642375174c65a"
+      ],
+      "sourceStatus": "",
+      "startedUtc": "2026-10-24T15:00:38Z",
+      "finishedUtc": "2026-10-24T15:00:44Z",
+      "passed": false,
+      "failurePhase": "bootstrap",
+      "failureType": "AssertionError",
+      "coverChecks": [
+        {
+          "fraction": 0.9593,
+          "minimum": 0.98,
+          "ok": false
+        },
+        {
+          "fraction": 0.9593,
+          "minimum": 0.98,
+          "ok": false
+        },
+        {
+          "fraction": 0.9593,
+          "minimum": 0.98,
+          "ok": false
+        }
+      ],
+      "casesCompleted": 0
+    },
+    {
+      "run": "g6",
+      "rawPath": "/tmp/r410f/g6/summary.json",
+      "rawSha256": "6cfa7a09add78bedf8250d9ca7efef64a04f0b78af60e9ab45f51a3150ff4b22",
+      "source": [
+        "102b67088abcd11ad3e77b68c17eda9b6fa2ae87",
+        "e50248c3c7eb9ffa75024efbefb642375174c65a"
+      ],
+      "sourceStatus": "",
+      "startedUtc": "2026-10-24T15:01:29Z",
+      "finishedUtc": "2026-10-24T15:01:37Z",
+      "passed": false,
+      "failurePhase": "bootstrap",
+      "failureType": "AssertionError",
+      "coverChecks": [
+        {
+          "fraction": 0.9593,
+          "minimum": 0.98,
+          "ok": false
+        },
+        {
+          "fraction": 0.9593,
+          "minimum": 0.98,
+          "ok": false
+        },
+        {
+          "fraction": 0.9593,
+          "minimum": 0.98,
+          "ok": false
+        }
+      ],
+      "casesCompleted": 0
+    },
+    {
+      "run": "g7",
+      "rawPath": "/tmp/r410f/g7/summary.json",
+      "rawSha256": "5b2b36743a05e322139ed0f65eea32160286ab30bef3bcfb4836deeef1db5398",
+      "source": [
+        "102b67088abcd11ad3e77b68c17eda9b6fa2ae87",
+        "e50248c3c7eb9ffa75024efbefb642375174c65a"
+      ],
+      "sourceStatus": "",
+      "startedUtc": "2026-10-24T15:02:17Z",
+      "finishedUtc": "2026-10-24T15:02:25Z",
+      "passed": false,
+      "failurePhase": "bootstrap",
+      "failureType": "AssertionError",
+      "coverChecks": [
+        {
+          "fraction": 0.0,
+          "minimum": 0.98,
+          "ok": false
+        },
+        {
+          "fraction": 0.9593,
+          "minimum": 0.98,
+          "ok": false
+        },
+        {
+          "fraction": 0.9593,
+          "minimum": 0.98,
+          "ok": false
+        }
+      ],
+      "casesCompleted": 0
+    }
+  ],
+  "regionPrerequisite": "g3 passed cover on retry but failed region preparation; execution-owner extension inventory found no system or user put.gd extension. Prior052d g4 monitor subset stays separate.",
+  "visualPolicy": "No failed physical frame was read or transferred. Raw receipts and excluded images remain on host. This report collected numeric/source/time/failure-type fields only."
+}

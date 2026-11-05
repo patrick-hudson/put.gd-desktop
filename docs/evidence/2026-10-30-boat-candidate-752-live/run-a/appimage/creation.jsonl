@@ -1,0 +1,4 @@
+{"event":"created","hostedPorts":null,"id":"bx_qhchvm59","org":null,"team":null,"ttlSeconds":10800}
+{"event":"state","id":"bx_qhchvm59","state":"starting"}
+{"event":"state","id":"bx_qhchvm59","state":"ready"}
+{"archiveAfter":"2026-10-30T07:03:25.668Z","commands":{"forward":"boat forward bx_qhchvm59 --remote 3000 --local 3000","ssh":"boat ssh bx_qhchvm59"},"desktopUrl":null,"event":"ready","id":"bx_qhchvm59","ip":"2001:41d0:8:8cd1:100::2c","state":"ready","url":"https://box-node-1926f843137b9bf9.on.boat.dev"}

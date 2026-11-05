@@ -1,0 +1,22 @@
+{
+  "k72": {
+    "exitCode": 0,
+    "stdout": " 00:29:31 up  5:14,  5 users,  load average: 0.08, 0.17, 0.58\nPRETTY_NAME=\"Ubuntu 26.04.1 LTS\"\nNAME=\"Ubuntu\"\nVERSION_ID=\"26.04\"\nVERSION=\"26.04.1 LTS (Resolute Raccoon)\"\nVERSION_CODENAME=resolute\nID=ubuntu\n7.0.0-38-generic\n/sys/fs/cgroup cgroup2\nLinger=yes\nuser-manager-reachable\n",
+    "stderr": "bash: line 1: systemd: command not found\n"
+  },
+  "f44": {
+    "exitCode": 0,
+    "stdout": " 00:29:31 up 6 days,  3:04,  6 users,  load average: 0.02, 0.06, 0.02\nNAME=\"Fedora Linux\"\nVERSION=\"44 (Workstation Edition)\"\nRELEASE_TYPE=stable\nID=fedora\nVERSION_ID=44\nVERSION_CODENAME=\"\"\n7.2.11-200.fc44.x86_64\n/sys/fs/cgroup cgroup2\nLinger=no\nuser-manager-reachable\n",
+    "stderr": "bash: systemd: command not found\n"
+  },
+  "d69": {
+    "exitCode": 0,
+    "stdout": " 00:29:31 up 13 days, 13 min,  8 users,  load average: 0.00, 0.02, 0.00\nPRETTY_NAME=\"Debian GNU/Linux 13 (trixie)\"\nNAME=\"Debian GNU/Linux\"\nVERSION_ID=\"13\"\nVERSION=\"13 (trixie)\"\nVERSION_CODENAME=trixie\nDEBIAN_VERSION_FULL=13.7\n6.12.107+deb13-amd64\n/sys/fs/cgroup cgroup2\nLinger=yes\nuser-manager-reachable\n",
+    "stderr": "bash: line 1: systemd: command not found\n"
+  },
+  "aurora-amd": {
+    "exitCode": 0,
+    "stdout": " 00:29:31 up 10:13,  6 users,  load average: 0.00, 0.02, 0.00\nNAME=\"Aurora\"\nVERSION=\"testing-45.20261029.1 (Kinoite)\"\nRELEASE_TYPE=stable\nID=aurora\nID_LIKE=\"fedora\"\nVERSION_ID=45\n7.2.11-300.fc45.x86_64\n/sys/fs/cgroup cgroup2\nLinger=no\nuser-manager-reachable\n",
+    "stderr": "bash: line 1: systemd: command not found\n"
+  }
+}

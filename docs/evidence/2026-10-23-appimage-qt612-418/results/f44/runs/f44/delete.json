@@ -1,0 +1,112 @@
+{
+ "item": "Screen-Capture-2026-10-23-14-43-47.png",
+ "prepare": {
+  "acknowledgement": "56b86a198519394a84b9a9a43543d54d815f9436bdd341d3a21e2cc702308103",
+  "cacheNotice": "Origin deletion does not invalidate browser or CDN caches",
+  "localCopiesPreserved": true,
+  "targets": [
+   {
+    "effect": "Guarded origin removal; selected versions only; browser/CDN caches may retain bytes",
+    "historyId": "706fc055-f23d-4b5b-98f1-011a20d8f0ca",
+    "receipt": {
+     "concurrencyToken": "\"a782ac7b4eb9546721779e0becfc4cdd\"",
+     "destination": {
+      "credentials": {
+       "mode": "session",
+       "reference": null
+      },
+      "profileId": "afa-fixture",
+      "profileRevision": "37839b451961281572189cb1aaa34985f71e75839c3964666d9fd48708047a88",
+      "providerId": "s3",
+      "settings": {
+       "aclMode": "public-read",
+       "addressing": "path",
+       "bucket": "fixture",
+       "connectTimeoutMs": 5000,
+       "endpoint": "http://127.0.0.1:45633",
+       "lowSpeedBytesPerSecond": 1,
+       "lowSpeedTimeSeconds": 120,
+       "objectPrefix": "afa/",
+       "publicUrlBase": "http://127.0.0.1:45633/fixture",
+       "region": "us-east-1",
+       "requestTimeoutMs": 120000,
+       "storageClass": "STANDARD"
+      }
+     },
+     "directUrl": "http://127.0.0.1:45633/fixture/afa/Screen-Capture-2026-10-23-14-43-47.png",
+     "objectReference": {
+      "bytes": 4665,
+      "key": "afa/Screen-Capture-2026-10-23-14-43-47.png",
+      "schemaVersion": 1,
+      "sha256": "4ae8ec033aea647f76789f27451f1aea3f9d093ad4f679e19449c92ef47b3099",
+      "versionId": ""
+     },
+     "publicationId": "ae4191d6-49b4-45c2-8676-ae4725c68635",
+     "schemaVersion": 1
+    }
+   }
+  ]
+ },
+ "confirm": {
+  "deleteOperationId": "8a53d351-fd35-4498-b1cb-aa4565662034",
+  "deletion": {
+   "acknowledgement": "56b86a198519394a84b9a9a43543d54d815f9436bdd341d3a21e2cc702308103",
+   "cancelled": false,
+   "created": "2026-10-23T19:44:09.980Z",
+   "id": "8a53d351-fd35-4498-b1cb-aa4565662034",
+   "items": [
+    {
+     "effect": "Guarded origin removal; selected versions only; browser/CDN caches may retain bytes",
+     "historyId": "706fc055-f23d-4b5b-98f1-011a20d8f0ca",
+     "progress": {
+      "schemaVersion": 1
+     },
+     "receipt": {
+      "concurrencyToken": "\"a782ac7b4eb9546721779e0becfc4cdd\"",
+      "destination": {
+       "credentials": {
+        "mode": "session",
+        "reference": null
+       },
+       "profileId": "afa-fixture",
+       "profileRevision": "37839b451961281572189cb1aaa34985f71e75839c3964666d9fd48708047a88",
+       "providerId": "s3",
+       "settings": {
+        "aclMode": "public-read",
+        "addressing": "path",
+        "bucket": "fixture",
+        "connectTimeoutMs": 5000,
+        "endpoint": "http://127.0.0.1:45633",
+        "lowSpeedBytesPerSecond": 1,
+        "lowSpeedTimeSeconds": 120,
+        "objectPrefix": "afa/",
+        "publicUrlBase": "http://127.0.0.1:45633/fixture",
+        "region": "us-east-1",
+        "requestTimeoutMs": 120000,
+        "storageClass": "STANDARD"
+       }
+      },
+      "directUrl": "http://127.0.0.1:45633/fixture/afa/Screen-Capture-2026-10-23-14-43-47.png",
+      "objectReference": {
+       "bytes": 4665,
+       "key": "afa/Screen-Capture-2026-10-23-14-43-47.png",
+       "schemaVersion": 1,
+       "sha256": "4ae8ec033aea647f76789f27451f1aea3f9d093ad4f679e19449c92ef47b3099",
+       "versionId": ""
+      },
+      "publicationId": "ae4191d6-49b4-45c2-8676-ae4725c68635",
+      "schemaVersion": 1
+     },
+     "status": "pending"
+    }
+   ],
+   "state": "accepted"
+  }
+ },
+ "final": null,
+ "remoteAfter": "HTTP 404",
+ "remoteStatus": "removed",
+ "localPath": "/home/patrick/work/put.gd-qt418/afa/runs/f44/archive/images/Screen-Capture-2026-10-23-14-43-47.png",
+ "localExistsAfter": true,
+ "historyRowKept": true
+}

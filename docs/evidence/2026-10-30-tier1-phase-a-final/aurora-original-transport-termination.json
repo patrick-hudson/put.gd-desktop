@@ -1,0 +1,9 @@
+{
+  "reason": "Original sandbox deletion already verified; terminate only its exact remaining local SSH transport",
+  "controllerPids": [
+    3355307
+  ],
+  "sshPids": [
+    3355308
+  ]
+}

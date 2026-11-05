@@ -1,0 +1,22 @@
+{
+  "executedDriverCommit": "8c125ebc80a5beffc70fd090bf651e8534a2997b",
+  "finalDriverCommit": "f0d9e03dc10944ab9a34aef19cab8357b899b6b2",
+  "finalFiles": {
+    "tools/lab/surface_driver/browser.py": "cf84390e3daa4905f9aa04c4f957962fde1dc04f05ac3f82386f33c1e9bd8824",
+    "tools/lab/surface_driver/fixtures/live_outcomes.py": "34c23ea57d33874f91c3e9162f7bb1bfd81d606a5578676609643baf7153eb9e",
+    "tools/lab/surface_driver/recipes/outcomes_live.py": "ae91c0f984eab3543257a94bd12025e105ff59b2a5dba67bedb497ada43dacf7",
+    "tools/lab/surface_driver/redact.py": "7e0efb1cc16e5f00442e88edb30b8c270cc468338c8a89a782c891caab330a41",
+    "tools/lab/surface_driver/gate.py": "b1d7c33d396e9dce23c637f575c698d3ddd8e9ad91a518a18d32fe1c1d7eb585",
+    "tools/lab/surface_driver/secret-states.json": "d92f49f82913f8217fa99cb3e5ff21e310a6bbe5fcf4adc092730327d796ac29",
+    "tests/desktop/test_surface_outcomes_live.py": "c041189a0b1759ef05300800a6b5ddf6bd7d524b3f2643eb04775fd9e1c22412"
+  },
+  "executedFiles": {
+    "tools/lab/surface_driver/browser.py": "075307b8b1299ef436cdb86fea61d8a77f46a782350b496f05b187db66d926e5",
+    "tools/lab/surface_driver/fixtures/live_outcomes.py": "34c23ea57d33874f91c3e9162f7bb1bfd81d606a5578676609643baf7153eb9e",
+    "tools/lab/surface_driver/recipes/outcomes_live.py": "86a341571c9a23f634d2420314ef84fdc451e4bcb10437cf3c88fd6b959f0fd0",
+    "tools/lab/surface_driver/redact.py": "7e0efb1cc16e5f00442e88edb30b8c270cc468338c8a89a782c891caab330a41",
+    "tools/lab/surface_driver/gate.py": "b1d7c33d396e9dce23c637f575c698d3ddd8e9ad91a518a18d32fe1c1d7eb585",
+    "tools/lab/surface_driver/secret-states.json": "d92f49f82913f8217fa99cb3e5ff21e310a6bbe5fcf4adc092730327d796ac29",
+    "tests/desktop/test_surface_outcomes_live.py": "291316f6deda2c14d47946e6a0ab7fde0cfbd200e35f8d292ba77515f5fc08b1"
+  }
+}

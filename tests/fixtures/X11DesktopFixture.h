@@ -20,3 +20,22 @@ public:
 private:
  QSet<xcb_keycode_t> pressed_;
 };
+// A separate client that holds an active keyboard grab (and optionally the
+// pointer) on its own mapped window, as an open menu does (#341).
+class X11GrabbingClient {
+public:
+ explicit X11GrabbingClient(bool pointer=false){
+  connection=xcb_connect(nullptr,nullptr);auto* screen=xcb_setup_roots_iterator(xcb_get_setup(connection)).data;window=xcb_generate_id(connection);uint32_t values[]{0xff00ff,1,XCB_EVENT_MASK_KEY_PRESS};xcb_create_window(connection,screen->root_depth,window,screen->root,200,200,40,40,0,XCB_WINDOW_CLASS_INPUT_OUTPUT,screen->root_visual,XCB_CW_BACK_PIXEL|XCB_CW_OVERRIDE_REDIRECT|XCB_CW_EVENT_MASK,values);xcb_map_window(connection,window);
+  free(xcb_get_input_focus_reply(connection,xcb_get_input_focus(connection),nullptr));
+  auto* keyboard=xcb_grab_keyboard_reply(connection,xcb_grab_keyboard(connection,0,window,XCB_CURRENT_TIME,XCB_GRAB_MODE_ASYNC,XCB_GRAB_MODE_ASYNC),nullptr);
+  grabbed=keyboard&&keyboard->status==XCB_GRAB_STATUS_SUCCESS;free(keyboard);
+  if(pointer){auto* reply=xcb_grab_pointer_reply(connection,xcb_grab_pointer(connection,0,window,XCB_EVENT_MASK_BUTTON_PRESS,XCB_GRAB_MODE_ASYNC,XCB_GRAB_MODE_ASYNC,XCB_NONE,XCB_NONE,XCB_CURRENT_TIME),nullptr);grabbed=grabbed&&reply&&reply->status==XCB_GRAB_STATUS_SUCCESS;free(reply);}
+ }
+ ~X11GrabbingClient(){release();xcb_destroy_window(connection,window);free(xcb_get_input_focus_reply(connection,xcb_get_input_focus(connection),nullptr));xcb_disconnect(connection);}
+ void release(){xcb_ungrab_keyboard(connection,XCB_CURRENT_TIME);xcb_ungrab_pointer(connection,XCB_CURRENT_TIME);free(xcb_get_input_focus_reply(connection,xcb_get_input_focus(connection),nullptr));}
+ // Key presses the grab delivered here: the "menu" still sees the keys.
+ int keyPresses(){free(xcb_get_input_focus_reply(connection,xcb_get_input_focus(connection),nullptr));while(auto* event=xcb_poll_for_event(connection)){if((event->response_type&127)==XCB_KEY_PRESS)++presses_;free(event);}return presses_;}
+ xcb_connection_t* connection=nullptr;xcb_window_t window=0;bool grabbed=false;
+private:
+ int presses_=0;
+};

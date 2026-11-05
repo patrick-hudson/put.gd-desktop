@@ -1,0 +1,73 @@
+{
+ "label": "k72-tray-menu",
+ "components": [
+  {
+   "blocks": 963,
+   "box": [
+    1528,
+    688,
+    1744,
+    1024
+   ]
+  },
+  {
+   "blocks": 97,
+   "box": [
+    544,
+    248,
+    1008,
+    352
+   ]
+  },
+  {
+   "blocks": 9,
+   "box": [
+    768,
+    296,
+    824,
+    320
+   ]
+  },
+  {
+   "blocks": 9,
+   "box": [
+    776,
+    408,
+    832,
+    432
+   ]
+  },
+  {
+   "blocks": 2,
+   "box": [
+    768,
+    744,
+    776,
+    760
+   ]
+  },
+  {
+   "blocks": 2,
+   "box": [
+    760,
+    520,
+    768,
+    536
+   ]
+  }
+ ],
+ "colour": [
+  244,
+  244,
+  244
+ ],
+ "inner": [
+  1539,
+  690,
+  1734,
+  1022
+ ],
+ "changedShare": 1.0,
+ "kept": "/home/patrick/work/put.gd-qt418/afa/runs/k72/crops/k72-tray-menu.png",
+ "full": "/home/patrick/work/put.gd-qt418/afa/runs/k72/full/k72-tray-menu.png"
+}

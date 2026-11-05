@@ -1,0 +1,20 @@
+{
+  "build": {
+    "baseVersion": "26.1030.3075",
+    "commitCount": 3075,
+    "dirty": false,
+    "gitCommit": "8d06f9947ea05ed183ca2c0689785cbcd0c10c9e",
+    "gitTree": "c13fe1c825758cc35c5a8b2055c68acbfe64e86c",
+    "packageVersion": "26.1030.3075~dev+g8d06f9947ea0",
+    "schemaVersion": 1,
+    "sourceProvenance": "git",
+    "version": "26.1030.3075-dev+g8d06f9947ea0"
+  },
+  "manifestSha256": "2cd6f666dbd22f2109fb7c45ac71507f0283d6acd3c94191879512d38ef5ffa8",
+  "stagedArchiveSha256": "33af906b6c9a51201db5a425e62806ca2edb62d4c8872b9e982f982d89b3e145",
+  "verifiedOn": [
+    "cin",
+    "kde",
+    "gno"
+  ]
+}

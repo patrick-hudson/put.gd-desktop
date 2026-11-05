@@ -1,0 +1,116 @@
+{
+ "processes": [
+  {
+   "pid": 3523,
+   "ppid": 3480,
+   "exe": "/tmp/.mount_putgd-nlCKLK/usr/bin/putgd",
+   "comm": "putgd",
+   "cmd": "/tmp/.mount_putgd-nlCKLK/usr/bin/putgd --background",
+   "qtPlatformPlugins": [],
+   "QT_QPA_PLATFORM": null,
+   "APPIMAGE": "/var/home/lab/afa2/images/putgd-0.1.1-nightly.942-x86_64.AppImage"
+  },
+  {
+   "pid": 3670,
+   "ppid": 3523,
+   "exe": "/tmp/.mount_putgd-nlCKLK/usr/bin/putgd-ui",
+   "comm": "putgd-ui",
+   "cmd": "/tmp/.mount_putgd-nlCKLK/usr/bin/putgd-ui",
+   "qtPlatformPlugins": [
+    "libqwayland-generic.so"
+   ],
+   "QT_QPA_PLATFORM": null,
+   "APPIMAGE": "/var/home/lab/afa2/images/putgd-0.1.1-nightly.942-x86_64.AppImage"
+  }
+ ],
+ "entries": [
+  "putgd-appimage-GrW6Idfw.desktop",
+  "putgd-record-appimage-yQfW9KV4.desktop",
+  "putgd-record.desktop",
+  "putgd-ui.desktop"
+ ],
+ "window": {
+  "label": "aurora-vm-settings-window",
+  "components": [
+   {
+    "blocks": 16000,
+    "box": [
+     0,
+     0,
+     1280,
+     800
+    ]
+   }
+  ],
+  "colour": [
+   24,
+   24,
+   32
+  ],
+  "inner": [
+   2,
+   28,
+   1278,
+   753
+  ],
+  "changedShare": 1.0,
+  "ownShare": 0.948,
+  "kept": "/var/home/lab/work/put.gd-afa2/runs/aurora-vm/crops/aurora-vm-settings-window.png"
+ },
+ "full": "/var/home/lab/work/put.gd-afa2/runs/aurora-vm/full/aurora-vm-settings-window.png",
+ "titlebar": {
+  "label": "aurora-vm-settings-titlebar",
+  "components": [
+   {
+    "blocks": 1120,
+    "box": [
+     0,
+     0,
+     1280,
+     56
+    ]
+   }
+  ],
+  "colour": [
+   40,
+   44,
+   48
+  ],
+  "inner": [
+   26,
+   2,
+   1254,
+   28
+  ],
+  "changedShare": 1.0,
+  "kept": "/var/home/lab/work/put.gd-afa2/runs/aurora-vm/crops/aurora-vm-settings-titlebar.png"
+ },
+ "switcher": {
+  "label": "aurora-vm-settings-switcher",
+  "components": [
+   {
+    "blocks": 753,
+    "box": [
+     488,
+     288,
+     800,
+     520
+    ]
+   }
+  ],
+  "colour": [
+   24,
+   24,
+   32
+  ],
+  "inner": [
+   548,
+   310,
+   580,
+   433
+  ],
+  "changedShare": 0.652,
+  "kept": "/var/home/lab/work/put.gd-afa2/runs/aurora-vm/crops/aurora-vm-settings-switcher.png"
+ },
+ "switcherFull": "/var/home/lab/work/put.gd-afa2/runs/aurora-vm/full/aurora-vm-settings-switcher.png"
+}

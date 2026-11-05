@@ -1,0 +1,381 @@
+{
+  "schemaVersion": 1,
+  "issue": 731,
+  "codePr": "https://github.com/patrick-hudson/put.gd-desktop/pull/743",
+  "build": {
+    "baseVersion": "26.1030.2347",
+    "commitCount": 2347,
+    "dirty": null,
+    "gitCommit": "44455848595f65d09ce6bf1365307d3b9ad3452a",
+    "gitTree": "8e41ce22c3ed83914f080fe69ece873f0abfb2fe",
+    "packageVersion": "26.1030.2347~dev+g44455848595f",
+    "schemaVersion": 1,
+    "sourceProvenance": "supplied",
+    "version": "26.1030.2347-dev+g44455848595f"
+  },
+  "sourceVerification": {
+    "commit": "44455848595f65d09ce6bf1365307d3b9ad3452a",
+    "checked": 906,
+    "mismatches": []
+  },
+  "package": {
+    "status": "installed",
+    "format": "deb",
+    "sha256": "f37b4e12f777ec3380dbb0933a737a6c7a74187d2d38c72fc1328894e32909d3"
+  },
+  "guest": {
+    "boatId": "bx_fmcg3v94",
+    "snapshot": "putgd-lab-cinnamon",
+    "machineProvider": "baremetal",
+    "profile": "cinnamon-x11",
+    "runId": "af45fa1c-ed6a-4115-80b9-93c65d0e5dcc",
+    "acceleration": "kvm",
+    "goldenSha256": "4a21566d5b741e55f349f4f07e1c687c99d1c99b5394ff0d18ed5c9e685693da",
+    "os": "Linux Mint 22.3",
+    "desktop": "Cinnamon 6.6.4",
+    "session": "X11",
+    "qt": "6.4.2 (dynamic distro libraries)",
+    "wallTunnel": "owned loopback VNC tile, active throughout graphical checks, now removed"
+  },
+  "recipe": {
+    "sourceCommit": "ef303b202936260ec1d61b1a1014cde785ba4f4e",
+    "name": "settings.shortcut_recording",
+    "functional": "passed",
+    "visual": "reviewed-ok",
+    "actions": [
+      "region",
+      "window",
+      "desktop",
+      "clipboard",
+      "edit",
+      "record"
+    ],
+    "nativeSamples": 444,
+    "recordingSegments": 18,
+    "postSecondClickRecordingEntries": 0,
+    "command": "python3 tools/lab/surface_driver/run.py --desktop mint-cinnamon-x11 --host boat --placement boat --guest cinnamon-x11 --run /home/user/work/s731/work/lab-runs/c3 --boat-id bx_fmcg3v94 --package deb --destination local --recipes settings.shortcut_recording --catalog /home/user/work/s731catalog --build 44455848595f65d09ce6bf1365307d3b9ad3452a --out /tmp/s731-f3 --campaign issue731 --coverage /home/user/work/731-coverage-44455848.json",
+    "assertionsOrTolerancesChanged": false
+  },
+  "extraNativeRowSwitch": {
+    "passed": true,
+    "regionPreserved": "Ctrl+Alt+Shift+9",
+    "windowRecorded": "Ctrl+Alt+Shift+8",
+    "results": {
+      "05-escape": {
+        "action": "region",
+        "chord": "Ctrl+Shift+1",
+        "expected": "resumed",
+        "shortcuts": {
+          "available": true,
+          "bindings": {
+            "clipboard": {
+              "bound": false,
+              "error": "disabled",
+              "requested": ""
+            },
+            "desktop": {
+              "actual": "Ctrl+Shift+3",
+              "bound": true,
+              "requested": "Ctrl+Shift+3"
+            },
+            "edit": {
+              "bound": false,
+              "error": "disabled",
+              "requested": ""
+            },
+            "record": {
+              "bound": false,
+              "error": "disabled",
+              "requested": ""
+            },
+            "region": {
+              "actual": "Ctrl+Shift+1",
+              "bound": true,
+              "requested": "Ctrl+Shift+1"
+            },
+            "window": {
+              "actual": "Ctrl+Shift+2",
+              "bound": true,
+              "requested": "Ctrl+Shift+2"
+            }
+          },
+          "keyPaths": {
+            "lastActivation": {},
+            "passive": true,
+            "raw": {
+              "available": true,
+              "xinput": "2.2"
+            }
+          }
+        }
+      },
+      "11-canceled": {
+        "action": "region",
+        "chord": "Ctrl+Alt+Shift+9",
+        "expected": "resumed",
+        "shortcuts": {
+          "available": true,
+          "bindings": {
+            "clipboard": {
+              "bound": false,
+              "error": "disabled",
+              "requested": ""
+            },
+            "desktop": {
+              "actual": "Ctrl+Shift+3",
+              "bound": true,
+              "requested": "Ctrl+Shift+3"
+            },
+            "edit": {
+              "bound": false,
+              "error": "disabled",
+              "requested": ""
+            },
+            "record": {
+              "bound": false,
+              "error": "disabled",
+              "requested": ""
+            },
+            "region": {
+              "actual": "Ctrl+Alt+Shift+9",
+              "bound": true,
+              "requested": "Ctrl+Alt+Shift+9"
+            },
+            "window": {
+              "actual": "Ctrl+Shift+2",
+              "bound": true,
+              "requested": "Ctrl+Shift+2"
+            }
+          },
+          "keyPaths": {
+            "lastActivation": {},
+            "passive": true,
+            "raw": {
+              "available": true,
+              "xinput": "2.2"
+            }
+          }
+        }
+      },
+      "14-window-paused": {
+        "action": "window",
+        "chord": "Ctrl+Shift+2",
+        "expected": "recording",
+        "shortcuts": {
+          "available": true,
+          "bindings": {
+            "clipboard": {
+              "bound": false,
+              "requested": "",
+              "state": "recording"
+            },
+            "desktop": {
+              "bound": false,
+              "requested": "Ctrl+Shift+3",
+              "state": "recording"
+            },
+            "edit": {
+              "bound": false,
+              "requested": "",
+              "state": "recording"
+            },
+            "record": {
+              "bound": false,
+              "requested": "",
+              "state": "recording"
+            },
+            "region": {
+              "bound": false,
+              "requested": "Ctrl+Alt+Shift+9",
+              "state": "recording"
+            },
+            "window": {
+              "bound": false,
+              "requested": "Ctrl+Shift+2",
+              "state": "recording"
+            }
+          },
+          "keyPaths": {
+            "lastActivation": {},
+            "passive": true,
+            "raw": {
+              "available": true,
+              "xinput": "2.2"
+            }
+          }
+        }
+      },
+      "15-window-recorded": {
+        "action": "window",
+        "chord": "Ctrl+Alt+Shift+8",
+        "expected": "resumed",
+        "shortcuts": {
+          "available": true,
+          "bindings": {
+            "clipboard": {
+              "bound": false,
+              "error": "disabled",
+              "requested": ""
+            },
+            "desktop": {
+              "actual": "Ctrl+Shift+3",
+              "bound": true,
+              "requested": "Ctrl+Shift+3"
+            },
+            "edit": {
+              "bound": false,
+              "error": "disabled",
+              "requested": ""
+            },
+            "record": {
+              "bound": false,
+              "error": "disabled",
+              "requested": ""
+            },
+            "region": {
+              "actual": "Ctrl+Alt+Shift+9",
+              "bound": true,
+              "requested": "Ctrl+Alt+Shift+9"
+            },
+            "window": {
+              "actual": "Ctrl+Alt+Shift+8",
+              "bound": true,
+              "requested": "Ctrl+Alt+Shift+8"
+            }
+          },
+          "keyPaths": {
+            "lastActivation": {},
+            "passive": true,
+            "raw": {
+              "available": true,
+              "xinput": "2.2"
+            }
+          }
+        }
+      },
+      "16-region-kept": {
+        "action": "region",
+        "chord": "Ctrl+Alt+Shift+9",
+        "expected": "resumed",
+        "shortcuts": {
+          "available": true,
+          "bindings": {
+            "clipboard": {
+              "bound": false,
+              "error": "disabled",
+              "requested": ""
+            },
+            "desktop": {
+              "actual": "Ctrl+Shift+3",
+              "bound": true,
+              "requested": "Ctrl+Shift+3"
+            },
+            "edit": {
+              "bound": false,
+              "error": "disabled",
+              "requested": ""
+            },
+            "record": {
+              "bound": false,
+              "error": "disabled",
+              "requested": ""
+            },
+            "region": {
+              "actual": "Ctrl+Alt+Shift+9",
+              "bound": true,
+              "requested": "Ctrl+Alt+Shift+9"
+            },
+            "window": {
+              "actual": "Ctrl+Alt+Shift+8",
+              "bound": true,
+              "requested": "Ctrl+Alt+Shift+8"
+            }
+          },
+          "keyPaths": {
+            "lastActivation": {},
+            "passive": true,
+            "raw": {
+              "available": true,
+              "xinput": "2.2"
+            }
+          }
+        }
+      }
+    }
+  },
+  "regression": {
+    "oldWidgetCommit": "422183788394106528a55b7459964262e635ea36",
+    "oldFailedRows": [
+      "preparing",
+      "ready"
+    ],
+    "oldTransitions": 3,
+    "expectedTransitions": 2,
+    "restoredResult": "6 passed, 0 failed",
+    "oldLogSha256": "ed421a1e8b87fa3acd26eba430e5864a1642954462fcb53334664d209185077d",
+    "fixedLogSha256": "0e8b13fe3f0124744e9903ce26ecad76eb7e5dc7c86c0c29bce8b38111576ac7"
+  },
+  "ctest": {
+    "tests": 114,
+    "failures": 0,
+    "retries": 0,
+    "realSeconds": 396.46,
+    "timeScale": 3,
+    "parallelism": 4,
+    "resourceSpec": "tools/ci/ctest-resources.json"
+  },
+  "images": {
+    "before": {
+      "sourceCommit": "40a95146b692dda82f0d5a07d11ce7ab9a260910",
+      "sourceFrame": "s703-r13/11-input-after-recordRegionShortcut.png",
+      "sourceSha256": "8e9118f9968d3b53e706d2140537bc684e20b5ce25acc946fdd34d50127ecfde",
+      "annotatedSha256": "09ba8715d0b38bd34cc49756937610e6adf85b75ec0158c5a6bc45025c503318"
+    },
+    "after": {
+      "sourceCommit": "44455848595f65d09ce6bf1365307d3b9ad3452a",
+      "sourceFrame": "settings.shortcut_recording/13-input-after-recordRegionShortcut.png",
+      "sourceSha256": "6e5909efe49f3aee593aed23e2921d1fae5817e564085e588d2c4214dd5a348e",
+      "annotatedSha256": "d3d452929d710e74d1998c84391a02b7e7df5d4865a023b6eeadb760e7731a29"
+    }
+  },
+  "assetCommit": "960323b0088ee6fb52d50d60be668007a6376fa0",
+  "evidenceExport": {
+    "packetSha256": "bfd28726cfe6a0657cf3fc5761f65de3a3fec2e618de1584eb85f2c279e0e31b",
+    "filesVerified": 262,
+    "rawWitnessesRestoredAndVerified": 94,
+    "runId": "af45fa1c-ed6a-4115-80b9-93c65d0e5dcc"
+  },
+  "overlayRetirement": {
+    "status": "completed",
+    "runId": "af45fa1c-ed6a-4115-80b9-93c65d0e5dcc",
+    "manifestSha256": "4087214169d9be9700443a25a6026e2a9c3b7bd4295dffe9810fda10432a359a",
+    "completedUtc": "2026-10-30T03:39:10.114217+00:00",
+    "diskAbsent": true,
+    "receiptSha256": "2807409aa102f49a01691f8642202a426b5e85eeb3afadc95764eac2b847cb50"
+  },
+  "sandboxDeletion": {
+    "attemptCount": 1,
+    "completedAt": "2026-10-30T03:40:15.811Z",
+    "expectedBy": null,
+    "id": "bdop_f957b38fe0394a37a6aa2534566cedfa",
+    "kind": "sandbox",
+    "reason": "explicit",
+    "requestedAt": "2026-10-30T03:40:01.514Z",
+    "stage": "completed",
+    "status": "completed",
+    "targetId": "bx_fmcg3v94"
+  },
+  "cleanup": {
+    "ownedWallTunnelStopped": true,
+    "ownedWallTileRemoved": true,
+    "ownSshAgentStopped": true
+  },
+  "gnomeScope": {
+    "sandbox": "bx_wx9v6uxt",
+    "exportVerified": true,
+    "guardedOverlayRetirement": "incomplete; cleanup command exited 1 and no completed receipt was collected",
+    "sandboxDeletion": "completed",
+    "operation": "bdop_36e4d01bf0234b29b7c19b889a35de86",
+    "scope": "preliminary candidate 30aec91d; not final desktop acceptance"
+  }
+}

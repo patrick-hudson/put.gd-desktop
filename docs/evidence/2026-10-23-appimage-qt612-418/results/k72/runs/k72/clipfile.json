@@ -1,0 +1,312 @@
+{
+ "at": "2026-10-23T18:58:06Z",
+ "before": {
+  "putgd": [
+   1527107
+  ],
+  "putgd-ui": [
+   1527351
+  ]
+ },
+ "entries": [
+  {
+   "sample": "cve-2025-10729-pattern-orphan.svg",
+   "sha256": "b1b7776ef367bc7e360ea559821347242979005e253df30c4cac5cc647708e54",
+   "bytes": 271,
+   "clipboardOwnerPid": 1532361,
+   "operation": {
+    "id": "3ebf6f7e-00de-469f-afa2-1f8571ccfcfe",
+    "state": "completed",
+    "copyStatus": "copied",
+    "items": [
+     {
+      "name": "cve-2025-10729-pattern-orphan.svg",
+      "mime": "image/svg+xml",
+      "uploadStatus": "uploaded",
+      "link": "http://127.0.0.1:37543/fixture/afa/cve-2025-10729-pattern-orphan.svg",
+      "local": {
+       "error": {
+        "code": "",
+        "details": {},
+        "message": ""
+       },
+       "path": "/home/patrick/work/put.gd-qt418/afa/runs/k72/archive/images/cve-2025-10729-pattern-orphan.svg",
+       "status": "saved"
+      }
+     }
+    ],
+    "error": {
+     "code": "",
+     "details": {},
+     "message": ""
+    }
+   },
+   "history": {
+    "id": "93cf4c10-d28a-4d73-bed9-597a97e8e3af",
+    "name": "cve-2025-10729-pattern-orphan.svg",
+    "mime": "image/svg+xml",
+    "uploadStatus": "uploaded",
+    "local": "saved",
+    "newest": true
+   },
+   "preview": {
+    "ok": true,
+    "state": "ready",
+    "error": {
+     "code": "",
+     "details": {},
+     "message": ""
+    },
+    "previewExists": true
+   },
+   "afterPreview": {
+    "putgd": [
+     1527107
+    ],
+    "putgd-ui": [
+     1527351
+    ]
+   },
+   "cards": 0,
+   "afterUi": {
+    "putgd": [
+     1527107
+    ],
+    "putgd-ui": [
+     1527351
+    ]
+   }
+  },
+  {
+   "sample": "cve-2026-8168-deep-nesting.svg",
+   "sha256": "c6980c19fc324275f07df6443eac1bdea38a4f9451c73ea0dd4f12b0c547ac5b",
+   "bytes": 1400111,
+   "clipboardOwnerPid": 1532567,
+   "operation": {
+    "id": "38ea036a-371d-4bfc-955e-e7a31e2db439",
+    "state": "completed",
+    "copyStatus": "copied",
+    "items": [
+     {
+      "name": "cve-2026-8168-deep-nesting.svg",
+      "mime": "image/svg+xml",
+      "uploadStatus": "uploaded",
+      "link": "http://127.0.0.1:37543/fixture/afa/cve-2026-8168-deep-nesting.svg",
+      "local": {
+       "error": {
+        "code": "",
+        "details": {},
+        "message": ""
+       },
+       "path": "/home/patrick/work/put.gd-qt418/afa/runs/k72/archive/images/cve-2026-8168-deep-nesting.svg",
+       "status": "saved"
+      }
+     }
+    ],
+    "error": {
+     "code": "",
+     "details": {},
+     "message": ""
+    }
+   },
+   "history": {
+    "id": "e729a4c7-cab0-457f-ade3-f72be3de3d40",
+    "name": "cve-2026-8168-deep-nesting.svg",
+    "mime": "image/svg+xml",
+    "uploadStatus": "uploaded",
+    "local": "saved",
+    "newest": true
+   },
+   "preview": {
+    "ok": false,
+    "state": null,
+    "error": {
+     "code": "preview_failed",
+     "details": {},
+     "message": "The image preview could not be made"
+    },
+    "previewExists": false
+   },
+   "afterPreview": {
+    "putgd": [
+     1527107
+    ],
+    "putgd-ui": [
+     1527351
+    ]
+   },
+   "cards": 1,
+   "frame": "/home/patrick/work/put.gd-qt418/afa/runs/k72/full/k72-clipfile-1.png",
+   "afterUi": {
+    "putgd": [
+     1527107
+    ],
+    "putgd-ui": [
+     1527351
+    ]
+   }
+  },
+  {
+   "sample": "cve-2025-5683-icns-block-length.icns",
+   "sha256": "e639bf43bd190e0660f20c6ae205c366c7b1a8ad9f06127d7837953fb8062717",
+   "bytes": 49,
+   "clipboardOwnerPid": 1532726,
+   "operation": {
+    "id": "94db87e0-df4f-4560-9dfb-22ac25a87c2f",
+    "state": "completed",
+    "copyStatus": "copied",
+    "items": [
+     {
+      "name": "cve-2025-5683-icns-block-length.icns",
+      "mime": "image/x-icns",
+      "uploadStatus": "uploaded",
+      "link": "http://127.0.0.1:37543/fixture/afa/cve-2025-5683-icns-block-length.icns",
+      "local": {
+       "error": {
+        "code": "",
+        "details": {},
+        "message": ""
+       },
+       "path": "/home/patrick/work/put.gd-qt418/afa/runs/k72/archive/images/cve-2025-5683-icns-block-length.icns",
+       "status": "saved"
+      }
+     }
+    ],
+    "error": {
+     "code": "",
+     "details": {},
+     "message": ""
+    }
+   },
+   "history": {
+    "id": "7a4574d0-4f8b-4899-8710-13cb6e557937",
+    "name": "cve-2025-5683-icns-block-length.icns",
+    "mime": "image/x-icns",
+    "uploadStatus": "uploaded",
+    "local": "saved",
+    "newest": true
+   },
+   "preview": {
+    "ok": false,
+    "state": null,
+    "error": {
+     "code": "preview_failed",
+     "details": {},
+     "message": "The image preview could not be made"
+    },
+    "previewExists": false
+   },
+   "afterPreview": {
+    "putgd": [
+     1527107
+    ],
+    "putgd-ui": [
+     1527351
+    ]
+   },
+   "cards": 2,
+   "frame": "/home/patrick/work/put.gd-qt418/afa/runs/k72/full/k72-clipfile-2.png",
+   "afterUi": {
+    "putgd": [
+     1527107
+    ],
+    "putgd-ui": [
+     1527351
+    ]
+   }
+  },
+  {
+   "sample": "fuzz-tiff-00.tiff",
+   "sha256": "6f6aa40023069e1f3a3b68cd1755979c8cb8381d176b5a9e37cc88f4f0e409c4",
+   "bytes": 3212,
+   "clipboardOwnerPid": 1532868,
+   "operation": {
+    "id": "7fb15cfd-2339-43fe-a0a0-3b4e9321ef6c",
+    "state": "completed",
+    "copyStatus": "copied",
+    "items": [
+     {
+      "name": "fuzz-tiff-00.tiff",
+      "mime": "image/tiff",
+      "uploadStatus": "uploaded",
+      "link": "http://127.0.0.1:37543/fixture/afa/fuzz-tiff-00.tiff",
+      "local": {
+       "error": {
+        "code": "",
+        "details": {},
+        "message": ""
+       },
+       "path": "/home/patrick/work/put.gd-qt418/afa/runs/k72/archive/images/fuzz-tiff-00.tiff",
+       "status": "saved"
+      }
+     }
+    ],
+    "error": {
+     "code": "",
+     "details": {},
+     "message": ""
+    }
+   },
+   "history": {
+    "id": "17c19d33-661b-482e-a881-cf56cebf710e",
+    "name": "fuzz-tiff-00.tiff",
+    "mime": "image/tiff",
+    "uploadStatus": "uploaded",
+    "local": "saved",
+    "newest": true
+   },
+   "preview": {
+    "ok": false,
+    "state": null,
+    "error": {
+     "code": "preview_failed",
+     "details": {},
+     "message": "The image preview could not be made"
+    },
+    "previewExists": false
+   },
+   "afterPreview": {
+    "putgd": [
+     1527107
+    ],
+    "putgd-ui": [
+     1527351
+    ]
+   },
+   "cards": 3,
+   "frame": "/home/patrick/work/put.gd-qt418/afa/runs/k72/full/k72-clipfile-3.png",
+   "afterUi": {
+    "putgd": [
+     1527107
+    ],
+    "putgd-ui": [
+     1527351
+    ]
+   }
+  }
+ ],
+ "after": {
+  "putgd": [
+   1527107
+  ],
+  "putgd-ui": [
+   1527351
+  ]
+ },
+ "diagnostics": {
+  "build": {
+   "baseVersion": "26.1023.1068",
+   "commitCount": 1068,
+   "dirty": false,
+   "gitCommit": "6a325a722afd946046a96480ca524db8aa6abcce",
+   "gitTree": "a0a449b23b4eb70f516e3c317b6d93b412aafbbb",
+   "packageVersion": "26.1023.1068~dev+g6a325a722afd",
+   "schemaVersion": 1,
+   "sourceProvenance": "git",
+   "version": "26.1023.1068-dev+g6a325a722afd"
+  },
+  "journalReady": true,
+  "qtVersion": "6.12.0"
+ },
+ "survived": true
+}

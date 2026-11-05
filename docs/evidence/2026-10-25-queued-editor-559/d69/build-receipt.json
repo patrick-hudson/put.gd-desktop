@@ -1,0 +1,31 @@
+{
+  "host": "debian",
+  "buildDirectory": "/home/patrick/work/i559/build/dev",
+  "cache": {
+    "CMAKE_BUILD_TYPE:STRING": "Debug",
+    "CMAKE_CXX_COMPILER:FILEPATH": "/usr/bin/c++",
+    "CMAKE_MAKE_PROGRAM:FILEPATH": "/usr/bin/ninja",
+    "PUTGD_AWS_RUNTIME_DIR:PATH": "/home/patrick/work/i559/build/sdk/lib",
+    "PUTGD_SOURCE_COMMIT_COUNT:STRING": "1254",
+    "PUTGD_SOURCE_COMMIT_TIME:STRING": "1792901395"
+  },
+  "identity": {
+    "schemaVersion": 1,
+    "version": "26.1025.1254-dev+g9f382fd0b07d",
+    "baseVersion": "26.1025.1254",
+    "packageVersion": "26.1025.1254~dev+g9f382fd0b07d",
+    "gitCommit": "9f382fd0b07d7c1237d8a47a25b87ee3d6129535",
+    "gitTree": "368c787617a047d52087a16aefd328503aabf147",
+    "commitCount": 1254,
+    "dirty": null,
+    "sourceProvenance": "supplied"
+  },
+  "binaries": {
+    "putgd": "937f7421708066ad0daed14853cd1a8a890ab547d1bea97d46e80dfd53ecaf39",
+    "putgd-cli": "4eac6486e96a0d103d46d87a16165003cdfaa89e5426b1c513a6435ab2adb26d",
+    "putgd-ui": "5e2dad127a53a175358c3eda5c0c1bffc322e9250801fbb0476c7988b2032968",
+    "putgd-s3-worker": "3190d5f7556c0be17250a99aebbdbceb0a824e5366a3615db5152ed850de3f6a"
+  },
+  "compiler": "c++ (Debian 14.2.0-19) 14.2.0",
+  "sdk": null
+}

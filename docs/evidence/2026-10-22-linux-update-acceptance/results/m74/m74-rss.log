@@ -1,0 +1,28 @@
+start 01:38:33Z load 1.07 1.04 1.00
+appimage 26.1022.1017-nightly A median 29.59 pss 23.76 B median 29.68 pss 23.85 tls [] load [0.8544921875, 0.994140625, 0.990234375]
+Traceback (most recent call last):
+  File "/home/patrick/work/put.gd-ua/tool/ua_app.py", line 737, in <module>
+    main()
+  File "/home/patrick/work/put.gd-ua/tool/ua_app.py", line 732, in main
+    {'setup': setup, 'start': start, 'check': check, 'channel': channel, 'install': install, 'restart': restart, 'quit': quit_, 'tamper': tamper, 'mem': mem,
+  File "/home/patrick/work/put.gd-ua/tool/ua_app.py", line 97, in setup
+    shutil.copy2(args.appimage, image); image.chmod(0o755)
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/shutil.py", line 475, in copy2
+    copyfile(src, dst, follow_symlinks=follow_symlinks)
+  File "/usr/lib/python3.12/shutil.py", line 260, in copyfile
+    with open(src, 'rb') as fsrc:
+         ^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/home/patrick/work/put.gd-ua/assets/v26.1022.1019-nightly/putgd-26.1022.1019-nightly-x86_64.AppImage'
+Traceback (most recent call last):
+  File "/home/patrick/work/put.gd-ua/tool/ua_app.py", line 737, in <module>
+    main()
+  File "/home/patrick/work/put.gd-ua/tool/ua_app.py", line 732, in main
+    {'setup': setup, 'start': start, 'check': check, 'channel': channel, 'install': install, 'restart': restart, 'quit': quit_, 'tamper': tamper, 'mem': mem,
+  File "/home/patrick/work/put.gd-ua/tool/ua_app.py", line 688, in cleanup
+    if not run.meta['before']['dataPutgd'] and (DATA / 'putgd').exists(): shutil.rmtree(DATA / 'putgd')
+           ~~~~~~~~^^^^^^^^^^
+KeyError: 'before'
+package 26.1022.1017-nightly A median 28.55 pss 18.3 B median 28.57 pss 18.38 tls [] load [0.93896484375, 0.9248046875, 0.96337890625]
+package 26.1022.1017-nightly A median 28.55 pss 18.39 B median 28.64 pss 18.47 tls [] load [0.77001953125, 0.83837890625, 0.91064453125]
+end 02:00:01Z load 1.12 0.95 0.94; putgd /home/patrick/work/put.gd-ua/tool/rss_n.sh: line 26: rpm: command not found

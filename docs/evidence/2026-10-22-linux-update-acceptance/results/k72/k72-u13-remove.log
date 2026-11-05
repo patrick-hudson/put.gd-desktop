@@ -1,0 +1,7 @@
+### after Discover Remove:
+deinstall ok config-files 26.1022.1017~nightly
+### apt-get purge -y putgd (Discover removes, leaves the conffile)
+Purging configuration files for putgd (26.1022.1017~nightly)…
+dpkg-query: no packages found matching putgd
+ls: cannot access '/etc/apt/sources.list.d/putgd.sources': No such file or directory
+0

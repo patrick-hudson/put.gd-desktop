@@ -1,0 +1,10 @@
+5c532eebde01bfc4768c8385fed970aa4e5b97b1338b1e8d00d84bcc0c39175d  /home/user/snapshot-bootstrap/identity.pub
+6c0873f3551c3454efa885772f2be4fbc41dd01420b7be065a9f1131b0fb9aa1  /home/user/snapshot-bootstrap/known_hosts
+{
+  "run": "/home/user/lab-driver/work/lab-runs/fv1",
+  "evidence": "/home/user/fresh-lab-verification",
+  "placement": "boat",
+  "ok": true
+}
+5c532eebde01bfc4768c8385fed970aa4e5b97b1338b1e8d00d84bcc0c39175d  /home/user/snapshot-bootstrap/identity.pub
+6c0873f3551c3454efa885772f2be4fbc41dd01420b7be065a9f1131b0fb9aa1  /home/user/snapshot-bootstrap/known_hosts

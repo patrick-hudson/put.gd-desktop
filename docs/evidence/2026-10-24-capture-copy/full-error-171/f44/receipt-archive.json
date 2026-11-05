@@ -1,0 +1,10 @@
+{
+  "source": "171b506e02ca37ba75b27dbbbe859502380926ef",
+  "host": "f44",
+  "archive": "/home/patrick/work/pgcc-fullerror-f44-receipts.tar.gz",
+  "sha256": "c43b2efc44ff8cb4acc38a9afaba561376f64089aa62b97bcf156da2e1994b9b",
+  "bytes": 7400786,
+  "workstationCopy": "/home/patrick/.t3/worktrees/put.gd/t3-0aa1b31c/work/capture-copy/full-error/f44/receipts.tar.gz",
+  "verifiedBothCopies": true,
+  "restore": "Verify SHA256; extract into a NEW private directory; private idle/failure frames are not publication artifacts."
+}

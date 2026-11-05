@@ -1,0 +1,1295 @@
+{
+ "run": "/home/user/rc791/out/g1-r4",
+ "scopes": [
+  {
+   "manifest": "private-media/review.advice/d1aab493/manifest.json",
+   "recipe": "review.advice",
+   "files": [
+    {
+     "path": "data/putgd/recording/17696839-1b25-4bae-9071-603c8a14204b/working.mkv",
+     "size": 100769,
+     "retained": true,
+     "sha256_ok": true,
+     "ffprobe": {
+      "programs": [],
+      "streams": [
+       {
+        "codec_name": "h264",
+        "width": 640,
+        "height": 320
+       }
+      ],
+      "format": {
+       "format_name": "matroska,webm",
+       "duration": "4.966666"
+      }
+     }
+    },
+    {
+     "path": "working/17696839-1b25-4bae-9071-603c8a14204b.mkv",
+     "size": 100769,
+     "retained": true,
+     "sha256_ok": true,
+     "ffprobe": {
+      "programs": [],
+      "streams": [
+       {
+        "codec_name": "h264",
+        "width": 640,
+        "height": 320
+       }
+      ],
+      "format": {
+       "format_name": "matroska,webm",
+       "duration": "4.966666"
+      }
+     }
+    },
+    {
+     "path": "working/1f8b5b5b-44fb-4d6c-be93-c6e1a6078a53.mkv",
+     "size": 13277,
+     "retained": true,
+     "sha256_ok": true,
+     "ffprobe": {
+      "programs": [],
+      "streams": [
+       {
+        "codec_name": "h264",
+        "width": 640,
+        "height": 320
+       }
+      ],
+      "format": {
+       "format_name": "matroska,webm",
+       "duration": "5.866666"
+      }
+     }
+    }
+   ],
+   "motion": {
+    "movingMotion": 50.250325520833336,
+    "frozenMotion": 0.0
+   }
+  },
+  {
+   "manifest": "private-media/review.cli_recording/bc2bb7b6/manifest.json",
+   "recipe": "review.cli_recording",
+   "files": [
+    {
+     "path": "data/putgd/recording/82a13d21-e469-45f9-8acb-1f33b4f77caf/working.mkv",
+     "size": 114566,
+     "retained": true,
+     "sha256_ok": true,
+     "ffprobe": {
+      "programs": [],
+      "streams": [
+       {
+        "codec_name": "h264",
+        "width": 640,
+        "height": 320
+       }
+      ],
+      "format": {
+       "format_name": "matroska,webm",
+       "duration": "4.966666"
+      }
+     }
+    },
+    {
+     "path": "out/cli-copy.mp4",
+     "size": 15857,
+     "retained": true,
+     "sha256_ok": true,
+     "ffprobe": {
+      "programs": [],
+      "streams": [
+       {
+        "codec_name": "h264",
+        "width": 640,
+        "height": 320
+       }
+      ],
+      "format": {
+       "format_name": "mov,mp4,m4a,3gp,3g2,mj2",
+       "duration": "2.000000"
+      }
+     }
+    },
+    {
+     "path": "working/7a5d5147-308b-408c-88c3-9387c3ccb0db.mkv",
+     "size": 13080,
+     "retained": true,
+     "sha256_ok": true,
+     "ffprobe": {
+      "programs": [],
+      "streams": [
+       {
+        "codec_name": "h264",
+        "width": 640,
+        "height": 320
+       }
+      ],
+      "format": {
+       "format_name": "matroska,webm",
+       "duration": "5.800000"
+      }
+     }
+    },
+    {
+     "path": "working/82a13d21-e469-45f9-8acb-1f33b4f77caf.mkv",
+     "size": 114566,
+     "retained": true,
+     "sha256_ok": true,
+     "ffprobe": {
+      "programs": [],
+      "streams": [
+       {
+        "codec_name": "h264",
+        "width": 640,
+        "height": 320
+       }
+      ],
+      "format": {
+       "format_name": "matroska,webm",
+       "duration": "4.966666"
+      }
+     }
+    }
+   ],
+   "motion": {
+    "movingMotion": 50.06392867476852,
+    "frozenMotion": 1.4796401515151514e-05
+   }
+  },
+  {
+   "manifest": "private-media/review.discard/903c0fce/manifest.json",
+   "recipe": "review.discard",
+   "files": [
+    {
+     "path": "data/putgd/recording/4d58b0e8-e001-4470-8d81-494ccd7c9c50/working.mkv",
+     "size": 101493,
+     "retained": true,
+     "sha256_ok": true,
+     "ffprobe": {
+      "programs": [],
+      "streams": [
+       {
+        "codec_name": "h264",
+        "width": 640,
+        "height": 320
+       }
+      ],
+      "format": {
+       "format_name": "matroska,webm",
+       "duration": "5.000000"
+      }
+     }
+    },
+    {
+     "path": "working/4d58b0e8-e001-4470-8d81-494ccd7c9c50.mkv",
+     "size": 101493,
+     "retained": true,
+     "sha256_ok": true,
+     "ffprobe": {
+      "programs": [],
+      "streams": [
+       {
+        "codec_name": "h264",
+        "width": 640,
+        "height": 320
+       }
+      ],
+      "format": {
+       "format_name": "matroska,webm",
+       "duration": "5.000000"
+      }
+     }
+    },
+    {
+     "path": "working/e2eb8572-c1ab-4a7e-97ae-5763ab908524.mkv",
+     "size": 13077,
+     "retained": true,
+     "sha256_ok": true,
+     "ffprobe": {
+      "programs": [],
+      "streams": [
+       {
+        "codec_name": "h264",
+        "width": 640,
+        "height": 320
+       }
+      ],
+      "format": {
+       "format_name": "matroska,webm",
+       "duration": "5.733333"
+      }
+     }
+    }
+   ],
+   "motion": {
+    "movingMotion": 49.62554253472222,
+    "frozenMotion": 0.0
+   }
+  },
+  {
+   "manifest": "private-media/review.formats/c2a6a9a7/manifest.json",
+   "recipe": "review.formats",
+   "files": [
+    {
+     "path": "data/putgd/recording/3a8b0dc2-2014-4910-b931-61e43bf6ff12/working.mkv",
+     "size": 93629,
+     "retained": true,
+     "sha256_ok": true,
+     "ffprobe": {
+      "programs": [],
+      "streams": [
+       {
+        "codec_name": "h264",
+        "width": 640,
+        "height": 320
+       }
+      ],
+      "format": {
+       "format_name": "matroska,webm",
+       "duration": "4.866666"
+      }
+     }
+    },
+    {
+     "path": "out/format-mp4-h264.mp4",
+     "size": 48853,
+     "retained": true,
+     "sha256_ok": true,
+     "ffprobe": {
+      "programs": [],
+      "streams": [
+       {
+        "codec_name": "h264",
+        "width": 640,
+        "height": 320
+       }
+      ],
+      "format": {
+       "format_name": "mov,mp4,m4a,3gp,3g2,mj2",
+       "duration": "4.866667"
+      }
+     }
+    },
+    {
+     "path": "out/format-mp4-h265.mp4",
+     "size": 16444,
+     "retained": true,
+     "sha256_ok": true,
+     "ffprobe": {
+      "programs": [],
+      "streams": [
+       {
+        "codec_name": "hevc",
+        "width": 640,
+        "height": 320
+       }
+      ],
+      "format": {
+       "format_name": "mov,mp4,m4a,3gp,3g2,mj2",
+       "duration": "4.866667"
+      }
+     }
+    },
+    {
+     "path": "working/3a8b0dc2-2014-4910-b931-61e43bf6ff12.mkv",
+     "size": 93629,
+     "retained": true,
+     "sha256_ok": true,
+     "ffprobe": {
+      "programs": [],
+      "streams": [
+       {
+        "codec_name": "h264",
+        "width": 640,
+        "height": 320
+       }
+      ],
+      "format": {
+       "format_name": "matroska,webm",
+       "duration": "4.866666"
+      }
+     }
+    },
+    {
+     "path": "working/80fc8f84-3294-4c62-a3d6-3d08d37c0db3.mkv",
+     "size": 13180,
+     "retained": true,
+     "sha256_ok": true,
+     "ffprobe": {
+      "programs": [],
+      "streams": [
+       {
+        "codec_name": "h264",
+        "width": 640,
+        "height": 320
+       }
+      ],
+      "format": {
+       "format_name": "matroska,webm",
+       "duration": "5.866666"
+      }
+     }
+    }
+   ],
+   "motion": {
+    "movingMotion": 50.316695601851855,
+    "frozenMotion": 1.4796401515151514e-05
+   }
+  },
+  {
+   "manifest": "private-media/review.mask_options/60494a50/manifest.json",
+   "recipe": "review.mask_options",
+   "files": [
+    {
+     "path": "data/putgd/recording/6c422ae3-ba1b-4c78-a996-118c8ec67c38/working.mkv",
+     "size": 112985,
+     "retained": true,
+     "sha256_ok": true,
+     "ffprobe": {
+      "programs": [],
+      "streams": [
+       {
+        "codec_name": "h264",
+        "width": 640,
+        "height": 320
+       }
+      ],
+      "format": {
+       "format_name": "matroska,webm",
+       "duration": "4.933333"
+      }
+     }
+    },
+    {
+     "path": "working/6c422ae3-ba1b-4c78-a996-118c8ec67c38.mkv",
+     "size": 112985,
+     "retained": true,
+     "sha256_ok": true,
+     "ffprobe": {
+      "programs": [],
+      "streams": [
+       {
+        "codec_name": "h264",
+        "width": 640,
+        "height": 320
+       }
+      ],
+      "format": {
+       "format_name": "matroska,webm",
+       "duration": "4.933333"
+      }
+     }
+    },
+    {
+     "path": "working/f1c69f25-4403-4b92-a161-e0b00812d611.mkv",
+     "size": 11550,
+     "retained": true,
+     "sha256_ok": true,
+     "ffprobe": {
+      "programs": [],
+      "streams": [
+       {
+        "codec_name": "h264",
+        "width": 640,
+        "height": 320
+       }
+      ],
+      "format": {
+       "format_name": "matroska,webm",
+       "duration": "4.700000"
+      }
+     }
+    }
+   ],
+   "motion": {
+    "movingMotion": 50.006673177083336,
+    "frozenMotion": 2.0345052083333332e-05
+   }
+  },
+  {
+   "manifest": "private-media/review.masks/a16d7f52/manifest.json",
+   "recipe": "review.masks",
+   "files": [
+    {
+     "path": "data/putgd/recording/70aa9aed-e7a5-4f88-b940-8459ff76e139/working.mkv",
+     "size": 114951,
+     "retained": true,
+     "sha256_ok": true,
+     "ffprobe": {
+      "programs": [],
+      "streams": [
+       {
+        "codec_name": "h264",
+        "width": 640,
+        "height": 320
+       }
+      ],
+      "format": {
+       "format_name": "matroska,webm",
+       "duration": "4.900000"
+      }
+     }
+    },
+    {
+     "path": "working/2326ed3a-d15f-4554-9131-8e7f6481cf86.mkv",
+     "size": 13343,
+     "retained": true,
+     "sha256_ok": true,
+     "ffprobe": {
+      "programs": [],
+      "streams": [
+       {
+        "codec_name": "h264",
+        "width": 640,
+        "height": 320
+       }
+      ],
+      "format": {
+       "format_name": "matroska,webm",
+       "duration": "5.800000"
+      }
+     }
+    },
+    {
+     "path": "working/70aa9aed-e7a5-4f88-b940-8459ff76e139.mkv",
+     "size": 114951,
+     "retained": true,
+     "sha256_ok": true,
+     "ffprobe": {
+      "programs": [],
+      "streams": [
+       {
+        "codec_name": "h264",
+        "width": 640,
+        "height": 320
+       }
+      ],
+      "format": {
+       "format_name": "matroska,webm",
+       "duration": "4.900000"
+      }
+     }
+    }
+   ],
+   "motion": {
+    "movingMotion": 50.07268156828704,
+    "frozenMotion": 0.0
+   }
+  },
+  {
+   "manifest": "private-media/review.mcp_recording/3c18f627/manifest.json",
+   "recipe": "review.mcp_recording",
+   "files": [
+    {
+     "path": "data/putgd/recording/b4b7070d-d57d-44de-8839-05f11b1af63b/working.mkv",
+     "size": 114275,
+     "retained": true,
+     "sha256_ok": true,
+     "ffprobe": {
+      "programs": [],
+      "streams": [
+       {
+        "codec_name": "h264",
+        "width": 640,
+        "height": 320
+       }
+      ],
+      "format": {
+       "format_name": "matroska,webm",
+       "duration": "4.933333"
+      }
+     }
+    },
+    {
+     "path": "out/mcp-copy.mp4",
+     "size": 16444,
+     "retained": true,
+     "sha256_ok": true,
+     "ffprobe": {
+      "programs": [],
+      "streams": [
+       {
+        "codec_name": "h264",
+        "width": 640,
+        "height": 320
+       }
+      ],
+      "format": {
+       "format_name": "mov,mp4,m4a,3gp,3g2,mj2",
+       "duration": "2.000000"
+      }
+     }
+    },
+    {
+     "path": "working/0e37cd68-df16-463e-8127-d904470408ae.mkv",
+     "size": 13443,
+     "retained": true,
+     "sha256_ok": true,
+     "ffprobe": {
+      "programs": [],
+      "streams": [
+       {
+        "codec_name": "h264",
+        "width": 640,
+        "height": 320
+       }
+      ],
+      "format": {
+       "format_name": "matroska,webm",
+       "duration": "5.866666"
+      }
+     }
+    },
+    {
+     "path": "working/b4b7070d-d57d-44de-8839-05f11b1af63b.mkv",
+     "size": 114275,
+     "retained": true,
+     "sha256_ok": true,
+     "ffprobe": {
+      "programs": [],
+      "streams": [
+       {
+        "codec_name": "h264",
+        "width": 640,
+        "height": 320
+       }
+      ],
+      "format": {
+       "format_name": "matroska,webm",
+       "duration": "4.933333"
+      }
+     }
+    }
+   ],
+   "motion": {
+    "movingMotion": 50.01477502893519,
+    "frozenMotion": 0.0
+   }
+  },
+  {
+   "manifest": "private-media/review.mcp_recording_review/8f2c444d/manifest.json",
+   "recipe": "review.mcp_recording_review",
+   "files": [
+    {
+     "path": "out/mcp-copy.mp4",
+     "size": 13495,
+     "retained": true,
+     "sha256_ok": true,
+     "ffprobe": {
+      "programs": [],
+      "streams": [
+       {
+        "codec_name": "h264",
+        "width": 640,
+        "height": 320
+       }
+      ],
+      "format": {
+       "format_name": "mov,mp4,m4a,3gp,3g2,mj2",
+       "duration": "2.000000"
+      }
+     }
+    },
+    {
+     "path": "out/videos/Screen-Recording-2026-10-30-01-29-27.mp4",
+     "size": 13495,
+     "retained": true,
+     "sha256_ok": true,
+     "ffprobe": {
+      "programs": [],
+      "streams": [
+       {
+        "codec_name": "h264",
+        "width": 640,
+        "height": 320
+       }
+      ],
+      "format": {
+       "format_name": "mov,mp4,m4a,3gp,3g2,mj2",
+       "duration": "2.000000"
+      }
+     }
+    },
+    {
+     "path": "working/716cba1a-6659-4517-ac74-6fd87bbcef03.mkv",
+     "size": 112493,
+     "retained": true,
+     "sha256_ok": true,
+     "ffprobe": {
+      "programs": [],
+      "streams": [
+       {
+        "codec_name": "h264",
+        "width": 640,
+        "height": 320
+       }
+      ],
+      "format": {
+       "format_name": "matroska,webm",
+       "duration": "4.900000"
+      }
+     }
+    },
+    {
+     "path": "working/cb32141d-36be-49f2-bc2c-c3cb13953d0f.mkv",
+     "size": 13166,
+     "retained": true,
+     "sha256_ok": true,
+     "ffprobe": {
+      "programs": [],
+      "streams": [
+       {
+        "codec_name": "h264",
+        "width": 640,
+        "height": 320
+       }
+      ],
+      "format": {
+       "format_name": "matroska,webm",
+       "duration": "5.766666"
+      }
+     }
+    }
+   ],
+   "motion": {
+    "movingMotion": 50.020254629629626,
+    "frozenMotion": 0.0
+   }
+  },
+  {
+   "manifest": "private-media/review.playback/6c0ea768/manifest.json",
+   "recipe": "review.playback",
+   "files": [
+    {
+     "path": "data/putgd/recording/7cb14633-bd5b-4042-adc6-a22088334bce/working.mkv",
+     "size": 98240,
+     "retained": true,
+     "sha256_ok": true,
+     "ffprobe": {
+      "programs": [],
+      "streams": [
+       {
+        "codec_name": "h264",
+        "width": 640,
+        "height": 320
+       }
+      ],
+      "format": {
+       "format_name": "matroska,webm",
+       "duration": "4.933333"
+      }
+     }
+    },
+    {
+     "path": "working/366af3d1-334a-407f-af3a-6f5f799aaa71.mkv",
+     "size": 13366,
+     "retained": true,
+     "sha256_ok": true,
+     "ffprobe": {
+      "programs": [],
+      "streams": [
+       {
+        "codec_name": "h264",
+        "width": 640,
+        "height": 320
+       }
+      ],
+      "format": {
+       "format_name": "matroska,webm",
+       "duration": "5.900000"
+      }
+     }
+    },
+    {
+     "path": "working/7cb14633-bd5b-4042-adc6-a22088334bce.mkv",
+     "size": 98240,
+     "retained": true,
+     "sha256_ok": true,
+     "ffprobe": {
+      "programs": [],
+      "streams": [
+       {
+        "codec_name": "h264",
+        "width": 640,
+        "height": 320
+       }
+      ],
+      "format": {
+       "format_name": "matroska,webm",
+       "duration": "4.933333"
+      }
+     }
+    }
+   ],
+   "motion": {
+    "movingMotion": 50.320511429398145,
+    "frozenMotion": 0.0
+   }
+  },
+  {
+   "manifest": "private-media/review.preview_error/6ccfd28b/manifest.json",
+   "recipe": "review.preview_error",
+   "files": [
+    {
+     "path": "data/putgd/recording/b08ba446-6026-45a6-87fe-52e0aa276cb8/working.mkv",
+     "size": 110359,
+     "retained": true,
+     "sha256_ok": true,
+     "ffprobe": {
+      "programs": [],
+      "streams": [
+       {
+        "codec_name": "h264",
+        "width": 640,
+        "height": 320
+       }
+      ],
+      "format": {
+       "format_name": "matroska,webm",
+       "duration": "4.933333"
+      }
+     }
+    },
+    {
+     "path": "working/b08ba446-6026-45a6-87fe-52e0aa276cb8.mkv",
+     "size": 110359,
+     "retained": true,
+     "sha256_ok": true,
+     "ffprobe": {
+      "programs": [],
+      "streams": [
+       {
+        "codec_name": "h264",
+        "width": 640,
+        "height": 320
+       }
+      ],
+      "format": {
+       "format_name": "matroska,webm",
+       "duration": "4.933333"
+      }
+     }
+    },
+    {
+     "path": "working/fae56a64-c023-42ed-8d43-9cfbd583bc86.mkv",
+     "size": 12277,
+     "retained": true,
+     "sha256_ok": true,
+     "ffprobe": {
+      "programs": [],
+      "streams": [
+       {
+        "codec_name": "h264",
+        "width": 640,
+        "height": 320
+       }
+      ],
+      "format": {
+       "format_name": "matroska,webm",
+       "duration": "5.200000"
+      }
+     }
+    }
+   ],
+   "motion": {
+    "movingMotion": 50.066695601851855,
+    "frozenMotion": 0.0
+   }
+  },
+  {
+   "manifest": "private-media/review.save_copy/7198fadc/manifest.json",
+   "recipe": "review.save_copy",
+   "files": [
+    {
+     "path": "data/putgd/recording/689c9068-e7ec-4990-abf5-a70f72496796/working.mkv",
+     "size": 101343,
+     "retained": true,
+     "sha256_ok": true,
+     "ffprobe": {
+      "programs": [],
+      "streams": [
+       {
+        "codec_name": "h264",
+        "width": 640,
+        "height": 320
+       }
+      ],
+      "format": {
+       "format_name": "matroska,webm",
+       "duration": "4.900000"
+      }
+     }
+    },
+    {
+     "path": "working/0e8e444d-0703-4d95-ad3c-14efb7f4f0c2.mkv",
+     "size": 13130,
+     "retained": true,
+     "sha256_ok": true,
+     "ffprobe": {
+      "programs": [],
+      "streams": [
+       {
+        "codec_name": "h264",
+        "width": 640,
+        "height": 320
+       }
+      ],
+      "format": {
+       "format_name": "matroska,webm",
+       "duration": "5.833333"
+      }
+     }
+    },
+    {
+     "path": "working/689c9068-e7ec-4990-abf5-a70f72496796.mkv",
+     "size": 101343,
+     "retained": true,
+     "sha256_ok": true,
+     "ffprobe": {
+      "programs": [],
+      "streams": [
+       {
+        "codec_name": "h264",
+        "width": 640,
+        "height": 320
+       }
+      ],
+      "format": {
+       "format_name": "matroska,webm",
+       "duration": "4.900000"
+      }
+     }
+    }
+   ],
+   "motion": {
+    "movingMotion": 49.87539785879629,
+    "frozenMotion": 1.4796401515151514e-05
+   }
+  },
+  {
+   "manifest": "private-media/review.status_actions/823bc3df/manifest.json",
+   "recipe": "review.status_actions",
+   "files": [
+    {
+     "path": "data/putgd/recording/0f55af0d-401f-4f03-81f8-9263fff7e0dc/working.mkv",
+     "size": 95914,
+     "retained": true,
+     "sha256_ok": true,
+     "ffprobe": {
+      "programs": [],
+      "streams": [
+       {
+        "codec_name": "h264",
+        "width": 640,
+        "height": 320
+       }
+      ],
+      "format": {
+       "format_name": "matroska,webm",
+       "duration": "4.900000"
+      }
+     }
+    },
+    {
+     "path": "working/0f55af0d-401f-4f03-81f8-9263fff7e0dc.mkv",
+     "size": 95914,
+     "retained": true,
+     "sha256_ok": true,
+     "ffprobe": {
+      "programs": [],
+      "streams": [
+       {
+        "codec_name": "h264",
+        "width": 640,
+        "height": 320
+       }
+      ],
+      "format": {
+       "format_name": "matroska,webm",
+       "duration": "4.900000"
+      }
+     }
+    },
+    {
+     "path": "working/b41ce858-2981-4d1f-b652-7743f1ad4b34.mkv",
+     "size": 13080,
+     "retained": true,
+     "sha256_ok": true,
+     "ffprobe": {
+      "programs": [],
+      "streams": [
+       {
+        "codec_name": "h264",
+        "width": 640,
+        "height": 320
+       }
+      ],
+      "format": {
+       "format_name": "matroska,webm",
+       "duration": "5.800000"
+      }
+     }
+    }
+   ],
+   "motion": {
+    "movingMotion": 50.18350332754629,
+    "frozenMotion": 1.4796401515151514e-05
+   }
+  },
+  {
+   "manifest": "private-media/review.stop_notice/e04a1546/manifest.json",
+   "recipe": "review.stop_notice",
+   "files": [
+    {
+     "path": "data/putgd/recording/5b3d6832-72da-4d47-9f89-7d9b9c94def0/working.mkv",
+     "size": 1087437,
+     "retained": true,
+     "sha256_ok": true,
+     "ffprobe": {
+      "programs": [],
+      "streams": [
+       {
+        "codec_name": "h264",
+        "width": 640,
+        "height": 320
+       }
+      ],
+      "format": {
+       "format_name": "matroska,webm",
+       "duration": "49.000000"
+      }
+     }
+    },
+    {
+     "path": "working/07227f52-29e4-4733-b3cf-20e59aae5ea3.mkv",
+     "size": 11524,
+     "retained": true,
+     "sha256_ok": true,
+     "ffprobe": {
+      "programs": [],
+      "streams": [
+       {
+        "codec_name": "h264",
+        "width": 640,
+        "height": 320
+       }
+      ],
+      "format": {
+       "format_name": "matroska,webm",
+       "duration": "4.766666"
+      }
+     }
+    },
+    {
+     "path": "working/5b3d6832-72da-4d47-9f89-7d9b9c94def0.mkv",
+     "size": 1087437,
+     "retained": true,
+     "sha256_ok": true,
+     "ffprobe": {
+      "programs": [],
+      "streams": [
+       {
+        "codec_name": "h264",
+        "width": 640,
+        "height": 320
+       }
+      ],
+      "format": {
+       "format_name": "matroska,webm",
+       "duration": "49.000000"
+      }
+     }
+    }
+   ],
+   "motion": {
+    "movingMotion": 50.00700577445652,
+    "frozenMotion": 1.808449074074074e-05
+   }
+  },
+  {
+   "manifest": "private-media/review.trim/2822d09a/manifest.json",
+   "recipe": "review.trim",
+   "files": [
+    {
+     "path": "data/putgd/recording/7795e648-26e5-477d-9ecc-1c4e82524e65/working.mkv",
+     "size": 112721,
+     "retained": true,
+     "sha256_ok": true,
+     "ffprobe": {
+      "programs": [],
+      "streams": [
+       {
+        "codec_name": "h264",
+        "width": 640,
+        "height": 320
+       }
+      ],
+      "format": {
+       "format_name": "matroska,webm",
+       "duration": "4.900000"
+      }
+     }
+    },
+    {
+     "path": "working/7795e648-26e5-477d-9ecc-1c4e82524e65.mkv",
+     "size": 112721,
+     "retained": true,
+     "sha256_ok": true,
+     "ffprobe": {
+      "programs": [],
+      "streams": [
+       {
+        "codec_name": "h264",
+        "width": 640,
+        "height": 320
+       }
+      ],
+      "format": {
+       "format_name": "matroska,webm",
+       "duration": "4.900000"
+      }
+     }
+    },
+    {
+     "path": "working/8e8da712-f4eb-4050-9bc5-4af6c8e70fe0.mkv",
+     "size": 13393,
+     "retained": true,
+     "sha256_ok": true,
+     "ffprobe": {
+      "programs": [],
+      "streams": [
+       {
+        "codec_name": "h264",
+        "width": 640,
+        "height": 320
+       }
+      ],
+      "format": {
+       "format_name": "matroska,webm",
+       "duration": "5.833333"
+      }
+     }
+    }
+   ],
+   "motion": {
+    "movingMotion": 49.98820891203704,
+    "frozenMotion": 0.0
+   }
+  },
+  {
+   "manifest": "private-media/review.upload/ad58def2/manifest.json",
+   "recipe": "review.upload",
+   "files": [
+    {
+     "path": "data/putgd/recording/92ccfb89-de85-4585-ab55-11831898df5c/working.mkv",
+     "size": 100049,
+     "retained": true,
+     "sha256_ok": true,
+     "ffprobe": {
+      "programs": [],
+      "streams": [
+       {
+        "codec_name": "h264",
+        "width": 640,
+        "height": 320
+       }
+      ],
+      "format": {
+       "format_name": "matroska,webm",
+       "duration": "4.900000"
+      }
+     }
+    },
+    {
+     "path": "working/84dd80c0-088e-48b1-9ff7-7495f84f25f6.mkv",
+     "size": 13030,
+     "retained": true,
+     "sha256_ok": true,
+     "ffprobe": {
+      "programs": [],
+      "streams": [
+       {
+        "codec_name": "h264",
+        "width": 640,
+        "height": 320
+       }
+      ],
+      "format": {
+       "format_name": "matroska,webm",
+       "duration": "5.766666"
+      }
+     }
+    },
+    {
+     "path": "working/92ccfb89-de85-4585-ab55-11831898df5c.mkv",
+     "size": 100049,
+     "retained": true,
+     "sha256_ok": true,
+     "ffprobe": {
+      "programs": [],
+      "streams": [
+       {
+        "codec_name": "h264",
+        "width": 640,
+        "height": 320
+       }
+      ],
+      "format": {
+       "format_name": "matroska,webm",
+       "duration": "4.900000"
+      }
+     }
+    }
+   ],
+   "motion": {
+    "movingMotion": 50.07268156828704,
+    "frozenMotion": 1.4796401515151514e-05
+   }
+  },
+  {
+   "manifest": "private-media/review.wheel_lanes/b0a5bb16/manifest.json",
+   "recipe": "review.wheel_lanes",
+   "files": [
+    {
+     "path": "data/putgd/recording/48d4add5-db6c-4c3d-82df-1a4c3b8b7a2a/working.mkv",
+     "size": 99309,
+     "retained": true,
+     "sha256_ok": true,
+     "ffprobe": {
+      "programs": [],
+      "streams": [
+       {
+        "codec_name": "h264",
+        "width": 640,
+        "height": 320
+       }
+      ],
+      "format": {
+       "format_name": "matroska,webm",
+       "duration": "4.900000"
+      }
+     }
+    },
+    {
+     "path": "working/39562f5d-a262-41fc-b089-240ee89fa571.mkv",
+     "size": 11659,
+     "retained": true,
+     "sha256_ok": true,
+     "ffprobe": {
+      "programs": [],
+      "streams": [
+       {
+        "codec_name": "h264",
+        "width": 640,
+        "height": 320
+       }
+      ],
+      "format": {
+       "format_name": "matroska,webm",
+       "duration": "4.833333"
+      }
+     }
+    },
+    {
+     "path": "working/48d4add5-db6c-4c3d-82df-1a4c3b8b7a2a.mkv",
+     "size": 99309,
+     "retained": true,
+     "sha256_ok": true,
+     "ffprobe": {
+      "programs": [],
+      "streams": [
+       {
+        "codec_name": "h264",
+        "width": 640,
+        "height": 320
+       }
+      ],
+      "format": {
+       "format_name": "matroska,webm",
+       "duration": "4.900000"
+      }
+     }
+    }
+   ],
+   "motion": {
+    "movingMotion": 50.06405526620371,
+    "frozenMotion": 0.0
+   }
+  },
+  {
+   "manifest": "private-media/review.window_close/7ae17f27/manifest.json",
+   "recipe": "review.window_close",
+   "files": [
+    {
+     "path": "data/putgd/recording/d8d63314-3da3-4bf8-9816-849c6b1e1e88/working.mkv",
+     "size": 97588,
+     "retained": true,
+     "sha256_ok": true,
+     "ffprobe": {
+      "programs": [],
+      "streams": [
+       {
+        "codec_name": "h264",
+        "width": 640,
+        "height": 320
+       }
+      ],
+      "format": {
+       "format_name": "matroska,webm",
+       "duration": "4.900000"
+      }
+     }
+    },
+    {
+     "path": "working/b024661a-7fbd-4d35-b99c-62ae9360a4d5.mkv",
+     "size": 13180,
+     "retained": true,
+     "sha256_ok": true,
+     "ffprobe": {
+      "programs": [],
+      "streams": [
+       {
+        "codec_name": "h264",
+        "width": 640,
+        "height": 320
+       }
+      ],
+      "format": {
+       "format_name": "matroska,webm",
+       "duration": "5.866666"
+      }
+     }
+    },
+    {
+     "path": "working/d8d63314-3da3-4bf8-9816-849c6b1e1e88.mkv",
+     "size": 97588,
+     "retained": true,
+     "sha256_ok": true,
+     "ffprobe": {
+      "programs": [],
+      "streams": [
+       {
+        "codec_name": "h264",
+        "width": 640,
+        "height": 320
+       }
+      ],
+      "format": {
+       "format_name": "matroska,webm",
+       "duration": "4.900000"
+      }
+     }
+    }
+   ],
+   "motion": {
+    "movingMotion": 49.98820891203704,
+    "frozenMotion": 1.4796401515151514e-05
+   }
+  }
+ ]
+}

@@ -340,6 +340,72 @@
             }
           ],
           "description": "Edit & upload: native region selection, then the on-demand editor. Optional; when absent it inherits the region output route with no shortcut."
+        },
+        "record": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "shortcut"
+          ],
+          "dependentRequired": {
+            "destination": ["profileId"],
+            "profileId": ["destination"]
+          },
+          "properties": {
+            "destination": {
+              "enum": [
+                "upload",
+                "local",
+                "default"
+              ]
+            },
+            "profileId": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "shortcut": {
+              "type": "string",
+              "maxLength": 128
+            },
+            "publicationMode": {
+              "type": "string",
+              "enum": [
+                "default",
+                "share",
+                "private"
+              ],
+              "default": "default"
+            }
+          },
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "destination": {
+                    "const": "default"
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "profileId": {
+                    "type": "null"
+                  },
+                  "publicationMode": {
+                    "const": "default"
+                  }
+                }
+              }
+            }
+          ],
+          "description": "Edit & upload: native region selection, then the on-demand editor. Optional; when absent it inherits the region output route with no shortcut."
         }
       }
     },
@@ -460,6 +526,22 @@
                       "const": "keychain"
                     }
                   }
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "provider": {
+                  "const": "backblaze-b2"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "settings": {
+                  "$ref": "#/$defs/b2Settings"
                 }
               }
             }
@@ -629,6 +711,20 @@
           },
           "description": "Literal text and filename tokens only; SettingsService also validates each rendered filename. Time tokens use local action time.",
           "default": "Text-{yyyy}-{MM}-{dd}-{HH}-{mm}-{ss}.{ext}"
+        },
+        "recordingTemplate": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096,
+          "pattern": "^(?:[^{}\\\\/\\u0000-\\u001f\\u007f-\\u009f]|\\{(?:name|ext|yyyy|MM|dd|HH|mm|ss|uuid)\\})+(?![\\s\\S])",
+          "not": {
+            "enum": [
+              ".",
+              ".."
+            ]
+          },
+          "description": "Literal text and filename tokens only; SettingsService also validates each rendered filename. Time tokens use local action time.",
+          "default": "Screen-Recording-{yyyy}-{MM}-{dd}-{HH}-{mm}-{ss}.{ext}"
         }
       }
     },
@@ -663,19 +759,31 @@
           "maximum": 32
         },
         "maxFileBytes": {
-          "type": "integer",
-          "minimum": 1,
-          "maximum": 1099511627776
+          "oneOf": [
+            {"type": "integer", "minimum": 1, "maximum": 1099511627776},
+            {"const": "auto"},
+            {"type": "null"}
+          ],
+          "default": "auto",
+          "description": "Largest imported file. Bytes, \"auto\" (no byte limit of put.gd's own) or null for no limit. The destination's maximum object size and free disk space, less a system reserve of min(15% of the filesystem, 4 GiB) and at least 1 GiB, always apply. A saved 2147483648 (the former default) reads as \"auto\"."
         },
         "maxBatchBytes": {
-          "type": "integer",
-          "minimum": 1,
-          "maximum": 1099511627776
+          "oneOf": [
+            {"type": "integer", "minimum": 1, "maximum": 1099511627776},
+            {"const": "auto"},
+            {"type": "null"}
+          ],
+          "default": "auto",
+          "description": "Largest combined batch. Bytes, \"auto\" (no byte limit of put.gd's own) or null for no limit. The destination's maximum object size and free disk space, less a system reserve of min(15% of the filesystem, 4 GiB) and at least 1 GiB, always apply. A saved 2147483648 (the former default) reads as \"auto\"."
         },
         "pendingArtifactBytes": {
-          "type": "integer",
-          "minimum": 1,
-          "maximum": 1099511627776
+          "oneOf": [
+            {"type": "integer", "minimum": 1, "maximum": 1099511627776},
+            {"const": "auto"},
+            {"type": "null"}
+          ],
+          "default": "auto",
+          "description": "Most acquired content waiting on disk. Bytes, \"auto\" (no byte limit of put.gd's own) or null for no limit. The destination's maximum object size and free disk space, less a system reserve of min(15% of the filesystem, 4 GiB) and at least 1 GiB, always apply. A saved 2147483648 (the former default) reads as \"auto\"."
         },
         "clipboardTextBytes": {
           "type": "integer",
@@ -698,6 +806,20 @@
           "maximum": 1099511627776,
           "default": 67108864,
           "description": "Total decoded image bytes admitted for queued/encoding jobs; released after persistence or cancellation. Does not bound total RSS."
+        },
+        "recordingAnimationSeconds": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 86400,
+          "default": 60,
+          "description": "Retained duration allowed for animated GIF/WebP recording exports."
+        },
+        "recordingAnimationEdge": {
+          "type": "integer",
+          "minimum": 16,
+          "maximum": 16384,
+          "default": 1280,
+          "description": "Output long edge allowed for animated GIF/WebP recording exports; set maxEdge on the recording to downscale explicitly."
         }
       }
     },
@@ -737,6 +859,20 @@
               "type": "null"
             }
           ]
+        },
+        "logDays": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 365,
+          "default": 14,
+          "description": "Days to keep persistent log files (docs/diagnostics.md). Omitted means 14."
+        },
+        "logBytes": {
+          "type": "integer",
+          "minimum": 1048576,
+          "maximum": 1073741824,
+          "default": 52428800,
+          "description": "Total bytes of persistent log files; the oldest files go first. Omitted means 50 MiB."
         }
       }
     },
@@ -762,6 +898,35 @@
           "default": "each_link",
           "description": "Copy every successful upload link individually as it becomes available, or one ordered list after overlapping uploads settle. Omitted legacy settings use each_link."
         },
+        "regionSelectionMode": {
+          "enum": [
+            "live",
+            "screenshot_first"
+          ],
+          "default": "live",
+          "description": "How region capture shows the screen while you drag. live keeps the desktop updating (an open menu must close first); screenshot_first captures every monitor before the selector opens and cuts the region from that frozen frame, so open menus are included. Recording region selection is always live. Omitted means live."
+        },
+        "recordingFrameRate": {
+          "enum": [
+            30,
+            60
+          ],
+          "default": 30,
+          "description": "Frames per second for screen recordings that don't ask for a rate. 60 is smoother and takes about twice the conversion and encoding work; while a recording runs, put.gd lowers the rate (60 to 30, 30 to 15) when the computer can't keep up. Omitted means 30."
+        },
+        "fileManagerFolders": {
+          "enum": [
+            "zip",
+            "files"
+          ],
+          "default": "zip",
+          "description": "How a folder chosen with Upload with put.gd in a file manager uploads: zip makes one <folder name>.zip and one link; files uploads every file in it (symlinks skipped). In files mode the file limit (limits.maxFiles, up to 10,000) counts the expanded files. Omitted means zip."
+        },
+        "fileManagerMenu": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether the AppImage adds Upload with put.gd to your file managers' right-click menus (per-user files it writes and removes). DEB and RPM installs add system-wide entries that are always on. Omitted means true."
+        },
         "unlockCredentialsAtStartup": {
           "type": "boolean",
           "default": true,
@@ -775,6 +940,69 @@
             "pattern": "^#[0-9a-f]{6}$"
           },
           "description": "Custom colors recently picked in the editor, most recent first. Written by put.gd."
+        },
+        "appearance": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["theme"],
+          "description": "The settings and history windows' colours. Omitted means {\"theme\": \"system\"}.",
+          "properties": {
+            "theme": {
+              "enum": ["system", "dark", "light"],
+              "default": "system",
+              "description": "system follows the desktop's light or dark preference live; dark and light fix the scheme. The tray icon follows the panel's colour either way."
+            },
+            "accent": {
+              "type": "null",
+              "default": null,
+              "description": "Reserved for a custom accent colour (phase 2 of #60). null is the built-in accent."
+            },
+            "overrides": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["dark", "light"],
+              "description": "Reserved for per-colour overrides of each scheme (phase 2 of #60). Both stay empty until then.",
+              "properties": {
+                "dark": {"type": "object", "maxProperties": 0},
+                "light": {"type": "object", "maxProperties": 0}
+              }
+            }
+          }
+        },
+        "updates": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "The daily check for a newer version (#293). It sends one request to app.put.gd with no identifying details and compares versions on this computer. Omitted means {\"check\": true, \"channel\": \"build\"}.",
+          "properties": {
+            "check": {
+              "type": "boolean",
+              "default": true,
+              "description": "Check once a day. Stable builds notify once per new version; nightly builds only show it in Settings. Development, source and Flatpak builds never check."
+            },
+            "channel": {
+              "enum": ["build", "stable", "nightly"],
+              "default": "build",
+              "description": "build follows this installation's own channel (release candidates follow stable); stable or nightly choose one."
+            }
+          }
+        },
+        "diagnostics": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["debugLogging"],
+          "properties": {
+            "debugLogging": {
+              "type": "boolean",
+              "default": false,
+              "description": "Keep debug records in the persistent log. put.gd turns this off again 24 hours after it was turned on. AWS SDK trace logging is never enabled."
+            },
+            "packageFolder": {
+              "type": ["string", "null"],
+              "minLength": 1,
+              "pattern": "^/",
+              "description": "The folder Settings → Create diagnostics package last saved to. Omitted or null means <archive root>/diagnostics. Written by put.gd."
+            }
+          }
         }
       }
     },
@@ -906,6 +1134,74 @@
           "type": "integer",
           "minimum": 1,
           "maximum": 2147483647
+        }
+      }
+    },
+    "b2Settings": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Backblaze B2 native API destination (#282). The provider validator is authoritative.",
+      "required": [
+        "apiUrl",
+        "bucket",
+        "objectPrefix",
+        "linkMode",
+        "linkValidityDays",
+        "publicUrlBase",
+        "connectTimeoutMs",
+        "requestTimeoutMs"
+      ],
+      "properties": {
+        "apiUrl": {
+          "type": "string",
+          "format": "uri",
+          "maxLength": 2048,
+          "default": "https://api.backblazeb2.com",
+          "description": "B2 authorization endpoint: HTTPS, or literal-loopback HTTP for local fixtures."
+        },
+        "bucket": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9-]{6,63}$",
+          "description": "Existing B2 bucket name; names starting with b2- are reserved."
+        },
+        "objectPrefix": {
+          "type": "string",
+          "maxLength": 900
+        },
+        "linkMode": {
+          "enum": [
+            "public",
+            "authorized"
+          ],
+          "default": "public",
+          "description": "public: the friendly URL of an allPublic bucket. authorized: a download-authorization token for exactly the file name."
+        },
+        "linkValidityDays": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 7,
+          "default": 7
+        },
+        "publicUrlBase": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uri",
+          "maxLength": 2048,
+          "description": "Optional link domain, for public buckets only."
+        },
+        "connectTimeoutMs": {
+          "type": "integer",
+          "minimum": 1000,
+          "maximum": 120000,
+          "default": 10000
+        },
+        "requestTimeoutMs": {
+          "type": "integer",
+          "minimum": 1000,
+          "maximum": 3600000,
+          "default": 600000
         }
       }
     },
@@ -1067,7 +1363,38 @@
                   }
                 }
               }
-            }
+            },
+            "required": [
+              "edit"
+            ]
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "captureDefaults"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "actions": {
+            "properties": {
+              "record": {
+                "required": [
+                  "destination"
+                ],
+                "properties": {
+                  "destination": {
+                    "const": "default"
+                  }
+                }
+              }
+            },
+            "required": [
+              "record"
+            ]
           }
         }
       },

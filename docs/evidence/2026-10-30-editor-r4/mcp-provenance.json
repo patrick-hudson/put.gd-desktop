@@ -1,0 +1,11 @@
+{
+  "archiveSha256": "c7c91a46a6353868c3ced7bfa3f96afe1d58378bd99b487be0117a4f270e5dd0",
+  "members": {
+    "tools/mcp/pyproject.toml": "e9370f877b3dff309c974f0ccf5b27b6328ce9b845bcde1707de65b49482d215",
+    "tools/mcp/share_mcp/__init__.py": "0d1d9c4c8c9354cf37d5f53dd0e8eff5769f8c042f394a06d4a8ebe44344c647",
+    "tools/mcp/share_mcp/server.py": "f70cd0884a41b056b976781a36bfb1aa9b49ded4afaade73db8fbcc03039c2c8",
+    "tools/mcp/uv.lock": "7de55636e04c776a3e3abd493ec5c8733ad51c93eda80661b6da6b687ac7a44e"
+  },
+  "privateProfileOverride": "zzzz-editor-mcp.json; loaded after settings.json",
+  "sdkProof": "cin-mcp-sdk-readonly.log:52 tools; cin-mcp-sdk-inspect.log:read-only inspect ok"
+}

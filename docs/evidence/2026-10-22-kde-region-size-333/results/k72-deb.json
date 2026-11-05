@@ -1,0 +1,344 @@
+{
+ "regions": [
+  {
+   "drag": [
+    400,
+    200,
+    1520,
+    880
+   ],
+   "map": "afa",
+   "ticks": [
+    [
+     6830,
+     6073
+    ],
+    [
+     25954,
+     26723
+    ]
+   ],
+   "expected": [
+    1120,
+    680
+   ],
+   "operation": {
+    "id": "bd502a2a-9d6c-49bd-ae8d-de5a3a72c0e7",
+    "state": "completed",
+    "error": {
+     "code": "",
+     "details": {},
+     "message": ""
+    },
+    "artifact": {
+     "bytes": 52957,
+     "category": "images",
+     "id": "8f0bdb84-412d-4e01-bf11-84cbeb2858de",
+     "mime": "image/png",
+     "name": "Screen-Capture-2026-10-21-22-06-13.png",
+     "namingPrepared": true,
+     "originalFile": false,
+     "previewPath": "/home/patrick/.local/share/putgd/artifacts/../previews/8f0bdb84-412d-4e01-bf11-84cbeb2858de.png",
+     "sha256": "c66a176ce93435f0b6a69a6c69fbba7cf04a9bd8e9faa4a73db30ffd82aabe42"
+    },
+    "local": {
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     },
+     "path": "/home/patrick/work/put.gd-333/runs/k72-deb/archive/images/Screen-Capture-2026-10-21-22-06-13.png",
+     "status": "saved"
+    }
+   },
+   "history": {
+    "id": "8f0bdb84-412d-4e01-bf11-84cbeb2858de",
+    "name": "Screen-Capture-2026-10-21-22-06-13.png",
+    "operationId": "bd502a2a-9d6c-49bd-ae8d-de5a3a72c0e7",
+    "sha256": "c66a176ce93435f0b6a69a6c69fbba7cf04a9bd8e9faa4a73db30ffd82aabe42",
+    "bytes": 52957,
+    "local": {
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     },
+     "path": "/home/patrick/work/put.gd-333/runs/k72-deb/archive/images/Screen-Capture-2026-10-21-22-06-13.png",
+     "status": "saved"
+    }
+   },
+   "savedFile": {
+    "path": "/home/patrick/work/put.gd-333/runs/k72-deb/archive/images/Screen-Capture-2026-10-21-22-06-13.png",
+    "exists": true,
+    "pngSize": [
+     1120,
+     680
+    ]
+   },
+   "frame": "/home/patrick/work/put.gd-333/runs/k72-deb/out/deb-drag-afa-1120.png",
+   "copy": "/home/patrick/work/put.gd-333/runs/k72-deb/out/region-afa-1120x680.png",
+   "sha256": {
+    "operation": "c66a176ce93435f0b6a69a6c69fbba7cf04a9bd8e9faa4a73db30ffd82aabe42",
+    "history": "c66a176ce93435f0b6a69a6c69fbba7cf04a9bd8e9faa4a73db30ffd82aabe42",
+    "savedFile": "c66a176ce93435f0b6a69a6c69fbba7cf04a9bd8e9faa4a73db30ffd82aabe42",
+    "agree": true
+   },
+   "pass": true
+  },
+  {
+   "drag": [
+    987,
+    549,
+    1067,
+    609
+   ],
+   "map": "afa",
+   "ticks": [
+    [
+     16853,
+     16671
+    ],
+    [
+     18219,
+     18494
+    ]
+   ],
+   "expected": [
+    80,
+    60
+   ],
+   "operation": {
+    "id": "a10ac1f8-50f2-411d-a16a-dd63579d37b0",
+    "state": "completed",
+    "error": {
+     "code": "",
+     "details": {},
+     "message": ""
+    },
+    "artifact": {
+     "bytes": 1016,
+     "category": "images",
+     "id": "cc3fd342-f7c3-403c-88f3-6134f40bfa76",
+     "mime": "image/png",
+     "name": "Screen-Capture-2026-10-21-22-06-19.png",
+     "namingPrepared": true,
+     "originalFile": false,
+     "previewPath": "/home/patrick/.local/share/putgd/artifacts/../previews/cc3fd342-f7c3-403c-88f3-6134f40bfa76.png",
+     "sha256": "a4a8024d5b5130d15023bd3ce169376bba517cf7c74b404b4f6d0556138f7c5f"
+    },
+    "local": {
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     },
+     "path": "/home/patrick/work/put.gd-333/runs/k72-deb/archive/images/Screen-Capture-2026-10-21-22-06-19.png",
+     "status": "saved"
+    }
+   },
+   "history": {
+    "id": "cc3fd342-f7c3-403c-88f3-6134f40bfa76",
+    "name": "Screen-Capture-2026-10-21-22-06-19.png",
+    "operationId": "a10ac1f8-50f2-411d-a16a-dd63579d37b0",
+    "sha256": "a4a8024d5b5130d15023bd3ce169376bba517cf7c74b404b4f6d0556138f7c5f",
+    "bytes": 1016,
+    "local": {
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     },
+     "path": "/home/patrick/work/put.gd-333/runs/k72-deb/archive/images/Screen-Capture-2026-10-21-22-06-19.png",
+     "status": "saved"
+    }
+   },
+   "savedFile": {
+    "path": "/home/patrick/work/put.gd-333/runs/k72-deb/archive/images/Screen-Capture-2026-10-21-22-06-19.png",
+    "exists": true,
+    "pngSize": [
+     80,
+     60
+    ]
+   },
+   "frame": null,
+   "copy": "/home/patrick/work/put.gd-333/runs/k72-deb/out/region-afa-80x60.png",
+   "sha256": {
+    "operation": "a4a8024d5b5130d15023bd3ce169376bba517cf7c74b404b4f6d0556138f7c5f",
+    "history": "a4a8024d5b5130d15023bd3ce169376bba517cf7c74b404b4f6d0556138f7c5f",
+    "savedFile": "a4a8024d5b5130d15023bd3ce169376bba517cf7c74b404b4f6d0556138f7c5f",
+    "agree": true
+   },
+   "pass": true
+  },
+  {
+   "drag": [
+    400,
+    200,
+    1520,
+    880
+   ],
+   "map": "lab",
+   "ticks": [
+    [
+     6827,
+     6069
+    ],
+    [
+     25942,
+     26700
+    ]
+   ],
+   "expected": [
+    1120,
+    680
+   ],
+   "operation": {
+    "id": "32f74864-89a5-4241-8547-1b775c428927",
+    "state": "completed",
+    "error": {
+     "code": "",
+     "details": {},
+     "message": ""
+    },
+    "artifact": {
+     "bytes": 52957,
+     "category": "images",
+     "id": "1d07279b-c742-415e-89c7-ee5b62f29149",
+     "mime": "image/png",
+     "name": "Screen-Capture-2026-10-21-22-06-25.png",
+     "namingPrepared": true,
+     "originalFile": false,
+     "previewPath": "/home/patrick/.local/share/putgd/artifacts/../previews/1d07279b-c742-415e-89c7-ee5b62f29149.png",
+     "sha256": "c66a176ce93435f0b6a69a6c69fbba7cf04a9bd8e9faa4a73db30ffd82aabe42"
+    },
+    "local": {
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     },
+     "path": "/home/patrick/work/put.gd-333/runs/k72-deb/archive/images/Screen-Capture-2026-10-21-22-06-25.png",
+     "status": "saved"
+    }
+   },
+   "history": {
+    "id": "1d07279b-c742-415e-89c7-ee5b62f29149",
+    "name": "Screen-Capture-2026-10-21-22-06-25.png",
+    "operationId": "32f74864-89a5-4241-8547-1b775c428927",
+    "sha256": "c66a176ce93435f0b6a69a6c69fbba7cf04a9bd8e9faa4a73db30ffd82aabe42",
+    "bytes": 52957,
+    "local": {
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     },
+     "path": "/home/patrick/work/put.gd-333/runs/k72-deb/archive/images/Screen-Capture-2026-10-21-22-06-25.png",
+     "status": "saved"
+    }
+   },
+   "savedFile": {
+    "path": "/home/patrick/work/put.gd-333/runs/k72-deb/archive/images/Screen-Capture-2026-10-21-22-06-25.png",
+    "exists": true,
+    "pngSize": [
+     1120,
+     680
+    ]
+   },
+   "frame": null,
+   "copy": "/home/patrick/work/put.gd-333/runs/k72-deb/out/region-lab-1120x680.png",
+   "sha256": {
+    "operation": "c66a176ce93435f0b6a69a6c69fbba7cf04a9bd8e9faa4a73db30ffd82aabe42",
+    "history": "c66a176ce93435f0b6a69a6c69fbba7cf04a9bd8e9faa4a73db30ffd82aabe42",
+    "savedFile": "c66a176ce93435f0b6a69a6c69fbba7cf04a9bd8e9faa4a73db30ffd82aabe42",
+    "agree": true
+   },
+   "pass": true
+  },
+  {
+   "drag": [
+    400,
+    200,
+    480,
+    260
+   ],
+   "map": "lab",
+   "ticks": [
+    [
+     6827,
+     6069
+    ],
+    [
+     8192,
+     7889
+    ]
+   ],
+   "expected": [
+    80,
+    60
+   ],
+   "operation": {
+    "id": "50a73534-c835-4e7a-935a-95b2bcccdd12",
+    "state": "completed",
+    "error": {
+     "code": "",
+     "details": {},
+     "message": ""
+    },
+    "artifact": {
+     "bytes": 234,
+     "category": "images",
+     "id": "c29ffa3a-5d3a-4fed-81b6-a7d7b6e88571",
+     "mime": "image/png",
+     "name": "Screen-Capture-2026-10-21-22-06-30.png",
+     "namingPrepared": true,
+     "originalFile": false,
+     "previewPath": "/home/patrick/.local/share/putgd/artifacts/../previews/c29ffa3a-5d3a-4fed-81b6-a7d7b6e88571.png",
+     "sha256": "35c5c6141ad5e930827e3147dfb10e723079a4b5fb58ab0cf84d203d25174885"
+    },
+    "local": {
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     },
+     "path": "/home/patrick/work/put.gd-333/runs/k72-deb/archive/images/Screen-Capture-2026-10-21-22-06-30.png",
+     "status": "saved"
+    }
+   },
+   "history": {
+    "id": "c29ffa3a-5d3a-4fed-81b6-a7d7b6e88571",
+    "name": "Screen-Capture-2026-10-21-22-06-30.png",
+    "operationId": "50a73534-c835-4e7a-935a-95b2bcccdd12",
+    "sha256": "35c5c6141ad5e930827e3147dfb10e723079a4b5fb58ab0cf84d203d25174885",
+    "bytes": 234,
+    "local": {
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     },
+     "path": "/home/patrick/work/put.gd-333/runs/k72-deb/archive/images/Screen-Capture-2026-10-21-22-06-30.png",
+     "status": "saved"
+    }
+   },
+   "savedFile": {
+    "path": "/home/patrick/work/put.gd-333/runs/k72-deb/archive/images/Screen-Capture-2026-10-21-22-06-30.png",
+    "exists": true,
+    "pngSize": [
+     80,
+     60
+    ]
+   },
+   "frame": null,
+   "copy": "/home/patrick/work/put.gd-333/runs/k72-deb/out/region-lab-80x60.png",
+   "sha256": {
+    "operation": "35c5c6141ad5e930827e3147dfb10e723079a4b5fb58ab0cf84d203d25174885",
+    "history": "35c5c6141ad5e930827e3147dfb10e723079a4b5fb58ab0cf84d203d25174885",
+    "savedFile": "35c5c6141ad5e930827e3147dfb10e723079a4b5fb58ab0cf84d203d25174885",
+    "agree": true
+   },
+   "pass": true
+  }
+ ]
+}

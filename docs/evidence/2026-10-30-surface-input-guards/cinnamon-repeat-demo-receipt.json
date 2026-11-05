@@ -1,0 +1,792 @@
+{
+  "schemaVersion": 2,
+  "environment": {
+    "desktop": "mint-cinnamon-x11",
+    "host": "boat",
+    "placement": "boat",
+    "guest": "cinnamon-x11",
+    "package": "deb",
+    "destination": "local",
+    "build": "6ad9f957e6544f30c5e45c08af2306db77a9ff64",
+    "placement_details": {
+      "boat_sandbox_id": "bx_ftjc74at",
+      "run_id": "4cd3d592-2451-4ad3-ab17-2ba5e1d692e8",
+      "lab_profile": "cinnamon-x11",
+      "run_directory": "/home/user/v3",
+      "session_root": "/tmp/sd-9c10d27c",
+      "socket": "/tmp/sd-9c10d27c/runtime/putgd/session.sock",
+      "input_backend": "qmp",
+      "frame_backend": "qmp"
+    },
+    "target": {
+      "hostname": "putgd-lab",
+      "kernel": "6.14.0-37-generic",
+      "machine": "x86_64",
+      "os": {
+        "ID": "linuxmint",
+        "VERSION_ID": "22.3",
+        "VARIANT_ID": null
+      },
+      "session_type": "x11",
+      "desktop": "X-Cinnamon",
+      "qt_platform": "xcb"
+    },
+    "observed_build": {
+      "baseVersion": "26.1030.2481",
+      "commitCount": 2481,
+      "dirty": false,
+      "gitCommit": "6ad9f957e6544f30c5e45c08af2306db77a9ff64",
+      "gitTree": "d823723c8759dae8db7c57cee59476ac7a3b4f90",
+      "packageVersion": "26.1030.2481~dev+g6ad9f957e654",
+      "schemaVersion": 1,
+      "sourceProvenance": "git",
+      "version": "26.1030.2481-dev+g6ad9f957e654"
+    }
+  },
+  "interactions": [
+    {
+      "interaction": "shell.window-maximize",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/user/e3/final-smoke/receipt.json",
+      "note": "operationId=8aafe8d7-e72d-4638-86b8-fc28c80c57b6; owned failed-upload notification {\"id\": 17, \"summary\": \"Completed with a problem\", \"timeout\": 0}; input target 'history' is obscured by \"cinnamon notification 'Recording stopped at 0:41: it reached the Largest file limit (65 MB; recording stops at 1 MB to leave room to finish the file). The clip so far is kept for review; raise Largest file in Settings > Uploads to record longer. / put.gd — recording stopped' at [1421, 10, 480, 129]\" (window None)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/__main__.notification_cover/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "notification-before",
+          "path": "frames/__main__.notification_cover/01-notification-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/__main__.notification_cover/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "__main__.notification_cover",
+      "build": "6ad9f957e6544f30c5e45c08af2306db77a9ff64",
+      "at": "2026-10-30T09:59:46Z"
+    },
+    {
+      "interaction": "shell.window-minimize",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/user/e3/final-smoke/receipt.json",
+      "note": "operationId=8aafe8d7-e72d-4638-86b8-fc28c80c57b6; owned failed-upload notification {\"id\": 17, \"summary\": \"Completed with a problem\", \"timeout\": 0}; input target 'history' is obscured by \"cinnamon notification 'Recording stopped at 0:41: it reached the Largest file limit (65 MB; recording stops at 1 MB to leave room to finish the file). The clip so far is kept for review; raise Largest file in Settings > Uploads to record longer. / put.gd — recording stopped' at [1421, 10, 480, 129]\" (window None)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/__main__.notification_cover/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "notification-before",
+          "path": "frames/__main__.notification_cover/01-notification-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/__main__.notification_cover/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "__main__.notification_cover",
+      "build": "6ad9f957e6544f30c5e45c08af2306db77a9ff64",
+      "at": "2026-10-30T09:59:46Z"
+    },
+    {
+      "interaction": "shell.window-close",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/user/e3/final-smoke/receipt.json",
+      "note": "operationId=8aafe8d7-e72d-4638-86b8-fc28c80c57b6; owned failed-upload notification {\"id\": 17, \"summary\": \"Completed with a problem\", \"timeout\": 0}; input target 'history' is obscured by \"cinnamon notification 'Recording stopped at 0:41: it reached the Largest file limit (65 MB; recording stops at 1 MB to leave room to finish the file). The clip so far is kept for review; raise Largest file in Settings > Uploads to record longer. / put.gd — recording stopped' at [1421, 10, 480, 129]\" (window None)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/__main__.notification_cover/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "notification-before",
+          "path": "frames/__main__.notification_cover/01-notification-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/__main__.notification_cover/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "__main__.notification_cover",
+      "build": "6ad9f957e6544f30c5e45c08af2306db77a9ff64",
+      "at": "2026-10-30T09:59:46Z"
+    },
+    {
+      "interaction": "shell.header-drag",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "/home/user/e3/final-smoke/receipt.json",
+      "note": "header repetition 1 passed in 5.389s; persistent SSH pid 135792; header repetition 2 passed in 3.646s; persistent SSH pid 135792; header repetition 3 passed in 3.643s; persistent SSH pid 135792; header repetition 4 passed in 3.644s; persistent SSH pid 135792; header repetition 5 passed in 3.870s; persistent SSH pid 135792; header repetition 6 passed in 3.879s; persistent SSH pid 135792; header repetition 7 passed in 3.494s; persistent SSH pid 135792; header repetition 8 passed in 3.386s; persistent SSH pid 135792; header repetition 9 passed in 3.723s; persistent SSH pid 135792; header repetition 10 passed in 3.803s; persistent SSH pid 135792; header repetition 11 passed in 3.815s; persistent SSH pid 135792; header repetition 12 passed in 4.100s; persistent SSH pid 135792; header repetition 13 passed in 3.348s; persistent SSH pid 135792; header repetition 14 passed in 3.772s; persistent SSH pid 135792; header repetition 15 passed in 3.725s; persistent SSH pid 135792; header repetition 16 passed in 3.914s; persistent SSH pid 135792; header repetition 17 passed in 4.002s; persistent SSH pid 135792; header repetition 18 passed in 3.843s; persistent SSH pid 135792; header repetition 19 passed in 3.931s; persistent SSH pid 135792; header repetition 20 passed in 3.470s; persistent SSH pid 135792",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/__main__.header_twenty/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "drag-01-before",
+          "path": "frames/__main__.header_twenty/01-drag-01-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "drag-01-after",
+          "path": "frames/__main__.header_twenty/02-drag-01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "drag-02-before",
+          "path": "frames/__main__.header_twenty/03-drag-02-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "drag-02-after",
+          "path": "frames/__main__.header_twenty/04-drag-02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "drag-03-before",
+          "path": "frames/__main__.header_twenty/05-drag-03-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "drag-03-after",
+          "path": "frames/__main__.header_twenty/06-drag-03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "drag-04-before",
+          "path": "frames/__main__.header_twenty/07-drag-04-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "drag-04-after",
+          "path": "frames/__main__.header_twenty/08-drag-04-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "drag-05-before",
+          "path": "frames/__main__.header_twenty/09-drag-05-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "drag-05-after",
+          "path": "frames/__main__.header_twenty/10-drag-05-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "drag-06-before",
+          "path": "frames/__main__.header_twenty/11-drag-06-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "drag-06-after",
+          "path": "frames/__main__.header_twenty/12-drag-06-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "drag-07-before",
+          "path": "frames/__main__.header_twenty/13-drag-07-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "drag-07-after",
+          "path": "frames/__main__.header_twenty/14-drag-07-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "drag-08-before",
+          "path": "frames/__main__.header_twenty/15-drag-08-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "drag-08-after",
+          "path": "frames/__main__.header_twenty/16-drag-08-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "drag-09-before",
+          "path": "frames/__main__.header_twenty/17-drag-09-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "drag-09-after",
+          "path": "frames/__main__.header_twenty/18-drag-09-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "drag-10-before",
+          "path": "frames/__main__.header_twenty/19-drag-10-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "drag-10-after",
+          "path": "frames/__main__.header_twenty/20-drag-10-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "drag-11-before",
+          "path": "frames/__main__.header_twenty/21-drag-11-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "drag-11-after",
+          "path": "frames/__main__.header_twenty/22-drag-11-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "drag-12-before",
+          "path": "frames/__main__.header_twenty/23-drag-12-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "drag-12-after",
+          "path": "frames/__main__.header_twenty/24-drag-12-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "drag-13-before",
+          "path": "frames/__main__.header_twenty/25-drag-13-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "drag-13-after",
+          "path": "frames/__main__.header_twenty/26-drag-13-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "drag-14-before",
+          "path": "frames/__main__.header_twenty/27-drag-14-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "drag-14-after",
+          "path": "frames/__main__.header_twenty/28-drag-14-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "drag-15-before",
+          "path": "frames/__main__.header_twenty/29-drag-15-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "drag-15-after",
+          "path": "frames/__main__.header_twenty/30-drag-15-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "drag-16-before",
+          "path": "frames/__main__.header_twenty/31-drag-16-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "drag-16-after",
+          "path": "frames/__main__.header_twenty/32-drag-16-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "drag-17-before",
+          "path": "frames/__main__.header_twenty/33-drag-17-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "drag-17-after",
+          "path": "frames/__main__.header_twenty/34-drag-17-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "drag-18-before",
+          "path": "frames/__main__.header_twenty/35-drag-18-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "drag-18-after",
+          "path": "frames/__main__.header_twenty/36-drag-18-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "drag-19-before",
+          "path": "frames/__main__.header_twenty/37-drag-19-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "drag-19-after",
+          "path": "frames/__main__.header_twenty/38-drag-19-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "drag-20-before",
+          "path": "frames/__main__.header_twenty/39-drag-20-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "drag-20-after",
+          "path": "frames/__main__.header_twenty/40-drag-20-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/__main__.header_twenty/41-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "__main__.header_twenty",
+      "build": "6ad9f957e6544f30c5e45c08af2306db77a9ff64",
+      "at": "2026-10-30T10:01:28Z"
+    },
+    {
+      "interaction": "shell.header-drag",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/user/e3/final-smoke/receipt.json",
+      "note": "recipe deadline exceeded before geometry probe; no request sent",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/__main__.deadline_channel/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "deadline-before",
+          "path": "frames/__main__.deadline_channel/01-deadline-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/__main__.deadline_channel/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "__main__.deadline_channel",
+      "build": "6ad9f957e6544f30c5e45c08af2306db77a9ff64",
+      "at": "2026-10-30T10:01:34Z"
+    },
+    {
+      "interaction": "editor.tool-text",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "/home/user/e3/final-smoke/receipt.json",
+      "note": "operationId=d49c95f5-4857-4641-a1c2-f2df5e6958cf",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/core_demo.text_tool/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "text-tool",
+          "path": "frames/core_demo.text_tool/01-text-tool.png",
+          "window": "editor",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/core_demo.text_tool/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "core_demo.text_tool",
+      "build": "6ad9f957e6544f30c5e45c08af2306db77a9ff64",
+      "at": "2026-10-30T10:02:11Z"
+    },
+    {
+      "interaction": "editor.tool-redact",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "/home/user/e3/final-smoke/receipt.json",
+      "note": "operationId=d97aeb94-55d3-4e11-8561-1a8ac593a3a2",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.645658, tolerance=0.025): actual=/home/user/e3/final-smoke/frames/core_demo.redact_tool/01-redact-tool.png reference=/home/user/e3/catalog/20-editor-redact.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/core_demo.redact_tool/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "redact-tool",
+          "path": "frames/core_demo.redact_tool/01-redact-tool.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6456584651064727,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/core_demo.redact_tool/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "core_demo.redact_tool",
+      "build": "6ad9f957e6544f30c5e45c08af2306db77a9ff64",
+      "at": "2026-10-30T10:02:41Z"
+    },
+    {
+      "interaction": "editor.undo",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "/home/user/e3/final-smoke/receipt.json",
+      "note": "operationId=4c255991-78fe-4db2-9b3c-b785ec0b5e2b",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/core_demo.undo_redo/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "redone",
+          "path": "frames/core_demo.undo_redo/01-redone.png",
+          "window": "editor",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/core_demo.undo_redo/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "core_demo.undo_redo",
+      "build": "6ad9f957e6544f30c5e45c08af2306db77a9ff64",
+      "at": "2026-10-30T10:03:11Z"
+    },
+    {
+      "interaction": "editor.redo",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "/home/user/e3/final-smoke/receipt.json",
+      "note": "operationId=4c255991-78fe-4db2-9b3c-b785ec0b5e2b",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/core_demo.undo_redo/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "redone",
+          "path": "frames/core_demo.undo_redo/01-redone.png",
+          "window": "editor",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/core_demo.undo_redo/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "core_demo.undo_redo",
+      "build": "6ad9f957e6544f30c5e45c08af2306db77a9ff64",
+      "at": "2026-10-30T10:03:11Z"
+    },
+    {
+      "interaction": "shortcut.region",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "/home/user/e3/final-smoke/receipt.json",
+      "note": "desktop catalog reference=00-tray-menu-idle; operation=a045dd8f-1be8-4926-829d-c016ca5cba45 action=region; operation=a045dd8f-1be8-4926-829d-c016ca5cba45 state=cancelled artifacts=",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/tray.shortcut_region/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/tray.shortcut_region/01-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/tray.shortcut_region/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/tray.shortcut_region/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "tray.shortcut_region",
+      "build": "6ad9f957e6544f30c5e45c08af2306db77a9ff64",
+      "at": "2026-10-30T10:03:44Z"
+    }
+  ]
+}

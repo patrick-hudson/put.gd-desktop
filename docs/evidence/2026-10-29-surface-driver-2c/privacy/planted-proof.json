@@ -1,0 +1,11 @@
+{
+  "rejected": true,
+  "planted_url": {
+    "host": "127.0.0.1",
+    "hash": "3d47cf0da54f2c1a47a5d2b55ee2541f9a85fc274be5cd602bcbd11b7e50942d",
+    "length": 94,
+    "present": true
+  },
+  "planted_length": 94,
+  "raw_artifact_excluded_from_export": true
+}

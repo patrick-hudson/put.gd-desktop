@@ -20,7 +20,7 @@ class SourceBuild(unittest.TestCase):
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name)
         self.identity = {'gitCommit': 'a' * 40, 'gitTree': 'b' * 40, 'commitCount': 7}
-        self.manifest = {**self.identity, 'sourceProvenance': 'supplied', 'version': '0.1.1-dev.7+gaaaaaaaaaaaa'}
+        self.manifest = {**self.identity, 'sourceProvenance': 'supplied', 'version': '26.1022.7-dev+gaaaaaaaaaaaa'}
         self.helper = b'#!/usr/bin/env python3\nimport json\nprint(json.dumps({"runtime":"synthetic-proton"}))\n'
         provisioner = '''import hashlib, json, pathlib, sys
 output = pathlib.Path('build/dependencies/proton-runtime')
@@ -40,7 +40,7 @@ helper = %r
         self.receipt = self.root / 'source-archive.json'
         self.receipt.write_text(json.dumps({'format': 'source.tar.gz', 'artifact': {
             'file': archive.name, 'sha256': hashlib.sha256(archive.read_bytes()).hexdigest(),
-            'bytes': archive.stat().st_size}, 'archiveRoot': 'source', 'identity': self.identity,
+            'bytes': archive.stat().st_size}, 'archiveRoot': 'source', 'identity': self.identity, 'timestamp': 1792639800,
             'localBuild': {'version': self.manifest['version']}}))
         self.bin = self.root / 'bin'
         self.bin.mkdir()
@@ -52,7 +52,7 @@ if '--build' not in sys.argv:
     (build / 'build-identity').mkdir(parents=True)
     manifest = %r
     (build / 'build-identity/build-info.json').write_text(json.dumps(manifest))
-    for name in ('putgd', 'putgd-cli', 'putgd-ui', 'putgd-capture', 'putgd-s3-worker'):
+    for name in ('putgd', 'putgd-cli', 'putgd-ui', 'putgd-capture', 'putgd-s3-worker', 'putgd-b2-worker'):
         program = build / name
         program.write_text('#!/usr/bin/env python3\\nimport json\\nprint(json.dumps(' + repr(manifest) + '))\\n')
         program.chmod(0o755)
@@ -75,6 +75,7 @@ if '--build' not in sys.argv:
     def test_existing_source_recipe_stays_non_proton_by_default(self):
         result = self.build()
         self.assertTrue(result['passed'])
+        self.assertEqual(result['archive'], json.loads(self.receipt.read_text())['artifact'])
         self.assertEqual(len(result['commands']), 2)
         self.assertNotIn('rebuiltProton', result)
 
@@ -82,6 +83,7 @@ if '--build' not in sys.argv:
         result = self.build(bundle_proton=True, proton_source=self.root / 'proton-sdk',
                             proton_crypto_source=self.root / 'proton-crypto', proton_offline=True)
         self.assertTrue(result['passed'])
+        self.assertEqual(result['archive'], json.loads(self.receipt.read_text())['artifact'])
         source = self.root / 'output/source'
         arguments = json.loads((source / 'build/dependencies/proton-runtime/provision-arguments.json').read_text())
         self.assertEqual(arguments, ['--source', str(self.root / 'proton-sdk'), '--crypto-source',

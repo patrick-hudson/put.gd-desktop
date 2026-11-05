@@ -6,7 +6,8 @@
 #include <QPointer>
 #include <QTimer>
 namespace putgd {
-class GnomeAdapter final:public QObject,public SourceAdapter {
+// Also the recording shell: the extension's selector, frame actors and bar placement.
+class GnomeAdapter final:public QObject,public SourceAdapter,public RecordingShell {
  Q_OBJECT
 public:
  explicit GnomeAdapter(QObject* parent=nullptr);
@@ -22,6 +23,14 @@ public:
  void bindShortcuts(const QHash<QString,QString>&);
  void setUiProcess(qint64) override;
  void invalidateCopyEligibility() override;
+ bool selectsRegions()const override;
+ Error regionError()const override;
+ // The loaded extension is older than the packaged one: a log-out loads it.
+ bool outdated()const;
+ void selectRegion(RecordingShell::Reply) override;
+ void cancelSelection() override;
+ void showFrame(const QJsonObject&,RecordingShell::Reply) override;
+ void hideFrame() override;
 signals:
  void actionRequested(const QString&);
  void capabilitiesChanged();
@@ -30,14 +39,17 @@ private slots:
  void helperClipboardChanged(qulonglong revision);
  void helperChanged();
 private:
+ // Why a region cannot be recorded through the Shell right now.
+ Error recordingShellError()const;
  using Reply=std::function<void(Error,QJsonObject)>;
- struct Transfer {QString id;ResourceLimits limits;QJsonObject metadata;QByteArray bytes;std::function<void(PayloadResult)> reply;quint64 generation=0;};
+ struct Transfer {QString id,outcome;bool screenshotFirst=false;ResourceLimits limits;QJsonObject metadata;QByteArray bytes;std::function<void(PayloadResult)> reply;quint64 generation=0;};
  void discover();
+ void helperUnavailable(const Error&);
  void applyShortcutBindings(std::function<void(Error)> reply={});
  void invalidateShortcutBindings();
  void call(const QString& method,const QVariantList&,Reply,int timeout=5000);
  QJsonObject sync(const QString& method,const QVariantList&,Error&,int timeout=1000);
- void start(const QString& id,const QString& action,const ResourceLimits&,std::function<void(PayloadResult)>);
+ void start(const QString& id,const QString& action,const ResourceLimits&,std::function<void(PayloadResult)>,const QString& outcome,bool screenshotFirst=false);
  void requestTransfer(const std::shared_ptr<Transfer>&,const QJsonArray& imageMimes);
  void read(const std::shared_ptr<Transfer>&);
  void decode(const std::shared_ptr<Transfer>&);
@@ -55,6 +67,7 @@ private:
  QHash<QString,QStringList> hotkeyPrepared_;
  QHash<QString,std::shared_ptr<Transfer>> transfers_;
  QStringList prepared_;
+ QString recordingSelection_;
  QList<QThread*> workers_;
  std::optional<quint64> lastCopyRevision_;
  // Image types the transient image job can decode, listed once for clipboard imports.

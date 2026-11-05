@@ -1,0 +1,10 @@
+QINFO  : SettingsGui::idleSettingsLayoutSettles(page0-1440) Idle Settings layout/paint events: 0 0
+QINFO  : SettingsGui::idleSettingsLayoutSettles(page0-1060) Idle Settings layout/paint events: 0 0
+QINFO  : SettingsGui::idleSettingsLayoutSettles(page1-1440) Idle Settings layout/paint events: 0 0
+QINFO  : SettingsGui::idleSettingsLayoutSettles(page1-1060) Idle Settings layout/paint events: 0 0
+QINFO  : SettingsGui::idleSettingsLayoutSettles(page2-1440) Idle Settings layout/paint events: 0 0
+QINFO  : SettingsGui::idleSettingsLayoutSettles(page2-1060) Idle Settings layout/paint events: 0 0
+QINFO  : SettingsGui::idleSettingsLayoutSettles(page3-1440) Idle Settings layout/paint events: 0 0
+QINFO  : SettingsGui::idleSettingsLayoutSettles(page3-1060) Idle Settings layout/paint events: 0 0
+PASS   : SettingsGui::emptyShortcutRecordingPromptFitsAndSettles()
+PASS   : SettingsGui::updateChannelHelpReservesItsHeightAfterItAppears()

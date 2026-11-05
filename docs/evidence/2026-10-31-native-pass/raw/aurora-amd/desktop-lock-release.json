@@ -1,0 +1,24 @@
+{
+  "lock": {
+    "owner": "native-pass",
+    "session": "np31-ddd3576a",
+    "host": "aurora-amd",
+    "purpose": "physical Tier1 local AppImage; no builds",
+    "acquired": "2026-10-31T15:36:21Z",
+    "expires": "2026-10-31T16:21:21Z",
+    "heartbeat": "2026-10-31T15:40:41Z"
+  },
+  "releasedBy": "np31-ddd3576a",
+  "check": {
+    "left": [],
+    "notMine": [],
+    "preexisting": [],
+    "unmatchedNotMine": []
+  },
+  "notes": [
+    "8 process(es) outside the desktop session (no DISPLAY or WAYLAND_DISPLAY; shared SSH work): 4532 7410 41115 207962 1401946 1402226 1436469 1436488"
+  ],
+  "event": "release",
+  "host": "aurora-amd",
+  "at": "2026-10-31T15:48:18Z"
+}

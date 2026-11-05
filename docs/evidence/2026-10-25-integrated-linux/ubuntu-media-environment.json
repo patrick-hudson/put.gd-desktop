@@ -1,0 +1,14 @@
+{
+  "initialAttempts": {
+    "ugr1": "missing GStreamer GTK cover sink before app launch",
+    "ugr2": "disk_space_insufficient, 1.4 GiB free; all four formats refused preparation"
+  },
+  "gtkPackage": "gstreamer1.0-gtk3:amd64",
+  "gtkVersion": "1.28.2-2ubuntu0.4",
+  "correctedFreeBytesBeforeUgr3": 2662686720,
+  "capacityRecovery": "1827 files in three owned duplicate extracted AppImage directories verified against cold archive, then removed; normal apt-get clean. No prior source or golden modified.",
+  "archiveHost": "f44",
+  "archive": "/home/patrick/work/ia25/vm-collected/g/extracted-copies.tar.gz",
+  "archiveSha256": "22cf9032a7da228dadc3dcb1ed26b2985c56dfd33a82634f97f6da8b6ba0e6a9",
+  "c180Scope": "Earlier completed C180 results retain their own pre-GTK-package measured environment; no broad retest performed."
+}

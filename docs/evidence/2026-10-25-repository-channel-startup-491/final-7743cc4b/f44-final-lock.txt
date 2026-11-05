@@ -1,0 +1,4 @@
+f44 (Fedora 44 GNOME Wayland): locked
+  #491 final package (codex-491-f44-final), acquired 2026-10-25T09:41:06Z
+  purpose: 7743cc4b startup refresh; work/491 evidence
+  note: 1 process(es) outside the desktop session (no DISPLAY or WAYLAND_DISPLAY; shared SSH work): 1271

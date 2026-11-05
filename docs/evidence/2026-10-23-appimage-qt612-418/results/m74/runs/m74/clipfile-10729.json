@@ -1,0 +1,106 @@
+{
+ "at": "2026-10-23T18:59:27Z",
+ "before": {
+  "putgd": [
+   526865
+  ],
+  "putgd-ui": [
+   527041
+  ]
+ },
+ "entries": [
+  {
+   "sample": "cve-2025-10729-pattern-orphan.svg",
+   "sha256": "b1b7776ef367bc7e360ea559821347242979005e253df30c4cac5cc647708e54",
+   "bytes": 271,
+   "clipboardOwnerPid": 530507,
+   "operation": {
+    "id": "03037a35-f1eb-41fb-a85f-98fbec73651e",
+    "state": "completed",
+    "copyStatus": "copied",
+    "items": [
+     {
+      "name": "cve-2025-10729-pattern-orphan.svg",
+      "mime": "image/svg+xml",
+      "uploadStatus": "uploaded",
+      "link": "http://127.0.0.1:42775/fixture/afa/cve-2025-10729-pattern-orphan-d5880788-1469-4c93-a86c-a615a18f6c3c.svg",
+      "local": {
+       "error": {
+        "code": "",
+        "details": {},
+        "message": ""
+       },
+       "path": "/home/patrick/work/put.gd-qt418/afa/runs/m74/archive/images/cve-2025-10729-pattern-orphan-381c90c3-2f78-46d6-a206-cc709c4eade4.svg",
+       "status": "saved"
+      }
+     }
+    ],
+    "error": {
+     "code": "",
+     "details": {},
+     "message": ""
+    }
+   },
+   "history": {
+    "id": "9618339f-501e-43a3-8f9c-a59fc5728a1f",
+    "name": "cve-2025-10729-pattern-orphan.svg",
+    "mime": "image/svg+xml",
+    "uploadStatus": "uploaded",
+    "local": "saved",
+    "newest": true
+   },
+   "preview": {
+    "ok": true,
+    "state": "ready",
+    "error": {
+     "code": "",
+     "details": {},
+     "message": ""
+    },
+    "previewExists": true
+   },
+   "afterPreview": {
+    "putgd": [
+     526865
+    ],
+    "putgd-ui": [
+     527041
+    ]
+   },
+   "cards": 2,
+   "frame": "/home/patrick/work/put.gd-qt418/afa/runs/m74/full/m74-clipfile-10729-0.png",
+   "afterUi": {
+    "putgd": [
+     526865
+    ],
+    "putgd-ui": [
+     527041
+    ]
+   }
+  }
+ ],
+ "after": {
+  "putgd": [
+   526865
+  ],
+  "putgd-ui": [
+   527041
+  ]
+ },
+ "diagnostics": {
+  "build": {
+   "baseVersion": "26.1023.1068",
+   "commitCount": 1068,
+   "dirty": false,
+   "gitCommit": "6a325a722afd946046a96480ca524db8aa6abcce",
+   "gitTree": "a0a449b23b4eb70f516e3c317b6d93b412aafbbb",
+   "packageVersion": "26.1023.1068~dev+g6a325a722afd",
+   "schemaVersion": 1,
+   "sourceProvenance": "git",
+   "version": "26.1023.1068-dev+g6a325a722afd"
+  },
+  "journalReady": true,
+  "qtVersion": "6.12.0"
+ },
+ "survived": true
+}

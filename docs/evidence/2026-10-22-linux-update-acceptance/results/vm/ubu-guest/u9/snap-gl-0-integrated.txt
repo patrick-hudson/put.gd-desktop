@@ -1,0 +1,20 @@
+## gl-0-integrated 2026-10-23T01:58:00Z
+### ls -la /home/lab/AppImages
+total 112572
+drwxr-xr-x  3 lab lab      4096 2026-10-22 20:57:59.891318362 -0500 .
+drwxr-x--- 45 lab lab      4096 2026-10-22 20:46:49.679202190 -0500 ..
+drwxr-xr-x  2 lab lab      4096 2026-10-22 20:57:59.935827146 -0500 .icons
+-rwxr-xr-x  1 lab lab 115259896 2026-10-22 20:57:58.076328620 -0500 put.gd.appimage
+### sha256 / inode
+2028075 005762e9ede991c78fce115707a41617d899d7870738fb525151c182357b7c3a  /home/lab/AppImages/put.gd.appimage
+### desktop entries
+#### /home/lab/.local/share/applications/putgd326-url.desktop
+Name=put.gd acceptance URL recorder
+Exec=/home/lab/work/put.gd-ua/record-url.sh %u
+502864cf36915bc144bf460940abbc47873579acec57ed33969b41ed0afa5783  /home/lab/.local/share/applications/putgd326-url.desktop
+#### /home/lab/.local/share/applications/put.gd.desktop
+Name=put.gd (442144)
+TryExec=/home/lab/AppImages/put.gd.appimage
+Exec=env DESKTOPINTEGRATION=1 /home/lab/AppImages/put.gd.appimage
+ff5d0b628315f0668988730a1d2db0395a0b0fa5cb43430168d19624fd76740f  /home/lab/.local/share/applications/put.gd.desktop
+### residents

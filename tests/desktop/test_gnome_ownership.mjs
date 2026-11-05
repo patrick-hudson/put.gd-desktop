@@ -31,7 +31,10 @@ if (!loaded)
 const source = new TextDecoder('utf-8', {fatal: true}).decode(contents)
     .replace(/^import .*;$/gm, '')
     .replace('class TrayTooltipCompanion', 'globalThis.TrayTooltipCompanion = class TrayTooltipCompanion')
-    .replace('export default class PutgdExtension', 'globalThis.PutgdExtension = class PutgdExtension');
+    .replace('export default class PutgdExtension', 'globalThis.PutgdExtension = class PutgdExtension')
+    .replace('function barPlacement(', 'globalThis.barPlacement = barPlacement; function barPlacement(')
+    .replace('function subtract(', 'globalThis.subtract = subtract; function subtract(')
+    .replaceAll('new RegionSelector(', 'new (globalThis.RegionSelectorFixture ?? RegionSelector)(');
 const resident = ':1.50';
 const residentPid = 1000;
 const helperPid = 2000;
@@ -95,6 +98,41 @@ const afterExit = id();
 await helper.extension._prepare(afterExit, 'window', resident);
 assert.equal(helper.extension._requests.get(afterExit).window.get_pid(), helperPid);
 print('PASS helper exit clears exclusion');
+
+// The Edit & upload editor (`putgd-ui --edit-image`) never registers through
+// SetUiProcess: the resident started it, so its parent PID identifies it.
+const editorPid = 2500;
+const parents = new Map([[helperPid, residentPid], [editorPid, residentPid], [3000, 1]]);
+GLib.file_get_contents = path => {
+    const pid = Number(path.split('/')[2]);
+    if (!parents.has(pid))
+        throw new Error('No such process');
+    return [true, new TextEncoder().encode(`${pid} (putgd-ui (edit)) S ${parents.get(pid)} 1 1 0`)];
+};
+for (const registered of [helperPid, 0]) {
+    const editor = fixture();
+    assert.deepEqual(await register(editor.extension, registered), {});
+    context.global.display.focus_window = focused(editorPid);
+    await assert.rejects(editor.extension._prepare(id(), 'window', resident), e => e.bridgeCode === 'capture_target');
+    assert.equal(editor.layouts(), 0);
+}
+print('PASS resident-started editor PID rejection before layout, with and without a views helper');
+{
+    const views = fixture();
+    assert.deepEqual(await register(views.extension, helperPid), {});
+    context.global.display.focus_window = focused(helperPid);
+    await assert.rejects(views.extension._prepare(id(), 'window', resident), e => e.bridgeCode === 'capture_target');
+    const outside = id();
+    context.global.display.focus_window = focused(3000);
+    await views.extension._prepare(outside, 'window', resident);
+    assert.equal(views.extension._requests.get(outside).window.get_pid(), 3000);
+    const vanished = id();
+    context.global.display.focus_window = focused(3999);
+    await views.extension._prepare(vanished, 'window', resident);
+    assert.equal(views.extension._requests.get(vanished).window.get_pid(), 3999);
+}
+delete GLib.file_get_contents;
+print('PASS views helper still refused; external and unreadable processes are captured');
 
 const external = focused(3000);
 context.global.display.focus_window = external;
@@ -399,3 +437,217 @@ assert.equal(context.Main.uiGroup.get_children()[0].text, 'put.gd — Working\nS
 retry.companion.disable(); retry.actor.destroy();
 assert.equal(timers.size, 0); assert.equal(subscriptions.size, 0); assert.equal(watches.size, 0);
 print('PASS each recoverable failure episode receives a fresh bounded retry budget');
+
+// Screen recording on GNOME. Synthetic Shell objects prove the selector request,
+// the bar's ownership check and placement and the frame actors; this is not
+// graphical acceptance and proves nothing about the Mutter stream's pixels.
+const pendingSelectors = [];
+globalThis.RegionSelectorFixture = class {
+    selectAsync() {return new Promise((resolve, reject) => {this.resolve = resolve; this.reject = reject; pendingSelectors.push(this);});}
+    cancel() {this.resolve(null);}
+};
+{
+    const {extension} = fixture();
+    const selectId = id();
+    const chosen = bridge(extension, 'SelectAreaAsync', [selectId]); await flush();
+    assert.equal(pendingSelectors.length, 1);
+    pendingSelectors.shift().resolve({x: 40, y: 50, width: 640, height: 360});
+    assert.deepEqual(await chosen, {version: 1, requestId: selectId, rect: [40, 50, 640, 360]});
+    assert.equal(extension._requests.size, 0); assert.equal(extension._selector, null);
+    const cancelId = id();
+    const cancelled = bridge(extension, 'SelectAreaAsync', [cancelId]); await flush();
+    assert.equal((await bridge(extension, 'SelectAreaAsync', [id()])).error.code, 'busy_selecting');
+    assert.deepEqual(await bridge(extension, 'ReleaseAsync', [cancelId]), {});
+    assert.equal((await cancelled).error.code, 'cancelled');
+    assert.equal(extension._requests.size, 0); assert.equal(extension._selector, null); assert.equal(timers.size, 0);
+    print('PASS recording selection answers the rectangle and Release cancels it');
+    const failedId = id();
+    const failed = bridge(extension, 'SelectAreaAsync', [JSON.stringify({id: failedId, appearance: {}})]); await flush();
+    const failedSelector = pendingSelectors.pop();
+    failedSelector.reject(Object.assign(new Error('Synthetic revoked grab'), {bridgeCode: 'cancelled'}));
+    assert.equal((await failed).error.code, 'cancelled');
+    assert.equal(extension._requests.size, 0); assert.equal(extension._selector, null); assert.equal(timers.size, 0);
+    const recoveredId = id();
+    const recovered = bridge(extension, 'SelectAreaAsync', [JSON.stringify({id: recoveredId, appearance: {}})]); await flush();
+    pendingSelectors.pop().resolve({x: 40, y: 50, width: 640, height: 360});
+    assert.deepEqual(await recovered, {version: 1, requestId: recoveredId, rect: [40, 50, 640, 360]});
+    assert.equal(extension._requests.size, 0); assert.equal(extension._selector, null); assert.equal(timers.size, 0);
+    print('PASS failed JSON selection releases its decoded request and allows immediate recovery');
+}
+const work = [[0, 32, 1920, 1048]];
+assert.deepEqual(globalThis.barPlacement([100, 100, 640, 360], [400, 40], work), {rect: [100, 470, 400, 40], outside: true});
+assert.deepEqual(globalThis.barPlacement([100, 600, 640, 470], [400, 40], work), {rect: [100, 550, 400, 40], outside: true});
+assert.deepEqual(globalThis.barPlacement([1700, 100, 200, 200], [400, 40], work), {rect: [1520, 310, 400, 40], outside: true});
+assert.deepEqual(globalThis.barPlacement([0, 0, 1920, 1080], [400, 40], [...work, [1920, 0, 1280, 1024]]), {rect: [2360, 10, 400, 40], outside: true});
+assert.deepEqual(globalThis.barPlacement([0, 0, 1920, 1080], [400, 40], work), {rect: [1510, 1030, 400, 40], outside: false});
+// Issue #108: a monitor stacked below takes the bar, and an inside decision keeps the corner when the bar shrinks.
+assert.deepEqual(globalThis.barPlacement([0, 0, 1920, 1080], [400, 40], [[0, 0, 1920, 1080], [0, 1080, 1920, 1080]]), {rect: [0, 1090, 400, 40], outside: true});
+assert.deepEqual(globalThis.barPlacement([0, 0, 1920, 1040], [90, 30], work, false), {rect: [1820, 1000, 90, 30], outside: false});
+assert.deepEqual(globalThis.barPlacement([0, 32, 1920, 1048], [90, 30], work), {rect: [1820, 1040, 90, 30], outside: false});
+assert.deepEqual(globalThis.subtract([[0, 0, 100, 100]], [20, 30, 50, 40]), [[0, 0, 100, 30], [0, 70, 100, 30], [0, 30, 20, 40], [70, 30, 30, 40]]);
+print('PASS recording bar placement prefers below, above, another monitor, then inside');
+{
+    const {extension} = fixture();
+    const overlap = (a, b) => a[0] < b[0] + b[2] && b[0] < a[0] + a[2] && a[1] < b[1] + b[3] && b[1] < a[1] + a[3];
+    let moved = null, above = false, parent = residentPid;
+    // The first move is undone once, as Mutter's initial placement does; the extension re-applies it.
+    let hidden = 2, undo = 1;
+    let size = [400, 40], resized = null, disconnected = 0;
+    const bar = {get_title: () => 'put.gd recording controls', get_pid: () => helperPid,
+        get_frame_rect: () => ({x: moved ? moved[0] : 700, y: moved ? moved[1] : 400, width: size[0], height: size[1]}),
+        is_hidden: () => hidden-- > 0, is_above: () => above, make_above() {above = true;},
+        move_frame(_user, x, y) {moved = undo-- > 0 ? [700, 400] : [x, y];},
+        connect(signal, handler) {assert.equal(signal, 'size-changed'); resized = handler; return 7;},
+        disconnect(id) {disconnected = id;}};
+    const settle = async promise => {for (let i = 0; i < 20; i++) {await flush(); tick(50); tick(100);} return promise;};
+    context.GLib.file_get_contents = () => [true, new TextEncoder().encode(`${helperPid} (putgd record) S ${parent} 1 1 0`)];
+    context.global.get_window_actors = () => [{meta_window: bar}];
+    context.global.stage = {width: 1920, height: 1080};
+    context.Main.layoutManager = {monitors: [{x: 0, y: 0, width: 1920, height: 1080}], getWorkAreaForMonitor: () => ({x: 0, y: 32, width: 1920, height: 1048})};
+    const before = context.Main.uiGroup.get_children().length;
+    const area = [600, 300, 640, 360];
+    const frame = state => JSON.stringify({rect: area, kind: 'region', state, pid: helperPid});
+    assert.deepEqual(await settle(bridge(extension, 'ShowRecordingFrameAsync', [frame('ready')])), {version: 1, bar: {placed: true, outside: true, rect: [600, 670, 400, 40]}});
+    assert.equal(above, true);
+    assert.equal(context.Main.uiGroup.get_children().length - before, 8);
+    await settle(bridge(extension, 'ShowRecordingFrameAsync', [frame('recording')]));
+    const actors = context.Main.uiGroup.get_children().slice(before);
+    // Ring (8) and dim strips (7: the bar is cut out of the bottom strip).
+    assert.equal(actors.length, 15);
+    assert.equal(actors.every(a => a.reactive === false && !overlap([a.x, a.y, a.width, a.height], area) &&
+        !overlap([a.x, a.y, a.width, a.height], [600, 670, 400, 40])), true);
+    // Record widens the bar: the Shell places it again from its right edge's monitor, still below the area.
+    size = [700, 40]; resized();
+    assert.deepEqual(moved, [600, 670]);
+    size = [1400, 40]; resized();
+    assert.deepEqual(moved, [520, 670]);
+    assert.equal(context.Main.uiGroup.get_children().slice(before).every(a => !overlap([a.x, a.y, a.width, a.height], [520, 670, 1400, 40])), true);
+    size = [400, 40];
+    // A whole monitor: the bar stays in the corner, and its handle goes to the corner too.
+    const whole = [0, 32, 1920, 1048];
+    const full = state => JSON.stringify({rect: whole, kind: 'monitor', state, pid: helperPid});
+    assert.deepEqual((await settle(bridge(extension, 'ShowRecordingFrameAsync', [full('ready')]))).bar, {placed: true, outside: false, rect: [1510, 1030, 400, 40]});
+    size = [90, 30]; resized();
+    assert.deepEqual(moved, [1820, 1040]);
+    assert.deepEqual((await settle(bridge(extension, 'ShowRecordingFrameAsync', [full('recording')]))).bar, {placed: true, outside: false, rect: [1820, 1040, 90, 30]});
+    size = [400, 40];
+    // A bar whose process is not the resident's child is never moved.
+    parent = 4321; moved = null;
+    const foreign = bridge(extension, 'ShowRecordingFrameAsync', [frame('ready')]);
+    for (let i = 0; i < 41; i++) {await flush(); tick(50);}
+    assert.deepEqual((await foreign).bar, {placed: false, outside: false}); assert.equal(moved, null);
+    assert.equal((await bridge(extension, 'ShowRecordingFrameAsync', [JSON.stringify({rect: [0, 0, 0, 10], kind: 'region', state: 'ready'})])).error.code, 'bridge_protocol');
+    assert.equal((await bridge(extension, 'ShowRecordingFrameAsync', [JSON.stringify({rect: area, kind: 'region', state: 'exporting'})])).error.code, 'bridge_protocol');
+    assert.deepEqual(await bridge(extension, 'HideRecordingFrameAsync', []), {});
+    assert.equal(context.Main.uiGroup.get_children().length, before); assert.equal(timers.size, 0);
+    assert.equal(disconnected, 7); assert.equal(extension._barFollow, null);
+    print('PASS recording frame places only the resident child\'s bar, follows its size and keeps every actor outside the area');
+}
+{
+    // #924: a selection hotkey closes put.gd's own open tray menu first; desktop
+    // and window captures keep it, and another application's menu stays open.
+    const session = context.Gio.DBus.session, original = session.call_sync;
+    const pids = new Map([[resident, residentPid], [':1.60', residentPid], [':1.70', 4242]]);
+    session.call_sync = (_service, _path, _iface, method, parameters) => {
+        if (method === 'GetNameOwner')
+            return {deep_unpack: () => [resident]};
+        const name = parameters.value[0];
+        if (!pids.has(name))
+            throw new Error('No such name');
+        return {deep_unpack: () => [pids.get(name)]};
+    };
+    const menu = busName => ({isOpen: true, closed: [], sourceActor: {_indicator: {busName}},
+        close(animation) {this.closed.push(animation); this.isOpen = false;}});
+    const {extension} = fixture();
+    extension._dbus = {emit_signal() {}};
+    let uuid = 0;
+    GLib.uuid_string_random ??= () => `00000000-0000-0000-0001-${String(++uuid).padStart(12, '0')}`;
+    for (const action of ['region', 'edit', 'record']) {
+        const own = menu(':1.60');
+        context.Main.panel.menuManager = {activeMenu: own};
+        await extension._hotkey(action);
+        assert.deepEqual(own.closed, [0]);
+    }
+    for (const [action, busName] of [['desktop', ':1.60'], ['region', ':1.70'], ['region', ':1.80'], ['region', undefined]]) {
+        const other = menu(busName);
+        context.Main.panel.menuManager = {activeMenu: other};
+        await extension._hotkey(action);
+        assert.deepEqual(other.closed, []);
+    }
+    const shut = menu(':1.60'); shut.isOpen = false;
+    context.Main.panel.menuManager = {activeMenu: shut};
+    assert.equal(extension._closeTrayMenu(resident), false); assert.deepEqual(shut.closed, []);
+    context.Main.panel.menuManager = {activeMenu: null};
+    assert.equal(extension._closeTrayMenu(resident), false);
+    delete context.Main.panel.menuManager; session.call_sync = original;
+    for (const id of extension._requests.keys()) extension._drop(id);
+    print('PASS selection hotkeys close only the resident\'s own open tray menu');
+}
+// A live region selection can show at the press (Preview) and be taken up by
+// Acquire once the journal is durable. A resident that predates Preview only
+// calls Acquire, which selects as it always did. Synthetic selector and streams.
+{
+    const layout = [{logical: [0, 0, 640, 480], density: 1}];
+    const bounds = JSON.stringify({imageMimes: ['image/png'], textBytes: 1, imageBytes: 8388608, imagePixels: 2097152, maxFiles: 1});
+    let pixelReads = 0;
+    context.Gio.MemoryOutputStream = {new_resizable() {pixelReads++; throw Object.assign(new Error('Synthetic stop'), {bridgeCode: 'capture_failed'});}};
+    const prepared = async () => {
+        const {extension} = fixture();
+        extension._layout = async () => layout;
+        const request = id();
+        await extension._prepare(request, 'region', resident);
+        return {extension, request};
+    };
+    pendingSelectors.length = 0;
+    {
+        const {extension, request} = await prepared();
+        globalThis.Config = {PACKAGE_VERSION: '50.0'};
+        extension.metadata = {version: 18};
+        assert.equal((await bridge(extension, 'HelloAsync', [])).previewVersion, 1);
+        assert.deepEqual(await bridge(extension, 'PreviewAsync', [request, JSON.stringify({outcome: 'Saves locally', appearance: {}})]), {version: 1, requestId: request, shown: true});
+        assert.equal(pendingSelectors.length, 1);
+        // The user finishes before the journal does: geometry waits, no pixels are read.
+        pendingSelectors.shift().resolve({x: 40, y: 50, width: 64, height: 36});
+        await flush();
+        assert.equal(pixelReads, 0); assert.equal(extension._selector, null);
+        assert.equal((await bridge(extension, 'AcquireAsync', [request, bounds])).error.code, 'capture_failed');
+        assert.equal(pixelReads, 1); assert.equal(pendingSelectors.length, 0);
+        print('PASS Preview shows the selector and only Acquire reads pixels');
+    }
+    {
+        pixelReads = 0;
+        const {extension, request} = await prepared();
+        const acquired = bridge(extension, 'AcquireAsync', [request, bounds]); await flush();
+        assert.equal(pendingSelectors.length, 1);
+        pendingSelectors.shift().resolve({x: 40, y: 50, width: 64, height: 36});
+        assert.equal((await acquired).error.code, 'capture_failed');
+        assert.equal(pixelReads, 1);
+        print('PASS a resident without Preview still selects through Acquire');
+    }
+    {
+        pixelReads = 0;
+        const {extension, request} = await prepared();
+        await bridge(extension, 'PreviewAsync', [request, '{}']);
+        pendingSelectors.shift().cancel();
+        await flush();
+        assert.equal((await bridge(extension, 'AcquireAsync', [request, bounds])).error.code, 'cancelled');
+        assert.equal(pixelReads, 0);
+        print('PASS cancelling a previewed selection cancels the acquisition');
+    }
+    {
+        const {extension, request} = await prepared();
+        extension._selector = {};
+        assert.equal((await bridge(extension, 'PreviewAsync', [request, '{}'])).shown, false);
+        assert.equal((await bridge(extension, 'AcquireAsync', [request, bounds])).error.code, 'busy_selecting');
+        print('PASS a busy selector leaves Preview unshown and Acquire reports it');
+    }
+    {
+        const {extension, request} = await prepared();
+        extension._requests.get(request).error = Object.assign(new Error('Synthetic layout failure'), {bridgeCode: 'capture_geometry'});
+        assert.equal((await bridge(extension, 'PreviewAsync', [request, '{}'])).shown, false);
+        assert.equal(pendingSelectors.length, 0);
+        assert.equal((await bridge(extension, 'AcquireAsync', [request, bounds])).error.code, 'capture_geometry');
+        print('PASS Preview leaves a failed request for Acquire to report');
+    }
+    delete context.Gio.MemoryOutputStream;
+}

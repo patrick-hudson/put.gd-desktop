@@ -1,0 +1,18 @@
+{
+  "reviewed": true,
+  "accepted": true,
+  "sourceCommit": "d5b561ddb94f8255b8bc754c1382552d983a6fa9",
+  "invalidVisuals": [],
+  "notes": "All nine complete frames inspected: actual Settings on/rearmed/off and real login/removal desktops. Stock Mint Welcome, KDE remote-control and Debian IBus notices are unrelated and retained. No protected login value or personal app content appears. Machine receipts establish file/process absence and settings preservation; screenshots supply desktop context.",
+  "files": {
+    "enabled-login.png": "13bf09d8ed86f7a02c6c3b785c49ebee65dd171afdbce14b70aa2cec9b5400d8",
+    "disabled-settings.png": "44042030efc9ecddf6ee1c0a2b6a0498da470e8bc39fe40974c177bebfe24336",
+    "login-settings.png": "d9ea53a09fe552d01eda5fecfecd9dea8ce98b0917f8473854b9a69faa6d240d",
+    "rearmed-settings.png": "41448ff2cac370ce0452a2ca1f584b61781b551eab1cde0e8bb8c8908bf332fa",
+    "enabled-settings.png": "9a9c83379378d18dbf17d1ed8973b977b4463eeeef71379b3a3b5936d736e19b",
+    "active-cleaned.png": "a9b187bf083e204d14eedde847c42df9fabf9bc6341daa5d3c1c2ec51604580c",
+    "active-cleaned-login.png": "3f7308e9669a0f9405e0c8ebffbf7000218f6cdec19e0791b45a7930d2c84ae0",
+    "disabled-clean-login.png": "6b9d705153677e439e07b45bf4464cbce2013a392c37f2681b6a836139c0fdda",
+    "inactive-cleaned-login.png": "87021021d7a0c29ca3fb829872e8f6350e7f963e8dea3382e340cf45b8892ee5"
+  }
+}

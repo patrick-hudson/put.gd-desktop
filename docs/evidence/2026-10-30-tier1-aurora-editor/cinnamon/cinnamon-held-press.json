@@ -1,0 +1,861 @@
+[
+  {
+    "shapes": [],
+    "view": {
+      "busy": false,
+      "cancelLabel": "Cancel",
+      "canvasSize": [
+        659,
+        456
+      ],
+      "cropPending": false,
+      "destination": {
+        "above": false,
+        "sharingMode": "Shared link",
+        "text": "Synthetic loopback S3 \u00b7 Shared link"
+      },
+      "discardConfirmation": {
+        "open": false,
+        "text": null
+      },
+      "editingText": false,
+      "fitted": true,
+      "geometry": null,
+      "geometryDetails": {
+        "open": false,
+        "visible": false
+      },
+      "keyboardHelp": {
+        "open": false,
+        "text": "[ / ]: Cycle marks\nArrows: Move\nShift+arrows: Resize\nCtrl+arrows: Move 10 px\nCtrl+Shift+arrows: Resize 10 px\nTab: Focus properties\nDelete: Remove mark\nEscape: Deselect\nInsert: Place mark\nCtrl+Z: Undo\nCtrl+Shift+Z: Redo"
+      },
+      "lastCopiedPath": null,
+      "lastSave": {
+        "status": null
+      },
+      "lastShowInFolder": null,
+      "message": null,
+      "preparationFailure": null,
+      "propertiesWidth": 240,
+      "saveDetailsOpen": false,
+      "saveFeedbackVisible": false,
+      "savingCopy": false,
+      "scheme": "light",
+      "selectedShapeId": null,
+      "selection": "No marks. Insert places a redaction in the middle. Alt+arrow keys pan the image; Alt+Shift+arrow keys pan farther.",
+      "style": {
+        "color": "#dc2626",
+        "font": "IBM Plex Sans",
+        "fontPixels": 28,
+        "strength": 12,
+        "width": 4
+      },
+      "textOutsideImage": false,
+      "tool": "redact",
+      "visibleRect": [
+        0,
+        0,
+        640,
+        320
+      ],
+      "zoomPercent": 98
+    }
+  },
+  {
+    "shapes": [
+      {
+        "color": "#dc2626",
+        "from": [
+          29,
+          30
+        ],
+        "id": 1,
+        "kind": "arrow",
+        "to": [
+          29,
+          30
+        ],
+        "width": 4
+      }
+    ],
+    "view": {
+      "busy": false,
+      "cancelLabel": "Discard\u2026",
+      "canvasSize": [
+        659,
+        456
+      ],
+      "cropPending": false,
+      "destination": {
+        "above": false,
+        "sharingMode": "Shared link",
+        "text": "Synthetic loopback S3 \u00b7 Shared link"
+      },
+      "discardConfirmation": {
+        "open": false,
+        "text": null
+      },
+      "editingText": false,
+      "fitted": true,
+      "geometry": [
+        29,
+        30,
+        0,
+        0
+      ],
+      "geometryDetails": {
+        "open": false,
+        "visible": false
+      },
+      "keyboardHelp": {
+        "open": false,
+        "text": "[ / ]: Cycle marks\nArrows: Move\nShift+arrows: Resize\nCtrl+arrows: Move 10 px\nCtrl+Shift+arrows: Resize 10 px\nTab: Focus properties\nDelete: Remove mark\nEscape: Deselect\nInsert: Place mark\nCtrl+Z: Undo\nCtrl+Shift+Z: Redo"
+      },
+      "lastCopiedPath": null,
+      "lastSave": {
+        "status": null
+      },
+      "lastShowInFolder": null,
+      "message": null,
+      "preparationFailure": null,
+      "propertiesWidth": 240,
+      "saveDetailsOpen": false,
+      "saveFeedbackVisible": false,
+      "savingCopy": false,
+      "scheme": "light",
+      "selectedShapeId": 1,
+      "selection": "Arrow 1 of 1 selected, from 29, 30 to 29, 30. Arrow keys move it, Shift+arrow keys resize it, Delete removes it, [ and ] cycle marks, Tab leaves the canvas for properties, Escape deselects. Alt+arrow keys pan the image; Alt+Shift+arrow keys pan farther.",
+      "style": {
+        "color": "#dc2626",
+        "font": "IBM Plex Sans",
+        "fontPixels": 28,
+        "strength": 12,
+        "width": 4
+      },
+      "textOutsideImage": false,
+      "tool": "arrow",
+      "visibleRect": [
+        0,
+        0,
+        640,
+        320
+      ],
+      "zoomPercent": 98
+    }
+  },
+  {
+    "shapes": [
+      {
+        "color": "#dc2626",
+        "from": [
+          29,
+          30
+        ],
+        "id": 1,
+        "kind": "arrow",
+        "to": [
+          250,
+          90
+        ],
+        "width": 4
+      }
+    ],
+    "view": {
+      "busy": false,
+      "cancelLabel": "Discard\u2026",
+      "canvasSize": [
+        659,
+        456
+      ],
+      "cropPending": false,
+      "destination": {
+        "above": false,
+        "sharingMode": "Shared link",
+        "text": "Synthetic loopback S3 \u00b7 Shared link"
+      },
+      "discardConfirmation": {
+        "open": false,
+        "text": null
+      },
+      "editingText": false,
+      "fitted": true,
+      "geometry": [
+        29,
+        30,
+        221,
+        60
+      ],
+      "geometryDetails": {
+        "open": false,
+        "visible": false
+      },
+      "keyboardHelp": {
+        "open": false,
+        "text": "[ / ]: Cycle marks\nArrows: Move\nShift+arrows: Resize\nCtrl+arrows: Move 10 px\nCtrl+Shift+arrows: Resize 10 px\nTab: Focus properties\nDelete: Remove mark\nEscape: Deselect\nInsert: Place mark\nCtrl+Z: Undo\nCtrl+Shift+Z: Redo"
+      },
+      "lastCopiedPath": null,
+      "lastSave": {
+        "status": null
+      },
+      "lastShowInFolder": null,
+      "message": null,
+      "preparationFailure": null,
+      "propertiesWidth": 240,
+      "saveDetailsOpen": false,
+      "saveFeedbackVisible": false,
+      "savingCopy": false,
+      "scheme": "light",
+      "selectedShapeId": 1,
+      "selection": "Arrow 1 of 1 selected, from 29, 30 to 250, 90. Arrow keys move it, Shift+arrow keys resize it, Delete removes it, [ and ] cycle marks, Tab leaves the canvas for properties, Escape deselects. Alt+arrow keys pan the image; Alt+Shift+arrow keys pan farther.",
+      "style": {
+        "color": "#dc2626",
+        "font": "IBM Plex Sans",
+        "fontPixels": 28,
+        "strength": 12,
+        "width": 4
+      },
+      "textOutsideImage": false,
+      "tool": "arrow",
+      "visibleRect": [
+        0,
+        0,
+        640,
+        320
+      ],
+      "zoomPercent": 98
+    }
+  },
+  {
+    "shapes": [
+      {
+        "color": "#dc2626",
+        "from": [
+          29,
+          30
+        ],
+        "id": 1,
+        "kind": "arrow",
+        "to": [
+          250,
+          90
+        ],
+        "width": 4
+      },
+      {
+        "color": "#dc2626",
+        "id": 2,
+        "kind": "rectangle",
+        "rect": [
+          350,
+          30,
+          1,
+          1
+        ],
+        "width": 4
+      }
+    ],
+    "view": {
+      "busy": false,
+      "cancelLabel": "Discard\u2026",
+      "canvasSize": [
+        659,
+        456
+      ],
+      "cropPending": false,
+      "destination": {
+        "above": false,
+        "sharingMode": "Shared link",
+        "text": "Synthetic loopback S3 \u00b7 Shared link"
+      },
+      "discardConfirmation": {
+        "open": false,
+        "text": null
+      },
+      "editingText": false,
+      "fitted": true,
+      "geometry": [
+        350,
+        30,
+        1,
+        1
+      ],
+      "geometryDetails": {
+        "open": false,
+        "visible": false
+      },
+      "keyboardHelp": {
+        "open": false,
+        "text": "[ / ]: Cycle marks\nArrows: Move\nShift+arrows: Resize\nCtrl+arrows: Move 10 px\nCtrl+Shift+arrows: Resize 10 px\nTab: Focus properties\nDelete: Remove mark\nEscape: Deselect\nInsert: Place mark\nCtrl+Z: Undo\nCtrl+Shift+Z: Redo"
+      },
+      "lastCopiedPath": null,
+      "lastSave": {
+        "status": null
+      },
+      "lastShowInFolder": null,
+      "message": null,
+      "preparationFailure": null,
+      "propertiesWidth": 240,
+      "saveDetailsOpen": false,
+      "saveFeedbackVisible": false,
+      "savingCopy": false,
+      "scheme": "light",
+      "selectedShapeId": 2,
+      "selection": "Rectangle 2 of 2 selected, x 350, y 30, 1 \u00d7 1 px. Arrow keys move it, Shift+arrow keys resize it, Delete removes it, [ and ] cycle marks, Tab leaves the canvas for properties, Escape deselects. Alt+arrow keys pan the image; Alt+Shift+arrow keys pan farther.",
+      "style": {
+        "color": "#dc2626",
+        "font": "IBM Plex Sans",
+        "fontPixels": 28,
+        "strength": 12,
+        "width": 4
+      },
+      "textOutsideImage": false,
+      "tool": "rectangle",
+      "visibleRect": [
+        0,
+        0,
+        640,
+        320
+      ],
+      "zoomPercent": 98
+    }
+  },
+  {
+    "shapes": [
+      {
+        "color": "#dc2626",
+        "from": [
+          29,
+          30
+        ],
+        "id": 1,
+        "kind": "arrow",
+        "to": [
+          250,
+          90
+        ],
+        "width": 4
+      },
+      {
+        "color": "#dc2626",
+        "id": 2,
+        "kind": "rectangle",
+        "rect": [
+          350,
+          30,
+          240,
+          80
+        ],
+        "width": 4
+      }
+    ],
+    "view": {
+      "busy": false,
+      "cancelLabel": "Discard\u2026",
+      "canvasSize": [
+        659,
+        456
+      ],
+      "cropPending": false,
+      "destination": {
+        "above": false,
+        "sharingMode": "Shared link",
+        "text": "Synthetic loopback S3 \u00b7 Shared link"
+      },
+      "discardConfirmation": {
+        "open": false,
+        "text": null
+      },
+      "editingText": false,
+      "fitted": true,
+      "geometry": [
+        350,
+        30,
+        240,
+        80
+      ],
+      "geometryDetails": {
+        "open": false,
+        "visible": false
+      },
+      "keyboardHelp": {
+        "open": false,
+        "text": "[ / ]: Cycle marks\nArrows: Move\nShift+arrows: Resize\nCtrl+arrows: Move 10 px\nCtrl+Shift+arrows: Resize 10 px\nTab: Focus properties\nDelete: Remove mark\nEscape: Deselect\nInsert: Place mark\nCtrl+Z: Undo\nCtrl+Shift+Z: Redo"
+      },
+      "lastCopiedPath": null,
+      "lastSave": {
+        "status": null
+      },
+      "lastShowInFolder": null,
+      "message": null,
+      "preparationFailure": null,
+      "propertiesWidth": 240,
+      "saveDetailsOpen": false,
+      "saveFeedbackVisible": false,
+      "savingCopy": false,
+      "scheme": "light",
+      "selectedShapeId": 2,
+      "selection": "Rectangle 2 of 2 selected, x 350, y 30, 240 \u00d7 80 px. Arrow keys move it, Shift+arrow keys resize it, Delete removes it, [ and ] cycle marks, Tab leaves the canvas for properties, Escape deselects. Alt+arrow keys pan the image; Alt+Shift+arrow keys pan farther.",
+      "style": {
+        "color": "#dc2626",
+        "font": "IBM Plex Sans",
+        "fontPixels": 28,
+        "strength": 12,
+        "width": 4
+      },
+      "textOutsideImage": false,
+      "tool": "rectangle",
+      "visibleRect": [
+        0,
+        0,
+        640,
+        320
+      ],
+      "zoomPercent": 98
+    }
+  },
+  {
+    "shapes": [
+      {
+        "color": "#dc2626",
+        "from": [
+          29,
+          30
+        ],
+        "id": 1,
+        "kind": "arrow",
+        "to": [
+          250,
+          90
+        ],
+        "width": 4
+      },
+      {
+        "color": "#dc2626",
+        "id": 2,
+        "kind": "rectangle",
+        "rect": [
+          350,
+          30,
+          240,
+          80
+        ],
+        "width": 4
+      }
+    ],
+    "view": {
+      "busy": false,
+      "cancelLabel": "Discard\u2026",
+      "canvasSize": [
+        659,
+        456
+      ],
+      "cropPending": false,
+      "destination": {
+        "above": false,
+        "sharingMode": "Shared link",
+        "text": "Synthetic loopback S3 \u00b7 Shared link"
+      },
+      "discardConfirmation": {
+        "open": false,
+        "text": null
+      },
+      "editingText": true,
+      "fitted": true,
+      "geometry": null,
+      "geometryDetails": {
+        "open": false,
+        "visible": false
+      },
+      "keyboardHelp": {
+        "open": false,
+        "text": "[ / ]: Cycle marks\nArrows: Move\nShift+arrows: Resize\nCtrl+arrows: Move 10 px\nCtrl+Shift+arrows: Resize 10 px\nTab: Focus properties\nDelete: Remove mark\nEscape: Deselect\nInsert: Place mark\nCtrl+Z: Undo\nCtrl+Shift+Z: Redo"
+      },
+      "lastCopiedPath": null,
+      "lastSave": {
+        "status": null
+      },
+      "lastShowInFolder": null,
+      "message": null,
+      "preparationFailure": null,
+      "propertiesWidth": 240,
+      "saveDetailsOpen": false,
+      "saveFeedbackVisible": false,
+      "savingCopy": false,
+      "scheme": "light",
+      "selectedShapeId": null,
+      "selection": "2 marks, none selected. Insert places a text label in the middle. [ and ] cycle marks; Escape deselects. Tab leaves the canvas. Alt+arrow keys pan the image; Alt+Shift+arrow keys pan farther.",
+      "style": {
+        "color": "#dc2626",
+        "font": "IBM Plex Sans",
+        "fontPixels": 28,
+        "strength": 12,
+        "width": 4
+      },
+      "textOutsideImage": false,
+      "tool": "text",
+      "visibleRect": [
+        0,
+        0,
+        640,
+        320
+      ],
+      "zoomPercent": 98
+    }
+  },
+  {
+    "shapes": [
+      {
+        "color": "#dc2626",
+        "from": [
+          29,
+          30
+        ],
+        "id": 1,
+        "kind": "arrow",
+        "to": [
+          250,
+          90
+        ],
+        "width": 4
+      },
+      {
+        "color": "#dc2626",
+        "id": 2,
+        "kind": "rectangle",
+        "rect": [
+          350,
+          30,
+          240,
+          80
+        ],
+        "width": 4
+      },
+      {
+        "at": [
+          39,
+          220
+        ],
+        "color": "#dc2626",
+        "font": "IBM Plex Sans",
+        "fontPixels": 28,
+        "id": 3,
+        "kind": "text",
+        "rect": [
+          39,
+          220,
+          75,
+          37
+        ],
+        "text": "Tier 1"
+      }
+    ],
+    "view": {
+      "busy": false,
+      "cancelLabel": "Discard\u2026",
+      "canvasSize": [
+        659,
+        456
+      ],
+      "cropPending": false,
+      "destination": {
+        "above": false,
+        "sharingMode": "Shared link",
+        "text": "Synthetic loopback S3 \u00b7 Shared link"
+      },
+      "discardConfirmation": {
+        "open": false,
+        "text": null
+      },
+      "editingText": false,
+      "fitted": true,
+      "geometry": [
+        39,
+        220,
+        75,
+        37
+      ],
+      "geometryDetails": {
+        "open": false,
+        "visible": false
+      },
+      "keyboardHelp": {
+        "open": false,
+        "text": "[ / ]: Cycle marks\nArrows: Move\nShift+arrows: Resize\nCtrl+arrows: Move 10 px\nCtrl+Shift+arrows: Resize 10 px\nTab: Focus properties\nDelete: Remove mark\nEscape: Deselect\nInsert: Place mark\nCtrl+Z: Undo\nCtrl+Shift+Z: Redo"
+      },
+      "lastCopiedPath": null,
+      "lastSave": {
+        "status": null
+      },
+      "lastShowInFolder": null,
+      "message": null,
+      "preparationFailure": null,
+      "propertiesWidth": 240,
+      "saveDetailsOpen": false,
+      "saveFeedbackVisible": false,
+      "savingCopy": false,
+      "scheme": "light",
+      "selectedShapeId": 3,
+      "selection": "Text label 3 of 3 selected, \"Tier 1\" at x 39, y 220, 28 px. Arrow keys move it, Shift+arrow keys resize it, Delete removes it, [ and ] cycle marks, Tab leaves the canvas for properties, Escape deselects. Alt+arrow keys pan the image; Alt+Shift+arrow keys pan farther.",
+      "style": {
+        "color": "#dc2626",
+        "font": "IBM Plex Sans",
+        "fontPixels": 28,
+        "strength": 12,
+        "width": 4
+      },
+      "textOutsideImage": false,
+      "tool": "text",
+      "visibleRect": [
+        0,
+        0,
+        640,
+        320
+      ],
+      "zoomPercent": 98
+    }
+  },
+  {
+    "shapes": [
+      {
+        "color": "#dc2626",
+        "from": [
+          29,
+          30
+        ],
+        "id": 1,
+        "kind": "arrow",
+        "to": [
+          250,
+          90
+        ],
+        "width": 4
+      },
+      {
+        "color": "#dc2626",
+        "id": 2,
+        "kind": "rectangle",
+        "rect": [
+          350,
+          30,
+          240,
+          80
+        ],
+        "width": 4
+      },
+      {
+        "at": [
+          39,
+          220
+        ],
+        "color": "#dc2626",
+        "font": "IBM Plex Sans",
+        "fontPixels": 28,
+        "id": 3,
+        "kind": "text",
+        "rect": [
+          39,
+          220,
+          75,
+          37
+        ],
+        "text": "Tier 1"
+      },
+      {
+        "id": 4,
+        "kind": "redact",
+        "rect": [
+          360,
+          189,
+          1,
+          1
+        ]
+      }
+    ],
+    "view": {
+      "busy": false,
+      "cancelLabel": "Discard\u2026",
+      "canvasSize": [
+        659,
+        456
+      ],
+      "cropPending": false,
+      "destination": {
+        "above": false,
+        "sharingMode": "Shared link",
+        "text": "Synthetic loopback S3 \u00b7 Shared link"
+      },
+      "discardConfirmation": {
+        "open": false,
+        "text": null
+      },
+      "editingText": false,
+      "fitted": true,
+      "geometry": [
+        360,
+        189,
+        1,
+        1
+      ],
+      "geometryDetails": {
+        "open": false,
+        "visible": false
+      },
+      "keyboardHelp": {
+        "open": false,
+        "text": "[ / ]: Cycle marks\nArrows: Move\nShift+arrows: Resize\nCtrl+arrows: Move 10 px\nCtrl+Shift+arrows: Resize 10 px\nTab: Focus properties\nDelete: Remove mark\nEscape: Deselect\nInsert: Place mark\nCtrl+Z: Undo\nCtrl+Shift+Z: Redo"
+      },
+      "lastCopiedPath": null,
+      "lastSave": {
+        "status": null
+      },
+      "lastShowInFolder": null,
+      "message": null,
+      "preparationFailure": null,
+      "propertiesWidth": 240,
+      "saveDetailsOpen": false,
+      "saveFeedbackVisible": false,
+      "savingCopy": false,
+      "scheme": "light",
+      "selectedShapeId": 4,
+      "selection": "Redaction 4 of 4 selected, x 360, y 189, 1 \u00d7 1 px. Arrow keys move it, Shift+arrow keys resize it, Delete removes it, [ and ] cycle marks, Tab leaves the canvas for properties, Escape deselects. Alt+arrow keys pan the image; Alt+Shift+arrow keys pan farther.",
+      "style": {
+        "color": "#000000",
+        "font": "IBM Plex Sans",
+        "fontPixels": 28,
+        "strength": 12,
+        "width": 4
+      },
+      "textOutsideImage": false,
+      "tool": "redact",
+      "visibleRect": [
+        0,
+        0,
+        640,
+        320
+      ],
+      "zoomPercent": 98
+    }
+  },
+  {
+    "shapes": [
+      {
+        "color": "#dc2626",
+        "from": [
+          29,
+          30
+        ],
+        "id": 1,
+        "kind": "arrow",
+        "to": [
+          250,
+          90
+        ],
+        "width": 4
+      },
+      {
+        "color": "#dc2626",
+        "id": 2,
+        "kind": "rectangle",
+        "rect": [
+          350,
+          30,
+          240,
+          80
+        ],
+        "width": 4
+      },
+      {
+        "at": [
+          39,
+          220
+        ],
+        "color": "#dc2626",
+        "font": "IBM Plex Sans",
+        "fontPixels": 28,
+        "id": 3,
+        "kind": "text",
+        "rect": [
+          39,
+          220,
+          75,
+          37
+        ],
+        "text": "Tier 1"
+      },
+      {
+        "id": 4,
+        "kind": "redact",
+        "rect": [
+          360,
+          189,
+          191,
+          92
+        ]
+      }
+    ],
+    "view": {
+      "busy": false,
+      "cancelLabel": "Discard\u2026",
+      "canvasSize": [
+        659,
+        456
+      ],
+      "cropPending": false,
+      "destination": {
+        "above": false,
+        "sharingMode": "Shared link",
+        "text": "Synthetic loopback S3 \u00b7 Shared link"
+      },
+      "discardConfirmation": {
+        "open": false,
+        "text": null
+      },
+      "editingText": false,
+      "fitted": true,
+      "geometry": [
+        360,
+        189,
+        191,
+        92
+      ],
+      "geometryDetails": {
+        "open": false,
+        "visible": false
+      },
+      "keyboardHelp": {
+        "open": false,
+        "text": "[ / ]: Cycle marks\nArrows: Move\nShift+arrows: Resize\nCtrl+arrows: Move 10 px\nCtrl+Shift+arrows: Resize 10 px\nTab: Focus properties\nDelete: Remove mark\nEscape: Deselect\nInsert: Place mark\nCtrl+Z: Undo\nCtrl+Shift+Z: Redo"
+      },
+      "lastCopiedPath": null,
+      "lastSave": {
+        "status": null
+      },
+      "lastShowInFolder": null,
+      "message": null,
+      "preparationFailure": null,
+      "propertiesWidth": 240,
+      "saveDetailsOpen": false,
+      "saveFeedbackVisible": false,
+      "savingCopy": false,
+      "scheme": "light",
+      "selectedShapeId": 4,
+      "selection": "Redaction 4 of 4 selected, x 360, y 189, 191 \u00d7 92 px. Arrow keys move it, Shift+arrow keys resize it, Delete removes it, [ and ] cycle marks, Tab leaves the canvas for properties, Escape deselects. Alt+arrow keys pan the image; Alt+Shift+arrow keys pan farther.",
+      "style": {
+        "color": "#000000",
+        "font": "IBM Plex Sans",
+        "fontPixels": 28,
+        "strength": 12,
+        "width": 4
+      },
+      "textOutsideImage": false,
+      "tool": "redact",
+      "visibleRect": [
+        0,
+        0,
+        640,
+        320
+      ],
+      "zoomPercent": 98
+    }
+  }
+]

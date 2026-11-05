@@ -1,0 +1,26 @@
+== host: kubuntu, 2026-10-22T20:41:09Z; recorder entry present: no
+
+$ gio mime x-scheme-handler/https
+Default application for “x-scheme-handler/https”: chatgpt.desktop
+Registered applications:
+	chatgpt.desktop
+Recommended applications:
+	chatgpt.desktop
+exit=0
+
+$ python3 -I tool/afa.py recorder-check
+{"refused": "no link click: the stand-in URL recorder is not the http and https default (run i326.py handler-on)", "gio": {"http": ["Default application for \u201cx-scheme-handler/http\u201d: chatgpt.desktop"], "https": ["Default application for \u201cx-scheme-handler/https\u201d: chatgpt.desktop"]}, "recorderEntry": false}
+exit=4
+
+$ python3 -I tool/trial415.py putgd guarded --label guard-test
+{"refused": "no link click: the stand-in URL recorder is not the http and https default (run i326.py handler-on)", "gio": {"http": ["Default application for \u201cx-scheme-handler/http\u201d: chatgpt.desktop"], "https": ["Default application for \u201cx-scheme-handler/https\u201d: chatgpt.desktop"]}, "recorderEntry": false}
+exit=4
+
+$ python3 -I tool/afa.py cleanup guarded
+refusing cleanup: the stand-in URL recorder is on in run(s) recorder-owner; run i326.py handler-off first
+exit=1
+
+$ python3 -I tool/afa.py notify guarded --label guard-test
+{"refused": "no link click: the stand-in URL recorder is not the http and https default (run i326.py handler-on)", "gio": {"http": ["Default application for \u201cx-scheme-handler/http\u201d: chatgpt.desktop"], "https": ["Default application for \u201cx-scheme-handler/https\u201d: chatgpt.desktop"]}, "recorderEntry": false}
+exit=4
+ls: cannot access '/tmp/i415guard': No such file or directory

@@ -1,0 +1,28 @@
+{
+  "build": {
+    "schemaVersion": 1,
+    "version": "26.1024.1191-dev+gccbd7d4ac576",
+    "baseVersion": "26.1024.1191",
+    "packageVersion": "26.1024.1191~dev+gccbd7d4ac576",
+    "gitCommit": "ccbd7d4ac5766d618351b8047a7518de4bba5442",
+    "gitTree": "eec41ef14663ee2de2b7715a032e828d6b7d6616",
+    "commitCount": 1191,
+    "dirty": false,
+    "sourceProvenance": "git"
+  },
+  "artifact": {
+    "file": "putgd-26.1024.1191-dev+gccbd7d4ac576-x86_64.AppImage",
+    "sha256": "6f4046734dc8dd468b4d1035c254cc58ace9096289ccc695f40a0338981da5ef",
+    "bytes": 116505080,
+    "mode": "0755"
+  },
+  "extract": {
+    "sha256": "6f4046734dc8dd468b4d1035c254cc58ace9096289ccc695f40a0338981da5ef",
+    "exit": 0,
+    "stderr": "",
+    "output": "/home/patrick/work/p382extract-doa1ltcy",
+    "appRunPresent": true
+  },
+  "scope": "Headless --appimage-extract only on Mint builder; no desktop/app run of integration artifact",
+  "firstFailure": "Initial PR SBOM extraction failed; cause not established. Failed raw bytes were not retained. Same uploaded artifact extracted successfully here and CI attempt 2 passed."
+}

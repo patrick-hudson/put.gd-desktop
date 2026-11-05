@@ -1,0 +1,141 @@
+{
+  "schemaVersion": 1,
+  "sourceCommit": "3440ab9c4fb6bd745d50eb6c0728a318951ee481",
+  "visuals": [
+    {
+      "file": "visuals/cinnamon-c4-review.png",
+      "sha256": "ce010a35cee84c433a112497fd9f0372d8ca96356d212cb16c8dcdc16eb9c30b",
+      "description": "Original c5bb package: live private Review; execution-owner Discard click890,660.",
+      "reportOwnerReview": "Viewed saved original pixels; synthetic content/surround and app UI only, no protected input. Copied unchanged; no crop/resampling/annotations."
+    },
+    {
+      "file": "visuals/cinnamon-c4-budget.png",
+      "sha256": "14559e256342848f912eeb050dad6143e37da332f58b90ab46efbbe334e3ff4d",
+      "description": "Original c5bb package: real1MiB budget retained for review at1:44.",
+      "reportOwnerReview": "Viewed saved original pixels; synthetic content/surround and app UI only, no protected input. Copied unchanged; no crop/resampling/annotations."
+    },
+    {
+      "file": "visuals/cinnamon-cm3-idle.png",
+      "sha256": "2c5d0b68cb87e13b2f2354a45b5b51c1ad1d37440ab6e3becea67d354c737ed4",
+      "description": "Original c5bb package: independent180s idle window over owned cover; metrics/process exit from receipt.",
+      "reportOwnerReview": "Viewed saved original pixels; synthetic content/surround and app UI only, no protected input. Copied unchanged; no crop/resampling/annotations."
+    },
+    {
+      "file": "visuals/cinnamon-c2-review.png",
+      "sha256": "02b64e561074a930085d0b842f1e54215f3106fe01403a64d60197a4592d1fbb",
+      "description": "Corrected fb19 package: fresh d69 C2 smoke live private Review, actual Discard890,660.",
+      "reportOwnerReview": "Viewed saved original pixels; synthetic content/surround and app UI only, no protected input. Copied unchanged; no crop/resampling/annotations."
+    },
+    {
+      "file": "visuals/kde-k1-review.png",
+      "sha256": "ef6dcce2e2f5807f91c5eecbddee25a728aa16de99bf980f7fecca31ace2fc9e",
+      "description": "Physical d69 native Wayland live private Review; actual Discard1321,808.",
+      "reportOwnerReview": "Viewed saved original pixels; synthetic content/surround and app UI only, no protected input. Copied unchanged; no crop/resampling/annotations."
+    },
+    {
+      "file": "visuals/kde-k1-budget.png",
+      "sha256": "b3c436ecc70915dfab5f583a38f1e6cef804d0dfb1ecbd599fb50ad76b8bf6f8",
+      "description": "Physical d69 real1MiB budget retained for review at0:56; owned synthetic motion stimulus.",
+      "reportOwnerReview": "Viewed saved original pixels; synthetic content/surround and app UI only, no protected input. Copied unchanged; no crop/resampling/annotations."
+    },
+    {
+      "file": "visuals/kde-km3-idle.png",
+      "sha256": "7cc9d3fe3684124bb5f621d8e538b31bcbfb8c4371881c4045743cfa99b66fa5",
+      "description": "Physical d69 independent180s resident idle window over owned cover.",
+      "reportOwnerReview": "Viewed saved original pixels; synthetic content/surround and app UI only, no protected input. Copied unchanged; no crop/resampling/annotations."
+    },
+    {
+      "file": "visuals/gnome-g1-review.png",
+      "sha256": "bf41bde9a5647915213c20a9756b71a7f2e2bf3931d19e78d7f84f5b7c6b9e7d",
+      "description": "Corrected73faf package: GNOME guest native Wayland live private Review; actual Discard1034,713.",
+      "reportOwnerReview": "Viewed saved original pixels; synthetic content/surround and app UI only, no protected input. Copied unchanged; no crop/resampling/annotations."
+    },
+    {
+      "file": "visuals/gnome-g1-budget.png",
+      "sha256": "71f40e5a8f96a942a1fa4de60ac4dbd0b2b0d1ad36913aa889b03fadc4d058e0",
+      "description": "Corrected73faf package: GNOME guest real1MiB budget retained for review at1:52.",
+      "reportOwnerReview": "Viewed saved original pixels; synthetic content/surround and app UI only, no protected input. Copied unchanged; no crop/resampling/annotations."
+    },
+    {
+      "file": "visuals/gnome-gm1-idle.png",
+      "sha256": "2c5d0b68cb87e13b2f2354a45b5b51c1ad1d37440ab6e3becea67d354c737ed4",
+      "description": "GNOME guest independent180s resident idle window over owned cover.",
+      "reportOwnerReview": "Viewed saved original pixels; synthetic content/surround and app UI only, no protected input. Copied unchanged; no crop/resampling/annotations."
+    },
+    {
+      "file": "visuals/cinnamon-c3-budget-timeout.png",
+      "sha256": "2bc7c9e80ad12b2626df9618d6f7f9a247f24f9e2c775a453df269ffb7818cc6",
+      "description": "Preserved failed90s harness wait on original c5bb; still recording at1:31, no budget completion claim.",
+      "reportOwnerReview": "Viewed saved original pixels; synthetic content/surround and app UI only, no protected input. Copied unchanged; no crop/resampling/annotations."
+    }
+  ],
+  "discardClicks": [
+    {
+      "run": "cinnamon-c4",
+      "receipt": {
+        "utc": "2026-10-24T15:36:35Z",
+        "runId": "1543038f-acf2-4140-b4ac-f432cebb06a4",
+        "run": "/tmp/r410c4",
+        "source": "3440ab9c4fb6bd745d50eb6c0728a318951ee481",
+        "point": [
+          890,
+          660
+        ],
+        "visualSha256": "ce010a35cee84c433a112497fd9f0372d8ca96356d212cb16c8dcdc16eb9c30b"
+      },
+      "rawSha256": "0c8795d2e6c0fb3005161fc7b87b23d2337ac64c633f913e78a517950c53c03c"
+    },
+    {
+      "run": "cinnamon-c2",
+      "receipt": {
+        "utc": "2026-10-24T15:59:55Z",
+        "runId": "7b7493a7-62fc-4da3-abd1-b9902255d37e",
+        "run": "/tmp/r410c2",
+        "source": "3440ab9c4fb6bd745d50eb6c0728a318951ee481",
+        "packageSha256": "fb19e0c7818f41430e1516dfc7526d67131d6e63e034b3b733a6dff45b24b988",
+        "point": [
+          890,
+          660
+        ],
+        "visualSha256": "02b64e561074a930085d0b842f1e54215f3106fe01403a64d60197a4592d1fbb"
+      },
+      "rawSha256": "88a7b6bcc98de72442e0fa41ad17f7640b2d2911ad49c3a3d3d7cc14bc374ae2"
+    },
+    {
+      "run": "kde-k1",
+      "receipt": {
+        "utc": "2026-10-24T15:37:40Z",
+        "run": "/tmp/r410d/k1",
+        "source": "3440ab9c4fb6bd745d50eb6c0728a318951ee481",
+        "point": [
+          1321,
+          808
+        ],
+        "visualSha256": "ef6dcce2e2f5807f91c5eecbddee25a728aa16de99bf980f7fecca31ace2fc9e"
+      },
+      "rawSha256": "82e0d2ccfda456479b984526c46549f8ffe3e32ecded2f64b712c7aa114e0d5d"
+    },
+    {
+      "run": "gnome-g1",
+      "receipt": {
+        "utc": "2026-10-24T15:56:43Z",
+        "runId": "afa7f719-5f19-4653-86f3-a96e4914044d",
+        "run": "/tmp/r410g1",
+        "source": "3440ab9c4fb6bd745d50eb6c0728a318951ee481",
+        "packageSha256": "73faf5f647d73390b8a64013e8e97136aa7f599e076d86090b247afcb62f13fd",
+        "point": [
+          1034,
+          713
+        ],
+        "visualSha256": "bf41bde9a5647915213c20a9756b71a7f2e2bf3931d19e78d7f84f5b7c6b9e7d"
+      },
+      "rawSha256": "7215e9792b122b0f789e060b0d22046ea3fc33719ab9955e2211fc9445a802f4"
+    }
+  ],
+  "limits": [
+    "The empty cover frames alone do not prove process exit; use memory and lifecycle receipts.",
+    "Original immediate unmapped review frames are not the decisive click witnesses; use the separately saved mapped frames above.",
+    "Excluded incomplete-cover physical GNOME frames remain on host and were not collected or published.",
+    "Some earlier idle-cover failures have numeric context only and no saved failure frame."
+  ]
+}

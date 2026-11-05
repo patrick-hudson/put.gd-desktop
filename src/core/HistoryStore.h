@@ -1,4 +1,5 @@
 #pragma once
+#include <optional>
 #include "Operation.h"
 #include <QSqlDatabase>
 #include <QSet>
@@ -24,16 +25,32 @@ public:
  HistoryPage list(const HistoryQuery&) const;
  QJsonObject detail(const QString&,Error* = nullptr) const;
  QJsonArray recent(int limit,Error* = nullptr) const;
+ // Operations created at or after `from` (ISO UTC) in one of `states`, newest
+ // first, at most `limit`; for diagnostics packages (#74).
+ QList<Operation> operationsSince(const QString& from,const QStringList& states,int limit,Error* = nullptr) const;
+ // The newest finished upload operation to a destination (completed, partial or
+ // failed), or none: the diagnostics upload's "working" check (#123).
+ std::optional<Operation> lastUpload(const QString& profileId,Error* = nullptr) const;
+ // Operations with an item whose upload journal still names a remote upload (#146).
+ QStringList journaledOperations(Error* = nullptr) const;
  Error expireBefore(const QString& timestamp);
  Error clear(); // preserves any identities retained by in-progress deletion
  Error saveDeletion(const QJsonObject&);
  QJsonObject deletion(const QString&,Error* = nullptr) const;
  Error saveSharing(const QJsonObject&); // journal and effective receipt in one transaction
  QJsonObject sharing(const QString&,Error* = nullptr) const;
+ // Record a successful explicit link copy without rewriting item/deletion ledgers
+ // or claiming that a copied subset recovered an entire batch.
+ Error recordCopiedLink(const QString& historyId,QString& operationId);
  Error updateRemote(const QString& historyId,const QString& status,const Error& = {});
 private:
  Error initialize();
  Error persistOperation(const Operation&,const ProviderRegistry*,const QSet<QString>* changedItems);
+ // Stored artifact and preview paths are absolute. A journal moved with its
+ // data folder (#56) reads them under the folder it is in now.
+ void relocate(Operation&) const;
+ QJsonObject relocate(QJsonObject record) const;
+ QString root_;
  QString connection_;
  QSqlDatabase db_;
  Error error_;

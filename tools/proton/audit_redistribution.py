@@ -28,6 +28,48 @@ def digest(path):
         return hashlib.file_digest(stream, 'sha256').hexdigest()
 
 
+def remaining_evidence(catalog, helper_sha256):
+    """Report the current catalog's gates only for its exact helper fingerprint."""
+    if catalog['helperSha256'] != helper_sha256:
+        raise ValueError('source catalog does not describe the audited helper')
+    proof = catalog.get('proof', {})
+    if proof.get('nativeBunRelinkVerified') or proof.get('nativeCompiledHelperSourceSelectionVerified'):
+        subject = catalog.get('nativeRelinkProof', {})
+        if (subject.get('helperSha256') != helper_sha256 or
+                any(subject.get('sourcePins', {}).get(name) != catalog['sourcePins'][name]
+                    for name in ('bun', 'webkit', 'tinycc'))):
+            raise ValueError('native relink proof does not describe the current helper and native sources')
+    if proof.get('finalPackageAcceptanceVerified'):
+        subject = catalog.get('desktopResourceAcceptance', {})
+        if (subject.get('status') != 'passed' or subject.get('helperSha256') != helper_sha256 or
+                subject.get('sourcePins') != catalog['sourcePins']):
+            raise ValueError('desktop/resource acceptance does not describe the current helper and sources')
+    gates = list(catalog['openGates'])
+    if not catalog.get('published'):
+        gates.append('Publish corresponding source assets with final binary packages')
+    return gates
+
+
+def search_import_graph(metafile):
+    """The public client needs capability glue, but this helper never searches.
+
+    Fail the build if an SDK upgrade starts embedding the Rust/WASM search
+    engine or its FFI runtime. A type-only input is not a bundled module.
+    """
+    inputs = Counter()
+    for output in metafile['outputs'].values():
+        for name, item in output['inputs'].items():
+            if '/search/' in name or '@boltffi/runtime/' in name or name.endswith('.wasm'):
+                inputs[name] += item['bytesInOutput']
+    adapter = 'node_modules/@protontech/drive-sdk/src/search/sdkCapabilities.ts'
+    forbidden = {name: size for name, size in inputs.items() if size > 0 and name != adapter}
+    if forbidden:
+        raise ValueError('unexpected bundled search engine/WASM/FFI inputs: ' + ', '.join(sorted(forbidden)))
+    return {'scope': 'Compiler-visible inputs; SDK capability adapter is distinct from the Rust/WASM engine',
+            'inputs': dict(sorted(inputs.items())), 'rustWasmSearchEngineBundled': False,
+            'boltffiRuntimeBundled': False}
+
+
 def inventory(work, metafile, source_overrides=None):
     source_overrides = source_overrides or {}
     locked = json.loads((work / 'package-lock.json').read_text())['packages']
@@ -130,6 +172,9 @@ def main():
     if output.exists():
         parser.error('--output must be new; preserve prior attempts')
     manifest = json.loads((runtime / 'manifest.json').read_text())
+    catalog_path = ROOT / 'notices/SOURCES.json'
+    catalog = json.loads(catalog_path.read_text())
+    gates = remaining_evidence(catalog, manifest['sha256'])
     work = runtime / 'build-source'
     if digest(runtime / manifest['artifact']) != manifest['sha256']:
         parser.error('runtime hash does not match manifest')
@@ -147,12 +192,15 @@ def main():
             parser.error('redistribution materials do not match runtime manifest')
     output.mkdir(mode=0o700, parents=True)
     bun = work / 'node_modules/@oven/bun-linux-x64/bin/bun'
+    lock = json.loads((ROOT / 'runtime-lock.json').read_text())
+    if digest(bun) != lock['bunSha256'] or manifest['bunSha256'] != lock['bunSha256']:
+        parser.error('Bun executable does not match the pinned official checksum')
     with tempfile.TemporaryDirectory(prefix='pg-p3-') as temporary:
         temporary = Path(temporary)
         candidate = temporary / 'putgd-proton-runtime.new'
         meta = temporary / 'metafile.json'
         result = subprocess.run([str(bun), 'build', '--compile', '--target=bun-linux-x64', '--minify',
-                                 './runtime.ts', '--outfile=' + str(candidate), '--metafile=' + str(meta)],
+                                 '--compile-executable-path=' + str(bun), './runtime.ts', '--outfile=' + str(candidate), '--metafile=' + str(meta)],
                                 cwd=work, capture_output=True, text=True, check=True)
         (output / 'compile.txt').write_text(result.stdout + result.stderr)
         if digest(candidate) != manifest['sha256']:
@@ -179,9 +227,9 @@ def main():
               'bundledMissingSuppliedTexts': [p['location'] for p in packages if p['classification'] == 'bundled-js' and not p['suppliedNotices']],
               'reviewComplete': False,
               'sourceOverrides': manifest.get('sourceOverrides', {}),
-              'remainingEvidence': ['Verify native Bun/JSC/TinyCC modification and relink with the required toolchain',
-                                    'Publish corresponding source assets with final binary packages',
-                                    'Complete final current-helper functional/memory/package acceptance'],
+              'sourceCatalogSha256': digest(catalog_path),
+              'searchImportGraph': search_import_graph(metafile),
+              'remainingEvidence': gates,
               'sourceFiles': len(sources), 'sourceArchiveSha256': digest(output / 'helper-rebuild.tar.gz')}
     (output / 'inventory.json').write_text(json.dumps(report, indent=2) + '\n')
     print(json.dumps({key: report[key] for key in ['runtimeSha256', 'exactRebuild', 'classificationCounts', 'sourceFiles', 'reviewComplete']}))

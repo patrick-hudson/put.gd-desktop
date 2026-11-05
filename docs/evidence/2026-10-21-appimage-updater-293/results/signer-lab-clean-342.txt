@@ -1,0 +1,7 @@
+deleted 38 lab objects
+invalidation I187ZGR5CFE8OC655G3MAR2NSC
+lab workspace and publisher state removed; receipts kept in /home/patrick/.local/state/putgd-signer/receipts/lab
+releases/v0.1.1-nightly.703/putgd-0.1.1-nightly.703-x86_64.AppImage 404
+dl/nightly/appimage.zsync 404
+update/v1/nightly.json 404
+apt/debian13/dists/nightly/InRelease 404

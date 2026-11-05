@@ -1,0 +1,1 @@
+{"host": "d69", "exit": 0, "stdout": "{\"pid\": 2755012, \"cgroup\": \"0::/user.slice/user-1000.slice/user@1000.service/app.slice/putgd-signer.service\\n\", \"displayEnvironment\": {\"DISPLAY\": \":0\", \"WAYLAND_DISPLAY\": \"wayland-0\", \"XDG_SESSION_ID\": \"20089\"}}\n", "stderr": ""}

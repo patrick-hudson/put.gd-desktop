@@ -1,0 +1,15 @@
+{
+  "sourceCommit": "573a11c831c2649f4b81f5a8ae86a120446f2421",
+  "ciRun": "https://github.com/patrick-hudson/put.gd-desktop/actions/runs/40978718771",
+  "field": "postDeploymentAudit.rootDesktopEntry",
+  "boat": {
+    "file": "putgd.desktop",
+    "removedLinks": [
+      "putgd-record.desktop"
+    ]
+  },
+  "ci": {
+    "file": "putgd.desktop",
+    "removedLinks": []
+  }
+}

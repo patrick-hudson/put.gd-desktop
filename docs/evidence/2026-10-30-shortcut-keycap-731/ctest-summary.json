@@ -1,0 +1,589 @@
+{
+  "sourceCommit": "44455848595f65d09ce6bf1365307d3b9ad3452a",
+  "sourceTree": "8e41ce22c3ed83914f080fe69ece873f0abfb2fe",
+  "boatId": "bx_fmcg3v94",
+  "command": "PUTGD_TEST_TIME_SCALE=3 ctest --preset dev --parallel 4 --resource-spec-file tools/ci/ctest-resources.json --output-junit /home/user/work/731-ctest-final.xml",
+  "retryCount": 0,
+  "result": {
+    "name": "Linux-c++",
+    "tests": "114",
+    "failures": "0",
+    "disabled": "0",
+    "skipped": "0",
+    "hostname": "box-node-b27c653ba6ca2223",
+    "time": "396",
+    "timestamp": "2026-10-30T03:20:05"
+  },
+  "cases": [
+    {
+      "name": "recording_storage_integration",
+      "time": "6.12628",
+      "status": "run"
+    },
+    {
+      "name": "portal_streams_contract",
+      "time": "0.00525515",
+      "status": "run"
+    },
+    {
+      "name": "wayland_acquisition_contract",
+      "time": "0.00260773",
+      "status": "run"
+    },
+    {
+      "name": "export_av_sync_contract",
+      "time": "4.39733",
+      "status": "run"
+    },
+    {
+      "name": "poster_contract",
+      "time": "0.237788",
+      "status": "run"
+    },
+    {
+      "name": "pause_timeline_contract",
+      "time": "0.00290768",
+      "status": "run"
+    },
+    {
+      "name": "record_runtime_contract",
+      "time": "0.00832047",
+      "status": "run"
+    },
+    {
+      "name": "bar_placement_contract",
+      "time": "0.0578019",
+      "status": "run"
+    },
+    {
+      "name": "bar_placement_single_monitor_contract",
+      "time": "0.060087",
+      "status": "run"
+    },
+    {
+      "name": "gui_review_window",
+      "time": "16.4817",
+      "status": "run"
+    },
+    {
+      "name": "record_identity_contract",
+      "time": "0.0148038",
+      "status": "run"
+    },
+    {
+      "name": "kde_region_control",
+      "time": "9.26415",
+      "status": "run"
+    },
+    {
+      "name": "native_session_guards",
+      "time": "0.00455447",
+      "status": "run"
+    },
+    {
+      "name": "native_tray_integration",
+      "time": "22.5264",
+      "status": "run"
+    },
+    {
+      "name": "capture_control_integration",
+      "time": "0.00403903",
+      "status": "run"
+    },
+    {
+      "name": "capture_process_integration",
+      "time": "7.0445",
+      "status": "run"
+    },
+    {
+      "name": "x11_core_clipboard",
+      "time": "17.6775",
+      "status": "run"
+    },
+    {
+      "name": "x11_clipboard_import",
+      "time": "0.614634",
+      "status": "run"
+    },
+    {
+      "name": "x11_capture_decode",
+      "time": "0.142389",
+      "status": "run"
+    },
+    {
+      "name": "x11_native_snapshot",
+      "time": "0.0337206",
+      "status": "run"
+    },
+    {
+      "name": "version_contract",
+      "time": "3.60728",
+      "status": "run"
+    },
+    {
+      "name": "kde_shortcut_normalization",
+      "time": "0.00538038",
+      "status": "run"
+    },
+    {
+      "name": "kde_shortcuts_integration",
+      "time": "5.56724",
+      "status": "run"
+    },
+    {
+      "name": "kde_keyboard_map",
+      "time": "0.00954128",
+      "status": "run"
+    },
+    {
+      "name": "shortcut_keyboard",
+      "time": "0.00374265",
+      "status": "run"
+    },
+    {
+      "name": "kde_ownership_integration",
+      "time": "8.2463",
+      "status": "run"
+    },
+    {
+      "name": "kde_clipboard_import",
+      "time": "0.109366",
+      "status": "run"
+    },
+    {
+      "name": "image_job_integration",
+      "time": "2.60305",
+      "status": "run"
+    },
+    {
+      "name": "poster_job_integration",
+      "time": "2.54952",
+      "status": "run"
+    },
+    {
+      "name": "ui_split_services_integration",
+      "time": "1.23613",
+      "status": "run"
+    },
+    {
+      "name": "ui_process_integration",
+      "time": "14.0685",
+      "status": "run"
+    },
+    {
+      "name": "editor_contract",
+      "time": "1.36254",
+      "status": "run"
+    },
+    {
+      "name": "editor_job_integration",
+      "time": "5.47811",
+      "status": "run"
+    },
+    {
+      "name": "edit_operations_integration",
+      "time": "29.9696",
+      "status": "run"
+    },
+    {
+      "name": "ui_endpoints_integration",
+      "time": "2.44318",
+      "status": "run"
+    },
+    {
+      "name": "ui_control_integration",
+      "time": "0.859002",
+      "status": "run"
+    },
+    {
+      "name": "session_client_integration",
+      "time": "16.6358",
+      "status": "run"
+    },
+    {
+      "name": "version_integration",
+      "time": "0.111872",
+      "status": "run"
+    },
+    {
+      "name": "gui_editor_window",
+      "time": "22.076",
+      "status": "run"
+    },
+    {
+      "name": "gui_application",
+      "time": "44.1677",
+      "status": "run"
+    },
+    {
+      "name": "gui_window_buttons",
+      "time": "0.335469",
+      "status": "run"
+    },
+    {
+      "name": "gui_theme",
+      "time": "0.730459",
+      "status": "run"
+    },
+    {
+      "name": "gui_tray",
+      "time": "76.405",
+      "status": "run"
+    },
+    {
+      "name": "gui_version",
+      "time": "2.17024",
+      "status": "run"
+    },
+    {
+      "name": "release_link_contract",
+      "time": "0.00465106",
+      "status": "run"
+    },
+    {
+      "name": "update_feed_contract",
+      "time": "0.00527853",
+      "status": "run"
+    },
+    {
+      "name": "update_check_request",
+      "time": "0.0270924",
+      "status": "run"
+    },
+    {
+      "name": "update_appimage_install_files",
+      "time": "0.812286",
+      "status": "run"
+    },
+    {
+      "name": "update_minisign_verify",
+      "time": "0.00533124",
+      "status": "run"
+    },
+    {
+      "name": "update_appimage_install_child",
+      "time": "0.888928",
+      "status": "run"
+    },
+    {
+      "name": "update_service_schedule",
+      "time": "14.1876",
+      "status": "run"
+    },
+    {
+      "name": "host_environment_contract",
+      "time": "0.0563356",
+      "status": "run"
+    },
+    {
+      "name": "update_system_repository",
+      "time": "0.00675775",
+      "status": "run"
+    },
+    {
+      "name": "geometry_contract",
+      "time": "0.412909",
+      "status": "run"
+    },
+    {
+      "name": "allocator_policy_contract",
+      "time": "0.0347916",
+      "status": "run"
+    },
+    {
+      "name": "x11_raw_key_matcher",
+      "time": "0.00351744",
+      "status": "run"
+    },
+    {
+      "name": "native_shortcut_rejection_integration",
+      "time": "0.947121",
+      "status": "run"
+    },
+    {
+      "name": "resident_retire_integration",
+      "time": "3.51745",
+      "status": "run"
+    },
+    {
+      "name": "resident_display_loss_integration",
+      "time": "0.818718",
+      "status": "run"
+    },
+    {
+      "name": "gui_theme_cinnamon_dconf",
+      "time": "1.4713",
+      "status": "run"
+    },
+    {
+      "name": "native_background_startup_integration",
+      "time": "70.0752",
+      "status": "run"
+    },
+    {
+      "name": "file_dialog_integration",
+      "time": "1.59346",
+      "status": "run"
+    },
+    {
+      "name": "file_dialog_x11_parent",
+      "time": "0.101067",
+      "status": "run"
+    },
+    {
+      "name": "host_open_integration",
+      "time": "3.89527",
+      "status": "run"
+    },
+    {
+      "name": "ui_native_lifecycle_integration",
+      "time": "2.6728",
+      "status": "run"
+    },
+    {
+      "name": "x11_isolated",
+      "time": "21.1283",
+      "status": "run"
+    },
+    {
+      "name": "keychain_backend_integration",
+      "time": "0.013292",
+      "status": "run"
+    },
+    {
+      "name": "keychain_integration",
+      "time": "0.108724",
+      "status": "run"
+    },
+    {
+      "name": "collision_policy_integration",
+      "time": "33.9095",
+      "status": "run"
+    },
+    {
+      "name": "s3_delete_integration",
+      "time": "8.70116",
+      "status": "run"
+    },
+    {
+      "name": "s3_module_integration",
+      "time": "35.3288",
+      "status": "run"
+    },
+    {
+      "name": "s3_integration",
+      "time": "11.9201",
+      "status": "run"
+    },
+    {
+      "name": "s3_multipart_integration",
+      "time": "17.5466",
+      "status": "run"
+    },
+    {
+      "name": "public_url",
+      "time": "0.00324821",
+      "status": "run"
+    },
+    {
+      "name": "build_contract",
+      "time": "0.054356",
+      "status": "run"
+    },
+    {
+      "name": "s3_worker_supervision",
+      "time": "50.4455",
+      "status": "run"
+    },
+    {
+      "name": "s3_worker_protocol",
+      "time": "0.0728221",
+      "status": "run"
+    },
+    {
+      "name": "sdk_contract",
+      "time": "0.18518",
+      "status": "run"
+    },
+    {
+      "name": "payload_contract",
+      "time": "0.413034",
+      "status": "run"
+    },
+    {
+      "name": "archive_contract",
+      "time": "0.0406381",
+      "status": "run"
+    },
+    {
+      "name": "upload_naming_contract",
+      "time": "0.0435934",
+      "status": "run"
+    },
+    {
+      "name": "history_contract",
+      "time": "12.9246",
+      "status": "run"
+    },
+    {
+      "name": "operations_contract",
+      "time": "277.95",
+      "status": "run"
+    },
+    {
+      "name": "recording_model_contract",
+      "time": "0.078729",
+      "status": "run"
+    },
+    {
+      "name": "storage_contract_integration",
+      "time": "46.3498",
+      "status": "run"
+    },
+    {
+      "name": "cli_integration",
+      "time": "42.755",
+      "status": "run"
+    },
+    {
+      "name": "config_reload_integration",
+      "time": "1.22102",
+      "status": "run"
+    },
+    {
+      "name": "storage_locations_integration",
+      "time": "8.04408",
+      "status": "run"
+    },
+    {
+      "name": "gnome_image_decode",
+      "time": "0.0473755",
+      "status": "run"
+    },
+    {
+      "name": "gnome_bridge_contract",
+      "time": "0.0222609",
+      "status": "run"
+    },
+    {
+      "name": "gnome_core_transport_integration",
+      "time": "11.7253",
+      "status": "run"
+    },
+    {
+      "name": "kwin_transfer_contract",
+      "time": "0.169755",
+      "status": "run"
+    },
+    {
+      "name": "recording_service_integration",
+      "time": "23.6244",
+      "status": "run"
+    },
+    {
+      "name": "recording_helper_integration",
+      "time": "17.3333",
+      "status": "run"
+    },
+    {
+      "name": "settings_contract",
+      "time": "10.0648",
+      "status": "run"
+    },
+    {
+      "name": "logging_contract",
+      "time": "2.36847",
+      "status": "run"
+    },
+    {
+      "name": "crash_handler_contract",
+      "time": "11.4015",
+      "status": "run"
+    },
+    {
+      "name": "diagnostics_upload_contract",
+      "time": "8.82847",
+      "status": "run"
+    },
+    {
+      "name": "diagnostics_bundle_contract",
+      "time": "4.25257",
+      "status": "run"
+    },
+    {
+      "name": "json_ref_lifetime_contract",
+      "time": "0.243125",
+      "status": "run"
+    },
+    {
+      "name": "gui_settings",
+      "time": "161.407",
+      "status": "run"
+    },
+    {
+      "name": "gui_history_view",
+      "time": "192.886",
+      "status": "run"
+    },
+    {
+      "name": "gui_history_view_text150",
+      "time": "23.6739",
+      "status": "run"
+    },
+    {
+      "name": "login_startup_contract",
+      "time": "0.505262",
+      "status": "run"
+    },
+    {
+      "name": "resident_session_contract",
+      "time": "1.7119",
+      "status": "run"
+    },
+    {
+      "name": "local_ipc_contract",
+      "time": "13.2883",
+      "status": "run"
+    },
+    {
+      "name": "ip_address_contract",
+      "time": "0.01942",
+      "status": "run"
+    },
+    {
+      "name": "region_selection_contract",
+      "time": "2.03439",
+      "status": "run"
+    },
+    {
+      "name": "kde_region_overlay",
+      "time": "0.0422104",
+      "status": "run"
+    },
+    {
+      "name": "native_region_overlay",
+      "time": "11.2761",
+      "status": "run"
+    },
+    {
+      "name": "capture_preparation_x11",
+      "time": "5.14858",
+      "status": "run"
+    },
+    {
+      "name": "proton_contract",
+      "time": "68.2543",
+      "status": "run"
+    },
+    {
+      "name": "proton_transport",
+      "time": "9.4532",
+      "status": "run"
+    },
+    {
+      "name": "b2_integration",
+      "time": "9.79396",
+      "status": "run"
+    }
+  ]
+}

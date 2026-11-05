@@ -1,0 +1,256 @@
+{
+  "status": "complete",
+  "startedUtc": "2026-10-25T05:00:46.301465+00:00",
+  "driver": {
+    "sha256": "3cb511e0f0e7e4de63afa68d0ae66a56a8f6abcc028aa0f2df426e27d21a6676",
+    "revision": "00ab777f2413a1fbd7670a7259dc614eced896e6",
+    "revisionSource": "explicit-declaration",
+    "sourceFiles": {
+      "tests/performance/physical_campaign.py": "3cb511e0f0e7e4de63afa68d0ae66a56a8f6abcc028aa0f2df426e27d21a6676",
+      "tests/performance/bench_ui_process.py": "a28c94b075036ea65f8eca8e068d480cff46ee959d4680593f5c4d55cce3fc40",
+      "tests/performance/observe_idle.py": "33fab955eb36d617ee0a2fd5de67cf0a54aab0994a3dccb3f70dac5111398efe",
+      "tests/performance/campaign_fixture.py": "330632490f68fb3621f19261f35e64643849b26190de256c969cdc89e79d41d9",
+      "tests/performance/campaign_ui.py": "86dd179d7ee6c4c0cae9728270dca133dbaf9b15975f05fb13965231669937dc",
+      "tests/performance/campaign_workloads.py": "179e837eab64ebc7f82c3a6237067070d208a75cf255b7cd4d5d970492337bf9",
+      "tests/performance/campaign_proxy.py": "39973a4603cedf82ae89250c222ae5f508f36aa127be4d501f2ee3c3eae0e98b",
+      "tests/performance/campaign_lifecycle.py": "e86141e204105fe6834d90933dd065377df0b444786eec5cc1340c11eabe6668",
+      "tests/performance/build_current_capture.py": "dfab0d0aefc471cd13eb3ec6e1bb6b0c57614ac424d2067eca4c5846de0f95bd",
+      "tests/performance/campaign_frames.py": "6c013f4cbce53b96ce6c2dd1b0b1d396f449d5017621654ae2e291a6c5cb6a97",
+      "tools/diagnostics/check_socket_paths.py": "7e8797ec6ea0014eeacd428f822ef3fe545a276247a7ad7e6de9b557a0937f55"
+    }
+  },
+  "product": {
+    "path": "/home/patrick/work/i561/putgd_26.1025.1259~dev+g79fd0cb5ee91_amd64.deb",
+    "sha256": "ba27f6d480e84dd71e8947375c4c48a62421301dbf90d47a531bfa35f61b657b",
+    "binaries": {
+      "app": {
+        "path": "/usr/bin/putgd",
+        "sha256": "181af4eaee0f2bc46cf0a12ce41cf92e0c2fe9a648b099e95afee62a02b70f24",
+        "build": {
+          "schemaVersion": 1,
+          "version": "26.1025.1259-dev+g79fd0cb5ee91",
+          "baseVersion": "26.1025.1259",
+          "packageVersion": "26.1025.1259~dev+g79fd0cb5ee91",
+          "gitCommit": "79fd0cb5ee9170580941b175b99d89c3921ed352",
+          "gitTree": "0b5977a7395abac369c0602ab145426dfbac06f1",
+          "commitCount": 1259,
+          "dirty": false,
+          "sourceProvenance": "git"
+        }
+      },
+      "capture_helper": {
+        "path": "/usr/bin/putgd-capture",
+        "sha256": "b05e267b82512d01b1cfea8e484ebc46628d7a7d42eae37bf285794eb41eda76",
+        "build": {
+          "schemaVersion": 1,
+          "version": "26.1025.1259-dev+g79fd0cb5ee91",
+          "baseVersion": "26.1025.1259",
+          "packageVersion": "26.1025.1259~dev+g79fd0cb5ee91",
+          "gitCommit": "79fd0cb5ee9170580941b175b99d89c3921ed352",
+          "gitTree": "0b5977a7395abac369c0602ab145426dfbac06f1",
+          "commitCount": 1259,
+          "dirty": false,
+          "sourceProvenance": "git"
+        }
+      },
+      "cli": {
+        "path": "/usr/bin/putgd-cli",
+        "sha256": "6005a3c55c4c121040b4c0d3e1fecd61389b82679a3ee5e0a9efbb98679d5e14",
+        "build": {
+          "schemaVersion": 1,
+          "version": "26.1025.1259-dev+g79fd0cb5ee91",
+          "baseVersion": "26.1025.1259",
+          "packageVersion": "26.1025.1259~dev+g79fd0cb5ee91",
+          "gitCommit": "79fd0cb5ee9170580941b175b99d89c3921ed352",
+          "gitTree": "0b5977a7395abac369c0602ab145426dfbac06f1",
+          "commitCount": 1259,
+          "dirty": false,
+          "sourceProvenance": "git"
+        }
+      },
+      "helper": {
+        "path": "/usr/bin/putgd-ui",
+        "sha256": "43ac32d5071fbc41a3be8ae3b1b69373270d51d7d9a944609c849092c8b26cb0",
+        "build": {
+          "schemaVersion": 1,
+          "version": "26.1025.1259-dev+g79fd0cb5ee91",
+          "baseVersion": "26.1025.1259",
+          "packageVersion": "26.1025.1259~dev+g79fd0cb5ee91",
+          "gitCommit": "79fd0cb5ee9170580941b175b99d89c3921ed352",
+          "gitTree": "0b5977a7395abac369c0602ab145426dfbac06f1",
+          "commitCount": 1259,
+          "dirty": false,
+          "sourceProvenance": "git"
+        }
+      }
+    }
+  },
+  "parameters": {
+    "scenario": "slow",
+    "output": "/tmp/p561s2",
+    "package": "/home/patrick/work/i561/putgd_26.1025.1259~dev+g79fd0cb5ee91_amd64.deb",
+    "package_sha256": "ba27f6d480e84dd71e8947375c4c48a62421301dbf90d47a531bfa35f61b657b",
+    "version": "26.1025.1259-dev+g79fd0cb5ee91",
+    "source_revision": "79fd0cb5ee9170580941b175b99d89c3921ed352",
+    "desktop_session": "c89",
+    "lock_session": "codex-561-m74-final",
+    "app": "/usr/bin/putgd",
+    "cli": "/usr/bin/putgd-cli",
+    "helper": "/usr/bin/putgd-ui",
+    "capture_helper": "/usr/bin/putgd-capture",
+    "driver": null,
+    "capture_driver_manifest": null,
+    "fixture_root": null,
+    "driver_revision": "00ab777f2413a1fbd7670a7259dc614eced896e6",
+    "open_seconds": 30,
+    "vnc_port": 5900,
+    "endpoint": "http://127.0.0.1:44181",
+    "fixture_pid": 717401,
+    "fixture_source": "/home/patrick/work/i561/driver/tests/fixtures/s3_server.py",
+    "enable_accessibility": true,
+    "native_driver": "/home/patrick/work/i561/native495/native_acceptance.py",
+    "native_driver_revision": "72afd00bf2dbdaaa7e4bd3f847dc54f1da715f0e",
+    "native_driver_sha256": "347934c226f99cb0e509d5466c5df8116896e6bfac07d75fdfa4f4c2d06ca053",
+    "threshold_policy": null,
+    "settle_seconds": 300,
+    "history_pages": 200
+  },
+  "metrics": {
+    "historyOpenFirstGenericDrawableObservationMs": 709.4302849727683,
+    "historyOpenUpperBoundMs": null,
+    "slowInputGenericRepaintMs": 5.2099269814789295,
+    "slowInputUpperBoundMs": null,
+    "slowUploadSeconds": 25.240495915000793,
+    "cancelTerminalMs": 713.7525719590485,
+    "postUploadFinalFamily": {
+      "rssBytes": 33378304,
+      "pssBytes": 21559296,
+      "privateBytes": 20795392
+    },
+    "settleGrowthBytes": 2262016,
+    "sampledProcessFamily": {
+      "peakTotals": {
+        "rssBytes": 161034240,
+        "pssBytes": 84380672,
+        "privateBytes": 67891200
+      },
+      "cpuPercentOneCoreLowerBound": 0.7769094874216717,
+      "observedProcessGenerations": 6,
+      "samplingSpanSeconds": 359.115192332014,
+      "shortLivedChildrenMayBeMissed": true
+    }
+  },
+  "gates": {
+    "historyOpenUpperBoundMs": {
+      "status": "unassessed",
+      "reason": "content_endpoint_not_witnessed"
+    },
+    "slowInputUpperBoundMs": {
+      "status": "unassessed",
+      "reason": "content_endpoint_not_witnessed"
+    },
+    "cancelTerminalMs": {
+      "status": "unassessed",
+      "reason": "no_explicit_approved_threshold"
+    },
+    "settleGrowthBytes": {
+      "status": "unassessed",
+      "reason": "no_explicit_approved_threshold"
+    },
+    "settled-rssBytes": {
+      "status": "pass",
+      "limitBytes": 41943040
+    },
+    "settled-pssBytes": {
+      "status": "pass",
+      "limitBytes": 30408704
+    },
+    "cleanup": {
+      "status": "pass"
+    }
+  },
+  "limitations": [
+    "Capture witness observes X11 drawable paint, not compositor presentation.",
+    "CLI acknowledgements do not prove painted response.",
+    "Sequential sampled process memory can miss short-lived descendants.",
+    "Family CPU is a lower bound when a child exits between samples.",
+    "Shared desktop daemons are outside the resident process family.",
+    "Host quietness and reviewed sanitized visuals require coordinator evidence.",
+    "Post-upload sampled growth/plateau is measured; a finite settle does not prove absence of all leaks."
+  ],
+  "socketPreflight": {
+    "schemaVersion": 1,
+    "passed": true,
+    "limitBytesExcludingNul": 107,
+    "paths": [
+      {
+        "path": "/tmp/p561s2/runtime/putgd/session.sock",
+        "utf8Bytes": 38,
+        "passed": true
+      }
+    ]
+  },
+  "physical": {
+    "hostname": "mint-builder",
+    "kernel": "6.14.0-37-generic",
+    "session": {
+      "Name": "patrick",
+      "Display": ":0",
+      "Remote": "no",
+      "Desktop": "cinnamon",
+      "Leader": "625282",
+      "Type": "x11",
+      "Active": "yes"
+    },
+    "sessionId": "c89",
+    "requestedQtPlatform": "xcb",
+    "systemVersions": {
+      "kernel": "6.14.0-37-generic",
+      "machine": "x86_64",
+      "cpu": "Intel(R) Core(TM) i5-6500T CPU @ 2.50GHz",
+      "desktop": "X-Cinnamon",
+      "session": "x11",
+      "python": "3.12.3",
+      "packages": {
+        "cinnamon": "6.6.9+zena",
+        "libc6": "2.39-0ubuntu8.9",
+        "libcairo2": "1.18.0-3build1",
+        "libgtk-3-0t64": "3.24.41-4ubuntu1.3",
+        "libqt6core6t64": "6.4.2+dfsg-21.1build5",
+        "muffin": "6.6.3+zena"
+      }
+    },
+    "osRelease": "NAME=\"Linux Mint\"\nVERSION=\"22.3 (Zena)\"\nID=linuxmint\nID_LIKE=\"ubuntu debian\"\nPRETTY_NAME=\"Linux Mint 22.3\"\nVERSION_ID=\"22.3\"\nHOME_URL=\"https://www.linuxmint.com/\"\nSUPPORT_URL=\"https://forums.linuxmint.com/\"\nBUG_REPORT_URL=\"http://linuxmint-troubleshooting-guide.readthedocs.io/en/latest/\"\nPRIVACY_POLICY_URL=\"https://www.linuxmint.com/\"\nVERSION_CODENAME=zena\nUBUNTU_CODENAME=noble\n",
+    "loadAverage": [
+      "0.16",
+      "0.17",
+      "0.26"
+    ]
+  },
+  "residentCleanup": [
+    {
+      "gracefulRequest": true,
+      "exitCode": 0,
+      "forced": false,
+      "remaining": [],
+      "socketAbsent": true,
+      "passed": true,
+      "errors": [],
+      "inventoryComplete": true,
+      "absenceVerified": true,
+      "inventoryDefinition": "observed PID/start/UID generations + resident process group + exact isolated runtime/data environment; no command lines exported"
+    },
+    {
+      "gracefulRequest": true,
+      "exitCode": 0,
+      "forced": false,
+      "remaining": [],
+      "socketAbsent": true,
+      "passed": true,
+      "errors": [],
+      "inventoryComplete": true,
+      "absenceVerified": true,
+      "inventoryDefinition": "observed PID/start/UID generations + resident process group + exact isolated runtime/data environment; no command lines exported"
+    }
+  ]
+}

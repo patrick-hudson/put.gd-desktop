@@ -1,0 +1,6 @@
+{
+  "file": "native-modification.patch.gz",
+  "sha256": "1948601cf8302901c15de7ac5e57f9800c7694d42e44cadee95475b2ddb6846a",
+  "uncompressedSha256": "0b6cf36da33db74b4cb16d7c3f7025b88806c700b77facef3a1a776b4022596c",
+  "scope": "Exact executed unified source patch, compressed to preserve its significant context prefixes without text whitespace normalization."
+}

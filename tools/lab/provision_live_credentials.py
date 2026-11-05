@@ -303,6 +303,7 @@ for name in DISPLAY XAUTHORITY DBUS_SESSION_BUS_ADDRESS XDG_SESSION_TYPE XDG_CUR
 done
 export QT_QPA_PLATFORM={shlex.quote(profile['qt_platform'])}
 export XDG_RUNTIME_DIR=/run/user/$(id -u)
+{lab.guest_secret_prefix(info)}\
 exec {shlex.quote(program)} <<'{nonce}'
 '''.encode('ascii') + body + nonce.encode('ascii') + b'\n'
     return _reply(exchange(arguments, script, timeout=BROKER_TIMEOUT), provider, request)
@@ -512,10 +513,12 @@ class ProtonSessionChain:
         self.host_receipts = {}
         self.pending_source = None
 
-    def provision(self, run, guest_broker, receipt=None):
+    def provision(self, run, guest_broker, receipt=None, reference=None):
+        """reference reuses an earlier, cleaned-up guest name, so that guest's put.gd can finish
+        operations recorded under it; the import still refuses an existing entry."""
         if self.active is not None or self.pending_source is not None:
             _fail()
-        reference = 'putgd-lab-' + str(uuid.uuid4())
+        reference = 'putgd-lab-' + str(uuid.uuid4()) if reference is None else validate_reference(reference, lab_only=True)
         run = _run_name(run)
         value = _receipt_value('proton', 'guest', run, reference, 'chain_guest', 'import_pending', True)
         path = _create_receipt(receipt, value)

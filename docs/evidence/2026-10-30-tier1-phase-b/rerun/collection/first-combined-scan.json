@@ -1,0 +1,13 @@
+{
+  "quarantine": [],
+  "passed": false,
+  "files": 479,
+  "pngs": 135,
+  "image_audit": "ocr-and-known-regions",
+  "findings": [
+    {
+      "file_index": 381,
+      "kind": "session-or-authorization"
+    }
+  ]
+}

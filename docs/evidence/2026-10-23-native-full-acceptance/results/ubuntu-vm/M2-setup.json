@@ -1,0 +1,84 @@
+{
+ "setup": true,
+ "validation": {
+  "error": {
+   "code": "",
+   "details": {},
+   "message": ""
+  },
+  "ok": true
+ },
+ "credentials": {
+  "profile": "afa-fixture",
+  "ok": true,
+  "state": "completed",
+  "error": ""
+ },
+ "run": {
+  "name": "M2",
+  "appimage": "/usr/bin/putgd",
+  "appdir": "/",
+  "exe": "/usr/bin/putgd",
+  "cli": "/usr/bin/putgd-cli",
+  "profile": "default",
+  "runtime": "/tmp/nfa.R0L9yt",
+  "session": {
+   "HOME": "/home/lab",
+   "PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin",
+   "USER": "lab",
+   "LANG": "en_US.UTF-8",
+   "DBUS_SESSION_BUS_ADDRESS": "unix:path=/run/user/1000/bus",
+   "XDG_SESSION_TYPE": "wayland",
+   "XDG_CURRENT_DESKTOP": "ubuntu:GNOME",
+   "XDG_SESSION_DESKTOP": "ubuntu",
+   "DESKTOP_SESSION": "ubuntu",
+   "XDG_DATA_DIRS": "/usr/share/ubuntu:/usr/share/gnome:/usr/local/share/:/usr/share/:/var/lib/snapd/desktop",
+   "WAYLAND_DISPLAY": "/run/user/1000/wayland-0",
+   "DISPLAY": ":0",
+   "XAUTHORITY": "/run/user/1000/.mutter-Xwaylandauth.DEODX3"
+  },
+  "shell": "gnome-shell",
+  "host": "putgd-ubuntu-lab",
+  "vnc": 5922,
+  "input": "vnc",
+  "before": {
+   "homePaths": {
+    "/home/lab/.config/putgd": null,
+    "/home/lab/.local/state/putgd": null,
+    "/home/lab/.cache/putgd": null,
+    "/home/lab/.local/share/putgd": null
+   },
+   "applications": [],
+   "autostart": false,
+   "defaultProfile": {
+    "/home/lab/.config/putgd": false,
+    "/home/lab/.local/state/putgd": false,
+    "/home/lab/.cache/putgd": false,
+    "/home/lab/.local/share/putgd": false
+   }
+  },
+  "pids": {
+   "fixture": 6827,
+   "apprun": 6829
+  },
+  "created": "2026-10-23T05:03:53Z",
+  "package": {
+   "manager": "dpkg",
+   "status": "ii",
+   "version": "0.1.1~nightly.947"
+  },
+  "systemFilesAdded": [],
+  "credentialsMode": "keychain",
+  "port": 45843,
+  "units": [
+   "putgd-nfa-M2-setup-1792731833"
+  ],
+  "configPath": "/home/lab/.config/putgd/config.json",
+  "credentialsStored": {
+   "profile": "afa-fixture",
+   "ok": true,
+   "state": "completed",
+   "error": ""
+  }
+ }
+}

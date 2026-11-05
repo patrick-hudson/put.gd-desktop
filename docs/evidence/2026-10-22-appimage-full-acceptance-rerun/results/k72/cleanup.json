@@ -1,0 +1,27 @@
+{
+ "removed": [
+  "/home/patrick/.local/state/putgd/logs/putgd-20261022T053918404Z-1251798-1.jsonl",
+  "/home/patrick/.local/share/putgd",
+  "/tmp/afa.30WHIw",
+  "/home/patrick/Pictures/afa-k72-edited.png",
+  "/home/patrick/afa-k72-review.mp4",
+  "/home/patrick/work/put.gd-afa2/runs/k72/appdir",
+  "/home/patrick/work/put.gd-afa2/runs/k72/frames",
+  "/home/patrick/work/put.gd-afa2/runs/k72/config",
+  "/home/patrick/work/put.gd-afa2/runs/k72/cache",
+  "/home/patrick/work/put.gd-afa2/runs/k72/archive",
+  "/home/patrick/work/put.gd-afa2/runs/k72/working",
+  "/home/patrick/work/put.gd-afa2/runs/k72/urldata"
+ ],
+ "fixtureStopped": 1242934,
+ "leftovers": {
+  "processes": [],
+  "mounts": [],
+  "entries": []
+ },
+ "after": {
+  "processes": [],
+  "mounts": [],
+  "entries": []
+ }
+}

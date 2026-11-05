@@ -1,5 +1,6 @@
 #pragma once
 #include "UiControl.h"
+#include "core/Log.h"
 #include <QHash>
 #include <QProcess>
 #include <QTimer>
@@ -14,10 +15,16 @@ public:
  ~UiProcessController() override;
  using ShortcutRecordingHandler=std::function<void(bool,Reply)>;
  void setShortcutRecordingHandler(ShortcutRecordingHandler handler){shortcutRecordingHandler_=std::move(handler);}
- void activate(const QString& view,Reply reply={});
+ // activationToken: an xdg-activation token for the click that asked for the
+ // view (#657); the helper hands it to the compositor when it shows the window.
+ void activate(const QString& view,Reply reply={},const QString& activationToken={});
+ // Forwards one command to an open view; the helper validates and answers it.
+ using CommandReply=std::function<void(Error,QJsonObject)>;
+ void command(const QString& name,const QJsonObject& params,CommandReply reply);
  void invalidate();
  void shutdown(std::function<void()> finished={});
  QJsonObject status()const;
+ QJsonObject viewState()const;
 signals:
  void failure(putgd::Error error);
  void helperPidChanged(qint64 pid);
@@ -26,7 +33,11 @@ private:
  struct Activation {QString view;QList<Reply> replies;};
  void launch();void flushActivations();void sendInvalidation();
  void receive(const QString& type,const QString& sequence,const QJsonObject& payload);
- void fail(Error);void failActivations(Error);void finished(QProcess*,quint64,int,QProcess::ExitStatus);
+ // `deadline` names the timer that expired, if one did; it goes in the log
+ // record written before the kill, not in the error callers see.
+ void fail(Error,const QString& deadline={});void failActivations(Error);
+ void killHelper(const QString& reason,QJsonObject context={});const char* phaseName()const;
+ void failCommands(const Error&);void finished(QProcess*,quint64,int,QProcess::ExitStatus);
  void updateShortcutRecording();void restoreShortcuts();
  Error storeState(const QJsonObject&);void completeShutdown();
  struct RecordingRequest {QString sequence;bool active;};
@@ -39,8 +50,11 @@ private:
  QTimer startup_,stopDeadline_,activationDeadline_,closeDeadline_;
  Phase phase_=Phase::Stopped;
  QHash<QString,QList<Reply>> pending_;
+ QHash<QString,QString> pendingTokens_;
  QHash<QString,Activation> activations_;
+ QHash<QString,CommandReply> commands_;QTimer commandDeadline_;
  QJsonObject state_,lastExit_;
+ HelperOutput output_{"putgd-ui",logUi()};
  qsizetype stateBytes_=0;
  quint64 processGeneration_=0,invalidationGeneration_=0,sentInvalidation_=0;
  QString invalidationSequence_,closeSequence_;

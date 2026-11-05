@@ -1,0 +1,20 @@
+[
+  {
+    "host": "f44",
+    "remotePath": "/home/patrick/work/p382n/putgd-26.1024.1186~dev+gd5b561ddb94f-1.fc44.x86_64.rpm",
+    "sha256": "bdf31e37584da849b8afa28e0b73e2fe451d8be99a9d5671c0d1db9ded32c274",
+    "build": {
+      "schemaVersion": 1,
+      "version": "26.1024.1186-dev+gd5b561ddb94f",
+      "baseVersion": "26.1024.1186",
+      "packageVersion": "26.1024.1186~dev+gd5b561ddb94f",
+      "gitCommit": "d5b561ddb94f8255b8bc754c1382552d983a6fa9",
+      "gitTree": "797721fa0672581562a8675d0d2010eced7c6bd4",
+      "commitCount": 1186,
+      "dirty": false,
+      "sourceProvenance": "git"
+    },
+    "artifactRun": 40068126465,
+    "artifactId": 12550586059
+  }
+]

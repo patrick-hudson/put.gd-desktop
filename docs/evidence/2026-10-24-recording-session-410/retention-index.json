@@ -1,0 +1,73 @@
+{
+  "schemaVersion": 1,
+  "privateRoot": "/home/patrick/work/put.gd/work/docs410-evidence",
+  "policy": "../../evidence-retention.md",
+  "compression": "none; active PR raw evidence remains directly usable; no raw files deleted",
+  "finalCatalogs": {
+    "cinnamon-export-3440": {
+      "members": 79,
+      "sha256": "d2bd668c063df4a20d004d19589c47cf1086a18f3aac40028bb958a443c3c4ec",
+      "privateCatalog": "cinnamon-export-3440/SHA256.json"
+    },
+    "cinnamon-retirement-3440": {
+      "members": 10,
+      "sha256": "78a599ef074d334f70fc065bd0d84ab915d47fa44472adcb046b0ee8c6982782",
+      "privateCatalog": "cinnamon-retirement-3440/SHA256.json"
+    },
+    "cinnamon-c2-export": {
+      "members": 26,
+      "sha256": "ba78f3f6705dbbd485b9c732984e60bb30900fe4c85c760868f1457a3469d0c6",
+      "privateCatalog": "cinnamon-c2-export/SHA256.json"
+    },
+    "cinnamon-c2-retirement": {
+      "members": 9,
+      "sha256": "9bb58214825cb2d91fc82880b48d548102ab1c9de40665db72990267820882de",
+      "privateCatalog": "cinnamon-c2-retirement/SHA256.json"
+    },
+    "kde-export-3440": {
+      "members": 41,
+      "sha256": "b54fcacc0def2df57d9065fa7aef6c9635fb8cf220b09b019a964c5b7378e40f",
+      "privateCatalog": "kde-export-3440/SHA256.json"
+    },
+    "gnome-export-3440": {
+      "members": 46,
+      "sha256": "081caaf35d6c2375209e43b016fb10cb754db127ed352baeece5fe54dacb2195",
+      "privateCatalog": "gnome-export-3440/SHA256.json"
+    },
+    "gnome-retirement-3440": {
+      "members": 9,
+      "sha256": "21cc1a5bdcfaa85350b50a8335c6536550cce37aa2f48af38c427960c6d4910e",
+      "privateCatalog": "gnome-retirement-3440/SHA256.json"
+    },
+    "package-mode-audit": {
+      "members": 4,
+      "sha256": "4c74ca41af08f6da1be7f0ede88d6c6d470a2c34d36598ca267fd5c30f929b1d",
+      "privateCatalog": "package-mode-audit/SHA256.json"
+    },
+    "cinnamon-harness-sources": {
+      "members": 5,
+      "sha256": "7c2a423ccdfc447ddc82ff8821c8dd404faca0e3f292df93eb82bbb74d5dd5e4",
+      "privateCatalog": "cinnamon-harness-sources/SHA256.json"
+    }
+  },
+  "allFinalMembersVerified": 229,
+  "sourceInfoSha256": "fb7dba27c47d5051ba8a8873f1eeaf94f78540e6a0c9c1f76a2b3d2f642df0a4",
+  "historicalCommandsSha256": "7fe1465b690daf61759b279c9ed60f990addbe9d9065b2809f66606e1f5d68f5",
+  "review5Sha256": "fdd18c58a28253077eea1f8986e94ad9e0ec7bbaa70be4dd56f08090cbb72366",
+  "negativeControls": [
+    "baseline-results.json",
+    "intermediate-cli-results.json",
+    "prior-052d-gnome.json",
+    "preexisting-probe-leak.json"
+  ],
+  "historicalHarnesses": {
+    "catalog": "cinnamon-harness-sources/SHA256.json",
+    "recoveredOriginalC1": "record_accept_c1.py",
+    "reconstructedExactHistoricalC3": "record_accept_c3.py",
+    "reconstructedExactHistoricalCm1": "record_memory_cm1.py",
+    "actualFinalC4": "record_accept_c4.py",
+    "actualFinalCm3": "record_memory_cm3.py",
+    "reconstructionRule": "Historical bytes reconstructed only where their hash equals the original saved harness hash; never relabeled as original filesystem files."
+  },
+  "excludedPhysicalFrames": "Incomplete-cover GNOME physical failure images remain on host; no private frame exported. Explicitly cleared disposable Cinnamon clock frame retained private only."
+}

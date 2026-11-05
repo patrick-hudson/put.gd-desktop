@@ -1,5 +1,10 @@
 #include "NativeTray.h"
+#include "core/ActivationToken.h"
+#include "core/Settings.h"
+#include <QSet>
+#include <QKeySequence>
 #include "IconArt.h"
+#include "Theme.h"
 #include <QCoreApplication>
 #include <QHash>
 #include <QImage>
@@ -17,6 +22,8 @@
 #include <QDBusServiceWatcher>
 #include <QDBusVariant>
 #include <QDBusVirtualObject>
+#include <QElapsedTimer>
+#include <utility>
 #include <QTimer>
 
 // Wire structures contain only Core types. ARGB bytes are in network order.
@@ -26,6 +33,8 @@ struct NativeTooltip { QString icon; NativeImages images; QString title, descrip
 struct NativeLayout { int id = 0; QVariantMap properties; QList<QDBusVariant> children; };
 struct NativeItemProperties { int id = 0; QVariantMap properties; };
 using NativePropertyList = QList<NativeItemProperties>;
+struct NativeItemRemoved { int id = 0; QStringList names; };
+using NativeRemovedList = QList<NativeItemRemoved>;
 struct NativeMenuEvent { int id = 0; QString event; QDBusVariant data; uint timestamp = 0; };
 using NativeEvents = QList<NativeMenuEvent>;
 Q_DECLARE_METATYPE(NativeImage)
@@ -34,6 +43,8 @@ Q_DECLARE_METATYPE(NativeTooltip)
 Q_DECLARE_METATYPE(NativeLayout)
 Q_DECLARE_METATYPE(NativeItemProperties)
 Q_DECLARE_METATYPE(NativePropertyList)
+Q_DECLARE_METATYPE(NativeItemRemoved)
+Q_DECLARE_METATYPE(NativeRemovedList)
 Q_DECLARE_METATYPE(NativeMenuEvent)
 Q_DECLARE_METATYPE(NativeEvents)
 
@@ -61,6 +72,12 @@ QDBusArgument& operator<<(QDBusArgument& a, const NativeItemProperties& x) {
 const QDBusArgument& operator>>(const QDBusArgument& a, NativeItemProperties& x) {
  a.beginStructure(); a >> x.id >> x.properties; a.endStructure(); return a;
 }
+QDBusArgument& operator<<(QDBusArgument& a, const NativeItemRemoved& x) {
+ a.beginStructure(); a << x.id << x.names; a.endStructure(); return a;
+}
+const QDBusArgument& operator>>(const QDBusArgument& a, NativeItemRemoved& x) {
+ a.beginStructure(); a >> x.id >> x.names; a.endStructure(); return a;
+}
 QDBusArgument& operator<<(QDBusArgument& a, const NativeMenuEvent& x) {
  a.beginStructure(); a << x.id << x.event << x.data << x.timestamp; a.endStructure(); return a;
 }
@@ -78,54 +95,79 @@ constexpr auto notificationService = "org.freedesktop.Notifications";
 constexpr auto notificationPath = "/org/freedesktop/Notifications";
 constexpr int callTimeoutMs = 1500;
 // IDs are 1-based table positions and stay stable; rootOrder sets the display
-// order. An entry with a parent belongs to that entry's submenu.
+// order. An entry with a parent belongs to that entry's submenu. A retired
+// entry keeps its slot, so later IDs don't move, and is unknown on the wire.
 struct Entry { const char* label; const char* action; int parent; };
+constexpr int retired = -1;
 constexpr Entry entries[] {
  {"Capture region", "region", 0}, {"Capture window", "window", 0},
- {"Capture desktop", "desktop", 0}, {"Upload Clipboard", "clipboard", 0},
+ {"Capture desktop", "desktop", 0}, {"Upload clipboard", "clipboard", 0},
  {"Capture region & edit", "edit", 0},
- {"", "", 0}, {"Settings and setup", "settings", 0}, {"Upload history", "history", 0},
- {"Recent activity", "activity", 0}, {"", "", 0}, {"About put.gd", "about", 0}, {"Quit", "quit", 0},
- {"Edit image", "", 0}, {"From clipboard", "edit-clipboard", 13}, {"From a file...", "edit-file", 13}
+ {"", "", 0}, {"Settings", "settings", 0}, {"History", "history", 0},
+ // 9 was "Recent activity", which opened the same History page.
+ {"", "", retired}, {"", "", 0}, {"About put.gd", "about", 0}, {"Quit put.gd", "quit", 0},
+ {"Edit image", "", 0}, {"Edit clipboard image", "edit-clipboard", 13}, {"Edit an image file…", "edit-file", 13},
+ {"Record screen", "record", 0},
+ // Hidden until a stable update is available; its label names the version (#293).
+ {"Update available", "update", 0}, {"Destinations", "destinations", 0},
+ {"Upload status", "", 0}, {"Cancel upload", "cancel-upload", 0}, {"", "", 0}, {"Failed uploads", "failed-uploads", 0},
+ {"Capture output", "", 0}, {"", "", 23}, {"", "", 23}, {"", "", 23}, {"", "", 23}, {"", "", 23}, {"", "", 23}, {"Change output…", "capture-settings", 0}
 };
-constexpr int rootOrder[] {1, 2, 3, 4, 5, 13, 6, 7, 8, 9, 10, 11, 12};
+constexpr int updateId = 17, uploadStatusId = 19, cancelUploadId = 20, uploadSeparatorId = 21;
 constexpr int entryCount = sizeof(entries) / sizeof(entries[0]);
 QList<int> childrenOf(int id) {
  QList<int> result;
- if (id == 0) for (int child : rootOrder) result.append(child);
+ if (id == 0) {
+  result.append({uploadStatusId,cancelUploadId,uploadSeparatorId,23,30});
+  for(const auto& action:Settings::presentationOrder())for(int child=1;child<=entryCount;++child)if(QLatin1String(entries[child-1].action)==action){result.append(child);if(action=="edit")result.append(13);}
+  result.append({6,22,8,18,7,17,10,11,12});
+ }
  else for (int i = 1; i <= entryCount; ++i) if (entries[i-1].parent == id) result.append(i);
  return result;
 }
-bool knownId(int id) { return id >= 0 && id <= entryCount; }
+bool knownId(int id) { return id == 0 || (id > 0 && id <= entryCount && entries[id-1].parent != retired); }
 bool validNames(const QStringList& names) {
  if (names.size() > 32) return false;
  for (const auto& name : names) if (name.size() > 128) return false;
  return true;
 }
-QVariantMap menuProperties(int id, const QStringList& names = {}) {
+QVariantMap menuProperties(int id, const QStringList& names = {}, const QString& update = {}, const QHash<QString,QString>& shortcuts = {}, const QString& upload = {},int uploads=1,bool failed=false,const QString& recording={},const QString& attention="Failed uploads",const QStringList& outputs={}) {
  QVariantMap props;
  if (id == 0 || !childrenOf(id).isEmpty()) props.insert("children-display", "submenu");
  if (id != 0) {
   const auto& e = entries[id-1];
-  if (!*e.label) props.insert("type", "separator");
-  else props.insert("label", QString::fromLatin1(e.label));
+  if (id>=23&&id<=29){props.insert("label",outputs.value(id-23));if(id!=23)props.insert("enabled",false);}
+  else if (!*e.label) props.insert("type", "separator");
+  else props.insert("label", id == updateId && !update.isEmpty() ? update : QString::fromUtf8(e.label));
+  // Always explicit: Plasma's and GNOME's hosts update a known item only with the
+  // properties a layout carries, so an omitted default would keep it hidden (#304).
+  if (id == updateId) props.insert("visible", !update.isEmpty());
+  if(id==uploadStatusId||id==cancelUploadId||id==uploadSeparatorId)props.insert("visible",!upload.isEmpty());
+  if(id==uploadStatusId){props.insert("label",upload);props.insert("enabled",false);}
+  if(id==cancelUploadId){props.insert("enabled",!upload.isEmpty());props.insert("label",uploads>1?"Cancel all uploads…":"Cancel upload");}
+  if(id==22){props.insert("visible",failed);props.insert("label",attention);}
+  if(id==16&&!recording.isEmpty())props.insert("label","Record screen — "+recording);
+  const QKeySequence shortcut(shortcuts.value(QString::fromLatin1(e.action)));
+  if(Settings::presentationOrder().contains(QString::fromLatin1(e.action))){
+   QList<QStringList> keys;for(int i=0;i<shortcut.count();++i){const auto chord=shortcut[i];const auto modifiers=chord.keyboardModifiers();QStringList parts;if(modifiers&Qt::ControlModifier)parts<<"Control";if(modifiers&Qt::AltModifier)parts<<"Alt";if(modifiers&Qt::ShiftModifier)parts<<"Shift";if(modifiers&Qt::MetaModifier)parts<<"Super";parts<<QKeySequence(chord.key()).toString(QKeySequence::PortableText);keys.append(parts);}props.insert("shortcut",QVariant::fromValue(keys));
+  }
  }
  if (!names.isEmpty()) for (auto it = props.begin(); it != props.end();) {
   if (!names.contains(it.key())) it = props.erase(it); else ++it;
  }
  return props;
 }
-NativeLayout menuLayout(int id, int depth, const QStringList& names) {
- NativeLayout result{id, menuProperties(id, names), {}};
+NativeLayout menuLayout(int id, int depth, const QStringList& names, const QString& update,const QHash<QString,QString>& shortcuts,const QString& upload,int uploads,bool failed,const QString& recording,const QString& attention,const QStringList& outputs) {
+ NativeLayout result{id, menuProperties(id, names, update, shortcuts, upload,uploads,failed,recording,attention,outputs), {}};
  // depth -1 expands every level; 0 returns this item alone.
  if (depth != 0) for (int child : childrenOf(id))
-  result.children.append(QDBusVariant(QVariant::fromValue(menuLayout(child, depth < 0 ? depth : depth - 1, names))));
+  result.children.append(QDBusVariant(QVariant::fromValue(menuLayout(child, depth < 0 ? depth : depth - 1, names, update, shortcuts, upload,uploads,failed,recording,attention,outputs))));
  return result;
 }
-NativeImages brandIcon(const QColor& color=QColor("#9bbcff"),int percent=-1) {
+NativeImages brandIcon(const IconArt::TrayIcon& icon=IconArt::TrayIcon{Theme::trayTints(false).idle}) {
  NativeImages result;
  for (int scale : {1, 2, 3}) {
-  const auto image=IconArt::liftTray(color,percent,scale);
+  const auto image=IconArt::liftTray(icon,scale);
   NativeImage wire{image.width(), image.height(), QByteArray(image.width() * image.height() * 4, '\0')};
   for (int y = 0; y < image.height(); ++y) for (int x = 0; x < image.width(); ++x) {
    const auto pixel = image.pixel(x, y); const int pos = (y * image.width() + x) * 4;
@@ -140,6 +182,7 @@ void registerWireTypes() {
  qDBusRegisterMetaType<NativeImage>(); qDBusRegisterMetaType<NativeImages>();
  qDBusRegisterMetaType<NativeTooltip>(); qDBusRegisterMetaType<NativeLayout>();
  qDBusRegisterMetaType<NativeItemProperties>(); qDBusRegisterMetaType<NativePropertyList>();
+ qDBusRegisterMetaType<NativeItemRemoved>(); qDBusRegisterMetaType<NativeRemovedList>();
  qDBusRegisterMetaType<NativeMenuEvent>(); qDBusRegisterMetaType<NativeEvents>();
  qDBusRegisterMetaType<QList<int>>(); qDBusRegisterMetaType<QList<QStringList>>();
 }
@@ -154,15 +197,33 @@ public:
  bool available() const { return available_; }
  bool availabilityKnown() const { return availabilityKnown_; }
  QVariantMap properties(bool menu) const;
- void dispatch(const QString& action);
- void setActivity(const QColor& color,const QString& description,int percent);
- void notify(const QString& title, const QString& message, bool warning, const QUrl& link);
+ void dispatch(const QString& action, const QString& activationToken = {});
+ // The xdg-activation token a tray host hands over just before it activates the
+ // item or one of its menu entries (#657). The next click takes it, whether or
+ // not that click dispatches anything; an old one belonged to an earlier click.
+ void provideActivationToken(const QString& token);
+ QString takeActivationToken();
+ void aboutToShow(){emit q_->menuAboutToShow();}
+ void setActivity(const QColor& color,const QString& description,int percent,int recording,const QString& title,IconArt::TrayGlyph glyph);
+ void notify(const QString& title, const QString& message, bool warning, const QUrl& link, const QList<NotificationAction>& actions);
+ // The update entry's label, empty while it is hidden, and the layout revision
+ // that changes with it.
+ const QString& updateLabel() const { return updateLabel_; }
+ uint menuRevision() const { return menuRevision_; }
+ void setUpdateLabel(const QString& label);
+ void setCommands(const QHash<QString,QString>& shortcuts,const QString& upload,int uploads,bool failed,const QString& recording,const QString& attention);
+ int uploadCount()const{return uploads_;}bool failed()const{return failed_;}const QString& recordingText()const{return recordingText_;}const QString& attentionLabel()const{return attentionLabel_;}
+ const QHash<QString,QString>& shortcuts()const{return shortcuts_;}
+ const QStringList& outputs()const{return outputs_;}
+ void setOutput(const QString& summary,const QStringList& details);
+ const QString& uploadStatus()const{return uploadStatus_;}
 private slots:
  void hostChanged();
  void notificationActivated(uint id, const QString& action);
  void notificationClosed(uint id, uint reason);
 private:
  void setOwner(const QString& owner);
+ void queryNotificationServer();
  void queryHost();
  void registerItem();
  void updateAvailability();
@@ -171,12 +232,24 @@ private:
  QString service_, owner_, registeredOwner_;
  QDBusServiceWatcher watcher_, notificationWatcher_;
  QHash<uint,QUrl> notificationLinks_;
+ QHash<uint,QHash<QString,QString>> notificationActions_;
  quint64 notificationGeneration_ = 0;
+ QString notificationServer_; // GetServerInformation's name, empty until it answers
+ QSet<uint> residentNotifications_; // sent resident (#151): put.gd closes them once used
+ int uploads_=0;bool failed_=false;QString updateLabel_,uploadStatus_,attentionLabel_="Failed uploads";QHash<QString,QString> shortcuts_;
+ QStringList outputs_;
+ uint menuRevision_ = 1;
+ QString activationToken_;
+ QElapsedTimer activationTokenAge_;
+ void closeNotification(uint id);
  std::unique_ptr<TrayExport> item_, menu_;
  NativeImages icons_;
- QColor color_ = QColor("#9bbcff");
+ QColor color_ = Theme::trayTints(false).idle;
  int percent_ = -1;
- QString activityText_;
+ IconArt::TrayGlyph glyph_ = IconArt::TrayGlyph::Mark;
+ int recording_ = 0;
+ QString recordingText_;
+ QString activityText_,activityTitle_="put.gd";
  QTimer retry_;
  quint64 generation_ = 0, hostQuery_ = 0;
  int attempts_ = 0, notificationsInFlight_ = 0;
@@ -204,11 +277,13 @@ NativeTrayPrivate::NativeTrayPrivate(NativeTray* owner, QDBusConnection bus)
    notificationWatcher_(notificationService,bus_,QDBusServiceWatcher::WatchForOwnerChange,this), icons_(brandIcon()) {
  registerWireTypes();
  connect(&notificationWatcher_,&QDBusServiceWatcher::serviceOwnerChanged,this,[this](const QString&,const QString& oldOwner,const QString&) {
+  notificationServer_.clear();queryNotificationServer();
   if(oldOwner.isEmpty())return;
-  ++notificationGeneration_;notificationLinks_.clear();
+  ++notificationGeneration_;notificationLinks_.clear();notificationActions_.clear();
  });
  bus_.connect(notificationService,notificationPath,notificationService,"ActionInvoked",this,SLOT(notificationActivated(uint,QString)));
  bus_.connect(notificationService,notificationPath,notificationService,"NotificationClosed",this,SLOT(notificationClosed(uint,uint)));
+ queryNotificationServer();
  auto resolveUnavailable = [this] {
   ownerKnown_ = hostKnown_ = registrationSettled_ = true;
   updateAvailability();
@@ -302,40 +377,94 @@ void NativeTrayPrivate::updateAvailability() {
   if (guard && guard->available() == value) emit guard->availabilityChanged(value);
  });
 }
-void NativeTrayPrivate::dispatch(const QString& action) {
- QTimer::singleShot(0, q_, [guard = QPointer<NativeTray>(q_), action] {
-  if (guard) emit guard->actionActivated(action);
+void NativeTrayPrivate::dispatch(const QString& action, const QString& token) {
+ QTimer::singleShot(0, q_, [guard = QPointer<NativeTray>(q_), action, token] {
+  if (guard) emit guard->actionActivated(action, token);
  });
 }
-void NativeTrayPrivate::notify(const QString& title, const QString& message, bool warning, const QUrl& link) {
- if (!available_ || notificationsInFlight_ >= 8) return;
+void NativeTrayPrivate::provideActivationToken(const QString& token) {
+ activationToken_ = token; activationTokenAge_.start();
+}
+QString NativeTrayPrivate::takeActivationToken() {
+ const bool fresh = activationTokenAge_.isValid() && activationTokenAge_.elapsed() < 10000;
+ activationTokenAge_.invalidate();
+ auto token = std::exchange(activationToken_, {});
+ return fresh ? token : QString{};
+}
+void NativeTrayPrivate::queryNotificationServer() {
+ if(!bus_.isConnected())return;
+ auto call=QDBusMessage::createMethodCall(notificationService,notificationPath,notificationService,"GetServerInformation");
+ auto* pending=new QDBusPendingCallWatcher(bus_.asyncCall(call,callTimeoutMs),this);
+ connect(pending,&QDBusPendingCallWatcher::finished,this,[this](QDBusPendingCallWatcher* p) {
+  const QDBusPendingReply<QString,QString,QString,QString> result=*p;p->deleteLater();
+  if(!result.isError())notificationServer_=result.argumentAt<0>();
+ });
+}
+int NativeTray::notificationTimeoutMs(const QString& server,bool actions) {
+ // GNOME Shell and Plasma keep a notification, buttons and all, in their lists once
+ // the popup goes. Elsewhere (Cinnamon, #151, and servers not yet known) a
+ // notification with buttons stays until it is used or dismissed.
+ if(!actions||server=="gnome-shell"||server=="Plasma")return 10000;
+ return 0;
+}
+void NativeTrayPrivate::notify(const QString& title, const QString& message, bool warning, const QUrl& link, const QList<NotificationAction>& actions) {
+ // Notifications don't need a tray (#1105): GNOME without a StatusNotifier
+ // extension has none, and a file-manager upload's result must still show.
+ if (notificationsInFlight_ >= 8) return;
  auto call = QDBusMessage::createMethodCall(notificationService, notificationPath, notificationService, "Notify");
- const QVariantMap hints{{"urgency", QVariant::fromValue(static_cast<uchar>(warning ? 2 : 1))}, {"desktop-entry", "putgd"}};
- call.setArguments({QString("put.gd"), uint(0), QString("putgd"), title.left(512), message.left(4096), link.isEmpty()?QStringList{}:QStringList{"default","Open in browser"}, hints, 10000});
+ QVariantMap hints{{"urgency", QVariant::fromValue(static_cast<uchar>(warning ? 2 : 1))}, {"desktop-entry", "putgd"}};
+ QStringList names=link.isEmpty()?QStringList{}:QStringList{"default","Open in browser"};
+ QHash<QString,QString> values;
+ for(const auto& action:actions)if(action.key!="default"){names<<action.key<<action.label;values.insert(action.key,action.value);}
+ const int timeout=NativeTray::notificationTimeoutMs(notificationServer_,!values.isEmpty());
+ // Cinnamon removes an app's non-resident notifications as soon as one of its
+ // windows takes focus, buttons and all; a resident one stays until used (#151).
+ const bool resident=timeout==0;
+ if(resident)hints.insert("resident",true);
+ call.setArguments({QString("put.gd"), uint(0), QString("putgd"), title.left(512), message.left(4096), names, hints, timeout});
  ++notificationsInFlight_;
  const auto generation=notificationGeneration_;
  auto* pending = new QDBusPendingCallWatcher(bus_.asyncCall(call, callTimeoutMs), this);
- connect(pending, &QDBusPendingCallWatcher::finished, this, [this,generation,link](QDBusPendingCallWatcher* p) {
+ connect(pending, &QDBusPendingCallWatcher::finished, this, [this,generation,link,values,resident](QDBusPendingCallWatcher* p) {
   const QDBusPendingReply<uint> result=*p;
   --notificationsInFlight_; p->deleteLater();
-  if(generation==notificationGeneration_&&!result.isError()&&!link.isEmpty())notificationLinks_.insert(result.value(),link);
+  if(generation!=notificationGeneration_||result.isError())return;
+  if(!link.isEmpty())notificationLinks_.insert(result.value(),link);
+  if(!values.isEmpty())notificationActions_.insert(result.value(),values);
+  if(resident)residentNotifications_.insert(result.value());
  });
 }
+// A resident notification isn't removed by its server when used; put.gd closes it.
+void NativeTrayPrivate::closeNotification(uint id) {
+ if(!residentNotifications_.remove(id))return;
+ auto call=QDBusMessage::createMethodCall(notificationService,notificationPath,notificationService,"CloseNotification");
+ call<<id;bus_.asyncCall(call,callTimeoutMs);
+}
 void NativeTrayPrivate::notificationActivated(uint id,const QString& action) {
+ // A button or a click on the body uses a resident notification up.
+ closeNotification(id);
+ if(action!="default"&&notificationActions_.value(id).contains(action)) {
+  const auto value=notificationActions_.take(id).value(action);notificationLinks_.remove(id);
+  QTimer::singleShot(0,q_,[guard=QPointer<NativeTray>(q_),action,value] {
+   if(guard)emit guard->notificationAction(action,value);
+  });
+  return;
+ }
  if(action!="default"||!notificationLinks_.contains(id))return;
- const auto link=notificationLinks_.take(id);
+ const auto link=notificationLinks_.take(id);notificationActions_.remove(id);
  QTimer::singleShot(0,q_,[guard=QPointer<NativeTray>(q_),link] {
   if(guard)emit guard->notificationActivated(link);
  });
 }
-void NativeTrayPrivate::notificationClosed(uint id,uint) {notificationLinks_.remove(id);}
-void NativeTrayPrivate::setActivity(const QColor& color,const QString& description,int percent) {
- percent=qBound(-1,percent,100);
- const bool iconChanged=color!=color_||percent!=percent_;
- const bool textChanged=description!=activityText_;
+void NativeTrayPrivate::notificationClosed(uint id,uint) {notificationLinks_.remove(id);notificationActions_.remove(id);residentNotifications_.remove(id);}
+void NativeTrayPrivate::setActivity(const QColor& color,const QString& description,int percent,int recording,const QString& title,IconArt::TrayGlyph glyph) {
+ percent=qBound(-2,percent,100);
+ const bool iconChanged=color!=color_||percent!=percent_||recording!=recording_||glyph!=glyph_;
+ const auto tooltipTitle=title.isEmpty()?(percent==-2?QString("Needs attention"):percent>=0?QString("Uploading"):QString("put.gd")):title;
+ const bool textChanged=description!=activityText_||tooltipTitle!=activityTitle_;
  if(!iconChanged&&!textChanged)return;
- color_=color;activityText_=description;percent_=percent;
- if(iconChanged)icons_=brandIcon(color,percent);
+ color_=color;activityText_=description;activityTitle_=tooltipTitle;percent_=percent;recording_=recording;glyph_=glyph;
+ if(iconChanged)icons_=brandIcon({color,percent,recording,glyph});
  const auto props=properties(false);QVariantMap changed;
  if(textChanged)changed.insert("ToolTip",props["ToolTip"]);
  if(iconChanged)changed.insert("IconPixmap",props["IconPixmap"]);
@@ -351,7 +480,7 @@ QVariantMap NativeTrayPrivate::properties(bool menu) const {
   {"IconName", ""}, {"IconPixmap", QVariant::fromValue(icons_)},
   {"OverlayIconName", ""}, {"OverlayIconPixmap", QVariant::fromValue(NativeImages{})},
   {"AttentionIconName", ""}, {"AttentionIconPixmap", QVariant::fromValue(NativeImages{})}, {"AttentionMovieName", ""},
-  {"ToolTip", QVariant::fromValue(NativeTooltip{"", {}, activityText_.isEmpty()?QString("put.gd — Share and local capture"):QString("put.gd — Working"), activityText_})}};
+  {"ToolTip", QVariant::fromValue(NativeTooltip{"", {}, activityTitle_, activityText_})}};
 }
 QString TrayExport::introspect(const QString&) const {
  QString xml = "<interface name=\"org.freedesktop.DBus.Properties\">"
@@ -382,6 +511,7 @@ QString TrayExport::introspect(const QString&) const {
   <method name="SecondaryActivate"><arg type="i" direction="in"/><arg type="i" direction="in"/></method>
   <method name="ContextMenu"><arg type="i" direction="in"/><arg type="i" direction="in"/></method>
   <method name="Scroll"><arg type="i" direction="in"/><arg type="s" direction="in"/></method>
+  <method name="ProvideXdgActivationToken"><arg type="s" direction="in"/></method>
   <signal name="NewTitle"/><signal name="NewIcon"/><signal name="NewAttentionIcon"/>
   <signal name="NewOverlayIcon"/><signal name="NewMenu"/><signal name="NewToolTip"/>
   <signal name="NewStatus"><arg type="s"/></signal>
@@ -396,9 +526,9 @@ bool TrayExport::handleMessage(const QDBusMessage& m, const QDBusConnection& bus
  auto error = [&](const char* name = "org.freedesktop.DBus.Error.InvalidArgs") {
   return bus.send(m.createErrorReply(QString::fromLatin1(name), "Invalid or unsupported tray request"));
  };
- auto dispatchId = [this](int id) {
-  if (id > 0 && knownId(id) && *entries[id-1].action)
-   owner_->dispatch(QString::fromLatin1(entries[id-1].action));
+ auto dispatchId = [this](int id, const QString& token) {
+  if (id > 0 && knownId(id) && id!=uploadStatusId && (id!=cancelUploadId||!owner_->uploadStatus().isEmpty()) && (id!=22||owner_->failed()) && *entries[id-1].action)
+   owner_->dispatch(QString::fromLatin1(entries[id-1].action), token);
  };
  const QString expected = QString::fromLatin1(menu_ ? menuInterface : itemInterface);
  if (m.interface() == "org.freedesktop.DBus.Properties") {
@@ -416,7 +546,8 @@ bool TrayExport::handleMessage(const QDBusMessage& m, const QDBusConnection& bus
  if (!m.interface().isEmpty() && m.interface() != expected) return error("org.freedesktop.DBus.Error.UnknownInterface");
  if (!menu_) {
   if ((member == "Activate" || member == "SecondaryActivate" || member == "ContextMenu") && sig == "ii") {
-   if (member == "Activate") owner_->dispatch("activity");
+   const auto token = owner_->takeActivationToken();
+   if (member == "Activate") owner_->dispatch("history", token);
    if (member == "ContextMenu") {
     auto show = QDBusMessage::createSignal("/Menu", menuInterface, "ItemActivationRequested");
     show.setArguments({0, uint(0)}); bus.send(show);
@@ -424,25 +555,30 @@ bool TrayExport::handleMessage(const QDBusMessage& m, const QDBusConnection& bus
    return reply();
   }
   if (member == "Scroll" && sig == "is") return reply();
+  if (member == "ProvideXdgActivationToken" && sig == "s") {
+   const auto token = args.at(0).toString();
+   if (!validActivationToken(token)) return error();
+   owner_->provideActivationToken(token); return reply();
+  }
   return error("org.freedesktop.DBus.Error.UnknownMethod");
  }
  if (member == "GetLayout" && sig == "iias") {
   const int id = args.at(0).toInt(), depth = args.at(1).toInt();
   const auto names = qdbus_cast<QStringList>(args.at(2));
   if (!knownId(id) || depth < -1 || !validNames(names)) return error();
-  return reply({uint(1), QVariant::fromValue(menuLayout(id, depth, names))});
+  return reply({owner_->menuRevision(), QVariant::fromValue(menuLayout(id, depth, names, owner_->updateLabel(),owner_->shortcuts(),owner_->uploadStatus(),owner_->uploadCount(),owner_->failed(),owner_->recordingText(),owner_->attentionLabel(),owner_->outputs()))});
  }
  if (member == "GetGroupProperties" && sig == "aias") {
   auto ids = qdbus_cast<QList<int>>(args.at(0)); const auto names = qdbus_cast<QStringList>(args.at(1));
   if (ids.size() > 64 || !validNames(names)) return error();
   if (ids.isEmpty()) for (int id = 0; id <= entryCount; ++id) ids.append(id);
   NativePropertyList values;
-  for (int id : ids) if (knownId(id)) values.append({id, menuProperties(id, names)});
+  for (int id : ids) if (knownId(id)) values.append({id, menuProperties(id, names, owner_->updateLabel(),owner_->shortcuts(),owner_->uploadStatus(),owner_->uploadCount(),owner_->failed(),owner_->recordingText(),owner_->attentionLabel(),owner_->outputs())});
   return reply({QVariant::fromValue(values)});
  }
  if (member == "GetProperty" && sig == "is") {
   int id = args.at(0).toInt(); if (!knownId(id)) return error();
-  const auto name = args.at(1).toString(); if (name.size() > 128) return error(); auto props = menuProperties(id);
+  const auto name = args.at(1).toString(); if (name.size() > 128) return error(); auto props = menuProperties(id, {}, owner_->updateLabel(),owner_->shortcuts(),owner_->uploadStatus(),owner_->uploadCount(),owner_->failed(),owner_->recordingText(),owner_->attentionLabel(),owner_->outputs());
   // Defaults are omitted from layouts but must resolve for explicit queries.
   const QVariantMap defaults{{"type", "standard"}, {"label", ""}, {"enabled", true}, {"visible", true},
    {"icon-name", ""}, {"icon-data", QByteArray{}}, {"shortcut", QVariant::fromValue(QList<QStringList>{})},
@@ -453,7 +589,7 @@ bool TrayExport::handleMessage(const QDBusMessage& m, const QDBusConnection& bus
  }
  if (member == "Event" && sig == "isvu") {
   int id = args.at(0).toInt(); if (!knownId(id)) return error();
-  if (args.at(1).toString() == "clicked") dispatchId(id);
+  if (args.at(1).toString() == "clicked") dispatchId(id, owner_->takeActivationToken());
   return reply();
  }
  if (member == "EventGroup" && sig == "a(isvu)") {
@@ -461,14 +597,14 @@ bool TrayExport::handleMessage(const QDBusMessage& m, const QDBusConnection& bus
   QList<int> missing; bool found = false;
   for (const auto& e : events) {
    if (!knownId(e.id)) missing.append(e.id);
-   else { found = true; if (e.event == "clicked") dispatchId(e.id); }
+   else { found = true; if (e.event == "clicked") dispatchId(e.id, owner_->takeActivationToken()); }
   }
   if (!events.isEmpty() && !found) return error();
   return reply({QVariant::fromValue(missing)});
  }
  if (member == "AboutToShow" && sig == "i") {
   if (!knownId(args.at(0).toInt())) return error();
-  return reply({false});
+  const auto revision=owner_->menuRevision();owner_->aboutToShow();return reply({revision!=owner_->menuRevision()});
  }
  if (member == "AboutToShowGroup" && sig == "ai") {
   const auto ids = qdbus_cast<QList<int>>(args.at(0)); if (ids.size() > 64) return error();
@@ -486,7 +622,32 @@ NativeTray::NativeTray(const QDBusConnection& bus, QObject* parent): QObject(par
 NativeTray::~NativeTray() = default;
 bool NativeTray::available() const { return d_->available(); }
 bool NativeTray::availabilityKnown() const { return d_->availabilityKnown(); }
-void NativeTray::setActivity(const QColor& color,const QString& description,int percent) {d_->setActivity(color,description,percent);}
-void NativeTray::notify(const QString& title, const QString& message, bool warning, const QUrl& link) { d_->notify(title, message, warning, link); }
+void NativeTray::setActivity(const QColor& color,const QString& description,int percent,int recording,const QString& title,IconArt::TrayGlyph glyph) {d_->setActivity(color,description,percent,recording,title,glyph);}
+void NativeTray::setUpdateLabel(const QString& label) {d_->setUpdateLabel(label);}
+void NativeTray::setCommands(const QHash<QString,QString>& shortcuts,const QString& upload,int uploads,bool failed,const QString& recording,const QString& attention) {d_->setCommands(shortcuts,upload,uploads,failed,recording,attention);}
+void NativeTrayPrivate::setCommands(const QHash<QString,QString>& shortcuts,const QString& upload,int uploads,bool failed,const QString& recording,const QString& attention) {
+ if(shortcuts_==shortcuts&&uploadStatus_==upload&&uploads_==uploads&&failed_==failed&&recordingText_==recording&&attentionLabel_==attention)return;shortcuts_=shortcuts;uploadStatus_=upload;uploads_=uploads;failed_=failed;recordingText_=recording;attentionLabel_=attention;++menuRevision_;
+ NativePropertyList changed;for(int id=1;id<=entryCount;++id)if(knownId(id))changed.append({id,menuProperties(id,{"label","visible","enabled","shortcut"},updateLabel_,shortcuts_,uploadStatus_,uploads_,failed_,recordingText_,attentionLabel_,outputs_)});
+ auto properties=QDBusMessage::createSignal("/Menu",menuInterface,"ItemsPropertiesUpdated");properties.setArguments({QVariant::fromValue(changed),QVariant::fromValue(NativeRemovedList{})});bus_.send(properties);
+ auto signal=QDBusMessage::createSignal("/Menu",menuInterface,"LayoutUpdated");signal.setArguments({menuRevision_,0});bus_.send(signal);
+}
+void NativeTrayPrivate::setUpdateLabel(const QString& label) {
+ if (label == updateLabel_) return;
+ updateLabel_ = label; ++menuRevision_;
+ // Hosts that track item properties get the change directly; the others
+ // re-read the layout on LayoutUpdated(revision, parent 0).
+ auto properties = QDBusMessage::createSignal("/Menu", menuInterface, "ItemsPropertiesUpdated");
+ properties.setArguments({QVariant::fromValue(NativePropertyList{{updateId, menuProperties(updateId, {"label", "visible"}, label)}}),
+                          QVariant::fromValue(NativeRemovedList{})});
+ bus_.send(properties);
+ auto signal = QDBusMessage::createSignal("/Menu", menuInterface, "LayoutUpdated");
+ signal.setArguments({menuRevision_, 0}); bus_.send(signal);
+}
+void NativeTray::notify(const QString& title, const QString& message, bool warning, const QUrl& link, const QList<NotificationAction>& actions) { d_->notify(title, message, warning, link, actions); }
 }
 #include "NativeTray.moc"
+
+namespace putgd {
+void NativeTray::setOutput(const QString& summary,const QStringList& details){d_->setOutput(summary,details);}
+void NativeTrayPrivate::setOutput(const QString& summary,const QStringList& details){QStringList values{summary};values.append(details);if(values==outputs_)return;outputs_=values;++menuRevision_;auto signal=QDBusMessage::createSignal("/Menu",menuInterface,"LayoutUpdated");signal.setArguments({menuRevision_,0});bus_.send(signal);}
+}

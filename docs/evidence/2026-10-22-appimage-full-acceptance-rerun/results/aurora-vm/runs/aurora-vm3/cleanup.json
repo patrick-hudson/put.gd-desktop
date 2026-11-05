@@ -1,0 +1,24 @@
+{
+ "removed": [
+  "/var/home/lab/.local/share/putgd",
+  "/tmp/afa.Q8pV9P",
+  "/var/home/lab/work/put.gd-afa2/runs/aurora-vm3/appdir",
+  "/var/home/lab/work/put.gd-afa2/runs/aurora-vm3/frames",
+  "/var/home/lab/work/put.gd-afa2/runs/aurora-vm3/config",
+  "/var/home/lab/work/put.gd-afa2/runs/aurora-vm3/cache",
+  "/var/home/lab/work/put.gd-afa2/runs/aurora-vm3/archive",
+  "/var/home/lab/work/put.gd-afa2/runs/aurora-vm3/working",
+  "/var/home/lab/work/put.gd-afa2/runs/aurora-vm3/urldata"
+ ],
+ "fixtureStopped": 2174,
+ "leftovers": {
+  "processes": [],
+  "mounts": [],
+  "entries": []
+ },
+ "after": {
+  "processes": [],
+  "mounts": [],
+  "entries": []
+ }
+}

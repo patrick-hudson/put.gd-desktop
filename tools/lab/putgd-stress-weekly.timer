@@ -1,0 +1,12 @@
+# Weekly trigger for putgd-stress-weekly.service: Sundays 03:00 local time.
+# A missed week (host off or asleep) is not caught up later.
+[Unit]
+Description=Weekly put.gd stress lane, Sundays 03:00
+
+[Timer]
+OnCalendar=Sun *-*-* 03:00:00
+Persistent=false
+AccuracySec=1min
+
+[Install]
+WantedBy=timers.target

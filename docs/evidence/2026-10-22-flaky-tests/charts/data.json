@@ -1,0 +1,86 @@
+{
+ "before": "nightly 33c768e (before)",
+ "after": "PR #351 (after; time scale 3)",
+ "stress": [
+  {
+   "host": "d69, Debian 13, Qt 6.8",
+   "contention": "tests and 4 busy loops on 2 of 4 CPUs",
+   "before": [
+    6,
+    8
+   ],
+   "after": [
+    0,
+    8
+   ],
+   "note": "before: operations_contract (onDemandPreviewsAreBounded) 6 of 8; after: commit 4984e80"
+  },
+  {
+   "host": "m74, Mint 22.3, Qt 6.4 (as CI 24.04)",
+   "contention": "tests and 4 busy loops on 2 of 4 CPUs",
+   "before": [
+    1,
+    8
+   ],
+   "after": [
+    0,
+    10
+   ],
+   "note": "after: commit 7ffcf42 (final test code); an earlier 1 of 10 at ea703c6 found a third upload-order race, fixed in 7ffcf42"
+  },
+  {
+   "host": "d69, Debian 13, Qt 6.8",
+   "contention": "tests and 3 busy loops on 1 of 4 CPUs",
+   "before": [
+    6,
+    6
+   ],
+   "after": [
+    0,
+    6
+   ],
+   "note": "before: gui_history_view 5 s budget (5350 ms needed) and operations_contract, every run; after: ea703c6 with TIMEOUT scaling (9cda806)"
+  }
+ ],
+ "stressFoot": "Twelve tests: proton_contract, proton_transport, gui_tray, gui_history_view, gui_application, native_tray_integration, operations_contract, b2_integration, recording_service_integration, s3_worker_supervision, x11_isolated, diagnostics_upload_contract. With 6 unpinned busy loops on d69 the nightly passed 8 of 8, so pinning is what reproduces the runner's starvation. Ledgers: docs/evidence/2026-10-22-flaky-tests/stress/.",
+ "parallel": [
+  {
+   "parallel": 6,
+   "median": 137.5,
+   "min": 137.2,
+   "max": 145.6
+  },
+  {
+   "parallel": 8,
+   "median": 113.2,
+   "min": 111.7,
+   "max": 113.5
+  },
+  {
+   "parallel": 10,
+   "median": 97.4,
+   "min": 96.8,
+   "max": 97.8
+  },
+  {
+   "parallel": 12,
+   "median": 83.8,
+   "min": 83.3,
+   "max": 84.1
+  }
+ ],
+ "oldConfig": {
+  "parallel": 8,
+  "median": 106.8
+ },
+ "floor": 75,
+ "chosen": 12,
+ "parallelFoot": "Three runs per setting: before at 4984e80 (8-test pool), the line at 4984e80 with the aa872c5 profiled pool; one run at 12 failed x11_isolated on the cross-connection grab race fixed in ea703c6. Ten more runs at 12 on ea703c6 passed (83.3-84.1 s; three that overlapped other load on k72 took 117-123 s). Hosted CI, CTest wall: 107.4 / 97.8 s (24.04 / 26.04) at 8 with the old pool (run 39704821072, 4984e80); 76.6 / 95.0 s at 12 (run 39712963621, 7ffcf42).",
+ "historySub": "Every failed linux (24.04, 26.04) and sanitizers job with a failed test, all attempts. 22 of 30 were timing and ordering flakes on code that was otherwise green, and 2 more are open and not wait budgets (13 tests in all); 6 were real bugs, which failed on both distributions and re-runs and were fixed in their own pull requests. Re-pulled with the Actions API from all 661 workflow runs since 2026-10-08.",
+ "historyFoot": "From 2026-10-14 to 2026-10-22: 670 linux jobs (44 failed) and 170 sanitizers jobs (8 failed). Earlier failures (2026-10-11/12) were on two codex branches and deliberate (#76 revert test). Data: docs/evidence/2026-10-22-flaky-tests/ci-failures-2026-10-16-22.csv.",
+ "heights": {
+  "stress-before-after": 560,
+  "parallelism": 540,
+  "ci-failure-history": 1390
+ }
+}

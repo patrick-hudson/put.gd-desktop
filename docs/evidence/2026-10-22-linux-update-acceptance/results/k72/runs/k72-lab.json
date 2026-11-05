@@ -1,0 +1,1501 @@
+{
+ "name": "k72-lab",
+ "runtime": "/tmp/ua-pkg.ldFVnc",
+ "session": {
+  "HOME": "/home/patrick",
+  "PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin",
+  "USER": "patrick",
+  "LANG": "en_US.UTF-8",
+  "DISPLAY": ":0",
+  "XAUTHORITY": "/run/user/1000/xauth_snxcgy",
+  "DBUS_SESSION_BUS_ADDRESS": "unix:path=/run/user/1000/bus",
+  "XDG_SESSION_TYPE": "wayland",
+  "XDG_CURRENT_DESKTOP": "KDE",
+  "WAYLAND_DISPLAY": "/run/user/1000/wayland-0",
+  "XDG_SESSION_DESKTOP": "KDE",
+  "DESKTOP_SESSION": "plasma",
+  "KDE_FULL_SESSION": "true",
+  "KDE_SESSION_VERSION": "6",
+  "XDG_DATA_DIRS": "/home/patrick/.local/share/flatpak/exports/share:/var/lib/flatpak/exports/share:/usr/local/share:/usr/share:/var/lib/snapd/desktop"
+ },
+ "shell": "plasmashell",
+ "vnc": 5900,
+ "input": "uinput",
+ "profile": "private",
+ "feed": "lab",
+ "hostPath": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin",
+ "host": "kubuntu",
+ "created": "2026-10-23T00:34:31Z",
+ "pids": {
+  "launch": "putgd-ua-k72-lab-u6lab-7-back-on-nightly-1792718479"
+ },
+ "log": [
+  {
+   "at": "2026-10-23T00:34:35Z",
+   "u6lab-1-L1": {
+    "pid": 1473078,
+    "reply": {
+     "ok": true,
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     }
+    },
+    "status": {
+     "build": "26.1019.1019-nightly",
+     "buildChannel": "nightly",
+     "channel": "nightly",
+     "channelSource": "repository",
+     "channelSetting": "build",
+     "latest": "26.1019.1019-nightly",
+     "updateAvailable": false,
+     "notifies": false,
+     "action": {
+      "kind": "software-updates",
+      "manager": "apt",
+      "updater": {
+       "arguments": [
+        "--mode",
+        "update"
+       ],
+       "id": "plasma-discover",
+       "name": "Discover",
+       "program": "/usr/bin/plasma-discover"
+      },
+      "channel": "nightly",
+      "file": "/etc/apt/sources.list.d/putgd.sources",
+      "command": "sudo apt update && sudo apt upgrade",
+      "repository": "managed",
+      "otherChannel": {
+       "channel": "stable",
+       "commands": [
+        "sudo install -m 644 /usr/share/putgd/repo/putgd-stable.sources /etc/apt/sources.list.d/putgd.sources",
+        "sudo apt update",
+        "sudo apt install --allow-downgrades putgd/stable"
+       ],
+       "docs": "https://github.com/patrick-hudson/put.gd-desktop/blob/main/docs/package-repositories.md#switching-channels"
+      },
+      "older": null
+     },
+     "installKind": "update",
+     "installAvailable": false,
+     "installReason": "not_appimage",
+     "error": null
+    },
+    "repo": {
+     "file": "/etc/apt/sources.list.d/putgd.sources",
+     "exists": true,
+     "sha256": "e3b73051ceae4304e4e16109dd05ee5e3d85e0cf397f716688c7c4bf19013e4b",
+     "sameAs": "/usr/share/putgd/repo/putgd-nightly.sources",
+     "lines": [
+      "URIs: https://pkg.put.gd/lab/apt/ubuntu26.04",
+      "Suites: nightly"
+     ],
+     "installed": "26.1019.1019~nightly",
+     "policy": [
+      "putgd:",
+      "  Installed: 26.1019.1019~nightly",
+      "  Candidate: 26.1019.1019~nightly",
+      "  Version table:",
+      " *** 26.1019.1019~nightly 100",
+      "        100 /var/lib/dpkg/status"
+     ],
+     "conffiles": "/etc/apt/sources.list.d/putgd.sources cd168aaeac742e89e6d977b2b9f889bd"
+    },
+    "frame": "/home/patrick/work/put.gd-ua/pkg/runs/k72-lab/frames/u6lab-1-L1.png"
+   }
+  },
+  {
+   "at": "2026-10-23T00:34:39Z",
+   "u6lab-1-L1": {
+    "pid": 1473078,
+    "reply": {
+     "ok": true,
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     }
+    },
+    "status": {
+     "build": "26.1019.1019-nightly",
+     "buildChannel": "nightly",
+     "channel": "nightly",
+     "channelSource": "repository",
+     "channelSetting": "build",
+     "latest": "26.1019.1019-nightly",
+     "updateAvailable": false,
+     "notifies": false,
+     "action": {
+      "kind": "software-updates",
+      "manager": "apt",
+      "updater": {
+       "arguments": [
+        "--mode",
+        "update"
+       ],
+       "id": "plasma-discover",
+       "name": "Discover",
+       "program": "/usr/bin/plasma-discover"
+      },
+      "channel": "nightly",
+      "file": "/etc/apt/sources.list.d/putgd.sources",
+      "command": "sudo apt update && sudo apt upgrade",
+      "repository": "managed",
+      "otherChannel": {
+       "channel": "stable",
+       "commands": [
+        "sudo install -m 644 /usr/share/putgd/repo/putgd-stable.sources /etc/apt/sources.list.d/putgd.sources",
+        "sudo apt update",
+        "sudo apt install --allow-downgrades putgd/stable"
+       ],
+       "docs": "https://github.com/patrick-hudson/put.gd-desktop/blob/main/docs/package-repositories.md#switching-channels"
+      },
+      "older": null
+     },
+     "installKind": "update",
+     "installAvailable": false,
+     "installReason": "not_appimage",
+     "error": null
+    },
+    "repo": {
+     "file": "/etc/apt/sources.list.d/putgd.sources",
+     "exists": true,
+     "sha256": "e3b73051ceae4304e4e16109dd05ee5e3d85e0cf397f716688c7c4bf19013e4b",
+     "sameAs": "/usr/share/putgd/repo/putgd-nightly.sources",
+     "lines": [
+      "URIs: https://pkg.put.gd/lab/apt/ubuntu26.04",
+      "Suites: nightly"
+     ],
+     "installed": "26.1019.1019~nightly",
+     "policy": [
+      "putgd:",
+      "  Installed: 26.1019.1019~nightly",
+      "  Candidate: 26.1019.1019~nightly",
+      "  Version table:",
+      " *** 26.1019.1019~nightly 100",
+      "        100 /var/lib/dpkg/status"
+     ],
+     "conffiles": "/etc/apt/sources.list.d/putgd.sources cd168aaeac742e89e6d977b2b9f889bd"
+    },
+    "frame": "/home/patrick/work/put.gd-ua/pkg/runs/k72-lab/frames/u6lab-1-L1.png"
+   }
+  },
+  {
+   "at": "2026-10-23T00:34:43Z",
+   "cmds": {
+    "pid": 1473078,
+    "reply": {
+     "ok": true,
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     }
+    },
+    "status": {
+     "build": "26.1019.1019-nightly",
+     "buildChannel": "nightly",
+     "channel": "nightly",
+     "channelSource": "repository",
+     "channelSetting": "build",
+     "latest": "26.1019.1019-nightly",
+     "updateAvailable": false,
+     "notifies": false,
+     "action": {
+      "kind": "software-updates",
+      "manager": "apt",
+      "updater": {
+       "arguments": [
+        "--mode",
+        "update"
+       ],
+       "id": "plasma-discover",
+       "name": "Discover",
+       "program": "/usr/bin/plasma-discover"
+      },
+      "channel": "nightly",
+      "file": "/etc/apt/sources.list.d/putgd.sources",
+      "command": "sudo apt update && sudo apt upgrade",
+      "repository": "managed",
+      "otherChannel": {
+       "channel": "stable",
+       "commands": [
+        "sudo install -m 644 /usr/share/putgd/repo/putgd-stable.sources /etc/apt/sources.list.d/putgd.sources",
+        "sudo apt update",
+        "sudo apt install --allow-downgrades putgd/stable"
+       ],
+       "docs": "https://github.com/patrick-hudson/put.gd-desktop/blob/main/docs/package-repositories.md#switching-channels"
+      },
+      "older": null
+     },
+     "installKind": "update",
+     "installAvailable": false,
+     "installReason": "not_appimage",
+     "error": null
+    },
+    "repo": {
+     "file": "/etc/apt/sources.list.d/putgd.sources",
+     "exists": true,
+     "sha256": "e3b73051ceae4304e4e16109dd05ee5e3d85e0cf397f716688c7c4bf19013e4b",
+     "sameAs": "/usr/share/putgd/repo/putgd-nightly.sources",
+     "lines": [
+      "URIs: https://pkg.put.gd/lab/apt/ubuntu26.04",
+      "Suites: nightly"
+     ],
+     "installed": "26.1019.1019~nightly",
+     "policy": [
+      "putgd:",
+      "  Installed: 26.1019.1019~nightly",
+      "  Candidate: 26.1019.1019~nightly",
+      "  Version table:",
+      " *** 26.1019.1019~nightly 100",
+      "        100 /var/lib/dpkg/status"
+     ],
+     "conffiles": "/etc/apt/sources.list.d/putgd.sources cd168aaeac742e89e6d977b2b9f889bd"
+    },
+    "frame": "/home/patrick/work/put.gd-ua/pkg/runs/k72-lab/frames/cmds.png"
+   }
+  },
+  {
+   "at": "2026-10-23T00:34:52Z",
+   "u6lab-2-stable-older-wait": {
+    "pid": 1473078,
+    "reply": {
+     "ok": true,
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     }
+    },
+    "status": {
+     "build": "26.1019.1019-nightly",
+     "buildChannel": "nightly",
+     "channel": "stable",
+     "channelSource": "repository",
+     "channelSetting": "build",
+     "latest": "26.1018.1020",
+     "updateAvailable": false,
+     "notifies": false,
+     "action": {
+      "kind": "software-updates",
+      "manager": "apt",
+      "updater": {
+       "arguments": [
+        "--mode",
+        "update"
+       ],
+       "id": "plasma-discover",
+       "name": "Discover",
+       "program": "/usr/bin/plasma-discover"
+      },
+      "channel": "stable",
+      "file": "/etc/apt/sources.list.d/putgd.sources",
+      "command": "sudo apt update && sudo apt upgrade",
+      "repository": "managed",
+      "otherChannel": {
+       "channel": "nightly",
+       "commands": [
+        "sudo install -m 644 /usr/share/putgd/repo/putgd-nightly.sources /etc/apt/sources.list.d/putgd.sources",
+        "sudo apt update",
+        "sudo apt install --allow-downgrades putgd/nightly"
+       ],
+       "docs": "https://github.com/patrick-hudson/put.gd-desktop/blob/main/docs/package-repositories.md#switching-channels"
+      },
+      "older": {
+       "command": "sudo apt install --allow-downgrades putgd/stable",
+       "version": "26.1018.1020"
+      }
+     },
+     "installKind": "update",
+     "installAvailable": false,
+     "installReason": "not_appimage",
+     "error": null
+    },
+    "repo": {
+     "file": "/etc/apt/sources.list.d/putgd.sources",
+     "exists": true,
+     "sha256": "4ca78f1d856cb4b13c938787b2bdfa1ba55111b3fe3c8f90eebd725d859ba9e2",
+     "sameAs": "/usr/share/putgd/repo/putgd-stable.sources",
+     "lines": [
+      "URIs: https://pkg.put.gd/lab/apt/ubuntu26.04",
+      "Suites: stable"
+     ],
+     "installed": "26.1019.1019~nightly",
+     "policy": [
+      "putgd:",
+      "  Installed: 26.1019.1019~nightly",
+      "  Candidate: 26.1019.1019~nightly",
+      "  Version table:",
+      " *** 26.1019.1019~nightly 100",
+      "        100 /var/lib/dpkg/status",
+      "     26.1018.1020 500",
+      "        500 https://pkg.put.gd/lab/apt/ubuntu26.04 stable/main amd64 Packages"
+     ],
+     "conffiles": "/etc/apt/sources.list.d/putgd.sources cd168aaeac742e89e6d977b2b9f889bd"
+    },
+    "frame": "/home/patrick/work/put.gd-ua/pkg/runs/k72-lab/frames/u6lab-2-stable-older-wait.png"
+   }
+  },
+  {
+   "at": "2026-10-23T00:35:02Z",
+   "u6lab-3-S1": {
+    "pid": 1473494,
+    "reply": {
+     "ok": true,
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     }
+    },
+    "status": {
+     "build": "26.1018.1020",
+     "buildChannel": "stable",
+     "channel": "stable",
+     "channelSource": "repository",
+     "channelSetting": "build",
+     "latest": "26.1018.1020",
+     "updateAvailable": false,
+     "notifies": false,
+     "action": {
+      "kind": "software-updates",
+      "manager": "apt",
+      "updater": {
+       "arguments": [
+        "--mode",
+        "update"
+       ],
+       "id": "plasma-discover",
+       "name": "Discover",
+       "program": "/usr/bin/plasma-discover"
+      },
+      "channel": "stable",
+      "file": "/etc/apt/sources.list.d/putgd.sources",
+      "command": "sudo apt update && sudo apt upgrade",
+      "repository": "managed",
+      "otherChannel": {
+       "channel": "nightly",
+       "commands": [
+        "sudo install -m 644 /usr/share/putgd/repo/putgd-nightly.sources /etc/apt/sources.list.d/putgd.sources",
+        "sudo apt update",
+        "sudo apt install --allow-downgrades putgd/nightly"
+       ],
+       "docs": "https://github.com/patrick-hudson/put.gd-desktop/blob/main/docs/package-repositories.md#switching-channels"
+      },
+      "older": null
+     },
+     "installKind": "update",
+     "installAvailable": false,
+     "installReason": "not_appimage",
+     "error": null
+    },
+    "repo": {
+     "file": "/etc/apt/sources.list.d/putgd.sources",
+     "exists": true,
+     "sha256": "4ca78f1d856cb4b13c938787b2bdfa1ba55111b3fe3c8f90eebd725d859ba9e2",
+     "sameAs": "/usr/share/putgd/repo/putgd-stable.sources",
+     "lines": [
+      "URIs: https://pkg.put.gd/lab/apt/ubuntu26.04",
+      "Suites: stable"
+     ],
+     "installed": "26.1018.1020",
+     "policy": [
+      "putgd:",
+      "  Installed: 26.1018.1020",
+      "  Candidate: 26.1018.1020",
+      "  Version table:",
+      " *** 26.1018.1020 500",
+      "        500 https://pkg.put.gd/lab/apt/ubuntu26.04 stable/main amd64 Packages",
+      "        100 /var/lib/dpkg/status"
+     ],
+     "conffiles": "/etc/apt/sources.list.d/putgd.sources c1dbb74bb38c5d9a81f0deb4300b208f"
+    },
+    "frame": "/home/patrick/work/put.gd-ua/pkg/runs/k72-lab/frames/u6lab-3-S1.png"
+   }
+  },
+  {
+   "at": "2026-10-23T00:35:06Z",
+   "u6lab-3-S1": {
+    "pid": 1473494,
+    "reply": {
+     "ok": true,
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     }
+    },
+    "status": {
+     "build": "26.1018.1020",
+     "buildChannel": "stable",
+     "channel": "stable",
+     "channelSource": "repository",
+     "channelSetting": "build",
+     "latest": "26.1018.1020",
+     "updateAvailable": false,
+     "notifies": false,
+     "action": {
+      "kind": "software-updates",
+      "manager": "apt",
+      "updater": {
+       "arguments": [
+        "--mode",
+        "update"
+       ],
+       "id": "plasma-discover",
+       "name": "Discover",
+       "program": "/usr/bin/plasma-discover"
+      },
+      "channel": "stable",
+      "file": "/etc/apt/sources.list.d/putgd.sources",
+      "command": "sudo apt update && sudo apt upgrade",
+      "repository": "managed",
+      "otherChannel": {
+       "channel": "nightly",
+       "commands": [
+        "sudo install -m 644 /usr/share/putgd/repo/putgd-nightly.sources /etc/apt/sources.list.d/putgd.sources",
+        "sudo apt update",
+        "sudo apt install --allow-downgrades putgd/nightly"
+       ],
+       "docs": "https://github.com/patrick-hudson/put.gd-desktop/blob/main/docs/package-repositories.md#switching-channels"
+      },
+      "older": null
+     },
+     "installKind": "update",
+     "installAvailable": false,
+     "installReason": "not_appimage",
+     "error": null
+    },
+    "repo": {
+     "file": "/etc/apt/sources.list.d/putgd.sources",
+     "exists": true,
+     "sha256": "4ca78f1d856cb4b13c938787b2bdfa1ba55111b3fe3c8f90eebd725d859ba9e2",
+     "sameAs": "/usr/share/putgd/repo/putgd-stable.sources",
+     "lines": [
+      "URIs: https://pkg.put.gd/lab/apt/ubuntu26.04",
+      "Suites: stable"
+     ],
+     "installed": "26.1018.1020",
+     "policy": [
+      "putgd:",
+      "  Installed: 26.1018.1020",
+      "  Candidate: 26.1018.1020",
+      "  Version table:",
+      " *** 26.1018.1020 500",
+      "        500 https://pkg.put.gd/lab/apt/ubuntu26.04 stable/main amd64 Packages",
+      "        100 /var/lib/dpkg/status"
+     ],
+     "conffiles": "/etc/apt/sources.list.d/putgd.sources c1dbb74bb38c5d9a81f0deb4300b208f"
+    },
+    "frame": "/home/patrick/work/put.gd-ua/pkg/runs/k72-lab/frames/u6lab-3-S1.png"
+   }
+  },
+  {
+   "at": "2026-10-23T00:35:06Z",
+   "watch": {
+    "label": "u14repo",
+    "pid": 1473564
+   }
+  },
+  {
+   "at": "2026-10-23T00:47:21Z",
+   "u6lab-4-S2-available": {
+    "pid": 1473494,
+    "reply": {
+     "ok": true,
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     }
+    },
+    "status": {
+     "build": "26.1018.1020",
+     "buildChannel": "stable",
+     "channel": "stable",
+     "channelSource": "repository",
+     "channelSetting": "build",
+     "latest": "26.1020.1021",
+     "updateAvailable": true,
+     "notifies": false,
+     "action": {
+      "kind": "software-updates",
+      "manager": "apt",
+      "updater": {
+       "arguments": [
+        "--mode",
+        "update"
+       ],
+       "id": "plasma-discover",
+       "name": "Discover",
+       "program": "/usr/bin/plasma-discover"
+      },
+      "channel": "stable",
+      "file": "/etc/apt/sources.list.d/putgd.sources",
+      "command": "sudo apt update && sudo apt upgrade",
+      "repository": "managed",
+      "otherChannel": {
+       "channel": "nightly",
+       "commands": [
+        "sudo install -m 644 /usr/share/putgd/repo/putgd-nightly.sources /etc/apt/sources.list.d/putgd.sources",
+        "sudo apt update",
+        "sudo apt install --allow-downgrades putgd/nightly"
+       ],
+       "docs": "https://github.com/patrick-hudson/put.gd-desktop/blob/main/docs/package-repositories.md#switching-channels"
+      },
+      "older": null
+     },
+     "installKind": "update",
+     "installAvailable": false,
+     "installReason": "not_appimage",
+     "error": null
+    },
+    "repo": {
+     "file": "/etc/apt/sources.list.d/putgd.sources",
+     "exists": true,
+     "sha256": "4ca78f1d856cb4b13c938787b2bdfa1ba55111b3fe3c8f90eebd725d859ba9e2",
+     "sameAs": "/usr/share/putgd/repo/putgd-stable.sources",
+     "lines": [
+      "URIs: https://pkg.put.gd/lab/apt/ubuntu26.04",
+      "Suites: stable"
+     ],
+     "installed": "26.1018.1020",
+     "policy": [
+      "putgd:",
+      "  Installed: 26.1018.1020",
+      "  Candidate: 26.1018.1020",
+      "  Version table:",
+      " *** 26.1018.1020 500",
+      "        500 https://pkg.put.gd/lab/apt/ubuntu26.04 stable/main amd64 Packages",
+      "        100 /var/lib/dpkg/status"
+     ],
+     "conffiles": "/etc/apt/sources.list.d/putgd.sources c1dbb74bb38c5d9a81f0deb4300b208f"
+    },
+    "frame": "/home/patrick/work/put.gd-ua/pkg/runs/k72-lab/frames/u6lab-4-S2-available.png"
+   }
+  },
+  {
+   "at": "2026-10-23T00:47:39Z",
+   "u6lab-5-S2": {
+    "pid": 1474237,
+    "reply": {
+     "ok": true,
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     }
+    },
+    "status": {
+     "build": "26.1020.1021",
+     "buildChannel": "stable",
+     "channel": "stable",
+     "channelSource": "repository",
+     "channelSetting": "build",
+     "latest": "26.1020.1021",
+     "updateAvailable": false,
+     "notifies": false,
+     "action": {
+      "kind": "software-updates",
+      "manager": "apt",
+      "updater": {
+       "arguments": [
+        "--mode",
+        "update"
+       ],
+       "id": "plasma-discover",
+       "name": "Discover",
+       "program": "/usr/bin/plasma-discover"
+      },
+      "channel": "stable",
+      "file": "/etc/apt/sources.list.d/putgd.sources",
+      "command": "sudo apt update && sudo apt upgrade",
+      "repository": "managed",
+      "otherChannel": {
+       "channel": "nightly",
+       "commands": [
+        "sudo install -m 644 /usr/share/putgd/repo/putgd-nightly.sources /etc/apt/sources.list.d/putgd.sources",
+        "sudo apt update",
+        "sudo apt install --allow-downgrades putgd/nightly"
+       ],
+       "docs": "https://github.com/patrick-hudson/put.gd-desktop/blob/main/docs/package-repositories.md#switching-channels"
+      },
+      "older": null
+     },
+     "installKind": "update",
+     "installAvailable": false,
+     "installReason": "not_appimage",
+     "error": null
+    },
+    "repo": {
+     "file": "/etc/apt/sources.list.d/putgd.sources",
+     "exists": true,
+     "sha256": "4ca78f1d856cb4b13c938787b2bdfa1ba55111b3fe3c8f90eebd725d859ba9e2",
+     "sameAs": "/usr/share/putgd/repo/putgd-stable.sources",
+     "lines": [
+      "URIs: https://pkg.put.gd/lab/apt/ubuntu26.04",
+      "Suites: stable"
+     ],
+     "installed": "26.1020.1021",
+     "policy": [
+      "putgd:",
+      "  Installed: 26.1020.1021",
+      "  Candidate: 26.1020.1021",
+      "  Version table:",
+      " *** 26.1020.1021 500",
+      "        500 https://pkg.put.gd/lab/apt/ubuntu26.04 stable/main amd64 Packages",
+      "        100 /var/lib/dpkg/status"
+     ],
+     "conffiles": "/etc/apt/sources.list.d/putgd.sources c1dbb74bb38c5d9a81f0deb4300b208f"
+    },
+    "frame": "/home/patrick/work/put.gd-ua/pkg/runs/k72-lab/frames/u6lab-5-S2.png"
+   }
+  },
+  {
+   "at": "2026-10-23T00:47:43Z",
+   "u6lab-5-S2": {
+    "pid": 1474237,
+    "reply": {
+     "ok": true,
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     }
+    },
+    "status": {
+     "build": "26.1020.1021",
+     "buildChannel": "stable",
+     "channel": "stable",
+     "channelSource": "repository",
+     "channelSetting": "build",
+     "latest": "26.1020.1021",
+     "updateAvailable": false,
+     "notifies": false,
+     "action": {
+      "kind": "software-updates",
+      "manager": "apt",
+      "updater": {
+       "arguments": [
+        "--mode",
+        "update"
+       ],
+       "id": "plasma-discover",
+       "name": "Discover",
+       "program": "/usr/bin/plasma-discover"
+      },
+      "channel": "stable",
+      "file": "/etc/apt/sources.list.d/putgd.sources",
+      "command": "sudo apt update && sudo apt upgrade",
+      "repository": "managed",
+      "otherChannel": {
+       "channel": "nightly",
+       "commands": [
+        "sudo install -m 644 /usr/share/putgd/repo/putgd-nightly.sources /etc/apt/sources.list.d/putgd.sources",
+        "sudo apt update",
+        "sudo apt install --allow-downgrades putgd/nightly"
+       ],
+       "docs": "https://github.com/patrick-hudson/put.gd-desktop/blob/main/docs/package-repositories.md#switching-channels"
+      },
+      "older": null
+     },
+     "installKind": "update",
+     "installAvailable": false,
+     "installReason": "not_appimage",
+     "error": null
+    },
+    "repo": {
+     "file": "/etc/apt/sources.list.d/putgd.sources",
+     "exists": true,
+     "sha256": "4ca78f1d856cb4b13c938787b2bdfa1ba55111b3fe3c8f90eebd725d859ba9e2",
+     "sameAs": "/usr/share/putgd/repo/putgd-stable.sources",
+     "lines": [
+      "URIs: https://pkg.put.gd/lab/apt/ubuntu26.04",
+      "Suites: stable"
+     ],
+     "installed": "26.1020.1021",
+     "policy": [
+      "putgd:",
+      "  Installed: 26.1020.1021",
+      "  Candidate: 26.1020.1021",
+      "  Version table:",
+      " *** 26.1020.1021 500",
+      "        500 https://pkg.put.gd/lab/apt/ubuntu26.04 stable/main amd64 Packages",
+      "        100 /var/lib/dpkg/status"
+     ],
+     "conffiles": "/etc/apt/sources.list.d/putgd.sources c1dbb74bb38c5d9a81f0deb4300b208f"
+    },
+    "frame": "/home/patrick/work/put.gd-ua/pkg/runs/k72-lab/frames/u6lab-5-S2.png"
+   }
+  },
+  {
+   "at": "2026-10-23T00:48:09Z",
+   "u6lab-4b-S1-again": {
+    "pid": 1474496,
+    "reply": {
+     "ok": true,
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     }
+    },
+    "status": {
+     "build": "26.1018.1020",
+     "buildChannel": "stable",
+     "channel": "stable",
+     "channelSource": "repository",
+     "channelSetting": "build",
+     "latest": "26.1020.1021",
+     "updateAvailable": true,
+     "notifies": false,
+     "action": {
+      "kind": "software-updates",
+      "manager": "apt",
+      "updater": {
+       "arguments": [
+        "--mode",
+        "update"
+       ],
+       "id": "plasma-discover",
+       "name": "Discover",
+       "program": "/usr/bin/plasma-discover"
+      },
+      "channel": "stable",
+      "file": "/etc/apt/sources.list.d/putgd.sources",
+      "command": "sudo apt update && sudo apt upgrade",
+      "repository": "managed",
+      "otherChannel": {
+       "channel": "nightly",
+       "commands": [
+        "sudo install -m 644 /usr/share/putgd/repo/putgd-nightly.sources /etc/apt/sources.list.d/putgd.sources",
+        "sudo apt update",
+        "sudo apt install --allow-downgrades putgd/nightly"
+       ],
+       "docs": "https://github.com/patrick-hudson/put.gd-desktop/blob/main/docs/package-repositories.md#switching-channels"
+      },
+      "older": null
+     },
+     "installKind": "update",
+     "installAvailable": false,
+     "installReason": "not_appimage",
+     "error": null
+    },
+    "repo": {
+     "file": "/etc/apt/sources.list.d/putgd.sources",
+     "exists": true,
+     "sha256": "4ca78f1d856cb4b13c938787b2bdfa1ba55111b3fe3c8f90eebd725d859ba9e2",
+     "sameAs": "/usr/share/putgd/repo/putgd-stable.sources",
+     "lines": [
+      "URIs: https://pkg.put.gd/lab/apt/ubuntu26.04",
+      "Suites: stable"
+     ],
+     "installed": "26.1018.1020",
+     "policy": [
+      "putgd:",
+      "  Installed: 26.1018.1020",
+      "  Candidate: 26.1020.1021",
+      "  Version table:",
+      "     26.1020.1021 500",
+      "        500 https://pkg.put.gd/lab/apt/ubuntu26.04 stable/main amd64 Packages",
+      " *** 26.1018.1020 100",
+      "        100 /var/lib/dpkg/status"
+     ],
+     "conffiles": "/etc/apt/sources.list.d/putgd.sources c1dbb74bb38c5d9a81f0deb4300b208f"
+    },
+    "frame": "/home/patrick/work/put.gd-ua/pkg/runs/k72-lab/frames/u6lab-4b-S1-again.png"
+   }
+  },
+  {
+   "at": "2026-10-23T00:49:12Z",
+   "click": {
+    "x": 797,
+    "y": 831,
+    "keys": null,
+    "frame": "/home/patrick/work/put.gd-ua/pkg/runs/k72-lab/frames/u6lab-4c-updater-S2.png"
+   }
+  },
+  {
+   "at": "2026-10-23T00:49:31Z",
+   "u6lab-4c-updater-S2": {
+    "repo": {
+     "file": "/etc/apt/sources.list.d/putgd.sources",
+     "exists": true,
+     "sha256": "4ca78f1d856cb4b13c938787b2bdfa1ba55111b3fe3c8f90eebd725d859ba9e2",
+     "sameAs": "/usr/share/putgd/repo/putgd-stable.sources",
+     "lines": [
+      "URIs: https://pkg.put.gd/lab/apt/ubuntu26.04",
+      "Suites: stable"
+     ],
+     "installed": "26.1018.1020",
+     "policy": [
+      "putgd:",
+      "  Installed: 26.1018.1020",
+      "  Candidate: 26.1020.1021",
+      "  Version table:",
+      "     26.1020.1021 500",
+      "        500 https://pkg.put.gd/lab/apt/ubuntu26.04 stable/main amd64 Packages",
+      " *** 26.1018.1020 100",
+      "        100 /var/lib/dpkg/status"
+     ],
+     "conffiles": "/etc/apt/sources.list.d/putgd.sources c1dbb74bb38c5d9a81f0deb4300b208f"
+    },
+    "frame": "/home/patrick/work/put.gd-ua/pkg/runs/k72-lab/frames/u6lab-4c-updater-S2.png"
+   }
+  },
+  {
+   "at": "2026-10-23T00:49:53Z",
+   "u6lab-5-S2": {
+    "pid": 1475024,
+    "reply": {
+     "ok": true,
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     }
+    },
+    "status": {
+     "build": "26.1020.1021",
+     "buildChannel": "stable",
+     "channel": "stable",
+     "channelSource": "repository",
+     "channelSetting": "build",
+     "latest": "26.1020.1021",
+     "updateAvailable": false,
+     "notifies": false,
+     "action": {
+      "kind": "software-updates",
+      "manager": "apt",
+      "updater": {
+       "arguments": [
+        "--mode",
+        "update"
+       ],
+       "id": "plasma-discover",
+       "name": "Discover",
+       "program": "/usr/bin/plasma-discover"
+      },
+      "channel": "stable",
+      "file": "/etc/apt/sources.list.d/putgd.sources",
+      "command": "sudo apt update && sudo apt upgrade",
+      "repository": "managed",
+      "otherChannel": {
+       "channel": "nightly",
+       "commands": [
+        "sudo install -m 644 /usr/share/putgd/repo/putgd-nightly.sources /etc/apt/sources.list.d/putgd.sources",
+        "sudo apt update",
+        "sudo apt install --allow-downgrades putgd/nightly"
+       ],
+       "docs": "https://github.com/patrick-hudson/put.gd-desktop/blob/main/docs/package-repositories.md#switching-channels"
+      },
+      "older": null
+     },
+     "installKind": "update",
+     "installAvailable": false,
+     "installReason": "not_appimage",
+     "error": null
+    },
+    "repo": {
+     "file": "/etc/apt/sources.list.d/putgd.sources",
+     "exists": true,
+     "sha256": "4ca78f1d856cb4b13c938787b2bdfa1ba55111b3fe3c8f90eebd725d859ba9e2",
+     "sameAs": "/usr/share/putgd/repo/putgd-stable.sources",
+     "lines": [
+      "URIs: https://pkg.put.gd/lab/apt/ubuntu26.04",
+      "Suites: stable"
+     ],
+     "installed": "26.1020.1021",
+     "policy": [
+      "putgd:",
+      "  Installed: 26.1020.1021",
+      "  Candidate: 26.1020.1021",
+      "  Version table:",
+      " *** 26.1020.1021 500",
+      "        500 https://pkg.put.gd/lab/apt/ubuntu26.04 stable/main amd64 Packages",
+      "        100 /var/lib/dpkg/status"
+     ],
+     "conffiles": "/etc/apt/sources.list.d/putgd.sources c1dbb74bb38c5d9a81f0deb4300b208f"
+    },
+    "frame": "/home/patrick/work/put.gd-ua/pkg/runs/k72-lab/frames/u6lab-5-S2.png"
+   }
+  },
+  {
+   "at": "2026-10-23T01:20:55Z",
+   "u6lab-6-S3-available": {
+    "pid": 1475024,
+    "reply": {
+     "ok": true,
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     }
+    },
+    "status": {
+     "build": "26.1020.1021",
+     "buildChannel": "stable",
+     "channel": "stable",
+     "channelSource": "repository",
+     "channelSetting": "build",
+     "latest": "26.1021.1023",
+     "updateAvailable": true,
+     "notifies": false,
+     "action": {
+      "kind": "software-updates",
+      "manager": "apt",
+      "updater": {
+       "arguments": [
+        "--mode",
+        "update"
+       ],
+       "id": "plasma-discover",
+       "name": "Discover",
+       "program": "/usr/bin/plasma-discover"
+      },
+      "channel": "stable",
+      "file": "/etc/apt/sources.list.d/putgd.sources",
+      "command": "sudo apt update && sudo apt upgrade",
+      "repository": "managed",
+      "otherChannel": {
+       "channel": "nightly",
+       "commands": [
+        "sudo install -m 644 /usr/share/putgd/repo/putgd-nightly.sources /etc/apt/sources.list.d/putgd.sources",
+        "sudo apt update",
+        "sudo apt install --allow-downgrades putgd/nightly"
+       ],
+       "docs": "https://github.com/patrick-hudson/put.gd-desktop/blob/main/docs/package-repositories.md#switching-channels"
+      },
+      "older": null
+     },
+     "installKind": "update",
+     "installAvailable": false,
+     "installReason": "not_appimage",
+     "error": null
+    },
+    "repo": {
+     "file": "/etc/apt/sources.list.d/putgd.sources",
+     "exists": true,
+     "sha256": "4ca78f1d856cb4b13c938787b2bdfa1ba55111b3fe3c8f90eebd725d859ba9e2",
+     "sameAs": "/usr/share/putgd/repo/putgd-stable.sources",
+     "lines": [
+      "URIs: https://pkg.put.gd/lab/apt/ubuntu26.04",
+      "Suites: stable"
+     ],
+     "installed": "26.1020.1021",
+     "policy": [
+      "putgd:",
+      "  Installed: 26.1020.1021",
+      "  Candidate: 26.1020.1021",
+      "  Version table:",
+      " *** 26.1020.1021 500",
+      "        500 https://pkg.put.gd/lab/apt/ubuntu26.04 stable/main amd64 Packages",
+      "        100 /var/lib/dpkg/status"
+     ],
+     "conffiles": "/etc/apt/sources.list.d/putgd.sources c1dbb74bb38c5d9a81f0deb4300b208f"
+    },
+    "frame": "/home/patrick/work/put.gd-ua/pkg/runs/k72-lab/frames/u6lab-6-S3-available.png"
+   }
+  },
+  {
+   "at": "2026-10-23T01:20:56Z",
+   "watch": {
+    "label": "u14repo",
+    "from": "2026-10-23T00:35:06Z",
+    "to": "2026-10-23T01:20:56Z",
+    "notifyCalls": [],
+    "putgdNotifyCalls": [],
+    "journal": [
+     {
+      "time": "2026-10-23T00:34:32.306Z",
+      "message": "Update check finished",
+      "fields": {
+       "channel": "nightly",
+       "itemId": null,
+       "latest": "26.1019.1019-nightly",
+       "operationId": null,
+       "updateAvailable": false
+      }
+     },
+     {
+      "time": "2026-10-23T00:34:36.229Z",
+      "message": "Update check finished",
+      "fields": {
+       "channel": "nightly",
+       "itemId": null,
+       "latest": "26.1019.1019-nightly",
+       "operationId": null,
+       "updateAvailable": false
+      }
+     },
+     {
+      "time": "2026-10-23T00:34:40.042Z",
+      "message": "Update check finished",
+      "fields": {
+       "channel": "nightly",
+       "itemId": null,
+       "latest": "26.1019.1019-nightly",
+       "operationId": null,
+       "updateAvailable": false
+      }
+     },
+     {
+      "time": "2026-10-23T00:34:48.742Z",
+      "message": "Update check finished",
+      "fields": {
+       "channel": "stable",
+       "itemId": null,
+       "latest": "26.1018.1020",
+       "operationId": null,
+       "updateAvailable": false
+      }
+     },
+     {
+      "time": "2026-10-23T00:34:58.711Z",
+      "message": "Update check finished",
+      "fields": {
+       "channel": "stable",
+       "itemId": null,
+       "latest": "26.1018.1020",
+       "operationId": null,
+       "updateAvailable": false
+      }
+     },
+     {
+      "time": "2026-10-23T00:35:03.287Z",
+      "message": "Update check finished",
+      "fields": {
+       "channel": "stable",
+       "itemId": null,
+       "latest": "26.1018.1020",
+       "operationId": null,
+       "updateAvailable": false
+      }
+     },
+     {
+      "time": "2026-10-23T00:47:18.523Z",
+      "message": "Update check finished",
+      "fields": {
+       "channel": "stable",
+       "itemId": null,
+       "latest": "26.1020.1021",
+       "operationId": null,
+       "updateAvailable": true
+      }
+     },
+     {
+      "time": "2026-10-23T00:47:35.420Z",
+      "message": "Update check finished",
+      "fields": {
+       "channel": "stable",
+       "itemId": null,
+       "latest": "26.1020.1021",
+       "operationId": null,
+       "updateAvailable": false
+      }
+     },
+     {
+      "time": "2026-10-23T00:47:39.987Z",
+      "message": "Update check finished",
+      "fields": {
+       "channel": "stable",
+       "itemId": null,
+       "latest": "26.1020.1021",
+       "operationId": null,
+       "updateAvailable": false
+      }
+     },
+     {
+      "time": "2026-10-23T00:48:05.080Z",
+      "message": "Update check finished",
+      "fields": {
+       "channel": "stable",
+       "itemId": null,
+       "latest": "26.1020.1021",
+       "operationId": null,
+       "updateAvailable": true
+      }
+     },
+     {
+      "time": "2026-10-23T00:49:49.113Z",
+      "message": "Update check finished",
+      "fields": {
+       "channel": "stable",
+       "itemId": null,
+       "latest": "26.1020.1021",
+       "operationId": null,
+       "updateAvailable": false
+      }
+     },
+     {
+      "time": "2026-10-23T01:20:52.333Z",
+      "message": "Update check finished",
+      "fields": {
+       "channel": "stable",
+       "itemId": null,
+       "latest": "26.1021.1023",
+       "operationId": null,
+       "updateAvailable": true
+      }
+     }
+    ]
+   }
+  },
+  {
+   "at": "2026-10-23T01:21:00Z",
+   "cmds": {
+    "pid": 1475024,
+    "reply": {
+     "ok": true,
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     }
+    },
+    "status": {
+     "build": "26.1020.1021",
+     "buildChannel": "stable",
+     "channel": "stable",
+     "channelSource": "repository",
+     "channelSetting": "build",
+     "latest": "26.1021.1023",
+     "updateAvailable": true,
+     "notifies": false,
+     "action": {
+      "kind": "software-updates",
+      "manager": "apt",
+      "updater": {
+       "arguments": [
+        "--mode",
+        "update"
+       ],
+       "id": "plasma-discover",
+       "name": "Discover",
+       "program": "/usr/bin/plasma-discover"
+      },
+      "channel": "stable",
+      "file": "/etc/apt/sources.list.d/putgd.sources",
+      "command": "sudo apt update && sudo apt upgrade",
+      "repository": "managed",
+      "otherChannel": {
+       "channel": "nightly",
+       "commands": [
+        "sudo install -m 644 /usr/share/putgd/repo/putgd-nightly.sources /etc/apt/sources.list.d/putgd.sources",
+        "sudo apt update",
+        "sudo apt install --allow-downgrades putgd/nightly"
+       ],
+       "docs": "https://github.com/patrick-hudson/put.gd-desktop/blob/main/docs/package-repositories.md#switching-channels"
+      },
+      "older": null
+     },
+     "installKind": "update",
+     "installAvailable": false,
+     "installReason": "not_appimage",
+     "error": null
+    },
+    "repo": {
+     "file": "/etc/apt/sources.list.d/putgd.sources",
+     "exists": true,
+     "sha256": "4ca78f1d856cb4b13c938787b2bdfa1ba55111b3fe3c8f90eebd725d859ba9e2",
+     "sameAs": "/usr/share/putgd/repo/putgd-stable.sources",
+     "lines": [
+      "URIs: https://pkg.put.gd/lab/apt/ubuntu26.04",
+      "Suites: stable"
+     ],
+     "installed": "26.1020.1021",
+     "policy": [
+      "putgd:",
+      "  Installed: 26.1020.1021",
+      "  Candidate: 26.1020.1021",
+      "  Version table:",
+      " *** 26.1020.1021 500",
+      "        500 https://pkg.put.gd/lab/apt/ubuntu26.04 stable/main amd64 Packages",
+      "        100 /var/lib/dpkg/status"
+     ],
+     "conffiles": "/etc/apt/sources.list.d/putgd.sources c1dbb74bb38c5d9a81f0deb4300b208f"
+    },
+    "frame": "/home/patrick/work/put.gd-ua/pkg/runs/k72-lab/frames/cmds.png"
+   }
+  },
+  {
+   "at": "2026-10-23T01:21:26Z",
+   "u6lab-7-back-on-nightly": {
+    "pid": 1479268,
+    "reply": {
+     "ok": true,
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     }
+    },
+    "status": {
+     "build": "26.1021.1022-nightly",
+     "buildChannel": "nightly",
+     "channel": "nightly",
+     "channelSource": "repository",
+     "channelSetting": "build",
+     "latest": "26.1021.1022-nightly",
+     "updateAvailable": false,
+     "notifies": false,
+     "action": {
+      "kind": "software-updates",
+      "manager": "apt",
+      "updater": {
+       "arguments": [
+        "--mode",
+        "update"
+       ],
+       "id": "plasma-discover",
+       "name": "Discover",
+       "program": "/usr/bin/plasma-discover"
+      },
+      "channel": "nightly",
+      "file": "/etc/apt/sources.list.d/putgd.sources",
+      "command": "sudo apt update && sudo apt upgrade",
+      "repository": "managed",
+      "otherChannel": {
+       "channel": "stable",
+       "commands": [
+        "sudo install -m 644 /usr/share/putgd/repo/putgd-stable.sources /etc/apt/sources.list.d/putgd.sources",
+        "sudo apt update",
+        "sudo apt install --allow-downgrades putgd/stable"
+       ],
+       "docs": "https://github.com/patrick-hudson/put.gd-desktop/blob/main/docs/package-repositories.md#switching-channels"
+      },
+      "older": null
+     },
+     "installKind": "update",
+     "installAvailable": false,
+     "installReason": "not_appimage",
+     "error": null
+    },
+    "repo": {
+     "file": "/etc/apt/sources.list.d/putgd.sources",
+     "exists": true,
+     "sha256": "e3b73051ceae4304e4e16109dd05ee5e3d85e0cf397f716688c7c4bf19013e4b",
+     "sameAs": "/usr/share/putgd/repo/putgd-nightly.sources",
+     "lines": [
+      "URIs: https://pkg.put.gd/lab/apt/ubuntu26.04",
+      "Suites: nightly"
+     ],
+     "installed": "26.1021.1022~nightly",
+     "policy": [
+      "putgd:",
+      "  Installed: 26.1021.1022~nightly",
+      "  Candidate: 26.1021.1022~nightly",
+      "  Version table:",
+      " *** 26.1021.1022~nightly 500",
+      "        500 https://pkg.put.gd/lab/apt/ubuntu26.04 nightly/main amd64 Packages",
+      "        100 /var/lib/dpkg/status"
+     ],
+     "conffiles": "/etc/apt/sources.list.d/putgd.sources cd168aaeac742e89e6d977b2b9f889bd"
+    },
+    "frame": "/home/patrick/work/put.gd-ua/pkg/runs/k72-lab/frames/u6lab-7-back-on-nightly.png"
+   }
+  },
+  {
+   "at": "2026-10-23T01:21:30Z",
+   "u6lab-7-back-on-nightly": {
+    "pid": 1479268,
+    "reply": {
+     "ok": true,
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     }
+    },
+    "status": {
+     "build": "26.1021.1022-nightly",
+     "buildChannel": "nightly",
+     "channel": "nightly",
+     "channelSource": "repository",
+     "channelSetting": "build",
+     "latest": "26.1021.1022-nightly",
+     "updateAvailable": false,
+     "notifies": false,
+     "action": {
+      "kind": "software-updates",
+      "manager": "apt",
+      "updater": {
+       "arguments": [
+        "--mode",
+        "update"
+       ],
+       "id": "plasma-discover",
+       "name": "Discover",
+       "program": "/usr/bin/plasma-discover"
+      },
+      "channel": "nightly",
+      "file": "/etc/apt/sources.list.d/putgd.sources",
+      "command": "sudo apt update && sudo apt upgrade",
+      "repository": "managed",
+      "otherChannel": {
+       "channel": "stable",
+       "commands": [
+        "sudo install -m 644 /usr/share/putgd/repo/putgd-stable.sources /etc/apt/sources.list.d/putgd.sources",
+        "sudo apt update",
+        "sudo apt install --allow-downgrades putgd/stable"
+       ],
+       "docs": "https://github.com/patrick-hudson/put.gd-desktop/blob/main/docs/package-repositories.md#switching-channels"
+      },
+      "older": null
+     },
+     "installKind": "update",
+     "installAvailable": false,
+     "installReason": "not_appimage",
+     "error": null
+    },
+    "repo": {
+     "file": "/etc/apt/sources.list.d/putgd.sources",
+     "exists": true,
+     "sha256": "e3b73051ceae4304e4e16109dd05ee5e3d85e0cf397f716688c7c4bf19013e4b",
+     "sameAs": "/usr/share/putgd/repo/putgd-nightly.sources",
+     "lines": [
+      "URIs: https://pkg.put.gd/lab/apt/ubuntu26.04",
+      "Suites: nightly"
+     ],
+     "installed": "26.1021.1022~nightly",
+     "policy": [
+      "putgd:",
+      "  Installed: 26.1021.1022~nightly",
+      "  Candidate: 26.1021.1022~nightly",
+      "  Version table:",
+      " *** 26.1021.1022~nightly 500",
+      "        500 https://pkg.put.gd/lab/apt/ubuntu26.04 nightly/main amd64 Packages",
+      "        100 /var/lib/dpkg/status"
+     ],
+     "conffiles": "/etc/apt/sources.list.d/putgd.sources cd168aaeac742e89e6d977b2b9f889bd"
+    },
+    "frame": "/home/patrick/work/put.gd-ua/pkg/runs/k72-lab/frames/u6lab-7-back-on-nightly.png"
+   }
+  }
+ ],
+ "before": {
+  "defaultProfile": {
+   "/home/patrick/.config/putgd": false,
+   "/home/patrick/.local/state/putgd": true,
+   "/home/patrick/.cache/putgd": false,
+   "/home/patrick/.local/share/putgd": false
+  },
+  "defaultFiles": {
+   "/home/patrick/.local/state/putgd": [
+    "/home/patrick/.local/state/putgd/logs",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261019T222239616Z-967989-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261019T222240223Z-968039-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261019T222251582Z-968146-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261019T222302998Z-968252-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261019T222314288Z-968397-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261019T222324889Z-968593-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261019T222337227Z-968761-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261019T222348518Z-968923-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261019T222349139Z-968960-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261019T222349759Z-968997-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261019T223814595Z-981568-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261019T223815175Z-981618-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261019T223826446Z-981723-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261019T223837827Z-981827-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261019T223849102Z-981932-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261019T223859696Z-982122-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261019T223912241Z-982248-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261019T223923444Z-982370-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261019T223924087Z-982407-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261019T223924708Z-982444-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261020T024110680Z-19425-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261020T024111421Z-19487-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261020T024122746Z-19802-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261020T024134157Z-20141-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261020T024145567Z-20484-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261020T024156522Z-21244-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261020T024208368Z-22651-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261020T024219688Z-23294-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261020T024220518Z-23387-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261020T024221403Z-23463-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261020T033314142Z-64455-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261020T033325533Z-64765-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261020T033336984Z-64962-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261020T033348328Z-65238-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261021T164255898Z-347613-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261021T164256723Z-347731-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261021T164308090Z-347896-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261021T164319355Z-348001-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261021T164330712Z-348146-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261021T164341381Z-348281-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261021T164353885Z-348447-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261021T164405127Z-348567-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261021T164405906Z-348605-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261021T164406575Z-348643-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261022T010627997Z-454308-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261022T010628271Z-454355-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261022T010639502Z-456101-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261022T010650751Z-457708-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261022T010701937Z-459088-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261022T010712645Z-460737-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261022T010724784Z-462093-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261022T010735951Z-463111-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261022T010736725Z-463215-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261022T010737537Z-463319-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261022T011439897Z-467766-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261022T011451146Z-468643-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261022T011502398Z-469635-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261022T011513607Z-470245-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261022T011524345Z-470955-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261022T011536790Z-472342-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261022T011548038Z-472914-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261022T011548941Z-473163-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261022T011550033Z-473362-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261022T011625878Z-480232-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261022T012321870Z-487490-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261022T012333189Z-487734-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261022T012344407Z-487875-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261022T012355751Z-488026-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261022T012406393Z-488191-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261022T012418807Z-488395-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261022T012429967Z-488591-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261022T012430652Z-488628-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261022T012431391Z-488665-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261022T012433387Z-488756-1.jsonl",
+    "/home/patrick/.local/state/putgd/logs/putgd-20261023T002834059Z-1468436-1.jsonl",
+    "/home/patrick/.local/state/putgd/running.crash",
+    "/home/patrick/.local/state/putgd/running.json",
+    "/home/patrick/.local/state/putgd/running.signal"
+   ]
+  }
+ },
+ "units": [
+  "putgd-ua-k72-lab-u6lab-1-L1-1792715671",
+  "putgd-ua-k72-lab-u6lab-3-S1-1792715698",
+  "putgd-ua-k72-lab-u6lab-5-S2-1792716454",
+  "putgd-ua-k72-lab-u6lab-4b-S1-again-1792716484",
+  "putgd-ua-k72-lab-u6lab-5-S2-1792716588",
+  "putgd-ua-k72-lab-u6lab-7-back-on-nightly-1792718479"
+ ],
+ "restarts": [
+  {
+   "old": 1473078,
+   "oldExe": "/usr/bin/putgd (deleted)"
+  },
+  {
+   "old": 1473494,
+   "oldExe": "/usr/bin/putgd (deleted)"
+  },
+  {
+   "old": 1474237,
+   "oldExe": "/usr/bin/putgd (deleted)"
+  },
+  {
+   "old": 1474496,
+   "oldExe": "/usr/bin/putgd (deleted)"
+  },
+  {
+   "old": 1475024,
+   "oldExe": "/usr/bin/putgd (deleted)"
+  }
+ ],
+ "watchStart-u14repo": "2026-10-23T00:35:06Z"
+}

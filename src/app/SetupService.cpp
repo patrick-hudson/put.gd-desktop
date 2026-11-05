@@ -78,9 +78,14 @@ QStringList SetupService::unlockSavedCredentials() {
  if(!snapshot.unlockCredentialsAtStartup||!settings_.metadata()["validation"].toObject()["ok"].toBool())return started;
  for(auto it=snapshot.profiles.cbegin();it!=snapshot.profiles.cend();++it){
   const auto reference=it.value()["credentials"].toObject();
-  if(it.value()["provider"]!="s3"||reference["mode"]!="keychain"||credentials_.cached(it.key(),reference))continue;
+  // Destinations whose keys live in put.gd's credential store: S3 and Backblaze B2 (#282).
+  if((it.value()["provider"]!="s3"&&it.value()["provider"]!="backblaze-b2")||reference["mode"]!="keychain"||credentials_.cached(it.key(),reference))continue;
   start("unlockCredentials",it.key(),settings_.revision(),{},[&](Error error,QJsonObject result){if(!error)started.append(result["setupId"].toString());});
  }
+ for(const auto& id:started)if(jobs_.value(id)["state"]=="running")startupUnlocks_.insert(id);
+ // An unlock someone already started for a profile holds the gate as well.
+ for(auto job=jobs_.cbegin();job!=jobs_.cend();++job)
+  if((*job)["kind"]=="unlockCredentials"&&(*job)["state"]=="running"&&snapshot.profiles.contains((*job)["profileId"].toString()))startupUnlocks_.insert(job.key());
  return started;
 }
 void SetupService::credentialHint(const QString& profileId,const QString& expectedRevision,JsonReply reply) {
@@ -106,7 +111,7 @@ void SetupService::revealCredentialSecret(const QString& profileId,const QString
  const auto profiles=settings_.snapshot().profiles;
  if(!profiles.contains(profileId)){reply({"profile_not_found","Save the destination before showing credentials",{}},{});return;}
  const auto profile=profiles[profileId];
- if(profile["provider"]!="s3"){reply({"setup_unsupported","This destination has no S3 secret access key",{}},{});return;}
+ if(profile["provider"]!="s3"&&profile["provider"]!="backblaze-b2"){reply({"setup_unsupported","This destination has no stored secret key",{}},{});return;}
  const auto cached=credentials_.cached(profileId,profile["credentials"].toObject());
  if(!cached){reply({"credential_setup_required","Unlock saved credentials first, or enter credentials for this session",{}},{});return;}
  reply({},{{"secretKey",cached->secretKey}});
@@ -120,6 +125,7 @@ void SetupService::finish(const QString& id,Error error,QJsonObject result) {
  const auto found=jobs_.find(id);if(found==jobs_.end()||(*found)["state"]!="running")return;
  auto& record=*found;record.remove("event");record["result"]=result;record["state"]=error?"failed":"completed";record["error"]=error.toJson();
  active_.remove(activeKey(record["profileId"].toString(),record["kind"].toString()));
+ startupUnlocks_.remove(id);
  completed_.enqueue(id);while(completed_.size()>64)jobs_.remove(completed_.dequeue());
  emit changed(id);
 }

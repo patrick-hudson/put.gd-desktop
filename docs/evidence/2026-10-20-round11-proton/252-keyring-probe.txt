@@ -1,0 +1,12 @@
+== Secret Service: no login collection (default alias unset)
+keyrings: 
+alias default -> o "/"
+collections: ao 1 "/org/freedesktop/secrets/collection/session"
+nightly wiring: operation_failed - The Proton operation could not be completed.
+#252 wiring  : keychain_unavailable - The private keychain is unavailable.
+== Secret Service: login collection (default alias -> login)
+keyrings: login.keyring user.keystore 
+alias default -> o "/org/freedesktop/secrets/collection/login"
+collections: ao 2 "/org/freedesktop/secrets/collection/session" "/org/freedesktop/secrets/collection/login"
+nightly wiring: session stored=true
+#252 wiring  : session stored=true

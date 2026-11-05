@@ -1,0 +1,51 @@
+
+### host
+Debian GNU/Linux 13 (trixie); 6.12.107+deb13-amd64
+2026-10-21T15:55:52Z
+
+### download putgd-0.1.1-nightly.816-debian13-x86_64.deb and SHA256SUMS from the GitHub release v0.1.1-nightly.816
+putgd-0.1.1-nightly.816-debian13-x86_64.deb: OK
+
+### before
+dpkg-query: no packages found matching putgd
+ls: cannot access '/etc/apt/sources.list.d/putgd.sources': No such file or directory
+
+### install from the file
+Processing triggers for gnome-menus (3.36.0-3) ...
+Processing triggers for mailcap (3.74) ...
+0.1.1~nightly.816 install ok installed
+
+### repository file
+-rw-r--r-- 1 root root 2033 Oct 21 10:20 /etc/apt/sources.list.d/putgd.sources
+# put.gd nightly packages from pkg.put.gd, added by the putgd package.
+# To stop updates from this repository, delete this file or add "Enabled: no";
+# upgrades leave your change alone and `apt purge putgd` removes the file.
+Types: deb
+URIs: https://pkg.put.gd/apt/debian13
+Suites: nightly
+Components: main
+Architectures: amd64
+Signed-By:
+
+### keyring
+-rw-r--r-- 1 root root 1170 Oct 21 10:17 /usr/share/keyrings/putgd-archive-keyring.gpg
+fpr:::::::::4032E28D893BAF66F4AC23D9A11D38D55536B371:
+
+### conffile
+ /etc/apt/sources.list.d/putgd.sources 2653095b3ce59e2f319b211cce617e2b
+
+### apt update (lists only) and policy
+Get:7 https://pkg.put.gd/apt/debian13 nightly InRelease [1,804 B]
+Get:8 https://pkg.put.gd/apt/debian13 nightly/main amd64 Packages [752 B]
+putgd:
+  Installed: 0.1.1~nightly.816
+  Candidate: 0.1.1~nightly.816
+  Version table:
+ *** 0.1.1~nightly.816 500
+        500 https://pkg.put.gd/apt/debian13 nightly/main amd64 Packages
+        100 /var/lib/dpkg/status
+
+### the app's own check against the live feed (putgd-cli --check-update nightly)
+ok True error 
+current None latest 0.1.1-nightly.816 available False
+action software-updates managed apt nightly gnome-software | sudo apt update && sudo apt upgrade

@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
-"""Provision pinned AppImage dependencies with their upstream CMake builds."""
+"""Provision pinned AppImage dependencies with their upstream builds (CMake, FFmpeg configure)."""
 import argparse
 import json
+import os
 from pathlib import Path
 import subprocess
 
@@ -18,9 +19,13 @@ def checkout(item, destination, license_only=False):
     run('git', '-C', str(destination), 'fetch', '--depth', '1', '--filter=blob:none', 'origin', item['commit'])
     if license_only:
         run('git', '-C', str(destination), 'sparse-checkout', 'init', '--no-cone')
+        # Qt's qt_attribution.json entries name their licence files, for example
+        # LICENCE.md (PCRE2), ijg-license.txt (libjpeg) and ../MIT_LICENSE.txt
+        # (Qt Wayland protocols): match license/licence, copying and copyright
+        # in any case.
         run('git', '-C', str(destination), 'sparse-checkout', 'set', '--no-cone',
-            '/LICENSE*', '/LICENSES/', '**/LICENSE*', '**/COPYING*',
-            '**/NOTICE*', '**/COPYRIGHT*', '**/qt_attribution.json')
+            '/LICENSES/', '**/*[Ll][Ii][Cc][Ee][Nn][CcSs][Ee]*', '**/*[Cc][Oo][Pp][Yy][Ii][Nn][Gg]*',
+            '**/*[Cc][Oo][Pp][Yy][Rr][Ii][Gg][Hh][Tt]*', '**/NOTICE*', '**/qt_attribution.json')
     run('git', '-C', str(destination), 'checkout', '--detach', 'FETCH_HEAD')
     actual = subprocess.check_output(['git', '-C', str(destination), 'rev-parse', 'HEAD'], text=True).strip()
     if actual != item['commit']:
@@ -50,12 +55,38 @@ def main():
             options += ['-DBUILD_WITH_QT6=ON', '-DBUILD_TEST_APPLICATION=OFF', '-DBUILD_TRANSLATIONS=OFF']
         if name == 'layershell':
             options += ['-DKDE_INSTALL_QTPLUGINDIR=' + str(prefix / 'lib/qt6/plugins')]
+            # Qt's private Wayland headers declare the core protocol from Qt's own
+            # wayland.xml (1.24 in Qt 6.12, with wl_fixes) behind the same include
+            # guard as the builder's older wayland-client-protocol.h (1.22 on
+            # Ubuntu 24.04). Include Qt's copy first so its declarations win; the
+            # protocol code itself is compiled into QtWaylandClient (#418).
+            header = (args.qt_root / 'include/QtWaylandClient' / lock['qt'] /
+                      'QtWaylandClient/private/wayland-wayland-client-protocol.h')
+            if not header.is_file():
+                raise ValueError('Qt Wayland client protocol header missing: ' + str(header))
+            options += ['-DCMAKE_CXX_FLAGS=-include ' + str(header.resolve())]
         if not args.skip_build:
             run('cmake', '-S', str(source), '-B', str(build), '-G', 'Ninja', *options)
             run('cmake', '--build', str(build), '--parallel', '2')
             run('cmake', '--install', str(build))
         records.append({'name': name, 'commit': item['commit'], 'source': str(source)})
-    for item in lock['qtLicenseSources']:
+    # putgd-record's export libraries: the pinned upstream FFmpeg, configured
+    # LGPL-only with the components packaging/appimage/media.json lists.
+    item = lock['ffmpeg']
+    source = sources / 'ffmpeg'
+    checkout(item, source)
+    configure = json.loads((root / 'packaging/appimage/media.json').read_text())['ffmpeg']['configure']
+    if not args.skip_build:
+        build = root / 'build/appimage-ffmpeg'
+        build.mkdir(parents=True, exist_ok=False)
+        subprocess.run([str(source / 'configure'), '--prefix=' + str(prefix), '--libdir=' + str(prefix / 'lib'), *configure],
+                       check=True, cwd=build)
+        run('make', '-C', str(build), '-j' + str(os.cpu_count() or 2))
+        run('make', '-C', str(build), 'install')
+    records.append({'name': 'ffmpeg', 'commit': item['commit'], 'source': str(source), 'configure': configure})
+    # Licence texts only: the Qt modules the image bundles and the ICU build
+    # shipped with Qt (tools/releases/appimage_notices.py).
+    for item in [*lock['qtLicenseSources'], lock['icu'], lock['mimalloc']]:
         name = item['repository'].rsplit('/', 1)[1].removesuffix('.git')
         source = sources / name
         checkout(item, source, license_only=True)

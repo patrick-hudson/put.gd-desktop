@@ -1,0 +1,11 @@
+zs setup
+zs start 26.1022.1017-nightly None
+zs check 26.1022.1019-nightly True True
+zs install installed zsync True 9.8 e5b7ad2caeca ['.putgd-update-backup-26.1022.1017-nightly.AppImage', 'putgd-26.1022.1017-nightly-x86_64.AppImage']
+zs restart 26.1022.1019-nightly /home/patrick/work/put.gd-ua/app/runs/f44-zs/apps/putgd-26.1022.1017-nightly-x86_64.AppImage {'current': '26.1022.1019-nightly', 'latest': '26.1022.1019-nightly', 'updateAvailable': False} ['putgd-26.1022.1017-nightly-x86_64.AppImage'] True
+zs cleanup True
+cr setup
+cr install installed download crashed 8.9 e5b7ad2caeca
+cr refuse restart {'ok': False, 'error': {'code': 'update_restart_required', 'details': {'installed': '26.1022.1019-nightly'}, 'message': 'Restart put.gd to finish the update that is already installed'}} True False
+cr restart 26.1022.1019-nightly {'current': '26.1022.1019-nightly', 'latest': '26.1022.1019-nightly', 'updateAvailable': False} ['putgd-26.1022.1017-nightly-x86_64.AppImage']
+cr cleanup True

@@ -1,0 +1,219 @@
+{
+    "class": "QMenu",
+    "controls": [
+        {
+            "class": "QAction",
+            "enabled": true,
+            "kind": "menu-item",
+            "name": "trayOutputSummary",
+            "rect": [
+                6,
+                6,
+                315,
+                32
+            ],
+            "submenu": true,
+            "text": "Shared link · Proton Drive + local copy"
+        },
+        {
+            "class": "QAction",
+            "enabled": true,
+            "kind": "menu-item",
+            "name": "trayChangeOutput",
+            "rect": [
+                6,
+                38,
+                315,
+                32
+            ],
+            "submenu": false,
+            "text": "Change output…"
+        },
+        {
+            "class": "QAction",
+            "enabled": true,
+            "kind": "menu-item",
+            "name": "region",
+            "rect": [
+                6,
+                79,
+                315,
+                32
+            ],
+            "submenu": false,
+            "text": "Capture region"
+        },
+        {
+            "class": "QAction",
+            "enabled": true,
+            "kind": "menu-item",
+            "name": "window",
+            "rect": [
+                6,
+                111,
+                315,
+                32
+            ],
+            "submenu": false,
+            "text": "Capture window"
+        },
+        {
+            "class": "QAction",
+            "enabled": true,
+            "kind": "menu-item",
+            "name": "desktop",
+            "rect": [
+                6,
+                143,
+                315,
+                32
+            ],
+            "submenu": false,
+            "text": "Capture desktop"
+        },
+        {
+            "class": "QAction",
+            "enabled": true,
+            "kind": "menu-item",
+            "name": "edit",
+            "rect": [
+                6,
+                175,
+                315,
+                32
+            ],
+            "submenu": false,
+            "text": "Capture region && edit"
+        },
+        {
+            "class": "QAction",
+            "enabled": true,
+            "kind": "menu-item",
+            "name": "edit-sources",
+            "rect": [
+                6,
+                207,
+                315,
+                32
+            ],
+            "submenu": true,
+            "text": "Edit image"
+        },
+        {
+            "class": "QAction",
+            "enabled": true,
+            "kind": "menu-item",
+            "name": "record",
+            "rect": [
+                6,
+                239,
+                315,
+                32
+            ],
+            "submenu": false,
+            "text": "Record screen"
+        },
+        {
+            "class": "QAction",
+            "enabled": true,
+            "kind": "menu-item",
+            "name": "clipboard",
+            "rect": [
+                6,
+                271,
+                315,
+                32
+            ],
+            "submenu": false,
+            "text": "Upload clipboard"
+        },
+        {
+            "class": "QAction",
+            "enabled": true,
+            "kind": "menu-item",
+            "name": "history",
+            "rect": [
+                6,
+                312,
+                315,
+                32
+            ],
+            "submenu": false,
+            "text": "History"
+        },
+        {
+            "class": "QAction",
+            "enabled": true,
+            "kind": "menu-item",
+            "name": "destinations",
+            "rect": [
+                6,
+                344,
+                315,
+                32
+            ],
+            "submenu": false,
+            "text": "Destinations"
+        },
+        {
+            "class": "QAction",
+            "enabled": true,
+            "kind": "menu-item",
+            "name": "preferences",
+            "rect": [
+                6,
+                376,
+                315,
+                32
+            ],
+            "submenu": false,
+            "text": "Settings"
+        },
+        {
+            "class": "QAction",
+            "enabled": true,
+            "kind": "menu-item",
+            "name": "update",
+            "rect": [
+                6,
+                408,
+                315,
+                32
+            ],
+            "submenu": false,
+            "text": "Update available: 26.1029.9999"
+        },
+        {
+            "class": "QAction",
+            "enabled": true,
+            "kind": "menu-item",
+            "name": "trayMenuAction-362db4ee39b59aea",
+            "rect": [
+                6,
+                449,
+                315,
+                32
+            ],
+            "submenu": false,
+            "text": "About put.gd"
+        },
+        {
+            "class": "QAction",
+            "enabled": true,
+            "kind": "menu-item",
+            "name": "trayMenuAction-33617f924b4aa7fb",
+            "rect": [
+                6,
+                481,
+                315,
+                32
+            ],
+            "submenu": false,
+            "text": "Quit put.gd"
+        }
+    ],
+    "height": 519,
+    "keys": [
+    ],
+    "width": 327
+}

@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "originalRun": "/home/user/g1",
+  "retiredRun": "/home/user/sdg/work/lab-runs/geometry-b18d",
+  "runId": "b18d6a21-e105-403b-b6d7-9d34ce8ba0fc",
+  "status": "completed",
+  "completedUtc": "2026-10-30T02:46:47.283771+00:00",
+  "cleanupManifestSha256": "dace1e91aff3d846e7bb15509115ade8e996648ccc334f41aa05006a5729a402",
+  "cleanupReceiptSha256": "ca8c749ea010084be7b387302779dd0840ecaa1ad141cdfbef336676b8fd3071",
+  "archive": {
+    "name": "sdg-export.tar.zst",
+    "sha256": "d131e434543cbaf5bfc702b135b7628b88bc58b1cbaccb4099e38dc64f93ad1e",
+    "verifiedFiles": 789,
+    "qmpWitnesses": 157
+  },
+  "retirementArchiveSha256": "7eaeed3eba1c022858b2d646dbba0f4d6756596d3c01583b72f23529129651f5",
+  "notes": [
+    "Initial noncanonical short-run cleanup refusal retained. Stopped unreferenced overlay relocated with inode unchanged; cleanup guard code unchanged.",
+    "Named snapshots and immutable golden unchanged."
+  ]
+}

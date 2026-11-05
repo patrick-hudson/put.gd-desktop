@@ -1,0 +1,14 @@
+{
+  "path": "/home/user/work/put.gd/work/lab-images/gnome-wayland-probes-v2/image.qcow2",
+  "launchSha256": "349698ea91542e77a73801299aea300ff221ab11f07c4b5daf246fc72815c656",
+  "expectedSnapshotSha256": "349698ea91542e77a73801299aea300ff221ab11f07c4b5daf246fc72815c656",
+  "digestVerificationStage": "launch",
+  "postTestIdentity": {
+    "device": 64769,
+    "inode": 2065053,
+    "size": 25521618944,
+    "mtimeNs": 1793333539245546747
+  },
+  "mtimePredatesLaunch": true,
+  "postTestFullHashCompleted": false
+}

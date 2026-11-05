@@ -1,0 +1,250 @@
+{
+ "name": "aur-u11",
+ "tool": "real",
+ "live": true,
+ "image": "/var/home/lab/ua/app/runs/aur-u11/apps/putgd-26.1022.1017-nightly-x86_64.AppImage",
+ "imageSha256": "005762e9ede991c78fce115707a41617d899d7870738fb525151c182357b7c3a",
+ "cliDir": "/var/home/lab/ua/app/runs/aur-u11/cli/squashfs-root",
+ "runtime": "/tmp/ua-app.WywAVF",
+ "session": {
+  "HOME": "/var/home/lab",
+  "PATH": "/var/home/lab/.local/bin:/var/home/lab/bin:/usr/local/bin:/usr/bin",
+  "USER": "lab",
+  "LANG": "en_US.UTF-8",
+  "DISPLAY": ":0",
+  "XAUTHORITY": "/run/user/1000/xauth_QQnhMF",
+  "DBUS_SESSION_BUS_ADDRESS": "unix:path=/run/user/1000/bus",
+  "XDG_SESSION_TYPE": "wayland",
+  "XDG_CURRENT_DESKTOP": "KDE",
+  "WAYLAND_DISPLAY": "/run/user/1000/wayland-0",
+  "XDG_SESSION_DESKTOP": "KDE",
+  "DESKTOP_SESSION": "/usr/share/wayland-sessions/plasma.desktop",
+  "KDE_FULL_SESSION": "true",
+  "KDE_SESSION_VERSION": "6",
+  "XDG_DATA_DIRS": "/var/home/lab/.local/share/flatpak/exports/share:/var/lib/flatpak/exports/share:/usr/local/share:/usr/share"
+ },
+ "shell": "plasmashell",
+ "hostPath": "/var/home/lab/.local/bin:/var/home/lab/bin:/usr/local/bin:/usr/bin",
+ "host": "aurora-lab",
+ "vnc": 5926,
+ "urls": {},
+ "input": "vnc",
+ "privateData": false,
+ "before": {
+  "dataPutgd": false,
+  "homePutgd": {
+   "/var/home/lab/.config/putgd": false,
+   "/var/home/lab/.local/state/putgd": false,
+   "/var/home/lab/.cache/putgd": false
+  },
+  "autostart": []
+ },
+ "pids": {
+  "apprun": 7238
+ },
+ "created": "2026-10-23T02:06:54Z",
+ "log": [
+  {
+   "at": "2026-10-23T02:06:59Z",
+   "start": {
+    "pid": 7203,
+    "status": {
+     "build": "26.1022.1017-nightly",
+     "channel": "nightly",
+     "latest": null,
+     "updateAvailable": null,
+     "install": {
+      "available": true,
+      "backup": null,
+      "image": "/var/home/lab/ua/app/runs/aur-u11/apps/putgd-26.1022.1017-nightly-x86_64.AppImage",
+      "installed": null,
+      "kind": "update",
+      "reason": null,
+      "restartRequired": false,
+      "running": false,
+      "state": "idle",
+      "switch": null
+     }
+    },
+    "frame": "/var/home/lab/ua/app/runs/aur-u11/frames/u11-1-1017.png"
+   }
+  },
+  {
+   "at": "2026-10-23T02:07:00Z",
+   "loginEnable": {
+    "entry": "[Desktop Entry]\nType=Application\nName=put.gd\nExec=/bin/sh \"/var/home/lab/.local/share/putgd/login/appimage-start.sh\" --background\nTerminal=false\nX-putgd-Managed=true\n",
+    "script": "#!/bin/sh\n# put.gd start at login for an AppImage (#307). put.gd writes this file while\n# Launch at login is on and rewrites it at every start; edits are replaced.\n# X-putgd-Managed=true\n#\n# Updaters that follow the image's .zsync write the new version under the\n# .zsync's versioned file name, beside the old image (AppImageLauncher), and may\n# remove the old one (appimageupdatetool --remove-old). So start the newest\n# put.gd AppImage in the configured image's folder that embeds the same update\n# information. Gear Lever replaces the configured file in place, which needs\n# nothing extra. Only the user's own files in the user's own folder qualify\n# as newer images.\nset -u\nconfigured='/var/home/lab/ua/app/runs/aur-u11/apps/putgd-26.1022.1017-nightly-x86_64.AppImage'\nupdate_information='zsync|https://app.put.gd/dl/nightly/appimage.zsync'\n\nsay() {\n    printf 'put.gd login start: %s\\n' \"$*\" >&2\n}\n\n# The user's private group: named after the user, with no other members. With\n# umask 002 (the desktop default on Debian 13, Kubuntu 26.04 and Mint 22.3) the\n# user's files are group-writable.\nown_group=\nuser=$(id -un 2>/dev/null) && group=$(id -g 2>/dev/null) && entry=$(getent group \"$group\" 2>/dev/null) &&\n    case $entry in\n        \"$user\":*:\"$group\": | \"$user\":*:\"$group\":\"$user\") own_group=$group ;;\n    esac\n\n# Owned by the user and writable by nobody else.\nprivate() {\n    [ -O \"$1\" ] || return 1\n    set -- $(stat -L -c '%a %g' -- \"$1\" 2>/dev/null)\n    [ $# -eq 2 ] || return 1\n    case $1 in\n        *[2367]) return 1 ;;\n        *[2367]?) [ \"$2\" = \"$own_group\" ] || return 1 ;;\n    esac\n}\n\n# A private executable regular file, not a symbolic link, with the AppImage\n# type 2 magic at offset 8.\nappimage() {\n    [ -f \"$1\" ] && [ ! -L \"$1\" ] && [ -x \"$1\" ] && private \"$1\" || return 1\n    [ \"$(head -c 11 -- \"$1\" 2>/dev/null | tail -c 3 | od -An -tx1 | tr -d ' \\n')\" = 414902 ]\n}\n\nbounded() {\n    if command -v timeout >/dev/null 2>&1; then\n        timeout 20 \"$@\"\n    else\n        \"$@\"\n    fi\n}\n\n# The version in putgd-VERSION-x86_64.AppImage, as the .zsync names the image,\n# or in AppImageLauncher's putgd-VERSION-x86_64_<md5>.AppImage.\nname_version() {\n    name=${1##*/}\n    case $name in\n        putgd-?*-x86_64.AppImage | putgd-?*-x86_64_*.AppImage) ;;\n        *) return 1 ;;\n    esac\n    version=${name#putgd-}\n    version=${version%%-x86_64*}\n    case $version in\n        [0-9]*) ;;\n        *) return 1 ;;\n    esac\n    case $version in\n        *[!0-9A-Za-z.+-]*) return 1 ;;\n    esac\n    printf '%s\\n' \"$version\"\n}\n\n# Prereleases order before their release: 26.1101.960-nightly < 26.1101.960 (sort -V, ~).\nsortable() {\n    case $1 in\n        *-*) printf '%s~%s\\n' \"${1%%-*}\" \"${1#*-}\" ;;\n        *) printf '%s\\n' \"$1\" ;;\n    esac\n}\n\n# Is version $1 newer than version $2?\nnewer() {\n    [ \"$1\" != \"$2\" ] && [ \"$(printf '%s\\n%s\\n' \"$1\" \"$2\" | sort -V | tail -n 1)\" = \"$1\" ]\n}\n\nbest=\nbest_version=\ndirectory=${configured%/*}\nif [ -n \"$update_information\" ] && [ -d \"$directory\" ] && private \"$directory\"; then\n    for candidate in \"$directory\"/putgd-*.AppImage; do\n        [ \"$candidate\" != \"$configured\" ] || continue\n        version=$(name_version \"$candidate\") || continue\n        version=$(sortable \"$version\")\n        if [ -n \"$best\" ] && ! newer \"$version\" \"$best_version\"; then\n            continue\n        fi\n        appimage \"$candidate\" || continue\n        [ \"$(bounded \"$candidate\" --appimage-updateinformation 2>/dev/null)\" = \"$update_information\" ] || continue\n        best=$candidate\n        best_version=$version\n    done\nfi\n# The configured image is the one put.gd last ran from; like the autostart entry\n# before #307, it only has to be an executable file.\nif [ -f \"$configured\" ] && [ -x \"$configured\" ]; then\n    [ -n \"$best\" ] || exec \"$configured\" \"$@\"\n    # Ask the image which version it is. put.gd's own update (#293) and Gear\n    # Lever replace the file in place, so its name can be older than what it\n    # holds, or carry no version; the name is only the fallback.\n    version=$(bounded \"$configured\" --version 2>/dev/null | sed -n '1s/^putgd //p')\n    [ -n \"$version\" ] || version=$(name_version \"$configured\") || version=\n    if [ -z \"$version\" ] || ! newer \"$best_version\" \"$(sortable \"$version\")\"; then\n        exec \"$configured\" \"$@\"\n    fi\n    say \"starting $best, which is newer than $configured\"\n    exec \"$best\" \"$@\"\nfi\nif [ -n \"$best\" ]; then\n    say \"$configured is missing; starting $best\"\n    exec \"$best\" \"$@\"\nfi\nsay \"cannot start $configured: it is missing or not executable, and no put.gd AppImage with its update information is beside it\"\nexit 1\n"
+   }
+  },
+  {
+   "at": "2026-10-23T02:07:10Z",
+   "install": {
+    "params": {
+     "confirm": true
+    },
+    "seconds": 9.1,
+    "phases": [
+     {
+      "at": 0.1,
+      "phase": [
+       "starting",
+       "auto"
+      ],
+      "bytes": 0,
+      "total": 0
+     },
+     {
+      "at": 0.5,
+      "phase": [
+       "verifying",
+       null
+      ],
+      "bytes": 0,
+      "total": 0
+     },
+     {
+      "at": 2.2,
+      "phase": [
+       "zsync",
+       "appimageupdatetool"
+      ],
+      "bytes": 0,
+      "total": 115259896
+     },
+     {
+      "at": 4.8,
+      "phase": [
+       "verifying",
+       "appimageupdatetool"
+      ],
+      "bytes": 115259896,
+      "total": 115259896
+     },
+     {
+      "at": 5.6,
+      "phase": [
+       "installing",
+       "zsync"
+      ],
+      "bytes": 115259896,
+      "total": 115259896
+     },
+     {
+      "at": 6.0,
+      "phase": [
+       "done",
+       "zsync"
+      ],
+      "bytes": 115259896,
+      "total": 115259896
+     }
+    ],
+    "install": {
+     "available": true,
+     "backup": "/var/home/lab/ua/app/runs/aur-u11/apps/.putgd-update-backup-26.1022.1017-nightly.AppImage",
+     "bytes": 115259896,
+     "finishedAt": "2026-10-23T02:07:06Z",
+     "image": "/var/home/lab/ua/app/runs/aur-u11/apps/putgd-26.1022.1017-nightly-x86_64.AppImage",
+     "installed": {
+      "channel": "nightly",
+      "image": "/var/home/lab/ua/app/runs/aur-u11/apps/putgd-26.1022.1017-nightly-x86_64.AppImage",
+      "installedAt": "2026-10-23T02:07:06Z",
+      "method": "zsync",
+      "previousChannel": "nightly",
+      "previousVersion": "26.1022.1017-nightly",
+      "sha256": "e5b7ad2caecaa7f5737bdfb5d2f0fd4e3c74ce5d98a8a68142caf4efd43525bc",
+      "version": "26.1022.1019-nightly"
+     },
+     "kind": "update",
+     "method": "zsync",
+     "phase": "done",
+     "reason": null,
+     "restartRequired": true,
+     "result": {
+      "backup": "/var/home/lab/ua/app/runs/aur-u11/apps/.putgd-update-backup-26.1022.1017-nightly.AppImage",
+      "channel": "nightly",
+      "image": "/var/home/lab/ua/app/runs/aur-u11/apps/putgd-26.1022.1017-nightly-x86_64.AppImage",
+      "installed": true,
+      "method": "zsync",
+      "previousChannel": "nightly",
+      "previousVersion": "26.1022.1017-nightly",
+      "sha256": "e5b7ad2caecaa7f5737bdfb5d2f0fd4e3c74ce5d98a8a68142caf4efd43525bc",
+      "signature": {
+       "trustedComment": "put.gd v26.1022.1019-nightly nightly"
+      },
+      "switched": false,
+      "tag": "v26.1022.1019-nightly",
+      "version": "26.1022.1019-nightly",
+      "zsync": {
+       "output": "zsync2: used 114921472 local, fetched 1071608 | 100.00% done (109.92 of 109.92 MiB)... | Validation warning: AppImage not signed | Update successful. New file created: /var/home/lab/ua/app/runs/aur-u11/apps/.putgd-update-DCLFKx/putgd-26.1022.1019-nightly-x86_64.AppImage",
+       "tool": "appimageupdatetool",
+       "used": true
+      }
+     },
+     "running": false,
+     "startedAt": "2026-10-23T02:07:00Z",
+     "state": "installed",
+     "switch": null,
+     "total": 115259896
+    },
+    "frames": {
+     "zsync": "/var/home/lab/ua/app/runs/aur-u11/frames/u11-2-install-no-restart-zsync.png",
+     "result": "/var/home/lab/ua/app/runs/aur-u11/frames/u11-2-install-no-restart-result.png"
+    },
+    "imageSha256": "e5b7ad2caecaa7f5737bdfb5d2f0fd4e3c74ce5d98a8a68142caf4efd43525bc",
+    "backup": "/var/home/lab/ua/app/runs/aur-u11/apps/.putgd-update-backup-26.1022.1017-nightly.AppImage",
+    "backupSha256": "005762e9ede991c78fce115707a41617d899d7870738fb525151c182357b7c3a",
+    "folder": [
+     ".putgd-update-backup-26.1022.1017-nightly.AppImage",
+     "putgd-26.1022.1017-nightly-x86_64.AppImage"
+    ],
+    "stateFile": {
+     "backup": {
+      "copied": false,
+      "device": "57",
+      "inode": "23943",
+      "mtime": 1792719581,
+      "path": "/var/home/lab/ua/app/runs/aur-u11/apps/.putgd-update-backup-26.1022.1017-nightly.AppImage",
+      "size": 115259896
+     },
+     "installed": {
+      "channel": "nightly",
+      "image": "/var/home/lab/ua/app/runs/aur-u11/apps/putgd-26.1022.1017-nightly-x86_64.AppImage",
+      "installedAt": "2026-10-23T02:07:06Z",
+      "method": "zsync",
+      "previousChannel": "nightly",
+      "previousVersion": "26.1022.1017-nightly",
+      "sha256": "e5b7ad2caecaa7f5737bdfb5d2f0fd4e3c74ce5d98a8a68142caf4efd43525bc",
+      "version": "26.1022.1019-nightly"
+     },
+     "schemaVersion": 1,
+     "staging": null
+    }
+   }
+  },
+  {
+   "at": "2026-10-23T02:07:11Z",
+   "frame": {
+    "label": "u11-3-1017-running-1019-installed",
+    "frame": "/var/home/lab/ua/app/runs/aur-u11/frames/u11-3-1017-running-1019-installed.png"
+   }
+  },
+  {
+   "at": "2026-10-23T02:10:49Z",
+   "loginCheck": {
+    "residents": [
+     {
+      "pid": 2136,
+      "appimage": "/var/home/lab/ua/app/runs/aur-u11/apps/putgd-26.1022.1017-nightly-x86_64.AppImage",
+      "parent": "AppRun",
+      "started": "21:10:33"
+     }
+    ],
+    "version": "putgd 26.1022.1019-nightly",
+    "imageSha256": "e5b7ad2caecaa7f5737bdfb5d2f0fd4e3c74ce5d98a8a68142caf4efd43525bc",
+    "journal": ""
+   }
+  }
+ ],
+ "realAutostart": "/var/home/lab/.config/autostart/putgd.desktop"
+}

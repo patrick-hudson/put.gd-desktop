@@ -1,0 +1,144 @@
+{
+  "schemaVersion": 2,
+  "environment": {
+    "desktop": "kubuntu-kde-wayland",
+    "host": "f44",
+    "placement": "guest",
+    "guest": "kde-wayland",
+    "package": "deb",
+    "destination": "s3",
+    "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+    "placement_details": {
+      "run_id": "eb888216-2d5d-4f69-9ffb-2eb0d7abe2d4",
+      "lab_profile": "kde-wayland",
+      "run_directory": "/home/patrick/t1b/work/lab-runs/rk1",
+      "session_root": "/dev/shm/rks2",
+      "socket": "/dev/shm/rks2/runtime/putgd/session.sock",
+      "input_backend": "qmp",
+      "frame_backend": "vnc-in-memory"
+    },
+    "target": {
+      "hostname": "putgd-kde-lab",
+      "kernel": "7.0.0-38-generic",
+      "machine": "x86_64",
+      "os": {
+        "ID": "ubuntu",
+        "VERSION_ID": "26.04",
+        "VARIANT_ID": null
+      },
+      "session_type": "wayland",
+      "desktop": "KDE",
+      "qt_platform": "wayland"
+    },
+    "blocked": "private session directory already exists or cannot be created",
+    "failure_frames": [
+      "startup-failed.png"
+    ],
+    "private_cleanup": "not-owned-or-retained",
+    "coverage_export": {
+      "scanned_before_copy": true,
+      "copy_scan_passed": true,
+      "published": true
+    }
+  },
+  "interactions": [
+    {
+      "interaction": "region.to-upload",
+      "desktop": "kubuntu-kde-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "receipt": "/home/patrick/t1r2e/kde-s3c/receipt.json",
+      "note": "private session directory already exists or cannot be created",
+      "host": "f44",
+      "placement": "guest",
+      "guest": "kde-wayland",
+      "destination": "s3",
+      "recipe": "outcomes_live.s3_region_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T05:14:27Z"
+    },
+    {
+      "interaction": "region.drag",
+      "desktop": "kubuntu-kde-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "receipt": "/home/patrick/t1r2e/kde-s3c/receipt.json",
+      "note": "private session directory already exists or cannot be created",
+      "host": "f44",
+      "placement": "guest",
+      "guest": "kde-wayland",
+      "destination": "s3",
+      "recipe": "outcomes_live.s3_region_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T05:14:27Z"
+    },
+    {
+      "interaction": "history.copy-link",
+      "desktop": "kubuntu-kde-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "receipt": "/home/patrick/t1r2e/kde-s3c/receipt.json",
+      "note": "private session directory already exists or cannot be created",
+      "host": "f44",
+      "placement": "guest",
+      "guest": "kde-wayland",
+      "destination": "s3",
+      "recipe": "outcomes_live.s3_region_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T05:14:27Z"
+    },
+    {
+      "interaction": "history.open-link",
+      "desktop": "kubuntu-kde-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "receipt": "/home/patrick/t1r2e/kde-s3c/receipt.json",
+      "note": "private session directory already exists or cannot be created",
+      "host": "f44",
+      "placement": "guest",
+      "guest": "kde-wayland",
+      "destination": "s3",
+      "recipe": "outcomes_live.s3_region_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T05:14:27Z"
+    },
+    {
+      "interaction": "history.delete-remote",
+      "desktop": "kubuntu-kde-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "receipt": "/home/patrick/t1r2e/kde-s3c/receipt.json",
+      "note": "private session directory already exists or cannot be created",
+      "host": "f44",
+      "placement": "guest",
+      "guest": "kde-wayland",
+      "destination": "s3",
+      "recipe": "outcomes_live.s3_region_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T05:14:27Z"
+    },
+    {
+      "interaction": "confirm.history-delete",
+      "desktop": "kubuntu-kde-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "receipt": "/home/patrick/t1r2e/kde-s3c/receipt.json",
+      "note": "private session directory already exists or cannot be created",
+      "host": "f44",
+      "placement": "guest",
+      "guest": "kde-wayland",
+      "destination": "s3",
+      "recipe": "outcomes_live.s3_region_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T05:14:27Z"
+    }
+  ],
+  "secret_scan": {
+    "quarantine": [],
+    "passed": true,
+    "files": 5,
+    "pngs": 1,
+    "image_audit": "ocr-and-known-regions",
+    "findings": []
+  }
+}

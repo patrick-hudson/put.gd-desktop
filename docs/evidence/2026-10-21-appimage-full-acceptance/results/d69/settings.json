@@ -1,0 +1,207 @@
+{
+ "schemes": {
+  "dark": {
+   "patch": true,
+   "appearance": {
+    "theme": "dark",
+    "scheme": "dark",
+    "desktop": "light",
+    "desktopSource": "portal"
+   },
+   "shot": {
+    "label": "settings-dark",
+    "components": [
+     {
+      "blocks": 20113,
+      "box": [
+       280,
+       56,
+       1640,
+       1008
+      ]
+     },
+     {
+      "blocks": 40,
+      "box": [
+       312,
+       1024,
+       368,
+       1072
+      ]
+     }
+    ],
+    "colour": [
+     24,
+     24,
+     32
+    ],
+    "inner": [
+     300,
+     91,
+     1620,
+     971
+    ],
+    "changedShare": 1.0,
+    "ownShare": 0.983,
+    "kept": "/home/patrick/work/put.gd-afa/runs/d69/crops/settings-dark.png"
+   },
+   "full": "/home/patrick/work/put.gd-afa/runs/d69/full/settings-dark.png"
+  },
+  "light": {
+   "patch": true,
+   "appearance": {
+    "theme": "light",
+    "scheme": "light",
+    "desktop": "light",
+    "desktopSource": "portal"
+   },
+   "shot": {
+    "label": "settings-light",
+    "components": [
+     {
+      "blocks": 20113,
+      "box": [
+       280,
+       56,
+       1640,
+       1008
+      ]
+     },
+     {
+      "blocks": 40,
+      "box": [
+       312,
+       1024,
+       368,
+       1072
+      ]
+     }
+    ],
+    "colour": [
+     252,
+     252,
+     252
+    ],
+    "inner": [
+     300,
+     91,
+     1620,
+     971
+    ],
+    "changedShare": 1.0,
+    "ownShare": 0.98,
+    "kept": "/home/patrick/work/put.gd-afa/runs/d69/crops/settings-light.png"
+   },
+   "full": "/home/patrick/work/put.gd-afa/runs/d69/full/settings-light.png"
+  },
+  "system": {
+   "patch": true,
+   "appearance": {
+    "theme": "system",
+    "scheme": "light",
+    "desktop": "light",
+    "desktopSource": "portal"
+   },
+   "shot": {
+    "label": "settings-system",
+    "components": [
+     {
+      "blocks": 20113,
+      "box": [
+       280,
+       56,
+       1640,
+       1008
+      ]
+     },
+     {
+      "blocks": 40,
+      "box": [
+       312,
+       1024,
+       368,
+       1072
+      ]
+     }
+    ],
+    "colour": [
+     252,
+     252,
+     252
+    ],
+    "inner": [
+     300,
+     91,
+     1620,
+     971
+    ],
+    "changedShare": 1.0,
+    "ownShare": 0.98,
+    "kept": "/home/patrick/work/put.gd-afa/runs/d69/crops/settings-system.png"
+   },
+   "full": "/home/patrick/work/put.gd-afa/runs/d69/full/settings-system.png"
+  }
+ },
+ "updateStatus": {
+  "channel": "nightly",
+  "channelSetting": "build",
+  "enabled": true,
+  "supported": true,
+  "reason": null,
+  "notifies": false,
+  "checkedAt": "2026-10-21T19:52:32Z",
+  "nextCheckAt": "2026-10-22T21:33:56Z",
+  "error": null,
+  "result": {
+   "action": {
+    "kind": "download",
+    "repository": "none"
+   },
+   "channel": "nightly",
+   "checkedAt": "2026-10-21T19:52:32Z",
+   "current": "0.1.1-nightly.842",
+   "downloadUrl": "https://github.com/patrick-hudson/put.gd-desktop/releases/download/v0.1.1-nightly.847/putgd-0.1.1-nightly.847-x86_64.AppImage",
+   "latest": "0.1.1-nightly.847",
+   "notesUrl": "https://github.com/patrick-hudson/put.gd-desktop/releases/tag/v0.1.1-nightly.847",
+   "packageTarget": "appimage",
+   "publishedAt": "2026-10-21T18:59:30Z",
+   "tag": "v0.1.1-nightly.847",
+   "updateAvailable": true
+  },
+  "build": {
+   "channel": "nightly",
+   "kind": "nightly",
+   "packageTarget": "appimage",
+   "reason": null,
+   "supported": true,
+   "version": "0.1.1-nightly.842"
+  }
+ },
+ "checkNow": {
+  "ok": true,
+  "seconds": 0.4,
+  "result": {
+   "action": {
+    "kind": "download",
+    "repository": "none"
+   },
+   "channel": "nightly",
+   "checkedAt": "2026-10-21T19:53:24Z",
+   "current": "0.1.1-nightly.842",
+   "downloadUrl": "https://github.com/patrick-hudson/put.gd-desktop/releases/download/v0.1.1-nightly.847/putgd-0.1.1-nightly.847-x86_64.AppImage",
+   "latest": "0.1.1-nightly.847",
+   "notesUrl": "https://github.com/patrick-hudson/put.gd-desktop/releases/tag/v0.1.1-nightly.847",
+   "packageTarget": "appimage",
+   "publishedAt": "2026-10-21T18:59:30Z",
+   "tag": "v0.1.1-nightly.847",
+   "updateAvailable": true
+  },
+  "error": {
+   "code": "",
+   "details": {},
+   "message": ""
+  }
+ },
+ "notificationsAfterCheck": [],
+ "liveFeed": "{\n  \"schema\": 1,\n  \"channel\": \"nightly\",\n  \"generatedAt\": \"2026-10-21T19:01:35Z\",\n  \"release\": {\n    \"tag\": \"v0.1.1-nightly.847\",\n    \"version\": \"0.1.1-nightly.847\",\n    \"publishedAt\": \"2026-10-21T18:59:30Z\",\n    \"notesUrl\": \"https://github.com/patrick-hudson/put.gd-desktop/releases/tag/v0.1.1-nightly.847\",\n    \"assets\": {\n      \"ubuntu24.04\": {\n        \"name\": \"putgd-0.1.1-nightly.847-ubuntu24.04-x86_64.deb\",\n        \"url\": \"https://github.com/patrick-hudson/put.gd-desktop/releases/download/v0.1.1-nightly.847/putgd-0.1.1-nightly.847-ubuntu24.04-x86_64.deb\",\n        \"size\": 53818108,\n        \"sha256\": \"8bc9a65096cb85b36d76ce5e570ba6eccd3ab8875ed57bcf4f9b3e979683ae0a\"\n      },\n      \"ubuntu26.04\": {\n        \"name\": \"putgd-0.1.1-nightly.847-ubuntu26.04-x86_64.deb\",\n        \"url\": \"https://github.com/patrick-hudson/put.gd-desktop/releases/download/v0.1.1-nightly.847/putgd-0.1.1-nightly.847-ubuntu26.04-x86_64.deb\",\n        \"size\": 54157036,\n        \"sha256\": \"956efa1b9f20c0bafc46b71a2cb0addc43de7ba54db3828f3020766c276045b0\"\n      },\n      \"debian13\": {\n        \"name\": \"putgd-0.1.1-nightly.847-debian13-x86_64.deb\",\n        \"url\": \"https://github.com/patrick-hudson/put.gd-desktop/releases/download/v0.1.1-nightly.847/putgd-0.1.1-nightly.847-debian13-x86_64.deb\",\n        \"size\": 53711286,\n        \"sha256\": \"3347d355963036d4774cbb961e96706b6ad255d1735bde973de0c6ccd35e317a\"\n      },\n      \"fedora44\": {\n        \"name\": \"putgd-0.1.1-nightly.847-fedora44-x86_64.rpm\",\n        \"url\": \"https://github.com/patrick-hudson/put.gd-desktop/releases/download/v0.1.1-nightly.847/putgd-0.1.1-nightly.847-fedora44-x86_64.rpm\",\n        \"size\": 40252853,\n        \"sha256\": \"f70eeb4764fb5ed436c3380060699b5bfdb24f82e8b1a2b61a4eb263330e9697\"\n      },\n      \"appimage\": {\n        \"name\": \"putgd-0.1.1-nightly.847-x86_64.AppImage\",\n        \"url\": \"https://github.com/patrick-hudson/put.gd-desktop/releases/download/v0.1.1-nightly.847/putgd-0.1.1-nightly.847-x86_64.AppImage\",\n        \"size\": 115018232,\n   "
+}

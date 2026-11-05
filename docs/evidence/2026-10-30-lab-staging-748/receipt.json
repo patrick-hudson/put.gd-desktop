@@ -1,0 +1,92 @@
+{
+  "placement": "boat",
+  "sandbox": "bx_2y86c4ne",
+  "sourceCommit": "5fd31c19",
+  "goldenBefore": "4a21566d5b741e55f349f4f07e1c687c99d1c99b5394ff0d18ed5c9e685693da",
+  "run": "/home/user/work/put.gd/issue748/work/lab-runs/c1",
+  "runId": "bd952ef9-bee3-492d-9892-904ce3cfbd02",
+  "packageSha256": "f5bd05537d8e2931f464fe0a54a52dd638f6fd3b32b2134dfef5785812d1c5ec",
+  "packageNote": "Unchanged historical snapshot DEB; installer lifecycle proof only",
+  "sourceFiles": {
+    "tools/lab/lab.py": "7a1b27ce885928712a04fc761a49883a3884c43b9b3bf15ca273c1fc795b10ed",
+    "tools/lab/package_staging.py": "91cc3f6fd99f104447eddd39e4454ee69d4b3da0c98cff5a5eb2f27afd9ff0e7",
+    "tools/lab/package_install.py": "ace5d788ea815a8bffae6be9c8caad8f689bba3c13da696cd12277c227d07207"
+  },
+  "desktop": "NAME=\"Linux Mint\"\nVERSION=\"22.3 (Zena)\"\nID=linuxmint\nID_LIKE=\"ubuntu debian\"\nPRETTY_NAME=\"Linux Mint 22.3\"\nVERSION_ID=\"22.3\"\nHOME_URL=\"https://www.linuxmint.com/\"\nSUPPORT_URL=\"https://forums.linuxmint.com/\"\nBUG_REPORT_URL=\"http://linuxmint-troubleshooting-guide.readthedocs.io/en/latest/\"\nPRIVACY_POLICY_URL=\"https://www.linuxmint.com/\"\nVERSION_CODENAME=zena\nUBUNTU_CODENAME=noble\nCinnamon 6.6.4\n 9 1000 lab -     -    active no -\nc1 1000 lab seat0 tty7 active no -\n",
+  "guestInitial": "94425f3dc3fbfb5bd24ad9eac0d34d5eb0a80211d78b69ece1cb1f84c69a5824  /home/lab/.ssh/authorized_keys\n",
+  "job": "install-a00ff3b6d0864749a3b24cc68d5ead9d",
+  "guestProcessBeforeCancel": {
+    "pid": 1998,
+    "startTicks": 7124
+  },
+  "hookPid": 2006,
+  "events": [
+    {
+      "event": "cancel-exact-controller-ssh",
+      "monotonic": 4029.600789149,
+      "identity": {
+        "pid": 44922,
+        "startTicks": 402713
+      }
+    },
+    {
+      "event": "retry-refused-while-staging-alive",
+      "monotonic": 4030.237292472
+    },
+    {
+      "event": "bounded-reconciliation-retains-live-job",
+      "monotonic": 4061.498955308,
+      "reconciliation": {
+        "finished": false,
+        "state": "staging-running",
+        "process": {
+          "pid": 1998,
+          "startTicks": 7124
+        },
+        "exactProcessAlive": true
+      }
+    },
+    {
+      "event": "guest-staging-exited-lock-recovered",
+      "monotonic": 4066.148360259,
+      "reconciliation": {
+        "pid": 1998,
+        "startTicks": 7124,
+        "exitCode": 0,
+        "finished": true,
+        "state": "staging-finished"
+      }
+    },
+    {
+      "event": "later-install-retry-succeeded",
+      "monotonic": 4134.646469528
+    },
+    {
+      "event": "golden-unchanged",
+      "monotonic": 4164.391654082
+    }
+  ],
+  "refusedRetry": "Install retry refused: {\"heldJob\": \"install-a00ff3b6d0864749a3b24cc68d5ead9d\", \"state\": \"staging\", \"startedAt\": \"2026-10-30T03:20:29.338620+00:00\", \"resultPath\": \"/home/lab/putgd-lab/install-a00ff3b6d0864749a3b24cc68d5ead9d/result.json\"}; inspect this job before recovery.",
+  "heldFailure": "Install staging job install-a00ff3b6d0864749a3b24cc68d5ead9d retains install-active; retries are blocked. Inspect ~/putgd-lab/install-a00ff3b6d0864749a3b24cc68d5ead9d/staging-process.json and staging-result.json. When reachable, run tools/lab/lab.py recover-staging --run /home/user/work/put.gd/issue748/work/lab-runs/c1 --job install-a00ff3b6d0864749a3b24cc68d5ead9d. Reconciliation: LabError.",
+  "retrySuccess": {
+    "sha256": "f5bd05537d8e2931f464fe0a54a52dd638f6fd3b32b2134dfef5785812d1c5ec",
+    "filename": "putgd_0.1.1~dev.907+g0071acafc975_amd64.deb",
+    "installedBinarySha256": {
+      "/usr/bin/putgd-ui": "fdf6765c8464f4613e713d965c9d1ae742c5eaacdc910705ac9c6993cc3b2d50",
+      "/usr/bin/putgd-kde-region": "43d7b831310d3f2350b21756376fdc9257205509e1a43f7065f2ed283f3474b5",
+      "/usr/bin/putgd-launcher": "f2b1462cb97419bec6c164b6626212f02e6377dc8ffee364c32bbcdaf7e38839",
+      "/usr/bin/putgd": "9ab3f75078cb0e3911d86be2152f3de6bc431fa8b73f24d5c81e0c9f06d0ea8c",
+      "/usr/bin/putgd-cli": "32fcc74bdcc465e366d2efac0c2a67b392d4cb4f9849a0223b71d52984e9185c",
+      "/usr/bin/putgd-s3-worker": "e7124189c2fa269da3e5a6335ed205df3371dbe290d66379006879139aba1a51",
+      "/usr/bin/putgd-desktop-fixture": "d604b420ea1ab73ecd47d0336b7729670661d94ddef7a4fe9b58d4170e0ba901",
+      "/usr/bin/putgd-record": "ac124d9ffcba62f351b0ac0ec4842633359840e8a135704370a6e3d476540e99",
+      "/usr/bin/putgd-capture": "ea465bd4aade21f0cad02ba5872e195963c3c7283833a296884b81ae994b99c5",
+      "/usr/bin/putgd-b2-worker": "2e64ab467a20b6e8c20399bd993de2d93426de375869b6dce3de35b1db4b4bc8"
+    },
+    "installEvidence": "/home/user/work/put.gd/issue748/work/lab-runs/c1/install-8b7b8ac8ca5e47be8d62f0e6fa720a35",
+    "timedOut": false
+  },
+  "guestFinal": "94425f3dc3fbfb5bd24ad9eac0d34d5eb0a80211d78b69ece1cb1f84c69a5824  /home/lab/.ssh/authorized_keys\n",
+  "goldenAfter": "4a21566d5b741e55f349f4f07e1c687c99d1c99b5394ff0d18ed5c9e685693da",
+  "ok": true
+}

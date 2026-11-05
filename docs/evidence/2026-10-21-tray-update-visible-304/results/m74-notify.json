@@ -1,0 +1,88 @@
+{
+ "nextCheckAt": "2026-10-21T03:53:38Z",
+ "start": "2026-10-21T03:42:14Z",
+ "shownAt": "2026-10-21T03:53:38Z",
+ "banner": {
+  "label": "m74-fix-notification",
+  "components": [
+   {
+    "blocks": 870,
+    "box": [
+     1440,
+     16,
+     1904,
+     136
+    ]
+   }
+  ],
+  "colour": [
+   236,
+   236,
+   236
+  ],
+  "inner": [
+   1442,
+   18,
+   1902,
+   130
+  ],
+  "changedShare": 1.0,
+  "kept": "/home/patrick/work/put.gd-304/p-m74fix/crops/m74-fix-notification.png"
+ },
+ "clicked": [
+  1672,
+  55
+ ],
+ "events": [
+  {
+   "category": "putgd.app",
+   "fields": {
+    "channel": "stable",
+    "itemId": null,
+    "manual": false,
+    "operationId": null
+   },
+   "level": "info",
+   "message": "Checking for updates",
+   "pid": 6486,
+   "process": "putgd",
+   "time": "2026-10-21T03:53:38.505Z",
+   "v": 1
+  },
+  {
+   "category": "putgd.app",
+   "fields": {
+    "channel": "stable",
+    "itemId": null,
+    "latest": "0.1.2",
+    "operationId": null,
+    "updateAvailable": true
+   },
+   "level": "info",
+   "message": "Update check finished",
+   "pid": 6486,
+   "process": "putgd",
+   "time": "2026-10-21T03:53:38.537Z",
+   "v": 1
+  },
+  {
+   "category": "putgd.ui",
+   "fields": {
+    "itemId": null,
+    "notificationId": 1,
+    "notificationText": "put.gd 0.1.2 is available. Settings \u2192 Updates has the download.",
+    "operationId": null,
+    "summary": "update_available",
+    "title": "put.gd \u2014 update available",
+    "warning": false
+   },
+   "level": "info",
+   "message": "Notification shown",
+   "pid": 6486,
+   "process": "putgd",
+   "time": "2026-10-21T03:53:38.537Z",
+   "v": 1
+  }
+ ],
+ "openedUrls": []
+}

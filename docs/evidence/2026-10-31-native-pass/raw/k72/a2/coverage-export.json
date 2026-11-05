@@ -1,0 +1,818 @@
+{
+  "schemaVersion": 2,
+  "campaign": "native-pass",
+  "entries": [
+    {
+      "interaction": "region.to-upload",
+      "desktop": "kubuntu-kde-wayland",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "/tmp/np31/a2/receipt.json",
+      "note": "operationId=d5a34d6c-4fc8-48c5-9189-7e7614a46fbc; Capture operation d5a34d6c-4fc8-48c5-9189-7e7614a46fbc; operationId=d5a34d6c-4fc8-48c5-9189-7e7614a46fbc; historyId=717d8019-609d-43f5-9390-40456e076466; uploaded/local sha256=e91989ba5aaf4bded40d1aecd488d8bd638e0cd2e3ee577d8124b2a9379f9b54; Retained synthetic png sha256=e91989ba5aaf4bded40d1aecd488d8bd638e0cd2e3ee577d8124b2a9379f9b54; pixel oracle: (600, 280), tolerance=0; desktop frame after masked by live evidence policy",
+      "host": "k72",
+      "placement": "native",
+      "destination": "local",
+      "review": true,
+      "review_reason": "frame has no visible pixels; visual approval withheld; frame fully masked: native-cover-not-yet-verified; desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes.region_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "independent-frozen-pattern",
+          "path": "frames/outcomes.region_upload/01-independent-frozen-pattern.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "independent-frozen-pattern",
+          "path": "frames/outcomes.region_upload/02-independent-frozen-pattern.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "publication-result",
+          "path": "frames/outcomes.region_upload/03-publication-result.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes.region_upload/04-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes.region_upload",
+      "build": "4d3840c6108c22546d83c43a1b7d4c77b1df9d6d",
+      "at": "2026-10-31T15:44:46Z"
+    },
+    {
+      "interaction": "region.drag",
+      "desktop": "kubuntu-kde-wayland",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "/tmp/np31/a2/receipt.json",
+      "note": "operationId=d5a34d6c-4fc8-48c5-9189-7e7614a46fbc; Capture operation d5a34d6c-4fc8-48c5-9189-7e7614a46fbc; operationId=d5a34d6c-4fc8-48c5-9189-7e7614a46fbc; historyId=717d8019-609d-43f5-9390-40456e076466; uploaded/local sha256=e91989ba5aaf4bded40d1aecd488d8bd638e0cd2e3ee577d8124b2a9379f9b54; Retained synthetic png sha256=e91989ba5aaf4bded40d1aecd488d8bd638e0cd2e3ee577d8124b2a9379f9b54; pixel oracle: (600, 280), tolerance=0; desktop frame after masked by live evidence policy",
+      "host": "k72",
+      "placement": "native",
+      "destination": "local",
+      "review": true,
+      "review_reason": "frame has no visible pixels; visual approval withheld; frame fully masked: native-cover-not-yet-verified; desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes.region_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "independent-frozen-pattern",
+          "path": "frames/outcomes.region_upload/01-independent-frozen-pattern.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "independent-frozen-pattern",
+          "path": "frames/outcomes.region_upload/02-independent-frozen-pattern.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "publication-result",
+          "path": "frames/outcomes.region_upload/03-publication-result.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes.region_upload/04-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes.region_upload",
+      "build": "4d3840c6108c22546d83c43a1b7d4c77b1df9d6d",
+      "at": "2026-10-31T15:44:46Z"
+    },
+    {
+      "interaction": "shell.command-capture-window",
+      "desktop": "kubuntu-kde-wayland",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "/tmp/np31/a2/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; operationId=81edc378-db7a-424f-bcb3-82cb688ced6e; operationId=81edc378-db7a-424f-bcb3-82cb688ced6e; historyId=eaa5052d-328d-4447-bfda-351d7bc5142f; uploaded/local sha256=d1d4f3ade78fcff80bee553461ac713fefa4973c44a3d3b2cdd3fbec7aaa59ff; Retained synthetic png sha256=d1d4f3ade78fcff80bee553461ac713fefa4973c44a3d3b2cdd3fbec7aaa59ff; pixel oracle: (1920, 1080), tolerance=0; operationId=61cce5b4-12bc-4c5c-abba-237a3a1eeac5; operationId=61cce5b4-12bc-4c5c-abba-237a3a1eeac5; historyId=25014aa6-7583-474f-85b5-822cd72b20c7; uploaded/local sha256=d1d4f3ade78fcff80bee553461ac713fefa4973c44a3d3b2cdd3fbec7aaa59ff; Retained synthetic png sha256=d1d4f3ade78fcff80bee553461ac713fefa4973c44a3d3b2cdd3fbec7aaa59ff; pixel oracle: (1920, 1080), tolerance=0; desktop frame after masked by live evidence policy",
+      "host": "k72",
+      "placement": "native",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes.window_desktop/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "independent-frozen-pattern",
+          "path": "frames/outcomes.window_desktop/01-independent-frozen-pattern.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "independent-frozen-pattern",
+          "path": "frames/outcomes.window_desktop/02-independent-frozen-pattern.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "publication-result",
+          "path": "frames/outcomes.window_desktop/03-publication-result.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "independent-frozen-pattern",
+          "path": "frames/outcomes.window_desktop/04-independent-frozen-pattern.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "publication-result",
+          "path": "frames/outcomes.window_desktop/05-publication-result.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes.window_desktop/06-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes.window_desktop",
+      "build": "4d3840c6108c22546d83c43a1b7d4c77b1df9d6d",
+      "at": "2026-10-31T15:46:30Z"
+    },
+    {
+      "interaction": "shell.command-capture-desktop",
+      "desktop": "kubuntu-kde-wayland",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "/tmp/np31/a2/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; operationId=81edc378-db7a-424f-bcb3-82cb688ced6e; operationId=81edc378-db7a-424f-bcb3-82cb688ced6e; historyId=eaa5052d-328d-4447-bfda-351d7bc5142f; uploaded/local sha256=d1d4f3ade78fcff80bee553461ac713fefa4973c44a3d3b2cdd3fbec7aaa59ff; Retained synthetic png sha256=d1d4f3ade78fcff80bee553461ac713fefa4973c44a3d3b2cdd3fbec7aaa59ff; pixel oracle: (1920, 1080), tolerance=0; operationId=61cce5b4-12bc-4c5c-abba-237a3a1eeac5; operationId=61cce5b4-12bc-4c5c-abba-237a3a1eeac5; historyId=25014aa6-7583-474f-85b5-822cd72b20c7; uploaded/local sha256=d1d4f3ade78fcff80bee553461ac713fefa4973c44a3d3b2cdd3fbec7aaa59ff; Retained synthetic png sha256=d1d4f3ade78fcff80bee553461ac713fefa4973c44a3d3b2cdd3fbec7aaa59ff; pixel oracle: (1920, 1080), tolerance=0; desktop frame after masked by live evidence policy",
+      "host": "k72",
+      "placement": "native",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes.window_desktop/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "independent-frozen-pattern",
+          "path": "frames/outcomes.window_desktop/01-independent-frozen-pattern.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "independent-frozen-pattern",
+          "path": "frames/outcomes.window_desktop/02-independent-frozen-pattern.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "publication-result",
+          "path": "frames/outcomes.window_desktop/03-publication-result.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "independent-frozen-pattern",
+          "path": "frames/outcomes.window_desktop/04-independent-frozen-pattern.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "publication-result",
+          "path": "frames/outcomes.window_desktop/05-publication-result.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes.window_desktop/06-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes.window_desktop",
+      "build": "4d3840c6108c22546d83c43a1b7d4c77b1df9d6d",
+      "at": "2026-10-31T15:46:30Z"
+    },
+    {
+      "interaction": "review.upload",
+      "desktop": "kubuntu-kde-wayland",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "/tmp/np31/a2/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; recording acquisition=kde-screencast; recording acquisition=kde-screencast; operationId=f8b9f0e2-9ae7-45cf-84fc-de3fb3cb41a0; Recording operation f8b9f0e2-9ae7-45cf-84fc-de3fb3cb41a0; KWin recording bar input={\"pid\": 285102, \"window_id\": \"{9e2dd9b8-5134-41e5-96f2-1f25d5d5f264}\", \"rect\": [640, 710, 780, 52], \"point\": [1250.0, 736.0], \"before_prepare\": [\"{911af074-816f-4a6e-9095-02cc9c152f4e}\", \"{c7c1bace-260c-4a5f-aab9-8167b7fddbc1}\", \"{a57af6d5-b5c6-4224-8417-1ea64b6dc5b9}\"], \"foreground\": {\"ok\": true, \"backend\": \"kwin-script-pick\", \"target\": \"{9e2dd9b8-5134-41e5-96f2-1f25d5d5f264}\", \"obscuring_window\": null}}; KWin recording bar input={\"pid\": 285102, \"window_id\": \"{9e2dd9b8-5134-41e5-96f2-1f25d5d5f264}\", \"rect\": [640, 710, 823, 52], \"point\": [1278.0, 736.0], \"before_prepare\": [\"{911af074-816f-4a6e-9095-02cc9c152f4e}\", \"{c7c1bace-260c-4a5f-aab9-8167b7fddbc1}\", \"{a57af6d5-b5c6-4224-8417-1ea64b6dc5b9}\"], \"foreground\": {\"ok\": true, \"backend\": \"kwin-script-pick\", \"target\": \"{9e2dd9b8-5134-41e5-96f2-1f25d5d5f264}\", \"obscuring_window\": null}}; Retained synthetic mp4 sha256=278f2565a95f0fa5fc62b4671122e50ff4cd528b306bf94b60f346ca3a092409; frozen clip motion=0.019, durationMs=9133; recording acquisition=kde-screencast; recording acquisition=kde-screencast; operationId=79093339-7e77-40c6-947b-6e6856239496; Recording operation 79093339-7e77-40c6-947b-6e6856239496; KWin recording bar input={\"pid\": 303211, \"window_id\": \"{b9f10dc5-92b1-41dc-9d87-2d6418cf920a}\", \"rect\": [640, 710, 780, 52], \"point\": [1250.0, 736.0], \"before_prepare\": [\"{911af074-816f-4a6e-9095-02cc9c152f4e}\", \"{c7c1bace-260c-4a5f-aab9-8167b7fddbc1}\", \"{a57af6d5-b5c6-4224-8417-1ea64b6dc5b9}\"], \"foreground\": {\"ok\": true, \"backend\": \"kwin-script-pick\", \"target\": \"{b9f10dc5-92b1-41dc-9d87-2d6418cf920a}\", \"obscuring_window\": null}}; KWin recording bar input={\"pid\": 303211, \"window_id\": \"{b9f10dc5-92b1-41dc-9d87-2d6418cf920a}\", \"rect\": [640, 710, 823, 52], \"point\": [1278.0, 736.0], \"before_prepare\": [\"{911af074-816f-4a6e-9095-02cc9c152f4e}\", \"{c7c1bace-260c-4a5f-aab9-8167b7fddbc1}\", \"{a57af6d5-b5c6-4224-8417-1ea64b6dc5b9}\"], \"foreground\": {\"ok\": true, \"backend\": \"kwin-script-pick\", \"target\": \"{b9f10dc5-92b1-41dc-9d87-2d6418cf920a}\", \"obscuring_window\": null}}; Retained synthetic mp4 sha256=a64660726afcc0fec12e1742bc16f7ccf52f100a92e7cfb35e3e245619ba8afe; moving clip motion=73.979, durationMs=9066; operationId=79093339-7e77-40c6-947b-6e6856239496; historyId=68e071a1-e5e4-4295-a232-830048dda901; uploaded/local sha256=a64660726afcc0fec12e1742bc16f7ccf52f100a92e7cfb35e3e245619ba8afe; Retained synthetic mp4 sha256=a64660726afcc0fec12e1742bc16f7ccf52f100a92e7cfb35e3e245619ba8afe; uploaded clip motion=73.979, durationMs=9066, frozen=0.019; desktop frame after masked by live evidence policy",
+      "host": "k72",
+      "placement": "native",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes.recording_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "independent-frozen-pattern",
+          "path": "frames/outcomes.recording_upload/01-independent-frozen-pattern.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "recording-private-review",
+          "path": "frames/outcomes.recording_upload/02-recording-private-review.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "publication-result",
+          "path": "frames/outcomes.recording_upload/03-publication-result.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes.recording_upload/04-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes.recording_upload",
+      "build": "4d3840c6108c22546d83c43a1b7d4c77b1df9d6d",
+      "at": "2026-10-31T15:49:02Z"
+    },
+    {
+      "interaction": "editor.upload",
+      "desktop": "kubuntu-kde-wayland",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "/tmp/np31/a2/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; operationId=4ebfdd52-f0be-4138-824f-c8ddb6551683; editor operationId=4ebfdd52-f0be-4138-824f-c8ddb6551683; operationId=4ebfdd52-f0be-4138-824f-c8ddb6551683; historyId=f7a73640-9e3b-4999-a825-c6e3ea555140; uploaded/local sha256=c76e1ecf6f9bddf3f12f5a04edc4b3c3c62b204d9d32c284c3c924f9e2f7fe71; Retained synthetic png sha256=c76e1ecf6f9bddf3f12f5a04edc4b3c3c62b204d9d32c284c3c924f9e2f7fe71; desktop frame after masked by live evidence policy",
+      "host": "k72",
+      "placement": "native",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes.edit_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "independent-frozen-pattern",
+          "path": "frames/outcomes.edit_upload/01-independent-frozen-pattern.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/outcomes.edit_upload/02-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "four-marks-before-upload",
+          "path": "frames/outcomes.edit_upload/03-four-marks-before-upload.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "publication-result",
+          "path": "frames/outcomes.edit_upload/04-publication-result.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes.edit_upload/05-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes.edit_upload",
+      "build": "4d3840c6108c22546d83c43a1b7d4c77b1df9d6d",
+      "at": "2026-10-31T15:51:45Z"
+    },
+    {
+      "interaction": "editor.mouse-draw",
+      "desktop": "kubuntu-kde-wayland",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "/tmp/np31/a2/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; operationId=4ebfdd52-f0be-4138-824f-c8ddb6551683; editor operationId=4ebfdd52-f0be-4138-824f-c8ddb6551683; operationId=4ebfdd52-f0be-4138-824f-c8ddb6551683; historyId=f7a73640-9e3b-4999-a825-c6e3ea555140; uploaded/local sha256=c76e1ecf6f9bddf3f12f5a04edc4b3c3c62b204d9d32c284c3c924f9e2f7fe71; Retained synthetic png sha256=c76e1ecf6f9bddf3f12f5a04edc4b3c3c62b204d9d32c284c3c924f9e2f7fe71; desktop frame after masked by live evidence policy",
+      "host": "k72",
+      "placement": "native",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes.edit_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "independent-frozen-pattern",
+          "path": "frames/outcomes.edit_upload/01-independent-frozen-pattern.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/outcomes.edit_upload/02-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "four-marks-before-upload",
+          "path": "frames/outcomes.edit_upload/03-four-marks-before-upload.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "publication-result",
+          "path": "frames/outcomes.edit_upload/04-publication-result.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes.edit_upload/05-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes.edit_upload",
+      "build": "4d3840c6108c22546d83c43a1b7d4c77b1df9d6d",
+      "at": "2026-10-31T15:51:45Z"
+    },
+    {
+      "interaction": "editor.text-typing",
+      "desktop": "kubuntu-kde-wayland",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "/tmp/np31/a2/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; operationId=4ebfdd52-f0be-4138-824f-c8ddb6551683; editor operationId=4ebfdd52-f0be-4138-824f-c8ddb6551683; operationId=4ebfdd52-f0be-4138-824f-c8ddb6551683; historyId=f7a73640-9e3b-4999-a825-c6e3ea555140; uploaded/local sha256=c76e1ecf6f9bddf3f12f5a04edc4b3c3c62b204d9d32c284c3c924f9e2f7fe71; Retained synthetic png sha256=c76e1ecf6f9bddf3f12f5a04edc4b3c3c62b204d9d32c284c3c924f9e2f7fe71; desktop frame after masked by live evidence policy",
+      "host": "k72",
+      "placement": "native",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes.edit_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "independent-frozen-pattern",
+          "path": "frames/outcomes.edit_upload/01-independent-frozen-pattern.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/outcomes.edit_upload/02-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "four-marks-before-upload",
+          "path": "frames/outcomes.edit_upload/03-four-marks-before-upload.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "publication-result",
+          "path": "frames/outcomes.edit_upload/04-publication-result.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes.edit_upload/05-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes.edit_upload",
+      "build": "4d3840c6108c22546d83c43a1b7d4c77b1df9d6d",
+      "at": "2026-10-31T15:51:45Z"
+    },
+    {
+      "interaction": "history.copy-link",
+      "desktop": "kubuntu-kde-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/tmp/np31/a2/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; operationId=733a6db3-cb2f-43d1-8bad-3d4dc623452c; operationId=733a6db3-cb2f-43d1-8bad-3d4dc623452c; historyId=3d78eba2-44f9-49ce-98aa-0eccd28b9678; uploaded/local sha256=4b809b5ca9f1076f378c55ed3500eb219dd427bdf5ff32c30e90d73a660fe2cb; Retained synthetic png sha256=4b809b5ca9f1076f378c55ed3500eb219dd427bdf5ff32c30e90d73a660fe2cb; private Firefox observation: {\"accessibleWindows\": 1, \"environmentReadable\": true, \"ownedAccessibleWindows\": 0, \"pid\": 549783, \"processPresent\": true, \"runtimeMatches\": false}; Firefox handler restored; MIME SHA-256 checks passed; desktop frame after masked by live evidence policy; geometry: RuntimeError: live window match is missing or ambiguous (0 matches)",
+      "host": "k72",
+      "placement": "native",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes.link_browser/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "independent-frozen-pattern",
+          "path": "frames/outcomes.link_browser/01-independent-frozen-pattern.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "publication-result",
+          "path": "frames/outcomes.link_browser/02-publication-result.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-failure-safe-desktop",
+          "path": "frames/outcomes.link_browser/03-browser-failure-safe-desktop.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "outcome-failed-before-cleanup",
+          "path": "frames/outcomes.link_browser/04-outcome-failed-before-cleanup.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes.link_browser/05-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes.link_browser",
+      "build": "4d3840c6108c22546d83c43a1b7d4c77b1df9d6d",
+      "at": "2026-10-31T15:53:39Z"
+    },
+    {
+      "interaction": "history.open-link",
+      "desktop": "kubuntu-kde-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/tmp/np31/a2/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; operationId=733a6db3-cb2f-43d1-8bad-3d4dc623452c; operationId=733a6db3-cb2f-43d1-8bad-3d4dc623452c; historyId=3d78eba2-44f9-49ce-98aa-0eccd28b9678; uploaded/local sha256=4b809b5ca9f1076f378c55ed3500eb219dd427bdf5ff32c30e90d73a660fe2cb; Retained synthetic png sha256=4b809b5ca9f1076f378c55ed3500eb219dd427bdf5ff32c30e90d73a660fe2cb; private Firefox observation: {\"accessibleWindows\": 1, \"environmentReadable\": true, \"ownedAccessibleWindows\": 0, \"pid\": 549783, \"processPresent\": true, \"runtimeMatches\": false}; Firefox handler restored; MIME SHA-256 checks passed; desktop frame after masked by live evidence policy; geometry: RuntimeError: live window match is missing or ambiguous (0 matches)",
+      "host": "k72",
+      "placement": "native",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes.link_browser/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "independent-frozen-pattern",
+          "path": "frames/outcomes.link_browser/01-independent-frozen-pattern.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "publication-result",
+          "path": "frames/outcomes.link_browser/02-publication-result.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-failure-safe-desktop",
+          "path": "frames/outcomes.link_browser/03-browser-failure-safe-desktop.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "outcome-failed-before-cleanup",
+          "path": "frames/outcomes.link_browser/04-outcome-failed-before-cleanup.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes.link_browser/05-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes.link_browser",
+      "build": "4d3840c6108c22546d83c43a1b7d4c77b1df9d6d",
+      "at": "2026-10-31T15:53:39Z"
+    },
+    {
+      "interaction": "history.delete-remote",
+      "desktop": "kubuntu-kde-wayland",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "/tmp/np31/a2/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; operationId=d5ed5b34-7aac-41d6-8573-0dc86d3b7926; operationId=d5ed5b34-7aac-41d6-8573-0dc86d3b7926; historyId=8695adab-8462-4483-a41f-3f48a979cc2c; uploaded/local sha256=4b809b5ca9f1076f378c55ed3500eb219dd427bdf5ff32c30e90d73a660fe2cb; Retained synthetic png sha256=4b809b5ca9f1076f378c55ed3500eb219dd427bdf5ff32c30e90d73a660fe2cb; History list keyboard focus verified through native accessibility; deleteOperationId=f2f36b1d-ccb6-44bd-9f60-4c6f1753e296; desktop frame after masked by live evidence policy",
+      "host": "k72",
+      "placement": "native",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes.history_delete/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "independent-frozen-pattern",
+          "path": "frames/outcomes.history_delete/01-independent-frozen-pattern.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "publication-result",
+          "path": "frames/outcomes.history_delete/02-publication-result.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "owned-history-row",
+          "path": "frames/outcomes.history_delete/03-owned-history-row.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "exact-deletion-confirmation",
+          "path": "frames/outcomes.history_delete/04-exact-deletion-confirmation.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "deleted-object-no-longer-resolves",
+          "path": "frames/outcomes.history_delete/05-deleted-object-no-longer-resolves.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes.history_delete/06-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes.history_delete",
+      "build": "4d3840c6108c22546d83c43a1b7d4c77b1df9d6d",
+      "at": "2026-10-31T15:56:32Z"
+    },
+    {
+      "interaction": "confirm.history-delete",
+      "desktop": "kubuntu-kde-wayland",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "/tmp/np31/a2/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; operationId=d5ed5b34-7aac-41d6-8573-0dc86d3b7926; operationId=d5ed5b34-7aac-41d6-8573-0dc86d3b7926; historyId=8695adab-8462-4483-a41f-3f48a979cc2c; uploaded/local sha256=4b809b5ca9f1076f378c55ed3500eb219dd427bdf5ff32c30e90d73a660fe2cb; Retained synthetic png sha256=4b809b5ca9f1076f378c55ed3500eb219dd427bdf5ff32c30e90d73a660fe2cb; History list keyboard focus verified through native accessibility; deleteOperationId=f2f36b1d-ccb6-44bd-9f60-4c6f1753e296; desktop frame after masked by live evidence policy",
+      "host": "k72",
+      "placement": "native",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes.history_delete/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "independent-frozen-pattern",
+          "path": "frames/outcomes.history_delete/01-independent-frozen-pattern.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "publication-result",
+          "path": "frames/outcomes.history_delete/02-publication-result.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "owned-history-row",
+          "path": "frames/outcomes.history_delete/03-owned-history-row.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "exact-deletion-confirmation",
+          "path": "frames/outcomes.history_delete/04-exact-deletion-confirmation.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "deleted-object-no-longer-resolves",
+          "path": "frames/outcomes.history_delete/05-deleted-object-no-longer-resolves.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes.history_delete/06-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes.history_delete",
+      "build": "4d3840c6108c22546d83c43a1b7d4c77b1df9d6d",
+      "at": "2026-10-31T15:56:32Z"
+    }
+  ]
+}

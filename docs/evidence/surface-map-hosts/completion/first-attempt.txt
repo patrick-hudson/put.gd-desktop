@@ -1,0 +1,1 @@
+First attempt: baseline module at /tmp/putgd-smh-evidence/nightly.py raised IndexError at HERE.parents[2]. Corrected export to baseline/nightly.py; no product change. Retry: /tmp/putgd-smh-py/bin/python /tmp/putgd-smh-evidence/verify.py

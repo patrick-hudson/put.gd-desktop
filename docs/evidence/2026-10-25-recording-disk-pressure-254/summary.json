@@ -1,0 +1,2930 @@
+{
+  "host": "f44 192.168.68.70",
+  "os": "NAME=\"Fedora Linux\"\nVERSION=\"44 (Workstation Edition)\"\nRELEASE_TYPE=stable\nID=fedora\nVERSION_ID=44\nVERSION_CODENAME=\"\"\nPRETTY_NAME=\"Fedora Linux 44 (Workstation Edition)\"\nANSI_COLOR=\"0;38;2;60;110;180\"\nLOGO=fedora-logo-icon\nCPE_NAME=\"cpe:/o:fedoraproject:fedora:44\"\nDEFAULT_HOSTNAME=\"fedora\"\nHOME_URL=\"https://fedoraproject.org/\"\nDOCUMENTATION_URL=\"https://docs.fedoraproject.org/en-US/fedora/f44/\"\nSUPPORT_URL=\"https://ask.fedoraproject.org/\"\nBUG_REPORT_URL=\"https://bugzilla.redhat.com/\"\nREDHAT_BUGZILLA_PRODUCT=\"Fedora\"\nREDHAT_BUGZILLA_PRODUCT_VERSION=44\nREDHAT_SUPPORT_PRODUCT=\"Fedora\"\nREDHAT_SUPPORT_PRODUCT_VERSION=44\nSUPPORT_END=2027-05-19\nVARIANT=\"Workstation Edition\"\nVARIANT_ID=workstation\n",
+  "kernel": "7.2.11-200.fc44.x86_64",
+  "qt": "6.11.2",
+  "acceptance": "Historical 25b36396 bounded Xvfb and targeted native f44 disk-preservation checks pass; native g3/g4 local Upload save succeeds but clipboard copy fails. New review-follow-up head has no native acceptance; full parallel functional/memory and remaining matrix gates pending.",
+  "runs": [
+    {
+      "identity": {
+        "schemaVersion": 1,
+        "version": "26.1025.1293-dev+g80ffa2e6c0d3",
+        "baseVersion": "26.1025.1293",
+        "packageVersion": "26.1025.1293~dev+g80ffa2e6c0d3",
+        "gitCommit": "80ffa2e6c0d34223d2cc0f31254f2e60ac2bd247",
+        "gitTree": "8e1abcea6b16634af938f14e94b9eff0de1d02b5",
+        "commitCount": 1293,
+        "dirty": false,
+        "sourceProvenance": "git"
+      },
+      "binarySha256": null,
+      "baseline": true,
+      "scenario": null,
+      "paused": false,
+      "exhaust": false,
+      "mountLimitBytes": 1610612736,
+      "mountIdentity": {
+        "target": "/tmp/d254b1/data/putgd/recording",
+        "source": "i254-disposable",
+        "fstype": "tmpfs",
+        "device": 75,
+        "capacityBytes": 1610612736
+      },
+      "id": "42c35db7-351b-4973-b5e5-3052a67de9d5",
+      "passed": true,
+      "failure": null,
+      "cleanupUnmount": 0,
+      "run": "d254b1",
+      "stop": {
+        "error": {
+          "code": "recording_unavailable",
+          "details": {},
+          "message": "No recording is active"
+        },
+        "ok": false,
+        "requestId": "dde18f1a-f834-4099-9605-d68c5ba4c0cb",
+        "result": {},
+        "schemaVersion": 1
+      },
+      "operationBeforeUpload": {
+        "action": "record",
+        "cancelled": false,
+        "clipboardRevision": "1",
+        "copyStatus": "no_result",
+        "created": "2026-10-25T16:57:50.526Z",
+        "destination": {
+          "credentials": {},
+          "profileId": "",
+          "profileRevision": "",
+          "providerId": "",
+          "settings": {}
+        },
+        "error": {
+          "code": "recording_failed",
+          "details": {
+            "debug": "../plugins/elements/gstelements_private.c(364): gst_writev_iovecs (): /GstPipeline:pipeline1/GstFileSink:sink",
+            "step": null
+          },
+          "message": "Capture failed: No space left on the resource."
+        },
+        "id": "42c35db7-351b-4973-b5e5-3052a67de9d5",
+        "invocation": "1",
+        "items": [],
+        "phase": "failed",
+        "requestTimeoutMs": null,
+        "settingsRevision": "906fd22159115399a490a87f60c2ba3f931d24de76f92975200decc8efea9bd8",
+        "state": "failed"
+      },
+      "export": null,
+      "operationAfterUpload": null,
+      "mcpInspect": null,
+      "parameters": {
+        "fps": 15,
+        "rect": [
+          0,
+          0,
+          640,
+          480
+        ],
+        "source": "Xvfb synthetic ball/snow",
+        "writer": "separate Python process, verified tmpfs only"
+      }
+    },
+    {
+      "identity": {
+        "schemaVersion": 1,
+        "version": "26.1025.1297-dev+g25b36396ea40",
+        "baseVersion": "26.1025.1297",
+        "packageVersion": "26.1025.1297~dev+g25b36396ea40",
+        "gitCommit": "25b36396ea408c53ff2b0d2daa9572a2faad9cd6",
+        "gitTree": "f8f882b9929a0d25f6508a283198f5af8bf74145",
+        "commitCount": 1297,
+        "dirty": false,
+        "sourceProvenance": "git"
+      },
+      "binarySha256": {
+        "putgd": "0528890ea4bce6b27a0ecc604e03cb8d09ecb41a41f476eb78d310142b68342a",
+        "putgd-cli": "80fc4b8aa4140f9af049283418c4b6107f22cc5c9eb42d5025a9ca88d650a013",
+        "putgd-record": "f6684ef821aaa8cb2bf8ac725f9d813e3c39f3fad3689a9503a27bc72ae4fbfa"
+      },
+      "baseline": false,
+      "scenario": "budget",
+      "paused": false,
+      "exhaust": false,
+      "mountLimitBytes": 1610612736,
+      "mountIdentity": {
+        "target": "/tmp/d254c1/data/putgd/recording",
+        "source": "i254-disposable",
+        "fstype": "tmpfs",
+        "device": 86,
+        "capacityBytes": 1610612736
+      },
+      "id": "c303406c-8405-4ac2-872b-a4304804b2c3",
+      "passed": true,
+      "failure": null,
+      "cleanupUnmount": 0,
+      "run": "d254c1",
+      "stop": {
+        "canvas": [
+          640,
+          480
+        ],
+        "config": {
+          "audio": {
+            "microphone": false,
+            "system": false
+          },
+          "budgetBytes": 1048576,
+          "codec": "h264",
+          "format": "mp4",
+          "fps": 15,
+          "mime": "video/mp4"
+        },
+        "durationUs": 730876,
+        "edit": {
+          "masks": [],
+          "revision": 1,
+          "trimEnd": null,
+          "trimStart": 0
+        },
+        "error": {
+          "code": "",
+          "details": {},
+          "message": ""
+        },
+        "exports": 0,
+        "lastExport": null,
+        "operationId": "c303406c-8405-4ac2-872b-a4304804b2c3",
+        "outputSize": [
+          640,
+          480
+        ],
+        "overlayExcluded": true,
+        "overlayPlacement": "outside",
+        "pending": null,
+        "progress": {
+          "audioEncoder": "",
+          "bytes": 179628,
+          "durationUs": 66666,
+          "encoder": "openh264enc",
+          "paused": false
+        },
+        "recordingId": "c303406c-8405-4ac2-872b-a4304804b2c3",
+        "retainedUs": 730876,
+        "selecting": false,
+        "state": "reviewing",
+        "stopDetails": {
+          "budgetBytes": 1048576,
+          "durationUs": 730876,
+          "hint": "Raise Largest file in Settings > Uploads to record longer",
+          "maxFileBytes": 2097152,
+          "message": "Recording stopped at 0:00: it reached the Largest file limit (2 MiB; recording stops at 1 MiB to leave room to finish the file). The clip so far is kept for review; raise Largest file in Settings > Uploads to record longer.",
+          "reason": "max_file_bytes"
+        },
+        "stopReason": "budget",
+        "target": {
+          "kind": "region",
+          "rect": [
+            0,
+            0,
+            640,
+            480
+          ]
+        }
+      },
+      "operationBeforeUpload": {
+        "action": "record",
+        "cancelled": false,
+        "clipboardRevision": "1",
+        "copyStatus": "pending",
+        "created": "2026-10-25T17:03:50.384Z",
+        "destination": {
+          "credentials": {},
+          "profileId": "",
+          "profileRevision": "",
+          "providerId": "",
+          "settings": {}
+        },
+        "error": {
+          "code": "",
+          "details": {},
+          "message": ""
+        },
+        "id": "c303406c-8405-4ac2-872b-a4304804b2c3",
+        "invocation": "1",
+        "items": [],
+        "phase": "reviewing",
+        "requestTimeoutMs": null,
+        "settingsRevision": "6f7468b60eb5ef55db37a514ee4ae373dde421b1da54d72c67377b8f561c140f",
+        "state": "recording"
+      },
+      "export": {
+        "canvas": [
+          640,
+          480
+        ],
+        "config": {
+          "audio": {
+            "microphone": false,
+            "system": false
+          },
+          "budgetBytes": 1048576,
+          "codec": "h264",
+          "format": "mp4",
+          "fps": 15,
+          "mime": "video/mp4"
+        },
+        "durationUs": 730876,
+        "edit": {
+          "masks": [],
+          "revision": 1,
+          "trimEnd": null,
+          "trimStart": 0
+        },
+        "error": {
+          "code": "",
+          "details": {},
+          "message": ""
+        },
+        "exports": 1,
+        "lastExport": {
+          "bytes": 1108055,
+          "command": "saveCopy",
+          "durationUs": 733333,
+          "path": "/tmp/d254c1/copy.mp4",
+          "revision": 1,
+          "status": "saved"
+        },
+        "operationId": "c303406c-8405-4ac2-872b-a4304804b2c3",
+        "outputSize": [
+          640,
+          480
+        ],
+        "overlayExcluded": true,
+        "overlayPlacement": "outside",
+        "pending": null,
+        "progress": {
+          "exportFraction": 0.7297174896972948
+        },
+        "recordingId": "c303406c-8405-4ac2-872b-a4304804b2c3",
+        "retainedUs": 730876,
+        "selecting": false,
+        "state": "reviewing",
+        "stopDetails": {
+          "budgetBytes": 1048576,
+          "durationUs": 730876,
+          "hint": "Raise Largest file in Settings > Uploads to record longer",
+          "maxFileBytes": 2097152,
+          "message": "Recording stopped at 0:00: it reached the Largest file limit (2 MiB; recording stops at 1 MiB to leave room to finish the file). The clip so far is kept for review; raise Largest file in Settings > Uploads to record longer.",
+          "reason": "max_file_bytes"
+        },
+        "stopReason": "budget",
+        "target": {
+          "kind": "region",
+          "rect": [
+            0,
+            0,
+            640,
+            480
+          ]
+        }
+      },
+      "operationAfterUpload": {
+        "action": "record",
+        "cancelled": false,
+        "clipboardRevision": "1",
+        "copyStatus": "pending",
+        "created": "2026-10-25T17:03:50.384Z",
+        "destination": {
+          "credentials": {},
+          "profileId": "",
+          "profileRevision": "",
+          "providerId": "",
+          "settings": {}
+        },
+        "error": {
+          "code": "",
+          "details": {},
+          "message": ""
+        },
+        "id": "c303406c-8405-4ac2-872b-a4304804b2c3",
+        "invocation": "1",
+        "items": [
+          {
+            "artifact": {
+              "bytes": 1108055,
+              "category": "videos",
+              "id": "ee0ace5c-f627-49fb-a509-8cb2ddf94099",
+              "mime": "video/mp4",
+              "name": "Screen-Recording-2026-10-25-12-03-50.mp4",
+              "namingPrepared": true,
+              "originalFile": false,
+              "previewPath": "",
+              "sha256": "ba0b1a29a06e32ec82c52093f05f45728143cf1ffc8f2264eefd856a1fd634e2"
+            },
+            "candidate": "",
+            "concurrencyToken": "",
+            "condition": "",
+            "error": {
+              "code": "",
+              "details": {},
+              "message": ""
+            },
+            "local": {
+              "error": {
+                "code": "",
+                "details": {},
+                "message": ""
+              },
+              "path": "/tmp/d254c1/archive/videos/Screen-Recording-2026-10-25-12-03-50.mp4",
+              "status": "saved"
+            },
+            "objectReference": {},
+            "phase": "stored",
+            "publicationId": "10f72c30-aa05-40d2-981f-fd2efa0250b9",
+            "receipt": {
+              "concurrencyToken": "",
+              "destination": {
+                "credentials": {},
+                "profileId": "",
+                "profileRevision": "",
+                "providerId": "",
+                "settings": {}
+              },
+              "directUrl": "",
+              "objectReference": {},
+              "publicationId": "",
+              "schemaVersion": 1
+            },
+            "remoteStatus": "not_requested",
+            "shareIntent": "",
+            "shareIntentOptions": {},
+            "shareStatus": "not_requested",
+            "uploadProgress": null,
+            "uploadStatus": "local_only"
+          }
+        ],
+        "phase": "completed",
+        "requestTimeoutMs": null,
+        "settingsRevision": "6f7468b60eb5ef55db37a514ee4ae373dde421b1da54d72c67377b8f561c140f",
+        "state": "completed"
+      },
+      "mcpInspect": {
+        "error": {
+          "code": "",
+          "details": {},
+          "message": ""
+        },
+        "ok": true,
+        "requestId": "c0e39038-c018-4805-b297-56ab26ca9bea",
+        "result": {
+          "canvas": [
+            640,
+            480
+          ],
+          "config": {
+            "audio": {
+              "microphone": false,
+              "system": false
+            },
+            "budgetBytes": 1048576,
+            "codec": "h264",
+            "format": "mp4",
+            "fps": 15,
+            "mime": "video/mp4"
+          },
+          "durationUs": 730876,
+          "edit": {
+            "masks": [],
+            "revision": 1,
+            "trimEnd": null,
+            "trimStart": 0
+          },
+          "error": {
+            "code": "",
+            "details": {},
+            "message": ""
+          },
+          "exports": 0,
+          "lastExport": null,
+          "operationId": "c303406c-8405-4ac2-872b-a4304804b2c3",
+          "outputSize": [
+            640,
+            480
+          ],
+          "overlayExcluded": true,
+          "overlayPlacement": "outside",
+          "pending": null,
+          "progress": {
+            "audioEncoder": "",
+            "bytes": 179628,
+            "durationUs": 66666,
+            "encoder": "openh264enc",
+            "paused": false
+          },
+          "recordingId": "c303406c-8405-4ac2-872b-a4304804b2c3",
+          "retainedUs": 730876,
+          "selecting": false,
+          "state": "reviewing",
+          "stopDetails": {
+            "budgetBytes": 1048576,
+            "durationUs": 730876,
+            "hint": "Raise Largest file in Settings > Uploads to record longer",
+            "maxFileBytes": 2097152,
+            "message": "Recording stopped at 0:00: it reached the Largest file limit (2 MiB; recording stops at 1 MiB to leave room to finish the file). The clip so far is kept for review; raise Largest file in Settings > Uploads to record longer.",
+            "reason": "max_file_bytes"
+          },
+          "stopReason": "budget",
+          "target": {
+            "kind": "region",
+            "rect": [
+              0,
+              0,
+              640,
+              480
+            ]
+          }
+        },
+        "schemaVersion": 1
+      },
+      "parameters": {
+        "fps": 15,
+        "rect": [
+          0,
+          0,
+          640,
+          480
+        ],
+        "source": "Xvfb synthetic ball/snow",
+        "writer": "separate Python process, verified tmpfs only"
+      }
+    },
+    {
+      "identity": {
+        "schemaVersion": 1,
+        "version": "26.1025.1297-dev+g25b36396ea40",
+        "baseVersion": "26.1025.1297",
+        "packageVersion": "26.1025.1297~dev+g25b36396ea40",
+        "gitCommit": "25b36396ea408c53ff2b0d2daa9572a2faad9cd6",
+        "gitTree": "f8f882b9929a0d25f6508a283198f5af8bf74145",
+        "commitCount": 1297,
+        "dirty": false,
+        "sourceProvenance": "git"
+      },
+      "binarySha256": {
+        "putgd": "0528890ea4bce6b27a0ecc604e03cb8d09ecb41a41f476eb78d310142b68342a",
+        "putgd-cli": "80fc4b8aa4140f9af049283418c4b6107f22cc5c9eb42d5025a9ca88d650a013",
+        "putgd-record": "f6684ef821aaa8cb2bf8ac725f9d813e3c39f3fad3689a9503a27bc72ae4fbfa"
+      },
+      "baseline": false,
+      "scenario": "pressure",
+      "paused": false,
+      "exhaust": true,
+      "mountLimitBytes": 1610612736,
+      "mountIdentity": {
+        "target": "/tmp/d254e1/data/putgd/recording",
+        "source": "i254-disposable",
+        "fstype": "tmpfs",
+        "device": 86,
+        "capacityBytes": 1610612736
+      },
+      "id": "736692b8-f08c-4fc9-a2e6-aa1975657a05",
+      "passed": true,
+      "failure": null,
+      "cleanupUnmount": 0,
+      "run": "d254e1",
+      "stop": {
+        "error": {
+          "code": "recording_unavailable",
+          "details": {},
+          "message": "No recording is active"
+        },
+        "ok": false,
+        "requestId": "6ab9aac1-9d6b-4b2f-8926-687ff2694744",
+        "result": {},
+        "schemaVersion": 1
+      },
+      "operationBeforeUpload": {
+        "action": "record",
+        "cancelled": false,
+        "clipboardRevision": "1",
+        "copyStatus": "no_result",
+        "created": "2026-10-25T17:03:59.422Z",
+        "destination": {
+          "credentials": {},
+          "profileId": "",
+          "profileRevision": "",
+          "providerId": "",
+          "settings": {}
+        },
+        "error": {
+          "code": "recording_disk_full",
+          "details": {
+            "availableBytes": 0,
+            "cause": {
+              "code": "recording_disk_full",
+              "details": {
+                "availableBytes": 0,
+                "clipBytes": 4096,
+                "finalizationReserveBytes": 33554432,
+                "finalized": false,
+                "freeBytes": 0,
+                "reason": "disk_space",
+                "requiredBytes": 167772160,
+                "reserveBytes": 1073741824,
+                "stopDetails": {
+                  "availableBytes": 0,
+                  "clipBytes": 2817,
+                  "finalizationReserveBytes": 33554432,
+                  "freeBytes": 0,
+                  "reason": "disk_space",
+                  "requiredBytes": 167772160,
+                  "reserveBytes": 1073741824
+                }
+              },
+              "message": "The disk filled before the recording could be finalized. No reviewable clip was retained and nothing was uploaded. Free up space and try again."
+            },
+            "clipBytes": 2817,
+            "finalizationReserveBytes": 33554432,
+            "finalized": false,
+            "freeBytes": 0,
+            "reason": "disk_space",
+            "requiredBytes": 167772160,
+            "reserveBytes": 1073741824,
+            "step": null
+          },
+          "message": "Recording stopped for low disk space, but the clip could not be finalized for review. Nothing was uploaded. Free up space and try again."
+        },
+        "id": "736692b8-f08c-4fc9-a2e6-aa1975657a05",
+        "invocation": "1",
+        "items": [],
+        "phase": "failed",
+        "requestTimeoutMs": null,
+        "settingsRevision": "66e6e097d4604240013f7e302101cf781e9cdff7870aeeefa1a7b01b69571f31",
+        "state": "failed"
+      },
+      "export": null,
+      "operationAfterUpload": null,
+      "mcpInspect": null,
+      "parameters": {
+        "fps": 15,
+        "rect": [
+          0,
+          0,
+          640,
+          480
+        ],
+        "source": "Xvfb synthetic ball/snow",
+        "writer": "separate Python process, verified tmpfs only"
+      }
+    },
+    {
+      "identity": {
+        "schemaVersion": 1,
+        "version": "26.1025.1296-dev+gf4565f2243b2",
+        "baseVersion": "26.1025.1296",
+        "packageVersion": "26.1025.1296~dev+gf4565f2243b2",
+        "gitCommit": "f4565f2243b256bcfa7703fd59b95dab1f4926e0",
+        "gitTree": "ecb160b51183e9a4ba68734f359533e90419110f",
+        "commitCount": 1296,
+        "dirty": false,
+        "sourceProvenance": "git"
+      },
+      "binarySha256": {
+        "putgd": "f43dedaa2a72999babf4f22f05e09edc274d23b734ec276691fc01fe151c45f7",
+        "putgd-cli": "cc1a49475468f6f4ad5ac96ff20d038b69696c92a3b53fe8c36e9fcc7f2c3ab0",
+        "putgd-record": "190e432a0ca71f1749eae245090fe23ee274abd69fc6ad4ae12d8678126a5888"
+      },
+      "baseline": false,
+      "scenario": "pressure",
+      "paused": false,
+      "exhaust": false,
+      "mountLimitBytes": 1610612736,
+      "mountIdentity": {
+        "target": "/tmp/d254f1/data/putgd/recording",
+        "source": "i254-disposable",
+        "fstype": "tmpfs",
+        "device": 86,
+        "capacityBytes": 1610612736
+      },
+      "id": "c8c94d7f-990d-4919-888c-dbd2dcb7d980",
+      "passed": true,
+      "failure": null,
+      "cleanupUnmount": 0,
+      "run": "d254f1",
+      "stop": {
+        "canvas": [
+          640,
+          480
+        ],
+        "config": {
+          "audio": {
+            "microphone": false,
+            "system": false
+          },
+          "budgetBytes": 178956970,
+          "codec": "h264",
+          "format": "mp4",
+          "fps": 15,
+          "mime": "video/mp4"
+        },
+        "durationUs": 5797751,
+        "edit": {
+          "masks": [],
+          "revision": 1,
+          "trimEnd": null,
+          "trimStart": 0
+        },
+        "error": {
+          "code": "",
+          "details": {},
+          "message": ""
+        },
+        "exports": 0,
+        "lastExport": null,
+        "operationId": "c8c94d7f-990d-4919-888c-dbd2dcb7d980",
+        "outputSize": [
+          640,
+          480
+        ],
+        "overlayExcluded": true,
+        "overlayPlacement": "outside",
+        "pending": null,
+        "progress": {
+          "audioEncoder": "",
+          "bytes": 5813,
+          "durationUs": 5064418,
+          "encoder": "openh264enc",
+          "paused": false
+        },
+        "recordingId": "c8c94d7f-990d-4919-888c-dbd2dcb7d980",
+        "retainedUs": 5797751,
+        "selecting": false,
+        "state": "reviewing",
+        "stopDetails": {
+          "availableBytes": 159375360,
+          "budgetBytes": 178956970,
+          "clipBytes": 5813,
+          "durationUs": 5797751,
+          "finalizationReserveBytes": 33554432,
+          "freeBytes": 1233117184,
+          "hint": "Free up space in put.gd's data folder before exporting or recording again",
+          "maxFileBytes": 1099511627776,
+          "message": "Recording stopped at 0:05 because free disk space fell: 1.1 GiB was free, with 1.0 GiB kept for the system and 160 MiB needed for finalization and copies. The clip so far is kept for private review. Free up space before exporting or recording again; nothing was uploaded.",
+          "reason": "disk_space",
+          "requiredBytes": 167772160,
+          "reserveBytes": 1073741824
+        },
+        "stopReason": "budget",
+        "target": {
+          "kind": "region",
+          "rect": [
+            0,
+            0,
+            640,
+            480
+          ]
+        }
+      },
+      "operationBeforeUpload": {
+        "action": "record",
+        "cancelled": false,
+        "clipboardRevision": "1",
+        "copyStatus": "pending",
+        "created": "2026-10-25T17:00:56.009Z",
+        "destination": {
+          "credentials": {},
+          "profileId": "",
+          "profileRevision": "",
+          "providerId": "",
+          "settings": {}
+        },
+        "error": {
+          "code": "",
+          "details": {},
+          "message": ""
+        },
+        "id": "c8c94d7f-990d-4919-888c-dbd2dcb7d980",
+        "invocation": "1",
+        "items": [],
+        "phase": "reviewing",
+        "requestTimeoutMs": null,
+        "settingsRevision": "ae851f088c216f3d98349edd75a6a941e5ea19181a665cb823aad9bfd405b1f3",
+        "state": "recording"
+      },
+      "export": {
+        "canvas": [
+          640,
+          480
+        ],
+        "config": {
+          "audio": {
+            "microphone": false,
+            "system": false
+          },
+          "budgetBytes": 178956970,
+          "codec": "h264",
+          "format": "mp4",
+          "fps": 15,
+          "mime": "video/mp4"
+        },
+        "durationUs": 5797751,
+        "edit": {
+          "masks": [],
+          "revision": 1,
+          "trimEnd": null,
+          "trimStart": 0
+        },
+        "error": {
+          "code": "",
+          "details": {},
+          "message": ""
+        },
+        "exports": 1,
+        "lastExport": {
+          "bytes": 14596,
+          "command": "saveCopy",
+          "durationUs": 5800000,
+          "path": "/tmp/d254f1/copy.mp4",
+          "revision": 1,
+          "status": "saved"
+        },
+        "operationId": "c8c94d7f-990d-4919-888c-dbd2dcb7d980",
+        "outputSize": [
+          640,
+          480
+        ],
+        "overlayExcluded": true,
+        "overlayPlacement": "outside",
+        "pending": null,
+        "progress": {
+          "exportFraction": 0.597933060595393
+        },
+        "recordingId": "c8c94d7f-990d-4919-888c-dbd2dcb7d980",
+        "retainedUs": 5797751,
+        "selecting": false,
+        "state": "reviewing",
+        "stopDetails": {
+          "availableBytes": 159375360,
+          "budgetBytes": 178956970,
+          "clipBytes": 5813,
+          "durationUs": 5797751,
+          "finalizationReserveBytes": 33554432,
+          "freeBytes": 1233117184,
+          "hint": "Free up space in put.gd's data folder before exporting or recording again",
+          "maxFileBytes": 1099511627776,
+          "message": "Recording stopped at 0:05 because free disk space fell: 1.1 GiB was free, with 1.0 GiB kept for the system and 160 MiB needed for finalization and copies. The clip so far is kept for private review. Free up space before exporting or recording again; nothing was uploaded.",
+          "reason": "disk_space",
+          "requiredBytes": 167772160,
+          "reserveBytes": 1073741824
+        },
+        "stopReason": "budget",
+        "target": {
+          "kind": "region",
+          "rect": [
+            0,
+            0,
+            640,
+            480
+          ]
+        }
+      },
+      "operationAfterUpload": {
+        "action": "record",
+        "cancelled": false,
+        "clipboardRevision": "1",
+        "copyStatus": "copied",
+        "created": "2026-10-25T17:00:56.009Z",
+        "destination": {
+          "credentials": {},
+          "profileId": "",
+          "profileRevision": "",
+          "providerId": "",
+          "settings": {}
+        },
+        "error": {
+          "code": "",
+          "details": {},
+          "message": ""
+        },
+        "id": "c8c94d7f-990d-4919-888c-dbd2dcb7d980",
+        "invocation": "1",
+        "items": [
+          {
+            "artifact": {
+              "bytes": 14596,
+              "category": "videos",
+              "id": "d7731947-807d-47bb-9609-7c00d9122e9f",
+              "mime": "video/mp4",
+              "name": "Screen-Recording-2026-10-25-12-00-56.mp4",
+              "namingPrepared": true,
+              "originalFile": false,
+              "previewPath": "",
+              "sha256": "7a13f8f6aa679750e99dd0ec9db5e1a305ffa226760f707a55bed25d89483d5a"
+            },
+            "candidate": "",
+            "concurrencyToken": "",
+            "condition": "",
+            "error": {
+              "code": "",
+              "details": {},
+              "message": ""
+            },
+            "local": {
+              "error": {
+                "code": "",
+                "details": {},
+                "message": ""
+              },
+              "path": "/tmp/d254f1/archive/videos/Screen-Recording-2026-10-25-12-00-56.mp4",
+              "status": "saved"
+            },
+            "objectReference": {},
+            "phase": "stored",
+            "publicationId": "3ec7d01e-007e-44ea-9447-fdd8b81a2a31",
+            "receipt": {
+              "concurrencyToken": "",
+              "destination": {
+                "credentials": {},
+                "profileId": "",
+                "profileRevision": "",
+                "providerId": "",
+                "settings": {}
+              },
+              "directUrl": "",
+              "objectReference": {},
+              "publicationId": "",
+              "schemaVersion": 1
+            },
+            "remoteStatus": "not_requested",
+            "shareIntent": "",
+            "shareIntentOptions": {},
+            "shareStatus": "not_requested",
+            "uploadProgress": null,
+            "uploadStatus": "local_only"
+          }
+        ],
+        "phase": "completed",
+        "requestTimeoutMs": null,
+        "settingsRevision": "ae851f088c216f3d98349edd75a6a941e5ea19181a665cb823aad9bfd405b1f3",
+        "state": "completed"
+      },
+      "mcpInspect": null,
+      "parameters": {
+        "fps": 15,
+        "rect": [
+          0,
+          0,
+          640,
+          480
+        ],
+        "source": "Xvfb synthetic ball/snow",
+        "writer": "separate Python process, verified tmpfs only"
+      }
+    },
+    {
+      "identity": {
+        "schemaVersion": 1,
+        "version": "26.1025.1297-dev+g25b36396ea40",
+        "baseVersion": "26.1025.1297",
+        "packageVersion": "26.1025.1297~dev+g25b36396ea40",
+        "gitCommit": "25b36396ea408c53ff2b0d2daa9572a2faad9cd6",
+        "gitTree": "f8f882b9929a0d25f6508a283198f5af8bf74145",
+        "commitCount": 1297,
+        "dirty": false,
+        "sourceProvenance": "git"
+      },
+      "binarySha256": {
+        "putgd": "0528890ea4bce6b27a0ecc604e03cb8d09ecb41a41f476eb78d310142b68342a",
+        "putgd-cli": "80fc4b8aa4140f9af049283418c4b6107f22cc5c9eb42d5025a9ca88d650a013",
+        "putgd-record": "f6684ef821aaa8cb2bf8ac725f9d813e3c39f3fad3689a9503a27bc72ae4fbfa"
+      },
+      "baseline": false,
+      "scenario": "pressure",
+      "paused": false,
+      "exhaust": false,
+      "mountLimitBytes": 1610612736,
+      "mountIdentity": {
+        "target": "/tmp/d254f2/data/putgd/recording",
+        "source": "i254-disposable",
+        "fstype": "tmpfs",
+        "device": 86,
+        "capacityBytes": 1610612736
+      },
+      "id": "49dbc888-5f22-47fa-8fcd-137ec4ddffe5",
+      "passed": true,
+      "failure": null,
+      "cleanupUnmount": 0,
+      "run": "d254f2",
+      "stop": {
+        "canvas": [
+          640,
+          480
+        ],
+        "config": {
+          "audio": {
+            "microphone": false,
+            "system": false
+          },
+          "budgetBytes": 178956970,
+          "codec": "h264",
+          "format": "mp4",
+          "fps": 15,
+          "mime": "video/mp4"
+        },
+        "durationUs": 5730890,
+        "edit": {
+          "masks": [],
+          "revision": 1,
+          "trimEnd": null,
+          "trimStart": 0
+        },
+        "error": {
+          "code": "",
+          "details": {},
+          "message": ""
+        },
+        "exports": 0,
+        "lastExport": null,
+        "operationId": "49dbc888-5f22-47fa-8fcd-137ec4ddffe5",
+        "outputSize": [
+          640,
+          480
+        ],
+        "overlayExcluded": true,
+        "overlayPlacement": "outside",
+        "pending": null,
+        "progress": {
+          "audioEncoder": "",
+          "bytes": 5063,
+          "durationUs": 5064223,
+          "encoder": "openh264enc",
+          "paused": false
+        },
+        "recordingId": "49dbc888-5f22-47fa-8fcd-137ec4ddffe5",
+        "retainedUs": 5730890,
+        "selecting": false,
+        "state": "reviewing",
+        "stopDetails": {
+          "availableBytes": 167763968,
+          "budgetBytes": 178956970,
+          "clipBytes": 5063,
+          "durationUs": 5730890,
+          "finalizationReserveBytes": 33554432,
+          "freeBytes": 1241505792,
+          "hint": "Free up space in put.gd's data folder before exporting or recording again",
+          "maxFileBytes": 1099511627776,
+          "message": "Recording stopped at 0:05 because free disk space fell: 1.2 GiB was free, with 1.0 GiB kept for the system and 160 MiB needed for finalization and copies. The clip so far is kept for private review. Free up space before exporting or recording again; nothing was uploaded.",
+          "reason": "disk_space",
+          "requiredBytes": 167772160,
+          "reserveBytes": 1073741824
+        },
+        "stopReason": "budget",
+        "target": {
+          "kind": "region",
+          "rect": [
+            0,
+            0,
+            640,
+            480
+          ]
+        }
+      },
+      "operationBeforeUpload": {
+        "action": "record",
+        "cancelled": false,
+        "clipboardRevision": "1",
+        "copyStatus": "pending",
+        "created": "2026-10-25T17:02:40.555Z",
+        "destination": {
+          "credentials": {},
+          "profileId": "",
+          "profileRevision": "",
+          "providerId": "",
+          "settings": {}
+        },
+        "error": {
+          "code": "",
+          "details": {},
+          "message": ""
+        },
+        "id": "49dbc888-5f22-47fa-8fcd-137ec4ddffe5",
+        "invocation": "1",
+        "items": [],
+        "phase": "reviewing",
+        "requestTimeoutMs": null,
+        "settingsRevision": "71cf929bf48c99cb33d5301354be25a2bf7ae30ebb0d7c1504ab8bf853ce2370",
+        "state": "recording"
+      },
+      "export": {
+        "canvas": [
+          640,
+          480
+        ],
+        "config": {
+          "audio": {
+            "microphone": false,
+            "system": false
+          },
+          "budgetBytes": 178956970,
+          "codec": "h264",
+          "format": "mp4",
+          "fps": 15,
+          "mime": "video/mp4"
+        },
+        "durationUs": 5730890,
+        "edit": {
+          "masks": [],
+          "revision": 1,
+          "trimEnd": null,
+          "trimStart": 0
+        },
+        "error": {
+          "code": "",
+          "details": {},
+          "message": ""
+        },
+        "exports": 1,
+        "lastExport": {
+          "bytes": 14132,
+          "command": "saveCopy",
+          "durationUs": 5733333,
+          "path": "/tmp/d254f2/copy.mp4",
+          "revision": 1,
+          "status": "saved"
+        },
+        "operationId": "49dbc888-5f22-47fa-8fcd-137ec4ddffe5",
+        "outputSize": [
+          640,
+          480
+        ],
+        "overlayExcluded": true,
+        "overlayPlacement": "outside",
+        "pending": null,
+        "progress": {
+          "exportFraction": 0.6281746814194654
+        },
+        "recordingId": "49dbc888-5f22-47fa-8fcd-137ec4ddffe5",
+        "retainedUs": 5730890,
+        "selecting": false,
+        "state": "reviewing",
+        "stopDetails": {
+          "availableBytes": 167763968,
+          "budgetBytes": 178956970,
+          "clipBytes": 5063,
+          "durationUs": 5730890,
+          "finalizationReserveBytes": 33554432,
+          "freeBytes": 1241505792,
+          "hint": "Free up space in put.gd's data folder before exporting or recording again",
+          "maxFileBytes": 1099511627776,
+          "message": "Recording stopped at 0:05 because free disk space fell: 1.2 GiB was free, with 1.0 GiB kept for the system and 160 MiB needed for finalization and copies. The clip so far is kept for private review. Free up space before exporting or recording again; nothing was uploaded.",
+          "reason": "disk_space",
+          "requiredBytes": 167772160,
+          "reserveBytes": 1073741824
+        },
+        "stopReason": "budget",
+        "target": {
+          "kind": "region",
+          "rect": [
+            0,
+            0,
+            640,
+            480
+          ]
+        }
+      },
+      "operationAfterUpload": {
+        "action": "record",
+        "cancelled": false,
+        "clipboardRevision": "1",
+        "copyStatus": "copied",
+        "created": "2026-10-25T17:02:40.555Z",
+        "destination": {
+          "credentials": {},
+          "profileId": "",
+          "profileRevision": "",
+          "providerId": "",
+          "settings": {}
+        },
+        "error": {
+          "code": "",
+          "details": {},
+          "message": ""
+        },
+        "id": "49dbc888-5f22-47fa-8fcd-137ec4ddffe5",
+        "invocation": "1",
+        "items": [
+          {
+            "artifact": {
+              "bytes": 14132,
+              "category": "videos",
+              "id": "216ee8b0-1612-42a1-a26d-90e2ef74bca7",
+              "mime": "video/mp4",
+              "name": "Screen-Recording-2026-10-25-12-02-40.mp4",
+              "namingPrepared": true,
+              "originalFile": false,
+              "previewPath": "",
+              "sha256": "c16683a9d1e094cb2a5fafb8efd54b88e1472de3a17dd034e9f857b28dc78d30"
+            },
+            "candidate": "",
+            "concurrencyToken": "",
+            "condition": "",
+            "error": {
+              "code": "",
+              "details": {},
+              "message": ""
+            },
+            "local": {
+              "error": {
+                "code": "",
+                "details": {},
+                "message": ""
+              },
+              "path": "/tmp/d254f2/archive/videos/Screen-Recording-2026-10-25-12-02-40.mp4",
+              "status": "saved"
+            },
+            "objectReference": {},
+            "phase": "stored",
+            "publicationId": "07279c92-f668-4302-9f5e-529132ca534f",
+            "receipt": {
+              "concurrencyToken": "",
+              "destination": {
+                "credentials": {},
+                "profileId": "",
+                "profileRevision": "",
+                "providerId": "",
+                "settings": {}
+              },
+              "directUrl": "",
+              "objectReference": {},
+              "publicationId": "",
+              "schemaVersion": 1
+            },
+            "remoteStatus": "not_requested",
+            "shareIntent": "",
+            "shareIntentOptions": {},
+            "shareStatus": "not_requested",
+            "uploadProgress": null,
+            "uploadStatus": "local_only"
+          }
+        ],
+        "phase": "completed",
+        "requestTimeoutMs": null,
+        "settingsRevision": "71cf929bf48c99cb33d5301354be25a2bf7ae30ebb0d7c1504ab8bf853ce2370",
+        "state": "completed"
+      },
+      "mcpInspect": null,
+      "parameters": {
+        "fps": 15,
+        "rect": [
+          0,
+          0,
+          640,
+          480
+        ],
+        "source": "Xvfb synthetic ball/snow",
+        "writer": "separate Python process, verified tmpfs only"
+      }
+    },
+    {
+      "identity": {
+        "schemaVersion": 1,
+        "version": "26.1025.1297-dev+g25b36396ea40",
+        "baseVersion": "26.1025.1297",
+        "packageVersion": "26.1025.1297~dev+g25b36396ea40",
+        "gitCommit": "25b36396ea408c53ff2b0d2daa9572a2faad9cd6",
+        "gitTree": "f8f882b9929a0d25f6508a283198f5af8bf74145",
+        "commitCount": 1297,
+        "dirty": false,
+        "sourceProvenance": "git"
+      },
+      "binarySha256": {
+        "putgd": "0528890ea4bce6b27a0ecc604e03cb8d09ecb41a41f476eb78d310142b68342a",
+        "putgd-cli": "80fc4b8aa4140f9af049283418c4b6107f22cc5c9eb42d5025a9ca88d650a013",
+        "putgd-record": "f6684ef821aaa8cb2bf8ac725f9d813e3c39f3fad3689a9503a27bc72ae4fbfa"
+      },
+      "baseline": false,
+      "scenario": "pressure",
+      "paused": false,
+      "exhaust": false,
+      "mountLimitBytes": 1610612736,
+      "mountIdentity": {
+        "target": "/tmp/d254f3/data/putgd/recording",
+        "source": "i254-disposable",
+        "fstype": "tmpfs",
+        "device": 86,
+        "capacityBytes": 1610612736
+      },
+      "id": "b89d59fd-8ae3-4888-8a3f-935f8aa15c19",
+      "passed": true,
+      "failure": null,
+      "cleanupUnmount": 0,
+      "run": "d254f3",
+      "stop": {
+        "canvas": [
+          640,
+          480
+        ],
+        "config": {
+          "audio": {
+            "microphone": false,
+            "system": false
+          },
+          "budgetBytes": 178956970,
+          "codec": "h264",
+          "format": "mp4",
+          "fps": 15,
+          "mime": "video/mp4"
+        },
+        "durationUs": 5730778,
+        "edit": {
+          "masks": [],
+          "revision": 1,
+          "trimEnd": null,
+          "trimStart": 0
+        },
+        "error": {
+          "code": "",
+          "details": {},
+          "message": ""
+        },
+        "exports": 0,
+        "lastExport": null,
+        "operationId": "b89d59fd-8ae3-4888-8a3f-935f8aa15c19",
+        "outputSize": [
+          640,
+          480
+        ],
+        "overlayExcluded": true,
+        "overlayPlacement": "outside",
+        "pending": null,
+        "progress": {
+          "audioEncoder": "",
+          "bytes": 4701,
+          "durationUs": 5064111,
+          "encoder": "openh264enc",
+          "paused": false
+        },
+        "recordingId": "b89d59fd-8ae3-4888-8a3f-935f8aa15c19",
+        "retainedUs": 5730778,
+        "selecting": false,
+        "state": "reviewing",
+        "stopDetails": {
+          "availableBytes": 167763968,
+          "budgetBytes": 178956970,
+          "clipBytes": 4701,
+          "durationUs": 5730778,
+          "finalizationReserveBytes": 33554432,
+          "freeBytes": 1241505792,
+          "hint": "Free up space in put.gd's data folder before exporting or recording again",
+          "maxFileBytes": 1099511627776,
+          "message": "Recording stopped at 0:05 because free disk space fell: 1.2 GiB was free, with 1.0 GiB kept for the system and 160 MiB needed for finalization and copies. The clip so far is kept for private review. Free up space before exporting or recording again; nothing was uploaded.",
+          "reason": "disk_space",
+          "requiredBytes": 167772160,
+          "reserveBytes": 1073741824
+        },
+        "stopReason": "budget",
+        "target": {
+          "kind": "region",
+          "rect": [
+            0,
+            0,
+            640,
+            480
+          ]
+        }
+      },
+      "operationBeforeUpload": {
+        "action": "record",
+        "cancelled": false,
+        "clipboardRevision": "1",
+        "copyStatus": "pending",
+        "created": "2026-10-25T17:05:01.036Z",
+        "destination": {
+          "credentials": {},
+          "profileId": "",
+          "profileRevision": "",
+          "providerId": "",
+          "settings": {}
+        },
+        "error": {
+          "code": "",
+          "details": {},
+          "message": ""
+        },
+        "id": "b89d59fd-8ae3-4888-8a3f-935f8aa15c19",
+        "invocation": "1",
+        "items": [],
+        "phase": "reviewing",
+        "requestTimeoutMs": null,
+        "settingsRevision": "f90b475736859a5e3e7d6d042ef0e8306110672516d25226585cb21a9f6b27a7",
+        "state": "recording"
+      },
+      "export": {
+        "canvas": [
+          640,
+          480
+        ],
+        "config": {
+          "audio": {
+            "microphone": false,
+            "system": false
+          },
+          "budgetBytes": 178956970,
+          "codec": "h264",
+          "format": "mp4",
+          "fps": 15,
+          "mime": "video/mp4"
+        },
+        "durationUs": 5730778,
+        "edit": {
+          "masks": [],
+          "revision": 1,
+          "trimEnd": null,
+          "trimStart": 0
+        },
+        "error": {
+          "code": "",
+          "details": {},
+          "message": ""
+        },
+        "exports": 1,
+        "lastExport": {
+          "bytes": 14545,
+          "command": "saveCopy",
+          "durationUs": 5733333,
+          "path": "/tmp/d254f3/copy.mp4",
+          "revision": 1,
+          "status": "saved"
+        },
+        "operationId": "b89d59fd-8ae3-4888-8a3f-935f8aa15c19",
+        "outputSize": [
+          640,
+          480
+        ],
+        "overlayExcluded": true,
+        "overlayPlacement": "outside",
+        "pending": null,
+        "progress": {
+          "exportFraction": 0.9655465627878099
+        },
+        "recordingId": "b89d59fd-8ae3-4888-8a3f-935f8aa15c19",
+        "retainedUs": 5730778,
+        "selecting": false,
+        "state": "reviewing",
+        "stopDetails": {
+          "availableBytes": 167763968,
+          "budgetBytes": 178956970,
+          "clipBytes": 4701,
+          "durationUs": 5730778,
+          "finalizationReserveBytes": 33554432,
+          "freeBytes": 1241505792,
+          "hint": "Free up space in put.gd's data folder before exporting or recording again",
+          "maxFileBytes": 1099511627776,
+          "message": "Recording stopped at 0:05 because free disk space fell: 1.2 GiB was free, with 1.0 GiB kept for the system and 160 MiB needed for finalization and copies. The clip so far is kept for private review. Free up space before exporting or recording again; nothing was uploaded.",
+          "reason": "disk_space",
+          "requiredBytes": 167772160,
+          "reserveBytes": 1073741824
+        },
+        "stopReason": "budget",
+        "target": {
+          "kind": "region",
+          "rect": [
+            0,
+            0,
+            640,
+            480
+          ]
+        }
+      },
+      "operationAfterUpload": {
+        "action": "record",
+        "cancelled": false,
+        "clipboardRevision": "1",
+        "copyStatus": "copied",
+        "created": "2026-10-25T17:05:01.036Z",
+        "destination": {
+          "credentials": {},
+          "profileId": "",
+          "profileRevision": "",
+          "providerId": "",
+          "settings": {}
+        },
+        "error": {
+          "code": "",
+          "details": {},
+          "message": ""
+        },
+        "id": "b89d59fd-8ae3-4888-8a3f-935f8aa15c19",
+        "invocation": "1",
+        "items": [
+          {
+            "artifact": {
+              "bytes": 14545,
+              "category": "videos",
+              "id": "04f79314-1701-43e1-9ee0-d5ca06507184",
+              "mime": "video/mp4",
+              "name": "Screen-Recording-2026-10-25-12-05-01.mp4",
+              "namingPrepared": true,
+              "originalFile": false,
+              "previewPath": "",
+              "sha256": "533c61b14edb6f7d389c8255b06dad25560b2627b04f925bbb2cd28654015dfe"
+            },
+            "candidate": "",
+            "concurrencyToken": "",
+            "condition": "",
+            "error": {
+              "code": "",
+              "details": {},
+              "message": ""
+            },
+            "local": {
+              "error": {
+                "code": "",
+                "details": {},
+                "message": ""
+              },
+              "path": "/tmp/d254f3/archive/videos/Screen-Recording-2026-10-25-12-05-01.mp4",
+              "status": "saved"
+            },
+            "objectReference": {},
+            "phase": "stored",
+            "publicationId": "d94a12cf-d5d6-444a-874b-e60dbaa595af",
+            "receipt": {
+              "concurrencyToken": "",
+              "destination": {
+                "credentials": {},
+                "profileId": "",
+                "profileRevision": "",
+                "providerId": "",
+                "settings": {}
+              },
+              "directUrl": "",
+              "objectReference": {},
+              "publicationId": "",
+              "schemaVersion": 1
+            },
+            "remoteStatus": "not_requested",
+            "shareIntent": "",
+            "shareIntentOptions": {},
+            "shareStatus": "not_requested",
+            "uploadProgress": null,
+            "uploadStatus": "local_only"
+          }
+        ],
+        "phase": "completed",
+        "requestTimeoutMs": null,
+        "settingsRevision": "f90b475736859a5e3e7d6d042ef0e8306110672516d25226585cb21a9f6b27a7",
+        "state": "completed"
+      },
+      "mcpInspect": {
+        "error": {
+          "code": "",
+          "details": {},
+          "message": ""
+        },
+        "ok": true,
+        "requestId": "54267856-94de-492d-a956-58e2ff1e7c8f",
+        "result": {
+          "canvas": [
+            640,
+            480
+          ],
+          "config": {
+            "audio": {
+              "microphone": false,
+              "system": false
+            },
+            "budgetBytes": 178956970,
+            "codec": "h264",
+            "format": "mp4",
+            "fps": 15,
+            "mime": "video/mp4"
+          },
+          "durationUs": 5730778,
+          "edit": {
+            "masks": [],
+            "revision": 1,
+            "trimEnd": null,
+            "trimStart": 0
+          },
+          "error": {
+            "code": "",
+            "details": {},
+            "message": ""
+          },
+          "exports": 0,
+          "lastExport": null,
+          "operationId": "b89d59fd-8ae3-4888-8a3f-935f8aa15c19",
+          "outputSize": [
+            640,
+            480
+          ],
+          "overlayExcluded": true,
+          "overlayPlacement": "outside",
+          "pending": null,
+          "progress": {
+            "audioEncoder": "",
+            "bytes": 4701,
+            "durationUs": 5064111,
+            "encoder": "openh264enc",
+            "paused": false
+          },
+          "recordingId": "b89d59fd-8ae3-4888-8a3f-935f8aa15c19",
+          "retainedUs": 5730778,
+          "selecting": false,
+          "state": "reviewing",
+          "stopDetails": {
+            "availableBytes": 167763968,
+            "budgetBytes": 178956970,
+            "clipBytes": 4701,
+            "durationUs": 5730778,
+            "finalizationReserveBytes": 33554432,
+            "freeBytes": 1241505792,
+            "hint": "Free up space in put.gd's data folder before exporting or recording again",
+            "maxFileBytes": 1099511627776,
+            "message": "Recording stopped at 0:05 because free disk space fell: 1.2 GiB was free, with 1.0 GiB kept for the system and 160 MiB needed for finalization and copies. The clip so far is kept for private review. Free up space before exporting or recording again; nothing was uploaded.",
+            "reason": "disk_space",
+            "requiredBytes": 167772160,
+            "reserveBytes": 1073741824
+          },
+          "stopReason": "budget",
+          "target": {
+            "kind": "region",
+            "rect": [
+              0,
+              0,
+              640,
+              480
+            ]
+          }
+        },
+        "schemaVersion": 1
+      },
+      "parameters": {
+        "fps": 15,
+        "rect": [
+          0,
+          0,
+          640,
+          480
+        ],
+        "source": "Xvfb synthetic ball/snow",
+        "writer": "separate Python process, verified tmpfs only"
+      }
+    },
+    {
+      "identity": {
+        "schemaVersion": 1,
+        "version": "26.1025.1297-dev+g25b36396ea40",
+        "baseVersion": "26.1025.1297",
+        "packageVersion": "26.1025.1297~dev+g25b36396ea40",
+        "gitCommit": "25b36396ea408c53ff2b0d2daa9572a2faad9cd6",
+        "gitTree": "f8f882b9929a0d25f6508a283198f5af8bf74145",
+        "commitCount": 1297,
+        "dirty": false,
+        "sourceProvenance": "git"
+      },
+      "binarySha256": {
+        "putgd": "0528890ea4bce6b27a0ecc604e03cb8d09ecb41a41f476eb78d310142b68342a",
+        "putgd-cli": "80fc4b8aa4140f9af049283418c4b6107f22cc5c9eb42d5025a9ca88d650a013",
+        "putgd-record": "f6684ef821aaa8cb2bf8ac725f9d813e3c39f3fad3689a9503a27bc72ae4fbfa"
+      },
+      "baseline": false,
+      "scenario": "minimum",
+      "paused": false,
+      "exhaust": false,
+      "mountLimitBytes": 1275068416,
+      "mountIdentity": {
+        "target": "/tmp/d254m1/data/putgd/recording",
+        "source": "i254-disposable",
+        "fstype": "tmpfs",
+        "device": 86,
+        "capacityBytes": 1275068416
+      },
+      "id": "0aba3d86-d458-4e9b-b134-53fcf9ca4fc5",
+      "passed": true,
+      "failure": null,
+      "cleanupUnmount": 0,
+      "run": "d254m1",
+      "stop": {
+        "canvas": [
+          640,
+          480
+        ],
+        "config": {
+          "audio": {
+            "microphone": false,
+            "system": false
+          },
+          "budgetBytes": 67108864,
+          "codec": "h264",
+          "format": "mp4",
+          "fps": 15,
+          "mime": "video/mp4"
+        },
+        "durationUs": 5464473,
+        "edit": {
+          "masks": [],
+          "revision": 1,
+          "trimEnd": null,
+          "trimStart": 0
+        },
+        "error": {
+          "code": "",
+          "details": {},
+          "message": ""
+        },
+        "exports": 0,
+        "lastExport": null,
+        "operationId": "0aba3d86-d458-4e9b-b134-53fcf9ca4fc5",
+        "outputSize": [
+          640,
+          480
+        ],
+        "overlayExcluded": true,
+        "overlayPlacement": "outside",
+        "pending": null,
+        "progress": {
+          "audioEncoder": "",
+          "bytes": 13644,
+          "canvas": [
+            640,
+            480
+          ],
+          "durationUs": 5464473,
+          "encoder": "openh264enc",
+          "paused": false
+        },
+        "recordingId": "0aba3d86-d458-4e9b-b134-53fcf9ca4fc5",
+        "retainedUs": 5464473,
+        "selecting": false,
+        "state": "reviewing",
+        "stopReason": "user",
+        "target": {
+          "kind": "region",
+          "rect": [
+            0,
+            0,
+            640,
+            480
+          ]
+        }
+      },
+      "operationBeforeUpload": {
+        "action": "record",
+        "cancelled": false,
+        "clipboardRevision": "1",
+        "copyStatus": "pending",
+        "created": "2026-10-25T17:03:15.863Z",
+        "destination": {
+          "credentials": {},
+          "profileId": "",
+          "profileRevision": "",
+          "providerId": "",
+          "settings": {}
+        },
+        "error": {
+          "code": "",
+          "details": {},
+          "message": ""
+        },
+        "id": "0aba3d86-d458-4e9b-b134-53fcf9ca4fc5",
+        "invocation": "1",
+        "items": [],
+        "phase": "reviewing",
+        "requestTimeoutMs": null,
+        "settingsRevision": "3e1dcde335e75266a2655b956d9a41a2fc0f2aa29c111f22d2dd3a6718008880",
+        "state": "recording"
+      },
+      "export": {
+        "canvas": [
+          640,
+          480
+        ],
+        "config": {
+          "audio": {
+            "microphone": false,
+            "system": false
+          },
+          "budgetBytes": 67108864,
+          "codec": "h264",
+          "format": "mp4",
+          "fps": 15,
+          "mime": "video/mp4"
+        },
+        "durationUs": 5464473,
+        "edit": {
+          "masks": [],
+          "revision": 1,
+          "trimEnd": null,
+          "trimStart": 0
+        },
+        "error": {
+          "code": "",
+          "details": {},
+          "message": ""
+        },
+        "exports": 1,
+        "lastExport": {
+          "bytes": 13199,
+          "command": "saveCopy",
+          "durationUs": 5466667,
+          "path": "/tmp/d254m1/copy.mp4",
+          "revision": 1,
+          "status": "saved"
+        },
+        "operationId": "0aba3d86-d458-4e9b-b134-53fcf9ca4fc5",
+        "outputSize": [
+          640,
+          480
+        ],
+        "overlayExcluded": true,
+        "overlayPlacement": "outside",
+        "pending": null,
+        "progress": {
+          "exportFraction": 0.622200896591492
+        },
+        "recordingId": "0aba3d86-d458-4e9b-b134-53fcf9ca4fc5",
+        "retainedUs": 5464473,
+        "selecting": false,
+        "state": "reviewing",
+        "stopReason": "user",
+        "target": {
+          "kind": "region",
+          "rect": [
+            0,
+            0,
+            640,
+            480
+          ]
+        }
+      },
+      "operationAfterUpload": {
+        "action": "record",
+        "cancelled": false,
+        "clipboardRevision": "1",
+        "copyStatus": "copied",
+        "created": "2026-10-25T17:03:15.863Z",
+        "destination": {
+          "credentials": {},
+          "profileId": "",
+          "profileRevision": "",
+          "providerId": "",
+          "settings": {}
+        },
+        "error": {
+          "code": "",
+          "details": {},
+          "message": ""
+        },
+        "id": "0aba3d86-d458-4e9b-b134-53fcf9ca4fc5",
+        "invocation": "1",
+        "items": [
+          {
+            "artifact": {
+              "bytes": 13199,
+              "category": "videos",
+              "id": "860c523d-d71c-469c-b2e3-17639c857935",
+              "mime": "video/mp4",
+              "name": "Screen-Recording-2026-10-25-12-03-15.mp4",
+              "namingPrepared": true,
+              "originalFile": false,
+              "previewPath": "",
+              "sha256": "93e9447e82ed6213ca1dcd0ac5e5c343ba8619d00cf1a2e74b1b3f924aecf529"
+            },
+            "candidate": "",
+            "concurrencyToken": "",
+            "condition": "",
+            "error": {
+              "code": "",
+              "details": {},
+              "message": ""
+            },
+            "local": {
+              "error": {
+                "code": "",
+                "details": {},
+                "message": ""
+              },
+              "path": "/tmp/d254m1/archive/videos/Screen-Recording-2026-10-25-12-03-15.mp4",
+              "status": "saved"
+            },
+            "objectReference": {},
+            "phase": "stored",
+            "publicationId": "571b5978-bf94-4634-ad98-26efd7f6fda2",
+            "receipt": {
+              "concurrencyToken": "",
+              "destination": {
+                "credentials": {},
+                "profileId": "",
+                "profileRevision": "",
+                "providerId": "",
+                "settings": {}
+              },
+              "directUrl": "",
+              "objectReference": {},
+              "publicationId": "",
+              "schemaVersion": 1
+            },
+            "remoteStatus": "not_requested",
+            "shareIntent": "",
+            "shareIntentOptions": {},
+            "shareStatus": "not_requested",
+            "uploadProgress": null,
+            "uploadStatus": "local_only"
+          }
+        ],
+        "phase": "completed",
+        "requestTimeoutMs": null,
+        "settingsRevision": "3e1dcde335e75266a2655b956d9a41a2fc0f2aa29c111f22d2dd3a6718008880",
+        "state": "completed"
+      },
+      "mcpInspect": null,
+      "parameters": {
+        "fps": 15,
+        "rect": [
+          0,
+          0,
+          640,
+          480
+        ],
+        "source": "Xvfb synthetic ball/snow",
+        "writer": "separate Python process, verified tmpfs only"
+      }
+    },
+    {
+      "identity": {
+        "schemaVersion": 1,
+        "version": "26.1025.1297-dev+g25b36396ea40",
+        "baseVersion": "26.1025.1297",
+        "packageVersion": "26.1025.1297~dev+g25b36396ea40",
+        "gitCommit": "25b36396ea408c53ff2b0d2daa9572a2faad9cd6",
+        "gitTree": "f8f882b9929a0d25f6508a283198f5af8bf74145",
+        "commitCount": 1297,
+        "dirty": false,
+        "sourceProvenance": "git"
+      },
+      "binarySha256": {
+        "putgd": "0528890ea4bce6b27a0ecc604e03cb8d09ecb41a41f476eb78d310142b68342a",
+        "putgd-cli": "80fc4b8aa4140f9af049283418c4b6107f22cc5c9eb42d5025a9ca88d650a013",
+        "putgd-record": "f6684ef821aaa8cb2bf8ac725f9d813e3c39f3fad3689a9503a27bc72ae4fbfa"
+      },
+      "baseline": false,
+      "scenario": "normal",
+      "paused": true,
+      "exhaust": false,
+      "mountLimitBytes": 1610612736,
+      "mountIdentity": {
+        "target": "/tmp/d254n1/data/putgd/recording",
+        "source": "i254-disposable",
+        "fstype": "tmpfs",
+        "device": 86,
+        "capacityBytes": 1610612736
+      },
+      "id": "bf343308-fdfc-408e-b5dd-e662e8b6203d",
+      "passed": true,
+      "failure": null,
+      "cleanupUnmount": 0,
+      "run": "d254n1",
+      "stop": {
+        "canvas": [
+          640,
+          480
+        ],
+        "config": {
+          "audio": {
+            "microphone": false,
+            "system": false
+          },
+          "budgetBytes": 178956970,
+          "codec": "h264",
+          "format": "mp4",
+          "fps": 15,
+          "mime": "video/mp4"
+        },
+        "durationUs": 4130900,
+        "edit": {
+          "masks": [],
+          "revision": 1,
+          "trimEnd": null,
+          "trimStart": 0
+        },
+        "error": {
+          "code": "",
+          "details": {},
+          "message": ""
+        },
+        "exports": 0,
+        "lastExport": null,
+        "operationId": "bf343308-fdfc-408e-b5dd-e662e8b6203d",
+        "outputSize": [
+          640,
+          480
+        ],
+        "overlayExcluded": true,
+        "overlayPlacement": "outside",
+        "pending": null,
+        "progress": {
+          "audioEncoder": "",
+          "bytes": 11808,
+          "canvas": [
+            640,
+            480
+          ],
+          "durationUs": 4130900,
+          "encoder": "openh264enc",
+          "paused": false
+        },
+        "recordingId": "bf343308-fdfc-408e-b5dd-e662e8b6203d",
+        "retainedUs": 4130900,
+        "selecting": false,
+        "state": "reviewing",
+        "stopReason": "user",
+        "target": {
+          "kind": "region",
+          "rect": [
+            0,
+            0,
+            640,
+            480
+          ]
+        }
+      },
+      "operationBeforeUpload": {
+        "action": "record",
+        "cancelled": false,
+        "clipboardRevision": "1",
+        "copyStatus": "pending",
+        "created": "2026-10-25T17:03:25.179Z",
+        "destination": {
+          "credentials": {},
+          "profileId": "",
+          "profileRevision": "",
+          "providerId": "",
+          "settings": {}
+        },
+        "error": {
+          "code": "",
+          "details": {},
+          "message": ""
+        },
+        "id": "bf343308-fdfc-408e-b5dd-e662e8b6203d",
+        "invocation": "1",
+        "items": [],
+        "phase": "reviewing",
+        "requestTimeoutMs": null,
+        "settingsRevision": "4a661027ef3d264fe8c7e547089bfc891f97a5e02f9d2818206cdae03fb0d648",
+        "state": "recording"
+      },
+      "export": {
+        "canvas": [
+          640,
+          480
+        ],
+        "config": {
+          "audio": {
+            "microphone": false,
+            "system": false
+          },
+          "budgetBytes": 178956970,
+          "codec": "h264",
+          "format": "mp4",
+          "fps": 15,
+          "mime": "video/mp4"
+        },
+        "durationUs": 4130900,
+        "edit": {
+          "masks": [],
+          "revision": 1,
+          "trimEnd": null,
+          "trimStart": 0
+        },
+        "error": {
+          "code": "",
+          "details": {},
+          "message": ""
+        },
+        "exports": 1,
+        "lastExport": {
+          "bytes": 11461,
+          "command": "saveCopy",
+          "durationUs": 4133333,
+          "path": "/tmp/d254n1/copy.mp4",
+          "revision": 1,
+          "status": "saved"
+        },
+        "operationId": "bf343308-fdfc-408e-b5dd-e662e8b6203d",
+        "outputSize": [
+          640,
+          480
+        ],
+        "overlayExcluded": true,
+        "overlayPlacement": "outside",
+        "pending": null,
+        "progress": {
+          "exportFraction": 0.7423726064537994
+        },
+        "recordingId": "bf343308-fdfc-408e-b5dd-e662e8b6203d",
+        "retainedUs": 4130900,
+        "selecting": false,
+        "state": "reviewing",
+        "stopReason": "user",
+        "target": {
+          "kind": "region",
+          "rect": [
+            0,
+            0,
+            640,
+            480
+          ]
+        }
+      },
+      "operationAfterUpload": {
+        "action": "record",
+        "cancelled": false,
+        "clipboardRevision": "1",
+        "copyStatus": "copied",
+        "created": "2026-10-25T17:03:25.179Z",
+        "destination": {
+          "credentials": {},
+          "profileId": "",
+          "profileRevision": "",
+          "providerId": "",
+          "settings": {}
+        },
+        "error": {
+          "code": "",
+          "details": {},
+          "message": ""
+        },
+        "id": "bf343308-fdfc-408e-b5dd-e662e8b6203d",
+        "invocation": "1",
+        "items": [
+          {
+            "artifact": {
+              "bytes": 11461,
+              "category": "videos",
+              "id": "3e4c9678-54b7-4d0d-9dcd-c7d5c976232e",
+              "mime": "video/mp4",
+              "name": "Screen-Recording-2026-10-25-12-03-25.mp4",
+              "namingPrepared": true,
+              "originalFile": false,
+              "previewPath": "",
+              "sha256": "2a4615c4d0072937fb5dad73fbb1cd8181fb29ea4504b5b67490cffa0e714668"
+            },
+            "candidate": "",
+            "concurrencyToken": "",
+            "condition": "",
+            "error": {
+              "code": "",
+              "details": {},
+              "message": ""
+            },
+            "local": {
+              "error": {
+                "code": "",
+                "details": {},
+                "message": ""
+              },
+              "path": "/tmp/d254n1/archive/videos/Screen-Recording-2026-10-25-12-03-25.mp4",
+              "status": "saved"
+            },
+            "objectReference": {},
+            "phase": "stored",
+            "publicationId": "9551ec50-ef79-47a3-b3ee-0f35fb68ad64",
+            "receipt": {
+              "concurrencyToken": "",
+              "destination": {
+                "credentials": {},
+                "profileId": "",
+                "profileRevision": "",
+                "providerId": "",
+                "settings": {}
+              },
+              "directUrl": "",
+              "objectReference": {},
+              "publicationId": "",
+              "schemaVersion": 1
+            },
+            "remoteStatus": "not_requested",
+            "shareIntent": "",
+            "shareIntentOptions": {},
+            "shareStatus": "not_requested",
+            "uploadProgress": null,
+            "uploadStatus": "local_only"
+          }
+        ],
+        "phase": "completed",
+        "requestTimeoutMs": null,
+        "settingsRevision": "4a661027ef3d264fe8c7e547089bfc891f97a5e02f9d2818206cdae03fb0d648",
+        "state": "completed"
+      },
+      "mcpInspect": null,
+      "parameters": {
+        "fps": 15,
+        "rect": [
+          0,
+          0,
+          640,
+          480
+        ],
+        "source": "Xvfb synthetic ball/snow",
+        "writer": "separate Python process, verified tmpfs only"
+      }
+    },
+    {
+      "identity": {
+        "schemaVersion": 1,
+        "version": "26.1025.1297-dev+g25b36396ea40",
+        "baseVersion": "26.1025.1297",
+        "packageVersion": "26.1025.1297~dev+g25b36396ea40",
+        "gitCommit": "25b36396ea408c53ff2b0d2daa9572a2faad9cd6",
+        "gitTree": "f8f882b9929a0d25f6508a283198f5af8bf74145",
+        "commitCount": 1297,
+        "dirty": false,
+        "sourceProvenance": "git"
+      },
+      "binarySha256": {
+        "putgd": "0528890ea4bce6b27a0ecc604e03cb8d09ecb41a41f476eb78d310142b68342a",
+        "putgd-cli": "80fc4b8aa4140f9af049283418c4b6107f22cc5c9eb42d5025a9ca88d650a013",
+        "putgd-record": "f6684ef821aaa8cb2bf8ac725f9d813e3c39f3fad3689a9503a27bc72ae4fbfa"
+      },
+      "baseline": false,
+      "scenario": "pressure",
+      "paused": true,
+      "exhaust": false,
+      "mountLimitBytes": 1610612736,
+      "mountIdentity": {
+        "target": "/tmp/d254p1/data/putgd/recording",
+        "source": "i254-disposable",
+        "fstype": "tmpfs",
+        "device": 86,
+        "capacityBytes": 1610612736
+      },
+      "id": "a2824cf3-6a9c-4326-93c2-673d7c1457c2",
+      "passed": true,
+      "failure": null,
+      "cleanupUnmount": 0,
+      "run": "d254p1",
+      "stop": {
+        "canvas": [
+          640,
+          480
+        ],
+        "config": {
+          "audio": {
+            "microphone": false,
+            "system": false
+          },
+          "budgetBytes": 178956970,
+          "codec": "h264",
+          "format": "mp4",
+          "fps": 15,
+          "mime": "video/mp4"
+        },
+        "durationUs": 3064404,
+        "edit": {
+          "masks": [],
+          "revision": 1,
+          "trimEnd": null,
+          "trimStart": 0
+        },
+        "error": {
+          "code": "",
+          "details": {},
+          "message": ""
+        },
+        "exports": 0,
+        "lastExport": null,
+        "operationId": "a2824cf3-6a9c-4326-93c2-673d7c1457c2",
+        "outputSize": [
+          640,
+          480
+        ],
+        "overlayExcluded": true,
+        "overlayPlacement": "outside",
+        "pending": null,
+        "progress": {
+          "audioEncoder": "",
+          "bytes": 3179,
+          "durationUs": 3064404,
+          "encoder": "openh264enc",
+          "paused": true
+        },
+        "recordingId": "a2824cf3-6a9c-4326-93c2-673d7c1457c2",
+        "retainedUs": 3064404,
+        "selecting": false,
+        "state": "reviewing",
+        "stopDetails": {
+          "availableBytes": 134213632,
+          "budgetBytes": 178956970,
+          "clipBytes": 3179,
+          "durationUs": 3064404,
+          "finalizationReserveBytes": 33554432,
+          "freeBytes": 1207955456,
+          "hint": "Free up space in put.gd's data folder before exporting or recording again",
+          "maxFileBytes": 1099511627776,
+          "message": "Recording stopped at 0:03 because free disk space fell: 1.1 GiB was free, with 1.0 GiB kept for the system and 160 MiB needed for finalization and copies. The clip so far is kept for private review. Free up space before exporting or recording again; nothing was uploaded.",
+          "reason": "disk_space",
+          "requiredBytes": 167772160,
+          "reserveBytes": 1073741824
+        },
+        "stopReason": "budget",
+        "target": {
+          "kind": "region",
+          "rect": [
+            0,
+            0,
+            640,
+            480
+          ]
+        }
+      },
+      "operationBeforeUpload": {
+        "action": "record",
+        "cancelled": false,
+        "clipboardRevision": "1",
+        "copyStatus": "pending",
+        "created": "2026-10-25T17:02:58.229Z",
+        "destination": {
+          "credentials": {},
+          "profileId": "",
+          "profileRevision": "",
+          "providerId": "",
+          "settings": {}
+        },
+        "error": {
+          "code": "",
+          "details": {},
+          "message": ""
+        },
+        "id": "a2824cf3-6a9c-4326-93c2-673d7c1457c2",
+        "invocation": "1",
+        "items": [],
+        "phase": "reviewing",
+        "requestTimeoutMs": null,
+        "settingsRevision": "35567844a921830bb54230210cafa43f31e38254091072327f7e4a5d103f6e05",
+        "state": "recording"
+      },
+      "export": {
+        "canvas": [
+          640,
+          480
+        ],
+        "config": {
+          "audio": {
+            "microphone": false,
+            "system": false
+          },
+          "budgetBytes": 178956970,
+          "codec": "h264",
+          "format": "mp4",
+          "fps": 15,
+          "mime": "video/mp4"
+        },
+        "durationUs": 3064404,
+        "edit": {
+          "masks": [],
+          "revision": 1,
+          "trimEnd": null,
+          "trimStart": 0
+        },
+        "error": {
+          "code": "",
+          "details": {},
+          "message": ""
+        },
+        "exports": 1,
+        "lastExport": {
+          "bytes": 4852,
+          "command": "saveCopy",
+          "durationUs": 3066667,
+          "path": "/tmp/d254p1/copy.mp4",
+          "revision": 1,
+          "status": "saved"
+        },
+        "operationId": "a2824cf3-6a9c-4326-93c2-673d7c1457c2",
+        "outputSize": [
+          640,
+          480
+        ],
+        "overlayExcluded": true,
+        "overlayPlacement": "outside",
+        "pending": null,
+        "progress": {
+          "exportFraction": 0
+        },
+        "recordingId": "a2824cf3-6a9c-4326-93c2-673d7c1457c2",
+        "retainedUs": 3064404,
+        "selecting": false,
+        "state": "reviewing",
+        "stopDetails": {
+          "availableBytes": 134213632,
+          "budgetBytes": 178956970,
+          "clipBytes": 3179,
+          "durationUs": 3064404,
+          "finalizationReserveBytes": 33554432,
+          "freeBytes": 1207955456,
+          "hint": "Free up space in put.gd's data folder before exporting or recording again",
+          "maxFileBytes": 1099511627776,
+          "message": "Recording stopped at 0:03 because free disk space fell: 1.1 GiB was free, with 1.0 GiB kept for the system and 160 MiB needed for finalization and copies. The clip so far is kept for private review. Free up space before exporting or recording again; nothing was uploaded.",
+          "reason": "disk_space",
+          "requiredBytes": 167772160,
+          "reserveBytes": 1073741824
+        },
+        "stopReason": "budget",
+        "target": {
+          "kind": "region",
+          "rect": [
+            0,
+            0,
+            640,
+            480
+          ]
+        }
+      },
+      "operationAfterUpload": {
+        "action": "record",
+        "cancelled": false,
+        "clipboardRevision": "1",
+        "copyStatus": "copied",
+        "created": "2026-10-25T17:02:58.229Z",
+        "destination": {
+          "credentials": {},
+          "profileId": "",
+          "profileRevision": "",
+          "providerId": "",
+          "settings": {}
+        },
+        "error": {
+          "code": "",
+          "details": {},
+          "message": ""
+        },
+        "id": "a2824cf3-6a9c-4326-93c2-673d7c1457c2",
+        "invocation": "1",
+        "items": [
+          {
+            "artifact": {
+              "bytes": 4852,
+              "category": "videos",
+              "id": "ca0cde5b-61f6-4f73-8cc7-cbbaf46551b5",
+              "mime": "video/mp4",
+              "name": "Screen-Recording-2026-10-25-12-02-58.mp4",
+              "namingPrepared": true,
+              "originalFile": false,
+              "previewPath": "",
+              "sha256": "89b3c94c22483bd598600a1bda77bfd64d032399af8b0e75a778190f242149fd"
+            },
+            "candidate": "",
+            "concurrencyToken": "",
+            "condition": "",
+            "error": {
+              "code": "",
+              "details": {},
+              "message": ""
+            },
+            "local": {
+              "error": {
+                "code": "",
+                "details": {},
+                "message": ""
+              },
+              "path": "/tmp/d254p1/archive/videos/Screen-Recording-2026-10-25-12-02-58.mp4",
+              "status": "saved"
+            },
+            "objectReference": {},
+            "phase": "stored",
+            "publicationId": "db53d1fa-8168-4b7c-97f3-643f3e57180c",
+            "receipt": {
+              "concurrencyToken": "",
+              "destination": {
+                "credentials": {},
+                "profileId": "",
+                "profileRevision": "",
+                "providerId": "",
+                "settings": {}
+              },
+              "directUrl": "",
+              "objectReference": {},
+              "publicationId": "",
+              "schemaVersion": 1
+            },
+            "remoteStatus": "not_requested",
+            "shareIntent": "",
+            "shareIntentOptions": {},
+            "shareStatus": "not_requested",
+            "uploadProgress": null,
+            "uploadStatus": "local_only"
+          }
+        ],
+        "phase": "completed",
+        "requestTimeoutMs": null,
+        "settingsRevision": "35567844a921830bb54230210cafa43f31e38254091072327f7e4a5d103f6e05",
+        "state": "completed"
+      },
+      "mcpInspect": null,
+      "parameters": {
+        "fps": 15,
+        "rect": [
+          0,
+          0,
+          640,
+          480
+        ],
+        "source": "Xvfb synthetic ball/snow",
+        "writer": "separate Python process, verified tmpfs only"
+      }
+    },
+    {
+      "identity": {
+        "schemaVersion": 1,
+        "version": "26.1025.1297-dev+g25b36396ea40",
+        "baseVersion": "26.1025.1297",
+        "packageVersion": "26.1025.1297~dev+g25b36396ea40",
+        "gitCommit": "25b36396ea408c53ff2b0d2daa9572a2faad9cd6",
+        "gitTree": "f8f882b9929a0d25f6508a283198f5af8bf74145",
+        "commitCount": 1297,
+        "dirty": false,
+        "sourceProvenance": "git"
+      },
+      "binarySha256": {
+        "putgd": "0528890ea4bce6b27a0ecc604e03cb8d09ecb41a41f476eb78d310142b68342a",
+        "putgd-cli": "80fc4b8aa4140f9af049283418c4b6107f22cc5c9eb42d5025a9ca88d650a013",
+        "putgd-record": "f6684ef821aaa8cb2bf8ac725f9d813e3c39f3fad3689a9503a27bc72ae4fbfa"
+      },
+      "baseline": false,
+      "scenario": "recovery",
+      "paused": false,
+      "exhaust": false,
+      "mountLimitBytes": 1610612736,
+      "mountIdentity": {
+        "target": "/tmp/d254r1/data/putgd/recording",
+        "source": "i254-disposable",
+        "fstype": "tmpfs",
+        "device": 86,
+        "capacityBytes": 1610612736
+      },
+      "id": "76a53c33-4a75-4c0c-94dd-978ce2c09e35",
+      "passed": true,
+      "failure": null,
+      "cleanupUnmount": 0,
+      "run": "d254r1",
+      "stop": {
+        "canvas": [
+          640,
+          480
+        ],
+        "config": {
+          "audio": {
+            "microphone": false,
+            "system": false
+          },
+          "budgetBytes": 178956970,
+          "codec": "h264",
+          "format": "mp4",
+          "fps": 15,
+          "mime": "video/mp4"
+        },
+        "durationUs": 8064200,
+        "edit": {
+          "masks": [],
+          "revision": 1,
+          "trimEnd": null,
+          "trimStart": 0
+        },
+        "error": {
+          "code": "",
+          "details": {},
+          "message": ""
+        },
+        "exports": 0,
+        "lastExport": null,
+        "operationId": "76a53c33-4a75-4c0c-94dd-978ce2c09e35",
+        "outputSize": [
+          640,
+          480
+        ],
+        "overlayExcluded": true,
+        "overlayPlacement": "outside",
+        "pending": null,
+        "progress": {
+          "audioEncoder": "",
+          "bytes": 29666,
+          "canvas": [
+            640,
+            480
+          ],
+          "durationUs": 8064200,
+          "encoder": "openh264enc",
+          "paused": false
+        },
+        "recordingId": "76a53c33-4a75-4c0c-94dd-978ce2c09e35",
+        "retainedUs": 8064200,
+        "selecting": false,
+        "state": "reviewing",
+        "stopReason": "user",
+        "target": {
+          "kind": "region",
+          "rect": [
+            0,
+            0,
+            640,
+            480
+          ]
+        }
+      },
+      "operationBeforeUpload": {
+        "action": "record",
+        "cancelled": false,
+        "clipboardRevision": "1",
+        "copyStatus": "pending",
+        "created": "2026-10-25T17:03:35.460Z",
+        "destination": {
+          "credentials": {},
+          "profileId": "",
+          "profileRevision": "",
+          "providerId": "",
+          "settings": {}
+        },
+        "error": {
+          "code": "",
+          "details": {},
+          "message": ""
+        },
+        "id": "76a53c33-4a75-4c0c-94dd-978ce2c09e35",
+        "invocation": "1",
+        "items": [],
+        "phase": "reviewing",
+        "requestTimeoutMs": null,
+        "settingsRevision": "fa11d399d7c1c23f074c3f75cde0fce94a31d85d6718079824ea921ad3de7348",
+        "state": "recording"
+      },
+      "export": {
+        "canvas": [
+          640,
+          480
+        ],
+        "config": {
+          "audio": {
+            "microphone": false,
+            "system": false
+          },
+          "budgetBytes": 178956970,
+          "codec": "h264",
+          "format": "mp4",
+          "fps": 15,
+          "mime": "video/mp4"
+        },
+        "durationUs": 8064200,
+        "edit": {
+          "masks": [],
+          "revision": 1,
+          "trimEnd": null,
+          "trimStart": 0
+        },
+        "error": {
+          "code": "",
+          "details": {},
+          "message": ""
+        },
+        "exports": 1,
+        "lastExport": {
+          "bytes": 28402,
+          "command": "saveCopy",
+          "durationUs": 8066667,
+          "path": "/tmp/d254r1/copy.mp4",
+          "revision": 1,
+          "status": "saved"
+        },
+        "operationId": "76a53c33-4a75-4c0c-94dd-978ce2c09e35",
+        "outputSize": [
+          640,
+          480
+        ],
+        "overlayExcluded": true,
+        "overlayPlacement": "outside",
+        "pending": null,
+        "progress": {
+          "exportFraction": 0.7936311103395253
+        },
+        "recordingId": "76a53c33-4a75-4c0c-94dd-978ce2c09e35",
+        "retainedUs": 8064200,
+        "selecting": false,
+        "state": "reviewing",
+        "stopReason": "user",
+        "target": {
+          "kind": "region",
+          "rect": [
+            0,
+            0,
+            640,
+            480
+          ]
+        }
+      },
+      "operationAfterUpload": {
+        "action": "record",
+        "cancelled": false,
+        "clipboardRevision": "1",
+        "copyStatus": "copied",
+        "created": "2026-10-25T17:03:35.460Z",
+        "destination": {
+          "credentials": {},
+          "profileId": "",
+          "profileRevision": "",
+          "providerId": "",
+          "settings": {}
+        },
+        "error": {
+          "code": "",
+          "details": {},
+          "message": ""
+        },
+        "id": "76a53c33-4a75-4c0c-94dd-978ce2c09e35",
+        "invocation": "1",
+        "items": [
+          {
+            "artifact": {
+              "bytes": 28402,
+              "category": "videos",
+              "id": "419f4a15-a5b0-49e2-b835-e04d8ec05ab1",
+              "mime": "video/mp4",
+              "name": "Screen-Recording-2026-10-25-12-03-35.mp4",
+              "namingPrepared": true,
+              "originalFile": false,
+              "previewPath": "",
+              "sha256": "e7718f8aec92466e15ae6f36d3665b3d2e8e951bdc437bd4e56c5bf4b57c145e"
+            },
+            "candidate": "",
+            "concurrencyToken": "",
+            "condition": "",
+            "error": {
+              "code": "",
+              "details": {},
+              "message": ""
+            },
+            "local": {
+              "error": {
+                "code": "",
+                "details": {},
+                "message": ""
+              },
+              "path": "/tmp/d254r1/archive/videos/Screen-Recording-2026-10-25-12-03-35.mp4",
+              "status": "saved"
+            },
+            "objectReference": {},
+            "phase": "stored",
+            "publicationId": "037cb1aa-1295-4686-af2a-f5a5e11fe4a4",
+            "receipt": {
+              "concurrencyToken": "",
+              "destination": {
+                "credentials": {},
+                "profileId": "",
+                "profileRevision": "",
+                "providerId": "",
+                "settings": {}
+              },
+              "directUrl": "",
+              "objectReference": {},
+              "publicationId": "",
+              "schemaVersion": 1
+            },
+            "remoteStatus": "not_requested",
+            "shareIntent": "",
+            "shareIntentOptions": {},
+            "shareStatus": "not_requested",
+            "uploadProgress": null,
+            "uploadStatus": "local_only"
+          }
+        ],
+        "phase": "completed",
+        "requestTimeoutMs": null,
+        "settingsRevision": "fa11d399d7c1c23f074c3f75cde0fce94a31d85d6718079824ea921ad3de7348",
+        "state": "completed"
+      },
+      "mcpInspect": {
+        "error": {
+          "code": "",
+          "details": {},
+          "message": ""
+        },
+        "ok": true,
+        "requestId": "c5735f02-bdfd-41c0-87de-a56dea0b8531",
+        "result": {
+          "canvas": [
+            640,
+            480
+          ],
+          "config": {
+            "audio": {
+              "microphone": false,
+              "system": false
+            },
+            "budgetBytes": 178956970,
+            "codec": "h264",
+            "format": "mp4",
+            "fps": 15,
+            "mime": "video/mp4"
+          },
+          "durationUs": 8064200,
+          "edit": {
+            "masks": [],
+            "revision": 1,
+            "trimEnd": null,
+            "trimStart": 0
+          },
+          "error": {
+            "code": "",
+            "details": {},
+            "message": ""
+          },
+          "exports": 0,
+          "lastExport": null,
+          "operationId": "76a53c33-4a75-4c0c-94dd-978ce2c09e35",
+          "outputSize": [
+            640,
+            480
+          ],
+          "overlayExcluded": true,
+          "overlayPlacement": "outside",
+          "pending": null,
+          "progress": {
+            "audioEncoder": "",
+            "bytes": 29666,
+            "canvas": [
+              640,
+              480
+            ],
+            "durationUs": 8064200,
+            "encoder": "openh264enc",
+            "paused": false
+          },
+          "recordingId": "76a53c33-4a75-4c0c-94dd-978ce2c09e35",
+          "retainedUs": 8064200,
+          "selecting": false,
+          "state": "reviewing",
+          "stopReason": "user",
+          "target": {
+            "kind": "region",
+            "rect": [
+              0,
+              0,
+              640,
+              480
+            ]
+          }
+        },
+        "schemaVersion": 1
+      },
+      "parameters": {
+        "fps": 15,
+        "rect": [
+          0,
+          0,
+          640,
+          480
+        ],
+        "source": "Xvfb synthetic ball/snow",
+        "writer": "separate Python process, verified tmpfs only"
+      }
+    },
+    {
+      "identity": {
+        "schemaVersion": 1,
+        "version": "26.1025.1293-dev+g80ffa2e6c0d3",
+        "baseVersion": "26.1025.1293",
+        "packageVersion": "26.1025.1293~dev+g80ffa2e6c0d3",
+        "gitCommit": "80ffa2e6c0d34223d2cc0f31254f2e60ac2bd247",
+        "gitTree": "8e1abcea6b16634af938f14e94b9eff0de1d02b5",
+        "commitCount": 1293,
+        "dirty": false,
+        "sourceProvenance": "git"
+      },
+      "binarySha256": {
+        "putgd": "a1a90b085d03e692c04d538bf9976cf3d0282b69489f1900db26f2569609f9cd",
+        "putgd-cli": "c07273b6fe400424abe755855ced89750a95e9c9fe5774c0a2c2a117a0413694",
+        "putgd-record": "fe959ac24878eed3d86c1a9fe52628efc8a327b7f7be8424445c24c63f0b880f"
+      },
+      "baseline": true,
+      "scenario": "pressure",
+      "paused": false,
+      "exhaust": false,
+      "mountLimitBytes": 1610612736,
+      "mountIdentity": {
+        "target": "/tmp/d254b2/data/putgd/recording",
+        "source": "i254-disposable",
+        "fstype": "tmpfs",
+        "device": 86,
+        "capacityBytes": 1610612736
+      },
+      "id": "6fb08cf1-92d1-4fe8-baaf-24537c9cf2f3",
+      "passed": true,
+      "failure": null,
+      "cleanupUnmount": 0,
+      "run": "d254b2",
+      "stop": {
+        "error": {
+          "code": "recording_unavailable",
+          "details": {},
+          "message": "No recording is active"
+        },
+        "ok": false,
+        "requestId": "ddbf5add-bed3-4553-a894-be24ff4dd1ab",
+        "result": {},
+        "schemaVersion": 1
+      },
+      "operationBeforeUpload": {
+        "action": "record",
+        "cancelled": false,
+        "clipboardRevision": "1",
+        "copyStatus": "no_result",
+        "created": "2026-10-25T17:16:27.282Z",
+        "destination": {
+          "credentials": {},
+          "profileId": "",
+          "profileRevision": "",
+          "providerId": "",
+          "settings": {}
+        },
+        "error": {
+          "code": "recording_failed",
+          "details": {
+            "debug": "../plugins/elements/gstelements_private.c(364): gst_writev_iovecs (): /GstPipeline:pipeline1/GstFileSink:sink",
+            "step": null
+          },
+          "message": "Capture failed: No space left on the resource."
+        },
+        "id": "6fb08cf1-92d1-4fe8-baaf-24537c9cf2f3",
+        "invocation": "1",
+        "items": [],
+        "phase": "failed",
+        "requestTimeoutMs": null,
+        "settingsRevision": "efb8dfe3852dabec8b6592d47c4742d88b6856b44e0a5606c082d33c19bca0db",
+        "state": "failed"
+      },
+      "parameters": {
+        "fps": 15,
+        "rect": [
+          0,
+          0,
+          640,
+          480
+        ],
+        "source": "Xvfb synthetic ball",
+        "writer": "separate verified tmpfs writer, 8 MiB per 50 ms, to zero"
+      }
+    }
+  ],
+  "strictDecodes": [
+    {
+      "run": "/tmp/d254f2",
+      "exit": 0
+    },
+    {
+      "run": "/tmp/d254p1",
+      "exit": 0
+    },
+    {
+      "run": "/tmp/d254m1",
+      "exit": 0
+    },
+    {
+      "run": "/tmp/d254n1",
+      "exit": 0
+    },
+    {
+      "run": "/tmp/d254r1",
+      "exit": 0
+    },
+    {
+      "run": "/tmp/d254c1",
+      "exit": 0
+    },
+    {
+      "run": "/tmp/d254f3",
+      "exit": 0
+    }
+  ],
+  "nativeEvidence": "native/native-results.json",
+  "nativeLimitation": "Own ready control bar/fade appears in first preview, including after overlay(false) in g4; no overlay-exclusion acceptance or proven baseline attribution",
+  "nativeUploadObservation": {
+    "runs": [
+      "d254g3",
+      "d254g4"
+    ],
+    "localStatus": "saved",
+    "remoteStatus": "not_requested",
+    "copyStatus": "failed",
+    "errorCode": "clipboard_unavailable",
+    "message": "GNOME helper cannot own CLIPBOARD",
+    "disposition": "Unresolved acceptance limitation requiring attribution and retest; no clipboard/full Upload-path acceptance or baseline attribution"
+  },
+  "reviewFollowup": {
+    "source": "4ee657db2d7ee00b2e784a6d7b3f0e4e722f7dd6",
+    "summary": "review-followup/review-summary.json",
+    "focusedCTest": "4/4 pass,22.60 seconds",
+    "nativeAcceptance": "pending on new head; previous native runs remain25b36396"
+  }
+}

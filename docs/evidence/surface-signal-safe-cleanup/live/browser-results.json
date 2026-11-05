@@ -1,0 +1,137 @@
+[
+ {
+  "trial": 1,
+  "offset_us": 0.0,
+  "raised": "runner interrupted by SIGTERM",
+  "terminate_ran": true,
+  "mime_exact": true,
+  "before": [
+   "/home/lab/.config/mimeapps.list 640 cdbfa20193364b9d1ab252ca3084f41f450c2dacac3f7a27f277d943bd1a3c43",
+   "/home/lab/.local/share/applications/mimeapps.list absent",
+   "/home/lab/.config/cinnamon-mimeapps.list absent",
+   "/home/lab/.config/x-cinnamon-mimeapps.list absent"
+  ],
+  "after": [
+   "/home/lab/.config/mimeapps.list 640 cdbfa20193364b9d1ab252ca3084f41f450c2dacac3f7a27f277d943bd1a3c43",
+   "/home/lab/.local/share/applications/mimeapps.list absent",
+   "/home/lab/.config/cinnamon-mimeapps.list absent",
+   "/home/lab/.config/x-cinnamon-mimeapps.list absent"
+  ],
+  "reviews": [],
+  "notes": [
+   "Firefox handler restored; MIME SHA-256 checks passed"
+  ],
+  "active_leak": false,
+  "handler_restored": true,
+  "mask_clear": true,
+  "ok": true
+ },
+ {
+  "trial": 2,
+  "offset_us": 37.5,
+  "raised": "runner interrupted by SIGTERM",
+  "terminate_ran": true,
+  "mime_exact": true,
+  "before": [
+   "/home/lab/.config/mimeapps.list 640 cdbfa20193364b9d1ab252ca3084f41f450c2dacac3f7a27f277d943bd1a3c43",
+   "/home/lab/.local/share/applications/mimeapps.list absent",
+   "/home/lab/.config/cinnamon-mimeapps.list absent",
+   "/home/lab/.config/x-cinnamon-mimeapps.list absent"
+  ],
+  "after": [
+   "/home/lab/.config/mimeapps.list 640 cdbfa20193364b9d1ab252ca3084f41f450c2dacac3f7a27f277d943bd1a3c43",
+   "/home/lab/.local/share/applications/mimeapps.list absent",
+   "/home/lab/.config/cinnamon-mimeapps.list absent",
+   "/home/lab/.config/x-cinnamon-mimeapps.list absent"
+  ],
+  "reviews": [],
+  "notes": [
+   "Firefox handler restored; MIME SHA-256 checks passed"
+  ],
+  "active_leak": false,
+  "handler_restored": true,
+  "mask_clear": true,
+  "ok": true
+ },
+ {
+  "trial": 3,
+  "offset_us": 75.0,
+  "raised": "runner interrupted by SIGTERM",
+  "terminate_ran": true,
+  "mime_exact": true,
+  "before": [
+   "/home/lab/.config/mimeapps.list 640 cdbfa20193364b9d1ab252ca3084f41f450c2dacac3f7a27f277d943bd1a3c43",
+   "/home/lab/.local/share/applications/mimeapps.list absent",
+   "/home/lab/.config/cinnamon-mimeapps.list absent",
+   "/home/lab/.config/x-cinnamon-mimeapps.list absent"
+  ],
+  "after": [
+   "/home/lab/.config/mimeapps.list 640 cdbfa20193364b9d1ab252ca3084f41f450c2dacac3f7a27f277d943bd1a3c43",
+   "/home/lab/.local/share/applications/mimeapps.list absent",
+   "/home/lab/.config/cinnamon-mimeapps.list absent",
+   "/home/lab/.config/x-cinnamon-mimeapps.list absent"
+  ],
+  "reviews": [],
+  "notes": [
+   "Firefox handler restored; MIME SHA-256 checks passed"
+  ],
+  "active_leak": false,
+  "handler_restored": true,
+  "mask_clear": true,
+  "ok": true
+ },
+ {
+  "trial": 4,
+  "offset_us": 112.5,
+  "raised": "runner interrupted by SIGTERM",
+  "terminate_ran": true,
+  "mime_exact": true,
+  "before": [
+   "/home/lab/.config/mimeapps.list 640 cdbfa20193364b9d1ab252ca3084f41f450c2dacac3f7a27f277d943bd1a3c43",
+   "/home/lab/.local/share/applications/mimeapps.list absent",
+   "/home/lab/.config/cinnamon-mimeapps.list absent",
+   "/home/lab/.config/x-cinnamon-mimeapps.list absent"
+  ],
+  "after": [
+   "/home/lab/.config/mimeapps.list 640 cdbfa20193364b9d1ab252ca3084f41f450c2dacac3f7a27f277d943bd1a3c43",
+   "/home/lab/.local/share/applications/mimeapps.list absent",
+   "/home/lab/.config/cinnamon-mimeapps.list absent",
+   "/home/lab/.config/x-cinnamon-mimeapps.list absent"
+  ],
+  "reviews": [],
+  "notes": [
+   "Firefox handler restored; MIME SHA-256 checks passed"
+  ],
+  "active_leak": false,
+  "handler_restored": true,
+  "mask_clear": true,
+  "ok": true
+ },
+ {
+  "trial": 5,
+  "offset_us": 150.0,
+  "raised": "runner interrupted by SIGTERM",
+  "terminate_ran": true,
+  "mime_exact": true,
+  "before": [
+   "/home/lab/.config/mimeapps.list 640 cdbfa20193364b9d1ab252ca3084f41f450c2dacac3f7a27f277d943bd1a3c43",
+   "/home/lab/.local/share/applications/mimeapps.list absent",
+   "/home/lab/.config/cinnamon-mimeapps.list absent",
+   "/home/lab/.config/x-cinnamon-mimeapps.list absent"
+  ],
+  "after": [
+   "/home/lab/.config/mimeapps.list 640 cdbfa20193364b9d1ab252ca3084f41f450c2dacac3f7a27f277d943bd1a3c43",
+   "/home/lab/.local/share/applications/mimeapps.list absent",
+   "/home/lab/.config/cinnamon-mimeapps.list absent",
+   "/home/lab/.config/x-cinnamon-mimeapps.list absent"
+  ],
+  "reviews": [],
+  "notes": [
+   "Firefox handler restored; MIME SHA-256 checks passed"
+  ],
+  "active_leak": false,
+  "handler_restored": true,
+  "mask_clear": true,
+  "ok": true
+ }
+]

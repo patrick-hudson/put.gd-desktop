@@ -1,0 +1,13 @@
+{
+  "scope": "driver cleanup correction; production source and frozen sampler unchanged",
+  "host": "m74",
+  "initialProfile": "/tmp/ccmf",
+  "initialPair": "postA/postB both numeric passes; not the final fixture-free pair",
+  "archiveSha256": "dc54160cbbb5c57a171079b73f057b3ea567d0e9aa8eb34980e2e29e8b86be85",
+  "cleanupRefusal": "older independent Qt witness PID570702 was left by private qt-switch; exact owned PID stopped",
+  "correction": "terminate prior exact tracked Qt fixture before starting another; retain every fixture PID/start identity and assert all absent plus exact-private-profile scan before sampler",
+  "replayProfile": "/tmp/ccmr",
+  "binaryIdentity": "same frozen source8a and Ubuntu24 DEB SHA313f2146a8ea44bc3d2f87a5b5100665f31a1002bb0b481fadf4aa0202ca97ec; two-package-only reinstall; no runtime upgrades",
+  "uiImages": "initial profile current-build actual inspector action; replay prefix adds production CLI recovery/native paste, full Qt/GTK matrix, six views then two final same-resident windows",
+  "background": "pre-existing protected Windows w11b PID308684 stays running ~111% CPU"
+}

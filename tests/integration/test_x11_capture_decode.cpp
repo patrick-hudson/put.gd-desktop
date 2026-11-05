@@ -6,6 +6,7 @@
 #include <QDBusContext>
 #include <QJsonArray>
 #include <QPointer>
+#include "fixtures/Waits.h"
 using namespace putgd;
 using test::loadedImagePlugins;
 namespace {
@@ -42,7 +43,7 @@ private slots:
   // The fixture helper encodes its 3x2 blue PNG in its own process.
   CaptureProcessController controller(PUTGD_CAPTURE_FIXTURE);int completed=0;PayloadResult result;
   controller.start(desktopSnapshot(),{},[&](PayloadResult value){result=std::move(value);++completed;});
-  QTRY_COMPARE(completed,1);QVERIFY2(!result.error,qPrintable(result.error.code));
+  PUTGD_TRY_COMPARE(completed,1);QVERIFY2(!result.error,qPrintable(result.error.code));
   QCOMPARE(result.payload.image.size(),QSize(3,2));QCOMPARE(result.payload.image.pixelColor(1,1),QColor(Qt::blue));
  }
  void cinnamonRegionPngDecodesWithoutPlugins(){
@@ -50,8 +51,8 @@ private slots:
   const CaptureFrame native{"fixture",QRectF(30,40,3,2),QRect(30,40,3,2),1,0,{}};
   auto* request=new CinnamonRegionCapture({native},{});QPointer<CinnamonRegionCapture> guard=request;bool done=false;QList<CaptureFrame> frames;Error error;
   connect(request,&CinnamonRegionCapture::acquired,this,[&](QList<CaptureFrame> captured,const Error& value){frames=std::move(captured);error=value;done=true;});
-  request->start();QTRY_VERIFY(done);QVERIFY2(!error,qPrintable(error.code));QCOMPARE(fixture.requests,1);
-  QCOMPARE(frames.size(),1);QVERIFY(test::syntheticPixels(frames[0].pixels));QTRY_VERIFY(guard.isNull());
+  request->start();PUTGD_TRY_VERIFY(done);QVERIFY2(!error,qPrintable(error.code));QCOMPARE(fixture.requests,1);
+  QCOMPARE(frames.size(),1);QVERIFY(test::syntheticPixels(frames[0].pixels));PUTGD_TRY_VERIFY(guard.isNull());
  }
 };
 QTEST_GUILESS_MAIN(X11CaptureDecodeTest)

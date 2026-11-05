@@ -1,0 +1,29 @@
+pid 2502561
+{"status": "stopped", "evidence": "/home/patrick/work/put.gd-ua/vm/src/work/lab-runs/ubu-2c94f9"}
+qemu 2502561 gone
+{"schemaVersion": 1, "status": "completed", "run": "/home/patrick/work/put.gd-ua/vm/src/work/lab-runs/ubu-2c94f9", "disk": "/home/patrick/work/put.gd-ua/vm/src/work/lab-runs/ubu-2c94f9/disk.qcow2", "diskIdentity": {"device": 2050, "inode": 7611736, "size": 2410414080, "mtimeNs": 1792724480774698159, "ctimeNs": 1792724480774698159, "allocatedBytes": 2410364928}, "base": "/home/patrick/work/put.gd/work/lab-images/transfer-0d2922e34f4b/image.qcow2", "stateSha256": "cd734f3b2766caf1fb2535b64f3f87964b875fcf9920876ce7991c44c997718a", "evidence": {"manifest": "/home/patrick/work/put.gd-ua/vm/evidence-ubu/manifest.json", "sha256": "afa45ca8396ad0d4b219173c91f794eeed2e4d5b93684ebec4d8d4aa142fff57", "runId": "3cc2dac3-a04e-40c9-8ec0-a065222cec78", "mode": "explicit"}, "preparedUtc": "2026-10-23T03:01:30.039081+00:00", "completedUtc": "2026-10-23T03:01:30.139482+00:00"}
+
+{
+  "schemaVersion": 1,
+  "status": "completed",
+  "run": "/home/patrick/work/put.gd-ua/vm/src/work/lab-runs/ubu-2c94f9",
+  "disk": "/home/patrick/work/put.gd-ua/vm/src/work/lab-runs/ubu-2c94f9/disk.qcow2",
+  "diskIdentity": {
+    "device": 2050,
+    "inode": 7611736,
+    "size": 2410414080,
+    "mtimeNs": 1792724480774698159,
+    "ctimeNs": 1792724480774698159,
+    "allocatedBytes": 2410364928
+  },
+  "base": "/home/patrick/work/put.gd/work/lab-images/transfer-0d2922e34f4b/image.qcow2",
+  "stateSha256": "cd734f3b2766caf1fb2535b64f3f87964b875fcf9920876ce7991c44c997718a",
+  "evidence": {
+    "manifest": "/home/patrick/work/put.gd-ua/vm/evidence-ubu/manifest.json",
+    "sha256": "afa45ca8396ad0d4b219173c91f794eeed2e4d5b93684ebec4d8d4aa142fff57",
+    "runId": "3cc2dac3-a04e-40c9-8ec0-a065222cec78",
+    "mode": "explicit"
+  },
+  "preparedUtc": "2026-10-23T03:01:30.039081+00:00",
+  "completedUtc": "2026-10-23T03:01:30.139482+00:00"
+}

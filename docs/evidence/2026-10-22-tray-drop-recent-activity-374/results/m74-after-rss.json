@@ -1,0 +1,10 @@
+{
+ "root": 264955,
+ "seconds": 20,
+ "min_mib": 29.04,
+ "median_mib": 29.06,
+ "max_mib": 29.06,
+ "last": {
+  "putgd:264955": 29736
+ }
+}

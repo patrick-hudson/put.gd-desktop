@@ -1,0 +1,14 @@
+{
+  "scope": "boat-guest",
+  "sandbox": "bx_kkq7fsv3",
+  "tunnelUnit": "putgd-t1-f299-gno.service",
+  "localEndpoint": "127.0.0.1:5992",
+  "remoteEndpoint": "127.0.0.1:5920",
+  "rfbHeader": "RFB 003.008",
+  "frames": {
+    "gno-through-tunnel.png": "b9b8dd968b0346871a2776a9741a4410eceb04857074d231bf93bfcf181e0885",
+    "gno-wall-pattern-a2.png": "24412d0fc4cac276b4a53e5e8bfa6b9486475a7c3d610a9cf544ccc2f0f211e6"
+  },
+  "phase": "a2",
+  "initialA1TunnelPersistenceUnproven": true
+}

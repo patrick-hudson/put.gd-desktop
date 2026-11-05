@@ -1,0 +1,232 @@
+{
+  "frames": {
+    "frames/outcomes.region_upload/00-before.png": {
+      "sha256": "51e457f4207c6361d8d22571976947233d81f61b45221f4e79f79d25d0d56cf1",
+      "size": [
+        1920,
+        1080
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1920,
+          1080
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "native-cover-not-yet-verified"
+    },
+    "frames/outcomes.region_upload/01-after.png": {
+      "sha256": "51e457f4207c6361d8d22571976947233d81f61b45221f4e79f79d25d0d56cf1",
+      "size": [
+        1920,
+        1080
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1920,
+          1080
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "native-cover-not-yet-verified"
+    },
+    "frames/outcomes.window_desktop/00-before.png": {
+      "sha256": "51e457f4207c6361d8d22571976947233d81f61b45221f4e79f79d25d0d56cf1",
+      "size": [
+        1920,
+        1080
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1920,
+          1080
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "native-cover-not-yet-verified"
+    },
+    "frames/outcomes.window_desktop/01-after.png": {
+      "sha256": "51e457f4207c6361d8d22571976947233d81f61b45221f4e79f79d25d0d56cf1",
+      "size": [
+        1920,
+        1080
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1920,
+          1080
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "native-cover-not-yet-verified"
+    },
+    "frames/outcomes.recording_upload/00-before.png": {
+      "sha256": "51e457f4207c6361d8d22571976947233d81f61b45221f4e79f79d25d0d56cf1",
+      "size": [
+        1920,
+        1080
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1920,
+          1080
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "native-cover-not-yet-verified"
+    },
+    "frames/outcomes.recording_upload/01-after.png": {
+      "sha256": "51e457f4207c6361d8d22571976947233d81f61b45221f4e79f79d25d0d56cf1",
+      "size": [
+        1920,
+        1080
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1920,
+          1080
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "native-cover-not-yet-verified"
+    },
+    "frames/outcomes.edit_upload/00-before.png": {
+      "sha256": "51e457f4207c6361d8d22571976947233d81f61b45221f4e79f79d25d0d56cf1",
+      "size": [
+        1920,
+        1080
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1920,
+          1080
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "native-cover-not-yet-verified"
+    },
+    "frames/outcomes.edit_upload/01-after.png": {
+      "sha256": "51e457f4207c6361d8d22571976947233d81f61b45221f4e79f79d25d0d56cf1",
+      "size": [
+        1920,
+        1080
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1920,
+          1080
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "native-cover-not-yet-verified"
+    },
+    "frames/outcomes.link_browser/00-before.png": {
+      "sha256": "51e457f4207c6361d8d22571976947233d81f61b45221f4e79f79d25d0d56cf1",
+      "size": [
+        1920,
+        1080
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1920,
+          1080
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "native-cover-not-yet-verified"
+    },
+    "frames/outcomes.link_browser/01-after.png": {
+      "sha256": "51e457f4207c6361d8d22571976947233d81f61b45221f4e79f79d25d0d56cf1",
+      "size": [
+        1920,
+        1080
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1920,
+          1080
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "native-cover-not-yet-verified"
+    },
+    "frames/outcomes.history_delete/00-before.png": {
+      "sha256": "51e457f4207c6361d8d22571976947233d81f61b45221f4e79f79d25d0d56cf1",
+      "size": [
+        1920,
+        1080
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1920,
+          1080
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "native-cover-not-yet-verified"
+    },
+    "frames/outcomes.history_delete/01-after.png": {
+      "sha256": "51e457f4207c6361d8d22571976947233d81f61b45221f4e79f79d25d0d56cf1",
+      "size": [
+        1920,
+        1080
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1920,
+          1080
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "native-cover-not-yet-verified"
+    }
+  }
+}

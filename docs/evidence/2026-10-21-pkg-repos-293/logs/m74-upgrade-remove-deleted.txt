@@ -1,0 +1,62 @@
+{"error": {"code": "", "details": {}, "message": ""}, "ok": true, "requestId": "25372ed8-9200-4f68-aa21-ef32db464176", "result": {"quitting": true}, "schemaVersion": 1}
+{"stopped": true, "left": ""}
+
+### upgrade through the repository
+Hit:4 https://pkg.put.gd/lab/apt/ubuntu24.04 nightly InRelease
+putgd:
+  Installed: 0.1.1~nightly.810
+  Candidate: 0.1.1~nightly.811
+  Version table:
+     0.1.1~nightly.811 500
+        500 https://pkg.put.gd/lab/apt/ubuntu24.04 nightly/main amd64 Packages
+ *** 0.1.1~nightly.810 100
+        100 /var/lib/dpkg/status
+apt upgrade would: Inst putgd [0.1.1~nightly.810] (0.1.1~nightly.811 put.gd:nightly [amd64])
+Processing triggers for hicolor-icon-theme (0.17-2)…
+Processing triggers for gnome-menus (3.36.0-1.1ubuntu3)…
+Processing triggers for mate-menus (1.26.1+mint1)…
+Processing triggers for mailcap (3.70+nmu1ubuntu1.24.04.1)…
+rc=0
+0.1.1~nightly.811 install ok installed
+/etc/apt/sources.list.d/putgd.sources present sha256=4ffc66e7888aa1f3
+conffiles: /etc/apt/sources.list.d/putgd.sources d88e0fec650178fc877b444700f4acbb
+-rw-r--r-- 1 root root 1170 Oct 20 21:37 /usr/share/keyrings/putgd-archive-keyring.gpg
+
+### purge / remove
+Processing triggers for desktop-file-utils (0.27-2build1)…
+(Reading database… (Reading database… 5%(Reading database… 10%(Reading database… 15%(Reading database… 20%(Reading database… 25%(Reading database… 30%(Reading database… 35%(Reading database… 40%(Reading database… 45%(Reading database… 50%(Reading database… 55%(Reading database… 60%(Reading database… 65%(Reading database… 70%(Reading database… 75%(Reading database… 80%(Reading database… 85%(Reading database… 90%(Reading database… 95%(Reading database… 100%(Reading database… 498291 files and directories currently installed.)
+Purging configuration files for putgd (0.1.1~nightly.811)…
+rc=0
+dpkg-query: no packages found matching putgd
+/etc/apt/sources.list.d/putgd.sources ABSENT
+ls: cannot access '/usr/share/keyrings/putgd-archive-keyring.gpg': No such file or directory
+
+### fresh install 810, delete /etc/apt/sources.list.d/putgd.sources, upgrade to 811 from the file
+debconf: unable to initialize frontend: Dialog
+debconf: (Dialog frontend will not work on a dumb terminal, an emacs shell buffer, or without a controlling terminal.)
+debconf: falling back to frontend: Readline
+debconf: unable to initialize frontend: Readline
+debconf: (This frontend requires a controlling tty.)
+debconf: falling back to frontend: Teletype
+dpkg-preconfigure: unable to re-open stdin: 
+0.1.1~nightly.810 install ok installed
+/etc/apt/sources.list.d/putgd.sources present sha256=4ffc66e7888aa1f3
+conffiles: /etc/apt/sources.list.d/putgd.sources d88e0fec650178fc877b444700f4acbb
+-rw-r--r-- 1 root root 1170 Oct 20 21:37 /usr/share/keyrings/putgd-archive-keyring.gpg
+/etc/apt/sources.list.d/putgd.sources ABSENT
+conffiles: /etc/apt/sources.list.d/putgd.sources d88e0fec650178fc877b444700f4acbb
+-rw-r--r-- 1 root root 1170 Oct 20 21:37 /usr/share/keyrings/putgd-archive-keyring.gpg
+Processing triggers for mate-menus (1.26.1+mint1)…
+Processing triggers for mailcap (3.70+nmu1ubuntu1.24.04.1)…
+rc=0
+0.1.1~nightly.811 install ok installed
+/etc/apt/sources.list.d/putgd.sources ABSENT
+conffiles: /etc/apt/sources.list.d/putgd.sources d88e0fec650178fc877b444700f4acbb
+-rw-r--r-- 1 root root 1170 Oct 20 21:37 /usr/share/keyrings/putgd-archive-keyring.gpg
+
+### remove after the deletion
+Purging configuration files for putgd (0.1.1~nightly.811)…
+dpkg-query: no packages found matching putgd
+/etc/apt/sources.list.d/putgd.sources ABSENT
+ls: cannot access '/usr/share/keyrings/putgd-archive-keyring.gpg': No such file or directory
+

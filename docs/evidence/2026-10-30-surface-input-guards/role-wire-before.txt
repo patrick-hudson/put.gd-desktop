@@ -1,0 +1,13 @@
+F
+======================================================================
+FAIL: test_real_menu_wire_roles_use_semantic_names_across_atk_and_atspi (__main__.ShellActorPick.test_real_menu_wire_roles_use_semantic_names_across_atk_and_atspi)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/patrick/.t3/worktrees/put.gd/t3-92ed5b64/work/r3/roles-baseline/tests/desktop/test_surface_tray_input.py", line 112, in test_real_menu_wire_roles_use_semantic_names_across_atk_and_atspi
+    self.assertTrue(probe.shell_witness_hit(query)['ok'])
+AssertionError: False is not true
+
+----------------------------------------------------------------------
+Ran 1 test in 0.001s
+
+FAILED (failures=1)

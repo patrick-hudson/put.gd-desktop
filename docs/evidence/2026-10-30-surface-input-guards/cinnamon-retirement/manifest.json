@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "kind": "vm-overlay-cleanup-evidence",
+  "run": "/home/user/r3/work/lab-runs/core-r3",
+  "runId": "4cd3d592-2451-4ad3-ab17-2ba5e1d692e8",
+  "completed": true,
+  "outcome": "failed",
+  "note": "Reviewed mixed development campaign; raw failures and blocked gates retained, not relabelled as passed.",
+  "files": {
+    "completion.json": "164b1aed6201f1ba504e57b7ca763981ef6bb2a694c447db761c89f558d08ea1",
+    "migration.json": "f90560db479c1bf529d685d89569a1e542c869a2f0ad62e8f81883725a431edb",
+    "stop.json": "0c4589efa8dead3093d1fc3fb2cd5c30734e3234fe6d70d5e1dcfb74e7857af3",
+    "original-state.json": "9da632c825847f42bba807f5e2cd50c3ebeb5fa605b91c59a1ddf5c816013ffe"
+  }
+}

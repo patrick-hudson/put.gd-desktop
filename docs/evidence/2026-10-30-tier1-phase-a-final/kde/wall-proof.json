@@ -1,0 +1,9 @@
+{
+  "sandbox": "bx_unbdwyhb",
+  "port": 5993,
+  "wall": "http://127.0.0.1:8765/",
+  "tile": "Tier1 final kde bx_unbdwyhb",
+  "connected": true,
+  "observer": "CUA AX state and saved RFB desktop",
+  "savedVisual": "kde-ready.png"
+}

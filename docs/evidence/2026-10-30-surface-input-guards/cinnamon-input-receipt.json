@@ -1,0 +1,320 @@
+{
+  "schemaVersion": 2,
+  "environment": {
+    "desktop": "mint-cinnamon-x11",
+    "host": "boat",
+    "placement": "boat",
+    "guest": "cinnamon-x11",
+    "package": "deb",
+    "destination": "local",
+    "build": "6ad9f957e6544f30c5e45c08af2306db77a9ff64",
+    "placement_details": {
+      "boat_sandbox_id": "bx_ftjc74at",
+      "run_id": "4cd3d592-2451-4ad3-ab17-2ba5e1d692e8",
+      "lab_profile": "cinnamon-x11",
+      "run_directory": "/home/user/v3",
+      "session_root": "/tmp/sd-7e6c98b7",
+      "socket": "/tmp/sd-7e6c98b7/runtime/putgd/session.sock",
+      "input_backend": "qmp",
+      "frame_backend": "qmp"
+    },
+    "target": {
+      "hostname": "putgd-lab",
+      "kernel": "6.14.0-37-generic",
+      "machine": "x86_64",
+      "os": {
+        "ID": "linuxmint",
+        "VERSION_ID": "22.3",
+        "VARIANT_ID": null
+      },
+      "session_type": "x11",
+      "desktop": "X-Cinnamon",
+      "qt_platform": "xcb"
+    },
+    "observed_build": {
+      "baseVersion": "26.1030.2481",
+      "commitCount": 2481,
+      "dirty": false,
+      "gitCommit": "6ad9f957e6544f30c5e45c08af2306db77a9ff64",
+      "gitTree": "d823723c8759dae8db7c57cee59476ac7a3b4f90",
+      "packageVersion": "26.1030.2481~dev+g6ad9f957e654",
+      "schemaVersion": 1,
+      "sourceProvenance": "git",
+      "version": "26.1030.2481-dev+g6ad9f957e654"
+    }
+  },
+  "interactions": [
+    {
+      "interaction": "shell.window-maximize",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "/home/user/e3/isolated-final/receipt.json",
+      "note": "operationId=3ac9200f-5400-4604-b624-755bac82494d; owned failed-upload notification {\"id\": 1, \"summary\": \"Completed with a problem\", \"timeout\": 0}; text:Maximize refused before dispatch: input target 'history' is obscured by \"cinnamon notification 'Save diagnostics for this upload / Upload failed: access denied by the destination. A local copy was saved. / Completed with a problem' at [1421, 10, 480, 138]\" (window None); text:Minimize refused before dispatch: input target 'history' is obscured by \"cinnamon notification 'Save diagnostics for this upload / Upload failed: access denied by the destination. A local copy was saved. / Completed with a problem' at [1421, 10, 480, 138]\" (window None); text:Close window refused before dispatch: input target 'history' is obscured by \"cinnamon notification 'Save diagnostics for this upload / Upload failed: access denied by the destination. A local copy was saved. / Completed with a problem' at [1421, 10, 480, 138]\" (window None)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/__main__.notification_cover/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "notification-before",
+          "path": "frames/__main__.notification_cover/01-notification-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "notification-refused",
+          "path": "frames/__main__.notification_cover/02-notification-refused.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "uncovered-maximized",
+          "path": "frames/__main__.notification_cover/03-uncovered-maximized.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "uncovered-minimized",
+          "path": "frames/__main__.notification_cover/04-uncovered-minimized.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "uncovered-closed",
+          "path": "frames/__main__.notification_cover/05-uncovered-closed.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/__main__.notification_cover/06-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "__main__.notification_cover",
+      "build": "6ad9f957e6544f30c5e45c08af2306db77a9ff64",
+      "at": "2026-10-30T10:16:48Z"
+    },
+    {
+      "interaction": "shell.window-minimize",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "/home/user/e3/isolated-final/receipt.json",
+      "note": "operationId=3ac9200f-5400-4604-b624-755bac82494d; owned failed-upload notification {\"id\": 1, \"summary\": \"Completed with a problem\", \"timeout\": 0}; text:Maximize refused before dispatch: input target 'history' is obscured by \"cinnamon notification 'Save diagnostics for this upload / Upload failed: access denied by the destination. A local copy was saved. / Completed with a problem' at [1421, 10, 480, 138]\" (window None); text:Minimize refused before dispatch: input target 'history' is obscured by \"cinnamon notification 'Save diagnostics for this upload / Upload failed: access denied by the destination. A local copy was saved. / Completed with a problem' at [1421, 10, 480, 138]\" (window None); text:Close window refused before dispatch: input target 'history' is obscured by \"cinnamon notification 'Save diagnostics for this upload / Upload failed: access denied by the destination. A local copy was saved. / Completed with a problem' at [1421, 10, 480, 138]\" (window None)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/__main__.notification_cover/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "notification-before",
+          "path": "frames/__main__.notification_cover/01-notification-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "notification-refused",
+          "path": "frames/__main__.notification_cover/02-notification-refused.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "uncovered-maximized",
+          "path": "frames/__main__.notification_cover/03-uncovered-maximized.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "uncovered-minimized",
+          "path": "frames/__main__.notification_cover/04-uncovered-minimized.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "uncovered-closed",
+          "path": "frames/__main__.notification_cover/05-uncovered-closed.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/__main__.notification_cover/06-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "__main__.notification_cover",
+      "build": "6ad9f957e6544f30c5e45c08af2306db77a9ff64",
+      "at": "2026-10-30T10:16:48Z"
+    },
+    {
+      "interaction": "shell.window-close",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "/home/user/e3/isolated-final/receipt.json",
+      "note": "operationId=3ac9200f-5400-4604-b624-755bac82494d; owned failed-upload notification {\"id\": 1, \"summary\": \"Completed with a problem\", \"timeout\": 0}; text:Maximize refused before dispatch: input target 'history' is obscured by \"cinnamon notification 'Save diagnostics for this upload / Upload failed: access denied by the destination. A local copy was saved. / Completed with a problem' at [1421, 10, 480, 138]\" (window None); text:Minimize refused before dispatch: input target 'history' is obscured by \"cinnamon notification 'Save diagnostics for this upload / Upload failed: access denied by the destination. A local copy was saved. / Completed with a problem' at [1421, 10, 480, 138]\" (window None); text:Close window refused before dispatch: input target 'history' is obscured by \"cinnamon notification 'Save diagnostics for this upload / Upload failed: access denied by the destination. A local copy was saved. / Completed with a problem' at [1421, 10, 480, 138]\" (window None)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/__main__.notification_cover/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "notification-before",
+          "path": "frames/__main__.notification_cover/01-notification-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "notification-refused",
+          "path": "frames/__main__.notification_cover/02-notification-refused.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "uncovered-maximized",
+          "path": "frames/__main__.notification_cover/03-uncovered-maximized.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "uncovered-minimized",
+          "path": "frames/__main__.notification_cover/04-uncovered-minimized.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "uncovered-closed",
+          "path": "frames/__main__.notification_cover/05-uncovered-closed.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/__main__.notification_cover/06-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "__main__.notification_cover",
+      "build": "6ad9f957e6544f30c5e45c08af2306db77a9ff64",
+      "at": "2026-10-30T10:16:48Z"
+    },
+    {
+      "interaction": "shell.header-drag",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "/home/user/e3/isolated-final/receipt.json",
+      "note": "live near-deadline cause: recipe deadline exhausted during accessible probe; persistent desktop probe timed out: accessible; elapsed 0.101s, budget 0.100s; SSH process still running; reply outstanding; further input withheld; start a new run; later input withheld: persistent desktop probe failed; accessible; persistent desktop probe timed out: accessible; elapsed 0.101s, budget 0.100s; SSH process still running; reply outstanding; further input withheld; start a new run; elapsed 0.101s, budget 0.100s; SSH process still running; reply outstanding; start a new run before further input",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/__main__.deadline_channel/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "deadline-before",
+          "path": "frames/__main__.deadline_channel/01-deadline-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "deadline-after",
+          "path": "frames/__main__.deadline_channel/02-deadline-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/__main__.deadline_channel/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "__main__.deadline_channel",
+      "build": "6ad9f957e6544f30c5e45c08af2306db77a9ff64",
+      "at": "2026-10-30T10:16:49Z"
+    }
+  ]
+}

@@ -1,0 +1,884 @@
+{
+ "schemaVersion": 1,
+ "build": "26.1023.1058-nightly",
+ "date": "2026-10-23",
+ "runs": [
+  {
+   "run": "plend-cin-0bce5e2f",
+   "host": "d69",
+   "profile": "cinnamon-x11",
+   "golden": "transfer-7dfa9973258d",
+   "goldenSha256": "4a21566d5b741e55f349f4f07e1c687c99d1c99b5394ff0d18ed5c9e685693da",
+   "overlayRetired": true,
+   "completion": "failed",
+   "lends": [],
+   "smoke": []
+  },
+  {
+   "run": "plend-cin-b2",
+   "host": "d69",
+   "profile": "cinnamon-x11",
+   "golden": "transfer-7dfa9973258d",
+   "goldenSha256": "4a21566d5b741e55f349f4f07e1c687c99d1c99b5394ff0d18ed5c9e685693da",
+   "overlayRetired": true,
+   "completion": "failed",
+   "lends": [],
+   "smoke": []
+  },
+  {
+   "run": "plend-cin-b3",
+   "host": "d69",
+   "profile": "cinnamon-x11",
+   "golden": "transfer-7dfa9973258d",
+   "goldenSha256": "4a21566d5b741e55f349f4f07e1c687c99d1c99b5394ff0d18ed5c9e685693da",
+   "overlayRetired": true,
+   "completion": "passed",
+   "lends": [
+    {
+     "folder": "2026-10-23T22-00-50Z-plend-cin-b3",
+     "run": "plend-cin-b3",
+     "host": "d69",
+     "step": "cleaned",
+     "testExit": 1,
+     "rotated": false,
+     "guestReference": "putgd-lab-8d26d715-f05c-4cd6-a765-b3f6a7318575",
+     "receipts": {
+      "carry-back-1.json": {
+       "kind": "source_replace",
+       "state": "replace_confirmed",
+       "reference": "putgd/proton/lab-d69"
+      },
+      "provision.json": {
+       "kind": "chain_guest",
+       "state": "cleanup_confirmed",
+       "reference": "putgd-lab-8d26d715-f05c-4cd6-a765-b3f6a7318575"
+      }
+     }
+    },
+    {
+     "folder": "2026-10-23T22-01-46Z-plend-cin-b3",
+     "run": "plend-cin-b3",
+     "host": "d69",
+     "step": "cleaned",
+     "testExit": 0,
+     "rotated": false,
+     "guestReference": "putgd-lab-1c1a58c4-03b1-4496-a3fe-c77c5bd21db9",
+     "receipts": {
+      "carry-back-1.json": {
+       "kind": "source_replace",
+       "state": "replace_confirmed",
+       "reference": "putgd/proton/lab-d69"
+      },
+      "provision.json": {
+       "kind": "chain_guest",
+       "state": "cleanup_confirmed",
+       "reference": "putgd-lab-1c1a58c4-03b1-4496-a3fe-c77c5bd21db9"
+      }
+     }
+    }
+   ],
+   "smoke": [
+    {
+     "file": "proton-smoke.json",
+     "passed": true,
+     "folderName": "putgd-lab-cinnamon-x11-20261023T220157Z",
+     "historyId": "e3667f07-304c-475c-9a26-696a52d8af02",
+     "operationId": "ef7aedaf-f200-4c9d-863a-32d687827ca6",
+     "account": "phudson2@gmail.com",
+     "links": {
+      "history.share": "shared",
+      "history.inspectLink": "shared",
+      "history.revokeLink": "revoked"
+     },
+     "failed": null
+    }
+   ]
+  },
+  {
+   "run": "plend-f-cin",
+   "host": "f44",
+   "profile": "cinnamon-x11",
+   "golden": "transfer-32dfa35ea5c8",
+   "goldenSha256": "4a21566d5b741e55f349f4f07e1c687c99d1c99b5394ff0d18ed5c9e685693da",
+   "overlayRetired": true,
+   "completion": "passed",
+   "lends": [
+    {
+     "folder": "2026-10-23T22-18-49Z-plend-f-cin",
+     "run": "plend-f-cin",
+     "host": "f44",
+     "step": "cleaned",
+     "testExit": 0,
+     "rotated": false,
+     "guestReference": "putgd-lab-ad31ff77-45a5-435d-a66e-1aea2e152e91",
+     "receipts": {
+      "carry-back-1.json": {
+       "kind": "source_replace",
+       "state": "replace_confirmed",
+       "reference": "putgd/proton/lab-f44"
+      },
+      "provision.json": {
+       "kind": "chain_guest",
+       "state": "cleanup_confirmed",
+       "reference": "putgd-lab-ad31ff77-45a5-435d-a66e-1aea2e152e91"
+      }
+     }
+    }
+   ],
+   "smoke": [
+    {
+     "file": "proton-smoke.json",
+     "passed": true,
+     "folderName": "putgd-lab-cinnamon-x11-20261023T221858Z",
+     "historyId": "00c9560d-cdd6-4310-b133-af6825e62eb5",
+     "operationId": "bbe4477c-26eb-4d09-9f13-40b51e0a4e5d",
+     "account": "phudson2@gmail.com",
+     "links": {
+      "history.share": "shared",
+      "history.inspectLink": "shared",
+      "history.revokeLink": "revoked"
+     },
+     "failed": null
+    }
+   ]
+  },
+  {
+   "run": "plend-f-gw",
+   "host": "f44",
+   "profile": "gnome-wayland",
+   "golden": "transfer-2f93113ef3b0",
+   "goldenSha256": "563730cc1d929bd946d20cf30a9aecfe3c4ad40eb12ba7f9abcff1c461e342bb",
+   "overlayRetired": true,
+   "completion": "failed",
+   "lends": [],
+   "smoke": []
+  },
+  {
+   "run": "plend-f-gw2",
+   "host": "f44",
+   "profile": "gnome-wayland",
+   "golden": "transfer-2f93113ef3b0",
+   "goldenSha256": "563730cc1d929bd946d20cf30a9aecfe3c4ad40eb12ba7f9abcff1c461e342bb",
+   "overlayRetired": true,
+   "completion": "failed",
+   "lends": [],
+   "smoke": []
+  },
+  {
+   "run": "plend-f-gw3",
+   "host": "f44",
+   "profile": "gnome-wayland",
+   "golden": "transfer-2f93113ef3b0",
+   "goldenSha256": "563730cc1d929bd946d20cf30a9aecfe3c4ad40eb12ba7f9abcff1c461e342bb",
+   "overlayRetired": true,
+   "completion": "passed",
+   "lends": [
+    {
+     "folder": "2026-10-23T22-38-38Z-plend-f-gw3",
+     "run": "plend-f-gw3",
+     "host": "f44",
+     "step": "cleaned",
+     "testExit": 0,
+     "rotated": false,
+     "guestReference": "putgd-lab-7b2a6e56-c516-46dc-a390-22e2ba158a5e",
+     "receipts": {
+      "carry-back-1.json": {
+       "kind": "source_replace",
+       "state": "replace_confirmed",
+       "reference": "putgd/proton/lab-f44"
+      },
+      "provision.json": {
+       "kind": "chain_guest",
+       "state": "cleanup_confirmed",
+       "reference": "putgd-lab-7b2a6e56-c516-46dc-a390-22e2ba158a5e"
+      }
+     }
+    }
+   ],
+   "smoke": [
+    {
+     "file": "proton-smoke.json",
+     "passed": true,
+     "folderName": "putgd-lab-gnome-wayland-20261023T223848Z",
+     "historyId": "016331b5-9a50-4a1e-b098-0971765d6ea7",
+     "operationId": "159dbf77-7828-4e71-98b2-4810f1fec375",
+     "account": "phudson2@gmail.com",
+     "links": {
+      "history.share": "shared",
+      "history.inspectLink": "shared",
+      "history.revokeLink": "revoked"
+     },
+     "failed": null
+    }
+   ]
+  },
+  {
+   "run": "plend-f-kw",
+   "host": "f44",
+   "profile": "kde-wayland",
+   "golden": "transfer-459d0181e995",
+   "goldenSha256": "49fcacff969b81ac38e36fefdf21407d20c82187e1725c58f128a3b76065a81c",
+   "overlayRetired": true,
+   "completion": "passed",
+   "lends": [
+    {
+     "folder": "2026-10-23T22-42-00Z-plend-f-kw",
+     "run": "plend-f-kw",
+     "host": "f44",
+     "step": "cleaned",
+     "testExit": 0,
+     "rotated": false,
+     "guestReference": "putgd-lab-d3687128-4fd7-435c-87c6-bb849b0df17c",
+     "receipts": {
+      "carry-back-1.json": {
+       "kind": "source_replace",
+       "state": "replace_confirmed",
+       "reference": "putgd/proton/lab-f44"
+      },
+      "provision.json": {
+       "kind": "chain_guest",
+       "state": "cleanup_confirmed",
+       "reference": "putgd-lab-d3687128-4fd7-435c-87c6-bb849b0df17c"
+      }
+     }
+    }
+   ],
+   "smoke": [
+    {
+     "file": "proton-smoke.json",
+     "passed": true,
+     "folderName": "putgd-lab-kde-wayland-20261023T224210Z",
+     "historyId": "aaa2a961-d168-4a2e-804f-a7bec60252f1",
+     "operationId": "f37c341e-072c-49ed-b35e-af7777b14e85",
+     "account": "phudson2@gmail.com",
+     "links": {
+      "history.share": "shared",
+      "history.inspectLink": "shared",
+      "history.revokeLink": "revoked"
+     },
+     "failed": null
+    }
+   ]
+  },
+  {
+   "run": "plend-gw",
+   "host": "d69",
+   "profile": "gnome-wayland",
+   "golden": "transfer-0d2922e34f4b",
+   "goldenSha256": "563730cc1d929bd946d20cf30a9aecfe3c4ad40eb12ba7f9abcff1c461e342bb",
+   "overlayRetired": true,
+   "completion": "passed",
+   "lends": [
+    {
+     "folder": "2026-10-23T22-04-51Z-plend-gw",
+     "run": "plend-gw",
+     "host": "d69",
+     "step": "cleaned",
+     "testExit": 1,
+     "rotated": false,
+     "guestReference": "putgd-lab-ae514598-0608-4695-91fe-0ae845f292da",
+     "receipts": {
+      "carry-back-1.json": {
+       "kind": "source_replace",
+       "state": "replace_confirmed",
+       "reference": "putgd/proton/lab-d69"
+      },
+      "provision.json": {
+       "kind": "chain_guest",
+       "state": "cleanup_confirmed",
+       "reference": "putgd-lab-ae514598-0608-4695-91fe-0ae845f292da"
+      }
+     }
+    },
+    {
+     "folder": "2026-10-23T22-08-29Z-plend-gw",
+     "run": "plend-gw",
+     "host": "d69",
+     "step": "cleaned",
+     "testExit": 0,
+     "rotated": false,
+     "guestReference": "putgd-lab-47028abe-8ce3-4de1-98b9-18b1c3a5c1ea",
+     "receipts": {
+      "carry-back-1.json": {
+       "kind": "source_replace",
+       "state": "replace_confirmed",
+       "reference": "putgd/proton/lab-d69"
+      },
+      "provision.json": {
+       "kind": "chain_guest",
+       "state": "cleanup_confirmed",
+       "reference": "putgd-lab-47028abe-8ce3-4de1-98b9-18b1c3a5c1ea"
+      }
+     }
+    }
+   ],
+   "smoke": [
+    {
+     "file": "proton-smoke.json",
+     "passed": true,
+     "folderName": "putgd-lab-gnome-wayland-20261023T220839Z",
+     "historyId": "d8f3ca9a-0ddb-4ce9-add6-9a4356e15322",
+     "operationId": "bf32a3ae-3a6f-4701-836c-b5e9904bff05",
+     "account": "phudson2@gmail.com",
+     "links": {
+      "history.share": "shared",
+      "history.inspectLink": "shared",
+      "history.revokeLink": "revoked"
+     },
+     "failed": null
+    }
+   ]
+  },
+  {
+   "run": "plend-kw",
+   "host": "d69",
+   "profile": "kde-wayland",
+   "golden": "transfer-541c1316ab6b",
+   "goldenSha256": "49fcacff969b81ac38e36fefdf21407d20c82187e1725c58f128a3b76065a81c",
+   "overlayRetired": true,
+   "completion": "passed",
+   "lends": [
+    {
+     "folder": "2026-10-23T22-11-43Z-plend-kw",
+     "run": "plend-kw",
+     "host": "d69",
+     "step": "cleaned",
+     "testExit": 0,
+     "rotated": false,
+     "guestReference": "putgd-lab-c78280d5-3682-4331-a6f3-58208668da01",
+     "receipts": {
+      "carry-back-1.json": {
+       "kind": "source_replace",
+       "state": "replace_confirmed",
+       "reference": "putgd/proton/lab-d69"
+      },
+      "provision.json": {
+       "kind": "chain_guest",
+       "state": "cleanup_confirmed",
+       "reference": "putgd-lab-c78280d5-3682-4331-a6f3-58208668da01"
+      }
+     }
+    },
+    {
+     "folder": "2026-10-23T22-14-06Z-plend-kw",
+     "run": "plend-kw",
+     "host": "d69",
+     "step": "cleaned",
+     "testExit": 0,
+     "rotated": false,
+     "guestReference": "putgd-lab-c78280d5-3682-4331-a6f3-58208668da01",
+     "receipts": {
+      "carry-back-1.json": {
+       "kind": "source_replace",
+       "state": "replace_confirmed",
+       "reference": "putgd/proton/lab-d69"
+      },
+      "provision.json": {
+       "kind": "chain_guest",
+       "state": "cleanup_confirmed",
+       "reference": "putgd-lab-c78280d5-3682-4331-a6f3-58208668da01"
+      }
+     }
+    },
+    {
+     "folder": "2026-10-23T22-14-30Z-plend-kw",
+     "run": "plend-kw",
+     "host": "d69",
+     "step": "cleaned",
+     "testExit": 0,
+     "rotated": false,
+     "guestReference": "putgd-lab-9235b918-be53-4a25-8812-c5dbec27883c",
+     "receipts": {
+      "carry-back-1.json": {
+       "kind": "source_replace",
+       "state": "replace_confirmed",
+       "reference": "putgd/proton/lab-d69"
+      },
+      "provision.json": {
+       "kind": "chain_guest",
+       "state": "cleanup_confirmed",
+       "reference": "putgd-lab-9235b918-be53-4a25-8812-c5dbec27883c"
+      }
+     }
+    }
+   ],
+   "smoke": [
+    {
+     "file": "proton-smoke-1.json",
+     "passed": true,
+     "folderName": "putgd-lab-kde-wayland-20261023T221153Z",
+     "historyId": "5df95bfa-3c67-4b80-93e3-bf35ad5c0421",
+     "operationId": "99559732-d408-477b-9b09-94c8bc09d49f",
+     "account": "phudson2@gmail.com",
+     "links": {
+      "history.share": "shared",
+      "history.inspectLink": "shared",
+      "history.revokeLink": "failed"
+     },
+     "failed": null
+    },
+    {
+     "file": "proton-smoke-2-revoke.json",
+     "passed": true,
+     "folderName": null,
+     "historyId": "5df95bfa-3c67-4b80-93e3-bf35ad5c0421",
+     "operationId": null,
+     "account": null,
+     "links": {
+      "history.revokeLink": "revoked"
+     },
+     "failed": null
+    },
+    {
+     "file": "proton-smoke.json",
+     "passed": true,
+     "folderName": "putgd-lab-kde-wayland-20261023T221441Z",
+     "historyId": "6ebcf307-a13d-4cad-ae89-7cdb552265bf",
+     "operationId": "1542e441-c5e3-47b2-8aca-08aa0ef8b37b",
+     "account": "phudson2@gmail.com",
+     "links": {
+      "history.share": "shared",
+      "history.inspectLink": "shared",
+      "history.revokeLink": "revoked"
+     },
+     "failed": null
+    }
+   ]
+  },
+  {
+   "run": "plend-pic-cin",
+   "host": "d69",
+   "profile": "cinnamon-x11",
+   "golden": "transfer-7dfa9973258d",
+   "goldenSha256": "4a21566d5b741e55f349f4f07e1c687c99d1c99b5394ff0d18ed5c9e685693da",
+   "overlayRetired": true,
+   "completion": "passed",
+   "lends": [
+    {
+     "folder": "2026-10-23T22-45-31Z-plend-pic-cin",
+     "run": "plend-pic-cin",
+     "host": "d69",
+     "step": "cleaned",
+     "testExit": 0,
+     "rotated": false,
+     "guestReference": "putgd-lab-0b1a478a-cc09-48a5-8a1b-80220a60264e",
+     "receipts": {
+      "carry-back-1.json": {
+       "kind": "source_replace",
+       "state": "replace_confirmed",
+       "reference": "putgd/proton/lab-d69"
+      },
+      "provision.json": {
+       "kind": "chain_guest",
+       "state": "cleanup_confirmed",
+       "reference": "putgd-lab-0b1a478a-cc09-48a5-8a1b-80220a60264e"
+      }
+     }
+    }
+   ],
+   "smoke": [
+    {
+     "file": "proton-smoke.json",
+     "passed": true,
+     "folderName": "putgd-lab-cinnamon-x11-20261023T224541Z",
+     "historyId": "a28106ae-78d2-43f8-89c1-7b11497ecf08",
+     "operationId": "fed0a9d7-ea3e-4dcf-9b49-432b4d95849a",
+     "account": "phudson2@gmail.com",
+     "links": {
+      "history.share": "shared",
+      "history.inspectLink": "shared",
+      "history.revokeLink": "revoked"
+     },
+     "failed": null
+    }
+   ]
+  },
+  {
+   "run": "plend-pic-cin2",
+   "host": "d69",
+   "profile": "cinnamon-x11",
+   "golden": "transfer-7dfa9973258d",
+   "goldenSha256": "4a21566d5b741e55f349f4f07e1c687c99d1c99b5394ff0d18ed5c9e685693da",
+   "overlayRetired": true,
+   "completion": "passed",
+   "lends": [
+    {
+     "folder": "2026-10-23T23-14-16Z-plend-pic-cin2",
+     "run": "plend-pic-cin2",
+     "host": "d69",
+     "step": "cleaned",
+     "testExit": 0,
+     "rotated": false,
+     "guestReference": "putgd-lab-aaa70360-519c-4a0c-b511-5f32d1f9b3c7",
+     "receipts": {
+      "carry-back-1.json": {
+       "kind": "source_replace",
+       "state": "replace_confirmed",
+       "reference": "putgd/proton/lab-d69"
+      },
+      "provision.json": {
+       "kind": "chain_guest",
+       "state": "cleanup_confirmed",
+       "reference": "putgd-lab-aaa70360-519c-4a0c-b511-5f32d1f9b3c7"
+      }
+     }
+    }
+   ],
+   "smoke": [
+    {
+     "file": "proton-smoke.json",
+     "passed": true,
+     "folderName": "putgd-lab-cinnamon-x11-20261023T231426Z",
+     "historyId": "d4347f1e-6a4e-45b2-8e2f-61890c2e804f",
+     "operationId": "42d55d3d-2e43-4a3c-8814-a6c79496ed22",
+     "account": "phudson2@gmail.com",
+     "links": {
+      "history.share": "shared",
+      "history.inspectLink": "shared",
+      "history.revokeLink": "revoked"
+     },
+     "failed": null
+    }
+   ]
+  },
+  {
+   "run": "plend-pic-gw",
+   "host": "d69",
+   "profile": "gnome-wayland",
+   "golden": "transfer-0d2922e34f4b",
+   "goldenSha256": "563730cc1d929bd946d20cf30a9aecfe3c4ad40eb12ba7f9abcff1c461e342bb",
+   "overlayRetired": true,
+   "completion": "passed",
+   "lends": [
+    {
+     "folder": "2026-10-23T22-48-22Z-plend-pic-gw",
+     "run": "plend-pic-gw",
+     "host": "d69",
+     "step": "cleaned",
+     "testExit": 0,
+     "rotated": false,
+     "guestReference": "putgd-lab-984190f3-3815-473f-8347-b871ccdc6ea8",
+     "receipts": {
+      "carry-back-1.json": {
+       "kind": "source_replace",
+       "state": "replace_confirmed",
+       "reference": "putgd/proton/lab-d69"
+      },
+      "provision.json": {
+       "kind": "chain_guest",
+       "state": "cleanup_confirmed",
+       "reference": "putgd-lab-984190f3-3815-473f-8347-b871ccdc6ea8"
+      }
+     }
+    }
+   ],
+   "smoke": [
+    {
+     "file": "proton-smoke.json",
+     "passed": true,
+     "folderName": "putgd-lab-gnome-wayland-20261023T224832Z",
+     "historyId": "e78791ca-e747-46d6-ba84-baed1ad9522b",
+     "operationId": "66090a09-3945-413c-89cb-620150ec5d73",
+     "account": "phudson2@gmail.com",
+     "links": {
+      "history.share": "shared",
+      "history.inspectLink": "shared",
+      "history.revokeLink": "revoked"
+     },
+     "failed": null
+    }
+   ]
+  },
+  {
+   "run": "plend-pic-gw2",
+   "host": "d69",
+   "profile": "gnome-wayland",
+   "golden": "transfer-0d2922e34f4b",
+   "goldenSha256": "563730cc1d929bd946d20cf30a9aecfe3c4ad40eb12ba7f9abcff1c461e342bb",
+   "overlayRetired": true,
+   "completion": "passed",
+   "lends": [
+    {
+     "folder": "2026-10-23T23-02-31Z-plend-pic-gw2",
+     "run": "plend-pic-gw2",
+     "host": "d69",
+     "step": "cleaned",
+     "testExit": 0,
+     "rotated": false,
+     "guestReference": "putgd-lab-ed63a840-86cc-4727-b96d-6d6b34fec0a9",
+     "receipts": {
+      "carry-back-1.json": {
+       "kind": "source_replace",
+       "state": "replace_confirmed",
+       "reference": "putgd/proton/lab-d69"
+      },
+      "provision.json": {
+       "kind": "chain_guest",
+       "state": "cleanup_confirmed",
+       "reference": "putgd-lab-ed63a840-86cc-4727-b96d-6d6b34fec0a9"
+      }
+     }
+    }
+   ],
+   "smoke": [
+    {
+     "file": "proton-smoke.json",
+     "passed": true,
+     "folderName": "putgd-lab-gnome-wayland-20261023T230241Z",
+     "historyId": "b0e672e5-5ef7-4bb0-937b-d9b52d29d4ae",
+     "operationId": "4cab1288-65f1-48ed-a7b6-e12debb75583",
+     "account": "phudson2@gmail.com",
+     "links": {
+      "history.share": "shared",
+      "history.inspectLink": "shared",
+      "history.revokeLink": "revoked"
+     },
+     "failed": null
+    }
+   ]
+  },
+  {
+   "run": "plend-pic-gw3",
+   "host": "d69",
+   "profile": "gnome-wayland",
+   "golden": "transfer-0d2922e34f4b",
+   "goldenSha256": "563730cc1d929bd946d20cf30a9aecfe3c4ad40eb12ba7f9abcff1c461e342bb",
+   "overlayRetired": true,
+   "completion": "passed",
+   "lends": [
+    {
+     "folder": "2026-10-23T23-05-27Z-plend-pic-gw3",
+     "run": "plend-pic-gw3",
+     "host": "d69",
+     "step": "cleaned",
+     "testExit": 0,
+     "rotated": false,
+     "guestReference": "putgd-lab-6b29e9df-12fd-4406-94ec-fe80b6d67de7",
+     "receipts": {
+      "carry-back-1.json": {
+       "kind": "source_replace",
+       "state": "replace_confirmed",
+       "reference": "putgd/proton/lab-d69"
+      },
+      "provision.json": {
+       "kind": "chain_guest",
+       "state": "cleanup_confirmed",
+       "reference": "putgd-lab-6b29e9df-12fd-4406-94ec-fe80b6d67de7"
+      }
+     }
+    }
+   ],
+   "smoke": [
+    {
+     "file": "proton-smoke.json",
+     "passed": true,
+     "folderName": "putgd-lab-gnome-wayland-20261023T230537Z",
+     "historyId": "5a42f063-1cb7-4186-a229-85979e814665",
+     "operationId": "811df0df-81da-47ee-ba18-9f1e5417673d",
+     "account": "phudson2@gmail.com",
+     "links": {
+      "history.share": "shared",
+      "history.inspectLink": "shared",
+      "history.revokeLink": "revoked"
+     },
+     "failed": null
+    }
+   ]
+  },
+  {
+   "run": "plend-pic-kw",
+   "host": "d69",
+   "profile": "kde-wayland",
+   "golden": "transfer-541c1316ab6b",
+   "goldenSha256": "49fcacff969b81ac38e36fefdf21407d20c82187e1725c58f128a3b76065a81c",
+   "overlayRetired": true,
+   "completion": "failed",
+   "lends": [
+    {
+     "folder": "2026-10-23T22-51-12Z-plend-pic-kw",
+     "run": "plend-pic-kw",
+     "host": "d69",
+     "step": "recovered",
+     "testExit": 1,
+     "rotated": null,
+     "guestReference": "putgd-lab-3d977279-9050-42a5-8068-6d715d966016",
+     "receipts": {
+      "carry-back-1.json": {
+       "kind": "source_replace",
+       "state": "replace_confirmed",
+       "reference": "putgd/proton/lab-d69"
+      },
+      "provision.json": {
+       "kind": "chain_guest",
+       "state": "cleanup_confirmed",
+       "reference": "putgd-lab-3d977279-9050-42a5-8068-6d715d966016"
+      }
+     }
+    },
+    {
+     "folder": "2026-10-23T22-54-05Z-plend-pic-kw",
+     "run": "plend-pic-kw",
+     "host": "d69",
+     "step": "cleaned",
+     "testExit": 1,
+     "rotated": false,
+     "guestReference": "putgd-lab-3d977279-9050-42a5-8068-6d715d966016",
+     "receipts": {
+      "carry-back-1.json": {
+       "kind": "source_replace",
+       "state": "replace_confirmed",
+       "reference": "putgd/proton/lab-d69"
+      },
+      "provision.json": {
+       "kind": "chain_guest",
+       "state": "cleanup_confirmed",
+       "reference": "putgd-lab-3d977279-9050-42a5-8068-6d715d966016"
+      }
+     }
+    },
+    {
+     "folder": "2026-10-23T22-56-13Z-plend-pic-kw",
+     "run": "plend-pic-kw",
+     "host": "d69",
+     "step": "cleaned",
+     "testExit": 0,
+     "rotated": false,
+     "guestReference": "putgd-lab-3d977279-9050-42a5-8068-6d715d966016",
+     "receipts": {
+      "carry-back-1.json": {
+       "kind": "source_replace",
+       "state": "replace_confirmed",
+       "reference": "putgd/proton/lab-d69"
+      },
+      "provision.json": {
+       "kind": "chain_guest",
+       "state": "cleanup_confirmed",
+       "reference": "putgd-lab-3d977279-9050-42a5-8068-6d715d966016"
+      }
+     }
+    }
+   ],
+   "smoke": [
+    {
+     "file": "proton-smoke-1.json",
+     "passed": false,
+     "folderName": "putgd-lab-kde-wayland-20261023T225122Z",
+     "historyId": "c0a9d753-5da2-4302-8de3-ff55792033c8",
+     "operationId": "063a99d9-a773-4898-8fed-17fdcd550149",
+     "account": "phudson2@gmail.com",
+     "links": {},
+     "failed": "ssh failed (exit 255)"
+    },
+    {
+     "file": "proton-smoke.json",
+     "passed": true,
+     "folderName": null,
+     "historyId": "c0a9d753-5da2-4302-8de3-ff55792033c8",
+     "operationId": null,
+     "account": null,
+     "links": {
+      "history.inspectLink": "shared",
+      "history.revokeLink": "revoked"
+     },
+     "failed": null
+    }
+   ]
+  },
+  {
+   "run": "plend-pic-kw2",
+   "host": "d69",
+   "profile": "kde-wayland",
+   "golden": "transfer-541c1316ab6b",
+   "goldenSha256": "49fcacff969b81ac38e36fefdf21407d20c82187e1725c58f128a3b76065a81c",
+   "overlayRetired": true,
+   "completion": "passed",
+   "lends": [
+    {
+     "folder": "2026-10-23T22-58-27Z-plend-pic-kw2",
+     "run": "plend-pic-kw2",
+     "host": "d69",
+     "step": "cleaned",
+     "testExit": 0,
+     "rotated": false,
+     "guestReference": "putgd-lab-37c6bb78-63dc-4a1c-8455-73b5741a5ade",
+     "receipts": {
+      "carry-back-1.json": {
+       "kind": "source_replace",
+       "state": "replace_confirmed",
+       "reference": "putgd/proton/lab-d69"
+      },
+      "provision.json": {
+       "kind": "chain_guest",
+       "state": "cleanup_confirmed",
+       "reference": "putgd-lab-37c6bb78-63dc-4a1c-8455-73b5741a5ade"
+      }
+     }
+    }
+   ],
+   "smoke": [
+    {
+     "file": "proton-smoke.json",
+     "passed": true,
+     "folderName": "putgd-lab-kde-wayland-20261023T225837Z",
+     "historyId": "a70e3dc6-c9bc-4757-a475-7b9111b828a8",
+     "operationId": "598be016-5864-4abc-95be-917149a5a427",
+     "account": "phudson2@gmail.com",
+     "links": {
+      "history.share": "shared",
+      "history.inspectLink": "shared",
+      "history.revokeLink": "revoked"
+     },
+     "failed": null
+    }
+   ]
+  },
+  {
+   "run": "plend-pic-kw3",
+   "host": "d69",
+   "profile": "kde-wayland",
+   "golden": "transfer-541c1316ab6b",
+   "goldenSha256": "49fcacff969b81ac38e36fefdf21407d20c82187e1725c58f128a3b76065a81c",
+   "overlayRetired": true,
+   "completion": "passed",
+   "lends": [
+    {
+     "folder": "2026-10-23T23-22-09Z-plend-pic-kw3",
+     "run": "plend-pic-kw3",
+     "host": "d69",
+     "step": "cleaned",
+     "testExit": 0,
+     "rotated": false,
+     "guestReference": "putgd-lab-7e1e221e-7670-4bdb-834b-54793ac0065b",
+     "receipts": {
+      "carry-back-1.json": {
+       "kind": "source_replace",
+       "state": "replace_confirmed",
+       "reference": "putgd/proton/lab-d69"
+      },
+      "provision.json": {
+       "kind": "chain_guest",
+       "state": "cleanup_confirmed",
+       "reference": "putgd-lab-7e1e221e-7670-4bdb-834b-54793ac0065b"
+      }
+     }
+    }
+   ],
+   "smoke": [
+    {
+     "file": "proton-smoke.json",
+     "passed": true,
+     "folderName": "putgd-lab-kde-wayland-20261023T232219Z",
+     "historyId": "cfa8670a-4523-4107-8480-8f1504b382bc",
+     "operationId": "f71738e4-f18c-4e4e-a0c3-2026c93a26b9",
+     "account": "phudson2@gmail.com",
+     "links": {
+      "history.share": "shared",
+      "history.inspectLink": "shared",
+      "history.revokeLink": "revoked"
+     },
+     "failed": null
+    }
+   ]
+  }
+ ]
+}

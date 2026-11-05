@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "status": "completed",
+  "run": "/home/patrick/work/a382/work/lab-runs/u382a",
+  "disk": "/home/patrick/work/a382/work/lab-runs/u382a/disk.qcow2",
+  "diskIdentity": {
+    "device": 50,
+    "inode": 5667739,
+    "size": 2394685440,
+    "mtimeNs": 1792824009355073203,
+    "ctimeNs": 1792824009355073203,
+    "allocatedBytes": 2394624000
+  },
+  "base": "/home/patrick/work/put.gd/work/lab-images/transfer-2f93113ef3b0/image.qcow2",
+  "stateSha256": "07f592c26c163bc912fce481ddddb75d1f09953b66a435f642818408507d261d",
+  "evidence": {
+    "manifest": "/home/patrick/work/a382/work/exports/i382-final-u382a/cleanup-evidence.json",
+    "sha256": "8823671c851800889eefbb6869a80c4f1200876877e8d98a1bf5986ad97bc753",
+    "runId": "23a76e17-9b10-474a-95f4-0dfe3c34107f",
+    "mode": "explicit"
+  },
+  "preparedUtc": "2026-10-24T06:40:18.500212+00:00",
+  "completedUtc": "2026-10-24T06:40:20.115449+00:00"
+}

@@ -5,6 +5,7 @@
 #include <QFile>
 #include <QProcess>
 #include <QJsonDocument>
+#include "fixtures/Waits.h"
 using namespace putgd;
 class KeychainTest : public QObject {
     Q_OBJECT
@@ -36,13 +37,13 @@ private slots:
         bool done = false;
         Error error;
         store.save("profile", reference, {"synthetic-key", "synthetic-secret", {}}, [&](auto value) { error = value; done = true; });
-        QTRY_VERIFY(done);
+        PUTGD_TRY_VERIFY(done);
         QVERIFY(error);
         QVERIFY(!store.cached("profile", reference));
         QVERIFY(!QJsonDocument(error.toJson()).toJson().contains("synthetic-secret"));
         done = false;
         store.unlock("profile", reference, [&](auto value) { error = value; done = true; });
-        QTRY_VERIFY(done);
+        PUTGD_TRY_VERIFY(done);
         QVERIFY(error);
         QVERIFY(!store.cached("profile", reference));
         QDirIterator files(root.path(), QDir::Files, QDirIterator::Subdirectories);

@@ -1,0 +1,255 @@
+{
+  "frames": {
+    "frames/outcomes_live.s3_region_upload/00-before.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "frames/outcomes_live.s3_region_upload/01-independent-frozen-pattern.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "frames/outcomes_live.s3_region_upload/02-browser-failure-fully-masked.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "frames/outcomes_live.s3_region_upload/03-history-before-remote-cleanup.png": {
+      "sha256": "f0e8ebdf16ffbd2fc685ebca9ea4bcaeac35568f4be337355f3c6a2573bcd184",
+      "size": [
+        1280,
+        746
+      ],
+      "regions": [
+        [
+          760,
+          320,
+          520,
+          426
+        ],
+        [
+          1123,
+          708,
+          143,
+          36
+        ],
+        [
+          230,
+          162,
+          656,
+          112
+        ],
+        [
+          914,
+          401,
+          68,
+          32
+        ],
+        [
+          914,
+          450,
+          352,
+          154
+        ],
+        [
+          1145,
+          357,
+          121,
+          40
+        ],
+        [
+          922,
+          363,
+          227,
+          28
+        ],
+        [
+          914,
+          294,
+          352,
+          25
+        ],
+        [
+          620,
+          122,
+          304,
+          40
+        ]
+      ],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true
+    },
+    "frames/outcomes_live.s3_region_upload/04-delete-exact-owned-object.png": {
+      "sha256": "d16eaadcdaf89eee1c38bc9d43601e414026a2067e52c1ac58f245f7bee173ea",
+      "size": [
+        560,
+        408
+      ],
+      "regions": [
+        [
+          400,
+          137,
+          160,
+          271
+        ],
+        [
+          101,
+          235,
+          425,
+          55
+        ],
+        [
+          22,
+          189,
+          504,
+          23
+        ],
+        [
+          22,
+          68,
+          516,
+          42
+        ],
+        [
+          22,
+          14,
+          516,
+          46
+        ],
+        [
+          0,
+          0,
+          526,
+          91
+        ],
+        [
+          554,
+          218,
+          6,
+          32
+        ],
+        [
+          554,
+          267,
+          6,
+          141
+        ],
+        [
+          554,
+          111,
+          6,
+          25
+        ]
+      ],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true
+    },
+    "frames/outcomes_live.s3_region_upload/05-history-after-remote-cleanup.png": {
+      "sha256": "db1ac38139f48a54a2bcce2e502f147c563e03e1b8392d6079a82ef91d7cdecd",
+      "size": [
+        1280,
+        746
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          746
+        ]
+      ],
+      "fallback": true,
+      "guard": "ocr-sensitive-text-fully-masked",
+      "visible_pixels": false
+    },
+    "frames/outcomes_live.s3_region_upload/06-browser-cloudfront-status-403.png": {
+      "sha256": "a5073c99b69cebd06443f11496d71eba947fac46fb51cb5d2522123cd35a7d95",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          760,
+          320,
+          520,
+          480
+        ],
+        [
+          22,
+          155,
+          1258,
+          19
+        ]
+      ],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true,
+      "desktop_safe": "private Firefox kiosk without address bar owns the verified foreground"
+    },
+    "frames/outcomes_live.s3_region_upload/07-after.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    }
+  }
+}

@@ -1,0 +1,27 @@
+{
+ "at": "2026-10-23T20:04:52Z",
+ "invoke": {
+  "ok": true,
+  "error": {
+   "code": "",
+   "details": {},
+   "message": ""
+  }
+ },
+ "operationId": "34b43ff1-f52f-4a1c-a9f1-e6749074a4b9",
+ "state": "completed",
+ "error": "",
+ "items": [
+  {
+   "mime": "image/png",
+   "bytes": 852786,
+   "local": "saved",
+   "file": "Screen-Capture-2026-10-23-15-04-50.png",
+   "pixels": [
+    1920,
+    1080
+   ],
+   "error": ""
+  }
+ ]
+}

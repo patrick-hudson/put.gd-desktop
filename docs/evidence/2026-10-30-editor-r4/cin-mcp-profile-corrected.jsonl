@@ -1,0 +1,3 @@
+{"desktop": "mint-cinnamon-x11", "mcp_python": "/home/lab/putgd-lab/editor-mcp/tools/mcp/.venv/bin/python", "mcp_helper": "/home/lab/putgd-lab/editor-mcp/tools/mcp/.venv/bin/putgd-mcp"}
+{"desktop": "kubuntu-kde-wayland", "mcp_python": "/home/lab/putgd-lab/editor-mcp/tools/mcp/.venv/bin/python", "mcp_helper": "/home/lab/putgd-lab/editor-mcp/tools/mcp/.venv/bin/putgd-mcp"}
+{"desktop": "ubuntu-gnome-wayland", "mcp_python": "/home/lab/putgd-lab/editor-mcp/tools/mcp/.venv/bin/python", "mcp_helper": "/home/lab/putgd-lab/editor-mcp/tools/mcp/.venv/bin/putgd-mcp"}

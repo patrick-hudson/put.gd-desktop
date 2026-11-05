@@ -1,0 +1,12 @@
+{
+ "pid": 1503672,
+ "covered": true,
+ "playing": true,
+ "states": [
+  "covered",
+  "playing"
+ ],
+ "precheck": [
+  "{\"check\": \"precheck\", \"fraction\": 1.0, \"framebuffer\": [1920, 1080], \"minFraction\": 0.98, \"ok\": true, \"output\": [\"HDMI-1\"], \"rect\": [0, 0, 1920, 1080]}"
+ ]
+}

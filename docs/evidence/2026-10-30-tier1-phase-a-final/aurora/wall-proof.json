@@ -1,0 +1,9 @@
+{
+  "sandbox": "bx_wtrrs85y",
+  "port": 5994,
+  "wall": "http://127.0.0.1:8765/",
+  "tile": "Tier1 final a2 bx_wtrrs85y",
+  "connected": true,
+  "observer": "CUA AX state and saved RFB desktop",
+  "savedVisual": "aurora-retry-ready.png"
+}

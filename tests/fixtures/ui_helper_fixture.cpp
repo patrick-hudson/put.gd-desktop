@@ -20,8 +20,10 @@ int main(int argc,char**argv){
    if(mode=="crash"){app.exit(77);return;}
    if(mode=="stall")return;
    if(mode=="flood"){fcntl(STDOUT_FILENO,F_SETFL,fcntl(STDOUT_FILENO,F_GETFL)&~O_NONBLOCK);const QByteArray block(16384,'x');for(int i=0;i<8192;++i)std::fwrite(block.constData(),1,block.size(),stdout);std::fflush(stdout);return;}
+   // #657: the view is shown only when it carries the token the test expects.
+   if(mode=="token"){const auto expected=qEnvironmentVariable("PUTGD_TEST_UI_TOKEN");control.send(payload["activationToken"].toString()==expected&&(expected.isEmpty()||payload.size()==2)?"shown":"activationFailed",{{"replyTo",seq},{"view",payload["view"]}});return;}
    control.send("shown",{{"replyTo",seq},{"view",payload["view"]}});
-   if(mode=="close"||mode=="crash-after-close"||(mode=="cancel"&&payload["view"]=="settings"))control.send("closeRequested",{{"state",QJsonObject{{"schemaVersion",1},{"settings",QJsonObject{{"draft","retained"}}}}}});
+   if(mode=="close"||mode=="crash-after-close"||(mode=="cancel"&&payload["view"]=="settings"))control.send("closeRequested",{{"state",QJsonObject{{"schemaVersion",1},{"settings",QJsonObject{{"draft","retained"},{"section",1},{"captureRouting",QJsonObject{{"default",QJsonObject{{"profileId","synthetic"}}}}}}}}}});
    if(mode.startsWith("recording-")){
     control.send("shortcutRecording",{{"active",true}});
     if(mode=="recording-crash-pending")QTimer::singleShot(100,&app,[&]{app.exit(77);});
@@ -37,6 +39,10 @@ int main(int argc,char**argv){
    if(mode=="cancel"){QTimer::singleShot(250,&app,[&,payload]{control.send("closeCancel",{{"replyTo",payload["replyTo"]}});});return;}
    control.send("closeConfirmed",{{"replyTo",payload["replyTo"]}});QTimer::singleShot(100,&app,[&]{app.exit(mode=="crash-after-close"?77:0);});}
   else if(type=="invalidated"){if(mode=="cancel")QTimer::singleShot(50,&app,[&,seq]{control.send("observed",{{"replyTo",seq}});});else control.send("observed",{{"replyTo",seq}});}
+  else if(type=="command"){
+   if(mode=="command-crash"){app.exit(77);return;}
+   control.send("commandResult",{{"replyTo",seq},{"error",QJsonObject{{"code",""},{"message",""},{"details",QJsonObject{}}}},{"result",QJsonObject{{"command",payload["command"]},{"params",payload["params"]}}}});
+  }
   else if(type=="shutdown")app.quit();
  });
  return app.exec();

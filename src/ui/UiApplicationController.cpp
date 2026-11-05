@@ -1,10 +1,13 @@
 #include "UiApplicationController.h"
+#include "FileDialog.h"
 #include "SettingsWindow.h"
 #include "HistoryWindow.h"
 #include "MainWindow.h"
 #include "AboutWindow.h"
 #include "ViewState.h"
+#include "WindowActivation.h"
 #include <QApplication>
+#include <QJsonDocument>
 #include <QCloseEvent>
 #include <QMessageBox>
 #include <QWindow>
@@ -22,6 +25,13 @@ UiApplicationController::UiApplicationController(UiSession& session,UiControl& c
   control_.send("shortcutRecording",{{"active",false}});
   finishShortcutRecordingRequests({"shortcut_recording_timeout","Global shortcuts could not be paused. Try recording again.",{}});
  });
+ // #60: the setting picks the scheme and "system" follows the desktop live;
+ // CLI/MCP patches arrive through the same accepted revisions.
+ // The view state reports the appearance, so every change reaches a checkpoint.
+ connect(&appearance_,&Appearance::changed,this,[this]{dirtyCheckpoint_=true;checkpointDelay_.start();});
+ followAppearance();
+ connect(&session_,&UiSession::accepted,this,&UiApplicationController::followAppearance);
+ connect(&session_,&UiSession::statusChanged,this,&UiApplicationController::followAppearance);
  session_.setShortcutRecordingHandler([this](bool active,std::function<void(Error)> reply){
   if(exiting_){reply({"ui_stopping","The interface is closing.",{}});return;}
   const auto sequence=control_.send("shortcutRecording",{{"active",active}});
@@ -52,19 +62,39 @@ UiApplicationController::~UiApplicationController(){
   if(window){window->removeEventFilter(this);disconnect(window,nullptr,this,nullptr);}
 }
 QWidget* UiApplicationController::view(const QString& name){
- if(QStringList{"settings","history","activity","destinations","editFile"}.contains(name)){
+ if(name.startsWith("historyCancelAll:")||name=="historyFailed"||name.startsWith("actionRecovery:")||QStringList{"settings","updates","history","activity","destinations","editFile","captureSettings"}.contains(name)){
   if(!main_){
    main_=std::make_unique<MainWindow>(session_);
-   if(saved_.contains("settings")&&!main_->settings()->restoreViewState(saved_["settings"].toObject()))notify({"ui_state_invalid","Saved settings draft could not be restored.",{}});
+   connect(main_.get(),&MainWindow::settingsCreated,this,[this](SettingsWindow* settings){
+    connect(settings,&SettingsWindow::appearancePreview,this,[this](const QString& theme){themePreview_=theme;followAppearance();});
+    if(saved_.contains("settings")&&!settings->restoreViewState(saved_["settings"].toObject()))notify({"ui_state_invalid","Saved settings draft could not be restored.",{}});
+   });
+   // Pending drafts and destination setup keep their existing eager lifecycle.
+   // Clean retained settings can wait until navigation or an agent command;
+   // restoreViewState reconciles them with the latest resident configuration.
+   const auto settingsState=saved_.value("settings").toObject();
+   bool active=settingsState["dirty"].toBool()||settingsState["conflict"].toBool()||settingsState["autosaveBlocked"].toBool()||!settingsState["setupJobs"].toArray().isEmpty()||!settingsState["provisionalProfile"].toObject().isEmpty();
+   for(const auto& editor:settingsState["profileEditors"].toArray())active|=editor.toObject()["providers"].toObject().size()>1;
+   if(active)main_->settings();
    if(saved_.contains("history")&&!main_->history()->restoreViewState(saved_["history"].toObject()))notify({"ui_state_invalid","Saved history state could not be restored.",{}});
-   if(saved_.contains("main"))main_->restoreViewState(saved_["main"].toObject());
+   if(saved_.contains("main"))main_->restoreViewState(saved_["main"].toObject(),name=="editFile");
    main_->installEventFilter(this);connect(main_.get(),&MainWindow::viewStateChanged,this,[this]{dirtyCheckpoint_=true;checkpointDelay_.start();});
+   // A Wayland window may never report a move: checkpoint once it exists, so
+   // ui.viewState carries the appearance in use (#60).
+   dirtyCheckpoint_=true;checkpointDelay_.start();
    connect(main_.get(),&MainWindow::quitRequested,this,&UiApplicationController::requestQuit);
    connect(main_.get(),&MainWindow::actionRequested,this,&UiApplicationController::requestAction);
    connect(main_.get(),&MainWindow::editRequested,this,&UiApplicationController::requestEdit);
+   connect(main_.get(),&MainWindow::aboutRequested,this,[this]{if(auto* about=view("about")){openViews_.insert(about);about->show();about->raise();about->activateWindow();}});
   }
   // The tray's "Edit image > From a file" shows the main window, then its picker.
   if(name=="editFile"){QTimer::singleShot(0,main_.get(),[main=QPointer<MainWindow>(main_.get())]{if(main)main->chooseImageToEdit();});return main_.get();}
+  // Scrolled once the window is shown and laid out, as editFile opens its picker.
+  if(name=="captureSettings"){main_->navigate("settings");QTimer::singleShot(0,main_.get(),[main=QPointer<MainWindow>(main_.get())]{if(main)main->showCaptureSettings();});return main_.get();}
+  if(name=="updates"){main_->navigate("settings");QTimer::singleShot(0,main_.get(),[main=QPointer<MainWindow>(main_.get())]{if(main)main->settings()->showUpdates();});return main_.get();}
+  if(name=="historyFailed"){main_->navigate("history");main_->history()->showFailedUploads();return main_.get();}
+  if(name.startsWith("historyCancelAll:")){QStringList ids;for(const auto& id:QJsonDocument::fromJson(name.mid(17).toUtf8()).array())if(id.isString())ids<<id.toString();main_->navigate("history");QTimer::singleShot(0,main_.get(),[main=QPointer<MainWindow>(main_.get()),ids]{if(main)main->history()->confirmUploads(ids);});return main_.get();}
+  if(name.startsWith("actionRecovery:")){const auto data=QJsonDocument::fromJson(name.mid(15).toUtf8()).object();main_->showActionFailure(data["action"].toString(),{data["code"].toString(),data["message"].toString(),{}});return main_.get();}
   main_->navigate(name);return main_.get();
  }
  if(name=="about"){
@@ -73,9 +103,22 @@ QWidget* UiApplicationController::view(const QString& name){
  }
  return nullptr;
 }
+void UiApplicationController::followAppearance(){
+ const auto accepted=session_.document()["preferences"].toObject()["appearance"].toObject()["theme"].toString("system");
+ // Settings ends the preview once its save settles: accepted, refused or discarded.
+ appearance_.setPreference(themePreview_.isEmpty()?accepted:themePreview_);
+}
 QJsonObject UiApplicationController::snapshot()const{
- auto state=saved_;state["schemaVersion"]=1;
- if(main_){state["settings"]=main_->settings()->saveViewState();state["history"]=main_->history()->saveViewState();state["main"]=main_->saveViewState();}
+ auto state=saved_;state["schemaVersion"]=1;state["appearance"]=appearance_.state();
+ if(main_){
+  if(auto* settings=main_->existingSettings())state["settings"]=settings->saveViewState();
+  else if(state.contains("settings")){
+   // Keep the recoverable clean draft, but no longer claim its old widget
+   // projection describes Settings that have not been constructed this time.
+   auto retained=state["settings"].toObject();retained.remove("captureRouting");state["settings"]=retained;
+  }
+  state["history"]=main_->history()->saveViewState();state["main"]=main_->saveViewState();
+ }
  return state;
 }
 void UiApplicationController::checkpoint(){
@@ -96,7 +139,7 @@ void UiApplicationController::notify(const Error& error){
 }
 void UiApplicationController::allowClose(){
  exiting_=true;actionDelay_.stop();captureDelay_.stop();pendingAction_.clear();checkpointDelay_.stop();closeDeadline_.stop();
- if(main_)main_->settings()->clearCredentialInputs();
+ if(main_&&main_->existingSettings())main_->existingSettings()->clearCredentialInputs();
  if(main_)main_->history()->releasePreview();
  emit exitRequested();
 }
@@ -120,9 +163,38 @@ void UiApplicationController::receive(const QString& type,const QString& sequenc
   auto* window=closing_||!pendingAction_.isEmpty()?nullptr:view(name);
   if(!window){control_.send("activationFailed",{{"replyTo",sequence},{"view",name}});return;}
   openViews_.insert(window);
-  if(window->isMinimized())window->showNormal();else window->show();
-  window->raise();window->activateWindow();
+  // A tray click's xdg-activation token lets Wayland bring the window forward (#657).
+  putgd::activateWindow(window,payload["activationToken"].toString());
   control_.send("shown",{{"replyTo",sequence},{"view",name}});return;
+ }
+ if(type=="command"){
+  // Agent control of an open view; unknown commands are refused, not ignored.
+  const auto name=payload["command"].toString();const auto params=payload["params"].toObject();
+  auto answer=[guard=QPointer<UiApplicationController>(this),sequence](Error error,QJsonObject result){if(guard&&!guard->exiting_)guard->control_.send("commandResult",{{"replyTo",sequence},{"error",error.toJson()},{"result",result}});};
+  Error error;QJsonObject result;
+  if(payload["version"]!=1)error={"ui_command_unsupported","This window does not support that command version.",{{"version",payload["version"]}}};
+  else if(!QStringList{"moveDestination","diagnostics","historySaveDiagnostics","history","fileDialog"}.contains(name))error={"ui_command_unknown","This window does not support that command.",{}};
+  else if(!main_||!main_->isVisible()||closing_)error={"ui_view_closed",name=="historySaveDiagnostics"||name=="history"?"Open History before driving it.":name=="fileDialog"?"Open put.gd's window (History or Settings) before driving it.":"Open Settings before driving it.",{}};
+  // #259: the open, save and folder choosers, as their buttons open them.
+  else if(name=="fileDialog"){
+   const auto dialog=params["dialog"].toString(),action=params["action"].toString();
+   auto withDialog=[answer,dialog](Error e,QJsonObject r){if(!e)r["dialog"]=dialog;answer(e,r);};
+   if(dialog=="editImage"){
+    auto& chooser=main_->editImageDialog();
+    if(action=="open"&&chooser.isOpen()){withDialog({"file_dialog_open","Edit an image file is already open.",{}},{});return;}
+    if(action=="open")main_->chooseImageToEdit();else if(action=="cancel")chooser.cancel();
+    withDialog({},chooser.state());return;
+   }
+   if(dialog=="historySaveAs"){main_->history()->saveAsDialogCommand(action,params["id"].toString(),withDialog);return;}
+   if(action=="open"&&dialog=="outputFolder")main_->navigate("settings");
+   main_->settings()->fileDialogCommand(dialog,action,params["field"].toString(),withDialog);return;
+  }
+  // These finish asynchronously (a session request) and answer through `answer`.
+  else if(name=="diagnostics"){main_->settings()->diagnosticsCommand(params,answer);return;}
+  else if(name=="historySaveDiagnostics"){main_->history()->saveDiagnosticsFor(params["id"].toString(),answer);return;}
+  else if(name=="history"){main_->history()->command(params,answer);return;}
+  else error=main_->settings()->moveSelectedDestination(params["direction"].toString()=="up"?-1:1,params["profileId"].toString(),result);
+  answer(error,result);return;
  }
  if(type=="invalidated"){
   QPointer<UiApplicationController> guard(this);
@@ -168,14 +240,14 @@ bool UiApplicationController::eventFilter(QObject* object,QEvent* event){
  auto* close=static_cast<QCloseEvent*>(event);
  if(window==main_.get()&&!actionDispatching_&&!pendingAction_.isEmpty())clearPendingAction(true);
  if(closing_){close->ignore();return true;}
- if(window==main_.get()&&!main_->settings()->flushAutosave()){close->ignore();QTimer::singleShot(40,this,[guard=QPointer<QWidget>(window)]{if(guard)guard->close();});return true;}
+ if(window==main_.get()&&main_->existingSettings()&&!main_->existingSettings()->flushAutosave()){close->ignore();QTimer::singleShot(40,this,[guard=QPointer<QWidget>(window)]{if(guard)guard->close();});return true;}
  // Native dialogs and transient children must finish before their owning view.
  if(QApplication::activeModalWidget()||QGuiApplication::modalWindow()){close->ignore();return true;}
  for(auto* child:window->findChildren<QWidget*>())if(child->isWindow()&&child->isVisible()){close->ignore();return true;}
  if(auto* native=window->windowHandle())for(auto* child:QGuiApplication::allWindows())
   if(child->isVisible())for(auto* parent=child->transientParent();parent;parent=parent->transientParent())
    if(parent==native){close->ignore();return true;}
- if(window==main_.get()){main_->settings()->clearCredentialInputs();main_->history()->releasePreview();}
+ if(window==main_.get()){if(auto* settings=main_->existingSettings())settings->clearCredentialInputs();main_->history()->releasePreview();}
  if(openViews_.size()>(openViews_.contains(window)?1:0)){
   openViews_.remove(window);dirtyCheckpoint_=true;checkpointDelay_.start();return QObject::eventFilter(object,event);
  }
@@ -186,7 +258,7 @@ void UiApplicationController::clearPendingAction(bool restore){
  if(restore)for(auto window:windows)if(window){openViews_.insert(window);window->show();window->raise();window->activateWindow();}
 }
 void UiApplicationController::requestAction(const QString& action){
- if(exiting_||quitting_||closing_||!pendingAction_.isEmpty()||!Settings::actionNames().contains(action))return;
+ if(exiting_||quitting_||closing_||!pendingAction_.isEmpty()||!Settings::invocableActionNames().contains(action))return;
  pendingAction_=action;pendingOptions_={};prepareAction();
 }
 void UiApplicationController::requestEdit(const QString& source,const QString& path){
@@ -195,11 +267,11 @@ void UiApplicationController::requestEdit(const QString& source,const QString& p
 }
 void UiApplicationController::prepareAction(){
  if(exiting_||quitting_||closing_||pendingAction_.isEmpty()){pendingAction_.clear();return;}
- if(main_&&!main_->settings()->flushAutosave()){actionDelay_.start();return;}
- if(main_)if(const auto error=main_->settings()->actionSaveError();error){pendingAction_.clear();notify(error);return;}
+ if(main_&&main_->existingSettings()&&!main_->existingSettings()->flushAutosave()){actionDelay_.start();return;}
+ if(main_&&main_->existingSettings())if(const auto error=main_->existingSettings()->actionSaveError();error){pendingAction_.clear();notify(error);return;}
  // Clipboard and file sources capture nothing, so windows stay in place.
  const bool screen=pendingAction_!="clipboard"&&!pendingOptions_.contains("source");
- if(screen&&main_&&main_->settings()->hasCredentialInputs()){
+ if(screen&&main_&&main_->existingSettings()&&main_->existingSettings()->hasCredentialInputs()){
   pendingAction_.clear();notify({"credentials_not_stored","Store or clear unfinished credentials in Destinations before taking a screen capture.",{}});return;
  }
  if(const auto error=validateUiState(snapshot());error){pendingAction_.clear();notify(error);return;}
@@ -225,7 +297,7 @@ void UiApplicationController::invokeAction(){
 void UiApplicationController::requestQuit(){
  if(quitting_||exiting_)return;
  if(!actionDispatching_)clearPendingAction(true);
- if(main_&&!main_->settings()->flushAutosave()){quitDelay_.start();return;}
+ if(main_&&main_->existingSettings()&&!main_->existingSettings()->flushAutosave()){quitDelay_.start();return;}
  quitting_=true;
  session_.request("ui.quit",{},this,[this](Error error,QJsonObject){if(error){quitting_=false;notify(error);}});
 }

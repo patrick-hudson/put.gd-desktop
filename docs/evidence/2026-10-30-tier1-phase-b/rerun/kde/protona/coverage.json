@@ -1,0 +1,414 @@
+{
+  "schemaVersion": 2,
+  "campaign": "tier1-phase-b-rerun",
+  "entries": [
+    {
+      "interaction": "region.to-upload",
+      "desktop": "kubuntu-kde-wayland",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/patrick/t1r2e/kde-protona/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; desktop frame independent-frozen-pattern masked by live evidence policy; operationId=3feb0d31-7334-46e5-9eea-cee2e20cbf24; Capture operation 3feb0d31-7334-46e5-9eea-cee2e20cbf24; shareOperationId=7db4e5ca-e002-41dc-94b4-db92cea8f193; operationId=3feb0d31-7334-46e5-9eea-cee2e20cbf24; historyId=a79ca6a4-fe98-4ec7-8716-c17a6b3745b4; upload_count=1; Retained synthetic png sha256=fbb7dea98f63d499b349e3c21a6c43a5f5ed430cd4f2f6bc9e351fede77e7f76; {\"url_host\": \"drive.proton.me\", \"title\": \"Screen-Capture-2026-10-31-00-02-49.png\", \"matched\": true}; Target browser helper: Recipient download deadline: {\"blobPreview\": true, \"downloadError\": false, \"downloading\": false, \"focused\": true, \"serviceWorkerAPI\": true}; Firefox handler restored; MIME SHA-256 checks passed; shareOperationId=f09496b6-97fe-43fb-af5a-8e743ea45b16; revocation_count=1; desktop frame after masked by live evidence policy; driver error: RuntimeError",
+      "host": "f44",
+      "placement": "guest",
+      "guest": "kde-wayland",
+      "destination": "proton",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes_live.proton_region_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "independent-frozen-pattern",
+          "path": "frames/outcomes_live.proton_region_upload/01-independent-frozen-pattern.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-content",
+          "path": "frames/outcomes_live.proton_region_upload/02-browser-content.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "revoke-exact-owned-link",
+          "path": "frames/outcomes_live.proton_region_upload/03-revoke-exact-owned-link.png",
+          "window": "confirmAction",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-after-remote-cleanup",
+          "path": "frames/outcomes_live.proton_region_upload/04-history-after-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes_live.proton_region_upload/05-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes_live.proton_region_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T05:06:16Z"
+    },
+    {
+      "interaction": "region.drag",
+      "desktop": "kubuntu-kde-wayland",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/patrick/t1r2e/kde-protona/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; desktop frame independent-frozen-pattern masked by live evidence policy; operationId=3feb0d31-7334-46e5-9eea-cee2e20cbf24; Capture operation 3feb0d31-7334-46e5-9eea-cee2e20cbf24; shareOperationId=7db4e5ca-e002-41dc-94b4-db92cea8f193; operationId=3feb0d31-7334-46e5-9eea-cee2e20cbf24; historyId=a79ca6a4-fe98-4ec7-8716-c17a6b3745b4; upload_count=1; Retained synthetic png sha256=fbb7dea98f63d499b349e3c21a6c43a5f5ed430cd4f2f6bc9e351fede77e7f76; {\"url_host\": \"drive.proton.me\", \"title\": \"Screen-Capture-2026-10-31-00-02-49.png\", \"matched\": true}; Target browser helper: Recipient download deadline: {\"blobPreview\": true, \"downloadError\": false, \"downloading\": false, \"focused\": true, \"serviceWorkerAPI\": true}; Firefox handler restored; MIME SHA-256 checks passed; shareOperationId=f09496b6-97fe-43fb-af5a-8e743ea45b16; revocation_count=1; desktop frame after masked by live evidence policy; driver error: RuntimeError",
+      "host": "f44",
+      "placement": "guest",
+      "guest": "kde-wayland",
+      "destination": "proton",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes_live.proton_region_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "independent-frozen-pattern",
+          "path": "frames/outcomes_live.proton_region_upload/01-independent-frozen-pattern.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-content",
+          "path": "frames/outcomes_live.proton_region_upload/02-browser-content.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "revoke-exact-owned-link",
+          "path": "frames/outcomes_live.proton_region_upload/03-revoke-exact-owned-link.png",
+          "window": "confirmAction",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-after-remote-cleanup",
+          "path": "frames/outcomes_live.proton_region_upload/04-history-after-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes_live.proton_region_upload/05-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes_live.proton_region_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T05:06:16Z"
+    },
+    {
+      "interaction": "history.copy-link",
+      "desktop": "kubuntu-kde-wayland",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/patrick/t1r2e/kde-protona/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; desktop frame independent-frozen-pattern masked by live evidence policy; operationId=3feb0d31-7334-46e5-9eea-cee2e20cbf24; Capture operation 3feb0d31-7334-46e5-9eea-cee2e20cbf24; shareOperationId=7db4e5ca-e002-41dc-94b4-db92cea8f193; operationId=3feb0d31-7334-46e5-9eea-cee2e20cbf24; historyId=a79ca6a4-fe98-4ec7-8716-c17a6b3745b4; upload_count=1; Retained synthetic png sha256=fbb7dea98f63d499b349e3c21a6c43a5f5ed430cd4f2f6bc9e351fede77e7f76; {\"url_host\": \"drive.proton.me\", \"title\": \"Screen-Capture-2026-10-31-00-02-49.png\", \"matched\": true}; Target browser helper: Recipient download deadline: {\"blobPreview\": true, \"downloadError\": false, \"downloading\": false, \"focused\": true, \"serviceWorkerAPI\": true}; Firefox handler restored; MIME SHA-256 checks passed; shareOperationId=f09496b6-97fe-43fb-af5a-8e743ea45b16; revocation_count=1; desktop frame after masked by live evidence policy; driver error: RuntimeError",
+      "host": "f44",
+      "placement": "guest",
+      "guest": "kde-wayland",
+      "destination": "proton",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes_live.proton_region_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "independent-frozen-pattern",
+          "path": "frames/outcomes_live.proton_region_upload/01-independent-frozen-pattern.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-content",
+          "path": "frames/outcomes_live.proton_region_upload/02-browser-content.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "revoke-exact-owned-link",
+          "path": "frames/outcomes_live.proton_region_upload/03-revoke-exact-owned-link.png",
+          "window": "confirmAction",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-after-remote-cleanup",
+          "path": "frames/outcomes_live.proton_region_upload/04-history-after-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes_live.proton_region_upload/05-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes_live.proton_region_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T05:06:16Z"
+    },
+    {
+      "interaction": "history.open-link",
+      "desktop": "kubuntu-kde-wayland",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/patrick/t1r2e/kde-protona/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; desktop frame independent-frozen-pattern masked by live evidence policy; operationId=3feb0d31-7334-46e5-9eea-cee2e20cbf24; Capture operation 3feb0d31-7334-46e5-9eea-cee2e20cbf24; shareOperationId=7db4e5ca-e002-41dc-94b4-db92cea8f193; operationId=3feb0d31-7334-46e5-9eea-cee2e20cbf24; historyId=a79ca6a4-fe98-4ec7-8716-c17a6b3745b4; upload_count=1; Retained synthetic png sha256=fbb7dea98f63d499b349e3c21a6c43a5f5ed430cd4f2f6bc9e351fede77e7f76; {\"url_host\": \"drive.proton.me\", \"title\": \"Screen-Capture-2026-10-31-00-02-49.png\", \"matched\": true}; Target browser helper: Recipient download deadline: {\"blobPreview\": true, \"downloadError\": false, \"downloading\": false, \"focused\": true, \"serviceWorkerAPI\": true}; Firefox handler restored; MIME SHA-256 checks passed; shareOperationId=f09496b6-97fe-43fb-af5a-8e743ea45b16; revocation_count=1; desktop frame after masked by live evidence policy; driver error: RuntimeError",
+      "host": "f44",
+      "placement": "guest",
+      "guest": "kde-wayland",
+      "destination": "proton",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes_live.proton_region_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "independent-frozen-pattern",
+          "path": "frames/outcomes_live.proton_region_upload/01-independent-frozen-pattern.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-content",
+          "path": "frames/outcomes_live.proton_region_upload/02-browser-content.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "revoke-exact-owned-link",
+          "path": "frames/outcomes_live.proton_region_upload/03-revoke-exact-owned-link.png",
+          "window": "confirmAction",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-after-remote-cleanup",
+          "path": "frames/outcomes_live.proton_region_upload/04-history-after-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes_live.proton_region_upload/05-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes_live.proton_region_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T05:06:16Z"
+    },
+    {
+      "interaction": "history.proton-sharing",
+      "desktop": "kubuntu-kde-wayland",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/patrick/t1r2e/kde-protona/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; desktop frame independent-frozen-pattern masked by live evidence policy; operationId=3feb0d31-7334-46e5-9eea-cee2e20cbf24; Capture operation 3feb0d31-7334-46e5-9eea-cee2e20cbf24; shareOperationId=7db4e5ca-e002-41dc-94b4-db92cea8f193; operationId=3feb0d31-7334-46e5-9eea-cee2e20cbf24; historyId=a79ca6a4-fe98-4ec7-8716-c17a6b3745b4; upload_count=1; Retained synthetic png sha256=fbb7dea98f63d499b349e3c21a6c43a5f5ed430cd4f2f6bc9e351fede77e7f76; {\"url_host\": \"drive.proton.me\", \"title\": \"Screen-Capture-2026-10-31-00-02-49.png\", \"matched\": true}; Target browser helper: Recipient download deadline: {\"blobPreview\": true, \"downloadError\": false, \"downloading\": false, \"focused\": true, \"serviceWorkerAPI\": true}; Firefox handler restored; MIME SHA-256 checks passed; shareOperationId=f09496b6-97fe-43fb-af5a-8e743ea45b16; revocation_count=1; desktop frame after masked by live evidence policy; driver error: RuntimeError",
+      "host": "f44",
+      "placement": "guest",
+      "guest": "kde-wayland",
+      "destination": "proton",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes_live.proton_region_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "independent-frozen-pattern",
+          "path": "frames/outcomes_live.proton_region_upload/01-independent-frozen-pattern.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-content",
+          "path": "frames/outcomes_live.proton_region_upload/02-browser-content.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "revoke-exact-owned-link",
+          "path": "frames/outcomes_live.proton_region_upload/03-revoke-exact-owned-link.png",
+          "window": "confirmAction",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-after-remote-cleanup",
+          "path": "frames/outcomes_live.proton_region_upload/04-history-after-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes_live.proton_region_upload/05-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes_live.proton_region_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T05:06:16Z"
+    },
+    {
+      "interaction": "confirm.revoke-link",
+      "desktop": "kubuntu-kde-wayland",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/patrick/t1r2e/kde-protona/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; desktop frame independent-frozen-pattern masked by live evidence policy; operationId=3feb0d31-7334-46e5-9eea-cee2e20cbf24; Capture operation 3feb0d31-7334-46e5-9eea-cee2e20cbf24; shareOperationId=7db4e5ca-e002-41dc-94b4-db92cea8f193; operationId=3feb0d31-7334-46e5-9eea-cee2e20cbf24; historyId=a79ca6a4-fe98-4ec7-8716-c17a6b3745b4; upload_count=1; Retained synthetic png sha256=fbb7dea98f63d499b349e3c21a6c43a5f5ed430cd4f2f6bc9e351fede77e7f76; {\"url_host\": \"drive.proton.me\", \"title\": \"Screen-Capture-2026-10-31-00-02-49.png\", \"matched\": true}; Target browser helper: Recipient download deadline: {\"blobPreview\": true, \"downloadError\": false, \"downloading\": false, \"focused\": true, \"serviceWorkerAPI\": true}; Firefox handler restored; MIME SHA-256 checks passed; shareOperationId=f09496b6-97fe-43fb-af5a-8e743ea45b16; revocation_count=1; desktop frame after masked by live evidence policy; driver error: RuntimeError",
+      "host": "f44",
+      "placement": "guest",
+      "guest": "kde-wayland",
+      "destination": "proton",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes_live.proton_region_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "independent-frozen-pattern",
+          "path": "frames/outcomes_live.proton_region_upload/01-independent-frozen-pattern.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-content",
+          "path": "frames/outcomes_live.proton_region_upload/02-browser-content.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "revoke-exact-owned-link",
+          "path": "frames/outcomes_live.proton_region_upload/03-revoke-exact-owned-link.png",
+          "window": "confirmAction",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-after-remote-cleanup",
+          "path": "frames/outcomes_live.proton_region_upload/04-history-after-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes_live.proton_region_upload/05-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes_live.proton_region_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T05:06:16Z"
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+ "schemaVersion": 1,
+ "kind": "vm-overlay-cleanup-evidence",
+ "run": "/home/user/rc817/src/work/lab-runs/g2",
+ "runId": "158a532e-34ff-45b2-89fe-7f3089df5e40",
+ "completed": true,
+ "outcome": "failed",
+ "files": {
+  "completion.json": "645c7c0da0291c7ce606d6eef2ebd262130561c8da2a76359ed6fec4b8ae904a",
+  "g2-install.json": "74ac3b88bab3b05f756bcfa9bc5bb8d5690fb002c32d1ffaff453fb31ad99591",
+  "g2-lane-redecode.json": "99c06f5a94efa0e4ea31b5facbe5c46bb485ff03e4979d563acb300faedd5041",
+  "g2-launch.json": "d2d2b991b3785b01b2d7fe3018d99a61ee77b743d967f3cfca7e43569419f92a",
+  "receipt.json": "17505679138ec6b54b12a045048a10f20672d60787dd310f34724d2da5cbe146"
+ }
+}

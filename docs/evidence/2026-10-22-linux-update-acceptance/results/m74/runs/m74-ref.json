@@ -1,0 +1,160 @@
+{
+ "name": "m74-ref",
+ "tool": null,
+ "live": true,
+ "image": "/home/patrick/work/put.gd-ua/app/runs/m74-ref/apps/putgd-26.1022.1017-nightly-x86_64.AppImage",
+ "imageSha256": "005762e9ede991c78fce115707a41617d899d7870738fb525151c182357b7c3a",
+ "cliDir": "/home/patrick/work/put.gd-ua/app/runs/m74-ref/cli/squashfs-root",
+ "runtime": "/tmp/ua-app.ViX06n",
+ "session": {
+  "HOME": "/home/patrick",
+  "PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin",
+  "USER": "patrick",
+  "LANG": "en_US.UTF-8",
+  "DISPLAY": ":0",
+  "XAUTHORITY": "/home/patrick/.Xauthority",
+  "DBUS_SESSION_BUS_ADDRESS": "unix:path=/run/user/1000/bus",
+  "XDG_SESSION_TYPE": "x11",
+  "XDG_CURRENT_DESKTOP": "X-Cinnamon",
+  "XDG_SESSION_DESKTOP": "cinnamon",
+  "DESKTOP_SESSION": "cinnamon",
+  "XDG_DATA_DIRS": "/usr/share/cinnamon:/home/patrick/.local/share/flatpak/exports/share:/var/lib/flatpak/exports/share:/usr/local/share:/usr/share"
+ },
+ "shell": "cinnamon",
+ "hostPath": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin",
+ "host": "mint-builder",
+ "vnc": 5900,
+ "urls": {},
+ "input": "xdotool",
+ "before": {
+  "dataPutgd": false,
+  "homePutgd": {
+   "/home/patrick/.config/putgd": false,
+   "/home/patrick/.local/state/putgd": true,
+   "/home/patrick/.cache/putgd": false
+  },
+  "autostart": []
+ },
+ "pids": {
+  "apprun": 436712
+ },
+ "created": "2026-10-23T00:26:33Z",
+ "log": [
+  {
+   "at": "2026-10-23T00:26:38Z",
+   "start": {
+    "pid": 436502,
+    "status": {
+     "build": "26.1022.1017-nightly",
+     "channel": "nightly",
+     "latest": null,
+     "updateAvailable": null,
+     "install": {
+      "available": true,
+      "backup": null,
+      "image": "/home/patrick/work/put.gd-ua/app/runs/m74-ref/apps/putgd-26.1022.1017-nightly-x86_64.AppImage",
+      "installed": null,
+      "kind": "update",
+      "reason": null,
+      "restartRequired": false,
+      "running": false,
+      "state": "idle",
+      "switch": null
+     }
+    },
+    "frame": "/home/patrick/work/put.gd-ua/app/runs/m74-ref/frames/u12-0-start.png"
+   }
+  },
+  {
+   "at": "2026-10-23T00:26:58Z",
+   "tamper": {
+    "base": "http://127.0.0.1:54857/releases",
+    "source": "live",
+    "tag": "v26.1022.1019-nightly",
+    "results": {
+     "image": {
+      "reply": true,
+      "state": "failed",
+      "error": {
+       "code": "update_verification_failed",
+       "details": {
+        "actual": "0deacba31edf17004dc8f62d92ca0a35f129d2dc4e871cb36a12eab47a701003",
+        "check": "sha256",
+        "expected": "e5b7ad2caecaa7f5737bdfb5d2f0fd4e3c74ce5d98a8a68142caf4efd43525bc",
+        "source": "release"
+       },
+       "message": "The download doesn't match the release's SHA256SUMS; nothing was changed"
+      },
+      "imageSha256": "005762e9ede991c78fce115707a41617d899d7870738fb525151c182357b7c3a",
+      "folder": [
+       "putgd-26.1022.1017-nightly-x86_64.AppImage"
+      ],
+      "frame": "/home/patrick/work/put.gd-ua/app/runs/m74-ref/frames/tamper-image.png"
+     },
+     "unsigned": {
+      "reply": true,
+      "state": "failed",
+      "error": {
+       "code": "update_signature_invalid",
+       "details": {
+        "check": "missing",
+        "httpStatus": 404,
+        "network": "Error transferring http://127.0.0.1:54857/releases/v26.1022.1019-nightly/SHA256SUMS.minisig - server replied: Not Found",
+        "tooLarge": false,
+        "url": "http://127.0.0.1:54857/releases/v26.1022.1019-nightly/SHA256SUMS.minisig"
+       },
+       "message": "The release's SHA256SUMS has no signature; nothing was changed"
+      },
+      "imageSha256": "005762e9ede991c78fce115707a41617d899d7870738fb525151c182357b7c3a",
+      "folder": [
+       "putgd-26.1022.1017-nightly-x86_64.AppImage"
+      ],
+      "frame": "/home/patrick/work/put.gd-ua/app/runs/m74-ref/frames/tamper-unsigned.png"
+     },
+     "sums": {
+      "reply": true,
+      "state": "failed",
+      "error": {
+       "code": "update_signature_invalid",
+       "details": {
+        "check": "signature"
+       },
+       "message": "The release's SHA256SUMS signature isn't valid (the signature doesn't match); nothing was changed"
+      },
+      "imageSha256": "005762e9ede991c78fce115707a41617d899d7870738fb525151c182357b7c3a",
+      "folder": [
+       "putgd-26.1022.1017-nightly-x86_64.AppImage"
+      ],
+      "frame": "/home/patrick/work/put.gd-ua/app/runs/m74-ref/frames/tamper-sums.png"
+     }
+    },
+    "unchanged": true
+   }
+  },
+  {
+   "at": "2026-10-23T00:27:03Z",
+   "start": {
+    "pid": 436712,
+    "status": {
+     "build": "26.1022.1017-nightly",
+     "channel": "nightly",
+     "latest": "26.1022.1019-nightly",
+     "updateAvailable": true,
+     "install": {
+      "available": true,
+      "backup": null,
+      "image": "/home/patrick/work/put.gd-ua/app/runs/m74-ref/apps/putgd-26.1022.1017-nightly-x86_64.AppImage",
+      "installed": null,
+      "kind": "update",
+      "reason": null,
+      "restartRequired": false,
+      "running": false,
+      "state": "idle",
+      "switch": null
+     }
+    },
+    "frame": "/home/patrick/work/put.gd-ua/app/runs/m74-ref/frames/u12-9-after-tamper.png"
+   }
+  }
+ ]
+}

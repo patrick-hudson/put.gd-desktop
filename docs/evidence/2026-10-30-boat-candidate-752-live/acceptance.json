@@ -1,0 +1,75 @@
+{
+  "verifiedAt": 1793335151.3681598,
+  "source": "0c329b0692cadc52f03f91e59c06c5eda760bf04",
+  "runs": {
+    "run-a": {
+      "passed": false,
+      "nonce": "02818a97bfa24edb",
+      "fileChecksumsVerified": 483,
+      "sandboxIds": [
+        "bx_2mxrfaus",
+        "bx_6pqd83aj",
+        "bx_8433k57e",
+        "bx_dgzpjwxg",
+        "bx_jw76a9k5",
+        "bx_qhchvm59",
+        "bx_v424zbpc"
+      ],
+      "fixtureSha256": "0f82b7a274d73ceb2841394a044bcd548ae74231c00b8d6587fd9938a5bce5ba"
+    },
+    "run-b": {
+      "passed": true,
+      "nonce": "67399a311ac84036",
+      "fileChecksumsVerified": 490,
+      "sandboxIds": [
+        "bx_7c8htxrs",
+        "bx_8sw9mgjx",
+        "bx_bdpqgcxs",
+        "bx_hjn2tpdq",
+        "bx_pm48s29k",
+        "bx_yxz2d7mn",
+        "bx_zpwdkszn"
+      ],
+      "fixtureSha256": "7f9e985e7219a85b740480d0d019439ebe9f142997b5541d969d4dca5d572723"
+    },
+    "ubuntu26Recovery": {
+      "state": "passed",
+      "sandboxId": "bx_jw76a9k5",
+      "fileChecksumsVerified": 7,
+      "originalControllerPreservedFailed": true
+    }
+  },
+  "disjointOwnedSets": true,
+  "all21StartsAccountedFor": true,
+  "all21OwnedIdsAbsent": [
+    "bx_2mxrfaus",
+    "bx_6pqd83aj",
+    "bx_7c8htxrs",
+    "bx_8433k57e",
+    "bx_8fj78ujy",
+    "bx_8sw9mgjx",
+    "bx_8td92cd8",
+    "bx_bbz3c2up",
+    "bx_bdpqgcxs",
+    "bx_dgzpjwxg",
+    "bx_h8r5kvwp",
+    "bx_hjn2tpdq",
+    "bx_jw76a9k5",
+    "bx_p924fy6j",
+    "bx_pm48s29k",
+    "bx_qhchvm59",
+    "bx_uwncq6e9",
+    "bx_v424zbpc",
+    "bx_vjg77375",
+    "bx_yxz2d7mn",
+    "bx_zpwdkszn"
+  ],
+  "listPageInfo": {
+    "hasMore": false,
+    "limit": 200,
+    "nextCursor": null
+  },
+  "unrelatedSandboxesAtFinalList": 26,
+  "unrelatedInitialIdsNeverDeleted": true,
+  "namedSnapshotsNeverDeleted": true
+}

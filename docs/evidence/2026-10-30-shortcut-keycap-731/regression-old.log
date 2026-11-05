@@ -1,0 +1,16 @@
+********* Start testing of SettingsGui *********
+Config: Using QtTest library 6.4.2, Qt 6.4.2 (x86_64-little_endian-lp64 shared (dynamic) release build; by GCC 13.2.0), ubuntu 24.04
+PASS   : SettingsGui::initTestCase()
+QWARN  : SettingsGui::shortcutSecondMouseClickCancelsRecording(preparing) putgd wait: transitions == QList<bool>({true,false}) still false after 5050 ms (budget 5000 ms x scale 1.00) at /home/user/work/s731/tests/gui/test_settings.cpp:1672
+FAIL!  : SettingsGui::shortcutSecondMouseClickCancelsRecording(preparing) Compared lists have different sizes.
+   Actual   (transitions) size: 3
+   Expected (QList<bool>({true,false})) size: 2
+   Loc: [/home/user/work/s731/tests/gui/test_settings.cpp(1672)]
+QWARN  : SettingsGui::shortcutSecondMouseClickCancelsRecording(ready) putgd wait: transitions == QList<bool>({true,false}) still false after 5053 ms (budget 5000 ms x scale 1.00) at /home/user/work/s731/tests/gui/test_settings.cpp:1672
+FAIL!  : SettingsGui::shortcutSecondMouseClickCancelsRecording(ready) Compared lists have different sizes.
+   Actual   (transitions) size: 3
+   Expected (QList<bool>({true,false})) size: 2
+   Loc: [/home/user/work/s731/tests/gui/test_settings.cpp(1672)]
+PASS   : SettingsGui::cleanupTestCase()
+Totals: 2 passed, 2 failed, 0 skipped, 0 blacklisted, 10138ms
+********* Finished testing of SettingsGui *********

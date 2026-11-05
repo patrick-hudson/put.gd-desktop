@@ -1,0 +1,7 @@
+{
+  "schemaVersion": 1,
+  "status": "unavailable",
+  "reason": "The original dry-run receipt is unavailable. The retained preview (and its private archive copy) was byte-identical to cinnamon-cleanup.json. The export helper rewrote the preview whenever it was not already 'completed', and a dry run against an already-retired overlay returns the completed receipt, which matches that copy. The completed receipt below is the cleanup record.",
+  "completedReceipt": "cinnamon-cleanup.json",
+  "completedReceiptSha256": "ac86c7ec0ca059c1980654350293906d1c48a842bafe669d2115b0f40d25ae1b"
+}

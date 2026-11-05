@@ -1,0 +1,22 @@
+Traceback (most recent call last):
+  File "/home/lab/work/put.gd-nfa/tool/nfa.py", line 1047, in <module>
+    main()
+    ~~~~^^
+  File "/home/lab/work/put.gd-nfa/tool/nfa.py", line 1006, in main
+    return afa.main()
+           ~~~~~~~~^^
+  File "/home/lab/work/put.gd-nfa/tool/afa.py", line 1465, in main
+    {'identity': identity, 'versions': versions, 'setup': setup, 'start': start, 'memory': memory, 'tray-menu': tray_menu, 'history': history,
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+     'delete': delete, 'settings': settings, 'cleanup': cleanup, 'processes': processes, 'baseline': baseline, 'shot': shot, 'click': click,
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+     'tray-click': tray_click, 'switcher': switcher, 'find-tray': find_tray, 'allow-full': allow_full, 'window': window, 'cover': cover, 'capture': capture, 'edit': edit, 'notify': notify, 'record': record,
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+     'control': control, 'update-check': update_check, 'login': login, 'quit-tray': quit_tray, 'recorder-check': recorder_check}[args.cmd](args)
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "/home/lab/work/put.gd-nfa/tool/nfa.py", line 239, in guarded
+    return _original(args)
+  File "/home/lab/work/put.gd-nfa/tool/afa.py", line 908, in capture
+    item = (op or {}).get('items', [{}])[0] if op else {}
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^
+IndexError: list index out of range

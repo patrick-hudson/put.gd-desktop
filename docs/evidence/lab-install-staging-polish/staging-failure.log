@@ -1,0 +1,5 @@
+Reading package lists...
+W: Unable to read /etc/apt/-/ - DirectoryExists (2: No such file or directory)
+W: Unable to read /dev/null - RealFileExists (2: No such file or directory)
+E: Could not get lock /var/lib/apt/lists/lock. It is held by process 2096 (python3)
+E: Unable to lock directory /var/lib/apt/lists/

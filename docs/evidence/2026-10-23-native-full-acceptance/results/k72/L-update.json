@@ -1,0 +1,112 @@
+{
+ "label": "l-update",
+ "command": [
+  "apt-get",
+  "update"
+ ],
+ "before": {
+  "at": "2026-10-23T05:30:38Z",
+  "host": "kubuntu",
+  "package": {
+   "manager": "dpkg",
+   "status": null,
+   "version": null
+  },
+  "files": {
+   "/etc/apt/sources.list.d/putgd.sources": {
+    "sha256": "5d5b79d0154fed9099c42beea5183e41876ba36920bed6ed45a747523d5cc852",
+    "bytes": 2036,
+    "mode": "0o644",
+    "mtime": "2026-10-23T05:30:38Z"
+   },
+   "/usr/share/keyrings/putgd-archive-keyring.gpg": {
+    "sha256": "76ab1b64e8a1d9504d3922fa44b116d6eb3c680e788be9cec46e106cd5258339",
+    "bytes": 1170,
+    "mode": "0o644",
+    "mtime": "2026-10-23T05:30:38Z"
+   },
+   "/etc/yum.repos.d/putgd.repo": null,
+   "/etc/yum.repos.d/putgd.repo.rpmsave": null,
+   "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd": null,
+   "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-nightly": null,
+   "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-stable": null,
+   "/usr/share/gnome-shell/extensions/putgd@put.gd/metadata.json": null
+  },
+  "defaultProfile": {
+   "/home/patrick/.config/putgd": null,
+   "/home/patrick/.local/state/putgd": 75,
+   "/home/patrick/.cache/putgd": null,
+   "/home/patrick/.local/share/putgd": null
+  },
+  "autostart": null,
+  "userExtension": false,
+  "processes": []
+ },
+ "startedAt": "2026-10-23T05:30:38Z",
+ "exit": 0,
+ "seconds": 7.7,
+ "log": "/home/patrick/work/put.gd-nfa/runs/L/logs/pkg-l-update.log",
+ "conffilePrompt": false,
+ "signature": [
+  "Hit:3 http://us.archive.ubuntu.com/ubuntu resolute InRelease",
+  "Get:4 http://us.archive.ubuntu.com/ubuntu resolute-updates InRelease [137 kB]",
+  "Get:5 https://pkg.put.gd/apt/ubuntu26.04 nightly InRelease [4,804 B]",
+  "Hit:6 http://security.ubuntu.com/ubuntu resolute-security InRelease",
+  "Hit:8 http://us.archive.ubuntu.com/ubuntu resolute-backports InRelease"
+ ],
+ "fetched": [
+  "Hit:3 http://us.archive.ubuntu.com/ubuntu resolute InRelease",
+  "Get:4 http://us.archive.ubuntu.com/ubuntu resolute-updates InRelease [137 kB]",
+  "Get:5 https://pkg.put.gd/apt/ubuntu26.04 nightly InRelease [4,804 B]",
+  "Hit:6 http://security.ubuntu.com/ubuntu resolute-security InRelease",
+  "Get:7 https://pkg.put.gd/apt/ubuntu26.04 nightly/main amd64 Packages [1,026 B]",
+  "Hit:8 http://us.archive.ubuntu.com/ubuntu resolute-backports InRelease",
+  "Get:9 http://us.archive.ubuntu.com/ubuntu resolute-updates/main amd64 Packages [744 kB]",
+  "Get:10 https://pkg.put.gd/apt/ubuntu26.04 nightly/main amd64 Components [750 B]",
+  "Get:11 http://us.archive.ubuntu.com/ubuntu resolute-updates/universe i386 Packages [176 kB]",
+  "Get:12 http://us.archive.ubuntu.com/ubuntu resolute-updates/universe amd64 Packages [334 kB]",
+  "Get:13 https://pkg.put.gd/apt/ubuntu26.04 nightly/main Icons (48x48) [776 B]",
+  "Get:14 https://pkg.put.gd/apt/ubuntu26.04 nightly/main Icons (64x64) [985 B]",
+  "Get:15 https://pkg.put.gd/apt/ubuntu26.04 nightly/main Icons (64x64@2) [1,643 B]",
+  "Get:16 https://pkg.put.gd/apt/ubuntu26.04 nightly/main Icons (128x128) [1,643 B]"
+ ],
+ "tail": "Hit:3 http://us.archive.ubuntu.com/ubuntu resolute InRelease\nGet:4 http://us.archive.ubuntu.com/ubuntu resolute-updates InRelease [137 kB]\nGet:5 https://pkg.put.gd/apt/ubuntu26.04 nightly InRelease [4,804 B]\nHit:6 http://security.ubuntu.com/ubuntu resolute-security InRelease\nGet:7 https://pkg.put.gd/apt/ubuntu26.04 nightly/main amd64 Packages [1,026 B]\nHit:8 http://us.archive.ubuntu.com/ubuntu resolute-backports InRelease\nGet:9 http://us.archive.ubuntu.com/ubuntu resolute-updates/main amd64 Packages [744 kB]\nGet:10 https://pkg.put.gd/apt/ubuntu26.04 nightly/main amd64 Components [750 B]\nGet:11 http://us.archive.ubuntu.com/ubuntu resolute-updates/universe i386 Packages [176 kB]\nGet:12 http://us.archive.ubuntu.com/ubuntu resolute-updates/universe amd64 Packages [334 kB]\nGet:13 https://pkg.put.gd/apt/ubuntu26.04 nightly/main Icons (48x48) [776 B]\nGet:14 https://pkg.put.gd/apt/ubuntu26.04 nightly/main Icons (64x64) [985 B]\nGet:15 https://pkg.put.gd/apt/ubuntu26.04 nightly/main Icons (64x64@2) [1,643 B]\nGet:16 https://pkg.put.gd/apt/ubuntu26.04 nightly/main Icons (128x128) [1,643 B]\nFetched 1,409 kB in 1s (996 kB/s)\nReading package lists...\n",
+ "after": {
+  "at": "2026-10-23T05:30:46Z",
+  "host": "kubuntu",
+  "package": {
+   "manager": "dpkg",
+   "status": null,
+   "version": null
+  },
+  "files": {
+   "/etc/apt/sources.list.d/putgd.sources": {
+    "sha256": "5d5b79d0154fed9099c42beea5183e41876ba36920bed6ed45a747523d5cc852",
+    "bytes": 2036,
+    "mode": "0o644",
+    "mtime": "2026-10-23T05:30:38Z"
+   },
+   "/usr/share/keyrings/putgd-archive-keyring.gpg": {
+    "sha256": "76ab1b64e8a1d9504d3922fa44b116d6eb3c680e788be9cec46e106cd5258339",
+    "bytes": 1170,
+    "mode": "0o644",
+    "mtime": "2026-10-23T05:30:38Z"
+   },
+   "/etc/yum.repos.d/putgd.repo": null,
+   "/etc/yum.repos.d/putgd.repo.rpmsave": null,
+   "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd": null,
+   "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-nightly": null,
+   "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-stable": null,
+   "/usr/share/gnome-shell/extensions/putgd@put.gd/metadata.json": null
+  },
+  "defaultProfile": {
+   "/home/patrick/.config/putgd": null,
+   "/home/patrick/.local/state/putgd": 75,
+   "/home/patrick/.cache/putgd": null,
+   "/home/patrick/.local/share/putgd": null
+  },
+  "autostart": null,
+  "userExtension": false,
+  "processes": []
+ }
+}

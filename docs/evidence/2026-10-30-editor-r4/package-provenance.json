@@ -1,0 +1,64 @@
+{
+  "actionsRun": 41061083477,
+  "pull": 726,
+  "pullHead": "5b2a5fb18eea60cbb8124bc8a9a2f85ced0ab16f",
+  "compiledCommit": "8d06f9947ea05ed183ca2c0689785cbcd0c10c9e",
+  "artifacts": [
+    {
+      "name": "release-native-ubuntu24.04",
+      "id": 12982060057,
+      "sha256": "e20b86d7d94dd9cfa76f6cdbe0fe5bd996404771e64c1d59e7042d43d650f2a6",
+      "verified": true
+    },
+    {
+      "name": "ui-catalog",
+      "id": 12981575108,
+      "sha256": "505cb4f03398df5efa9ae8e885b45dd33ed57fbdcc902905d7987be95ae16b62",
+      "verified": true
+    },
+    {
+      "name": "release-native-ubuntu26.04",
+      "id": 12981155119,
+      "sha256": "c2082d79a48830579190be5d90d51fb3d8a1ac3a2d148c449f1cfaae95cdf089",
+      "verified": true
+    }
+  ],
+  "packages": [
+    {
+      "artifact": "release-native-ubuntu24.04",
+      "file": "putgd_26.1030.3075~dev+g8d06f9947ea0_amd64.deb",
+      "sha256": "296f6c75a57262a104285a49090a2c5827837d293ba1776066ab28b58fd3b974",
+      "verifiedAgainst": "native-audit.json/package/sha256",
+      "build": {
+        "schemaVersion": 1,
+        "version": "26.1030.3075-dev+g8d06f9947ea0",
+        "baseVersion": "26.1030.3075",
+        "packageVersion": "26.1030.3075~dev+g8d06f9947ea0",
+        "gitCommit": "8d06f9947ea05ed183ca2c0689785cbcd0c10c9e",
+        "gitTree": "c13fe1c825758cc35c5a8b2055c68acbfe64e86c",
+        "commitCount": 3075,
+        "dirty": false,
+        "sourceProvenance": "git"
+      }
+    },
+    {
+      "artifact": "release-native-ubuntu26.04",
+      "file": "putgd_26.1030.3075~dev+g8d06f9947ea0_amd64.deb",
+      "sha256": "2e4c295422e319212b10fdf4f795803b75b6be720684c352de5d40cbc6f08876",
+      "verifiedAgainst": "native-audit.json/package/sha256",
+      "build": {
+        "schemaVersion": 1,
+        "version": "26.1030.3075-dev+g8d06f9947ea0",
+        "baseVersion": "26.1030.3075",
+        "packageVersion": "26.1030.3075~dev+g8d06f9947ea0",
+        "gitCommit": "8d06f9947ea05ed183ca2c0689785cbcd0c10c9e",
+        "gitTree": "c13fe1c825758cc35c5a8b2055c68acbfe64e86c",
+        "commitCount": 3075,
+        "dirty": false,
+        "sourceProvenance": "git"
+      }
+    }
+  ],
+  "recipeCommit": "017c1717fd10994c8333067702501cac08ee4e45",
+  "coreCommit": "86d1bb2591001835b70067bbe8a21ae31166235a"
+}

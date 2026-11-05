@@ -1,0 +1,110 @@
+{
+  "d69": {
+    "originalSha256": "42978b58be26f7008e1815682c746041da095872ea5292c62ebf66c9e126e9c1",
+    "at": "2026-10-25T05:14:46Z",
+    "event": "release",
+    "host": "d69",
+    "session": "codex-561-d69-8c",
+    "ownedRemaining": [],
+    "baselinePreserved": true
+  },
+  "f44": {
+    "originalSha256": "83e27994292b8870399937733aec71c205ada508b2e864c8efc281f3b92f20bb",
+    "at": "2026-10-25T05:13:53Z",
+    "event": "release",
+    "host": "f44",
+    "session": "codex-561-f44-8c",
+    "ownedRemaining": [],
+    "baselinePreserved": true
+  },
+  "k72": {
+    "originalSha256": "e20d9af96d7f28635ee5179808b71aea9226372244e19ef122aac842537da6c7",
+    "at": "2026-10-25T05:14:18Z",
+    "event": "release",
+    "host": "k72",
+    "session": "codex-561-k72-8c",
+    "ownedRemaining": [],
+    "baselinePreserved": true
+  },
+  "m74": {
+    "originalSha256": "5195488c1d892c0dace86b75d5ef40f58241665c075b044a742a496438285a6a",
+    "at": "2026-10-25T05:23:11Z",
+    "event": "release",
+    "host": "m74",
+    "session": "codex-561-m74-8c",
+    "ownedRemaining": [],
+    "baselinePreserved": true
+  },
+  "k561": {
+    "schemaVersion": 1,
+    "status": "completed",
+    "run": "/home/patrick/work/i561/work/lab-runs/k561",
+    "disk": "/home/patrick/work/i561/work/lab-runs/k561/disk.qcow2",
+    "diskIdentity": {
+      "device": 2050,
+      "inode": 7496844,
+      "size": 919732224,
+      "mtimeNs": 1792905588635633515,
+      "ctimeNs": 1792905588635633515,
+      "allocatedBytes": 919674880
+    },
+    "base": "/home/patrick/work/put.gd/work/lab-images/kde-x11-20261025-559/image.qcow2",
+    "stateSha256": "9a788568d0435305f8f82c000bcf04a535b35598ca4333f3ac7b178bf7d1fd41",
+    "evidence": {
+      "manifest": "/home/patrick/work/i561/work/acceptance/k561/cleanup-manifest.json",
+      "sha256": "57a74573925b6b428d66dedb74c90d2c7e913378b3c82511c6c128b306c4d5ab",
+      "runId": "0c6cd3f4-48ff-4bfd-bb81-d2146e645a9e",
+      "mode": "explicit"
+    },
+    "preparedUtc": "2026-10-25T05:21:59.689759+00:00",
+    "completedUtc": "2026-10-25T05:21:59.919175+00:00"
+  },
+  "xg561": {
+    "schemaVersion": 1,
+    "status": "completed",
+    "run": "/home/patrick/work/i561/work/lab-runs/xg561",
+    "disk": "/home/patrick/work/i561/work/lab-runs/xg561/disk.qcow2",
+    "diskIdentity": {
+      "device": 2050,
+      "inode": 7496856,
+      "size": 255131648,
+      "mtimeNs": 1792905933177866258,
+      "ctimeNs": 1792905933177866258,
+      "allocatedBytes": 255074304
+    },
+    "base": "/home/patrick/work/put.gd/work/lab-images/ubuntu24-gnome-x11-20261025-491/image.qcow2",
+    "stateSha256": "aa0f1d48a7ad449e862fc55e760bb771fc8f6548eb5b5d783723056be70a583f",
+    "evidence": {
+      "manifest": "/home/patrick/work/i561/work/acceptance/xg561/cleanup-manifest.json",
+      "sha256": "4dfdcbca4c29304903560050a16feafd6249e993d287279bf2d449e6dacdb376",
+      "runId": "393a057e-7611-4042-8fa1-263c785b1b82",
+      "mode": "explicit"
+    },
+    "preparedUtc": "2026-10-25T05:25:34.678635+00:00",
+    "completedUtc": "2026-10-25T05:25:34.799070+00:00"
+  },
+  "g561b": {
+    "schemaVersion": 1,
+    "status": "completed",
+    "run": "/home/patrick/work/i561/work/lab-runs/g561b",
+    "disk": "/home/patrick/work/i561/work/lab-runs/g561b/disk.qcow2",
+    "diskIdentity": {
+      "device": 2050,
+      "inode": 7496865,
+      "size": 1125777408,
+      "mtimeNs": 1792905927549896721,
+      "ctimeNs": 1792905927549896721,
+      "allocatedBytes": 1125724160
+    },
+    "base": "/home/patrick/work/put.gd/work/lab-images/transfer-0d2922e34f4b/image.qcow2",
+    "stateSha256": "0ec77ac3679c2a36fa8d6dc9c2cdba52740e1e93f2237c4a62bac2678912cf7a",
+    "evidence": {
+      "manifest": "/home/patrick/work/i561/work/acceptance/g561b/cleanup-manifest.json",
+      "sha256": "eee7ac78c40a379f1a111ad66af28c46193d8c3856b8b642996af710295845f9",
+      "runId": "64d13483-fc33-43ee-8b6c-8226078c9fbb",
+      "mode": "explicit"
+    },
+    "preparedUtc": "2026-10-25T05:25:36.286554+00:00",
+    "completedUtc": "2026-10-25T05:25:36.400864+00:00"
+  }
+}

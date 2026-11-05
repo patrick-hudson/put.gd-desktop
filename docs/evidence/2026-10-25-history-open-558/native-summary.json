@@ -1,0 +1,370 @@
+{
+  "schemaVersion": 1,
+  "scope": "Local development candidate targeted physical Cinnamon proof; full parallel desktop and published asset acceptance pending",
+  "source": {
+    "baseVersion": "26.1025.1297",
+    "commitCount": 1297,
+    "dirty": false,
+    "gitCommit": "48fd6047b2a8d7830296bc3de78f370719a1574f",
+    "gitTree": "6a25d37f135146a59cdcd8558033238690f1847b",
+    "packageVersion": "26.1025.1297~dev+g48fd6047b2a8",
+    "schemaVersion": 1,
+    "sourceProvenance": "git",
+    "version": "26.1025.1297-dev+g48fd6047b2a8"
+  },
+  "packageSha256": "9c8ff3711ae2b55bd75e44c92ab7496d3e88d5b23a480d7e83d071819817084d",
+  "physical": {
+    "hostname": "mint-builder",
+    "kernel": "6.14.0-37-generic",
+    "session": {
+      "Name": "patrick",
+      "Display": ":0",
+      "Remote": "no",
+      "Desktop": "cinnamon",
+      "Leader": "625282",
+      "Type": "x11",
+      "Active": "yes"
+    },
+    "sessionId": "c89",
+    "requestedQtPlatform": "xcb",
+    "systemVersions": {
+      "kernel": "6.14.0-37-generic",
+      "machine": "x86_64",
+      "cpu": "Intel(R) Core(TM) i5-6500T CPU @ 2.50GHz",
+      "desktop": "X-Cinnamon",
+      "session": "x11",
+      "python": "3.12.3",
+      "packages": {
+        "cinnamon": "6.6.9+zena",
+        "libc6": "2.39-0ubuntu8.9",
+        "libcairo2": "1.18.0-3build1",
+        "libgtk-3-0t64": "3.24.41-4ubuntu1.3",
+        "libqt6core6t64": "6.4.2+dfsg-21.1build5",
+        "muffin": "6.6.3+zena"
+      }
+    },
+    "osRelease": "NAME=\"Linux Mint\"\nVERSION=\"22.3 (Zena)\"\nID=linuxmint\nID_LIKE=\"ubuntu debian\"\nPRETTY_NAME=\"Linux Mint 22.3\"\nVERSION_ID=\"22.3\"\nHOME_URL=\"https://www.linuxmint.com/\"\nSUPPORT_URL=\"https://forums.linuxmint.com/\"\nBUG_REPORT_URL=\"http://linuxmint-troubleshooting-guide.readthedocs.io/en/latest/\"\nPRIVACY_POLICY_URL=\"https://www.linuxmint.com/\"\nVERSION_CODENAME=zena\nUBUNTU_CODENAME=noble\n",
+    "loadAverage": [
+      "0.06",
+      "0.07",
+      "0.09"
+    ]
+  },
+  "memory": {
+    "status": "complete",
+    "startedUtc": "2026-10-25T17:39:00.706389+00:00",
+    "driver": {
+      "sha256": "3cb511e0f0e7e4de63afa68d0ae66a56a8f6abcc028aa0f2df426e27d21a6676",
+      "revision": "00ab777f2413a1fbd7670a7259dc614eced896e6",
+      "revisionSource": "explicit-declaration",
+      "sourceFiles": {
+        "tests/performance/physical_campaign.py": "3cb511e0f0e7e4de63afa68d0ae66a56a8f6abcc028aa0f2df426e27d21a6676",
+        "tests/performance/bench_ui_process.py": "a28c94b075036ea65f8eca8e068d480cff46ee959d4680593f5c4d55cce3fc40",
+        "tests/performance/observe_idle.py": "33fab955eb36d617ee0a2fd5de67cf0a54aab0994a3dccb3f70dac5111398efe",
+        "tests/performance/campaign_fixture.py": "330632490f68fb3621f19261f35e64643849b26190de256c969cdc89e79d41d9",
+        "tests/performance/campaign_ui.py": "86dd179d7ee6c4c0cae9728270dca133dbaf9b15975f05fb13965231669937dc",
+        "tests/performance/campaign_workloads.py": "179e837eab64ebc7f82c3a6237067070d208a75cf255b7cd4d5d970492337bf9",
+        "tests/performance/campaign_proxy.py": "39973a4603cedf82ae89250c222ae5f508f36aa127be4d501f2ee3c3eae0e98b",
+        "tests/performance/campaign_lifecycle.py": "e86141e204105fe6834d90933dd065377df0b444786eec5cc1340c11eabe6668",
+        "tests/performance/build_current_capture.py": "dfab0d0aefc471cd13eb3ec6e1bb6b0c57614ac424d2067eca4c5846de0f95bd",
+        "tests/performance/campaign_frames.py": "6c013f4cbce53b96ce6c2dd1b0b1d396f449d5017621654ae2e291a6c5cb6a97",
+        "tools/diagnostics/check_socket_paths.py": "7e8797ec6ea0014eeacd428f822ef3fe545a276247a7ad7e6de9b557a0937f55"
+      }
+    },
+    "parameters": {
+      "scenario": "memory",
+      "output": "/tmp/p558m1",
+      "package": "/home/patrick/putgd-lab/i558/putgd_26.1025.1297~dev+g48fd6047b2a8_amd64.deb",
+      "package_sha256": "9c8ff3711ae2b55bd75e44c92ab7496d3e88d5b23a480d7e83d071819817084d",
+      "version": "26.1025.1297-dev+g48fd6047b2a8",
+      "source_revision": "48fd6047b2a8d7830296bc3de78f370719a1574f",
+      "desktop_session": "c89",
+      "lock_session": "t3-i558-history1",
+      "app": "/usr/bin/putgd",
+      "cli": "/usr/bin/putgd-cli",
+      "helper": "/usr/bin/putgd-ui",
+      "capture_helper": "/usr/bin/putgd-capture",
+      "driver": null,
+      "capture_driver_manifest": null,
+      "fixture_root": null,
+      "driver_revision": "00ab777f2413a1fbd7670a7259dc614eced896e6",
+      "open_seconds": 30,
+      "vnc_port": 5900,
+      "endpoint": null,
+      "fixture_pid": null,
+      "fixture_source": null,
+      "enable_accessibility": false,
+      "native_driver": null,
+      "native_driver_revision": null,
+      "native_driver_sha256": null,
+      "threshold_policy": null,
+      "settle_seconds": 300,
+      "history_pages": 200
+    },
+    "metrics": {
+      "coldClosed": {
+        "seconds": 300.0493753150222,
+        "residentCpuPercentOneCore": 0.006665569618001029,
+        "peakResidentRssBytes": 30117888,
+        "peakFamilyRssBytes": 30117888,
+        "peakFamilyPssBytes": 19172352
+      },
+      "historyOpenPeakFamilyPssBytes": 46641152,
+      "historyOpenMeasuredSeconds": 30.069854649016634,
+      "historyClosed": {
+        "seconds": 300.1368883519899,
+        "residentCpuPercentOneCore": 0.0033318130453436146,
+        "peakResidentRssBytes": 30281728,
+        "peakFamilyRssBytes": 30281728,
+        "peakFamilyPssBytes": 19314688
+      },
+      "sampledProcessFamily": {
+        "peakTotals": {
+          "rssBytes": 98566144,
+          "pssBytes": 46641152,
+          "privateBytes": 31682560
+        },
+        "cpuPercentOneCoreLowerBound": 0.006315185327866859,
+        "observedProcessGenerations": 2,
+        "samplingSpanSeconds": 633.3939215290011,
+        "shortLivedChildrenMayBeMissed": true
+      }
+    },
+    "gates": {
+      "cold-cpu": {
+        "status": "pass",
+        "minimumSeconds": 300,
+        "exclusiveLimitPercentOneCore": 0.5
+      },
+      "cold-rss": {
+        "status": "pass",
+        "limitBytes": 41943040
+      },
+      "cold-pss": {
+        "status": "pass",
+        "limitBytes": 30408704
+      },
+      "historyOpenPss": {
+        "status": "pass",
+        "limitBytes": 62914560,
+        "minimumSeconds": 30,
+        "measuredSeconds": 30.069854649016634
+      },
+      "closed-cpu": {
+        "status": "pass",
+        "minimumSeconds": 300,
+        "exclusiveLimitPercentOneCore": 0.5
+      },
+      "closed-rss": {
+        "status": "pass",
+        "limitBytes": 41943040
+      },
+      "closed-pss": {
+        "status": "pass",
+        "limitBytes": 30408704
+      },
+      "historyPaintResponse": {
+        "status": "unassessed",
+        "reason": "external_paint_scenario_required"
+      },
+      "cleanup": {
+        "status": "pass"
+      }
+    },
+    "socketPreflight": {
+      "schemaVersion": 1,
+      "passed": true,
+      "limitBytesExcludingNul": 107,
+      "paths": [
+        {
+          "path": "/tmp/p558m1/runtime/putgd/session.sock",
+          "utf8Bytes": 38,
+          "passed": true
+        }
+      ]
+    },
+    "residentCleanup": [
+      {
+        "gracefulRequest": true,
+        "exitCode": 0,
+        "forced": false,
+        "remaining": [],
+        "socketAbsent": true,
+        "passed": true,
+        "errors": [],
+        "inventoryComplete": true,
+        "absenceVerified": true,
+        "inventoryDefinition": "observed PID/start/UID generations + resident process group + exact isolated runtime/data environment; no command lines exported"
+      },
+      {
+        "gracefulRequest": true,
+        "exitCode": 0,
+        "forced": false,
+        "remaining": [],
+        "socketAbsent": true,
+        "passed": true,
+        "errors": [],
+        "inventoryComplete": true,
+        "absenceVerified": true,
+        "inventoryDefinition": "observed PID/start/UID generations + resident process group + exact isolated runtime/data environment; no command lines exported"
+      }
+    ],
+    "elapsedSeconds": 640.831719347043,
+    "limitations": [
+      "Capture witness observes X11 drawable paint, not compositor presentation.",
+      "CLI acknowledgements do not prove painted response.",
+      "Sequential sampled process memory can miss short-lived descendants.",
+      "Family CPU is a lower bound when a child exits between samples.",
+      "Shared desktop daemons are outside the resident process family.",
+      "Host quietness and reviewed sanitized visuals require coordinator evidence."
+    ]
+  },
+  "memoryLifecycle": [
+    {
+      "kind": "history-interval-guard",
+      "elapsedSeconds": 340.22823249700014,
+      "owner": {
+        "pid": 744096,
+        "startTicks": 34815636,
+        "uid": 1000,
+        "executable": "/usr/bin/putgd-ui",
+        "device": 2050,
+        "inode": 10364827,
+        "sha256": "d1c0dc1d4b44acd117f960b6bb11f87e631848dc125cc74727d9a2ceac22b7f6",
+        "role": "ui",
+        "rssBytes": 68157440,
+        "pssBytes": 32707584,
+        "privateBytes": 23711744,
+        "privateHugetlbBytes": 0,
+        "swapBytes": 0,
+        "cpuTicks": 19,
+        "threads": 10,
+        "inResidentTree": true,
+        "qtPlatformMappings": [
+          "libQt6XcbQpa.so.6.4.2",
+          "libqxcb.so"
+        ]
+      },
+      "window": "0x4c00006",
+      "checks": 299,
+      "activation": "ui.show history acknowledged",
+      "evidence": "pidfd + exact identity/parent + queued X11 unmap/destroy events"
+    },
+    {
+      "kind": "history-helper-normal-exit",
+      "elapsedSeconds": 340.32854911801405,
+      "owner": {
+        "pid": 744096,
+        "startTicks": 34815636,
+        "uid": 1000,
+        "executable": "/usr/bin/putgd-ui",
+        "device": 2050,
+        "inode": 10364827,
+        "sha256": "d1c0dc1d4b44acd117f960b6bb11f87e631848dc125cc74727d9a2ceac22b7f6",
+        "role": "ui",
+        "rssBytes": 68157440,
+        "pssBytes": 32707584,
+        "privateBytes": 23711744,
+        "privateHugetlbBytes": 0,
+        "swapBytes": 0,
+        "cpuTicks": 19,
+        "threads": 10,
+        "inResidentTree": true,
+        "qtPlatformMappings": [
+          "libQt6XcbQpa.so.6.4.2",
+          "libqxcb.so"
+        ]
+      },
+      "lastExit": {
+        "code": 0,
+        "generation": 1,
+        "status": "normal"
+      }
+    }
+  ],
+  "functional": {
+    "status": "passed-targeted-functional",
+    "startedUtc": "2026-10-25T17:50:05.515916+00:00",
+    "functionalDriver": {
+      "sha256": "2d57425dafd27e1d2ca060a5530ba6f3cfddb941111a478ec7f1fd0b5eedbeea",
+      "file": "native-functional.py",
+      "scored": false
+    },
+    "gates": {
+      "targetedFunctional": {
+        "status": "pass"
+      },
+      "cleanup": {
+        "status": "pass"
+      }
+    },
+    "residentCleanup": [
+      {
+        "gracefulRequest": true,
+        "exitCode": 0,
+        "forced": false,
+        "remaining": [],
+        "socketAbsent": true,
+        "passed": true,
+        "errors": [],
+        "inventoryComplete": true,
+        "absenceVerified": true,
+        "inventoryDefinition": "observed PID/start/UID generations + resident process group + exact isolated runtime/data environment; no command lines exported"
+      },
+      {
+        "gracefulRequest": true,
+        "exitCode": 0,
+        "forced": false,
+        "remaining": [],
+        "socketAbsent": true,
+        "passed": true,
+        "errors": [],
+        "inventoryComplete": true,
+        "absenceVerified": true,
+        "inventoryDefinition": "observed PID/start/UID generations + resident process group + exact isolated runtime/data environment; no command lines exported"
+      }
+    ]
+  },
+  "functionalEvents": [
+    {
+      "kind": "functional-destinations-navigation",
+      "elapsedSeconds": 5.158219165052287,
+      "window": "0x4c00006",
+      "clientClick": [
+        100,
+        486
+      ],
+      "basis": "inspected exact-candidate native History frame"
+    },
+    {
+      "kind": "functional-normal-close",
+      "elapsedSeconds": 7.210510351054836,
+      "lastExit": {
+        "code": 0,
+        "generation": 1,
+        "status": "normal"
+      }
+    },
+    {
+      "kind": "functional-agent-command-initialized-settings",
+      "elapsedSeconds": 9.117459237051662,
+      "expectedError": "profile_not_found"
+    },
+    {
+      "kind": "functional-normal-close",
+      "elapsedSeconds": 10.69765757204732,
+      "lastExit": {
+        "code": 0,
+        "generation": 2,
+        "status": "normal"
+      }
+    }
+  ],
+  "rawArchive": {
+    "sha256": "1daa3de9e1b1d2c818466fd4a3744be6d61a44d9b5196aa629e13adf909683e9",
+    "hostPath": "/home/patrick/putgd-lab/i558-results.tar",
+    "localPath": "work/i558/export/i558-results.tar",
+    "originalsPreserved": true
+  },
+  "releaseReceipt": "2026-10-25T17-51-30Z-release.json"
+}

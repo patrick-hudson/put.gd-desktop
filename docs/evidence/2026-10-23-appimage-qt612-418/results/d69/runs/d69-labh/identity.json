@@ -1,0 +1,27 @@
+{
+ "file": "putgd-26.1023.1068-nightly-x86_64.AppImage",
+ "bytes": 116439544,
+ "sha256": "7bbda043a1547c0e43f99afcbaa1092a396dba4f832c9a75e4e496fb3b544d4e",
+ "sumsEntry": "7bbda043a1547c0e43f99afcbaa1092a396dba4f832c9a75e4e496fb3b544d4e",
+ "hashMatches": true,
+ "versionJson": {
+  "schemaVersion": 1,
+  "version": "26.1023.1068-nightly",
+  "baseVersion": "26.1023.1068",
+  "packageVersion": "26.1023.1068~nightly",
+  "gitCommit": "dd1036ed381a330cb31b4a9a3b52be1da4ac4279",
+  "gitTree": "a0a449b23b4eb70f516e3c317b6d93b412aafbbb",
+  "commitCount": 1068,
+  "dirty": false,
+  "sourceProvenance": "git"
+ },
+ "tagMatches": true,
+ "updateInformation": "zsync|https://pkg.put.gd/lab/dl/nightly/appimage.zsync",
+ "updateInformationMatches": false,
+ "rootDesktopFiles": [
+  "putgd.desktop"
+ ],
+ "putgdDesktop": "[Desktop Entry]\nType=Application\nName=put.gd\nComment=Capture and share screen regions and clipboard content\nExec=putgd-launcher\nIcon=putgd\nTerminal=false\nCategories=Utility;Graphics;\nStartupNotify=true\n",
+ "noDisplay": false,
+ "rootOk": true
+}

@@ -1,0 +1,1489 @@
+{
+    "build": {
+        "baseVersion": "26.1030.3203",
+        "commitCount": 3203,
+        "dirty": false,
+        "gitCommit": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+        "gitTree": "47d8ee85fb481fde7f557aff8f1c01e378f17ad3",
+        "packageVersion": "26.1030.3203~dev+gcc9d9410d6e9",
+        "schemaVersion": 1,
+        "sourceProvenance": "git",
+        "version": "26.1030.3203-dev+gcc9d9410d6e9"
+    },
+    "captures": [
+        {
+            "controls": "00-tray-menu-idle.controls.json",
+            "file": "00-tray-menu-idle.png",
+            "height": 519,
+            "width": 327
+        },
+        {
+            "controls": "00-tray-edit-submenu.controls.json",
+            "file": "00-tray-edit-submenu.png",
+            "height": 76,
+            "width": 169
+        },
+        {
+            "controls": "00-tray-output-submenu.controls.json",
+            "file": "00-tray-output-submenu.png",
+            "height": 312,
+            "width": 292
+        },
+        {
+            "controls": "00-tray-menu-uploading.controls.json",
+            "file": "00-tray-menu-uploading.png",
+            "height": 601,
+            "width": 327
+        },
+        {
+            "controls": "00-tray-menu-proton-busy.controls.json",
+            "file": "00-tray-menu-proton-busy.png",
+            "height": 551,
+            "width": 327
+        },
+        {
+            "controls": "00-output-menu-literal-ampersand.controls.json",
+            "file": "00-output-menu-literal-ampersand.png",
+            "height": 117,
+            "width": 362
+        },
+        {
+            "controls": "01-history-list.controls.json",
+            "file": "01-history-list.png",
+            "height": 960,
+            "width": 1440
+        },
+        {
+            "controls": "01b-history-left-window-buttons.controls.json",
+            "file": "01b-history-left-window-buttons.png",
+            "height": 960,
+            "width": 1440
+        },
+        {
+            "controls": "01a-history-preview-focus.controls.json",
+            "file": "01a-history-preview-focus.png",
+            "height": 960,
+            "width": 1440
+        },
+        {
+            "controls": "52-history-long-inspector.controls.json",
+            "file": "52-history-long-inspector.png",
+            "height": 960,
+            "width": 1440
+        },
+        {
+            "controls": "54-history-local-copy-guidance.controls.json",
+            "file": "54-history-local-copy-guidance.png",
+            "height": 960,
+            "width": 1440
+        },
+        {
+            "controls": "02-history-gallery.controls.json",
+            "file": "02-history-gallery.png",
+            "height": 960,
+            "width": 1440
+        },
+        {
+            "controls": "02a-history-gallery-retry.controls.json",
+            "file": "02a-history-gallery-retry.png",
+            "height": 960,
+            "width": 1440
+        },
+        {
+            "controls": "02b-history-gallery-retry-focus.controls.json",
+            "file": "02b-history-gallery-retry-focus.png",
+            "height": 960,
+            "width": 1440
+        },
+        {
+            "controls": "55-history-gallery-details.controls.json",
+            "file": "55-history-gallery-details.png",
+            "height": 960,
+            "width": 1440
+        },
+        {
+            "controls": "56-history-gallery-return.controls.json",
+            "file": "56-history-gallery-return.png",
+            "height": 960,
+            "width": 1440
+        },
+        {
+            "controls": "40-history-filters-active.controls.json",
+            "file": "40-history-filters-active.png",
+            "height": 960,
+            "width": 1440
+        },
+        {
+            "controls": "50-history-failure-recovery.controls.json",
+            "file": "50-history-failure-recovery.png",
+            "height": 960,
+            "width": 1440
+        },
+        {
+            "controls": "50a-history-failure-inspector.controls.json",
+            "file": "50a-history-failure-inspector.png",
+            "height": 960,
+            "width": 1440
+        },
+        {
+            "controls": "history-failed-filters-locked.controls.json",
+            "file": "history-failed-filters-locked.png",
+            "height": 960,
+            "width": 1440
+        },
+        {
+            "file": "50b-history-failure-compact.png",
+            "height": 480,
+            "width": 776
+        },
+        {
+            "file": "50c-history-failure-compact-inspector.png",
+            "height": 480,
+            "width": 776
+        },
+        {
+            "controls": "45-history-filters-expanded.controls.json",
+            "file": "45-history-filters-expanded.png",
+            "height": 960,
+            "width": 1440
+        },
+        {
+            "file": "history-remote-groups.png",
+            "height": 960,
+            "width": 1440
+        },
+        {
+            "controls": "62-history-technical-filters.controls.json",
+            "file": "62-history-technical-filters.png",
+            "height": 960,
+            "width": 1440
+        },
+        {
+            "controls": "41-history-selection.controls.json",
+            "file": "41-history-selection.png",
+            "height": 960,
+            "width": 1440
+        },
+        {
+            "controls": "41a-history-selection-inspector.controls.json",
+            "file": "41a-history-selection-inspector.png",
+            "height": 960,
+            "width": 1800
+        },
+        {
+            "controls": "42-history-delete-confirmation.controls.json",
+            "file": "42-history-delete-confirmation.png",
+            "height": 454,
+            "width": 560
+        },
+        {
+            "controls": "confirm-history-delete-supported.controls.json",
+            "file": "confirm-history-delete-supported.png",
+            "height": 520,
+            "width": 560
+        },
+        {
+            "file": "49-history-delete-details.png",
+            "height": 320,
+            "width": 520
+        },
+        {
+            "controls": "47-history-filtering.controls.json",
+            "file": "47-history-filtering.png",
+            "height": 960,
+            "width": 1440
+        },
+        {
+            "controls": "43-history-no-matches.controls.json",
+            "file": "43-history-no-matches.png",
+            "height": 960,
+            "width": 1440
+        },
+        {
+            "controls": "51-history-loading-failure.controls.json",
+            "file": "51-history-loading-failure.png",
+            "height": 960,
+            "width": 1440
+        },
+        {
+            "controls": "48-history-deletion-recovery.controls.json",
+            "file": "48-history-deletion-recovery.png",
+            "height": 960,
+            "width": 1440
+        },
+        {
+            "controls": "03-destinations-proton.controls.json",
+            "file": "03-destinations-proton.png",
+            "height": 960,
+            "width": 1440
+        },
+        {
+            "controls": "settings-radio-choices.controls.json",
+            "file": "settings-radio-choices.png",
+            "height": 960,
+            "width": 1440
+        },
+        {
+            "controls": "settings-radio-choices-compact.controls.json",
+            "file": "settings-radio-choices-compact.png",
+            "height": 680,
+            "width": 1060
+        },
+        {
+            "controls": "16-proton-loading-folders.controls.json",
+            "file": "16-proton-loading-folders.png",
+            "height": 960,
+            "width": 1440
+        },
+        {
+            "controls": "04-destinations-s3.controls.json",
+            "file": "04-destinations-s3.png",
+            "height": 960,
+            "width": 1440
+        },
+        {
+            "controls": "settings-add-credentials-focus.controls.json",
+            "file": "settings-add-credentials-focus.png",
+            "height": 680,
+            "width": 1060
+        },
+        {
+            "controls": "05-settings-advanced.controls.json",
+            "file": "05-settings-advanced.png",
+            "height": 960,
+            "width": 1440
+        },
+        {
+            "controls": "settings-desktop-support-expanded.controls.json",
+            "file": "settings-desktop-support-expanded.png",
+            "height": 960,
+            "width": 1440
+        },
+        {
+            "controls": "settings-resource-limits-expanded.controls.json",
+            "file": "settings-resource-limits-expanded.png",
+            "height": 960,
+            "width": 1440
+        },
+        {
+            "controls": "settings-retention-help.controls.json",
+            "file": "settings-retention-help.png",
+            "height": 960,
+            "width": 1440
+        },
+        {
+            "controls": "settings-forever-retention.controls.json",
+            "file": "settings-forever-retention.png",
+            "height": 960,
+            "width": 1440
+        },
+        {
+            "controls": "settings-numeric-limit-unit.controls.json",
+            "file": "settings-numeric-limit-unit.png",
+            "height": 960,
+            "width": 1440
+        },
+        {
+            "controls": "06-settings-shortcuts.controls.json",
+            "file": "06-settings-shortcuts.png",
+            "height": 960,
+            "width": 1440
+        },
+        {
+            "controls": "07-settings-general.controls.json",
+            "file": "07-settings-general.png",
+            "height": 960,
+            "width": 1440
+        },
+        {
+            "controls": "08-settings-capture.controls.json",
+            "file": "08-settings-capture.png",
+            "height": 960,
+            "width": 1440
+        },
+        {
+            "controls": "settings-custom-name-pattern.controls.json",
+            "file": "settings-custom-name-pattern.png",
+            "height": 960,
+            "width": 1440
+        },
+        {
+            "controls": "09-stored-credential-hint.controls.json",
+            "file": "09-stored-credential-hint.png",
+            "height": 960,
+            "width": 1440
+        },
+        {
+            "controls": "10-history-compact.controls.json",
+            "file": "10-history-compact.png",
+            "height": 680,
+            "width": 1060
+        },
+        {
+            "controls": "10a-history-compact-preview-focus.controls.json",
+            "file": "10a-history-compact-preview-focus.png",
+            "height": 680,
+            "width": 1060
+        },
+        {
+            "controls": "46-history-maintenance-compact.controls.json",
+            "file": "46-history-maintenance-compact.png",
+            "height": 680,
+            "width": 1060
+        },
+        {
+            "file": "57-history-management-menu.png",
+            "height": 76,
+            "width": 183
+        },
+        {
+            "controls": "confirm-make-default-untested.controls.json",
+            "file": "confirm-make-default-untested.png",
+            "height": 145,
+            "width": 468
+        },
+        {
+            "controls": "confirm-remove-destination.controls.json",
+            "file": "confirm-remove-destination.png",
+            "height": 126,
+            "width": 468
+        },
+        {
+            "controls": "confirm-add-destination-name.controls.json",
+            "file": "confirm-add-destination-name.png",
+            "height": 125,
+            "width": 200
+        },
+        {
+            "controls": "confirm-new-proton-folder.controls.json",
+            "file": "confirm-new-proton-folder.png",
+            "height": 125,
+            "width": 200
+        },
+        {
+            "controls": "confirm-reset-limits.controls.json",
+            "file": "confirm-reset-limits.png",
+            "height": 172,
+            "width": 468
+        },
+        {
+            "controls": "confirm-clear-logs.controls.json",
+            "file": "confirm-clear-logs.png",
+            "height": 126,
+            "width": 468
+        },
+        {
+            "controls": "confirm-switch-older.controls.json",
+            "file": "confirm-switch-older.png",
+            "height": 206,
+            "width": 468
+        },
+        {
+            "controls": "confirm-clear-history.controls.json",
+            "file": "confirm-clear-history.png",
+            "height": 126,
+            "width": 468
+        },
+        {
+            "controls": "confirm-clear-cache.controls.json",
+            "file": "confirm-clear-cache.png",
+            "height": 145,
+            "width": 468
+        },
+        {
+            "controls": "confirm-revoke-link.controls.json",
+            "file": "confirm-revoke-link.png",
+            "height": 172,
+            "width": 468
+        },
+        {
+            "controls": "history-gallery-compact.controls.json",
+            "file": "history-gallery-compact.png",
+            "height": 680,
+            "width": 1060
+        },
+        {
+            "controls": "67-history-gallery-compact-details.controls.json",
+            "file": "67-history-gallery-compact-details.png",
+            "height": 680,
+            "width": 1060
+        },
+        {
+            "file": "68-history-expanded-preview.png",
+            "height": 563,
+            "width": 752
+        },
+        {
+            "controls": "70-history-taller-details.controls.json",
+            "file": "70-history-taller-details.png",
+            "height": 900,
+            "width": 1060
+        },
+        {
+            "controls": "71-history-thumbnail-details.controls.json",
+            "file": "71-history-thumbnail-details.png",
+            "height": 480,
+            "width": 1060
+        },
+        {
+            "controls": "58-history-text-unavailable-link.controls.json",
+            "file": "58-history-text-unavailable-link.png",
+            "height": 960,
+            "width": 1440
+        },
+        {
+            "controls": "66-history-preview-failed.controls.json",
+            "file": "66-history-preview-failed.png",
+            "height": 960,
+            "width": 1440
+        },
+        {
+            "controls": "59-history-recording-no-copy.controls.json",
+            "file": "59-history-recording-no-copy.png",
+            "height": 960,
+            "width": 1440
+        },
+        {
+            "controls": "60-history-previous-link-details.controls.json",
+            "file": "60-history-previous-link-details.png",
+            "height": 960,
+            "width": 1440
+        },
+        {
+            "controls": "61-history-browser-failure.controls.json",
+            "file": "61-history-browser-failure.png",
+            "height": 960,
+            "width": 1440
+        },
+        {
+            "controls": "history-missing-copy-present.controls.json",
+            "file": "history-missing-copy-present.png",
+            "height": 960,
+            "width": 1440
+        },
+        {
+            "controls": "history-missing-copy-removed.controls.json",
+            "file": "history-missing-copy-removed.png",
+            "height": 960,
+            "width": 1440
+        },
+        {
+            "controls": "history-missing-copy-local_only.controls.json",
+            "file": "history-missing-copy-local_only.png",
+            "height": 960,
+            "width": 1440
+        },
+        {
+            "controls": "69a-history-saving-copy.controls.json",
+            "file": "69a-history-saving-copy.png",
+            "height": 680,
+            "width": 1060
+        },
+        {
+            "controls": "69-history-saved-copy.controls.json",
+            "file": "69-history-saved-copy.png",
+            "height": 680,
+            "width": 1060
+        },
+        {
+            "controls": "69b-history-dismissed-copy.controls.json",
+            "file": "69b-history-dismissed-copy.png",
+            "height": 680,
+            "width": 1060
+        },
+        {
+            "controls": "settings-b2-compact.controls.json",
+            "file": "settings-b2-compact.png",
+            "height": 680,
+            "width": 1060
+        },
+        {
+            "controls": "settings-b2-stepper-1060.controls.json",
+            "file": "settings-b2-stepper-1060.png",
+            "height": 680,
+            "width": 1060
+        },
+        {
+            "controls": "settings-general-compact.controls.json",
+            "file": "settings-general-compact.png",
+            "height": 680,
+            "width": 1060
+        },
+        {
+            "controls": "settings-update-privacy.controls.json",
+            "file": "settings-update-privacy.png",
+            "height": 680,
+            "width": 1060
+        },
+        {
+            "controls": "settings-shortcuts-compact.controls.json",
+            "file": "settings-shortcuts-compact.png",
+            "height": 680,
+            "width": 1060
+        },
+        {
+            "controls": "11-advanced-compact.controls.json",
+            "file": "11-advanced-compact.png",
+            "height": 680,
+            "width": 1060
+        },
+        {
+            "controls": "12-proton-compact.controls.json",
+            "file": "12-proton-compact.png",
+            "height": 680,
+            "width": 1060
+        },
+        {
+            "controls": "settings-proton-steppers-1060.controls.json",
+            "file": "settings-proton-steppers-1060.png",
+            "height": 680,
+            "width": 1060
+        },
+        {
+            "controls": "17-destination-long-name-compact.controls.json",
+            "file": "17-destination-long-name-compact.png",
+            "height": 680,
+            "width": 1060
+        },
+        {
+            "controls": "18-destination-credentials-compact.controls.json",
+            "file": "18-destination-credentials-compact.png",
+            "height": 680,
+            "width": 1060
+        },
+        {
+            "controls": "13-capture-compact.controls.json",
+            "file": "13-capture-compact.png",
+            "height": 680,
+            "width": 1060
+        },
+        {
+            "controls": "settings-category-folders.controls.json",
+            "file": "settings-category-folders.png",
+            "height": 680,
+            "width": 1060
+        },
+        {
+            "controls": "14-capture-exceptions-compact.controls.json",
+            "file": "14-capture-exceptions-compact.png",
+            "height": 680,
+            "width": 1060
+        },
+        {
+            "controls": "settings-exceptions-compact.controls.json",
+            "file": "settings-exceptions-compact.png",
+            "height": 680,
+            "width": 1060
+        },
+        {
+            "controls": "15-capture-no-output.controls.json",
+            "file": "15-capture-no-output.png",
+            "height": 680,
+            "width": 1060
+        },
+        {
+            "controls": "main-unavailable-recovery.controls.json",
+            "file": "main-unavailable-recovery.png",
+            "height": 680,
+            "width": 1060
+        },
+        {
+            "file": "history-edit-sources-no-output.png",
+            "height": 76,
+            "width": 199
+        },
+        {
+            "controls": "50-capture-exceptions-locked.controls.json",
+            "file": "50-capture-exceptions-locked.png",
+            "height": 680,
+            "width": 1060
+        },
+        {
+            "controls": "60-credential-storage-replacement.controls.json",
+            "file": "60-credential-storage-replacement.png",
+            "height": 680,
+            "width": 1060
+        },
+        {
+            "controls": "61-credential-store-pending.controls.json",
+            "file": "61-credential-store-pending.png",
+            "height": 680,
+            "width": 1060
+        },
+        {
+            "controls": "62-destination-connection-expanded.controls.json",
+            "file": "62-destination-connection-expanded.png",
+            "height": 680,
+            "width": 1060
+        },
+        {
+            "controls": "settings-endpoint-advanced.controls.json",
+            "file": "settings-endpoint-advanced.png",
+            "height": 680,
+            "width": 1060
+        },
+        {
+            "controls": "63-local-copies-focus.controls.json",
+            "file": "63-local-copies-focus.png",
+            "height": 680,
+            "width": 1060
+        },
+        {
+            "controls": "52-destinations-conflict.controls.json",
+            "file": "52-destinations-conflict.png",
+            "height": 680,
+            "width": 1060
+        },
+        {
+            "controls": "64-credential-store-conflict.controls.json",
+            "file": "64-credential-store-conflict.png",
+            "height": 680,
+            "width": 1060
+        },
+        {
+            "controls": "51-settings-conflict.controls.json",
+            "file": "51-settings-conflict.png",
+            "height": 680,
+            "width": 1060
+        },
+        {
+            "controls": "51a-settings-conflict-compact-update.controls.json",
+            "file": "51a-settings-conflict-compact-update.png",
+            "height": 680,
+            "width": 1060
+        },
+        {
+            "controls": "53-reload-confirm.controls.json",
+            "file": "53-reload-confirm.png",
+            "height": 172,
+            "width": 468
+        },
+        {
+            "controls": "54-capture-exception-override.controls.json",
+            "file": "54-capture-exception-override.png",
+            "height": 680,
+            "width": 1060
+        },
+        {
+            "controls": "66-recording-region-inheritance.controls.json",
+            "file": "66-recording-region-inheritance.png",
+            "height": 680,
+            "width": 1060
+        },
+        {
+            "controls": "67-recording-explicit-output.controls.json",
+            "file": "67-recording-explicit-output.png",
+            "height": 680,
+            "width": 1060
+        },
+        {
+            "file": "main-mixed-outputs.png",
+            "height": 680,
+            "width": 1060
+        },
+        {
+            "controls": "main-output-recovery.controls.json",
+            "file": "main-output-recovery.png",
+            "height": 680,
+            "width": 1060
+        },
+        {
+            "controls": "55-folder-chooser-failed.controls.json",
+            "file": "55-folder-chooser-failed.png",
+            "height": 680,
+            "width": 1060
+        },
+        {
+            "controls": "56-edit-image-chooser-failed.controls.json",
+            "file": "56-edit-image-chooser-failed.png",
+            "height": 680,
+            "width": 1060
+        },
+        {
+            "file": "57-output-summary-full-text.png",
+            "height": 680,
+            "width": 1060
+        },
+        {
+            "file": "58-diagnostics-package.png",
+            "height": 489,
+            "width": 560
+        },
+        {
+            "controls": "main-rename-destination.controls.json",
+            "file": "main-rename-destination.png",
+            "height": 680,
+            "width": 1060
+        },
+        {
+            "controls": "main-update-browser-failure.controls.json",
+            "file": "main-update-browser-failure.png",
+            "height": 680,
+            "width": 1060
+        },
+        {
+            "controls": "main-version-browser-failure.controls.json",
+            "file": "main-version-browser-failure.png",
+            "height": 680,
+            "width": 1060
+        },
+        {
+            "controls": "65-repository-update-channel.controls.json",
+            "file": "65-repository-update-channel.png",
+            "height": 680,
+            "width": 1060
+        },
+        {
+            "controls": "history-tray-output-recovery.controls.json",
+            "file": "history-tray-output-recovery.png",
+            "height": 680,
+            "width": 1060
+        },
+        {
+            "controls": "history-tray-destination-recovery.controls.json",
+            "file": "history-tray-destination-recovery.png",
+            "height": 680,
+            "width": 1060
+        },
+        {
+            "controls": "history-many-active.controls.json",
+            "file": "history-many-active.png",
+            "height": 680,
+            "width": 1060
+        },
+        {
+            "controls": "history-cancel-all-confirmation.controls.json",
+            "file": "history-cancel-all-confirmation.png",
+            "height": 194,
+            "width": 480
+        },
+        {
+            "controls": "20-editor-redact.controls.json",
+            "file": "20-editor-redact.png",
+            "height": 820,
+            "width": 1180
+        },
+        {
+            "controls": "21-editor-blur-warning.controls.json",
+            "file": "21-editor-blur-warning.png",
+            "height": 820,
+            "width": 1180
+        },
+        {
+            "controls": "21a-editor-blur-focus.controls.json",
+            "file": "21a-editor-blur-focus.png",
+            "height": 820,
+            "width": 1180
+        },
+        {
+            "controls": "22-editor-arrow-style.controls.json",
+            "file": "22-editor-arrow-style.png",
+            "height": 820,
+            "width": 1180
+        },
+        {
+            "controls": "23-editor-crop.controls.json",
+            "file": "23-editor-crop.png",
+            "height": 820,
+            "width": 1180
+        },
+        {
+            "controls": "24-editor-compact.controls.json",
+            "file": "24-editor-compact.png",
+            "height": 620,
+            "width": 900
+        },
+        {
+            "controls": "26-editor-selected.controls.json",
+            "file": "26-editor-selected.png",
+            "height": 820,
+            "width": 1180
+        },
+        {
+            "controls": "26g-editor-long-destination.controls.json",
+            "file": "26g-editor-long-destination.png",
+            "height": 620,
+            "width": 900
+        },
+        {
+            "controls": "26c-editor-1060.controls.json",
+            "file": "26c-editor-1060.png",
+            "height": 820,
+            "width": 1060
+        },
+        {
+            "controls": "26h-editor-geometry-expanded.controls.json",
+            "file": "26h-editor-geometry-expanded.png",
+            "height": 820,
+            "width": 1060
+        },
+        {
+            "controls": "26d-editor-keyboard-help.controls.json",
+            "file": "26d-editor-keyboard-help.png",
+            "height": 820,
+            "width": 1060
+        },
+        {
+            "controls": "26e-editor-text-stepper-1060.controls.json",
+            "file": "26e-editor-text-stepper-1060.png",
+            "height": 820,
+            "width": 1060
+        },
+        {
+            "controls": "26a-editor-properties-focus.controls.json",
+            "file": "26a-editor-properties-focus.png",
+            "height": 820,
+            "width": 1180
+        },
+        {
+            "controls": "26b-editor-text-edge.controls.json",
+            "file": "26b-editor-text-edge.png",
+            "height": 820,
+            "width": 1180
+        },
+        {
+            "controls": "26i-editor-text-anchor.controls.json",
+            "file": "26i-editor-text-anchor.png",
+            "height": 820,
+            "width": 1180
+        },
+        {
+            "controls": "26j-editor-affected-text.controls.json",
+            "file": "26j-editor-affected-text.png",
+            "height": 820,
+            "width": 1180
+        },
+        {
+            "controls": "26k-editor-affected-crop.controls.json",
+            "file": "26k-editor-affected-crop.png",
+            "height": 820,
+            "width": 1180
+        },
+        {
+            "controls": "27-editor-saved.controls.json",
+            "file": "27-editor-saved.png",
+            "height": 820,
+            "width": 1180
+        },
+        {
+            "controls": "27b-editor-saved-compact.controls.json",
+            "file": "27b-editor-saved-compact.png",
+            "height": 620,
+            "width": 900
+        },
+        {
+            "controls": "27a-editor-folder-failed.controls.json",
+            "file": "27a-editor-folder-failed.png",
+            "height": 820,
+            "width": 1180
+        },
+        {
+            "controls": "28-editor-save-failed.controls.json",
+            "file": "28-editor-save-failed.png",
+            "height": 820,
+            "width": 1180
+        },
+        {
+            "controls": "28c-editor-save-failed-compact.controls.json",
+            "file": "28c-editor-save-failed-compact.png",
+            "height": 620,
+            "width": 900
+        },
+        {
+            "controls": "28a-editor-save-path.controls.json",
+            "file": "28a-editor-save-path.png",
+            "height": 820,
+            "width": 1180
+        },
+        {
+            "file": "28b-editor-save-path-popup.png",
+            "height": 159,
+            "width": 462
+        },
+        {
+            "controls": "19-editor-discard-confirm.controls.json",
+            "file": "19-editor-discard-confirm.png",
+            "height": 136,
+            "width": 404
+        },
+        {
+            "file": "29a-editor-saving.png",
+            "height": 620,
+            "width": 900
+        },
+        {
+            "controls": "25-editor-finalizing.controls.json",
+            "file": "25-editor-finalizing.png",
+            "height": 620,
+            "width": 900
+        },
+        {
+            "controls": "25a-editor-finalizing-warning.controls.json",
+            "file": "25a-editor-finalizing-warning.png",
+            "height": 620,
+            "width": 900
+        },
+        {
+            "controls": "29-editor-preparation-failed.controls.json",
+            "file": "29-editor-preparation-failed.png",
+            "height": 620,
+            "width": 900
+        },
+        {
+            "controls": "29b-editor-recent-colours.controls.json",
+            "file": "29b-editor-recent-colours.png",
+            "height": 620,
+            "width": 900
+        },
+        {
+            "file": "26l-editor-dark-content.png",
+            "height": 820,
+            "width": 1180
+        },
+        {
+            "file": "settings-proton-signed-out.png",
+            "height": 680,
+            "width": 1060
+        },
+        {
+            "file": "settings-proton-browser-retry.png",
+            "height": 680,
+            "width": 1060
+        },
+        {
+            "file": "settings-config-editor-failure.png",
+            "height": 680,
+            "width": 1060
+        },
+        {
+            "controls": "30-review.controls.json",
+            "file": "30-review.png",
+            "height": 720,
+            "width": 754
+        },
+        {
+            "controls": "30a-review-mask-inactive.controls.json",
+            "file": "30a-review-mask-inactive.png",
+            "height": 720,
+            "width": 754
+        },
+        {
+            "controls": "30b-review-mask-ended.controls.json",
+            "file": "30b-review-mask-ended.png",
+            "height": 720,
+            "width": 754
+        },
+        {
+            "controls": "31-review-blur-selected.controls.json",
+            "file": "31-review-blur-selected.png",
+            "height": 720,
+            "width": 754
+        },
+        {
+            "controls": "31j-review-add-blur-warning.controls.json",
+            "file": "31j-review-add-blur-warning.png",
+            "height": 720,
+            "width": 754
+        },
+        {
+            "controls": "31k-review-disabled-blur-warning.controls.json",
+            "file": "31k-review-disabled-blur-warning.png",
+            "height": 720,
+            "width": 754
+        },
+        {
+            "controls": "31i-review-mask-options.controls.json",
+            "file": "31i-review-mask-options.png",
+            "height": 189,
+            "width": 264
+        },
+        {
+            "controls": "31b-review-strength-1060.controls.json",
+            "file": "31b-review-strength-1060.png",
+            "height": 720,
+            "width": 1060
+        },
+        {
+            "controls": "31m-review-header-wide.controls.json",
+            "file": "31m-review-header-wide.png",
+            "height": 720,
+            "width": 1342
+        },
+        {
+            "controls": "31c-review-many-lanes.controls.json",
+            "file": "31c-review-many-lanes.png",
+            "height": 720,
+            "width": 754
+        },
+        {
+            "controls": "32-review-minimum.controls.json",
+            "file": "32-review-minimum.png",
+            "height": 480,
+            "width": 640
+        },
+        {
+            "controls": "settings-review-inactive-header.controls.json",
+            "file": "settings-review-inactive-header.png",
+            "height": 480,
+            "width": 640
+        },
+        {
+            "controls": "32a-review-minimum-no-selection.controls.json",
+            "file": "32a-review-minimum-no-selection.png",
+            "height": 480,
+            "width": 640
+        },
+        {
+            "controls": "38-review-keyboard-mask.controls.json",
+            "file": "38-review-keyboard-mask.png",
+            "height": 720,
+            "width": 820
+        },
+        {
+            "controls": "39-review-status-errors.controls.json",
+            "file": "39-review-status-errors.png",
+            "height": 720,
+            "width": 820
+        },
+        {
+            "controls": "67-review-680-workspace.controls.json",
+            "file": "67-review-680-workspace.png",
+            "height": 680,
+            "width": 690
+        },
+        {
+            "controls": "review-destination-full-text.controls.json",
+            "file": "review-destination-full-text.png",
+            "height": 189,
+            "width": 375
+        },
+        {
+            "controls": "68-review-error-details.controls.json",
+            "file": "68-review-error-details.png",
+            "height": 181,
+            "width": 640
+        },
+        {
+            "controls": "31d-review-add-mask-menu.controls.json",
+            "file": "31d-review-add-mask-menu.png",
+            "height": 76,
+            "width": 158
+        },
+        {
+            "controls": "31e-review-format-menu.controls.json",
+            "file": "31e-review-format-menu.png",
+            "height": 267,
+            "width": 333
+        },
+        {
+            "controls": "31f-review-gif-audio.controls.json",
+            "file": "31f-review-gif-audio.png",
+            "height": 720,
+            "width": 820
+        },
+        {
+            "controls": "31g-review-restored-audio.controls.json",
+            "file": "31g-review-restored-audio.png",
+            "height": 720,
+            "width": 820
+        },
+        {
+            "controls": "31h-review-no-audio.controls.json",
+            "file": "31h-review-no-audio.png",
+            "height": 720,
+            "width": 754
+        },
+        {
+            "controls": "40-review-preview-error.controls.json",
+            "file": "40-review-preview-error.png",
+            "height": 720,
+            "width": 820
+        },
+        {
+            "controls": "49-review-saved-copy.controls.json",
+            "file": "49-review-saved-copy.png",
+            "height": 720,
+            "width": 820
+        },
+        {
+            "controls": "50-review-earlier-copy.controls.json",
+            "file": "50-review-earlier-copy.png",
+            "height": 720,
+            "width": 820
+        },
+        {
+            "controls": "41-review-discard-confirm.controls.json",
+            "file": "41-review-discard-confirm.png",
+            "height": 153,
+            "width": 468
+        },
+        {
+            "controls": "33-record-ready-bar.controls.json",
+            "file": "33-record-ready-bar.png",
+            "height": 52,
+            "width": 794
+        },
+        {
+            "controls": "33a-record-gif-requested-audio.controls.json",
+            "file": "33a-record-gif-requested-audio.png",
+            "height": 96,
+            "width": 688
+        },
+        {
+            "controls": "33b-record-restored-audio.controls.json",
+            "file": "33b-record-restored-audio.png",
+            "height": 52,
+            "width": 794
+        },
+        {
+            "controls": "34-record-recording-bar.controls.json",
+            "file": "34-record-recording-bar.png",
+            "height": 52,
+            "width": 892
+        },
+        {
+            "controls": "35-record-paused-bar.controls.json",
+            "file": "35-record-paused-bar.png",
+            "height": 52,
+            "width": 887
+        },
+        {
+            "controls": "36-record-discard-confirm.controls.json",
+            "file": "36-record-discard-confirm.png",
+            "height": 52,
+            "width": 620
+        },
+        {
+            "controls": "42-record-paused-discard-confirm.controls.json",
+            "file": "42-record-paused-discard-confirm.png",
+            "height": 52,
+            "width": 589
+        },
+        {
+            "controls": "37-record-ready-narrow.controls.json",
+            "file": "37-record-ready-narrow.png",
+            "height": 96,
+            "width": 423
+        },
+        {
+            "controls": "43-review-private-destination.controls.json",
+            "file": "43-review-private-destination.png",
+            "height": 720,
+            "width": 754
+        },
+        {
+            "controls": "43a-review-long-destination.controls.json",
+            "file": "43a-review-long-destination.png",
+            "height": 720,
+            "width": 754
+        },
+        {
+            "controls": "43b-review-long-destination-header.controls.json",
+            "file": "43b-review-long-destination-header.png",
+            "height": 720,
+            "width": 1342
+        },
+        {
+            "controls": "48-review-many-masks.controls.json",
+            "file": "48-review-many-masks.png",
+            "height": 720,
+            "width": 714
+        },
+        {
+            "controls": "48a-review-next-mask-lanes.controls.json",
+            "file": "48a-review-next-mask-lanes.png",
+            "height": 720,
+            "width": 714
+        },
+        {
+            "controls": "46-region-entire-display.controls.json",
+            "file": "46-region-entire-display.png",
+            "height": 800,
+            "width": 800
+        },
+        {
+            "controls": "44-region-keyboard.controls.json",
+            "file": "44-region-keyboard.png",
+            "height": 800,
+            "width": 800
+        },
+        {
+            "controls": "44a-region-badge-outside-selection.controls.json",
+            "file": "44a-region-badge-outside-selection.png",
+            "height": 800,
+            "width": 800
+        },
+        {
+            "controls": "47-record-entire-display.controls.json",
+            "file": "47-record-entire-display.png",
+            "height": 800,
+            "width": 800
+        },
+        {
+            "controls": "45-record-region-keyboard.controls.json",
+            "file": "45-record-region-keyboard.png",
+            "height": 800,
+            "width": 800
+        },
+        {
+            "controls": "45a-record-badge-outside-selection.controls.json",
+            "file": "45a-record-badge-outside-selection.png",
+            "height": 800,
+            "width": 800
+        },
+        {
+            "controls": "about.controls.json",
+            "file": "about.png",
+            "height": 292,
+            "width": 440
+        },
+        {
+            "controls": "about-build-details.controls.json",
+            "file": "about-build-details.png",
+            "height": 516,
+            "width": 440
+        },
+        {
+            "controls": "about-build-details-copied.controls.json",
+            "file": "about-build-details-copied.png",
+            "height": 516,
+            "width": 440
+        }
+    ],
+    "credentialFixture": "synthetic session only",
+    "desktopAcceptance": false,
+    "images": [
+        "00-control-tiers.png",
+        "00-editor-icons.png",
+        "00-icon-specimen.png",
+        "00-inactive-locked-controls.png",
+        "00-output-menu-literal-ampersand.png",
+        "00-tray-edit-submenu.png",
+        "00-tray-menu-idle.png",
+        "00-tray-menu-proton-busy.png",
+        "00-tray-menu-uploading.png",
+        "00-tray-output-submenu.png",
+        "00-tray-upload-status.png",
+        "01-history-list.png",
+        "01a-history-preview-focus.png",
+        "01b-history-left-window-buttons.png",
+        "02-history-gallery.png",
+        "02a-history-gallery-retry.png",
+        "02b-history-gallery-retry-focus.png",
+        "03-destinations-proton.png",
+        "04-destinations-s3.png",
+        "05-settings-advanced.png",
+        "06-settings-shortcuts.png",
+        "07-settings-general.png",
+        "08-settings-capture.png",
+        "09-stored-credential-hint.png",
+        "10-history-compact.png",
+        "10a-history-compact-preview-focus.png",
+        "11-advanced-compact.png",
+        "12-proton-compact.png",
+        "13-capture-compact.png",
+        "14-capture-exceptions-compact.png",
+        "15-capture-no-output.png",
+        "16-proton-loading-folders.png",
+        "17-destination-long-name-compact.png",
+        "18-destination-credentials-compact.png",
+        "19-editor-discard-confirm.png",
+        "20-editor-redact.png",
+        "21-editor-blur-warning.png",
+        "21a-editor-blur-focus.png",
+        "22-editor-arrow-style.png",
+        "23-editor-crop.png",
+        "24-editor-compact.png",
+        "25-editor-finalizing.png",
+        "25a-editor-finalizing-warning.png",
+        "26-editor-selected.png",
+        "26a-editor-properties-focus.png",
+        "26b-editor-text-edge.png",
+        "26c-editor-1060.png",
+        "26d-editor-keyboard-help.png",
+        "26e-editor-text-stepper-1060.png",
+        "26f-editor-zoom-menu.png",
+        "26g-editor-long-destination.png",
+        "26h-editor-geometry-expanded.png",
+        "26i-editor-text-anchor.png",
+        "26j-editor-affected-text.png",
+        "26k-editor-affected-crop.png",
+        "26l-editor-dark-content.png",
+        "27-editor-saved.png",
+        "27a-editor-folder-failed.png",
+        "27b-editor-saved-compact.png",
+        "28-editor-save-failed.png",
+        "28a-editor-save-path.png",
+        "28b-editor-save-path-popup.png",
+        "28c-editor-save-failed-compact.png",
+        "29-editor-preparation-failed.png",
+        "29a-editor-saving.png",
+        "29b-editor-recent-colours.png",
+        "30-review.png",
+        "30a-review-mask-inactive.png",
+        "30b-review-mask-ended.png",
+        "31-review-blur-selected.png",
+        "31b-review-strength-1060.png",
+        "31c-review-many-lanes.png",
+        "31d-review-add-mask-menu.png",
+        "31e-review-format-menu.png",
+        "31f-review-gif-audio.png",
+        "31g-review-restored-audio.png",
+        "31h-review-no-audio.png",
+        "31i-review-mask-options.png",
+        "31j-review-add-blur-warning.png",
+        "31k-review-disabled-blur-warning.png",
+        "31m-review-header-wide.png",
+        "32-review-minimum.png",
+        "32a-review-minimum-no-selection.png",
+        "33-record-ready-bar.png",
+        "33a-record-gif-requested-audio.png",
+        "33b-record-restored-audio.png",
+        "34-record-recording-bar.png",
+        "35-record-paused-bar.png",
+        "36-record-discard-confirm.png",
+        "37-record-ready-narrow.png",
+        "38-review-keyboard-mask.png",
+        "39-review-status-errors.png",
+        "40-history-filters-active.png",
+        "40-review-preview-error.png",
+        "41-history-selection.png",
+        "41-review-discard-confirm.png",
+        "41a-history-selection-inspector.png",
+        "42-history-delete-confirmation.png",
+        "42-record-paused-discard-confirm.png",
+        "43-history-no-matches.png",
+        "43-review-private-destination.png",
+        "43a-review-long-destination.png",
+        "43b-review-long-destination-header.png",
+        "44-region-keyboard.png",
+        "44a-region-badge-outside-selection.png",
+        "45-history-filters-expanded.png",
+        "45-record-region-keyboard.png",
+        "45a-record-badge-outside-selection.png",
+        "46-history-maintenance-compact.png",
+        "46-region-entire-display.png",
+        "47-history-filtering.png",
+        "47-record-entire-display.png",
+        "48-history-deletion-recovery.png",
+        "48-review-many-masks.png",
+        "48a-review-next-mask-lanes.png",
+        "49-history-delete-details.png",
+        "49-review-saved-copy.png",
+        "50-capture-exceptions-locked.png",
+        "50-history-failure-recovery.png",
+        "50-review-earlier-copy.png",
+        "50a-history-failure-inspector.png",
+        "50b-history-failure-compact.png",
+        "50c-history-failure-compact-inspector.png",
+        "51-history-loading-failure.png",
+        "51-settings-conflict.png",
+        "51a-settings-conflict-compact-update.png",
+        "52-destinations-conflict.png",
+        "52-history-long-inspector.png",
+        "53-reload-confirm.png",
+        "54-capture-exception-override.png",
+        "54-history-local-copy-guidance.png",
+        "55-folder-chooser-failed.png",
+        "55-history-gallery-details.png",
+        "56-edit-image-chooser-failed.png",
+        "56-history-gallery-return.png",
+        "57-history-management-menu.png",
+        "57-output-summary-full-text.png",
+        "58-diagnostics-package.png",
+        "58-history-text-unavailable-link.png",
+        "59-history-recording-no-copy.png",
+        "60-credential-storage-replacement.png",
+        "60-history-previous-link-details.png",
+        "61-credential-store-pending.png",
+        "61-history-browser-failure.png",
+        "62-destination-connection-expanded.png",
+        "62-history-technical-filters.png",
+        "63-local-copies-focus.png",
+        "64-credential-store-conflict.png",
+        "65-repository-update-channel.png",
+        "66-history-preview-failed.png",
+        "66-recording-region-inheritance.png",
+        "67-history-gallery-compact-details.png",
+        "67-recording-explicit-output.png",
+        "67-review-680-workspace.png",
+        "68-history-expanded-preview.png",
+        "68-review-error-details.png",
+        "69-history-saved-copy.png",
+        "69a-history-saving-copy.png",
+        "69b-history-dismissed-copy.png",
+        "70-history-taller-details.png",
+        "71-history-thumbnail-details.png",
+        "about-build-details-copied.png",
+        "about-build-details.png",
+        "about.png",
+        "confirm-add-destination-name.png",
+        "confirm-clear-cache.png",
+        "confirm-clear-history.png",
+        "confirm-clear-logs.png",
+        "confirm-history-delete-supported.png",
+        "confirm-make-default-untested.png",
+        "confirm-new-proton-folder.png",
+        "confirm-remove-destination.png",
+        "confirm-reset-limits.png",
+        "confirm-revoke-link.png",
+        "confirm-switch-older.png",
+        "history-cancel-all-confirmation.png",
+        "history-edit-sources-no-output.png",
+        "history-failed-filters-locked.png",
+        "history-gallery-compact.png",
+        "history-many-active.png",
+        "history-missing-copy-local_only.png",
+        "history-missing-copy-present.png",
+        "history-missing-copy-removed.png",
+        "history-remote-groups.png",
+        "history-tray-destination-recovery.png",
+        "history-tray-output-recovery.png",
+        "main-mixed-outputs.png",
+        "main-output-recovery.png",
+        "main-rename-destination.png",
+        "main-unavailable-recovery.png",
+        "main-update-browser-failure.png",
+        "main-version-browser-failure.png",
+        "provider-icons-16.png",
+        "review-destination-full-text.png",
+        "settings-add-credentials-focus.png",
+        "settings-b2-compact.png",
+        "settings-b2-stepper-1060.png",
+        "settings-category-folders.png",
+        "settings-config-editor-failure.png",
+        "settings-custom-name-pattern.png",
+        "settings-desktop-support-expanded.png",
+        "settings-endpoint-advanced.png",
+        "settings-exceptions-compact.png",
+        "settings-forever-retention.png",
+        "settings-general-compact.png",
+        "settings-header-context-menu.png",
+        "settings-numeric-limit-unit.png",
+        "settings-package-contents-expanded.png",
+        "settings-proton-browser-retry.png",
+        "settings-proton-signed-out.png",
+        "settings-proton-steppers-1060.png",
+        "settings-radio-choices-compact.png",
+        "settings-radio-choices.png",
+        "settings-resource-limits-expanded.png",
+        "settings-retention-help.png",
+        "settings-review-inactive-header.png",
+        "settings-shortcuts-compact.png",
+        "settings-tray-states.png",
+        "settings-update-privacy.png"
+    ],
+    "kind": "synthetic-ui-catalog",
+    "networkActions": 0,
+    "platform": "offscreen",
+    "qtVersion": "6.10.2",
+    "scope": {
+        "editorOnly": false,
+        "handshake": false,
+        "recordOnly": false,
+        "review": true
+    },
+    "skippedCaptures": [
+    ],
+    "sourceReads": 0
+}

@@ -1,0 +1,21 @@
+{
+  "driver_source": "64dc9b8b00d788b060e7dcb54b09bea8e8d05e79",
+  "native_evidence_driver_source": "94c2f7fae366abe426066bb4b5201ca04bf364c6",
+  "product_artifact_source": "0348fc368e62b9367b71f79a58e8bba95cfaf932",
+  "unit_tests": {
+    "passed": true,
+    "count": 63
+  },
+  "without_Pillow": {
+    "passed": true,
+    "total": 17,
+    "image_skips": 8,
+    "nonimage_passes": 9
+  },
+  "delta_after_native_run": [
+    "Activate masking fallback for opaque MCP, notification, and URL-evidence paths.",
+    "Audit explicitly registered distinctive literals only in memory.",
+    "A failing standalone CLI audit invalidates matching coverage rows under lock; supports external campaign coverage path."
+  ],
+  "validation_limit": "These final Python-only audit changes have synthetic regression tests. The recorded native GUI run was performed on 94c2f7fa, before this final review correction; it is not relabeled as a native run of 64dc9b8b. Product C++/CMake is unchanged since the exact installed artifact."
+}

@@ -1,0 +1,112 @@
+{
+  "schemaVersion": 1,
+  "role": "intermediate before-deadline-fix negative control",
+  "status": "expected-failure",
+  "executionHost": {
+    "name": "d69",
+    "address": "192.168.68.69",
+    "os": "Debian 13",
+    "mode": "SSH fake-backend integration; no desktop acceptance"
+  },
+  "source": {
+    "productionCommit": "39d1945d3a8a5139d140f8d5748b6f831a392c26",
+    "testPatchSha256": "1790f3200f8c9365e79e70f3b337e5ed41185ba43011f9c993410a4c053bc438",
+    "testPatchPaths": [
+      "tests/integration/test_cli.cpp",
+      "tests/integration/test_recording_service.cpp"
+    ],
+    "productionSource": "intermediate source plus test-only patch",
+    "publicReconstruction": {
+      "diffFrom": "39d1945d3a8a5139d140f8d5748b6f831a392c26",
+      "diffTo": "052d4363826fc01fa62a552f91db48b74667383b",
+      "paths": [
+        "tests/integration/test_cli.cpp",
+        "tests/integration/test_recording_service.cpp"
+      ],
+      "sha256Verified": true
+    }
+  },
+  "test": {
+    "suite": "CliContract",
+    "case": "recordToggleWaitsForASlowStopThroughTheRealClient",
+    "actualClientExitCode": 1,
+    "expectedClientExitCode": 0,
+    "qtTestElapsedMs": 15396,
+    "qtTestTotalsIncludingSetupAndCleanup": {
+      "passed": 2,
+      "failed": 1,
+      "skipped": 0
+    },
+    "fakeStopDelayMs": 16000
+  },
+  "softwareFromLog": {
+    "qt": "6.8.2",
+    "qtLinkage": "dynamic",
+    "compiler": "GCC 14.2.0",
+    "os": "Debian 13"
+  },
+  "reproductionCommand": "XDG_RUNTIME_DIR=NEW_PRIVATE_ROOT/r TMPDIR=NEW_PRIVATE_ROOT/t build/dev/test_cli recordToggleWaitsForASlowStopThroughTheRealClient",
+  "reproductionContext": "Use intermediate production source plus the verified test-only patch, official provisioned dependencies, and a new private short runtime with socket preflight. This command describes reproduction, not a recovered historical shell transcript.",
+  "socketPreflight": {
+    "schemaVersion": 1,
+    "passed": true,
+    "limitBytesExcludingNul": 107,
+    "paths": [
+      {
+        "path": "/tmp/r410d/r/putgd/session.sock",
+        "utf8Bytes": 31,
+        "passed": true
+      },
+      {
+        "path": "/tmp/r410d/t/test_cli-XXXXXX/runtime/session.sock",
+        "utf8Bytes": 49,
+        "passed": true
+      }
+    ]
+  },
+  "rawEvidence": {
+    "remoteRoot": "d69:/tmp/r410d",
+    "privateWorkstationCopy": "/home/patrick/work/put.gd/work/docs410-evidence/intermediate39d-d69",
+    "files": [
+      {
+        "file": "review2-cli-before.log",
+        "remotePath": "/tmp/r410d/review2-cli-before.log",
+        "sha256": "af995900e2392bea5ffcbbf432f398d20391ad7d4e0c4f877817fa4205f6b628",
+        "sizeBytes": 616
+      },
+      {
+        "file": "review2-test.patch",
+        "remotePath": "/tmp/r410d/review2-test.patch",
+        "sha256": "1790f3200f8c9365e79e70f3b337e5ed41185ba43011f9c993410a4c053bc438",
+        "sizeBytes": 7645
+      },
+      {
+        "file": "review2-socket-preflight.json",
+        "remotePath": "/tmp/r410d/review2-socket-preflight.json",
+        "sha256": "799468a0c196be3be419c39e74076fdc8d219748397514a8f596b8279e51651e",
+        "sizeBytes": 253
+      },
+      {
+        "file": "review2-configure.log",
+        "remotePath": "/tmp/r410d/review2-configure.log",
+        "sha256": "8e95511e5164d5fd8a2ef145e3e0c8252f094b2ad9bcbfe91caf7829e9b711f5",
+        "sizeBytes": 1061
+      },
+      {
+        "file": "review2-build.log",
+        "remotePath": "/tmp/r410d/review2-build.log",
+        "sha256": "d5f307f6ed839440bb7a52acf4a7ec76e97624791454bb62684ccfcd0253392e",
+        "sizeBytes": 6774
+      }
+    ]
+  },
+  "reportOwnerVerification": [
+    "Pinned-SSH export matched remote SHA-256 for every listed file.",
+    "Read exact CLI failure, runtime tool versions and QtTest elapsed time.",
+    "Public test-only diff SHA-256 matches the saved intermediate patch."
+  ],
+  "limitations": [
+    "The 15396 ms value is QtTest elapsed time, not a separately sampled client duration.",
+    "This is a deliberate expected failure, not final-source, graphical or memory acceptance."
+  ]
+}

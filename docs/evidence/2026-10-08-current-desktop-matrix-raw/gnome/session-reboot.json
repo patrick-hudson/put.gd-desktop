@@ -4,8 +4,8 @@
   "request": "gnome-session-quit --reboot --no-prompt",
   "purpose": "Normal fresh Wayland login discovers newly installed system extension; visible VNC remains active",
   "hostPid": 2204570,
-  "bootIdBefore": "25c15b01-e3b1-42de-a394-31a6c10fdbf9",
+  "bootIdBefore": "[REDACTED]",
   "requestOutput": "",
-  "bootIdAfter": "5e43c72e-a65d-4f7c-8f32-88614ca7ae8c",
+  "bootIdAfter": "[REDACTED]",
   "bootChanged": true
 }

@@ -1,0 +1,58 @@
+{
+  "artifact": "lab-fixture",
+  "ciDifferences": [
+    "Cold isolated Docker build on Boat; no Actions package/SDK/compiler caches or hosted runner preinstalls. No weekly native package snapshot/offline fallback.",
+    "No Actions upload, split debug staging, SBOM, source rebuild, publication or desktop acceptance; only selected build/audit artifacts.",
+    "Untagged development identity for the exact SHA; no release tag supplied.",
+    "PATH prefers distro /usr/bin; compiler cache is private and capped at 256M.",
+    "Test-only DEB named putgd-lab-fixture; PUTGD_PACKAGE_TARGET empty and PUTGD_UPDATE_CHECK OFF. It must not enter production staging.",
+    "native.py audit intentionally not run: production audit forbids fixture files and requires package name putgd. CPack control metadata, binary/build identity and per-file hashes retained instead."
+  ],
+  "cleanup": {
+    "deletedIds": [
+      "bx_bbz3c2up"
+    ],
+    "finalState": "absent",
+    "name": "putgd-0c329b0692ca-lab-fixture-eda9d5e1835a48ad",
+    "requests": [
+      {
+        "operation": {
+          "attemptCount": 0,
+          "completedAt": null,
+          "expectedBy": null,
+          "id": "bdop_dd15950a319b4050897be90a9ec28da1",
+          "kind": "sandbox",
+          "reason": "explicit",
+          "requestedAt": "2026-10-30T04:03:49.350Z",
+          "stage": "removing",
+          "status": "pending",
+          "targetId": "bx_bbz3c2up"
+        },
+        "sandboxId": "bx_bbz3c2up"
+      }
+    ],
+    "verification": "boat list --all",
+    "verified": true,
+    "verifiedAt": 1793333031.7227685
+  },
+  "cleanupVerified": true,
+  "commit": "0c329b0692cadc52f03f91e59c06c5eda760bf04",
+  "error": "Controller cancelled or deadline exceeded: boat",
+  "name": "putgd-0c329b0692ca-lab-fixture-eda9d5e1835a48ad",
+  "placementReason": "parallel candidate packaging; preserve quiet physical acceptance hosts",
+  "runNonce": "eda9d5e1835a48ad",
+  "sandboxId": "bx_bbz3c2up",
+  "snapshot": "putgd-build-base",
+  "startupCleanup": {
+    "deleted": [],
+    "preserved": [
+      "bx_dgzpjwxg",
+      "bx_pm48s29k"
+    ],
+    "verified": true
+  },
+  "state": "failed",
+  "totalSeconds": 4.165,
+  "ttlSeconds": 10800,
+  "type": "large"
+}

@@ -1,0 +1,2 @@
+f44 (Fedora 44 GNOME Wayland): Nothing new is left on the host. Finish the manual steps (workstation forwards, re-login after an extension copy), then rerun with --verified-clean
+  note: 1 process(es) outside the desktop session (no DISPLAY or WAYLAND_DISPLAY; shared SSH work): 1271

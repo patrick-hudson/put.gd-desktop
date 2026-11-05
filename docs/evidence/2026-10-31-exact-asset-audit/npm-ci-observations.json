@@ -1,0 +1,33 @@
+{
+  "producingRun": 41176529926,
+  "kind": "Observed installed npm packages / engine warning in original CI logs, separate from new source rebuild",
+  "jobs": {
+    "ubuntu24.04": {
+      "npmVersion": "9.2.0",
+      "packageVersionOrWarning": "9.2.0~ds1-2",
+      "job": "https://github.com/patrick-hudson/put.gd-desktop/actions/runs/41176529926/job/124465296993"
+    },
+    "ubuntu26.04": {
+      "npmVersion": "9.2.0",
+      "packageVersionOrWarning": "9.2.0~ds3-1",
+      "job": "https://github.com/patrick-hudson/put.gd-desktop/actions/runs/41176529926/job/124465297035"
+    },
+    "debian13": {
+      "npmVersion": "9.2.0",
+      "packageVersionOrWarning": "9.2.0~ds1-3",
+      "job": "https://github.com/patrick-hudson/put.gd-desktop/actions/runs/41176529926/job/124465296970"
+    },
+    "fedora44": {
+      "npmVersion": "10.9.8",
+      "packageVersionOrWarning": "nodejs22-npm-1:10.9.8-1.22.23",
+      "job": "https://github.com/patrick-hudson/put.gd-desktop/actions/runs/41176529926/job/124465296961"
+    },
+    "appimage": {
+      "npmVersion": "9.2.0",
+      "packageVersionOrWarning": "9.2.0~ds1-2",
+      "job": "https://github.com/patrick-hudson/put.gd-desktop/actions/runs/41176529926/job/124465296986"
+    }
+  },
+  "runtimeSha256": "e93b3b520d20a19e37569c7a97a1680f47bc43fcb5acaf6a5d69fa660e0a34b0",
+  "runtimeCopies": "All five exact packages match the catalog helper hash and notices, including direct @openpgp/web-stream-tools."
+}

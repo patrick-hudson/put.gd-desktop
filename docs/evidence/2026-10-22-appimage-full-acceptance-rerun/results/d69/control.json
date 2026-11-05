@@ -1,0 +1,22 @@
+{
+ "mp4": {
+  "bytes": 9489,
+  "motion": {
+   "motion": 0.0,
+   "compared": 7,
+   "durationMs": 6866,
+   "size": "1120x680",
+   "by": "putgd-record"
+  }
+ },
+ "gif": {
+  "bytes": 4956,
+  "motion": {
+   "motion": 0.0,
+   "compared": 7,
+   "durationMs": 6870,
+   "size": "1120x680",
+   "by": "putgd-record"
+  }
+ }
+}

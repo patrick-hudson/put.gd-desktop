@@ -1,0 +1,5 @@
+{
+  "exit": 3,
+  "stdout": "{\"check\": \"precheck\", \"fraction\": 0.9705, \"framebuffer\": [1920, 1080], \"minFraction\": 0.98, \"ok\": false, \"output\": [\"HDMI-A-1\"], \"rect\": [0, 0, 1920, 1080]}\n",
+  "stderr": ""
+}

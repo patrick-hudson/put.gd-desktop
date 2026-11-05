@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """Private QEMU/QMP graphical acceptance lab. Python stdlib only."""
 import argparse
+import contextlib
 import datetime
+import fcntl
 from functools import wraps
 import shutil
 import hashlib
@@ -13,6 +15,7 @@ import re
 import shlex
 import signal
 import socket
+import struct
 import subprocess
 import sys
 import time
@@ -23,6 +26,7 @@ SCENARIOS = ('region', 'window', 'desktop', 'clipboard-text', 'clipboard-image',
              'region-cancel-escape', 'region-cancel-right-click', 'region-cancel-zero-area')
 sys.path.insert(0, str(HERE))
 import overlay_cleanup
+import rfb
 
 class LabError(RuntimeError):
     pass
@@ -39,9 +43,10 @@ def lifecycle_operation(function):
     return locked
 
 
-def cleanup_overlay(run, *, evidence_manifest=None, dry_run=False):
+def cleanup_overlay(run, *, evidence_manifest=None, dry_run=False, images_root=None):
     try:
-        return overlay_cleanup.cleanup(run, evidence_manifest=evidence_manifest, dry_run=dry_run)
+        return overlay_cleanup.cleanup(run, evidence_manifest=evidence_manifest, dry_run=dry_run,
+                                       images_root=images_root)
     except overlay_cleanup.CleanupError as error:
         raise LabError(str(error)) from error
 
@@ -84,22 +89,62 @@ def command(args, timeout=60, check=True, input=None):
     return result
 
 
+def connect_unix(path, timeout):
+    """Connect within one deadline, including Linux AF_UNIX backlog pressure.
+
+    Python timeout sockets use O_NONBLOCK. Unlike TCP's EINPROGRESS, a full
+    Unix listener queue returns EAGAIN immediately, without waiting for the
+    configured timeout. Retry only this pre-connection failure, never a QMP
+    write or reply: input dispatch may already have happened in those cases.
+    """
+    deadline = time.monotonic() + timeout
+    while True:
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            raise TimeoutError('Unix socket connection timed out')
+        peer = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        try:
+            peer.settimeout(remaining)
+            peer.connect(str(path))
+            peer.settimeout(timeout)
+            return peer
+        except BlockingIOError:
+            peer.close()
+            time.sleep(min(.01, max(0, deadline - time.monotonic())))
+        except BaseException:
+            peer.close()
+            raise
+
+
 class QMP:
-    def __init__(self, path, timeout=10):
-        self.socket = socket.socket(socket.AF_UNIX)
-        self.socket.settimeout(timeout)
-        self.socket.connect(str(path))
-        self.stream = self.socket.makefile('rwb')
-        self.events = []
-        self.sequence = 0
-        greeting = self._read()
-        if 'QMP' not in greeting:
+    def __init__(self, path, timeout=10, deadline=None):
+        # deadline (time.monotonic()): one budget for connect, greeting and
+        # every reply, instead of ``timeout`` per step.
+        self.deadline = deadline
+        self.socket = connect_unix(path, timeout if deadline is None else min(timeout, deadline - time.monotonic()))
+        self.stream = None
+        try:
+            self.stream = self.socket.makefile('rwb')
+            self.events = []
+            self.sequence = 0
+            greeting = self._read()
+            if 'QMP' not in greeting:
+                raise LabError('Missing QMP greeting')
+            self.version = greeting['QMP']['version']
+            self.execute('qmp_capabilities')
+        except BaseException:
             self.close()
-            raise LabError('Missing QMP greeting')
-        self.version = greeting['QMP']['version']
-        self.execute('qmp_capabilities')
+            raise
+
+    def _budget(self):
+        if self.deadline is not None:
+            remaining = self.deadline - time.monotonic()
+            if remaining <= 0:
+                raise TimeoutError('QMP deadline exceeded')
+            self.socket.settimeout(remaining)
 
     def _read(self):
+        self._budget()
         line = self.stream.readline(1024 * 1024)
         if not line or not line.endswith(b'\n'):
             raise LabError('QMP closed or oversized reply')
@@ -110,6 +155,7 @@ class QMP:
         request = {'execute': name, 'id': self.sequence}
         if arguments is not None:
             request['arguments'] = arguments
+        self._budget()
         self.stream.write(json.dumps(request).encode() + b'\n')
         self.stream.flush()
         while True:
@@ -124,8 +170,11 @@ class QMP:
             return reply['return']
 
     def close(self):
-        self.stream.close()
-        self.socket.close()
+        try:
+            if self.stream is not None:
+                self.stream.close()
+        finally:
+            self.socket.close()
 
     def __enter__(self):
         return self
@@ -134,18 +183,166 @@ class QMP:
         self.close()
 
 
-def qemu_command(profile, run, overlay, ssh_port, vnc_display, acceleration):
+# Host OVMF locations, searched in order. Both pflash files of a pair must come
+# from the same package build, so a pair is accepted only when both exist.
+UEFI_FIRMWARE = (
+    {'code': '/usr/share/edk2/ovmf/OVMF_CODE_4M.qcow2', 'vars': '/usr/share/edk2/ovmf/OVMF_VARS_4M.qcow2',
+     'format': 'qcow2'},  # Fedora edk2-ovmf
+    {'code': '/usr/share/OVMF/OVMF_CODE_4M.fd', 'vars': '/usr/share/OVMF/OVMF_VARS_4M.fd',
+     'format': 'raw'},  # Debian/Ubuntu ovmf
+)
+
+
+def uefi_firmware(profile):
+    """Resolve the host OVMF pair for a `firmware: uefi` profile; None for BIOS profiles."""
+    kind = profile.get('firmware', 'bios')
+    if kind == 'bios':
+        return None
+    if kind != 'uefi':
+        raise LabError('Profile firmware must be "bios" or "uefi"')
+    for candidate in UEFI_FIRMWARE:
+        if Path(candidate['code']).is_file() and Path(candidate['vars']).is_file():
+            return {'type': 'uefi', 'code': candidate['code'], 'vars_template': candidate['vars'],
+                    'format': candidate['format']}
+    raise LabError('UEFI firmware unavailable; install edk2-ovmf (Fedora) or ovmf (Debian/Ubuntu)')
+
+
+MAX_HEADS = 4
+# QEMU's virtio-gpu default scanout size; extra heads start at this size unless a layout says otherwise.
+DEFAULT_HEAD_SIZE = (1280, 800)
+MULTIHEAD_VIDEO = ('virtio-vga', 'virtio-gpu-pci')
+HEAD_GEOMETRY = re.compile(r'([0-9]{3,4})x([0-9]{3,4})([+-][0-9]{1,5})([+-][0-9]{1,5})')
+
+
+def parse_layout(value):
+    """Parse `WxH+X+Y,...` (one entry per head, in head order; X/Y may be negative)."""
+    parts = value.split(',') if isinstance(value, str) else list(value)
+    layout = []
+    for part in parts:
+        match = HEAD_GEOMETRY.fullmatch(str(part).strip())
+        if not match:
+            raise LabError('Head layout entries must look like 1920x1080+0+0 or 1280x1024-1280+0')
+        width, height, x, y = (int(group) for group in match.groups())
+        if not (640 <= width <= 5120 and 480 <= height <= 2880):
+            raise LabError('Head sizes must be between 640x480 and 5120x2880')
+        layout.append({'width': width, 'height': height, 'x': x, 'y': y})
+    if not 1 <= len(layout) <= MAX_HEADS:
+        raise LabError(f'A head layout has 1 to {MAX_HEADS} entries')
+    for index, first in enumerate(layout):
+        for second in layout[index + 1:]:
+            if (first['x'] < second['x'] + second['width'] and second['x'] < first['x'] + first['width'] and
+                    first['y'] < second['y'] + second['height'] and second['y'] < first['y'] + first['height']):
+                raise LabError('Head layout rectangles overlap')
+    return layout
+
+
+def format_layout(layout):
+    return ','.join(f"{head['width']}x{head['height']}{head['x']:+d}{head['y']:+d}" for head in layout)
+
+
+def head_plan(profile, heads=None, layout=None):
+    """Resolve the head count and optional layout from launch options, then the profile."""
+    if layout is None and profile.get('head_layout') is not None:
+        layout = profile['head_layout']
+    layout = parse_layout(layout) if layout is not None else None
+    count = heads if heads is not None else len(layout) if layout else profile.get('display_heads', 1)
+    if not isinstance(count, int) or not 1 <= count <= MAX_HEADS:
+        raise LabError(f'Heads must be 1 to {MAX_HEADS}')
+    if layout is not None and len(layout) != count:
+        raise LabError('The head layout needs one entry per head')
+    if count > 1 and profile['video'] not in MULTIHEAD_VIDEO:
+        raise LabError('Multiple heads need a virtio-gpu video device (virtio-vga or virtio-gpu-pci)')
+    return count, layout
+
+
+def qemu_command(profile, run, overlay, ssh_port, vnc_display, acceleration, firmware=None, heads=1):
     args = ['qemu-system-x86_64', '-machine', 'q35,accel=' + acceleration,
-            '-cpu', 'host' if acceleration == 'kvm' else 'max',
-            '-smp', str(profile['cpus']), '-m', str(profile['memory_mib']),
-            '-device', profile['video'] + ',id=video0', '-device', 'usb-ehci', '-device', 'usb-tablet',
-            '-drive', f'file={overlay},format=qcow2,if=virtio',
+            '-cpu', 'host' if acceleration == 'kvm' else 'max']
+    if firmware is not None:
+        # Read-only shared code image plus this run's private, writable NVRAM copy.
+        args += ['-drive', f"if=pflash,format={firmware['format']},readonly=on,file={firmware['code']}",
+                 '-drive', f"if=pflash,format={firmware['format']},file={firmware['vars']}"]
+    video = profile['video'] + ',id=video0' + (f',max_outputs={heads}' if heads > 1 else '')
+    args += ['-smp', str(profile['cpus']), '-m', str(profile['memory_mib']),
+            '-device', video, '-device', 'usb-ehci', '-device', 'usb-tablet']
+    # Each extra head gets its own tablet bound to that head's console, so a VNC
+    # client on head N sends coordinates relative to head N. The unbound tablet
+    # keeps receiving QMP input that names no head.
+    for head in range(heads if heads > 1 else 0):
+        args += ['-device', f'usb-tablet,id=tablet{head},display=video0,head={head},serial=putgd-head{head}']
+    args += ['-drive', f'file={overlay},format=qcow2,if=virtio',
             '-netdev', f'user,id=net0,hostfwd=tcp:127.0.0.1:{ssh_port}-:22',
             '-device', 'virtio-net-pci,netdev=net0',
-            '-qmp', f'unix:{run}/qmp.sock,server=on,wait=off',
-            '-vnc', f'127.0.0.1:{vnc_display}', '-display', 'none',
-            '-daemonize', '-pidfile', str(run / 'qemu.pid')]
+            '-qmp', f'unix:{run}/qmp.sock,server=on,wait=off']
+    if heads == 1:
+        args += ['-vnc', f'127.0.0.1:{vnc_display}']
+    else:
+        # QEMU's VNC server shows one head per listener, on consecutive displays.
+        for head in range(heads):
+            args += ['-vnc', f'127.0.0.1:{vnc_display + head},id=head{head},display=video0,head={head}']
+    args += ['-display', 'none', '-daemonize', '-pidfile', str(run / 'qemu.pid')]
     return args
+
+
+def head_ports(vnc_display, heads):
+    return [{'head': head, 'port': 5900 + vnc_display + head, 'display': f'127.0.0.1:{5900 + vnc_display + head}'}
+            for head in range(heads)]
+
+
+def request_head_size(port, width, height, timeout=10):
+    """Enable one virtio-gpu head at a preferred size with an RFB SetDesktopSize request.
+
+    virtio-gpu reports only head 0 as connected until a display client sends
+    size information for a head. QEMU's VNC server forwards a client's
+    SetDesktopSize to the device, which hot-plugs that head into the guest
+    with the requested size as its preferred mode.
+    """
+    client = rfb.RFB(port, timeout=timeout)
+    try:
+        # Raw plus ExtendedDesktopSize, so QEMU reports the request's outcome.
+        client.sock.sendall(struct.pack('>BxHii', 2, 2, 0, -308))
+        client.sock.sendall(struct.pack('>BxHHBxIHHHHI', 251, width, height, 1, 0, 0, 0, width, height, 0))
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline:
+            kind = client._read(1)[0]
+            if kind == 0:
+                client._read(1)
+                for _ in range(struct.unpack('>H', client._read(2))[0]):
+                    x, y, w, h, encoding = struct.unpack('>HHHHi', client._read(12))
+                    if encoding == -308:
+                        screens = client._read(4)[0]
+                        client._read(16 * screens)
+                        # x is the reason (1: this client's request), y the status;
+                        # QEMU answers 4 when it forwarded the request to the device.
+                        if x == 1:
+                            if y not in (0, 4):
+                                raise LabError(f'QEMU refused head size on port {port} (status {y})')
+                            return {'port': port, 'width': width, 'height': height, 'status': y}
+                    elif encoding == 0:
+                        client._read(w * h * 4)
+                    elif encoding != -223:
+                        raise LabError('Unexpected RFB encoding while sizing a head')
+            elif kind == 1:
+                client._read(3)
+                client._read(6 * struct.unpack('>H', client._read(2))[0])
+            elif kind == 3:
+                client._read(3)
+                client._read(struct.unpack('>I', client._read(4))[0])
+            elif kind != 2:
+                raise LabError('Unexpected RFB message while sizing a head')
+        raise LabError(f'No SetDesktopSize answer on port {port}')
+    finally:
+        client.close()
+
+
+def enable_heads(vnc_display, heads, layout=None):
+    sizes = [(head['width'], head['height']) for head in layout] if layout else [DEFAULT_HEAD_SIZE] * heads
+    try:
+        return [request_head_size(5900 + vnc_display + head, *sizes[head]) for head in range(heads)]
+    except (RuntimeError, OSError, struct.error) as error:
+        if isinstance(error, LabError):
+            raise
+        raise LabError(f'Could not size the guest heads over VNC: {error}') from error
 
 
 def validate_readiness(profile, actual, acceleration):
@@ -230,6 +427,71 @@ def locate_fixture_paint(path):
     return matches[0] if len(matches) == 1 else None
 
 
+FIXTURE_RGB = ((220, 30, 40), (20, 180, 70), (35, 70, 220), (235, 190, 20))
+
+
+def locate_scaled_fixture_paint(path, scale, slack=3):
+    """The 640x320 four-colour fixture drawn at scale, such as an editor's Fit zoom.
+
+    Smoothing and an image edge may change up to `slack` pixels at each
+    boundary, while quadrant interiors keep their exact colours. The origin is
+    taken from the boundaries between quadrants, so an edge drawn on the image's
+    outer pixels cannot move it. Returns float coordinates, or None unless the
+    pattern appears exactly once.
+    """
+    width, height, pixels = ppm(path)
+    red, green, blue, yellow = (bytes(colour) for colour in FIXTURE_RGB)
+    across, down = 320 * scale, 160 * scale
+    shortest, longest = max(4, int(across) - 2 * slack), int(across) + 1
+    stride = width * 3
+
+    def runs(y, colour):
+        row, found = pixels[y * stride:(y + 1) * stride], []
+        start = row.find(colour * shortest)
+        while start >= 0:
+            if start % 3:
+                start = row.find(colour * shortest, start + 1)
+                continue
+            end = start
+            while row[end:end + 3] == colour:
+                end += 3
+            if (end - start) // 3 <= longest:
+                found.append((start // 3, end // 3))
+            start = row.find(colour * shortest, end)
+        return found
+
+    def pair(y, left, right):
+        """(left start, boundary) of each left|right quadrant pair on row y."""
+        rights = runs(y, right)
+        return [(start, (end + other) / 2) for start, end in runs(y, left)
+                for other, _ in rights if end <= other <= end + 2 * slack]
+
+    tops = {}
+    for y in range(height):
+        for start, boundary in pair(y, red, green):
+            tops.setdefault(start, []).append((y, boundary))
+    matches = []
+    for start, rows in tops.items():
+        ys = [y for y, _ in rows]
+        first, last = ys[0], ys[-1]
+        if ys != list(range(first, last + 1)) or not down - 2 * slack <= len(ys) <= down + 1:
+            continue
+        below = next((y for y in range(last + 1, min(height, last + 2 + 2 * slack))
+                      if any(abs(x - start) <= 1 for x, _ in pair(y, blue, yellow))), None)
+        if below is None:
+            continue
+        # The bottom half must be complete too, not one matching row.
+        bottom = below
+        while bottom < height and any(abs(x - start) <= 1 for x, _ in pair(bottom, blue, yellow)):
+            bottom += 1
+        if not down - 2 * slack <= bottom - below <= down + 1:
+            continue
+        across_at = sum(boundary for _, boundary in rows) / len(rows)
+        down_at = (last + 1 + below) / 2
+        matches.append({'x': across_at - across, 'y': down_at - down, 'width': 640 * scale, 'height': 320 * scale})
+    return matches[0] if len(matches) == 1 else None
+
+
 def compare_paste(actual, expected):
     return {'ok': all(actual.get(key) == value for key, value in expected.items()),
             'expected': expected, 'actual': actual}
@@ -264,8 +526,13 @@ def ssh_args(run, bootstrap=False):
             '-p', str(info['ssh_port']), info['guest_user'] + '@127.0.0.1']
 
 
-def ssh(run, script, timeout=60, bootstrap=False):
-    return command(ssh_args(run, bootstrap) + ['sh', '-s'], timeout=timeout, input=script).stdout
+def ssh(run, script, timeout=60, bootstrap=False, refusals=None):
+    # refusals maps a guard script's exit status to its reason; guest stderr
+    # stays hidden (it can contain private data).
+    result = command(ssh_args(run, bootstrap) + ['sh', '-s'], timeout=timeout, input=script, check=not refusals)
+    if result.returncode:
+        raise LabError(refusals.get(result.returncode, f'ssh failed (exit {result.returncode})'))
+    return result.stdout
 
 
 def scp_connection(run):
@@ -281,9 +548,9 @@ def put(run, local, remote):
     command(arguments + [local, endpoint + str(remote)])
 
 
-def get(run, remote, local):
+def get(run, remote, local, timeout=60):
     arguments, endpoint = scp_connection(run)
-    command(arguments + [endpoint + str(remote), local])
+    command(arguments + [endpoint + str(remote), local], timeout=timeout)
 
 
 def native_display_prefix():
@@ -301,7 +568,55 @@ case "${WAYLAND_DISPLAY:-}" in ""|/*) ;; *) export WAYLAND_DISPLAY="$XDG_RUNTIME
 """
 
 
-def guest_session(run, body):
+def install_format(profile):
+    value = profile.get('install', 'deb')
+    if value not in ('deb', 'appimage'):
+        raise LabError('Profile install must be "deb" or "appimage"')
+    return value
+
+
+def appimage_path_prefix(profile):
+    # `install --appimage` writes putgd-launcher/putgd-cli shims there, so the
+    # same session commands drive the AppImage and a distro package. Package
+    # profiles keep their unchanged PATH.
+    if install_format(profile) != 'appimage':
+        return ''
+    return 'export PATH="$HOME/putgd-lab/bin:$PATH"\n'
+
+
+def appimage_entries_prefix(profile):
+    # AppRun writes its host desktop entries (the KWin capture permission, the
+    # recorder's screencast entry and the putgd-ui/putgd-record entries that
+    # carry the windows' icons) under XDG_DATA_HOME/applications. The compositor
+    # reads the session's own data home, so with the private one below KWin
+    # showed its generic Wayland icon (#523). Point only applications/ at the
+    # session's; put.gd's own data stays private. A directory with files in it
+    # is left as it is.
+    if install_format(profile) != 'appimage':
+        return ''
+    return '''session_data=$(tr '\\0' '\\n' < /proc/$pid/environ | sed -n 's/^XDG_DATA_HOME=//p')
+session_applications=${session_data:-$HOME/.local/share}/applications
+mkdir -p "$session_applications" "$XDG_DATA_HOME"
+[ -L "$XDG_DATA_HOME/applications" ] || rmdir "$XDG_DATA_HOME/applications" 2>/dev/null || :
+[ -e "$XDG_DATA_HOME/applications" ] || ln -s "$session_applications" "$XDG_DATA_HOME/applications"
+'''
+
+
+def guest_secret_prefix(info):
+    """Select an overlay-owned service for both the resident and stdin bridge.
+
+    Never apply this selection to the builder's own keychain.
+    """
+    name = info.get('secret_service')
+    if name is None:
+        return ''
+    if not isinstance(name, str) or not re.fullmatch(r':[0-9]+\.[0-9]+', name):
+        raise LabError('Invalid guest Secret Service connection')
+    return ('export SECRET_SERVICE_BUS_NAME='+shlex.quote(name)+'\n'
+            'export QTKEYCHAIN_BACKEND=libsecret\nexport KDE_SESSION_VERSION=\n')
+
+
+def guest_session(run, body, timeout=60):
     # Discover the real desktop session's environment, not SSH's empty DISPLAY.
     info = state(run)
     user = info['guest_user']
@@ -309,24 +624,149 @@ def guest_session(run, body):
     process = profile['session_process']
     if process not in ('cinnamon', 'gnome-shell', 'plasmashell'):
         raise LabError('Unsupported native desktop session process')
+    # PanelTone needs the session's XDG_CONFIG_DIRS and XDG_DATA_DIRS too
+    # (docs/appearance.md): Plasma lists ~/.config/kdedefaults in the first and
+    # finds the Plasma style's colors file through the second. Without them a
+    # Breeze Dark panel reads as Plasma's light default (#229, #243).
     script = f'''set -eu
 pid=$(pgrep -u {shlex.quote(user)} -x {shlex.quote(process)} | head -n 1)
 [ -n "$pid" ]
-for name in DISPLAY XAUTHORITY DBUS_SESSION_BUS_ADDRESS XDG_SESSION_TYPE XDG_CURRENT_DESKTOP WAYLAND_DISPLAY; do
+for name in DISPLAY XAUTHORITY DBUS_SESSION_BUS_ADDRESS XDG_SESSION_TYPE XDG_CURRENT_DESKTOP WAYLAND_DISPLAY XDG_CONFIG_DIRS XDG_DATA_DIRS; do
  value=$(tr '\\0' '\\n' < /proc/$pid/environ | sed -n "s/^$name=//p")
  [ -z "$value" ] || export "$name=$value"
 done
 export QT_QPA_PLATFORM={shlex.quote(profile["qt_platform"])}
 export XDG_RUNTIME_DIR=/run/user/$(id -u)
-{native_display_prefix()}export XDG_CONFIG_HOME=$HOME/putgd-lab/config
+{appimage_path_prefix(profile)}{native_display_prefix()}export XDG_CONFIG_HOME=$HOME/putgd-lab/config
 export XDG_DATA_HOME=$HOME/putgd-lab/data
-{body}
+{appimage_entries_prefix(profile)}{guest_secret_prefix(info)}{body}
 '''
-    return ssh(run, script)
+    return ssh(run, script, timeout=timeout)
+
+
+def verify_owned_guest(run):
+    """Prove SSH targets this user's running overlay, never a physical desktop."""
+    run = overlay_cleanup._no_symlinks(Path(run).absolute())
+    info = state(run)
+    disk = run / 'disk.qcow2'
+    if info.get('overlay') != str(disk) or Path(info.get('golden', '')) == disk or not disk.is_file():
+        raise LabError('Guest preflight requires an owned disposable overlay')
+    overlay_cleanup._no_symlinks(disk)
+    port = info.get('ssh_port')
+    if not isinstance(port, int) or not 1024 <= port <= 65535:
+        raise LabError('Guest preflight requires a private forwarded SSH port')
+    process = Path('/proc') / str(info.get('pid'))
+    try:
+        arguments = (process / 'cmdline').read_bytes().split(b'\0')
+        forward = f'hostfwd=tcp:127.0.0.1:{port}-:22'.encode()
+        valid = (process.stat().st_uid == os.getuid()
+                 and Path(arguments[0].decode()).name.startswith('qemu-system-')
+                 and any(str(disk).encode() in value.split(b',') or
+                         b'file=' + str(disk).encode() in value.split(b',') for value in arguments)
+                 and any(forward in value.split(b',') for value in arguments))
+    except (OSError, IndexError, UnicodeError):
+        valid = False
+    if not valid:
+        raise LabError('Guest preflight cannot authenticate the owned QEMU/SSH endpoint')
+    with QMP(run / 'qmp.sock') as qmp:
+        if qmp.execute('query-status').get('running') is not True:
+            raise LabError('Guest preflight requires a running VM')
+    return info
+
+
+def visible_guest_output(run, token, head, port, apply, attempts):
+    # A desktop shell can own its bus names before its first frame is painted.
+    # Retain every initial blank attempt; later boundary checks never wait.
+    deadline = time.monotonic() + (15 if apply else 0)
+    count = 0
+    while True:
+        witness = screenshot(run, token + '-attempt' + str(count), head)
+        width, height, pixels = ppm(witness['path'])
+        # A uniform non-gray RGB frame still has distinct channel bytes.
+        # Require a complete frame containing at least two different pixels.
+        visible = (width > 0 and height > 0 and len(pixels) == width * height * 3
+                   and pixels != pixels[:3] * (width * height))
+        attempts.append(dict(witness, width=width, height=height, head=head, visible=visible))
+        if visible:
+            break
+        if time.monotonic() >= deadline:
+            raise LabError('Guest visible-output witness is blank')
+        count += 1
+        time.sleep(1)
+    client = rfb.RFB(port)
+    try:
+        if (client.width, client.height) != (width, height):
+            raise LabError('Guest VNC and QMP output extents disagree')
+    finally:
+        client.close()
+    return dict(witness, width=width, height=height, head=head)
+
+
+def guest_preflight(run, *, apply=False, stage='manual'):
+    """Configure once, then fail closed on policy/session/output drift at handoffs."""
+    # Refuse unsafe receipt destinations before writing anything. Once the
+    # directory is safe, even ownership/readiness/profile failures are evidence.
+    run = overlay_cleanup._no_symlinks(Path(run).absolute())
+    directory = run.stat()
+    if not run.is_dir() or directory.st_uid != os.getuid() or directory.st_mode & 0o022:
+        raise LabError('Guest preflight receipt requires an owned, non-writable-by-others directory')
+    token = 'guest-preflight-' + uuid.uuid4().hex
+    report = {'schemaVersion': 1, 'stage': stage, 'apply': apply,
+              'timestampUtc': datetime.datetime.now(datetime.timezone.utc).isoformat(), 'ok': False}
+    try:
+        info = verify_owned_guest(run)
+        report['runId'] = info['id']
+        profile = load_profile(info['profile'])
+        source = HERE / 'guest_idle.py'
+        report['helperSha256'] = hash_file(source)
+        desktop = 'Cinnamon' if profile['desktop'] == 'X-Cinnamon' else profile['desktop']
+        arguments = ['python3', '-', '--desktop', desktop, '--process', profile['session_process'],
+                     '--user', info['guest_user'], '--session-type', profile['session']]
+        if apply:
+            arguments.append('--apply')
+        result = command(ssh_args(run) + [shlex.join(arguments)], input=source.read_text(), timeout=90, check=False)
+        report['policyInvocation'] = {'exitCode': result.returncode, 'stderr': getattr(result, 'stderr', '')[:1000]}
+        report['policy'] = json.loads(result.stdout)
+        if result.returncode or report['policy'].get('ok') is not True:
+            raise LabError('Guest idle/session preflight refused: ' + report['policy'].get('error', 'no policy receipt'))
+        heads = len(info.get('heads', [])) or 1
+        outputs = guest_outputs(run, layout_backend(profile))
+        report['outputs'] = verify_outputs(outputs, heads)
+        if not report['outputs']['ok']:
+            raise LabError('Guest outputs are not all connected and enabled')
+        report['visuals'] = []
+        report['visualAttempts'] = []
+        for head in range(heads):
+            # QMP supplies a complete frame; RFB damage updates are not a full-frame oracle.
+            report['visuals'].append(visible_guest_output(
+                run, token, head, 5900 + info['vnc_display'] + head, apply, report['visualAttempts']))
+        # Recheck after output collection, using the real desktop homes again.
+        checked = command(ssh_args(run) + [shlex.join([a for a in arguments if a != '--apply'])],
+                          input=source.read_text(), timeout=90, check=False)
+        report['afterVisualInvocation'] = {'exitCode': checked.returncode, 'stderr': checked.stderr[:1000]}
+        report['afterVisuals'] = json.loads(checked.stdout)
+        if checked.returncode or report['afterVisuals'].get('ok') is not True:
+            raise LabError('Guest policy/session changed while collecting visible output evidence')
+        report['ok'] = True
+        return report
+    except (OSError, ValueError, KeyError, subprocess.TimeoutExpired, LabError,
+            overlay_cleanup.CleanupError) as error:
+        report['error'] = str(error)
+        raise LabError('Guest preflight failed; retained ' + token + '.json: ' + str(error)) from error
+    finally:
+        write_json(run / (token + '.json'), report)
+
+
+def acceptance_preflight(run, *, apply=False, stage='manual'):
+    # physical.py deliberately shares scenario/start logic, but its separately
+    # leased user desktop must never receive disposable-guest policy changes.
+    if state(run).get('acceleration') == 'physical':
+        return {'scope': 'physical desktop policy unchanged; managed by desktop lease'}
+    return guest_preflight(run, apply=apply, stage=stage)
 
 
 @lifecycle_operation
-def _launch_machine(args, profile, golden, run, golden_sha256, golden_identity):
+def _launch_machine(args, profile, golden, run, golden_sha256, golden_identity, firmware=None, heads=1, layout=None):
     current = golden.stat()
     if (current.st_dev, current.st_ino, current.st_size, current.st_mtime_ns) != golden_identity:
         raise LabError('Golden changed before launch')
@@ -334,6 +774,15 @@ def _launch_machine(args, profile, golden, run, golden_sha256, golden_identity):
     os.chmod(run, 0o700)
     overlay = run / 'disk.qcow2'
     command(['qemu-img', 'create', '-f', 'qcow2', '-F', 'qcow2', '-b', golden, overlay])
+    if firmware is not None:
+        # The shared OVMF code image stays read-only; UEFI variables live in a
+        # private copy that cleanup preserves with the rest of the run's state.
+        vars_copy = run / ('vars.qcow2' if firmware['format'] == 'qcow2' else 'vars.fd')
+        shutil.copyfile(firmware['vars_template'], vars_copy)
+        os.chmod(vars_copy, 0o600)
+        firmware = {**firmware, 'vars': str(vars_copy),
+                    'code_sha256': hash_file(firmware['code']),
+                    'vars_template_sha256': hash_file(firmware['vars_template'])}
     command(['ssh-keygen', '-q', '-t', 'ed25519', '-N', '', '-f', run / 'identity'])
     known_hosts = run / 'known_hosts'
     known_hosts.write_bytes(Path(args.known_hosts).read_bytes())
@@ -343,9 +792,15 @@ def _launch_machine(args, profile, golden, run, golden_sha256, golden_identity):
             'golden': str(golden), 'golden_sha256': golden_sha256,
             'bootstrap_key': str(Path(args.bootstrap_key).resolve()),
             'known_hosts': str(known_hosts), 'overlay': str(overlay)}
+    if firmware is not None:
+        info['firmware'] = firmware
+    if heads > 1 or layout:
+        info['heads'] = head_ports(args.vnc_display, heads)
+    if layout:
+        info['head_layout'] = format_layout(layout)
     write_json(run / 'state.json', info)
     result = command(qemu_command(profile, run, overlay, args.ssh_port,
-                                  args.vnc_display, args.acceleration), timeout=15, check=False)
+                                  args.vnc_display, args.acceleration, firmware, heads), timeout=15, check=False)
     (run / 'qemu.log').write_text(result.stderr)
     if result.returncode:
         raise LabError('QEMU startup failed; private qemu.log preserved')
@@ -355,6 +810,22 @@ def _launch_machine(args, profile, golden, run, golden_sha256, golden_identity):
 
 
 def launch(args):
+    # Match guarded retirement's direct-child, symlink-free layout before any
+    # bootstrap, hashing, key generation, mkdir or overlay allocation.
+    root = overlay_cleanup.ROOT / 'work/lab-runs'
+    try:
+        run = overlay_cleanup._no_symlinks(Path(args.run).absolute())
+    except overlay_cleanup.CleanupError as error:
+        raise LabError(str(error)) from error
+    if run.parent != root:
+        raise LabError(f'Run must be a direct child of canonical {root}; use --run {root}/c1. '
+                       'Keep the run name short; if needed use a checkout at a shorter real path '
+                       'and check resolved Unix socket paths against the 107-byte limit.')
+    sockets = [run / name for name in ('qmp.sock', 'vnc.sock')]
+    checked = command([sys.executable, HERE.parent / 'diagnostics/check_socket_paths.py',
+                       '--socket', *sockets], check=False)
+    if checked.returncode:
+        raise LabError('Run Unix socket paths exceed the 107-byte limit: ' + checked.stdout.strip())
     profile = load_profile(args.profile)
     golden = Path(args.golden).resolve()
     if not golden.is_file():
@@ -367,12 +838,17 @@ def launch(args):
     pinned = command(['ssh-keygen', '-F', endpoint, '-f', args.known_hosts], check=False)
     if pinned.returncode or not pinned.stdout.strip():
         raise LabError(f'{endpoint} is missing from --known-hosts; see docs/vm-lab.md for authenticated port remapping')
-    run = Path(args.run).resolve()
+    firmware = uefi_firmware(profile)
+    heads, layout = head_plan(profile, getattr(args, 'heads', None), getattr(args, 'layout', None))
     before = golden.stat()
     golden_identity = (before.st_dev, before.st_ino, before.st_size, before.st_mtime_ns)
     golden_sha256 = hash_file(golden)
-    info = _launch_machine(args, profile, golden, run, golden_sha256, golden_identity)
+    info = _launch_machine(args, profile, golden, run, golden_sha256, golden_identity, firmware, heads, layout)
     try:
+        if heads > 1 or layout:
+            # Before the guest's driver probes, so it boots with every head connected.
+            info['head_requests'] = enable_heads(args.vnc_display, heads, layout)
+            write_json(run / 'state.json', info)
         deadline = time.monotonic() + args.timeout
         while True:
             if not Path(f"/proc/{info['pid']}").exists():
@@ -385,16 +861,38 @@ def launch(args):
                     raise LabError('Guest SSH boot timeout')
                 time.sleep(2)
         public_key = (run / 'identity.pub').read_text().strip()
-        ssh(run, 'umask 077\nmkdir -p ~/.ssh\nprintf "%s\\n" ' + shlex.quote(public_key) + ' >> ~/.ssh/authorized_keys\n', bootstrap=True)
+        # Keep the run key usable when a later failed preflight stops QEMU.
+        # A guest page-cache-only append can otherwise return as a NUL-filled
+        # extent on restart. Separate it from any unterminated existing line.
+        ssh(run, 'umask 077\nmkdir -p ~/.ssh\nprintf "\\n%s\\n" ' + shlex.quote(public_key)
+            + ' >> ~/.ssh/authorized_keys\nsync ~/.ssh/authorized_keys\n', bootstrap=True)
         with QMP(run / 'qmp.sock') as qmp:
             features = qmp.execute('query-commands')
             acceleration_state = qmp.execute('query-kvm')
             write_json(run / 'qmp-features.json', {'version': qmp.version, 'commands': features, 'kvm': acceleration_state})
-        return {'run': str(run), 'id': info['id'], 'display': f'127.0.0.1:{5900 + args.vnc_display}',
-                'status': 'booted-not-accepted'}
+        result = {'run': str(run), 'id': info['id'], 'display': f'127.0.0.1:{5900 + args.vnc_display}',
+                  'status': 'booted-not-accepted'}
+        if 'heads' in info:
+            result['heads'] = info['heads']
+        result['guestPreflight'] = guest_preflight(run, apply=True, stage='launch')
+        return result
     except BaseException:
-        reset(run)
+        stop_failed_launch(run)
         raise
+
+
+def stop_failed_launch(run):
+    # Flush first-boot writes before QMP quit. A broken connection or inability
+    # to save the receipt must still stop the owned guest.
+    try:
+        shutdown = {'guestSync': 'completed'}
+        try:
+            ssh(run, 'sync\n', timeout=10, bootstrap=True)
+        except (LabError, OSError, subprocess.TimeoutExpired) as error:
+            shutdown = {'guestSync': 'failed', 'error': str(error)}
+        write_json(Path(run) / 'failure-shutdown.json', shutdown)
+    finally:
+        reset(run)
 
 
 def hash_file(path):
@@ -431,9 +929,14 @@ def reset(run):
     return {'status': 'stopped', 'evidence': str(run)}
 
 
-def input_events(run, events):
-    with QMP(Path(run) / 'qmp.sock') as qmp:
-        qmp.execute('input-send-event', {'events': events})
+def input_events(run, events, head=None, timeout=None):
+    """Send QMP input events. ``timeout``: total seconds, connect to reply."""
+    arguments = {'events': events}
+    if head is not None:
+        arguments.update(device='video0', head=head)
+    budget = {} if timeout is None else {'timeout': timeout, 'deadline': time.monotonic() + timeout}
+    with QMP(Path(run) / 'qmp.sock', **budget) as qmp:
+        qmp.execute('input-send-event', arguments)
 
 
 def key(run, keys):
@@ -449,7 +952,7 @@ def key(run, keys):
                 for value in reversed(keys)]})
 
 
-def pointer(run, x, y, width, height, down=None):
+def pointer(run, x, y, width, height, down=None, button='left'):
     # The inclusive tablet range has 32768 positions. Using extent-1
     # crosses Qt's half-pixel rounding boundary (680 becomes 680.5078 at 1280).
     # Choose the first tick at or above each pixel edge; floor and qRound
@@ -457,7 +960,7 @@ def pointer(run, x, y, width, height, down=None):
     events = [{'type': 'abs', 'data': {'axis': 'x', 'value': min(32767, math.ceil(x * 32768 / width))}},
               {'type': 'abs', 'data': {'axis': 'y', 'value': min(32767, math.ceil(y * 32768 / height))}}]
     if down is not None:
-        events.append({'type': 'btn', 'data': {'button': 'left', 'down': down}})
+        events.append({'type': 'btn', 'data': {'button': button, 'down': down}})
     input_events(run, events)
 
 
@@ -468,6 +971,219 @@ def screenshot(run, name='witness', head=0):
     with QMP(Path(run) / 'qmp.sock') as qmp:
         qmp.execute('screendump', {'filename': str(path), 'device': 'video0', 'head': head})
     return {'path': str(path), 'sha256': hash_file(path)}
+
+
+XRANDR_OUTPUT = re.compile(r'(\S+) (connected|disconnected)( primary)?(?: ([0-9]+)x([0-9]+)([+-][0-9]+)([+-][0-9]+))?')
+XRANDR_MONITOR = re.compile(r'\s*[0-9]+: [+]?[*]?(\S+) [0-9]+/[0-9]+x[0-9]+/[0-9]+[+-][0-9]+[+-][0-9]+\s+(.*)')
+
+
+def parse_xrandr(query, monitors):
+    """Outputs in connector order plus the RandR monitors, from `xrandr --query` and `--listmonitors`."""
+    outputs = []
+    for line in query.splitlines():
+        if line[:1].isspace():
+            if outputs and line.split():
+                outputs[-1]['modes'].append(line.split()[0])
+            continue
+        match = XRANDR_OUTPUT.match(line)
+        if not match:
+            continue
+        name, state, primary, width, height, x, y = match.groups()
+        output = {'name': name, 'connected': state == 'connected', 'enabled': width is not None,
+                  'primary': bool(primary), 'modes': []}
+        if width is not None:
+            output.update(width=int(width), height=int(height), x=int(x), y=int(y))
+        outputs.append(output)
+    listed = []
+    for line in monitors.splitlines():
+        match = XRANDR_MONITOR.match(line)
+        if match:
+            listed.append({'name': match[1], 'outputs': match[2].split()})
+    return {'outputs': outputs, 'monitors': listed}
+
+
+def parse_kscreen(document):
+    outputs = []
+    for value in sorted(document.get('outputs', []), key=lambda output: output.get('name', '')):
+        output = {'name': value['name'], 'connected': bool(value.get('connected')),
+                  'enabled': bool(value.get('enabled')), 'primary': value.get('priority') == 1,
+                  # kscreen lists the preferred mode first; keep the first mode of each size.
+                  'modes': {}}
+        for mode in value.get('modes', []):
+            output['modes'].setdefault(mode['name'].split('@')[0], mode['id'])
+        if output['enabled']:
+            output.update(width=value['size']['width'], height=value['size']['height'],
+                          x=value['pos']['x'], y=value['pos']['y'])
+        outputs.append(output)
+    return {'outputs': outputs}
+
+
+def verify_outputs(observed, heads, layout=None):
+    """Require `heads` real, enabled outputs (not RandR monitors split from one output)."""
+    outputs = observed['outputs'][:heads]
+    errors = []
+    if len(outputs) < heads or not all(output['connected'] and output['enabled'] for output in outputs):
+        errors.append(f'expected {heads} connected, enabled outputs')
+    enabled = [output for output in observed['outputs'] if output['enabled']]
+    if len(enabled) != heads:
+        errors.append(f'{len(enabled)} outputs enabled, expected {heads}')
+    if 'monitors' in observed:
+        # A real output is its own RandR monitor; `xrandr --setmonitor` splits are not.
+        names = sorted(output['name'] for output in enabled)
+        if sorted(monitor['name'] for monitor in observed['monitors']) != names or any(
+                monitor['outputs'] != [monitor['name']] for monitor in observed['monitors']):
+            errors.append('RandR monitors do not match the real outputs one to one')
+    if layout and not errors:
+        # X11, Mutter and KWin place the whole desktop at 0,0, so compare the arrangement
+        # relative to each side's top-left corner. Head 0 must be the primary output.
+        spec_x, spec_y = min(head['x'] for head in layout), min(head['y'] for head in layout)
+        real_x, real_y = min(output['x'] for output in outputs), min(output['y'] for output in outputs)
+        for index, (head, output) in enumerate(zip(layout, outputs)):
+            wanted = (head['width'], head['height'], head['x'] - spec_x, head['y'] - spec_y)
+            actual = (output['width'], output['height'], output['x'] - real_x, output['y'] - real_y)
+            if wanted != actual:
+                errors.append(f'head {index} is {actual}, expected {wanted}')
+        if not outputs[0]['primary']:
+            errors.append('head 0 is not the primary output')
+    return {'ok': not errors, 'errors': errors,
+            'outputs': [{key: output[key] for key in ('name', 'enabled', 'primary', 'width', 'height', 'x', 'y')
+                         if key in output} for output in observed['outputs']]}
+
+
+MUTTER_STATE = r'''
+import json, sys
+from gi.repository import Gio, GLib
+bus = Gio.bus_get_sync(Gio.BusType.SESSION)
+def call(method, arguments=None):
+    return bus.call_sync('org.gnome.Mutter.DisplayConfig', '/org/gnome/Mutter/DisplayConfig',
+                         'org.gnome.Mutter.DisplayConfig', method, arguments, None, 0, 10000, None).unpack()
+serial, monitors, logical, properties = call('GetCurrentState')
+placed = {}
+for x, y, scale, transform, primary, members, _ in logical:
+    for connector, *_ in members:
+        placed[connector] = (x, y, primary)
+outputs = []
+for (connector, *_), modes, _ in sorted(monitors, key=lambda monitor: monitor[0][0]):
+    current = [mode for mode in modes if mode[6].get('is-current')]
+    output = {'name': connector, 'connected': True, 'enabled': connector in placed and bool(current),
+              'primary': placed.get(connector, (0, 0, False))[2],
+              'modes': {f'{mode[1]}x{mode[2]}': mode[0] for mode in sorted(modes, key=lambda mode: mode[3])}}
+    if output['enabled']:
+        output.update(width=current[0][1], height=current[0][2], x=placed[connector][0], y=placed[connector][1])
+    outputs.append(output)
+wanted = json.loads(sys.argv[1]) if len(sys.argv) > 1 else None
+if wanted:
+    config = [(head['x'], head['y'], 1.0, 0, index == 0, [(head['name'], head['mode'], {})])
+              for index, head in enumerate(wanted)]
+    call('ApplyMonitorsConfig', GLib.Variant('(uua(iiduba(ssa{sv}))a{sv})', (serial, 1, config, {})))
+print(json.dumps({'outputs': outputs}))
+'''
+
+
+def guest_outputs(run, backend):
+    if backend == 'xrandr':
+        text = guest_session(run, 'xrandr --query\nprintf "\\n@@\\n"\nxrandr --listmonitors\n')
+        query, monitors = text.split('\n@@\n', 1)
+        return parse_xrandr(query, monitors)
+    if backend == 'kscreen':
+        return parse_kscreen(json.loads(guest_session(run, 'kscreen-doctor -j\n')))
+    return json.loads(guest_session(run, 'python3 -c ' + shlex.quote(MUTTER_STATE) + '\n'))
+
+
+def layout_backend(profile):
+    if profile['session'] == 'x11':
+        return 'xrandr'
+    return 'kscreen' if profile['desktop'] == 'KDE' else 'mutter'
+
+
+def map_tablets_x11(run, outputs):
+    """Bind each head's QEMU tablet to that head's output, so VNC input lands on the right screen."""
+    pairs = ' '.join(f'{head}:{shlex.quote(output["name"])}' for head, output in enumerate(outputs)
+                     if output.get('enabled', True))
+    return guest_session(run, f'''command -v xinput >/dev/null || {{ echo unavailable; exit 0; }}
+for id in $(xinput list --id-only); do
+ node=$(xinput list-props "$id" 2>/dev/null | sed -n 's/.*Device Node ([0-9]*):[[:space:]]*"\\(.*\\)"/\\1/p')
+ [ -n "$node" ] || continue
+ # The USB device above the event node carries QEMU's per-head serial.
+ path=$(readlink -f "/sys/class/input/${{node##*/}}/device")
+ while [ "$path" != /sys ] && [ "$path" != / ] && [ ! -f "$path/serial" ]; do path=${{path%/*}}; done
+ serial=$(cat "$path/serial" 2>/dev/null || true)
+ for pair in {pairs}; do
+  if [ "$serial" = "putgd-head${{pair%%:*}}" ]; then
+   xinput map-to-output "$id" "${{pair#*:}}"
+   echo "mapped $id ${{pair#*:}}"
+  fi
+ done
+done
+''').split()[2::3]
+
+
+def layout(run, spec=None, settle=30):
+    """Size, arrange and verify a multi-head guest's outputs in its native session."""
+    run = Path(run)
+    info = state(run)
+    profile = load_profile(info['profile'])
+    heads = info.get('heads') or head_ports(info['vnc_display'], 1)
+    wanted = parse_layout(spec) if spec else parse_layout(info['head_layout']) if info.get('head_layout') else None
+    if wanted and len(wanted) != len(heads):
+        raise LabError(f'This run has {len(heads)} heads; the layout names {len(wanted)}')
+    if wanted:
+        enable_heads(info['vnc_display'], len(heads), wanted)
+    backend = layout_backend(profile)
+    deadline = time.monotonic() + settle
+    attempts = 0
+    while True:
+        observed = guest_outputs(run, backend)
+        result = verify_outputs(observed, len(heads), wanted)
+        if result['ok'] or time.monotonic() >= deadline:
+            break
+        names = [output['name'] for output in observed['outputs'][:len(heads)]]
+        if wanted and len(names) == len(heads) and all(output['connected'] for output in observed['outputs'][:len(heads)]):
+            attempts += 1
+            apply_layout(run, backend, observed, wanted)
+        time.sleep(2)
+    if result['ok'] and backend == 'xrandr':
+        result['tablets'] = map_tablets_x11(run, observed['outputs'][:len(heads)])
+    # Independent of the guest: each head's QMP screendump must have that head's size.
+    result['screendumps'] = []
+    for index, head in enumerate(heads):
+        width, height, _ = ppm(screenshot(run, 'layout', index)['path'])
+        result['screendumps'].append({'head': index, 'width': width, 'height': height})
+        if wanted and (width, height) != (wanted[index]['width'], wanted[index]['height']):
+            result['ok'] = False
+            result['errors'].append(f'head {index} screendump is {width}x{height}')
+    result.update(backend=backend, heads=heads, layout=format_layout(wanted) if wanted else None, attempts=attempts)
+    write_json(run / 'layout.json', result)
+    return result
+
+
+def apply_layout(run, backend, observed, wanted):
+    outputs = observed['outputs'][:len(wanted)]
+    left, top = min(head['x'] for head in wanted), min(head['y'] for head in wanted)
+    if backend == 'xrandr':
+        arguments = ['xrandr']
+        for index, (head, output) in enumerate(zip(wanted, outputs)):
+            arguments += ['--output', output['name'], '--mode', f"{head['width']}x{head['height']}",
+                          '--pos', f"{head['x'] - left}x{head['y'] - top}"] + (['--primary'] if index == 0 else [])
+        guest_session(run, shlex.join(arguments) + '\n')
+    elif backend == 'kscreen':
+        arguments = ['kscreen-doctor']
+        for index, (head, output) in enumerate(zip(wanted, outputs)):
+            mode = output['modes'].get(f"{head['width']}x{head['height']}")
+            if mode is None:
+                raise LabError(f"{output['name']} offers no {head['width']}x{head['height']} mode")
+            prefix = f"output.{output['name']}."
+            arguments += [prefix + 'enable', prefix + f'mode.{mode}',
+                          prefix + f"position.{head['x'] - left},{head['y'] - top}", prefix + f'priority.{index + 1}']
+        guest_session(run, shlex.join(arguments) + '\n')
+    else:
+        config = []
+        for head, output in zip(wanted, outputs):
+            mode = output['modes'].get(f"{head['width']}x{head['height']}")
+            if mode is None:
+                raise LabError(f"{output['name']} offers no {head['width']}x{head['height']} mode")
+            config.append({'name': output['name'], 'mode': mode, 'x': head['x'] - left, 'y': head['y'] - top})
+        guest_session(run, 'python3 -c ' + shlex.quote(MUTTER_STATE) + ' ' + shlex.quote(json.dumps(config)) + '\n')
 
 
 def collect(run):
@@ -566,6 +1282,7 @@ def fixture_run(args):
               'scenario': args.scenario + '-independent-paste', 'ok': False,
               'acceptanceScope': 'single-head named action; no full profile certification'}
     try:
+        result['guestPreflightBefore'] = acceptance_preflight(run, stage='scenario-before')
         guest_session(run, '''set -eu
 mkdir -p ~/putgd-lab/fixture
 pkill -x putgd-desktop-f || true
@@ -940,6 +1657,7 @@ nohup python3 ~/putgd-lab/gtk_clipboard_fixture.py --output "$HOME/putgd-lab/fix
     finally:
         if result['ok']:
             try:
+                result['guestPreflightAfter'] = acceptance_preflight(run, stage='scenario-after')
                 expected_process = result.get('runningAppAfterRestart', result['runningApp'])
                 if verify_running_app(run) != expected_process:
                     raise LabError('Resident identity changed during the graphical scenario')
@@ -1018,6 +1736,513 @@ def verify_installed_binaries(run, deb):
     return expected
 
 
+def staging_invocation(remote, script, supervisor=False):
+    lifetime = (HERE / 'package_staging.py').read_text()
+    return ('python3 -c ' + shlex.quote(lifetime) +
+            (' launch-supervisor' if supervisor else ' launch') + ' "$HOME/' + remote + '" '
+            + shlex.quote(script) + ' ' + shlex.quote(lifetime))
+
+
+def report_staging_tracking(tracking, phase):
+    if tracking.get('tracking') == 'session':
+        reason = tracking.get('fallbackReason', 'tracking prerequisite is unconfirmed')
+        print(f'Guest {phase} uses session-only tracking: {reason}. Session-scan limits apply.',
+              file=sys.stderr)
+
+
+SCOPE_LAUNCHER = '/usr/local/lib/putgd-lab/package_scope.py'
+
+
+def stage_install_helper(run, remote, helper, digest):
+    # Old immutable goldens grant apt-get, not these new helpers. Use that
+    # existing authority only in the disposable overlay. Staging uses no
+    # repositories and disables list cleanup; normal apt work belongs to the
+    # supervisor. The scope launcher is granted alone: never systemd-run itself.
+    # A fresh overlay's first staging therefore uses session tracking; later
+    # phases (the supervisor) use system scopes.
+    scope_digest = hash_file(HERE / 'package_scope.py')
+    hook = (f'set -eu; install -d -m 755 /usr/local/lib/putgd-lab; '
+            # Verify under a temporary name, then rename: a source swapped
+            # while copying never reaches the granted path.
+            f'install -o root -g root -m 755 "SOURCE" {helper}.new; '
+            f'echo "{digest}  {helper}.new" | sha256sum -c -; mv -f {helper}.new {helper}; '
+            f'install -o root -g root -m 755 "LAUNCHER" {SCOPE_LAUNCHER}.new; '
+            f'echo "{scope_digest}  {SCOPE_LAUNCHER}.new" | sha256sum -c -; '
+            f'mv -f {SCOPE_LAUNCHER}.new {SCOPE_LAUNCHER}; '
+            f'printf "lab ALL=(root) NOPASSWD: {helper}, {SCOPE_LAUNCHER}\\n" '
+            '> /etc/sudoers.d/putgd-lab-install; '
+            'chmod 440 /etc/sudoers.d/putgd-lab-install; '
+            'visudo -cf /etc/sudoers.d/putgd-lab-install; exit 1')
+    # sudo resets HOME on some guests, so expand the caller's path before sudo.
+    before, rest = hook.split('SOURCE')
+    middle, after = rest.split('LAUNCHER')
+    script = (f'set -eu\nsource="$HOME/{remote}/package_install.py"\n'
+              f'launcher="$HOME/{remote}/package_scope.py"\n'
+              f'echo "{digest}  $source" | sha256sum -c -\n'
+              f'echo "{scope_digest}  $launcher" | sha256sum -c -\n'
+              f'hook={shlex.quote(before)}"$source"{shlex.quote(middle)}"$launcher"{shlex.quote(after)}\n'
+              'LC_ALL=C sudo -n /usr/bin/apt-get -o Dir::Etc::sourcelist=/dev/null '
+              '-o Dir::Etc::sourceparts=- -o APT::Get::List-Cleanup=0 '
+              '-o "APT::Update::Pre-Invoke::=$hook" update '
+              '> ~/putgd-lab/' + remote.split('/')[-1] + '/staging.log 2>&1 || true\n'
+              # Return only controlled lock metadata: ssh deliberately suppresses
+              # guest stderr, which may contain private data. Apt's own failed
+              # acquisition identifies the actual holder without a precheck race.
+              f'if grep -Fq "Could not get lock /var/lib/apt/lists/lock" ~/{remote}/staging.log; then\n'
+              f'python3 - "$HOME/{remote}/staging.log" <<\'PYAPTLOCK\'\n'
+              'import json, re, sys\n'
+              'with open(sys.argv[1]) as stream: log = stream.read(32768)\n'
+              'holder = re.search(r"held by process ([0-9]+)(?: \\(([a-zA-Z0-9_.+-]+)\\))?", log)\n'
+              'print("putgd-staging-apt-lock " + json.dumps({"pid": holder[1] if holder else "unknown",\n'
+              '    "process": holder[2] if holder and holder[2] else "unknown"}))\n'
+              'PYAPTLOCK\nexit 0\nfi\n'
+              f'test -x {helper}\n'
+              f'echo "{digest}  {helper}" | sha256sum -c -\n'
+              f'test "$(stat -c %u:%a {helper})" = 0:755\n'
+              f'sudo -n -l {helper} /tmp/check 1 1 >/dev/null\n'
+              f'echo "{scope_digest}  {SCOPE_LAUNCHER}" | sha256sum -c -\n'
+              f'test "$(stat -c %u:%a {SCOPE_LAUNCHER})" = 0:755\n')
+    invocation = staging_invocation(remote, script)
+    # The detached subreaper outlives SSH; only its terminal receipt proves all
+    # staging descendants exited. setsid --wait preserves that wait even if the
+    # launcher has to fork. Keep the original output/exit status separate.
+    output = ssh(run, f'nohup setsid --wait {invocation} > ~/{remote}/staging-output.log 2>&1 < /dev/null &\n'
+                      'staging_pid=$!\nwait "$staging_pid"\ncode=$?\n'
+                      f'cat ~/{remote}/staging-output.log\nexit "$code"\n')
+    for line in output.splitlines():
+        if line.startswith('putgd-staging-fallback '):
+            report_staging_tracking(json.loads(line.split(' ', 1)[1]), 'staging')
+        if line.startswith('putgd-staging-apt-lock '):
+            holder = json.loads(line.split(' ', 1)[1])
+            raise LabError(f'Guest helper staging blocked by apt lists lock /var/lib/apt/lists/lock: '
+                           f'holder PID {holder["pid"]} ({holder["process"]}); '
+                           f'apt-daily or Mint Update may be active. Wait for the holder to finish; '
+                           f'inspect ~/{remote}/staging.log.')
+
+
+# All ownership transitions share this guest-side guard. A token check followed
+# by rm/rmdir alone can delete a replacement job after concurrent recovery.
+INSTALL_LOCK_PREFIX = ('set -eu\numask 077\nmkdir -p ~/putgd-lab\n'
+                       'exec 9> ~/putgd-lab/install-guard\nflock -x -w 5 9\n')
+
+
+def reconcile_staging(run, remote, wait=30, abandoned=False, supervisor=False):
+    lifetime = (HERE / 'package_staging.py').read_text()
+    script = ('python3 -c ' + shlex.quote(lifetime) + (' reconcile-supervisor' if supervisor else ' reconcile')
+              + ' "$HOME/' + remote + '" ' + str(wait) + (' --abandoned' if abandoned else '') + '\n')
+    report = json.loads(ssh(run, script, timeout=wait + 10))
+    if not isinstance(report, dict) or type(report.get('finished')) is not bool:
+        raise LabError('Invalid staging reconciliation receipt')
+    return report
+
+
+@contextlib.contextmanager
+def install_controller_fence(run, refusal):
+    # An install controller holds this host-side flock from guest lock
+    # acquisition through supervisor admission and result collection. The
+    # kernel drops it when the controller exits for any reason, so a free fence
+    # proves that no live controller can still act on its install-active token.
+    # The QEMU guest and its run directory belong to this host (verify_owned_guest).
+    with open(Path(run) / 'install.lock', 'a') as fence:
+        try:
+            fcntl.flock(fence, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            raise LabError(refusal) from None
+        yield
+
+
+def recover_staging(run, job, abandoned=False):
+    if not re.fullmatch(r'install-[0-9a-f]{32}', job):
+        raise LabError('Recovery requires the exact held install job ID')
+    # Staging success leaves no guest marker while the controller still uploads
+    # the package and launches the supervisor; only the controller fence covers
+    # that window. Hold it so no new controller starts during recovery either.
+    with install_controller_fence(run, f'An install controller for {run} is still running; it owns {job}. '
+                                       'recover-staging applies only after that controller exits.'):
+        return recover_staging_fenced(run, job, abandoned)
+
+
+# Recovery guard exit statuses and the reasons reported for them.
+RECOVERY_REFUSALS = {3: 'install-active is not held by this job',
+                     4: 'the install supervisor has started (progress.json or result.json exists)',
+                     5: 'the install supervisor has no terminal result.json'}
+
+
+def guarded_recovery(run, job, script):
+    return ssh(run, script, refusals={code: f'recover-staging refused {job}: {reason}.'
+                                      for code, reason in RECOVERY_REFUSALS.items()})
+
+
+def recover_staging_fenced(run, job, abandoned):
+    remote = 'putgd-lab/' + job
+    verify_owned_guest(run)
+    # Each check is its own statement: under set -e a failed left side of &&
+    # does not exit. Never clear a replacement job's token.
+    held = (f'if [ "$(cat ~/putgd-lab/install-active/job)" != {job} ]; then\n'
+            'echo "install-active is not held by this job" >&2; exit 3\nfi\n')
+    started = f'[ -e ~/{remote}/progress.json ] || [ -e ~/{remote}/result.json ]'
+    supervisor = guarded_recovery(run, job, 'set -eu\n' + held + f'if {started}; then echo supervisor; fi\n')
+    if supervisor.strip() == 'supervisor':
+        return recover_supervisor(run, job, remote, held)
+    # Pre-supervisor staging: never clear an install supervisor's lock.
+    owned = held + (f'if {started}; then\n'
+                    'echo "the install supervisor has started" >&2; exit 4\nfi\n')
+    # A missing host receipt needs no guest identity: the controller fence
+    # proves the controller exited, and reconcile fences a delayed staging
+    # launch before reporting staging-not-started.
+    report = reconcile_staging(run, remote, abandoned=abandoned)
+    if report['finished'] is not True:
+        raise LabError(f'Staging {job} remains held ({report["state"]}); install-active blocks retries. '
+                       f'Inspect ~/{remote}/staging-process.json and staging-result.json; '
+                       + (f'staging session processes are still running: PIDs {report["sessionPids"]}'
+                          if report.get('sessionPids') else
+                          report.get('inspectionError', 'staging cgroup remains populated' if
+                              report.get('cgroupPopulated') else 'staging session exit is unconfirmed')) + '.')
+    # The supervisor admits itself under install-guard only while this job
+    # holds install-active, writing progress.json before releasing the guard.
+    # Repeating the checks and releasing under that same guard means either
+    # this release or the supervisor's admission fails.
+    guarded_recovery(run, job, INSTALL_LOCK_PREFIX + owned +
+                     'rm ~/putgd-lab/install-active/job\nrmdir ~/putgd-lab/install-active\n')
+    # Record recovery only after the release succeeded: a refused release
+    # (a supervisor admitted after reconcile) must not leave a receipt.
+    evidence = Path(run) / job
+    evidence.mkdir(mode=0o700, exist_ok=True)
+    write_json(evidence / 'staging-recovery.json', report)
+    return report
+
+
+def recover_supervisor(run, job, remote, held):
+    # An admitted supervisor whose controller is gone: release only after its
+    # terminal result.json and an empty or gone system scope (cgroup.events
+    # populated 0), with every wrapper identity and session check. A
+    # session-tracked or identity-less supervisor stays held (no proof that its
+    # root descendants exited). progress.json without result.json stays held.
+    report = reconcile_staging(run, remote, supervisor=True)
+    if report['finished'] is not True:
+        reasons = {'supervisor-running': 'its scope wrapper still holds the job fence',
+                   'supervisor-session-tracked': 'it ran without a system scope, so its exit cannot be proven',
+                   'supervisor-no-result': 'it has no terminal result.json'}
+        reason = (f'session processes are still running: PIDs {report["sessionPids"]}' if report.get('sessionPids')
+                  else 'its system scope remains populated' if report.get('cgroupPopulated')
+                  else report.get('inspectionError') or reasons.get(report['state'], 'its exit is unconfirmed'))
+        raise LabError(f'recover-staging refused {job}: the install supervisor has started and '
+                       f'{reason} ({report["state"]}); install-active blocks retries. Inspect '
+                       f'~/{remote}/supervisor-process.json, progress.json and result.json.')
+    # Same install-guard as admission and every other release.
+    guarded_recovery(run, job, INSTALL_LOCK_PREFIX + held + f'if [ ! -e ~/{remote}/result.json ]; then\n'
+                     'echo "no terminal result.json" >&2; exit 5\nfi\n'
+                     'rm ~/putgd-lab/install-active/job\nrmdir ~/putgd-lab/install-active\n')
+    evidence = Path(run) / job
+    evidence.mkdir(mode=0o700, exist_ok=True)
+    write_json(evidence / 'supervisor-recovery.json', report)
+    if not report['result']['ok']:
+        print(f'Released {job} after its install failed; inspect ~/{remote}/result.json and dpkg state '
+              'before the next install.', file=sys.stderr)
+    return report
+
+
+def staging_failure_guidance(run, token, error):
+    previous = None
+    try:
+        try:
+            previous = signal.signal(signal.SIGINT, signal.SIG_IGN)
+        except ValueError:
+            pass  # Non-main-thread callers cannot change signal disposition.
+        try:
+            lock = ssh(run, INSTALL_LOCK_PREFIX +
+                'if test ! -e ~/putgd-lab/install-active; then echo released; '
+                f'elif [ "$(cat ~/putgd-lab/install-active/job)" = {token} ]; then echo held; '
+                'else echo replacement; fi\n', timeout=10).strip()
+        except (Exception, KeyboardInterrupt, SystemExit):
+            lock = 'unknown'
+        description = {'held': 'retains install-active; retries are blocked',
+                       'released': 'no longer holds install-active; the lock is released',
+                       'replacement': 'no longer owns install-active; a replacement job holds it'}
+        message = (f'Install staging job {token} ' + description.get(lock,
+                   'has unknown install-active state; inspect the guest before retrying') + '. '
+                   f'Inspect ~/putgd-lab/{token}/staging-process.json and staging-result.json. ')
+        if lock not in ('released', 'replacement'):
+            message += (f'When reachable, run tools/lab/lab.py recover-staging --run {run} --job {token}. ')
+        message += f'Reconciliation: {type(error).__name__}.'
+        print(message, file=sys.stderr)
+        return message
+    finally:
+        if previous is not None:
+            signal.signal(signal.SIGINT, previous)
+
+
+def install_package(run, deb, install_timeout=None, install_recovery_timeout=None):
+    if Path(deb).suffix.lower() != '.deb':
+        raise LabError('Guest apt installation requires a .deb package; RPM/dnf installation uses physical.py')
+    profile = load_profile(state(run)['profile'])
+    timeout = install_timeout if install_timeout is not None else profile.get('install_timeout', 900)
+    recovery = (install_recovery_timeout if install_recovery_timeout is not None
+                else profile.get('install_recovery_timeout', 600))
+    if any(type(value) is not int or value <= 0 for value in (timeout, recovery)):
+        raise LabError('Install and recovery timeouts must be positive integer seconds')
+    with install_controller_fence(run, f'Install refused: another install controller or recover-staging '
+                                       f'is running for {run}.'):
+        return install_package_fenced(run, deb, timeout, recovery)
+
+
+def install_package_fenced(run, deb, timeout, recovery):
+    helper = '/usr/local/lib/putgd-lab/package_install.py'
+    helper_sha256 = hash_file(HERE / 'package_install.py')
+    token = 'install-' + uuid.uuid4().hex
+    def release_lock():
+        # Do not clear a replacement job if an operator reconciled this one.
+        ssh(run, INSTALL_LOCK_PREFIX + f'if [ "$(cat ~/putgd-lab/install-active/job)" = {token} ]; then\n'
+                 'rm ~/putgd-lab/install-active/job\nrmdir ~/putgd-lab/install-active\nfi\n')
+    remote = 'putgd-lab/' + token
+    evidence = Path(run) / token
+    # Acquire before staging or creating host evidence. A refused retry reports
+    # the held job's durable state and leaves no empty host install directory.
+    held = ssh(run, INSTALL_LOCK_PREFIX +
+        f'if mkdir ~/putgd-lab/install-active 2>/dev/null; then\n'
+        f'printf %s {token} > ~/putgd-lab/install-active/job\nmkdir ~/{remote}\n'
+        "else\npython3 - <<'PYLOCK'\n"
+        'import datetime, json, pathlib, re\n'
+        'root = pathlib.Path.home() / "putgd-lab"\n'
+        'try: job = (root / "install-active/job").read_text().strip()\n'
+        'except OSError: job = "unknown"\n'
+        'status, started, result = "staging", "unknown", "unknown"\n'
+        'try: started = datetime.datetime.fromtimestamp((root / "install-active/job").stat().st_mtime, datetime.timezone.utc).isoformat()\n'
+        'except OSError: pass\n'
+        'if re.fullmatch(r"install-[0-9a-f]{32}", job):\n'
+        '    result = str(root / job / "result.json")\n'
+        '    for name in ("result.json", "progress.json"):\n'
+        '        try:\n'
+        '            report = json.loads((root / job / name).read_text())\n'
+        '            if not isinstance(report, dict): continue\n'
+        '            status = "running" if name == "progress.json" else (\n'
+        '                "aborted" if report.get("aborted") else "succeeded" if report.get("ok") else "failed")\n'
+        '            break\n'
+        '        except (OSError, ValueError): pass\n'
+        'print(json.dumps({"heldJob": job, "state": status, "startedAt": started, "resultPath": result}))\n'
+        'PYLOCK\nfi\n')
+    if held.strip():
+        raise LabError('Install retry refused: ' + held.strip() + '; inspect this job before recovery.')
+    staging_attempted = False
+    staging_finished = False
+    try:
+        evidence.mkdir(mode=0o700)
+        write_json(evidence / 'request.json', {'timeoutSeconds': timeout, 'recoverySeconds': recovery,
+                                             'remoteDirectory': remote, 'helperSha256': helper_sha256})
+        put(run, str(HERE / 'package_install.py'), remote + '/package_install.py')
+        put(run, str(HERE / 'package_scope.py'), remote + '/package_scope.py')
+        staging_attempted = True
+        stage_install_helper(run, remote, helper, helper_sha256)
+        staging_finished = True
+        write_json(evidence / 'helper.json', {'sha256': helper_sha256, 'verified': True,
+                   'source': remote + '/package_install.py', 'installedPath': helper,
+                   'scopeLauncher': {'sha256': hash_file(HERE / 'package_scope.py'), 'installedPath': SCOPE_LAUNCHER},
+                   'route': 'existing passwordless apt-get Pre-Invoke; no sources or list cleanup'})
+        put(run, str(Path(deb).resolve()), remote + '/package.deb')
+    except BaseException as staging_error:
+        try:
+            write_json(evidence / 'staging-failed.json', {'error': type(staging_error).__name__})
+        except OSError:
+            pass  # Evidence IO must not bypass lifetime reconciliation.
+        except (KeyboardInterrupt, SystemExit) as error:
+            staging_failure_guidance(run, token, error)
+            raise  # Recovery can reconstruct this interrupted receipt from the guest.
+        # Log collection is independent of lifetime proof, including its own
+        # cancellation. An uncertain guest outcome must retain the job token.
+        try:
+            get(run, remote + '/staging.log', evidence / 'staging.log', timeout=10)
+        except (LabError, OSError, subprocess.TimeoutExpired):
+            pass
+        finally:
+            interrupted = sys.exc_info()[1]
+            try:
+                report = ({'finished': True, 'state': 'staging-not-started'} if not staging_attempted
+                          else {'finished': True, 'state': 'staging-finished'} if staging_finished
+                          else reconcile_staging(run, remote))
+                try:
+                    write_json(evidence / 'staging-reconciliation.json', report)
+                except OSError:
+                    pass
+                if report['finished'] is not True:
+                    raise LabError('Staging exit is unconfirmed (' + report['state'] + ')')
+                release_lock()
+            except BaseException as error:
+                message = staging_failure_guidance(run, token, error)
+                if isinstance(error, (KeyboardInterrupt, SystemExit)):
+                    raise
+                if not isinstance(interrupted, (KeyboardInterrupt, SystemExit)):
+                    failure = LabError(message)
+                    if hasattr(failure, 'add_note'):
+                        failure.add_note(f'Staging reconciliation failed: {error}')
+                    raise failure from staging_error
+        raise
+    try:
+        invocation = staging_invocation(remote,
+            f'exec sudo -n {helper} "$HOME/{remote}" {timeout} {recovery}', supervisor=True)
+        ssh(run, f'nohup setsid --wait {invocation} '
+                 f'> ~/{remote}/supervisor.log 2>&1 < /dev/null &\n')
+    except (LabError, subprocess.TimeoutExpired):
+        # The remote launch may have happened even when its SSH reply was lost.
+        # Reconcile the same job below; never launch a replacement.
+        pass
+    # The detached guest watchdog survives a controller/SSH timeout. Never start
+    # a replacement. Its own pidfds bound package recovery independently of SSH.
+    startup_error = None
+    tracking_reported = False
+    startup_deadline = time.monotonic() + 15
+    deadline = time.monotonic() + timeout + recovery + 120
+    while True:
+        try:
+            if not tracking_reported:
+                tracking = ssh(run, f'if test -f ~/{remote}/supervisor-tracking.json; then '
+                               f'cat ~/{remote}/supervisor-tracking.json; fi\n', timeout=10)
+                if tracking.strip():
+                    report_staging_tracking(json.loads(tracking), 'supervisor')
+                    tracking_reported = True
+            output = ssh(run, f'if test -f ~/{remote}/result.json; then cat ~/{remote}/result.json; '
+                         f'elif ! test -f ~/{remote}/progress.json; then '
+                         "printf '%s\\n' '{\"startupPending\":true}'; fi\n", timeout=10)
+            if output.strip():
+                report = json.loads(output)
+                if not report.get('startupPending'):
+                    break
+                if time.monotonic() >= startup_deadline:
+                    try:
+                        get(run, remote + '/supervisor.log', evidence / 'supervisor.log')
+                    except (LabError, subprocess.TimeoutExpired):
+                        pass
+                    startup_error = (f'Install supervisor did not start: no progress.json after 15 seconds; '
+                                   f'inspect {evidence}/supervisor.log (may be missing); '
+                                   f'job {token} retains install-active pending reconciliation.')
+                    break
+        except (LabError, subprocess.TimeoutExpired):
+            pass
+        if time.monotonic() >= deadline:
+            raise LabError(f'Install outcome unavailable; guest watchdog owns recovery in ~/{remote}; '
+                           'install-active blocks retries. Inspect result.json and dpkg state, then run '
+                           f'tools/lab/lab.py recover-staging --run {run} --job {token}.')
+        time.sleep(1)
+    if startup_error:
+        raise LabError(startup_error)
+    write_json(evidence / 'result.json', report)
+    try:
+        for name in ('apt.log', 'progress.json', 'supervisor.log', 'staging.log',
+                     'staging-process.json', 'staging-result.json', 'staging-output.log', 'supervisor-process.json',
+                     'staging-tracking.json', 'supervisor-tracking.json'):
+            get(run, remote + '/' + name, evidence / name)
+        if not report.get('ok'):
+            raise LabError(f'Install failed; dpkg state and owned PIDs retained in {evidence}/result.json; '
+                           'install-active blocks retries until tools/lab/lab.py recover-staging '
+                           f'--run {run} --job {token}.')
+        installed = verify_installed_binaries(run, deb)
+    finally:
+        # A successful report proves apt stopped and dpkg is clean. Hold the
+        # lock through binary verification to prevent a concurrent replacement,
+        # but release it even if collection/verification fails afterward.
+        if report.get('ok'):
+            release_lock()
+    return {'sha256': hash_file(deb), 'filename': Path(deb).name, 'installedBinarySha256': installed,
+            'installEvidence': str(evidence), 'timedOut': report['timedOut']}
+
+
+APPIMAGE_SHIMS = {
+    # AppRun registers the KWin permission entry for the mounted resident and
+    # forwards every argument to the bundled putgd-launcher.
+    'putgd-launcher': '#!/bin/sh\nexec "$HOME/{name}" "$@"\n',
+    # The CLI has no AppRun route; run the extracted copy with the image's own
+    # libraries, exactly as AppRun does for the resident.
+    'putgd-cli': '#!/bin/sh\nroot="$HOME/putgd-lab/appimage/squashfs-root"\n'
+                 'export LD_LIBRARY_PATH="$root/usr/lib:$root/usr/lib/putgd${{LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}}"\n'
+                 'export QT_PLUGIN_PATH="$root/usr/plugins:$root/usr/lib/qt6/plugins${{QT_PLUGIN_PATH:+:$QT_PLUGIN_PATH}}"\n'
+                 'exec "$root/usr/bin/putgd-cli" "$@"\n',
+    'putgd-record': '#!/bin/sh\nroot="$HOME/putgd-lab/appimage/squashfs-root"\n'
+                 'export LD_LIBRARY_PATH="$root/usr/lib:$root/usr/lib/putgd${{LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}}"\n'
+                 'export QT_PLUGIN_PATH="$root/usr/plugins:$root/usr/lib/qt6/plugins${{QT_PLUGIN_PATH:+:$QT_PLUGIN_PATH}}"\n'
+                 'exec "$root/usr/bin/putgd-record" "$@"\n',
+}
+
+
+def install_appimage(run, appimage):
+    """Place the AppImage in the guest home, verify its bytes and record the bundled binaries.
+
+    Image-based guests (Aurora) have no package manager: the AppImage is the
+    installed artifact. The receipt keeps the package layout (`/usr/bin/putgd`
+    keys) because the resident runs from the image's usr/bin and
+    verify_running_app hashes that executable.
+    """
+    source = Path(appimage).resolve()
+    name = source.name
+    if not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9._+-]*\.AppImage', name):
+        raise LabError('AppImage filename must be a plain name ending in .AppImage')
+    expected_sha256 = hash_file(source)
+    quoted = shlex.quote(name)
+    put(run, str(source), name)  # relative to the guest home (/var/home/lab on Aurora)
+    shims = ''.join(
+        f'printf %s {shlex.quote(body.format(name=name))} > ~/putgd-lab/bin/{shim}\nchmod 755 ~/putgd-lab/bin/{shim}\n'
+        for shim, body in APPIMAGE_SHIMS.items())
+    script = ('set -eu\ncd ~\n'
+              f'chmod +x {quoted}\n'
+              f'actual=$(sha256sum {quoted} | cut -d" " -f1)\n'
+              f'[ "$actual" = {expected_sha256} ] || exit 65\n'
+              'mkdir -p ~/putgd-lab/bin\nrm -rf ~/putgd-lab/appimage\nmkdir -p ~/putgd-lab/appimage\n'
+              f'(cd ~/putgd-lab/appimage && "$HOME/"{quoted} --appimage-extract >/dev/null)\n'
+              + shims +
+              'printf \'{"home":"%s","version":\' "$HOME"\n'
+              f'"$HOME/"{quoted} --version-json\n'
+              'printf \',"binaries":\'\n'
+              'sha256sum ~/putgd-lab/appimage/squashfs-root/usr/bin/putgd* | python3 -c '
+              '\'import json,sys; print(json.dumps(dict(line.split()[::-1] for line in sys.stdin.read().splitlines())), end="")\'\n'
+              'printf \'}\\n\'\n')
+    report = json.loads(ssh(run, script, timeout=300))
+    installed = {}
+    for path, digest in report['binaries'].items():
+        binary = Path(path).name
+        if not binary.startswith('putgd') or not re.fullmatch(r'[0-9a-f]{64}', digest):
+            raise LabError('Unexpected bundled binary inventory')
+        installed['/usr/bin/' + binary] = digest
+    if '/usr/bin/putgd' not in installed:
+        raise LabError('AppImage has no putgd application binary')
+    version = report['version']
+    if not isinstance(version, dict) or not version.get('version'):
+        raise LabError('AppImage --version-json did not report an identity')
+    return {'sha256': expected_sha256, 'filename': name, 'format': 'appimage',
+            'installedPath': report['home'] + '/' + name, 'version': version,
+            'installedBinarySha256': installed}
+
+
+def install(run, deb=None, appimage=None, install_timeout=None, install_recovery_timeout=None):
+    # A failed new install must not certify the previous package.
+    (Path(run) / 'package.json').unlink(missing_ok=True)
+    wanted = install_format(load_profile(state(run)['profile']))
+    if appimage is not None and wanted != 'appimage':
+        raise LabError('This profile installs a distro package; pass --deb')
+    if deb is not None and wanted != 'deb':
+        raise LabError('This profile installs an AppImage; pass --appimage')
+    receipt = (install_appimage(run, appimage) if appimage is not None else
+               install_package(run, deb, install_timeout, install_recovery_timeout))
+    write_json(Path(run) / 'package.json', receipt)
+    return {'status': 'installed', 'format': receipt.get('format', 'deb'), 'sha256': receipt['sha256'],
+            **{key: receipt[key] for key in ('installEvidence', 'timedOut') if key in receipt}}
+
+
+def start(run, timeout=30):
+    """Start the installed resident in the native session and prove it is the verified build."""
+    acceptance_preflight(run, apply=True, stage='start')
+    guest_session(run, 'mkdir -p ~/putgd-lab\nnohup putgd-launcher --background > ~/putgd-lab/app.log 2>&1 < /dev/null &\n')
+    deadline = time.monotonic() + timeout
+    while True:
+        try:
+            capabilities = cli(run, 'capabilities')
+            break
+        except (LabError, ValueError, subprocess.TimeoutExpired):
+            if time.monotonic() >= deadline:
+                raise LabError('Resident did not answer the production CLI in time')
+            time.sleep(1)
+    resident = verify_running_app(run)
+    return {'status': 'started', 'resident': resident,
+            'source': capabilities.get('source', {}).get('adapter')}
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest='action', required=True)
@@ -1029,12 +2254,18 @@ def main():
     launch_parser.add_argument('--vnc-display', type=int, default=20)
     launch_parser.add_argument('--acceleration', choices=['kvm', 'tcg'], default='kvm')
     launch_parser.add_argument('--timeout', type=int, default=180)
-    for name in ('reset', 'cleanup', 'collect', 'screenshot', 'key', 'input', 'install', 'run', 'cli'):
+    launch_parser.add_argument('--heads', type=int, help=f'Virtual monitors (1-{MAX_HEADS}); overrides the profile')
+    launch_parser.add_argument('--layout', help='Per-head WxH+X+Y list in head order, e.g. 2560x1440+0+0,1920x1080-1920+0')
+    for name in ('recover-staging', 'reset', 'cleanup', 'collect', 'screenshot', 'key', 'input', 'install', 'start', 'run', 'cli', 'layout', 'preflight'):
         child = sub.add_parser(name)
         child.add_argument('--run', required=True)
+        if name == 'preflight':
+            child.add_argument('--apply', action='store_true', help='Apply disposable guest idle policy before verifying it')
+            child.add_argument('--stage', default='manual', help='Receipt label for before/after a measurement stage')
         if name == 'cleanup':
             child.add_argument('--evidence-manifest', help='Verified completion manifest for a custom or reviewed failed run')
             child.add_argument('--dry-run', action='store_true', help='Validate retirement without removing the disk')
+            child.add_argument('--images-root', help="Absolute work/lab-images holding the run's golden, when it is not this checkout's")
         if name == 'cli':
             child.add_argument('--method', required=True)
             child.add_argument('--params', default='{}', help='Production JSON parameters (credential references only)')
@@ -1044,8 +2275,26 @@ def main():
             child.add_argument('keys', nargs='+')
         if name == 'input':
             child.add_argument('events', help='JSON QMP input-send-event events array')
+            child.add_argument('--head', type=int, help="Send to this head's tablet (multi-head runs)")
+        if name == 'layout':
+            child.add_argument('--layout', help="WxH+X+Y list in head order; defaults to the run's launch layout")
+            child.add_argument('--settle', type=int, default=30, help='Seconds to wait for the guest to report the outputs')
+        if name == 'recover-staging':
+            child.add_argument('--job', required=True, help='Exact held staging job ID')
+            child.add_argument('--abandoned', action='store_true',
+                               help='Recover only with no live install controller, a free staging flock, a dead/reused session leader '
+                                    'and no live session processes; never signals processes. Descendants that '
+                                    'called setsid() are outside the session check (see the report\'s limit field). '
+                                    'An admitted supervisor is released (with or without this flag) only after its '
+                                    'terminal result.json and an empty or gone system scope')
         if name == 'install':
-            child.add_argument('--deb', required=True)
+            child.add_argument('--install-timeout', type=int, help='Apt budget in seconds (profile install_timeout, default 900)')
+            child.add_argument('--install-recovery-timeout', type=int, help='Wait for owned processes after timeout (profile install_recovery_timeout, default 600)')
+            package = child.add_mutually_exclusive_group(required=True)
+            package.add_argument('--deb', help='Distro package for apt profiles')
+            package.add_argument('--appimage', help='AppImage for image-based guests (profile install: appimage)')
+        if name == 'start':
+            child.add_argument('--timeout', type=int, default=30)
         if name == 'run':
             child.add_argument('--timeout', type=int, default=45)
             child.add_argument('--keep', action='store_true')
@@ -1066,7 +2315,8 @@ def main():
         elif args.action == 'reset':
             value = reset(args.run)
         elif args.action == 'cleanup':
-            value = cleanup_overlay(args.run, evidence_manifest=args.evidence_manifest, dry_run=args.dry_run)
+            value = cleanup_overlay(args.run, evidence_manifest=args.evidence_manifest, dry_run=args.dry_run,
+                                    images_root=args.images_root)
         elif args.action == 'collect':
             value = collect(args.run)
         elif args.action == 'screenshot':
@@ -1075,18 +2325,21 @@ def main():
             key(args.run, args.keys)
             value = {'status': 'input-sent'}
         elif args.action == 'input':
-            input_events(args.run, json.loads(args.events))
+            input_events(args.run, json.loads(args.events), args.head)
             value = {'status': 'input-sent'}
+        elif args.action == 'layout':
+            value = layout(args.run, args.layout, args.settle)
         elif args.action == 'cli':
             value = cli(args.run, args.method, json.loads(args.params))
+        elif args.action == 'recover-staging':
+            value = recover_staging(args.run, args.job, abandoned=args.abandoned)
         elif args.action == 'install':
-            # A failed new install must not certify the previous package.
-            (Path(args.run) / 'package.json').unlink(missing_ok=True)
-            put(args.run, str(Path(args.deb).resolve()), '/tmp/putgd-lab.deb')
-            ssh(args.run, 'sudo -n apt-get update\nsudo -n apt-get install --reinstall -y /tmp/putgd-lab.deb\n', timeout=180)
-            installed = verify_installed_binaries(args.run, args.deb)
-            write_json(Path(args.run) / 'package.json', {'sha256': hash_file(args.deb), 'filename': Path(args.deb).name, 'installedBinarySha256': installed})
-            value = {'status': 'installed'}
+            value = install(args.run, deb=args.deb, appimage=args.appimage,
+                            install_timeout=args.install_timeout, install_recovery_timeout=args.install_recovery_timeout)
+        elif args.action == 'start':
+            value = start(args.run, timeout=args.timeout)
+        elif args.action == 'preflight':
+            value = guest_preflight(args.run, apply=args.apply, stage=args.stage)
         else:
             value = fixture_run(args)
         print(json.dumps(value))

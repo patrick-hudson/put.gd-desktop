@@ -1,0 +1,5 @@
+{
+  "exit": 3,
+  "stdout": "{\"deleted\": true, \"edges\": {\"bottom\": 1.0, \"left\": 1.0, \"right\": 1.0, \"top\": 0.325}, \"fraction\": 0.472, \"minFraction\": 0.5, \"ok\": false, \"reason\": \"uncovered\", \"rect\": [0, 180, 1920, 900], \"size\": [1920, 1080]}\n",
+  "stderr": ""
+}

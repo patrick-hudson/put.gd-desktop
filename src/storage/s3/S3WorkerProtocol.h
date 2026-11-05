@@ -33,6 +33,9 @@ bool decode(const QJsonObject&, Credentials&);
 bool decodeReconcileRequest(const QJsonObject&, UploadRequest&);
 bool decodeReceiptRequest(const QJsonObject&, StorageReceipt&);
 bool validateRequest(const QString& method, const QJsonObject&);
+// One informational upload record (UploadRequest::trace): numbers and S3 request
+// IDs only, so nothing that names the object can reach the log (#148).
+bool decodeUploadTrace(const QJsonObject&);
 // Validate the actual synthetic-test result shapes without changing the payload.
 bool decodeTestDestinationResult(const QJsonObject&);
 }

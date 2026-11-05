@@ -1,0 +1,27 @@
+{
+ "label": "tryexec",
+ "entry": "[Desktop Entry]\nType=Application\nName=put.gd\nTryExec=/usr/bin/putgd-launcher\nExec=\"/usr/bin/putgd-launcher\" --background\nTerminal=false\nX-putgd-Managed=true\n",
+ "entryInfo": {
+  "sha256": "c460a4f33cd4bdcac7eb612ef683f1914a54cf4363f0d6ae9aaa2882509556ce",
+  "bytes": 157,
+  "mode": "0o600",
+  "mtime": "2026-10-23T06:01:28Z"
+ },
+ "execTargetExists": false,
+ "shellStarted": "2026-10-23T05:59:38Z",
+ "journal": [
+  "user 2026-10-23T01:00:24-05:00 debian systemd-xdg-autostart-generator[2523088]: Exec binary '/usr/bin/putgd-launcher' does not exist: No such file or directory",
+  "user 2026-10-23T01:00:24-05:00 debian systemd-xdg-autostart-generator[2523088]: /home/patrick/.config/autostart/putgd.desktop: not generating unit, executable specified in Exec= does not exist.",
+  "system 2026-10-23T01:00:24-05:00 debian systemd-xdg-autostart-generator[2523088]: Exec binary '/usr/bin/putgd-launcher' does not exist: No such file or directory",
+  "system 2026-10-23T01:00:24-05:00 debian systemd-xdg-autostart-generator[2523088]: /home/patrick/.config/autostart/putgd.desktop: not generating unit, executable specified in Exec= does not exist."
+ ],
+ "failedUnits": [],
+ "autostartUnits": [],
+ "generatorUnit": [],
+ "processes": [],
+ "package": {
+  "manager": "dpkg",
+  "status": null,
+  "version": null
+ }
+}

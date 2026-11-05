@@ -1,0 +1,19 @@
+$ python3 tests/desktop/test_boat_candidate.py
+..............................E.................
+======================================================================
+ERROR: test_manifest_rejects_truthy_qualified_cleanup_even_if_build_passed (__main__.CandidateContracts.test_manifest_rejects_truthy_qualified_cleanup_even_if_build_passed)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/runner/work/put.gd-desktop/put.gd-desktop/tests/desktop/test_boat_candidate.py", line 661, in test_manifest_rejects_truthy_qualified_cleanup_even_if_build_passed
+    code = candidate.main([SHA, '--output', str(output), '--artifact', 'appimage'])
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/work/put.gd-desktop/put.gd-desktop/tools/lab/boat/candidate.py", line 687, in main
+    snapshot = next(item for item in snapshots if item['name'] == 'putgd-build-base-v3')
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+StopIteration
+
+----------------------------------------------------------------------
+Ran 48 tests in 2.043s
+
+FAILED (errors=1)
+

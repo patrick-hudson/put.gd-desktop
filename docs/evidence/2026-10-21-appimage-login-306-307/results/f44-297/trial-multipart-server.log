@@ -1,0 +1,14 @@
+GET /appimage.zsync range=None -> 200
+GET /appimage.zsync range=None -> 200
+GET /appimage.zsync range=None -> 200
+GET /appimage.zsync range=None -> 200
+HEAD /putgd-0.1.1-nightly.816-x86_64.AppImage range=None -> 200
+GET /putgd-0.1.1-nightly.816-x86_64.AppImage range=bytes=929792-5144575 -> 206
+GET /putgd-0.1.1-nightly.816-x86_64.AppImage range=bytes=5533696-7200767 -> 206
+GET /putgd-0.1.1-nightly.816-x86_64.AppImage range=bytes=22413312-22421503 -> 206
+GET /putgd-0.1.1-nightly.816-x86_64.AppImage range=bytes=33046528-33779711 -> 206
+GET /putgd-0.1.1-nightly.816-x86_64.AppImage range=bytes=34275328-34312191 -> 206
+GET /putgd-0.1.1-nightly.816-x86_64.AppImage range=bytes=35393536-35409919 -> 206
+GET /putgd-0.1.1-nightly.816-x86_64.AppImage range=bytes=37752832-37761023 -> 206
+GET /putgd-0.1.1-nightly.816-x86_64.AppImage range=bytes=113008640-113016831 -> 206
+GET /putgd-0.1.1-nightly.816-x86_64.AppImage range=bytes=114843648-114917375 -> 206

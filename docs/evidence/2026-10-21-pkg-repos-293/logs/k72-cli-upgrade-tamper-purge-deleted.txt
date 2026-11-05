@@ -1,0 +1,92 @@
+{"clicked": [1039, 476]}
+{"clicked": [1413, 161]}
+after-close:
+cli ok True plasma-discover managed
+running: 275923 /usr/bin/plasma-discover --mode update
+left:
+{"error": {"code": "", "details": {}, "message": ""}, "ok": true, "requestId": "bd533a6a-de2f-4c92-b524-f2b5dfadaa48", "
+{"stopped": true, "left": ""}
+
+### upgrade through the repository
+Hit:2 https://pkg.put.gd/lab/apt/ubuntu26.04 nightly InRelease
+putgd:
+  Installed: 0.1.1~nightly.810
+  Candidate: 0.1.1~nightly.811
+  Version table:
+     0.1.1~nightly.811 500
+        500 https://pkg.put.gd/lab/apt/ubuntu26.04 nightly/main amd64 Packages
+ *** 0.1.1~nightly.810 100
+        100 /var/lib/dpkg/status
+apt upgrade would: Inst putgd [0.1.1~nightly.810] (0.1.1~nightly.811 put.gd:nightly [amd64])
+Unpacking putgd (0.1.1~nightly.811) over (0.1.1~nightly.810)…
+Setting up putgd (0.1.1~nightly.811)…
+Processing triggers for hicolor-icon-theme (0.18-2build1)…
+Processing triggers for desktop-file-utils (0.28-1build1)…
+rc=0
+0.1.1~nightly.811 install ok installed
+/etc/apt/sources.list.d/putgd.sources present sha256=e3b73051ceae4304
+conffiles: /etc/apt/sources.list.d/putgd.sources cd168aaeac742e89e6d977b2b9f889bd
+-rw-r--r-- 1 root root 1170 Oct 20 21:37 /usr/share/keyrings/putgd-archive-keyring.gpg
+
+### tamper: untouched copy (control)
+Get:1 http://127.0.0.1:18293/apt/ubuntu26.04 nightly InRelease [1,807 B]
+Err:2 http://127.0.0.1:18293/apt/ubuntu26.04 nightly/main amd64 Packages
+  404  File not found [IP: 127.0.0.1 18293]
+Get:2 http://127.0.0.1:18293/apt/ubuntu26.04 nightly/main amd64 Packages [1,483 B]
+apt saw putgd: 1 Packages lists
+
+### tamper: InRelease: signed text changed
+Get:1 http://127.0.0.1:18293/apt/ubuntu26.04 nightly InRelease [1,807 B]
+Err:1 http://127.0.0.1:18293/apt/ubuntu26.04 nightly InRelease
+W: OpenPGP signature verification failed: http://127.0.0.1:18293/apt/ubuntu26.04 nightly InRelease: The following signatures were invalid: BADSIG A11D38D55536B371 put.gd nightly packages <packages@put.gd>
+E: The repository 'http://127.0.0.1:18293/apt/ubuntu26.04 nightly InRelease' is not signed.
+apt saw putgd: 0 Packages lists
+
+### tamper: Packages changed, InRelease untouched
+Get:1 http://127.0.0.1:18293/apt/ubuntu26.04 nightly InRelease [1,807 B]
+Err:2 http://127.0.0.1:18293/apt/ubuntu26.04 nightly/main amd64 Packages
+  404  File not found [IP: 127.0.0.1 18293]
+Get:2 http://127.0.0.1:18293/apt/ubuntu26.04 nightly/main amd64 Packages [1,483 B]
+Err:2 http://127.0.0.1:18293/apt/ubuntu26.04 nightly/main amd64 Packages
+  File has unexpected size (1513 != 1483). Mirror sync in progress? [IP: 127.0.0.1 18293]
+apt saw putgd: 0 Packages lists
+
+### purge / remove
+Processing triggers for desktop-file-utils (0.28-1build1)…
+(Reading database… (Reading database… 5%(Reading database… 10%(Reading database… 15%(Reading database… 20%(Reading database… 25%(Reading database… 30%(Reading database… 35%(Reading database… 40%(Reading database… 45%(Reading database… 50%(Reading database… 55%(Reading database… 60%(Reading database… 65%(Reading database… 70%(Reading database… 75%(Reading database… 80%(Reading database… 85%(Reading database… 90%(Reading database… 95%(Reading database… 100%(Reading database… 301584 files and directories currently installed.)
+Purging configuration files for putgd (0.1.1~nightly.811)…
+rc=0
+dpkg-query: no packages found matching putgd
+/etc/apt/sources.list.d/putgd.sources ABSENT
+ls: cannot access '/usr/share/keyrings/putgd-archive-keyring.gpg': No such file or directory
+
+### fresh install 810, delete /etc/apt/sources.list.d/putgd.sources, upgrade to 811 from the file
+debconf: unable to initialize frontend: Dialog
+debconf: (Dialog frontend will not work on a dumb terminal, an emacs shell buffer, or without a controlling terminal.)
+debconf: falling back to frontend: Readline
+debconf: unable to initialize frontend: Readline
+debconf: (This frontend requires a controlling tty.)
+debconf: falling back to frontend: Teletype
+debconf: unable to initialize frontend: Teletype
+debconf: (This frontend requires a controlling tty.)
+debconf: falling back to frontend: Noninteractive
+0.1.1~nightly.810 install ok installed
+/etc/apt/sources.list.d/putgd.sources present sha256=e3b73051ceae4304
+conffiles: /etc/apt/sources.list.d/putgd.sources cd168aaeac742e89e6d977b2b9f889bd
+-rw-r--r-- 1 root root 1170 Oct 20 21:37 /usr/share/keyrings/putgd-archive-keyring.gpg
+/etc/apt/sources.list.d/putgd.sources ABSENT
+conffiles: /etc/apt/sources.list.d/putgd.sources cd168aaeac742e89e6d977b2b9f889bd
+-rw-r--r-- 1 root root 1170 Oct 20 21:37 /usr/share/keyrings/putgd-archive-keyring.gpg
+Processing triggers for hicolor-icon-theme (0.18-2build1)…
+Processing triggers for desktop-file-utils (0.28-1build1)…
+rc=0
+0.1.1~nightly.811 install ok installed
+/etc/apt/sources.list.d/putgd.sources ABSENT
+conffiles: /etc/apt/sources.list.d/putgd.sources cd168aaeac742e89e6d977b2b9f889bd
+-rw-r--r-- 1 root root 1170 Oct 20 21:37 /usr/share/keyrings/putgd-archive-keyring.gpg
+
+### remove after the deletion
+Purging configuration files for putgd (0.1.1~nightly.811)…
+dpkg-query: no packages found matching putgd
+/etc/apt/sources.list.d/putgd.sources ABSENT
+ls: cannot access '/usr/share/keyrings/putgd-archive-keyring.gpg': No such file or directory

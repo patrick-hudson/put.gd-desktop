@@ -1,0 +1,31 @@
+{
+ "removed": [
+  "/home/patrick/.local/share/putgd",
+  "/tmp/nfa.bsMrkx",
+  "/home/patrick/Pictures/afa-P-edited.png",
+  "/home/patrick/afa-P-review.mp4",
+  "/home/patrick/work/put.gd-nfa/runs/P/frames",
+  "/home/patrick/work/put.gd-nfa/runs/P/config",
+  "/home/patrick/work/put.gd-nfa/runs/P/cache",
+  "/home/patrick/work/put.gd-nfa/runs/P/archive",
+  "/home/patrick/work/put.gd-nfa/runs/P/working",
+  "/home/patrick/work/put.gd-nfa/runs/P/state"
+ ],
+ "fixtureStopped": 485171,
+ "leftovers": {
+  "processes": [
+   "485211 putgd /usr/bin/putgd",
+   "485374 putgd-ui /usr/bin/putgd-ui"
+  ],
+  "mounts": [],
+  "entries": []
+ },
+ "after": {
+  "processes": [
+   "485211 putgd /usr/bin/putgd",
+   "485374 putgd-ui /usr/bin/putgd-ui"
+  ],
+  "mounts": [],
+  "entries": []
+ }
+}

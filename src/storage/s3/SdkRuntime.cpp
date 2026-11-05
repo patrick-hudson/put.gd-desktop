@@ -1,7 +1,14 @@
 #include "SdkRuntime.h"
 #include "TlsCompatibility.h"
 #include <aws/core/Aws.h>
+#include <aws/core/utils/logging/LogSystemInterface.h>
+#include <cstdarg>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
 #include <mutex>
+#include <string>
+#include <string_view>
 #include <memory>
 #include <condition_variable>
 #include <exception>
@@ -18,8 +25,76 @@
 
 namespace putgd {
 namespace {
+// One stderr line per SDK record; the resident redacts and stores it.
+class StderrLogSystem final : public Aws::Utils::Logging::LogSystemInterface {
+public:
+    explicit StderrLogSystem(Aws::Utils::Logging::LogLevel level) : level_(level) {}
+    Aws::Utils::Logging::LogLevel GetLogLevel() const override { return level_; }
+    void Log(Aws::Utils::Logging::LogLevel level, const char* tag, const char* format, ...) override {
+        va_list args;
+        va_start(args, format);
+        vaLog(level, tag, format, args);
+        va_end(args);
+    }
+    void vaLog(Aws::Utils::Logging::LogLevel level, const char* tag, const char* format, va_list args) override {
+        if (!enabled(level)) return;
+        char text[2048];
+        std::vsnprintf(text, sizeof text, format, args);
+        writeLine(level, tag, text);
+    }
+    void LogStream(Aws::Utils::Logging::LogLevel level, const char* tag, const Aws::OStringStream& stream) override {
+        if (enabled(level)) writeLine(level, tag, stream.str());
+    }
+    void Flush() override { std::fflush(stderr); }
+private:
+    bool enabled(Aws::Utils::Logging::LogLevel level) const {
+        return level != Aws::Utils::Logging::LogLevel::Off && level <= level_ && level <= Aws::Utils::Logging::LogLevel::Info;
+    }
+    void writeLine(Aws::Utils::Logging::LogLevel level, const char* tag, const std::string_view text) {
+        using Aws::Utils::Logging::LogLevel;
+        const char mark = level <= LogLevel::Error ? 'E' : level == LogLevel::Warn ? 'W' : 'I';
+        std::string line = "putgd-aws\t";
+        line += mark;
+        line += '\t';
+        for (const char* c = tag ? tag : ""; *c && line.size() < 80; ++c) line += *c == '\t' || *c == '\n' ? ' ' : *c;
+        line += '\t';
+        for (const char c : text.substr(0, 2000)) {
+            if (c == '\n') line += " | ";
+            else if (c == '\t' || c == '\r') line += ' ';
+            else line += c;
+        }
+        while (line.ends_with(" | ")) line.resize(line.size() - 3);
+        line += '\n';
+        std::lock_guard lock(mutex_);
+        std::fwrite(line.data(), 1, line.size(), stderr);
+        std::fflush(stderr);
+    }
+    const Aws::Utils::Logging::LogLevel level_;
+    std::mutex mutex_;
+};
+Aws::Utils::Logging::LogLevel sdkLevel(SdkRuntime::LogLevel level) {
+    switch (level) {
+    case SdkRuntime::LogLevel::Error: return Aws::Utils::Logging::LogLevel::Error;
+    case SdkRuntime::LogLevel::Info: return Aws::Utils::Logging::LogLevel::Info;
+    case SdkRuntime::LogLevel::Warn: break;
+    }
+    return Aws::Utils::Logging::LogLevel::Warn;
+}
 #if defined(PUTGD_SDK_CURL_TRANSPORT)
 thread_local bool destructiveRequest = false;
+// The request on this thread whose continue handler can cut it (#203).
+thread_local const Aws::Http::HttpRequest* continuableRequest = nullptr;
+// The SDK asks a request's continue handler only while body bytes move, so a part
+// whose body is sent and whose reply is slow would run to its timeout. libcurl's
+// progress callback also runs about once a second while a transfer waits.
+int continueProgress(void* data, curl_off_t, curl_off_t, curl_off_t, curl_off_t) {
+    const auto* request = static_cast<const Aws::Http::HttpRequest*>(data);
+    try {
+        return request && request->GetContinueRequestHandler() && !request->GetContinueRequestHandler()(request) ? 1 : 0;
+    } catch (...) {
+        return 0;
+    }
+}
 // libcurl can transparently replay an empty-body DELETE when a reused connection
 // loses its response. That bypasses the SDK retry strategy and is unsafe for S3
 // marker creation. Use the SDK's supported per-handle customization, preserving
@@ -45,9 +120,17 @@ public:
         Aws::Utils::RateLimits::RateLimiterInterface* write = nullptr) const override {
         struct RequestScope {
             bool previous = destructiveRequest;
-            explicit RequestScope(bool destructive) { destructiveRequest = destructive; }
-            ~RequestScope() { destructiveRequest = previous; }
-        } scope(request->GetMethod() == Aws::Http::HttpMethod::HTTP_DELETE);
+            const Aws::Http::HttpRequest* previousContinuable = continuableRequest;
+            RequestScope(bool destructive, const Aws::Http::HttpRequest* continuable) {
+                destructiveRequest = destructive;
+                continuableRequest = continuable;
+            }
+            ~RequestScope() {
+                destructiveRequest = previous;
+                continuableRequest = previousContinuable;
+            }
+        } scope(request->GetMethod() == Aws::Http::HttpMethod::HTTP_DELETE,
+                request->GetContinueRequestHandler() && !request->IsEventStreamRequest() ? request.get() : nullptr);
         return Aws::Http::CurlHttpClient::MakeRequest(request, read, write);
     }
 protected:
@@ -62,6 +145,12 @@ protected:
         if (destructiveRequest) {
             curl_easy_setopt(handle, CURLOPT_FRESH_CONNECT, 1L);
             curl_easy_setopt(handle, CURLOPT_FORBID_REUSE, 1L);
+        }
+        // The handle is reset when it returns to the pool, so this stays per request.
+        if (continuableRequest) {
+            curl_easy_setopt(handle, CURLOPT_NOPROGRESS, 0L);
+            curl_easy_setopt(handle, CURLOPT_XFERINFOFUNCTION, continueProgress);
+            curl_easy_setopt(handle, CURLOPT_XFERINFODATA, const_cast<Aws::Http::HttpRequest*>(continuableRequest));
         }
     }
 private:
@@ -112,6 +201,11 @@ struct SdkRuntime::State {
         return value;
     }
     explicit State(bool defer) : deferred(defer) {
+        const auto level = sdkLevel(SdkRuntime::logLevel(std::getenv("PUTGD_AWS_LOG_LEVEL")));
+        options.loggingOptions.logLevel = level;
+        options.loggingOptions.logger_create_fn = [level] {
+            return Aws::MakeShared<StderrLogSystem>("putgd-log", level);
+        };
 #if defined(PUTGD_SDK_CURL_TRANSPORT)
         options.httpOptions.httpClientFactory_create_fn = [] {
             return Aws::MakeShared<NonReplayingHttpFactory>("putgd-http");
@@ -172,6 +266,11 @@ void SdkRuntime::ensureInitialized() {
     std::lock_guard lock(registry.mutex);
     if (!registry.current) throw std::logic_error("S3 work requires an owning SdkRuntime");
     registry.current->ensureInitialized();
+}
+SdkRuntime::LogLevel SdkRuntime::logLevel(const char* value) {
+    if (value && std::strcmp(value, "error") == 0) return LogLevel::Error;
+    if (value && std::strcmp(value, "info") == 0) return LogLevel::Info;
+    return LogLevel::Warn;
 }
 bool SdkRuntime::safeDeleteTransport() {
 #if defined(PUTGD_SDK_CURL_TRANSPORT)

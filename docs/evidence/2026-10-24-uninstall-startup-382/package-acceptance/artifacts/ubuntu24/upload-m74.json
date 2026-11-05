@@ -1,0 +1,20 @@
+[
+  {
+    "host": "m74",
+    "remotePath": "/home/patrick/work/p382n/putgd_26.1024.1186~dev+gd5b561ddb94f_amd64.deb",
+    "sha256": "ff3cd261d6159d0e52acd01aa80b8eae9618694c7bf609e4a108531cfedd2730",
+    "build": {
+      "schemaVersion": 1,
+      "version": "26.1024.1186-dev+gd5b561ddb94f",
+      "baseVersion": "26.1024.1186",
+      "packageVersion": "26.1024.1186~dev+gd5b561ddb94f",
+      "gitCommit": "d5b561ddb94f8255b8bc754c1382552d983a6fa9",
+      "gitTree": "797721fa0672581562a8675d0d2010eced7c6bd4",
+      "commitCount": 1186,
+      "dirty": false,
+      "sourceProvenance": "git"
+    },
+    "artifactRun": 40068126465,
+    "artifactId": 12549999661
+  }
+]

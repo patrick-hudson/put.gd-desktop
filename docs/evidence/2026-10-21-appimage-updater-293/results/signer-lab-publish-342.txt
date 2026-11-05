@@ -1,0 +1,94 @@
+=== publish-local v0.1.1-nightly.701
+{"receipt": "/home/patrick/.local/state/putgd-signer/receipts/lab/v0.1.1-nightly.701.json", "tag": "v0.1.1-nightly.701", "result": "published", "error": null}
+--- v0.1.1-nightly.701 image: HEAD
+HTTP/2 200 
+content-type: application/vnd.appimage
+content-length: 8389912
+cache-control: public, max-age=31536000, immutable
+x-cache: Miss from cloudfront
+--- v0.1.1-nightly.701 image: three ranges
+HTTP/2 206 
+content-type: multipart/byteranges; boundary=CloudFront:A3C5918F86E0AC384DE3A31F6A5441C7
+    multipart body bytes: 745, parts: 3
+--- v0.1.1-nightly.701 .zsync and the channel permalink
+HTTP/2 200 
+content-type: application/x-zsync
+cache-control: public, max-age=31536000, immutable
+b4c7078f7b40cb3a449efe093f572dbdda1399f22d9fab27d0aa33aabe0f73c3
+b4c7078f7b40cb3a449efe093f572dbdda1399f22d9fab27d0aa33aabe0f73c3
+HTTP/2 200 
+content-type: application/x-zsync
+cache-control: public, max-age=300
+feed: v0.1.1-nightly.701 putgd-0.1.1-nightly.701-x86_64.AppImage https://app.put.gd/dl/nightly/appimage.zsync
+=== publish-local v0.1.1-nightly.702
+{"receipt": "/home/patrick/.local/state/putgd-signer/receipts/lab/v0.1.1-nightly.702.json", "tag": "v0.1.1-nightly.702", "result": "published", "error": null}
+--- v0.1.1-nightly.702 image: HEAD
+HTTP/2 200 
+content-type: application/vnd.appimage
+content-length: 8389912
+cache-control: public, max-age=31536000, immutable
+x-cache: Miss from cloudfront
+--- v0.1.1-nightly.702 image: three ranges
+HTTP/2 206 
+content-type: multipart/byteranges; boundary=CloudFront:920B9E080338BC29BB54D9F4835C304E
+    multipart body bytes: 745, parts: 3
+--- v0.1.1-nightly.702 .zsync and the channel permalink
+HTTP/2 200 
+content-type: application/x-zsync
+cache-control: public, max-age=31536000, immutable
+1aeb91f64efa1057c48eb65076635343caf3cdf6fd60b9d82edf99d58e693e9a
+1aeb91f64efa1057c48eb65076635343caf3cdf6fd60b9d82edf99d58e693e9a
+HTTP/2 200 
+content-type: application/x-zsync
+cache-control: public, max-age=300
+feed: v0.1.1-nightly.702 putgd-0.1.1-nightly.702-x86_64.AppImage https://app.put.gd/dl/nightly/appimage.zsync
+=== publish-local v0.1.1-nightly.703
+{"receipt": "/home/patrick/.local/state/putgd-signer/receipts/lab/v0.1.1-nightly.703.json", "tag": "v0.1.1-nightly.703", "result": "published", "error": null}
+--- v0.1.1-nightly.703 image: HEAD
+HTTP/2 200 
+content-type: application/vnd.appimage
+content-length: 8389912
+cache-control: public, max-age=31536000, immutable
+x-cache: Miss from cloudfront
+--- v0.1.1-nightly.703 image: three ranges
+HTTP/2 206 
+content-type: multipart/byteranges; boundary=CloudFront:909FD08B81DF330215C86E9857D64659
+    multipart body bytes: 745, parts: 3
+--- v0.1.1-nightly.703 .zsync and the channel permalink
+HTTP/2 200 
+content-type: application/x-zsync
+cache-control: public, max-age=31536000, immutable
+bf69682de86fdc2925227f8aaa2e128a63cea9fd33b1ff7e18e8e51e32d7dbb7
+bf69682de86fdc2925227f8aaa2e128a63cea9fd33b1ff7e18e8e51e32d7dbb7
+HTTP/2 200 
+content-type: application/x-zsync
+cache-control: public, max-age=300
+feed: v0.1.1-nightly.703 putgd-0.1.1-nightly.703-x86_64.AppImage https://app.put.gd/dl/nightly/appimage.zsync
+=== no overwrite: republishing 703 is refused
+{"error": "SignerError: The lab repository already carries 0.1.1-nightly.703", "detail": ""}
+exit=1
+=== retention: images in the lab tree
+/home/patrick/.local/state/putgd-signer/workspaces/lab/nightly/current/tree/releases/v0.1.1-nightly.702/putgd-0.1.1-nightly.702-x86_64.AppImage
+/home/patrick/.local/state/putgd-signer/workspaces/lab/nightly/current/tree/releases/v0.1.1-nightly.702/putgd-0.1.1-nightly.702-x86_64.AppImage.zsync
+/home/patrick/.local/state/putgd-signer/workspaces/lab/nightly/current/tree/releases/v0.1.1-nightly.703/putgd-0.1.1-nightly.703-x86_64.AppImage
+/home/patrick/.local/state/putgd-signer/workspaces/lab/nightly/current/tree/releases/v0.1.1-nightly.703/putgd-0.1.1-nightly.703-x86_64.AppImage.zsync
+=== status
+{
+ "live": {
+  "nightly": {
+   "tag": "v0.1.1-nightly.847",
+   "version": "0.1.1-nightly.847",
+   "publishedAt": "2026-10-21T19:03:24Z"
+  },
+  "stable": null
+ },
+ "lab": {
+  "nightly": {
+   "tag": "v0.1.1-nightly.703",
+   "version": "0.1.1-nightly.703",
+   "publishedAt": "2026-10-21T21:44:18Z"
+  },
+  "stable": null
+ },
+ "staged": []
+}

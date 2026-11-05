@@ -1,0 +1,37 @@
+{
+  "reviewed": true,
+  "accepted": true,
+  "sourceCommit": "d5b561ddb94f8255b8bc754c1382552d983a6fa9",
+  "invalidVisuals": [
+    "enabled-login.attempt10.png",
+    "enabled-login.attempt11.png",
+    "enabled-login.attempt12.png",
+    "enabled-login.attempt2.png",
+    "enabled-login.attempt3.png",
+    "enabled-login.attempt4.png",
+    "enabled-login.attempt5.png",
+    "enabled-login.attempt6.png",
+    "enabled-login.attempt7.png",
+    "enabled-login.attempt8.png",
+    "enabled-login.attempt9.png",
+    "enabled-login.png",
+    "logout-driver-failure.png",
+    "recovery-after-wake.png",
+    "recovery-dpms-on.png",
+    "recovery-mode-reset.png",
+    "stale-workspace-after-stop.png",
+    "stale-workspace-failure.png"
+  ],
+  "notes": "All nine selected complete frames inspected: actual Settings on/rearmed/off, recovered enabled login on visible Aurora desktop, and real cleanup/login desktops. Earlier blank/stale/login-driver failure frames are excluded. No protected login value or personal app content appears. Machine receipts establish file/process absence and settings preservation; pictures supply desktop context. Aurora requires stopping stale Plasma workspace targets along with plasmalogin during controlled logout; see harness-correction3.json.",
+  "files": {
+    "enabled-settings.png": "813164958f10ccdacc45633c30beb76e690afa064b3d9aa127bb483c92759bc9",
+    "enabled-login-recovered3.png": "f2ab7c0cdfce8492742f5f4f2f2645a489cc31b4617222c86b8ced8b3d37c0f0",
+    "login-settings.png": "377707c091f4e4541ca7a48565a29a0f73c0e9763de6bb7a07507a2a82c52a08",
+    "inactive-cleaned-login.png": "5b4c1a9581aa3e53dac15cd461a9318a8666eb7e73146a0b1ae7f2ad9aa1ea36",
+    "rearmed-settings.png": "79f364f43a9145de0c6c2be6cddf094a70d5eba5c5675d825addcaf04f0574ab",
+    "active-cleaned.png": "2f1a44ec21a6b3989eb9dc5d7702b1ca91a3e42941c7a8dbe3454f3cf90d23d4",
+    "active-cleaned-login.png": "d151ae79d729f47bf7fec0170a481dbcc6955832a49615df7b5cf0d174fc3409",
+    "disabled-settings.png": "0e18e3bddc30bed8474055f8cbfca70845b1b77fc4cf36de7c79230022572034",
+    "disabled-clean-login.png": "2fd36306f5b10593be1d66fd36b7ea6343abfc10ca31c8cef26a06a04675463e"
+  }
+}

@@ -1,0 +1,13 @@
+diff --git a/tests/gui/test_editor_window.cpp b/tests/gui/test_editor_window.cpp
+index 40afba30..19a1eda8 100644
+--- a/tests/gui/test_editor_window.cpp
++++ b/tests/gui/test_editor_window.cpp
+@@ -516,7 +516,7 @@ private slots:
+   auto pick=[&](const QColor& color){
+    bool found=false;QTimer answer;answer.setSingleShot(true);
+    connect(&answer,&QTimer::timeout,&window,[&]{
+-    auto* dialog=window.findChild<QColorDialog*>();found=dialog!=nullptr;
++    auto* dialog=window.findChild<QColorDialog*>("deliberately-missing-dialog");found=dialog!=nullptr;
+     if(dialog){dialog->setCurrentColor(color);dialog->accept();return;}
+     // A failed lookup must still unwind the nested exec(), then fail the test.
+     for(auto* widget:QApplication::topLevelWidgets())

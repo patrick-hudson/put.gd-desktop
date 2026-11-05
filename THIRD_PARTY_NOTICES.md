@@ -6,6 +6,12 @@ distribution packages. Their exact installed versions and package identities bel
 in each acceptance manifest; their source and license records come from that distro.
 No Qt or compiler runtime is privately bundled by the Linux package.
 
+The interface and recording helper embed unmodified IBM Plex Sans Regular,
+Medium and SemiBold and IBM Plex Mono Regular, copyright IBM Corp., Reserved
+Font Name Plex, under SIL OFL 1.1. The sources and original per-family licences
+are in `src/ui/fonts`; packages install `OFL-sans.txt` and `OFL-mono.txt` beside
+their runtime notices.
+
 The package privately includes the official AWS SDK for C++ and its CRT shared
 libraries. `cmake/dependency-lock.json` identifies SDK 1.11.907 and all 15 pinned
 submodules. `tools/verify_dependencies.py` checks the actual source tree. Packaging
@@ -29,6 +35,14 @@ library when the supported Qt version and development package are available.
 The optional MCP helper is distributed separately from the native application.
 `tools/mcp/uv.lock` identifies its Python dependencies, including the official MCP
 SDK and jsonschema. Preserve their upstream notices when packaging that helper.
+
+The AppImage is different: it bundles the official Qt 6.12.0 binaries with their
+ICU, QtKeychain, LayerShellQt, a pinned FFmpeg, the AWS SDK, the Proton helper and
+Ubuntu 24.04 libraries. Its notices are generated from the image's contents when it
+is built (`tools/releases/appimage_notices.py`, `packaging/appimage/components.json`):
+`share/doc/putgd/runtime-notices.txt` and `bundled-components.json` in the image list
+every bundled component with its version, licence, source and files, and
+`share/doc/putgd/bundled-licenses` holds their licence texts.
 
 This inventory records build and package inputs. Actual installed-package notice
 inspection, lifecycle checks and the complete release matrix remain release gates.

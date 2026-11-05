@@ -1,0 +1,12 @@
+{
+  "archive": "catalog-evidence-full.tar.gz",
+  "sha256": "c9ad97a3f5634298453680cdd44de0e4b8f652b94c1c0f21ea1f7becf8ec1d3f",
+  "bytes": 42374261,
+  "filesVerified": 1026,
+  "sourceHead": "90d1134e3c9264f5cd82080a5f1077dd95538e06",
+  "localRestoreVerification": {
+    "archiveSha256": "c9ad97a3f5634298453680cdd44de0e4b8f652b94c1c0f21ea1f7becf8ec1d3f",
+    "filesVerified": 1026,
+    "passed": true
+  }
+}

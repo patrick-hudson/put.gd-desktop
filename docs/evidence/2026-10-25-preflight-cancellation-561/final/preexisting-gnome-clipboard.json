@@ -1,0 +1,62 @@
+{
+  "source": "9f382fd0b07d",
+  "evidencePR": "https://github.com/patrick-hudson/put.gd-desktop/pull/569",
+  "originalSha256": "ffe25c441ef0a2a2ac21c4d08336b0c6fce2944b83cea1454316905d7e4a8665",
+  "operations": [
+    {
+      "id": "91242221-52d3-46f3-83bc-263972e2bd87",
+      "created": "2026-10-25T04:39:53.290Z",
+      "state": "completed",
+      "copyStatus": "failed",
+      "error": {
+        "code": "clipboard_unavailable",
+        "details": {},
+        "message": "GNOME helper cannot own CLIPBOARD"
+      }
+    },
+    {
+      "id": "928e4b89-dd8d-476e-a2e1-0ab0038431e7",
+      "created": "2026-10-25T04:39:56.272Z",
+      "state": "completed",
+      "copyStatus": "failed",
+      "error": {
+        "code": "clipboard_unavailable",
+        "details": {},
+        "message": "GNOME helper cannot own CLIPBOARD"
+      }
+    },
+    {
+      "id": "a8b50f52-1b12-467b-8d44-aa57f1cf4c3b",
+      "created": "2026-10-25T04:39:56.814Z",
+      "state": "completed",
+      "copyStatus": "failed",
+      "error": {
+        "code": "clipboard_unavailable",
+        "details": {},
+        "message": "GNOME helper cannot own CLIPBOARD"
+      }
+    },
+    {
+      "id": "63363159-b65d-4472-b3f7-47221cb9f21d",
+      "created": "2026-10-25T04:39:57.259Z",
+      "state": "completed",
+      "copyStatus": "failed",
+      "error": {
+        "code": "clipboard_unavailable",
+        "details": {},
+        "message": "GNOME helper cannot own CLIPBOARD"
+      }
+    },
+    {
+      "id": "8ae298ef-b232-46b8-8f60-b9163328fc2e",
+      "created": "2026-10-25T04:39:57.849Z",
+      "state": "completed",
+      "copyStatus": "failed",
+      "error": {
+        "code": "clipboard_unavailable",
+        "details": {},
+        "message": "GNOME helper cannot own CLIPBOARD"
+      }
+    }
+  ]
+}

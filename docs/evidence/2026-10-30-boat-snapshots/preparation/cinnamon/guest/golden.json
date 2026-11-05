@@ -1,0 +1,136 @@
+{
+  "builtTreeCommit": "6ad9f957e6544f30c5e45c08af2306db77a9ff64",
+  "conversion": {
+    "command": "qemu-img convert -c -f qcow2 -O qcow2",
+    "hardOutputLimitBytes": 73045286912,
+    "reserveBytes": 10737418240
+  },
+  "golden": {
+    "compressedClusters": true,
+    "path": "/home/user/work/put.gd/work/lab-images/cinnamon-x11-probes-v3-session/image.qcow2",
+    "sha256": "23b3e37571bdc7b452fdc30d53e70386423d75cb377e59653eed8a652c8bfab7",
+    "standalone": true,
+    "virtualBytes": 34359738368
+  },
+  "guestSessionPolicy": {
+    "mintUpdate": {
+      "autostartOverride": "~/.config/autostart/mintupdate.desktop",
+      "enabled": false,
+      "hidden": true,
+      "scope": "disposable guest user; original golden preserved"
+    }
+  },
+  "hostPackageTarget": "ubuntu24.04",
+  "hostPackages": [
+    "build-essential",
+    "ccache",
+    "git",
+    "ca-certificates",
+    "passwd",
+    "util-linux",
+    "qemu-utils",
+    "python3",
+    "nodejs",
+    "npm",
+    "cmake",
+    "ninja-build",
+    "pkg-config",
+    "qt6-base-dev",
+    "qt6-base-dev-tools",
+    "libqt6sql6-sqlite",
+    "qt6-wayland-dev",
+    "qtkeychain-qt6-dev",
+    "libxcb1-dev",
+    "libxcb-keysyms1-dev",
+    "libxcb-util-dev",
+    "libxcb-image0-dev",
+    "libxcb-randr0-dev",
+    "libxcb-xfixes0-dev",
+    "libxcb-damage0-dev",
+    "libxcb-shape0-dev",
+    "libxcb-xinput-dev",
+    "libxcb-xtest0-dev",
+    "xvfb",
+    "xauth",
+    "dbus-daemon",
+    "libxcursor-dev",
+    "libxkbcommon-dev",
+    "libxkbcommon-x11-dev",
+    "libcurl4-openssl-dev",
+    "libssl-dev",
+    "zlib1g-dev",
+    "libwayland-dev",
+    "wayland-protocols",
+    "libgstreamer1.0-dev",
+    "libgstreamer-plugins-base1.0-dev",
+    "libavcodec-dev",
+    "libavformat-dev",
+    "libavfilter-dev",
+    "libavutil-dev",
+    "libswscale-dev",
+    "libswresample-dev",
+    "gstreamer1.0-plugins-good",
+    "gstreamer1.0-plugins-bad",
+    "gstreamer1.0-plugins-ugly",
+    "gstreamer1.0-libav"
+  ],
+  "packageBuild": {
+    "artifact": "ubuntu24.04",
+    "command": "python3 tools/lab/boat/candidate.py COMMIT --artifact ubuntu24.04 --output NEW_PRIVATE_OUTPUT",
+    "environment": "the target distro container from the exact commit package.yml",
+    "method": "candidate-native-target"
+  },
+  "packageTarget": "ubuntu24.04",
+  "placement": "boat",
+  "probeContract": {
+    "additionalPackages": [
+      "tesseract-ocr"
+    ],
+    "commit": "4b5e185ff9df2ae7dd578ae535da1202c58deb68",
+    "path": "tools/lab/surface_driver/profiles/provision-probes.sh",
+    "sha256": "bbbc802c14512ae80d34791e4632ffe557b34bfdc5edb273aaf7ffdb2e6c2816"
+  },
+  "probePackages": [
+    "python3",
+    "python3-pyatspi",
+    "python3-dbus",
+    "python3-pyqt6",
+    "dbus-bin",
+    "libglib2.0-bin",
+    "libx11-6",
+    "xdotool",
+    "x11-utils",
+    "x11-xserver-utils",
+    "xclip",
+    "wl-clipboard",
+    "tesseract-ocr"
+  ],
+  "probeTools": [
+    "dbus-monitor",
+    "gdbus",
+    "xdotool",
+    "xprop",
+    "xwininfo",
+    "xrandr",
+    "xclip",
+    "wl-paste",
+    "wl-copy",
+    "tesseract"
+  ],
+  "schemaVersion": 1,
+  "snapshotName": "putgd-lab-cinnamon-v3",
+  "sourceChain": [
+    {
+      "path": "/home/user/work/put.gd/work/lab-images/cinnamon-x11-probes-v2/image.qcow2",
+      "sha256": "518e3e45034c459e91118f95e3987971e19ea346486ab8219970b8484a892e48"
+    },
+    {
+      "path": "/home/user/work/put.gd/work/lab-images/cinnamon-x11/image.qcow2",
+      "sha256": "4a21566d5b741e55f349f4f07e1c687c99d1c99b5394ff0d18ed5c9e685693da"
+    }
+  ],
+  "sourceGolden": {
+    "path": "/home/user/work/put.gd/work/lab-images/cinnamon-x11-probes-v3/image.qcow2",
+    "sha256": "218f91afeda30448d82de38ce127ba3a77f3fbb2e0a8c2fbcf8ac27dc277c1b9"
+  }
+}

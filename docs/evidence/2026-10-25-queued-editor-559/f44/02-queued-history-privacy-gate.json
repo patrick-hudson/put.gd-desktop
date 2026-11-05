@@ -1,0 +1,5 @@
+{
+  "exit": 0,
+  "stdout": "{\"edges\": {\"bottom\": 1.0, \"left\": 1.0, \"right\": 1.0, \"top\": 1.0}, \"fraction\": 0.6485, \"kept\": \"/tmp/q559f4/02-queued-history.png\", \"minFraction\": 0.5, \"ok\": true, \"rect\": [0, 180, 1920, 900], \"sha256\": \"7281bba6fa810fd1455ee584460b1ac8858bfd07dde2d0a65102b93b2332fa6b\", \"size\": [1920, 1080]}\n",
+  "stderr": ""
+}

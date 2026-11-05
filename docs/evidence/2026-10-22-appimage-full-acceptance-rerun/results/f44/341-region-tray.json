@@ -1,0 +1,321 @@
+{
+ "action": "region",
+ "shortcut": "Ctrl+Shift+1",
+ "opened": "click:1708,19",
+ "menuBox": [
+  1591,
+  39,
+  1825,
+  533
+ ],
+ "menuFull": "/home/patrick/work/put.gd-afa2/runs/f44/full/f44-341-region-traymenu-menu-open.png",
+ "selectorFull": "/home/patrick/work/put.gd-afa2/runs/f44/full/f44-341-region-traymenu-selector.png",
+ "drag": [
+  1000,
+  500,
+  1080,
+  560
+ ],
+ "seconds": 5.75,
+ "operations": [
+  {
+   "id": "e69db53c-9b6c-4079-aafe-df72cdd0bddc",
+   "state": "running",
+   "copyStatus": "pending",
+   "items": [
+    {
+     "name": "Screen-Capture-2026-10-22-00-35-56.png",
+     "mime": "image/png",
+     "uploadStatus": "uploading",
+     "link": "",
+     "local": {
+      "error": {
+       "code": "",
+       "details": {},
+       "message": ""
+      },
+      "path": "/home/patrick/work/put.gd-afa2/runs/f44/archive/images/Screen-Capture-2026-10-22-00-35-56.png",
+      "status": "saved"
+     }
+    }
+   ],
+   "error": {
+    "code": "",
+    "details": {},
+    "message": ""
+   }
+  }
+ ],
+ "newHistory": [
+  "e00bb601-37f6-4ab1-9d23-0d2455e5d874"
+ ],
+ "notices": [
+  {
+   "itemId": null,
+   "notificationId": 1,
+   "notificationText": "Uploaded. Link copied to the clipboard. Click to open in browser.",
+   "operationId": null,
+   "summary": "operation_completed",
+   "title": "put.gd \u2014 completed",
+   "warning": false
+  }
+ ],
+ "shortcutLog": [
+  {
+   "message": "Resident started",
+   "fields": {
+    "architecture": "x86_64",
+    "build": {
+     "baseVersion": "0.1.1",
+     "commitCount": 942,
+     "dirty": false,
+     "gitCommit": "0435ed6a8974135bb114f965cca923da04655169",
+     "gitTree": "34f4741e75cd379114f8612da58262ed5b6259bd",
+     "packageVersion": "0.1.1~nightly.942",
+     "schemaVersion": 1,
+     "sourceProvenance": "git",
+     "version": "0.1.1-nightly.942"
+    },
+    "capabilities": {
+     "adapter": "gnome-wayland",
+     "capture": {
+      "desktop": {
+       "available": false,
+       "consent": "one-time-extension-setup",
+       "error": {
+        "code": "",
+        "details": {},
+        "message": ""
+       },
+       "mode": "compositor-native"
+      },
+      "region": {
+       "available": false,
+       "consent": "one-time-extension-setup",
+       "error": {
+        "code": "",
+        "details": {},
+        "message": ""
+       },
+       "mode": "compositor-native"
+      },
+      "window": {
+       "available": false,
+       "consent": "one-time-extension-setup",
+       "error": {
+        "code": "",
+        "details": {},
+        "message": ""
+       },
+       "mode": "compositor-native"
+      }
+     },
+     "clipboard": "<redacted>",
+     "helper": {
+      "available": false,
+      "error": {
+       "code": "",
+       "details": {},
+       "message": ""
+      },
+      "outdated": false,
+      "packagedExtensionVersion": 2,
+      "protocol": 1,
+      "recordingVersion": 0,
+      "uuid": "putgd@put.gd"
+     },
+     "shortcuts": {
+      "available": false,
+      "bindings": {
+       "clipboard": "<redacted>",
+       "desktop": {
+        "bound": false,
+        "error": "helper_unavailable",
+        "requested": "Ctrl+Shift+3"
+       },
+       "edit": {
+        "bound": false,
+        "error": "disabled",
+        "requested": ""
+       },
+       "record": {
+        "bound": false,
+        "error": "disabled",
+        "requested": ""
+       },
+       "region": {
+        "bound": false,
+        "error": "helper_unavailable",
+        "requested": "Ctrl+Shift+1"
+       },
+       "window": {
+        "bound": false,
+        "error": "helper_unavailable",
+        "requested": "Ctrl+Shift+2"
+       }
+      }
+     }
+    },
+    "desktop": "GNOME",
+    "itemId": null,
+    "kernel": "6.19.10-300.fc44.x86_64",
+    "locations": {
+     "config": {
+      "path": "/home/patrick/work/put.gd-afa2/runs/f44/config/putgd",
+      "state": "current"
+     },
+     "data": {
+      "path": "/home/patrick/.local/share/putgd",
+      "state": "current"
+     },
+     "schemaVersion": 1
+    },
+    "operationId": null,
+    "os": "Fedora Linux 44 (Workstation Edition)",
+    "platform": "none",
+    "qtCompiled": "6.8.3",
+    "qtRuntime": "6.8.3",
+    "resident": "gnome-core",
+    "sessionType": "wayland",
+    "trayAvailable": false
+   }
+  },
+  {
+   "message": "Resident started",
+   "fields": {
+    "architecture": "x86_64",
+    "build": {
+     "baseVersion": "0.1.1",
+     "commitCount": 942,
+     "dirty": false,
+     "gitCommit": "0435ed6a8974135bb114f965cca923da04655169",
+     "gitTree": "34f4741e75cd379114f8612da58262ed5b6259bd",
+     "packageVersion": "0.1.1~nightly.942",
+     "schemaVersion": 1,
+     "sourceProvenance": "git",
+     "version": "0.1.1-nightly.942"
+    },
+    "capabilities": {
+     "adapter": "gnome-wayland",
+     "capture": {
+      "desktop": {
+       "available": false,
+       "consent": "one-time-extension-setup",
+       "error": {
+        "code": "",
+        "details": {},
+        "message": ""
+       },
+       "mode": "compositor-native"
+      },
+      "region": {
+       "available": false,
+       "consent": "one-time-extension-setup",
+       "error": {
+        "code": "",
+        "details": {},
+        "message": ""
+       },
+       "mode": "compositor-native"
+      },
+      "window": {
+       "available": false,
+       "consent": "one-time-extension-setup",
+       "error": {
+        "code": "",
+        "details": {},
+        "message": ""
+       },
+       "mode": "compositor-native"
+      }
+     },
+     "clipboard": "<redacted>",
+     "helper": {
+      "available": false,
+      "error": {
+       "code": "",
+       "details": {},
+       "message": ""
+      },
+      "outdated": false,
+      "packagedExtensionVersion": 2,
+      "protocol": 1,
+      "recordingVersion": 0,
+      "uuid": "putgd@put.gd"
+     },
+     "shortcuts": {
+      "available": false,
+      "bindings": {
+       "clipboard": "<redacted>",
+       "desktop": {
+        "bound": false,
+        "error": "helper_unavailable",
+        "requested": "Ctrl+Shift+3"
+       },
+       "edit": {
+        "bound": false,
+        "error": "disabled",
+        "requested": ""
+       },
+       "record": {
+        "bound": false,
+        "error": "disabled",
+        "requested": ""
+       },
+       "region": {
+        "bound": false,
+        "error": "helper_unavailable",
+        "requested": "Ctrl+Shift+1"
+       },
+       "window": {
+        "bound": false,
+        "error": "helper_unavailable",
+        "requested": "Ctrl+Shift+2"
+       }
+      }
+     }
+    },
+    "desktop": "GNOME",
+    "itemId": null,
+    "kernel": "6.19.10-300.fc44.x86_64",
+    "locations": {
+     "config": {
+      "path": "/home/patrick/work/put.gd-afa2/runs/f44/config/putgd",
+      "state": "current"
+     },
+     "data": {
+      "path": "/home/patrick/.local/share/putgd",
+      "state": "current"
+     },
+     "schemaVersion": 1
+    },
+    "operationId": null,
+    "os": "Fedora Linux 44 (Workstation Edition)",
+    "platform": "none",
+    "qtCompiled": "6.8.3",
+    "qtRuntime": "6.8.3",
+    "resident": "gnome-core",
+    "sessionType": "wayland",
+    "trayAvailable": false
+   }
+  }
+ ],
+ "history": {
+  "id": "e00bb601-37f6-4ab1-9d23-0d2455e5d874",
+  "name": "Screen-Capture-2026-10-22-00-35-56.png",
+  "uploadStatus": "uploading"
+ },
+ "png": {
+  "path": "/home/patrick/work/put.gd-afa2/runs/f44/out/f44-341-region-traymenu.png",
+  "size": [
+   80,
+   60
+  ],
+  "sha256": "16f76c7b83395021cf012d3b7d89d3bff0c05a2926978a9d43eac9f67eed42ce"
+ },
+ "expectedSize": [
+  80,
+  60
+ ],
+ "after": "/home/patrick/work/put.gd-afa2/runs/f44/full/f44-341-region-traymenu-after.png"
+}

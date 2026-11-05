@@ -7,11 +7,13 @@
 #include <QSignalSpy>
 #include <QTimer>
 #include <vector>
+#include <thread>
 #ifdef Q_OS_LINUX
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <unistd.h>
 #include <cstring>
+#include "fixtures/Waits.h"
 #endif
 using namespace putgd;
 using namespace putgd::test;
@@ -22,7 +24,7 @@ class LocalIpcContract : public QObject {
  }
  static QByteArray receive(QLocalSocket& socket) {
   QByteArray bytes;QElapsedTimer elapsed;elapsed.start();
-  while(elapsed.elapsed()<3000&&!bytes.contains('\n')){QCoreApplication::processEvents();bytes+=socket.readAll();QTest::qWait(1);}
+  while(elapsed.elapsed()<putgd::test::scaled(3000)&&!bytes.contains('\n')){QCoreApplication::processEvents();bytes+=socket.readAll();putgd::test::settle(1);}
   return bytes;
  }
 private slots:
@@ -38,10 +40,10 @@ private slots:
     QTimer::singleShot(50,socket,[socket,payload]{socket->sendAndClose(payload);});
    });
   });
-  QLocalSocket peer;peer.setReadBufferSize(1024);peer.connectToServer(server.fullServerName());QVERIFY(peer.waitForConnected(1000));peer.write("request");QVERIFY(peer.waitForBytesWritten(1000));QTRY_COMPARE(notifications,1);
-  peer.write("ignored trailing bytes");QVERIFY(peer.waitForBytesWritten(1000));QTest::qWait(100);QCOMPARE(notifications,1);QVERIFY(peer.bytesAvailable()<=1024);
+  QLocalSocket peer;peer.setReadBufferSize(1024);peer.connectToServer(server.fullServerName());QVERIFY(peer.waitForConnected(1000));peer.write("request");QVERIFY(peer.waitForBytesWritten(1000));PUTGD_TRY_COMPARE(notifications,1);
+  peer.write("ignored trailing bytes");QVERIFY(peer.waitForBytesWritten(1000));putgd::test::settle(100);PUTGD_TRY_COMPARE(notifications,1);PUTGD_TRY_VERIFY(peer.bytesAvailable()<=1024);
   QByteArray reply;QElapsedTimer elapsed;elapsed.start();
-  while(elapsed.elapsed()<5000&&reply.size()<payload.size()){QCoreApplication::processEvents();reply+=peer.readAll();QTest::qWait(1);}
+  while(elapsed.elapsed()<putgd::test::scaled(5000)&&reply.size()<payload.size()){QCoreApplication::processEvents();reply+=peer.readAll();putgd::test::settle(1);}
   QCOMPARE(reply,payload);
  }
  void handledRequestObservesDisconnectBeforeReply() {
@@ -54,12 +56,12 @@ private slots:
    });
   });
   QLocalSocket peer;peer.connectToServer(server.fullServerName());QVERIFY(peer.waitForConnected(1000));
-  peer.write("request");QVERIFY(peer.waitForBytesWritten(1000));QTRY_COMPARE(notifications,1);
+  peer.write("request");QVERIFY(peer.waitForBytesWritten(1000));PUTGD_TRY_COMPARE(notifications,1);
   QSignalSpy disconnected(accepted,&LocalIpcConnection::disconnected);
   // A response may be waiting on asynchronous work when the CLI exits.
   peer.write(QByteArray(128*1024,'x'));QVERIFY(peer.waitForBytesWritten(1000));
-  QTest::qWait(10);peer.abort();
-  QTRY_COMPARE_WITH_TIMEOUT(disconnected.count(),1,1000);
+  putgd::test::settle(10);peer.abort();
+  PUTGD_TRY_COMPARE_WITH_TIMEOUT(disconnected.count(),1,1000);
   QCOMPARE(notifications,1);
   accepted->sendAndClose("late reply\n");
   QCoreApplication::processEvents();QCOMPARE(disconnected.count(),1);
@@ -68,26 +70,26 @@ private slots:
   QTemporaryDir d;LocalIpcServer server;QVERIFY(server.listen(d.filePath("session.sock")));int replies=0;
   connect(&server,&LocalIpcServer::newConnection,this,[&]{auto* socket=server.nextPendingConnection();
    connect(socket,&LocalIpcConnection::readyRead,this,[&,socket]{socket->readAll();socket->stopReading();QTimer::singleShot(30,socket,[&,socket]{socket->sendAndClose("reply\n");++replies;});});});
-  QLocalSocket gone;gone.connectToServer(server.fullServerName());QVERIFY(gone.waitForConnected(1000));gone.write("first");QVERIFY(gone.waitForBytesWritten(1000));QTest::qWait(5);gone.abort();QTRY_COMPARE(replies,1);
+  QLocalSocket gone;gone.connectToServer(server.fullServerName());QVERIFY(gone.waitForConnected(1000));gone.write("first");QVERIFY(gone.waitForBytesWritten(1000));putgd::test::settle(5);gone.abort();PUTGD_TRY_COMPARE(replies,1);
   QLocalSocket healthy;healthy.connectToServer(server.fullServerName());QVERIFY(healthy.waitForConnected(1000));healthy.write("second");QVERIFY(healthy.waitForBytesWritten(1000));QCOMPARE(receive(healthy),QByteArray("reply\n"));
  }
  void incompleteRequestExpires() {
   QTemporaryDir d;ProviderRegistry providers;SettingsService settings(d.filePath("config.json"));Source source;OperationService operations(d.filePath("data"),settings,providers,source);HistoryService history(operations);LocalServer server(settings,operations,history);QVERIFY(server.listen(d.filePath("runtime")));
   QLocalSocket peer;peer.connectToServer(server.socketPath());QVERIFY(peer.waitForConnected(1000));peer.write("{partial");QVERIFY(peer.waitForBytesWritten(1000));
-  QTRY_COMPARE_WITH_TIMEOUT(peer.state(),QLocalSocket::UnconnectedState,12000);
+  PUTGD_TRY_COMPARE_WITH_TIMEOUT(peer.state(),QLocalSocket::UnconnectedState,12000);
   QLocalSocket healthy;healthy.connectToServer(server.socketPath());QVERIFY(healthy.waitForConnected(1000));healthy.write(request(server.socketPath()));QVERIFY(healthy.waitForBytesWritten(1000));QVERIFY(QJsonDocument::fromJson(receive(healthy)).object()["ok"].toBool());
  }
  void clientLimitPreservesAcceptedRequests() {
   QTemporaryDir d;ProviderRegistry providers;SettingsService settings(d.filePath("config.json"));Source source;OperationService operations(d.filePath("data"),settings,providers,source);HistoryService history(operations);LocalServer server(settings,operations,history);QVERIFY(server.listen(d.filePath("runtime")));
   std::vector<std::unique_ptr<QLocalSocket>> peers;
   for(int i=0;i<65;++i){auto peer=std::make_unique<QLocalSocket>();peer->connectToServer(server.socketPath());QVERIFY(peer->waitForConnected(1000));QCoreApplication::processEvents();peers.push_back(std::move(peer));}
-  QTRY_COMPARE(peers.back()->state(),QLocalSocket::UnconnectedState);
+  PUTGD_TRY_COMPARE(peers.back()->state(),QLocalSocket::UnconnectedState);
   peers.front()->write(request(server.socketPath()));QVERIFY(peers.front()->waitForBytesWritten(1000));QVERIFY(QJsonDocument::fromJson(receive(*peers.front())).object()["ok"].toBool());
  }
  void fragmentedRequestAndDuplicateFrames() {
   QTemporaryDir d;ProviderRegistry providers;SettingsService settings(d.filePath("config.json"));Source source;OperationService operations(d.filePath("data"),settings,providers,source);HistoryService history(operations);LocalServer server(settings,operations,history);QVERIFY(server.listen(d.filePath("runtime")));
   const auto bytes=request(server.socketPath());QLocalSocket client;client.connectToServer(server.socketPath());QVERIFY(client.waitForConnected(1000));
-  client.write(bytes.left(bytes.size()/2));QVERIFY(client.waitForBytesWritten(1000));QTest::qWait(20);QVERIFY(client.readAll().isEmpty());
+  client.write(bytes.left(bytes.size()/2));QVERIFY(client.waitForBytesWritten(1000));PUTGD_VERIFY_STEADY(client.bytesAvailable()==0,20);
   client.write(bytes.mid(bytes.size()/2));QVERIFY(client.waitForBytesWritten(1000));const auto response=QJsonDocument::fromJson(receive(client)).object();QVERIFY(response["ok"].toBool());QCOMPARE(response["requestId"].toString(),QString("ipc-fixture"));
   QLocalSocket duplicate;duplicate.connectToServer(server.socketPath());QVERIFY(duplicate.waitForConnected(1000));duplicate.write(bytes+bytes);QVERIFY(duplicate.waitForBytesWritten(1000));QCOMPARE(QJsonDocument::fromJson(receive(duplicate)).object()["error"].toObject()["code"].toString(),QString("invalid_request"));
  }
@@ -109,6 +111,46 @@ private slots:
   QTemporaryDir d;const auto path=d.filePath("session.sock");
   {LocalIpcServer server;QVERIFY(server.listen(path));QVERIFY(QFile::remove(path));QFile replacement(path);QVERIFY(replacement.open(QIODevice::WriteOnly));replacement.write("preserve");}
   QFile replacement(path);QVERIFY(replacement.open(QIODevice::ReadOnly));QCOMPARE(replacement.readAll(),QByteArray("preserve"));
+ }
+ // #1149: the resident's --upload client exchanges one request over the raw
+ // socket. The reply deadline and size limit are the caller's, and sent tells
+ // a lost reply (outcome unknown) from a request that never left.
+ void exchangeHonoursDeadlineLimitAndReportsSent() {
+  QTemporaryDir d;const auto path=QFile::encodeName(d.filePath("session.sock"));
+  sockaddr_un address{};address.sun_family=AF_UNIX;std::memcpy(address.sun_path,path.constData(),size_t(path.size())+1);
+  const int listener=::socket(AF_UNIX,SOCK_STREAM|SOCK_CLOEXEC,0);QVERIFY(listener>=0);
+  QCOMPARE(::bind(listener,reinterpret_cast<sockaddr*>(&address),sizeof(address)),0);QCOMPARE(::listen(listener,4),0);
+  // Each accepted peer: read its frame, then answer per scenario.
+  enum class Answer { Echo, Oversize, Silent, Close, Fragmented };
+  std::vector<Answer> answers{Answer::Echo,Answer::Fragmented,Answer::Oversize,Answer::Silent,Answer::Close};
+  std::thread server([&]{
+   for(const auto answer:answers) {
+    const int peer=::accept(listener,nullptr,nullptr);if(peer<0)return;
+    QByteArray frame;char chunk[4096];
+    while(!frame.contains('\n')){const auto count=::recv(peer,chunk,sizeof(chunk),0);if(count<=0)break;frame.append(chunk,count);}
+    if(answer==Answer::Echo)::send(peer,frame.constData(),size_t(frame.size()),MSG_NOSIGNAL);
+    else if(answer==Answer::Fragmented){for(qsizetype i=0;i<frame.size();++i){::send(peer,frame.constData()+i,1,MSG_NOSIGNAL);std::this_thread::sleep_for(std::chrono::milliseconds(2));}}
+    else if(answer==Answer::Oversize){const QByteArray big(3000,'x');::send(peer,big.constData(),size_t(big.size()),MSG_NOSIGNAL);}
+    else if(answer==Answer::Silent)std::this_thread::sleep_for(std::chrono::milliseconds(putgd::test::scaled(600)));
+    ::close(peer);
+   }
+  });
+  const QByteArray request="{\"method\":\"capabilities\"}\n";
+  const auto socketPath=d.filePath("session.sock");
+  auto echo=exchangeLocalSession(socketPath,request,putgd::test::scaled(3000),2048);
+  QVERIFY(echo.connected);QVERIFY(echo.sent);QVERIFY(echo.errorCode.isEmpty());QCOMPARE(echo.response,request);
+  auto fragmented=exchangeLocalSession(socketPath,request,putgd::test::scaled(3000),2048);
+  QVERIFY(fragmented.sent);QVERIFY(fragmented.errorCode.isEmpty());QCOMPARE(fragmented.response,request);
+  auto oversize=exchangeLocalSession(socketPath,request,putgd::test::scaled(3000),2048);
+  QVERIFY(oversize.sent);QCOMPARE(oversize.errorCode,QString("response_too_large"));QVERIFY(oversize.response.isEmpty());
+  QElapsedTimer elapsed;elapsed.start();
+  auto silent=exchangeLocalSession(socketPath,request,putgd::test::scaled(200),2048);
+  QVERIFY(silent.connected);QVERIFY(silent.sent);QCOMPARE(silent.errorCode,QString("activation_timeout"));QVERIFY(elapsed.elapsed()<putgd::test::scaled(600));
+  auto closed=exchangeLocalSession(socketPath,request,putgd::test::scaled(3000),2048);
+  QVERIFY(closed.sent);QCOMPARE(closed.errorCode,QString("transport_failed"));QVERIFY(closed.response.isEmpty());
+  server.join();::close(listener);
+  auto absent=exchangeLocalSession(d.filePath("missing.sock"),request,putgd::test::scaled(500),2048);
+  QVERIFY(!absent.connected);QVERIFY(!absent.sent);
  }
  void recoversOwnedStaleSocket() {
   QTemporaryDir d;const auto runtime=d.filePath("runtime");QVERIFY(QDir().mkpath(runtime));const auto path=QFile::encodeName(runtime+"/session.sock");sockaddr_un address{};address.sun_family=AF_UNIX;QVERIFY(path.size()<qsizetype(sizeof(address.sun_path)));std::memcpy(address.sun_path,path.constData(),path.size()+1);

@@ -1,0 +1,16 @@
+{
+  "sourceCommit": "d5b561ddb94f8255b8bc754c1382552d983a6fa9",
+  "sourceTree": "797721fa0672581562a8675d0d2010eced7c6bd4",
+  "boundedBuild": "Mint dev preset; embedded identity remains the older dirty development checkout; all nine modified source/test files match this commit. This is not exact-package acceptance.",
+  "sha256": {
+    "packaging/appimage/runtime-source.json": "bc34a3afcfccc5cf6914c4bb8827cf7d2345833e2bb72b3303054cde0cf512fe",
+    "src/app/LoginStartup.cpp": "e0d148343a89241d00b812128e122a9f0786471718dc4d73fa239fc1f1f6b193",
+    "src/app/LoginStartup.h": "0e163ce8041309bbd779bdfabfe52d1ee4b2d008a15d5ac4ca419f8407fe509b",
+    "src/app/appimage-login-start.sh": "920202539096004a8d5d98558f99e55d25d5eb86598ec23ba3669918263dc938",
+    "src/main.cpp": "f8698a03499e0c1d818745134e4c22dd440880406a7804799dfd4202176eaf6a",
+    "tests/releases/test_appimage_complete_sources.py": "f6d7c77cc8237b91fa2e7f793d448ea7b89b885dd3d12b34e9984310da225437",
+    "tests/unit/test_appimage_login_start.py": "8f2c9c39ad4038ad0195c30f54f3deb253998e28f1d08190931f2b4cd30c8b30",
+    "tests/unit/test_login_startup.cpp": "e722adeb58a0cfd1cc44b9c8228987ff88b5c6ee1ae4f760ff59603a45e20366",
+    "tools/releases/appimage_complete_sources.py": "9378db8d2eedf0f176b119c44bd04297e853d5a731e09a9fca08241c1b99abb3"
+  }
+}

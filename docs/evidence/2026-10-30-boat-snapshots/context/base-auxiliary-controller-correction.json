@@ -1,0 +1,8 @@
+{
+  "snapshotName": "putgd-build-base-v3",
+  "snapshotId": "301fa0da-1124-4256-9f94-6c29fad5182b",
+  "embeddedAuxiliaryControllerCommit": "234c5028691917a8e3c757cea718a34b5a936fc4",
+  "observedAuxiliaryControllerCommit": "b063ba38d5fcaaa363c7ac1f9aa8ff449a41f6cb",
+  "reason": "The unused auxiliary lab driver was updated while Boat was saving the base binding. The built application, package, scratch configuration and runtime were unchanged. Host configure/build/114-test verification does not invoke this lab driver. Lab snapshots are saved only after the driver update is complete.",
+  "freshHostVerification": "fbase-fresh-verification.json"
+}

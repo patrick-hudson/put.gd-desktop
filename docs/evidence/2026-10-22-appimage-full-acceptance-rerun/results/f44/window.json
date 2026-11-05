@@ -1,0 +1,123 @@
+{
+ "processes": [
+  {
+   "pid": 2437917,
+   "ppid": 2437881,
+   "exe": "/tmp/.mount_putgd-gmGeOH/usr/bin/putgd",
+   "comm": "putgd",
+   "cmd": "/tmp/.mount_putgd-gmGeOH/usr/bin/putgd --background",
+   "qtPlatformPlugins": [],
+   "QT_QPA_PLATFORM": null,
+   "APPIMAGE": "/home/patrick/work/put.gd-afa2/images/putgd-0.1.1-nightly.942-x86_64.AppImage"
+  },
+  {
+   "pid": 2444805,
+   "ppid": 2437917,
+   "exe": "/tmp/.mount_putgd-gmGeOH/usr/bin/putgd-ui",
+   "comm": "putgd-ui",
+   "cmd": "/tmp/.mount_putgd-gmGeOH/usr/bin/putgd-ui",
+   "qtPlatformPlugins": [
+    "libqwayland-generic.so"
+   ],
+   "QT_QPA_PLATFORM": null,
+   "APPIMAGE": "/home/patrick/work/put.gd-afa2/images/putgd-0.1.1-nightly.942-x86_64.AppImage"
+  }
+ ],
+ "entries": [
+  "putgd-record.desktop",
+  "putgd-ui.desktop"
+ ],
+ "window": {
+  "label": "f44-settings-window",
+  "components": [
+   {
+    "blocks": 32400,
+    "box": [
+     0,
+     0,
+     1920,
+     1080
+    ]
+   }
+  ],
+  "colour": [
+   252,
+   252,
+   252
+  ],
+  "inner": [
+   300,
+   232,
+   1620,
+   851
+  ],
+  "changedShare": 1.0,
+  "ownShare": 0.979,
+  "kept": "/home/patrick/work/put.gd-afa2/runs/f44/crops/f44-settings-window.png"
+ },
+ "full": "/home/patrick/work/put.gd-afa2/runs/f44/full/f44-settings-window.png",
+ "titlebar": {
+  "label": "f44-settings-titlebar",
+  "components": [
+   {
+    "blocks": 1680,
+    "box": [
+     0,
+     0,
+     1920,
+     56
+    ]
+   }
+  ],
+  "colour": [
+   0,
+   0,
+   0
+  ],
+  "inner": [
+   44,
+   2,
+   1895,
+   32
+  ],
+  "changedShare": 1.0,
+  "kept": "/home/patrick/work/put.gd-afa2/runs/f44/crops/f44-settings-titlebar.png"
+ },
+ "switcher": {
+  "label": "f44-settings-switcher",
+  "components": [
+   {
+    "blocks": 425,
+    "box": [
+     872,
+     464,
+     1040,
+     632
+    ]
+   },
+   {
+    "blocks": 234,
+    "box": [
+     656,
+     736,
+     1560,
+     776
+    ]
+   }
+  ],
+  "colour": [
+   88,
+   88,
+   92
+  ],
+  "inner": [
+   901,
+   578,
+   1018,
+   601
+  ],
+  "changedShare": 1.0,
+  "kept": "/home/patrick/work/put.gd-afa2/runs/f44/crops/f44-settings-switcher.png"
+ },
+ "switcherFull": "/home/patrick/work/put.gd-afa2/runs/f44/full/f44-settings-switcher.png"
+}

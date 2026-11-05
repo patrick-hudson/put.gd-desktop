@@ -1,23 +1,46 @@
 # Build
 
 Linux baseline: GCC 13, CMake 3.24+, Ninja, Qt 6.4.2+, QtKeychain 0.14.2+.
-Install normal distribution development packages (Ubuntu/Mint):
+Install normal distribution development packages (Ubuntu/Mint/Debian 13):
 
 ```sh
 sudo apt-get update
 sudo apt-get install build-essential git cmake ninja-build pkg-config \
-  qt6-base-dev qt6-base-dev-tools libqt6sql6-sqlite qt6-wayland-dev \
+  qt6-base-dev qt6-svg-dev qt6-base-dev-tools libqt6sql6-sqlite qt6-wayland-dev \
   qtkeychain-qt6-dev libxcb1-dev libxcb-keysyms1-dev libxcb-util-dev \
-  libxcb-image0-dev libxcb-randr0-dev libxcb-xfixes0-dev libxcb-damage0-dev libxcb-shape0-dev libxcb-xtest0-dev xvfb xauth dbus-daemon \
+  libxcb-image0-dev libxcb-randr0-dev libxcb-xfixes0-dev libxcb-damage0-dev libxcb-shape0-dev libxcb-xinput-dev libxcb-xtest0-dev xvfb xauth dbus-daemon \
   libxcursor-dev libxkbcommon-dev libxkbcommon-x11-dev libcurl4-openssl-dev libssl-dev \
-  zlib1g-dev libwayland-dev wayland-protocols liblayershellqtinterface-dev
+  zlib1g-dev libwayland-dev wayland-protocols liblayershellqtinterface-dev \
+  libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev libavcodec-dev libavformat-dev \
+  libavfilter-dev libavutil-dev libswscale-dev libswresample-dev
 ```
+
+The last line builds the optional `putgd-record` screen-recording helper
+(GStreamer >= 1.24, FFmpeg libraries >= 6.1; Fedora: `gstreamer1-devel
+gstreamer1-plugins-base-devel ffmpeg-free-devel`). Without them CMake reports
+`putgd-record not built` and the resident answers `recording_helper_missing`.
+See [recording](recording.md).
 
 `liblayershellqtinterface-dev` (Qt 6.5+ distributions) enables the native KDE
 Plasma/Wayland region selector, which Edit & upload also uses. CMake finds it
 quietly; a build without it reports KDE region selection as unavailable.
 
-Generic composited X11 region capture follows root repaints through the distro XCB Damage library (`libxcb-damage0-dev`; part of `libxcb-devel` on Fedora). Linux capture helpers use the distro Xcursor development library. On Fedora, install `libXcursor-devel` alongside the normal Qt/X11 development packages. Runtime package dependencies remain distro-resolved; do not vendor Xcursor or build a replacement toolchain.
+X11 global shortcuts also listen to XInput2 raw key events, so they work while another client's menu holds the keyboard (#341); they need the distro XCB XInput library (`libxcb-xinput-dev`; part of `libxcb-devel` on Fedora). Generic composited X11 region capture follows root repaints through the distro XCB Damage library (`libxcb-damage0-dev`; part of `libxcb-devel` on Fedora). Linux capture helpers use the distro Xcursor development library. On Fedora, install `libXcursor-devel` alongside the normal Qt/X11 development packages. Runtime package dependencies remain distro-resolved; do not vendor Xcursor or build a replacement toolchain.
+
+The file manager's `putgd --upload` client resolves network URIs through GIO
+(`libglib2.0-dev`, `glib2-devel` on Fedora), and folder uploads deflate through
+zlib (`zlib1g-dev`, `zlib-devel`). The native packages also carry the Upload
+with put.gd menu plugins (#1105): Nautilus (`libnautilus-extension-dev` /
+`nautilus-devel`), Caja (`libcaja-extension-dev` / `caja-devel`, plus GTK 3
+headers) and Peony (`libpeony-dev`; Qt 6 on Ubuntu 26.04, while Ubuntu 24.04 and
+Debian 13 also need `qtbase5-dev qtbase5-dev-tools`).
+`PUTGD_NAUTILUS_PLUGIN`, `PUTGD_CAJA_PLUGIN` and `PUTGD_PEONY_PLUGIN` are `AUTO`
+by default (built when pkg-config finds the headers); package builds set `ON`
+(Peony `OFF` on Fedora) and the AppImage sets all three `OFF`. The plugins link
+neither the file manager's library nor Qt; their symbols resolve in the file
+manager. `tools/releases/install-native-deps.sh` installs all of these.
+
+Linux packaging renders menu PNG sizes from `packaging/linux/putgd.svg` at build time with Qt SVG (`qt6-svg-dev`, or `qt6-qtsvg-devel` on Fedora). The small headless renderer is a build tool and is not installed. Native packages refresh the hicolor icon cache after installation and removal.
 
 Build the pinned AWS SDK with its own official CMake project. The app configuration
 never downloads dependencies. SDK libraries install under `build/sdk`; this is a normal
@@ -79,6 +102,20 @@ ctest --preset release
 (umask 022; cpack --config build/release/CPackConfig.cmake -G DEB -B build/release/packages-fresh)
 ```
 
+Build each DEB on the release it targets. `dpkg-shlibdeps` writes the
+build host's FFmpeg sonames into `Depends`, so an Ubuntu-built DEB cannot
+install on Debian 13 and the reverse. The release matrix builds Ubuntu 24.04,
+Ubuntu 26.04 and Debian 13 DEBs in their own containers
+([release.md](release.md#formats-and-build-environments)).
+
+Qt loads plugins by name, so neither `dpkg-shlibdeps` nor RPM's dependency
+generator sees them. `packaging/linux/CMakeLists.txt` names them: the platform
+and SQLite plugins, Qt Wayland, and Qt's image formats (`qt6-image-formats-plugins`,
+`qt6-qtimageformats`), whose WebP plugin reads History's WebP previews (#189).
+`tools/releases/native.py` refuses a DEB or RPM that does not require the
+image formats package, and `tools/releases/portable_appimage.py` refuses an
+AppImage without `libqgif.so`, `libqjpeg.so` and `libqwebp.so`.
+
 Choose an absent output directory for each package attempt. CPack can otherwise
 reuse staging directories created under a permissive host umask. Inspect the
 actual DEB directory ownership/modes and executable hashes before installation;
@@ -96,6 +133,15 @@ DEB and `putgd-bench-capture` exists in the build directory. These options defau
 off for normal distribution packages. Record them with the test parameters so a
 future agent does not mistake a production-only package for a lab-ready artifact.
 
+Release builds compile with `-g` and split each product binary's debug information
+into `<binary>.debug` beside it in the build tree (`PUTGD_SPLIT_DEBUG`: `AUTO`, the
+default, splits Release builds; `ON` also splits Debug builds; `OFF` never splits;
+it needs `objcopy`). Packages install only the stripped binaries; the release
+publishes the `.debug` files by build ID (see [diagnostics.md](diagnostics.md)).
+Development builds also get the test-only crash trigger (`PUTGD_CRASH_TRIGGER`,
+`PUTGD_TEST_CRASH=<process>:<kind>[:<delay ms>]`); a Release build or one with
+`PUTGD_RELEASE_TAG` refuses it.
+
 Use `release`, `asan`, or `tsan` in place of `dev` for application presets. ASan/UBSan
 and TSan are separate builds. The SDK is currently built in Release; sanitizer evidence
 applies to application code, not an instrumented dependency. Set `-DBUILD_TESTING=OFF`
@@ -103,9 +149,8 @@ at configure time to exclude QtTest. `ctest` uses the offscreen Qt platform for 
 contract tests and a disposable Xvfb display for native X11 protocol tests. These
 checks do not certify capture, clipboard ownership, or global hotkeys on a real desktop.
 
-Windows/macOS provision the same Qt/QtKeychain/SDK packages with their normal package
-manager and pass their installation prefix using `CMAKE_PREFIX_PATH`. Native desktop
-adapters are Linux-first. Cross-platform compile results will be recorded by CI.
+put.gd builds and ships for Linux only: DEB, RPM and AppImage. Native Windows
+support was dropped on 2026-10-31; CI has no Windows build or MSVC provisioning.
 
 Local bootstrap evidence (Mint 22.3, GCC 13.3, Qt 6.4.2, QtKeychain 0.14.2):
 the pinned SDK compiled and installed; the Debug app and both contract tests built;
@@ -121,8 +166,9 @@ keychain tests use an isolated D-Bus protocol peer or an unavailable service.
 They do not contact AWS or read the user's secret store. The four hosted jobs
 passed for main `b1ed4ae6c2128ad189889b61c18798994ebf210c` in
 [Build run 38438946727](https://github.com/patrick-hudson/put.gd-desktop/actions/runs/38438946727):
-Ubuntu 24.04/26.04 build and test Linux, while Windows/macOS establish shared
-compile success only. These jobs do not certify native desktop behavior.
+That historical run built and tested Ubuntu 24.04/26.04 and established shared
+compile success on Windows/macOS only. It predates the Linux-only CI policy;
+those compile jobs are retired. These results do not certify native desktop behavior.
 
 U1 changes build configuration and introduces the skeleton. No prior implementation or
 tests existed. Replacement evidence is the actual dependency compile/link and runtime
@@ -132,8 +178,12 @@ The Linux resident uses Unix-domain sockets through Qt Core notifications. Qt
 Network remains a build dependency for the CLI, compatibility tests and lazy S3
 module; non-Linux builds retain Qt local sockets. The native IPC contracts join
 the ordinary `ctest --preset dev` run and its existing CI JUnit artifact. Physical
-Cinnamon RSS measurements use the separate procedure in
-[testing-memory.md](testing-memory.md), not a headless CI substitute.
+Cinnamon RSS measurements use the applicable
+[acceptance-matrix memory gates](acceptance-matrix.md) and the
+[cold-family observer](../tests/performance/observe_cold_family.py) /
+[UI-process observer and evaluator](../tests/performance/bench_ui_process.py), with the
+[earlier measurement record](history/testing-memory.md) retained for context.
+Headless CI is not a physical memory measurement.
 
 Proton-enabled Linux x86-64 builds additionally provision the private runtime:
 

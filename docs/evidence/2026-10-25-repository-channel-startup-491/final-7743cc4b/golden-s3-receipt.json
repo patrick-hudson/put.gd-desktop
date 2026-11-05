@@ -1,0 +1,29 @@
+{
+  "name": "ubuntu24-gnome-x11-20261025-491",
+  "uncompressedSha256": "fff0b55cc2d09d403bea61dd17d46165994cd8a9d0c2d467c5883c7fb795e245",
+  "compressedSha256": "f102a09515b5d9f53214edfae312c4ef0b7d9547897b8171f86f0c78491bfba3",
+  "compressedBytes": 3597396735,
+  "bucket": "putgd-lab-images-626193791566",
+  "key": "linux/ubuntu24-gnome-x11-20261025-491/ubuntu24-gnome-x11-20261025-491.qcow2.zst",
+  "roundTripVerified": true,
+  "head": {
+    "AcceptRanges": "bytes",
+    "LastModified": "2026-10-25T09:40:14+00:00",
+    "ContentLength": 3597396735,
+    "ETag": "\"82a84b3fd7ede6fca128fecd4518b8f9-429\"",
+    "ContentType": "binary/octet-stream",
+    "ServerSideEncryption": "AES256",
+    "Metadata": {
+      "sha256": "fff0b55cc2d09d403bea61dd17d46165994cd8a9d0c2d467c5883c7fb795e245",
+      "zst-sha256": "f102a09515b5d9f53214edfae312c4ef0b7d9547897b8171f86f0c78491bfba3",
+      "virtual-size": "42949672960"
+    },
+    "StorageClass": "GLACIER_IR"
+  },
+  "copies": [
+    "f44",
+    "d69",
+    "S3"
+  ],
+  "noLocalImageFile": true
+}

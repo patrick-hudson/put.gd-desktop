@@ -1,0 +1,135 @@
+{
+ "schemes": {
+  "dark": {
+   "patch": true,
+   "appearance": {
+    "theme": "dark",
+    "scheme": "dark",
+    "desktop": "light",
+    "desktopSource": "qt"
+   },
+   "shot": {
+    "label": "settings-dark",
+    "components": [
+     {
+      "blocks": 18260,
+      "box": [
+       296,
+       88,
+       1624,
+       968
+      ]
+     }
+    ],
+    "colour": [
+     24,
+     24,
+     32
+    ],
+    "inner": [
+     300,
+     90,
+     1620,
+     966
+    ],
+    "changedShare": 1.0,
+    "ownShare": 0.968,
+    "kept": "/home/patrick/work/put.gd-qt418/afa/runs/k72-labh/crops/settings-dark.png"
+   },
+   "full": "/home/patrick/work/put.gd-qt418/afa/runs/k72-labh/full/settings-dark.png"
+  },
+  "light": {
+   "patch": true,
+   "appearance": {
+    "theme": "light",
+    "scheme": "light",
+    "desktop": "light",
+    "desktopSource": "qt"
+   },
+   "shot": {
+    "label": "settings-light",
+    "components": [
+     {
+      "blocks": 27,
+      "box": [
+       656,
+       512,
+       776,
+       528
+      ]
+     }
+    ],
+    "kept": null
+   },
+   "full": "/home/patrick/work/put.gd-qt418/afa/runs/k72-labh/full/settings-light.png"
+  },
+  "system": {
+   "patch": true,
+   "appearance": {
+    "theme": "system",
+    "scheme": "light",
+    "desktop": "light",
+    "desktopSource": "qt"
+   },
+   "shot": {
+    "label": "settings-system",
+    "components": [],
+    "kept": null
+   },
+   "full": "/home/patrick/work/put.gd-qt418/afa/runs/k72-labh/full/settings-system.png"
+  }
+ },
+ "updateStatus": {
+  "channel": "nightly",
+  "channelSetting": "build",
+  "enabled": true,
+  "supported": true,
+  "reason": null,
+  "notifies": false,
+  "checkedAt": null,
+  "nextCheckAt": "2026-10-23T20:40:22Z",
+  "error": null,
+  "result": null,
+  "build": {
+   "channel": "nightly",
+   "kind": "nightly",
+   "packageTarget": "appimage",
+   "reason": null,
+   "supported": true,
+   "version": "26.1023.1068-nightly"
+  }
+ },
+ "checkNow": {
+  "ok": true,
+  "seconds": 0.61,
+  "result": {
+   "action": {
+    "kind": "download",
+    "repository": "none"
+   },
+   "asset": {
+    "name": "putgd-26.1023.1058-nightly-x86_64.AppImage",
+    "sha256": "ce707fcf4e693b5ca9024da539e5510e149c5edf8a6a17bca28d815e0e20e6db",
+    "size": 115309048
+   },
+   "channel": "nightly",
+   "channelSource": "setting",
+   "checkedAt": "2026-10-23T20:27:34Z",
+   "current": "26.1023.1068-nightly",
+   "downloadUrl": "https://github.com/patrick-hudson/put.gd-desktop/releases/download/v26.1023.1058-nightly/putgd-26.1023.1058-nightly-x86_64.AppImage",
+   "latest": "26.1023.1058-nightly",
+   "notesUrl": "https://github.com/patrick-hudson/put.gd-desktop/releases/tag/v26.1023.1058-nightly",
+   "packageTarget": "appimage",
+   "publishedAt": "2026-10-23T04:10:17Z",
+   "tag": "v26.1023.1058-nightly",
+   "updateAvailable": false
+  },
+  "error": {
+   "code": "",
+   "details": {},
+   "message": ""
+  }
+ },
+ "notificationsAfterCheck": [],
+ "liveFeed": "{\n  \"schema\": 1,\n  \"channel\": \"nightly\",\n  \"generatedAt\": \"2026-10-23T04:11:47Z\",\n  \"release\": {\n    \"tag\": \"v26.1023.1058-nightly\",\n    \"version\": \"26.1023.1058-nightly\",\n    \"publishedAt\": \"2026-10-23T04:10:17Z\",\n    \"notesUrl\": \"https://github.com/patrick-hudson/put.gd-desktop/releases/tag/v26.1023.1058-nightly\",\n    \"assets\": {\n      \"ubuntu24.04\": {\n        \"name\": \"putgd-26.1023.1058-nightly-ubuntu24.04-x86_64.deb\",\n        \"url\": \"https://github.com/patrick-hudson/put.gd-desktop/releases/download/v26.1023.1058-nightly/putgd-26.1023.1058-nightly-ubuntu24.04-x86_64.deb\",\n        \"size\": 54216822,\n        \"sha256\": \"f9b01cd26b3e3cbb3670658969e62f6a4c45e5c21b8a9029923d41ec56d75833\"\n      },\n      \"ubuntu26.04\": {\n        \"name\": \"putgd-26.1023.1058-nightly-ubuntu26.04-x86_64.deb\",\n        \"url\": \"https://github.com/patrick-hudson/put.gd-desktop/releases/download/v26.1023.1058-nightly/putgd-26.1023.1058-nightly-ubuntu26.04-x86_64.deb\",\n        \"size\": 54572542,\n        \"sha256\": \"a06b63f9e4ff0fc21c57392d5f34fc076ea9badca139e0dd87fe09ed73510feb\"\n      },\n      \"debian13\": {\n        \"name\": \"putgd-26.1023.1058-nightly-debian13-x86_64.deb\",\n        \"url\": \"https://github.com/patrick-hudson/put.gd-desktop/releases/download/v26.1023.1058-nightly/putgd-26.1023.1058-nightly-debian13-x86_64.deb\",\n        \"size\": 54108456,\n        \"sha256\": \"d56909f1703c8ca8225d059ac3a78bf1d7889ea610df82746e5b3ea5796fba0c\"\n      },\n      \"fedora44\": {\n        \"name\": \"putgd-26.1023.1058-nightly-fedora44-x86_64.rpm\",\n        \"url\": \"https://github.com/patrick-hudson/put.gd-desktop/releases/download/v26.1023.1058-nightly/putgd-26.1023.1058-nightly-fedora44-x86_64.rpm\",\n        \"size\": 40554170,\n        \"sha256\": \"d97d711687a4b9e04f77dd71bc87bcfd44529e01c2e7b180655a4a293b828937\"\n      },\n      \"appimage\": {\n        \"name\": \"putgd-26.1023.1058-nightly-x86_64.AppImage\",\n        \"url\": \"https://github.com/patrick-hudson/put.gd-desktop/releases/download/v26.1023.1058-nightly/putgd-26.1023.1058-ni"
+}

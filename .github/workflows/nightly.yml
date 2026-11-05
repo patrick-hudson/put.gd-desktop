@@ -15,13 +15,14 @@ concurrency:
 jobs:
   plan:
     runs-on: ubuntu-24.04
+    timeout-minutes: 15
     permissions:
       contents: write  # create the immutable nightly tag
     outputs:
       tag: ${{ steps.plan.outputs.tag }}
       skip: ${{ steps.plan.outputs.skip }}
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           ref: ${{ github.sha }}
@@ -32,7 +33,7 @@ jobs:
         run: python3 tools/releases/nightly.py plan --output "$RUNNER_TEMP/nightly-plan.json"
       - name: Retain the plan
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: nightly-plan
           path: ${{ runner.temp }}/nightly-plan.json
@@ -44,38 +45,258 @@ jobs:
     if: needs.plan.outputs.skip == 'false'
     permissions:
       contents: read
+      # ci.yml's prune-caches job declares these; it runs only on nightly pushes.
+      actions: write
+      pull-requests: read
+      # ci.yml's test jobs record flaky tests in tracker issues.
+      issues: write
     uses: ./.github/workflows/ci.yml
     with:
       release_tag: ${{ needs.plan.outputs.tag }}
+      reuse_source_ci: true
 
   publish:
     needs: [plan, ci]
     if: needs.plan.outputs.skip == 'false'
     runs-on: ubuntu-24.04
+    timeout-minutes: 60
     permissions:
       contents: write  # stage and publish the prerelease
+      pull-requests: read  # labels for the release notes' changes section
+      issues: read  # the issues each listed pull request closes
     env:
       GH_TOKEN: ${{ github.token }}
       TAG: ${{ needs.plan.outputs.tag }}
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           ref: ${{ needs.plan.outputs.tag }}
-      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: release-assets
           path: build/publish
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: release-source-assets
+          path: build/publish/sources
       - name: Publish verified nightly prerelease
         run: python3 tools/releases/publish.py --tag "$TAG" --directory build/publish --nightly
       - name: Summarize
         run: |
           echo "Published nightly [\`$TAG\`]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/releases/tag/$TAG)." >> "$GITHUB_STEP_SUMMARY"
+      - name: Notify put.gd-site
+        # The site rebuilds its download links on this event; without it the
+        # site's deploy refreshes on its own six-hour schedule. The workflow
+        # token cannot dispatch to another repository: SITE_DISPATCH_TOKEN is a
+        # fine-grained PAT for patrick-hudson/put.gd-site with Contents: read
+        # and write. `if:` cannot read secrets, so the shell checks the value.
+        env:
+          SITE_DISPATCH_TOKEN: ${{ secrets.SITE_DISPATCH_TOKEN }}
+        run: |
+          if [ -z "$SITE_DISPATCH_TOKEN" ]; then
+            echo "SITE_DISPATCH_TOKEN is not set: not notifying patrick-hudson/put.gd-site; its deploy refreshes within six hours."
+            exit 0
+          fi
+          if GH_TOKEN="$SITE_DISPATCH_TOKEN" gh api repos/patrick-hudson/put.gd-site/dispatches \
+              -f event_type=release-published \
+              -f "client_payload[tag]=$TAG" \
+              -F "client_payload[prerelease]=true"; then
+            echo "Sent release-published for $TAG to patrick-hudson/put.gd-site."
+            echo "Notified put.gd-site, which refreshes its download links." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "::warning::Could not notify patrick-hudson/put.gd-site of $TAG; its deploy refreshes within six hours."
+          fi
       - name: Retain final publication evidence
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: publication-${{ github.run_id }}-${{ github.run_attempt }}
           path: build/publish/publication.json
+          if-no-files-found: warn
+          retention-days: 90
+      - name: Prune older nightly releases and unreferenced paired sources
+        run: |
+          sudo bash tools/ci/install-packages.sh --no-install-recommends zstd
+          python3 tools/releases/prune_nightlies.py --output build/publish/nightly-retention.json
+      - name: Retain nightly retention plan
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: nightly-retention-${{ github.run_id }}-${{ github.run_attempt }}
+          path: build/publish/nightly-retention.json
+          if-no-files-found: warn
+          retention-days: 90
+
+  surface-map:
+    # map.put.gd: every surface and interaction of this nightly, coloured by the
+    # acceptance coverage recorded under tools/lab/surface_map/coverage. Rendered
+    # from the linux (26.04) job's UI catalog; never gates publication.
+    needs: [plan, ci, publish]
+    if: needs.plan.outputs.skip == 'false'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      actions: read  # the reused source-CI run's ui-catalog artifact
+      id-token: write  # assume the putgd-map-publish role through OIDC
+    env:
+      TAG: ${{ needs.plan.outputs.tag }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.plan.outputs.tag }}
+      - name: Download this run's UI catalog
+        # Absent when the nightly reused verified source CI: the linux job did not run.
+        id: catalog
+        continue-on-error: true
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: ui-catalog
+          path: build/ui-catalog
+      - name: Download the reused source-CI provenance
+        if: steps.catalog.outcome != 'success'
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: source-ci-provenance
+          path: build/provenance
+      - name: Download the UI catalog from the reused source-CI run
+        if: steps.catalog.outcome != 'success'
+        run: |
+          run_id="$(python3 -c 'import json,sys; p=json.load(open(sys.argv[1]))["producer"]; print(p["runId"] if p else "")' build/provenance/reused-ci.json)"
+          if [ -z "$run_id" ]; then
+            echo "::error::No ui-catalog in this run and no reused source-CI run to take it from."
+            exit 1
+          fi
+          gh run download "$run_id" --repo "$GITHUB_REPOSITORY" --name ui-catalog --dir build/ui-catalog
+          echo "UI catalog taken from reused source-CI run $run_id." >> "$GITHUB_STEP_SUMMARY"
+      - name: Render the surface map
+        run: |
+          python3 tools/lab/surface_map/surface_map.py build --catalog build/ui-catalog \
+            --coverage tools/lab/surface_map/coverage/[0-9]*.json \
+            --output build/surface-map --index --label "$TAG"
+          printf '<!DOCTYPE html><meta charset="utf-8"><title>Not found</title><p>Not found. The map lives at <a href="/">map.put.gd</a>.' > build/surface-map/404.html
+      - name: Publish to map.put.gd
+        # The role, bucket and distribution are repository variables set from the
+        # put.gd-site Terraform outputs; without them the render is only retained.
+        if: vars.MAP_PUBLISH_ROLE_ARN != ''
+        uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
+        with:
+          role-to-assume: ${{ vars.MAP_PUBLISH_ROLE_ARN }}
+          aws-region: us-east-2
+      - name: Sync the page and invalidate
+        if: vars.MAP_PUBLISH_ROLE_ARN != ''
+        env:
+          MAP_BUCKET: ${{ vars.MAP_BUCKET }}
+          MAP_DISTRIBUTION_ID: ${{ vars.MAP_DISTRIBUTION_ID }}
+        run: |
+          # Capture names carry a content hash, so they are immutable. Upload them before the
+          # page that names them, and keep older ones (no --delete): a page still cached for
+          # five minutes may name them. The set is small and changes only with the UI.
+          aws s3 sync build/surface-map/captures "s3://$MAP_BUCKET/captures" \
+            --cache-control "public, max-age=31536000, immutable"
+          for file in index.html 404.html; do
+            aws s3 cp "build/surface-map/$file" "s3://$MAP_BUCKET/$file" \
+              --cache-control "public, max-age=300" --content-type "text/html; charset=utf-8"
+          done
+          aws s3 cp build/surface-map/map.json "s3://$MAP_BUCKET/map.json" \
+            --cache-control "public, max-age=300" --content-type "application/json"
+          aws cloudfront create-invalidation --distribution-id "$MAP_DISTRIBUTION_ID" --paths "/*"
+          echo "Published the surface map for \`$TAG\` to https://map.put.gd/." >> "$GITHUB_STEP_SUMMARY"
+      - name: Retain the rendered map
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: surface-map-${{ needs.plan.outputs.tag }}
+          path: build/surface-map
+          if-no-files-found: warn
+          retention-days: 30
+
+  stable-scan:
+    # A stable AppImage freezes its bundled components, so every day the latest
+    # stable release's own SBOMs meet the day's vulnerability data (#420,
+    # docs/release.md). It flags and keeps one issue per release current; it never
+    # gates the nightly.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      issues: write  # one tracking issue per stable release
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: The latest stable release's SBOMs
+        id: stable
+        run: |
+          tag=$(gh api "repos/$GITHUB_REPOSITORY/releases?per_page=50" --jq '[.[] | select(.draft == false and .prerelease == false)][0].tag_name // ""')
+          mkdir -p build/stable-sbom
+          if [ -z "$tag" ] || ! gh release download "$tag" --repo "$GITHUB_REPOSITORY" --dir build/stable-sbom --pattern '*.cdx.json' --pattern SHA256SUMS; then
+            echo "No published stable release with SBOMs to re-scan${tag:+ ($tag has none)}." | tee -a "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          (cd build/stable-sbom && grep -E '[.]cdx[.]json$' SHA256SUMS | sha256sum --check --strict)
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+      - name: Pinned Grype and the current database
+        if: steps.stable.outputs.tag != ''
+        id: grype-db
+        run: |
+          python3 tools/releases/sbom.py tools --output "$RUNNER_TEMP/sbom-tools"
+          python3 tools/releases/sbom.py database --listing-only --listing build/grype-db.json --output build/grype-db
+          echo "key=grype-db-v6-$(python3 -c 'import json; print(json.load(open("build/grype-db.json"))["sha256"])')" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        if: steps.stable.outputs.tag != ''
+        id: grype-cache
+        with:
+          path: build/grype-db
+          key: ${{ steps.grype-db.outputs.key }}
+      - name: Download, verify and import the Grype database
+        if: steps.stable.outputs.tag != ''
+        env:
+          GRYPE_DB_CACHE_DIR: ${{ runner.temp }}/grype-db
+          GRYPE_CHECK_FOR_APP_UPDATE: 'false'
+        run: |
+          python3 tools/releases/sbom.py database --listing build/grype-db.json --output build/grype-db
+          "$RUNNER_TEMP/sbom-tools/grype" db import build/grype-db/vulnerability-db_*.tar.zst
+      - uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        if: steps.stable.outputs.tag != '' && steps.grype-cache.outputs.cache-hit != 'true'
+        with:
+          path: build/grype-db
+          key: ${{ steps.grype-db.outputs.key }}
+      - name: Re-scan the stable release
+        if: steps.stable.outputs.tag != ''
+        env:
+          GRYPE_DB_CACHE_DIR: ${{ runner.temp }}/grype-db
+          TAG: ${{ steps.stable.outputs.tag }}
+        run: |
+          python3 tools/releases/sbom.py scan --released --sboms build/stable-sbom --grype "$RUNNER_TEMP/sbom-tools/grype" \
+            --output build/stable-vulnerabilities --database build/grype-db.json --release-tag "$TAG" --summary "$GITHUB_STEP_SUMMARY"
+      - name: Keep the release's tracking issue current
+        if: steps.stable.outputs.tag != ''
+        env:
+          TAG: ${{ steps.stable.outputs.tag }}
+        run: |
+          report=build/stable-vulnerabilities
+          flagged=$(python3 -c 'import json, sys; print(sum(1 for f in json.load(open(sys.argv[1]))["findings"] if f["status"].startswith(("blocking", "flagged"))))' "$report/vulnerability-report.json")
+          title="Stable $TAG: bundled components with fixed critical or high CVEs"
+          number=$(gh issue list --repo "$GITHUB_REPOSITORY" --state open --search "in:title $TAG bundled components" --json number,title \
+            --jq "[.[] | select(.title == \"$title\")][0].number // \"\"")
+          {
+            echo "The daily re-scan of \`$TAG\`'s published SBOMs ([run]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID)) flags $flagged finding(s)."
+            echo "Policy: \`packaging/sbom/policy.json\`; re-release policy: #420; docs/release.md, \"SBOMs and vulnerability scans\"."
+            echo
+            cat "$report/vulnerability-summary.md"
+          } > "$RUNNER_TEMP/issue.md"
+          if [ -n "$number" ]; then
+            gh issue edit "$number" --repo "$GITHUB_REPOSITORY" --body-file "$RUNNER_TEMP/issue.md"
+          elif [ "$flagged" -gt 0 ]; then
+            gh issue create --repo "$GITHUB_REPOSITORY" --title "$title" --label 'area: packaging' --label needs-patrick --body-file "$RUNNER_TEMP/issue.md"
+          fi
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always() && steps.stable.outputs.tag != ''
+        with:
+          name: stable-vulnerability-report
+          path: build/stable-vulnerabilities/
           if-no-files-found: warn
           retention-days: 90

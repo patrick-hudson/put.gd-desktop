@@ -1,0 +1,56 @@
+{
+ "os": "Ubuntu 26.04.1 LTS",
+ "osVersionId": "26.04",
+ "kernel": "7.0.0-38-generic",
+ "host": "kubuntu",
+ "sessionProcess": "plasmashell",
+ "graphicalSessions": [
+  {
+   "Seat": "seat0",
+   "Service": "sddm-autologin",
+   "Desktop": "KDE",
+   "Leader": "1256",
+   "Type": "wayland",
+   "Class": "user",
+   "State": "active",
+   "Id": "1"
+  }
+ ],
+ "shellSession": "0::/user.slice/user-1000.slice/user@1000.service/session.slice/plasma-plasmashell.service",
+ "envSessionType": "wayland",
+ "currentDesktop": "KDE",
+ "plasmashell": [
+  "plasmashell 6.6.6"
+ ],
+ "kwin_wayland": [
+  "kwin 6.6.6"
+ ],
+ "kwin_x11": [
+  "kwin 6.6.4"
+ ],
+ "Xorg": [
+  "/usr/lib/xorg/Xorg.wrap: Only console users are allowed to run the X server"
+ ],
+ "packages": {
+  "kwin-wayland": "4:6.6.6-0ubuntu0.1",
+  "kwin-common": "4:6.6.6-0ubuntu0.1",
+  "plasma-workspace": "4:6.6.6-0ubuntu0.1",
+  "xserver-xorg-core": "2:21.1.22-1ubuntu1.2",
+  "xwayland": "2:24.1.10-1",
+  "libqt6core6t64": "6.10.2+dfsg-7",
+  "xdg-desktop-portal": "1.21.1+ds-1ubuntu3.1",
+  "xdg-desktop-portal-kde": "6.6.6-0ubuntu0.1",
+  "xdg-desktop-portal-gtk": "1.15.3-2ubuntu1",
+  "pipewire": "1.6.2-1ubuntu1.2",
+  "libpipewire-0.3-0t64": "1.6.2-1ubuntu1.2",
+  "fuse3": "3.18.2-1"
+ },
+ "gpu": [
+  "00:02.0 VGA compatible controller: Intel Corporation Skylake-S GT2 [HD Graphics 530] (rev 06)"
+ ],
+ "fuse": {
+  "fusermount": true,
+  "fusermount3": true
+ },
+ "libfuse2": false
+}

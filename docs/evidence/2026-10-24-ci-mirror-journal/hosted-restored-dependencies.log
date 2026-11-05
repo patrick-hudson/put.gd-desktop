@@ -1,0 +1,209 @@
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:42.0011497Z [command]/usr/bin/tar -xf /home/runner/work/_temp/d9e752b4-1eaf-4776-b1cc-cce6c960669b/cache.tzst -P -C /home/runner/work/put.gd-desktop/put.gd-desktop --use-compress-program unzstd
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:42.0668875Z Cache restored successfully
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:42.0722916Z Cache restored from key: putgd-sdk-v1-9fb0abbe16ac71a4b905743bf43cd94cf7536f3285b02e961df794155a58ac44
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:42.0808828Z ##[group]Run python3 tools/ci/sdk_cache.py verify --key 'putgd-sdk-v1-9fb0abbe16ac71a4b905743bf43cd94cf7536f3285b02e961df794155a58ac44'
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:42.0809373Z ^[[36;1mpython3 tools/ci/sdk_cache.py verify --key 'putgd-sdk-v1-9fb0abbe16ac71a4b905743bf43cd94cf7536f3285b02e961df794155a58ac44'^[[0m
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:42.0810001Z ^[[36;1mpython3 tools/ci/sdk_cache.py verify --prefix build/appimage-deps --manifest build/appimage-deps-cache.json --key 'putgd-sdk-v1-9fb0abbe16ac71a4b905743bf43cd94cf7536f3285b02e961df794155a58ac44'^[[0m
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:42.0810563Z ^[[36;1mpython3 tools/releases/provision-appimage.py --qt-root "$QT_ROOT_DIR" --skip-build^[[0m
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:42.0870798Z shell: /usr/bin/bash -e {0}
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:42.0870953Z env:
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:42.0871066Z   RELEASE_TAG: 
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:42.0871225Z   pythonLocation: /opt/hostedtoolcache/Python/3.14.8/x64
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:42.0871632Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.14.8/x64/lib/pkgconfig:/home/runner/work/put.gd-desktop/Qt/6.12.0/gcc_64/lib/pkgconfig
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:42.0871976Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.14.8/x64
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:42.0872185Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.14.8/x64
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:42.0872395Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.14.8/x64
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:42.0872698Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.14.8/x64/lib:/home/runner/work/put.gd-desktop/Qt/6.12.0/gcc_64/lib
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:42.0873012Z   QT_ROOT_DIR: /home/runner/work/put.gd-desktop/Qt/6.12.0/gcc_64
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:42.0873257Z   QT_PLUGIN_PATH: /home/runner/work/put.gd-desktop/Qt/6.12.0/gcc_64/plugins
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:42.0873517Z   QML2_IMPORT_PATH: /home/runner/work/put.gd-desktop/Qt/6.12.0/gcc_64/qml
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:42.0873719Z ##[endgroup]
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:42.1875789Z SDK cache verify passed
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:42.2471666Z SDK cache verify passed
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:42.2871573Z hint: Using 'master' as the name for the initial branch. This default branch name
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:42.2872186Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:42.2872641Z hint: to use in all of your new repositories, which will suppress this warning,
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:42.2873004Z hint: call:
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:42.2883929Z hint:
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:42.2884389Z Initialized empty Git repository in /home/runner/work/put.gd-desktop/put.gd-desktop/build/dependencies/appimage/ecm/.git/
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:42.2885405Z hint: 	git config --global init.defaultBranch <name>
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:42.2885774Z hint:
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:42.2886029Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:42.2886454Z hint: 'development'. The just-created branch can be renamed via this command:
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:42.2886753Z hint:
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:42.2886927Z hint: 	git branch -m <name>
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:42.2887132Z hint:
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:42.2887655Z hint: Disable this message with "git config set advice.defaultBranchName false"
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:42.6251123Z From https://github.com/KDE/extra-cmake-modules
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:42.6251581Z  * branch            a5f0366eb92baa2a31b24e65f754fe4bc48ca28e -> FETCH_HEAD
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:43.0684774Z HEAD is now at a5f0366 Update dependency version to 6.14.0
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:43.0726628Z hint: Using 'master' as the name for the initial branch. This default branch name
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:43.0727097Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:43.0727537Z hint: to use in all of your new repositories, which will suppress this warning,
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:43.0727866Z hint: call:
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:43.0728043Z hint:
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:43.0728270Z hint: 	git config --global init.defaultBranch <name>
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:43.0728536Z hint:
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:43.0728793Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:43.0729215Z hint: 'development'. The just-created branch can be renamed via this command:
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:43.0729575Z hint:
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:43.0729985Z hint: 	git branch -m <name>
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:43.0730139Z hint:
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:43.0730322Z hint: Disable this message with "git config set advice.defaultBranchName false"
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:43.0730714Z Initialized empty Git repository in /home/runner/work/put.gd-desktop/put.gd-desktop/build/dependencies/appimage/qtkeychain/.git/
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:43.3121676Z From https://github.com/frankosterfeld/qtkeychain
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:43.3122003Z  * branch            8eac9889775ca45c106d077bb0d3744754a1570a -> FETCH_HEAD
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:43.5910071Z HEAD is now at 8eac988 Prepare 0.14.2
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:43.5953332Z hint: Using 'master' as the name for the initial branch. This default branch name
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:43.5953797Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:43.5954238Z hint: to use in all of your new repositories, which will suppress this warning,
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:43.5954597Z hint: call:
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:43.5954768Z hint:
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:43.5955016Z hint: 	git config --global init.defaultBranch <name>
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:43.5955452Z hint:
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:43.5955730Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:43.5956160Z hint: 'development'. The just-created branch can be renamed via this command:
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:43.5956490Z hint:
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:43.5956671Z hint: 	git branch -m <name>
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:43.5956878Z hint:
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:43.5957158Z hint: Disable this message with "git config set advice.defaultBranchName false"
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:43.5957789Z Initialized empty Git repository in /home/runner/work/put.gd-desktop/put.gd-desktop/build/dependencies/appimage/layershell/.git/
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:43.8926314Z From https://github.com/KDE/layer-shell-qt
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:43.8926608Z  * branch            b1317ba122420dd0542ad12f4780b02ba7b6288f -> FETCH_HEAD
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:44.1226685Z HEAD is now at b1317ba Update version for new release 6.4.6
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:44.1268101Z hint: Using 'master' as the name for the initial branch. This default branch name
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:44.1268538Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:44.1268959Z hint: to use in all of your new repositories, which will suppress this warning,
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:44.1269272Z hint: call:
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:44.1269432Z hint:
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:44.1269658Z hint: 	git config --global init.defaultBranch <name>
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:44.1269909Z hint:
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:44.1270154Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:44.1270569Z hint: 'development'. The just-created branch can be renamed via this command:
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:44.1270880Z hint:
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:44.1271051Z hint: 	git branch -m <name>
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:44.1271247Z hint:
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:44.1271511Z hint: Disable this message with "git config set advice.defaultBranchName false"
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:44.1272208Z Initialized empty Git repository in /home/runner/work/put.gd-desktop/put.gd-desktop/build/dependencies/appimage/ffmpeg/.git/
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:44.5150579Z From https://github.com/FFmpeg/FFmpeg
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:44.5151036Z  * branch            3a0867c2bfda4a4d4309ca1a8cbdc6175e67f587 -> FETCH_HEAD
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:52.2243082Z HEAD is now at 3a0867c Changelog:update
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:52.2304297Z hint: Using 'master' as the name for the initial branch. This default branch name
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:52.2304758Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:52.2305323Z hint: to use in all of your new repositories, which will suppress this warning,
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:52.2305543Z hint: call:
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:52.2305661Z hint:
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:52.2305822Z hint: 	git config --global init.defaultBranch <name>
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:52.2306001Z hint:
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:52.2306172Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:52.2306661Z hint: 'development'. The just-created branch can be renamed via this command:
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:52.2307275Z hint:
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:52.2307419Z hint: 	git branch -m <name>
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:52.2307557Z hint:
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:52.2307743Z hint: Disable this message with "git config set advice.defaultBranchName false"
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:52.2308145Z Initialized empty Git repository in /home/runner/work/put.gd-desktop/put.gd-desktop/build/dependencies/appimage/qtbase/.git/
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:52.7906132Z From https://github.com/qt/qtbase
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:52.7906396Z  * branch            025bdad181de241e81bf853c8a2d7bf3d19261a9 -> FETCH_HEAD
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:54.1929245Z HEAD is now at 025bdad Add a "Security Considerations" section for Qt Test
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:54.1974924Z hint: Using 'master' as the name for the initial branch. This default branch name
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:54.1975538Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:54.1975983Z hint: to use in all of your new repositories, which will suppress this warning,
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:54.1976361Z hint: call:
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:54.1976559Z hint:
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:54.1976794Z hint: 	git config --global init.defaultBranch <name>
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:54.1977062Z hint:
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:54.1977326Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:54.1977753Z hint: 'development'. The just-created branch can be renamed via this command:
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:54.1978088Z hint:
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:54.1978267Z hint: 	git branch -m <name>
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:54.1978473Z hint:
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:54.1978745Z hint: Disable this message with "git config set advice.defaultBranchName false"
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:54.1979154Z Initialized empty Git repository in /home/runner/work/put.gd-desktop/put.gd-desktop/build/dependencies/appimage/qtwayland/.git/
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:54.4654570Z From https://github.com/qt/qtwayland
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:54.4654900Z  * branch            c4f85cd060e3e80a7d71829defac9cf5a40e8ffa -> FETCH_HEAD
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:54.9209660Z HEAD is now at c4f85cd Update dependencies on '6.12.0' in qt/qtwayland
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:54.9253651Z hint: Using 'master' as the name for the initial branch. This default branch name
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:54.9253966Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:54.9254254Z hint: to use in all of your new repositories, which will suppress this warning,
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:54.9254466Z hint: call:
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:54.9254577Z hint:
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:54.9254732Z hint: 	git config --global init.defaultBranch <name>
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:54.9254954Z hint:
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:54.9255668Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:54.9255941Z hint: 'development'. The just-created branch can be renamed via this command:
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:54.9256147Z hint:
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:54.9256263Z hint: 	git branch -m <name>
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:54.9256395Z hint:
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:54.9256571Z hint: Disable this message with "git config set advice.defaultBranchName false"
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:54.9257473Z Initialized empty Git repository in /home/runner/work/put.gd-desktop/put.gd-desktop/build/dependencies/appimage/qtsvg/.git/
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:55.1974079Z From https://github.com/qt/qtsvg
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:55.1974349Z  * branch            883a58532078d003cefef0a549bfe9f885ce41f5 -> FETCH_HEAD
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:55.6159138Z HEAD is now at 883a585 Update dependencies on '6.12.0' in qt/qtsvg
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:55.6200241Z hint: Using 'master' as the name for the initial branch. This default branch name
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:55.6200696Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:55.6201136Z hint: to use in all of your new repositories, which will suppress this warning,
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:55.6201464Z hint: call:
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:55.6201631Z hint:
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:55.6201863Z hint: 	git config --global init.defaultBranch <name>
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:55.6202127Z hint:
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:55.6202387Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:55.6203081Z hint: 'development'. The just-created branch can be renamed via this command:
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:55.6203407Z hint:
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:55.6203589Z hint: 	git branch -m <name>
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:55.6203791Z hint:
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:55.6204069Z hint: Disable this message with "git config set advice.defaultBranchName false"
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:55.6204599Z Initialized empty Git repository in /home/runner/work/put.gd-desktop/put.gd-desktop/build/dependencies/appimage/qtimageformats/.git/
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:55.8971560Z From https://github.com/qt/qtimageformats
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:55.8971890Z  * branch            dc13f2fbff1d579cfb2eb2d9092e3563b4d05b8e -> FETCH_HEAD
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:56.3246858Z HEAD is now at dc13f2f Update dependencies on '6.12.0' in qt/qtimageformats
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:56.3287571Z hint: Using 'master' as the name for the initial branch. This default branch name
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:56.3288043Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:56.3288549Z hint: to use in all of your new repositories, which will suppress this warning,
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:56.3288885Z hint: call:
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:56.3289062Z hint:
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:56.3289303Z hint: 	git config --global init.defaultBranch <name>
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:56.3289569Z hint:
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:56.3289830Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:56.3290255Z hint: 'development'. The just-created branch can be renamed via this command:
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:56.3290590Z hint:
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:56.3290768Z hint: 	git branch -m <name>
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:56.3290972Z hint:
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:56.3291212Z hint: Disable this message with "git config set advice.defaultBranchName false"
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:56.3291623Z Initialized empty Git repository in /home/runner/work/put.gd-desktop/put.gd-desktop/build/dependencies/appimage/qttranslations/.git/
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:56.6306253Z From https://github.com/qt/qttranslations
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:56.6306680Z  * branch            2811457ceff8f0c24a1c4d14f947a283a17239d0 -> FETCH_HEAD
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:57.0817172Z HEAD is now at 2811457 Update dependencies on '6.12.0' in qt/qttranslations
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:57.0858113Z hint: Using 'master' as the name for the initial branch. This default branch name
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:57.0858586Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:57.0859024Z hint: to use in all of your new repositories, which will suppress this warning,
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:57.0859355Z hint: call:
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:57.0859526Z hint:
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:57.0859762Z hint: 	git config --global init.defaultBranch <name>
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:57.0860025Z hint:
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:57.0860284Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:57.0860709Z hint: 'development'. The just-created branch can be renamed via this command:
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:57.0861037Z hint:
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:57.0861214Z hint: 	git branch -m <name>
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:57.0861624Z hint:
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:57.0861851Z hint: Disable this message with "git config set advice.defaultBranchName false"
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:57.0862241Z Initialized empty Git repository in /home/runner/work/put.gd-desktop/put.gd-desktop/build/dependencies/appimage/icu/.git/
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:57.5045656Z From https://github.com/unicode-org/icu
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:57.5045972Z  * branch            680f521746a3bd6a86f25f25ee50a62d88b489cf -> FETCH_HEAD
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:58.0237348Z HEAD is now at 680f521 ICU-22389 Cherry-pick CLDR 43.1 data from main to maint-73 (#2495)
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:58.0473857Z ##[group]Run python3 tools/proton/provision_runtime.py
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:58.0474096Z ^[[36;1mpython3 tools/proton/provision_runtime.py^[[0m
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:58.0530398Z shell: /usr/bin/bash -e {0}
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:58.0530537Z env:
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:58.0530649Z   RELEASE_TAG: 
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:58.0530809Z   pythonLocation: /opt/hostedtoolcache/Python/3.14.8/x64
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:58.0531168Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.14.8/x64/lib/pkgconfig:/home/runner/work/put.gd-desktop/Qt/6.12.0/gcc_64/lib/pkgconfig
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:58.0531527Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.14.8/x64
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:58.0531736Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.14.8/x64
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:58.0531948Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.14.8/x64
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:58.0532250Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.14.8/x64/lib:/home/runner/work/put.gd-desktop/Qt/6.12.0/gcc_64/lib
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:58.0532597Z   QT_ROOT_DIR: /home/runner/work/put.gd-desktop/Qt/6.12.0/gcc_64
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:58.0532847Z   QT_PLUGIN_PATH: /home/runner/work/put.gd-desktop/Qt/6.12.0/gcc_64/plugins
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:58.0533106Z   QML2_IMPORT_PATH: /home/runner/work/put.gd-desktop/Qt/6.12.0/gcc_64/qml
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:58.0533316Z   npm_config_fetch_retries: 5
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:58.0533458Z ##[endgroup]
+packages / appimage	UNKNOWN STEP	2026-10-24T00:48:58.1019527Z Cloning into '/home/runner/work/put.gd-desktop/put.gd-desktop/build/dependencies/proton-runtime/sdk-source'...

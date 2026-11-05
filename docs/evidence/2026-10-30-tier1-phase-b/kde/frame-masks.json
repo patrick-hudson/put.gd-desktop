@@ -1,0 +1,315 @@
+{
+  "frames": {
+    "s3a/startup-failed.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false
+    },
+    "s3b/frames/outcomes_live.s3_region_upload/00-before.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "s3b/frames/outcomes_live.s3_region_upload/01-after.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "protona/frames/outcomes_live.proton_region_upload/00-before.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "protona/frames/outcomes_live.proton_region_upload/01-independent-frozen-pattern.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "protona/frames/outcomes_live.proton_region_upload/02-after.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "protonb/frames/outcomes_live.proton_region_upload/00-before.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "protonb/frames/outcomes_live.proton_region_upload/01-independent-frozen-pattern.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "protonb/frames/outcomes_live.proton_region_upload/02-browser-failure-safe-desktop.png": {
+      "sha256": "fec91d4d92514fcaa20dab2141382ad64c928acab252c5a6ae5da643be7ccc5f",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          760,
+          320,
+          520,
+          480
+        ]
+      ],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true,
+      "desktop_safe": "private Firefox kiosk without address bar owns the verified foreground"
+    },
+    "protonb/frames/outcomes_live.proton_region_upload/03-after.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "post/frames/__main__.finish/00-before.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "post/frames/__main__.finish/01-revoke-exact-owned-link.png": {
+      "sha256": "40e2201449e733470bf756563779559d5738c38feb0edc4115fa452b45f8a41e",
+      "size": [
+        500,
+        171
+      ],
+      "regions": [
+        [
+          370,
+          18,
+          130,
+          153
+        ]
+      ],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true
+    },
+    "post/frames/__main__.finish/02-history-after-remote-cleanup.png": {
+      "sha256": "feb1e373fd54c528544a61913830a452141bfab9395d79d71da7a8763c3247bd",
+      "size": [
+        1280,
+        746
+      ],
+      "regions": [
+        [
+          760,
+          320,
+          520,
+          426
+        ],
+        [
+          1123,
+          708,
+          143,
+          36
+        ],
+        [
+          914,
+          534,
+          108,
+          40
+        ],
+        [
+          914,
+          490,
+          117,
+          40
+        ],
+        [
+          914,
+          446,
+          140,
+          40
+        ],
+        [
+          620,
+          122,
+          304,
+          40
+        ]
+      ],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true
+    },
+    "post/frames/__main__.finish/03-after.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "setup/unlocked-before-live.png": {
+      "sha256": "76e163e78dae8d6f550eb9e1d99a383b269d05b343611a21ea1b64f56711dfcc",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [],
+      "guard": "precredential-desktop-or-synthetic-functional-payload"
+    },
+    "protonb/functional/dbf28b144b57384a3d338158d0bca7d0ab67372b5e072f1993ed3667c524ee7a.png": {
+      "sha256": "dbf28b144b57384a3d338158d0bca7d0ab67372b5e072f1993ed3667c524ee7a",
+      "size": [
+        600,
+        280
+      ],
+      "regions": [],
+      "guard": "precredential-desktop-or-synthetic-functional-payload"
+    }
+  }
+}

@@ -1,0 +1,5 @@
+cinnamon	6.6.9+zena
+libqt6core6	
+libqt6gui6	
+libqt6widgets6	
+muffin	6.6.3+zena

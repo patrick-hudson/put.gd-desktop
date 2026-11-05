@@ -1,0 +1,1 @@
+238257fa fix(lab): declared desktop frames keep the shell's panels and dock

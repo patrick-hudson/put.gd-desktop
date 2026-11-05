@@ -1,0 +1,1121 @@
+{
+ "name": "f44",
+ "runtime": "/tmp/acc386.Wmo5q6",
+ "shell": "gnome-shell",
+ "vnc": 5901,
+ "host": "fedora",
+ "created": "2026-10-22T20:17:16Z",
+ "log": [
+  {
+   "at": "2026-10-22T20:17:20Z",
+   "1-nightly-on-nightly": {
+    "pid": 2636280,
+    "reply": {
+     "ok": true,
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     }
+    },
+    "status": {
+     "build": "26.1021.991-nightly",
+     "buildChannel": "nightly",
+     "channel": "nightly",
+     "channelSource": "repository",
+     "channelSetting": "build",
+     "latest": "26.1021.991-nightly",
+     "updateAvailable": false,
+     "notifies": false,
+     "action": {
+      "kind": "software-updates",
+      "channel": "nightly",
+      "file": "/etc/yum.repos.d/putgd.repo",
+      "command": "sudo dnf upgrade --refresh",
+      "otherChannel": {
+       "channel": "stable",
+       "commands": [
+        "sudo install -m 644 /usr/share/putgd/repo/putgd-stable.repo /etc/yum.repos.d/putgd.repo",
+        "sudo dnf distro-sync --refresh putgd"
+       ],
+       "docs": "https://github.com/patrick-hudson/put.gd-desktop/blob/main/docs/package-repositories.md#switching-channels"
+      },
+      "older": null
+     },
+     "installKind": "update",
+     "installReason": "not_appimage"
+    },
+    "repo": {
+     "file": "/etc/yum.repos.d/putgd.repo",
+     "exists": true,
+     "sha256": "d7a3ae5591b28ed03c311de31fb6f62a7f6f678eb6fa1e03f638f68709a7cac6",
+     "sameAs": "/usr/share/putgd/repo/putgd-nightly.repo",
+     "lines": [
+      "[putgd-nightly]",
+      "baseurl=https://pkg.put.gd/lab/rpm/fedora/44/x86_64/nightly",
+      "enabled=1",
+      "gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-nightly"
+     ],
+     "installed": "putgd-26.1021.991~nightly-1.fc44.x86_64",
+     "selinux": "system_u:object_r:system_conf_t:s0 /etc/yum.repos.d/putgd.repo"
+    },
+    "frame": "1-nightly-on-nightly.png"
+   }
+  },
+  {
+   "at": "2026-10-22T20:18:07Z",
+   "1-nightly-on-nightly-max": {
+    "pid": 2636280,
+    "reply": {
+     "ok": true,
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     }
+    },
+    "status": {
+     "build": "26.1021.991-nightly",
+     "buildChannel": "nightly",
+     "channel": "nightly",
+     "channelSource": "repository",
+     "channelSetting": "build",
+     "latest": "26.1021.991-nightly",
+     "updateAvailable": false,
+     "notifies": false,
+     "action": {
+      "kind": "software-updates",
+      "channel": "nightly",
+      "file": "/etc/yum.repos.d/putgd.repo",
+      "command": "sudo dnf upgrade --refresh",
+      "otherChannel": {
+       "channel": "stable",
+       "commands": [
+        "sudo install -m 644 /usr/share/putgd/repo/putgd-stable.repo /etc/yum.repos.d/putgd.repo",
+        "sudo dnf distro-sync --refresh putgd"
+       ],
+       "docs": "https://github.com/patrick-hudson/put.gd-desktop/blob/main/docs/package-repositories.md#switching-channels"
+      },
+      "older": null
+     },
+     "installKind": "update",
+     "installReason": "not_appimage"
+    },
+    "repo": {
+     "file": "/etc/yum.repos.d/putgd.repo",
+     "exists": true,
+     "sha256": "d7a3ae5591b28ed03c311de31fb6f62a7f6f678eb6fa1e03f638f68709a7cac6",
+     "sameAs": "/usr/share/putgd/repo/putgd-nightly.repo",
+     "lines": [
+      "[putgd-nightly]",
+      "baseurl=https://pkg.put.gd/lab/rpm/fedora/44/x86_64/nightly",
+      "enabled=1",
+      "gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-nightly"
+     ],
+     "installed": "putgd-26.1021.991~nightly-1.fc44.x86_64",
+     "selinux": "system_u:object_r:system_conf_t:s0 /etc/yum.repos.d/putgd.repo"
+    },
+    "frame": "1-nightly-on-nightly-max.png"
+   }
+  },
+  {
+   "at": "2026-10-22T20:18:32Z",
+   "2-stable-repo-older": {
+    "pid": 2636280,
+    "reply": {
+     "ok": true,
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     }
+    },
+    "status": {
+     "build": "26.1021.991-nightly",
+     "buildChannel": "nightly",
+     "channel": "stable",
+     "channelSource": "repository",
+     "channelSetting": "build",
+     "latest": "26.1020.990",
+     "updateAvailable": false,
+     "notifies": false,
+     "action": {
+      "kind": "software-updates",
+      "channel": "stable",
+      "file": "/etc/yum.repos.d/putgd.repo",
+      "command": "sudo dnf upgrade --refresh",
+      "otherChannel": {
+       "channel": "nightly",
+       "commands": [
+        "sudo install -m 644 /usr/share/putgd/repo/putgd-nightly.repo /etc/yum.repos.d/putgd.repo",
+        "sudo dnf distro-sync --refresh putgd"
+       ],
+       "docs": "https://github.com/patrick-hudson/put.gd-desktop/blob/main/docs/package-repositories.md#switching-channels"
+      },
+      "older": {
+       "command": "sudo dnf distro-sync --refresh putgd",
+       "version": "26.1020.990"
+      }
+     },
+     "installKind": "update",
+     "installReason": "not_appimage"
+    },
+    "repo": {
+     "file": "/etc/yum.repos.d/putgd.repo",
+     "exists": true,
+     "sha256": "71b36e60d01f620536baaab003a38c2d55fe1383002f52219c4109eb7500d7de",
+     "sameAs": "/usr/share/putgd/repo/putgd-stable.repo",
+     "lines": [
+      "[putgd-stable]",
+      "baseurl=https://pkg.put.gd/lab/rpm/fedora/44/x86_64/stable",
+      "enabled=1",
+      "gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-stable"
+     ],
+     "installed": "putgd-26.1021.991~nightly-1.fc44.x86_64",
+     "selinux": "system_u:object_r:system_conf_t:s0 /etc/yum.repos.d/putgd.repo"
+    },
+    "frame": "2-stable-repo-older.png"
+   }
+  },
+  {
+   "at": "2026-10-22T20:19:11Z",
+   "3-stable-989-update-available": {
+    "pid": 2637530,
+    "reply": {
+     "ok": true,
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     }
+    },
+    "status": {
+     "build": "26.1018.989",
+     "buildChannel": "stable",
+     "channel": "stable",
+     "channelSource": "repository",
+     "channelSetting": "build",
+     "latest": "26.1020.990",
+     "updateAvailable": true,
+     "notifies": false,
+     "action": {
+      "kind": "software-updates",
+      "channel": "stable",
+      "file": "/etc/yum.repos.d/putgd.repo",
+      "command": "sudo dnf upgrade --refresh",
+      "otherChannel": {
+       "channel": "nightly",
+       "commands": [
+        "sudo install -m 644 /usr/share/putgd/repo/putgd-nightly.repo /etc/yum.repos.d/putgd.repo",
+        "sudo dnf distro-sync --refresh putgd"
+       ],
+       "docs": "https://github.com/patrick-hudson/put.gd-desktop/blob/main/docs/package-repositories.md#switching-channels"
+      },
+      "older": null
+     },
+     "installKind": "update",
+     "installReason": "not_appimage"
+    },
+    "repo": {
+     "file": "/etc/yum.repos.d/putgd.repo",
+     "exists": true,
+     "sha256": "71b36e60d01f620536baaab003a38c2d55fe1383002f52219c4109eb7500d7de",
+     "sameAs": "/usr/share/putgd/repo/putgd-stable.repo",
+     "lines": [
+      "[putgd-stable]",
+      "baseurl=https://pkg.put.gd/lab/rpm/fedora/44/x86_64/stable",
+      "enabled=1",
+      "gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-stable"
+     ],
+     "installed": "putgd-26.1018.989-1.fc44.x86_64",
+     "selinux": "system_u:object_r:system_conf_t:s0 /etc/yum.repos.d/putgd.repo"
+    },
+    "frame": "3-stable-989-update-available.png"
+   }
+  },
+  {
+   "at": "2026-10-22T20:19:46Z",
+   "4-gnome-software": {
+    "repo": {
+     "file": "/etc/yum.repos.d/putgd.repo",
+     "exists": true,
+     "sha256": "71b36e60d01f620536baaab003a38c2d55fe1383002f52219c4109eb7500d7de",
+     "sameAs": "/usr/share/putgd/repo/putgd-stable.repo",
+     "lines": [
+      "[putgd-stable]",
+      "baseurl=https://pkg.put.gd/lab/rpm/fedora/44/x86_64/stable",
+      "enabled=1",
+      "gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-stable"
+     ],
+     "installed": "putgd-26.1018.989-1.fc44.x86_64",
+     "selinux": "system_u:object_r:system_conf_t:s0 /etc/yum.repos.d/putgd.repo"
+    },
+    "frame": "4-gnome-software.png"
+   }
+  },
+  {
+   "at": "2026-10-22T20:20:46Z",
+   "4-gnome-software-putgd": {
+    "repo": {
+     "file": "/etc/yum.repos.d/putgd.repo",
+     "exists": true,
+     "sha256": "71b36e60d01f620536baaab003a38c2d55fe1383002f52219c4109eb7500d7de",
+     "sameAs": "/usr/share/putgd/repo/putgd-stable.repo",
+     "lines": [
+      "[putgd-stable]",
+      "baseurl=https://pkg.put.gd/lab/rpm/fedora/44/x86_64/stable",
+      "enabled=1",
+      "gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-stable"
+     ],
+     "installed": "putgd-26.1018.989-1.fc44.x86_64",
+     "selinux": "system_u:object_r:system_conf_t:s0 /etc/yum.repos.d/putgd.repo"
+    },
+    "frame": "4-gnome-software-putgd.png"
+   }
+  },
+  {
+   "at": "2026-10-22T20:21:12Z",
+   "4-gnome-software-putgd-page": {
+    "repo": {
+     "file": "/etc/yum.repos.d/putgd.repo",
+     "exists": true,
+     "sha256": "71b36e60d01f620536baaab003a38c2d55fe1383002f52219c4109eb7500d7de",
+     "sameAs": "/usr/share/putgd/repo/putgd-stable.repo",
+     "lines": [
+      "[putgd-stable]",
+      "baseurl=https://pkg.put.gd/lab/rpm/fedora/44/x86_64/stable",
+      "enabled=1",
+      "gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-stable"
+     ],
+     "installed": "putgd-26.1018.989-1.fc44.x86_64",
+     "selinux": "system_u:object_r:system_conf_t:s0 /etc/yum.repos.d/putgd.repo"
+    },
+    "frame": "4-gnome-software-putgd-page.png"
+   }
+  },
+  {
+   "at": "2026-10-22T20:21:37Z",
+   "4-gnome-software-tab22": {
+    "repo": {
+     "file": "/etc/yum.repos.d/putgd.repo",
+     "exists": true,
+     "sha256": "71b36e60d01f620536baaab003a38c2d55fe1383002f52219c4109eb7500d7de",
+     "sameAs": "/usr/share/putgd/repo/putgd-stable.repo",
+     "lines": [
+      "[putgd-stable]",
+      "baseurl=https://pkg.put.gd/lab/rpm/fedora/44/x86_64/stable",
+      "enabled=1",
+      "gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-stable"
+     ],
+     "installed": "putgd-26.1018.989-1.fc44.x86_64",
+     "selinux": "system_u:object_r:system_conf_t:s0 /etc/yum.repos.d/putgd.repo"
+    },
+    "frame": "4-gnome-software-tab22.png"
+   }
+  },
+  {
+   "at": "2026-10-22T20:21:53Z",
+   "4-gnome-software-end": {
+    "repo": {
+     "file": "/etc/yum.repos.d/putgd.repo",
+     "exists": true,
+     "sha256": "71b36e60d01f620536baaab003a38c2d55fe1383002f52219c4109eb7500d7de",
+     "sameAs": "/usr/share/putgd/repo/putgd-stable.repo",
+     "lines": [
+      "[putgd-stable]",
+      "baseurl=https://pkg.put.gd/lab/rpm/fedora/44/x86_64/stable",
+      "enabled=1",
+      "gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-stable"
+     ],
+     "installed": "putgd-26.1018.989-1.fc44.x86_64",
+     "selinux": "system_u:object_r:system_conf_t:s0 /etc/yum.repos.d/putgd.repo"
+    },
+    "frame": "4-gnome-software-end.png"
+   }
+  },
+  {
+   "at": "2026-10-22T20:22:12Z",
+   "4-gnome-software-system": {
+    "repo": {
+     "file": "/etc/yum.repos.d/putgd.repo",
+     "exists": true,
+     "sha256": "71b36e60d01f620536baaab003a38c2d55fe1383002f52219c4109eb7500d7de",
+     "sameAs": "/usr/share/putgd/repo/putgd-stable.repo",
+     "lines": [
+      "[putgd-stable]",
+      "baseurl=https://pkg.put.gd/lab/rpm/fedora/44/x86_64/stable",
+      "enabled=1",
+      "gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-stable"
+     ],
+     "installed": "putgd-26.1018.989-1.fc44.x86_64",
+     "selinux": "system_u:object_r:system_conf_t:s0 /etc/yum.repos.d/putgd.repo"
+    },
+    "frame": "4-gnome-software-system.png"
+   }
+  },
+  {
+   "at": "2026-10-22T20:22:39Z",
+   "4-gs-system-1": {
+    "repo": {
+     "file": "/etc/yum.repos.d/putgd.repo",
+     "exists": true,
+     "sha256": "71b36e60d01f620536baaab003a38c2d55fe1383002f52219c4109eb7500d7de",
+     "sameAs": "/usr/share/putgd/repo/putgd-stable.repo",
+     "lines": [
+      "[putgd-stable]",
+      "baseurl=https://pkg.put.gd/lab/rpm/fedora/44/x86_64/stable",
+      "enabled=1",
+      "gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-stable"
+     ],
+     "installed": "putgd-26.1018.989-1.fc44.x86_64",
+     "selinux": "system_u:object_r:system_conf_t:s0 /etc/yum.repos.d/putgd.repo"
+    },
+    "frame": "4-gs-system-1.png"
+   }
+  },
+  {
+   "at": "2026-10-22T20:22:42Z",
+   "4-gs-system-2": {
+    "repo": {
+     "file": "/etc/yum.repos.d/putgd.repo",
+     "exists": true,
+     "sha256": "71b36e60d01f620536baaab003a38c2d55fe1383002f52219c4109eb7500d7de",
+     "sameAs": "/usr/share/putgd/repo/putgd-stable.repo",
+     "lines": [
+      "[putgd-stable]",
+      "baseurl=https://pkg.put.gd/lab/rpm/fedora/44/x86_64/stable",
+      "enabled=1",
+      "gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-stable"
+     ],
+     "installed": "putgd-26.1018.989-1.fc44.x86_64",
+     "selinux": "system_u:object_r:system_conf_t:s0 /etc/yum.repos.d/putgd.repo"
+    },
+    "frame": "4-gs-system-2.png"
+   }
+  },
+  {
+   "at": "2026-10-22T20:22:46Z",
+   "4-gs-system-3": {
+    "repo": {
+     "file": "/etc/yum.repos.d/putgd.repo",
+     "exists": true,
+     "sha256": "71b36e60d01f620536baaab003a38c2d55fe1383002f52219c4109eb7500d7de",
+     "sameAs": "/usr/share/putgd/repo/putgd-stable.repo",
+     "lines": [
+      "[putgd-stable]",
+      "baseurl=https://pkg.put.gd/lab/rpm/fedora/44/x86_64/stable",
+      "enabled=1",
+      "gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-stable"
+     ],
+     "installed": "putgd-26.1018.989-1.fc44.x86_64",
+     "selinux": "system_u:object_r:system_conf_t:s0 /etc/yum.repos.d/putgd.repo"
+    },
+    "frame": "4-gs-system-3.png"
+   }
+  },
+  {
+   "at": "2026-10-22T20:23:12Z",
+   "4-gs-up-0": {
+    "repo": {
+     "file": "/etc/yum.repos.d/putgd.repo",
+     "exists": true,
+     "sha256": "71b36e60d01f620536baaab003a38c2d55fe1383002f52219c4109eb7500d7de",
+     "sameAs": "/usr/share/putgd/repo/putgd-stable.repo",
+     "lines": [
+      "[putgd-stable]",
+      "baseurl=https://pkg.put.gd/lab/rpm/fedora/44/x86_64/stable",
+      "enabled=1",
+      "gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-stable"
+     ],
+     "installed": "putgd-26.1018.989-1.fc44.x86_64",
+     "selinux": "system_u:object_r:system_conf_t:s0 /etc/yum.repos.d/putgd.repo"
+    },
+    "frame": "4-gs-up-0.png"
+   }
+  },
+  {
+   "at": "2026-10-22T20:23:14Z",
+   "4-gs-up-1": {
+    "repo": {
+     "file": "/etc/yum.repos.d/putgd.repo",
+     "exists": true,
+     "sha256": "71b36e60d01f620536baaab003a38c2d55fe1383002f52219c4109eb7500d7de",
+     "sameAs": "/usr/share/putgd/repo/putgd-stable.repo",
+     "lines": [
+      "[putgd-stable]",
+      "baseurl=https://pkg.put.gd/lab/rpm/fedora/44/x86_64/stable",
+      "enabled=1",
+      "gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-stable"
+     ],
+     "installed": "putgd-26.1018.989-1.fc44.x86_64",
+     "selinux": "system_u:object_r:system_conf_t:s0 /etc/yum.repos.d/putgd.repo"
+    },
+    "frame": "4-gs-up-1.png"
+   }
+  },
+  {
+   "at": "2026-10-22T20:23:15Z",
+   "4-gs-up-2": {
+    "repo": {
+     "file": "/etc/yum.repos.d/putgd.repo",
+     "exists": true,
+     "sha256": "71b36e60d01f620536baaab003a38c2d55fe1383002f52219c4109eb7500d7de",
+     "sameAs": "/usr/share/putgd/repo/putgd-stable.repo",
+     "lines": [
+      "[putgd-stable]",
+      "baseurl=https://pkg.put.gd/lab/rpm/fedora/44/x86_64/stable",
+      "enabled=1",
+      "gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-stable"
+     ],
+     "installed": "putgd-26.1018.989-1.fc44.x86_64",
+     "selinux": "system_u:object_r:system_conf_t:s0 /etc/yum.repos.d/putgd.repo"
+    },
+    "frame": "4-gs-up-2.png"
+   }
+  },
+  {
+   "at": "2026-10-22T20:23:17Z",
+   "4-gs-up-3": {
+    "repo": {
+     "file": "/etc/yum.repos.d/putgd.repo",
+     "exists": true,
+     "sha256": "71b36e60d01f620536baaab003a38c2d55fe1383002f52219c4109eb7500d7de",
+     "sameAs": "/usr/share/putgd/repo/putgd-stable.repo",
+     "lines": [
+      "[putgd-stable]",
+      "baseurl=https://pkg.put.gd/lab/rpm/fedora/44/x86_64/stable",
+      "enabled=1",
+      "gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-stable"
+     ],
+     "installed": "putgd-26.1018.989-1.fc44.x86_64",
+     "selinux": "system_u:object_r:system_conf_t:s0 /etc/yum.repos.d/putgd.repo"
+    },
+    "frame": "4-gs-up-3.png"
+   }
+  },
+  {
+   "at": "2026-10-22T20:23:19Z",
+   "4-gs-up-4": {
+    "repo": {
+     "file": "/etc/yum.repos.d/putgd.repo",
+     "exists": true,
+     "sha256": "71b36e60d01f620536baaab003a38c2d55fe1383002f52219c4109eb7500d7de",
+     "sameAs": "/usr/share/putgd/repo/putgd-stable.repo",
+     "lines": [
+      "[putgd-stable]",
+      "baseurl=https://pkg.put.gd/lab/rpm/fedora/44/x86_64/stable",
+      "enabled=1",
+      "gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-stable"
+     ],
+     "installed": "putgd-26.1018.989-1.fc44.x86_64",
+     "selinux": "system_u:object_r:system_conf_t:s0 /etc/yum.repos.d/putgd.repo"
+    },
+    "frame": "4-gs-up-4.png"
+   }
+  },
+  {
+   "at": "2026-10-22T20:23:20Z",
+   "4-gs-up-5": {
+    "repo": {
+     "file": "/etc/yum.repos.d/putgd.repo",
+     "exists": true,
+     "sha256": "71b36e60d01f620536baaab003a38c2d55fe1383002f52219c4109eb7500d7de",
+     "sameAs": "/usr/share/putgd/repo/putgd-stable.repo",
+     "lines": [
+      "[putgd-stable]",
+      "baseurl=https://pkg.put.gd/lab/rpm/fedora/44/x86_64/stable",
+      "enabled=1",
+      "gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-stable"
+     ],
+     "installed": "putgd-26.1018.989-1.fc44.x86_64",
+     "selinux": "system_u:object_r:system_conf_t:s0 /etc/yum.repos.d/putgd.repo"
+    },
+    "frame": "4-gs-up-5.png"
+   }
+  },
+  {
+   "at": "2026-10-22T20:23:47Z",
+   "4-gs-search": {
+    "repo": {
+     "file": "/etc/yum.repos.d/putgd.repo",
+     "exists": true,
+     "sha256": "71b36e60d01f620536baaab003a38c2d55fe1383002f52219c4109eb7500d7de",
+     "sameAs": "/usr/share/putgd/repo/putgd-stable.repo",
+     "lines": [
+      "[putgd-stable]",
+      "baseurl=https://pkg.put.gd/lab/rpm/fedora/44/x86_64/stable",
+      "enabled=1",
+      "gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-stable"
+     ],
+     "installed": "putgd-26.1018.989-1.fc44.x86_64",
+     "selinux": "system_u:object_r:system_conf_t:s0 /etc/yum.repos.d/putgd.repo"
+    },
+    "frame": "4-gs-search.png"
+   }
+  },
+  {
+   "at": "2026-10-22T20:24:17Z",
+   "4-gs-jump-1": {
+    "repo": {
+     "file": "/etc/yum.repos.d/putgd.repo",
+     "exists": true,
+     "sha256": "71b36e60d01f620536baaab003a38c2d55fe1383002f52219c4109eb7500d7de",
+     "sameAs": "/usr/share/putgd/repo/putgd-stable.repo",
+     "lines": [
+      "[putgd-stable]",
+      "baseurl=https://pkg.put.gd/lab/rpm/fedora/44/x86_64/stable",
+      "enabled=1",
+      "gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-stable"
+     ],
+     "installed": "putgd-26.1018.989-1.fc44.x86_64",
+     "selinux": "system_u:object_r:system_conf_t:s0 /etc/yum.repos.d/putgd.repo"
+    },
+    "frame": "4-gs-jump-1.png"
+   }
+  },
+  {
+   "at": "2026-10-22T20:24:20Z",
+   "4-gs-jump-2": {
+    "repo": {
+     "file": "/etc/yum.repos.d/putgd.repo",
+     "exists": true,
+     "sha256": "71b36e60d01f620536baaab003a38c2d55fe1383002f52219c4109eb7500d7de",
+     "sameAs": "/usr/share/putgd/repo/putgd-stable.repo",
+     "lines": [
+      "[putgd-stable]",
+      "baseurl=https://pkg.put.gd/lab/rpm/fedora/44/x86_64/stable",
+      "enabled=1",
+      "gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-stable"
+     ],
+     "installed": "putgd-26.1018.989-1.fc44.x86_64",
+     "selinux": "system_u:object_r:system_conf_t:s0 /etc/yum.repos.d/putgd.repo"
+    },
+    "frame": "4-gs-jump-2.png"
+   }
+  },
+  {
+   "at": "2026-10-22T20:24:23Z",
+   "4-gs-jump-3": {
+    "repo": {
+     "file": "/etc/yum.repos.d/putgd.repo",
+     "exists": true,
+     "sha256": "71b36e60d01f620536baaab003a38c2d55fe1383002f52219c4109eb7500d7de",
+     "sameAs": "/usr/share/putgd/repo/putgd-stable.repo",
+     "lines": [
+      "[putgd-stable]",
+      "baseurl=https://pkg.put.gd/lab/rpm/fedora/44/x86_64/stable",
+      "enabled=1",
+      "gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-stable"
+     ],
+     "installed": "putgd-26.1018.989-1.fc44.x86_64",
+     "selinux": "system_u:object_r:system_conf_t:s0 /etc/yum.repos.d/putgd.repo"
+    },
+    "frame": "4-gs-jump-3.png"
+   }
+  },
+  {
+   "at": "2026-10-22T20:24:25Z",
+   "4-gs-jump-4": {
+    "repo": {
+     "file": "/etc/yum.repos.d/putgd.repo",
+     "exists": true,
+     "sha256": "71b36e60d01f620536baaab003a38c2d55fe1383002f52219c4109eb7500d7de",
+     "sameAs": "/usr/share/putgd/repo/putgd-stable.repo",
+     "lines": [
+      "[putgd-stable]",
+      "baseurl=https://pkg.put.gd/lab/rpm/fedora/44/x86_64/stable",
+      "enabled=1",
+      "gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-stable"
+     ],
+     "installed": "putgd-26.1018.989-1.fc44.x86_64",
+     "selinux": "system_u:object_r:system_conf_t:s0 /etc/yum.repos.d/putgd.repo"
+    },
+    "frame": "4-gs-jump-4.png"
+   }
+  },
+  {
+   "at": "2026-10-22T20:24:28Z",
+   "4-gs-jump-5": {
+    "repo": {
+     "file": "/etc/yum.repos.d/putgd.repo",
+     "exists": true,
+     "sha256": "71b36e60d01f620536baaab003a38c2d55fe1383002f52219c4109eb7500d7de",
+     "sameAs": "/usr/share/putgd/repo/putgd-stable.repo",
+     "lines": [
+      "[putgd-stable]",
+      "baseurl=https://pkg.put.gd/lab/rpm/fedora/44/x86_64/stable",
+      "enabled=1",
+      "gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-stable"
+     ],
+     "installed": "putgd-26.1018.989-1.fc44.x86_64",
+     "selinux": "system_u:object_r:system_conf_t:s0 /etc/yum.repos.d/putgd.repo"
+    },
+    "frame": "4-gs-jump-5.png"
+   }
+  },
+  {
+   "at": "2026-10-22T20:24:48Z",
+   "4-gs-fine-1": {
+    "repo": {
+     "file": "/etc/yum.repos.d/putgd.repo",
+     "exists": true,
+     "sha256": "71b36e60d01f620536baaab003a38c2d55fe1383002f52219c4109eb7500d7de",
+     "sameAs": "/usr/share/putgd/repo/putgd-stable.repo",
+     "lines": [
+      "[putgd-stable]",
+      "baseurl=https://pkg.put.gd/lab/rpm/fedora/44/x86_64/stable",
+      "enabled=1",
+      "gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-stable"
+     ],
+     "installed": "putgd-26.1018.989-1.fc44.x86_64",
+     "selinux": "system_u:object_r:system_conf_t:s0 /etc/yum.repos.d/putgd.repo"
+    },
+    "frame": "4-gs-fine-1.png"
+   }
+  },
+  {
+   "at": "2026-10-22T20:24:51Z",
+   "4-gs-fine-2": {
+    "repo": {
+     "file": "/etc/yum.repos.d/putgd.repo",
+     "exists": true,
+     "sha256": "71b36e60d01f620536baaab003a38c2d55fe1383002f52219c4109eb7500d7de",
+     "sameAs": "/usr/share/putgd/repo/putgd-stable.repo",
+     "lines": [
+      "[putgd-stable]",
+      "baseurl=https://pkg.put.gd/lab/rpm/fedora/44/x86_64/stable",
+      "enabled=1",
+      "gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-stable"
+     ],
+     "installed": "putgd-26.1018.989-1.fc44.x86_64",
+     "selinux": "system_u:object_r:system_conf_t:s0 /etc/yum.repos.d/putgd.repo"
+    },
+    "frame": "4-gs-fine-2.png"
+   }
+  },
+  {
+   "at": "2026-10-22T20:25:08Z",
+   "4-gs-fine2-1": {
+    "repo": {
+     "file": "/etc/yum.repos.d/putgd.repo",
+     "exists": true,
+     "sha256": "71b36e60d01f620536baaab003a38c2d55fe1383002f52219c4109eb7500d7de",
+     "sameAs": "/usr/share/putgd/repo/putgd-stable.repo",
+     "lines": [
+      "[putgd-stable]",
+      "baseurl=https://pkg.put.gd/lab/rpm/fedora/44/x86_64/stable",
+      "enabled=1",
+      "gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-stable"
+     ],
+     "installed": "putgd-26.1018.989-1.fc44.x86_64",
+     "selinux": "system_u:object_r:system_conf_t:s0 /etc/yum.repos.d/putgd.repo"
+    },
+    "frame": "4-gs-fine2-1.png"
+   }
+  },
+  {
+   "at": "2026-10-22T20:25:10Z",
+   "4-gs-fine2-2": {
+    "repo": {
+     "file": "/etc/yum.repos.d/putgd.repo",
+     "exists": true,
+     "sha256": "71b36e60d01f620536baaab003a38c2d55fe1383002f52219c4109eb7500d7de",
+     "sameAs": "/usr/share/putgd/repo/putgd-stable.repo",
+     "lines": [
+      "[putgd-stable]",
+      "baseurl=https://pkg.put.gd/lab/rpm/fedora/44/x86_64/stable",
+      "enabled=1",
+      "gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-stable"
+     ],
+     "installed": "putgd-26.1018.989-1.fc44.x86_64",
+     "selinux": "system_u:object_r:system_conf_t:s0 /etc/yum.repos.d/putgd.repo"
+    },
+    "frame": "4-gs-fine2-2.png"
+   }
+  },
+  {
+   "at": "2026-10-22T20:25:32Z",
+   "4-gs-fine3-1": {
+    "repo": {
+     "file": "/etc/yum.repos.d/putgd.repo",
+     "exists": true,
+     "sha256": "71b36e60d01f620536baaab003a38c2d55fe1383002f52219c4109eb7500d7de",
+     "sameAs": "/usr/share/putgd/repo/putgd-stable.repo",
+     "lines": [
+      "[putgd-stable]",
+      "baseurl=https://pkg.put.gd/lab/rpm/fedora/44/x86_64/stable",
+      "enabled=1",
+      "gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-stable"
+     ],
+     "installed": "putgd-26.1018.989-1.fc44.x86_64",
+     "selinux": "system_u:object_r:system_conf_t:s0 /etc/yum.repos.d/putgd.repo"
+    },
+    "frame": "4-gs-fine3-1.png"
+   }
+  },
+  {
+   "at": "2026-10-22T20:25:35Z",
+   "4-gs-fine3-2": {
+    "repo": {
+     "file": "/etc/yum.repos.d/putgd.repo",
+     "exists": true,
+     "sha256": "71b36e60d01f620536baaab003a38c2d55fe1383002f52219c4109eb7500d7de",
+     "sameAs": "/usr/share/putgd/repo/putgd-stable.repo",
+     "lines": [
+      "[putgd-stable]",
+      "baseurl=https://pkg.put.gd/lab/rpm/fedora/44/x86_64/stable",
+      "enabled=1",
+      "gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-stable"
+     ],
+     "installed": "putgd-26.1018.989-1.fc44.x86_64",
+     "selinux": "system_u:object_r:system_conf_t:s0 /etc/yum.repos.d/putgd.repo"
+    },
+    "frame": "4-gs-fine3-2.png"
+   }
+  },
+  {
+   "at": "2026-10-22T20:25:55Z",
+   "4-gs-fine4-1": {
+    "repo": {
+     "file": "/etc/yum.repos.d/putgd.repo",
+     "exists": true,
+     "sha256": "71b36e60d01f620536baaab003a38c2d55fe1383002f52219c4109eb7500d7de",
+     "sameAs": "/usr/share/putgd/repo/putgd-stable.repo",
+     "lines": [
+      "[putgd-stable]",
+      "baseurl=https://pkg.put.gd/lab/rpm/fedora/44/x86_64/stable",
+      "enabled=1",
+      "gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-stable"
+     ],
+     "installed": "putgd-26.1018.989-1.fc44.x86_64",
+     "selinux": "system_u:object_r:system_conf_t:s0 /etc/yum.repos.d/putgd.repo"
+    },
+    "frame": "4-gs-fine4-1.png"
+   }
+  },
+  {
+   "at": "2026-10-22T20:25:59Z",
+   "4-gs-fine4-2": {
+    "repo": {
+     "file": "/etc/yum.repos.d/putgd.repo",
+     "exists": true,
+     "sha256": "71b36e60d01f620536baaab003a38c2d55fe1383002f52219c4109eb7500d7de",
+     "sameAs": "/usr/share/putgd/repo/putgd-stable.repo",
+     "lines": [
+      "[putgd-stable]",
+      "baseurl=https://pkg.put.gd/lab/rpm/fedora/44/x86_64/stable",
+      "enabled=1",
+      "gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-stable"
+     ],
+     "installed": "putgd-26.1018.989-1.fc44.x86_64",
+     "selinux": "system_u:object_r:system_conf_t:s0 /etc/yum.repos.d/putgd.repo"
+    },
+    "frame": "4-gs-fine4-2.png"
+   }
+  },
+  {
+   "at": "2026-10-22T20:26:18Z",
+   "4-gs-fine5-1": {
+    "repo": {
+     "file": "/etc/yum.repos.d/putgd.repo",
+     "exists": true,
+     "sha256": "71b36e60d01f620536baaab003a38c2d55fe1383002f52219c4109eb7500d7de",
+     "sameAs": "/usr/share/putgd/repo/putgd-stable.repo",
+     "lines": [
+      "[putgd-stable]",
+      "baseurl=https://pkg.put.gd/lab/rpm/fedora/44/x86_64/stable",
+      "enabled=1",
+      "gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-stable"
+     ],
+     "installed": "putgd-26.1018.989-1.fc44.x86_64",
+     "selinux": "system_u:object_r:system_conf_t:s0 /etc/yum.repos.d/putgd.repo"
+    },
+    "frame": "4-gs-fine5-1.png"
+   }
+  },
+  {
+   "at": "2026-10-22T20:26:22Z",
+   "4-gs-fine5-2": {
+    "repo": {
+     "file": "/etc/yum.repos.d/putgd.repo",
+     "exists": true,
+     "sha256": "71b36e60d01f620536baaab003a38c2d55fe1383002f52219c4109eb7500d7de",
+     "sameAs": "/usr/share/putgd/repo/putgd-stable.repo",
+     "lines": [
+      "[putgd-stable]",
+      "baseurl=https://pkg.put.gd/lab/rpm/fedora/44/x86_64/stable",
+      "enabled=1",
+      "gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-stable"
+     ],
+     "installed": "putgd-26.1018.989-1.fc44.x86_64",
+     "selinux": "system_u:object_r:system_conf_t:s0 /etc/yum.repos.d/putgd.repo"
+    },
+    "frame": "4-gs-fine5-2.png"
+   }
+  },
+  {
+   "at": "2026-10-22T20:26:40Z",
+   "4-gs-fine6-1": {
+    "repo": {
+     "file": "/etc/yum.repos.d/putgd.repo",
+     "exists": true,
+     "sha256": "71b36e60d01f620536baaab003a38c2d55fe1383002f52219c4109eb7500d7de",
+     "sameAs": "/usr/share/putgd/repo/putgd-stable.repo",
+     "lines": [
+      "[putgd-stable]",
+      "baseurl=https://pkg.put.gd/lab/rpm/fedora/44/x86_64/stable",
+      "enabled=1",
+      "gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-stable"
+     ],
+     "installed": "putgd-26.1018.989-1.fc44.x86_64",
+     "selinux": "system_u:object_r:system_conf_t:s0 /etc/yum.repos.d/putgd.repo"
+    },
+    "frame": "4-gs-fine6-1.png"
+   }
+  },
+  {
+   "at": "2026-10-22T20:26:45Z",
+   "4-gs-fine6-2": {
+    "repo": {
+     "file": "/etc/yum.repos.d/putgd.repo",
+     "exists": true,
+     "sha256": "71b36e60d01f620536baaab003a38c2d55fe1383002f52219c4109eb7500d7de",
+     "sameAs": "/usr/share/putgd/repo/putgd-stable.repo",
+     "lines": [
+      "[putgd-stable]",
+      "baseurl=https://pkg.put.gd/lab/rpm/fedora/44/x86_64/stable",
+      "enabled=1",
+      "gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-stable"
+     ],
+     "installed": "putgd-26.1018.989-1.fc44.x86_64",
+     "selinux": "system_u:object_r:system_conf_t:s0 /etc/yum.repos.d/putgd.repo"
+    },
+    "frame": "4-gs-fine6-2.png"
+   }
+  },
+  {
+   "at": "2026-10-22T20:27:19Z",
+   "5-stable-990": {
+    "pid": 2642201,
+    "reply": {
+     "ok": true,
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     }
+    },
+    "status": {
+     "build": "26.1020.990",
+     "buildChannel": "stable",
+     "channel": "stable",
+     "channelSource": "repository",
+     "channelSetting": "build",
+     "latest": "26.1020.990",
+     "updateAvailable": false,
+     "notifies": false,
+     "action": {
+      "kind": "software-updates",
+      "channel": "stable",
+      "file": "/etc/yum.repos.d/putgd.repo",
+      "command": "sudo dnf upgrade --refresh",
+      "otherChannel": {
+       "channel": "nightly",
+       "commands": [
+        "sudo install -m 644 /usr/share/putgd/repo/putgd-nightly.repo /etc/yum.repos.d/putgd.repo",
+        "sudo dnf distro-sync --refresh putgd"
+       ],
+       "docs": "https://github.com/patrick-hudson/put.gd-desktop/blob/main/docs/package-repositories.md#switching-channels"
+      },
+      "older": null
+     },
+     "installKind": "update",
+     "installReason": "not_appimage"
+    },
+    "repo": {
+     "file": "/etc/yum.repos.d/putgd.repo",
+     "exists": true,
+     "sha256": "71b36e60d01f620536baaab003a38c2d55fe1383002f52219c4109eb7500d7de",
+     "sameAs": "/usr/share/putgd/repo/putgd-stable.repo",
+     "lines": [
+      "[putgd-stable]",
+      "baseurl=https://pkg.put.gd/lab/rpm/fedora/44/x86_64/stable",
+      "enabled=1",
+      "gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-stable"
+     ],
+     "installed": "putgd-26.1020.990-1.fc44.x86_64",
+     "selinux": "system_u:object_r:system_conf_t:s0 /etc/yum.repos.d/putgd.repo"
+    },
+    "frame": "5-stable-990.png"
+   }
+  },
+  {
+   "at": "2026-10-22T20:27:24Z",
+   "5-stable-990-max": {
+    "pid": 2642201,
+    "reply": {
+     "ok": true,
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     }
+    },
+    "status": {
+     "build": "26.1020.990",
+     "buildChannel": "stable",
+     "channel": "stable",
+     "channelSource": "repository",
+     "channelSetting": "build",
+     "latest": "26.1020.990",
+     "updateAvailable": false,
+     "notifies": false,
+     "action": {
+      "kind": "software-updates",
+      "channel": "stable",
+      "file": "/etc/yum.repos.d/putgd.repo",
+      "command": "sudo dnf upgrade --refresh",
+      "otherChannel": {
+       "channel": "nightly",
+       "commands": [
+        "sudo install -m 644 /usr/share/putgd/repo/putgd-nightly.repo /etc/yum.repos.d/putgd.repo",
+        "sudo dnf distro-sync --refresh putgd"
+       ],
+       "docs": "https://github.com/patrick-hudson/put.gd-desktop/blob/main/docs/package-repositories.md#switching-channels"
+      },
+      "older": null
+     },
+     "installKind": "update",
+     "installReason": "not_appimage"
+    },
+    "repo": {
+     "file": "/etc/yum.repos.d/putgd.repo",
+     "exists": true,
+     "sha256": "71b36e60d01f620536baaab003a38c2d55fe1383002f52219c4109eb7500d7de",
+     "sameAs": "/usr/share/putgd/repo/putgd-stable.repo",
+     "lines": [
+      "[putgd-stable]",
+      "baseurl=https://pkg.put.gd/lab/rpm/fedora/44/x86_64/stable",
+      "enabled=1",
+      "gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-stable"
+     ],
+     "installed": "putgd-26.1020.990-1.fc44.x86_64",
+     "selinux": "system_u:object_r:system_conf_t:s0 /etc/yum.repos.d/putgd.repo"
+    },
+    "frame": "5-stable-990-max.png"
+   }
+  },
+  {
+   "at": "2026-10-22T20:27:57Z",
+   "6-back-on-nightly": {
+    "pid": 2642563,
+    "reply": {
+     "ok": true,
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     }
+    },
+    "status": {
+     "build": "26.1021.991-nightly",
+     "buildChannel": "nightly",
+     "channel": "nightly",
+     "channelSource": "repository",
+     "channelSetting": "build",
+     "latest": "26.1021.991-nightly",
+     "updateAvailable": false,
+     "notifies": false,
+     "action": {
+      "kind": "software-updates",
+      "channel": "nightly",
+      "file": "/etc/yum.repos.d/putgd.repo",
+      "command": "sudo dnf upgrade --refresh",
+      "otherChannel": {
+       "channel": "stable",
+       "commands": [
+        "sudo install -m 644 /usr/share/putgd/repo/putgd-stable.repo /etc/yum.repos.d/putgd.repo",
+        "sudo dnf distro-sync --refresh putgd"
+       ],
+       "docs": "https://github.com/patrick-hudson/put.gd-desktop/blob/main/docs/package-repositories.md#switching-channels"
+      },
+      "older": null
+     },
+     "installKind": "update",
+     "installReason": "not_appimage"
+    },
+    "repo": {
+     "file": "/etc/yum.repos.d/putgd.repo",
+     "exists": true,
+     "sha256": "d7a3ae5591b28ed03c311de31fb6f62a7f6f678eb6fa1e03f638f68709a7cac6",
+     "sameAs": "/usr/share/putgd/repo/putgd-nightly.repo",
+     "lines": [
+      "[putgd-nightly]",
+      "baseurl=https://pkg.put.gd/lab/rpm/fedora/44/x86_64/nightly",
+      "enabled=1",
+      "gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-nightly"
+     ],
+     "installed": "putgd-26.1021.991~nightly-1.fc44.x86_64",
+     "selinux": "system_u:object_r:system_conf_t:s0 /etc/yum.repos.d/putgd.repo"
+    },
+    "frame": "6-back-on-nightly.png"
+   }
+  },
+  {
+   "at": "2026-10-22T20:28:02Z",
+   "6-back-on-nightly-max": {
+    "pid": 2642563,
+    "reply": {
+     "ok": true,
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     }
+    },
+    "status": {
+     "build": "26.1021.991-nightly",
+     "buildChannel": "nightly",
+     "channel": "nightly",
+     "channelSource": "repository",
+     "channelSetting": "build",
+     "latest": "26.1021.991-nightly",
+     "updateAvailable": false,
+     "notifies": false,
+     "action": {
+      "kind": "software-updates",
+      "channel": "nightly",
+      "file": "/etc/yum.repos.d/putgd.repo",
+      "command": "sudo dnf upgrade --refresh",
+      "otherChannel": {
+       "channel": "stable",
+       "commands": [
+        "sudo install -m 644 /usr/share/putgd/repo/putgd-stable.repo /etc/yum.repos.d/putgd.repo",
+        "sudo dnf distro-sync --refresh putgd"
+       ],
+       "docs": "https://github.com/patrick-hudson/put.gd-desktop/blob/main/docs/package-repositories.md#switching-channels"
+      },
+      "older": null
+     },
+     "installKind": "update",
+     "installReason": "not_appimage"
+    },
+    "repo": {
+     "file": "/etc/yum.repos.d/putgd.repo",
+     "exists": true,
+     "sha256": "d7a3ae5591b28ed03c311de31fb6f62a7f6f678eb6fa1e03f638f68709a7cac6",
+     "sameAs": "/usr/share/putgd/repo/putgd-nightly.repo",
+     "lines": [
+      "[putgd-nightly]",
+      "baseurl=https://pkg.put.gd/lab/rpm/fedora/44/x86_64/nightly",
+      "enabled=1",
+      "gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-nightly"
+     ],
+     "installed": "putgd-26.1021.991~nightly-1.fc44.x86_64",
+     "selinux": "system_u:object_r:system_conf_t:s0 /etc/yum.repos.d/putgd.repo"
+    },
+    "frame": "6-back-on-nightly-max.png"
+   }
+  }
+ ]
+}

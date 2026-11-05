@@ -1,0 +1,13 @@
+{
+  "scope": "Real Fedora GNOME login with current script template, missing native executable and no resident; not package acceptance",
+  "templateSha256": "6b62f40f4f12379496fd9b9487002b941999c8e70d4019b84d2fa9be5f298f0a",
+  "sessionId": "715",
+  "entryAbsent": true,
+  "scriptAbsent": true,
+  "savedPreference": true,
+  "startupJournalLines": [
+    "2026-10-24T00:33:30-05:00 fedora systemd[1063]: Started app-gnome-putgd-92562.scope - Application launched by gnome-session-service."
+  ],
+  "startupJournalErrors": [],
+  "pass": true
+}

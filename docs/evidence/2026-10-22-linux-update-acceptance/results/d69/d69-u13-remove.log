@@ -1,0 +1,6 @@
+### apt-get purge -y putgd (CLI: GNOME Software removal would wait on needrestart again and needs the root password)
+Removing putgd (26.1022.1017~nightly) ...
+Purging configuration files for putgd (26.1022.1017~nightly) ...
+dpkg-query: no packages found matching putgd
+ls: cannot access '/etc/apt/sources.list.d/putgd.sources': No such file or directory
+0

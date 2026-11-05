@@ -1,0 +1,29 @@
+{
+  "action": "window",
+  "cancelled": false,
+  "clipboardRevision": "1",
+  "copyStatus": "no_result",
+  "created": "2026-10-24T03:13:01.346Z",
+  "destination": {
+    "credentials": {},
+    "profileId": "",
+    "profileRevision": "",
+    "providerId": "",
+    "settings": {}
+  },
+  "error": {
+    "code": "synthetic_history_rendering",
+    "message": "Synthetic History rendering fixture (not a GNOME capture failure).\nGNOME capture needs the put.gd Shell extension. If it is missing, install the matching put.gd package or extension; after a new installation, log out and back in first. Then run: gnome-extensions enable putgd@put.gd",
+    "details": {
+      "synthetic": true,
+      "scope": "shared History rendering only"
+    }
+  },
+  "id": "2dd11d8fc0ce42f19d6dadb1a9c57d4e",
+  "invocation": "1",
+  "items": [],
+  "phase": "failed",
+  "requestTimeoutMs": null,
+  "settingsRevision": "1fe9da385539befe6e0951ca01e154c3d1d2fb4b064bced67591edae3297b2d4",
+  "state": "failed"
+}

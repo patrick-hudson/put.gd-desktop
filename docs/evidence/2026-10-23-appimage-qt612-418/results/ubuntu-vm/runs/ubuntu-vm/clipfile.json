@@ -1,0 +1,313 @@
+{
+ "at": "2026-10-23T19:40:54Z",
+ "before": {
+  "putgd": [
+   3027
+  ],
+  "putgd-ui": [
+   4025
+  ]
+ },
+ "entries": [
+  {
+   "sample": "cve-2026-8168-deep-nesting.svg",
+   "sha256": "c6980c19fc324275f07df6443eac1bdea38a4f9451c73ea0dd4f12b0c547ac5b",
+   "bytes": 1400111,
+   "clipboardOwnerPid": 8272,
+   "operation": {
+    "id": "657a973b-978b-4223-8f85-3bc437b0527f",
+    "state": "completed",
+    "copyStatus": "copied",
+    "items": [
+     {
+      "name": "cve-2026-8168-deep-nesting.svg",
+      "mime": "image/svg+xml",
+      "uploadStatus": "uploaded",
+      "link": "http://127.0.0.1:39955/fixture/afa/cve-2026-8168-deep-nesting-9526fa40-050b-4f62-9903-180b48e421e9.svg",
+      "local": {
+       "error": {
+        "code": "",
+        "details": {},
+        "message": ""
+       },
+       "path": "/home/lab/work/put.gd-qt418/afa/runs/ubuntu-vm/archive/images/cve-2026-8168-deep-nesting-c4779602-11ec-47f9-9d2d-4db7e4fcd7b8.svg",
+       "status": "saved"
+      }
+     }
+    ],
+    "error": {
+     "code": "",
+     "details": {},
+     "message": ""
+    }
+   },
+   "history": {
+    "id": "cf9f9378-9294-4d98-b926-753b98c5c1e1",
+    "name": "cve-2026-8168-deep-nesting.svg",
+    "mime": "image/svg+xml",
+    "uploadStatus": "uploaded",
+    "local": "saved",
+    "newest": true
+   },
+   "preview": {
+    "ok": false,
+    "state": null,
+    "error": {
+     "code": "preview_failed",
+     "details": {},
+     "message": "The image preview could not be made"
+    },
+    "previewExists": false
+   },
+   "afterPreview": {
+    "putgd": [
+     3027
+    ],
+    "putgd-ui": [
+     4025
+    ]
+   },
+   "cards": 2,
+   "frame": "/home/lab/work/put.gd-qt418/afa/runs/ubuntu-vm/full/ubuntu-vm-clipfile-0.png",
+   "afterUi": {
+    "putgd": [
+     3027
+    ],
+    "putgd-ui": [
+     4025
+    ]
+   }
+  },
+  {
+   "sample": "cve-2025-5683-icns-block-length.icns",
+   "sha256": "e639bf43bd190e0660f20c6ae205c366c7b1a8ad9f06127d7837953fb8062717",
+   "bytes": 49,
+   "clipboardOwnerPid": 8359,
+   "operation": {
+    "id": "8a3caa43-b574-4317-90f3-b9c3787c403b",
+    "state": "completed",
+    "copyStatus": "copied",
+    "items": [
+     {
+      "name": "cve-2025-5683-icns-block-length.icns",
+      "mime": "image/x-icns",
+      "uploadStatus": "uploaded",
+      "link": "http://127.0.0.1:39955/fixture/afa/cve-2025-5683-icns-block-length.icns",
+      "local": {
+       "error": {
+        "code": "",
+        "details": {},
+        "message": ""
+       },
+       "path": "/home/lab/work/put.gd-qt418/afa/runs/ubuntu-vm/archive/images/cve-2025-5683-icns-block-length.icns",
+       "status": "saved"
+      }
+     }
+    ],
+    "error": {
+     "code": "",
+     "details": {},
+     "message": ""
+    }
+   },
+   "history": {
+    "id": "0acea446-25ac-4922-88c5-bbcb11619d6a",
+    "name": "cve-2025-5683-icns-block-length.icns",
+    "mime": "image/x-icns",
+    "uploadStatus": "uploaded",
+    "local": "saved",
+    "newest": true
+   },
+   "preview": {
+    "ok": false,
+    "state": null,
+    "error": {
+     "code": "preview_failed",
+     "details": {},
+     "message": "The image preview could not be made"
+    },
+    "previewExists": false
+   },
+   "afterPreview": {
+    "putgd": [
+     3027
+    ],
+    "putgd-ui": [
+     4025
+    ]
+   },
+   "cards": 3,
+   "frame": "/home/lab/work/put.gd-qt418/afa/runs/ubuntu-vm/full/ubuntu-vm-clipfile-1.png",
+   "afterUi": {
+    "putgd": [
+     3027
+    ],
+    "putgd-ui": [
+     4025
+    ]
+   }
+  },
+  {
+   "sample": "fuzz-tiff-00.tiff",
+   "sha256": "6f6aa40023069e1f3a3b68cd1755979c8cb8381d176b5a9e37cc88f4f0e409c4",
+   "bytes": 3212,
+   "clipboardOwnerPid": 8443,
+   "operation": {
+    "id": "5a869055-feec-4ff3-b5c9-d71cc8318612",
+    "state": "completed",
+    "copyStatus": "copied",
+    "items": [
+     {
+      "name": "fuzz-tiff-00.tiff",
+      "mime": "image/tiff",
+      "uploadStatus": "uploaded",
+      "link": "http://127.0.0.1:39955/fixture/afa/fuzz-tiff-00.tiff",
+      "local": {
+       "error": {
+        "code": "",
+        "details": {},
+        "message": ""
+       },
+       "path": "/home/lab/work/put.gd-qt418/afa/runs/ubuntu-vm/archive/images/fuzz-tiff-00.tiff",
+       "status": "saved"
+      }
+     }
+    ],
+    "error": {
+     "code": "",
+     "details": {},
+     "message": ""
+    }
+   },
+   "history": {
+    "id": "d4d749f3-cba0-417d-b04b-614dad17c522",
+    "name": "fuzz-tiff-00.tiff",
+    "mime": "image/tiff",
+    "uploadStatus": "uploaded",
+    "local": "saved",
+    "newest": true
+   },
+   "preview": {
+    "ok": false,
+    "state": null,
+    "error": {
+     "code": "preview_failed",
+     "details": {},
+     "message": "The image preview could not be made"
+    },
+    "previewExists": false
+   },
+   "afterPreview": {
+    "putgd": [
+     3027
+    ],
+    "putgd-ui": [
+     4025
+    ]
+   },
+   "cards": 3,
+   "frame": "/home/lab/work/put.gd-qt418/afa/runs/ubuntu-vm/full/ubuntu-vm-clipfile-2.png",
+   "afterUi": {
+    "putgd": [
+     3027
+    ],
+    "putgd-ui": [
+     4025
+    ]
+   }
+  },
+  {
+   "sample": "cve-2025-10729-pattern-orphan.svg",
+   "sha256": "b1b7776ef367bc7e360ea559821347242979005e253df30c4cac5cc647708e54",
+   "bytes": 271,
+   "clipboardOwnerPid": 8526,
+   "operation": {
+    "id": "ebd344a3-fc31-4d8c-8cd3-1992eb00dec2",
+    "state": "completed",
+    "copyStatus": "copied",
+    "items": [
+     {
+      "name": "cve-2025-10729-pattern-orphan.svg",
+      "mime": "image/svg+xml",
+      "uploadStatus": "uploaded",
+      "link": "http://127.0.0.1:39955/fixture/afa/cve-2025-10729-pattern-orphan.svg",
+      "local": {
+       "error": {
+        "code": "",
+        "details": {},
+        "message": ""
+       },
+       "path": "/home/lab/work/put.gd-qt418/afa/runs/ubuntu-vm/archive/images/cve-2025-10729-pattern-orphan.svg",
+       "status": "saved"
+      }
+     }
+    ],
+    "error": {
+     "code": "",
+     "details": {},
+     "message": ""
+    }
+   },
+   "history": {
+    "id": "62966a45-7d7c-4b48-bc1e-f2a3f5448718",
+    "name": "cve-2025-10729-pattern-orphan.svg",
+    "mime": "image/svg+xml",
+    "uploadStatus": "uploaded",
+    "local": "saved",
+    "newest": true
+   },
+   "preview": {
+    "ok": true,
+    "state": "ready",
+    "error": {
+     "code": "",
+     "details": {},
+     "message": ""
+    },
+    "previewExists": true
+   },
+   "afterPreview": {
+    "putgd": [
+     3027
+    ],
+    "putgd-ui": [
+     4025
+    ]
+   },
+   "cards": 2,
+   "frame": "/home/lab/work/put.gd-qt418/afa/runs/ubuntu-vm/full/ubuntu-vm-clipfile-3.png",
+   "afterUi": {
+    "putgd": [
+     3027
+    ],
+    "putgd-ui": [
+     4025
+    ]
+   }
+  }
+ ],
+ "after": {
+  "putgd": [
+   3027
+  ],
+  "putgd-ui": [
+   4025
+  ]
+ },
+ "diagnostics": {
+  "build": {
+   "baseVersion": "26.1023.1068",
+   "commitCount": 1068,
+   "dirty": false,
+   "gitCommit": "6a325a722afd946046a96480ca524db8aa6abcce",
+   "gitTree": "a0a449b23b4eb70f516e3c317b6d93b412aafbbb",
+   "packageVersion": "26.1023.1068~dev+g6a325a722afd",
+   "schemaVersion": 1,
+   "sourceProvenance": "git",
+   "version": "26.1023.1068-dev+g6a325a722afd"
+  },
+  "journalReady": true,
+  "qtVersion": "6.12.0"
+ },
+ "survived": true
+}

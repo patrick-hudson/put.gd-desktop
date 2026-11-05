@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "status": "completed",
+  "run": "/home/patrick/work/i559/work/lab-runs/xg559",
+  "disk": "/home/patrick/work/i559/work/lab-runs/xg559/disk.qcow2",
+  "diskIdentity": {
+    "device": 2050,
+    "inode": 7379392,
+    "size": 1323302912,
+    "mtimeNs": 1792905909809992467,
+    "ctimeNs": 1792905909809992467,
+    "allocatedBytes": 1323266048
+  },
+  "base": "/home/patrick/work/put.gd/work/lab-images/ubuntu24-gnome-x11-20261025-491/image.qcow2",
+  "stateSha256": "00d91eccc3161d13efed50b59445e18426881b7205d1938597f4fd251871260a",
+  "evidence": {
+    "manifest": "/home/patrick/work/i559/evidence/xg559/manifest.json",
+    "sha256": "c3aaff459a63f7d89b150545decf52ecbade644f0222892e91fa4043e803b76b",
+    "runId": "8ab70c4a-c666-437a-9b37-5da939109890",
+    "mode": "explicit"
+  },
+  "preparedUtc": "2026-10-25T05:25:33.651197+00:00",
+  "completedUtc": "2026-10-25T05:25:33.764692+00:00"
+}

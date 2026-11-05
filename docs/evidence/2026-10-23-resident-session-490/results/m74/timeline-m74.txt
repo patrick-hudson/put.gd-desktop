@@ -1,0 +1,35 @@
+2026-10-23T20:00:39Z app-c1 old resident 541268 in session c38
+2026-10-23T20:00:43Z app-c1 old resident 541268 gone 3.0 s after logout; session c38: closing
+2026-10-23T20:00:48Z app-c1 relogin requested
+2026-10-23T20:00:54Z app-c1 fresh resident(s): 542563@c40
+2026-10-23T20:01:03Z app-c1 capture completed  [{'mime': 'image/png', 'bytes': 852626, 'local': 'saved', 'file': 'Screen-Capture-2026-10-23-15-01-02.png', 'pixels': [1920, 1080], 'error': ''}]
+2026-10-23T20:01:05Z app-c2 old resident 542563 in session c40
+2026-10-23T20:01:09Z app-c2 old resident 542563 gone 3.0 s after logout; session c40: closing
+2026-10-23T20:01:14Z app-c2 relogin requested
+2026-10-23T20:01:20Z app-c2 fresh resident(s): 543697@c42
+2026-10-23T20:01:29Z app-c2 capture completed  [{'mime': 'image/png', 'bytes': 852626, 'local': 'saved', 'file': 'Screen-Capture-2026-10-23-15-01-28.png', 'pixels': [1920, 1080], 'error': ''}]
+2026-10-23T20:01:31Z app-c3 old resident 543697 in session c42
+2026-10-23T20:01:35Z app-c3 old resident 543697 gone 2.9 s after logout; session c42: closing
+2026-10-23T20:01:40Z app-c3 relogin requested
+2026-10-23T20:01:46Z app-c3 fresh resident(s): 544877@c44
+2026-10-23T20:01:56Z app-c3 capture completed  [{'mime': 'image/png', 'bytes': 852626, 'local': 'saved', 'file': 'Screen-Capture-2026-10-23-15-01-54.png', 'pixels': [1920, 1080], 'error': ''}]
+2026-10-23T19:57:44Z deb-c1 old resident 536394 in session c30
+2026-10-23T19:57:49Z deb-c1 old resident 536394 gone 3.0 s after logout; session c30: closing
+2026-10-23T19:57:53Z deb-c1 relogin requested
+2026-10-23T19:57:59Z deb-c1 fresh resident(s): 537730@c32
+2026-10-23T19:58:09Z deb-c1 capture completed  [{'mime': 'image/png', 'bytes': 852805, 'local': 'saved', 'file': 'Screen-Capture-2026-10-23-14-58-07.png', 'pixels': [1920, 1080], 'error': ''}]
+2026-10-23T19:58:11Z deb-c2 old resident 537730 in session c32
+2026-10-23T19:58:15Z deb-c2 old resident 537730 gone 3.1 s after logout; session c32: closing
+2026-10-23T19:58:20Z deb-c2 relogin requested
+2026-10-23T19:58:24Z deb-c2 fresh resident(s): 538859@c34
+2026-10-23T19:58:34Z deb-c2 capture completed  [{'mime': 'image/png', 'bytes': 852805, 'local': 'saved', 'file': 'Screen-Capture-2026-10-23-14-58-32.png', 'pixels': [1920, 1080], 'error': ''}]
+2026-10-23T19:58:36Z deb-c3 old resident 538859 in session c34
+2026-10-23T19:58:40Z deb-c3 old resident 538859 gone 2.9 s after logout; session c34: closing
+2026-10-23T19:58:44Z deb-c3 relogin requested
+2026-10-23T19:58:50Z deb-c3 fresh resident(s): 539992@c36
+2026-10-23T19:59:00Z deb-c3 capture completed  [{'mime': 'image/png', 'bytes': 852805, 'local': 'saved', 'file': 'Screen-Capture-2026-10-23-14-58-58.png', 'pixels': [1920, 1080], 'error': ''}]
+2026-10-23T20:02:48Z replace-1058 old resident 546131 in session c46
+2026-10-23T20:04:31Z replace-1058 FAIL old resident 546131 still running 60 s after logout; session c46: closing
+2026-10-23T20:04:36Z replace-1058 relogin requested
+2026-10-23T20:04:42Z replace-1058 fresh resident(s): 548461@c48
+2026-10-23T20:04:52Z replace-1058 capture completed  [{'mime': 'image/png', 'bytes': 852786, 'local': 'saved', 'file': 'Screen-Capture-2026-10-23-15-04-50.png', 'pixels': [1920, 1080], 'error': ''}]

@@ -4,9 +4,18 @@
 #include <QString>
 
 namespace putgd::IconArt {
+// The tray's upper glyph; every one keeps the mark's bowl. A badge always draws
+// on the ordinary mark, because the turkey's head sits under it.
+enum class TrayGlyph {Mark,Turkey,Tree};
+// What one tray frame shows.
+struct TrayIcon {QColor color;int percent=-1,recording=0;TrayGlyph glyph=TrayGlyph::Mark;};
+QImage liftTray(const TrayIcon& icon,int scale=1);
 // Software rendering also serves the Core-only StatusNotifier resident.
-// A negative percentage means a solid status glyph; 0..100 fills bottom to top.
-QImage liftTray(const QColor& color, int percent = -1, int scale = 1);
+// -1 is solid; -2 tints the glyph error and adds a badge when not recording.
+// 0..100 fills bottom to top. Badge priority: recording dot (1), paused bars (2), error.
+QImage liftTray(const QColor& color, int percent = -1, int scale = 1, int recording = 0);
 QImage liftApp(const QColor& color, int scale = 1);
-QImage symbol(const QString& name, const QColor& color, int scale = 1);
+// 24-unit outline glyphs; secondary supplies an optional 18% interior wash.
+// Brand and tray retain their solid identity artwork.
+QImage symbol(const QString& name, const QColor& color, int scale = 1, const QColor& secondary = {});
 }

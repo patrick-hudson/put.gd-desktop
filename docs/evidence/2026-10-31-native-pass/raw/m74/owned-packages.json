@@ -1,0 +1,16 @@
+{
+  "newlyInstalledAndRemoved": [
+    "gir1.2-gtk-4.0",
+    "putgd",
+    "python3-pyqt6",
+    "python3-pyqt6.sip"
+  ],
+  "unrelatedPackagesRemoved": [],
+  "automaticRemoval": false,
+  "baselineEvidence": [
+    "install.txt",
+    "deps-install.txt",
+    "gtk4-install.txt"
+  ],
+  "conffilesMayRemain": true
+}

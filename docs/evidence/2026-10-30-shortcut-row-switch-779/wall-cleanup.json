@@ -1,0 +1,10 @@
+{
+  "removedOnlyOwnedTile": true,
+  "removed": {
+    "name": "Boat Cinnamon shortcut 779",
+    "port": 6279
+  },
+  "remainingEntries": 18,
+  "tunnelUnit": "putgd-vm-779.service",
+  "tunnelStopped": true
+}

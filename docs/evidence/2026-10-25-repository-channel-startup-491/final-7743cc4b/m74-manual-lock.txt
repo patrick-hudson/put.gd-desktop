@@ -1,0 +1,4 @@
+m74 (Linux Mint 22.3 Cinnamon X11): locked
+  #491 manual visual retry (codex-491-m74-manual), acquired 2026-10-25T09:45:56Z
+  purpose: 7743cc4b fresh unmanaged only; prior capture partial
+  note: 3 process(es) outside the desktop session (no DISPLAY or WAYLAND_DISPLAY; shared SSH work): 2067 313646 313651

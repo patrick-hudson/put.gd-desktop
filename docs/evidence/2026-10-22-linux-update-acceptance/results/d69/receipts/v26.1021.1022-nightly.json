@@ -1,0 +1,419 @@
+{
+ "schemaVersion": 1,
+ "tag": "v26.1021.1022-nightly",
+ "channel": "nightly",
+ "scope": "lab",
+ "startedAt": "2026-10-23T01:17:36Z",
+ "finishedAt": "2026-10-23T01:19:05Z",
+ "result": "published",
+ "source": {
+  "kind": "lab",
+  "repository": "patrick-hudson/put.gd-desktop",
+  "commit": null,
+  "checks": [
+   "lab build: SHA256SUMS and package fields only"
+  ]
+ },
+ "inputs": [
+  {
+   "label": "debian13",
+   "name": "putgd-26.1021.1022-nightly-debian13-x86_64.deb",
+   "sha256": "fa4fe5176494cdf46e853de7d23b64f1a6c6091c331e9caec62ccd1452eb4a8f",
+   "size": 10740044,
+   "checks": [
+    "SHA256SUMS",
+    "package fields putgd 26.1021.1022~nightly amd64"
+   ]
+  },
+  {
+   "label": "fedora44",
+   "name": "putgd-26.1021.1022-nightly-fedora44-x86_64.rpm",
+   "sha256": "ac2024d3c010e531506145be7cb428cd78612a6288766b97ddea18bb2220d473",
+   "size": 7224663,
+   "checks": [
+    "SHA256SUMS",
+    "package fields putgd 26.1021.1022~nightly x86_64"
+   ]
+  },
+  {
+   "label": "ubuntu24.04",
+   "name": "putgd-26.1021.1022-nightly-ubuntu24.04-x86_64.deb",
+   "sha256": "e16229e1a7b190d43bd0fd2c9ebe321509aeb9a8ab041f02e9dfa4e9baa3753e",
+   "size": 10289954,
+   "checks": [
+    "SHA256SUMS",
+    "package fields putgd 26.1021.1022~nightly amd64"
+   ]
+  },
+  {
+   "label": "ubuntu26.04",
+   "name": "putgd-26.1021.1022-nightly-ubuntu26.04-x86_64.deb",
+   "sha256": "7652fc353b442f0b2921bc8563d06cf7d3ffcbd278fd424fa22a2484942530c4",
+   "size": 11205102,
+   "checks": [
+    "SHA256SUMS",
+    "package fields putgd 26.1021.1022~nightly amd64"
+   ]
+  },
+  {
+   "label": "appimage",
+   "name": "putgd-26.1021.1022-nightly-x86_64.AppImage",
+   "sha256": "9005868bb99d6ecf5a88c69b9b71b52f0e471422485790c7f2aa6a149b69f0b3",
+   "size": 115255800,
+   "checks": [
+    "SHA256SUMS",
+    ".zsync describes the image at https://pkg.put.gd/lab/releases/v26.1021.1022-nightly/putgd-26.1021.1022-nightly-x86_64.AppImage"
+   ]
+  },
+  {
+   "label": "appimage-zsync",
+   "name": "putgd-26.1021.1022-nightly-x86_64.AppImage.zsync",
+   "sha256": "afb583b4b57d4e582f62f41d19f1ddb358c9134724b929ec1a312fe0adc124bf",
+   "size": 197283,
+   "checks": [
+    "SHA256SUMS",
+    "URL https://pkg.put.gd/lab/releases/v26.1021.1022-nightly/putgd-26.1021.1022-nightly-x86_64.AppImage"
+   ]
+  }
+ ],
+ "rpm": [
+  {
+   "asset": "putgd-26.1021.1022-nightly-fedora44-x86_64.rpm",
+   "file": "putgd-26.1021.1022~nightly-1.fc44.x86_64.rpm",
+   "githubSha256": "ac2024d3c010e531506145be7cb428cd78612a6288766b97ddea18bb2220d473",
+   "repoSha256": "15710b78ffa1e673f48262e39180e52197fc62278173c26bbe59750805751e67",
+   "signedWith": "4032E28D893BAF66F4AC23D9A11D38D55536B371"
+  }
+ ],
+ "catalog": {
+  "ubuntu24.04": {
+   "origin": "putgd-ubuntu24.04-nightly",
+   "package": "putgd_26.1021.1022~nightly_amd64.deb",
+   "packageSha256": "e16229e1a7b190d43bd0fd2c9ebe321509aeb9a8ab041f02e9dfa4e9baa3753e",
+   "files": {
+    "apt/ubuntu24.04/dists/nightly/main/dep11/Components-amd64.yml": "9144dd2f225984403eb46b992873206fc8d2f16c0edf958282e1d0be79ccdf0e",
+    "apt/ubuntu24.04/dists/nightly/main/dep11/Components-amd64.yml.gz": "124be60ea50fc46af420033bfbe12dbe76f33a30905aadb1f2a0f3f9de0ed644",
+    "apt/ubuntu24.04/dists/nightly/main/dep11/icons-128x128.tar": "e423bf7f6ac88e23a371bfbb44af52e77c1eade996cc9a32ef9cf9c261825b81",
+    "apt/ubuntu24.04/dists/nightly/main/dep11/icons-128x128.tar.gz": "09b00afd658935767b24e9e644559b99c509720cc8ca3867c7235d22f6cbd1ac",
+    "apt/ubuntu24.04/dists/nightly/main/dep11/icons-128x128@2.tar": "f6907d09e39e4ec3983e1de8538c8d7ea3dd00718221aeb8d4300d5a8fd0616f",
+    "apt/ubuntu24.04/dists/nightly/main/dep11/icons-128x128@2.tar.gz": "64a33cab8de8c043cc691b47bf961d08ddd387c5504626a639ec0c1370ee705c",
+    "apt/ubuntu24.04/dists/nightly/main/dep11/icons-48x48.tar": "a883acaa9e5bd6afe4f07d37d7f20c3cf1fd881c7b264c8a9eda24fd20d7543e",
+    "apt/ubuntu24.04/dists/nightly/main/dep11/icons-48x48.tar.gz": "94976a10456380788b5ccc8cc5f64b71dc8112fc9793a1a10251f66d78408ab5",
+    "apt/ubuntu24.04/dists/nightly/main/dep11/icons-64x64.tar": "fd99b6e26c378c83c29515a6e223d7b516ba441e38743d793af59d0ae9a90bf0",
+    "apt/ubuntu24.04/dists/nightly/main/dep11/icons-64x64.tar.gz": "3a306d480816b045ae18f1d568bccbc22d9bcca5f4606a568e61515adf8f09bb",
+    "apt/ubuntu24.04/dists/nightly/main/dep11/icons-64x64@2.tar": "e423bf7f6ac88e23a371bfbb44af52e77c1eade996cc9a32ef9cf9c261825b81",
+    "apt/ubuntu24.04/dists/nightly/main/dep11/icons-64x64@2.tar.gz": "09b00afd658935767b24e9e644559b99c509720cc8ca3867c7235d22f6cbd1ac"
+   }
+  },
+  "ubuntu26.04": {
+   "origin": "putgd-ubuntu26.04-nightly",
+   "package": "putgd_26.1021.1022~nightly_amd64.deb",
+   "packageSha256": "7652fc353b442f0b2921bc8563d06cf7d3ffcbd278fd424fa22a2484942530c4",
+   "files": {
+    "apt/ubuntu26.04/dists/nightly/main/dep11/Components-amd64.yml": "53767c93658fa9ab7326241385aae0d5a7a07c76ebbd88b149a80dc42a3984de",
+    "apt/ubuntu26.04/dists/nightly/main/dep11/Components-amd64.yml.gz": "82fd381b6d7303b9206dec496a49f7d15afcaf66e24200e3e7243d51cec86b36",
+    "apt/ubuntu26.04/dists/nightly/main/dep11/icons-128x128.tar": "e423bf7f6ac88e23a371bfbb44af52e77c1eade996cc9a32ef9cf9c261825b81",
+    "apt/ubuntu26.04/dists/nightly/main/dep11/icons-128x128.tar.gz": "09b00afd658935767b24e9e644559b99c509720cc8ca3867c7235d22f6cbd1ac",
+    "apt/ubuntu26.04/dists/nightly/main/dep11/icons-128x128@2.tar": "f6907d09e39e4ec3983e1de8538c8d7ea3dd00718221aeb8d4300d5a8fd0616f",
+    "apt/ubuntu26.04/dists/nightly/main/dep11/icons-128x128@2.tar.gz": "64a33cab8de8c043cc691b47bf961d08ddd387c5504626a639ec0c1370ee705c",
+    "apt/ubuntu26.04/dists/nightly/main/dep11/icons-48x48.tar": "a883acaa9e5bd6afe4f07d37d7f20c3cf1fd881c7b264c8a9eda24fd20d7543e",
+    "apt/ubuntu26.04/dists/nightly/main/dep11/icons-48x48.tar.gz": "94976a10456380788b5ccc8cc5f64b71dc8112fc9793a1a10251f66d78408ab5",
+    "apt/ubuntu26.04/dists/nightly/main/dep11/icons-64x64.tar": "fd99b6e26c378c83c29515a6e223d7b516ba441e38743d793af59d0ae9a90bf0",
+    "apt/ubuntu26.04/dists/nightly/main/dep11/icons-64x64.tar.gz": "3a306d480816b045ae18f1d568bccbc22d9bcca5f4606a568e61515adf8f09bb",
+    "apt/ubuntu26.04/dists/nightly/main/dep11/icons-64x64@2.tar": "e423bf7f6ac88e23a371bfbb44af52e77c1eade996cc9a32ef9cf9c261825b81",
+    "apt/ubuntu26.04/dists/nightly/main/dep11/icons-64x64@2.tar.gz": "09b00afd658935767b24e9e644559b99c509720cc8ca3867c7235d22f6cbd1ac"
+   }
+  },
+  "debian13": {
+   "origin": "putgd-debian13-nightly",
+   "package": "putgd_26.1021.1022~nightly_amd64.deb",
+   "packageSha256": "fa4fe5176494cdf46e853de7d23b64f1a6c6091c331e9caec62ccd1452eb4a8f",
+   "files": {
+    "apt/debian13/dists/nightly/main/dep11/Components-amd64.yml": "ad121ff69f2b42067665d8cab32358ee3453249f102665e55845987c8b82ebee",
+    "apt/debian13/dists/nightly/main/dep11/Components-amd64.yml.gz": "5939802c62eb7f19e3c05129454c65adbb5d54b1f799f26dace10beb35179fe5",
+    "apt/debian13/dists/nightly/main/dep11/icons-128x128.tar": "e423bf7f6ac88e23a371bfbb44af52e77c1eade996cc9a32ef9cf9c261825b81",
+    "apt/debian13/dists/nightly/main/dep11/icons-128x128.tar.gz": "09b00afd658935767b24e9e644559b99c509720cc8ca3867c7235d22f6cbd1ac",
+    "apt/debian13/dists/nightly/main/dep11/icons-128x128@2.tar": "f6907d09e39e4ec3983e1de8538c8d7ea3dd00718221aeb8d4300d5a8fd0616f",
+    "apt/debian13/dists/nightly/main/dep11/icons-128x128@2.tar.gz": "64a33cab8de8c043cc691b47bf961d08ddd387c5504626a639ec0c1370ee705c",
+    "apt/debian13/dists/nightly/main/dep11/icons-48x48.tar": "a883acaa9e5bd6afe4f07d37d7f20c3cf1fd881c7b264c8a9eda24fd20d7543e",
+    "apt/debian13/dists/nightly/main/dep11/icons-48x48.tar.gz": "94976a10456380788b5ccc8cc5f64b71dc8112fc9793a1a10251f66d78408ab5",
+    "apt/debian13/dists/nightly/main/dep11/icons-64x64.tar": "fd99b6e26c378c83c29515a6e223d7b516ba441e38743d793af59d0ae9a90bf0",
+    "apt/debian13/dists/nightly/main/dep11/icons-64x64.tar.gz": "3a306d480816b045ae18f1d568bccbc22d9bcca5f4606a568e61515adf8f09bb",
+    "apt/debian13/dists/nightly/main/dep11/icons-64x64@2.tar": "e423bf7f6ac88e23a371bfbb44af52e77c1eade996cc9a32ef9cf9c261825b81",
+    "apt/debian13/dists/nightly/main/dep11/icons-64x64@2.tar.gz": "09b00afd658935767b24e9e644559b99c509720cc8ca3867c7235d22f6cbd1ac"
+   }
+  },
+  "fedora44": {
+   "origin": "putgd-nightly",
+   "package": "putgd-26.1021.1022~nightly-1.fc44.x86_64.rpm",
+   "packageSha256": "15710b78ffa1e673f48262e39180e52197fc62278173c26bbe59750805751e67",
+   "files": {
+    "rpm/fedora/44/x86_64/nightly/repodata/fab3d1f70c4c9ca9474fed28b56fe227cf604466d5ee680fa4900abb420bc873-appstream.xml.gz": "fab3d1f70c4c9ca9474fed28b56fe227cf604466d5ee680fa4900abb420bc873",
+    "rpm/fedora/44/x86_64/nightly/repodata/206c5993deb8b76321324992f29f81484cc3990d810dfa13a6602aaa42faf324-appstream-icons.tar.gz": "206c5993deb8b76321324992f29f81484cc3990d810dfa13a6602aaa42faf324"
+   }
+  }
+ },
+ "signatures": [
+  {
+   "file": "apt/ubuntu24.04/dists/nightly/InRelease",
+   "kind": "openpgp",
+   "key": "4032E28D893BAF66F4AC23D9A11D38D55536B371"
+  },
+  {
+   "file": "apt/ubuntu24.04/dists/nightly/Release.gpg",
+   "kind": "openpgp",
+   "key": "4032E28D893BAF66F4AC23D9A11D38D55536B371"
+  },
+  {
+   "file": "apt/ubuntu26.04/dists/nightly/InRelease",
+   "kind": "openpgp",
+   "key": "4032E28D893BAF66F4AC23D9A11D38D55536B371"
+  },
+  {
+   "file": "apt/ubuntu26.04/dists/nightly/Release.gpg",
+   "kind": "openpgp",
+   "key": "4032E28D893BAF66F4AC23D9A11D38D55536B371"
+  },
+  {
+   "file": "apt/debian13/dists/nightly/InRelease",
+   "kind": "openpgp",
+   "key": "4032E28D893BAF66F4AC23D9A11D38D55536B371"
+  },
+  {
+   "file": "apt/debian13/dists/nightly/Release.gpg",
+   "kind": "openpgp",
+   "key": "4032E28D893BAF66F4AC23D9A11D38D55536B371"
+  },
+  {
+   "file": "rpm/fedora/44/x86_64/nightly/Packages/putgd-26.1021.1022~nightly-1.fc44.x86_64.rpm",
+   "kind": "rpm",
+   "key": "4032E28D893BAF66F4AC23D9A11D38D55536B371"
+  },
+  {
+   "file": "releases/v26.1021.1022-nightly/SHA256SUMS.minisig",
+   "kind": "minisign",
+   "key": "nightly"
+  },
+  {
+   "file": "update/v1/nightly.json.minisig",
+   "kind": "minisign",
+   "key": "nightly"
+  }
+ ],
+ "s3": {
+  "uploaded": [
+   {
+    "key": "lab/apt/debian13/pool/main/p/putgd/putgd_26.1021.1022~nightly_amd64.deb",
+    "sha256": "fa4fe5176494cdf46e853de7d23b64f1a6c6091c331e9caec62ccd1452eb4a8f"
+   },
+   {
+    "key": "lab/apt/ubuntu24.04/pool/main/p/putgd/putgd_26.1021.1022~nightly_amd64.deb",
+    "sha256": "e16229e1a7b190d43bd0fd2c9ebe321509aeb9a8ab041f02e9dfa4e9baa3753e"
+   },
+   {
+    "key": "lab/apt/ubuntu26.04/pool/main/p/putgd/putgd_26.1021.1022~nightly_amd64.deb",
+    "sha256": "7652fc353b442f0b2921bc8563d06cf7d3ffcbd278fd424fa22a2484942530c4"
+   },
+   {
+    "key": "lab/releases/v26.1021.1022-nightly/putgd-26.1021.1022-nightly-x86_64.AppImage",
+    "sha256": "9005868bb99d6ecf5a88c69b9b71b52f0e471422485790c7f2aa6a149b69f0b3"
+   },
+   {
+    "key": "lab/rpm/fedora/44/x86_64/nightly/Packages/putgd-26.1021.1022~nightly-1.fc44.x86_64.rpm",
+    "sha256": "15710b78ffa1e673f48262e39180e52197fc62278173c26bbe59750805751e67"
+   },
+   {
+    "key": "lab/apt/debian13/dists/nightly/main/binary-amd64/Packages",
+    "sha256": "416116fc9d2587d92301736c25ff5535a03bbbc614176c865486784050ced9b9"
+   },
+   {
+    "key": "lab/apt/debian13/dists/nightly/main/binary-amd64/Packages.gz",
+    "sha256": "2723bb639df2ce9179b9b1852ff61d699c80d2cdbc1bfb5cd5e0520e165d12ef"
+   },
+   {
+    "key": "lab/apt/debian13/dists/nightly/main/dep11/Components-amd64.yml",
+    "sha256": "ad121ff69f2b42067665d8cab32358ee3453249f102665e55845987c8b82ebee"
+   },
+   {
+    "key": "lab/apt/debian13/dists/nightly/main/dep11/Components-amd64.yml.gz",
+    "sha256": "5939802c62eb7f19e3c05129454c65adbb5d54b1f799f26dace10beb35179fe5"
+   },
+   {
+    "key": "lab/apt/ubuntu24.04/dists/nightly/main/binary-amd64/Packages",
+    "sha256": "48375887a787c5024602f048468c1e279e0f9b0d20bf90b18dcf67f848716cae"
+   },
+   {
+    "key": "lab/apt/ubuntu24.04/dists/nightly/main/binary-amd64/Packages.gz",
+    "sha256": "785a6fb20249b9c430a214444a035ffd76dc9600b5458e99d86ba6db71c449df"
+   },
+   {
+    "key": "lab/apt/ubuntu24.04/dists/nightly/main/dep11/Components-amd64.yml",
+    "sha256": "9144dd2f225984403eb46b992873206fc8d2f16c0edf958282e1d0be79ccdf0e"
+   },
+   {
+    "key": "lab/apt/ubuntu24.04/dists/nightly/main/dep11/Components-amd64.yml.gz",
+    "sha256": "124be60ea50fc46af420033bfbe12dbe76f33a30905aadb1f2a0f3f9de0ed644"
+   },
+   {
+    "key": "lab/apt/ubuntu26.04/dists/nightly/main/binary-amd64/Packages",
+    "sha256": "359b1a4afd887c50bb071b73a3293b2ce12a33ccfb9a656a575e5404ae610423"
+   },
+   {
+    "key": "lab/apt/ubuntu26.04/dists/nightly/main/binary-amd64/Packages.gz",
+    "sha256": "b8244ab9416c6d6f6f3f73ecfa72512a7e01f63df63b54defc5975f629fbee47"
+   },
+   {
+    "key": "lab/apt/ubuntu26.04/dists/nightly/main/dep11/Components-amd64.yml",
+    "sha256": "53767c93658fa9ab7326241385aae0d5a7a07c76ebbd88b149a80dc42a3984de"
+   },
+   {
+    "key": "lab/apt/ubuntu26.04/dists/nightly/main/dep11/Components-amd64.yml.gz",
+    "sha256": "82fd381b6d7303b9206dec496a49f7d15afcaf66e24200e3e7243d51cec86b36"
+   },
+   {
+    "key": "lab/rpm/fedora/44/x86_64/nightly/repodata/277b91281dcfbb247153c68146878a371bac7260a930d22e4267dec629c1b45c-primary.xml.zst",
+    "sha256": "277b91281dcfbb247153c68146878a371bac7260a930d22e4267dec629c1b45c"
+   },
+   {
+    "key": "lab/rpm/fedora/44/x86_64/nightly/repodata/33d997c9c363395becf5493d74321547df3dccbfba5d1c88465484b8a154e665-filelists.xml.zst",
+    "sha256": "33d997c9c363395becf5493d74321547df3dccbfba5d1c88465484b8a154e665"
+   },
+   {
+    "key": "lab/rpm/fedora/44/x86_64/nightly/repodata/d0782d404a621eb275e59540a1f7b7309c971b8ae5298741c7a74184fe2a8ccb-other.xml.zst",
+    "sha256": "d0782d404a621eb275e59540a1f7b7309c971b8ae5298741c7a74184fe2a8ccb"
+   },
+   {
+    "key": "lab/rpm/fedora/44/x86_64/nightly/repodata/fab3d1f70c4c9ca9474fed28b56fe227cf604466d5ee680fa4900abb420bc873-appstream.xml.gz",
+    "sha256": "fab3d1f70c4c9ca9474fed28b56fe227cf604466d5ee680fa4900abb420bc873"
+   },
+   {
+    "key": "lab/apt/debian13/dists/nightly/InRelease",
+    "sha256": "67c61a137f886190b5e5c23ec5709568b0213e826fb4ce821410dab85d61601b"
+   },
+   {
+    "key": "lab/apt/debian13/dists/nightly/Release",
+    "sha256": "39a65387a647280346f681c07ee479eb52f879394ad298040d237ca26d01301e"
+   },
+   {
+    "key": "lab/apt/debian13/dists/nightly/Release.gpg",
+    "sha256": "c9f8abde197a15a84ab3801fa6f3a9982b4a21199ffd9f0ac0b39047547ac38d"
+   },
+   {
+    "key": "lab/apt/ubuntu24.04/dists/nightly/InRelease",
+    "sha256": "bdba632afcc94fa5320f8bb7b859987dffb2301a6ff04ec06be2be9a3ef84252"
+   },
+   {
+    "key": "lab/apt/ubuntu24.04/dists/nightly/Release",
+    "sha256": "0b27c873d28feca707ba1c0915dd4155bff899e929b9157f39b7ec832c699bb9"
+   },
+   {
+    "key": "lab/apt/ubuntu24.04/dists/nightly/Release.gpg",
+    "sha256": "2bdbdf673be9aa0ab6406c05e173a53fb4e380095834747e58c082100066a99f"
+   },
+   {
+    "key": "lab/apt/ubuntu26.04/dists/nightly/InRelease",
+    "sha256": "ae68a91f529b67ff55516119eebad274d6515cd9eb8e1490a45e1966d647345a"
+   },
+   {
+    "key": "lab/apt/ubuntu26.04/dists/nightly/Release",
+    "sha256": "ade2a90c483fcbd93ca59c254d673fff65525e7b74e96cd013eb4f57b438a8fe"
+   },
+   {
+    "key": "lab/apt/ubuntu26.04/dists/nightly/Release.gpg",
+    "sha256": "547c5ccda918ff31713171486a68544d21347b78ad75a1e3ed9f967c14554953"
+   },
+   {
+    "key": "lab/rpm/fedora/44/x86_64/nightly/repodata/repomd.xml",
+    "sha256": "9a554438d590e9706207335debcec324f2d17e0885c92c50c0d4af90d2aaa213"
+   },
+   {
+    "key": "lab/releases/v26.1021.1022-nightly/SHA256SUMS",
+    "sha256": "dbca1fd5f987509bd7fec3669e1e779ba9d9dc7333265389e447e9ebcc56b170"
+   },
+   {
+    "key": "lab/releases/v26.1021.1022-nightly/SHA256SUMS.minisig",
+    "sha256": "35949b81aaa5b1eb0e97d36989c53c600eeb3124888b1e0da725443f154075e5"
+   },
+   {
+    "key": "lab/releases/v26.1021.1022-nightly/putgd-26.1021.1022-nightly-x86_64.AppImage.zsync",
+    "sha256": "afb583b4b57d4e582f62f41d19f1ddb358c9134724b929ec1a312fe0adc124bf"
+   },
+   {
+    "key": "lab/dl/nightly/appimage.zsync",
+    "sha256": "afb583b4b57d4e582f62f41d19f1ddb358c9134724b929ec1a312fe0adc124bf"
+   },
+   {
+    "key": "lab/update/v1/nightly.json",
+    "sha256": "ba6912774077b6cfb29ea6e0d12b92bc761cab76f24be2cf505fb6d44570daea"
+   },
+   {
+    "key": "lab/update/v1/nightly.json.minisig",
+    "sha256": "9b4d32070838013fe2129c757dd70700f56970545bde74680a4aaf391da84504"
+   }
+  ],
+  "deleted": []
+ },
+ "invalidations": [
+  {
+   "distribution": "EY4KKRLYNFZ1W",
+   "id": "IHTX46WIC5VRLT3EA0ML5TVHK",
+   "paths": 24
+  },
+  {
+   "distribution": "EY4KKRLYNFZ1W",
+   "id": "I19IAFFPQ0M0UM2VH6TWGS9AHY",
+   "paths": 3
+  }
+ ],
+ "readback": [
+  {
+   "url": "https://pkg.put.gd/lab/apt/ubuntu24.04/dists/nightly/InRelease",
+   "sha256": "bdba632afcc94fa5320f8bb7b859987dffb2301a6ff04ec06be2be9a3ef84252"
+  },
+  {
+   "url": "https://pkg.put.gd/lab/apt/ubuntu24.04/dists/nightly/main/binary-amd64/Packages",
+   "sha256": "48375887a787c5024602f048468c1e279e0f9b0d20bf90b18dcf67f848716cae"
+  },
+  {
+   "url": "https://pkg.put.gd/lab/apt/ubuntu26.04/dists/nightly/InRelease",
+   "sha256": "ae68a91f529b67ff55516119eebad274d6515cd9eb8e1490a45e1966d647345a"
+  },
+  {
+   "url": "https://pkg.put.gd/lab/apt/ubuntu26.04/dists/nightly/main/binary-amd64/Packages",
+   "sha256": "359b1a4afd887c50bb071b73a3293b2ce12a33ccfb9a656a575e5404ae610423"
+  },
+  {
+   "url": "https://pkg.put.gd/lab/apt/debian13/dists/nightly/InRelease",
+   "sha256": "67c61a137f886190b5e5c23ec5709568b0213e826fb4ce821410dab85d61601b"
+  },
+  {
+   "url": "https://pkg.put.gd/lab/apt/debian13/dists/nightly/main/binary-amd64/Packages",
+   "sha256": "416116fc9d2587d92301736c25ff5535a03bbbc614176c865486784050ced9b9"
+  },
+  {
+   "url": "https://pkg.put.gd/lab/apt/ubuntu24.04/dists/nightly/main/dep11/Components-amd64.yml.gz",
+   "sha256": "124be60ea50fc46af420033bfbe12dbe76f33a30905aadb1f2a0f3f9de0ed644"
+  },
+  {
+   "url": "https://pkg.put.gd/lab/apt/ubuntu26.04/dists/nightly/main/dep11/Components-amd64.yml.gz",
+   "sha256": "82fd381b6d7303b9206dec496a49f7d15afcaf66e24200e3e7243d51cec86b36"
+  },
+  {
+   "url": "https://pkg.put.gd/lab/apt/debian13/dists/nightly/main/dep11/Components-amd64.yml.gz",
+   "sha256": "5939802c62eb7f19e3c05129454c65adbb5d54b1f799f26dace10beb35179fe5"
+  },
+  {
+   "url": "https://pkg.put.gd/lab/rpm/fedora/44/x86_64/nightly/repodata/repomd.xml",
+   "sha256": "9a554438d590e9706207335debcec324f2d17e0885c92c50c0d4af90d2aaa213"
+  },
+  {
+   "url": "https://pkg.put.gd/lab/releases/v26.1021.1022-nightly/putgd-26.1021.1022-nightly-x86_64.AppImage.zsync",
+   "sha256": "afb583b4b57d4e582f62f41d19f1ddb358c9134724b929ec1a312fe0adc124bf"
+  }
+ ],
+ "feed": {
+  "key": "lab/update/v1/nightly.json",
+  "sha256": "ba6912774077b6cfb29ea6e0d12b92bc761cab76f24be2cf505fb6d44570daea"
+ },
+ "error": null
+}

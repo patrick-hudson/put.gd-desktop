@@ -1,0 +1,171 @@
+{
+ "exit": 0,
+ "status": "pass",
+ "events": [
+  {
+   "kind": "build",
+   "t": 355756.329,
+   "build": {
+    "baseVersion": "26.1025.1294",
+    "commitCount": 1294,
+    "dirty": false,
+    "gitCommit": "98878cfe31c2506d25ea6cbec97af002210319d2",
+    "gitTree": "1a4c7e6d116a911d50dfbb52fc0ed2304cf627c8",
+    "packageVersion": "26.1025.1294~dev+g98878cfe31c2",
+    "schemaVersion": 1,
+    "sourceProvenance": "git",
+    "version": "26.1025.1294-dev+g98878cfe31c2"
+   }
+  },
+  {
+   "kind": "burst-file-source-attributed-before-submit",
+   "t": 355756.748,
+   "operationId": "89064d5c-65ae-4ab8-8dcc-578348f03e64",
+   "path": "/tmp/p560f1/burst-media/queue-00-synthetic.png",
+   "device": 2050,
+   "inode": 6165297,
+   "bytes": 103726,
+   "mtimeNs": 1792957848177592412,
+   "ctimeNs": 1792957848177592412,
+   "sha256": "201ed4972b5c746cc6b10dffa0a9ec1bade35f812c08e3ac3f35eb599632f640",
+   "width": 320,
+   "height": 180,
+   "pixelSha256": "576f0498b8bfa7527bdd520423b8ee712afe41583267bffbc193612e6a7ea63f"
+  },
+  {
+   "kind": "burst-file-editor-handed-off",
+   "t": 355756.925,
+   "operationId": "89064d5c-65ae-4ab8-8dcc-578348f03e64",
+   "observedPhase": "preflight",
+   "artifactPending": false,
+   "sourceSha256": "201ed4972b5c746cc6b10dffa0a9ec1bade35f812c08e3ac3f35eb599632f640"
+  },
+  {
+   "kind": "burst-file-source-attributed-before-submit",
+   "t": 355757.309,
+   "operationId": "ea2e3c4a-8ae5-4353-8617-ec4fc0d7e057",
+   "path": "/tmp/p560f1/burst-media/queue-01-synthetic.png",
+   "device": 2050,
+   "inode": 6165565,
+   "bytes": 103660,
+   "mtimeNs": 1792957848754994683,
+   "ctimeNs": 1792957848754994683,
+   "sha256": "db86e3adab675a8c21decf8e3d1d222cc66bf89cb220241de35b1893b28a2339",
+   "width": 320,
+   "height": 180,
+   "pixelSha256": "a18d2655c705879acf1c2a38261f5de9e5067d6a82eb49d31ea76386f3824cc1"
+  },
+  {
+   "kind": "burst-file-editor-handed-off",
+   "t": 355757.465,
+   "operationId": "ea2e3c4a-8ae5-4353-8617-ec4fc0d7e057",
+   "observedPhase": "queued",
+   "artifactPending": true,
+   "sourceSha256": "db86e3adab675a8c21decf8e3d1d222cc66bf89cb220241de35b1893b28a2339"
+  },
+  {
+   "kind": "burst-file-source-attributed-before-submit",
+   "t": 355757.807,
+   "operationId": "9e7a025b-1119-41dc-8ae6-e1fceec1cd18",
+   "path": "/tmp/p560f1/burst-media/queue-02-synthetic.png",
+   "device": 2050,
+   "inode": 6165566,
+   "bytes": 103642,
+   "mtimeNs": 1792957849260869965,
+   "ctimeNs": 1792957849260869965,
+   "sha256": "b3aa0ef68071cc10d55328989947566ab37e9bb97af3060b60ebc2832524d8c6",
+   "width": 320,
+   "height": 180,
+   "pixelSha256": "d0a039ffbf1982ad954542419b0e0e770b3d22ea84a29361796511596fb2f54f"
+  },
+  {
+   "kind": "burst-file-editor-handed-off",
+   "t": 355757.961,
+   "operationId": "9e7a025b-1119-41dc-8ae6-e1fceec1cd18",
+   "observedPhase": "queued",
+   "artifactPending": true,
+   "sourceSha256": "b3aa0ef68071cc10d55328989947566ab37e9bb97af3060b60ebc2832524d8c6"
+  },
+  {
+   "kind": "pre-cancel-witness",
+   "t": 355757.963,
+   "id": "9e7a025b-1119-41dc-8ae6-e1fceec1cd18",
+   "state": "acquiring",
+   "phase": "queued",
+   "items": 0
+  },
+  {
+   "kind": "terminal",
+   "t": 355763.272,
+   "id": "89064d5c-65ae-4ab8-8dcc-578348f03e64",
+   "state": "completed"
+  },
+  {
+   "kind": "upload-independent-verification",
+   "t": 355763.315,
+   "operationId": "89064d5c-65ae-4ab8-8dcc-578348f03e64",
+   "historyId": "a9b5fa96-7153-471c-a681-0e32a11f39fe",
+   "directUrl": "http://127.0.0.1:32899/fixture/i560f/Screen-Capture-2026-10-25-14-50-48.png",
+   "sha256": "2c4e51479344ada31291a80a5c046b199e46db3510176b4e6ed0011d72863986",
+   "attributedSourcePixelSha256": "576f0498b8bfa7527bdd520423b8ee712afe41583267bffbc193612e6a7ea63f"
+  },
+  {
+   "kind": "terminal",
+   "t": 355769.835,
+   "id": "ea2e3c4a-8ae5-4353-8617-ec4fc0d7e057",
+   "state": "completed"
+  },
+  {
+   "kind": "upload-independent-verification",
+   "t": 355769.868,
+   "operationId": "ea2e3c4a-8ae5-4353-8617-ec4fc0d7e057",
+   "historyId": "6294b35e-6463-4279-9524-0fa39ead5fee",
+   "directUrl": "http://127.0.0.1:32899/fixture/i560f/Screen-Capture-2026-10-25-14-50-48-bfd3083c-1cd5-47b1-b834-4dbd9bc4bac8.png",
+   "sha256": "b05064ead7d60181b293b2e4a2783f52f9ee820a9c425cf9f430c0903e57ad4a",
+   "attributedSourcePixelSha256": "a18d2655c705879acf1c2a38261f5de9e5067d6a82eb49d31ea76386f3824cc1"
+  },
+  {
+   "kind": "terminal",
+   "t": 355769.869,
+   "id": "9e7a025b-1119-41dc-8ae6-e1fceec1cd18",
+   "state": "cancelled"
+  },
+  {
+   "kind": "visual",
+   "t": 355772.088,
+   "label": "history",
+   "sha256": "c7e491d45fc07f9fd0ab5f9aa18d9c60e02478256392a9e04e0f249c2a31ce68"
+  },
+  {
+   "kind": "visual",
+   "t": 355774.302,
+   "label": "settings",
+   "sha256": "f6fabe671704f8f1907505108543f2e7e12481a8bb6581f5f0f7ca6f6b5aca66"
+  },
+  {
+   "kind": "ui-windows",
+   "t": 355774.306,
+   "pid": 770430,
+   "windows": [
+    "0x04800006"
+   ]
+  },
+  {
+   "kind": "ui-closed-normally",
+   "t": 355774.412
+  },
+  {
+   "kind": "visual",
+   "t": 355775.751,
+   "label": "after-close",
+   "sha256": "c75b033f71b0ade7d69526cba7c1bd22bdc42339d70a2843bd7472ca037a28d3"
+  },
+  {
+   "kind": "resident-exit",
+   "t": 355775.783,
+   "code": 0,
+   "socketAbsent": true
+  }
+ ],
+ "remainingOwned": []
+}

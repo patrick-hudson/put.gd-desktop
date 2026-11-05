@@ -1,0 +1,51 @@
+{
+ "at": "2026-10-23T20:23:05Z",
+ "graphicalSession": "14534",
+ "session": {
+  "User": "1000",
+  "Display": "",
+  "Leader": "3291864",
+  "Type": "wayland",
+  "Active": "yes",
+  "State": "active",
+  "LockedHint": "no"
+ },
+ "residents": [
+  {
+   "pid": 3292289,
+   "exe": "/usr/bin/putgd",
+   "ppid": 1397,
+   "start": 57272240,
+   "session": null,
+   "sessionState": null,
+   "sessionType": null,
+   "cgroup": "/user.slice/user-1000.slice/user@1000.service/app.slice/app-gnome-putgd-3292289.scope",
+   "display": ":0",
+   "sessionIdEnv": null
+  }
+ ],
+ "snapshot": {
+  "ok": true,
+  "error": "",
+  "build": {
+   "baseVersion": "26.1023.1067",
+   "commitCount": 1067,
+   "dirty": false,
+   "gitCommit": "01347aaffc5846a0b6123f7c08e1d5321c6d9261",
+   "gitTree": "75febcf609170e3b5b41851463bad40409e059ec",
+   "packageVersion": "26.1023.1067~dev+g01347aaffc58",
+   "schemaVersion": 1,
+   "sourceProvenance": "git",
+   "version": "26.1023.1067-dev+g01347aaffc58"
+  },
+  "loginSession": {
+   "reason": "outside_session",
+   "watched": false
+  },
+  "loginStartup": {
+   "applied": true,
+   "enabled": true
+  },
+  "shortcutsAvailable": false
+ }
+}

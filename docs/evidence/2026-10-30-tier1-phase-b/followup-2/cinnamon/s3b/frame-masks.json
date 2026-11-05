@@ -1,0 +1,188 @@
+{
+  "frames": {
+    "frames/outcomes_live.s3_region_upload/00-before.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "frames/outcomes_live.s3_region_upload/01-independent-frozen-pattern.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "frames/outcomes_live.s3_region_upload/02-browser-failure-fully-masked.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "frames/outcomes_live.s3_region_upload/03-history-before-remote-cleanup.png": {
+      "sha256": "9954f9a75822b21db6cbeb3bd29639156ef5907e9dc0ff4a26ac9d5516fa4ca0",
+      "size": [
+        1280,
+        760
+      ],
+      "regions": [
+        [
+          760,
+          0,
+          520,
+          400
+        ],
+        [
+          760,
+          400,
+          520,
+          360
+        ],
+        [
+          230,
+          166,
+          656,
+          112
+        ],
+        [
+          914,
+          464,
+          352,
+          154
+        ],
+        [
+          922,
+          377,
+          227,
+          28
+        ],
+        [
+          914,
+          308,
+          352,
+          25
+        ],
+        [
+          620,
+          122,
+          304,
+          40
+        ]
+      ],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true
+    },
+    "frames/outcomes_live.s3_region_upload/04-history-before-remote-cleanup.png": {
+      "sha256": "9954f9a75822b21db6cbeb3bd29639156ef5907e9dc0ff4a26ac9d5516fa4ca0",
+      "size": [
+        1280,
+        760
+      ],
+      "regions": [
+        [
+          760,
+          0,
+          520,
+          400
+        ],
+        [
+          760,
+          400,
+          520,
+          360
+        ],
+        [
+          230,
+          166,
+          656,
+          112
+        ],
+        [
+          914,
+          464,
+          352,
+          154
+        ],
+        [
+          922,
+          377,
+          227,
+          28
+        ],
+        [
+          914,
+          308,
+          352,
+          25
+        ],
+        [
+          620,
+          122,
+          304,
+          40
+        ]
+      ],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true
+    },
+    "frames/outcomes_live.s3_region_upload/05-after.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    }
+  }
+}

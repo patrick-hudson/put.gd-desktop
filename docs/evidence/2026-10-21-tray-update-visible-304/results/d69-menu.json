@@ -1,0 +1,119 @@
+{
+ "watcherItems": [
+  ":1.78/StatusNotifierItem",
+  ":1.3267/StatusNotifierItem",
+  "org.kde.StatusNotifierItem.putgd_fc7de16f1da54c35b1167fd77f291bdc/StatusNotifierItem"
+ ],
+ "ours": [
+  "org.kde.StatusNotifierItem.putgd_fc7de16f1da54c35b1167fd77f291bdc"
+ ],
+ "revision": 2,
+ "items": [
+  {
+   "id": 1,
+   "label": "Capture Region",
+   "type": "standard",
+   "visible": true,
+   "enabled": true
+  },
+  {
+   "id": 5,
+   "label": "Capture Region & Edit",
+   "type": "standard",
+   "visible": true,
+   "enabled": true
+  },
+  {
+   "id": 2,
+   "label": "Capture Window",
+   "type": "standard",
+   "visible": true,
+   "enabled": true
+  },
+  {
+   "id": 3,
+   "label": "Capture Desktop",
+   "type": "standard",
+   "visible": true,
+   "enabled": true
+  },
+  {
+   "id": 16,
+   "label": "Capture Screen Recording",
+   "type": "standard",
+   "visible": true,
+   "enabled": true
+  },
+  {
+   "id": 13,
+   "label": "Edit Image",
+   "type": "standard",
+   "visible": true,
+   "enabled": true
+  },
+  {
+   "id": 4,
+   "label": "Upload Clipboard",
+   "type": "standard",
+   "visible": true,
+   "enabled": true
+  },
+  {
+   "id": 6,
+   "label": null,
+   "type": "separator",
+   "visible": true,
+   "enabled": true
+  },
+  {
+   "id": 7,
+   "label": "Settings and setup",
+   "type": "standard",
+   "visible": true,
+   "enabled": true
+  },
+  {
+   "id": 8,
+   "label": "Upload history",
+   "type": "standard",
+   "visible": true,
+   "enabled": true
+  },
+  {
+   "id": 9,
+   "label": "Recent activity",
+   "type": "standard",
+   "visible": true,
+   "enabled": true
+  },
+  {
+   "id": 17,
+   "label": "Update available: 0.1.2",
+   "type": "standard",
+   "visible": true,
+   "enabled": true
+  },
+  {
+   "id": 10,
+   "label": null,
+   "type": "separator",
+   "visible": true,
+   "enabled": true
+  },
+  {
+   "id": 11,
+   "label": "About put.gd",
+   "type": "standard",
+   "visible": true,
+   "enabled": true
+  },
+  {
+   "id": 12,
+   "label": "Quit",
+   "type": "standard",
+   "visible": true,
+   "enabled": true
+  }
+ ],
+ "title": "put.gd"
+}

@@ -5,6 +5,7 @@
 #include <QLocalSocket>
 #include <QElapsedTimer>
 #include <QSignalSpy>
+#include "fixtures/Waits.h"
 using namespace putgd;
 using namespace putgd::test;
 
@@ -34,12 +35,15 @@ class UiEndpointsTest : public QObject {
   QLocalSocket socket;socket.connectToServer(server.socketPath());if(!socket.waitForConnected(1000))return {};
   socket.write(QJsonDocument(QJsonObject{{"schemaVersion",1},{"requestId","wire-setup-test"},{"session",server.socketPath()},{"method",method},{"params",params}}).toJson(QJsonDocument::Compact)+'\n');
   QElapsedTimer timer;timer.start();QByteArray response;
-  while(timer.elapsed()<3000&&!response.contains('\n')){QCoreApplication::processEvents();response+=socket.readAll();QTest::qWait(1);}
+  while(timer.elapsed()<putgd::test::scaled(3000)&&!response.contains('\n')){QCoreApplication::processEvents();response+=socket.readAll();putgd::test::settle(1);}
   return QJsonDocument::fromJson(response).object();
  }
 private slots:
+ void configurationFolderActionForwardsThroughDiagnostics() {
+  Fixture f;QString group;QJsonObject forwarded;f.server.setUiCommand([&](const QString& name,const QJsonObject& params,JsonReply reply){group=name;forwarded=params;reply({},{{"opened",true}});});Error error;QJsonObject result;request(f.server,"ui.diagnostics",{{"action","showConfigFolder"}},[&](Error e,QJsonObject value){error=e;result=value;});QVERIFY(!error);QCOMPARE(group,QString("diagnostics"));QCOMPARE(forwarded,QJsonObject({{"action","showConfigFolder"}}));QVERIFY(result["opened"].toBool());
+ }
  void snapshotIncludesResidentIdentitySettingsAndDiagnostics() {
-  Fixture f;QVERIFY(f.settings.save(configuration(f.root.path(),true),{}));QTRY_VERIFY(f.operations.ready());
+  Fixture f;QVERIFY(f.settings.save(configuration(f.root.path(),true),{}));PUTGD_TRY_VERIFY(f.operations.ready());
   Error error;QJsonObject result;bool done=false;
   request(f.server,"ui.snapshot",{},[&](Error e,QJsonObject value){error=e;result=value;done=true;});
   QVERIFY(done);QVERIFY2(!error,qPrintable(error.code));
@@ -57,10 +61,59 @@ private slots:
   auto preferences=candidate["preferences"].toObject();preferences["notifications"]=false;candidate["preferences"]=preferences;
   Error error;QJsonObject result;bool done=false;
   request(f.server,"settings.save",{{"document",candidate},{"expectedRevision",revision}},[&](Error e,QJsonObject value){error=e;result=value;done=true;});
-  QTRY_VERIFY(done);QVERIFY2(!error,qPrintable(error.code));QCOMPARE(result["document"].toObject(),candidate);
+  PUTGD_TRY_VERIFY(done);QVERIFY2(!error,qPrintable(error.code));QCOMPARE(result["document"].toObject(),candidate);
   QCOMPARE(result["metadata"].toObject(),f.settings.metadata());QVERIFY(!f.settings.snapshot().notifications);
   done=false;request(f.server,"settings.save",{{"document",candidate},{"expectedRevision",revision}},[&](Error e,QJsonObject){error=e;done=true;});
-  QTRY_VERIFY(done);QCOMPARE(error.code,QString("config_conflict"));
+  PUTGD_TRY_VERIFY(done);QCOMPARE(error.code,QString("config_conflict"));
+ }
+ void reorderProfilesChangesOnlyTheOrderAndRejectsWithoutWriting() {
+  Fixture f;QVERIFY(f.saveProfiles(3));auto document=f.settings.document();auto actions=document["actions"].toObject();
+  for(const auto& name:Settings::actionNames()){auto action=actions[name].toObject();action["destination"]="upload";action["profileId"]=name=="clipboard"?"profile2":"profile0";actions[name]=action;}
+  document["actions"]=actions;QVERIFY(!f.settings.save(document,f.settings.revision()).error);
+  QFile file(f.settings.path());QVERIFY(file.open(QIODevice::ReadOnly));const auto bytes=file.readAll();file.close();
+  auto call=[&](const QJsonObject& params){Error error;QJsonObject result;bool done=false;request(f.server,"settings.reorderProfiles",params,[&](Error e,QJsonObject value){error=e;result=value;done=true;});[&]{PUTGD_TRY_VERIFY(done);}();return std::pair{error,result};};
+  auto unchanged=[&]{QFile current(f.settings.path());[&]{QVERIFY(current.open(QIODevice::ReadOnly));}();return current.readAll()==bytes;};
+  const auto revision=f.settings.revision();
+  const QList<QPair<QJsonArray,QString>> rejected{{{"profile0","profile1"},"missing"},{{"profile0","profile1","profile2","other"},"extra"},{{"profile0","profile1","profile2","profile1"},"duplicate"}};
+  for(const auto& [order,field]:rejected){
+   const auto [error,result]=call({{"order",order},{"expectedRevision",revision}});
+   QCOMPARE(error.code,QString("profile_order_invalid"));QVERIFY2(!error.details[field].toArray().isEmpty(),qPrintable(field));QVERIFY(unchanged());QCOMPARE(f.settings.revision(),revision);
+  }
+  QCOMPARE(call({{"order",QJsonArray{"profile2","profile1","profile0"}},{"expectedRevision","stale"}}).first.code,QString("config_conflict"));QVERIFY(unchanged());
+  QCOMPARE(call({{"order",QJsonArray{1,2}},{"expectedRevision",revision}}).first.code,QString("profile_order_invalid"));
+  QCOMPARE(call({{"order","profile0"},{"expectedRevision",revision}}).first.code,QString("invalid_request"));
+  QCOMPARE(call({{"order",QJsonArray{}}}).first.code,QString("invalid_request"));QVERIFY(unchanged());
+  // An unchanged order does not rewrite the file.
+  auto [same,sameResult]=call({{"order",QJsonArray{"profile0","profile1","profile2"}},{"expectedRevision",revision}});QVERIFY(!same);QVERIFY(!sameResult["changed"].toBool());QVERIFY(unchanged());
+  const auto [moved,movedResult]=call({{"order",QJsonArray{"profile2","profile0","profile1"}},{"expectedRevision",revision}});
+  QVERIFY2(!moved,qPrintable(moved.code));QVERIFY(movedResult["changed"].toBool());QCOMPARE(movedResult["metadata"].toObject()["acceptedRevision"].toString(),f.settings.revision());
+  QStringList ids;for(const auto& p:f.settings.document()["profiles"].toArray())ids.append(p.toObject()["id"].toString());QCOMPARE(ids,QStringList({"profile2","profile0","profile1"}));
+  auto expected=document;auto profiles=document["profiles"].toArray();expected["profiles"]=QJsonArray{profiles[2],profiles[0],profiles[1]};
+  QCOMPARE(f.settings.document()["profiles"].toArray(),expected["profiles"].toArray());
+  auto withoutProfiles=[](QJsonObject doc){doc.remove("profiles");return doc;};QCOMPARE(withoutProfiles(f.settings.document()),withoutProfiles(Settings::normalized(document)));
+  QCOMPARE(f.settings.snapshot().actions["clipboard"].profileId,QString("profile2"));QCOMPARE(f.settings.snapshot().actions["region"].profileId,QString("profile0"));
+  QCOMPARE(call({{"order",QJsonArray{"profile0","profile1","profile2"}},{"expectedRevision",revision}}).first.code,QString("config_conflict"));
+ }
+ void moveDestinationNeedsAnInterface() {
+  Fixture f;QVERIFY(f.saveProfiles(2));Error error;bool done=false;
+  for(const auto& params:QList<QJsonObject>{{{"direction","left"}},{},{{"direction","up"},{"profileId",""}},{{"direction","up"},{"extra",true}}}){done=false;request(f.server,"ui.moveDestination",params,[&](Error e,QJsonObject){error=e;done=true;});QVERIFY(done);QCOMPARE(error.code,QString("invalid_request"));}
+  done=false;request(f.server,"ui.moveDestination",{{"direction","down"}},[&](Error e,QJsonObject){error=e;done=true;});QVERIFY(done);QCOMPARE(error.code,QString("ui_unavailable"));
+  QString command;QJsonObject forwarded;f.server.setUiCommand([&](const QString& name,const QJsonObject& params,JsonReply reply){command=name;forwarded=params;reply({},{{"order",QJsonArray{"profile1","profile0"}}});});
+  QJsonObject result;done=false;request(f.server,"ui.moveDestination",{{"direction","up"},{"profileId","profile1"}},[&](Error e,QJsonObject value){error=e;result=value;done=true;});
+  QVERIFY(done);QVERIFY(!error);QCOMPARE(command,QString("moveDestination"));QCOMPARE(forwarded,QJsonObject({{"direction","up"},{"profileId","profile1"}}));QCOMPARE(result["order"].toArray().size(),2);
+ }
+ // #293: update.status and update.check take no parameters and need the service.
+ void updateEndpointsReportTheCheckOrItsAbsence() {
+  Fixture f;QVERIFY(f.settings.save(configuration(f.root.path(),true),{}));
+  Error error;QJsonObject result;
+  for(const auto* method:{"update.status","update.check"}){request(f.server,method,{},[&](Error e,QJsonObject){error=e;});QCOMPARE(error.code,QString("update_check_unavailable"));}
+  UpdateService updates(f.settings,f.root.path(),"/bin/false");updates.start();f.server.setUpdateService(&updates);
+  request(f.server,"update.status",{},[&](Error e,QJsonObject value){error=e;result=value;});
+  QVERIFY(!error);QCOMPARE(result["supported"].toBool(),false);QCOMPARE(result["check"].toBool(),true);QVERIFY(result.contains("build"));
+  // A development build never checks, even when asked.
+  request(f.server,"update.check",{},[&](Error e,QJsonObject){error=e;});QCOMPARE(error.code,QString("update_check_unavailable"));
+  request(f.server,"update.status",{{"force",true}},[&](Error e,QJsonObject){error=e;});QCOMPARE(error.code,QString("invalid_request"));
+  QCOMPARE(LocalServer::replyDeadlineMs("update.check"),UpdateService::childTimeoutMs+15000);
  }
  void setupEndpointsWithoutServiceReportUnavailable() {
   Fixture f;
@@ -80,7 +133,7 @@ private slots:
   QVERIFY2(!error,qPrintable(error.code));QCOMPARE(accepted.keys(),QStringList{"setupId"});const auto id=accepted["setupId"].toString();QVERIFY(!id.isEmpty());
   QJsonObject record;setup.inspect(id,[&](Error e,QJsonObject value){error=e;record=value;});QVERIFY(!error);QCOMPARE(record["state"].toString(),QString("running"));
   setup.start("storeCredentials","test",f.settings.revision(),input,[&](Error e,QJsonObject){error=e;});QCOMPARE(error.code,QString("setup_busy"));
-  QTRY_VERIFY(changed.count()>=2);setup.inspect(id,[&](Error e,QJsonObject value){error=e;record=value;});QVERIFY(!error);QCOMPARE(record["state"].toString(),QString("completed"));
+  PUTGD_TRY_VERIFY(changed.count()>=2);setup.inspect(id,[&](Error e,QJsonObject value){error=e;record=value;});QVERIFY(!error);QCOMPARE(record["state"].toString(),QString("completed"));
   QCOMPARE(record["kind"].toString(),QString("storeCredentials"));QCOMPARE(record["profileId"].toString(),QString("test"));QVERIFY(record["error"].isObject());
   const auto reference=f.settings.snapshot().profiles["test"]["credentials"].toObject();const auto cached=credentials.cached("test",reference);QVERIFY(cached);QCOMPARE(cached->sessionToken,QString("synthetic-token"));QVERIFY(!credentials.cached("other",reference));
   const auto bytes=QJsonDocument(record).toJson()+QJsonDocument(f.settings.document()).toJson();QVERIFY(!bytes.contains("synthetic-access"));QVERIFY(!bytes.contains("synthetic-secret"));QVERIFY(!bytes.contains("synthetic-token"));
@@ -96,15 +149,18 @@ private slots:
   QVERIFY(settings.save(document,{}));
   {
    CredentialStore credentials;SetupService setup(settings,credentials,{});
-   const auto started=setup.unlockSavedCredentials();QCOMPARE(started.size(),1);
+   // #1105: a file-manager upload waits until the startup read has run and ended.
+   QVERIFY(!setup.savedCredentialsSettled());
+   const auto started=setup.unlockSavedCredentials();QCOMPARE(started.size(),1);QVERIFY(!setup.savedCredentialsSettled());
    Error error;QJsonObject record;setup.inspect(started.first(),[&](Error e,QJsonObject value){error=e;record=value;});
    QVERIFY(!error);QCOMPARE(record["kind"].toString(),QString("unlockCredentials"));QCOMPARE(record["profileId"].toString(),QString("s3saved"));
    QVERIFY(setup.unlockSavedCredentials().isEmpty());
-   QTRY_COMPARE_WITH_TIMEOUT((setup.inspect(started.first(),[&](Error,QJsonObject value){record=value;}),record["state"].toString()),QString("failed"),10000);
+   PUTGD_TRY_COMPARE_WITH_TIMEOUT((setup.inspect(started.first(),[&](Error,QJsonObject value){record=value;}),record["state"].toString()),QString("failed"),10000);
+   QVERIFY(setup.savedCredentialsSettled());
   }
   auto preferences=document["preferences"].toObject();preferences["unlockCredentialsAtStartup"]=false;document["preferences"]=preferences;
   QVERIFY(settings.save(document,settings.revision()));
-  {CredentialStore credentials;SetupService setup(settings,credentials,{});QVERIFY(setup.unlockSavedCredentials().isEmpty());}
+  {CredentialStore credentials;SetupService setup(settings,credentials,{});QVERIFY(setup.unlockSavedCredentials().isEmpty());QVERIFY(setup.savedCredentialsSettled());}
   if(bus.isNull())qunsetenv("DBUS_SESSION_BUS_ADDRESS");else qputenv("DBUS_SESSION_BUS_ADDRESS",bus);
  }
  void credentialRevealRejectsStaleMissingAndNonS3Destinations() {
@@ -145,7 +201,7 @@ private slots:
   QVERIFY(!error);QVERIFY(!id.isEmpty());QCOMPARE(tests,1);QCOMPARE(profileId,QString("test"));QCOMPARE(supplied,f.settings.snapshot().profiles["test"]);
   setup.start("testDestination","test",f.settings.revision(),{},[&](Error e,QJsonObject){error=e;});QCOMPARE(error.code,QString("setup_busy"));QCOMPARE(tests,1);
   std::thread worker([finish]{finish({"synthetic_failure","Synthetic destination test failed",{}});finish({});});worker.join();
-  QTRY_COMPARE(changed.count(),2);QVERIFY(!wrongThread);QJsonObject record;setup.inspect(id,[&](Error e,QJsonObject value){error=e;record=value;});QVERIFY(!error);QCOMPARE(record["state"].toString(),QString("failed"));QCOMPARE(record["error"].toObject()["code"].toString(),QString("synthetic_failure"));
+  PUTGD_TRY_COMPARE(changed.count(),2);QVERIFY(!wrongThread);QJsonObject record;setup.inspect(id,[&](Error e,QJsonObject value){error=e;record=value;});QVERIFY(!error);QCOMPARE(record["state"].toString(),QString("failed"));QCOMPARE(record["error"].toObject()["code"].toString(),QString("synthetic_failure"));
  }
  void completionsAfterServiceDestructionAreSafe() {
   Fixture f;QVERIFY(f.saveProfiles());CredentialStore credentials;std::function<void(Error)> finish;
@@ -159,7 +215,7 @@ private slots:
   QString activeId;Error error;setup.start("testDestination","test",f.settings.revision(),{},[&](Error e,QJsonObject value){error=e;activeId=value["setupId"].toString();});QVERIFY(!error);
   QString first,last;for(int i=0;i<70;++i) {
    setup.start("unlockCredentials","test",f.settings.revision(),{},[&](Error e,QJsonObject value){error=e;last=value["setupId"].toString();});QVERIFY(!error);if(i==0)first=last;
-   QJsonObject record;QTRY_VERIFY(([&]{setup.inspect(last,[&](Error e,QJsonObject value){error=e;record=value;});return record["state"]=="failed";})());
+   QJsonObject record;PUTGD_TRY_VERIFY(([&]{setup.inspect(last,[&](Error e,QJsonObject value){error=e;record=value;});return record["state"]=="failed";})());
    QCOMPARE(record["error"].toObject()["code"].toString(),QString("credential_setup_required"));
   }
   setup.inspect(first,[&](Error e,QJsonObject){error=e;});QCOMPARE(error.code,QString("setup_not_found"));
@@ -180,6 +236,14 @@ private slots:
   Error error;QJsonObject result;request(f.server,"ui.snapshot",{},[&](Error e,QJsonObject value){error=e;result=value;});
   QVERIFY(!error);QCOMPARE(result["residentEpoch"].toString(),epoch);QCOMPARE(result["diagnostics"].toObject(),diagnostics);
   request(f.server,"ui.snapshot",{{"unexpected",true}},[&](Error e,QJsonObject){error=e;});QCOMPARE(error.code,QString("invalid_request"));
+ }
+ void viewStateForwardsTheInterfaceProjection() {
+  Fixture f;Error error;QJsonObject result;
+  request(f.server,"ui.viewState",{},[&](Error e,QJsonObject){error=e;});QCOMPARE(error.code,QString("ui_unavailable"));
+  const QJsonObject view{{"state","ready"},{"settings",QJsonObject{{"section",1},{"captureRouting",QJsonObject{{"default",QJsonObject{{"profileId","synthetic"}}}}}}}};
+  f.server.setUiViewState([view]{return view;});
+  request(f.server,"ui.viewState",{},[&](Error e,QJsonObject value){error=e;result=value;});QVERIFY(!error);QCOMPARE(result,view);
+  request(f.server,"ui.viewState",{{"unexpected",true}},[&](Error e,QJsonObject){error=e;});QCOMPARE(error.code,QString("invalid_request"));
  }
  void wireSetupJobsSurviveClientDepartureAndUseSavedProfile() {
   Fixture f;QVERIFY(f.saveProfiles());QVERIFY(f.server.listen(f.root.filePath("runtime")));CredentialStore credentials;

@@ -1,0 +1,33 @@
+{
+  "passed": true,
+  "scenario1Exit": 0,
+  "scenario2Exit": 0,
+  "remainingAfterPeerCleanup": [
+    "legacy_fresh",
+    "other_sha_dead",
+    "other_suffix_expired",
+    "trailing_expired",
+    "unknown_fresh",
+    "unrelated",
+    "upper_expired"
+  ],
+  "lateCreates": [
+    {
+      "state": "failed",
+      "error": "Controller cancelled or deadline exceeded: boat",
+      "cleanupVerified": true,
+      "_elapsed": 33.3
+    },
+    {
+      "state": "failed",
+      "error": "Controller cancelled or deadline exceeded: boat",
+      "cleanupVerified": true,
+      "_elapsed": 35.0
+    }
+  ],
+  "legacySweepDeletedOnlyExpiredId": true,
+  "logs": {
+    "scenario1.log": "5a0be878ab2a1a6cb7fd7f3721fc577a423d46ebea8aa8e284b3699c4e8d6856",
+    "scenario2.log": "56aae64fa5681e6d7d4543591ec1b17714a791dfd3075025f7f639630bfbbee0"
+  }
+}

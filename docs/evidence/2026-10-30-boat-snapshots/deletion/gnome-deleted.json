@@ -1,0 +1,27 @@
+{
+  "name": "snapshots-v3-gnome",
+  "requests": [
+    {
+      "sandboxId": "bx_nkwgnay9",
+      "operation": {
+        "attemptCount": 0,
+        "completedAt": null,
+        "expectedBy": null,
+        "id": "bdop_599887ea8d1247909070fb595adfeffd",
+        "kind": "sandbox",
+        "reason": "explicit",
+        "requestedAt": "2026-10-30T04:25:50.478Z",
+        "stage": "removing",
+        "status": "pending",
+        "targetId": "bx_nkwgnay9"
+      }
+    }
+  ],
+  "verified": true,
+  "finalState": "absent",
+  "verification": "boat list --all",
+  "deletedIds": [
+    "bx_nkwgnay9"
+  ],
+  "verifiedAt": 1793334352.8590121
+}

@@ -1,0 +1,1 @@
+{"ok": false, "error": "[127.0.0.1]:22220 is missing from --known-hosts; see docs/vm-lab.md for authenticated port remapping"}

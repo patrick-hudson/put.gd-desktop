@@ -1,0 +1,239 @@
+$ ctest --preset dev --parallel 12 --resource-spec-file /home/user/work/put.gd/src/tools/ci/ctest-resources.json --output-junit /home/user/779/ci-ram/ctest.xml
+Test project /home/user/work/put.gd/src/build/dev
+        Start  83: operations_contract
+        Start 112: proton_contract
+        Start 101: gui_settings
+        Start 102: gui_history_view
+        Start  43: gui_tray
+        Start  61: native_background_startup_integration
+        Start  76: s3_worker_supervision
+        Start  40: gui_application
+        Start  71: s3_module_integration
+        Start  86: cli_integration
+        Start 103: gui_history_view_text150
+        Start  69: collision_policy_integration
+  1/114 Test #112: proton_contract .........................   Passed    4.33 sec
+        Start  34: edit_operations_integration
+  2/114 Test #103: gui_history_view_text150 ................   Passed    6.05 sec
+        Start  93: recording_service_integration
+  3/114 Test  #69: collision_policy_integration ............   Passed    9.90 sec
+        Start  14: native_tray_integration
+  4/114 Test  #93: recording_service_integration ...........   Passed    6.95 sec
+        Start  85: storage_contract_integration
+  5/114 Test  #85: storage_contract_integration ............   Passed    4.55 sec
+        Start  66: x11_isolated
+  6/114 Test  #34: edit_operations_integration .............   Passed   14.00 sec
+        Start  73: s3_multipart_integration
+  7/114 Test  #14: native_tray_integration .................   Passed   16.14 sec
+        Start  17: x11_core_clipboard
+  8/114 Test  #43: gui_tray ................................   Passed   34.18 sec
+        Start  94: recording_helper_integration
+  9/114 Test  #73: s3_multipart_integration ................   Passed   19.55 sec
+        Start  37: session_client_integration
+ 10/114 Test  #71: s3_module_integration ...................   Passed   38.06 sec
+        Start  72: s3_integration
+ 11/114 Test  #66: x11_isolated ............................   Passed   20.66 sec
+        Start  10: gui_review_window
+ 12/114 Test  #40: gui_application .........................   Passed   40.15 sec
+        Start  51: update_service_schedule
+ 13/114 Test  #86: cli_integration .........................   Passed   40.49 sec
+        Start  31: ui_process_integration
+ 14/114 Test  #51: update_service_schedule .................   Passed    3.31 sec
+        Start  82: history_contract
+ 15/114 Test  #17: x11_core_clipboard ......................   Passed   17.61 sec
+        Start  39: gui_editor_window
+ 16/114 Test  #82: history_contract ........................   Passed    2.52 sec
+        Start  98: diagnostics_upload_contract
+ 17/114 Test  #94: recording_helper_integration ............   Passed   11.81 sec
+        Start  70: s3_delete_integration
+ 18/114 Test  #98: diagnostics_upload_contract .............   Passed    1.55 sec
+        Start 106: local_ipc_contract
+ 19/114 Test  #76: s3_worker_supervision ...................   Passed   47.94 sec
+        Start  97: crash_handler_contract
+ 20/114 Test  #72: s3_integration ..........................   Passed   14.05 sec
+        Start  91: gnome_core_transport_integration
+ 21/114 Test  #37: session_client_integration ..............   Passed   16.68 sec
+        Start 114: b2_integration
+ 22/114 Test  #31: ui_process_integration ..................   Passed   14.78 sec
+        Start  95: settings_contract
+ 23/114 Test #102: gui_history_view ........................   Passed   58.13 sec
+        Start  12: kde_region_control
+ 24/114 Test  #70: s3_delete_integration ...................   Passed   12.51 sec
+        Start   4: export_av_sync_contract
+ 25/114 Test  #10: gui_review_window .......................   Passed   20.86 sec
+        Start 113: proton_transport
+ 26/114 Test  #97: crash_handler_contract ..................   Passed   11.59 sec
+        Start  26: kde_ownership_integration
+ 27/114 Test #106: local_ipc_contract ......................   Passed   13.08 sec
+        Start  88: storage_locations_integration
+ 28/114 Test  #88: storage_locations_integration ...........   Passed    0.67 sec
+        Start  16: capture_process_integration
+ 29/114 Test   #4: export_av_sync_contract .................   Passed    4.95 sec
+        Start  21: version_contract
+ 30/114 Test  #91: gnome_core_transport_integration ........   Passed   11.95 sec
+        Start 110: native_region_overlay
+ 31/114 Test  #95: settings_contract .......................   Passed    9.71 sec
+        Start   1: recording_storage_integration
+ 32/114 Test #114: b2_integration ..........................   Passed   10.58 sec
+        Start  99: diagnostics_bundle_contract
+ 33/114 Test  #39: gui_editor_window .......................   Passed   21.77 sec
+        Start 111: capture_preparation_x11
+ 34/114 Test  #12: kde_region_control ......................   Passed    9.23 sec
+        Start  23: kde_shortcuts_integration
+ 35/114 Test  #26: kde_ownership_integration ...............   Passed    8.26 sec
+        Start  33: editor_job_integration
+ 36/114 Test  #99: diagnostics_bundle_contract .............   Passed    3.54 sec
+        Start  64: host_open_integration
+ 37/114 Test #113: proton_transport ........................   Passed    9.72 sec
+        Start  96: logging_contract
+ 38/114 Test  #96: logging_contract ........................   Passed    0.44 sec
+        Start  29: poster_job_integration
+ 39/114 Test  #16: capture_process_integration .............   Passed    8.63 sec
+        Start  58: resident_retire_integration
+ 40/114 Test  #61: native_background_startup_integration ...   Passed   70.72 sec
+        Start  65: ui_native_lifecycle_integration
+ 41/114 Test  #21: version_contract ........................   Passed    7.38 sec
+        Start  35: ui_endpoints_integration
+ 42/114 Test #111: capture_preparation_x11 .................   Passed    5.56 sec
+        Start  28: image_job_integration
+ 43/114 Test  #35: ui_endpoints_integration ................   Passed    0.38 sec
+        Start  62: file_dialog_integration
+ 44/114 Test   #1: recording_storage_integration ...........   Passed    6.60 sec
+        Start 108: region_selection_contract
+ 45/114 Test  #29: poster_job_integration ..................   Passed    3.09 sec
+        Start  32: editor_contract
+ 46/114 Test  #23: kde_shortcuts_integration ...............   Passed    5.06 sec
+        Start  30: ui_split_services_integration
+ 47/114 Test  #62: file_dialog_integration .................   Passed    1.24 sec
+        Start 105: resident_session_contract
+ 48/114 Test  #64: host_open_integration ...................   Passed    3.85 sec
+        Start  57: native_shortcut_rejection_integration
+ 49/114 Test  #30: ui_split_services_integration ...........   Passed    0.42 sec
+        Start  60: gui_theme_cinnamon_dconf
+ 50/114 Test  #65: ui_native_lifecycle_integration .........   Passed    2.18 sec
+        Start  44: gui_version
+ 51/114 Test  #33: editor_job_integration ..................   Passed    5.35 sec
+        Start  50: update_appimage_install_child
+ 52/114 Test  #50: update_appimage_install_child ...........   Passed    0.07 sec
+        Start  87: config_reload_integration
+ 53/114 Test  #57: native_shortcut_rejection_integration ...   Passed    0.72 sec
+        Start  59: resident_display_loss_integration
+ 54/114 Test  #58: resident_retire_integration .............   Passed    3.51 sec
+        Start  36: ui_control_integration
+ 55/114 Test  #28: image_job_integration ...................   Passed    2.62 sec
+        Start  18: x11_clipboard_import
+ 56/114 Test #108: region_selection_contract ...............   Passed    2.04 sec
+        Start 104: login_startup_contract
+ 57/114 Test #104: login_startup_contract ..................   Passed    0.01 sec
+        Start   5: poster_contract
+ 58/114 Test  #32: editor_contract .........................   Passed    1.49 sec
+        Start  48: update_appimage_install_files
+ 59/114 Test  #87: config_reload_integration ...............   Passed    0.62 sec
+        Start  54: geometry_contract
+ 60/114 Test  #48: update_appimage_install_files ...........   Passed    0.01 sec
+        Start  79: payload_contract
+ 61/114 Test  #79: payload_contract ........................   Passed    0.05 sec
+        Start  42: gui_theme
+ 62/114 Test  #59: resident_display_loss_integration .......   Passed    0.64 sec
+        Start 100: json_ref_lifetime_contract
+ 63/114 Test   #5: poster_contract .........................   Passed    0.36 sec
+        Start  78: sdk_contract
+ 64/114 Test #105: resident_session_contract ...............   Passed    1.71 sec
+        Start  41: gui_window_buttons
+ 65/114 Test  #78: sdk_contract ............................   Passed    0.21 sec
+        Start  38: version_integration
+ 66/114 Test  #18: x11_clipboard_import ....................   Passed    0.62 sec
+        Start  19: x11_capture_decode
+ 67/114 Test  #38: version_integration .....................   Passed    0.04 sec
+        Start  92: kwin_transfer_contract
+ 68/114 Test  #54: geometry_contract .......................   Passed    0.44 sec
+        Start   9: bar_placement_single_monitor_contract
+ 69/114 Test  #60: gui_theme_cinnamon_dconf ................   Passed    1.47 sec
+        Start  77: s3_worker_protocol
+ 70/114 Test   #9: bar_placement_single_monitor_contract ...   Passed    0.06 sec
+        Start  84: recording_model_contract
+ 71/114 Test  #84: recording_model_contract ................   Passed    0.01 sec
+        Start  27: kde_clipboard_import
+ 72/114 Test  #41: gui_window_buttons ......................   Passed    0.18 sec
+        Start  63: file_dialog_x11_parent
+ 73/114 Test  #36: ui_control_integration ..................   Passed    0.92 sec
+        Start   8: bar_placement_contract
+ 74/114 Test  #77: s3_worker_protocol ......................   Passed    0.08 sec
+        Start  89: gnome_image_decode
+ 75/114 Test  #92: kwin_transfer_contract ..................   Passed    0.17 sec
+        Start  68: keychain_integration
+ 76/114 Test   #8: bar_placement_contract ..................   Passed    0.07 sec
+        Start  20: x11_native_snapshot
+ 77/114 Test  #19: x11_capture_decode ......................   Passed    0.19 sec
+        Start  55: allocator_policy_contract
+ 78/114 Test  #27: kde_clipboard_import ....................   Passed    0.11 sec
+        Start  75: build_contract
+ 79/114 Test  #63: file_dialog_x11_parent ..................   Passed    0.11 sec
+        Start  67: keychain_backend_integration
+ 80/114 Test  #89: gnome_image_decode ......................   Passed    0.06 sec
+        Start  52: host_environment_contract
+ 81/114 Test  #20: x11_native_snapshot .....................   Passed    0.04 sec
+        Start  81: upload_naming_contract
+ 82/114 Test  #55: allocator_policy_contract ...............   Passed    0.04 sec
+        Start 109: kde_region_overlay
+ 83/114 Test  #67: keychain_backend_integration ............   Passed    0.01 sec
+        Start  80: archive_contract
+ 84/114 Test  #80: archive_contract ........................   Passed    0.00 sec
+        Start  11: record_identity_contract
+ 85/114 Test  #11: record_identity_contract ................   Passed    0.01 sec
+        Start  47: update_check_request
+ 86/114 Test  #75: build_contract ..........................   Passed    0.05 sec
+        Start  90: gnome_bridge_contract
+ 87/114 Test  #81: upload_naming_contract ..................   Passed    0.04 sec
+        Start 107: ip_address_contract
+ 88/114 Test  #47: update_check_request ....................   Passed    0.02 sec
+        Start   2: portal_streams_contract
+ 89/114 Test  #68: keychain_integration ....................   Passed    0.11 sec
+        Start  24: kde_keyboard_map
+ 90/114 Test   #2: portal_streams_contract .................   Passed    0.01 sec
+        Start  45: release_link_contract
+ 91/114 Test #109: kde_region_overlay ......................   Passed    0.05 sec
+        Start  53: update_system_repository
+ 92/114 Test  #45: release_link_contract ...................   Passed    0.00 sec
+        Start  46: update_feed_contract
+ 93/114 Test  #52: host_environment_contract ...............   Passed    0.06 sec
+        Start  22: kde_shortcut_normalization
+ 94/114 Test #107: ip_address_contract .....................   Passed    0.02 sec
+        Start   7: record_runtime_contract
+ 95/114 Test  #90: gnome_bridge_contract ...................   Passed    0.02 sec
+ 96/114 Test  #53: update_system_repository ................   Passed    0.01 sec
+ 97/114 Test  #46: update_feed_contract ....................   Passed    0.01 sec
+        Start  49: update_minisign_verify
+        Start   6: pause_timeline_contract
+        Start   3: wayland_acquisition_contract
+ 98/114 Test  #24: kde_keyboard_map ........................   Passed    0.02 sec
+ 99/114 Test  #22: kde_shortcut_normalization ..............   Passed    0.01 sec
+100/114 Test   #7: record_runtime_contract .................   Passed    0.01 sec
+        Start  13: native_session_guards
+        Start  56: x11_raw_key_matcher
+        Start  74: public_url
+101/114 Test   #6: pause_timeline_contract .................   Passed    0.01 sec
+102/114 Test   #3: wayland_acquisition_contract ............   Passed    0.00 sec
+103/114 Test  #13: native_session_guards ...................   Passed    0.00 sec
+        Start  15: capture_control_integration
+        Start  25: shortcut_keyboard
+104/114 Test  #49: update_minisign_verify ..................   Passed    0.01 sec
+105/114 Test  #56: x11_raw_key_matcher .....................   Passed    0.01 sec
+106/114 Test  #74: public_url ..............................   Passed    0.01 sec
+107/114 Test  #15: capture_control_integration .............   Passed    0.00 sec
+108/114 Test  #25: shortcut_keyboard .......................   Passed    0.00 sec
+109/114 Test #100: json_ref_lifetime_contract ..............   Passed    0.67 sec
+110/114 Test  #42: gui_theme ...............................   Passed    0.78 sec
+111/114 Test  #44: gui_version .............................   Passed    2.16 sec
+112/114 Test  #83: operations_contract .....................   Passed   75.17 sec
+113/114 Test #110: native_region_overlay ...................   Passed   11.16 sec
+114/114 Test #101: gui_settings ............................   Passed  122.77 sec
+
+100% tests passed, 0 tests failed out of 114
+
+Label Time Summary:
+integration    = 933.08 sec*proc (83 tests)
+unit           =  11.53 sec*proc (31 tests)
+
+Total Test time (real) = 122.78 sec
+ctest_retry: 114 tests, 0 failed first, 0 passed on retry, 0 failed

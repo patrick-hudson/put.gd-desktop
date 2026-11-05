@@ -26,6 +26,7 @@ public:
     static QJsonObject defaults() { return Settings::defaults(); }
 signals:
     void accepted(const QString& revision);
+    // The accepted settings or metadata() changed; an identical rescan stays silent.
     void statusChanged();
 private:
     Result acceptLoaded(const QJsonObject&, const QString&, const Error&, quint64 sequence);

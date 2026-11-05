@@ -1,0 +1,61 @@
+{
+  "frames": {
+    "frames/outcomes.edit_upload/00-before.png": {
+      "sha256": "3bafd15bfc5539c4b16a52bb94ca2a085b0acff91662d9e5abc0f653069aa202",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [],
+      "fallback": false,
+      "guard": "local-secret-fields-only",
+      "visible_pixels": true
+    },
+    "frames/outcomes.edit_upload/01-before.png": {
+      "sha256": "ec01ab09383e145204a00b7b19830ce08098a09dcb6a749be80c73269f9303f7",
+      "size": [
+        900,
+        620
+      ],
+      "regions": [],
+      "fallback": false,
+      "guard": "local-secret-fields-only",
+      "visible_pixels": true
+    },
+    "frames/outcomes.edit_upload/02-four-marks-before-upload.png": {
+      "sha256": "ef009c82579782aa7e3919b96292c5d100ce115991ccf263eb36a443cfccd0b9",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [],
+      "fallback": false,
+      "guard": "local-secret-fields-only",
+      "visible_pixels": true,
+      "desktop_safe": "Disposable guest: synthetic moving pattern, selectors and recording controls; isolated loopback publications only; no live account or credentials"
+    },
+    "frames/outcomes.edit_upload/03-publication-result.png": {
+      "sha256": "066cb9b1dc52f70f9d521b44dddd36aed058195fefd9a1bedd45f2b30d7c9cfa",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [],
+      "fallback": false,
+      "guard": "local-secret-fields-only",
+      "visible_pixels": true,
+      "desktop_safe": "Disposable guest: synthetic moving pattern, selectors and recording controls; isolated loopback publications only; no live account or credentials"
+    },
+    "frames/outcomes.edit_upload/04-after.png": {
+      "sha256": "233da1ab87d312f332f5df487fdff12c74b31be9c4f78d7b2e0e566d7dfe7d0b",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [],
+      "fallback": false,
+      "guard": "local-secret-fields-only",
+      "visible_pixels": true
+    }
+  }
+}

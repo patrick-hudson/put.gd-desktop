@@ -1,0 +1,148 @@
+{
+  "artifact": "ubuntu24.04",
+  "buildSeconds": 1948.304,
+  "ciDifferences": [
+    "Cold isolated Docker build on Boat; no Actions package/SDK/compiler caches or hosted runner preinstalls. No weekly native package snapshot/offline fallback.",
+    "No Actions upload, split debug staging, SBOM, source rebuild, publication or desktop acceptance; only selected build/audit artifacts.",
+    "Untagged development identity for the exact SHA; no release tag supplied.",
+    "PATH prefers distro /usr/bin; compiler cache is private and capped at 256M."
+  ],
+  "cleanup": {
+    "deletedIds": [
+      "bx_8433k57e"
+    ],
+    "finalState": "absent",
+    "name": "putgd-0c329b0692ca-ubuntu24.04-02818a97bfa24edb",
+    "requests": [
+      {
+        "operation": {
+          "attemptCount": 0,
+          "completedAt": null,
+          "expectedBy": null,
+          "id": "bdop_91d88a1fde3f4ca294be703c4d91b917",
+          "kind": "sandbox",
+          "reason": "explicit",
+          "requestedAt": "2026-10-30T04:38:36.151Z",
+          "stage": "removing",
+          "status": "pending",
+          "targetId": "bx_8433k57e"
+        },
+        "sandboxId": "bx_8433k57e"
+      }
+    ],
+    "verification": "boat list --all",
+    "verified": true,
+    "verifiedAt": 1793335118.5221288
+  },
+  "cleanupVerified": true,
+  "collectionBudgetSeconds": 8536.417,
+  "collectionInput": {
+    "bytes": 64925100,
+    "diskAndPressure": [
+      "Filesystem     Type 1024-blocks     Used Available Capacity Mounted on",
+      "/dev/vda1      ext4   153470764 49770008  97405684      34% /home",
+      "some avg10=2.94 avg60=2.94 avg300=3.06 total=536304170",
+      "full avg10=2.85 avg60=2.89 avg300=2.96 total=507748718"
+    ],
+    "files": 9
+  },
+  "collectionPhases": {
+    "packSeconds": 2.692,
+    "probeSeconds": 2.039,
+    "restoreSeconds": 0.228,
+    "transferSeconds": 21.924
+  },
+  "collectionSeconds": 26.956,
+  "collectionTtlCapped": false,
+  "commit": "0c329b0692cadc52f03f91e59c06c5eda760bf04",
+  "containerImage": "ubuntu:24.04@sha256:534baea6a22c03a63003dbc8dbe78fe34bc0d7e595d9a9dc9834884ff530eb55",
+  "files": [
+    {
+      "bytes": 346,
+      "path": "binary-version.json",
+      "sha256": "2bdd9849526215e3d98fd9507cf106bba9f7350645d43a5f0d142ecc6e6af6f5"
+    },
+    {
+      "bytes": 345,
+      "path": "build-info.json",
+      "sha256": "995117a4c65e4caa59e7040ac75b1f98e24caf80a4e1efe4f2ddf48b2b0f06ee"
+    },
+    {
+      "bytes": 256,
+      "path": "cpack.log",
+      "sha256": "838ef6726c867649875fb9a0f073e277ebc28350279260bc93f1c0c9d52d9371"
+    },
+    {
+      "bytes": 154586,
+      "path": "native-audit.json",
+      "sha256": "46e8a5d0e1c840be05d0a5e41347eeff8277f2e6aad47b5fed0528caeae1ed13"
+    },
+    {
+      "bytes": 36637,
+      "path": "packages.txt",
+      "sha256": "dff8032f827d7fb257aa74921d9bf04f901bca9b8a56fdfb6b61a2d3d3dcf789"
+    },
+    {
+      "bytes": 4691072,
+      "path": "putgd-26.1030.2473-dev+g0c329b0692ca-source.tar.gz",
+      "sha256": "ac36e8c4375ab51260ac05d4154a027a0d18ce6a6ae6cff6290600c3e9e810af"
+    },
+    {
+      "bytes": 59933316,
+      "path": "putgd_26.1030.2473~dev+g0c329b0692ca_amd64.deb",
+      "sha256": "fcbd908079036d4c1e3cf0569dd7fa2cb4b695002d3bb87c58de6696f748907d"
+    },
+    {
+      "bytes": 108542,
+      "path": "source-archive.json",
+      "sha256": "f7caff6531f2728dfe283c68a20f92e8e7d3748be9a95a0ebbb768263fa0c768"
+    },
+    {
+      "bytes": 0,
+      "path": "source-status.txt",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "hydrationSeconds": 134.629,
+  "identity": {
+    "baseVersion": "26.1030.2473",
+    "commitCount": 2473,
+    "dirty": false,
+    "gitCommit": "0c329b0692cadc52f03f91e59c06c5eda760bf04",
+    "gitTree": "038bc7af0456e1698a3e31ebeb9923a225bef876",
+    "packageVersion": "26.1030.2473~dev+g0c329b0692ca",
+    "schemaVersion": 1,
+    "sourceProvenance": "git",
+    "version": "26.1030.2473-dev+g0c329b0692ca"
+  },
+  "name": "putgd-0c329b0692ca-ubuntu24.04-02818a97bfa24edb",
+  "placement": {
+    "createdAt": "2026-10-30T04:03:25.994Z",
+    "hydrated": true,
+    "hydratedAt": "2026-10-30T04:05:38.691Z",
+    "id": "bx_8433k57e",
+    "machineProvider": "baremetal",
+    "memoryGB": 16,
+    "sshEndpoint": "37.187.158.51:19041",
+    "vcpu": 8
+  },
+  "placementReason": "parallel candidate packaging; preserve quiet physical acceptance hosts",
+  "runNonce": "02818a97bfa24edb",
+  "sandboxId": "bx_8433k57e",
+  "snapshot": "putgd-build-base",
+  "startupCleanup": {
+    "deleted": [],
+    "preserved": [],
+    "verified": true
+  },
+  "state": "passed",
+  "totalSeconds": 2113.48,
+  "transport": {
+    "bytes": 64942080,
+    "compression": "none",
+    "kind": "tar",
+    "sha256": "4a0c2f1c8c6d70224f73fccfcce5c84e8808185a259988ea318bc838002d6b9d"
+  },
+  "ttlSeconds": 10800,
+  "type": "large"
+}

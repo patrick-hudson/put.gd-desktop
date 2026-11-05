@@ -1,0 +1,106 @@
+{
+ "label": "before",
+ "at": "2026-10-23T05:51:25Z",
+ "package": {
+  "manager": "dpkg",
+  "status": "ii",
+  "version": "0.1.1~dev.133.20261013004314+gb0ed0461c600"
+ },
+ "config": {
+  "sha256": "fc21ae23fb9c651ec59ad992e50476e915519f2090271659905eee2265b27b62",
+  "bytes": 2672,
+  "mode": "0o664",
+  "mtime": "2026-10-23T05:47:19Z"
+ },
+ "configFiles": {
+  "/home/patrick/.config/putgd/config.json": null,
+  "/home/patrick/.config/putgd/putgd/config.json": {
+   "sha256": "fc21ae23fb9c651ec59ad992e50476e915519f2090271659905eee2265b27b62",
+   "bytes": 2672,
+   "mode": "0o664",
+   "mtime": "2026-10-23T05:47:19Z"
+  }
+ },
+ "dataRoots": {
+  "/home/patrick/.local/share/putgd": [
+   "putgd"
+  ],
+  "/home/patrick/.local/share/putgd/putgd": [
+   "artifacts",
+   "history.sqlite",
+   "previews",
+   "resident.lock"
+  ]
+ },
+ "processes": [
+  {
+   "pid": 1500787,
+   "ppid": 1261,
+   "exe": "/usr/bin/putgd",
+   "comm": "putgd",
+   "cmd": "/usr/bin/putgd --background ",
+   "qtPlatformPlugins": []
+  }
+ ],
+ "history": {
+  "db": "/home/patrick/.local/share/putgd/putgd/history.sqlite",
+  "userVersion": 5,
+  "integrity": "ok",
+  "tables": {
+   "history": 10000,
+   "operations": 5,
+   "deletions": 1,
+   "deletion_targets": 1,
+   "cleared_history": 0,
+   "item_state": 10000
+  },
+  "upload_status": {
+   "failed": 2000,
+   "uploaded": 8000
+  },
+  "local_status": {
+   "saved": 10000
+  },
+  "remote_status": {
+   "not_requested": 8000,
+   "removed": 2000
+  },
+  "itemStateRemote": {
+   "not_requested": 8000,
+   "removed": 2000
+  }
+ },
+ "outputs": {
+  "archive/images/Screen-Capture-2026-10-23-00-47-23.png": "61aafd9a5ada4f97f018224f1a20b58624f2a32777db266f207b69bb12883941",
+  "archive/images/Screen-Capture-2026-10-23-00-47-24-688f4c5a-e894-4f4c-b4f9-c6c891391ed7.png": "61aafd9a5ada4f97f018224f1a20b58624f2a32777db266f207b69bb12883941",
+  "archive/images/Screen-Capture-2026-10-23-00-47-24.png": "61aafd9a5ada4f97f018224f1a20b58624f2a32777db266f207b69bb12883941",
+  "archive/images/Screen-Capture-2026-10-23-00-47-25.png": "61aafd9a5ada4f97f018224f1a20b58624f2a32777db266f207b69bb12883941",
+  "archive/images/Screen-Capture-2026-10-23-00-47-26.png": "61aafd9a5ada4f97f018224f1a20b58624f2a32777db266f207b69bb12883941"
+ },
+ "historyList": {
+  "ok": true,
+  "total": 10000,
+  "seconds": 0.02
+ },
+ "build": {
+  "baseVersion": "0.1.1",
+  "commitCount": 133,
+  "dirty": false,
+  "gitCommit": "b0ed0461c600de74e0a924057a59722f2b1851a3",
+  "gitTree": "7b09bbac32a640cc9dcfa7e223c54a26c5d6e92e",
+  "packageVersion": "0.1.1~dev.133.20261013004314+gb0ed0461c600",
+  "schemaVersion": 1,
+  "sourceProvenance": "git",
+  "version": "0.1.1-dev.133.20261013004314+gb0ed0461c600"
+ },
+ "storage": {
+  "storage": {
+   "s3": {
+    "moduleLiveDrivers": 0,
+    "queuedRequests": 0,
+    "retainedDrivers": 0,
+    "workerStarted": false
+   }
+  }
+ }
+}

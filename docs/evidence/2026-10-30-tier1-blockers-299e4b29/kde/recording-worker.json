@@ -1,0 +1,8 @@
+{
+  "status": "owned by the #822 worker",
+  "issues": [
+    822,
+    950
+  ],
+  "scopeChange": "Coordinator reassigned recording consent; this task does not modify fixtures/consent.py or target.py acquisition/runtime environment."
+}

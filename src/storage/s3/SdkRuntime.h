@@ -14,6 +14,13 @@ public:
     static void ensureInitialized();
     ~SdkRuntime();
     static bool safeDeleteTransport();
+    // AWS SDK log records go to stderr as "putgd-aws<TAB>E|W|I<TAB>tag<TAB>text"
+    // lines, which the resident collects into its log (#74). The level comes
+    // from PUTGD_AWS_LOG_LEVEL: "error", "info" (debug logging) or anything
+    // else for warn. Debug and Trace log request headers, including
+    // authorization data, so no value selects them.
+    enum class LogLevel { Error, Warn, Info };
+    static LogLevel logLevel(const char* value);
     SdkRuntime(const SdkRuntime&) = delete;
     SdkRuntime& operator=(const SdkRuntime&) = delete;
 private:

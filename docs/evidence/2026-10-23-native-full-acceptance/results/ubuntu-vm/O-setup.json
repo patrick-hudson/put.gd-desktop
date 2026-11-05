@@ -1,0 +1,84 @@
+{
+ "setup": true,
+ "validation": {
+  "error": {
+   "code": "",
+   "details": {},
+   "message": ""
+  },
+  "ok": true
+ },
+ "credentials": {
+  "profile": "afa-fixture",
+  "ok": true,
+  "state": "completed",
+  "error": ""
+ },
+ "run": {
+  "name": "O",
+  "appimage": "/usr/bin/putgd",
+  "appdir": "/",
+  "exe": "/usr/bin/putgd",
+  "cli": "/usr/bin/putgd-cli",
+  "profile": "private",
+  "runtime": "/tmp/nfa.FaTwa7",
+  "session": {
+   "HOME": "/home/lab",
+   "PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin",
+   "USER": "lab",
+   "LANG": "en_US.UTF-8",
+   "DBUS_SESSION_BUS_ADDRESS": "unix:path=/run/user/1000/bus",
+   "XDG_SESSION_TYPE": "wayland",
+   "XDG_CURRENT_DESKTOP": "ubuntu:GNOME",
+   "XDG_SESSION_DESKTOP": "ubuntu",
+   "DESKTOP_SESSION": "ubuntu",
+   "XDG_DATA_DIRS": "/usr/share/ubuntu:/usr/share/gnome:/usr/local/share/:/usr/share/:/var/lib/snapd/desktop",
+   "WAYLAND_DISPLAY": "/run/user/1000/wayland-0",
+   "DISPLAY": ":0",
+   "XAUTHORITY": "/run/user/1000/.mutter-Xwaylandauth.HXPLX3"
+  },
+  "shell": "gnome-shell",
+  "host": "putgd-ubuntu-lab",
+  "vnc": 5922,
+  "input": "vnc",
+  "before": {
+   "homePaths": {
+    "/home/lab/.config/putgd": null,
+    "/home/lab/.local/state/putgd": null,
+    "/home/lab/.cache/putgd": null,
+    "/home/lab/.local/share/putgd": null
+   },
+   "applications": [],
+   "autostart": false,
+   "defaultProfile": {
+    "/home/lab/.config/putgd": false,
+    "/home/lab/.local/state/putgd": false,
+    "/home/lab/.cache/putgd": false,
+    "/home/lab/.local/share/putgd": false
+   }
+  },
+  "pids": {
+   "fixture": 2892,
+   "apprun": 2894
+  },
+  "created": "2026-10-23T05:15:34Z",
+  "package": {
+   "manager": "dpkg",
+   "status": "ii",
+   "version": "26.1023.1058~nightly"
+  },
+  "systemFilesAdded": [],
+  "credentialsMode": "keychain",
+  "port": 40797,
+  "units": [
+   "putgd-nfa-O-setup-1792732535"
+  ],
+  "configPath": "/home/lab/work/put.gd-nfa/runs/O/config/putgd/config.json",
+  "credentialsStored": {
+   "profile": "afa-fixture",
+   "ok": true,
+   "state": "completed",
+   "error": ""
+  }
+ }
+}

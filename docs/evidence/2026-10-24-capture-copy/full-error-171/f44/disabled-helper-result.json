@@ -1,0 +1,29 @@
+{
+  "action": "window",
+  "cancelled": false,
+  "clipboardRevision": "0",
+  "copyStatus": "no_result",
+  "created": "2026-10-24T03:16:49.154Z",
+  "destination": {
+    "credentials": {},
+    "profileId": "",
+    "profileRevision": "",
+    "providerId": "",
+    "settings": {}
+  },
+  "error": {
+    "code": "helper_unavailable",
+    "details": {
+      "dbusError": "org.freedesktop.DBus.Error.UnknownMethod",
+      "helperEndpointMissing": true
+    },
+    "message": "GNOME capture needs the put.gd Shell extension. If it is missing, install the matching put.gd package or extension; after a new installation, log out and back in first. Then run: gnome-extensions enable putgd@put.gd"
+  },
+  "id": "576a2e6c-9e97-4ff9-90d4-203b288a9da0",
+  "invocation": "1",
+  "items": [],
+  "phase": "failed",
+  "requestTimeoutMs": null,
+  "settingsRevision": "c8b208837e3bc089d3e803d0bcdc8440c83ef5ce9ec2cfad0ef5ad85faea6858",
+  "state": "failed"
+}

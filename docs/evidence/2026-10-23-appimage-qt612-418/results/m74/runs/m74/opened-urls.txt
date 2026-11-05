@@ -1,0 +1,1 @@
+2026-10-23T18:46:01Z http://127.0.0.1:42775/fixture/afa/Screen-Capture-2026-10-23-13-45-57.png lib=unset plugins=unset appdir=unset parent=systemd

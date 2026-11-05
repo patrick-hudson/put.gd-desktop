@@ -1,0 +1,13 @@
+{
+  "shown": {
+    "view": "settings",
+    "uiPid": 6097,
+    "wallTime": 1793369057.4915338
+  },
+  "screenshot": {
+    "path": "/home/user/lab-driver/work/lab-runs/s840g2/gnome-review-after-head0.ppm",
+    "sha256": "f89966d0adf75984b4af86105afcef9039735deca439658e631e260f6ea6fbcd"
+  },
+  "capturedAtUtc": "2026-10-30T14:04:22.507892+00:00",
+  "runId": "c15e608c-ac1e-4269-abca-76971da0fdce"
+}

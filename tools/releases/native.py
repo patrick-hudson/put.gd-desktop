@@ -11,6 +11,7 @@ import stat
 import subprocess
 import tarfile
 
+from audit_file_manager_plugins import audit_plugins
 from audit_native import audit_tree, command, sha256
 
 
@@ -28,11 +29,14 @@ def package_metadata(package: Path, kind: str) -> dict:
         return {"format": "DEB", "name": command(["dpkg-deb", "-f", str(package), "Package"]),
                 "version": command(["dpkg-deb", "-f", str(package), "Version"]),
                 "architecture": command(["dpkg-deb", "-f", str(package), "Architecture"]),
-                "requires": command(["dpkg-deb", "-f", str(package), "Depends"])}
+                "requires": command(["dpkg-deb", "-f", str(package), "Depends"]),
+                "recommends": command(["dpkg-deb", "-f", str(package), "Recommends"])}
     listing = command(["rpm", "-qp", "--qf",
-                       "[%{FILENAMES}\t%{FILEMODES:octal}\t%{FILEUSERNAME}\t%{FILEGROUPNAME}\n]", str(package)])
+                       "[%{FILENAMES}\t%{FILEMODES:octal}\t%{FILEUSERNAME}\t%{FILEGROUPNAME}\t%{FILEFLAGS:fflags}\t.\n]", str(package)])
     for line in listing.splitlines():
-        name, mode, user, group = line.split("\t")
+        name, mode, user, group, flags, sentinel = line.split("\t")
+        if name.startswith("/usr/share/doc/putgd/") and not name.endswith("changelog.gz") and not stat.S_ISDIR(int(mode, 8)) and "l" not in flags:
+            raise ValueError(f"RPM notice is not marked %license: {name}")
         if user != "root" or group != "root":
             raise ValueError(f"RPM entry is not root-owned: {name}")
         bits = int(mode, 8)
@@ -46,7 +50,23 @@ def package_metadata(package: Path, kind: str) -> dict:
             "version": command(["rpm", "-qp", "--qf", "%{VERSION}", str(package)]),
             "release": command(["rpm", "-qp", "--qf", "%{RELEASE}", str(package)]),
             "architecture": command(["rpm", "-qp", "--qf", "%{ARCH}", str(package)]),
-            "requires": requires, "provides": provides}
+            "requires": requires, "provides": provides,
+            "recommends": command(["rpm", "-qp", "--recommends", str(package)]).splitlines()}
+
+
+# Qt loads image plugins by name, so neither dpkg-shlibdeps nor RPM's
+# dependency generator sees them: History reads WebP recordings and images
+# through the WebP plugin (#189), which the distros package apart from Qt GUI.
+RUNTIME_PACKAGES = {"DEB": ("qt6-image-formats-plugins",), "RPM": ("qt6-qtimageformats",)}
+
+
+def require_runtime_packages(metadata: dict) -> None:
+    requires = metadata["requires"]
+    entries = requires.split(",") if isinstance(requires, str) else requires
+    names = {alternative.split()[0] for entry in entries for alternative in entry.split("|") if alternative.strip()}
+    missing = [name for name in RUNTIME_PACKAGES[metadata["format"]] if name not in names]
+    if missing:
+        raise ValueError(metadata["format"] + " does not require " + ", ".join(missing))
 
 
 def extract_package(package: Path, kind: str, root: Path):
@@ -73,6 +93,7 @@ def main():
     parser.add_argument("--require-kde", action="store_true")
     parser.add_argument("--require-proton", action="store_true")
     parser.add_argument("--proton-manifest", type=Path, help="Expected provisioned Proton runtime manifest")
+    parser.add_argument("--package-target", help="Expected PUTGD_PACKAGE_TARGET, such as debian13 (#293)")
     args = parser.parse_args()
     build = args.build.resolve()
     output = args.output.resolve()
@@ -92,13 +113,17 @@ def main():
             raise ValueError(f"Expected one native package, found {len(packages)}")
         package = packages[0]
         metadata = package_metadata(package, args.format)
+        require_runtime_packages(metadata)
         if metadata["name"] != "putgd" or metadata["version"] != expected["packageVersion"]:
             raise ValueError("Native package name/version differs from compiled build manifest")
         extracted = output / "extracted"
         extract_package(package, args.format, extracted)
         proton_expected = json.loads(args.proton_manifest.read_text()) if args.proton_manifest else None
         result = audit_tree(extracted, expected, require_kde=args.require_kde,
-                            require_proton=args.require_proton, expected_proton_manifest=proton_expected)
+                            require_proton=args.require_proton, expected_proton_manifest=proton_expected,
+                            package_target=args.package_target)
+        result["fileManagerPlugins"] = audit_plugins(extracted, build, package_target=args.package_target,
+                                                     package=package, metadata=metadata)
         package_digest = sha256(package)
         result["package"] = {**metadata, "file": package.name, "sha256": package_digest, "size": package.stat().st_size}
         (output / "native-audit.json").write_text(json.dumps(result, indent=2) + "\n")

@@ -1,0 +1,163 @@
+{
+  "frames": {
+    "frames/__main__.finish/00-before.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "frames/__main__.finish/01-browser-content.png": {
+      "sha256": "e6ff66e8f12bdbe81832dc43529cbcb545268f08888b62d5cce8634251c729ae",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          760,
+          0,
+          520,
+          400
+        ],
+        [
+          760,
+          400,
+          520,
+          400
+        ],
+        [
+          0,
+          0,
+          1280,
+          752
+        ]
+      ],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true,
+      "desktop_safe": "private Firefox kiosk without address bar owns the verified foreground"
+    },
+    "frames/__main__.finish/02-history-before-remote-cleanup.png": {
+      "sha256": "469e89dbd7120f2c983f5fbc179dc4e564d27a7ca4587c6d48797254d7fdf5fa",
+      "size": [
+        1280,
+        760
+      ],
+      "regions": [
+        [
+          760,
+          0,
+          520,
+          400
+        ],
+        [
+          760,
+          400,
+          520,
+          360
+        ],
+        [
+          922,
+          289,
+          227,
+          28
+        ],
+        [
+          620,
+          122,
+          304,
+          40
+        ]
+      ],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true
+    },
+    "frames/__main__.finish/03-revoke-exact-owned-link.png": {
+      "sha256": "515a2dcd3e7e24972a668e19bf519ce2f65ad5e5760bb307a56e561755d09d76",
+      "size": [
+        468,
+        153
+      ],
+      "regions": [
+        [
+          380,
+          0,
+          88,
+          145
+        ],
+        [
+          380,
+          145,
+          88,
+          8
+        ]
+      ],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true
+    },
+    "frames/__main__.finish/04-history-after-remote-cleanup.png": {
+      "sha256": "78bcea22463580ea5cf270696ce58a83b0ac80e155008824c1858b6c7ff9dbfd",
+      "size": [
+        1280,
+        760
+      ],
+      "regions": [
+        [
+          760,
+          0,
+          520,
+          400
+        ],
+        [
+          760,
+          400,
+          520,
+          360
+        ],
+        [
+          620,
+          122,
+          304,
+          40
+        ]
+      ],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true
+    },
+    "frames/__main__.finish/05-after.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    }
+  }
+}

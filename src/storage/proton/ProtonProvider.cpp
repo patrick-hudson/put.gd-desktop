@@ -1,11 +1,15 @@
 #include "OutputBudget.h"
 #include "ProtonProvider.h"
+#include "core/HostEnvironment.h"
+#include "core/ByteSize.h"
 #include <QCoreApplication>
 #include <QCryptographicHash>
+#include <QDateTime>
 #include <QDir>
 #include <QFile>
 #include <QJsonDocument>
 #include <QJsonArray>
+#include <QLocale>
 #include <QProcess>
 #include <QProcessEnvironment>
 #include <QRegularExpression>
@@ -39,6 +43,11 @@ bool runtimeVerified() {
    && hash.addData(&file) && hash.result().toHex()==QByteArray(PUTGD_PROTON_RUNTIME_SHA512);
 }
 }
+QProcessEnvironment ProtonProvider::helperEnvironment(const QProcessEnvironment& host,const QString& dataDirectory) {
+ auto env=host;for(const auto& key:env.keys())if(key.startsWith("PROTON_DRIVE_")||key.startsWith("PUTGD_PROTON_"))env.remove(key);
+ env.insert("PUTGD_PROTON_DATA_DIR",dataDirectory);
+ return env;
+}
 QJsonObject ProtonProvider::defaults() {
  return {{"accountRootUid",""},{"folderUid",""},{"shareByDefault",true},{"linkExpirationDays",0},
   {"sharePasswordReference",QJsonValue::Null},{"requestTimeoutMs",120000}};
@@ -51,6 +60,11 @@ std::optional<int> ProtonProvider::retryRequestTimeout(const Destination& accept
 }
 ProviderCapabilities ProtonProvider::capabilities(const Destination&) const {
  ProviderCapabilities caps;caps.conditionalCreate=true;caps.stat=true;caps.urls=true;caps.maximumNameBytes=255;caps.sharing=true;caps.privateUploads=true;
+ // The pinned Drive SDK (0.22.2) streams 4 MiB encrypted blocks and sets no file
+ // size limit of its own. Proton enforces plan limits server-side (error 200003,
+ // MAX_FILE_SIZE_FOR_FREE_USER, reported as destination_file_too_large_for_plan),
+ // so none is declared.
+ caps.maximumObjectBytes=0;
  caps.deletionEffect="Safe remote deletion is unavailable: Proton does not expose an atomic revision-guarded file deletion. Revoke share links separately.";return caps;
 }
 QString ProtonProvider::defaultPublicationMode(const Destination& destination) const {return destination.settings["shareByDefault"].toBool(true)?"share":"private";}
@@ -111,9 +125,7 @@ QJsonObject ProtonProvider::call(const QString& method,const Destination& destin
  if(!privateRoot.isValid()){error={"proton_private_storage","Private helper storage is unavailable",{}};return {};}
  QFile::setPermissions(privateRoot.path(),QFile::ReadOwner|QFile::WriteOwner|QFile::ExeOwner);
  params["schemaVersion"]=1;params["method"]=method;params["destination"]=destination.toJson();
- auto env=QProcessEnvironment::systemEnvironment();for(const auto& key:env.keys())if(key.startsWith("PROTON_DRIVE_")||key.startsWith("PUTGD_PROTON_"))env.remove(key);
- env.insert("PUTGD_PROTON_DATA_DIR",privateRoot.path());
- QProcess process;process.setProcessEnvironment(env);process.setProcessChannelMode(QProcess::SeparateChannels);
+ QProcess process;process.setProcessEnvironment(helperEnvironment(host::environment(),privateRoot.path()));process.setProcessChannelMode(QProcess::SeparateChannels);
  ++active_;struct Release{std::atomic_int& count;~Release(){--count;}} release{active_};
  process.start(runtimePath(),{"--stdio"});
  if(!process.waitForStarted(5000)){error={"proton_runtime_start","The bundled Proton runtime could not start",{}};return {};}
@@ -127,6 +139,8 @@ QJsonObject ProtonProvider::call(const QString& method,const Destination& destin
  QElapsedTimer elapsed;elapsed.start();QByteArray pending;QJsonObject final;bool gotResult=false,gotAuth=false;ProtonOutputBudget outputBudget;
  const int timeout=method=="connect"?600000:params["requestTimeoutMs"].toInt(destination.settings["requestTimeoutMs"].toInt(120000));
  const auto consume=[&]{
+  // The first violation decides the outcome; output left after a kill is not parsed.
+  if(error)return;
   process.readAllStandardError();process.setReadChannel(QProcess::StandardOutput);auto chunk=process.read(ProtonOutputBudget::MaximumBurstBytes+1);pending+=chunk;
   if(pending.size()>ProtonOutputBudget::MaximumBurstBytes||!outputBudget.consume(chunk.size(),elapsed.elapsed())){error={"proton_protocol","Helper response exceeded its bound",{}};return;}
   while(pending.contains('\n')){
@@ -162,11 +176,17 @@ QJsonObject ProtonProvider::call(const QString& method,const Destination& destin
  }
  return final["result"].toObject();
 }
-void ProtonProvider::checkName(const Destination& d,const QString& name,std::function<void(NameCheck)> reply){Error e;auto r=call("checkName",d,{{"candidate",name}},e);reply({e?"inconclusive":r["status"].toString("inconclusive"),r["objectReference"].toObject(),r["concurrencyToken"].toString(),e?e:parseError(r["error"].toObject())});}
+void ProtonProvider::checkName(const Destination& d,const QString& name,std::function<void(NameCheck)> reply,std::shared_ptr<std::atomic_bool> cancellation){Error e;auto r=call("checkName",d,{{"candidate",name}},e,cancellation);reply({e?"inconclusive":r["status"].toString("inconclusive"),r["objectReference"].toObject(),r["concurrencyToken"].toString(),e?e:parseError(r["error"].toObject())});}
 void ProtonProvider::upload(const UploadRequest& req,std::function<void(UploadResult)> reply){
  if(req.condition!="absent"){reply({"failed",{}, {"unsupported_capability","Proton cannot safely replace a recorded file revision",{}}});return;}
  Error e;bool uncertain=false;auto r=call("upload",req.destination,{{"requestTimeoutMs",req.requestTimeoutMs?QJsonValue(*req.requestTimeoutMs):QJsonValue(req.destination.settings["requestTimeoutMs"])},{"artifact",req.artifact.toJson()},{"candidate",req.candidate},{"publicationId",req.publicationId},{"condition",req.condition},{"objectReference",req.objectReference},{"concurrencyToken",req.concurrencyToken}},e,req.cancellation,{},&uncertain,req.progress);
- reply({e?(uncertain?"unknown":"failed"):r["status"].toString("unknown"),StorageReceipt::fromJson(r["receipt"].toObject()),e?e:parseError(r["error"].toObject())});
+ auto error=e?e:parseError(r["error"].toObject());
+ // The plan's per-file limit is Proton's own (#147): name the file's size beside it.
+ if(error.code=="destination_file_too_large_for_plan"){
+  error.message=QStringLiteral("Proton refused this %1 file: it is larger than your Proton plan allows for a single file. Upload a smaller file, or upgrade the Proton plan, then Retry.").arg(ByteSize::localized(req.artifact.bytes,1,QLocale::c()));
+  error.details["bytes"]=double(req.artifact.bytes);
+ }
+ reply({e?(uncertain?"unknown":"failed"):r["status"].toString("unknown"),StorageReceipt::fromJson(r["receipt"].toObject()),error});
 }
 void ProtonProvider::stat(const StorageReceipt& receipt,std::function<void(StatResult)> reply){Error e;auto r=call("stat",receipt.destination,{{"receipt",receipt.toJson()}},e);reply({e?"unknown":r["status"].toString("unknown"),StorageReceipt::fromJson(r["receipt"].toObject()),e?e:parseError(r["error"].toObject())});}
 void ProtonProvider::reconcile(const UploadRequest& req,std::function<void(StatResult)> reply){Error e;auto r=call("reconcile",req.destination,{{"requestTimeoutMs",req.requestTimeoutMs?QJsonValue(*req.requestTimeoutMs):QJsonValue(req.destination.settings["requestTimeoutMs"])},{"artifact",req.artifact.toJson()},{"candidate",req.candidate},{"publicationId",req.publicationId},{"objectReference",req.objectReference}},e,req.cancellation);reply({e?"unknown":r["status"].toString("unknown"),StorageReceipt::fromJson(r["receipt"].toObject()),e?e:parseError(r["error"].toObject())});}
@@ -180,7 +200,10 @@ void ProtonProvider::share(const ShareRequest& req,DurableCheckpoint checkpoint,
  auto options=req.options;options["action"]=req.action;Error e;bool uncertain=false;auto r=call("share",req.receipt.destination,{{"receipt",req.receipt.toJson()},{"options",options}},e,req.cancellation,{},&uncertain);
  auto receipt=r.contains("receipt")?StorageReceipt::fromJson(r["receipt"].toObject()):req.receipt;
  if(e)receipt.directUrl.clear();
- reply({e?(uncertain?"unknown":"failed"):r["status"].toString("unknown"),receipt,r["progress"].toObject(),e?e:parseError(r["error"].toObject())});
+ ShareResult result{e?(uncertain?"unknown":"failed"):r["status"].toString("unknown"),receipt,r["progress"].toObject(),e?e:parseError(r["error"].toObject())};
+ const auto expires=QDateTime::fromString(r.value("expiresAt").toString(),Qt::ISODateWithMs);
+ if(!e&&expires.isValid())result.expiresAt=expires.toUTC().toString(Qt::ISODateWithMs);
+ reply(result);
 }
 QJsonObject ProtonProvider::setup(const QString& method,const Destination& d,const QJsonObject& input,Error& e,SetupEvent event){
  if(method!="testDestination")return call(method,d,{{"options",input}},e,{},std::move(event));

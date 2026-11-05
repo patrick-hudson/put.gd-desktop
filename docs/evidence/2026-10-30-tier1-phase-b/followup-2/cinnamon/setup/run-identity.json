@@ -1,0 +1,12 @@
+{
+  "id": "947b32ae-3b1f-4707-93c4-a51a546ce3f1",
+  "profile": "cinnamon-x11",
+  "golden": "/home/patrick/work/put.gd/work/lab-images/transfer-7dfa9973258d/image.qcow2",
+  "golden_sha256": "4a21566d5b741e55f349f4f07e1c687c99d1c99b5394ff0d18ed5c9e685693da",
+  "overlay": "/home/patrick/t1b/work/lab-runs/r3c/disk.qcow2",
+  "ssh_port": 22220,
+  "vnc_display": 20,
+  "acceleration": "kvm",
+  "guest_user": "lab",
+  "pid": 3826508
+}

@@ -1,0 +1,10 @@
+=== before retire
+{'lab/releases/v0.1.1-nightly.701/putgd-0.1.1-nightly.701-x86_64.AppImage': 1792619058.0573525, 'lab/releases/v0.1.1-nightly.701/putgd-0.1.1-nightly.701-x86_64.AppImage.zsync': 1792619058.0573525}
+=== retire (delete_after 120 s)
+{"receipt": "/home/patrick/.local/state/putgd-signer/receipts/lab/retire-nightly-1792619193.json", "tag": null, "result": "retired", "error": null}
+lab/releases/v0.1.1-nightly.701/putgd-0.1.1-nightly.701-x86_64.AppImage - no longer tracked - deleted at the origin
+lab/releases/v0.1.1-nightly.702/putgd-0.1.1-nightly.702-x86_64.AppImage - tracked - present at the origin
+lab/releases/v0.1.1-nightly.703/putgd-0.1.1-nightly.703-x86_64.AppImage - tracked - present at the origin
+=== CDN for the retired 701 image (edge cache may still hold it)
+HTTP/2 404 
+x-cache: Error from cloudfront

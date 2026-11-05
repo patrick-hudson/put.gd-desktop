@@ -1,0 +1,17 @@
+Test project /home/patrick/work/i254/build/dev
+    Start  1: recording_storage_integration
+1/4 Test  #1: recording_storage_integration ....   Passed    6.39 sec
+    Start 81: recording_model_contract
+2/4 Test #81: recording_model_contract .........   Passed    0.02 sec
+    Start 91: recording_service_integration
+3/4 Test #91: recording_service_integration ....   Passed    5.10 sec
+    Start 92: recording_helper_integration
+4/4 Test #92: recording_helper_integration .....   Passed   11.08 sec
+
+100% tests passed, 0 tests failed out of 4
+
+Label Time Summary:
+integration    =  22.57 sec*proc (3 tests)
+unit           =   0.02 sec*proc (1 test)
+
+Total Test time (real) =  22.60 sec

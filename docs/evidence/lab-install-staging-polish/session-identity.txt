@@ -1,0 +1,11 @@
+27 1000 lab -     -    active no -
+c1 1000 lab seat0 tty7 active no -
+Id=27
+Desktop=
+Type=tty
+State=active
+Id=c1
+Desktop=cinnamon
+Type=x11
+State=active
+1298 cinnamon --replace

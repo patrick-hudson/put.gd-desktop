@@ -8,6 +8,8 @@
 #include <QVersionNumber>
 #include <QLibrary>
 #include <QProcess>
+#include <QLocalServer>
+#include <QLocalSocket>
 #include <QTemporaryDir>
 #include <QFile>
 #include <QFileInfo>
@@ -20,12 +22,16 @@
 #include <QtEndian>
 #include <xcb/xfixes.h>
 #include <xcb/xcb_keysyms.h>
+#include <xcb/xtest.h>
+#include "platform/x11/CaptureCursorCache.h"
+#include <QJsonArray>
 #include <QJsonDocument>
 #include <QUuid>
 #include <sys/stat.h>
 #include <cstring>
 #include <memory>
 #include <X11/Xcursor/Xcursor.h>
+#include "fixtures/Waits.h"
 #undef None
 #undef CursorShape
 #undef Bool
@@ -35,10 +41,11 @@ namespace {
 struct HelperSession {
  QTemporaryDir directory{"/tmp/putgd-capture-XXXXXX"};
  QString path,nonce=QUuid::createUuid().toString(QUuid::WithoutBraces),failure;
- QFile artifact;QProcess process;CaptureControl control{process};
- bool ready=false;int results=0,cancellations=0,errors=0;QJsonObject result;
+ QFile artifact;QProcess process;CaptureControl control{process};QProcessEnvironment environment=QProcessEnvironment::systemEnvironment();
+ bool ready=false;int results=0,cancellations=0,errors=0,handoffs=0,cursorImages=0;bool observe=false;QJsonObject result,cursorImage;
  ~HelperSession(){if(process.state()!=QProcess::NotRunning){process.kill();process.waitForFinished(2000);}}
  QJsonObject command(const QString& cursor="0")const{return {{"nonce",nonce},{"generation","1"},{"cursor",cursor}};}
+ QJsonObject preview(const QString& cursor="0",const QString& hold="0")const{auto frame=command(cursor);frame["hold"]=hold;return frame;}
  QJsonObject envelope()const{return {{"nonce",nonce},{"generation","1"}};}
  bool start(const QString& action="region"){
   X11NativeSnapshot snapshot;Error error;const auto frozen=snapshot.freeze(action,{},error);if(error){failure=error.code;return false;}
@@ -51,12 +58,14 @@ struct HelperSession {
   QObject::connect(&control,&CaptureControl::frame,&process,[this](const QString& type,const QJsonObject& payload){
    if(payload["nonce"]!=nonce||payload["generation"]!="1"){failure="foreign helper response";return;}
    if(type=="ready")ready=true;
+   if(type=="handoff")++handoffs;
+   if(type=="cursor_image"){++cursorImages;cursorImage=payload;}
    if(type=="result"){++results;result=payload;}
    if(type=="cancelled")++cancellations;
    if(type=="error"){++errors;failure=payload["code"].toString();}
   });
-  process.start(PUTGD_REAL_CAPTURE_HELPER,{});if(!process.waitForStarted())return false;
-  return control.send("bootstrap",{{"build",QJsonDocument::fromJson(buildManifestJson()).object()},{"nonce",nonce},{"generation","1"},{"target",frozen},{"cursor",QJsonObject{{"id","0"},{"cache",false}}},{"path",path},{"device",QString::number(qulonglong(identity.st_dev))},{"inode",QString::number(qulonglong(identity.st_ino))},{"limits",QJsonObject{{"imagePixels",10000000},{"imageBytes",40000000},{"maxFileBytes",40000000}}}});
+  process.setProcessEnvironment(environment);process.start(PUTGD_REAL_CAPTURE_HELPER,{});if(!process.waitForStarted())return false;
+  return control.send("bootstrap",{{"build",QJsonDocument::fromJson(buildManifestJson()).object()},{"nonce",nonce},{"generation","1"},{"target",frozen},{"cursor",QJsonObject{{"id","0"},{"cache",false},{"observe",observe}}},{"path",path},{"device",QString::number(qulonglong(identity.st_dev))},{"inode",QString::number(qulonglong(identity.st_ino))},{"limits",QJsonObject{{"imagePixels",10000000},{"imageBytes",40000000},{"maxFileBytes",40000000}}}});
  }
 };
 QList<xcb_window_t> selectorWindows(xcb_connection_t* connection,qint64 pid){
@@ -110,7 +119,7 @@ private slots:
   X11Capture capture;Error error;const auto target=capture.freeze("region",error);QVERIFY2(!error,qPrintable(error.code));
   int callbacks=0;auto source=std::make_unique<X11SourceAdapter>(nullptr,true);
   source->selectRegionFrozen(target,ResourceLimits{},[&](RegionSelectionResult){++callbacks;});
-  QTRY_VERIFY(!selectorWindows(connection,QCoreApplication::applicationPid()).isEmpty());QTRY_COMPARE(pointerGrabStatus(connection),int(XCB_GRAB_STATUS_ALREADY_GRABBED));
+  PUTGD_TRY_VERIFY(!selectorWindows(connection,QCoreApplication::applicationPid()).isEmpty());PUTGD_TRY_COMPARE(pointerGrabStatus(connection),int(XCB_GRAB_STATUS_ALREADY_GRABBED));
   // Do not run the event loop between cancel and reset: this reproduces helper
   // EOF/rejection exiting before its selector's DeferredDelete is processed.
   source->cancelAcquisition();QCOMPARE(callbacks,0);source.reset();QCOMPARE(callbacks,0);
@@ -133,19 +142,19 @@ private slots:
   auto create=x11::reply(xcb_request_check(connection,xcb_create_window_checked(connection,XCB_COPY_FROM_PARENT,background,root,300,200,240,180,0,XCB_WINDOW_CLASS_INPUT_OUTPUT,XCB_COPY_FROM_PARENT,XCB_CW_BACK_PIXEL,&red)));QVERIFY(!create);
   const auto remove=qScopeGuard([&]{xcb_destroy_window(connection,background);xcb_flush(connection);});
   xcb_map_window(connection,background);auto fence=x11::reply(xcb_get_input_focus_reply(connection,xcb_get_input_focus(connection),nullptr));QVERIFY(fence);
-  HelperSession helper;QVERIFY2(helper.start(),qPrintable(helper.failure));QTRY_VERIFY(helper.ready);
-  QVERIFY(helper.control.send("preview",helper.command()));
-  QTRY_VERIFY(!selectorWindows(connection,helper.process.processId()).isEmpty());
-  QTRY_COMPARE(pointerGrabStatus(connection),int(XCB_GRAB_STATUS_ALREADY_GRABBED));
+  HelperSession helper;QVERIFY2(helper.start(),qPrintable(helper.failure));PUTGD_TRY_VERIFY(helper.ready);
+  QVERIFY(helper.control.send("preview",helper.preview()));
+  PUTGD_TRY_VERIFY(!selectorWindows(connection,helper.process.processId()).isEmpty());
+  PUTGD_TRY_COMPARE(pointerGrabStatus(connection),int(XCB_GRAB_STATUS_ALREADY_GRABBED));
   QCOMPARE(helper.results,0);QCOMPARE(helper.errors,0);QCOMPARE(helper.artifact.size(),qint64(0));
   if(ending=="begin-first")QVERIFY(helper.control.send("begin",helper.command()));
   const auto window=selectorWindows(connection,helper.process.processId()).first();
   // These are explicit synthetic XCB events, not physical/compositor evidence.
   QVERIFY(sendButton(connection,window,{340,240},true));QVERIFY(sendButton(connection,window,{420,300},false));
-  QTRY_VERIFY(selectorWindows(connection,helper.process.processId()).isEmpty());
-  QTRY_COMPARE(pointerGrabStatus(connection),int(XCB_GRAB_STATUS_SUCCESS));
+  PUTGD_TRY_VERIFY(selectorWindows(connection,helper.process.processId()).isEmpty());
+  PUTGD_TRY_COMPARE(pointerGrabStatus(connection),int(XCB_GRAB_STATUS_SUCCESS));
   if(ending!="begin-first"){
-   QTest::qWait(100);QCOMPARE(helper.process.state(),QProcess::Running);QCOMPARE(helper.results,0);QCOMPARE(helper.errors,0);QCOMPARE(helper.artifact.size(),qint64(0));
+   putgd::test::settle(100);PUTGD_TRY_COMPARE(helper.process.state(),QProcess::Running);PUTGD_TRY_COMPARE(helper.results,0);PUTGD_TRY_COMPARE(helper.errors,0);PUTGD_TRY_COMPARE(helper.artifact.size(),qint64(0));
    // Painting changes after selection. A successful late BEGIN must acquire
    // this later frame, proving selection did not freeze/cache desktop pixels.
    const uint32_t blue=0x002266cc;xcb_change_window_attributes(connection,background,XCB_CW_BACK_PIXEL,&blue);xcb_clear_area(connection,false,background,0,0,0,0);fence=x11::reply(xcb_get_input_focus_reply(connection,xcb_get_input_focus(connection),nullptr));QVERIFY(fence);
@@ -156,7 +165,7 @@ private slots:
   }else if(ending=="eof")helper.process.closeWriteChannel();
   else{
    if(ending=="begin-late")QVERIFY(helper.control.send("begin",helper.command()));
-   QTRY_COMPARE(helper.results,1);QCOMPARE(helper.errors,0);QCOMPARE(helper.cancellations,0);
+   PUTGD_TRY_COMPARE(helper.results,1);QCOMPARE(helper.errors,0);QCOMPARE(helper.cancellations,0);
    QImage image(helper.path);QVERIFY(!image.isNull());QCOMPARE(image.size(),QSize(80,60));
    const auto expected=ending=="begin-first"?QColor(0xcc,0x22,0x44):QColor(0x22,0x66,0xcc);
    for(int y=0;y<image.height();++y)for(int x=0;x<image.width();++x)QCOMPARE(image.pixelColor(x,y),expected);
@@ -164,8 +173,95 @@ private slots:
    helper.artifact.seek(0);QCOMPARE(helper.result["sha256"].toString(),QString::fromLatin1(QCryptographicHash::hash(helper.artifact.readAll(),QCryptographicHash::Sha256).toHex()));
    QVERIFY(helper.control.send("accept",helper.envelope()));
   }
-  QTRY_COMPARE(helper.process.state(),QProcess::NotRunning);QCOMPARE(helper.process.exitStatus(),QProcess::NormalExit);QCOMPARE(helper.process.exitCode(),ending=="eof"?3:0);QVERIFY(!QFile::exists(helper.path));
+  PUTGD_TRY_COMPARE(helper.process.state(),QProcess::NotRunning);QCOMPARE(helper.process.exitStatus(),QProcess::NormalExit);QCOMPARE(helper.process.exitCode(),ending=="eof"?3:0);QVERIFY(!QFile::exists(helper.path));
   if(ending=="cancel"||ending=="buffered-cancel"||ending=="eof"){QCOMPARE(helper.results,0);QCOMPARE(helper.errors,0);QCOMPARE(helper.artifact.size(),qint64(0));QCOMPARE(helper.cancellations,ending=="eof"?0:1);}
+ }
+ void clicksMadeDuringTheHoldReachTheSelector_data(){
+  QTest::addColumn<bool>("finished");
+  QTest::newRow("whole-drag-before-handoff")<<true;
+  QTest::newRow("drag-spans-handoff")<<false;
+ }
+ void clicksMadeDuringTheHoldReachTheSelector(){
+  // XTest goes through the server's real input path, so the resident's grab sees it.
+  QFETCH(bool,finished);
+  auto* connection=xcb_connect(nullptr,nullptr);QVERIFY(connection&&!xcb_connection_has_error(connection));const auto close=qScopeGuard([&]{xcb_disconnect(connection);});
+  const auto root=xcb_setup_roots_iterator(xcb_get_setup(connection)).data->root;
+  CaptureCursorCache cursor;QVERIFY(cursor.supported());QVERIFY(cursor.seed(2,2,1,1,QByteArray(16,char(0xff)),QString(64,'a')));
+  const auto input=[&](uint8_t type,uint8_t detail,int x=0,int y=0){xcb_test_fake_input(connection,type,detail,XCB_CURRENT_TIME,root,int16_t(x),int16_t(y),0);};
+  const auto sync=[&]{auto fence=x11::reply(xcb_get_input_focus_reply(connection,xcb_get_input_focus(connection),nullptr));return bool(fence);};
+  input(XCB_MOTION_NOTIFY,0,10,10);QVERIFY(sync());
+  QVERIFY(cursor.holdPointer());QCOMPARE(pointerGrabStatus(connection),int(XCB_GRAB_STATUS_ALREADY_GRABBED));
+  HelperSession helper;QVERIFY2(helper.start(),qPrintable(helper.failure));PUTGD_TRY_VERIFY(helper.ready);
+  // The drag starts before any selector exists.
+  input(XCB_MOTION_NOTIFY,0,340,240);input(XCB_BUTTON_PRESS,1);input(XCB_MOTION_NOTIFY,0,420,300);if(finished)input(XCB_BUTTON_RELEASE,1);QVERIFY(sync());
+  QVERIFY(helper.control.send("preview",helper.preview("0",QString::number(cursor.current()))));
+  PUTGD_TRY_COMPARE(helper.handoffs,1);
+  // The helper has mapped its surfaces and waits; it asked before grabbing.
+  QVERIFY(!selectorWindows(connection,helper.process.processId()).isEmpty());QCOMPARE(helper.errors,0);
+  const auto held=cursor.releasePointer();QCOMPARE(held.size(),finished?2:1);QVERIFY(held[0].press);QCOMPARE(held[0].button,1);QCOMPARE(QPoint(held[0].x,held[0].y),QPoint(340,240));
+  QJsonArray buttons;for(const auto& button:held)buttons.append(QJsonObject{{"press",button.press},{"button",button.button},{"x",button.x},{"y",button.y}});
+  auto frame=helper.envelope();frame["buttons"]=buttons;QVERIFY(helper.control.send("handoff_done",frame));
+  if(!finished){PUTGD_TRY_COMPARE(pointerGrabStatus(connection),int(XCB_GRAB_STATUS_ALREADY_GRABBED));input(XCB_BUTTON_RELEASE,1);QVERIFY(sync());}
+  PUTGD_TRY_VERIFY(selectorWindows(connection,helper.process.processId()).isEmpty());
+  QCOMPARE(helper.cancellations,0);QCOMPARE(helper.errors,0);
+  QVERIFY(helper.control.send("begin",helper.command()));
+  PUTGD_TRY_COMPARE(helper.results,1);QCOMPARE(helper.errors,0);
+  QCOMPARE(helper.result["width"].toInt(),80);QCOMPARE(helper.result["height"].toInt(),60);
+  QVERIFY(helper.control.send("accept",helper.envelope()));PUTGD_TRY_COMPARE(helper.process.state(),QProcess::NotRunning);QCOMPARE(helper.process.exitCode(),0);
+ }
+ void rightClickDuringTheHoldCancelsTheSelector(){
+  // The real helper applies the held right-click as soon as it owns the input.
+  auto* connection=xcb_connect(nullptr,nullptr);QVERIFY(connection&&!xcb_connection_has_error(connection));const auto close=qScopeGuard([&]{xcb_disconnect(connection);});
+  const auto root=xcb_setup_roots_iterator(xcb_get_setup(connection)).data->root;
+  CaptureCursorCache cursor;QVERIFY(cursor.seed(2,2,1,1,QByteArray(16,char(0xff)),QString(64,'a')));
+  QVERIFY(cursor.holdPointer());
+  HelperSession helper;QVERIFY2(helper.start(),qPrintable(helper.failure));PUTGD_TRY_VERIFY(helper.ready);
+  xcb_test_fake_input(connection,XCB_BUTTON_PRESS,3,XCB_CURRENT_TIME,root,0,0,0);xcb_test_fake_input(connection,XCB_BUTTON_RELEASE,3,XCB_CURRENT_TIME,root,0,0,0);
+  auto fence=x11::reply(xcb_get_input_focus_reply(connection,xcb_get_input_focus(connection),nullptr));QVERIFY(fence);
+  QVERIFY(helper.control.send("preview",helper.preview("0",QString::number(cursor.current()))));
+  PUTGD_TRY_COMPARE(helper.handoffs,1);
+  QJsonArray buttons;for(const auto& button:cursor.releasePointer())buttons.append(QJsonObject{{"press",button.press},{"button",button.button},{"x",button.x},{"y",button.y}});
+  QCOMPARE(buttons.size(),2);auto frame=helper.envelope();frame["buttons"]=buttons;QVERIFY(helper.control.send("handoff_done",frame));
+  PUTGD_TRY_COMPARE(helper.cancellations,1);PUTGD_TRY_COMPARE(helper.process.state(),QProcess::NotRunning);QCOMPARE(helper.process.exitCode(),0);
+  QCOMPARE(helper.results,0);QVERIFY(selectorWindows(connection,helper.process.processId()).isEmpty());
+  PUTGD_TRY_COMPARE(pointerGrabStatus(connection),int(XCB_GRAB_STATUS_SUCCESS));
+ }
+ void qtCursorIsReportedForTheNextPress(){
+  // The resident shows this exact image at the next press, whichever Qt chose it.
+  HelperSession helper;helper.observe=true;QVERIFY2(helper.start(),qPrintable(helper.failure));PUTGD_TRY_VERIFY(helper.ready);
+  QVERIFY(helper.control.send("preview",helper.preview()));
+  PUTGD_TRY_COMPARE(helper.cursorImages,1);
+  QVERIFY(helper.cursorImage["width"].toInt()>=1);QCOMPARE(QByteArray::fromBase64(helper.cursorImage["pixels"].toString().toLatin1()).size(),helper.cursorImage["width"].toInt()*helper.cursorImage["height"].toInt()*4);
+  // The report is the image on screen right now, while the helper holds the grab.
+  auto* connection=xcb_connect(nullptr,nullptr);QVERIFY(connection&&!xcb_connection_has_error(connection));const auto close=qScopeGuard([&]{xcb_disconnect(connection);});
+  auto version=x11::reply(xcb_xfixes_query_version_reply(connection,xcb_xfixes_query_version(connection,1,0),nullptr));QVERIFY(version);
+  auto shown=x11::reply(xcb_xfixes_get_cursor_image_reply(connection,xcb_xfixes_get_cursor_image(connection),nullptr));QVERIFY(shown);
+  QCOMPARE(helper.cursorImage["width"].toInt(),int(shown->width));QCOMPARE(helper.cursorImage["height"].toInt(),int(shown->height));QCOMPARE(helper.cursorImage["xhot"].toInt(),int(shown->xhot));QCOMPARE(helper.cursorImage["yhot"].toInt(),int(shown->yhot));
+  QByteArray expected(qsizetype(shown->width)*shown->height*4,Qt::Uninitialized);const auto* pixels=xcb_xfixes_get_cursor_image_cursor_image(shown.get());
+  for(qsizetype i=0;i<shown->width*shown->height;++i)qToBigEndian<quint32>(pixels[i],expected.data()+i*4);
+  QCOMPARE(QByteArray::fromBase64(helper.cursorImage["pixels"].toString().toLatin1()),expected);
+  QVERIFY(helper.control.send("cancel",helper.envelope()));PUTGD_TRY_COMPARE(helper.process.state(),QProcess::NotRunning);
+ }
+ void accessibilityStartsAfterTheSelectorMaps(){
+  // QGuiApplication::exec() would start Qt's AT-SPI bridge before the helper
+  // reads its bootstrap: 20-30 ms of synchronous D-Bus ahead of every selector
+  // (#1063). AT_SPI_BUS_ADDRESS makes Qt enable the bridge and connect here.
+  qputenv("XCURSOR_THEME","static");
+  QTemporaryDir bus("/tmp/putgd-a11y-XXXXXX");QVERIFY(bus.isValid());
+  QLocalServer server;QVERIFY(server.listen(bus.filePath("bus")));int connections=0;
+  // Refusing the connection keeps the helper's D-Bus handshake short.
+  connect(&server,&QLocalServer::newConnection,this,[&]{while(auto* socket=server.nextPendingConnection()){++connections;socket->abort();socket->deleteLater();}});
+  auto* connection=xcb_connect(nullptr,nullptr);QVERIFY(connection&&!xcb_connection_has_error(connection));const auto close=qScopeGuard([&]{xcb_disconnect(connection);});
+  HelperSession helper;helper.environment.insert("AT_SPI_BUS_ADDRESS","unix:path="+bus.filePath("bus"));
+  QVERIFY2(helper.start(),qPrintable(helper.failure));PUTGD_TRY_VERIFY(helper.ready);
+  server.waitForNewConnection(0);QCOMPARE(connections,0);
+  QVERIFY(helper.control.send("preview",helper.preview()));
+  PUTGD_TRY_VERIFY(!selectorWindows(connection,helper.process.processId()).isEmpty());
+  // Accessibility still starts once the selector is shown, without any input.
+  PUTGD_TRY_VERIFY(connections>0);
+  QVERIFY(helper.control.send("cancel",helper.envelope()));
+  PUTGD_TRY_COMPARE(helper.process.state(),QProcess::NotRunning);QCOMPARE(helper.process.exitStatus(),QProcess::NormalExit);QCOMPARE(helper.process.exitCode(),0);
+  QCOMPARE(helper.cancellations,1);QCOMPARE(helper.results,0);QCOMPARE(helper.errors,0);QCOMPARE(helper.artifact.size(),qint64(0));
  }
  void previewTermination_data(){
   QTest::addColumn<QString>("scenario");
@@ -174,24 +270,24 @@ private slots:
  void previewTermination(){
   QFETCH(QString,scenario);qputenv("XCURSOR_THEME","static");
   auto* connection=xcb_connect(nullptr,nullptr);QVERIFY(connection&&!xcb_connection_has_error(connection));const auto close=qScopeGuard([&]{xcb_disconnect(connection);});
-  HelperSession helper;QVERIFY2(helper.start(scenario=="desktop"?"desktop":"region"),qPrintable(helper.failure));QTRY_VERIFY(helper.ready);
+  HelperSession helper;QVERIFY2(helper.start(scenario=="desktop"?"desktop":"region"),qPrintable(helper.failure));PUTGD_TRY_VERIFY(helper.ready);
   if(scenario=="foreign"||scenario=="generation"||scenario=="extra-key"||scenario=="desktop"){
-   auto command=helper.command();if(scenario=="foreign")command["nonce"]="foreign";if(scenario=="generation")command["generation"]="2";if(scenario=="extra-key")command["unexpected"]=true;
+   auto command=helper.preview();if(scenario=="foreign")command["nonce"]="foreign";if(scenario=="generation")command["generation"]="2";if(scenario=="extra-key")command["unexpected"]=true;
    // One batch: no valid following frame may enter acquisition after rejection.
    const auto bytes=wireFrame("preview",command,2)+wireFrame("begin",helper.command(),3);QCOMPARE(helper.process.write(bytes),qint64(bytes.size()));
   }else{
-   QVERIFY(helper.control.send(scenario=="preview-after-begin"?"begin":"preview",helper.command()));
-   QTRY_VERIFY(!selectorWindows(connection,helper.process.processId()).isEmpty());QTRY_COMPARE(pointerGrabStatus(connection),int(XCB_GRAB_STATUS_ALREADY_GRABBED));
+   QVERIFY(helper.control.send(scenario=="preview-after-begin"?"begin":"preview",scenario=="preview-after-begin"?helper.command():helper.preview()));
+   PUTGD_TRY_VERIFY(!selectorWindows(connection,helper.process.processId()).isEmpty());PUTGD_TRY_COMPARE(pointerGrabStatus(connection),int(XCB_GRAB_STATUS_ALREADY_GRABBED));
    QCOMPARE(helper.results,0);QCOMPARE(helper.artifact.size(),qint64(0));
    if(scenario=="escape")QVERIFY(sendEscape(connection,selectorWindows(connection,helper.process.processId()).first()));
    else if(scenario=="cancel")QVERIFY(helper.control.send("cancel",helper.envelope()));
    else if(scenario=="eof")helper.process.closeWriteChannel();
    else if(scenario=="cursor-mismatch")QVERIFY(helper.control.send("begin",helper.command("1")));
-   else QVERIFY(helper.control.send("preview",helper.command()));
+   else QVERIFY(helper.control.send("preview",helper.preview()));
   }
-  QTRY_COMPARE(helper.process.state(),QProcess::NotRunning);QCOMPARE(helper.process.exitStatus(),QProcess::NormalExit);QCOMPARE(helper.process.exitCode(),scenario=="eof"?3:scenario=="escape"||scenario=="cancel"?0:4);
+  PUTGD_TRY_COMPARE(helper.process.state(),QProcess::NotRunning);QCOMPARE(helper.process.exitStatus(),QProcess::NormalExit);QCOMPARE(helper.process.exitCode(),scenario=="eof"?3:scenario=="escape"||scenario=="cancel"?0:4);
   QCOMPARE(helper.results,0);QCOMPARE(helper.errors,0);QCOMPARE(helper.cancellations,scenario=="escape"||scenario=="cancel"?1:0);QCOMPARE(helper.artifact.size(),qint64(0));QVERIFY(!QFile::exists(helper.path));
-  QTRY_COMPARE(pointerGrabStatus(connection),int(XCB_GRAB_STATUS_SUCCESS));QVERIFY(selectorWindows(connection,helper.process.processId()).isEmpty());
+  PUTGD_TRY_COMPARE(pointerGrabStatus(connection),int(XCB_GRAB_STATUS_SUCCESS));QVERIFY(selectorWindows(connection,helper.process.processId()).isEmpty());
  }
  void bootstrapRemainsInvisibleAndDoesNotOwnInput_data(){
   QTest::addColumn<bool>("badBegin");QTest::addColumn<bool>("cache");QTest::addColumn<QByteArray>("theme");QTest::addColumn<bool>("seedExpected");QTest::addColumn<bool>("resizeRequested");QTest::addColumn<bool>("resourceResize");
@@ -246,8 +342,8 @@ private slots:
    if(type=="error"&&ready)++errors;
   });
   process.start(PUTGD_REAL_CAPTURE_HELPER,{});QVERIFY(process.waitForStarted());
-  QVERIFY(control.send("bootstrap",{{"build",QJsonDocument::fromJson(buildManifestJson()).object()},{"nonce",nonce},{"generation","1"},{"target",frozen},{"cursor",QJsonObject{{"id","0"},{"cache",cache}}},{"path",path},{"device",QString::number(qulonglong(identity.st_dev))},{"inode",QString::number(qulonglong(identity.st_ino))},{"limits",QJsonObject{{"imagePixels",badBegin?1:10000000},{"imageBytes",badBegin?4:40000000},{"maxFileBytes",40000000}}}}));
-  QTRY_VERIFY(ready);QTest::qWait(80);QCOMPARE(results,0);QCOMPARE(QFileInfo(path).size(),qint64(0));
+  QVERIFY(control.send("bootstrap",{{"build",QJsonDocument::fromJson(buildManifestJson()).object()},{"nonce",nonce},{"generation","1"},{"target",frozen},{"cursor",QJsonObject{{"id","0"},{"cache",cache},{"observe",false}}},{"path",path},{"device",QString::number(qulonglong(identity.st_dev))},{"inode",QString::number(qulonglong(identity.st_ino))},{"limits",QJsonObject{{"imagePixels",badBegin?1:10000000},{"imageBytes",badBegin?4:40000000},{"maxFileBytes",40000000}}}}));
+  PUTGD_TRY_VERIFY(ready);putgd::test::settle(80);PUTGD_TRY_COMPARE(results,0);PUTGD_TRY_COMPARE(QFileInfo(path).size(),qint64(0));
   auto* connection=xcb_connect(nullptr,nullptr);QVERIFY(connection&&!xcb_connection_has_error(connection));
   const auto cleanup=qScopeGuard([&]{xcb_disconnect(connection);});const auto root=xcb_setup_roots_iterator(xcb_get_setup(connection)).data->root;
   const auto pidAtom=x11::internAtom(connection,"_NET_WM_PID");auto tree=x11::reply(xcb_query_tree_reply(connection,xcb_query_tree(connection,root),nullptr));QVERIFY(tree);
@@ -261,7 +357,7 @@ private slots:
    // rather than seeding the cache from the expected Qt image itself.
    QVERIFY2(!seed.isEmpty(),"The generated static theme must provide an ARGB crosshair");
    QWindow expected;expected.setGeometry(100,100,200,200);expected.setCursor(Qt::CrossCursor);expected.show();
-   QVERIFY(QTest::qWaitForWindowExposed(&expected));
+   QVERIFY(putgd::test::waitForWindowExposed(&expected));
    xcb_warp_pointer(connection,XCB_WINDOW_NONE,root,0,0,0,0,150,150);xcb_flush(connection);
    auto image=x11::reply(xcb_xfixes_get_cursor_image_reply(connection,xcb_xfixes_get_cursor_image(connection),nullptr));QVERIFY(image);
    QCOMPARE(seed["width"].toInt(),int(image->width));QCOMPARE(seed["height"].toInt(),int(image->height));
@@ -280,7 +376,7 @@ private slots:
    const auto frame=[&](const QString& identity,int sequence){return QJsonDocument(QJsonObject{{"version",1},{"sequence",QString::number(sequence)},{"type","begin"},{"payload",QJsonObject{{"nonce",identity},{"generation","1"},{"cursor","0"}}}}).toJson(QJsonDocument::Compact)+'\n';};
    const auto bytes=frame("foreign",2)+frame(nonce,3);QCOMPARE(process.write(bytes),qint64(bytes.size()));
   }else QVERIFY(control.send("cancel",{{"nonce",nonce},{"generation","1"}}));
-  QTRY_COMPARE(process.state(),QProcess::NotRunning);QCOMPARE(process.exitStatus(),QProcess::NormalExit);QCOMPARE(process.exitCode(),badBegin?4:0);QVERIFY(!QFile::exists(path));QCOMPARE(results,0);QCOMPARE(errors,0);
+  PUTGD_TRY_COMPARE(process.state(),QProcess::NotRunning);QCOMPARE(process.exitStatus(),QProcess::NormalExit);QCOMPARE(process.exitCode(),badBegin?4:0);QVERIFY(!QFile::exists(path));QCOMPARE(results,0);QCOMPARE(errors,0);
   // The open descriptor survives helper unlink. A desktop acquisition triggered
   // by the buffered valid begin could leave encoded bytes on this inode.
   // Zero bytes alone cannot prove no earlier screen read; decoder-stop coverage

@@ -1,0 +1,7 @@
+deleted 51 lab objects
+invalidation I3ZMY9YNHAYTGK8YQG0D9F65IP
+lab workspace and publisher state removed; receipts kept in /home/patrick/.local/state/putgd-signer/receipts/lab
+apt/ubuntu26.04/dists/nightly/InRelease 404
+apt/debian13/dists/nightly/main/dep11/Components-amd64.yml.gz 404
+rpm/fedora/44/x86_64/nightly/repodata/repomd.xml 404
+update/v1/nightly.json 404

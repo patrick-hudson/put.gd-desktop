@@ -25,10 +25,16 @@ class Bundle(unittest.TestCase):
         self.names = [
             'putgd-0.1.1-rc.1-ubuntu24.04-x86_64.deb',
             'putgd-0.1.1-rc.1-ubuntu26.04-x86_64.deb',
+            'putgd-0.1.1-rc.1-debian13-x86_64.deb',
             'putgd-0.1.1-rc.1-fedora44-x86_64.rpm',
             'putgd-0.1.1-rc.1-x86_64.AppImage',
+            'putgd-0.1.1-rc.1-x86_64.AppImage.zsync',
+            'putgd-0.1.1-rc.1-appimage-complete-source.tar.gz',
             'putgd-0.1.1-rc.1-source.tar.gz',
             'putgd-gnome50-0.1.1-rc.1.zip', 'release-builds.json', 'proton-source-catalog.json',
+            'putgd-0.1.1-rc.1-appimage.cdx.json', 'putgd-0.1.1-rc.1-ubuntu24.04.cdx.json',
+            'putgd-0.1.1-rc.1-ubuntu26.04.cdx.json', 'putgd-0.1.1-rc.1-debian13.cdx.json',
+            'putgd-0.1.1-rc.1-fedora44.cdx.json',
         ]
         for name in self.names:
             (self.first / name).write_bytes(('synthetic bytes: ' + name).encode())
@@ -133,7 +139,7 @@ class Bundle(unittest.TestCase):
         self.assertFalse(self.output.exists())
 
     def test_nightly_positive_inventory_and_channel(self):
-        version = '0.1.1-dev.42.20261012184001+g0123456789ab'
+        version = '0.1.1-nightly.42'
         names = [name.replace(VERSION, version) for name in self.names]
         for old, new in zip(self.names, names):
             (self.first / new).write_bytes((self.first / old).read_bytes())
@@ -148,9 +154,9 @@ class Bundle(unittest.TestCase):
 
     def test_unrelated_or_malformed_versions_rejected(self):
         for version in ['0.1.1-dev.42+g0123456789ab', '0.1.1-beta.1',
-                        '0.1.1-dev.042.20261012184001+g0123456789ab',
-                        '0.1.1-dev.42.20260230184001+g0123456789ab',
-                        '0.1.1-dev.42.20261012184001+g0123456789AB',
+                        '0.1.1-nightly.042', '0.1.1-nightly.0', '0.1.1-nightly',
+                        '0.1.1-nightly.42+g0123456789ab',
+                        '0.1.1-dev.42.20261012184001+g0123456789ab',
                         '../0.1.1', '0.1.1/other', '0.1.1-rc.01']:
             with self.subTest(version=version), self.assertRaises(ValueError):
                 release_bundle.expected_members(version)

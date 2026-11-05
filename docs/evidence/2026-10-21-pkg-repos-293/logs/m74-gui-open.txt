@@ -1,0 +1,2 @@
+{"clicked": [548, 801]}
+{"ok": true, "frame": [1920, 1080], "crop": [21, 14, 1387, 987], "edges": {"top": 1.0, "bottom": 1.0, "left": 1.0, "right": 1.0}, "file": "/home/patrick/work/put.gd-pkg293-lab/evidence/m74-p5-updater.

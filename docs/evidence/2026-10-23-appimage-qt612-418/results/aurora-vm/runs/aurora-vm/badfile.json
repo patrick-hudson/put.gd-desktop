@@ -1,0 +1,393 @@
+{
+ "at": "2026-10-23T20:37:53Z",
+ "before": {
+  "putgd": [
+   2686
+  ],
+  "putgd-ui": [
+   3320
+  ]
+ },
+ "entries": [
+  {
+   "id": "02290898-41f2-46ea-8d8a-f1b139a3f4bf",
+   "row": 0,
+   "name": "Screen-Capture-2026-10-23-15-35-29.png",
+   "sample": "cve-2025-10729-pattern-orphan.svg",
+   "sampleSha256": "b1b7776ef367bc7e360ea559821347242979005e253df30c4cac5cc647708e54",
+   "replaced": [
+    "/var/home/lab/.local/share/putgd/artifacts/2facde2a-2dc1-47df-ac8d-48b143757aab/02290898-41f2-46ea-8d8a-f1b139a3f4bf",
+    "/var/home/lab/work/put.gd-qt418/afa/runs/aurora-vm/archive/images/Screen-Capture-2026-10-23-15-35-29.png"
+   ],
+   "preview": {
+    "ok": false,
+    "state": null,
+    "error": {
+     "code": "preview_source_missing",
+     "details": {},
+     "message": "Neither the stored file nor a local copy is available"
+    },
+    "previewPath": null
+   },
+   "afterPreview": {
+    "putgd": [
+     2686
+    ],
+    "putgd-ui": [
+     3320
+    ]
+   },
+   "frame": "/var/home/lab/work/put.gd-qt418/afa/runs/aurora-vm/full/aurora-vm-badfile-0.png",
+   "afterUi": {
+    "putgd": [
+     2686
+    ],
+    "putgd-ui": [
+     3320
+    ]
+   }
+  },
+  {
+   "id": "07919b66-9348-4f53-a548-08948c261483",
+   "row": 1,
+   "name": "Screen-Capture-2026-10-23-15-35-21.png",
+   "sample": "cve-2026-8168-deep-nesting.svg",
+   "sampleSha256": "c6980c19fc324275f07df6443eac1bdea38a4f9451c73ea0dd4f12b0c547ac5b",
+   "replaced": [
+    "/var/home/lab/.local/share/putgd/artifacts/5358200e-7c9c-4169-adb1-19836d067560/07919b66-9348-4f53-a548-08948c261483",
+    "/var/home/lab/work/put.gd-qt418/afa/runs/aurora-vm/archive/images/Screen-Capture-2026-10-23-15-35-21.png",
+    "/var/home/lab/work/put.gd-qt418/afa/runs/aurora-vm/out/region-80x60-coords.png"
+   ],
+   "preview": {
+    "ok": false,
+    "state": null,
+    "error": {
+     "code": "preview_source_missing",
+     "details": {},
+     "message": "Neither the stored file nor a local copy is available"
+    },
+    "previewPath": null
+   },
+   "afterPreview": {
+    "putgd": [
+     2686
+    ],
+    "putgd-ui": [
+     3320
+    ]
+   },
+   "frame": "/var/home/lab/work/put.gd-qt418/afa/runs/aurora-vm/full/aurora-vm-badfile-1.png",
+   "afterUi": {
+    "putgd": [
+     2686
+    ],
+    "putgd-ui": [
+     3320
+    ]
+   }
+  },
+  {
+   "id": "cd7e1193-1112-4e6b-a9fa-932b2fe11379",
+   "row": 2,
+   "name": "Screen-Capture-2026-10-23-15-35-11.png",
+   "sample": "cve-2025-5683-icns-block-length.icns",
+   "sampleSha256": "e639bf43bd190e0660f20c6ae205c366c7b1a8ad9f06127d7837953fb8062717",
+   "replaced": [
+    "/var/home/lab/.local/share/putgd/artifacts/223ed0d2-18b8-4725-bf4d-80e7c49fde92/cd7e1193-1112-4e6b-a9fa-932b2fe11379",
+    "/var/home/lab/work/put.gd-qt418/afa/runs/aurora-vm/archive/images/Screen-Capture-2026-10-23-15-35-11.png",
+    "/var/home/lab/work/put.gd-qt418/afa/runs/aurora-vm/out/region-980x600-coords.png"
+   ],
+   "preview": {
+    "ok": false,
+    "state": null,
+    "error": {
+     "code": "preview_source_missing",
+     "details": {},
+     "message": "Neither the stored file nor a local copy is available"
+    },
+    "previewPath": null
+   },
+   "afterPreview": {
+    "putgd": [
+     2686
+    ],
+    "putgd-ui": [
+     3320
+    ]
+   },
+   "frame": "/var/home/lab/work/put.gd-qt418/afa/runs/aurora-vm/full/aurora-vm-badfile-2.png",
+   "afterUi": {
+    "putgd": [
+     2686
+    ],
+    "putgd-ui": [
+     3320
+    ]
+   }
+  },
+  {
+   "id": "93655760-5b5a-4a00-a281-c6a29fc9d8e5",
+   "row": 4,
+   "name": "Screen-Capture-2026-10-23-15-33-46.png",
+   "sample": "fuzz-tiff-00.tiff",
+   "sampleSha256": "6f6aa40023069e1f3a3b68cd1755979c8cb8381d176b5a9e37cc88f4f0e409c4",
+   "replaced": [
+    "/var/home/lab/.local/share/putgd/artifacts/931afebe-fc3a-43b6-aa3f-b992c1c5a104/93655760-5b5a-4a00-a281-c6a29fc9d8e5",
+    "/var/home/lab/work/put.gd-qt418/afa/runs/aurora-vm/archive/images/Screen-Capture-2026-10-23-15-33-46.png"
+   ],
+   "preview": {
+    "ok": false,
+    "state": null,
+    "error": {
+     "code": "preview_source_missing",
+     "details": {},
+     "message": "Neither the stored file nor a local copy is available"
+    },
+    "previewPath": null
+   },
+   "afterPreview": {
+    "putgd": [
+     2686
+    ],
+    "putgd-ui": [
+     3320
+    ]
+   },
+   "frame": "/var/home/lab/work/put.gd-qt418/afa/runs/aurora-vm/full/aurora-vm-badfile-3.png",
+   "afterUi": {
+    "putgd": [
+     2686
+    ],
+    "putgd-ui": [
+     3320
+    ]
+   }
+  }
+ ],
+ "cacheClear": {
+  "error": {
+   "code": "",
+   "details": {},
+   "message": ""
+  },
+  "ok": true,
+  "requestId": "a1dc452b-592a-4e30-991c-127bbf6bcd69",
+  "result": {
+   "abortedUploads": 0,
+   "elapsedMs": 6,
+   "finished": "2026-10-23T20:37:54.166Z",
+   "incompleteUploads": [],
+   "more": null,
+   "removedOperations": 9,
+   "stopped": null,
+   "trigger": "manual"
+  },
+  "schemaVersion": 1
+ },
+ "cards": [
+  [
+   255,
+   213,
+   329,
+   261
+  ],
+  [
+   255,
+   325,
+   329,
+   373
+  ],
+  [
+   255,
+   437,
+   329,
+   485
+  ],
+  [
+   255,
+   549,
+   329,
+   597
+  ]
+ ],
+ "after": {
+  "putgd": [
+   2686
+  ],
+  "putgd-ui": [
+   3320
+  ]
+ },
+ "diagnostics": {
+  "build": {
+   "baseVersion": "26.1023.1068",
+   "commitCount": 1068,
+   "dirty": false,
+   "gitCommit": "6a325a722afd946046a96480ca524db8aa6abcce",
+   "gitTree": "a0a449b23b4eb70f516e3c317b6d93b412aafbbb",
+   "packageVersion": "26.1023.1068~dev+g6a325a722afd",
+   "schemaVersion": 1,
+   "sourceProvenance": "git",
+   "version": "26.1023.1068-dev+g6a325a722afd"
+  },
+  "journalReady": true,
+  "qtVersion": "6.12.0"
+ },
+ "crashLogLines": [
+  {
+   "category": "putgd.s3",
+   "fields": {
+    "awsTag": "AWSXmlClient",
+    "itemId": null,
+    "operationId": null,
+    "stream": "aws-sdk"
+   },
+   "level": "error",
+   "message": "HTTP response code: 404 | Resolved remote host IP address: 127.0.0.1 | Request ID:  | Exception name:  | Error message: No response body. | 5 response headers: | content-length : 73 | date : Fri, 23 Oct 2026 20:33:28 GMT | server : BaseHTTP Python/3.15.0 | x-amz-id-2 : synthetic+Extended/Id2= | x-amz-request-id : SYNTHREQ0123ABCD",
+   "pid": 3512,
+   "process": "putgd-s3-worker",
+   "time": "2026-10-23T20:33:28.498Z",
+   "v": 1
+  },
+  {
+   "category": "putgd.s3",
+   "fields": {
+    "awsTag": "AWSXmlClient",
+    "itemId": null,
+    "operationId": null,
+    "stream": "aws-sdk"
+   },
+   "level": "error",
+   "message": "HTTP response code: 404 | Resolved remote host IP address: 127.0.0.1 | Request ID:  | Exception name:  | Error message: No response body. | 5 response headers: | content-length : 73 | date : Fri, 23 Oct 2026 20:33:32 GMT | server : BaseHTTP Python/3.15.0 | x-amz-id-2 : synthetic+Extended/Id2= | x-amz-request-id : SYNTHREQ0123ABCD",
+   "pid": 3578,
+   "process": "putgd-s3-worker",
+   "time": "2026-10-23T20:33:32.743Z",
+   "v": 1
+  },
+  {
+   "category": "putgd.s3",
+   "fields": {
+    "awsTag": "AWSXmlClient",
+    "itemId": null,
+    "operationId": null,
+    "stream": "aws-sdk"
+   },
+   "level": "error",
+   "message": "HTTP response code: 404 | Resolved remote host IP address: 127.0.0.1 | Request ID:  | Exception name:  | Error message: No response body. | 5 response headers: | content-length : 73 | date : Fri, 23 Oct 2026 20:33:36 GMT | server : BaseHTTP Python/3.15.0 | x-amz-id-2 : synthetic+Extended/Id2= | x-amz-request-id : SYNTHREQ0123ABCD",
+   "pid": 3693,
+   "process": "putgd-s3-worker",
+   "time": "2026-10-23T20:33:36.333Z",
+   "v": 1
+  },
+  {
+   "category": "putgd.s3",
+   "fields": {
+    "awsTag": "AWSXmlClient",
+    "itemId": null,
+    "operationId": null,
+    "stream": "aws-sdk"
+   },
+   "level": "error",
+   "message": "HTTP response code: 404 | Resolved remote host IP address: 127.0.0.1 | Request ID:  | Exception name:  | Error message: No response body. | 5 response headers: | content-length : 73 | date : Fri, 23 Oct 2026 20:33:43 GMT | server : BaseHTTP Python/3.15.0 | x-amz-id-2 : synthetic+Extended/Id2= | x-amz-request-id : SYNTHREQ0123ABCD",
+   "pid": 3767,
+   "process": "putgd-s3-worker",
+   "time": "2026-10-23T20:33:43.854Z",
+   "v": 1
+  },
+  {
+   "category": "putgd.s3",
+   "fields": {
+    "awsTag": "AWSXmlClient",
+    "itemId": null,
+    "operationId": null,
+    "stream": "aws-sdk"
+   },
+   "level": "error",
+   "message": "HTTP response code: 404 | Resolved remote host IP address: 127.0.0.1 | Request ID:  | Exception name:  | Error message: No response body. | 5 response headers: | content-length : 73 | date : Fri, 23 Oct 2026 20:34:00 GMT | server : BaseHTTP Python/3.15.0 | x-amz-id-2 : synthetic+Extended/Id2= | x-amz-request-id : SYNTHREQ0123ABCD",
+   "pid": 3920,
+   "process": "putgd-s3-worker",
+   "time": "2026-10-23T20:34:00.976Z",
+   "v": 1
+  },
+  {
+   "category": "putgd.s3",
+   "fields": {
+    "awsTag": "AWSXmlClient",
+    "itemId": null,
+    "operationId": null,
+    "stream": "aws-sdk"
+   },
+   "level": "error",
+   "message": "HTTP response code: 404 | Resolved remote host IP address: 127.0.0.1 | Request ID:  | Exception name:  | Error message: No response body. | 5 response headers: | content-length : 73 | date : Fri, 23 Oct 2026 20:34:55 GMT | server : BaseHTTP Python/3.15.0 | x-amz-id-2 : synthetic+Extended/Id2= | x-amz-request-id : SYNTHREQ0123ABCD",
+   "pid": 5047,
+   "process": "putgd-s3-worker",
+   "time": "2026-10-23T20:34:55.202Z",
+   "v": 1
+  },
+  {
+   "category": "putgd.recording",
+   "fields": {
+    "helper": "putgd-record",
+    "itemId": null,
+    "operationId": null,
+    "pid": 5096,
+    "reason": "recording_helper_protocol",
+    "requested": true,
+    "signal": 9,
+    "supervisorKill": true
+   },
+   "level": "warning",
+   "message": "Helper killed by put.gd",
+   "pid": 2686,
+   "process": "putgd",
+   "time": "2026-10-23T20:35:07.297Z",
+   "v": 1
+  },
+  {
+   "category": "putgd.s3",
+   "fields": {
+    "awsTag": "AWSXmlClient",
+    "itemId": null,
+    "operationId": null,
+    "stream": "aws-sdk"
+   },
+   "level": "error",
+   "message": "HTTP response code: 404 | Resolved remote host IP address: 127.0.0.1 | Request ID:  | Exception name:  | Error message: No response body. | 5 response headers: | content-length : 73 | date : Fri, 23 Oct 2026 20:35:16 GMT | server : BaseHTTP Python/3.15.0 | x-amz-id-2 : synthetic+Extended/Id2= | x-amz-request-id : SYNTHREQ0123ABCD",
+   "pid": 5414,
+   "process": "putgd-s3-worker",
+   "time": "2026-10-23T20:35:16.001Z",
+   "v": 1
+  },
+  {
+   "category": "putgd.s3",
+   "fields": {
+    "awsTag": "AWSXmlClient",
+    "itemId": null,
+    "operationId": null,
+    "stream": "aws-sdk"
+   },
+   "level": "error",
+   "message": "HTTP response code: 404 | Resolved remote host IP address: 127.0.0.1 | Request ID:  | Exception name:  | Error message: No response body. | 5 response headers: | content-length : 73 | date : Fri, 23 Oct 2026 20:35:25 GMT | server : BaseHTTP Python/3.15.0 | x-amz-id-2 : synthetic+Extended/Id2= | x-amz-request-id : SYNTHREQ0123ABCD",
+   "pid": 5521,
+   "process": "putgd-s3-worker",
+   "time": "2026-10-23T20:35:25.623Z",
+   "v": 1
+  },
+  {
+   "category": "putgd.s3",
+   "fields": {
+    "awsTag": "AWSXmlClient",
+    "itemId": null,
+    "operationId": null,
+    "stream": "aws-sdk"
+   },
+   "level": "error",
+   "message": "HTTP response code: 404 | Resolved remote host IP address: 127.0.0.1 | Request ID:  | Exception name:  | Error message: No response body. | 5 response headers: | content-length : 73 | date : Fri, 23 Oct 2026 20:35:30 GMT | server : BaseHTTP Python/3.15.0 | x-amz-id-2 : synthetic+Extended/Id2= | x-amz-request-id : SYNTHREQ0123ABCD",
+   "pid": 5610,
+   "process": "putgd-s3-worker",
+   "time": "2026-10-23T20:35:30.478Z",
+   "v": 1
+  }
+ ],
+ "survived": true
+}

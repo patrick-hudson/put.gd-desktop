@@ -1,0 +1,9 @@
+********* Start testing of SettingsGui *********
+Config: Using QtTest library 6.4.2, Qt 6.4.2 (x86_64-little_endian-lp64 shared (dynamic) release build; by GCC 13.2.0), ubuntu 24.04
+PASS   : SettingsGui::initTestCase()
+QWARN  : SettingsGui::emptyShortcutRecordingPromptFitsAndSettles() putgd wait: input->contentsRect().width()>=input->fontMetrics().horizontalAdvance(input->placeholderText())+4 still false after 5114 ms (budget 5000 ms x scale 1.00) at /home/user/work/put.gd/src/tests/gui/test_settings.cpp:141
+FAIL!  : SettingsGui::emptyShortcutRecordingPromptFitsAndSettles() 'input->contentsRect().width()>=input->fontMetrics().horizontalAdvance(input->placeholderText())+4' returned FALSE. ()
+   Loc: [/home/user/work/put.gd/src/tests/gui/test_settings.cpp(141)]
+PASS   : SettingsGui::cleanupTestCase()
+Totals: 2 passed, 1 failed, 0 skipped, 0 blacklisted, 5402ms
+********* Finished testing of SettingsGui *********

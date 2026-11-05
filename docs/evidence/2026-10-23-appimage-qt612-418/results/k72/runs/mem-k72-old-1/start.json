@@ -1,0 +1,420 @@
+{
+ "startSeconds": 0.64,
+ "credentials": "completed",
+ "sessionSock": true,
+ "processes": [
+  {
+   "pid": 1524582,
+   "ppid": 1,
+   "exe": "/home/patrick/work/put.gd-qt418/afa/images/putgd-26.1023.1058-nightly-x86_64.AppImage",
+   "comm": "putgd-26.1023.1",
+   "cmd": "/home/patrick/work/put.gd-qt418/afa/images/putgd-26.1023.1058-nightly-x86_64.AppImage --background",
+   "qtPlatformPlugins": [],
+   "QT_QPA_PLATFORM": null,
+   "APPIMAGE": null
+  },
+  {
+   "pid": 1524785,
+   "ppid": 1524784,
+   "exe": "/usr/bin/dash",
+   "comm": "AppRun",
+   "cmd": "/bin/sh /tmp/.mount_putgd-MpmKhh/AppRun --background",
+   "qtPlatformPlugins": [],
+   "QT_QPA_PLATFORM": null,
+   "APPIMAGE": "/home/patrick/work/put.gd-qt418/afa/images/putgd-26.1023.1058-nightly-x86_64.AppImage"
+  },
+  {
+   "pid": 1524790,
+   "ppid": 1,
+   "exe": "/home/patrick/work/put.gd-qt418/afa/images/putgd-26.1023.1058-nightly-x86_64.AppImage",
+   "comm": "putgd-26.1023.1",
+   "cmd": "/home/patrick/work/put.gd-qt418/afa/images/putgd-26.1023.1058-nightly-x86_64.AppImage --background",
+   "qtPlatformPlugins": [],
+   "QT_QPA_PLATFORM": null,
+   "APPIMAGE": null
+  },
+  {
+   "pid": 1524828,
+   "ppid": 1524785,
+   "exe": "/tmp/.mount_putgd-MpmKhh/usr/bin/putgd",
+   "comm": "putgd",
+   "cmd": "/tmp/.mount_putgd-MpmKhh/usr/bin/putgd --background",
+   "qtPlatformPlugins": [],
+   "QT_QPA_PLATFORM": null,
+   "APPIMAGE": "/home/patrick/work/put.gd-qt418/afa/images/putgd-26.1023.1058-nightly-x86_64.AppImage"
+  }
+ ],
+ "diagnostics": {
+  "backend": "Qt",
+  "build": {
+   "baseVersion": "26.1023.1058",
+   "commitCount": 1058,
+   "dirty": false,
+   "gitCommit": "05991d9d42aad68d3bd233a609cf294d839835ed",
+   "gitTree": "5e53f777b912ef958678b2f23b400847c7cb4d33",
+   "packageVersion": "26.1023.1058~nightly",
+   "schemaVersion": 1,
+   "sourceProvenance": "git",
+   "version": "26.1023.1058-nightly"
+  },
+  "capabilities": {
+   "editor": {
+    "admissionPixels": 24000000,
+    "available": true,
+    "commands": [
+     "inspect",
+     "apply",
+     "preview",
+     "saveCopy",
+     "fileDialog",
+     "submit",
+     "cancel",
+     "raise"
+    ],
+    "fileFormats": [
+     "png",
+     "jpeg"
+    ],
+    "open": false,
+    "output": "png",
+    "shapes": [
+     "redact",
+     "blur",
+     "arrow",
+     "rectangle",
+     "text",
+     "highlight"
+    ],
+    "sources": [
+     "region",
+     "window",
+     "desktop",
+     "clipboard",
+     "file"
+    ]
+   },
+   "providers": {
+    "backblaze-b2": {
+     "conditionalCreate": true,
+     "conditionalDelete": false,
+     "conditionalReplace": false,
+     "delete": true,
+     "deletionEffect": "Deletes exactly the uploaded B2 file version by its ID. put.gd never uploads over a visible file, so the name then shows nothing, or an older version that was hidden before the upload. Authorized links stop working when they expire.",
+     "maximumNameBytes": 1023,
+     "maximumObjectBytes": 10000000000000,
+     "privateUploads": false,
+     "sharing": false,
+     "stat": true,
+     "urls": true,
+     "versionAddressing": true
+    },
+    "proton-drive": {
+     "conditionalCreate": true,
+     "conditionalDelete": false,
+     "conditionalReplace": false,
+     "delete": false,
+     "deletionEffect": "Safe remote deletion is unavailable: Proton does not expose an atomic revision-guarded file deletion. Revoke share links separately.",
+     "maximumNameBytes": 255,
+     "maximumObjectBytes": null,
+     "privateUploads": true,
+     "sharing": true,
+     "stat": true,
+     "urls": true,
+     "versionAddressing": false
+    },
+    "s3": {
+     "conditionalCreate": true,
+     "conditionalDelete": true,
+     "conditionalReplace": true,
+     "delete": true,
+     "deletionEffect": "Guarded origin removal; selected versions only; browser/CDN caches may retain bytes",
+     "maximumNameBytes": 1024,
+     "maximumObjectBytes": 5497558138880,
+     "privateUploads": false,
+     "sharing": false,
+     "stat": true,
+     "urls": true,
+     "versionAddressing": true
+    }
+   },
+   "recording": {
+    "active": null,
+    "audio": {
+     "microphone": false,
+     "system": false
+    },
+    "available": false,
+    "codecs": {},
+    "commands": [
+     "prepare",
+     "start",
+     "pause",
+     "resume",
+     "stop",
+     "cancel",
+     "inspect",
+     "select",
+     "raise",
+     "overlay",
+     "edit",
+     "preview",
+     "review",
+     "saveCopy",
+     "upload"
+    ],
+    "editCommands": [
+     "setTrim",
+     "resetTrim",
+     "addMask",
+     "updateMask",
+     "removeMask"
+    ],
+    "formats": [],
+    "limits": {
+     "animationMaxEdge": 1280,
+     "animationMaxUs": 60000000,
+     "maxFileBytes": 1099511627776,
+     "maxMasks": 64
+    },
+    "maskKinds": [
+     "blur",
+     "solid"
+    ],
+    "overlayExclusion": {},
+    "reason": "recording_not_probed",
+    "states": [
+     "preparing",
+     "ready",
+     "starting",
+     "recording",
+     "paused",
+     "stopping",
+     "reviewing",
+     "exporting",
+     "submitted",
+     "cancelled",
+     "failed"
+    ],
+    "targets": [],
+    "timeUnit": "microseconds"
+   },
+   "source": {
+    "adapter": "kde-wayland",
+    "capture": {
+     "desktop": {
+      "available": true,
+      "error": "",
+      "interface": "org.kde.KWin.ScreenShot2",
+      "interface_version": 5,
+      "mode": "compositor-native",
+      "permission": "restricted-desktop-entry",
+      "permission_entry_matches_executable": true,
+      "permission_rejected": false
+     },
+     "region": {
+      "available": true,
+      "error": "",
+      "helper": {
+       "active": false,
+       "build": {
+        "baseVersion": "26.1023.1058",
+        "commitCount": 1058,
+        "dirty": false,
+        "gitCommit": "05991d9d42aad68d3bd233a609cf294d839835ed",
+        "gitTree": "5e53f777b912ef958678b2f23b400847c7cb4d33",
+        "packageVersion": "26.1023.1058~nightly",
+        "schemaVersion": 1,
+        "sourceProvenance": "git",
+        "version": "26.1023.1058-nightly"
+       },
+       "cleanupRequired": false,
+       "lastExit": {},
+       "processId": 0
+      },
+      "interface": "org.kde.KWin.ScreenShot2",
+      "interface_version": 5,
+      "mode": "compositor-native",
+      "permission": "restricted-desktop-entry",
+      "permission_entry_matches_executable": true,
+      "permission_rejected": false
+     },
+     "window": {
+      "available": true,
+      "error": "",
+      "interface": "org.kde.KWin.ScreenShot2",
+      "interface_version": 5,
+      "mode": "compositor-native",
+      "permission": "restricted-desktop-entry",
+      "permission_entry_matches_executable": true,
+      "permission_rejected": false
+     }
+    },
+    "captureHelper": {
+     "active": false,
+     "build": {
+      "baseVersion": "26.1023.1058",
+      "commitCount": 1058,
+      "dirty": false,
+      "gitCommit": "05991d9d42aad68d3bd233a609cf294d839835ed",
+      "gitTree": "5e53f777b912ef958678b2f23b400847c7cb4d33",
+      "packageVersion": "26.1023.1058~nightly",
+      "schemaVersion": 1,
+      "sourceProvenance": "git",
+      "version": "26.1023.1058-nightly"
+     },
+     "cleanupRequired": false,
+     "lastExit": {},
+     "processId": 0
+    },
+    "clipboard": {
+     "available": true,
+     "error": "",
+     "import": "ext-data-control-v1",
+     "protocol_version": 1,
+     "result": "ext-data-control-v1-clipboard-only",
+     "types": [
+      "files",
+      "image",
+      "text"
+     ]
+    },
+    "outputs": {
+     "available": true,
+     "error": "",
+     "outputs": 1,
+     "protocol": "wl-output+xdg-output",
+     "protocol_version": 3,
+     "revision": 4
+    },
+    "resident": "qt-core",
+    "shortcuts": {
+     "available": true,
+     "bindings": {
+      "clipboard": {
+       "actual": [],
+       "bound": false,
+       "effective": "",
+       "layout": 0,
+       "requested": "",
+       "state": "unbound"
+      },
+      "desktop": {
+       "actual": [
+        "Ctrl+#"
+       ],
+       "bound": true,
+       "effective": "Ctrl+#",
+       "layout": 0,
+       "requested": "Ctrl+Shift+3",
+       "state": "bound"
+      },
+      "edit": {
+       "actual": [],
+       "bound": false,
+       "effective": "",
+       "layout": 0,
+       "requested": "",
+       "state": "unbound"
+      },
+      "record": {
+       "actual": [],
+       "bound": false,
+       "effective": "",
+       "layout": 0,
+       "requested": "",
+       "state": "unbound"
+      },
+      "region": {
+       "actual": [
+        "Ctrl+!"
+       ],
+       "bound": true,
+       "effective": "Ctrl+!",
+       "layout": 0,
+       "requested": "Ctrl+Shift+1",
+       "state": "bound"
+      },
+      "window": {
+       "actual": [
+        "Ctrl+@"
+       ],
+       "bound": true,
+       "effective": "Ctrl+@",
+       "layout": 0,
+       "requested": "Ctrl+Shift+2",
+       "state": "bound"
+      }
+     }
+    }
+   }
+  },
+  "journalReady": true,
+  "qtVersion": "6.8.3",
+  "release": {
+   "kind": "nightly",
+   "url": "https://github.com/patrick-hudson/put.gd-desktop/releases/tag/v26.1023.1058-nightly",
+   "version": "26.1023.1058-nightly"
+  }
+ },
+ "ui": {
+  "ui": {
+   "checkpointBytes": 0,
+   "lastExit": {},
+   "pid": 0,
+   "state": "stopped"
+  },
+  "trayAvailable": true,
+  "trayTint": {
+   "color": "#2759b8",
+   "panel": "light",
+   "source": "kde-default"
+  },
+  "loginStartup": {
+   "applied": true,
+   "enabled": false
+  },
+  "update": {
+   "action": null,
+   "attemptedAt": null,
+   "build": {
+    "channel": "nightly",
+    "kind": "nightly",
+    "packageTarget": "appimage",
+    "reason": null,
+    "supported": true,
+    "version": "26.1023.1058-nightly"
+   },
+   "channel": "nightly",
+   "channelSetting": "build",
+   "channelSource": "setting",
+   "check": true,
+   "checkedAt": null,
+   "checking": false,
+   "enabled": true,
+   "error": null,
+   "install": {
+    "available": true,
+    "backup": null,
+    "image": "/home/patrick/work/put.gd-qt418/afa/images/putgd-26.1023.1058-nightly-x86_64.AppImage",
+    "installed": null,
+    "kind": "update",
+    "reason": null,
+    "restartRequired": false,
+    "running": false,
+    "state": "idle",
+    "switch": null
+   },
+   "nextCheckAt": "2026-10-23T18:37:35Z",
+   "notifies": false,
+   "reason": null,
+   "result": null,
+   "supported": true
+  }
+ },
+ "kdeEntries": [
+  "putgd-appimage-UTYJUin7.desktop",
+  "putgd-record-appimage-6AUXG7ky.desktop",
+  "putgd-record.desktop",
+  "putgd-ui.desktop"
+ ]
+}

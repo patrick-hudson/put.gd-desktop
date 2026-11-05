@@ -1,0 +1,45 @@
+{
+  "controller": "d69",
+  "suites": [
+    {
+      "suite": "test_surface_driver",
+      "tests": 93,
+      "seconds": 6.473,
+      "passed": true,
+      "skipped": 0,
+      "logSha256": "13ef2f97d7767dd97800c9528f671222d025b3166abe7e2777a9f110bcb8fe20"
+    },
+    {
+      "suite": "test_surface_live_evidence",
+      "tests": 71,
+      "seconds": 8.225,
+      "passed": true,
+      "skipped": 5,
+      "logSha256": "8080b56e80f65a6e43728123aadbd4a7498384575958d751c533c83e8bfedee3"
+    },
+    {
+      "suite": "test_surface_outcomes_live",
+      "tests": 7,
+      "seconds": 0.012,
+      "passed": true,
+      "skipped": 0,
+      "logSha256": "0797a603f79e55a5612211749887a547eca16fda33260dc9b3baf57657cc4f17"
+    },
+    {
+      "suite": "test_surface_recipes_links",
+      "tests": 63,
+      "seconds": 32.385,
+      "passed": true,
+      "skipped": 0,
+      "logSha256": "46b3ea705883b46f2d42fce32519845a28383979c63196b5a8cf38bae0b30d36"
+    },
+    {
+      "suite": "test_surface_recipes_outcomes",
+      "tests": 5,
+      "seconds": 0.174,
+      "passed": true,
+      "skipped": 0,
+      "logSha256": "3305ef2d8a4c653bcf1bc8ddc890205b3fe7965734cda96b11b69127e3df2c1b"
+    }
+  ]
+}

@@ -1,0 +1,45 @@
+     Static hostname: aurora-amd
+           Icon name: computer-desktop
+             Chassis: desktop 🖥️
+          Machine ID: [REDACTED]
+             Boot ID: [REDACTED]
+    Operating System: Aurora (Version: testing-45.20261029.1)
+         CPE OS Name: cpe:/o:universal-blue:aurora:45
+      OS Support End: Wed 2027-11-24
+OS Support Remaining: 1y 3w 2d
+            OS Image: aurora
+    OS Image Version: testing-45.20261029.1
+              Kernel: Linux 7.2.11-300.fc45.x86_64
+        Architecture: x86-64
+     Hardware Vendor: Lenovo
+      Hardware Model: ThinkCentre M75q Gen 5
+        Hardware SKU: LENOVO_MT_12RQ_BU_Think_FM_ThinkCentre M75q Gen 5
+    Firmware Version: M55KT19A
+       Firmware Date: Mon 2024-10-28
+        Firmware Age: 2y 3d
+  1 1000 patrick seat0 2479    user    tty1 no -
+  2 1000 patrick -     2645    manager -    no -
+ 36 1000 patrick -     7269    user    -    no -
+497 1000 patrick -     207953  user    -    no -
+510 1000 patrick -     210102  user    -    no -
+  6 1000 patrick -     4457    user    -    no -
+  7 1000 patrick -     4461    user    -    no -
+734 1000 patrick -     3072069 user    -    no -
+735 1000 patrick -     3072064 user    -    no -
+736 1000 patrick -     3072068 user    -    no -
+737 1000 patrick -     3072067 user    -    no -
+738 1000 patrick -     3072066 user    -    no -
+747 1000 patrick -     3896559 user    -    no -
+  8 1000 patrick -     4528    user    -    no -
+/sys/class/drm/card1-DP-1/status disconnected
+/sys/class/drm/card1-DP-2/status connected
+/sys/class/drm/card1-DP-3/status disconnected
+/sys/class/drm/card1-DP-4/status disconnected
+/sys/class/drm/card1-DP-5/status disconnected
+/sys/class/drm/card1-DP-6/status disconnected
+/sys/class/drm/card1-DP-7/status disconnected
+/sys/class/drm/card1-HDMI-A-1/status disconnected
+/sys/class/drm/card1-Writeback-1/status unknown
+kwin 6.7.5
+bash: line 3: rg: command not found
+bash: line 6: 3897285 Aborted                    (core dumped) plasmashell --version

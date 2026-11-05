@@ -1,0 +1,146 @@
+{
+  "frames": {
+    "frames/outcomes_live.proton_region_upload/00-before.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "frames/outcomes_live.proton_region_upload/01-independent-frozen-pattern.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "frames/outcomes_live.proton_region_upload/02-browser-failure-safe-desktop.png": {
+      "sha256": "cb0e14f5dc857ddb5dc920b4178085d9f6251d26562017678afc1ae3135b86fd",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          360,
+          0,
+          560,
+          360
+        ]
+      ],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true,
+      "desktop_safe": "private Firefox kiosk without address bar owns the verified foreground"
+    },
+    "frames/outcomes_live.proton_region_upload/03-revoke-exact-owned-link.png": {
+      "sha256": "da4162dde591ad8f25dec41f374d184077a7649bd6c0fa80f41fa718441fbf32",
+      "size": [
+        468,
+        153
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          468,
+          20
+        ]
+      ],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true
+    },
+    "frames/outcomes_live.proton_region_upload/04-history-after-remote-cleanup.png": {
+      "sha256": "944d0866da2188fae6366c9bb24a28b582d8a3cadfc76b1cf16f39732ef8dd01",
+      "size": [
+        1213,
+        768
+      ],
+      "regions": [
+        [
+          293,
+          0,
+          560,
+          328
+        ],
+        [
+          1056,
+          730,
+          143,
+          36
+        ],
+        [
+          847,
+          538,
+          108,
+          40
+        ],
+        [
+          847,
+          494,
+          117,
+          40
+        ],
+        [
+          847,
+          450,
+          140,
+          40
+        ],
+        [
+          553,
+          122,
+          304,
+          40
+        ]
+      ],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true
+    },
+    "frames/outcomes_live.proton_region_upload/05-after.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    }
+  }
+}

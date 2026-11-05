@@ -1,0 +1,5 @@
+relative args with spaces: exit=0 resolved=<T>/src dir|<T>/h dir|/tmp/p560zz|<T>/app|
+missing app exit=2
+relative OUT exit=2
+too few args exit=2
+missing HARNESS exit=2

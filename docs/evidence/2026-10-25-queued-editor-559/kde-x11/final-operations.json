@@ -1,0 +1,669 @@
+[
+  {
+    "action": "edit",
+    "cancelled": false,
+    "clipboardRevision": "2",
+    "copyStatus": "copied",
+    "created": "2026-10-25T05:14:07.863Z",
+    "destination": {
+      "credentials": {
+        "mode": "session",
+        "reference": null
+      },
+      "profileId": "q559",
+      "profileRevision": "ff043ecfae9457799ec1572ccd9df21709495910460b7a85306f324b15b4fcae",
+      "providerId": "s3",
+      "settings": {
+        "aclMode": "public-read",
+        "addressing": "path",
+        "bucket": "fixture",
+        "connectTimeoutMs": 5000,
+        "endpoint": "http://127.0.0.1:44571",
+        "lowSpeedBytesPerSecond": 1,
+        "lowSpeedTimeSeconds": 120,
+        "objectPrefix": "q559/",
+        "publicUrlBase": "http://127.0.0.1:44571/fixture",
+        "region": "us-east-1",
+        "requestTimeoutMs": 180000,
+        "storageClass": "STANDARD"
+      }
+    },
+    "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+    },
+    "id": "d1087831-9774-4f40-a358-3a27d009500b",
+    "invocation": "1",
+    "items": [
+      {
+        "artifact": {
+          "bytes": 757,
+          "category": "images",
+          "id": "0d8f2e0e-44c7-4696-ade5-df96915ad4be",
+          "mime": "image/png",
+          "name": "Screen-Capture-2026-10-25-00-14-07.png",
+          "namingPrepared": true,
+          "originalFile": false,
+          "previewPath": "/tmp/q559xk1/data/putgd/artifacts/../previews/0d8f2e0e-44c7-4696-ade5-df96915ad4be.png",
+          "sha256": "55eba1835a74471f4d322e0f3a0b4e750a245ab9147e0cf60ea373c81f4721cf"
+        },
+        "candidate": "Screen-Capture-2026-10-25-00-14-07.png",
+        "concurrencyToken": "",
+        "condition": "absent",
+        "error": {
+          "code": "",
+          "details": {},
+          "message": ""
+        },
+        "local": {
+          "error": {
+            "code": "",
+            "details": {},
+            "message": ""
+          },
+          "path": "",
+          "status": "disabled"
+        },
+        "objectReference": {
+          "key": "q559/Screen-Capture-2026-10-25-00-14-07.png",
+          "schemaVersion": 1
+        },
+        "phase": "uploaded",
+        "publicationId": "00b116d8-cdc5-4fc0-9de9-7e9759f86896",
+        "receipt": {
+          "concurrencyToken": "\"47824ddc0198707508090acae7d03c4e\"",
+          "destination": {
+            "credentials": {
+              "mode": "session",
+              "reference": null
+            },
+            "profileId": "q559",
+            "profileRevision": "ff043ecfae9457799ec1572ccd9df21709495910460b7a85306f324b15b4fcae",
+            "providerId": "s3",
+            "settings": {
+              "aclMode": "public-read",
+              "addressing": "path",
+              "bucket": "fixture",
+              "connectTimeoutMs": 5000,
+              "endpoint": "http://127.0.0.1:44571",
+              "lowSpeedBytesPerSecond": 1,
+              "lowSpeedTimeSeconds": 120,
+              "objectPrefix": "q559/",
+              "publicUrlBase": "http://127.0.0.1:44571/fixture",
+              "region": "us-east-1",
+              "requestTimeoutMs": 180000,
+              "storageClass": "STANDARD"
+            }
+          },
+          "directUrl": "http://127.0.0.1:44571/fixture/q559/Screen-Capture-2026-10-25-00-14-07.png",
+          "objectReference": {
+            "bytes": 757,
+            "key": "q559/Screen-Capture-2026-10-25-00-14-07.png",
+            "schemaVersion": 1,
+            "sha256": "55eba1835a74471f4d322e0f3a0b4e750a245ab9147e0cf60ea373c81f4721cf",
+            "versionId": ""
+          },
+          "publicationId": "00b116d8-cdc5-4fc0-9de9-7e9759f86896",
+          "schemaVersion": 1
+        },
+        "remoteStatus": "not_requested",
+        "shareIntent": "",
+        "shareIntentOptions": {},
+        "shareStatus": "not_requested",
+        "uploadProgress": {
+          "bytesTotal": 757,
+          "bytesTransferred": 757,
+          "phase": "finalizing"
+        },
+        "uploadStatus": "uploaded"
+      }
+    ],
+    "phase": "completed",
+    "requestTimeoutMs": null,
+    "settingsRevision": "ff043ecfae9457799ec1572ccd9df21709495910460b7a85306f324b15b4fcae",
+    "state": "completed"
+  },
+  {
+    "action": "edit",
+    "cancelled": false,
+    "clipboardRevision": "2",
+    "copyStatus": "copied",
+    "created": "2026-10-25T05:14:11.350Z",
+    "destination": {
+      "credentials": {
+        "mode": "session",
+        "reference": null
+      },
+      "profileId": "q559",
+      "profileRevision": "ff043ecfae9457799ec1572ccd9df21709495910460b7a85306f324b15b4fcae",
+      "providerId": "s3",
+      "settings": {
+        "aclMode": "public-read",
+        "addressing": "path",
+        "bucket": "fixture",
+        "connectTimeoutMs": 5000,
+        "endpoint": "http://127.0.0.1:44571",
+        "lowSpeedBytesPerSecond": 1,
+        "lowSpeedTimeSeconds": 120,
+        "objectPrefix": "q559/",
+        "publicUrlBase": "http://127.0.0.1:44571/fixture",
+        "region": "us-east-1",
+        "requestTimeoutMs": 180000,
+        "storageClass": "STANDARD"
+      }
+    },
+    "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+    },
+    "id": "db624952-de0f-4ff5-a0ba-08bf4d85fc9e",
+    "invocation": "2",
+    "items": [
+      {
+        "artifact": {
+          "bytes": 757,
+          "category": "images",
+          "id": "291c6c07-f46b-4fa7-b063-dfc0f211a1a0",
+          "mime": "image/png",
+          "name": "Screen-Capture-2026-10-25-00-14-11.png",
+          "namingPrepared": true,
+          "originalFile": false,
+          "previewPath": "/tmp/q559xk1/data/putgd/artifacts/../previews/291c6c07-f46b-4fa7-b063-dfc0f211a1a0.png",
+          "sha256": "55eba1835a74471f4d322e0f3a0b4e750a245ab9147e0cf60ea373c81f4721cf"
+        },
+        "candidate": "Screen-Capture-2026-10-25-00-14-11.png",
+        "concurrencyToken": "",
+        "condition": "absent",
+        "error": {
+          "code": "",
+          "details": {},
+          "message": ""
+        },
+        "local": {
+          "error": {
+            "code": "",
+            "details": {},
+            "message": ""
+          },
+          "path": "",
+          "status": "disabled"
+        },
+        "objectReference": {
+          "key": "q559/Screen-Capture-2026-10-25-00-14-11.png",
+          "schemaVersion": 1
+        },
+        "phase": "uploaded",
+        "publicationId": "3561b55b-0c9b-421b-9a20-64d922e7c567",
+        "receipt": {
+          "concurrencyToken": "\"47824ddc0198707508090acae7d03c4e\"",
+          "destination": {
+            "credentials": {
+              "mode": "session",
+              "reference": null
+            },
+            "profileId": "q559",
+            "profileRevision": "ff043ecfae9457799ec1572ccd9df21709495910460b7a85306f324b15b4fcae",
+            "providerId": "s3",
+            "settings": {
+              "aclMode": "public-read",
+              "addressing": "path",
+              "bucket": "fixture",
+              "connectTimeoutMs": 5000,
+              "endpoint": "http://127.0.0.1:44571",
+              "lowSpeedBytesPerSecond": 1,
+              "lowSpeedTimeSeconds": 120,
+              "objectPrefix": "q559/",
+              "publicUrlBase": "http://127.0.0.1:44571/fixture",
+              "region": "us-east-1",
+              "requestTimeoutMs": 180000,
+              "storageClass": "STANDARD"
+            }
+          },
+          "directUrl": "http://127.0.0.1:44571/fixture/q559/Screen-Capture-2026-10-25-00-14-11.png",
+          "objectReference": {
+            "bytes": 757,
+            "key": "q559/Screen-Capture-2026-10-25-00-14-11.png",
+            "schemaVersion": 1,
+            "sha256": "55eba1835a74471f4d322e0f3a0b4e750a245ab9147e0cf60ea373c81f4721cf",
+            "versionId": ""
+          },
+          "publicationId": "3561b55b-0c9b-421b-9a20-64d922e7c567",
+          "schemaVersion": 1
+        },
+        "remoteStatus": "not_requested",
+        "shareIntent": "",
+        "shareIntentOptions": {},
+        "shareStatus": "not_requested",
+        "uploadProgress": {
+          "bytesTotal": 757,
+          "bytesTransferred": 757,
+          "phase": "finalizing"
+        },
+        "uploadStatus": "uploaded"
+      }
+    ],
+    "phase": "completed",
+    "requestTimeoutMs": null,
+    "settingsRevision": "ff043ecfae9457799ec1572ccd9df21709495910460b7a85306f324b15b4fcae",
+    "state": "completed"
+  },
+  {
+    "action": "edit",
+    "cancelled": false,
+    "clipboardRevision": "2",
+    "copyStatus": "copied",
+    "created": "2026-10-25T05:14:11.763Z",
+    "destination": {
+      "credentials": {
+        "mode": "session",
+        "reference": null
+      },
+      "profileId": "q559",
+      "profileRevision": "ff043ecfae9457799ec1572ccd9df21709495910460b7a85306f324b15b4fcae",
+      "providerId": "s3",
+      "settings": {
+        "aclMode": "public-read",
+        "addressing": "path",
+        "bucket": "fixture",
+        "connectTimeoutMs": 5000,
+        "endpoint": "http://127.0.0.1:44571",
+        "lowSpeedBytesPerSecond": 1,
+        "lowSpeedTimeSeconds": 120,
+        "objectPrefix": "q559/",
+        "publicUrlBase": "http://127.0.0.1:44571/fixture",
+        "region": "us-east-1",
+        "requestTimeoutMs": 180000,
+        "storageClass": "STANDARD"
+      }
+    },
+    "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+    },
+    "id": "5be238c7-dac0-4506-a173-7b77e8db6008",
+    "invocation": "3",
+    "items": [
+      {
+        "artifact": {
+          "bytes": 757,
+          "category": "images",
+          "id": "3b091236-b58e-47d5-9ee2-1389a6b7ea49",
+          "mime": "image/png",
+          "name": "Screen-Capture-2026-10-25-00-14-11.png",
+          "namingPrepared": true,
+          "originalFile": false,
+          "previewPath": "/tmp/q559xk1/data/putgd/artifacts/../previews/3b091236-b58e-47d5-9ee2-1389a6b7ea49.png",
+          "sha256": "55eba1835a74471f4d322e0f3a0b4e750a245ab9147e0cf60ea373c81f4721cf"
+        },
+        "candidate": "Screen-Capture-2026-10-25-00-14-11-092c34ba-89fd-4689-b618-ccd58f766b4c.png",
+        "concurrencyToken": "",
+        "condition": "absent",
+        "error": {
+          "code": "",
+          "details": {},
+          "message": ""
+        },
+        "local": {
+          "error": {
+            "code": "",
+            "details": {},
+            "message": ""
+          },
+          "path": "",
+          "status": "disabled"
+        },
+        "objectReference": {
+          "key": "q559/Screen-Capture-2026-10-25-00-14-11-092c34ba-89fd-4689-b618-ccd58f766b4c.png",
+          "schemaVersion": 1
+        },
+        "phase": "uploaded",
+        "publicationId": "7d65c2e0-e433-449c-bca7-992c141946e5",
+        "receipt": {
+          "concurrencyToken": "\"47824ddc0198707508090acae7d03c4e\"",
+          "destination": {
+            "credentials": {
+              "mode": "session",
+              "reference": null
+            },
+            "profileId": "q559",
+            "profileRevision": "ff043ecfae9457799ec1572ccd9df21709495910460b7a85306f324b15b4fcae",
+            "providerId": "s3",
+            "settings": {
+              "aclMode": "public-read",
+              "addressing": "path",
+              "bucket": "fixture",
+              "connectTimeoutMs": 5000,
+              "endpoint": "http://127.0.0.1:44571",
+              "lowSpeedBytesPerSecond": 1,
+              "lowSpeedTimeSeconds": 120,
+              "objectPrefix": "q559/",
+              "publicUrlBase": "http://127.0.0.1:44571/fixture",
+              "region": "us-east-1",
+              "requestTimeoutMs": 180000,
+              "storageClass": "STANDARD"
+            }
+          },
+          "directUrl": "http://127.0.0.1:44571/fixture/q559/Screen-Capture-2026-10-25-00-14-11-092c34ba-89fd-4689-b618-ccd58f766b4c.png",
+          "objectReference": {
+            "bytes": 757,
+            "key": "q559/Screen-Capture-2026-10-25-00-14-11-092c34ba-89fd-4689-b618-ccd58f766b4c.png",
+            "schemaVersion": 1,
+            "sha256": "55eba1835a74471f4d322e0f3a0b4e750a245ab9147e0cf60ea373c81f4721cf",
+            "versionId": ""
+          },
+          "publicationId": "7d65c2e0-e433-449c-bca7-992c141946e5",
+          "schemaVersion": 1
+        },
+        "remoteStatus": "not_requested",
+        "shareIntent": "",
+        "shareIntentOptions": {},
+        "shareStatus": "not_requested",
+        "uploadProgress": {
+          "bytesTotal": 757,
+          "bytesTransferred": 757,
+          "phase": "finalizing"
+        },
+        "uploadStatus": "uploaded"
+      }
+    ],
+    "phase": "completed",
+    "requestTimeoutMs": null,
+    "settingsRevision": "ff043ecfae9457799ec1572ccd9df21709495910460b7a85306f324b15b4fcae",
+    "state": "completed"
+  },
+  {
+    "action": "edit",
+    "cancelled": false,
+    "clipboardRevision": "2",
+    "copyStatus": "copied",
+    "created": "2026-10-25T05:14:12.381Z",
+    "destination": {
+      "credentials": {
+        "mode": "session",
+        "reference": null
+      },
+      "profileId": "q559",
+      "profileRevision": "ff043ecfae9457799ec1572ccd9df21709495910460b7a85306f324b15b4fcae",
+      "providerId": "s3",
+      "settings": {
+        "aclMode": "public-read",
+        "addressing": "path",
+        "bucket": "fixture",
+        "connectTimeoutMs": 5000,
+        "endpoint": "http://127.0.0.1:44571",
+        "lowSpeedBytesPerSecond": 1,
+        "lowSpeedTimeSeconds": 120,
+        "objectPrefix": "q559/",
+        "publicUrlBase": "http://127.0.0.1:44571/fixture",
+        "region": "us-east-1",
+        "requestTimeoutMs": 180000,
+        "storageClass": "STANDARD"
+      }
+    },
+    "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+    },
+    "id": "1c1c311f-ddbd-45d9-b680-45a32cb0636e",
+    "invocation": "4",
+    "items": [
+      {
+        "artifact": {
+          "bytes": 757,
+          "category": "images",
+          "id": "04dc4ddc-36eb-4c59-9d8c-fe7f7f72c77d",
+          "mime": "image/png",
+          "name": "Screen-Capture-2026-10-25-00-14-12.png",
+          "namingPrepared": true,
+          "originalFile": false,
+          "previewPath": "/tmp/q559xk1/data/putgd/artifacts/../previews/04dc4ddc-36eb-4c59-9d8c-fe7f7f72c77d.png",
+          "sha256": "55eba1835a74471f4d322e0f3a0b4e750a245ab9147e0cf60ea373c81f4721cf"
+        },
+        "candidate": "Screen-Capture-2026-10-25-00-14-12.png",
+        "concurrencyToken": "",
+        "condition": "absent",
+        "error": {
+          "code": "",
+          "details": {},
+          "message": ""
+        },
+        "local": {
+          "error": {
+            "code": "",
+            "details": {},
+            "message": ""
+          },
+          "path": "",
+          "status": "disabled"
+        },
+        "objectReference": {
+          "key": "q559/Screen-Capture-2026-10-25-00-14-12.png",
+          "schemaVersion": 1
+        },
+        "phase": "uploaded",
+        "publicationId": "c0a60824-607c-4b85-b6fb-3254dbb613f8",
+        "receipt": {
+          "concurrencyToken": "\"47824ddc0198707508090acae7d03c4e\"",
+          "destination": {
+            "credentials": {
+              "mode": "session",
+              "reference": null
+            },
+            "profileId": "q559",
+            "profileRevision": "ff043ecfae9457799ec1572ccd9df21709495910460b7a85306f324b15b4fcae",
+            "providerId": "s3",
+            "settings": {
+              "aclMode": "public-read",
+              "addressing": "path",
+              "bucket": "fixture",
+              "connectTimeoutMs": 5000,
+              "endpoint": "http://127.0.0.1:44571",
+              "lowSpeedBytesPerSecond": 1,
+              "lowSpeedTimeSeconds": 120,
+              "objectPrefix": "q559/",
+              "publicUrlBase": "http://127.0.0.1:44571/fixture",
+              "region": "us-east-1",
+              "requestTimeoutMs": 180000,
+              "storageClass": "STANDARD"
+            }
+          },
+          "directUrl": "http://127.0.0.1:44571/fixture/q559/Screen-Capture-2026-10-25-00-14-12.png",
+          "objectReference": {
+            "bytes": 757,
+            "key": "q559/Screen-Capture-2026-10-25-00-14-12.png",
+            "schemaVersion": 1,
+            "sha256": "55eba1835a74471f4d322e0f3a0b4e750a245ab9147e0cf60ea373c81f4721cf",
+            "versionId": ""
+          },
+          "publicationId": "c0a60824-607c-4b85-b6fb-3254dbb613f8",
+          "schemaVersion": 1
+        },
+        "remoteStatus": "not_requested",
+        "shareIntent": "",
+        "shareIntentOptions": {},
+        "shareStatus": "not_requested",
+        "uploadProgress": {
+          "bytesTotal": 757,
+          "bytesTransferred": 757,
+          "phase": "finalizing"
+        },
+        "uploadStatus": "uploaded"
+      }
+    ],
+    "phase": "completed",
+    "requestTimeoutMs": null,
+    "settingsRevision": "ff043ecfae9457799ec1572ccd9df21709495910460b7a85306f324b15b4fcae",
+    "state": "completed"
+  },
+  {
+    "action": "edit",
+    "cancelled": false,
+    "clipboardRevision": "2",
+    "copyStatus": "copied",
+    "created": "2026-10-25T05:14:13.013Z",
+    "destination": {
+      "credentials": {
+        "mode": "session",
+        "reference": null
+      },
+      "profileId": "q559",
+      "profileRevision": "ff043ecfae9457799ec1572ccd9df21709495910460b7a85306f324b15b4fcae",
+      "providerId": "s3",
+      "settings": {
+        "aclMode": "public-read",
+        "addressing": "path",
+        "bucket": "fixture",
+        "connectTimeoutMs": 5000,
+        "endpoint": "http://127.0.0.1:44571",
+        "lowSpeedBytesPerSecond": 1,
+        "lowSpeedTimeSeconds": 120,
+        "objectPrefix": "q559/",
+        "publicUrlBase": "http://127.0.0.1:44571/fixture",
+        "region": "us-east-1",
+        "requestTimeoutMs": 180000,
+        "storageClass": "STANDARD"
+      }
+    },
+    "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+    },
+    "id": "236f8f71-9ce1-4673-8e7a-570e11bc5579",
+    "invocation": "5",
+    "items": [
+      {
+        "artifact": {
+          "bytes": 757,
+          "category": "images",
+          "id": "88c9ef0a-0713-4944-8f94-765973f01646",
+          "mime": "image/png",
+          "name": "Screen-Capture-2026-10-25-00-14-13.png",
+          "namingPrepared": true,
+          "originalFile": false,
+          "previewPath": "/tmp/q559xk1/data/putgd/artifacts/../previews/88c9ef0a-0713-4944-8f94-765973f01646.png",
+          "sha256": "55eba1835a74471f4d322e0f3a0b4e750a245ab9147e0cf60ea373c81f4721cf"
+        },
+        "candidate": "Screen-Capture-2026-10-25-00-14-13.png",
+        "concurrencyToken": "",
+        "condition": "absent",
+        "error": {
+          "code": "",
+          "details": {},
+          "message": ""
+        },
+        "local": {
+          "error": {
+            "code": "",
+            "details": {},
+            "message": ""
+          },
+          "path": "",
+          "status": "disabled"
+        },
+        "objectReference": {
+          "key": "q559/Screen-Capture-2026-10-25-00-14-13.png",
+          "schemaVersion": 1
+        },
+        "phase": "uploaded",
+        "publicationId": "b3c6f7b1-3eed-4723-9d9e-0bcb4db3fe17",
+        "receipt": {
+          "concurrencyToken": "\"47824ddc0198707508090acae7d03c4e\"",
+          "destination": {
+            "credentials": {
+              "mode": "session",
+              "reference": null
+            },
+            "profileId": "q559",
+            "profileRevision": "ff043ecfae9457799ec1572ccd9df21709495910460b7a85306f324b15b4fcae",
+            "providerId": "s3",
+            "settings": {
+              "aclMode": "public-read",
+              "addressing": "path",
+              "bucket": "fixture",
+              "connectTimeoutMs": 5000,
+              "endpoint": "http://127.0.0.1:44571",
+              "lowSpeedBytesPerSecond": 1,
+              "lowSpeedTimeSeconds": 120,
+              "objectPrefix": "q559/",
+              "publicUrlBase": "http://127.0.0.1:44571/fixture",
+              "region": "us-east-1",
+              "requestTimeoutMs": 180000,
+              "storageClass": "STANDARD"
+            }
+          },
+          "directUrl": "http://127.0.0.1:44571/fixture/q559/Screen-Capture-2026-10-25-00-14-13.png",
+          "objectReference": {
+            "bytes": 757,
+            "key": "q559/Screen-Capture-2026-10-25-00-14-13.png",
+            "schemaVersion": 1,
+            "sha256": "55eba1835a74471f4d322e0f3a0b4e750a245ab9147e0cf60ea373c81f4721cf",
+            "versionId": ""
+          },
+          "publicationId": "b3c6f7b1-3eed-4723-9d9e-0bcb4db3fe17",
+          "schemaVersion": 1
+        },
+        "remoteStatus": "not_requested",
+        "shareIntent": "",
+        "shareIntentOptions": {},
+        "shareStatus": "not_requested",
+        "uploadProgress": {
+          "bytesTotal": 757,
+          "bytesTransferred": 757,
+          "phase": "finalizing"
+        },
+        "uploadStatus": "uploaded"
+      }
+    ],
+    "phase": "completed",
+    "requestTimeoutMs": null,
+    "settingsRevision": "ff043ecfae9457799ec1572ccd9df21709495910460b7a85306f324b15b4fcae",
+    "state": "completed"
+  },
+  {
+    "action": "edit",
+    "cancelled": true,
+    "clipboardRevision": "2",
+    "copyStatus": "no_result",
+    "created": "2026-10-25T05:14:13.491Z",
+    "destination": {
+      "credentials": {
+        "mode": "session",
+        "reference": null
+      },
+      "profileId": "q559",
+      "profileRevision": "ff043ecfae9457799ec1572ccd9df21709495910460b7a85306f324b15b4fcae",
+      "providerId": "s3",
+      "settings": {
+        "aclMode": "public-read",
+        "addressing": "path",
+        "bucket": "fixture",
+        "connectTimeoutMs": 5000,
+        "endpoint": "http://127.0.0.1:44571",
+        "lowSpeedBytesPerSecond": 1,
+        "lowSpeedTimeSeconds": 120,
+        "objectPrefix": "q559/",
+        "publicUrlBase": "http://127.0.0.1:44571/fixture",
+        "region": "us-east-1",
+        "requestTimeoutMs": 180000,
+        "storageClass": "STANDARD"
+      }
+    },
+    "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+    },
+    "id": "8edef2de-c219-451b-85d8-18579c27e9b3",
+    "invocation": "6",
+    "items": [],
+    "phase": "cancelled",
+    "requestTimeoutMs": null,
+    "settingsRevision": "ff043ecfae9457799ec1572ccd9df21709495910460b7a85306f324b15b4fcae",
+    "state": "cancelled"
+  }
+]

@@ -1,7 +1,9 @@
 #pragma once
 #include <QMainWindow>
 #include <QJsonObject>
-class QListWidget;class QStackedWidget;class QLabel;class QPushButton;class QMimeData;
+#include "FileDialog.h"
+#include "core/Error.h"
+class QListWidget;class QToolButton;class QTabBar;class QStackedWidget;class QLabel;class QPushButton;class QMimeData;class QScrollArea;class QSpacerItem;
 namespace putgd {
 class UiSession;class SettingsWindow;class HistoryWindow;
 class MainWindow final:public QMainWindow {
@@ -10,17 +12,28 @@ public:
  explicit MainWindow(UiSession&,QWidget* parent=nullptr);
  ~MainWindow()override;
  void navigate(const QString&);
- // Asks for a PNG or JPEG to edit, then emits editRequested.
- void chooseImageToEdit();QJsonObject saveViewState()const;bool restoreViewState(const QJsonObject&);
- SettingsWindow* settings()const{return settings_;}HistoryWindow* history()const{return history_;}
+ Q_SLOT void showLocalCopySettings();void showCaptureSettings(const QStringList& actions={});void showActionFailure(const QString& action,const Error&);
+ // Asks for a PNG or JPEG to edit through the desktop's chooser (#259), then
+ // emits editRequested; false while that chooser is already open.
+ bool chooseImageToEdit();FileDialog& editImageDialog(){return *chooser_;}
+ // How that chooser ended: a chosen image opens in the editor, a cancel does
+ // nothing, a failure shows under the command band with Try again.
+ void imageChooserFinished(const FileDialog::Result&);QJsonObject saveViewState()const;bool restoreViewState(const QJsonObject&,bool restorePage=true);
+ // settings() initializes on demand; passive lifecycle checks use existingSettings().
+ SettingsWindow* settings();SettingsWindow* existingSettings()const{return settings_;}
+ HistoryWindow* history()const{return history_;}
  // The absolute path of a single dropped local PNG or JPEG file, else empty.
  static QString droppedImage(const QMimeData*);
-signals:void viewStateChanged();void actionRequested(const QString&);
+signals:void settingsCreated(SettingsWindow*);void viewStateChanged();void actionRequested(const QString&);
  // Edit & upload from a source other than a region: "clipboard" or "file" with a path.
- void editRequested(const QString& source,const QString& path);void quitRequested();
+ void editRequested(const QString& source,const QString& path);void quitRequested();void aboutRequested();
 protected:
  bool eventFilter(QObject*,QEvent*)override;
 private:
- UiSession& session_;QPushButton* editButton_=nullptr;SettingsWindow* settings_;HistoryWindow* history_;QListWidget* navigation_;QStackedWidget* pages_;QLabel *destination_,*saveStatus_;
+ void updateOutputSummary();void fitBand();void updateSaveStatus();void updateAvailability();
+ UiSession& session_;QToolButton* editButton_=nullptr;SettingsWindow* settings_=nullptr;HistoryWindow* history_;QTabBar* tabs_;QStackedWidget* pages_;QToolButton* destination_=nullptr;QLabel *saveStatus_=nullptr,*version_=nullptr;QPushButton* versionLink_;QPushButton* updateLink_=nullptr;FileDialog* chooser_=nullptr;QLabel* explanation_=nullptr;QWidget* outputGroup_=nullptr;
+ // Edit an image file… whose chooser failed: its reason and Try again, under the command band.
+ QWidget* chooserFailure_=nullptr;QLabel* chooserError_=nullptr;
+ QWidget* outputWarning_=nullptr;QLabel* outputWarningText_=nullptr;QWidget* band_=nullptr;QList<QToolButton*> actionButtons_;int bandStage_=0;bool fittingBand_=false,statusFitPending_=false;
 };
 }

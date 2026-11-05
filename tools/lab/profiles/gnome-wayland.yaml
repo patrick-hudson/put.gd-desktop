@@ -10,5 +10,11 @@
   "video": "virtio-vga",
   "display_heads": 1,
   "guest_user": "lab",
-  "status": "requires-graphical-acceptance"
+  "status": "requires-graphical-acceptance",
+  "tray_menu": {
+    "button": "right",
+    "openSeconds": 0.8,
+    "firstRowSelected": false,
+    "primeOpen": true
+  }
 }

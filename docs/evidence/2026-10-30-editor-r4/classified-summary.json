@@ -1,0 +1,121 @@
+{
+  "cin": {
+    "counts": {
+      "passed": 44,
+      "failed": 0,
+      "blocked": 7
+    },
+    "proof": [
+      {
+        "receipt": "work/editor-r4/cin-final/o4c2/receipt.json",
+        "auditPassed": true,
+        "rawCounts": {
+          "passed": 42,
+          "blocked": 9
+        },
+        "source": "017c1717fd10994c8333067702501cac08ee4e45"
+      },
+      {
+        "receipt": "work/editor-r4/cin-final/o4cg/receipt.json",
+        "auditPassed": true,
+        "rawCounts": {
+          "passed": 4,
+          "blocked": 1
+        },
+        "source": "ecf983dd7a44a24ba4f0a6b2e67f7d5159d9c33a"
+      },
+      {
+        "receipt": "work/editor-r4/cin-final/o4cl/receipt.json",
+        "auditPassed": true,
+        "rawCounts": {
+          "blocked": 1
+        },
+        "source": "6ee85728b7e1243627f19fa11e2c3d73b80ac5f1"
+      },
+      {
+        "receipt": "work/editor-r4/cin-final/o4cm/receipt.json",
+        "auditPassed": false,
+        "rawCounts": {
+          "failed": 2
+        },
+        "source": "6ee85728b7e1243627f19fa11e2c3d73b80ac5f1"
+      }
+    ],
+    "issues": {
+      "663": 4,
+      "910": 2,
+      "671": 1
+    }
+  },
+  "gno": {
+    "counts": {
+      "passed": 44,
+      "failed": 1,
+      "blocked": 6
+    },
+    "proof": [
+      {
+        "receipt": "work/editor-r4/gno-final/o4g2/receipt.json",
+        "auditPassed": true,
+        "rawCounts": {
+          "passed": 43,
+          "blocked": 8
+        },
+        "source": "017c1717fd10994c8333067702501cac08ee4e45"
+      },
+      {
+        "receipt": "work/editor-r4/gno-final/o4gf/receipt.json",
+        "auditPassed": true,
+        "rawCounts": {
+          "passed": 4,
+          "failed": 1
+        },
+        "source": "ecf983dd7a44a24ba4f0a6b2e67f7d5159d9c33a"
+      },
+      {
+        "receipt": "work/editor-r4/gno-final/o4gm/receipt.json",
+        "auditPassed": false,
+        "rawCounts": {
+          "failed": 2
+        },
+        "source": "6ee85728b7e1243627f19fa11e2c3d73b80ac5f1"
+      }
+    ],
+    "issues": {
+      "663": 3,
+      "910": 2,
+      "671": 1,
+      "911": 1
+    }
+  },
+  "kde": {
+    "counts": {
+      "passed": 5,
+      "failed": 0,
+      "blocked": 46
+    },
+    "proof": [
+      {
+        "receipt": "work/editor-r4/kde-final/o4k3/receipt.json",
+        "auditPassed": false,
+        "rawCounts": {
+          "failed": 51
+        },
+        "source": "31784b28e0712ad5f15c64ad34a530f4af923023"
+      },
+      {
+        "receipt": "work/editor-r4/kde-final/o4kg/receipt.json",
+        "auditPassed": true,
+        "rawCounts": {
+          "passed": 5,
+          "failed": 1
+        },
+        "source": "a9195e08e673494c426b9e593530db195fc8f262"
+      }
+    ],
+    "issues": {
+      "910": 45,
+      "913": 1
+    }
+  }
+}

@@ -1,0 +1,146 @@
+{
+ "label": "install-947",
+ "command": [
+  "dnf",
+  "install",
+  "-y",
+  "/home/patrick/work/put.gd-nfa/assets/putgd-0.1.1-nightly.947-fedora44-x86_64.rpm"
+ ],
+ "before": {
+  "at": "2026-10-23T05:53:59Z",
+  "host": "fedora",
+  "package": {
+   "manager": "rpm",
+   "version": null
+  },
+  "files": {
+   "/etc/apt/sources.list.d/putgd.sources": null,
+   "/usr/share/keyrings/putgd-archive-keyring.gpg": null,
+   "/etc/yum.repos.d/putgd.repo": null,
+   "/etc/yum.repos.d/putgd.repo.rpmsave": null,
+   "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd": null,
+   "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-nightly": null,
+   "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-stable": null,
+   "/usr/share/gnome-shell/extensions/putgd@put.gd/metadata.json": null
+  },
+  "defaultProfile": {
+   "/home/patrick/.config/putgd": null,
+   "/home/patrick/.local/state/putgd": 21,
+   "/home/patrick/.cache/putgd": null,
+   "/home/patrick/.local/share/putgd": null
+  },
+  "autostart": null,
+  "userExtension": false,
+  "processes": [],
+  "enabledExtensions": "['background-logo@fedorahosted.org', 'appindicatorsupport@rgcjonas.gmail.com', 'putgd@put.gd']",
+  "openh264": {
+   "openh264": "openh264-2.6.0-3.fc44.x86_64",
+   "noopenh264": "package noopenh264 is not installed",
+   "gstreamer1-plugin-openh264": "gstreamer1-plugin-openh264-1.28.1-1.fc44.x86_64",
+   "mozilla-openh264": "mozilla-openh264-2.6.0-3.fc44.x86_64"
+  }
+ },
+ "startedAt": "2026-10-23T05:53:59Z",
+ "simulation": {
+  "command": [
+   "sudo",
+   "-n",
+   "dnf",
+   "--assumeno",
+   "install",
+   "/home/patrick/work/put.gd-nfa/assets/putgd-0.1.1-nightly.947-fedora44-x86_64.rpm"
+  ],
+  "exit": 1,
+  "changes": [
+   {
+    "op": "Installing",
+    "package": "putgd"
+   },
+   {
+    "op": "Installing",
+    "package": "jasper-libs"
+   },
+   {
+    "op": "Installing",
+    "package": "libmng"
+   },
+   {
+    "op": "Installing",
+    "package": "qt6-qtimageformats"
+   }
+  ],
+  "tail": "Package             Arch   Version                    Repository        Size\nInstalling:\n putgd              x86_64 0:0.1.1~nightly.947-1.fc44 @commandline 115.2 MiB\nInstalling dependencies:\n jasper-libs        x86_64 0:4.2.8-2.fc44             fedora       349.7 KiB\n libmng             x86_64 0:2.0.3-25.fc44            fedora       553.8 KiB\n qt6-qtimageformats x86_64 0:6.11.2-1.fc44            updates      435.3 KiB\n\nTransaction Summary:\n Installing:         4 packages\n\nUpdating and loading repositories:\nRepositories loaded.\nTotal size of inbound packages is 39 MiB. Need to download 493 KiB.\nAfter this operation, 117 MiB extra will be used (install 117 MiB, remove 0 B).\nWarning: A pending offline transaction initiated by the following command will be invalidated: dnf5daemon-server\nOperation aborted by the user.\n"
+ },
+ "otherPackages": [
+  {
+   "op": "Installing",
+   "package": "jasper-libs"
+  },
+  {
+   "op": "Installing",
+   "package": "libmng"
+  },
+  {
+   "op": "Installing",
+   "package": "qt6-qtimageformats"
+  }
+ ],
+ "exit": 0,
+ "seconds": 6.0,
+ "log": "/home/patrick/work/put.gd-nfa/runs/M2/logs/pkg-install-947.log",
+ "conffilePrompt": false,
+ "signature": [
+  "Warning: skipped OpenPGP checks for 1 package from repository: @commandline"
+ ],
+ "fetched": [],
+ "tail": "Package             Arch   Version                    Repository        Size\nInstalling:\n putgd              x86_64 0:0.1.1~nightly.947-1.fc44 @commandline 115.2 MiB\nInstalling dependencies:\n jasper-libs        x86_64 0:4.2.8-2.fc44             fedora       349.7 KiB\n libmng             x86_64 0:2.0.3-25.fc44            fedora       553.8 KiB\n qt6-qtimageformats x86_64 0:6.11.2-1.fc44            updates      435.3 KiB\n\nTransaction Summary:\n Installing:         4 packages\n\nUpdating and loading repositories:\nRepositories loaded.\nTotal size of inbound packages is 39 MiB. Need to download 493 KiB.\nAfter this operation, 117 MiB extra will be used (install 117 MiB, remove 0 B).\nWarning: A pending offline transaction initiated by the following command will be invalidated: dnf5daemon-server\n[1/3] qt6-qtimageformats-0:6.11.2-1.fc4 100% | 395.5 KiB/s | 128.5 KiB |  00m00s\n[2/3] jasper-libs-0:4.2.8-2.fc44.x86_64 100% | 353.8 KiB/s | 170.2 KiB |  00m00s\n[3/3] libmng-0:2.0.3-25.fc44.x86_64     100% | 344.6 KiB/s | 194.0 KiB |  00m01s\n--------------------------------------------------------------------------------\n[3/3] Total                             100% | 410.6 KiB/s | 492.7 KiB |  00m01s\nRunning transaction\n[1/6] Verify package files              100% |   9.0   B/s |   4.0   B |  00m00s\n[2/6] Prepare transaction               100% |   7.0   B/s |   4.0   B |  00m01s\n[3/6] Installing libmng-0:2.0.3-25.fc44 100% |  32.0 MiB/s | 556.3 KiB |  00m00s\n[4/6] Installing jasper-libs-0:4.2.8-2. 100% |  38.1 MiB/s | 351.2 KiB |  00m00s\n[5/6] Installing qt6-qtimageformats-0:6 100% |  21.9 MiB/s | 448.3 KiB |  00m00s\n[6/6] Installing putgd-0:0.1.1~nightly. 100% |  67.6 MiB/s | 115.3 MiB |  00m02s\nWarning: skipped OpenPGP checks for 1 package from repository: @commandline\nWarning: Pending offline transaction has been invalidated.\nTo reschedule, run: dnf5daemon-server\nComplete!\n",
+ "after": {
+  "at": "2026-10-23T05:54:06Z",
+  "host": "fedora",
+  "package": {
+   "manager": "rpm",
+   "version": "0.1.1~nightly.947-1.fc44"
+  },
+  "files": {
+   "/etc/apt/sources.list.d/putgd.sources": null,
+   "/usr/share/keyrings/putgd-archive-keyring.gpg": null,
+   "/etc/yum.repos.d/putgd.repo": {
+    "sha256": "5399dba05eefd1826094a5226b12285d58da08460b5b8d8b9229e0fe7848a0f4",
+    "bytes": 421,
+    "mode": "0o644",
+    "mtime": "2026-10-23T05:54:05Z"
+   },
+   "/etc/yum.repos.d/putgd.repo.rpmsave": null,
+   "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd": {
+    "sha256": "1a79015c14a4907ac6812658204fa3cc2b2e4bbbbf63f04a4c1eec4623165e80",
+    "bytes": 1664,
+    "mode": "0o644",
+    "mtime": "2010-07-04T00:00:00Z"
+   },
+   "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-nightly": null,
+   "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-stable": null,
+   "/usr/share/gnome-shell/extensions/putgd@put.gd/metadata.json": {
+    "sha256": "690be5bcfd1ee05783cd57a78851c56c0fe624131711b254cb46d062d0cb8046",
+    "bytes": 248,
+    "mode": "0o644",
+    "mtime": "2010-07-04T00:00:00Z"
+   }
+  },
+  "defaultProfile": {
+   "/home/patrick/.config/putgd": null,
+   "/home/patrick/.local/state/putgd": 21,
+   "/home/patrick/.cache/putgd": null,
+   "/home/patrick/.local/share/putgd": null
+  },
+  "autostart": null,
+  "userExtension": false,
+  "processes": [],
+  "enabledExtensions": "['background-logo@fedorahosted.org', 'appindicatorsupport@rgcjonas.gmail.com', 'putgd@put.gd']",
+  "openh264": {
+   "openh264": "openh264-2.6.0-3.fc44.x86_64",
+   "noopenh264": "package noopenh264 is not installed",
+   "gstreamer1-plugin-openh264": "gstreamer1-plugin-openh264-1.28.1-1.fc44.x86_64",
+   "mozilla-openh264": "mozilla-openh264-2.6.0-3.fc44.x86_64"
+  }
+ }
+}

@@ -1,0 +1,10 @@
+{
+  "commit": "6dad974015e87b48b1cfd471bc474251358c7fd4",
+  "validation": "Final light unit regression and hosted CI; live staging lifecycle proof remains the historical 5fd31c19 receipt. No second sandbox was created.",
+  "guestLifetimeHelperUnchanged": true,
+  "files": {
+    "tools/lab/lab.py": "ce2a03542ea32944638b77f6d250ca65e93e9458d772ef60abda5dd8de219d6c",
+    "tools/lab/package_staging.py": "91cc3f6fd99f104447eddd39e4454ee69d4b3da0c98cff5a5eb2f27afd9ff0e7",
+    "tests/desktop/test_lab.py": "f445ccbcc94bb60c50c42f9fee389e9cfd1175fcb9d2fcf16449cb9e4c59b3e6"
+  }
+}

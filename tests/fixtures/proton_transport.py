@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 """Synthetic stdio peer for testing adapter failure disposition; no SDK or account."""
 import json
+import os
 import sys
 import time
 request = json.loads(sys.stdin.buffer.readline())
@@ -39,8 +40,44 @@ elif case == 'flood':
 elif case == 'after-result':
     print(json.dumps({'ok': False, 'error': {'code': 'authentication_required', 'message': 'Synthetic', 'details': {}}}), flush=True)
     print(json.dumps({'event': 'progress', 'phase': 'uploading', 'bytesTransferred': 1}), flush=True)
+if case == 'plan-limit':
+    # The helper's mapping of Proton error 200003 (MAX_FILE_SIZE_FOR_FREE_USER), #147.
+    print(json.dumps({'ok': False, 'error': {'code': 'destination_file_too_large_for_plan',
+        'message': 'This file is larger than your Proton plan allows for a single file.', 'details': {}}}), flush=True)
+    sys.exit(0)
+if case == 'plan-limit-settled':
+    # The helper proved the name still free after 200003: nothing was created (#201).
+    print(json.dumps({'ok': True, 'result': {'status': 'failed', 'error': {'code': 'destination_file_too_large_for_plan',
+        'message': 'This file is larger than your Proton plan allows for a single file.', 'details': {}}}}), flush=True)
+    sys.exit(0)
+if case.startswith('share-expiry'):
+    # A confirmed share result with the service's link expiry (#253).
+    receipt = dict(request['receipt'], directUrl='https://example.invalid/share#synthetic')
+    expires = {'share-expiry': '2026-10-27T17:48:40.000Z', 'share-expiry-invalid': 'next week'}[case]
+    print(json.dumps({'ok': True, 'result': {'status': 'shared', 'receipt': receipt, 'linkAvailable': True,
+        'expiresAt': expires, 'progress': {'schemaVersion': 1}, 'error': {}}}), flush=True)
+    sys.exit(0)
 if case == 'timeout':
-    time.sleep(3)
+    # The cancellation tests must know the request was dispatched, rather than
+    # guessing how long account-lock persistence and helper startup will take.
+    received = request['destination']['settings'].get('receivedFile')
+    if received:
+        parent = request['destination']['settings']['expectedParentPid']
+        timeout = request.get('requestTimeoutMs')
+        if timeout is None:
+            timeout = request['destination']['settings'].get('requestTimeoutMs', 120000)
+        deadline = time.monotonic() + timeout / 1000
+        with open(received, 'x') as marker:
+            marker.write(request['method'])
+        # Stay pending while the observer is delayed, but retire after a parent
+        # crash, the accepted deadline, or assertion-failure teardown.
+        while os.getppid() == parent and not os.path.exists(received + '.stop'):
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                break
+            time.sleep(min(0.05, remaining))
+    else:
+        time.sleep(3)
 elif case == 'malformed':
     print('malformed', flush=True)
 else:

@@ -1,0 +1,106 @@
+{
+ "at": "2026-10-23T18:57:15Z",
+ "before": {
+  "putgd": [
+   2561916
+  ],
+  "putgd-ui": [
+   2562052
+  ]
+ },
+ "entries": [
+  {
+   "sample": "cve-2026-8168-deep-nesting.svg",
+   "sha256": "c6980c19fc324275f07df6443eac1bdea38a4f9451c73ea0dd4f12b0c547ac5b",
+   "bytes": 1400111,
+   "clipboardOwnerPid": 2565594,
+   "operation": {
+    "id": "9c537fab-5c43-41ee-9e34-cf48f8afc94d",
+    "state": "completed",
+    "copyStatus": "copied",
+    "items": [
+     {
+      "name": "cve-2026-8168-deep-nesting.svg",
+      "mime": "image/svg+xml",
+      "uploadStatus": "uploaded",
+      "link": "http://127.0.0.1:44773/fixture/afa/cve-2026-8168-deep-nesting.svg",
+      "local": {
+       "error": {
+        "code": "",
+        "details": {},
+        "message": ""
+       },
+       "path": "/home/patrick/work/put.gd-qt418/afa/runs/d69/archive/images/cve-2026-8168-deep-nesting.svg",
+       "status": "saved"
+      }
+     }
+    ],
+    "error": {
+     "code": "",
+     "details": {},
+     "message": ""
+    }
+   },
+   "history": {
+    "id": "fc2484a0-4993-4d03-aa7c-c9aa66b2173b",
+    "name": "cve-2026-8168-deep-nesting.svg",
+    "mime": "image/svg+xml",
+    "uploadStatus": "uploaded",
+    "local": "saved",
+    "newest": true
+   },
+   "preview": {
+    "ok": false,
+    "state": null,
+    "error": {
+     "code": "preview_failed",
+     "details": {},
+     "message": "The image preview could not be made"
+    },
+    "previewExists": false
+   },
+   "afterPreview": {
+    "putgd": [
+     2561916
+    ],
+    "putgd-ui": [
+     2562052
+    ]
+   },
+   "cards": 2,
+   "frame": "/home/patrick/work/put.gd-qt418/afa/runs/d69/full/d69-clipfile-try-0.png",
+   "afterUi": {
+    "putgd": [
+     2561916
+    ],
+    "putgd-ui": [
+     2562052
+    ]
+   }
+  }
+ ],
+ "after": {
+  "putgd": [
+   2561916
+  ],
+  "putgd-ui": [
+   2562052
+  ]
+ },
+ "diagnostics": {
+  "build": {
+   "baseVersion": "26.1023.1068",
+   "commitCount": 1068,
+   "dirty": false,
+   "gitCommit": "6a325a722afd946046a96480ca524db8aa6abcce",
+   "gitTree": "a0a449b23b4eb70f516e3c317b6d93b412aafbbb",
+   "packageVersion": "26.1023.1068~dev+g6a325a722afd",
+   "schemaVersion": 1,
+   "sourceProvenance": "git",
+   "version": "26.1023.1068-dev+g6a325a722afd"
+  },
+  "journalReady": true,
+  "qtVersion": "6.12.0"
+ },
+ "survived": true
+}

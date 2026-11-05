@@ -1,0 +1,84 @@
+{
+ "mem": {
+  "version": "26.1022.1017-nightly",
+  "imageSha256": "005762e9ede991c78fce115707a41617d899d7870738fb525151c182357b7c3a",
+  "pid": 2951,
+  "host": "aurora-lab",
+  "session": "wayland",
+  "desktop": "KDE",
+  "A": {
+   "window": "A cold idle",
+   "seconds": 180.1,
+   "rssMedianMiB": 29.82,
+   "rssMinMiB": 29.58,
+   "rssMaxMiB": 29.82,
+   "every10s": [
+    29.58,
+    29.58,
+    29.58,
+    29.82,
+    29.82,
+    29.82,
+    29.82,
+    29.82,
+    29.82,
+    29.82,
+    29.82,
+    29.82,
+    29.82,
+    29.82,
+    29.82,
+    29.82,
+    29.82,
+    29.82
+   ],
+   "pssMiB": 23.37,
+   "privateMiB": 23.0,
+   "tlsNetworkLibraries": [],
+   "load": [
+    0.0615234375,
+    0.39599609375,
+    0.2353515625
+   ]
+  },
+  "action": {
+   "check": true
+  },
+  "B": {
+   "window": "B idle after check",
+   "seconds": 180.1,
+   "rssMedianMiB": 29.91,
+   "rssMinMiB": 29.91,
+   "rssMaxMiB": 29.91,
+   "every10s": [
+    29.91,
+    29.91,
+    29.91,
+    29.91,
+    29.91,
+    29.91,
+    29.91,
+    29.91,
+    29.91,
+    29.91,
+    29.91,
+    29.91,
+    29.91,
+    29.91,
+    29.91,
+    29.91,
+    29.91,
+    29.91
+   ],
+   "pssMiB": 23.46,
+   "privateMiB": 23.09,
+   "tlsNetworkLibraries": [],
+   "load": [
+    0.0166015625,
+    0.201171875,
+    0.18017578125
+   ]
+  }
+ }
+}
+cleanup True

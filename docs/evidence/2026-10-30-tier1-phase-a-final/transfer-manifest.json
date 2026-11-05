@@ -1,0 +1,10 @@
+{
+  "source.tgz": {
+    "sha256": "2ecdd93286c7497834448e099e16a0bc58b32ce74d151aa62e24419e251f8103",
+    "bytes": 4409487
+  },
+  "catalog.tgz": {
+    "sha256": "53c3fa7777bf4394911b94fd704e40ad8f1679d7cbf334d76c08e8a7c235301d",
+    "bytes": 16529216
+  }
+}

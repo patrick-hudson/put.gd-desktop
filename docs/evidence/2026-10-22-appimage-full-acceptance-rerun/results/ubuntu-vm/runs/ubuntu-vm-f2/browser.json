@@ -1,0 +1,19 @@
+{
+ "browserProcesses": [
+  {
+   "pid": 6794,
+   "comm": "firefox",
+   "cmd": "/snap/firefox/8763/usr/lib/firefox/firefox https://put.gd/acceptance/afa2/ubuntu-vm/Screen-Capture-2026-10-22-01-32-51.png "
+  }
+ ],
+ "opened": [
+  {
+   "itemId": null,
+   "opened": true,
+   "operationId": null,
+   "route": "portal",
+   "target": "notification-link"
+  }
+ ],
+ "full": "/home/lab/work/put.gd-afa2/runs/ubuntu-vm-f2/full/ubuntu-vm-F-browser.png"
+}

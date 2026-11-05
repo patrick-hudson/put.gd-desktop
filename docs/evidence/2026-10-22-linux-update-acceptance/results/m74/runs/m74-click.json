@@ -1,0 +1,133 @@
+{
+ "name": "m74-click",
+ "tool": "real",
+ "live": true,
+ "image": "/home/patrick/work/put.gd-ua/app/runs/m74-click/apps/putgd-26.1022.1017-nightly-x86_64.AppImage",
+ "imageSha256": "005762e9ede991c78fce115707a41617d899d7870738fb525151c182357b7c3a",
+ "cliDir": "/home/patrick/work/put.gd-ua/app/runs/m74-click/cli/squashfs-root",
+ "runtime": "/tmp/ua-app.dvmFLP",
+ "session": {
+  "HOME": "/home/patrick",
+  "PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin",
+  "USER": "patrick",
+  "LANG": "en_US.UTF-8",
+  "DISPLAY": ":0",
+  "XAUTHORITY": "/home/patrick/.Xauthority",
+  "DBUS_SESSION_BUS_ADDRESS": "unix:path=/run/user/1000/bus",
+  "XDG_SESSION_TYPE": "x11",
+  "XDG_CURRENT_DESKTOP": "X-Cinnamon",
+  "XDG_SESSION_DESKTOP": "cinnamon",
+  "DESKTOP_SESSION": "cinnamon",
+  "XDG_DATA_DIRS": "/usr/share/cinnamon:/home/patrick/.local/share/flatpak/exports/share:/var/lib/flatpak/exports/share:/usr/local/share:/usr/share"
+ },
+ "shell": "cinnamon",
+ "hostPath": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin",
+ "host": "mint-builder",
+ "vnc": 5900,
+ "urls": {},
+ "input": "xdotool",
+ "before": {
+  "dataPutgd": false,
+  "homePutgd": {
+   "/home/patrick/.config/putgd": false,
+   "/home/patrick/.local/state/putgd": true,
+   "/home/patrick/.cache/putgd": false
+  },
+  "autostart": []
+ },
+ "pids": {
+  "apprun": 435457
+ },
+ "created": "2026-10-23T00:22:40Z",
+ "log": [
+  {
+   "at": "2026-10-23T00:22:45Z",
+   "start": {
+    "pid": 435410,
+    "status": {
+     "build": "26.1022.1017-nightly",
+     "channel": "nightly",
+     "latest": null,
+     "updateAvailable": null,
+     "install": {
+      "available": true,
+      "backup": null,
+      "image": "/home/patrick/work/put.gd-ua/app/runs/m74-click/apps/putgd-26.1022.1017-nightly-x86_64.AppImage",
+      "installed": null,
+      "kind": "update",
+      "reason": null,
+      "restartRequired": false,
+      "running": false,
+      "state": "idle",
+      "switch": null
+     }
+    },
+    "frame": "/home/patrick/work/put.gd-ua/app/runs/m74-click/frames/u7-click-1-start.png"
+   }
+  },
+  {
+   "at": "2026-10-23T00:22:49Z",
+   "check": {
+    "reply": {
+     "ok": true,
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     }
+    },
+    "status": {
+     "build": "26.1022.1017-nightly",
+     "channel": "nightly",
+     "latest": "26.1022.1019-nightly",
+     "updateAvailable": true,
+     "install": {
+      "available": true,
+      "backup": null,
+      "image": "/home/patrick/work/put.gd-ua/app/runs/m74-click/apps/putgd-26.1022.1017-nightly-x86_64.AppImage",
+      "installed": null,
+      "kind": "update",
+      "reason": null,
+      "restartRequired": false,
+      "running": false,
+      "state": "idle",
+      "switch": null
+     }
+    },
+    "frame": "/home/patrick/work/put.gd-ua/app/runs/m74-click/frames/u7-click-2-available.png"
+   }
+  },
+  {
+   "at": "2026-10-23T00:23:04Z",
+   "click": {
+    "x": 746,
+    "y": 794,
+    "keys": null,
+    "frame": "/home/patrick/work/put.gd-ua/app/runs/m74-click/frames/u7-click-3-progress.png"
+   }
+  },
+  {
+   "at": "2026-10-23T00:23:09Z",
+   "frame": {
+    "label": "u7-click-4-installed",
+    "frame": "/home/patrick/work/put.gd-ua/app/runs/m74-click/frames/u7-click-4-installed.png"
+   }
+  },
+  {
+   "at": "2026-10-23T00:23:31Z",
+   "click": {
+    "x": 724,
+    "y": 794,
+    "keys": null,
+    "frame": null
+   }
+  },
+  {
+   "at": "2026-10-23T00:23:35Z",
+   "frame": {
+    "label": "u7-click-5-restarted",
+    "frame": "/home/patrick/work/put.gd-ua/app/runs/m74-click/frames/u7-click-5-restarted.png"
+   }
+  }
+ ]
+}

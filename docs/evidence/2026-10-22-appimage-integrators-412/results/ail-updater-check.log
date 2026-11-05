@@ -1,0 +1,17 @@
+file::/update_spinner.qml:2:1: module "QtQuick.Layouts" is not installed 
+     import QtQuick.Layouts 1.15 
+     ^
+file::/update_spinner.qml:1:1: module "QtQuick.Controls" is not installed 
+     import QtQuick.Controls 2.15 
+     ^
+file::/update_spinner.qml:2:1: module "QtQuick.Layouts" is not installed 
+     import QtQuick.Layouts 1.15 
+     ^
+file::/update_spinner.qml:1:1: module "QtQuick.Controls" is not installed 
+     import QtQuick.Controls 2.15 
+     ^
+QObject::connect: Cannot queue arguments of type 'std::string'
+(Make sure 'std::string' is registered using qRegisterMetaType().)
+QObject::connect: Cannot queue arguments of type 'std::string'
+(Make sure 'std::string' is registered using qRegisterMetaType().)
+""

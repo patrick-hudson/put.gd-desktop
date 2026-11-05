@@ -1,0 +1,45 @@
+{
+  "session": "codex-tier1b-r5-6801919c",
+  "placement": "guest",
+  "release": "v26.1030.3203-nightly",
+  "appCommit": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+  "catalogCiRun": 41111404666,
+  "attemptsPerDestination": 1,
+  "rows": [
+    {
+      "desktop": "ubuntu-gnome-wayland",
+      "host": "d69",
+      "destinations": [
+        "s3"
+      ],
+      "reusedProton": "followup-3/gnome/protona"
+    },
+    {
+      "desktop": "kubuntu-kde-wayland",
+      "host": "f44",
+      "destinations": [
+        "s3",
+        "proton"
+      ]
+    },
+    {
+      "desktop": "mint-cinnamon-x11",
+      "host": "d69",
+      "destinations": [
+        "s3",
+        "proton"
+      ]
+    }
+  ],
+  "s3": {
+    "aclMode": "public-read",
+    "objectPrefixShape": "acceptance/tier1-live/<uuid>/",
+    "deletionProof": "origin GET 404",
+    "cloudfrontAfterDeletion": "informational",
+    "publicUrlHost": "put.gd",
+    "publicUrlScheme": "https"
+  },
+  "recipientPublicBytes": "Cinnamon: bounded independent guest GET alongside verified Firefox image load; GNOME/KDE: older Firefox image-document fetch failed before guest GET",
+  "gnomeAndKdeS3Finding": 996,
+  "attemptCorrections": "private preparation only; no extra upload or complete recipe retry"
+}

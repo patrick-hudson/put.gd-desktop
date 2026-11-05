@@ -1,0 +1,90 @@
+{
+ "nextCheckAt": "2026-10-21T01:47:36Z",
+ "start": "2026-10-21T01:36:52Z",
+ "shownAt": "2026-10-21T01:47:36Z",
+ "banner": {
+  "label": "f44-gnome-notification",
+  "components": [
+   {
+    "blocks": 920,
+    "box": [
+     696,
+     32,
+     1224,
+     144
+    ]
+   }
+  ],
+  "colour": [
+   84,
+   84,
+   88
+  ],
+  "inner": [
+   707,
+   36,
+   1212,
+   138
+  ],
+  "changedShare": 1.0,
+  "kept": "/home/patrick/work/put.gd-303/p-f44stable/crops/f44-gnome-notification.png"
+ },
+ "clicked": [
+  959,
+  70
+ ],
+ "events": [
+  {
+   "category": "putgd.app",
+   "fields": {
+    "channel": "stable",
+    "itemId": null,
+    "manual": false,
+    "operationId": null
+   },
+   "level": "info",
+   "message": "Checking for updates",
+   "pid": 1601469,
+   "process": "putgd",
+   "time": "2026-10-21T01:47:35.963Z",
+   "v": 1
+  },
+  {
+   "category": "putgd.app",
+   "fields": {
+    "channel": "stable",
+    "itemId": null,
+    "latest": "0.1.2",
+    "operationId": null,
+    "updateAvailable": true
+   },
+   "level": "info",
+   "message": "Update check finished",
+   "pid": 1601469,
+   "process": "putgd",
+   "time": "2026-10-21T01:47:36.000Z",
+   "v": 1
+  },
+  {
+   "category": "putgd.ui",
+   "fields": {
+    "itemId": null,
+    "notificationId": 1,
+    "notificationText": "put.gd 0.1.2 is available. Settings \u2192 Updates has the download.",
+    "operationId": null,
+    "summary": "update_available",
+    "title": "put.gd \u2014 update available",
+    "warning": false
+   },
+   "level": "info",
+   "message": "Notification shown",
+   "pid": 1601469,
+   "process": "putgd",
+   "time": "2026-10-21T01:47:36.001Z",
+   "v": 1
+  }
+ ],
+ "openedUrls": [
+  "2026-10-21T01:47:38Z https://github.com/patrick-hudson/put.gd-desktop/releases/tag/v0.1.2"
+ ]
+}

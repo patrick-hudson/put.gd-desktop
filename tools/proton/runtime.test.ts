@@ -5,11 +5,38 @@ import { join } from 'node:path';
 import { createHash } from 'node:crypto';
 import { MemberRole, NodeType, RevisionState, NodeWithSameNameExistsValidationError, RateLimitedError, ServerError, ValidationError, type NodeEntity } from '@protontech/drive-sdk';
 import { checkName, createFolder, destinationFolder, inspectAccount, stat, upload, share, serviceFailure } from './runtime';
-import { makeReceipt, type JsonObject } from './protocol';
+import { ProtocolError, makeReceipt, type JsonObject } from './protocol';
+import { saveToKeychain } from './account';
+import { Credentials } from './upstream/cli/src/credentials/credentials';
 import { AccountApiError, ApiClient } from 'proton-drive-sdk-account';
 
 type Context = Parameters<typeof inspectAccount>[0];
 type Call = { method: string; args: unknown[] };
+test('account response hooks synchronize crypto server time using official header precedence', async () => {
+    // Crypto time is monotonic module state: isolate it from other SDK tests.
+    const script = `
+        import assert from 'node:assert/strict';
+        import { accountResponseHooks } from './account.ts';
+        import { serverTime } from '@protontech/crypto/serverTime';
+        const hooks = accountResponseHooks(() => { throw new Error('unexpected requirement refusal'); });
+        for (const [headers, expected] of [
+            [{ date: 'Fri, 09 Oct 2026 05:00:00 GMT' }, '2026-10-09T05:00:00.000Z'],
+            [{ 'x-pm-date': 'invalid', date: 'Sat, 10 Oct 2026 05:00:00 GMT' }, '2026-10-10T05:00:00.000Z'],
+            [{ 'x-pm-date': 'Sun, 11 Oct 2026 06:00:00 GMT', date: 'Mon, 12 Oct 2026 06:00:00 GMT' }, '2026-10-11T06:00:00.000Z'],
+            [{ date: 'invalid' }, '2026-10-11T06:00:00.000Z'],
+        ]) {
+            for (const hook of hooks) await hook(new Request('https://synthetic.invalid'), {}, new Response(null, { headers }), {});
+            assert.equal(serverTime().toISOString(), expected);
+        }
+        console.log('server-time-hooks-passed');`;
+    const child = Bun.spawn([process.execPath, '--eval', script], {
+        cwd: import.meta.dir, stdout: 'pipe', stderr: 'pipe',
+    });
+    const [stdout, stderr, code] = await Promise.all([
+        new Response(child.stdout).text(), new Response(child.stderr).text(), child.exited,
+    ]);
+    expect(code).toBe(0); expect(stderr).toBe(''); expect(stdout.trim()).toBe('server-time-hooks-passed');
+});
 const destination = { providerId: 'proton-drive', profileId: 'profile', profileRevision: 'revision',
     settings: { accountRootUid: 'root', folderUid: '' }, credentials: { mode: 'keychain', reference: 'synthetic-reference' } };
 const setup = { schemaVersion: 1, method: 'inspectAccount', destination, options: { name: 'Uploads' } };
@@ -103,7 +130,7 @@ test('name preflight uses SDK hashed availability without listing unrelated fold
         const result = await checkName(stub.ctx, request);
         expect(result.status).toBe(available === 'photo.png' ? 'absent' : 'present');
         expect(stub.calls.map(call => call.method)).toEqual(['root', 'node', 'available']);
-        expect(stub.calls[2].args).toEqual(['folder', 'photo.png']);
+        expect(stub.calls[2].args).toEqual(['folder', 'photo.png', NodeType.File]);
     }
 });
 test('failed name availability is inconclusive rather than permission-as-absence', async () => {
@@ -159,6 +186,7 @@ test('name and ownership failures retain safe service recovery codes', async () 
         [new RateLimitedError('synthetic-private-provider-detail'), 'rate_limited'],
         [new ValidationError('synthetic-private-provider-detail', 2011), 'permission_denied'],
         [new ValidationError('synthetic-private-provider-detail', 200002), 'quota_exceeded'],
+        [new ValidationError('synthetic-private-provider-detail', 200003), 'destination_file_too_large_for_plan'],
         [Object.assign(new ServerError('synthetic-private-provider-detail'), { statusCode: 401 }), 'authentication_required'],
     ] as const;
     for (const [error, code] of cases) {
@@ -182,6 +210,7 @@ test('quota and rate limiting after upload dispatch retain uncertainty and recov
     try {
         for (const [error, code] of [
             [new ValidationError('synthetic-private-provider-detail', 200002), 'quota_exceeded'],
+            [new ValidationError('synthetic-private-provider-detail', 200003), 'destination_file_too_large_for_plan'],
             [new RateLimitedError('synthetic-private-provider-detail'), 'rate_limited'],
         ] as const) {
             const stub = context(); let dispatched = 0;
@@ -226,6 +255,42 @@ function sharingContext() {
         denyAfter: () => { deniedAfter = true; }, failSharing: (error: Error) => { sharingError = error; },
         expire: () => { expiration = new Date(Date.now() - 1000); } };
 }
+test('a plan or quota refusal settles as failed only when the name is still free afterwards', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'putgd-plan-'));
+    const path = join(directory, 'synthetic.bin'), data = Buffer.alloc(32, 112);
+    await writeFile(path, data, { mode: 0o600 });
+    try {
+        // Free name: neither a completed file nor a draft holds it, so nothing was created (#201).
+        // Taken name (a draft the SDK could not delete, or a racing file) or a failed query stays unknown.
+        for (const [serviceCode, code] of [[200003, 'destination_file_too_large_for_plan'], [200002, 'quota_exceeded']] as const) {
+            for (const [available, expected] of [['photo.png', 'failed'], ['photo (1).png', 'unknown'], [undefined, 'unknown']] as const) {
+                const stub = context();
+                (stub.ctx.sdk as any).getFileUploader = async () => ({
+                    uploadFromStream: async () => ({ completion: async () => { throw new ValidationError('synthetic-private-provider-detail', serviceCode); } }),
+                });
+                (stub.ctx.sdk as any).getAvailableName = async (...args: unknown[]) => {
+                    stub.calls.push({ method: 'available', args });
+                    if (available === undefined) throw new Error('Synthetic denied name lookup');
+                    return available;
+                };
+                const result = await upload(stub.ctx, { ...statRequest(), method: 'upload', condition: 'absent',
+                    artifact: { path, bytes: data.length, mime: 'application/octet-stream', sha256: createHash('sha256').update(data).digest('hex') } });
+                expect(result.status).toBe(expected);
+                expect(result.error.code).toBe(code);
+                expect(stub.calls.filter(call => call.method === 'available').map(call => call.args)).toEqual([['folder', 'photo.png', NodeType.File]]);
+                expect(JSON.stringify(result)).not.toContain('synthetic-private-provider-detail');
+            }
+        }
+        // Other refusals never consult the name: rate limiting says nothing about what was created.
+        const stub = context(); let consulted = 0;
+        (stub.ctx.sdk as any).getFileUploader = async () => { throw new RateLimitedError('synthetic-private-provider-detail'); };
+        (stub.ctx.sdk as any).getAvailableName = async () => { ++consulted; return 'photo.png'; };
+        const result = await upload(stub.ctx, { ...statRequest(), method: 'upload', condition: 'absent',
+            artifact: { path, bytes: data.length, mime: 'application/octet-stream', sha256: createHash('sha256').update(data).digest('hex') } });
+        expect(result.status).toBe('unknown'); expect(result.error.code).toBe('rate_limited'); expect(consulted).toBe(0);
+    } finally { await rm(directory, { recursive: true, force: true }); }
+});
+
 test('changed revision blocks sharing before mutation and suppresses a raced link after mutation', async () => {
     for (const when of ['before', 'after']) {
         const stub = sharingContext();
@@ -263,6 +328,14 @@ test('sharing preserves protection options and expired inspection never creates 
     stub.request.options.action = 'inspect'; stub.expire();
     const expired = await share(stub.ctx, stub.request);
     expect(expired.status).toBe('private'); expect(expired.receipt.directUrl).toBe(''); expect(stub.mutations()).toBe(1);
+});
+test('a file over the plan limit is not reported as a full drive', () => {
+    const result = serviceFailure(new ValidationError('synthetic-private-provider-detail', 200003));
+    expect(result.code).toBe('destination_file_too_large_for_plan');
+    expect(result.message).toContain('Proton plan');
+    expect(result.message).not.toContain('capacity');
+    expect(JSON.stringify(result)).not.toContain('synthetic-private-provider-detail');
+    expect(serviceFailure(new ValidationError('synthetic-private-provider-detail', 200001)).code).toBe('quota_exceeded');
 });
 test('service classification accepts typed account errors and never trusts raw exception properties', () => {
     for (const [httpCode, code] of [[401, 'authentication_required'], [403, 'permission_denied'], [429, 'rate_limited']] as const) {
@@ -352,4 +425,22 @@ test('pinned SDK honors Retry-After before recovery and cancellation stops repea
     } as any, 'https://synthetic.invalid', 'en');
     await expect(limited.get('drive/v2/synthetic', cancellation.signal)).rejects.toThrow('Request aborted');
     expect(attempts).toBe(1);
+});
+
+test('a refused keychain session write reports keychain_unavailable without provider detail (#252)', async () => {
+    const refused = () => Promise.reject(new Error('Object does not exist at path "/org/freedesktop/secrets/collection/login"'));
+    // The official credentials object saves once both the key password and the session exist, as Connect does.
+    const credentials = new Credentials({ load: async () => null, remove: async () => {},
+        save: () => saveToKeychain(refused) }, { debug() {}, info() {}, warn() {}, error() {} } as any);
+    await credentials.setUserKeyPassword('synthetic-key-password');
+    const error = await credentials.setSessionInfo({ uid: 'synthetic-uid', accessToken: 'synthetic', refreshToken: 'synthetic' }).catch(e => e);
+    expect(error).toBeInstanceOf(ProtocolError);
+    for (const fallback of ['operation_failed', 'operation_unknown']) {
+        const result = serviceFailure(error, fallback);
+        expect(result.code).toBe('keychain_unavailable');
+        expect(JSON.stringify(result)).not.toContain('/org/freedesktop');
+    }
+    let saved = 0;
+    await saveToKeychain(async () => { ++saved; });
+    expect(saved).toBe(1);
 });

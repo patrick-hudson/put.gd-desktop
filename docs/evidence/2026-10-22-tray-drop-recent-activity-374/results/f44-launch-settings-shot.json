@@ -1,0 +1,28 @@
+{
+ "label": "f44-launch-settings",
+ "components": [
+  {
+   "blocks": 20673,
+   "box": [
+    296,
+    0,
+    1832,
+    1016
+   ]
+  }
+ ],
+ "colour": [
+  252,
+  252,
+  252
+ ],
+ "inner": [
+  301,
+  101,
+  1581,
+  949
+ ],
+ "changedShare": 1.0,
+ "themeShare": 0.921,
+ "kept": "/home/patrick/work/put.gd-tray374lab/p-f44-after/crops/f44-launch-settings.png"
+}

@@ -1,0 +1,14 @@
+{
+  "utc": "2026-10-24T03:38:34.779468+00:00",
+  "source": "171b506e02ca37ba75b27dbbbe859502380926ef",
+  "retiredOnlyExactTemporaryRoots": [
+    "/tmp/hfgi",
+    "/tmp/hfgc",
+    "/tmp/hfgf"
+  ],
+  "archive": "/home/patrick/work/pgcc-fullerror-f44-native-roots.tar.gz",
+  "sha256": "13d04b3d1961c77f8c5fcd99753c57597151ab8752922e9677f0f19c453a7cf6",
+  "builderAndWorkstationArchiveVerified": true,
+  "processesStoppedAndDesktopReleasedVerifiedCleanBeforeRetirement": true,
+  "historicalEvidenceAndSourcesPreserved": true
+}

@@ -1,0 +1,33 @@
+{
+  "build": {
+    "baseVersion": "26.1024.1185",
+    "commitCount": 1185,
+    "dirty": false,
+    "gitCommit": "bca1ff98c9dfb3ab7ec11efd8427659adcf7d3d4",
+    "gitTree": "76f01e544acf07b40d6d0273318b66580c41b4f2",
+    "packageVersion": "26.1024.1185~dev+gbca1ff98c9df",
+    "schemaVersion": 1,
+    "sourceProvenance": "git",
+    "version": "26.1024.1185-dev+gbca1ff98c9df"
+  },
+  "sessionId": "19940",
+  "session": {
+    "User": "1000",
+    "Display": "",
+    "Leader": "2744046",
+    "Type": "wayland",
+    "Active": "yes",
+    "State": "active",
+    "LockedHint": "no"
+  },
+  "startupJournalErrors": [
+    "2026-10-24T00:47:12-05:00 debian systemd[937]: putgd-login-startup-f2406d7eabeb4f3c478524ef784bfd86814192ab354b43414e7a605e39c73933.path: Failed to open /run/user/1000/systemd/transient/putgd-login-startup-f2406d7eabeb4f3c478524ef784bfd86814192ab354b43414e7a605e39c73933.path: No such file or directory",
+    "2026-10-24T00:47:12-05:00 debian systemd[937]: putgd-login-startup-f2406d7eabeb4f3c478524ef784bfd86814192ab354b43414e7a605e39c73933.path: Failed to open /run/user/1000/systemd/transient/putgd-login-startup-f2406d7eabeb4f3c478524ef784bfd86814192ab354b43414e7a605e39c73933.path: No such file or directory",
+    "2026-10-24T00:47:12-05:00 debian systemd[937]: putgd-login-startup-f2406d7eabeb4f3c478524ef784bfd86814192ab354b43414e7a605e39c73933.service: Failed to open /run/user/1000/systemd/transient/putgd-login-startup-f2406d7eabeb4f3c478524ef784bfd86814192ab354b43414e7a605e39c73933.service: No such file or directory",
+    "2026-10-24T00:47:12-05:00 debian systemd[937]: putgd-login-startup-f2406d7eabeb4f3c478524ef784bfd86814192ab354b43414e7a605e39c73933.path: Failed to open /run/user/1000/systemd/transient/putgd-login-startup-f2406d7eabeb4f3c478524ef784bfd86814192ab354b43414e7a605e39c73933.path: No such file or directory",
+    "2026-10-24T00:47:12-05:00 debian systemd[937]: putgd-login-startup-f2406d7eabeb4f3c478524ef784bfd86814192ab354b43414e7a605e39c73933.path: Failed to open /run/user/1000/systemd/transient/putgd-login-startup-f2406d7eabeb4f3c478524ef784bfd86814192ab354b43414e7a605e39c73933.path: No such file or directory",
+    "2026-10-24T00:47:12-05:00 debian systemd[937]: putgd-login-startup-f2406d7eabeb4f3c478524ef784bfd86814192ab354b43414e7a605e39c73933.service: Failed to open /run/user/1000/systemd/transient/putgd-login-startup-f2406d7eabeb4f3c478524ef784bfd86814192ab354b43414e7a605e39c73933.service: No such file or directory"
+  ],
+  "residentStarted": true,
+  "accepted": false
+}

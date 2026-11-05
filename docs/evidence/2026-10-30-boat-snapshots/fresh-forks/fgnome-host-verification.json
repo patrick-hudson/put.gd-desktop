@@ -1,0 +1,46 @@
+{
+  "placement": "boat",
+  "sandboxId": "bx_kywgfsas",
+  "snapshotName": "putgd-lab-ubuntu-gnome-v4",
+  "builtTreeCommit": "6ad9f957e6544f30c5e45c08af2306db77a9ff64",
+  "ctestSummary": {
+    "tests": 114,
+    "failedFirst": [
+      "editor_job_integration",
+      "x11_isolated"
+    ],
+    "failed": [
+      "editor_job_integration",
+      "x11_isolated"
+    ],
+    "retried": [],
+    "passedOnRetry": [],
+    "blocking": [
+      "editor_job_integration",
+      "x11_isolated"
+    ],
+    "unexplainedCtestFailure": false,
+    "ok": false
+  },
+  "retryEnabled": false,
+  "parallel": 12,
+  "timeScale": 3,
+  "automaticScratch": "/dev/shm",
+  "configureBuildWithoutInstallOrReprovision": true,
+  "inheritedManifestUnchanged": true,
+  "protonRuntimeUnchanged": true,
+  "bootstrapUnchanged": true,
+  "focusedRetest": {
+    "tests": {
+      "editor_job_integration": true,
+      "x11_isolated": true
+    },
+    "allPassed": true,
+    "x11RelatedIssue": 765,
+    "fixedAfterFreezeByPr": 773,
+    "originalEditorFailure": "editor_timeout versus editor_io at tests/integration/test_editor_job.cpp:190",
+    "changedAssertionsOrTimeouts": false
+  },
+  "overallTestsPassed": 114,
+  "fullSuiteFirstPass": false
+}

@@ -1,0 +1,275 @@
+{
+ "editorId": "4b9326cd-e7dc-4fb6-993e-26c84cc0c5fd",
+ "size": [
+  980,
+  600
+ ],
+ "blur": [
+  294,
+  192,
+  176,
+  204
+ ],
+ "solid": [
+  509,
+  216,
+  137,
+  132
+ ],
+ "apply": true,
+ "inspect": {
+  "canRedo": false,
+  "canUndo": true,
+  "crop": [
+   0,
+   0,
+   980,
+   600
+  ],
+  "destination": "Upload to Loopback fixture",
+  "height": 600,
+  "historyTruncated": false,
+  "modified": true,
+  "operationId": "4b9326cd-e7dc-4fb6-993e-26c84cc0c5fd",
+  "phase": "editing",
+  "shapes": [
+   {
+    "id": 1,
+    "kind": "blur",
+    "rect": [
+     294,
+     192,
+     176,
+     204
+    ],
+    "strength": 24
+   },
+   {
+    "id": 2,
+    "kind": "redact",
+    "rect": [
+     509,
+     216,
+     137,
+     132
+    ]
+   }
+  ],
+  "width": 980
+ },
+ "window": {
+  "label": "editor",
+  "components": [
+   {
+    "blocks": 8452,
+    "box": [
+     0,
+     0,
+     1280,
+     800
+    ]
+   },
+   {
+    "blocks": 3971,
+    "box": [
+     320,
+     216,
+     968,
+     624
+    ]
+   }
+  ],
+  "colour": [
+   252,
+   0,
+   252
+  ],
+  "inner": [
+   227,
+   180,
+   1120,
+   656
+  ],
+  "changedShare": 0.571,
+  "ownShare": 0.0,
+  "kept": null
+ },
+ "full": "/home/lab/work/put.gd-qt418/afa/runs/ubuntu-vm/full/editor.png",
+ "editorCommands": [
+  "inspect",
+  "apply",
+  "preview",
+  "saveCopy",
+  "fileDialog",
+  "submit",
+  "cancel",
+  "raise"
+ ],
+ "dialogOpen": {
+  "error": {
+   "code": "",
+   "details": {},
+   "message": ""
+  },
+  "ok": true,
+  "requestId": "cbca61e0-626a-4811-ba5e-40fc4742e41f",
+  "result": {
+   "backend": "portal",
+   "fallbackReason": null,
+   "last": null,
+   "mode": "save",
+   "open": true,
+   "operationId": "4b9326cd-e7dc-4fb6-993e-26c84cc0c5fd",
+   "parentWindow": "",
+   "title": "Save a copy"
+  },
+  "schemaVersion": 1
+ },
+ "dialogState": {
+  "backend": "portal",
+  "fallbackReason": null,
+  "last": null,
+  "mode": "save",
+  "open": true,
+  "operationId": "4b9326cd-e7dc-4fb6-993e-26c84cc0c5fd",
+  "parentWindow": "",
+  "title": "Save a copy"
+ },
+ "dialogShot": {
+  "label": "save-copy-dialog",
+  "components": [
+   {
+    "blocks": 8251,
+    "box": [
+     0,
+     96,
+     1280,
+     744
+    ]
+   },
+   {
+    "blocks": 10,
+    "box": [
+     608,
+     40,
+     680,
+     56
+    ]
+   },
+   {
+    "blocks": 9,
+    "box": [
+     696,
+     40,
+     744,
+     56
+    ]
+   },
+   {
+    "blocks": 2,
+    "box": [
+     1256,
+     40,
+     1272,
+     56
+    ]
+   },
+   {
+    "blocks": 1,
+    "box": [
+     1208,
+     48,
+     1216,
+     56
+    ]
+   }
+  ],
+  "colour": [
+   252,
+   252,
+   252
+  ],
+  "inner": null
+ },
+ "dialogFull": "/home/lab/work/put.gd-qt418/afa/runs/ubuntu-vm/full/save-copy-dialog.png",
+ "dialogResult": {
+  "backend": null,
+  "fallbackReason": null,
+  "last": {
+   "backend": "portal",
+   "error": null,
+   "fallbackReason": null,
+   "mode": "save",
+   "path": "/home/lab/Pictures/afa-ubuntu-vm-edited.png",
+   "status": "chosen"
+  },
+  "mode": null,
+  "open": false,
+  "operationId": "4b9326cd-e7dc-4fb6-993e-26c84cc0c5fd",
+  "parentWindow": null,
+  "title": null
+ },
+ "savedCopy": {
+  "exists": true,
+  "bytes": 3913,
+  "size": [
+   980,
+   600
+  ],
+  "solidRegion": {
+   "mean": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "spread": 0
+  },
+  "blurChangedShare": 0.627
+ },
+ "upload": {
+  "id": "4b9326cd-e7dc-4fb6-993e-26c84cc0c5fd",
+  "state": "completed",
+  "copyStatus": "copied",
+  "items": [
+   {
+    "name": "Screen-Capture-2026-10-23-14-35-38.png",
+    "mime": "image/png",
+    "uploadStatus": "uploaded",
+    "link": "http://127.0.0.1:39955/fixture/afa/Screen-Capture-2026-10-23-14-35-38.png",
+    "local": {
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     },
+     "path": "/home/lab/work/put.gd-qt418/afa/runs/ubuntu-vm/archive/images/Screen-Capture-2026-10-23-14-35-38.png",
+     "status": "saved"
+    }
+   }
+  ],
+  "error": {
+   "code": "",
+   "details": {},
+   "message": ""
+  }
+ },
+ "uploaded": {
+  "size": [
+   980,
+   600
+  ],
+  "solidRegion": {
+   "mean": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "spread": 0
+  },
+  "blurChangedShare": 0.627,
+  "unchangedOutsideShare": 1.0
+ },
+ "redactionVerified": true,
+ "clipboard": "http://127.0.0.1:39955/fixture/afa/Screen-Capture-2026-10-23-14-35-38.png",
+ "linkCopied": true
+}

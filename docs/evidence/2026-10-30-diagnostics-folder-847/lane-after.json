@@ -1,0 +1,1278 @@
+{
+  "schemaVersion": 2,
+  "environment": {
+    "desktop": "ubuntu-gnome-wayland",
+    "host": "boat",
+    "placement": "boat",
+    "guest": "gnome-wayland",
+    "package": "deb",
+    "destination": "local",
+    "build": "88928c0b59f3938098067e88913bc077b1e46d89",
+    "placement_details": {
+      "boat_sandbox_id": "bx_n3uk8bvu",
+      "run_id": "cac969c6-b780-4d9e-8182-49be623fa6a6",
+      "lab_profile": "gnome-wayland",
+      "run_directory": "/home/user/i847/work/lab-runs/g1",
+      "session_root": "/tmp/sd-794c5062",
+      "socket": "/tmp/sd-794c5062/runtime/putgd/session.sock",
+      "input_backend": "qmp",
+      "frame_backend": "qmp"
+    },
+    "target": {
+      "hostname": "putgd-ubuntu-lab",
+      "kernel": "7.0.0-38-generic",
+      "machine": "x86_64",
+      "os": {
+        "ID": "ubuntu",
+        "VERSION_ID": "26.04",
+        "VARIANT_ID": null
+      },
+      "session_type": "wayland",
+      "desktop": "ubuntu:GNOME",
+      "qt_platform": "wayland"
+    },
+    "observed_build": {
+      "baseVersion": "26.1030.2582",
+      "commitCount": 2582,
+      "dirty": false,
+      "gitCommit": "88928c0b59f3938098067e88913bc077b1e46d89",
+      "gitTree": "59017513d373a0053268a5c13dc020ec6a53eecc",
+      "packageVersion": "26.1030.2582~nightly",
+      "schemaVersion": 1,
+      "sourceProvenance": "git",
+      "version": "26.1030.2582-nightly"
+    }
+  },
+  "interactions": [
+    {
+      "interaction": "dialog.edit-image",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "evidence/lane-after/receipt.json",
+      "note": "Requested chooser backend: portal; Chooser ready: backend=portal, mode=open, title=Edit an image file; Chooser ready: backend=portal, mode=open, title=Edit an image file; operationId=7460ec26-cb16-4a56-91f4-4da5150967df",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/dialogs.edit_image_portal/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/dialogs.edit_image_portal/01-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "dialog-ready",
+          "path": "frames/dialogs.edit_image_portal/02-dialog-ready.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after-cancel",
+          "path": "frames/dialogs.edit_image_portal/03-after-cancel.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "dialog-ready",
+          "path": "frames/dialogs.edit_image_portal/04-dialog-ready.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "path-entered",
+          "path": "frames/dialogs.edit_image_portal/05-path-entered.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/dialogs.edit_image_portal/06-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/dialogs.edit_image_portal/07-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "dialogs.edit_image_portal",
+      "build": "88928c0b59f3938098067e88913bc077b1e46d89",
+      "at": "2026-10-30T11:27:07Z"
+    },
+    {
+      "interaction": "dialog.edit-image",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "evidence/lane-after/receipt.json",
+      "note": "Requested chooser backend: fallback; Fallback accessible surfaces: [{\"application\": \"putgd-ui\", \"name\": \"Edit an image file\", \"pid\": 20809, \"rect\": null, \"role\": \"dialog\"}, {\"application\": \"putgd-ui\", \"name\": \"Edit an image file\", \"pid\": 20809, \"rect\": null, \"role\": \"file chooser\"}, {\"application\": \"putgd-ui\", \"name\": \"Edit an image file\", \"pid\": 20809, \"rect\": null, \"role\": \"label\"}]; Chooser state at failure: {\"backend\": \"fallback\", \"dialog\": \"editImage\", \"fallbackReason\": \"disabled\", \"last\": null, \"mode\": \"open\", \"open\": true, \"parentWindow\": null, \"title\": \"Edit an image file\"}; geometry: RuntimeError: Wayland window cannot be placed on the desktop: Edit an image file: compositor window for 'Edit an image file' (pid 20809, 820x520) is missing or ambiguous (0 matches)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/dialogs.edit_image_fallback/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/dialogs.edit_image_fallback/01-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "dialog-failure",
+          "path": "frames/dialogs.edit_image_fallback/02-dialog-failure.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/dialogs.edit_image_fallback/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "dialogs.edit_image_fallback",
+      "build": "88928c0b59f3938098067e88913bc077b1e46d89",
+      "at": "2026-10-30T11:27:22Z"
+    },
+    {
+      "interaction": "dialog.history-save-as",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "evidence/lane-after/receipt.json",
+      "note": "operationId=658377c1-6a8c-41e1-9a9e-fc7fb42f0b70; Requested chooser backend: portal; Chooser ready: backend=portal, mode=save, title=Save original file as; Chooser ready: backend=portal, mode=save, title=Save original file as; Saved original: 4b809b5ca9f1076f378c55ed3500eb219dd427bdf5ff32c30e90d73a660fe2cb  /tmp/pgfd.9jizl89b/History copy.png",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/dialogs.history_save_as_portal/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/dialogs.history_save_as_portal/01-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "dialog-ready",
+          "path": "frames/dialogs.history_save_as_portal/02-dialog-ready.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after-cancel",
+          "path": "frames/dialogs.history_save_as_portal/03-after-cancel.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "dialog-ready",
+          "path": "frames/dialogs.history_save_as_portal/04-dialog-ready.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "path-entered",
+          "path": "frames/dialogs.history_save_as_portal/05-path-entered.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/dialogs.history_save_as_portal/06-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/dialogs.history_save_as_portal/07-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "dialogs.history_save_as_portal",
+      "build": "88928c0b59f3938098067e88913bc077b1e46d89",
+      "at": "2026-10-30T11:28:13Z"
+    },
+    {
+      "interaction": "dialog.history-save-as",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "evidence/lane-after/receipt.json",
+      "note": "operationId=3a7715fb-778e-46b3-9bc1-0d17311912b3; Requested chooser backend: fallback; Fallback accessible surfaces: [{\"application\": \"putgd-ui\", \"name\": \"Save original file as\", \"pid\": 29030, \"rect\": null, \"role\": \"dialog\"}, {\"application\": \"putgd-ui\", \"name\": \"Save original file as\", \"pid\": 29030, \"rect\": null, \"role\": \"file chooser\"}]; Chooser state at failure: {\"backend\": \"fallback\", \"dialog\": \"historySaveAs\", \"fallbackReason\": \"disabled\", \"last\": null, \"mode\": \"save\", \"open\": true, \"parentWindow\": null, \"title\": \"Save original file as\"}; geometry: RuntimeError: Wayland window cannot be placed on the desktop: Save original file as: compositor window for 'Save original file as' (pid 29030, 820x520) is missing or ambiguous (0 matches)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/dialogs.history_save_as_fallback/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/dialogs.history_save_as_fallback/01-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "dialog-failure",
+          "path": "frames/dialogs.history_save_as_fallback/02-dialog-failure.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/dialogs.history_save_as_fallback/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "dialogs.history_save_as_fallback",
+      "build": "88928c0b59f3938098067e88913bc077b1e46d89",
+      "at": "2026-10-30T11:28:34Z"
+    },
+    {
+      "interaction": "dialog.output-folder",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "evidence/lane-after/receipt.json",
+      "note": "Requested chooser backend: portal; Chooser ready: backend=portal, mode=folder, title=Choose output folder; Chooser ready: backend=portal, mode=folder, title=Choose output folder; Chooser ready: backend=portal, mode=folder, title=Choose output folder; Chooser ready: backend=portal, mode=folder, title=Choose output folder; Chooser ready: backend=portal, mode=folder, title=Choose output folder; Chooser ready: backend=portal, mode=folder, title=Choose output folder; Chooser ready: backend=portal, mode=folder, title=Choose output folder; Chooser ready: backend=portal, mode=folder, title=Choose output folder; Chooser state at failure: {\"backend\": \"portal\", \"dialog\": \"outputFolder\", \"fallbackReason\": null, \"last\": {\"backend\": \"portal\", \"error\": null, \"fallbackReason\": null, \"mode\": \"folder\", \"path\": null, \"status\": \"cancelled\"}, \"mode\": \"folder\", \"open\": true, \"parentWindow\": \"\", \"title\": \"Choose output folder\"}; geometry: RuntimeError: fresh accessibility probe timed out",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/dialogs.output_folder_portal/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/dialogs.output_folder_portal/01-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "dialog-ready",
+          "path": "frames/dialogs.output_folder_portal/02-dialog-ready.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after-cancel",
+          "path": "frames/dialogs.output_folder_portal/03-after-cancel.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "dialog-ready",
+          "path": "frames/dialogs.output_folder_portal/04-dialog-ready.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "path-entered",
+          "path": "frames/dialogs.output_folder_portal/05-path-entered.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after-root",
+          "path": "frames/dialogs.output_folder_portal/06-after-root.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/dialogs.output_folder_portal/07-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "dialog-ready",
+          "path": "frames/dialogs.output_folder_portal/08-dialog-ready.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after-cancel",
+          "path": "frames/dialogs.output_folder_portal/09-after-cancel.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "dialog-ready",
+          "path": "frames/dialogs.output_folder_portal/10-dialog-ready.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "path-entered",
+          "path": "frames/dialogs.output_folder_portal/11-path-entered.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after-images",
+          "path": "frames/dialogs.output_folder_portal/12-after-images.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/dialogs.output_folder_portal/13-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "dialog-ready",
+          "path": "frames/dialogs.output_folder_portal/14-dialog-ready.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after-cancel",
+          "path": "frames/dialogs.output_folder_portal/15-after-cancel.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "dialog-ready",
+          "path": "frames/dialogs.output_folder_portal/16-dialog-ready.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "path-entered",
+          "path": "frames/dialogs.output_folder_portal/17-path-entered.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after-videos",
+          "path": "frames/dialogs.output_folder_portal/18-after-videos.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/dialogs.output_folder_portal/19-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "dialog-ready",
+          "path": "frames/dialogs.output_folder_portal/20-dialog-ready.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after-cancel",
+          "path": "frames/dialogs.output_folder_portal/21-after-cancel.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "dialog-ready",
+          "path": "frames/dialogs.output_folder_portal/22-dialog-ready.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "dialog-failure",
+          "path": "frames/dialogs.output_folder_portal/23-dialog-failure.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/dialogs.output_folder_portal/24-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "dialogs.output_folder_portal",
+      "build": "88928c0b59f3938098067e88913bc077b1e46d89",
+      "at": "2026-10-30T11:30:55Z"
+    },
+    {
+      "interaction": "dialog.output-folder",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "evidence/lane-after/receipt.json",
+      "note": "Requested chooser backend: fallback; Chooser state at failure: {\"backend\": \"fallback\", \"dialog\": \"outputFolder\", \"fallbackReason\": \"disabled\", \"last\": null, \"mode\": \"folder\", \"open\": true, \"parentWindow\": null, \"title\": \"Choose output folder\"}; accessible: RuntimeError: fresh accessibility probe timed out",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/dialogs.output_folder_fallback/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/dialogs.output_folder_fallback/01-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "dialog-failure",
+          "path": "frames/dialogs.output_folder_fallback/02-dialog-failure.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/dialogs.output_folder_fallback/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "dialogs.output_folder_fallback",
+      "build": "88928c0b59f3938098067e88913bc077b1e46d89",
+      "at": "2026-10-30T11:31:20Z"
+    },
+    {
+      "interaction": "dialog.diagnostics-folder",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "evidence/lane-after/receipt.json",
+      "note": "Requested chooser backend: portal; Chooser state at failure: {\"backend\": \"portal\", \"dialog\": \"diagnosticsFolder\", \"fallbackReason\": null, \"last\": null, \"mode\": \"folder\", \"open\": true, \"parentWindow\": \"\", \"title\": \"Save diagnostics packages to\"}; accessible: RuntimeError: fresh accessibility probe timed out",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/dialogs.diagnostics_folder_portal/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/dialogs.diagnostics_folder_portal/01-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "dialog-failure",
+          "path": "frames/dialogs.diagnostics_folder_portal/02-dialog-failure.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/dialogs.diagnostics_folder_portal/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "dialogs.diagnostics_folder_portal",
+      "build": "88928c0b59f3938098067e88913bc077b1e46d89",
+      "at": "2026-10-30T11:31:47Z"
+    },
+    {
+      "interaction": "dialog.diagnostics-folder",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "evidence/lane-after/receipt.json",
+      "note": "Requested chooser backend: fallback; Chooser state at failure: {\"backend\": \"fallback\", \"dialog\": \"diagnosticsFolder\", \"fallbackReason\": \"disabled\", \"last\": null, \"mode\": \"folder\", \"open\": true, \"parentWindow\": null, \"title\": \"Save diagnostics packages to\"}; accessible: RuntimeError: fresh accessibility probe timed out",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/dialogs.diagnostics_folder_fallback/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/dialogs.diagnostics_folder_fallback/01-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "dialog-failure",
+          "path": "frames/dialogs.diagnostics_folder_fallback/02-dialog-failure.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/dialogs.diagnostics_folder_fallback/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "dialogs.diagnostics_folder_fallback",
+      "build": "88928c0b59f3938098067e88913bc077b1e46d89",
+      "at": "2026-10-30T11:32:14Z"
+    },
+    {
+      "interaction": "dialog.editor-save-copy",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "evidence/lane-after/receipt.json",
+      "note": "Requested chooser backend: portal; operationId=77b30cad-07cf-4a31-9dfb-b75648db0e40; Chooser state at failure: {\"backend\": \"portal\", \"fallbackReason\": null, \"last\": null, \"mode\": \"save\", \"open\": true, \"operationId\": \"77b30cad-07cf-4a31-9dfb-b75648db0e40\", \"parentWindow\": \"\", \"title\": \"Save a copy\"}; accessible: RuntimeError: fresh accessibility probe timed out",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/dialogs.editor_save_copy_portal/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/dialogs.editor_save_copy_portal/01-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "dialog-failure",
+          "path": "frames/dialogs.editor_save_copy_portal/02-dialog-failure.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/dialogs.editor_save_copy_portal/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "dialogs.editor_save_copy_portal",
+      "build": "88928c0b59f3938098067e88913bc077b1e46d89",
+      "at": "2026-10-30T11:32:40Z"
+    },
+    {
+      "interaction": "dialog.editor-save-copy",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "evidence/lane-after/receipt.json",
+      "note": "Requested chooser backend: fallback; operationId=904337fb-2de2-43a2-83d7-d9e49b664ea3; Chooser state at failure: {\"backend\": \"fallback\", \"fallbackReason\": \"disabled\", \"last\": null, \"mode\": \"save\", \"open\": true, \"operationId\": \"904337fb-2de2-43a2-83d7-d9e49b664ea3\", \"parentWindow\": null, \"title\": \"Save a copy\"}; accessible: RuntimeError: fresh accessibility probe timed out",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/dialogs.editor_save_copy_fallback/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/dialogs.editor_save_copy_fallback/01-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "dialog-failure",
+          "path": "frames/dialogs.editor_save_copy_fallback/02-dialog-failure.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/dialogs.editor_save_copy_fallback/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "dialogs.editor_save_copy_fallback",
+      "build": "88928c0b59f3938098067e88913bc077b1e46d89",
+      "at": "2026-10-30T11:33:06Z"
+    },
+    {
+      "interaction": "dialog.review-save-copy",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "evidence/lane-after/receipt.json",
+      "note": "timeout: visible synthetic scrolling pattern",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/dialogs.review_save_copy_portal/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/dialogs.review_save_copy_portal/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "dialogs.review_save_copy_portal",
+      "build": "88928c0b59f3938098067e88913bc077b1e46d89",
+      "at": "2026-10-30T11:33:45Z"
+    },
+    {
+      "interaction": "dialog.review-save-copy",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "evidence/lane-after/receipt.json",
+      "note": "timeout: visible synthetic scrolling pattern",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/dialogs.review_save_copy_fallback/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/dialogs.review_save_copy_fallback/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "dialogs.review_save_copy_fallback",
+      "build": "88928c0b59f3938098067e88913bc077b1e46d89",
+      "at": "2026-10-30T11:34:20Z"
+    },
+    {
+      "interaction": "dialog.portal",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "evidence/lane-after/receipt.json",
+      "note": "Requested chooser backend: portal; Chooser state at failure: {\"backend\": \"portal\", \"dialog\": \"outputFolder\", \"fallbackReason\": null, \"last\": null, \"mode\": \"folder\", \"open\": true, \"parentWindow\": \"\", \"title\": \"Choose output folder\"}; accessible: RuntimeError: fresh accessibility probe timed out",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/dialogs.portal_portal/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/dialogs.portal_portal/01-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "dialog-failure",
+          "path": "frames/dialogs.portal_portal/02-dialog-failure.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/dialogs.portal_portal/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "dialogs.portal_portal",
+      "build": "88928c0b59f3938098067e88913bc077b1e46d89",
+      "at": "2026-10-30T11:34:56Z"
+    },
+    {
+      "interaction": "dialog.portal",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "evidence/lane-after/receipt.json",
+      "issue": 671,
+      "note": "Requested chooser backend: fallback; portal backend state does not exist in a fallback run",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/dialogs.portal_fallback/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/dialogs.portal_fallback/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "dialogs.portal_fallback",
+      "build": "88928c0b59f3938098067e88913bc077b1e46d89",
+      "at": "2026-10-30T11:35:09Z"
+    },
+    {
+      "interaction": "dialog.fallback",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "evidence/lane-after/receipt.json",
+      "issue": 671,
+      "note": "Requested chooser backend: portal; fallback backend state does not exist in a portal run",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/dialogs.fallback_portal/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/dialogs.fallback_portal/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "dialogs.fallback_portal",
+      "build": "88928c0b59f3938098067e88913bc077b1e46d89",
+      "at": "2026-10-30T11:35:24Z"
+    },
+    {
+      "interaction": "dialog.fallback",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "evidence/lane-after/receipt.json",
+      "note": "Requested chooser backend: fallback; Chooser state at failure: {\"backend\": \"fallback\", \"dialog\": \"outputFolder\", \"fallbackReason\": \"disabled\", \"last\": null, \"mode\": \"folder\", \"open\": true, \"parentWindow\": null, \"title\": \"Choose output folder\"}; accessible: RuntimeError: fresh accessibility probe timed out",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/dialogs.fallback_fallback/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/dialogs.fallback_fallback/01-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "dialog-failure",
+          "path": "frames/dialogs.fallback_fallback/02-dialog-failure.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/dialogs.fallback_fallback/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "dialogs.fallback_fallback",
+      "build": "88928c0b59f3938098067e88913bc077b1e46d89",
+      "at": "2026-10-30T11:35:57Z"
+    },
+    {
+      "interaction": "dialog.cancel",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "evidence/lane-after/receipt.json",
+      "note": "Requested chooser backend: portal; accessible: RuntimeError: fresh accessibility probe timed out",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/dialogs.cancel_portal/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/dialogs.cancel_portal/01-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/dialogs.cancel_portal/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "dialogs.cancel_portal",
+      "build": "88928c0b59f3938098067e88913bc077b1e46d89",
+      "at": "2026-10-30T11:36:31Z"
+    },
+    {
+      "interaction": "dialog.cancel",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "evidence/lane-after/receipt.json",
+      "note": "Requested chooser backend: fallback; accessible: RuntimeError: fresh accessibility probe timed out",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/dialogs.cancel_fallback/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/dialogs.cancel_fallback/01-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/dialogs.cancel_fallback/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "dialogs.cancel_fallback",
+      "build": "88928c0b59f3938098067e88913bc077b1e46d89",
+      "at": "2026-10-30T11:37:01Z"
+    },
+    {
+      "interaction": "dialog.failure-strip",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "evidence/lane-after/receipt.json",
+      "issue": 671,
+      "note": "isolated chooser failure needs a production failure injection boundary; portal Response 2 falls back",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/dialogs.failure_strip_portal/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/dialogs.failure_strip_portal/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "dialogs.failure_strip_portal",
+      "build": "88928c0b59f3938098067e88913bc077b1e46d89",
+      "at": "2026-10-30T11:37:01Z"
+    },
+    {
+      "interaction": "dialog.failure-strip",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "evidence/lane-after/receipt.json",
+      "issue": 671,
+      "note": "isolated chooser failure needs a production failure injection boundary; portal Response 2 falls back",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/dialogs.failure_strip_fallback/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/dialogs.failure_strip_fallback/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "dialogs.failure_strip_fallback",
+      "build": "88928c0b59f3938098067e88913bc077b1e46d89",
+      "at": "2026-10-30T11:37:02Z"
+    },
+    {
+      "interaction": "mcp.file-dialogs",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "evidence/lane-after/receipt.json",
+      "note": "Requested chooser backend: portal; official MCP client/helper unavailable or failed; configure mcp_python and mcp_helper in profile",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/dialogs.mcp_file_dialogs_portal/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/dialogs.mcp_file_dialogs_portal/01-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/dialogs.mcp_file_dialogs_portal/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "dialogs.mcp_file_dialogs_portal",
+      "build": "88928c0b59f3938098067e88913bc077b1e46d89",
+      "at": "2026-10-30T11:37:20Z"
+    },
+    {
+      "interaction": "mcp.file-dialogs",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "evidence/lane-after/receipt.json",
+      "note": "Requested chooser backend: fallback; official MCP client/helper unavailable or failed; configure mcp_python and mcp_helper in profile",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/dialogs.mcp_file_dialogs_fallback/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/dialogs.mcp_file_dialogs_fallback/01-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/dialogs.mcp_file_dialogs_fallback/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "dialogs.mcp_file_dialogs_fallback",
+      "build": "88928c0b59f3938098067e88913bc077b1e46d89",
+      "at": "2026-10-30T11:37:33Z"
+    }
+  ]
+}

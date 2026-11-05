@@ -9,6 +9,10 @@ struct X11Target {
  QRect nativeWindowRect;
  QList<CaptureFrame> layout;
  QRectF logicalSelection;
+ QString outcome;
+ // Region screenshots in Screenshot first mode (#629): every monitor is read
+ // before selection, and the result is cut from those frames.
+ bool screenshotFirst=false;
 };
 class X11Capture final:public QObject {
  Q_OBJECT

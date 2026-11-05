@@ -1,0 +1,913 @@
+{
+ "iterations": [
+  {
+   "exitCode": 8,
+   "failed": [
+    "operations_contract"
+   ],
+   "iteration": 1,
+   "loadavg": [
+    "5.28",
+    "6.39",
+    "5.08"
+   ],
+   "seconds": 93.78,
+   "tests": 12
+  },
+  {
+   "exitCode": 8,
+   "failed": [
+    "operations_contract"
+   ],
+   "iteration": 2,
+   "loadavg": [
+    "5.66",
+    "6.36",
+    "5.19"
+   ],
+   "seconds": 94.03,
+   "tests": 12
+  },
+  {
+   "exitCode": 8,
+   "failed": [
+    "operations_contract"
+   ],
+   "iteration": 3,
+   "loadavg": [
+    "5.62",
+    "6.27",
+    "5.28"
+   ],
+   "seconds": 92.22,
+   "tests": 12
+  },
+  {
+   "exitCode": 0,
+   "failed": [],
+   "iteration": 4,
+   "loadavg": [
+    "5.49",
+    "6.18",
+    "5.35"
+   ],
+   "seconds": 94.58,
+   "tests": 12
+  },
+  {
+   "exitCode": 8,
+   "failed": [
+    "operations_contract"
+   ],
+   "iteration": 5,
+   "loadavg": [
+    "5.56",
+    "6.16",
+    "5.44"
+   ],
+   "seconds": 94.93,
+   "tests": 12
+  },
+  {
+   "exitCode": 0,
+   "failed": [],
+   "iteration": 6,
+   "loadavg": [
+    "5.24",
+    "6.00",
+    "5.46"
+   ],
+   "seconds": 94.53,
+   "tests": 12
+  },
+  {
+   "exitCode": 8,
+   "failed": [
+    "operations_contract"
+   ],
+   "iteration": 7,
+   "loadavg": [
+    "5.48",
+    "6.01",
+    "5.52"
+   ],
+   "seconds": 95.08,
+   "tests": 12
+  },
+  {
+   "exitCode": 8,
+   "failed": [
+    "operations_contract"
+   ],
+   "iteration": 8,
+   "loadavg": [
+    "5.49",
+    "6.01",
+    "5.58"
+   ],
+   "seconds": 93.03,
+   "tests": 12
+  }
+ ],
+ "schemaVersion": 1,
+ "source": {
+  "PUTGD_TEST_TIME_SCALE": "1",
+  "commit": "33c768ec",
+  "contention": "4 busy loops on CPUs 0-1, tests on CPUs 0-1",
+  "cpus": 4,
+  "ctestArgs": [
+   "--preset",
+   "dev",
+   "--parallel",
+   "8",
+   "--resource-spec-file",
+   "/home/patrick/work/put.gd-flake-base/tools/ci/ctest-resources.json",
+   "-R",
+   "^(proton_contract|gui_tray|gui_history_view|gui_application|native_tray_integration|operations_contract|b2_integration|recording_service_integration|proton_transport|s3_worker_supervision|x11_isolated|diagnostics_upload_contract)$"
+  ],
+  "ended": "2026-10-22T01:04:24+00:00",
+  "host": "debian",
+  "interrupted": false,
+  "iterations": 8,
+  "kind": "stress",
+  "label": "nightly 33c768ec, known flaky tests, 2 CPUs shared with 4 busy loops",
+  "requestedIterations": 8,
+  "started": "2026-10-22T00:51:51+00:00"
+ },
+ "tests": {
+  "b2_integration": {
+   "attempts": [
+    {
+     "details": [],
+     "iteration": 1,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 39.7822
+    },
+    {
+     "details": [],
+     "iteration": 2,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 39.3039
+    },
+    {
+     "details": [],
+     "iteration": 3,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 39.5479
+    },
+    {
+     "details": [],
+     "iteration": 4,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 39.0778
+    },
+    {
+     "details": [],
+     "iteration": 5,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 38.9712
+    },
+    {
+     "details": [],
+     "iteration": 6,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 40.2415
+    },
+    {
+     "details": [],
+     "iteration": 7,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 41.1605
+    },
+    {
+     "details": [],
+     "iteration": 8,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 38.5744
+    }
+   ],
+   "labels": [],
+   "outcome": "passed"
+  },
+  "diagnostics_upload_contract": {
+   "attempts": [
+    {
+     "details": [],
+     "iteration": 1,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 4.80826
+    },
+    {
+     "details": [],
+     "iteration": 2,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 4.8783
+    },
+    {
+     "details": [],
+     "iteration": 3,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 4.79188
+    },
+    {
+     "details": [],
+     "iteration": 4,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 4.89515
+    },
+    {
+     "details": [],
+     "iteration": 5,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 4.83703
+    },
+    {
+     "details": [],
+     "iteration": 6,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 4.69818
+    },
+    {
+     "details": [],
+     "iteration": 7,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 5.10308
+    },
+    {
+     "details": [],
+     "iteration": 8,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 4.97135
+    }
+   ],
+   "labels": [],
+   "outcome": "passed"
+  },
+  "gui_application": {
+   "attempts": [
+    {
+     "details": [],
+     "iteration": 1,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 73.0319
+    },
+    {
+     "details": [],
+     "iteration": 2,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 73.0843
+    },
+    {
+     "details": [],
+     "iteration": 3,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 72.2375
+    },
+    {
+     "details": [],
+     "iteration": 4,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 71.9239
+    },
+    {
+     "details": [],
+     "iteration": 5,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 73.2436
+    },
+    {
+     "details": [],
+     "iteration": 6,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 72.5159
+    },
+    {
+     "details": [],
+     "iteration": 7,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 78.1411
+    },
+    {
+     "details": [],
+     "iteration": 8,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 72.9513
+    }
+   ],
+   "labels": [],
+   "outcome": "passed"
+  },
+  "gui_history_view": {
+   "attempts": [
+    {
+     "details": [],
+     "iteration": 1,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 42.7437
+    },
+    {
+     "details": [],
+     "iteration": 2,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 41.9645
+    },
+    {
+     "details": [],
+     "iteration": 3,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 42.2505
+    },
+    {
+     "details": [],
+     "iteration": 4,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 42.5244
+    },
+    {
+     "details": [],
+     "iteration": 5,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 43.5424
+    },
+    {
+     "details": [],
+     "iteration": 6,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 42.8229
+    },
+    {
+     "details": [],
+     "iteration": 7,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 43.8075
+    },
+    {
+     "details": [],
+     "iteration": 8,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 42.0246
+    }
+   ],
+   "labels": [],
+   "outcome": "passed"
+  },
+  "gui_tray": {
+   "attempts": [
+    {
+     "details": [],
+     "iteration": 1,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 51.6014
+    },
+    {
+     "details": [],
+     "iteration": 2,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 51.5943
+    },
+    {
+     "details": [],
+     "iteration": 3,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 51.9194
+    },
+    {
+     "details": [],
+     "iteration": 4,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 51.616
+    },
+    {
+     "details": [],
+     "iteration": 5,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 52.028
+    },
+    {
+     "details": [],
+     "iteration": 6,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 51.8259
+    },
+    {
+     "details": [],
+     "iteration": 7,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 51.744
+    },
+    {
+     "details": [],
+     "iteration": 8,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 51.6728
+    }
+   ],
+   "labels": [],
+   "outcome": "passed"
+  },
+  "native_tray_integration": {
+   "attempts": [
+    {
+     "details": [],
+     "iteration": 1,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 16.2735
+    },
+    {
+     "details": [],
+     "iteration": 2,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 15.6624
+    },
+    {
+     "details": [],
+     "iteration": 3,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 16.0105
+    },
+    {
+     "details": [],
+     "iteration": 4,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 16.043
+    },
+    {
+     "details": [],
+     "iteration": 5,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 15.9037
+    },
+    {
+     "details": [],
+     "iteration": 6,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 16.251
+    },
+    {
+     "details": [],
+     "iteration": 7,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 15.8141
+    },
+    {
+     "details": [],
+     "iteration": 8,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 16.1094
+    }
+   ],
+   "labels": [],
+   "outcome": "passed"
+  },
+  "operations_contract": {
+   "attempts": [
+    {
+     "details": [
+      "FAIL!  : OperationsTest::onDemandPreviewsAreBounded() Compared values are not the same",
+      "   Actual   (outcomes.value(items[i].artifact.id)): \"preview_busy\"",
+      "   Expected (QString(\"made\"))                     : \"made\"",
+      "   Loc: [/home/patrick/work/put.gd-flake-base/tests/unit/test_operations.cpp(411)]"
+     ],
+     "iteration": 1,
+     "message": "Failed",
+     "outcome": "failed",
+     "seconds": 93.6949
+    },
+    {
+     "details": [
+      "FAIL!  : OperationsTest::onDemandPreviewsAreBounded() Compared values are not the same",
+      "   Actual   (outcomes.value(items[i].artifact.id)): \"preview_busy\"",
+      "   Expected (QString(\"made\"))                     : \"made\"",
+      "   Loc: [/home/patrick/work/put.gd-flake-base/tests/unit/test_operations.cpp(411)]"
+     ],
+     "iteration": 2,
+     "message": "Failed",
+     "outcome": "failed",
+     "seconds": 93.9415
+    },
+    {
+     "details": [
+      "FAIL!  : OperationsTest::onDemandPreviewsAreBounded() Compared values are not the same",
+      "   Actual   (outcomes.value(items[i].artifact.id)): \"preview_busy\"",
+      "   Expected (QString(\"made\"))                     : \"made\"",
+      "   Loc: [/home/patrick/work/put.gd-flake-base/tests/unit/test_operations.cpp(411)]"
+     ],
+     "iteration": 3,
+     "message": "Failed",
+     "outcome": "failed",
+     "seconds": 92.1472
+    },
+    {
+     "details": [],
+     "iteration": 4,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 94.5016
+    },
+    {
+     "details": [
+      "FAIL!  : OperationsTest::historyImageSupersededWorkerReleasesNewerCopy() 'child.exitStatus()==QProcess::NormalExit&&child.exitCode()==0' returned FALSE. (********* Start testing of OperationsTest *********",
+      "FAIL!  : OperationsTest::historyImageSupersededWorkerReleasesNewerCopy() 'record[\"jobDirectory\"].toString().startsWith(\"/tmp/pgi-\")' returned FALSE. ()",
+      "   Loc: [/home/patrick/work/put.gd-flake-base/tests/unit/test_operations.cpp(88)]",
+      "   Loc: [/home/patrick/work/put.gd-flake-base/tests/unit/test_operations.cpp(86)]"
+     ],
+     "iteration": 5,
+     "message": "Failed",
+     "outcome": "failed",
+     "seconds": 94.8408
+    },
+    {
+     "details": [],
+     "iteration": 6,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 94.4435
+    },
+    {
+     "details": [
+      "FAIL!  : OperationsTest::onDemandPreviewsAreBounded() Compared values are not the same",
+      "   Actual   (outcomes.value(items[i].artifact.id)): \"preview_busy\"",
+      "   Expected (QString(\"made\"))                     : \"made\"",
+      "   Loc: [/home/patrick/work/put.gd-flake-base/tests/unit/test_operations.cpp(411)]"
+     ],
+     "iteration": 7,
+     "message": "Failed",
+     "outcome": "failed",
+     "seconds": 95.0266
+    },
+    {
+     "details": [
+      "FAIL!  : OperationsTest::onDemandPreviewsAreBounded() Compared values are not the same",
+      "   Actual   (outcomes.value(items[i].artifact.id)): \"preview_busy\"",
+      "   Expected (QString(\"made\"))                     : \"made\"",
+      "   Loc: [/home/patrick/work/put.gd-flake-base/tests/unit/test_operations.cpp(411)]"
+     ],
+     "iteration": 8,
+     "message": "Failed",
+     "outcome": "failed",
+     "seconds": 92.9654
+    }
+   ],
+   "labels": [],
+   "outcome": "flaky"
+  },
+  "proton_contract": {
+   "attempts": [
+    {
+     "details": [],
+     "iteration": 1,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 5.68281
+    },
+    {
+     "details": [],
+     "iteration": 2,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 5.44984
+    },
+    {
+     "details": [],
+     "iteration": 3,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 5.32374
+    },
+    {
+     "details": [],
+     "iteration": 4,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 5.56377
+    },
+    {
+     "details": [],
+     "iteration": 5,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 5.50555
+    },
+    {
+     "details": [],
+     "iteration": 6,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 5.47463
+    },
+    {
+     "details": [],
+     "iteration": 7,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 5.56767
+    },
+    {
+     "details": [],
+     "iteration": 8,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 5.47046
+    }
+   ],
+   "labels": [],
+   "outcome": "passed"
+  },
+  "proton_transport": {
+   "attempts": [
+    {
+     "details": [],
+     "iteration": 1,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 10.3805
+    },
+    {
+     "details": [],
+     "iteration": 2,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 10.3035
+    },
+    {
+     "details": [],
+     "iteration": 3,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 10.3807
+    },
+    {
+     "details": [],
+     "iteration": 4,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 10.3609
+    },
+    {
+     "details": [],
+     "iteration": 5,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 10.1816
+    },
+    {
+     "details": [],
+     "iteration": 6,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 10.1621
+    },
+    {
+     "details": [],
+     "iteration": 7,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 10.6336
+    },
+    {
+     "details": [],
+     "iteration": 8,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 10.462
+    }
+   ],
+   "labels": [],
+   "outcome": "passed"
+  },
+  "recording_service_integration": {
+   "attempts": [
+    {
+     "details": [],
+     "iteration": 1,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 4.24785
+    },
+    {
+     "details": [],
+     "iteration": 2,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 4.22106
+    },
+    {
+     "details": [],
+     "iteration": 3,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 4.16286
+    },
+    {
+     "details": [],
+     "iteration": 4,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 4.15066
+    },
+    {
+     "details": [],
+     "iteration": 5,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 4.24782
+    },
+    {
+     "details": [],
+     "iteration": 6,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 4.05577
+    },
+    {
+     "details": [],
+     "iteration": 7,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 4.16166
+    },
+    {
+     "details": [],
+     "iteration": 8,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 4.27361
+    }
+   ],
+   "labels": [],
+   "outcome": "passed"
+  },
+  "s3_worker_supervision": {
+   "attempts": [
+    {
+     "details": [],
+     "iteration": 1,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 60.3212
+    },
+    {
+     "details": [],
+     "iteration": 2,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 59.9113
+    },
+    {
+     "details": [],
+     "iteration": 3,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 60.0822
+    },
+    {
+     "details": [],
+     "iteration": 4,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 60.5194
+    },
+    {
+     "details": [],
+     "iteration": 5,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 59.9565
+    },
+    {
+     "details": [],
+     "iteration": 6,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 60.6914
+    },
+    {
+     "details": [],
+     "iteration": 7,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 61.4279
+    },
+    {
+     "details": [],
+     "iteration": 8,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 60.6919
+    }
+   ],
+   "labels": [],
+   "outcome": "passed"
+  },
+  "x11_isolated": {
+   "attempts": [
+    {
+     "details": [],
+     "iteration": 1,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 23.0157
+    },
+    {
+     "details": [],
+     "iteration": 2,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 23.1952
+    },
+    {
+     "details": [],
+     "iteration": 3,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 23.1959
+    },
+    {
+     "details": [],
+     "iteration": 4,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 22.9797
+    },
+    {
+     "details": [],
+     "iteration": 5,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 23.3879
+    },
+    {
+     "details": [],
+     "iteration": 6,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 23.438
+    },
+    {
+     "details": [],
+     "iteration": 7,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 22.908
+    },
+    {
+     "details": [],
+     "iteration": 8,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 22.8452
+    }
+   ],
+   "labels": [],
+   "outcome": "passed"
+  }
+ }
+}

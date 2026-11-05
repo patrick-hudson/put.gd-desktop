@@ -1,0 +1,6 @@
+Oct 30 00:28:50 patrick-Precision-5540 systemd[1810]: Started putgd-snap-fbase.service - /usr/bin/ssh -F /dev/null -i /home/patrick/.ssh/ascii_box_ed25519 -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile=/home/patrick/work/boat-snapshots-v2-20261030/fbase-known_hosts -o ConnectTimeout=20 -p 19040 -N -T -o ExitOnForwardFailure=yes -L 127.0.0.1:6261:127.0.0.1:5901 user@149.202.84.238.
+Oct 30 00:28:52 patrick-Precision-5540 ssh[2051443]: bind [127.0.0.1]:6261: Address already in use
+Oct 30 00:28:52 patrick-Precision-5540 ssh[2051443]: channel_setup_fwd_listener_tcpip: cannot listen to port: 6261
+Oct 30 00:28:52 patrick-Precision-5540 ssh[2051443]: Could not request local forwarding.
+Oct 30 00:28:52 patrick-Precision-5540 systemd[1810]: putgd-snap-fbase.service: Main process exited, code=exited, status=255/EXCEPTION
+Oct 30 00:28:52 patrick-Precision-5540 systemd[1810]: putgd-snap-fbase.service: Failed with result 'exit-code'.

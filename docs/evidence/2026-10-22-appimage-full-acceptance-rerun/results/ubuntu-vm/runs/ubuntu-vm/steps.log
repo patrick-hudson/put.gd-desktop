@@ -1,0 +1,34 @@
+2026-10-22T05:41:36Z setup
+2026-10-22T05:41:36Z started
+2026-10-22T05:44:37Z memory
+2026-10-22T05:44:42Z updates-first-open
+2026-10-22T05:44:42Z status-clean
+2026-10-22T05:44:45Z channel-options
+2026-10-22T05:54:49Z find-tray rc=0
+2026-10-22T05:54:53Z tray-menu-click rc=0
+2026-10-22T05:54:53Z tray-menu-dbus rc=0
+2026-10-22T05:55:04Z window rc=0
+2026-10-22T05:55:08Z cover-start rc=0
+2026-10-22T05:55:16Z capture-region rc=0
+2026-10-22T05:55:21Z capture-window rc=0
+2026-10-22T05:55:25Z capture-desktop rc=0
+2026-10-22T05:55:30Z region-size-small rc=0
+2026-10-22T05:55:48Z edit rc=0
+2026-10-22T05:56:41Z record rc=0
+2026-10-22T05:56:42Z cover-stop rc=0
+2026-10-22T05:56:44Z cover-still rc=0
+2026-10-22T05:56:54Z control rc=0
+2026-10-22T05:56:54Z cover-stop2 rc=0
+2026-10-22T05:57:04Z region-size-coords-large rc=0
+2026-10-22T05:57:13Z region-size-coords-small rc=0
+2026-10-22T05:57:14Z handler-on rc=0
+2026-10-22T05:57:24Z notify rc=0
+2026-10-22T05:57:28Z recorder-full rc=0
+2026-10-22T05:57:29Z handler-off rc=0
+2026-10-22T05:57:38Z history rc=0
+2026-10-22T05:59:08Z delete rc=0
+2026-10-22T05:59:33Z settings rc=0
+2026-10-22T05:59:33Z status-clean-settings rc=0
+2026-10-22T05:59:38Z channel-stable rc=0
+2026-10-22T05:59:42Z channel-nightly rc=0
+2026-10-22T05:59:42Z dk-done

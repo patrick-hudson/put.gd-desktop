@@ -1,0 +1,29 @@
+{
+  "run": 40068126465,
+  "artifactId": 12550407563,
+  "name": "release-native-debian13",
+  "zipBytes": 163672047,
+  "transferredBytes": 63721966,
+  "members": {
+    "build-info.json": {
+      "sha256": "28f74ca8dc08652b5908b2d0733d4ef16c99dfaa03933ac37a959279b3b1ad0a",
+      "bytes": 345,
+      "zipCrc32": 1451299108
+    },
+    "ci-sdk-environment.json": {
+      "sha256": "fa6d3c759cd05c9216081f398b6394d9587a43775c0d1fda42f872f4fcc3f6cc",
+      "bytes": 38389,
+      "zipCrc32": 724560379
+    },
+    "native-audit.json": {
+      "sha256": "e9f51c9ffc89e0227727bb0f3de96cf73f5222ecec9edeaa2a5bdaa6f0494c6d",
+      "bytes": 161009,
+      "zipCrc32": 3855715366
+    },
+    "putgd_26.1024.1186~dev+gd5b561ddb94f_amd64.deb": {
+      "sha256": "84de10757faa06b35527ff359626a2b0d44cd5b6403aa204914fb759977957cd",
+      "bytes": 57433042,
+      "zipCrc32": 3188295927
+    }
+  }
+}

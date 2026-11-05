@@ -1,0 +1,57 @@
+{
+  "source": "171b506e02ca37ba75b27dbbbe859502380926ef",
+  "commits": {
+    "testsFirst": "74e5264b2b89d6ed575c07b0b3e58454150ed1c7",
+    "wrappedLayout": "ee17800c35d5e8f23ff26e9744102bb96249c368",
+    "viewportRelayout": "a36ff8cc61ef81abbb0de9e842d83c4469c93c62",
+    "steadyWaits": "171b506e02ca37ba75b27dbbbe859502380926ef"
+  },
+  "ordinaryDev": {
+    "configure": "cmake --preset dev -DCMAKE_PREFIX_PATH=/home/patrick/work/put.gd/build/sdk -DPUTGD_AWS_SOURCE_DIR=/home/patrick/work/put.gd/build/dependencies/aws-sdk-cpp",
+    "build": "nice -n 10 cmake --build --preset dev --parallel 2",
+    "tests": "ctest --preset dev",
+    "passed": 108,
+    "total": 108,
+    "seconds": 850.58
+  },
+  "focusedActualPaintGeometry": {
+    "dataRows": 8,
+    "selectedAndUnselected": true,
+    "historyWidths": [
+      1000,
+      600
+    ],
+    "resizeWiderAndBack": true,
+    "literalHtmlPlaintext": true,
+    "longTokenCharacters": 1800,
+    "wholeDelegateErrorPixelsCompared": true,
+    "cardBoundsAndLastRowScrollReachability": true,
+    "passedIncludingInitCleanup": 10
+  },
+  "lockedOfficialSdkMcp": {
+    "passed": 5,
+    "total": 5,
+    "seconds": 20.954
+  },
+  "pinnedOfficialAwsSdk": "1.11.907; verified source/submodules, dynamic distro Qt",
+  "testsFirst": "Eight data rows fail on original fixed-height/elided painting after retained initial test compile correction",
+  "intermediateScrollFix": "Two narrow-list long-token rows exposed final viewport-width/scroll-range clipping; queued viewport relayout fixes it, no harness/gate change",
+  "officialFailedCI": {
+    "head": "a36ff8cc61ef81abbb0de9e842d83c4469c93c62",
+    "run": 40056224819,
+    "job": 120759690875,
+    "artifact": 12545341975,
+    "cause": "WaitLint.test_repository_tests_use_the_scaled_helpers:2 settle-assert violations at114/127",
+    "officialTraceSha256": "5ab2111fef402458adbb49721dabf2f59e90de306ad493c4d3ef2511a1a520ca",
+    "correction": "Scaled steady predicates wait for actual paint/geometry/selection/scroll; no exemptions/policy changes"
+  },
+  "finalCodeCI": "All required CI passed171, confirmed by coordinator completion event; child did not poll",
+  "sshTransport": "Original exec returned255 after completed logs; independent source/process/readback retained, test outcomes read from complete logs",
+  "privateArchive": {
+    "host": "d69",
+    "path": "/home/patrick/work/pgcc-fullerror-headless-receipts.tar.gz",
+    "sha256": "cc5c88c069e608e67f31ba597da1bc9abd2bbc25e622ad9733c769d187b7d15e",
+    "workstationCopy": "/home/patrick/.t3/worktrees/put.gd/t3-0aa1b31c/work/capture-copy/full-error/pgcc-fullerror-headless-receipts.tar.gz",
+    "restore": "Verify SHA256 and extract in new private directory; all red/configure/interruption/green logs and scripts retained"
+  }
+}

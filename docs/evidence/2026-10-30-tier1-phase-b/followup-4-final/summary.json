@@ -1,0 +1,104 @@
+{
+  "schemaVersion": 2,
+  "scope": "coordinator-follow-up-4-combined-pass",
+  "release": "v26.1030.3203-nightly",
+  "appCommit": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+  "catalogCiRun": 41111404666,
+  "placement": "guest",
+  "completedUploads": 5,
+  "verifiedRemoteHashes": 5,
+  "verifiedBrowserHashes": 2,
+  "verifiedGuestPublicHashes": 1,
+  "uiRevocations": 2,
+  "uiDeletions": 3,
+  "independentUnavailableLinks": 2,
+  "s3OriginAbsenceProofs": 3,
+  "s3MissingHead404": 3,
+  "batonsLent": 2,
+  "batonsReturned": 2,
+  "overlaysRetired": 3,
+  "reusedGnomeProton": true,
+  "reusedCounts": {
+    "completedUploads": 1,
+    "verifiedRemoteHashes": 1,
+    "verifiedBrowserHashes": 1,
+    "uiRevocations": 1,
+    "independentUnavailableLinks": 1
+  },
+  "rows": {
+    "gnome": {
+      "s3": "failed"
+    },
+    "kde": {
+      "s3": "failed",
+      "proton": "passed"
+    },
+    "cinnamon": {
+      "s3": "passed",
+      "proton": "passed"
+    }
+  },
+  "locksReleased": true,
+  "coverageSha256": "d924e4129d76fefaf060ceae200cb5fb23580b5386953fb0d1f451fb31f1bf16",
+  "issues": [
+    978,
+    992,
+    996
+  ],
+  "previousCumulative": {
+    "independentUnavailableLinks": 10,
+    "s3MissingHead404": 7,
+    "verifiedRemoteHashes": 7,
+    "overlaysRetired": 10,
+    "uiRevocations": 11,
+    "s3OriginAbsenceProofs": 6,
+    "verifiedBrowserHashes": 1,
+    "batonsLent": 22,
+    "uiDeletions": 6,
+    "completedUploads": 17,
+    "batonsReturned": 22
+  },
+  "cumulative": {
+    "verifiedRemoteHashes": 12,
+    "batonsLent": 24,
+    "overlaysRetired": 13,
+    "s3MissingHead404": 10,
+    "verifiedGuestPublicHashes": 1,
+    "uiRevocations": 13,
+    "completedUploads": 22,
+    "verifiedBrowserHashes": 3,
+    "uiDeletions": 9,
+    "independentUnavailableLinks": 12,
+    "s3OriginAbsenceProofs": 9,
+    "batonsReturned": 24
+  },
+  "matrixResults": {
+    "gnome": {
+      "s3": "F",
+      "proton": "P",
+      "protonReused": true
+    },
+    "kde": {
+      "s3": "F",
+      "proton": "P"
+    },
+    "cinnamon": {
+      "s3": "P",
+      "proton": "P"
+    }
+  },
+  "cloudfrontAfterDeletion": {
+    "gnome": {
+      "status": 200,
+      "informational": true
+    },
+    "kde": {
+      "status": 200,
+      "informational": true
+    },
+    "cinnamon": {
+      "status": 200,
+      "informational": true
+    }
+  }
+}

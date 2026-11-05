@@ -1,0 +1,9 @@
+condition	binary	runs	failed	mean_ms	max_ms	mean_load1	failure_codes
+7 hogs, any CPU	before	200	0	483	634	5.56	-
+7 hogs, any CPU	after	200	0	482	640	7.76	-
+3 hogs + test on CPU 0	before	200	0	873	907	4.45	-
+3 hogs + test on CPU 0	after	200	0	865	924	4.21	-
+4 hogs + test on CPU 0	before	200	198	1073	1106	4.04	proton_request_timeout
+4 hogs + test on CPU 0	after	200	0	1073	1129	5.07	-
+5 hogs + test on CPU 0	before	200	200	1085	1128	5.37	proton_request_timeout
+5 hogs + test on CPU 0	after	200	0	1289	1355	6.08	-

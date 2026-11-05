@@ -1,0 +1,436 @@
+{
+  "schemaVersion": 1,
+  "testedAppSource": "4d3840c6108c22546d83c43a1b7d4c77b1df9d6d",
+  "scope": "Saved physical m74 published-nightly measurements; observer overhead included; no stable-asset certification",
+  "policyCorrections": [
+    {
+      "raw": "raw/m74/b3/*/results.json:gates.overlayPaint",
+      "reason": "Supplemental wrapper mistakenly used max(drawable,root). Frozen #379 gate is drawable p95 <=150ms. Root observations are retained and ungraded; raw receipts are never rewritten."
+    }
+  ],
+  "capture": {
+    "capture-empty": {
+      "source": "raw/m74/b3/capture-empty/results.json",
+      "drawablePaint": {
+        "samples": 30,
+        "p50Ms": 122.3056330345571,
+        "p95Ms": 138.85366905014962,
+        "maxMs": 154.97261297423393
+      },
+      "drawableGate": {
+        "value": 138.85366905014962,
+        "maximum": 150,
+        "unit": "ms",
+        "status": "pass"
+      },
+      "rootObservedUngraded": {
+        "samples": 30,
+        "p50Ms": 197.48412002809346,
+        "p95Ms": 232.43893904145807,
+        "maxMs": 234.64696400333196
+      }
+    },
+    "capture-10k": {
+      "source": "raw/m74/b3/capture-10k/results.json",
+      "drawablePaint": {
+        "samples": 30,
+        "p50Ms": 127.1974720293656,
+        "p95Ms": 158.40072208084166,
+        "maxMs": 160.5785699794069
+      },
+      "drawableGate": {
+        "value": 158.40072208084166,
+        "maximum": 150,
+        "unit": "ms",
+        "status": "fail"
+      },
+      "rootObservedUngraded": {
+        "samples": 30,
+        "p50Ms": 192.69146700389683,
+        "p95Ms": 213.0847640801221,
+        "maxMs": 222.25661110132933
+      }
+    },
+    "links": {
+      "source": "raw/m74/b3/links/results.json",
+      "drawablePaint": {
+        "samples": 30,
+        "p50Ms": 130.49072097055614,
+        "p95Ms": 158.99808495305479,
+        "maxMs": 180.20897498354316
+      },
+      "drawableGate": {
+        "value": 158.99808495305479,
+        "maximum": 150,
+        "unit": "ms",
+        "status": "fail"
+      },
+      "rootObservedUngraded": {
+        "samples": 30,
+        "p50Ms": 197.49201089143753,
+        "p95Ms": 223.70755509473383,
+        "maxMs": 228.61037403345108
+      },
+      "captureToLinkUngraded": {
+        "samples": 30,
+        "p50Ms": 814.5456130150706,
+        "p95Ms": 947.1436010207981,
+        "maxMs": 969.6549080545083
+      }
+    }
+  },
+  "history": {
+    "source": "raw/m74/b3/history-10k/results.json",
+    "open": {
+      "samples": 20,
+      "p50Ms": 753.4790129866451,
+      "p95Ms": 776.6464110463858,
+      "maxMs": 780.5314150173217
+    },
+    "search": {
+      "samples": 30,
+      "p50Ms": 112.60918399784714,
+      "p95Ms": 119.82305499259382,
+      "maxMs": 130.30474295374006
+    },
+    "scroll": {
+      "samples": 40,
+      "p50Ms": 79.64165101293474,
+      "p95Ms": 101.77866101730615,
+      "maxMs": 109.48152700439095
+    },
+    "traversedRows": 10000,
+    "pages": 200,
+    "traversalSeconds": 172.05208375898656,
+    "gates": {
+      "openMax": {
+        "value": 780.5314150173217,
+        "maximum": 1000,
+        "unit": "ms",
+        "status": "pass"
+      },
+      "searchP95": {
+        "value": 119.82305499259382,
+        "maximum": 250,
+        "unit": "ms",
+        "status": "pass"
+      },
+      "scrollP95": {
+        "value": 101.77866101730615,
+        "maximum": 100,
+        "unit": "ms",
+        "status": "fail"
+      }
+    }
+  },
+  "slow256": {
+    "status": "complete",
+    "metrics": {
+      "historyOpenFirstGenericDrawableObservationMs": 602.9989400412887,
+      "historyOpenUpperBoundMs": null,
+      "slowInputGenericRepaintMs": 38.684680010192096,
+      "slowInputUpperBoundMs": null,
+      "slowUploadSeconds": 25.490497455000877,
+      "cancelTerminalMs": 754.0482759941369,
+      "postUploadFinalFamily": {
+        "rssBytes": 33275904,
+        "pssBytes": 17386496,
+        "privateBytes": 12591104
+      },
+      "settleGrowthBytes": 1979392,
+      "sampledProcessFamily": {
+        "peakTotals": {
+          "rssBytes": 146112512,
+          "pssBytes": 62385152,
+          "privateBytes": 46415872
+        },
+        "cpuPercentOneCoreLowerBound": 0.5079814571215473,
+        "observedProcessGenerations": 7,
+        "samplingSpanSeconds": 358.2807944039814,
+        "shortLivedChildrenMayBeMissed": true
+      }
+    },
+    "gates": {
+      "historyOpenUpperBoundMs": {
+        "status": "unassessed",
+        "reason": "content_endpoint_not_witnessed"
+      },
+      "slowInputUpperBoundMs": {
+        "status": "unassessed",
+        "reason": "content_endpoint_not_witnessed"
+      },
+      "cancelTerminalMs": {
+        "status": "unassessed",
+        "reason": "no_explicit_approved_threshold"
+      },
+      "settleGrowthBytes": {
+        "status": "unassessed",
+        "reason": "no_explicit_approved_threshold"
+      },
+      "settled-rssBytes": {
+        "status": "pass",
+        "limitBytes": 41943040
+      },
+      "settled-pssBytes": {
+        "status": "pass",
+        "limitBytes": 30408704
+      },
+      "cleanup": {
+        "status": "pass"
+      }
+    },
+    "source": "raw/m74/b2/slow/results.json",
+    "limitation": "UI observer saw generic drawable change, not content-specific first presentation; response/cancel/settle growth have no approved threshold"
+  },
+  "slow100": {
+    "status": "complete",
+    "metrics": {
+      "historyOpenFirstGenericDrawableObservationMs": 432.4841449270025,
+      "historyOpenUpperBoundMs": null,
+      "slowInputGenericRepaintMs": 41.78017599042505,
+      "slowInputUpperBoundMs": null,
+      "slowUploadSeconds": 62.60685842006933,
+      "cancelTerminalMs": 732.4169470230117,
+      "postUploadFinalFamily": {
+        "rssBytes": 33169408,
+        "pssBytes": 17247232,
+        "privateBytes": 12464128
+      },
+      "settleGrowthBytes": 1848320,
+      "sampledProcessFamily": {
+        "peakTotals": {
+          "rssBytes": 146497536,
+          "pssBytes": 62644224,
+          "privateBytes": 46698496
+        },
+        "cpuPercentOneCoreLowerBound": 0.5705777090908185,
+        "observedProcessGenerations": 8,
+        "samplingSpanSeconds": 432.8945839710068,
+        "shortLivedChildrenMayBeMissed": true
+      }
+    },
+    "gates": {
+      "historyOpenUpperBoundMs": {
+        "status": "unassessed",
+        "reason": "content_endpoint_not_witnessed"
+      },
+      "slowInputUpperBoundMs": {
+        "status": "unassessed",
+        "reason": "content_endpoint_not_witnessed"
+      },
+      "cancelTerminalMs": {
+        "status": "unassessed",
+        "reason": "no_explicit_approved_threshold"
+      },
+      "settleGrowthBytes": {
+        "status": "unassessed",
+        "reason": "no_explicit_approved_threshold"
+      },
+      "settled-rssBytes": {
+        "status": "pass",
+        "limitBytes": 41943040
+      },
+      "settled-pssBytes": {
+        "status": "pass",
+        "limitBytes": 30408704
+      },
+      "cleanup": {
+        "status": "pass"
+      }
+    },
+    "source": "raw/m74/b3/slow100/results.json",
+    "fixturePort": 41297,
+    "rateBytesPerSecond": 100000,
+    "qdiscRestored": true,
+    "ownedTableAbsent": true
+  },
+  "memory": {
+    "metrics": {
+      "coldClosed": {
+        "seconds": 300.0547630179208,
+        "residentCpuPercentOneCore": 0.08998357409306455,
+        "peakResidentRssBytes": 32698368,
+        "peakFamilyRssBytes": 32698368,
+        "peakFamilyPssBytes": 17726464
+      },
+      "historyOpenPeakFamilyPssBytes": 56563712,
+      "historyOpenMeasuredSeconds": 30.16171602299437,
+      "historyClosed": {
+        "seconds": 300.04509174998384,
+        "residentCpuPercentOneCore": 0.0033328323891838965,
+        "peakResidentRssBytes": 37019648,
+        "peakFamilyRssBytes": 37019648,
+        "peakFamilyPssBytes": 22073344
+      },
+      "sampledProcessFamily": {
+        "peakTotals": {
+          "rssBytes": 117616640,
+          "pssBytes": 56563712,
+          "privateBytes": 42176512
+        },
+        "cpuPercentOneCoreLowerBound": 0.09947041941755487,
+        "observedProcessGenerations": 3,
+        "samplingSpanSeconds": 633.3541204399662,
+        "shortLivedChildrenMayBeMissed": true
+      }
+    },
+    "gates": {
+      "cold-cpu": {
+        "status": "pass",
+        "minimumSeconds": 300,
+        "exclusiveLimitPercentOneCore": 0.5
+      },
+      "cold-rss": {
+        "status": "pass",
+        "limitBytes": 41943040
+      },
+      "cold-pss": {
+        "status": "pass",
+        "limitBytes": 30408704
+      },
+      "historyOpenPss": {
+        "status": "pass",
+        "limitBytes": 62914560,
+        "minimumSeconds": 30,
+        "measuredSeconds": 30.16171602299437
+      },
+      "closed-cpu": {
+        "status": "pass",
+        "minimumSeconds": 300,
+        "exclusiveLimitPercentOneCore": 0.5
+      },
+      "closed-rss": {
+        "status": "pass",
+        "limitBytes": 41943040
+      },
+      "closed-pss": {
+        "status": "pass",
+        "limitBytes": 30408704
+      },
+      "historyPaintResponse": {
+        "status": "unassessed",
+        "reason": "external_paint_scenario_required"
+      },
+      "cleanup": {
+        "status": "pass"
+      }
+    },
+    "source": "raw/m74/b2/memory-10k/results.json"
+  },
+  "native-burst": {
+    "source": "raw/m74/b4/native-burst/results.json",
+    "status": "complete",
+    "metrics": {
+      "nativeBurst": {
+        "nativeCaptures": 50,
+        "verifiedUploads": 50,
+        "uniqueLinks": 50,
+        "queuedPeak": 1,
+        "uploadingPeak": 3,
+        "putDelaySeconds": 10,
+        "concurrentSlots": 4,
+        "pendingOperationLimit": 64,
+        "acquisitionDrainBeforeNextCapture": true,
+        "trayStatus": "Active"
+      },
+      "postUploadFinalFamily": {
+        "rssBytes": 34144256,
+        "pssBytes": 18426880,
+        "privateBytes": 13529088
+      },
+      "settleGrowthBytes": 2897920,
+      "sampledProcessFamily": {
+        "peakTotals": {
+          "rssBytes": 183209984,
+          "pssBytes": 57670656,
+          "privateBytes": 39514112
+        },
+        "cpuPercentOneCoreLowerBound": 14.237854321098476,
+        "observedProcessGenerations": 109,
+        "samplingSpanSeconds": 481.95464325207286,
+        "shortLivedChildrenMayBeMissed": true
+      }
+    },
+    "gates": {
+      "settleGrowthBytes": {
+        "status": "unassessed",
+        "reason": "no_explicit_approved_threshold"
+      },
+      "settled-rssBytes": {
+        "status": "pass",
+        "limitBytes": 41943040
+      },
+      "settled-pssBytes": {
+        "status": "pass",
+        "limitBytes": 30408704
+      },
+      "cleanup": {
+        "status": "pass"
+      }
+    },
+    "error": null
+  },
+  "history-functionals": {
+    "source": "raw/m74/b4/history-functionals/results.json",
+    "status": "failed-or-interrupted",
+    "metrics": {
+      "historyOpenFirstGenericDrawableObservationMs": 345.57992208283395,
+      "historyOpenUpperBoundMs": null,
+      "sampledProcessFamily": {
+        "peakTotals": {
+          "rssBytes": 149086208,
+          "pssBytes": 88235008,
+          "privateBytes": 73879552
+        },
+        "cpuPercentOneCoreLowerBound": 3.0688551758825793,
+        "observedProcessGenerations": 3,
+        "samplingSpanSeconds": 5.213670597993769,
+        "shortLivedChildrenMayBeMissed": true
+      }
+    },
+    "gates": {
+      "historyOpenUpperBoundMs": {
+        "status": "unassessed",
+        "reason": "content_endpoint_not_witnessed"
+      },
+      "cleanup": {
+        "status": "pass"
+      }
+    },
+    "error": {
+      "type": "EvidenceError",
+      "reason": "accessible_control_missing_or_ambiguous",
+      "traceback": "Traceback (most recent call last):\n  File \"/tmp/np31/b_campaign.py\", line 41, in phase\n    try:b_history.functionals(run,ui)\n        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/tmp/np31/b_history.py\", line 207, in functionals\n    ui.action('copy-image',lambda:ui.accessible.click('Copy image'),ui.full_rectangle)\n  File \"/tmp/np31/frozen-src/tests/performance/campaign_workloads.py\", line 236, in action\n    value = self.draw.response(rectangle or self.list_rectangle, action)\n            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/tmp/np31/frozen-src/tests/performance/campaign_ui.py\", line 86, in response\n    action()\n  File \"/tmp/np31/b_history.py\", line 207, in <lambda>\n    ui.action('copy-image',lambda:ui.accessible.click('Copy image'),ui.full_rectangle)\n                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/tmp/np31/frozen-src/tests/performance/campaign_ui.py\", line 368, in click\n    node = self.find(name)\n           ^^^^^^^^^^^^^^^\n  File \"/tmp/np31/b_history.py\", line 30, in find\n    return super().find('History items and upload activity' if name=='Captures and upload activity' else name)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/tmp/np31/frozen-src/tests/performance/campaign_ui.py\", line 364, in find\n    raise EvidenceError('accessible_control_missing_or_ambiguous')\nbench_ui_process.EvidenceError: accessible_control_missing_or_ambiguous\n"
+    }
+  },
+  "overall": "blocked: native admission/browser gaps, 10k capture, links-cohort empty-history capture and scroll threshold failures, and populated functional gaps",
+  "partialImagePreview": {
+    "source": "raw/m74/b4/history-functionals/events.jsonl",
+    "summary": {
+      "samples": 10,
+      "p50Ms": 333.2473119953647,
+      "p95Ms": 346.8696039635688,
+      "maxMs": 346.8696039635688
+    },
+    "imageOnly": true,
+    "scope": "ten warm reopens of one fixture image; video/copy/delete not reached; overall populated functional gate remains blocked",
+    "p95SubsetGate": {
+      "value": 346.8696039635688,
+      "maximum": 1000,
+      "unit": "ms",
+      "status": "pass"
+    }
+  },
+  "historyStressSampledTelemetry": {
+    "peakTotals": {
+      "rssBytes": 136441856,
+      "pssBytes": 75670528,
+      "privateBytes": 61386752
+    },
+    "cpuPercentOneCoreLowerBound": 6.322902931219753,
+    "observedProcessGenerations": 45,
+    "samplingSpanSeconds": 224.73854421894066,
+    "shortLivedChildrenMayBeMissed": true
+  },
+  "historyStressTelemetryLimitation": "Mapping/process-family samples are lower bounds, not continuous CPU/memory observation of every full traversal step. Separate 10k open/closed memory gate is authoritative within its own scope."
+}

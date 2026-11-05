@@ -1,0 +1,2 @@
+{"receipt": "/home/patrick/work/put.gd-ua/labstate/receipts/lab/v26.1021.1022-nightly.json", "tag": "v26.1021.1022-nightly", "result": "published", "error": null}
+{"tag": "v26.1021.1022-nightly", "version": "26.1021.1022-nightly", "publishedAt": "2026-10-23T01:19:05Z"}

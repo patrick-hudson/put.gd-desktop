@@ -23,10 +23,15 @@ public:
  // that is not cached, unless the preference is off. The desktop keyring may
  // show its own unlock prompt. Returns the started setup IDs.
  QStringList unlockSavedCredentials();
+ // Whether that startup read has run and every job it started has ended. A
+ // file-manager upload waits for it (#1105): a resident started for one would
+ // otherwise reach the destination before its saved credentials are read.
+ bool savedCredentialsSettled() const {return startupUnlockDone_&&startupUnlocks_.isEmpty();}
 signals:
  void changed(const QString& setupId);
 private:
  bool startupUnlockDone_=false;
+ QSet<QString> startupUnlocks_;
  struct CompletionContext {std::mutex mutex;SetupService* owner=nullptr;};
  void finish(const QString& id,Error,QJsonObject result={});
  SettingsService& settings_;

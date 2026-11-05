@@ -1,0 +1,11 @@
+{"kind": "shell", "returncode": 0, "stdout": {"redacted": true, "length": 6, "present": true}, "stderr": {"redacted": true, "length": 0, "present": false}}
+{"kind": "shell", "returncode": 0, "stdout": {"redacted": true, "length": 6, "present": true}, "stderr": {"redacted": true, "length": 0, "present": false}}
+{"kind": "cli", "returncode": 0, "stdout": {"redacted": true, "length": 2898, "present": true}, "stderr": {"redacted": true, "length": 0, "present": false}}
+{"kind": "cli", "returncode": 0, "stdout": {"redacted": true, "length": 2108, "present": true}, "stderr": {"redacted": true, "length": 0, "present": false}}
+{"kind": "cli", "returncode": 0, "stdout": {"redacted": true, "length": 2827, "present": true}, "stderr": {"redacted": true, "length": 0, "present": false}}
+{"kind": "shell", "returncode": 0, "stdout": {"redacted": true, "length": 67, "present": true}, "stderr": {"redacted": true, "length": 0, "present": false}}
+{"kind": "shell", "returncode": 0, "stdout": {"redacted": true, "length": 94, "present": true}, "stderr": {"redacted": true, "length": 0, "present": false}}
+{"kind": "cli", "returncode": 0, "stdout": {"redacted": true, "length": 2132, "present": true}, "stderr": {"redacted": true, "length": 0, "present": false}}
+{"kind": "cli", "returncode": 0, "stdout": {"redacted": true, "length": 191, "present": true}, "stderr": {"redacted": true, "length": 0, "present": false}}
+{"kind": "cli", "returncode": 0, "stdout": {"redacted": true, "length": 300, "present": true}, "stderr": {"redacted": true, "length": 0, "present": false}}
+{"kind": "recipe-output", "returncode": null, "stdout": {"redacted": true, "length": 0, "present": false}, "stderr": {"redacted": true, "length": 0, "present": false}}

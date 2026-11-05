@@ -1,0 +1,29 @@
+{
+ "name": "r925",
+ "scenario": "a",
+ "image": "/home/patrick/work/put.gd-calver373-acc/runs/r925/apps/putgd-0.1.1-nightly.925-x86_64.AppImage",
+ "imageSha256": "49c6dfaa61a561b955dc69c231d57887aef1b80ed9e0130e6c59025587eb3b81",
+ "cliDir": "/home/patrick/work/put.gd-calver373-acc/runs/r925/cli/squashfs-root",
+ "runtime": "/tmp/upd293.j4BC9q",
+ "host": "kubuntu",
+ "urls": {
+  "PUTGD_UPDATE_FEED_URL": "https://pkg.put.gd/lab/update/v1/",
+  "PUTGD_UPDATE_RELEASE_URL": "https://pkg.put.gd/lab/releases",
+  "PUTGD_UPDATE_MIRROR_URL": "https://pkg.put.gd/lab/releases"
+ },
+ "before": {
+  "dataPutgd": false,
+  "homePutgd": {
+   "/home/patrick/.config/putgd": false,
+   "/home/patrick/.local/state/putgd": true,
+   "/home/patrick/.cache/putgd": false
+  },
+  "autostart": [
+   "patrick-vnc.desktop"
+  ]
+ },
+ "pids": {
+  "apprun": 1262508
+ },
+ "created": "2026-10-22T06:30:52Z"
+}

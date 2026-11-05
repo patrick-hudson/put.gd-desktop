@@ -1,0 +1,27 @@
+#pragma once
+#include <QString>
+#include <QStringList>
+class QFormLayout;
+class QVBoxLayout;
+class QLabel;
+class QRadioButton;
+class QWidget;
+class QToolButton;
+namespace putgd::PreferenceRows {
+// Preserve each field and its agent identity while composing card rows. Text
+// fields stack unless preferenceInline is set; inline values fill the width after a measured, capped
+// label gutter shared within their page family.
+QStringList destinationStateLines(const QString& state,int width);
+QLabel* caption(const QString&);
+QFormLayout* card(QVBoxLayout*,const QString& heading,const QString& description={},bool headingInside=false);
+QWidget* sectionFor(QFormLayout*);
+QWidget* rowFor(QWidget*);
+QWidget* labelFor(QFormLayout*,QWidget* row);
+QWidget* action(QFormLayout*,const QString& heading,const QString& hint,QWidget* control);
+QWidget* disclosure(QFormLayout*,const QString& heading,QLabel* summary,QToolButton* toggle,bool inlineSummary=false);
+QWidget* radio(QRadioButton*,const QString& explanation,const QString& detail);
+// preferenceStacked keeps a picker full width; other choices move below their
+// caption when the family gutter and a usable field no longer fit.
+void box(QFormLayout*);
+void alignChoices(QWidget* family,bool reserveHelp=false);
+}

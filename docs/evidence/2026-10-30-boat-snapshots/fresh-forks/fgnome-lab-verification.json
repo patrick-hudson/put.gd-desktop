@@ -1,0 +1,36 @@
+{
+  "snapshotName": "putgd-lab-ubuntu-gnome-v4",
+  "sandboxId": "bx_kywgfsas",
+  "packageTarget": "ubuntu26.04",
+  "packageSha256": "969c6899a1297b056ef45b2eb3c69150af7fbd554db8fcde5959172dc8a998cd",
+  "installedBuildInfo": {
+    "baseVersion": "26.1030.2481",
+    "commitCount": 2481,
+    "dirty": false,
+    "gitCommit": "6ad9f957e6544f30c5e45c08af2306db77a9ff64",
+    "gitTree": "d823723c8759dae8db7c57cee59476ac7a3b4f90",
+    "packageVersion": "26.1030.2481~dev+g6ad9f957e654",
+    "schemaVersion": 1,
+    "sourceProvenance": "git",
+    "version": "26.1030.2481-dev+g6ad9f957e654"
+  },
+  "labController": {
+    "commit": "b063ba38d5fcaaa363c7ac1f9aa8ff449a41f6cb",
+    "entrypoint": "/home/user/lab-driver/tools/lab/lab.py",
+    "path": "/home/user/lab-driver"
+  },
+  "launchPreflightPassed": true,
+  "probesReadOnly": true,
+  "matchingDebInstalledAndStarted": true,
+  "settingsShown": true,
+  "guardedCleanupStatus": "completed",
+  "heldOverlayRefused": true,
+  "base": {
+    "manifestSha256": "f92f4680d758bc26a94809274d752a701411c5ab731ef8c49ac96cc46229b8d8",
+    "path": "/home/user/work/put.gd/work/lab-images/gnome-wayland-probes-v4/image.qcow2",
+    "sha256": "8666b7dd8b98932e2fa794ec7bb4ccf0e82a8195e97a8580997ad70ed593a6c4",
+    "standalone": true,
+    "virtualBytes": 34359738368
+  },
+  "recipeSha256": "d0496694e07d79717aaa84333e8251ca88d54ab124fe4ad0ff19e96875a678d9"
+}

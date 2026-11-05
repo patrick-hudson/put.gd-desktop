@@ -1,0 +1,154 @@
+{
+ "label": "remove-1058",
+ "command": [
+  "dnf",
+  "remove",
+  "-y",
+  "putgd"
+ ],
+ "before": {
+  "at": "2026-10-23T05:45:44Z",
+  "host": "fedora",
+  "package": {
+   "manager": "rpm",
+   "version": "26.1023.1058~nightly-1.fc44"
+  },
+  "files": {
+   "/etc/apt/sources.list.d/putgd.sources": null,
+   "/usr/share/keyrings/putgd-archive-keyring.gpg": null,
+   "/etc/yum.repos.d/putgd.repo": {
+    "sha256": "1d6c2195c06eef968bbc4fd30ba9cb3efb2aa6ba6fe00ac9f0b9e08df5082e22",
+    "bytes": 429,
+    "mode": "0o644",
+    "mtime": "2026-10-23T05:30:38Z"
+   },
+   "/etc/yum.repos.d/putgd.repo.rpmsave": null,
+   "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd": {
+    "sha256": "1a79015c14a4907ac6812658204fa3cc2b2e4bbbbf63f04a4c1eec4623165e80",
+    "bytes": 1664,
+    "mode": "0o644",
+    "mtime": "2010-07-04T00:00:00Z"
+   },
+   "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-nightly": {
+    "sha256": "1a79015c14a4907ac6812658204fa3cc2b2e4bbbbf63f04a4c1eec4623165e80",
+    "bytes": 1664,
+    "mode": "0o644",
+    "mtime": "2010-07-04T00:00:00Z"
+   },
+   "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-stable": {
+    "sha256": "dd17348889ca55ae6956b902530e14f31e8cf88c052768190a4577b7949d4c77",
+    "bytes": 1668,
+    "mode": "0o644",
+    "mtime": "2010-07-04T00:00:00Z"
+   },
+   "/usr/share/gnome-shell/extensions/putgd@put.gd/metadata.json": {
+    "sha256": "690be5bcfd1ee05783cd57a78851c56c0fe624131711b254cb46d062d0cb8046",
+    "bytes": 248,
+    "mode": "0o644",
+    "mtime": "2010-07-04T00:00:00Z"
+   }
+  },
+  "defaultProfile": {
+   "/home/patrick/.config/putgd": null,
+   "/home/patrick/.local/state/putgd": 21,
+   "/home/patrick/.cache/putgd": null,
+   "/home/patrick/.local/share/putgd": null
+  },
+  "autostart": null,
+  "userExtension": false,
+  "processes": [],
+  "enabledExtensions": "['background-logo@fedorahosted.org', 'appindicatorsupport@rgcjonas.gmail.com', 'putgd@put.gd']",
+  "openh264": {
+   "openh264": "openh264-2.6.0-3.fc44.x86_64",
+   "noopenh264": "package noopenh264 is not installed",
+   "gstreamer1-plugin-openh264": "gstreamer1-plugin-openh264-1.28.1-1.fc44.x86_64",
+   "mozilla-openh264": "mozilla-openh264-2.6.0-3.fc44.x86_64"
+  }
+ },
+ "startedAt": "2026-10-23T05:45:44Z",
+ "simulation": {
+  "command": [
+   "sudo",
+   "-n",
+   "dnf",
+   "--assumeno",
+   "remove",
+   "putgd"
+  ],
+  "exit": 1,
+  "changes": [
+   {
+    "op": "Removing",
+    "package": "putgd"
+   },
+   {
+    "op": "Removing",
+    "package": "jasper-libs"
+   },
+   {
+    "op": "Removing",
+    "package": "libmng"
+   },
+   {
+    "op": "Removing",
+    "package": "qt6-qtimageformats"
+   }
+  ],
+  "tail": "Package             Arch   Version                       Repository         Size\nRemoving:\n putgd              x86_64 0:26.1023.1058~nightly-1.fc44 putgd-nightly 115.4 MiB\nRemoving unused dependencies:\n jasper-libs        x86_64 0:4.2.8-2.fc44                fedora        349.7 KiB\n libmng             x86_64 0:2.0.3-25.fc44               fedora        553.8 KiB\n qt6-qtimageformats x86_64 0:6.11.2-1.fc44               updates       435.3 KiB\n\nTransaction Summary:\n Removing:           4 packages\n\nAfter this operation, 117 MiB will be freed (install 0 B, remove 117 MiB).\nWarning: A pending offline transaction initiated by the following command will be invalidated: dnf5daemon-server\nOperation aborted by the user.\n"
+ },
+ "otherPackages": [
+  {
+   "op": "Removing",
+   "package": "jasper-libs"
+  },
+  {
+   "op": "Removing",
+   "package": "libmng"
+  },
+  {
+   "op": "Removing",
+   "package": "qt6-qtimageformats"
+  }
+ ],
+ "exit": 0,
+ "seconds": 1.7,
+ "log": "/home/patrick/work/put.gd-nfa/runs/M1/logs/pkg-remove-1058.log",
+ "conffilePrompt": false,
+ "signature": [],
+ "fetched": [],
+ "tail": "Package             Arch   Version                       Repository         Size\nRemoving:\n putgd              x86_64 0:26.1023.1058~nightly-1.fc44 putgd-nightly 115.4 MiB\nRemoving unused dependencies:\n jasper-libs        x86_64 0:4.2.8-2.fc44                fedora        349.7 KiB\n libmng             x86_64 0:2.0.3-25.fc44               fedora        553.8 KiB\n qt6-qtimageformats x86_64 0:6.11.2-1.fc44               updates       435.3 KiB\n\nTransaction Summary:\n Removing:           4 packages\n\nAfter this operation, 117 MiB will be freed (install 0 B, remove 117 MiB).\nWarning: A pending offline transaction initiated by the following command will be invalidated: dnf5daemon-server\nRunning transaction\n[1/5] Prepare transaction               100% |  15.0   B/s |   4.0   B |  00m00s\n[2/5] Removing putgd-0:26.1023.1058~nig 100% |   2.5 KiB/s | 138.0   B |  00m00s\n[3/5] Removing qt6-qtimageformats-0:6.1 100% |   7.7 KiB/s |  79.0   B |  00m00s\n[4/5] Removing jasper-libs-0:4.2.8-2.fc 100% |   1.6 KiB/s |  10.0   B |  00m00s\n[5/5] Removing libmng-0:2.0.3-25.fc44.x 100% |  27.0   B/s |  17.0   B |  00m01s\nWarning: Pending offline transaction has been invalidated.\nTo reschedule, run: dnf5daemon-server\nComplete!\n",
+ "after": {
+  "at": "2026-10-23T05:45:47Z",
+  "host": "fedora",
+  "package": {
+   "manager": "rpm",
+   "version": null
+  },
+  "files": {
+   "/etc/apt/sources.list.d/putgd.sources": null,
+   "/usr/share/keyrings/putgd-archive-keyring.gpg": null,
+   "/etc/yum.repos.d/putgd.repo": null,
+   "/etc/yum.repos.d/putgd.repo.rpmsave": null,
+   "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd": null,
+   "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-nightly": null,
+   "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-stable": null,
+   "/usr/share/gnome-shell/extensions/putgd@put.gd/metadata.json": null
+  },
+  "defaultProfile": {
+   "/home/patrick/.config/putgd": null,
+   "/home/patrick/.local/state/putgd": 21,
+   "/home/patrick/.cache/putgd": null,
+   "/home/patrick/.local/share/putgd": null
+  },
+  "autostart": null,
+  "userExtension": false,
+  "processes": [],
+  "enabledExtensions": "['background-logo@fedorahosted.org', 'appindicatorsupport@rgcjonas.gmail.com', 'putgd@put.gd']",
+  "openh264": {
+   "openh264": "openh264-2.6.0-3.fc44.x86_64",
+   "noopenh264": "package noopenh264 is not installed",
+   "gstreamer1-plugin-openh264": "gstreamer1-plugin-openh264-1.28.1-1.fc44.x86_64",
+   "mozilla-openh264": "mozilla-openh264-2.6.0-3.fc44.x86_64"
+  }
+ }
+}

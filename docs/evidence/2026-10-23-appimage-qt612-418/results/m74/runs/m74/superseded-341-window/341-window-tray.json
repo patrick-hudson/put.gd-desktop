@@ -1,0 +1,371 @@
+{
+ "action": "window",
+ "shortcut": "Ctrl+Shift+2",
+ "opened": "click:1738,1062",
+ "menuBox": [
+  1715,
+  746,
+  1904,
+  1039
+ ],
+ "menuFull": "/home/patrick/work/put.gd-qt418/afa/runs/m74/full/m74-341-window-traymenu-menu-open.png",
+ "seconds": 30.36,
+ "operations": [
+  {
+   "id": "a2150f3d-325b-4cea-89ab-376f053a7457",
+   "state": "failed",
+   "copyStatus": "no_result",
+   "items": [],
+   "error": {
+    "code": "capture_target",
+    "details": {},
+    "message": "Focus an external window before invoking window capture"
+   }
+  }
+ ],
+ "newHistory": null,
+ "notices": [
+  {
+   "itemId": null,
+   "notificationId": 1,
+   "notificationText": "Uploaded. Link copied to the clipboard. Click to open in browser.",
+   "operationId": null,
+   "summary": "operation_completed",
+   "title": "put.gd \u2014 completed",
+   "warning": false
+  }
+ ],
+ "shortcutLog": [
+  {
+   "message": "Resident started",
+   "fields": {
+    "architecture": "x86_64",
+    "build": {
+     "baseVersion": "26.1023.1068",
+     "commitCount": 1068,
+     "dirty": false,
+     "gitCommit": "6a325a722afd946046a96480ca524db8aa6abcce",
+     "gitTree": "a0a449b23b4eb70f516e3c317b6d93b412aafbbb",
+     "packageVersion": "26.1023.1068~dev+g6a325a722afd",
+     "schemaVersion": 1,
+     "sourceProvenance": "git",
+     "version": "26.1023.1068-dev+g6a325a722afd"
+    },
+    "capabilities": {
+     "adapter": "cinnamon-core-x11",
+     "capture": {
+      "desktop": {
+       "available": true,
+       "consent": "none",
+       "helper": {
+        "active": false,
+        "build": {
+         "baseVersion": "26.1023.1068",
+         "commitCount": 1068,
+         "dirty": false,
+         "gitCommit": "6a325a722afd946046a96480ca524db8aa6abcce",
+         "gitTree": "a0a449b23b4eb70f516e3c317b6d93b412aafbbb",
+         "packageVersion": "26.1023.1068~dev+g6a325a722afd",
+         "schemaVersion": 1,
+         "sourceProvenance": "git",
+         "version": "26.1023.1068-dev+g6a325a722afd"
+        },
+        "lastExit": {},
+        "processId": 0
+       },
+       "mode": "visible-pixels"
+      },
+      "region": {
+       "available": true,
+       "consent": "none",
+       "helper": {
+        "active": false,
+        "build": {
+         "baseVersion": "26.1023.1068",
+         "commitCount": 1068,
+         "dirty": false,
+         "gitCommit": "6a325a722afd946046a96480ca524db8aa6abcce",
+         "gitTree": "a0a449b23b4eb70f516e3c317b6d93b412aafbbb",
+         "packageVersion": "26.1023.1068~dev+g6a325a722afd",
+         "schemaVersion": 1,
+         "sourceProvenance": "git",
+         "version": "26.1023.1068-dev+g6a325a722afd"
+        },
+        "lastExit": {},
+        "processId": 0
+       },
+       "mode": "visible-pixels"
+      },
+      "window": {
+       "available": true,
+       "consent": "none",
+       "helper": {
+        "active": false,
+        "build": {
+         "baseVersion": "26.1023.1068",
+         "commitCount": 1068,
+         "dirty": false,
+         "gitCommit": "6a325a722afd946046a96480ca524db8aa6abcce",
+         "gitTree": "a0a449b23b4eb70f516e3c317b6d93b412aafbbb",
+         "packageVersion": "26.1023.1068~dev+g6a325a722afd",
+         "schemaVersion": 1,
+         "sourceProvenance": "git",
+         "version": "26.1023.1068-dev+g6a325a722afd"
+        },
+        "lastExit": {},
+        "processId": 0
+       },
+       "mode": "visible-pixels"
+      }
+     },
+     "clipboard": "<redacted>",
+     "shortcuts": {
+      "available": true,
+      "bindings": {
+       "clipboard": "<redacted>",
+       "desktop": {
+        "actual": "Ctrl+Shift+3",
+        "bound": true,
+        "requested": "Ctrl+Shift+3"
+       },
+       "edit": {
+        "bound": false,
+        "error": "disabled",
+        "requested": ""
+       },
+       "record": {
+        "bound": false,
+        "error": "disabled",
+        "requested": ""
+       },
+       "region": {
+        "actual": "Ctrl+Shift+1",
+        "bound": true,
+        "requested": "Ctrl+Shift+1"
+       },
+       "window": {
+        "actual": "Ctrl+Shift+2",
+        "bound": true,
+        "requested": "Ctrl+Shift+2"
+       }
+      },
+      "keyPaths": {
+       "lastActivation": {},
+       "passive": true,
+       "raw": {
+        "available": true,
+        "xinput": "2.2"
+       }
+      }
+     }
+    },
+    "desktop": "X-Cinnamon",
+    "itemId": null,
+    "kernel": "6.14.0-37-generic",
+    "locations": {
+     "config": {
+      "path": "/home/patrick/work/put.gd-qt418/afa/runs/m74/config/putgd",
+      "state": "current"
+     },
+     "data": {
+      "path": "/home/patrick/.local/share/putgd",
+      "state": "current"
+     },
+     "schemaVersion": 1
+    },
+    "operationId": null,
+    "os": "Linux Mint 22.3",
+    "platform": "none",
+    "qtCompiled": "6.12.0",
+    "qtRuntime": "6.12.0",
+    "resident": "x11-core",
+    "sessionType": "x11",
+    "trayAvailable": false
+   }
+  },
+  {
+   "message": "Resident started",
+   "fields": {
+    "architecture": "x86_64",
+    "build": {
+     "baseVersion": "26.1023.1068",
+     "commitCount": 1068,
+     "dirty": false,
+     "gitCommit": "6a325a722afd946046a96480ca524db8aa6abcce",
+     "gitTree": "a0a449b23b4eb70f516e3c317b6d93b412aafbbb",
+     "packageVersion": "26.1023.1068~dev+g6a325a722afd",
+     "schemaVersion": 1,
+     "sourceProvenance": "git",
+     "version": "26.1023.1068-dev+g6a325a722afd"
+    },
+    "capabilities": {
+     "adapter": "cinnamon-core-x11",
+     "capture": {
+      "desktop": {
+       "available": true,
+       "consent": "none",
+       "helper": {
+        "active": false,
+        "build": {
+         "baseVersion": "26.1023.1068",
+         "commitCount": 1068,
+         "dirty": false,
+         "gitCommit": "6a325a722afd946046a96480ca524db8aa6abcce",
+         "gitTree": "a0a449b23b4eb70f516e3c317b6d93b412aafbbb",
+         "packageVersion": "26.1023.1068~dev+g6a325a722afd",
+         "schemaVersion": 1,
+         "sourceProvenance": "git",
+         "version": "26.1023.1068-dev+g6a325a722afd"
+        },
+        "lastExit": {},
+        "processId": 0
+       },
+       "mode": "visible-pixels"
+      },
+      "region": {
+       "available": true,
+       "consent": "none",
+       "helper": {
+        "active": false,
+        "build": {
+         "baseVersion": "26.1023.1068",
+         "commitCount": 1068,
+         "dirty": false,
+         "gitCommit": "6a325a722afd946046a96480ca524db8aa6abcce",
+         "gitTree": "a0a449b23b4eb70f516e3c317b6d93b412aafbbb",
+         "packageVersion": "26.1023.1068~dev+g6a325a722afd",
+         "schemaVersion": 1,
+         "sourceProvenance": "git",
+         "version": "26.1023.1068-dev+g6a325a722afd"
+        },
+        "lastExit": {},
+        "processId": 0
+       },
+       "mode": "visible-pixels"
+      },
+      "window": {
+       "available": true,
+       "consent": "none",
+       "helper": {
+        "active": false,
+        "build": {
+         "baseVersion": "26.1023.1068",
+         "commitCount": 1068,
+         "dirty": false,
+         "gitCommit": "6a325a722afd946046a96480ca524db8aa6abcce",
+         "gitTree": "a0a449b23b4eb70f516e3c317b6d93b412aafbbb",
+         "packageVersion": "26.1023.1068~dev+g6a325a722afd",
+         "schemaVersion": 1,
+         "sourceProvenance": "git",
+         "version": "26.1023.1068-dev+g6a325a722afd"
+        },
+        "lastExit": {},
+        "processId": 0
+       },
+       "mode": "visible-pixels"
+      }
+     },
+     "clipboard": "<redacted>",
+     "shortcuts": {
+      "available": true,
+      "bindings": {
+       "clipboard": "<redacted>",
+       "desktop": {
+        "actual": "Ctrl+Shift+3",
+        "bound": true,
+        "requested": "Ctrl+Shift+3"
+       },
+       "edit": {
+        "bound": false,
+        "error": "disabled",
+        "requested": ""
+       },
+       "record": {
+        "bound": false,
+        "error": "disabled",
+        "requested": ""
+       },
+       "region": {
+        "actual": "Ctrl+Shift+1",
+        "bound": true,
+        "requested": "Ctrl+Shift+1"
+       },
+       "window": {
+        "actual": "Ctrl+Shift+2",
+        "bound": true,
+        "requested": "Ctrl+Shift+2"
+       }
+      },
+      "keyPaths": {
+       "lastActivation": {},
+       "passive": true,
+       "raw": {
+        "available": true,
+        "xinput": "2.2"
+       }
+      }
+     }
+    },
+    "desktop": "X-Cinnamon",
+    "itemId": null,
+    "kernel": "6.14.0-37-generic",
+    "locations": {
+     "config": {
+      "path": "/home/patrick/work/put.gd-qt418/afa/runs/m74/config/putgd",
+      "state": "current"
+     },
+     "data": {
+      "path": "/home/patrick/.local/share/putgd",
+      "state": "current"
+     },
+     "schemaVersion": 1
+    },
+    "operationId": null,
+    "os": "Linux Mint 22.3",
+    "platform": "none",
+    "qtCompiled": "6.12.0",
+    "qtRuntime": "6.12.0",
+    "resident": "x11-core",
+    "sessionType": "x11",
+    "trayAvailable": false
+   }
+  },
+  {
+   "message": "Shortcut pressed",
+   "fields": {
+    "action": "desktop",
+    "itemId": null,
+    "operationId": null,
+    "path": "raw"
+   }
+  },
+  {
+   "message": "Shortcut pressed",
+   "fields": {
+    "action": "region",
+    "itemId": null,
+    "operationId": null,
+    "path": "raw"
+   }
+  },
+  {
+   "message": "Shortcut pressed",
+   "fields": {
+    "action": "region",
+    "itemId": null,
+    "operationId": null,
+    "path": "raw"
+   }
+  },
+  {
+   "message": "Shortcut pressed",
+   "fields": {
+    "action": "window",
+    "itemId": null,
+    "operationId": null,
+    "path": "raw"
+   }
+  }
+ ],
+ "after": "/home/patrick/work/put.gd-qt418/afa/runs/m74/full/m74-341-window-traymenu-after.png"
+}

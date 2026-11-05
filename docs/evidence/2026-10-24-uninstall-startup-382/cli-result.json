@@ -1,0 +1,22 @@
+{
+  "source": "91864c41bcc4c430d6ca967593fc2420c6dc706a",
+  "host": "mint-builder",
+  "class": "Isolated offscreen production resident/CLI plus GLib/GIO parser checks; no GUI, package removal or real login acceptance",
+  "socket": "/tmp/p382c-zz43z_0a/r/putgd/session.sock",
+  "initial": {
+    "applied": true,
+    "enabled": true
+  },
+  "final": {
+    "applied": true,
+    "enabled": false
+  },
+  "tryExecDecodedByGLib": "/home/patrick/work/pg382/build/dev/putgd",
+  "entryValidated": true,
+  "missingExecutableIgnoredByGio": true,
+  "restoredExecutableRecognizedByGio": true,
+  "preferenceAndEntryRetainedWhileExecutableAbsent": true,
+  "productionCliPatchRemovedManagedEntry": true,
+  "residentPid": 580682,
+  "appSha256": "99cbf822a8ee563f62e1f88c433d768e2f2dc6da73b67666d91670c956b58de8"
+}

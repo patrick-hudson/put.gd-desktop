@@ -1,0 +1,3 @@
+[  0.03s] settings.get effectiveLimits.disk {"freeBytes": 1799995392, "reserveBytes": 1675087872, "availableBytes": 124907520}
+[  0.03s] $ putgd-cli recording.prepare {"target":{"kind":"desktop"},"format":"mp4"}
+[  0.05s]   ERROR {"code": "disk_space_insufficient", "message": "Not enough free disk space to record: 1.7 GiB is free, put.gd keeps 1.6 GiB free for the system, and a recording needs 192 MiB more. Free up at least 73 MiB and try again.", "details": {"availableBytes": 124907520, "freeBytes": 1799995392, "hint": "Free up space in put.gd's data folder, then record again", "requiredBytes": 201326592, "reserveBytes": 1675087872, "reservedBytes": 0, "shortfallBytes": 76419072}}

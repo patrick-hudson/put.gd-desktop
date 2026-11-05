@@ -1,0 +1,102 @@
+{
+ "name": "f44-nostable",
+ "tool": null,
+ "live": true,
+ "image": "/home/patrick/work/put.gd-ua/app/runs/f44-nostable/apps/putgd-26.1019.1019-nightly-x86_64.AppImage",
+ "imageSha256": "8486fec9d8bc3b79d86b8674fd3412d35011a8366272c67431c0803c9ac1c776",
+ "cliDir": "/home/patrick/work/put.gd-ua/app/runs/f44-nostable/cli/squashfs-root",
+ "runtime": "/tmp/ua-app.ZiV2SB",
+ "session": {
+  "HOME": "/home/patrick",
+  "PATH": "/home/patrick/.local/bin:/home/patrick/bin:/usr/lib64/ccache:/usr/local/bin:/usr/bin",
+  "USER": "patrick",
+  "LANG": "en_US.UTF-8",
+  "DBUS_SESSION_BUS_ADDRESS": "unix:path=/run/user/1000/bus",
+  "XDG_SESSION_TYPE": "wayland",
+  "XDG_CURRENT_DESKTOP": "GNOME",
+  "XDG_SESSION_DESKTOP": "gnome",
+  "DESKTOP_SESSION": "gnome",
+  "XDG_DATA_DIRS": "/home/patrick/.local/share/flatpak/exports/share:/var/lib/flatpak/exports/share:/usr/local/share/:/usr/share/",
+  "WAYLAND_DISPLAY": "/run/user/1000/wayland-0",
+  "DISPLAY": ":0",
+  "XAUTHORITY": "/run/user/1000/.mutter-Xwaylandauth.XUPOX3"
+ },
+ "shell": "gnome-shell",
+ "hostPath": "/home/patrick/.local/bin:/home/patrick/bin:/usr/lib64/ccache:/usr/local/bin:/usr/bin",
+ "host": "fedora",
+ "vnc": 5901,
+ "urls": {},
+ "input": "uinput",
+ "before": {
+  "dataPutgd": false,
+  "homePutgd": {
+   "/home/patrick/.config/putgd": false,
+   "/home/patrick/.local/state/putgd": true,
+   "/home/patrick/.cache/putgd": false
+  },
+  "autostart": []
+ },
+ "pids": {
+  "apprun": 3055879
+ },
+ "created": "2026-10-23T00:29:56Z",
+ "log": [
+  {
+   "at": "2026-10-23T00:30:01Z",
+   "start": {
+    "pid": 3055830,
+    "status": {
+     "build": "26.1019.1019-nightly",
+     "channel": "stable",
+     "latest": null,
+     "updateAvailable": null,
+     "install": {
+      "available": false,
+      "backup": null,
+      "image": "/home/patrick/work/put.gd-ua/app/runs/f44-nostable/apps/putgd-26.1019.1019-nightly-x86_64.AppImage",
+      "installed": null,
+      "kind": "switch",
+      "reason": "not_checked",
+      "restartRequired": false,
+      "running": false,
+      "state": "idle",
+      "switch": null
+     }
+    },
+    "frame": "/home/patrick/work/put.gd-ua/app/runs/f44-nostable/frames/u10-0-start.png"
+   }
+  },
+  {
+   "at": "2026-10-23T00:30:05Z",
+   "check": {
+    "reply": {
+     "ok": true,
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     }
+    },
+    "status": {
+     "build": "26.1019.1019-nightly",
+     "channel": "stable",
+     "latest": null,
+     "updateAvailable": false,
+     "install": {
+      "available": false,
+      "backup": null,
+      "image": "/home/patrick/work/put.gd-ua/app/runs/f44-nostable/apps/putgd-26.1019.1019-nightly-x86_64.AppImage",
+      "installed": null,
+      "kind": "switch",
+      "reason": "no_release",
+      "restartRequired": false,
+      "running": false,
+      "state": "idle",
+      "switch": null
+     }
+    },
+    "frame": "/home/patrick/work/put.gd-ua/app/runs/f44-nostable/frames/u10-1-no-stable-yet-live.png"
+   }
+  }
+ ]
+}

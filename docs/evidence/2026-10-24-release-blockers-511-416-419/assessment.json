@@ -1,0 +1,101 @@
+{
+  "schemaVersion": 1,
+  "scope": "Read-only source and exact existing development AppImage assessment; no new ignore or release acceptance",
+  "build": {
+    "schemaVersion": 1,
+    "version": "26.1024.1133-dev+g50053b01f1bb",
+    "baseVersion": "26.1024.1133",
+    "packageVersion": "26.1024.1133~dev+g50053b01f1bb",
+    "gitCommit": "50053b01f1bbd7f3776a53513bb8c43151ce0de8",
+    "gitTree": "add0e9919319fed3a465838a4ea34d5de56938ea",
+    "commitCount": 1133,
+    "dirty": false,
+    "sourceProvenance": "git"
+  },
+  "appImage": {
+    "file": "putgd-26.1024.1133-dev+g50053b01f1bb-x86_64.AppImage",
+    "sha256": "cea2f5f6fe98b7782c1eae090e4a0398b620989052a3d340450474f5eb9af426",
+    "bytes": 116472312,
+    "mode": "0755"
+  },
+  "receiptSha256": "d4681db6108729f6058cd019b241997e2ac4072491a89731ef12039d3da59cc7",
+  "binaryFiles": [
+    {
+      "path": "usr/lib/gstreamer-1.0/libgstvideoparsersbad.so",
+      "sha256": "98589e5727b09b514904784d40426c3cb0a629c36bcb18f05684047e97ecfc79",
+      "bytes": 331600
+    },
+    {
+      "path": "usr/lib/libgstcodecparsers-1.0.so.0",
+      "sha256": "d1cb930dd08d62ddd0a4e11e4c802d3cda7218bc8f98d109678db089d4703265",
+      "bytes": 607752
+    },
+    {
+      "path": "usr/plugins/imageformats/libqtiff.so",
+      "sha256": "a7c82738b2db49c461ae137dd15b8863345c6d47fad140d5f383edfa767fe0b4",
+      "bytes": 1028288
+    }
+  ],
+  "libtiff": {
+    "cve": "CVE-2026-4775",
+    "version": "4.7.2",
+    "qtModuleSource": {
+      "repository": "https://github.com/qt/qtimageformats.git",
+      "commit": "dc13f2fbff1d579cfb2eb2d9092e3563b4d05b8e"
+    },
+    "sourcePath": "src/3rdparty/libtiff/libtiff/tif_getimage.c",
+    "sourceSha256": "9ebfe8afe9d74f6b3d23d5172d1e20150c3162082a80d2eb0fa776817915dc07",
+    "upstreamFix": "782a11d6b5b61c6dc21e714950a4af5bf89f023c",
+    "checks": [
+      {
+        "function": "putcontig8bitYCbCr44tile",
+        "widenedArithmetic": "const tmsize_t incr = 3 * (tmsize_t)w + 4 * (tmsize_t)toskew;"
+      },
+      {
+        "function": "putcontig8bitYCbCr42tile",
+        "widenedArithmetic": "const tmsize_t incr = 2 * (tmsize_t)toskew + (tmsize_t)w;"
+      },
+      {
+        "function": "putcontig8bitYCbCr22tile",
+        "widenedArithmetic": "const tmsize_t incr = 2 * (tmsize_t)toskew + (tmsize_t)w;"
+      },
+      {
+        "function": "putcontig8bitYCbCr12tile",
+        "widenedArithmetic": "const tmsize_t incr = 2 * (tmsize_t)toskew + (tmsize_t)w;"
+      }
+    ],
+    "conclusion": "Fix present in exact pinned Qt source; TIFF plugin is present and reachable through generic Qt image loading, so this is not an absent-plugin disposition."
+  },
+  "gstreamer": {
+    "cve": "CVE-2025-3887",
+    "sourcePackage": "gst-plugins-bad1.0",
+    "sourceVersion": "1.24.2-1ubuntu4",
+    "upstreamFixes": [
+      "5463f0e09768ca90aa8c58357c1f4c645db580db",
+      "bcaab3609805ea10fb3d9ac0c9d947b4c3563948"
+    ],
+    "applicationSourceFiles": [
+      {
+        "path": "src/record/RecordingPipeline.cpp",
+        "sha256": "93257e2736243e4729f51dcf0d110e02682224535475c76fd37711b9ff3cd406"
+      },
+      {
+        "path": "src/record/EncoderCheck.cpp",
+        "sha256": "44c352187c65464220437d156cb1abd0715485b1c5c73874666d7a78ff83463c"
+      },
+      {
+        "path": "src/record/RecordSession.cpp",
+        "sha256": "577948f892f6c0d6ba3709f790bb4bd12313a7e78fc82b1b0646cefa241ed006"
+      },
+      {
+        "path": "src/record/MediaProbe.cpp",
+        "sha256": "bbba00f926d3e84ec2682e7fa95e5e8934659d074abaf2c5447d88742517ff3b"
+      },
+      {
+        "path": "src/record/ClipExporter.cpp",
+        "sha256": "a7c9625e6429173653c651ac54f12d38d36b4f2673de8b693904a853bc9fe743"
+      }
+    ],
+    "conclusion": "Affected H265 parser code is bundled and unpatched. Product uses explicit H264/AAC recording/encoder-check pipelines, probes factories/WebP properties, and uses FFmpeg for preview/export. No current product H265 parsing route identified. Raw finding remains visible; no waiver or claim that the library is fixed."
+  }
+}

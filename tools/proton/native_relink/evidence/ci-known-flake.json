@@ -1,0 +1,22 @@
+{
+  "runUrl": "https://github.com/patrick-hudson/put.gd-desktop/actions/runs/41231351678/attempts/1",
+  "headSha": "7b0b7badc78e273d2b59f3258f5f97aa371866ec",
+  "job": "linux (24.04)",
+  "test": "gui_history_view",
+  "case": "HistoryGui::failedUploadSavesDiagnosticsForThatOperation",
+  "actualGapPixels": 53,
+  "expectedGapPixels": 12,
+  "firstAndImmediateRetryFailed": true,
+  "existingIssue": "https://github.com/patrick-hudson/put.gd-desktop/issues/976",
+  "existingIssueCreatedUtc": "2026-10-31T04:12:22Z",
+  "uiAndTestSourceChangesInThisBranch": false,
+  "logSha256": "86a11cc2ff17f3dd6d6a940d7824a6cd19475c9689877003ebf90e4ffe2ad7f9",
+  "action": "Rerun failed jobs once; final head is checked separately. No test, wait budget or product layout is changed.",
+  "rerun": {
+    "attempt": 2,
+    "runUrl": "https://github.com/patrick-hudson/put.gd-desktop/actions/runs/41231351678/attempts/2",
+    "workflowConclusion": "success",
+    "sameHeadSha": true,
+    "noUiOrTestChanges": true
+  }
+}

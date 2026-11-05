@@ -1,0 +1,23 @@
+### rpm keys before: 4032e28d893baf66f4ac23d9a11d38d55536b371 put.gd nightly packages <packages@put.gd> public key
+### repo before 5399dba05eefd1826094a5226b12285d58da08460b5b8d8b9229e0fe7848a0f4  /etc/yum.repos.d/putgd.repo
+### sudo pkcon refresh force
+Status: 	Refreshing software list
+Status: 	Finished
+Results:
+### sudo pkcon update -y putgd
+Package:	putgd_26.1022.1017~nightly-1.fc44.x86_64
+Package:	putgd_26.1022.996~nightly-1.fc44.x86_64
+Results:
+Updated      putgd-26.1022.1017~nightly-1.fc44.x86_64 (putgd-nightly)
+Cleaned up   putgd-26.1022.996~nightly-1.fc44.x86_64 (installed)
+rc=0
+### after: putgd-26.1022.1017~nightly-1.fc44.x86_64
+### repo after 5399dba05eefd1826094a5226b12285d58da08460b5b8d8b9229e0fe7848a0f4  /etc/yum.repos.d/putgd.repo
+### rpm keys after: 4032e28d893baf66f4ac23d9a11d38d55536b371 put.gd nightly packages <packages@put.gd> public key
+RPM-GPG-KEY-putgd
+RPM-GPG-KEY-putgd-nightly
+RPM-GPG-KEY-putgd-stable
+/usr/share/putgd/repo/:
+putgd-nightly.repo
+putgd.repo
+putgd-stable.repo

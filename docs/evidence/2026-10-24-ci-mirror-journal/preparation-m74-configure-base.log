@@ -1,0 +1,45 @@
+Preset CMake variables:
+
+  BUILD_TESTING="ON"
+  CMAKE_BUILD_TYPE="Debug"
+  CMAKE_EXPORT_COMPILE_COMMANDS="ON"
+  CMAKE_PREFIX_PATH="/home/patrick/work/putgd-ci393/src/build/sdk"
+
+-- The C compiler identification is GNU 13.3.0
+-- The CXX compiler identification is GNU 13.3.0
+-- Detecting C compiler ABI info
+-- Detecting C compiler ABI info - done
+-- Check for working C compiler: /usr/bin/cc - skipped
+-- Detecting C compile features
+-- Detecting C compile features - done
+-- Detecting CXX compiler ABI info
+-- Detecting CXX compiler ABI info - done
+-- Check for working CXX compiler: /usr/bin/c++ - skipped
+-- Detecting CXX compile features
+-- Detecting CXX compile features - done
+-- Performing Test CMAKE_HAVE_LIBC_PTHREAD
+-- Performing Test CMAKE_HAVE_LIBC_PTHREAD - Success
+-- Found Threads: TRUE  
+-- Performing Test HAVE_STDATOMIC
+-- Performing Test HAVE_STDATOMIC - Success
+-- Found WrapAtomic: TRUE  
+-- Found OpenGL: /usr/lib/x86_64-linux-gnu/libOpenGL.so   
+-- Found WrapOpenGL: TRUE  
+-- Found XKB: /usr/lib/x86_64-linux-gnu/libxkbcommon.so (found suitable version "1.6.0", minimum required is "0.5.0") 
+-- Found WrapVulkanHeaders: /usr/include  
+CMake Error at cmake/Dependencies.cmake:8 (find_package):
+  Could not find a package configuration file provided by "AWSSDK" (requested
+  version 1.11.907) with any of the following names:
+
+    AWSSDKConfig.cmake
+    awssdk-config.cmake
+
+  Add the installation prefix of "AWSSDK" to CMAKE_PREFIX_PATH or set
+  "AWSSDK_DIR" to a directory containing one of the above files.  If "AWSSDK"
+  provides a separate development package or SDK, be sure it has been
+  installed.
+Call Stack (most recent call first):
+  CMakeLists.txt:10 (include)
+
+
+-- Configuring incomplete, errors occurred!

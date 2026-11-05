@@ -1,12 +1,15 @@
 #include "S3ProcessDriver.h"
 #include "S3WorkerProtocol.h"
+#include "S3Multipart.h"
 #include "app/UiControl.h"
 #include "core/BuildInfo.h"
+#include "core/Log.h"
 #include <QCoreApplication>
 #include <QDir>
 #include <QElapsedTimer>
 #include <QJsonDocument>
 #include <QProcess>
+#include <QProcessEnvironment>
 #include <QUuid>
 #include <mutex>
 namespace putgd {
@@ -53,12 +56,16 @@ public:
   control_=std::make_unique<UiControl>(*process_);
   QObject::connect(control_.get(),&UiControl::failed,process_.get(),[this](Error){failed_=true;});
   QObject::connect(process_.get(),&QProcess::readyReadStandardError,process_.get(),[this]{
-   while(process_->bytesAvailable()>0&&process_->readChannel()==QProcess::StandardError)process_->read(16384);
-   auto discarded=process_->readAllStandardError();stderrBytes_+=discarded.size();if(stderrBytes_>1024*1024)failed_=true;
+   // AWS SDK warnings and errors arrive here; the resident log redacts them.
+   const auto bytes=process_->readAllStandardError();stderrBytes_+=bytes.size();output_.append(bytes);if(stderrBytes_>1024*1024)failed_=true;
   });
   QObject::connect(control_.get(),&UiControl::frame,process_.get(),[this](const QString& type,const QString& sequence,const QJsonObject& value){receive(type,sequence,value);});
+  auto environment=QProcessEnvironment::systemEnvironment();
+  environment.insert("PUTGD_AWS_LOG_LEVEL",logging::debug()?"info":"warn");environment.insert("QT_FORCE_STDERR_LOGGING","1");
+  process_->setProcessEnvironment(environment);
   process_->start(helperPath(),{});
-  if(!process_->waitForStarted(10000)){failed_=true;resetProcess();return false;}
+  if(!process_->waitForStarted(10000)){output_.failedToStart(process_->errorString());failed_=true;resetProcess();return false;}
+  output_.started(process_->processId(),{{"generation",qint64(generation_)}});
   auto boot=envelope();boot["build"]=build();boot["contract"]=QString::fromUtf8(PUTGD_S3_BUILD_ID);boot["safeDelete"]=bool(PUTGD_SDK_CURL_TRANSPORT);boot["modulePath"]=path_;
   if(control_->send("bootstrap",boot).isEmpty())failed_=true;
   QElapsedTimer clock;clock.start();
@@ -66,12 +73,17 @@ public:
   if(!ready_||failed_){failed_=true;resetProcess();return false;}
   return true;
  }
- void checkName(const Destination& destination,const QString& candidate,std::function<void(NameCheck)> callback)override{
-  QJsonObject result;auto error=run("checkName",{{"destination",destination.toJson()},{"candidate",candidate}},destination,{}, {},result);
+ void checkName(const Destination& destination,const QString& candidate,std::function<void(NameCheck)> callback, std::shared_ptr<std::atomic_bool> cancellation = {})override{
+  QJsonObject result;auto error=run("checkName",{{"destination",destination.toJson()},{"candidate",candidate}},destination,cancellation, {},result);
   NameCheck value;if(error||!s3wire::decode(result,value))value={"inconclusive",{}, {},error?error:uncertain()};callback(std::move(value));
  }
  void upload(const UploadRequest& request,std::function<void(UploadResult)> callback)override{
-  QJsonObject result;auto error=run("upload",s3wire::encode(request),request.destination,request.cancellation,{},result,request.progress);
+  // A multipart journal is acknowledged by the caller's durable store. Callers
+  // without one (synthetic tests) still get abort on cancel and final failure.
+  DurableCheckpoint journal=request.checkpoint?DurableCheckpoint(request.checkpoint):DurableCheckpoint([](const QJsonObject&,std::function<void(Error)> ack){ack({});});
+  lanes_=request.extraLanes;trace_=request.trace;
+  QJsonObject result;auto error=run("upload",s3wire::encode(request),request.destination,request.cancellation,std::move(journal),result,request.progress);
+  lanes_={};trace_={};
   UploadResult value;if(error||!s3wire::decode(result,value))value={noEffects(error)?"failed":"unknown",{},error?error:uncertain()};callback(std::move(value));
  }
  void stat(const StorageReceipt& receipt,std::function<void(StatResult)> callback)override{
@@ -85,6 +97,10 @@ public:
  void remove(const DeleteRequest& request,DurableCheckpoint checkpoint,std::function<void(DeleteResult)> callback)override{
   QJsonObject result;auto error=run("remove",s3wire::encode(request),request.receipt.destination,request.cancellation,std::move(checkpoint),result);
   DeleteResult value;if(error||!s3wire::decode(result,value))value={noEffects(error)?"failed":"unknown",noEffects(error)?request.progress:QJsonObject{},error?error:uncertain()};callback(std::move(value));
+ }
+ void abandon(const Destination& destination,const QJsonObject& journal,std::function<void(Error)> callback)override{
+  QJsonObject result;auto error=run("abandon",{{"destination",destination.toJson()},{"journal",journal}},destination,{},{},result);
+  Error value;if(!error&&(result.size()!=1||!result["error"].isObject()||!s3wire::decode(result["error"].toObject(),value)))error=uncertain();callback(error?error:value);
  }
  void testDestination(const Destination& destination,DurableCheckpoint checkpoint,std::function<void(QJsonObject,Error)> callback)override{
   QJsonObject result;auto error=run("testDestination",{{"destination",destination.toJson()}},destination,{},std::move(checkpoint),result);
@@ -109,6 +125,16 @@ private:
     activity_.restart();
     if(progress_)try{progress_(*progress);}catch(...){}
     answer("uploadProgress",sequence,{});activity_.restart();return;
+   }
+   // Per-request diagnostics (#148), batched by the worker; informational only.
+   if(object["kind"]=="uploadTrace"&&activationAcknowledged_&&activeMethod_=="upload"){
+    const auto data=object["data"].toObject();
+    if(data.size()!=2||!data["records"].isArray()||data["records"].toArray().size()>64||!data["dropped"].isDouble()||data["dropped"].toInteger()<0){failed_=true;return;}
+    for(const auto& value:data["records"].toArray())if(!value.isObject()||!s3wire::decodeUploadTrace(value.toObject())){failed_=true;return;}
+    activity_.restart();
+    if(trace_)for(const auto& value:data["records"].toArray())try{trace_(value.toObject());}catch(...){}
+    if(const auto dropped=data["dropped"].toInteger())logging::debug(logS3(),"Upload diagnostics dropped",{{"records",dropped}});
+    return;
    }
    failed_=true;return;
   }
@@ -155,7 +181,10 @@ private:
   auto activate=envelope();activate["method"]=method;activate["request"]=request;
   // SDK CURL bounds each HTTP exchange; allow the complete driver's bounded
   // call chain, slow local artifact hashing and durable persistence separately.
-  const qint64 calls=method=="testDestination"?16:method=="remove"?8:method=="upload"?6:1;
+  // A multipart upload makes up to three attempts per part plus its create,
+  // listing, completion and abort calls; each part is bounded like one PUT.
+  const auto resume=request["resume"].toObject();const qint64 parts=method=="upload"?qBound<qint64>(0LL,s3PartCount(request["artifact"].toObject()["bytes"].toInteger(),qBound<qint64>(0LL,resume["partBytes"].toInteger(),s3MaximumPartBytes)),s3MaximumParts):0;
+  const qint64 calls=method=="testDestination"?20:method=="remove"?8:method=="abandon"?3:method=="upload"?6+parts*3+(parts?16:0):1;
   const auto settings=destination.settings;
   const auto timeout=[&](const char* key){return qBound<qint64>(1LL,settings[key].toInteger(),2147483647LL);};
   const qint64 perCall=qMax<qint64>(timeout("requestTimeoutMs"),timeout("connectTimeoutMs")+timeout("lowSpeedTimeSeconds")*1000)+1000;
@@ -163,14 +192,20 @@ private:
   // malformed direct driver calls, before child request validation rejects them.
   const qint64 bytes=method=="upload"?qBound<qint64>(0LL,request["artifact"].toObject()["bytes"].toInteger(),1099511627776LL):0;
   const qint64 hashBudget=qMax<qint64>(60000,((bytes+16383)/16384)*4000);
-  const qint64 checkpoints=method=="testDestination"?10:method=="remove"?8:0;
+  const qint64 checkpoints=method=="testDestination"?12:method=="remove"?8:method=="upload"&&parts?4:0;
   const qint64 cancellationGrace=limits_.cancellationGraceMs>0?limits_.cancellationGraceMs:qBound<qint64>(30000LL,perCall+5000,120000LL);
   QElapsedTimer cancelDeadline;
   const qint64 totalBudget=calls*perCall+hashBudget+checkpoints*300000+60000;
   QElapsedTimer workDeadline;workDeadline.start();activity_.start();
+  // A multipart upload learns how many idle upload slots it may borrow (#174).
+  QElapsedTimer lanesPoll;lanesPoll.start();int lentLanes=0;const bool borrows=lanes_&&parts>1;
   activated_=true;if(control_->send("activate",activate).isEmpty())failed_=true;
   while(process_->state()!=QProcess::NotRunning&&!failed_){
    flushAck();
+   if(borrows&&activationAcknowledged_&&!terminal_&&lanesPoll.elapsed()>=100){
+    lanesPoll.restart();int lent=0;try{lent=qBound(0,lanes_(s3MaximumPartLanes-1),s3MaximumPartLanes-1);}catch(...){}
+    if(lent!=lentLanes){auto value=envelope();value["lanes"]=lent;if(control_->send("lanes",value).isEmpty())failed_=true;lentLanes=lent;}
+   }
    if(cancellation&&cancellation->load()&&!cancelSent_){auto cancel=envelope();cancel["cancel"]=true;if(control_->send("shutdown",cancel).isEmpty())failed_=true;cancelSent_=true;cancelDeadline.start();}
    process_->waitForReadyRead(20);
    if((!activationAcknowledged_&&workDeadline.elapsed()>10000)||
@@ -190,14 +225,21 @@ private:
  void resetProcess(){
   if(pending_){std::lock_guard lock(pending_->mutex);pending_->closed=true;}pending_.reset();
   if(control_)control_->stop();
-  if(process_&&process_->state()!=QProcess::NotRunning){process_->closeWriteChannel();process_->terminate();if(!process_->waitForFinished(1000)){process_->kill();process_->waitForFinished(2000);}}
+  bool requested=false;
+  if(process_&&process_->state()!=QProcess::NotRunning){requested=true;process_->closeWriteChannel();process_->terminate();if(!process_->waitForFinished(1000)){process_->kill();process_->waitForFinished(2000);}}
+  if(process_&&output_.pid()>0) {
+   output_.append(process_->readAllStandardError());
+   output_.finished(process_->exitCode(),process_->exitStatus(),requested);
+  }
   control_.reset();process_.reset();ready_=false;stderrBytes_=0;
  }
  QString path_,nonce_,pendingRpc_,activeMethod_;QElapsedTimer activity_,checkpointDeadline_,exitDeadline_;quint64 generation_=0,rpc_=0;CredentialLookup credentials_;ReadinessCheck readiness_;
  std::unique_ptr<QProcess> process_;std::unique_ptr<UiControl> control_;std::shared_ptr<Ack> pending_;
  S3ProcessLimits limits_;Destination destination_;DurableCheckpoint checkpoint_;QJsonObject reply_;
  std::function<void(const UploadProgress&)> progress_;qint64 uploadBytes_=0;
+ std::function<int(int)> lanes_;std::function<void(const QJsonObject&)> trace_;
  bool ready_=false,activated_=false,activationAcknowledged_=false,terminal_=false,failed_=false,cancelSent_=false,checkpointException_=false;qint64 stderrBytes_=0;
+ HelperOutput output_{"putgd-s3-worker",logS3(),true};
 };
 }
 S3Driver* createS3ProcessDriver(const QString& path,CredentialLookup credentials,ReadinessCheck readiness,Error& error,S3ProcessLimits limits){

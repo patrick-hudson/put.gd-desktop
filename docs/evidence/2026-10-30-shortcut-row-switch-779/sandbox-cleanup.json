@@ -1,0 +1,19 @@
+{
+  "sandbox": "bx_w4wz6wub",
+  "finalState": "absent",
+  "allStatesListed": true,
+  "deleteResponse": {
+    "operation": {
+      "attemptCount": 0,
+      "completedAt": null,
+      "expectedBy": null,
+      "id": "bdop_fe71a9d3fe144d9ab80296f6d135b41a",
+      "kind": "sandbox",
+      "reason": "explicit",
+      "requestedAt": "2026-10-30T05:05:59.151Z",
+      "stage": "removing",
+      "status": "pending",
+      "targetId": "bx_w4wz6wub"
+    }
+  }
+}

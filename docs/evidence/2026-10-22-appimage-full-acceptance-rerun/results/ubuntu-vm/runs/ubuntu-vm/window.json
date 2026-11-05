@@ -1,0 +1,132 @@
+{
+ "processes": [
+  {
+   "pid": 3108,
+   "ppid": 3074,
+   "exe": "/tmp/.mount_putgd-FJCoNI/usr/bin/putgd",
+   "comm": "putgd",
+   "cmd": "/tmp/.mount_putgd-FJCoNI/usr/bin/putgd --background",
+   "qtPlatformPlugins": [],
+   "QT_QPA_PLATFORM": null,
+   "APPIMAGE": "/home/lab/afa2/images/putgd-0.1.1-nightly.942-x86_64.AppImage"
+  },
+  {
+   "pid": 3291,
+   "ppid": 3108,
+   "exe": "/tmp/.mount_putgd-FJCoNI/usr/bin/putgd-ui",
+   "comm": "putgd-ui",
+   "cmd": "/tmp/.mount_putgd-FJCoNI/usr/bin/putgd-ui",
+   "qtPlatformPlugins": [
+    "libqwayland-generic.so"
+   ],
+   "QT_QPA_PLATFORM": null,
+   "APPIMAGE": "/home/lab/afa2/images/putgd-0.1.1-nightly.942-x86_64.AppImage"
+  }
+ ],
+ "entries": [
+  "putgd-record.desktop",
+  "putgd-ui.desktop"
+ ],
+ "window": {
+  "label": "ubuntu-vm-settings-window",
+  "components": [
+   {
+    "blocks": 16000,
+    "box": [
+     0,
+     0,
+     1280,
+     800
+    ]
+   }
+  ],
+  "colour": [
+   252,
+   252,
+   252
+  ],
+  "inner": [
+   67,
+   32,
+   1278,
+   798
+  ],
+  "changedShare": 1.0,
+  "ownShare": 0.958,
+  "kept": "/home/lab/work/put.gd-afa2/runs/ubuntu-vm/crops/ubuntu-vm-settings-window.png"
+ },
+ "full": "/home/lab/work/put.gd-afa2/runs/ubuntu-vm/full/ubuntu-vm-settings-window.png",
+ "titlebar": {
+  "label": "ubuntu-vm-settings-titlebar",
+  "components": [
+   {
+    "blocks": 1120,
+    "box": [
+     0,
+     0,
+     1280,
+     56
+    ]
+   }
+  ],
+  "colour": [
+   16,
+   16,
+   16
+  ],
+  "inner": [
+   2,
+   2,
+   1257,
+   32
+  ],
+  "changedShare": 1.0,
+  "kept": "/home/lab/work/put.gd-afa2/runs/ubuntu-vm/crops/ubuntu-vm-settings-titlebar.png"
+ },
+ "switcher": {
+  "label": "ubuntu-vm-settings-switcher",
+  "components": [
+   {
+    "blocks": 481,
+    "box": [
+     552,
+     296,
+     728,
+     504
+    ]
+   },
+   {
+    "blocks": 202,
+    "box": [
+     424,
+     584,
+     1216,
+     624
+    ]
+   },
+   {
+    "blocks": 2,
+    "box": [
+     712,
+     8,
+     720,
+     24
+    ]
+   }
+  ],
+  "colour": [
+   44,
+   44,
+   44
+  ],
+  "inner": [
+   562,
+   307,
+   718,
+   493
+  ],
+  "changedShare": 0.909,
+  "kept": "/home/lab/work/put.gd-afa2/runs/ubuntu-vm/crops/ubuntu-vm-settings-switcher.png"
+ },
+ "switcherFull": "/home/lab/work/put.gd-afa2/runs/ubuntu-vm/full/ubuntu-vm-settings-switcher.png"
+}

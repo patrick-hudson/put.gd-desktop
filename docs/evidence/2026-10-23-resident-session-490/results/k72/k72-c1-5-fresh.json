@@ -1,0 +1,18 @@
+{
+ "at": "2026-10-23T20:18:25Z",
+ "graphicalSession": "9572",
+ "fresh": [
+  {
+   "pid": 1548286,
+   "exe": "/usr/bin/putgd",
+   "ppid": 1261,
+   "start": 30969437,
+   "session": null,
+   "sessionState": null,
+   "sessionType": null,
+   "cgroup": "/user.slice/user-1000.slice/user@1000.service/app.slice/app-putgd@autostart.service",
+   "display": ":0",
+   "sessionIdEnv": "9572"
+  }
+ ]
+}

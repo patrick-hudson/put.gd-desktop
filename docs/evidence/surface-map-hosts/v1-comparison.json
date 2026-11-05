@@ -1,0 +1,28 @@
+{
+  "base": "a18d79e762dfa4780522e25d6e3f63df1b3a2258",
+  "existingFile": "tools/lab/surface_map/coverage/_schema-example.json at base",
+  "beforeBuild": "394 interactions, 0 passed, 0 partial, 0 failed, 0 blocked, 394 untested",
+  "afterBuild": "394 interactions, 0 passed, 0 partial, 0 failed, 0 blocked, 394 untested",
+  "all394DesktopSummariesIdentical": true,
+  "additionalNonemptyV1SummaryIdentical": true,
+  "nonemptyV1Entries": [
+    {
+      "interaction": "editor.undo",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "source": "mark",
+      "at": "2026-10-01T00:00:00Z",
+      "functional": "passed",
+      "visual": "frames"
+    },
+    {
+      "interaction": "editor.redo",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "appimage",
+      "source": "mark",
+      "at": "2026-10-01T00:00:00Z",
+      "functional": "failed"
+    }
+  ],
+  "modelOnlyDesktopsAndNotesChanged": true
+}

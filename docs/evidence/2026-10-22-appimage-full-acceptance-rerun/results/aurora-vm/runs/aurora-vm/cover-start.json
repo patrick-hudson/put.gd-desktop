@@ -1,0 +1,10 @@
+{
+ "pid": 4081,
+ "covered": true,
+ "playing": true,
+ "states": [
+  "covered",
+  "playing"
+ ],
+ "precheck": "~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/usr/lib64/python3.14/socket.py\", line 874, in create_connection\n    raise exceptions[0]\n  File \"/usr/lib64/python3.14/socket.py\", line 859, in create_connection\n    sock.connect(sa)\n    ~~~~~~~~~~~~^^^^\nConnectionRefusedError: [Errno 111] Connection refused\n"
+}

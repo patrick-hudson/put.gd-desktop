@@ -1,0 +1,208 @@
+{
+ "desktopAcceptance": false,
+ "directSwitch": {
+  "paintMs": {
+   "max": 17.91244800000277,
+   "median": 17.458666999998968,
+   "min": 17.269695999995747
+  },
+  "restyleMs": {
+   "max": 1337.4722550000006,
+   "median": 1316.43145,
+   "min": 1302.6022470000025
+  },
+  "rounds": [
+   {
+    "paintMs": 17.447251999998116,
+    "restyleMs": 1302.6022470000025,
+    "scheme": "light"
+   },
+   {
+    "paintMs": 17.65015200000198,
+    "restyleMs": 1326.191310000002,
+    "scheme": "dark"
+   },
+   {
+    "paintMs": 17.60286400000041,
+    "restyleMs": 1337.4722550000006,
+    "scheme": "light"
+   },
+   {
+    "paintMs": 17.4648159999997,
+    "restyleMs": 1332.7188600000009,
+    "scheme": "dark"
+   },
+   {
+    "paintMs": 17.542650999996113,
+    "restyleMs": 1316.193922999999,
+    "scheme": "light"
+   },
+   {
+    "paintMs": 17.334216999995988,
+    "restyleMs": 1316.6689770000012,
+    "scheme": "dark"
+   },
+   {
+    "paintMs": 17.353564000004553,
+    "restyleMs": 1310.9180889999989,
+    "scheme": "light"
+   },
+   {
+    "paintMs": 17.452517999998236,
+    "restyleMs": 1318.9114010000048,
+    "scheme": "dark"
+   },
+   {
+    "paintMs": 17.91244800000277,
+    "restyleMs": 1318.6039149999997,
+    "scheme": "light"
+   },
+   {
+    "paintMs": 17.269695999995747,
+    "restyleMs": 1311.8710169999977,
+    "scheme": "dark"
+   },
+   {
+    "paintMs": 17.349334999998973,
+    "restyleMs": 1310.344686999997,
+    "scheme": "light"
+   },
+   {
+    "paintMs": 17.740645999998378,
+    "restyleMs": 1314.5347770000008,
+    "scheme": "dark"
+   }
+  ]
+ },
+ "historyItems": 24,
+ "kind": "synthetic-theme-switch-timing",
+ "platform": "wayland",
+ "qt": "6.8.2",
+ "rounds": 12,
+ "settingsPick": {
+  "paintMs": {
+   "max": 18.59628000000157,
+   "median": 17.284727499998553,
+   "min": 16.993832999996812
+  },
+  "pickToApplyMs": {
+   "max": 443.1541700000016,
+   "median": 402.7043435000003,
+   "min": 401.87259899999935
+  },
+  "pickToPaintedMs": {
+   "max": 1775.4742750000005,
+   "median": 1723.2973614999994,
+   "min": 1709.870329999998
+  },
+  "pickToResidentAcceptedMs": {
+   "max": 441.6228420000007,
+   "median": 401.1589469999999,
+   "min": 400.34407099999953
+  },
+  "restyleMs": {
+   "max": 1316.3981700000004,
+   "median": 1301.186545999999,
+   "min": 1290.2995820000033
+  },
+  "rounds": [
+   {
+    "paintMs": 17.788464000000204,
+    "pickToApplyMs": 402.782283,
+    "pickToPaintedMs": 1724.1251280000001,
+    "pickToResidentAcceptedMs": 401.2099280000002,
+    "restyleMs": 1303.554381,
+    "scheme": "light"
+   },
+   {
+    "paintMs": 17.08829700000024,
+    "pickToApplyMs": 401.87259899999935,
+    "pickToPaintedMs": 1715.975891,
+    "pickToResidentAcceptedMs": 400.34407099999953,
+    "restyleMs": 1297.0149950000005,
+    "scheme": "dark"
+   },
+   {
+    "paintMs": 17.24209200000041,
+    "pickToApplyMs": 441.60975400000007,
+    "pickToPaintedMs": 1768.925381000001,
+    "pickToResidentAcceptedMs": 440.0896130000001,
+    "restyleMs": 1310.0735350000004,
+    "scheme": "light"
+   },
+   {
+    "paintMs": 17.510212999999567,
+    "pickToApplyMs": 441.56589200000053,
+    "pickToPaintedMs": 1775.4742750000005,
+    "pickToResidentAcceptedMs": 440.03933099999995,
+    "restyleMs": 1316.3981700000004,
+    "scheme": "dark"
+   },
+   {
+    "paintMs": 17.577597999999853,
+    "pickToApplyMs": 402.2558360000003,
+    "pickToPaintedMs": 1724.8831210000008,
+    "pickToResidentAcceptedMs": 400.64492600000085,
+    "restyleMs": 1305.0496870000006,
+    "scheme": "light"
+   },
+   {
+    "paintMs": 17.213991000000533,
+    "pickToApplyMs": 402.62640400000055,
+    "pickToPaintedMs": 1719.8904060000004,
+    "pickToResidentAcceptedMs": 401.1079659999996,
+    "restyleMs": 1300.0500109999994,
+    "scheme": "dark"
+   },
+   {
+    "paintMs": 17.263491999998223,
+    "pickToApplyMs": 443.1064340000012,
+    "pickToPaintedMs": 1757.7795540000006,
+    "pickToResidentAcceptedMs": 441.58351700000276,
+    "restyleMs": 1297.4096280000012,
+    "scheme": "light"
+   },
+   {
+    "paintMs": 18.59628000000157,
+    "pickToApplyMs": 443.1541700000016,
+    "pickToPaintedMs": 1765.3229410000022,
+    "pickToResidentAcceptedMs": 441.6228420000007,
+    "restyleMs": 1303.572490999999,
+    "scheme": "dark"
+   },
+   {
+    "paintMs": 17.357906000001094,
+    "pickToApplyMs": 402.48628499999904,
+    "pickToPaintedMs": 1718.3794579999994,
+    "pickToResidentAcceptedMs": 400.89689499999804,
+    "restyleMs": 1298.5352669999993,
+    "scheme": "light"
+   },
+   {
+    "paintMs": 16.993832999996812,
+    "pickToApplyMs": 402.5769149999978,
+    "pickToPaintedMs": 1709.870329999998,
+    "pickToResidentAcceptedMs": 400.9440910000012,
+    "restyleMs": 1290.2995820000033,
+    "scheme": "dark"
+   },
+   {
+    "paintMs": 17.09276999999929,
+    "pickToApplyMs": 402.4805669999987,
+    "pickToPaintedMs": 1711.5318310000002,
+    "pickToResidentAcceptedMs": 400.8053839999993,
+    "restyleMs": 1291.9584940000022,
+    "scheme": "light"
+   },
+   {
+    "paintMs": 17.305962999998883,
+    "pickToApplyMs": 402.84055100000114,
+    "pickToPaintedMs": 1722.4695949999987,
+    "pickToResidentAcceptedMs": 401.3087039999991,
+    "restyleMs": 1302.3230809999986,
+    "scheme": "dark"
+   }
+  ]
+ },
+ "widgets": 1129
+}

@@ -1,0 +1,52 @@
+{
+    "class": "QMessageBox",
+    "controls": [
+        {
+            "class": "QLabel",
+            "enabled": true,
+            "kind": "focusable",
+            "name": "qt_msgbox_label",
+            "rect": [
+                24,
+                20,
+                420,
+                57
+            ],
+            "text": "This connection has not passed a test in this session. Use \"Project archive\" as the capture default? Per-action exceptions will stay unchanged."
+        },
+        {
+            "checkable": false,
+            "checked": false,
+            "class": "QPushButton",
+            "enabled": true,
+            "kind": "button",
+            "name": "confirmDiscard",
+            "rect": [
+                330,
+                93,
+                114,
+                36
+            ],
+            "text": "Make default"
+        },
+        {
+            "checkable": false,
+            "checked": false,
+            "class": "QPushButton",
+            "enabled": true,
+            "kind": "button",
+            "name": "",
+            "rect": [
+                251,
+                93,
+                73,
+                36
+            ],
+            "text": "Cancel"
+        }
+    ],
+    "height": 145,
+    "keys": [
+    ],
+    "width": 468
+}

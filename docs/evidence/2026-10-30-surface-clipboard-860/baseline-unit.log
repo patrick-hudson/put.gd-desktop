@@ -1,0 +1,41 @@
+FFF
+======================================================================
+FAIL: test_idle_has_no_periodic_wakeups (__main__.ClipboardLeaseTests.test_idle_has_no_periodic_wakeups)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/patrick/.t3/worktrees/put.gd/t3-5ab91e30/work/keeper860/baseline/tests/desktop/test_surface_clipboard.py", line 135, in test_idle_has_no_periodic_wakeups
+    self.assertEqual(result['wakeups'], 0, 'idle clipboard keeper still polls')
+AssertionError: 3 != 0 : idle clipboard keeper still polls
+
+======================================================================
+FAIL: test_runner_pipe_eof_restores_all_bytes_and_exits (__main__.ClipboardLeaseTests.test_runner_pipe_eof_restores_all_bytes_and_exits)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/patrick/.t3/worktrees/put.gd/t3-5ab91e30/work/keeper860/baseline/tests/desktop/test_surface_clipboard.py", line 120, in test_runner_pipe_eof_restores_all_bytes_and_exits
+    process.wait(timeout=2)
+  File "/usr/lib/python3.12/subprocess.py", line 1264, in wait
+    return self._wait(timeout=timeout)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/subprocess.py", line 2045, in _wait
+    raise TimeoutExpired(self.args, timeout)
+subprocess.TimeoutExpired: Command '['/usr/bin/python3', '-c', '\nimport json, os, select, signal, sys, time, types\nfrom pathlib import Path\nresult_root=sys.argv[1]\nnotifiers=[]; timers=[]; single=[]; wakeups=0; sets=[]; quitting=False\nclass Event:\n def connect(self, fn):self.fn=fn\n def fire(self):self.fn()\nclass Mime:\n def __init__(self):self.values={}\n def formats(self):return list(self.values)\n def data(self,mime):return self.values[mime]\n def setData(self,mime,data):self.values[mime]=data\nsource=Mime();source.setData(\'text/plain\',b\'line 1\\r\\nline 2\\x00\\xff\')\nsource.setData(\'application/x-putgd-unit\',bytes(range(256)))\nclass Clipboard:\n def mimeData(self):return source\n def setMimeData(self,mime):sets.append({k:bytes(v).hex() for k,v in mime.values.items()})\n def ownsClipboard(self):return True\nclass App:\n def __init__(self,*a):pass\n def clipboard(self):return Clipboard()\n def quit(self):\n  global quitting\n  quitting=True\n def exec(self):\n  global wakeups\n  while not quitting:\n   active=[n for n in notifiers if n.enabled]\n   ready=select.select([n.fd for n in active],[],[],.01)[0]\n   for n in active:\n    if n.fd in ready:n.activated.fire()\n   now=time.monotonic()\n   for timer in timers:\n    if now>=timer.next:\n     timer.next=now+timer.interval;wakeups+=1;timer.timeout.fire()\n   for deadline, fn in list(single):\n    if now>=deadline:single.remove((deadline,fn));fn()\nclass Notifier:\n Type=types.SimpleNamespace(Read=1)\n def __init__(self,fd,kind):self.fd=fd;self.enabled=True;self.activated=Event();notifiers.append(self)\n def setEnabled(self,value):self.enabled=value\nclass Timer:\n def __init__(self):self.timeout=Event()\n def start(self,interval):self.interval=interval/1000;self.next=time.monotonic()+self.interval;timers.append(self)\n @staticmethod\n def singleShot(delay,fn):single.append((time.monotonic()+delay/1000,fn))\nqt=types.ModuleType(\'PyQt6\');core=types.ModuleType(\'PyQt6.QtCore\');gui=types.ModuleType(\'PyQt6.QtGui\')\ncore.QMimeData=Mime;core.QTimer=Timer;core.QSocketNotifier=Notifier;gui.QGuiApplication=App\nsys.modules.update({\'PyQt6\':qt,\'PyQt6.QtCore\':core,\'PyQt6.QtGui\':gui})\ndef summary(*_):\n Path(result_root+\'/unit-result.json\').write_text(json.dumps(dict(wakeups=wakeups,sets=sets)))\n if _:os._exit(0)\nsignal.signal(signal.SIGUSR2,summary)\n\nsys.argv.append(sys.argv[1]);sys.argv[1]+="/clipboard-state"\nexec(compile("\\nimport os, signal, sys\\nfrom pathlib import Path\\nfrom PyQt6.QtCore import QMimeData, QTimer\\nfrom PyQt6.QtGui import QGuiApplication\\napp = QGuiApplication([])\\nclipboard = app.clipboard()\\nsaved = QMimeData()\\nsource = clipboard.mimeData()\\nsize = 0\\nif source:\\n    for mime in source.formats():\\n        data = source.data(mime)\\n        size += len(data)\\n        if size > 32 * 1024 * 1024:\\n            sys.exit(2)\\n        saved.setData(mime, data)\\nstate = Path(sys.argv[1])\\nstate.write_text(\'ready\')\\nrestore = False\\nrestored = False\\ndef request(*_):\\n    global restore\\n    restore = True\\ndef tick():\\n    global restore, restored\\n    if restore and not restored:\\n        clipboard.setMimeData(saved)\\n        restored = True\\n        state.write_text(\'restored\')\\n    elif restored and not clipboard.ownsClipboard():\\n        app.quit()\\nsignal.signal(signal.SIGUSR1, request)\\ntimer = QTimer()\\ntimer.timeout.connect(tick)\\ntimer.start(50)\\napp.exec()\\n","clipboard_test","exec"))\n', '/tmp/tmpboecxhiz']' timed out after 2 seconds
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/patrick/.t3/worktrees/put.gd/t3-5ab91e30/work/keeper860/baseline/tests/desktop/test_surface_clipboard.py", line 122, in test_runner_pipe_eof_restores_all_bytes_and_exits
+    self.fail('keeper leaked after runner input closed')
+AssertionError: keeper leaked after runner input closed
+
+======================================================================
+FAIL: test_termination_restores_once_then_exits (__main__.ClipboardLeaseTests.test_termination_restores_once_then_exits)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/patrick/.t3/worktrees/put.gd/t3-5ab91e30/work/keeper860/baseline/tests/desktop/test_surface_clipboard.py", line 142, in test_termination_restores_once_then_exits
+    self.assertEqual(process.returncode, 0, 'keeper terminated without restoration')
+AssertionError: -15 != 0 : keeper terminated without restoration
+
+----------------------------------------------------------------------
+Ran 3 tests in 2.328s
+
+FAILED (failures=3)

@@ -2,6 +2,8 @@
 #include <QColor>
 #include <QFont>
 #include <QImage>
+#include <QHash>
+#include <QPainterPath>
 #include <QList>
 #include <QPoint>
 #include <QRect>
@@ -28,6 +30,8 @@ struct Shape {
 
 // Bold text font shared by the canvas, export and agent commands.
 QFont textFont(const QString& family,int pixels);
+// Exact glyph outline plus the contrast stroke used by export, in image pixels.
+QRectF textOutputBounds(const Shape&);
 constexpr int minimumFontPixels=8,maximumFontPixels=200,maximumFontFamilyCharacters=100;
 
 // Undo history stores geometry snapshots, never pixel copies. The bounded base
@@ -48,6 +52,9 @@ public:
  const QList<Shape>& shapes() const {return state_.shapes;}
  const Shape* find(quint64 id) const;
  bool modified() const {return state_.shapes.size()>0||state_.crop!=base_.rect();}
+ // Bumped by every change to what export renders (edits, live drags, undo,
+ // redo), so a saved copy can tell whether it still matches the draft.
+ quint64 generation() const {return generation_;}
 
  quint64 add(Shape);
  bool replace(const Shape&);  // same id; returns false when unknown or unchanged
@@ -67,6 +74,9 @@ public:
  int historyEntries() const {return undo_.size()+redo_.size();}
  bool historyTruncated() const {return truncated_;}
 
+ // Resolve text on the calling (GUI) thread before a worker renders a copy.
+ EditDocument snapshotForExport() const;
+
  // Full-resolution sanitized result: redaction overwrites source pixels first,
  // blur reads only redacted pixels, annotations are drawn, then crop applies.
  // Fully transparent pixels have their hidden color cleared.
@@ -78,7 +88,7 @@ public:
 
  static QRect clampRect(const QRect&,const QRect& bounds);
  static void blurInPlace(QImage&,const QRect&,int radius);
- static void paintAnnotation(class QPainter&,const Shape&);
+ static void paintAnnotation(class QPainter&,const Shape&,const QPainterPath* textPath=nullptr);
 private:
  struct State {QList<Shape> shapes;QRect crop;bool operator==(const State&) const=default;};
  static qint64 bytesOf(const State&);
@@ -89,6 +99,10 @@ private:
  bool gesture_=false,truncated_=false;
  QList<State> undo_,redo_;
  qint64 historyBytes_=0;
- quint64 nextId_=1;
+ quint64 nextId_=1,generation_=0;
+ mutable QHash<quint64,QPainterPath> textPaths_;
+ mutable quint64 textPathsGeneration_=0;
+ mutable QFont textPathsFont_;
+ bool textPathsFrozen_=false;
 };
 }

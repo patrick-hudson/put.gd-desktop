@@ -1,0 +1,77 @@
+{
+ "kind": "desktop",
+ "operation": {
+  "id": "2c00aa6c-1539-4ce4-8743-ed88afd5ba18",
+  "state": "completed",
+  "copyStatus": "pending",
+  "items": [
+   {
+    "name": "Screen-Capture-2026-10-22-00-55-35.png",
+    "mime": "image/png",
+    "uploadStatus": "uploaded",
+    "link": "http://127.0.0.1:42355/fixture/afa/Screen-Capture-2026-10-22-00-55-35.png",
+    "local": {
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     },
+     "path": "/var/home/lab/work/put.gd-afa2/runs/aurora-vm/archive/images/Screen-Capture-2026-10-22-00-55-35.png",
+     "status": "saved"
+    }
+   }
+  ],
+  "error": {
+   "code": "",
+   "details": {},
+   "message": ""
+  }
+ },
+ "png": {
+  "bytes": 32559,
+  "sha256": "1a25c8ffec12a2d39942382ccbf63012033122276dd04e98b2daa0eacb85913d",
+  "magic": true,
+  "size": [
+   1280,
+   800
+  ]
+ },
+ "coverCheck": {
+  "edges": {
+   "bottom": 1.0,
+   "left": 1.0,
+   "right": 0.9635,
+   "top": 1.0
+  },
+  "fraction": 0.7426,
+  "kept": "/var/home/lab/work/put.gd-afa2/runs/aurora-vm/out/capture-desktop.png",
+  "minFraction": 0.5,
+  "ok": true,
+  "rect": [
+   0,
+   0,
+   1280,
+   800
+  ],
+  "sha256": "1a25c8ffec12a2d39942382ccbf63012033122276dd04e98b2daa0eacb85913d",
+  "size": [
+   1280,
+   800
+  ]
+ },
+ "clipboard": "http://127.0.0.1:42355/fixture/afa/Screen-Capture-2026-10-22-00-55-35.png",
+ "linkCopied": true,
+ "linkServes": {
+  "status": 200,
+  "sha256": "1a25c8ffec12a2d39942382ccbf63012033122276dd04e98b2daa0eacb85913d",
+  "matchesLocal": true
+ },
+ "historyEntry": {
+  "id": "c3a328cc-5db1-410d-ae45-4dce0a3e115c",
+  "name": "Screen-Capture-2026-10-22-00-55-35.png",
+  "uploadStatus": "uploaded",
+  "local": "saved",
+  "linkAvailable": true
+ },
+ "notifications": []
+}

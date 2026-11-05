@@ -1,0 +1,38 @@
+{
+ "host": "mint-builder",
+ "profile": "b2",
+ "store": "completed",
+ "testConnection": {
+  "state": "completed",
+  "error": {
+   "code": "",
+   "details": {},
+   "message": ""
+  },
+  "seconds": 3.08
+ },
+ "upload": {
+  "state": "completed",
+  "uploadStatus": "uploaded",
+  "error": {
+   "code": "source_unsupported",
+   "details": {},
+   "message": "Native desktop adapter is not available"
+  },
+  "link": "https://f001.backblazeb2.com/file/putgd-i329-f53d5a37/put.gd/acceptance/i329/m74nb2/Screen-Capture-2026-10-21-17-22-41.png",
+  "seconds": 2.73
+ },
+ "linkFetch": {
+  "status": 200,
+  "png": true,
+  "bytes": 2035
+ },
+ "delete": {
+  "state": "completed",
+  "items": [
+   "removed"
+  ],
+  "remoteStatus": "removed",
+  "linkAfter": 404
+ }
+}

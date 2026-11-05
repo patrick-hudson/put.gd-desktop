@@ -1,0 +1,279 @@
+{
+  "scope": "Public acceptance summary; raw run files and completion manifests remain private",
+  "runId": "f54020bb-4a00-44ca-a651-a99d1408d84d",
+  "canonicalRun": "/home/user/t716/work/lab-runs/c2",
+  "controllerCommit": "4e8cc39cd06d3f4cd5233138d640d93ea0922e5d",
+  "controllerSha256": "fe15e1254f1bac17d10be3cdb447576862251811818637ef1788d1c15eb6f0a8",
+  "supervisorSha256": "c19c76028a23c8a3b7f7daa5ab7091cad06c7d3accf45508f9aea52a0d7ee998",
+  "goldenSha256": "4a21566d5b741e55f349f4f07e1c687c99d1c99b5394ff0d18ed5c9e685693da",
+  "packageSha256": "f5bd05537d8e2931f464fe0a54a52dd638f6fd3b32b2134dfef5785812d1c5ec",
+  "installedBinarySha256": {
+    "/usr/bin/putgd-ui": "fdf6765c8464f4613e713d965c9d1ae742c5eaacdc910705ac9c6993cc3b2d50",
+    "/usr/bin/putgd-kde-region": "43d7b831310d3f2350b21756376fdc9257205509e1a43f7065f2ed283f3474b5",
+    "/usr/bin/putgd-launcher": "f2b1462cb97419bec6c164b6626212f02e6377dc8ffee364c32bbcdaf7e38839",
+    "/usr/bin/putgd": "9ab3f75078cb0e3911d86be2152f3de6bc431fa8b73f24d5c81e0c9f06d0ea8c",
+    "/usr/bin/putgd-cli": "32fcc74bdcc465e366d2efac0c2a67b392d4cb4f9849a0223b71d52984e9185c",
+    "/usr/bin/putgd-s3-worker": "e7124189c2fa269da3e5a6335ed205df3371dbe290d66379006879139aba1a51",
+    "/usr/bin/putgd-desktop-fixture": "d604b420ea1ab73ecd47d0336b7729670661d94ddef7a4fe9b58d4170e0ba901",
+    "/usr/bin/putgd-record": "ac124d9ffcba62f351b0ac0ec4842633359840e8a135704370a6e3d476540e99",
+    "/usr/bin/putgd-capture": "ea465bd4aade21f0cad02ba5872e195963c3c7283833a296884b81ae994b99c5",
+    "/usr/bin/putgd-b2-worker": "2e64ab467a20b6e8c20399bd993de2d93426de375869b6dce3de35b1db4b4bc8"
+  },
+  "install": {
+    "timeoutSeconds": 180,
+    "recoverySeconds": 900,
+    "elapsedSeconds": 371.162361804,
+    "timedOut": true,
+    "aborted": false,
+    "exitCodes": [
+      0,
+      0
+    ],
+    "remainingPids": [],
+    "ok": true
+  },
+  "dpkgStatus": "install ok installed",
+  "dpkgAuditClean": true,
+  "ownedProcessIdentities": [
+    {
+      "pid": 2103,
+      "startTicks": 8952
+    },
+    {
+      "pid": 2106,
+      "startTicks": 8959
+    },
+    {
+      "pid": 2115,
+      "startTicks": 8986
+    },
+    {
+      "pid": 2117,
+      "startTicks": 8995
+    },
+    {
+      "pid": 2253,
+      "startTicks": 9069
+    },
+    {
+      "pid": 2328,
+      "startTicks": 9089
+    },
+    {
+      "pid": 2405,
+      "startTicks": 9272
+    },
+    {
+      "pid": 2406,
+      "startTicks": 9273
+    },
+    {
+      "pid": 2414,
+      "startTicks": 9274
+    },
+    {
+      "pid": 2415,
+      "startTicks": 9275
+    },
+    {
+      "pid": 2471,
+      "startTicks": 9280
+    },
+    {
+      "pid": 3012,
+      "startTicks": 15604
+    },
+    {
+      "pid": 3029,
+      "startTicks": 15611
+    },
+    {
+      "pid": 3031,
+      "startTicks": 15611
+    },
+    {
+      "pid": 3053,
+      "startTicks": 15795
+    },
+    {
+      "pid": 3055,
+      "startTicks": 15795
+    },
+    {
+      "pid": 3079,
+      "startTicks": 16037
+    },
+    {
+      "pid": 3087,
+      "startTicks": 16117
+    },
+    {
+      "pid": 3094,
+      "startTicks": 16121
+    },
+    {
+      "pid": 3097,
+      "startTicks": 16121
+    },
+    {
+      "pid": 5552,
+      "startTicks": 44439
+    },
+    {
+      "pid": 5553,
+      "startTicks": 44440
+    },
+    {
+      "pid": 5563,
+      "startTicks": 44463
+    },
+    {
+      "pid": 5564,
+      "startTicks": 44464
+    },
+    {
+      "pid": 5578,
+      "startTicks": 44494
+    },
+    {
+      "pid": 5594,
+      "startTicks": 44607
+    },
+    {
+      "pid": 5596,
+      "startTicks": 44607
+    },
+    {
+      "pid": 5612,
+      "startTicks": 44625
+    },
+    {
+      "pid": 5613,
+      "startTicks": 44625
+    },
+    {
+      "pid": 5614,
+      "startTicks": 44625
+    },
+    {
+      "pid": 5670,
+      "startTicks": 44688
+    },
+    {
+      "pid": 5721,
+      "startTicks": 44748
+    },
+    {
+      "pid": 5722,
+      "startTicks": 44748
+    },
+    {
+      "pid": 5723,
+      "startTicks": 44748
+    },
+    {
+      "pid": 5795,
+      "startTicks": 44815
+    },
+    {
+      "pid": 5797,
+      "startTicks": 44815
+    },
+    {
+      "pid": 5869,
+      "startTicks": 44926
+    },
+    {
+      "pid": 5870,
+      "startTicks": 44926
+    },
+    {
+      "pid": 5871,
+      "startTicks": 44926
+    },
+    {
+      "pid": 5970,
+      "startTicks": 45093
+    },
+    {
+      "pid": 6107,
+      "startTicks": 45274
+    },
+    {
+      "pid": 6143,
+      "startTicks": 45312
+    },
+    {
+      "pid": 6144,
+      "startTicks": 45312
+    },
+    {
+      "pid": 6145,
+      "startTicks": 45312
+    },
+    {
+      "pid": 6275,
+      "startTicks": 45435
+    },
+    {
+      "pid": 6279,
+      "startTicks": 45441
+    },
+    {
+      "pid": 6281,
+      "startTicks": 45441
+    },
+    {
+      "pid": 6288,
+      "startTicks": 45470
+    },
+    {
+      "pid": 6289,
+      "startTicks": 45471
+    },
+    {
+      "pid": 6290,
+      "startTicks": 45471
+    },
+    {
+      "pid": 6336,
+      "startTicks": 45768
+    },
+    {
+      "pid": 6337,
+      "startTicks": 45769
+    },
+    {
+      "pid": 6338,
+      "startTicks": 45769
+    },
+    {
+      "pid": 6340,
+      "startTicks": 45797
+    },
+    {
+      "pid": 6359,
+      "startTicks": 45915
+    },
+    {
+      "pid": 6362,
+      "startTicks": 45916
+    },
+    {
+      "pid": 6365,
+      "startTicks": 45938
+    },
+    {
+      "pid": 6366,
+      "startTicks": 45938
+    }
+  ],
+  "retirement": {
+    "status": "completed",
+    "stateSha256": "e39c41e3faf870e4d0beeab3f09eb7358a76a97f5d9e038b98a1a369b552ce8b",
+    "preparedUtc": "2026-10-30T00:34:10.071769+00:00",
+    "completedUtc": "2026-10-30T00:34:10.159567+00:00"
+  },
+  "retirementEvidenceSha256": "1edee9e01dfc7e790b893c2c6c079678c12504c607d0bb90001e16a5fa6a0030",
+  "retirementReceiptSha256": "ebe4f64f36fe498fb4b9f10e48e9b986722e399b6996d87c1bdee9063517f6ee"
+}

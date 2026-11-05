@@ -1,0 +1,10 @@
+[Unit]
+Description=Check the newest untested nightly daily at 07:30 UTC
+
+[Timer]
+OnCalendar=*-*-* 07:30:00 UTC
+Persistent=true
+Unit=putgd-nightly-desktops.service
+
+[Install]
+WantedBy=timers.target

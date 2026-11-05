@@ -1,10 +1,14 @@
 #include "KdeRegionOverlay.h"
+#include "KdeDesktopFont.h"
+#include "ui/QuickBackend.h"
 #include "KdeRegionProtocol.h"
 #include "platform/x11/CaptureControl.h"
 #include "ui/StdioDevice.h"
+#include "ui/Theme.h"
 #include "core/BuildInfo.h"
 #include <QApplication>
 #include <QJsonDocument>
+#include <QScopeGuard>
 #include <QScreen>
 #include <QTimer>
 #include <QUuid>
@@ -12,6 +16,7 @@
 #include <cstring>
 #include <memory>
 #include <functional>
+#include <thread>
 #include <cerrno>
 #if defined(PUTGD_HAVE_LAYER_SHELL) && QT_VERSION >= QT_VERSION_CHECK(6,5,0)
 #include <wayland-client.h>
@@ -37,7 +42,23 @@ int main(int argc,char** argv) {
   std::printf("putgd-kde-region %s\n",putgd::buildVersion()); return 0;
  }
  putgd::UiControlPipes handles; if(!handles.valid()) return 2;
+ // This helper paints its own surfaces and pills from the app theme. Plasma's
+ // platform theme would load KDE Frameworks, Qt Quick and Mesa on every region
+ // press, 90 ms of the hotkey on Kubuntu's native package, for one thing the
+ // selector shows: the desktop font, which is read directly below. Where that
+ // plugin isn't installed, as in the AppImage, Qt's own theme stays as it was.
+ const bool plasmaFont=putgd::plasmaThemeExpected(qgetenv("QT_QPA_PLATFORMTHEME"),qgetenv("XDG_CURRENT_DESKTOP"))&&putgd::plasmaThemeInstalled(QCoreApplication::libraryPaths());
+ if(plasmaFont) {
+  QGuiApplication::setDesktopSettingsAware(false);
+  qunsetenv("QT_QPA_PLATFORMTHEME");
+  qunsetenv("QT_STYLE_OVERRIDE");
+ }
  QApplication app(argc,argv); app.setQuitOnLastWindowClosed(false);
+ if(plasmaFont) QGuiApplication::setFont(putgd::kdeDesktopFont(putgd::kdeGlobalsPaths()));
+ // Load the pill font while this process waits for its bootstrap; a surface does
+ // not wait for it to map.
+ std::thread fonts=putgd::KdeRegionOverlay::preloadFonts();
+ const auto joinFonts=qScopeGuard([&]{fonts.join();});
  app.setDesktopFileName("putgd-kde-region");
  QCoreApplication::setOrganizationName("putgd"); QCoreApplication::setApplicationName("putgd-kde-region");
  QCoreApplication::setApplicationVersion(putgd::buildVersion());
@@ -45,7 +66,7 @@ int main(int argc,char** argv) {
  putgd::CaptureControl control(pipes); QTimer deadline; deadline.setSingleShot(true); deadline.start(10000);
  const auto build=QJsonDocument::fromJson(putgd::buildManifestJson()).object();
  QString nonce,generation; QList<putgd::CaptureFrame> frozen;
- std::unique_ptr<putgd::KdeRegionOverlay> selector;
+ std::unique_ptr<putgd::KdeRegionOverlay> selector;QString outcome;bool screenshotFirst=false;QList<putgd::CaptureFrame> backdrop;
  bool bootstrapped=false,ready=false,begun=false,resultSent=false,settled=false,teardownPending=false;
  QTimer teardownDeadline;teardownDeadline.setSingleShot(true);
  std::function<void(bool)> teardownReply;
@@ -112,14 +133,25 @@ int main(int argc,char** argv) {
  QObject::connect(&control,&putgd::CaptureControl::frame,&app,[&](const QString& type,const QJsonObject& payload){
   if(settled||teardownPending) return;
   if(type=="bootstrap") {
-   if(bootstrapped || payload.size()!=4 || payload["build"].toObject()!=build ||
+   if(bootstrapped || payload.size()!=4+int(payload.contains("outcome"))+int(payload.contains("frozen"))+int(payload.contains("appearance")) || payload["build"].toObject()!=build ||
+      (payload.contains("frozen")&&(!payload["frozen"].isObject()||payload["frozen"].toObject().size()!=2||!payload["frozen"]["fd"].isDouble()||!payload["frozen"]["frames"].isArray())) ||
       !payload["nonce"].isString() || QUuid(payload["nonce"].toString()).isNull() ||
-      !payload["generation"].isString() || !payload["layout"].isArray()) { close(4); return; }
+      !payload["generation"].isString() || !payload["layout"].isArray() || (payload.contains("outcome")&&(!payload["outcome"].isString()||payload["outcome"].toString().size()>256))) { close(4); return; }
+   if(payload.contains("appearance")&&(!payload["appearance"].isObject()||(!payload["appearance"].toObject().isEmpty()&&payload["appearance"]["scheme"]!="light"&&payload["appearance"]["scheme"]!="dark"))){close(4);return;}
+   putgd::Theme::setScheme(payload["appearance"]["scheme"]=="light"?putgd::Theme::Scheme::Light:putgd::Theme::Scheme::Dark);
    bool numeric=false; const auto g=payload["generation"].toString(); const auto number=g.toULongLong(&numeric);
    if(!numeric || !number || QString::number(number)!=g) { close(4); return; }
-   nonce=payload["nonce"].toString(); generation=g; bootstrapped=true;
+   outcome=payload["outcome"].toString();nonce=payload["nonce"].toString(); generation=g; bootstrapped=true;
    putgd::Error error; frozen=putgd::kdeRegionLayout(payload["layout"].toArray(),error);
    if(error) { close(4); return; }
+   // Screenshot first (#629): the resident's frozen frames become the backdrop.
+   if(payload.contains("frozen")) {
+    const auto descriptor=payload["frozen"].toObject();const auto fd=descriptor["fd"].toInteger();
+    // The geometry-only layout keeps validating results; the selector draws these.
+    backdrop=frozen;
+    if(fd<3 || fd>65535 || !putgd::kdeFrozenPixels(int(fd),descriptor["frames"].toArray(),backdrop,error)) { close(4); return; }
+    screenshotFirst=true;
+   }
    ready=true; auto message=envelope(); message["build"]=build;
    if(!control.send("ready",message)) { close(4); return; }
    if(!QGuiApplication::platformName().startsWith("wayland")) { fail("region_unavailable"); return; }
@@ -131,7 +163,7 @@ int main(int argc,char** argv) {
   if(type=="begin") {
    if(begun || !putgd::kdeRegionLayoutsMatch(frozen,layout())) { if(begun) close(4); else fail("display_changed"); return; }
    begun=true; deadline.start(120000);
-   selector=std::make_unique<putgd::KdeRegionOverlay>(frozen);
+   selector=std::make_unique<putgd::KdeRegionOverlay>(screenshotFirst?backdrop:frozen,nullptr,false,outcome,screenshotFirst);
    QObject::connect(selector.get(),&putgd::KdeRegionOverlay::cancelled,&app,[&](const putgd::Error& error){
     // Destroy outside the emitting Surface event handler.
     const auto code=error.code; QTimer::singleShot(0,&app,[&,code]{fail(code);});

@@ -1,0 +1,270 @@
+{
+ "name": "m74-lab1058",
+ "scenario": "a",
+ "image": "/home/patrick/work/put.gd-qt418/afa/upd/runs/m74-lab1058/apps/putgd-26.1023.1058-nightly-x86_64.AppImage",
+ "imageSha256": "ce707fcf4e693b5ca9024da539e5510e149c5edf8a6a17bca28d815e0e20e6db",
+ "cliDir": "/home/patrick/work/put.gd-qt418/afa/upd/runs/m74-lab1058/cli/squashfs-root",
+ "runtime": "/tmp/upd293.zEfGGf",
+ "session": {
+  "HOME": "/home/patrick",
+  "PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin",
+  "USER": "patrick",
+  "LANG": "en_US.UTF-8",
+  "DISPLAY": ":0",
+  "XAUTHORITY": "/home/patrick/.Xauthority",
+  "DBUS_SESSION_BUS_ADDRESS": "unix:path=/run/user/1000/bus",
+  "XDG_SESSION_TYPE": "x11",
+  "XDG_CURRENT_DESKTOP": "X-Cinnamon",
+  "XDG_SESSION_DESKTOP": "cinnamon",
+  "DESKTOP_SESSION": "cinnamon",
+  "XDG_DATA_DIRS": "/usr/share/cinnamon:/home/patrick/.local/share/flatpak/exports/share:/var/lib/flatpak/exports/share:/usr/local/share:/usr/share"
+ },
+ "shell": "cinnamon",
+ "hostPath": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin",
+ "host": "mint-builder",
+ "vnc": 5900,
+ "urls": {
+  "PUTGD_UPDATE_FEED_URL": "https://pkg.put.gd/lab/update/v1/",
+  "PUTGD_UPDATE_RELEASE_URL": "https://pkg.put.gd/lab/releases",
+  "PUTGD_UPDATE_MIRROR_URL": "https://pkg.put.gd/lab/releases"
+ },
+ "before": {
+  "dataPutgd": false,
+  "homePutgd": {
+   "/home/patrick/.config/putgd": false,
+   "/home/patrick/.local/state/putgd": true,
+   "/home/patrick/.cache/putgd": false
+  },
+  "autostart": []
+ },
+ "pids": {
+  "apprun": 552663
+ },
+ "created": "2026-10-23T20:15:23Z",
+ "log": [
+  {
+   "at": "2026-10-23T20:15:28Z",
+   "check": {
+    "status": {
+     "build": "26.1023.1058-nightly",
+     "channel": "nightly",
+     "latest": "26.1023.1069-nightly",
+     "updateAvailable": true,
+     "install": {
+      "available": true,
+      "backup": null,
+      "image": "/home/patrick/work/put.gd-qt418/afa/upd/runs/m74-lab1058/apps/putgd-26.1023.1058-nightly-x86_64.AppImage",
+      "installed": null,
+      "kind": "update",
+      "reason": null,
+      "restartRequired": false,
+      "running": false,
+      "state": "idle",
+      "switch": null
+     }
+    },
+    "frame": "/home/patrick/work/put.gd-qt418/afa/upd/runs/m74-lab1058/frames/check.png"
+   }
+  },
+  {
+   "at": "2026-10-23T20:15:39Z",
+   "install": {
+    "seconds": 9.8,
+    "phases": [
+     {
+      "at": 0.1,
+      "phase": [
+       "starting",
+       "auto"
+      ],
+      "bytes": 0,
+      "total": 0
+     },
+     {
+      "at": 0.5,
+      "phase": [
+       "verifying",
+       null
+      ],
+      "bytes": 0,
+      "total": 0
+     },
+     {
+      "at": 1.7,
+      "phase": [
+       "zsync",
+       "appimageupdatetool"
+      ],
+      "bytes": 0,
+      "total": 116439544
+     },
+     {
+      "at": 4.8,
+      "phase": [
+       "verifying",
+       "appimageupdatetool"
+      ],
+      "bytes": 116439544,
+      "total": 116439544
+     },
+     {
+      "at": 5.7,
+      "phase": [
+       "installing",
+       "zsync"
+      ],
+      "bytes": 116439544,
+      "total": 116439544
+     },
+     {
+      "at": 6.1,
+      "phase": [
+       "done",
+       "zsync"
+      ],
+      "bytes": 116439544,
+      "total": 116439544
+     }
+    ],
+    "install": {
+     "available": true,
+     "backup": "/home/patrick/work/put.gd-qt418/afa/upd/runs/m74-lab1058/apps/.putgd-update-backup-26.1023.1058-nightly.AppImage",
+     "bytes": 116439544,
+     "finishedAt": "2026-10-23T20:15:34Z",
+     "image": "/home/patrick/work/put.gd-qt418/afa/upd/runs/m74-lab1058/apps/putgd-26.1023.1058-nightly-x86_64.AppImage",
+     "installed": {
+      "channel": "nightly",
+      "image": "/home/patrick/work/put.gd-qt418/afa/upd/runs/m74-lab1058/apps/putgd-26.1023.1058-nightly-x86_64.AppImage",
+      "installedAt": "2026-10-23T20:15:34Z",
+      "method": "zsync",
+      "previousChannel": "nightly",
+      "previousVersion": "26.1023.1058-nightly",
+      "sha256": "f253c1ec30863511ac0f5ed0b4b8599440cab5ad87a6f903edd06ba0be2979e0",
+      "version": "26.1023.1069-nightly"
+     },
+     "kind": "update",
+     "method": "zsync",
+     "phase": "done",
+     "reason": null,
+     "restartRequired": true,
+     "result": {
+      "backup": "/home/patrick/work/put.gd-qt418/afa/upd/runs/m74-lab1058/apps/.putgd-update-backup-26.1023.1058-nightly.AppImage",
+      "channel": "nightly",
+      "image": "/home/patrick/work/put.gd-qt418/afa/upd/runs/m74-lab1058/apps/putgd-26.1023.1058-nightly-x86_64.AppImage",
+      "installed": true,
+      "method": "zsync",
+      "previousChannel": "nightly",
+      "previousVersion": "26.1023.1058-nightly",
+      "sha256": "f253c1ec30863511ac0f5ed0b4b8599440cab5ad87a6f903edd06ba0be2979e0",
+      "signature": {
+       "trustedComment": "put.gd v26.1023.1069-nightly nightly"
+      },
+      "switched": false,
+      "tag": "v26.1023.1069-nightly",
+      "version": "26.1023.1069-nightly",
+      "zsync": {
+       "output": "zsync2: used 86765568 local, fetched 31377912 | 100.00% done (111.05 of 111.05 MiB)... | Validation warning: AppImage not signed | Update successful. New file created: /home/patrick/work/put.gd-qt418/afa/upd/runs/m74-lab1058/apps/.putgd-update-raWUDq/putgd-26.1023.1069-nightly-x86_64.AppImage",
+       "tool": "appimageupdatetool",
+       "used": true
+      }
+     },
+     "running": false,
+     "startedAt": "2026-10-23T20:15:28Z",
+     "state": "installed",
+     "switch": null,
+     "total": 116439544
+    },
+    "frames": {
+     "zsync": "/home/patrick/work/put.gd-qt418/afa/upd/runs/m74-lab1058/frames/install-zsync.png",
+     "result": "/home/patrick/work/put.gd-qt418/afa/upd/runs/m74-lab1058/frames/install-result.png"
+    },
+    "imageSha256": "f253c1ec30863511ac0f5ed0b4b8599440cab5ad87a6f903edd06ba0be2979e0",
+    "backup": "/home/patrick/work/put.gd-qt418/afa/upd/runs/m74-lab1058/apps/.putgd-update-backup-26.1023.1058-nightly.AppImage",
+    "backupSha256": "ce707fcf4e693b5ca9024da539e5510e149c5edf8a6a17bca28d815e0e20e6db",
+    "folder": [
+     ".putgd-update-backup-26.1023.1058-nightly.AppImage",
+     "putgd-26.1023.1058-nightly-x86_64.AppImage"
+    ],
+    "stateFile": {
+     "backup": {
+      "copied": false,
+      "device": "2050",
+      "inode": "14059886",
+      "mtime": 1792778808,
+      "path": "/home/patrick/work/put.gd-qt418/afa/upd/runs/m74-lab1058/apps/.putgd-update-backup-26.1023.1058-nightly.AppImage",
+      "size": 115309048
+     },
+     "installed": {
+      "channel": "nightly",
+      "image": "/home/patrick/work/put.gd-qt418/afa/upd/runs/m74-lab1058/apps/putgd-26.1023.1058-nightly-x86_64.AppImage",
+      "installedAt": "2026-10-23T20:15:34Z",
+      "method": "zsync",
+      "previousChannel": "nightly",
+      "previousVersion": "26.1023.1058-nightly",
+      "sha256": "f253c1ec30863511ac0f5ed0b4b8599440cab5ad87a6f903edd06ba0be2979e0",
+      "version": "26.1023.1069-nightly"
+     },
+     "schemaVersion": 1,
+     "staging": null
+    }
+   }
+  },
+  {
+   "at": "2026-10-23T20:15:44Z",
+   "restart": {
+    "reply": {
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     },
+     "ok": true,
+     "requestId": "ac2f8bfe-5f30-4e84-b6b7-9c7d94bbc08e",
+     "result": {
+      "restarting": true,
+      "version": "26.1023.1069-nightly"
+     },
+     "schemaVersion": 1
+    },
+    "oldPid": 552663,
+    "oldGone": true,
+    "newPid": 552813,
+    "newExe": "/tmp/.mount_putgd-hogicK/usr/bin/putgd",
+    "newAppimage": "/home/patrick/work/put.gd-qt418/afa/upd/runs/m74-lab1058/apps/putgd-26.1023.1058-nightly-x86_64.AppImage",
+    "version": "26.1023.1069-nightly",
+    "install": {
+     "available": true,
+     "backup": null,
+     "image": "/home/patrick/work/put.gd-qt418/afa/upd/runs/m74-lab1058/apps/putgd-26.1023.1058-nightly-x86_64.AppImage",
+     "installed": {
+      "backupRemoved": true,
+      "channel": "nightly",
+      "image": "/home/patrick/work/put.gd-qt418/afa/upd/runs/m74-lab1058/apps/putgd-26.1023.1058-nightly-x86_64.AppImage",
+      "installedAt": "2026-10-23T20:15:34Z",
+      "method": "zsync",
+      "previousChannel": "nightly",
+      "previousVersion": "26.1023.1058-nightly",
+      "sha256": "f253c1ec30863511ac0f5ed0b4b8599440cab5ad87a6f903edd06ba0be2979e0",
+      "version": "26.1023.1069-nightly"
+     },
+     "kind": "update",
+     "reason": null,
+     "restartRequired": false,
+     "running": false,
+     "state": "idle",
+     "switch": null
+    },
+    "imageSha256": "f253c1ec30863511ac0f5ed0b4b8599440cab5ad87a6f903edd06ba0be2979e0",
+    "afterRestart": {
+     "current": "26.1023.1069-nightly",
+     "latest": "26.1023.1069-nightly",
+     "updateAvailable": false
+    },
+    "folder": [
+     "putgd-26.1023.1058-nightly-x86_64.AppImage"
+    ],
+    "frame": "/home/patrick/work/put.gd-qt418/afa/upd/runs/m74-lab1058/frames/restarted.png"
+   }
+  }
+ ]
+}

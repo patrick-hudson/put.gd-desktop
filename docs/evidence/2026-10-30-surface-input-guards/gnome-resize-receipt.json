@@ -1,0 +1,198 @@
+{
+  "schemaVersion": 2,
+  "environment": {
+    "desktop": "ubuntu-gnome-wayland",
+    "host": "boat",
+    "placement": "boat",
+    "guest": "gnome-wayland",
+    "package": "deb",
+    "destination": "local",
+    "build": "6ad9f957e6544f30c5e45c08af2306db77a9ff64",
+    "placement_details": {
+      "boat_sandbox_id": "bx_jrnr7ah6",
+      "run_id": "68f9d2d3-bd17-40f7-86e9-33e0c3da2763",
+      "lab_profile": "gnome-wayland",
+      "run_directory": "/home/user/v3",
+      "session_root": "/tmp/sd-2b7b5105",
+      "socket": "/tmp/sd-2b7b5105/runtime/putgd/session.sock",
+      "input_backend": "qmp",
+      "frame_backend": "qmp"
+    },
+    "target": {
+      "hostname": "putgd-ubuntu-lab",
+      "kernel": "7.0.0-38-generic",
+      "machine": "x86_64",
+      "os": {
+        "ID": "ubuntu",
+        "VERSION_ID": "26.04",
+        "VARIANT_ID": null
+      },
+      "session_type": "wayland",
+      "desktop": "ubuntu:GNOME",
+      "qt_platform": "wayland"
+    },
+    "observed_build": {
+      "baseVersion": "26.1030.2481",
+      "commitCount": 2481,
+      "dirty": false,
+      "gitCommit": "6ad9f957e6544f30c5e45c08af2306db77a9ff64",
+      "gitTree": "d823723c8759dae8db7c57cee59476ac7a3b4f90",
+      "packageVersion": "26.1030.2481~dev+g6ad9f957e654",
+      "schemaVersion": 1,
+      "sourceProvenance": "git",
+      "version": "26.1030.2481-dev+g6ad9f957e654"
+    }
+  },
+  "interactions": [
+    {
+      "interaction": "shell.edge-resize",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "/home/user/e3/resize2/receipt.json",
+      "note": "original corner precisely blocked: resize-start not witnessed: Mutter emitted no new interactive resize begin for window 2251804337 after guarded press and first motion",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/__main__.original_corner/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "original-corner-before",
+          "path": "frames/__main__.original_corner/01-original-corner-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "original-corner-after",
+          "path": "frames/__main__.original_corner/02-original-corner-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/__main__.original_corner/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "__main__.original_corner",
+      "build": "6ad9f957e6544f30c5e45c08af2306db77a9ff64",
+      "at": "2026-10-30T09:03:46Z"
+    },
+    {
+      "interaction": "shell.edge-resize",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/e3/resize2/receipt.json",
+      "note": "resize-start not witnessed: Mutter emitted no new interactive resize begin for window 2251804338 after guarded press and first motion",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/__main__.resize_five/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "resize-1-before",
+          "path": "frames/__main__.resize_five/01-resize-1-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "resize-1-after",
+          "path": "frames/__main__.resize_five/02-resize-1-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/__main__.resize_five/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "__main__.resize_five",
+      "build": "6ad9f957e6544f30c5e45c08af2306db77a9ff64",
+      "at": "2026-10-30T09:04:08Z"
+    },
+    {
+      "interaction": "shell.minimum-size",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/e3/resize2/receipt.json",
+      "note": "resize-start not witnessed: Mutter emitted no new interactive resize begin for window 2251804338 after guarded press and first motion",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/__main__.resize_five/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "resize-1-before",
+          "path": "frames/__main__.resize_five/01-resize-1-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "resize-1-after",
+          "path": "frames/__main__.resize_five/02-resize-1-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/__main__.resize_five/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "__main__.resize_five",
+      "build": "6ad9f957e6544f30c5e45c08af2306db77a9ff64",
+      "at": "2026-10-30T09:04:08Z"
+    }
+  ]
+}

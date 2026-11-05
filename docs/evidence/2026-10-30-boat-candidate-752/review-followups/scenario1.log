@@ -1,0 +1,86 @@
+== run B: real build_worker path (startup sweep + own create + cleanup)
+{
+ "name": "putgd-aaaaaaaaaaaa-appimage-c12c7cb0fca8449b",
+ "state": "failed",
+ "error": "Worker stopped before hydration",
+ "sandboxId": "bx_3",
+ "startupCleanup": {
+  "deleted": [
+   {
+    "name": null,
+    "requests": [
+     {
+      "sandboxId": "bx_2",
+      "operation": {
+       "status": "pending"
+      }
+     }
+    ],
+    "verified": true,
+    "finalState": "absent",
+    "verification": "boat list --all",
+    "deletedIds": [
+     "bx_2"
+    ],
+    "verifiedAt": 1793331941.0819578
+   },
+   {
+    "name": null,
+    "requests": [
+     {
+      "sandboxId": "unknown_expired",
+      "operation": {
+       "status": "pending"
+      }
+     }
+    ],
+    "verified": true,
+    "finalState": "absent",
+    "verification": "boat list --all",
+    "deletedIds": [
+     "unknown_expired"
+    ],
+    "verifiedAt": 1793331943.3014424
+   }
+  ],
+  "preserved": [
+   "bx_1",
+   "unknown_fresh",
+   "live_nonce_expired",
+   "legacy_fresh"
+  ],
+  "verified": true
+ },
+ "cleanup": {
+  "name": "putgd-aaaaaaaaaaaa-appimage-c12c7cb0fca8449b",
+  "requests": [
+   {
+    "sandboxId": "bx_3",
+    "operation": {
+     "status": "pending"
+    }
+   }
+  ],
+  "verified": true,
+  "finalState": "absent",
+  "verification": "boat list --all",
+  "deletedIds": [
+   "bx_3"
+  ],
+  "verifiedAt": 1793331945.6887167
+ },
+ "cleanupVerified": true,
+ "_elapsed": 6.9
+}
+== --cleanup via CLI entrypoint
+exit=0
+[{"preserved": ["bx_1", "unknown_fresh", "live_nonce_expired", "legacy_fresh"], "target": "appimage", "verified": true, "deleted": []}, {"preserved": [], "target": "ubuntu24.04", "verified": true, "deleted": []}, {"preserved": [], "target": "ubuntu26.04", "verified": true, "deleted": []}, {"preserved": [], "target": "debian13", "verified": true, "deleted": []}, {"preserved": [], "target": "fedora44", "verified": true, "deleted": []}, {"preserved": [], "target": "ui-catalog", "verified": true, "deleted": [["dead_other_target"]]}, {"preserved": [], "target": "lab-fixture", "verified": true, "deleted": []}]
+== remaining after sweeps (peer A still live):
+[('bx_1', 'appimage-1111111111111111'), ('legacy_fresh', 'appimage'), ('live_nonce_expired', 'appimage-1111111111111111'), ('other_sha_dead', 'appimage-dddddddddddddddd'), ('other_suffix_expired', 'appimage-extra'), ('trailing_expired', 'appimage-0123456789abcdef-x'), ('unknown_fresh', 'appimage-cccccccccccccccc'), ('unrelated', ''), ('upper_expired', 'appimage-ABCDEF0123456789')]
+== remaining after A finishes:
+['legacy_fresh', 'other_sha_dead', 'other_suffix_expired', 'trailing_expired', 'unknown_fresh', 'unrelated', 'upper_expired']
+deletes: ['bx_2', 'unknown_expired', 'bx_3', 'dead_other_target', 'bx_1', 'live_nonce_expired']
+lease files:
+1111111111111111
+c12c7cb0fca8449b
+dddddddddddddddd

@@ -1,0 +1,8 @@
+Traceback (most recent call last):
+  File "/home/user/b780/tools/lab/staging_acceptance.py", line 290, in <module>
+    ready=wait_for(lambda:(json.loads(root_guest('cat /home/lab/'+watchdog_remote+'/watchdog-ready.json\n'))
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/user/b780/tools/lab/staging_acceptance.py", line 22, in wait_for
+    if time.monotonic()>=deadline:raise TimeoutError('guest handshake')
+                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TimeoutError: guest handshake

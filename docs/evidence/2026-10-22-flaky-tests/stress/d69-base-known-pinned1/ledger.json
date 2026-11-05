@@ -1,0 +1,749 @@
+{
+ "iterations": [
+  {
+   "exitCode": 8,
+   "failed": [
+    "gui_history_view",
+    "operations_contract"
+   ],
+   "iteration": 1,
+   "loadavg": [
+    "4.34",
+    "3.95",
+    "3.96"
+   ],
+   "seconds": 112.67,
+   "tests": 12
+  },
+  {
+   "exitCode": 8,
+   "failed": [
+    "gui_history_view",
+    "operations_contract"
+   ],
+   "iteration": 2,
+   "loadavg": [
+    "5.07",
+    "4.55",
+    "4.19"
+   ],
+   "seconds": 112.98,
+   "tests": 12
+  },
+  {
+   "exitCode": 8,
+   "failed": [
+    "gui_history_view",
+    "operations_contract"
+   ],
+   "iteration": 3,
+   "loadavg": [
+    "5.24",
+    "4.99",
+    "4.41"
+   ],
+   "seconds": 113.12,
+   "tests": 12
+  },
+  {
+   "exitCode": 8,
+   "failed": [
+    "gui_history_view",
+    "operations_contract"
+   ],
+   "iteration": 4,
+   "loadavg": [
+    "5.19",
+    "5.30",
+    "4.61"
+   ],
+   "seconds": 113.42,
+   "tests": 12
+  },
+  {
+   "exitCode": 8,
+   "failed": [
+    "gui_history_view",
+    "operations_contract"
+   ],
+   "iteration": 5,
+   "loadavg": [
+    "5.12",
+    "5.48",
+    "4.77"
+   ],
+   "seconds": 113.97,
+   "tests": 12
+  },
+  {
+   "exitCode": 8,
+   "failed": [
+    "gui_history_view",
+    "operations_contract"
+   ],
+   "iteration": 6,
+   "loadavg": [
+    "5.23",
+    "5.65",
+    "4.94"
+   ],
+   "seconds": 113.07,
+   "tests": 12
+  }
+ ],
+ "schemaVersion": 1,
+ "source": {
+  "PUTGD_TEST_TIME_SCALE": "1",
+  "commit": "33c768ec",
+  "contention": "3 busy loops on CPUs 0, tests on CPUs 0",
+  "cpus": 4,
+  "ctestArgs": [
+   "--preset",
+   "dev",
+   "--parallel",
+   "8",
+   "--resource-spec-file",
+   "/home/patrick/work/put.gd-flake-base/tools/ci/ctest-resources.json",
+   "-R",
+   "^(proton_contract|gui_tray|gui_history_view|gui_application|native_tray_integration|operations_contract|b2_integration|recording_service_integration|proton_transport|s3_worker_supervision|x11_isolated|diagnostics_upload_contract)$"
+  ],
+  "ended": "2026-10-22T01:54:59+00:00",
+  "host": "debian",
+  "interrupted": false,
+  "iterations": 6,
+  "kind": "stress",
+  "label": "nightly 33c768ec, known flaky tests, 1 CPU shared with 3 busy loops",
+  "requestedIterations": 6,
+  "started": "2026-10-22T01:43:40+00:00"
+ },
+ "tests": {
+  "b2_integration": {
+   "attempts": [
+    {
+     "details": [],
+     "iteration": 1,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 63.6545
+    },
+    {
+     "details": [],
+     "iteration": 2,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 62.9785
+    },
+    {
+     "details": [],
+     "iteration": 3,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 63.214
+    },
+    {
+     "details": [],
+     "iteration": 4,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 62.9352
+    },
+    {
+     "details": [],
+     "iteration": 5,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 64.8314
+    },
+    {
+     "details": [],
+     "iteration": 6,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 64.2177
+    }
+   ],
+   "labels": [],
+   "outcome": "passed"
+  },
+  "diagnostics_upload_contract": {
+   "attempts": [
+    {
+     "details": [],
+     "iteration": 1,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 5.76207
+    },
+    {
+     "details": [],
+     "iteration": 2,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 5.80177
+    },
+    {
+     "details": [],
+     "iteration": 3,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 5.74278
+    },
+    {
+     "details": [],
+     "iteration": 4,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 5.94189
+    },
+    {
+     "details": [],
+     "iteration": 5,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 5.86893
+    },
+    {
+     "details": [],
+     "iteration": 6,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 5.80486
+    }
+   ],
+   "labels": [],
+   "outcome": "passed"
+  },
+  "gui_application": {
+   "attempts": [
+    {
+     "details": [],
+     "iteration": 1,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 100.999
+    },
+    {
+     "details": [],
+     "iteration": 2,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 101.349
+    },
+    {
+     "details": [],
+     "iteration": 3,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 100.284
+    },
+    {
+     "details": [],
+     "iteration": 4,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 101.161
+    },
+    {
+     "details": [],
+     "iteration": 5,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 101.893
+    },
+    {
+     "details": [],
+     "iteration": 6,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 101.832
+    }
+   ],
+   "labels": [],
+   "outcome": "passed"
+  },
+  "gui_history_view": {
+   "attempts": [
+    {
+     "details": [
+      "FAIL!  : HistoryGui::tenThousandEntryLedgerPagesAndFiltersOffline() QTestLib: This test case check (\"(model.total()) == (qint64(10000))\") failed because the requested timeout (5000 ms) was too short, 5350 ms would have been sufficient this time.",
+      "   Loc: [/home/patrick/work/put.gd-flake-base/tests/gui/test_history_view.cpp(271)]"
+     ],
+     "iteration": 1,
+     "message": "Failed",
+     "outcome": "failed",
+     "seconds": 56.7829
+    },
+    {
+     "details": [
+      "FAIL!  : HistoryGui::tenThousandEntryLedgerPagesAndFiltersOffline() QTestLib: This test case check (\"(model.total()) == (qint64(10000))\") failed because the requested timeout (5000 ms) was too short, 5350 ms would have been sufficient this time.",
+      "   Loc: [/home/patrick/work/put.gd-flake-base/tests/gui/test_history_view.cpp(271)]"
+     ],
+     "iteration": 2,
+     "message": "Failed",
+     "outcome": "failed",
+     "seconds": 56.3999
+    },
+    {
+     "details": [
+      "FAIL!  : HistoryGui::tenThousandEntryLedgerPagesAndFiltersOffline() QTestLib: This test case check (\"(model.total()) == (qint64(10000))\") failed because the requested timeout (5000 ms) was too short, 5400 ms would have been sufficient this time.",
+      "   Loc: [/home/patrick/work/put.gd-flake-base/tests/gui/test_history_view.cpp(271)]"
+     ],
+     "iteration": 3,
+     "message": "Failed",
+     "outcome": "failed",
+     "seconds": 56.696
+    },
+    {
+     "details": [
+      "FAIL!  : HistoryGui::tenThousandEntryLedgerPagesAndFiltersOffline() QTestLib: This test case check (\"(model.total()) == (qint64(10000))\") failed because the requested timeout (5000 ms) was too short, 5400 ms would have been sufficient this time.",
+      "   Loc: [/home/patrick/work/put.gd-flake-base/tests/gui/test_history_view.cpp(271)]"
+     ],
+     "iteration": 4,
+     "message": "Failed",
+     "outcome": "failed",
+     "seconds": 56.7543
+    },
+    {
+     "details": [
+      "FAIL!  : HistoryGui::tenThousandEntryLedgerPagesAndFiltersOffline() QTestLib: This test case check (\"(model.total()) == (qint64(10000))\") failed because the requested timeout (5000 ms) was too short, 5300 ms would have been sufficient this time.",
+      "   Loc: [/home/patrick/work/put.gd-flake-base/tests/gui/test_history_view.cpp(271)]"
+     ],
+     "iteration": 5,
+     "message": "Failed",
+     "outcome": "failed",
+     "seconds": 56.8091
+    },
+    {
+     "details": [
+      "FAIL!  : HistoryGui::tenThousandEntryLedgerPagesAndFiltersOffline() QTestLib: This test case check (\"(model.total()) == (qint64(10000))\") failed because the requested timeout (5000 ms) was too short, 5400 ms would have been sufficient this time.",
+      "   Loc: [/home/patrick/work/put.gd-flake-base/tests/gui/test_history_view.cpp(271)]"
+     ],
+     "iteration": 6,
+     "message": "Failed",
+     "outcome": "failed",
+     "seconds": 56.4726
+    }
+   ],
+   "labels": [],
+   "outcome": "failed"
+  },
+  "gui_tray": {
+   "attempts": [
+    {
+     "details": [],
+     "iteration": 1,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 56.2502
+    },
+    {
+     "details": [],
+     "iteration": 2,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 56.4128
+    },
+    {
+     "details": [],
+     "iteration": 3,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 56.2237
+    },
+    {
+     "details": [],
+     "iteration": 4,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 56.5955
+    },
+    {
+     "details": [],
+     "iteration": 5,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 56.7481
+    },
+    {
+     "details": [],
+     "iteration": 6,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 56.2382
+    }
+   ],
+   "labels": [],
+   "outcome": "passed"
+  },
+  "native_tray_integration": {
+   "attempts": [
+    {
+     "details": [],
+     "iteration": 1,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 17.1784
+    },
+    {
+     "details": [],
+     "iteration": 2,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 17.0345
+    },
+    {
+     "details": [],
+     "iteration": 3,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 17.3336
+    },
+    {
+     "details": [],
+     "iteration": 4,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 17.3494
+    },
+    {
+     "details": [],
+     "iteration": 5,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 17.4449
+    },
+    {
+     "details": [],
+     "iteration": 6,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 17.0466
+    }
+   ],
+   "labels": [],
+   "outcome": "passed"
+  },
+  "operations_contract": {
+   "attempts": [
+    {
+     "details": [
+      "FAIL!  : OperationsTest::onDemandPreviewsAreBounded() Compared values are not the same",
+      "   Actual   (outcomes.value(items[i].artifact.id)): \"preview_busy\"",
+      "   Expected (QString(\"made\"))                     : \"made\"",
+      "   Loc: [/home/patrick/work/put.gd-flake-base/tests/unit/test_operations.cpp(411)]"
+     ],
+     "iteration": 1,
+     "message": "Failed",
+     "outcome": "failed",
+     "seconds": 112.592
+    },
+    {
+     "details": [
+      "FAIL!  : OperationsTest::onDemandPreviewsAreBounded() Compared values are not the same",
+      "   Actual   (outcomes.value(items[i].artifact.id)): \"preview_busy\"",
+      "   Expected (QString(\"made\"))                     : \"made\"",
+      "   Loc: [/home/patrick/work/put.gd-flake-base/tests/unit/test_operations.cpp(411)]"
+     ],
+     "iteration": 2,
+     "message": "Failed",
+     "outcome": "failed",
+     "seconds": 112.87
+    },
+    {
+     "details": [
+      "FAIL!  : OperationsTest::onDemandPreviewsAreBounded() Compared values are not the same",
+      "   Actual   (outcomes.value(items[i].artifact.id)): \"preview_busy\"",
+      "   Expected (QString(\"made\"))                     : \"made\"",
+      "   Loc: [/home/patrick/work/put.gd-flake-base/tests/unit/test_operations.cpp(411)]"
+     ],
+     "iteration": 3,
+     "message": "Failed",
+     "outcome": "failed",
+     "seconds": 113.022
+    },
+    {
+     "details": [
+      "FAIL!  : OperationsTest::historyImageSupersededWorkerReleasesNewerCopy() 'child.exitStatus()==QProcess::NormalExit&&child.exitCode()==0' returned FALSE. (********* Start testing of OperationsTest *********",
+      "FAIL!  : OperationsTest::historyImageSupersededWorkerReleasesNewerCopy() 'record[\"jobDirectory\"].toString().startsWith(\"/tmp/pgi-\")' returned FALSE. ()",
+      "   Loc: [/home/patrick/work/put.gd-flake-base/tests/unit/test_operations.cpp(88)]",
+      "   Loc: [/home/patrick/work/put.gd-flake-base/tests/unit/test_operations.cpp(86)]",
+      "FAIL!  : OperationsTest::onDemandPreviewsAreBounded() Compared values are not the same",
+      "   Actual   (outcomes.value(items[i].artifact.id)): \"preview_busy\"",
+      "   Expected (QString(\"made\"))                     : \"made\"",
+      "   Loc: [/home/patrick/work/put.gd-flake-base/tests/unit/test_operations.cpp(411)]"
+     ],
+     "iteration": 4,
+     "message": "Failed",
+     "outcome": "failed",
+     "seconds": 113.327
+    },
+    {
+     "details": [
+      "FAIL!  : OperationsTest::onDemandPreviewsAreBounded() Compared values are not the same",
+      "   Actual   (outcomes.value(items[i].artifact.id)): \"preview_busy\"",
+      "   Expected (QString(\"made\"))                     : \"made\"",
+      "   Loc: [/home/patrick/work/put.gd-flake-base/tests/unit/test_operations.cpp(411)]"
+     ],
+     "iteration": 5,
+     "message": "Failed",
+     "outcome": "failed",
+     "seconds": 113.883
+    },
+    {
+     "details": [
+      "FAIL!  : OperationsTest::onDemandPreviewsAreBounded() Compared values are not the same",
+      "   Actual   (outcomes.value(items[i].artifact.id)): \"preview_busy\"",
+      "   Expected (QString(\"made\"))                     : \"made\"",
+      "   Loc: [/home/patrick/work/put.gd-flake-base/tests/unit/test_operations.cpp(411)]"
+     ],
+     "iteration": 6,
+     "message": "Failed",
+     "outcome": "failed",
+     "seconds": 113.005
+    }
+   ],
+   "labels": [],
+   "outcome": "failed"
+  },
+  "proton_contract": {
+   "attempts": [
+    {
+     "details": [],
+     "iteration": 1,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 6.19758
+    },
+    {
+     "details": [],
+     "iteration": 2,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 6.17094
+    },
+    {
+     "details": [],
+     "iteration": 3,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 6.23064
+    },
+    {
+     "details": [],
+     "iteration": 4,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 6.39984
+    },
+    {
+     "details": [],
+     "iteration": 5,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 6.24831
+    },
+    {
+     "details": [],
+     "iteration": 6,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 6.09055
+    }
+   ],
+   "labels": [],
+   "outcome": "passed"
+  },
+  "proton_transport": {
+   "attempts": [
+    {
+     "details": [],
+     "iteration": 1,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 14.3329
+    },
+    {
+     "details": [],
+     "iteration": 2,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 14.1558
+    },
+    {
+     "details": [],
+     "iteration": 3,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 14.0854
+    },
+    {
+     "details": [],
+     "iteration": 4,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 14.1118
+    },
+    {
+     "details": [],
+     "iteration": 5,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 14.5177
+    },
+    {
+     "details": [],
+     "iteration": 6,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 14.254
+    }
+   ],
+   "labels": [],
+   "outcome": "passed"
+  },
+  "recording_service_integration": {
+   "attempts": [
+    {
+     "details": [],
+     "iteration": 1,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 4.59793
+    },
+    {
+     "details": [],
+     "iteration": 2,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 4.69144
+    },
+    {
+     "details": [],
+     "iteration": 3,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 5.03329
+    },
+    {
+     "details": [],
+     "iteration": 4,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 4.88606
+    },
+    {
+     "details": [],
+     "iteration": 5,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 5.03448
+    },
+    {
+     "details": [],
+     "iteration": 6,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 4.65482
+    }
+   ],
+   "labels": [],
+   "outcome": "passed"
+  },
+  "s3_worker_supervision": {
+   "attempts": [
+    {
+     "details": [],
+     "iteration": 1,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 74.2739
+    },
+    {
+     "details": [],
+     "iteration": 2,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 74.2624
+    },
+    {
+     "details": [],
+     "iteration": 3,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 74.2451
+    },
+    {
+     "details": [],
+     "iteration": 4,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 74.3143
+    },
+    {
+     "details": [],
+     "iteration": 5,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 76.3238
+    },
+    {
+     "details": [],
+     "iteration": 6,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 76.2138
+    }
+   ],
+   "labels": [],
+   "outcome": "passed"
+  },
+  "x11_isolated": {
+   "attempts": [
+    {
+     "details": [],
+     "iteration": 1,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 24.6938
+    },
+    {
+     "details": [],
+     "iteration": 2,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 24.9721
+    },
+    {
+     "details": [],
+     "iteration": 3,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 24.9839
+    },
+    {
+     "details": [],
+     "iteration": 4,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 24.9121
+    },
+    {
+     "details": [],
+     "iteration": 5,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 25.5245
+    },
+    {
+     "details": [],
+     "iteration": 6,
+     "message": "",
+     "outcome": "passed",
+     "seconds": 25.4811
+    }
+   ],
+   "labels": [],
+   "outcome": "passed"
+  }
+ }
+}

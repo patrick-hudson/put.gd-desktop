@@ -3,7 +3,7 @@
 Issue #51 adds a small editing workflow, **Capture region & edit** (the `edit` action): choose what to share, remove
 private information or add a few marks, review it, then send only the finished
 image through the normal archive/upload/history pipeline. This document is the
-implementation contract and records what has been verified. It does not claim
+feature contract and records what has been verified. It does not claim
 desktop acceptance beyond the evidence listed at the end.
 
 ## User workflow
@@ -62,6 +62,9 @@ You don't need Select to adjust a mark:
 - With Text, dragging a label moves it, and clicking it edits it.
 - A selected text label has four corner handles. Dragging one scales the
   text around the opposite corner, and the Size box follows as you drag.
+- Drawing, moving and resizing stop at the edge of the (cropped) image. A
+  press in the margin starts the mark on the nearest edge, and a text click in
+  the margin opens no label.
 
 Next to the seven palette colors, the rainbow button opens a color picker for
 any custom color. The last six custom colors you picked appear beside it as
@@ -75,9 +78,13 @@ Undo (Ctrl+Z) and redo (Ctrl+Shift+Z or Ctrl+Y) are bounded. Ctrl+0 fits the
 window, Ctrl+1 shows 100% for checking text and redaction edges, Ctrl+wheel
 zooms, the wheel or Space/middle-drag pans. **Save a copy…** (Ctrl+S) writes the
 same sanitized export as Upload to a user-chosen file; it never overwrites the
-private source. The editor runs on Qt's built-in `generic` platform theme, so its
-file dialog is Qt's own (styled like the editor) rather than the GTK/KDE one;
-this keeps the desktop's integration libraries out of the image process. The
+private source. The editor runs on Qt's built-in `generic` platform theme, which
+keeps the desktop's integration libraries out of the image process. Its file
+dialog is nevertheless the desktop's own: Save a copy asks the XDG portal's
+FileChooser over D-Bus, so the chooser runs in the portal backend's process, and
+Qt's widget dialog, themed like the editor, is only the fallback when no portal
+answers ([file-dialogs.md](file-dialogs.md)). `editor.fileDialog` opens,
+inspects or cancels it as the button does. The
 helper also clears its desktop identity variables (`XDG_CURRENT_DESKTOP` and
 similar), because Qt would otherwise still load the desktop's theme plugin; on
 Plasma that plugin brings in Qt Quick and the GPU driver (about 85 MiB).
@@ -173,6 +180,12 @@ guarantee forensic erasure from disks, swap or backups.
 `edit` operations move through `accepted → acquiring → editing → acquiring`
 (handoff) `→ stored → running → completed`. `editing` is persisted and is an
 active state; the operation has no items until the finalized PNG is committed.
+After the helper exits successfully, the resident persists `state=acquiring`,
+`phase=queued` before putting the sanitized PNG in the worker queue. The editor
+is closed; History says **Waiting to upload…**. `stored` begins only after the
+worker commits an immutable artifact. Cancellation while queued still cancels
+the submitted operation without reopening the editor ([#559 evidence](evidence/2026-10-25-queued-editor-559/README.md)).
+
 A resident restart turns `editing` into `interrupted` with `edit_interrupted`:
 it is never resumed or uploaded, retry reports `artifact_missing`, and startup
 removes all abandoned `<data>/editing` staging before new work. Cancellation
@@ -198,11 +211,10 @@ inspected source, license and packaging documentation, and on the custom canvas
 meeting every redaction and memory gate in the
 [acceptance receipt](evidence/2026-10-17-issue51-edit-and-upload.md).
 
-- **Licensing.** kImageAnnotator and kColorPicker are LGPL-3.0, and their
-  Windows builds are documented as static only. Statically linking LGPL code
-  into this MIT-licensed app would add relinking obligations to the Windows
-  package. ShareX.ImageEditor, Greenshot and Flameshot are GPL-3.0, which this
-  project cannot adopt without relicensing.
+- **Licensing.** kImageAnnotator and kColorPicker are LGPL-3.0. The original
+  cross-platform evaluation also considered static-linking obligations; that
+  packaging concern was historical. ShareX.ImageEditor, Greenshot and Flameshot
+  are GPL-3.0, which this project cannot adopt without relicensing.
 - **Memory.** kImageAnnotator's export renders a full ARGB image, crop undo
   keeps both the original and the cropped pixmap, and its undo stack has no byte
   accounting. Here the document holds one immutable base raster, undo is
@@ -233,7 +245,7 @@ Every editor capability is available through session methods, the production
 | `editor.saveCopy` | `save_editor_copy` | `id`, absolute `.png` `path`, optional `overwrite` |
 | `editor.submit` | `submit_editor` | `id`; same as Upload |
 | `editor.cancel` | `cancel_editor` | `id`; discard without confirmation |
-| `editor.raise` | `raise_editor` | `id`; bring the window to front |
+| `editor.raise` | `raise_editor` | `id`, optional `activationToken`; asks the desktop to bring the window to front and answers what it did: `raised: true` once the window is active, otherwise after 1.5 s `raised: false` with `reason: activation_refused` and a message (#911) |
 
 Commands: `add {shape}`, `update {shapeId, shape}`, `remove {shapeId}`,
 `crop {rect}`, `resetCrop`, `undo`, `redo`. Rectangles are `[x, y, width, height]`.
@@ -278,7 +290,7 @@ process family. It has not been measured yet; see verification below.
 Editing, export, commands and the resident integration are portable C++20/Qt
 Widgets. The helper transport uses Unix file descriptors; on other platforms
 `EditorJob` reports `editor_unavailable` and capabilities report the editor as
-unavailable. No Windows support is claimed. On GNOME the extension binds the
+unavailable. On GNOME the extension binds the
 `edit` shortcut and prepares a native region selection; KDE and Cinnamon use
 their existing generic shortcut and region routes. KDE Wayland has no window
 capture, so `source: window` fails there as it does for ordinary captures.
@@ -302,7 +314,7 @@ termination, oversize admission and a missing helper. `edit_operations_integrati
 checks that an uploaded edit leaves no unredacted pixels in any retained raster,
 that cancellation stores nothing, file sources, single-session raising and
 restart recovery. Synthetic screenshots of the themed window are produced by
-`putgd-redesign-preview` (`20-`–`25-editor-*.png`). Offscreen results are not
+`putgd-ui-catalog` (`20-`–`25-editor-*.png`). Offscreen results are not
 desktop acceptance. Graphical, memory and MCP evidence is in the
 [2026-10-17 receipt](evidence/2026-10-17-issue51-edit-and-upload.md), and the
 lab drivers are described in the [VM lab guide](vm-lab.md#editor-acceptance-drivers).

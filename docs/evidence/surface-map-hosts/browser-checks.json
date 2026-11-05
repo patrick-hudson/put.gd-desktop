@@ -1,0 +1,20 @@
+{
+  "headers": [
+    "Interaction",
+    "kind",
+    "driver",
+    "Ubuntu GNOME/Wayland on aurora-amd (VM)",
+    "Ubuntu GNOME/Wayland on d69 (VM)",
+    "Ubuntu GNOME/Wayland on f44 (VM) \u00b7 gnome-provisioned-20261016",
+    "Ubuntu GNOME/Wayland on k72 (VM)",
+    "Ubuntu GNOME/Wayland on m74 (VM) \u00b7 gnome-provisioned-20261016"
+  ],
+  "filtered": [
+    "Interaction",
+    "kind",
+    "driver",
+    "Ubuntu GNOME/Wayland on m74 (VM) \u00b7 gnome-provisioned-20261016"
+  ],
+  "review": "REVIEW \u00b7 1 ROWS\nshortcut.region \u00b7 Ubuntu GNOME/Wayland on m74 (VM) \u00b7 gnome-provisioned-20261016local\n\nSynthetic demo: compare region selection before and after\n\nbefore: frames/before.png\nafter: frames/after.png \u00b7 reference: 44-region-keyboard \u00b7 distance 0.12 / tolerance 0.05\nreceipt: /tmp/putgd-surface-hosts/driver-v2.json\ndemo.capture_region \u00b7 synthetic-demo \u00b7 2026-10-29T12:00:00Z",
+  "consoleErrors": []
+}

@@ -1,3 +1,4 @@
+#include "core/ByteSize.h"
 #include "Settings.h"
 #include "UploadNaming.h"
 #include <QDir>
@@ -37,19 +38,54 @@ bool identifier(const QJsonValue& value) {
 bool folder(const QJsonValue& value, bool nullable) {
     return (nullable && value.isNull()) || (text(value, 1) && QDir::isAbsolutePath(value.toString()));
 }
+constexpr qint64 formerArtifactDefault = 2147483648LL; // 2 GiB, saved explicitly before "auto" existed
+bool byteLimit(const QJsonValue& value) {
+    return value.isNull() || value == QJsonValue(QStringLiteral("auto")) || integer(value, 1, ResourceLimits::unlimitedBytes);
+}
+}
+
+QStringList Settings::artifactByteLimitKeys() { return {"maxFileBytes", "maxBatchBytes", "pendingArtifactBytes"}; }
+QJsonObject Settings::effectiveArtifactLimits() const {
+    auto value = [](qint64 bytes) { return bytes >= ResourceLimits::unlimitedBytes ? QJsonValue(QJsonValue::Null) : QJsonValue(double(bytes)); };
+    return {{"maxFileBytes", value(limits.maxFileBytes)}, {"maxBatchBytes", value(limits.maxBatchBytes)},
+            {"pendingArtifactBytes", value(limits.pendingArtifactBytes)}};
 }
 
 QStringList Settings::actionNames() { return {"region", "window", "desktop", "clipboard", "edit"}; }
 QStringList Settings::requiredActionNames() { return {"region", "window", "desktop", "clipboard"}; }
+QString Settings::recordingActionName() { return QStringLiteral("record"); }
+QStringList Settings::invocableActionNames() { return actionNames() << recordingActionName(); }
+QStringList Settings::presentationOrder() { return {"region", "window", "desktop", "edit", "record", "clipboard"}; }
 
-QJsonObject Settings::normalized(const QJsonObject& doc) {
+QJsonObject Settings::normalized(const QJsonObject& original) {
+    auto doc = original;
+    // Before "auto" existed every configuration saved the 2 GiB default
+    // explicitly; that exact value now means "auto".
+    if (doc["limits"].isObject()) {
+        auto limits = doc["limits"].toObject();
+        bool migrated = false;
+        for (const auto& key : artifactByteLimitKeys())
+            if (limits.value(key).isDouble() && limits.value(key).toDouble() == double(formerArtifactDefault)) { limits[key] = QStringLiteral("auto"); migrated = true; }
+        if (migrated) doc["limits"] = limits;
+    }
     auto actions = doc["actions"].toObject();
-    if (!doc["actions"].isObject() || actions.contains("edit") || !actions["region"].isObject()) return doc;
-    // Edit & upload was added after schema 1 shipped. Older documents inherit the
-    // region output route with no shortcut; the user assigns a key explicitly.
-    auto edit = actions["region"].toObject();
-    edit["shortcut"] = QString{};
-    actions["edit"] = edit;
+    if (!doc["actions"].isObject() || !actions["region"].isObject()) return doc;
+    // Edit & upload and screen recording were added after schema 1 shipped.
+    // Older documents inherit the region output route with no shortcut; the
+    // user assigns a key explicitly. Edit copies the route; record keeps
+    // following it (a shortcut-only entry) until a document routes it itself.
+    bool changed = false;
+    if (!actions.contains("edit")) {
+        auto inherited = actions["region"].toObject();
+        inherited["shortcut"] = QString{};
+        actions["edit"] = inherited;
+        changed = true;
+    }
+    if (!actions.contains(recordingActionName())) {
+        actions[recordingActionName()] = QJsonObject{{"shortcut", QString{}}};
+        changed = true;
+    }
+    if (!changed) return doc;
     auto result = doc;
     result["actions"] = actions;
     return result;
@@ -64,6 +100,8 @@ QJsonObject Settings::defaults() {
             {"shortcut", action == "clipboard" || action == "edit" ? QString{} : QStringLiteral("Ctrl+Shift+%1").arg(shortcut)}};
         ++shortcut;
     }
+    // Recording keeps following the region route; only its key is its own.
+    actions[recordingActionName()] = QJsonObject{{"shortcut", QString{}}};
     auto documents = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation);
     if (documents.isEmpty()) documents = QDir::homePath();
     return {{"schemaVersion", 1}, {"actions", actions}, {"profiles", QJsonArray{}},
@@ -74,10 +112,13 @@ QJsonObject Settings::defaults() {
             {"fileTemplate", initial.fileTemplate},
             {"captureTemplate", initial.captureTemplate},
             {"imageTemplate", initial.imageTemplate},
-            {"textTemplate", initial.textTemplate}}},
-        {"limits", QJsonObject{{"maxFiles", 100}, {"pendingOperations", 8}, {"concurrentUploads", 1},
-            {"maxFileBytes", 2147483648.0}, {"maxBatchBytes", 2147483648.0}, {"pendingArtifactBytes", 2147483648.0},
+            {"textTemplate", initial.textTemplate},
+            {"recordingTemplate", initial.recordingTemplate}}},
+        {"limits", QJsonObject{{"maxFiles", 100}, {"pendingOperations", 8}, {"concurrentUploads", initial.limits.concurrentUploads},
+            {"maxFileBytes", "auto"}, {"maxBatchBytes", "auto"}, {"pendingArtifactBytes", "auto"},
             {"pendingImageBytes", initial.limits.pendingImageBytes},
+            {"recordingAnimationSeconds", initial.limits.recordingAnimationSeconds},
+            {"recordingAnimationEdge", initial.limits.recordingAnimationEdge},
             {"clipboardTextBytes", 16777216.0}, {"imagePixels", 100000000.0}, {"imageBytes", 536870912.0}}},
         {"retention", QJsonObject{{"failedArtifactDays", 7}, {"recentActivityLimit", 100},
             {"previewCacheBytes", 268435456.0}, {"historyRetentionDays", QJsonValue::Null}}},
@@ -128,16 +169,26 @@ Error Settings::validate(const QJsonObject& original, const ProfileValidator& va
            !(output["profileId"].isNull()||(identifier(output["profileId"])&&profileIds.contains(output["profileId"].toString()))))
             return invalid("/captureDefaults","Choose a valid default output and destination.");
     }
-    if (!doc["actions"].isObject() || !keys(doc["actions"].toObject(), actionNames()))
-        return invalid("/actions", "Define exactly region, window, desktop, clipboard, and optional edit actions.");
-    for (const auto& name : actionNames()) {
-        const auto value = doc["actions"].toObject()[name];
+    auto definedActions = doc["actions"].toObject();
+    const bool hasRecord = definedActions.contains(recordingActionName());
+    definedActions.remove(recordingActionName());
+    if (!doc["actions"].isObject() || !keys(definedActions, actionNames()))
+        return invalid("/actions", "Define exactly region, window, desktop, clipboard, and optional edit and record actions.");
+    auto validatedActions = actionNames();
+    if (hasRecord) validatedActions.append(recordingActionName());
+    for (const auto& name : validatedActions) {
+        // A copy: operator[] on the temporary object would return a reference into it.
+        const QJsonValue value = doc["actions"].toObject().value(name);
         const auto action = value.toObject();
-        if (!value.isObject() || !(keys(action, {"destination", "profileId", "shortcut"}) || keys(action, {"destination", "profileId", "shortcut", "publicationMode"})) ||
+        // A shortcut-only record entry follows the region route.
+        const bool inheritedRecord = name == recordingActionName() && value.isObject() && keys(action, {"shortcut"});
+        if (inheritedRecord) {
+            if (!text(action["shortcut"], 0, 128)) return invalid("/actions/" + name, "Action fields or profile references are invalid.");
+        } else if (!value.isObject() || !(keys(action, {"destination", "profileId", "shortcut"}) || keys(action, {"destination", "profileId", "shortcut", "publicationMode"})) ||
             !choice(action["destination"], {"upload", "local", "default"}) || !text(action["shortcut"], 0, 128) ||
             !(action["profileId"].isNull() || (identifier(action["profileId"]) && profileIds.contains(action["profileId"].toString()))))
             return invalid("/actions/" + name, "Action fields or profile references are invalid.");
-        if(action["destination"]=="default"&&(!doc.contains("captureDefaults")||!action["profileId"].isNull()||action["publicationMode"].toString("default")!="default"))
+        if(!inheritedRecord&&action["destination"]=="default"&&(!doc.contains("captureDefaults")||!action["profileId"].isNull()||action["publicationMode"].toString("default")!="default"))
             return invalid("/actions/"+name,"Inherited actions need capture defaults and no separate output values.");
         if(action.contains("publicationMode") && !choice(action["publicationMode"],{"default","share","private"}))
             return invalid("/actions/"+name+"/publicationMode","Choose default, share or private publication.");
@@ -156,7 +207,7 @@ Error Settings::validate(const QJsonObject& original, const ProfileValidator& va
         if (!folder(archive["folders"].toObject()[category], true))
             return invalid("/archive/folders/" + category, "Folder overrides must be null or absolute paths.");
     const auto naming = doc["naming"].toObject();
-    const QStringList templateKeys{"fileTemplate", "captureTemplate", "imageTemplate", "textTemplate"};
+    const QStringList templateKeys{"fileTemplate", "captureTemplate", "imageTemplate", "textTemplate", "recordingTemplate"};
     auto namingKeys = templateKeys;
     namingKeys.append({"mode", "collisionPolicy"});
     if (!doc["naming"].isObject() || !naming.contains("mode") || !naming.contains("collisionPolicy") ||
@@ -173,28 +224,45 @@ Error Settings::validate(const QJsonObject& original, const ProfileValidator& va
     const auto limits = doc["limits"].toObject();
     auto requiredLimits = limits;
     requiredLimits.remove("pendingImageBytes");
+    requiredLimits.remove("recordingAnimationSeconds");
+    requiredLimits.remove("recordingAnimationEdge");
     const QStringList limitKeys{"maxFiles", "pendingOperations", "concurrentUploads", "maxFileBytes", "maxBatchBytes",
         "pendingArtifactBytes", "clipboardTextBytes", "imagePixels", "imageBytes"};
     if (!doc["limits"].isObject() || !keys(requiredLimits, limitKeys)) return invalid("/limits", "Resource limit fields are incomplete.");
     if (limits.contains("pendingImageBytes") && !integer(limits["pendingImageBytes"], 1, 1099511627776LL))
         return invalid("/limits/pendingImageBytes", "The pending image budget must be a positive bounded integer.");
+    if (limits.contains("recordingAnimationSeconds") && !integer(limits["recordingAnimationSeconds"], 1, 86400))
+        return invalid("/limits/recordingAnimationSeconds", "Animated export duration must be 1 to 86400 seconds.");
+    if (limits.contains("recordingAnimationEdge") && !integer(limits["recordingAnimationEdge"], 16, 16384))
+        return invalid("/limits/recordingAnimationEdge", "Animated export size must be 16 to 16384 pixels.");
     for (const auto& key : limitKeys) {
         qint64 maximum = 1099511627776LL; // 1 TiB, well within exact JSON integer representation
         if (key == "maxFiles") maximum = 10000;
         if (key == "pendingOperations") maximum = 1024;
         if (key == "concurrentUploads") maximum = 32;
         if (key == "imagePixels") maximum = 1000000000;
+        if (artifactByteLimitKeys().contains(key)) {
+            if (!byteLimit(limits[key])) return invalid("/limits/" + key, ByteSize::labels("File, batch and waiting-upload limits are a positive byte count up to 1 TiB, \"auto\" or null for no limit."));
+            continue;
+        }
         if (!integer(limits[key], 1, maximum)) return invalid("/limits/" + key, "Resource limits must be positive bounded integers.");
     }
     const auto retention = doc["retention"].toObject();
-    if (!doc["retention"].isObject() || !keys(retention, {"failedArtifactDays", "recentActivityLimit", "previewCacheBytes", "historyRetentionDays"}) ||
+    QStringList retentionKeys{"failedArtifactDays", "recentActivityLimit", "previewCacheBytes", "historyRetentionDays"};
+    for (const auto* optional : {"logDays", "logBytes"})
+        if (retention.contains(optional)) retentionKeys.append(optional);
+    if (!doc["retention"].isObject() || !keys(retention, retentionKeys) ||
         !integer(retention["failedArtifactDays"], 0, 36500) || !integer(retention["recentActivityLimit"], 1, 10000) ||
         !integer(retention["previewCacheBytes"], 0, 1099511627776LL) ||
         !(retention["historyRetentionDays"].isNull() || integer(retention["historyRetentionDays"], 1, 36500)))
         return invalid("/retention", "Retention limits are invalid; null history retention means no automatic expiry.");
+    if (retention.contains("logDays") && !integer(retention["logDays"], 1, 365))
+        return invalid("/retention/logDays", "Log retention is 1 to 365 days.");
+    if (retention.contains("logBytes") && !integer(retention["logBytes"], 1048576, 1073741824))
+        return invalid("/retention/logBytes", ByteSize::labels("Log storage is 1 MiB to 1 GiB."));
     const auto preferences = doc["preferences"].toObject();
     QStringList preferenceKeys{"notifications", "launchAtLogin"};
-    for (const auto* optional : {"uploadClipboardBehavior", "unlockCredentialsAtStartup", "editorRecentColors"})
+    for (const auto* optional : {"uploadClipboardBehavior", "regionSelectionMode", "recordingFrameRate", "unlockCredentialsAtStartup", "editorRecentColors", "diagnostics", "appearance", "updates", "fileManagerFolders", "fileManagerMenu"})
         if (preferences.contains(optional)) preferenceKeys.append(optional);
     if (!doc["preferences"].isObject() || !keys(preferences, preferenceKeys) ||
         !preferences["notifications"].isBool() || !preferences["launchAtLogin"].isBool())
@@ -208,14 +276,59 @@ Error Settings::validate(const QJsonObject& original, const ProfileValidator& va
             valid = valid && color.isString() && QRegularExpression("^#[0-9a-f]{6}$").match(color.toString()).hasMatch();
         if (!valid) return invalid("/preferences/editorRecentColors", "Recent editor colors are up to 6 lowercase #rrggbb values.");
     }
+    if (preferences.contains("diagnostics")) {
+        // debugLogging, and the folder Create diagnostics package last saved to (#122).
+        const auto diagnostics = preferences["diagnostics"].toObject();
+        const bool hasFolder = diagnostics.contains("packageFolder");
+        if (!preferences["diagnostics"].isObject() || !keys(diagnostics, hasFolder ? QStringList{"debugLogging", "packageFolder"} : QStringList{"debugLogging"}) ||
+            !diagnostics["debugLogging"].isBool() || (hasFolder && !folder(diagnostics["packageFolder"], true)))
+            return invalid("/preferences/diagnostics", "Diagnostics preferences hold debugLogging (true or false) and an optional absolute packageFolder.");
+    }
+    if (preferences.contains("updates")) {
+        // #293: both keys optional; check defaults to true, channel to "build".
+        const auto updates = preferences["updates"].toObject();
+        QStringList updateKeys;
+        for (const auto* optional : {"check", "channel"}) if (updates.contains(optional)) updateKeys.append(optional);
+        if (!preferences["updates"].isObject() || !keys(updates, updateKeys) || (updates.contains("check") && !updates["check"].isBool()) ||
+            (updates.contains("channel") && !choice(updates["channel"], {"build", "stable", "nightly"})))
+            return invalid("/preferences/updates", "Updates hold an optional check (true or false) and channel (build, stable or nightly).");
+    }
+    if (preferences.contains("appearance")) {
+        // #60: the theme now; the accent and per-scheme overrides keep their
+        // place for phase 2 and must stay at their built-in values until then.
+        const auto appearance = preferences["appearance"].toObject();
+        QStringList appearanceKeys{"theme"};
+        for (const auto* optional : {"accent", "overrides"}) if (appearance.contains(optional)) appearanceKeys.append(optional);
+        const auto overrides = appearance["overrides"].toObject();
+        const bool overridesEmpty = !appearance.contains("overrides") ||
+            (appearance["overrides"].isObject() && keys(overrides, {"dark", "light"}) && overrides["dark"].isObject() && overrides["light"].isObject() &&
+             overrides["dark"].toObject().isEmpty() && overrides["light"].toObject().isEmpty());
+        if (!preferences["appearance"].isObject() || !keys(appearance, appearanceKeys) || !choice(appearance["theme"], {"system", "dark", "light"}) ||
+            (appearance.contains("accent") && !appearance["accent"].isNull()) || !overridesEmpty)
+            return invalid("/preferences/appearance", "Appearance holds theme (system, dark or light); accent is null and overrides are {\"dark\": {}, \"light\": {}} until custom colours are supported.");
+    }
     if (preferences.contains("uploadClipboardBehavior") && !choice(preferences["uploadClipboardBehavior"], {"each_link", "list"}))
         return invalid("/preferences/uploadClipboardBehavior", "Choose each_link or list for upload clipboard behavior.");
+    if (preferences.contains("regionSelectionMode") && !choice(preferences["regionSelectionMode"], {"live", "screenshot_first"}))
+        return invalid("/preferences/regionSelectionMode", "Choose live or screenshot_first for region selection.");
+    if (preferences.contains("recordingFrameRate") && !(integer(preferences["recordingFrameRate"], 30, 30) || integer(preferences["recordingFrameRate"], 60, 60)))
+        return invalid("/preferences/recordingFrameRate", "Choose 30 or 60 frames per second for recordings.");
+    if (preferences.contains("fileManagerFolders") && !choice(preferences["fileManagerFolders"], {"zip", "files"}))
+        return invalid("/preferences/fileManagerFolders", "Choose zip or files for folders uploaded from a file manager.");
+    if (preferences.contains("fileManagerMenu") && !preferences["fileManagerMenu"].isBool())
+        return invalid("/preferences/fileManagerMenu", "The file manager menu setting must be true or false.");
     return {};
 }
 
 QJsonObject Settings::effectiveAction(const QJsonObject& original,const QString& name) {
     const auto doc=normalized(original);
     auto action=doc["actions"].toObject()[name].toObject();
+    if(name==recordingActionName()&&!action.contains("destination")) {
+        // A shortcut-only record entry follows the region route with its own key.
+        auto inherited=effectiveAction(doc,"region");
+        inherited["shortcut"]=action["shortcut"];
+        return inherited;
+    }
     if(action["destination"]=="default") {
         const auto output=doc["captureDefaults"].toObject();
         for(const auto& key:QStringList{"destination","profileId","publicationMode"})action[key]=output[key];
@@ -231,6 +344,9 @@ Settings Settings::fromValidated(const QJsonObject& original) {
         const auto action = effectiveAction(doc,name);
         settings.actions.insert(name, {action["destination"].toString(), action["profileId"].toString(), action["shortcut"].toString(),action["publicationMode"].toString("default")});
     }
+    // Recording follows the region route unless the document routes it itself (effectiveAction).
+    const auto record = effectiveAction(doc, recordingActionName());
+    settings.actions.insert(recordingActionName(), {record["destination"].toString(), record["profileId"].toString(), record["shortcut"].toString(), record["publicationMode"].toString("default")});
     for (const auto& entry : doc["profiles"].toArray()) settings.profiles.insert(entry.toObject()["id"].toString(), entry.toObject());
     const auto archive = doc["archive"].toObject();
     settings.archive.keepUploads = archive["keepUploads"].toBool();
@@ -241,10 +357,16 @@ Settings Settings::fromValidated(const QJsonObject& original) {
     settings.limits.maxFiles = limits["maxFiles"].toInt();
     settings.limits.pendingOperations = limits["pendingOperations"].toInt();
     settings.limits.concurrentUploads = limits["concurrentUploads"].toInt();
-    settings.limits.maxFileBytes = limits["maxFileBytes"].toInteger();
-    settings.limits.maxBatchBytes = limits["maxBatchBytes"].toInteger();
-    settings.limits.pendingArtifactBytes = limits["pendingArtifactBytes"].toInteger();
+    auto artifactLimit = [&](const char* key) {
+        const auto value = limits[QLatin1String(key)];
+        return value.isNull() || value.isString() ? ResourceLimits::unlimitedBytes : value.toInteger();
+    };
+    settings.limits.maxFileBytes = artifactLimit("maxFileBytes");
+    settings.limits.maxBatchBytes = artifactLimit("maxBatchBytes");
+    settings.limits.pendingArtifactBytes = artifactLimit("pendingArtifactBytes");
     settings.limits.pendingImageBytes = limits["pendingImageBytes"].toInteger(settings.limits.pendingImageBytes);
+    settings.limits.recordingAnimationSeconds = limits["recordingAnimationSeconds"].toInteger(settings.limits.recordingAnimationSeconds);
+    settings.limits.recordingAnimationEdge = limits["recordingAnimationEdge"].toInt(settings.limits.recordingAnimationEdge);
     settings.limits.clipboardTextBytes = limits["clipboardTextBytes"].toInteger();
     settings.limits.imagePixels = limits["imagePixels"].toInteger();
     settings.limits.imageBytes = limits["imageBytes"].toInteger();
@@ -255,16 +377,49 @@ Settings Settings::fromValidated(const QJsonObject& original) {
     settings.captureTemplate = naming["captureTemplate"].toString(settings.captureTemplate);
     settings.imageTemplate = naming["imageTemplate"].toString(settings.imageTemplate);
     settings.textTemplate = naming["textTemplate"].toString(settings.textTemplate);
+    settings.recordingTemplate = naming["recordingTemplate"].toString(settings.recordingTemplate);
     const auto retention = doc["retention"].toObject();
     settings.failedArtifactDays = retention["failedArtifactDays"].toInt();
     settings.recentActivityLimit = retention["recentActivityLimit"].toInt();
     settings.previewCacheBytes = retention["previewCacheBytes"].toInteger();
     settings.historyRetentionDays = retention["historyRetentionDays"].toInt();
+    settings.logDays = retention["logDays"].toInt(14);
+    settings.logBytes = retention["logBytes"].toInteger(52428800LL);
+    settings.debugLogging = doc["preferences"].toObject()["diagnostics"].toObject()["debugLogging"].toBool();
     settings.uploadClipboardBehavior = doc["preferences"].toObject()["uploadClipboardBehavior"].toString("each_link");
+    settings.regionSelectionMode = doc["preferences"].toObject()["regionSelectionMode"].toString("live");
+    settings.recordingFrameRate = doc["preferences"].toObject()["recordingFrameRate"].toInt(30);
+    settings.appearanceTheme = doc["preferences"].toObject()["appearance"].toObject()["theme"].toString("system");
     settings.notifications = doc["preferences"].toObject()["notifications"].toBool();
     settings.launchAtLogin = doc["preferences"].toObject()["launchAtLogin"].toBool();
     settings.unlockCredentialsAtStartup = doc["preferences"].toObject()["unlockCredentialsAtStartup"].toBool(true);
+    settings.checkForUpdates = doc["preferences"].toObject()["updates"].toObject()["check"].toBool(true);
+    settings.updateChannel = doc["preferences"].toObject()["updates"].toObject()["channel"].toString("build");
+    settings.fileManagerFolders = doc["preferences"].toObject()["fileManagerFolders"].toString("zip");
+    settings.fileManagerMenu = doc["preferences"].toObject()["fileManagerMenu"].toBool(true);
     for (const auto& color : doc["preferences"].toObject()["editorRecentColors"].toArray()) settings.editorRecentColors.append(color.toString());
     return settings;
+}
+Error Settings::reorderProfiles(const QJsonObject& document, const QJsonArray& order, QJsonObject& reordered) {
+    const auto profiles = document["profiles"].toArray();
+    QHash<QString, QJsonObject> byId;
+    for (const auto& entry : profiles) byId.insert(entry.toObject()["id"].toString(), entry.toObject());
+    QStringList seen, missing, extra, duplicate;
+    for (const auto& value : order) {
+        if (!value.isString()) return {"profile_order_invalid", "The order must be a list of destination IDs.", {}};
+        const auto id = value.toString();
+        if (seen.contains(id)) { if (!duplicate.contains(id)) duplicate.append(id); continue; }
+        seen.append(id);
+        if (!byId.contains(id)) extra.append(id);
+    }
+    for (const auto& entry : profiles) if (!seen.contains(entry.toObject()["id"].toString())) missing.append(entry.toObject()["id"].toString());
+    if (!missing.isEmpty() || !extra.isEmpty() || !duplicate.isEmpty())
+        return {"profile_order_invalid", "The order must list every destination ID exactly once.",
+            {{"missing", QJsonArray::fromStringList(missing)}, {"extra", QJsonArray::fromStringList(extra)}, {"duplicate", QJsonArray::fromStringList(duplicate)}}};
+    QJsonArray result;
+    for (const auto& id : seen) result.append(byId.value(id));
+    reordered = document;
+    reordered["profiles"] = result;
+    return {};
 }
 }

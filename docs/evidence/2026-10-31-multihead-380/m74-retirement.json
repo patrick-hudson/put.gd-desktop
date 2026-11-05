@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "status": "completed",
+  "run": "/home/patrick/work/m380/work/lab-runs/c",
+  "disk": "/home/patrick/work/m380/work/lab-runs/c/disk.qcow2",
+  "diskIdentity": {
+    "device": 2050,
+    "inode": 14943134,
+    "size": 949157888,
+    "mtimeNs": 1793459710162995813,
+    "ctimeNs": 1793459710162995813,
+    "allocatedBytes": 949100544
+  },
+  "base": "/home/patrick/work/put.gd/work/lab-images/transfer-1e7496436875/image.qcow2",
+  "stateSha256": "991b55df6276b2cc51bef1e2ea7e47d5bf1aae1330a40a583e1e43f9589f5e17",
+  "evidence": {
+    "manifest": "/home/patrick/work/m380/work/completion-c/manifest.json",
+    "sha256": "c06ffd585517a550d467cde051fb54f3c73395975d0ad2bbe31da097ead215c6",
+    "runId": "3ebef383-23cd-4fd7-b546-b408406fa3c8",
+    "mode": "explicit"
+  },
+  "preparedUtc": "2026-10-31T15:15:29.886703+00:00",
+  "completedUtc": "2026-10-31T15:15:30.208313+00:00"
+}

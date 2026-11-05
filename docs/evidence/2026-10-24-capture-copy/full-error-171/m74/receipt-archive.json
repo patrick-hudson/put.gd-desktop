@@ -1,0 +1,10 @@
+{
+  "source": "171b506e02ca37ba75b27dbbbe859502380926ef",
+  "host": "m74",
+  "archive": "/home/patrick/work/pgcc-fullerror-m74-receipts.tar.gz",
+  "sha256": "d537dd31f42efb337eb86885651ceadcbd74c89818c14fa2559da2a3879b9f86",
+  "bytes": 797331,
+  "workstationCopy": "/home/patrick/.t3/worktrees/put.gd/t3-0aa1b31c/work/capture-copy/full-error/m74/receipts.tar.gz",
+  "verifiedBothCopies": true,
+  "restore": "Verify SHA256; extract into a NEW private directory; private idle/failure frames are not publication artifacts."
+}

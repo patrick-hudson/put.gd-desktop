@@ -1,0 +1,110 @@
+{
+    "actions": {
+        "clipboard": {
+            "destination": "upload",
+            "profileId": "afa-fixture",
+            "shortcut": ""
+        },
+        "desktop": {
+            "destination": "upload",
+            "profileId": "afa-fixture",
+            "shortcut": "Ctrl+Shift+3"
+        },
+        "edit": {
+            "destination": "upload",
+            "profileId": "afa-fixture",
+            "shortcut": ""
+        },
+        "record": {
+            "shortcut": ""
+        },
+        "region": {
+            "destination": "upload",
+            "profileId": "afa-fixture",
+            "shortcut": "Ctrl+Shift+1"
+        },
+        "window": {
+            "destination": "upload",
+            "profileId": "afa-fixture",
+            "shortcut": "Ctrl+Shift+2"
+        }
+    },
+    "archive": {
+        "folders": {
+            "images": null,
+            "other": null,
+            "text": null,
+            "videos": null
+        },
+        "keepUploads": true,
+        "root": "/home/lab/work/put.gd-nfa/runs/M2/archive"
+    },
+    "limits": {
+        "clipboardTextBytes": 16777216,
+        "concurrentUploads": 3,
+        "imageBytes": 536870912,
+        "imagePixels": 100000000,
+        "maxBatchBytes": "auto",
+        "maxFileBytes": "auto",
+        "maxFiles": 100,
+        "pendingArtifactBytes": "auto",
+        "pendingImageBytes": 67108864,
+        "pendingOperations": 8,
+        "recordingAnimationEdge": 1280,
+        "recordingAnimationSeconds": 60
+    },
+    "naming": {
+        "captureTemplate": "Screen-Capture-{yyyy}-{MM}-{dd}-{HH}-{mm}-{ss}.{ext}",
+        "collisionPolicy": "rename",
+        "fileTemplate": "{name}.{ext}",
+        "imageTemplate": "Image-{yyyy}-{MM}-{dd}-{HH}-{mm}-{ss}.{ext}",
+        "mode": "original",
+        "recordingTemplate": "Screen-Recording-{yyyy}-{MM}-{dd}-{HH}-{mm}-{ss}.{ext}",
+        "textTemplate": "Text-{yyyy}-{MM}-{dd}-{HH}-{mm}-{ss}.{ext}"
+    },
+    "preferences": {
+        "appearance": {
+            "theme": "dark"
+        },
+        "launchAtLogin": false,
+        "notifications": false,
+        "unlockCredentialsAtStartup": false,
+        "updates": {
+            "channel": "build",
+            "check": true
+        },
+        "uploadClipboardBehavior": "each_link"
+    },
+    "profiles": [
+        {
+            "credentials": {
+                "mode": "session",
+                "reference": null
+            },
+            "id": "afa-fixture",
+            "label": "Loopback fixture",
+            "provider": "s3",
+            "settings": {
+                "aclMode": "public-read",
+                "addressing": "path",
+                "bucket": "fixture",
+                "connectTimeoutMs": 5000,
+                "endpoint": "http://127.0.0.1:45843",
+                "lowSpeedBytesPerSecond": 1,
+                "lowSpeedTimeSeconds": 120,
+                "objectPrefix": "afa/",
+                "publicUrlBase": "http://127.0.0.1:45843/fixture",
+                "region": "us-east-1",
+                "requestTimeoutMs": 120000,
+                "storageClass": "STANDARD"
+            }
+        }
+    ],
+    "retention": {
+        "failedArtifactDays": 7,
+        "historyRetentionDays": null,
+        "previewCacheBytes": 268435456,
+        "recentActivityLimit": 100
+    },
+    "schemaVersion": 1
+}

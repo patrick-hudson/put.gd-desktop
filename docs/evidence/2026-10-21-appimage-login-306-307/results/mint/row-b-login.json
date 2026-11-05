@@ -1,0 +1,30 @@
+{
+ "label": "appimageupdatetool --remove-old: after logout and login",
+ "time": "2026-10-21T12:05:00-0500",
+ "sessions": [
+  "40 1000 lab -     -    closing no -",
+  "43 1000 lab -     -    active  no -",
+  "c1 1000 lab seat0 tty7 closing no -",
+  "c3 1000 lab seat0 tty7 closing no -",
+  "c5 1000 lab seat0 tty7 closing no -",
+  "c7 1000 lab seat0 tty7 active  no -"
+ ],
+ "resident": {
+  "pid": 4924,
+  "started": "Wed Oct 21 12:04:31 2026",
+  "APPIMAGE": "/home/lab/Apps/putgd-0.1.1-dev.827+gac0c3235e729-x86_64.AppImage",
+  "version": "0.1.1-dev.827+gac0c3235e729"
+ },
+ "autostartExec": "Exec=/bin/sh \"/home/lab/.local/share/putgd/login/appimage-start.sh\" --background",
+ "loginScript": {
+  "configured": "'/home/lab/Apps/putgd-0.1.1-dev.827+gac0c3235e729-x86_64.AppImage'",
+  "update_information": "'zsync|http://127.0.0.1:8765/appimage.zsync'",
+  "mode": "0o700"
+ },
+ "images": {
+  "/home/lab/Applications": [],
+  "/home/lab/Apps": [
+   "putgd-0.1.1-dev.827+gac0c3235e729-x86_64.AppImage"
+  ]
+ }
+}

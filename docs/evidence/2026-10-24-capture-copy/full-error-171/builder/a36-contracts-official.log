@@ -1,0 +1,34 @@
+$ python3 tests/ci/test_flake_tools.py
+...................F
+======================================================================
+FAIL: test_repository_tests_use_the_scaled_helpers (__main__.WaitLint.test_repository_tests_use_the_scaled_helpers)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/runner/work/put.gd-desktop/put.gd-desktop/tests/ci/test_flake_tools.py", line 131, in test_repository_tests_use_the_scaled_helpers
+    self.assertEqual(problems, [], '\n'.join(problems))
+AssertionError: Lists differ: ['tests/gui/test_history_view.cpp: 2 settl[116 chars]ADY'] != []
+
+First list contains 1 additional elements.
+First extra element 0:
+'tests/gui/test_history_view.cpp: 2 settle-assert at line 114, 127: a fixed sleep before an assertion is a race; use PUTGD_VERIFY_STEADY or PUTGD_COMPARE_STEADY'
+
++ []
+- ['tests/gui/test_history_view.cpp: 2 settle-assert at line 114, 127: a fixed '
+-  'sleep before an assertion is a race; use PUTGD_VERIFY_STEADY or '
+-  'PUTGD_COMPARE_STEADY'] : tests/gui/test_history_view.cpp: 2 settle-assert at line 114, 127: a fixed sleep before an assertion is a race; use PUTGD_VERIFY_STEADY or PUTGD_COMPARE_STEADY
+
+----------------------------------------------------------------------
+Ran 20 tests in 1.226s
+
+FAILED (failures=1)
+flake_ledger: recorded gui_flaky in u
+flake_ledger: reopened u
+flake_ledger: recorded gui_flaky in u
+::warning title=Flaky-test tracker not updated::No GITHUB_TOKEN/GITHUB_REPOSITORY; the flaky tests are listed in the job summary only.
+flake_ledger: opened https://github.invalid/issues/99
+flake_ledger: recorded gui_flaky in https://github.invalid/issues/99
+flake_ledger: opened https://github.invalid/issues/99
+flake_ledger: recorded broken in https://github.invalid/issues/99
+flake_ledger: reopened u
+flake_ledger: recorded gui_flaky in u
+

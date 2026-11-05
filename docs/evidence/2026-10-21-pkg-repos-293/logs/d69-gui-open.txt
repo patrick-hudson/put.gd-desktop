@@ -1,0 +1,3 @@
+{"clicked": [797, 810]}
+1870511 /usr/bin/gnome-software --mode=updates
+{"ok": true, "frame": [1920, 1080], "crop": [247, 22, 1425, 1011], "edges": {"top": 1.0, "bottom": 1.0, "left": 1.0, "right": 1.0}, "file": "/home/patrick/work/put.gd-pkg293-lab/evidence/d69-p5-update

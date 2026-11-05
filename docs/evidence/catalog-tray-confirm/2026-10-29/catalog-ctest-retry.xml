@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="Linux-c++"
+	tests="1"
+	failures="0"
+	disabled="0"
+	skipped="0"
+	hostname="box-node-92ad7400cc57c384"
+	time="56"
+	timestamp="2026-10-30T02:15:39"
+	>
+	<testcase name="gui_tray" classname="gui_tray" time="56.781" status="run">
+		<properties>
+			<property name="cmake_labels" value="integration"/>
+		</properties>
+		<system-out>********* Start testing of ResidentTray *********
+Config: Using QtTest library 6.4.2, Qt 6.4.2 (x86_64-little_endian-lp64 shared (dynamic) release build; by GCC 13.2.0), ubuntu 24.04
+PASS   : ResidentTray::initTestCase()
+PASS   : ResidentTray::catalogMessageLabelsPreserveTheirActualFocusPolicy()
+QWARN  : ResidentTray::catalogRowsRemainStableAcrossStatesAndSkipSeparators() This plugin does not support raise()
+QWARN  : ResidentTray::catalogRowsRemainStableAcrossStatesAndSkipSeparators() This plugin does not support grabbing the keyboard
+PASS   : ResidentTray::catalogRowsRemainStableAcrossStatesAndSkipSeparators()
+PASS   : ResidentTray::catalogProviderReleaseBeforeOrAfterUploadCompletesExactlyOnce()
+PASS   : ResidentTray::residentThemeScopeRestoresTheEnvironmentForChildren()
+QWARN  : ResidentTray::menuShowsDisplayOnlyShortcutsAndCancelsUploads() qt.core.qobject.connect: QObject::connect: No such signal QPlatformNativeInterface::systemTrayWindowChanged(QScreen*)
+PASS   : ResidentTray::menuShowsDisplayOnlyShortcut...
+[This part of the test output was removed since it exceeds the threshold of 1024 bytes.]
+</system-out>
+	</testcase>
+</testsuite>

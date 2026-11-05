@@ -1,0 +1,151 @@
+{
+ "label": "update",
+ "command": [
+  "apt-get",
+  "update"
+ ],
+ "before": {
+  "at": "2026-10-23T05:53:08Z",
+  "host": "kubuntu",
+  "package": {
+   "manager": "dpkg",
+   "status": "ii",
+   "version": "0.1.1~nightly.947"
+  },
+  "files": {
+   "/etc/apt/sources.list.d/putgd.sources": {
+    "sha256": "5d5b79d0154fed9099c42beea5183e41876ba36920bed6ed45a747523d5cc852",
+    "bytes": 2036,
+    "mode": "0o644",
+    "mtime": "2026-10-22T05:19:16Z"
+   },
+   "/usr/share/keyrings/putgd-archive-keyring.gpg": {
+    "sha256": "76ab1b64e8a1d9504d3922fa44b116d6eb3c680e788be9cec46e106cd5258339",
+    "bytes": 1170,
+    "mode": "0o644",
+    "mtime": "2026-10-22T05:15:32Z"
+   },
+   "/etc/yum.repos.d/putgd.repo": null,
+   "/etc/yum.repos.d/putgd.repo.rpmsave": null,
+   "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd": null,
+   "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-nightly": null,
+   "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-stable": null,
+   "/usr/share/gnome-shell/extensions/putgd@put.gd/metadata.json": {
+    "sha256": "690be5bcfd1ee05783cd57a78851c56c0fe624131711b254cb46d062d0cb8046",
+    "bytes": 248,
+    "mode": "0o644",
+    "mtime": "2026-10-22T05:19:16Z"
+   }
+  },
+  "defaultProfile": {
+   "/home/patrick/.config/putgd": 1,
+   "/home/patrick/.local/state/putgd": 79,
+   "/home/patrick/.cache/putgd": null,
+   "/home/patrick/.local/share/putgd": 12
+  },
+  "autostart": null,
+  "userExtension": false,
+  "processes": [
+   {
+    "pid": 1501446,
+    "ppid": 1261,
+    "exe": "/usr/bin/putgd",
+    "comm": "putgd",
+    "cmd": "/usr/bin/putgd --background ",
+    "qtPlatformPlugins": []
+   },
+   {
+    "pid": 1501457,
+    "ppid": 1501446,
+    "exe": "/usr/bin/putgd-ui",
+    "comm": "putgd-ui",
+    "cmd": "/usr/bin/putgd-ui ",
+    "qtPlatformPlugins": [
+     "libqwayland.so"
+    ]
+   }
+  ]
+ },
+ "startedAt": "2026-10-23T05:53:08Z",
+ "exit": 0,
+ "seconds": 1.9,
+ "log": "/home/patrick/work/put.gd-nfa/runs/M2/logs/pkg-update.log",
+ "conffilePrompt": false,
+ "signature": [
+  "Hit:3 http://us.archive.ubuntu.com/ubuntu resolute InRelease",
+  "Hit:4 http://us.archive.ubuntu.com/ubuntu resolute-updates InRelease",
+  "Hit:5 http://security.ubuntu.com/ubuntu resolute-security InRelease",
+  "Hit:6 http://us.archive.ubuntu.com/ubuntu resolute-backports InRelease",
+  "Hit:7 https://pkg.put.gd/apt/ubuntu26.04 nightly InRelease"
+ ],
+ "fetched": [
+  "Hit:3 http://us.archive.ubuntu.com/ubuntu resolute InRelease",
+  "Hit:4 http://us.archive.ubuntu.com/ubuntu resolute-updates InRelease",
+  "Hit:5 http://security.ubuntu.com/ubuntu resolute-security InRelease",
+  "Hit:6 http://us.archive.ubuntu.com/ubuntu resolute-backports InRelease",
+  "Hit:7 https://pkg.put.gd/apt/ubuntu26.04 nightly InRelease"
+ ],
+ "tail": "Hit:3 http://us.archive.ubuntu.com/ubuntu resolute InRelease\nHit:4 http://us.archive.ubuntu.com/ubuntu resolute-updates InRelease\nHit:5 http://security.ubuntu.com/ubuntu resolute-security InRelease\nHit:6 http://us.archive.ubuntu.com/ubuntu resolute-backports InRelease\nHit:7 https://pkg.put.gd/apt/ubuntu26.04 nightly InRelease\nFetched 6,652 B in 1s (12.9 kB/s)\nReading package lists...\n",
+ "after": {
+  "at": "2026-10-23T05:53:10Z",
+  "host": "kubuntu",
+  "package": {
+   "manager": "dpkg",
+   "status": "ii",
+   "version": "0.1.1~nightly.947"
+  },
+  "files": {
+   "/etc/apt/sources.list.d/putgd.sources": {
+    "sha256": "5d5b79d0154fed9099c42beea5183e41876ba36920bed6ed45a747523d5cc852",
+    "bytes": 2036,
+    "mode": "0o644",
+    "mtime": "2026-10-22T05:19:16Z"
+   },
+   "/usr/share/keyrings/putgd-archive-keyring.gpg": {
+    "sha256": "76ab1b64e8a1d9504d3922fa44b116d6eb3c680e788be9cec46e106cd5258339",
+    "bytes": 1170,
+    "mode": "0o644",
+    "mtime": "2026-10-22T05:15:32Z"
+   },
+   "/etc/yum.repos.d/putgd.repo": null,
+   "/etc/yum.repos.d/putgd.repo.rpmsave": null,
+   "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd": null,
+   "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-nightly": null,
+   "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-stable": null,
+   "/usr/share/gnome-shell/extensions/putgd@put.gd/metadata.json": {
+    "sha256": "690be5bcfd1ee05783cd57a78851c56c0fe624131711b254cb46d062d0cb8046",
+    "bytes": 248,
+    "mode": "0o644",
+    "mtime": "2026-10-22T05:19:16Z"
+   }
+  },
+  "defaultProfile": {
+   "/home/patrick/.config/putgd": 1,
+   "/home/patrick/.local/state/putgd": 79,
+   "/home/patrick/.cache/putgd": null,
+   "/home/patrick/.local/share/putgd": 12
+  },
+  "autostart": null,
+  "userExtension": false,
+  "processes": [
+   {
+    "pid": 1501446,
+    "ppid": 1261,
+    "exe": "/usr/bin/putgd",
+    "comm": "putgd",
+    "cmd": "/usr/bin/putgd --background ",
+    "qtPlatformPlugins": []
+   },
+   {
+    "pid": 1501457,
+    "ppid": 1501446,
+    "exe": "/usr/bin/putgd-ui",
+    "comm": "putgd-ui",
+    "cmd": "/usr/bin/putgd-ui ",
+    "qtPlatformPlugins": [
+     "libqwayland.so"
+    ]
+   }
+  ]
+ }
+}

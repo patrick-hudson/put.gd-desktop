@@ -1,0 +1,39 @@
+Start testing: Oct 23 23:45 CDT
+----------------------------------------------------------
+89/97 Testing: login_startup_contract
+89/97 Test: login_startup_contract
+Command: "/home/patrick/work/pg382/build/dev/test_login_startup"
+Directory: /home/patrick/work/pg382/build/dev
+"login_startup_contract" start time: Oct 23 23:45 CDT
+Output:
+----------------------------------------------------------
+********* Start testing of LoginStartupTest *********
+Config: Using QtTest library 6.4.2, Qt 6.4.2 (x86_64-little_endian-lp64 shared (dynamic) release build; by GCC 13.2.0), linuxmint 22.3
+PASS   : LoginStartupTest::initTestCase()
+PASS   : LoginStartupTest::appImageStartupRunsTheLoginScript()
+PASS   : LoginStartupTest::startFromAnUpdatedImageRepairsTheScript()
+PASS   : LoginStartupTest::imageWithoutUpdateInformationStartsOnlyItself()
+PASS   : LoginStartupTest::updateInformationIsReadFromTheRuntimeSection()
+PASS   : LoginStartupTest::inheritedAppImageDoesNotOverrideNativeStartup()
+PASS   : LoginStartupTest::disablingRemovesOnlyManagedScriptsAndMigratesTheOldPath()
+PASS   : LoginStartupTest::missingAppImageCannotPersistTemporaryMount()
+PASS   : LoginStartupTest::nativeStartupUsesAUserScopedCleanupScript()
+PASS   : LoginStartupTest::templateLookingPathTextRemainsLiteral()
+PASS   : LoginStartupTest::nativeStartupRepairsTheOldDirectEntry()
+PASS   : LoginStartupTest::removedNativeExecutableCannotRecreateTheStartupLink()
+PASS   : LoginStartupTest::preferenceOwnsOnlyManagedAutostartEntry()
+PASS   : LoginStartupTest::cleanupTestCase()
+Totals: 14 passed, 0 failed, 0 skipped, 0 blacklisted, 80ms
+********* Finished testing of LoginStartupTest *********
+<end of output>
+Test time =   0.09 sec
+----------------------------------------------------------
+Test Passed.
+"login_startup_contract" end time: Oct 23 23:45 CDT
+"login_startup_contract" time elapsed: 00:00:00
+----------------------------------------------------------
+
+End testing: Oct 23 23:45 CDT
+
+unit =   0.09 sec*proc
+

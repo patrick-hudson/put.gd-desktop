@@ -1,0 +1,37 @@
+{
+ "label": "f44-tray-menu",
+ "components": [
+  {
+   "blocks": 1990,
+   "box": [
+    1584,
+    0,
+    1832,
+    544
+   ]
+  },
+  {
+   "blocks": 234,
+   "box": [
+    656,
+    736,
+    1560,
+    776
+   ]
+  }
+ ],
+ "colour": [
+  52,
+  52,
+  56
+ ],
+ "inner": [
+  1591,
+  39,
+  1825,
+  533
+ ],
+ "changedShare": 1.0,
+ "kept": "/home/patrick/work/put.gd-afa2/runs/f44/crops/f44-tray-menu.png",
+ "full": "/home/patrick/work/put.gd-afa2/runs/f44/full/f44-tray-menu.png"
+}

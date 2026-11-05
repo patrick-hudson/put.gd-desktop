@@ -1,0 +1,67 @@
+{
+  "lends": [
+    {
+      "receiptDirectory": "2026-10-31T04-49-01Z-rc1",
+      "finalStep": "cleaned",
+      "testExit": 1,
+      "carryBackStates": [
+        "replace_confirmed"
+      ],
+      "guestEntryState": "cleanup_confirmed"
+    },
+    {
+      "receiptDirectory": "2026-10-31T04-55-34Z-rc1",
+      "finalStep": "cleaned",
+      "testExit": 0,
+      "carryBackStates": [
+        "replace_confirmed"
+      ],
+      "guestEntryState": "cleanup_confirmed"
+    },
+    {
+      "receiptDirectory": "2026-10-31T04-58-54Z-rc1",
+      "finalStep": "cleaned",
+      "testExit": 0,
+      "carryBackStates": [
+        "replace_confirmed"
+      ],
+      "guestEntryState": "cleanup_confirmed"
+    },
+    {
+      "receiptDirectory": "2026-10-31T05-02-16Z-rc1",
+      "finalStep": "cleaned",
+      "testExit": 0,
+      "carryBackStates": [
+        "replace_confirmed"
+      ],
+      "guestEntryState": "cleanup_confirmed"
+    },
+    {
+      "receiptDirectory": "2026-10-31T05-05-28Z-rc1",
+      "finalStep": "cleaned",
+      "testExit": 0,
+      "carryBackStates": [
+        "replace_confirmed"
+      ],
+      "guestEntryState": "cleanup_confirmed"
+    },
+    {
+      "receiptDirectory": "2026-10-31T05-07-14Z-rc1",
+      "finalStep": "cleaned",
+      "testExit": 0,
+      "carryBackStates": [
+        "replace_confirmed"
+      ],
+      "guestEntryState": "cleanup_confirmed"
+    },
+    {
+      "receiptDirectory": "2026-10-31T05-08-48Z-rc1",
+      "finalStep": "cleaned",
+      "testExit": 0,
+      "carryBackStates": [
+        "replace_confirmed"
+      ],
+      "guestEntryState": "cleanup_confirmed"
+    }
+  ]
+}

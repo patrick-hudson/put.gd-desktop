@@ -1,0 +1,10 @@
+{
+  "buildCommit": "d5b561ddb94f8255b8bc754c1382552d983a6fa9",
+  "appImageSha256": "26a047a98c1c7f514f8d7bb388f39f2aa5ccc9862475fd70c5fd8cc7f922ecb8",
+  "completeSourceReferencesSameImage": true,
+  "completeSourceFile": "putgd-26.1024.1186-dev+gd5b561ddb94f-appimage-complete-source.tar.gz",
+  "completeSourceSha256": "ddf69de4acfce85a01a525a95a384e2975eae20f555c70d0f72d2cb639031882",
+  "untaggedUpdateInformation": null,
+  "sourceArchiveLocallyDownloaded": false,
+  "sourceClosureGate": "CI AppImage build/audit job success; original receipt retained"
+}

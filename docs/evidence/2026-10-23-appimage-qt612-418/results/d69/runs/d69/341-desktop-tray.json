@@ -1,0 +1,381 @@
+{
+ "action": "desktop",
+ "shortcut": "Ctrl+Shift+3",
+ "opened": "click:1576,1052",
+ "menuBox": [
+  1562,
+  730,
+  1760,
+  1035
+ ],
+ "menuFull": "/home/patrick/work/put.gd-qt418/afa/runs/d69/full/d69-341-desktop-traymenu-menu-open.png",
+ "seconds": 0.6,
+ "operations": [
+  {
+   "id": "3c1d2642-c896-420b-abdc-8b099781a1a5",
+   "state": "running",
+   "copyStatus": "pending",
+   "items": [
+    {
+     "name": "Screen-Capture-2026-10-23-14-00-40.png",
+     "mime": "image/png",
+     "uploadStatus": "uploading",
+     "link": "",
+     "local": {
+      "error": {
+       "code": "",
+       "details": {},
+       "message": ""
+      },
+      "path": "/home/patrick/work/put.gd-qt418/afa/runs/d69/archive/images/Screen-Capture-2026-10-23-14-00-40.png",
+      "status": "saved"
+     }
+    }
+   ],
+   "error": {
+    "code": "",
+    "details": {},
+    "message": ""
+   }
+  }
+ ],
+ "newHistory": [
+  "7e7fe3d1-01d6-4401-9de0-8ef44ab9c349"
+ ],
+ "notices": [
+  {
+   "itemId": null,
+   "notificationId": 1,
+   "notificationText": "Uploaded. Link copied to the clipboard. Click to open in browser.",
+   "operationId": null,
+   "summary": "operation_completed",
+   "title": "put.gd \u2014 completed",
+   "warning": false
+  }
+ ],
+ "shortcutLog": [
+  {
+   "message": "Resident started",
+   "fields": {
+    "architecture": "x86_64",
+    "build": {
+     "baseVersion": "26.1023.1068",
+     "commitCount": 1068,
+     "dirty": false,
+     "gitCommit": "6a325a722afd946046a96480ca524db8aa6abcce",
+     "gitTree": "a0a449b23b4eb70f516e3c317b6d93b412aafbbb",
+     "packageVersion": "26.1023.1068~dev+g6a325a722afd",
+     "schemaVersion": 1,
+     "sourceProvenance": "git",
+     "version": "26.1023.1068-dev+g6a325a722afd"
+    },
+    "capabilities": {
+     "adapter": "kde-wayland",
+     "capture": {
+      "desktop": {
+       "available": false,
+       "error": "Waiting for a completed compositor output batch",
+       "interface": "org.kde.KWin.ScreenShot2",
+       "interface_version": 0,
+       "mode": "compositor-native",
+       "permission": "restricted-desktop-entry",
+       "permission_entry_matches_executable": true,
+       "permission_rejected": false
+      },
+      "region": {
+       "available": false,
+       "error": "Waiting for a completed compositor output batch",
+       "helper": {
+        "active": false,
+        "build": {
+         "baseVersion": "26.1023.1068",
+         "commitCount": 1068,
+         "dirty": false,
+         "gitCommit": "6a325a722afd946046a96480ca524db8aa6abcce",
+         "gitTree": "a0a449b23b4eb70f516e3c317b6d93b412aafbbb",
+         "packageVersion": "26.1023.1068~dev+g6a325a722afd",
+         "schemaVersion": 1,
+         "sourceProvenance": "git",
+         "version": "26.1023.1068-dev+g6a325a722afd"
+        },
+        "cleanupRequired": false,
+        "lastExit": {},
+        "processId": 0
+       },
+       "interface": "org.kde.KWin.ScreenShot2",
+       "interface_version": 0,
+       "mode": "compositor-native",
+       "permission": "restricted-desktop-entry",
+       "permission_entry_matches_executable": true,
+       "permission_rejected": false
+      },
+      "window": {
+       "available": false,
+       "error": "ScreenShot2 has not been probed",
+       "interface": "org.kde.KWin.ScreenShot2",
+       "interface_version": 0,
+       "mode": "compositor-native",
+       "permission": "restricted-desktop-entry",
+       "permission_entry_matches_executable": true,
+       "permission_rejected": false
+      }
+     },
+     "captureHelper": {
+      "active": false,
+      "build": {
+       "baseVersion": "26.1023.1068",
+       "commitCount": 1068,
+       "dirty": false,
+       "gitCommit": "6a325a722afd946046a96480ca524db8aa6abcce",
+       "gitTree": "a0a449b23b4eb70f516e3c317b6d93b412aafbbb",
+       "packageVersion": "26.1023.1068~dev+g6a325a722afd",
+       "schemaVersion": 1,
+       "sourceProvenance": "git",
+       "version": "26.1023.1068-dev+g6a325a722afd"
+      },
+      "cleanupRequired": false,
+      "lastExit": {},
+      "processId": 0
+     },
+     "clipboard": "<redacted>",
+     "outputs": {
+      "available": false,
+      "error": "Waiting for a completed compositor output batch",
+      "outputs": 0,
+      "protocol": "wl-output+xdg-output",
+      "protocol_version": 3,
+      "revision": 3
+     },
+     "resident": "qt-core",
+     "shortcuts": {
+      "available": false,
+      "bindings": {
+       "clipboard": "<redacted>",
+       "desktop": {
+        "bound": false,
+        "error": "Waiting for the compositor keyboard map and current layout",
+        "requested": "Ctrl+Shift+3",
+        "state": "shortcut_unavailable"
+       },
+       "edit": {
+        "bound": false,
+        "error": "Waiting for the compositor keyboard map and current layout",
+        "requested": "",
+        "state": "shortcut_unavailable"
+       },
+       "record": {
+        "bound": false,
+        "error": "Waiting for the compositor keyboard map and current layout",
+        "requested": "",
+        "state": "shortcut_unavailable"
+       },
+       "region": {
+        "bound": false,
+        "error": "Waiting for the compositor keyboard map and current layout",
+        "requested": "Ctrl+Shift+1",
+        "state": "shortcut_unavailable"
+       },
+       "window": {
+        "bound": false,
+        "error": "Waiting for the compositor keyboard map and current layout",
+        "requested": "Ctrl+Shift+2",
+        "state": "shortcut_unavailable"
+       }
+      }
+     }
+    },
+    "desktop": "KDE",
+    "itemId": null,
+    "kernel": "6.12.107+deb13-amd64",
+    "locations": {
+     "config": {
+      "path": "/home/patrick/work/put.gd-qt418/afa/runs/d69/config/putgd",
+      "state": "current"
+     },
+     "data": {
+      "path": "/home/patrick/.local/share/putgd",
+      "state": "current"
+     },
+     "schemaVersion": 1
+    },
+    "operationId": null,
+    "os": "Debian GNU/Linux 13 (trixie)",
+    "platform": "none",
+    "qtCompiled": "6.12.0",
+    "qtRuntime": "6.12.0",
+    "resident": "kde-core",
+    "sessionType": "wayland",
+    "trayAvailable": false
+   }
+  },
+  {
+   "message": "Resident started",
+   "fields": {
+    "architecture": "x86_64",
+    "build": {
+     "baseVersion": "26.1023.1068",
+     "commitCount": 1068,
+     "dirty": false,
+     "gitCommit": "6a325a722afd946046a96480ca524db8aa6abcce",
+     "gitTree": "a0a449b23b4eb70f516e3c317b6d93b412aafbbb",
+     "packageVersion": "26.1023.1068~dev+g6a325a722afd",
+     "schemaVersion": 1,
+     "sourceProvenance": "git",
+     "version": "26.1023.1068-dev+g6a325a722afd"
+    },
+    "capabilities": {
+     "adapter": "kde-wayland",
+     "capture": {
+      "desktop": {
+       "available": false,
+       "error": "Waiting for a completed compositor output batch",
+       "interface": "org.kde.KWin.ScreenShot2",
+       "interface_version": 0,
+       "mode": "compositor-native",
+       "permission": "restricted-desktop-entry",
+       "permission_entry_matches_executable": true,
+       "permission_rejected": false
+      },
+      "region": {
+       "available": false,
+       "error": "Waiting for a completed compositor output batch",
+       "helper": {
+        "active": false,
+        "build": {
+         "baseVersion": "26.1023.1068",
+         "commitCount": 1068,
+         "dirty": false,
+         "gitCommit": "6a325a722afd946046a96480ca524db8aa6abcce",
+         "gitTree": "a0a449b23b4eb70f516e3c317b6d93b412aafbbb",
+         "packageVersion": "26.1023.1068~dev+g6a325a722afd",
+         "schemaVersion": 1,
+         "sourceProvenance": "git",
+         "version": "26.1023.1068-dev+g6a325a722afd"
+        },
+        "cleanupRequired": false,
+        "lastExit": {},
+        "processId": 0
+       },
+       "interface": "org.kde.KWin.ScreenShot2",
+       "interface_version": 0,
+       "mode": "compositor-native",
+       "permission": "restricted-desktop-entry",
+       "permission_entry_matches_executable": true,
+       "permission_rejected": false
+      },
+      "window": {
+       "available": false,
+       "error": "ScreenShot2 has not been probed",
+       "interface": "org.kde.KWin.ScreenShot2",
+       "interface_version": 0,
+       "mode": "compositor-native",
+       "permission": "restricted-desktop-entry",
+       "permission_entry_matches_executable": true,
+       "permission_rejected": false
+      }
+     },
+     "captureHelper": {
+      "active": false,
+      "build": {
+       "baseVersion": "26.1023.1068",
+       "commitCount": 1068,
+       "dirty": false,
+       "gitCommit": "6a325a722afd946046a96480ca524db8aa6abcce",
+       "gitTree": "a0a449b23b4eb70f516e3c317b6d93b412aafbbb",
+       "packageVersion": "26.1023.1068~dev+g6a325a722afd",
+       "schemaVersion": 1,
+       "sourceProvenance": "git",
+       "version": "26.1023.1068-dev+g6a325a722afd"
+      },
+      "cleanupRequired": false,
+      "lastExit": {},
+      "processId": 0
+     },
+     "clipboard": "<redacted>",
+     "outputs": {
+      "available": false,
+      "error": "Waiting for a completed compositor output batch",
+      "outputs": 0,
+      "protocol": "wl-output+xdg-output",
+      "protocol_version": 3,
+      "revision": 3
+     },
+     "resident": "qt-core",
+     "shortcuts": {
+      "available": false,
+      "bindings": {
+       "clipboard": "<redacted>",
+       "desktop": {
+        "bound": false,
+        "error": "Waiting for the compositor keyboard map and current layout",
+        "requested": "Ctrl+Shift+3",
+        "state": "shortcut_unavailable"
+       },
+       "edit": {
+        "bound": false,
+        "error": "Waiting for the compositor keyboard map and current layout",
+        "requested": "",
+        "state": "shortcut_unavailable"
+       },
+       "record": {
+        "bound": false,
+        "error": "Waiting for the compositor keyboard map and current layout",
+        "requested": "",
+        "state": "shortcut_unavailable"
+       },
+       "region": {
+        "bound": false,
+        "error": "Waiting for the compositor keyboard map and current layout",
+        "requested": "Ctrl+Shift+1",
+        "state": "shortcut_unavailable"
+       },
+       "window": {
+        "bound": false,
+        "error": "Waiting for the compositor keyboard map and current layout",
+        "requested": "Ctrl+Shift+2",
+        "state": "shortcut_unavailable"
+       }
+      }
+     }
+    },
+    "desktop": "KDE",
+    "itemId": null,
+    "kernel": "6.12.107+deb13-amd64",
+    "locations": {
+     "config": {
+      "path": "/home/patrick/work/put.gd-qt418/afa/runs/d69/config/putgd",
+      "state": "current"
+     },
+     "data": {
+      "path": "/home/patrick/.local/share/putgd",
+      "state": "current"
+     },
+     "schemaVersion": 1
+    },
+    "operationId": null,
+    "os": "Debian GNU/Linux 13 (trixie)",
+    "platform": "none",
+    "qtCompiled": "6.12.0",
+    "qtRuntime": "6.12.0",
+    "resident": "kde-core",
+    "sessionType": "wayland",
+    "trayAvailable": false
+   }
+  }
+ ],
+ "history": {
+  "id": "7e7fe3d1-01d6-4401-9de0-8ef44ab9c349",
+  "name": "Screen-Capture-2026-10-23-14-00-40.png",
+  "uploadStatus": "uploading"
+ },
+ "png": {
+  "path": "/home/patrick/work/put.gd-qt418/afa/runs/d69/out/d69-341-desktop-traymenu.png",
+  "size": [
+   1920,
+   1080
+  ],
+  "sha256": "0efed003dcec11fdd68e471c16aba610c49884c94c3a549eba6197ab86c22185"
+ },
+ "menuInCapture": 1.0,
+ "after": "/home/patrick/work/put.gd-qt418/afa/runs/d69/full/d69-341-desktop-traymenu-after.png"
+}

@@ -1,0 +1,13 @@
+{
+  "utc": "2026-10-24T03:38:34.375263+00:00",
+  "source": "171b506e02ca37ba75b27dbbbe859502380926ef",
+  "retiredOnlyExactTemporaryRoots": [
+    "/tmp/hfmc",
+    "/tmp/hfmf"
+  ],
+  "archive": "/home/patrick/work/pgcc-fullerror-m74-native-roots.tar.gz",
+  "sha256": "e8264ba000d5fe17d7baa6fc3ebe31731d229f7e6223d166860f69842e87fa88",
+  "builderAndWorkstationArchiveVerified": true,
+  "processesStoppedAndDesktopReleasedVerifiedCleanBeforeRetirement": true,
+  "historicalEvidenceAndSourcesPreserved": true
+}

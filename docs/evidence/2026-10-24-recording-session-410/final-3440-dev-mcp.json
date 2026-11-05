@@ -1,0 +1,226 @@
+{
+  "schemaVersion": 1,
+  "status": "passed full registered Debian Dev CTest and separate MCP suite",
+  "sourceCommit": "3440ab9c4fb6bd745d50eb6c0728a318951ee481",
+  "sourceTree": "17b445850b0f1d5258b77bf88a8ccbcc5edbb3e8",
+  "host": "d69",
+  "buildIdentity": {
+    "source": [
+      "3440ab9c4fb6bd745d50eb6c0728a318951ee481",
+      "17b445850b0f1d5258b77bf88a8ccbcc5edbb3e8"
+    ],
+    "status": "",
+    "binaries": {
+      "putgd": {
+        "sha256": "45e32293d3df90547ab6ac7023a3795e024ca33aa61aeae316999a2e556b8b18",
+        "manifest": {
+          "schemaVersion": 1,
+          "version": "26.1024.1209-dev+g3440ab9c4fb6",
+          "baseVersion": "26.1024.1209",
+          "packageVersion": "26.1024.1209~dev+g3440ab9c4fb6",
+          "gitCommit": "3440ab9c4fb6bd745d50eb6c0728a318951ee481",
+          "gitTree": "17b445850b0f1d5258b77bf88a8ccbcc5edbb3e8",
+          "commitCount": 1209,
+          "dirty": false,
+          "sourceProvenance": "git"
+        }
+      },
+      "putgd-cli": {
+        "sha256": "bf60b2c9a9fedddb39022c297eb88bb824b29f0944f6a003d559657144fe010a",
+        "manifest": {
+          "schemaVersion": 1,
+          "version": "26.1024.1209-dev+g3440ab9c4fb6",
+          "baseVersion": "26.1024.1209",
+          "packageVersion": "26.1024.1209~dev+g3440ab9c4fb6",
+          "gitCommit": "3440ab9c4fb6bd745d50eb6c0728a318951ee481",
+          "gitTree": "17b445850b0f1d5258b77bf88a8ccbcc5edbb3e8",
+          "commitCount": 1209,
+          "dirty": false,
+          "sourceProvenance": "git"
+        }
+      },
+      "putgd-record": {
+        "sha256": "d947b3c4356af151f63b92db15f5293395e3f73a669b5e3604aec8333e8402b0",
+        "manifest": {
+          "schemaVersion": 1,
+          "version": "26.1024.1209-dev+g3440ab9c4fb6",
+          "baseVersion": "26.1024.1209",
+          "packageVersion": "26.1024.1209~dev+g3440ab9c4fb6",
+          "gitCommit": "3440ab9c4fb6bd745d50eb6c0728a318951ee481",
+          "gitTree": "17b445850b0f1d5258b77bf88a8ccbcc5edbb3e8",
+          "commitCount": 1209,
+          "dirty": false,
+          "sourceProvenance": "git"
+        }
+      },
+      "test_recording_service": {
+        "sha256": "23ed92e8ec8288b2c9b2f4970ec541b994db50e3df6a6b50c11869ac886a67c8"
+      },
+      "test_cli": {
+        "sha256": "0c121cbfe7755df40810f253a1dd055ff8afc92d882c3538a5f6aaa31fd9f459"
+      },
+      "build/dev/test_recording_service": {
+        "sha256": "23ed92e8ec8288b2c9b2f4970ec541b994db50e3df6a6b50c11869ac886a67c8"
+      },
+      "build/dev/test_cli": {
+        "sha256": "0c121cbfe7755df40810f253a1dd055ff8afc92d882c3538a5f6aaa31fd9f459"
+      }
+    }
+  },
+  "ctest": {
+    "registeredEntries": 108,
+    "failed": 0,
+    "skipped": 0,
+    "wallSeconds": 880.39
+  },
+  "mcp": {
+    "tests": 5,
+    "failed": 0,
+    "wallSeconds": 21.144,
+    "scope": "official SDK/production CLI integration contracts; no compositor or fresh-agent acceptance inferred"
+  },
+  "codeCi": {
+    "headCommit": "3440ab9c4fb6bd745d50eb6c0728a318951ee481",
+    "runURL": "https://github.com/patrick-hudson/put.gd-desktop/actions/runs/40105903461",
+    "conclusion": "success",
+    "jobs": [
+      {
+        "name": "changes",
+        "conclusion": "success"
+      },
+      {
+        "name": "contracts",
+        "conclusion": "success"
+      },
+      {
+        "name": "linux (24.04)",
+        "conclusion": "success"
+      },
+      {
+        "name": "portable (windows-2022)",
+        "conclusion": "success"
+      },
+      {
+        "name": "linux (26.04)",
+        "conclusion": "success"
+      },
+      {
+        "name": "sanitizers (clang ASan/UBSan)",
+        "conclusion": "success"
+      },
+      {
+        "name": "pipewire",
+        "conclusion": "success"
+      },
+      {
+        "name": "packages",
+        "conclusion": "skipped"
+      },
+      {
+        "name": "CI",
+        "conclusion": "success"
+      },
+      {
+        "name": "prune caches",
+        "conclusion": "skipped"
+      }
+    ]
+  },
+  "rawEvidence": {
+    "remoteRoot": "d69:/tmp/r410d",
+    "privateWorkstationCopy": "/home/patrick/work/put.gd/work/docs410-evidence/dev3440-d69",
+    "files": [
+      {
+        "file": "3440-tests.log",
+        "remotePath": "/tmp/r410d/3440-tests.log",
+        "sha256": "569b5bdc3b61331f8699555e844d7b0e49edb9b4ba4e8b17fda63968d4a7989a",
+        "sizeBytes": 13581
+      },
+      {
+        "file": "3440-junit.xml",
+        "remotePath": "/tmp/r410d/3440-junit.xml",
+        "sha256": "2a79aef9833361c6f4e208985ae43297eb0a0d3de0a7115b19864dfc6be1d4b2",
+        "sizeBytes": 126060
+      },
+      {
+        "file": "3440-mcp-tests.log",
+        "remotePath": "/tmp/r410d/3440-mcp-tests.log",
+        "sha256": "1b66e3019bb888c1c32bdd29edaf9768e02c281b2444ac6321e9dbcea1a8d35f",
+        "sizeBytes": 8137
+      },
+      {
+        "collectedAtUTC": "2026-10-24T15:39:07.526134+00:00",
+        "host": "d69",
+        "file": "3440-dev-identities.json",
+        "remotePath": "/tmp/r410d/3440-dev-identities.json",
+        "sha256": "3fc166f4ba200192b9f8b9f08b3dd71a95c39e369b475f72a7301d846ce2eb18",
+        "sizeBytes": 2231
+      }
+    ]
+  },
+  "reportOwnerVerification": [
+    "Export bytes match remote SHA-256.",
+    "Clean source/tree matches all three product manifests and supplied relevant test hashes.",
+    "Read108-entry JUnit with zero failures/skips, CTest wall time and5-test MCP completion.",
+    "Exact3440 CI run succeeded; packages/prune unselected rather than product/package evidence."
+  ],
+  "limitations": [
+    "Dev and headless MCP checks do not establish desktop or release acceptance.",
+    "Normal Dev test hashes supplied cover relevant service/CLI executables, not every one of108 registered programs."
+  ],
+  "historicalCommands": {
+    "cwd": "/home/patrick/work/i410 on d69",
+    "dev": [
+      "nice -n10 cmake --preset dev > /tmp/r410d/3440-configure.log 2>&1",
+      "nice -n10 cmake --build --preset dev > /tmp/r410d/3440-build.log 2>&1",
+      "mkdir -m700 /tmp/r410d/r344",
+      "python3 tools/diagnostics/check_socket_paths.py --socket /tmp/r410d/r344/putgd/session.sock /tmp/r410d/t/test_cli-XXXXXX/runtime/session.sock > /tmp/r410d/3440-socket-preflight.json",
+      "XDG_RUNTIME_DIR=/tmp/r410d/r344 TMPDIR=/tmp/r410d/t nice -n10 ctest --preset dev --output-junit /tmp/r410d/3440-junit.xml > /tmp/r410d/3440-tests.log 2>&1"
+    ],
+    "mcp": [
+      "mkdir -m700 /tmp/r410d/m344",
+      "python3 tools/diagnostics/check_socket_paths.py --socket /tmp/r410d/m344/putgd/session.sock /tmp/r410d/t/putgd-mcp-XXXXXX/session.sock > /tmp/r410d/3440-mcp-socket-preflight.json",
+      "PUTGD_CLI=\"$PWD/build/dev/putgd-cli\" XDG_RUNTIME_DIR=/tmp/r410d/m344 TMPDIR=/tmp/r410d/t nice -n10 ~/.local/bin/uv run --project tools/mcp --locked python -m unittest discover -s tests/integration -p test_mcp.py -v > /tmp/r410d/3440-mcp-tests.log 2>&1"
+    ],
+    "source": "Extracted inner command sequences from untruncated durable T3 command-execution items393 and418; original wrappers retained privately. Both recorded exit0.",
+    "privateCommandReceiptSha256": "7fe1465b690daf61759b279c9ed60f990addbe9d9065b2809f66606e1f5d68f5"
+  },
+  "socketPreflights": [
+    {
+      "sha256": "2b8f0cf01ab80a91c7bb89a0a4540f227f39b251f05ce93b9e078f286f5b2c73",
+      "schemaVersion": 1,
+      "passed": true,
+      "limitBytesExcludingNul": 107,
+      "paths": [
+        {
+          "path": "/tmp/r410d/r344/putgd/session.sock",
+          "utf8Bytes": 34,
+          "passed": true
+        },
+        {
+          "path": "/tmp/r410d/t/test_cli-XXXXXX/runtime/session.sock",
+          "utf8Bytes": 49,
+          "passed": true
+        }
+      ]
+    },
+    {
+      "sha256": "056c2997bb864eb4d8f203c4cd4eb633ea9c9d38e850ff5deb56c29f6260c338",
+      "schemaVersion": 1,
+      "passed": true,
+      "limitBytesExcludingNul": 107,
+      "paths": [
+        {
+          "path": "/tmp/r410d/m344/putgd/session.sock",
+          "utf8Bytes": 34,
+          "passed": true
+        },
+        {
+          "path": "/tmp/r410d/t/putgd-mcp-XXXXXX/session.sock",
+          "utf8Bytes": 42,
+          "passed": true
+        }
+      ]
+    }
+  ]
+}

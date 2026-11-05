@@ -1,0 +1,183 @@
+{
+  "schemaVersion": 1,
+  "sourceCommit": "3440ab9c4fb6bd745d50eb6c0728a318951ee481",
+  "guardedRetirements": [
+    {
+      "runId": "1543038f-acf2-4140-b4ac-f432cebb06a4",
+      "run": "/home/patrick/work/put.gd/work/lab-runs/i410c1",
+      "qemuPid": 165763,
+      "status": "completed guarded overlay retirement",
+      "completedUtc": "2026-10-24T15:46:24.491176+00:00",
+      "sourceCommit": "3440ab9c4fb6bd745d50eb6c0728a318951ee481",
+      "moduleSha256": "4b541bd59df1e7067083095385d856a51851f761425749045551ebd9a76db84b",
+      "configuredCanonicalLabRoot": "/home/patrick/work/put.gd",
+      "rootContextReason": "Shared canonical lab root carries historical lab.py without cleanup; execute current unmodified guard module against actual canonical lab root; no source changes or validation disabled",
+      "completionManifestSha256": "56db4751ebbd118d3d872b8f6994c49b5c8e1a3478e35383f3391ad18cf5dfc5",
+      "completionMembersVerified": 80,
+      "beforeGoldenSha256": "4a21566d5b741e55f349f4f07e1c687c99d1c99b5394ff0d18ed5c9e685693da",
+      "afterGoldenSha256": "4a21566d5b741e55f349f4f07e1c687c99d1c99b5394ff0d18ed5c9e685693da",
+      "diskIdentity": {
+        "device": 50,
+        "inode": 5850431,
+        "size": 1225392128,
+        "mtimeNs": 1792856712758509707,
+        "ctimeNs": 1792856712758509707,
+        "allocatedBytes": 1225330688
+      },
+      "rawEvidence": [
+        {
+          "file": "cinnamon-retirement-3440/completion-manifest.json",
+          "sha256": "56db4751ebbd118d3d872b8f6994c49b5c8e1a3478e35383f3391ad18cf5dfc5"
+        },
+        {
+          "file": "cinnamon-retirement-3440/cinnamon-cleanup-dry.json",
+          "sha256": "842710b957ee1e0960e594a733305d1b43e35e04fe7048366e99f75f37a12471"
+        },
+        {
+          "file": "cinnamon-retirement-3440/cinnamon-cleanup.json",
+          "sha256": "7b3366f2e7c1d2cde8c7fa49c7f413c4f508cad33833af6e1f856873b71c1a5d"
+        },
+        {
+          "file": "cinnamon-retirement-3440/cinnamon-cleanup-api.json",
+          "sha256": "6cf8ad86961cb7cbe7b6865c13c959b82412c71b11ad93ac352fabd1632f7d00"
+        },
+        {
+          "file": "cinnamon-retirement-3440/cinnamon-golden-after.sha256",
+          "sha256": "c2e298c87443ca5f62c0d99a603704d5416bd08d713204e3ade0c4ec8822f406"
+        }
+      ]
+    },
+    {
+      "runId": "7b7493a7-62fc-4da3-abd1-b9902255d37e",
+      "run": "/home/patrick/work/put.gd/work/lab-runs/i410c2",
+      "qemuPid": 2807402,
+      "status": "completed guarded overlay retirement",
+      "completedUtc": "2026-10-24T16:01:29.781970+00:00",
+      "sourceCommit": "3440ab9c4fb6bd745d50eb6c0728a318951ee481",
+      "moduleSha256": "4b541bd59df1e7067083095385d856a51851f761425749045551ebd9a76db84b",
+      "configuredCanonicalLabRoot": "/home/patrick/work/put.gd",
+      "rootContextReason": "Currentunmodifiedguardmoduleconfiguredtoactualcanonicallabroot; allguardsretained; nosharedsourcechanges",
+      "completionManifestSha256": "86bf00f20119dd1bebb1701335584d2a9a30d5613e528f77dfcc98f5664e216f",
+      "completionMembersVerified": 27,
+      "beforeGoldenSha256": "ebc60005f72aaf67f1c14f51a16e09749cf09d91ad1890e50a0eedda30b40252",
+      "afterGoldenSha256": "ebc60005f72aaf67f1c14f51a16e09749cf09d91ad1890e50a0eedda30b40252",
+      "diskIdentity": {
+        "device": 2050,
+        "inode": 8520598,
+        "size": 772210688,
+        "mtimeNs": 1792857663908078726,
+        "ctimeNs": 1792857663908078726,
+        "allocatedBytes": 772157440
+      },
+      "rawEvidence": [
+        {
+          "file": "cinnamon-c2-retirement/completion-manifest.json",
+          "sha256": "86bf00f20119dd1bebb1701335584d2a9a30d5613e528f77dfcc98f5664e216f"
+        },
+        {
+          "file": "cinnamon-c2-retirement/cinnamon-c2-cleanup-dry.json",
+          "sha256": "04a6703aa7a0c7c900af843310be940694e50aba8032939ac408ed531b4a818a"
+        },
+        {
+          "file": "cinnamon-c2-retirement/cinnamon-c2-cleanup.json",
+          "sha256": "55c08c28c35e45f142e0287097d8ad5279fd3899fe1c19560506933a19e20a90"
+        },
+        {
+          "file": "cinnamon-c2-retirement/cinnamon-c2-cleanup-api.json",
+          "sha256": "0fd35dd265ffe39710213020478d3006bbcc49e81e8895c92e9bcc82b1378525"
+        },
+        {
+          "file": "cinnamon-c2-retirement/cinnamon-c2-golden-after.sha256",
+          "sha256": "199c9b8bbd271a54e8eff5f82e5591038efb37b1ac19052a184d7119e0583899"
+        }
+      ]
+    },
+    {
+      "runId": "afa7f719-5f19-4653-86f3-a96e4914044d",
+      "run": "/home/patrick/work/put.gd/work/lab-runs/i410g1",
+      "qemuPid": 172510,
+      "status": "completed guarded overlay retirement",
+      "completedUtc": "2026-10-24T16:04:45.051170+00:00",
+      "sourceCommit": "3440ab9c4fb6bd745d50eb6c0728a318951ee481",
+      "moduleSha256": "4b541bd59df1e7067083095385d856a51851f761425749045551ebd9a76db84b",
+      "configuredCanonicalLabRoot": "/home/patrick/work/put.gd",
+      "rootContextReason": "Currentunmodifiedguardmoduleconfiguredtoactualcanonicallabroot; allguardsretained; nosharedsourcechanges",
+      "completionManifestSha256": "b9c319b63ffaa06a5a631920d6ce6a58dea66d2c44fb85c1b9b05e4cfa1cb805",
+      "completionMembersVerified": 47,
+      "beforeGoldenSha256": "563730cc1d929bd946d20cf30a9aecfe3c4ad40eb12ba7f9abcff1c461e342bb",
+      "afterGoldenSha256": "563730cc1d929bd946d20cf30a9aecfe3c4ad40eb12ba7f9abcff1c461e342bb",
+      "diskIdentity": {
+        "device": 50,
+        "inode": 5851203,
+        "size": 1770979328,
+        "mtimeNs": 1792857861645310028,
+        "ctimeNs": 1792857861645310028,
+        "allocatedBytes": 1770917888
+      },
+      "rawEvidence": [
+        {
+          "file": "gnome-retirement-3440/completion-manifest.json",
+          "sha256": "b9c319b63ffaa06a5a631920d6ce6a58dea66d2c44fb85c1b9b05e4cfa1cb805"
+        },
+        {
+          "file": "gnome-retirement-3440/gnome-cleanup-dry.json",
+          "sha256": "0655446bbc7a6928f792fcbfe74693d405513f08482374ed7c2cb222f33edd23"
+        },
+        {
+          "file": "gnome-retirement-3440/gnome-cleanup.json",
+          "sha256": "a62707c70ae45e3e9f2179bc28875739edeea878759a7e4b2f6f4d37e55ce37d"
+        },
+        {
+          "file": "gnome-retirement-3440/gnome-cleanup-api.json",
+          "sha256": "0fd35dd265ffe39710213020478d3006bbcc49e81e8895c92e9bcc82b1378525"
+        },
+        {
+          "file": "gnome-retirement-3440/gnome-golden-after.sha256",
+          "sha256": "994924db9b61eac8c40c631efa99002c6d64e5f52eb9a04abd006c84bd7d4cf3"
+        }
+      ]
+    }
+  ],
+  "physicalDesktop": {
+    "host": "d69",
+    "lock": {
+      "owner": "Codex410",
+      "session": "codex-410-d69-final",
+      "host": "d69",
+      "purpose": "Issue410 exact3440 recording functional memory gates; T3 9b80a9a2; evidence /tmp/r410d/k1",
+      "acquired": "2026-10-24T15:36:05Z",
+      "expires": "2026-10-24T16:06:05Z",
+      "heartbeat": "2026-10-24T15:42:45Z"
+    },
+    "releasedUtc": "2026-10-24T15:45:48Z",
+    "check": {
+      "left": [],
+      "notMine": [],
+      "preexisting": [
+        {
+          "kind": "process",
+          "id": "2008860",
+          "key": "process:2008860:40475026",
+          "detail": "gpg-agent --homedir /home/patrick/.local/share/putgd-signer/gnupg --use-standard-socket --daemon"
+        }
+      ],
+      "unmatchedNotMine": []
+    },
+    "rawEvidence": {
+      "file": "kde-export-3440/desktop-release.json",
+      "sha256": "8985633ce37abc078d0248e43a7959c309d9747e5b389a8d221ea09e4b0370bf"
+    }
+  },
+  "executionOwnerFinalAttestation": {
+    "allOwnedVMOverlaysRetired": true,
+    "allImmutableGoldenHashesUnchanged": true,
+    "allOwnedQEMUAbsent": true,
+    "ownPhysicalDesktopLockReleased": "d69 2026-10-24T15-45-48Z-release.json",
+    "ownVMtunnelsStopped": true,
+    "onlyOwnWallEntriesRemoved": true,
+    "ownedBootstrapAgentsStopped": true,
+    "m74Workloads": "none"
+  },
+  "attestationLimit": "QEMU/overlay absence and own tunnel/wall/bootstrap-agent cleanup are execution-owner final observations; retirement/base/export/release receipt joins independently verified by report owner. No new desktop or VM execution here.",
+  "historicalCorrection": "Shared historical lab CLI had no cleanup command; exact unmodified3440 overlay_cleanup API used with canonical lab ROOT instead of source checkout ROOT. Root confirmed context correction, no guard waiver."
+}

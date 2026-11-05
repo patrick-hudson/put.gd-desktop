@@ -1,0 +1,9 @@
+{
+  "gitCommit": "3e21fbf10db71bd4ed5b1f81acb224c53f962bfd",
+  "placement": "boat",
+  "files": {
+    "tools/lab/lab.py": "0e0817d3dcbf1b88320392f0c7c83885881d4107d819c3915acfe73f3bc7f20e",
+    "tools/lab/package_staging.py": "32123e656667f70f23e8c1c32b504e605f855f2fba1a1af87b2855d78868c916",
+    "tools/lab/package_install.py": "7014397025219f6c6655586786168a958dbd9ed0f29fe9ad98addb9e06895263"
+  }
+}

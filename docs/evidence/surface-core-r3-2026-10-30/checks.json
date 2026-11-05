@@ -1,0 +1,21 @@
+{
+  "sourceHead": "a8cc74ea3692df85715739f5e1669de64f56c536",
+  "surfaceTests": {
+    "passed": 664,
+    "placement": "Boat GNOME sandbox host",
+    "logSha256": "2fe2049d4823a9af7561487d2307a4cb8a5b76ba514126a523e3f2bf8c73547d",
+    "logMember": "unit-final-head.log"
+  },
+  "cleanupTests": {
+    "passed": 31,
+    "logSha256": "1a7e0446826b46d590b7cbd5baf7e77b3dc4270c74bdaa79738448ca040b228d",
+    "logMember": "unit-cleanup-844.log"
+  },
+  "earlierTermination": {
+    "kind": "SIGSEGV",
+    "logMember": "unit-head.log",
+    "logSha256": "eb081a07dcf29e9560fbece1ac76e03178343cdc15dc290b0e2473e39bf2b125",
+    "faultSite": "unproven",
+    "laterVerboseRunsPassed": 2
+  }
+}

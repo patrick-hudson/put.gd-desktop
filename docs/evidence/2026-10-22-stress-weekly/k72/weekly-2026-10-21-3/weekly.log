@@ -1,0 +1,40 @@
+2026-10-21T23:33:37-05:00 putgd weekly stress lane on kubuntu: origin/claude/stress-lane-weekly-360-31d0ab, 10 runs, 4 busy loops, scale 3
+2026-10-21T23:33:37-05:00 k72 desktop lock: free (read with ~/work/put.gd-stress/tools/lab/desktop_lock.py)
+2026-10-21T23:33:37-05:00 no other ctest or stress suite running; load 0.98 on 4 CPUs
+2026-10-21T23:33:37-05:00 $ git -C ~/work/put.gd-stress fetch --quiet --prune --no-tags origin +refs/heads/claude/stress-lane-weekly-360-31d0ab:refs/remotes/origin/claude/stress-lane-weekly-360-31d0ab
+2026-10-21T23:33:38-05:00 $ git -C ~/work/put.gd-stress checkout --quiet --force --detach refs/remotes/origin/claude/stress-lane-weekly-360-31d0ab
+2026-10-21T23:33:38-05:00 $ git -C ~/work/put.gd-stress clean -ffdq
+2026-10-21T23:33:38-05:00 tree ~/work/put.gd-stress at origin/claude/stress-lane-weekly-360-31d0ab 3ae60a5b27cf8064babad0ae860f29a86ad0b6eb
+2026-10-21T23:33:38-05:00 disk: 102.1 GiB free, keeping the previous build/dev for an incremental build
+2026-10-21T23:33:38-05:00 $ cmake --preset dev -DPUTGD_TEST_TIMEOUT_SCALE=3
+2026-10-21T23:33:39-05:00 $ nice -n 10 cmake --build --preset dev -j 3
+2026-10-21T23:34:09-05:00 built in 31 s; build/dev is 2.6 GiB
+2026-10-21T23:34:09-05:00 k72 desktop lock: free (read with ~/work/put.gd-stress/tools/lab/desktop_lock.py)
+2026-10-21T23:34:09-05:00 no other ctest or stress suite running; load 1.97 on 4 CPUs
+2026-10-21T23:34:09-05:00 $ /usr/bin/python3 -I ~/work/put.gd-stress/tools/ci/stress_suite.py --source ~/work/put.gd-stress --out ~/work/flake-stress/weekly-2026-10-21-3 --iterations 10 --hogs 4 --time-scale 3 --label weekly-2026-10-21-3 -- --preset dev -L integration --parallel 12 --resource-spec-file ~/work/put.gd-stress/tools/ci/ctest-resources.json
+2026-10-21T23:36:09-05:00 iteration 1/10: 74 tests, 119.88 s, load 8.08 5.62 5.53, failed: none
+2026-10-21T23:38:08-05:00 iteration 2/10: 74 tests, 119.06 s, load 8.19 6.86 6.02, failed: none
+2026-10-21T23:40:08-05:00 iteration 3/10: 74 tests, 119.74 s, load 8.45 7.73 6.46, failed: none
+2026-10-21T23:42:06-05:00 iteration 4/10: 74 tests, 118.21 s, load 8.67 8.29 6.83, failed: capture_process_integration
+2026-10-21T23:44:04-05:00 iteration 5/10: 74 tests, 117.57 s, load 9.15 8.91 7.25, failed: none
+2026-10-21T23:46:02-05:00 iteration 6/10: 74 tests, 118.24 s, load 8.54 9.03 7.52, failed: none
+2026-10-21T23:48:01-05:00 iteration 7/10: 74 tests, 118.66 s, load 8.80 9.22 7.78, failed: none
+2026-10-21T23:49:58-05:00 iteration 8/10: 74 tests, 117.52 s, load 8.84 9.49 8.08, failed: none
+2026-10-21T23:51:57-05:00 iteration 9/10: 74 tests, 118.51 s, load 8.83 9.64 8.33, failed: none
+2026-10-21T23:53:57-05:00 iteration 10/10: 74 tests, 119.86 s, load 8.76 9.61 8.49, failed: none
+2026-10-21T23:53:57-05:00 ### Stress: weekly-2026-10-21-3 on kubuntu
+2026-10-21T23:53:57-05:00 
+2026-10-21T23:53:57-05:00 | Test | Label | Runs | Failed | Outcome | Where | First failure |
+2026-10-21T23:53:57-05:00 | --- | --- | ---: | ---: | --- | --- | --- |
+2026-10-21T23:53:57-05:00 | `capture_process_integration` | integration | 10 | 1 | flaky | stress on kubuntu: 10 runs, 4 busy loops, scale 3 | `FAIL!  : CaptureProcessTests::malformedResultsSettleOnce(early-exit) 'QStringList({"helper_exit","begin_send"}).contains(error.details["check"].toString())' ret` |
+2026-10-21T23:53:57-05:00 
+2026-10-21T23:53:57-05:00 1 flaky, 0 failed, 74 test results.
+2026-10-21T23:53:57-05:00 
+2026-10-21T23:53:57-05:00 | Test | Runs | Failed |
+2026-10-21T23:53:57-05:00 | --- | ---: | ---: |
+2026-10-21T23:53:57-05:00 | `capture_process_integration` | 10 | 1 |
+2026-10-21T23:53:57-05:00 
+2026-10-21T23:53:57-05:00 Iterations: 10, wall 117.52-119.88 s (median 118.66 s).
+2026-10-21T23:53:57-05:00 
+2026-10-21T23:53:57-05:00 GitHub token ~/.config/putgd-stress/github-token is missing: not commenting on flaky-test issues; the results stay in ~/work/flake-stress/weekly-2026-10-21-3
+2026-10-21T23:53:57-05:00 results: ~/work/flake-stress/weekly-2026-10-21-3/ledger.json and ~/work/flake-stress/weekly-2026-10-21-3/summary.md

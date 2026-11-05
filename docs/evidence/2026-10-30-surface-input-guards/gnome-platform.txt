@@ -1,0 +1,24 @@
+Linux putgd-ubuntu-lab 7.0.0-38-generic #38-Ubuntu SMP PREEMPT_DYNAMIC Fri Sep  4 09:10:14 UTC 2026 x86_64 GNU/Linux
+
+PACKAGES
+cinnamon 
+gnome-shell 50.1-0ubuntu1.2
+libqt6core6 
+libqt6core6t64:amd64 6.10.2+dfsg-7
+mutter-common 50.1-0ubuntu2.2
+putgd 26.1030.2481~dev+g6ad9f957e654
+
+BINARIES
+02b1267cd1cf4df5770e668cbcda8e61bdc57668bc208e668de9b2534bad36a1  /usr/bin/putgd
+07f7e567f0ffc3c1c9ed9a571df36acac96570d3fb7deeec883e5e8ae7098ede  /usr/bin/putgd-ui
+e1bbc373266d4bfd89685597f692bd3e0f07c09bdfd12399daf17ac9cbb32869  /usr/bin/putgd-capture
+
+QT_DYNAMIC_LIBRARIES
+	libQt6Network.so.6 => /usr/lib/x86_64-linux-gnu/libQt6Network.so.6 (0x000074149e210000)
+	libQt6Widgets.so.6 => /usr/lib/x86_64-linux-gnu/libQt6Widgets.so.6 (0x000074149da00000)
+	libQt6Gui.so.6 => /usr/lib/x86_64-linux-gnu/libQt6Gui.so.6 (0x000074149d000000)
+	libQt6DBus.so.6 => /usr/lib/x86_64-linux-gnu/libQt6DBus.so.6 (0x000074149e983000)
+	libQt6Core.so.6 => /usr/lib/x86_64-linux-gnu/libQt6Core.so.6 (0x000074149ca00000)
+
+SESSION
+wayland ubuntu:GNOME wayland

@@ -1,0 +1,31 @@
+Test project /home/patrick/work/i560o/build/dev
+      Start  80: operations_contract
+      Start  33: edit_operations_integration
+ 1/11 Test  #33: edit_operations_integration .........   Passed   14.81 sec
+      Start  93: settings_contract
+ 2/11 Test  #93: settings_contract ...................   Passed    9.59 sec
+      Start  79: history_contract
+ 3/11 Test  #79: history_contract ....................   Passed    7.18 sec
+      Start  56: resident_retire_integration
+ 4/11 Test  #56: resident_retire_integration .........   Passed    3.54 sec
+      Start 102: resident_session_contract
+ 5/11 Test #102: resident_session_contract ...........   Passed    1.72 sec
+      Start  96: diagnostics_upload_contract
+ 6/11 Test  #96: diagnostics_upload_contract .........   Passed    1.54 sec
+      Start  57: resident_display_loss_integration
+ 7/11 Test  #57: resident_display_loss_integration ...   Passed    0.71 sec
+      Start  53: allocator_policy_contract
+ 8/11 Test  #53: allocator_policy_contract ...........   Passed    0.16 sec
+      Start  78: upload_naming_contract
+ 9/11 Test  #78: upload_naming_contract ..............   Passed    0.03 sec
+      Start  77: archive_contract
+10/11 Test  #77: archive_contract ....................   Passed    0.02 sec
+11/11 Test  #80: operations_contract .................   Passed   74.72 sec
+
+100% tests passed, 0 tests failed out of 11
+
+Label Time Summary:
+integration    = 106.78 sec*proc (8 tests)
+unit           =   7.23 sec*proc (3 tests)
+
+Total Test time (real) =  74.72 sec

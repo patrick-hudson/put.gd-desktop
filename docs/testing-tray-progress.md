@@ -18,8 +18,9 @@ cannot replace this inspection.
 ## Candidate and guest preparation
 
 Run Cinnamon/X11, GNOME/Wayland and KDE/Wayland functional **and memory** checks
-in parallel on one candidate. Use [VM memory evidence](testing-vm-memory-audit.md)
-and [the frozen memory protocols](testing-memory.md); this functional runner
+in parallel on one candidate. Use [whole-workload measurement guidance](memory-strategy.md#measure-the-complete-workload),
+the [performance observers](../tests/performance/) and the applicable
+[acceptance-matrix memory gates](acceptance-matrix.md); this functional runner
 does not invent a replacement memory budget. Wait for build/GUI work to stop
 before quiet memory sampling.
 
@@ -59,8 +60,10 @@ before quiet memory sampling.
    verifies every path in this receipt, not just these three examples. Native
    package-manager installation must resolve its dependencies normally. This
    runner does not add an RPM installer to `lab.py`.
-4. Keep the VM's localhost VNC listener and display wall at
-   `http://127.0.0.1:8765/` active. Restore a locked session through its visible
+4. Keep the VM's localhost VNC listener running. The runner itself needs no
+   viewer: QMP supplies its input and screenshots on VMs, and `physical.py`
+   reads the host's VNC tunnel directly. The display wall at
+   `http://127.0.0.1:8765/` is only for watching live. Restore a locked session through its visible
    console using the owned/private protected login input identified by existing
    bootstrap metadata. The operator reads it only in memory and types into the
    visibly focused masked field. Do not print it, put it in argv, photograph it,
@@ -172,7 +175,9 @@ python3 -B tools/lab/tray_progress.py \
 ```
 
 Repeat with `--provider proton-drive` and that provider's new folder/profile
-patch, then with GNOME/KDE only after the Cinnamon functional/memory gates pass.
+patch, and run the GNOME and KDE legs in parallel with Cinnamon on the same
+candidate; a failure on any desktop blocks acceptance until it is fixed or
+shown to predate the build.
 Every declared desktop/provider combination needs current-source evidence.
 All CLI source imports come from the guest fixture's actual native clipboard.
 The host clipboard is never used or shared.
@@ -205,15 +210,25 @@ The scenario uses two deterministic synthetic files per operation and drives:
    state and idle, then explicit production `operation.retry` with the original
    operation, retained artifact and publication IDs. Unknown publication is
    reconciled by that retry; a new action never conceals it.
+   The guests' user-mode network occasionally resets the public S3 download; a
+   reset restarts it, at most twice, while HTTP errors and wrong bytes still fail.
+   Keep the default 32 MiB payload: on the lab uplink 8 MiB files can finish
+   before the cancel lands. A cancel after the files uploaded settles with
+   `copyStatus: partial` (some links copied), which the runner accepts as final.
 5. A local-only file batch whose new private archive root is intentionally a
-   regular file. Its real save must fail. Replacing that owned blocker with a
+   regular file. Its real save must fail and latch the tray: "Needs attention",
+   the error glyph and badge, and "Local save needs attention — open the tray
+   menu to review". The latch must hold for 3 seconds untouched. The runner
+   then opens it from the desktop's own tray menu (see
+   [opening a latched failure](#opening-a-latched-failure)) and requires the
+   exact original idle icon afterwards. Replacing that owned blocker with a
    directory permits `operation.retryLocalSave` on the same operation; actual
    saved bytes must match independent source hashes and stay local-only.
 6. Resident quit/restart, a new matching process identity, exact preserved
    history receipts and the original idle icon hashes/empty tooltip.
 
 CLI and SNI reads are independent and ordered within one SSH session, avoiding
-network round trips that can alias the 300 ms blink. The product batches observations. Counter
+network round trips between them. The product batches observations. Counter
 assertions use before/after CLI reads plus a two-second recent observation
 window, restricted to the current row’s operation and artifact identity.
 An operation moving up a row keeps its own observations; a previous operation
@@ -222,38 +237,97 @@ without coverage credit and retried for at most two consecutive seconds. A
 persistently idle tray while CLI work remains active fails this same bound.
 Privacy, identity, icon color and malformed accounting failures stop immediately;
 the rejected SNI text is redacted from failure evidence.
-Expected error overlays are scoped to the runner's original local-save failure
-ID or explicit `proton_account_busy` failures on original concurrent/retry IDs.
-Independent terminal CLI items must prove the expected failure before red is
-accepted. Each newly failed ID supplies one monotonic three-second pulse window;
-repeated frames never renew it. A newly failed ID archives the previous window
-and requires a fresh red/blue/red sequence. Red, a subsequent blue off-phase and returning red must all be
-observed and receive native screenshot witnesses. A single red frame followed
-by blue for the rest of the window is insufficient. Blue during that window is
-not idle recovery. Recovery requires the window to expire, no active CLI work,
-and the exact original blue idle icon/empty tooltip. `errorPulses` records the
-failure IDs/times, deadline, red/blue observations and recovery time separately
-from upload activity coverage. Initial bracketed green and green within the
-last 500 ms of the observed deadline can be validated as transition grace;
-they receive no pulse or upload coverage and cannot establish idle recovery.
-Green during the established pulse fails immediately. Missing phases fail the replay and require a new
-preserved run; the harness never invents error coverage from a declaration.
+
+Icon colours are checked against the tint set for the panel the resident sees
+(#229). put.gd tints its tray icon for the panel, not the app theme
+(`Theme::trayTints`, #60). Dark panels get idle `#d6d6d2`, upload `#91bca2`,
+encoding `#e8b66d` and error `#e59b93`; light panels get `#383834`, `#386a4b`,
+`#8f5b20` and `#a44139`. At setup the runner reads the panel
+tone the way `PanelTone` does, in the resident's own environment: the KDE
+configuration cascade (`plasmarc`, `kdeglobals`, the Plasma style's `colors`),
+Cinnamon's `org.cinnamon.theme`, or GNOME's dark top bar. It then waits until
+put.gd's own report (`ui.snapshot` `diagnostics.trayTint`) agrees, and saves
+both in `panel-tone.json`. Every read, attention included, is checked
+against that one set. The resident and the reader get the desktop session's
+`XDG_CONFIG_DIRS` and `XDG_DATA_DIRS`: Plasma lists `~/.config/kdedefaults`
+there, and without it a Breeze Dark panel reads as Plasma's light default.
+`TRAY_TINTS` in `tray_progress.py` mirrors `Theme.cpp`; the contracts read the
+C++ table and `PanelTone`'s rule rows back, so the two can't drift.
+
+The tooltip title is `put.gd` when idle or preparing, `Uploading` while an upload
+is shown, `Upload complete` for a confirmed upload and `Needs attention` for a
+latched failure (`TrayController::refreshActivity`). In November and December,
+only the idle title becomes `put.gd - Happy Holidays!`. During preparation,
+recording, pause, review, saving or upload, the ordinary title and activity rows
+stay first and the greeting is appended as the last line (see
+[seasonal glyphs](appearance.md#seasonal-glyphs)). Working icons keep the idle
+glyph, with an encoding-colour fill for upload progress; the upload colour is
+reserved for a confirmed completion. The reveal and hold timings stay with the
+product: activity appears after 200 ms, a shown upload holds at least 600 ms,
+and "Finishing upload" covers the short hold after the last transfer. Rounded
+tooltip sizes use the app's MB/GB format (`ByteSize::summary`).
+`tests/desktop/test_lab_ui_contract.py` fails when any title, label or unit the
+runner matches leaves the app source.
+
+A failure latches until it is opened. Only the runner's original local-save
+failure ID, or explicit `proton_account_busy` failures on original concurrent or
+retry IDs, may latch. Independent terminal CLI items must prove that failure
+before the attention state is accepted; until then a frame showing it gets only
+the two-second batching grace. Attention without an expected failure is fatal.
+While latched, every icon must carry the error colour without a progress or
+completion fill, and the first tooltip row must name the expected item, such as
+"Local save needs attention — open the tray menu to review". Later rows are
+ordinary activity, checked against observations. A local-save latch that clears
+before its item is opened fails the replay. A Proton busy latch clears by itself
+once its retried items upload. The `attention` results record the failure IDs,
+when the latch was first and last seen, how it was opened and when it cleared.
+
+### Opening a latched failure
+
+The runner opens the attention item the way a person does, on the desktop's own
+tray menu, and watches the result:
+
+1. A `busctl monitor` on the resident's bus name records every dbusmenu call
+   other clients make to put.gd's menu. The guest needs `busctl` and `stdbuf`.
+2. Tray icons move when other items come and go, so `--tray-x/--tray-y` is
+   only a hint: the runner parks the pointer (Plasma lightens a hovered icon),
+   then finds the latched icon's error-tint pixels near the hint in the frame
+   taken just before, and fails over (below) if there are none. The profile's
+   button (right by default) opens the menu there. The monitor must show the
+   desktop asking for the menu (`AboutToShow`, `AboutToShowGroup` or an
+   `opened` event) addressed to the resident: Cinnamon uses its unique bus
+   name, Plasma the item's well-known name.
+3. The runner counts the attention item's place among the visible, enabled
+   top-level rows of the live menu layout and presses Down that many times. If
+   the desktop reports hovers, the last one must be the attention row.
+4. Enter. The desktop's own `clicked` for exactly that row must reach put.gd
+   within 5 seconds. A click on any other row is fatal: it may have started a
+   capture or quit the resident.
+
+Frames before, open, highlighted and after are saved as witnesses. Each
+profile's optional `tray_menu` entry calibrates its desktop: `button`,
+`openSeconds` (0.8 by default) and `firstRowSelected` (whether the menu opens
+with its first row highlighted). Attempts record whether their profile was
+calibrated, where the icon was found and whether the desktop reported hovers.
+Cinnamon, Plasma and GNOME are calibrated (right button, 0.8 s, no first-row
+highlight). None of them reports hovers, so the desktop's own `clicked` on the
+counted row is the proof. GNOME also sets `primeOpen`: its AppIndicator applies
+a layout change received while the menu was closed on the next open, and that
+open ignores the keyboard, so the runner opens and escapes once before the
+counted open and records `primedOpen`.
+
+If the menu does not open, the highlight is elsewhere or no click arrives, the
+runner presses Escape, saves the frame and sends the dbusmenu `clicked` event
+itself, so the rest of the replay can run. That run never counts as a visible
+pass: `visibleMenuFallbacks` in the results and the printed summary carry the
+reason, and acceptance treats it as a finding about put.gd on that desktop.
 
 Rounded tooltip bytes must fit real observed byte bounds and their own
 integer percentage. A source-size fallback must be labelled `Estimated`, match
 the actual counters/source bytes, and stop at 99% while awaiting finalization or
-receipt. No elapsed-time percentage is accepted. Green activity is revealed after
-200 ms; successful work that finishes before that delay leaves the blue icon
-unchanged. Once revealed, green stays visible for at least 600 ms, including at
-least 200 ms of terminal feedback. A confirmed successful upload displays full
-green before returning to blue. Pending receipt lookup and gaps between storage
-phases retain the last visible frame. Tooltips update during the reveal delay. Partial
-fills include a dim green base, which is still green storage feedback at 0%.
-Destination checks and storage work without a usable transfer denominator use
-that dim green frame rather than appearing complete before transfer begins.
-Concurrent transfer fills are weighted by their acquired source sizes; local
-preparation and queued transfers do not contribute. Error pulses supersede all
-fills and retain their existing timing.
+receipt. No elapsed-time percentage is accepted. Concurrent transfer fills are
+weighted by their acquired source sizes; local preparation and queued transfers
+do not contribute. A latched failure supersedes all fills.
 The SNI phase must have a matching production observation. Source filenames,
 paths and links are prohibited in tray text.
 
@@ -268,6 +342,56 @@ queued/concurrent work or cancellation fails instead of fabricating those
 observations. Preserve its full output, record the corrected command, and use
 a new output/root/destination marker before retrying. Do not alter a frozen
 memory harness or relax a gate to get a pass.
+
+## Concurrent batch row on physical trays (#207)
+
+When several files of one operation transfer at once, the tooltip gets a batch row
+(#175), such as "Uploading: 20 MiB of 20 MiB (100%) · 3 uploading, 1 waiting, 2 done".
+`check_tooltip` validates that row with `BATCH` and `records_from`. The row was checked
+on two physical desktops on 2026-10-20 (round 9), with a dev build of nightly `87e6900`
+plus #220 and a private profile under `/tmp/r9*`: config, data, state, cache,
+runtime and archive. Without its own `archive.root` the profile would archive into
+`~/Documents/put.gd`. The destination was the offline S3 fixture
+(`tests/fixtures/s3_server.py`) on loopback, with its synthetic keys in session mode,
+stored over the resident's socket because the CLI refuses raw keys. One six-file
+clipboard batch (`text/uri-list`, 4 MiB synthetic files) ran with
+`limits.concurrentUploads` 3. The fixture held each PUT 12 s longer than the previous
+one, so files finished one at a time. About every 0.45 s the driver
+([r9lab.py](evidence/tray-batch-207/r9lab.py)) read `operation.recent`, the real
+StatusNotifier item through `putgd-tray-probe`, then `operation.recent` again, and
+applied `check_tooltip` and `correlated_records` from `tray_progress.py` unchanged.
+
+| Host | Tray host | Reads | Matched | Batch rows seen on the panel |
+| --- | --- | --- | --- | --- |
+| m74, Linux Mint 22.3, Cinnamon 6.6.4, X11 | xapp StatusNotifierWatcher | 238 | 233 | 3 uploading, 1 waiting → …, 1 done → …, 2 done → 3 uploading, 3 done → 2 uploading, 4 done |
+| d69, Debian 13, Plasma 6.3, Wayland, light panel | Plasma | 228 | 224 | the same five rows |
+
+Every mismatch was a single read that straddled a file or phase change, and the next
+read matched. That is within the runner's 2 s batching grace. No fatal check failed,
+both operations completed, and the tooltip never named a file, path or link.
+
+![Each host's SNI tooltip over time beside production's counts, with the batch rows boxed](evidence/tray-batch-207/207-tray-batch-rows.png)
+
+Notes on the runs:
+
+- **Tray tints on d69:** the d69 resident drew the light-panel set (`#2759B8` idle,
+  `#146C42` active, `#092F1D` dim), and the first attempt failed on the icon colour
+  ([attempt 1](evidence/tray-batch-207/observations-d69-plasma-attempt1-dark-tint-check.jsonl)),
+  because `check_tooltip` then knew only the dark set. The kept run renamed those
+  three colours to their dark twins before the check. d69's panel was in fact dark
+  (Breeze Dark from `~/.config/kdedefaults`, unchanged since 2026-10-16): this
+  run's driver gave the resident no `XDG_CONFIG_DIRS`, so put.gd fell back to
+  Plasma's light default. #229 made the check panel-aware and passes the session's
+  directories to the resident; replaying these 228 reads against the light set
+  passes all of them ([#229 evidence](evidence/2026-10-20-tray-tints-229/README.md)).
+- **Clipboard:** the batch needs the desktop clipboard. On d69, Klipper keeps the
+  synthetic file list and the loopback link list in its history. Klipper can only clear
+  all of its history, so the entries were left and only the current contents were cleared.
+- **Notifications** were off on d69. On m74, put.gd closed its own "completed"
+  notification when it quit.
+- The observation logs are [m74](evidence/tray-batch-207/observations-m74-cinnamon.jsonl)
+  and [d69](evidence/tray-batch-207/observations-d69-plasma.jsonl).
+  Each line has the SNI title and tooltip, production's rows and the check result.
 
 ## Native host restart, cleanup and evidence
 
@@ -307,11 +431,9 @@ services, then records each actual outcome. Proton `delete.prepare` must return
 folder because safe revision-guarded deletion is unavailable. Link revocation
 is a separate mutation and does not remove those files.
 
-Windows S3 acceptance uses independent overlays and the native Windows route in
-[windows-vm-lab.md](windows-vm-lab.md). This Linux SNI/QMP runner is not Windows
-tray proof. The currently pinned Proton runtime supports Linux x86-64 only;
-Windows Proton acceptance is blocked until a supported runtime/package exists.
-Neither those platform routes nor a service-session exporter is added here.
+This procedure covers Linux SNI/QMP behavior. The pinned Proton runtime
+supports Linux x86-64. Use the [acceptance matrix](acceptance-matrix.md) for
+current package and desktop requirements.
 
 Pure host contracts can be run independently without builds, guests or service
 access:
@@ -330,7 +452,7 @@ acceptance. Record those actual executions separately.
 The native Linux resident gives a single-item upload notification a browser action
 only when the item has a confirmed, available link. Clicking the toast opens that
 receipt's HTTP(S) URL through the default browser. A batch or local-only result
-keeps its existing Recent Activity guidance. Upload completion itself never opens
+keeps its existing guidance to open History. Upload completion itself never opens
 the browser.
 
 The transport uses the notification server's returned ID and the standard
@@ -341,7 +463,9 @@ first appearance of a service preserves replies for notifications that started
 it. The generic Qt fallback has no per-notification click ID and does not promise
 browser activation.
 
-Browser activation uses `gio open` and the configured HTTP(S) URI handler.
+Browser activation asks the XDG portal's OpenURI, and falls back to `gio open` with the
+host's environment and the configured HTTP(S) URI handler
+([diagnostics.md](diagnostics.md#opening-links-and-folders-on-the-host)).
 KDE’s generic `xdg-open` path can choose an image application for a remote PNG
 even when Firefox is the default browser. Keep the native desktop’s data/config
 search paths when launching an isolated test session; a missing browser desktop

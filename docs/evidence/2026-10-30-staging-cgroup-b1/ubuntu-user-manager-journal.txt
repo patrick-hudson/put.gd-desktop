@@ -1,0 +1,180 @@
+2026-10-30T02:39:19-05:00 putgd-ubuntu-lab systemd[20260]: Stopped org.gnome.SettingsDaemon.ScreensaverProxy.service - GNOME FreeDesktop screensaver service.
+2026-10-30T02:39:19-05:00 putgd-ubuntu-lab systemd[20260]: Stopped app-gnome-org.gnome.SettingsDaemon.DiskUtilityNotify-20747.scope - Application launched by gnome-session-service.
+2026-10-30T02:39:19-05:00 putgd-ubuntu-lab systemd[20260]: Stopped xdg-desktop-portal-gnome.service - Portal service (GNOME implementation).
+2026-10-30T02:39:19-05:00 putgd-ubuntu-lab systemd[20260]: Stopped xdg-desktop-portal-gtk.service - Portal service (GTK/GNOME implementation).
+2026-10-30T02:39:19-05:00 putgd-ubuntu-lab systemd[20260]: Stopped app-gnome-org.gnome.Evolution\x2dalarm\x2dnotify-20742.scope - Application launched by gnome-session-service.
+2026-10-30T02:39:19-05:00 putgd-ubuntu-lab systemd[20260]: Stopped app-gnome-update\x2dnotifier-20738.scope - Application launched by gnome-session-service.
+2026-10-30T02:39:19-05:00 putgd-ubuntu-lab systemd[20260]: Stopped xdg-permission-store.service - sandboxed app permission store.
+2026-10-30T02:39:19-05:00 putgd-ubuntu-lab systemd[20260]: Stopped gvfs-mtp-volume-monitor.service - Virtual filesystem service - Media Transfer Protocol monitor.
+2026-10-30T02:39:19-05:00 putgd-ubuntu-lab systemd[20260]: Stopped gvfs-gphoto2-volume-monitor.service - Virtual filesystem service - digital camera monitor.
+2026-10-30T02:39:19-05:00 putgd-ubuntu-lab systemd[20260]: Stopped gvfs-goa-volume-monitor.service - Virtual filesystem service - GNOME Online Accounts monitor.
+2026-10-30T02:39:19-05:00 putgd-ubuntu-lab systemd[20260]: Stopped gvfs-udisks2-volume-monitor.service - Virtual filesystem service - disk device monitor.
+2026-10-30T02:39:19-05:00 putgd-ubuntu-lab localsearch-3[20975]: Owner of volume monitor org.gtk.vfs.MTPVolumeMonitor disconnected from the bus; removing drives/volumes/mounts
+2026-10-30T02:39:19-05:00 putgd-ubuntu-lab localsearch-3[20975]: Owner of volume monitor org.gtk.vfs.GoaVolumeMonitor disconnected from the bus; removing drives/volumes/mounts
+2026-10-30T02:39:19-05:00 putgd-ubuntu-lab systemd[20260]: Stopped gvfs-afc-volume-monitor.service - Virtual filesystem service - Apple File Conduit monitor.
+2026-10-30T02:39:19-05:00 putgd-ubuntu-lab localsearch-3[20975]: Owner of volume monitor org.gtk.vfs.GPhoto2VolumeMonitor disconnected from the bus; removing drives/volumes/mounts
+2026-10-30T02:39:19-05:00 putgd-ubuntu-lab localsearch-3[20975]: Owner of volume monitor org.gtk.vfs.AfcVolumeMonitor disconnected from the bus; removing drives/volumes/mounts
+2026-10-30T02:39:19-05:00 putgd-ubuntu-lab systemd[20260]: Stopped xdg-desktop-portal.service - Portal service.
+2026-10-30T02:39:19-05:00 putgd-ubuntu-lab localsearch-3[20975]: Owner of volume monitor org.gtk.vfs.UDisks2VolumeMonitor disconnected from the bus; removing drives/volumes/mounts
+2026-10-30T02:39:19-05:00 putgd-ubuntu-lab systemd[20260]: Stopped org.gnome.SettingsDaemon.XSettings.service - GNOME XSettings service.
+2026-10-30T02:39:19-05:00 putgd-ubuntu-lab systemd[20260]: Stopped target graphical-session.target - Current graphical user session.
+2026-10-30T02:39:19-05:00 putgd-ubuntu-lab systemd[20260]: Stopped update-notifier-crash.path - Path trigger for Apport crash notifications.
+2026-10-30T02:39:19-05:00 putgd-ubuntu-lab systemd[20260]: Stopped update-notifier-release.path - Path trigger for new release of Ubuntu notifications.
+2026-10-30T02:39:19-05:00 putgd-ubuntu-lab systemd[20260]: Stopped target gnome-session.target - GNOME Session.
+2026-10-30T02:39:19-05:00 putgd-ubuntu-lab systemd[20260]: Stopped target gnome-session-basic-services.target - GNOME basic session services.
+2026-10-30T02:39:19-05:00 putgd-ubuntu-lab systemd[20260]: Stopped target gnome-session-services.target - GNOME session services.
+2026-10-30T02:39:19-05:00 putgd-ubuntu-lab systemd[20260]: Stopped target gnome-session-x11-services-ready.target - GNOME session X11 services.
+2026-10-30T02:39:19-05:00 putgd-ubuntu-lab systemd[20260]: Stopped target gnome-session-x11-services.target - GNOME session X11 services.
+2026-10-30T02:39:19-05:00 putgd-ubuntu-lab systemd[20260]: Stopped target org.gnome.SettingsDaemon.A11ySettings.target - GNOME accessibility target.
+2026-10-30T02:39:19-05:00 putgd-ubuntu-lab systemd[20260]: Stopped target org.gnome.SettingsDaemon.Color.target - GNOME color management target.
+2026-10-30T02:39:19-05:00 putgd-ubuntu-lab systemd[20260]: Stopped target org.gnome.SettingsDaemon.Datetime.target - GNOME date & time target.
+2026-10-30T02:39:19-05:00 putgd-ubuntu-lab systemd[20260]: Stopped target org.gnome.SettingsDaemon.Housekeeping.target - GNOME maintenance of expirable data target.
+2026-10-30T02:39:19-05:00 putgd-ubuntu-lab systemd[20260]: Stopped target org.gnome.SettingsDaemon.Keyboard.target - GNOME keyboard configuration target.
+2026-10-30T02:39:19-05:00 putgd-ubuntu-lab systemd[20260]: Stopped target org.gnome.SettingsDaemon.MediaKeys.target - GNOME keyboard shortcuts target.
+2026-10-30T02:39:19-05:00 putgd-ubuntu-lab systemd[20260]: Stopped target org.gnome.SettingsDaemon.Power.target - GNOME power management target.
+2026-10-30T02:39:19-05:00 putgd-ubuntu-lab systemd[20260]: Stopped target org.gnome.SettingsDaemon.PrintNotifications.target - GNOME printer notifications target.
+2026-10-30T02:39:19-05:00 putgd-ubuntu-lab systemd[20260]: Stopped target org.gnome.SettingsDaemon.Rfkill.target - GNOME RFKill support target.
+2026-10-30T02:39:19-05:00 putgd-ubuntu-lab systemd[20260]: Stopped target org.gnome.SettingsDaemon.ScreensaverProxy.target - GNOME FreeDesktop screensaver target.
+2026-10-30T02:39:19-05:00 putgd-ubuntu-lab systemd[20260]: Stopped target org.gnome.SettingsDaemon.Sharing.target - GNOME file sharing target.
+2026-10-30T02:39:19-05:00 putgd-ubuntu-lab systemd[20260]: Stopped target org.gnome.SettingsDaemon.Smartcard.target - GNOME smartcard target.
+2026-10-30T02:39:19-05:00 putgd-ubuntu-lab systemd[20260]: Stopped target org.gnome.SettingsDaemon.Sound.target - GNOME sound sample caching target.
+2026-10-30T02:39:19-05:00 putgd-ubuntu-lab systemd[20260]: Stopped target org.gnome.SettingsDaemon.UsbProtection.target - GNOME USB protection target.
+2026-10-30T02:39:19-05:00 putgd-ubuntu-lab systemd[20260]: Stopped target org.gnome.SettingsDaemon.Wwan.target - GNOME WWan support target.
+2026-10-30T02:39:19-05:00 putgd-ubuntu-lab systemd[20260]: Stopping org.freedesktop.IBus.session.GNOME.service - IBus Daemon for GNOME...
+2026-10-30T02:39:19-05:00 putgd-ubuntu-lab systemd[20260]: xdg-document-portal.service: Failed to kill control group /user.slice/user-1000.slice/user@1000.service/session.slice/xdg-document-portal.service, ignoring: Operation not permitted
+2026-10-30T02:39:19-05:00 putgd-ubuntu-lab systemd[20260]: xdg-document-portal.service: Killing process 20459 (fusermount3) with signal SIGKILL.
+2026-10-30T02:39:19-05:00 putgd-ubuntu-lab systemd[20260]: xdg-document-portal.service: Killing process 25842 (fusermount3) with signal SIGKILL.
+2026-10-30T02:39:19-05:00 putgd-ubuntu-lab systemd[20260]: xdg-document-portal.service: Failed to kill control group /user.slice/user-1000.slice/user@1000.service/session.slice/xdg-document-portal.service, ignoring: Operation not permitted
+2026-10-30T02:39:19-05:00 putgd-ubuntu-lab systemd[20260]: xdg-document-portal.service: Unit process 20459 (fusermount3) remains running after unit stopped.
+2026-10-30T02:39:19-05:00 putgd-ubuntu-lab systemd[20260]: xdg-document-portal.service: Unit process 25842 (fusermount3) remains running after unit stopped.
+2026-10-30T02:39:19-05:00 putgd-ubuntu-lab systemd[20260]: Stopped xdg-document-portal.service - flatpak document portal service.
+2026-10-30T02:39:19-05:00 putgd-ubuntu-lab systemd[20260]: Stopped gvfs-daemon.service - Virtual filesystem service.
+2026-10-30T02:39:19-05:00 putgd-ubuntu-lab systemd[20260]: Stopped org.freedesktop.IBus.session.GNOME.service - IBus Daemon for GNOME.
+2026-10-30T02:39:19-05:00 putgd-ubuntu-lab systemd[20260]: org.freedesktop.IBus.session.GNOME.service: Consumed 1.734s CPU time over 1min 34.575s wall clock time, 23.6M memory peak.
+2026-10-30T02:39:19-05:00 putgd-ubuntu-lab systemd[20260]: Stopped target gnome-session-initialized.target - GNOME Session is initialized.
+2026-10-30T02:39:19-05:00 putgd-ubuntu-lab systemd[20260]: Stopping org.gnome.Shell@ubuntu.service - GNOME Shell...
+2026-10-30T02:39:19-05:00 putgd-ubuntu-lab gnome-shell[20641]: Owner of volume monitor org.gtk.vfs.MTPVolumeMonitor disconnected from the bus; removing drives/volumes/mounts
+2026-10-30T02:39:19-05:00 putgd-ubuntu-lab gnome-shell[20641]: Owner of volume monitor org.gtk.vfs.GoaVolumeMonitor disconnected from the bus; removing drives/volumes/mounts
+2026-10-30T02:39:19-05:00 putgd-ubuntu-lab gnome-shell[20641]: Owner of volume monitor org.gtk.vfs.GPhoto2VolumeMonitor disconnected from the bus; removing drives/volumes/mounts
+2026-10-30T02:39:19-05:00 putgd-ubuntu-lab gnome-shell[20641]: Connection to xwayland lost
+2026-10-30T02:39:19-05:00 putgd-ubuntu-lab gnome-shell[20641]: DING: (gjs:21063): GVFS-RemoteVolumeMonitor-WARNING **: 02:39:19.653: Owner of volume monitor org.gtk.vfs.MTPVolumeMonitor disconnected from the bus; removing drives/volumes/mounts
+2026-10-30T02:39:19-05:00 putgd-ubuntu-lab gnome-shell[20641]: Owner of volume monitor org.gtk.vfs.AfcVolumeMonitor disconnected from the bus; removing drives/volumes/mounts
+2026-10-30T02:39:19-05:00 putgd-ubuntu-lab gnome-shell[20641]: Owner of volume monitor org.gtk.vfs.UDisks2VolumeMonitor disconnected from the bus; removing drives/volumes/mounts
+2026-10-30T02:39:19-05:00 putgd-ubuntu-lab gnome-shell[20641]: Using public X11 display :0, (using unix:/tmp/.X11-unix/X1 for managed services)
+2026-10-30T02:39:19-05:00 putgd-ubuntu-lab gnome-shell[20641]: Shutting down GNOME Shell
+2026-10-30T02:39:19-05:00 putgd-ubuntu-lab gnome-shell[20641]: DING: (gjs:21063): GVFS-RemoteVolumeMonitor-WARNING **: 02:39:19.653: Owner of volume monitor org.gtk.vfs.GoaVolumeMonitor disconnected from the bus; removing drives/volumes/mounts
+2026-10-30T02:39:19-05:00 putgd-ubuntu-lab gnome-shell[20641]: Launching DING process
+2026-10-30T02:39:19-05:00 putgd-ubuntu-lab dbus-daemon[20286]: [session uid=1000 pid=20286 pidfd=5] Activating via systemd: service name='org.gtk.vfs.Daemon' unit='gvfs-daemon.service' requested by ':1.131' (uid=1000 pid=25848 comm="gjs /usr/share/gnome-shell/extensions/ding@rasters" label="desktop-icons-ng (unconfined)")
+2026-10-30T02:39:19-05:00 putgd-ubuntu-lab systemd[20260]: Starting gvfs-daemon.service - Virtual filesystem service...
+2026-10-30T02:39:19-05:00 putgd-ubuntu-lab dbus-daemon[20286]: [session uid=1000 pid=20286 pidfd=5] Successfully activated service 'org.gtk.vfs.Daemon'
+2026-10-30T02:39:19-05:00 putgd-ubuntu-lab systemd[20260]: Started gvfs-daemon.service - Virtual filesystem service.
+2026-10-30T02:39:19-05:00 putgd-ubuntu-lab snapd-desktop-i[21423]: Lost connection to Wayland compositor.
+2026-10-30T02:39:19-05:00 putgd-ubuntu-lab snapd-desktop-integration.snapd-desktop-integration[21361]: Child process exited with value 256
+2026-10-30T02:39:19-05:00 putgd-ubuntu-lab systemd[20260]: snap.snapd-desktop-integration.snapd-desktop-integration.service: Main process exited, code=exited, status=2/INVALIDARGUMENT
+2026-10-30T02:39:19-05:00 putgd-ubuntu-lab systemd[20260]: snap.snapd-desktop-integration.snapd-desktop-integration.service: Failed with result 'exit-code'.
+2026-10-30T02:39:19-05:00 putgd-ubuntu-lab systemd[20260]: Stopped org.gnome.Shell@ubuntu.service - GNOME Shell.
+2026-10-30T02:39:19-05:00 putgd-ubuntu-lab systemd[20260]: org.gnome.Shell@ubuntu.service: Consumed 4.134s CPU time over 1min 35.920s wall clock time, 319.4M memory peak.
+2026-10-30T02:39:19-05:00 putgd-ubuntu-lab systemd[20260]: Stopped target gnome-session-manager.target - GNOME Session Manager is ready.
+2026-10-30T02:39:19-05:00 putgd-ubuntu-lab systemd[20260]: Stopped target gnome-session-pre.target - Tasks to be run before GNOME Session starts.
+2026-10-30T02:39:19-05:00 putgd-ubuntu-lab systemd[20260]: Stopped target graphical-session-pre.target - Session services which should run early before the graphical session is brought up.
+2026-10-30T02:39:19-05:00 putgd-ubuntu-lab systemd[20260]: Reached target gnome-session-shutdown.target - Shutdown running GNOME Session.
+2026-10-30T02:39:19-05:00 putgd-ubuntu-lab systemd[20260]: Stopping gnome-session-monitor.service - Monitor Session leader for GNOME Session...
+2026-10-30T02:39:19-05:00 putgd-ubuntu-lab systemd[20260]: Starting gnome-session-restart-dbus.service - Restart DBus after GNOME Session shutdown...
+2026-10-30T02:39:19-05:00 putgd-ubuntu-lab systemd[20260]: Stopped target gnome-session-shutdown.target - Shutdown running GNOME Session.
+2026-10-30T02:39:20-05:00 putgd-ubuntu-lab systemd[20260]: Reached target gnome-session-shutdown.target - Shutdown running GNOME Session.
+2026-10-30T02:39:20-05:00 putgd-ubuntu-lab systemd[20260]: Stopped target gnome-session-shutdown.target - Shutdown running GNOME Session.
+2026-10-30T02:39:20-05:00 putgd-ubuntu-lab systemd[20260]: Stopped gnome-session-monitor.service - Monitor Session leader for GNOME Session.
+2026-10-30T02:39:20-05:00 putgd-ubuntu-lab systemd[20260]: Started gnome-session-restart-dbus.service - Restart DBus after GNOME Session shutdown.
+2026-10-30T02:39:20-05:00 putgd-ubuntu-lab systemd[20260]: Stopping filter-chain.service - PipeWire filter chain daemon...
+2026-10-30T02:39:20-05:00 putgd-ubuntu-lab systemd[20260]: Stopping pipewire-pulse.service - PipeWire PulseAudio...
+2026-10-30T02:39:20-05:00 putgd-ubuntu-lab systemd[20260]: Stopped pipewire-pulse.service - PipeWire PulseAudio.
+2026-10-30T02:39:20-05:00 putgd-ubuntu-lab systemd[20260]: Stopped filter-chain.service - PipeWire filter chain daemon.
+2026-10-30T02:39:20-05:00 putgd-ubuntu-lab systemd[20260]: Stopping wireplumber.service - Multimedia Service Session Manager...
+2026-10-30T02:39:20-05:00 putgd-ubuntu-lab systemd[20260]: Stopped wireplumber.service - Multimedia Service Session Manager.
+2026-10-30T02:39:20-05:00 putgd-ubuntu-lab systemd[20260]: Stopping dbus.service - D-Bus User Message Bus...
+2026-10-30T02:39:20-05:00 putgd-ubuntu-lab systemd[20260]: Stopping pipewire.service - PipeWire Multimedia Service...
+2026-10-30T02:39:20-05:00 putgd-ubuntu-lab systemd[20260]: mpris-proxy.service: Main process exited, code=exited, status=1/FAILURE
+2026-10-30T02:39:20-05:00 putgd-ubuntu-lab systemd[20260]: mpris-proxy.service: Failed with result 'exit-code'.
+2026-10-30T02:39:20-05:00 putgd-ubuntu-lab systemd[20260]: Stopped pipewire.service - PipeWire Multimedia Service.
+2026-10-30T02:39:20-05:00 putgd-ubuntu-lab systemd[20260]: Stopped dbus.service - D-Bus User Message Bus.
+2026-10-30T02:39:20-05:00 putgd-ubuntu-lab systemd[20260]: dbus.service: Consumed 1.231s CPU time over 1min 36.720s wall clock time, 70M memory peak.
+2026-10-30T02:39:20-05:00 putgd-ubuntu-lab systemd[20260]: localsearch-3.service: Consumed 2.006s CPU time over 1min 34.352s wall clock time, 32.9M memory peak.
+2026-10-30T02:39:21-05:00 putgd-ubuntu-lab systemd[20260]: snap.snapd-desktop-integration.snapd-desktop-integration.service: Scheduled restart job, restart counter is at 2.
+2026-10-30T02:39:21-05:00 putgd-ubuntu-lab systemd[20260]: Started snap.snapd-desktop-integration.snapd-desktop-integration.service - Service for snap application snapd-desktop-integration.snapd-desktop-integration.
+2026-10-30T02:39:22-05:00 putgd-ubuntu-lab systemd[20260]: Starting dbus.service - D-Bus User Message Bus...
+2026-10-30T02:39:22-05:00 putgd-ubuntu-lab dbus-daemon[26664]: [session uid=1000 pid=26664 pidfd=5] AppArmor D-Bus mediation is enabled
+2026-10-30T02:39:22-05:00 putgd-ubuntu-lab systemd[20260]: Started dbus.service - D-Bus User Message Bus.
+2026-10-30T02:39:22-05:00 putgd-ubuntu-lab dbus-daemon[26664]: [session uid=1000 pid=26664 pidfd=5] Activating via systemd: service name='org.freedesktop.portal.Documents' unit='xdg-document-portal.service' requested by ':1.1' (uid=1000 pid=26645 comm="/snap/snapd/current/usr/bin/snap run snapd-desktop" label="unconfined")
+2026-10-30T02:39:22-05:00 putgd-ubuntu-lab systemd[20260]: Starting xdg-document-portal.service - flatpak document portal service...
+2026-10-30T02:39:22-05:00 putgd-ubuntu-lab dbus-daemon[26664]: [session uid=1000 pid=26664 pidfd=5] Activating via systemd: service name='org.freedesktop.impl.portal.PermissionStore' unit='xdg-permission-store.service' requested by ':1.2' (uid=1000 pid=26666 comm="/usr/libexec/xdg-document-portal" label="unconfined")
+2026-10-30T02:39:22-05:00 putgd-ubuntu-lab systemd[20260]: Starting xdg-permission-store.service - sandboxed app permission store...
+2026-10-30T02:39:22-05:00 putgd-ubuntu-lab dbus-daemon[26664]: [session uid=1000 pid=26664 pidfd=5] Successfully activated service 'org.freedesktop.impl.portal.PermissionStore'
+2026-10-30T02:39:22-05:00 putgd-ubuntu-lab systemd[20260]: Started xdg-permission-store.service - sandboxed app permission store.
+2026-10-30T02:39:22-05:00 putgd-ubuntu-lab dbus-daemon[26664]: [session uid=1000 pid=26664 pidfd=5] Successfully activated service 'org.freedesktop.portal.Documents'
+2026-10-30T02:39:22-05:00 putgd-ubuntu-lab systemd[20260]: Started xdg-document-portal.service - flatpak document portal service.
+2026-10-30T02:40:27-05:00 putgd-ubuntu-lab systemd[1]: Stopping user@1000.service - User Manager for UID 1000...
+2026-10-30T02:40:27-05:00 putgd-ubuntu-lab systemd[20260]: Activating special unit exit.target...
+2026-10-30T02:40:27-05:00 putgd-ubuntu-lab systemd[20260]: Removed slice app-gnome\x2dsession\x2dmanager.slice - Slice /app/gnome-session-manager.
+2026-10-30T02:40:27-05:00 putgd-ubuntu-lab systemd[20260]: Removed slice background.slice - User Background Tasks Slice.
+2026-10-30T02:40:27-05:00 putgd-ubuntu-lab systemd[20260]: background.slice: Consumed 2.006s CPU time over 2min 43.995s wall clock time, 32.9M memory peak.
+2026-10-30T02:40:27-05:00 putgd-ubuntu-lab systemd[20260]: Stopped target default.target - Main User Target.
+2026-10-30T02:40:27-05:00 putgd-ubuntu-lab systemd[20260]: Stopping gcr-ssh-agent.service - GCR ssh-agent wrapper...
+2026-10-30T02:40:27-05:00 putgd-ubuntu-lab systemd[20260]: Stopping putgd-lab-visible.service - Keep an owned disposable put.gd lab guest visible...
+2026-10-30T02:40:27-05:00 putgd-ubuntu-lab systemd[20260]: Stopping snap.snapd-desktop-integration.snapd-desktop-integration.service - Service for snap application snapd-desktop-integration.snapd-desktop-integration...
+2026-10-30T02:40:27-05:00 putgd-ubuntu-lab systemd[20260]: Stopping ssh-agent.service - OpenSSH Agent...
+2026-10-30T02:40:27-05:00 putgd-ubuntu-lab systemd[20260]: xdg-document-portal.service: Failed to kill control group /user.slice/user-1000.slice/user@1000.service/session.slice/xdg-document-portal.service, ignoring: Operation not permitted
+2026-10-30T02:40:27-05:00 putgd-ubuntu-lab systemd[20260]: Stopping xdg-document-portal.service - flatpak document portal service...
+2026-10-30T02:40:27-05:00 putgd-ubuntu-lab systemd[20260]: Stopping xdg-permission-store.service - sandboxed app permission store...
+2026-10-30T02:40:27-05:00 putgd-ubuntu-lab systemd[20260]: Stopped xdg-permission-store.service - sandboxed app permission store.
+2026-10-30T02:40:27-05:00 putgd-ubuntu-lab ssh-agent[20564]: exiting on signal 15
+2026-10-30T02:40:27-05:00 putgd-ubuntu-lab systemd[20260]: Stopped gcr-ssh-agent.service - GCR ssh-agent wrapper.
+2026-10-30T02:40:27-05:00 putgd-ubuntu-lab systemd[20260]: Stopped ssh-agent.service - OpenSSH Agent.
+2026-10-30T02:40:27-05:00 putgd-ubuntu-lab systemd[20260]: xdg-document-portal.service: Failed to kill control group /user.slice/user-1000.slice/user@1000.service/session.slice/xdg-document-portal.service, ignoring: Operation not permitted
+2026-10-30T02:40:27-05:00 putgd-ubuntu-lab systemd[20260]: xdg-document-portal.service: Killing process 26684 (fusermount3) with signal SIGKILL.
+2026-10-30T02:40:27-05:00 putgd-ubuntu-lab systemd[20260]: xdg-document-portal.service: Failed to kill control group /user.slice/user-1000.slice/user@1000.service/session.slice/xdg-document-portal.service, ignoring: Operation not permitted
+2026-10-30T02:40:27-05:00 putgd-ubuntu-lab systemd[20260]: xdg-document-portal.service: Unit process 26684 (fusermount3) remains running after unit stopped.
+2026-10-30T02:40:27-05:00 putgd-ubuntu-lab systemd[20260]: Stopped xdg-document-portal.service - flatpak document portal service.
+2026-10-30T02:40:27-05:00 putgd-ubuntu-lab systemd[20260]: snap.snapd-desktop-integration.snapd-desktop-integration.service: Main process exited, code=exited, status=2/INVALIDARGUMENT
+2026-10-30T02:40:27-05:00 putgd-ubuntu-lab systemd[20260]: snap.snapd-desktop-integration.snapd-desktop-integration.service: Failed with result 'exit-code'.
+2026-10-30T02:40:27-05:00 putgd-ubuntu-lab systemd[20260]: Stopped snap.snapd-desktop-integration.snapd-desktop-integration.service - Service for snap application snapd-desktop-integration.snapd-desktop-integration.
+2026-10-30T02:40:27-05:00 putgd-ubuntu-lab systemd[20260]: Stopped putgd-lab-visible.service - Keep an owned disposable put.gd lab guest visible.
+2026-10-30T02:40:27-05:00 putgd-ubuntu-lab systemd[20260]: Stopping dbus.service - D-Bus User Message Bus...
+2026-10-30T02:40:27-05:00 putgd-ubuntu-lab systemd[20260]: Stopped dbus.service - D-Bus User Message Bus.
+2026-10-30T02:40:27-05:00 putgd-ubuntu-lab systemd[20260]: Removed slice session.slice - User Core Session Slice.
+2026-10-30T02:40:27-05:00 putgd-ubuntu-lab systemd[20260]: session.slice: Consumed 8.427s CPU time over 2min 44.660s wall clock time, 478.7M memory peak.
+2026-10-30T02:40:27-05:00 putgd-ubuntu-lab systemd[20260]: Stopped target basic.target - Basic System.
+2026-10-30T02:40:27-05:00 putgd-ubuntu-lab systemd[20260]: Stopped target paths.target - Paths.
+2026-10-30T02:40:27-05:00 putgd-ubuntu-lab systemd[20260]: Stopped ubuntu-report.path - Pending report trigger for Ubuntu Report.
+2026-10-30T02:40:27-05:00 putgd-ubuntu-lab systemd[20260]: Stopped target sockets.target - Sockets.
+2026-10-30T02:40:27-05:00 putgd-ubuntu-lab systemd[20260]: Stopped target timers.target - Timers.
+2026-10-30T02:40:27-05:00 putgd-ubuntu-lab systemd[20260]: Stopped launchpadlib-cache-clean.timer - Clean up old files in the Launchpadlib cache.
+2026-10-30T02:40:27-05:00 putgd-ubuntu-lab systemd[20260]: Stopped snap.firmware-updater.firmware-notifier.timer - Timer firmware-notifier for snap application firmware-updater.firmware-notifier.
+2026-10-30T02:40:27-05:00 putgd-ubuntu-lab systemd[20260]: Stopped ubuntu-insights-collect.timer - "Run Ubuntu-Insights collect 5 mins after boot and every month relative to the activation time".
+2026-10-30T02:40:27-05:00 putgd-ubuntu-lab systemd[20260]: Stopped ubuntu-insights-upload.timer - "Run Ubuntu-Insights upload 8 mins after boot and every week relative to the activation time".
+2026-10-30T02:40:27-05:00 putgd-ubuntu-lab systemd[20260]: Closed dbus.socket - D-Bus User Message Bus Socket.
+2026-10-30T02:40:27-05:00 putgd-ubuntu-lab systemd[20260]: Closed dirmngr.socket - GnuPG network certificate management daemon.
+2026-10-30T02:40:27-05:00 putgd-ubuntu-lab systemd[20260]: Closed gnome-keyring-daemon.socket - GNOME Keyring daemon.
+2026-10-30T02:40:27-05:00 putgd-ubuntu-lab systemd[20260]: Closed gpg-agent-browser.socket - GnuPG cryptographic agent and passphrase cache (access for web browsers).
+2026-10-30T02:40:27-05:00 putgd-ubuntu-lab systemd[20260]: Closed gpg-agent-extra.socket - GnuPG cryptographic agent and passphrase cache (restricted).
+2026-10-30T02:40:27-05:00 putgd-ubuntu-lab systemd[20260]: Stopping gpg-agent-ssh.socket - GnuPG cryptographic agent (ssh-agent emulation)...
+2026-10-30T02:40:27-05:00 putgd-ubuntu-lab systemd[20260]: Stopping gpg-agent.socket - GnuPG cryptographic agent and passphrase cache...
+2026-10-30T02:40:27-05:00 putgd-ubuntu-lab systemd[20260]: Closed keyboxd.socket - GnuPG public key management service.
+2026-10-30T02:40:27-05:00 putgd-ubuntu-lab systemd[20260]: Closed pipewire-pulse.socket - PipeWire PulseAudio.
+2026-10-30T02:40:27-05:00 putgd-ubuntu-lab systemd[20260]: Closed pipewire.socket - PipeWire Multimedia System Sockets.
+2026-10-30T02:40:27-05:00 putgd-ubuntu-lab systemd[20260]: Closed pk-debconf-helper.socket - debconf communication socket.
+2026-10-30T02:40:27-05:00 putgd-ubuntu-lab systemd[20260]: Closed snapd.session-agent.socket - REST API socket for snapd user session agent.
+2026-10-30T02:40:27-05:00 putgd-ubuntu-lab systemd[20260]: Closed speech-dispatcher.socket - Speech Dispatcher Socket.
+2026-10-30T02:40:27-05:00 putgd-ubuntu-lab systemd[20260]: Closed systemd-ask-password.socket - Query the User Interactively for a Password.
+2026-10-30T02:40:27-05:00 putgd-ubuntu-lab systemd[20260]: Closed gpg-agent.socket - GnuPG cryptographic agent and passphrase cache.
+2026-10-30T02:40:27-05:00 putgd-ubuntu-lab systemd[20260]: Closed gpg-agent-ssh.socket - GnuPG cryptographic agent (ssh-agent emulation).
+2026-10-30T02:40:27-05:00 putgd-ubuntu-lab systemd[20260]: Closed gcr-ssh-agent.socket - GCR ssh-agent wrapper.
+2026-10-30T02:40:27-05:00 putgd-ubuntu-lab systemd[20260]: Stopping ssh-agent.socket - OpenSSH Agent socket...
+2026-10-30T02:40:27-05:00 putgd-ubuntu-lab systemd[20260]: Closed ssh-agent.socket - OpenSSH Agent socket.
+2026-10-30T02:40:27-05:00 putgd-ubuntu-lab systemd[20260]: Removed slice app.slice - User Application Slice.
+2026-10-30T02:40:27-05:00 putgd-ubuntu-lab systemd[20260]: app.slice: Consumed 2.702s CPU time over 2min 44.679s wall clock time, 93.4M memory peak.
+2026-10-30T02:40:27-05:00 putgd-ubuntu-lab systemd[20260]: Reached target shutdown.target - Shutdown.
+2026-10-30T02:40:27-05:00 putgd-ubuntu-lab systemd[20260]: Finished systemd-exit.service - Exit the Session.
+2026-10-30T02:40:27-05:00 putgd-ubuntu-lab systemd[20260]: Reached target exit.target - Exit the Session.
+2026-10-30T02:40:27-05:00 putgd-ubuntu-lab systemd[1]: user@1000.service: Deactivated successfully.
+2026-10-30T02:40:27-05:00 putgd-ubuntu-lab systemd[1]: Stopped user@1000.service - User Manager for UID 1000.
+2026-10-30T02:40:27-05:00 putgd-ubuntu-lab systemd[1]: user@1000.service: Consumed 13.929s CPU time over 2min 44.793s wall clock time, 588.9M memory peak.

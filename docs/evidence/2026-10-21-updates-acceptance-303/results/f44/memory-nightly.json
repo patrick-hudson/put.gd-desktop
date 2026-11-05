@@ -1,0 +1,271 @@
+{
+  "schemaVersion": 1,
+  "scope": "physical GNOME wayland idle resident, private local-only profile; windows before and after update.check",
+  "session": {
+    "XDG_CURRENT_DESKTOP": "GNOME",
+    "XDG_SESSION_TYPE": "wayland",
+    "WAYLAND_DISPLAY": "/run/user/1000/wayland-0",
+    "DISPLAY": ":0"
+  },
+  "appSha256": "0129cd7043072e4f414d417fb8ba46726707b87d4171cbb9087e0bfb7e5983a6",
+  "version": "0.1.1-nightly.795",
+  "updateInfo": {
+    "channel": "nightly",
+    "kind": "nightly",
+    "packageTarget": "fedora44",
+    "reason": null,
+    "supported": true,
+    "version": "0.1.1-nightly.795"
+  },
+  "host": "fedora",
+  "kernel": "6.19.10-300.fc44.x86_64",
+  "loadBefore": [
+    0.08203125,
+    0.07080078125,
+    0.50244140625
+  ],
+  "before": {
+    "window": "before",
+    "seconds": 180.1,
+    "samples": [
+      {
+        "elapsedSeconds": 0.0,
+        "rssBytes": 35897344
+      },
+      {
+        "elapsedSeconds": 10.0,
+        "rssBytes": 35901440
+      },
+      {
+        "elapsedSeconds": 20.0,
+        "rssBytes": 35901440
+      },
+      {
+        "elapsedSeconds": 30.0,
+        "rssBytes": 35901440
+      },
+      {
+        "elapsedSeconds": 40.0,
+        "rssBytes": 35901440
+      },
+      {
+        "elapsedSeconds": 50.0,
+        "rssBytes": 35901440
+      },
+      {
+        "elapsedSeconds": 60.0,
+        "rssBytes": 36220928
+      },
+      {
+        "elapsedSeconds": 70.0,
+        "rssBytes": 36220928
+      },
+      {
+        "elapsedSeconds": 80.0,
+        "rssBytes": 36220928
+      },
+      {
+        "elapsedSeconds": 90.0,
+        "rssBytes": 36220928
+      },
+      {
+        "elapsedSeconds": 100.0,
+        "rssBytes": 36220928
+      },
+      {
+        "elapsedSeconds": 110.0,
+        "rssBytes": 36220928
+      },
+      {
+        "elapsedSeconds": 120.1,
+        "rssBytes": 36220928
+      },
+      {
+        "elapsedSeconds": 130.1,
+        "rssBytes": 36220928
+      },
+      {
+        "elapsedSeconds": 140.1,
+        "rssBytes": 36220928
+      },
+      {
+        "elapsedSeconds": 150.1,
+        "rssBytes": 36220928
+      },
+      {
+        "elapsedSeconds": 160.1,
+        "rssBytes": 36220928
+      },
+      {
+        "elapsedSeconds": 170.1,
+        "rssBytes": 36220928
+      },
+      {
+        "elapsedSeconds": 180.1,
+        "rssBytes": 36220928
+      }
+    ],
+    "medianRssMiB": 34.543,
+    "peakRssMiB": 34.543,
+    "finalRssMiB": 34.543,
+    "cpuPercentOneCore": 0.0222,
+    "smapsRollup": {
+      "Rss": 36220928,
+      "Pss": 21641216,
+      "Private_Clean": 16596992,
+      "Private_Dirty": 4104192,
+      "Anonymous": 4104192
+    },
+    "tlsNetworkLibraries": [
+      "libcrypto.so.3.5.9"
+    ]
+  },
+  "check": {
+    "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+    },
+    "ok": true,
+    "requestId": "e8c15767-075b-4bed-826c-9b999ea27f28",
+    "result": {
+      "attemptedAt": "2026-10-21T01:32:42Z",
+      "build": {
+        "channel": "nightly",
+        "kind": "nightly",
+        "packageTarget": "fedora44",
+        "reason": null,
+        "supported": true,
+        "version": "0.1.1-nightly.795"
+      },
+      "channel": "nightly",
+      "channelSetting": "build",
+      "check": true,
+      "checkedAt": "2026-10-21T01:32:42Z",
+      "checking": false,
+      "enabled": true,
+      "error": null,
+      "nextCheckAt": "2026-10-22T00:32:39Z",
+      "notifies": false,
+      "reason": null,
+      "result": {
+        "channel": "nightly",
+        "checkedAt": "2026-10-21T01:32:42Z",
+        "current": "0.1.1-nightly.795",
+        "downloadUrl": "https://github.com/patrick-hudson/put.gd-desktop/releases/download/v0.1.1-nightly.588/putgd-0.1.1-nightly.588-fedora44-x86_64.rpm",
+        "latest": "0.1.1-nightly.588",
+        "notesUrl": "https://github.com/patrick-hudson/put.gd-desktop/releases/tag/v0.1.1-nightly.588",
+        "packageTarget": "fedora44",
+        "publishedAt": "2026-10-20T05:55:50Z",
+        "tag": "v0.1.1-nightly.588",
+        "updateAvailable": false
+      },
+      "supported": true
+    },
+    "schemaVersion": 1
+  },
+  "checkSeconds": 0.69,
+  "childrenAfterSettle": [],
+  "after": {
+    "window": "after",
+    "seconds": 180.1,
+    "samples": [
+      {
+        "elapsedSeconds": 0.0,
+        "rssBytes": 36315136
+      },
+      {
+        "elapsedSeconds": 10.0,
+        "rssBytes": 36315136
+      },
+      {
+        "elapsedSeconds": 20.0,
+        "rssBytes": 36315136
+      },
+      {
+        "elapsedSeconds": 30.0,
+        "rssBytes": 36315136
+      },
+      {
+        "elapsedSeconds": 40.0,
+        "rssBytes": 36315136
+      },
+      {
+        "elapsedSeconds": 50.0,
+        "rssBytes": 36315136
+      },
+      {
+        "elapsedSeconds": 60.0,
+        "rssBytes": 36315136
+      },
+      {
+        "elapsedSeconds": 70.0,
+        "rssBytes": 36315136
+      },
+      {
+        "elapsedSeconds": 80.0,
+        "rssBytes": 36315136
+      },
+      {
+        "elapsedSeconds": 90.1,
+        "rssBytes": 36315136
+      },
+      {
+        "elapsedSeconds": 100.1,
+        "rssBytes": 36315136
+      },
+      {
+        "elapsedSeconds": 110.1,
+        "rssBytes": 36315136
+      },
+      {
+        "elapsedSeconds": 120.1,
+        "rssBytes": 36315136
+      },
+      {
+        "elapsedSeconds": 130.1,
+        "rssBytes": 36315136
+      },
+      {
+        "elapsedSeconds": 140.1,
+        "rssBytes": 36315136
+      },
+      {
+        "elapsedSeconds": 150.1,
+        "rssBytes": 36315136
+      },
+      {
+        "elapsedSeconds": 160.1,
+        "rssBytes": 36315136
+      },
+      {
+        "elapsedSeconds": 170.1,
+        "rssBytes": 36315136
+      },
+      {
+        "elapsedSeconds": 180.1,
+        "rssBytes": 36315136
+      }
+    ],
+    "medianRssMiB": 34.633,
+    "peakRssMiB": 34.633,
+    "finalRssMiB": 34.633,
+    "cpuPercentOneCore": 0.0222,
+    "smapsRollup": {
+      "Rss": 36315136,
+      "Pss": 21735424,
+      "Private_Clean": 16662528,
+      "Private_Dirty": 4132864,
+      "Anonymous": 4132864
+    },
+    "tlsNetworkLibraries": [
+      "libcrypto.so.3.5.9"
+    ]
+  },
+  "deltaMedianRssMiB": 0.09,
+  "loadAfter": [
+    0.05126953125,
+    0.04638671875,
+    0.33642578125
+  ]
+}

@@ -1,0 +1,21 @@
+ 02:20:19 up 4 days,  2:02,  5 users,  load average: 1.09, 0.57, 0.30
+Rss total base 33830 head 33870 KiB
+      +204 KiB  putgd
+       +32 KiB  libxml2.so.2.12.10
+       +10 KiB  libQt6Sql.so.6.11.2
+        +8 KiB  libqt6keychain.so.0.16.0
+        +8 KiB  libGLX.so.0.0.0
+        +6 KiB  libzstd.so.1.5.7
+       -24 KiB  libxkbcommon.so.0.13.1
+       -62 KiB  [anon]
+       -72 KiB  libQt6DBus.so.6.11.2
+Private_Dirty total base 4348 head 4286 KiB
+        +2 KiB  [heap]
+        +0 KiB  putgd
+        +0 KiB  locale-archive
+        +0 KiB  libzstd.so.1.5.7
+        +0 KiB  libz.so.1.3.1.zlib-ng
+        +0 KiB  libxml2.so.2.12.10
+        +0 KiB  [vdso]
+        -2 KiB  [stack]
+       -62 KiB  [anon]

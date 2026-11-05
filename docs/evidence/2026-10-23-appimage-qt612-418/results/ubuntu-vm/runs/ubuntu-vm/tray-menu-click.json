@@ -1,0 +1,64 @@
+{
+ "label": "ubuntu-vm-tray-menu",
+ "components": [
+  {
+   "blocks": 655,
+   "box": [
+    1040,
+    192,
+    1256,
+    488
+   ]
+  },
+  {
+   "blocks": 161,
+   "box": [
+    1040,
+    88,
+    1256,
+    184
+   ]
+  },
+  {
+   "blocks": 72,
+   "box": [
+    312,
+    232,
+    712,
+    336
+   ]
+  },
+  {
+   "blocks": 60,
+   "box": [
+    1072,
+    0,
+    1272,
+    72
+   ]
+  },
+  {
+   "blocks": 3,
+   "box": [
+    552,
+    616,
+    568,
+    632
+   ]
+  }
+ ],
+ "colour": [
+  252,
+  252,
+  252
+ ],
+ "inner": [
+  1042,
+  194,
+  1254,
+  485
+ ],
+ "changedShare": 0.62,
+ "kept": "/home/lab/work/put.gd-qt418/afa/runs/ubuntu-vm/crops/ubuntu-vm-tray-menu.png",
+ "full": "/home/lab/work/put.gd-qt418/afa/runs/ubuntu-vm/full/ubuntu-vm-tray-menu.png"
+}

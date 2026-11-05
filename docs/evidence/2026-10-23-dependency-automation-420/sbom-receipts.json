@@ -1,0 +1,66 @@
+{
+  "schemaVersion": 1,
+  "sboms": {
+    "appimage": {
+      "label": "appimage",
+      "file": "putgd-26.1023.1070-dev+g0073c0c9baf2-appimage.cdx.json",
+      "sha256": "6fa82f6878684872eeba615bc96df71026b8fda03268b75e88cb4f5d483357e1",
+      "bytes": 96623,
+      "package": "putgd-26.1023.1070-dev+g0073c0c9baf2-x86_64.AppImage",
+      "packageSha256": "3764bd42190c68c26ac630a53f3fff4e3d29336c0223555fe1f56668da2e3171",
+      "components": 168,
+      "origins": {
+        "bundled": 44,
+        "bundled-distro": 124
+      }
+    },
+    "ubuntu24.04": {
+      "label": "ubuntu24.04",
+      "file": "putgd-26.1023.1070-dev+g0073c0c9baf2-ubuntu24.04.cdx.json",
+      "sha256": "a29c4c510eb06908eab6b8477888b5acd2dd910976f31216731522695bd7ce86",
+      "bytes": 17125,
+      "package": "putgd_26.1023.1070~dev+g0073c0c9baf2_amd64.deb",
+      "packageSha256": "41928d9d42f083513d3767b6badeb6bd00fe5dcb0f6f09d13bbd6b842a693ceb",
+      "components": 25,
+      "origins": {
+        "bundled": 25
+      }
+    },
+    "ubuntu26.04": {
+      "label": "ubuntu26.04",
+      "file": "putgd-26.1023.1070-dev+g0073c0c9baf2-ubuntu26.04.cdx.json",
+      "sha256": "40910a3765ddf9aa16fbce2313affb2b915dc7da32edd82ce1f002f25f9a3bf4",
+      "bytes": 17125,
+      "package": "putgd_26.1023.1070~dev+g0073c0c9baf2_amd64.deb",
+      "packageSha256": "018a212852925577f65d87d262db501f2c4a2a99fc3fd7ce267ed4c4a2c393a8",
+      "components": 25,
+      "origins": {
+        "bundled": 25
+      }
+    },
+    "debian13": {
+      "label": "debian13",
+      "file": "putgd-26.1023.1070-dev+g0073c0c9baf2-debian13.cdx.json",
+      "sha256": "17de45625c241d339bb735e98edebd73314170036b9e5bb0e2beddaab81d944f",
+      "bytes": 17119,
+      "package": "putgd_26.1023.1070~dev+g0073c0c9baf2_amd64.deb",
+      "packageSha256": "c47734de793d8eb6dbc08e0c8a30c4696d652bba581e53b618a97cd22639504d",
+      "components": 25,
+      "origins": {
+        "bundled": 25
+      }
+    },
+    "fedora44": {
+      "label": "fedora44",
+      "file": "putgd-26.1023.1070-dev+g0073c0c9baf2-fedora44.cdx.json",
+      "sha256": "fb349ec36f253e5dce5d8652a290345aedfeede57d197ef704c130f097862880",
+      "bytes": 17127,
+      "package": "putgd-26.1023.1070~dev+g0073c0c9baf2-1.fc44.x86_64.rpm",
+      "packageSha256": "35c194f356d3eaf886add7ae3c3b4ef1fee4293506dbd22f04fd14bda8a4fa11",
+      "components": 25,
+      "origins": {
+        "bundled": 25
+      }
+    }
+  }
+}

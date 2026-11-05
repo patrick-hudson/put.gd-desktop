@@ -1,0 +1,26 @@
+{
+ "label": "tryexec",
+ "entry": "[Desktop Entry]\nType=Application\nName=put.gd\nTryExec=/usr/bin/putgd-launcher\nExec=\"/usr/bin/putgd-launcher\" --background\nTerminal=false\nX-putgd-Managed=true\n",
+ "entryInfo": {
+  "sha256": "c460a4f33cd4bdcac7eb612ef683f1914a54cf4363f0d6ae9aaa2882509556ce",
+  "bytes": 157,
+  "mode": "0o600",
+  "mtime": "2026-10-23T05:59:25Z"
+ },
+ "execTargetExists": false,
+ "shellStarted": "2026-10-23T05:57:27Z",
+ "journal": [
+  "user 2026-10-23T00:58:57-05:00 fedora gnome-session-service[3144489]: Desktop file /home/patrick/.config/autostart/putgd.desktop couldn't be parsed, or references a missing TryExec binary",
+  "user 2026-10-23T00:59:27-05:00 fedora gnome-session-service[3146105]: Desktop file /home/patrick/.config/autostart/putgd.desktop couldn't be parsed, or references a missing TryExec binary",
+  "system 2026-10-23T00:58:57-05:00 fedora gnome-session-service[3144489]: Desktop file /home/patrick/.config/autostart/putgd.desktop couldn't be parsed, or references a missing TryExec binary",
+  "system 2026-10-23T00:59:27-05:00 fedora gnome-session-service[3146105]: Desktop file /home/patrick/.config/autostart/putgd.desktop couldn't be parsed, or references a missing TryExec binary"
+ ],
+ "failedUnits": [],
+ "autostartUnits": [],
+ "generatorUnit": [],
+ "processes": [],
+ "package": {
+  "manager": "rpm",
+  "version": null
+ }
+}

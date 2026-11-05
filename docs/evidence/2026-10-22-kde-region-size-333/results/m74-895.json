@@ -1,0 +1,232 @@
+{
+ "regions": [
+  {
+   "drag": [
+    400,
+    200,
+    1520,
+    880
+   ],
+   "map": "lab",
+   "ticks": null,
+   "expected": [
+    1120,
+    680
+   ],
+   "operation": {
+    "id": "b512119d-d8f0-454c-8892-8831dc70b397",
+    "state": "completed",
+    "error": {
+     "code": "",
+     "details": {},
+     "message": ""
+    },
+    "artifact": {
+     "bytes": 221086,
+     "category": "images",
+     "id": "ef3791cf-18e9-42c8-b03c-1deedd4d2e9e",
+     "mime": "image/png",
+     "name": "Screen-Capture-2026-10-21-22-22-34.png",
+     "namingPrepared": true,
+     "originalFile": false,
+     "previewPath": "/home/patrick/.local/share/putgd/artifacts/../previews/ef3791cf-18e9-42c8-b03c-1deedd4d2e9e.png",
+     "sha256": "b36248fe60757d02e38d870ad75842e2e13f8a811c0ba5372dc6c2e6c1abe506"
+    },
+    "local": {
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     },
+     "path": "/home/patrick/work/put.gd-333/runs/m74-895/archive/images/Screen-Capture-2026-10-21-22-22-34.png",
+     "status": "saved"
+    }
+   },
+   "history": {
+    "id": "ef3791cf-18e9-42c8-b03c-1deedd4d2e9e",
+    "name": "Screen-Capture-2026-10-21-22-22-34.png",
+    "operationId": "b512119d-d8f0-454c-8892-8831dc70b397",
+    "sha256": "b36248fe60757d02e38d870ad75842e2e13f8a811c0ba5372dc6c2e6c1abe506",
+    "bytes": 221086,
+    "local": {
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     },
+     "path": "/home/patrick/work/put.gd-333/runs/m74-895/archive/images/Screen-Capture-2026-10-21-22-22-34.png",
+     "status": "saved"
+    }
+   },
+   "savedFile": {
+    "path": "/home/patrick/work/put.gd-333/runs/m74-895/archive/images/Screen-Capture-2026-10-21-22-22-34.png",
+    "exists": true,
+    "pngSize": [
+     1120,
+     680
+    ]
+   },
+   "frame": "/home/patrick/work/put.gd-333/runs/m74-895/out/m74-drag-1120.png",
+   "copy": "/home/patrick/work/put.gd-333/runs/m74-895/out/region-x11-400-200-1520-880-222240.png",
+   "sha256": {
+    "operation": "b36248fe60757d02e38d870ad75842e2e13f8a811c0ba5372dc6c2e6c1abe506",
+    "history": "b36248fe60757d02e38d870ad75842e2e13f8a811c0ba5372dc6c2e6c1abe506",
+    "savedFile": "b36248fe60757d02e38d870ad75842e2e13f8a811c0ba5372dc6c2e6c1abe506",
+    "agree": true
+   },
+   "pass": true
+  },
+  {
+   "drag": [
+    400,
+    200,
+    480,
+    260
+   ],
+   "map": "lab",
+   "ticks": null,
+   "expected": [
+    80,
+    60
+   ],
+   "operation": {
+    "id": "caf9b02e-2508-455b-9f32-30e789fa01df",
+    "state": "completed",
+    "error": {
+     "code": "",
+     "details": {},
+     "message": ""
+    },
+    "artifact": {
+     "bytes": 2820,
+     "category": "images",
+     "id": "8f542905-5cb1-453f-907d-05dd7ac62cbc",
+     "mime": "image/png",
+     "name": "Screen-Capture-2026-10-21-22-22-41.png",
+     "namingPrepared": true,
+     "originalFile": false,
+     "previewPath": "/home/patrick/.local/share/putgd/artifacts/../previews/8f542905-5cb1-453f-907d-05dd7ac62cbc.png",
+     "sha256": "db05bece0af20e3f8387234b099e4b14dcdd9510387c117a5669b6813cafa2a9"
+    },
+    "local": {
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     },
+     "path": "/home/patrick/work/put.gd-333/runs/m74-895/archive/images/Screen-Capture-2026-10-21-22-22-41.png",
+     "status": "saved"
+    }
+   },
+   "history": {
+    "id": "8f542905-5cb1-453f-907d-05dd7ac62cbc",
+    "name": "Screen-Capture-2026-10-21-22-22-41.png",
+    "operationId": "caf9b02e-2508-455b-9f32-30e789fa01df",
+    "sha256": "db05bece0af20e3f8387234b099e4b14dcdd9510387c117a5669b6813cafa2a9",
+    "bytes": 2820,
+    "local": {
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     },
+     "path": "/home/patrick/work/put.gd-333/runs/m74-895/archive/images/Screen-Capture-2026-10-21-22-22-41.png",
+     "status": "saved"
+    }
+   },
+   "savedFile": {
+    "path": "/home/patrick/work/put.gd-333/runs/m74-895/archive/images/Screen-Capture-2026-10-21-22-22-41.png",
+    "exists": true,
+    "pngSize": [
+     80,
+     60
+    ]
+   },
+   "frame": null,
+   "copy": "/home/patrick/work/put.gd-333/runs/m74-895/out/region-x11-400-200-480-260-222246.png",
+   "sha256": {
+    "operation": "db05bece0af20e3f8387234b099e4b14dcdd9510387c117a5669b6813cafa2a9",
+    "history": "db05bece0af20e3f8387234b099e4b14dcdd9510387c117a5669b6813cafa2a9",
+    "savedFile": "db05bece0af20e3f8387234b099e4b14dcdd9510387c117a5669b6813cafa2a9",
+    "agree": true
+   },
+   "pass": true
+  },
+  {
+   "drag": [
+    987,
+    549,
+    1067,
+    609
+   ],
+   "map": "lab",
+   "ticks": null,
+   "expected": [
+    80,
+    60
+   ],
+   "operation": {
+    "id": "e6af7ce0-15f6-482a-a05e-7ba5b74cd0b7",
+    "state": "completed",
+    "error": {
+     "code": "",
+     "details": {},
+     "message": ""
+    },
+    "artifact": {
+     "bytes": 1104,
+     "category": "images",
+     "id": "6689cb7c-aa25-46eb-894d-ccfd2cbe0955",
+     "mime": "image/png",
+     "name": "Screen-Capture-2026-10-21-22-22-47.png",
+     "namingPrepared": true,
+     "originalFile": false,
+     "previewPath": "/home/patrick/.local/share/putgd/artifacts/../previews/6689cb7c-aa25-46eb-894d-ccfd2cbe0955.png",
+     "sha256": "a8c8e93df117781479df68f954a2e742998d459f37b840a62de57a0dce5d5b9d"
+    },
+    "local": {
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     },
+     "path": "/home/patrick/work/put.gd-333/runs/m74-895/archive/images/Screen-Capture-2026-10-21-22-22-47.png",
+     "status": "saved"
+    }
+   },
+   "history": {
+    "id": "6689cb7c-aa25-46eb-894d-ccfd2cbe0955",
+    "name": "Screen-Capture-2026-10-21-22-22-47.png",
+    "operationId": "e6af7ce0-15f6-482a-a05e-7ba5b74cd0b7",
+    "sha256": "a8c8e93df117781479df68f954a2e742998d459f37b840a62de57a0dce5d5b9d",
+    "bytes": 1104,
+    "local": {
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     },
+     "path": "/home/patrick/work/put.gd-333/runs/m74-895/archive/images/Screen-Capture-2026-10-21-22-22-47.png",
+     "status": "saved"
+    }
+   },
+   "savedFile": {
+    "path": "/home/patrick/work/put.gd-333/runs/m74-895/archive/images/Screen-Capture-2026-10-21-22-22-47.png",
+    "exists": true,
+    "pngSize": [
+     80,
+     60
+    ]
+   },
+   "frame": null,
+   "copy": "/home/patrick/work/put.gd-333/runs/m74-895/out/region-x11-987-549-1067-609-222251.png",
+   "sha256": {
+    "operation": "a8c8e93df117781479df68f954a2e742998d459f37b840a62de57a0dce5d5b9d",
+    "history": "a8c8e93df117781479df68f954a2e742998d459f37b840a62de57a0dce5d5b9d",
+    "savedFile": "a8c8e93df117781479df68f954a2e742998d459f37b840a62de57a0dce5d5b9d",
+    "agree": true
+   },
+   "pass": true
+  }
+ ]
+}

@@ -1,0 +1,59 @@
+{
+ "menuComponents": [
+  {
+   "blocks": 1049,
+   "box": [
+    1704,
+    736,
+    1920,
+    1080
+   ]
+  }
+ ],
+ "hover": [
+  1809,
+  1025
+ ],
+ "menu": {
+  "label": "tray-quit",
+  "components": [
+   {
+    "blocks": 1051,
+    "box": [
+     1704,
+     736,
+     1920,
+     1080
+    ]
+   },
+   {
+    "blocks": 6,
+    "box": [
+     1904,
+     536,
+     1920,
+     568
+    ]
+   }
+  ],
+  "colour": [
+   252,
+   252,
+   252
+  ],
+  "inner": [
+   1839,
+   738,
+   1879,
+   1006
+  ],
+  "changedShare": 1.0,
+  "kept": "/home/patrick/work/put.gd-qt418/afa/runs/m74/crops/tray-quit.png"
+ },
+ "allGone": true,
+ "after": {
+  "processes": [],
+  "mounts": [],
+  "entries": []
+ }
+}

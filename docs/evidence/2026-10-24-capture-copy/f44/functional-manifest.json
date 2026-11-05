@@ -1,0 +1,509 @@
+{
+  "source": "8a9415c540bee2ac5a8caa0e7606681bafa528a7",
+  "scope": "real native Qt/GTK local captures and clipboard; synthetic stored-link recovery, no remote upload",
+  "resident": {
+    "residentPid": 3401009,
+    "residentStartTicks": "59175275",
+    "source": {
+      "schemaVersion": 1,
+      "version": "26.1024.1135-dev+g8a9415c540be",
+      "baseVersion": "26.1024.1135",
+      "packageVersion": "26.1024.1135~dev+g8a9415c540be",
+      "gitCommit": "8a9415c540bee2ac5a8caa0e7606681bafa528a7",
+      "gitTree": "9c2dcf250cf07b9d393a56a2533e3fbc069fb5b5",
+      "commitCount": 1135,
+      "dirty": false,
+      "sourceProvenance": "git"
+    },
+    "host": "f44-extracted-rpm",
+    "session": {
+      "XDG_CURRENT_DESKTOP": "GNOME",
+      "XDG_SESSION_TYPE": "wayland",
+      "QT_QPA_PLATFORM": "wayland"
+    }
+  },
+  "cases": [
+    {
+      "label": "qt-window-final",
+      "operationId": "1619e712-ea8e-4bbe-81ad-5a84d2a64265",
+      "state": "completed",
+      "copyStatus": "copied",
+      "items": [
+        {
+          "id": "aeae6ba6-61e4-426c-a8b8-5f378b175662",
+          "category": "images",
+          "sha256": "5c6ffc8cfd8d9afa5de3670a7ccf3a16d966624c7b9b2ce7ffe3c65421c2cee5",
+          "localStatus": "saved"
+        }
+      ],
+      "independentPaste": {
+        "operationId": "1619e712-ea8e-4bbe-81ad-5a84d2a64265",
+        "decodedRgbaSha256": "3ff12c8af9943770d4c990264d29dd2c28efd3cca0ac05d81913bb7a259cc70d",
+        "width": 662,
+        "height": 480,
+        "matchedRetainedOriginal": true
+      },
+      "independentPasteArtifact": {
+        "path": "native-paste/qt-window-final.png",
+        "sha256": "5c6ffc8cfd8d9afa5de3670a7ccf3a16d966624c7b9b2ce7ffe3c65421c2cee5"
+      },
+      "paste": {
+        "formats": [
+          "image/png",
+          "application/x-qt-image"
+        ],
+        "image": {
+          "height": 480,
+          "saved": true,
+          "width": 662
+        },
+        "schemaVersion": 1
+      }
+    },
+    {
+      "label": "qt-region-final",
+      "operationId": "401b0c3c-dd9f-4f54-9028-a8fad6f55a08",
+      "state": "completed",
+      "copyStatus": "copied",
+      "items": [
+        {
+          "id": "b9aa2a7d-4799-4465-a9e3-f1b2a58ec81d",
+          "category": "images",
+          "sha256": "fd2e1db54b338df67ad1630ec6e94393b07e4e6b3e980e1410940d7d5e93eb93",
+          "localStatus": "saved"
+        }
+      ],
+      "independentPaste": {
+        "operationId": "401b0c3c-dd9f-4f54-9028-a8fad6f55a08",
+        "decodedRgbaSha256": "16e42f92ee64c70a1e0b5c182ddeb9ea45c4810f0f9107b00207524f2549e283",
+        "width": 80,
+        "height": 60,
+        "matchedRetainedOriginal": true
+      },
+      "independentPasteArtifact": {
+        "path": "native-paste/qt-region-final.png",
+        "sha256": "fd2e1db54b338df67ad1630ec6e94393b07e4e6b3e980e1410940d7d5e93eb93"
+      },
+      "paste": {
+        "formats": [
+          "image/png",
+          "application/x-qt-image"
+        ],
+        "image": {
+          "height": 60,
+          "saved": true,
+          "width": 80
+        },
+        "schemaVersion": 1
+      }
+    },
+    {
+      "label": "qt-desktop-final",
+      "operationId": "8cd8af00-aacd-45b3-a253-c3e2c7c137fd",
+      "state": "completed",
+      "copyStatus": "copied",
+      "items": [
+        {
+          "id": "c1a38b1b-20c3-43a6-9bfe-8fbb09e0f3fe",
+          "category": "images",
+          "sha256": "265227a9b165263885117b9eb0eb32cf9a80e07b9201f6587ce50038d1ff7973",
+          "localStatus": "saved"
+        }
+      ],
+      "independentPaste": {
+        "operationId": "8cd8af00-aacd-45b3-a253-c3e2c7c137fd",
+        "decodedRgbaSha256": "70ff3fc95c5b69c85ba7c964b929b6df6a8d29eb98f9638bf76ef97aa5c68e61",
+        "width": 1920,
+        "height": 1080,
+        "matchedRetainedOriginal": true
+      },
+      "independentPasteArtifact": {
+        "path": "native-paste/qt-desktop-final.png",
+        "sha256": "265227a9b165263885117b9eb0eb32cf9a80e07b9201f6587ce50038d1ff7973"
+      },
+      "paste": {
+        "formats": [
+          "image/png",
+          "application/x-qt-image"
+        ],
+        "image": {
+          "height": 1080,
+          "saved": true,
+          "width": 1920
+        },
+        "schemaVersion": 1
+      },
+      "privacyEdgeGate": {
+        "fractions": [
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "minimum": 0.9,
+        "dimensions": [
+          1920,
+          1080
+        ]
+      }
+    },
+    {
+      "label": "qt-clipboard-final-t",
+      "operationId": "7c6c7ac5-6855-4583-8d98-7daa3d518a37",
+      "state": "completed",
+      "copyStatus": "copied",
+      "items": [
+        {
+          "id": "64836158-647b-4241-852b-815a3ea0361d",
+          "category": "text",
+          "sha256": "c7a4c2eea1d901cbc049d84dbba77e472576aafc27b49e4a1e188bb7dd176185",
+          "localStatus": "saved"
+        }
+      ],
+      "paste": {
+        "formats": [
+          "text/plain"
+        ],
+        "schemaVersion": 1,
+        "text": "putgd synthetic clipboard text"
+      }
+    },
+    {
+      "label": "qt-clipboard-final-i",
+      "operationId": "958b645b-d166-4859-9925-0143eb3f69d3",
+      "state": "completed",
+      "copyStatus": "copied",
+      "items": [
+        {
+          "id": "ad34e3da-e4ad-4bca-a380-4760ca6789e4",
+          "category": "images",
+          "sha256": "8d5810dd5c9c8b1b5648e611d0e43971e01b6b03e2839bad028ad384ec998316",
+          "localStatus": "saved"
+        }
+      ],
+      "independentPaste": {
+        "operationId": "958b645b-d166-4859-9925-0143eb3f69d3",
+        "decodedRgbaSha256": "f7d6e5a37e11f8a47c53f53d1b1407d9ddd447cd33947f4f7761f2287b0eca9a",
+        "width": 96,
+        "height": 64,
+        "matchedRetainedOriginal": true
+      },
+      "independentPasteArtifact": {
+        "path": "native-paste/qt-clipboard-final-i.png",
+        "sha256": "8d5810dd5c9c8b1b5648e611d0e43971e01b6b03e2839bad028ad384ec998316"
+      },
+      "paste": {
+        "formats": [
+          "image/png",
+          "application/x-qt-image"
+        ],
+        "image": {
+          "height": 64,
+          "saved": true,
+          "width": 96
+        },
+        "schemaVersion": 1
+      }
+    },
+    {
+      "label": "qt-clipboard-final-f",
+      "operationId": "ff050f10-f52a-4770-ba80-b819c6bee25c",
+      "state": "completed",
+      "copyStatus": "copied",
+      "items": [
+        {
+          "id": "efa32bc4-aaa5-4d14-90e5-999dcbbaa5ce",
+          "category": "text",
+          "sha256": "5b19eebc3f2265be7fb729e7c911c784093eebf706a89beaa356e82ce2222427",
+          "localStatus": "saved"
+        },
+        {
+          "id": "c895661e-0b0d-40b0-aecd-00e9d9871149",
+          "category": "text",
+          "sha256": "010e71d5ea18016d6f57aaf690c656a8d3bcaaa6199336a843fc07eb07c63209",
+          "localStatus": "saved"
+        }
+      ],
+      "paste": {
+        "formats": [
+          "text/uri-list"
+        ],
+        "schemaVersion": 1,
+        "text": "file:///tmp/ccff/archive/text/synthetic-1.txt\nfile:///tmp/ccff/archive/text/synthetic-2.txt\n",
+        "urls": [
+          "file:///tmp/ccff/archive/text/synthetic-1.txt",
+          "file:///tmp/ccff/archive/text/synthetic-2.txt"
+        ]
+      }
+    },
+    {
+      "label": "gtk-window-final",
+      "operationId": "9e89c82d-445e-466d-b0e2-8c565bc0bdd3",
+      "state": "completed",
+      "copyStatus": "copied",
+      "items": [
+        {
+          "id": "29118c5d-0649-4f85-a353-7bc7e09fd9e9",
+          "category": "images",
+          "sha256": "81304feba49696140e22093832ff44df1895be392703adab3a26bf5beecf1058",
+          "localStatus": "saved"
+        }
+      ],
+      "independentPaste": {
+        "operationId": "9e89c82d-445e-466d-b0e2-8c565bc0bdd3",
+        "decodedRgbaSha256": "51f0c55abc34fcfa062a5d69cc3e2df109a46fb159e1e1b4c435fc2c008cac45",
+        "width": 668,
+        "height": 449,
+        "matchedRetainedOriginal": true
+      },
+      "independentPasteArtifact": {
+        "path": "native-paste/gtk-window-final.png",
+        "sha256": "81304feba49696140e22093832ff44df1895be392703adab3a26bf5beecf1058"
+      },
+      "paste": {
+        "schemaVersion": 1,
+        "client": "GTK",
+        "formats": [
+          "image/png"
+        ],
+        "image": {
+          "width": 668,
+          "height": 449,
+          "saved": true
+        }
+      }
+    },
+    {
+      "label": "gtk-region-final",
+      "operationId": "1b22f400-4d33-4c53-819f-99e03c8aa80c",
+      "state": "completed",
+      "copyStatus": "copied",
+      "items": [
+        {
+          "id": "f317354f-7aea-4ec7-9811-fb9af4d518d1",
+          "category": "images",
+          "sha256": "ffb62d3e8518b1bf85d1b15138480089e30d8041d177cc2ac9ce519b40015669",
+          "localStatus": "saved"
+        }
+      ],
+      "independentPaste": {
+        "operationId": "1b22f400-4d33-4c53-819f-99e03c8aa80c",
+        "decodedRgbaSha256": "5e5276bff72a97b27e4f72531932eb928faf60da17db93b8325d3f6eddd70fbb",
+        "width": 80,
+        "height": 60,
+        "matchedRetainedOriginal": true
+      },
+      "independentPasteArtifact": {
+        "path": "native-paste/gtk-region-final.png",
+        "sha256": "ffb62d3e8518b1bf85d1b15138480089e30d8041d177cc2ac9ce519b40015669"
+      },
+      "paste": {
+        "schemaVersion": 1,
+        "client": "GTK",
+        "formats": [
+          "image/png"
+        ],
+        "image": {
+          "width": 80,
+          "height": 60,
+          "saved": true
+        }
+      }
+    },
+    {
+      "label": "gtk-desktop-final",
+      "operationId": "7d146275-5d11-4492-9971-1f698e5c427b",
+      "state": "completed",
+      "copyStatus": "copied",
+      "items": [
+        {
+          "id": "a565b8f8-fae9-450c-a498-44b06c8685c6",
+          "category": "images",
+          "sha256": "fd642a1e167a8aa58adca85460cf27008f2081a12645a6bfe3e446b9f4c34765",
+          "localStatus": "saved"
+        }
+      ],
+      "independentPaste": {
+        "operationId": "7d146275-5d11-4492-9971-1f698e5c427b",
+        "decodedRgbaSha256": "70ff3fc95c5b69c85ba7c964b929b6df6a8d29eb98f9638bf76ef97aa5c68e61",
+        "width": 1920,
+        "height": 1080,
+        "matchedRetainedOriginal": true
+      },
+      "independentPasteArtifact": {
+        "path": "native-paste/gtk-desktop-final.png",
+        "sha256": "fd642a1e167a8aa58adca85460cf27008f2081a12645a6bfe3e446b9f4c34765"
+      },
+      "paste": {
+        "schemaVersion": 1,
+        "client": "GTK",
+        "formats": [
+          "image/png"
+        ],
+        "image": {
+          "width": 1920,
+          "height": 1080,
+          "saved": true
+        }
+      },
+      "privacyEdgeGate": {
+        "fractions": [
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "minimum": 0.9,
+        "dimensions": [
+          1920,
+          1080
+        ]
+      }
+    },
+    {
+      "label": "gtk-clipboard-final-t",
+      "operationId": "676fe9ed-d43c-4d95-a955-8f0f649f5990",
+      "state": "completed",
+      "copyStatus": "copied",
+      "items": [
+        {
+          "id": "5684611f-d73b-44f0-a00f-58028391d62e",
+          "category": "text",
+          "sha256": "c7a4c2eea1d901cbc049d84dbba77e472576aafc27b49e4a1e188bb7dd176185",
+          "localStatus": "saved"
+        }
+      ],
+      "paste": {
+        "schemaVersion": 1,
+        "client": "GTK",
+        "formats": [
+          "text/plain;charset=utf-8"
+        ],
+        "text": "putgd synthetic clipboard text"
+      }
+    },
+    {
+      "label": "gtk-clipboard-final-i",
+      "operationId": "9bc20425-7b04-4d3f-9ee0-7c97e2020487",
+      "state": "completed",
+      "copyStatus": "copied",
+      "items": [
+        {
+          "id": "00676ed6-2a3e-47a2-8faf-947b04e825a4",
+          "category": "images",
+          "sha256": "6171cd78a25ed61bd98dfa4be87b5339b15e39ae7661b3002486af4fefb3cd17",
+          "localStatus": "saved"
+        }
+      ],
+      "independentPaste": {
+        "operationId": "9bc20425-7b04-4d3f-9ee0-7c97e2020487",
+        "decodedRgbaSha256": "f7d6e5a37e11f8a47c53f53d1b1407d9ddd447cd33947f4f7761f2287b0eca9a",
+        "width": 96,
+        "height": 64,
+        "matchedRetainedOriginal": true
+      },
+      "independentPasteArtifact": {
+        "path": "native-paste/gtk-clipboard-final-i.png",
+        "sha256": "6171cd78a25ed61bd98dfa4be87b5339b15e39ae7661b3002486af4fefb3cd17"
+      },
+      "paste": {
+        "schemaVersion": 1,
+        "client": "GTK",
+        "formats": [
+          "image/png"
+        ],
+        "image": {
+          "width": 96,
+          "height": 64,
+          "saved": true
+        }
+      }
+    },
+    {
+      "label": "gtk-clipboard-final-f",
+      "operationId": "ad0d62a6-59f1-40eb-a292-5777c4fcf68a",
+      "state": "completed",
+      "copyStatus": "copied",
+      "items": [
+        {
+          "id": "33fafe3c-7003-4b5e-9ec0-9665977b8a54",
+          "category": "text",
+          "sha256": "5b19eebc3f2265be7fb729e7c911c784093eebf706a89beaa356e82ce2222427",
+          "localStatus": "saved"
+        },
+        {
+          "id": "f9cc0830-33f3-4e91-9631-86816f4ceb5b",
+          "category": "text",
+          "sha256": "010e71d5ea18016d6f57aaf690c656a8d3bcaaa6199336a843fc07eb07c63209",
+          "localStatus": "saved"
+        }
+      ],
+      "paste": {
+        "schemaVersion": 1,
+        "client": "GTK",
+        "formats": [
+          "text/uri-list"
+        ],
+        "text": "file:///tmp/ccff/archive/text/synthetic-1-a266377f-3f56-493e-acee-d192a2b578a1.txt\r\nfile:///tmp/ccff/archive/text/synthetic-2-b2fd4c27-8adc-47d6-b62b-a85fbcff267f.txt\r\n",
+        "urls": [
+          "file:///tmp/ccff/archive/text/synthetic-1-a266377f-3f56-493e-acee-d192a2b578a1.txt",
+          "file:///tmp/ccff/archive/text/synthetic-2-b2fd4c27-8adc-47d6-b62b-a85fbcff267f.txt"
+        ]
+      }
+    },
+    {
+      "label": "cancel-right",
+      "operationId": "afb6280c-148a-4519-99bf-5345bca2666c",
+      "state": "cancelled",
+      "copyStatus": "no_result",
+      "items": []
+    },
+    {
+      "label": "cancel-zero",
+      "operationId": "0b68c85e-053a-43af-9521-e0397142f749",
+      "state": "cancelled",
+      "copyStatus": "no_result",
+      "items": []
+    },
+    {
+      "label": "cancel-escape-final",
+      "operationId": "12710fae-908b-430f-a08e-05c5c57a3f80",
+      "state": "cancelled",
+      "copyStatus": "no_result",
+      "items": []
+    }
+  ],
+  "views": [
+    {
+      "view": "settings",
+      "helperPid": 3402052,
+      "closedNormally": true
+    },
+    {
+      "view": "history",
+      "helperPid": 3402083,
+      "closedNormally": true
+    },
+    {
+      "view": "settings",
+      "helperPid": 3402114,
+      "closedNormally": true
+    },
+    {
+      "view": "history",
+      "helperPid": 3402180,
+      "closedNormally": true
+    },
+    {
+      "view": "settings",
+      "helperPid": 3402226,
+      "closedNormally": true
+    },
+    {
+      "view": "history",
+      "helperPid": 3402560,
+      "closedNormally": true
+    }
+  ],
+  "privateArchiveSha256": "e7dbabd3214a2f33e87781344d4baae76e4f74e21731ff33130080411b5438de"
+}

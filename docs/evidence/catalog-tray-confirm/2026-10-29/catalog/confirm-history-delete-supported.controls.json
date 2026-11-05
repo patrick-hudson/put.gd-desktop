@@ -1,0 +1,54 @@
+{
+    "class": "QDialog",
+    "controls": [
+        {
+            "checkable": true,
+            "checked": false,
+            "class": "QToolButton",
+            "enabled": true,
+            "kind": "button",
+            "name": "deleteConfirmationDetailsExpanded",
+            "rect": [
+                24,
+                420,
+                143,
+                36
+            ],
+            "text": "Technical details"
+        },
+        {
+            "checkable": false,
+            "checked": false,
+            "class": "QPushButton",
+            "enabled": true,
+            "kind": "button",
+            "name": "confirmCancel",
+            "rect": [
+                342,
+                468,
+                73,
+                36
+            ],
+            "text": "Cancel"
+        },
+        {
+            "checkable": false,
+            "checked": false,
+            "class": "QPushButton",
+            "enabled": true,
+            "kind": "button",
+            "name": "confirmActionButton",
+            "rect": [
+                423,
+                468,
+                113,
+                36
+            ],
+            "text": "Delete 2 files"
+        }
+    ],
+    "height": 520,
+    "keys": [
+    ],
+    "width": 560
+}

@@ -1,0 +1,64 @@
+{
+  "schemaVersion": 1,
+  "passed": true,
+  "archive": {
+    "bytes": 23805491,
+    "file": "putgd-26.1101.3698-nightly-source.tar.gz",
+    "sha256": "b5da2712dcd2188b9df2f63c1798077668301680e197548b4d12e807cbfb8f53"
+  },
+  "commands": [
+    [
+      "/usr/bin/python3",
+      "tools/proton/provision_runtime.py"
+    ],
+    [
+      "cmake",
+      "--preset",
+      "release",
+      "-DBUILD_TESTING=OFF",
+      "-DPUTGD_LAB_FIXTURE=OFF",
+      "-DPUTGD_PHYSICAL_BENCHMARKS=OFF",
+      "-DCMAKE_PREFIX_PATH=/home/patrick/work/put.gd/build/sdk",
+      "-DPUTGD_AWS_SOURCE_DIR=/home/patrick/work/put.gd/build/dependencies/aws-sdk-cpp",
+      "-DPUTGD_AWS_RUNTIME_DIR=/home/patrick/work/put.gd/build/sdk/lib",
+      "-DPUTGD_SOURCE_COMMIT=38fa2ac634d475733e2ebfe70c2871da6425e31b",
+      "-DPUTGD_SOURCE_TREE=82f7582dce6ea847d02e1a501f8bd04ae5c6698c",
+      "-DPUTGD_SOURCE_COMMIT_COUNT=3698",
+      "-DPUTGD_SOURCE_COMMIT_TIME=1793537809",
+      "-DPUTGD_BUNDLE_PROTON=ON"
+    ],
+    [
+      "cmake",
+      "--build",
+      "--preset",
+      "release"
+    ]
+  ],
+  "rebuiltProton": {
+    "sha256": "9fd4d72f86352cfcf2c8b6ba1db4102ed6f7b22660077698c700989e9fda8586",
+    "bundledSha256": "9fd4d72f86352cfcf2c8b6ba1db4102ed6f7b22660077698c700989e9fda8586",
+    "manifestSha256": "35b17e011225691fdc311bb07c2cc74f0e7560198e662afed25147428b32e93e"
+  },
+  "compiledBuild": {
+    "schemaVersion": 1,
+    "version": "26.1101.3698-dev+g38fa2ac634d4",
+    "baseVersion": "26.1101.3698",
+    "packageVersion": "26.1101.3698~dev+g38fa2ac634d4",
+    "gitCommit": "38fa2ac634d475733e2ebfe70c2871da6425e31b",
+    "gitTree": "82f7582dce6ea847d02e1a501f8bd04ae5c6698c",
+    "commitCount": 3698,
+    "dirty": null,
+    "sourceProvenance": "supplied"
+  },
+  "identityMatchedPrograms": [
+    "putgd",
+    "putgd-cli",
+    "putgd-ui",
+    "putgd-capture",
+    "putgd-s3-worker",
+    "putgd-b2-worker",
+    "putgd-kde-region",
+    "putgd-record"
+  ],
+  "wallSeconds": 590.417208091123
+}

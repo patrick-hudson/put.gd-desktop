@@ -1,0 +1,46 @@
+{
+ "label": "m74-launch-activity",
+ "components": [
+  {
+   "blocks": 18887,
+   "box": [
+    296,
+    8,
+    1624,
+    928
+   ]
+  },
+  {
+   "blocks": 25,
+   "box": [
+    192,
+    1040,
+    232,
+    1080
+   ]
+  },
+  {
+   "blocks": 1,
+   "box": [
+    1896,
+    1056,
+    1904,
+    1064
+   ]
+  }
+ ],
+ "colour": [
+  244,
+  244,
+  248
+ ],
+ "inner": [
+  299,
+  10,
+  1619,
+  922
+ ],
+ "changedShare": 1.0,
+ "themeShare": 0.94,
+ "kept": "/home/patrick/work/put.gd-tray374lab/p-m74-after/crops/m74-launch-activity.png"
+}

@@ -7,6 +7,7 @@
 #include "ext-data-control-v1-server-protocol.h"
 #include <sys/stat.h>
 #include <unistd.h>
+#include "fixtures/Waits.h"
 using namespace putgd;
 using test::loadedImagePlugins;
 // A private in-process compositor that owns one clipboard selection. It proves
@@ -70,9 +71,9 @@ class KdeClipboardImportTest final:public QObject {
  Q_OBJECT
  static bool importFrom(DataControlFixture& owner,PayloadResult& result){
   if(!owner.error.isEmpty())return false;
-  DataControlClipboard importer;if(!QTest::qWaitFor([&]{return importer.available();},5000))return false;
+  DataControlClipboard importer;if(!putgd::test::waitFor([&]{return importer.available();},5000))return false;
   bool done=false;importer.acquire({},[&](PayloadResult value){result=std::move(value);done=true;},importer.revision());
-  return QTest::qWaitFor([&]{return done;},20000);
+  return putgd::test::waitFor([&]{return done;},20000);
  }
 private slots:
  void initTestCase(){

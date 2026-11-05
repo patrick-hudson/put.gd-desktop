@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "id": "8ab70c4a-c666-437a-9b37-5da939109890",
+  "profile": "gnome-x11-559",
+  "guest_user": "lab",
+  "ssh_port": 22459,
+  "vnc_display": 62,
+  "acceleration": "kvm",
+  "golden": "/home/patrick/work/put.gd/work/lab-images/ubuntu24-gnome-x11-20261025-491/image.qcow2",
+  "golden_sha256": "fff0b55cc2d09d403bea61dd17d46165994cd8a9d0c2d467c5883c7fb795e245",
+  "bootstrap_key": "/home/patrick/work/put.gd/work/lab-bootstrap-u24x11-491/identity",
+  "known_hosts": "/home/patrick/work/i559/work/lab-runs/xg559/known_hosts",
+  "overlay": "/home/patrick/work/i559/work/lab-runs/xg559/disk.qcow2",
+  "heads": [
+    {
+      "head": 0,
+      "port": 5962,
+      "display": "127.0.0.1:5962"
+    }
+  ],
+  "head_layout": "1920x1080+0+0",
+  "pid": 2880106,
+  "head_requests": [
+    {
+      "port": 5962,
+      "width": 1920,
+      "height": 1080,
+      "status": 4
+    }
+  ]
+}

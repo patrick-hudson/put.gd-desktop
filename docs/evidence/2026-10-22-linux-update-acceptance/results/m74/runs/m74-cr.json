@@ -1,0 +1,345 @@
+{
+ "name": "m74-cr",
+ "tool": "crash",
+ "live": true,
+ "image": "/home/patrick/work/put.gd-ua/app/runs/m74-cr/apps/putgd-26.1022.1017-nightly-x86_64.AppImage",
+ "imageSha256": "005762e9ede991c78fce115707a41617d899d7870738fb525151c182357b7c3a",
+ "cliDir": "/home/patrick/work/put.gd-ua/app/runs/m74-cr/cli/squashfs-root",
+ "runtime": "/tmp/ua-app.J2JRbc",
+ "session": {
+  "HOME": "/home/patrick",
+  "PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin",
+  "USER": "patrick",
+  "LANG": "en_US.UTF-8",
+  "DISPLAY": ":0",
+  "XAUTHORITY": "/home/patrick/.Xauthority",
+  "DBUS_SESSION_BUS_ADDRESS": "unix:path=/run/user/1000/bus",
+  "XDG_SESSION_TYPE": "x11",
+  "XDG_CURRENT_DESKTOP": "X-Cinnamon",
+  "XDG_SESSION_DESKTOP": "cinnamon",
+  "DESKTOP_SESSION": "cinnamon",
+  "XDG_DATA_DIRS": "/usr/share/cinnamon:/home/patrick/.local/share/flatpak/exports/share:/var/lib/flatpak/exports/share:/usr/local/share:/usr/share"
+ },
+ "shell": "cinnamon",
+ "hostPath": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin",
+ "host": "mint-builder",
+ "vnc": 5900,
+ "urls": {},
+ "input": "xdotool",
+ "before": {
+  "dataPutgd": false,
+  "homePutgd": {
+   "/home/patrick/.config/putgd": false,
+   "/home/patrick/.local/state/putgd": true,
+   "/home/patrick/.cache/putgd": false
+  },
+  "autostart": []
+ },
+ "pids": {
+  "apprun": 435208
+ },
+ "created": "2026-10-23T00:21:52Z",
+ "log": [
+  {
+   "at": "2026-10-23T00:21:57Z",
+   "start": {
+    "pid": 435165,
+    "status": {
+     "build": "26.1022.1017-nightly",
+     "channel": "nightly",
+     "latest": null,
+     "updateAvailable": null,
+     "install": {
+      "available": true,
+      "backup": null,
+      "image": "/home/patrick/work/put.gd-ua/app/runs/m74-cr/apps/putgd-26.1022.1017-nightly-x86_64.AppImage",
+      "installed": null,
+      "kind": "update",
+      "reason": null,
+      "restartRequired": false,
+      "running": false,
+      "state": "idle",
+      "switch": null
+     }
+    },
+    "frame": "/home/patrick/work/put.gd-ua/app/runs/m74-cr/frames/u7-cr-1-start.png"
+   }
+  },
+  {
+   "at": "2026-10-23T00:22:01Z",
+   "check": {
+    "reply": {
+     "ok": true,
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     }
+    },
+    "status": {
+     "build": "26.1022.1017-nightly",
+     "channel": "nightly",
+     "latest": "26.1022.1019-nightly",
+     "updateAvailable": true,
+     "install": {
+      "available": true,
+      "backup": null,
+      "image": "/home/patrick/work/put.gd-ua/app/runs/m74-cr/apps/putgd-26.1022.1017-nightly-x86_64.AppImage",
+      "installed": null,
+      "kind": "update",
+      "reason": null,
+      "restartRequired": false,
+      "running": false,
+      "state": "idle",
+      "switch": null
+     }
+    },
+    "frame": "/home/patrick/work/put.gd-ua/app/runs/m74-cr/frames/u7-cr-2-available.png"
+   }
+  },
+  {
+   "at": "2026-10-23T00:22:11Z",
+   "install": {
+    "params": {
+     "confirm": true
+    },
+    "seconds": 8.6,
+    "phases": [
+     {
+      "at": 0.0,
+      "phase": [
+       "starting",
+       "auto"
+      ],
+      "bytes": 0,
+      "total": 0
+     },
+     {
+      "at": 0.5,
+      "phase": [
+       "verifying",
+       null
+      ],
+      "bytes": 0,
+      "total": 0
+     },
+     {
+      "at": 1.7,
+      "phase": [
+       "zsync",
+       "appimageupdatetool"
+      ],
+      "bytes": 0,
+      "total": 115259896
+     },
+     {
+      "at": 4.9,
+      "phase": [
+       "done",
+       "download"
+      ],
+      "bytes": 115259896,
+      "total": 115259896
+     }
+    ],
+    "install": {
+     "available": true,
+     "backup": "/home/patrick/work/put.gd-ua/app/runs/m74-cr/apps/.putgd-update-backup-26.1022.1017-nightly.AppImage",
+     "bytes": 115259896,
+     "finishedAt": "2026-10-23T00:22:06Z",
+     "image": "/home/patrick/work/put.gd-ua/app/runs/m74-cr/apps/putgd-26.1022.1017-nightly-x86_64.AppImage",
+     "installed": {
+      "channel": "nightly",
+      "image": "/home/patrick/work/put.gd-ua/app/runs/m74-cr/apps/putgd-26.1022.1017-nightly-x86_64.AppImage",
+      "installedAt": "2026-10-23T00:22:06Z",
+      "method": "download",
+      "previousChannel": "nightly",
+      "previousVersion": "26.1022.1017-nightly",
+      "sha256": "e5b7ad2caecaa7f5737bdfb5d2f0fd4e3c74ce5d98a8a68142caf4efd43525bc",
+      "version": "26.1022.1019-nightly"
+     },
+     "kind": "update",
+     "method": "download",
+     "phase": "done",
+     "reason": null,
+     "restartRequired": true,
+     "result": {
+      "backup": "/home/patrick/work/put.gd-ua/app/runs/m74-cr/apps/.putgd-update-backup-26.1022.1017-nightly.AppImage",
+      "channel": "nightly",
+      "downloads": [
+       {
+        "source": "release",
+        "transfer": {
+         "httpStatus": 200,
+         "network": null,
+         "tooLarge": false,
+         "url": "https://github.com/patrick-hudson/put.gd-desktop/releases/download/v26.1022.1019-nightly/putgd-26.1022.1019-nightly-x86_64.AppImage"
+        }
+       }
+      ],
+      "image": "/home/patrick/work/put.gd-ua/app/runs/m74-cr/apps/putgd-26.1022.1017-nightly-x86_64.AppImage",
+      "installed": true,
+      "method": "download",
+      "previousChannel": "nightly",
+      "previousVersion": "26.1022.1017-nightly",
+      "sha256": "e5b7ad2caecaa7f5737bdfb5d2f0fd4e3c74ce5d98a8a68142caf4efd43525bc",
+      "signature": {
+       "trustedComment": "put.gd v26.1022.1019-nightly nightly"
+      },
+      "source": "release",
+      "switched": false,
+      "tag": "v26.1022.1019-nightly",
+      "version": "26.1022.1019-nightly",
+      "zsync": {
+       "fallbackReason": "crashed",
+       "output": "zsync2: Unknown error while checking whether file (null) exists: Bad address (lab shim)",
+       "tool": "appimageupdatetool",
+       "used": false
+      }
+     },
+     "running": false,
+     "startedAt": "2026-10-23T00:22:01Z",
+     "state": "installed",
+     "switch": null,
+     "total": 115259896
+    },
+    "frames": {
+     "zsync": "/home/patrick/work/put.gd-ua/app/runs/m74-cr/frames/u7-cr-3-zsync.png",
+     "result": "/home/patrick/work/put.gd-ua/app/runs/m74-cr/frames/u7-cr-3-result.png"
+    },
+    "imageSha256": "e5b7ad2caecaa7f5737bdfb5d2f0fd4e3c74ce5d98a8a68142caf4efd43525bc",
+    "backup": "/home/patrick/work/put.gd-ua/app/runs/m74-cr/apps/.putgd-update-backup-26.1022.1017-nightly.AppImage",
+    "backupSha256": "005762e9ede991c78fce115707a41617d899d7870738fb525151c182357b7c3a",
+    "folder": [
+     ".putgd-update-backup-26.1022.1017-nightly.AppImage",
+     "putgd-26.1022.1017-nightly-x86_64.AppImage"
+    ],
+    "stateFile": {
+     "backup": {
+      "copied": false,
+      "device": "2050",
+      "inode": "14025674",
+      "mtime": 1792709410,
+      "path": "/home/patrick/work/put.gd-ua/app/runs/m74-cr/apps/.putgd-update-backup-26.1022.1017-nightly.AppImage",
+      "size": 115259896
+     },
+     "installed": {
+      "channel": "nightly",
+      "image": "/home/patrick/work/put.gd-ua/app/runs/m74-cr/apps/putgd-26.1022.1017-nightly-x86_64.AppImage",
+      "installedAt": "2026-10-23T00:22:06Z",
+      "method": "download",
+      "previousChannel": "nightly",
+      "previousVersion": "26.1022.1017-nightly",
+      "sha256": "e5b7ad2caecaa7f5737bdfb5d2f0fd4e3c74ce5d98a8a68142caf4efd43525bc",
+      "version": "26.1022.1019-nightly"
+     },
+     "schemaVersion": 1,
+     "staging": null
+    }
+   }
+  },
+  {
+   "at": "2026-10-23T00:22:16Z",
+   "refuse": {
+    "case": "restart",
+    "params": {
+     "confirm": true,
+     "method": "download"
+    },
+    "reply": {
+     "ok": false,
+     "error": {
+      "code": "update_restart_required",
+      "details": {
+       "installed": "26.1022.1019-nightly"
+      },
+      "message": "Restart put.gd to finish the update that is already installed"
+     }
+    },
+    "install": {
+     "state": "installed",
+     "phase": "done",
+     "error": null,
+     "available": true,
+     "reason": null,
+     "restartRequired": true
+    },
+    "imageSha256": "e5b7ad2caecaa7f5737bdfb5d2f0fd4e3c74ce5d98a8a68142caf4efd43525bc",
+    "unchanged": false,
+    "folder": [
+     ".putgd-update-backup-26.1022.1017-nightly.AppImage",
+     "putgd-26.1022.1017-nightly-x86_64.AppImage"
+    ],
+    "frame": "/home/patrick/work/put.gd-ua/app/runs/m74-cr/frames/refuse-restart.png"
+   }
+  },
+  {
+   "at": "2026-10-23T00:22:21Z",
+   "restart": {
+    "reply": {
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     },
+     "ok": true,
+     "requestId": "571eb937-2a47-44c5-9aa7-7fab1a7b88e1",
+     "result": {
+      "restarting": true,
+      "version": "26.1022.1019-nightly"
+     },
+     "schemaVersion": 1
+    },
+    "oldPid": 435165,
+    "oldGone": true,
+    "newPid": 435320,
+    "newExe": "/tmp/.mount_putgd-fNDlod/usr/bin/putgd",
+    "newAppimage": "/home/patrick/work/put.gd-ua/app/runs/m74-cr/apps/putgd-26.1022.1017-nightly-x86_64.AppImage",
+    "version": "26.1022.1019-nightly",
+    "install": {
+     "available": true,
+     "backup": null,
+     "image": "/home/patrick/work/put.gd-ua/app/runs/m74-cr/apps/putgd-26.1022.1017-nightly-x86_64.AppImage",
+     "installed": {
+      "backupRemoved": true,
+      "channel": "nightly",
+      "image": "/home/patrick/work/put.gd-ua/app/runs/m74-cr/apps/putgd-26.1022.1017-nightly-x86_64.AppImage",
+      "installedAt": "2026-10-23T00:22:06Z",
+      "method": "download",
+      "previousChannel": "nightly",
+      "previousVersion": "26.1022.1017-nightly",
+      "sha256": "e5b7ad2caecaa7f5737bdfb5d2f0fd4e3c74ce5d98a8a68142caf4efd43525bc",
+      "version": "26.1022.1019-nightly"
+     },
+     "kind": "update",
+     "reason": null,
+     "restartRequired": false,
+     "running": false,
+     "state": "idle",
+     "switch": null
+    },
+    "imageSha256": "e5b7ad2caecaa7f5737bdfb5d2f0fd4e3c74ce5d98a8a68142caf4efd43525bc",
+    "afterRestart": {
+     "current": "26.1022.1019-nightly",
+     "latest": "26.1022.1019-nightly",
+     "updateAvailable": false
+    },
+    "channel": "nightly",
+    "channelSetting": "build",
+    "build": {
+     "channel": "nightly",
+     "kind": "nightly",
+     "packageTarget": "appimage",
+     "reason": null,
+     "supported": true,
+     "version": "26.1022.1019-nightly"
+    },
+    "loginScript": null,
+    "folder": [
+     "putgd-26.1022.1017-nightly-x86_64.AppImage"
+    ],
+    "frame": "/home/patrick/work/put.gd-ua/app/runs/m74-cr/frames/u7-cr-4-restarted.png"
+   }
+  }
+ ]
+}

@@ -1,0 +1,6 @@
+refusing: functional uploads copy links to the desktop clipboard; set I560_CLIPBOARD_SCOPE=dedicated:<approval> for a desktop whose clipboard is dedicated to this test
+no scope exit=3 workCreated=no
+refusing: functional uploads copy links 
+invalid scope exit=3
+usage: I560_CLIPBOARD_SCOPE=dedicated:<approval> f-run-v2.sh LABEL
+no label exit=2

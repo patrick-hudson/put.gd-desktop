@@ -1,0 +1,524 @@
+{
+  "source": "8a9415c540bee2ac5a8caa0e7606681bafa528a7",
+  "scope": "real native Qt/GTK local captures and clipboard; synthetic stored-link recovery, no remote upload",
+  "resident": {
+    "residentPid": 572446,
+    "residentStartTicks": "20425851",
+    "source": {
+      "schemaVersion": 1,
+      "version": "26.1024.1135-dev+g8a9415c540be",
+      "baseVersion": "26.1024.1135",
+      "packageVersion": "26.1024.1135~dev+g8a9415c540be",
+      "gitCommit": "8a9415c540bee2ac5a8caa0e7606681bafa528a7",
+      "gitTree": "9c2dcf250cf07b9d393a56a2533e3fbc069fb5b5",
+      "commitCount": 1135,
+      "dirty": false,
+      "sourceProvenance": "git"
+    },
+    "host": "m74",
+    "session": {
+      "XDG_CURRENT_DESKTOP": "X-Cinnamon",
+      "XDG_SESSION_TYPE": "x11",
+      "QT_QPA_PLATFORM": "xcb"
+    }
+  },
+  "cases": [
+    {
+      "label": "qt-window-final",
+      "operationId": "cb3452b8-e7a6-4489-a8f8-69cf67cf9a60",
+      "state": "completed",
+      "copyStatus": "copied",
+      "items": [
+        {
+          "id": "79e7ee95-2e7b-4b55-899d-51e4756831f2",
+          "category": "images",
+          "sha256": "317238c1979e630a022ab2aa37d51d66bd8facd8b5386c951d375fc5e7e5bb33",
+          "localStatus": "saved"
+        }
+      ],
+      "independentPaste": {
+        "operationId": "cb3452b8-e7a6-4489-a8f8-69cf67cf9a60",
+        "decodedRgbaSha256": "90916519a95ae45499974c5cd0ea63debbc019e556a007c8487b60f5212bda2f",
+        "width": 640,
+        "height": 452,
+        "matchedRetainedOriginal": true
+      },
+      "independentPasteArtifact": {
+        "path": "native-paste/qt-window-final.png",
+        "sha256": "317238c1979e630a022ab2aa37d51d66bd8facd8b5386c951d375fc5e7e5bb33"
+      },
+      "paste": {
+        "formats": [
+          "TARGETS",
+          "TIMESTAMP",
+          "image/png",
+          "application/x-qt-image"
+        ],
+        "image": {
+          "height": 452,
+          "saved": true,
+          "width": 640
+        },
+        "schemaVersion": 1
+      }
+    },
+    {
+      "label": "qt-region-final",
+      "operationId": "dcb5a4e8-0de8-408d-92df-605ad6d53105",
+      "state": "completed",
+      "copyStatus": "copied",
+      "items": [
+        {
+          "id": "7a06c503-d1c4-4397-b46c-bd46119e288a",
+          "category": "images",
+          "sha256": "07433c6d2c221634b10a6a0ae06921b715757767e738a502874ed18a2584093d",
+          "localStatus": "saved"
+        }
+      ],
+      "independentPaste": {
+        "operationId": "dcb5a4e8-0de8-408d-92df-605ad6d53105",
+        "decodedRgbaSha256": "5e5276bff72a97b27e4f72531932eb928faf60da17db93b8325d3f6eddd70fbb",
+        "width": 80,
+        "height": 60,
+        "matchedRetainedOriginal": true
+      },
+      "independentPasteArtifact": {
+        "path": "native-paste/qt-region-final.png",
+        "sha256": "07433c6d2c221634b10a6a0ae06921b715757767e738a502874ed18a2584093d"
+      },
+      "paste": {
+        "formats": [
+          "TARGETS",
+          "TIMESTAMP",
+          "image/png",
+          "application/x-qt-image"
+        ],
+        "image": {
+          "height": 60,
+          "saved": true,
+          "width": 80
+        },
+        "schemaVersion": 1
+      }
+    },
+    {
+      "label": "qt-desktop-final",
+      "operationId": "94389406-14af-44f5-b972-714506bb1889",
+      "state": "completed",
+      "copyStatus": "copied",
+      "items": [
+        {
+          "id": "7220c3a6-81a6-4a4f-abea-6c3db8bf8cd1",
+          "category": "images",
+          "sha256": "4b6fc375c86c94146fdce607100735661655b72d181cf1d93336555471923ab6",
+          "localStatus": "saved"
+        }
+      ],
+      "independentPaste": {
+        "operationId": "94389406-14af-44f5-b972-714506bb1889",
+        "decodedRgbaSha256": "70ff3fc95c5b69c85ba7c964b929b6df6a8d29eb98f9638bf76ef97aa5c68e61",
+        "width": 1920,
+        "height": 1080,
+        "matchedRetainedOriginal": true
+      },
+      "independentPasteArtifact": {
+        "path": "native-paste/qt-desktop-final.png",
+        "sha256": "4b6fc375c86c94146fdce607100735661655b72d181cf1d93336555471923ab6"
+      },
+      "paste": {
+        "formats": [
+          "TARGETS",
+          "TIMESTAMP",
+          "image/png",
+          "application/x-qt-image"
+        ],
+        "image": {
+          "height": 1080,
+          "saved": true,
+          "width": 1920
+        },
+        "schemaVersion": 1
+      },
+      "privacyEdgeGate": {
+        "fractions": [
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "minimum": 0.9,
+        "dimensions": [
+          1920,
+          1080
+        ]
+      }
+    },
+    {
+      "label": "qt-clipboard-final-t",
+      "operationId": "ef631b3c-cf97-447b-bec1-a43f4a5118b8",
+      "state": "completed",
+      "copyStatus": "copied",
+      "items": [
+        {
+          "id": "5c4b2ae8-cb4a-4edb-9f40-19edf8822209",
+          "category": "text",
+          "sha256": "c7a4c2eea1d901cbc049d84dbba77e472576aafc27b49e4a1e188bb7dd176185",
+          "localStatus": "saved"
+        }
+      ],
+      "paste": {
+        "formats": [
+          "TARGETS",
+          "TIMESTAMP",
+          "text/plain",
+          "text/plain;charset=utf-8"
+        ],
+        "schemaVersion": 1,
+        "text": "putgd synthetic clipboard text"
+      }
+    },
+    {
+      "label": "qt-clipboard-final-i",
+      "operationId": "78d9c1f5-2478-423a-a67a-486f817b9b21",
+      "state": "completed",
+      "copyStatus": "copied",
+      "items": [
+        {
+          "id": "d012a024-b69c-46ab-9de0-5d2344345a76",
+          "category": "images",
+          "sha256": "8d5810dd5c9c8b1b5648e611d0e43971e01b6b03e2839bad028ad384ec998316",
+          "localStatus": "saved"
+        }
+      ],
+      "independentPaste": {
+        "operationId": "78d9c1f5-2478-423a-a67a-486f817b9b21",
+        "decodedRgbaSha256": "f7d6e5a37e11f8a47c53f53d1b1407d9ddd447cd33947f4f7761f2287b0eca9a",
+        "width": 96,
+        "height": 64,
+        "matchedRetainedOriginal": true
+      },
+      "independentPasteArtifact": {
+        "path": "native-paste/qt-clipboard-final-i.png",
+        "sha256": "8d5810dd5c9c8b1b5648e611d0e43971e01b6b03e2839bad028ad384ec998316"
+      },
+      "paste": {
+        "formats": [
+          "TARGETS",
+          "TIMESTAMP",
+          "image/png",
+          "application/x-qt-image"
+        ],
+        "image": {
+          "height": 64,
+          "saved": true,
+          "width": 96
+        },
+        "schemaVersion": 1
+      }
+    },
+    {
+      "label": "qt-clipboard-final-f",
+      "operationId": "b9de85f7-6fec-4eac-8f91-b658aa8db92d",
+      "state": "completed",
+      "copyStatus": "copied",
+      "items": [
+        {
+          "id": "0ce7d2bf-d018-479c-9e33-6ea0cf9e1664",
+          "category": "text",
+          "sha256": "5b19eebc3f2265be7fb729e7c911c784093eebf706a89beaa356e82ce2222427",
+          "localStatus": "saved"
+        },
+        {
+          "id": "8afba44d-29ed-4694-94bd-69ee4e2c94b4",
+          "category": "text",
+          "sha256": "010e71d5ea18016d6f57aaf690c656a8d3bcaaa6199336a843fc07eb07c63209",
+          "localStatus": "saved"
+        }
+      ],
+      "paste": {
+        "formats": [
+          "TARGETS",
+          "TIMESTAMP",
+          "text/uri-list",
+          "text/plain",
+          "text/plain;charset=utf-8"
+        ],
+        "schemaVersion": 1,
+        "text": "file:///tmp/ccmr/archive/text/synthetic-1.txt\r\nfile:///tmp/ccmr/archive/text/synthetic-2.txt\r\n",
+        "urls": [
+          "file:///tmp/ccmr/archive/text/synthetic-1.txt",
+          "file:///tmp/ccmr/archive/text/synthetic-2.txt"
+        ]
+      }
+    },
+    {
+      "label": "gtk-window-final",
+      "operationId": "0e5ac75d-b866-4ede-829d-3512ec6c0a74",
+      "state": "completed",
+      "copyStatus": "copied",
+      "items": [
+        {
+          "id": "981a3cfd-9057-4eb3-90ba-095ca087b7a3",
+          "category": "images",
+          "sha256": "730e8298b4be34da972337f79fd8eb5a5954166d053a241d7e25df4899950131",
+          "localStatus": "saved"
+        }
+      ],
+      "independentPaste": {
+        "operationId": "0e5ac75d-b866-4ede-829d-3512ec6c0a74",
+        "decodedRgbaSha256": "acb7133b1c1d0e44cd8b27b1fc59d9643388fbb7bdaaae0c43c50c2433b3ca97",
+        "width": 640,
+        "height": 452,
+        "matchedRetainedOriginal": true
+      },
+      "independentPasteArtifact": {
+        "path": "native-paste/gtk-window-final.png",
+        "sha256": "730e8298b4be34da972337f79fd8eb5a5954166d053a241d7e25df4899950131"
+      },
+      "paste": {
+        "schemaVersion": 1,
+        "client": "GTK",
+        "formats": [
+          "image/png"
+        ],
+        "image": {
+          "width": 640,
+          "height": 452,
+          "saved": true
+        }
+      }
+    },
+    {
+      "label": "gtk-region-final",
+      "operationId": "8da47a52-5d9e-40b1-a3a0-1ba5ba4f9558",
+      "state": "completed",
+      "copyStatus": "copied",
+      "items": [
+        {
+          "id": "06f169db-f4dc-4108-8804-c1cbd7f33037",
+          "category": "images",
+          "sha256": "07433c6d2c221634b10a6a0ae06921b715757767e738a502874ed18a2584093d",
+          "localStatus": "saved"
+        }
+      ],
+      "independentPaste": {
+        "operationId": "8da47a52-5d9e-40b1-a3a0-1ba5ba4f9558",
+        "decodedRgbaSha256": "5e5276bff72a97b27e4f72531932eb928faf60da17db93b8325d3f6eddd70fbb",
+        "width": 80,
+        "height": 60,
+        "matchedRetainedOriginal": true
+      },
+      "independentPasteArtifact": {
+        "path": "native-paste/gtk-region-final.png",
+        "sha256": "07433c6d2c221634b10a6a0ae06921b715757767e738a502874ed18a2584093d"
+      },
+      "paste": {
+        "schemaVersion": 1,
+        "client": "GTK",
+        "formats": [
+          "image/png"
+        ],
+        "image": {
+          "width": 80,
+          "height": 60,
+          "saved": true
+        }
+      }
+    },
+    {
+      "label": "gtk-desktop-final",
+      "operationId": "ba2ff0e3-10b9-44fe-938e-a0b2f49b6460",
+      "state": "completed",
+      "copyStatus": "copied",
+      "items": [
+        {
+          "id": "d5387bb9-267d-4af6-971f-d2edd81ab557",
+          "category": "images",
+          "sha256": "4b6fc375c86c94146fdce607100735661655b72d181cf1d93336555471923ab6",
+          "localStatus": "saved"
+        }
+      ],
+      "independentPaste": {
+        "operationId": "ba2ff0e3-10b9-44fe-938e-a0b2f49b6460",
+        "decodedRgbaSha256": "70ff3fc95c5b69c85ba7c964b929b6df6a8d29eb98f9638bf76ef97aa5c68e61",
+        "width": 1920,
+        "height": 1080,
+        "matchedRetainedOriginal": true
+      },
+      "independentPasteArtifact": {
+        "path": "native-paste/gtk-desktop-final.png",
+        "sha256": "4b6fc375c86c94146fdce607100735661655b72d181cf1d93336555471923ab6"
+      },
+      "paste": {
+        "schemaVersion": 1,
+        "client": "GTK",
+        "formats": [
+          "image/png"
+        ],
+        "image": {
+          "width": 1920,
+          "height": 1080,
+          "saved": true
+        }
+      },
+      "privacyEdgeGate": {
+        "fractions": [
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "minimum": 0.9,
+        "dimensions": [
+          1920,
+          1080
+        ]
+      }
+    },
+    {
+      "label": "gtk-clipboard-final-t",
+      "operationId": "c8b3132b-f0d6-46c6-805d-4e1e36680cd1",
+      "state": "completed",
+      "copyStatus": "copied",
+      "items": [
+        {
+          "id": "c5ec5b48-efbf-4975-8018-32a0db9111e1",
+          "category": "text",
+          "sha256": "c7a4c2eea1d901cbc049d84dbba77e472576aafc27b49e4a1e188bb7dd176185",
+          "localStatus": "saved"
+        }
+      ],
+      "paste": {
+        "schemaVersion": 1,
+        "client": "GTK",
+        "formats": [
+          "text/plain;charset=utf-8"
+        ],
+        "text": "putgd synthetic clipboard text"
+      }
+    },
+    {
+      "label": "gtk-clipboard-final-i",
+      "operationId": "cb4a5aeb-f1da-49ca-8652-6d8471b2cf17",
+      "state": "completed",
+      "copyStatus": "copied",
+      "items": [
+        {
+          "id": "26f72770-2c7e-49f5-8dd9-40fbd68b6743",
+          "category": "images",
+          "sha256": "6171cd78a25ed61bd98dfa4be87b5339b15e39ae7661b3002486af4fefb3cd17",
+          "localStatus": "saved"
+        }
+      ],
+      "independentPaste": {
+        "operationId": "cb4a5aeb-f1da-49ca-8652-6d8471b2cf17",
+        "decodedRgbaSha256": "f7d6e5a37e11f8a47c53f53d1b1407d9ddd447cd33947f4f7761f2287b0eca9a",
+        "width": 96,
+        "height": 64,
+        "matchedRetainedOriginal": true
+      },
+      "independentPasteArtifact": {
+        "path": "native-paste/gtk-clipboard-final-i.png",
+        "sha256": "6171cd78a25ed61bd98dfa4be87b5339b15e39ae7661b3002486af4fefb3cd17"
+      },
+      "paste": {
+        "schemaVersion": 1,
+        "client": "GTK",
+        "formats": [
+          "image/png"
+        ],
+        "image": {
+          "width": 96,
+          "height": 64,
+          "saved": true
+        }
+      }
+    },
+    {
+      "label": "gtk-clipboard-final-f",
+      "operationId": "aaea0e77-3286-4d2f-82cb-cd9222c7fbda",
+      "state": "completed",
+      "copyStatus": "copied",
+      "items": [
+        {
+          "id": "a966b425-d75d-4230-b2d4-029b2b63bff6",
+          "category": "text",
+          "sha256": "5b19eebc3f2265be7fb729e7c911c784093eebf706a89beaa356e82ce2222427",
+          "localStatus": "saved"
+        },
+        {
+          "id": "89a0e6c6-63c1-4930-aec7-5c8da8814875",
+          "category": "text",
+          "sha256": "010e71d5ea18016d6f57aaf690c656a8d3bcaaa6199336a843fc07eb07c63209",
+          "localStatus": "saved"
+        }
+      ],
+      "paste": {
+        "schemaVersion": 1,
+        "client": "GTK",
+        "formats": [
+          "text/uri-list"
+        ],
+        "text": "file:///tmp/ccmr/archive/text/synthetic-1-ebc4c79b-0bbb-4db1-b875-573235b15747.txt\r\nfile:///tmp/ccmr/archive/text/synthetic-2-8f022f1a-d7cd-4a4f-adfa-dfa9bac4224c.txt\r\n",
+        "urls": [
+          "file:///tmp/ccmr/archive/text/synthetic-1-ebc4c79b-0bbb-4db1-b875-573235b15747.txt",
+          "file:///tmp/ccmr/archive/text/synthetic-2-8f022f1a-d7cd-4a4f-adfa-dfa9bac4224c.txt"
+        ]
+      }
+    },
+    {
+      "label": "cancel-right",
+      "operationId": "39fc94d2-b71b-40a9-9eb5-24c69c042656",
+      "state": "cancelled",
+      "copyStatus": "no_result",
+      "items": []
+    },
+    {
+      "label": "cancel-zero",
+      "operationId": "ee808cff-92f2-4462-be85-75e38bae2cf8",
+      "state": "cancelled",
+      "copyStatus": "no_result",
+      "items": []
+    },
+    {
+      "label": "cancel-escape-final",
+      "operationId": "56acac57-d5d2-4a6e-bb14-6feea224f428",
+      "state": "cancelled",
+      "copyStatus": "no_result",
+      "items": []
+    }
+  ],
+  "views": [
+    {
+      "view": "settings",
+      "helperPid": 572867,
+      "closedNormally": true
+    },
+    {
+      "view": "history",
+      "helperPid": 572892,
+      "closedNormally": true
+    },
+    {
+      "view": "settings",
+      "helperPid": 572919,
+      "closedNormally": true
+    },
+    {
+      "view": "history",
+      "helperPid": 572944,
+      "closedNormally": true
+    },
+    {
+      "view": "settings",
+      "helperPid": 572968,
+      "closedNormally": true
+    },
+    {
+      "view": "history",
+      "helperPid": 572993,
+      "closedNormally": true
+    }
+  ],
+  "privateArchiveSha256": "dea95888a1039b5e195b07af95ad820aa70f3b3c38985cd7585705af87790373"
+}

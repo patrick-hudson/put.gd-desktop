@@ -1,0 +1,3 @@
+update False update_feed_unavailable SSL handshake failed: The issuer certificate of a locally looked up certificate could not be found 
+aws s3_transport_unknown {"curlCode": 77, "elapsedMs": 72, "httpStatus": -1, "requestStage": "name_head", "sdkErrorType": 99, "sdkRetryable": true, "serviceCode": "Unclassified"}
+b2 b2_transport_unknown {"httpStatus": 0, "requestStage": "authorize", "serviceCode": "unclassified", "transport": "network error 6"}

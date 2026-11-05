@@ -1,0 +1,2982 @@
+{
+  "schemaVersion": 2,
+  "campaign": "2026-10-30-surface-driver-tier1-live",
+  "entries": [
+    {
+      "interaction": "region.to-upload",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/followup-6/gnome/s3a/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; s3_missing_head_404_count=1; desktop frame independent-frozen-pattern masked by live evidence policy; s3_resolved_cloudfront_base_count=1; operationId=1874febf-158a-4607-92c4-03537cf553de; Capture operation 1874febf-158a-4607-92c4-03537cf553de; operationId=1874febf-158a-4607-92c4-03537cf553de; historyId=4dcfede8-04e0-4165-b83a-96d453a3865f; upload_count=1; Retained synthetic png sha256=7ae2ea88d21ff387c221a95fff74303542607813a06473250d80d3cefd50b81d; remote_hash_match_count=1; {\"url_host\": \"put.gd\", \"title\": \"[redacted]\", \"matched\": true}; cloudfront_positive_status=200; guest_public_hash_match_count=1; guest_cloudfront_positive_status=200; deletion_count=1; s3_origin_absence_count=1; recipient_unavailable_observation={\"complete\": true, \"hostOK\": true, \"httpUnavailable\": false, \"media\": true, \"missing\": false, \"status\": 200, \"unavailable\": false}; cloudfront_after_delete_status=200; Firefox handler restored; MIME SHA-256 checks passed; desktop frame after masked by live evidence policy",
+      "host": "d69",
+      "placement": "guest",
+      "guest": "gnome-wayland",
+      "destination": "s3",
+      "review": true,
+      "review_reason": "frame has no visible pixels; visual approval withheld; frame has no visible pixels; visual approval withheld; frame fully masked: ocr-sensitive-text-fully-masked; frame has no visible pixels; visual approval withheld; desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes_live.s3_region_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "independent-frozen-pattern",
+          "path": "frames/outcomes_live.s3_region_upload/01-independent-frozen-pattern.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-content",
+          "path": "frames/outcomes_live.s3_region_upload/02-browser-content.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-before-remote-cleanup",
+          "path": "frames/outcomes_live.s3_region_upload/03-history-before-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "delete-exact-owned-object",
+          "path": "frames/outcomes_live.s3_region_upload/04-delete-exact-owned-object.png",
+          "window": "confirmAction",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-after-remote-cleanup",
+          "path": "frames/outcomes_live.s3_region_upload/05-history-after-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-cloudfront-status-200",
+          "path": "frames/outcomes_live.s3_region_upload/06-browser-cloudfront-status-200.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes_live.s3_region_upload/07-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes_live.s3_region_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T12:49:24Z"
+    },
+    {
+      "interaction": "region.drag",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/followup-6/gnome/s3a/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; s3_missing_head_404_count=1; desktop frame independent-frozen-pattern masked by live evidence policy; s3_resolved_cloudfront_base_count=1; operationId=1874febf-158a-4607-92c4-03537cf553de; Capture operation 1874febf-158a-4607-92c4-03537cf553de; operationId=1874febf-158a-4607-92c4-03537cf553de; historyId=4dcfede8-04e0-4165-b83a-96d453a3865f; upload_count=1; Retained synthetic png sha256=7ae2ea88d21ff387c221a95fff74303542607813a06473250d80d3cefd50b81d; remote_hash_match_count=1; {\"url_host\": \"put.gd\", \"title\": \"[redacted]\", \"matched\": true}; cloudfront_positive_status=200; guest_public_hash_match_count=1; guest_cloudfront_positive_status=200; deletion_count=1; s3_origin_absence_count=1; recipient_unavailable_observation={\"complete\": true, \"hostOK\": true, \"httpUnavailable\": false, \"media\": true, \"missing\": false, \"status\": 200, \"unavailable\": false}; cloudfront_after_delete_status=200; Firefox handler restored; MIME SHA-256 checks passed; desktop frame after masked by live evidence policy",
+      "host": "d69",
+      "placement": "guest",
+      "guest": "gnome-wayland",
+      "destination": "s3",
+      "review": true,
+      "review_reason": "frame has no visible pixels; visual approval withheld; frame has no visible pixels; visual approval withheld; frame fully masked: ocr-sensitive-text-fully-masked; frame has no visible pixels; visual approval withheld; desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes_live.s3_region_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "independent-frozen-pattern",
+          "path": "frames/outcomes_live.s3_region_upload/01-independent-frozen-pattern.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-content",
+          "path": "frames/outcomes_live.s3_region_upload/02-browser-content.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-before-remote-cleanup",
+          "path": "frames/outcomes_live.s3_region_upload/03-history-before-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "delete-exact-owned-object",
+          "path": "frames/outcomes_live.s3_region_upload/04-delete-exact-owned-object.png",
+          "window": "confirmAction",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-after-remote-cleanup",
+          "path": "frames/outcomes_live.s3_region_upload/05-history-after-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-cloudfront-status-200",
+          "path": "frames/outcomes_live.s3_region_upload/06-browser-cloudfront-status-200.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes_live.s3_region_upload/07-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes_live.s3_region_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T12:49:24Z"
+    },
+    {
+      "interaction": "history.copy-link",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/followup-6/gnome/s3a/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; s3_missing_head_404_count=1; desktop frame independent-frozen-pattern masked by live evidence policy; s3_resolved_cloudfront_base_count=1; operationId=1874febf-158a-4607-92c4-03537cf553de; Capture operation 1874febf-158a-4607-92c4-03537cf553de; operationId=1874febf-158a-4607-92c4-03537cf553de; historyId=4dcfede8-04e0-4165-b83a-96d453a3865f; upload_count=1; Retained synthetic png sha256=7ae2ea88d21ff387c221a95fff74303542607813a06473250d80d3cefd50b81d; remote_hash_match_count=1; {\"url_host\": \"put.gd\", \"title\": \"[redacted]\", \"matched\": true}; cloudfront_positive_status=200; guest_public_hash_match_count=1; guest_cloudfront_positive_status=200; deletion_count=1; s3_origin_absence_count=1; recipient_unavailable_observation={\"complete\": true, \"hostOK\": true, \"httpUnavailable\": false, \"media\": true, \"missing\": false, \"status\": 200, \"unavailable\": false}; cloudfront_after_delete_status=200; Firefox handler restored; MIME SHA-256 checks passed; desktop frame after masked by live evidence policy",
+      "host": "d69",
+      "placement": "guest",
+      "guest": "gnome-wayland",
+      "destination": "s3",
+      "review": true,
+      "review_reason": "frame has no visible pixels; visual approval withheld; frame has no visible pixels; visual approval withheld; frame fully masked: ocr-sensitive-text-fully-masked; frame has no visible pixels; visual approval withheld; desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes_live.s3_region_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "independent-frozen-pattern",
+          "path": "frames/outcomes_live.s3_region_upload/01-independent-frozen-pattern.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-content",
+          "path": "frames/outcomes_live.s3_region_upload/02-browser-content.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-before-remote-cleanup",
+          "path": "frames/outcomes_live.s3_region_upload/03-history-before-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "delete-exact-owned-object",
+          "path": "frames/outcomes_live.s3_region_upload/04-delete-exact-owned-object.png",
+          "window": "confirmAction",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-after-remote-cleanup",
+          "path": "frames/outcomes_live.s3_region_upload/05-history-after-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-cloudfront-status-200",
+          "path": "frames/outcomes_live.s3_region_upload/06-browser-cloudfront-status-200.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes_live.s3_region_upload/07-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes_live.s3_region_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T12:49:24Z"
+    },
+    {
+      "interaction": "history.open-link",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/followup-6/gnome/s3a/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; s3_missing_head_404_count=1; desktop frame independent-frozen-pattern masked by live evidence policy; s3_resolved_cloudfront_base_count=1; operationId=1874febf-158a-4607-92c4-03537cf553de; Capture operation 1874febf-158a-4607-92c4-03537cf553de; operationId=1874febf-158a-4607-92c4-03537cf553de; historyId=4dcfede8-04e0-4165-b83a-96d453a3865f; upload_count=1; Retained synthetic png sha256=7ae2ea88d21ff387c221a95fff74303542607813a06473250d80d3cefd50b81d; remote_hash_match_count=1; {\"url_host\": \"put.gd\", \"title\": \"[redacted]\", \"matched\": true}; cloudfront_positive_status=200; guest_public_hash_match_count=1; guest_cloudfront_positive_status=200; deletion_count=1; s3_origin_absence_count=1; recipient_unavailable_observation={\"complete\": true, \"hostOK\": true, \"httpUnavailable\": false, \"media\": true, \"missing\": false, \"status\": 200, \"unavailable\": false}; cloudfront_after_delete_status=200; Firefox handler restored; MIME SHA-256 checks passed; desktop frame after masked by live evidence policy",
+      "host": "d69",
+      "placement": "guest",
+      "guest": "gnome-wayland",
+      "destination": "s3",
+      "review": true,
+      "review_reason": "frame has no visible pixels; visual approval withheld; frame has no visible pixels; visual approval withheld; frame fully masked: ocr-sensitive-text-fully-masked; frame has no visible pixels; visual approval withheld; desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes_live.s3_region_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "independent-frozen-pattern",
+          "path": "frames/outcomes_live.s3_region_upload/01-independent-frozen-pattern.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-content",
+          "path": "frames/outcomes_live.s3_region_upload/02-browser-content.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-before-remote-cleanup",
+          "path": "frames/outcomes_live.s3_region_upload/03-history-before-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "delete-exact-owned-object",
+          "path": "frames/outcomes_live.s3_region_upload/04-delete-exact-owned-object.png",
+          "window": "confirmAction",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-after-remote-cleanup",
+          "path": "frames/outcomes_live.s3_region_upload/05-history-after-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-cloudfront-status-200",
+          "path": "frames/outcomes_live.s3_region_upload/06-browser-cloudfront-status-200.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes_live.s3_region_upload/07-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes_live.s3_region_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T12:49:24Z"
+    },
+    {
+      "interaction": "history.delete-remote",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/followup-6/gnome/s3a/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; s3_missing_head_404_count=1; desktop frame independent-frozen-pattern masked by live evidence policy; s3_resolved_cloudfront_base_count=1; operationId=1874febf-158a-4607-92c4-03537cf553de; Capture operation 1874febf-158a-4607-92c4-03537cf553de; operationId=1874febf-158a-4607-92c4-03537cf553de; historyId=4dcfede8-04e0-4165-b83a-96d453a3865f; upload_count=1; Retained synthetic png sha256=7ae2ea88d21ff387c221a95fff74303542607813a06473250d80d3cefd50b81d; remote_hash_match_count=1; {\"url_host\": \"put.gd\", \"title\": \"[redacted]\", \"matched\": true}; cloudfront_positive_status=200; guest_public_hash_match_count=1; guest_cloudfront_positive_status=200; deletion_count=1; s3_origin_absence_count=1; recipient_unavailable_observation={\"complete\": true, \"hostOK\": true, \"httpUnavailable\": false, \"media\": true, \"missing\": false, \"status\": 200, \"unavailable\": false}; cloudfront_after_delete_status=200; Firefox handler restored; MIME SHA-256 checks passed; desktop frame after masked by live evidence policy",
+      "host": "d69",
+      "placement": "guest",
+      "guest": "gnome-wayland",
+      "destination": "s3",
+      "review": true,
+      "review_reason": "frame has no visible pixels; visual approval withheld; frame has no visible pixels; visual approval withheld; frame fully masked: ocr-sensitive-text-fully-masked; frame has no visible pixels; visual approval withheld; desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes_live.s3_region_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "independent-frozen-pattern",
+          "path": "frames/outcomes_live.s3_region_upload/01-independent-frozen-pattern.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-content",
+          "path": "frames/outcomes_live.s3_region_upload/02-browser-content.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-before-remote-cleanup",
+          "path": "frames/outcomes_live.s3_region_upload/03-history-before-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "delete-exact-owned-object",
+          "path": "frames/outcomes_live.s3_region_upload/04-delete-exact-owned-object.png",
+          "window": "confirmAction",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-after-remote-cleanup",
+          "path": "frames/outcomes_live.s3_region_upload/05-history-after-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-cloudfront-status-200",
+          "path": "frames/outcomes_live.s3_region_upload/06-browser-cloudfront-status-200.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes_live.s3_region_upload/07-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes_live.s3_region_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T12:49:24Z"
+    },
+    {
+      "interaction": "confirm.history-delete",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/followup-6/gnome/s3a/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; s3_missing_head_404_count=1; desktop frame independent-frozen-pattern masked by live evidence policy; s3_resolved_cloudfront_base_count=1; operationId=1874febf-158a-4607-92c4-03537cf553de; Capture operation 1874febf-158a-4607-92c4-03537cf553de; operationId=1874febf-158a-4607-92c4-03537cf553de; historyId=4dcfede8-04e0-4165-b83a-96d453a3865f; upload_count=1; Retained synthetic png sha256=7ae2ea88d21ff387c221a95fff74303542607813a06473250d80d3cefd50b81d; remote_hash_match_count=1; {\"url_host\": \"put.gd\", \"title\": \"[redacted]\", \"matched\": true}; cloudfront_positive_status=200; guest_public_hash_match_count=1; guest_cloudfront_positive_status=200; deletion_count=1; s3_origin_absence_count=1; recipient_unavailable_observation={\"complete\": true, \"hostOK\": true, \"httpUnavailable\": false, \"media\": true, \"missing\": false, \"status\": 200, \"unavailable\": false}; cloudfront_after_delete_status=200; Firefox handler restored; MIME SHA-256 checks passed; desktop frame after masked by live evidence policy",
+      "host": "d69",
+      "placement": "guest",
+      "guest": "gnome-wayland",
+      "destination": "s3",
+      "review": true,
+      "review_reason": "frame has no visible pixels; visual approval withheld; frame has no visible pixels; visual approval withheld; frame fully masked: ocr-sensitive-text-fully-masked; frame has no visible pixels; visual approval withheld; desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes_live.s3_region_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "independent-frozen-pattern",
+          "path": "frames/outcomes_live.s3_region_upload/01-independent-frozen-pattern.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-content",
+          "path": "frames/outcomes_live.s3_region_upload/02-browser-content.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-before-remote-cleanup",
+          "path": "frames/outcomes_live.s3_region_upload/03-history-before-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "delete-exact-owned-object",
+          "path": "frames/outcomes_live.s3_region_upload/04-delete-exact-owned-object.png",
+          "window": "confirmAction",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-after-remote-cleanup",
+          "path": "frames/outcomes_live.s3_region_upload/05-history-after-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-cloudfront-status-200",
+          "path": "frames/outcomes_live.s3_region_upload/06-browser-cloudfront-status-200.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes_live.s3_region_upload/07-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes_live.s3_region_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T12:49:24Z"
+    },
+    {
+      "interaction": "region.to-upload",
+      "desktop": "kubuntu-kde-wayland",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/followup-5/kde/s3a/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; s3_missing_head_404_count=1; desktop frame independent-frozen-pattern masked by live evidence policy; s3_resolved_cloudfront_base_count=1; operationId=606e26ac-b738-43ee-84c8-b3acb404f789; Capture operation 606e26ac-b738-43ee-84c8-b3acb404f789; operationId=606e26ac-b738-43ee-84c8-b3acb404f789; historyId=44eff48f-c5c3-4ac7-952f-63af89f7fcd9; upload_count=1; Retained synthetic png sha256=0277a39cef61125b677afe35bde6f92022724a6acadf2555683c94fc14332084; remote_hash_match_count=1; {\"url_host\": \"put.gd\", \"title\": \"[redacted]\", \"matched\": true}; cloudfront_positive_status=200; guest_public_hash_match_count=1; guest_cloudfront_positive_status=200; deletion_count=1; s3_origin_absence_count=1; recipient_unavailable_observation={\"complete\": true, \"hostOK\": true, \"httpUnavailable\": false, \"media\": true, \"missing\": false, \"status\": 200, \"unavailable\": false}; cloudfront_after_delete_informational=geometry: RuntimeError: Wayland window cannot be placed on the desktop: [redacted] (PNG Image, 600\u00a0\u00d7\u00a0280 pixels) \u2014 Mozilla Firefox: compositor window for '[redacted] (PNG Image, 600\\xa0\u00d7\\xa0280 pixels) \u2014 Mozilla Firefox' (pid 10667, 1280x800) is missing or ambiguous (0 matches); compositor has for pid 10667: '[redacted] (PNG Image, 600 \u00d7 280 pixels) \u2014 Mozilla Firefox' [0, 0, 1280, 800] type 0 (KWin::XdgToplevelWindow); Firefox handler restored; MIME SHA-256 checks passed; desktop frame after masked by live evidence policy; Retained in coordinator follow-up 6: only GNOME S3 rerun; this same-build P remains from its cited attempt.",
+      "host": "f44",
+      "placement": "guest",
+      "guest": "kde-wayland",
+      "destination": "s3",
+      "review": true,
+      "review_reason": "frame has no visible pixels; visual approval withheld; frame fully masked: live-geometry-unknown-fully-masked (RecipeBlocked: showing secret control has no placement); frame has no visible pixels; visual approval withheld; frame fully masked: ocr-sensitive-text-fully-masked; desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes_live.s3_region_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "independent-frozen-pattern",
+          "path": "frames/outcomes_live.s3_region_upload/01-independent-frozen-pattern.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-content",
+          "path": "frames/outcomes_live.s3_region_upload/02-browser-content.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-before-remote-cleanup",
+          "path": "frames/outcomes_live.s3_region_upload/03-history-before-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "delete-exact-owned-object",
+          "path": "frames/outcomes_live.s3_region_upload/04-delete-exact-owned-object.png",
+          "window": "confirmAction",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-after-remote-cleanup",
+          "path": "frames/outcomes_live.s3_region_upload/05-history-after-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes_live.s3_region_upload/06-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes_live.s3_region_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T12:32:02Z"
+    },
+    {
+      "interaction": "region.drag",
+      "desktop": "kubuntu-kde-wayland",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/followup-5/kde/s3a/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; s3_missing_head_404_count=1; desktop frame independent-frozen-pattern masked by live evidence policy; s3_resolved_cloudfront_base_count=1; operationId=606e26ac-b738-43ee-84c8-b3acb404f789; Capture operation 606e26ac-b738-43ee-84c8-b3acb404f789; operationId=606e26ac-b738-43ee-84c8-b3acb404f789; historyId=44eff48f-c5c3-4ac7-952f-63af89f7fcd9; upload_count=1; Retained synthetic png sha256=0277a39cef61125b677afe35bde6f92022724a6acadf2555683c94fc14332084; remote_hash_match_count=1; {\"url_host\": \"put.gd\", \"title\": \"[redacted]\", \"matched\": true}; cloudfront_positive_status=200; guest_public_hash_match_count=1; guest_cloudfront_positive_status=200; deletion_count=1; s3_origin_absence_count=1; recipient_unavailable_observation={\"complete\": true, \"hostOK\": true, \"httpUnavailable\": false, \"media\": true, \"missing\": false, \"status\": 200, \"unavailable\": false}; cloudfront_after_delete_informational=geometry: RuntimeError: Wayland window cannot be placed on the desktop: [redacted] (PNG Image, 600\u00a0\u00d7\u00a0280 pixels) \u2014 Mozilla Firefox: compositor window for '[redacted] (PNG Image, 600\\xa0\u00d7\\xa0280 pixels) \u2014 Mozilla Firefox' (pid 10667, 1280x800) is missing or ambiguous (0 matches); compositor has for pid 10667: '[redacted] (PNG Image, 600 \u00d7 280 pixels) \u2014 Mozilla Firefox' [0, 0, 1280, 800] type 0 (KWin::XdgToplevelWindow); Firefox handler restored; MIME SHA-256 checks passed; desktop frame after masked by live evidence policy; Retained in coordinator follow-up 6: only GNOME S3 rerun; this same-build P remains from its cited attempt.",
+      "host": "f44",
+      "placement": "guest",
+      "guest": "kde-wayland",
+      "destination": "s3",
+      "review": true,
+      "review_reason": "frame has no visible pixels; visual approval withheld; frame fully masked: live-geometry-unknown-fully-masked (RecipeBlocked: showing secret control has no placement); frame has no visible pixels; visual approval withheld; frame fully masked: ocr-sensitive-text-fully-masked; desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes_live.s3_region_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "independent-frozen-pattern",
+          "path": "frames/outcomes_live.s3_region_upload/01-independent-frozen-pattern.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-content",
+          "path": "frames/outcomes_live.s3_region_upload/02-browser-content.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-before-remote-cleanup",
+          "path": "frames/outcomes_live.s3_region_upload/03-history-before-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "delete-exact-owned-object",
+          "path": "frames/outcomes_live.s3_region_upload/04-delete-exact-owned-object.png",
+          "window": "confirmAction",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-after-remote-cleanup",
+          "path": "frames/outcomes_live.s3_region_upload/05-history-after-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes_live.s3_region_upload/06-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes_live.s3_region_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T12:32:02Z"
+    },
+    {
+      "interaction": "history.copy-link",
+      "desktop": "kubuntu-kde-wayland",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/followup-5/kde/s3a/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; s3_missing_head_404_count=1; desktop frame independent-frozen-pattern masked by live evidence policy; s3_resolved_cloudfront_base_count=1; operationId=606e26ac-b738-43ee-84c8-b3acb404f789; Capture operation 606e26ac-b738-43ee-84c8-b3acb404f789; operationId=606e26ac-b738-43ee-84c8-b3acb404f789; historyId=44eff48f-c5c3-4ac7-952f-63af89f7fcd9; upload_count=1; Retained synthetic png sha256=0277a39cef61125b677afe35bde6f92022724a6acadf2555683c94fc14332084; remote_hash_match_count=1; {\"url_host\": \"put.gd\", \"title\": \"[redacted]\", \"matched\": true}; cloudfront_positive_status=200; guest_public_hash_match_count=1; guest_cloudfront_positive_status=200; deletion_count=1; s3_origin_absence_count=1; recipient_unavailable_observation={\"complete\": true, \"hostOK\": true, \"httpUnavailable\": false, \"media\": true, \"missing\": false, \"status\": 200, \"unavailable\": false}; cloudfront_after_delete_informational=geometry: RuntimeError: Wayland window cannot be placed on the desktop: [redacted] (PNG Image, 600\u00a0\u00d7\u00a0280 pixels) \u2014 Mozilla Firefox: compositor window for '[redacted] (PNG Image, 600\\xa0\u00d7\\xa0280 pixels) \u2014 Mozilla Firefox' (pid 10667, 1280x800) is missing or ambiguous (0 matches); compositor has for pid 10667: '[redacted] (PNG Image, 600 \u00d7 280 pixels) \u2014 Mozilla Firefox' [0, 0, 1280, 800] type 0 (KWin::XdgToplevelWindow); Firefox handler restored; MIME SHA-256 checks passed; desktop frame after masked by live evidence policy; Retained in coordinator follow-up 6: only GNOME S3 rerun; this same-build P remains from its cited attempt.",
+      "host": "f44",
+      "placement": "guest",
+      "guest": "kde-wayland",
+      "destination": "s3",
+      "review": true,
+      "review_reason": "frame has no visible pixels; visual approval withheld; frame fully masked: live-geometry-unknown-fully-masked (RecipeBlocked: showing secret control has no placement); frame has no visible pixels; visual approval withheld; frame fully masked: ocr-sensitive-text-fully-masked; desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes_live.s3_region_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "independent-frozen-pattern",
+          "path": "frames/outcomes_live.s3_region_upload/01-independent-frozen-pattern.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-content",
+          "path": "frames/outcomes_live.s3_region_upload/02-browser-content.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-before-remote-cleanup",
+          "path": "frames/outcomes_live.s3_region_upload/03-history-before-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "delete-exact-owned-object",
+          "path": "frames/outcomes_live.s3_region_upload/04-delete-exact-owned-object.png",
+          "window": "confirmAction",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-after-remote-cleanup",
+          "path": "frames/outcomes_live.s3_region_upload/05-history-after-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes_live.s3_region_upload/06-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes_live.s3_region_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T12:32:02Z"
+    },
+    {
+      "interaction": "history.open-link",
+      "desktop": "kubuntu-kde-wayland",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/followup-5/kde/s3a/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; s3_missing_head_404_count=1; desktop frame independent-frozen-pattern masked by live evidence policy; s3_resolved_cloudfront_base_count=1; operationId=606e26ac-b738-43ee-84c8-b3acb404f789; Capture operation 606e26ac-b738-43ee-84c8-b3acb404f789; operationId=606e26ac-b738-43ee-84c8-b3acb404f789; historyId=44eff48f-c5c3-4ac7-952f-63af89f7fcd9; upload_count=1; Retained synthetic png sha256=0277a39cef61125b677afe35bde6f92022724a6acadf2555683c94fc14332084; remote_hash_match_count=1; {\"url_host\": \"put.gd\", \"title\": \"[redacted]\", \"matched\": true}; cloudfront_positive_status=200; guest_public_hash_match_count=1; guest_cloudfront_positive_status=200; deletion_count=1; s3_origin_absence_count=1; recipient_unavailable_observation={\"complete\": true, \"hostOK\": true, \"httpUnavailable\": false, \"media\": true, \"missing\": false, \"status\": 200, \"unavailable\": false}; cloudfront_after_delete_informational=geometry: RuntimeError: Wayland window cannot be placed on the desktop: [redacted] (PNG Image, 600\u00a0\u00d7\u00a0280 pixels) \u2014 Mozilla Firefox: compositor window for '[redacted] (PNG Image, 600\\xa0\u00d7\\xa0280 pixels) \u2014 Mozilla Firefox' (pid 10667, 1280x800) is missing or ambiguous (0 matches); compositor has for pid 10667: '[redacted] (PNG Image, 600 \u00d7 280 pixels) \u2014 Mozilla Firefox' [0, 0, 1280, 800] type 0 (KWin::XdgToplevelWindow); Firefox handler restored; MIME SHA-256 checks passed; desktop frame after masked by live evidence policy; Retained in coordinator follow-up 6: only GNOME S3 rerun; this same-build P remains from its cited attempt.",
+      "host": "f44",
+      "placement": "guest",
+      "guest": "kde-wayland",
+      "destination": "s3",
+      "review": true,
+      "review_reason": "frame has no visible pixels; visual approval withheld; frame fully masked: live-geometry-unknown-fully-masked (RecipeBlocked: showing secret control has no placement); frame has no visible pixels; visual approval withheld; frame fully masked: ocr-sensitive-text-fully-masked; desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes_live.s3_region_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "independent-frozen-pattern",
+          "path": "frames/outcomes_live.s3_region_upload/01-independent-frozen-pattern.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-content",
+          "path": "frames/outcomes_live.s3_region_upload/02-browser-content.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-before-remote-cleanup",
+          "path": "frames/outcomes_live.s3_region_upload/03-history-before-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "delete-exact-owned-object",
+          "path": "frames/outcomes_live.s3_region_upload/04-delete-exact-owned-object.png",
+          "window": "confirmAction",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-after-remote-cleanup",
+          "path": "frames/outcomes_live.s3_region_upload/05-history-after-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes_live.s3_region_upload/06-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes_live.s3_region_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T12:32:02Z"
+    },
+    {
+      "interaction": "history.delete-remote",
+      "desktop": "kubuntu-kde-wayland",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/followup-5/kde/s3a/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; s3_missing_head_404_count=1; desktop frame independent-frozen-pattern masked by live evidence policy; s3_resolved_cloudfront_base_count=1; operationId=606e26ac-b738-43ee-84c8-b3acb404f789; Capture operation 606e26ac-b738-43ee-84c8-b3acb404f789; operationId=606e26ac-b738-43ee-84c8-b3acb404f789; historyId=44eff48f-c5c3-4ac7-952f-63af89f7fcd9; upload_count=1; Retained synthetic png sha256=0277a39cef61125b677afe35bde6f92022724a6acadf2555683c94fc14332084; remote_hash_match_count=1; {\"url_host\": \"put.gd\", \"title\": \"[redacted]\", \"matched\": true}; cloudfront_positive_status=200; guest_public_hash_match_count=1; guest_cloudfront_positive_status=200; deletion_count=1; s3_origin_absence_count=1; recipient_unavailable_observation={\"complete\": true, \"hostOK\": true, \"httpUnavailable\": false, \"media\": true, \"missing\": false, \"status\": 200, \"unavailable\": false}; cloudfront_after_delete_informational=geometry: RuntimeError: Wayland window cannot be placed on the desktop: [redacted] (PNG Image, 600\u00a0\u00d7\u00a0280 pixels) \u2014 Mozilla Firefox: compositor window for '[redacted] (PNG Image, 600\\xa0\u00d7\\xa0280 pixels) \u2014 Mozilla Firefox' (pid 10667, 1280x800) is missing or ambiguous (0 matches); compositor has for pid 10667: '[redacted] (PNG Image, 600 \u00d7 280 pixels) \u2014 Mozilla Firefox' [0, 0, 1280, 800] type 0 (KWin::XdgToplevelWindow); Firefox handler restored; MIME SHA-256 checks passed; desktop frame after masked by live evidence policy; Retained in coordinator follow-up 6: only GNOME S3 rerun; this same-build P remains from its cited attempt.",
+      "host": "f44",
+      "placement": "guest",
+      "guest": "kde-wayland",
+      "destination": "s3",
+      "review": true,
+      "review_reason": "frame has no visible pixels; visual approval withheld; frame fully masked: live-geometry-unknown-fully-masked (RecipeBlocked: showing secret control has no placement); frame has no visible pixels; visual approval withheld; frame fully masked: ocr-sensitive-text-fully-masked; desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes_live.s3_region_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "independent-frozen-pattern",
+          "path": "frames/outcomes_live.s3_region_upload/01-independent-frozen-pattern.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-content",
+          "path": "frames/outcomes_live.s3_region_upload/02-browser-content.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-before-remote-cleanup",
+          "path": "frames/outcomes_live.s3_region_upload/03-history-before-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "delete-exact-owned-object",
+          "path": "frames/outcomes_live.s3_region_upload/04-delete-exact-owned-object.png",
+          "window": "confirmAction",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-after-remote-cleanup",
+          "path": "frames/outcomes_live.s3_region_upload/05-history-after-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes_live.s3_region_upload/06-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes_live.s3_region_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T12:32:02Z"
+    },
+    {
+      "interaction": "confirm.history-delete",
+      "desktop": "kubuntu-kde-wayland",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/followup-5/kde/s3a/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; s3_missing_head_404_count=1; desktop frame independent-frozen-pattern masked by live evidence policy; s3_resolved_cloudfront_base_count=1; operationId=606e26ac-b738-43ee-84c8-b3acb404f789; Capture operation 606e26ac-b738-43ee-84c8-b3acb404f789; operationId=606e26ac-b738-43ee-84c8-b3acb404f789; historyId=44eff48f-c5c3-4ac7-952f-63af89f7fcd9; upload_count=1; Retained synthetic png sha256=0277a39cef61125b677afe35bde6f92022724a6acadf2555683c94fc14332084; remote_hash_match_count=1; {\"url_host\": \"put.gd\", \"title\": \"[redacted]\", \"matched\": true}; cloudfront_positive_status=200; guest_public_hash_match_count=1; guest_cloudfront_positive_status=200; deletion_count=1; s3_origin_absence_count=1; recipient_unavailable_observation={\"complete\": true, \"hostOK\": true, \"httpUnavailable\": false, \"media\": true, \"missing\": false, \"status\": 200, \"unavailable\": false}; cloudfront_after_delete_informational=geometry: RuntimeError: Wayland window cannot be placed on the desktop: [redacted] (PNG Image, 600\u00a0\u00d7\u00a0280 pixels) \u2014 Mozilla Firefox: compositor window for '[redacted] (PNG Image, 600\\xa0\u00d7\\xa0280 pixels) \u2014 Mozilla Firefox' (pid 10667, 1280x800) is missing or ambiguous (0 matches); compositor has for pid 10667: '[redacted] (PNG Image, 600 \u00d7 280 pixels) \u2014 Mozilla Firefox' [0, 0, 1280, 800] type 0 (KWin::XdgToplevelWindow); Firefox handler restored; MIME SHA-256 checks passed; desktop frame after masked by live evidence policy; Retained in coordinator follow-up 6: only GNOME S3 rerun; this same-build P remains from its cited attempt.",
+      "host": "f44",
+      "placement": "guest",
+      "guest": "kde-wayland",
+      "destination": "s3",
+      "review": true,
+      "review_reason": "frame has no visible pixels; visual approval withheld; frame fully masked: live-geometry-unknown-fully-masked (RecipeBlocked: showing secret control has no placement); frame has no visible pixels; visual approval withheld; frame fully masked: ocr-sensitive-text-fully-masked; desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes_live.s3_region_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "independent-frozen-pattern",
+          "path": "frames/outcomes_live.s3_region_upload/01-independent-frozen-pattern.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-content",
+          "path": "frames/outcomes_live.s3_region_upload/02-browser-content.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-before-remote-cleanup",
+          "path": "frames/outcomes_live.s3_region_upload/03-history-before-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "delete-exact-owned-object",
+          "path": "frames/outcomes_live.s3_region_upload/04-delete-exact-owned-object.png",
+          "window": "confirmAction",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-after-remote-cleanup",
+          "path": "frames/outcomes_live.s3_region_upload/05-history-after-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes_live.s3_region_upload/06-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes_live.s3_region_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T12:32:02Z"
+    },
+    {
+      "interaction": "region.to-upload",
+      "desktop": "kubuntu-kde-wayland",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/followup-4/kde/protona/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; desktop frame independent-frozen-pattern masked by live evidence policy; operationId=2d26be9d-9bb9-4b08-8d8d-8639c071d68b; Capture operation 2d26be9d-9bb9-4b08-8d8d-8639c071d68b; shareOperationId=011ac6d1-e6f9-451b-adcd-502c399519bd; operationId=2d26be9d-9bb9-4b08-8d8d-8639c071d68b; historyId=6a498d74-4e1e-4be6-92a4-68e6a949485c; upload_count=1; Retained synthetic png sha256=bf27d05374d1490da03d953f49f515361094424f675d8a483787822dfb2fd768; {\"url_host\": \"drive.proton.me\", \"title\": \"Screen-Capture-2026-10-31-07-10-00.png\", \"matched\": true}; firefox_download_list=[{\"available\": true, \"entries\": [], \"partFileCount\": 0, \"phase\": \"immediately-after-trusted-click\"}, {\"available\": true, \"entries\": [{\"canceled\": false, \"currentBytes\": 1398, \"error\": null, \"hasBlockedData\": false, \"hasPartialData\": false, \"partFilePath\": \"/dev/shm/t1-firefox/putgd-surface-tbhf3spk/downloads/o2ckd2VY.png.part\", \"stopped\": true, \"succeeded\": true, \"target\": \"/dev/shm/t1-firefox/putgd-surface-tbhf3spk/downloads/Screen-Capture-2026-10-31-07-10-00.png\", \"targetExists\": true, \"totalBytes\": 1398}], \"partFileCount\": 0, \"phase\": \"after-visible-download-confirm-menu\"}, {\"available\": true, \"entries\": [{\"canceled\": false, \"currentBytes\": 1398, \"error\": null, \"hasBlockedData\": false, \"hasPartialData\": false, \"partFilePath\": \"/dev/shm/t1-firefox/putgd-surface-tbhf3spk/downloads/o2ckd2VY.png.part\", \"stopped\": true, \"succeeded\": true, \"target\": \"/dev/shm/t1-firefox/putgd-surface-tbhf3spk/downloads/Screen-Capture-2026-10-31-07-10-00.png\", \"targetExists\": true, \"totalBytes\": 1398}], \"phase\": \"completed\"}]; recipient_preview_pixels={\"comparison\": \"decoded-RGBA\", \"height\": 280, \"matches\": true, \"naturalHeight\": 280, \"naturalWidth\": 600, \"previewPixelSha256\": \"f2844d87adfc69e0f3e45cf8f02db2fe9257a70dc2e4332a52dace3c8d38b32c\", \"savedPixelSha256\": \"f2844d87adfc69e0f3e45cf8f02db2fe9257a70dc2e4332a52dace3c8d38b32c\", \"scaling\": \"none\", \"tolerance\": 0, \"width\": 600}; browser_hash_match_count=1; remote_hash_match_count=1; shareOperationId=9b5e60fc-2551-49d7-9151-e869d5a4aeb2; revocation_count=1; recipient_unavailable_observation={\"complete\": true, \"hostOK\": true, \"httpUnavailable\": false, \"media\": false, \"missing\": true, \"status\": 200, \"unavailable\": true}; unavailable_link_count=1; Firefox handler restored; MIME SHA-256 checks passed; desktop frame after masked by live evidence policy; Retained in coordinator follow-up 5: only GNOME/KDE S3 rerun; this same-build P remains from its cited attempt.; Retained in coordinator follow-up 6: only GNOME S3 rerun; this same-build P remains from its cited attempt.",
+      "host": "f44",
+      "placement": "guest",
+      "guest": "kde-wayland",
+      "destination": "proton",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes_live.proton_region_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "independent-frozen-pattern",
+          "path": "frames/outcomes_live.proton_region_upload/01-independent-frozen-pattern.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-content",
+          "path": "frames/outcomes_live.proton_region_upload/02-browser-content.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-before-remote-cleanup",
+          "path": "frames/outcomes_live.proton_region_upload/03-history-before-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "revoke-exact-owned-link",
+          "path": "frames/outcomes_live.proton_region_upload/04-revoke-exact-owned-link.png",
+          "window": "confirmAction",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-after-remote-cleanup",
+          "path": "frames/outcomes_live.proton_region_upload/05-history-after-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-link-unavailable",
+          "path": "frames/outcomes_live.proton_region_upload/06-browser-link-unavailable.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes_live.proton_region_upload/07-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes_live.proton_region_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T12:11:40Z"
+    },
+    {
+      "interaction": "region.drag",
+      "desktop": "kubuntu-kde-wayland",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/followup-4/kde/protona/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; desktop frame independent-frozen-pattern masked by live evidence policy; operationId=2d26be9d-9bb9-4b08-8d8d-8639c071d68b; Capture operation 2d26be9d-9bb9-4b08-8d8d-8639c071d68b; shareOperationId=011ac6d1-e6f9-451b-adcd-502c399519bd; operationId=2d26be9d-9bb9-4b08-8d8d-8639c071d68b; historyId=6a498d74-4e1e-4be6-92a4-68e6a949485c; upload_count=1; Retained synthetic png sha256=bf27d05374d1490da03d953f49f515361094424f675d8a483787822dfb2fd768; {\"url_host\": \"drive.proton.me\", \"title\": \"Screen-Capture-2026-10-31-07-10-00.png\", \"matched\": true}; firefox_download_list=[{\"available\": true, \"entries\": [], \"partFileCount\": 0, \"phase\": \"immediately-after-trusted-click\"}, {\"available\": true, \"entries\": [{\"canceled\": false, \"currentBytes\": 1398, \"error\": null, \"hasBlockedData\": false, \"hasPartialData\": false, \"partFilePath\": \"/dev/shm/t1-firefox/putgd-surface-tbhf3spk/downloads/o2ckd2VY.png.part\", \"stopped\": true, \"succeeded\": true, \"target\": \"/dev/shm/t1-firefox/putgd-surface-tbhf3spk/downloads/Screen-Capture-2026-10-31-07-10-00.png\", \"targetExists\": true, \"totalBytes\": 1398}], \"partFileCount\": 0, \"phase\": \"after-visible-download-confirm-menu\"}, {\"available\": true, \"entries\": [{\"canceled\": false, \"currentBytes\": 1398, \"error\": null, \"hasBlockedData\": false, \"hasPartialData\": false, \"partFilePath\": \"/dev/shm/t1-firefox/putgd-surface-tbhf3spk/downloads/o2ckd2VY.png.part\", \"stopped\": true, \"succeeded\": true, \"target\": \"/dev/shm/t1-firefox/putgd-surface-tbhf3spk/downloads/Screen-Capture-2026-10-31-07-10-00.png\", \"targetExists\": true, \"totalBytes\": 1398}], \"phase\": \"completed\"}]; recipient_preview_pixels={\"comparison\": \"decoded-RGBA\", \"height\": 280, \"matches\": true, \"naturalHeight\": 280, \"naturalWidth\": 600, \"previewPixelSha256\": \"f2844d87adfc69e0f3e45cf8f02db2fe9257a70dc2e4332a52dace3c8d38b32c\", \"savedPixelSha256\": \"f2844d87adfc69e0f3e45cf8f02db2fe9257a70dc2e4332a52dace3c8d38b32c\", \"scaling\": \"none\", \"tolerance\": 0, \"width\": 600}; browser_hash_match_count=1; remote_hash_match_count=1; shareOperationId=9b5e60fc-2551-49d7-9151-e869d5a4aeb2; revocation_count=1; recipient_unavailable_observation={\"complete\": true, \"hostOK\": true, \"httpUnavailable\": false, \"media\": false, \"missing\": true, \"status\": 200, \"unavailable\": true}; unavailable_link_count=1; Firefox handler restored; MIME SHA-256 checks passed; desktop frame after masked by live evidence policy; Retained in coordinator follow-up 5: only GNOME/KDE S3 rerun; this same-build P remains from its cited attempt.; Retained in coordinator follow-up 6: only GNOME S3 rerun; this same-build P remains from its cited attempt.",
+      "host": "f44",
+      "placement": "guest",
+      "guest": "kde-wayland",
+      "destination": "proton",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes_live.proton_region_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "independent-frozen-pattern",
+          "path": "frames/outcomes_live.proton_region_upload/01-independent-frozen-pattern.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-content",
+          "path": "frames/outcomes_live.proton_region_upload/02-browser-content.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-before-remote-cleanup",
+          "path": "frames/outcomes_live.proton_region_upload/03-history-before-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "revoke-exact-owned-link",
+          "path": "frames/outcomes_live.proton_region_upload/04-revoke-exact-owned-link.png",
+          "window": "confirmAction",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-after-remote-cleanup",
+          "path": "frames/outcomes_live.proton_region_upload/05-history-after-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-link-unavailable",
+          "path": "frames/outcomes_live.proton_region_upload/06-browser-link-unavailable.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes_live.proton_region_upload/07-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes_live.proton_region_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T12:11:40Z"
+    },
+    {
+      "interaction": "history.copy-link",
+      "desktop": "kubuntu-kde-wayland",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/followup-4/kde/protona/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; desktop frame independent-frozen-pattern masked by live evidence policy; operationId=2d26be9d-9bb9-4b08-8d8d-8639c071d68b; Capture operation 2d26be9d-9bb9-4b08-8d8d-8639c071d68b; shareOperationId=011ac6d1-e6f9-451b-adcd-502c399519bd; operationId=2d26be9d-9bb9-4b08-8d8d-8639c071d68b; historyId=6a498d74-4e1e-4be6-92a4-68e6a949485c; upload_count=1; Retained synthetic png sha256=bf27d05374d1490da03d953f49f515361094424f675d8a483787822dfb2fd768; {\"url_host\": \"drive.proton.me\", \"title\": \"Screen-Capture-2026-10-31-07-10-00.png\", \"matched\": true}; firefox_download_list=[{\"available\": true, \"entries\": [], \"partFileCount\": 0, \"phase\": \"immediately-after-trusted-click\"}, {\"available\": true, \"entries\": [{\"canceled\": false, \"currentBytes\": 1398, \"error\": null, \"hasBlockedData\": false, \"hasPartialData\": false, \"partFilePath\": \"/dev/shm/t1-firefox/putgd-surface-tbhf3spk/downloads/o2ckd2VY.png.part\", \"stopped\": true, \"succeeded\": true, \"target\": \"/dev/shm/t1-firefox/putgd-surface-tbhf3spk/downloads/Screen-Capture-2026-10-31-07-10-00.png\", \"targetExists\": true, \"totalBytes\": 1398}], \"partFileCount\": 0, \"phase\": \"after-visible-download-confirm-menu\"}, {\"available\": true, \"entries\": [{\"canceled\": false, \"currentBytes\": 1398, \"error\": null, \"hasBlockedData\": false, \"hasPartialData\": false, \"partFilePath\": \"/dev/shm/t1-firefox/putgd-surface-tbhf3spk/downloads/o2ckd2VY.png.part\", \"stopped\": true, \"succeeded\": true, \"target\": \"/dev/shm/t1-firefox/putgd-surface-tbhf3spk/downloads/Screen-Capture-2026-10-31-07-10-00.png\", \"targetExists\": true, \"totalBytes\": 1398}], \"phase\": \"completed\"}]; recipient_preview_pixels={\"comparison\": \"decoded-RGBA\", \"height\": 280, \"matches\": true, \"naturalHeight\": 280, \"naturalWidth\": 600, \"previewPixelSha256\": \"f2844d87adfc69e0f3e45cf8f02db2fe9257a70dc2e4332a52dace3c8d38b32c\", \"savedPixelSha256\": \"f2844d87adfc69e0f3e45cf8f02db2fe9257a70dc2e4332a52dace3c8d38b32c\", \"scaling\": \"none\", \"tolerance\": 0, \"width\": 600}; browser_hash_match_count=1; remote_hash_match_count=1; shareOperationId=9b5e60fc-2551-49d7-9151-e869d5a4aeb2; revocation_count=1; recipient_unavailable_observation={\"complete\": true, \"hostOK\": true, \"httpUnavailable\": false, \"media\": false, \"missing\": true, \"status\": 200, \"unavailable\": true}; unavailable_link_count=1; Firefox handler restored; MIME SHA-256 checks passed; desktop frame after masked by live evidence policy; Retained in coordinator follow-up 5: only GNOME/KDE S3 rerun; this same-build P remains from its cited attempt.; Retained in coordinator follow-up 6: only GNOME S3 rerun; this same-build P remains from its cited attempt.",
+      "host": "f44",
+      "placement": "guest",
+      "guest": "kde-wayland",
+      "destination": "proton",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes_live.proton_region_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "independent-frozen-pattern",
+          "path": "frames/outcomes_live.proton_region_upload/01-independent-frozen-pattern.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-content",
+          "path": "frames/outcomes_live.proton_region_upload/02-browser-content.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-before-remote-cleanup",
+          "path": "frames/outcomes_live.proton_region_upload/03-history-before-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "revoke-exact-owned-link",
+          "path": "frames/outcomes_live.proton_region_upload/04-revoke-exact-owned-link.png",
+          "window": "confirmAction",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-after-remote-cleanup",
+          "path": "frames/outcomes_live.proton_region_upload/05-history-after-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-link-unavailable",
+          "path": "frames/outcomes_live.proton_region_upload/06-browser-link-unavailable.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes_live.proton_region_upload/07-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes_live.proton_region_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T12:11:40Z"
+    },
+    {
+      "interaction": "history.open-link",
+      "desktop": "kubuntu-kde-wayland",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/followup-4/kde/protona/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; desktop frame independent-frozen-pattern masked by live evidence policy; operationId=2d26be9d-9bb9-4b08-8d8d-8639c071d68b; Capture operation 2d26be9d-9bb9-4b08-8d8d-8639c071d68b; shareOperationId=011ac6d1-e6f9-451b-adcd-502c399519bd; operationId=2d26be9d-9bb9-4b08-8d8d-8639c071d68b; historyId=6a498d74-4e1e-4be6-92a4-68e6a949485c; upload_count=1; Retained synthetic png sha256=bf27d05374d1490da03d953f49f515361094424f675d8a483787822dfb2fd768; {\"url_host\": \"drive.proton.me\", \"title\": \"Screen-Capture-2026-10-31-07-10-00.png\", \"matched\": true}; firefox_download_list=[{\"available\": true, \"entries\": [], \"partFileCount\": 0, \"phase\": \"immediately-after-trusted-click\"}, {\"available\": true, \"entries\": [{\"canceled\": false, \"currentBytes\": 1398, \"error\": null, \"hasBlockedData\": false, \"hasPartialData\": false, \"partFilePath\": \"/dev/shm/t1-firefox/putgd-surface-tbhf3spk/downloads/o2ckd2VY.png.part\", \"stopped\": true, \"succeeded\": true, \"target\": \"/dev/shm/t1-firefox/putgd-surface-tbhf3spk/downloads/Screen-Capture-2026-10-31-07-10-00.png\", \"targetExists\": true, \"totalBytes\": 1398}], \"partFileCount\": 0, \"phase\": \"after-visible-download-confirm-menu\"}, {\"available\": true, \"entries\": [{\"canceled\": false, \"currentBytes\": 1398, \"error\": null, \"hasBlockedData\": false, \"hasPartialData\": false, \"partFilePath\": \"/dev/shm/t1-firefox/putgd-surface-tbhf3spk/downloads/o2ckd2VY.png.part\", \"stopped\": true, \"succeeded\": true, \"target\": \"/dev/shm/t1-firefox/putgd-surface-tbhf3spk/downloads/Screen-Capture-2026-10-31-07-10-00.png\", \"targetExists\": true, \"totalBytes\": 1398}], \"phase\": \"completed\"}]; recipient_preview_pixels={\"comparison\": \"decoded-RGBA\", \"height\": 280, \"matches\": true, \"naturalHeight\": 280, \"naturalWidth\": 600, \"previewPixelSha256\": \"f2844d87adfc69e0f3e45cf8f02db2fe9257a70dc2e4332a52dace3c8d38b32c\", \"savedPixelSha256\": \"f2844d87adfc69e0f3e45cf8f02db2fe9257a70dc2e4332a52dace3c8d38b32c\", \"scaling\": \"none\", \"tolerance\": 0, \"width\": 600}; browser_hash_match_count=1; remote_hash_match_count=1; shareOperationId=9b5e60fc-2551-49d7-9151-e869d5a4aeb2; revocation_count=1; recipient_unavailable_observation={\"complete\": true, \"hostOK\": true, \"httpUnavailable\": false, \"media\": false, \"missing\": true, \"status\": 200, \"unavailable\": true}; unavailable_link_count=1; Firefox handler restored; MIME SHA-256 checks passed; desktop frame after masked by live evidence policy; Retained in coordinator follow-up 5: only GNOME/KDE S3 rerun; this same-build P remains from its cited attempt.; Retained in coordinator follow-up 6: only GNOME S3 rerun; this same-build P remains from its cited attempt.",
+      "host": "f44",
+      "placement": "guest",
+      "guest": "kde-wayland",
+      "destination": "proton",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes_live.proton_region_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "independent-frozen-pattern",
+          "path": "frames/outcomes_live.proton_region_upload/01-independent-frozen-pattern.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-content",
+          "path": "frames/outcomes_live.proton_region_upload/02-browser-content.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-before-remote-cleanup",
+          "path": "frames/outcomes_live.proton_region_upload/03-history-before-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "revoke-exact-owned-link",
+          "path": "frames/outcomes_live.proton_region_upload/04-revoke-exact-owned-link.png",
+          "window": "confirmAction",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-after-remote-cleanup",
+          "path": "frames/outcomes_live.proton_region_upload/05-history-after-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-link-unavailable",
+          "path": "frames/outcomes_live.proton_region_upload/06-browser-link-unavailable.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes_live.proton_region_upload/07-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes_live.proton_region_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T12:11:40Z"
+    },
+    {
+      "interaction": "history.proton-sharing",
+      "desktop": "kubuntu-kde-wayland",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/followup-4/kde/protona/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; desktop frame independent-frozen-pattern masked by live evidence policy; operationId=2d26be9d-9bb9-4b08-8d8d-8639c071d68b; Capture operation 2d26be9d-9bb9-4b08-8d8d-8639c071d68b; shareOperationId=011ac6d1-e6f9-451b-adcd-502c399519bd; operationId=2d26be9d-9bb9-4b08-8d8d-8639c071d68b; historyId=6a498d74-4e1e-4be6-92a4-68e6a949485c; upload_count=1; Retained synthetic png sha256=bf27d05374d1490da03d953f49f515361094424f675d8a483787822dfb2fd768; {\"url_host\": \"drive.proton.me\", \"title\": \"Screen-Capture-2026-10-31-07-10-00.png\", \"matched\": true}; firefox_download_list=[{\"available\": true, \"entries\": [], \"partFileCount\": 0, \"phase\": \"immediately-after-trusted-click\"}, {\"available\": true, \"entries\": [{\"canceled\": false, \"currentBytes\": 1398, \"error\": null, \"hasBlockedData\": false, \"hasPartialData\": false, \"partFilePath\": \"/dev/shm/t1-firefox/putgd-surface-tbhf3spk/downloads/o2ckd2VY.png.part\", \"stopped\": true, \"succeeded\": true, \"target\": \"/dev/shm/t1-firefox/putgd-surface-tbhf3spk/downloads/Screen-Capture-2026-10-31-07-10-00.png\", \"targetExists\": true, \"totalBytes\": 1398}], \"partFileCount\": 0, \"phase\": \"after-visible-download-confirm-menu\"}, {\"available\": true, \"entries\": [{\"canceled\": false, \"currentBytes\": 1398, \"error\": null, \"hasBlockedData\": false, \"hasPartialData\": false, \"partFilePath\": \"/dev/shm/t1-firefox/putgd-surface-tbhf3spk/downloads/o2ckd2VY.png.part\", \"stopped\": true, \"succeeded\": true, \"target\": \"/dev/shm/t1-firefox/putgd-surface-tbhf3spk/downloads/Screen-Capture-2026-10-31-07-10-00.png\", \"targetExists\": true, \"totalBytes\": 1398}], \"phase\": \"completed\"}]; recipient_preview_pixels={\"comparison\": \"decoded-RGBA\", \"height\": 280, \"matches\": true, \"naturalHeight\": 280, \"naturalWidth\": 600, \"previewPixelSha256\": \"f2844d87adfc69e0f3e45cf8f02db2fe9257a70dc2e4332a52dace3c8d38b32c\", \"savedPixelSha256\": \"f2844d87adfc69e0f3e45cf8f02db2fe9257a70dc2e4332a52dace3c8d38b32c\", \"scaling\": \"none\", \"tolerance\": 0, \"width\": 600}; browser_hash_match_count=1; remote_hash_match_count=1; shareOperationId=9b5e60fc-2551-49d7-9151-e869d5a4aeb2; revocation_count=1; recipient_unavailable_observation={\"complete\": true, \"hostOK\": true, \"httpUnavailable\": false, \"media\": false, \"missing\": true, \"status\": 200, \"unavailable\": true}; unavailable_link_count=1; Firefox handler restored; MIME SHA-256 checks passed; desktop frame after masked by live evidence policy; Retained in coordinator follow-up 5: only GNOME/KDE S3 rerun; this same-build P remains from its cited attempt.; Retained in coordinator follow-up 6: only GNOME S3 rerun; this same-build P remains from its cited attempt.",
+      "host": "f44",
+      "placement": "guest",
+      "guest": "kde-wayland",
+      "destination": "proton",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes_live.proton_region_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "independent-frozen-pattern",
+          "path": "frames/outcomes_live.proton_region_upload/01-independent-frozen-pattern.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-content",
+          "path": "frames/outcomes_live.proton_region_upload/02-browser-content.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-before-remote-cleanup",
+          "path": "frames/outcomes_live.proton_region_upload/03-history-before-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "revoke-exact-owned-link",
+          "path": "frames/outcomes_live.proton_region_upload/04-revoke-exact-owned-link.png",
+          "window": "confirmAction",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-after-remote-cleanup",
+          "path": "frames/outcomes_live.proton_region_upload/05-history-after-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-link-unavailable",
+          "path": "frames/outcomes_live.proton_region_upload/06-browser-link-unavailable.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes_live.proton_region_upload/07-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes_live.proton_region_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T12:11:40Z"
+    },
+    {
+      "interaction": "confirm.revoke-link",
+      "desktop": "kubuntu-kde-wayland",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/followup-4/kde/protona/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; desktop frame independent-frozen-pattern masked by live evidence policy; operationId=2d26be9d-9bb9-4b08-8d8d-8639c071d68b; Capture operation 2d26be9d-9bb9-4b08-8d8d-8639c071d68b; shareOperationId=011ac6d1-e6f9-451b-adcd-502c399519bd; operationId=2d26be9d-9bb9-4b08-8d8d-8639c071d68b; historyId=6a498d74-4e1e-4be6-92a4-68e6a949485c; upload_count=1; Retained synthetic png sha256=bf27d05374d1490da03d953f49f515361094424f675d8a483787822dfb2fd768; {\"url_host\": \"drive.proton.me\", \"title\": \"Screen-Capture-2026-10-31-07-10-00.png\", \"matched\": true}; firefox_download_list=[{\"available\": true, \"entries\": [], \"partFileCount\": 0, \"phase\": \"immediately-after-trusted-click\"}, {\"available\": true, \"entries\": [{\"canceled\": false, \"currentBytes\": 1398, \"error\": null, \"hasBlockedData\": false, \"hasPartialData\": false, \"partFilePath\": \"/dev/shm/t1-firefox/putgd-surface-tbhf3spk/downloads/o2ckd2VY.png.part\", \"stopped\": true, \"succeeded\": true, \"target\": \"/dev/shm/t1-firefox/putgd-surface-tbhf3spk/downloads/Screen-Capture-2026-10-31-07-10-00.png\", \"targetExists\": true, \"totalBytes\": 1398}], \"partFileCount\": 0, \"phase\": \"after-visible-download-confirm-menu\"}, {\"available\": true, \"entries\": [{\"canceled\": false, \"currentBytes\": 1398, \"error\": null, \"hasBlockedData\": false, \"hasPartialData\": false, \"partFilePath\": \"/dev/shm/t1-firefox/putgd-surface-tbhf3spk/downloads/o2ckd2VY.png.part\", \"stopped\": true, \"succeeded\": true, \"target\": \"/dev/shm/t1-firefox/putgd-surface-tbhf3spk/downloads/Screen-Capture-2026-10-31-07-10-00.png\", \"targetExists\": true, \"totalBytes\": 1398}], \"phase\": \"completed\"}]; recipient_preview_pixels={\"comparison\": \"decoded-RGBA\", \"height\": 280, \"matches\": true, \"naturalHeight\": 280, \"naturalWidth\": 600, \"previewPixelSha256\": \"f2844d87adfc69e0f3e45cf8f02db2fe9257a70dc2e4332a52dace3c8d38b32c\", \"savedPixelSha256\": \"f2844d87adfc69e0f3e45cf8f02db2fe9257a70dc2e4332a52dace3c8d38b32c\", \"scaling\": \"none\", \"tolerance\": 0, \"width\": 600}; browser_hash_match_count=1; remote_hash_match_count=1; shareOperationId=9b5e60fc-2551-49d7-9151-e869d5a4aeb2; revocation_count=1; recipient_unavailable_observation={\"complete\": true, \"hostOK\": true, \"httpUnavailable\": false, \"media\": false, \"missing\": true, \"status\": 200, \"unavailable\": true}; unavailable_link_count=1; Firefox handler restored; MIME SHA-256 checks passed; desktop frame after masked by live evidence policy; Retained in coordinator follow-up 5: only GNOME/KDE S3 rerun; this same-build P remains from its cited attempt.; Retained in coordinator follow-up 6: only GNOME S3 rerun; this same-build P remains from its cited attempt.",
+      "host": "f44",
+      "placement": "guest",
+      "guest": "kde-wayland",
+      "destination": "proton",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes_live.proton_region_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "independent-frozen-pattern",
+          "path": "frames/outcomes_live.proton_region_upload/01-independent-frozen-pattern.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-content",
+          "path": "frames/outcomes_live.proton_region_upload/02-browser-content.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-before-remote-cleanup",
+          "path": "frames/outcomes_live.proton_region_upload/03-history-before-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "revoke-exact-owned-link",
+          "path": "frames/outcomes_live.proton_region_upload/04-revoke-exact-owned-link.png",
+          "window": "confirmAction",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-after-remote-cleanup",
+          "path": "frames/outcomes_live.proton_region_upload/05-history-after-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-link-unavailable",
+          "path": "frames/outcomes_live.proton_region_upload/06-browser-link-unavailable.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes_live.proton_region_upload/07-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes_live.proton_region_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T12:11:40Z"
+    },
+    {
+      "interaction": "region.to-upload",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/followup-4/cinnamon/s3a/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; s3_missing_head_404_count=1; desktop frame independent-frozen-pattern masked by live evidence policy; s3_resolved_cloudfront_base_count=1; operationId=e63b54fe-6be6-4845-8fda-e415ea1f8377; Capture operation e63b54fe-6be6-4845-8fda-e415ea1f8377; operationId=e63b54fe-6be6-4845-8fda-e415ea1f8377; historyId=b74c556b-5073-4d2f-b449-8584500ad96a; upload_count=1; Retained synthetic png sha256=7d4432c10d5d85afa4bdbb25f2e15c2108ce4c62713c7f363662eaf7feb0d384; remote_hash_match_count=1; {\"url_host\": \"put.gd\", \"title\": \"[redacted]\", \"matched\": true}; cloudfront_positive_status=200; guest_public_hash_match_count=1; guest_cloudfront_positive_status=200; deletion_count=1; s3_origin_absence_count=1; recipient_unavailable_observation={\"complete\": true, \"hostOK\": true, \"httpUnavailable\": false, \"media\": true, \"missing\": false, \"status\": 200, \"unavailable\": false}; cloudfront_after_delete_status=200; Firefox handler restored; MIME SHA-256 checks passed; desktop frame after masked by live evidence policy; Retained in coordinator follow-up 5: only GNOME/KDE S3 rerun; this same-build P remains from its cited attempt.; Retained in coordinator follow-up 6: only GNOME S3 rerun; this same-build P remains from its cited attempt.",
+      "host": "d69",
+      "placement": "guest",
+      "guest": "cinnamon-x11",
+      "destination": "s3",
+      "review": true,
+      "review_reason": "frame has no visible pixels; visual approval withheld; frame fully masked: live-geometry-unknown-fully-masked (RecipeBlocked: showing secret control has no placement); frame has no visible pixels; visual approval withheld; frame fully masked: ocr-sensitive-text-fully-masked; frame has no visible pixels; visual approval withheld; desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes_live.s3_region_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "independent-frozen-pattern",
+          "path": "frames/outcomes_live.s3_region_upload/01-independent-frozen-pattern.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-content",
+          "path": "frames/outcomes_live.s3_region_upload/02-browser-content.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-before-remote-cleanup",
+          "path": "frames/outcomes_live.s3_region_upload/03-history-before-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "delete-exact-owned-object",
+          "path": "frames/outcomes_live.s3_region_upload/04-delete-exact-owned-object.png",
+          "window": "confirmAction",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-after-remote-cleanup",
+          "path": "frames/outcomes_live.s3_region_upload/05-history-after-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-cloudfront-status-200",
+          "path": "frames/outcomes_live.s3_region_upload/06-browser-cloudfront-status-200.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes_live.s3_region_upload/07-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes_live.s3_region_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T12:14:34Z"
+    },
+    {
+      "interaction": "region.drag",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/followup-4/cinnamon/s3a/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; s3_missing_head_404_count=1; desktop frame independent-frozen-pattern masked by live evidence policy; s3_resolved_cloudfront_base_count=1; operationId=e63b54fe-6be6-4845-8fda-e415ea1f8377; Capture operation e63b54fe-6be6-4845-8fda-e415ea1f8377; operationId=e63b54fe-6be6-4845-8fda-e415ea1f8377; historyId=b74c556b-5073-4d2f-b449-8584500ad96a; upload_count=1; Retained synthetic png sha256=7d4432c10d5d85afa4bdbb25f2e15c2108ce4c62713c7f363662eaf7feb0d384; remote_hash_match_count=1; {\"url_host\": \"put.gd\", \"title\": \"[redacted]\", \"matched\": true}; cloudfront_positive_status=200; guest_public_hash_match_count=1; guest_cloudfront_positive_status=200; deletion_count=1; s3_origin_absence_count=1; recipient_unavailable_observation={\"complete\": true, \"hostOK\": true, \"httpUnavailable\": false, \"media\": true, \"missing\": false, \"status\": 200, \"unavailable\": false}; cloudfront_after_delete_status=200; Firefox handler restored; MIME SHA-256 checks passed; desktop frame after masked by live evidence policy; Retained in coordinator follow-up 5: only GNOME/KDE S3 rerun; this same-build P remains from its cited attempt.; Retained in coordinator follow-up 6: only GNOME S3 rerun; this same-build P remains from its cited attempt.",
+      "host": "d69",
+      "placement": "guest",
+      "guest": "cinnamon-x11",
+      "destination": "s3",
+      "review": true,
+      "review_reason": "frame has no visible pixels; visual approval withheld; frame fully masked: live-geometry-unknown-fully-masked (RecipeBlocked: showing secret control has no placement); frame has no visible pixels; visual approval withheld; frame fully masked: ocr-sensitive-text-fully-masked; frame has no visible pixels; visual approval withheld; desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes_live.s3_region_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "independent-frozen-pattern",
+          "path": "frames/outcomes_live.s3_region_upload/01-independent-frozen-pattern.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-content",
+          "path": "frames/outcomes_live.s3_region_upload/02-browser-content.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-before-remote-cleanup",
+          "path": "frames/outcomes_live.s3_region_upload/03-history-before-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "delete-exact-owned-object",
+          "path": "frames/outcomes_live.s3_region_upload/04-delete-exact-owned-object.png",
+          "window": "confirmAction",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-after-remote-cleanup",
+          "path": "frames/outcomes_live.s3_region_upload/05-history-after-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-cloudfront-status-200",
+          "path": "frames/outcomes_live.s3_region_upload/06-browser-cloudfront-status-200.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes_live.s3_region_upload/07-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes_live.s3_region_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T12:14:34Z"
+    },
+    {
+      "interaction": "history.copy-link",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/followup-4/cinnamon/s3a/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; s3_missing_head_404_count=1; desktop frame independent-frozen-pattern masked by live evidence policy; s3_resolved_cloudfront_base_count=1; operationId=e63b54fe-6be6-4845-8fda-e415ea1f8377; Capture operation e63b54fe-6be6-4845-8fda-e415ea1f8377; operationId=e63b54fe-6be6-4845-8fda-e415ea1f8377; historyId=b74c556b-5073-4d2f-b449-8584500ad96a; upload_count=1; Retained synthetic png sha256=7d4432c10d5d85afa4bdbb25f2e15c2108ce4c62713c7f363662eaf7feb0d384; remote_hash_match_count=1; {\"url_host\": \"put.gd\", \"title\": \"[redacted]\", \"matched\": true}; cloudfront_positive_status=200; guest_public_hash_match_count=1; guest_cloudfront_positive_status=200; deletion_count=1; s3_origin_absence_count=1; recipient_unavailable_observation={\"complete\": true, \"hostOK\": true, \"httpUnavailable\": false, \"media\": true, \"missing\": false, \"status\": 200, \"unavailable\": false}; cloudfront_after_delete_status=200; Firefox handler restored; MIME SHA-256 checks passed; desktop frame after masked by live evidence policy; Retained in coordinator follow-up 5: only GNOME/KDE S3 rerun; this same-build P remains from its cited attempt.; Retained in coordinator follow-up 6: only GNOME S3 rerun; this same-build P remains from its cited attempt.",
+      "host": "d69",
+      "placement": "guest",
+      "guest": "cinnamon-x11",
+      "destination": "s3",
+      "review": true,
+      "review_reason": "frame has no visible pixels; visual approval withheld; frame fully masked: live-geometry-unknown-fully-masked (RecipeBlocked: showing secret control has no placement); frame has no visible pixels; visual approval withheld; frame fully masked: ocr-sensitive-text-fully-masked; frame has no visible pixels; visual approval withheld; desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes_live.s3_region_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "independent-frozen-pattern",
+          "path": "frames/outcomes_live.s3_region_upload/01-independent-frozen-pattern.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-content",
+          "path": "frames/outcomes_live.s3_region_upload/02-browser-content.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-before-remote-cleanup",
+          "path": "frames/outcomes_live.s3_region_upload/03-history-before-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "delete-exact-owned-object",
+          "path": "frames/outcomes_live.s3_region_upload/04-delete-exact-owned-object.png",
+          "window": "confirmAction",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-after-remote-cleanup",
+          "path": "frames/outcomes_live.s3_region_upload/05-history-after-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-cloudfront-status-200",
+          "path": "frames/outcomes_live.s3_region_upload/06-browser-cloudfront-status-200.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes_live.s3_region_upload/07-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes_live.s3_region_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T12:14:34Z"
+    },
+    {
+      "interaction": "history.open-link",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/followup-4/cinnamon/s3a/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; s3_missing_head_404_count=1; desktop frame independent-frozen-pattern masked by live evidence policy; s3_resolved_cloudfront_base_count=1; operationId=e63b54fe-6be6-4845-8fda-e415ea1f8377; Capture operation e63b54fe-6be6-4845-8fda-e415ea1f8377; operationId=e63b54fe-6be6-4845-8fda-e415ea1f8377; historyId=b74c556b-5073-4d2f-b449-8584500ad96a; upload_count=1; Retained synthetic png sha256=7d4432c10d5d85afa4bdbb25f2e15c2108ce4c62713c7f363662eaf7feb0d384; remote_hash_match_count=1; {\"url_host\": \"put.gd\", \"title\": \"[redacted]\", \"matched\": true}; cloudfront_positive_status=200; guest_public_hash_match_count=1; guest_cloudfront_positive_status=200; deletion_count=1; s3_origin_absence_count=1; recipient_unavailable_observation={\"complete\": true, \"hostOK\": true, \"httpUnavailable\": false, \"media\": true, \"missing\": false, \"status\": 200, \"unavailable\": false}; cloudfront_after_delete_status=200; Firefox handler restored; MIME SHA-256 checks passed; desktop frame after masked by live evidence policy; Retained in coordinator follow-up 5: only GNOME/KDE S3 rerun; this same-build P remains from its cited attempt.; Retained in coordinator follow-up 6: only GNOME S3 rerun; this same-build P remains from its cited attempt.",
+      "host": "d69",
+      "placement": "guest",
+      "guest": "cinnamon-x11",
+      "destination": "s3",
+      "review": true,
+      "review_reason": "frame has no visible pixels; visual approval withheld; frame fully masked: live-geometry-unknown-fully-masked (RecipeBlocked: showing secret control has no placement); frame has no visible pixels; visual approval withheld; frame fully masked: ocr-sensitive-text-fully-masked; frame has no visible pixels; visual approval withheld; desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes_live.s3_region_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "independent-frozen-pattern",
+          "path": "frames/outcomes_live.s3_region_upload/01-independent-frozen-pattern.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-content",
+          "path": "frames/outcomes_live.s3_region_upload/02-browser-content.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-before-remote-cleanup",
+          "path": "frames/outcomes_live.s3_region_upload/03-history-before-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "delete-exact-owned-object",
+          "path": "frames/outcomes_live.s3_region_upload/04-delete-exact-owned-object.png",
+          "window": "confirmAction",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-after-remote-cleanup",
+          "path": "frames/outcomes_live.s3_region_upload/05-history-after-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-cloudfront-status-200",
+          "path": "frames/outcomes_live.s3_region_upload/06-browser-cloudfront-status-200.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes_live.s3_region_upload/07-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes_live.s3_region_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T12:14:34Z"
+    },
+    {
+      "interaction": "history.delete-remote",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/followup-4/cinnamon/s3a/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; s3_missing_head_404_count=1; desktop frame independent-frozen-pattern masked by live evidence policy; s3_resolved_cloudfront_base_count=1; operationId=e63b54fe-6be6-4845-8fda-e415ea1f8377; Capture operation e63b54fe-6be6-4845-8fda-e415ea1f8377; operationId=e63b54fe-6be6-4845-8fda-e415ea1f8377; historyId=b74c556b-5073-4d2f-b449-8584500ad96a; upload_count=1; Retained synthetic png sha256=7d4432c10d5d85afa4bdbb25f2e15c2108ce4c62713c7f363662eaf7feb0d384; remote_hash_match_count=1; {\"url_host\": \"put.gd\", \"title\": \"[redacted]\", \"matched\": true}; cloudfront_positive_status=200; guest_public_hash_match_count=1; guest_cloudfront_positive_status=200; deletion_count=1; s3_origin_absence_count=1; recipient_unavailable_observation={\"complete\": true, \"hostOK\": true, \"httpUnavailable\": false, \"media\": true, \"missing\": false, \"status\": 200, \"unavailable\": false}; cloudfront_after_delete_status=200; Firefox handler restored; MIME SHA-256 checks passed; desktop frame after masked by live evidence policy; Retained in coordinator follow-up 5: only GNOME/KDE S3 rerun; this same-build P remains from its cited attempt.; Retained in coordinator follow-up 6: only GNOME S3 rerun; this same-build P remains from its cited attempt.",
+      "host": "d69",
+      "placement": "guest",
+      "guest": "cinnamon-x11",
+      "destination": "s3",
+      "review": true,
+      "review_reason": "frame has no visible pixels; visual approval withheld; frame fully masked: live-geometry-unknown-fully-masked (RecipeBlocked: showing secret control has no placement); frame has no visible pixels; visual approval withheld; frame fully masked: ocr-sensitive-text-fully-masked; frame has no visible pixels; visual approval withheld; desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes_live.s3_region_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "independent-frozen-pattern",
+          "path": "frames/outcomes_live.s3_region_upload/01-independent-frozen-pattern.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-content",
+          "path": "frames/outcomes_live.s3_region_upload/02-browser-content.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-before-remote-cleanup",
+          "path": "frames/outcomes_live.s3_region_upload/03-history-before-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "delete-exact-owned-object",
+          "path": "frames/outcomes_live.s3_region_upload/04-delete-exact-owned-object.png",
+          "window": "confirmAction",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-after-remote-cleanup",
+          "path": "frames/outcomes_live.s3_region_upload/05-history-after-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-cloudfront-status-200",
+          "path": "frames/outcomes_live.s3_region_upload/06-browser-cloudfront-status-200.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes_live.s3_region_upload/07-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes_live.s3_region_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T12:14:34Z"
+    },
+    {
+      "interaction": "confirm.history-delete",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/followup-4/cinnamon/s3a/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; s3_missing_head_404_count=1; desktop frame independent-frozen-pattern masked by live evidence policy; s3_resolved_cloudfront_base_count=1; operationId=e63b54fe-6be6-4845-8fda-e415ea1f8377; Capture operation e63b54fe-6be6-4845-8fda-e415ea1f8377; operationId=e63b54fe-6be6-4845-8fda-e415ea1f8377; historyId=b74c556b-5073-4d2f-b449-8584500ad96a; upload_count=1; Retained synthetic png sha256=7d4432c10d5d85afa4bdbb25f2e15c2108ce4c62713c7f363662eaf7feb0d384; remote_hash_match_count=1; {\"url_host\": \"put.gd\", \"title\": \"[redacted]\", \"matched\": true}; cloudfront_positive_status=200; guest_public_hash_match_count=1; guest_cloudfront_positive_status=200; deletion_count=1; s3_origin_absence_count=1; recipient_unavailable_observation={\"complete\": true, \"hostOK\": true, \"httpUnavailable\": false, \"media\": true, \"missing\": false, \"status\": 200, \"unavailable\": false}; cloudfront_after_delete_status=200; Firefox handler restored; MIME SHA-256 checks passed; desktop frame after masked by live evidence policy; Retained in coordinator follow-up 5: only GNOME/KDE S3 rerun; this same-build P remains from its cited attempt.; Retained in coordinator follow-up 6: only GNOME S3 rerun; this same-build P remains from its cited attempt.",
+      "host": "d69",
+      "placement": "guest",
+      "guest": "cinnamon-x11",
+      "destination": "s3",
+      "review": true,
+      "review_reason": "frame has no visible pixels; visual approval withheld; frame fully masked: live-geometry-unknown-fully-masked (RecipeBlocked: showing secret control has no placement); frame has no visible pixels; visual approval withheld; frame fully masked: ocr-sensitive-text-fully-masked; frame has no visible pixels; visual approval withheld; desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes_live.s3_region_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "independent-frozen-pattern",
+          "path": "frames/outcomes_live.s3_region_upload/01-independent-frozen-pattern.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-content",
+          "path": "frames/outcomes_live.s3_region_upload/02-browser-content.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-before-remote-cleanup",
+          "path": "frames/outcomes_live.s3_region_upload/03-history-before-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "delete-exact-owned-object",
+          "path": "frames/outcomes_live.s3_region_upload/04-delete-exact-owned-object.png",
+          "window": "confirmAction",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-after-remote-cleanup",
+          "path": "frames/outcomes_live.s3_region_upload/05-history-after-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-cloudfront-status-200",
+          "path": "frames/outcomes_live.s3_region_upload/06-browser-cloudfront-status-200.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes_live.s3_region_upload/07-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes_live.s3_region_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T12:14:34Z"
+    },
+    {
+      "interaction": "region.to-upload",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/followup-4/cinnamon/protona/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; desktop frame independent-frozen-pattern masked by live evidence policy; operationId=5fa0cc6b-a568-4c0f-8c1a-2e3fb844832a; Capture operation 5fa0cc6b-a568-4c0f-8c1a-2e3fb844832a; shareOperationId=29eb8ee7-49a9-4e47-b264-4cdf05a18622; operationId=5fa0cc6b-a568-4c0f-8c1a-2e3fb844832a; historyId=665c20d9-ae63-47da-8b3c-17ec1a2ab907; upload_count=1; Retained synthetic png sha256=17c4d5d4d0c8fde0770d01528dff0b1a8c522d399e1d5996d1f0b6c15ee0feca; {\"url_host\": \"drive.proton.me\", \"title\": \"Screen-Capture-2026-10-31-07-15-32.png\", \"matched\": true}; firefox_download_list=[{\"available\": true, \"entries\": [], \"partFileCount\": 0, \"phase\": \"immediately-after-trusted-click\"}, {\"available\": true, \"entries\": [{\"canceled\": false, \"currentBytes\": 1184, \"error\": null, \"hasBlockedData\": false, \"hasPartialData\": false, \"partFilePath\": \"/dev/shm/t1-firefox/putgd-surface-6sgbrnfs/downloads/2XHy87I8.png.part\", \"stopped\": true, \"succeeded\": true, \"target\": \"/dev/shm/t1-firefox/putgd-surface-6sgbrnfs/downloads/Screen-Capture-2026-10-31-07-15-32.png\", \"targetExists\": true, \"totalBytes\": 1184}], \"partFileCount\": 0, \"phase\": \"after-visible-download-confirm-menu\"}, {\"available\": true, \"entries\": [{\"canceled\": false, \"currentBytes\": 1184, \"error\": null, \"hasBlockedData\": false, \"hasPartialData\": false, \"partFilePath\": \"/dev/shm/t1-firefox/putgd-surface-6sgbrnfs/downloads/2XHy87I8.png.part\", \"stopped\": true, \"succeeded\": true, \"target\": \"/dev/shm/t1-firefox/putgd-surface-6sgbrnfs/downloads/Screen-Capture-2026-10-31-07-15-32.png\", \"targetExists\": true, \"totalBytes\": 1184}], \"phase\": \"completed\"}]; recipient_preview_pixels={\"comparison\": \"decoded-RGBA\", \"height\": 280, \"matches\": true, \"naturalHeight\": 280, \"naturalWidth\": 600, \"previewPixelSha256\": \"8c33bc02496340edd3fcb29198f71ad5493d41f53a7ff23af31601db7ee3b1c6\", \"savedPixelSha256\": \"8c33bc02496340edd3fcb29198f71ad5493d41f53a7ff23af31601db7ee3b1c6\", \"scaling\": \"none\", \"tolerance\": 0, \"width\": 600}; browser_hash_match_count=1; remote_hash_match_count=1; shareOperationId=bb6aace1-e690-4caa-aa48-b5cf3bf0f66a; revocation_count=1; recipient_unavailable_observation={\"complete\": true, \"hostOK\": true, \"httpUnavailable\": false, \"media\": false, \"missing\": true, \"status\": 200, \"unavailable\": true}; unavailable_link_count=1; Firefox handler restored; MIME SHA-256 checks passed; desktop frame after masked by live evidence policy; Retained in coordinator follow-up 5: only GNOME/KDE S3 rerun; this same-build P remains from its cited attempt.; Retained in coordinator follow-up 6: only GNOME S3 rerun; this same-build P remains from its cited attempt.",
+      "host": "d69",
+      "placement": "guest",
+      "guest": "cinnamon-x11",
+      "destination": "proton",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes_live.proton_region_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "independent-frozen-pattern",
+          "path": "frames/outcomes_live.proton_region_upload/01-independent-frozen-pattern.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-content",
+          "path": "frames/outcomes_live.proton_region_upload/02-browser-content.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-before-remote-cleanup",
+          "path": "frames/outcomes_live.proton_region_upload/03-history-before-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "revoke-exact-owned-link",
+          "path": "frames/outcomes_live.proton_region_upload/04-revoke-exact-owned-link.png",
+          "window": "confirmAction",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-after-remote-cleanup",
+          "path": "frames/outcomes_live.proton_region_upload/05-history-after-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-link-unavailable",
+          "path": "frames/outcomes_live.proton_region_upload/06-browser-link-unavailable.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes_live.proton_region_upload/07-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes_live.proton_region_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T12:17:10Z"
+    },
+    {
+      "interaction": "region.drag",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/followup-4/cinnamon/protona/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; desktop frame independent-frozen-pattern masked by live evidence policy; operationId=5fa0cc6b-a568-4c0f-8c1a-2e3fb844832a; Capture operation 5fa0cc6b-a568-4c0f-8c1a-2e3fb844832a; shareOperationId=29eb8ee7-49a9-4e47-b264-4cdf05a18622; operationId=5fa0cc6b-a568-4c0f-8c1a-2e3fb844832a; historyId=665c20d9-ae63-47da-8b3c-17ec1a2ab907; upload_count=1; Retained synthetic png sha256=17c4d5d4d0c8fde0770d01528dff0b1a8c522d399e1d5996d1f0b6c15ee0feca; {\"url_host\": \"drive.proton.me\", \"title\": \"Screen-Capture-2026-10-31-07-15-32.png\", \"matched\": true}; firefox_download_list=[{\"available\": true, \"entries\": [], \"partFileCount\": 0, \"phase\": \"immediately-after-trusted-click\"}, {\"available\": true, \"entries\": [{\"canceled\": false, \"currentBytes\": 1184, \"error\": null, \"hasBlockedData\": false, \"hasPartialData\": false, \"partFilePath\": \"/dev/shm/t1-firefox/putgd-surface-6sgbrnfs/downloads/2XHy87I8.png.part\", \"stopped\": true, \"succeeded\": true, \"target\": \"/dev/shm/t1-firefox/putgd-surface-6sgbrnfs/downloads/Screen-Capture-2026-10-31-07-15-32.png\", \"targetExists\": true, \"totalBytes\": 1184}], \"partFileCount\": 0, \"phase\": \"after-visible-download-confirm-menu\"}, {\"available\": true, \"entries\": [{\"canceled\": false, \"currentBytes\": 1184, \"error\": null, \"hasBlockedData\": false, \"hasPartialData\": false, \"partFilePath\": \"/dev/shm/t1-firefox/putgd-surface-6sgbrnfs/downloads/2XHy87I8.png.part\", \"stopped\": true, \"succeeded\": true, \"target\": \"/dev/shm/t1-firefox/putgd-surface-6sgbrnfs/downloads/Screen-Capture-2026-10-31-07-15-32.png\", \"targetExists\": true, \"totalBytes\": 1184}], \"phase\": \"completed\"}]; recipient_preview_pixels={\"comparison\": \"decoded-RGBA\", \"height\": 280, \"matches\": true, \"naturalHeight\": 280, \"naturalWidth\": 600, \"previewPixelSha256\": \"8c33bc02496340edd3fcb29198f71ad5493d41f53a7ff23af31601db7ee3b1c6\", \"savedPixelSha256\": \"8c33bc02496340edd3fcb29198f71ad5493d41f53a7ff23af31601db7ee3b1c6\", \"scaling\": \"none\", \"tolerance\": 0, \"width\": 600}; browser_hash_match_count=1; remote_hash_match_count=1; shareOperationId=bb6aace1-e690-4caa-aa48-b5cf3bf0f66a; revocation_count=1; recipient_unavailable_observation={\"complete\": true, \"hostOK\": true, \"httpUnavailable\": false, \"media\": false, \"missing\": true, \"status\": 200, \"unavailable\": true}; unavailable_link_count=1; Firefox handler restored; MIME SHA-256 checks passed; desktop frame after masked by live evidence policy; Retained in coordinator follow-up 5: only GNOME/KDE S3 rerun; this same-build P remains from its cited attempt.; Retained in coordinator follow-up 6: only GNOME S3 rerun; this same-build P remains from its cited attempt.",
+      "host": "d69",
+      "placement": "guest",
+      "guest": "cinnamon-x11",
+      "destination": "proton",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes_live.proton_region_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "independent-frozen-pattern",
+          "path": "frames/outcomes_live.proton_region_upload/01-independent-frozen-pattern.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-content",
+          "path": "frames/outcomes_live.proton_region_upload/02-browser-content.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-before-remote-cleanup",
+          "path": "frames/outcomes_live.proton_region_upload/03-history-before-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "revoke-exact-owned-link",
+          "path": "frames/outcomes_live.proton_region_upload/04-revoke-exact-owned-link.png",
+          "window": "confirmAction",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-after-remote-cleanup",
+          "path": "frames/outcomes_live.proton_region_upload/05-history-after-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-link-unavailable",
+          "path": "frames/outcomes_live.proton_region_upload/06-browser-link-unavailable.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes_live.proton_region_upload/07-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes_live.proton_region_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T12:17:10Z"
+    },
+    {
+      "interaction": "history.copy-link",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/followup-4/cinnamon/protona/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; desktop frame independent-frozen-pattern masked by live evidence policy; operationId=5fa0cc6b-a568-4c0f-8c1a-2e3fb844832a; Capture operation 5fa0cc6b-a568-4c0f-8c1a-2e3fb844832a; shareOperationId=29eb8ee7-49a9-4e47-b264-4cdf05a18622; operationId=5fa0cc6b-a568-4c0f-8c1a-2e3fb844832a; historyId=665c20d9-ae63-47da-8b3c-17ec1a2ab907; upload_count=1; Retained synthetic png sha256=17c4d5d4d0c8fde0770d01528dff0b1a8c522d399e1d5996d1f0b6c15ee0feca; {\"url_host\": \"drive.proton.me\", \"title\": \"Screen-Capture-2026-10-31-07-15-32.png\", \"matched\": true}; firefox_download_list=[{\"available\": true, \"entries\": [], \"partFileCount\": 0, \"phase\": \"immediately-after-trusted-click\"}, {\"available\": true, \"entries\": [{\"canceled\": false, \"currentBytes\": 1184, \"error\": null, \"hasBlockedData\": false, \"hasPartialData\": false, \"partFilePath\": \"/dev/shm/t1-firefox/putgd-surface-6sgbrnfs/downloads/2XHy87I8.png.part\", \"stopped\": true, \"succeeded\": true, \"target\": \"/dev/shm/t1-firefox/putgd-surface-6sgbrnfs/downloads/Screen-Capture-2026-10-31-07-15-32.png\", \"targetExists\": true, \"totalBytes\": 1184}], \"partFileCount\": 0, \"phase\": \"after-visible-download-confirm-menu\"}, {\"available\": true, \"entries\": [{\"canceled\": false, \"currentBytes\": 1184, \"error\": null, \"hasBlockedData\": false, \"hasPartialData\": false, \"partFilePath\": \"/dev/shm/t1-firefox/putgd-surface-6sgbrnfs/downloads/2XHy87I8.png.part\", \"stopped\": true, \"succeeded\": true, \"target\": \"/dev/shm/t1-firefox/putgd-surface-6sgbrnfs/downloads/Screen-Capture-2026-10-31-07-15-32.png\", \"targetExists\": true, \"totalBytes\": 1184}], \"phase\": \"completed\"}]; recipient_preview_pixels={\"comparison\": \"decoded-RGBA\", \"height\": 280, \"matches\": true, \"naturalHeight\": 280, \"naturalWidth\": 600, \"previewPixelSha256\": \"8c33bc02496340edd3fcb29198f71ad5493d41f53a7ff23af31601db7ee3b1c6\", \"savedPixelSha256\": \"8c33bc02496340edd3fcb29198f71ad5493d41f53a7ff23af31601db7ee3b1c6\", \"scaling\": \"none\", \"tolerance\": 0, \"width\": 600}; browser_hash_match_count=1; remote_hash_match_count=1; shareOperationId=bb6aace1-e690-4caa-aa48-b5cf3bf0f66a; revocation_count=1; recipient_unavailable_observation={\"complete\": true, \"hostOK\": true, \"httpUnavailable\": false, \"media\": false, \"missing\": true, \"status\": 200, \"unavailable\": true}; unavailable_link_count=1; Firefox handler restored; MIME SHA-256 checks passed; desktop frame after masked by live evidence policy; Retained in coordinator follow-up 5: only GNOME/KDE S3 rerun; this same-build P remains from its cited attempt.; Retained in coordinator follow-up 6: only GNOME S3 rerun; this same-build P remains from its cited attempt.",
+      "host": "d69",
+      "placement": "guest",
+      "guest": "cinnamon-x11",
+      "destination": "proton",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes_live.proton_region_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "independent-frozen-pattern",
+          "path": "frames/outcomes_live.proton_region_upload/01-independent-frozen-pattern.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-content",
+          "path": "frames/outcomes_live.proton_region_upload/02-browser-content.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-before-remote-cleanup",
+          "path": "frames/outcomes_live.proton_region_upload/03-history-before-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "revoke-exact-owned-link",
+          "path": "frames/outcomes_live.proton_region_upload/04-revoke-exact-owned-link.png",
+          "window": "confirmAction",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-after-remote-cleanup",
+          "path": "frames/outcomes_live.proton_region_upload/05-history-after-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-link-unavailable",
+          "path": "frames/outcomes_live.proton_region_upload/06-browser-link-unavailable.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes_live.proton_region_upload/07-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes_live.proton_region_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T12:17:10Z"
+    },
+    {
+      "interaction": "history.open-link",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/followup-4/cinnamon/protona/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; desktop frame independent-frozen-pattern masked by live evidence policy; operationId=5fa0cc6b-a568-4c0f-8c1a-2e3fb844832a; Capture operation 5fa0cc6b-a568-4c0f-8c1a-2e3fb844832a; shareOperationId=29eb8ee7-49a9-4e47-b264-4cdf05a18622; operationId=5fa0cc6b-a568-4c0f-8c1a-2e3fb844832a; historyId=665c20d9-ae63-47da-8b3c-17ec1a2ab907; upload_count=1; Retained synthetic png sha256=17c4d5d4d0c8fde0770d01528dff0b1a8c522d399e1d5996d1f0b6c15ee0feca; {\"url_host\": \"drive.proton.me\", \"title\": \"Screen-Capture-2026-10-31-07-15-32.png\", \"matched\": true}; firefox_download_list=[{\"available\": true, \"entries\": [], \"partFileCount\": 0, \"phase\": \"immediately-after-trusted-click\"}, {\"available\": true, \"entries\": [{\"canceled\": false, \"currentBytes\": 1184, \"error\": null, \"hasBlockedData\": false, \"hasPartialData\": false, \"partFilePath\": \"/dev/shm/t1-firefox/putgd-surface-6sgbrnfs/downloads/2XHy87I8.png.part\", \"stopped\": true, \"succeeded\": true, \"target\": \"/dev/shm/t1-firefox/putgd-surface-6sgbrnfs/downloads/Screen-Capture-2026-10-31-07-15-32.png\", \"targetExists\": true, \"totalBytes\": 1184}], \"partFileCount\": 0, \"phase\": \"after-visible-download-confirm-menu\"}, {\"available\": true, \"entries\": [{\"canceled\": false, \"currentBytes\": 1184, \"error\": null, \"hasBlockedData\": false, \"hasPartialData\": false, \"partFilePath\": \"/dev/shm/t1-firefox/putgd-surface-6sgbrnfs/downloads/2XHy87I8.png.part\", \"stopped\": true, \"succeeded\": true, \"target\": \"/dev/shm/t1-firefox/putgd-surface-6sgbrnfs/downloads/Screen-Capture-2026-10-31-07-15-32.png\", \"targetExists\": true, \"totalBytes\": 1184}], \"phase\": \"completed\"}]; recipient_preview_pixels={\"comparison\": \"decoded-RGBA\", \"height\": 280, \"matches\": true, \"naturalHeight\": 280, \"naturalWidth\": 600, \"previewPixelSha256\": \"8c33bc02496340edd3fcb29198f71ad5493d41f53a7ff23af31601db7ee3b1c6\", \"savedPixelSha256\": \"8c33bc02496340edd3fcb29198f71ad5493d41f53a7ff23af31601db7ee3b1c6\", \"scaling\": \"none\", \"tolerance\": 0, \"width\": 600}; browser_hash_match_count=1; remote_hash_match_count=1; shareOperationId=bb6aace1-e690-4caa-aa48-b5cf3bf0f66a; revocation_count=1; recipient_unavailable_observation={\"complete\": true, \"hostOK\": true, \"httpUnavailable\": false, \"media\": false, \"missing\": true, \"status\": 200, \"unavailable\": true}; unavailable_link_count=1; Firefox handler restored; MIME SHA-256 checks passed; desktop frame after masked by live evidence policy; Retained in coordinator follow-up 5: only GNOME/KDE S3 rerun; this same-build P remains from its cited attempt.; Retained in coordinator follow-up 6: only GNOME S3 rerun; this same-build P remains from its cited attempt.",
+      "host": "d69",
+      "placement": "guest",
+      "guest": "cinnamon-x11",
+      "destination": "proton",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes_live.proton_region_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "independent-frozen-pattern",
+          "path": "frames/outcomes_live.proton_region_upload/01-independent-frozen-pattern.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-content",
+          "path": "frames/outcomes_live.proton_region_upload/02-browser-content.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-before-remote-cleanup",
+          "path": "frames/outcomes_live.proton_region_upload/03-history-before-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "revoke-exact-owned-link",
+          "path": "frames/outcomes_live.proton_region_upload/04-revoke-exact-owned-link.png",
+          "window": "confirmAction",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-after-remote-cleanup",
+          "path": "frames/outcomes_live.proton_region_upload/05-history-after-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-link-unavailable",
+          "path": "frames/outcomes_live.proton_region_upload/06-browser-link-unavailable.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes_live.proton_region_upload/07-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes_live.proton_region_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T12:17:10Z"
+    },
+    {
+      "interaction": "history.proton-sharing",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/followup-4/cinnamon/protona/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; desktop frame independent-frozen-pattern masked by live evidence policy; operationId=5fa0cc6b-a568-4c0f-8c1a-2e3fb844832a; Capture operation 5fa0cc6b-a568-4c0f-8c1a-2e3fb844832a; shareOperationId=29eb8ee7-49a9-4e47-b264-4cdf05a18622; operationId=5fa0cc6b-a568-4c0f-8c1a-2e3fb844832a; historyId=665c20d9-ae63-47da-8b3c-17ec1a2ab907; upload_count=1; Retained synthetic png sha256=17c4d5d4d0c8fde0770d01528dff0b1a8c522d399e1d5996d1f0b6c15ee0feca; {\"url_host\": \"drive.proton.me\", \"title\": \"Screen-Capture-2026-10-31-07-15-32.png\", \"matched\": true}; firefox_download_list=[{\"available\": true, \"entries\": [], \"partFileCount\": 0, \"phase\": \"immediately-after-trusted-click\"}, {\"available\": true, \"entries\": [{\"canceled\": false, \"currentBytes\": 1184, \"error\": null, \"hasBlockedData\": false, \"hasPartialData\": false, \"partFilePath\": \"/dev/shm/t1-firefox/putgd-surface-6sgbrnfs/downloads/2XHy87I8.png.part\", \"stopped\": true, \"succeeded\": true, \"target\": \"/dev/shm/t1-firefox/putgd-surface-6sgbrnfs/downloads/Screen-Capture-2026-10-31-07-15-32.png\", \"targetExists\": true, \"totalBytes\": 1184}], \"partFileCount\": 0, \"phase\": \"after-visible-download-confirm-menu\"}, {\"available\": true, \"entries\": [{\"canceled\": false, \"currentBytes\": 1184, \"error\": null, \"hasBlockedData\": false, \"hasPartialData\": false, \"partFilePath\": \"/dev/shm/t1-firefox/putgd-surface-6sgbrnfs/downloads/2XHy87I8.png.part\", \"stopped\": true, \"succeeded\": true, \"target\": \"/dev/shm/t1-firefox/putgd-surface-6sgbrnfs/downloads/Screen-Capture-2026-10-31-07-15-32.png\", \"targetExists\": true, \"totalBytes\": 1184}], \"phase\": \"completed\"}]; recipient_preview_pixels={\"comparison\": \"decoded-RGBA\", \"height\": 280, \"matches\": true, \"naturalHeight\": 280, \"naturalWidth\": 600, \"previewPixelSha256\": \"8c33bc02496340edd3fcb29198f71ad5493d41f53a7ff23af31601db7ee3b1c6\", \"savedPixelSha256\": \"8c33bc02496340edd3fcb29198f71ad5493d41f53a7ff23af31601db7ee3b1c6\", \"scaling\": \"none\", \"tolerance\": 0, \"width\": 600}; browser_hash_match_count=1; remote_hash_match_count=1; shareOperationId=bb6aace1-e690-4caa-aa48-b5cf3bf0f66a; revocation_count=1; recipient_unavailable_observation={\"complete\": true, \"hostOK\": true, \"httpUnavailable\": false, \"media\": false, \"missing\": true, \"status\": 200, \"unavailable\": true}; unavailable_link_count=1; Firefox handler restored; MIME SHA-256 checks passed; desktop frame after masked by live evidence policy; Retained in coordinator follow-up 5: only GNOME/KDE S3 rerun; this same-build P remains from its cited attempt.; Retained in coordinator follow-up 6: only GNOME S3 rerun; this same-build P remains from its cited attempt.",
+      "host": "d69",
+      "placement": "guest",
+      "guest": "cinnamon-x11",
+      "destination": "proton",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes_live.proton_region_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "independent-frozen-pattern",
+          "path": "frames/outcomes_live.proton_region_upload/01-independent-frozen-pattern.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-content",
+          "path": "frames/outcomes_live.proton_region_upload/02-browser-content.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-before-remote-cleanup",
+          "path": "frames/outcomes_live.proton_region_upload/03-history-before-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "revoke-exact-owned-link",
+          "path": "frames/outcomes_live.proton_region_upload/04-revoke-exact-owned-link.png",
+          "window": "confirmAction",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-after-remote-cleanup",
+          "path": "frames/outcomes_live.proton_region_upload/05-history-after-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-link-unavailable",
+          "path": "frames/outcomes_live.proton_region_upload/06-browser-link-unavailable.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes_live.proton_region_upload/07-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes_live.proton_region_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T12:17:10Z"
+    },
+    {
+      "interaction": "confirm.revoke-link",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/followup-4/cinnamon/protona/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; desktop frame independent-frozen-pattern masked by live evidence policy; operationId=5fa0cc6b-a568-4c0f-8c1a-2e3fb844832a; Capture operation 5fa0cc6b-a568-4c0f-8c1a-2e3fb844832a; shareOperationId=29eb8ee7-49a9-4e47-b264-4cdf05a18622; operationId=5fa0cc6b-a568-4c0f-8c1a-2e3fb844832a; historyId=665c20d9-ae63-47da-8b3c-17ec1a2ab907; upload_count=1; Retained synthetic png sha256=17c4d5d4d0c8fde0770d01528dff0b1a8c522d399e1d5996d1f0b6c15ee0feca; {\"url_host\": \"drive.proton.me\", \"title\": \"Screen-Capture-2026-10-31-07-15-32.png\", \"matched\": true}; firefox_download_list=[{\"available\": true, \"entries\": [], \"partFileCount\": 0, \"phase\": \"immediately-after-trusted-click\"}, {\"available\": true, \"entries\": [{\"canceled\": false, \"currentBytes\": 1184, \"error\": null, \"hasBlockedData\": false, \"hasPartialData\": false, \"partFilePath\": \"/dev/shm/t1-firefox/putgd-surface-6sgbrnfs/downloads/2XHy87I8.png.part\", \"stopped\": true, \"succeeded\": true, \"target\": \"/dev/shm/t1-firefox/putgd-surface-6sgbrnfs/downloads/Screen-Capture-2026-10-31-07-15-32.png\", \"targetExists\": true, \"totalBytes\": 1184}], \"partFileCount\": 0, \"phase\": \"after-visible-download-confirm-menu\"}, {\"available\": true, \"entries\": [{\"canceled\": false, \"currentBytes\": 1184, \"error\": null, \"hasBlockedData\": false, \"hasPartialData\": false, \"partFilePath\": \"/dev/shm/t1-firefox/putgd-surface-6sgbrnfs/downloads/2XHy87I8.png.part\", \"stopped\": true, \"succeeded\": true, \"target\": \"/dev/shm/t1-firefox/putgd-surface-6sgbrnfs/downloads/Screen-Capture-2026-10-31-07-15-32.png\", \"targetExists\": true, \"totalBytes\": 1184}], \"phase\": \"completed\"}]; recipient_preview_pixels={\"comparison\": \"decoded-RGBA\", \"height\": 280, \"matches\": true, \"naturalHeight\": 280, \"naturalWidth\": 600, \"previewPixelSha256\": \"8c33bc02496340edd3fcb29198f71ad5493d41f53a7ff23af31601db7ee3b1c6\", \"savedPixelSha256\": \"8c33bc02496340edd3fcb29198f71ad5493d41f53a7ff23af31601db7ee3b1c6\", \"scaling\": \"none\", \"tolerance\": 0, \"width\": 600}; browser_hash_match_count=1; remote_hash_match_count=1; shareOperationId=bb6aace1-e690-4caa-aa48-b5cf3bf0f66a; revocation_count=1; recipient_unavailable_observation={\"complete\": true, \"hostOK\": true, \"httpUnavailable\": false, \"media\": false, \"missing\": true, \"status\": 200, \"unavailable\": true}; unavailable_link_count=1; Firefox handler restored; MIME SHA-256 checks passed; desktop frame after masked by live evidence policy; Retained in coordinator follow-up 5: only GNOME/KDE S3 rerun; this same-build P remains from its cited attempt.; Retained in coordinator follow-up 6: only GNOME S3 rerun; this same-build P remains from its cited attempt.",
+      "host": "d69",
+      "placement": "guest",
+      "guest": "cinnamon-x11",
+      "destination": "proton",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes_live.proton_region_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "independent-frozen-pattern",
+          "path": "frames/outcomes_live.proton_region_upload/01-independent-frozen-pattern.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-content",
+          "path": "frames/outcomes_live.proton_region_upload/02-browser-content.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-before-remote-cleanup",
+          "path": "frames/outcomes_live.proton_region_upload/03-history-before-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "revoke-exact-owned-link",
+          "path": "frames/outcomes_live.proton_region_upload/04-revoke-exact-owned-link.png",
+          "window": "confirmAction",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-after-remote-cleanup",
+          "path": "frames/outcomes_live.proton_region_upload/05-history-after-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-link-unavailable",
+          "path": "frames/outcomes_live.proton_region_upload/06-browser-link-unavailable.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes_live.proton_region_upload/07-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes_live.proton_region_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T12:17:10Z"
+    },
+    {
+      "interaction": "region.to-upload",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/followup-3/gnome/protona/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; desktop frame independent-frozen-pattern masked by live evidence policy; operationId=94c8a6ed-6e5e-4aeb-9f92-df53f31e15fc; Capture operation 94c8a6ed-6e5e-4aeb-9f92-df53f31e15fc; shareOperationId=43f8646c-0e48-4f82-abb6-072ba862cbcf; operationId=94c8a6ed-6e5e-4aeb-9f92-df53f31e15fc; historyId=fb6f7a97-c89e-4086-be8f-a8e019f72689; upload_count=1; Retained synthetic png sha256=1242e5054e79eb22d9ab3b4bd367506fbd5ff5b0ee22a7ec4fd6ee55404060be; {\"url_host\": \"drive.proton.me\", \"title\": \"Screen-Capture-2026-10-31-01-55-20.png\", \"matched\": true}; firefox_download_list=[{\"available\": true, \"entries\": [], \"partFileCount\": 0, \"phase\": \"immediately-after-trusted-click\"}, {\"available\": true, \"entries\": [{\"canceled\": false, \"currentBytes\": 1491, \"error\": null, \"hasBlockedData\": false, \"hasPartialData\": false, \"partFilePath\": \"/dev/shm/t1-firefox/putgd-surface-2tdpqxhp/downloads/0JHRjE0k.png.part\", \"stopped\": true, \"succeeded\": true, \"target\": \"/dev/shm/t1-firefox/putgd-surface-2tdpqxhp/downloads/Screen-Capture-2026-10-31-01-55-20.png\", \"targetExists\": true, \"totalBytes\": 1491}], \"partFileCount\": 0, \"phase\": \"after-visible-download-confirm-menu\"}, {\"available\": true, \"entries\": [{\"canceled\": false, \"currentBytes\": 1491, \"error\": null, \"hasBlockedData\": false, \"hasPartialData\": false, \"partFilePath\": \"/dev/shm/t1-firefox/putgd-surface-2tdpqxhp/downloads/0JHRjE0k.png.part\", \"stopped\": true, \"succeeded\": true, \"target\": \"/dev/shm/t1-firefox/putgd-surface-2tdpqxhp/downloads/Screen-Capture-2026-10-31-01-55-20.png\", \"targetExists\": true, \"totalBytes\": 1491}], \"phase\": \"completed\"}]; recipient_preview_pixels={\"comparison\": \"decoded-RGBA\", \"height\": 280, \"matches\": true, \"naturalHeight\": 280, \"naturalWidth\": 600, \"previewPixelSha256\": \"d273c33841f95003c67726eae72367badce59fad49b2c44f2c8b541ce12777c7\", \"savedPixelSha256\": \"d273c33841f95003c67726eae72367badce59fad49b2c44f2c8b541ce12777c7\", \"scaling\": \"none\", \"tolerance\": 0, \"width\": 600}; browser_hash_match_count=1; remote_hash_match_count=1; shareOperationId=8c2e3291-8e79-40db-a0a4-c8534960e792; revocation_count=1; recipient_unavailable_observation={\"complete\": true, \"hostOK\": true, \"httpUnavailable\": false, \"media\": false, \"missing\": true, \"status\": 200, \"unavailable\": true}; unavailable_link_count=1; Firefox handler restored; MIME SHA-256 checks passed; desktop frame after masked by live evidence policy; Reused in coordinator follow-up 4 as explicitly authorized; original-file hash, revocation and fresh unavailable proof remain from follow-up 3 on the same exact app build.; Retained in coordinator follow-up 5: only GNOME/KDE S3 rerun; this same-build P remains from its cited attempt.; Retained in coordinator follow-up 6: only GNOME S3 rerun; this same-build P remains from its cited attempt.",
+      "host": "d69",
+      "placement": "guest",
+      "guest": "gnome-wayland",
+      "destination": "proton",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes_live.proton_region_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "independent-frozen-pattern",
+          "path": "frames/outcomes_live.proton_region_upload/01-independent-frozen-pattern.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-content",
+          "path": "frames/outcomes_live.proton_region_upload/02-browser-content.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-before-remote-cleanup",
+          "path": "frames/outcomes_live.proton_region_upload/03-history-before-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "revoke-exact-owned-link",
+          "path": "frames/outcomes_live.proton_region_upload/04-revoke-exact-owned-link.png",
+          "window": "confirmAction",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-after-remote-cleanup",
+          "path": "frames/outcomes_live.proton_region_upload/05-history-after-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-link-unavailable",
+          "path": "frames/outcomes_live.proton_region_upload/06-browser-link-unavailable.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes_live.proton_region_upload/07-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes_live.proton_region_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T06:56:49Z"
+    },
+    {
+      "interaction": "region.drag",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/followup-3/gnome/protona/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; desktop frame independent-frozen-pattern masked by live evidence policy; operationId=94c8a6ed-6e5e-4aeb-9f92-df53f31e15fc; Capture operation 94c8a6ed-6e5e-4aeb-9f92-df53f31e15fc; shareOperationId=43f8646c-0e48-4f82-abb6-072ba862cbcf; operationId=94c8a6ed-6e5e-4aeb-9f92-df53f31e15fc; historyId=fb6f7a97-c89e-4086-be8f-a8e019f72689; upload_count=1; Retained synthetic png sha256=1242e5054e79eb22d9ab3b4bd367506fbd5ff5b0ee22a7ec4fd6ee55404060be; {\"url_host\": \"drive.proton.me\", \"title\": \"Screen-Capture-2026-10-31-01-55-20.png\", \"matched\": true}; firefox_download_list=[{\"available\": true, \"entries\": [], \"partFileCount\": 0, \"phase\": \"immediately-after-trusted-click\"}, {\"available\": true, \"entries\": [{\"canceled\": false, \"currentBytes\": 1491, \"error\": null, \"hasBlockedData\": false, \"hasPartialData\": false, \"partFilePath\": \"/dev/shm/t1-firefox/putgd-surface-2tdpqxhp/downloads/0JHRjE0k.png.part\", \"stopped\": true, \"succeeded\": true, \"target\": \"/dev/shm/t1-firefox/putgd-surface-2tdpqxhp/downloads/Screen-Capture-2026-10-31-01-55-20.png\", \"targetExists\": true, \"totalBytes\": 1491}], \"partFileCount\": 0, \"phase\": \"after-visible-download-confirm-menu\"}, {\"available\": true, \"entries\": [{\"canceled\": false, \"currentBytes\": 1491, \"error\": null, \"hasBlockedData\": false, \"hasPartialData\": false, \"partFilePath\": \"/dev/shm/t1-firefox/putgd-surface-2tdpqxhp/downloads/0JHRjE0k.png.part\", \"stopped\": true, \"succeeded\": true, \"target\": \"/dev/shm/t1-firefox/putgd-surface-2tdpqxhp/downloads/Screen-Capture-2026-10-31-01-55-20.png\", \"targetExists\": true, \"totalBytes\": 1491}], \"phase\": \"completed\"}]; recipient_preview_pixels={\"comparison\": \"decoded-RGBA\", \"height\": 280, \"matches\": true, \"naturalHeight\": 280, \"naturalWidth\": 600, \"previewPixelSha256\": \"d273c33841f95003c67726eae72367badce59fad49b2c44f2c8b541ce12777c7\", \"savedPixelSha256\": \"d273c33841f95003c67726eae72367badce59fad49b2c44f2c8b541ce12777c7\", \"scaling\": \"none\", \"tolerance\": 0, \"width\": 600}; browser_hash_match_count=1; remote_hash_match_count=1; shareOperationId=8c2e3291-8e79-40db-a0a4-c8534960e792; revocation_count=1; recipient_unavailable_observation={\"complete\": true, \"hostOK\": true, \"httpUnavailable\": false, \"media\": false, \"missing\": true, \"status\": 200, \"unavailable\": true}; unavailable_link_count=1; Firefox handler restored; MIME SHA-256 checks passed; desktop frame after masked by live evidence policy; Reused in coordinator follow-up 4 as explicitly authorized; original-file hash, revocation and fresh unavailable proof remain from follow-up 3 on the same exact app build.; Retained in coordinator follow-up 5: only GNOME/KDE S3 rerun; this same-build P remains from its cited attempt.; Retained in coordinator follow-up 6: only GNOME S3 rerun; this same-build P remains from its cited attempt.",
+      "host": "d69",
+      "placement": "guest",
+      "guest": "gnome-wayland",
+      "destination": "proton",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes_live.proton_region_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "independent-frozen-pattern",
+          "path": "frames/outcomes_live.proton_region_upload/01-independent-frozen-pattern.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-content",
+          "path": "frames/outcomes_live.proton_region_upload/02-browser-content.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-before-remote-cleanup",
+          "path": "frames/outcomes_live.proton_region_upload/03-history-before-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "revoke-exact-owned-link",
+          "path": "frames/outcomes_live.proton_region_upload/04-revoke-exact-owned-link.png",
+          "window": "confirmAction",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-after-remote-cleanup",
+          "path": "frames/outcomes_live.proton_region_upload/05-history-after-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-link-unavailable",
+          "path": "frames/outcomes_live.proton_region_upload/06-browser-link-unavailable.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes_live.proton_region_upload/07-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes_live.proton_region_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T06:56:49Z"
+    },
+    {
+      "interaction": "history.copy-link",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/followup-3/gnome/protona/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; desktop frame independent-frozen-pattern masked by live evidence policy; operationId=94c8a6ed-6e5e-4aeb-9f92-df53f31e15fc; Capture operation 94c8a6ed-6e5e-4aeb-9f92-df53f31e15fc; shareOperationId=43f8646c-0e48-4f82-abb6-072ba862cbcf; operationId=94c8a6ed-6e5e-4aeb-9f92-df53f31e15fc; historyId=fb6f7a97-c89e-4086-be8f-a8e019f72689; upload_count=1; Retained synthetic png sha256=1242e5054e79eb22d9ab3b4bd367506fbd5ff5b0ee22a7ec4fd6ee55404060be; {\"url_host\": \"drive.proton.me\", \"title\": \"Screen-Capture-2026-10-31-01-55-20.png\", \"matched\": true}; firefox_download_list=[{\"available\": true, \"entries\": [], \"partFileCount\": 0, \"phase\": \"immediately-after-trusted-click\"}, {\"available\": true, \"entries\": [{\"canceled\": false, \"currentBytes\": 1491, \"error\": null, \"hasBlockedData\": false, \"hasPartialData\": false, \"partFilePath\": \"/dev/shm/t1-firefox/putgd-surface-2tdpqxhp/downloads/0JHRjE0k.png.part\", \"stopped\": true, \"succeeded\": true, \"target\": \"/dev/shm/t1-firefox/putgd-surface-2tdpqxhp/downloads/Screen-Capture-2026-10-31-01-55-20.png\", \"targetExists\": true, \"totalBytes\": 1491}], \"partFileCount\": 0, \"phase\": \"after-visible-download-confirm-menu\"}, {\"available\": true, \"entries\": [{\"canceled\": false, \"currentBytes\": 1491, \"error\": null, \"hasBlockedData\": false, \"hasPartialData\": false, \"partFilePath\": \"/dev/shm/t1-firefox/putgd-surface-2tdpqxhp/downloads/0JHRjE0k.png.part\", \"stopped\": true, \"succeeded\": true, \"target\": \"/dev/shm/t1-firefox/putgd-surface-2tdpqxhp/downloads/Screen-Capture-2026-10-31-01-55-20.png\", \"targetExists\": true, \"totalBytes\": 1491}], \"phase\": \"completed\"}]; recipient_preview_pixels={\"comparison\": \"decoded-RGBA\", \"height\": 280, \"matches\": true, \"naturalHeight\": 280, \"naturalWidth\": 600, \"previewPixelSha256\": \"d273c33841f95003c67726eae72367badce59fad49b2c44f2c8b541ce12777c7\", \"savedPixelSha256\": \"d273c33841f95003c67726eae72367badce59fad49b2c44f2c8b541ce12777c7\", \"scaling\": \"none\", \"tolerance\": 0, \"width\": 600}; browser_hash_match_count=1; remote_hash_match_count=1; shareOperationId=8c2e3291-8e79-40db-a0a4-c8534960e792; revocation_count=1; recipient_unavailable_observation={\"complete\": true, \"hostOK\": true, \"httpUnavailable\": false, \"media\": false, \"missing\": true, \"status\": 200, \"unavailable\": true}; unavailable_link_count=1; Firefox handler restored; MIME SHA-256 checks passed; desktop frame after masked by live evidence policy; Reused in coordinator follow-up 4 as explicitly authorized; original-file hash, revocation and fresh unavailable proof remain from follow-up 3 on the same exact app build.; Retained in coordinator follow-up 5: only GNOME/KDE S3 rerun; this same-build P remains from its cited attempt.; Retained in coordinator follow-up 6: only GNOME S3 rerun; this same-build P remains from its cited attempt.",
+      "host": "d69",
+      "placement": "guest",
+      "guest": "gnome-wayland",
+      "destination": "proton",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes_live.proton_region_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "independent-frozen-pattern",
+          "path": "frames/outcomes_live.proton_region_upload/01-independent-frozen-pattern.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-content",
+          "path": "frames/outcomes_live.proton_region_upload/02-browser-content.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-before-remote-cleanup",
+          "path": "frames/outcomes_live.proton_region_upload/03-history-before-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "revoke-exact-owned-link",
+          "path": "frames/outcomes_live.proton_region_upload/04-revoke-exact-owned-link.png",
+          "window": "confirmAction",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-after-remote-cleanup",
+          "path": "frames/outcomes_live.proton_region_upload/05-history-after-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-link-unavailable",
+          "path": "frames/outcomes_live.proton_region_upload/06-browser-link-unavailable.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes_live.proton_region_upload/07-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes_live.proton_region_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T06:56:49Z"
+    },
+    {
+      "interaction": "history.open-link",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/followup-3/gnome/protona/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; desktop frame independent-frozen-pattern masked by live evidence policy; operationId=94c8a6ed-6e5e-4aeb-9f92-df53f31e15fc; Capture operation 94c8a6ed-6e5e-4aeb-9f92-df53f31e15fc; shareOperationId=43f8646c-0e48-4f82-abb6-072ba862cbcf; operationId=94c8a6ed-6e5e-4aeb-9f92-df53f31e15fc; historyId=fb6f7a97-c89e-4086-be8f-a8e019f72689; upload_count=1; Retained synthetic png sha256=1242e5054e79eb22d9ab3b4bd367506fbd5ff5b0ee22a7ec4fd6ee55404060be; {\"url_host\": \"drive.proton.me\", \"title\": \"Screen-Capture-2026-10-31-01-55-20.png\", \"matched\": true}; firefox_download_list=[{\"available\": true, \"entries\": [], \"partFileCount\": 0, \"phase\": \"immediately-after-trusted-click\"}, {\"available\": true, \"entries\": [{\"canceled\": false, \"currentBytes\": 1491, \"error\": null, \"hasBlockedData\": false, \"hasPartialData\": false, \"partFilePath\": \"/dev/shm/t1-firefox/putgd-surface-2tdpqxhp/downloads/0JHRjE0k.png.part\", \"stopped\": true, \"succeeded\": true, \"target\": \"/dev/shm/t1-firefox/putgd-surface-2tdpqxhp/downloads/Screen-Capture-2026-10-31-01-55-20.png\", \"targetExists\": true, \"totalBytes\": 1491}], \"partFileCount\": 0, \"phase\": \"after-visible-download-confirm-menu\"}, {\"available\": true, \"entries\": [{\"canceled\": false, \"currentBytes\": 1491, \"error\": null, \"hasBlockedData\": false, \"hasPartialData\": false, \"partFilePath\": \"/dev/shm/t1-firefox/putgd-surface-2tdpqxhp/downloads/0JHRjE0k.png.part\", \"stopped\": true, \"succeeded\": true, \"target\": \"/dev/shm/t1-firefox/putgd-surface-2tdpqxhp/downloads/Screen-Capture-2026-10-31-01-55-20.png\", \"targetExists\": true, \"totalBytes\": 1491}], \"phase\": \"completed\"}]; recipient_preview_pixels={\"comparison\": \"decoded-RGBA\", \"height\": 280, \"matches\": true, \"naturalHeight\": 280, \"naturalWidth\": 600, \"previewPixelSha256\": \"d273c33841f95003c67726eae72367badce59fad49b2c44f2c8b541ce12777c7\", \"savedPixelSha256\": \"d273c33841f95003c67726eae72367badce59fad49b2c44f2c8b541ce12777c7\", \"scaling\": \"none\", \"tolerance\": 0, \"width\": 600}; browser_hash_match_count=1; remote_hash_match_count=1; shareOperationId=8c2e3291-8e79-40db-a0a4-c8534960e792; revocation_count=1; recipient_unavailable_observation={\"complete\": true, \"hostOK\": true, \"httpUnavailable\": false, \"media\": false, \"missing\": true, \"status\": 200, \"unavailable\": true}; unavailable_link_count=1; Firefox handler restored; MIME SHA-256 checks passed; desktop frame after masked by live evidence policy; Reused in coordinator follow-up 4 as explicitly authorized; original-file hash, revocation and fresh unavailable proof remain from follow-up 3 on the same exact app build.; Retained in coordinator follow-up 5: only GNOME/KDE S3 rerun; this same-build P remains from its cited attempt.; Retained in coordinator follow-up 6: only GNOME S3 rerun; this same-build P remains from its cited attempt.",
+      "host": "d69",
+      "placement": "guest",
+      "guest": "gnome-wayland",
+      "destination": "proton",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes_live.proton_region_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "independent-frozen-pattern",
+          "path": "frames/outcomes_live.proton_region_upload/01-independent-frozen-pattern.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-content",
+          "path": "frames/outcomes_live.proton_region_upload/02-browser-content.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-before-remote-cleanup",
+          "path": "frames/outcomes_live.proton_region_upload/03-history-before-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "revoke-exact-owned-link",
+          "path": "frames/outcomes_live.proton_region_upload/04-revoke-exact-owned-link.png",
+          "window": "confirmAction",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-after-remote-cleanup",
+          "path": "frames/outcomes_live.proton_region_upload/05-history-after-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-link-unavailable",
+          "path": "frames/outcomes_live.proton_region_upload/06-browser-link-unavailable.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes_live.proton_region_upload/07-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes_live.proton_region_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T06:56:49Z"
+    },
+    {
+      "interaction": "history.proton-sharing",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/followup-3/gnome/protona/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; desktop frame independent-frozen-pattern masked by live evidence policy; operationId=94c8a6ed-6e5e-4aeb-9f92-df53f31e15fc; Capture operation 94c8a6ed-6e5e-4aeb-9f92-df53f31e15fc; shareOperationId=43f8646c-0e48-4f82-abb6-072ba862cbcf; operationId=94c8a6ed-6e5e-4aeb-9f92-df53f31e15fc; historyId=fb6f7a97-c89e-4086-be8f-a8e019f72689; upload_count=1; Retained synthetic png sha256=1242e5054e79eb22d9ab3b4bd367506fbd5ff5b0ee22a7ec4fd6ee55404060be; {\"url_host\": \"drive.proton.me\", \"title\": \"Screen-Capture-2026-10-31-01-55-20.png\", \"matched\": true}; firefox_download_list=[{\"available\": true, \"entries\": [], \"partFileCount\": 0, \"phase\": \"immediately-after-trusted-click\"}, {\"available\": true, \"entries\": [{\"canceled\": false, \"currentBytes\": 1491, \"error\": null, \"hasBlockedData\": false, \"hasPartialData\": false, \"partFilePath\": \"/dev/shm/t1-firefox/putgd-surface-2tdpqxhp/downloads/0JHRjE0k.png.part\", \"stopped\": true, \"succeeded\": true, \"target\": \"/dev/shm/t1-firefox/putgd-surface-2tdpqxhp/downloads/Screen-Capture-2026-10-31-01-55-20.png\", \"targetExists\": true, \"totalBytes\": 1491}], \"partFileCount\": 0, \"phase\": \"after-visible-download-confirm-menu\"}, {\"available\": true, \"entries\": [{\"canceled\": false, \"currentBytes\": 1491, \"error\": null, \"hasBlockedData\": false, \"hasPartialData\": false, \"partFilePath\": \"/dev/shm/t1-firefox/putgd-surface-2tdpqxhp/downloads/0JHRjE0k.png.part\", \"stopped\": true, \"succeeded\": true, \"target\": \"/dev/shm/t1-firefox/putgd-surface-2tdpqxhp/downloads/Screen-Capture-2026-10-31-01-55-20.png\", \"targetExists\": true, \"totalBytes\": 1491}], \"phase\": \"completed\"}]; recipient_preview_pixels={\"comparison\": \"decoded-RGBA\", \"height\": 280, \"matches\": true, \"naturalHeight\": 280, \"naturalWidth\": 600, \"previewPixelSha256\": \"d273c33841f95003c67726eae72367badce59fad49b2c44f2c8b541ce12777c7\", \"savedPixelSha256\": \"d273c33841f95003c67726eae72367badce59fad49b2c44f2c8b541ce12777c7\", \"scaling\": \"none\", \"tolerance\": 0, \"width\": 600}; browser_hash_match_count=1; remote_hash_match_count=1; shareOperationId=8c2e3291-8e79-40db-a0a4-c8534960e792; revocation_count=1; recipient_unavailable_observation={\"complete\": true, \"hostOK\": true, \"httpUnavailable\": false, \"media\": false, \"missing\": true, \"status\": 200, \"unavailable\": true}; unavailable_link_count=1; Firefox handler restored; MIME SHA-256 checks passed; desktop frame after masked by live evidence policy; Reused in coordinator follow-up 4 as explicitly authorized; original-file hash, revocation and fresh unavailable proof remain from follow-up 3 on the same exact app build.; Retained in coordinator follow-up 5: only GNOME/KDE S3 rerun; this same-build P remains from its cited attempt.; Retained in coordinator follow-up 6: only GNOME S3 rerun; this same-build P remains from its cited attempt.",
+      "host": "d69",
+      "placement": "guest",
+      "guest": "gnome-wayland",
+      "destination": "proton",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes_live.proton_region_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "independent-frozen-pattern",
+          "path": "frames/outcomes_live.proton_region_upload/01-independent-frozen-pattern.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-content",
+          "path": "frames/outcomes_live.proton_region_upload/02-browser-content.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-before-remote-cleanup",
+          "path": "frames/outcomes_live.proton_region_upload/03-history-before-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "revoke-exact-owned-link",
+          "path": "frames/outcomes_live.proton_region_upload/04-revoke-exact-owned-link.png",
+          "window": "confirmAction",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-after-remote-cleanup",
+          "path": "frames/outcomes_live.proton_region_upload/05-history-after-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-link-unavailable",
+          "path": "frames/outcomes_live.proton_region_upload/06-browser-link-unavailable.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes_live.proton_region_upload/07-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes_live.proton_region_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T06:56:49Z"
+    },
+    {
+      "interaction": "confirm.revoke-link",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/followup-3/gnome/protona/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; desktop frame independent-frozen-pattern masked by live evidence policy; operationId=94c8a6ed-6e5e-4aeb-9f92-df53f31e15fc; Capture operation 94c8a6ed-6e5e-4aeb-9f92-df53f31e15fc; shareOperationId=43f8646c-0e48-4f82-abb6-072ba862cbcf; operationId=94c8a6ed-6e5e-4aeb-9f92-df53f31e15fc; historyId=fb6f7a97-c89e-4086-be8f-a8e019f72689; upload_count=1; Retained synthetic png sha256=1242e5054e79eb22d9ab3b4bd367506fbd5ff5b0ee22a7ec4fd6ee55404060be; {\"url_host\": \"drive.proton.me\", \"title\": \"Screen-Capture-2026-10-31-01-55-20.png\", \"matched\": true}; firefox_download_list=[{\"available\": true, \"entries\": [], \"partFileCount\": 0, \"phase\": \"immediately-after-trusted-click\"}, {\"available\": true, \"entries\": [{\"canceled\": false, \"currentBytes\": 1491, \"error\": null, \"hasBlockedData\": false, \"hasPartialData\": false, \"partFilePath\": \"/dev/shm/t1-firefox/putgd-surface-2tdpqxhp/downloads/0JHRjE0k.png.part\", \"stopped\": true, \"succeeded\": true, \"target\": \"/dev/shm/t1-firefox/putgd-surface-2tdpqxhp/downloads/Screen-Capture-2026-10-31-01-55-20.png\", \"targetExists\": true, \"totalBytes\": 1491}], \"partFileCount\": 0, \"phase\": \"after-visible-download-confirm-menu\"}, {\"available\": true, \"entries\": [{\"canceled\": false, \"currentBytes\": 1491, \"error\": null, \"hasBlockedData\": false, \"hasPartialData\": false, \"partFilePath\": \"/dev/shm/t1-firefox/putgd-surface-2tdpqxhp/downloads/0JHRjE0k.png.part\", \"stopped\": true, \"succeeded\": true, \"target\": \"/dev/shm/t1-firefox/putgd-surface-2tdpqxhp/downloads/Screen-Capture-2026-10-31-01-55-20.png\", \"targetExists\": true, \"totalBytes\": 1491}], \"phase\": \"completed\"}]; recipient_preview_pixels={\"comparison\": \"decoded-RGBA\", \"height\": 280, \"matches\": true, \"naturalHeight\": 280, \"naturalWidth\": 600, \"previewPixelSha256\": \"d273c33841f95003c67726eae72367badce59fad49b2c44f2c8b541ce12777c7\", \"savedPixelSha256\": \"d273c33841f95003c67726eae72367badce59fad49b2c44f2c8b541ce12777c7\", \"scaling\": \"none\", \"tolerance\": 0, \"width\": 600}; browser_hash_match_count=1; remote_hash_match_count=1; shareOperationId=8c2e3291-8e79-40db-a0a4-c8534960e792; revocation_count=1; recipient_unavailable_observation={\"complete\": true, \"hostOK\": true, \"httpUnavailable\": false, \"media\": false, \"missing\": true, \"status\": 200, \"unavailable\": true}; unavailable_link_count=1; Firefox handler restored; MIME SHA-256 checks passed; desktop frame after masked by live evidence policy; Reused in coordinator follow-up 4 as explicitly authorized; original-file hash, revocation and fresh unavailable proof remain from follow-up 3 on the same exact app build.; Retained in coordinator follow-up 5: only GNOME/KDE S3 rerun; this same-build P remains from its cited attempt.; Retained in coordinator follow-up 6: only GNOME S3 rerun; this same-build P remains from its cited attempt.",
+      "host": "d69",
+      "placement": "guest",
+      "guest": "gnome-wayland",
+      "destination": "proton",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes_live.proton_region_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "independent-frozen-pattern",
+          "path": "frames/outcomes_live.proton_region_upload/01-independent-frozen-pattern.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-content",
+          "path": "frames/outcomes_live.proton_region_upload/02-browser-content.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-before-remote-cleanup",
+          "path": "frames/outcomes_live.proton_region_upload/03-history-before-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "revoke-exact-owned-link",
+          "path": "frames/outcomes_live.proton_region_upload/04-revoke-exact-owned-link.png",
+          "window": "confirmAction",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-after-remote-cleanup",
+          "path": "frames/outcomes_live.proton_region_upload/05-history-after-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-link-unavailable",
+          "path": "frames/outcomes_live.proton_region_upload/06-browser-link-unavailable.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes_live.proton_region_upload/07-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes_live.proton_region_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T06:56:49Z"
+    }
+  ]
+}

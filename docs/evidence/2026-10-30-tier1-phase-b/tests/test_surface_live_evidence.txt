@@ -1,0 +1,8 @@
+.....................................04-destinations-s3: catalog None, pin ['credentialAccessKey', 'credentialSecretKey']
+the catalog's secret-control states differ from tools/lab/surface_driver/secret-states.json; if the UI change is intended, run `python3 -m tools.lab.surface_driver.gate write-pin CATALOG` and commit it
+............sssss.................
+----------------------------------------------------------------------
+Ran 71 tests in 8.225s
+
+OK (skipped=5)
+secret-control states match the pin (3 states)

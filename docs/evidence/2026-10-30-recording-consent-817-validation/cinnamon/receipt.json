@@ -1,0 +1,1470 @@
+{
+  "schemaVersion": 2,
+  "environment": {
+    "desktop": "mint-cinnamon-x11",
+    "host": "boat",
+    "placement": "boat",
+    "guest": "cinnamon-x11",
+    "package": "deb",
+    "destination": "local",
+    "build": "26.1030.2572-dev+gf7a6dd503ced",
+    "placement_details": {
+      "boat_sandbox_id": "bx_htkexbg9",
+      "run_id": "30790d5a-7095-45bb-86cf-04aeb2f0cfde",
+      "lab_profile": "cinnamon-x11",
+      "run_directory": "/home/user/rc817/src/work/lab-runs/c2",
+      "session_root": "/tmp/sd-6d6bd8c0",
+      "socket": "/tmp/sd-6d6bd8c0/runtime/putgd/session.sock",
+      "input_backend": "qmp",
+      "frame_backend": "qmp"
+    },
+    "target": {
+      "hostname": "putgd-lab",
+      "kernel": "6.14.0-37-generic",
+      "machine": "x86_64",
+      "os": {
+        "ID": "linuxmint",
+        "VERSION_ID": "22.3",
+        "VARIANT_ID": null
+      },
+      "session_type": "x11",
+      "desktop": "X-Cinnamon",
+      "qt_platform": "xcb"
+    },
+    "observed_build": {
+      "baseVersion": "26.1030.2572",
+      "commitCount": 2572,
+      "dirty": false,
+      "gitCommit": "f7a6dd503cedb5730d72c140a2d77cb80e3f2f29",
+      "gitTree": "f32e498197a37cb748b4676944584ca1d38cb8a7",
+      "packageVersion": "26.1030.2572~dev+gf7a6dd503ced",
+      "schemaVersion": 1,
+      "sourceProvenance": "git",
+      "version": "26.1030.2572-dev+gf7a6dd503ced"
+    }
+  },
+  "interactions": [
+    {
+      "interaction": "review.play",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/rc817/out/c2-lane/receipt.json",
+      "note": "operationId=59c372bc-c33b-490d-bcf1-04c90dc87605; operationId=53b941f7-fab4-4b09-b763-81f7dd37b179; Capture motion metrics: {\"movingMotion\": 47.91453269675926, \"frozenMotion\": 1.808449074074074e-05}; recording media retained privately: 3/3 files (private-media/review.playback/8a0652bc); control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.544441, tolerance=0.025): actual=/home/user/rc817/out/c2-lane/frames/review.playback/01-before.png reference=/home/user/rc817/pkg/ci-catalog/30-review.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/review.playback/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/review.playback/01-before.png",
+          "window": "review",
+          "reference": "30-review",
+          "distance": 0.5444413959068563,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/review.playback/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.playback",
+      "build": "26.1030.2572-dev+gf7a6dd503ced",
+      "at": "2026-10-30T09:13:05Z"
+    },
+    {
+      "interaction": "review.speed",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/rc817/out/c2-lane/receipt.json",
+      "note": "operationId=59c372bc-c33b-490d-bcf1-04c90dc87605; operationId=53b941f7-fab4-4b09-b763-81f7dd37b179; Capture motion metrics: {\"movingMotion\": 47.91453269675926, \"frozenMotion\": 1.808449074074074e-05}; recording media retained privately: 3/3 files (private-media/review.playback/8a0652bc); control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.544441, tolerance=0.025): actual=/home/user/rc817/out/c2-lane/frames/review.playback/01-before.png reference=/home/user/rc817/pkg/ci-catalog/30-review.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/review.playback/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/review.playback/01-before.png",
+          "window": "review",
+          "reference": "30-review",
+          "distance": 0.5444413959068563,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/review.playback/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.playback",
+      "build": "26.1030.2572-dev+gf7a6dd503ced",
+      "at": "2026-10-30T09:13:05Z"
+    },
+    {
+      "interaction": "review.timeline",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/rc817/out/c2-lane/receipt.json",
+      "note": "operationId=cc51e8e2-117b-458d-92bc-953ade19dc79; operationId=f963327d-7240-49ba-b1f0-0fe515f684fb; Capture motion metrics: {\"movingMotion\": 47.88646556712963, \"frozenMotion\": 0.0}; recording media retained privately: 3/3 files (private-media/review.trim/930ffb6a); control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.543264, tolerance=0.025): actual=/home/user/rc817/out/c2-lane/frames/review.trim/01-before.png reference=/home/user/rc817/pkg/ci-catalog/30-review.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/review.trim/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/review.trim/01-before.png",
+          "window": "review",
+          "reference": "30-review",
+          "distance": 0.543263683989178,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/review.trim/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.trim",
+      "build": "26.1030.2572-dev+gf7a6dd503ced",
+      "at": "2026-10-30T09:13:38Z"
+    },
+    {
+      "interaction": "review.trim-in",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/rc817/out/c2-lane/receipt.json",
+      "note": "operationId=cc51e8e2-117b-458d-92bc-953ade19dc79; operationId=f963327d-7240-49ba-b1f0-0fe515f684fb; Capture motion metrics: {\"movingMotion\": 47.88646556712963, \"frozenMotion\": 0.0}; recording media retained privately: 3/3 files (private-media/review.trim/930ffb6a); control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.543264, tolerance=0.025): actual=/home/user/rc817/out/c2-lane/frames/review.trim/01-before.png reference=/home/user/rc817/pkg/ci-catalog/30-review.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/review.trim/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/review.trim/01-before.png",
+          "window": "review",
+          "reference": "30-review",
+          "distance": 0.543263683989178,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/review.trim/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.trim",
+      "build": "26.1030.2572-dev+gf7a6dd503ced",
+      "at": "2026-10-30T09:13:38Z"
+    },
+    {
+      "interaction": "review.trim-out",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/rc817/out/c2-lane/receipt.json",
+      "note": "operationId=cc51e8e2-117b-458d-92bc-953ade19dc79; operationId=f963327d-7240-49ba-b1f0-0fe515f684fb; Capture motion metrics: {\"movingMotion\": 47.88646556712963, \"frozenMotion\": 0.0}; recording media retained privately: 3/3 files (private-media/review.trim/930ffb6a); control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.543264, tolerance=0.025): actual=/home/user/rc817/out/c2-lane/frames/review.trim/01-before.png reference=/home/user/rc817/pkg/ci-catalog/30-review.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/review.trim/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/review.trim/01-before.png",
+          "window": "review",
+          "reference": "30-review",
+          "distance": 0.543263683989178,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/review.trim/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.trim",
+      "build": "26.1030.2572-dev+gf7a6dd503ced",
+      "at": "2026-10-30T09:13:38Z"
+    },
+    {
+      "interaction": "review.trim-reset",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/rc817/out/c2-lane/receipt.json",
+      "note": "operationId=cc51e8e2-117b-458d-92bc-953ade19dc79; operationId=f963327d-7240-49ba-b1f0-0fe515f684fb; Capture motion metrics: {\"movingMotion\": 47.88646556712963, \"frozenMotion\": 0.0}; recording media retained privately: 3/3 files (private-media/review.trim/930ffb6a); control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.543264, tolerance=0.025): actual=/home/user/rc817/out/c2-lane/frames/review.trim/01-before.png reference=/home/user/rc817/pkg/ci-catalog/30-review.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/review.trim/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/review.trim/01-before.png",
+          "window": "review",
+          "reference": "30-review",
+          "distance": 0.543263683989178,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/review.trim/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.trim",
+      "build": "26.1030.2572-dev+gf7a6dd503ced",
+      "at": "2026-10-30T09:13:38Z"
+    },
+    {
+      "interaction": "review.key-timeline",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/rc817/out/c2-lane/receipt.json",
+      "note": "operationId=cc51e8e2-117b-458d-92bc-953ade19dc79; operationId=f963327d-7240-49ba-b1f0-0fe515f684fb; Capture motion metrics: {\"movingMotion\": 47.88646556712963, \"frozenMotion\": 0.0}; recording media retained privately: 3/3 files (private-media/review.trim/930ffb6a); control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.543264, tolerance=0.025): actual=/home/user/rc817/out/c2-lane/frames/review.trim/01-before.png reference=/home/user/rc817/pkg/ci-catalog/30-review.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/review.trim/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/review.trim/01-before.png",
+          "window": "review",
+          "reference": "30-review",
+          "distance": 0.543263683989178,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/review.trim/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.trim",
+      "build": "26.1030.2572-dev+gf7a6dd503ced",
+      "at": "2026-10-30T09:13:38Z"
+    },
+    {
+      "interaction": "review.add-mask",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/rc817/out/c2-lane/receipt.json",
+      "note": "operationId=67aa4b05-129b-42b5-b2bd-1229a92a59b2; operationId=0a0b4d74-866d-4afa-8a54-5cd9f94e9f28; Capture motion metrics: {\"movingMotion\": 47.65292245370371, \"frozenMotion\": 1.808449074074074e-05}; recording media retained privately: 3/3 files (private-media/review.masks/f1f808fc); control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.544126, tolerance=0.025): actual=/home/user/rc817/out/c2-lane/frames/review.masks/01-before.png reference=/home/user/rc817/pkg/ci-catalog/30-review.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/review.masks/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/review.masks/01-before.png",
+          "window": "review",
+          "reference": "30-review",
+          "distance": 0.544125860091799,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/review.masks/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.masks",
+      "build": "26.1030.2572-dev+gf7a6dd503ced",
+      "at": "2026-10-30T09:14:06Z"
+    },
+    {
+      "interaction": "review.frame",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/rc817/out/c2-lane/receipt.json",
+      "note": "operationId=67aa4b05-129b-42b5-b2bd-1229a92a59b2; operationId=0a0b4d74-866d-4afa-8a54-5cd9f94e9f28; Capture motion metrics: {\"movingMotion\": 47.65292245370371, \"frozenMotion\": 1.808449074074074e-05}; recording media retained privately: 3/3 files (private-media/review.masks/f1f808fc); control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.544126, tolerance=0.025): actual=/home/user/rc817/out/c2-lane/frames/review.masks/01-before.png reference=/home/user/rc817/pkg/ci-catalog/30-review.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/review.masks/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/review.masks/01-before.png",
+          "window": "review",
+          "reference": "30-review",
+          "distance": 0.544125860091799,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/review.masks/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.masks",
+      "build": "26.1030.2572-dev+gf7a6dd503ced",
+      "at": "2026-10-30T09:14:06Z"
+    },
+    {
+      "interaction": "review.masks",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/rc817/out/c2-lane/receipt.json",
+      "note": "operationId=67aa4b05-129b-42b5-b2bd-1229a92a59b2; operationId=0a0b4d74-866d-4afa-8a54-5cd9f94e9f28; Capture motion metrics: {\"movingMotion\": 47.65292245370371, \"frozenMotion\": 1.808449074074074e-05}; recording media retained privately: 3/3 files (private-media/review.masks/f1f808fc); control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.544126, tolerance=0.025): actual=/home/user/rc817/out/c2-lane/frames/review.masks/01-before.png reference=/home/user/rc817/pkg/ci-catalog/30-review.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/review.masks/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/review.masks/01-before.png",
+          "window": "review",
+          "reference": "30-review",
+          "distance": 0.544125860091799,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/review.masks/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.masks",
+      "build": "26.1030.2572-dev+gf7a6dd503ced",
+      "at": "2026-10-30T09:14:06Z"
+    },
+    {
+      "interaction": "review.mask-in-out",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/rc817/out/c2-lane/receipt.json",
+      "note": "operationId=67aa4b05-129b-42b5-b2bd-1229a92a59b2; operationId=0a0b4d74-866d-4afa-8a54-5cd9f94e9f28; Capture motion metrics: {\"movingMotion\": 47.65292245370371, \"frozenMotion\": 1.808449074074074e-05}; recording media retained privately: 3/3 files (private-media/review.masks/f1f808fc); control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.544126, tolerance=0.025): actual=/home/user/rc817/out/c2-lane/frames/review.masks/01-before.png reference=/home/user/rc817/pkg/ci-catalog/30-review.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/review.masks/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/review.masks/01-before.png",
+          "window": "review",
+          "reference": "30-review",
+          "distance": 0.544125860091799,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/review.masks/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.masks",
+      "build": "26.1030.2572-dev+gf7a6dd503ced",
+      "at": "2026-10-30T09:14:06Z"
+    },
+    {
+      "interaction": "review.mask-delete",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/rc817/out/c2-lane/receipt.json",
+      "note": "operationId=67aa4b05-129b-42b5-b2bd-1229a92a59b2; operationId=0a0b4d74-866d-4afa-8a54-5cd9f94e9f28; Capture motion metrics: {\"movingMotion\": 47.65292245370371, \"frozenMotion\": 1.808449074074074e-05}; recording media retained privately: 3/3 files (private-media/review.masks/f1f808fc); control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.544126, tolerance=0.025): actual=/home/user/rc817/out/c2-lane/frames/review.masks/01-before.png reference=/home/user/rc817/pkg/ci-catalog/30-review.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/review.masks/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/review.masks/01-before.png",
+          "window": "review",
+          "reference": "30-review",
+          "distance": 0.544125860091799,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/review.masks/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.masks",
+      "build": "26.1030.2572-dev+gf7a6dd503ced",
+      "at": "2026-10-30T09:14:06Z"
+    },
+    {
+      "interaction": "review.mask-place",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/rc817/out/c2-lane/receipt.json",
+      "note": "operationId=67aa4b05-129b-42b5-b2bd-1229a92a59b2; operationId=0a0b4d74-866d-4afa-8a54-5cd9f94e9f28; Capture motion metrics: {\"movingMotion\": 47.65292245370371, \"frozenMotion\": 1.808449074074074e-05}; recording media retained privately: 3/3 files (private-media/review.masks/f1f808fc); control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.544126, tolerance=0.025): actual=/home/user/rc817/out/c2-lane/frames/review.masks/01-before.png reference=/home/user/rc817/pkg/ci-catalog/30-review.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/review.masks/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/review.masks/01-before.png",
+          "window": "review",
+          "reference": "30-review",
+          "distance": 0.544125860091799,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/review.masks/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.masks",
+      "build": "26.1030.2572-dev+gf7a6dd503ced",
+      "at": "2026-10-30T09:14:06Z"
+    },
+    {
+      "interaction": "review.mask-disarm",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/rc817/out/c2-lane/receipt.json",
+      "note": "operationId=67aa4b05-129b-42b5-b2bd-1229a92a59b2; operationId=0a0b4d74-866d-4afa-8a54-5cd9f94e9f28; Capture motion metrics: {\"movingMotion\": 47.65292245370371, \"frozenMotion\": 1.808449074074074e-05}; recording media retained privately: 3/3 files (private-media/review.masks/f1f808fc); control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.544126, tolerance=0.025): actual=/home/user/rc817/out/c2-lane/frames/review.masks/01-before.png reference=/home/user/rc817/pkg/ci-catalog/30-review.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/review.masks/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/review.masks/01-before.png",
+          "window": "review",
+          "reference": "30-review",
+          "distance": 0.544125860091799,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/review.masks/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.masks",
+      "build": "26.1030.2572-dev+gf7a6dd503ced",
+      "at": "2026-10-30T09:14:06Z"
+    },
+    {
+      "interaction": "review.key-frame-nudge",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/rc817/out/c2-lane/receipt.json",
+      "note": "operationId=67aa4b05-129b-42b5-b2bd-1229a92a59b2; operationId=0a0b4d74-866d-4afa-8a54-5cd9f94e9f28; Capture motion metrics: {\"movingMotion\": 47.65292245370371, \"frozenMotion\": 1.808449074074074e-05}; recording media retained privately: 3/3 files (private-media/review.masks/f1f808fc); control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.544126, tolerance=0.025): actual=/home/user/rc817/out/c2-lane/frames/review.masks/01-before.png reference=/home/user/rc817/pkg/ci-catalog/30-review.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/review.masks/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/review.masks/01-before.png",
+          "window": "review",
+          "reference": "30-review",
+          "distance": 0.544125860091799,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/review.masks/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.masks",
+      "build": "26.1030.2572-dev+gf7a6dd503ced",
+      "at": "2026-10-30T09:14:06Z"
+    },
+    {
+      "interaction": "review.mask-options",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/rc817/out/c2-lane/receipt.json",
+      "note": "operationId=8a416618-4caf-4ac9-93e7-510127f8e47f; operationId=5da17561-e46a-4cce-8bd9-14c1e9cd5d06; Capture motion metrics: {\"movingMotion\": 47.6949146412037, \"frozenMotion\": 1.808449074074074e-05}; recording media retained privately: 3/3 files (private-media/review.mask_options/b2a72115); control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.547476, tolerance=0.025): actual=/home/user/rc817/out/c2-lane/frames/review.mask_options/01-before.png reference=/home/user/rc817/pkg/ci-catalog/30-review.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/review.mask_options/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/review.mask_options/01-before.png",
+          "window": "review",
+          "reference": "30-review",
+          "distance": 0.5474764585694002,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/review.mask_options/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.mask_options",
+      "build": "26.1030.2572-dev+gf7a6dd503ced",
+      "at": "2026-10-30T09:14:31Z"
+    },
+    {
+      "interaction": "review.wheel-lanes",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/rc817/out/c2-lane/receipt.json",
+      "note": "operationId=01985e4b-ee3d-40b0-9804-4316c1ca00aa; operationId=29b57f99-664c-4773-8f9d-673cde079713; Capture motion metrics: {\"movingMotion\": 47.579768880208334, \"frozenMotion\": 1.808449074074074e-05}; recording media retained privately: 3/3 files (private-media/review.wheel_lanes/a3ee7c05); control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.547045, tolerance=0.025): actual=/home/user/rc817/out/c2-lane/frames/review.wheel_lanes/01-before.png reference=/home/user/rc817/pkg/ci-catalog/30-review.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/review.wheel_lanes/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/review.wheel_lanes/01-before.png",
+          "window": "review",
+          "reference": "30-review",
+          "distance": 0.547045195202829,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/review.wheel_lanes/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.wheel_lanes",
+      "build": "26.1030.2572-dev+gf7a6dd503ced",
+      "at": "2026-10-30T09:15:00Z"
+    },
+    {
+      "interaction": "review.format",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/rc817/out/c2-lane/receipt.json",
+      "note": "operationId=af0651d1-c3f3-415a-89c4-89562bae1fc7; operationId=d848c2a3-1007-4710-9862-b222d7499a03; Capture motion metrics: {\"movingMotion\": 47.6717845775463, \"frozenMotion\": 1.808449074074074e-05}; Decoded export metrics: {\"duration\": 4.833333, \"codec\": \"h264\", \"container\": \"mov,mp4,m4a,3gp,3g2,mj2\", \"movingMotion\": 47.6717845775463, \"frozenMotion\": 1.808449074074074e-05, \"exportMotion\": 47.36087601273148, \"masked\": 0}; Decoded export metrics: {\"duration\": 4.833333, \"codec\": \"hevc\", \"container\": \"mov,mp4,m4a,3gp,3g2,mj2\", \"movingMotion\": 47.6717845775463, \"frozenMotion\": 1.808449074074074e-05, \"exportMotion\": 47.39563440393519, \"masked\": 0}; recording media retained privately: 5/5 files (private-media/review.formats/ee391d8d); control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.543239, tolerance=0.025): actual=/home/user/rc817/out/c2-lane/frames/review.formats/01-before.png reference=/home/user/rc817/pkg/ci-catalog/30-review.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/review.formats/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/review.formats/01-before.png",
+          "window": "review",
+          "reference": "30-review",
+          "distance": 0.5432392762089985,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/review.formats/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.formats",
+      "build": "26.1030.2572-dev+gf7a6dd503ced",
+      "at": "2026-10-30T09:15:40Z"
+    },
+    {
+      "interaction": "review.save-copy",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/rc817/out/c2-lane/receipt.json",
+      "note": "operationId=de804e2c-4387-49b3-bff8-ab8b4a7e2da3; operationId=2ebe0676-9ecc-4db3-9b14-3e9d03dfb4cd; Capture motion metrics: {\"movingMotion\": 47.91686559606481, \"frozenMotion\": 3.616898148148148e-05}; recording media retained privately: 3/3 files (private-media/review.save_copy/4fba6d16); geometry: RuntimeError: live window match is missing or ambiguous (0 matches)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.545316, tolerance=0.025): actual=/home/user/rc817/out/c2-lane/frames/review.save_copy/01-before.png reference=/home/user/rc817/pkg/ci-catalog/30-review.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/review.save_copy/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/review.save_copy/01-before.png",
+          "window": "review",
+          "reference": "30-review",
+          "distance": 0.545315997478577,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/review.save_copy/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.save_copy",
+      "build": "26.1030.2572-dev+gf7a6dd503ced",
+      "at": "2026-10-30T09:16:20Z"
+    },
+    {
+      "interaction": "review.status-actions",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/rc817/out/c2-lane/receipt.json",
+      "note": "operationId=4991492b-dbdc-4f31-a1e2-2a613f284e70; operationId=4391d2d8-a4ad-41b7-bfac-de6d65c200ee; Capture motion metrics: {\"movingMotion\": 47.643410011574076, \"frozenMotion\": 1.808449074074074e-05}; recording media retained privately: 3/3 files (private-media/review.status_actions/f104b66d); control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.543253, tolerance=0.025): actual=/home/user/rc817/out/c2-lane/frames/review.status_actions/01-before.png reference=/home/user/rc817/pkg/ci-catalog/30-review.png; catalog mismatch (distance=0.537483, tolerance=0.025): actual=/home/user/rc817/out/c2-lane/frames/review.status_actions/02-export-failed.png reference=/home/user/rc817/pkg/ci-catalog/39-review-status-errors.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/review.status_actions/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/review.status_actions/01-before.png",
+          "window": "review",
+          "reference": "30-review",
+          "distance": 0.5432531626386038,
+          "tolerance": 0.025
+        },
+        {
+          "label": "export-failed",
+          "path": "frames/review.status_actions/02-export-failed.png",
+          "window": "review",
+          "reference": "39-review-status-errors",
+          "distance": 0.5374826145402896,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/review.status_actions/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.status_actions",
+      "build": "26.1030.2572-dev+gf7a6dd503ced",
+      "at": "2026-10-30T09:16:53Z"
+    },
+    {
+      "interaction": "review.destination-menu",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/rc817/out/c2-lane/receipt.json",
+      "note": "operationId=33cb20d4-d312-4ec1-931e-b52f3afcd617; operationId=22c0eef0-31b0-4d4f-966e-58372b960892; Capture motion metrics: {\"movingMotion\": 47.643355758101855, \"frozenMotion\": 1.808449074074074e-05}; recording media retained privately: 3/3 files (private-media/review.upload/0f40ef9d); control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.546619, tolerance=0.025): actual=/home/user/rc817/out/c2-lane/frames/review.upload/01-before.png reference=/home/user/rc817/pkg/ci-catalog/30-review.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/review.upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/review.upload/01-before.png",
+          "window": "review",
+          "reference": "30-review",
+          "distance": 0.5466191596399336,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/review.upload/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.upload",
+      "build": "26.1030.2572-dev+gf7a6dd503ced",
+      "at": "2026-10-30T09:17:19Z"
+    },
+    {
+      "interaction": "review.upload",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/rc817/out/c2-lane/receipt.json",
+      "note": "operationId=33cb20d4-d312-4ec1-931e-b52f3afcd617; operationId=22c0eef0-31b0-4d4f-966e-58372b960892; Capture motion metrics: {\"movingMotion\": 47.643355758101855, \"frozenMotion\": 1.808449074074074e-05}; recording media retained privately: 3/3 files (private-media/review.upload/0f40ef9d); control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.546619, tolerance=0.025): actual=/home/user/rc817/out/c2-lane/frames/review.upload/01-before.png reference=/home/user/rc817/pkg/ci-catalog/30-review.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/review.upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/review.upload/01-before.png",
+          "window": "review",
+          "reference": "30-review",
+          "distance": 0.5466191596399336,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/review.upload/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.upload",
+      "build": "26.1030.2572-dev+gf7a6dd503ced",
+      "at": "2026-10-30T09:17:19Z"
+    },
+    {
+      "interaction": "confirm.review-discard",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/rc817/out/c2-lane/receipt.json",
+      "note": "operationId=87681276-d1e8-4097-b859-bf09f194023c; operationId=4efe4afd-083f-4164-a3d2-5490ecef1a83; Capture motion metrics: {\"movingMotion\": 47.64728009259259, \"frozenMotion\": 1.808449074074074e-05}; recording media retained privately: 3/3 files (private-media/review.discard/123854a7); geometry: RuntimeError: live window match is missing or ambiguous (0 matches)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.547711, tolerance=0.025): actual=/home/user/rc817/out/c2-lane/frames/review.discard/01-before.png reference=/home/user/rc817/pkg/ci-catalog/30-review.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/review.discard/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/review.discard/01-before.png",
+          "window": "review",
+          "reference": "30-review",
+          "distance": 0.5477109914292264,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/review.discard/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.discard",
+      "build": "26.1030.2572-dev+gf7a6dd503ced",
+      "at": "2026-10-30T09:17:44Z"
+    },
+    {
+      "interaction": "review.discard",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/rc817/out/c2-lane/receipt.json",
+      "note": "operationId=87681276-d1e8-4097-b859-bf09f194023c; operationId=4efe4afd-083f-4164-a3d2-5490ecef1a83; Capture motion metrics: {\"movingMotion\": 47.64728009259259, \"frozenMotion\": 1.808449074074074e-05}; recording media retained privately: 3/3 files (private-media/review.discard/123854a7); geometry: RuntimeError: live window match is missing or ambiguous (0 matches)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.547711, tolerance=0.025): actual=/home/user/rc817/out/c2-lane/frames/review.discard/01-before.png reference=/home/user/rc817/pkg/ci-catalog/30-review.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/review.discard/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/review.discard/01-before.png",
+          "window": "review",
+          "reference": "30-review",
+          "distance": 0.5477109914292264,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/review.discard/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.discard",
+      "build": "26.1030.2572-dev+gf7a6dd503ced",
+      "at": "2026-10-30T09:17:44Z"
+    },
+    {
+      "interaction": "review.window-close",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/rc817/out/c2-lane/receipt.json",
+      "note": "operationId=7b8dc113-6c57-4789-a8e9-a07f40184bc5; operationId=c4ef12d2-2fa6-45e4-8614-bb3238929e9c; Capture motion metrics: {\"movingMotion\": 47.22578486689815, \"frozenMotion\": 1.808449074074074e-05}; recording media retained privately: 3/3 files (private-media/review.window_close/8f972a8b); control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.546699, tolerance=0.025): actual=/home/user/rc817/out/c2-lane/frames/review.window_close/01-before.png reference=/home/user/rc817/pkg/ci-catalog/30-review.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/review.window_close/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/review.window_close/01-before.png",
+          "window": "review",
+          "reference": "30-review",
+          "distance": 0.546698674850383,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/review.window_close/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.window_close",
+      "build": "26.1030.2572-dev+gf7a6dd503ced",
+      "at": "2026-10-30T09:18:08Z"
+    },
+    {
+      "interaction": "review.advice",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/rc817/out/c2-lane/receipt.json",
+      "note": "operationId=1050b361-477c-4110-a5ff-31bac9b3a11e; operationId=7055d8be-ae1a-40fd-afcf-73f31cdb057b; Capture motion metrics: {\"movingMotion\": 47.67201967592593, \"frozenMotion\": 1.808449074074074e-05}; recording media retained privately: 3/3 files (private-media/review.advice/460c93b0); control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.547281, tolerance=0.025): actual=/home/user/rc817/out/c2-lane/frames/review.advice/01-before.png reference=/home/user/rc817/pkg/ci-catalog/30-review.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/review.advice/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/review.advice/01-before.png",
+          "window": "review",
+          "reference": "30-review",
+          "distance": 0.5472806168136296,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/review.advice/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.advice",
+      "build": "26.1030.2572-dev+gf7a6dd503ced",
+      "at": "2026-10-30T09:18:35Z"
+    },
+    {
+      "interaction": "review.notice",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/rc817/out/c2-lane/receipt.json",
+      "note": "operationId=dce568b7-b23e-4d25-a23b-dcde311f1223; operationId=b998bb95-4547-437e-8c12-5942e4004e4c; Capture motion metrics: {\"movingMotion\": 47.29022305253623, \"frozenMotion\": 1.808449074074074e-05}; recording media retained privately: 3/3 files (private-media/review.stop_notice/e40a9119); control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.520282, tolerance=0.025): actual=/home/user/rc817/out/c2-lane/frames/review.stop_notice/01-before.png reference=/home/user/rc817/pkg/ci-catalog/30-review.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/review.stop_notice/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/review.stop_notice/01-before.png",
+          "window": "review",
+          "reference": "30-review",
+          "distance": 0.5202818791809037,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/review.stop_notice/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.stop_notice",
+      "build": "26.1030.2572-dev+gf7a6dd503ced",
+      "at": "2026-10-30T09:20:14Z"
+    },
+    {
+      "interaction": "review.preview-error",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "/home/user/rc817/out/c2-lane/receipt.json",
+      "note": "operationId=423507ff-337f-49ad-9df4-5f9b1fd0f035; operationId=d34f1539-1699-45e7-8b64-0427160d5a79; Capture motion metrics: {\"movingMotion\": 47.61348017939815, \"frozenMotion\": 1.808449074074074e-05}; recording media retained privately: 3/3 files (private-media/review.preview_error/c7be8197)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.388303, tolerance=0.025): actual=/home/user/rc817/out/c2-lane/frames/review.preview_error/01-before.png reference=/home/user/rc817/pkg/ci-catalog/30-review.png; catalog mismatch (distance=0.393326, tolerance=0.025): actual=/home/user/rc817/out/c2-lane/frames/review.preview_error/02-error.png reference=/home/user/rc817/pkg/ci-catalog/40-review-preview-error.png; catalog mismatch (distance=0.524460, tolerance=0.025): actual=/home/user/rc817/out/c2-lane/frames/review.preview_error/03-after.png reference=/home/user/rc817/pkg/ci-catalog/30-review.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/review.preview_error/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/review.preview_error/01-before.png",
+          "window": "review",
+          "reference": "30-review",
+          "distance": 0.38830333591825944,
+          "tolerance": 0.025
+        },
+        {
+          "label": "error",
+          "path": "frames/review.preview_error/02-error.png",
+          "window": "review",
+          "reference": "40-review-preview-error",
+          "distance": 0.3933259380759704,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/review.preview_error/03-after.png",
+          "window": "review",
+          "reference": "30-review",
+          "distance": 0.5244601166547744,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/review.preview_error/04-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.preview_error",
+      "build": "26.1030.2572-dev+gf7a6dd503ced",
+      "at": "2026-10-30T09:20:53Z"
+    },
+    {
+      "interaction": "cli.recording",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/rc817/out/c2-lane/receipt.json",
+      "issue": 672,
+      "note": "operationId=b1ee5625-8ecf-46e6-8014-d519bffca7ce; operationId=c9ddb261-d45e-40d3-b4c1-15d53786afcd; Capture motion metrics: {\"movingMotion\": 47.64158347800926, \"frozenMotion\": 0.0}; Decoded export metrics: {\"duration\": 2.0, \"codec\": \"h264\", \"container\": \"mov,mp4,m4a,3gp,3g2,mj2\", \"movingMotion\": 47.64158347800926, \"frozenMotion\": 0.0, \"exportMotion\": 45.53016493055555, \"masked\": 1}; recording media retained privately: 4/4 files (private-media/review.cli_recording/8c288678); CLI review-stage entries exercised; capture prepare/start/pause/resume/stop/select/overlay need a capture fixture (#672)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "API full-desktop frames require visual review",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/review.cli_recording/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/review.cli_recording/01-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/review.cli_recording/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/review.cli_recording/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.cli_recording",
+      "build": "26.1030.2572-dev+gf7a6dd503ced",
+      "at": "2026-10-30T09:21:28Z"
+    },
+    {
+      "interaction": "mcp.recording",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/rc817/out/c2-lane/receipt.json",
+      "issue": 672,
+      "note": "operationId=088de80e-3dc2-47f3-a51b-f27066c97c41; operationId=5b0b3b76-a310-43f1-80d9-d76243ba3e8a; Capture motion metrics: {\"movingMotion\": 47.61346209490741, \"frozenMotion\": 1.808449074074074e-05}; Decoded export metrics: {\"duration\": 2.0, \"codec\": \"h264\", \"container\": \"mov,mp4,m4a,3gp,3g2,mj2\", \"movingMotion\": 47.61346209490741, \"frozenMotion\": 1.808449074074074e-05, \"exportMotion\": 45.598524305555564, \"masked\": 1}; recording media retained privately: 4/4 files (private-media/review.mcp_recording/b1ec31a3); MCP review/edit/preview/save exercised; prepare/control/select/overlay capture lifecycle remains unexercised (#672)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "API full-desktop frames require visual review",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/review.mcp_recording/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/review.mcp_recording/01-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/review.mcp_recording/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/review.mcp_recording/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.mcp_recording",
+      "build": "26.1030.2572-dev+gf7a6dd503ced",
+      "at": "2026-10-30T09:22:08Z"
+    },
+    {
+      "interaction": "mcp.recording-review",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "/home/user/rc817/out/c2-lane/receipt.json",
+      "note": "operationId=d79ef9fd-b6ee-4835-9a8b-793fa92a19ed; operationId=df88f854-7102-4a0c-96b6-241e066dee07; Capture motion metrics: {\"movingMotion\": 47.71770109953704, \"frozenMotion\": 0.0}; Decoded export metrics: {\"duration\": 2.0, \"codec\": \"h264\", \"container\": \"mov,mp4,m4a,3gp,3g2,mj2\", \"movingMotion\": 47.71770109953704, \"frozenMotion\": 0.0, \"exportMotion\": 45.707302517361114, \"masked\": 1}; Decoded export metrics: {\"duration\": 2.0, \"codec\": \"h264\", \"container\": \"mov,mp4,m4a,3gp,3g2,mj2\", \"movingMotion\": 47.71770109953704, \"frozenMotion\": 0.0, \"exportMotion\": 45.707302517361114, \"masked\": 1}; recording media retained privately: 4/4 files (private-media/review.mcp_recording_review/b832a16b)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "API full-desktop frames require visual review",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/review.mcp_recording_review/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/review.mcp_recording_review/01-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/review.mcp_recording_review/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "uploaded",
+          "path": "frames/review.mcp_recording_review/03-uploaded.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/review.mcp_recording_review/04-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.mcp_recording_review",
+      "build": "26.1030.2572-dev+gf7a6dd503ced",
+      "at": "2026-10-30T09:22:53Z"
+    }
+  ]
+}

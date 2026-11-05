@@ -2,7 +2,7 @@
 """In-guest sampler: put.gd process family memory every 20 ms until a stop file appears.
 Family = resident and its helpers by installed executable path. Output: JSON lines."""
 import json, os, sys, time
-FAMILY = {'/usr/bin/putgd', '/usr/bin/putgd-ui', '/usr/bin/putgd-capture', '/usr/bin/putgd-s3-worker'}
+FAMILY = {'/usr/bin/putgd', '/usr/bin/putgd-ui', '/usr/bin/putgd-capture', '/usr/bin/putgd-s3-worker', '/usr/bin/putgd-record'}
 out, stop = sys.argv[1], sys.argv[2]
 def kib(text, key):
     for line in text.splitlines():

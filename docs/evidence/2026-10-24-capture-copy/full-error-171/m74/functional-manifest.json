@@ -1,0 +1,539 @@
+{
+  "source": "171b506e02ca37ba75b27dbbbe859502380926ef",
+  "scope": "actual native-installed production package; real Qt/GTK local capture and clipboard, clearly synthetic History rendering/stored-link receipts; no live upload or recording claim",
+  "finalResident": {
+    "residentPid": 575889,
+    "residentStartTicks": "20989748",
+    "source": {
+      "schemaVersion": 1,
+      "version": "26.1024.1140-dev+g171b506e02ca",
+      "baseVersion": "26.1024.1140",
+      "packageVersion": "26.1024.1140~dev+g171b506e02ca",
+      "gitCommit": "171b506e02ca37ba75b27dbbbe859502380926ef",
+      "gitTree": "2942cc06bd2361cf915e9d5ffbeeadd7eaa75368",
+      "commitCount": 1140,
+      "dirty": false,
+      "sourceProvenance": "git"
+    },
+    "host": "m74-native-full-errors",
+    "session": {
+      "XDG_CURRENT_DESKTOP": "X-Cinnamon",
+      "XDG_SESSION_TYPE": "x11",
+      "QT_QPA_PLATFORM": "xcb"
+    }
+  },
+  "cases": [
+    {
+      "label": "qt-window-final",
+      "operationId": "7d8e6244-da46-4008-ae40-06bf003cb422",
+      "state": "completed",
+      "copyStatus": "copied",
+      "items": [
+        {
+          "id": "cb3906a5-3132-4cd3-9d02-83b4c1a7612c",
+          "category": "images",
+          "sha256": "317238c1979e630a022ab2aa37d51d66bd8facd8b5386c951d375fc5e7e5bb33",
+          "localStatus": "saved"
+        }
+      ],
+      "independentPaste": {
+        "operationId": "7d8e6244-da46-4008-ae40-06bf003cb422",
+        "decodedRgbaSha256": "90916519a95ae45499974c5cd0ea63debbc019e556a007c8487b60f5212bda2f",
+        "width": 640,
+        "height": 452,
+        "matchedRetainedOriginal": true
+      },
+      "independentPasteArtifact": {
+        "path": "native-paste/qt-window-final.png",
+        "sha256": "317238c1979e630a022ab2aa37d51d66bd8facd8b5386c951d375fc5e7e5bb33"
+      },
+      "nativePaste": {
+        "formats": [
+          "TARGETS",
+          "TIMESTAMP",
+          "image/png",
+          "application/x-qt-image"
+        ],
+        "image": {
+          "height": 452,
+          "saved": true,
+          "width": 640
+        },
+        "schemaVersion": 1
+      }
+    },
+    {
+      "label": "qt-region-final",
+      "operationId": "1e4da727-cfe4-4b07-81d3-20606601544c",
+      "state": "completed",
+      "copyStatus": "copied",
+      "items": [
+        {
+          "id": "1e7b0bbf-9f0b-448e-b3b5-125a758e6b55",
+          "category": "images",
+          "sha256": "07433c6d2c221634b10a6a0ae06921b715757767e738a502874ed18a2584093d",
+          "localStatus": "saved"
+        }
+      ],
+      "independentPaste": {
+        "operationId": "1e4da727-cfe4-4b07-81d3-20606601544c",
+        "decodedRgbaSha256": "5e5276bff72a97b27e4f72531932eb928faf60da17db93b8325d3f6eddd70fbb",
+        "width": 80,
+        "height": 60,
+        "matchedRetainedOriginal": true
+      },
+      "independentPasteArtifact": {
+        "path": "native-paste/qt-region-final.png",
+        "sha256": "07433c6d2c221634b10a6a0ae06921b715757767e738a502874ed18a2584093d"
+      },
+      "nativePaste": {
+        "formats": [
+          "TARGETS",
+          "TIMESTAMP",
+          "image/png",
+          "application/x-qt-image"
+        ],
+        "image": {
+          "height": 60,
+          "saved": true,
+          "width": 80
+        },
+        "schemaVersion": 1
+      }
+    },
+    {
+      "label": "qt-desktop-final",
+      "operationId": "7d42776f-fc2f-4caf-a8cc-291e06fa4416",
+      "state": "completed",
+      "copyStatus": "copied",
+      "items": [
+        {
+          "id": "e9b825af-21cd-4765-9a76-3b6f0a9bdbd9",
+          "category": "images",
+          "sha256": "4b6fc375c86c94146fdce607100735661655b72d181cf1d93336555471923ab6",
+          "localStatus": "saved"
+        }
+      ],
+      "independentPaste": {
+        "operationId": "7d42776f-fc2f-4caf-a8cc-291e06fa4416",
+        "decodedRgbaSha256": "70ff3fc95c5b69c85ba7c964b929b6df6a8d29eb98f9638bf76ef97aa5c68e61",
+        "width": 1920,
+        "height": 1080,
+        "matchedRetainedOriginal": true
+      },
+      "independentPasteArtifact": {
+        "path": "native-paste/qt-desktop-final.png",
+        "sha256": "4b6fc375c86c94146fdce607100735661655b72d181cf1d93336555471923ab6"
+      },
+      "nativePaste": {
+        "formats": [
+          "TARGETS",
+          "TIMESTAMP",
+          "image/png",
+          "application/x-qt-image"
+        ],
+        "image": {
+          "height": 1080,
+          "saved": true,
+          "width": 1920
+        },
+        "schemaVersion": 1
+      },
+      "privacyEdgeGate": {
+        "fractions": [
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "minimum": 0.9,
+        "dimensions": [
+          1920,
+          1080
+        ]
+      }
+    },
+    {
+      "label": "qt-clipboard-final-t",
+      "operationId": "276480fd-c352-4b27-9e50-066a42d79598",
+      "state": "completed",
+      "copyStatus": "copied",
+      "items": [
+        {
+          "id": "be5f95cf-8842-4ec7-ab35-eb05efa9e41d",
+          "category": "text",
+          "sha256": "c7a4c2eea1d901cbc049d84dbba77e472576aafc27b49e4a1e188bb7dd176185",
+          "localStatus": "saved"
+        }
+      ],
+      "nativePaste": {
+        "formats": [
+          "TARGETS",
+          "TIMESTAMP",
+          "text/plain",
+          "text/plain;charset=utf-8"
+        ],
+        "schemaVersion": 1,
+        "text": "putgd synthetic clipboard text"
+      }
+    },
+    {
+      "label": "qt-clipboard-final-i",
+      "operationId": "ece88827-1627-4292-a429-9ab4f7d0a7b2",
+      "state": "completed",
+      "copyStatus": "copied",
+      "items": [
+        {
+          "id": "935768ff-bcfb-413c-8bda-265f3e9fff60",
+          "category": "images",
+          "sha256": "8d5810dd5c9c8b1b5648e611d0e43971e01b6b03e2839bad028ad384ec998316",
+          "localStatus": "saved"
+        }
+      ],
+      "independentPaste": {
+        "operationId": "ece88827-1627-4292-a429-9ab4f7d0a7b2",
+        "decodedRgbaSha256": "f7d6e5a37e11f8a47c53f53d1b1407d9ddd447cd33947f4f7761f2287b0eca9a",
+        "width": 96,
+        "height": 64,
+        "matchedRetainedOriginal": true
+      },
+      "independentPasteArtifact": {
+        "path": "native-paste/qt-clipboard-final-i.png",
+        "sha256": "8d5810dd5c9c8b1b5648e611d0e43971e01b6b03e2839bad028ad384ec998316"
+      },
+      "nativePaste": {
+        "formats": [
+          "TARGETS",
+          "TIMESTAMP",
+          "image/png",
+          "application/x-qt-image"
+        ],
+        "image": {
+          "height": 64,
+          "saved": true,
+          "width": 96
+        },
+        "schemaVersion": 1
+      }
+    },
+    {
+      "label": "qt-clipboard-final-f",
+      "operationId": "991665ce-3d70-4c9b-b3c6-9370ad470a71",
+      "state": "completed",
+      "copyStatus": "copied",
+      "items": [
+        {
+          "id": "2b1518e3-8306-4c1d-94b9-74b7bf913355",
+          "category": "text",
+          "sha256": "5b19eebc3f2265be7fb729e7c911c784093eebf706a89beaa356e82ce2222427",
+          "localStatus": "saved"
+        },
+        {
+          "id": "ca650ad3-6a27-47fa-8812-d4377f481836",
+          "category": "text",
+          "sha256": "010e71d5ea18016d6f57aaf690c656a8d3bcaaa6199336a843fc07eb07c63209",
+          "localStatus": "saved"
+        }
+      ],
+      "nativePaste": {
+        "formats": [
+          "TARGETS",
+          "TIMESTAMP",
+          "text/uri-list",
+          "text/plain",
+          "text/plain;charset=utf-8"
+        ],
+        "schemaVersion": 1,
+        "text": "file:///tmp/hfmf/archive/text/synthetic-1.txt\r\nfile:///tmp/hfmf/archive/text/synthetic-2.txt\r\n",
+        "urls": [
+          "file:///tmp/hfmf/archive/text/synthetic-1.txt",
+          "file:///tmp/hfmf/archive/text/synthetic-2.txt"
+        ]
+      }
+    },
+    {
+      "label": "gtk-window-final",
+      "operationId": "3dc1e41b-70c1-4d38-9655-ffff17775e10",
+      "state": "completed",
+      "copyStatus": "copied",
+      "items": [
+        {
+          "id": "d2aaab40-3051-4e70-bb10-a869c76e4ea4",
+          "category": "images",
+          "sha256": "730e8298b4be34da972337f79fd8eb5a5954166d053a241d7e25df4899950131",
+          "localStatus": "saved"
+        }
+      ],
+      "independentPaste": {
+        "operationId": "3dc1e41b-70c1-4d38-9655-ffff17775e10",
+        "decodedRgbaSha256": "acb7133b1c1d0e44cd8b27b1fc59d9643388fbb7bdaaae0c43c50c2433b3ca97",
+        "width": 640,
+        "height": 452,
+        "matchedRetainedOriginal": true
+      },
+      "independentPasteArtifact": {
+        "path": "native-paste/gtk-window-final.png",
+        "sha256": "730e8298b4be34da972337f79fd8eb5a5954166d053a241d7e25df4899950131"
+      },
+      "nativePaste": {
+        "schemaVersion": 1,
+        "client": "GTK",
+        "formats": [
+          "image/png"
+        ],
+        "image": {
+          "width": 640,
+          "height": 452,
+          "saved": true
+        }
+      }
+    },
+    {
+      "label": "gtk-region-final",
+      "operationId": "a986e8c5-cf79-4822-bae4-3e6a418c28df",
+      "state": "completed",
+      "copyStatus": "copied",
+      "items": [
+        {
+          "id": "1b439e13-ee7b-47ab-90e4-a82588ede7ee",
+          "category": "images",
+          "sha256": "07433c6d2c221634b10a6a0ae06921b715757767e738a502874ed18a2584093d",
+          "localStatus": "saved"
+        }
+      ],
+      "independentPaste": {
+        "operationId": "a986e8c5-cf79-4822-bae4-3e6a418c28df",
+        "decodedRgbaSha256": "5e5276bff72a97b27e4f72531932eb928faf60da17db93b8325d3f6eddd70fbb",
+        "width": 80,
+        "height": 60,
+        "matchedRetainedOriginal": true
+      },
+      "independentPasteArtifact": {
+        "path": "native-paste/gtk-region-final.png",
+        "sha256": "07433c6d2c221634b10a6a0ae06921b715757767e738a502874ed18a2584093d"
+      },
+      "nativePaste": {
+        "schemaVersion": 1,
+        "client": "GTK",
+        "formats": [
+          "image/png"
+        ],
+        "image": {
+          "width": 80,
+          "height": 60,
+          "saved": true
+        }
+      }
+    },
+    {
+      "label": "gtk-desktop-final",
+      "operationId": "b8fbdabd-e888-463e-a1d0-e7c250c8d748",
+      "state": "completed",
+      "copyStatus": "copied",
+      "items": [
+        {
+          "id": "a468a007-45da-4f5b-bc29-9e166708800a",
+          "category": "images",
+          "sha256": "4b6fc375c86c94146fdce607100735661655b72d181cf1d93336555471923ab6",
+          "localStatus": "saved"
+        }
+      ],
+      "independentPaste": {
+        "operationId": "b8fbdabd-e888-463e-a1d0-e7c250c8d748",
+        "decodedRgbaSha256": "70ff3fc95c5b69c85ba7c964b929b6df6a8d29eb98f9638bf76ef97aa5c68e61",
+        "width": 1920,
+        "height": 1080,
+        "matchedRetainedOriginal": true
+      },
+      "independentPasteArtifact": {
+        "path": "native-paste/gtk-desktop-final.png",
+        "sha256": "4b6fc375c86c94146fdce607100735661655b72d181cf1d93336555471923ab6"
+      },
+      "nativePaste": {
+        "schemaVersion": 1,
+        "client": "GTK",
+        "formats": [
+          "image/png"
+        ],
+        "image": {
+          "width": 1920,
+          "height": 1080,
+          "saved": true
+        }
+      },
+      "privacyEdgeGate": {
+        "fractions": [
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "minimum": 0.9,
+        "dimensions": [
+          1920,
+          1080
+        ]
+      }
+    },
+    {
+      "label": "gtk-clipboard-final-t",
+      "operationId": "9d70dc6a-a5d5-4705-9204-efd996abc5d2",
+      "state": "completed",
+      "copyStatus": "copied",
+      "items": [
+        {
+          "id": "4d75aa9e-eccd-4d66-9daa-4c121967acdb",
+          "category": "text",
+          "sha256": "c7a4c2eea1d901cbc049d84dbba77e472576aafc27b49e4a1e188bb7dd176185",
+          "localStatus": "saved"
+        }
+      ],
+      "nativePaste": {
+        "schemaVersion": 1,
+        "client": "GTK",
+        "formats": [
+          "text/plain;charset=utf-8"
+        ],
+        "text": "putgd synthetic clipboard text"
+      }
+    },
+    {
+      "label": "gtk-clipboard-final-i",
+      "operationId": "1832c0ad-c40a-42f3-bc9a-cace88518010",
+      "state": "completed",
+      "copyStatus": "copied",
+      "items": [
+        {
+          "id": "435428fb-964c-4e0c-a733-3ec2e758babd",
+          "category": "images",
+          "sha256": "6171cd78a25ed61bd98dfa4be87b5339b15e39ae7661b3002486af4fefb3cd17",
+          "localStatus": "saved"
+        }
+      ],
+      "independentPaste": {
+        "operationId": "1832c0ad-c40a-42f3-bc9a-cace88518010",
+        "decodedRgbaSha256": "f7d6e5a37e11f8a47c53f53d1b1407d9ddd447cd33947f4f7761f2287b0eca9a",
+        "width": 96,
+        "height": 64,
+        "matchedRetainedOriginal": true
+      },
+      "independentPasteArtifact": {
+        "path": "native-paste/gtk-clipboard-final-i.png",
+        "sha256": "6171cd78a25ed61bd98dfa4be87b5339b15e39ae7661b3002486af4fefb3cd17"
+      },
+      "nativePaste": {
+        "schemaVersion": 1,
+        "client": "GTK",
+        "formats": [
+          "image/png"
+        ],
+        "image": {
+          "width": 96,
+          "height": 64,
+          "saved": true
+        }
+      }
+    },
+    {
+      "label": "gtk-clipboard-final-f",
+      "operationId": "28253dbe-f270-4717-8c7a-dbf43a15ee33",
+      "state": "completed",
+      "copyStatus": "copied",
+      "items": [
+        {
+          "id": "4a460818-ccd4-4662-bc18-99a5141470d1",
+          "category": "text",
+          "sha256": "5b19eebc3f2265be7fb729e7c911c784093eebf706a89beaa356e82ce2222427",
+          "localStatus": "saved"
+        },
+        {
+          "id": "6bebbd5e-318b-4961-9666-e0f538326141",
+          "category": "text",
+          "sha256": "010e71d5ea18016d6f57aaf690c656a8d3bcaaa6199336a843fc07eb07c63209",
+          "localStatus": "saved"
+        }
+      ],
+      "nativePaste": {
+        "schemaVersion": 1,
+        "client": "GTK",
+        "formats": [
+          "text/uri-list"
+        ],
+        "text": "file:///tmp/hfmf/archive/text/synthetic-1-f69e8e29-6962-43f9-a591-04ea4288bb9c.txt\r\nfile:///tmp/hfmf/archive/text/synthetic-2-7885404a-70af-4e5f-9716-173293435301.txt\r\n",
+        "urls": [
+          "file:///tmp/hfmf/archive/text/synthetic-1-f69e8e29-6962-43f9-a591-04ea4288bb9c.txt",
+          "file:///tmp/hfmf/archive/text/synthetic-2-7885404a-70af-4e5f-9716-173293435301.txt"
+        ]
+      }
+    },
+    {
+      "label": "cancel-right",
+      "operationId": "f5ed0cd9-435d-4188-99f2-63cc0f7f0252",
+      "state": "cancelled",
+      "copyStatus": "no_result",
+      "items": []
+    },
+    {
+      "label": "cancel-zero",
+      "operationId": "9bc687bd-f517-4920-95ab-57e9de618fe6",
+      "state": "cancelled",
+      "copyStatus": "no_result",
+      "items": []
+    },
+    {
+      "label": "cancel-escape-final",
+      "operationId": "a375ed09-4b46-4745-b358-9fc5ef2ca6a8",
+      "state": "cancelled",
+      "copyStatus": "no_result",
+      "items": []
+    }
+  ],
+  "sixNormalViewCloses": [
+    {
+      "view": "settings",
+      "helperPid": 576321,
+      "closedNormally": true
+    },
+    {
+      "view": "history",
+      "helperPid": 576347,
+      "closedNormally": true
+    },
+    {
+      "view": "settings",
+      "helperPid": 576370,
+      "closedNormally": true
+    },
+    {
+      "view": "history",
+      "helperPid": 576396,
+      "closedNormally": true
+    },
+    {
+      "view": "settings",
+      "helperPid": 576423,
+      "closedNormally": true
+    },
+    {
+      "view": "history",
+      "helperPid": 576448,
+      "closedNormally": true
+    }
+  ],
+  "allThreeCopyPaths": "actual inspector UI, fresh suppressed CLI, fresh suppressed official-SDK MCP, each persisted copied and independently pasted",
+  "privateArchive": {
+    "source": "171b506e02ca37ba75b27dbbbe859502380926ef",
+    "host": "m74",
+    "archive": "/home/patrick/work/pgcc-fullerror-m74-native-roots.tar.gz",
+    "sha256": "e8264ba000d5fe17d7baa6fc3ebe31731d229f7e6223d166860f69842e87fa88",
+    "bytes": 2762344,
+    "roots": [
+      "/tmp/hfmc",
+      "/tmp/hfmf"
+    ],
+    "excluded": "runtime directories/sockets only; path preflight and process identities retained",
+    "verified": "Every regular archived file matched original source bytes after owned producers stopped",
+    "createdUtc": "2026-10-24T03:32:42.301214+00:00",
+    "restore": "Verify SHA256, extract into a NEW private directory with tar -xzf. Never overwrite old campaigns; do not launch archived profiles."
+  }
+}

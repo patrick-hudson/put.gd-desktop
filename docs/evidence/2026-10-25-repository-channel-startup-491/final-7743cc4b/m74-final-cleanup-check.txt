@@ -1,0 +1,2 @@
+m74 (Linux Mint 22.3 Cinnamon X11): Nothing new is left on the host. Finish the manual steps (workstation forwards, re-login after an extension copy), then rerun with --verified-clean
+  note: 3 process(es) outside the desktop session (no DISPLAY or WAYLAND_DISPLAY; shared SSH work): 2067 313646 313651

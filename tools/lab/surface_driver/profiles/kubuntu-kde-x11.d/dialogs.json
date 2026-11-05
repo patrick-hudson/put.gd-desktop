@@ -1,0 +1,37 @@
+{
+  "dialogs": {
+    "backends": {
+      "portal": {
+        "available": true,
+        "chooser": "kde",
+        "environment": {
+          "PUTGD_FILE_DIALOG": ""
+        },
+        "location_keys": [
+          "Ctrl+L"
+        ],
+        "folder_accept_keys": [
+          "Alt+O"
+        ],
+        "geometry_accessible": false
+      },
+      "fallback": {
+        "available": true,
+        "environment": {
+          "PUTGD_FILE_DIALOG": "fallback"
+        },
+        "references": {},
+        "expected_reason": "disabled"
+      }
+    }
+  },
+  "windows": {
+    "putgdFileDialog": {
+      "accessible": {
+        "role": "dialog",
+        "application": "putgd*"
+      },
+      "owned": true
+    }
+  }
+}

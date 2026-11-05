@@ -1,0 +1,3 @@
+423a424,425
+> x        # r283 scratch copy: the test card pipeline from r283lab.py.
+> x        description = os.environ.get('R283_PATTERN') or description

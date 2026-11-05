@@ -1,0 +1,27 @@
+{
+  "name": "snapshots-v2-cinnamon-verify",
+  "requests": [
+    {
+      "sandboxId": "bx_c794aq9q",
+      "operation": {
+        "attemptCount": 0,
+        "completedAt": null,
+        "expectedBy": null,
+        "id": "bdop_22b4a85f30704747badae21f5664fd4e",
+        "kind": "sandbox",
+        "reason": "explicit",
+        "requestedAt": "2026-10-30T04:25:06.543Z",
+        "stage": "removing",
+        "status": "pending",
+        "targetId": "bx_c794aq9q"
+      }
+    }
+  ],
+  "verified": true,
+  "finalState": "absent",
+  "verification": "boat list --all",
+  "deletedIds": [
+    "bx_c794aq9q"
+  ],
+  "verifiedAt": 1793334308.941123
+}

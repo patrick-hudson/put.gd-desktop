@@ -142,4 +142,4 @@ remain open; no new native Cinnamon/GNOME/KDE or authenticated memory acceptance
 is established here. After the user's explicit Proton-only restriction, all
 additional service traffic was restricted to `drive-api.proton.me`; no further
 S3 tests or S3 account/bucket access were performed. See
-[the gate register](../proton-drive-release-gates.md).
+[the gate register](../history/proton-drive-release-gates.md).

@@ -1,0 +1,36 @@
+{
+  "snapshotName": "putgd-lab-cinnamon-v3",
+  "sandboxId": "bx_wsvvktyu",
+  "packageTarget": "ubuntu24.04",
+  "packageSha256": "dd8a58d3779e7e7873c69e364a72dbfa5439c9f3088841dc447c47afd2cdaa9f",
+  "installedBuildInfo": {
+    "baseVersion": "26.1030.2481",
+    "commitCount": 2481,
+    "dirty": false,
+    "gitCommit": "6ad9f957e6544f30c5e45c08af2306db77a9ff64",
+    "gitTree": "d823723c8759dae8db7c57cee59476ac7a3b4f90",
+    "packageVersion": "26.1030.2481~dev+g6ad9f957e654",
+    "schemaVersion": 1,
+    "sourceProvenance": "git",
+    "version": "26.1030.2481-dev+g6ad9f957e654"
+  },
+  "labController": {
+    "commit": "b063ba38d5fcaaa363c7ac1f9aa8ff449a41f6cb",
+    "entrypoint": "/home/user/lab-driver/tools/lab/lab.py",
+    "path": "/home/user/lab-driver"
+  },
+  "launchPreflightPassed": true,
+  "probesReadOnly": true,
+  "matchingDebInstalledAndStarted": true,
+  "settingsShown": true,
+  "guardedCleanupStatus": "completed",
+  "heldOverlayRefused": true,
+  "base": {
+    "manifestSha256": "dcfa8cf2d5841dd85ed0645c212319e2ec99a955c3008f9ae878af57a6ea9123",
+    "path": "/home/user/work/put.gd/work/lab-images/cinnamon-x11-probes-v3-session/image.qcow2",
+    "sha256": "23b3e37571bdc7b452fdc30d53e70386423d75cb377e59653eed8a652c8bfab7",
+    "standalone": true,
+    "virtualBytes": 34359738368
+  },
+  "recipeSha256": "d0496694e07d79717aaa84333e8251ca88d54ab124fe4ad0ff19e96875a678d9"
+}

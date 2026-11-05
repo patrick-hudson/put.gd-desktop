@@ -1,0 +1,39 @@
+{
+    "class": "QDialog",
+    "controls": [
+        {
+            "checkable": true,
+            "checked": false,
+            "class": "QToolButton",
+            "enabled": true,
+            "kind": "button",
+            "name": "deleteConfirmationDetailsExpanded",
+            "rect": [
+                24,
+                354,
+                143,
+                36
+            ],
+            "text": "Technical details"
+        },
+        {
+            "checkable": false,
+            "checked": false,
+            "class": "QPushButton",
+            "enabled": true,
+            "kind": "button",
+            "name": "confirmCancel",
+            "rect": [
+                471,
+                402,
+                65,
+                36
+            ],
+            "text": "Close"
+        }
+    ],
+    "height": 454,
+    "keys": [
+    ],
+    "width": 560
+}

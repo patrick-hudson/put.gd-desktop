@@ -1,0 +1,19 @@
+{
+ "browserProcesses": [
+  {
+   "pid": 532810,
+   "comm": "firefox-bin",
+   "cmd": "/usr/lib/firefox/firefox https://put.gd/acceptance/qt418/m74/Screen-Capture-2026-10-23-14-11-25.png "
+  }
+ ],
+ "opened": [
+  {
+   "itemId": null,
+   "opened": true,
+   "operationId": null,
+   "route": "portal",
+   "target": "notification-link"
+  }
+ ],
+ "full": "/home/patrick/work/put.gd-qt418/afa/runs/m74-F/full/m74-F-browser.png"
+}

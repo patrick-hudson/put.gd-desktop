@@ -1,0 +1,311 @@
+{
+ "action": "desktop",
+ "shortcut": "Ctrl+Shift+3",
+ "opened": "click:1158,15",
+ "menuBox": [
+  1042,
+  140,
+  1254,
+  526
+ ],
+ "menuFull": "/home/lab/work/put.gd-afa2/runs/ubuntu-vm/full/ubuntu-vm-341-desktop-traymenu-menu-open.png",
+ "seconds": 0.67,
+ "operations": [
+  {
+   "id": "a61e3ee6-6af3-434f-8e69-c19c0ddff7cf",
+   "state": "running",
+   "copyStatus": "pending",
+   "items": [
+    {
+     "name": "Screen-Capture-2026-10-22-01-03-40.png",
+     "mime": "image/png",
+     "uploadStatus": "uploading",
+     "link": "",
+     "local": {
+      "error": {
+       "code": "",
+       "details": {},
+       "message": ""
+      },
+      "path": "/home/lab/work/put.gd-afa2/runs/ubuntu-vm/archive/images/Screen-Capture-2026-10-22-01-03-40.png",
+      "status": "saved"
+     }
+    }
+   ],
+   "error": {
+    "code": "",
+    "details": {},
+    "message": ""
+   }
+  }
+ ],
+ "newHistory": [
+  "1fd8f83e-18c7-4aa3-9c9b-2b210e05ffa4"
+ ],
+ "notices": [
+  {
+   "itemId": null,
+   "notificationId": 1,
+   "notificationText": "Uploaded. Link copied to the clipboard. Click to open in browser.",
+   "operationId": null,
+   "summary": "operation_completed",
+   "title": "put.gd \u2014 completed",
+   "warning": false
+  }
+ ],
+ "shortcutLog": [
+  {
+   "message": "Resident started",
+   "fields": {
+    "architecture": "x86_64",
+    "build": {
+     "baseVersion": "0.1.1",
+     "commitCount": 942,
+     "dirty": false,
+     "gitCommit": "0435ed6a8974135bb114f965cca923da04655169",
+     "gitTree": "34f4741e75cd379114f8612da58262ed5b6259bd",
+     "packageVersion": "0.1.1~nightly.942",
+     "schemaVersion": 1,
+     "sourceProvenance": "git",
+     "version": "0.1.1-nightly.942"
+    },
+    "capabilities": {
+     "adapter": "gnome-wayland",
+     "capture": {
+      "desktop": {
+       "available": false,
+       "consent": "one-time-extension-setup",
+       "error": {
+        "code": "",
+        "details": {},
+        "message": ""
+       },
+       "mode": "compositor-native"
+      },
+      "region": {
+       "available": false,
+       "consent": "one-time-extension-setup",
+       "error": {
+        "code": "",
+        "details": {},
+        "message": ""
+       },
+       "mode": "compositor-native"
+      },
+      "window": {
+       "available": false,
+       "consent": "one-time-extension-setup",
+       "error": {
+        "code": "",
+        "details": {},
+        "message": ""
+       },
+       "mode": "compositor-native"
+      }
+     },
+     "clipboard": "<redacted>",
+     "helper": {
+      "available": false,
+      "error": {
+       "code": "",
+       "details": {},
+       "message": ""
+      },
+      "outdated": false,
+      "packagedExtensionVersion": 2,
+      "protocol": 1,
+      "recordingVersion": 0,
+      "uuid": "putgd@put.gd"
+     },
+     "shortcuts": {
+      "available": false,
+      "bindings": {
+       "clipboard": "<redacted>",
+       "desktop": {
+        "bound": false,
+        "error": "helper_unavailable",
+        "requested": "Ctrl+Shift+3"
+       },
+       "edit": {
+        "bound": false,
+        "error": "disabled",
+        "requested": ""
+       },
+       "record": {
+        "bound": false,
+        "error": "disabled",
+        "requested": ""
+       },
+       "region": {
+        "bound": false,
+        "error": "helper_unavailable",
+        "requested": "Ctrl+Shift+1"
+       },
+       "window": {
+        "bound": false,
+        "error": "helper_unavailable",
+        "requested": "Ctrl+Shift+2"
+       }
+      }
+     }
+    },
+    "desktop": "ubuntu:GNOME",
+    "itemId": null,
+    "kernel": "7.0.0-38-generic",
+    "locations": {
+     "config": {
+      "path": "/home/lab/work/put.gd-afa2/runs/ubuntu-vm/config/putgd",
+      "state": "current"
+     },
+     "data": {
+      "path": "/home/lab/.local/share/putgd",
+      "state": "current"
+     },
+     "schemaVersion": 1
+    },
+    "operationId": null,
+    "os": "Ubuntu 26.04.1 LTS",
+    "platform": "none",
+    "qtCompiled": "6.8.3",
+    "qtRuntime": "6.8.3",
+    "resident": "gnome-core",
+    "sessionType": "wayland",
+    "trayAvailable": false
+   }
+  },
+  {
+   "message": "Resident started",
+   "fields": {
+    "architecture": "x86_64",
+    "build": {
+     "baseVersion": "0.1.1",
+     "commitCount": 942,
+     "dirty": false,
+     "gitCommit": "0435ed6a8974135bb114f965cca923da04655169",
+     "gitTree": "34f4741e75cd379114f8612da58262ed5b6259bd",
+     "packageVersion": "0.1.1~nightly.942",
+     "schemaVersion": 1,
+     "sourceProvenance": "git",
+     "version": "0.1.1-nightly.942"
+    },
+    "capabilities": {
+     "adapter": "gnome-wayland",
+     "capture": {
+      "desktop": {
+       "available": false,
+       "consent": "one-time-extension-setup",
+       "error": {
+        "code": "",
+        "details": {},
+        "message": ""
+       },
+       "mode": "compositor-native"
+      },
+      "region": {
+       "available": false,
+       "consent": "one-time-extension-setup",
+       "error": {
+        "code": "",
+        "details": {},
+        "message": ""
+       },
+       "mode": "compositor-native"
+      },
+      "window": {
+       "available": false,
+       "consent": "one-time-extension-setup",
+       "error": {
+        "code": "",
+        "details": {},
+        "message": ""
+       },
+       "mode": "compositor-native"
+      }
+     },
+     "clipboard": "<redacted>",
+     "helper": {
+      "available": false,
+      "error": {
+       "code": "",
+       "details": {},
+       "message": ""
+      },
+      "outdated": false,
+      "packagedExtensionVersion": 2,
+      "protocol": 1,
+      "recordingVersion": 0,
+      "uuid": "putgd@put.gd"
+     },
+     "shortcuts": {
+      "available": false,
+      "bindings": {
+       "clipboard": "<redacted>",
+       "desktop": {
+        "bound": false,
+        "error": "helper_unavailable",
+        "requested": "Ctrl+Shift+3"
+       },
+       "edit": {
+        "bound": false,
+        "error": "disabled",
+        "requested": ""
+       },
+       "record": {
+        "bound": false,
+        "error": "disabled",
+        "requested": ""
+       },
+       "region": {
+        "bound": false,
+        "error": "helper_unavailable",
+        "requested": "Ctrl+Shift+1"
+       },
+       "window": {
+        "bound": false,
+        "error": "helper_unavailable",
+        "requested": "Ctrl+Shift+2"
+       }
+      }
+     }
+    },
+    "desktop": "ubuntu:GNOME",
+    "itemId": null,
+    "kernel": "7.0.0-38-generic",
+    "locations": {
+     "config": {
+      "path": "/home/lab/work/put.gd-afa2/runs/ubuntu-vm/config/putgd",
+      "state": "current"
+     },
+     "data": {
+      "path": "/home/lab/.local/share/putgd",
+      "state": "current"
+     },
+     "schemaVersion": 1
+    },
+    "operationId": null,
+    "os": "Ubuntu 26.04.1 LTS",
+    "platform": "none",
+    "qtCompiled": "6.8.3",
+    "qtRuntime": "6.8.3",
+    "resident": "gnome-core",
+    "sessionType": "wayland",
+    "trayAvailable": false
+   }
+  }
+ ],
+ "history": {
+  "id": "1fd8f83e-18c7-4aa3-9c9b-2b210e05ffa4",
+  "name": "Screen-Capture-2026-10-22-01-03-40.png",
+  "uploadStatus": "uploading"
+ },
+ "png": {
+  "path": "/home/lab/work/put.gd-afa2/runs/ubuntu-vm/out/ubuntu-vm-341-desktop-traymenu.png",
+  "size": [
+   1280,
+   800
+  ],
+  "sha256": "ca3bb3c2f127049931fcc8a7f814dbbf32055ba39b1d3a1d187124c6bae0757f"
+ },
+ "menuInCapture": 1.0,
+ "after": "/home/lab/work/put.gd-afa2/runs/ubuntu-vm/full/ubuntu-vm-341-desktop-traymenu-after.png"
+}

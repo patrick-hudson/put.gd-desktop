@@ -1,0 +1,280 @@
+{
+ "name": "k72-sw",
+ "runtime": "/tmp/ua-pkg.Q30twd",
+ "session": {
+  "HOME": "/home/patrick",
+  "PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin",
+  "USER": "patrick",
+  "LANG": "en_US.UTF-8",
+  "DISPLAY": ":0",
+  "XAUTHORITY": "/run/user/1000/xauth_DpCZom",
+  "DBUS_SESSION_BUS_ADDRESS": "unix:path=/run/user/1000/bus",
+  "XDG_SESSION_TYPE": "wayland",
+  "XDG_CURRENT_DESKTOP": "KDE",
+  "WAYLAND_DISPLAY": "/run/user/1000/wayland-0",
+  "XDG_SESSION_DESKTOP": "KDE",
+  "DESKTOP_SESSION": "plasma",
+  "KDE_FULL_SESSION": "true",
+  "KDE_SESSION_VERSION": "6",
+  "XDG_DATA_DIRS": "/home/patrick/.local/share/flatpak/exports/share:/var/lib/flatpak/exports/share:/usr/local/share:/usr/share:/var/lib/snapd/desktop"
+ },
+ "shell": "plasmashell",
+ "vnc": 5900,
+ "input": "uinput",
+ "profile": "private",
+ "feed": "live",
+ "hostPath": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin",
+ "host": "kubuntu",
+ "created": "2026-10-22T23:11:09Z",
+ "pids": {
+  "launch": 1454849
+ },
+ "log": [
+  {
+   "at": "2026-10-22T23:11:14Z",
+   "sw-1-1017-settings": {
+    "pid": 1454849,
+    "reply": {
+     "ok": true,
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     }
+    },
+    "status": {
+     "build": "26.1022.1017-nightly",
+     "buildChannel": "nightly",
+     "channel": "nightly",
+     "channelSource": "repository",
+     "channelSetting": "build",
+     "latest": "26.1022.1017-nightly",
+     "updateAvailable": false,
+     "notifies": false,
+     "action": {
+      "kind": "software-updates",
+      "manager": "apt",
+      "updater": {
+       "arguments": [
+        "--mode",
+        "update"
+       ],
+       "id": "plasma-discover",
+       "name": "Discover",
+       "program": "/usr/bin/plasma-discover"
+      },
+      "channel": "nightly",
+      "file": "/etc/apt/sources.list.d/putgd.sources",
+      "command": "sudo apt update && sudo apt upgrade",
+      "repository": "managed",
+      "otherChannel": {
+       "channel": "stable",
+       "commands": [
+        "sudo install -m 644 /usr/share/putgd/repo/putgd-stable.sources /etc/apt/sources.list.d/putgd.sources",
+        "sudo apt update",
+        "sudo apt install --allow-downgrades putgd/stable"
+       ],
+       "docs": "https://github.com/patrick-hudson/put.gd-desktop/blob/main/docs/package-repositories.md#switching-channels"
+      },
+      "older": null
+     },
+     "installKind": "update",
+     "installAvailable": false,
+     "installReason": "not_appimage",
+     "error": null
+    },
+    "repo": {
+     "file": "/etc/apt/sources.list.d/putgd.sources",
+     "exists": true,
+     "sha256": "5d5b79d0154fed9099c42beea5183e41876ba36920bed6ed45a747523d5cc852",
+     "sameAs": "/usr/share/putgd/repo/putgd-nightly.sources",
+     "lines": [
+      "URIs: https://pkg.put.gd/apt/ubuntu26.04",
+      "Suites: nightly"
+     ],
+     "installed": "26.1022.1017~nightly",
+     "policy": [
+      "putgd:",
+      "  Installed: 26.1022.1017~nightly",
+      "  Candidate: 26.1022.1017~nightly",
+      "  Version table:",
+      " *** 26.1022.1017~nightly 100",
+      "        100 /var/lib/dpkg/status"
+     ],
+     "conffiles": "/etc/apt/sources.list.d/putgd.sources 0bddc60435085b83a461f59d1a549517"
+    },
+    "frame": "/home/patrick/work/put.gd-ua/pkg/runs/k72-sw/frames/sw-1-1017-settings.png"
+   }
+  },
+  {
+   "at": "2026-10-22T23:11:29Z",
+   "click": {
+    "x": 1527,
+    "y": 875,
+    "keys": null,
+    "frame": null
+   }
+  },
+  {
+   "at": "2026-10-22T23:11:35Z",
+   "sw-2-stable-empty": {
+    "pid": 1454849,
+    "reply": {
+     "ok": true,
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     }
+    },
+    "status": {
+     "build": "26.1022.1017-nightly",
+     "buildChannel": "nightly",
+     "channel": "stable",
+     "channelSource": "repository",
+     "channelSetting": "build",
+     "latest": null,
+     "updateAvailable": false,
+     "notifies": false,
+     "action": {
+      "kind": "software-updates",
+      "manager": "apt",
+      "updater": {
+       "arguments": [
+        "--mode",
+        "update"
+       ],
+       "id": "plasma-discover",
+       "name": "Discover",
+       "program": "/usr/bin/plasma-discover"
+      },
+      "channel": "stable",
+      "file": "/etc/apt/sources.list.d/putgd.sources",
+      "command": "sudo apt update && sudo apt upgrade",
+      "repository": "managed",
+      "otherChannel": {
+       "channel": "nightly",
+       "commands": [
+        "sudo install -m 644 /usr/share/putgd/repo/putgd-nightly.sources /etc/apt/sources.list.d/putgd.sources",
+        "sudo apt update",
+        "sudo apt install --allow-downgrades putgd/nightly"
+       ],
+       "docs": "https://github.com/patrick-hudson/put.gd-desktop/blob/main/docs/package-repositories.md#switching-channels"
+      },
+      "older": null
+     },
+     "installKind": "update",
+     "installAvailable": false,
+     "installReason": "not_appimage",
+     "error": null
+    },
+    "repo": {
+     "file": "/etc/apt/sources.list.d/putgd.sources",
+     "exists": true,
+     "sha256": "9d2faa5453a56f93432b6ba42245c8dd9c26d1d2f57e6f2cabb76129b7986cfc",
+     "sameAs": "/usr/share/putgd/repo/putgd-stable.sources",
+     "lines": [
+      "URIs: https://pkg.put.gd/apt/ubuntu26.04",
+      "Suites: stable"
+     ],
+     "installed": "26.1022.1017~nightly",
+     "policy": [
+      "putgd:",
+      "  Installed: 26.1022.1017~nightly",
+      "  Candidate: 26.1022.1017~nightly",
+      "  Version table:",
+      " *** 26.1022.1017~nightly 100",
+      "        100 /var/lib/dpkg/status"
+     ],
+     "conffiles": "/etc/apt/sources.list.d/putgd.sources 0bddc60435085b83a461f59d1a549517"
+    },
+    "frame": "/home/patrick/work/put.gd-ua/pkg/runs/k72-sw/frames/sw-2-stable-empty.png"
+   }
+  },
+  {
+   "at": "2026-10-22T23:11:44Z",
+   "sw-3-back-on-nightly": {
+    "pid": 1454849,
+    "reply": {
+     "ok": true,
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     }
+    },
+    "status": {
+     "build": "26.1022.1017-nightly",
+     "buildChannel": "nightly",
+     "channel": "nightly",
+     "channelSource": "repository",
+     "channelSetting": "build",
+     "latest": "26.1022.1017-nightly",
+     "updateAvailable": false,
+     "notifies": false,
+     "action": {
+      "kind": "software-updates",
+      "manager": "apt",
+      "updater": {
+       "arguments": [
+        "--mode",
+        "update"
+       ],
+       "id": "plasma-discover",
+       "name": "Discover",
+       "program": "/usr/bin/plasma-discover"
+      },
+      "channel": "nightly",
+      "file": "/etc/apt/sources.list.d/putgd.sources",
+      "command": "sudo apt update && sudo apt upgrade",
+      "repository": "managed",
+      "otherChannel": {
+       "channel": "stable",
+       "commands": [
+        "sudo install -m 644 /usr/share/putgd/repo/putgd-stable.sources /etc/apt/sources.list.d/putgd.sources",
+        "sudo apt update",
+        "sudo apt install --allow-downgrades putgd/stable"
+       ],
+       "docs": "https://github.com/patrick-hudson/put.gd-desktop/blob/main/docs/package-repositories.md#switching-channels"
+      },
+      "older": null
+     },
+     "installKind": "update",
+     "installAvailable": false,
+     "installReason": "not_appimage",
+     "error": null
+    },
+    "repo": {
+     "file": "/etc/apt/sources.list.d/putgd.sources",
+     "exists": true,
+     "sha256": "5d5b79d0154fed9099c42beea5183e41876ba36920bed6ed45a747523d5cc852",
+     "sameAs": "/usr/share/putgd/repo/putgd-nightly.sources",
+     "lines": [
+      "URIs: https://pkg.put.gd/apt/ubuntu26.04",
+      "Suites: nightly"
+     ],
+     "installed": "26.1022.1017~nightly",
+     "policy": [
+      "putgd:",
+      "  Installed: 26.1022.1017~nightly",
+      "  Candidate: 26.1022.1017~nightly",
+      "  Version table:",
+      " *** 26.1022.1017~nightly 500",
+      "        500 https://pkg.put.gd/apt/ubuntu26.04 nightly/main amd64 Packages",
+      "        100 /var/lib/dpkg/status"
+     ],
+     "conffiles": "/etc/apt/sources.list.d/putgd.sources 0bddc60435085b83a461f59d1a549517"
+    },
+    "frame": "/home/patrick/work/put.gd-ua/pkg/runs/k72-sw/frames/sw-3-back-on-nightly.png"
+   }
+  }
+ ],
+ "before": {
+  "defaultProfile": {
+   "/home/patrick/.config/putgd": false,
+   "/home/patrick/.local/state/putgd": true,
+   "/home/patrick/.cache/putgd": false,
+   "/home/patrick/.local/share/putgd": false
+  }
+ }
+}

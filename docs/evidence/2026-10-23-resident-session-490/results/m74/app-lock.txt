@@ -1,0 +1,10 @@
+True
+   "pid": 541268,
+   "exe": "/tmp/.mount_putgd-OJmLLG/usr/bin/putgd",
+   "session": "c38",
+{'id': 'c38', 'type': 'x11', 'watched': True} 26.1023.1067-dev+g01347aaffc58
+541268
+541268
+ "state": "completed",
+   "local": "saved",
+   "pixels": [

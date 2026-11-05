@@ -1,0 +1,13 @@
+{
+  "frames": {
+    "idle-desktop.png": {
+      "sha256": "e549460f48fec4ddcc3d171270612986837a3aa0964a4855651b0203393b2911",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [],
+      "fallback": false
+    }
+  }
+}

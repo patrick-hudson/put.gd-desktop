@@ -1,0 +1,65 @@
+{
+    "class": "QMessageBox",
+    "controls": [
+        {
+            "class": "QLabel",
+            "enabled": true,
+            "kind": "focusable",
+            "name": "qt_msgbox_label",
+            "rect": [
+                24,
+                20,
+                420,
+                38
+            ],
+            "text": "Replace this window's settings with the configuration file as it is now?"
+        },
+        {
+            "checkable": false,
+            "checked": false,
+            "class": "QPushButton",
+            "enabled": true,
+            "kind": "button",
+            "name": "confirmDiscard",
+            "rect": [
+                314,
+                120,
+                130,
+                36
+            ],
+            "text": "Reload from file"
+        },
+        {
+            "checkable": false,
+            "checked": false,
+            "class": "QPushButton",
+            "enabled": true,
+            "kind": "button",
+            "name": "",
+            "rect": [
+                235,
+                120,
+                73,
+                36
+            ],
+            "text": "Cancel"
+        },
+        {
+            "class": "QLabel",
+            "enabled": true,
+            "kind": "focusable",
+            "name": "qt_msgbox_informativelabel",
+            "rect": [
+                24,
+                70,
+                420,
+                34
+            ],
+            "text": "These unsaved edits are discarded:\n• Credentials typed but not stored"
+        }
+    ],
+    "height": 172,
+    "keys": [
+    ],
+    "width": 468
+}

@@ -1,0 +1,8 @@
+Desktop=KDE
+Type=x11
+Active=yes
+LockedHint=no
+kwin-x11	4:6.6.4-0ubuntu1
+libqt6core6t64:amd64	6.10.2+dfsg-7
+plasma-session-x11	4:6.6.6-0ubuntu0.1
+putgd-kde-lab

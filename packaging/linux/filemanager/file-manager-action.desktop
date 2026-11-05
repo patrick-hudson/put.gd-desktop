@@ -1,0 +1,12 @@
+# "Upload with put.gd" in PCManFM and PCManFM-Qt (#1105), a FileManager-Actions
+# entry for files and folders. Their %F gives a URI for an item with no local
+# path, and the launcher resolves it.
+[Desktop Entry]
+Type=Action
+Name=Upload with put.gd
+Icon=putgd
+Profiles=putgd;
+
+[X-Action-Profile putgd]
+MimeTypes=all/all;
+Exec=/usr/bin/putgd-launcher --upload -- %F

@@ -1,0 +1,8 @@
+# "Upload with put.gd" in Pantheon Files (#1105). Contractor matches a type or
+# any subtype, and every file type is a subtype of application/octet-stream.
+[Contractor Entry]
+Name=Upload with put.gd
+Description=Upload the selected items with put.gd
+Icon=putgd
+MimeType=application/octet-stream;inode/directory;
+Exec=/usr/bin/putgd-launcher --upload -- %U

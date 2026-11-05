@@ -1,0 +1,16 @@
+{
+ "checkNow": {
+  "ok": false,
+  "seconds": 0.14,
+  "result": null,
+  "error": {
+   "code": "update_feed_unavailable",
+   "details": {
+    "httpStatus": null,
+    "network": "SSL handshake failed: The issuer certificate of a locally looked up certificate could not be found"
+   },
+   "message": "Cannot read the update feed"
+  }
+ },
+ "caBundle": "(unset)"
+}

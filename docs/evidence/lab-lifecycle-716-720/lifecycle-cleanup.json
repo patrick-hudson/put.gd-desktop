@@ -1,0 +1,11 @@
+{
+  "createdSandbox": "bx_76ecpr6w",
+  "sandboxDeletionOperation": "bdop_80b0bd76386c4067a81cfaa37f309bcd",
+  "status": "completed",
+  "completedUtc": "2026-10-30T00:48:35.394Z",
+  "allThreeOverlaysRetired": true,
+  "wallTileRemoved": true,
+  "tunnelStopped": true,
+  "isolatedAgentStopped": true,
+  "namedSnapshotsAndGoldenSourcesModified": false
+}

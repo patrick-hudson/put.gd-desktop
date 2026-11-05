@@ -1,0 +1,42 @@
+[
+  {
+    "desktop": "gnome",
+    "placement": "boat",
+    "sourceSnapshot": "putgd-lab-ubuntu-gnome-v4",
+    "id": "bx_ujpgnfd5",
+    "ip": "2001:41d0:1004:38a5:100::2b",
+    "sshEndpoint": "213.32.24.165:19043",
+    "machineProvider": "baremetal",
+    "type": "large",
+    "vcpu": 8,
+    "memoryGB": 16,
+    "createdAt": "2026-10-30T11:23:10.033Z",
+    "hydrated": true,
+    "hydratedAt": "2026-10-30T11:37:35.863Z",
+    "ttlSeconds": 14400,
+    "baselineRunId": "e6bc8ae2-d90d-4806-8dc8-46960fa658a6",
+    "finalRunId": "c15e608c-ac1e-4269-abca-76971da0fdce",
+    "guestVcpus": 2,
+    "guestMemoryGiB": 6
+  },
+  {
+    "desktop": "cinnamon",
+    "placement": "boat",
+    "sourceSnapshot": "putgd-lab-cinnamon-v3",
+    "id": "bx_3b8tu3xp",
+    "ip": "2001:41d0:2:f047:100::2f",
+    "sshEndpoint": "178.33.123.71:19047",
+    "machineProvider": "baremetal",
+    "type": "large",
+    "vcpu": 8,
+    "memoryGB": 16,
+    "createdAt": "2026-10-30T11:55:14.489Z",
+    "hydrated": true,
+    "hydratedAt": "2026-10-30T11:59:26.441Z",
+    "ttlSeconds": 10800,
+    "baselineRunId": "a4283000-0d44-4249-a29c-1efafa070989",
+    "finalRunId": "f33e5726-4124-4e78-907e-6908af523ebc",
+    "guestVcpus": 2,
+    "guestMemoryGiB": 6
+  }
+]

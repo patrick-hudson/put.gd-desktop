@@ -1,0 +1,10 @@
+[1/168] Automatic MOC and UIC for target putgd_log
+[2/168] cd /home/patrick/work/putgd-ci393/src/build/dev && /usr/bin/cmake -DSOURCE_DIR=/home/patrick/work/putgd-ci393/src -DOUTPUT_DIR=/home/patrick/work/putgd-ci393/src/build/dev/build-identity -DRELEASE_TAG= -DSUPPLIED_COMMIT= -DSUPPLIED_TREE= -DSUPPLIED_COUNT= -DSUPPLIED_TIME= -P /home/patrick/work/putgd-ci393/src/cmake/GenerateBuildInfo.cmake
+[3/168] Building CXX object CMakeFiles/putgd_build_identity.dir/build-identity/BuildInfo.cpp.o
+[4/168] Building CXX object CMakeFiles/putgd_log.dir/putgd_log_autogen/mocs_compilation.cpp.o
+[5/168] Automatic MOC and UIC for target putgd_ui_control
+[6/168] Building CXX object CMakeFiles/putgd_log.dir/src/core/RunMarker.cpp.o
+[7/168] Building CXX object CMakeFiles/putgd_log.dir/src/core/Log.cpp.o
+[8/168] Building CXX object CMakeFiles/putgd_log.dir/src/core/CrashRecord.cpp.o
+[9/168] Building CXX object CMakeFiles/putgd_ui_control.dir/putgd_ui_control_autogen/mocs_compilation.cpp.o
+ninja: build stopped: interrupted by user.

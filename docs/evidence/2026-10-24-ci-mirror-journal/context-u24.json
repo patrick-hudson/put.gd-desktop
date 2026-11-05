@@ -1,0 +1,30 @@
+{
+  "host": "d69 physical / 42f5a9df95e9",
+  "osRelease": "PRETTY_NAME=\"Ubuntu 24.04.5 LTS\"\nNAME=\"Ubuntu\"\nVERSION_ID=\"24.04\"\nVERSION=\"24.04.5 LTS (Noble Numbat)\"\nVERSION_CODENAME=noble\nID=ubuntu\nID_LIKE=debian\nHOME_URL=\"https://www.ubuntu.com/\"\nSUPPORT_URL=\"https://help.ubuntu.com/\"\nBUG_REPORT_URL=\"https://bugs.launchpad.net/ubuntu/\"\nPRIVACY_POLICY_URL=\"https://www.ubuntu.com/legal/terms-and-policies/privacy-policy\"\nUBUNTU_CODENAME=noble\nLOGO=ubuntu-logo\n",
+  "qt": "6.4.2",
+  "compiler": "c++ (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0\nCopyright (C) 2023 Free Software Foundation, Inc.\nThis is free software; see the source for copying conditions.  There is NO\nwarranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.",
+  "source": "5683c71f4b99f2c64203b67836653f0d41b23baa",
+  "tree": "c8f56b835770dd02d2b728828dba1f58c0d01586",
+  "status": "",
+  "binaryHash": "1e9eb65b4cdd7a26615145fe6e3a5c83305d04d3c8ff761131c6c0e99d02d6ca  build/dev/test_operations",
+  "buildInfo": {
+    "schemaVersion": 1,
+    "version": "26.1024.1136-dev+g5683c71f4b99",
+    "baseVersion": "26.1024.1136",
+    "packageVersion": "26.1024.1136~dev+g5683c71f4b99",
+    "gitCommit": "5683c71f4b99f2c64203b67836653f0d41b23baa",
+    "gitTree": "c8f56b835770dd02d2b728828dba1f58c0d01586",
+    "commitCount": 1136,
+    "dirty": false,
+    "sourceProvenance": "git"
+  },
+  "ldd": "linux-vdso.so.1 (0x00007fba29e65000)\n\tlibQt6Test.so.6 => /lib/x86_64-linux-gnu/libQt6Test.so.6 (0x00007fba29df5000)\n\tlibQt6Gui.so.6 => /lib/x86_64-linux-gnu/libQt6Gui.so.6 (0x00007fba290cf000)\n\tlibQt6Sql.so.6 => /lib/x86_64-linux-gnu/libQt6Sql.so.6 (0x00007fba29daa000)\n\tlibqt6keychain.so.1 => /lib/x86_64-linux-gnu/libqt6keychain.so.1 (0x00007fba29d7e000)\n\tlibQt6Core.so.6 => /lib/x86_64-linux-gnu/libQt6Core.so.6 (0x00007fba28bc3000)\n\tlibstdc++.so.6 => /lib/x86_64-linux-gnu/libstdc++.so.6 (0x00007fba28945000)\n\tlibm.so.6 => /lib/x86_64-linux-gnu/libm.so.6 (0x00007fba2885c000)\n\tlibgcc_s.so.1 => /lib/x86_64-linux-gnu/libgcc_s.so.1 (0x00007fba29d4e000)\n\tlibc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007fba28649000)\n\t/lib64/ld-linux-x86-64.so.2 (0x00007fba29e67000)\n\tlibEGL.so.1 => /lib/x86_64-linux-gnu/libEGL.so.1 (0x00007fba29d3c000)\n\tlibfontconfig.so.1 => /lib/x86_64-linux-gnu/libfontconfig.so.1 (0x00007fba29ceb000)\n\tlibX11.so.6 => /lib/x86_64-linux-gnu/libX11.so.6 (0x00007fba2850b000)\n\tlibglib-2.0.so.0 => /lib/x86_64-linux-gnu/libglib-2.0.so.0 (0x00007fba283c2000)\n\tlibQt6DBus.so.6 => /lib/x86_64-linux-gnu/libQt6DBus.so.6 (0x00007fba2830d000)\n\tlibxkbcommon.so.0 => /lib/x86_64-linux-gnu/libxkbcommon.so.0 (0x00007fba282c4000)\n\tlibGLX.so.0 => /lib/x86_64-linux-gnu/libGLX.so.0 (0x00007fba29cb6000)\n\tlibOpenGL.so.0 => /lib/x86_64-linux-gnu/libOpenGL.so.0 (0x00007fba28299000)\n\tlibpng16.so.16 => /lib/x86_64-linux-gnu/libpng16.so.16 (0x00007fba28261000)\n\tlibharfbuzz.so.0 => /lib/x86_64-linux-gnu/libharfbuzz.so.0 (0x00007fba28154000)\n\tlibmd4c.so.0 => /lib/x86_64-linux-gnu/libmd4c.so.0 (0x00007fba28142000)\n\tlibfreetype.so.6 => /lib/x86_64-linux-gnu/libfreetype.so.6 (0x00007fba28076000)\n\tlibz.so.1 => /lib/x86_64-linux-gnu/libz.so.1 (0x00007fba2805a000)\n\tlibicui18n.so.74 => /lib/x86_64-linux-gnu/libicui18n.so.74 (0x00007fba27d0c000)\n\tlibicuuc.so.74 => /lib/x86_64-linux-gnu/libicuuc.so.74 (0x00007fba27aff000)\n\tlibdouble-conversion.so.3 => /lib/x86_64-linux-gnu/libdouble-conversion.so.3 (0x00007fba27aea000)\n\tlibb2.so.1 => /lib/x86_64-linux-gnu/libb2.so.1 (0x00007fba27acc000)\n\tlibpcre2-16.so.0 => /lib/x86_64-linux-gnu/libpcre2-16.so.0 (0x00007fba27a40000)\n\tlibzstd.so.1 => /lib/x86_64-linux-gnu/libzstd.so.1 (0x00007fba27986000)\n\tlibGLdispatch.so.0 => /lib/x86_64-linux-gnu/libGLdispatch.so.0 (0x00007fba278ce000)\n\tlibexpat.so.1 => /lib/x86_64-linux-gnu/libexpat.so.1 (0x00007fba278a0000)\n\tlibxcb.so.1 => /lib/x86_64-linux-gnu/libxcb.so.1 (0x00007fba27877000)\n\tlibpcre2-8.so.0 => /lib/x86_64-linux-gnu/libpcre2-8.so.0 (0x00007fba277dd000)\n\tlibdbus-1.so.3 => /lib/x86_64-linux-gnu/libdbus-1.so.3 (0x00007fba2778e000)\n\tlibgraphite2.so.3 => /lib/x86_64-linux-gnu/libgraphite2.so.3 (0x00007fba27766000)\n\tlibbz2.so.1.0 => /lib/x86_64-linux-gnu/libbz2.so.1.0 (0x00007fba27752000)\n\tlibbrotlidec.so.1 => /lib/x86_64-linux-gnu/libbrotlidec.so.1 (0x00007fba27744000)\n\tlibicudata.so.74 => /lib/x86_64-linux-gnu/libicudata.so.74 (0x00007fba259e4000)\n\tlibgomp.so.1 => /lib/x86_64-linux-gnu/libgomp.so.1 (0x00007fba2598e000)\n\tlibXau.so.6 => /lib/x86_64-linux-gnu/libXau.so.6 (0x00007fba25986000)\n\tlibXdmcp.so.6 => /lib/x86_64-linux-gnu/libXdmcp.so.6 (0x00007fba2597e000)\n\tlibsystemd.so.0 => /lib/x86_64-linux-gnu/libsystemd.so.0 (0x00007fba2589e000)\n\tlibbrotlicommon.so.1 => /lib/x86_64-linux-gnu/libbrotlicommon.so.1 (0x00007fba2587b000)\n\tlibbsd.so.0 => /lib/x86_64-linux-gnu/libbsd.so.0 (0x00007fba25865000)\n\tlibcap.so.2 => /lib/x86_64-linux-gnu/libcap.so.2 (0x00007fba25856000)\n\tlibgcrypt.so.20 => /lib/x86_64-linux-gnu/libgcrypt.so.20 (0x00007fba2570d000)\n\tliblz4.so.1 => /lib/x86_64-linux-gnu/liblz4.so.1 (0x00007fba256eb000)\n\tliblzma.so.5 => /lib/x86_64-linux-gnu/liblzma.so.5 (0x00007fba256b9000)\n\tlibmd.so.0 => /lib/x86_64-linux-gnu/libmd.so.0 (0x00007fba256aa000)\n\tlibgpg-error.so.0 => /lib/x86_64-linux-gnu/libgpg-error.so.0 (0x00007fba25683000)",
+  "environment": {
+    "DISPLAY": null,
+    "WAYLAND_DISPLAY": null,
+    "DBUS_SESSION_BUS_ADDRESS": null,
+    "QT_QPA_PLATFORM": "offscreen",
+    "XDG_RUNTIME_DIR": "/tmp/pg393u24/runtime"
+  },
+  "scope": "Headless full operations_contract; one busy loop and CTest on CPU0, nice10, no desktop/memory acceptance"
+}

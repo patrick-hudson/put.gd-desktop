@@ -1,0 +1,57 @@
+{
+  "schemaVersion": 1,
+  "status": "failed unsuppressed product probe",
+  "sourceCommitReportedByExecutionOwner": "052d4363826fc01fa62a552f91db48b74667383b",
+  "host": "d69",
+  "leak": {
+    "bytes": 17,
+    "allocations": 1,
+    "allocationFunction": "gst_version_string",
+    "caller": "putgd::record::probeMedia",
+    "sourcePath": "src/record/MediaProbe.cpp",
+    "line": 87
+  },
+  "preexistingSourceEvidence": {
+    "sha256ByCommit": {
+      "1a70ac7f02b75bc4c75a9d768b2775e837e771a6": "bbba00f926d3e84ec2682e7fa95e5e8934659d074abaf2c5447d88742517ff3b",
+      "052d4363826fc01fa62a552f91db48b74667383b": "bbba00f926d3e84ec2682e7fa95e5e8934659d074abaf2c5447d88742517ff3b",
+      "102b67088abcd11ad3e77b68c17eda9b6fa2ae87": "bbba00f926d3e84ec2682e7fa95e5e8934659d074abaf2c5447d88742517ff3b"
+    },
+    "unchangedAcrossBaselineAndCandidates": true,
+    "blameCommit": "f91ae27112be72a3accd004ce33bdc7b776703cf",
+    "blameDate": "2026-10-17"
+  },
+  "ownershipContract": {
+    "url": "https://gstreamer.freedesktop.org/documentation/gstreamer/gst.html#gst_version_string",
+    "officialDocumentationChecked": true,
+    "returnOwnership": "transfer full; newly allocated string belongs to caller"
+  },
+  "rawEvidence": {
+    "collectedAtUTC": "2026-10-24T15:09:14.493988+00:00",
+    "host": "d69",
+    "file": "asan-probe-deep.log",
+    "remotePath": "/tmp/r410d/asan-probe-deep.log",
+    "sha256": "24008b178ac3cd1638596b55b0955626eae98cdac00a9f8c5aa4f17a40220787",
+    "sizeBytes": 3350
+  },
+  "relatedChecksReportedByExecutionOwner": {
+    "helperFixtureCases": {
+      "passed": 18,
+      "receiptReview": "full suite receipt pending"
+    },
+    "cliAsan": "passed; detailed receipt pending",
+    "serviceAsan": "prior oracle failure; 102b retest pending"
+  },
+  "suppressionApplied": false,
+  "candidatePass": false,
+  "limitations": [
+    "Historical052d product probe remains a recorded unsuppressed failure.",
+    "3440 positive results are scoped to full relevant suites and actual probe, not whole-project sanitizer or desktop acceptance."
+  ],
+  "fixStatusAtRecordedRun": "No fix was applied in the recorded052d run.",
+  "currentDisposition": "3440 ownership fix passed exact-build unsuppressed actual product probe and all three relevant whole CTest suites; historical052d failure remains unchanged.",
+  "permanentProductProbeExclusion": false,
+  "fixAppliedCommit": "3440ab9c4fb6bd745d50eb6c0728a318951ee481",
+  "fixedSourceSha256": "a867cba4badb8bbf7107198dd6b3378e745e6f7cc2ceef62cebe9eea5de05bb1",
+  "positiveReceipt": "final-3440-sanitizers.json"
+}

@@ -1,0 +1,78 @@
+{
+  "host": "d69 / debian",
+  "privateRoot": "/home/patrick/work/ra383",
+  "attempts": [
+    {
+      "output": "a1",
+      "result": "failed",
+      "reason": "Nightly sourceBuild receipt is null; initial checker assumed a receipt existed.",
+      "correction": "Continue artifact/CVE checks while recording the missing receipt; run the independent source rebuild and bind its result.",
+      "command": "python3 /home/patrick/work/ra383/src/tools/releases/audit_assets.py --tag v26.1031.3384-nightly --directory /home/patrick/work/ra383/assets --output /home/patrick/work/ra383/a1"
+    },
+    {
+      "output": "a2",
+      "result": "failed",
+      "reason": "Native receipt uses original CPack filename, while collector publishes a canonical filename.",
+      "correction": "Resolve downloaded native package by release version, distro label and format; continue to verify the receipt SHA-256.",
+      "command": "python3 /home/patrick/work/ra383/src/tools/releases/audit_assets.py --tag v26.1031.3384-nightly --directory /home/patrick/work/ra383/assets --output /home/patrick/work/ra383/a2"
+    },
+    {
+      "output": "a3",
+      "result": "failed",
+      "reason": "Outer source receipt includes source-info.json; its own inner member hash list necessarily excludes itself.",
+      "correction": "Compare all other members and verify the complete source-info.json through the outer archive digest.",
+      "command": "python3 /home/patrick/work/ra383/src/tools/releases/audit_assets.py --tag v26.1031.3384-nightly --directory /home/patrick/work/ra383/assets --output /home/patrick/work/ra383/a3 --reuse-downloads /home/patrick/work/ra383/a2"
+    },
+    {
+      "output": "a4",
+      "result": "failed after all package audits",
+      "reason": "Standard Debian gh 2.46 lacks --slurp.",
+      "correction": "Decode paginated JSON pages directly; retain system gh. Add pagination and advisory fixed-boundary tests.",
+      "command": "python3 /home/patrick/work/ra383/src/tools/releases/audit_assets.py --tag v26.1031.3384-nightly --directory /home/patrick/work/ra383/assets --output /home/patrick/work/ra383/a4 --reuse-downloads /home/patrick/work/ra383/a2"
+    },
+    {
+      "output": "final",
+      "command": "python3 /home/patrick/work/ra383/src/tools/releases/audit_assets.py --tag v26.1031.3384-nightly --directory /home/patrick/work/ra383/assets --output /home/patrick/work/ra383/final --reuse-downloads /home/patrick/work/ra383/a2 --source-build-result /home/patrick/work/ra383/rebuild/results.json",
+      "result": "failed after source rebuild binding and all package audits",
+      "reason": "Official Bun advisory comparator ranges contain whitespace between operators and versions.",
+      "correction": "Normalize comparator whitespace; use the exact upstream ranges in tests. Re-run with the passing rebuild receipt in new output final2."
+    }
+  ],
+  "unchangedBoundaries": [
+    "No CVE policy relaxation or new disposition",
+    "No fabricated rebuild receipt",
+    "No alternate toolchain",
+    "No source asset overwritten",
+    "All failed attempts and commands retained on d69"
+  ],
+  "finalCommand": "python3 /home/patrick/work/ra383/src/tools/releases/audit_assets.py --tag v26.1031.3384-nightly --directory /home/patrick/work/ra383/assets --output /home/patrick/work/ra383/final5 --reuse-downloads /home/patrick/work/ra383/a2 --source-build-result /home/patrick/work/ra383/rebuild/results.json",
+  "notes": [
+    "Debian rpm emitted a non-blocking warning about its absent system RPM database while reading the RPM License header; the query returned the correct value and succeeded. No system RPM database was modified."
+  ],
+  "completedAudits": [
+    {
+      "output": "final2",
+      "driverCommit": "05347d3201f9ccaa769d584d68edc6459ddf20d5",
+      "exitCode": 1,
+      "meaning": "Completed; only the two security gaps blocked."
+    },
+    {
+      "output": "final3",
+      "driverCommit": "82a197819f23d9ee0040e581df013a8853dc4715",
+      "exitCode": 1,
+      "meaning": "Completed after full-pagination duplicate-tag review fix; same two security gaps only."
+    },
+    {
+      "output": "final4",
+      "driverCommit": "d013f832e8873ff00f83d6c1f4e33baa2d35ddd6",
+      "exitCode": 1,
+      "meaning": "Completed with independent Git source verification and curated/delivered catalog binding; same two security gaps only."
+    },
+    {
+      "output": "final5",
+      "driverCommit": "ba19305546680dd024dd02e7b5034baf3642309b",
+      "exitCode": 1,
+      "meaning": "Completed after tar header/mode checks and exact rebuild archive binding; same two security gaps only."
+    }
+  ]
+}

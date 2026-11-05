@@ -32,7 +32,9 @@ export function serviceFailure(error: unknown, fallback = 'operation_failed', au
     // Public ValidationError codes from the pinned SDK's API error factory.
     if (error instanceof ValidationError) {
         if ([2011, 2026].includes(error.code ?? 0)) return failure('permission_denied');
-        if ([200001, 200002, 200003, 200004, 200100, 200101, 200600, 200601, 200602, 200800].includes(error.code ?? 0))
+        // 200003 (MAX_FILE_SIZE_FOR_FREE_USER) is the plan's per-file limit, not a full drive.
+        if (error.code === 200003) return failure('destination_file_too_large_for_plan');
+        if ([200001, 200002, 200004, 200100, 200101, 200600, 200601, 200602, 200800].includes(error.code ?? 0))
             return failure('quota_exceeded');
     }
     return failure(fallback);
@@ -97,7 +99,7 @@ export async function checkName(ctx: Context, request: JsonObject) {
     try {
         const folder = await destinationFolder(ctx, request);
         const candidate = name(request.candidate);
-        const available = await ctx.sdk.getAvailableName(folder.uid, candidate);
+        const available = await ctx.sdk.getAvailableName(folder.uid, candidate, NodeType.File);
         if (typeof available !== 'string' || !available) return status('inconclusive');
         return status(available === candidate ? 'absent' : 'present', {
             objectReference: reference(request), concurrencyToken: '' });
@@ -128,6 +130,12 @@ async function reconcile(ctx: Context, request: JsonObject) {
         if (ownership !== 'own' || !node.activeRevision) return status(ownership);
         return status('own', { receipt: makeReceipt(request, node.uid, node.activeRevision.uid) });
     } catch (error) { return status('unknown', { error: serviceFailure(error, 'operation_unknown', ctx.auth.isLoggedIn()) }); }
+}
+// The hashed availability query counts completed files and unfinished drafts, so a free
+// name proves neither exists. Any doubt, including a failed query, keeps the outcome unknown.
+async function nameStillFree(ctx: Context, folderUid: string, candidate: string): Promise<boolean> {
+    try { return await ctx.sdk.getAvailableName(folderUid, candidate, NodeType.File) === candidate; }
+    catch { return false; }
 }
 export async function upload(ctx: Context, request: JsonObject): Promise<JsonObject> {
     if (request.condition !== 'absent') throw new ProtocolError('unsupported_condition');
@@ -165,7 +173,12 @@ export async function upload(ctx: Context, request: JsonObject): Promise<JsonObj
             return status('uploaded', { receipt: makeReceipt(request, completed.nodeUid, completed.nodeRevisionUid) });
         } catch (error) {
             if (error instanceof NodeWithSameNameExistsValidationError) return status('collision', { error: error.isUnfinishedUpload ? failure('upload_draft_conflict') : {} });
-            return status('unknown', { error: deadlineExpired ? deadlineError() : serviceFailure(error, 'operation_unknown', ctx.auth.isLoggedIn()) });
+            if (deadlineExpired) return status('unknown', { error: deadlineError() });
+            const refused = serviceFailure(error, 'operation_unknown', ctx.auth.isLoggedIn());
+            // A plan or quota refusal settles as failed only when the name is still free afterwards (#201).
+            if (['destination_file_too_large_for_plan', 'quota_exceeded'].includes(refused.code) && await nameStillFree(ctx, folder.uid, request.candidate))
+                return status('failed', { error: refused });
+            return status('unknown', { error: refused });
         }
     } finally { try { await uploadProgress.finish(); } finally { await file.close(); } }
 }

@@ -1,0 +1,17 @@
+Test project /home/user/work/put.gd/src/build/dev
+        Start 101: gui_settings
+        Start  83: operations_contract
+        Start  61: native_background_startup_integration
+        Start 102: gui_history_view
+        Start  76: s3_worker_supervision
+        Start  43: gui_tray
+        Start  40: gui_application
+        Start  71: s3_module_integration
+        Start  86: cli_integration
+        Start  66: x11_isolated
+        Start  73: s3_multipart_integration
+        Start  17: x11_core_clipboard
+  1/114 Test  #17: x11_core_clipboard ......................   Passed   19.17 sec
+        Start  37: session_client_integration
+  2/114 Test  #66: x11_isolated ............................   Passed   25.69 sec
+        Start  14: native_tray_integration

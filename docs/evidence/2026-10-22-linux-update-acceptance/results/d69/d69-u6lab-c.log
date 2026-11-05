@@ -1,0 +1,17 @@
+u6lab-6-S3-available 26.1020.1021 stable repository latest 26.1021.1023 available True older None repo /usr/share/putgd/repo/putgd-stable.sources 26.1020.1021
+u14 repo stable 2026-10-23T00:35:01Z 2026-10-23T01:20:56Z putgd notifications []
+copied: sudo -n install -m 644 /usr/share/putgd/repo/putgd-nightly.sources /etc/apt/sources.list.d/putgd.sources
+copied: sudo -n apt-get update
+copied: sudo -n apt-get install -y --allow-downgrades putgd/nightly
+### sudo -n install -m 644 /usr/share/putgd/repo/putgd-nightly.sources /etc/apt/sources.list.d/putgd.sources
+### sudo -n apt-get update
+Fetched 155 kB in 1s (170 kB/s)
+Reading package lists...
+### sudo -n apt-get install -y --allow-downgrades putgd/nightly
+
+No VM guests are running outdated hypervisor (qemu) binaries on this host.
+u6lab-7-back-on-nightly 26.1021.1022-nightly nightly repository latest 26.1021.1022-nightly available False older None repo /usr/share/putgd/repo/putgd-nightly.sources 26.1021.1022~nightly
+run cleaned
+### remove put.gd and its repository file
+Removing putgd (26.1021.1022~nightly) ...
+Purging configuration files for putgd (26.1021.1022~nightly) ...

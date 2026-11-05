@@ -1,0 +1,22 @@
+### remove the live put.gd
+Removing:
+Removing unused dependencies:
+ Removing:           4 packages
+[2/5] Removing putgd-0:26.1022.1019~nig 100% |   2.3 KiB/s | 127.0   B |  00m00s
+[3/5] Removing qt6-qtimageformats-0:6.1 100% |   4.3 KiB/s |  79.0   B |  00m00s
+[4/5] Removing jasper-libs-0:4.2.8-2.fc 100% |   1.6 KiB/s |  10.0   B |  00m00s
+[5/5] Removing libmng-0:2.0.3-25.fc44.x 100% |  23.0   B/s |  17.0   B |  00m01s
+Complete!
+### install lab nightly L1 from its file
+Complete!
+u6lab-1-L1 26.1019.1019-nightly nightly repository latest 26.1019.1019-nightly available False older None repo /usr/share/putgd/repo/putgd-nightly.repo putgd-26.1019.1019~nightly-1.fc44.x86_64
+copied: sudo -n install -m 644 /usr/share/putgd/repo/putgd-stable.repo /etc/yum.repos.d/putgd.repo
+copied: sudo -n dnf -y distro-sync --refresh putgd
+### sudo -n install -m 644 /usr/share/putgd/repo/putgd-stable.repo /etc/yum.repos.d/putgd.repo
+u6lab-2-stable-older-wait 26.1019.1019-nightly stable repository latest 26.1018.1020 available False older {'command': 'sudo dnf distro-sync --refresh putgd', 'version': '26.1018.1020'} repo /usr/share/putgd/repo/putgd-stable.repo putgd-26.1019.1019~nightly-1.fc44.x86_64
+### sudo -n dnf -y distro-sync --refresh putgd
+Warning: Pending offline transaction has been invalidated.
+To reschedule, run: dnf5daemon-server
+Complete!
+u6lab-3-S1 26.1018.1020 stable repository latest 26.1018.1020 available False older None repo /usr/share/putgd/repo/putgd-stable.repo putgd-26.1018.1020-1.fc44.x86_64
+watch on

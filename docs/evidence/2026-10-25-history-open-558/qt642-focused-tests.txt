@@ -1,0 +1,16 @@
+Test project /src/build/release
+    Start 39: gui_application
+1/4 Test #39: gui_application ..................   Passed   47.12 sec
+    Start 40: gui_theme
+2/4 Test #40: gui_theme ........................   Passed    0.10 sec
+    Start 97: gui_settings
+3/4 Test #97: gui_settings .....................   Passed   98.01 sec
+    Start 98: gui_history_view
+4/4 Test #98: gui_history_view .................   Passed   29.10 sec
+
+100% tests passed, 0 tests failed out of 4
+
+Label Time Summary:
+integration    = 174.33 sec*proc (4 tests)
+
+Total Test time (real) = 174.33 sec

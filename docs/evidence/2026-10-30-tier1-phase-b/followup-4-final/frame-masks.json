@@ -1,0 +1,7120 @@
+{
+  "frames": {
+    "cinnamon/s3a/frames/outcomes_live.s3_region_upload/00-before.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "cinnamon/s3a/frames/outcomes_live.s3_region_upload/01-after.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "cinnamon/protona/frames/outcomes_live.proton_region_upload/00-before.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "cinnamon/protona/frames/outcomes_live.proton_region_upload/01-independent-frozen-pattern.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "cinnamon/protona/frames/outcomes_live.proton_region_upload/02-after.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "cinnamon/protonb/frames/outcomes_live.proton_region_upload/00-before.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "cinnamon/protonb/frames/outcomes_live.proton_region_upload/01-after.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "cinnamon/setup/unlocked-before-live.png": {
+      "sha256": "a29b93b34e75cbe26519a81d8a7ccd3e7d57b8e7caca60da50139fcf50a1f772",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [],
+      "guard": "precredential-desktop-or-synthetic-functional-payload"
+    },
+    "gnome/s3a/frames/outcomes_live.s3_region_upload/00-before.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "gnome/s3a/frames/outcomes_live.s3_region_upload/01-after.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "gnome/protona/frames/outcomes_live.proton_region_upload/00-before.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "gnome/protona/frames/outcomes_live.proton_region_upload/01-independent-frozen-pattern.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "gnome/protona/frames/outcomes_live.proton_region_upload/02-browser-failure-safe-desktop.png": {
+      "sha256": "cb0e14f5dc857ddb5dc920b4178085d9f6251d26562017678afc1ae3135b86fd",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          360,
+          0,
+          560,
+          360
+        ]
+      ],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true,
+      "desktop_safe": "private Firefox kiosk without address bar owns the verified foreground"
+    },
+    "gnome/protona/frames/outcomes_live.proton_region_upload/03-revoke-exact-owned-link.png": {
+      "sha256": "da4162dde591ad8f25dec41f374d184077a7649bd6c0fa80f41fa718441fbf32",
+      "size": [
+        468,
+        153
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          468,
+          20
+        ]
+      ],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true
+    },
+    "gnome/protona/frames/outcomes_live.proton_region_upload/04-history-after-remote-cleanup.png": {
+      "sha256": "944d0866da2188fae6366c9bb24a28b582d8a3cadfc76b1cf16f39732ef8dd01",
+      "size": [
+        1213,
+        768
+      ],
+      "regions": [
+        [
+          293,
+          0,
+          560,
+          328
+        ],
+        [
+          1056,
+          730,
+          143,
+          36
+        ],
+        [
+          847,
+          538,
+          108,
+          40
+        ],
+        [
+          847,
+          494,
+          117,
+          40
+        ],
+        [
+          847,
+          450,
+          140,
+          40
+        ],
+        [
+          553,
+          122,
+          304,
+          40
+        ]
+      ],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true
+    },
+    "gnome/protona/frames/outcomes_live.proton_region_upload/05-after.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "gnome/setup/unlocked-before-live.png": {
+      "sha256": "9c32647318841433d1bc9f740264cb6da068df8a37f9ccbb9703a752ca0facf8",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [],
+      "guard": "precredential-desktop-or-synthetic-functional-payload"
+    },
+    "gnome/protona/functional/692d117ad19d9b8fb937bc9629a0c6d9148826464efaa787a85b209cd9cf7280.png": {
+      "sha256": "692d117ad19d9b8fb937bc9629a0c6d9148826464efaa787a85b209cd9cf7280",
+      "size": [
+        600,
+        280
+      ],
+      "regions": [],
+      "guard": "precredential-desktop-or-synthetic-functional-payload"
+    },
+    "kde/s3b/frames/outcomes_live.s3_region_upload/00-before.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "kde/s3b/frames/outcomes_live.s3_region_upload/01-after.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "kde/protona/frames/outcomes_live.proton_region_upload/00-before.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "kde/protona/frames/outcomes_live.proton_region_upload/01-independent-frozen-pattern.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "kde/protona/frames/outcomes_live.proton_region_upload/02-after.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "kde/protonb/frames/outcomes_live.proton_region_upload/00-before.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "kde/protonb/frames/outcomes_live.proton_region_upload/01-independent-frozen-pattern.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "kde/protonb/frames/outcomes_live.proton_region_upload/02-browser-failure-safe-desktop.png": {
+      "sha256": "fec91d4d92514fcaa20dab2141382ad64c928acab252c5a6ae5da643be7ccc5f",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          760,
+          320,
+          520,
+          480
+        ]
+      ],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true,
+      "desktop_safe": "private Firefox kiosk without address bar owns the verified foreground"
+    },
+    "kde/protonb/frames/outcomes_live.proton_region_upload/03-after.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "kde/post/frames/__main__.finish/00-before.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "kde/post/frames/__main__.finish/01-revoke-exact-owned-link.png": {
+      "sha256": "40e2201449e733470bf756563779559d5738c38feb0edc4115fa452b45f8a41e",
+      "size": [
+        500,
+        171
+      ],
+      "regions": [
+        [
+          370,
+          18,
+          130,
+          153
+        ]
+      ],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true
+    },
+    "kde/post/frames/__main__.finish/02-history-after-remote-cleanup.png": {
+      "sha256": "feb1e373fd54c528544a61913830a452141bfab9395d79d71da7a8763c3247bd",
+      "size": [
+        1280,
+        746
+      ],
+      "regions": [
+        [
+          760,
+          320,
+          520,
+          426
+        ],
+        [
+          1123,
+          708,
+          143,
+          36
+        ],
+        [
+          914,
+          534,
+          108,
+          40
+        ],
+        [
+          914,
+          490,
+          117,
+          40
+        ],
+        [
+          914,
+          446,
+          140,
+          40
+        ],
+        [
+          620,
+          122,
+          304,
+          40
+        ]
+      ],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true
+    },
+    "kde/post/frames/__main__.finish/03-after.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "kde/setup/unlocked-before-live.png": {
+      "sha256": "76e163e78dae8d6f550eb9e1d99a383b269d05b343611a21ea1b64f56711dfcc",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [],
+      "guard": "precredential-desktop-or-synthetic-functional-payload"
+    },
+    "kde/protonb/functional/dbf28b144b57384a3d338158d0bca7d0ab67372b5e072f1993ed3667c524ee7a.png": {
+      "sha256": "dbf28b144b57384a3d338158d0bca7d0ab67372b5e072f1993ed3667c524ee7a",
+      "size": [
+        600,
+        280
+      ],
+      "regions": [],
+      "guard": "precredential-desktop-or-synthetic-functional-payload"
+    },
+    "rerun/cinnamon/s3a/frames/outcomes_live.s3_region_upload/00-before.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "rerun/cinnamon/s3a/frames/outcomes_live.s3_region_upload/01-after.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "rerun/cinnamon/s3b/frames/outcomes_live.s3_region_upload/00-before.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "rerun/cinnamon/s3b/frames/outcomes_live.s3_region_upload/01-independent-frozen-pattern.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "rerun/cinnamon/s3b/frames/outcomes_live.s3_region_upload/02-after.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "rerun/cinnamon/s3c/frames/outcomes_live.s3_region_upload/00-before.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "rerun/cinnamon/s3c/frames/outcomes_live.s3_region_upload/01-after.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "rerun/cinnamon/s3d/frames/outcomes_live.s3_region_upload/00-before.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "rerun/cinnamon/s3d/frames/outcomes_live.s3_region_upload/01-after.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "rerun/cinnamon/s3-reconcile/frames/__main__.finish/00-before.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "rerun/cinnamon/s3-reconcile/frames/__main__.finish/01-after.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "rerun/cinnamon/protona/frames/outcomes_live.proton_region_upload/00-before.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "rerun/cinnamon/protona/frames/outcomes_live.proton_region_upload/01-independent-frozen-pattern.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "rerun/cinnamon/protona/frames/outcomes_live.proton_region_upload/02-browser-content.png": {
+      "sha256": "e6ff66e8f12bdbe81832dc43529cbcb545268f08888b62d5cce8634251c729ae",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          760,
+          0,
+          520,
+          400
+        ],
+        [
+          760,
+          400,
+          520,
+          400
+        ],
+        [
+          0,
+          0,
+          1280,
+          752
+        ]
+      ],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true,
+      "desktop_safe": "private Firefox kiosk without address bar owns the verified foreground"
+    },
+    "rerun/cinnamon/protona/frames/outcomes_live.proton_region_upload/03-after.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "rerun/cinnamon/post/frames/__main__.finish/00-before.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "rerun/cinnamon/post/frames/__main__.finish/01-browser-content.png": {
+      "sha256": "e6ff66e8f12bdbe81832dc43529cbcb545268f08888b62d5cce8634251c729ae",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          760,
+          0,
+          520,
+          400
+        ],
+        [
+          760,
+          400,
+          520,
+          400
+        ],
+        [
+          0,
+          0,
+          1280,
+          752
+        ]
+      ],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true,
+      "desktop_safe": "private Firefox kiosk without address bar owns the verified foreground"
+    },
+    "rerun/cinnamon/post/frames/__main__.finish/02-after.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "rerun/cinnamon/cleanup/frames/__main__.finish/00-before.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "rerun/cinnamon/cleanup/frames/__main__.finish/01-browser-content.png": {
+      "sha256": "e6ff66e8f12bdbe81832dc43529cbcb545268f08888b62d5cce8634251c729ae",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          760,
+          0,
+          520,
+          400
+        ],
+        [
+          760,
+          400,
+          520,
+          400
+        ],
+        [
+          0,
+          0,
+          1280,
+          752
+        ]
+      ],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true,
+      "desktop_safe": "private Firefox kiosk without address bar owns the verified foreground"
+    },
+    "rerun/cinnamon/cleanup/frames/__main__.finish/02-after.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "rerun/cinnamon/finish/frames/__main__.finish/00-before.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "rerun/cinnamon/finish/frames/__main__.finish/01-browser-content.png": {
+      "sha256": "e6ff66e8f12bdbe81832dc43529cbcb545268f08888b62d5cce8634251c729ae",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          760,
+          0,
+          520,
+          400
+        ],
+        [
+          760,
+          400,
+          520,
+          400
+        ],
+        [
+          0,
+          0,
+          1280,
+          752
+        ]
+      ],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true,
+      "desktop_safe": "private Firefox kiosk without address bar owns the verified foreground"
+    },
+    "rerun/cinnamon/finish/frames/__main__.finish/02-history-before-remote-cleanup.png": {
+      "sha256": "b8f38c7c4458227879578565769e316dc40d1955e610b898fc60ec2fe6796a4f",
+      "size": [
+        1280,
+        760
+      ],
+      "regions": [
+        [
+          760,
+          0,
+          520,
+          400
+        ],
+        [
+          760,
+          400,
+          520,
+          360
+        ],
+        [
+          922,
+          429,
+          227,
+          28
+        ],
+        [
+          620,
+          122,
+          304,
+          40
+        ]
+      ],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true
+    },
+    "rerun/cinnamon/finish/frames/__main__.finish/03-after.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "rerun/cinnamon/scroll/frames/__main__.finish/00-before.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "rerun/cinnamon/scroll/frames/__main__.finish/01-browser-content.png": {
+      "sha256": "e6ff66e8f12bdbe81832dc43529cbcb545268f08888b62d5cce8634251c729ae",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          760,
+          0,
+          520,
+          400
+        ],
+        [
+          760,
+          400,
+          520,
+          400
+        ],
+        [
+          0,
+          0,
+          1280,
+          752
+        ]
+      ],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true,
+      "desktop_safe": "private Firefox kiosk without address bar owns the verified foreground"
+    },
+    "rerun/cinnamon/scroll/frames/__main__.finish/02-after.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "rerun/cinnamon/last/frames/__main__.finish/00-before.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "rerun/cinnamon/last/frames/__main__.finish/01-browser-content.png": {
+      "sha256": "e6ff66e8f12bdbe81832dc43529cbcb545268f08888b62d5cce8634251c729ae",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          760,
+          0,
+          520,
+          400
+        ],
+        [
+          760,
+          400,
+          520,
+          400
+        ],
+        [
+          0,
+          0,
+          1280,
+          752
+        ]
+      ],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true,
+      "desktop_safe": "private Firefox kiosk without address bar owns the verified foreground"
+    },
+    "rerun/cinnamon/last/frames/__main__.finish/02-history-before-remote-cleanup.png": {
+      "sha256": "b445b0b201247c2f9176e1107faf18ce142bfb730a5ee662f46fba38e35573db",
+      "size": [
+        1280,
+        760
+      ],
+      "regions": [
+        [
+          760,
+          0,
+          520,
+          400
+        ],
+        [
+          760,
+          400,
+          520,
+          360
+        ],
+        [
+          922,
+          289,
+          227,
+          28
+        ],
+        [
+          620,
+          122,
+          304,
+          40
+        ]
+      ],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true
+    },
+    "rerun/cinnamon/last/frames/__main__.finish/03-after.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "rerun/cinnamon/qt64/frames/__main__.finish/00-before.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "rerun/cinnamon/qt64/frames/__main__.finish/01-browser-content.png": {
+      "sha256": "e6ff66e8f12bdbe81832dc43529cbcb545268f08888b62d5cce8634251c729ae",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          760,
+          0,
+          520,
+          400
+        ],
+        [
+          760,
+          400,
+          520,
+          400
+        ],
+        [
+          0,
+          0,
+          1280,
+          752
+        ]
+      ],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true,
+      "desktop_safe": "private Firefox kiosk without address bar owns the verified foreground"
+    },
+    "rerun/cinnamon/qt64/frames/__main__.finish/02-history-before-remote-cleanup.png": {
+      "sha256": "469e89dbd7120f2c983f5fbc179dc4e564d27a7ca4587c6d48797254d7fdf5fa",
+      "size": [
+        1280,
+        760
+      ],
+      "regions": [
+        [
+          760,
+          0,
+          520,
+          400
+        ],
+        [
+          760,
+          400,
+          520,
+          360
+        ],
+        [
+          922,
+          289,
+          227,
+          28
+        ],
+        [
+          620,
+          122,
+          304,
+          40
+        ]
+      ],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true
+    },
+    "rerun/cinnamon/qt64/frames/__main__.finish/03-revoke-exact-owned-link.png": {
+      "sha256": "515a2dcd3e7e24972a668e19bf519ce2f65ad5e5760bb307a56e561755d09d76",
+      "size": [
+        468,
+        153
+      ],
+      "regions": [
+        [
+          380,
+          0,
+          88,
+          145
+        ],
+        [
+          380,
+          145,
+          88,
+          8
+        ]
+      ],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true
+    },
+    "rerun/cinnamon/qt64/frames/__main__.finish/04-history-after-remote-cleanup.png": {
+      "sha256": "78bcea22463580ea5cf270696ce58a83b0ac80e155008824c1858b6c7ff9dbfd",
+      "size": [
+        1280,
+        760
+      ],
+      "regions": [
+        [
+          760,
+          0,
+          520,
+          400
+        ],
+        [
+          760,
+          400,
+          520,
+          360
+        ],
+        [
+          620,
+          122,
+          304,
+          40
+        ]
+      ],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true
+    },
+    "rerun/cinnamon/qt64/frames/__main__.finish/05-after.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "rerun/cinnamon/setup/cin-ready.png": {
+      "sha256": "28881f98ffc5baabb582f95af2cf68ba3db6e842dc9b2af936d6e8c54f8fb027",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [],
+      "guard": "precredential-desktop-or-synthetic-functional-payload"
+    },
+    "rerun/cinnamon/setup/unlocked-before-live.png": {
+      "sha256": "28881f98ffc5baabb582f95af2cf68ba3db6e842dc9b2af936d6e8c54f8fb027",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [],
+      "guard": "precredential-desktop-or-synthetic-functional-payload"
+    },
+    "rerun/cinnamon/protona/functional/5f5658469bcd089a54c62dd10c88659f0d180ba55fc19980a29a256af873cab1.png": {
+      "sha256": "5f5658469bcd089a54c62dd10c88659f0d180ba55fc19980a29a256af873cab1",
+      "size": [
+        600,
+        280
+      ],
+      "regions": [],
+      "guard": "precredential-desktop-or-synthetic-functional-payload"
+    },
+    "rerun/cinnamon/s3-reconcile/functional/17c4d5d4d0c8fde0770d01528dff0b1a8c522d399e1d5996d1f0b6c15ee0feca.png": {
+      "sha256": "17c4d5d4d0c8fde0770d01528dff0b1a8c522d399e1d5996d1f0b6c15ee0feca",
+      "size": [
+        600,
+        280
+      ],
+      "regions": [],
+      "guard": "precredential-desktop-or-synthetic-functional-payload"
+    },
+    "rerun/gnome/s3a/frames/outcomes_live.s3_region_upload/00-before.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "rerun/gnome/s3a/frames/outcomes_live.s3_region_upload/01-independent-frozen-pattern.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "rerun/gnome/s3a/frames/outcomes_live.s3_region_upload/02-after.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "rerun/gnome/protona/frames/outcomes_live.proton_region_upload/00-before.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "rerun/gnome/protona/frames/outcomes_live.proton_region_upload/01-independent-frozen-pattern.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "rerun/gnome/protona/frames/outcomes_live.proton_region_upload/02-browser-content.png": {
+      "sha256": "5f934334800879da8e0a1a26da5f486f636ab17487b6a63e3dea113613a9215c",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          360,
+          0,
+          560,
+          360
+        ]
+      ],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true,
+      "desktop_safe": "private Firefox kiosk without address bar owns the verified foreground"
+    },
+    "rerun/gnome/protona/frames/outcomes_live.proton_region_upload/03-history-before-remote-cleanup.png": {
+      "sha256": "7ad404dedc61c57d41da438ad80160a83ae6e8793366ef2b75495b8d8eaa7afd",
+      "size": [
+        1213,
+        768
+      ],
+      "regions": [
+        [
+          293,
+          0,
+          560,
+          328
+        ],
+        [
+          1056,
+          730,
+          143,
+          36
+        ],
+        [
+          847,
+          440,
+          108,
+          40
+        ],
+        [
+          847,
+          396,
+          117,
+          40
+        ],
+        [
+          847,
+          352,
+          140,
+          40
+        ],
+        [
+          847,
+          316,
+          68,
+          32
+        ],
+        [
+          1078,
+          272,
+          121,
+          40
+        ],
+        [
+          855,
+          278,
+          227,
+          28
+        ],
+        [
+          553,
+          122,
+          304,
+          40
+        ]
+      ],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true
+    },
+    "rerun/gnome/protona/frames/outcomes_live.proton_region_upload/04-revoke-exact-owned-link.png": {
+      "sha256": "7bd7b775cb55bbed5099bff6a29b046cef4b45a9169786e90ec34659c65ffb54",
+      "size": [
+        468,
+        153
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          468,
+          20
+        ]
+      ],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true
+    },
+    "rerun/gnome/protona/frames/outcomes_live.proton_region_upload/05-history-after-remote-cleanup.png": {
+      "sha256": "33c9f175aa3aac2f0f9e705091ca9273c50a4b9e0f673dc31e3e8eec767dfecb",
+      "size": [
+        1213,
+        768
+      ],
+      "regions": [
+        [
+          293,
+          0,
+          560,
+          328
+        ],
+        [
+          1056,
+          730,
+          143,
+          36
+        ],
+        [
+          847,
+          538,
+          108,
+          40
+        ],
+        [
+          847,
+          494,
+          117,
+          40
+        ],
+        [
+          847,
+          450,
+          140,
+          40
+        ],
+        [
+          553,
+          122,
+          304,
+          40
+        ]
+      ],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true
+    },
+    "rerun/gnome/protona/frames/outcomes_live.proton_region_upload/06-browser-link-unavailable.png": {
+      "sha256": "4bca7bad9c0d5ea8888369b259a51df7eba6db2439badc86c3a71590a790c6d7",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          360,
+          0,
+          560,
+          360
+        ]
+      ],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true,
+      "desktop_safe": "private Firefox kiosk without address bar owns the verified foreground"
+    },
+    "rerun/gnome/protona/frames/outcomes_live.proton_region_upload/07-after.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "rerun/gnome/protonb/frames/outcomes_live.proton_region_upload/00-before.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "rerun/gnome/protonb/frames/outcomes_live.proton_region_upload/01-independent-frozen-pattern.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "rerun/gnome/protonb/frames/outcomes_live.proton_region_upload/02-browser-content.png": {
+      "sha256": "2ac2f8c58c8fa614140da927a6ac5850ca2e21e359038c7431cc6413f576752f",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          360,
+          0,
+          560,
+          360
+        ]
+      ],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true,
+      "desktop_safe": "private Firefox kiosk without address bar owns the verified foreground"
+    },
+    "rerun/gnome/protonb/frames/outcomes_live.proton_region_upload/03-history-before-remote-cleanup.png": {
+      "sha256": "819f057ec9369c64a12a9f94e59903074b52b75f3c2d952890e4be4812816450",
+      "size": [
+        1213,
+        768
+      ],
+      "regions": [
+        [
+          293,
+          0,
+          560,
+          328
+        ],
+        [
+          1056,
+          730,
+          143,
+          36
+        ],
+        [
+          847,
+          459,
+          108,
+          40
+        ],
+        [
+          847,
+          415,
+          117,
+          40
+        ],
+        [
+          847,
+          371,
+          140,
+          40
+        ],
+        [
+          847,
+          335,
+          68,
+          32
+        ],
+        [
+          1078,
+          291,
+          121,
+          40
+        ],
+        [
+          855,
+          297,
+          227,
+          28
+        ],
+        [
+          553,
+          122,
+          304,
+          40
+        ]
+      ],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true
+    },
+    "rerun/gnome/protonb/frames/outcomes_live.proton_region_upload/04-revoke-exact-owned-link.png": {
+      "sha256": "da4162dde591ad8f25dec41f374d184077a7649bd6c0fa80f41fa718441fbf32",
+      "size": [
+        468,
+        153
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          468,
+          20
+        ]
+      ],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true
+    },
+    "rerun/gnome/protonb/frames/outcomes_live.proton_region_upload/05-history-after-remote-cleanup.png": {
+      "sha256": "8b1601225ff734ea75e0669ca6da225653a3687d79c28c4ad97f89a0cf50f83c",
+      "size": [
+        1213,
+        768
+      ],
+      "regions": [
+        [
+          293,
+          0,
+          560,
+          328
+        ],
+        [
+          1056,
+          730,
+          143,
+          36
+        ],
+        [
+          847,
+          538,
+          108,
+          40
+        ],
+        [
+          847,
+          494,
+          117,
+          40
+        ],
+        [
+          847,
+          450,
+          140,
+          40
+        ],
+        [
+          553,
+          122,
+          304,
+          40
+        ]
+      ],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true
+    },
+    "rerun/gnome/protonb/frames/outcomes_live.proton_region_upload/06-browser-link-unavailable.png": {
+      "sha256": "4bca7bad9c0d5ea8888369b259a51df7eba6db2439badc86c3a71590a790c6d7",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          360,
+          0,
+          560,
+          360
+        ]
+      ],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true,
+      "desktop_safe": "private Firefox kiosk without address bar owns the verified foreground"
+    },
+    "rerun/gnome/protonb/frames/outcomes_live.proton_region_upload/07-after.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "rerun/gnome/setup/unlocked-before-live.png": {
+      "sha256": "8ff14028bbf704afb02e73c59a85d4d5d1a8fc673e10984ba2e0a5511d37bec0",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [],
+      "guard": "precredential-desktop-or-synthetic-functional-payload"
+    },
+    "rerun/gnome/setup/gno-ready.png": {
+      "sha256": "8ff14028bbf704afb02e73c59a85d4d5d1a8fc673e10984ba2e0a5511d37bec0",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [],
+      "guard": "precredential-desktop-or-synthetic-functional-payload"
+    },
+    "rerun/gnome/protonb/functional/db5031b3c1959ba465a07d519793b2b4455a32d412770535f668ccf0ed950659.png": {
+      "sha256": "db5031b3c1959ba465a07d519793b2b4455a32d412770535f668ccf0ed950659",
+      "size": [
+        600,
+        280
+      ],
+      "regions": [],
+      "guard": "precredential-desktop-or-synthetic-functional-payload"
+    },
+    "rerun/gnome/protona/functional/4e9d7035a8c7edfda038d40ca38c2d4bcf96504dcd5228915ce8af710ac29c22.png": {
+      "sha256": "4e9d7035a8c7edfda038d40ca38c2d4bcf96504dcd5228915ce8af710ac29c22",
+      "size": [
+        600,
+        280
+      ],
+      "regions": [],
+      "guard": "precredential-desktop-or-synthetic-functional-payload"
+    },
+    "rerun/kde/s3a/frames/outcomes_live.s3_region_upload/00-before.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "rerun/kde/s3a/frames/outcomes_live.s3_region_upload/01-after.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "rerun/kde/s3b/frames/outcomes_live.s3_region_upload/00-before.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "rerun/kde/s3b/frames/outcomes_live.s3_region_upload/01-independent-frozen-pattern.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "rerun/kde/s3b/frames/outcomes_live.s3_region_upload/02-after.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "rerun/kde/s3d/frames/outcomes_live.s3_region_upload/00-before.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "rerun/kde/s3d/frames/outcomes_live.s3_region_upload/01-independent-frozen-pattern.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "rerun/kde/s3d/frames/outcomes_live.s3_region_upload/02-after.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "rerun/kde/s3-inspect/frames/__main__.finish/00-before.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "rerun/kde/s3-inspect/frames/__main__.finish/01-failed-upload-history.png": {
+      "sha256": "55833bfa2d2867d81d29edd3d94f0f1ead76e5b593cd80bb3e5833955ccda7cc",
+      "size": [
+        1280,
+        746
+      ],
+      "regions": [
+        [
+          760,
+          320,
+          520,
+          426
+        ],
+        [
+          1123,
+          708,
+          143,
+          36
+        ],
+        [
+          620,
+          122,
+          304,
+          40
+        ]
+      ],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true
+    },
+    "rerun/kde/s3-inspect/frames/__main__.finish/02-after.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "rerun/kde/s3-detail/frames/__main__.finish/00-before.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "rerun/kde/s3-detail/frames/__main__.finish/01-failed-upload-history.png": {
+      "sha256": "ca02c7f6b844cdf75ecdc9ee024134cb8c8a0ffbac04ea12290324ef29568777",
+      "size": [
+        1280,
+        746
+      ],
+      "regions": [
+        [
+          760,
+          320,
+          520,
+          426
+        ],
+        [
+          1123,
+          708,
+          143,
+          36
+        ],
+        [
+          620,
+          122,
+          304,
+          40
+        ]
+      ],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true
+    },
+    "rerun/kde/s3-detail/frames/__main__.finish/02-after.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "rerun/kde/s3-reconcile/frames/__main__.finish/00-before.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "rerun/kde/s3-reconcile/frames/__main__.finish/01-after.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "rerun/kde/protona/frames/outcomes_live.proton_region_upload/00-before.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "rerun/kde/protona/frames/outcomes_live.proton_region_upload/01-independent-frozen-pattern.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "rerun/kde/protona/frames/outcomes_live.proton_region_upload/02-browser-content.png": {
+      "sha256": "5de97e8c8f926e257a0c5c2f42dafe6e5f01e4814600f0e2dc483e87fc42a686",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          760,
+          320,
+          520,
+          480
+        ]
+      ],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true,
+      "desktop_safe": "private Firefox kiosk without address bar owns the verified foreground"
+    },
+    "rerun/kde/protona/frames/outcomes_live.proton_region_upload/03-revoke-exact-owned-link.png": {
+      "sha256": "98f4e60bb511d07fd5c7df892e4a2942dc4c02fddf78a411e15051296aa52d70",
+      "size": [
+        468,
+        153
+      ],
+      "regions": [
+        [
+          354,
+          9,
+          114,
+          144
+        ]
+      ],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true
+    },
+    "rerun/kde/protona/frames/outcomes_live.proton_region_upload/04-history-after-remote-cleanup.png": {
+      "sha256": "189f0301b6678fa3aec5ee1f6d18b1a3fddc9f490de7cd17773070ad4dca0758",
+      "size": [
+        1280,
+        746
+      ],
+      "regions": [
+        [
+          760,
+          320,
+          520,
+          426
+        ],
+        [
+          1123,
+          708,
+          143,
+          36
+        ],
+        [
+          914,
+          534,
+          108,
+          40
+        ],
+        [
+          914,
+          490,
+          117,
+          40
+        ],
+        [
+          914,
+          446,
+          140,
+          40
+        ],
+        [
+          620,
+          122,
+          304,
+          40
+        ]
+      ],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true
+    },
+    "rerun/kde/protona/frames/outcomes_live.proton_region_upload/05-after.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "rerun/kde/protonc/frames/outcomes_live.proton_region_upload/00-before.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "rerun/kde/protonc/frames/outcomes_live.proton_region_upload/01-independent-frozen-pattern.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "rerun/kde/protonc/frames/outcomes_live.proton_region_upload/02-browser-failure-safe-desktop.png": {
+      "sha256": "fec91d4d92514fcaa20dab2141382ad64c928acab252c5a6ae5da643be7ccc5f",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          760,
+          320,
+          520,
+          480
+        ]
+      ],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true,
+      "desktop_safe": "private Firefox kiosk without address bar owns the verified foreground"
+    },
+    "rerun/kde/protonc/frames/outcomes_live.proton_region_upload/03-after.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "rerun/kde/post/frames/__main__.finish/00-before.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "rerun/kde/post/frames/__main__.finish/01-browser-content.png": {
+      "sha256": "aeb3154136ef2f9ab0e020f3b86af9cadc80ad6a972886048df4cc46395fdb1b",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          760,
+          320,
+          520,
+          480
+        ]
+      ],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true,
+      "desktop_safe": "private Firefox kiosk without address bar owns the verified foreground"
+    },
+    "rerun/kde/post/frames/__main__.finish/02-history-before-remote-cleanup.png": {
+      "sha256": "343b4cfb4dd19489a118296d7247fdbf7a86f39804446bccf6d824ba516e1257",
+      "size": [
+        1280,
+        746
+      ],
+      "regions": [
+        [
+          760,
+          320,
+          520,
+          426
+        ],
+        [
+          1123,
+          708,
+          143,
+          36
+        ],
+        [
+          914,
+          437,
+          108,
+          40
+        ],
+        [
+          914,
+          393,
+          117,
+          40
+        ],
+        [
+          914,
+          349,
+          140,
+          40
+        ],
+        [
+          914,
+          313,
+          68,
+          32
+        ],
+        [
+          1145,
+          269,
+          121,
+          40
+        ],
+        [
+          922,
+          275,
+          227,
+          28
+        ],
+        [
+          620,
+          122,
+          304,
+          40
+        ]
+      ],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true
+    },
+    "rerun/kde/post/frames/__main__.finish/03-revoke-exact-owned-link.png": {
+      "sha256": "98f4e60bb511d07fd5c7df892e4a2942dc4c02fddf78a411e15051296aa52d70",
+      "size": [
+        468,
+        153
+      ],
+      "regions": [
+        [
+          354,
+          9,
+          114,
+          144
+        ]
+      ],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true
+    },
+    "rerun/kde/post/frames/__main__.finish/04-history-after-remote-cleanup.png": {
+      "sha256": "2b2800b8fa18d0a6ece26b5894fb10221be14c20054f72e3f78f76bf706659f5",
+      "size": [
+        1280,
+        746
+      ],
+      "regions": [
+        [
+          760,
+          320,
+          520,
+          426
+        ],
+        [
+          1123,
+          708,
+          143,
+          36
+        ],
+        [
+          914,
+          534,
+          108,
+          40
+        ],
+        [
+          914,
+          490,
+          117,
+          40
+        ],
+        [
+          914,
+          446,
+          140,
+          40
+        ],
+        [
+          620,
+          122,
+          304,
+          40
+        ]
+      ],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true
+    },
+    "rerun/kde/post/frames/__main__.finish/05-after.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "rerun/kde/setup/kde-ready.png": {
+      "sha256": "2b0ef902d614386e853dec26e6b8b2513c2194e4a8e2cad731fa5b0579d42de9",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [],
+      "guard": "precredential-desktop-or-synthetic-functional-payload"
+    },
+    "rerun/kde/setup/unlocked-before-live.png": {
+      "sha256": "2b0ef902d614386e853dec26e6b8b2513c2194e4a8e2cad731fa5b0579d42de9",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [],
+      "guard": "precredential-desktop-or-synthetic-functional-payload"
+    },
+    "rerun/kde/protonc/functional/536d9b7fb071c2fed5a043a8471df195e6608055d4704e2299353741a999bb70.png": {
+      "sha256": "536d9b7fb071c2fed5a043a8471df195e6608055d4704e2299353741a999bb70",
+      "size": [
+        600,
+        280
+      ],
+      "regions": [],
+      "guard": "precredential-desktop-or-synthetic-functional-payload"
+    },
+    "rerun/kde/protona/functional/fbb7dea98f63d499b349e3c21a6c43a5f5ed430cd4f2f6bc9e351fede77e7f76.png": {
+      "sha256": "fbb7dea98f63d499b349e3c21a6c43a5f5ed430cd4f2f6bc9e351fede77e7f76",
+      "size": [
+        600,
+        280
+      ],
+      "regions": [],
+      "guard": "precredential-desktop-or-synthetic-functional-payload"
+    },
+    "rerun/kde/s3-reconcile/functional/bf27d05374d1490da03d953f49f515361094424f675d8a483787822dfb2fd768.png": {
+      "sha256": "bf27d05374d1490da03d953f49f515361094424f675d8a483787822dfb2fd768",
+      "size": [
+        600,
+        280
+      ],
+      "regions": [],
+      "guard": "precredential-desktop-or-synthetic-functional-payload"
+    },
+    "followup-2/cinnamon/pattern/frames/tier1_pattern.guard_only/00-before.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "followup-2/cinnamon/pattern/frames/tier1_pattern.guard_only/01-independent-frozen-pattern.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "followup-2/cinnamon/pattern/frames/tier1_pattern.guard_only/02-after.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "followup-2/cinnamon/s3-cancel/frames/__main__.finish/00-before.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "followup-2/cinnamon/s3-cancel/frames/__main__.finish/01-cancelled-before-upload-confirmed.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "followup-2/cinnamon/s3-cancel/frames/__main__.finish/02-after.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "followup-2/cinnamon/s3-delete2/frames/__main__.finish/00-before.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "followup-2/cinnamon/s3-delete2/frames/__main__.finish/01-browser-failure-fully-masked.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "followup-2/cinnamon/s3-delete2/frames/__main__.finish/02-history-before-remote-cleanup.png": {
+      "sha256": "9954f9a75822b21db6cbeb3bd29639156ef5907e9dc0ff4a26ac9d5516fa4ca0",
+      "size": [
+        1280,
+        760
+      ],
+      "regions": [
+        [
+          760,
+          0,
+          520,
+          400
+        ],
+        [
+          760,
+          400,
+          520,
+          360
+        ],
+        [
+          230,
+          166,
+          656,
+          112
+        ],
+        [
+          914,
+          464,
+          352,
+          154
+        ],
+        [
+          922,
+          377,
+          227,
+          28
+        ],
+        [
+          914,
+          308,
+          352,
+          25
+        ],
+        [
+          620,
+          122,
+          304,
+          40
+        ]
+      ],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true
+    },
+    "followup-2/cinnamon/s3-delete2/frames/__main__.finish/03-delete-exact-owned-object.png": {
+      "sha256": "4d3a05906abc81adc4b3b992eb40abe853a018141e6114db41f20dfb9d052e98",
+      "size": [
+        560,
+        408
+      ],
+      "regions": [
+        [
+          410,
+          0,
+          150,
+          264
+        ],
+        [
+          410,
+          264,
+          150,
+          144
+        ],
+        [
+          101,
+          235,
+          425,
+          55
+        ],
+        [
+          22,
+          189,
+          504,
+          23
+        ],
+        [
+          22,
+          68,
+          516,
+          42
+        ],
+        [
+          22,
+          14,
+          516,
+          46
+        ],
+        [
+          0,
+          30,
+          536,
+          112
+        ],
+        [
+          270,
+          0,
+          290,
+          26
+        ]
+      ],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true
+    },
+    "followup-2/cinnamon/s3-delete2/frames/__main__.finish/04-history-after-remote-cleanup.png": {
+      "sha256": "e3e964ab2a3a82ef42b61490c0810b6eeddcbae260c75fe50822ff8599dc9f00",
+      "size": [
+        1280,
+        760
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          760
+        ]
+      ],
+      "fallback": true,
+      "guard": "ocr-sensitive-text-fully-masked",
+      "visible_pixels": false
+    },
+    "followup-2/cinnamon/s3-delete2/frames/__main__.finish/05-browser-cloudfront-status-403.png": {
+      "sha256": "44e96d9d8ffcf89d2360250d0d878940d4d3a3fb987dd45d3bfb886f200f407a",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          760,
+          0,
+          520,
+          400
+        ],
+        [
+          760,
+          400,
+          520,
+          400
+        ],
+        [
+          0,
+          0,
+          1280,
+          752
+        ],
+        [
+          22,
+          155,
+          1258,
+          19
+        ]
+      ],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true,
+      "desktop_safe": "private Firefox kiosk without address bar owns the verified foreground"
+    },
+    "followup-2/cinnamon/s3-delete2/frames/__main__.finish/06-after.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "followup-2/cinnamon/s3a/frames/outcomes_live.s3_region_upload/00-before.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "followup-2/cinnamon/s3a/frames/outcomes_live.s3_region_upload/01-independent-frozen-pattern.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "followup-2/cinnamon/s3a/frames/outcomes_live.s3_region_upload/02-selector-readback-unavailable.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "followup-2/cinnamon/s3a/frames/outcomes_live.s3_region_upload/03-after.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "followup-2/cinnamon/s3b/frames/outcomes_live.s3_region_upload/00-before.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "followup-2/cinnamon/s3b/frames/outcomes_live.s3_region_upload/01-independent-frozen-pattern.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "followup-2/cinnamon/s3b/frames/outcomes_live.s3_region_upload/02-browser-failure-fully-masked.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "followup-2/cinnamon/s3b/frames/outcomes_live.s3_region_upload/03-history-before-remote-cleanup.png": {
+      "sha256": "9954f9a75822b21db6cbeb3bd29639156ef5907e9dc0ff4a26ac9d5516fa4ca0",
+      "size": [
+        1280,
+        760
+      ],
+      "regions": [
+        [
+          760,
+          0,
+          520,
+          400
+        ],
+        [
+          760,
+          400,
+          520,
+          360
+        ],
+        [
+          230,
+          166,
+          656,
+          112
+        ],
+        [
+          914,
+          464,
+          352,
+          154
+        ],
+        [
+          922,
+          377,
+          227,
+          28
+        ],
+        [
+          914,
+          308,
+          352,
+          25
+        ],
+        [
+          620,
+          122,
+          304,
+          40
+        ]
+      ],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true
+    },
+    "followup-2/cinnamon/s3b/frames/outcomes_live.s3_region_upload/04-history-before-remote-cleanup.png": {
+      "sha256": "9954f9a75822b21db6cbeb3bd29639156ef5907e9dc0ff4a26ac9d5516fa4ca0",
+      "size": [
+        1280,
+        760
+      ],
+      "regions": [
+        [
+          760,
+          0,
+          520,
+          400
+        ],
+        [
+          760,
+          400,
+          520,
+          360
+        ],
+        [
+          230,
+          166,
+          656,
+          112
+        ],
+        [
+          914,
+          464,
+          352,
+          154
+        ],
+        [
+          922,
+          377,
+          227,
+          28
+        ],
+        [
+          914,
+          308,
+          352,
+          25
+        ],
+        [
+          620,
+          122,
+          304,
+          40
+        ]
+      ],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true
+    },
+    "followup-2/cinnamon/s3b/frames/outcomes_live.s3_region_upload/05-after.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "followup-2/cinnamon/protona/frames/outcomes_live.proton_region_upload/00-before.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "followup-2/cinnamon/protona/frames/outcomes_live.proton_region_upload/01-independent-frozen-pattern.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "followup-2/cinnamon/protona/frames/outcomes_live.proton_region_upload/02-browser-content.png": {
+      "sha256": "e6ff66e8f12bdbe81832dc43529cbcb545268f08888b62d5cce8634251c729ae",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          760,
+          0,
+          520,
+          400
+        ],
+        [
+          760,
+          400,
+          520,
+          400
+        ],
+        [
+          0,
+          0,
+          1280,
+          752
+        ]
+      ],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true,
+      "desktop_safe": "private Firefox kiosk without address bar owns the verified foreground"
+    },
+    "followup-2/cinnamon/protona/frames/outcomes_live.proton_region_upload/03-history-before-remote-cleanup.png": {
+      "sha256": "a3aa1c1546df4299e8c1f25f25e1e16bb6bd644b6b9b47e86a29072fd902c1c3",
+      "size": [
+        1280,
+        760
+      ],
+      "regions": [
+        [
+          760,
+          0,
+          520,
+          400
+        ],
+        [
+          760,
+          400,
+          520,
+          360
+        ],
+        [
+          922,
+          289,
+          227,
+          28
+        ],
+        [
+          620,
+          122,
+          304,
+          40
+        ]
+      ],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true
+    },
+    "followup-2/cinnamon/protona/frames/outcomes_live.proton_region_upload/04-revoke-exact-owned-link.png": {
+      "sha256": "515a2dcd3e7e24972a668e19bf519ce2f65ad5e5760bb307a56e561755d09d76",
+      "size": [
+        468,
+        153
+      ],
+      "regions": [
+        [
+          380,
+          0,
+          88,
+          145
+        ],
+        [
+          380,
+          145,
+          88,
+          8
+        ]
+      ],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true
+    },
+    "followup-2/cinnamon/protona/frames/outcomes_live.proton_region_upload/05-history-after-remote-cleanup.png": {
+      "sha256": "103e992ce9e511daa8f894df458d9d159b5d15efd29683526388e151e44cb0d5",
+      "size": [
+        1280,
+        760
+      ],
+      "regions": [
+        [
+          760,
+          0,
+          520,
+          400
+        ],
+        [
+          760,
+          400,
+          520,
+          360
+        ],
+        [
+          620,
+          122,
+          304,
+          40
+        ]
+      ],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true
+    },
+    "followup-2/cinnamon/protona/frames/outcomes_live.proton_region_upload/06-browser-link-unavailable.png": {
+      "sha256": "44e96d9d8ffcf89d2360250d0d878940d4d3a3fb987dd45d3bfb886f200f407a",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          760,
+          0,
+          520,
+          400
+        ],
+        [
+          760,
+          400,
+          520,
+          400
+        ],
+        [
+          0,
+          0,
+          1280,
+          752
+        ]
+      ],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true,
+      "desktop_safe": "private Firefox kiosk without address bar owns the verified foreground"
+    },
+    "followup-2/cinnamon/protona/frames/outcomes_live.proton_region_upload/07-after.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "followup-2/cinnamon/setup/cin-ready.png": {
+      "sha256": "de9ffeded2ebc4506d42424768de55ec0fbd80eb96b36a8e3df5771e6559e804",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [],
+      "guard": "precredential-desktop-or-synthetic-functional-payload"
+    },
+    "followup-2/cinnamon/setup/unlocked-before-live.png": {
+      "sha256": "de9ffeded2ebc4506d42424768de55ec0fbd80eb96b36a8e3df5771e6559e804",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [],
+      "guard": "precredential-desktop-or-synthetic-functional-payload"
+    },
+    "followup-2/cinnamon/protona/functional/17c4d5d4d0c8fde0770d01528dff0b1a8c522d399e1d5996d1f0b6c15ee0feca.png": {
+      "sha256": "17c4d5d4d0c8fde0770d01528dff0b1a8c522d399e1d5996d1f0b6c15ee0feca",
+      "size": [
+        600,
+        280
+      ],
+      "regions": [],
+      "guard": "precredential-desktop-or-synthetic-functional-payload"
+    },
+    "followup-2/cinnamon/s3-delete2/functional/17c4d5d4d0c8fde0770d01528dff0b1a8c522d399e1d5996d1f0b6c15ee0feca.png": {
+      "sha256": "17c4d5d4d0c8fde0770d01528dff0b1a8c522d399e1d5996d1f0b6c15ee0feca",
+      "size": [
+        600,
+        280
+      ],
+      "regions": [],
+      "guard": "precredential-desktop-or-synthetic-functional-payload"
+    },
+    "followup-2/cinnamon/s3b/functional/17c4d5d4d0c8fde0770d01528dff0b1a8c522d399e1d5996d1f0b6c15ee0feca.png": {
+      "sha256": "17c4d5d4d0c8fde0770d01528dff0b1a8c522d399e1d5996d1f0b6c15ee0feca",
+      "size": [
+        600,
+        280
+      ],
+      "regions": [],
+      "guard": "precredential-desktop-or-synthetic-functional-payload"
+    },
+    "followup-2/gnome/s3a/frames/outcomes_live.s3_region_upload/00-before.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "followup-2/gnome/s3a/frames/outcomes_live.s3_region_upload/01-independent-frozen-pattern.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "followup-2/gnome/s3a/frames/outcomes_live.s3_region_upload/02-browser-failure-safe-desktop.png": {
+      "sha256": "cb0e14f5dc857ddb5dc920b4178085d9f6251d26562017678afc1ae3135b86fd",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          360,
+          0,
+          560,
+          360
+        ]
+      ],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true,
+      "desktop_safe": "private Firefox kiosk without address bar owns the verified foreground"
+    },
+    "followup-2/gnome/s3a/frames/outcomes_live.s3_region_upload/03-history-before-remote-cleanup.png": {
+      "sha256": "a2297279e0cdba065422afb243390037007b4bb24ebc9b81f0108066cefe0b06",
+      "size": [
+        1213,
+        768
+      ],
+      "regions": [
+        [
+          293,
+          0,
+          560,
+          328
+        ],
+        [
+          1056,
+          730,
+          143,
+          36
+        ],
+        [
+          230,
+          166,
+          589,
+          112
+        ],
+        [
+          847,
+          423,
+          68,
+          32
+        ],
+        [
+          847,
+          472,
+          352,
+          154
+        ],
+        [
+          1078,
+          379,
+          121,
+          40
+        ],
+        [
+          855,
+          385,
+          227,
+          28
+        ],
+        [
+          847,
+          316,
+          352,
+          25
+        ],
+        [
+          553,
+          122,
+          304,
+          40
+        ]
+      ],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true
+    },
+    "followup-2/gnome/s3a/frames/outcomes_live.s3_region_upload/04-delete-exact-owned-object.png": {
+      "sha256": "01240ae5c1aa86ac0f7827dc43ca41366bf52e48abab75f808f4b67c3a156a55",
+      "size": [
+        560,
+        408
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          527,
+          129
+        ],
+        [
+          101,
+          235,
+          425,
+          55
+        ],
+        [
+          22,
+          189,
+          504,
+          23
+        ],
+        [
+          22,
+          68,
+          516,
+          42
+        ],
+        [
+          22,
+          14,
+          516,
+          46
+        ],
+        [
+          0,
+          0,
+          493,
+          79
+        ],
+        [
+          521,
+          224,
+          39,
+          32
+        ],
+        [
+          521,
+          273,
+          39,
+          135
+        ],
+        [
+          529,
+          186,
+          31,
+          28
+        ],
+        [
+          521,
+          117,
+          39,
+          25
+        ]
+      ],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true
+    },
+    "followup-2/gnome/s3a/frames/outcomes_live.s3_region_upload/05-history-after-remote-cleanup.png": {
+      "sha256": "08b2c0bc03cb2873ff65b88658d95cafd636221b43cadd1071da0c8dab994c90",
+      "size": [
+        1213,
+        768
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1213,
+          768
+        ]
+      ],
+      "fallback": true,
+      "guard": "ocr-sensitive-text-fully-masked",
+      "visible_pixels": false
+    },
+    "followup-2/gnome/s3a/frames/outcomes_live.s3_region_upload/06-browser-cloudfront-status-0.png": {
+      "sha256": "cb0e14f5dc857ddb5dc920b4178085d9f6251d26562017678afc1ae3135b86fd",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          360,
+          0,
+          560,
+          360
+        ]
+      ],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true,
+      "desktop_safe": "private Firefox kiosk without address bar owns the verified foreground"
+    },
+    "followup-2/gnome/s3a/frames/outcomes_live.s3_region_upload/07-after.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "followup-2/gnome/s3b/frames/outcomes_live.s3_region_upload/00-before.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "followup-2/gnome/s3b/frames/outcomes_live.s3_region_upload/01-independent-frozen-pattern.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "followup-2/gnome/s3b/frames/outcomes_live.s3_region_upload/02-browser-failure-fully-masked.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "followup-2/gnome/s3b/frames/outcomes_live.s3_region_upload/03-history-before-remote-cleanup.png": {
+      "sha256": "7110590c5e62de30f3b7871bbbd911fe00680fb52bdfd6cbd260a82dffc92f79",
+      "size": [
+        1213,
+        768
+      ],
+      "regions": [
+        [
+          293,
+          0,
+          560,
+          328
+        ],
+        [
+          1056,
+          730,
+          143,
+          36
+        ],
+        [
+          230,
+          166,
+          589,
+          112
+        ],
+        [
+          847,
+          423,
+          68,
+          32
+        ],
+        [
+          847,
+          472,
+          352,
+          154
+        ],
+        [
+          1078,
+          379,
+          121,
+          40
+        ],
+        [
+          855,
+          385,
+          227,
+          28
+        ],
+        [
+          847,
+          316,
+          352,
+          25
+        ],
+        [
+          553,
+          122,
+          304,
+          40
+        ]
+      ],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true
+    },
+    "followup-2/gnome/s3b/frames/outcomes_live.s3_region_upload/04-delete-exact-owned-object.png": {
+      "sha256": "01240ae5c1aa86ac0f7827dc43ca41366bf52e48abab75f808f4b67c3a156a55",
+      "size": [
+        560,
+        408
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          527,
+          129
+        ],
+        [
+          101,
+          235,
+          425,
+          55
+        ],
+        [
+          22,
+          189,
+          504,
+          23
+        ],
+        [
+          22,
+          68,
+          516,
+          42
+        ],
+        [
+          22,
+          14,
+          516,
+          46
+        ],
+        [
+          0,
+          0,
+          493,
+          79
+        ],
+        [
+          521,
+          224,
+          39,
+          32
+        ],
+        [
+          521,
+          273,
+          39,
+          135
+        ],
+        [
+          529,
+          186,
+          31,
+          28
+        ],
+        [
+          521,
+          117,
+          39,
+          25
+        ]
+      ],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true
+    },
+    "followup-2/gnome/s3b/frames/outcomes_live.s3_region_upload/05-history-after-remote-cleanup.png": {
+      "sha256": "08b2c0bc03cb2873ff65b88658d95cafd636221b43cadd1071da0c8dab994c90",
+      "size": [
+        1213,
+        768
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1213,
+          768
+        ]
+      ],
+      "fallback": true,
+      "guard": "ocr-sensitive-text-fully-masked",
+      "visible_pixels": false
+    },
+    "followup-2/gnome/s3b/frames/outcomes_live.s3_region_upload/06-browser-cloudfront-status-403.png": {
+      "sha256": "b9669a850f625cbdef4744e1bc7f0a77f516c54d42720895b9360034278a0ffa",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          360,
+          0,
+          560,
+          360
+        ],
+        [
+          22,
+          155,
+          1258,
+          19
+        ]
+      ],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true,
+      "desktop_safe": "private Firefox kiosk without address bar owns the verified foreground"
+    },
+    "followup-2/gnome/s3b/frames/outcomes_live.s3_region_upload/07-after.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "followup-2/gnome/protona/frames/outcomes_live.proton_region_upload/00-before.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "followup-2/gnome/protona/frames/outcomes_live.proton_region_upload/01-independent-frozen-pattern.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "followup-2/gnome/protona/frames/outcomes_live.proton_region_upload/02-browser-content.png": {
+      "sha256": "5f934334800879da8e0a1a26da5f486f636ab17487b6a63e3dea113613a9215c",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          360,
+          0,
+          560,
+          360
+        ]
+      ],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true,
+      "desktop_safe": "private Firefox kiosk without address bar owns the verified foreground"
+    },
+    "followup-2/gnome/protona/frames/outcomes_live.proton_region_upload/03-history-before-remote-cleanup.png": {
+      "sha256": "57f21c93b5e103901c28212a7971b74dd23fa86ca253ff79a43f2da5e345b5e5",
+      "size": [
+        1213,
+        768
+      ],
+      "regions": [
+        [
+          293,
+          0,
+          560,
+          328
+        ],
+        [
+          1056,
+          730,
+          143,
+          36
+        ],
+        [
+          847,
+          440,
+          108,
+          40
+        ],
+        [
+          847,
+          396,
+          117,
+          40
+        ],
+        [
+          847,
+          352,
+          140,
+          40
+        ],
+        [
+          847,
+          316,
+          68,
+          32
+        ],
+        [
+          1078,
+          272,
+          121,
+          40
+        ],
+        [
+          855,
+          278,
+          227,
+          28
+        ],
+        [
+          553,
+          122,
+          304,
+          40
+        ]
+      ],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true
+    },
+    "followup-2/gnome/protona/frames/outcomes_live.proton_region_upload/04-revoke-exact-owned-link.png": {
+      "sha256": "e617208676bb66e70c7d354faa10ba4ec60949c9058e778598c30a2d7e26e865",
+      "size": [
+        468,
+        153
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          468,
+          20
+        ]
+      ],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true
+    },
+    "followup-2/gnome/protona/frames/outcomes_live.proton_region_upload/05-history-after-remote-cleanup.png": {
+      "sha256": "778eab5777ca379335a9ac25d5285c118b2f50304f2cc38ccc5d2475b57d229b",
+      "size": [
+        1213,
+        768
+      ],
+      "regions": [
+        [
+          293,
+          0,
+          560,
+          328
+        ],
+        [
+          1056,
+          730,
+          143,
+          36
+        ],
+        [
+          847,
+          538,
+          108,
+          40
+        ],
+        [
+          847,
+          494,
+          117,
+          40
+        ],
+        [
+          847,
+          450,
+          140,
+          40
+        ],
+        [
+          553,
+          122,
+          304,
+          40
+        ]
+      ],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true
+    },
+    "followup-2/gnome/protona/frames/outcomes_live.proton_region_upload/06-browser-link-unavailable.png": {
+      "sha256": "4bca7bad9c0d5ea8888369b259a51df7eba6db2439badc86c3a71590a790c6d7",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          360,
+          0,
+          560,
+          360
+        ]
+      ],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true,
+      "desktop_safe": "private Firefox kiosk without address bar owns the verified foreground"
+    },
+    "followup-2/gnome/protona/frames/outcomes_live.proton_region_upload/07-after.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "followup-2/gnome/setup/unlocked-before-live.png": {
+      "sha256": "227dbd8b8328ba88bac3eb79642fbd61308615fbf718df98c20fca26ac082913",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [],
+      "guard": "precredential-desktop-or-synthetic-functional-payload"
+    },
+    "followup-2/gnome/setup/gno-ready.png": {
+      "sha256": "227dbd8b8328ba88bac3eb79642fbd61308615fbf718df98c20fca26ac082913",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [],
+      "guard": "precredential-desktop-or-synthetic-functional-payload"
+    },
+    "followup-2/gnome/protona/functional/8e86d367c0898e8a66e080c9815ad1300e744f9aeecf0a45df38a5926200a5e3.png": {
+      "sha256": "8e86d367c0898e8a66e080c9815ad1300e744f9aeecf0a45df38a5926200a5e3",
+      "size": [
+        600,
+        280
+      ],
+      "regions": [],
+      "guard": "precredential-desktop-or-synthetic-functional-payload"
+    },
+    "followup-2/gnome/s3a/functional/bad7cc029d1e898d18707483d77459e4ba93473bf5d612a1d0f5290966244589.png": {
+      "sha256": "bad7cc029d1e898d18707483d77459e4ba93473bf5d612a1d0f5290966244589",
+      "size": [
+        600,
+        280
+      ],
+      "regions": [],
+      "guard": "precredential-desktop-or-synthetic-functional-payload"
+    },
+    "followup-2/gnome/s3b/functional/b88949e534d8491106b7db30f782cf3bbda1e72f6be74bf9581a8d5f975b1e09.png": {
+      "sha256": "b88949e534d8491106b7db30f782cf3bbda1e72f6be74bf9581a8d5f975b1e09",
+      "size": [
+        600,
+        280
+      ],
+      "regions": [],
+      "guard": "precredential-desktop-or-synthetic-functional-payload"
+    },
+    "followup-2/kde/s3a/frames/outcomes_live.s3_region_upload/00-before.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "followup-2/kde/s3a/frames/outcomes_live.s3_region_upload/01-independent-frozen-pattern.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "followup-2/kde/s3a/frames/outcomes_live.s3_region_upload/02-browser-failure-safe-desktop.png": {
+      "sha256": "fec91d4d92514fcaa20dab2141382ad64c928acab252c5a6ae5da643be7ccc5f",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          760,
+          320,
+          520,
+          480
+        ]
+      ],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true,
+      "desktop_safe": "private Firefox kiosk without address bar owns the verified foreground"
+    },
+    "followup-2/kde/s3a/frames/outcomes_live.s3_region_upload/03-history-before-remote-cleanup.png": {
+      "sha256": "0a8c19a80b9a120ade28e20d59799d458eb12bedb4b12205b45b3b126e21401a",
+      "size": [
+        1280,
+        746
+      ],
+      "regions": [
+        [
+          760,
+          320,
+          520,
+          426
+        ],
+        [
+          1123,
+          708,
+          143,
+          36
+        ],
+        [
+          230,
+          162,
+          656,
+          112
+        ],
+        [
+          914,
+          401,
+          68,
+          32
+        ],
+        [
+          914,
+          450,
+          352,
+          154
+        ],
+        [
+          1145,
+          357,
+          121,
+          40
+        ],
+        [
+          922,
+          363,
+          227,
+          28
+        ],
+        [
+          914,
+          294,
+          352,
+          25
+        ],
+        [
+          620,
+          122,
+          304,
+          40
+        ]
+      ],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true
+    },
+    "followup-2/kde/s3a/frames/outcomes_live.s3_region_upload/04-delete-exact-owned-object.png": {
+      "sha256": "d16eaadcdaf89eee1c38bc9d43601e414026a2067e52c1ac58f245f7bee173ea",
+      "size": [
+        560,
+        408
+      ],
+      "regions": [
+        [
+          400,
+          137,
+          160,
+          271
+        ],
+        [
+          101,
+          235,
+          425,
+          55
+        ],
+        [
+          22,
+          189,
+          504,
+          23
+        ],
+        [
+          22,
+          68,
+          516,
+          42
+        ],
+        [
+          22,
+          14,
+          516,
+          46
+        ],
+        [
+          0,
+          0,
+          526,
+          91
+        ],
+        [
+          554,
+          218,
+          6,
+          32
+        ],
+        [
+          554,
+          267,
+          6,
+          141
+        ],
+        [
+          554,
+          111,
+          6,
+          25
+        ]
+      ],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true
+    },
+    "followup-2/kde/s3a/frames/outcomes_live.s3_region_upload/05-history-after-remote-cleanup.png": {
+      "sha256": "db1ac38139f48a54a2bcce2e502f147c563e03e1b8392d6079a82ef91d7cdecd",
+      "size": [
+        1280,
+        746
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          746
+        ]
+      ],
+      "fallback": true,
+      "guard": "ocr-sensitive-text-fully-masked",
+      "visible_pixels": false
+    },
+    "followup-2/kde/s3a/frames/outcomes_live.s3_region_upload/06-browser-cloudfront-status-0.png": {
+      "sha256": "fec91d4d92514fcaa20dab2141382ad64c928acab252c5a6ae5da643be7ccc5f",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          760,
+          320,
+          520,
+          480
+        ]
+      ],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true,
+      "desktop_safe": "private Firefox kiosk without address bar owns the verified foreground"
+    },
+    "followup-2/kde/s3a/frames/outcomes_live.s3_region_upload/07-after.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "followup-2/kde/s3b/frames/outcomes_live.s3_region_upload/00-before.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "followup-2/kde/s3b/frames/outcomes_live.s3_region_upload/01-independent-frozen-pattern.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "followup-2/kde/s3b/frames/outcomes_live.s3_region_upload/02-browser-failure-fully-masked.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "followup-2/kde/s3b/frames/outcomes_live.s3_region_upload/03-history-before-remote-cleanup.png": {
+      "sha256": "f0e8ebdf16ffbd2fc685ebca9ea4bcaeac35568f4be337355f3c6a2573bcd184",
+      "size": [
+        1280,
+        746
+      ],
+      "regions": [
+        [
+          760,
+          320,
+          520,
+          426
+        ],
+        [
+          1123,
+          708,
+          143,
+          36
+        ],
+        [
+          230,
+          162,
+          656,
+          112
+        ],
+        [
+          914,
+          401,
+          68,
+          32
+        ],
+        [
+          914,
+          450,
+          352,
+          154
+        ],
+        [
+          1145,
+          357,
+          121,
+          40
+        ],
+        [
+          922,
+          363,
+          227,
+          28
+        ],
+        [
+          914,
+          294,
+          352,
+          25
+        ],
+        [
+          620,
+          122,
+          304,
+          40
+        ]
+      ],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true
+    },
+    "followup-2/kde/s3b/frames/outcomes_live.s3_region_upload/04-delete-exact-owned-object.png": {
+      "sha256": "d16eaadcdaf89eee1c38bc9d43601e414026a2067e52c1ac58f245f7bee173ea",
+      "size": [
+        560,
+        408
+      ],
+      "regions": [
+        [
+          400,
+          137,
+          160,
+          271
+        ],
+        [
+          101,
+          235,
+          425,
+          55
+        ],
+        [
+          22,
+          189,
+          504,
+          23
+        ],
+        [
+          22,
+          68,
+          516,
+          42
+        ],
+        [
+          22,
+          14,
+          516,
+          46
+        ],
+        [
+          0,
+          0,
+          526,
+          91
+        ],
+        [
+          554,
+          218,
+          6,
+          32
+        ],
+        [
+          554,
+          267,
+          6,
+          141
+        ],
+        [
+          554,
+          111,
+          6,
+          25
+        ]
+      ],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true
+    },
+    "followup-2/kde/s3b/frames/outcomes_live.s3_region_upload/05-history-after-remote-cleanup.png": {
+      "sha256": "db1ac38139f48a54a2bcce2e502f147c563e03e1b8392d6079a82ef91d7cdecd",
+      "size": [
+        1280,
+        746
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          746
+        ]
+      ],
+      "fallback": true,
+      "guard": "ocr-sensitive-text-fully-masked",
+      "visible_pixels": false
+    },
+    "followup-2/kde/s3b/frames/outcomes_live.s3_region_upload/06-browser-cloudfront-status-403.png": {
+      "sha256": "a5073c99b69cebd06443f11496d71eba947fac46fb51cb5d2522123cd35a7d95",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          760,
+          320,
+          520,
+          480
+        ],
+        [
+          22,
+          155,
+          1258,
+          19
+        ]
+      ],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true,
+      "desktop_safe": "private Firefox kiosk without address bar owns the verified foreground"
+    },
+    "followup-2/kde/s3b/frames/outcomes_live.s3_region_upload/07-after.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "followup-2/kde/protona/frames/outcomes_live.proton_region_upload/00-before.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "followup-2/kde/protona/frames/outcomes_live.proton_region_upload/01-independent-frozen-pattern.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "followup-2/kde/protona/frames/outcomes_live.proton_region_upload/02-browser-content.png": {
+      "sha256": "caf6e4b5481710be6335f4add089fd8ad9532bb0da19d6ce052fd7b230e7cc46",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          760,
+          320,
+          520,
+          480
+        ]
+      ],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true,
+      "desktop_safe": "private Firefox kiosk without address bar owns the verified foreground"
+    },
+    "followup-2/kde/protona/frames/outcomes_live.proton_region_upload/03-history-before-remote-cleanup.png": {
+      "sha256": "f8f49b5b216c1feb988d7064325fe210acd190bd6fe0c16493415932bc997ced",
+      "size": [
+        1280,
+        746
+      ],
+      "regions": [
+        [
+          760,
+          320,
+          520,
+          426
+        ],
+        [
+          1123,
+          708,
+          143,
+          36
+        ],
+        [
+          914,
+          418,
+          108,
+          40
+        ],
+        [
+          914,
+          374,
+          117,
+          40
+        ],
+        [
+          914,
+          330,
+          140,
+          40
+        ],
+        [
+          914,
+          294,
+          68,
+          32
+        ],
+        [
+          1145,
+          250,
+          121,
+          40
+        ],
+        [
+          922,
+          256,
+          227,
+          28
+        ],
+        [
+          620,
+          122,
+          304,
+          40
+        ]
+      ],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true
+    },
+    "followup-2/kde/protona/frames/outcomes_live.proton_region_upload/04-revoke-exact-owned-link.png": {
+      "sha256": "be8d2e27f3b8425c06885a15519ed95cccf9703cf5433d420b386f9d4a69ce4b",
+      "size": [
+        468,
+        153
+      ],
+      "regions": [
+        [
+          354,
+          9,
+          114,
+          144
+        ]
+      ],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true
+    },
+    "followup-2/kde/protona/frames/outcomes_live.proton_region_upload/05-history-after-remote-cleanup.png": {
+      "sha256": "45bffcf07a2e2025b4abb020d094fc08a0182fd59013a5263da6b6a4642f490c",
+      "size": [
+        1280,
+        746
+      ],
+      "regions": [
+        [
+          760,
+          320,
+          520,
+          426
+        ],
+        [
+          1123,
+          708,
+          143,
+          36
+        ],
+        [
+          914,
+          534,
+          108,
+          40
+        ],
+        [
+          914,
+          490,
+          117,
+          40
+        ],
+        [
+          914,
+          446,
+          140,
+          40
+        ],
+        [
+          620,
+          122,
+          304,
+          40
+        ]
+      ],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true
+    },
+    "followup-2/kde/protona/frames/outcomes_live.proton_region_upload/06-browser-link-unavailable.png": {
+      "sha256": "0fb88f317d365b809510a8913280c8d6be04f1aef56ff4ae462952825237f873",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          760,
+          320,
+          520,
+          480
+        ]
+      ],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true,
+      "desktop_safe": "private Firefox kiosk without address bar owns the verified foreground"
+    },
+    "followup-2/kde/protona/frames/outcomes_live.proton_region_upload/07-after.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "followup-2/kde/setup/kde-ready.png": {
+      "sha256": "8256e0dc84fe64c00b58f19ba919d2d38118dba6e971d217f61d3ef20bbe71e5",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [],
+      "guard": "precredential-desktop-or-synthetic-functional-payload"
+    },
+    "followup-2/kde/setup/unlocked-before-live.png": {
+      "sha256": "8256e0dc84fe64c00b58f19ba919d2d38118dba6e971d217f61d3ef20bbe71e5",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [],
+      "guard": "precredential-desktop-or-synthetic-functional-payload"
+    },
+    "followup-2/kde/protona/functional/bf27d05374d1490da03d953f49f515361094424f675d8a483787822dfb2fd768.png": {
+      "sha256": "bf27d05374d1490da03d953f49f515361094424f675d8a483787822dfb2fd768",
+      "size": [
+        600,
+        280
+      ],
+      "regions": [],
+      "guard": "precredential-desktop-or-synthetic-functional-payload"
+    },
+    "followup-2/kde/s3b/functional/bf27d05374d1490da03d953f49f515361094424f675d8a483787822dfb2fd768.png": {
+      "sha256": "bf27d05374d1490da03d953f49f515361094424f675d8a483787822dfb2fd768",
+      "size": [
+        600,
+        280
+      ],
+      "regions": [],
+      "guard": "precredential-desktop-or-synthetic-functional-payload"
+    },
+    "followup-2/kde/s3a/functional/7e98f871750943f0b7c9596d0d5958df220ac702ec4eb28f5991498c938b059a.png": {
+      "sha256": "7e98f871750943f0b7c9596d0d5958df220ac702ec4eb28f5991498c938b059a",
+      "size": [
+        600,
+        280
+      ],
+      "regions": [],
+      "guard": "precredential-desktop-or-synthetic-functional-payload"
+    },
+    "followup-3/gnome/s3a/frames/outcomes_live.s3_region_upload/00-before.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "followup-3/gnome/s3a/frames/outcomes_live.s3_region_upload/01-independent-frozen-pattern.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "followup-3/gnome/s3a/frames/outcomes_live.s3_region_upload/02-browser-failure-fully-masked.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "followup-3/gnome/s3a/frames/outcomes_live.s3_region_upload/03-history-before-remote-cleanup.png": {
+      "sha256": "c6879b5a592b17eab0b2b463f37f0eed8e6398c0ffee38941c958725305f7d00",
+      "size": [
+        1213,
+        768
+      ],
+      "regions": [
+        [
+          293,
+          0,
+          560,
+          328
+        ],
+        [
+          1056,
+          730,
+          143,
+          36
+        ],
+        [
+          230,
+          166,
+          589,
+          112
+        ],
+        [
+          847,
+          423,
+          68,
+          32
+        ],
+        [
+          847,
+          472,
+          352,
+          154
+        ],
+        [
+          1078,
+          379,
+          121,
+          40
+        ],
+        [
+          855,
+          385,
+          227,
+          28
+        ],
+        [
+          847,
+          316,
+          352,
+          25
+        ],
+        [
+          553,
+          122,
+          304,
+          40
+        ]
+      ],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true
+    },
+    "followup-3/gnome/s3a/frames/outcomes_live.s3_region_upload/04-delete-exact-owned-object.png": {
+      "sha256": "01240ae5c1aa86ac0f7827dc43ca41366bf52e48abab75f808f4b67c3a156a55",
+      "size": [
+        560,
+        408
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          527,
+          129
+        ],
+        [
+          101,
+          235,
+          425,
+          55
+        ],
+        [
+          22,
+          189,
+          504,
+          23
+        ],
+        [
+          22,
+          68,
+          516,
+          42
+        ],
+        [
+          22,
+          14,
+          516,
+          46
+        ],
+        [
+          0,
+          0,
+          493,
+          79
+        ],
+        [
+          521,
+          224,
+          39,
+          32
+        ],
+        [
+          521,
+          273,
+          39,
+          135
+        ],
+        [
+          529,
+          186,
+          31,
+          28
+        ],
+        [
+          521,
+          117,
+          39,
+          25
+        ]
+      ],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true
+    },
+    "followup-3/gnome/s3a/frames/outcomes_live.s3_region_upload/05-history-after-remote-cleanup.png": {
+      "sha256": "08b2c0bc03cb2873ff65b88658d95cafd636221b43cadd1071da0c8dab994c90",
+      "size": [
+        1213,
+        768
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1213,
+          768
+        ]
+      ],
+      "fallback": true,
+      "guard": "ocr-sensitive-text-fully-masked",
+      "visible_pixels": false
+    },
+    "followup-3/gnome/s3a/frames/outcomes_live.s3_region_upload/06-browser-cloudfront-status-403.png": {
+      "sha256": "8dae41dd8ecc29820710d3aacc0d5ac26e8550f4e97b43a973158e73c95adb32",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          360,
+          0,
+          560,
+          360
+        ],
+        [
+          22,
+          155,
+          1258,
+          19
+        ]
+      ],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true,
+      "desktop_safe": "private Firefox kiosk without address bar owns the verified foreground"
+    },
+    "followup-3/gnome/s3a/frames/outcomes_live.s3_region_upload/07-after.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "followup-3/gnome/protona/frames/outcomes_live.proton_region_upload/00-before.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "followup-3/gnome/protona/frames/outcomes_live.proton_region_upload/01-independent-frozen-pattern.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "followup-3/gnome/protona/frames/outcomes_live.proton_region_upload/02-browser-content.png": {
+      "sha256": "5d61c3ccb6afc7f52ba9839309edf6394e1574d74a070534056f0457f329bb9a",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          360,
+          0,
+          560,
+          360
+        ]
+      ],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true,
+      "desktop_safe": "private Firefox kiosk without address bar owns the verified foreground"
+    },
+    "followup-3/gnome/protona/frames/outcomes_live.proton_region_upload/03-history-before-remote-cleanup.png": {
+      "sha256": "622d413cec282c9d7e74de2c8e74c57ac1d01169c8801e51cee3ff09da0a2f53",
+      "size": [
+        1213,
+        768
+      ],
+      "regions": [
+        [
+          293,
+          0,
+          560,
+          328
+        ],
+        [
+          1056,
+          730,
+          143,
+          36
+        ],
+        [
+          847,
+          440,
+          108,
+          40
+        ],
+        [
+          847,
+          396,
+          117,
+          40
+        ],
+        [
+          847,
+          352,
+          140,
+          40
+        ],
+        [
+          847,
+          316,
+          68,
+          32
+        ],
+        [
+          1078,
+          272,
+          121,
+          40
+        ],
+        [
+          855,
+          278,
+          227,
+          28
+        ],
+        [
+          553,
+          122,
+          304,
+          40
+        ]
+      ],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true
+    },
+    "followup-3/gnome/protona/frames/outcomes_live.proton_region_upload/04-revoke-exact-owned-link.png": {
+      "sha256": "7bd7b775cb55bbed5099bff6a29b046cef4b45a9169786e90ec34659c65ffb54",
+      "size": [
+        468,
+        153
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          468,
+          20
+        ]
+      ],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true
+    },
+    "followup-3/gnome/protona/frames/outcomes_live.proton_region_upload/05-history-after-remote-cleanup.png": {
+      "sha256": "f57538bf90f87b7edbf002e352e258379f0ca8e2ec88c6e7a7f5c22fabad649e",
+      "size": [
+        1213,
+        768
+      ],
+      "regions": [
+        [
+          293,
+          0,
+          560,
+          328
+        ],
+        [
+          1056,
+          730,
+          143,
+          36
+        ],
+        [
+          847,
+          538,
+          108,
+          40
+        ],
+        [
+          847,
+          494,
+          117,
+          40
+        ],
+        [
+          847,
+          450,
+          140,
+          40
+        ],
+        [
+          553,
+          122,
+          304,
+          40
+        ]
+      ],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true
+    },
+    "followup-3/gnome/protona/frames/outcomes_live.proton_region_upload/06-browser-link-unavailable.png": {
+      "sha256": "4bca7bad9c0d5ea8888369b259a51df7eba6db2439badc86c3a71590a790c6d7",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          360,
+          0,
+          560,
+          360
+        ]
+      ],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true,
+      "desktop_safe": "private Firefox kiosk without address bar owns the verified foreground"
+    },
+    "followup-3/gnome/protona/frames/outcomes_live.proton_region_upload/07-after.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "followup-3/gnome/setup/unlocked-before-live.png": {
+      "sha256": "8f4a89e639f218e81e83044932b1b438511c254c50860e52c829db80a034edd4",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [],
+      "guard": "precredential-desktop-or-synthetic-functional-payload"
+    },
+    "followup-3/gnome/setup/gno-ready.png": {
+      "sha256": "8f4a89e639f218e81e83044932b1b438511c254c50860e52c829db80a034edd4",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [],
+      "guard": "precredential-desktop-or-synthetic-functional-payload"
+    },
+    "followup-3/gnome/protona/functional/1242e5054e79eb22d9ab3b4bd367506fbd5ff5b0ee22a7ec4fd6ee55404060be.png": {
+      "sha256": "1242e5054e79eb22d9ab3b4bd367506fbd5ff5b0ee22a7ec4fd6ee55404060be",
+      "size": [
+        600,
+        280
+      ],
+      "regions": [],
+      "guard": "precredential-desktop-or-synthetic-functional-payload"
+    },
+    "followup-3/gnome/s3a/functional/0ebbcb3a761b414751c5a722ae1ed15470b26050074ef928cce5f184de77c5ff.png": {
+      "sha256": "0ebbcb3a761b414751c5a722ae1ed15470b26050074ef928cce5f184de77c5ff",
+      "size": [
+        600,
+        280
+      ],
+      "regions": [],
+      "guard": "precredential-desktop-or-synthetic-functional-payload"
+    },
+    "followup-4/gnome/s3a/frames/outcomes_live.s3_region_upload/00-before.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "followup-4/gnome/s3a/frames/outcomes_live.s3_region_upload/01-independent-frozen-pattern.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "followup-4/gnome/s3a/frames/outcomes_live.s3_region_upload/02-browser-content.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          360,
+          0,
+          560,
+          360
+        ],
+        [
+          0,
+          0,
+          1280,
+          40
+        ],
+        [
+          0,
+          0,
+          1280,
+          800
+        ],
+        [
+          0,
+          0,
+          1280,
+          800
+        ],
+        [
+          338,
+          258,
+          604,
+          284
+        ]
+      ],
+      "fallback": false,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "desktop_safe": "private Firefox kiosk without address bar owns the verified foreground"
+    },
+    "followup-4/gnome/s3a/frames/outcomes_live.s3_region_upload/03-history-before-remote-cleanup.png": {
+      "sha256": "7110590c5e62de30f3b7871bbbd911fe00680fb52bdfd6cbd260a82dffc92f79",
+      "size": [
+        1213,
+        768
+      ],
+      "regions": [
+        [
+          293,
+          0,
+          560,
+          328
+        ],
+        [
+          1056,
+          730,
+          143,
+          36
+        ],
+        [
+          230,
+          166,
+          589,
+          112
+        ],
+        [
+          847,
+          423,
+          68,
+          32
+        ],
+        [
+          847,
+          472,
+          352,
+          154
+        ],
+        [
+          1078,
+          379,
+          121,
+          40
+        ],
+        [
+          855,
+          385,
+          227,
+          28
+        ],
+        [
+          847,
+          316,
+          352,
+          25
+        ],
+        [
+          553,
+          122,
+          304,
+          40
+        ]
+      ],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true
+    },
+    "followup-4/gnome/s3a/frames/outcomes_live.s3_region_upload/04-delete-exact-owned-object.png": {
+      "sha256": "01240ae5c1aa86ac0f7827dc43ca41366bf52e48abab75f808f4b67c3a156a55",
+      "size": [
+        560,
+        408
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          527,
+          129
+        ],
+        [
+          101,
+          235,
+          425,
+          55
+        ],
+        [
+          22,
+          189,
+          504,
+          23
+        ],
+        [
+          22,
+          68,
+          516,
+          42
+        ],
+        [
+          22,
+          14,
+          516,
+          46
+        ],
+        [
+          0,
+          0,
+          493,
+          79
+        ],
+        [
+          521,
+          224,
+          39,
+          32
+        ],
+        [
+          521,
+          273,
+          39,
+          135
+        ],
+        [
+          529,
+          186,
+          31,
+          28
+        ],
+        [
+          521,
+          117,
+          39,
+          25
+        ]
+      ],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true
+    },
+    "followup-4/gnome/s3a/frames/outcomes_live.s3_region_upload/05-history-after-remote-cleanup.png": {
+      "sha256": "08b2c0bc03cb2873ff65b88658d95cafd636221b43cadd1071da0c8dab994c90",
+      "size": [
+        1213,
+        768
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1213,
+          768
+        ]
+      ],
+      "fallback": true,
+      "guard": "ocr-sensitive-text-fully-masked",
+      "visible_pixels": false
+    },
+    "followup-4/gnome/s3a/frames/outcomes_live.s3_region_upload/06-browser-cloudfront-status-200.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          360,
+          0,
+          560,
+          360
+        ],
+        [
+          0,
+          0,
+          1280,
+          40
+        ],
+        [
+          0,
+          0,
+          1280,
+          800
+        ],
+        [
+          0,
+          0,
+          1280,
+          800
+        ],
+        [
+          338,
+          258,
+          604,
+          284
+        ]
+      ],
+      "fallback": false,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "desktop_safe": "private Firefox kiosk without address bar owns the verified foreground"
+    },
+    "followup-4/gnome/s3a/frames/outcomes_live.s3_region_upload/07-after.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "followup-4/gnome/setup/unlocked-before-live.png": {
+      "sha256": "96ea6c80bba0806a2b6bb346a20a88520816760288e132ee49bd33b17027ff76",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [],
+      "guard": "precredential-desktop-or-synthetic-functional-payload"
+    },
+    "followup-4/gnome/setup/gno-ready.png": {
+      "sha256": "96ea6c80bba0806a2b6bb346a20a88520816760288e132ee49bd33b17027ff76",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [],
+      "guard": "precredential-desktop-or-synthetic-functional-payload"
+    },
+    "followup-4/gnome/s3a/functional/0355381c33d121f40627928ac65a0a0219545fdbbaaa37e5bc754028baa5cb02.png": {
+      "sha256": "0355381c33d121f40627928ac65a0a0219545fdbbaaa37e5bc754028baa5cb02",
+      "size": [
+        600,
+        280
+      ],
+      "regions": [],
+      "guard": "precredential-desktop-or-synthetic-functional-payload"
+    },
+    "followup-4/kde/s3a/frames/outcomes_live.s3_region_upload/00-before.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "followup-4/kde/s3a/frames/outcomes_live.s3_region_upload/01-independent-frozen-pattern.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "followup-4/kde/s3a/frames/outcomes_live.s3_region_upload/02-browser-content.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-geometry-unknown-fully-masked",
+      "policy_reason": "RecipeBlocked: showing secret control has no placement",
+      "desktop_safe": "private Firefox kiosk without address bar owns the verified foreground"
+    },
+    "followup-4/kde/s3a/frames/outcomes_live.s3_region_upload/03-history-before-remote-cleanup.png": {
+      "sha256": "1ff1cbac2fd18a7ab9b12aad377689f78969fccc49b237d67a9d13787ddfb9bf",
+      "size": [
+        1280,
+        746
+      ],
+      "regions": [
+        [
+          760,
+          320,
+          520,
+          426
+        ],
+        [
+          1123,
+          708,
+          143,
+          36
+        ],
+        [
+          230,
+          162,
+          656,
+          112
+        ],
+        [
+          914,
+          401,
+          68,
+          32
+        ],
+        [
+          914,
+          450,
+          352,
+          154
+        ],
+        [
+          1145,
+          357,
+          121,
+          40
+        ],
+        [
+          922,
+          363,
+          227,
+          28
+        ],
+        [
+          914,
+          294,
+          352,
+          25
+        ],
+        [
+          620,
+          122,
+          304,
+          40
+        ]
+      ],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true
+    },
+    "followup-4/kde/s3a/frames/outcomes_live.s3_region_upload/04-delete-exact-owned-object.png": {
+      "sha256": "d16eaadcdaf89eee1c38bc9d43601e414026a2067e52c1ac58f245f7bee173ea",
+      "size": [
+        560,
+        408
+      ],
+      "regions": [
+        [
+          400,
+          137,
+          160,
+          271
+        ],
+        [
+          101,
+          235,
+          425,
+          55
+        ],
+        [
+          22,
+          189,
+          504,
+          23
+        ],
+        [
+          22,
+          68,
+          516,
+          42
+        ],
+        [
+          22,
+          14,
+          516,
+          46
+        ],
+        [
+          0,
+          0,
+          526,
+          91
+        ],
+        [
+          554,
+          218,
+          6,
+          32
+        ],
+        [
+          554,
+          267,
+          6,
+          141
+        ],
+        [
+          554,
+          111,
+          6,
+          25
+        ]
+      ],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true
+    },
+    "followup-4/kde/s3a/frames/outcomes_live.s3_region_upload/05-history-after-remote-cleanup.png": {
+      "sha256": "db1ac38139f48a54a2bcce2e502f147c563e03e1b8392d6079a82ef91d7cdecd",
+      "size": [
+        1280,
+        746
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          746
+        ]
+      ],
+      "fallback": true,
+      "guard": "ocr-sensitive-text-fully-masked",
+      "visible_pixels": false
+    },
+    "followup-4/kde/s3a/frames/outcomes_live.s3_region_upload/06-after.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "followup-4/kde/protona/frames/outcomes_live.proton_region_upload/00-before.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "followup-4/kde/protona/frames/outcomes_live.proton_region_upload/01-independent-frozen-pattern.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "followup-4/kde/protona/frames/outcomes_live.proton_region_upload/02-browser-content.png": {
+      "sha256": "87d9432ab977bd0c994c4e356e005a98d9b119df2204ef70497d69efd743b9e6",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          760,
+          320,
+          520,
+          480
+        ]
+      ],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true,
+      "desktop_safe": "private Firefox kiosk without address bar owns the verified foreground"
+    },
+    "followup-4/kde/protona/frames/outcomes_live.proton_region_upload/03-history-before-remote-cleanup.png": {
+      "sha256": "fbe2f2b001a3be5f030bd6b78fe27be97c411b7d1d2c17263dd39dba408cafb5",
+      "size": [
+        1280,
+        746
+      ],
+      "regions": [
+        [
+          760,
+          320,
+          520,
+          426
+        ],
+        [
+          1123,
+          708,
+          143,
+          36
+        ],
+        [
+          914,
+          437,
+          108,
+          40
+        ],
+        [
+          914,
+          393,
+          117,
+          40
+        ],
+        [
+          914,
+          349,
+          140,
+          40
+        ],
+        [
+          914,
+          313,
+          68,
+          32
+        ],
+        [
+          1145,
+          269,
+          121,
+          40
+        ],
+        [
+          922,
+          275,
+          227,
+          28
+        ],
+        [
+          620,
+          122,
+          304,
+          40
+        ]
+      ],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true
+    },
+    "followup-4/kde/protona/frames/outcomes_live.proton_region_upload/04-revoke-exact-owned-link.png": {
+      "sha256": "98f4e60bb511d07fd5c7df892e4a2942dc4c02fddf78a411e15051296aa52d70",
+      "size": [
+        468,
+        153
+      ],
+      "regions": [
+        [
+          354,
+          9,
+          114,
+          144
+        ]
+      ],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true
+    },
+    "followup-4/kde/protona/frames/outcomes_live.proton_region_upload/05-history-after-remote-cleanup.png": {
+      "sha256": "3f4b5d38ab71abe6ec87d07a772cd58fbe18321bf93d8b3e39add98d1f10a7a5",
+      "size": [
+        1280,
+        746
+      ],
+      "regions": [
+        [
+          760,
+          320,
+          520,
+          426
+        ],
+        [
+          1123,
+          708,
+          143,
+          36
+        ],
+        [
+          914,
+          534,
+          108,
+          40
+        ],
+        [
+          914,
+          490,
+          117,
+          40
+        ],
+        [
+          914,
+          446,
+          140,
+          40
+        ],
+        [
+          620,
+          122,
+          304,
+          40
+        ]
+      ],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true
+    },
+    "followup-4/kde/protona/frames/outcomes_live.proton_region_upload/06-browser-link-unavailable.png": {
+      "sha256": "0fb88f317d365b809510a8913280c8d6be04f1aef56ff4ae462952825237f873",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          760,
+          320,
+          520,
+          480
+        ]
+      ],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true,
+      "desktop_safe": "private Firefox kiosk without address bar owns the verified foreground"
+    },
+    "followup-4/kde/protona/frames/outcomes_live.proton_region_upload/07-after.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "followup-4/kde/setup/kde-ready.png": {
+      "sha256": "bad50ba6c93dec9cd350457b9702aa33a1b9176e044a0d54c8df0e2a41ec36e6",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [],
+      "guard": "precredential-desktop-or-synthetic-functional-payload"
+    },
+    "followup-4/kde/setup/unlocked-before-live.png": {
+      "sha256": "bad50ba6c93dec9cd350457b9702aa33a1b9176e044a0d54c8df0e2a41ec36e6",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [],
+      "guard": "precredential-desktop-or-synthetic-functional-payload"
+    },
+    "followup-4/kde/protona/functional/bf27d05374d1490da03d953f49f515361094424f675d8a483787822dfb2fd768.png": {
+      "sha256": "bf27d05374d1490da03d953f49f515361094424f675d8a483787822dfb2fd768",
+      "size": [
+        600,
+        280
+      ],
+      "regions": [],
+      "guard": "precredential-desktop-or-synthetic-functional-payload"
+    },
+    "followup-4/kde/s3a/functional/180696114db05edd4c8bf5ad426d8c91d8f8aaf86505254b56d849d0fea9e7cd.png": {
+      "sha256": "180696114db05edd4c8bf5ad426d8c91d8f8aaf86505254b56d849d0fea9e7cd",
+      "size": [
+        600,
+        280
+      ],
+      "regions": [],
+      "guard": "precredential-desktop-or-synthetic-functional-payload"
+    },
+    "followup-4/cinnamon/s3a/frames/outcomes_live.s3_region_upload/00-before.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "followup-4/cinnamon/s3a/frames/outcomes_live.s3_region_upload/01-independent-frozen-pattern.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "followup-4/cinnamon/s3a/frames/outcomes_live.s3_region_upload/02-browser-content.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-geometry-unknown-fully-masked",
+      "policy_reason": "RecipeBlocked: showing secret control has no placement",
+      "desktop_safe": "private Firefox kiosk without address bar owns the verified foreground"
+    },
+    "followup-4/cinnamon/s3a/frames/outcomes_live.s3_region_upload/03-history-before-remote-cleanup.png": {
+      "sha256": "9954f9a75822b21db6cbeb3bd29639156ef5907e9dc0ff4a26ac9d5516fa4ca0",
+      "size": [
+        1280,
+        760
+      ],
+      "regions": [
+        [
+          760,
+          0,
+          520,
+          400
+        ],
+        [
+          760,
+          400,
+          520,
+          360
+        ],
+        [
+          230,
+          166,
+          656,
+          112
+        ],
+        [
+          914,
+          464,
+          352,
+          154
+        ],
+        [
+          922,
+          377,
+          227,
+          28
+        ],
+        [
+          914,
+          308,
+          352,
+          25
+        ],
+        [
+          620,
+          122,
+          304,
+          40
+        ]
+      ],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true
+    },
+    "followup-4/cinnamon/s3a/frames/outcomes_live.s3_region_upload/04-delete-exact-owned-object.png": {
+      "sha256": "4d3a05906abc81adc4b3b992eb40abe853a018141e6114db41f20dfb9d052e98",
+      "size": [
+        560,
+        408
+      ],
+      "regions": [
+        [
+          410,
+          0,
+          150,
+          264
+        ],
+        [
+          410,
+          264,
+          150,
+          144
+        ],
+        [
+          101,
+          235,
+          425,
+          55
+        ],
+        [
+          22,
+          189,
+          504,
+          23
+        ],
+        [
+          22,
+          68,
+          516,
+          42
+        ],
+        [
+          22,
+          14,
+          516,
+          46
+        ],
+        [
+          0,
+          30,
+          536,
+          112
+        ],
+        [
+          270,
+          0,
+          290,
+          26
+        ]
+      ],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true
+    },
+    "followup-4/cinnamon/s3a/frames/outcomes_live.s3_region_upload/05-history-after-remote-cleanup.png": {
+      "sha256": "e3e964ab2a3a82ef42b61490c0810b6eeddcbae260c75fe50822ff8599dc9f00",
+      "size": [
+        1280,
+        760
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          760
+        ]
+      ],
+      "fallback": true,
+      "guard": "ocr-sensitive-text-fully-masked",
+      "visible_pixels": false
+    },
+    "followup-4/cinnamon/s3a/frames/outcomes_live.s3_region_upload/06-browser-cloudfront-status-200.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          760,
+          0,
+          520,
+          400
+        ],
+        [
+          760,
+          400,
+          520,
+          400
+        ],
+        [
+          0,
+          0,
+          1280,
+          752
+        ],
+        [
+          0,
+          752,
+          1280,
+          48
+        ],
+        [
+          0,
+          0,
+          1280,
+          800
+        ],
+        [
+          0,
+          0,
+          1280,
+          800
+        ],
+        [
+          338,
+          258,
+          604,
+          284
+        ]
+      ],
+      "fallback": false,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "desktop_safe": "private Firefox kiosk without address bar owns the verified foreground"
+    },
+    "followup-4/cinnamon/s3a/frames/outcomes_live.s3_region_upload/07-after.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "followup-4/cinnamon/protona/frames/outcomes_live.proton_region_upload/00-before.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "followup-4/cinnamon/protona/frames/outcomes_live.proton_region_upload/01-independent-frozen-pattern.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "followup-4/cinnamon/protona/frames/outcomes_live.proton_region_upload/02-browser-content.png": {
+      "sha256": "e6ff66e8f12bdbe81832dc43529cbcb545268f08888b62d5cce8634251c729ae",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          760,
+          0,
+          520,
+          400
+        ],
+        [
+          760,
+          400,
+          520,
+          400
+        ],
+        [
+          0,
+          0,
+          1280,
+          752
+        ]
+      ],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true,
+      "desktop_safe": "private Firefox kiosk without address bar owns the verified foreground"
+    },
+    "followup-4/cinnamon/protona/frames/outcomes_live.proton_region_upload/03-history-before-remote-cleanup.png": {
+      "sha256": "bfc7d51d81068711ffd152ec0d198ab21b01ea18f6e223e76c4315fb41578162",
+      "size": [
+        1280,
+        760
+      ],
+      "regions": [
+        [
+          760,
+          0,
+          520,
+          400
+        ],
+        [
+          760,
+          400,
+          520,
+          360
+        ],
+        [
+          922,
+          289,
+          227,
+          28
+        ],
+        [
+          620,
+          122,
+          304,
+          40
+        ]
+      ],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true
+    },
+    "followup-4/cinnamon/protona/frames/outcomes_live.proton_region_upload/04-revoke-exact-owned-link.png": {
+      "sha256": "515a2dcd3e7e24972a668e19bf519ce2f65ad5e5760bb307a56e561755d09d76",
+      "size": [
+        468,
+        153
+      ],
+      "regions": [
+        [
+          380,
+          0,
+          88,
+          145
+        ],
+        [
+          380,
+          145,
+          88,
+          8
+        ]
+      ],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true
+    },
+    "followup-4/cinnamon/protona/frames/outcomes_live.proton_region_upload/05-history-after-remote-cleanup.png": {
+      "sha256": "ef60a428d204cf2e2c574431e271110e721dcac5300f4a34d8680fc74ff05b9d",
+      "size": [
+        1280,
+        760
+      ],
+      "regions": [
+        [
+          760,
+          0,
+          520,
+          400
+        ],
+        [
+          760,
+          400,
+          520,
+          360
+        ],
+        [
+          620,
+          122,
+          304,
+          40
+        ]
+      ],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true
+    },
+    "followup-4/cinnamon/protona/frames/outcomes_live.proton_region_upload/06-browser-link-unavailable.png": {
+      "sha256": "44e96d9d8ffcf89d2360250d0d878940d4d3a3fb987dd45d3bfb886f200f407a",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          760,
+          0,
+          520,
+          400
+        ],
+        [
+          760,
+          400,
+          520,
+          400
+        ],
+        [
+          0,
+          0,
+          1280,
+          752
+        ]
+      ],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true,
+      "desktop_safe": "private Firefox kiosk without address bar owns the verified foreground"
+    },
+    "followup-4/cinnamon/protona/frames/outcomes_live.proton_region_upload/07-after.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "followup-4/cinnamon/setup/cin-ready.png": {
+      "sha256": "a123b7a5c81905448dd61c31b0b905aac6671d2bcf03b3886041e8151c903835",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [],
+      "guard": "precredential-desktop-or-synthetic-functional-payload"
+    },
+    "followup-4/cinnamon/setup/unlocked-before-live.png": {
+      "sha256": "a123b7a5c81905448dd61c31b0b905aac6671d2bcf03b3886041e8151c903835",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [],
+      "guard": "precredential-desktop-or-synthetic-functional-payload"
+    },
+    "followup-4/cinnamon/protona/functional/17c4d5d4d0c8fde0770d01528dff0b1a8c522d399e1d5996d1f0b6c15ee0feca.png": {
+      "sha256": "17c4d5d4d0c8fde0770d01528dff0b1a8c522d399e1d5996d1f0b6c15ee0feca",
+      "size": [
+        600,
+        280
+      ],
+      "regions": [],
+      "guard": "precredential-desktop-or-synthetic-functional-payload"
+    },
+    "followup-4/cinnamon/s3a/functional/7d4432c10d5d85afa4bdbb25f2e15c2108ce4c62713c7f363662eaf7feb0d384.png": {
+      "sha256": "7d4432c10d5d85afa4bdbb25f2e15c2108ce4c62713c7f363662eaf7feb0d384",
+      "size": [
+        600,
+        280
+      ],
+      "regions": [],
+      "guard": "precredential-desktop-or-synthetic-functional-payload"
+    }
+  }
+}

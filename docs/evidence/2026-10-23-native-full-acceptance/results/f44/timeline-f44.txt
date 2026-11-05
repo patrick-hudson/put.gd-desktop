@@ -1,0 +1,90 @@
+2026-10-23T05:30:19Z lock acquired f44 (native-full-acceptance-f44)
+2026-10-23T05:30:39Z L: repo file + keys placed from the 1058 RPM bytes
+2026-10-23T05:30:57Z L: dnf install putgd (pkg.put.gd) -> 26.1023.1058~nightly-1.fc44 (+ jasper-libs, libmng, qt6-qtimageformats); invalidated a pending dnf5daemon offline transaction (not rescheduled)
+2026-10-23T05:31:30Z L: gnome-extensions enable putgd@put.gd (README step); relogin next
+2026-10-23T05:31:30Z shell gnome-shell pid 3103527
+2026-10-23T05:31:31Z logout requested (gnome-session-quit --logout)
+2026-10-23T05:31:32Z old shell gone
+2026-10-23T05:31:32Z systemctl restart gdm
+2026-10-23T05:31:33Z new shell pid 3124235
+13889  1000 patrick     seat0 3124163 user          tty2 no -
+2026-10-23T05:31:54Z L: enable before relogin failed (shell had not seen the new extension); after relogin: enabled ->   State: ACTIVE
+2026-10-23T05:32:02Z recorder on (run L)
+2026-10-23T05:33:03Z L: first start from the GNOME overview (real click on put.gd)
+2026-10-23T05:33:27Z L: fixture destination, region capture uploaded
+2026-10-23T05:33:37Z A-K: private run P started; memory window next (host quiet)
+2026-10-23T05:36:53Z nk.sh P (B, D, E, G, H) start
+2026-10-23T05:41:12Z nk.sh P done
+2026-10-23T05:41:54Z H: GNOME Software (opened by Open software updates) closed by a real click on its window X; tool/nfa.py guard patched for ~/.config/mozilla/firefox
+2026-10-23T05:42:03Z F: recorder off; ffprofile on (temp profile default of every Firefox install, profiles.ini/installs.ini backed up)
+2026-10-23T05:42:17Z F: closed Patrick's windowless Firefox D-Bus service PID 3125913 (started with the session) by exact PID before the link click
+2026-10-23T05:42:52Z F: notification clicked, browser shot
+2026-10-23T05:44:40Z F: object deleted from destination; temp Firefox closed by PID (3129663 3129777 3129796 3129840 3129850 3129903 3129949 3129977 3130129 3130143 3130159 3130246 ); ffprofile off (byte-exact); recorder on again
+2026-10-23T05:44:57Z F: removed Firefox Profile Groups/6c3bddb8.sqlite{,-shm,-wal} born 05:42:34Z by the temp profile
+2026-10-23T05:45:11Z K: quit from the tray (real click), private run P cleaned
+2026-10-23T05:45:22Z K: private run P cleaned (recorder off/on around cleanup)
+2026-10-23T05:45:44Z M1: no login keyring on f44 (keyrings dir empty, only the session collection) -> --credentials session + a keychain-reference profile
+2026-10-23T05:45:50Z M1: 1058 removed; dev.133 RPM installed
+2026-10-23T05:46:13Z M1: dev.133 RPM uninstallable on F44 (nothing provides qt6-qtbase-sqlite); seeding with the dev.133 AppImage; dev.133 gnome50 zip installed as a temporary user extension (~/.local/share/gnome-shell/extensions/putgd@put.gd)
+2026-10-23T05:46:20Z shell gnome-shell pid 3124235
+2026-10-23T05:46:20Z logout requested (gnome-session-quit --logout)
+2026-10-23T05:46:21Z old shell gone
+2026-10-23T05:46:21Z systemctl restart gdm
+2026-10-23T05:46:22Z new shell pid 3132170
+13924  1000 patrick     seat0 3132080 user          tty2 no -
+2026-10-23T05:50:37Z M1: dev.133 AppImage seeded the default profile
+2026-10-23T05:50:52Z M1: grown to 10000 rows, dev.133 reopened them; dev.133 quit; temporary user extension files removed (v1 stays loaded in the running shell)
+2026-10-23T05:51:00Z M1: 1058 RPM installed (file), started; migration compared
+2026-10-23T05:51:32Z O: helper outdated check (dev.133 extension 1 loaded, packaged 2), screenshot, interactive recording refused (frame)
+2026-10-23T05:52:02Z M1: history check (list/search/copy/delete/test connection) and History window frame at 10k
+2026-10-23T05:52:51Z shell gnome-shell pid 3132170
+2026-10-23T05:52:51Z logout requested (gnome-session-quit --logout)
+2026-10-23T05:52:52Z old shell gone
+2026-10-23T05:52:52Z systemctl restart gdm
+2026-10-23T05:52:53Z new shell pid 3136533
+13938  1000 patrick     seat0 3136440 user          tty2 no -
+2026-10-23T05:53:05Z O: after relogin the packaged extension 2 is loaded
+2026-10-23T05:53:46Z O: extension disabled -> desktop capture result recorded; enabled again -> capture
+2026-10-23T05:54:07Z M2: M1 profile torn down; 1058 removed; 947 RPM installed from file
+2026-10-23T05:54:53Z M2: 947 default profile populated (2 captures uploaded to the fixture, theme dark)
+2026-10-23T05:55:29Z M2: dnf upgrade --refresh putgd from pkg.put.gd (947 -> 1058), resident running
+2026-10-23T05:55:42Z M2 DONE: restarted on 1058; config and history preserved
+2026-10-23T05:56:35Z E/OpenH264: dnf swap openh264->noopenh264 would also remove mozilla-openh264 (requires openh264 = 2.6.0-3); not run. Instead the noopenh264 library is loaded into the resident only via LD_LIBRARY_PATH (no host package change)
+2026-10-23T05:57:02Z E/OpenH264: recording attempted with the placeholder library (frame f44-E-h264-unusable)
+2026-10-23T05:57:18Z E/OpenH264: relaunched without the placeholder: recording available again; host openh264 packages unchanged
+2026-10-23T05:57:46Z I: Launch at login enabled (default profile)
+2026-10-23T05:57:46Z shell gnome-shell pid 3136533
+2026-10-23T05:57:46Z logout requested (gnome-session-quit --logout)
+2026-10-23T05:57:47Z old shell gone
+2026-10-23T05:57:47Z systemctl restart gdm
+2026-10-23T05:57:48Z new shell pid 3140926
+13959  1000 patrick     seat0 3140839 user          tty2 no -
+2026-10-23T05:58:02Z I: checked after login
+2026-10-23T05:58:15Z I: first relogin invalid (systemd-run resident survived the logout); resident quit, relogin again
+2026-10-23T05:58:15Z shell gnome-shell pid 3140926
+2026-10-23T05:58:15Z logout requested (gnome-session-quit --logout)
+2026-10-23T05:58:16Z old shell gone
+2026-10-23T05:58:16Z systemctl restart gdm
+2026-10-23T05:58:17Z new shell pid 3142549
+13963  1000 patrick     seat0 3142459 user          tty2 no -
+2026-10-23T05:58:30Z I: checked after login
+2026-10-23T05:58:46Z P: dnf remove putgd
+2026-10-23T05:58:55Z shell gnome-shell pid 3142549
+2026-10-23T05:58:55Z logout requested (gnome-session-quit --logout)
+2026-10-23T05:58:56Z old shell gone
+2026-10-23T05:58:57Z systemctl restart gdm
+2026-10-23T05:58:58Z new shell pid 3144513
+13968  1000 patrick     seat0 3144424 user          tty2 no -
+2026-10-23T05:59:15Z P/Q: login after removal checked
+2026-10-23T05:59:25Z Q: TryExec probe entry written
+2026-10-23T05:59:25Z shell gnome-shell pid 3144513
+2026-10-23T05:59:25Z logout requested (gnome-session-quit --logout)
+2026-10-23T05:59:26Z old shell gone
+2026-10-23T05:59:26Z systemctl restart gdm
+2026-10-23T05:59:27Z new shell pid 3146134
+13971  1000 patrick     seat0 3146044 user          tty2 no -
+2026-10-23T05:59:43Z Q: login with the TryExec entry checked
+2026-10-23T06:00:03Z cleanup: M2 profile and autostart entry removed, recorder off (byte-exact), enabled-extensions restored, uinput agent stopped by PID
+2026-10-23T06:00:13Z cleanup: enabled-extensions restored to the state-0 value; agent socket removed; state-end == state-0
+2026-10-23T06:00:23Z results copied off; runs/ and assets/ removed; lock release next
+2026-10-23T06:00:35Z lock released --verified-clean

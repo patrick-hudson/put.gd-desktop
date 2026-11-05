@@ -1,0 +1,9 @@
+{
+  "sandbox": "bx_s8jxdf93",
+  "port": 5991,
+  "wall": "http://127.0.0.1:8765/",
+  "tile": "Tier1 final cin bx_s8jxdf93",
+  "connected": true,
+  "observer": "CUA AX state and saved RFB desktop",
+  "savedVisual": "cinnamon-ready.png"
+}

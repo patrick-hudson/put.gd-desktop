@@ -1,0 +1,12 @@
+Test project /home/user/work/put.gd/src/build/dev
+    Start 33: editor_job_integration
+    Start 66: x11_isolated
+1/2 Test #33: editor_job_integration ...........   Passed    5.44 sec
+2/2 Test #66: x11_isolated .....................   Passed   20.64 sec
+
+100% tests passed, 0 tests failed out of 2
+
+Label Time Summary:
+integration    =  26.08 sec*proc (2 tests)
+
+Total Test time (real) =  20.64 sec

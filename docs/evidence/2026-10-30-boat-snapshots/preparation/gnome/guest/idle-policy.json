@@ -1,0 +1,179 @@
+{
+  "afterVisualInvocation": {
+    "exitCode": 0,
+    "stderr": ""
+  },
+  "afterVisuals": {
+    "configurationHome": "/home/lab/.config",
+    "desktop": "GNOME",
+    "inhibitor": {
+      "mode": "block",
+      "pid": 1446,
+      "uid": 1000,
+      "what": "sleep:idle",
+      "who": "putgd-lab-guest"
+    },
+    "ok": true,
+    "policy": [
+      {
+        "key": "idle-delay",
+        "schema": "org.gnome.desktop.session",
+        "value": "uint32 0"
+      },
+      {
+        "key": "lock-enabled",
+        "schema": "org.gnome.desktop.screensaver",
+        "value": "false"
+      },
+      {
+        "key": "idle-activation-enabled",
+        "schema": "org.gnome.desktop.screensaver",
+        "value": "false"
+      },
+      {
+        "key": "sleep-inactive-ac-timeout",
+        "schema": "org.gnome.settings-daemon.plugins.power",
+        "value": "0"
+      },
+      {
+        "key": "sleep-inactive-ac-type",
+        "schema": "org.gnome.settings-daemon.plugins.power",
+        "value": "'nothing'"
+      },
+      {
+        "key": "sleep-inactive-battery-timeout",
+        "schema": "org.gnome.settings-daemon.plugins.power",
+        "value": "0"
+      },
+      {
+        "key": "sleep-inactive-battery-type",
+        "schema": "org.gnome.settings-daemon.plugins.power",
+        "value": "'nothing'"
+      },
+      {
+        "key": "idle-dim",
+        "schema": "org.gnome.settings-daemon.plugins.power",
+        "value": "false"
+      }
+    ],
+    "session": {
+      "Active": "yes",
+      "LockedHint": "no",
+      "Seat": "seat0",
+      "State": "active",
+      "Type": "wayland",
+      "User": "1000",
+      "id": "1"
+    },
+    "x11": null
+  },
+  "apply": false,
+  "helperSha256": "1e074f7c34708af97a18a9949499942ec583804d510729619de0d966683959e6",
+  "ok": true,
+  "outputs": {
+    "errors": [],
+    "ok": true,
+    "outputs": [
+      {
+        "enabled": true,
+        "height": 800,
+        "name": "Virtual-1",
+        "primary": true,
+        "width": 1280,
+        "x": 0,
+        "y": 0
+      }
+    ]
+  },
+  "policy": {
+    "configurationHome": "/home/lab/.config",
+    "desktop": "GNOME",
+    "inhibitor": {
+      "mode": "block",
+      "pid": 1446,
+      "uid": 1000,
+      "what": "sleep:idle",
+      "who": "putgd-lab-guest"
+    },
+    "ok": true,
+    "policy": [
+      {
+        "key": "idle-delay",
+        "schema": "org.gnome.desktop.session",
+        "value": "uint32 0"
+      },
+      {
+        "key": "lock-enabled",
+        "schema": "org.gnome.desktop.screensaver",
+        "value": "false"
+      },
+      {
+        "key": "idle-activation-enabled",
+        "schema": "org.gnome.desktop.screensaver",
+        "value": "false"
+      },
+      {
+        "key": "sleep-inactive-ac-timeout",
+        "schema": "org.gnome.settings-daemon.plugins.power",
+        "value": "0"
+      },
+      {
+        "key": "sleep-inactive-ac-type",
+        "schema": "org.gnome.settings-daemon.plugins.power",
+        "value": "'nothing'"
+      },
+      {
+        "key": "sleep-inactive-battery-timeout",
+        "schema": "org.gnome.settings-daemon.plugins.power",
+        "value": "0"
+      },
+      {
+        "key": "sleep-inactive-battery-type",
+        "schema": "org.gnome.settings-daemon.plugins.power",
+        "value": "'nothing'"
+      },
+      {
+        "key": "idle-dim",
+        "schema": "org.gnome.settings-daemon.plugins.power",
+        "value": "false"
+      }
+    ],
+    "session": {
+      "Active": "yes",
+      "LockedHint": "no",
+      "Seat": "seat0",
+      "State": "active",
+      "Type": "wayland",
+      "User": "1000",
+      "id": "1"
+    },
+    "x11": null
+  },
+  "policyInvocation": {
+    "exitCode": 0,
+    "stderr": ""
+  },
+  "runId": "d90afd11-c236-4069-909d-9b208630b158",
+  "schemaVersion": 1,
+  "stage": "snapshot-check",
+  "timestampUtc": "2026-10-30T05:15:52.487086+00:00",
+  "visualAttempts": [
+    {
+      "head": 0,
+      "height": 800,
+      "path": "/home/user/lab-driver/work/lab-runs/pg4c/guest-preflight-a43f454c7cfd441d98e74f354a9cd39f-attempt0-head0.ppm",
+      "sha256": "dae9653caaf6b85f554a5f6461b896f048f7d9da31e14cca408420796f072202",
+      "visible": true,
+      "width": 1280
+    }
+  ],
+  "visuals": [
+    {
+      "head": 0,
+      "height": 800,
+      "path": "/home/user/lab-driver/work/lab-runs/pg4c/guest-preflight-a43f454c7cfd441d98e74f354a9cd39f-attempt0-head0.ppm",
+      "sha256": "dae9653caaf6b85f554a5f6461b896f048f7d9da31e14cca408420796f072202",
+      "width": 1280
+    }
+  ]
+}

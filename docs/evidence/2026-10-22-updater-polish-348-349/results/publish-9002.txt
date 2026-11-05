@@ -1,0 +1,1 @@
+{"receipt": "~/.local/state/putgd-signer/receipts/lab/v0.1.1-nightly.9002.json", "tag": "v0.1.1-nightly.9002", "result": "published", "error": null}

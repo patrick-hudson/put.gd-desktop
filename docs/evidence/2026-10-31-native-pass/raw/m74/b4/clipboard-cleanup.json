@@ -1,0 +1,33 @@
+{
+  "errors": [],
+  "lease": {
+    "restored_and_stopped": true,
+    "reviews": [],
+    "ready": true,
+    "preserved_mimes": [
+      "image/xpm",
+      "image/xbm",
+      "image/webp",
+      "image/wbmp",
+      "image/tiff",
+      "image/tif",
+      "image/ppm",
+      "image/pgm",
+      "BITMAP",
+      "image/pbm",
+      "image/jpg",
+      "image/jpeg",
+      "image/ico",
+      "image/icns",
+      "image/cur",
+      "image/bmp",
+      "application/x-qt-image",
+      "image/png"
+    ],
+    "transport": "xcb",
+    "pid": 1228694,
+    "start": "86298992",
+    "boot": "[REDACTED]",
+    "reaped_pids": []
+  }
+}

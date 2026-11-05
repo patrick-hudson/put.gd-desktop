@@ -1,0 +1,115 @@
+{
+ "label": "purge",
+ "command": [
+  "apt-get",
+  "purge",
+  "-y",
+  "putgd"
+ ],
+ "before": {
+  "at": "2026-10-23T05:57:26Z",
+  "host": "kubuntu",
+  "package": {
+   "manager": "dpkg",
+   "status": "rc",
+   "version": "26.1023.1058~nightly"
+  },
+  "files": {
+   "/etc/apt/sources.list.d/putgd.sources": {
+    "sha256": "5d5b79d0154fed9099c42beea5183e41876ba36920bed6ed45a747523d5cc852",
+    "bytes": 2036,
+    "mode": "0o644",
+    "mtime": "2026-10-22T05:19:16Z"
+   },
+   "/usr/share/keyrings/putgd-archive-keyring.gpg": null,
+   "/etc/yum.repos.d/putgd.repo": null,
+   "/etc/yum.repos.d/putgd.repo.rpmsave": null,
+   "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd": null,
+   "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-nightly": null,
+   "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-stable": null,
+   "/usr/share/gnome-shell/extensions/putgd@put.gd/metadata.json": null
+  },
+  "defaultProfile": {
+   "/home/patrick/.config/putgd": 1,
+   "/home/patrick/.local/state/putgd": 82,
+   "/home/patrick/.cache/putgd": null,
+   "/home/patrick/.local/share/putgd": 17
+  },
+  "autostart": "[Desktop Entry]\nType=Application\nName=put.gd\nExec=\"/usr/bin/putgd-launcher\" --background\nTerminal=false\nX-putgd-Managed=true\n",
+  "userExtension": false,
+  "processes": [
+   {
+    "pid": 1507871,
+    "ppid": 1261,
+    "exe": "/usr/bin/putgd (deleted)",
+    "comm": "putgd",
+    "cmd": "/usr/bin/putgd --background ",
+    "qtPlatformPlugins": []
+   }
+  ]
+ },
+ "startedAt": "2026-10-23T05:57:26Z",
+ "simulation": {
+  "command": [
+   "apt-get",
+   "-s",
+   "purge",
+   "putgd"
+  ],
+  "exit": 0,
+  "changes": [
+   {
+    "op": "Purg",
+    "package": "putgd",
+    "from": null,
+    "to": null
+   }
+  ],
+  "tail": "NOTE: This is only a simulation!\n      apt-get needs root privileges for real execution.\n      Keep also in mind that locking is deactivated,\n      so don't depend on the relevance to the real current situation!\nReading package lists...\nBuilding dependency tree...\nReading state information...\nSolving dependencies...\nThe following packages will be REMOVED:\n  putgd*\n0 upgraded, 0 newly installed, 1 to remove and 63 not upgraded.\nPurg putgd\n"
+ },
+ "otherPackages": [],
+ "exit": 0,
+ "seconds": 5.2,
+ "log": "/home/patrick/work/put.gd-nfa/runs/M2/logs/pkg-purge.log",
+ "conffilePrompt": false,
+ "signature": [],
+ "fetched": [],
+ "tail": "Reading package lists...\nBuilding dependency tree...\nReading state information...\nSolving dependencies...\nThe following packages will be REMOVED:\n  putgd*\n0 upgraded, 0 newly installed, 1 to remove and 63 not upgraded.\nAfter this operation, 0 B of additional disk space will be used.\n(Reading database\u2026 \n(Reading database\u2026 5%\n(Reading database\u2026 10%\n(Reading database\u2026 15%\n(Reading database\u2026 20%\n(Reading database\u2026 25%\n(Reading database\u2026 30%\n(Reading database\u2026 35%\n(Reading database\u2026 40%\n(Reading database\u2026 45%\n(Reading database\u2026 50%\n(Reading database\u2026 55%\n(Reading database\u2026 60%\n(Reading database\u2026 65%\n(Reading database\u2026 70%\n(Reading database\u2026 75%\n(Reading database\u2026 80%\n(Reading database\u2026 85%\n(Reading database\u2026 90%\n(Reading database\u2026 95%\n(Reading database\u2026 100%\n(Reading database\u2026 301598 files and directories currently installed.)\nPurging configuration files for putgd (26.1023.1058~nightly)\u2026\n",
+ "after": {
+  "at": "2026-10-23T05:57:34Z",
+  "host": "kubuntu",
+  "package": {
+   "manager": "dpkg",
+   "status": null,
+   "version": null
+  },
+  "files": {
+   "/etc/apt/sources.list.d/putgd.sources": null,
+   "/usr/share/keyrings/putgd-archive-keyring.gpg": null,
+   "/etc/yum.repos.d/putgd.repo": null,
+   "/etc/yum.repos.d/putgd.repo.rpmsave": null,
+   "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd": null,
+   "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-nightly": null,
+   "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-stable": null,
+   "/usr/share/gnome-shell/extensions/putgd@put.gd/metadata.json": null
+  },
+  "defaultProfile": {
+   "/home/patrick/.config/putgd": 1,
+   "/home/patrick/.local/state/putgd": 82,
+   "/home/patrick/.cache/putgd": null,
+   "/home/patrick/.local/share/putgd": 17
+  },
+  "autostart": "[Desktop Entry]\nType=Application\nName=put.gd\nExec=\"/usr/bin/putgd-launcher\" --background\nTerminal=false\nX-putgd-Managed=true\n",
+  "userExtension": false,
+  "processes": [
+   {
+    "pid": 1507871,
+    "ppid": 1261,
+    "exe": "/usr/bin/putgd (deleted)",
+    "comm": "putgd",
+    "cmd": "/usr/bin/putgd --background ",
+    "qtPlatformPlugins": []
+   }
+  ]
+ }
+}

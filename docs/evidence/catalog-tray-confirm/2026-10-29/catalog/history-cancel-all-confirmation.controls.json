@@ -1,0 +1,39 @@
+{
+    "class": "QDialog",
+    "controls": [
+        {
+            "checkable": false,
+            "checked": false,
+            "class": "QPushButton",
+            "enabled": true,
+            "kind": "button",
+            "name": "historyKeepUploading",
+            "rect": [
+                166,
+                134,
+                128,
+                36
+            ],
+            "text": "Keep uploading"
+        },
+        {
+            "checkable": false,
+            "checked": false,
+            "class": "QPushButton",
+            "enabled": true,
+            "kind": "button",
+            "name": "historyConfirmCancelAll",
+            "rect": [
+                310,
+                134,
+                146,
+                36
+            ],
+            "text": "Cancel 24 uploads"
+        }
+    ],
+    "height": 194,
+    "keys": [
+    ],
+    "width": 480
+}

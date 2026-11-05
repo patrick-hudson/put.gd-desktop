@@ -1,0 +1,88 @@
+{
+  "freshRecipientRecipeMatchesExecutedContainerInputs": true,
+  "files": [
+    {
+      "path": "apply_proof.py",
+      "sha256": "24a1be433f06d234a01701541b95650fc3858bff8550f1473187e550b26e4fc0"
+    },
+    {
+      "path": "run_build.py",
+      "sha256": "6f9683ea14f03a38956f4a2a2a9c98714e9a14882203749f0dc3e868d79ab971"
+    },
+    {
+      "path": "resume_build.py",
+      "sha256": "3a8e0a16392435c5ef0ed3ca779b2845cd2dce23bcaee5c3d5ddbc5cecc44c58"
+    },
+    {
+      "path": "run_helper_proof.py",
+      "sha256": "8d6bb017ec630fd51c8709aadc89a9c19fe7f1c2b5f3d8b99e64a8d9c345ae83"
+    },
+    {
+      "path": "rebuild_native.py",
+      "sha256": "de15a57daf6e8de092f88718a058ff8d6672f3abd2b3fc7e8d1808ecc3b34fac"
+    },
+    {
+      "path": "helper-proof-inputs/smoke_test.py",
+      "sha256": "b7faf1d5fc17f88f349e99dcb76ee49ddc2204701392450513b5ea63c01251bc"
+    },
+    {
+      "path": "helper-rebuild.tar.gz",
+      "sha256": "ff0f7368e9c0fa0ea310f37d37504d1f674af0b61818317c6bd5eaa44ac2e563"
+    },
+    {
+      "path": "SOURCES.json",
+      "sha256": "5b87916ed9aae8ec39b210bc77967588742a2bdcc56cc7e1da70af7868928b03"
+    },
+    {
+      "path": "install_std_vendor.py",
+      "sha256": "59a94ee74aeda6703526fa8f940e24fc4d8a4740360f33702b535b2e5434fa65"
+    },
+    {
+      "path": "bootstrap-bun",
+      "sha256": "10702245766b225e70bbf6235fd6b47214fd94b4760d00ffaed8ab0df57ac235"
+    },
+    {
+      "path": "image/Dockerfile",
+      "sha256": "70651e11c88de4ba022b38726613165e2d9902fa1a3f50cd377b58838ddc18f7"
+    },
+    {
+      "path": "image/llvm.asc",
+      "sha256": "8b2a587ffd672c4687e7581dad4b2f6c1bb2ad6b480cd9771ba2ff48e0b8c75d"
+    },
+    {
+      "path": "image/install_rust.py",
+      "sha256": "10a9058655a8307c7b9a86b0dfd6a576a170a7b275b0be7d632b9f4a2496b174"
+    },
+    {
+      "path": "image/rust-components.json",
+      "sha256": "4b36e9081f2361d462b4ea7d5672b2a8694a812eb94a93bfbab66fbf4e936791"
+    }
+  ],
+  "inputs": {
+    "sourcePackets": {
+      "putgd-proton-bun-sources-1.4.4.tar": "0a58af4f9af2a0d9ee61fb381025826bd91bdc393ba1f06f8d67e5eb03c70e8f",
+      "putgd-proton-helper-rebuild.tar.gz": "ff0f7368e9c0fa0ea310f37d37504d1f674af0b61818317c6bd5eaa44ac2e563",
+      "putgd-proton-native-rebuild-supplement.tar.gz": "a8ca1e3a313a40d55542470a01770cfd7037e221e3761156c18ee7723f7034fc"
+    },
+    "bootstrapSha256": "10702245766b225e70bbf6235fd6b47214fd94b4760d00ffaed8ab0df57ac235",
+    "rustComponents": {
+      "rustc": {
+        "url": "https://static.rust-lang.org/dist/2026-09-15/rustc-nightly-x86_64-unknown-linux-gnu.tar.xz",
+        "sha256": "ecc706e88ded6d48c83f2de218b2fa3861a821e7c3134be47e3db9eb1cc5149d"
+      },
+      "cargo": {
+        "url": "https://static.rust-lang.org/dist/2026-09-15/cargo-nightly-x86_64-unknown-linux-gnu.tar.xz",
+        "sha256": "d5704ae8ac2252532f798abaf2531557969d6124ea7ea003bb532187643947a7"
+      },
+      "rust-std": {
+        "url": "https://static.rust-lang.org/dist/2026-09-15/rust-std-nightly-x86_64-unknown-linux-gnu.tar.xz",
+        "sha256": "4db2d95d204298525ebb3aa850edc67ea0a9a5dbbf12e7f769a57bee31bdb9cc"
+      },
+      "rust-src": {
+        "url": "https://static.rust-lang.org/dist/2026-09-15/rust-src-nightly.tar.xz",
+        "sha256": "dee5c574fab79b4b45aa24f7260613977d820e62013a7923647c066c10bdaec5"
+      }
+    }
+  },
+  "excludedDifference": "Native source assembly already exists in the container and is not reapplied. Final helper handoff was separately checksum-verified."
+}

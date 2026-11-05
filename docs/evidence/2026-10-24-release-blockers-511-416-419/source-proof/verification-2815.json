@@ -1,0 +1,12 @@
+{
+  "sourceHead": "2815dcbe18da4321255dfa24c5129896b00645d3",
+  "passed": true,
+  "uid": 1000,
+  "asset": {
+    "file": "putgd-26.1024.1133-dev+g50053b01f1bb-appimage-complete-source.tar.gz",
+    "bytes": 658780913,
+    "sha256": "77de399818e852aad3e897a19096211d4311220617efa15182eb6bea6553b1d2"
+  },
+  "components": 137,
+  "runtimeArchives": 6
+}

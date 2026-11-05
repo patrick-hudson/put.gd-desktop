@@ -1,0 +1,112 @@
+{
+ "label": "install-947",
+ "command": [
+  "apt-get",
+  "install",
+  "-y",
+  "/home/patrick/work/put.gd-nfa/assets/putgd-0.1.1-nightly.947-debian13-x86_64.deb"
+ ],
+ "before": {
+  "at": "2026-10-23T05:57:05Z",
+  "host": "debian",
+  "package": {
+   "manager": "dpkg",
+   "status": null,
+   "version": null
+  },
+  "files": {
+   "/etc/apt/sources.list.d/putgd.sources": null,
+   "/usr/share/keyrings/putgd-archive-keyring.gpg": null,
+   "/etc/yum.repos.d/putgd.repo": null,
+   "/etc/yum.repos.d/putgd.repo.rpmsave": null,
+   "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd": null,
+   "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-nightly": null,
+   "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-stable": null,
+   "/usr/share/gnome-shell/extensions/putgd@put.gd/metadata.json": null
+  },
+  "defaultProfile": {
+   "/home/patrick/.config/putgd": null,
+   "/home/patrick/.local/state/putgd": 94,
+   "/home/patrick/.cache/putgd": null,
+   "/home/patrick/.local/share/putgd": null
+  },
+  "autostart": null,
+  "userExtension": false,
+  "processes": [],
+  "enabledExtensions": "@as []"
+ },
+ "startedAt": "2026-10-23T05:57:05Z",
+ "simulation": {
+  "command": [
+   "apt-get",
+   "-s",
+   "install",
+   "/home/patrick/work/put.gd-nfa/assets/putgd-0.1.1-nightly.947-debian13-x86_64.deb"
+  ],
+  "exit": 0,
+  "changes": [
+   {
+    "op": "Inst",
+    "package": "putgd",
+    "from": null,
+    "to": "0.1.1~nightly.947"
+   }
+  ],
+  "tail": "NOTE: This is only a simulation!\n      apt-get needs root privileges for real execution.\n      Keep also in mind that locking is deactivated,\n      so don't depend on the relevance to the real current situation!\nReading package lists...\nBuilding dependency tree...\nReading state information...\nThe following packages were automatically installed and are no longer required:\n  libvncclient1 libvncserver1 tcl tk\nUse 'apt autoremove' to remove them.\nThe following NEW packages will be installed:\n  putgd\n0 upgraded, 1 newly installed, 0 to remove and 76 not upgraded.\nInst putgd (0.1.1~nightly.947 local-deb [amd64])\nConf putgd (0.1.1~nightly.947 local-deb [amd64])\n"
+ },
+ "otherPackages": [],
+ "exit": 0,
+ "seconds": 5.1,
+ "log": "/home/patrick/work/put.gd-nfa/runs/M2/logs/pkg-install-947.log",
+ "conffilePrompt": false,
+ "signature": [],
+ "fetched": [
+  "Get:1 /home/patrick/work/put.gd-nfa/assets/putgd-0.1.1-nightly.947-debian13-x86_64.deb putgd amd64 0.1.1~nightly.947 [54.0 MB]",
+  "Preparing to unpack .../putgd-0.1.1-nightly.947-debian13-x86_64.deb ..."
+ ],
+ "tail": " and 76 not upgraded.\nNeed to get 0 B/54.0 MB of archives.\nAfter this operation, 127 MB of additional disk space will be used.\nGet:1 /home/patrick/work/put.gd-nfa/assets/putgd-0.1.1-nightly.947-debian13-x86_64.deb putgd amd64 0.1.1~nightly.947 [54.0 MB]\nSelecting previously unselected package putgd.\n(Reading database ... \n(Reading database ... 5%\n(Reading database ... 10%\n(Reading database ... 15%\n(Reading database ... 20%\n(Reading database ... 25%\n(Reading database ... 30%\n(Reading database ... 35%\n(Reading database ... 40%\n(Reading database ... 45%\n(Reading database ... 50%\n(Reading database ... 55%\n(Reading database ... 60%\n(Reading database ... 65%\n(Reading database ... 70%\n(Reading database ... 75%\n(Reading database ... 80%\n(Reading database ... 85%\n(Reading database ... 90%\n(Reading database ... 95%\n(Reading database ... 100%\n(Reading database ... 401667 files and directories currently installed.)\nPreparing to unpack .../putgd-0.1.1-nightly.947-debian13-x86_64.deb ...\nUnpacking putgd (0.1.1~nightly.947) ...\nSetting up putgd (0.1.1~nightly.947) ...\nProcessing triggers for desktop-file-utils (0.28-1) ...\nProcessing triggers for hicolor-icon-theme (0.18-2) ...\nProcessing triggers for gnome-menus (3.36.0-3) ...\nProcessing triggers for mailcap (3.74) ...\n\nRunning kernel seems to be up-to-date.\n\nThe processor microcode seems to be up-to-date.\n\nServices to be restarted:\n systemctl restart avahi-daemon.service\n systemctl restart polkit.service\n\nService restarts being deferred:\n /etc/needrestart/restart.d/dbus.service\n\nNo containers need to be restarted.\n\nUser sessions running outdated binaries:\n patrick @ session #2065: sshd-session[308518]\n patrick @ session #7406: sshd-session[978297]\n patrick @ user service: dbus.service[959,1572], evolution-addressbook-factory.service[1627], evolution-calendar-factory.service[1615], evolution-source-registry.service[1538], wireplumber.service[963]\n\nNo VM guests are running outdated hypervisor (qemu) binaries on this host.\ndebconf: unable to initialize frontend: Dialog\ndebconf: (Dialog frontend will not work on a dumb terminal, an emacs shell buffer, or without a controlling terminal.)\ndebconf: falling back to frontend: Readline\ndebconf: unable to initialize frontend: Readline\ndebconf: (This frontend requires a controlling tty.)\ndebconf: falling back to frontend: Teletype\ndebconf: unable to initialize frontend: Teletype\ndebconf: (This frontend requires a controlling tty.)\ndebconf: falling back to frontend: Noninteractive\n",
+ "after": {
+  "at": "2026-10-23T05:57:11Z",
+  "host": "debian",
+  "package": {
+   "manager": "dpkg",
+   "status": "ii",
+   "version": "0.1.1~nightly.947"
+  },
+  "files": {
+   "/etc/apt/sources.list.d/putgd.sources": {
+    "sha256": "11b30f1c9733b307cb1028e8a05d956a251d15a797173dcffd1e2bc9f165416f",
+    "bytes": 2033,
+    "mode": "0o644",
+    "mtime": "2026-10-22T05:18:00Z"
+   },
+   "/usr/share/keyrings/putgd-archive-keyring.gpg": {
+    "sha256": "76ab1b64e8a1d9504d3922fa44b116d6eb3c680e788be9cec46e106cd5258339",
+    "bytes": 1170,
+    "mode": "0o644",
+    "mtime": "2026-10-22T05:15:18Z"
+   },
+   "/etc/yum.repos.d/putgd.repo": null,
+   "/etc/yum.repos.d/putgd.repo.rpmsave": null,
+   "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd": null,
+   "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-nightly": null,
+   "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-stable": null,
+   "/usr/share/gnome-shell/extensions/putgd@put.gd/metadata.json": {
+    "sha256": "690be5bcfd1ee05783cd57a78851c56c0fe624131711b254cb46d062d0cb8046",
+    "bytes": 248,
+    "mode": "0o644",
+    "mtime": "2026-10-22T05:18:00Z"
+   }
+  },
+  "defaultProfile": {
+   "/home/patrick/.config/putgd": null,
+   "/home/patrick/.local/state/putgd": 94,
+   "/home/patrick/.cache/putgd": null,
+   "/home/patrick/.local/share/putgd": null
+  },
+  "autostart": null,
+  "userExtension": false,
+  "processes": [],
+  "enabledExtensions": "@as []"
+ }
+}

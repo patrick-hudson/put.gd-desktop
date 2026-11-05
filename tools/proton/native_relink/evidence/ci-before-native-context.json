@@ -1,0 +1,17 @@
+{
+  "producer": {
+    "runUrl": "https://github.com/patrick-hudson/put.gd-desktop/actions/runs/41231351678",
+    "headSha": "7b0b7badc78e273d2b59f3258f5f97aa371866ec",
+    "artifactId": 13053698679,
+    "artifactName": "release-native-debian13"
+  },
+  "auditReceipt": "ci-before-native.json",
+  "auditReceiptSha256": "2109b73bf1c8b7ac3641a169c64fb075bdf11d1e0cd3f0bb82e706ea1a468d3a",
+  "advisoryTransport": {
+    "scope": "Actual live public GitHub Bun security advisories over unauthenticated HTTPS pagination on d69; no cached or synthetic findings",
+    "url": "https://api.github.com/repos/oven-sh/bun/security-advisories?per_page=100",
+    "builderHasGitHubCredentials": false,
+    "adapterSha256": "a9e0c6982c26022fdbefe7d511839dc83be7997444ba3cc5493e94408770293a"
+  },
+  "scope": "Exact final-helper CI installer before native proof; final catalog/package audit follows source publication. Auditor-owned Proton/audit paths match the recorded commit; unrelated README image checkout differences are outside this audit."
+}

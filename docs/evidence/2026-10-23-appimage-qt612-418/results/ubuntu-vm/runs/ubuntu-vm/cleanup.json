@@ -1,0 +1,25 @@
+{
+ "removed": [
+  "/home/lab/.local/state/putgd",
+  "/home/lab/.local/share/putgd",
+  "/home/lab/Pictures/afa-ubuntu-vm-edited.png",
+  "/home/lab/afa-ubuntu-vm-review.mp4",
+  "/home/lab/work/put.gd-qt418/afa/runs/ubuntu-vm/appdir",
+  "/home/lab/work/put.gd-qt418/afa/runs/ubuntu-vm/frames",
+  "/home/lab/work/put.gd-qt418/afa/runs/ubuntu-vm/config",
+  "/home/lab/work/put.gd-qt418/afa/runs/ubuntu-vm/cache",
+  "/home/lab/work/put.gd-qt418/afa/runs/ubuntu-vm/archive",
+  "/home/lab/work/put.gd-qt418/afa/runs/ubuntu-vm/working",
+  "/home/lab/work/put.gd-qt418/afa/runs/ubuntu-vm/urldata"
+ ],
+ "leftovers": {
+  "processes": [],
+  "mounts": [],
+  "entries": []
+ },
+ "after": {
+  "processes": [],
+  "mounts": [],
+  "entries": []
+ }
+}

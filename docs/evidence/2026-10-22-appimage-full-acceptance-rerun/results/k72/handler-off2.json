@@ -1,0 +1,20 @@
+{
+ "restored": {
+  "https": [
+   "Default application for \u201cx-scheme-handler/https\u201d: chatgpt.desktop"
+  ],
+  "http": [
+   "Default application for \u201cx-scheme-handler/http\u201d: chatgpt.desktop"
+  ]
+ },
+ "before": {
+  "https": [
+   "Default application for \u201cx-scheme-handler/https\u201d: chatgpt.desktop"
+  ],
+  "http": [
+   "Default application for \u201cx-scheme-handler/http\u201d: chatgpt.desktop"
+  ]
+ },
+ "same": true,
+ "filesMatch": true
+}

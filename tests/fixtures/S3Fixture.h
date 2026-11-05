@@ -13,6 +13,7 @@
 #include <QFile>
 #include <atomic>
 #include <future>
+#include "fixtures/Waits.h"
 using namespace putgd;
 namespace putgd::test {
 class S3Fixture {
@@ -20,10 +21,10 @@ public:
     QProcess process;
     QTemporaryDir directory;
     CredentialStore credentials;
-    S3Provider provider{credentials};
+    S3Provider provider;
     QString endpoint;
     Destination destination;
-    S3Fixture() {
+    explicit S3Fixture(S3UploadPolicy policy = {}, int lanes = 0) : provider(credentials, policy, lanes) {
         process.start("python3", {S3_FIXTURE_PATH});
         if (!process.waitForStarted() || !process.waitForReadyRead()) qFatal("fixture failed to start");
         endpoint = "http://127.0.0.1:" + QString::fromUtf8(process.readLine()).trimmed();
@@ -87,12 +88,8 @@ public:
         auto promise = std::make_shared<std::promise<T>>();
         auto future = promise->get_future();
         invoke([promise](T value) { promise->set_value(std::move(value)); });
-        QElapsedTimer deadline;
-        deadline.start();
-        while (future.wait_for(std::chrono::milliseconds(0)) != std::future_status::ready) {
-            if (deadline.elapsed() > 15000) qFatal("Provider callback did not complete within fixture deadline");
-            QTest::qWait(1);
-        }
+        if (!putgd::test::waitFor([&] { return future.wait_for(std::chrono::milliseconds(0)) == std::future_status::ready; }, 15000))
+            qFatal("Provider callback did not complete within fixture deadline");
         return future.get();
     }
     UploadRequest request(const QString& name = "a b.txt", const QByteArray& bytes = "synthetic payload") {

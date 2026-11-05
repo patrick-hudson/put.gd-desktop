@@ -1,0 +1,9 @@
+setup
+readonly True update_image_not_writable put.gd can't write to the AppImage's folder True ['putgd-26.1022.1017-nightly-x86_64.AppImage'] None
+foreign True update_image_not_writable The AppImage belongs to another user, so put.gd won't replace it True ['putgd-26.1022.1017-nightly-x86_64.AppImage'] None
+diskfull True update_disk_full There isn't enough free space beside the AppImage for the new version True ['putgd-26.1022.1017-nightly-x86_64.AppImage'] None
+busy True None None False ['.putgd-update-backup-26.1022.1017-nightly.AppImage', 'putgd-26.1022.1017-nightly-x86_64.AppImage'] {'stored': False, 'submitted': {'operationId': '47a08c54-2e66-429e-9f75-e224f3a2983f', 'submitted': True}, 'putsSeen': 0}
+tamper False {'image': ('failed', 'update_not_available', ['putgd-26.1022.1017-nightly-x86_64.AppImage']), 'unsigned': ('failed', 'update_not_available', ['putgd-26.1022.1017-nightly-x86_64.AppImage']), 'sums': ('failed', 'update_not_available', ['putgd-26.1022.1017-nightly-x86_64.AppImage'])}
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+TypeError: string indices must be integers, not 'str'

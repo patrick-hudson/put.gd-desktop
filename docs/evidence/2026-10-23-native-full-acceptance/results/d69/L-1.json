@@ -1,0 +1,109 @@
+{
+ "label": "l1-update",
+ "command": [
+  "apt-get",
+  "update"
+ ],
+ "before": {
+  "at": "2026-10-23T05:30:39Z",
+  "host": "debian",
+  "package": {
+   "manager": "dpkg",
+   "status": null,
+   "version": null
+  },
+  "files": {
+   "/etc/apt/sources.list.d/putgd.sources": {
+    "sha256": "11b30f1c9733b307cb1028e8a05d956a251d15a797173dcffd1e2bc9f165416f",
+    "bytes": 2033,
+    "mode": "0o644",
+    "mtime": "2026-10-23T05:30:39Z"
+   },
+   "/usr/share/keyrings/putgd-archive-keyring.gpg": {
+    "sha256": "76ab1b64e8a1d9504d3922fa44b116d6eb3c680e788be9cec46e106cd5258339",
+    "bytes": 1170,
+    "mode": "0o644",
+    "mtime": "2026-10-23T05:30:39Z"
+   },
+   "/etc/yum.repos.d/putgd.repo": null,
+   "/etc/yum.repos.d/putgd.repo.rpmsave": null,
+   "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd": null,
+   "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-nightly": null,
+   "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-stable": null,
+   "/usr/share/gnome-shell/extensions/putgd@put.gd/metadata.json": null
+  },
+  "defaultProfile": {
+   "/home/patrick/.config/putgd": null,
+   "/home/patrick/.local/state/putgd": 94,
+   "/home/patrick/.cache/putgd": null,
+   "/home/patrick/.local/share/putgd": null
+  },
+  "autostart": null,
+  "userExtension": false,
+  "processes": [],
+  "enabledExtensions": "@as []"
+ },
+ "startedAt": "2026-10-23T05:30:39Z",
+ "exit": 0,
+ "seconds": 5.2,
+ "log": "/home/patrick/work/put.gd-nfa/runs/L/logs/pkg-l1-update.log",
+ "conffilePrompt": false,
+ "signature": [
+  "Get:1 http://security.debian.org/debian-security trixie-security InRelease [43.4 kB]",
+  "Get:2 http://deb.debian.org/debian trixie InRelease [140 kB]",
+  "Get:3 http://deb.debian.org/debian trixie-updates InRelease [47.3 kB]",
+  "Get:8 https://pkg.put.gd/apt/debian13 nightly InRelease [4,801 B]"
+ ],
+ "fetched": [
+  "Get:1 http://security.debian.org/debian-security trixie-security InRelease [43.4 kB]",
+  "Get:2 http://deb.debian.org/debian trixie InRelease [140 kB]",
+  "Get:3 http://deb.debian.org/debian trixie-updates InRelease [47.3 kB]",
+  "Get:4 http://security.debian.org/debian-security trixie-security/main Sources [239 kB]",
+  "Get:7 http://security.debian.org/debian-security trixie-security/main amd64 Packages [269 kB]",
+  "Get:8 https://pkg.put.gd/apt/debian13 nightly InRelease [4,801 B]",
+  "Get:9 https://pkg.put.gd/apt/debian13 nightly/main amd64 Packages [1,020 B]",
+  "Get:10 https://pkg.put.gd/apt/debian13 nightly/main amd64 Components [747 B]",
+  "Get:11 https://pkg.put.gd/apt/debian13 nightly/main Icons (48x48) [776 B]",
+  "Get:12 https://pkg.put.gd/apt/debian13 nightly/main Icons (64x64) [985 B]"
+ ],
+ "tail": "Get:1 http://security.debian.org/debian-security trixie-security InRelease [43.4 kB]\nGet:2 http://deb.debian.org/debian trixie InRelease [140 kB]\nGet:3 http://deb.debian.org/debian trixie-updates InRelease [47.3 kB]\nGet:4 http://security.debian.org/debian-security trixie-security/main Sources [239 kB]\nGet:7 http://security.debian.org/debian-security trixie-security/main amd64 Packages [269 kB]\nGet:8 https://pkg.put.gd/apt/debian13 nightly InRelease [4,801 B]\nGet:9 https://pkg.put.gd/apt/debian13 nightly/main amd64 Packages [1,020 B]\nGet:10 https://pkg.put.gd/apt/debian13 nightly/main amd64 Components [747 B]\nGet:11 https://pkg.put.gd/apt/debian13 nightly/main Icons (48x48) [776 B]\nGet:12 https://pkg.put.gd/apt/debian13 nightly/main Icons (64x64) [985 B]\nFetched 754 kB in 2s (414 kB/s)\nReading package lists...\n",
+ "after": {
+  "at": "2026-10-23T05:30:45Z",
+  "host": "debian",
+  "package": {
+   "manager": "dpkg",
+   "status": null,
+   "version": null
+  },
+  "files": {
+   "/etc/apt/sources.list.d/putgd.sources": {
+    "sha256": "11b30f1c9733b307cb1028e8a05d956a251d15a797173dcffd1e2bc9f165416f",
+    "bytes": 2033,
+    "mode": "0o644",
+    "mtime": "2026-10-23T05:30:39Z"
+   },
+   "/usr/share/keyrings/putgd-archive-keyring.gpg": {
+    "sha256": "76ab1b64e8a1d9504d3922fa44b116d6eb3c680e788be9cec46e106cd5258339",
+    "bytes": 1170,
+    "mode": "0o644",
+    "mtime": "2026-10-23T05:30:39Z"
+   },
+   "/etc/yum.repos.d/putgd.repo": null,
+   "/etc/yum.repos.d/putgd.repo.rpmsave": null,
+   "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd": null,
+   "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-nightly": null,
+   "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-stable": null,
+   "/usr/share/gnome-shell/extensions/putgd@put.gd/metadata.json": null
+  },
+  "defaultProfile": {
+   "/home/patrick/.config/putgd": null,
+   "/home/patrick/.local/state/putgd": 94,
+   "/home/patrick/.cache/putgd": null,
+   "/home/patrick/.local/share/putgd": null
+  },
+  "autostart": null,
+  "userExtension": false,
+  "processes": [],
+  "enabledExtensions": "@as []"
+ }
+}

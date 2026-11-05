@@ -1,0 +1,28 @@
+{
+ "label": "aurora-vm-tray-probe",
+ "components": [
+  {
+   "blocks": 98,
+   "box": [
+    1000,
+    688,
+    1200,
+    776
+   ]
+  }
+ ],
+ "colour": [
+  28,
+  28,
+  32
+ ],
+ "inner": [
+  1002,
+  690,
+  1194,
+  768
+ ],
+ "changedShare": 1.0,
+ "kept": "/var/home/lab/work/put.gd-afa2/runs/aurora-vm/crops/aurora-vm-tray-probe.png",
+ "full": "/var/home/lab/work/put.gd-afa2/runs/aurora-vm/full/aurora-vm-tray-probe.png"
+}

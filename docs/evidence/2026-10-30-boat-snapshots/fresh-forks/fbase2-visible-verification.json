@@ -1,0 +1,29 @@
+{
+  "placement": "boat",
+  "sandboxId": "bx_rxgaakqm",
+  "snapshotName": "putgd-build-base-v3",
+  "packageTarget": "ubuntu24.04",
+  "packageSha256": "dd8a58d3779e7e7873c69e364a72dbfa5439c9f3088841dc447c47afd2cdaa9f",
+  "installedBuildInfo": {
+    "baseVersion": "26.1030.2481",
+    "commitCount": 2481,
+    "dirty": false,
+    "gitCommit": "6ad9f957e6544f30c5e45c08af2306db77a9ff64",
+    "gitTree": "d823723c8759dae8db7c57cee59476ac7a3b4f90",
+    "packageVersion": "26.1030.2481~dev+g6ad9f957e654",
+    "schemaVersion": 1,
+    "sourceProvenance": "git",
+    "version": "26.1030.2481-dev+g6ad9f957e654"
+  },
+  "wall": {
+    "sandboxId": "bx_rxgaakqm",
+    "unit": "putgd-snap-fbase2",
+    "port": 6261,
+    "remotePort": 5901,
+    "listenerPid": 2088023,
+    "verifiedListener": true
+  },
+  "sourceOfFullCtestProof": "fbase-fresh-verification.json",
+  "matchingDebInstalledAndStarted": true,
+  "settingsShown": true
+}

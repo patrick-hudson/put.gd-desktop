@@ -1,0 +1,195 @@
+{
+  "schemaVersion": 1,
+  "rawCounts": {
+    "before": {
+      "passed": 2,
+      "blocked": 17,
+      "failed": 3
+    },
+    "after": {
+      "passed": 2,
+      "blocked": 18,
+      "failed": 2
+    }
+  },
+  "focused": {
+    "before": "failed at cancellation wait",
+    "after": "passed end to end"
+  },
+  "triage": [
+    {
+      "recipe": "dialogs.edit_image_portal",
+      "before": "passed",
+      "after": "passed",
+      "issue": null,
+      "reason": "Passed both phases"
+    },
+    {
+      "recipe": "dialogs.edit_image_fallback",
+      "before": "blocked",
+      "after": "blocked",
+      "issue": 842,
+      "reason": "Fallback accessible proxy has no matching Mutter placement"
+    },
+    {
+      "recipe": "dialogs.history_save_as_portal",
+      "before": "passed",
+      "after": "passed",
+      "issue": null,
+      "reason": "Passed both phases"
+    },
+    {
+      "recipe": "dialogs.history_save_as_fallback",
+      "before": "blocked",
+      "after": "blocked",
+      "issue": 842,
+      "reason": "Fallback accessible proxy has no matching Mutter placement"
+    },
+    {
+      "recipe": "dialogs.output_folder_portal",
+      "before": "failed",
+      "after": "blocked",
+      "issue": 805,
+      "reason": "Observation timeout; before output-folder also loses foreground to Desktop Icons 1"
+    },
+    {
+      "recipe": "dialogs.output_folder_fallback",
+      "before": "blocked",
+      "after": "blocked",
+      "issue": 805,
+      "reason": "Fresh accessibility probe timeout"
+    },
+    {
+      "recipe": "dialogs.diagnostics_folder_portal",
+      "before": "blocked",
+      "after": "blocked",
+      "issue": 805,
+      "reason": "Fresh accessibility probe timeout"
+    },
+    {
+      "recipe": "dialogs.diagnostics_folder_fallback",
+      "before": "blocked",
+      "after": "blocked",
+      "issue": 805,
+      "reason": "Fresh accessibility probe timeout"
+    },
+    {
+      "recipe": "dialogs.editor_save_copy_portal",
+      "before": "blocked",
+      "after": "blocked",
+      "issue": 805,
+      "reason": "Fresh accessibility probe timeout"
+    },
+    {
+      "recipe": "dialogs.editor_save_copy_fallback",
+      "before": "blocked",
+      "after": "blocked",
+      "issue": 805,
+      "reason": "Fresh accessibility probe timeout"
+    },
+    {
+      "recipe": "dialogs.review_save_copy_portal",
+      "before": "failed",
+      "after": "failed",
+      "issue": 672,
+      "reason": "Moving-pattern fixture times out before chooser"
+    },
+    {
+      "recipe": "dialogs.review_save_copy_fallback",
+      "before": "failed",
+      "after": "failed",
+      "issue": 672,
+      "reason": "Moving-pattern fixture times out before chooser"
+    },
+    {
+      "recipe": "dialogs.portal_portal",
+      "before": "blocked",
+      "after": "blocked",
+      "issue": 805,
+      "reason": "Fresh accessibility probe timeout"
+    },
+    {
+      "recipe": "dialogs.portal_fallback",
+      "before": "blocked",
+      "after": "blocked",
+      "issue": 671,
+      "reason": "Backend mismatch or unavailable deterministic failure fixture"
+    },
+    {
+      "recipe": "dialogs.fallback_portal",
+      "before": "blocked",
+      "after": "blocked",
+      "issue": 671,
+      "reason": "Backend mismatch or unavailable deterministic failure fixture"
+    },
+    {
+      "recipe": "dialogs.fallback_fallback",
+      "before": "blocked",
+      "after": "blocked",
+      "issue": 805,
+      "reason": "Fresh accessibility probe timeout"
+    },
+    {
+      "recipe": "dialogs.cancel_portal",
+      "before": "blocked",
+      "after": "blocked",
+      "issue": 805,
+      "reason": "Fresh accessibility probe timeout"
+    },
+    {
+      "recipe": "dialogs.cancel_fallback",
+      "before": "blocked",
+      "after": "blocked",
+      "issue": 805,
+      "reason": "Fresh accessibility probe timeout"
+    },
+    {
+      "recipe": "dialogs.failure_strip_portal",
+      "before": "blocked",
+      "after": "blocked",
+      "issue": 671,
+      "reason": "Backend mismatch or unavailable deterministic failure fixture"
+    },
+    {
+      "recipe": "dialogs.failure_strip_fallback",
+      "before": "blocked",
+      "after": "blocked",
+      "issue": 671,
+      "reason": "Backend mismatch or unavailable deterministic failure fixture"
+    },
+    {
+      "recipe": "dialogs.mcp_file_dialogs_portal",
+      "before": "blocked",
+      "after": "blocked",
+      "issue": 672,
+      "reason": "Official MCP client/helper not provisioned"
+    },
+    {
+      "recipe": "dialogs.mcp_file_dialogs_fallback",
+      "before": "blocked",
+      "after": "blocked",
+      "issue": 672,
+      "reason": "Official MCP client/helper not provisioned"
+    }
+  ],
+  "source": {
+    "app": "88928c0b59f3938098067e88913bc077b1e46d89",
+    "core": "97d335ec9f2bb6a9fb74fb81f3bf121ddb082760",
+    "dialogs": "8702e57b63c18119aaf31e1b55b22605615626b7",
+    "fix": "6708c65c597026133820624e81e75cb22cc19df3"
+  },
+  "files": {
+    "after-first-escape.png": "4ceb9ddc062ad39aebc4b47aec42c028fda6815042f2ccb754ed76d67c7a0278",
+    "after-ready.png": "985a2df1ff3d0f04df2dd7d4102f6ddb868a40c3d900020d5ee49172500a5782",
+    "after-recipe-chosen.png": "d892b9e33001f0f5956af3d78d032fabd0d05f428668e33f601aacbacc6eaaaa",
+    "before-alert.png": "52da85a96d8e62c57d07f9b3ff11b71252551aa8b8e6868a2f2fa641b2e1906f",
+    "before-first-escape.png": "c44db7c0c3e5a213095197477222669870a0e19464832d9ef65295eb8e58101a",
+    "before-second-escape.png": "8c3212cdb417e253576afffae9adee97a83614194fd343035dea398af8a6bd12",
+    "focused-after.json": "6f7d6e0fae052a3a69064a146c40ef9fbf94f95a76a594a039f3cae39b8bbe58",
+    "focused-before.json": "a8d643827acbefacbba875d3145aa60524b41889ceea83647e88a37e19b6f3dd",
+    "lane-after.json": "a3c4e6fb166c7853d458bd4657c79ce7c84e0e77b79d01f1bf711559935ac46a",
+    "lane-before.json": "ca2b30ca432c2d9c974c38e20a675a39f6afbe0ceac2f4795db02abd1747ae19",
+    "overlay-cleanup.json": "deb05f29a73141967658ec394fcfbb254b8dc8d39a046b016064299629a98c5e",
+    "retention.json": "f7cd6584e49980fec335e4b09a59ea12eb98cc7d01026c2be5e5fc52b17c1c51"
+  }
+}

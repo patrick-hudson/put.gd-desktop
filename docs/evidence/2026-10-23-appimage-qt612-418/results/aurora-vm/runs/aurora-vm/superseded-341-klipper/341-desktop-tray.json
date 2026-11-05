@@ -1,0 +1,381 @@
+{
+ "action": "desktop",
+ "shortcut": "Ctrl+Shift+3",
+ "opened": "click:1012,779",
+ "menuBox": [
+  1002,
+  690,
+  1194,
+  758
+ ],
+ "menuFull": "/var/home/lab/work/put.gd-qt418/afa/runs/aurora-vm/full/aurora-vm-341-desktop-traymenu-menu-open.png",
+ "seconds": 0.7,
+ "operations": [
+  {
+   "id": "dbcbaa91-437d-494d-b44a-8ec1a0c6138f",
+   "state": "running",
+   "copyStatus": "pending",
+   "items": [
+    {
+     "name": "Screen-Capture-2026-10-23-15-40-38.png",
+     "mime": "image/png",
+     "uploadStatus": "stored",
+     "link": "",
+     "local": {
+      "error": {
+       "code": "",
+       "details": {},
+       "message": ""
+      },
+      "path": "/var/home/lab/work/put.gd-qt418/afa/runs/aurora-vm/archive/images/Screen-Capture-2026-10-23-15-40-38.png",
+      "status": "saved"
+     }
+    }
+   ],
+   "error": {
+    "code": "",
+    "details": {},
+    "message": ""
+   }
+  }
+ ],
+ "newHistory": [
+  "36414ca3-59c1-4cff-a1c5-092e34914065"
+ ],
+ "notices": [
+  {
+   "itemId": null,
+   "notificationId": 1,
+   "notificationText": "Uploaded. Link copied to the clipboard. Click to open in browser.",
+   "operationId": null,
+   "summary": "operation_completed",
+   "title": "put.gd \u2014 completed",
+   "warning": false
+  }
+ ],
+ "shortcutLog": [
+  {
+   "message": "Resident started",
+   "fields": {
+    "architecture": "x86_64",
+    "build": {
+     "baseVersion": "26.1023.1068",
+     "commitCount": 1068,
+     "dirty": false,
+     "gitCommit": "6a325a722afd946046a96480ca524db8aa6abcce",
+     "gitTree": "a0a449b23b4eb70f516e3c317b6d93b412aafbbb",
+     "packageVersion": "26.1023.1068~dev+g6a325a722afd",
+     "schemaVersion": 1,
+     "sourceProvenance": "git",
+     "version": "26.1023.1068-dev+g6a325a722afd"
+    },
+    "capabilities": {
+     "adapter": "kde-wayland",
+     "capture": {
+      "desktop": {
+       "available": false,
+       "error": "Native output discovery has not connected",
+       "interface": "org.kde.KWin.ScreenShot2",
+       "interface_version": 0,
+       "mode": "compositor-native",
+       "permission": "restricted-desktop-entry",
+       "permission_entry_matches_executable": true,
+       "permission_rejected": false
+      },
+      "region": {
+       "available": false,
+       "error": "Native output discovery has not connected",
+       "helper": {
+        "active": false,
+        "build": {
+         "baseVersion": "26.1023.1068",
+         "commitCount": 1068,
+         "dirty": false,
+         "gitCommit": "6a325a722afd946046a96480ca524db8aa6abcce",
+         "gitTree": "a0a449b23b4eb70f516e3c317b6d93b412aafbbb",
+         "packageVersion": "26.1023.1068~dev+g6a325a722afd",
+         "schemaVersion": 1,
+         "sourceProvenance": "git",
+         "version": "26.1023.1068-dev+g6a325a722afd"
+        },
+        "cleanupRequired": false,
+        "lastExit": {},
+        "processId": 0
+       },
+       "interface": "org.kde.KWin.ScreenShot2",
+       "interface_version": 0,
+       "mode": "compositor-native",
+       "permission": "restricted-desktop-entry",
+       "permission_entry_matches_executable": true,
+       "permission_rejected": false
+      },
+      "window": {
+       "available": false,
+       "error": "ScreenShot2 has not been probed",
+       "interface": "org.kde.KWin.ScreenShot2",
+       "interface_version": 0,
+       "mode": "compositor-native",
+       "permission": "restricted-desktop-entry",
+       "permission_entry_matches_executable": true,
+       "permission_rejected": false
+      }
+     },
+     "captureHelper": {
+      "active": false,
+      "build": {
+       "baseVersion": "26.1023.1068",
+       "commitCount": 1068,
+       "dirty": false,
+       "gitCommit": "6a325a722afd946046a96480ca524db8aa6abcce",
+       "gitTree": "a0a449b23b4eb70f516e3c317b6d93b412aafbbb",
+       "packageVersion": "26.1023.1068~dev+g6a325a722afd",
+       "schemaVersion": 1,
+       "sourceProvenance": "git",
+       "version": "26.1023.1068-dev+g6a325a722afd"
+      },
+      "cleanupRequired": false,
+      "lastExit": {},
+      "processId": 0
+     },
+     "clipboard": "<redacted>",
+     "outputs": {
+      "available": false,
+      "error": "Native output discovery has not connected",
+      "outputs": 0,
+      "protocol": "wl-output+xdg-output",
+      "protocol_version": 0,
+      "revision": 0
+     },
+     "resident": "qt-core",
+     "shortcuts": {
+      "available": false,
+      "bindings": {
+       "clipboard": "<redacted>",
+       "desktop": {
+        "bound": false,
+        "error": "Waiting for the compositor keyboard map and current layout",
+        "requested": "Ctrl+Shift+3",
+        "state": "shortcut_unavailable"
+       },
+       "edit": {
+        "bound": false,
+        "error": "Waiting for the compositor keyboard map and current layout",
+        "requested": "",
+        "state": "shortcut_unavailable"
+       },
+       "record": {
+        "bound": false,
+        "error": "Waiting for the compositor keyboard map and current layout",
+        "requested": "",
+        "state": "shortcut_unavailable"
+       },
+       "region": {
+        "bound": false,
+        "error": "Waiting for the compositor keyboard map and current layout",
+        "requested": "Ctrl+Shift+1",
+        "state": "shortcut_unavailable"
+       },
+       "window": {
+        "bound": false,
+        "error": "Waiting for the compositor keyboard map and current layout",
+        "requested": "Ctrl+Shift+2",
+        "state": "shortcut_unavailable"
+       }
+      }
+     }
+    },
+    "desktop": "KDE",
+    "itemId": null,
+    "kernel": "7.2.11-300.fc45.x86_64",
+    "locations": {
+     "config": {
+      "path": "/var/home/lab/work/put.gd-qt418/afa/runs/aurora-vm/config/putgd",
+      "state": "current"
+     },
+     "data": {
+      "path": "/var/home/lab/.local/share/putgd",
+      "state": "current"
+     },
+     "schemaVersion": 1
+    },
+    "operationId": null,
+    "os": "Aurora (Version: testing-45.20261022.1)",
+    "platform": "none",
+    "qtCompiled": "6.12.0",
+    "qtRuntime": "6.12.0",
+    "resident": "kde-core",
+    "sessionType": "wayland",
+    "trayAvailable": false
+   }
+  },
+  {
+   "message": "Resident started",
+   "fields": {
+    "architecture": "x86_64",
+    "build": {
+     "baseVersion": "26.1023.1068",
+     "commitCount": 1068,
+     "dirty": false,
+     "gitCommit": "6a325a722afd946046a96480ca524db8aa6abcce",
+     "gitTree": "a0a449b23b4eb70f516e3c317b6d93b412aafbbb",
+     "packageVersion": "26.1023.1068~dev+g6a325a722afd",
+     "schemaVersion": 1,
+     "sourceProvenance": "git",
+     "version": "26.1023.1068-dev+g6a325a722afd"
+    },
+    "capabilities": {
+     "adapter": "kde-wayland",
+     "capture": {
+      "desktop": {
+       "available": false,
+       "error": "Native output discovery has not connected",
+       "interface": "org.kde.KWin.ScreenShot2",
+       "interface_version": 0,
+       "mode": "compositor-native",
+       "permission": "restricted-desktop-entry",
+       "permission_entry_matches_executable": true,
+       "permission_rejected": false
+      },
+      "region": {
+       "available": false,
+       "error": "Native output discovery has not connected",
+       "helper": {
+        "active": false,
+        "build": {
+         "baseVersion": "26.1023.1068",
+         "commitCount": 1068,
+         "dirty": false,
+         "gitCommit": "6a325a722afd946046a96480ca524db8aa6abcce",
+         "gitTree": "a0a449b23b4eb70f516e3c317b6d93b412aafbbb",
+         "packageVersion": "26.1023.1068~dev+g6a325a722afd",
+         "schemaVersion": 1,
+         "sourceProvenance": "git",
+         "version": "26.1023.1068-dev+g6a325a722afd"
+        },
+        "cleanupRequired": false,
+        "lastExit": {},
+        "processId": 0
+       },
+       "interface": "org.kde.KWin.ScreenShot2",
+       "interface_version": 0,
+       "mode": "compositor-native",
+       "permission": "restricted-desktop-entry",
+       "permission_entry_matches_executable": true,
+       "permission_rejected": false
+      },
+      "window": {
+       "available": false,
+       "error": "ScreenShot2 has not been probed",
+       "interface": "org.kde.KWin.ScreenShot2",
+       "interface_version": 0,
+       "mode": "compositor-native",
+       "permission": "restricted-desktop-entry",
+       "permission_entry_matches_executable": true,
+       "permission_rejected": false
+      }
+     },
+     "captureHelper": {
+      "active": false,
+      "build": {
+       "baseVersion": "26.1023.1068",
+       "commitCount": 1068,
+       "dirty": false,
+       "gitCommit": "6a325a722afd946046a96480ca524db8aa6abcce",
+       "gitTree": "a0a449b23b4eb70f516e3c317b6d93b412aafbbb",
+       "packageVersion": "26.1023.1068~dev+g6a325a722afd",
+       "schemaVersion": 1,
+       "sourceProvenance": "git",
+       "version": "26.1023.1068-dev+g6a325a722afd"
+      },
+      "cleanupRequired": false,
+      "lastExit": {},
+      "processId": 0
+     },
+     "clipboard": "<redacted>",
+     "outputs": {
+      "available": false,
+      "error": "Native output discovery has not connected",
+      "outputs": 0,
+      "protocol": "wl-output+xdg-output",
+      "protocol_version": 0,
+      "revision": 0
+     },
+     "resident": "qt-core",
+     "shortcuts": {
+      "available": false,
+      "bindings": {
+       "clipboard": "<redacted>",
+       "desktop": {
+        "bound": false,
+        "error": "Waiting for the compositor keyboard map and current layout",
+        "requested": "Ctrl+Shift+3",
+        "state": "shortcut_unavailable"
+       },
+       "edit": {
+        "bound": false,
+        "error": "Waiting for the compositor keyboard map and current layout",
+        "requested": "",
+        "state": "shortcut_unavailable"
+       },
+       "record": {
+        "bound": false,
+        "error": "Waiting for the compositor keyboard map and current layout",
+        "requested": "",
+        "state": "shortcut_unavailable"
+       },
+       "region": {
+        "bound": false,
+        "error": "Waiting for the compositor keyboard map and current layout",
+        "requested": "Ctrl+Shift+1",
+        "state": "shortcut_unavailable"
+       },
+       "window": {
+        "bound": false,
+        "error": "Waiting for the compositor keyboard map and current layout",
+        "requested": "Ctrl+Shift+2",
+        "state": "shortcut_unavailable"
+       }
+      }
+     }
+    },
+    "desktop": "KDE",
+    "itemId": null,
+    "kernel": "7.2.11-300.fc45.x86_64",
+    "locations": {
+     "config": {
+      "path": "/var/home/lab/work/put.gd-qt418/afa/runs/aurora-vm/config/putgd",
+      "state": "current"
+     },
+     "data": {
+      "path": "/var/home/lab/.local/share/putgd",
+      "state": "current"
+     },
+     "schemaVersion": 1
+    },
+    "operationId": null,
+    "os": "Aurora (Version: testing-45.20261022.1)",
+    "platform": "none",
+    "qtCompiled": "6.12.0",
+    "qtRuntime": "6.12.0",
+    "resident": "kde-core",
+    "sessionType": "wayland",
+    "trayAvailable": false
+   }
+  }
+ ],
+ "history": {
+  "id": "36414ca3-59c1-4cff-a1c5-092e34914065",
+  "name": "Screen-Capture-2026-10-23-15-40-38.png",
+  "uploadStatus": "stored"
+ },
+ "png": {
+  "path": "/var/home/lab/work/put.gd-qt418/afa/runs/aurora-vm/out/aurora-vm-341-desktop-traymenu.png",
+  "size": [
+   1280,
+   800
+  ],
+  "sha256": "30ac1c2ed62504ae05c84c808fb9f14aeaa0c90680c59206e80e2b1c2651d954"
+ },
+ "menuInCapture": 1.0,
+ "after": "/var/home/lab/work/put.gd-qt418/afa/runs/aurora-vm/full/aurora-vm-341-desktop-traymenu-after.png"
+}

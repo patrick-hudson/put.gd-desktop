@@ -1,0 +1,33 @@
+{
+  "source": "0c329b0692cadc52f03f91e59c06c5eda760bf04",
+  "controllerCommit": "a8dab553490975ad369bae5bf51879b4912682fb",
+  "controllerSha256": "02e786eeb8ed2639fca278f5a077fa4958c6548e075db03f934e6a492e455fe0",
+  "runs": [
+    {
+      "name": "run-a",
+      "pid": 1766383,
+      "argv": [
+        "python3",
+        "/home/patrick/.t3/worktrees/put.gd/t3-c14e8bd4/tools/lab/boat/candidate.py",
+        "0c329b0692cadc52f03f91e59c06c5eda760bf04",
+        "--output",
+        "/home/patrick/work/boat-candidates/issue752-f1-live-20261030/run-a"
+      ],
+      "returncode": 1
+    },
+    {
+      "name": "run-b",
+      "pid": 1766384,
+      "argv": [
+        "python3",
+        "/home/patrick/.t3/worktrees/put.gd/t3-c14e8bd4/tools/lab/boat/candidate.py",
+        "0c329b0692cadc52f03f91e59c06c5eda760bf04",
+        "--output",
+        "/home/patrick/work/boat-candidates/issue752-f1-live-20261030/run-b"
+      ],
+      "returncode": 0
+    }
+  ],
+  "startedAt": 1793333003.9362934,
+  "finishedAt": 1793335142.5247495
+}

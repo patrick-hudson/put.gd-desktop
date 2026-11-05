@@ -1,0 +1,90 @@
+[
+  {
+    "method": "HEAD",
+    "bucket": "fixture",
+    "key": "q559/Screen-Capture-2026-10-24-23-58-50.png",
+    "bodyBytes": 0,
+    "bodySha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "signatureValid": true
+  },
+  {
+    "method": "PUT",
+    "bucket": "fixture",
+    "key": "q559/Screen-Capture-2026-10-24-23-58-50.png",
+    "bodyBytes": 757,
+    "bodySha256": "55eba1835a74471f4d322e0f3a0b4e750a245ab9147e0cf60ea373c81f4721cf",
+    "signatureValid": true
+  },
+  {
+    "method": "HEAD",
+    "bucket": "fixture",
+    "key": "q559/Screen-Capture-2026-10-24-23-58-52.png",
+    "bodyBytes": 0,
+    "bodySha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "signatureValid": true
+  },
+  {
+    "method": "PUT",
+    "bucket": "fixture",
+    "key": "q559/Screen-Capture-2026-10-24-23-58-52.png",
+    "bodyBytes": 757,
+    "bodySha256": "55eba1835a74471f4d322e0f3a0b4e750a245ab9147e0cf60ea373c81f4721cf",
+    "signatureValid": true
+  },
+  {
+    "method": "HEAD",
+    "bucket": "fixture",
+    "key": "q559/Screen-Capture-2026-10-24-23-58-53.png",
+    "bodyBytes": 0,
+    "bodySha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "signatureValid": true
+  },
+  {
+    "method": "PUT",
+    "bucket": "fixture",
+    "key": "q559/Screen-Capture-2026-10-24-23-58-53.png",
+    "bodyBytes": 757,
+    "bodySha256": "55eba1835a74471f4d322e0f3a0b4e750a245ab9147e0cf60ea373c81f4721cf",
+    "signatureValid": true
+  },
+  {
+    "method": "HEAD",
+    "bucket": "fixture",
+    "key": "q559/Screen-Capture-2026-10-24-23-58-53.png",
+    "bodyBytes": 0,
+    "bodySha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "signatureValid": true
+  },
+  {
+    "method": "HEAD",
+    "bucket": "fixture",
+    "key": "q559/Screen-Capture-2026-10-24-23-58-53-fb8270d7-1dc9-4f01-b067-5af1148e0474.png",
+    "bodyBytes": 0,
+    "bodySha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "signatureValid": true
+  },
+  {
+    "method": "PUT",
+    "bucket": "fixture",
+    "key": "q559/Screen-Capture-2026-10-24-23-58-53-fb8270d7-1dc9-4f01-b067-5af1148e0474.png",
+    "bodyBytes": 757,
+    "bodySha256": "55eba1835a74471f4d322e0f3a0b4e750a245ab9147e0cf60ea373c81f4721cf",
+    "signatureValid": true
+  },
+  {
+    "method": "HEAD",
+    "bucket": "fixture",
+    "key": "q559/Screen-Capture-2026-10-24-23-58-54.png",
+    "bodyBytes": 0,
+    "bodySha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "signatureValid": true
+  },
+  {
+    "method": "PUT",
+    "bucket": "fixture",
+    "key": "q559/Screen-Capture-2026-10-24-23-58-54.png",
+    "bodyBytes": 757,
+    "bodySha256": "55eba1835a74471f4d322e0f3a0b4e750a245ab9147e0cf60ea373c81f4721cf",
+    "signatureValid": true
+  }
+]

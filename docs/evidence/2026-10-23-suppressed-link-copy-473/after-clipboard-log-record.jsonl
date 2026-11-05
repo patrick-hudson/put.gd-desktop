@@ -1,0 +1,2 @@
+{"category":"putgd.clipboard","fields":{"action":"region","automatic":true,"behavior":"each_link","cancelled":false,"copyStatus":"suppressed","itemId":null,"links":1,"suppression":{"epochAtDispatch":0,"epochAtInvocation":0,"guard":"clipboard_changed","revisionAtDispatch":2,"revisionAtInvocation":1}},"level":"info","message":"Automatic copy finished","operationId":"cdbe20c1-d2e9-497f-9c97-8f4158a7a2b2","pid":5478,"process":"putgd","time":"2026-10-23T02:36:43.236Z","v":1}
+

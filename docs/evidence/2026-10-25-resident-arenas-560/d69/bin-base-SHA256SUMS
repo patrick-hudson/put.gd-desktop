@@ -1,0 +1,4 @@
+8a7256e7465ff60495559c80fe20bdb522422c901db274366d51a6e3f42dc8f6  bin-base/putgd
+1318a76102ac9b70d4c7149dec170aaff86b64decf8a722e027d7b7aa62fc08f  bin-base/putgd-b2-worker
+8cd14d94e84c21749bc36a5a6c520d4cd8b2c1b3b1f80562e63f7e0fb6c9e41d  bin-base/putgd-s3-worker
+083a31828c09c03aaed7bdb91d58e17e49ef1afb691695aed8b5b29685fc6376  bin-base/putgd-ui

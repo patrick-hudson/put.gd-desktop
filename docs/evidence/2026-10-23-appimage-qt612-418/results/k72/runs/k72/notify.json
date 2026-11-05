@@ -1,0 +1,96 @@
+{
+ "notificationsOn": true,
+ "operation": {
+  "id": "0e22bbbc-4441-4748-b6a7-004ea7fa8338",
+  "state": "completed",
+  "copyStatus": "copied",
+  "items": [
+   {
+    "name": "Screen-Capture-2026-10-23-13-45-53.png",
+    "mime": "image/png",
+    "uploadStatus": "uploaded",
+    "link": "http://127.0.0.1:37543/fixture/afa/Screen-Capture-2026-10-23-13-45-53.png",
+    "local": {
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     },
+     "path": "/home/patrick/work/put.gd-qt418/afa/runs/k72/archive/images/Screen-Capture-2026-10-23-13-45-53.png",
+     "status": "saved"
+    }
+   }
+  ],
+  "error": {
+   "code": "",
+   "details": {},
+   "message": ""
+  }
+ },
+ "notification": {
+  "logged": [
+   {
+    "category": "putgd.ui",
+    "fields": {
+     "itemId": null,
+     "notificationId": 1,
+     "notificationText": "Uploaded. Link copied to the clipboard. Click to open in browser.",
+     "operationId": null,
+     "summary": "operation_completed",
+     "title": "put.gd \u2014 completed",
+     "warning": false
+    },
+    "level": "info",
+    "message": "Notification shown",
+    "pid": 1527107,
+    "process": "putgd",
+    "time": "2026-10-23T18:45:54.746Z",
+    "v": 1
+   }
+  ],
+  "banner": {
+   "label": "k72-notify-notification",
+   "components": [
+    {
+     "blocks": 582,
+     "box": [
+      1544,
+      888,
+      1888,
+      1000
+     ]
+    }
+   ],
+   "colour": [
+    56,
+    60,
+    64
+   ],
+   "inner": [
+    1626,
+    921,
+    1839,
+    989
+   ],
+   "changedShare": 1.0,
+   "kept": "/home/patrick/work/put.gd-qt418/afa/runs/k72/crops/k72-notify-notification.png"
+  },
+  "full": "/home/patrick/work/put.gd-qt418/afa/runs/k72/full/k72-notify-notification.png",
+  "clicked": [
+   1732,
+   943
+  ],
+  "dbusMembers": [
+   "NameAcquired",
+   "NameLost",
+   "Notify"
+  ],
+  "notifyActions": [
+   "default",
+   "Open in browser"
+  ],
+  "actionInvoked": [],
+  "openedUrls": []
+ },
+ "notificationsOff": true
+}

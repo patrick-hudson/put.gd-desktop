@@ -1,0 +1,112 @@
+{
+ "menu": {
+  "label": "f44-fix-live-tray-menu",
+  "components": [
+   {
+    "blocks": 2118,
+    "box": [
+     1584,
+     0,
+     1832,
+     576
+    ]
+   },
+   {
+    "blocks": 1,
+    "box": [
+     1912,
+     624,
+     1920,
+     632
+    ]
+   }
+  ],
+  "colour": [
+   52,
+   52,
+   56
+  ],
+  "inner": [
+   1589,
+   40,
+   1827,
+   569
+  ],
+  "changedShare": 1.0,
+  "kept": "/home/patrick/work/put.gd-304/p-f44fix/crops/f44-fix-live-tray-menu.png"
+ },
+ "menuSelected": {
+  "label": "f44-fix-live-tray-menu-selected",
+  "components": [
+   {
+    "blocks": 2118,
+    "box": [
+     1584,
+     0,
+     1832,
+     576
+    ]
+   },
+   {
+    "blocks": 4,
+    "box": [
+     1904,
+     616,
+     1920,
+     632
+    ]
+   }
+  ],
+  "colour": [
+   52,
+   52,
+   56
+  ],
+  "inner": [
+   1589,
+   40,
+   1827,
+   569
+  ],
+  "changedShare": 1.0,
+  "kept": "/home/patrick/work/put.gd-304/p-f44fix/crops/f44-fix-live-tray-menu-selected.png"
+ },
+ "window": {
+  "label": "f44-fix-live-settings",
+  "components": [
+   {
+    "blocks": 19048,
+    "box": [
+     296,
+     96,
+     1624,
+     1016
+    ]
+   },
+   {
+    "blocks": 7,
+    "box": [
+     1904,
+     608,
+     1920,
+     640
+    ]
+   }
+  ],
+  "colour": [
+   252,
+   252,
+   252
+  ],
+  "inner": [
+   300,
+   98,
+   1620,
+   1014
+  ],
+  "changedShare": 1.0,
+  "themeShare": 0.958,
+  "kept": "/home/patrick/work/put.gd-304/p-f44fix/crops/f44-fix-live-settings.png"
+ },
+ "ui": null
+}

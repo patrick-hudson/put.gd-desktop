@@ -1,0 +1,67 @@
+{
+  "schemaVersion": 1,
+  "kind": "development-regression-evidence",
+  "issue": 840,
+  "codePullRequest": "https://github.com/patrick-hudson/put.gd-desktop/pull/877",
+  "source": {
+    "base": "5e1d592eadd9898c5a20477afa94999ad1d69eae",
+    "head": "be8bc6b13f28afd03c835211f98f608909b84b6f",
+    "tree": "17352781d921c64e2ee9a28ee92ef371225430a0"
+  },
+  "cpu": {
+    "gnome": {
+      "before": {
+        "view": "settings",
+        "uiPid": 15812,
+        "ticks": 6101,
+        "elapsed": 60.00056593599993,
+        "cpuPercent": 101.68237423806434
+      },
+      "after": {
+        "view": "settings",
+        "uiPid": 6097,
+        "ticks": 0,
+        "elapsed": 60.00025093100004,
+        "cpuPercent": 0.0
+      },
+      "afterRunId": "c15e608c-ac1e-4269-abca-76971da0fdce"
+    },
+    "cinnamon": {
+      "before": {
+        "view": "settings",
+        "uiPid": 2738,
+        "ticks": 5659,
+        "elapsed": 60.001601307,
+        "cpuPercent": 94.31414956820161
+      },
+      "after": {
+        "view": "settings",
+        "uiPid": 3226,
+        "ticks": 0,
+        "elapsed": 60.001433588000054,
+        "cpuPercent": 0.0
+      },
+      "afterRunId": "f33e5726-4124-4e78-907e-6908af523ebc"
+    }
+  },
+  "ctest": {
+    "registered": 114,
+    "passed": 114,
+    "retried": 0,
+    "seconds": 160.22,
+    "ledger": "tests/snapshot-flakes.json"
+  },
+  "artifacts": {
+    "gnomeDebSha256": "bf2d17ffaf81b0c728498bf98c9b7254d7db5e1e06e697ae7d1f48ce0da746e0",
+    "cinnamonDebSha256": "22b828998dc82bcd22df85721416357308090f013a821ec601f3e66e51d2608f"
+  },
+  "profile": {
+    "nativeWarmupSeconds": 3,
+    "nativeSampleSeconds": 60,
+    "clockTicksPerSecond": 100,
+    "appearance": "system",
+    "testAtSpiObserver": false,
+    "accessibilityRegistrationForcedForNative": true,
+    "physicalReleaseAcceptance": false
+  }
+}

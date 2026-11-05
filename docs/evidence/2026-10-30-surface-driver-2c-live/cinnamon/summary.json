@@ -1,0 +1,651 @@
+{
+ "driver_source": "7577c2e6424d296dcafb02529d1d390c114d5018",
+ "desktop": "mint-cinnamon-x11",
+ "boat_sandbox_id": "bx_nhk7d37m",
+ "run_id": "7adcf68d-63c6-48db-92b2-08491dcf61bc",
+ "cases": {
+  "history_rows": {
+   "ok": true,
+   "value": {
+    "kinds": [
+     "b2",
+     "custom",
+     "loopback",
+     "share"
+    ],
+    "link_hosts": [
+     "127.0.0.1",
+     "127.0.0.1:45167",
+     "f004.backblazeb2.com",
+     "objects.sd726.internal",
+     "objects.sd726.internal:9443",
+     "put.gd"
+    ],
+    "links_registered": true
+   }
+  },
+  "history_frames": {
+   "ok": true,
+   "value": {
+    "frames": [
+     {
+      "label": "history-list",
+      "path": "frames/setup/00-history-list.png",
+      "guard": "ocr-checked",
+      "fallback": false,
+      "policy": null,
+      "size": [
+       1280,
+       760
+      ],
+      "black_share": 0.597,
+      "masks": 8,
+      "fully_black": false
+     },
+     {
+      "label": "history-selected-custom",
+      "path": "frames/setup/01-history-selected-custom.png",
+      "guard": "ocr-checked",
+      "fallback": false,
+      "policy": null,
+      "size": [
+       1280,
+       760
+      ],
+      "black_share": 0.597,
+      "masks": 12,
+      "fully_black": false
+     }
+    ],
+    "link_field_found": false
+   }
+  },
+  "destinations_and_settings": {
+   "ok": true,
+   "value": {
+    "frames": [
+     {
+      "label": "destinations",
+      "path": "frames/setup/02-destinations.png",
+      "guard": "ocr-checked",
+      "fallback": false,
+      "policy": null,
+      "size": [
+       1280,
+       760
+      ],
+      "black_share": 0.473,
+      "masks": 10,
+      "fully_black": false
+     },
+     {
+      "label": "destinations-credentials-typed",
+      "path": "frames/setup/03-destinations-credentials-typed.png",
+      "guard": "ocr-checked",
+      "fallback": false,
+      "policy": null,
+      "size": [
+       1280,
+       760
+      ],
+      "black_share": 0.458,
+      "masks": 8,
+      "fully_black": false
+     },
+     {
+      "label": "settings",
+      "path": "frames/setup/04-settings.png",
+      "guard": "ocr-checked",
+      "fallback": false,
+      "policy": null,
+      "size": [
+       1280,
+       760
+      ],
+      "black_share": 0.406,
+      "masks": 3,
+      "fully_black": false
+     }
+    ],
+    "typed_credentials": [
+     "secret"
+    ]
+   }
+  },
+  "clipboard": {
+   "ok": true,
+   "value": {
+    "presigned_read": true,
+    "registered": true
+   }
+  },
+  "foreign_window": {
+   "ok": true,
+   "value": {
+    "frame": {
+     "label": "history-under-foreign-window",
+     "path": "frames/setup/05-history-under-foreign-window.png",
+     "guard": "ocr-checked",
+     "fallback": false,
+     "policy": null,
+     "size": [
+      1280,
+      760
+     ],
+     "black_share": 0.637,
+     "masks": 15,
+     "fully_black": false
+    },
+    "undeclared_desktop": {
+     "label": "desktop-foreign-window",
+     "path": "frames/setup/06-desktop-foreign-window.png",
+     "guard": "fully-masked",
+     "fallback": true,
+     "policy": "live-desktop-masked",
+     "size": [
+      1280,
+      800
+     ],
+     "black_share": 1.0,
+     "masks": 1,
+     "fully_black": true
+    },
+    "declared_desktop": {
+     "label": "desktop-foreign-window-declared",
+     "path": "frames/setup/07-desktop-foreign-window-declared.png",
+     "guard": "ocr-checked",
+     "fallback": false,
+     "policy": null,
+     "size": [
+      1280,
+      800
+     ],
+     "black_share": 0.655,
+     "masks": 16,
+     "fully_black": false
+    }
+   }
+  },
+  "notifications_top": {
+   "ok": true,
+   "value": {
+    "frames": [
+     {
+      "label": "top-share-desktop",
+      "path": "frames/setup/08-top-share-desktop.png",
+      "guard": "fully-masked",
+      "fallback": true,
+      "policy": "live-desktop-masked",
+      "size": [
+       1280,
+       800
+      ],
+      "black_share": 1.0,
+      "masks": 1,
+      "fully_black": true
+     },
+     {
+      "label": "top-share-desktop-declared",
+      "path": "frames/setup/09-top-share-desktop-declared.png",
+      "guard": "ocr-checked",
+      "fallback": false,
+      "policy": null,
+      "size": [
+       1280,
+       800
+      ],
+      "black_share": 0.617,
+      "masks": 13,
+      "fully_black": false
+     },
+     {
+      "label": "top-share-history",
+      "path": "frames/setup/10-top-share-history.png",
+      "guard": "ocr-checked",
+      "fallback": false,
+      "policy": null,
+      "size": [
+       1280,
+       760
+      ],
+      "black_share": 0.597,
+      "masks": 12,
+      "fully_black": false
+     },
+     {
+      "label": "top-b2-desktop",
+      "path": "frames/setup/11-top-b2-desktop.png",
+      "guard": "fully-masked",
+      "fallback": true,
+      "policy": "live-desktop-masked",
+      "size": [
+       1280,
+       800
+      ],
+      "black_share": 1.0,
+      "masks": 1,
+      "fully_black": true
+     },
+     {
+      "label": "top-b2-desktop-declared",
+      "path": "frames/setup/12-top-b2-desktop-declared.png",
+      "guard": "ocr-checked",
+      "fallback": false,
+      "policy": null,
+      "size": [
+       1280,
+       800
+      ],
+      "black_share": 0.617,
+      "masks": 13,
+      "fully_black": false
+     },
+     {
+      "label": "top-b2-history",
+      "path": "frames/setup/13-top-b2-history.png",
+      "guard": "ocr-checked",
+      "fallback": false,
+      "policy": null,
+      "size": [
+       1280,
+       760
+      ],
+      "black_share": 0.597,
+      "masks": 12,
+      "fully_black": false
+     },
+     {
+      "label": "top-presigned-desktop",
+      "path": "frames/setup/14-top-presigned-desktop.png",
+      "guard": "fully-masked",
+      "fallback": true,
+      "policy": "live-desktop-masked",
+      "size": [
+       1280,
+       800
+      ],
+      "black_share": 1.0,
+      "masks": 1,
+      "fully_black": true
+     },
+     {
+      "label": "top-presigned-desktop-declared",
+      "path": "frames/setup/15-top-presigned-desktop-declared.png",
+      "guard": "ocr-checked",
+      "fallback": false,
+      "policy": null,
+      "size": [
+       1280,
+       800
+      ],
+      "black_share": 0.617,
+      "masks": 13,
+      "fully_black": false
+     },
+     {
+      "label": "top-presigned-history",
+      "path": "frames/setup/16-top-presigned-history.png",
+      "guard": "ocr-checked",
+      "fallback": false,
+      "policy": null,
+      "size": [
+       1280,
+       760
+      ],
+      "black_share": 0.597,
+      "masks": 12,
+      "fully_black": false
+     },
+     {
+      "label": "top-custom-desktop",
+      "path": "frames/setup/17-top-custom-desktop.png",
+      "guard": "fully-masked",
+      "fallback": true,
+      "policy": "live-desktop-masked",
+      "size": [
+       1280,
+       800
+      ],
+      "black_share": 1.0,
+      "masks": 1,
+      "fully_black": true
+     },
+     {
+      "label": "top-custom-desktop-declared",
+      "path": "frames/setup/18-top-custom-desktop-declared.png",
+      "guard": "ocr-checked",
+      "fallback": false,
+      "policy": null,
+      "size": [
+       1280,
+       800
+      ],
+      "black_share": 0.617,
+      "masks": 13,
+      "fully_black": false
+     },
+     {
+      "label": "top-custom-history",
+      "path": "frames/setup/19-top-custom-history.png",
+      "guard": "ocr-checked",
+      "fallback": false,
+      "policy": null,
+      "size": [
+       1280,
+       760
+      ],
+      "black_share": 0.597,
+      "masks": 12,
+      "fully_black": false
+     }
+    ],
+    "notifications_read": 4,
+    "bodies_registered": 4
+   }
+  },
+  "notifications_bottom": {
+   "ok": true,
+   "value": {
+    "frames": [
+     {
+      "label": "bottom-share-desktop",
+      "path": "frames/setup/20-bottom-share-desktop.png",
+      "guard": "fully-masked",
+      "fallback": true,
+      "policy": "live-desktop-masked",
+      "size": [
+       1280,
+       800
+      ],
+      "black_share": 1.0,
+      "masks": 1,
+      "fully_black": true
+     },
+     {
+      "label": "bottom-share-desktop-declared",
+      "path": "frames/setup/21-bottom-share-desktop-declared.png",
+      "guard": "ocr-checked",
+      "fallback": false,
+      "policy": null,
+      "size": [
+       1280,
+       800
+      ],
+      "black_share": 0.617,
+      "masks": 14,
+      "fully_black": false
+     },
+     {
+      "label": "bottom-share-history",
+      "path": "frames/setup/22-bottom-share-history.png",
+      "guard": "ocr-checked",
+      "fallback": false,
+      "policy": null,
+      "size": [
+       1280,
+       760
+      ],
+      "black_share": 0.597,
+      "masks": 13,
+      "fully_black": false
+     },
+     {
+      "label": "bottom-b2-desktop",
+      "path": "frames/setup/23-bottom-b2-desktop.png",
+      "guard": "fully-masked",
+      "fallback": true,
+      "policy": "live-desktop-masked",
+      "size": [
+       1280,
+       800
+      ],
+      "black_share": 1.0,
+      "masks": 1,
+      "fully_black": true
+     },
+     {
+      "label": "bottom-b2-desktop-declared",
+      "path": "frames/setup/24-bottom-b2-desktop-declared.png",
+      "guard": "ocr-checked",
+      "fallback": false,
+      "policy": null,
+      "size": [
+       1280,
+       800
+      ],
+      "black_share": 0.617,
+      "masks": 14,
+      "fully_black": false
+     },
+     {
+      "label": "bottom-b2-history",
+      "path": "frames/setup/25-bottom-b2-history.png",
+      "guard": "ocr-checked",
+      "fallback": false,
+      "policy": null,
+      "size": [
+       1280,
+       760
+      ],
+      "black_share": 0.597,
+      "masks": 13,
+      "fully_black": false
+     },
+     {
+      "label": "bottom-presigned-desktop",
+      "path": "frames/setup/26-bottom-presigned-desktop.png",
+      "guard": "fully-masked",
+      "fallback": true,
+      "policy": "live-desktop-masked",
+      "size": [
+       1280,
+       800
+      ],
+      "black_share": 1.0,
+      "masks": 1,
+      "fully_black": true
+     },
+     {
+      "label": "bottom-presigned-desktop-declared",
+      "path": "frames/setup/27-bottom-presigned-desktop-declared.png",
+      "guard": "ocr-checked",
+      "fallback": false,
+      "policy": null,
+      "size": [
+       1280,
+       800
+      ],
+      "black_share": 0.617,
+      "masks": 14,
+      "fully_black": false
+     },
+     {
+      "label": "bottom-presigned-history",
+      "path": "frames/setup/28-bottom-presigned-history.png",
+      "guard": "ocr-checked",
+      "fallback": false,
+      "policy": null,
+      "size": [
+       1280,
+       760
+      ],
+      "black_share": 0.597,
+      "masks": 13,
+      "fully_black": false
+     },
+     {
+      "label": "bottom-custom-desktop",
+      "path": "frames/setup/29-bottom-custom-desktop.png",
+      "guard": "fully-masked",
+      "fallback": true,
+      "policy": "live-desktop-masked",
+      "size": [
+       1280,
+       800
+      ],
+      "black_share": 1.0,
+      "masks": 1,
+      "fully_black": true
+     },
+     {
+      "label": "bottom-custom-desktop-declared",
+      "path": "frames/setup/30-bottom-custom-desktop-declared.png",
+      "guard": "ocr-checked",
+      "fallback": false,
+      "policy": null,
+      "size": [
+       1280,
+       800
+      ],
+      "black_share": 0.617,
+      "masks": 14,
+      "fully_black": false
+     },
+     {
+      "label": "bottom-custom-history",
+      "path": "frames/setup/31-bottom-custom-history.png",
+      "guard": "ocr-checked",
+      "fallback": false,
+      "policy": null,
+      "size": [
+       1280,
+       760
+      ],
+      "black_share": 0.597,
+      "masks": 13,
+      "fully_black": false
+     }
+    ],
+    "notifications_read": 4,
+    "bodies_registered": 4
+   }
+  },
+  "exceptions_and_audit": {
+   "ok": true,
+   "value": {
+    "rows": [
+     [
+      "__main__.registered",
+      "failed",
+      "frames"
+     ],
+     [
+      "__main__.schemeless",
+      "failed",
+      "frames"
+     ],
+     [
+      "__main__.raw",
+      "failed",
+      "frames"
+     ],
+     [
+      "__main__.framed",
+      "passed",
+      "frames"
+     ]
+    ],
+    "scan": true,
+    "export": {
+     "scanned_before_copy": true,
+     "copy_scan_passed": true,
+     "published": true
+    }
+   }
+  }
+ },
+ "notes": [
+  "stopped mintUpdate by exact PID: 2670",
+  "credentials button addDestinationCredentials: RecipeBlocked",
+  "credentials button text-glob:*credentials*: RecipeBlocked"
+ ],
+ "monitor": {
+  "pid": 3562
+ },
+ "field_names": [
+  [
+   "password text",
+   "Session token",
+   [
+    478,
+    652,
+    531,
+    36
+   ]
+  ],
+  [
+   "password text",
+   "Secret access key",
+   [
+    478,
+    600,
+    531,
+    36
+   ]
+  ],
+  [
+   "text",
+   "Access key ID",
+   [
+    478,
+    548,
+    531,
+    36
+   ]
+  ],
+  [
+   "text",
+   "Link domain",
+   [
+    478,
+    337,
+    531,
+    36
+   ]
+  ],
+  [
+   "text",
+   "Folder in bucket",
+   [
+    478,
+    73,
+    531,
+    36
+   ]
+  ],
+  [
+   "text",
+   "s3Region",
+   [
+    490,
+    22,
+    489,
+    34
+   ]
+  ],
+  [
+   "text",
+   "Bucket",
+   [
+    478,
+    -52,
+    531,
+    36
+   ]
+  ],
+  [
+   "text",
+   "Destination name",
+   [
+    265,
+    -236,
+    235,
+    36
+   ]
+  ]
+ ],
+ "cleanup": {
+  "errors": [],
+  "private_root": "resident-log-and-state-root-removed"
+ }
+}

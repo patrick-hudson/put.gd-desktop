@@ -1,0 +1,11 @@
+{
+  "returncode": 0,
+  "scan": {
+    "passed": true,
+    "files": 14,
+    "pngs": 4,
+    "image_audit": "ocr-and-known-regions",
+    "findings": []
+  },
+  "stderr_empty": true
+}

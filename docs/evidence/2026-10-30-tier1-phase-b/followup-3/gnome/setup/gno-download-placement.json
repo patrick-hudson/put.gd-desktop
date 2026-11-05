@@ -1,0 +1,1 @@
+{"downloadDestinationFilesystems": {"/home/lab/Downloads": "tmpfs", "/tmp": "tmpfs", "/dev/shm/t1-firefox": "tmpfs"}, "fallbackDownloadsRamLink": true, "overlayOnly": true}

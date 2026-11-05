@@ -1,0 +1,22 @@
+{
+  "u24": {
+    "file": "putgd_26.1025.1260~dev+g8c4923d06b95_amd64.deb",
+    "sha256": "d403d030fa804f98af8072d78495a5b205e602245fce29ca2cf63f863ed1ae48",
+    "source": "8c4923d06b9591dde7d39049fccd4fb50a2a8725",
+    "buildType": "Release",
+    "distroQt": true,
+    "officialAwsSdk": "1.11.907",
+    "labFixture": true,
+    "releaseAcceptance": false
+  },
+  "u26": {
+    "file": "putgd_26.1025.1260~dev+g8c4923d06b95_amd64.deb",
+    "sha256": "420e0b5cce4c4af27e8a6d9329fe073df56a068eb91f0815c3e67527946be07f",
+    "source": "8c4923d06b9591dde7d39049fccd4fb50a2a8725",
+    "buildType": "Debug",
+    "distroQt": true,
+    "officialAwsSdk": "1.11.907",
+    "labFixture": true,
+    "releaseAcceptance": false
+  }
+}

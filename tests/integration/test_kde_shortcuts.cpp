@@ -11,6 +11,7 @@
 #include <QSignalSpy>
 #include <QtTest>
 #include <memory>
+#include "fixtures/Waits.h"
 using namespace putgd;
 
 // These synthetic peers use the real D-Bus transport on dbus-run-session's
@@ -160,7 +161,7 @@ private slots:
   QVERIFY(peer_.unregisterService("org.kde.keyboard"));
   struct Restore { QDBusConnection bus; ~Restore() { bus.registerService("org.kde.keyboard"); } } restore{peer_};
   KdeShortcuts source; source.setKeyboardMap(map.get()); source.bind({{"region", "Ctrl+Shift+1"}});
-  QTRY_VERIFY(region(source)["bound"].toBool());
+  PUTGD_TRY_VERIFY(region(source)["bound"].toBool());
   QVERIFY(source.available());
   QCOMPARE(region(source)["layout"].toInt(-1), 0);
   QCOMPARE(region(source)["requested"].toString(), QString("Ctrl+Shift+1"));
@@ -172,7 +173,7 @@ private slots:
  void shiftedDefaultUsesNativeWireAndRetainsRequestedChord() {
   auto map = keymap("us"); QVERIFY(map);
   KdeShortcuts source; source.setKeyboardMap(map.get()); source.bind({{"region", "Ctrl+Shift+1"}});
-  QTRY_VERIFY(region(source)["bound"].toBool());
+  PUTGD_TRY_VERIFY(region(source)["bound"].toBool());
   QVERIFY(source.available());
   QCOMPARE(region(source)["requested"].toString(), QString("Ctrl+Shift+1"));
   QCOMPARE(region(source)["effective"].toString(), QString("Ctrl+!"));
@@ -185,10 +186,10 @@ private slots:
  void digitEditReplacesActiveKeysAndRoutesOnlyMatchingAction() {
   auto map = keymap("us"); QVERIFY(map);
   KdeShortcuts source; source.setKeyboardMap(map.get()); source.bind({{"region", "Ctrl+Shift+1"}});
-  QTRY_VERIFY(region(source)["bound"].toBool());
+  PUTGD_TRY_VERIFY(region(source)["bound"].toBool());
   const auto old = accel_.active.value("region").first().keys;
   source.bind({{"region", "Ctrl+1"}});
-  QTRY_COMPARE(region(source)["actual"].toArray(), (QJsonArray{"Ctrl+1"}));
+  PUTGD_TRY_COMPARE(region(source)["actual"].toArray(), (QJsonArray{"Ctrl+1"}));
   QVERIFY(region(source)["bound"].toBool());
   QCOMPARE(region(source)["requested"].toString(), QString("Ctrl+1"));
   QCOMPARE(accel_.active.size(), 1);
@@ -196,13 +197,13 @@ private slots:
            keys(int(Qt::ControlModifier) | int(Qt::Key_1)).first().keys);
   QVERIFY(accel_.active.value("region").first().keys != old);
   QVERIFY(accel_.inactive.contains({"putgd", "region", "put.gd", "region"}));
-  QTRY_VERIFY(accel_.componentRequests > 0); QVERIFY(roundTrip());
+  PUTGD_TRY_VERIFY(accel_.componentRequests > 0); QVERIFY(roundTrip());
   QSignalSpy activated(&source, &KdeShortcuts::activated);
   emit component_.globalShortcutPressed("foreign", "region", 1);
   emit component_.globalShortcutPressed("putgd", "unknown", 2);
   QVERIFY(roundTrip()); QCOMPARE(activated.size(), 0);
   emit component_.globalShortcutPressed("putgd", "region", 3);
-  QTRY_COMPARE(activated.size(), 1);
+  PUTGD_TRY_COMPARE(activated.size(), 1);
   QCOMPARE(activated.first().first().toString(), QString("region"));
  }
  void normalizationFailureReportsItsCodeAndValidRebindRecovers() {
@@ -210,13 +211,13 @@ private slots:
   const auto unsupported = QString("Ctrl+1, Ctrl+2");
   QCOMPARE(QKeySequence::fromString(unsupported, QKeySequence::PortableText).count(), 2);
   KdeShortcuts source; source.setKeyboardMap(map.get()); source.bind({{"region", unsupported}});
-  QTRY_COMPARE(region(source)["state"].toString(), QString("shortcut_unsupported"));
+  PUTGD_TRY_COMPARE(region(source)["state"].toString(), QString("shortcut_unsupported"));
   QCOMPARE(region(source)["error"].toString(), QString("shortcut_unsupported"));
   QCOMPARE(region(source)["requested"].toString(), unsupported);
   QVERIFY(!region(source)["bound"].toBool());
   QVERIFY(accel_.active.isEmpty());
   source.bind({{"region", "Ctrl+1"}});
-  QTRY_VERIFY(region(source)["bound"].toBool());
+  PUTGD_TRY_VERIFY(region(source)["bound"].toBool());
   QCOMPARE(region(source)["requested"].toString(), QString("Ctrl+1"));
   QCOMPARE(region(source)["effective"].toString(), QString("Ctrl+1"));
   QCOMPARE(region(source)["actual"].toArray(), (QJsonArray{"Ctrl+1"}));
@@ -227,18 +228,18 @@ private slots:
   auto map = keymap("us"); QVERIFY(map);
   accel_.forceActual = true; accel_.forcedActual = keys(int(Qt::AltModifier) | int(Qt::Key_F12));
   KdeShortcuts source; source.setKeyboardMap(map.get()); source.bind({{"region", "Ctrl+1"}});
-  QTRY_COMPARE(region(source)["state"].toString(), QString("shortcut_conflict"));
+  PUTGD_TRY_COMPARE(region(source)["state"].toString(), QString("shortcut_conflict"));
   QVERIFY(!region(source)["bound"].toBool());
   QCOMPARE(region(source)["actual"].toArray(), (QJsonArray{"Alt+F12"}));
   QSignalSpy activated(&source, &KdeShortcuts::activated);
-  QTRY_VERIFY(accel_.componentRequests > 0); QVERIFY(roundTrip());
+  PUTGD_TRY_VERIFY(accel_.componentRequests > 0); QVERIFY(roundTrip());
   emit component_.globalShortcutPressed("putgd", "region", 1);
   QVERIFY(roundTrip()); QCOMPARE(activated.size(), 0);
   accel_.forceActual = false; source.bind({{"region", "Ctrl+1"}});
-  QTRY_VERIFY(region(source)["bound"].toBool());
+  PUTGD_TRY_VERIFY(region(source)["bound"].toBool());
   emit accel_.yourShortcutsChanged({"putgd", "region", "put.gd", "region"},
                                  keys(int(Qt::AltModifier) | int(Qt::Key_F12)));
-  QTRY_COMPARE(region(source)["state"].toString(), QString("shortcut_conflict"));
+  PUTGD_TRY_COMPARE(region(source)["state"].toString(), QString("shortcut_conflict"));
   QVERIFY(!region(source)["bound"].toBool());
   emit component_.globalShortcutPressed("putgd", "region", 2);
   QVERIFY(roundTrip()); QCOMPARE(activated.size(), 0);
@@ -248,49 +249,49 @@ private slots:
   QCOMPARE(region(source)["state"].toString(), QString("shortcut_unavailable"));
   QVERIFY(!source.available()); QCOMPARE(accel_.setters, 0);
   auto map = keymap("us,fr"); QVERIFY(map); source.setKeyboardMap(map.get());
-  QTRY_VERIFY(region(source)["bound"].toBool());
+  PUTGD_TRY_VERIFY(region(source)["bound"].toBool());
   source.setKeyboardMap(nullptr);
   QVERIFY(!source.available()); QVERIFY(!region(source)["bound"].toBool());
-  QTRY_VERIFY(accel_.active.isEmpty());
-  source.setKeyboardMap(map.get()); QTRY_VERIFY(region(source)["bound"].toBool());
+  PUTGD_TRY_VERIFY(accel_.active.isEmpty());
+  source.setKeyboardMap(map.get()); PUTGD_TRY_VERIFY(region(source)["bound"].toBool());
   keyboard_.layout = 2; emit keyboard_.layoutChanged(2);
-  QTRY_COMPARE(region(source)["state"].toString(), QString("shortcut_unavailable"));
-  QTRY_VERIFY(!source.available()); QTRY_VERIFY(accel_.active.isEmpty());
+  PUTGD_TRY_COMPARE(region(source)["state"].toString(), QString("shortcut_unavailable"));
+  PUTGD_TRY_VERIFY(!source.available()); PUTGD_TRY_VERIFY(accel_.active.isEmpty());
   QVERIFY(roundTrip()); QVERIFY(!region(source)["bound"].toBool());
  }
  void layoutOwnerDisappearanceClosesBindingsAndRecoveryRebinds() {
   auto map = keymap("us,fr"); QVERIFY(map);
   KdeShortcuts source; source.setKeyboardMap(map.get()); source.bind({{"region", "Ctrl+Shift+1"}});
-  QTRY_VERIFY(region(source)["bound"].toBool());
+  PUTGD_TRY_VERIFY(region(source)["bound"].toBool());
   QVERIFY(peer_.unregisterService("org.kde.keyboard"));
-  QTRY_VERIFY(!source.available());
-  QTRY_COMPARE(region(source)["state"].toString(), QString("shortcut_unavailable"));
-  QTRY_VERIFY(accel_.active.isEmpty());
+  PUTGD_TRY_VERIFY(!source.available());
+  PUTGD_TRY_COMPARE(region(source)["state"].toString(), QString("shortcut_unavailable"));
+  PUTGD_TRY_VERIFY(accel_.active.isEmpty());
   QVERIFY(peer_.registerService("org.kde.keyboard"));
-  QTRY_VERIFY(region(source)["bound"].toBool());
+  PUTGD_TRY_VERIFY(region(source)["bound"].toBool());
   QCOMPARE(region(source)["actual"].toArray(), (QJsonArray{"Ctrl+!"}));
  }
  void layoutSignalsRecomputeWithoutApplicationFocus() {
   auto map = keymap("us,fr"); QVERIFY(map);
   QCOMPARE(xkb_keymap_num_layouts(map.get()), xkb_layout_index_t(2));
   KdeShortcuts source; source.setKeyboardMap(map.get()); source.bind({{"region", "Ctrl+Shift+1"}});
-  QTRY_COMPARE(region(source)["actual"].toArray(), (QJsonArray{"Ctrl+!"}));
+  PUTGD_TRY_COMPARE(region(source)["actual"].toArray(), (QJsonArray{"Ctrl+!"}));
   keyboard_.layout = 1; emit keyboard_.layoutChanged(1);
-  QTRY_COMPARE(region(source)["layout"].toInt(-1), 1);
-  QTRY_VERIFY(region(source)["bound"].toBool());
+  PUTGD_TRY_COMPARE(region(source)["layout"].toInt(-1), 1);
+  PUTGD_TRY_VERIFY(region(source)["bound"].toBool());
   QCOMPARE(region(source)["requested"].toString(), QString("Ctrl+Shift+1"));
   QCOMPARE(accel_.active.value("region").first().keys,
            keys(int(Qt::ControlModifier) | int(Qt::Key_1)).first().keys);
   QCOMPARE(region(source)["actual"].toArray(), (QJsonArray{"Ctrl+1"}));
   keyboard_.layout = 0; emit keyboard_.layoutListChanged();
-  QTRY_COMPARE(region(source)["actual"].toArray(), (QJsonArray{"Ctrl+!"}));
+  PUTGD_TRY_COMPARE(region(source)["actual"].toArray(), (QJsonArray{"Ctrl+!"}));
   QCOMPARE(region(source)["layout"].toInt(-1), 0);
  }
  void equivalentLayoutSignalKeepsBindingAndImmediateDelivery() {
   auto map = keymap("us,fr"); QVERIFY(map);
   KdeShortcuts source; source.setKeyboardMap(map.get()); source.bind({{"region", "Ctrl+1"}});
-  QTRY_VERIFY(region(source)["bound"].toBool());
-  QTRY_VERIFY(accel_.componentRequests > 0); QVERIFY(roundTrip());
+  PUTGD_TRY_VERIFY(region(source)["bound"].toBool());
+  PUTGD_TRY_VERIFY(accel_.componentRequests > 0); QVERIFY(roundTrip());
   const auto setters = accel_.setters;
   const auto inactive = accel_.inactive.size();
   bool becameUnbound = false;
@@ -316,8 +317,8 @@ private slots:
   auto map = keymap("us,fr"); QVERIFY(map);
   accel_.holdComponents = true;
   KdeShortcuts source; source.setKeyboardMap(map.get()); source.bind({{"region", "Ctrl+1"}});
-  QTRY_VERIFY(region(source)["bound"].toBool());
-  QTRY_COMPARE(accel_.heldComponents.size(), 1);
+  PUTGD_TRY_VERIFY(region(source)["bound"].toBool());
+  PUTGD_TRY_COMPARE(accel_.heldComponents.size(), 1);
   const auto firstQuery = accel_.componentRequests;
   const auto setters = accel_.setters;
   const auto inactive = accel_.inactive.size();
@@ -333,11 +334,11 @@ private slots:
   QVERIFY(roundTrip()); QCOMPARE(activated.size(), 0);
   // A replacement query is required; accepting the stale reply would hide
   // this race, while preserving only the bound status would lose delivery.
-  QTRY_COMPARE_WITH_TIMEOUT(accel_.componentRequests, firstQuery + 1, 1500);
-  QTRY_COMPARE_WITH_TIMEOUT(accel_.heldComponents.size(), 1, 1500);
+  PUTGD_TRY_COMPARE_WITH_TIMEOUT(accel_.componentRequests, firstQuery + 1, 1500);
+  PUTGD_TRY_COMPARE_WITH_TIMEOUT(accel_.heldComponents.size(), 1, 1500);
   QVERIFY(accel_.replyHeldComponent()); QVERIFY(roundTrip());
   emit component_.globalShortcutPressed("putgd", "region", 2);
-  QTRY_COMPARE(activated.size(), 1);
+  PUTGD_TRY_COMPARE(activated.size(), 1);
   QCOMPARE(activated.first().first().toString(), QString("region"));
   QVERIFY(roundTrip()); QCOMPARE(activated.size(), 1);
   QCOMPARE(accel_.setters, setters);
@@ -347,17 +348,17 @@ private slots:
  void failedLayoutRetryDoesNotRepeatBindingInvalidation() {
   auto map = keymap("us,fr"); QVERIFY(map);
   KdeShortcuts source; source.setKeyboardMap(map.get()); source.bind({{"region", "Ctrl+Shift+1"}});
-  QTRY_VERIFY(region(source)["bound"].toBool()); QVERIFY(roundTrip());
+  PUTGD_TRY_VERIFY(region(source)["bound"].toBool()); QVERIFY(roundTrip());
   keyboard_.failQueries = true; emit keyboard_.layoutListChanged();
-  QTRY_COMPARE(region(source)["state"].toString(), QString("shortcut_unavailable"));
-  QTRY_VERIFY(accel_.active.isEmpty());
+  PUTGD_TRY_COMPARE(region(source)["state"].toString(), QString("shortcut_unavailable"));
+  PUTGD_TRY_VERIFY(accel_.active.isEmpty());
   QVERIFY(roundTrip(true)); // Drain the first failed query and inactive calls.
   const auto requests = keyboard_.requests;
   const auto setters = accel_.setters;
   const auto inactive = accel_.inactive.size();
   QSignalSpy changed(&source, &KdeShortcuts::changed);
   // One three-second retry is sufficient; no long exponential-backoff wait.
-  QTRY_VERIFY_WITH_TIMEOUT(keyboard_.requests > requests, 4500);
+  PUTGD_TRY_VERIFY_WITH_TIMEOUT(keyboard_.requests > requests, 4500);
   QVERIFY(roundTrip(true));
   QCOMPARE(accel_.setters, setters);
   QCOMPARE(accel_.inactive.size(), inactive);
@@ -368,13 +369,13 @@ private slots:
  void delayedOldLayoutReplyCannotRestoreStaleBinding() {
   auto map = keymap("us,fr"); QVERIFY(map);
   KdeShortcuts source; source.setKeyboardMap(map.get()); source.bind({{"region", "Ctrl+Shift+1"}});
-  QTRY_COMPARE(region(source)["actual"].toArray(), (QJsonArray{"Ctrl+!"}));
+  PUTGD_TRY_COMPARE(region(source)["actual"].toArray(), (QJsonArray{"Ctrl+!"}));
   keyboard_.holdNext = true; emit keyboard_.layoutListChanged();
-  QTRY_COMPARE(keyboard_.held.size(), 1);
+  PUTGD_TRY_COMPARE(keyboard_.held.size(), 1);
   QVERIFY(!region(source)["bound"].toBool());
   keyboard_.layout = 1; emit keyboard_.layoutChanged(1);
-  QTRY_COMPARE(region(source)["layout"].toInt(-1), 1);
-  QTRY_VERIFY(region(source)["bound"].toBool());
+  PUTGD_TRY_COMPARE(region(source)["layout"].toInt(-1), 1);
+  PUTGD_TRY_VERIFY(region(source)["bound"].toBool());
   const auto setters = accel_.setters;
   keyboard_.replyHeld(0); QVERIFY(roundTrip());
   QCOMPARE(region(source)["layout"].toInt(-1), 1);

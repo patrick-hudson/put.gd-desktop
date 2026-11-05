@@ -1,0 +1,9 @@
+{
+  "sourceCommit": "48ab5c2c8bbecf74f914dc04b430b5b9f9bd27dd",
+  "tests": 67,
+  "passed": true,
+  "durationSeconds": 3.813,
+  "command": "python3 -m unittest -q tests.desktop.test_review_adversarial tests.desktop.test_surface_tier1_blockers tests.desktop.test_surface_plasma.IsolatedSecretService tests.desktop.test_surface_shell_health.RawAccessibility",
+  "location": "workstation: lightweight synthetic unit checks; not desktop evidence",
+  "context": "after merging the recording worker upstream and correcting the live-only adversarial test"
+}

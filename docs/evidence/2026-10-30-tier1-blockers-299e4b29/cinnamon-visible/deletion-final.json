@@ -1,0 +1,14 @@
+{
+  "operation": {
+    "attemptCount": 1,
+    "completedAt": "2026-10-31T01:21:49.225Z",
+    "expectedBy": null,
+    "id": "bdop_ffd76e441ee048cb90066720f65e71b4",
+    "kind": "sandbox",
+    "reason": "explicit",
+    "requestedAt": "2026-10-31T01:21:14.678Z",
+    "stage": "completed",
+    "status": "completed",
+    "targetId": "bx_9u2nj4hm"
+  }
+}

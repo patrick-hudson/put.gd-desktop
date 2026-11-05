@@ -1,0 +1,202 @@
+{
+  "scope": "native Qt widget fixture; synthetic supported build, not native package acceptance",
+  "host": "d69",
+  "output": "/home/patrick/work/i491/work/491/native-20261025T042343Z",
+  "root": "/tmp/i491d69-3bw_f7s4",
+  "source": "29496f5871820a4caaaf5d687c35db5a02c8b4f8",
+  "cases": [
+    {
+      "case": "fresh-repository",
+      "visuals": [
+        {
+          "path": "fresh-repository-first.png",
+          "sha256": "03fdb4e1769edcfdbe50057e12a57cb122ff620b6f3befe52a101f3475be87a6",
+          "size": [
+            1920,
+            1080
+          ],
+          "coverFraction": 0.5240589985994398,
+          "edgeFractions": {
+            "top": 1.0,
+            "bottom": 1.0,
+            "left": 1.0,
+            "right": 1.0
+          },
+          "elapsed": 1.3276136019267142
+        },
+        {
+          "path": "fresh-repository-settled.png",
+          "sha256": "03fdb4e1769edcfdbe50057e12a57cb122ff620b6f3befe52a101f3475be87a6",
+          "size": [
+            1920,
+            1080
+          ],
+          "coverFraction": 0.5240589985994398,
+          "edgeFractions": {
+            "top": 1.0,
+            "bottom": 1.0,
+            "left": 1.0,
+            "right": 1.0
+          },
+          "elapsed": 1.8184182639233768
+        }
+      ],
+      "pid": 2827799,
+      "exit": 0,
+      "visualGate": true
+    },
+    {
+      "case": "repository-with-manual-choice",
+      "visuals": [
+        {
+          "path": "repository-with-manual-choice-first.png",
+          "sha256": "8f287fd6ced2b96cb0ce422c89e32da9363982e1e62c7cf3df1386627fd30e8c",
+          "size": [
+            1920,
+            1080
+          ],
+          "coverFraction": 0.5240589985994398,
+          "edgeFractions": {
+            "top": 1.0,
+            "bottom": 1.0,
+            "left": 1.0,
+            "right": 1.0
+          },
+          "elapsed": 1.3389821220189333
+        },
+        {
+          "path": "repository-with-manual-choice-settled.png",
+          "sha256": "8f287fd6ced2b96cb0ce422c89e32da9363982e1e62c7cf3df1386627fd30e8c",
+          "size": [
+            1920,
+            1080
+          ],
+          "coverFraction": 0.5240589985994398,
+          "edgeFractions": {
+            "top": 1.0,
+            "bottom": 1.0,
+            "left": 1.0,
+            "right": 1.0
+          },
+          "elapsed": 1.7946258549345657
+        }
+      ],
+      "pid": 2827826,
+      "exit": 0,
+      "visualGate": true
+    },
+    {
+      "case": "fresh-manual",
+      "visuals": [
+        {
+          "path": "fresh-manual-first.png",
+          "sha256": "1029f851f4eb166d57744c005408c3d94ec350f8102fba327350719b6b2b9644",
+          "size": [
+            1920,
+            1080
+          ],
+          "coverFraction": 0.5240589985994398,
+          "edgeFractions": {
+            "top": 1.0,
+            "bottom": 1.0,
+            "left": 1.0,
+            "right": 1.0
+          },
+          "elapsed": 1.3095361120067537
+        },
+        {
+          "path": "fresh-manual-settled.png",
+          "sha256": "1029f851f4eb166d57744c005408c3d94ec350f8102fba327350719b6b2b9644",
+          "size": [
+            1920,
+            1080
+          ],
+          "coverFraction": 0.5240589985994398,
+          "edgeFractions": {
+            "top": 1.0,
+            "bottom": 1.0,
+            "left": 1.0,
+            "right": 1.0
+          },
+          "elapsed": 1.7544727600179613
+        }
+      ],
+      "pid": 2827850,
+      "exit": 0,
+      "visualGate": true
+    },
+    {
+      "case": "manual-with-choice",
+      "visuals": [
+        {
+          "path": "manual-with-choice-first.png",
+          "sha256": "0a8a035ce92905f378bfe44b860c7f23945270f92dc921a2f3241c8fc644da73",
+          "size": [
+            1920,
+            1080
+          ],
+          "coverFraction": 0.5524509803921569,
+          "edgeFractions": {
+            "top": 1.0,
+            "bottom": 1.0,
+            "left": 1.0,
+            "right": 1.0
+          },
+          "elapsed": 1.3071057080524042
+        },
+        {
+          "path": "manual-with-choice-settled.png",
+          "sha256": "6c2294b483b3beb8df87d6206e18a93833940b3d4b2a79d694dc609f0a2a9fd6",
+          "size": [
+            1920,
+            1080
+          ],
+          "coverFraction": 0.5240589985994398,
+          "edgeFractions": {
+            "top": 1.0,
+            "bottom": 1.0,
+            "left": 1.0,
+            "right": 1.0
+          },
+          "elapsed": 1.7578267119824886
+        }
+      ],
+      "pid": 2827881,
+      "exit": 0,
+      "visualGate": true
+    }
+  ],
+  "binarySha256": "aa22831c5a26a4ce9404d5fb11b0bdebc63f90795e0e779a417a821fbff88255",
+  "session": {
+    "DISPLAY": ":0",
+    "WAYLAND_DISPLAY": "wayland-0",
+    "XDG_CURRENT_DESKTOP": "KDE",
+    "XDG_SESSION_TYPE": "wayland"
+  },
+  "socketPreflight": {
+    "schemaVersion": 1,
+    "passed": true,
+    "limitBytesExcludingNul": 107,
+    "paths": [
+      {
+        "path": "/tmp/i491d69-3bw_f7s4/r/putgd/session.sock",
+        "utf8Bytes": 42,
+        "passed": true
+      }
+    ]
+  },
+  "coverSamples": [
+    0.9999168417366947
+  ],
+  "captureRect": [
+    0,
+    64,
+    1920,
+    952
+  ],
+  "fullCoverFraction": 0.9999266975308642,
+  "coverFraction": 0.9999168417366947,
+  "passed": true,
+  "coverExit": 0,
+  "socketRemaining": false
+}

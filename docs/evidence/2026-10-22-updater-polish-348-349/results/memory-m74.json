@@ -1,0 +1,164 @@
+{
+ "m74-mb": {
+  "version": "0.1.1-nightly.9000",
+  "imageSha256": "ac236a2ca470ad041d47060ea63d0dea8c52273d5f09277de8bbaa4031647b60",
+  "pid": 241810,
+  "host": "mint-builder",
+  "session": "x11",
+  "desktop": "X-Cinnamon",
+  "A": {
+   "window": "A cold idle",
+   "seconds": 180.1,
+   "rssMedianMiB": 29.27,
+   "rssMinMiB": 29.03,
+   "rssMaxMiB": 29.27,
+   "every10s": [
+    29.03,
+    29.03,
+    29.03,
+    29.27,
+    29.27,
+    29.27,
+    29.27,
+    29.27,
+    29.27,
+    29.27,
+    29.27,
+    29.27,
+    29.27,
+    29.27,
+    29.27,
+    29.27,
+    29.27,
+    29.27
+   ],
+   "pssMiB": 23.38,
+   "privateMiB": 23.26,
+   "tlsNetworkLibraries": [],
+   "load": [
+    0.03564453125,
+    0.3447265625,
+    1.60791015625
+   ]
+  },
+  "action": {
+   "check": true
+  },
+  "B": {
+   "window": "B idle after check",
+   "seconds": 180.1,
+   "rssMedianMiB": 29.29,
+   "rssMinMiB": 29.29,
+   "rssMaxMiB": 29.29,
+   "every10s": [
+    29.29,
+    29.29,
+    29.29,
+    29.29,
+    29.29,
+    29.29,
+    29.29,
+    29.29,
+    29.29,
+    29.29,
+    29.29,
+    29.29,
+    29.29,
+    29.29,
+    29.29,
+    29.29,
+    29.29,
+    29.29
+   ],
+   "pssMiB": 23.41,
+   "privateMiB": 23.28,
+   "tlsNetworkLibraries": [],
+   "load": [
+    0.111328125,
+    0.4052734375,
+    1.3916015625
+   ]
+  }
+ },
+ "m74-mh": {
+  "version": "0.1.1-nightly.9001",
+  "imageSha256": "9e43b4a217556b90237588e961dfcf42bbcd63a3f9c92a8c6bbffd2b62afd85c",
+  "pid": 242815,
+  "host": "mint-builder",
+  "session": "x11",
+  "desktop": "X-Cinnamon",
+  "A": {
+   "window": "A cold idle",
+   "seconds": 180.1,
+   "rssMedianMiB": 29.27,
+   "rssMinMiB": 29.0,
+   "rssMaxMiB": 29.27,
+   "every10s": [
+    29.0,
+    29.0,
+    29.0,
+    29.27,
+    29.27,
+    29.27,
+    29.27,
+    29.27,
+    29.27,
+    29.27,
+    29.27,
+    29.27,
+    29.27,
+    29.27,
+    29.27,
+    29.27,
+    29.27,
+    29.27
+   ],
+   "pssMiB": 23.48,
+   "privateMiB": 23.34,
+   "tlsNetworkLibraries": [],
+   "load": [
+    0.0791015625,
+    0.23681640625,
+    1.11376953125
+   ]
+  },
+  "action": {
+   "check": true
+  },
+  "B": {
+   "window": "B idle after check",
+   "seconds": 180.1,
+   "rssMedianMiB": 29.36,
+   "rssMinMiB": 29.36,
+   "rssMaxMiB": 29.36,
+   "every10s": [
+    29.36,
+    29.36,
+    29.36,
+    29.36,
+    29.36,
+    29.36,
+    29.36,
+    29.36,
+    29.36,
+    29.36,
+    29.36,
+    29.36,
+    29.36,
+    29.36,
+    29.36,
+    29.36,
+    29.36,
+    29.36
+   ],
+   "pssMiB": 23.56,
+   "privateMiB": 23.43,
+   "tlsNetworkLibraries": [],
+   "load": [
+    0.06298828125,
+    0.14697265625,
+    0.89404296875
+   ]
+  }
+ }
+}

@@ -1,0 +1,8 @@
+H.settings {"schemes": {"dark": "dark", "light": "light", "system": "light"}, "checkNow": {"ok": true, "seconds": 0.61, "result": {"action": {"kind": "download", "repository": "none"}, "asset": {"name": "putgd-26.1023.1058-nightly-x86_64.AppImage", "sha256": "ce707fcf4e693b5ca9024da539e5510e149c5edf8a6a17bca28
+H.348 {"calls": 1, "show": true}
+H.statusClean:start {"pass": true, "control": []}
+H.statusClean:settings {"pass": true, "control": []}
+H.channel:k72-labh-344:stable {"ok": true, "err": {"code": "", "details": {}, "message": ""}, "channel": "stable", "reason": "no_release", "result": "{'action': {'kind': 'download', 'repository': 'none'}, 'asset': None, 'channel': 'stable', 'channelSource': 'setting', 'checkedAt': '2026-10-23T20:27:41Z', 'cur", "notifs": 0}
+H.channel:k72-labh-344:nightly {"ok": true, "err": {"code": "", "details": {}, "message": ""}, "channel": "nightly", "reason": null, "result": "{'action': {'kind': 'download', 'repository': 'none'}, 'asset': {'name': 'putgd-26.1023.1058-nightly-x86_64.AppImage', 'sha256': 'ce707fcf4e693b5ca9024da539e551", "notifs": 0}
+J exit 1 
+LAB-LEG-DONE

@@ -1,0 +1,8 @@
+{
+  "driverReference": "56dc5e07e97b7e27f550d6d1fb8244b6ff227a96",
+  "instrumentation": "editor-diagnostic.py wraps the real press and calls official MCP get_editor before motion",
+  "failedSetup": "d1 bridge did not forward stdin; retained; no shape drag occurred",
+  "heldPressRun": "d2",
+  "finalUninstrumentedRun": "a1",
+  "finalDriverReference": "9a1e527c0c93c7680d0a7e89e04674adc8820b73"
+}

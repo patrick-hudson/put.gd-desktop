@@ -1,0 +1,1375 @@
+{
+ "pkg:purge": {
+  "label": "purge",
+  "command": [
+   "apt-get",
+   "purge",
+   "-y",
+   "putgd"
+  ],
+  "before": {
+   "at": "2026-10-23T05:08:22Z",
+   "host": "putgd-ubuntu-lab",
+   "package": {
+    "manager": "dpkg",
+    "status": "rc",
+    "version": "26.1023.1058~nightly"
+   },
+   "files": {
+    "/etc/apt/sources.list.d/putgd.sources": {
+     "sha256": "5d5b79d0154fed9099c42beea5183e41876ba36920bed6ed45a747523d5cc852",
+     "bytes": 2036,
+     "mode": "0o644",
+     "mtime": "2026-10-22T05:19:16Z"
+    },
+    "/usr/share/keyrings/putgd-archive-keyring.gpg": null,
+    "/etc/yum.repos.d/putgd.repo": null,
+    "/etc/yum.repos.d/putgd.repo.rpmsave": null,
+    "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd": null,
+    "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-nightly": null,
+    "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-stable": null,
+    "/usr/share/gnome-shell/extensions/putgd@put.gd/metadata.json": null
+   },
+   "defaultProfile": {
+    "/home/lab/.config/putgd": 1,
+    "/home/lab/.local/state/putgd": 8,
+    "/home/lab/.cache/putgd": null,
+    "/home/lab/.local/share/putgd": 12
+   },
+   "autostart": "[Desktop Entry]\nType=Application\nName=put.gd\nExec=\"/usr/bin/putgd-launcher\" --background\nTerminal=false\nX-putgd-Managed=true\n",
+   "userExtension": false,
+   "processes": [
+    {
+     "pid": 1934,
+     "ppid": 1310,
+     "exe": "/usr/bin/putgd (deleted)",
+     "comm": "putgd",
+     "cmd": "/usr/bin/putgd --background ",
+     "qtPlatformPlugins": []
+    }
+   ],
+   "enabledExtensions": "['putgd@put.gd']"
+  },
+  "startedAt": "2026-10-23T05:08:22Z",
+  "simulation": {
+   "command": [
+    "apt-get",
+    "-s",
+    "purge",
+    "putgd"
+   ],
+   "exit": 0,
+   "changes": [
+    {
+     "op": "Purg",
+     "package": "putgd",
+     "from": null,
+     "to": null
+    }
+   ],
+   "tail": "NOTE: This is only a simulation!\n      apt-get needs root privileges for real execution.\n      Keep also in mind that locking is deactivated,\n      so don't depend on the relevance to the real current situation!\nReading package lists...\nBuilding dependency tree...\nReading state information...\nSolving dependencies...\nThe following packages were automatically installed and are no longer required:\n  gstreamer1.0-vaapi layer-shell-qt liblayershellqtinterface6 libmng2\n  libva-wayland2 libxcb-damage0 qt6-image-formats-plugins\nUse 'apt autoremove' to remove them.\nThe following packages will be REMOVED:\n  putgd*\n0 upgraded, 0 newly installed, 1 to remove and 96 not upgraded.\nPurg putgd\n"
+  },
+  "otherPackages": [],
+  "exit": 0,
+  "seconds": 4.3,
+  "log": "/home/lab/work/put.gd-nfa/runs/M2/logs/pkg-purge.log",
+  "conffilePrompt": false,
+  "signature": [],
+  "fetched": [],
+  "tail": "Reading package lists...\nBuilding dependency tree...\nReading state information...\nSolving dependencies...\nThe following packages were automatically installed and are no longer required:\n  gstreamer1.0-vaapi layer-shell-qt liblayershellqtinterface6 libmng2\n  libva-wayland2 libxcb-damage0 qt6-image-formats-plugins\nUse 'sudo apt autoremove' to remove them.\nThe following packages will be REMOVED:\n  putgd*\n0 upgraded, 0 newly installed, 1 to remove and 96 not upgraded.\nAfter this operation, 0 B of additional disk space will be used.\n(Reading database\u2026 \n(Reading database\u2026 5%\n(Reading database\u2026 10%\n(Reading database\u2026 15%\n(Reading database\u2026 20%\n(Reading database\u2026 25%\n(Reading database\u2026 30%\n(Reading database\u2026 35%\n(Reading database\u2026 40%\n(Reading database\u2026 45%\n(Reading database\u2026 50%\n(Reading database\u2026 55%\n(Reading database\u2026 60%\n(Reading database\u2026 65%\n(Reading database\u2026 70%\n(Reading database\u2026 75%\n(Reading database\u2026 80%\n(Reading database\u2026 85%\n(Reading database\u2026 90%\n(Reading database\u2026 95%\n(Reading database\u2026 100%\n(Reading database\u2026 169596 files and directories currently installed.)\nPurging configuration files for putgd (26.1023.1058~nightly)\u2026\n",
+  "after": {
+   "at": "2026-10-23T05:08:28Z",
+   "host": "putgd-ubuntu-lab",
+   "package": {
+    "manager": "dpkg",
+    "status": null,
+    "version": null
+   },
+   "files": {
+    "/etc/apt/sources.list.d/putgd.sources": null,
+    "/usr/share/keyrings/putgd-archive-keyring.gpg": null,
+    "/etc/yum.repos.d/putgd.repo": null,
+    "/etc/yum.repos.d/putgd.repo.rpmsave": null,
+    "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd": null,
+    "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-nightly": null,
+    "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-stable": null,
+    "/usr/share/gnome-shell/extensions/putgd@put.gd/metadata.json": null
+   },
+   "defaultProfile": {
+    "/home/lab/.config/putgd": 1,
+    "/home/lab/.local/state/putgd": 8,
+    "/home/lab/.cache/putgd": null,
+    "/home/lab/.local/share/putgd": 12
+   },
+   "autostart": "[Desktop Entry]\nType=Application\nName=put.gd\nExec=\"/usr/bin/putgd-launcher\" --background\nTerminal=false\nX-putgd-Managed=true\n",
+   "userExtension": false,
+   "processes": [
+    {
+     "pid": 1934,
+     "ppid": 1310,
+     "exe": "/usr/bin/putgd (deleted)",
+     "comm": "putgd",
+     "cmd": "/usr/bin/putgd --background ",
+     "qtPlatformPlugins": []
+    }
+   ],
+   "enabledExtensions": "['putgd@put.gd']"
+  }
+ },
+ "pkg:install-947": {
+  "label": "install-947",
+  "command": [
+   "apt-get",
+   "install",
+   "-y",
+   "/home/lab/work/put.gd-nfa/assets/putgd-0.1.1-nightly.947-ubuntu26.04-x86_64.deb"
+  ],
+  "before": {
+   "at": "2026-10-23T05:03:45Z",
+   "host": "putgd-ubuntu-lab",
+   "package": {
+    "manager": "dpkg",
+    "status": null,
+    "version": null
+   },
+   "files": {
+    "/etc/apt/sources.list.d/putgd.sources": null,
+    "/usr/share/keyrings/putgd-archive-keyring.gpg": null,
+    "/etc/yum.repos.d/putgd.repo": null,
+    "/etc/yum.repos.d/putgd.repo.rpmsave": null,
+    "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd": null,
+    "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-nightly": null,
+    "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-stable": null,
+    "/usr/share/gnome-shell/extensions/putgd@put.gd/metadata.json": null
+   },
+   "defaultProfile": {
+    "/home/lab/.config/putgd": null,
+    "/home/lab/.local/state/putgd": null,
+    "/home/lab/.cache/putgd": null,
+    "/home/lab/.local/share/putgd": null
+   },
+   "autostart": null,
+   "userExtension": false,
+   "processes": [],
+   "enabledExtensions": "['putgd@put.gd']"
+  },
+  "startedAt": "2026-10-23T05:03:46Z",
+  "simulation": {
+   "command": [
+    "apt-get",
+    "-s",
+    "install",
+    "/home/lab/work/put.gd-nfa/assets/putgd-0.1.1-nightly.947-ubuntu26.04-x86_64.deb"
+   ],
+   "exit": 0,
+   "changes": [
+    {
+     "op": "Inst",
+     "package": "putgd",
+     "from": null,
+     "to": "0.1.1~nightly.947"
+    }
+   ],
+   "tail": "NOTE: This is only a simulation!\n      apt-get needs root privileges for real execution.\n      Keep also in mind that locking is deactivated,\n      so don't depend on the relevance to the real current situation!\nReading package lists...\nBuilding dependency tree...\nReading state information...\nSolving dependencies...\nThe following NEW packages will be installed:\n  putgd\n0 upgraded, 1 newly installed, 0 to remove and 96 not upgraded.\nInst putgd (0.1.1~nightly.947 local-deb [amd64])\nConf putgd (0.1.1~nightly.947 local-deb [amd64])\n"
+  },
+  "otherPackages": [],
+  "exit": 0,
+  "seconds": 6.0,
+  "log": "/home/lab/work/put.gd-nfa/runs/M2/logs/pkg-install-947.log",
+  "conffilePrompt": false,
+  "signature": [],
+  "fetched": [
+   "Get:1 /home/lab/work/put.gd-nfa/assets/putgd-0.1.1-nightly.947-ubuntu26.04-x86_64.deb putgd amd64 0.1.1~nightly.947 [54.5 MB]",
+   "Preparing to unpack \u2026/putgd-0.1.1-nightly.947-ubuntu26.04-x86_64.deb\u2026"
+  ],
+  "tail": "Reading package lists...\nBuilding dependency tree...\nReading state information...\nSolving dependencies...\nThe following NEW packages will be installed:\n  putgd\n0 upgraded, 1 newly installed, 0 to remove and 96 not upgraded.\nNeed to get 0 B/54.5 MB of archives.\nAfter this operation, 129 MB of additional disk space will be used.\nGet:1 /home/lab/work/put.gd-nfa/assets/putgd-0.1.1-nightly.947-ubuntu26.04-x86_64.deb putgd amd64 0.1.1~nightly.947 [54.5 MB]\nSelecting previously unselected package putgd.\n(Reading database\u2026 \n(Reading database\u2026 5%\n(Reading database\u2026 10%\n(Reading database\u2026 15%\n(Reading database\u2026 20%\n(Reading database\u2026 25%\n(Reading database\u2026 30%\n(Reading database\u2026 35%\n(Reading database\u2026 40%\n(Reading database\u2026 45%\n(Reading database\u2026 50%\n(Reading database\u2026 55%\n(Reading database\u2026 60%\n(Reading database\u2026 65%\n(Reading database\u2026 70%\n(Reading database\u2026 75%\n(Reading database\u2026 80%\n(Reading database\u2026 85%\n(Reading database\u2026 90%\n(Reading database\u2026 95%\n(Reading database\u2026 100%\n(Reading database\u2026 169597 files and directories currently installed.)\nPreparing to unpack \u2026/putgd-0.1.1-nightly.947-ubuntu26.04-x86_64.deb\u2026\nUnpacking putgd (0.1.1~nightly.947)\u2026\nSetting up putgd (0.1.1~nightly.947)\u2026\nProcessing triggers for hicolor-icon-theme (0.18-2build1)\u2026\nProcessing triggers for gnome-menus (3.38.1-1ubuntu1)\u2026\nProcessing triggers for desktop-file-utils (0.28-1build1)\u2026\ndebconf: unable to initialize frontend: Dialog\ndebconf: (Dialog frontend will not work on a dumb terminal, an emacs shell buffer, or without a controlling terminal.)\ndebconf: falling back to frontend: Readline\ndebconf: unable to initialize frontend: Readline\ndebconf: (This frontend requires a controlling tty.)\ndebconf: falling back to frontend: Teletype\ndebconf: unable to initialize frontend: Teletype\ndebconf: (This frontend requires a controlling tty.)\ndebconf: falling back to frontend: Noninteractive\n",
+  "after": {
+   "at": "2026-10-23T05:03:53Z",
+   "host": "putgd-ubuntu-lab",
+   "package": {
+    "manager": "dpkg",
+    "status": "ii",
+    "version": "0.1.1~nightly.947"
+   },
+   "files": {
+    "/etc/apt/sources.list.d/putgd.sources": {
+     "sha256": "5d5b79d0154fed9099c42beea5183e41876ba36920bed6ed45a747523d5cc852",
+     "bytes": 2036,
+     "mode": "0o644",
+     "mtime": "2026-10-22T05:19:16Z"
+    },
+    "/usr/share/keyrings/putgd-archive-keyring.gpg": {
+     "sha256": "76ab1b64e8a1d9504d3922fa44b116d6eb3c680e788be9cec46e106cd5258339",
+     "bytes": 1170,
+     "mode": "0o644",
+     "mtime": "2026-10-22T05:15:32Z"
+    },
+    "/etc/yum.repos.d/putgd.repo": null,
+    "/etc/yum.repos.d/putgd.repo.rpmsave": null,
+    "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd": null,
+    "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-nightly": null,
+    "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-stable": null,
+    "/usr/share/gnome-shell/extensions/putgd@put.gd/metadata.json": {
+     "sha256": "690be5bcfd1ee05783cd57a78851c56c0fe624131711b254cb46d062d0cb8046",
+     "bytes": 248,
+     "mode": "0o644",
+     "mtime": "2026-10-22T05:19:16Z"
+    }
+   },
+   "defaultProfile": {
+    "/home/lab/.config/putgd": null,
+    "/home/lab/.local/state/putgd": null,
+    "/home/lab/.cache/putgd": null,
+    "/home/lab/.local/share/putgd": null
+   },
+   "autostart": null,
+   "userExtension": false,
+   "processes": [],
+   "enabledExtensions": "['putgd@put.gd']"
+  }
+ },
+ "extension:947-old-shell-ext": {
+  "label": "947-old-shell-ext",
+  "system": {
+   "sha256": "690be5bcfd1ee05783cd57a78851c56c0fe624131711b254cb46d062d0cb8046",
+   "bytes": 248,
+   "mode": "0o644",
+   "mtime": "2026-10-22T05:19:16Z"
+  },
+  "info": [
+   "putgd@put.gd",
+   "  Name: put.gd native capture",
+   "  Description: Native GNOME 50 capture, global actions and bounded background CLIPBOARD transfer for put.gd.",
+   "  Path: /usr/share/gnome-shell/extensions/putgd@put.gd",
+   "  URL: https://put.gd",
+   "  Version: 1",
+   "  Enabled: Yes",
+   "  State: ACTIVE"
+  ],
+  "enabled": "['putgd@put.gd']",
+  "capabilities": {},
+  "snapshot": {}
+ },
+ "capture:desktop": {
+  "kind": "desktop",
+  "operation": {
+   "id": "6b4bc06b-ad98-401e-b4c2-e9273fefe756",
+   "state": "completed",
+   "copyStatus": "copied",
+   "items": [
+    {
+     "name": "Screen-Capture-2026-10-23-00-04-15.png",
+     "mime": "image/png",
+     "uploadStatus": "uploaded",
+     "link": "http://127.0.0.1:45843/fixture/afa/Screen-Capture-2026-10-23-00-04-15.png",
+     "local": {
+      "error": {
+       "code": "",
+       "details": {},
+       "message": ""
+      },
+      "path": "/home/lab/work/put.gd-nfa/runs/M2/archive/images/Screen-Capture-2026-10-23-00-04-15.png",
+      "status": "saved"
+     }
+    }
+   ],
+   "error": {
+    "code": "",
+    "details": {},
+    "message": ""
+   }
+  },
+  "png": {
+   "bytes": 6002,
+   "sha256": "c416cf5c38f18def97cceb9453bafdeacaa20324294a1b6ba97698abdc1b21d7",
+   "magic": true,
+   "size": [
+    1280,
+    800
+   ]
+  },
+  "coverCheck": {
+   "edges": {
+    "bottom": 1.0,
+    "left": 1.0,
+    "right": 1.0,
+    "top": 1.0
+   },
+   "fraction": 1.0,
+   "kept": "/home/lab/work/put.gd-nfa/runs/M2/out/capture-desktop.png",
+   "minFraction": 0.5,
+   "ok": true,
+   "rect": [
+    0,
+    0,
+    1280,
+    800
+   ],
+   "sha256": "c416cf5c38f18def97cceb9453bafdeacaa20324294a1b6ba97698abdc1b21d7",
+   "size": [
+    1280,
+    800
+   ]
+  },
+  "clipboard": "http://127.0.0.1:45843/fixture/afa/Screen-Capture-2026-10-23-00-04-15.png",
+  "linkCopied": true,
+  "linkServes": {
+   "status": 200,
+   "sha256": "c416cf5c38f18def97cceb9453bafdeacaa20324294a1b6ba97698abdc1b21d7",
+   "matchesLocal": true
+  },
+  "historyEntry": {
+   "id": "9dce9de0-108c-44c4-b200-66f026fb96b6",
+   "name": "Screen-Capture-2026-10-23-00-04-15.png",
+   "uploadStatus": "uploaded",
+   "local": "saved",
+   "linkAvailable": true
+  },
+  "notifications": []
+ },
+ "frame:M2-after-capture-old-ext": {
+  "at": "2026-10-23T05:04:19Z",
+  "full": "/home/lab/work/put.gd-nfa/runs/M2/full/M2-after-capture-old-ext.png",
+  "processes": [
+   {
+    "pid": 6829,
+    "ppid": 1310,
+    "exe": "/usr/bin/putgd",
+    "comm": "putgd",
+    "cmd": "/usr/bin/putgd --background ",
+    "qtPlatformPlugins": []
+   },
+   {
+    "pid": 6838,
+    "ppid": 6829,
+    "exe": "/usr/bin/putgd-ui",
+    "comm": "putgd-ui",
+    "cmd": "/usr/bin/putgd-ui ",
+    "qtPlatformPlugins": [
+     "libqwayland.so"
+    ]
+   }
+  ]
+ },
+ "capture:region": {
+  "kind": "region",
+  "operation": {
+   "id": "97c8a51d-512d-4030-9543-80c635eb8330",
+   "state": "completed",
+   "copyStatus": "copied",
+   "items": [
+    {
+     "name": "Screen-Capture-2026-10-23-00-04-38.png",
+     "mime": "image/png",
+     "uploadStatus": "uploaded",
+     "link": "http://127.0.0.1:45843/fixture/afa/Screen-Capture-2026-10-23-00-04-38.png",
+     "local": {
+      "error": {
+       "code": "",
+       "details": {},
+       "message": ""
+      },
+      "path": "/home/lab/work/put.gd-nfa/runs/M2/archive/images/Screen-Capture-2026-10-23-00-04-38.png",
+      "status": "saved"
+     }
+    }
+   ],
+   "error": {
+    "code": "",
+    "details": {},
+    "message": ""
+   }
+  },
+  "png": {
+   "bytes": 3584,
+   "sha256": "478b6e18f941fa8370d477855a8bc6b26712b563a1f27a18477be0751bab62f0",
+   "magic": true,
+   "size": [
+    960,
+    560
+   ]
+  },
+  "coverCheck": {
+   "edges": {
+    "bottom": 1.0,
+    "left": 1.0,
+    "right": 1.0,
+    "top": 1.0
+   },
+   "fraction": 0.5714,
+   "kept": "/home/lab/work/put.gd-nfa/runs/M2/out/capture-region.png",
+   "minFraction": 0.5,
+   "ok": true,
+   "rect": [
+    0,
+    0,
+    960,
+    560
+   ],
+   "sha256": "478b6e18f941fa8370d477855a8bc6b26712b563a1f27a18477be0751bab62f0",
+   "size": [
+    960,
+    560
+   ]
+  },
+  "clipboard": "http://127.0.0.1:45843/fixture/afa/Screen-Capture-2026-10-23-00-04-38.png",
+  "linkCopied": true,
+  "linkServes": {
+   "status": 200,
+   "sha256": "478b6e18f941fa8370d477855a8bc6b26712b563a1f27a18477be0751bab62f0",
+   "matchesLocal": true
+  },
+  "historyEntry": {
+   "id": "a1dbe9cc-cb21-4922-a1de-09f37825ed83",
+   "name": "Screen-Capture-2026-10-23-00-04-38.png",
+   "uploadStatus": "uploaded",
+   "local": "saved",
+   "linkAvailable": true
+  },
+  "notifications": []
+ },
+ "snapshot:before": {
+  "label": "before",
+  "at": "2026-10-23T05:04:47Z",
+  "package": {
+   "manager": "dpkg",
+   "status": "ii",
+   "version": "0.1.1~nightly.947"
+  },
+  "config": {
+   "sha256": "c6bc6b5548223d6d3059ea8de0b903883aed88fb400afb4d4271f6bc824b7964",
+   "bytes": 3302,
+   "mode": "0o600",
+   "mtime": "2026-10-23T05:04:45Z"
+  },
+  "configFiles": {
+   "/home/lab/.config/putgd/config.json": {
+    "sha256": "c6bc6b5548223d6d3059ea8de0b903883aed88fb400afb4d4271f6bc824b7964",
+    "bytes": 3302,
+    "mode": "0o600",
+    "mtime": "2026-10-23T05:04:45Z"
+   },
+   "/home/lab/.config/putgd/putgd/config.json": null
+  },
+  "dataRoots": {
+   "/home/lab/.local/share/putgd": [
+    "artifacts",
+    "history.sqlite",
+    "previews",
+    "resident.lock"
+   ],
+   "/home/lab/.local/share/putgd/putgd": null
+  },
+  "processes": [
+   {
+    "pid": 6829,
+    "ppid": 1310,
+    "exe": "/usr/bin/putgd",
+    "comm": "putgd",
+    "cmd": "/usr/bin/putgd --background ",
+    "qtPlatformPlugins": []
+   },
+   {
+    "pid": 6838,
+    "ppid": 6829,
+    "exe": "/usr/bin/putgd-ui",
+    "comm": "putgd-ui",
+    "cmd": "/usr/bin/putgd-ui ",
+    "qtPlatformPlugins": [
+     "libqwayland.so"
+    ]
+   }
+  ],
+  "history": {
+   "db": "/home/lab/.local/share/putgd/history.sqlite",
+   "userVersion": 7,
+   "integrity": "ok",
+   "tables": {
+    "history": 2,
+    "operations": 2,
+    "deletions": 0,
+    "deletion_targets": 0,
+    "cleared_history": 0,
+    "item_state": 2,
+    "sharing_operations": 0
+   },
+   "upload_status": {
+    "uploaded": 2
+   },
+   "local_status": {
+    "saved": 2
+   },
+   "remote_status": {
+    "not_requested": 2
+   },
+   "itemStateRemote": {
+    "not_requested": 2
+   }
+  },
+  "outputs": {
+   "archive/images/Screen-Capture-2026-10-23-00-04-15.png": "c416cf5c38f18def97cceb9453bafdeacaa20324294a1b6ba97698abdc1b21d7",
+   "archive/images/Screen-Capture-2026-10-23-00-04-38.png": "478b6e18f941fa8370d477855a8bc6b26712b563a1f27a18477be0751bab62f0"
+  },
+  "historyList": {
+   "ok": true,
+   "total": 2,
+   "seconds": 0.03
+  },
+  "build": {
+   "baseVersion": "0.1.1",
+   "commitCount": 947,
+   "dirty": false,
+   "gitCommit": "476e5c7b8a39fdc7f3582ede1a58976ff1a874ca",
+   "gitTree": "f189999548f35ff7de4cedbe432be1337bf1e1ec",
+   "packageVersion": "0.1.1~nightly.947",
+   "schemaVersion": 1,
+   "sourceProvenance": "git",
+   "version": "0.1.1-nightly.947"
+  },
+  "storage": {
+   "locations": {
+    "config": {
+     "path": "/home/lab/.config/putgd",
+     "state": "current"
+    },
+    "data": {
+     "path": "/home/lab/.local/share/putgd",
+     "state": "current"
+    },
+    "schemaVersion": 1
+   },
+   "storage": {
+    "backblaze-b2": {
+     "activeHelpers": 0,
+     "protocolVersion": 1
+    },
+    "proton-drive": {
+     "activeHelpers": 0,
+     "protocolVersion": 1
+    },
+    "s3": {
+     "lanes": 1,
+     "moduleLiveDrivers": 0,
+     "queuedRequests": 0,
+     "retainedDrivers": 0,
+     "workerStarted": true
+    }
+   }
+  }
+ },
+ "pkg:update": {
+  "label": "update",
+  "command": [
+   "apt-get",
+   "update"
+  ],
+  "before": {
+   "at": "2026-10-23T05:04:47Z",
+   "host": "putgd-ubuntu-lab",
+   "package": {
+    "manager": "dpkg",
+    "status": "ii",
+    "version": "0.1.1~nightly.947"
+   },
+   "files": {
+    "/etc/apt/sources.list.d/putgd.sources": {
+     "sha256": "5d5b79d0154fed9099c42beea5183e41876ba36920bed6ed45a747523d5cc852",
+     "bytes": 2036,
+     "mode": "0o644",
+     "mtime": "2026-10-22T05:19:16Z"
+    },
+    "/usr/share/keyrings/putgd-archive-keyring.gpg": {
+     "sha256": "76ab1b64e8a1d9504d3922fa44b116d6eb3c680e788be9cec46e106cd5258339",
+     "bytes": 1170,
+     "mode": "0o644",
+     "mtime": "2026-10-22T05:15:32Z"
+    },
+    "/etc/yum.repos.d/putgd.repo": null,
+    "/etc/yum.repos.d/putgd.repo.rpmsave": null,
+    "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd": null,
+    "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-nightly": null,
+    "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-stable": null,
+    "/usr/share/gnome-shell/extensions/putgd@put.gd/metadata.json": {
+     "sha256": "690be5bcfd1ee05783cd57a78851c56c0fe624131711b254cb46d062d0cb8046",
+     "bytes": 248,
+     "mode": "0o644",
+     "mtime": "2026-10-22T05:19:16Z"
+    }
+   },
+   "defaultProfile": {
+    "/home/lab/.config/putgd": 1,
+    "/home/lab/.local/state/putgd": 5,
+    "/home/lab/.cache/putgd": null,
+    "/home/lab/.local/share/putgd": 12
+   },
+   "autostart": null,
+   "userExtension": false,
+   "processes": [
+    {
+     "pid": 6829,
+     "ppid": 1310,
+     "exe": "/usr/bin/putgd",
+     "comm": "putgd",
+     "cmd": "/usr/bin/putgd --background ",
+     "qtPlatformPlugins": []
+    },
+    {
+     "pid": 6838,
+     "ppid": 6829,
+     "exe": "/usr/bin/putgd-ui",
+     "comm": "putgd-ui",
+     "cmd": "/usr/bin/putgd-ui ",
+     "qtPlatformPlugins": [
+      "libqwayland.so"
+     ]
+    }
+   ],
+   "enabledExtensions": "['putgd@put.gd']"
+  },
+  "startedAt": "2026-10-23T05:04:47Z",
+  "exit": 0,
+  "seconds": 2.0,
+  "log": "/home/lab/work/put.gd-nfa/runs/M2/logs/pkg-update.log",
+  "conffilePrompt": false,
+  "signature": [
+   "Hit:1 http://security.ubuntu.com/ubuntu resolute-security InRelease",
+   "Hit:2 http://us.archive.ubuntu.com/ubuntu resolute InRelease",
+   "Get:3 http://us.archive.ubuntu.com/ubuntu resolute-updates InRelease [137 kB]",
+   "Hit:4 https://pkg.put.gd/apt/ubuntu26.04 nightly InRelease",
+   "Hit:5 http://us.archive.ubuntu.com/ubuntu resolute-backports InRelease"
+  ],
+  "fetched": [
+   "Hit:1 http://security.ubuntu.com/ubuntu resolute-security InRelease",
+   "Hit:2 http://us.archive.ubuntu.com/ubuntu resolute InRelease",
+   "Get:3 http://us.archive.ubuntu.com/ubuntu resolute-updates InRelease [137 kB]",
+   "Hit:4 https://pkg.put.gd/apt/ubuntu26.04 nightly InRelease",
+   "Hit:5 http://us.archive.ubuntu.com/ubuntu resolute-backports InRelease"
+  ],
+  "tail": "Hit:1 http://security.ubuntu.com/ubuntu resolute-security InRelease\nHit:2 http://us.archive.ubuntu.com/ubuntu resolute InRelease\nGet:3 http://us.archive.ubuntu.com/ubuntu resolute-updates InRelease [137 kB]\nHit:4 https://pkg.put.gd/apt/ubuntu26.04 nightly InRelease\nHit:5 http://us.archive.ubuntu.com/ubuntu resolute-backports InRelease\nFetched 137 kB in 1s (220 kB/s)\nReading package lists...\n",
+  "after": {
+   "at": "2026-10-23T05:04:49Z",
+   "host": "putgd-ubuntu-lab",
+   "package": {
+    "manager": "dpkg",
+    "status": "ii",
+    "version": "0.1.1~nightly.947"
+   },
+   "files": {
+    "/etc/apt/sources.list.d/putgd.sources": {
+     "sha256": "5d5b79d0154fed9099c42beea5183e41876ba36920bed6ed45a747523d5cc852",
+     "bytes": 2036,
+     "mode": "0o644",
+     "mtime": "2026-10-22T05:19:16Z"
+    },
+    "/usr/share/keyrings/putgd-archive-keyring.gpg": {
+     "sha256": "76ab1b64e8a1d9504d3922fa44b116d6eb3c680e788be9cec46e106cd5258339",
+     "bytes": 1170,
+     "mode": "0o644",
+     "mtime": "2026-10-22T05:15:32Z"
+    },
+    "/etc/yum.repos.d/putgd.repo": null,
+    "/etc/yum.repos.d/putgd.repo.rpmsave": null,
+    "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd": null,
+    "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-nightly": null,
+    "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-stable": null,
+    "/usr/share/gnome-shell/extensions/putgd@put.gd/metadata.json": {
+     "sha256": "690be5bcfd1ee05783cd57a78851c56c0fe624131711b254cb46d062d0cb8046",
+     "bytes": 248,
+     "mode": "0o644",
+     "mtime": "2026-10-22T05:19:16Z"
+    }
+   },
+   "defaultProfile": {
+    "/home/lab/.config/putgd": 1,
+    "/home/lab/.local/state/putgd": 5,
+    "/home/lab/.cache/putgd": null,
+    "/home/lab/.local/share/putgd": 12
+   },
+   "autostart": null,
+   "userExtension": false,
+   "processes": [
+    {
+     "pid": 6829,
+     "ppid": 1310,
+     "exe": "/usr/bin/putgd",
+     "comm": "putgd",
+     "cmd": "/usr/bin/putgd --background ",
+     "qtPlatformPlugins": []
+    },
+    {
+     "pid": 6838,
+     "ppid": 6829,
+     "exe": "/usr/bin/putgd-ui",
+     "comm": "putgd-ui",
+     "cmd": "/usr/bin/putgd-ui ",
+     "qtPlatformPlugins": [
+      "libqwayland.so"
+     ]
+    }
+   ],
+   "enabledExtensions": "['putgd@put.gd']"
+  }
+ },
+ "pkg:upgrade": {
+  "label": "upgrade",
+  "command": [
+   "apt-get",
+   "install",
+   "-y",
+   "--only-upgrade",
+   "putgd"
+  ],
+  "before": {
+   "at": "2026-10-23T05:04:50Z",
+   "host": "putgd-ubuntu-lab",
+   "package": {
+    "manager": "dpkg",
+    "status": "ii",
+    "version": "0.1.1~nightly.947"
+   },
+   "files": {
+    "/etc/apt/sources.list.d/putgd.sources": {
+     "sha256": "5d5b79d0154fed9099c42beea5183e41876ba36920bed6ed45a747523d5cc852",
+     "bytes": 2036,
+     "mode": "0o644",
+     "mtime": "2026-10-22T05:19:16Z"
+    },
+    "/usr/share/keyrings/putgd-archive-keyring.gpg": {
+     "sha256": "76ab1b64e8a1d9504d3922fa44b116d6eb3c680e788be9cec46e106cd5258339",
+     "bytes": 1170,
+     "mode": "0o644",
+     "mtime": "2026-10-22T05:15:32Z"
+    },
+    "/etc/yum.repos.d/putgd.repo": null,
+    "/etc/yum.repos.d/putgd.repo.rpmsave": null,
+    "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd": null,
+    "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-nightly": null,
+    "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-stable": null,
+    "/usr/share/gnome-shell/extensions/putgd@put.gd/metadata.json": {
+     "sha256": "690be5bcfd1ee05783cd57a78851c56c0fe624131711b254cb46d062d0cb8046",
+     "bytes": 248,
+     "mode": "0o644",
+     "mtime": "2026-10-22T05:19:16Z"
+    }
+   },
+   "defaultProfile": {
+    "/home/lab/.config/putgd": 1,
+    "/home/lab/.local/state/putgd": 5,
+    "/home/lab/.cache/putgd": null,
+    "/home/lab/.local/share/putgd": 12
+   },
+   "autostart": null,
+   "userExtension": false,
+   "processes": [
+    {
+     "pid": 6829,
+     "ppid": 1310,
+     "exe": "/usr/bin/putgd",
+     "comm": "putgd",
+     "cmd": "/usr/bin/putgd --background ",
+     "qtPlatformPlugins": []
+    },
+    {
+     "pid": 6838,
+     "ppid": 6829,
+     "exe": "/usr/bin/putgd-ui",
+     "comm": "putgd-ui",
+     "cmd": "/usr/bin/putgd-ui ",
+     "qtPlatformPlugins": [
+      "libqwayland.so"
+     ]
+    }
+   ],
+   "enabledExtensions": "['putgd@put.gd']"
+  },
+  "startedAt": "2026-10-23T05:04:50Z",
+  "simulation": {
+   "command": [
+    "apt-get",
+    "-s",
+    "install",
+    "--only-upgrade",
+    "putgd"
+   ],
+   "exit": 0,
+   "changes": [
+    {
+     "op": "Inst",
+     "package": "putgd",
+     "from": "0.1.1~nightly.947",
+     "to": "26.1023.1058~nightly"
+    }
+   ],
+   "tail": "NOTE: This is only a simulation!\n      apt-get needs root privileges for real execution.\n      Keep also in mind that locking is deactivated,\n      so don't depend on the relevance to the real current situation!\nReading package lists...\nBuilding dependency tree...\nReading state information...\nSolving dependencies...\nThe following packages will be upgraded:\n  putgd\n1 upgraded, 0 newly installed, 0 to remove and 96 not upgraded.\nInst putgd [0.1.1~nightly.947] (26.1023.1058~nightly put.gd:nightly [amd64])\nConf putgd (26.1023.1058~nightly put.gd:nightly [amd64])\n"
+  },
+  "otherPackages": [],
+  "exit": 0,
+  "seconds": 4.3,
+  "log": "/home/lab/work/put.gd-nfa/runs/M2/logs/pkg-upgrade.log",
+  "conffilePrompt": false,
+  "signature": [],
+  "fetched": [
+   "Preparing to unpack \u2026/putgd_26.1023.1058~nightly_amd64.deb\u2026"
+  ],
+  "tail": "Reading package lists...\nBuilding dependency tree...\nReading state information...\nSolving dependencies...\nThe following packages will be upgraded:\n  putgd\n1 upgraded, 0 newly installed, 0 to remove and 96 not upgraded.\nNeed to get 0 B/54.6 MB of archives.\nAfter this operation, 151 kB of additional disk space will be used.\n(Reading database\u2026 \n(Reading database\u2026 5%\n(Reading database\u2026 10%\n(Reading database\u2026 15%\n(Reading database\u2026 20%\n(Reading database\u2026 25%\n(Reading database\u2026 30%\n(Reading database\u2026 35%\n(Reading database\u2026 40%\n(Reading database\u2026 45%\n(Reading database\u2026 50%\n(Reading database\u2026 55%\n(Reading database\u2026 60%\n(Reading database\u2026 65%\n(Reading database\u2026 70%\n(Reading database\u2026 75%\n(Reading database\u2026 80%\n(Reading database\u2026 85%\n(Reading database\u2026 90%\n(Reading database\u2026 95%\n(Reading database\u2026 100%\n(Reading database\u2026 169709 files and directories currently installed.)\nPreparing to unpack \u2026/putgd_26.1023.1058~nightly_amd64.deb\u2026\nUnpacking putgd (26.1023.1058~nightly) over (0.1.1~nightly.947)\u2026\nSetting up putgd (26.1023.1058~nightly)\u2026\nProcessing triggers for hicolor-icon-theme (0.18-2build1)\u2026\nProcessing triggers for gnome-menus (3.38.1-1ubuntu1)\u2026\nProcessing triggers for desktop-file-utils (0.28-1build1)\u2026\ndebconf: unable to initialize frontend: Dialog\ndebconf: (Dialog frontend will not work on a dumb terminal, an emacs shell buffer, or without a controlling terminal.)\ndebconf: falling back to frontend: Readline\ndebconf: unable to initialize frontend: Readline\ndebconf: (This frontend requires a controlling tty.)\ndebconf: falling back to frontend: Teletype\ndebconf: unable to initialize frontend: Teletype\ndebconf: (This frontend requires a controlling tty.)\ndebconf: falling back to frontend: Noninteractive\n",
+  "after": {
+   "at": "2026-10-23T05:04:55Z",
+   "host": "putgd-ubuntu-lab",
+   "package": {
+    "manager": "dpkg",
+    "status": "ii",
+    "version": "26.1023.1058~nightly"
+   },
+   "files": {
+    "/etc/apt/sources.list.d/putgd.sources": {
+     "sha256": "5d5b79d0154fed9099c42beea5183e41876ba36920bed6ed45a747523d5cc852",
+     "bytes": 2036,
+     "mode": "0o644",
+     "mtime": "2026-10-22T05:19:16Z"
+    },
+    "/usr/share/keyrings/putgd-archive-keyring.gpg": {
+     "sha256": "76ab1b64e8a1d9504d3922fa44b116d6eb3c680e788be9cec46e106cd5258339",
+     "bytes": 1170,
+     "mode": "0o644",
+     "mtime": "2026-10-23T03:42:11Z"
+    },
+    "/etc/yum.repos.d/putgd.repo": null,
+    "/etc/yum.repos.d/putgd.repo.rpmsave": null,
+    "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd": null,
+    "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-nightly": null,
+    "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-stable": null,
+    "/usr/share/gnome-shell/extensions/putgd@put.gd/metadata.json": {
+     "sha256": "690be5bcfd1ee05783cd57a78851c56c0fe624131711b254cb46d062d0cb8046",
+     "bytes": 248,
+     "mode": "0o644",
+     "mtime": "2026-10-23T03:45:19Z"
+    }
+   },
+   "defaultProfile": {
+    "/home/lab/.config/putgd": 1,
+    "/home/lab/.local/state/putgd": 5,
+    "/home/lab/.cache/putgd": null,
+    "/home/lab/.local/share/putgd": 12
+   },
+   "autostart": null,
+   "userExtension": false,
+   "processes": [
+    {
+     "pid": 6829,
+     "ppid": 1310,
+     "exe": "/usr/bin/putgd (deleted)",
+     "comm": "putgd",
+     "cmd": "/usr/bin/putgd --background ",
+     "qtPlatformPlugins": []
+    },
+    {
+     "pid": 6838,
+     "ppid": 6829,
+     "exe": "/usr/bin/putgd-ui (deleted)",
+     "comm": "putgd-ui",
+     "cmd": "/usr/bin/putgd-ui ",
+     "qtPlatformPlugins": [
+      "libqwayland.so"
+     ]
+    }
+   ],
+   "enabledExtensions": "['putgd@put.gd']"
+  }
+ },
+ "quit:old-resident": {
+  "pids": [
+   6829
+  ],
+  "reply": true,
+  "gone": true,
+  "left": []
+ },
+ "launch:after-upgrade": {
+  "seconds": 0.34,
+  "processes": [
+   {
+    "pid": 7792,
+    "ppid": 1310,
+    "exe": "/usr/bin/putgd",
+    "comm": "putgd",
+    "cmd": "/usr/bin/putgd --background ",
+    "qtPlatformPlugins": []
+   }
+  ],
+  "build": {
+   "baseVersion": "26.1023.1058",
+   "commitCount": 1058,
+   "dirty": false,
+   "gitCommit": "05991d9d42aad68d3bd233a609cf294d839835ed",
+   "gitTree": "5e53f777b912ef958678b2f23b400847c7cb4d33",
+   "packageVersion": "26.1023.1058~nightly",
+   "schemaVersion": 1,
+   "sourceProvenance": "git",
+   "version": "26.1023.1058-nightly"
+  },
+  "package": {
+   "manager": "dpkg",
+   "status": "ii",
+   "version": "26.1023.1058~nightly"
+  }
+ },
+ "snapshot:after": {
+  "label": "after",
+  "at": "2026-10-23T05:05:08Z",
+  "package": {
+   "manager": "dpkg",
+   "status": "ii",
+   "version": "26.1023.1058~nightly"
+  },
+  "config": {
+   "sha256": "c6bc6b5548223d6d3059ea8de0b903883aed88fb400afb4d4271f6bc824b7964",
+   "bytes": 3302,
+   "mode": "0o600",
+   "mtime": "2026-10-23T05:04:45Z"
+  },
+  "configFiles": {
+   "/home/lab/.config/putgd/config.json": {
+    "sha256": "c6bc6b5548223d6d3059ea8de0b903883aed88fb400afb4d4271f6bc824b7964",
+    "bytes": 3302,
+    "mode": "0o600",
+    "mtime": "2026-10-23T05:04:45Z"
+   },
+   "/home/lab/.config/putgd/putgd/config.json": null
+  },
+  "dataRoots": {
+   "/home/lab/.local/share/putgd": [
+    "artifacts",
+    "history.sqlite",
+    "previews",
+    "resident.lock"
+   ],
+   "/home/lab/.local/share/putgd/putgd": null
+  },
+  "processes": [
+   {
+    "pid": 7792,
+    "ppid": 1310,
+    "exe": "/usr/bin/putgd",
+    "comm": "putgd",
+    "cmd": "/usr/bin/putgd --background ",
+    "qtPlatformPlugins": []
+   }
+  ],
+  "history": {
+   "db": "/home/lab/.local/share/putgd/history.sqlite",
+   "userVersion": 7,
+   "integrity": "ok",
+   "tables": {
+    "history": 2,
+    "operations": 2,
+    "deletions": 0,
+    "deletion_targets": 0,
+    "cleared_history": 0,
+    "item_state": 2,
+    "sharing_operations": 0
+   },
+   "upload_status": {
+    "uploaded": 2
+   },
+   "local_status": {
+    "saved": 2
+   },
+   "remote_status": {
+    "not_requested": 2
+   },
+   "itemStateRemote": {
+    "not_requested": 2
+   }
+  },
+  "outputs": {
+   "archive/images/Screen-Capture-2026-10-23-00-04-15.png": "c416cf5c38f18def97cceb9453bafdeacaa20324294a1b6ba97698abdc1b21d7",
+   "archive/images/Screen-Capture-2026-10-23-00-04-38.png": "478b6e18f941fa8370d477855a8bc6b26712b563a1f27a18477be0751bab62f0"
+  },
+  "historyList": {
+   "ok": true,
+   "total": 2,
+   "seconds": 0.03
+  },
+  "build": {
+   "baseVersion": "26.1023.1058",
+   "commitCount": 1058,
+   "dirty": false,
+   "gitCommit": "05991d9d42aad68d3bd233a609cf294d839835ed",
+   "gitTree": "5e53f777b912ef958678b2f23b400847c7cb4d33",
+   "packageVersion": "26.1023.1058~nightly",
+   "schemaVersion": 1,
+   "sourceProvenance": "git",
+   "version": "26.1023.1058-nightly"
+  },
+  "storage": {
+   "locations": {
+    "config": {
+     "path": "/home/lab/.config/putgd",
+     "state": "current"
+    },
+    "data": {
+     "path": "/home/lab/.local/share/putgd",
+     "state": "current"
+    },
+    "schemaVersion": 1
+   },
+   "storage": {
+    "backblaze-b2": {
+     "activeHelpers": 0,
+     "protocolVersion": 1
+    },
+    "proton-drive": {
+     "activeHelpers": 0,
+     "protocolVersion": 1
+    },
+    "s3": {
+     "lanes": 1,
+     "moduleLiveDrivers": 0,
+     "queuedRequests": 0,
+     "retainedDrivers": 0,
+     "workerStarted": false
+    }
+   }
+  }
+ },
+ "compare:before->after": {
+  "configSame": true,
+  "userVersion": [
+   7,
+   7
+  ],
+  "integrity": "ok",
+  "historyRows": [
+   2,
+   2
+  ],
+  "statusCounts": {
+   "upload_status": [
+    {
+     "uploaded": 2
+    },
+    {
+     "uploaded": 2
+    }
+   ],
+   "local_status": [
+    {
+     "saved": 2
+    },
+    {
+     "saved": 2
+    }
+   ],
+   "remote_status": [
+    {
+     "not_requested": 2
+    },
+    {
+     "not_requested": 2
+    }
+   ]
+  },
+  "tablesAdded": [],
+  "outputsSame": true,
+  "rowsPreserved": true
+ },
+ "loginEnable": {
+  "patch": true,
+  "entry": "[Desktop Entry]\nType=Application\nName=put.gd\nExec=\"/usr/bin/putgd-launcher\" --background\nTerminal=false\nX-putgd-Managed=true\n",
+  "loginStartup": {
+   "applied": true,
+   "enabled": true
+  }
+ },
+ "loginCheck:I": {
+  "entry": "[Desktop Entry]\nType=Application\nName=put.gd\nExec=\"/usr/bin/putgd-launcher\" --background\nTerminal=false\nX-putgd-Managed=true\n",
+  "processes": [
+   {
+    "pid": 1934,
+    "ppid": 1310,
+    "exe": "/usr/bin/putgd",
+    "comm": "putgd",
+    "cmd": "/usr/bin/putgd --background ",
+    "qtPlatformPlugins": [],
+    "started": "2026-10-23T05:06:48Z"
+   }
+  ],
+  "shellStarted": "2026-10-23T05:06:44Z",
+  "fromPackage": true,
+  "package": {
+   "manager": "dpkg",
+   "status": "ii",
+   "version": "26.1023.1058~nightly"
+  }
+ },
+ "frame:M2-I-after-login": {
+  "at": "2026-10-23T05:08:02Z",
+  "full": "/home/lab/work/put.gd-nfa/runs/M2/full/M2-I-after-login.png",
+  "processes": [
+   {
+    "pid": 1934,
+    "ppid": 1310,
+    "exe": "/usr/bin/putgd",
+    "comm": "putgd",
+    "cmd": "/usr/bin/putgd --background ",
+    "qtPlatformPlugins": []
+   }
+  ]
+ },
+ "pkg:remove": {
+  "label": "remove",
+  "command": [
+   "apt-get",
+   "remove",
+   "-y",
+   "putgd"
+  ],
+  "before": {
+   "at": "2026-10-23T05:08:16Z",
+   "host": "putgd-ubuntu-lab",
+   "package": {
+    "manager": "dpkg",
+    "status": "ii",
+    "version": "26.1023.1058~nightly"
+   },
+   "files": {
+    "/etc/apt/sources.list.d/putgd.sources": {
+     "sha256": "5d5b79d0154fed9099c42beea5183e41876ba36920bed6ed45a747523d5cc852",
+     "bytes": 2036,
+     "mode": "0o644",
+     "mtime": "2026-10-22T05:19:16Z"
+    },
+    "/usr/share/keyrings/putgd-archive-keyring.gpg": {
+     "sha256": "76ab1b64e8a1d9504d3922fa44b116d6eb3c680e788be9cec46e106cd5258339",
+     "bytes": 1170,
+     "mode": "0o644",
+     "mtime": "2026-10-23T03:42:11Z"
+    },
+    "/etc/yum.repos.d/putgd.repo": null,
+    "/etc/yum.repos.d/putgd.repo.rpmsave": null,
+    "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd": null,
+    "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-nightly": null,
+    "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-stable": null,
+    "/usr/share/gnome-shell/extensions/putgd@put.gd/metadata.json": {
+     "sha256": "690be5bcfd1ee05783cd57a78851c56c0fe624131711b254cb46d062d0cb8046",
+     "bytes": 248,
+     "mode": "0o644",
+     "mtime": "2026-10-23T03:45:19Z"
+    }
+   },
+   "defaultProfile": {
+    "/home/lab/.config/putgd": 1,
+    "/home/lab/.local/state/putgd": 8,
+    "/home/lab/.cache/putgd": null,
+    "/home/lab/.local/share/putgd": 12
+   },
+   "autostart": "[Desktop Entry]\nType=Application\nName=put.gd\nExec=\"/usr/bin/putgd-launcher\" --background\nTerminal=false\nX-putgd-Managed=true\n",
+   "userExtension": false,
+   "processes": [
+    {
+     "pid": 1934,
+     "ppid": 1310,
+     "exe": "/usr/bin/putgd",
+     "comm": "putgd",
+     "cmd": "/usr/bin/putgd --background ",
+     "qtPlatformPlugins": []
+    }
+   ],
+   "enabledExtensions": "['putgd@put.gd']"
+  },
+  "startedAt": "2026-10-23T05:08:17Z",
+  "simulation": {
+   "command": [
+    "apt-get",
+    "-s",
+    "remove",
+    "putgd"
+   ],
+   "exit": 0,
+   "changes": [
+    {
+     "op": "Remv",
+     "package": "putgd",
+     "from": "26.1023.1058~nightly",
+     "to": null
+    }
+   ],
+   "tail": "NOTE: This is only a simulation!\n      apt-get needs root privileges for real execution.\n      Keep also in mind that locking is deactivated,\n      so don't depend on the relevance to the real current situation!\nReading package lists...\nBuilding dependency tree...\nReading state information...\nSolving dependencies...\nThe following packages were automatically installed and are no longer required:\n  gstreamer1.0-vaapi layer-shell-qt liblayershellqtinterface6 libmng2\n  libva-wayland2 libxcb-damage0 qt6-image-formats-plugins\nUse 'apt autoremove' to remove them.\nThe following packages will be REMOVED:\n  putgd\n0 upgraded, 0 newly installed, 1 to remove and 96 not upgraded.\nRemv putgd [26.1023.1058~nightly]\n"
+  },
+  "otherPackages": [],
+  "exit": 0,
+  "seconds": 4.1,
+  "log": "/home/lab/work/put.gd-nfa/runs/M2/logs/pkg-remove.log",
+  "conffilePrompt": false,
+  "signature": [],
+  "fetched": [],
+  "tail": "Reading package lists...\nBuilding dependency tree...\nReading state information...\nSolving dependencies...\nThe following packages were automatically installed and are no longer required:\n  gstreamer1.0-vaapi layer-shell-qt liblayershellqtinterface6 libmng2\n  libva-wayland2 libxcb-damage0 qt6-image-formats-plugins\nUse 'sudo apt autoremove' to remove them.\nThe following packages will be REMOVED:\n  putgd\n0 upgraded, 0 newly installed, 1 to remove and 96 not upgraded.\nAfter this operation, 129 MB disk space will be freed.\n(Reading database\u2026 \n(Reading database\u2026 5%\n(Reading database\u2026 10%\n(Reading database\u2026 15%\n(Reading database\u2026 20%\n(Reading database\u2026 25%\n(Reading database\u2026 30%\n(Reading database\u2026 35%\n(Reading database\u2026 40%\n(Reading database\u2026 45%\n(Reading database\u2026 50%\n(Reading database\u2026 55%\n(Reading database\u2026 60%\n(Reading database\u2026 65%\n(Reading database\u2026 70%\n(Reading database\u2026 75%\n(Reading database\u2026 80%\n(Reading database\u2026 85%\n(Reading database\u2026 90%\n(Reading database\u2026 95%\n(Reading database\u2026 100%\n(Reading database\u2026 169728 files and directories currently installed.)\nRemoving putgd (26.1023.1058~nightly)\u2026\nProcessing triggers for hicolor-icon-theme (0.18-2build1)\u2026\nProcessing triggers for gnome-menus (3.38.1-1ubuntu1)\u2026\nProcessing triggers for desktop-file-utils (0.28-1build1)\u2026\n",
+  "after": {
+   "at": "2026-10-23T05:08:22Z",
+   "host": "putgd-ubuntu-lab",
+   "package": {
+    "manager": "dpkg",
+    "status": "rc",
+    "version": "26.1023.1058~nightly"
+   },
+   "files": {
+    "/etc/apt/sources.list.d/putgd.sources": {
+     "sha256": "5d5b79d0154fed9099c42beea5183e41876ba36920bed6ed45a747523d5cc852",
+     "bytes": 2036,
+     "mode": "0o644",
+     "mtime": "2026-10-22T05:19:16Z"
+    },
+    "/usr/share/keyrings/putgd-archive-keyring.gpg": null,
+    "/etc/yum.repos.d/putgd.repo": null,
+    "/etc/yum.repos.d/putgd.repo.rpmsave": null,
+    "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd": null,
+    "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-nightly": null,
+    "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-stable": null,
+    "/usr/share/gnome-shell/extensions/putgd@put.gd/metadata.json": null
+   },
+   "defaultProfile": {
+    "/home/lab/.config/putgd": 1,
+    "/home/lab/.local/state/putgd": 8,
+    "/home/lab/.cache/putgd": null,
+    "/home/lab/.local/share/putgd": 12
+   },
+   "autostart": "[Desktop Entry]\nType=Application\nName=put.gd\nExec=\"/usr/bin/putgd-launcher\" --background\nTerminal=false\nX-putgd-Managed=true\n",
+   "userExtension": false,
+   "processes": [
+    {
+     "pid": 1934,
+     "ppid": 1310,
+     "exe": "/usr/bin/putgd (deleted)",
+     "comm": "putgd",
+     "cmd": "/usr/bin/putgd --background ",
+     "qtPlatformPlugins": []
+    }
+   ],
+   "enabledExtensions": "['putgd@put.gd']"
+  }
+ },
+ "loginCheck:P": {
+  "entry": "[Desktop Entry]\nType=Application\nName=put.gd\nExec=\"/usr/bin/putgd-launcher\" --background\nTerminal=false\nX-putgd-Managed=true\n",
+  "processes": [],
+  "shellStarted": "2026-10-23T05:09:56Z",
+  "fromPackage": false,
+  "package": {
+   "manager": "dpkg",
+   "status": null,
+   "version": null
+  }
+ },
+ "autostart:after-removal": {
+  "label": "after-removal",
+  "entry": "[Desktop Entry]\nType=Application\nName=put.gd\nExec=\"/usr/bin/putgd-launcher\" --background\nTerminal=false\nX-putgd-Managed=true\n",
+  "entryInfo": {
+   "sha256": "4662cdb185a7ab7eea947549bc21e9a38fa9d4fd197e7dc9660323446812307a",
+   "bytes": 125,
+   "mode": "0o600",
+   "mtime": "2026-10-23T05:05:22Z"
+  },
+  "execTargetExists": false,
+  "shellStarted": "2026-10-23T05:07:56Z",
+  "journal": [
+   "user 2026-10-23T00:09:55-05:00 putgd-ubuntu-lab systemd-xdg-autostart-generator[1323]: Exec binary '/usr/bin/putgd-launcher' does not exist: No such file or directory",
+   "user 2026-10-23T00:09:55-05:00 putgd-ubuntu-lab systemd-xdg-autostart-generator[1323]: /home/lab/.config/autostart/putgd.desktop: not generating unit, executable specified in Exec= does not exist.",
+   "user 2026-10-23T00:09:56-05:00 putgd-ubuntu-lab gnome-session-service[1666]: Desktop file /home/lab/.config/autostart/putgd.desktop couldn't be parsed, or references a missing TryExec binary",
+   "system 2026-10-23T00:09:55-05:00 putgd-ubuntu-lab systemd-xdg-autostart-generator[1323]: Exec binary '/usr/bin/putgd-launcher' does not exist: No such file or directory",
+   "system 2026-10-23T00:09:55-05:00 putgd-ubuntu-lab systemd-xdg-autostart-generator[1323]: /home/lab/.config/autostart/putgd.desktop: not generating unit, executable specified in Exec= does not exist.",
+   "system 2026-10-23T00:09:56-05:00 putgd-ubuntu-lab gnome-session-service[1666]: Desktop file /home/lab/.config/autostart/putgd.desktop couldn't be parsed, or references a missing TryExec binary"
+  ],
+  "failedUnits": [],
+  "autostartUnits": [],
+  "generatorUnit": [],
+  "processes": [],
+  "package": {
+   "manager": "dpkg",
+   "status": null,
+   "version": null
+  }
+ },
+ "tryexec": {
+  "before": "[Desktop Entry]\nType=Application\nName=put.gd\nExec=\"/usr/bin/putgd-launcher\" --background\nTerminal=false\nX-putgd-Managed=true\n",
+  "after": "[Desktop Entry]\nType=Application\nName=put.gd\nTryExec=/usr/bin/putgd-launcher\nExec=\"/usr/bin/putgd-launcher\" --background\nTerminal=false\nX-putgd-Managed=true\n"
+ },
+ "autostart:tryexec": {
+  "label": "tryexec",
+  "entry": "[Desktop Entry]\nType=Application\nName=put.gd\nTryExec=/usr/bin/putgd-launcher\nExec=\"/usr/bin/putgd-launcher\" --background\nTerminal=false\nX-putgd-Managed=true\n",
+  "entryInfo": {
+   "sha256": "c460a4f33cd4bdcac7eb612ef683f1914a54cf4363f0d6ae9aaa2882509556ce",
+   "bytes": 157,
+   "mode": "0o600",
+   "mtime": "2026-10-23T05:11:00Z"
+  },
+  "execTargetExists": false,
+  "shellStarted": "2026-10-23T05:10:26Z",
+  "journal": [
+   "user 2026-10-23T00:12:26-05:00 putgd-ubuntu-lab gnome-session-service[1642]: Desktop file /home/lab/.config/autostart/putgd.desktop couldn't be parsed, or references a missing TryExec binary",
+   "system 2026-10-23T00:12:26-05:00 putgd-ubuntu-lab gnome-session-service[1642]: Desktop file /home/lab/.config/autostart/putgd.desktop couldn't be parsed, or references a missing TryExec binary"
+  ],
+  "failedUnits": [],
+  "autostartUnits": [],
+  "generatorUnit": [],
+  "processes": [],
+  "package": {
+   "manager": "dpkg",
+   "status": null,
+   "version": null
+  }
+ },
+ "teardown": {
+  "removed": [
+   "/home/lab/.config/putgd",
+   "/home/lab/.local/state/putgd",
+   "/home/lab/.local/share/putgd",
+   "/home/lab/.config/autostart/putgd.desktop"
+  ],
+  "kept": [
+   "/tmp/nfa.R0L9yt (not this run's mktemp folder)"
+  ],
+  "after": {
+   "at": "2026-10-23T05:15:34Z",
+   "host": "putgd-ubuntu-lab",
+   "package": {
+    "manager": "dpkg",
+    "status": "ii",
+    "version": "26.1023.1058~nightly"
+   },
+   "files": {
+    "/etc/apt/sources.list.d/putgd.sources": {
+     "sha256": "5d5b79d0154fed9099c42beea5183e41876ba36920bed6ed45a747523d5cc852",
+     "bytes": 2036,
+     "mode": "0o644",
+     "mtime": "2026-10-23T03:45:19Z"
+    },
+    "/usr/share/keyrings/putgd-archive-keyring.gpg": {
+     "sha256": "76ab1b64e8a1d9504d3922fa44b116d6eb3c680e788be9cec46e106cd5258339",
+     "bytes": 1170,
+     "mode": "0o644",
+     "mtime": "2026-10-23T03:42:11Z"
+    },
+    "/etc/yum.repos.d/putgd.repo": null,
+    "/etc/yum.repos.d/putgd.repo.rpmsave": null,
+    "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd": null,
+    "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-nightly": null,
+    "/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-stable": null,
+    "/usr/share/gnome-shell/extensions/putgd@put.gd/metadata.json": {
+     "sha256": "690be5bcfd1ee05783cd57a78851c56c0fe624131711b254cb46d062d0cb8046",
+     "bytes": 248,
+     "mode": "0o644",
+     "mtime": "2026-10-23T03:45:19Z"
+    }
+   },
+   "defaultProfile": {
+    "/home/lab/.config/putgd": null,
+    "/home/lab/.local/state/putgd": null,
+    "/home/lab/.cache/putgd": null,
+    "/home/lab/.local/share/putgd": null
+   },
+   "autostart": null,
+   "userExtension": false,
+   "processes": [],
+   "enabledExtensions": "['putgd@put.gd']"
+  }
+ }
+}

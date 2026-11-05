@@ -21,7 +21,7 @@ private slots:
  }
  void templateTokensHaveExactMeaning() {
   Artifact file;file.name="report.final.pdf";file.originalFile=true;file.id="b76d3ddb-7c66-4de5-b0dd-7400f2b20d96";
-  const auto acquired=QDateTime(QDate(2026,10,8),QTime(4,27,21),Qt::LocalTime);
+  const auto acquired=QDateTime(QDate(2026,10,8),QTime(4,27,21));
   const auto rendered=UploadNaming::renderTemplate("{name}-{yyyy}-{MM}-{dd}-{HH}-{mm}-{ss}-{uuid}.{ext}",file,acquired,file.id);
   QVERIFY(!rendered.error);
   QCOMPARE(rendered.name,QString("report.final-2026-10-08-04-27-21-b76d3ddb-7c66-4de5-b0dd-7400f2b20d96.pdf"));
@@ -49,7 +49,7 @@ private slots:
  }
  void unsafeTemplatesAndEmptyResultsFail() {
   Artifact file;file.name="README";
-  const auto acquired=QDateTime(QDate(2026,10,8),QTime(4,27,21),Qt::LocalTime);
+  const auto acquired=QDateTime(QDate(2026,10,8),QTime(4,27,21));
   for(const auto& format:QStringList{"{wat}","{name","name}","{name}/x","{name}\\x",QString(QChar(0))+"x","line\n{name}","",".",".."})
    QVERIFY(UploadNaming::renderTemplate(format,file,acquired).error);
   QVERIFY(UploadNaming::renderTemplate("{ext}",file,acquired).error);

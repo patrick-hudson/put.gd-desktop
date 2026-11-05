@@ -1,0 +1,11 @@
+{
+ "tool": "appimageupdatetool-x86_64.AppImage",
+ "toolSha256": "8d17a50e2f7502edacab48216d1b491de3669935858591ea0026cc2db375967c",
+ "sslCertFile": null,
+ "exit": 1,
+ "signal": null,
+ "stdout": "",
+ "stderr": "zsync2: Using CA bundle found on system: /etc/ssl/certs/ca-certificates.crt\n",
+ "feed": "{\n  \"schema\": 1,\n  \"channel\": \"nightly\",\n  \"generatedAt\": \"2026-10-22T05:41:38Z\",\n  \"release\": {\n    \"tag\": \"v0.1.1-nightly.947\",\n    \"version\": \"0.1.1-nightly.947\",\n    \"publishedAt\": \"2026-10-22T05:40:12Z\",\n    \"notesUrl\": \"https://github.com/patrick-hudson/put.gd-desktop/releases/tag/v0.1.1-nightly.947\",\n    \"assets\": {\n      \"ubuntu24.04\": {\n        \"name\": \"putgd-0.1.1-nightly.947-ubuntu24.04-x86_64.deb\",\n        \"url\": \"https://github.com/patrick-hudson/put.gd-desktop/releases/download/v0.1.1-nightly.947/putgd-0.1.1-nightly.947-ubuntu24.04-x86_64.deb\",\n        \"size\": 54158988,\n        \"sha256\": \"65aac9eece3a5b51dc629f71a13673f48c8d3895ce957a0cfdd97cb76573742c\"\n      },\n      \"ubuntu26.04\": {\n        \"name\": \"putgd-0.1.1-nightly.947-ubuntu26.04-x86_64.deb\",\n        \"url\": \"https://github.com/patrick-hudson/put.gd-desktop/releases/download/v0.1.1-nightly.947/putgd-0.1.1-nightly.947-ubuntu26.04-x86_64.deb\",\n        \"size\": 54501268,\n        \"sha256\": \"628b884ff3c85afadedaaf5133321f787371470f91395edfb68571a7c707e57c\"\n      },\n      \"debian13\": {\n        \"name\": \"putgd-0.1.1-nightly.947-debian13-x86_64.deb\",\n        \"url\": \"https://github.com/patrick-hudson/put.gd-desktop/releases/download/v0.1.1-nightly.947/putgd-0.1.1-nightly.947-debian13-x86_64.deb\",\n        \"size\": 54044832,\n        \"sha256\": \"d5d15d6f420b944d5babc3fb24f0a68cc84ddc80cf5ee6fba1163c03618b88fc\"\n      },\n      \"fedora44\": {\n        \"name\": \"putgd-0.1.1-nightly.947-fedora44-x86_64.rpm\",\n        \"url\": \"https",
+ "image": "putgd-0.1.1-nightly.942-x86_64.AppImage"
+}

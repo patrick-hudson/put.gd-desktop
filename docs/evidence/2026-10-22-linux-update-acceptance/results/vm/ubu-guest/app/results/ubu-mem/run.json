@@ -1,0 +1,130 @@
+{
+ "name": "ubu-mem",
+ "tool": null,
+ "live": true,
+ "image": "/home/lab/ua/app/runs/ubu-mem/apps/putgd-26.1022.1019-nightly-x86_64.AppImage",
+ "imageSha256": "e5b7ad2caecaa7f5737bdfb5d2f0fd4e3c74ce5d98a8a68142caf4efd43525bc",
+ "cliDir": "/home/lab/ua/app/runs/ubu-mem/cli/squashfs-root",
+ "runtime": "/tmp/ua-app.yMK5OO",
+ "session": {
+  "HOME": "/home/lab",
+  "PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin",
+  "USER": "lab",
+  "LANG": "en_US.UTF-8",
+  "DBUS_SESSION_BUS_ADDRESS": "unix:path=/run/user/1000/bus",
+  "XDG_SESSION_TYPE": "wayland",
+  "XDG_CURRENT_DESKTOP": "ubuntu:GNOME",
+  "XDG_SESSION_DESKTOP": "ubuntu",
+  "DESKTOP_SESSION": "ubuntu",
+  "XDG_DATA_DIRS": "/usr/share/ubuntu:/usr/share/gnome:/home/lab/.local/share/flatpak/exports/share:/var/lib/flatpak/exports/share:/usr/local/share/:/usr/share/:/var/lib/snapd/desktop",
+  "WAYLAND_DISPLAY": "/run/user/1000/wayland-0",
+  "DISPLAY": ":0",
+  "XAUTHORITY": "/run/user/1000/.mutter-Xwaylandauth.3XLTX3"
+ },
+ "shell": "gnome-shell",
+ "hostPath": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin",
+ "host": "putgd-ubuntu-lab",
+ "vnc": 5922,
+ "urls": {},
+ "input": "vnc",
+ "privateData": true,
+ "before": {
+  "dataPutgd": false,
+  "homePutgd": {
+   "/home/lab/.config/putgd": false,
+   "/home/lab/.local/state/putgd": false,
+   "/home/lab/.cache/putgd": false
+  },
+  "autostart": []
+ },
+ "pids": {
+  "apprun": 3384
+ },
+ "created": "2026-10-23T02:06:36Z",
+ "log": [
+  {
+   "at": "2026-10-23T02:13:39Z",
+   "mem": {
+    "version": "26.1022.1019-nightly",
+    "imageSha256": "e5b7ad2caecaa7f5737bdfb5d2f0fd4e3c74ce5d98a8a68142caf4efd43525bc",
+    "pid": 3416,
+    "host": "putgd-ubuntu-lab",
+    "session": "wayland",
+    "desktop": "ubuntu:GNOME",
+    "A": {
+     "window": "A cold idle",
+     "seconds": 180.1,
+     "rssMedianMiB": 29.21,
+     "rssMinMiB": 28.93,
+     "rssMaxMiB": 29.21,
+     "every10s": [
+      28.93,
+      28.93,
+      28.93,
+      29.21,
+      29.21,
+      29.21,
+      29.21,
+      29.21,
+      29.21,
+      29.21,
+      29.21,
+      29.21,
+      29.21,
+      29.21,
+      29.21,
+      29.21,
+      29.21,
+      29.21
+     ],
+     "pssMiB": 22.76,
+     "privateMiB": 22.42,
+     "tlsNetworkLibraries": [],
+     "load": [
+      0.04345703125,
+      0.36328125,
+      0.22021484375
+     ]
+    },
+    "action": {
+     "check": true
+    },
+    "B": {
+     "window": "B idle after check",
+     "seconds": 180.1,
+     "rssMedianMiB": 29.3,
+     "rssMinMiB": 29.3,
+     "rssMaxMiB": 29.3,
+     "every10s": [
+      29.3,
+      29.3,
+      29.3,
+      29.3,
+      29.3,
+      29.3,
+      29.3,
+      29.3,
+      29.3,
+      29.3,
+      29.3,
+      29.3,
+      29.3,
+      29.3,
+      29.3,
+      29.3,
+      29.3,
+      29.3
+     ],
+     "pssMiB": 22.85,
+     "privateMiB": 22.51,
+     "tlsNetworkLibraries": [],
+     "load": [
+      0.0,
+      0.17236328125,
+      0.166015625
+     ]
+    }
+   }
+  }
+ ]
+}

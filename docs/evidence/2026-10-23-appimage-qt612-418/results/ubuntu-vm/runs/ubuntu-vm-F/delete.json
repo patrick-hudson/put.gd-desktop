@@ -1,0 +1,112 @@
+{
+ "item": "Screen-Capture-2026-10-23-14-46-41.png",
+ "prepare": {
+  "acknowledgement": "234fd5de64072e74410b061976b84da96afdf9eb7095d0f6b159a882004fb36a",
+  "cacheNotice": "Origin deletion does not invalidate browser or CDN caches",
+  "localCopiesPreserved": true,
+  "targets": [
+   {
+    "effect": "Guarded origin removal; selected versions only; browser/CDN caches may retain bytes",
+    "historyId": "151b34b7-7b0b-4299-abab-5b4caea09c8a",
+    "receipt": {
+     "concurrencyToken": "\"4a0b42e19b05ece35bd620c407e856b9\"",
+     "destination": {
+      "credentials": {
+       "mode": "session",
+       "reference": null
+      },
+      "profileId": "live-s3",
+      "profileRevision": "7ec87f28a40be6da79680762abaae2a9871561e06d27a41c01f67bcba509777b",
+      "providerId": "s3",
+      "settings": {
+       "aclMode": "public-read",
+       "addressing": "path",
+       "bucket": "put.gd",
+       "connectTimeoutMs": 10000,
+       "endpoint": "https://s3.us-east-2.amazonaws.com",
+       "lowSpeedBytesPerSecond": 1,
+       "lowSpeedTimeSeconds": 120,
+       "objectPrefix": "acceptance/qt418/ubuntu-vm/",
+       "publicUrlBase": "https://put.gd",
+       "region": "us-east-2",
+       "requestTimeoutMs": 120000,
+       "storageClass": "STANDARD"
+      }
+     },
+     "directUrl": "https://put.gd/acceptance/qt418/ubuntu-vm/Screen-Capture-2026-10-23-14-46-41.png",
+     "objectReference": {
+      "bytes": 1088,
+      "key": "acceptance/qt418/ubuntu-vm/Screen-Capture-2026-10-23-14-46-41.png",
+      "schemaVersion": 1,
+      "sha256": "162262561b65856a21546c6db5b619092c970b679efcfe607d060633af6ca9e7",
+      "versionId": ""
+     },
+     "publicationId": "fc025648-a5b5-4df5-93fe-830690186aee",
+     "schemaVersion": 1
+    }
+   }
+  ]
+ },
+ "confirm": {
+  "deleteOperationId": "70424bef-2962-4520-8eac-7cef918cf1db",
+  "deletion": {
+   "acknowledgement": "234fd5de64072e74410b061976b84da96afdf9eb7095d0f6b159a882004fb36a",
+   "cancelled": false,
+   "created": "2026-10-23T19:47:27.476Z",
+   "id": "70424bef-2962-4520-8eac-7cef918cf1db",
+   "items": [
+    {
+     "effect": "Guarded origin removal; selected versions only; browser/CDN caches may retain bytes",
+     "historyId": "151b34b7-7b0b-4299-abab-5b4caea09c8a",
+     "progress": {
+      "schemaVersion": 1
+     },
+     "receipt": {
+      "concurrencyToken": "\"4a0b42e19b05ece35bd620c407e856b9\"",
+      "destination": {
+       "credentials": {
+        "mode": "session",
+        "reference": null
+       },
+       "profileId": "live-s3",
+       "profileRevision": "7ec87f28a40be6da79680762abaae2a9871561e06d27a41c01f67bcba509777b",
+       "providerId": "s3",
+       "settings": {
+        "aclMode": "public-read",
+        "addressing": "path",
+        "bucket": "put.gd",
+        "connectTimeoutMs": 10000,
+        "endpoint": "https://s3.us-east-2.amazonaws.com",
+        "lowSpeedBytesPerSecond": 1,
+        "lowSpeedTimeSeconds": 120,
+        "objectPrefix": "acceptance/qt418/ubuntu-vm/",
+        "publicUrlBase": "https://put.gd",
+        "region": "us-east-2",
+        "requestTimeoutMs": 120000,
+        "storageClass": "STANDARD"
+       }
+      },
+      "directUrl": "https://put.gd/acceptance/qt418/ubuntu-vm/Screen-Capture-2026-10-23-14-46-41.png",
+      "objectReference": {
+       "bytes": 1088,
+       "key": "acceptance/qt418/ubuntu-vm/Screen-Capture-2026-10-23-14-46-41.png",
+       "schemaVersion": 1,
+       "sha256": "162262561b65856a21546c6db5b619092c970b679efcfe607d060633af6ca9e7",
+       "versionId": ""
+      },
+      "publicationId": "fc025648-a5b5-4df5-93fe-830690186aee",
+      "schemaVersion": 1
+     },
+     "status": "pending"
+    }
+   ],
+   "state": "accepted"
+  }
+ },
+ "final": null,
+ "remoteAfter": "HTTP 403",
+ "remoteStatus": "removed",
+ "localPath": "/home/lab/work/put.gd-qt418/afa/runs/ubuntu-vm-F/archive/images/Screen-Capture-2026-10-23-14-46-41.png",
+ "localExistsAfter": true,
+ "historyRowKept": true
+}

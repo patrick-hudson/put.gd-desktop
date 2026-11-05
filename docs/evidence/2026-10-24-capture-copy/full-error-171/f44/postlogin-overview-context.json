@@ -1,0 +1,5 @@
+{
+  "initial": "GNOME real login started in Activities overview; newly opened testwindows remained in overview; full-window crop guard refused scaled thumbnails",
+  "correction": "Observed live overview, pressedEscape to show actual desktop; source and capture/memory gates unchanged",
+  "retainedFailureVisual": "postlogin-ui-first-private.png"
+}

@@ -1,0 +1,9 @@
+{
+  "resident": {
+    "pid": 4011,
+    "sha256": "97fe907a36c7138dee9acb3c923701d4646b474ee8af7be0765b2616fad1d8aa",
+    "startTicks": 4592
+  },
+  "source": "cinnamon-core-x11",
+  "status": "started"
+}

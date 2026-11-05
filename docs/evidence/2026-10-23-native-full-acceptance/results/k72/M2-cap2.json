@@ -1,0 +1,77 @@
+{
+ "kind": "desktop",
+ "operation": {
+  "id": "3b293fcf-0dea-4738-abdd-19bd0d74ed37",
+  "state": "completed",
+  "copyStatus": "copied",
+  "items": [
+   {
+    "name": "Screen-Capture-2026-10-23-00-53-01.png",
+    "mime": "image/png",
+    "uploadStatus": "uploaded",
+    "link": "http://127.0.0.1:44781/fixture/afa/Screen-Capture-2026-10-23-00-53-01.png",
+    "local": {
+     "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+     },
+     "path": "/home/patrick/work/put.gd-nfa/runs/M2/archive/images/Screen-Capture-2026-10-23-00-53-01.png",
+     "status": "saved"
+    }
+   }
+  ],
+  "error": {
+   "code": "",
+   "details": {},
+   "message": ""
+  }
+ },
+ "png": {
+  "bytes": 10723,
+  "sha256": "7dff5a2c2513e30c3e0939d42ebece2deec4112b58733213068e1b4cf22873ff",
+  "magic": true,
+  "size": [
+   1920,
+   1080
+  ]
+ },
+ "coverCheck": {
+  "edges": {
+   "bottom": 1.0,
+   "left": 1.0,
+   "right": 1.0,
+   "top": 1.0
+  },
+  "fraction": 0.8889,
+  "kept": "/home/patrick/work/put.gd-nfa/runs/M2/out/capture-desktop.png",
+  "minFraction": 0.5,
+  "ok": true,
+  "rect": [
+   0,
+   0,
+   1920,
+   1080
+  ],
+  "sha256": "7dff5a2c2513e30c3e0939d42ebece2deec4112b58733213068e1b4cf22873ff",
+  "size": [
+   1920,
+   1080
+  ]
+ },
+ "clipboard": "http://127.0.0.1:44781/fixture/afa/Screen-Capture-2026-10-23-00-53-01.png",
+ "linkCopied": true,
+ "linkServes": {
+  "status": 200,
+  "sha256": "7dff5a2c2513e30c3e0939d42ebece2deec4112b58733213068e1b4cf22873ff",
+  "matchesLocal": true
+ },
+ "historyEntry": {
+  "id": "dd7dfe89-c4b4-4edd-b702-559e254245fc",
+  "name": "Screen-Capture-2026-10-23-00-53-01.png",
+  "uploadStatus": "uploaded",
+  "local": "saved",
+  "linkAvailable": true
+ },
+ "notifications": []
+}

@@ -1,0 +1,56 @@
+{
+  "artifact": "ubuntu24.04",
+  "ciDifferences": [
+    "Cold isolated Docker build on Boat; no Actions package/SDK/compiler caches or hosted runner preinstalls. No weekly native package snapshot/offline fallback.",
+    "No Actions upload, split debug staging, SBOM, source rebuild, publication or desktop acceptance; only selected build/audit artifacts.",
+    "Untagged development identity for the exact SHA; no release tag supplied.",
+    "PATH prefers distro /usr/bin; compiler cache is private and capped at 256M."
+  ],
+  "cleanup": {
+    "deletedIds": [
+      "bx_8td92cd8"
+    ],
+    "finalState": "absent",
+    "name": "putgd-0c329b0692ca-ubuntu24.04-eda9d5e1835a48ad",
+    "requests": [
+      {
+        "operation": {
+          "attemptCount": 0,
+          "completedAt": null,
+          "expectedBy": null,
+          "id": "bdop_2bdbf7f75469464d84e61fa09085ad03",
+          "kind": "sandbox",
+          "reason": "explicit",
+          "requestedAt": "2026-10-30T04:03:49.385Z",
+          "stage": "removing",
+          "status": "pending",
+          "targetId": "bx_8td92cd8"
+        },
+        "sandboxId": "bx_8td92cd8"
+      }
+    ],
+    "verification": "boat list --all",
+    "verified": true,
+    "verifiedAt": 1793333031.7614467
+  },
+  "cleanupVerified": true,
+  "commit": "0c329b0692cadc52f03f91e59c06c5eda760bf04",
+  "error": "Controller cancelled or deadline exceeded: boat",
+  "name": "putgd-0c329b0692ca-ubuntu24.04-eda9d5e1835a48ad",
+  "placementReason": "parallel candidate packaging; preserve quiet physical acceptance hosts",
+  "runNonce": "eda9d5e1835a48ad",
+  "sandboxId": "bx_8td92cd8",
+  "snapshot": "putgd-build-base",
+  "startupCleanup": {
+    "deleted": [],
+    "preserved": [
+      "bx_8433k57e",
+      "bx_bdpqgcxs"
+    ],
+    "verified": true
+  },
+  "state": "failed",
+  "totalSeconds": 4.205,
+  "ttlSeconds": 10800,
+  "type": "large"
+}

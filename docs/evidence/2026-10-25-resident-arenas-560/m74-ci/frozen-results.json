@@ -1,0 +1,871 @@
+{
+ "p560e1": {
+  "product": {
+   "path": "/home/patrick/work/i560o/ci/putgd_26.1025.1294~dev+g98878cfe31c2_amd64.deb",
+   "sha256": "5c77da8d6e25228061024afd9adcf55c61c25e87283920e39152eee4412a6300",
+   "binaries": {
+    "app": {
+     "path": "/usr/bin/putgd",
+     "sha256": "eccfe8c73e65615e46b2c593c890977c7aeedab8b5bc9a078a7d08d507494c8e",
+     "build": {
+      "schemaVersion": 1,
+      "version": "26.1025.1294-dev+g98878cfe31c2",
+      "baseVersion": "26.1025.1294",
+      "packageVersion": "26.1025.1294~dev+g98878cfe31c2",
+      "gitCommit": "98878cfe31c2506d25ea6cbec97af002210319d2",
+      "gitTree": "1a4c7e6d116a911d50dfbb52fc0ed2304cf627c8",
+      "commitCount": 1294,
+      "dirty": false,
+      "sourceProvenance": "git"
+     }
+    },
+    "capture_helper": {
+     "path": "/usr/bin/putgd-capture",
+     "sha256": "cc8ac5a7ea3f708ce2bbe468b9255eeb7363fa1a220100528619d8336336b093",
+     "build": {
+      "schemaVersion": 1,
+      "version": "26.1025.1294-dev+g98878cfe31c2",
+      "baseVersion": "26.1025.1294",
+      "packageVersion": "26.1025.1294~dev+g98878cfe31c2",
+      "gitCommit": "98878cfe31c2506d25ea6cbec97af002210319d2",
+      "gitTree": "1a4c7e6d116a911d50dfbb52fc0ed2304cf627c8",
+      "commitCount": 1294,
+      "dirty": false,
+      "sourceProvenance": "git"
+     }
+    },
+    "cli": {
+     "path": "/usr/bin/putgd-cli",
+     "sha256": "f8f51d1fd10729618b6886e3b70c64e884824e6f7c5079ba74ec42ccc346245e",
+     "build": {
+      "schemaVersion": 1,
+      "version": "26.1025.1294-dev+g98878cfe31c2",
+      "baseVersion": "26.1025.1294",
+      "packageVersion": "26.1025.1294~dev+g98878cfe31c2",
+      "gitCommit": "98878cfe31c2506d25ea6cbec97af002210319d2",
+      "gitTree": "1a4c7e6d116a911d50dfbb52fc0ed2304cf627c8",
+      "commitCount": 1294,
+      "dirty": false,
+      "sourceProvenance": "git"
+     }
+    },
+    "helper": {
+     "path": "/usr/bin/putgd-ui",
+     "sha256": "27564b720d3016ddf3d20ee7988538b8054ce47bd0566a7f695b2a382a74424c",
+     "build": {
+      "schemaVersion": 1,
+      "version": "26.1025.1294-dev+g98878cfe31c2",
+      "baseVersion": "26.1025.1294",
+      "packageVersion": "26.1025.1294~dev+g98878cfe31c2",
+      "gitCommit": "98878cfe31c2506d25ea6cbec97af002210319d2",
+      "gitTree": "1a4c7e6d116a911d50dfbb52fc0ed2304cf627c8",
+      "commitCount": 1294,
+      "dirty": false,
+      "sourceProvenance": "git"
+     }
+    }
+   }
+  },
+  "driver": {
+   "sha256": "3cb511e0f0e7e4de63afa68d0ae66a56a8f6abcc028aa0f2df426e27d21a6676",
+   "revision": "00ab777f2413a1fbd7670a7259dc614eced896e6",
+   "revisionSource": "explicit-declaration",
+   "sourceFiles": {
+    "tests/performance/physical_campaign.py": "3cb511e0f0e7e4de63afa68d0ae66a56a8f6abcc028aa0f2df426e27d21a6676",
+    "tests/performance/bench_ui_process.py": "a28c94b075036ea65f8eca8e068d480cff46ee959d4680593f5c4d55cce3fc40",
+    "tests/performance/observe_idle.py": "33fab955eb36d617ee0a2fd5de67cf0a54aab0994a3dccb3f70dac5111398efe",
+    "tests/performance/campaign_fixture.py": "330632490f68fb3621f19261f35e64643849b26190de256c969cdc89e79d41d9",
+    "tests/performance/campaign_ui.py": "86dd179d7ee6c4c0cae9728270dca133dbaf9b15975f05fb13965231669937dc",
+    "tests/performance/campaign_workloads.py": "179e837eab64ebc7f82c3a6237067070d208a75cf255b7cd4d5d970492337bf9",
+    "tests/performance/campaign_proxy.py": "39973a4603cedf82ae89250c222ae5f508f36aa127be4d501f2ee3c3eae0e98b",
+    "tests/performance/campaign_lifecycle.py": "e86141e204105fe6834d90933dd065377df0b444786eec5cc1340c11eabe6668",
+    "tests/performance/build_current_capture.py": "dfab0d0aefc471cd13eb3ec6e1bb6b0c57614ac424d2067eca4c5846de0f95bd",
+    "tests/performance/campaign_frames.py": "6c013f4cbce53b96ce6c2dd1b0b1d396f449d5017621654ae2e291a6c5cb6a97",
+    "tools/diagnostics/check_socket_paths.py": "7e8797ec6ea0014eeacd428f822ef3fe545a276247a7ad7e6de9b557a0937f55"
+   }
+  },
+  "parameters": {
+   "scenario": "burst",
+   "output": "/tmp/p560e1",
+   "package": "/home/patrick/work/i560o/ci/putgd_26.1025.1294~dev+g98878cfe31c2_amd64.deb",
+   "package_sha256": "5c77da8d6e25228061024afd9adcf55c61c25e87283920e39152eee4412a6300",
+   "version": "26.1025.1294-dev+g98878cfe31c2",
+   "source_revision": "98878cfe31c2506d25ea6cbec97af002210319d2",
+   "desktop_session": "c89",
+   "lock_session": "t3-i560-opus-ci1",
+   "app": "/usr/bin/putgd",
+   "cli": "/usr/bin/putgd-cli",
+   "helper": "/usr/bin/putgd-ui",
+   "capture_helper": "/usr/bin/putgd-capture",
+   "driver": null,
+   "capture_driver_manifest": null,
+   "fixture_root": null,
+   "driver_revision": "00ab777f2413a1fbd7670a7259dc614eced896e6",
+   "open_seconds": 30,
+   "vnc_port": 5900,
+   "endpoint": "http://127.0.0.1:39267",
+   "fixture_pid": 763174,
+   "fixture_source": "/home/patrick/work/i560o/driver/tests/fixtures/s3_server.py",
+   "enable_accessibility": true,
+   "native_driver": "/home/patrick/work/i560o/native495/native_acceptance.py",
+   "native_driver_revision": "72afd00bf2dbdaaa7e4bd3f847dc54f1da715f0e",
+   "native_driver_sha256": "347934c226f99cb0e509d5466c5df8116896e6bfac07d75fdfa4f4c2d06ca053",
+   "threshold_policy": null,
+   "settle_seconds": 300,
+   "history_pages": 200
+  },
+  "status": "complete",
+  "gates": {
+   "captureBurst": {
+    "status": "unassessed",
+    "reason": "50-upload workload uses explicit synthetic file editors; actual capture burst is not exercised"
+   },
+   "historyOpenUpperBoundMs": {
+    "status": "unassessed",
+    "reason": "content_endpoint_not_witnessed"
+   },
+   "burstVisualAttribution": {
+    "status": "pass",
+    "attempted": 4,
+    "succeeded": 4,
+    "refused": 0
+   },
+   "settleGrowthBytes": {
+    "status": "unassessed",
+    "reason": "no_explicit_approved_threshold"
+   },
+   "settled-rssBytes": {
+    "status": "pass",
+    "limitBytes": 41943040
+   },
+   "settled-pssBytes": {
+    "status": "pass",
+    "limitBytes": 30408704
+   },
+   "cleanup": {
+    "status": "pass"
+   }
+  },
+  "metrics": {
+   "historyOpenFirstGenericDrawableObservationMs": 642.0963770360686,
+   "historyOpenUpperBoundMs": null,
+   "burst": {
+    "acceptedFileEditorUploads": 50,
+    "nativeCapturesExercised": 0,
+    "source": "production editor.open(source=file) then explicit editor.submit",
+    "sourceGeometry": [
+     320,
+     180
+    ],
+    "fixturePutDelaySeconds": 10,
+    "concurrentUploadPeakObserved": 4,
+    "queuedOperationPeakObserved": 38,
+    "linksIndependentlyVerified": 50,
+    "finalTrayStatus": "Active"
+   },
+   "postUploadFinalFamily": {
+    "rssBytes": 35995648,
+    "pssBytes": 24103936,
+    "privateBytes": 23375872
+   },
+   "settleGrowthBytes": 5271552,
+   "sampledProcessFamily": {
+    "peakTotals": {
+     "rssBytes": 279240704,
+     "pssBytes": 110798848,
+     "privateBytes": 84385792
+    },
+    "cpuPercentOneCoreLowerBound": 4.231040395505573,
+    "observedProcessGenerations": 77,
+    "samplingSpanSeconds": 497.7499156559934,
+    "shortLivedChildrenMayBeMissed": true
+   }
+  },
+  "residentCleanup": [
+   {
+    "gracefulRequest": true,
+    "exitCode": 0,
+    "forced": false,
+    "remaining": [],
+    "socketAbsent": true,
+    "passed": true,
+    "errors": [],
+    "inventoryComplete": true,
+    "absenceVerified": true,
+    "inventoryDefinition": "observed PID/start/UID generations + resident process group + exact isolated runtime/data environment; no command lines exported"
+   },
+   {
+    "gracefulRequest": true,
+    "exitCode": 0,
+    "forced": false,
+    "remaining": [],
+    "socketAbsent": true,
+    "passed": true,
+    "errors": [],
+    "inventoryComplete": true,
+    "absenceVerified": true,
+    "inventoryDefinition": "observed PID/start/UID generations + resident process group + exact isolated runtime/data environment; no command lines exported"
+   }
+  ],
+  "limitations": [
+   "Capture witness observes X11 drawable paint, not compositor presentation.",
+   "CLI acknowledgements do not prove painted response.",
+   "Sequential sampled process memory can miss short-lived descendants.",
+   "Family CPU is a lower bound when a child exits between samples.",
+   "Shared desktop daemons are outside the resident process family.",
+   "Host quietness and reviewed sanitized visuals require coordinator evidence.",
+   "Burst measures 50 explicit synthetic file-editor Uploads, not desktop or native capture acceptance.",
+   "Post-upload sampled growth/plateau is measured; a finite settle does not prove absence of all leaks."
+  ],
+  "settleSeries": [
+   {
+    "elapsedSeconds": 202.115,
+    "processCount": 1,
+    "rssBytes": 36089856,
+    "pssBytes": 24146944,
+    "privateBytes": 23470080
+   },
+   {
+    "elapsedSeconds": 207.154,
+    "processCount": 1,
+    "rssBytes": 36089856,
+    "pssBytes": 24146944,
+    "privateBytes": 23470080
+   },
+   {
+    "elapsedSeconds": 212.197,
+    "processCount": 1,
+    "rssBytes": 36089856,
+    "pssBytes": 24146944,
+    "privateBytes": 23470080
+   },
+   {
+    "elapsedSeconds": 217.236,
+    "processCount": 1,
+    "rssBytes": 36089856,
+    "pssBytes": 24146944,
+    "privateBytes": 23470080
+   },
+   {
+    "elapsedSeconds": 222.302,
+    "processCount": 1,
+    "rssBytes": 36089856,
+    "pssBytes": 24146944,
+    "privateBytes": 23470080
+   },
+   {
+    "elapsedSeconds": 227.34,
+    "processCount": 1,
+    "rssBytes": 35995648,
+    "pssBytes": 24052736,
+    "privateBytes": 23375872
+   },
+   {
+    "elapsedSeconds": 232.38,
+    "processCount": 1,
+    "rssBytes": 35995648,
+    "pssBytes": 24052736,
+    "privateBytes": 23375872
+   },
+   {
+    "elapsedSeconds": 237.418,
+    "processCount": 1,
+    "rssBytes": 35995648,
+    "pssBytes": 24052736,
+    "privateBytes": 23375872
+   },
+   {
+    "elapsedSeconds": 242.457,
+    "processCount": 1,
+    "rssBytes": 35995648,
+    "pssBytes": 24052736,
+    "privateBytes": 23375872
+   },
+   {
+    "elapsedSeconds": 247.492,
+    "processCount": 1,
+    "rssBytes": 35995648,
+    "pssBytes": 24052736,
+    "privateBytes": 23375872
+   },
+   {
+    "elapsedSeconds": 252.529,
+    "processCount": 1,
+    "rssBytes": 35995648,
+    "pssBytes": 24052736,
+    "privateBytes": 23375872
+   },
+   {
+    "elapsedSeconds": 257.566,
+    "processCount": 1,
+    "rssBytes": 35995648,
+    "pssBytes": 24052736,
+    "privateBytes": 23375872
+   },
+   {
+    "elapsedSeconds": 262.604,
+    "processCount": 1,
+    "rssBytes": 35995648,
+    "pssBytes": 24052736,
+    "privateBytes": 23375872
+   },
+   {
+    "elapsedSeconds": 267.643,
+    "processCount": 1,
+    "rssBytes": 35995648,
+    "pssBytes": 24052736,
+    "privateBytes": 23375872
+   },
+   {
+    "elapsedSeconds": 272.681,
+    "processCount": 1,
+    "rssBytes": 35995648,
+    "pssBytes": 24052736,
+    "privateBytes": 23375872
+   },
+   {
+    "elapsedSeconds": 277.719,
+    "processCount": 1,
+    "rssBytes": 35995648,
+    "pssBytes": 24052736,
+    "privateBytes": 23375872
+   },
+   {
+    "elapsedSeconds": 282.757,
+    "processCount": 1,
+    "rssBytes": 35995648,
+    "pssBytes": 24048640,
+    "privateBytes": 23371776
+   },
+   {
+    "elapsedSeconds": 287.798,
+    "processCount": 1,
+    "rssBytes": 35995648,
+    "pssBytes": 24049664,
+    "privateBytes": 23371776
+   },
+   {
+    "elapsedSeconds": 292.838,
+    "processCount": 1,
+    "rssBytes": 35995648,
+    "pssBytes": 24049664,
+    "privateBytes": 23371776
+   },
+   {
+    "elapsedSeconds": 297.901,
+    "processCount": 1,
+    "rssBytes": 35995648,
+    "pssBytes": 24049664,
+    "privateBytes": 23371776
+   },
+   {
+    "elapsedSeconds": 302.964,
+    "processCount": 1,
+    "rssBytes": 35995648,
+    "pssBytes": 24049664,
+    "privateBytes": 23371776
+   },
+   {
+    "elapsedSeconds": 308.003,
+    "processCount": 1,
+    "rssBytes": 35995648,
+    "pssBytes": 24103936,
+    "privateBytes": 23375872
+   },
+   {
+    "elapsedSeconds": 313.04,
+    "processCount": 1,
+    "rssBytes": 35995648,
+    "pssBytes": 24103936,
+    "privateBytes": 23375872
+   },
+   {
+    "elapsedSeconds": 318.079,
+    "processCount": 1,
+    "rssBytes": 35995648,
+    "pssBytes": 24103936,
+    "privateBytes": 23375872
+   },
+   {
+    "elapsedSeconds": 323.118,
+    "processCount": 1,
+    "rssBytes": 35995648,
+    "pssBytes": 24103936,
+    "privateBytes": 23375872
+   },
+   {
+    "elapsedSeconds": 328.157,
+    "processCount": 1,
+    "rssBytes": 35995648,
+    "pssBytes": 24103936,
+    "privateBytes": 23375872
+   },
+   {
+    "elapsedSeconds": 333.196,
+    "processCount": 1,
+    "rssBytes": 35995648,
+    "pssBytes": 24103936,
+    "privateBytes": 23375872
+   },
+   {
+    "elapsedSeconds": 338.233,
+    "processCount": 1,
+    "rssBytes": 35995648,
+    "pssBytes": 24103936,
+    "privateBytes": 23375872
+   },
+   {
+    "elapsedSeconds": 343.296,
+    "processCount": 1,
+    "rssBytes": 35995648,
+    "pssBytes": 24103936,
+    "privateBytes": 23375872
+   },
+   {
+    "elapsedSeconds": 348.334,
+    "processCount": 1,
+    "rssBytes": 35995648,
+    "pssBytes": 24103936,
+    "privateBytes": 23375872
+   },
+   {
+    "elapsedSeconds": 353.4,
+    "processCount": 1,
+    "rssBytes": 35995648,
+    "pssBytes": 24103936,
+    "privateBytes": 23375872
+   },
+   {
+    "elapsedSeconds": 358.439,
+    "processCount": 1,
+    "rssBytes": 35995648,
+    "pssBytes": 24103936,
+    "privateBytes": 23375872
+   },
+   {
+    "elapsedSeconds": 363.477,
+    "processCount": 1,
+    "rssBytes": 35995648,
+    "pssBytes": 24103936,
+    "privateBytes": 23375872
+   },
+   {
+    "elapsedSeconds": 368.517,
+    "processCount": 1,
+    "rssBytes": 35995648,
+    "pssBytes": 24103936,
+    "privateBytes": 23375872
+   },
+   {
+    "elapsedSeconds": 373.564,
+    "processCount": 1,
+    "rssBytes": 35995648,
+    "pssBytes": 24103936,
+    "privateBytes": 23375872
+   },
+   {
+    "elapsedSeconds": 378.601,
+    "processCount": 1,
+    "rssBytes": 35995648,
+    "pssBytes": 24103936,
+    "privateBytes": 23375872
+   },
+   {
+    "elapsedSeconds": 383.638,
+    "processCount": 1,
+    "rssBytes": 35995648,
+    "pssBytes": 24103936,
+    "privateBytes": 23375872
+   },
+   {
+    "elapsedSeconds": 388.704,
+    "processCount": 1,
+    "rssBytes": 35995648,
+    "pssBytes": 24103936,
+    "privateBytes": 23375872
+   },
+   {
+    "elapsedSeconds": 393.749,
+    "processCount": 1,
+    "rssBytes": 35995648,
+    "pssBytes": 24103936,
+    "privateBytes": 23375872
+   },
+   {
+    "elapsedSeconds": 398.786,
+    "processCount": 1,
+    "rssBytes": 35995648,
+    "pssBytes": 24103936,
+    "privateBytes": 23375872
+   },
+   {
+    "elapsedSeconds": 403.849,
+    "processCount": 1,
+    "rssBytes": 35995648,
+    "pssBytes": 24103936,
+    "privateBytes": 23375872
+   },
+   {
+    "elapsedSeconds": 408.883,
+    "processCount": 1,
+    "rssBytes": 35995648,
+    "pssBytes": 24103936,
+    "privateBytes": 23375872
+   },
+   {
+    "elapsedSeconds": 413.918,
+    "processCount": 1,
+    "rssBytes": 35995648,
+    "pssBytes": 24103936,
+    "privateBytes": 23375872
+   },
+   {
+    "elapsedSeconds": 418.956,
+    "processCount": 1,
+    "rssBytes": 35995648,
+    "pssBytes": 24103936,
+    "privateBytes": 23375872
+   },
+   {
+    "elapsedSeconds": 423.994,
+    "processCount": 1,
+    "rssBytes": 35995648,
+    "pssBytes": 24103936,
+    "privateBytes": 23375872
+   },
+   {
+    "elapsedSeconds": 429.033,
+    "processCount": 1,
+    "rssBytes": 35995648,
+    "pssBytes": 24103936,
+    "privateBytes": 23375872
+   },
+   {
+    "elapsedSeconds": 434.071,
+    "processCount": 1,
+    "rssBytes": 35995648,
+    "pssBytes": 24103936,
+    "privateBytes": 23375872
+   },
+   {
+    "elapsedSeconds": 439.11,
+    "processCount": 1,
+    "rssBytes": 35995648,
+    "pssBytes": 24103936,
+    "privateBytes": 23375872
+   },
+   {
+    "elapsedSeconds": 444.148,
+    "processCount": 1,
+    "rssBytes": 35995648,
+    "pssBytes": 24103936,
+    "privateBytes": 23375872
+   },
+   {
+    "elapsedSeconds": 449.186,
+    "processCount": 1,
+    "rssBytes": 35995648,
+    "pssBytes": 24103936,
+    "privateBytes": 23375872
+   },
+   {
+    "elapsedSeconds": 454.222,
+    "processCount": 1,
+    "rssBytes": 35995648,
+    "pssBytes": 24103936,
+    "privateBytes": 23375872
+   },
+   {
+    "elapsedSeconds": 459.264,
+    "processCount": 1,
+    "rssBytes": 35995648,
+    "pssBytes": 24103936,
+    "privateBytes": 23375872
+   },
+   {
+    "elapsedSeconds": 464.303,
+    "processCount": 1,
+    "rssBytes": 35995648,
+    "pssBytes": 24103936,
+    "privateBytes": 23375872
+   },
+   {
+    "elapsedSeconds": 469.342,
+    "processCount": 1,
+    "rssBytes": 35995648,
+    "pssBytes": 24103936,
+    "privateBytes": 23375872
+   },
+   {
+    "elapsedSeconds": 474.379,
+    "processCount": 1,
+    "rssBytes": 35995648,
+    "pssBytes": 24103936,
+    "privateBytes": 23375872
+   },
+   {
+    "elapsedSeconds": 479.417,
+    "processCount": 1,
+    "rssBytes": 35995648,
+    "pssBytes": 24103936,
+    "privateBytes": 23375872
+   },
+   {
+    "elapsedSeconds": 484.455,
+    "processCount": 1,
+    "rssBytes": 35995648,
+    "pssBytes": 24103936,
+    "privateBytes": 23375872
+   },
+   {
+    "elapsedSeconds": 489.493,
+    "processCount": 1,
+    "rssBytes": 35995648,
+    "pssBytes": 24103936,
+    "privateBytes": 23375872
+   },
+   {
+    "elapsedSeconds": 494.529,
+    "processCount": 1,
+    "rssBytes": 35995648,
+    "pssBytes": 24103936,
+    "privateBytes": 23375872
+   },
+   {
+    "elapsedSeconds": 499.568,
+    "processCount": 1,
+    "rssBytes": 35995648,
+    "pssBytes": 24103936,
+    "privateBytes": 23375872
+   },
+   {
+    "elapsedSeconds": 502.214,
+    "processCount": 1,
+    "rssBytes": 35995648,
+    "pssBytes": 24103936,
+    "privateBytes": 23375872
+   }
+  ]
+ },
+ "p560m1": {
+  "product": {
+   "path": "/home/patrick/work/i560o/ci/putgd_26.1025.1294~dev+g98878cfe31c2_amd64.deb",
+   "sha256": "5c77da8d6e25228061024afd9adcf55c61c25e87283920e39152eee4412a6300",
+   "binaries": {
+    "app": {
+     "path": "/usr/bin/putgd",
+     "sha256": "eccfe8c73e65615e46b2c593c890977c7aeedab8b5bc9a078a7d08d507494c8e",
+     "build": {
+      "schemaVersion": 1,
+      "version": "26.1025.1294-dev+g98878cfe31c2",
+      "baseVersion": "26.1025.1294",
+      "packageVersion": "26.1025.1294~dev+g98878cfe31c2",
+      "gitCommit": "98878cfe31c2506d25ea6cbec97af002210319d2",
+      "gitTree": "1a4c7e6d116a911d50dfbb52fc0ed2304cf627c8",
+      "commitCount": 1294,
+      "dirty": false,
+      "sourceProvenance": "git"
+     }
+    },
+    "capture_helper": {
+     "path": "/usr/bin/putgd-capture",
+     "sha256": "cc8ac5a7ea3f708ce2bbe468b9255eeb7363fa1a220100528619d8336336b093",
+     "build": {
+      "schemaVersion": 1,
+      "version": "26.1025.1294-dev+g98878cfe31c2",
+      "baseVersion": "26.1025.1294",
+      "packageVersion": "26.1025.1294~dev+g98878cfe31c2",
+      "gitCommit": "98878cfe31c2506d25ea6cbec97af002210319d2",
+      "gitTree": "1a4c7e6d116a911d50dfbb52fc0ed2304cf627c8",
+      "commitCount": 1294,
+      "dirty": false,
+      "sourceProvenance": "git"
+     }
+    },
+    "cli": {
+     "path": "/usr/bin/putgd-cli",
+     "sha256": "f8f51d1fd10729618b6886e3b70c64e884824e6f7c5079ba74ec42ccc346245e",
+     "build": {
+      "schemaVersion": 1,
+      "version": "26.1025.1294-dev+g98878cfe31c2",
+      "baseVersion": "26.1025.1294",
+      "packageVersion": "26.1025.1294~dev+g98878cfe31c2",
+      "gitCommit": "98878cfe31c2506d25ea6cbec97af002210319d2",
+      "gitTree": "1a4c7e6d116a911d50dfbb52fc0ed2304cf627c8",
+      "commitCount": 1294,
+      "dirty": false,
+      "sourceProvenance": "git"
+     }
+    },
+    "helper": {
+     "path": "/usr/bin/putgd-ui",
+     "sha256": "27564b720d3016ddf3d20ee7988538b8054ce47bd0566a7f695b2a382a74424c",
+     "build": {
+      "schemaVersion": 1,
+      "version": "26.1025.1294-dev+g98878cfe31c2",
+      "baseVersion": "26.1025.1294",
+      "packageVersion": "26.1025.1294~dev+g98878cfe31c2",
+      "gitCommit": "98878cfe31c2506d25ea6cbec97af002210319d2",
+      "gitTree": "1a4c7e6d116a911d50dfbb52fc0ed2304cf627c8",
+      "commitCount": 1294,
+      "dirty": false,
+      "sourceProvenance": "git"
+     }
+    }
+   }
+  },
+  "driver": {
+   "sha256": "3cb511e0f0e7e4de63afa68d0ae66a56a8f6abcc028aa0f2df426e27d21a6676",
+   "revision": "00ab777f2413a1fbd7670a7259dc614eced896e6",
+   "revisionSource": "explicit-declaration",
+   "sourceFiles": {
+    "tests/performance/physical_campaign.py": "3cb511e0f0e7e4de63afa68d0ae66a56a8f6abcc028aa0f2df426e27d21a6676",
+    "tests/performance/bench_ui_process.py": "a28c94b075036ea65f8eca8e068d480cff46ee959d4680593f5c4d55cce3fc40",
+    "tests/performance/observe_idle.py": "33fab955eb36d617ee0a2fd5de67cf0a54aab0994a3dccb3f70dac5111398efe",
+    "tests/performance/campaign_fixture.py": "330632490f68fb3621f19261f35e64643849b26190de256c969cdc89e79d41d9",
+    "tests/performance/campaign_ui.py": "86dd179d7ee6c4c0cae9728270dca133dbaf9b15975f05fb13965231669937dc",
+    "tests/performance/campaign_workloads.py": "179e837eab64ebc7f82c3a6237067070d208a75cf255b7cd4d5d970492337bf9",
+    "tests/performance/campaign_proxy.py": "39973a4603cedf82ae89250c222ae5f508f36aa127be4d501f2ee3c3eae0e98b",
+    "tests/performance/campaign_lifecycle.py": "e86141e204105fe6834d90933dd065377df0b444786eec5cc1340c11eabe6668",
+    "tests/performance/build_current_capture.py": "dfab0d0aefc471cd13eb3ec6e1bb6b0c57614ac424d2067eca4c5846de0f95bd",
+    "tests/performance/campaign_frames.py": "6c013f4cbce53b96ce6c2dd1b0b1d396f449d5017621654ae2e291a6c5cb6a97",
+    "tools/diagnostics/check_socket_paths.py": "7e8797ec6ea0014eeacd428f822ef3fe545a276247a7ad7e6de9b557a0937f55"
+   }
+  },
+  "parameters": {
+   "scenario": "memory",
+   "output": "/tmp/p560m1",
+   "package": "/home/patrick/work/i560o/ci/putgd_26.1025.1294~dev+g98878cfe31c2_amd64.deb",
+   "package_sha256": "5c77da8d6e25228061024afd9adcf55c61c25e87283920e39152eee4412a6300",
+   "version": "26.1025.1294-dev+g98878cfe31c2",
+   "source_revision": "98878cfe31c2506d25ea6cbec97af002210319d2",
+   "desktop_session": "c89",
+   "lock_session": "t3-i560-opus-ci1",
+   "app": "/usr/bin/putgd",
+   "cli": "/usr/bin/putgd-cli",
+   "helper": "/usr/bin/putgd-ui",
+   "capture_helper": "/usr/bin/putgd-capture",
+   "driver": null,
+   "capture_driver_manifest": null,
+   "fixture_root": null,
+   "driver_revision": "00ab777f2413a1fbd7670a7259dc614eced896e6",
+   "open_seconds": 30,
+   "vnc_port": 5900,
+   "endpoint": null,
+   "fixture_pid": null,
+   "fixture_source": null,
+   "enable_accessibility": false,
+   "native_driver": "/home/patrick/work/i560o/native495/native_acceptance.py",
+   "native_driver_revision": "72afd00bf2dbdaaa7e4bd3f847dc54f1da715f0e",
+   "native_driver_sha256": "347934c226f99cb0e509d5466c5df8116896e6bfac07d75fdfa4f4c2d06ca053",
+   "threshold_policy": null,
+   "settle_seconds": 300,
+   "history_pages": 200
+  },
+  "status": "complete",
+  "gates": {
+   "cold-cpu": {
+    "status": "pass",
+    "minimumSeconds": 300,
+    "exclusiveLimitPercentOneCore": 0.5
+   },
+   "cold-rss": {
+    "status": "pass",
+    "limitBytes": 41943040
+   },
+   "cold-pss": {
+    "status": "pass",
+    "limitBytes": 30408704
+   },
+   "historyOpenPss": {
+    "status": "fail",
+    "limitBytes": 62914560,
+    "minimumSeconds": 30,
+    "measuredSeconds": 30.044001811009366
+   },
+   "closed-cpu": {
+    "status": "pass",
+    "minimumSeconds": 300,
+    "exclusiveLimitPercentOneCore": 0.5
+   },
+   "closed-rss": {
+    "status": "pass",
+    "limitBytes": 41943040
+   },
+   "closed-pss": {
+    "status": "pass",
+    "limitBytes": 30408704
+   },
+   "historyPaintResponse": {
+    "status": "unassessed",
+    "reason": "external_paint_scenario_required"
+   },
+   "cleanup": {
+    "status": "pass"
+   }
+  },
+  "metrics": {
+   "coldClosed": {
+    "seconds": 300.0797761650174,
+    "residentCpuPercentOneCore": 0.003332447167149606,
+    "peakResidentRssBytes": 29978624,
+    "peakFamilyRssBytes": 29978624,
+    "peakFamilyPssBytes": 18788352
+   },
+   "historyOpenPeakFamilyPssBytes": 64642048,
+   "historyOpenMeasuredSeconds": 30.044001811009366,
+   "historyClosed": {
+    "seconds": 300.0454072880093,
+    "residentCpuPercentOneCore": 0.003332828884263222,
+    "peakResidentRssBytes": 30179328,
+    "peakFamilyRssBytes": 30179328,
+    "peakFamilyPssBytes": 18966528
+   },
+   "sampledProcessFamily": {
+    "peakTotals": {
+     "rssBytes": 118079488,
+     "pssBytes": 66666496,
+     "privateBytes": 53940224
+    },
+    "cpuPercentOneCoreLowerBound": 0.007893375410233529,
+    "observedProcessGenerations": 2,
+    "samplingSpanSeconds": 633.4425692610093,
+    "shortLivedChildrenMayBeMissed": true
+   }
+  },
+  "residentCleanup": [
+   {
+    "gracefulRequest": true,
+    "exitCode": 0,
+    "forced": false,
+    "remaining": [],
+    "socketAbsent": true,
+    "passed": true,
+    "errors": [],
+    "inventoryComplete": true,
+    "absenceVerified": true,
+    "inventoryDefinition": "observed PID/start/UID generations + resident process group + exact isolated runtime/data environment; no command lines exported"
+   },
+   {
+    "gracefulRequest": true,
+    "exitCode": 0,
+    "forced": false,
+    "remaining": [],
+    "socketAbsent": true,
+    "passed": true,
+    "errors": [],
+    "inventoryComplete": true,
+    "absenceVerified": true,
+    "inventoryDefinition": "observed PID/start/UID generations + resident process group + exact isolated runtime/data environment; no command lines exported"
+   }
+  ],
+  "limitations": [
+   "Capture witness observes X11 drawable paint, not compositor presentation.",
+   "CLI acknowledgements do not prove painted response.",
+   "Sequential sampled process memory can miss short-lived descendants.",
+   "Family CPU is a lower bound when a child exits between samples.",
+   "Shared desktop daemons are outside the resident process family.",
+   "Host quietness and reviewed sanitized visuals require coordinator evidence."
+  ]
+ }
+}

@@ -1,0 +1,26 @@
+Private synthetic observer receipts: /home/user/work/put.gd/src/build/contracts/cold-family-unit
+test_cap_failure_still_cleans_known_generations (__main__.ColdFamilyTests.test_cap_failure_still_cleans_known_generations) ... ok
+test_churn_recipe_bounds_loop_and_retains_interruptions (__main__.ColdFamilyTests.test_churn_recipe_bounds_loop_and_retains_interruptions) ... ok
+test_coverage_rejects_sparse_or_gapped_samples (__main__.ColdFamilyTests.test_coverage_rejects_sparse_or_gapped_samples) ... ok
+test_dirty_mixed_and_wrong_source_versions_reject_before_launch (__main__.ColdFamilyTests.test_dirty_mixed_and_wrong_source_versions_reject_before_launch) ... ok
+test_exited_or_fast_observed_descendant_rejects_single_resident (__main__.ColdFamilyTests.test_exited_or_fast_observed_descendant_rejects_single_resident) ... ok
+test_failure_diagnostics_exclude_sensitive_exception_content (__main__.ColdFamilyTests.test_failure_diagnostics_exclude_sensitive_exception_content) ... ok
+test_generation_rejects_pid_reuse_and_uid_change (__main__.ColdFamilyTests.test_generation_rejects_pid_reuse_and_uid_change) ... ok
+test_metadata_permission_normalization_requires_absent_process (__main__.ColdFamilyTests.test_metadata_permission_normalization_requires_absent_process) ... ok
+test_normal_root_disappearance_after_final_primary (__main__.ColdFamilyTests.test_normal_root_disappearance_after_final_primary) ... ok
+test_owned_child_and_task_children_esrch (__main__.ColdFamilyTests.test_owned_child_and_task_children_esrch) ... ok
+test_owned_metadata_esrch_retains_known_generations (__main__.ColdFamilyTests.test_owned_metadata_esrch_retains_known_generations) ... ok
+test_pidfd_binding_rejects_reused_generation_and_missing_api (__main__.ColdFamilyTests.test_pidfd_binding_rejects_reused_generation_and_missing_api) ... ok
+test_preflight_precedes_binary_version_probe (__main__.ColdFamilyTests.test_preflight_precedes_binary_version_probe) ... ok
+test_preidentification_dead_parent_live_orphan (__main__.ColdFamilyTests.test_preidentification_dead_parent_live_orphan) ... ok
+test_real_fork_exec_reparent_cleanup (__main__.ColdFamilyTests.test_real_fork_exec_reparent_cleanup) ... ok
+test_sample_esrch_is_not_owned_metadata_disappearance (__main__.ColdFamilyTests.test_sample_esrch_is_not_owned_metadata_disappearance) ... ok
+test_terminal_exit_does_not_hide_other_sample_failures (__main__.ColdFamilyTests.test_terminal_exit_does_not_hide_other_sample_failures) ... ok
+test_terminal_normalizer_rejects_unrelated_missing_files_and_live_proc (__main__.ColdFamilyTests.test_terminal_normalizer_rejects_unrelated_missing_files_and_live_proc) ... ok
+
+----------------------------------------------------------------------
+Ran 18 tests in 16.175s
+
+OK
+{"passed": false, "cohorts": 1, "receipt": "/home/user/work/put.gd/src/build/contracts/cold-family-unit/recipe-deadline/results.json"}
+{"passed": false, "cohorts": 1, "receipt": "/home/user/work/put.gd/src/build/contracts/cold-family-unit/recipe-interrupt/results.json"}

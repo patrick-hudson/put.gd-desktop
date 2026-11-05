@@ -1,0 +1,27 @@
+{
+  "name": "snapshots-v2-build-verify",
+  "requests": [
+    {
+      "sandboxId": "bx_q5wgf24n",
+      "operation": {
+        "attemptCount": 0,
+        "completedAt": null,
+        "expectedBy": null,
+        "id": "bdop_23fdd18727eb4b6aa5892223225d747c",
+        "kind": "sandbox",
+        "reason": "explicit",
+        "requestedAt": "2026-10-30T04:25:49.464Z",
+        "stage": "removing",
+        "status": "pending",
+        "targetId": "bx_q5wgf24n"
+      }
+    }
+  ],
+  "verified": true,
+  "finalState": "absent",
+  "verification": "boat list --all",
+  "deletedIds": [
+    "bx_q5wgf24n"
+  ],
+  "verifiedAt": 1793334353.521794
+}

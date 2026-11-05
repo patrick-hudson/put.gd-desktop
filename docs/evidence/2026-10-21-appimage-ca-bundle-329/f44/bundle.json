@@ -1,0 +1,8 @@
+{
+ "host": "fedora",
+ "PUTGD_CA_BUNDLE": {
+  "putgd": "/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem",
+  "putgd-pr334b.Ap": "(unset)",
+  "putgd-ui": "/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem"
+ }
+}

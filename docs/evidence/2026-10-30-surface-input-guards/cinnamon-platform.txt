@@ -1,0 +1,24 @@
+Linux putgd-lab 6.14.0-37-generic #37~24.04.1-Ubuntu SMP PREEMPT_DYNAMIC Thu Nov 20 10:25:38 UTC 2 x86_64 x86_64 x86_64 GNU/Linux
+
+PACKAGES
+cinnamon 6.6.4+zena
+gnome-shell 
+libqt6core6 
+libqt6core6t64:amd64 6.4.2+dfsg-21.1build5
+muffin 6.6.1+zena
+putgd 26.1030.2481~dev+g6ad9f957e654
+
+BINARIES
+97fe907a36c7138dee9acb3c923701d4646b474ee8af7be0765b2616fad1d8aa  /usr/bin/putgd
+5e063752d76a52aa58e200b78e2a683f82ca2257ee834e55074b1ab166e3ab46  /usr/bin/putgd-ui
+83126ff0ae8b6d6643ec9bae3c0e19b83f90bdc9302457922ea5f0b0497c72db  /usr/bin/putgd-capture
+
+QT_DYNAMIC_LIBRARIES
+	libQt6Network.so.6 => /lib/x86_64-linux-gnu/libQt6Network.so.6 (0x000078a8f8469000)
+	libQt6Widgets.so.6 => /lib/x86_64-linux-gnu/libQt6Widgets.so.6 (0x000078a8f7c00000)
+	libQt6Gui.so.6 => /lib/x86_64-linux-gnu/libQt6Gui.so.6 (0x000078a8f7400000)
+	libQt6DBus.so.6 => /lib/x86_64-linux-gnu/libQt6DBus.so.6 (0x000078a8f8ba0000)
+	libQt6Core.so.6 => /lib/x86_64-linux-gnu/libQt6Core.so.6 (0x000078a8f6e00000)
+
+SESSION
+x11 X-Cinnamon xcb

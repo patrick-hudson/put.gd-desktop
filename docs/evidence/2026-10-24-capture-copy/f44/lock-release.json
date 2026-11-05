@@ -1,0 +1,24 @@
+{
+  "lock": {
+    "owner": "capture-copy-466-492-493-474",
+    "session": "t3-0aa1b31c",
+    "host": "f44",
+    "purpose": "Quiet exact extracted-RPM GNOME #493/#474; preserve DNF queue, temporary user helper and scoped relogin",
+    "acquired": "2026-10-24T01:32:35Z",
+    "expires": "2026-10-24T02:17:35Z",
+    "heartbeat": "2026-10-24T01:53:20Z"
+  },
+  "releasedBy": "t3-0aa1b31c",
+  "check": {
+    "left": [],
+    "notMine": [],
+    "preexisting": [],
+    "unmatchedNotMine": []
+  },
+  "notes": [
+    "2 process(es) outside the desktop session (no DISPLAY or WAYLAND_DISPLAY; shared SSH work): 1956962 2923548"
+  ],
+  "event": "release",
+  "host": "f44",
+  "at": "2026-10-24T01:58:06Z"
+}

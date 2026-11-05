@@ -1,0 +1,10 @@
+Test project /home/patrick/work/pg382/build/dev
+    Start 89: login_startup_contract
+1/1 Test #89: login_startup_contract ...........   Passed    0.10 sec
+
+100% tests passed, 0 tests failed out of 1
+
+Label Time Summary:
+unit    =   0.10 sec*proc (1 test)
+
+Total Test time (real) =   0.11 sec

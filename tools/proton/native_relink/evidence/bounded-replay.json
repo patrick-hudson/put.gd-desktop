@@ -1,0 +1,108 @@
+{
+  "recordedUtc": "2026-10-31T19:49:23.204982+00:00",
+  "passed": true,
+  "scope": "Supplementary bounded-command replay using the retained source-built Bun. No native source build or live account operation repeated.",
+  "sourceBuiltRuntimeReused": true,
+  "allProofExecutableHashesMatchPrimaryExecution": true,
+  "result": {
+    "nativeBunSha256": "e2501fe8a1f12058166923347657d1a0732eac06d9361beff21b26f5870ef401",
+    "proofHelperSha256": "872e0637c2ca790132364509e2680d1553121518be8f894eacf014cab7e282d6",
+    "nativeCryptoProofSha256": "bf9070d61afb40028c5d13b0ec7924078eaf280d1731e20606724785d54b47d6",
+    "markers": [
+      "putgd-bun-native-proof putgd-jsc-source-proof putgd-tinycc-source-proof",
+      "1.4.4-canary.1+38afee6c8"
+    ],
+    "nativeVersion": "1.4.4",
+    "tinyccCompileAndExecute": true,
+    "compiledHelperCallsNativeSourceMarkers": true,
+    "compiledHelperTinyccCompileAndExecute": true,
+    "helperTests": 46,
+    "compiledStdioCases": 11,
+    "stdoutBytes": 1048337,
+    "crypto": {
+      "argon2Packet": true,
+      "rebuildRoundtrip": true,
+      "publishedDecryptsRebuilt": true,
+      "rebuiltDecryptsPublished": true,
+      "modifiedWasmMarker": true,
+      "markedInstantiations": 1
+    },
+    "productionHelperChanged": false,
+    "productionHelperSha256": "9fd4d72f86352cfcf2c8b6ba1db4102ed6f7b22660077698c700989e9fda8586",
+    "sourcePins": {
+      "sdk": "8a44654aece1609f0f7218be51c205103945abd8",
+      "crypto": "68b93b7d2cadd043cd08203710af382706ed1458",
+      "openpgp": "36198c3369ab8d4a02d70372d62f1aa8bc247dcb",
+      "bun": "38afee6c84fcf48c0edb2466aa4b27d287a59c30",
+      "webkit": "d6375c72affe0f70222cdcb45012b10f0bf3a9d5",
+      "tinycc": "05f0fafaa3be31e31d7b4b5c17dc60f62c991171",
+      "argon2id": "6fc76bcf69fbe07b5ec532a7912772d28f1ea43a"
+    },
+    "applicationSourceOverlayVerified": true,
+    "accountsOrServicesUsed": false,
+    "nativeBitIdentityClaimed": false
+  },
+  "commandTimeoutSeconds": 300,
+  "runnerSourceSha256": "d622031a357cda63768c252e7d67c2ba4dc1b3fff621dd8ea03d5b8103696426",
+  "driverSourceSha256": "81bf458d340ed60264806d5e05b5a37d77394fee3630d2da7c308a3a15137db7",
+  "logArchive": "/home/patrick/work/b1071/bounded-proof-logs.tar.gz",
+  "logArchiveSha256": "abb85828317f0be421488fad074ddb8e72003c54b69c54ed56a050074e78c51c",
+  "logArchiveReadbackVerified": true,
+  "primaryExecutionReceipt": "native-proof.json",
+  "setupFailurePreserved": {
+    "log": "/home/patrick/work/b1071/bounded-proof-driver.log",
+    "reason": "Minimal replay tar omitted empty log/proof directories; corrected before any proof command ran",
+    "testsOrServicesUsed": false
+  },
+  "files": {
+    "proof/native-proof-results.json": {
+      "bytes": 1533,
+      "sha256": "76eccee63f1f0d9b5bb9dd8689f0b853fd5cf133b88510566cb05b5f4b0b6948"
+    },
+    "logs/native-openpgp-build.log": {
+      "bytes": 116,
+      "sha256": "4ab03e5f9f3b8f3c45e760418e994e975fd5e2bf7010218ac4c2674802012ec7"
+    },
+    "logs/native-revision.log": {
+      "bytes": 97,
+      "sha256": "39b4f6123b51c44eeec1c97d454357d3b677887e36e810eb0057a64488509020"
+    },
+    "logs/native-openpgp-crypto.log": {
+      "bytes": 161,
+      "sha256": "3fbacd41c18ca8624f25f9db85faa0abe969992c39649e3c773738e366102538"
+    },
+    "logs/compiled-helper-native-revision.log": {
+      "bytes": 97,
+      "sha256": "39b4f6123b51c44eeec1c97d454357d3b677887e36e810eb0057a64488509020"
+    },
+    "logs/native-helper-tests.log": {
+      "bytes": 5437,
+      "sha256": "4eb2772cae33ec231e861e4922047277268398ef86832b12205569752ebce556"
+    },
+    "logs/native-version.log": {
+      "bytes": 6,
+      "sha256": "d03d8b268b4171328ac2458ce8ca82d69a1fde38469d4e4faae4f8fa8d8a5e35"
+    },
+    "logs/compiled-helper-tinycc-ffi.log": {
+      "bytes": 34,
+      "sha256": "55e4aceaf3d0318065eb7ed90cca5d1eb6740851205c51baf3e2c02709a505cd"
+    },
+    "logs/native-helper-smoke.log": {
+      "bytes": 62,
+      "sha256": "df1747b927df8e40609e1f5d6ce7fe145a341739e448b7c1bb358e606ed161a5"
+    },
+    "logs/native-tinycc-ffi.log": {
+      "bytes": 34,
+      "sha256": "55e4aceaf3d0318065eb7ed90cca5d1eb6740851205c51baf3e2c02709a505cd"
+    },
+    "logs/native-helper-stdout-build.log": {
+      "bytes": 109,
+      "sha256": "7249577959d9c571c96e6c89a471275cd1546ab21b6eea89259912684a7a87c8"
+    },
+    "logs/native-helper-build.log": {
+      "bytes": 124,
+      "sha256": "e228d0e98ac8703dcbc4ea83998d7fe02fefb30241cc8016513c0b8c72108245"
+    }
+  },
+  "ownContainerRemoved": true
+}

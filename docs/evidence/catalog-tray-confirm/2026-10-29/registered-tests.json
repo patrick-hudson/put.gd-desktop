@@ -1,0 +1,4499 @@
+{
+  "backtraceGraph" : 
+  {
+    "commands" : 
+    [
+      "add_test",
+      "include"
+    ],
+    "files" : 
+    [
+      "/home/user/work/put.gd/src/CMakeLists.txt",
+      "/home/user/work/put.gd/src/cmake/Proton.cmake",
+      "/home/user/work/put.gd/src/cmake/B2Tests.cmake"
+    ],
+    "nodes" : 
+    [
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 509,
+        "parent" : 0
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 514,
+        "parent" : 2
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 518,
+        "parent" : 4
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 523,
+        "parent" : 6
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 528,
+        "parent" : 8
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 533,
+        "parent" : 10
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 537,
+        "parent" : 12
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 543,
+        "parent" : 14
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 545,
+        "parent" : 16
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 552,
+        "parent" : 18
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 559,
+        "parent" : 20
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 613,
+        "parent" : 22
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 618,
+        "parent" : 24
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 625,
+        "parent" : 26
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 631,
+        "parent" : 28
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 639,
+        "parent" : 30
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 644,
+        "parent" : 32
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 657,
+        "parent" : 34
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 666,
+        "parent" : 36
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 670,
+        "parent" : 38
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 674,
+        "parent" : 40
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 682,
+        "parent" : 42
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 685,
+        "parent" : 44
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 688,
+        "parent" : 46
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 691,
+        "parent" : 48
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 706,
+        "parent" : 50
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 719,
+        "parent" : 52
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 732,
+        "parent" : 54
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 745,
+        "parent" : 56
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 753,
+        "parent" : 58
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 761,
+        "parent" : 60
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 765,
+        "parent" : 62
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 776,
+        "parent" : 64
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 781,
+        "parent" : 66
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 787,
+        "parent" : 68
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 790,
+        "parent" : 70
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 793,
+        "parent" : 72
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 806,
+        "parent" : 74
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 827,
+        "parent" : 76
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 832,
+        "parent" : 78
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 840,
+        "parent" : 80
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 845,
+        "parent" : 82
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 858,
+        "parent" : 84
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 860,
+        "parent" : 86
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 864,
+        "parent" : 88
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 868,
+        "parent" : 90
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 872,
+        "parent" : 92
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 876,
+        "parent" : 94
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 884,
+        "parent" : 96
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 885,
+        "parent" : 98
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 889,
+        "parent" : 100
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 892,
+        "parent" : 102
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 895,
+        "parent" : 104
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 898,
+        "parent" : 106
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 901,
+        "parent" : 108
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 905,
+        "parent" : 110
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 912,
+        "parent" : 112
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 925,
+        "parent" : 114
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 929,
+        "parent" : 116
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 932,
+        "parent" : 118
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 939,
+        "parent" : 120
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 942,
+        "parent" : 122
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 948,
+        "parent" : 124
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 956,
+        "parent" : 126
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 962,
+        "parent" : 128
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 968,
+        "parent" : 130
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 973,
+        "parent" : 132
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 979,
+        "parent" : 134
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 985,
+        "parent" : 136
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 1007,
+        "parent" : 138
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 1013,
+        "parent" : 140
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 1019,
+        "parent" : 142
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 1030,
+        "parent" : 144
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 1035,
+        "parent" : 146
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 1048,
+        "parent" : 148
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 1053,
+        "parent" : 150
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 1059,
+        "parent" : 152
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 1065,
+        "parent" : 154
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 1065,
+        "parent" : 156
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 1065,
+        "parent" : 158
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 1065,
+        "parent" : 160
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 1065,
+        "parent" : 162
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 1065,
+        "parent" : 164
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 1091,
+        "parent" : 166
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 1091,
+        "parent" : 168
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 1091,
+        "parent" : 170
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 1091,
+        "parent" : 172
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 1117,
+        "parent" : 174
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 1119,
+        "parent" : 176
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 1121,
+        "parent" : 178
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 1137,
+        "parent" : 180
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 1144,
+        "parent" : 182
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 1158,
+        "parent" : 184
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 1164,
+        "parent" : 186
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 1169,
+        "parent" : 188
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 1183,
+        "parent" : 190
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 1188,
+        "parent" : 192
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 1194,
+        "parent" : 194
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 1197,
+        "parent" : 196
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 1208,
+        "parent" : 198
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 1208,
+        "parent" : 200
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 1218,
+        "parent" : 202
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 1225,
+        "parent" : 204
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 1230,
+        "parent" : 206
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 1237,
+        "parent" : 208
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 1243,
+        "parent" : 210
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 1260,
+        "parent" : 212
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 1270,
+        "parent" : 214
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 1278,
+        "parent" : 216
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 1288,
+        "parent" : 218
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 1,
+        "file" : 0,
+        "line" : 1293,
+        "parent" : 220
+      },
+      {
+        "file" : 1,
+        "parent" : 221
+      },
+      {
+        "command" : 0,
+        "file" : 1,
+        "line" : 115,
+        "parent" : 222
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 1,
+        "file" : 0,
+        "line" : 1293,
+        "parent" : 224
+      },
+      {
+        "file" : 1,
+        "parent" : 225
+      },
+      {
+        "command" : 0,
+        "file" : 1,
+        "line" : 131,
+        "parent" : 226
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 1,
+        "file" : 0,
+        "line" : 1294,
+        "parent" : 228
+      },
+      {
+        "file" : 2,
+        "parent" : 229
+      },
+      {
+        "command" : 0,
+        "file" : 2,
+        "line" : 7,
+        "parent" : 230
+      }
+    ]
+  },
+  "kind" : "ctestInfo",
+  "tests" : 
+  [
+    {
+      "backtrace" : 1,
+      "command" : 
+      [
+        "/home/user/work/put.gd/src/build/dev/test_recording_storage"
+      ],
+      "name" : "recording_storage_integration",
+      "properties" : 
+      [
+        {
+          "name" : "ENVIRONMENT",
+          "value" : 
+          [
+            "QT_QPA_PLATFORM=offscreen"
+          ]
+        },
+        {
+          "name" : "LABELS",
+          "value" : 
+          [
+            "integration"
+          ]
+        },
+        {
+          "name" : "TIMEOUT",
+          "value" : 900.0
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/user/work/put.gd/src/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 3,
+      "command" : 
+      [
+        "/home/user/work/put.gd/src/build/dev/test_portal_streams"
+      ],
+      "name" : "portal_streams_contract",
+      "properties" : 
+      [
+        {
+          "name" : "LABELS",
+          "value" : 
+          [
+            "unit"
+          ]
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/user/work/put.gd/src/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 5,
+      "command" : 
+      [
+        "/home/user/work/put.gd/src/build/dev/test_wayland_acquisition"
+      ],
+      "name" : "wayland_acquisition_contract",
+      "properties" : 
+      [
+        {
+          "name" : "LABELS",
+          "value" : 
+          [
+            "integration"
+          ]
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/user/work/put.gd/src/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 7,
+      "command" : 
+      [
+        "/home/user/work/put.gd/src/build/dev/test_export_av_sync"
+      ],
+      "name" : "export_av_sync_contract",
+      "properties" : 
+      [
+        {
+          "name" : "LABELS",
+          "value" : 
+          [
+            "unit"
+          ]
+        },
+        {
+          "name" : "RESOURCE_GROUPS",
+          "value" : 
+          [
+            {
+              "requirements" : 
+              [
+                {
+                  ".type" : "cpu",
+                  "slots" : 2
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/user/work/put.gd/src/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 9,
+      "command" : 
+      [
+        "/home/user/work/put.gd/src/build/dev/test_poster"
+      ],
+      "name" : "poster_contract",
+      "properties" : 
+      [
+        {
+          "name" : "LABELS",
+          "value" : 
+          [
+            "unit"
+          ]
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/user/work/put.gd/src/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 11,
+      "command" : 
+      [
+        "/home/user/work/put.gd/src/build/dev/test_pause_timeline"
+      ],
+      "name" : "pause_timeline_contract",
+      "properties" : 
+      [
+        {
+          "name" : "LABELS",
+          "value" : 
+          [
+            "unit"
+          ]
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/user/work/put.gd/src/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 13,
+      "command" : 
+      [
+        "/home/user/work/put.gd/src/build/dev/test_record_runtime"
+      ],
+      "name" : "record_runtime_contract",
+      "properties" : 
+      [
+        {
+          "name" : "LABELS",
+          "value" : 
+          [
+            "unit"
+          ]
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/user/work/put.gd/src/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 15,
+      "command" : 
+      [
+        "/home/user/work/put.gd/src/build/dev/test_bar_placement"
+      ],
+      "name" : "bar_placement_contract",
+      "properties" : 
+      [
+        {
+          "name" : "ENVIRONMENT",
+          "value" : 
+          [
+            "QT_QPA_PLATFORM=offscreen:configfile=/home/user/work/put.gd/src/tests/fixtures/offscreen-three-monitors.json",
+            "PUTGD_TEST_SCREENS=3"
+          ]
+        },
+        {
+          "name" : "LABELS",
+          "value" : 
+          [
+            "unit"
+          ]
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/user/work/put.gd/src/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 17,
+      "command" : 
+      [
+        "/home/user/work/put.gd/src/build/dev/test_bar_placement"
+      ],
+      "name" : "bar_placement_single_monitor_contract",
+      "properties" : 
+      [
+        {
+          "name" : "ENVIRONMENT",
+          "value" : 
+          [
+            "QT_QPA_PLATFORM=offscreen:configfile=/home/user/work/put.gd/src/tests/fixtures/offscreen-one-monitor.json",
+            "PUTGD_TEST_SCREENS=1"
+          ]
+        },
+        {
+          "name" : "LABELS",
+          "value" : 
+          [
+            "unit"
+          ]
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/user/work/put.gd/src/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 19,
+      "command" : 
+      [
+        "/home/user/work/put.gd/src/build/dev/test_review_window"
+      ],
+      "name" : "gui_review_window",
+      "properties" : 
+      [
+        {
+          "name" : "ENVIRONMENT",
+          "value" : 
+          [
+            "QT_QPA_PLATFORM=offscreen:configfile=/home/user/work/put.gd/src/tests/fixtures/offscreen-one-monitor.json"
+          ]
+        },
+        {
+          "name" : "LABELS",
+          "value" : 
+          [
+            "integration"
+          ]
+        },
+        {
+          "name" : "TIMEOUT",
+          "value" : 600.0
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/user/work/put.gd/src/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 21,
+      "command" : 
+      [
+        "/home/user/work/put.gd/src/build/dev/test_record_identity"
+      ],
+      "name" : "record_identity_contract",
+      "properties" : 
+      [
+        {
+          "name" : "ENVIRONMENT",
+          "value" : 
+          [
+            "QT_QPA_PLATFORM=offscreen"
+          ]
+        },
+        {
+          "name" : "LABELS",
+          "value" : 
+          [
+            "unit"
+          ]
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/user/work/put.gd/src/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 23,
+      "command" : 
+      [
+        "/home/user/work/put.gd/src/build/dev/test_kde_region_control"
+      ],
+      "name" : "kde_region_control",
+      "properties" : 
+      [
+        {
+          "name" : "LABELS",
+          "value" : 
+          [
+            "integration"
+          ]
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/user/work/put.gd/src/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 25,
+      "command" : 
+      [
+        "/home/user/work/put.gd/src/build/dev/test_native_session"
+      ],
+      "name" : "native_session_guards",
+      "properties" : 
+      [
+        {
+          "name" : "LABELS",
+          "value" : 
+          [
+            "integration"
+          ]
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/user/work/put.gd/src/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 27,
+      "command" : 
+      [
+        "/usr/bin/dbus-run-session",
+        "--config-file=/home/user/work/put.gd/src/tests/fixtures/dbus-session-isolated.conf",
+        "--",
+        "/home/user/work/put.gd/src/build/dev/test_native_tray"
+      ],
+      "name" : "native_tray_integration",
+      "properties" : 
+      [
+        {
+          "name" : "LABELS",
+          "value" : 
+          [
+            "integration"
+          ]
+        },
+        {
+          "name" : "TIMEOUT",
+          "value" : 900.0
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/user/work/put.gd/src/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 29,
+      "command" : 
+      [
+        "/home/user/work/put.gd/src/build/dev/test_capture_control"
+      ],
+      "name" : "capture_control_integration",
+      "properties" : 
+      [
+        {
+          "name" : "LABELS",
+          "value" : 
+          [
+            "integration"
+          ]
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/user/work/put.gd/src/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 31,
+      "command" : 
+      [
+        "/usr/bin/xvfb-run",
+        "-n",
+        "200",
+        "-a",
+        "-s",
+        "-screen 0 1280x800x24 -noreset",
+        "/home/user/work/put.gd/src/build/dev/test_capture_process"
+      ],
+      "name" : "capture_process_integration",
+      "properties" : 
+      [
+        {
+          "name" : "ENVIRONMENT",
+          "value" : 
+          [
+            "QT_IMAGEIO_MAXALLOC=1"
+          ]
+        },
+        {
+          "name" : "LABELS",
+          "value" : 
+          [
+            "integration"
+          ]
+        },
+        {
+          "name" : "TIMEOUT",
+          "value" : 900.0
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/user/work/put.gd/src/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 33,
+      "command" : 
+      [
+        "/usr/bin/dbus-run-session",
+        "--",
+        "xvfb-run",
+        "-n",
+        "201",
+        "-a",
+        "-s",
+        "-screen 0 1280x800x24 -noreset",
+        "/home/user/work/put.gd/src/build/dev/test_x11_core_clipboard"
+      ],
+      "name" : "x11_core_clipboard",
+      "properties" : 
+      [
+        {
+          "name" : "ENVIRONMENT",
+          "value" : 
+          [
+            "QT_QPA_PLATFORM=xcb",
+            "XDG_SESSION_TYPE=x11",
+            "WAYLAND_DISPLAY="
+          ]
+        },
+        {
+          "name" : "LABELS",
+          "value" : 
+          [
+            "integration"
+          ]
+        },
+        {
+          "name" : "TIMEOUT",
+          "value" : 900.0
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/user/work/put.gd/src/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 35,
+      "command" : 
+      [
+        "/usr/bin/dbus-run-session",
+        "--",
+        "xvfb-run",
+        "-n",
+        "202",
+        "-a",
+        "-s",
+        "-screen 0 1280x800x24 -noreset",
+        "/home/user/work/put.gd/src/build/dev/test_x11_clipboard_import"
+      ],
+      "name" : "x11_clipboard_import",
+      "properties" : 
+      [
+        {
+          "name" : "ENVIRONMENT",
+          "value" : 
+          [
+            "QT_QPA_PLATFORM=xcb",
+            "XDG_SESSION_TYPE=x11",
+            "WAYLAND_DISPLAY="
+          ]
+        },
+        {
+          "name" : "LABELS",
+          "value" : 
+          [
+            "integration"
+          ]
+        },
+        {
+          "name" : "TIMEOUT",
+          "value" : 900.0
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/user/work/put.gd/src/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 37,
+      "command" : 
+      [
+        "/usr/bin/dbus-run-session",
+        "--",
+        "xvfb-run",
+        "-n",
+        "203",
+        "-a",
+        "-s",
+        "-screen 0 1280x800x24 -noreset",
+        "/home/user/work/put.gd/src/build/dev/test_x11_capture_decode"
+      ],
+      "name" : "x11_capture_decode",
+      "properties" : 
+      [
+        {
+          "name" : "ENVIRONMENT",
+          "value" : 
+          [
+            "QT_QPA_PLATFORM=xcb",
+            "XDG_SESSION_TYPE=x11",
+            "WAYLAND_DISPLAY="
+          ]
+        },
+        {
+          "name" : "LABELS",
+          "value" : 
+          [
+            "integration"
+          ]
+        },
+        {
+          "name" : "TIMEOUT",
+          "value" : 900.0
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/user/work/put.gd/src/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 39,
+      "command" : 
+      [
+        "/usr/bin/xvfb-run",
+        "-n",
+        "204",
+        "-a",
+        "-s",
+        "-screen 0 1280x800x24 -noreset",
+        "/home/user/work/put.gd/src/build/dev/test_x11_native_snapshot"
+      ],
+      "name" : "x11_native_snapshot",
+      "properties" : 
+      [
+        {
+          "name" : "ENVIRONMENT",
+          "value" : 
+          [
+            "QT_QPA_PLATFORM=xcb",
+            "XDG_SESSION_TYPE=x11",
+            "WAYLAND_DISPLAY="
+          ]
+        },
+        {
+          "name" : "LABELS",
+          "value" : 
+          [
+            "integration"
+          ]
+        },
+        {
+          "name" : "TIMEOUT",
+          "value" : 900.0
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/user/work/put.gd/src/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 41,
+      "command" : 
+      [
+        "/usr/bin/cmake",
+        "-DREPO_ROOT=/home/user/work/put.gd/src",
+        "-DTEST_ROOT=/home/user/work/put.gd/src/build/dev/Testing/version-contract-Debug",
+        "-P",
+        "/home/user/work/put.gd/src/tests/cmake/version_contract.cmake"
+      ],
+      "name" : "version_contract",
+      "properties" : 
+      [
+        {
+          "name" : "LABELS",
+          "value" : 
+          [
+            "integration"
+          ]
+        },
+        {
+          "name" : "RESOURCE_GROUPS",
+          "value" : 
+          [
+            {
+              "requirements" : 
+              [
+                {
+                  ".type" : "cpu",
+                  "slots" : 1
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name" : "TIMEOUT",
+          "value" : 900.0
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/user/work/put.gd/src/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 43,
+      "command" : 
+      [
+        "/home/user/work/put.gd/src/build/dev/test_kde_shortcut_normalization"
+      ],
+      "name" : "kde_shortcut_normalization",
+      "properties" : 
+      [
+        {
+          "name" : "LABELS",
+          "value" : 
+          [
+            "unit"
+          ]
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/user/work/put.gd/src/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 45,
+      "command" : 
+      [
+        "/usr/bin/dbus-run-session",
+        "--",
+        "/home/user/work/put.gd/src/build/dev/test_kde_shortcuts"
+      ],
+      "name" : "kde_shortcuts_integration",
+      "properties" : 
+      [
+        {
+          "name" : "LABELS",
+          "value" : 
+          [
+            "integration"
+          ]
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/user/work/put.gd/src/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 47,
+      "command" : 
+      [
+        "/home/user/work/put.gd/src/build/dev/test_kde_keyboard_map"
+      ],
+      "name" : "kde_keyboard_map",
+      "properties" : 
+      [
+        {
+          "name" : "LABELS",
+          "value" : 
+          [
+            "unit"
+          ]
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/user/work/put.gd/src/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 49,
+      "command" : 
+      [
+        "/home/user/work/put.gd/src/build/dev/test_shortcut_keyboard"
+      ],
+      "name" : "shortcut_keyboard",
+      "properties" : 
+      [
+        {
+          "name" : "LABELS",
+          "value" : 
+          [
+            "unit"
+          ]
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/user/work/put.gd/src/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 51,
+      "command" : 
+      [
+        "/usr/bin/dbus-run-session",
+        "--",
+        "/home/user/work/put.gd/src/build/dev/test_kde_ownership"
+      ],
+      "name" : "kde_ownership_integration",
+      "properties" : 
+      [
+        {
+          "name" : "ENVIRONMENT",
+          "value" : 
+          [
+            "QT_QPA_PLATFORM=offscreen"
+          ]
+        },
+        {
+          "name" : "LABELS",
+          "value" : 
+          [
+            "integration"
+          ]
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/user/work/put.gd/src/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 53,
+      "command" : 
+      [
+        "/home/user/work/put.gd/src/build/dev/test_kde_clipboard_import"
+      ],
+      "name" : "kde_clipboard_import",
+      "properties" : 
+      [
+        {
+          "name" : "LABELS",
+          "value" : 
+          [
+            "integration"
+          ]
+        },
+        {
+          "name" : "TIMEOUT",
+          "value" : 600.0
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/user/work/put.gd/src/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 55,
+      "command" : 
+      [
+        "/home/user/work/put.gd/src/build/dev/test_image_job"
+      ],
+      "name" : "image_job_integration",
+      "properties" : 
+      [
+        {
+          "name" : "ENVIRONMENT",
+          "value" : 
+          [
+            "QT_QPA_PLATFORM=offscreen"
+          ]
+        },
+        {
+          "name" : "LABELS",
+          "value" : 
+          [
+            "integration"
+          ]
+        },
+        {
+          "name" : "RESOURCE_GROUPS",
+          "value" : 
+          [
+            {
+              "requirements" : 
+              [
+                {
+                  ".type" : "cpu",
+                  "slots" : 1
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name" : "TIMEOUT",
+          "value" : 1200.0
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/user/work/put.gd/src/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 57,
+      "command" : 
+      [
+        "/home/user/work/put.gd/src/build/dev/test_poster_job"
+      ],
+      "name" : "poster_job_integration",
+      "properties" : 
+      [
+        {
+          "name" : "LABELS",
+          "value" : 
+          [
+            "integration"
+          ]
+        },
+        {
+          "name" : "RESOURCE_GROUPS",
+          "value" : 
+          [
+            {
+              "requirements" : 
+              [
+                {
+                  ".type" : "cpu",
+                  "slots" : 1
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name" : "TIMEOUT",
+          "value" : 1200.0
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/user/work/put.gd/src/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 59,
+      "command" : 
+      [
+        "/home/user/work/put.gd/src/build/dev/test_ui_split_services"
+      ],
+      "name" : "ui_split_services_integration",
+      "properties" : 
+      [
+        {
+          "name" : "ENVIRONMENT",
+          "value" : 
+          [
+            "QT_QPA_PLATFORM=offscreen"
+          ]
+        },
+        {
+          "name" : "LABELS",
+          "value" : 
+          [
+            "integration"
+          ]
+        },
+        {
+          "name" : "TIMEOUT",
+          "value" : 450.0
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/user/work/put.gd/src/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 61,
+      "command" : 
+      [
+        "/home/user/work/put.gd/src/build/dev/test_ui_process"
+      ],
+      "name" : "ui_process_integration",
+      "properties" : 
+      [
+        {
+          "name" : "LABELS",
+          "value" : 
+          [
+            "integration"
+          ]
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/user/work/put.gd/src/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 63,
+      "command" : 
+      [
+        "/home/user/work/put.gd/src/build/dev/test_editor"
+      ],
+      "name" : "editor_contract",
+      "properties" : 
+      [
+        {
+          "name" : "ENVIRONMENT",
+          "value" : 
+          [
+            "QT_QPA_PLATFORM=offscreen"
+          ]
+        },
+        {
+          "name" : "LABELS",
+          "value" : 
+          [
+            "integration"
+          ]
+        },
+        {
+          "name" : "RESOURCE_GROUPS",
+          "value" : 
+          [
+            {
+              "requirements" : 
+              [
+                {
+                  ".type" : "cpu",
+                  "slots" : 1
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name" : "TIMEOUT",
+          "value" : 1200.0
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/user/work/put.gd/src/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 65,
+      "command" : 
+      [
+        "/home/user/work/put.gd/src/build/dev/test_editor_job"
+      ],
+      "name" : "editor_job_integration",
+      "properties" : 
+      [
+        {
+          "name" : "ENVIRONMENT",
+          "value" : 
+          [
+            "QT_QPA_PLATFORM=offscreen"
+          ]
+        },
+        {
+          "name" : "LABELS",
+          "value" : 
+          [
+            "integration"
+          ]
+        },
+        {
+          "name" : "TIMEOUT",
+          "value" : 1800.0
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/user/work/put.gd/src/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 67,
+      "command" : 
+      [
+        "/home/user/work/put.gd/src/build/dev/test_edit_operations"
+      ],
+      "name" : "edit_operations_integration",
+      "properties" : 
+      [
+        {
+          "name" : "ENVIRONMENT",
+          "value" : 
+          [
+            "QT_QPA_PLATFORM=offscreen"
+          ]
+        },
+        {
+          "name" : "LABELS",
+          "value" : 
+          [
+            "integration"
+          ]
+        },
+        {
+          "name" : "RESOURCE_GROUPS",
+          "value" : 
+          [
+            {
+              "requirements" : 
+              [
+                {
+                  ".type" : "cpu",
+                  "slots" : 1
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name" : "TIMEOUT",
+          "value" : 1800.0
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/user/work/put.gd/src/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 69,
+      "command" : 
+      [
+        "/home/user/work/put.gd/src/build/dev/test_ui_endpoints"
+      ],
+      "name" : "ui_endpoints_integration",
+      "properties" : 
+      [
+        {
+          "name" : "LABELS",
+          "value" : 
+          [
+            "integration"
+          ]
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/user/work/put.gd/src/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 71,
+      "command" : 
+      [
+        "/home/user/work/put.gd/src/build/dev/test_ui_control"
+      ],
+      "name" : "ui_control_integration",
+      "properties" : 
+      [
+        {
+          "name" : "LABELS",
+          "value" : 
+          [
+            "integration"
+          ]
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/user/work/put.gd/src/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 73,
+      "command" : 
+      [
+        "/home/user/work/put.gd/src/build/dev/test_session_client"
+      ],
+      "name" : "session_client_integration",
+      "properties" : 
+      [
+        {
+          "name" : "LABELS",
+          "value" : 
+          [
+            "integration"
+          ]
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/user/work/put.gd/src/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 75,
+      "command" : 
+      [
+        "/home/user/work/put.gd/src/build/dev/test_version"
+      ],
+      "name" : "version_integration",
+      "properties" : 
+      [
+        {
+          "name" : "LABELS",
+          "value" : 
+          [
+            "integration"
+          ]
+        },
+        {
+          "name" : "TIMEOUT",
+          "value" : 300.0
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/user/work/put.gd/src/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 77,
+      "command" : 
+      [
+        "/home/user/work/put.gd/src/build/dev/test_editor_window"
+      ],
+      "name" : "gui_editor_window",
+      "properties" : 
+      [
+        {
+          "name" : "ENVIRONMENT",
+          "value" : 
+          [
+            "QT_QPA_PLATFORM=offscreen"
+          ]
+        },
+        {
+          "name" : "LABELS",
+          "value" : 
+          [
+            "integration"
+          ]
+        },
+        {
+          "name" : "TIMEOUT",
+          "value" : 600.0
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/user/work/put.gd/src/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 79,
+      "command" : 
+      [
+        "/home/user/work/put.gd/src/build/dev/test_gui_application"
+      ],
+      "name" : "gui_application",
+      "properties" : 
+      [
+        {
+          "name" : "ENVIRONMENT",
+          "value" : 
+          [
+            "QT_QPA_PLATFORM=offscreen"
+          ]
+        },
+        {
+          "name" : "ENVIRONMENT_MODIFICATION",
+          "value" : 
+          [
+            "DBUS_SESSION_BUS_ADDRESS=set:unix:path=/nonexistent/putgd-test-no-session-bus",
+            "XDG_CURRENT_DESKTOP=unset:",
+            "QT_QPA_PLATFORMTHEME=unset:"
+          ]
+        },
+        {
+          "name" : "LABELS",
+          "value" : 
+          [
+            "integration"
+          ]
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/user/work/put.gd/src/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 81,
+      "command" : 
+      [
+        "/home/user/work/put.gd/src/build/dev/test_gui_window_buttons"
+      ],
+      "name" : "gui_window_buttons",
+      "properties" : 
+      [
+        {
+          "name" : "ENVIRONMENT",
+          "value" : 
+          [
+            "QT_QPA_PLATFORM=offscreen",
+            "XDG_CURRENT_DESKTOP="
+          ]
+        },
+        {
+          "name" : "LABELS",
+          "value" : 
+          [
+            "integration"
+          ]
+        },
+        {
+          "name" : "TIMEOUT",
+          "value" : 300.0
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/user/work/put.gd/src/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 83,
+      "command" : 
+      [
+        "/home/user/work/put.gd/src/build/dev/test_gui_theme"
+      ],
+      "name" : "gui_theme",
+      "properties" : 
+      [
+        {
+          "name" : "ENVIRONMENT",
+          "value" : 
+          [
+            "QT_QPA_PLATFORM=offscreen"
+          ]
+        },
+        {
+          "name" : "ENVIRONMENT_MODIFICATION",
+          "value" : 
+          [
+            "DBUS_SESSION_BUS_ADDRESS=set:unix:path=/nonexistent/putgd-test-no-session-bus",
+            "XDG_CURRENT_DESKTOP=unset:",
+            "QT_QPA_PLATFORMTHEME=unset:"
+          ]
+        },
+        {
+          "name" : "LABELS",
+          "value" : 
+          [
+            "integration"
+          ]
+        },
+        {
+          "name" : "TIMEOUT",
+          "value" : 600.0
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/user/work/put.gd/src/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 85,
+      "command" : 
+      [
+        "/home/user/work/put.gd/src/build/dev/test_gui_tray"
+      ],
+      "name" : "gui_tray",
+      "properties" : 
+      [
+        {
+          "name" : "ENVIRONMENT",
+          "value" : 
+          [
+            "QT_QPA_PLATFORM=offscreen"
+          ]
+        },
+        {
+          "name" : "LABELS",
+          "value" : 
+          [
+            "integration"
+          ]
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/user/work/put.gd/src/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 87,
+      "command" : 
+      [
+        "/home/user/work/put.gd/src/build/dev/test_gui_version"
+      ],
+      "name" : "gui_version",
+      "properties" : 
+      [
+        {
+          "name" : "ENVIRONMENT",
+          "value" : 
+          [
+            "QT_QPA_PLATFORM=offscreen"
+          ]
+        },
+        {
+          "name" : "LABELS",
+          "value" : 
+          [
+            "integration"
+          ]
+        },
+        {
+          "name" : "TIMEOUT",
+          "value" : 300.0
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/user/work/put.gd/src/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 89,
+      "command" : 
+      [
+        "/home/user/work/put.gd/src/build/dev/test_release_link"
+      ],
+      "name" : "release_link_contract",
+      "properties" : 
+      [
+        {
+          "name" : "LABELS",
+          "value" : 
+          [
+            "unit"
+          ]
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/user/work/put.gd/src/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 91,
+      "command" : 
+      [
+        "/home/user/work/put.gd/src/build/dev/test_update"
+      ],
+      "name" : "update_feed_contract",
+      "properties" : 
+      [
+        {
+          "name" : "LABELS",
+          "value" : 
+          [
+            "unit"
+          ]
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/user/work/put.gd/src/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 93,
+      "command" : 
+      [
+        "/home/user/work/put.gd/src/build/dev/test_update_check"
+      ],
+      "name" : "update_check_request",
+      "properties" : 
+      [
+        {
+          "name" : "LABELS",
+          "value" : 
+          [
+            "unit"
+          ]
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/user/work/put.gd/src/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 95,
+      "command" : 
+      [
+        "/home/user/work/put.gd/src/build/dev/test_appimage_install"
+      ],
+      "name" : "update_appimage_install_files",
+      "properties" : 
+      [
+        {
+          "name" : "LABELS",
+          "value" : 
+          [
+            "integration"
+          ]
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/user/work/put.gd/src/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 97,
+      "command" : 
+      [
+        "/home/user/work/put.gd/src/build/dev/test_minisign"
+      ],
+      "name" : "update_minisign_verify",
+      "properties" : 
+      [
+        {
+          "name" : "LABELS",
+          "value" : 
+          [
+            "unit"
+          ]
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/user/work/put.gd/src"
+        }
+      ]
+    },
+    {
+      "backtrace" : 99,
+      "command" : 
+      [
+        "/home/user/work/put.gd/src/build/dev/test_update_install"
+      ],
+      "name" : "update_appimage_install_child",
+      "properties" : 
+      [
+        {
+          "name" : "LABELS",
+          "value" : 
+          [
+            "unit"
+          ]
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/user/work/put.gd/src/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 101,
+      "command" : 
+      [
+        "/home/user/work/put.gd/src/build/dev/test_update_service"
+      ],
+      "name" : "update_service_schedule",
+      "properties" : 
+      [
+        {
+          "name" : "LABELS",
+          "value" : 
+          [
+            "integration"
+          ]
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/user/work/put.gd/src/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 103,
+      "command" : 
+      [
+        "/home/user/work/put.gd/src/build/dev/test_host_environment"
+      ],
+      "name" : "host_environment_contract",
+      "properties" : 
+      [
+        {
+          "name" : "LABELS",
+          "value" : 
+          [
+            "integration"
+          ]
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/user/work/put.gd/src/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 105,
+      "command" : 
+      [
+        "/home/user/work/put.gd/src/build/dev/test_system_updates"
+      ],
+      "name" : "update_system_repository",
+      "properties" : 
+      [
+        {
+          "name" : "LABELS",
+          "value" : 
+          [
+            "unit"
+          ]
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/user/work/put.gd/src/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 107,
+      "command" : 
+      [
+        "/home/user/work/put.gd/src/build/dev/test_geometry"
+      ],
+      "name" : "geometry_contract",
+      "properties" : 
+      [
+        {
+          "name" : "LABELS",
+          "value" : 
+          [
+            "unit"
+          ]
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/user/work/put.gd/src/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 109,
+      "command" : 
+      [
+        "/home/user/work/put.gd/src/build/dev/test_allocator_policy"
+      ],
+      "name" : "allocator_policy_contract",
+      "properties" : 
+      [
+        {
+          "name" : "LABELS",
+          "value" : 
+          [
+            "integration"
+          ]
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/user/work/put.gd/src/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 111,
+      "command" : 
+      [
+        "/home/user/work/put.gd/src/build/dev/test_x11_raw_key_matcher"
+      ],
+      "name" : "x11_raw_key_matcher",
+      "properties" : 
+      [
+        {
+          "name" : "LABELS",
+          "value" : 
+          [
+            "unit"
+          ]
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/user/work/put.gd/src/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 113,
+      "command" : 
+      [
+        "/usr/bin/dbus-run-session",
+        "--",
+        "/usr/bin/xvfb-run",
+        "-n",
+        "205",
+        "-a",
+        "/home/user/work/put.gd/src/build/dev/test_native_tray",
+        "rejectedGlobalShortcutReportsMissingDestination"
+      ],
+      "name" : "native_shortcut_rejection_integration",
+      "properties" : 
+      [
+        {
+          "name" : "ENVIRONMENT",
+          "value" : 
+          [
+            "PUTGD_ISOLATED_SHORTCUT_TEST=1",
+            "QT_QPA_PLATFORM=xcb",
+            "XDG_SESSION_TYPE=x11",
+            "WAYLAND_DISPLAY="
+          ]
+        },
+        {
+          "name" : "LABELS",
+          "value" : 
+          [
+            "integration"
+          ]
+        },
+        {
+          "name" : "TIMEOUT",
+          "value" : 600.0
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/user/work/put.gd/src/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 115,
+      "command" : 
+      [
+        "/home/user/work/put.gd/src/build/dev/test_resident_lifecycle",
+        "retireEndsTheExactResident",
+        "retireRefusesAnyOtherProcess"
+      ],
+      "name" : "resident_retire_integration",
+      "properties" : 
+      [
+        {
+          "name" : "LABELS",
+          "value" : 
+          [
+            "integration"
+          ]
+        },
+        {
+          "name" : "TIMEOUT",
+          "value" : 600.0
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/user/work/put.gd/src/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 117,
+      "command" : 
+      [
+        "/usr/bin/dbus-run-session",
+        "--config-file=/home/user/work/put.gd/src/tests/fixtures/dbus-session-isolated.conf",
+        "--",
+        "/home/user/work/put.gd/src/build/dev/test_resident_lifecycle",
+        "displayLossEndsResident"
+      ],
+      "name" : "resident_display_loss_integration",
+      "properties" : 
+      [
+        {
+          "name" : "ENVIRONMENT",
+          "value" : 
+          [
+            "PUTGD_ISOLATED_RESIDENT_TEST=1",
+            "PUTGD_TEST_XVFB_DISPLAY=206"
+          ]
+        },
+        {
+          "name" : "LABELS",
+          "value" : 
+          [
+            "integration"
+          ]
+        },
+        {
+          "name" : "TIMEOUT",
+          "value" : 900.0
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/user/work/put.gd/src/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 119,
+      "command" : 
+      [
+        "/usr/bin/dbus-run-session",
+        "--",
+        "/usr/bin/xvfb-run",
+        "-n",
+        "207",
+        "-a",
+        "/home/user/work/put.gd/src/build/dev/test_native_tray",
+        "backgroundStartupWaitsForLateTray"
+      ],
+      "name" : "native_background_startup_integration",
+      "properties" : 
+      [
+        {
+          "name" : "ENVIRONMENT",
+          "value" : 
+          [
+            "PUTGD_ISOLATED_STARTUP_TEST=1",
+            "QT_QPA_PLATFORM=xcb",
+            "XDG_SESSION_TYPE=x11",
+            "WAYLAND_DISPLAY="
+          ]
+        },
+        {
+          "name" : "LABELS",
+          "value" : 
+          [
+            "integration"
+          ]
+        },
+        {
+          "name" : "TIMEOUT",
+          "value" : 1200.0
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/user/work/put.gd/src/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 121,
+      "command" : 
+      [
+        "/usr/bin/dbus-run-session",
+        "--config-file=/home/user/work/put.gd/src/tests/fixtures/dbus-session-isolated.conf",
+        "--",
+        "/home/user/work/put.gd/src/build/dev/test_file_dialog"
+      ],
+      "name" : "file_dialog_integration",
+      "properties" : 
+      [
+        {
+          "name" : "ENVIRONMENT",
+          "value" : 
+          [
+            "QT_QPA_PLATFORM=offscreen"
+          ]
+        },
+        {
+          "name" : "LABELS",
+          "value" : 
+          [
+            "integration"
+          ]
+        },
+        {
+          "name" : "TIMEOUT",
+          "value" : 600.0
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/user/work/put.gd/src/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 123,
+      "command" : 
+      [
+        "/usr/bin/dbus-run-session",
+        "--config-file=/home/user/work/put.gd/src/tests/fixtures/dbus-session-isolated.conf",
+        "--",
+        "/usr/bin/xvfb-run",
+        "-n",
+        "208",
+        "-a",
+        "/home/user/work/put.gd/src/build/dev/test_file_dialog",
+        "parentWindowOnX11"
+      ],
+      "name" : "file_dialog_x11_parent",
+      "properties" : 
+      [
+        {
+          "name" : "ENVIRONMENT",
+          "value" : 
+          [
+            "QT_QPA_PLATFORM=xcb",
+            "XDG_SESSION_TYPE=x11",
+            "WAYLAND_DISPLAY="
+          ]
+        },
+        {
+          "name" : "LABELS",
+          "value" : 
+          [
+            "integration"
+          ]
+        },
+        {
+          "name" : "TIMEOUT",
+          "value" : 300.0
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/user/work/put.gd/src/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 125,
+      "command" : 
+      [
+        "/usr/bin/dbus-run-session",
+        "--config-file=/home/user/work/put.gd/src/tests/fixtures/dbus-session-isolated.conf",
+        "--",
+        "/home/user/work/put.gd/src/build/dev/test_host_open"
+      ],
+      "name" : "host_open_integration",
+      "properties" : 
+      [
+        {
+          "name" : "LABELS",
+          "value" : 
+          [
+            "integration"
+          ]
+        },
+        {
+          "name" : "TIMEOUT",
+          "value" : 600.0
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/user/work/put.gd/src/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 127,
+      "command" : 
+      [
+        "/usr/bin/dbus-run-session",
+        "--",
+        "/usr/bin/xvfb-run",
+        "-n",
+        "209",
+        "-a",
+        "/home/user/work/put.gd/src/build/dev/test_ui_native_lifecycle"
+      ],
+      "name" : "ui_native_lifecycle_integration",
+      "properties" : 
+      [
+        {
+          "name" : "ENVIRONMENT",
+          "value" : 
+          [
+            "QT_QPA_PLATFORM=xcb",
+            "XDG_SESSION_TYPE=x11",
+            "WAYLAND_DISPLAY="
+          ]
+        },
+        {
+          "name" : "LABELS",
+          "value" : 
+          [
+            "integration"
+          ]
+        },
+        {
+          "name" : "RESOURCE_GROUPS",
+          "value" : 
+          [
+            {
+              "requirements" : 
+              [
+                {
+                  ".type" : "cpu",
+                  "slots" : 1
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name" : "TIMEOUT",
+          "value" : 900.0
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/user/work/put.gd/src/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 129,
+      "command" : 
+      [
+        "/usr/bin/dbus-run-session",
+        "--",
+        "/usr/bin/xvfb-run",
+        "-n",
+        "210",
+        "-a",
+        "/home/user/work/put.gd/src/build/dev/test_x11"
+      ],
+      "name" : "x11_isolated",
+      "properties" : 
+      [
+        {
+          "name" : "ENVIRONMENT",
+          "value" : 
+          [
+            "QT_QPA_PLATFORM=xcb",
+            "XDG_SESSION_TYPE=x11",
+            "WAYLAND_DISPLAY="
+          ]
+        },
+        {
+          "name" : "LABELS",
+          "value" : 
+          [
+            "integration"
+          ]
+        },
+        {
+          "name" : "TIMEOUT",
+          "value" : 600.0
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/user/work/put.gd/src/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 131,
+      "command" : 
+      [
+        "/usr/bin/dbus-run-session",
+        "--",
+        "/home/user/work/put.gd/src/build/dev/test_keychain_backend"
+      ],
+      "name" : "keychain_backend_integration",
+      "properties" : 
+      [
+        {
+          "name" : "LABELS",
+          "value" : 
+          [
+            "integration"
+          ]
+        },
+        {
+          "name" : "TIMEOUT",
+          "value" : 300.0
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/user/work/put.gd/src/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 133,
+      "command" : 
+      [
+        "/home/user/work/put.gd/src/build/dev/test_keychain"
+      ],
+      "name" : "keychain_integration",
+      "properties" : 
+      [
+        {
+          "name" : "LABELS",
+          "value" : 
+          [
+            "integration"
+          ]
+        },
+        {
+          "name" : "TIMEOUT",
+          "value" : 300.0
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/user/work/put.gd/src/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 135,
+      "command" : 
+      [
+        "/home/user/work/put.gd/src/build/dev/test_collision_policy"
+      ],
+      "name" : "collision_policy_integration",
+      "properties" : 
+      [
+        {
+          "name" : "LABELS",
+          "value" : 
+          [
+            "integration"
+          ]
+        },
+        {
+          "name" : "RESOURCE_GROUPS",
+          "value" : 
+          [
+            {
+              "requirements" : 
+              [
+                {
+                  ".type" : "cpu",
+                  "slots" : 1
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name" : "TIMEOUT",
+          "value" : 1200.0
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/user/work/put.gd/src/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 137,
+      "command" : 
+      [
+        "/home/user/work/put.gd/src/build/dev/test_s3_delete"
+      ],
+      "name" : "s3_delete_integration",
+      "properties" : 
+      [
+        {
+          "name" : "LABELS",
+          "value" : 
+          [
+            "integration"
+          ]
+        },
+        {
+          "name" : "RESOURCE_GROUPS",
+          "value" : 
+          [
+            {
+              "requirements" : 
+              [
+                {
+                  ".type" : "cpu",
+                  "slots" : 1
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name" : "TIMEOUT",
+          "value" : 1200.0
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/user/work/put.gd/src/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 139,
+      "command" : 
+      [
+        "/home/user/work/put.gd/src/build/dev/test_s3_module"
+      ],
+      "name" : "s3_module_integration",
+      "properties" : 
+      [
+        {
+          "name" : "LABELS",
+          "value" : 
+          [
+            "integration"
+          ]
+        },
+        {
+          "name" : "TIMEOUT",
+          "value" : 1200.0
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/user/work/put.gd/src/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 141,
+      "command" : 
+      [
+        "/home/user/work/put.gd/src/build/dev/test_s3"
+      ],
+      "name" : "s3_integration",
+      "properties" : 
+      [
+        {
+          "name" : "LABELS",
+          "value" : 
+          [
+            "integration"
+          ]
+        },
+        {
+          "name" : "RESOURCE_GROUPS",
+          "value" : 
+          [
+            {
+              "requirements" : 
+              [
+                {
+                  ".type" : "cpu",
+                  "slots" : 1
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name" : "TIMEOUT",
+          "value" : 1200.0
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/user/work/put.gd/src/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 143,
+      "command" : 
+      [
+        "/home/user/work/put.gd/src/build/dev/test_s3_multipart"
+      ],
+      "name" : "s3_multipart_integration",
+      "properties" : 
+      [
+        {
+          "name" : "LABELS",
+          "value" : 
+          [
+            "integration"
+          ]
+        },
+        {
+          "name" : "RESOURCE_GROUPS",
+          "value" : 
+          [
+            {
+              "requirements" : 
+              [
+                {
+                  ".type" : "cpu",
+                  "slots" : 1
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name" : "TIMEOUT",
+          "value" : 2400.0
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/user/work/put.gd/src/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 145,
+      "command" : 
+      [
+        "/home/user/work/put.gd/src/build/dev/test_public_url"
+      ],
+      "name" : "public_url",
+      "properties" : 
+      [
+        {
+          "name" : "LABELS",
+          "value" : 
+          [
+            "unit"
+          ]
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/user/work/put.gd/src/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 147,
+      "command" : 
+      [
+        "/home/user/work/put.gd/src/build/dev/test_build_contract"
+      ],
+      "name" : "build_contract",
+      "properties" : 
+      [
+        {
+          "name" : "ENVIRONMENT",
+          "value" : 
+          [
+            "QT_QPA_PLATFORM=offscreen"
+          ]
+        },
+        {
+          "name" : "LABELS",
+          "value" : 
+          [
+            "unit"
+          ]
+        },
+        {
+          "name" : "TIMEOUT",
+          "value" : 300.0
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/user/work/put.gd/src/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 149,
+      "command" : 
+      [
+        "/home/user/work/put.gd/src/build/dev/test_s3_worker"
+      ],
+      "name" : "s3_worker_supervision",
+      "properties" : 
+      [
+        {
+          "name" : "LABELS",
+          "value" : 
+          [
+            "integration"
+          ]
+        },
+        {
+          "name" : "TIMEOUT",
+          "value" : 1800.0
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/user/work/put.gd/src/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 151,
+      "command" : 
+      [
+        "/home/user/work/put.gd/src/build/dev/test_s3_worker_protocol"
+      ],
+      "name" : "s3_worker_protocol",
+      "properties" : 
+      [
+        {
+          "name" : "LABELS",
+          "value" : 
+          [
+            "integration"
+          ]
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/user/work/put.gd/src/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 153,
+      "command" : 
+      [
+        "/home/user/work/put.gd/src/build/dev/test_sdk_contract"
+      ],
+      "name" : "sdk_contract",
+      "properties" : 
+      [
+        {
+          "name" : "LABELS",
+          "value" : 
+          [
+            "integration"
+          ]
+        },
+        {
+          "name" : "TIMEOUT",
+          "value" : 300.0
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/user/work/put.gd/src/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 155,
+      "command" : 
+      [
+        "/home/user/work/put.gd/src/build/dev/test_payload"
+      ],
+      "name" : "payload_contract",
+      "properties" : 
+      [
+        {
+          "name" : "ENVIRONMENT",
+          "value" : 
+          [
+            "QT_QPA_PLATFORM=offscreen"
+          ]
+        },
+        {
+          "name" : "LABELS",
+          "value" : 
+          [
+            "unit"
+          ]
+        },
+        {
+          "name" : "TIMEOUT",
+          "value" : 600.0
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/user/work/put.gd/src/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 157,
+      "command" : 
+      [
+        "/home/user/work/put.gd/src/build/dev/test_archive"
+      ],
+      "name" : "archive_contract",
+      "properties" : 
+      [
+        {
+          "name" : "LABELS",
+          "value" : 
+          [
+            "unit"
+          ]
+        },
+        {
+          "name" : "TIMEOUT",
+          "value" : 600.0
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/user/work/put.gd/src/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 159,
+      "command" : 
+      [
+        "/home/user/work/put.gd/src/build/dev/test_upload_naming"
+      ],
+      "name" : "upload_naming_contract",
+      "properties" : 
+      [
+        {
+          "name" : "LABELS",
+          "value" : 
+          [
+            "unit"
+          ]
+        },
+        {
+          "name" : "TIMEOUT",
+          "value" : 600.0
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/user/work/put.gd/src/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 161,
+      "command" : 
+      [
+        "/home/user/work/put.gd/src/build/dev/test_history"
+      ],
+      "name" : "history_contract",
+      "properties" : 
+      [
+        {
+          "name" : "LABELS",
+          "value" : 
+          [
+            "unit"
+          ]
+        },
+        {
+          "name" : "RESOURCE_GROUPS",
+          "value" : 
+          [
+            {
+              "requirements" : 
+              [
+                {
+                  ".type" : "cpu",
+                  "slots" : 1
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name" : "TIMEOUT",
+          "value" : 600.0
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/user/work/put.gd/src/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 163,
+      "command" : 
+      [
+        "/home/user/work/put.gd/src/build/dev/test_operations"
+      ],
+      "name" : "operations_contract",
+      "properties" : 
+      [
+        {
+          "name" : "LABELS",
+          "value" : 
+          [
+            "integration"
+          ]
+        },
+        {
+          "name" : "TIMEOUT",
+          "value" : 1200.0
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/user/work/put.gd/src/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 165,
+      "command" : 
+      [
+        "/home/user/work/put.gd/src/build/dev/test_recording_model"
+      ],
+      "name" : "recording_model_contract",
+      "properties" : 
+      [
+        {
+          "name" : "LABELS",
+          "value" : 
+          [
+            "unit"
+          ]
+        },
+        {
+          "name" : "TIMEOUT",
+          "value" : 600.0
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/user/work/put.gd/src/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 167,
+      "command" : 
+      [
+        "/home/user/work/put.gd/src/build/dev/test_storage_contract"
+      ],
+      "name" : "storage_contract_integration",
+      "properties" : 
+      [
+        {
+          "name" : "LABELS",
+          "value" : 
+          [
+            "integration"
+          ]
+        },
+        {
+          "name" : "TIMEOUT",
+          "value" : 600.0
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/user/work/put.gd/src/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 169,
+      "command" : 
+      [
+        "/home/user/work/put.gd/src/build/dev/test_cli"
+      ],
+      "name" : "cli_integration",
+      "properties" : 
+      [
+        {
+          "name" : "LABELS",
+          "value" : 
+          [
+            "integration"
+          ]
+        },
+        {
+          "name" : "TIMEOUT",
+          "value" : 600.0
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/user/work/put.gd/src/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 171,
+      "command" : 
+      [
+        "/home/user/work/put.gd/src/build/dev/test_config_reload"
+      ],
+      "name" : "config_reload_integration",
+      "properties" : 
+      [
+        {
+          "name" : "LABELS",
+          "value" : 
+          [
+            "integration"
+          ]
+        },
+        {
+          "name" : "TIMEOUT",
+          "value" : 600.0
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/user/work/put.gd/src/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 173,
+      "command" : 
+      [
+        "/home/user/work/put.gd/src/build/dev/test_storage_locations"
+      ],
+      "name" : "storage_locations_integration",
+      "properties" : 
+      [
+        {
+          "name" : "LABELS",
+          "value" : 
+          [
+            "integration"
+          ]
+        },
+        {
+          "name" : "TIMEOUT",
+          "value" : 1800.0
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/user/work/put.gd/src/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 175,
+      "command" : 
+      [
+        "/home/user/work/put.gd/src/build/dev/test_gnome_image_decode"
+      ],
+      "name" : "gnome_image_decode",
+      "properties" : 
+      [
+        {
+          "name" : "LABELS",
+          "value" : 
+          [
+            "unit"
+          ]
+        },
+        {
+          "name" : "TIMEOUT",
+          "value" : 600.0
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/user/work/put.gd/src/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 177,
+      "command" : 
+      [
+        "/home/user/work/put.gd/src/build/dev/test_gnome_bridge"
+      ],
+      "name" : "gnome_bridge_contract",
+      "properties" : 
+      [
+        {
+          "name" : "LABELS",
+          "value" : 
+          [
+            "integration"
+          ]
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/user/work/put.gd/src/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 179,
+      "command" : 
+      [
+        "/usr/bin/dbus-run-session",
+        "--",
+        "/home/user/work/put.gd/src/build/dev/test_gnome_bridge",
+        "--core-adapter-transport"
+      ],
+      "name" : "gnome_core_transport_integration",
+      "properties" : 
+      [
+        {
+          "name" : "ENVIRONMENT",
+          "value" : 
+          [
+            "XDG_CURRENT_DESKTOP=GNOME",
+            "XDG_SESSION_TYPE=wayland",
+            "WAYLAND_DISPLAY=putgd-synthetic-wayland",
+            "DISPLAY=",
+            "QT_QPA_PLATFORM=wayland"
+          ]
+        },
+        {
+          "name" : "LABELS",
+          "value" : 
+          [
+            "integration"
+          ]
+        },
+        {
+          "name" : "TIMEOUT",
+          "value" : 600.0
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/user/work/put.gd/src/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 181,
+      "command" : 
+      [
+        "/home/user/work/put.gd/src/build/dev/test_kwin_transfer"
+      ],
+      "name" : "kwin_transfer_contract",
+      "properties" : 
+      [
+        {
+          "name" : "LABELS",
+          "value" : 
+          [
+            "integration"
+          ]
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/user/work/put.gd/src/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 183,
+      "command" : 
+      [
+        "/home/user/work/put.gd/src/build/dev/test_recording_service"
+      ],
+      "name" : "recording_service_integration",
+      "properties" : 
+      [
+        {
+          "name" : "LABELS",
+          "value" : 
+          [
+            "integration"
+          ]
+        },
+        {
+          "name" : "TIMEOUT",
+          "value" : 1200.0
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/user/work/put.gd/src/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 185,
+      "command" : 
+      [
+        "/home/user/work/put.gd/src/build/dev/test_recording_helper"
+      ],
+      "name" : "recording_helper_integration",
+      "properties" : 
+      [
+        {
+          "name" : "LABELS",
+          "value" : 
+          [
+            "integration"
+          ]
+        },
+        {
+          "name" : "TIMEOUT",
+          "value" : 1800.0
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/user/work/put.gd/src/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 187,
+      "command" : 
+      [
+        "/home/user/work/put.gd/src/build/dev/test_settings"
+      ],
+      "name" : "settings_contract",
+      "properties" : 
+      [
+        {
+          "name" : "LABELS",
+          "value" : 
+          [
+            "integration"
+          ]
+        },
+        {
+          "name" : "TIMEOUT",
+          "value" : 300.0
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/user/work/put.gd/src/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 189,
+      "command" : 
+      [
+        "/home/user/work/put.gd/src/build/dev/test_logging"
+      ],
+      "name" : "logging_contract",
+      "properties" : 
+      [
+        {
+          "name" : "LABELS",
+          "value" : 
+          [
+            "integration"
+          ]
+        },
+        {
+          "name" : "TIMEOUT",
+          "value" : 1200.0
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/user/work/put.gd/src/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 191,
+      "command" : 
+      [
+        "/home/user/work/put.gd/src/build/dev/test_crash_handler"
+      ],
+      "name" : "crash_handler_contract",
+      "properties" : 
+      [
+        {
+          "name" : "LABELS",
+          "value" : 
+          [
+            "integration"
+          ]
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/user/work/put.gd/src/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 193,
+      "command" : 
+      [
+        "/home/user/work/put.gd/src/build/dev/test_diagnostics_upload"
+      ],
+      "name" : "diagnostics_upload_contract",
+      "properties" : 
+      [
+        {
+          "name" : "LABELS",
+          "value" : 
+          [
+            "integration"
+          ]
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/user/work/put.gd/src/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 195,
+      "command" : 
+      [
+        "/home/user/work/put.gd/src/build/dev/test_diagnostics_bundle"
+      ],
+      "name" : "diagnostics_bundle_contract",
+      "properties" : 
+      [
+        {
+          "name" : "LABELS",
+          "value" : 
+          [
+            "integration"
+          ]
+        },
+        {
+          "name" : "RESOURCE_GROUPS",
+          "value" : 
+          [
+            {
+              "requirements" : 
+              [
+                {
+                  ".type" : "cpu",
+                  "slots" : 1
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name" : "TIMEOUT",
+          "value" : 1800.0
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/user/work/put.gd/src/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 197,
+      "command" : 
+      [
+        "/usr/bin/cmake",
+        "-DREPO_ROOT=/home/user/work/put.gd/src",
+        "-P",
+        "/home/user/work/put.gd/src/tests/cmake/json_ref_lifetime_contract.cmake"
+      ],
+      "name" : "json_ref_lifetime_contract",
+      "properties" : 
+      [
+        {
+          "name" : "LABELS",
+          "value" : 
+          [
+            "unit"
+          ]
+        },
+        {
+          "name" : "TIMEOUT",
+          "value" : 300.0
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/user/work/put.gd/src/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 199,
+      "command" : 
+      [
+        "/home/user/work/put.gd/src/build/dev/test_gui_settings"
+      ],
+      "name" : "gui_settings",
+      "properties" : 
+      [
+        {
+          "name" : "ENVIRONMENT",
+          "value" : 
+          [
+            "QT_QPA_PLATFORM=offscreen"
+          ]
+        },
+        {
+          "name" : "LABELS",
+          "value" : 
+          [
+            "integration"
+          ]
+        },
+        {
+          "name" : "TIMEOUT",
+          "value" : 1800.0
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/user/work/put.gd/src/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 201,
+      "command" : 
+      [
+        "/home/user/work/put.gd/src/build/dev/test_gui_history_view"
+      ],
+      "name" : "gui_history_view",
+      "properties" : 
+      [
+        {
+          "name" : "ENVIRONMENT",
+          "value" : 
+          [
+            "QT_QPA_PLATFORM=offscreen"
+          ]
+        },
+        {
+          "name" : "LABELS",
+          "value" : 
+          [
+            "integration"
+          ]
+        },
+        {
+          "name" : "TIMEOUT",
+          "value" : 1200.0
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/user/work/put.gd/src/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 203,
+      "command" : 
+      [
+        "/home/user/work/put.gd/src/build/dev/test_gui_history_view",
+        "historyHeadingKeepsItsWordsBeforeSearchYields",
+        "compactFailureDetailIsNeverShortenedBesideItsActions",
+        "historyToolbarKeepsItsControlsTogether",
+        "rowsReserveOnlyTheirOwnPrimaryAction",
+        "remoteGroupsUseTheProductionQueryAndRestoreExactStates",
+        "inspectorDeduplicatesNamesAndOutcomes",
+        "galleryCardsReserveTextBeforeTheirActions",
+        "columnHeadingsMatchRowColumns",
+        "compactLayoutOpensDetailsOverTheList",
+        "selectedRowLeavesItsPrimaryActionToTheInspector",
+        "rowActionsNeverCoverFilenameOrStatus",
+        "expandedFiltersKeepTwoWholeResults",
+        "galleryInspectorUsesTheVisibleCardAndKeepsItsActionSpace",
+        "localAvailabilityFollowsTheFileWithoutChangingTheReceipt",
+        "compactFailureWrapsBeforeTheActionFooter",
+        "compactRowsSpendTheirWidthOnTitles",
+        "compactDetailsKeepFactsAndPrimaryOnTheFirstScreen"
+      ],
+      "name" : "gui_history_view_text150",
+      "properties" : 
+      [
+        {
+          "name" : "ENVIRONMENT",
+          "value" : 
+          [
+            "QT_QPA_PLATFORM=offscreen",
+            "PUTGD_TEXT_SCALE=1.5"
+          ]
+        },
+        {
+          "name" : "LABELS",
+          "value" : 
+          [
+            "integration"
+          ]
+        },
+        {
+          "name" : "TIMEOUT",
+          "value" : 1200.0
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/user/work/put.gd/src/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 205,
+      "command" : 
+      [
+        "/home/user/work/put.gd/src/build/dev/test_login_startup"
+      ],
+      "name" : "login_startup_contract",
+      "properties" : 
+      [
+        {
+          "name" : "LABELS",
+          "value" : 
+          [
+            "unit"
+          ]
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/user/work/put.gd/src/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 207,
+      "command" : 
+      [
+        "/home/user/work/put.gd/src/build/dev/test_resident_session"
+      ],
+      "name" : "resident_session_contract",
+      "properties" : 
+      [
+        {
+          "name" : "LABELS",
+          "value" : 
+          [
+            "integration"
+          ]
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/user/work/put.gd/src/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 209,
+      "command" : 
+      [
+        "/home/user/work/put.gd/src/build/dev/test_local_ipc"
+      ],
+      "name" : "local_ipc_contract",
+      "properties" : 
+      [
+        {
+          "name" : "LABELS",
+          "value" : 
+          [
+            "integration"
+          ]
+        },
+        {
+          "name" : "TIMEOUT",
+          "value" : 600.0
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/user/work/put.gd/src/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 211,
+      "command" : 
+      [
+        "/home/user/work/put.gd/src/build/dev/test_ip_address"
+      ],
+      "name" : "ip_address_contract",
+      "properties" : 
+      [
+        {
+          "name" : "LABELS",
+          "value" : 
+          [
+            "unit"
+          ]
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/user/work/put.gd/src/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 213,
+      "command" : 
+      [
+        "/home/user/work/put.gd/src/build/dev/test_region_selection"
+      ],
+      "name" : "region_selection_contract",
+      "properties" : 
+      [
+        {
+          "name" : "ENVIRONMENT",
+          "value" : 
+          [
+            "QT_QPA_PLATFORM=offscreen"
+          ]
+        },
+        {
+          "name" : "LABELS",
+          "value" : 
+          [
+            "unit"
+          ]
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/user/work/put.gd/src/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 215,
+      "command" : 
+      [
+        "/home/user/work/put.gd/src/build/dev/test_kde_region_overlay"
+      ],
+      "name" : "kde_region_overlay",
+      "properties" : 
+      [
+        {
+          "name" : "ENVIRONMENT",
+          "value" : 
+          [
+            "QT_QPA_PLATFORM=offscreen"
+          ]
+        },
+        {
+          "name" : "LABELS",
+          "value" : 
+          [
+            "integration"
+          ]
+        },
+        {
+          "name" : "TIMEOUT",
+          "value" : 300.0
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/user/work/put.gd/src/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 217,
+      "command" : 
+      [
+        "/usr/bin/dbus-run-session",
+        "--",
+        "/usr/bin/xvfb-run",
+        "-n",
+        "211",
+        "-a",
+        "-s",
+        "-screen 0 1280x800x24 -noreset",
+        "/home/user/work/put.gd/src/build/dev/test_native_region_overlay"
+      ],
+      "name" : "native_region_overlay",
+      "properties" : 
+      [
+        {
+          "name" : "ENVIRONMENT",
+          "value" : 
+          [
+            "QT_QPA_PLATFORM=xcb",
+            "XDG_SESSION_TYPE=x11",
+            "WAYLAND_DISPLAY="
+          ]
+        },
+        {
+          "name" : "LABELS",
+          "value" : 
+          [
+            "integration"
+          ]
+        },
+        {
+          "name" : "TIMEOUT",
+          "value" : 600.0
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/user/work/put.gd/src/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 219,
+      "command" : 
+      [
+        "/usr/bin/xvfb-run",
+        "-n",
+        "212",
+        "-a",
+        "-s",
+        "-screen 0 1280x800x24 -noreset",
+        "/home/user/work/put.gd/src/build/dev/test_capture_preparation"
+      ],
+      "name" : "capture_preparation_x11",
+      "properties" : 
+      [
+        {
+          "name" : "ENVIRONMENT",
+          "value" : 
+          [
+            "QT_QPA_PLATFORM=xcb",
+            "XDG_SESSION_TYPE=x11",
+            "WAYLAND_DISPLAY="
+          ]
+        },
+        {
+          "name" : "LABELS",
+          "value" : 
+          [
+            "integration"
+          ]
+        },
+        {
+          "name" : "TIMEOUT",
+          "value" : 300.0
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/user/work/put.gd/src/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 223,
+      "command" : 
+      [
+        "/home/user/work/put.gd/src/build/dev/test_proton"
+      ],
+      "name" : "proton_contract",
+      "properties" : 
+      [
+        {
+          "name" : "LABELS",
+          "value" : 
+          [
+            "integration"
+          ]
+        },
+        {
+          "name" : "TIMEOUT",
+          "value" : 300.0
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/user/work/put.gd/src/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 227,
+      "command" : 
+      [
+        "/home/user/work/put.gd/src/build/dev/test_proton_transport"
+      ],
+      "name" : "proton_transport",
+      "properties" : 
+      [
+        {
+          "name" : "LABELS",
+          "value" : 
+          [
+            "integration"
+          ]
+        },
+        {
+          "name" : "TIMEOUT",
+          "value" : 200.0
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/user/work/put.gd/src/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 231,
+      "command" : 
+      [
+        "/home/user/work/put.gd/src/build/dev/test_b2"
+      ],
+      "name" : "b2_integration",
+      "properties" : 
+      [
+        {
+          "name" : "LABELS",
+          "value" : 
+          [
+            "integration"
+          ]
+        },
+        {
+          "name" : "RESOURCE_GROUPS",
+          "value" : 
+          [
+            {
+              "requirements" : 
+              [
+                {
+                  ".type" : "cpu",
+                  "slots" : 1
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name" : "TIMEOUT",
+          "value" : 1800.0
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/user/work/put.gd/src/build/dev"
+        }
+      ]
+    }
+  ],
+  "version" : 
+  {
+    "major" : 1,
+    "minor" : 0
+  }
+}

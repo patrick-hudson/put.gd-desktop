@@ -1,0 +1,74 @@
+{
+ "name": "aurora-vm",
+ "appimage": "/var/home/lab/put.gd-qt418/afa/images/putgd-26.1023.1068-dev+g6a325a722afd-x86_64.AppImage",
+ "appdir": "/var/home/lab/work/put.gd-qt418/afa/runs/aurora-vm/appdir/squashfs-root",
+ "runtime": "/tmp/afa.Wf6Dvp",
+ "session": {
+  "HOME": "/var/home/lab",
+  "PATH": "/var/home/lab/.local/bin:/var/home/lab/bin:/usr/local/bin:/usr/bin",
+  "USER": "lab",
+  "LANG": "en_US.UTF-8",
+  "DISPLAY": ":0",
+  "XAUTHORITY": "/run/user/1000/xauth_jEFqvk",
+  "DBUS_SESSION_BUS_ADDRESS": "unix:path=/run/user/1000/bus",
+  "XDG_SESSION_TYPE": "wayland",
+  "XDG_CURRENT_DESKTOP": "KDE",
+  "WAYLAND_DISPLAY": "/run/user/1000/wayland-0",
+  "XDG_SESSION_DESKTOP": "KDE",
+  "DESKTOP_SESSION": "/usr/share/wayland-sessions/plasma.desktop",
+  "KDE_FULL_SESSION": "true",
+  "KDE_SESSION_VERSION": "6",
+  "XDG_DATA_DIRS": "/var/home/lab/work/put.gd-qt418/afa/runs/aurora-vm/urldata:/var/home/lab/.local/share/flatpak/exports/share:/var/lib/flatpak/exports/share:/usr/local/share:/usr/share"
+ },
+ "shell": "plasmashell",
+ "host": "aurora-lab",
+ "vnc": 5927,
+ "input": "vnc",
+ "before": {
+  "homePaths": {
+   "/var/home/lab/.config/putgd": null,
+   "/var/home/lab/.cache/putgd": null,
+   "/var/home/lab/.local/state/putgd": null,
+   "/var/home/lab/.local/share/putgd": null
+  },
+  "applications": [],
+  "dataPutgd": false,
+  "autostart": []
+ },
+ "pids": {
+  "fixture": 2404,
+  "apprun": 2643
+ },
+ "created": "2026-10-23T20:29:11Z",
+ "port": 33585,
+ "fullAllowed": true,
+ "started": "2026-10-23T20:29:54Z",
+ "coverLog": "/var/home/lab/work/put.gd-qt418/afa/runs/aurora-vm/logs/cover-153456.jsonl",
+ "pattern": null,
+ "userFiles": [
+  "/var/home/lab/Pictures/afa-aurora-vm-edited.png",
+  "/var/home/lab/afa-aurora-vm-review.mp4"
+ ],
+ "recordingId": "c1f93784-5016-488a-a481-e77b50e11c38",
+ "handlerRestored": {
+  "restored": {
+   "https": [
+    "Default application for \u201cx-scheme-handler/https\u201d: org.mozilla.firefox.desktop"
+   ],
+   "http": [
+    "Default application for \u201cx-scheme-handler/http\u201d: org.mozilla.firefox.desktop"
+   ]
+  },
+  "before": {
+   "https": [
+    "Default application for \u201cx-scheme-handler/https\u201d: org.mozilla.firefox.desktop"
+   ],
+   "http": [
+    "Default application for \u201cx-scheme-handler/http\u201d: org.mozilla.firefox.desktop"
+   ]
+  },
+  "same": true,
+  "filesMatch": true
+ },
+ "realAutostart": "/var/home/lab/.config/autostart/putgd.desktop"
+}

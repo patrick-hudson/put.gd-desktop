@@ -1,0 +1,16 @@
+### 3: Ctrl-C at 2s during boat new; server-side create visible at 5s; CREATE_TIMEOUT=15
+{'state': 'failed', 'error': 'Controller cancelled or deadline exceeded: boat', 'cleanupVerified': True, '_elapsed': 33.3} ['bx_1']
+remaining: []
+events: [{'create': 'bx_1', 'name': 'putgd-aaaaaaaaaaaa-appimage-2fc83c11fe354ee2'}, {'delete': 'bx_1'}]
+### 3b: boat new hangs to CREATE_TIMEOUT=4 (killed); server-side create visible at 7s
+{'state': 'failed', 'error': 'Controller cancelled or deadline exceeded: boat', 'cleanupVerified': True, '_elapsed': 35.0} ['bx_1']
+remaining: []
+events: [{'create': 'bx_1', 'name': 'putgd-aaaaaaaaaaaa-appimage-63c640cd40494168'}, {'delete': 'bx_1'}]
+### 3c: --cleanup afterwards (dead lease) recovers it
+exit=0
+remaining: []
+events: [{'create': 'bx_1', 'name': 'putgd-aaaaaaaaaaaa-appimage-63c640cd40494168'}, {'delete': 'bx_1'}]
+### 4: legacy fixed-name: expired orphan plus a fresh same-name worker from an older-version controller
+exit=0
+remaining: [('legacy_fresh_live_peer', 'appimage')]
+events: [{'delete': 'legacy_expired'}]

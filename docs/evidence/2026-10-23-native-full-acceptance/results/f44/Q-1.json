@@ -1,0 +1,26 @@
+{
+ "label": "after-removal",
+ "entry": "[Desktop Entry]\nType=Application\nName=put.gd\nExec=\"/usr/bin/putgd-launcher\" --background\nTerminal=false\nX-putgd-Managed=true\n",
+ "entryInfo": {
+  "sha256": "4662cdb185a7ab7eea947549bc21e9a38fa9d4fd197e7dc9660323446812307a",
+  "bytes": 125,
+  "mode": "0o600",
+  "mtime": "2026-10-23T05:57:44Z"
+ },
+ "execTargetExists": false,
+ "shellStarted": "2026-10-23T05:56:57Z",
+ "journal": [
+  "user 2026-10-23T00:57:17-05:00 fedora systemd[1397]: Started putgd-nfa-M2-normal-1792735037.service - [systemd-run] /usr/bin/putgd --background.",
+  "user 2026-10-23T00:58:57-05:00 fedora gnome-session-service[3144489]: Desktop file /home/patrick/.config/autostart/putgd.desktop couldn't be parsed, or references a missing TryExec binary",
+  "system 2026-10-23T00:57:17-05:00 fedora systemd[1397]: Started putgd-nfa-M2-normal-1792735037.service - [systemd-run] /usr/bin/putgd --background.",
+  "system 2026-10-23T00:58:57-05:00 fedora gnome-session-service[3144489]: Desktop file /home/patrick/.config/autostart/putgd.desktop couldn't be parsed, or references a missing TryExec binary"
+ ],
+ "failedUnits": [],
+ "autostartUnits": [],
+ "generatorUnit": [],
+ "processes": [],
+ "package": {
+  "manager": "rpm",
+  "version": null
+ }
+}

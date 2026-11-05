@@ -1,0 +1,9 @@
+{
+  "source": "/home/user/putgd-gnome-golden",
+  "destination": "/home/user/work/put.gd/work/lab-images/gnome-legacy-source-563730cc",
+  "sha256": "563730cc1d929bd946d20cf30a9aecfe3c4ad40eb12ba7f9abcff1c461e342bb",
+  "backingReferences": [],
+  "heldPids": [],
+  "bytesUnchanged": true,
+  "originalNamedSnapshotsUnchanged": true
+}

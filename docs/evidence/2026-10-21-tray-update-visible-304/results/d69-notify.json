@@ -1,0 +1,90 @@
+{
+ "nextCheckAt": "2026-10-21T03:04:50Z",
+ "start": "2026-10-21T02:55:45Z",
+ "shownAt": "2026-10-21T03:04:50Z",
+ "banner": {
+  "label": "d69-fix-notification",
+  "components": [
+   {
+    "blocks": 586,
+    "box": [
+     1552,
+     880,
+     1888,
+     992
+    ]
+   }
+  ],
+  "colour": [
+   28,
+   40,
+   48
+  ],
+  "inner": [
+   1607,
+   885,
+   1883,
+   984
+  ],
+  "changedShare": 1.0,
+  "kept": "/home/patrick/work/put.gd-304/p-d69fix/crops/d69-fix-notification.png"
+ },
+ "clicked": [
+  1745,
+  918
+ ],
+ "events": [
+  {
+   "category": "putgd.app",
+   "fields": {
+    "channel": "stable",
+    "itemId": null,
+    "manual": false,
+    "operationId": null
+   },
+   "level": "info",
+   "message": "Checking for updates",
+   "pid": 1840504,
+   "process": "putgd",
+   "time": "2026-10-21T03:04:50.634Z",
+   "v": 1
+  },
+  {
+   "category": "putgd.app",
+   "fields": {
+    "channel": "stable",
+    "itemId": null,
+    "latest": "0.1.2",
+    "operationId": null,
+    "updateAvailable": true
+   },
+   "level": "info",
+   "message": "Update check finished",
+   "pid": 1840504,
+   "process": "putgd",
+   "time": "2026-10-21T03:04:50.663Z",
+   "v": 1
+  },
+  {
+   "category": "putgd.ui",
+   "fields": {
+    "itemId": null,
+    "notificationId": 1,
+    "notificationText": "put.gd 0.1.2 is available. Settings \u2192 Updates has the download.",
+    "operationId": null,
+    "summary": "update_available",
+    "title": "put.gd \u2014 update available",
+    "warning": false
+   },
+   "level": "info",
+   "message": "Notification shown",
+   "pid": 1840504,
+   "process": "putgd",
+   "time": "2026-10-21T03:04:50.663Z",
+   "v": 1
+  }
+ ],
+ "openedUrls": [
+  "2026-10-21T03:04:52Z https://github.com/patrick-hudson/put.gd-desktop/releases/tag/v0.1.2"
+ ]
+}

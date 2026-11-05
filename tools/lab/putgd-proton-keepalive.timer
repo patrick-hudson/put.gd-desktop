@@ -1,0 +1,12 @@
+# Weekly trigger for putgd-proton-keepalive.service: Wednesdays 04:30 local time.
+# A missed run (host off) runs after the next boot.
+[Unit]
+Description=Weekly put.gd Proton lab session keep-alive, Wednesdays 04:30
+
+[Timer]
+OnCalendar=Wed *-*-* 04:30:00
+Persistent=true
+RandomizedDelaySec=15min
+
+[Install]
+WantedBy=timers.target

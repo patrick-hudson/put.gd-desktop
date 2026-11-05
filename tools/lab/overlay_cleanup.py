@@ -13,6 +13,7 @@ from contextlib import contextmanager
 import datetime
 import fcntl
 import hashlib
+import inspect
 import json
 import os
 from pathlib import Path
@@ -27,6 +28,10 @@ ROOT = Path(__file__).resolve().parents[2]
 _PROC = Path('/proc')
 _thread_lock = threading.RLock()
 _lock_depth = threading.local()
+# Cold, remotely hydrated qcow2 metadata can exceed the old 60-second bound.
+# Keep inspection bounded and fail closed; no dependency result is cached or
+# omitted, and the native lock/process checks still surround the entire pass.
+CHAIN_INSPECTION_TIMEOUT = 180
 
 
 class CleanupError(RuntimeError):
@@ -126,11 +131,32 @@ def lifecycle_lock():
             os.close(fd)
 
 
-def _run_state(run):
+def _images_root(value):
+    """The golden root: this checkout's work/lab-images, or an explicit one.
+
+    A lab.py copy outside the main tree (a scratch checkout on a builder) keeps
+    its runs next to itself while its goldens stay in the main tree. The
+    explicit root must be an owned, symlink-free `.../work/lab-images`.
+    """
+    if value is None:
+        return ROOT / 'work/lab-images'
+    if not Path(value).is_absolute():
+        raise CleanupError('The images root must be an absolute path')
+    root = _no_symlinks(value)
+    if root.name != 'lab-images' or root.parent.name != 'work':
+        raise CleanupError('The images root must be a work/lab-images directory')
+    if not root.is_dir() or root.stat().st_uid != os.getuid():
+        raise CleanupError('The images root must be an owned directory')
+    return root
+
+
+def _run_state(run, images_root=None):
     run = _no_symlinks(run)
     allowed = [ROOT / 'work/lab-runs', ROOT / 'work/windows/runs']
     if run.parent not in allowed or not run.is_dir() or run.stat().st_uid != os.getuid():
-        raise CleanupError('Cleanup requires a direct owned run under a canonical lab runs directory')
+        raise CleanupError('Cleanup requires a direct owned run under a canonical lab runs directory; '
+                           'for a pre-existing outside run, stop and relocate it using '
+                           'docs/vm-lab.md#retire-completed-overlays')
     if (run / 'manifest.json').exists() or (run / 'manifest.json').is_symlink():
         raise CleanupError('Sealed bundles are not disposable overlays')
     info = _read_json(run / 'state.json')
@@ -139,7 +165,7 @@ def _run_state(run):
         if info.get('schemaVersion') != 1 or info.get('overlay') != str(disk):
             raise CleanupError('Linux state overlay identity does not match the run')
         base_name, identity = info.get('golden'), info.get('id')
-        base_root = ROOT / 'work/lab-images'
+        base_root = _images_root(images_root)
     else:
         base_name, identity = info.get('base'), info.get('run_id')
         base_root = ROOT / 'work/windows/bases'
@@ -235,8 +261,17 @@ def _evidence(run, run_id, explicit):
 
 
 def _chain(disk):
-    result = subprocess.run(['qemu-img', 'info', '--force-share', '--output=json', '--backing-chain', str(disk)],
-                            capture_output=True, text=True, timeout=60)
+    started = time.monotonic()
+    try:
+        result = subprocess.run(['qemu-img', 'info', '--force-share', '--output=json', '--backing-chain', str(disk)],
+                                capture_output=True, text=True, timeout=CHAIN_INSPECTION_TIMEOUT)
+    except subprocess.TimeoutExpired as error:
+        # This is the only prerequisite subprocess timeout that used to escape
+        # to cleanup's generic handler. Name the actual slow phase without
+        # exposing its command line, stdout/stderr or unrelated image paths.
+        elapsed = time.monotonic() - started
+        raise CleanupError('Cleanup prerequisite timed out: qemu-img backing-chain inspection '
+                           f'({elapsed:.1f}s elapsed, {CHAIN_INSPECTION_TIMEOUT}s limit); overlay retained') from error
     if result.returncode:
         raise CleanupError('Cannot inspect a lab image backing chain; cleanup refused')
     chain = json.loads(result.stdout)
@@ -255,16 +290,20 @@ def _chain(disk):
     return paths
 
 
-def _check_chains(disk, base):
+def _check_chains(disk, base, images_root=None):
     selected = _chain(disk)
     if len(selected) < 2 or selected[1] != base:
         raise CleanupError('Actual overlay backing file does not match recorded base')
-    roots = ('work/lab-runs', 'work/lab-images', 'work/windows')
+    roots = [ROOT / relative for relative in ('work/lab-runs', 'work/lab-images', 'work/windows')]
+    if images_root is not None:
+        # Also inventory the tree that owns the explicit golden root.
+        explicit = _images_root(images_root)
+        roots += [explicit, explicit.parent / 'lab-runs', explicit.parent / 'windows']
     visited = set()
     def incomplete(_error):
         raise CleanupError('Cannot completely inventory lab image dependencies')
-    for relative in roots:
-        root = _no_symlinks(ROOT / relative)
+    for candidate in dict.fromkeys(roots):
+        root = _no_symlinks(candidate)
         if not root.exists():
             continue
         for directory, subdirs, files in os.walk(root, followlinks=False, onerror=incomplete):
@@ -333,8 +372,14 @@ def _image_lock(disk):
         process.stdout.close()
 
 
-def _check_processes(run, disk, *, lock_process=None):
-    proc = _PROC
+def _scan_processes(proc, run, device, inode, lock_pid):
+    """Read-only probe, also sent as source to an isolated privileged Python.
+
+    No UID/comm exemption: root, foreign users and nondumpable applications
+    can hold ordinary read-only FDs despite the native QEMU writer lock.
+    PermissionError must reach the caller; an opaque process is not evidence
+    that the disk is unused. Never read or emit process arguments/maps wholesale.
+    """
     status = (proc / 'self/status').read_text()
     namespace = re.search(r'^NSpid:\s*(.*)$', status, re.MULTILINE)
     if namespace and len(namespace[1].split()) > 1:
@@ -343,36 +388,30 @@ def _check_processes(run, disk, *, lock_process=None):
         fields = line.split()
         if len(fields) >= 4 and fields[1] == '/proc' and any(option.startswith('hidepid=') and option != 'hidepid=0' for option in fields[3].split(',')):
             raise CleanupError('Hidden /proc inventory prevents safe cleanup')
-    identity = disk.stat()
-    if lock_process is not None:
-        _lock_alive(lock_process, disk)
     for directory in proc.iterdir():
         if not directory.name.isdecimal():
             continue
-        if lock_process is not None and int(directory.name) == lock_process.pid:
+        if int(directory.name) == lock_pid:
             continue
-        possible_vm = True
         try:
-            owned = directory.stat().st_uid == os.getuid()
-            # Unrelated nonowned applications are outside the caller's /proc
-            # access. Inspect foreign VM engines too (e.g. sudo QEMU), refusing
-            # when their descriptors cannot be inspected.
+            def start_ticks():
+                fields = (directory / 'stat').read_text().rsplit(')', 1)[-1].split()
+                if len(fields) < 20 or not fields[19].isdecimal():
+                    raise CleanupError('Cannot interpret host process identity')
+                return fields[19]
+            start = start_ticks()
             comm = (directory / 'comm').read_text().strip()
-            possible_vm = comm.startswith('qemu') or comm == 'swtpm'
-            if not owned and not possible_vm:
-                continue
             arguments = (directory / 'cmdline').read_bytes().split(b'\0')
-            if not arguments[0]:
-                continue  # Kernel thread or an exited zombie.
             executable = Path(os.fsdecode(arguments[0])).name
             vm = executable.startswith('qemu-system') or executable == 'swtpm'
-            possible_vm = possible_vm or vm
-            if vm and any(str(run).encode() in arg or str(disk).encode() in arg for arg in arguments):
+            possible_vm = vm or comm.startswith('qemu') or comm == 'swtpm'
+            paths = (os.fsencode(run), os.fsencode(Path(run) / 'disk.qcow2'))
+            if possible_vm and any(path in arg for path in paths for arg in arguments):
                 raise CleanupError('A QEMU/TPM process still owns the run')
             for descriptor in (directory / 'fd').iterdir():
                 try:
                     info = descriptor.stat()
-                    if (info.st_dev, info.st_ino) == (identity.st_dev, identity.st_ino):
+                    if (info.st_dev, info.st_ino) == (device, inode):
                         raise CleanupError('A process still has the overlay open')
                 except FileNotFoundError:
                     continue
@@ -381,22 +420,76 @@ def _check_processes(run, disk, *, lock_process=None):
                 if len(fields) < 5 or not fields[4].isdecimal():
                     raise CleanupError('Cannot interpret host memory mapping inventory')
                 major, minor = (int(part, 16) for part in fields[3].split(':'))
-                if (int(fields[4]) == identity.st_ino
-                        and os.makedev(major, minor) == identity.st_dev):
+                if (int(fields[4]) == inode
+                        and os.makedev(major, minor) == device):
                     raise CleanupError('A process still maps the overlay')
+            if start_ticks() != start:
+                raise CleanupError('Host process identity changed during inventory')
         except (FileNotFoundError, ProcessLookupError):
-            continue
-        except PermissionError as error:
-            if lock_process is not None and not possible_vm:
+            try:
+                directory.stat()
+            except (FileNotFoundError, ProcessLookupError):
                 continue
-            raise CleanupError('Host process inventory is not fully visible; cleanup refused') from error
+            raise CleanupError('Host process inventory disappeared for a live PID')
 
 
-def cleanup(run, *, evidence_manifest=None, dry_run=False):
+def _privileged_probe_source():
+    return ('import os, re, sys\nfrom pathlib import Path\n'
+            'class CleanupError(RuntimeError): pass\n' + inspect.getsource(_scan_processes) +
+            '\ntry:\n'
+            '    _scan_processes(Path("/proc"), sys.argv[1], int(sys.argv[2]), '
+            'int(sys.argv[3]), int(sys.argv[4]))\n'
+            'except CleanupError:\n    print("blocked")\n'
+            'except Exception:\n    print("unavailable")\n'
+            'else:\n    print("clear")\n')
+
+
+# Captured once at import: a checkout switched mid-run must not change what runs as root.
+_PRIVILEGED_PROBE = _privileged_probe_source()
+
+
+def _privileged_process_inventory(run, device, inode, lock_pid):
+    # Boat grants user passwordless sudo; builders allow /usr/bin/python3 without a prompt.
+    # Elevate only this read-only probe, never lab.py or a checkout import (which could run
+    # unrelated root code). -I ignores PYTHONPATH, user site packages and the working
+    # directory; -B writes no bytecode. No sudoers changes, prompts, installation, disk
+    # opens or mutations.
+    try:
+        result = subprocess.run(['sudo', '-n', '--', '/usr/bin/python3', '-I', '-B', '-c',
+                                 _PRIVILEGED_PROBE, str(run), str(device), str(inode), str(lock_pid)],
+                                capture_output=True, text=True, timeout=15)
+    except (OSError, subprocess.SubprocessError) as error:
+        raise CleanupError('Host process inventory is not fully visible; '
+                           'read-only sudo inventory unavailable; cleanup refused') from error
+    if result.returncode == 0 and result.stdout == 'clear\n' and not result.stderr:
+        return
+    if result.returncode == 0 and result.stdout == 'blocked\n' and not result.stderr:
+        raise CleanupError('Privileged host process inventory found a process using the overlay; '
+                           'cleanup refused')
+    raise CleanupError('Privileged host process inventory unavailable or incomplete; cleanup refused')
+
+
+def _check_processes(run, disk, *, lock_process=None):
+    identity = disk.stat()
+    lock_pid = -1
+    if lock_process is not None:
+        _lock_alive(lock_process, disk)
+        lock_pid = lock_process.pid
+    try:
+        _scan_processes(_PROC, str(run), identity.st_dev, identity.st_ino, lock_pid)
+    except PermissionError:
+        # Full host visibility is still required. A filtered /proc or nested
+        # PID namespace is rejected by both probes, never cured by sudo.
+        _privileged_process_inventory(run, identity.st_dev, identity.st_ino, lock_pid)
+    if lock_process is not None:
+        _lock_alive(lock_process, disk)
+
+
+def cleanup(run, *, evidence_manifest=None, dry_run=False, images_root=None):
     """Retire exactly one stopped, unreferenced overlay, retaining durable evidence."""
     try:
         with lifecycle_lock():
-            run, disk, base, run_id = _run_state(Path(run))
+            run, disk, base, run_id = _run_state(Path(run), images_root)
             _no_symlinks(disk)
             evidence = _evidence(run, run_id, evidence_manifest)
             receipt_path = _no_symlinks(run / 'overlay-cleanup.json')
@@ -421,7 +514,7 @@ def cleanup(run, *, evidence_manifest=None, dry_run=False):
             identity = _identity(disk)
             with _image_lock(disk) as lock_process:
                 _check_processes(run, disk, lock_process=lock_process)
-                _check_chains(disk, base)
+                _check_chains(disk, base, images_root)
                 receipt = {'schemaVersion': 1, 'status': 'dry-run' if dry_run else 'prepared',
                            'run': str(run), 'disk': str(disk), 'diskIdentity': identity,
                            'base': str(base), 'stateSha256': state_hash, 'evidence': evidence,

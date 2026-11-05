@@ -1217,14 +1217,14 @@
     {
       "path": "gnome/installed-running-identity-after.json",
       "originalPath": "/home/patrick/work/put.gd/work/cross-desktop-current/gnome/installed-running-identity-after.json",
-      "sha256": "500b203569fd1abf1733b473810819b8516b87db203be130cd7422c821498b71",
-      "bytes": 5503
+      "sha256": "974878719f04078f8092063bfaf1a8645c2e6511ff5cf84578a7c1454a416e8b",
+      "bytes": 5477
     },
     {
       "path": "gnome/installed-running-identity-before.json",
       "originalPath": "/home/patrick/work/put.gd/work/cross-desktop-current/gnome/installed-running-identity-before.json",
-      "sha256": "039c057969e1a8c8ba0343a7988fc8ae566a40d9f5ec4403007a31ac763d42c0",
-      "bytes": 5535
+      "sha256": "079e61289474b9d1d86828a1915df732806f2d5952e4a9998a60b9e6c987e8c6",
+      "bytes": 5509
     },
     {
       "path": "gnome/launch.json",
@@ -1295,7 +1295,7 @@
     {
       "path": "gnome/manifest.json",
       "originalPath": "/home/patrick/work/put.gd/work/cross-desktop-current/gnome/manifest.json",
-      "sha256": "6bbe05b9522cb793872461f6e058dfb4c3a36742e230335566948e56646df406",
+      "sha256": "1fc6e2f42851a4f768cc941e720609de701651e4f4b6ee1e09755757792e8a99",
       "bytes": 61561
     },
     {
@@ -1349,8 +1349,8 @@
     {
       "path": "gnome/overlay-restart.json",
       "originalPath": "/home/patrick/work/put.gd/work/cross-desktop-current/gnome/overlay-restart.json",
-      "sha256": "936a21b07635ee0ffd2a38053d85af30e2f2050499d073431fa47ffc943eae79",
-      "bytes": 1701
+      "sha256": "91815df6b025f05d3e8b41097396bd7f0c246eaedb127a233a91a099c3c8f91a",
+      "bytes": 1649
     },
     {
       "path": "gnome/parameters.json",
@@ -1499,8 +1499,8 @@
     {
       "path": "gnome/session-reboot.json",
       "originalPath": "/home/patrick/work/put.gd/work/cross-desktop-current/gnome/session-reboot.json",
-      "sha256": "005813166d161a02d50641ec783a9ad2a445311b0e15387c0415a434af8a9265",
-      "bytes": 432
+      "sha256": "41299987cea6a36978cb2cb2346d6a0785f814b23905d782f99ff398409e2c26",
+      "bytes": 380
     },
     {
       "path": "gnome/summary.json",
@@ -2291,7 +2291,7 @@
     {
       "path": "kde/evidence-manifest.json",
       "originalPath": "/home/patrick/work/put.gd/work/cross-desktop-current/kde/evidence-manifest.json",
-      "sha256": "4d4f04042f32b2aca87fe8ad097f4d57882a190837a77452399984ab67705425",
+      "sha256": "8b000867537726de1d962512d6886aa38b82e857c1d6064088deb55d8e1b7269",
       "bytes": 6219
     },
     {
@@ -2351,8 +2351,8 @@
     {
       "path": "kde/installed-running-identity.json",
       "originalPath": "/home/patrick/work/put.gd/work/cross-desktop-current/kde/installed-running-identity.json",
-      "sha256": "091913f17d0cf7cc41182ef49a99b8dffa54eb8c53a1fd2708362cf111803f4d",
-      "bytes": 1941
+      "sha256": "6d08c60392ac42b53631c3bc1623b047ff559a017ce6bdfbb8524f317d7bd9ba",
+      "bytes": 1915
     },
     {
       "path": "kde/known-host-port-adaptation.json",

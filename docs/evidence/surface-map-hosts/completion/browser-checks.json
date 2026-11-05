@@ -1,0 +1,190 @@
+{
+  "after": "9ad7a2c9085e066407bd1c3f6c05c9d50ea0b9b0",
+  "nightly": "5985e9043ea81a3ac33d2931203384e40bde035e",
+  "before": "9cd26ff96a9da6ec3d52ebb770ffeb0a03d44852",
+  "viewportHeight": 1000,
+  "browserChecks": [
+    {
+      "state": "before",
+      "width": 1900,
+      "overlapPx": 19,
+      "toolbar": {
+        "x": 0,
+        "y": 0,
+        "width": 1900,
+        "height": 77,
+        "top": 0,
+        "right": 1900,
+        "bottom": 77,
+        "left": 0
+      },
+      "heading": {
+        "x": 18,
+        "y": 58,
+        "width": 270,
+        "height": 27.890625,
+        "top": 58,
+        "right": 288,
+        "bottom": 85.890625,
+        "left": 18
+      },
+      "scrollY": 2200,
+      "offset": "58px"
+    },
+    {
+      "state": "before",
+      "width": 900,
+      "overlapPx": 93.09375,
+      "toolbar": {
+        "x": 0,
+        "y": 0,
+        "width": 900,
+        "height": 151.09375,
+        "top": 0,
+        "right": 900,
+        "bottom": 151.09375,
+        "left": 0
+      },
+      "heading": {
+        "x": 18,
+        "y": 58,
+        "width": 270,
+        "height": 27.890625,
+        "top": 58,
+        "right": 288,
+        "bottom": 85.890625,
+        "left": 18
+      },
+      "scrollY": 2200,
+      "offset": "58px"
+    },
+    {
+      "state": "before",
+      "width": 1900,
+      "overlapPx": 19,
+      "toolbar": {
+        "x": 0,
+        "y": 0,
+        "width": 1900,
+        "height": 77,
+        "top": 0,
+        "right": 1900,
+        "bottom": 77,
+        "left": 0
+      },
+      "heading": {
+        "x": 18,
+        "y": 58,
+        "width": 270,
+        "height": 27.890625,
+        "top": 58,
+        "right": 288,
+        "bottom": 85.890625,
+        "left": 18
+      },
+      "scrollY": 2200,
+      "offset": "58px"
+    },
+    {
+      "state": "after",
+      "width": 1900,
+      "overlapPx": 0,
+      "toolbar": {
+        "x": 0,
+        "y": 0,
+        "width": 1900,
+        "height": 77,
+        "top": 0,
+        "right": 1900,
+        "bottom": 77,
+        "left": 0
+      },
+      "heading": {
+        "x": 18,
+        "y": 77,
+        "width": 270,
+        "height": 27.890625,
+        "top": 77,
+        "right": 288,
+        "bottom": 104.890625,
+        "left": 18
+      },
+      "scrollY": 2200,
+      "offset": "77px"
+    },
+    {
+      "state": "after",
+      "width": 900,
+      "overlapPx": 0.0,
+      "toolbar": {
+        "x": 0,
+        "y": 0,
+        "width": 900,
+        "height": 151.09375,
+        "top": 0,
+        "right": 900,
+        "bottom": 151.09375,
+        "left": 0
+      },
+      "heading": {
+        "x": 18,
+        "y": 151.09375,
+        "width": 270,
+        "height": 27.890625,
+        "top": 151.09375,
+        "right": 288,
+        "bottom": 178.984375,
+        "left": 18
+      },
+      "scrollY": 2200,
+      "offset": "151.094px"
+    },
+    {
+      "state": "after",
+      "width": 1900,
+      "overlapPx": 0,
+      "toolbar": {
+        "x": 0,
+        "y": 0,
+        "width": 1900,
+        "height": 77,
+        "top": 0,
+        "right": 1900,
+        "bottom": 77,
+        "left": 0
+      },
+      "heading": {
+        "x": 18,
+        "y": 77,
+        "width": 270,
+        "height": 27.890625,
+        "top": 77,
+        "right": 288,
+        "bottom": 104.890625,
+        "left": 18
+      },
+      "scrollY": 2200,
+      "offset": "77px"
+    }
+  ],
+  "errors": [],
+  "chromium": "156.0.8078.47",
+  "v1": {
+    "matchedNightly": true,
+    "views": [
+      "All required desktops/Map",
+      "All required desktops/Matrix",
+      "All required desktops/Gaps",
+      "Mint Cinnamon/X11/Map",
+      "Mint Cinnamon/X11/Matrix",
+      "Mint Cinnamon/X11/Gaps"
+    ],
+    "normalization": "Aurora KDE/Wayland (AppImage) -> Aurora KDE/Wayland; planned label change only"
+  },
+  "matrixPopover": {
+    "selectedDesktop": "Mint Cinnamon/X11",
+    "clickedDesktop": "Ubuntu GNOME/Wayland",
+    "keepsSelectedAndClickedRows": true,
+    "text": "\u2715\nImage editor \u00b7 Undo Ctrl+Z\neditor.undo \u00b7 button \u00b7 method editor.apply \u00b7 driver edit_acceptance \u00b7 src/ui/EditorWindow.cpp\n\tfunctional\tvisual\t\t\nMint Cinnamon/X11 on f44 (VM)\t passed\t none\tdeb\t\nUbuntu GNOME/Wayland on f44 (VM) \u00b7 golden\t failed\t none\tdeb\tdocs/synthetic-ubuntu-receipt.json\noverall: passed on every required desktop \u00b7 no frames"
+  }
+}

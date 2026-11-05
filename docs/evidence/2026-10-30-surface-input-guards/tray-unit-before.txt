@@ -1,0 +1,100 @@
+EEEEEEEEE
+======================================================================
+ERROR: test_double_click_has_one_live_resolution_and_guard_for_the_pair (__main__.DesktopGestures.test_double_click_has_one_live_resolution_and_guard_for_the_pair)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/patrick/.t3/worktrees/put.gd/t3-92ed5b64/tests/desktop/test_surface_tray_input.py", line 25, in test_double_click_has_one_live_resolution_and_guard_for_the_pair
+    ctx.double_click_accessible({'application':'gnome-shell*','name':'put.gd'})
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'DriverContext' object has no attribute 'double_click_accessible'. Did you mean: 'click_accessible'?
+
+======================================================================
+ERROR: test_double_click_refuses_obstruction_without_input (__main__.DesktopGestures.test_double_click_refuses_obstruction_without_input)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/patrick/.t3/worktrees/put.gd/t3-92ed5b64/tests/desktop/test_surface_tray_input.py", line 35, in test_double_click_refuses_obstruction_without_input
+    ctx.double_click_accessible({'pid':70,'name':'put.gd'})
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'DriverContext' object has no attribute 'double_click_accessible'. Did you mean: 'click_accessible'?
+
+======================================================================
+ERROR: test_release_failure_stops_the_pair_and_poisoning_is_preserved (__main__.DesktopGestures.test_release_failure_stops_the_pair_and_poisoning_is_preserved)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/patrick/.t3/worktrees/put.gd/t3-92ed5b64/tests/desktop/test_surface_tray_input.py", line 42, in test_release_failure_stops_the_pair_and_poisoning_is_preserved
+    ctx.double_click_accessible({'pid':70,'name':'put.gd'})
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'DriverContext' object has no attribute 'double_click_accessible'. Did you mean: 'click_accessible'?
+
+======================================================================
+ERROR: test_wheel_stops_when_an_obstruction_arrives (__main__.DesktopGestures.test_wheel_stops_when_an_obstruction_arrives)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/patrick/.t3/worktrees/put.gd/t3-92ed5b64/tests/desktop/test_surface_tray_input.py", line 57, in test_wheel_stops_when_an_obstruction_arrives
+    ctx.scroll_accessible({'pid':70,'name':'put.gd'},2)
+    ^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'DriverContext' object has no attribute 'scroll_accessible'. Did you mean: 'click_accessible'?
+
+======================================================================
+ERROR: test_wheel_uses_desktop_witness_and_releases_each_pulse (__main__.DesktopGestures.test_wheel_uses_desktop_witness_and_releases_each_pulse)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/patrick/.t3/worktrees/put.gd/t3-92ed5b64/tests/desktop/test_surface_tray_input.py", line 48, in test_wheel_uses_desktop_witness_and_releases_each_pulse
+    ctx.scroll_accessible({'pid':70,'name':'put.gd'},-2)
+    ^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'DriverContext' object has no attribute 'scroll_accessible'. Did you mean: 'click_accessible'?
+
+======================================================================
+ERROR: test_private_native_selector_focused_state_proves_its_grab (__main__.NativeGrab.test_private_native_selector_focused_state_proves_its_grab)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/patrick/.t3/worktrees/put.gd/t3-92ed5b64/tests/desktop/test_surface_tray_input.py", line 75, in test_private_native_selector_focused_state_proves_its_grab
+    result=self.check([self.row])
+           ^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/patrick/.t3/worktrees/put.gd/t3-92ed5b64/tests/desktop/test_surface_tray_input.py", line 67, in check
+    with patch.object(probe,'owned',return_value=owned),patch.object(probe,'native_capture_process',return_value=True),\
+  File "/usr/lib/python3.12/unittest/mock.py", line 1458, in __enter__
+    original, local = self.get_original()
+                      ^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/unittest/mock.py", line 1431, in get_original
+    raise AttributeError(
+AttributeError: <module 'tools.lab.surface_driver.probe' from '/home/patrick/.t3/worktrees/put.gd/t3-92ed5b64/tools/lab/surface_driver/probe.py'> does not have the attribute 'native_capture_process'
+
+======================================================================
+ERROR: test_stale_ambiguous_or_foreign_selector_never_authorizes_keyboard (__main__.NativeGrab.test_stale_ambiguous_or_foreign_selector_never_authorizes_keyboard)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/patrick/.t3/worktrees/put.gd/t3-92ed5b64/tests/desktop/test_surface_tray_input.py", line 80, in test_stale_ambiguous_or_foreign_selector_never_authorizes_keyboard
+    self.assertFalse(self.check(rows)['ok'])
+                     ^^^^^^^^^^^^^^^^
+  File "/home/patrick/.t3/worktrees/put.gd/t3-92ed5b64/tests/desktop/test_surface_tray_input.py", line 67, in check
+    with patch.object(probe,'owned',return_value=owned),patch.object(probe,'native_capture_process',return_value=True),\
+  File "/usr/lib/python3.12/unittest/mock.py", line 1458, in __enter__
+    original, local = self.get_original()
+                      ^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/unittest/mock.py", line 1431, in get_original
+    raise AttributeError(
+AttributeError: <module 'tools.lab.surface_driver.probe' from '/home/patrick/.t3/worktrees/put.gd/t3-92ed5b64/tools/lab/surface_driver/probe.py'> does not have the attribute 'native_capture_process'
+
+======================================================================
+ERROR: test_foreign_window_pid_duplicate_name_or_wrong_rect_cannot_match (__main__.ShellActorPick.test_foreign_window_pid_duplicate_name_or_wrong_rect_cannot_match)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/patrick/.t3/worktrees/put.gd/t3-92ed5b64/tests/desktop/test_surface_tray_input.py", line 99, in test_foreign_window_pid_duplicate_name_or_wrong_rect_cannot_match
+    self.assertFalse(probe.shell_witness_hit(self.query)['ok'])
+                     ^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: module 'tools.lab.surface_driver.probe' has no attribute 'shell_witness_hit'
+
+======================================================================
+ERROR: test_native_shell_actor_proves_label_above_the_client (__main__.ShellActorPick.test_native_shell_actor_proves_label_above_the_client)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/patrick/.t3/worktrees/put.gd/t3-92ed5b64/tests/desktop/test_surface_tray_input.py", line 93, in test_native_shell_actor_proves_label_above_the_client
+    self.assertTrue(probe.shell_witness_hit(self.query)['ok'])
+                    ^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: module 'tools.lab.surface_driver.probe' has no attribute 'shell_witness_hit'
+
+----------------------------------------------------------------------
+Ran 9 tests in 0.014s
+
+FAILED (errors=9)

@@ -1,0 +1,158 @@
+{
+  "schemaVersion": 2,
+  "campaign": "tier1-phase-b-followup-2",
+  "entries": [
+    {
+      "interaction": "history.delete-remote",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "/home/patrick/t1r3e/cin-s3-delete2/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; operationId=b7700a7c-cc2a-46ec-a488-313e31cd4e5e; Retained synthetic png sha256=17c4d5d4d0c8fde0770d01528dff0b1a8c522d399e1d5996d1f0b6c15ee0feca; desktop frame browser-failure-fully-masked masked by live evidence policy; Retained public-serving failure=timeout: default Firefox loaded the expected page content; last Firefox answer: Recipient readiness: {\"blank\": false, \"certificateError\": false, \"complete\": true, \"content\": false, \"focused\": true, \"fullscreen\": true, \"hostOK\": true, \"media\": false, \"named\": true, \"networkError\": false, \"status\": 403}; deletion_count=1; s3_origin_absence_count=1; recipient_unavailable_observation={\"complete\": true, \"hostOK\": true, \"httpUnavailable\": true, \"media\": false, \"missing\": false, \"status\": 403, \"unavailable\": false}; cloudfront_after_delete_status=403; unavailable_link_count=1; Firefox handler restored; MIME SHA-256 checks passed; retained_s3_credential_cleanup_count=1; desktop frame after masked by live evidence policy",
+      "host": "d69",
+      "placement": "guest",
+      "guest": "cinnamon-x11",
+      "destination": "s3",
+      "review": true,
+      "review_reason": "frame has no visible pixels; visual approval withheld; frame fully masked: ocr-sensitive-text-fully-masked; desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/__main__.finish/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-failure-fully-masked",
+          "path": "frames/__main__.finish/01-browser-failure-fully-masked.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-before-remote-cleanup",
+          "path": "frames/__main__.finish/02-history-before-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "delete-exact-owned-object",
+          "path": "frames/__main__.finish/03-delete-exact-owned-object.png",
+          "window": "confirmAction",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-after-remote-cleanup",
+          "path": "frames/__main__.finish/04-history-after-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-cloudfront-status-403",
+          "path": "frames/__main__.finish/05-browser-cloudfront-status-403.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/__main__.finish/06-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "__main__.finish",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T06:34:42Z"
+    },
+    {
+      "interaction": "confirm.history-delete",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "/home/patrick/t1r3e/cin-s3-delete2/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; operationId=b7700a7c-cc2a-46ec-a488-313e31cd4e5e; Retained synthetic png sha256=17c4d5d4d0c8fde0770d01528dff0b1a8c522d399e1d5996d1f0b6c15ee0feca; desktop frame browser-failure-fully-masked masked by live evidence policy; Retained public-serving failure=timeout: default Firefox loaded the expected page content; last Firefox answer: Recipient readiness: {\"blank\": false, \"certificateError\": false, \"complete\": true, \"content\": false, \"focused\": true, \"fullscreen\": true, \"hostOK\": true, \"media\": false, \"named\": true, \"networkError\": false, \"status\": 403}; deletion_count=1; s3_origin_absence_count=1; recipient_unavailable_observation={\"complete\": true, \"hostOK\": true, \"httpUnavailable\": true, \"media\": false, \"missing\": false, \"status\": 403, \"unavailable\": false}; cloudfront_after_delete_status=403; unavailable_link_count=1; Firefox handler restored; MIME SHA-256 checks passed; retained_s3_credential_cleanup_count=1; desktop frame after masked by live evidence policy",
+      "host": "d69",
+      "placement": "guest",
+      "guest": "cinnamon-x11",
+      "destination": "s3",
+      "review": true,
+      "review_reason": "frame has no visible pixels; visual approval withheld; frame fully masked: ocr-sensitive-text-fully-masked; desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/__main__.finish/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-failure-fully-masked",
+          "path": "frames/__main__.finish/01-browser-failure-fully-masked.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-before-remote-cleanup",
+          "path": "frames/__main__.finish/02-history-before-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "delete-exact-owned-object",
+          "path": "frames/__main__.finish/03-delete-exact-owned-object.png",
+          "window": "confirmAction",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-after-remote-cleanup",
+          "path": "frames/__main__.finish/04-history-after-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-cloudfront-status-403",
+          "path": "frames/__main__.finish/05-browser-cloudfront-status-403.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/__main__.finish/06-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "__main__.finish",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T06:34:42Z"
+    }
+  ]
+}

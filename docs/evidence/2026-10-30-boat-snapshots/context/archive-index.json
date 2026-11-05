@@ -1,0 +1,311 @@
+{
+  "schemaVersion": 1,
+  "privateRootDescription": "Owned campaign workspace boat-snapshots-v2-20261030; contains no workstation golden images",
+  "restore": "Verify SHA-256, then extract a listed tar to a new private directory with data-only tar filters. DEBs are matching cached package binaries. Source commits are retained in Git and the named snapshots.",
+  "files": [
+    {
+      "path": "base-final-host.tar",
+      "bytes": 440320,
+      "sha256": "4945ce12082f54718a99f569301dfdcd8200cc2043ef305e1ba3b9d976760922",
+      "members": 10
+    },
+    {
+      "path": "base-final-manifest.json",
+      "bytes": 8974,
+      "sha256": "d717e3fbbda1d928a7faa03e20a9c205ea21392ce5177e4aef7bf9a6b7c885b5"
+    },
+    {
+      "path": "base-final-publication.json",
+      "bytes": 10065,
+      "sha256": "cf6647ecd844f72bf66992caf7f510d9dc20eb6eedb7b5be00acffb8f320e84e"
+    },
+    {
+      "path": "build-host-evidence.tar",
+      "bytes": 450560,
+      "sha256": "3bde5058c44a9b2f3e13f4206df01ce7f99427d86a12a708d3f79d5e4d521918",
+      "members": 11
+    },
+    {
+      "path": "build-manifest.json",
+      "bytes": 5387,
+      "sha256": "6b5a3167427fad869d09e676148bd3a0c5fe422d0482b0cbb3164df4979b2dee"
+    },
+    {
+      "path": "build-publication.json",
+      "bytes": 6091,
+      "sha256": "8f564a2ffe45ab58b49c4a132c82b11e08109ebf7fe8fcd359c9859093863829"
+    },
+    {
+      "path": "cinnamon-final-host.tar",
+      "bytes": 450560,
+      "sha256": "78182d90ac9a8dbc2c3475618c5347999956dc9c622da686c96df65c706e57a2",
+      "members": 10
+    },
+    {
+      "path": "cinnamon-final-manifest.json",
+      "bytes": 10769,
+      "sha256": "130d42363810ddd36ede62b229d1702d4b9b25bb86c977aa59d11f0a057dda2e"
+    },
+    {
+      "path": "cinnamon-final-publication.json",
+      "bytes": 11992,
+      "sha256": "f2a32cb075e09ef3a42a99e7f2ecc83314e48a9a78859692b5632f19711c59c6"
+    },
+    {
+      "path": "cinnamon-guest.tar",
+      "bytes": 3112960,
+      "sha256": "5d4c0b0d12866ba10776c885b8d4aaebc63cb6262aa3ff08bb944cf73c072209",
+      "members": 12
+    },
+    {
+      "path": "cinnamon-host-evidence.tar",
+      "bytes": 450560,
+      "sha256": "2b04b4794e29046856440a0e85d4d0ca63fe3c7618ac7094d390a46879cb46f6",
+      "members": 11
+    },
+    {
+      "path": "cinnamon-manifest.json",
+      "bytes": 6486,
+      "sha256": "484414e20e84d202a4be8600daee3bb7ae963a7974e19c2e457e8384e320a42e"
+    },
+    {
+      "path": "cinnamon-publication.json",
+      "bytes": 7272,
+      "sha256": "cc643fc09d0be1d2e74c89d74fe1c247276f36248bfcbf270a38b4ef5830848f"
+    },
+    {
+      "path": "fbase-fresh-host.tar",
+      "bytes": 317440,
+      "sha256": "c370c8d1616d71891dcd8ca03c6cd494e81eb49c6dad0e1c443102043249bcea",
+      "members": 9
+    },
+    {
+      "path": "fbase-fresh-verification.json",
+      "bytes": 613,
+      "sha256": "e383dafbac6b6317857ec8545e9a2558ba0791d80c3c7b414a09d293f7acbe39"
+    },
+    {
+      "path": "fbase-inherited-manifest.json",
+      "bytes": 8973,
+      "sha256": "1201a05bca72f429077648c1088840466e13394076fc9ad43e2c269118a3c8cf"
+    },
+    {
+      "path": "fbase-package.tar",
+      "bytes": 296960,
+      "sha256": "2481b8c12201c5a24762d52f51dc86608e74bf4489592e78f3e430f997e8db29",
+      "members": 12
+    },
+    {
+      "path": "fbase2-package.tar",
+      "bytes": 296960,
+      "sha256": "f8b92e14bc1ab62b16c58397a59c37daa57ac474481b34787d73ceb75dd2cee0",
+      "members": 12
+    },
+    {
+      "path": "fcinnamon-focused.tar",
+      "bytes": 10240,
+      "sha256": "c35b38afb5fa0b974d253037827fe2c6088e958fc1f0eebd8d44dae9341fb8d7",
+      "members": 2
+    },
+    {
+      "path": "fcinnamon-fresh-host.tar",
+      "bytes": 419840,
+      "sha256": "7f5e17d3482e2e90d2bcf6fc41e43c5f2c28b7955c55f2df9cd803248376203a",
+      "members": 9
+    },
+    {
+      "path": "fcinnamon-fresh-lab-verification.json",
+      "bytes": 1390,
+      "sha256": "f5628ed57267c944c80dbacc60317f0272bc51d8abe26e57fa14920a172c8665"
+    },
+    {
+      "path": "fcinnamon-fresh-lab.tar",
+      "bytes": 9328640,
+      "sha256": "6fc3f3dc2fe7c29b9f1cd156d01ba30b45ebbdde81ca9ccafab7643450dc743a",
+      "members": 29
+    },
+    {
+      "path": "fcinnamon-fresh-verification.json",
+      "bytes": 977,
+      "sha256": "c59746070e921dbf1d973f4f2ea82537655c6b86627ab5190982a1bff68b674d"
+    },
+    {
+      "path": "fcinnamon-inherited-manifest.json",
+      "bytes": 10768,
+      "sha256": "162718a85f3f99275566c85edca3078f8cbfdbfa5d3405896270fed54c956532"
+    },
+    {
+      "path": "fgnome-focused.tar",
+      "bytes": 10240,
+      "sha256": "b365ccccd852ec69b66723596ed02ffc71ff3bf92a60a76f230698687f923c8d",
+      "members": 2
+    },
+    {
+      "path": "fgnome-fresh-host.tar",
+      "bytes": 327680,
+      "sha256": "399afeafbfe7bc9b0939858e68030d75327dee8bca6b39cdb27e03752f57c130",
+      "members": 9
+    },
+    {
+      "path": "fgnome-fresh-lab-verification.json",
+      "bytes": 1387,
+      "sha256": "be7694bad380bb39c7a0ad3ce3db774f602f5e6f00861b3a8a0a0c119dc7f95f"
+    },
+    {
+      "path": "fgnome-fresh-lab.tar",
+      "bytes": 9318400,
+      "sha256": "0b03cacdcd93f5529d8b18e99216527ede8af226483264dd4b23af1a51187cad",
+      "members": 27
+    },
+    {
+      "path": "fgnome-fresh-verification.json",
+      "bytes": 1201,
+      "sha256": "9de627ffdd67c8f69e1312d73369bd09dd739843362a6341610d98f86f1a8a8e"
+    },
+    {
+      "path": "fgnome-inherited-manifest.json",
+      "bytes": 10468,
+      "sha256": "ee14391555aa3e4f19bf8700a46d22307be7c9fa8129ca76277fcd28b0579ef6"
+    },
+    {
+      "path": "gnome-final-host.tar",
+      "bytes": 450560,
+      "sha256": "388af8b06c96b3f314d516e540e4d98354313b7cbea89ea640aba33179f06763",
+      "members": 10
+    },
+    {
+      "path": "gnome-final-manifest.json",
+      "bytes": 10469,
+      "sha256": "fb0c880e9aa9df660039cdc5580e56ac5ed8aa357451f1206eeb50be5876d4f2"
+    },
+    {
+      "path": "gnome-final-publication.json",
+      "bytes": 11589,
+      "sha256": "ddbe23fb4cd1b6972255606f7a8fea592c2c07e12d56ad4c5950f0197a924580"
+    },
+    {
+      "path": "gnome-guest-partial.tar",
+      "bytes": 3092480,
+      "sha256": "ea264727d519ed39f2df366665397c3a8f74717c2c3b4d8169621ba1bc287f1d",
+      "members": 7
+    },
+    {
+      "path": "gnome-guest.tar",
+      "bytes": 3102720,
+      "sha256": "62351c89f28ed44286025c66b221b418d617d85b91049fe9afe551b3c46d7589",
+      "members": 12
+    },
+    {
+      "path": "gnome-host-evidence.tar",
+      "bytes": 450560,
+      "sha256": "72576a673e8fb02c957fd248258945672695e1dc73c3d46fa8364b31855b2222",
+      "members": 11
+    },
+    {
+      "path": "gnome-manifest.json",
+      "bytes": 6400,
+      "sha256": "6e47a4b57d4a2aad919fd23343e8587dc1035f448a5373d43e46227aa1762ba6"
+    },
+    {
+      "path": "gnome-publication.json",
+      "bytes": 7455,
+      "sha256": "25baa8c0763aa52f4f232fc2618a88464d1a668b6d73a2962f99f7bcfed19219"
+    },
+    {
+      "path": "packages/ubuntu24.04/putgd_26.1030.2481~dev+g6ad9f957e654_amd64.deb",
+      "bytes": 59935320,
+      "sha256": "dd8a58d3779e7e7873c69e364a72dbfa5439c9f3088841dc447c47afd2cdaa9f"
+    },
+    {
+      "path": "packages/ubuntu26.04/putgd_26.1030.2481~dev+g6ad9f957e654_amd64.deb",
+      "bytes": 60326068,
+      "sha256": "969c6899a1297b056ef45b2eb3c69150af7fbd554db8fcde5959172dc8a998cd"
+    },
+    {
+      "path": "pbuild-failed-evidence.tar",
+      "bytes": 440320,
+      "sha256": "cd6daff9dbcef52836c96ee29222331cb94792677e7a1d4c05229e9e1d942390",
+      "members": 7
+    },
+    {
+      "path": "pcinnamon-guest-package.tar",
+      "bytes": 9267200,
+      "sha256": "5d446d0b96808c733ea400125a72b0eab01e77fb6aea2b38235ce71b1ca8a587",
+      "members": 24
+    },
+    {
+      "path": "pcinnamon-host-package.tar",
+      "bytes": 286720,
+      "sha256": "e4e5075dca4db9033011603957d99d47a248922288b94ae61f4bd32683b270b2",
+      "members": 11
+    },
+    {
+      "path": "pcinnamon-session-guest.tar",
+      "bytes": 9277440,
+      "sha256": "250af4fd74dc93215d8fd8ecc4caf93317d206c307416144e6de9571d03565a6",
+      "members": 27
+    },
+    {
+      "path": "ubuntu24.04-package.tar",
+      "bytes": 60098560,
+      "sha256": "b8fced7c63b85e8eeb911c011e17864b24a60dfc8c48192e00155ba8d8c63b34",
+      "members": 6
+    },
+    {
+      "path": "ubuntu24.04-recipe.sh",
+      "bytes": 2898,
+      "sha256": "bc94c4a6f83f8962ea0c22e4d970001534225e400a15ab507d46cedb48f00c10"
+    },
+    {
+      "path": "ubuntu26.04-package.tar",
+      "bytes": 60497920,
+      "sha256": "b72b09d2682b9bce591e5b98f98470561dcab6df8b68163f1dc073170141878c",
+      "members": 6
+    },
+    {
+      "path": "ubuntu26.04-recipe.sh",
+      "bytes": 2765,
+      "sha256": "c395bc1271789d6c849f9a671a11b9ddd5fd9728552f4e6154bc5729d79d7e41"
+    },
+    {
+      "path": "vbuild-host-evidence.tar",
+      "bytes": 389120,
+      "sha256": "28714e5001f85df2e5d905f7a5eb7f512e671455a77a5b465b677e9248458a9a",
+      "members": 9
+    },
+    {
+      "path": "vcinnamon-guest.tar",
+      "bytes": 6174720,
+      "sha256": "49300ce81fad27eca602bdbe937142ead0d5dbb3395b2804441207ab240980c9",
+      "members": 13
+    },
+    {
+      "path": "vcinnamon-host-evidence.tar",
+      "bytes": 296960,
+      "sha256": "8b66d2db5d4f846ecd83455bf43c8c9d91acc5ef7c78852d7037fa60a1edd2ca",
+      "members": 8
+    },
+    {
+      "path": "vcinnamon-inherited-manifest.json",
+      "bytes": 6485,
+      "sha256": "f40465537a486836266cc7b7f9c2ba3fa463e0c79f5bb42d2fc1669f8e3ee3a9"
+    },
+    {
+      "path": "vgnome-guest-package.tar",
+      "bytes": 9267200,
+      "sha256": "30803ed19b56635b3cd568688a12011a4ed70e2702ee768154a6182bd41efd3e",
+      "members": 25
+    },
+    {
+      "path": "vgnome-guest.tar",
+      "bytes": 6164480,
+      "sha256": "f43d1524368648d36443f6dc21619952c4f504d920560314367b36594696c76b",
+      "members": 12
+    },
+    {
+      "path": "vgnome-inherited-manifest.json",
+      "bytes": 6399,
+      "sha256": "f2f4cffb79fc9d44e64d52e3a1a86bcf7c5eed5d3b49861268ca6c6211e36a03"
+    }
+  ]
+}

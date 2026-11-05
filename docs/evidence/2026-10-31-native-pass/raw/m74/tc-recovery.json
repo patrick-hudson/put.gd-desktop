@@ -1,0 +1,38 @@
+{
+  "tc -j qdisc show dev lo": {
+    "exit": 0,
+    "stdout": "[{\"kind\":\"noqueue\",\"handle\":\"0:\",\"root\":true,\"refcnt\":2,\"options\":{}}]\n",
+    "stderr": ""
+  },
+  "tc -j class show dev lo": {
+    "exit": 0,
+    "stdout": "class htb 379:1 root rate 100Gbit ceil 100Gbit burst 2400b cburst 2400b \nclass htb 379:2 parent 379:1 prio 0 rate 100Gbit ceil 100Gbit burst 2400b cburst 2400b \n",
+    "stderr": ""
+  },
+  "tc -s -j class show dev lo": {
+    "exit": 0,
+    "stdout": "class htb 379:1 root rate 100Gbit ceil 100Gbit burst 2400b cburst 2400b \n Sent 9770462 bytes 997 pkt (dropped 0, overlimits 157 requeues 0) \n backlog 0b 0p requeues 0\n lended: 0 borrowed: 0 giants: 0\n tokens: 2 ctokens: 2\n\nclass htb 379:2 parent 379:1 prio 0 rate 100Gbit ceil 100Gbit burst 2400b cburst 2400b \n Sent 9770462 bytes 997 pkt (dropped 0, overlimits 242 requeues 0) \n backlog 0b 0p requeues 0\n lended: 996 borrowed: 0 giants: 0\n tokens: 2 ctokens: 2\n\n",
+    "stderr": ""
+  },
+  "nft -j list table inet np379_1211603": {
+    "exit": 0,
+    "stdout": "{\"nftables\": [{\"metainfo\": {\"version\": \"1.0.9\", \"release_name\": \"Old Doc Yak #3\", \"json_schema_version\": 1}}, {\"table\": {\"family\": \"inet\", \"name\": \"np379_1211603\", \"handle\": 7}}, {\"chain\": {\"family\": \"inet\", \"table\": \"np379_1211603\", \"name\": \"output\", \"handle\": 1, \"type\": \"filter\", \"hook\": \"output\", \"prio\": -1, \"policy\": \"accept\"}}, {\"rule\": {\"family\": \"inet\", \"table\": \"np379_1211603\", \"chain\": \"output\", \"handle\": 2, \"expr\": [{\"match\": {\"op\": \"==\", \"left\": {\"payload\": {\"protocol\": \"ip\", \"field\": \"daddr\"}}, \"right\": \"127.0.0.1\"}}, {\"match\": {\"op\": \"==\", \"left\": {\"payload\": {\"protocol\": \"tcp\", \"field\": \"dport\"}}, \"right\": 40745}}, {\"counter\": {\"packets\": 0, \"bytes\": 0}}, {\"mangle\": {\"key\": {\"meta\": {\"key\": \"mark\"}}, \"value\": 932184064}}]}}]}\n",
+    "stderr": ""
+  },
+  "tc qdisc del dev lo root handle 379:": {
+    "exit": 0,
+    "stdout": "",
+    "stderr": ""
+  },
+  "nft delete table inet np379_1211603": {
+    "exit": 0,
+    "stdout": "",
+    "stderr": ""
+  },
+  "nft list tables": {
+    "exit": 0,
+    "stdout": "table ip filter\ntable ip nat\ntable ip6 filter\ntable ip6 nat\ntable ip mangle\ntable ip6 mangle\n",
+    "stderr": ""
+  },
+  "restored": true
+}

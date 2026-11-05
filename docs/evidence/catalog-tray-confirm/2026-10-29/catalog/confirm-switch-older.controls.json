@@ -1,0 +1,65 @@
+{
+    "class": "QMessageBox",
+    "controls": [
+        {
+            "class": "QLabel",
+            "enabled": true,
+            "kind": "focusable",
+            "name": "qt_msgbox_label",
+            "rect": [
+                24,
+                20,
+                420,
+                38
+            ],
+            "text": "Switch to stable 26.1028.1, which is older than this build (26.1029.1)?"
+        },
+        {
+            "checkable": false,
+            "checked": false,
+            "class": "QPushButton",
+            "enabled": true,
+            "kind": "button",
+            "name": "confirmDiscard",
+            "rect": [
+                241,
+                154,
+                203,
+                36
+            ],
+            "text": "Switch to stable 26.1028.1"
+        },
+        {
+            "checkable": false,
+            "checked": false,
+            "class": "QPushButton",
+            "enabled": true,
+            "kind": "button",
+            "name": "",
+            "rect": [
+                162,
+                154,
+                73,
+                36
+            ],
+            "text": "Cancel"
+        },
+        {
+            "class": "QLabel",
+            "enabled": true,
+            "kind": "focusable",
+            "name": "qt_msgbox_informativelabel",
+            "rect": [
+                24,
+                70,
+                420,
+                68
+            ],
+            "text": "put.gd replaces synthetic-putgd.AppImage with stable 26.1028.1, checked against the stable release's signature, at the same path. An older version may not open settings or history saved by a newer one. This version is kept as a hidden backup until the new one has started."
+        }
+    ],
+    "height": 206,
+    "keys": [
+    ],
+    "width": 468
+}

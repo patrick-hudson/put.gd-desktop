@@ -1,0 +1,9 @@
+# A desktop capture whose local save failed keeps its artifact for Retry (retention.failedArtifactDays = 7).
+$ age202.py history.sqlite 8        # with the resident stopped: created 2026-10-12T15:48:46.968Z, state failed
+$ putgd --background                # restarted 15:49:01Z; nobody runs Clean artifacts
+15:49:01.874Z putgd.app        info  Resident started
+15:50:01.966Z putgd.operation  info  Expired artifacts removed  operationId 3db5e30e-...  state failed  items 1  ageDays 8  failedArtifactDays 7  trigger automatic
+15:50:01.966Z putgd.operation  info  Artifact cleanup finished  removedOperations 1  abortedUploads 0  incompleteUploads 0  more false  stopped false  elapsedMs 1  trigger automatic
+$ ls data/putgd/artifacts           # empty: the 8-day-old failed artifact is gone
+$ putgd-cli diagnostics   -> result.artifactCleanup
+{"automatic": false, "intervalMs": 3600000, "running": false, "last": {"trigger": "automatic", "removedOperations": 1, "abortedUploads": 0, "incompleteUploads": [], "finished": "2026-10-20T15:50:01.964Z", "elapsedMs": 1}}

@@ -1,0 +1,5 @@
+{
+  "exit": 0,
+  "stdout": "{\"edges\": {\"bottom\": 1.0, \"left\": 1.0, \"right\": 1.0, \"top\": 1.0}, \"fraction\": 1.0, \"kept\": \"/tmp/q559f3/00-covered.png\", \"minFraction\": 0.5, \"ok\": true, \"rect\": [0, 180, 1920, 900], \"sha256\": \"7d0d1da2e086a2eca623edd79ac78d5f569de74f9d868181543676511a2a95cf\", \"size\": [1920, 1080]}\n",
+  "stderr": ""
+}

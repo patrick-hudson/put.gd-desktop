@@ -1,0 +1,324 @@
+{
+  "schemaVersion": 2,
+  "campaign": "tier1-phase-b",
+  "entries": [
+    {
+      "interaction": "region.to-upload",
+      "desktop": "kubuntu-kde-wayland",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/patrick/t1e/kde-protonb/receipt.json",
+      "issue": 820,
+      "note": "desktop frame before masked by live evidence policy; desktop frame independent-frozen-pattern masked by live evidence policy; operationId=320d4cfc-f77e-4b10-a282-0a337cfd5505; Capture operation 320d4cfc-f77e-4b10-a282-0a337cfd5505; shareOperationId=ad7334f4-5d27-4496-be8d-fc15ac196f33; operationId=320d4cfc-f77e-4b10-a282-0a337cfd5505; historyId=b8005ea6-a07f-4ee3-a9ec-ce7a67fca2da; Retained synthetic png sha256=dbf28b144b57384a3d338158d0bca7d0ab67372b5e072f1993ed3667c524ee7a; Firefox handler restored; MIME SHA-256 checks passed; desktop frame after masked by live evidence policy; No unambiguous live geometry after waiting for confirmAction.; fixture cleanup failed: owned history and cache: RecipeBlocked; accepted settings: RecipeBlocked; owned directory: RecipeBlocked",
+      "host": "f44",
+      "placement": "guest",
+      "guest": "kde-wayland",
+      "destination": "proton",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes_live.proton_region_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "independent-frozen-pattern",
+          "path": "frames/outcomes_live.proton_region_upload/01-independent-frozen-pattern.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-failure-safe-desktop",
+          "path": "frames/outcomes_live.proton_region_upload/02-browser-failure-safe-desktop.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes_live.proton_region_upload/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes_live.proton_region_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T04:07:01Z"
+    },
+    {
+      "interaction": "region.drag",
+      "desktop": "kubuntu-kde-wayland",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/patrick/t1e/kde-protonb/receipt.json",
+      "issue": 820,
+      "note": "desktop frame before masked by live evidence policy; desktop frame independent-frozen-pattern masked by live evidence policy; operationId=320d4cfc-f77e-4b10-a282-0a337cfd5505; Capture operation 320d4cfc-f77e-4b10-a282-0a337cfd5505; shareOperationId=ad7334f4-5d27-4496-be8d-fc15ac196f33; operationId=320d4cfc-f77e-4b10-a282-0a337cfd5505; historyId=b8005ea6-a07f-4ee3-a9ec-ce7a67fca2da; Retained synthetic png sha256=dbf28b144b57384a3d338158d0bca7d0ab67372b5e072f1993ed3667c524ee7a; Firefox handler restored; MIME SHA-256 checks passed; desktop frame after masked by live evidence policy; No unambiguous live geometry after waiting for confirmAction.; fixture cleanup failed: owned history and cache: RecipeBlocked; accepted settings: RecipeBlocked; owned directory: RecipeBlocked",
+      "host": "f44",
+      "placement": "guest",
+      "guest": "kde-wayland",
+      "destination": "proton",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes_live.proton_region_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "independent-frozen-pattern",
+          "path": "frames/outcomes_live.proton_region_upload/01-independent-frozen-pattern.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-failure-safe-desktop",
+          "path": "frames/outcomes_live.proton_region_upload/02-browser-failure-safe-desktop.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes_live.proton_region_upload/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes_live.proton_region_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T04:07:01Z"
+    },
+    {
+      "interaction": "history.copy-link",
+      "desktop": "kubuntu-kde-wayland",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/patrick/t1e/kde-protonb/receipt.json",
+      "issue": 820,
+      "note": "desktop frame before masked by live evidence policy; desktop frame independent-frozen-pattern masked by live evidence policy; operationId=320d4cfc-f77e-4b10-a282-0a337cfd5505; Capture operation 320d4cfc-f77e-4b10-a282-0a337cfd5505; shareOperationId=ad7334f4-5d27-4496-be8d-fc15ac196f33; operationId=320d4cfc-f77e-4b10-a282-0a337cfd5505; historyId=b8005ea6-a07f-4ee3-a9ec-ce7a67fca2da; Retained synthetic png sha256=dbf28b144b57384a3d338158d0bca7d0ab67372b5e072f1993ed3667c524ee7a; Firefox handler restored; MIME SHA-256 checks passed; desktop frame after masked by live evidence policy; No unambiguous live geometry after waiting for confirmAction.; fixture cleanup failed: owned history and cache: RecipeBlocked; accepted settings: RecipeBlocked; owned directory: RecipeBlocked",
+      "host": "f44",
+      "placement": "guest",
+      "guest": "kde-wayland",
+      "destination": "proton",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes_live.proton_region_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "independent-frozen-pattern",
+          "path": "frames/outcomes_live.proton_region_upload/01-independent-frozen-pattern.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-failure-safe-desktop",
+          "path": "frames/outcomes_live.proton_region_upload/02-browser-failure-safe-desktop.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes_live.proton_region_upload/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes_live.proton_region_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T04:07:01Z"
+    },
+    {
+      "interaction": "history.open-link",
+      "desktop": "kubuntu-kde-wayland",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/patrick/t1e/kde-protonb/receipt.json",
+      "issue": 820,
+      "note": "desktop frame before masked by live evidence policy; desktop frame independent-frozen-pattern masked by live evidence policy; operationId=320d4cfc-f77e-4b10-a282-0a337cfd5505; Capture operation 320d4cfc-f77e-4b10-a282-0a337cfd5505; shareOperationId=ad7334f4-5d27-4496-be8d-fc15ac196f33; operationId=320d4cfc-f77e-4b10-a282-0a337cfd5505; historyId=b8005ea6-a07f-4ee3-a9ec-ce7a67fca2da; Retained synthetic png sha256=dbf28b144b57384a3d338158d0bca7d0ab67372b5e072f1993ed3667c524ee7a; Firefox handler restored; MIME SHA-256 checks passed; desktop frame after masked by live evidence policy; No unambiguous live geometry after waiting for confirmAction.; fixture cleanup failed: owned history and cache: RecipeBlocked; accepted settings: RecipeBlocked; owned directory: RecipeBlocked",
+      "host": "f44",
+      "placement": "guest",
+      "guest": "kde-wayland",
+      "destination": "proton",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes_live.proton_region_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "independent-frozen-pattern",
+          "path": "frames/outcomes_live.proton_region_upload/01-independent-frozen-pattern.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-failure-safe-desktop",
+          "path": "frames/outcomes_live.proton_region_upload/02-browser-failure-safe-desktop.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes_live.proton_region_upload/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes_live.proton_region_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T04:07:01Z"
+    },
+    {
+      "interaction": "history.proton-sharing",
+      "desktop": "kubuntu-kde-wayland",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/patrick/t1e/kde-protonb/receipt.json",
+      "issue": 820,
+      "note": "desktop frame before masked by live evidence policy; desktop frame independent-frozen-pattern masked by live evidence policy; operationId=320d4cfc-f77e-4b10-a282-0a337cfd5505; Capture operation 320d4cfc-f77e-4b10-a282-0a337cfd5505; shareOperationId=ad7334f4-5d27-4496-be8d-fc15ac196f33; operationId=320d4cfc-f77e-4b10-a282-0a337cfd5505; historyId=b8005ea6-a07f-4ee3-a9ec-ce7a67fca2da; Retained synthetic png sha256=dbf28b144b57384a3d338158d0bca7d0ab67372b5e072f1993ed3667c524ee7a; Firefox handler restored; MIME SHA-256 checks passed; desktop frame after masked by live evidence policy; No unambiguous live geometry after waiting for confirmAction.; fixture cleanup failed: owned history and cache: RecipeBlocked; accepted settings: RecipeBlocked; owned directory: RecipeBlocked",
+      "host": "f44",
+      "placement": "guest",
+      "guest": "kde-wayland",
+      "destination": "proton",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes_live.proton_region_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "independent-frozen-pattern",
+          "path": "frames/outcomes_live.proton_region_upload/01-independent-frozen-pattern.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-failure-safe-desktop",
+          "path": "frames/outcomes_live.proton_region_upload/02-browser-failure-safe-desktop.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes_live.proton_region_upload/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes_live.proton_region_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T04:07:01Z"
+    },
+    {
+      "interaction": "confirm.revoke-link",
+      "desktop": "kubuntu-kde-wayland",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/patrick/t1e/kde-protonb/receipt.json",
+      "issue": 820,
+      "note": "desktop frame before masked by live evidence policy; desktop frame independent-frozen-pattern masked by live evidence policy; operationId=320d4cfc-f77e-4b10-a282-0a337cfd5505; Capture operation 320d4cfc-f77e-4b10-a282-0a337cfd5505; shareOperationId=ad7334f4-5d27-4496-be8d-fc15ac196f33; operationId=320d4cfc-f77e-4b10-a282-0a337cfd5505; historyId=b8005ea6-a07f-4ee3-a9ec-ce7a67fca2da; Retained synthetic png sha256=dbf28b144b57384a3d338158d0bca7d0ab67372b5e072f1993ed3667c524ee7a; Firefox handler restored; MIME SHA-256 checks passed; desktop frame after masked by live evidence policy; No unambiguous live geometry after waiting for confirmAction.; fixture cleanup failed: owned history and cache: RecipeBlocked; accepted settings: RecipeBlocked; owned directory: RecipeBlocked",
+      "host": "f44",
+      "placement": "guest",
+      "guest": "kde-wayland",
+      "destination": "proton",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes_live.proton_region_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "independent-frozen-pattern",
+          "path": "frames/outcomes_live.proton_region_upload/01-independent-frozen-pattern.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-failure-safe-desktop",
+          "path": "frames/outcomes_live.proton_region_upload/02-browser-failure-safe-desktop.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes_live.proton_region_upload/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes_live.proton_region_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T04:07:01Z"
+    }
+  ]
+}

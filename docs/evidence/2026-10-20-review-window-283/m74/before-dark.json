@@ -1,0 +1,97 @@
+{
+ "host": "mint-builder",
+ "desktop": "cinnamon",
+ "session": "x11",
+ "build": "/home/patrick/putgd-lab/r283/before/putgd-0.1.1-dev.762+g0912f0ce6a5b-x86_64.AppImage",
+ "label": "before",
+ "scheme": "dark",
+ "shots": [
+  {
+   "name": "before-dark-empty",
+   "client": [
+    40,
+    40,
+    900,
+    700
+   ],
+   "check": {
+    "ownFraction": 0.9431,
+    "magentaFraction": 0.0,
+    "magentaBox": null,
+    "edgeBackground": {
+     "top": 1.0,
+     "bottom": 1.0,
+     "left": 1.0,
+     "right": 1.0
+    }
+   },
+   "kept": true
+  },
+  {
+   "name": "before-dark-masks",
+   "client": [
+    40,
+    40,
+    900,
+    700
+   ],
+   "check": {
+    "ownFraction": 0.9348,
+    "magentaFraction": 0.0,
+    "magentaBox": null,
+    "edgeBackground": {
+     "top": 1.0,
+     "bottom": 1.0,
+     "left": 1.0,
+     "right": 1.0
+    }
+   },
+   "kept": true
+  }
+ ],
+ "version": "putgd-cli 0.1.1-dev.762+g0912f0ce6a5b",
+ "cover": {
+  "placed": {
+   "monitorIndex": 0,
+   "ok": true,
+   "output": [
+    "HDMI-1"
+   ],
+   "rect": [
+    0,
+    0,
+    1920,
+    1080
+   ],
+   "state": "covered"
+  },
+  "precheck": {
+   "check": "precheck",
+   "fraction": 1.0,
+   "framebuffer": [
+    1920,
+    1080
+   ],
+   "minFraction": 0.98,
+   "ok": true,
+   "output": [
+    "HDMI-1"
+   ],
+   "rect": [
+    0,
+    0,
+    1920,
+    1080
+   ]
+  },
+  "region": [
+   324,
+   184,
+   1272,
+   712
+  ]
+ },
+ "acquisition": null,
+ "durationUs": 6560107,
+ "load": 1.97314453125
+}

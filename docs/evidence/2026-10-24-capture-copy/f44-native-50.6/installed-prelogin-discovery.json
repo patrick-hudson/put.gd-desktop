@@ -1,0 +1,12 @@
+{
+  "info": {
+    "returncode": 2,
+    "stdout": "",
+    "stderr": "Extension \u201cputgd@put.gd\u201d doesn't exist\n"
+  },
+  "enable": {
+    "returncode": 2,
+    "stdout": "",
+    "stderr": "Extension \u201cputgd@put.gd\u201d does not exist\n"
+  }
+}

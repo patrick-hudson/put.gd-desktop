@@ -1,0 +1,86 @@
+{
+  "schemaVersion": 1,
+  "label": "appimage",
+  "architecture": "x86_64",
+  "build": {
+    "schemaVersion": 1,
+    "version": "26.1024.1191-dev+gccbd7d4ac576",
+    "baseVersion": "26.1024.1191",
+    "packageVersion": "26.1024.1191~dev+gccbd7d4ac576",
+    "gitCommit": "ccbd7d4ac5766d618351b8047a7518de4bba5442",
+    "gitTree": "eec41ef14663ee2de2b7715a032e828d6b7d6616",
+    "commitCount": 1191,
+    "dirty": false,
+    "sourceProvenance": "git"
+  },
+  "archive": {
+    "file": "debug-symbols-appimage.tar",
+    "bytes": 119132160,
+    "sha256": "b321626f3e145b5d7f692e64ebe759b636fcacdd13c2b09e6ebb98548ec8b9f2"
+  },
+  "files": [
+    {
+      "program": "putgd",
+      "buildId": "b02b246ea1db6d02952470b17131ff4495123f62",
+      "path": ".build-id/b0/2b246ea1db6d02952470b17131ff4495123f62.debug",
+      "bytes": 42236832,
+      "sha256": "941bc8745dcb2609ceb101779256265ef95ed90a0626466650309d1236801107"
+    },
+    {
+      "program": "putgd-cli",
+      "buildId": "a745fb3d28eeeb9a7c1cd0b719e7b210909e9014",
+      "path": ".build-id/a7/45fb3d28eeeb9a7c1cd0b719e7b210909e9014.debug",
+      "bytes": 20372472,
+      "sha256": "42625cf87546ff65ef99033f1ea218006d4a0a7965961dad8d16cfd73c840125"
+    },
+    {
+      "program": "putgd-ui",
+      "buildId": "94ad36ec48899319e8c3015799e0e775b167e52a",
+      "path": ".build-id/94/ad36ec48899319e8c3015799e0e775b167e52a.debug",
+      "bytes": 19883088,
+      "sha256": "23e900b484b58e8408ef331240fb880541bb13b1558b881124f0f68188b411d9"
+    },
+    {
+      "program": "putgd-capture",
+      "buildId": "d075d396d4d2ef5da9b86a0ddeb3cdaab1c6ec45",
+      "path": ".build-id/d0/75d396d4d2ef5da9b86a0ddeb3cdaab1c6ec45.debug",
+      "bytes": 7917976,
+      "sha256": "3e222a1823148f2a360708c741870703837fb54443f64f87bea1165644d64953"
+    },
+    {
+      "program": "putgd-kde-region",
+      "buildId": "45b31f43b544d0e62524b5aeaeb610d2f1528ce4",
+      "path": ".build-id/45/b31f43b544d0e62524b5aeaeb610d2f1528ce4.debug",
+      "bytes": 8078336,
+      "sha256": "88b05ed0c9ed96f6892ac01b2f19e8a8fe8539fb8dd2070a4da870732740c8cd"
+    },
+    {
+      "program": "putgd-record",
+      "buildId": "bb86950772e8eec258838ca07b7eac22691bbc64",
+      "path": ".build-id/bb/86950772e8eec258838ca07b7eac22691bbc64.debug",
+      "bytes": 10642512,
+      "sha256": "868e6632b95d284e9e4ea421bf2f446317f27276b26f71c056498b40aa239a80"
+    },
+    {
+      "program": "putgd-s3-worker",
+      "buildId": "f988be5fdc590dadbd9d15e916a55a4dafcb3e44",
+      "path": ".build-id/f9/88be5fdc590dadbd9d15e916a55a4dafcb3e44.debug",
+      "bytes": 4127128,
+      "sha256": "9141e245acd6c635ff6c4a3bd24e19160a3e2746380adfda2e4f051ed1f6f019"
+    },
+    {
+      "program": "putgd-b2-worker",
+      "buildId": "a8a401997113f6c792b0ca65733d6888ceccec6d",
+      "path": ".build-id/a8/a401997113f6c792b0ca65733d6888ceccec6d.debug",
+      "bytes": 3526056,
+      "sha256": "9f70885e9fe6c058dc270501e34944db047b1032872ef95ea793000e9e8161c5"
+    },
+    {
+      "program": "libputgd-s3.so",
+      "buildId": "e8623de7677df87c086f8a58d8916dfeca9aada2",
+      "path": ".build-id/e8/623de7677df87c086f8a58d8916dfeca9aada2.debug",
+      "bytes": 2337896,
+      "sha256": "4208bffe1626c5a6e5f678b68ad9294ac0b1695461378ba85aa1320e6c2c9c15"
+    }
+  ]
+}

@@ -1,0 +1,37 @@
+[
+  {
+    "kind": "gnome",
+    "url": "https://github.com/patrick-hudson/put.gd-desktop/issues/1060",
+    "classification": "lab acceptance blocker; app defect not established"
+  },
+  {
+    "kind": "aurora",
+    "url": "https://github.com/patrick-hudson/put.gd-desktop/issues/1061",
+    "classification": "lab acceptance blocker; app defect not established"
+  },
+  {
+    "kind": "browser",
+    "url": "https://github.com/patrick-hudson/put.gd-desktop/issues/1062",
+    "classification": "lab acceptance blocker; app defect not established"
+  },
+  {
+    "kind": "populated-capture-latency",
+    "url": "https://github.com/patrick-hudson/put.gd-desktop/issues/1063",
+    "classification": "published-native drawable latency threshold failure; observer overhead included"
+  },
+  {
+    "kind": "populated-history-scroll",
+    "url": "https://github.com/patrick-hudson/put.gd-desktop/issues/1064",
+    "classification": "content response upper-bound threshold failure; observer overhead included"
+  },
+  {
+    "kind": "populated-history-functionals",
+    "url": "https://github.com/patrick-hudson/put.gd-desktop/issues/1066",
+    "classification": "lab Copy image selector blocks 10k video preview/copy/delete coverage; no app defect established"
+  },
+  {
+    "kind": "pid-only-fixture-cleanup",
+    "url": "https://github.com/patrick-hudson/put.gd-desktop/issues/1068",
+    "classification": "frozen fixture helper uses owned process groups; PID-only policy adapter required before further physical acceptance"
+  }
+]

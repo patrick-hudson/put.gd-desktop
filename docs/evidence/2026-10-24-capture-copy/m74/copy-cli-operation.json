@@ -1,0 +1,82 @@
+{
+  "action": "window",
+  "cancelled": false,
+  "clipboardRevision": "2",
+  "copyStatus": "copied",
+  "created": "2026-10-24T01:45:50.265Z",
+  "destination": {
+    "credentials": {},
+    "profileId": "",
+    "profileRevision": "",
+    "providerId": "",
+    "settings": {}
+  },
+  "error": {
+    "code": "",
+    "details": {},
+    "message": ""
+  },
+  "id": "c3730837-2496-489c-b858-f31342082cf7",
+  "invocation": "1",
+  "items": [
+    {
+      "artifact": {
+        "bytes": 11974,
+        "category": "images",
+        "id": "f7fb5c0f-368f-4e1a-bb70-2d84930e4f39",
+        "mime": "image/png",
+        "name": "Synthetic copied-link recovery",
+        "namingPrepared": true,
+        "originalFile": false,
+        "previewPath": "/tmp/ccmr/d/putgd/artifacts/../previews/f7fb5c0f-368f-4e1a-bb70-2d84930e4f39.png",
+        "sha256": "317238c1979e630a022ab2aa37d51d66bd8facd8b5386c951d375fc5e7e5bb33"
+      },
+      "candidate": "",
+      "concurrencyToken": "",
+      "condition": "",
+      "error": {
+        "code": "",
+        "details": {},
+        "message": ""
+      },
+      "local": {
+        "error": {
+          "code": "",
+          "details": {},
+          "message": ""
+        },
+        "path": "/tmp/ccmr/archive/images/Screen-Capture-2026-10-23-20-45-49.png",
+        "status": "saved"
+      },
+      "objectReference": {},
+      "phase": "uploaded",
+      "publicationId": "56f9a223-e6d0-453b-97be-0ee710aa9397",
+      "receipt": {
+        "concurrencyToken": "synthetic",
+        "destination": {
+          "credentials": {},
+          "profileId": "synthetic",
+          "profileRevision": "synthetic",
+          "providerId": "synthetic",
+          "settings": {}
+        },
+        "directUrl": "https://example.invalid/copy-recovery",
+        "objectReference": {
+          "id": "synthetic"
+        },
+        "publicationId": "synthetic",
+        "schemaVersion": 1
+      },
+      "remoteStatus": "not_requested",
+      "shareIntent": "",
+      "shareIntentOptions": {},
+      "shareStatus": "not_requested",
+      "uploadProgress": null,
+      "uploadStatus": "uploaded"
+    }
+  ],
+  "phase": "completed",
+  "requestTimeoutMs": null,
+  "settingsRevision": "4703733d2d8e41c0877ea376ca771108e043655bb6a6f7aa4835fb3b325de85c",
+  "state": "completed"
+}

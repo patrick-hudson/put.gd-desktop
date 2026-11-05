@@ -1,0 +1,121 @@
+{
+ "menu": {
+  "label": "d69-fix-live-tray-menu",
+  "components": [
+   {
+    "blocks": 1156,
+    "box": [
+     1552,
+     672,
+     1752,
+     1048
+    ]
+   },
+   {
+    "blocks": 2,
+    "box": [
+     1824,
+     1040,
+     1840,
+     1048
+    ]
+   }
+  ],
+  "colour": [
+   244,
+   244,
+   244
+  ],
+  "inner": [
+   1554,
+   677,
+   1750,
+   1035
+  ],
+  "changedShare": 1.0,
+  "kept": "/home/patrick/work/put.gd-304/p-d69fix/crops/d69-fix-live-tray-menu.png"
+ },
+ "menuSelected": {
+  "label": "d69-fix-live-tray-menu-selected",
+  "components": [
+   {
+    "blocks": 1156,
+    "box": [
+     1552,
+     672,
+     1752,
+     1048
+    ]
+   },
+   {
+    "blocks": 2,
+    "box": [
+     1824,
+     1040,
+     1840,
+     1048
+    ]
+   }
+  ],
+  "colour": [
+   244,
+   244,
+   244
+  ],
+  "inner": [
+   1554,
+   677,
+   1750,
+   1035
+  ],
+  "changedShare": 1.0,
+  "kept": "/home/patrick/work/put.gd-304/p-d69fix/crops/d69-fix-live-tray-menu-selected.png"
+ },
+ "window": {
+  "label": "d69-fix-live-settings",
+  "components": [
+   {
+    "blocks": 20113,
+    "box": [
+     280,
+     56,
+     1640,
+     1008
+    ]
+   },
+   {
+    "blocks": 41,
+    "box": [
+     368,
+     1024,
+     424,
+     1072
+    ]
+   },
+   {
+    "blocks": 2,
+    "box": [
+     1824,
+     1040,
+     1840,
+     1048
+    ]
+   }
+  ],
+  "colour": [
+   252,
+   252,
+   252
+  ],
+  "inner": [
+   300,
+   91,
+   1620,
+   971
+  ],
+  "changedShare": 1.0,
+  "themeShare": 0.952,
+  "kept": "/home/patrick/work/put.gd-304/p-d69fix/crops/d69-fix-live-settings.png"
+ },
+ "ui": null
+}

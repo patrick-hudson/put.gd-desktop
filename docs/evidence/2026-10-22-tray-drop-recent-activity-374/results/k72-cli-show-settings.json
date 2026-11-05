@@ -1,0 +1,19 @@
+{
+ "method": "ui.show",
+ "params": {
+  "view": "settings"
+ },
+ "response": {
+  "error": {
+   "code": "",
+   "details": {},
+   "message": ""
+  },
+  "ok": true,
+  "requestId": "33202e13-b6a2-4be2-b856-56e45ec51683",
+  "result": {
+   "shown": "settings"
+  },
+  "schemaVersion": 1
+ }
+}

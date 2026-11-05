@@ -4,6 +4,7 @@
 #include "platform/NativeSession.h"
 #include "core/ImageFormat.h"
 #include "core/ImageJob.h"
+#include "core/Log.h"
 #include <QSet>
 #include <QMimeData>
 #include <QBuffer>
@@ -206,7 +207,9 @@ xcb_timestamp_t X11Clipboard::serverTimestamp(){
  if(!barrier)return 0;
  events();return serverTime_;
 }
-void X11Clipboard::copy(const CopyPayload& payload,std::function<void(Error)> callback){
+void X11Clipboard::copy(const CopyPayload& payload,std::function<void(Error)> finished){
+ // Every way out answers through one callback, so the native result is logged once (#473).
+ auto callback=[finished=std::move(finished)](Error e){logging::debug(logClipboard(),"Native copy finished",{{"writer","x11"},{"ok",!e},{"code",e.code}});finished(std::move(e));};
  if(closing_||!available()){callback({"clipboard_unavailable","X11 clipboard is unavailable",{}});return;}
  const auto frozen=revision();auto content=std::make_shared<OwnedContent>();
  // Incoming results have already passed their operation's configured limits.

@@ -1,0 +1,13 @@
+== physical builder desktop (native placement)
+live destination s3 blocked by secret-safe evidence: placement-not-disposable
+exit=1 out_exists=no
+== empty catalog
+live destination s3 blocked by secret-safe evidence: catalog-missing
+exit=1 out_exists=no
+== blind OCR (exits 0, reads nothing)
+live destination s3 blocked by secret-safe evidence: ocr-self-test-failed
+exit=1 out_exists=no
+== admitted: boat placement, exact-build catalog, real OCR
+blockers []
+wrong build ['catalog-build-mismatch']
+guest []

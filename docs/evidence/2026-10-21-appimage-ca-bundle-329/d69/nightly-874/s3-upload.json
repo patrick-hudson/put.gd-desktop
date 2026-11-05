@@ -1,0 +1,29 @@
+{
+ "host": "debian",
+ "profile": "aws",
+ "store": "completed",
+ "upload": {
+  "state": "completed",
+  "uploadStatus": "uploaded",
+  "error": {
+   "code": "source_unsupported",
+   "details": {},
+   "message": "Native desktop adapter is not available"
+  },
+  "link": "https://s3.us-east-2.amazonaws.com/put.gd/acceptance/i329/d69n/Screen-Capture-2026-10-21-17-22-31.png",
+  "seconds": 1.6
+ },
+ "linkFetch": {
+  "status": 403,
+  "png": false,
+  "bytes": 0
+ },
+ "delete": {
+  "state": "completed",
+  "items": [
+   "removed"
+  ],
+  "remoteStatus": "removed",
+  "linkAfter": 403
+ }
+}

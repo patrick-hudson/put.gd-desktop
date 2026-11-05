@@ -1,0 +1,120 @@
+{
+  "error": {
+    "code": "",
+    "details": {},
+    "message": ""
+  },
+  "ok": true,
+  "requestId": "df776803-0e1d-4513-9e3d-550bc88e840a",
+  "result": {
+    "document": {
+      "actions": {
+        "clipboard": {
+          "destination": "local",
+          "profileId": null,
+          "shortcut": ""
+        },
+        "desktop": {
+          "destination": "local",
+          "profileId": null,
+          "shortcut": ""
+        },
+        "edit": {
+          "destination": "local",
+          "profileId": null,
+          "shortcut": ""
+        },
+        "record": {
+          "shortcut": ""
+        },
+        "region": {
+          "destination": "local",
+          "profileId": null,
+          "shortcut": ""
+        },
+        "window": {
+          "destination": "local",
+          "profileId": null,
+          "shortcut": ""
+        }
+      },
+      "archive": {
+        "folders": {
+          "images": null,
+          "other": null,
+          "text": null,
+          "videos": null
+        },
+        "keepUploads": true,
+        "root": "/tmp/hfgf/archive"
+      },
+      "limits": {
+        "clipboardTextBytes": 16777216,
+        "concurrentUploads": 1,
+        "imageBytes": 536870912,
+        "imagePixels": 100000000,
+        "maxBatchBytes": "auto",
+        "maxFileBytes": "auto",
+        "maxFiles": 100,
+        "pendingArtifactBytes": "auto",
+        "pendingImageBytes": 67108864,
+        "pendingOperations": 8
+      },
+      "naming": {
+        "captureTemplate": "Screen-Capture-{yyyy}-{MM}-{dd}-{HH}-{mm}-{ss}.{ext}",
+        "collisionPolicy": "rename",
+        "fileTemplate": "{name}.{ext}",
+        "imageTemplate": "Image-{yyyy}-{MM}-{dd}-{HH}-{mm}-{ss}.{ext}",
+        "mode": "original",
+        "textTemplate": "Text-{yyyy}-{MM}-{dd}-{HH}-{mm}-{ss}.{ext}"
+      },
+      "preferences": {
+        "appearance": {
+          "theme": "dark"
+        },
+        "launchAtLogin": false,
+        "notifications": false,
+        "updates": {
+          "check": false
+        }
+      },
+      "profiles": [],
+      "retention": {
+        "failedArtifactDays": 7,
+        "historyRetentionDays": null,
+        "previewCacheBytes": 268435456,
+        "recentActivityLimit": 100
+      },
+      "schemaVersion": 1
+    },
+    "effectiveLimits": {
+      "disk": {
+        "availableBytes": 7245152256,
+        "freeBytes": 8318894080,
+        "reserveBytes": 1073741824,
+        "reservedBytes": 0,
+        "totalBytes": 8320135168
+      },
+      "maxBatchBytes": null,
+      "maxFileBytes": null,
+      "pendingArtifactBytes": null
+    },
+    "metadata": {
+      "acceptedRevision": "c8b208837e3bc089d3e803d0bcdc8440c83ef5ce9ec2cfad0ef5ad85faea6858",
+      "fallbackRescanMs": 2000,
+      "observedRevision": "c8b208837e3bc089d3e803d0bcdc8440c83ef5ce9ec2cfad0ef5ad85faea6858",
+      "path": "/tmp/hfgf/c/putgd/config.json",
+      "schemaVersion": 1,
+      "validation": {
+        "error": {
+          "code": "",
+          "details": {},
+          "message": ""
+        },
+        "ok": true
+      },
+      "watching": true
+    }
+  },
+  "schemaVersion": 1
+}

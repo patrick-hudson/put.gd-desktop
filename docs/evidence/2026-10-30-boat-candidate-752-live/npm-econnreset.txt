@@ -1,0 +1,29 @@
+npm WARN deprecated @protontech/jsmimeparser@3.0.2: Package no longer maintained. Relevant features are now integrated under the @protontech/crypto package.
+npm ERR! code ECONNRESET
+npm ERR! syscall read
+npm ERR! errno -104
+npm ERR! network read ECONNRESET
+npm ERR! network This is a problem related to network connectivity.
+npm ERR! network In most cases you are behind a proxy or have bad network settings.
+npm ERR! network 
+npm ERR! network If you are behind a proxy, please make sure that the
+npm ERR! network 'proxy' config is set properly.  See: 'npm help config'
+
+npm ERR! A complete log of this run can be found in:
+npm ERR!     /root/.npm/_logs/2026-10-30T04_14_15_319Z-debug-0.log
+Traceback (most recent call last):
+  File "/src/tools/proton/provision_runtime.py", line 229, in <module>
+    main()
+    ~~~~^^
+  File "/src/tools/proton/provision_runtime.py", line 138, in main
+    run(['npm', 'ci', '--ignore-scripts', '--no-audit', '--no-fund', *(['--offline'] if args.offline else [])], work)
+    ~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/src/tools/proton/provision_runtime.py", line 21, in run
+    return subprocess.run(args, cwd=cwd, check=True, text=True,
+           ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                          stdout=subprocess.PIPE if capture else None).stdout
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/subprocess.py", line 578, in run
+    raise CalledProcessError(retcode, process.args,
+                             output=stdout, stderr=stderr)
+subprocess.CalledProcessError: Command '['npm', 'ci', '--ignore-scripts', '--no-audit', '--no-fund']' returned non-zero exit status 152.

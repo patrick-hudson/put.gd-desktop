@@ -1,0 +1,14 @@
+phase2_o5 checkout (relative roots, spaces) exit=1 revisionDirsCopied=0 patchRestored=yes 
+phase2_o5 apply (relative roots, spaces) exit=1 revisionDirsCopied=0 patchRestored=yes 
+phase2_o5 noop-apply (relative roots, spaces) exit=5 revisionDirsCopied=0 patchRestored=yes patch not applied 
+phase2_o5 build (relative roots, spaces) exit=1 revisionDirsCopied=0 patchRestored=yes 
+phase2_o5 stale (relative roots, spaces) exit=6 revisionDirsCopied=0 patchRestored=yes stale build/dev/operations_upload_probe for 80ffa2e6c0d34223d2cc0f31254f2e60ac2bd247 
+phase2_o5 identity (relative roots, spaces) exit=7 revisionDirsCopied=0 patchRestored=yes worker identity is not 80ffa2e6c0d34223d2cc0f31254f2e60ac2bd247 
+phase2_o5 nomodule (relative roots, spaces) exit=8 revisionDirsCopied=0 patchRestored=yes module missing for 80ffa2e6c0d34223d2cc0f31254f2e60ac2bd247 
+phase2_o5 badrelative (relative roots, spaces) exit=9 revisionDirsCopied=0 patchRestored=yes worker module lookup is not ../lib/x86_64-linux-gnu/putgd/libputgd-s3.so 
+phase2_o5 none (relative roots, spaces) exit=0 revisionDirsCopied=2 patchRestored=yes 
+phase2_o5 no REV exit=2 outrootCreated=no usage: phase2_o5.sh SRC HARNESS OUTROOT REV...
+phase2_o5 short REV exit=2 outrootCreated=no REV must be a full commit: 80ffa2e6
+phase2_o5 missing OUTROOT parent exit=2 OUTROOT parent missing: missing parent/out
+phase2_o5 missing SRC exit=2 outrootCreated=no
+head

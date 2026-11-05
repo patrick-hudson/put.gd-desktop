@@ -1,0 +1,180 @@
+2026-10-30T02:39:11-05:00 putgd-lab systemd[10276]: Started putgd-lab-visible.service - Keep an owned disposable put.gd lab guest visible.
+2026-10-30T02:39:11-05:00 putgd-lab systemd[10276]: Started wireplumber.service - Multimedia Service Session Manager.
+2026-10-30T02:39:11-05:00 putgd-lab systemd[10276]: Started pipewire-pulse.service - PipeWire PulseAudio.
+2026-10-30T02:39:11-05:00 putgd-lab systemd[10276]: Reached target default.target - Main User Target.
+2026-10-30T02:39:11-05:00 putgd-lab systemd[10276]: Startup finished in 101ms.
+2026-10-30T02:39:11-05:00 putgd-lab systemd[10276]: Starting dbus.service - D-Bus User Message Bus...
+2026-10-30T02:39:11-05:00 putgd-lab dbus-daemon[10294]: [session uid=1000 pid=10294] AppArmor D-Bus mediation is enabled
+2026-10-30T02:39:11-05:00 putgd-lab systemd[10276]: Started dbus.service - D-Bus User Message Bus.
+2026-10-30T02:39:11-05:00 putgd-lab pipewire[10289]: mod.jackdbus-detect: Failed to receive jackdbus reply: org.freedesktop.DBus.Error.ServiceUnknown: The name org.jackaudio.service was not provided by any .service files
+2026-10-30T02:39:11-05:00 putgd-lab wireplumber[10292]: SPA handle 'api.libcamera.enum.manager' could not be loaded; is it installed?
+2026-10-30T02:39:11-05:00 putgd-lab wireplumber[10292]: PipeWire's libcamera SPA missing or broken. libcamera not supported.
+2026-10-30T02:39:11-05:00 putgd-lab wireplumber[10292]: BlueZ system service is not available
+2026-10-30T02:39:11-05:00 putgd-lab dbus-daemon[10294]: [session uid=1000 pid=10294] Activating via systemd: service name='org.gtk.vfs.Daemon' unit='gvfs-daemon.service' requested by ':1.14' (uid=1000 pid=10403 comm="/usr/bin/ibus-daemon --daemonize --xim" label="unconfined")
+2026-10-30T02:39:11-05:00 putgd-lab systemd[10276]: Starting gvfs-daemon.service - Virtual filesystem service...
+2026-10-30T02:39:11-05:00 putgd-lab dbus-daemon[10294]: [session uid=1000 pid=10294] Successfully activated service 'org.gtk.vfs.Daemon'
+2026-10-30T02:39:11-05:00 putgd-lab systemd[10276]: Started gvfs-daemon.service - Virtual filesystem service.
+2026-10-30T02:39:11-05:00 putgd-lab dbus-daemon[10294]: [session uid=1000 pid=10294] Activating service name='org.freedesktop.portal.IBus' requested by ':1.14' (uid=1000 pid=10403 comm="/usr/bin/ibus-daemon --daemonize --xim" label="unconfined")
+2026-10-30T02:39:11-05:00 putgd-lab dbus-daemon[10294]: [session uid=1000 pid=10294] Successfully activated service 'org.freedesktop.portal.IBus'
+2026-10-30T02:39:11-05:00 putgd-lab systemd[10276]: Started gnome-keyring-daemon.service - GNOME Keyring daemon.
+2026-10-30T02:39:11-05:00 putgd-lab gnome-keyring-daemon[10453]: GNOME_KEYRING_CONTROL=/run/user/1000/keyring
+2026-10-30T02:39:11-05:00 putgd-lab gnome-keyring-daemon[10453]: The Secret Service was already initialized
+2026-10-30T02:39:11-05:00 putgd-lab gnome-keyring-d[10453]: The Secret Service was already initialized
+2026-10-30T02:39:11-05:00 putgd-lab gnome-keyring-daemon[10453]: The PKCS#11 component was already initialized
+2026-10-30T02:39:11-05:00 putgd-lab gnome-keyring-d[10453]: The PKCS#11 component was already initialized
+2026-10-30T02:39:11-05:00 putgd-lab dbus-daemon[10294]: [session uid=1000 pid=10294] Activating via systemd: service name='org.a11y.Bus' unit='at-spi-dbus-bus.service' requested by ':1.21' (uid=1000 pid=10427 comm="/usr/libexec/ibus-x11 --kill-daemon" label="unconfined")
+2026-10-30T02:39:11-05:00 putgd-lab systemd[10276]: Starting at-spi-dbus-bus.service - Accessibility services bus...
+2026-10-30T02:39:11-05:00 putgd-lab dbus-daemon[10294]: [session uid=1000 pid=10294] Successfully activated service 'org.a11y.Bus'
+2026-10-30T02:39:11-05:00 putgd-lab systemd[10276]: Started at-spi-dbus-bus.service - Accessibility services bus.
+2026-10-30T02:39:11-05:00 putgd-lab at-spi-bus-launcher[10481]: dbus-daemon[10481]: Activating service name='org.a11y.atspi.Registry' requested by ':1.0' (uid=1000 pid=10427 comm="/usr/libexec/ibus-x11 --kill-daemon" label="unconfined")
+2026-10-30T02:39:11-05:00 putgd-lab at-spi-bus-launcher[10481]: dbus-daemon[10481]: Successfully activated service 'org.a11y.atspi.Registry'
+2026-10-30T02:39:11-05:00 putgd-lab at-spi-bus-launcher[10490]: SpiRegistry daemon is running with well-known name - org.a11y.atspi.Registry
+2026-10-30T02:39:11-05:00 putgd-lab dbus-daemon[10294]: [session uid=1000 pid=10294] Activating via systemd: service name='ca.desrt.dconf' unit='dconf.service' requested by ':1.26' (uid=1000 pid=10486 comm="/usr/bin/csd-settings-remap" label="unconfined")
+2026-10-30T02:39:11-05:00 putgd-lab systemd[10276]: Starting dconf.service - User preferences database...
+2026-10-30T02:39:11-05:00 putgd-lab dbus-daemon[10294]: [session uid=1000 pid=10294] Successfully activated service 'ca.desrt.dconf'
+2026-10-30T02:39:11-05:00 putgd-lab systemd[10276]: Started dconf.service - User preferences database.
+2026-10-30T02:39:11-05:00 putgd-lab dbus-daemon[10294]: [session uid=1000 pid=10294] Activating via systemd: service name='org.gtk.vfs.UDisks2VolumeMonitor' unit='gvfs-udisks2-volume-monitor.service' requested by ':1.34' (uid=1000 pid=10497 comm="/usr/bin/csd-automount" label="unconfined")
+2026-10-30T02:39:11-05:00 putgd-lab systemd[10276]: Starting gvfs-udisks2-volume-monitor.service - Virtual filesystem service - disk device monitor...
+2026-10-30T02:39:11-05:00 putgd-lab dbus-daemon[10294]: [session uid=1000 pid=10294] Successfully activated service 'org.gtk.vfs.UDisks2VolumeMonitor'
+2026-10-30T02:39:11-05:00 putgd-lab systemd[10276]: Started gvfs-udisks2-volume-monitor.service - Virtual filesystem service - disk device monitor.
+2026-10-30T02:39:11-05:00 putgd-lab dbus-daemon[10294]: [session uid=1000 pid=10294] Activating via systemd: service name='org.gtk.vfs.GPhoto2VolumeMonitor' unit='gvfs-gphoto2-volume-monitor.service' requested by ':1.34' (uid=1000 pid=10497 comm="/usr/bin/csd-automount" label="unconfined")
+2026-10-30T02:39:11-05:00 putgd-lab systemd[10276]: Starting gvfs-gphoto2-volume-monitor.service - Virtual filesystem service - digital camera monitor...
+2026-10-30T02:39:11-05:00 putgd-lab dbus-daemon[10294]: [session uid=1000 pid=10294] Successfully activated service 'org.gtk.vfs.GPhoto2VolumeMonitor'
+2026-10-30T02:39:11-05:00 putgd-lab systemd[10276]: Started gvfs-gphoto2-volume-monitor.service - Virtual filesystem service - digital camera monitor.
+2026-10-30T02:39:11-05:00 putgd-lab dbus-daemon[10294]: [session uid=1000 pid=10294] Activating via systemd: service name='org.gtk.vfs.MTPVolumeMonitor' unit='gvfs-mtp-volume-monitor.service' requested by ':1.34' (uid=1000 pid=10497 comm="/usr/bin/csd-automount" label="unconfined")
+2026-10-30T02:39:11-05:00 putgd-lab systemd[10276]: Starting gvfs-mtp-volume-monitor.service - Virtual filesystem service - Media Transfer Protocol monitor...
+2026-10-30T02:39:11-05:00 putgd-lab dbus-daemon[10294]: [session uid=1000 pid=10294] Successfully activated service 'org.gtk.vfs.MTPVolumeMonitor'
+2026-10-30T02:39:11-05:00 putgd-lab systemd[10276]: Started gvfs-mtp-volume-monitor.service - Virtual filesystem service - Media Transfer Protocol monitor.
+2026-10-30T02:39:11-05:00 putgd-lab dbus-daemon[10294]: [session uid=1000 pid=10294] Activating via systemd: service name='org.gtk.vfs.AfcVolumeMonitor' unit='gvfs-afc-volume-monitor.service' requested by ':1.34' (uid=1000 pid=10497 comm="/usr/bin/csd-automount" label="unconfined")
+2026-10-30T02:39:11-05:00 putgd-lab systemd[10276]: Starting gvfs-afc-volume-monitor.service - Virtual filesystem service - Apple File Conduit monitor...
+2026-10-30T02:39:11-05:00 putgd-lab dbus-daemon[10294]: [session uid=1000 pid=10294] Successfully activated service 'org.gtk.vfs.AfcVolumeMonitor'
+2026-10-30T02:39:11-05:00 putgd-lab systemd[10276]: Started gvfs-afc-volume-monitor.service - Virtual filesystem service - Apple File Conduit monitor.
+2026-10-30T02:39:11-05:00 putgd-lab dbus-daemon[10294]: [session uid=1000 pid=10294] Activating via systemd: service name='org.gtk.vfs.GoaVolumeMonitor' unit='gvfs-goa-volume-monitor.service' requested by ':1.34' (uid=1000 pid=10497 comm="/usr/bin/csd-automount" label="unconfined")
+2026-10-30T02:39:11-05:00 putgd-lab systemd[10276]: Starting gvfs-goa-volume-monitor.service - Virtual filesystem service - GNOME Online Accounts monitor...
+2026-10-30T02:39:11-05:00 putgd-lab dbus-daemon[10294]: [session uid=1000 pid=10294] Activating service name='org.gnome.OnlineAccounts' requested by ':1.49' (uid=1000 pid=10623 comm="/usr/libexec/gvfs-goa-volume-monitor" label="unconfined")
+2026-10-30T02:39:11-05:00 putgd-lab goa-daemon[10628]: goa-daemon version 3.50.4 starting
+2026-10-30T02:39:11-05:00 putgd-lab dbus-daemon[10294]: [session uid=1000 pid=10294] Activating service name='org.gnome.Identity' requested by ':1.50' (uid=1000 pid=10628 comm="/usr/libexec/goa-daemon" label="unconfined")
+2026-10-30T02:39:11-05:00 putgd-lab dbus-daemon[10294]: [session uid=1000 pid=10294] Successfully activated service 'org.gnome.OnlineAccounts'
+2026-10-30T02:39:11-05:00 putgd-lab dbus-daemon[10294]: [session uid=1000 pid=10294] Successfully activated service 'org.gtk.vfs.GoaVolumeMonitor'
+2026-10-30T02:39:11-05:00 putgd-lab systemd[10276]: Started gvfs-goa-volume-monitor.service - Virtual filesystem service - GNOME Online Accounts monitor.
+2026-10-30T02:39:11-05:00 putgd-lab dbus-daemon[10294]: [session uid=1000 pid=10294] Successfully activated service 'org.gnome.Identity'
+2026-10-30T02:39:14-05:00 putgd-lab dbus-daemon[10294]: [session uid=1000 pid=10294] Activating service name='org.cinnamon.ScreenSaver' requested by ':1.13' (uid=1000 pid=10316 comm="/usr/lib/x86_64-linux-gnu/cinnamon-session-binary" label="unconfined")
+2026-10-30T02:39:15-05:00 putgd-lab org.cinnamon.ScreenSaver[10712]: Loading AccountsService
+2026-10-30T02:39:15-05:00 putgd-lab org.cinnamon.ScreenSaver[10712]: Fractional scaling active: False
+2026-10-30T02:39:15-05:00 putgd-lab org.cinnamon.ScreenSaver[10712]: Trying to connect to logind...
+2026-10-30T02:39:15-05:00 putgd-lab dbus-daemon[10294]: [session uid=1000 pid=10294] Successfully activated service 'org.cinnamon.ScreenSaver'
+2026-10-30T02:39:15-05:00 putgd-lab org.cinnamon.ScreenSaver[10712]: Starting screensaver...
+2026-10-30T02:39:15-05:00 putgd-lab org.cinnamon.ScreenSaver[10712]: Cinnamon Screensaver support not found in current theme - adding some...
+2026-10-30T02:39:15-05:00 putgd-lab org.cinnamon.ScreenSaver[10712]: AccountsService ready
+2026-10-30T02:39:15-05:00 putgd-lab org.cinnamon.ScreenSaver[10712]: Successfully using logind
+2026-10-30T02:39:16-05:00 putgd-lab systemd[10276]: Reloading requested from client PID 10905 ('systemctl')...
+2026-10-30T02:39:16-05:00 putgd-lab systemd[10276]: Reloading...
+2026-10-30T02:39:16-05:00 putgd-lab dbus-daemon[10294]: [session uid=1000 pid=10294] Activating via systemd: service name='org.gnome.evolution.dataserver.Sources5' unit='evolution-source-registry.service' requested by ':1.66' (uid=1000 pid=10729 comm="/usr/libexec/evolution-data-server/evolution-alarm" label="unconfined")
+2026-10-30T02:39:16-05:00 putgd-lab systemd[10276]: Reloading finished in 105 ms.
+2026-10-30T02:39:16-05:00 putgd-lab systemd[10276]: Starting evolution-source-registry.service - Evolution source registry...
+2026-10-30T02:39:16-05:00 putgd-lab systemd[10276]: Reloading requested from client PID 10934 ('systemctl')...
+2026-10-30T02:39:16-05:00 putgd-lab systemd[10276]: Reloading...
+2026-10-30T02:39:16-05:00 putgd-lab dbus-daemon[10294]: [session uid=1000 pid=10294] Successfully activated service 'org.gnome.evolution.dataserver.Sources5'
+2026-10-30T02:39:16-05:00 putgd-lab dbus-daemon[10294]: [session uid=1000 pid=10294] Activating via systemd: service name='org.bluez.obex' unit='obex.service' requested by ':1.64' (uid=1000 pid=10724 comm="/usr/bin/python3 /usr/bin/blueman-applet" label="unconfined")
+2026-10-30T02:39:16-05:00 putgd-lab systemd[10276]: Reloading finished in 170 ms.
+2026-10-30T02:39:16-05:00 putgd-lab systemd[10276]: Started evolution-source-registry.service - Evolution source registry.
+2026-10-30T02:39:16-05:00 putgd-lab systemd[10276]: Starting obex.service - Bluetooth OBEX service...
+2026-10-30T02:39:16-05:00 putgd-lab obexd[10945]: OBEX daemon 5.72
+2026-10-30T02:39:16-05:00 putgd-lab dbus-daemon[10294]: [session uid=1000 pid=10294] Successfully activated service 'org.bluez.obex'
+2026-10-30T02:39:16-05:00 putgd-lab systemd[10276]: Started obex.service - Bluetooth OBEX service.
+2026-10-30T02:39:16-05:00 putgd-lab dbus-daemon[10294]: [session uid=1000 pid=10294] Activating via systemd: service name='org.gnome.evolution.dataserver.Calendar8' unit='evolution-calendar-factory.service' requested by ':1.66' (uid=1000 pid=10729 comm="/usr/libexec/evolution-data-server/evolution-alarm" label="unconfined")
+2026-10-30T02:39:16-05:00 putgd-lab systemd[10276]: Starting evolution-calendar-factory.service - Evolution calendar service...
+2026-10-30T02:39:16-05:00 putgd-lab dbus-daemon[10294]: [session uid=1000 pid=10294] Successfully activated service 'org.gnome.evolution.dataserver.Calendar8'
+2026-10-30T02:39:16-05:00 putgd-lab systemd[10276]: Started evolution-calendar-factory.service - Evolution calendar service.
+2026-10-30T02:39:16-05:00 putgd-lab dbus-daemon[10294]: [session uid=1000 pid=10294] Activating via systemd: service name='org.gnome.evolution.dataserver.AddressBook10' unit='evolution-addressbook-factory.service' requested by ':1.84' (uid=1000 pid=10958 comm="/usr/libexec/evolution-calendar-factory" label="unconfined")
+2026-10-30T02:39:16-05:00 putgd-lab systemd[10276]: Starting evolution-addressbook-factory.service - Evolution address book service...
+2026-10-30T02:39:16-05:00 putgd-lab dbus-daemon[10294]: [session uid=1000 pid=10294] Successfully activated service 'org.gnome.evolution.dataserver.AddressBook10'
+2026-10-30T02:39:16-05:00 putgd-lab systemd[10276]: Started evolution-addressbook-factory.service - Evolution address book service.
+2026-10-30T02:39:16-05:00 putgd-lab dbus-daemon[10294]: [session uid=1000 pid=10294] Activating service name='org.cinnamon.CalendarServer' requested by ':1.54' (uid=1000 pid=10648 comm="cinnamon --replace" label="unconfined")
+2026-10-30T02:39:17-05:00 putgd-lab dbus-daemon[10294]: [session uid=1000 pid=10294] Successfully activated service 'org.cinnamon.CalendarServer'
+2026-10-30T02:39:37-05:00 putgd-lab org.cinnamon.CalendarServer[10996]: SET TIME: from 2026-09-27T00:00:00-05 to 2026-11-07T23:59:59-06
+2026-10-30T02:39:37-05:00 putgd-lab org.cinnamon.CalendarServer[10996]: Discovered calendar:  Birthdays & Anniversaries
+2026-10-30T02:39:37-05:00 putgd-lab org.cinnamon.CalendarServer[10996]: Discovered calendar:  Personal
+2026-10-30T02:39:37-05:00 putgd-lab org.cinnamon.CalendarServer[10996]: SET TIME: from 2026-09-27T00:00:00-05 to 2026-11-07T23:59:59-06
+2026-10-30T02:40:13-05:00 putgd-lab dbus-daemon[10294]: [session uid=1000 pid=10294] Activating service name='org.cinnamon.ScreenSaver' requested by ':1.99' (uid=1000 pid=11977 comm="busctl --user call org.cinnamon.ScreenSaver /org/c" label="unconfined")
+2026-10-30T02:40:13-05:00 putgd-lab org.cinnamon.ScreenSaver[11979]: Loading AccountsService
+2026-10-30T02:40:13-05:00 putgd-lab org.cinnamon.ScreenSaver[11979]: Fractional scaling active: False
+2026-10-30T02:40:13-05:00 putgd-lab org.cinnamon.ScreenSaver[11979]: Trying to connect to logind...
+2026-10-30T02:40:13-05:00 putgd-lab dbus-daemon[10294]: [session uid=1000 pid=10294] Successfully activated service 'org.cinnamon.ScreenSaver'
+2026-10-30T02:40:13-05:00 putgd-lab org.cinnamon.ScreenSaver[11979]: Starting screensaver...
+2026-10-30T02:40:13-05:00 putgd-lab org.cinnamon.ScreenSaver[11979]: Cinnamon Screensaver support not found in current theme - adding some...
+2026-10-30T02:40:13-05:00 putgd-lab org.cinnamon.ScreenSaver[11979]: Successfully using logind
+2026-10-30T02:40:51-05:00 putgd-lab systemd[1]: Stopping user@1000.service - User Manager for UID 1000...
+2026-10-30T02:40:51-05:00 putgd-lab systemd[10276]: Activating special unit exit.target...
+2026-10-30T02:40:51-05:00 putgd-lab systemd[10276]: Stopped target default.target - Main User Target.
+2026-10-30T02:40:51-05:00 putgd-lab systemd[10276]: Stopping at-spi-dbus-bus.service - Accessibility services bus...
+2026-10-30T02:40:51-05:00 putgd-lab at-spi-bus-launcher[10470]: Invalid MIT-MAGIC-COOKIE-1 key
+2026-10-30T02:40:51-05:00 putgd-lab systemd[10276]: Stopping dbus.service - D-Bus User Message Bus...
+2026-10-30T02:40:51-05:00 putgd-lab systemd[10276]: Stopping dconf.service - User preferences database...
+2026-10-30T02:40:51-05:00 putgd-lab systemd[10276]: Stopping evolution-addressbook-factory.service - Evolution address book service...
+2026-10-30T02:40:51-05:00 putgd-lab systemd[10276]: Stopping evolution-calendar-factory.service - Evolution calendar service...
+2026-10-30T02:40:51-05:00 putgd-lab systemd[10276]: Stopping evolution-source-registry.service - Evolution source registry...
+2026-10-30T02:40:51-05:00 putgd-lab systemd[10276]: Stopping filter-chain.service - PipeWire filter chain daemon...
+2026-10-30T02:40:51-05:00 putgd-lab systemd[10276]: Stopping gnome-keyring-daemon.service - GNOME Keyring daemon...
+2026-10-30T02:40:51-05:00 putgd-lab systemd[10276]: Stopping gvfs-afc-volume-monitor.service - Virtual filesystem service - Apple File Conduit monitor...
+2026-10-30T02:40:51-05:00 putgd-lab systemd[10276]: Stopping gvfs-daemon.service - Virtual filesystem service...
+2026-10-30T02:40:51-05:00 putgd-lab systemd[10276]: Stopping gvfs-goa-volume-monitor.service - Virtual filesystem service - GNOME Online Accounts monitor...
+2026-10-30T02:40:51-05:00 putgd-lab systemd[10276]: Stopping gvfs-gphoto2-volume-monitor.service - Virtual filesystem service - digital camera monitor...
+2026-10-30T02:40:51-05:00 putgd-lab systemd[10276]: Stopping gvfs-mtp-volume-monitor.service - Virtual filesystem service - Media Transfer Protocol monitor...
+2026-10-30T02:40:51-05:00 putgd-lab systemd[10276]: Stopping gvfs-udisks2-volume-monitor.service - Virtual filesystem service - disk device monitor...
+2026-10-30T02:40:51-05:00 putgd-lab systemd[10276]: Stopping obex.service - Bluetooth OBEX service...
+2026-10-30T02:40:51-05:00 putgd-lab systemd[10276]: Stopping pipewire-pulse.service - PipeWire PulseAudio...
+2026-10-30T02:40:51-05:00 putgd-lab systemd[10276]: Stopping putgd-lab-visible.service - Keep an owned disposable put.gd lab guest visible...
+2026-10-30T02:40:51-05:00 putgd-lab systemd[10276]: Stopped at-spi-dbus-bus.service - Accessibility services bus.
+2026-10-30T02:40:51-05:00 putgd-lab obexd[10945]: Terminating
+2026-10-30T02:40:51-05:00 putgd-lab systemd[10276]: Stopped gnome-keyring-daemon.service - GNOME Keyring daemon.
+2026-10-30T02:40:51-05:00 putgd-lab systemd[10276]: Stopped filter-chain.service - PipeWire filter chain daemon.
+2026-10-30T02:40:51-05:00 putgd-lab systemd[10276]: Stopped putgd-lab-visible.service - Keep an owned disposable put.gd lab guest visible.
+2026-10-30T02:40:51-05:00 putgd-lab systemd[10276]: Stopped pipewire-pulse.service - PipeWire PulseAudio.
+2026-10-30T02:40:51-05:00 putgd-lab systemd[10276]: Stopped dconf.service - User preferences database.
+2026-10-30T02:40:51-05:00 putgd-lab systemd[10276]: Stopped gvfs-gphoto2-volume-monitor.service - Virtual filesystem service - digital camera monitor.
+2026-10-30T02:40:51-05:00 putgd-lab systemd[10276]: Stopped gvfs-goa-volume-monitor.service - Virtual filesystem service - GNOME Online Accounts monitor.
+2026-10-30T02:40:51-05:00 putgd-lab systemd[10276]: Stopped dbus.service - D-Bus User Message Bus.
+2026-10-30T02:40:51-05:00 putgd-lab systemd[10276]: dbus.service: Consumed 1.054s CPU time, 29.6M memory peak, 0B memory swap peak.
+2026-10-30T02:40:51-05:00 putgd-lab systemd[10276]: Stopped gvfs-udisks2-volume-monitor.service - Virtual filesystem service - disk device monitor.
+2026-10-30T02:40:51-05:00 putgd-lab systemd[10276]: Stopped gvfs-mtp-volume-monitor.service - Virtual filesystem service - Media Transfer Protocol monitor.
+2026-10-30T02:40:51-05:00 putgd-lab systemd[10276]: Stopped gvfs-afc-volume-monitor.service - Virtual filesystem service - Apple File Conduit monitor.
+2026-10-30T02:40:51-05:00 putgd-lab systemd[10276]: Stopped obex.service - Bluetooth OBEX service.
+2026-10-30T02:40:51-05:00 putgd-lab systemd[10276]: Stopped evolution-calendar-factory.service - Evolution calendar service.
+2026-10-30T02:40:51-05:00 putgd-lab systemd[10276]: Stopped gvfs-daemon.service - Virtual filesystem service.
+2026-10-30T02:40:51-05:00 putgd-lab systemd[10276]: Stopping wireplumber.service - Multimedia Service Session Manager...
+2026-10-30T02:40:51-05:00 putgd-lab wireplumber[10292]: stopped by signal: Terminated
+2026-10-30T02:40:51-05:00 putgd-lab wireplumber[10292]: disconnected from pipewire
+2026-10-30T02:40:51-05:00 putgd-lab systemd[10276]: Stopped evolution-source-registry.service - Evolution source registry.
+2026-10-30T02:40:51-05:00 putgd-lab systemd[10276]: Stopped evolution-addressbook-factory.service - Evolution address book service.
+2026-10-30T02:40:51-05:00 putgd-lab systemd[10276]: Stopped wireplumber.service - Multimedia Service Session Manager.
+2026-10-30T02:40:51-05:00 putgd-lab systemd[10276]: Stopping pipewire.service - PipeWire Multimedia Service...
+2026-10-30T02:40:51-05:00 putgd-lab systemd[10276]: Stopped pipewire.service - PipeWire Multimedia Service.
+2026-10-30T02:40:51-05:00 putgd-lab systemd[10276]: Removed slice session.slice - User Core Session Slice.
+2026-10-30T02:40:51-05:00 putgd-lab systemd[10276]: session.slice: Consumed 1.562s CPU time, 52.5M memory peak, 0B memory swap peak.
+2026-10-30T02:40:51-05:00 putgd-lab systemd[10276]: Stopped target basic.target - Basic System.
+2026-10-30T02:40:51-05:00 putgd-lab systemd[10276]: Stopped target paths.target - Paths.
+2026-10-30T02:40:51-05:00 putgd-lab systemd[10276]: Stopped target sockets.target - Sockets.
+2026-10-30T02:40:51-05:00 putgd-lab systemd[10276]: Stopped target timers.target - Timers.
+2026-10-30T02:40:51-05:00 putgd-lab systemd[10276]: Stopped launchpadlib-cache-clean.timer - Clean up old files in the Launchpadlib cache.
+2026-10-30T02:40:51-05:00 putgd-lab systemd[10276]: Closed dbus.socket - D-Bus User Message Bus Socket.
+2026-10-30T02:40:51-05:00 putgd-lab systemd[10276]: Closed dirmngr.socket - GnuPG network certificate management daemon.
+2026-10-30T02:40:51-05:00 putgd-lab systemd[10276]: Closed gcr-ssh-agent.socket - GCR ssh-agent wrapper.
+2026-10-30T02:40:51-05:00 putgd-lab systemd[10276]: Closed gnome-keyring-daemon.socket - GNOME Keyring daemon.
+2026-10-30T02:40:51-05:00 putgd-lab systemd[10276]: Closed gpg-agent-browser.socket - GnuPG cryptographic agent and passphrase cache (access for web browsers).
+2026-10-30T02:40:51-05:00 putgd-lab systemd[10276]: Closed gpg-agent-extra.socket - GnuPG cryptographic agent and passphrase cache (restricted).
+2026-10-30T02:40:51-05:00 putgd-lab systemd[10276]: Stopping gpg-agent-ssh.socket - GnuPG cryptographic agent (ssh-agent emulation)...
+2026-10-30T02:40:51-05:00 putgd-lab systemd[10276]: Closed gpg-agent.socket - GnuPG cryptographic agent and passphrase cache.
+2026-10-30T02:40:51-05:00 putgd-lab systemd[10276]: Closed keyboxd.socket - GnuPG public key management service.
+2026-10-30T02:40:51-05:00 putgd-lab systemd[10276]: Closed pipewire-pulse.socket - PipeWire PulseAudio.
+2026-10-30T02:40:51-05:00 putgd-lab systemd[10276]: Closed pipewire.socket - PipeWire Multimedia System Sockets.
+2026-10-30T02:40:51-05:00 putgd-lab systemd[10276]: Closed pk-debconf-helper.socket - debconf communication socket.
+2026-10-30T02:40:51-05:00 putgd-lab systemd[10276]: Closed speech-dispatcher.socket - Speech Dispatcher Socket.
+2026-10-30T02:40:51-05:00 putgd-lab systemd[10276]: Closed gpg-agent-ssh.socket - GnuPG cryptographic agent (ssh-agent emulation).
+2026-10-30T02:40:51-05:00 putgd-lab systemd[10276]: Removed slice app.slice - User Application Slice.
+2026-10-30T02:40:51-05:00 putgd-lab systemd[10276]: Reached target shutdown.target - Shutdown.
+2026-10-30T02:40:51-05:00 putgd-lab systemd[10276]: Finished systemd-exit.service - Exit the Session.
+2026-10-30T02:40:51-05:00 putgd-lab systemd[10276]: Reached target exit.target - Exit the Session.
+2026-10-30T02:40:52-05:00 putgd-lab systemd[1]: user@1000.service: Deactivated successfully.
+2026-10-30T02:40:52-05:00 putgd-lab systemd[1]: Stopped user@1000.service - User Manager for UID 1000.
+2026-10-30T02:40:52-05:00 putgd-lab systemd[1]: user@1000.service: Consumed 2.265s CPU time, 100.8M memory peak, 0B memory swap peak.

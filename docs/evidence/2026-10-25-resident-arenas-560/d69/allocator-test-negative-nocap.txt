@@ -1,0 +1,12 @@
+PASS   : AllocatorPolicyContract::initTestCase()
+FAIL!  : AllocatorPolicyContract::workerChurnIsTrimmable() 'retained<512*1024' returned FALSE. (worker churn left 1085440 bytes of allocator heap after malloc_trim (baseline 339968))
+PASS   : AllocatorPolicyContract::cleanupTestCase()
+Totals: 2 passed, 1 failed, 0 skipped, 0 blacklisted, 61ms
+PASS   : AllocatorPolicyContract::initTestCase()
+FAIL!  : AllocatorPolicyContract::workerChurnIsTrimmable() 'retained<512*1024' returned FALSE. (worker churn left 1085440 bytes of allocator heap after malloc_trim (baseline 339968))
+PASS   : AllocatorPolicyContract::cleanupTestCase()
+Totals: 2 passed, 1 failed, 0 skipped, 0 blacklisted, 61ms
+PASS   : AllocatorPolicyContract::initTestCase()
+FAIL!  : AllocatorPolicyContract::workerChurnIsTrimmable() 'retained<512*1024' returned FALSE. (worker churn left 1085440 bytes of allocator heap after malloc_trim (baseline 339968))
+PASS   : AllocatorPolicyContract::cleanupTestCase()
+Totals: 2 passed, 1 failed, 0 skipped, 0 blacklisted, 62ms

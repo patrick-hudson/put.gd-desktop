@@ -1,0 +1,12 @@
+Traceback (most recent call last):
+  File "/home/user/b780/tools/lab/staging_acceptance.py", line 50, in <module>
+    lab.stage_install_helper(RUN,remote,'/usr/local/lib/putgd-lab/package_install.py',lab.hash_file(ROOT/'tools/lab/package_install.py'))
+  File "/home/user/b780/tools/lab/lab.py", line 1727, in stage_install_helper
+    output = ssh(run, f'nohup setsid --wait {invocation} > ~/{remote}/staging-output.log 2>&1 < /dev/null &\n'
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/user/b780/tools/lab/lab.py", line 486, in ssh
+    return command(ssh_args(run, bootstrap) + ['sh', '-s'], timeout=timeout, input=script).stdout
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/user/b780/tools/lab/lab.py", line 88, in command
+    raise LabError(f'{Path(str(args[0])).name} failed (exit {result.returncode})')
+lab.LabError: ssh failed (exit 1)

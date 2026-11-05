@@ -1,0 +1,525 @@
+{
+  "source": "171b506e02ca37ba75b27dbbbe859502380926ef",
+  "scope": "actual native-installed production package; real Qt/GTK local capture and clipboard, clearly synthetic History rendering/stored-link receipts; no live upload or recording claim",
+  "finalResident": {
+    "residentPid": 33325,
+    "residentStartTicks": "337439",
+    "source": {
+      "schemaVersion": 1,
+      "version": "26.1024.1140-dev+g171b506e02ca",
+      "baseVersion": "26.1024.1140",
+      "packageVersion": "26.1024.1140~dev+g171b506e02ca",
+      "gitCommit": "171b506e02ca37ba75b27dbbbe859502380926ef",
+      "gitTree": "2942cc06bd2361cf915e9d5ffbeeadd7eaa75368",
+      "commitCount": 1140,
+      "dirty": false,
+      "sourceProvenance": "git"
+    },
+    "host": "f44-native-full-errors",
+    "session": {
+      "XDG_CURRENT_DESKTOP": "GNOME",
+      "XDG_SESSION_TYPE": "wayland",
+      "QT_QPA_PLATFORM": "wayland"
+    }
+  },
+  "cases": [
+    {
+      "label": "qt-window-final",
+      "operationId": "5ccaaf5b-42b8-4e9b-9d68-8deb2141989d",
+      "state": "completed",
+      "copyStatus": "copied",
+      "items": [
+        {
+          "id": "526b4e48-e7fc-4647-8376-2492d4321124",
+          "category": "images",
+          "sha256": "48b22a9b49a17caff52369b7659f0585b0dfa8e062e564312ea8cf807ddd805c",
+          "localStatus": "saved"
+        }
+      ],
+      "independentPaste": {
+        "operationId": "5ccaaf5b-42b8-4e9b-9d68-8deb2141989d",
+        "decodedRgbaSha256": "3ff12c8af9943770d4c990264d29dd2c28efd3cca0ac05d81913bb7a259cc70d",
+        "width": 662,
+        "height": 480,
+        "matchedRetainedOriginal": true
+      },
+      "independentPasteArtifact": {
+        "path": "native-paste/qt-window-final.png",
+        "sha256": "48b22a9b49a17caff52369b7659f0585b0dfa8e062e564312ea8cf807ddd805c"
+      },
+      "nativePaste": {
+        "formats": [
+          "image/png",
+          "application/x-qt-image"
+        ],
+        "image": {
+          "height": 480,
+          "saved": true,
+          "width": 662
+        },
+        "schemaVersion": 1
+      }
+    },
+    {
+      "label": "qt-region-final",
+      "operationId": "ee7dbb93-b905-4d1e-9dc0-a1963d365b0c",
+      "state": "completed",
+      "copyStatus": "copied",
+      "items": [
+        {
+          "id": "e0baf671-4237-4002-b626-1a2e2d9fd6c1",
+          "category": "images",
+          "sha256": "154a035af81527117a55be7d39ee2c8f6e2751de652336f1e60d532d9e8b8d80",
+          "localStatus": "saved"
+        }
+      ],
+      "independentPaste": {
+        "operationId": "ee7dbb93-b905-4d1e-9dc0-a1963d365b0c",
+        "decodedRgbaSha256": "5e5276bff72a97b27e4f72531932eb928faf60da17db93b8325d3f6eddd70fbb",
+        "width": 80,
+        "height": 60,
+        "matchedRetainedOriginal": true
+      },
+      "independentPasteArtifact": {
+        "path": "native-paste/qt-region-final.png",
+        "sha256": "154a035af81527117a55be7d39ee2c8f6e2751de652336f1e60d532d9e8b8d80"
+      },
+      "nativePaste": {
+        "formats": [
+          "image/png",
+          "application/x-qt-image"
+        ],
+        "image": {
+          "height": 60,
+          "saved": true,
+          "width": 80
+        },
+        "schemaVersion": 1
+      }
+    },
+    {
+      "label": "qt-desktop-final",
+      "operationId": "6ee1fb0a-0371-4eff-ae75-c57605d43c49",
+      "state": "completed",
+      "copyStatus": "copied",
+      "items": [
+        {
+          "id": "2af9c09d-a047-4ff7-93e7-8ca9f837b5af",
+          "category": "images",
+          "sha256": "da26ab4dd1004b731b6efe016a287a435011372fdc5b1e5e2c2a4414192dacdf",
+          "localStatus": "saved"
+        }
+      ],
+      "independentPaste": {
+        "operationId": "6ee1fb0a-0371-4eff-ae75-c57605d43c49",
+        "decodedRgbaSha256": "70ff3fc95c5b69c85ba7c964b929b6df6a8d29eb98f9638bf76ef97aa5c68e61",
+        "width": 1920,
+        "height": 1080,
+        "matchedRetainedOriginal": true
+      },
+      "independentPasteArtifact": {
+        "path": "native-paste/qt-desktop-final.png",
+        "sha256": "da26ab4dd1004b731b6efe016a287a435011372fdc5b1e5e2c2a4414192dacdf"
+      },
+      "nativePaste": {
+        "formats": [
+          "image/png",
+          "application/x-qt-image"
+        ],
+        "image": {
+          "height": 1080,
+          "saved": true,
+          "width": 1920
+        },
+        "schemaVersion": 1
+      },
+      "privacyEdgeGate": {
+        "fractions": [
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "minimum": 0.9,
+        "dimensions": [
+          1920,
+          1080
+        ]
+      }
+    },
+    {
+      "label": "qt-clipboard-final-t",
+      "operationId": "b0c97c73-34dd-4fac-ba17-f05a87be3537",
+      "state": "completed",
+      "copyStatus": "copied",
+      "items": [
+        {
+          "id": "c674fac1-356a-4a40-b496-f8bdc4960a02",
+          "category": "text",
+          "sha256": "c7a4c2eea1d901cbc049d84dbba77e472576aafc27b49e4a1e188bb7dd176185",
+          "localStatus": "saved"
+        }
+      ],
+      "nativePaste": {
+        "formats": [
+          "text/plain"
+        ],
+        "schemaVersion": 1,
+        "text": "putgd synthetic clipboard text"
+      }
+    },
+    {
+      "label": "qt-clipboard-final-i",
+      "operationId": "5c7b1ba3-1f54-49c6-8f57-9519f8992ec7",
+      "state": "completed",
+      "copyStatus": "copied",
+      "items": [
+        {
+          "id": "50ac3430-d4ad-41b7-a522-7a7db4c41a14",
+          "category": "images",
+          "sha256": "8d5810dd5c9c8b1b5648e611d0e43971e01b6b03e2839bad028ad384ec998316",
+          "localStatus": "saved"
+        }
+      ],
+      "independentPaste": {
+        "operationId": "5c7b1ba3-1f54-49c6-8f57-9519f8992ec7",
+        "decodedRgbaSha256": "f7d6e5a37e11f8a47c53f53d1b1407d9ddd447cd33947f4f7761f2287b0eca9a",
+        "width": 96,
+        "height": 64,
+        "matchedRetainedOriginal": true
+      },
+      "independentPasteArtifact": {
+        "path": "native-paste/qt-clipboard-final-i.png",
+        "sha256": "8d5810dd5c9c8b1b5648e611d0e43971e01b6b03e2839bad028ad384ec998316"
+      },
+      "nativePaste": {
+        "formats": [
+          "image/png",
+          "application/x-qt-image"
+        ],
+        "image": {
+          "height": 64,
+          "saved": true,
+          "width": 96
+        },
+        "schemaVersion": 1
+      }
+    },
+    {
+      "label": "qt-clipboard-final-f",
+      "operationId": "a08d99eb-70f0-4cc0-ad38-39494996b27d",
+      "state": "completed",
+      "copyStatus": "copied",
+      "items": [
+        {
+          "id": "c4ef968e-713d-4009-8b2a-5bff54d236c8",
+          "category": "text",
+          "sha256": "5b19eebc3f2265be7fb729e7c911c784093eebf706a89beaa356e82ce2222427",
+          "localStatus": "saved"
+        },
+        {
+          "id": "468d0cb3-bd72-4aab-a0a4-3be83a4271d7",
+          "category": "text",
+          "sha256": "010e71d5ea18016d6f57aaf690c656a8d3bcaaa6199336a843fc07eb07c63209",
+          "localStatus": "saved"
+        }
+      ],
+      "nativePaste": {
+        "formats": [
+          "text/uri-list"
+        ],
+        "schemaVersion": 1,
+        "text": "file:///tmp/hfgf/archive/text/synthetic-1.txt\nfile:///tmp/hfgf/archive/text/synthetic-2.txt\n",
+        "urls": [
+          "file:///tmp/hfgf/archive/text/synthetic-1.txt",
+          "file:///tmp/hfgf/archive/text/synthetic-2.txt"
+        ]
+      }
+    },
+    {
+      "label": "gtk-window-final",
+      "operationId": "676321b1-3474-44b6-88dc-5b3c8202ad12",
+      "state": "completed",
+      "copyStatus": "copied",
+      "items": [
+        {
+          "id": "e996c83f-d1ba-45d5-aaf7-ef78e22f9462",
+          "category": "images",
+          "sha256": "9246fca3bda5586e316739610a52e86e56f9751ae03600366798155881e6078f",
+          "localStatus": "saved"
+        }
+      ],
+      "independentPaste": {
+        "operationId": "676321b1-3474-44b6-88dc-5b3c8202ad12",
+        "decodedRgbaSha256": "51f0c55abc34fcfa062a5d69cc3e2df109a46fb159e1e1b4c435fc2c008cac45",
+        "width": 668,
+        "height": 449,
+        "matchedRetainedOriginal": true
+      },
+      "independentPasteArtifact": {
+        "path": "native-paste/gtk-window-final.png",
+        "sha256": "9246fca3bda5586e316739610a52e86e56f9751ae03600366798155881e6078f"
+      },
+      "nativePaste": {
+        "schemaVersion": 1,
+        "client": "GTK",
+        "formats": [
+          "image/png"
+        ],
+        "image": {
+          "width": 668,
+          "height": 449,
+          "saved": true
+        }
+      }
+    },
+    {
+      "label": "gtk-region-final",
+      "operationId": "fdeb0896-6844-44f1-8884-f10ee2e1ea74",
+      "state": "completed",
+      "copyStatus": "copied",
+      "items": [
+        {
+          "id": "226e0468-8d47-4319-9fc1-5caa659ba5ef",
+          "category": "images",
+          "sha256": "51eeafbd088d5144f0ea3f3c141f6da83f2d3fecd9e4018a0b4b5abb7d811ff9",
+          "localStatus": "saved"
+        }
+      ],
+      "independentPaste": {
+        "operationId": "fdeb0896-6844-44f1-8884-f10ee2e1ea74",
+        "decodedRgbaSha256": "5e5276bff72a97b27e4f72531932eb928faf60da17db93b8325d3f6eddd70fbb",
+        "width": 80,
+        "height": 60,
+        "matchedRetainedOriginal": true
+      },
+      "independentPasteArtifact": {
+        "path": "native-paste/gtk-region-final.png",
+        "sha256": "51eeafbd088d5144f0ea3f3c141f6da83f2d3fecd9e4018a0b4b5abb7d811ff9"
+      },
+      "nativePaste": {
+        "schemaVersion": 1,
+        "client": "GTK",
+        "formats": [
+          "image/png"
+        ],
+        "image": {
+          "width": 80,
+          "height": 60,
+          "saved": true
+        }
+      }
+    },
+    {
+      "label": "gtk-desktop-final",
+      "operationId": "b42a9337-ba64-4a21-9cb1-2142ca4b7cdc",
+      "state": "completed",
+      "copyStatus": "copied",
+      "items": [
+        {
+          "id": "40722c25-d2ef-4bde-ab57-a89dabb85177",
+          "category": "images",
+          "sha256": "b59d3f016294385d4316ed6bbfe49882f636e53b5ed43e889147914dfc490579",
+          "localStatus": "saved"
+        }
+      ],
+      "independentPaste": {
+        "operationId": "b42a9337-ba64-4a21-9cb1-2142ca4b7cdc",
+        "decodedRgbaSha256": "70ff3fc95c5b69c85ba7c964b929b6df6a8d29eb98f9638bf76ef97aa5c68e61",
+        "width": 1920,
+        "height": 1080,
+        "matchedRetainedOriginal": true
+      },
+      "independentPasteArtifact": {
+        "path": "native-paste/gtk-desktop-final.png",
+        "sha256": "b59d3f016294385d4316ed6bbfe49882f636e53b5ed43e889147914dfc490579"
+      },
+      "nativePaste": {
+        "schemaVersion": 1,
+        "client": "GTK",
+        "formats": [
+          "image/png"
+        ],
+        "image": {
+          "width": 1920,
+          "height": 1080,
+          "saved": true
+        }
+      },
+      "privacyEdgeGate": {
+        "fractions": [
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "minimum": 0.9,
+        "dimensions": [
+          1920,
+          1080
+        ]
+      }
+    },
+    {
+      "label": "gtk-clipboard-final-t",
+      "operationId": "ebae0a56-d64d-419c-ac96-654d47952f34",
+      "state": "completed",
+      "copyStatus": "copied",
+      "items": [
+        {
+          "id": "3f0c45b6-e46b-4af6-9e50-f4b58e0fb691",
+          "category": "text",
+          "sha256": "c7a4c2eea1d901cbc049d84dbba77e472576aafc27b49e4a1e188bb7dd176185",
+          "localStatus": "saved"
+        }
+      ],
+      "nativePaste": {
+        "schemaVersion": 1,
+        "client": "GTK",
+        "formats": [
+          "text/plain;charset=utf-8"
+        ],
+        "text": "putgd synthetic clipboard text"
+      }
+    },
+    {
+      "label": "gtk-clipboard-final-i",
+      "operationId": "9fe3cc2d-09b6-40d6-b906-cf89cdcf9987",
+      "state": "completed",
+      "copyStatus": "copied",
+      "items": [
+        {
+          "id": "faaa3b79-0e6e-427f-b9de-12399248e5df",
+          "category": "images",
+          "sha256": "6171cd78a25ed61bd98dfa4be87b5339b15e39ae7661b3002486af4fefb3cd17",
+          "localStatus": "saved"
+        }
+      ],
+      "independentPaste": {
+        "operationId": "9fe3cc2d-09b6-40d6-b906-cf89cdcf9987",
+        "decodedRgbaSha256": "f7d6e5a37e11f8a47c53f53d1b1407d9ddd447cd33947f4f7761f2287b0eca9a",
+        "width": 96,
+        "height": 64,
+        "matchedRetainedOriginal": true
+      },
+      "independentPasteArtifact": {
+        "path": "native-paste/gtk-clipboard-final-i.png",
+        "sha256": "6171cd78a25ed61bd98dfa4be87b5339b15e39ae7661b3002486af4fefb3cd17"
+      },
+      "nativePaste": {
+        "schemaVersion": 1,
+        "client": "GTK",
+        "formats": [
+          "image/png"
+        ],
+        "image": {
+          "width": 96,
+          "height": 64,
+          "saved": true
+        }
+      }
+    },
+    {
+      "label": "gtk-clipboard-final-f",
+      "operationId": "18435a3d-0bc7-4fbe-b361-95ccf9eee4f3",
+      "state": "completed",
+      "copyStatus": "copied",
+      "items": [
+        {
+          "id": "8b7ce3b2-b022-4cc2-91c8-8d656e04a1ab",
+          "category": "text",
+          "sha256": "5b19eebc3f2265be7fb729e7c911c784093eebf706a89beaa356e82ce2222427",
+          "localStatus": "saved"
+        },
+        {
+          "id": "e72c9170-eafc-4b8d-bdee-38f84c056d15",
+          "category": "text",
+          "sha256": "010e71d5ea18016d6f57aaf690c656a8d3bcaaa6199336a843fc07eb07c63209",
+          "localStatus": "saved"
+        }
+      ],
+      "nativePaste": {
+        "schemaVersion": 1,
+        "client": "GTK",
+        "formats": [
+          "text/uri-list"
+        ],
+        "text": "file:///tmp/hfgf/archive/text/synthetic-1-78ba7971-23ab-4e88-a665-20d8d0b1373f.txt\r\nfile:///tmp/hfgf/archive/text/synthetic-2-ab67ef76-7b98-4e16-9dfc-9634b9256aad.txt\r\n",
+        "urls": [
+          "file:///tmp/hfgf/archive/text/synthetic-1-78ba7971-23ab-4e88-a665-20d8d0b1373f.txt",
+          "file:///tmp/hfgf/archive/text/synthetic-2-ab67ef76-7b98-4e16-9dfc-9634b9256aad.txt"
+        ]
+      }
+    },
+    {
+      "label": "cancel-right",
+      "operationId": "90c95844-c703-4ee1-a4c6-15b17b8c2c6d",
+      "state": "cancelled",
+      "copyStatus": "no_result",
+      "items": []
+    },
+    {
+      "label": "cancel-zero",
+      "operationId": "a999da59-a683-46cf-bf91-624232dc7c83",
+      "state": "cancelled",
+      "copyStatus": "no_result",
+      "items": []
+    },
+    {
+      "label": "cancel-escape-final",
+      "operationId": "3d98c592-fb69-4b79-93bb-8fb98ba33364",
+      "state": "cancelled",
+      "copyStatus": "no_result",
+      "items": []
+    }
+  ],
+  "sixNormalViewCloses": [
+    {
+      "view": "settings",
+      "helperPid": 33683,
+      "closedNormally": true
+    },
+    {
+      "view": "history",
+      "helperPid": 33709,
+      "closedNormally": true
+    },
+    {
+      "view": "settings",
+      "helperPid": 33737,
+      "closedNormally": true
+    },
+    {
+      "view": "history",
+      "helperPid": 33763,
+      "closedNormally": true
+    },
+    {
+      "view": "settings",
+      "helperPid": 33792,
+      "closedNormally": true
+    },
+    {
+      "view": "history",
+      "helperPid": 33862,
+      "closedNormally": true
+    }
+  ],
+  "allThreeCopyPaths": "actual inspector UI, fresh suppressed CLI, fresh suppressed official-SDK MCP, each persisted copied and independently pasted",
+  "privateArchive": {
+    "source": "171b506e02ca37ba75b27dbbbe859502380926ef",
+    "host": "f44",
+    "archive": "/home/patrick/work/pgcc-fullerror-f44-native-roots.tar.gz",
+    "sha256": "13d04b3d1961c77f8c5fcd99753c57597151ab8752922e9677f0f19c453a7cf6",
+    "bytes": 2907900,
+    "roots": [
+      "/tmp/hfgi",
+      "/tmp/hfgc",
+      "/tmp/hfgf"
+    ],
+    "excluded": "runtime directories/sockets only; path preflight and process identities retained",
+    "verified": "Every regular archived file matched original source bytes after owned producers stopped",
+    "createdUtc": "2026-10-24T03:37:39.125476+00:00",
+    "restore": "Verify SHA256, extract into a NEW private directory with tar -xzf. Never overwrite old campaigns; do not launch archived profiles."
+  }
+}

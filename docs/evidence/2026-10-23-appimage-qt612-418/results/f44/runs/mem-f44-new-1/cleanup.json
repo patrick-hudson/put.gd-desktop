@@ -1,0 +1,29 @@
+{
+ "removed": [
+  "/tmp/afa.qtQAlP",
+  "/home/patrick/work/put.gd-qt418/afa/runs/mem-f44-new-1/appdir",
+  "/home/patrick/work/put.gd-qt418/afa/runs/mem-f44-new-1/frames",
+  "/home/patrick/work/put.gd-qt418/afa/runs/mem-f44-new-1/config",
+  "/home/patrick/work/put.gd-qt418/afa/runs/mem-f44-new-1/cache",
+  "/home/patrick/work/put.gd-qt418/afa/runs/mem-f44-new-1/archive",
+  "/home/patrick/work/put.gd-qt418/afa/runs/mem-f44-new-1/working",
+  "/home/patrick/work/put.gd-qt418/afa/runs/mem-f44-new-1/urldata"
+ ],
+ "fixtureStopped": 3257247,
+ "leftovers": {
+  "processes": [],
+  "mounts": [
+   "/tmp/.mount_putgd-AAhFNi",
+   "/tmp/.mount_putgd-npCIHF"
+  ],
+  "entries": []
+ },
+ "after": {
+  "processes": [],
+  "mounts": [
+   "/tmp/.mount_putgd-AAhFNi",
+   "/tmp/.mount_putgd-npCIHF"
+  ],
+  "entries": []
+ }
+}

@@ -89,13 +89,63 @@ class RemoteDraftTest(unittest.TestCase):
         with patch.object(sys, 'argv', argv), patch.object(publish, 'verify', return_value=release), patch.object(publish, 'verify_remote_draft', return_value={'releaseId': 42}) as remote, patch.object(publish.subprocess, 'run') as mutate:
             publish.main()
             remote.assert_called_once_with('v0.1.1-rc.1', self.directory, self.listed, 'a' * 40)
-            mutate.assert_called_once_with(['gh', 'release', 'edit', 'v0.1.1-rc.1', '--draft=false'], check=True)
-        self.assertTrue(json.loads((self.directory / 'publication.json').read_text())['published'])
+            self.assertEqual(mutate.call_args_list, [
+                call(['gh', 'release', 'edit', 'v0.1.1-rc.1', '--draft=false'], check=True),
+                call(['gh', 'api', 'repos/patrick-hudson/put.gd-site/dispatches', '-f', 'event_type=release-published',
+                      '-f', 'client_payload[tag]=v0.1.1-rc.1', '-F', 'client_payload[prerelease]=true'], check=True)])
+        receipt = json.loads((self.directory / 'publication.json').read_text())
+        self.assertEqual((receipt['published'], receipt['siteNotified']), (True, True))
         with patch.object(sys, 'argv', argv), patch.object(publish, 'verify', return_value=release), patch.object(publish, 'verify_remote_draft', side_effect=ValueError('remote bytes differ')), patch.object(publish.subprocess, 'run') as mutate:
             with self.assertRaisesRegex(ValueError, 'remote bytes differ'):
                 publish.main()
             mutate.assert_not_called()
 
+
+    def test_site_notification_follows_publication_and_never_fails_it(self):
+        for tag, prerelease in [('v0.1.1-rc.1', 'true'), ('v0.1.1', 'false')]:
+            release = {'gitCommit': 'a' * 40}
+            for name in publish.public_inventory(tag) - {'SHA256SUMS'}:
+                (self.directory / name).write_bytes(('synthetic ' + name).encode())
+            (self.directory / 'release-builds.json').write_text(json.dumps({'release': release}))
+            listed = {name: publish.sha256(self.directory / name)
+                      for name in publish.public_inventory(tag) - {'SHA256SUMS'}}
+            (self.directory / 'SHA256SUMS').write_text(''.join(d + '  ' + n + '\n' for n, d in sorted(listed.items())))
+            acceptance = self.directory / 'acceptance.json'
+            acceptance.write_text(json.dumps({'tag': tag, 'gitCommit': 'a' * 40, 'status': 'passed', 'assetSha256': listed}))
+            argv = ['publish.py', '--tag', tag, '--directory', str(self.directory), '--publish', '--acceptance', str(acceptance)]
+            edit = ['gh', 'release', 'edit', tag, '--draft=false']
+            dispatch = ['gh', 'api', 'repos/patrick-hudson/put.gd-site/dispatches', '-f', 'event_type=release-published',
+                        '-f', 'client_payload[tag]=' + tag, '-F', 'client_payload[prerelease]=' + prerelease]
+            receipts = []
+
+            def run(command, **kwargs):
+                if command == dispatch:
+                    receipts.append(json.loads((self.directory / 'publication.json').read_text()))
+                    raise subprocess.CalledProcessError(1, command)
+                return subprocess.CompletedProcess(command, 0)
+
+            with self.subTest(tag=tag, outcome='dispatch fails'), patch.object(sys, 'argv', argv), \
+                 patch.object(publish, 'verify', return_value=release), \
+                 patch.object(publish, 'verify_remote_draft', return_value={'releaseId': 42}), \
+                 patch.object(publish.subprocess, 'run', side_effect=run) as mutate, \
+                 patch.object(sys, 'stderr', io.StringIO()) as stderr:
+                publish.main()
+                self.assertEqual([c.args[0] for c in mutate.call_args_list], [edit, dispatch])
+                self.assertIn('could not notify patrick-hudson/put.gd-site', stderr.getvalue())
+            # The receipt already said published when the notification was attempted.
+            self.assertEqual([r['published'] for r in receipts], [True])
+            receipt = json.loads((self.directory / 'publication.json').read_text())
+            self.assertEqual((receipt['published'], receipt['siteNotified']), (True, False))
+
+            (self.directory / 'publication.json').unlink()
+            with self.subTest(tag=tag, outcome='publication fails'), patch.object(sys, 'argv', argv), \
+                 patch.object(publish, 'verify', return_value=release), \
+                 patch.object(publish, 'verify_remote_draft', return_value={'releaseId': 42}), \
+                 patch.object(publish.subprocess, 'run', side_effect=subprocess.CalledProcessError(1, edit)) as mutate:
+                with self.assertRaises(subprocess.CalledProcessError):
+                    publish.main()
+                self.assertEqual([c.args[0] for c in mutate.call_args_list], [edit])
+            self.assertFalse((self.directory / 'publication.json').exists())
 
     def test_candidate_and_stable_incomplete_inventory_block_public_mutation(self):
         for tag in ('v0.1.1-rc.1', 'v0.1.1'):
@@ -174,7 +224,7 @@ class RemoteDraftTest(unittest.TestCase):
                 self.assertEqual([c.args[0][2] for c in commands.call_args_list], ['create', 'upload'])
 
     def test_delayed_nightly_draft_still_requires_prerelease_and_staging_recheck(self):
-        tag = 'v0.1.1-dev.2.20261011153045+g' + 'a' * 12
+        tag = 'v0.1.1-nightly.2'
         release = {'gitCommit': 'a' * 40, 'version': tag[1:], 'prerelease': True, 'channel': 'nightly'}
         for prerelease in (True, False):
             draft = {**self.metadata, 'tag_name': tag, 'assets': [], 'prerelease': prerelease}
@@ -307,6 +357,25 @@ class RemoteDraftTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'bytes differ'):
             self.verify()
 
+    def test_server_sha256_verifies_uploaded_bytes_without_downloading_them_again(self):
+        for asset in self.metadata['assets']:
+            asset['digest'] = 'sha256:' + hashlib.sha256(self.remote_files[asset['name']]).hexdigest()
+        with patch.object(publish, 'github_json', side_effect=self.api), \
+                patch.object(publish.subprocess, 'run') as download:
+            publish.verify_remote_draft('v0.1.1-rc.1', self.directory, self.listed, 'a' * 40)
+        download.assert_not_called()
+        self.metadata['assets'][0]['digest'] = 'sha256:' + 'f' * 64
+        with self.assertRaisesRegex(ValueError, 'digest differs'):
+            self.verify()
+
+    def test_server_digest_changes_during_verification_are_rejected(self):
+        for asset in self.metadata['assets']:
+            asset['digest'] = 'sha256:' + hashlib.sha256(self.remote_files[asset['name']]).hexdigest()
+        self.after = copy.deepcopy(self.metadata)
+        self.after['assets'][0]['digest'] = 'sha256:' + 'e' * 64
+        with self.assertRaisesRegex(ValueError, 'changed'):
+            self.verify()
+
 
 class NightlyPublicationTest(unittest.TestCase):
     """Drive the CLI against synthetic GitHub protocol state, without live mutations."""
@@ -314,9 +383,9 @@ class NightlyPublicationTest(unittest.TestCase):
         self.temporary = tempfile.TemporaryDirectory(prefix='pg-nightly-publish-')
         self.addCleanup(self.temporary.cleanup)
         self.directory = Path(self.temporary.name)
-        self.tag = 'v0.1.1-dev.42.20261012184001+gaaaaaaaaaaaa'
+        self.tag = 'v26.1022.42-nightly'
         self.release = {'schemaVersion': 1, 'tag': self.tag, 'version': self.tag[1:],
-                        'baseVersion': '0.1.1', 'packageVersion': self.tag[1:].replace('-dev.', '~dev.'),
+                        'baseVersion': '26.1022.42', 'packageVersion': '26.1022.42~nightly',
                         'channel': 'nightly', 'prerelease': True, 'gitCommit': 'a' * 40,
                         'gitTree': 'b' * 40, 'commitCount': 42}
         names = sorted(publish.public_inventory(self.tag) - {'SHA256SUMS'})
@@ -381,14 +450,131 @@ class NightlyPublicationTest(unittest.TestCase):
         argv = ['publish.py', '--tag', self.tag, '--directory', str(self.directory), '--nightly', *extra]
         with patch.object(sys, 'argv', argv), patch.dict(os.environ, self.environment, clear=True), \
              patch.object(publish, 'verify', return_value=self.release), \
+             patch.object(publish.changelog, 'section', side_effect=self.changes), \
              patch.object(subprocess, 'check_output', side_effect=self.output), \
              patch.object(subprocess, 'run', side_effect=self.command):
             publish.main()
 
-    def test_cli_publishes_all_twelve_verified_assets_as_nightly_prerelease(self):
+    def test_release_titles_name_the_calendar_version(self):
+        self.assertEqual(publish.release_title({'version': '26.1022.42-nightly'}), 'put.gd 26.1022.42 nightly')
+        self.assertEqual(publish.release_title({'version': '26.1101.960'}), 'put.gd 26.1101.960')
+        self.assertEqual(publish.release_title({'version': '0.1.1-nightly.42'}), 'put.gd 0.1.1 nightly 42')
+
+    def installer_fixture(self):
+        sources = self.directory / 'sources'
+        sources.mkdir()
+        for name in (f'putgd-{self.release["version"]}-source.tar.gz',
+                     f'putgd-{self.release["version"]}-appimage-complete-source.tar.gz',
+                     f'putgd-gnome50-{self.release["version"]}.zip'):
+            (sources / name).write_bytes(b'synthetic source fixture')
+        delivery = publish.support_assets.describe(sources, self.release, 'fixture/putgd')
+        self.files = {name: ('synthetic ' + name).encode() for name in
+                      publish.support_assets.inventory(self.release['version']) - {'SHA256SUMS'}}
+        self.files['release-builds.json'] = json.dumps({'release': self.release, 'sources': delivery,
+            'schemaVersion': 2, 'assetLayout': publish.support_assets.LAYOUT}).encode()
+        self.files['source-delivery.json'] = json.dumps(delivery).encode()
+        self.files['proton-source-catalog.json'] = (ROOT / 'tools/proton/notices/SOURCES.json').read_bytes()
+        self.listed = {name: hashlib.sha256(data).hexdigest() for name, data in self.files.items()}
+        self.files['SHA256SUMS'] = ''.join(d + '  ' + n + '\n' for n, d in sorted(self.listed.items())).encode()
+        for name, data in self.files.items():
+            (self.directory / name).write_bytes(data)
+
+    def test_installer_release_publishes_only_installers_and_support_files(self):
+        self.installer_fixture()
+        with patch.object(publish.support_assets, 'publish') as linked, \
+                patch.object(publish.support_assets, 'verify_public'), \
+                patch.object(publish.support_assets, 'verify_proton'):
+            self.invoke()
+        linked.assert_called_once()
+        self.assertEqual(set(self.remote_files), publish.support_assets.inventory(self.release['version']))
+        self.assertEqual(len(self.remote_files), 15)
+        notes = (self.directory / 'release-notes.md').read_text()
+        self.assertIn('/releases/tag/sources-' + self.tag, notes)
+        self.assertIn('CI artifacts', notes)
+        changes, delivery = notes.split('## Downloads and sources\n', 1)
+        self.assertIn("## What's changed", changes)
+        self.assertIn('Synthetic change', changes)
+        self.assertNotIn('Downloads:', changes)
+        self.assertIn('Downloads:', delivery)
+        self.assertIn('CI artifacts', delivery)
+        self.assertNotIn('combined ZIP', notes)
+
+    def test_missing_linked_sources_block_installer_publication(self):
+        self.installer_fixture()
+        with patch.object(publish.support_assets, 'verify_proton'), \
+                patch.object(publish.support_assets, 'publish', side_effect=ValueError('source unavailable')):
+            with self.assertRaisesRegex(ValueError, 'source unavailable'):
+                self.invoke()
+        self.assertFalse(self.commands)
+
+    def test_manual_installer_publication_resolves_repository_without_actions_environment(self):
+        self.tag = 'v26.1022.42'
+        self.release.update(tag=self.tag, version=self.tag[1:], packageVersion=self.tag[1:],
+                            channel='stable', prerelease=False)
+        self.installer_fixture()
+        self.metadata = self.metadata_for(True)
+        self.remote_files = dict(self.files)
+        acceptance = self.directory / 'acceptance.json'
+        acceptance.write_text(json.dumps({'tag': self.tag, 'gitCommit': self.commit,
+            'status': 'passed', 'assetSha256': self.listed}))
+        argv = ['publish.py', '--tag', self.tag, '--directory', str(self.directory),
+                '--publish', '--acceptance', str(acceptance)]
+        lookup = ['gh', 'repo', 'view', '--json', 'nameWithOwner', '--jq', '.nameWithOwner']
+
+        def output(command, **kwargs):
+            return 'fixture/putgd\n' if command == lookup else self.output(command, **kwargs)
+
+        with patch.object(sys, 'argv', argv), patch.dict(os.environ, {}, clear=True), \
+                patch.object(publish, 'verify', return_value=self.release), \
+                patch.object(publish, 'run_provenance') as provenance, \
+                patch.object(subprocess, 'check_output', side_effect=output) as reads, \
+                patch.object(subprocess, 'run', side_effect=self.command), \
+                patch.object(publish.support_assets, 'verify_proton') as proton, \
+                patch.object(publish.support_assets, 'verify_public') as linked, \
+                patch.object(publish.support_assets, 'publish') as stage_sources, \
+                patch.object(publish, 'notify_site', return_value=True):
+            publish.main()
+        reads.assert_any_call(lookup, text=True, timeout=60)
+        provenance.assert_not_called()
+        stage_sources.assert_not_called()
+        proton.assert_called_once()
+        linked.assert_called_once()
+        self.assertEqual(linked.call_args.args[0].repository, 'fixture/putgd')
+        self.assertEqual(self.commands, [['gh', 'release', 'edit', self.tag, '--draft=false']])
+        self.assertTrue(json.loads((self.directory / 'publication.json').read_text())['published'])
+
+    def test_installer_inventory_error_names_missing_and_extra_files_before_mutation(self):
+        self.installer_fixture()
+        installer = f'putgd-{self.release["version"]}-x86_64.AppImage'
+        extra = 'unexpected.zip'
+        (self.directory / extra).write_bytes(b'unexpected archive')
+        for problem in ('missing', 'extra'):
+            with self.subTest(problem=problem):
+                listed = dict(self.listed)
+                if problem == 'missing':
+                    del listed[installer]
+                else:
+                    listed[extra] = publish.sha256(self.directory / extra)
+                (self.directory / 'SHA256SUMS').write_text(
+                    ''.join(d + '  ' + n + '\n' for n, d in sorted(listed.items())))
+                with self.assertRaises(ValueError) as error:
+                    self.invoke()
+                message = str(error.exception)
+                self.assertIn('installers-v1 (15 assets expected)', message)
+                self.assertIn('missing: ' + installer if problem == 'missing' else 'extra: ' + extra,
+                              message)
+                self.assertFalse(self.commands)
+
+    def changes(self, root, tag, repository, server, released=None):
+        self.assertEqual((tag, repository, server), (self.tag, 'fixture/putgd', 'https://github.com'))
+        # Only published releases start the changes (#373): the reader is passed, not called here.
+        self.assertIs(released, publish.changelog.released_tags)
+        return f"## What's changed\n\n- Synthetic change in {tag}\n\n## Downloads and sources\n\n"
+
+    def test_cli_publishes_all_twenty_one_verified_assets_as_nightly_prerelease(self):
         self.invoke()
         self.assertEqual(self.remote_files, self.files)
-        self.assertEqual(len(self.remote_files), 12)
+        self.assertEqual(len(self.remote_files), 21)
         self.assertFalse(self.metadata['draft'])
         self.assertTrue(self.metadata['prerelease'])
         self.assertIn('--latest=false', self.commands[0])
@@ -405,8 +591,14 @@ class NightlyPublicationTest(unittest.TestCase):
         self.assertEqual(receipt['verifiedRemoteDraft']['sha256'],
                          {**self.listed, 'SHA256SUMS': hashlib.sha256(self.files['SHA256SUMS']).hexdigest()})
         notes = (self.directory / 'release-notes.md').read_text()
-        for text in ('nightly', 'a' * 40, 'actions/runs/77', 'graphical', 'memory', 'S3'):
+        self.assertIn('--title', self.commands[0])
+        self.assertEqual(self.commands[0][self.commands[0].index('--title') + 1], 'put.gd 26.1022.42 nightly')
+        for text in ('Nightly 26.1022.42:', 'a' * 40, 'actions/runs/77', 'graphical', 'memory', 'S3'):
             self.assertIn(text, notes)
+        # The changes follow the one-line summary, before the coverage and asset notes.
+        self.assertLess(notes.index('Nightly 26.1022.42:'), notes.index("## What's changed"))
+        self.assertLess(notes.index('Synthetic change in ' + self.tag), notes.index('## Downloads and sources'))
+        self.assertLess(notes.index('## Downloads and sources'), notes.index('Automated coverage'))
 
 
     def test_missing_or_invalid_run_identity_blocks_before_mutation(self):
@@ -427,7 +619,7 @@ class NightlyPublicationTest(unittest.TestCase):
 
     def test_automated_mode_rejects_stable_and_candidate_before_mutation(self):
         original_tag, original_release = self.tag, self.release
-        for tag, channel in [('v0.1.1', 'stable'), ('v0.1.1-rc.1', 'candidate')]:
+        for tag, channel in [('v26.1022.42', 'stable'), ('v0.1.1', 'stable'), ('v0.1.1-rc.1', 'candidate')]:
             with self.subTest(tag=tag):
                 self.tag = tag
                 self.release = {**original_release, 'tag': tag, 'channel': channel}
@@ -501,7 +693,7 @@ class NightlyPublicationTest(unittest.TestCase):
     def test_positive_inventory_is_required_before_any_remote_mutation(self):
         checksums = (self.directory / 'SHA256SUMS').read_text().splitlines()
         (self.directory / 'SHA256SUMS').write_text('\n'.join(checksums[:-1]) + '\n')
-        with self.assertRaisesRegex(ValueError, 'all twelve'):
+        with self.assertRaisesRegex(ValueError, '21 assets expected'):
             self.invoke()
         self.assertEqual(self.commands, [])
 
@@ -528,7 +720,7 @@ class NightlyPublicationTest(unittest.TestCase):
                 self.assertEqual(self.commands, [])
 
     def test_stable_and_candidate_still_require_acceptance_to_publish(self):
-        for tag, channel in [('v0.1.1', 'stable'), ('v0.1.1-rc.1', 'candidate')]:
+        for tag, channel in [('v26.1022.42', 'stable'), ('v0.1.1', 'stable'), ('v0.1.1-rc.1', 'candidate')]:
             release = {**self.release, 'tag': tag, 'channel': channel, 'version': tag[1:]}
             for name in publish.public_inventory(tag) - {'SHA256SUMS'}:
                 (self.directory / name).write_bytes(('synthetic ' + name).encode())
@@ -563,6 +755,7 @@ class NightlyPublicationTest(unittest.TestCase):
                 argv = ['publish.py', '--tag', tag, '--directory', str(self.directory)]
                 with patch.object(sys, 'argv', argv), patch.dict(os.environ, self.environment, clear=True), \
                      patch.object(publish, 'verify', return_value=release), \
+                     patch.object(publish.changelog, 'section', side_effect=self.changes), \
                      patch.object(subprocess, 'check_output', side_effect=self.output), \
                      patch.object(subprocess, 'run', side_effect=self.command):
                     publish.main()
@@ -575,6 +768,11 @@ class NightlyPublicationTest(unittest.TestCase):
                 notes = (self.directory / 'release-notes.md').read_text()
                 self.assertIn('actions/runs/77', notes)
                 self.assertIn('release candidate' if channel == 'candidate' else 'x86_64 release', notes)
+                changes, delivery = notes.split('## Downloads and sources\n', 1)
+                self.assertIn("## What's changed", changes)
+                self.assertIn('Synthetic change in ' + tag, changes)
+                self.assertNotIn('DEB/RPM use distro Qt', changes)
+                self.assertIn('DEB/RPM use distro Qt', delivery)
 
     def test_nightly_cannot_use_acceptance_mode_to_bypass_producer_verification(self):
         argv = ['publish.py', '--tag', self.tag, '--directory', str(self.directory),

@@ -1,0 +1,10 @@
+********* Start testing of EditorWindowTest *********
+Config: Using QtTest library 6.4.2, Qt 6.4.2 (x86_64-little_endian-lp64 shared (dynamic) release build; by GCC 13.2.0), ubuntu 24.04
+PASS   : EditorWindowTest::initTestCase()
+QWARN  : EditorWindowTest::customColorSwatchNamesStayStableAndUniqueImmediatelyAfterRebuild() This plugin does not support propagateSizeHints()
+QWARN  : EditorWindowTest::customColorSwatchNamesStayStableAndUniqueImmediatelyAfterRebuild() This plugin does not support propagateSizeHints()
+FAIL!  : EditorWindowTest::customColorSwatchNamesStayStableAndUniqueImmediatelyAfterRebuild() 'pick(QColor("#123456"))' returned FALSE. (Custom colour dialog was not found)
+   Loc: [/home/user/work/put.gd/src/tests/gui/test_editor_window.cpp(535)]
+PASS   : EditorWindowTest::cleanupTestCase()
+Totals: 2 passed, 1 failed, 0 skipped, 0 blacklisted, 144ms
+********* Finished testing of EditorWindowTest *********

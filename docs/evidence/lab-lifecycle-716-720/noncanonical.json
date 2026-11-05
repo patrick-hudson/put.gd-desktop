@@ -1,0 +1,21 @@
+{
+  "controllerCommit": "0227cfa28565086dd79d2ac8f93407d0429f3513",
+  "controllerSha256": "851e18ac7e4ec9406ed97b326d67bcf8f4d7563e8fd32f30718499393c0a4120",
+  "exitCode": 1,
+  "seconds": 0.06093695699996715,
+  "before": [
+    "c1",
+    "c2",
+    "c3"
+  ],
+  "after": [
+    "c1",
+    "c2",
+    "c3"
+  ],
+  "outsideCreated": false,
+  "response": {
+    "ok": false,
+    "error": "Run must be a direct child of canonical /home/user/t716/work/lab-runs; use --run /home/user/t716/work/lab-runs/c1. Keep the run name short; if needed use a checkout at a shorter real path and check resolved Unix socket paths against the 107-byte limit."
+  }
+}

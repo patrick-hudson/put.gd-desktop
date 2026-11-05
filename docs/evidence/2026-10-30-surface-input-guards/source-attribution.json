@@ -1,0 +1,62 @@
+{
+  "appCommit": "6ad9f957e6544f30c5e45c08af2306db77a9ff64",
+  "driverFinalCommit": "29d1462eb8a2c049be54ff3c259eaf66b457ff59",
+  "finalProofCommit": "b29a6f61d40afb1788ee3d2d229386d7c6d95865",
+  "runs": [
+    {
+      "guest": "cinnamon",
+      "directory": "isolated-final",
+      "driverCommit": "29d1462eb8a2c049be54ff3c259eaf66b457ff59",
+      "proofCommit": "b29a6f61d40afb1788ee3d2d229386d7c6d95865",
+      "harness": "100ms fresh accessible timeout; notification cover"
+    },
+    {
+      "guest": "cinnamon",
+      "directory": "final-smoke",
+      "driverCommit": "29d1462eb8a2c049be54ff3c259eaf66b457ff59",
+      "proofCommit": "b29a6f61d40afb1788ee3d2d229386d7c6d95865",
+      "harness": "previous ordering/1ms geometry diagnostic; raw failures retained"
+    },
+    {
+      "guest": "cinnamon",
+      "directory": "tray1",
+      "driverCommit": "06ef72a301a9be5d1f90838000a4ba5649052d66",
+      "proofCommit": "1829c8034662bd101b52848ed30c6d7d48734374",
+      "harness": "local tray API adoption; original page-state readback"
+    },
+    {
+      "guest": "gnome",
+      "directory": "tray2",
+      "driverCommit": "fc288b4d136ef89c605fbaac1fc8213bb59c2c68",
+      "proofCommit": "ff25a7a9dc3d4a9ada0ecd31d2bb233f87377ec4",
+      "harness": "role-name correction; original page-state readback"
+    },
+    {
+      "guest": "gnome",
+      "directory": "tray-targeted",
+      "driverCommit": "29d1462eb8a2c049be54ff3c259eaf66b457ff59",
+      "proofCommit": "b29a6f61d40afb1788ee3d2d229386d7c6d95865",
+      "harness": "local nested/owned page-state readback"
+    },
+    {
+      "guest": "gnome",
+      "directory": "tray1",
+      "driverCommit": "06ef72a301a9be5d1f90838000a4ba5649052d66",
+      "proofCommit": "1829c8034662bd101b52848ed30c6d7d48734374",
+      "harness": "partial tray run; real move signal positive control"
+    },
+    {
+      "guest": "gnome",
+      "directory": "resize2",
+      "driverCommit": "f577519599c48a5413f3d7fd16af15fce82fba31",
+      "harness": "original corner and right edge; no resize start; grab logic unchanged in final v4 witness"
+    },
+    {
+      "guest": "gnome",
+      "directory": "actor-diagnostic",
+      "driverCommit": null,
+      "harness": "WIP read-only wire diagnostics; not attributed to final driver head"
+    }
+  ],
+  "earlierAttempts": "Archived unchanged. App identity comes from each receipt; earlier driver/harness attempts are not relabelled as final-head validation."
+}

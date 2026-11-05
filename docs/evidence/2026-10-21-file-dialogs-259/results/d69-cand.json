@@ -1,0 +1,454 @@
+{
+  "schemaVersion": 1,
+  "label": "pr321-5753383",
+  "desktop": "plasmashell",
+  "session": {
+    "XDG_CURRENT_DESKTOP": "KDE",
+    "XDG_SESSION_TYPE": "wayland"
+  },
+  "fallbackForced": false,
+  "host": "debian",
+  "kernel": "6.12.107+deb13-amd64",
+  "app": "/home/patrick/work/put.gd-i259/build/dev",
+  "binaries": {
+    "putgd": "355147d4b76f1ef4a9d27157a948e2e695010e92ad3787b0507b7b2f2afc7d43",
+    "putgd-ui": "62ddfb6b56d807066e82949dad9e0341b3e0ca1840413c3748d3b354cd04af5f",
+    "putgd-record": "83d3ed49dd1c941ba53d2da968af32ffd71f7bb0d984b0d236cdd965d0c59926",
+    "putgd-cli": "d26e007c52fdb5b3d76fb0909ce75c6f763882acabea1a304f8e6d51b61d47e1"
+  },
+  "version": "0.1.1-dev.unknown",
+  "windows": [
+    {
+      "window": "resident-idle-before",
+      "seconds": 120,
+      "loadavg": [
+        0.1513671875,
+        0.154296875,
+        0.18408203125
+      ],
+      "resident": {
+        "pid": 1943183,
+        "medianRssMiB": 31.91,
+        "peakRssMiB": 31.91,
+        "smapsRollup": {
+          "Rss": 33460224,
+          "Pss": 12760064,
+          "Private_Clean": 7266304,
+          "Private_Dirty": 3874816,
+          "Anonymous": 3874816
+        },
+        "PssMiB": 12.169,
+        "libraries": {
+          "tls": [],
+          "gtk": [],
+          "kde": [],
+          "platformTheme": []
+        }
+      }
+    },
+    {
+      "window": "review-open",
+      "seconds": 60,
+      "loadavg": [
+        0.1904296875,
+        0.18798828125,
+        0.19140625
+      ],
+      "resident": {
+        "pid": 1943183,
+        "medianRssMiB": 32.168,
+        "peakRssMiB": 32.168,
+        "smapsRollup": {
+          "Rss": 33730560,
+          "Pss": 11862016,
+          "Private_Clean": 5455872,
+          "Private_Dirty": 3993600,
+          "Anonymous": 3993600
+        },
+        "PssMiB": 11.312,
+        "libraries": {
+          "tls": [],
+          "gtk": [],
+          "kde": [],
+          "platformTheme": []
+        }
+      },
+      "record": {
+        "pid": 1943400,
+        "medianRssMiB": 141.688,
+        "peakRssMiB": 142.031,
+        "smapsRollup": {
+          "Rss": 148570112,
+          "Pss": 103173120,
+          "Private_Clean": 39333888,
+          "Private_Dirty": 54575104,
+          "Anonymous": 52400128
+        },
+        "PssMiB": 98.394,
+        "libraries": {
+          "tls": [
+            "libcrypto.so.3",
+            "libgnutls.so.30.40.3",
+            "libssl.so.3"
+          ],
+          "gtk": [],
+          "kde": [
+            "iHD_drv_video.so"
+          ],
+          "platformTheme": []
+        }
+      }
+    },
+    {
+      "window": "save-copy-dialog-open",
+      "seconds": 30,
+      "loadavg": [
+        0.22998046875,
+        0.197265625,
+        0.1923828125
+      ],
+      "resident": {
+        "pid": 1943183,
+        "medianRssMiB": 32.168,
+        "peakRssMiB": 32.168,
+        "smapsRollup": {
+          "Rss": 33730560,
+          "Pss": 11785216,
+          "Private_Clean": 5451776,
+          "Private_Dirty": 3993600,
+          "Anonymous": 3993600
+        },
+        "PssMiB": 11.239,
+        "libraries": {
+          "tls": [],
+          "gtk": [],
+          "kde": [],
+          "platformTheme": []
+        }
+      },
+      "record": {
+        "pid": 1943400,
+        "medianRssMiB": 141.738,
+        "peakRssMiB": 141.738,
+        "smapsRollup": {
+          "Rss": 148623360,
+          "Pss": 101263360,
+          "Private_Clean": 37924864,
+          "Private_Dirty": 52412416,
+          "Anonymous": 52400128
+        },
+        "PssMiB": 96.572,
+        "libraries": {
+          "tls": [
+            "libcrypto.so.3",
+            "libgnutls.so.30.40.3",
+            "libssl.so.3"
+          ],
+          "gtk": [],
+          "kde": [
+            "iHD_drv_video.so"
+          ],
+          "platformTheme": []
+        }
+      }
+    },
+    {
+      "window": "after-dialog-closed",
+      "seconds": 30,
+      "loadavg": [
+        0.12744140625,
+        0.17333984375,
+        0.18212890625
+      ],
+      "resident": {
+        "pid": 1943183,
+        "medianRssMiB": 32.168,
+        "peakRssMiB": 32.168,
+        "smapsRollup": {
+          "Rss": 33730560,
+          "Pss": 11785216,
+          "Private_Clean": 5451776,
+          "Private_Dirty": 3993600,
+          "Anonymous": 3993600
+        },
+        "PssMiB": 11.239,
+        "libraries": {
+          "tls": [],
+          "gtk": [],
+          "kde": [],
+          "platformTheme": []
+        }
+      },
+      "record": {
+        "pid": 1943400,
+        "medianRssMiB": 141.727,
+        "peakRssMiB": 141.727,
+        "smapsRollup": {
+          "Rss": 148611072,
+          "Pss": 101251072,
+          "Private_Clean": 37924864,
+          "Private_Dirty": 52400128,
+          "Anonymous": 52400128
+        },
+        "PssMiB": 96.561,
+        "libraries": {
+          "tls": [
+            "libcrypto.so.3",
+            "libgnutls.so.30.40.3",
+            "libssl.so.3"
+          ],
+          "gtk": [],
+          "kde": [
+            "iHD_drv_video.so"
+          ],
+          "platformTheme": []
+        }
+      }
+    },
+    {
+      "window": "resident-idle-after",
+      "seconds": 120,
+      "loadavg": [
+        0.01171875,
+        0.107421875,
+        0.15625
+      ],
+      "resident": {
+        "pid": 1943183,
+        "medianRssMiB": 32.051,
+        "peakRssMiB": 32.051,
+        "smapsRollup": {
+          "Rss": 33607680,
+          "Pss": 12744704,
+          "Private_Clean": 7356416,
+          "Private_Dirty": 3739648,
+          "Anonymous": 3739648
+        },
+        "PssMiB": 12.154,
+        "libraries": {
+          "tls": [],
+          "gtk": [],
+          "kde": [],
+          "platformTheme": []
+        }
+      }
+    }
+  ],
+  "events": [
+    {
+      "cover": {
+        "monitorIndex": 0,
+        "ok": true,
+        "output": [
+          "HDMI-A-1"
+        ],
+        "rect": [
+          0,
+          0,
+          1920,
+          1080
+        ],
+        "state": "covered"
+      },
+      "precheck": "{\"check\": \"precheck\", \"fraction\": 1.0, \"framebuffer\": [1920, 1080], \"minFraction\": 0.98, \"ok\": true, \"output\": [\"HDMI-A-1\"], \"rect\": [0, 0, 1920, 1080]}",
+      "precheckExit": 0,
+      "t": 3.29
+    },
+    {
+      "window": "resident-idle-before",
+      "resident": {
+        "medianRssMiB": 31.91,
+        "PssMiB": 12.169
+      },
+      "t": 128.7
+    },
+    {
+      "prepare": {
+        "ok": true,
+        "error": "",
+        "acquisition": null
+      },
+      "t": 129.66
+    },
+    {
+      "prepared": "ready",
+      "t": 130.22
+    },
+    {
+      "reviewing": "reviewing",
+      "helper": 1943400,
+      "t": 134.43
+    },
+    {
+      "window": "review-open",
+      "resident": {
+        "medianRssMiB": 32.168,
+        "PssMiB": 11.312
+      },
+      "record": {
+        "medianRssMiB": 141.688,
+        "PssMiB": 98.394
+      },
+      "t": 197.5
+    },
+    {
+      "frame": "review",
+      "kept": true,
+      "size": [
+        1920,
+        1080
+      ],
+      "crop": [
+        442,
+        178,
+        1478,
+        702
+      ],
+      "panelRows": {
+        "top": 0,
+        "bottom": 44
+      },
+      "nonCover": {
+        "columns": [],
+        "rows": []
+      },
+      "outsideCoverFraction": 0.9999,
+      "edgeCoverFraction": 1.0,
+      "path": "/home/patrick/work/put.gd-i259-lab/d69-cand/frames/review.png",
+      "t": 197.79
+    },
+    {
+      "saveCopyDialog": {
+        "backend": "portal",
+        "fallbackReason": null,
+        "last": null,
+        "mode": "save",
+        "open": true,
+        "parentWindow": "",
+        "title": "Save a copy"
+      },
+      "t": 197.82
+    },
+    {
+      "window": "save-copy-dialog-open",
+      "resident": {
+        "medianRssMiB": 32.168,
+        "PssMiB": 11.239
+      },
+      "record": {
+        "medianRssMiB": 141.738,
+        "PssMiB": 96.572
+      },
+      "t": 233.87
+    },
+    {
+      "frame": "chooser",
+      "kept": true,
+      "size": [
+        1920,
+        1080
+      ],
+      "crop": [
+        438,
+        186,
+        1482,
+        684
+      ],
+      "panelRows": {
+        "top": 0,
+        "bottom": 44
+      },
+      "nonCover": {
+        "columns": [],
+        "rows": []
+      },
+      "outsideCoverFraction": 0.9999,
+      "edgeCoverFraction": 1.0,
+      "path": "/home/patrick/work/put.gd-i259-lab/d69-cand/frames/chooser.png",
+      "t": 234.16
+    },
+    {
+      "window": "after-dialog-closed",
+      "resident": {
+        "medianRssMiB": 32.168,
+        "PssMiB": 11.239
+      },
+      "record": {
+        "medianRssMiB": 141.727,
+        "PssMiB": 96.561
+      },
+      "t": 268.22
+    },
+    {
+      "window": "resident-idle-after",
+      "resident": {
+        "medianRssMiB": 32.051,
+        "PssMiB": 12.154
+      },
+      "t": 396.3
+    }
+  ],
+  "loadBefore": [
+    0.4521484375,
+    0.15869140625,
+    0.19580078125
+  ],
+  "operationId": "009244ce-acaa-493b-b7d5-da98a1bcd819",
+  "reviewBefore": {
+    "visible": true,
+    "size": [
+      960,
+      600
+    ],
+    "scheme": "dark",
+    "fileDialog": {
+      "backend": null,
+      "fallbackReason": null,
+      "last": null,
+      "mode": null,
+      "open": false,
+      "parentWindow": null,
+      "title": null
+    }
+  },
+  "saveCopyDialog": {
+    "backend": "portal",
+    "fallbackReason": null,
+    "last": null,
+    "mode": "save",
+    "open": true,
+    "parentWindow": "",
+    "title": "Save a copy"
+  },
+  "dialogState": {
+    "backend": "portal",
+    "fallbackReason": null,
+    "last": null,
+    "mode": "save",
+    "open": true,
+    "parentWindow": "",
+    "title": "Save a copy"
+  },
+  "closed": {
+    "backend": null,
+    "fallbackReason": null,
+    "last": {
+      "backend": "portal",
+      "error": null,
+      "fallbackReason": null,
+      "mode": "save",
+      "path": null,
+      "status": "cancelled"
+    },
+    "mode": null,
+    "open": false,
+    "parentWindow": null,
+    "title": null
+  },
+  "childrenAfterCancel": null,
+  "loadAfter": [
+    0.01171875,
+    0.107421875,
+    0.15625
+  ]
+}

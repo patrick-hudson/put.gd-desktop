@@ -1,0 +1,28 @@
+{
+ "label": "m74-tray-menu",
+ "components": [
+  {
+   "blocks": 1049,
+   "box": [
+    1704,
+    736,
+    1920,
+    1080
+   ]
+  }
+ ],
+ "colour": [
+  252,
+  252,
+  252
+ ],
+ "inner": [
+  1714,
+  738,
+  1904,
+  1039
+ ],
+ "changedShare": 1.0,
+ "kept": "/home/patrick/work/put.gd-qt418/afa/runs/m74/crops/m74-tray-menu.png",
+ "full": "/home/patrick/work/put.gd-qt418/afa/runs/m74/full/m74-tray-menu.png"
+}

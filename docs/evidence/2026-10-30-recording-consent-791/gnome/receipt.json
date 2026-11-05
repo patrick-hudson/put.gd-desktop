@@ -1,0 +1,1966 @@
+{
+  "schemaVersion": 2,
+  "environment": {
+    "desktop": "ubuntu-gnome-wayland",
+    "host": "boat",
+    "placement": "boat",
+    "guest": "gnome-wayland",
+    "package": "deb",
+    "destination": "local",
+    "build": "26.1030.2533-dev+g8164f173cb58",
+    "placement_details": {
+      "boat_sandbox_id": "bx_2nuqsfvk",
+      "run_id": "d74a3502-1fa7-4de2-9360-a8e1f735ec5e",
+      "lab_profile": "gnome-wayland",
+      "run_directory": "/home/user/rc791/src/work/lab-runs/g1",
+      "session_root": "/tmp/sd-6cf550c4",
+      "socket": "/tmp/sd-6cf550c4/runtime/putgd/session.sock",
+      "input_backend": "qmp",
+      "frame_backend": "qmp"
+    },
+    "target": {
+      "hostname": "putgd-ubuntu-lab",
+      "kernel": "7.0.0-38-generic",
+      "machine": "x86_64",
+      "os": {
+        "ID": "ubuntu",
+        "VERSION_ID": "26.04",
+        "VARIANT_ID": null
+      },
+      "session_type": "wayland",
+      "desktop": "ubuntu:GNOME",
+      "qt_platform": "wayland"
+    },
+    "observed_build": {
+      "baseVersion": "26.1030.2533",
+      "commitCount": 2533,
+      "dirty": false,
+      "gitCommit": "8164f173cb5829884249c1c3d7a4d0f9de659bc3",
+      "gitTree": "7efb5458129ad1be177b5491219cb7811ab85317",
+      "packageVersion": "26.1030.2533~dev+g8164f173cb58",
+      "schemaVersion": 1,
+      "sourceProvenance": "git",
+      "version": "26.1030.2533-dev+g8164f173cb58"
+    }
+  },
+  "interactions": [
+    {
+      "interaction": "review.play",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/rc791/out/g1-r4/receipt.json",
+      "note": "operationId=366af3d1-334a-407f-af3a-6f5f799aaa71; screencast consent: clicked 'Share' in xdg-desktop-portal-gnome for this resident's request; operationId=7cb14633-bd5b-4042-adc6-a22088334bce; Capture motion metrics: {\"movingMotion\": 47.34962745949074, \"frozenMotion\": 0.001864346590909091}; recording media retained privately: 3/3 files (private-media/review.playback/6c0ea768); control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.539745, tolerance=0.025): actual=/home/user/rc791/out/g1-r4/frames/review.playback/03-before.png reference=/home/user/rc791/pkg/ci-catalog/30-review.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/review.playback/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "screencast-consent-before",
+          "path": "frames/review.playback/01-screencast-consent-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "screencast-consent-after",
+          "path": "frames/review.playback/02-screencast-consent-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/review.playback/03-before.png",
+          "window": "review",
+          "reference": "30-review",
+          "distance": 0.5397447190390057,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/review.playback/04-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.playback",
+      "build": "26.1030.2533-dev+g8164f173cb58",
+      "at": "2026-10-30T06:19:53Z"
+    },
+    {
+      "interaction": "review.speed",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/rc791/out/g1-r4/receipt.json",
+      "note": "operationId=366af3d1-334a-407f-af3a-6f5f799aaa71; screencast consent: clicked 'Share' in xdg-desktop-portal-gnome for this resident's request; operationId=7cb14633-bd5b-4042-adc6-a22088334bce; Capture motion metrics: {\"movingMotion\": 47.34962745949074, \"frozenMotion\": 0.001864346590909091}; recording media retained privately: 3/3 files (private-media/review.playback/6c0ea768); control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.539745, tolerance=0.025): actual=/home/user/rc791/out/g1-r4/frames/review.playback/03-before.png reference=/home/user/rc791/pkg/ci-catalog/30-review.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/review.playback/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "screencast-consent-before",
+          "path": "frames/review.playback/01-screencast-consent-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "screencast-consent-after",
+          "path": "frames/review.playback/02-screencast-consent-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/review.playback/03-before.png",
+          "window": "review",
+          "reference": "30-review",
+          "distance": 0.5397447190390057,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/review.playback/04-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.playback",
+      "build": "26.1030.2533-dev+g8164f173cb58",
+      "at": "2026-10-30T06:19:53Z"
+    },
+    {
+      "interaction": "review.timeline",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/rc791/out/g1-r4/receipt.json",
+      "note": "operationId=8e8da712-f4eb-4050-9bc5-4af6c8e70fe0; screencast consent: clicked 'Share' in xdg-desktop-portal-gnome for this resident's request; operationId=7795e648-26e5-477d-9ecc-1c4e82524e65; Capture motion metrics: {\"movingMotion\": 47.11232277199074, \"frozenMotion\": 0.0018051609848484848}; recording media retained privately: 3/3 files (private-media/review.trim/2822d09a); control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.540748, tolerance=0.025): actual=/home/user/rc791/out/g1-r4/frames/review.trim/03-before.png reference=/home/user/rc791/pkg/ci-catalog/30-review.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/review.trim/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "screencast-consent-before",
+          "path": "frames/review.trim/01-screencast-consent-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "screencast-consent-after",
+          "path": "frames/review.trim/02-screencast-consent-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/review.trim/03-before.png",
+          "window": "review",
+          "reference": "30-review",
+          "distance": 0.5407476874726705,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/review.trim/04-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.trim",
+      "build": "26.1030.2533-dev+g8164f173cb58",
+      "at": "2026-10-30T06:20:26Z"
+    },
+    {
+      "interaction": "review.trim-in",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/rc791/out/g1-r4/receipt.json",
+      "note": "operationId=8e8da712-f4eb-4050-9bc5-4af6c8e70fe0; screencast consent: clicked 'Share' in xdg-desktop-portal-gnome for this resident's request; operationId=7795e648-26e5-477d-9ecc-1c4e82524e65; Capture motion metrics: {\"movingMotion\": 47.11232277199074, \"frozenMotion\": 0.0018051609848484848}; recording media retained privately: 3/3 files (private-media/review.trim/2822d09a); control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.540748, tolerance=0.025): actual=/home/user/rc791/out/g1-r4/frames/review.trim/03-before.png reference=/home/user/rc791/pkg/ci-catalog/30-review.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/review.trim/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "screencast-consent-before",
+          "path": "frames/review.trim/01-screencast-consent-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "screencast-consent-after",
+          "path": "frames/review.trim/02-screencast-consent-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/review.trim/03-before.png",
+          "window": "review",
+          "reference": "30-review",
+          "distance": 0.5407476874726705,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/review.trim/04-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.trim",
+      "build": "26.1030.2533-dev+g8164f173cb58",
+      "at": "2026-10-30T06:20:26Z"
+    },
+    {
+      "interaction": "review.trim-out",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/rc791/out/g1-r4/receipt.json",
+      "note": "operationId=8e8da712-f4eb-4050-9bc5-4af6c8e70fe0; screencast consent: clicked 'Share' in xdg-desktop-portal-gnome for this resident's request; operationId=7795e648-26e5-477d-9ecc-1c4e82524e65; Capture motion metrics: {\"movingMotion\": 47.11232277199074, \"frozenMotion\": 0.0018051609848484848}; recording media retained privately: 3/3 files (private-media/review.trim/2822d09a); control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.540748, tolerance=0.025): actual=/home/user/rc791/out/g1-r4/frames/review.trim/03-before.png reference=/home/user/rc791/pkg/ci-catalog/30-review.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/review.trim/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "screencast-consent-before",
+          "path": "frames/review.trim/01-screencast-consent-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "screencast-consent-after",
+          "path": "frames/review.trim/02-screencast-consent-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/review.trim/03-before.png",
+          "window": "review",
+          "reference": "30-review",
+          "distance": 0.5407476874726705,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/review.trim/04-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.trim",
+      "build": "26.1030.2533-dev+g8164f173cb58",
+      "at": "2026-10-30T06:20:26Z"
+    },
+    {
+      "interaction": "review.trim-reset",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/rc791/out/g1-r4/receipt.json",
+      "note": "operationId=8e8da712-f4eb-4050-9bc5-4af6c8e70fe0; screencast consent: clicked 'Share' in xdg-desktop-portal-gnome for this resident's request; operationId=7795e648-26e5-477d-9ecc-1c4e82524e65; Capture motion metrics: {\"movingMotion\": 47.11232277199074, \"frozenMotion\": 0.0018051609848484848}; recording media retained privately: 3/3 files (private-media/review.trim/2822d09a); control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.540748, tolerance=0.025): actual=/home/user/rc791/out/g1-r4/frames/review.trim/03-before.png reference=/home/user/rc791/pkg/ci-catalog/30-review.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/review.trim/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "screencast-consent-before",
+          "path": "frames/review.trim/01-screencast-consent-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "screencast-consent-after",
+          "path": "frames/review.trim/02-screencast-consent-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/review.trim/03-before.png",
+          "window": "review",
+          "reference": "30-review",
+          "distance": 0.5407476874726705,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/review.trim/04-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.trim",
+      "build": "26.1030.2533-dev+g8164f173cb58",
+      "at": "2026-10-30T06:20:26Z"
+    },
+    {
+      "interaction": "review.key-timeline",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/rc791/out/g1-r4/receipt.json",
+      "note": "operationId=8e8da712-f4eb-4050-9bc5-4af6c8e70fe0; screencast consent: clicked 'Share' in xdg-desktop-portal-gnome for this resident's request; operationId=7795e648-26e5-477d-9ecc-1c4e82524e65; Capture motion metrics: {\"movingMotion\": 47.11232277199074, \"frozenMotion\": 0.0018051609848484848}; recording media retained privately: 3/3 files (private-media/review.trim/2822d09a); control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.540748, tolerance=0.025): actual=/home/user/rc791/out/g1-r4/frames/review.trim/03-before.png reference=/home/user/rc791/pkg/ci-catalog/30-review.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/review.trim/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "screencast-consent-before",
+          "path": "frames/review.trim/01-screencast-consent-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "screencast-consent-after",
+          "path": "frames/review.trim/02-screencast-consent-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/review.trim/03-before.png",
+          "window": "review",
+          "reference": "30-review",
+          "distance": 0.5407476874726705,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/review.trim/04-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.trim",
+      "build": "26.1030.2533-dev+g8164f173cb58",
+      "at": "2026-10-30T06:20:26Z"
+    },
+    {
+      "interaction": "review.add-mask",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/rc791/out/g1-r4/receipt.json",
+      "note": "operationId=2326ed3a-d15f-4554-9131-8e7f6481cf86; screencast consent: clicked 'Share' in xdg-desktop-portal-gnome for this resident's request; operationId=70aa9aed-e7a5-4f88-b940-8459ff76e139; Capture motion metrics: {\"movingMotion\": 47.15583405671296, \"frozenMotion\": 0.0018051609848484848}; recording media retained privately: 3/3 files (private-media/review.masks/a16d7f52); control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.540437, tolerance=0.025): actual=/home/user/rc791/out/g1-r4/frames/review.masks/03-before.png reference=/home/user/rc791/pkg/ci-catalog/30-review.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/review.masks/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "screencast-consent-before",
+          "path": "frames/review.masks/01-screencast-consent-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "screencast-consent-after",
+          "path": "frames/review.masks/02-screencast-consent-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/review.masks/03-before.png",
+          "window": "review",
+          "reference": "30-review",
+          "distance": 0.5404372468114862,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/review.masks/04-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.masks",
+      "build": "26.1030.2533-dev+g8164f173cb58",
+      "at": "2026-10-30T06:20:57Z"
+    },
+    {
+      "interaction": "review.frame",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/rc791/out/g1-r4/receipt.json",
+      "note": "operationId=2326ed3a-d15f-4554-9131-8e7f6481cf86; screencast consent: clicked 'Share' in xdg-desktop-portal-gnome for this resident's request; operationId=70aa9aed-e7a5-4f88-b940-8459ff76e139; Capture motion metrics: {\"movingMotion\": 47.15583405671296, \"frozenMotion\": 0.0018051609848484848}; recording media retained privately: 3/3 files (private-media/review.masks/a16d7f52); control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.540437, tolerance=0.025): actual=/home/user/rc791/out/g1-r4/frames/review.masks/03-before.png reference=/home/user/rc791/pkg/ci-catalog/30-review.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/review.masks/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "screencast-consent-before",
+          "path": "frames/review.masks/01-screencast-consent-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "screencast-consent-after",
+          "path": "frames/review.masks/02-screencast-consent-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/review.masks/03-before.png",
+          "window": "review",
+          "reference": "30-review",
+          "distance": 0.5404372468114862,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/review.masks/04-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.masks",
+      "build": "26.1030.2533-dev+g8164f173cb58",
+      "at": "2026-10-30T06:20:57Z"
+    },
+    {
+      "interaction": "review.masks",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/rc791/out/g1-r4/receipt.json",
+      "note": "operationId=2326ed3a-d15f-4554-9131-8e7f6481cf86; screencast consent: clicked 'Share' in xdg-desktop-portal-gnome for this resident's request; operationId=70aa9aed-e7a5-4f88-b940-8459ff76e139; Capture motion metrics: {\"movingMotion\": 47.15583405671296, \"frozenMotion\": 0.0018051609848484848}; recording media retained privately: 3/3 files (private-media/review.masks/a16d7f52); control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.540437, tolerance=0.025): actual=/home/user/rc791/out/g1-r4/frames/review.masks/03-before.png reference=/home/user/rc791/pkg/ci-catalog/30-review.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/review.masks/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "screencast-consent-before",
+          "path": "frames/review.masks/01-screencast-consent-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "screencast-consent-after",
+          "path": "frames/review.masks/02-screencast-consent-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/review.masks/03-before.png",
+          "window": "review",
+          "reference": "30-review",
+          "distance": 0.5404372468114862,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/review.masks/04-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.masks",
+      "build": "26.1030.2533-dev+g8164f173cb58",
+      "at": "2026-10-30T06:20:57Z"
+    },
+    {
+      "interaction": "review.mask-in-out",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/rc791/out/g1-r4/receipt.json",
+      "note": "operationId=2326ed3a-d15f-4554-9131-8e7f6481cf86; screencast consent: clicked 'Share' in xdg-desktop-portal-gnome for this resident's request; operationId=70aa9aed-e7a5-4f88-b940-8459ff76e139; Capture motion metrics: {\"movingMotion\": 47.15583405671296, \"frozenMotion\": 0.0018051609848484848}; recording media retained privately: 3/3 files (private-media/review.masks/a16d7f52); control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.540437, tolerance=0.025): actual=/home/user/rc791/out/g1-r4/frames/review.masks/03-before.png reference=/home/user/rc791/pkg/ci-catalog/30-review.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/review.masks/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "screencast-consent-before",
+          "path": "frames/review.masks/01-screencast-consent-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "screencast-consent-after",
+          "path": "frames/review.masks/02-screencast-consent-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/review.masks/03-before.png",
+          "window": "review",
+          "reference": "30-review",
+          "distance": 0.5404372468114862,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/review.masks/04-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.masks",
+      "build": "26.1030.2533-dev+g8164f173cb58",
+      "at": "2026-10-30T06:20:57Z"
+    },
+    {
+      "interaction": "review.mask-delete",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/rc791/out/g1-r4/receipt.json",
+      "note": "operationId=2326ed3a-d15f-4554-9131-8e7f6481cf86; screencast consent: clicked 'Share' in xdg-desktop-portal-gnome for this resident's request; operationId=70aa9aed-e7a5-4f88-b940-8459ff76e139; Capture motion metrics: {\"movingMotion\": 47.15583405671296, \"frozenMotion\": 0.0018051609848484848}; recording media retained privately: 3/3 files (private-media/review.masks/a16d7f52); control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.540437, tolerance=0.025): actual=/home/user/rc791/out/g1-r4/frames/review.masks/03-before.png reference=/home/user/rc791/pkg/ci-catalog/30-review.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/review.masks/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "screencast-consent-before",
+          "path": "frames/review.masks/01-screencast-consent-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "screencast-consent-after",
+          "path": "frames/review.masks/02-screencast-consent-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/review.masks/03-before.png",
+          "window": "review",
+          "reference": "30-review",
+          "distance": 0.5404372468114862,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/review.masks/04-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.masks",
+      "build": "26.1030.2533-dev+g8164f173cb58",
+      "at": "2026-10-30T06:20:57Z"
+    },
+    {
+      "interaction": "review.mask-place",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/rc791/out/g1-r4/receipt.json",
+      "note": "operationId=2326ed3a-d15f-4554-9131-8e7f6481cf86; screencast consent: clicked 'Share' in xdg-desktop-portal-gnome for this resident's request; operationId=70aa9aed-e7a5-4f88-b940-8459ff76e139; Capture motion metrics: {\"movingMotion\": 47.15583405671296, \"frozenMotion\": 0.0018051609848484848}; recording media retained privately: 3/3 files (private-media/review.masks/a16d7f52); control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.540437, tolerance=0.025): actual=/home/user/rc791/out/g1-r4/frames/review.masks/03-before.png reference=/home/user/rc791/pkg/ci-catalog/30-review.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/review.masks/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "screencast-consent-before",
+          "path": "frames/review.masks/01-screencast-consent-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "screencast-consent-after",
+          "path": "frames/review.masks/02-screencast-consent-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/review.masks/03-before.png",
+          "window": "review",
+          "reference": "30-review",
+          "distance": 0.5404372468114862,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/review.masks/04-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.masks",
+      "build": "26.1030.2533-dev+g8164f173cb58",
+      "at": "2026-10-30T06:20:57Z"
+    },
+    {
+      "interaction": "review.mask-disarm",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/rc791/out/g1-r4/receipt.json",
+      "note": "operationId=2326ed3a-d15f-4554-9131-8e7f6481cf86; screencast consent: clicked 'Share' in xdg-desktop-portal-gnome for this resident's request; operationId=70aa9aed-e7a5-4f88-b940-8459ff76e139; Capture motion metrics: {\"movingMotion\": 47.15583405671296, \"frozenMotion\": 0.0018051609848484848}; recording media retained privately: 3/3 files (private-media/review.masks/a16d7f52); control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.540437, tolerance=0.025): actual=/home/user/rc791/out/g1-r4/frames/review.masks/03-before.png reference=/home/user/rc791/pkg/ci-catalog/30-review.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/review.masks/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "screencast-consent-before",
+          "path": "frames/review.masks/01-screencast-consent-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "screencast-consent-after",
+          "path": "frames/review.masks/02-screencast-consent-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/review.masks/03-before.png",
+          "window": "review",
+          "reference": "30-review",
+          "distance": 0.5404372468114862,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/review.masks/04-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.masks",
+      "build": "26.1030.2533-dev+g8164f173cb58",
+      "at": "2026-10-30T06:20:57Z"
+    },
+    {
+      "interaction": "review.key-frame-nudge",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/rc791/out/g1-r4/receipt.json",
+      "note": "operationId=2326ed3a-d15f-4554-9131-8e7f6481cf86; screencast consent: clicked 'Share' in xdg-desktop-portal-gnome for this resident's request; operationId=70aa9aed-e7a5-4f88-b940-8459ff76e139; Capture motion metrics: {\"movingMotion\": 47.15583405671296, \"frozenMotion\": 0.0018051609848484848}; recording media retained privately: 3/3 files (private-media/review.masks/a16d7f52); control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.540437, tolerance=0.025): actual=/home/user/rc791/out/g1-r4/frames/review.masks/03-before.png reference=/home/user/rc791/pkg/ci-catalog/30-review.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/review.masks/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "screencast-consent-before",
+          "path": "frames/review.masks/01-screencast-consent-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "screencast-consent-after",
+          "path": "frames/review.masks/02-screencast-consent-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/review.masks/03-before.png",
+          "window": "review",
+          "reference": "30-review",
+          "distance": 0.5404372468114862,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/review.masks/04-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.masks",
+      "build": "26.1030.2533-dev+g8164f173cb58",
+      "at": "2026-10-30T06:20:57Z"
+    },
+    {
+      "interaction": "review.mask-options",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/rc791/out/g1-r4/receipt.json",
+      "note": "operationId=f1c69f25-4403-4b92-a161-e0b00812d611; screencast consent: clicked 'Share' in xdg-desktop-portal-gnome for this resident's request; operationId=6c422ae3-ba1b-4c78-a996-118c8ec67c38; Capture motion metrics: {\"movingMotion\": 47.084743923611114, \"frozenMotion\": 8.138020833333333e-05}; recording media retained privately: 3/3 files (private-media/review.mask_options/60494a50); control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.540638, tolerance=0.025): actual=/home/user/rc791/out/g1-r4/frames/review.mask_options/03-before.png reference=/home/user/rc791/pkg/ci-catalog/30-review.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/review.mask_options/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "screencast-consent-before",
+          "path": "frames/review.mask_options/01-screencast-consent-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "screencast-consent-after",
+          "path": "frames/review.mask_options/02-screencast-consent-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/review.mask_options/03-before.png",
+          "window": "review",
+          "reference": "30-review",
+          "distance": 0.5406379074372651,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/review.mask_options/04-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.mask_options",
+      "build": "26.1030.2533-dev+g8164f173cb58",
+      "at": "2026-10-30T06:21:28Z"
+    },
+    {
+      "interaction": "review.wheel-lanes",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/rc791/out/g1-r4/receipt.json",
+      "note": "operationId=39562f5d-a262-41fc-b089-240ee89fa571; screencast consent: clicked 'Share' in xdg-desktop-portal-gnome for this resident's request; operationId=48d4add5-db6c-4c3d-82df-1a4c3b8b7a2a; Capture motion metrics: {\"movingMotion\": 47.130226417824076, \"frozenMotion\": 0.0}; recording media retained privately: 3/3 files (private-media/review.wheel_lanes/b0a5bb16); control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.540353, tolerance=0.025): actual=/home/user/rc791/out/g1-r4/frames/review.wheel_lanes/03-before.png reference=/home/user/rc791/pkg/ci-catalog/30-review.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/review.wheel_lanes/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "screencast-consent-before",
+          "path": "frames/review.wheel_lanes/01-screencast-consent-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "screencast-consent-after",
+          "path": "frames/review.wheel_lanes/02-screencast-consent-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/review.wheel_lanes/03-before.png",
+          "window": "review",
+          "reference": "30-review",
+          "distance": 0.5403533177688011,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/review.wheel_lanes/04-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.wheel_lanes",
+      "build": "26.1030.2533-dev+g8164f173cb58",
+      "at": "2026-10-30T06:21:58Z"
+    },
+    {
+      "interaction": "review.format",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/rc791/out/g1-r4/receipt.json",
+      "note": "operationId=80fc8f84-3294-4c62-a3d6-3d08d37c0db3; screencast consent: clicked 'Share' in xdg-desktop-portal-gnome for this resident's request; operationId=3a8b0dc2-2014-4910-b931-61e43bf6ff12; Capture motion metrics: {\"movingMotion\": 47.433738425925924, \"frozenMotion\": 0.001864346590909091}; Decoded export metrics: {\"duration\": 4.866667, \"codec\": \"h264\", \"container\": \"mov,mp4,m4a,3gp,3g2,mj2\", \"movingMotion\": 47.433738425925924, \"frozenMotion\": 0.001864346590909091, \"exportMotion\": 47.5751953125, \"masked\": 0}; Decoded export metrics: {\"duration\": 4.866667, \"codec\": \"hevc\", \"container\": \"mov,mp4,m4a,3gp,3g2,mj2\", \"movingMotion\": 47.433738425925924, \"frozenMotion\": 0.001864346590909091, \"exportMotion\": 47.55513961226852, \"masked\": 0}; recording media retained privately: 5/5 files (private-media/review.formats/c2a6a9a7); control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.540586, tolerance=0.025): actual=/home/user/rc791/out/g1-r4/frames/review.formats/03-before.png reference=/home/user/rc791/pkg/ci-catalog/30-review.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/review.formats/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "screencast-consent-before",
+          "path": "frames/review.formats/01-screencast-consent-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "screencast-consent-after",
+          "path": "frames/review.formats/02-screencast-consent-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/review.formats/03-before.png",
+          "window": "review",
+          "reference": "30-review",
+          "distance": 0.5405856371922971,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/review.formats/04-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.formats",
+      "build": "26.1030.2533-dev+g8164f173cb58",
+      "at": "2026-10-30T06:22:37Z"
+    },
+    {
+      "interaction": "review.save-copy",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/rc791/out/g1-r4/receipt.json",
+      "note": "operationId=0e8e444d-0703-4d95-ad3c-14efb7f4f0c2; screencast consent: clicked 'Share' in xdg-desktop-portal-gnome for this resident's request; operationId=689c9068-e7ec-4990-abf5-a70f72496796; Capture motion metrics: {\"movingMotion\": 47.00108506944444, \"frozenMotion\": 0.001864346590909091}; recording media retained privately: 3/3 files (private-media/review.save_copy/7198fadc); geometry: RuntimeError: live window match is missing or ambiguous (0 matches)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.540748, tolerance=0.025): actual=/home/user/rc791/out/g1-r4/frames/review.save_copy/03-before.png reference=/home/user/rc791/pkg/ci-catalog/30-review.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/review.save_copy/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "screencast-consent-before",
+          "path": "frames/review.save_copy/01-screencast-consent-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "screencast-consent-after",
+          "path": "frames/review.save_copy/02-screencast-consent-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/review.save_copy/03-before.png",
+          "window": "review",
+          "reference": "30-review",
+          "distance": 0.5407476874726705,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/review.save_copy/04-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.save_copy",
+      "build": "26.1030.2533-dev+g8164f173cb58",
+      "at": "2026-10-30T06:23:11Z"
+    },
+    {
+      "interaction": "review.status-actions",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/rc791/out/g1-r4/receipt.json",
+      "note": "operationId=b41ce858-2981-4d1f-b652-7743f1ad4b34; screencast consent: clicked 'Share' in xdg-desktop-portal-gnome for this resident's request; operationId=0f55af0d-401f-4f03-81f8-9263fff7e0dc; Capture motion metrics: {\"movingMotion\": 47.13928674768519, \"frozenMotion\": 0.001864346590909091}; recording media retained privately: 3/3 files (private-media/review.status_actions/823bc3df); control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.540748, tolerance=0.025): actual=/home/user/rc791/out/g1-r4/frames/review.status_actions/03-before.png reference=/home/user/rc791/pkg/ci-catalog/30-review.png; catalog mismatch (distance=0.540065, tolerance=0.025): actual=/home/user/rc791/out/g1-r4/frames/review.status_actions/04-export-failed.png reference=/home/user/rc791/pkg/ci-catalog/39-review-status-errors.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/review.status_actions/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "screencast-consent-before",
+          "path": "frames/review.status_actions/01-screencast-consent-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "screencast-consent-after",
+          "path": "frames/review.status_actions/02-screencast-consent-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/review.status_actions/03-before.png",
+          "window": "review",
+          "reference": "30-review",
+          "distance": 0.5407476874726705,
+          "tolerance": 0.025
+        },
+        {
+          "label": "export-failed",
+          "path": "frames/review.status_actions/04-export-failed.png",
+          "window": "review",
+          "reference": "39-review-status-errors",
+          "distance": 0.5400649786563225,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/review.status_actions/05-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.status_actions",
+      "build": "26.1030.2533-dev+g8164f173cb58",
+      "at": "2026-10-30T06:23:44Z"
+    },
+    {
+      "interaction": "review.destination-menu",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/rc791/out/g1-r4/receipt.json",
+      "note": "operationId=84dd80c0-088e-48b1-9ff7-7495f84f25f6; screencast consent: clicked 'Share' in xdg-desktop-portal-gnome for this resident's request; operationId=92ccfb89-de85-4585-ab55-11831898df5c; Capture motion metrics: {\"movingMotion\": 47.15583405671296, \"frozenMotion\": 0.001864346590909091}; recording media retained privately: 3/3 files (private-media/review.upload/ad58def2); control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.540437, tolerance=0.025): actual=/home/user/rc791/out/g1-r4/frames/review.upload/03-before.png reference=/home/user/rc791/pkg/ci-catalog/30-review.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/review.upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "screencast-consent-before",
+          "path": "frames/review.upload/01-screencast-consent-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "screencast-consent-after",
+          "path": "frames/review.upload/02-screencast-consent-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/review.upload/03-before.png",
+          "window": "review",
+          "reference": "30-review",
+          "distance": 0.5404372468114862,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/review.upload/04-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.upload",
+      "build": "26.1030.2533-dev+g8164f173cb58",
+      "at": "2026-10-30T06:24:14Z"
+    },
+    {
+      "interaction": "review.upload",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/rc791/out/g1-r4/receipt.json",
+      "note": "operationId=84dd80c0-088e-48b1-9ff7-7495f84f25f6; screencast consent: clicked 'Share' in xdg-desktop-portal-gnome for this resident's request; operationId=92ccfb89-de85-4585-ab55-11831898df5c; Capture motion metrics: {\"movingMotion\": 47.15583405671296, \"frozenMotion\": 0.001864346590909091}; recording media retained privately: 3/3 files (private-media/review.upload/ad58def2); control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.540437, tolerance=0.025): actual=/home/user/rc791/out/g1-r4/frames/review.upload/03-before.png reference=/home/user/rc791/pkg/ci-catalog/30-review.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/review.upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "screencast-consent-before",
+          "path": "frames/review.upload/01-screencast-consent-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "screencast-consent-after",
+          "path": "frames/review.upload/02-screencast-consent-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/review.upload/03-before.png",
+          "window": "review",
+          "reference": "30-review",
+          "distance": 0.5404372468114862,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/review.upload/04-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.upload",
+      "build": "26.1030.2533-dev+g8164f173cb58",
+      "at": "2026-10-30T06:24:14Z"
+    },
+    {
+      "interaction": "confirm.review-discard",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/rc791/out/g1-r4/receipt.json",
+      "note": "operationId=e2eb8572-c1ab-4a7e-97ae-5763ab908524; screencast consent: clicked 'Share' in xdg-desktop-portal-gnome for this resident's request; operationId=4d58b0e8-e001-4470-8d81-494ccd7c9c50; Capture motion metrics: {\"movingMotion\": 46.81239149305556, \"frozenMotion\": 0.0019856770833333332}; recording media retained privately: 3/3 files (private-media/review.discard/903c0fce); geometry: RuntimeError: live window match is missing or ambiguous (0 matches)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.540797, tolerance=0.025): actual=/home/user/rc791/out/g1-r4/frames/review.discard/03-before.png reference=/home/user/rc791/pkg/ci-catalog/30-review.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/review.discard/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "screencast-consent-before",
+          "path": "frames/review.discard/01-screencast-consent-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "screencast-consent-after",
+          "path": "frames/review.discard/02-screencast-consent-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/review.discard/03-before.png",
+          "window": "review",
+          "reference": "30-review",
+          "distance": 0.5407972271824537,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/review.discard/04-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.discard",
+      "build": "26.1030.2533-dev+g8164f173cb58",
+      "at": "2026-10-30T06:24:49Z"
+    },
+    {
+      "interaction": "review.discard",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/rc791/out/g1-r4/receipt.json",
+      "note": "operationId=e2eb8572-c1ab-4a7e-97ae-5763ab908524; screencast consent: clicked 'Share' in xdg-desktop-portal-gnome for this resident's request; operationId=4d58b0e8-e001-4470-8d81-494ccd7c9c50; Capture motion metrics: {\"movingMotion\": 46.81239149305556, \"frozenMotion\": 0.0019856770833333332}; recording media retained privately: 3/3 files (private-media/review.discard/903c0fce); geometry: RuntimeError: live window match is missing or ambiguous (0 matches)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.540797, tolerance=0.025): actual=/home/user/rc791/out/g1-r4/frames/review.discard/03-before.png reference=/home/user/rc791/pkg/ci-catalog/30-review.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/review.discard/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "screencast-consent-before",
+          "path": "frames/review.discard/01-screencast-consent-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "screencast-consent-after",
+          "path": "frames/review.discard/02-screencast-consent-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/review.discard/03-before.png",
+          "window": "review",
+          "reference": "30-review",
+          "distance": 0.5407972271824537,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/review.discard/04-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.discard",
+      "build": "26.1030.2533-dev+g8164f173cb58",
+      "at": "2026-10-30T06:24:49Z"
+    },
+    {
+      "interaction": "review.window-close",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/rc791/out/g1-r4/receipt.json",
+      "note": "operationId=b024661a-7fbd-4d35-b99c-62ae9360a4d5; screencast consent: clicked 'Share' in xdg-desktop-portal-gnome for this resident's request; operationId=d8d63314-3da3-4bf8-9816-849c6b1e1e88; Capture motion metrics: {\"movingMotion\": 47.11232277199074, \"frozenMotion\": 0.001864346590909091}; recording media retained privately: 3/3 files (private-media/review.window_close/7ae17f27); control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.540748, tolerance=0.025): actual=/home/user/rc791/out/g1-r4/frames/review.window_close/03-before.png reference=/home/user/rc791/pkg/ci-catalog/30-review.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/review.window_close/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "screencast-consent-before",
+          "path": "frames/review.window_close/01-screencast-consent-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "screencast-consent-after",
+          "path": "frames/review.window_close/02-screencast-consent-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/review.window_close/03-before.png",
+          "window": "review",
+          "reference": "30-review",
+          "distance": 0.5407476874726705,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/review.window_close/04-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.window_close",
+      "build": "26.1030.2533-dev+g8164f173cb58",
+      "at": "2026-10-30T06:25:22Z"
+    },
+    {
+      "interaction": "review.advice",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/rc791/out/g1-r4/receipt.json",
+      "note": "operationId=1f8b5b5b-44fb-4d6c-be93-c6e1a6078a53; screencast consent: clicked 'Share' in xdg-desktop-portal-gnome for this resident's request; operationId=17696839-1b25-4bae-9071-603c8a14204b; Capture motion metrics: {\"movingMotion\": 47.32767288773148, \"frozenMotion\": 0.0018051609848484848}; recording media retained privately: 3/3 files (private-media/review.advice/d1aab493); control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.540640, tolerance=0.025): actual=/home/user/rc791/out/g1-r4/frames/review.advice/03-before.png reference=/home/user/rc791/pkg/ci-catalog/30-review.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/review.advice/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "screencast-consent-before",
+          "path": "frames/review.advice/01-screencast-consent-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "screencast-consent-after",
+          "path": "frames/review.advice/02-screencast-consent-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/review.advice/03-before.png",
+          "window": "review",
+          "reference": "30-review",
+          "distance": 0.5406402575275124,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/review.advice/04-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.advice",
+      "build": "26.1030.2533-dev+g8164f173cb58",
+      "at": "2026-10-30T06:25:57Z"
+    },
+    {
+      "interaction": "review.notice",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/rc791/out/g1-r4/receipt.json",
+      "note": "operationId=07227f52-29e4-4733-b3cf-20e59aae5ea3; screencast consent: clicked 'Share' in xdg-desktop-portal-gnome for this resident's request; operationId=5b3d6832-72da-4d47-9f89-7d9b9c94def0; Capture motion metrics: {\"movingMotion\": 47.03993999094203, \"frozenMotion\": 7.233796296296296e-05}; recording media retained privately: 3/3 files (private-media/review.stop_notice/e04a1546); control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.537717, tolerance=0.025): actual=/home/user/rc791/out/g1-r4/frames/review.stop_notice/03-before.png reference=/home/user/rc791/pkg/ci-catalog/30-review.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/review.stop_notice/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "screencast-consent-before",
+          "path": "frames/review.stop_notice/01-screencast-consent-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "screencast-consent-after",
+          "path": "frames/review.stop_notice/02-screencast-consent-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/review.stop_notice/03-before.png",
+          "window": "review",
+          "reference": "30-review",
+          "distance": 0.5377168174962292,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/review.stop_notice/04-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.stop_notice",
+      "build": "26.1030.2533-dev+g8164f173cb58",
+      "at": "2026-10-30T06:27:14Z"
+    },
+    {
+      "interaction": "review.preview-error",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "/home/user/rc791/out/g1-r4/receipt.json",
+      "note": "operationId=fae56a64-c023-42ed-8d43-9cfbd583bc86; screencast consent: clicked 'Share' in xdg-desktop-portal-gnome for this resident's request; operationId=b08ba446-6026-45a6-87fe-52e0aa276cb8; Capture motion metrics: {\"movingMotion\": 47.153591579861114, \"frozenMotion\": 0.00220630787037037}; recording media retained privately: 3/3 files (private-media/review.preview_error/6ccfd28b)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.399713, tolerance=0.025): actual=/home/user/rc791/out/g1-r4/frames/review.preview_error/03-before.png reference=/home/user/rc791/pkg/ci-catalog/30-review.png; catalog mismatch (distance=0.405574, tolerance=0.025): actual=/home/user/rc791/out/g1-r4/frames/review.preview_error/04-error.png reference=/home/user/rc791/pkg/ci-catalog/40-review-preview-error.png; catalog mismatch (distance=0.538269, tolerance=0.025): actual=/home/user/rc791/out/g1-r4/frames/review.preview_error/05-after.png reference=/home/user/rc791/pkg/ci-catalog/30-review.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/review.preview_error/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "screencast-consent-before",
+          "path": "frames/review.preview_error/01-screencast-consent-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "screencast-consent-after",
+          "path": "frames/review.preview_error/02-screencast-consent-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/review.preview_error/03-before.png",
+          "window": "review",
+          "reference": "30-review",
+          "distance": 0.39971336604196644,
+          "tolerance": 0.025
+        },
+        {
+          "label": "error",
+          "path": "frames/review.preview_error/04-error.png",
+          "window": "review",
+          "reference": "40-review-preview-error",
+          "distance": 0.40557391687478966,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/review.preview_error/05-after.png",
+          "window": "review",
+          "reference": "30-review",
+          "distance": 0.5382691874274025,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/review.preview_error/06-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.preview_error",
+      "build": "26.1030.2533-dev+g8164f173cb58",
+      "at": "2026-10-30T06:27:49Z"
+    },
+    {
+      "interaction": "cli.recording",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/rc791/out/g1-r4/receipt.json",
+      "issue": 672,
+      "note": "operationId=7a5d5147-308b-408c-88c3-9387c3ccb0db; screencast consent: clicked 'Share' in xdg-desktop-portal-gnome for this resident's request; operationId=82a13d21-e469-45f9-8acb-1f33b4f77caf; Capture motion metrics: {\"movingMotion\": 47.12999131944444, \"frozenMotion\": 0.001864346590909091}; Decoded export metrics: {\"duration\": 2.0, \"codec\": \"h264\", \"container\": \"mov,mp4,m4a,3gp,3g2,mj2\", \"movingMotion\": 47.12999131944444, \"frozenMotion\": 0.001864346590909091, \"exportMotion\": 45.562717013888886, \"masked\": 1}; recording media retained privately: 4/4 files (private-media/review.cli_recording/bc2bb7b6); CLI review-stage entries exercised; capture prepare/start/pause/resume/stop/select/overlay need a capture fixture (#672)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "review": true,
+      "review_reason": "API full-desktop frames require visual review",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/review.cli_recording/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "screencast-consent-before",
+          "path": "frames/review.cli_recording/01-screencast-consent-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "screencast-consent-after",
+          "path": "frames/review.cli_recording/02-screencast-consent-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/review.cli_recording/03-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/review.cli_recording/04-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/review.cli_recording/05-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.cli_recording",
+      "build": "26.1030.2533-dev+g8164f173cb58",
+      "at": "2026-10-30T06:28:27Z"
+    },
+    {
+      "interaction": "mcp.recording",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/rc791/out/g1-r4/receipt.json",
+      "issue": 672,
+      "note": "operationId=0e37cd68-df16-463e-8127-d904470408ae; screencast consent: clicked 'Share' in xdg-desktop-portal-gnome for this resident's request; operationId=b4b7070d-d57d-44de-8839-05f11b1af63b; Capture motion metrics: {\"movingMotion\": 47.112087673611114, \"frozenMotion\": 0.0018051609848484848}; Decoded export metrics: {\"duration\": 2.0, \"codec\": \"h264\", \"container\": \"mov,mp4,m4a,3gp,3g2,mj2\", \"movingMotion\": 47.112087673611114, \"frozenMotion\": 0.0018051609848484848, \"exportMotion\": 44.88525390625, \"masked\": 1}; recording media retained privately: 4/4 files (private-media/review.mcp_recording/3c18f627); MCP review/edit/preview/save exercised; prepare/control/select/overlay capture lifecycle remains unexercised (#672)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "review": true,
+      "review_reason": "API full-desktop frames require visual review",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/review.mcp_recording/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "screencast-consent-before",
+          "path": "frames/review.mcp_recording/01-screencast-consent-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "screencast-consent-after",
+          "path": "frames/review.mcp_recording/02-screencast-consent-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/review.mcp_recording/03-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/review.mcp_recording/04-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/review.mcp_recording/05-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.mcp_recording",
+      "build": "26.1030.2533-dev+g8164f173cb58",
+      "at": "2026-10-30T06:29:09Z"
+    },
+    {
+      "interaction": "mcp.recording-review",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "/home/user/rc791/out/g1-r4/receipt.json",
+      "note": "operationId=cb32141d-36be-49f2-bc2c-c3cb13953d0f; screencast consent: clicked 'Share' in xdg-desktop-portal-gnome for this resident's request; operationId=716cba1a-6659-4517-ac74-6fd87bbcef03; Capture motion metrics: {\"movingMotion\": 47.026584201388886, \"frozenMotion\": 0.001864346590909091}; Decoded export metrics: {\"duration\": 2.0, \"codec\": \"h264\", \"container\": \"mov,mp4,m4a,3gp,3g2,mj2\", \"movingMotion\": 47.026584201388886, \"frozenMotion\": 0.001864346590909091, \"exportMotion\": 45.49620225694445, \"masked\": 1}; Decoded export metrics: {\"duration\": 2.0, \"codec\": \"h264\", \"container\": \"mov,mp4,m4a,3gp,3g2,mj2\", \"movingMotion\": 47.026584201388886, \"frozenMotion\": 0.001864346590909091, \"exportMotion\": 45.49620225694445, \"masked\": 1}; recording media retained privately: 4/4 files (private-media/review.mcp_recording_review/8f2c444d)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "review": true,
+      "review_reason": "API full-desktop frames require visual review",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/review.mcp_recording_review/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "screencast-consent-before",
+          "path": "frames/review.mcp_recording_review/01-screencast-consent-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "screencast-consent-after",
+          "path": "frames/review.mcp_recording_review/02-screencast-consent-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/review.mcp_recording_review/03-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/review.mcp_recording_review/04-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "uploaded",
+          "path": "frames/review.mcp_recording_review/05-uploaded.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/review.mcp_recording_review/06-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.mcp_recording_review",
+      "build": "26.1030.2533-dev+g8164f173cb58",
+      "at": "2026-10-30T06:29:53Z"
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+{
+ "storedChannel": "build",
+ "status": {
+  "channel": null,
+  "channelSetting": "build",
+  "build": {
+   "channel": null,
+   "kind": "none",
+   "packageTarget": "appimage",
+   "reason": "development_build",
+   "supported": false,
+   "version": "26.1023.1068-dev+g6a325a722afd"
+  }
+ },
+ "closed": "/var/home/lab/work/put.gd-qt418/afa/runs/aurora-vm/full/aurora-vm-channel-closed.png"
+}

@@ -1,11 +1,76 @@
 #include "fixtures/S3Fixture.h"
+#include "fixtures/U2Fixtures.h"
 #include <thread>
 #include <QBuffer>
 #include <mutex>
+#include "fixtures/Waits.h"
 using namespace putgd::test;
 class S3Test : public QObject {
     Q_OBJECT
 private slots:
+    void stalledPreflightCancelsPromptlyAndRetries() {
+        S3Fixture f;
+        // Longer than the cancellation bound: a timeout or released HEAD cannot pass.
+        f.destination.settings["requestTimeoutMs"] = 120000;
+        f.destination.settings["lowSpeedTimeSeconds"] = 120;
+        f.reset({{"rules", QJsonArray{QJsonObject{{"method", "HEAD"}, {"delay", 30}}}}});
+        ProviderRegistry registry;
+        registry.add("s3", std::shared_ptr<StorageProvider>(&f.provider, [](StorageProvider*) {}));
+        SettingsService settings(f.directory.filePath("config.json"), [&](auto id, auto value) { return registry.validate(id, value); });
+        auto config = configuration(f.directory.path());
+        auto profile = Settings::developmentTemplate()["profiles"].toArray()[0].toObject();
+        profile["id"] = f.destination.profileId;
+        profile["settings"] = f.destination.settings;
+        profile["credentials"] = f.destination.credentialReference;
+        config["profiles"] = QJsonArray{profile};
+        auto actions = config["actions"].toObject();
+        // The validator requires all upload actions to reference an existing profile.
+        // Recording has only a shortcut and inherits the region route.
+        for (const auto& key : Settings::actionNames()) { auto action = actions[key].toObject(); action["profileId"] = f.destination.profileId; actions[key] = action; }
+        config["actions"] = actions;
+        const auto saved = settings.save(config, {});
+        QVERIFY2(saved, qPrintable(saved.error.message));
+        Source source; source.payload = textPayload();
+        OperationService operations(f.directory.filePath("data"), settings, registry, source);
+        PUTGD_TRY_VERIFY(operations.ready());
+        HistoryStore history(operations.databasePath());
+        QString id;
+        operations.invoke("clipboard", [&](Error error, QJsonObject result) { QVERIFY(!error); id = result["operationId"].toString(); });
+        PUTGD_TRY_VERIFY(!id.isEmpty());
+        PUTGD_TRY_VERIFY(!f.events("HEAD").isEmpty());
+        QCOMPARE(history.operation(id).phase, QString("preflight"));
+        const auto candidate = history.operation(id).items[0].candidate;
+        QElapsedTimer elapsed; elapsed.start();
+        bool acknowledged = false;
+        operations.cancel(id, [&](Error error, QJsonObject) { QVERIFY(!error); acknowledged = true; });
+        PUTGD_TRY_VERIFY(acknowledged);
+        PUTGD_TRY_COMPARE(history.operation(id).state, QString("cancelled"));
+        // The journal write precedes the session-thread completion callback.
+        // Include releasing the active slot in the prompt cancellation bound.
+        PUTGD_TRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(), 0);
+        qInfo() << "stalled HEAD cancelTerminalMs" << elapsed.elapsed();
+        QVERIFY2(elapsed.elapsed() < 5000, "Cancellation must finish well before the 120 s request timeout or 30 s fixture delay");
+        QCOMPARE(f.events("HEAD").size(), 1);
+        QVERIFY(f.events("PUT").isEmpty());
+        QCOMPARE(source.copies, 0);
+        bool retried = false;
+        operations.retry(id, [&](Error error, QJsonObject) { QVERIFY2(!error, qPrintable(error.code)); retried = true; });
+        PUTGD_TRY_VERIFY(retried);
+        PUTGD_TRY_COMPARE(history.operation(id).state, QString("completed"));
+        QCOMPARE(history.operation(id).items[0].candidate, candidate);
+        QCOMPARE(history.operation(id).items[0].uploadStatus, QString("uploaded"));
+        QCOMPARE(f.events("PUT").size(), 1);
+        PUTGD_TRY_COMPARE(source.copies, 1);
+    }
+    void alreadyCancelledNameCheckSendsNoHead() {
+        S3Fixture f;
+        auto cancellation = std::make_shared<std::atomic_bool>(true);
+        const auto result = f.await<NameCheck>([&](auto cb) { f.provider.checkName(f.destination, "cancelled.txt", cb, cancellation); });
+        QCOMPARE(result.status, QString("inconclusive"));
+        QCOMPARE(result.error.code, QString("cancelled"));
+        QVERIFY(f.events("HEAD").isEmpty());
+    }
+
     void failedNameHeadRetainsSafeTransportDiagnostics() {
         S3Fixture f;
         f.process.terminate();
@@ -75,17 +140,58 @@ private slots:
     }
     void uploadProgressUsesBodyBytesAndFinishesBeforeReply() {
         S3Fixture f;
+        // Keep the held reply within the request/low-speed bounds, including
+        // scaled observation budgets on a contended CI worker.
+        f.destination.settings["requestTimeoutMs"] = scaled(15000);
+        f.destination.settings["lowSpeedTimeSeconds"] = scaled(15000) / 1000;
         auto request = f.request("progress.txt", QByteArray(1024 * 1024, 'p'));
-        // Keep the real SDK call active after it sends the body, allowing the
-        // production child timer to forward byte counters before completion.
-        f.reset({{"rules", QJsonArray{QJsonObject{{"method", "PUT"}, {"delay", 0.7}}}}});
+        // Progress is coalesced by the child timer. Hold the reply until the
+        // full-body observation arrives; a fixed delay can expire before that
+        // timer runs and let "finalizing" replace the "uploading" value.
+        f.reset({{"rules", QJsonArray{QJsonObject{{"method", "PUT"}, {"barrier", "progress"}}}}});
         std::mutex mutex;
         QList<UploadProgress> progress;
         request.progress = [&](const UploadProgress& value) {
             std::lock_guard lock(mutex);
             progress.append(value);
         };
-        const auto result = f.upload(request);
+        std::atomic_bool completed{false};
+        bool receivedBody = false, sentBeforeReply = false, finalizedBeforeReply = false, completedBeforeReply = false;
+        QJsonArray puts;
+        bool replyHeld = false;
+        const auto result = f.await<UploadResult>([&](auto callback) {
+            f.provider.upload(request, [&, callback](UploadResult value) {
+                completed.store(true);
+                callback(std::move(value));
+            });
+            receivedBody = waitFor([&] { puts = f.events("PUT"); return !puts.isEmpty(); });
+            sentBeforeReply = waitFor([&] {
+                std::lock_guard lock(mutex);
+                for (const auto& value : progress)
+                    if (value.phase == "uploading" && value.bytesTransferred == request.artifact.bytes) return true;
+                return false;
+            });
+            {
+                std::lock_guard lock(mutex);
+                for (const auto& value : progress)
+                    if (value.phase == "finalizing") finalizedBeforeReply = true;
+            }
+            completedBeforeReply = completed.load();
+            // The fixture stores the object only after leaving its barrier.
+            // Check that the bounded barrier has not expired independently.
+            replyHeld = f.state()["objects"].toObject().isEmpty();
+            // Always release before asserting, so a failed observation cannot
+            // strand the provider while the fixture is being destroyed.
+            f.control("/__release", {{"barrier", "progress"}}, true);
+        });
+        QVERIFY(receivedBody);
+        QCOMPARE(puts.size(), 1);
+        QVERIFY(puts[0].toObject()["signatureValid"].toBool());
+        QCOMPARE(QByteArray::fromBase64(puts[0].toObject()["body"].toString().toUtf8()), QByteArray(1024 * 1024, 'p'));
+        QVERIFY(sentBeforeReply);
+        QVERIFY(replyHeld);
+        QVERIFY(!finalizedBeforeReply);
+        QVERIFY(!completedBeforeReply);
         QCOMPARE(result.status, QString("uploaded"));
         qsizetype count;
         {
@@ -103,7 +209,7 @@ private slots:
             QCOMPARE(progress.last().bytesTransferred, std::optional<qint64>(request.artifact.bytes));
             count = progress.size();
         }
-        QTest::qWait(350);
+        putgd::test::settle(350);
         std::lock_guard lock(mutex);
         QCOMPARE(progress.size(), count);
     }
@@ -161,7 +267,7 @@ private slots:
         QTest::addColumn<QString>("service");
         QTest::addColumn<QString>("expected");
         QTest::addColumn<QString>("guidance");
-        QTest::newRow("ownership") << 400 << QString("AccessControlListNotSupported") << QString("s3_acl_incompatible") << QString("Follow the bucket's policy");
+        QTest::newRow("ownership") << 400 << QString("AccessControlListNotSupported") << QString("s3_acl_incompatible") << QString("Use bucket policy");
         QTest::newRow("public-access-block") << 403 << QString("AccessDenied") << QString("s3_permission_denied") << QString("s3:PutObject");
         QTest::newRow("authentication") << 403 << QString("InvalidAccessKeyId") << QString("s3_authentication_failed") << QString("access key ID");
         QTest::newRow("wrong-secret") << 403 << QString("SignatureDoesNotMatch") << QString("s3_authentication_failed") << QString("secret access key");
@@ -181,6 +287,9 @@ private slots:
         QVERIFY2(result.error.message.contains(guidance),qPrintable(result.error.message));
         QVERIFY(!QJsonDocument(result.error.toJson()).toJson().contains("synthetic fixture"));
         QCOMPARE(result.error.details["serviceCode"].toString(),service);
+        // #74: the request IDs AWS support asks for survive the worker protocol.
+        QCOMPARE(result.error.details["requestId"].toString(),QString("SYNTHREQ0123ABCD"));
+        QCOMPARE(result.error.details["extendedRequestId"].toString(),QString("synthetic+Extended/Id2="));
         QCOMPARE(f.events("PUT").size(), 1);
         QCOMPARE(f.events("DELETE").size(), 0);
         QCOMPARE(f.events("PUT")[0].toObject()["headers"].toObject()["x-amz-acl"].toString(), QString("public-read"));
@@ -272,7 +381,8 @@ private slots:
         QCOMPARE(f.events().size(), 1);
     }
     void queuedCancellationAndSlowEventLoop() {
-        S3Fixture f;
+        // One lane: the second call queues behind the first.
+        S3Fixture f({}, 1);
         auto first = f.request("slow.txt");
         auto second = f.request("cancelled.txt");
         second.cancellation = std::make_shared<std::atomic_bool>(false);
@@ -286,29 +396,53 @@ private slots:
         QTimer timer;
         connect(&timer, &QTimer::timeout, this, [&] { ++ticks; });
         timer.start(5);
-        QTRY_COMPARE(callbacks.load(), 2);
+        PUTGD_TRY_COMPARE(callbacks.load(), 2);
         QVERIFY(ticks > 10);
         QCOMPARE(secondStatus, QString("cancelled"));
         QCOMPARE(f.events("PUT").size(), 1);
     }
     void queuedCredentialRevocationPreservesInFlightClient() {
-        S3Fixture f;
+        // One lane: the second call queues behind the first.
+        S3Fixture f({}, 1);
         auto first = f.request("in-flight.txt");
         auto queued = f.request("queued.txt");
         f.reset({{"rules", QJsonArray{QJsonObject{{"method", "PUT"}, {"barrier", "credential-change"}}}}});
         std::atomic_int callbacks{0};
         QString firstStatus, secondCode;
         f.provider.upload(first, [&](auto result) { firstStatus = result.status; ++callbacks; });
-        QTRY_COMPARE(f.events("PUT").size(), 1);
+        PUTGD_TRY_COMPARE(f.events("PUT").size(), 1);
         QCOMPARE(callbacks.load(), 0);
         f.provider.upload(queued, [&](auto result) { secondCode = result.error.code; ++callbacks; });
         f.credentials.forget(f.destination.profileId, f.destination.credentialReference);
         f.control("/__release", {{"barrier", "credential-change"}}, true);
-        QTRY_COMPARE(callbacks.load(), 2);
+        PUTGD_TRY_COMPARE(callbacks.load(), 2);
         QCOMPARE(firstStatus, QString("uploaded"));
         QCOMPARE(secondCode, QString("credential_setup_required"));
         QCOMPARE(f.events("PUT").size(), 1);
         QVERIFY(f.events("PUT")[0].toObject()["signatureValid"].toBool());
+    }
+    void lanesRunUploadsInParallel() {
+        S3Fixture f;
+        QVERIFY(f.provider.maximumConcurrentRequests(f.destination) > 1);
+        auto blocked = f.request("blocked.txt");
+        auto free = f.request("free.txt");
+        f.reset({{"rules", QJsonArray{QJsonObject{{"method", "PUT"}, {"key", "prefix é/blocked.txt"}, {"barrier", "lane"}}}}});
+        std::atomic_bool blockedDone{false}, freeDone{false};
+        QString blockedStatus, freeStatus;
+        f.provider.upload(blocked, [&](auto result) { blockedStatus = result.status; blockedDone = true; });
+        PUTGD_TRY_COMPARE(f.events("PUT").size(), 1);
+        // A second upload completes on another lane while the first is still in flight.
+        f.provider.upload(free, [&](auto result) { freeStatus = result.status; freeDone = true; });
+        PUTGD_TRY_VERIFY_WITH_TIMEOUT(freeDone.load(), 15000);
+        QCOMPARE(freeStatus, QString("uploaded"));
+        QVERIFY(!blockedDone.load());
+        QCOMPARE(f.provider.diagnostics()["lanes"].toInt(), 2);
+        f.control("/__release", {{"barrier", "lane"}}, true);
+        PUTGD_TRY_VERIFY_WITH_TIMEOUT(blockedDone.load(), 15000);
+        QCOMPARE(blockedStatus, QString("uploaded"));
+        // An idle provider reuses its lanes; their drivers are released once idle.
+        PUTGD_TRY_COMPARE(f.provider.diagnostics()["queuedRequests"].toInt(), 0);
+        QCOMPARE(f.provider.diagnostics()["retainedDrivers"].toInt(), 0);
     }
     void providerDestructionDrainsSentRequestBeforeRuntime() {
         S3Fixture f;
@@ -318,7 +452,7 @@ private slots:
         std::atomic_bool completed{false};
         QString status;
         provider->upload(request, [&](auto result) { status = result.status; completed.store(true); });
-        QTRY_COMPARE(f.events("PUT").size(), 1);
+        PUTGD_TRY_COMPARE(f.events("PUT").size(), 1);
         QVERIFY(!completed.load());
         std::thread release([&] { f.control("/__release", {{"barrier", "shutdown"}}, true); });
         provider.reset();
@@ -350,7 +484,7 @@ private slots:
         QJsonObject result;
         Error error;
         f.provider.testDestination(f.destination, [](auto, auto ack) { ack({}); }, [&](auto value, auto e) { result = value; error = e; done = true; });
-        QTRY_VERIFY(done.load());
+        PUTGD_TRY_VERIFY(done.load());
         if (reachable) QVERIFY2(!error, qPrintable(error.code));
         else {QCOMPARE(error.code, QString("public_url_unreachable"));QVERIFY(error.message.contains("Link domain"));QVERIFY(error.message.contains("public-read"));}
         QCOMPARE(result["publicReachable"].toBool(), reachable);

@@ -1,0 +1,10 @@
+{
+  "argv": [
+    "work/i382n/campaign.py",
+    "d69",
+    "appimage",
+    "/home/patrick/work/p382n/putgd-26.1024.1186-dev+gd5b561ddb94f-x86_64.AppImage"
+  ],
+  "campaignSha256": "f3e466bb13445fbe03d370870754474411b721066a410d820bdee87759e0baa2",
+  "remoteDriverSha256": "4b69a41bae2d874d36dfd5c58507bec3c02e18cbc0736e924cb8d89ac0f22658"
+}

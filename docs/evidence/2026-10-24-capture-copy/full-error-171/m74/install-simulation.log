@@ -1,0 +1,10 @@
+Reading package lists...
+Building dependency tree...
+Reading state information...
+The following NEW packages will be installed:
+  gir1.2-gtk-4.0 putgd
+0 upgraded, 2 newly installed, 0 to remove and 30 not upgraded.
+Inst gir1.2-gtk-4.0 (4.14.5+ds-0ubuntu0.10 Ubuntu:24.04/noble-updates [amd64])
+Inst putgd (26.1024.1140~dev+g171b506e02ca local-deb [amd64])
+Conf gir1.2-gtk-4.0 (4.14.5+ds-0ubuntu0.10 Ubuntu:24.04/noble-updates [amd64])
+Conf putgd (26.1024.1140~dev+g171b506e02ca local-deb [amd64])

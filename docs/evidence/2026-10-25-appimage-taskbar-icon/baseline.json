@@ -1,0 +1,19 @@
+{
+  "windows": [
+    "0x03a00021  0 mintwelcome.py.Mintwelcome.py  mint-builder Welcome",
+    "0x03000003  0 nemo-desktop.Nemo-desktop  mint-builder Desktop",
+    "0x04800007  0 putgd-ui.putgd-ui     mint-builder put.gd"
+  ],
+  "size": [
+    1920,
+    1080
+  ],
+  "wmClass": "WM_CLASS(STRING) = \"putgd-ui\", \"putgd-ui\"\n",
+  "version": "putgd-cli 26.1024.1186-dev+gd5b561ddb94f\n",
+  "session": {
+    "DISPLAY": ":0",
+    "XDG_SESSION_TYPE": "x11",
+    "XDG_CURRENT_DESKTOP": "X-Cinnamon"
+  },
+  "iconPresent": true
+}

@@ -1,0 +1,93 @@
+Selecting previously unselected package putgd.
+(Reading database ... 0 files and directories currently installed.)
+Preparing to unpack .../putgd_26.1024.1150~dev+g3993e8d49d0a_amd64.deb ...
+Unpacking putgd (26.1024.1150~dev+g3993e8d49d0a) ...
+dpkg: putgd: dependency problems, but configuring anyway as you requested:
+ putgd depends on libqt6sql6-sqlite; however:
+  Package libqt6sql6-sqlite is not installed.
+ putgd depends on qt6-qpa-plugins; however:
+  Package qt6-qpa-plugins is not installed.
+ putgd depends on qt6-wayland; however:
+  Package qt6-wayland is not installed.
+ putgd depends on qt6-image-formats-plugins; however:
+  Package qt6-image-formats-plugins is not installed.
+ putgd depends on libglib2.0-bin; however:
+  Package libglib2.0-bin is not installed.
+ putgd depends on gstreamer1.0-plugins-base; however:
+  Package gstreamer1.0-plugins-base is not installed.
+ putgd depends on gstreamer1.0-plugins-good; however:
+  Package gstreamer1.0-plugins-good is not installed.
+ putgd depends on gstreamer1.0-plugins-bad; however:
+  Package gstreamer1.0-plugins-bad is not installed.
+ putgd depends on gstreamer1.0-pipewire; however:
+  Package gstreamer1.0-pipewire is not installed.
+ putgd depends on xdg-utils; however:
+  Package xdg-utils is not installed.
+ putgd depends on libsecret-1-0; however:
+  Package libsecret-1-0 is not installed.
+ putgd depends on libavcodec61 (>= 7:7.1.5); however:
+  Package libavcodec61 is not installed.
+ putgd depends on libavfilter10 (>= 7:7.1.5); however:
+  Package libavfilter10 is not installed.
+ putgd depends on libavformat61 (>= 7:7.1.5); however:
+  Package libavformat61 is not installed.
+ putgd depends on libavutil59 (>= 7:7.1.5); however:
+  Package libavutil59 is not installed.
+ putgd depends on libc6 (>= 2.38); however:
+  Package libc6 is not installed.
+ putgd depends on libcurl4t64 (>= 7.18.0); however:
+  Package libcurl4t64 is not installed.
+ putgd depends on libgcc-s1 (>= 4.2); however:
+  Package libgcc-s1 is not installed.
+ putgd depends on libglib2.0-0t64 (>= 2.12.0); however:
+  Package libglib2.0-0t64 is not installed.
+ putgd depends on libgstreamer1.0-0 (>= 1.0.0); however:
+  Package libgstreamer1.0-0 is not installed.
+ putgd depends on liblayershellqtinterface6 (>= 6.1.0); however:
+  Package liblayershellqtinterface6 is not installed.
+ putgd depends on libqt6core6t64 (>= 6.8.2); however:
+  Package libqt6core6t64 is not installed.
+ putgd depends on libqt6dbus6 (>= 6.8.2); however:
+  Package libqt6dbus6 is not installed.
+ putgd depends on libqt6gui6 (>= 6.8.2); however:
+  Package libqt6gui6 is not installed.
+ putgd depends on libqt6keychain1 (>= 0.13.2); however:
+  Package libqt6keychain1 is not installed.
+ putgd depends on libqt6network6 (>= 6.7.2); however:
+  Package libqt6network6 is not installed.
+ putgd depends on libqt6sql6 (>= 6.1.2); however:
+  Package libqt6sql6 is not installed.
+ putgd depends on libqt6widgets6 (>= 6.4.0); however:
+  Package libqt6widgets6 is not installed.
+ putgd depends on libssl3t64 (>= 3.4.0); however:
+  Package libssl3t64 is not installed.
+ putgd depends on libstdc++6 (>= 14); however:
+  Package libstdc++6 is not installed.
+ putgd depends on libswresample5 (>= 7:7.1.5); however:
+  Package libswresample5 is not installed.
+ putgd depends on libswscale8 (>= 7:7.1.5); however:
+  Package libswscale8 is not installed.
+ putgd depends on libwayland-client0 (>= 1.20.0); however:
+  Package libwayland-client0 is not installed.
+ putgd depends on libxcb-damage0; however:
+  Package libxcb-damage0 is not installed.
+ putgd depends on libxcb-keysyms1 (>= 0.4.1); however:
+  Package libxcb-keysyms1 is not installed.
+ putgd depends on libxcb-randr0 (>= 1.3); however:
+  Package libxcb-randr0 is not installed.
+ putgd depends on libxcb-render0; however:
+  Package libxcb-render0 is not installed.
+ putgd depends on libxcb-xfixes0; however:
+  Package libxcb-xfixes0 is not installed.
+ putgd depends on libxcb-xinput0 (>= 1.17.0); however:
+  Package libxcb-xinput0 is not installed.
+ putgd depends on libxcb1; however:
+  Package libxcb1 is not installed.
+ putgd depends on libxcursor1 (>> 1.1.2); however:
+  Package libxcursor1 is not installed.
+ putgd depends on libxkbcommon0 (>= 1.0.0); however:
+  Package libxkbcommon0 is not installed.
+ putgd depends on zlib1g (>= 1:1.1.4); however:
+  Package zlib1g is not installed.
+
+Setting up putgd (26.1024.1150~dev+g3993e8d49d0a) ...

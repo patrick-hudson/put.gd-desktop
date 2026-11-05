@@ -1,0 +1,25 @@
+# Fedora 44 (f44), appimageupdatetool 2.0.0-alpha-1-20251018 build 255, live nightly 801 -> 816
+$ ls /etc/ssl/certs/ca-certificates.crt /etc/pki/tls/certs/ca-bundle.crt
+ls: cannot access '/etc/ssl/certs/ca-certificates.crt': No such file or directory
+ls: cannot access '/etc/pki/tls/certs/ca-bundle.crt': No such file or directory
+
+$ appimageupdatetool --check-for-update putgd-0.1.1-nightly.801-x86_64.AppImage
+zsync2: Unknown error while checking whether file (null) exists: Bad address   (x30)
+Segmentation fault (exit 139)
+
+$ SSL_CERT_FILE=/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem appimageupdatetool --remove-old putgd-0.1.1-nightly.801-x86_64.AppImage
+zsync2: Downloading from https://github.com/…/v0.1.1-nightly.816/putgd-0.1.1-nightly.816-x86_64.AppImage
+zsync_legacy: Other error? -1
+zsync2: failed to retrieve from https://github.com/…/v0.1.1-nightly.816/putgd-0.1.1-nightly.816-x86_64.AppImage, status -1
+Update failed!
+
+$ APPIMAGE_EXTRACT_AND_RUN=1 bwrap … --ro-bind …/tls-ca-bundle.pem /etc/pki/tls/certs/ca-certificates.crt appimageupdatetool --remove-old …801…
+zsync2: Downloading from https://release-assets.githubusercontent.com/…
+zsync2: checksum matches OK
+zsync2: used 109277184 local, fetched 6765048
+Update successful. New file created: putgd-0.1.1-nightly.816-x86_64.AppImage
+putgd-0.1.1-nightly.816-x86_64.AppImage: OK   (sha256sum -c against 816 SHA256SUMS)
+
+$ flatpak run it.mijorus.gearlever --update ~/AppImages/put.gd.appimage   # Gear Lever 4.6.2
+~/AppImages/put.gd.appimage updated successfully
+sha256 342fcaba…c1d5 = putgd-0.1.1-nightly.816-x86_64.AppImage in SHA256SUMS

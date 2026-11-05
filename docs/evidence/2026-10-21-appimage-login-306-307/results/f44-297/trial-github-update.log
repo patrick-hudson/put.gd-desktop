@@ -1,0 +1,24 @@
+Checking for updates...
+zsync2: Using CA bundle found on system: /etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem
+... done!
+Starting update...
+
+Updating from generic server via ZSync
+zsync2: Using CA bundle found on system: /etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem
+zsync2: Target file: /home/patrick/work/put.gd-r12aiu/f44-297/trial-github/apps/putgd-0.1.1-nightly.816-x86_64.AppImage
+zsync2: Reading seed file: /home/patrick/work/put.gd-r12aiu/f44-297/trial-github/apps/putgd-0.1.1-nightly.801-x86_64.AppImage
+[2K
+zsync2: Usable data from seed files: 95.091959%
+zsync2: Renaming temp file
+zsync2: Fetching remaining blocks
+zsync2: Downloading from http://127.0.0.1:18318/putgd-0.1.1-nightly.816-x86_64.AppImage
+zsync2: optimized ranges, old requests count 28, new requests count 9
+
+zsync2: Verifying downloaded file
+[2K
+zsync2: checksum matches OK
+zsync2: used 109277184 local, fetched 6765048
+[2K
+Validation warning: AppImage not signed
+Removing old AppImage: /home/patrick/work/put.gd-r12aiu/f44-297/trial-github/apps/putgd-0.1.1-nightly.801-x86_64.AppImage
+Update successful. New file created: /home/patrick/work/put.gd-r12aiu/f44-297/trial-github/apps/putgd-0.1.1-nightly.816-x86_64.AppImage

@@ -1,0 +1,7 @@
+{
+  "status": "installed",
+  "format": "deb",
+  "sha256": "22b828998dc82bcd22df85721416357308090f013a821ec601f3e66e51d2608f",
+  "installEvidence": "/home/user/lab-driver/work/lab-runs/s840c3/install-1fba910bb0db4b879d5abf9bd433db62",
+  "timedOut": false
+}

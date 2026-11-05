@@ -1,0 +1,35 @@
+{
+  "session": "codex-tier1b-r7-6801919c",
+  "placement": "guest",
+  "desktop": "ubuntu-gnome-wayland",
+  "host": "d69",
+  "run": "/home/patrick/t1b/work/lab-runs/r7g",
+  "sessionRoot": "/dev/shm/zgsa",
+  "release": "v26.1030.3203-nightly",
+  "appCommit": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+  "catalogCiRun": 41111404666,
+  "destination": "s3",
+  "recipe": "outcomes_live.s3_region_upload",
+  "attempts": 1,
+  "protonUsed": false,
+  "guestPreparation": "Mask update-notifier and GNOME Software service autostart, stop exact matching PIDs, disable GNOME Software download-updates and allow-updates, dismiss or expire the existing banner, overlay-only DND, verify clear pre-run frame",
+  "s3": {
+    "aclMode": "public-read",
+    "publicUrlHost": "put.gd",
+    "publicUrlScheme": "https",
+    "objectPrefixShape": "acceptance/tier1-live/<uuid>/",
+    "positiveProof": "guarded Firefox image plus independent guest GET 200 and original SHA-256",
+    "deletionProof": "authenticated origin GET 404",
+    "cloudfrontAfterDeletion": "informational"
+  },
+  "preparationCorrection": {
+    "initialGnomeSoftwareSchemaAbsent": true,
+    "commonDataPackageHasNoSchema": true,
+    "solution": "Install only official common data; use the verified official schema XML from the distro GNOME Software DEB in owned guest RAM via GSETTINGS_SCHEMA_DIR, applying the actual dconf Boolean keys; no software executable/compositor/portal package installed or global schema changed",
+    "liveAttemptsAdded": 0,
+    "initialExactProcessStopStageCompletedBeforeSchemaFailure": true,
+    "initialStoppedPidValuesRetained": false,
+    "nativeDesktopConfigVerified": true,
+    "settingsAppliedIn": "Native guest desktop dconf, verified separately from the lab helper private XDG config"
+  }
+}

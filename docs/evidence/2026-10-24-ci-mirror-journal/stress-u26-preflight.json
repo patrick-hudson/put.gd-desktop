@@ -1,0 +1,1 @@
+{"schemaVersion": 1, "passed": true, "limitBytesExcludingNul": 107, "paths": [{"path": "/tmp/pg393u26/runtime/putgd/session.sock", "utf8Bytes": 40, "passed": true}, {"path": "/tmp/pgst.XXXXXXXX/test_operations-XXXXXX/runtime/putgd/session.sock", "utf8Bytes": 68, "passed": true}]}

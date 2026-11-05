@@ -1,0 +1,1626 @@
+{
+  "schemaVersion": 2,
+  "campaign": "2026-10-30-surface-driver-tier1-live",
+  "entries": [
+    {
+      "interaction": "region.to-upload",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/cinnamon/s3a/receipt.json",
+      "note": "AWS rejected builder key set 2 with InvalidAccessKeyId before upload. Original attempt retained; Cinnamon initially reported a generic SDK failure. No object created.",
+      "host": "d69",
+      "placement": "guest",
+      "guest": "cinnamon-x11",
+      "destination": "s3",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes_live.s3_region_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes_live.s3_region_upload/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes_live.s3_region_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T03:59:59Z",
+      "issue": 973
+    },
+    {
+      "interaction": "region.drag",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/cinnamon/s3a/receipt.json",
+      "note": "AWS rejected builder key set 2 with InvalidAccessKeyId before upload. Original attempt retained; Cinnamon initially reported a generic SDK failure. No object created.",
+      "host": "d69",
+      "placement": "guest",
+      "guest": "cinnamon-x11",
+      "destination": "s3",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes_live.s3_region_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes_live.s3_region_upload/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes_live.s3_region_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T03:59:59Z",
+      "issue": 973
+    },
+    {
+      "interaction": "history.copy-link",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/cinnamon/s3a/receipt.json",
+      "note": "AWS rejected builder key set 2 with InvalidAccessKeyId before upload. Original attempt retained; Cinnamon initially reported a generic SDK failure. No object created.",
+      "host": "d69",
+      "placement": "guest",
+      "guest": "cinnamon-x11",
+      "destination": "s3",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes_live.s3_region_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes_live.s3_region_upload/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes_live.s3_region_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T03:59:59Z",
+      "issue": 973
+    },
+    {
+      "interaction": "history.open-link",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/cinnamon/s3a/receipt.json",
+      "note": "AWS rejected builder key set 2 with InvalidAccessKeyId before upload. Original attempt retained; Cinnamon initially reported a generic SDK failure. No object created.",
+      "host": "d69",
+      "placement": "guest",
+      "guest": "cinnamon-x11",
+      "destination": "s3",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes_live.s3_region_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes_live.s3_region_upload/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes_live.s3_region_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T03:59:59Z",
+      "issue": 973
+    },
+    {
+      "interaction": "history.delete-remote",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/cinnamon/s3a/receipt.json",
+      "note": "AWS rejected builder key set 2 with InvalidAccessKeyId before upload. Original attempt retained; Cinnamon initially reported a generic SDK failure. No object created.",
+      "host": "d69",
+      "placement": "guest",
+      "guest": "cinnamon-x11",
+      "destination": "s3",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes_live.s3_region_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes_live.s3_region_upload/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes_live.s3_region_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T03:59:59Z",
+      "issue": 973
+    },
+    {
+      "interaction": "confirm.history-delete",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/cinnamon/s3a/receipt.json",
+      "note": "AWS rejected builder key set 2 with InvalidAccessKeyId before upload. Original attempt retained; Cinnamon initially reported a generic SDK failure. No object created.",
+      "host": "d69",
+      "placement": "guest",
+      "guest": "cinnamon-x11",
+      "destination": "s3",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes_live.s3_region_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes_live.s3_region_upload/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes_live.s3_region_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T03:59:59Z",
+      "issue": 973
+    },
+    {
+      "interaction": "region.to-upload",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/cinnamon/protonb/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; desktop frame after masked by live evidence policy; known fullscreen pattern covers the chosen monitor without foreign UI; Consolidated result F. No live upload; scene guard stopped the row.",
+      "host": "d69",
+      "placement": "guest",
+      "guest": "cinnamon-x11",
+      "destination": "proton",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes_live.proton_region_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes_live.proton_region_upload/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes_live.proton_region_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T04:05:11Z",
+      "issue": 975
+    },
+    {
+      "interaction": "region.drag",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/cinnamon/protonb/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; desktop frame after masked by live evidence policy; known fullscreen pattern covers the chosen monitor without foreign UI; Consolidated result F. No live upload; scene guard stopped the row.",
+      "host": "d69",
+      "placement": "guest",
+      "guest": "cinnamon-x11",
+      "destination": "proton",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes_live.proton_region_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes_live.proton_region_upload/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes_live.proton_region_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T04:05:11Z",
+      "issue": 975
+    },
+    {
+      "interaction": "history.copy-link",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/cinnamon/protonb/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; desktop frame after masked by live evidence policy; known fullscreen pattern covers the chosen monitor without foreign UI; Consolidated result F. No live upload; scene guard stopped the row.",
+      "host": "d69",
+      "placement": "guest",
+      "guest": "cinnamon-x11",
+      "destination": "proton",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes_live.proton_region_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes_live.proton_region_upload/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes_live.proton_region_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T04:05:11Z",
+      "issue": 975
+    },
+    {
+      "interaction": "history.open-link",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/cinnamon/protonb/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; desktop frame after masked by live evidence policy; known fullscreen pattern covers the chosen monitor without foreign UI; Consolidated result F. No live upload; scene guard stopped the row.",
+      "host": "d69",
+      "placement": "guest",
+      "guest": "cinnamon-x11",
+      "destination": "proton",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes_live.proton_region_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes_live.proton_region_upload/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes_live.proton_region_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T04:05:11Z",
+      "issue": 975
+    },
+    {
+      "interaction": "history.proton-sharing",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/cinnamon/protonb/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; desktop frame after masked by live evidence policy; known fullscreen pattern covers the chosen monitor without foreign UI; Consolidated result F. No live upload; scene guard stopped the row.",
+      "host": "d69",
+      "placement": "guest",
+      "guest": "cinnamon-x11",
+      "destination": "proton",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes_live.proton_region_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes_live.proton_region_upload/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes_live.proton_region_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T04:05:11Z",
+      "issue": 975
+    },
+    {
+      "interaction": "confirm.revoke-link",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/cinnamon/protonb/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; desktop frame after masked by live evidence policy; known fullscreen pattern covers the chosen monitor without foreign UI; Consolidated result F. No live upload; scene guard stopped the row.",
+      "host": "d69",
+      "placement": "guest",
+      "guest": "cinnamon-x11",
+      "destination": "proton",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes_live.proton_region_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes_live.proton_region_upload/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes_live.proton_region_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T04:05:11Z",
+      "issue": 975
+    },
+    {
+      "interaction": "region.to-upload",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/gnome/s3a/receipt.json",
+      "note": "AWS rejected builder key set 2 with InvalidAccessKeyId before upload. Original attempt retained; Cinnamon initially reported a generic SDK failure. No object created.",
+      "host": "d69",
+      "placement": "guest",
+      "guest": "gnome-wayland",
+      "destination": "s3",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes_live.s3_region_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes_live.s3_region_upload/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes_live.s3_region_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T04:15:21Z",
+      "issue": 973
+    },
+    {
+      "interaction": "region.drag",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/gnome/s3a/receipt.json",
+      "note": "AWS rejected builder key set 2 with InvalidAccessKeyId before upload. Original attempt retained; Cinnamon initially reported a generic SDK failure. No object created.",
+      "host": "d69",
+      "placement": "guest",
+      "guest": "gnome-wayland",
+      "destination": "s3",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes_live.s3_region_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes_live.s3_region_upload/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes_live.s3_region_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T04:15:21Z",
+      "issue": 973
+    },
+    {
+      "interaction": "history.copy-link",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/gnome/s3a/receipt.json",
+      "note": "AWS rejected builder key set 2 with InvalidAccessKeyId before upload. Original attempt retained; Cinnamon initially reported a generic SDK failure. No object created.",
+      "host": "d69",
+      "placement": "guest",
+      "guest": "gnome-wayland",
+      "destination": "s3",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes_live.s3_region_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes_live.s3_region_upload/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes_live.s3_region_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T04:15:21Z",
+      "issue": 973
+    },
+    {
+      "interaction": "history.open-link",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/gnome/s3a/receipt.json",
+      "note": "AWS rejected builder key set 2 with InvalidAccessKeyId before upload. Original attempt retained; Cinnamon initially reported a generic SDK failure. No object created.",
+      "host": "d69",
+      "placement": "guest",
+      "guest": "gnome-wayland",
+      "destination": "s3",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes_live.s3_region_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes_live.s3_region_upload/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes_live.s3_region_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T04:15:21Z",
+      "issue": 973
+    },
+    {
+      "interaction": "history.delete-remote",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/gnome/s3a/receipt.json",
+      "note": "AWS rejected builder key set 2 with InvalidAccessKeyId before upload. Original attempt retained; Cinnamon initially reported a generic SDK failure. No object created.",
+      "host": "d69",
+      "placement": "guest",
+      "guest": "gnome-wayland",
+      "destination": "s3",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes_live.s3_region_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes_live.s3_region_upload/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes_live.s3_region_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T04:15:21Z",
+      "issue": 973
+    },
+    {
+      "interaction": "confirm.history-delete",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/gnome/s3a/receipt.json",
+      "note": "AWS rejected builder key set 2 with InvalidAccessKeyId before upload. Original attempt retained; Cinnamon initially reported a generic SDK failure. No object created.",
+      "host": "d69",
+      "placement": "guest",
+      "guest": "gnome-wayland",
+      "destination": "s3",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes_live.s3_region_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes_live.s3_region_upload/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes_live.s3_region_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T04:15:21Z",
+      "issue": 973
+    },
+    {
+      "interaction": "region.to-upload",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/gnome/protona/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; desktop frame independent-frozen-pattern masked by live evidence policy; operationId=cb34479d-126f-4791-9810-3293c71aa31e; Capture operation cb34479d-126f-4791-9810-3293c71aa31e; shareOperationId=21f06a31-7821-42c1-a72c-27a4b142b5b3; operationId=cb34479d-126f-4791-9810-3293c71aa31e; historyId=089de136-e7c6-41d8-a40f-c71a71c5b1ab; Retained synthetic png sha256=692d117ad19d9b8fb937bc9629a0c6d9148826464efaa787a85b209cd9cf7280; Firefox handler restored; MIME SHA-256 checks passed; shareOperationId=0f7cfac1-93e9-4331-8de9-a74b601e707b; revocation_count=1; desktop frame after masked by live evidence policy; timeout: default Firefox loaded the expected page content; Consolidated result F. One upload, one History UI revocation; recipient hash/browser and independent unavailable-link proof remain unproven.",
+      "host": "d69",
+      "placement": "guest",
+      "guest": "gnome-wayland",
+      "destination": "proton",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes_live.proton_region_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "independent-frozen-pattern",
+          "path": "frames/outcomes_live.proton_region_upload/01-independent-frozen-pattern.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-failure-safe-desktop",
+          "path": "frames/outcomes_live.proton_region_upload/02-browser-failure-safe-desktop.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "revoke-exact-owned-link",
+          "path": "frames/outcomes_live.proton_region_upload/03-revoke-exact-owned-link.png",
+          "window": "confirmAction",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-after-remote-cleanup",
+          "path": "frames/outcomes_live.proton_region_upload/04-history-after-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes_live.proton_region_upload/05-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes_live.proton_region_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T04:18:06Z",
+      "issue": 978
+    },
+    {
+      "interaction": "region.drag",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/gnome/protona/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; desktop frame independent-frozen-pattern masked by live evidence policy; operationId=cb34479d-126f-4791-9810-3293c71aa31e; Capture operation cb34479d-126f-4791-9810-3293c71aa31e; shareOperationId=21f06a31-7821-42c1-a72c-27a4b142b5b3; operationId=cb34479d-126f-4791-9810-3293c71aa31e; historyId=089de136-e7c6-41d8-a40f-c71a71c5b1ab; Retained synthetic png sha256=692d117ad19d9b8fb937bc9629a0c6d9148826464efaa787a85b209cd9cf7280; Firefox handler restored; MIME SHA-256 checks passed; shareOperationId=0f7cfac1-93e9-4331-8de9-a74b601e707b; revocation_count=1; desktop frame after masked by live evidence policy; timeout: default Firefox loaded the expected page content; Consolidated result F. One upload, one History UI revocation; recipient hash/browser and independent unavailable-link proof remain unproven.",
+      "host": "d69",
+      "placement": "guest",
+      "guest": "gnome-wayland",
+      "destination": "proton",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes_live.proton_region_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "independent-frozen-pattern",
+          "path": "frames/outcomes_live.proton_region_upload/01-independent-frozen-pattern.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-failure-safe-desktop",
+          "path": "frames/outcomes_live.proton_region_upload/02-browser-failure-safe-desktop.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "revoke-exact-owned-link",
+          "path": "frames/outcomes_live.proton_region_upload/03-revoke-exact-owned-link.png",
+          "window": "confirmAction",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-after-remote-cleanup",
+          "path": "frames/outcomes_live.proton_region_upload/04-history-after-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes_live.proton_region_upload/05-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes_live.proton_region_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T04:18:06Z",
+      "issue": 978
+    },
+    {
+      "interaction": "history.copy-link",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/gnome/protona/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; desktop frame independent-frozen-pattern masked by live evidence policy; operationId=cb34479d-126f-4791-9810-3293c71aa31e; Capture operation cb34479d-126f-4791-9810-3293c71aa31e; shareOperationId=21f06a31-7821-42c1-a72c-27a4b142b5b3; operationId=cb34479d-126f-4791-9810-3293c71aa31e; historyId=089de136-e7c6-41d8-a40f-c71a71c5b1ab; Retained synthetic png sha256=692d117ad19d9b8fb937bc9629a0c6d9148826464efaa787a85b209cd9cf7280; Firefox handler restored; MIME SHA-256 checks passed; shareOperationId=0f7cfac1-93e9-4331-8de9-a74b601e707b; revocation_count=1; desktop frame after masked by live evidence policy; timeout: default Firefox loaded the expected page content; Consolidated result F. One upload, one History UI revocation; recipient hash/browser and independent unavailable-link proof remain unproven.",
+      "host": "d69",
+      "placement": "guest",
+      "guest": "gnome-wayland",
+      "destination": "proton",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes_live.proton_region_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "independent-frozen-pattern",
+          "path": "frames/outcomes_live.proton_region_upload/01-independent-frozen-pattern.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-failure-safe-desktop",
+          "path": "frames/outcomes_live.proton_region_upload/02-browser-failure-safe-desktop.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "revoke-exact-owned-link",
+          "path": "frames/outcomes_live.proton_region_upload/03-revoke-exact-owned-link.png",
+          "window": "confirmAction",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-after-remote-cleanup",
+          "path": "frames/outcomes_live.proton_region_upload/04-history-after-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes_live.proton_region_upload/05-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes_live.proton_region_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T04:18:06Z",
+      "issue": 978
+    },
+    {
+      "interaction": "history.open-link",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/gnome/protona/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; desktop frame independent-frozen-pattern masked by live evidence policy; operationId=cb34479d-126f-4791-9810-3293c71aa31e; Capture operation cb34479d-126f-4791-9810-3293c71aa31e; shareOperationId=21f06a31-7821-42c1-a72c-27a4b142b5b3; operationId=cb34479d-126f-4791-9810-3293c71aa31e; historyId=089de136-e7c6-41d8-a40f-c71a71c5b1ab; Retained synthetic png sha256=692d117ad19d9b8fb937bc9629a0c6d9148826464efaa787a85b209cd9cf7280; Firefox handler restored; MIME SHA-256 checks passed; shareOperationId=0f7cfac1-93e9-4331-8de9-a74b601e707b; revocation_count=1; desktop frame after masked by live evidence policy; timeout: default Firefox loaded the expected page content; Consolidated result F. One upload, one History UI revocation; recipient hash/browser and independent unavailable-link proof remain unproven.",
+      "host": "d69",
+      "placement": "guest",
+      "guest": "gnome-wayland",
+      "destination": "proton",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes_live.proton_region_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "independent-frozen-pattern",
+          "path": "frames/outcomes_live.proton_region_upload/01-independent-frozen-pattern.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-failure-safe-desktop",
+          "path": "frames/outcomes_live.proton_region_upload/02-browser-failure-safe-desktop.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "revoke-exact-owned-link",
+          "path": "frames/outcomes_live.proton_region_upload/03-revoke-exact-owned-link.png",
+          "window": "confirmAction",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-after-remote-cleanup",
+          "path": "frames/outcomes_live.proton_region_upload/04-history-after-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes_live.proton_region_upload/05-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes_live.proton_region_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T04:18:06Z",
+      "issue": 978
+    },
+    {
+      "interaction": "history.proton-sharing",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/gnome/protona/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; desktop frame independent-frozen-pattern masked by live evidence policy; operationId=cb34479d-126f-4791-9810-3293c71aa31e; Capture operation cb34479d-126f-4791-9810-3293c71aa31e; shareOperationId=21f06a31-7821-42c1-a72c-27a4b142b5b3; operationId=cb34479d-126f-4791-9810-3293c71aa31e; historyId=089de136-e7c6-41d8-a40f-c71a71c5b1ab; Retained synthetic png sha256=692d117ad19d9b8fb937bc9629a0c6d9148826464efaa787a85b209cd9cf7280; Firefox handler restored; MIME SHA-256 checks passed; shareOperationId=0f7cfac1-93e9-4331-8de9-a74b601e707b; revocation_count=1; desktop frame after masked by live evidence policy; timeout: default Firefox loaded the expected page content; Consolidated result F. One upload, one History UI revocation; recipient hash/browser and independent unavailable-link proof remain unproven.",
+      "host": "d69",
+      "placement": "guest",
+      "guest": "gnome-wayland",
+      "destination": "proton",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes_live.proton_region_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "independent-frozen-pattern",
+          "path": "frames/outcomes_live.proton_region_upload/01-independent-frozen-pattern.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-failure-safe-desktop",
+          "path": "frames/outcomes_live.proton_region_upload/02-browser-failure-safe-desktop.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "revoke-exact-owned-link",
+          "path": "frames/outcomes_live.proton_region_upload/03-revoke-exact-owned-link.png",
+          "window": "confirmAction",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-after-remote-cleanup",
+          "path": "frames/outcomes_live.proton_region_upload/04-history-after-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes_live.proton_region_upload/05-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes_live.proton_region_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T04:18:06Z",
+      "issue": 978
+    },
+    {
+      "interaction": "confirm.revoke-link",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/gnome/protona/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; desktop frame independent-frozen-pattern masked by live evidence policy; operationId=cb34479d-126f-4791-9810-3293c71aa31e; Capture operation cb34479d-126f-4791-9810-3293c71aa31e; shareOperationId=21f06a31-7821-42c1-a72c-27a4b142b5b3; operationId=cb34479d-126f-4791-9810-3293c71aa31e; historyId=089de136-e7c6-41d8-a40f-c71a71c5b1ab; Retained synthetic png sha256=692d117ad19d9b8fb937bc9629a0c6d9148826464efaa787a85b209cd9cf7280; Firefox handler restored; MIME SHA-256 checks passed; shareOperationId=0f7cfac1-93e9-4331-8de9-a74b601e707b; revocation_count=1; desktop frame after masked by live evidence policy; timeout: default Firefox loaded the expected page content; Consolidated result F. One upload, one History UI revocation; recipient hash/browser and independent unavailable-link proof remain unproven.",
+      "host": "d69",
+      "placement": "guest",
+      "guest": "gnome-wayland",
+      "destination": "proton",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes_live.proton_region_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "independent-frozen-pattern",
+          "path": "frames/outcomes_live.proton_region_upload/01-independent-frozen-pattern.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-failure-safe-desktop",
+          "path": "frames/outcomes_live.proton_region_upload/02-browser-failure-safe-desktop.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "revoke-exact-owned-link",
+          "path": "frames/outcomes_live.proton_region_upload/03-revoke-exact-owned-link.png",
+          "window": "confirmAction",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-after-remote-cleanup",
+          "path": "frames/outcomes_live.proton_region_upload/04-history-after-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes_live.proton_region_upload/05-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes_live.proton_region_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T04:18:06Z",
+      "issue": 978
+    },
+    {
+      "interaction": "region.to-upload",
+      "desktop": "kubuntu-kde-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/kde/s3b/receipt.json",
+      "note": "AWS rejected builder key set 2 with InvalidAccessKeyId before upload. Original attempt retained; Cinnamon initially reported a generic SDK failure. No object created.",
+      "host": "f44",
+      "placement": "guest",
+      "guest": "kde-wayland",
+      "destination": "s3",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes_live.s3_region_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes_live.s3_region_upload/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes_live.s3_region_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T04:01:26Z",
+      "issue": 973
+    },
+    {
+      "interaction": "region.drag",
+      "desktop": "kubuntu-kde-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/kde/s3b/receipt.json",
+      "note": "AWS rejected builder key set 2 with InvalidAccessKeyId before upload. Original attempt retained; Cinnamon initially reported a generic SDK failure. No object created.",
+      "host": "f44",
+      "placement": "guest",
+      "guest": "kde-wayland",
+      "destination": "s3",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes_live.s3_region_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes_live.s3_region_upload/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes_live.s3_region_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T04:01:26Z",
+      "issue": 973
+    },
+    {
+      "interaction": "history.copy-link",
+      "desktop": "kubuntu-kde-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/kde/s3b/receipt.json",
+      "note": "AWS rejected builder key set 2 with InvalidAccessKeyId before upload. Original attempt retained; Cinnamon initially reported a generic SDK failure. No object created.",
+      "host": "f44",
+      "placement": "guest",
+      "guest": "kde-wayland",
+      "destination": "s3",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes_live.s3_region_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes_live.s3_region_upload/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes_live.s3_region_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T04:01:26Z",
+      "issue": 973
+    },
+    {
+      "interaction": "history.open-link",
+      "desktop": "kubuntu-kde-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/kde/s3b/receipt.json",
+      "note": "AWS rejected builder key set 2 with InvalidAccessKeyId before upload. Original attempt retained; Cinnamon initially reported a generic SDK failure. No object created.",
+      "host": "f44",
+      "placement": "guest",
+      "guest": "kde-wayland",
+      "destination": "s3",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes_live.s3_region_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes_live.s3_region_upload/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes_live.s3_region_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T04:01:26Z",
+      "issue": 973
+    },
+    {
+      "interaction": "history.delete-remote",
+      "desktop": "kubuntu-kde-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/kde/s3b/receipt.json",
+      "note": "AWS rejected builder key set 2 with InvalidAccessKeyId before upload. Original attempt retained; Cinnamon initially reported a generic SDK failure. No object created.",
+      "host": "f44",
+      "placement": "guest",
+      "guest": "kde-wayland",
+      "destination": "s3",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes_live.s3_region_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes_live.s3_region_upload/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes_live.s3_region_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T04:01:26Z",
+      "issue": 973
+    },
+    {
+      "interaction": "confirm.history-delete",
+      "desktop": "kubuntu-kde-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/kde/s3b/receipt.json",
+      "note": "AWS rejected builder key set 2 with InvalidAccessKeyId before upload. Original attempt retained; Cinnamon initially reported a generic SDK failure. No object created.",
+      "host": "f44",
+      "placement": "guest",
+      "guest": "kde-wayland",
+      "destination": "s3",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes_live.s3_region_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes_live.s3_region_upload/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes_live.s3_region_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T04:01:26Z",
+      "issue": 973
+    },
+    {
+      "interaction": "region.to-upload",
+      "desktop": "kubuntu-kde-wayland",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/kde/protonb/receipt.json",
+      "issue": 978,
+      "note": "desktop frame before masked by live evidence policy; desktop frame independent-frozen-pattern masked by live evidence policy; operationId=320d4cfc-f77e-4b10-a282-0a337cfd5505; Capture operation 320d4cfc-f77e-4b10-a282-0a337cfd5505; shareOperationId=ad7334f4-5d27-4496-be8d-fc15ac196f33; operationId=320d4cfc-f77e-4b10-a282-0a337cfd5505; historyId=b8005ea6-a07f-4ee3-a9ec-ce7a67fca2da; Retained synthetic png sha256=dbf28b144b57384a3d338158d0bca7d0ab67372b5e072f1993ed3667c524ee7a; Firefox handler restored; MIME SHA-256 checks passed; desktop frame after masked by live evidence policy; No unambiguous live geometry after waiting for confirmAction.; fixture cleanup failed: owned history and cache: RecipeBlocked; accepted settings: RecipeBlocked; owned directory: RecipeBlocked; Consolidated result F. One upload, one History UI revocation; recipient hash/browser and independent unavailable-link proof remain unproven.",
+      "host": "f44",
+      "placement": "guest",
+      "guest": "kde-wayland",
+      "destination": "proton",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes_live.proton_region_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "independent-frozen-pattern",
+          "path": "frames/outcomes_live.proton_region_upload/01-independent-frozen-pattern.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-failure-safe-desktop",
+          "path": "frames/outcomes_live.proton_region_upload/02-browser-failure-safe-desktop.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes_live.proton_region_upload/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes_live.proton_region_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T04:07:01Z"
+    },
+    {
+      "interaction": "region.drag",
+      "desktop": "kubuntu-kde-wayland",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/kde/protonb/receipt.json",
+      "issue": 978,
+      "note": "desktop frame before masked by live evidence policy; desktop frame independent-frozen-pattern masked by live evidence policy; operationId=320d4cfc-f77e-4b10-a282-0a337cfd5505; Capture operation 320d4cfc-f77e-4b10-a282-0a337cfd5505; shareOperationId=ad7334f4-5d27-4496-be8d-fc15ac196f33; operationId=320d4cfc-f77e-4b10-a282-0a337cfd5505; historyId=b8005ea6-a07f-4ee3-a9ec-ce7a67fca2da; Retained synthetic png sha256=dbf28b144b57384a3d338158d0bca7d0ab67372b5e072f1993ed3667c524ee7a; Firefox handler restored; MIME SHA-256 checks passed; desktop frame after masked by live evidence policy; No unambiguous live geometry after waiting for confirmAction.; fixture cleanup failed: owned history and cache: RecipeBlocked; accepted settings: RecipeBlocked; owned directory: RecipeBlocked; Consolidated result F. One upload, one History UI revocation; recipient hash/browser and independent unavailable-link proof remain unproven.",
+      "host": "f44",
+      "placement": "guest",
+      "guest": "kde-wayland",
+      "destination": "proton",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes_live.proton_region_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "independent-frozen-pattern",
+          "path": "frames/outcomes_live.proton_region_upload/01-independent-frozen-pattern.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-failure-safe-desktop",
+          "path": "frames/outcomes_live.proton_region_upload/02-browser-failure-safe-desktop.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes_live.proton_region_upload/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes_live.proton_region_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T04:07:01Z"
+    },
+    {
+      "interaction": "history.copy-link",
+      "desktop": "kubuntu-kde-wayland",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/kde/protonb/receipt.json",
+      "issue": 978,
+      "note": "desktop frame before masked by live evidence policy; desktop frame independent-frozen-pattern masked by live evidence policy; operationId=320d4cfc-f77e-4b10-a282-0a337cfd5505; Capture operation 320d4cfc-f77e-4b10-a282-0a337cfd5505; shareOperationId=ad7334f4-5d27-4496-be8d-fc15ac196f33; operationId=320d4cfc-f77e-4b10-a282-0a337cfd5505; historyId=b8005ea6-a07f-4ee3-a9ec-ce7a67fca2da; Retained synthetic png sha256=dbf28b144b57384a3d338158d0bca7d0ab67372b5e072f1993ed3667c524ee7a; Firefox handler restored; MIME SHA-256 checks passed; desktop frame after masked by live evidence policy; No unambiguous live geometry after waiting for confirmAction.; fixture cleanup failed: owned history and cache: RecipeBlocked; accepted settings: RecipeBlocked; owned directory: RecipeBlocked; Consolidated result F. One upload, one History UI revocation; recipient hash/browser and independent unavailable-link proof remain unproven.",
+      "host": "f44",
+      "placement": "guest",
+      "guest": "kde-wayland",
+      "destination": "proton",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes_live.proton_region_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "independent-frozen-pattern",
+          "path": "frames/outcomes_live.proton_region_upload/01-independent-frozen-pattern.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-failure-safe-desktop",
+          "path": "frames/outcomes_live.proton_region_upload/02-browser-failure-safe-desktop.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes_live.proton_region_upload/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes_live.proton_region_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T04:07:01Z"
+    },
+    {
+      "interaction": "history.open-link",
+      "desktop": "kubuntu-kde-wayland",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/kde/protonb/receipt.json",
+      "issue": 978,
+      "note": "desktop frame before masked by live evidence policy; desktop frame independent-frozen-pattern masked by live evidence policy; operationId=320d4cfc-f77e-4b10-a282-0a337cfd5505; Capture operation 320d4cfc-f77e-4b10-a282-0a337cfd5505; shareOperationId=ad7334f4-5d27-4496-be8d-fc15ac196f33; operationId=320d4cfc-f77e-4b10-a282-0a337cfd5505; historyId=b8005ea6-a07f-4ee3-a9ec-ce7a67fca2da; Retained synthetic png sha256=dbf28b144b57384a3d338158d0bca7d0ab67372b5e072f1993ed3667c524ee7a; Firefox handler restored; MIME SHA-256 checks passed; desktop frame after masked by live evidence policy; No unambiguous live geometry after waiting for confirmAction.; fixture cleanup failed: owned history and cache: RecipeBlocked; accepted settings: RecipeBlocked; owned directory: RecipeBlocked; Consolidated result F. One upload, one History UI revocation; recipient hash/browser and independent unavailable-link proof remain unproven.",
+      "host": "f44",
+      "placement": "guest",
+      "guest": "kde-wayland",
+      "destination": "proton",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes_live.proton_region_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "independent-frozen-pattern",
+          "path": "frames/outcomes_live.proton_region_upload/01-independent-frozen-pattern.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-failure-safe-desktop",
+          "path": "frames/outcomes_live.proton_region_upload/02-browser-failure-safe-desktop.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes_live.proton_region_upload/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes_live.proton_region_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T04:07:01Z"
+    },
+    {
+      "interaction": "history.proton-sharing",
+      "desktop": "kubuntu-kde-wayland",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/kde/protonb/receipt.json",
+      "issue": 978,
+      "note": "desktop frame before masked by live evidence policy; desktop frame independent-frozen-pattern masked by live evidence policy; operationId=320d4cfc-f77e-4b10-a282-0a337cfd5505; Capture operation 320d4cfc-f77e-4b10-a282-0a337cfd5505; shareOperationId=ad7334f4-5d27-4496-be8d-fc15ac196f33; operationId=320d4cfc-f77e-4b10-a282-0a337cfd5505; historyId=b8005ea6-a07f-4ee3-a9ec-ce7a67fca2da; Retained synthetic png sha256=dbf28b144b57384a3d338158d0bca7d0ab67372b5e072f1993ed3667c524ee7a; Firefox handler restored; MIME SHA-256 checks passed; desktop frame after masked by live evidence policy; No unambiguous live geometry after waiting for confirmAction.; fixture cleanup failed: owned history and cache: RecipeBlocked; accepted settings: RecipeBlocked; owned directory: RecipeBlocked; Consolidated result F. One upload, one History UI revocation; recipient hash/browser and independent unavailable-link proof remain unproven.",
+      "host": "f44",
+      "placement": "guest",
+      "guest": "kde-wayland",
+      "destination": "proton",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes_live.proton_region_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "independent-frozen-pattern",
+          "path": "frames/outcomes_live.proton_region_upload/01-independent-frozen-pattern.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-failure-safe-desktop",
+          "path": "frames/outcomes_live.proton_region_upload/02-browser-failure-safe-desktop.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes_live.proton_region_upload/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes_live.proton_region_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T04:07:01Z"
+    },
+    {
+      "interaction": "confirm.revoke-link",
+      "desktop": "kubuntu-kde-wayland",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/kde/protonb/receipt.json",
+      "issue": 978,
+      "note": "desktop frame before masked by live evidence policy; desktop frame independent-frozen-pattern masked by live evidence policy; operationId=320d4cfc-f77e-4b10-a282-0a337cfd5505; Capture operation 320d4cfc-f77e-4b10-a282-0a337cfd5505; shareOperationId=ad7334f4-5d27-4496-be8d-fc15ac196f33; operationId=320d4cfc-f77e-4b10-a282-0a337cfd5505; historyId=b8005ea6-a07f-4ee3-a9ec-ce7a67fca2da; Retained synthetic png sha256=dbf28b144b57384a3d338158d0bca7d0ab67372b5e072f1993ed3667c524ee7a; Firefox handler restored; MIME SHA-256 checks passed; desktop frame after masked by live evidence policy; No unambiguous live geometry after waiting for confirmAction.; fixture cleanup failed: owned history and cache: RecipeBlocked; accepted settings: RecipeBlocked; owned directory: RecipeBlocked; Consolidated result F. One upload, one History UI revocation; recipient hash/browser and independent unavailable-link proof remain unproven.",
+      "host": "f44",
+      "placement": "guest",
+      "guest": "kde-wayland",
+      "destination": "proton",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes_live.proton_region_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "independent-frozen-pattern",
+          "path": "frames/outcomes_live.proton_region_upload/01-independent-frozen-pattern.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-failure-safe-desktop",
+          "path": "frames/outcomes_live.proton_region_upload/02-browser-failure-safe-desktop.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes_live.proton_region_upload/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes_live.proton_region_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T04:07:01Z"
+    }
+  ]
+}

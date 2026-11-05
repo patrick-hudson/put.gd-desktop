@@ -1,0 +1,10 @@
+{
+  "original_runtime_receipts_unchanged": true,
+  "mapping": {
+    "/home/user/s2c/accept-9": "privacy",
+    "/home/user/s2c/demo-6": "core-demo"
+  },
+  "private_archive_index": "work/s2c/evidence/archive-index.json",
+  "source": "94c2f7fae366abe426066bb4b5201ca04bf364c6",
+  "scope": "Driver safety development proof in a real Mint 22.3 Cinnamon X11 KVM guest; no real provider, credential or physical-desktop acceptance."
+}

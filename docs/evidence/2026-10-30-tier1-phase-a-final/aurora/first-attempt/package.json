@@ -1,0 +1,28 @@
+{
+  "sha256": "55e9596d31329542622ce3b341fdc677990b475f9e65c8459d89bc3e032f4322",
+  "filename": "putgd-26.1030.3203-nightly-x86_64.AppImage",
+  "format": "appimage",
+  "installedPath": "/var/home/lab/putgd-26.1030.3203-nightly-x86_64.AppImage",
+  "version": {
+    "schemaVersion": 1,
+    "version": "26.1030.3203-nightly",
+    "baseVersion": "26.1030.3203",
+    "packageVersion": "26.1030.3203~nightly",
+    "gitCommit": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+    "gitTree": "47d8ee85fb481fde7f557aff8f1c01e378f17ad3",
+    "commitCount": 3203,
+    "dirty": false,
+    "sourceProvenance": "git"
+  },
+  "installedBinarySha256": {
+    "/usr/bin/putgd": "8f4aeb72a7969a26799a01d110d533db1d3a32c35c3e8576ac21a4c6365b05a7",
+    "/usr/bin/putgd-b2-worker": "b4a129f80408a5c1c7db70c3b5bee8ab7a9d8dc09367d668dca45815b4265d8a",
+    "/usr/bin/putgd-capture": "0f8c876795a02c296000a3f271e4eccedcb164c9b03a370bd3f7300923027b8a",
+    "/usr/bin/putgd-cli": "000dd3eda16d477f9db670330eca5770a31a2820c836aaa7fd3eadbf6019f375",
+    "/usr/bin/putgd-kde-region": "bc6e39fec2f2b837fc47b42e45f468346beb25947225153aed0c2a7b5750827d",
+    "/usr/bin/putgd-launcher": "16cd129d55f6e9f2cdc5fac7fef7b3d23cfcf9e26631f9cefef6a8d251a95517",
+    "/usr/bin/putgd-record": "6ca1b86917e48d0cc31ea39c4edb6af186fe2be1d27dd8c4ef7020b4b3661b6e",
+    "/usr/bin/putgd-s3-worker": "2423e90656aa6fcc5cd05763755ac37807e9b15b83b0f914996ecf01dfbea791",
+    "/usr/bin/putgd-ui": "407d46f8b3830003418d6b57655400b7c4ed62acd3267706f173400cc946498b"
+  }
+}
