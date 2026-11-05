@@ -37,7 +37,7 @@ deadline, so its `recording_helper_timeout` still arrives: 45 s for
 `start`, `pause`, `resume`, `raise`, `overlay` and `preview`. Work that can take longer
 replies when it starts: `recording.prepare` with `state: preparing`, and
 `recording.saveCopy` and `recording.upload` with `state: exporting`; poll
-`recording.inspect` (see [recording.md](../design/recording.md#exports)). A missed wait is
+`recording.inspect` (see [recording.md](../design/recording/session-contract.md#exports)). A missed wait is
 `transport_failed`; the resident may still finish the request, so inspect before
 retrying.
 
@@ -55,7 +55,7 @@ Methods and parameters:
 
 | Method | Parameters |
 |---|---|
-| `action.invoke` | `action`: region, window, desktop, clipboard, edit, record; `edit` also accepts `source` and `path` as `editor.open`; only `record` accepts `mode`: `open` (default) or `toggle` ([recording](../design/recording.md#tray-and-shortcut)) |
+| `action.invoke` | `action`: region, window, desktop, clipboard, edit, record; `edit` also accepts `source` and `path` as `editor.open`; only `record` accepts `mode`: `open` (default) or `toggle` ([recording](../design/recording/overlay-and-review.md#tray-and-shortcut)) |
 | `upload.files` | `paths` (absolute, 1–10,000), optional `profileId`, optional `installation` (`system` or `appimage`; a file manager's client sends it and another installation's resident refuses with `installation_mismatch`). Answers within 120 s after checking every file ([file-manager-upload.md](../design/file-manager-upload.md)) |
 | `editor.open` | optional `source` region (default)/window/desktop/clipboard/file, `path` (absolute, file only) |
 | `editor.inspect`, `.submit`, `.cancel`, `.raise` | operation `id` of the open editor |
@@ -68,7 +68,7 @@ Methods and parameters:
 | `history.list` | optional limit, offset, search, category, mime, profileId, uploadStatus, localStatus, remoteStatus, from, to |
 | `history.detail`, `history.copyLink`, `history.copyImage` | history `id` |
 | `history.openLink` | history `id`; opens the stored link in the default browser as the link-ready notification does, and returns `route` (`portal` or `launcher`), `opened` and `fallbackFrom`. `link_unavailable` for a removed or expired link, `link_not_opened` when nothing could open it ([diagnostics.md](../design/diagnostics.md#opening-links-and-folders-on-the-host)) |
-| `history.preview` | history `id`; makes a missing image preview or video poster from the retained artifact or an unchanged local copy and returns `state` (`ready` or `made`), `previewPath` and `source`, or why there is none; waits up to 45 s ([recording.md](../design/recording.md#previews-made-on-selection)) |
+| `history.preview` | history `id`; makes a missing image preview or video poster from the retained artifact or an unchanged local copy and returns `state` (`ready` or `made`), `previewPath` and `source`, or why there is none; waits up to 45 s ([recording.md](../design/recording/history-posters.md#previews-made-on-selection)) |
 | `history.clear`, `cache.clear` | empty object; `cache.clear` returns `removedOperations`, `abortedUploads` and `incompleteUploads` (at most 100 `{operationId, itemId, error, reported}` entries whose multipart abort S3 refused; `reported` is true once the user was told about that upload), and `incompleteUploadNotice` when the pass kept uploads nobody was told about yet (`count`, `bytes`, `buckets`, `labels`, `providers`, `error`, `hint`, `message`); it also returns `trigger: manual`, `elapsedMs` and `finished`. The same cleanup runs on its own hourly (#202): `diagnostics.result.artifactCleanup` reports `running`, `automatic`, `intervalMs`, the `last` outcome (`trigger: automatic`, plus `more` when a pass stopped at its batch of 50 and `stopped` when a Retry or shutdown cut it short) and `incompleteUploadNotice`, the latest notice since the resident started (#226) |
 | `logs.clear` | empty object; deletes every persistent log file and starts a new one ([diagnostics.md](../design/diagnostics.md#retention)) |
 | `update.status` | empty object; the daily update check: `build` (version, kind, channel, packageTarget, supported, reason), `check`, `channelSetting`, `channel`, `enabled`, `notifies`, `checking`, `attemptedAt`, `checkedAt`, `nextCheckAt`, `result` and the last `error` ([updates.md](../design/updates.md)) |
