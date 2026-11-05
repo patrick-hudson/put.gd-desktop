@@ -9,6 +9,13 @@ missing profiles, and run physical-hardware release gates on physical machines.
 This requirement is separate from the historical results below; missing new
 rows and current-candidate evidence remain gates.
 
+## First stable acceptance, `v26.1105.3906` — 2026-11-05
+
+[Evidence](evidence/2026-11-05-v26.1105.3906-acceptance.md): on the exact draft files, the stable scan and exact-asset audit passed, the
+nightly desktop check reached 65 of 65 cells with one row from a rerun (#1214), all four native packages passed install, upgrade, removal
+and fresh install, every graded Cinnamon performance limit passed, and a two-head VM capture passed. Full History traversal wasn't measured to
+completion (#1066). Sections below this one predate this release, including gates they describe as open.
+
 ## History gallery blanking, scrolling and gap crash (#1151) — 2026-11-02
 
 [Evidence](evidence/2026-11-02-history-gallery/README.md): with `v26.1102.3796-nightly` on Mint
