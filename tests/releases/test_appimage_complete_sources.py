@@ -215,7 +215,7 @@ class ExactSourceInputs(unittest.TestCase):
                 self.assertRaisesRegex(RuntimeError, r'apparmor=4\.0-8 .*snapshot\.ubuntu\.com'):
             complete.apt_source('apparmor', '4.0-8', Path('/synthetic'))
         self.assertEqual(run.call_count, 1 + complete.SNAPSHOT_ATTEMPTS)
-        self.assertEqual(sleep.call_count, complete.SNAPSHOT_ATTEMPTS - 1)
+        self.assertEqual([call.args[0] for call in sleep.call_args_list], [20, 40, 60, 80])
 
     def test_another_publication_cannot_substitute_a_source_version(self):
         response = io.BytesIO(json.dumps({'entries': [

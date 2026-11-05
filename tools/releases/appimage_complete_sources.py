@@ -167,7 +167,8 @@ def snapshot_source(args, stamp, target):
                 time.sleep(SNAPSHOT_PAUSE_SECONDS * attempt)
         raise RuntimeError(f'apt could not download {args[-1]} from the Ubuntu snapshot at {stamp} in '
                            f'{SNAPSHOT_ATTEMPTS} attempts. See its warnings above: a failed fetch from '
-                           'snapshot.ubuntu.com is that service failing, not a missing source.')
+                           'snapshot.ubuntu.com means that service was failing; without one, the version '
+                           'is missing from that snapshot or its signature was refused.')
 
 
 def apt_source(package, version, target):
