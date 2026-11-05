@@ -19,6 +19,9 @@ import sys
 ROOT = Path(__file__).resolve().parents[2]
 SUFFIXES = ('.c', '.cc', '.cpp', '.h', '.hpp')
 INCLUDE = re.compile(r'^[ \t]*#[ \t]*include[ \t]*(?:"([^"\n]+)"|<([^>\n]+)>)')
+# Comments and raw strings, which may hold an include; ordinary strings and line
+# comments are matched so that a /* inside one doesn't open a block comment.
+NON_CODE = re.compile(r'''//[^\n]*|/\*.*?(?:\*/|\Z)|\b(?:u8|[uUL])?R"([^()\\\s]*)\(.*?\)\1"|"(?:\\.|[^"\\\n])*"?''', re.S)
 # One subdirectory per desktop or provider; each is its own module.
 SPLIT_MODULES = ('platform', 'storage')
 
@@ -75,6 +78,13 @@ TOLERATED = {
 Include = namedtuple('Include', 'file line text source target')
 
 
+def code(text):
+    """The text with block comments and raw strings blank, on the same line numbers."""
+    def blank(match):
+        return match[0] if match[0][0] == '"' or match[0].startswith('//') else ' ' + '\n' * match[0].count('\n')
+    return NON_CODE.sub(blank, text)
+
+
 def module_of(path):
     """The module of a path relative to src/."""
     parts = PurePosixPath(path).parts
@@ -101,7 +111,7 @@ def includes(src):
     found = []
     for path in sorted(p for p in src.rglob('*') if p.suffix in SUFFIXES and p.is_file()):
         relative = path.relative_to(src).as_posix()
-        for number, line in enumerate(path.read_text(errors='replace').splitlines(), 1):
+        for number, line in enumerate(code(path.read_text(errors='replace')).splitlines(), 1):
             match = INCLUDE.match(line)
             if not match:
                 continue
