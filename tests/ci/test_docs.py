@@ -102,12 +102,12 @@ class Links(Tree):
         self.assertOneProblem(self.problems({'AGENTS.md': '[x](/docs/README.md)\n'}), 'absolute link', 'relative')
 
     def test_external_code_and_fenced_targets_are_skipped(self):
-        text = ('[a](https://example.com/x.md) [b](mailto:a@example.com) `[c](missing.md)`\n\n'
+        text = ('[a](https://example.com/x.md) [b](mailto:a@example.com) `[c](missing.md)` `<a href="missing.md">`\n\n'
                 '```\n[d](missing.md)\n```\n\n~~~~\n```\n[e](missing.md)\n~~~~\n')
         self.assertEqual(self.problems({'AGENTS.md': text}), [])
 
     def test_reference_definitions_html_images_and_titles_are_links(self):
-        for text in ('[a][r]\n\n[r]: missing.md\n', '<a href="missing.md">x</a>\n', '<img src="missing.png">\n',
+        for text in ('[a][r]\n\n[r]: missing.md\n', '<a href="missing.md">x</a>\n', "<a href='missing.md'>x</a>\n", '<img src="missing.png">\n',
                      '![image](missing.png)\n', '[a](missing.md "title")\n', "[a](missing.md 'title')\n",
                      '[a](<missing.md>)\n'):
             with self.subTest(text=text):
@@ -194,10 +194,10 @@ class TopLevel(Tree):
         self.assertOneProblem(self.problems({'docs/new.md': '# New\n'}), 'docs/new.md', 'docs/<folder>/')
 
     def test_a_stub_must_link_to_its_new_location(self):
-        for stub, text in (('docs/release.md', '# Stub\n'), ('docs/verification.md', '# Stub\n\n[elsewhere](README.md)\n'),
-                           ('docs/package-repositories.md', '# Stub\n')):
-            with self.subTest(stub=stub):
-                self.assertOneProblem(self.problems({stub: text}), stub, check_docs.STUBS[stub])
+        for stub in check_docs.STUBS:
+            for text in ('# Stub\n', '# Stub\n\n[elsewhere](README.md)\n'):
+                with self.subTest(stub=stub, text=text):
+                    self.assertOneProblem(self.problems({stub: text}), stub, check_docs.STUBS[stub])
                 self.problems()
 
     def test_a_removed_stub_fails(self):

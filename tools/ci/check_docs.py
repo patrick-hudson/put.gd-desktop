@@ -51,7 +51,7 @@ ARCHIVE_DROPPED_ALLOWED = ('docs/evidence/', 'docs/history/plans/', 'docs/histor
 FENCE = re.compile(r'^\s{0,3}(```+|~~~+)')
 INLINE = re.compile(r'\]\(\s*(<[^>\n]+>|[^()\s]+(?:\([^()\s]*\)[^()\s]*)*)(?:\s+(?:"[^"]*"|\'[^\']*\'))?\s*\)')
 REFDEF = re.compile(r'^\s{0,3}\[[^\]]+\]:\s*(\S+)')
-HTML_LINK = re.compile(r'''\b(?:href|src)="([^"]+)"''')
+HTML_LINK = re.compile(r'''\b(?:href|src)=(?:"([^"]+)"|'([^']+)')''')
 HTML_ANCHOR = re.compile(r'''<[a-zA-Z][^>]*\b(?:id|name)="([^"]+)"''')
 ATX = re.compile(r'^\s{0,3}(#{1,6})\s+(.*?)\s*#*\s*$')
 SETEXT = re.compile(r'^\s{0,3}(=+|-+)\s*$')
@@ -137,8 +137,9 @@ def links(text):
             if not any(start <= match.start() < end for start, end in code):
                 target = match.group(1)
                 yield number, target[1:-1] if target.startswith('<') else target
-        for target in HTML_LINK.findall(line):
-            yield number, target
+        for match in HTML_LINK.finditer(line):
+            if not any(start <= match.start() < end for start, end in code):
+                yield number, match.group(1) or match.group(2)
         match = REFDEF.match(line)
         if match:
             yield number, match.group(1)
