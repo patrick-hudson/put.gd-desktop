@@ -44,15 +44,8 @@ include(cmake/Recording.cmake)
 include(cmake/B2.cmake)
 # The crash handler and debug splitting for every product binary.
 include(cmake/ProductBinaries.cmake)
-# File-manager menu plugins (#1105): AUTO builds each whose headers pkg-config
-# finds; package builds set ON. Before packaging/linux, which installs them.
-foreach(file_manager NAUTILUS CAJA PEONY)
-  set(PUTGD_${file_manager}_PLUGIN AUTO CACHE STRING "Build the ${file_manager} menu plugin: AUTO, ON or OFF")
-  set_property(CACHE PUTGD_${file_manager}_PLUGIN PROPERTY STRINGS AUTO ON OFF)
-endforeach()
-if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
-  add_subdirectory(src/filemanager)
-endif()
+# The file-manager menu plugins.
+include(cmake/FileManagerPlugins.cmake)
 # Desktop integration and package contents.
 add_subdirectory(packaging/linux)
 option(PUTGD_PHYSICAL_BENCHMARKS "Build opt-in physical desktop benchmark drivers" OFF)
