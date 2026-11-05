@@ -8,7 +8,7 @@ scripts. It excludes working-tree modifications, untracked/ignored files, agent
 context, test/lab artifacts, plans, evidence, and credentials.
 
 Use the normal system C++20 toolchain, Qt 6.4.2+, QtKeychain, CMake presets, Ninja,
-and the pinned official AWS SDK described in `docs/build.md`. Provision the SDK
+and the pinned official AWS SDK described in `docs/release/build.md`. Provision the SDK
 separately; no dependencies or substitute compiler/Qt distribution are bundled.
 
 An extracted archive has no Git checkout. Configure it with `BUILD_TESTING=OFF`

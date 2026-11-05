@@ -17,3 +17,4 @@ Everyday use of the app, its failures and its storage destinations.
 - [Structured failures and recovery](errors.md): every failure code and what to do about it.
 - [S3 adapter](s3.md): S3 and S3-compatible destinations, addressing, transfers and version safeguards.
 - [Backblaze B2 destination](b2.md): setting up and using B2 through its native API.
+- [Proton Drive](proton-drive.md): the provider, its build checks, release gates and lab sessions.

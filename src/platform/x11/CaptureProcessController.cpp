@@ -10,6 +10,7 @@
 #include <QImageReader>
 #include <QCryptographicHash>
 #include <QFile>
+#include <QThread>
 #include <QUuid>
 #include <fcntl.h>
 #include <sys/stat.h>

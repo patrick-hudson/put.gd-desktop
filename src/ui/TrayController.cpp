@@ -4,7 +4,7 @@
 #include "app/FileManagerIntegration.h"
 #include "Ui.h"
 #include "Theme.h"
-#include "ByteSize.h"
+#include "core/ByteSize.h"
 #include "core/Log.h"
 #include "platform/HostOpen.h"
 #include "core/HostEnvironment.h"

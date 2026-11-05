@@ -28,7 +28,7 @@
      "placement": "guest"
     }
    ],
-   "notes": "Planned native/VM placements; inventory does not establish acceptance or golden availability. The cinnamon-x11 golden is Linux Mint 22.3 (docs/vm-lab.md, First Cinnamon golden disk)."
+   "notes": "Planned native/VM placements; inventory does not establish acceptance or golden availability. The cinnamon-x11 golden is Linux Mint 22.3 (docs/lab/vm-lab.md, First Cinnamon golden disk)."
   },
   {
    "id": "ubuntu-gnome-wayland",

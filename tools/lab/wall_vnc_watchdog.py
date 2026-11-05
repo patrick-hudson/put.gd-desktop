@@ -6,7 +6,7 @@ PipeWire screencast stream that KWin provides through the portal. On k72 an
 i915 GPU hang reset KWin's GL context on 2026-10-20, and KWin's stream stopped
 delivering frames. w0vncserver doesn't notice a stream that stops or disconnects,
 so it served its last frame indefinitely. This watchdog runs next to it in the
-desktop session (`wall-vnc-watchdog.service`, see docs/remote-builders.md):
+desktop session (`wall-vnc-watchdog.service`, see docs/lab/remote-builders.md):
 
 - It holds one shared, view-only RFB connection to the server and asks for
   incremental updates, at most one every --poll seconds. A live Plasma desktop

@@ -52,13 +52,13 @@ class Selection(unittest.TestCase):
         for path in ('packaging/linux/CMakeLists.txt', 'tools/releases/collect.py', 'tools/proton/runtime-lock.json',
                      'cmake/Proton.cmake', 'CMakeLists.txt', 'CMakePresets.json', 'LICENSE',
                      'THIRD_PARTY_NOTICES.md', 'integrations/gnome/extension.js', '.github/workflows/ci.yml',
-                     'tools/ci/sdk_cache.py', 'tools/verify_dependencies.py', 'docs/build.md',
-                     'docs/proton-drive.md', '.gitignore'):
+                     'tools/ci/sdk_cache.py', 'tools/verify_dependencies.py', 'docs/release/build.md',
+                     'docs/user/proton-drive.md', '.gitignore'):
             with self.subTest(path=path):
                 self.assertSelects([path], True, True)
 
     def test_core_app_and_their_tests_select_the_sanitizer_job(self):
-        for path in ('src/core/Settings.cpp', 'src/app/OperationService.cpp', 'tests/unit/test_settings.cpp',
+        for path in ('src/core/Settings.cpp', 'src/app/OperationService.cpp', 'src/ipc/UiControl.cpp', 'tests/unit/test_settings.cpp',
                      'tests/integration/test_storage_locations.cpp', 'tests/fixtures/U2Fixtures.h',
                      'CMakeLists.txt', 'CMakePresets.json', 'cmake/Proton.cmake', '.github/workflows/ci.yml',
                      'tools/ci/sdk_cache.py'):

@@ -3,7 +3,7 @@
 The Python 3.12+ helper uses the official MCP SDK over stdio. Each tool validates its
 arguments and calls the production `putgd-cli` as an argument vector. It owns no
 capture/storage pipeline, credentials, model, TCP listener or shell tool. The resident
-app must already run in the same user session. Start it following [build.md](../build.md).
+app must already run in the same user session. Start it following [build.md](../release/build.md).
 Capabilities state actual adapter availability; the helper cannot enable a missing backend.
 
 From the repository root, install the locked helper with ordinary uv:

@@ -2,7 +2,7 @@
 #include <QByteArray>
 #include <QJsonObject>
 namespace putgd::crash {
-// Parses the "putgd-crash<TAB>..." lines CrashHandler writes (docs/diagnostics.md)
+// Parses the "putgd-crash<TAB>..." lines CrashHandler writes (docs/design/diagnostics.md)
 // into {process, pid, thread, version, signal, signalName, code, faultAddress,
 // pc, time, frames[{index, address, module, offset}], modules[{index, loadBias,
 // buildId, file}], complete}. Addresses are "0x..." strings; `offset` is the

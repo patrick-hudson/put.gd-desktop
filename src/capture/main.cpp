@@ -1,10 +1,10 @@
 #include "platform/x11/X11SourceAdapter.h"
 #include "platform/x11/X11NativeSnapshot.h"
-#include "platform/x11/CaptureControl.h"
+#include "ipc/CaptureControl.h"
 #include "platform/x11/CaptureCursorPolicy.h"
 #include <QLibrary>
 #include "platform/x11/CaptureArtifactLease.h"
-#include "ui/StdioDevice.h"
+#include "ipc/StdioDevice.h"
 #include "ui/Theme.h"
 #include "core/BuildInfo.h"
 #include <QApplication>

@@ -1,4 +1,4 @@
-# The action SHAs in .github/workflows (#420, docs/ci.md "Dependency updates").
+# The action SHAs in .github/workflows (#420, docs/release/ci.md "Dependency updates").
 # Renovate runs with the workflow token, which cannot change workflow files, so
 # Dependabot keeps these current. Container digests, actionlint and the Renovate
 # image inside the workflows are not actions and stay manual (#507).

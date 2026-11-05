@@ -2,7 +2,7 @@
 #include "FileDialog.h"
 #include "ViewState.h"
 #include "Ui.h"
-#include "ByteSize.h"
+#include "core/ByteSize.h"
 #include <QListWidget>
 #include <QAccessibleWidget>
 #include <QCursor>

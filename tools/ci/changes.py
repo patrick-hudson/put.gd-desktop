@@ -34,12 +34,12 @@ PACKAGING_PREFIXES = ('packaging/', 'tools/releases/', 'tools/proton/', 'tools/c
 PACKAGING_FILES = frozenset({'CMakeLists.txt', 'CMakePresets.json', 'LICENSE',
                              'THIRD_PARTY_NOTICES.md', '.gitignore',
                              'tools/verify_dependencies.py',
-                             'docs/build.md', 'docs/proton-drive.md'})
+                             'docs/release/build.md', 'docs/user/proton-drive.md'})
 
 
 # The core and application libraries, their C++ tests and the build definitions
 # that compile them. The clang ASan/UBSan job runs only for these.
-SANITIZER_PREFIXES = ('src/core/', 'src/app/', 'tests/unit/', 'tests/integration/',
+SANITIZER_PREFIXES = ('src/core/', 'src/app/', 'src/ipc/', 'tests/unit/', 'tests/integration/',
                       'tests/fixtures/', 'cmake/', 'tools/ci/')
 SANITIZER_FILES = frozenset({'CMakeLists.txt', 'CMakePresets.json', '.github/workflows/ci.yml'})
 

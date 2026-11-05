@@ -38,7 +38,7 @@ commit and job IDs are saved in `source-ci-provenance` for 90 days.
 | `docs/` (except below), `README.md`, `AGENTS.md`, `CLAUDE.md` | yes | no | no |
 | Lab, MCP and maintenance Python; `tests/ci`, `tests/releases`, `tests/maintenance`; Python and YAML directly under `tests/desktop` and `tests/performance`; `.github/renovate.json`, `.github/dependabot.yml` | yes | no | no |
 | Anything else, including `src/`, C++ tests, schemas and new directories | yes | yes | no |
-| `packaging/`, `tools/releases/`, `tools/proton/`, `tools/ci/`, `cmake/`, `integrations/`, `.github/workflows/`, root CMake files, `LICENSE`, `THIRD_PARTY_NOTICES.md`, `.gitignore`, `docs/build.md`, `docs/proton-drive.md` | yes | yes | yes |
+| `packaging/`, `tools/releases/`, `tools/proton/`, `tools/ci/`, `cmake/`, `integrations/`, `.github/workflows/`, root CMake files, `LICENSE`, `THIRD_PARTY_NOTICES.md`, `.gitignore`, `docs/release/build.md`, `docs/user/proton-drive.md` | yes | yes | yes |
 
 Unknown paths select the build by default. The last row lists every input to the
 package builders and the curated source archive.
@@ -46,7 +46,7 @@ package builders and the curated source archive.
 A pull request selects the union of its rows, so a documentation edit pushed to a
 code pull request re-runs that pull request's whole build. Keep documentation in
 its own pull request (see `AGENTS.md`): a documentation-only pull request runs
-`contracts` alone, unless it touches `docs/build.md` or `docs/proton-drive.md`.
+`contracts` alone, unless it touches `docs/release/build.md` or `docs/user/proton-drive.md`.
 
 The **sanitizers** job is selected separately: by `src/core/`, `src/app/`, the C++
 sources under `tests/unit/`, `tests/integration/` and `tests/fixtures/`, and by
@@ -245,7 +245,7 @@ reads its Qt version from the lock, so a Qt update needs no workflow change.
 **Approval.** Updates that need a decision wait on the dependency dashboard, the
 issue titled "Dependency updates (Renovate)": Qt and FFmpeg minor and major
 releases, and every Proton helper update. A Proton helper update also needs its
-notices and corresponding-source catalog rebuilt (docs/proton-drive.md), which
+notices and corresponding-source catalog rebuilt (docs/user/proton-drive.md), which
 Renovate cannot do. Tick an update on the dashboard and the next run opens it. At
 most five update pull requests are open at once.
 

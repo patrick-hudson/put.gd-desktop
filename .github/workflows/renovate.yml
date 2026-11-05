@@ -1,5 +1,5 @@
 name: Renovate
-# Self-hosted Renovate (#420; docs/ci.md, "Dependency updates"). Weekly, or on
+# Self-hosted Renovate (#420; docs/release/ci.md, "Dependency updates"). Weekly, or on
 # demand, it opens version-update pull requests against nightly from
 # .github/renovate.json, with this workflow's own token: CI on those pull
 # requests starts after a maintainer approves its workflows, and Renovate cannot

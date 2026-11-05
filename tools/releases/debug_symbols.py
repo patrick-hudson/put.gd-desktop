@@ -8,7 +8,7 @@ binary in a build tree against its .debug file and against the binary the
 package installs (same GNU build ID), then writes debug-symbols-<label>.tar and
 its manifest. `combine` checks every staged build and writes one tar.zst laid
 out like a debuginfod cache: .build-id/<2 hex>/<rest>.debug, plus manifest.json
-naming each build's programs and build IDs. See docs/diagnostics.md.
+naming each build's programs and build IDs. See docs/design/diagnostics.md.
 
 The builds keep zlib-compressed debug sections, which keeps the staged files
 and the jobs' artifacts small. The asset decompresses them, moves the DWARF

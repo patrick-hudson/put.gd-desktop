@@ -37,7 +37,7 @@ endif()
 
 find_package(Threads REQUIRED)
 # Release builds keep debug information, split out of each product binary into
-# <file>.debug before anything hashes or installs it (#124, docs/diagnostics.md).
+# <file>.debug before anything hashes or installs it (#124, docs/design/diagnostics.md).
 # AUTO splits Release builds; ON also splits other build types (a development
 # build with the crash trigger, to rehearse symbolization); OFF never splits.
 set(PUTGD_SPLIT_DEBUG "AUTO" CACHE STRING "Split debug information into <binary>.debug: AUTO (Release), ON or OFF")
@@ -269,7 +269,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     src/platform/x11/X11CompositorSettle.cpp src/platform/x11/X11SourceAdapter.cpp src/platform/x11/NativeRegionOverlay.cpp
     src/ui/RegionOverlay.cpp src/ui/RegionSelector.h)
   target_link_libraries(putgd_x11 PUBLIC putgd_app putgd_x11_listeners putgd_visual Qt6::Widgets PRIVATE PkgConfig::PUTGD_XCB PkgConfig::PUTGD_XCB_DAMAGE Qt6::DBus)
-  add_library(putgd_capture_control STATIC src/platform/x11/CaptureControl.cpp)
+  add_library(putgd_capture_control STATIC src/ipc/CaptureControl.cpp)
   target_include_directories(putgd_capture_control PUBLIC src)
   target_link_libraries(putgd_capture_control PUBLIC Qt6::Core putgd_build_options)
   add_library(putgd_x11_native_snapshot STATIC src/platform/x11/X11NativeSnapshot.cpp)
@@ -328,7 +328,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   find_package(Threads REQUIRED)
   add_library(putgd_kde STATIC src/platform/kde/KWinTransfer.cpp src/platform/kde/KWinCapture.cpp
     src/platform/kde/KdeShortcuts.cpp src/platform/kde/KdeShortcutNormalization.cpp
-    src/platform/kde/DataControlClipboard.cpp src/platform/wayland/DataControlSourceAdapter.cpp
+    src/platform/wayland/DataControlClipboard.cpp src/platform/wayland/DataControlSourceAdapter.cpp
     src/platform/kde/KdeRegionOverlay.cpp src/platform/kde/KdeSourceAdapter.cpp src/platform/kde/KdeOutputs.cpp
     "${protocol_dir}/ext-data-control-v1-client-protocol.h" "${protocol_dir}/ext-data-control-v1-protocol.c"
     "${protocol_dir}/wlr-data-control-unstable-v1-client-protocol.h" "${protocol_dir}/wlr-data-control-unstable-v1-protocol.c"
@@ -346,7 +346,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     endif()
   endif()
 endif()
-add_library(putgd_ui_control STATIC src/app/UiControl.cpp src/ui/StdioDevice.cpp)
+add_library(putgd_ui_control STATIC src/ipc/UiControl.cpp src/ipc/StdioDevice.cpp)
 target_include_directories(putgd_ui_control PUBLIC src)
 target_link_libraries(putgd_ui_control PUBLIC Qt6::Core putgd_build_options)
 add_library(putgd_ui_supervisor STATIC src/app/UiProcessController.cpp)

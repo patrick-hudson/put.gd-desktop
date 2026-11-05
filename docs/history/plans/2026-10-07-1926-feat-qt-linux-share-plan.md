@@ -763,7 +763,7 @@ Verification: Release evidence records every required profile/case, package inst
 | Live S3 smoke | Explicit synthetic fixture | PUT/ACL, unauthenticated public URL bytes, guarded fixture deletion and recorded effect | General capture correctness or instantaneous cache invalidation |
 
 Implementation checkpoint (2026-10-13): the CMake presets, U6 lab runner and
-native/AppImage release validators now exist. Follow [build](../../build.md),
+native/AppImage release validators now exist. Follow [build](../../release/build.md),
 [VM lab](../../lab/vm-lab.md) and [release](../../release/release.md) for their actual commands.
 Tool availability is not acceptance: [verification](../../testing/verification.md) records
 which source/package identities and cases passed, and which U9/U10 gates remain

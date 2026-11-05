@@ -56,7 +56,7 @@ python3 tools/releases/portable_appimage.py --stage "$stage" --output-dir "$PWD/
   --license-source build/dependencies/appimage/layershell \
   --license-source build/dependencies/appimage/ffmpeg \
   --license-source build/dependencies/appimage/mimalloc
-# The image's own putgd-record must run the lab diagnostics (docs/recording.md)
+# The image's own putgd-record must run the lab diagnostics (docs/design/recording.md)
 # on every export format: headless, on the extracted image, nothing captured.
 images=("$PWD"/build/appimage-output/*.AppImage)
 if [ "${#images[@]}" -ne 1 ] || [ ! -f "${images[0]}" ]; then echo 'Expected one built AppImage' >&2; exit 1; fi

@@ -1,5 +1,5 @@
 #pragma once
-#include "app/UiControl.h"
+#include "ipc/UiControl.h"
 #include "UiSession.h"
 #include "Appearance.h"
 #include <QPointer>

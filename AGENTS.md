@@ -66,7 +66,7 @@ record, not a work list. Preserve user-approved choices and explicit non-goals;
 implement changes in dependency order.
 
 Use `cmake --preset dev`, `cmake --build --preset dev`, and `ctest --preset dev`.
-See `docs/build.md` for SDK provisioning and sanitizer builds. Keep AWS headers under
+See `docs/release/build.md` for SDK provisioning and sanitizer builds. Keep AWS headers under
 `src/storage/s3/`; shared core, GUI, history, and platform contracts remain provider-neutral.
 Offscreen tests prove widget/core behavior only. Real desktop support requires graphical
 acceptance evidence for each declared compositor. Never report a mock as desktop proof.
@@ -98,8 +98,8 @@ Keep documentation out of code pull requests: changes to `docs/`, `README.md`,
 `AGENTS.md` and `CLAUDE.md` go in a separate documentation-only pull request,
 which CI checks with `contracts` alone. A doc edit pushed to a code pull request
 re-runs its whole build. Open the documentation pull request alongside its code
-pull request, link the two, and merge it after the code. `docs/build.md` and
-`docs/proton-drive.md` are package inputs and select every job anyway.
+pull request, link the two, and merge it after the code. `docs/release/build.md` and
+`docs/user/proton-drive.md` are package inputs and select every job anyway.
 Promote `nightly` to `main` only through `tools/releases/promote.py --open` (a `release:
 promote nightly YY.MDD.N` pull request from `nightly`, merged with a merge commit);
 its merge tags the stable `vYY.MDD.N` and stages its draft. There is no candidate
@@ -125,7 +125,7 @@ Agent source, workflow and acceptance maps are in `docs/automation/agents.md`. T
 setup and its separate integration suite. It forwards only to the production CLI.
 Inspect actual capabilities/configuration before acting; retain operation IDs and prepare
 exact history IDs/effects before acknowledging deletion. Use `docs/lab/vm-lab.md`
-and `docs/build.md` for lab and package commands, and `docs/testing/verification.md`
+and `docs/release/build.md` for lab and package commands, and `docs/testing/verification.md`
 for observed acceptance and blocked gates. Headless parity or an earlier partial
 walkthrough cannot establish current desktop acceptance.
 

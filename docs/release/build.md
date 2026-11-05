@@ -19,7 +19,7 @@ The last line builds the optional `putgd-record` screen-recording helper
 (GStreamer >= 1.24, FFmpeg libraries >= 6.1; Fedora: `gstreamer1-devel
 gstreamer1-plugins-base-devel ffmpeg-free-devel`). Without them CMake reports
 `putgd-record not built` and the resident answers `recording_helper_missing`.
-See [recording](recording.md).
+See [recording](../design/recording.md).
 
 `liblayershellqtinterface-dev` (Qt 6.5+ distributions) enables the native KDE
 Plasma/Wayland region selector, which Edit & upload also uses. CMake finds it
@@ -137,7 +137,7 @@ Release builds compile with `-g` and split each product binary's debug informati
 into `<binary>.debug` beside it in the build tree (`PUTGD_SPLIT_DEBUG`: `AUTO`, the
 default, splits Release builds; `ON` also splits Debug builds; `OFF` never splits;
 it needs `objcopy`). Packages install only the stripped binaries; the release
-publishes the `.debug` files by build ID (see [diagnostics.md](diagnostics.md)).
+publishes the `.debug` files by build ID (see [diagnostics.md](../design/diagnostics.md)).
 Development builds also get the test-only crash trigger (`PUTGD_CRASH_TRIGGER`,
 `PUTGD_TEST_CRASH=<process>:<kind>[:<delay ms>]`); a Release build or one with
 `PUTGD_RELEASE_TAG` refuses it.
@@ -159,8 +159,8 @@ PUT/DELETE header serialization passed. Release also built with `BUILD_TESTING=O
 and contains no QtTest target. ASan/UBSan contract tests passed outside the restricted
 process sandbox; inside that sandbox LeakSanitizer could not inspect its own threads.
 Thread-checking setup and dependency instrumentation are documented in
-[thread-sanitizer.md](thread-sanitizer.md). Current observed results are recorded
-in [verification.md](verification.md).
+[thread-sanitizer.md](../testing/thread-sanitizer.md). Current observed results are recorded
+in [verification.md](../testing/verification.md).
 The S3 integration tests use an isolated local HTTP fixture with synthetic keys;
 keychain tests use an isolated D-Bus protocol peer or an unavailable service.
 They do not contact AWS or read the user's secret store. The four hosted jobs
@@ -179,10 +179,10 @@ Network remains a build dependency for the CLI, compatibility tests and lazy S3
 module; non-Linux builds retain Qt local sockets. The native IPC contracts join
 the ordinary `ctest --preset dev` run and its existing CI JUnit artifact. Physical
 Cinnamon RSS measurements use the applicable
-[acceptance-matrix memory gates](acceptance-matrix.md) and the
-[cold-family observer](../tests/performance/observe_cold_family.py) /
-[UI-process observer and evaluator](../tests/performance/bench_ui_process.py), with the
-[earlier measurement record](history/testing-memory.md) retained for context.
+[acceptance-matrix memory gates](../testing/acceptance-matrix.md) and the
+[cold-family observer](../../tests/performance/observe_cold_family.py) /
+[UI-process observer and evaluator](../../tests/performance/bench_ui_process.py), with the
+[earlier measurement record](../history/testing-memory.md) retained for context.
 Headless CI is not a physical memory measurement.
 
 Proton-enabled Linux x86-64 builds additionally provision the private runtime:
@@ -196,5 +196,5 @@ ctest --preset dev
 
 Use the same bundle option with Release when packaging. Provisioning is explicit;
 CMake does not fetch it. Users receive the executable in the package and need no
-separate CLI/runtime installation. See [Proton Drive](proton-drive.md) for the
+separate CLI/runtime installation. See [Proton Drive](../user/proton-drive.md) for the
 account, sharing, unsupported deletion and current acceptance limits.

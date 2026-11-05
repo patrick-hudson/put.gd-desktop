@@ -15,7 +15,7 @@ from release_identity import calendar_base
 
 EXACT_PATHS = frozenset({
     'tools/releases/native_metadata.py', 'CMakeLists.txt', 'CMakePresets.json', 'LICENSE', 'THIRD_PARTY_NOTICES.md', '.gitignore',
-    'docs/build.md', 'docs/proton-drive.md', 'tools/verify_dependencies.py', 'tools/releases/provision-sdk.sh',
+    'docs/release/build.md', 'docs/user/proton-drive.md', 'tools/verify_dependencies.py', 'tools/releases/provision-sdk.sh',
     'tools/releases/build-appimage.sh', 'tools/releases/provision-appimage.py',
     'tools/releases/portable_appimage.py', 'tools/releases/appimage_notices.py',
     'tools/releases/appimage_update.py', 'tools/releases/appimage_diagnostics.py',
@@ -146,7 +146,7 @@ and credentials are excluded. Proton provisioning checks are retained as rebuild
 inputs. Dependencies and binary build outputs are not bundled.
 
 Install the normal system C++20, CMake 3.24+, Ninja, Qt 6.4.2+, QtKeychain, and
-Linux development packages listed in `docs/build.md`. Keep Qt dynamically linked
+Linux development packages listed in `docs/release/build.md`. Keep Qt dynamically linked
 to distribution libraries. Obtain the pinned official AWS SDK and verify its
 source and submodules with `tools/verify_dependencies.py` before building it.
 The documented default SDK install is `build/sdk`; `tools/releases/provision-sdk.sh`
@@ -173,7 +173,7 @@ After provisioning, append `-DPUTGD_BUNDLE_PROTON=ON` to the configure command
 below to include Proton. This runtime targets Linux x86-64 only; other targets
 leave the option off. No separate Bun/Node installation is required by packaged
 users. Proton setup requires a browser and a working desktop keychain; see
-`docs/proton-drive.md`.
+`docs/user/proton-drive.md`.
 
 After provisioning the SDK, run these commands from the extracted archive root:
 
@@ -192,7 +192,7 @@ cmake --build --preset release
 If using an existing SDK elsewhere, additionally set `CMAKE_PREFIX_PATH`,
 `PUTGD_AWS_RUNTIME_DIR` (its library directory), and `PUTGD_AWS_SOURCE_DIR`
 (its verified source directory including component licenses), as described in
-`docs/build.md`. Application test and lab sources are omitted, so leave `BUILD_TESTING=OFF`,
+`docs/release/build.md`. Application test and lab sources are omitted, so leave `BUILD_TESTING=OFF`,
 `PUTGD_LAB_FIXTURE=OFF`, and `PUTGD_PHYSICAL_BENCHMARKS=OFF`.
 
 This archive has no Git checkout. These flags provide supplied provenance;

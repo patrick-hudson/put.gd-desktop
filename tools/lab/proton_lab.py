@@ -9,8 +9,8 @@ secret-service collection under `ch.proton.drive/putgd` and the reference in
 ~/putgd-lab/locks/proton-registry.json. Every refresh rotates its refresh token,
 so one user at a time holds the builder's Proton lock
 (`desktop_lock.py ... --resource proton`): the lab profile's app, a check, or a
-VM borrowing the session through `lend`. The rules are in docs/proton-drive.md
-("Lab sessions") and docs/remote-builders.md.
+VM borrowing the session through `lend`. The rules are in docs/user/proton-drive.md
+("Lab sessions") and docs/lab/remote-builders.md.
 
   proton_lab.py status
   proton_lab.py install-app APPIMAGE|DEB
@@ -814,7 +814,7 @@ def keychain(layout):
     write_registry(layout, registry)
     if not writable:
         raise LabFailure('The default secret-service collection refused a synthetic entry (keychain_unavailable): '
-                         'create or unlock a default collection first; see docs/proton-drive.md')
+                         'create or unlock a default collection first; see docs/user/proton-drive.md')
     return registry['keychain']
 
 

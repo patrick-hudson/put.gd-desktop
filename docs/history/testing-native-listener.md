@@ -78,7 +78,7 @@ Start from the exact candidate commit, not a newer documentation commit or an
 existing binary with a matching version label. Preserve the commit, tree, count,
 source archive SHA256, build manifest and hashes of the resident, CLI, UI helper,
 capture helper and S3 module. Record compiler, Qt, SDK, kernel and compositor.
-Use the normal presets and the pinned official SDK from [build.md](../build.md).
+Use the normal presets and the pinned official SDK from [build.md](../release/build.md).
 There are no new dependencies in this experiment.
 
 ```sh

@@ -1,7 +1,7 @@
 #include "ImageJob.h"
 #include "ImageFormat.h"
 #include "BuildInfo.h"
-#include "app/UiControl.h"
+#include "ipc/UiControl.h"
 #include <QBuffer>
 #include <QCoreApplication>
 #include <QCryptographicHash>

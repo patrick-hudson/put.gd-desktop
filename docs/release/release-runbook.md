@@ -118,7 +118,7 @@ requires its exact-source production rebuild receipt; nightly collection may omi
 that expensive rebuild. For a nightly rehearsal without that receipt, the first
 run retains `sources/source-archive.json` from `release-builds.json` and reports
 the missing rebuild. With the standard pinned SDK already provisioned (see
-[Build](../build.md)), build the downloaded source and rerun in a new directory:
+[Build](build.md)), build the downloaded source and rerun in a new directory:
 
 ```sh
 audit_output=/short/private/exact-audit

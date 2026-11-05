@@ -220,7 +220,7 @@ private slots:
   QCOMPARE(read(again["path"].toString()),QByteArray("the user's own file"));QVERIFY(settled["backup"].isNull());QCOMPARE(settled["installed"].toObject()["backupRemoved"].toBool(),false);
  }
  // #412: the new version didn't start, so the user moved the backup back
- // (docs/updates.md, "If the new version won't start"). The old version's
+ // (docs/design/updates.md, "If the new version won't start"). The old version's
  // next start forgets the install instead of waiting for a restart.
  void forgetsAnUpdateWhoseBackupWasMovedBack() {
   QTemporaryDir dir;const auto path=dir.filePath("putgd-0.1.1-nightly.800-x86_64.AppImage");const auto old=elfImage(nightly.toUtf8(),"800");write(path,old);

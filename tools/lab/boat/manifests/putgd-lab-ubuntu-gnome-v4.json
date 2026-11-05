@@ -38,7 +38,7 @@
     "unexplainedCtestFailure": false
   },
   "embeddedPreparationManifestSha256": "fb0c880e9aa9df660039cdc5580e56ac5ed8aa357451f1206eeb50be5876d4f2",
-  "evidence": "docs/evidence/2026-10-30-boat-snapshots/README.md",
+  "evidence": "https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-30-boat-snapshots/README.md",
   "fastScratch": {
     "base": "/dev/shm",
     "environment": "PUTGD_CI_TMPDIR",

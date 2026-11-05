@@ -225,7 +225,7 @@ print(json.dumps(dict(pid=p.pid,start=Path('/proc/%d/stat'%p.pid).read_text().rs
 # Fedora's updates-archive has broken this way (#1206) and is not needed for
 # these tools. Only then, install them with dnf on a /usr overlay, which lasts
 # until the next reboot; the sudo rule does not cover dnf, so this uses the
-# standard guest password (docs/remote-golden-images.md).
+# standard guest password (docs/lab/remote-golden-images.md).
 ATOMIC_TOOLS = '''set -eu
 sudo -n systemctl stop uupd.service
 sudo -n systemctl disable --now uupd.timer

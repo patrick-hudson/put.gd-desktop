@@ -38,7 +38,7 @@ notice; s2n-tls uses Apache-2.0. The SDK and CRT libraries also contain cJSON (M
 aws-sdk-cJSON-LICENSE), TinyXML-2 (Zlib, aws-sdk-TinyXML2-LICENSE), libcbor (MIT,
 aws-crt-cpp-crt-aws-c-common-THIRD-PARTY-LICENSES) and xxHash (BSD-2-Clause,
 aws-crt-cpp-crt-aws-checksums-xxHash-LICENSE). Rebuild the pinned official
-SDK following docs/build.md, update the lock deliberately, and rebuild the DEB to
+SDK following docs/release/build.md, update the lock deliberately, and rebuild the DEB to
 update these libraries. No compiler or Qt runtime is bundled.
 
 The ext-data-control-v1, wlr-data-control-unstable-v1 and zkde-screencast-unstable-v1

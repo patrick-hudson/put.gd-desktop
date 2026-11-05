@@ -1,7 +1,7 @@
 #pragma once
-#include "app/OperationService.h"
+#include "core/SourceAdapter.h"
 #include "KWinCapture.h"
-#include "DataControlClipboard.h"
+#include "platform/wayland/DataControlClipboard.h"
 #include "KdeShortcuts.h"
 #include "KdeRegionOverlay.h"
 #include "KdeOutputs.h"

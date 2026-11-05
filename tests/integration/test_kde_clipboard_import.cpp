@@ -1,4 +1,4 @@
-#include "platform/kde/DataControlClipboard.h"
+#include "platform/wayland/DataControlClipboard.h"
 #include "../fixtures/ImagePluginMappings.h"
 #include <QtTest>
 #include <QSocketNotifier>

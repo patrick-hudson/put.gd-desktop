@@ -1,7 +1,7 @@
 # Testing
 
 Build and run repository tests with `cmake --preset dev`, `cmake --build --preset dev`,
-and `ctest --preset dev`. See [build.md](../build.md) for pinned SDK provisioning and
+and `ctest --preset dev`. See [build.md](../release/build.md) for pinned SDK provisioning and
 sanitizer builds. Qt offscreen tests prove core/widget contracts; isolated Xvfb checks
 prove X11 protocol behavior. Neither establishes real Cinnamon or Wayland support.
 
@@ -187,7 +187,7 @@ same expression.
 
 Repeat the affected sanitizer contracts with
 `payload_contract|archive_contract|upload_naming_contract|settings_contract|operations_contract|gui_settings|gui_history_view|collision_policy_integration`
-as the CTest `-R` expression, using the ASan/UBSan settings in [build.md](../build.md)
+as the CTest `-R` expression, using the ASan/UBSan settings in [build.md](../release/build.md)
 and the instrumented Qt environment in [thread-sanitizer.md](thread-sanitizer.md).
 Keep separate JUnit/logs per attempt; a prior failure remains evidence even when
 the final source passes. Native UI witnesses and the exact controlled inputs are
