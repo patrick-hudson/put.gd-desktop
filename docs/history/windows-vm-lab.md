@@ -228,7 +228,7 @@ Repeat with another fresh run path. Retain the overlay while investigation is
 active; once the campaign is complete, export and verify its evidence and retire
 the stopped overlay with `windows.py cleanup --vm RUN --evidence-manifest MANIFEST`.
 The completion manifest and refusal rules are in
-[the Linux lab lifecycle guide](../lab/vm-lab.md#retire-completed-overlays). Cleanup keeps
+[the Linux lab lifecycle guide](../lab/vm-lab/retire-overlays.md#retire-completed-overlays). Cleanup keeps
 all witnesses, results, firmware/TPM metadata and sealed bases, removing only the
 unreferenced test disk. Use `--dry-run` before applying retirement.
 Stock Windows power settings can blank an idle console. Wake it with the helper

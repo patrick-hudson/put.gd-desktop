@@ -282,7 +282,7 @@ replaces Fedora's `noopenh264` placeholder. Recommends do not replace an install
 conflicting placeholder: Fedora recording needs the explicit command
 `sudo dnf install openh264 gstreamer1-plugin-openh264`. The one-line installer
 runs that codec step when the Cisco repository is enabled; otherwise it prints
-the enable-then-install commands (see [codec setup](../design/recording.md#packages-and-codecs)).
+the enable-then-install commands (see [codec setup](../design/recording/packages-and-codecs.md#packages-and-codecs)).
 Each DEB therefore installs only
 on the release it was built for: the Ubuntu 24.04 and 26.04 DEBs need
 `libavcodec60` and `libavcodec62`, which Debian 13 does not ship, so Debian 13

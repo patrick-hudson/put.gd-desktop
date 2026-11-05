@@ -317,4 +317,4 @@ restart recovery. Synthetic screenshots of the themed window are produced by
 `putgd-ui-catalog` (`20-`–`25-editor-*.png`). Offscreen results are not
 desktop acceptance. Graphical, memory and MCP evidence is in the
 [2026-10-17 receipt](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-17-issue51-edit-and-upload.md), and the
-lab drivers are described in the [VM lab guide](../lab/vm-lab.md#editor-acceptance-drivers).
+lab drivers are described in the [VM lab guide](../lab/vm-lab/input-and-evidence.md#editor-acceptance-drivers).
