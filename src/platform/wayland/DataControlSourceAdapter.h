@@ -1,6 +1,6 @@
 #pragma once
 #include "core/SourceAdapter.h"
-#include "platform/kde/DataControlClipboard.h"
+#include "DataControlClipboard.h"
 #include <QObject>
 namespace putgd {
 // A Wayland desktop with no native adapter (COSMIC, Budgie's labwc session). The
