@@ -42,6 +42,14 @@ class SourceArchive(unittest.TestCase):
             if path.is_file():
                 self.assertTrue(source_archive._included(path.relative_to(root).as_posix()), path.name)
 
+    def test_every_file_the_root_cmake_includes_is_exported(self):
+        root = Path(__file__).resolve().parents[2]
+        included = re.findall(r'^\s*include\((cmake/[A-Za-z0-9_]+\.cmake)\)$', (root / 'CMakeLists.txt').read_text(), re.M)
+        self.assertIn('cmake/TestsS3.cmake', included)
+        for name in included:
+            self.assertTrue((root / name).is_file(), name)
+            self.assertTrue(source_archive._included(name), name)
+
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory(prefix='pgsource-')
         self.addCleanup(self.temp.cleanup)
