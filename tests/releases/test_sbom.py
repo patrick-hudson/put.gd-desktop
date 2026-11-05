@@ -250,7 +250,7 @@ class Components(unittest.TestCase):
         connections = []
         for path in sources:
             text = path.read_text(errors='replace')
-            self.assertIsNone(re.search(r'\bfts[345]\b|VIRTUAL\s+TABLE|ATTACH\s+DATABASE|load_extension|sqlite3changeset|sqlite3session',
+            self.assertIsNone(re.search(r'\bfts[345]\b|VIRTUAL\s+TABLE|\bATTACH\s+(?:DATABASE\b|[\x27"?:@$])|load_extension|sqlite3changeset|sqlite3session',
                                         text, re.IGNORECASE), path)
             connections += [path.name] * text.count('"QSQLITE"')
         self.assertEqual(connections, ['HistoryStore.cpp'])
