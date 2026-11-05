@@ -12,7 +12,7 @@
 #include <QSignalBlocker>
 #include "ShortcutEditor.h"
 #include "PreferenceRows.h"
-#include "ByteSize.h"
+#include "core/ByteSize.h"
 #include <QProgressBar>
 #include "Ui.h"
 #include <QApplication>

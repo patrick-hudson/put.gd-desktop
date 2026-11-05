@@ -4,7 +4,7 @@
 #include "ui/Ui.h"
 #include "ui/PreferenceRows.h"
 #include "ui/Fonts.h"
-#include "ui/ByteSize.h"
+#include "core/ByteSize.h"
 #include <QAccessible>
 #include <QToolTip>
 #include <QPainter>
