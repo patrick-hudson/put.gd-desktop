@@ -162,3 +162,11 @@ Dated results moved from the [acceptance matrix](../testing/acceptance-matrix.md
 | File | What it was | When it was current | What replaced it |
 | --- | --- | --- | --- |
 | [acceptance-matrix-records.md](acceptance-matrix-records.md) | The removal of the earlier Fedora 45 Aurora golden and what used it | 2026-11-02 | [acceptance matrix](../testing/acceptance-matrix.md) |
+
+## Remote builder run records
+
+Dated inventories moved from [remote builders](../lab/remote-builders.md) on 2026-11-05 (#1222).
+
+| File | What it was | When it was current | What replaced it |
+| --- | --- | --- | --- |
+| [remote-builders-records.md](remote-builders-records.md) | Access inventory of the Fedora and Debian hosts; Kubuntu host preflight | 2026-10-16 and 2026-10-17 | [remote builders](../lab/remote-builders.md) |
