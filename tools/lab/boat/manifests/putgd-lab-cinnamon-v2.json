@@ -39,7 +39,7 @@
     "unexplainedCtestFailure": false
   },
   "embeddedPreparationManifestSha256": "484414e20e84d202a4be8600daee3bb7ae963a7974e19c2e457e8384e320a42e",
-  "evidence": "docs/evidence/2026-10-30-boat-snapshots/README.md",
+  "evidence": "https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-30-boat-snapshots/README.md",
   "golden": {
     "path": "/home/user/work/put.gd/work/lab-images/cinnamon-x11-probes-v2/image.qcow2",
     "sha256": "518e3e45034c459e91118f95e3987971e19ea346486ab8219970b8484a892e48",

@@ -116,10 +116,10 @@ def body(source, section, changelog_pull=None):
               '- [ ] `CI` passed on this pull request.']
     if changelog_pull:
         lines.append(f'- [ ] {changelog_pull} is merged, so `{CHANGELOG}` has the `[Unreleased]` section.')
-    lines += ['- [ ] Known blocked acceptance gates are listed in docs/verification.md.', '',
+    lines += ['- [ ] Known blocked acceptance gates are listed in docs/testing/verification.md.', '',
               '## After merging', '',
               '- The Release workflow tags `vYY.MDD.N` and stages its draft.',
-              '- Run exact-asset acceptance on the draft (docs/release.md), then publish it.',
+              '- Run exact-asset acceptance on the draft (docs/release/release.md), then publish it.',
               '- Run `tools/releases/promote.py --finalize vYY.MDD.N` to name the CHANGELOG.md section.']
     return '\n'.join(lines) + '\n'
 

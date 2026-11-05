@@ -3,5 +3,5 @@
 # mutex cannot be acquired by another thread at that construction edge. TSan
 # combines that edge with later disconnect and reports a hypothetical cycle.
 # Reproduced with QDBusConnection::sessionBus alone and instrumented libdbus.
-# See docs/thread-sanitizer.md. Do not suppress Qt/app races or the lock detector.
+# See docs/testing/thread-sanitizer.md. Do not suppress Qt/app races or the lock detector.
 deadlock:_dbus_connection_new_for_transport

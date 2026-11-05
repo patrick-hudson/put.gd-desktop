@@ -29,7 +29,7 @@ namespace {
 constexpr qint64 maximumOutput=2*1024*1024;
 #if defined(Q_OS_UNIX)&&!defined(PUTGD_POSTER_SANITIZED)
 // Address space for the helper. A 4K H.265 poster peaked at 570 MiB of
-// address space and 186 MiB resident (#112, docs/recording.md); 2 GiB leaves
+// address space and 186 MiB resident (#112, docs/design/recording.md); 2 GiB leaves
 // room for longer GOPs. Sanitizer shadow memory cannot work under a limit, so
 // sanitizer builds leave it off.
 constexpr rlim_t addressSpace=rlim_t(2)*1024*1024*1024;

@@ -2,7 +2,7 @@
 """Build an exact public commit in parallel, disposable Boat workers.
 
 Requires the authenticated boat CLI, OpenSSH and distro python3-yaml locally.
-All compilation and rendering happen remotely. See docs/boat-candidates.md.
+All compilation and rendering happen remotely. See docs/lab/boat-candidates.md.
 """
 import argparse
 from contextlib import contextmanager

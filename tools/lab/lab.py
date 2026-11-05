@@ -625,7 +625,7 @@ def guest_session(run, body, timeout=60):
     if process not in ('cinnamon', 'gnome-shell', 'plasmashell'):
         raise LabError('Unsupported native desktop session process')
     # PanelTone needs the session's XDG_CONFIG_DIRS and XDG_DATA_DIRS too
-    # (docs/appearance.md): Plasma lists ~/.config/kdedefaults in the first and
+    # (docs/design/appearance.md): Plasma lists ~/.config/kdedefaults in the first and
     # finds the Plasma style's colors file through the second. Without them a
     # Breeze Dark panel reads as Plasma's light default (#229, #243).
     script = f'''set -eu
@@ -829,7 +829,7 @@ def launch(args):
     profile = load_profile(args.profile)
     golden = Path(args.golden).resolve()
     if not golden.is_file():
-        raise LabError('Install and shut down a golden guest first; see docs/vm-lab.md')
+        raise LabError('Install and shut down a golden guest first; see docs/lab/vm-lab.md')
     if args.acceleration == 'kvm' and not os.access('/dev/kvm', os.R_OK | os.W_OK):
         raise LabError('KVM unavailable; request explicit --acceleration tcg for functional-only evidence')
     # A provisioning key pinned to another forwarded port cannot authenticate
@@ -837,7 +837,7 @@ def launch(args):
     endpoint = '127.0.0.1' if args.ssh_port == 22 else f'[127.0.0.1]:{args.ssh_port}'
     pinned = command(['ssh-keygen', '-F', endpoint, '-f', args.known_hosts], check=False)
     if pinned.returncode or not pinned.stdout.strip():
-        raise LabError(f'{endpoint} is missing from --known-hosts; see docs/vm-lab.md for authenticated port remapping')
+        raise LabError(f'{endpoint} is missing from --known-hosts; see docs/lab/vm-lab.md for authenticated port remapping')
     firmware = uefi_firmware(profile)
     heads, layout = head_plan(profile, getattr(args, 'heads', None), getattr(args, 'layout', None))
     before = golden.stat()

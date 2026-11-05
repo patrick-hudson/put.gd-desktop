@@ -26,7 +26,7 @@ class RenovateConfig(unittest.TestCase):
         self.assertFalse(CONFIG['automerge'])
         self.assertFalse(CONFIG['platformAutomerge'])
         self.assertLessEqual(CONFIG['prConcurrentLimit'], 5)
-        # The workflow token cannot push .github/workflows changes (docs/ci.md).
+        # The workflow token cannot push .github/workflows changes (docs/release/ci.md).
         self.assertEqual(CONFIG['enabledManagers'], ['custom.regex', 'npm', 'pep621'])
 
     def test_every_regex_manager_matches_in_every_file_it_names(self):

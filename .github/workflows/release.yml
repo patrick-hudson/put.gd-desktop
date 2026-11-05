@@ -112,7 +112,7 @@ jobs:
           {
             echo "Staged draft $CHANNEL release \`$TAG\`: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/releases"
             echo
-            echo "1. Run exact-asset acceptance on the draft downloads (docs/release.md)."
+            echo "1. Run exact-asset acceptance on the draft downloads (docs/release/release.md)."
             echo "2. Publish: \`gh release download $TAG -D build/publish\`, check out \`$TAG\`, then"
             echo "   \`python3 tools/releases/publish.py --tag $TAG --directory build/publish --publish --acceptance RECEIPT\`."
             echo "3. Name the CHANGELOG.md section: \`python3 tools/releases/promote.py --finalize $TAG --open\`."

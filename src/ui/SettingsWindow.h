@@ -43,7 +43,7 @@ public:
  Error moveSelectedDestination(int delta,const QString& profileId,QJsonObject& result);
  // Advanced → Diagnostics (#122; on General until #238): debug logging, Clear
  // logs, the log and unclean-exit status and Create diagnostics package. diagnosticsCommand drives them for agents
- // (ui.diagnostics); see docs/diagnostics.md.
+ // (ui.diagnostics); see docs/design/diagnostics.md.
  void diagnosticsCommand(const QJsonObject& params,std::function<void(Error,QJsonObject)> reply);
  QJsonObject diagnosticsState()const;
  // #259: Capture → Local copies' Browse… buttons (dialog outputFolder,

@@ -440,7 +440,7 @@ class OverlayCleanup(unittest.TestCase):
     def test_legacy_outside_run_requires_stopped_relocation_before_cleanup(self):
         outside = self.root / 'legacy-run'
         self.run.rename(outside)
-        with self.assertRaisesRegex(cleanup.CleanupError, 'canonical.*stop and relocate.*docs/vm-lab.md'):
+        with self.assertRaisesRegex(cleanup.CleanupError, 'canonical.*stop and relocate.*docs/lab/vm-lab.md'):
             cleanup.cleanup(outside)
         self.assertTrue((outside / 'disk.qcow2').exists())
         # Relocating the stopped bundle back restores its recorded paths. A

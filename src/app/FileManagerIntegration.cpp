@@ -616,7 +616,7 @@ FileManagerResult FileManagerIntegration::apply(const FileManagerContext& c) {
   // The session's own file manager only: Files on PATH says nothing on LXDE.
   const auto desktops=(c.desktop.isEmpty()?qEnvironmentVariable("XDG_CURRENT_DESKTOP"):c.desktop).split(':');
   const auto onDesktop=[&](const QStringList& names){return std::any_of(desktops.begin(),desktops.end(),[&](const QString& desktop){return names.contains(desktop,Qt::CaseInsensitive);});};
-  // docs/file-manager-upload.md's unsupported list: no entry there, so no notice claiming one.
+  // docs/design/file-manager-upload.md's unsupported list: no entry there, so no notice claiming one.
   const auto plasma5=onDesktop({"KDE"})&&(c.kdeVersion.isEmpty()?qEnvironmentVariable("KDE_SESSION_VERSION"):c.kdeVersion)=="5";
   result.announce=!onDesktop({"Deepin","DDE","Enlightenment","TDE","Trinity"})&&!(appImage&&(onDesktop({"UKUI"})||plasma5))&&(cosmicFiles||!onDesktop({"COSMIC"}));
   // libfm and libfm-qt load FileManager-Actions at a process's first file menu. One whose

@@ -404,7 +404,7 @@ jobs:
             bash tests/desktop/pipewire/ci_check.sh --install build/pipewire/squashfs-root
 
   sbom:
-    # CycloneDX SBOMs of every package and their Grype report (#420, docs/release.md).
+    # CycloneDX SBOMs of every package and their Grype report (#420, docs/release/release.md).
     # packaging/sbom/policy.json decides which findings flag and which block this channel.
     needs: [native, appimage]
     runs-on: ubuntu-24.04
