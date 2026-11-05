@@ -58,7 +58,7 @@ Use the pinned hosts in [remote builders](remote-builders.md).
 
 ## Multi-head guests
 
-A [multi-head guest](vm-lab.md#multi-head-guests) has one VNC listener per head, on
+A [multi-head guest](vm-lab/guests-and-displays.md#multi-head-guests) has one VNC listener per head, on
 consecutive remote ports (`--vnc-display 60` with four heads: 5960-5963). Forward every
 head, each with its own `-L` and workstation port. One SSH process per guest is enough:
 

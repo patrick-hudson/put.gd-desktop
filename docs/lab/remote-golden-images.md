@@ -440,7 +440,7 @@ arguments or logs. Shut down and create a new standalone golden at a new path,
 with its own hash/manifest. Preserve both original and copied immutable sources.
 
 For the first login to an older Linux source, agents use the protected local input
-listed in [VM lab](vm-lab.md#protected-login-inputs), read only in memory, and the
+listed in [VM lab](vm-lab/hosts-and-bases.md#protected-login-inputs), read only in memory, and the
 visible masked guest console. Do not ask Patrick for a known lab login or copy
 legacy input files to builders. Record whether the remote image has actually
 passed standard-login provisioning; do not claim migration merely from a copy.

@@ -34,7 +34,7 @@ Both are standalone qcow2 files (32 GiB virtual) under
 0444), `source.manifest.json`, `image-info.json`, `image-check.txt`,
 `source-info.json`, `source-check.txt`, the pinned guest `known_hosts`,
 `identity.pub` and `bootstrap.sh`. The
-[immutable-golden rules](vm-lab.md#base-protection-and-inventory) apply.
+[immutable-golden rules](vm-lab/hosts-and-bases.md#base-protection-and-inventory) apply.
 
 | Name | Edition | SHA-256 | Copies |
 | --- | --- | --- | --- |
@@ -224,7 +224,7 @@ On f44 the key is under `lab-bootstrap-f44/`. For the User golden use its direct
 to draw its panel. A screenshot straight after `start` can show only the
 wallpaper, so take another before calling it a failure. Retire with `reset` and
 the guarded `cleanup --evidence-manifest` described in
-[vm-lab.md](vm-lab.md#retire-completed-overlays). Expose a run on the wall with
+[vm-lab.md](vm-lab/retire-overlays.md#retire-completed-overlays). Expose a run on the wall with
 a tunnel to its VNC port, following [remote VM displays](remote-vm-displays.md).
 
 ### Smoke round trip, 2026-10-23
@@ -263,4 +263,4 @@ private data home's `applications/` to the session's
 - Report the plasmalogin absolute-session-path problem upstream, with Patrick's
   OK ([#524](https://github.com/patrick-hudson/put.gd-desktop/issues/524)).
 
-New disposable overlays use the [verified visibility preflight](vm-lab.md#visible-guest-preflight) before acceptance. Existing immutable golden contents and manifests remain historical; do not retrofit them in place.
+New disposable overlays use the [verified visibility preflight](vm-lab/guests-and-displays.md#visible-guest-preflight) before acceptance. Existing immutable golden contents and manifests remain historical; do not retrofit them in place.
