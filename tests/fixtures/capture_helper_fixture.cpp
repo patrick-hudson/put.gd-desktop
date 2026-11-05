@@ -1,6 +1,6 @@
-#include "platform/x11/CaptureControl.h"
+#include "ipc/CaptureControl.h"
 #include "platform/x11/CaptureArtifactLease.h"
-#include "ui/StdioDevice.h"
+#include "ipc/StdioDevice.h"
 #include "core/BuildInfo.h"
 #include <QCoreApplication>
 #include <QJsonDocument>

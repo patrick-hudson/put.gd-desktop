@@ -1,5 +1,5 @@
 #pragma once
-#include "UiControl.h"
+#include "ipc/UiControl.h"
 #include "core/Log.h"
 #include <QHash>
 #include <QProcess>

@@ -2,9 +2,9 @@
 // prove the resident's supervision: handshake, command/result framing, events,
 // timeouts, crashes and the required normal exit. It records nothing. The
 // product helper never reads PUTGD_TEST_RECORD_MODE.
-#include "app/UiControl.h"
+#include "ipc/UiControl.h"
 #include "core/BuildInfo.h"
-#include "ui/StdioDevice.h"
+#include "ipc/StdioDevice.h"
 #include <QCoreApplication>
 #include <QFile>
 #include <QJsonArray>

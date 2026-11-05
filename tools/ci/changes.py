@@ -39,7 +39,7 @@ PACKAGING_FILES = frozenset({'CMakeLists.txt', 'CMakePresets.json', 'LICENSE',
 
 # The core and application libraries, their C++ tests and the build definitions
 # that compile them. The clang ASan/UBSan job runs only for these.
-SANITIZER_PREFIXES = ('src/core/', 'src/app/', 'tests/unit/', 'tests/integration/',
+SANITIZER_PREFIXES = ('src/core/', 'src/app/', 'src/ipc/', 'tests/unit/', 'tests/integration/',
                       'tests/fixtures/', 'cmake/', 'tools/ci/')
 SANITIZER_FILES = frozenset({'CMakeLists.txt', 'CMakePresets.json', '.github/workflows/ci.yml'})
 

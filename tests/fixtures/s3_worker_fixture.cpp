@@ -1,7 +1,7 @@
-#include "app/UiControl.h"
+#include "ipc/UiControl.h"
 #include "core/BuildInfo.h"
 #include "storage/s3/S3WorkerProtocol.h"
-#include "ui/StdioDevice.h"
+#include "ipc/StdioDevice.h"
 #include <QCoreApplication>
 #include <QFile>
 #include <QJsonDocument>

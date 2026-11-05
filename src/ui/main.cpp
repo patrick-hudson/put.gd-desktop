@@ -1,7 +1,7 @@
 #include "UiApplicationController.h"
 #include "ImageJob.h"
 #include "ImageEditor.h"
-#include "StdioDevice.h"
+#include "ipc/StdioDevice.h"
 #include "ViewState.h"
 #include "Ui.h"
 #include "Fonts.h"

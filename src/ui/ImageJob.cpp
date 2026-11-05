@@ -1,5 +1,5 @@
 #include "ImageJob.h"
-#include "app/UiControl.h"
+#include "ipc/UiControl.h"
 #include "core/BuildInfo.h"
 #include <QCoreApplication>
 #include <QCryptographicHash>
