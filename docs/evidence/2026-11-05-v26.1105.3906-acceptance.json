@@ -106,14 +106,19 @@
       "result": "passed"
     },
     {
+      "gate": "stable-vulnerability-scan",
+      "result": "passed",
+      "note": "191 findings, none blocking; accepted exceptions are listed in the record"
+    },
+    {
       "gate": "exact-asset-audit",
       "result": "passed",
-      "note": "191 findings, none blocking",
       "sourceRebuild": {
         "kind": "CI receipt",
         "passed": true,
         "archiveSha256": "1c7fd02616707753f562f5f67f778291db164f201176f43651057fd9af820946"
-      }
+      },
+      "note": "No errors, fresh Grype database"
     },
     {
       "gate": "amd-hardware-encode",
