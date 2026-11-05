@@ -9,9 +9,9 @@ when recreating a surface. The source change is ten files, committed as
 `427662c9bf9d4a425d672e27b085c16609b7d4f8` on the optimization branch and integrated
 as `0a2b104595e06dbdc27ae64b8677c5336d819419` on the feature branch.
 
-The [structured summary](../evidence/2026-10-08-view-surfaces.json) links the exact
+The [structured summary](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-08-view-surfaces.json) links the exact
 source archive, binaries, comparisons, commands, parameters and correctness
-receipts. The [raw manifest](../evidence/2026-10-08-view-surfaces-raw/manifest.json)
+receipts. The [raw manifest](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-08-view-surfaces-raw/manifest.json)
 contains checksums. Historical absolute work paths inside receipts describe the
 original run; the exported files under that manifest are the portable record.
 

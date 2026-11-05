@@ -86,7 +86,7 @@ and memory rows in parallel on the same candidate, with quiet sampling on each
 host after its other work ends. Physical gates use physical machines. Preserve
 samples, saved visuals, failures, identities and cleanup receipts.
 
-For a dated example, the [2026-10-31 physical native receipt](../evidence/2026-10-31-native-pass/README.md#b-379-physical-m74)
+For a dated example, the [2026-10-31 physical native receipt](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-31-native-pass/README.md#b-379-physical-m74)
 measures nightly `v26.1031.3384-nightly` on Mint 22.3 Cinnamon/X11 with a synthetic
 10,000-row history and loopback destinations: cold RSS 31.18 MiB, History-closed
 RSS 35.30 MiB, and post-burst settled RSS 32.56 MiB, each over a 300-second window.

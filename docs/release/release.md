@@ -104,7 +104,7 @@ Preview a section from a local checkout with
 (add `--offline` to skip the GitHub query). The fixture history in
 `tests/releases/test_changelog.py` covers the ranges, grouping and folding.
 
-![The changes section for the range v0.1.1-nightly.588 to the current nightly: grouped entries with PR and closing-issue links; on the right, the same range as historical release notes with documentation, lab and test changes folded into one line](../evidence/release-changelog-188/changes-section-annotated.png)
+![The changes section for the range v0.1.1-nightly.588 to the current nightly: grouped entries with PR and closing-issue links; on the right, the same range as historical release notes with documentation, lab and test changes folded into one line](https://raw.githubusercontent.com/patrick-hudson/put.gd-evidence/874703b35562c732268c6fe0bc9b42614ffda928/records/release-changelog-188/changes-section-annotated.png)
 
 ### CHANGELOG.md
 
@@ -141,7 +141,7 @@ The stable release's own source tree therefore carries its section under
 `tests/releases/test_promote.py` covers the section, the file update, the pull
 request order and `--finalize`.
 
-![A rendered CHANGELOG.md excerpt from a promote.py dry run on nightly: the Keep a Changelog header, the 0.1.1 section, Added, Fixed and Changed entries with PR and issue links, and the folded documentation, lab and test line](../evidence/2026-10-20-changelog-md-217/217-changelog-excerpt.png)
+![A rendered CHANGELOG.md excerpt from a promote.py dry run on nightly: the Keep a Changelog header, the 0.1.1 section, Added, Fixed and Changed entries with PR and issue links, and the folded documentation, lab and test line](https://raw.githubusercontent.com/patrick-hudson/put.gd-evidence/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-20-changelog-md-217/217-changelog-excerpt.png)
 
 ### Stable
 
@@ -242,7 +242,7 @@ stable across npm 9/10/11 because the formerly optional peer dependency is pinne
 directly (#369), and ICU 78.3 is bound into both Linux redistribution copies
 (#461).
 
-The [native packaging evidence](../evidence/2026-10-24-native-packaging-540/README.md)
+The [native packaging evidence](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-24-native-packaging-540/README.md)
 records the clean Fedora/Debian build, strict metadata and filtered-install
 checks, npm-version comparison, original failures and the final CI run.
 
@@ -402,14 +402,14 @@ image's value with `./putgd-VERSION-x86_64.AppImage --appimage-updateinformation
 Assembly details are in
 [AppImage assembly](../../packaging/appimage/README.md#update-information); the lab
 update from one build to the next is recorded in
-[AppImage zsync updates](../evidence/2026-10-20-appimage-zsync-293/README.md).
+[AppImage zsync updates](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-20-appimage-zsync-293/README.md).
 On Fedora, appimageupdatetool can't find the certificate bundle; `SSL_CERT_FILE` alone
 isn't enough. The workaround and Gear Lever (unaffected) are in
 [Updating the AppImage](../design/updates.md#fedora) (#297).
 
 Gear Lever and AppImageLauncher both move N to N+1 through a 302, like the site
 permalink's, in a lab Mint 22.3 guest
-([desktop acceptance](../evidence/2026-10-21-updates-acceptance-303/README.md#4-appimage-updates-gear-lever-appimagelauncher-start-at-login-295)).
+([desktop acceptance](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-21-updates-acceptance-303/README.md#4-appimage-updates-gear-lever-appimagelauncher-start-at-login-295)).
 
 **Gear Lever** downloads the whole image and replaces the file in place.
 **AppImageLauncher**'s updater and appimageupdatetool do a zsync delta and write the
@@ -425,16 +425,16 @@ The image root holds exactly one desktop entry, `putgd.desktop`, and the build c
 it, so AppImageLauncher integrates put.gd and offers **Update this AppImage**
 ([#306](https://github.com/patrick-hudson/put.gd-desktop/issues/306)). Both are recorded
 in a Mint 22.3 guest with real logouts and logins:
-[AppImage login and integration](../evidence/2026-10-21-appimage-login-306-307/README.md).
+[AppImage login and integration](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-21-appimage-login-306-307/README.md).
 
 A live delta update from nightly 801 to 816 through the site permalink and GitHub's
 download CDN worked with appimageupdatetool in the Mint guest (95 % of the image reused,
 6.8 MB fetched, SHA-256 equal to 816's `SHA256SUMS` line;
-[pre-check](../evidence/2026-10-21-appimage-login-306-307/README.md#live-pre-check-801-to-816)).
+[pre-check](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-21-appimage-login-306-307/README.md#live-pre-check-801-to-816)).
 The live close-out moved nightly 842 to 847 (both with #307) through the permalink with
 appimageupdatetool, Gear Lever and AppImageLauncher in the Mint guest; after each, a real
 logout and login started 847, and the feed and permalinks answered as designed (no stable
-permalink yet): [live update](../evidence/2026-10-21-appimage-live-294-296/README.md).
+permalink yet): [live update](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-21-appimage-live-294-296/README.md).
 
 ## GitHub downloads and source
 
@@ -584,7 +584,7 @@ The evidence package is the development-identity AppImage from `nightly`
 `50053b01f1bbd7f3776a53513bb8c43151ce0de8` (CI run 40045151634), not a published
 nightly or stable draft. Each later package must satisfy the same fingerprint
 guards, and the exact stable draft still requires its current scan and other
-release acceptance. The [remaining-findings assessment](../evidence/2026-10-24-release-blockers-511-416-419/README.md)
+release acceptance. The [remaining-findings assessment](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-24-release-blockers-511-416-419/README.md)
 checks the exact source behind libtiff CVE-2026-4775 and GStreamer CVE-2025-3887.
 Qt's pinned libtiff already contains all four upstream overflow corrections.
 GStreamer's affected H.265 parser is bundled and unpatched, but no current

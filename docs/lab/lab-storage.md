@@ -28,7 +28,7 @@ guest. Verified Btrfs identification with zero inode counters is `dynamic`, with
 `availableInodes: null`: [Btrfs creates inodes from metadata space](https://btrfs.readthedocs.io/en/stable/Administration.html#flexibility).
 Its byte reserves and expected growth still apply. Reported counts must exceed
 1,024; unknown or mismatched identification, invalid numbers and inconsistent
-counters fail closed. See the [actual-host prerequisite evidence](../evidence/2026-10-24-recording-session-410/README.md#btrfs-vm-storage-prerequisite).
+counters fail closed. See the [actual-host prerequisite evidence](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-24-recording-session-410/README.md#btrfs-vm-storage-prerequisite).
 Identification accepts a bounded ASCII filesystem name and hexadecimal magic;
 malformed command output is discarded. Failures retain measured raw capacity
 when available and record only sanitized error types; a host measurement failure

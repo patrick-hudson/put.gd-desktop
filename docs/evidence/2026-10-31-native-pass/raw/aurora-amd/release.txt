@@ -1,6 +1,0 @@
-aurora-amd (Aurora Fedora 45 Plasma Wayland): released
-  native-pass (np31-ddd3576a), acquired 2026-10-31T15:36:21Z
-  purpose: physical Tier1 local AppImage; no builds
-  note: 8 process(es) outside the desktop session (no DISPLAY or WAYLAND_DISPLAY; shared SSH work): 4532 7410 41115 207962 1401946 1402226 1436469 1436488
-  receipt on the host: /home/patrick/putgd-lab/locks/history/2026-10-31T15-48-18Z-release.json
-  Tell the next session in the queue and your coordinator

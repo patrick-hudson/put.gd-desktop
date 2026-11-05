@@ -173,7 +173,7 @@ workstation) are preserved until TTL expiry. Legacy
 fixed names have no lease and are preserved until TTL expiry. If `createdAt` or
 `ttlSeconds` is missing or invalid, unknown and legacy workers are kept; missing
 metadata never authorizes deletion. The real API returned both fields in the
-[issue #752 live campaign](../evidence/2026-10-30-boat-candidate-752-live/README.md).
+[issue #752 live campaign](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-30-boat-candidate-752-live/README.md).
 Orphan sweeps
 always delete by the exact eligible ID, preserving a fresh legacy worker even
 when it shares an expired worker's name. Each run’s final cleanup uses its own
@@ -224,7 +224,7 @@ new output directory each time. Preserve logs/receipts before retrying and follo
 
 New lanes use `putgd-build-base-v3`, `putgd-lab-cinnamon-v3` and
 `putgd-lab-ubuntu-gnome-v4`. Their [repeatable recipe](boat-snapshots.md) and
-[campaign evidence](../evidence/2026-10-30-boat-snapshots/README.md) record immutable
+[campaign evidence](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-30-boat-snapshots/README.md) record immutable
 IDs, source/new golden hashes, package inventories, cached build commits,
 bootstrap pins, cleanup receipts and fresh-fork results. Read the authoritative
 `tools/lab/boat/manifests/NAME.json` for the exact image path and package target.

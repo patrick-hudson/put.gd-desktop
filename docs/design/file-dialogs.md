@@ -69,7 +69,7 @@ Qt's `generic` theme and `putgd-record` and `putgd-capture` keep
 desktop-settings awareness off ([memory-strategy.md](memory-strategy.md)). The
 helper adds a D-Bus call to a process that already links QtDBus. With the
 chooser open, `putgd-record` grew by at most 0.12 MiB, against 5.4 MiB for
-Qt's widget dialog. The resident is unchanged ([evidence](../evidence/2026-10-21-file-dialogs-259/README.md)).
+Qt's widget dialog. The resident is unchanged ([evidence](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-21-file-dialogs-259/README.md)).
 
 ## Fallback: Qt's dialog in the Theme tokens
 
@@ -159,4 +159,4 @@ For a cancellation investigation, retain the focused control as well as the
 compositor window, the matching frontend/backend request and response, and saved
 before/after frames. An open request after an alert was dismissed does not
 establish a lost portal response. See the [live trace and recipe
-evidence](../evidence/2026-10-30-diagnostics-folder-847/README.md).
+evidence](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-30-diagnostics-folder-847/README.md).

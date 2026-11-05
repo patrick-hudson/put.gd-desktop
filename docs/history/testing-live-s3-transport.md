@@ -180,7 +180,7 @@ chains and were protected. No VM image or power/compositor setting changed.
 See `lab-storage.md` for capacity gates, current-plus-one-rollback retention,
 restoration and future immutable-base migration.
 
-Committed evidence is under [source108](../evidence/live-s3-transport/source108). Raw frames, payloads, protected login inputs and credentials remain outside these archives.
+Committed evidence is under [source108](https://github.com/patrick-hudson/put.gd-evidence/tree/874703b35562c732268c6fe0bc9b42614ffda928/records/live-s3-transport/source108). Raw frames, payloads, protected login inputs and credentials remain outside these archives.
 
 
 ## OpenSSL 3.5 handshake compatibility follow-up

@@ -130,7 +130,7 @@ goldens, it stays on this image; a later `testing` image needs a new golden.
 | SSH | Host key `SHA256:Y0ufFqg5/mARX/Mz5sF+8mTv9zaGOL2q3c0I2SOavsc`, read on the serial console and matched against `ssh-keyscan`. `known_hosts` pins `[127.0.0.1]:22426` and `:22427`. Authorized keys: the Aurora bootstrap key `putgd-lab-aurora` and the workstation's provisioner key. |
 | Golden | Standalone qcow2, 11,139,153,920 bytes, virtual 50,994,348,032 bytes, SHA-256 `731b43833009724506feb20d35a19a417da8bbae2890940571b7da4edc1a35ae`, `qemu-img compare` identical to the provisioned overlay, `qemu-img check` clean, mode 0444. |
 | Copies | S3 `linux/aurora-testing-45.20261101.2-ec2-20261102-a1/` and all five builders under the same directory name; every restore checked both hashes and `qemu-img check`. |
-| Evidence | [Receipt](../evidence/2026-11-02-aurora-plasma-68-golden/receipt.json), [autologin desktop](../evidence/2026-11-02-aurora-plasma-68-golden/autologin-desktop.png); the rest under `sidecars/` in S3. |
+| Evidence | [Receipt](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-11-02-aurora-plasma-68-golden/receipt.json), [autologin desktop](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-11-02-aurora-plasma-68-golden/autologin-desktop.png); the rest under `sidecars/` in S3. |
 
 ### Application result
 
@@ -258,12 +258,12 @@ and the run directory:
 | `install --appimage` | `installed`, guest SHA-256 `e5b7ad2c…25bc` = host file; `--version-json` `26.1022.1019-nightly` at commit `5ba9de0e`; bundled `usr/bin/putgd` `3920fcdf…5059` |
 | `start` | resident pid 2246 running the bundled `putgd` (`3920fcdf…` = receipt), `source: kde-wayland` |
 | `cli --method capabilities` | `source.adapter` `kde-wayland`; desktop, region and window capture `compositor-native` through `org.kde.KWin.ScreenShot2` v5, permission `restricted-desktop-entry`, entry matches the executable, not rejected; recording `recording_not_probed` (expected before the first prepare) |
-| `screenshot` | `witness-head0.ppm`, SHA-256 `80769090c3bd1b5806a60445e76789c96bcdfb65f2f4cb6a251b7ff3cc70178f`, 1280x800: the dashboard open on Settings, version `26.1022.1019-nightly` ([picture](../evidence/2026-10-23-aurora-f45-golden/02-smoke-dashboard-26.1022.1019.png)) |
+| `screenshot` | `witness-head0.ppm`, SHA-256 `80769090c3bd1b5806a60445e76789c96bcdfb65f2f4cb6a251b7ff3cc70178f`, 1280x800: the dashboard open on Settings, version `26.1022.1019-nightly` ([picture](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-23-aurora-f45-golden/02-smoke-dashboard-26.1022.1019.png)) |
 | `collect` | kernel `7.2.11-300.fc45`, `plasma-workspace-6.7.5-2.fc45`, `qt6-qtbase-6.11.2-3.fc45`, `xdg-desktop-portal-1.22.1-2.fc45`, no `putgd` package (expected) |
 | Retirement | `reset`, then the guarded `cleanup --evidence-manifest` with an explicit completion manifest removed only `disk.qcow2`; receipts under `prov-f45/evidence-aurora-f45s/` |
 
 The autologged Fedora 45 desktop before any install is the provisioning run's
-witness ([picture](../evidence/2026-10-23-aurora-f45-golden/01-f45-desktop-autologin.png)).
+witness ([picture](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-23-aurora-f45-golden/01-f45-desktop-autologin.png)).
 
 ## Running a disposable overlay
 

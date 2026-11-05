@@ -8,7 +8,7 @@ SSH metadata collection is not graphical acceptance.
 
 ## What the original audit established
 
-The [structured audit](../evidence/2026-10-08-vm-memory-audit.json) records the old
+The [structured audit](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-08-vm-memory-audit.json) records the old
 residents sampled on 2026-10-08, before the current-build functional wave.
 
 | Guest | RSS MiB | PSS MiB | Private MiB | Process age hours |
@@ -75,7 +75,7 @@ CI host contracts are not compositor acceptance.
 
 ## Replay the read-only audit
 
-The [raw manifest](../evidence/2026-10-08-vm-memory-audit-raw/manifest.json) maps the
+The [raw manifest](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-08-vm-memory-audit-raw/manifest.json) maps the
 original temporary paths to committed copies and retains their exact hashes.
 The guest collector and supplemental scripts were executed for the saved audit.
 `dashboard-readonly.py` was prepared from the executed inline GET protocol and
@@ -200,7 +200,7 @@ a sandbox's restricted `/proc` to infer that a host VM exited.
 ### Replay
 
 The current-source wave is recorded separately in
-[evidence/2026-10-08-current-desktop-matrix.json](../evidence/2026-10-08-current-desktop-matrix.json).
+[evidence/2026-10-08-current-desktop-matrix.json](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-08-current-desktop-matrix.json).
 Use its archive/source identity, build recipes and per-case parameters to prepare
 a new wave. Do not reuse an old passing test ID after changing the package.
 Run all 12 scenarios and the visible view smoke on each profile first; inspect

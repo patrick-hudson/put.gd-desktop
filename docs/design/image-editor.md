@@ -184,7 +184,7 @@ After the helper exits successfully, the resident persists `state=acquiring`,
 `phase=queued` before putting the sanitized PNG in the worker queue. The editor
 is closed; History says **Waiting to upload…**. `stored` begins only after the
 worker commits an immutable artifact. Cancellation while queued still cancels
-the submitted operation without reopening the editor ([#559 evidence](../evidence/2026-10-25-queued-editor-559/README.md)).
+the submitted operation without reopening the editor ([#559 evidence](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-25-queued-editor-559/README.md)).
 
 A resident restart turns `editing` into `interrupted` with `edit_interrupted`:
 it is never resumed or uploaded, retry reports `artifact_missing`, and startup
@@ -209,7 +209,7 @@ first, with a small custom Qt canvas as the fallback. put.gd uses the custom
 canvas. kImageAnnotator was not built or benchmarked. The decision rests on its
 inspected source, license and packaging documentation, and on the custom canvas
 meeting every redaction and memory gate in the
-[acceptance receipt](../evidence/2026-10-17-issue51-edit-and-upload.md).
+[acceptance receipt](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-17-issue51-edit-and-upload.md).
 
 - **Licensing.** kImageAnnotator and kColorPicker are LGPL-3.0. The original
   cross-platform evaluation also considered static-linking obligations; that
@@ -316,5 +316,5 @@ that cancellation stores nothing, file sources, single-session raising and
 restart recovery. Synthetic screenshots of the themed window are produced by
 `putgd-ui-catalog` (`20-`–`25-editor-*.png`). Offscreen results are not
 desktop acceptance. Graphical, memory and MCP evidence is in the
-[2026-10-17 receipt](../evidence/2026-10-17-issue51-edit-and-upload.md), and the
+[2026-10-17 receipt](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-17-issue51-edit-and-upload.md), and the
 lab drivers are described in the [VM lab guide](../lab/vm-lab.md#editor-acceptance-drivers).

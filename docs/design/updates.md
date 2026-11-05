@@ -41,9 +41,9 @@ A version you already saw after **Check now** isn't announced again. put.gd reme
 channel, so changing the channel neither repeats an announcement nor hides one. The notification
 also follows **Show a notification when a link is ready**.
 
-![Settings → General → Updates and the main window rail on a nightly build, with a newer nightly available](../evidence/2026-10-21-updates-293/settings-update-available-annotated.png)
+![Settings → General → Updates and the main window rail on a nightly build, with a newer nightly available](https://raw.githubusercontent.com/patrick-hudson/put.gd-evidence/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-21-updates-293/settings-update-available-annotated.png)
 
-![The Updates section when up to date, after a failed check (next check a day later) and on a development build, which never checks](../evidence/2026-10-21-updates-293/update-states-annotated.png)
+![The Updates section when up to date, after a failed check (next check a day later) and on a development build, which never checks](https://raw.githubusercontent.com/patrick-hudson/put.gd-evidence/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-21-updates-293/update-states-annotated.png)
 
 These pictures come from a tagged `v0.1.1-nightly.783` and `.784` build
 (`PUTGD_PACKAGE_TARGET=fedora44`) on f44, and a development build on d69. Both ran in a
@@ -51,7 +51,7 @@ private Xvfb and profile against a local feed server set with `PUTGD_UPDATE_FEED
 The resident's TLS and Qt Network library mappings were the same before and after
 **Check now**.
 
-[Desktop acceptance](../evidence/2026-10-21-updates-acceptance-303/README.md) (#303) ran
+[Desktop acceptance](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-21-updates-acceptance-303/README.md) (#303) ran
 tagged builds on Cinnamon (m74), GNOME with AppIndicator (f44) and Plasma Wayland
 (d69), each against a local feed:
 
@@ -62,7 +62,7 @@ tagged builds on Cinnamon (m74), GNOME with AppIndicator (f44) and Plasma Waylan
 
 On Plasma and GNOME the tray's **Update available** entry used to appear only after a
 restart. [#311](https://github.com/patrick-hudson/put.gd-desktop/pull/311) fixed that
-([evidence](../evidence/2026-10-21-tray-update-visible-304/README.md)).
+([evidence](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-21-tray-update-visible-304/README.md)).
 
 **Channel** offers *Stable* and *Nightly* and starts on the build's own channel
 ([#344](https://github.com/patrick-hudson/put.gd-desktop/issues/344); it replaced *This build's
@@ -163,12 +163,12 @@ button switches channels instead ([below](#switching-channels)). DEB and RPM ins
 Accepted on Fedora 44 GNOME, Linux Mint 22.3 Cinnamon, Kubuntu 26.04 Plasma, Debian 13 Plasma and
 Aurora (Fedora Atomic) through all three paths, with tampered files refused and the resident's idle
 memory unchanged within 0.2 MiB:
-[evidence](../evidence/2026-10-21-appimage-updater-293/README.md).
+[evidence](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-21-appimage-updater-293/README.md).
 
 An AppImage integrated by Gear Lever 4.6.2 or AppImageLauncher 3.0.0-beta-3 updates the same way:
 after 26.1022.968 → 26.1022.983 on Linux Mint 22.3, each tool's menu entry and record still start the
 new version, neither shows a second entry or picks up the hidden backup, and each reports no further
-update ([evidence](../evidence/2026-10-22-appimage-integrators-412/README.md)).
+update ([evidence](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-22-appimage-integrators-412/README.md)).
 
 ### If the new version won't start
 
@@ -278,7 +278,7 @@ other channel's checks:
 Accepted on Fedora 44 GNOME and Linux Mint 22.3 Cinnamon with lab channels under `pkg.put.gd/lab`:
 both directions, the older-version confirmation, no stable release yet, tampered releases refused,
 start at login after a switch, and the resident's idle memory unchanged
-([evidence](../evidence/2026-10-22-appimage-channel-344/README.md)).
+([evidence](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-22-appimage-channel-344/README.md)).
 
 ### Other AppImage updaters
 
@@ -339,7 +339,7 @@ On Fedora `/etc/ssl/certs` is a link to `/etc/pki/tls/certs`, so the bundle appe
 `/etc/ssl/certs/ca-certificates.crt` for that one command. `APPIMAGE_EXTRACT_AND_RUN=1` is needed
 because FUSE mounts don't work inside `bwrap`. AppImageLauncher's updater uses the same library
 (zsync2) and is expected to behave the same; it wasn't tested on Fedora. Recorded on Fedora 44:
-[AppImage updates on Fedora](../evidence/2026-10-21-appimage-login-306-307/README.md#fedora-297).
+[AppImage updates on Fedora](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-21-appimage-login-306-307/README.md#fedora-297).
 
 ## CLI and MCP
 
@@ -399,7 +399,7 @@ the app.put.gd copy within about a minute of each release.
   an invalid version for its channel"), and it can't install the update in-app. apt, dnf
   and the zsync updaters (appimageupdatetool, Gear Lever, AppImageLauncher) still upgrade
   it, because they don't parse put.gd's versions; after that, in-app updates work again.
-  The lab acceptance shows both sides ([evidence](../evidence/2026-10-22-calver-373/README.md)).
+  The lab acceptance shows both sides ([evidence](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-22-calver-373/README.md)).
 - **Checks the client makes:** a stable feed may name only stable versions and a
   nightly feed only nightlies. The tag must be `v` + version. Any other `schema` is
   rejected, and so is a feed over 256 KiB.

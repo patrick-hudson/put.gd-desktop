@@ -150,7 +150,7 @@ no key and uses 30; an existing explicit key is preserved when saved. CLI `setti
 ![Settings → Capture → Screen recording → Frame rate, with the new control annotated](https://github.com/patrick-hudson/put.gd-desktop/blob/fd139d3349b0dddb6a24bb889b2f0b1a55ceba78/docs/evidence/2026-10-31-recording-rate/settings-frame-rate-annotated.png?raw=true)
 
 This is a synthetic UI catalog render, not desktop acceptance. Its provenance
-and the bounded physical measurements are in the [frame-rate receipt](../evidence/2026-10-31-recording-rate/README.md).
+and the bounded physical measurements are in the [frame-rate receipt](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-31-recording-rate/README.md).
 
 The adaptive rate is enabled by default. The helper samples one window per
 second, waits two warm-up windows, then lowers the rate after three bad windows
@@ -578,13 +578,13 @@ against −12 to −18 ms on Kubuntu 26.04 X11, all with GStreamer's `playbin`
 as the player. `ffplay` reads 4–43 ms later on the same captures because
 it ignores the audio server's latency, and it doesn't play on GNOME Wayland.
 The raw numbers per path are in
-[the receipt](../evidence/2026-10-19-wayland-av-sync.md).
+[the receipt](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-19-wayland-av-sync.md).
 
 Across a pause the offset now holds: after a resume the working clip moves by
 at most 0.6 ms and the export by at most 1.7 ms relative to the working clip
 (f44 Mutter and d69 KWin, MP4 and WebM), where nightly `134a9be` stepped the
 capture by up to 17 ms and moved every export 10 ms earlier
-([receipt](../evidence/2026-10-20-recording-reliability.md); portal paths: [closeout](../evidence/2026-10-20-recording-closeout.md#166-pauseresume-av-on-the-portal-paths)).
+([receipt](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-20-recording-reliability.md); portal paths: [closeout](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-20-recording-closeout.md#166-pauseresume-av-on-the-portal-paths)).
 
 Lab A/B runs: `PUTGD_RECORD_PIPEWIRE_TIMESTAMPS=compositor` maps each frame's
 header time instead of stamping its arrival, and `=legacy` restores the
@@ -617,7 +617,7 @@ frames a second in `videorate`. `PUTGD_RECORD_PIPEWIRE_TIMESTAMPS=arrival`
 restores raw arrival stamps for lab A/B runs. On aurora-amd (Plasma 6.7.5)
 a 60 fps monitor recording holds 59.6–59.9 distinct frames per second.
 The #983 recheck on nightly `26.1031.3384` measured 59.72 / 59.81 distinct
-frames/s; PR #981 already contains that fix. See the [receipt](../evidence/2026-10-31-recording-rate/README.md)
+frames/s; PR #981 already contains that fix. See the [receipt](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-31-recording-rate/README.md)
 for exact hosts, workloads and limitations.
 
 ### Wayland selection, bounds and bar
@@ -764,7 +764,7 @@ fault, so the order is unchanged. The encoder actually used stays in
 and in `recording.inspect` progress. If a GPU's encoder fails at
 `prepare`, the probe moves on to the next one. Kernel versions, drivers and
 the per-host table are in
-[the closeout receipt](../evidence/2026-10-20-recording-closeout.md#89-gpu-first-encoder-order-kept).
+[the closeout receipt](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-20-recording-closeout.md#89-gpu-first-encoder-order-kept).
 
 Stop ends the clip at once: from that running time on nothing is kept, however
 long the drain takes. It then sends EOS into each branch at the element after
@@ -869,7 +869,7 @@ once per display refresh (#6). `PUTGD_REGION_DEBUG_LOG=<file>` appends one
 line per selection with the pointer moves, paints or presents and their
 timing. `tools/lab/fluidity.py` and `tools/lab/fluidity_run.py` measure a
 recording's distinct frames per second and a drag's cost per build on a
-physical desktop ([receipt](../evidence/2026-10-31-fluidity-campaign.md)).
+physical desktop ([receipt](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-31-fluidity-campaign.md)).
 
 Lab diagnostics: `PUTGD_RECORD_DEBUG_LOG=<file>` appends pipeline and command
 traces, `PUTGD_RECORD_KEEP_WORKING=<dir>` keeps a copy of each working clip,

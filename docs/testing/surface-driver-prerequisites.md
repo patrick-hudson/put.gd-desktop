@@ -66,7 +66,7 @@ No Shell clipboard extension is added. Full native GNOME MIME persistence is
 tracked in [#879](https://github.com/patrick-hudson/put.gd-desktop/issues/879).
 The helper always exits; it never remains as a clipboard owner after the run.
 Successful cleanup removes the private root; a failed cleanup retains it and
-reports an explicit error. See the [#860 evidence and limits](../evidence/2026-10-30-surface-clipboard-860/README.md).
+reports an explicit error. See the [#860 evidence and limits](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-30-surface-clipboard-860/README.md).
 
 Catalog input rectangles use Qt logical client coordinates. Resizing a window,
 even without changing its aspect ratio, does not prove that controls scale with
@@ -311,11 +311,11 @@ The click is marked before dispatch and is never repeated. `drive()` refuses a s
 
 Anything the step cannot prove or drive raises `RecipeBlocked` (#791) with the reason; a ready timeout names the last consent state. The step never pre-grants through the permission store.
 
-**Remaining window.** A foreign request sent after the post-pick re-read can still get its dialog drawn under the point in the milliseconds before the press. Live, a foreign `Start` fired by the guard's own `Pick` call was caught by the re-read. [Adversarial and live evidence](../evidence/2026-10-30-recording-consent-817-validation/README.md).
+**Remaining window.** A foreign request sent after the post-pick re-read can still get its dialog drawn under the point in the milliseconds before the press. Live, a foreign `Start` fired by the guard's own `Pick` call was caught by the re-read. [Adversarial and live evidence](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-30-recording-consent-817-validation/README.md).
 
 **Monitors on channel loss.** Both run monitors (the portal consent filter and the notification observer) follow the run's persistent probe process, matched by PID and start time. They exit with it when the guest SSH channel drops. The private session root and resident can outlive a dropped channel; overlay retirement removes them with the disk.
 
-On GNOME 50, xdg-desktop-portal-gnome is GTK4. GTK4 reports screen extents as (0,0) and exposes `sensitive` instead of `enabled`. The GNOME profiles therefore query window-relative extents. Those extents leave out the header bar padding (7,6 px measured). The profiles declare an 8 px `placement_tolerance`, and the accept button's centre must stay inside the button under that tolerance. KDE's native zkde_screencast path needs no consent. Its xdg-desktop-portal-kde fallback is declared but has not been observed in the lab yet. Profiles without a compositor witness block if a dialog appears. [Evidence](../evidence/2026-10-30-recording-consent-791/README.md).
+On GNOME 50, xdg-desktop-portal-gnome is GTK4. GTK4 reports screen extents as (0,0) and exposes `sensitive` instead of `enabled`. The GNOME profiles therefore query window-relative extents. Those extents leave out the header bar padding (7,6 px measured). The profiles declare an 8 px `placement_tolerance`, and the accept button's centre must stay inside the button under that tolerance. KDE's native zkde_screencast path needs no consent. Its xdg-desktop-portal-kde fallback is declared but has not been observed in the lab yet. Profiles without a compositor witness block if a dialog appears. [Evidence](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-30-recording-consent-791/README.md).
 
 **Retained media (#796).** Before scope cleanup, the recording fixture copies the regular `.mkv`, `.mp4`, `.webm`, `.gif` and `.webp` files under its owned root to `<run out>/private-media/<recipe>/<scope>/`. These are the working and frozen clips and the exports that recipes verified there. Each copy:
 

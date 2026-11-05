@@ -1,6 +1,0 @@
-k72 (Kubuntu 26.04 Plasma Wayland): released
-  native-pass (np31-ddd3576a), acquired 2026-10-31T15:36:20Z
-  purpose: physical Tier1 local only; no builds
-  note: 5 process(es) outside the desktop session (no DISPLAY or WAYLAND_DISPLAY; shared SSH work): 1599 811898 811902 867370 867371
-  receipt on the host: /home/patrick/putgd-lab/locks/history/2026-10-31T15-58-41Z-release.json
-  Tell the next session in the queue and your coordinator

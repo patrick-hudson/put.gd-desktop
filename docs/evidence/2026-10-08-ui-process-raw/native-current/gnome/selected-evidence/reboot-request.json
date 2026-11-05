@@ -1,6 +1,0 @@
-{
-  "utc": "2026-10-09T01:26:40.977347+00:00",
-  "exitCode": 1,
-  "bootIdBefore": "[REDACTED]",
-  "purpose": "Load installed GNOME extension in a fresh Shell process; existing VM only"
-}

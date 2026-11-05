@@ -5,7 +5,7 @@
 Status: retained source63 implementation. Recorded KDE local-native and memory
 gates passed, followed by current-source Cinnamon/GNOME regressions. Current real
 S3/remote History and full release acceptance remain pending. See
-[the cumulative strategy](../design/memory-strategy.md) and [source63 evidence](../evidence/kde-source63/memory-summary.md).
+[the cumulative strategy](../design/memory-strategy.md) and [source63 evidence](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/kde-source63/memory-summary.md).
 Host contract tests alone do not establish compositor support.
 
 On an unambiguous native KDE Wayland session, the resident uses `QCoreApplication`.

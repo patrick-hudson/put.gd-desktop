@@ -75,7 +75,7 @@ reads and remove only the companion's own label/signals/timers.
 The existing `gjs -m tests/desktop/test_gnome_ownership.mjs
 integrations/gnome/extension.js` suite adds synthetic tooltip ownership,
 updates, ambiguity, bounds and lifecycle contracts. They prove no graphical
-hover behavior. The [current Proton package receipt](../evidence/2026-10-15-proton-p4-p6-acceptance.md) records
+hover behavior. The [current Proton package receipt](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-15-proton-p4-p6-acceptance.md) records
 visible active/idle companion text, the existing icon, native Activity/paste and
 product-family post-use memory at `a5112bc` on a fresh GNOME session. It does not
 certify every menu/lock/disable/actor-replacement case or the Shell heap. An
@@ -123,7 +123,7 @@ opener runs in its own session and is not a child of the process that launched
 it; a cancelled or unanswered portal request skips the launcher (see
 [diagnostics](../design/diagnostics.md)). The browser or file manager is therefore
 never classified as put.gd's own window. The
-[editor refusal receipt](../evidence/2026-10-19-gnome-editor-refusal.md)
+[editor refusal receipt](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-19-gnome-editor-refusal.md)
 records the physical Fedora 44 runs from the RPM and the AppImage.
 
 Recording protocol 1 (`recordingVersion: 1` in `Hello`) serves screen
@@ -170,5 +170,5 @@ The default `gnome_bridge_contract` remains a headless decoder test. This extra
 mode fails if native Wayland is unavailable; it is not an offscreen replacement
 for graphical capture or tray acceptance.
 
-[The recovery receipt](../evidence/2026-10-08-ui-gnome-recovery.json) preserves the
+[The recovery receipt](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-08-ui-gnome-recovery.json) preserves the
 unchanged-production failure and passing correction, source hashes and replay.

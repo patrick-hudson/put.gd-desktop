@@ -357,7 +357,7 @@ stored over the resident's socket because the CLI refuses raw keys. One six-file
 clipboard batch (`text/uri-list`, 4 MiB synthetic files) ran with
 `limits.concurrentUploads` 3. The fixture held each PUT 12 s longer than the previous
 one, so files finished one at a time. About every 0.45 s the driver
-([r9lab.py](../evidence/tray-batch-207/r9lab.py)) read `operation.recent`, the real
+([r9lab.py](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/tray-batch-207/r9lab.py)) read `operation.recent`, the real
 StatusNotifier item through `putgd-tray-probe`, then `operation.recent` again, and
 applied `check_tooltip` and `correlated_records` from `tray_progress.py` unchanged.
 
@@ -370,27 +370,27 @@ Every mismatch was a single read that straddled a file or phase change, and the 
 read matched. That is within the runner's 2 s batching grace. No fatal check failed,
 both operations completed, and the tooltip never named a file, path or link.
 
-![Each host's SNI tooltip over time beside production's counts, with the batch rows boxed](../evidence/tray-batch-207/207-tray-batch-rows.png)
+![Each host's SNI tooltip over time beside production's counts, with the batch rows boxed](https://raw.githubusercontent.com/patrick-hudson/put.gd-evidence/874703b35562c732268c6fe0bc9b42614ffda928/records/tray-batch-207/207-tray-batch-rows.png)
 
 Notes on the runs:
 
 - **Tray tints on d69:** the d69 resident drew the light-panel set (`#2759B8` idle,
   `#146C42` active, `#092F1D` dim), and the first attempt failed on the icon colour
-  ([attempt 1](../evidence/tray-batch-207/observations-d69-plasma-attempt1-dark-tint-check.jsonl)),
+  ([attempt 1](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/tray-batch-207/observations-d69-plasma-attempt1-dark-tint-check.jsonl)),
   because `check_tooltip` then knew only the dark set. The kept run renamed those
   three colours to their dark twins before the check. d69's panel was in fact dark
   (Breeze Dark from `~/.config/kdedefaults`, unchanged since 2026-10-16): this
   run's driver gave the resident no `XDG_CONFIG_DIRS`, so put.gd fell back to
   Plasma's light default. #229 made the check panel-aware and passes the session's
   directories to the resident; replaying these 228 reads against the light set
-  passes all of them ([#229 evidence](../evidence/2026-10-20-tray-tints-229/README.md)).
+  passes all of them ([#229 evidence](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-20-tray-tints-229/README.md)).
 - **Clipboard:** the batch needs the desktop clipboard. On d69, Klipper keeps the
   synthetic file list and the loopback link list in its history. Klipper can only clear
   all of its history, so the entries were left and only the current contents were cleared.
 - **Notifications** were off on d69. On m74, put.gd closed its own "completed"
   notification when it quit.
-- The observation logs are [m74](../evidence/tray-batch-207/observations-m74-cinnamon.jsonl)
-  and [d69](../evidence/tray-batch-207/observations-d69-plasma.jsonl).
+- The observation logs are [m74](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/tray-batch-207/observations-m74-cinnamon.jsonl)
+  and [d69](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/tray-batch-207/observations-d69-plasma.jsonl).
   Each line has the SNI title and tooltip, production's rows and the check result.
 
 ## Native host restart, cleanup and evidence

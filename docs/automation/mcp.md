@@ -164,7 +164,7 @@ The native CLI, graphical lab runner and development-package commands are implem
 Use [vm-lab.md](../lab/vm-lab.md) for disposable overlays and native scenarios,
 [release.md](../release/release.md) for existing CMake/CPack commands and pending installed
 lifecycle checks, and [agents.md](agents.md) for the source and verification map.
-An earlier [fresh-agent Cinnamon walkthrough](../evidence/2026-10-08-fresh-cinnamon.json)
+An earlier [fresh-agent Cinnamon walkthrough](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-08-fresh-cinnamon.json)
 exercised build/package/run/collect instructions, actual MCP/CLI local-operation
 parity and configuration-error recovery. Its local-only scope and source-identity
 limitations remain recorded; it did not exercise cloud publication or deletion.

@@ -6,8 +6,8 @@ Candidate `676f6e6d6e0b026dcdd1b4ef2ae7dabc8a29ded3` on
 `codex/optimize-resident-native-boundary` reached the physical Cinnamon memory
 target. Its version is `0.1.1-dev.49+g676f6e6d6e0b`. It remains experimental:
 region selector startup regressed, so the implementation has not been integrated.
-The [structured summary](../evidence/2026-10-09-native-listener.json) and
-[hashed raw receipts](../evidence/2026-10-09-native-listener-raw/manifest.json) preserve
+The [structured summary](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-09-native-listener.json) and
+[hashed raw receipts](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-09-native-listener-raw/manifest.json) preserve
 passing checks, failed checks, exact commands, parameters and source identities.
 Documentation commits do not change which binary was measured.
 

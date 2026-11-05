@@ -11,14 +11,14 @@ rows and current-candidate evidence remain gates.
 
 ## First stable acceptance, `v26.1105.3906` — 2026-11-05
 
-[Evidence](../evidence/2026-11-05-v26.1105.3906-acceptance.md): on the exact draft files, the stable scan and exact-asset audit passed, the
+[Evidence](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-11-05-v26.1105.3906-acceptance.md): on the exact draft files, the stable scan and exact-asset audit passed, the
 nightly desktop check reached 65 of 65 cells with one row from a rerun (#1214), all four native packages passed install, upgrade, removal
 and fresh install, every graded Cinnamon performance limit passed, a two-head VM capture passed, and AMD hardware encoding worked on the exact AppImage. Full History traversal wasn't measured to
 completion (#1066). Sections below this one predate this release, including gates they describe as open.
 
 ## History gallery blanking, scrolling and gap crash (#1151) — 2026-11-02
 
-[Evidence](../evidence/2026-11-02-history-gallery/README.md): with `v26.1102.3796-nightly` on Mint
+[Evidence](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-11-02-history-gallery/README.md): with `v26.1102.3796-nightly` on Mint
 Cinnamon X11, a desktop recording blanked 15 or more of about 45 gallery tiles at its worst and resting the pointer
 between tiles crashed `putgd-ui`. With PR #1151's DEB at `3f5d0b0da071`, no sampled frame (about 4 a
 second) showed a blanked tile and the crash was gone. `putgd-ui` CPU per wheel notch fell from 144.5 ms to 59.2 ms. The scroll
@@ -26,7 +26,7 @@ paint test also passes on live GNOME Wayland; Plasma wasn't run. Synthetic histo
 
 ## Published nightly artifact/source/CVE audit rerun — 2026-11-01
 
-The [exact-asset rerun](../evidence/2026-11-01-exact-asset-audit/README.md) covers
+The [exact-asset rerun](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-11-01-exact-asset-audit/README.md) covers
 `v26.1101.3698-nightly` (`38fa2ac634d4`) on d69 with the same driver as the
 2026-10-31 rehearsal: 15 assets, four linked source assets, two Proton transport
 parts, all five regenerated SBOMs, a separate 590 s exact-source rebuild that
@@ -75,14 +75,14 @@ p50/p95 was 814.546/947.144 ms, ungraded. Fifty actual native captures/uploads
 and both slow-network cases completed; populated Copy image/video/delete
 remain unassessed at the current AT-SPI boundary (#1066). Full results, samples, failed
 observers, source/asset/session identities, annotated visuals and cleanup are
-in [the physical native evidence](../evidence/2026-10-31-native-pass/README.md).
+in [the physical native evidence](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-31-native-pass/README.md).
 #379, #1063 and #1064 are now closed; these failed observations remain the
 historical results for the tested build. #44 stays open; this does not certify
 stable bytes or complete agent acceptance.
 
 ## Published nightly artifact/source/CVE audit — 2026-10-31
 
-The [exact-asset rehearsal](../evidence/2026-10-31-exact-asset-audit/README.md) covers
+The [exact-asset rehearsal](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-31-exact-asset-audit/README.md) covers
 `v26.1031.3384-nightly` (`4d3840c6108c`) on d69: all five packages/SBOMs,
 15 installer/support assets, four linked source assets and six Proton source
 packets. Checksums, notices and source closure pass; 30 FFmpeg/ICU findings match
@@ -113,7 +113,7 @@ This is synthetic widget evidence, not desktop acceptance.
 
 ## Integrated Linux development campaign — 2026-10-25
 
-The [integrated evidence packet](../evidence/2026-10-25-integrated-linux/README.md)
+The [integrated evidence packet](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-25-integrated-linux/README.md)
 freezes CI development source `6b7949f5` and exact assets combining #572/#574/#576.
 It records current Cinnamon/GNOME/KDE targeted functional, memory, History,
 native-capture burst, slow/stalled network and per-format media results, including
@@ -130,7 +130,7 @@ acceptance, and does not close #378/#380/#381 or final exact-byte gates.
 The History-only helper now defers hidden Settings/destination construction,
 while retaining active drafts and accepted setup inspection. Controlled builder
 measurements and lifecycle tests are recorded in the
-[History memory evidence](../evidence/2026-10-25-history-open-558/README.md).
+[History memory evidence](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-25-history-open-558/README.md).
 The exact local development DEB passes physical Cinnamon 300/30/300 memory
 (46,641,152 B History-open family PSS) and separate targeted native UI checks.
 All 107 configured dev tests pass across two invocations; four minimum-Qt suites
@@ -154,10 +154,10 @@ explicit in the raw receipt. Startup CTest, 26 shell tests, 14 source-collection
 tests and complete branch/integration CI passed; earlier failing attempts are
 retained. Test VMs were retired after verified export and physical locks released.
 
-[Exact matrix, source/artifact identities, pictures and limits](../evidence/2026-10-24-uninstall-startup-382/package-acceptance/README.md).
+[Exact matrix, source/artifact identities, pictures and limits](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-24-uninstall-startup-382/package-acceptance/README.md).
 #382 is closed per Patrick’s explicit decision that old entries in accounts
 which never ran the updated app are not a first-release blocker given limited
-existing usage. The [decision and closure receipt](../evidence/2026-10-24-uninstall-startup-382/legacy-rollout-decision.json)
+existing usage. The [decision and closure receipt](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-24-uninstall-startup-382/legacy-rollout-decision.json)
 record that exception. Code #544 merged into `nightly` at
 `35a16d0e6c63bc57bffe8d7bfeeeca5ad428c28c`; companion #545 carries the docs.
 Published-nightly lifecycle verification, including AppImage replacement with
@@ -180,14 +180,14 @@ work packages:
 | Gate | Issue | Status on 2026-10-22 |
 | --- | --- | --- |
 | Calendar versions `YY.MDD.N`, prerequisite for promotion | [#373](https://github.com/patrick-hudson/put.gd-desktop/issues/373) | design approved 2026-10-22 (one code PR, no `-rc`); implementation in progress |
-| AppImage full acceptance A–K, six desktops | [profile](acceptance-matrix.md#appimage-full-acceptance-profile), [first pass](../evidence/2026-10-21-appimage-full-acceptance/README.md) | first pass on nightly 842 failed F (5 desktops), H and J (f44); rerun pending |
+| AppImage full acceptance A–K, six desktops | [profile](acceptance-matrix.md#appimage-full-acceptance-profile), [first pass](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-21-appimage-full-acceptance/README.md) | first pass on nightly 842 failed F (5 desktops), H and J (f44); rerun pending |
 | DEB lifecycle, recording rows, live S3 | [#375](https://github.com/patrick-hudson/put.gd-desktop/issues/375) | partial: source144 Cinnamon VM only; no state-preserving upgrade or removal + login on Wayland; schema 5→7 never exercised |
 | RPM lifecycle on f44 | [#377](https://github.com/patrick-hudson/put.gd-desktop/issues/377) | partial: repo upgrade 816→828 only |
 | GUI/CLI/MCP parity, AE17, fresh-agent walkthrough | [#378](https://github.com/patrick-hudson/put.gd-desktop/issues/378) | partial: 2026-10-13, CLI `dev.143` |
 | Physical Cinnamon latency, 10,000-entry history, burst, slow network | [#379](https://github.com/patrick-hudson/put.gd-desktop/issues/379) | latency stale (current63, 121.273 ms p95); history/burst/slow network not started |
 | Multi-display geometry in VMs | [#380](https://github.com/patrick-hudson/put.gd-desktop/issues/380) | partial: 3-head Cinnamon X11 region, single-output fractional scale |
 | Physical mixed DPI and rotation | [#381](https://github.com/patrick-hudson/put.gd-desktop/issues/381) | blocked: no builder has two outputs; proposed for 0.1.2 |
-| Uninstall login-startup entry | [#382](https://github.com/patrick-hudson/put.gd-desktop/issues/382) | closed by Patrick; 11 development-artifact rows pass, legacy exception accepted; PR integration and #384 release checks remain ([evidence](../evidence/2026-10-24-uninstall-startup-382/README.md)) |
+| Uninstall login-startup entry | [#382](https://github.com/patrick-hudson/put.gd-desktop/issues/382) | closed by Patrick; 11 development-artifact rows pass, legacy exception accepted; PR integration and #384 release checks remain ([evidence](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-24-uninstall-startup-382/README.md)) |
 | License, notices, provenance, dependencies | [#383](https://github.com/patrick-hudson/put.gd-desktop/issues/383) | AppImage rehearsal on `v26.1022.968-nightly` ([below](#appimage-exact-asset-audit-rehearsal-383--2026-10-22)): provenance passes; notices, complete source, Qt CVEs and codec patents open (#416–#419); DEB/RPM not yet audited |
 | Release campaign and stable signing | [#384](https://github.com/patrick-hudson/put.gd-desktop/issues/384) | promote.py dry run passed on `0435ed6a` under the old scheme; repeat after #373 |
 | KDE/X11 rows, graphical-store installs | [#385](https://github.com/patrick-hudson/put.gd-desktop/issues/385) | proposed for 0.1.2; GNOME/X11 obsolete (GNOME 50 has no X11 session) |
@@ -196,7 +196,7 @@ Supported packages are DEB, RPM and AppImage; other package experiments are out 
 
 ## Native package full acceptance (#375, #377, #382) — 2026-10-23
 
-[Evidence](../evidence/2026-10-23-native-full-acceptance/README.md): the
+[Evidence](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-23-native-full-acceptance/README.md): the
 [native package profile](acceptance-matrix.md#native-package-full-acceptance-profile)
 (A–Q) on nightly `v26.1023.1058-nightly` (`05991d9d`). It covered the `ubuntu24.04` DEB on m74
 (Mint Cinnamon X11), the `ubuntu26.04` DEB on k72 (Kubuntu Plasma Wayland, plus its X11
@@ -222,7 +222,7 @@ session for recording) and on an Ubuntu 26.04 GNOME VM, the `debian13` DEB on d6
 
 ## Native acceptance driver hardening (#495) — 2026-10-24
 
-The [follow-up record](../evidence/2026-10-24-native-acceptance-drivers-495/README.md)
+The [follow-up record](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-24-native-acceptance-drivers-495/README.md)
 retires unsafe recipes and records accepted `72afd00b` live/growth proof for
 [code PR #554](https://github.com/patrick-hudson/put.gd-desktop/pull/554).
 The later `61439983` delta has 39 passing tests and clear focused round-4
@@ -254,7 +254,7 @@ Assets: the ubuntu24.04, ubuntu26.04 and debian13 DEBs and the fedora44 RPM of
 [Nightly run 39864143584](https://github.com/patrick-hudson/put.gd-desktop/actions/runs/39864143584).
 The README lists each package's SHA-256. Audited on f44, with lint in rootless
 containers, and identities on m74, k72 and d69. Evidence and repeatable scripts:
-`docs/evidence/2026-10-22-native-license-audit/`. This is a nightly pass; it
+[`records/2026-10-22-native-license-audit/`](https://github.com/patrick-hudson/put.gd-evidence/tree/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-22-native-license-audit). This is a nightly pass; it
 does not certify release bytes.
 
 - **Provenance passes.** `SHA256SUMS` and its minisig verify. Each receipt's
@@ -291,7 +291,7 @@ Asset: `putgd-26.1022.968-nightly-x86_64.AppImage`, SHA-256
 `dc17d5c6fb92a35514f381051d58f9a0170fad2b40c7e0e328dae64b219f51cf`, from
 [Nightly run 39737710388](https://github.com/patrick-hudson/put.gd-desktop/actions/runs/39737710388)
 on `ddc7981e`. Audited on m74 (Ubuntu 24.04 base). Evidence and repeatable
-scripts: `docs/evidence/2026-10-22-appimage-license-audit/`. This is a nightly
+scripts: [`records/2026-10-22-appimage-license-audit/`](https://github.com/patrick-hudson/put.gd-evidence/tree/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-22-appimage-license-audit). This is a nightly
 pass; it does not certify release bytes.
 
 - **Provenance passes.** `SHA256SUMS` matches GitHub's digests and the
@@ -318,7 +318,7 @@ pass; it does not certify release bytes.
   chose to bump Qt; the AppImage now bundles Qt 6.12.0
   ([#497](https://github.com/patrick-hudson/put.gd-desktop/pull/497)), with an
   A–K re-acceptance on six desktops
-  ([evidence](../evidence/2026-10-23-appimage-qt612-418/README.md)).
+  ([evidence](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-23-appimage-qt612-418/README.md)).
 
 Not covered: the Proton per-release check. The DEBs and the RPM are in the
 section above.
@@ -326,7 +326,7 @@ section above.
 ## AppImage window icon on Plasma (#523) — 2026-10-23
 
 Lab code: [#530](https://github.com/patrick-hudson/put.gd-desktop/pull/530).
-Evidence: [2026-10-23-appimage-icon-523](../evidence/2026-10-23-appimage-icon-523/README.md).
+Evidence: [2026-10-23-appimage-icon-523](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-23-appimage-icon-523/README.md).
 
 - **Cause.** The neon smoke runs' "W" icon was a lab artifact. `lab.py`'s
   private `XDG_DATA_HOME` hid AppRun's `putgd-ui.desktop` from KWin, and the
@@ -353,7 +353,7 @@ Code: [#388](https://github.com/patrick-hudson/put.gd-desktop/pull/388), head
 `aca7858f`, all CI jobs green
 ([run 39727602972](https://github.com/patrick-hudson/put.gd-desktop/actions/runs/39727602972)).
 Policy: [CI coverage, package installs](../release/ci.md#package-installs). Evidence:
-`docs/evidence/2026-10-22-package-installs-368/`.
+[`records/2026-10-22-package-installs-368/`](https://github.com/patrick-hudson/put.gd-evidence/tree/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-22-package-installs-368).
 
 - **Before.** Run 39717118907 (#357, `fd9e255`): `native (fedora44)` failed
   twice because no mirror, `dl.fedoraproject.org` included, served mesa
@@ -375,7 +375,7 @@ Code: [#498](https://github.com/patrick-hudson/put.gd-desktop/pull/498), head
 `1926941a`, all CI jobs green
 ([run 40008537011](https://github.com/patrick-hudson/put.gd-desktop/actions/runs/40008537011)).
 Policy: [CI coverage, stalled installs](../release/ci.md#stalled-installs). Evidence:
-`docs/evidence/2026-10-23-package-install-stalls-467/`.
+[`records/2026-10-23-package-install-stalls-467/`](https://github.com/patrick-hudson/put.gd-evidence/tree/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-23-package-install-stalls-467).
 
 - **Before.** Nightly run 39851369595 (`eab13a18`): `packages / appimage`
   hung for 93 minutes after `Get:5 https://archive.ubuntu.com/ubuntu
@@ -395,7 +395,7 @@ The `portable` job cited by that audit was removed with the retired platform.
 Code: [#364](https://github.com/patrick-hudson/put.gd-desktop/pull/364). How it
 works: [CI coverage, weekly run on k72](../release/ci.md#weekly-run-on-k72) and
 [remote builders](../lab/remote-builders.md#weekly-stress-lane-on-k72). Evidence:
-`docs/evidence/2026-10-22-stress-weekly/`.
+[`records/2026-10-22-stress-weekly/`](https://github.com/patrick-hudson/put.gd-evidence/tree/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-22-stress-weekly).
 
 - **Installed.** `tools/lab/install-stress-weekly.sh` ran on k72 and enabled
   lingering. `systemctl --user list-timers` shows the next run at
@@ -421,7 +421,7 @@ Code: [#351](https://github.com/patrick-hudson/put.gd-desktop/pull/351), head
 `7ffcf42`, all CI jobs green
 ([run 39712963621](https://github.com/patrick-hudson/put.gd-desktop/actions/runs/39712963621)).
 Policy and tools: [CI coverage, flaky tests](../release/ci.md#flaky-tests). Evidence:
-`docs/evidence/2026-10-22-flaky-tests/`.
+[`records/2026-10-22-flaky-tests/`](https://github.com/patrick-hudson/put.gd-evidence/tree/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-22-flaky-tests).
 
 - **History.** Every failed `linux` and `sanitizers` job with a failed test from
   2026-10-16 to 2026-10-22, all attempts, re-pulled from the Actions API
@@ -450,8 +450,8 @@ Not covered: the lane is not scheduled (proposal #360); Python contract suites
 
 ## Recording session contract (#410) — 2026-10-24
 
-The [companion report](../evidence/2026-10-24-recording-session-410/README.md) and
-[JSON ledger](../evidence/2026-10-24-recording-session-410/summary.json) bind clean
+The [companion report](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-24-recording-session-410/README.md) and
+[JSON ledger](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-24-recording-session-410/summary.json) bind clean
 `3440ab9c` to 108/108 Dev tests, 5/5 MCP tests, three relevant whole unsuppressed
 ASan/UBSan suites and the actual product probe, plus required code CI.
 Cinnamon X11 and GNOME Wayland guests and physical Debian KDE Wayland passed
@@ -469,7 +469,7 @@ Merge recording #551 and prerequisite #556 before companion #550.
 
 ## Recording closeout (#87, #166, #165, #164, #89) — 2026-10-20
 
-The [closeout receipt](../evidence/2026-10-20-recording-closeout.md) finishes #87's
+The [closeout receipt](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-20-recording-closeout.md) finishes #87's
 lab-reachable items on nightly `9c035bf` and re-measures #166. Every capture
 used the lab cover pinned to a named output, a VNC precheck of at least 98%
 cover, and frames kept only at least half cover (`tools/lab/cover_player.py`,
@@ -503,7 +503,7 @@ cover, and frames kept only at least half cover (`tools/lab/cover_player.py`,
 
 ## Screen recording acceptance sweep (#87) — 2026-10-19
 
-The [#87 acceptance receipt](../evidence/2026-10-19-recording-acceptance-87.md)
+The [#87 acceptance receipt](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-19-recording-acceptance-87.md)
 records the lab-reachable checks from issue #87, on nightly `5ac6bbc` (AppImage
 and Ubuntu 26.04 DEB, CI run 39325350860) and `8e568fd` (Fedora 44 RPM, Ubuntu
 26.04 DEB, CI run 39336656763). Every run used a moving pattern with a scored
@@ -542,7 +542,7 @@ static control, saved frames and recorded identities.
 
 ## Wayland recording A/V sync — 2026-10-19
 
-The [A/V sync receipt](../evidence/2026-10-19-wayland-av-sync.md) records #86 on
+The [A/V sync receipt](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-19-wayland-av-sync.md) records #86 on
 `claude/wayland-av-sync`, final build `0500748` (scratch builds on each desktop's
 builder), measured with the `--av-marker`/`--av-sync` check through the built-in
 speakers with a GStreamer player on every desktop.
@@ -567,7 +567,7 @@ speakers with a GStreamer player on every desktop.
 
 ## X11 editor window refusal — 2026-10-19
 
-The [X11 editor refusal receipt](../evidence/2026-10-19-x11-editor-refusal.md)
+The [X11 editor refusal receipt](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-19-x11-editor-refusal.md)
 records #106 (issue #103, the X11 half). The candidate was `85d04f0`, packaged by
 manual CI run 39266644046: the Ubuntu 26.04 DEB (sha256 `0b8aa778…`) and the
 AppImage (sha256 `d14dc770…`).
@@ -586,7 +586,7 @@ AppImage (sha256 `d14dc770…`).
 
 ## GNOME editor window refusal — 2026-10-19
 
-The [GNOME editor refusal receipt](../evidence/2026-10-19-gnome-editor-refusal.md)
+The [GNOME editor refusal receipt](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-19-gnome-editor-refusal.md)
 records #104 (issue #103), from pull request CI merge `3a9438c`. The Fedora 44
 RPM (sha256 `ba4d1774…`) and the AppImage (sha256 `3a4cae53…`) both ran with
 the RPM's Shell extension, version 2, loaded.
@@ -605,7 +605,7 @@ the RPM's Shell extension, version 2, loaded.
 
 ## AppImage Wayland window icons — 2026-10-19
 
-The [Wayland window icon receipt](../evidence/2026-10-19-appimage-wayland-icons.md)
+The [Wayland window icon receipt](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-19-appimage-wayland-icons.md)
 records #101 (issue #88): candidate CI AppImage `930d228`, sha256 `98bba655…`,
 against nightly `9042776`. Both ran from the image with nothing installed.
 
@@ -627,7 +627,7 @@ against nightly `9042776`. Both ran from the image with nothing installed.
 
 ## AppImage screen recording on Wayland — 2026-10-19
 
-The [Wayland AppImage recording receipt](../evidence/2026-10-19-appimage-recording-wayland.md)
+The [Wayland AppImage recording receipt](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-19-appimage-recording-wayland.md)
 records the nightly `9042776` CI AppImage (#75, #77 and #81), sha256
 `1be3fbdc…`. It ran from the image with private XDG directories and nothing
 installed.
@@ -660,7 +660,7 @@ The image's own `putgd-record` diagnostics can't read its exports (#92).
 
 ## Screen recording packages — 2026-10-18
 
-The [recording packaging receipt](../evidence/2026-10-18-recording-packaging.md)
+The [recording packaging receipt](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-18-recording-packaging.md)
 records pull request #75, with final code `7aa1aff`:
 
 - Pull request CI on `7aa1aff`: contracts, Linux suites, the then-supported cross-platform build, three
@@ -691,7 +691,7 @@ Blocked or not run:
 
 ## Single-name configuration and data folders — 2026-10-18
 
-The [issue 56 receipt](../evidence/2026-10-18-issue56-storage-locations.md) records
+The [issue 56 receipt](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-18-issue56-storage-locations.md) records
 candidate `d37a975`:
 
 - Workstation dev suite 73/73 on `d37a975` (671 s). The first candidate, `d7366b8`, failed
@@ -710,7 +710,7 @@ package upgrade acceptance stays with issue #44.
 
 ## Inherited capture output in Settings — 2026-10-18
 
-The [issue 58 receipt](../evidence/2026-10-18-issue58-inherited-capture-output.md)
+The [issue 58 receipt](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-18-issue58-inherited-capture-output.md)
 records candidate `48c2b57`: `ctest --preset dev` 72/72, the MCP suite 3/3, and a
 native check on the workstation's Cinnamon X11 session with an isolated instance
 and synthetic destinations. Inherited per-action cards stayed visible with their
@@ -720,7 +720,7 @@ state. GNOME, KDE, Wayland and memory were not tested.
 
 ## Wayland recording regions and system audio — 2026-10-18
 
-The [Wayland region receipt](../evidence/2026-10-18-wayland-recording-region.md)
+The [Wayland region receipt](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-18-wayland-recording-region.md)
 covers the follow-up on `claude/wayland-recording-region`: region selection
 before the stream (KDE layer-shell selector, GNOME Shell extension), ring,
 dimming and bar placement with `overlayPlacement`, and the synthetic A/V-sync
@@ -734,7 +734,7 @@ capture and listening tests with real headphones remain uncovered.
 
 ## Screen recording — 2026-10-18
 
-The [issue 50 receipt](../evidence/2026-10-18-issue50-screen-recording.md) records
+The [issue 50 receipt](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-18-issue50-screen-recording.md) records
 candidates `8252f03` (X11 capture, review, export, tray) and `625b7ff` (Wayland
 acquisition) on pull request #68:
 
@@ -753,7 +753,7 @@ guests were rerun by the follow-up above.
 
 ## Resident PNG readers — 2026-10-17
 
-The [resident PNG receipt](../evidence/2026-10-17-resident-png-codecs.md) records the
+The [resident PNG receipt](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-17-resident-png-codecs.md) records the
 kept reader change `e9a4dac` and the dropped libpng writer. The writer prototype
 passed the Mint dev suite 69/69 and 18/18 scenarios each on a Mint Cinnamon VM and
 the physical Debian Plasma desktop. It saved only the 220-436 KiB of plugin files
@@ -762,7 +762,7 @@ the affected capture, clipboard, GNOME, KDE and editor suites.
 
 ## KDE window frame check — 2026-10-17
 
-The [KDE window frame receipt](../evidence/2026-10-17-kde-window-frame.md) records
+The [KDE window frame receipt](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-17-kde-window-frame.md) records
 the decision to keep frame-inclusive window capture on Plasma/Wayland, and the
 lab fix. The runner now asks KWin for the frame on any observed KDE Wayland
 session, not only a profile named `kde-wayland`. Window runs pass 2/2 on
@@ -771,7 +771,7 @@ physical Debian Plasma 6.3 (642×449) and 2/2 on the Kubuntu Plasma 6.6 VM
 
 ## X11 clipboard image plugins — 2026-10-17
 
-The [X11 clipboard receipt](../evidence/2026-10-17-x11-clipboard-plugins.md) records
+The [X11 clipboard receipt](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-17-x11-clipboard-plugins.md) records
 candidate `d11940f` on `feat/edit-and-upload`:
 
 - Dev suite 64/64 on Mint.
@@ -781,11 +781,11 @@ candidate `d11940f` on `feat/edit-and-upload`:
 - Plasma/X11 resident 10.2 MiB smaller after its first clipboard import, with no
   image plugin mapped. The one Debian window failure was a lab expectation tied
   to the physical profile name, fixed in the
-  [window frame receipt](../evidence/2026-10-17-kde-window-frame.md).
+  [window frame receipt](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-17-kde-window-frame.md).
 
 ## Edit & upload — 2026-10-17
 
-The [issue 51 receipt](../evidence/2026-10-17-issue51-edit-and-upload.md) records
+The [issue 51 receipt](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-17-issue51-edit-and-upload.md) records
 candidate `329d736`:
 
 - Dev suites on Mint, Kubuntu and Debian.
@@ -799,7 +799,7 @@ Physical Fedora was uncovered in that campaign; the retired platform is out of s
 
 ## Local S3 settings controls — 2026-10-16
 
-The [scoped receipt](../evidence/2026-10-16-s3-settings-controls.md) records the
+The [scoped receipt](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-16-s3-settings-controls.md) records the
 user-approved saved-secret reveal, visible connection-test progress/success,
 actionable sanitized S3 errors and synthetic regression checks. Current-candidate
 graphical and resident-memory acceptance remains pending; prior desktop evidence
@@ -807,7 +807,7 @@ does not cover this change.
 
 ## Clipboard tray wording — 2026-10-16
 
-The [issue 36 receipt](../evidence/2026-10-16-issue36-tray-label.md) records the exact
+The [issue 36 receipt](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-16-issue36-tray-label.md) records the exact
 **Upload Clipboard** label, two passing tray suites, and a real Cinnamon menu
 selection with synthetic local-save and independent paste verification. Memory
 testing was waived by explicit user instruction for this string change. This
@@ -815,7 +815,7 @@ focused development check makes no wider desktop or release acceptance claim.
 
 ## Unified UI acceptance — 2026-10-16
 
-The [issue 40 receipt](../evidence/2026-10-16-issue40-redesign-acceptance.md) records
+The [issue 40 receipt](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-16-issue40-redesign-acceptance.md) records
 frozen product source `1010842`, including the History clipboard ownership and
 16-bit precision corrections: full
 58/58 Dev and ASan/UBSan suites, audited native
@@ -835,7 +835,7 @@ receipts as diagnostic history; they are not current release blockers.
 | Build and automated contracts | [Main b1ed4ae Build run](https://github.com/patrick-hudson/put.gd-desktop/actions/runs/38438946727), all four jobs passed | The retired cross-platform jobs compiled shared code only; CI is not compositor proof |
 | Cold first capture (#3) | [Unable-to-reproduce closure](https://github.com/patrick-hudson/put.gd-desktop/issues/3#issuecomment-6149342985): b75c0dd, 3/3 cold runs each on GNOME/KDE, exact image/native-paste comparisons | Does not prove the S3 fix caused the historical timeout to disappear or rule out a rare race |
 | Live S3 and retained memory (#4) | [Closure and exact scope](https://github.com/patrick-hudson/put.gd-desktop/issues/4#issuecomment-6152173663): the historical full workload plus bounded b1ed4ae-tree Cinnamon/GNOME/KDE checks | The newer check covers region/text publication, restart/history/deletion and two idle windows per desktop; it is not a new full geometry matrix |
-| Release and fresh-agent acceptance (#5) | [Dated audit](../evidence/2026-10-13-issue5-acceptance.md): clean SDK/dev/release builds, production CLI/MCP/live S3, Cinnamon upgrade with 10,000 records | Initial unexplained auto-copy suppression blocks sibling expansion; physical hardware and full geometry/performance acceptance remain separate gates. Remaining findings and acceptance work: [#24](https://github.com/patrick-hudson/put.gd-desktop/issues/24) |
+| Release and fresh-agent acceptance (#5) | [Dated audit](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-13-issue5-acceptance.md): clean SDK/dev/release builds, production CLI/MCP/live S3, Cinnamon upgrade with 10,000 records | Initial unexplained auto-copy suppression blocks sibling expansion; physical hardware and full geometry/performance acceptance remain separate gates. Remaining findings and acceptance work: [#24](https://github.com/patrick-hudson/put.gd-desktop/issues/24) |
 
 Full release readiness requires the current [acceptance matrix](acceptance-matrix.md)
 and [release runbook](../release/release-runbook.md). The
@@ -847,7 +847,7 @@ and [release runbook](../release/release-runbook.md). The
 
 The [Proton register](../history/proton-drive-release-gates.md) credits the merged integration
 and the source-specific P1 recovery/recipient, P2 resource and P3 source/rebuild
-receipts. The [final P4/P6 receipt](../evidence/2026-10-15-proton-p4-p6-acceptance.md) records the actual packaged
+receipts. The [final P4/P6 receipt](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-15-proton-p4-p6-acceptance.md) records the actual packaged
 experimental Proton candidate `a5112bc`: source publication/extracted production
 rebuild, package inventories, Cinnamon-first functional/memory acceptance then
 GNOME/KDE, Fedora/AppImage smoke checks and secure test-session cleanup. P5 credits
@@ -1186,7 +1186,7 @@ The bounded batch ended after three experiments: two retained and one degenerate
 The remaining one-hour budget could not fit another full measurement. The 40 MiB
 target remains open, and neither empty-history results nor native mapping checks
 establish upload/populated-history memory or complete visual acceptance. The
-[structured comparison](../evidence/2026-10-08-resident-memory.json) retains parameters,
+[structured comparison](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-08-resident-memory.json) retains parameters,
 hashes, time series, page attribution summaries and the failed candidate.
 These savings describe a background resident before views or S3 are first used.
 Views remain cached to preserve drafts and selections; AWS stays initialized after
@@ -1200,7 +1200,7 @@ race freedom. No new suppression was introduced.
 The focused Compound Engineering review combined a local correctness read with
 an independent Anthropic Claude Opus 5.5 pass and returned no findings for the
 six-file optimization slice at 016edb8. Its
-[receipt](../evidence/2026-10-08-memory-review.json) records exact scope and limitations;
+[receipt](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-08-memory-review.json) records exact scope and limitations;
 it does not certify whole-product readiness or the later permanent-test diff.
 
 
@@ -1219,7 +1219,7 @@ configuration revision rejection, invalid reload recovery and visible settings
 refresh passed. The stdio client needed the explicit resident socket because its
 minimal child environment omitted XDG_RUNTIME_DIR; the documented endpoint option
 worked without launching another resident. The
-[structured receipt](../evidence/2026-10-08-fresh-cinnamon.json) retains run parameters,
+[structured receipt](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-08-fresh-cinnamon.json) retains run parameters,
 package/binary hashes, operation IDs, failures and exact limitations. This local
 single-head subset does not complete full lab and agent acceptance, remote publication/deletion, the
 compositor matrix or release lifecycle acceptance.
@@ -1264,7 +1264,7 @@ Cinnamon guest. Native region/Qt paste (80×60) and clipboard-image/GTK4.14 X11
 paste (96×64) pass with matching pixel hashes and correct timestamped local names.
 The lab's original configuration was preserved and its resident restored.
 
-The [structured record](../evidence/2026-10-08-settings-refinement.json) retains source,
+The [structured record](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-08-settings-refinement.json) retains source,
 binary and package fingerprints, commands, parameters, failure/green log hashes,
 JUnit hashes, controlled GUI inputs, screenshots and separate review/fix receipts.
 Only synthetic local workflows were exercised here. Successful live S3, full
@@ -1285,7 +1285,7 @@ restart recovery, and wrong-build/wrong-transport rejection fixtures fail when
 the corresponding guards are removed. Eight affected SDK contracts pass in
 Dev, Release, ASan and TSan; installed-package checks pass. The combined canonical
 SDK/live-region/cleanup development suite passes 26/26 (112.90 seconds).
-[The SDK record](../evidence/2026-10-08-sdk-memory.json) retains exact source, binaries,
+[The SDK record](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-08-sdk-memory.json) retains exact source, binaries,
 review and raw measurements. Third-party uninstrumented library limits remain.
 
 Three empty-view cycles on the reviewed binary finish at 79.551 MiB; no operations
@@ -1301,7 +1301,7 @@ Native Cinnamon proof changed the independent fixture color during dragging,
 then verified both normal and rapid-release saved pixels and independent Qt paste
 contained the final color without the outline. Escape and right-click cancellation
 preserved clipboard text. The single-head record is in
-[live-region evidence](../evidence/2026-10-08-live-region.json); fresh GNOME/KDE
+[live-region evidence](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-08-live-region.json); fresh GNOME/KDE
 graphical proof, mixed displays and the physical latency gate remain open.
 
 After five local capture/clipboard cycles, production idle heap reclamation
@@ -1313,7 +1313,7 @@ This comparison uses different binary identities and establishes neither cold
 acquisition that never enqueues a payload. Final coherent development tests pass
 25/25 (81.39s); affected operation ASan/UBSan with leak detection passes 1/1
 (24.70s), and instrumented-Qt TSan passes 1/1 (26.34s), with no new suppression.
-[The cleanup record](../evidence/2026-10-08-heap-reclaim.json) retains source identities,
+[The cleanup record](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-08-heap-reclaim.json) retains source identities,
 complete controlled samples, JUnit reports and the cancellation test delta.
 
 A test-first lab-finalizer correction also verifies that input cleanup failures do
@@ -1337,7 +1337,7 @@ The isolated fixed IPC source measured 46.020 MiB against a paired 52.012 MiB
 reference over five minutes. The committed combined
 source measured 46.188 MiB over another 300 seconds at 0.00666% of one core,
 without operations or owned window activation. Full identities are recorded
-in [the IPC evidence](../evidence/2026-10-08-local-ipc.json). Keep the
+in [the IPC evidence](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-08-local-ipc.json). Keep the
 40 MiB target, post-S3/populated-history memory and full desktop acceptance open.
 The temporary region trace still fails the unchanged 150 ms warm p95 gate at
 160.004 ms; it points to journal initialization overlapping a prior cancellation
@@ -1362,7 +1362,7 @@ Integrated development tests pass 28/28 (144.57s). The affected operations
 contract passes Debug and Release, ASan/UBSan with leak checking (37.56s), and
 instrumented-Qt TSan with unchanged suppressions (39.47s). These are bounded
 application checks, not new desktop/cloud or whole-dependency certifications.
-[Complete evidence](../evidence/2026-10-08-startup-reclaim.json) preserves exact
+[Complete evidence](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-08-startup-reclaim.json) preserves exact
 source/binary identities, tests, review and both physical workloads.
 
 ### On-demand UI implementation checkpoint — 2026-10-08
@@ -1382,7 +1382,7 @@ The GTK debug startup failure was reproduced and corrected using private control
 descriptors established before QApplication. These are headless/isolated checks,
 not current Cinnamon/GNOME/KDE acceptance.
 
-[The structured checkpoint](../evidence/2026-10-08-ui-process.json) retains the
+[The structured checkpoint](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-08-ui-process.json) retains the
 completed review, four confirmed findings and caller fixes, command scripts,
 JUnit results, source hashes and a 15-case total-process sampler test receipt.
 GNOME ownership-clear and expired setup-result recovery remain scheduled fixes.
@@ -1396,8 +1396,8 @@ new regressions failed before the fix; the full Settings suite and affected
 ASan/UBSan and instrumented-Qt TSan checks pass. GNOME now retries failed UI-PID
 clearing through the existing probe. A native Qt Wayland/private-D-Bus regression
 reproduced the failure and now passes all three recovery scenarios, including
-newer PID and Shell-owner protections. See the [setup receipt](../evidence/2026-10-08-ui-setup-recovery.json)
-and [GNOME receipt](../evidence/2026-10-08-ui-gnome-recovery.json). These checks do not
+newer PID and Shell-owner protections. See the [setup receipt](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-08-ui-setup-recovery.json)
+and [GNOME receipt](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-08-ui-gnome-recovery.json). These checks do not
 close the pending current-source graphical or total-process memory gates.
 
 ### Current-source UI split native wave — 2026-10-08
@@ -1431,7 +1431,7 @@ physical cold 40 MiB target. GNOME's successful sampler was followed by a host
 launcher `Popen.check_returncode` error; retain it and the corrected future replay
 driver. No timed sample was repeated to hide that error.
 
-[Current-source receipts and raw replay evidence](../evidence/2026-10-08-ui-process-native-memory.json)
+[Current-source receipts and raw replay evidence](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-08-ui-process-native-memory.json)
 distinguish these demonstrated subsets from full AE17. Real S3 publication and
 precise deletion, native crash/version/typed-credential cases, the historical
 GNOME readiness/focus concerns, mixed displays and remaining release gates stay
@@ -1468,12 +1468,12 @@ runs where that native runtime is already installed. The shared C++/Qt tests
 remain portable; real GNOME capture/clipboard tests remain separate from these
 mocked ownership assertions. Do not install Node to fill a guest coverage gap.
 All five ownership assertions pass under the guest’s existing GJS 1.88.0.
-Host CMake configuration passes without Node lookup. [The receipt](../evidence/2026-10-08-gjs-ownership.json)
+Host CMake configuration passes without Node lookup. [The receipt](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-08-gjs-ownership.json)
 keeps this result separate from the frozen source-43 native build.
 
 ### Live S3 and Cinnamon resident experiment — 2026-10-10
 
-The [source55 live S3 record](../evidence/2026-10-09-live-s3-cinnamon.json)
+The [source55 live S3 record](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-09-live-s3-cinnamon.json)
 uses the clean `0.1.1-dev.55+g033b73fb58a3` resident, commit
 `033b73fb58a38f853bd79b1902d88117e723a122`, in the Cinnamon/X11 VM.
 One synthetic 30-byte clipboard text upload passed unsigned public-byte
@@ -1535,7 +1535,7 @@ The GNOME resident experiment subsequently passed all fifty registered guest tes
 native capture/clipboard/cancellation cases and the local focused UI gates on
 its verified Core route. Two separate 300-second post-use observations both
 peaked at 32.77 MiB RSS, with 61 valid samples each and worst CPU 0.0334% of one
-core. The [structured record](../evidence/2026-10-10-gnome-core57-memory.json)
+core. The [structured record](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-10-gnome-core57-memory.json)
 pins exact source, workload, process and original result hashes. The approved
 30-minute extension completed the fresh empty-profile cold confirmation at
 26.95 MiB peak RSS and 0.0067% of one CPU core over 300.000 seconds. All 61
@@ -1573,7 +1573,7 @@ normal generation-four helper exit. Independent recomputation verified counters,
 attribution hashes and native/source joins. Measurement integrity and CPU pass;
 the 40 MiB RSS target fails. PSS does not replace the requested RSS target.
 
-The [bounded record](../evidence/2026-10-10-kde-source57-memory-baseline.json) and
+The [bounded record](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-10-kde-source57-memory-baseline.json) and
 [procedure](../history/testing-kde-memory.md) preserve deterministic parameters, commands,
 hashes, failed attempts and workload qualifications. Current cold and post-S3
 memory, remote History, full geometry, physical KDE, canonical clean-checkout
@@ -1719,7 +1719,7 @@ local adversarial reviewer completed the lens; all three code findings were appl
 The completed review and follow-up receipt are under
 `/tmp/compound-engineering-1000/ce-code-review/20261014-172954-89b34b02/`.
 
-The [native VM follow-up](../evidence/2026-10-14-storage-tray-native.md) tested frozen
+The [native VM follow-up](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-14-storage-tray-native.md) tested frozen
 commit `061c2d9c569d` on Cinnamon 6.6.4/X11/Qt 6.4.2, GNOME 50.1/Wayland/Qt 6.10.2
 and Plasma 6.6.6/Wayland/Qt 6.10.2. Each desktop passed twelve native
 capture/clipboard/cancellation cases, six view opens/closes with normal helper
@@ -1741,7 +1741,7 @@ separate. All golden/backing disks were preserved; only fresh overlays were boot
 
 ## Cinnamon login startup — issue #24 (2026-10-16)
 
-The [login-fix report](../evidence/2026-10-16-issue24-login-fix.md) and its payload-free
+The [login-fix report](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-16-issue24-login-fix.md) and its payload-free
 JSON receipt record frozen implementation `09ce25b7851624e602c96dba855b4465e688fec9`.
 Two actual Cinnamon console logout/login cycles started distinct verified
 residents with a registered tray, preserved configuration and no app window or
@@ -1769,5 +1769,5 @@ is not claimed fixed by the startup change.
 
 The 2026-10-16 combined S3/Proton controls campaign passed the current-source
 Cinnamon-first three-desktop functional matrix and user-requested 30-second
-post-use memory observations; see [the native receipt](../evidence/2026-10-16-destination-controls-native.md).
+post-use memory observations; see [the native receipt](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-16-destination-controls-native.md).
 Its synthetic S3 and minimal Proton scope does not establish broader agent or live-cloud gates.

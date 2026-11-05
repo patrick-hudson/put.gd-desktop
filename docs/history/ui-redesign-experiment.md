@@ -4,7 +4,7 @@
 
 This is the historical 2026-10-15 visual experiment record. The user approved the
 first visual round and expanded testing on 2026-10-16. Current merge-preparation
-source and acceptance are recorded in the [dated acceptance receipt](../evidence/2026-10-16-issue40-redesign-acceptance.md).
+source and acceptance are recorded in the [dated acceptance receipt](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-16-issue40-redesign-acceptance.md).
 Deferral statements below describe their original checkpoints.
 The subsequent visual-language contract was [Graphite](../design/visual-language.md). Since 2026-10-29 the app style is `putgd::Ui`; the names below are the ones used at the time.
 

@@ -1,8 +1,0 @@
-cmake_minimum_required(VERSION 3.24)
-project(putgd_sqlite_locating_probe LANGUAGES CXX)
-set(CMAKE_CXX_STANDARD 20)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-find_package(Qt6 6.4.2 REQUIRED COMPONENTS Core Sql)
-find_package(Threads REQUIRED)
-add_executable(sqlite-latency-probe probe.cpp)
-target_link_libraries(sqlite-latency-probe PRIVATE Qt6::Core Qt6::Sql Threads::Threads)

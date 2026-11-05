@@ -149,7 +149,7 @@ The final GNOME preparation also relocated its unused legacy outside-root
 copy into `gnome-legacy-source-563730cc/` only after a hash, complete backing
 reference and open-file inventory. Its bytes and SHA-256 stayed unchanged;
 no referenced base or original named snapshot was moved or changed.
-[The campaign record](../evidence/2026-10-30-boat-snapshots/README.md) retains the
+[The campaign record](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-30-boat-snapshots/README.md) retains the
 inventory, failed attempts, fresh launch/reset/held-overlay-refusal/guarded-cleanup
 receipts and worker deletion proof. Follow the [recipe](boat-snapshots.md) to
 make another new version; never overwrite these images or snapshot names.
@@ -208,7 +208,7 @@ The S3 prefix also holds the provisioning evidence and
 `sidecars/job-completion.json`. UEFI code, the blank VARS template and the
 provisioned VARS are under `sidecars/firmware/` as `OVMF_CODE_4M.fd`,
 `OVMF_VARS_4M.fd` and `provisioned-vars.fd`. Their SHA-256 values and server
-checksums are in the [verification receipt](../evidence/2026-10-29-aurora-golden-s3-665/receipt.json).
+checksums are in the [verification receipt](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-29-aurora-golden-s3-665/receipt.json).
 Future runs must use private writable copies of VARS, preserving the archived
 firmware and golden.
 

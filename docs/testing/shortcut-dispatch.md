@@ -143,7 +143,7 @@ than being mislabeled as syntax errors; the GUI preserves the saved draft and ex
 diagnostics. These are protocol/unit checks, not Plasma acceptance. The Plasma
 acceptance of the recorder and one-level-copy changes, on Aurora Fedora 45 (US and
 German) and Debian 13, is in the
-[2026-10-23 evidence](../evidence/2026-10-23-kde-shortcut-504/README.md).
+[2026-10-23 evidence](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-23-kde-shortcut-504/README.md).
 
 For native acceptance, preserve the recorded source revision and executable hash;
 start with the unmodified default four shortcuts and invoke each with actual keys.

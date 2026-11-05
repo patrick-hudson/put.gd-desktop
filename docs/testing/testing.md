@@ -97,7 +97,7 @@ python3 tests/performance/bench_idle.py \
 ```
 
 Retained comparisons are exported in
-[the structured memory record](../evidence/2026-10-08-resident-memory.json), including
+[the structured memory record](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-08-resident-memory.json), including
 failed candidates, workload parameters, binary/harness hashes and measured page
 attribution. Replay with a fresh output directory on the same physical session;
 do not substitute a shorter run or a hosted CI measurement. Raw local logs remain
@@ -191,5 +191,5 @@ as the CTest `-R` expression, using the ASan/UBSan settings in [build.md](../bui
 and the instrumented Qt environment in [thread-sanitizer.md](thread-sanitizer.md).
 Keep separate JUnit/logs per attempt; a prior failure remains evidence even when
 the final source passes. Native UI witnesses and the exact controlled inputs are
-recorded in [the settings-refinement evidence](../evidence/2026-10-08-settings-refinement.json); offscreen results establish no
+recorded in [the settings-refinement evidence](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-08-settings-refinement.json); offscreen results establish no
 compositor certification.

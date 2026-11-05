@@ -137,9 +137,9 @@ evidenced on every desktop. A failed item is a finding and gets its own issue; t
 pass still reports it as a fail. An item that can't run on a desktop needs a
 written reason, and Patrick decides whether the pass counts as complete. Nothing
 is skipped silently. The passes so far are
-[2026-10-21, nightly 842](../evidence/2026-10-21-appimage-full-acceptance/README.md),
-[2026-10-22, nightly 942](../evidence/2026-10-22-appimage-full-acceptance-rerun/README.md) and
-[2026-10-23, Qt 6.12.0 (#418)](../evidence/2026-10-23-appimage-qt612-418/README.md).
+[2026-10-21, nightly 842](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-21-appimage-full-acceptance/README.md),
+[2026-10-22, nightly 942](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-22-appimage-full-acceptance-rerun/README.md) and
+[2026-10-23, Qt 6.12.0 (#418)](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-23-appimage-qt612-418/README.md).
 
 | Desktop | Placement |
 | --- | --- |
@@ -334,7 +334,7 @@ Each resident runs with private `XDG_CONFIG_HOME`,
   the update writes N+1 beside N, which matches `SHA256SUMS`. On Fedora this needs
   `SSL_CERT_FILE=/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem` ([#297](https://github.com/patrick-hudson/put.gd-desktop/issues/297)).
   Run put.gd from N's path afterwards: login (U11) picks N+1.
-- **U9. Gear Lever and AppImageLauncher** (as in [#412](../evidence/2026-10-22-appimage-integrators-412/README.md)):
+- **U9. Gear Lever and AppImageLauncher** (as in [#412](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-22-appimage-integrators-412/README.md)):
   - Each integrates N. Then put.gd's in-app update N → N+1 runs from the integrator's menu entry.
   - The entry and the record still start N+1, with no second entry and no adopted backup.
   - Each tool's own check then reports no update. Gear Lever's own **Update** on a second copy of N goes
@@ -406,8 +406,8 @@ The same rules as the AppImage profile apply:
 
 Nothing is skipped silently. The passes are in the evidence folders named
 `*-native-full-acceptance`. The first was
-[2026-10-23, nightly 1058](../evidence/2026-10-23-native-full-acceptance/README.md), and its drivers are in
-[`2026-10-23-native-full-acceptance/lab/`](../evidence/2026-10-23-native-full-acceptance/lab/README.md).
+[2026-10-23, nightly 1058](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-23-native-full-acceptance/README.md), and its drivers are in
+[`2026-10-23-native-full-acceptance/lab/`](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-23-native-full-acceptance/lab/README.md).
 
 | Desktop | Package | Placement |
 | --- | --- | --- |

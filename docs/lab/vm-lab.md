@@ -475,12 +475,12 @@ Mint 22.3 and Ubuntu 26.04 logout/controller-SIGKILL evidence uses the new
 system-manager mechanism: both the graphical login and any closing SSH login
 were ended, `Linger=no` was retained, and `user@1000.service` was observed
 inactive while the root helper survived and then wrote `result.json`. See the
-[B1 evidence](../evidence/2026-10-30-staging-cgroup-b1/README.md). That run
+[B1 evidence](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-30-staging-cgroup-b1/README.md). That run
 ended the closing login with `kill-session --signal=KILL`, which sudo cannot
 relay. Independent validation then showed a plain stop of that login killing
 the supervisor wrapper on both guests, and `terminate-user` killing it on
 Ubuntu (sudo-rs), through sudo's relay. The
-[login-end evidence](../evidence/2026-10-30-staging-cgroup-f1/README.md) repeats
+[login-end evidence](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-30-staging-cgroup-f1/README.md) repeats
 plain `systemctl stop session-N.scope` and `loginctl terminate-user` during
 both staging and the supervisor on Mint 22.3 and Ubuntu 26.04, with the real
 `install` controller killed, then releases each finished job through
@@ -535,9 +535,9 @@ clears only the matching install token. The missing terminal receipt remains
 missing; recovery proves process quiescence rather than a successful helper
 installation. These rules apply only to disposable overlays; immutable goldens
 are never changed.
-See the [Cinnamon cancellation proof](../evidence/2026-10-30-lab-staging-748/README.md)
+See the [Cinnamon cancellation proof](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-30-lab-staging-748/README.md)
 for the earlier exact identities, refused retries, later successful install and cleanup.
-The [cgroup recovery regression](../evidence/2026-10-30-staging-cgroup-780/README.md)
+The [cgroup recovery regression](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-30-staging-cgroup-780/README.md)
 records the #780 guest identities, setsid/SIGKILL proof, fallback unit cases and
 resource retirement.
 
@@ -620,7 +620,7 @@ and `XDG_DATA_HOME=~/putgd-lab/data`. For AppImage profiles,
 directory (its `XDG_DATA_HOME`, else `~/.local/share`). AppRun writes the KWin
 permission entries and the window-icon entries there, and the compositor reads
 only the session's directory
-([#523](../evidence/2026-10-23-appimage-icon-523/README.md)). put.gd's own data
+([#523](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-23-appimage-icon-523/README.md)). put.gd's own data
 stays private. An `applications/` directory that already holds files is left
 as it is.
 

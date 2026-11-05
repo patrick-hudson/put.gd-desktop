@@ -102,7 +102,7 @@ that there's nothing to install, and the nightly stays until the first stable re
 **Package upgrades keep the channel you chose:**
 - **apt:** dpkg keeps the copied file through upgrades of the same channel. When the other
   channel's package arrives, it ships exactly that file, so dpkg takes it without a conffile
-  prompt. Checked with dpkg 1.22.22 on d69 ([probe](../evidence/2026-10-22-deb-rpm-channel-386/lab/i386-conffile-probe.sh))
+  prompt. Checked with dpkg 1.22.22 on d69 ([probe](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-22-deb-rpm-channel-386/lab/i386-conffile-probe.sh))
   and on Mint 22.3.
 - **dnf:** RPM never rewrites a `%ghost` file.
 - **The conffile's bytes are pinned:** `tests/releases/test_repository_files.py` holds the
@@ -118,7 +118,7 @@ the repository file, the Channel choice comes back and put.gd offers **Download*
 
 ![After moving the repository to stable by hand: stable 26.1018.989 is older, so apt keeps the nightly until the last command](https://raw.githubusercontent.com/patrick-hudson/put.gd-desktop/2b0367ae90ef24511aff54e6fa43a14660eb444e/docs/evidence/2026-10-22-deb-rpm-channel-386/pictures/m74-2-stable-repository-older.png)
 
-The pictures come from lab builds of [#428](https://github.com/patrick-hudson/put.gd-desktop/pull/428), on Linux Mint 22.3 and Fedora 44. The lab channels were under `pkg.put.gd/lab`, and the stable side was signed with a lab-only key ([evidence](../evidence/2026-10-22-deb-rpm-channel-386/README.md)).
+The pictures come from lab builds of [#428](https://github.com/patrick-hudson/put.gd-desktop/pull/428), on Linux Mint 22.3 and Fedora 44. The lab channels were under `pkg.put.gd/lab`, and the stable side was signed with a lab-only key ([evidence](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-22-deb-rpm-channel-386/README.md)).
 
 ## AppStream catalog (#314)
 
@@ -251,6 +251,6 @@ python3 tools/releases/sign_stable.py --empty                      # on the work
 
 ## Acceptance (2026-10-21)
 
-Lab-scope and live evidence (real nightlies 816 → 828 on all four desktops, 2026-10-21) is in [evidence/2026-10-21-pkg-repos-293](../evidence/2026-10-21-pkg-repos-293/README.md).
+Lab-scope and live evidence (real nightlies 816 → 828 on all four desktops, 2026-10-21) is in [evidence/2026-10-21-pkg-repos-293](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-21-pkg-repos-293/README.md).
 
-The AppStream catalog (#314) was tested in the lab on 2026-10-22: search, install and remove from Discover (k72), GNOME Software (f44) and Mint's Software Manager (m74). The evidence is in [evidence/2026-10-22-appstream-catalog-314](../evidence/2026-10-22-appstream-catalog-314/README.md).
+The AppStream catalog (#314) was tested in the lab on 2026-10-22: search, install and remove from Discover (k72), GNOME Software (f44) and Mint's Software Manager (m74). The evidence is in [evidence/2026-10-22-appstream-catalog-314](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-22-appstream-catalog-314/README.md).

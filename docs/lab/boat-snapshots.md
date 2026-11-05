@@ -161,7 +161,7 @@ and never overwritten. It checks the source hash again and writes an adjacent
 manifest with source/new hashes and package target. No existing golden is changed.
 
 For an inherited original GNOME snapshot with an unused outside-root copy,
-quiesce all owned lab lifecycle work first. The [recorded relocation script](../evidence/2026-10-30-boat-snapshots/context/canonicalize-unused-copy.py)
+quiesce all owned lab lifecycle work first. The [recorded relocation script](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-30-boat-snapshots/context/canonicalize-unused-copy.py)
 checks the source hash, every discovered backing reference and a privileged
 read-only open-file/mapping inventory under the lifecycle lock before renaming
 the unreferenced directory into the canonical root. It verifies the same hash
@@ -227,4 +227,4 @@ Delete all preparation workers, stop only your tunnels and agent, remove only
 your wall tiles, and check every owned ID against `boat list --all`. Preserve
 unrelated workers and every named snapshot. Evidence, including failed attempts,
 JUnit, identities, screenshots and retirement receipts is linked from the
-[snapshot campaign record](../evidence/2026-10-30-boat-snapshots/README.md).
+[snapshot campaign record](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-30-boat-snapshots/README.md).

@@ -252,7 +252,7 @@ one harmless restart. Both triggers were tested on k72 on 2026-10-20: a labelled
 synthetic `GPU HANG: ` journal line, and a `SIGSTOP`ped server. Each restart
 brought live frames back. On d69 a labelled synthetic KWin reset line restarted
 the server after the unit's 5-minute start grace, and frames came back
-([receipt](../evidence/2026-10-20-recording-closeout.md#164-wall-vnc-watchdog-on-d69)).
+([receipt](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-20-recording-closeout.md#164-wall-vnc-watchdog-on-d69)).
 d69's `patrick` user isn't in `adm`, so the kernel's `GPU HANG` line is
 invisible to the unit there. KWin's own "graphics reset attributable" line is in
 the user journal, and the unit matches it. On k72 the user is in `adm` and
@@ -639,7 +639,7 @@ phudson2@gmail.com, signed in once by Patrick: the original four on 2026-10-23
 and Aurora on 2026-10-29. Use it for live Proton
 tests on the builder or in its VMs. The tools, commands and recovery steps are in
 [Proton Drive: lab sessions](../proton-drive.md#lab-sessions-on-the-builders); the
-evidence is in [the 2026-10-23 lab sessions](../evidence/2026-10-23-proton-lab-sessions/README.md).
+evidence is in [the 2026-10-23 lab sessions](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-23-proton-lab-sessions/README.md).
 
 | Builder | Keychain reference | Default keyring | Lab app in `~/putgd-lab/proton/` | VMs that can borrow it |
 | --- | --- | --- | --- | --- |
@@ -652,7 +652,7 @@ evidence is in [the 2026-10-23 lab sessions](../evidence/2026-10-23-proton-lab-s
 Each builder's registry (`~/putgd-lab/locks/proton-registry.json`) lists the goldens it
 lends to under `guests`, with each one's path, SHA-256, bootstrap key and host-key
 pins, recorded by `proton_lab.py register-guests`. Every builder passed a
-lend proof on 2026-10-29 and 2026-10-30 ([evidence](../evidence/2026-10-29-proton-guest-bridge/README.md)).
+lend proof on 2026-10-29 and 2026-10-30 ([evidence](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-29-proton-guest-bridge/README.md)).
 
 - **The Proton lock.** Take `desktop_lock.py acquire HOST --resource proton` before
   using a builder's session in any way: its lab app, a check, or lending it to a VM.
@@ -821,4 +821,4 @@ with `DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus`. Rollback:
 `systemctl --user unmask xfce4-notifyd.service`. With the mask in place, a put.gd
 update notification's default action (a click on the body) opened its link again
 on m74 at 16:53Z. Evidence:
-[2026-10-21-test-lab-reliability](../evidence/2026-10-21-test-lab-reliability/README.md).
+[2026-10-21-test-lab-reliability](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-21-test-lab-reliability/README.md).

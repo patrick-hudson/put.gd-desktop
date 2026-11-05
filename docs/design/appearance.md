@@ -32,7 +32,7 @@ hidden at the switch catches up just before it is shown. A pick repaints every
 open window in 38 ms on d69 Plasma Wayland (Qt 6.8.2), 39 ms on f44 GNOME
 Wayland (Qt 6.11.2) and 64 ms on m74 Cinnamon X11 (Qt 6.4.2; #260), measured
 with `putgd-bench-theme-switch`; see
-[the evidence](../evidence/2026-10-20-ui-polish-233-237-238-239/README.md).
+[the evidence](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-20-ui-polish-233-237-238-239/README.md).
 Stylesheet `palette(role)` references are not an alternative: Qt resolves them
 when it builds a rule, so they keep the old colours after a palette change.
 
@@ -133,7 +133,7 @@ on Cinnamon the resident also follows dconf's change notice
 (`ca.desrt.dconf.Writer` `Notify`) for that schema: a desktop theme picked on its
 own (Themes, Advanced settings, Desktop) re-tints the tray too
 ([#702](https://github.com/patrick-hudson/put.gd-desktop/issues/702),
-[evidence](../evidence/2026-10-29-cinnamon-panel-theme-702/README.md)). The theme
+[evidence](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-29-cinnamon-panel-theme-702/README.md)). The theme
 is read with `gsettings`, which reads dconf's database under the resident's own
 `XDG_CONFIG_HOME`: a lab run with a private configuration home must share the
 session's `~/.config/dconf` for this, as the events recipe does. The resident's own session environment matters: it needs the
@@ -200,4 +200,4 @@ overrides, and must keep those values until then (#197).
 ## Evidence
 
 Screenshots from GNOME, Plasma and Cinnamon are in
-[evidence/2026-10-20-appearance-60](../evidence/2026-10-20-appearance-60/README.md).
+[evidence/2026-10-20-appearance-60](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-20-appearance-60/README.md).

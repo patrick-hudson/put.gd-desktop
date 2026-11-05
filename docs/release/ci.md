@@ -148,7 +148,7 @@ Its standard build-dependency attempts have a 300-second deadline, a 120-second
 silence limit and three attempts; the shared installer records failures and retry outcomes. It
 adds no AppImage package snapshot to the shared 10 GB cache. Native container
 snapshots and dependency pins are unchanged. See the
-[independent mirror and journal-retry evidence](../evidence/2026-10-24-ci-mirror-journal/README.md)
+[independent mirror and journal-retry evidence](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-24-ci-mirror-journal/README.md)
 for targeted checks and the outstanding hosted-run/stress gates.
 
 **appimage-pipewire** in `package.yml` checks each new image as soon as its
@@ -741,7 +741,7 @@ The lane also found four races the scaled waits alone did not fix, each fixed in
 (it now waits for the new `previews` diagnostic), three operations tests
 assumed the first operation takes the shared upload lock, and an X11 test read
 grabs before the resident's ungrab reached the server. The ledgers are in
-`docs/evidence/2026-10-22-flaky-tests/stress/`.
+[`records/2026-10-22-flaky-tests/stress/`](https://github.com/patrick-hudson/put.gd-evidence/tree/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-22-flaky-tests/stress).
 
 ### Weekly run on k72
 
@@ -791,7 +791,7 @@ only in this lane runs under more contention than the hosted runner. Treat it
 like a CI flake: find the wait that assumes a fast machine.
 
 The first runs, on 2026-10-21, were started by hand
-(`docs/evidence/2026-10-22-stress-weekly/`):
+([`records/2026-10-22-stress-weekly/`](https://github.com/patrick-hudson/put.gd-evidence/tree/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-22-stress-weekly)):
 
 - A fake quiet A/V lock in a test copy skipped the week and logged why.
 - The first full run timed out five native and X11 tests in every iteration.
@@ -809,7 +809,7 @@ The first runs, on 2026-10-21, were started by hand
 
 `tools/ci/ctest_cpu_profile.py` runs each test alone and reports its wall and
 CPU time; `cmake/TestPolicy.cmake`'s CPU pool comes from its k72 profile
-(`docs/evidence/2026-10-22-flaky-tests/k72-cpu-profile.json`). With that pool,
+([`records/2026-10-22-flaky-tests/k72-cpu-profile.json`](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-22-flaky-tests/k72-cpu-profile.json)). With that pool,
 the full suite on k72 (four cores, like the runner) took:
 
 ![Full CTest wall time against tests run at once on k72](https://raw.githubusercontent.com/patrick-hudson/put.gd-desktop/396b54e2d55ef5e4e4dafdf0f66c26824f48b574/docs/evidence/2026-10-22-flaky-tests/parallelism.png)
@@ -892,7 +892,7 @@ retry, four failed attempts installed from the snapshot and built the package,
 and a fault on every attempt and on the snapshot failed the job. Job summaries
 and logs are visible only to signed-in viewers, so the after picture lists the
 same lines from the check-runs API. The files are in
-`docs/evidence/2026-10-22-package-installs-368/`. To repeat it, push such a
+[`records/2026-10-22-package-installs-368/`](https://github.com/patrick-hudson/put.gd-evidence/tree/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-22-package-installs-368). To repeat it, push such a
 wrapper to a pull request branch, never to `nightly`.
 
 Not covered yet: the `linux` and `sanitizers` installs in `ci.yml` run before
@@ -957,7 +957,7 @@ hang. With a 60 s stall limit, a stall during the first 75 s was stopped and
 the retry passed. Two stopped attempts were followed by an offline install
 from a snapshot. With the default limits and no snapshot, every attempt
 stalled and the job failed red after 43.5 minutes, inside its 90-minute timeout. Evidence:
-`docs/evidence/2026-10-23-package-install-stalls-467/`.
+[`records/2026-10-23-package-install-stalls-467/`](https://github.com/patrick-hudson/put.gd-evidence/tree/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-23-package-install-stalls-467).
 
 ## Proton Linux runtime
 

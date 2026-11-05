@@ -66,7 +66,7 @@ allows `lab` only `apt-get`, at both `/usr/bin/apt-get` and neon's
 `/usr/sbin/apt-get` wrapper (sudo's `secure_path` finds the wrapper first). neon
 installs no Spectacle by default.
 
-![neon Unstable after autologin, Plasma 6.9 Dev watermark](../evidence/2026-10-23-neon-goldens/pictures/01-unstable-plasma-master-autologin.png)
+![neon Unstable after autologin, Plasma 6.9 Dev watermark](https://raw.githubusercontent.com/patrick-hudson/put.gd-evidence/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-23-neon-goldens/pictures/01-unstable-plasma-master-autologin.png)
 
 ## Source ISOs
 
@@ -164,7 +164,7 @@ save your work before deliberately logging out or rebooting to verify it. In the
 lab, test only an independent overlay and keep it visible on its wall tile.
 Never boot or repair an immutable golden directly.
 
-The [2026-10-23 repair check](../evidence/2026-10-23-neon-autologin-524/README.md)
+The [2026-10-23 repair check](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-23-neon-autologin-524/README.md)
 records the reproduced failures and successful autologin on fresh User and
 Unstable overlays, with exact source identities, saved visuals and cleanup.
 
@@ -235,8 +235,8 @@ builder:
 
 | Run | Golden | Result |
 | --- | --- | --- |
-| `neon-a955b23` (d69) | Unstable | launch 36 s; `install --appimage` and `start` ok, resident `82a25356…` = receipt; `capabilities`: `source.adapter` `kde-wayland`, desktop, region and window capture `compositor-native` through `org.kde.KWin.ScreenShot2` v5, permission entry matches the executable; dashboard and tray on screen ([picture](../evidence/2026-10-23-neon-goldens/pictures/02-unstable-appimage-capture-available.png)) |
-| `neon-abd768f` (f44) | User 6.8.1 | same results ([picture](../evidence/2026-10-23-neon-goldens/pictures/03-user-6.8.1-appimage-capture-available.png)) |
+| `neon-a955b23` (d69) | Unstable | launch 36 s; `install --appimage` and `start` ok, resident `82a25356…` = receipt; `capabilities`: `source.adapter` `kde-wayland`, desktop, region and window capture `compositor-native` through `org.kde.KWin.ScreenShot2` v5, permission entry matches the executable; dashboard and tray on screen ([picture](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-23-neon-goldens/pictures/02-unstable-appimage-capture-available.png)) |
+| `neon-abd768f` (f44) | User 6.8.1 | same results ([picture](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-23-neon-goldens/pictures/03-user-6.8.1-appimage-capture-available.png)) |
 | `neon-s9c888e` (d69) | Unstable, Ubuntu 24.04 DEB | installs and runs; desktop and window capture available, region capture unavailable ("requires … LayerShellQt and Qt 6.5 or later") |
 
 All three were retired with an explicit completion manifest; cleanup removed
@@ -248,7 +248,7 @@ That was a lab artifact. The runner's private `XDG_DATA_HOME` hid AppRun's
 6.12 AppImage shows the put.gd icon either way, and the runner now links the
 private data home's `applications/` to the session's
 ([#530](https://github.com/patrick-hudson/put.gd-desktop/pull/530);
-[evidence](../evidence/2026-10-23-appimage-icon-523/README.md)).
+[evidence](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-23-appimage-icon-523/README.md)).
 
 ## Follow-ups
 

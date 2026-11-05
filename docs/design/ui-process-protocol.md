@@ -226,7 +226,7 @@ graphical session `closing`, or no longer exists, the launcher:
    (`pid`, `session`, `type`, `state`, `reason`, `how`).
 
 This also clears residents left by builds without the fix. Evidence:
-[2026-10-23 resident session acceptance](../evidence/2026-10-23-resident-session-490/README.md).
+[2026-10-23 resident session acceptance](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-23-resident-session-490/README.md).
 
 ## Reproduce the foundation checks
 
@@ -241,7 +241,7 @@ cmake --build --preset asan --target test_session_client test_ui_control test_ui
 ctest --preset asan -R '^(session_client|ui_control|ui_endpoints)_integration$'
 ```
 
-The [structured receipt](../evidence/2026-10-08-ui-foundations.json) retains source
+The [structured receipt](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-08-ui-foundations.json) retains source
 hashes, original failing tests, fixed ownership failures, JUnit and commands.
 No fixture is evidence of native desktop support. Final U11 acceptance still
 requires the same source on Cinnamon, GNOME and KDE, VNC witnesses, ongoing work

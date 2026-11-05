@@ -221,7 +221,7 @@ contracts, not native desktop acceptance or a measured application saving.
 
 ## Replaying the source-41 observation
 
-The [current-source record](../evidence/2026-10-08-ui-process-native-memory.json)
+The [current-source record](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-08-ui-process-native-memory.json)
 links native receipts, exact executable/package identities, controlled commands,
 quiet guards and physical results. Its allowlists exclude private XDG state,
 resident logs, credentials and payloads. The tested software remains

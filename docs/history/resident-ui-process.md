@@ -74,7 +74,7 @@ build have mapped-readiness medians of 332.68 versus 100.92 ms. These times incl
 observer overhead and do not certify completed painting or p95 latency. The
 separate five-minute cold run peaks at 44.390625 MiB, so 40 MiB remains unmet.
 Native Cinnamon fonts/dialogs remain enabled. See the [measured decision and raw
-evidence](../evidence/2026-10-08-ui-process-native-memory.json).
+evidence](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-08-ui-process-native-memory.json).
 
 A subsequent four-run standard Qt cost probe kept the native GTK/font integration
 and measured only 0.63 MiB settled RSS difference between full and native styling,

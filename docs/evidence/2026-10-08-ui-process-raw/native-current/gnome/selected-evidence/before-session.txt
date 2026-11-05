@@ -1,6 +1,0 @@
-User=1000
-Name=lab
-Type=wayland
-LockedHint=yes
-AutomaticLoginEnable=true
-AutomaticLogin=lab

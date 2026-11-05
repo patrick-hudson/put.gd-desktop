@@ -87,7 +87,7 @@ Records at the default level:
 
   The clipboard text is never logged. `history.copyLink` (Activity's **Copy link**)
   writes no record of its own.
-  Pictures of the notification and Activity: [evidence](../evidence/2026-10-23-suppressed-link-copy-473/README.md).
+  Pictures of the notification and Activity: [evidence](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-23-suppressed-link-copy-473/README.md).
 - **Provider errors:** the error's `code`, `message` and `details`. S3 details carry
   `httpStatus`, `serviceCode`, `requestStage`, `sdkRetryable`, `curlCode`, `elapsedMs`,
   and the S3 request IDs `requestId` (`x-amz-request-id`) and `extendedRequestId`
@@ -359,7 +359,7 @@ thread that a dlopen'd library starts, and checks that every thread gets its
 before the executable's own constructors; the test checks that the thread has its
 stack and that overflowing it gives a complete record (#211):
 
-![Before: with the handler installed from a constructor, the library constructor's thread has no alternate stack and its overflow leaves an empty record. After: installed from .preinit_array, the test passes and the record is complete, from that thread, symbolized to overflowInEarlyThread](../evidence/crash-early-threads-211/crash-early-thread-before-after.png)
+![Before: with the handler installed from a constructor, the library constructor's thread has no alternate stack and its overflow leaves an empty record. After: installed from .preinit_array, the test passes and the record is complete, from that thread, symbolized to overflowInEarlyThread](https://raw.githubusercontent.com/patrick-hudson/put.gd-evidence/874703b35562c732268c6fe0bc9b42614ffda928/records/crash-early-threads-211/crash-early-thread-before-after.png)
 
 ### systemd-coredump (option B)
 
@@ -561,7 +561,7 @@ skipped or failed upload still answers successfully with `path`, plus
   anyone with the link can download the package. On Proton Drive the share link
   expires after 7 days: Proton reported a link created at 17:48:43Z expiring
   7 days later, and the link opened without a Proton session (checked live
-  on 2026-10-20, [evidence](../evidence/2026-10-20-round10-proton/README.md)).
+  on 2026-10-20, [evidence](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-20-round10-proton/README.md)).
 - **History:** the upload is an ordinary history entry (operation action
   `diagnostics`). On S3 it can be deleted from the destination like any upload.
   Proton refuses remote deletion (`unsupported_capability`), as for every
@@ -713,7 +713,7 @@ worker passes it to the AWS SDK as `caFile`, for uploads and Test connection's l
   is [#297](https://github.com/patrick-hudson/put.gd-desktop/issues/297); see
   [Updates](updates.md#fedora).
 
-Evidence: [AppImage TLS on Fedora](../evidence/2026-10-21-appimage-ca-bundle-329/README.md).
+Evidence: [AppImage TLS on Fedora](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-21-appimage-ca-bundle-329/README.md).
 
 A lab URL recorder set as the default browser must be in the user's real
 `~/.config/mimeapps.list`: the portal does not read a test resident's private

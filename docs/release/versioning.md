@@ -167,7 +167,7 @@ apt and dnf, without an epoch. `tests/releases/test_verify_tag.py` checks the
 whole sequence with real `dpkg --compare-versions` and `rpm.vercmp`. In the lab, the published `0.1.1-nightly.925` upgraded through dnf on Fedora 44
 and apt on Mint 22.3 to a calendar nightly from `pkg.put.gd/lab`. The AppImage
 updated in place, from an old-format image with appimageupdatetool and between
-calendar versions in-app ([evidence](../evidence/2026-10-22-calver-373/README.md)).
+calendar versions in-app ([evidence](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-22-calver-373/README.md)).
 
 **Order across channels:**
 

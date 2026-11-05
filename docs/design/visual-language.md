@@ -238,9 +238,9 @@ saved visuals, functional and memory evidence, and cleanup receipts under the
 [acceptance matrix](../testing/acceptance-matrix.md) and [remote builder rules](../lab/remote-builders.md).
 Prototype evidence never establishes production or release acceptance. Retain
 failures and the corrected attempts under the [evidence retention rules](../testing/evidence-retention.md).
-The [2026-10-26 feasibility receipt](../evidence/2026-10-26-graphite-design-feasibility.md)
+The [2026-10-26 feasibility receipt](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-26-graphite-design-feasibility.md)
 records the prototype's exact scope, identities, results and preserved failures.
-The separate [production review](../evidence/2026-10-26-graphite-production/README.md)
+The separate [production review](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-26-graphite-production/README.md)
 records the implemented screens, package identities, desktop workflows, memory
 measurements and remaining limitations for code PR #596.
 

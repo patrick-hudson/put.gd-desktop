@@ -56,7 +56,7 @@ The S3 worker exits after each driver call; measure post-upload residency
 separately from cold residency. Origin deletion also does not establish browser/CDN cache
 invalidation.
 
-The [2026-10-09 Cinnamon evidence](../evidence/2026-10-09-live-s3-cinnamon.json) records
+The [2026-10-09 Cinnamon evidence](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-09-live-s3-cinnamon.json) records
 one passing live workflow and its distinct 49.14 MiB post-cloud diagnostic.
 Use fresh IDs for each reproduction; historical deletion IDs are evidence only.
 See [CLI](../automation/cli.md), [S3](../user/s3.md), [credentials](../design/credentials.md) and
