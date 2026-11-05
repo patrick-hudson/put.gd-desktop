@@ -416,6 +416,9 @@ def place_files(source, target, wanted):
     for relative, mode in wanted:
         path = target / relative
         path.parent.mkdir(parents=True, exist_ok=True)
+        if path.is_symlink():
+            # A published symlink is replaced, never written through.
+            path.unlink()
         shutil.copyfile(source / relative, path)
         path.chmod(0o755 if mode == '100755' else 0o644)
 

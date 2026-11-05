@@ -331,6 +331,7 @@ class PublishTests(EvidenceBase):
             self.assertIn('records/2026-11-05-sample/b', refused.stderr)
         self.assertEqual(self.remote_paths('2026-11-05-sample'), published)
 
+    @unittest.skipIf(os.geteuid() == 0, 'root reads a mode-0 directory')
     def test_unreadable_directory_stops_the_publish(self):
         source = self.source(files={'README.md': '# T\n', 'private/log.txt': 'x\n'})
         (source / 'private').chmod(0)
