@@ -31,7 +31,7 @@
     "unexplainedCtestFailure": false
   },
   "embeddedPreparationManifestSha256": "6b5a3167427fad869d09e676148bd3a0c5fe422d0482b0cbb3164df4979b2dee",
-  "evidence": "docs/evidence/2026-10-30-boat-snapshots/README.md",
+  "evidence": "https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-30-boat-snapshots/README.md",
   "freshVerificationNote": "114 tests overall; gui_history_view passed only on the CI-permitted single retry. Not a no-retry pass.",
   "golden": {
     "path": "/home/user/work/put.gd/work/lab-images/cinnamon-x11/image.qcow2",

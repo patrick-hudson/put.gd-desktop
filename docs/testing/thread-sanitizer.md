@@ -6,7 +6,7 @@ TSan. A minimal queued-call reproducer demonstrated this problem with system Qt;
 the same reproducer passes with instrumented Qt. A deliberately racy control still
 reports its race. Do not suppress all Qt or application reports.
 
-Use the normal GCC, CMake and Ninja packages from [build.md](../build.md). The
+Use the normal GCC, CMake and Ninja packages from [build.md](../release/build.md). The
 dependency below lives in ignored `work/`, changes no system library, and uses
 Qt's supported `FEATURE_sanitize_thread` CMake option. The headless contracts and isolated X11 protocol tests do
 not certify behavior on a real Cinnamon or Wayland desktop.

@@ -1,6 +1,6 @@
 # Working as an agent
 
-Read [AGENTS.md](../../AGENTS.md), [overview](../design/overview.md), [build](../build.md),
+Read [AGENTS.md](../../AGENTS.md), [overview](../design/overview.md), [build](../release/build.md),
 [architecture](../design/architecture.md), [configuration](../design/configuration.md), [CLI](cli.md),
 and [current evidence](../testing/verification.md).
 Read [resident memory strategy](../design/memory-strategy.md) before changing process boundaries,
@@ -18,7 +18,7 @@ from passing tests.
 | Provider contract | `src/core/StorageProvider.h`, `src/core/StorageReceipt.h` | `tests/integration/test_storage_contract.cpp`, [providers](../design/storage-providers.md) |
 | S3 / explicit credential resolution | `src/storage/s3/`, `src/secrets/` | `tests/integration/`, [credentials](../design/credentials.md), [S3](../user/s3.md) |
 | Backblaze B2 native API | `src/storage/b2/` | `tests/integration/test_b2.cpp`, [B2](../user/b2.md) |
-| Proton Drive helper adapter | `src/storage/proton/` | `tests/integration/test_proton.cpp`, `tests/integration/test_proton_transport.cpp`, [Proton Drive](../proton-drive.md) |
+| Proton Drive helper adapter | `src/storage/proton/` | `tests/integration/test_proton.cpp`, `tests/integration/test_proton_transport.cpp`, [Proton Drive](../user/proton-drive.md) |
 | Settings/activity/history widgets and login startup | `src/ui/`, `src/app/LoginStartup.*` | `tests/gui/`, `tests/unit/test_login_startup.cpp`, [user guide](../user/user-guide.md) |
 | Disposable desktop VM lab / development package | `tools/lab/`, `packaging/linux/` | `tests/desktop/test_lab.py`, [VM lab](../lab/vm-lab.md), [remote hosts](../lab/remote-builders.md) |
 | UI process lifecycle and total memory | `src/app/UiProcessController.*`, `src/ui/UiApplicationController.*`, `src/ui/UiSession.*`, `src/ui/ViewState.*` | `tests/integration/test_ui_process.cpp`, `tests/integration/test_ui_split_services.cpp`, [protocol](../design/ui-process-protocol.md), [state](../design/ui-process-state.md) |
@@ -34,7 +34,7 @@ from passing tests.
 | Automatic nightly desktop checks | `tools/lab/nightly_desktops.py` | `tests/desktop/test_surface_nightly_desktops.py`, [lab sharing](../lab/remote-builders.md#sharing-the-lab-between-concurrent-sessions) |
 | UI catalog and reference images | `tests/gui/ui_catalog.cpp`, `tests/gui/catalog-references/` | [UI catalog](../design/ui-catalog.md), [visual language](../design/visual-language.md) |
 | Integer widths / member layout | `tools/diagnostics/layout/` | [read-only probe and replay](../../tools/diagnostics/layout/README.md); sizes alone do not prove RSS savings |
-| Build, dependency pins, sanitizers | `CMakePresets.json`, `cmake/`, `tools/verify_dependencies.py` | [build](../build.md), [thread checks](../testing/thread-sanitizer.md) |
+| Build, dependency pins, sanitizers | `CMakePresets.json`, `cmake/`, `tools/verify_dependencies.py` | [build](../release/build.md), [thread checks](../testing/thread-sanitizer.md) |
 | Commit/build identity and package versions | `cmake/BuildVersion.cmake`, `src/core/BuildInfo.h` | `tests/cmake/version_contract.cmake`, `tests/integration/test_version.cpp`, `tests/gui/test_version.cpp`, [versioning](../release/versioning.md) |
 
 Use `cmake --preset dev`, `cmake --build --preset dev`, and `ctest --preset dev`.
@@ -212,7 +212,7 @@ branch. Hotfixes target `main` and merge back to `nightly` through a pull reques
 The `CI` summary is the only required check; a cancelled or skipped-by-failure job
 is not a pass. Documentation changes go in a separate docs-only pull request,
 linked to their code pull request and merged after it. Docs-only CI runs
-`contracts`; `docs/build.md` and `docs/proton-drive.md` are package inputs and
+`contracts`; `docs/release/build.md` and `docs/user/proton-drive.md` are package inputs and
 select every job.
 
 Promotion uses `tools/releases/promote.py --open` to open a

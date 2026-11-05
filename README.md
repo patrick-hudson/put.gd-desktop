@@ -71,11 +71,11 @@ Change keys in **Settings → Shortcuts**. **Capture region & edit**, **Record s
 
 **Desktops.** Cinnamon on X11, GNOME 50 on Wayland, and KDE Plasma on Wayland or X11. Aurora uses the AppImage on Plasma Wayland. See the desktop notes for [Cinnamon](docs/desktops/cinnamon.md), [GNOME](docs/desktops/gnome.md) and [KDE](docs/desktops/kde.md).
 
-**Destinations.** Amazon S3, Cloudflare R2 and other S3-compatible services; Backblaze B2 through its native API; and [Proton Drive](docs/proton-drive.md), an experimental third-party integration. Proton links open a share page rather than a direct image URL. Local saving is independent of uploads.
+**Destinations.** Amazon S3, Cloudflare R2 and other S3-compatible services; Backblaze B2 through its native API; and [Proton Drive](docs/user/proton-drive.md), an experimental third-party integration. Proton links open a share page rather than a direct image URL. Local saving is independent of uploads.
 
 **CLI and MCP.** `putgd-cli` controls the running app from scripts. The optional MCP helper exposes capture, editing, recording, uploads and History to agents. See [CLI](docs/automation/cli.md) and [MCP setup](docs/automation/mcp.md).
 
-**Build from source.** C++20, Qt 6 Widgets, CMake, Ninja and the official AWS C++ SDK. Follow the [build instructions](docs/build.md).
+**Build from source.** C++20, Qt 6 Widgets, CMake, Ninja and the official AWS C++ SDK. Follow the [build instructions](docs/release/build.md).
 
 **Privacy and credentials.** Uploads go to the destination you choose. Image edits and recordings stay private until you explicitly upload them. Saved credentials use the system keychain; configuration stores references, not secret values. S3 credentials can also stay in memory for the session. The daily update check can be disabled, and updates require your action. See [credentials](docs/design/credentials.md) and [updates](docs/design/updates.md).
 

@@ -1,7 +1,7 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "description": [
-    "Self-hosted Renovate (.github/workflows/renovate.yml; docs/ci.md, 'Dependency updates').",
+    "Self-hosted Renovate (.github/workflows/renovate.yml; docs/release/ci.md, 'Dependency updates').",
     "Renovate changes versions only. Its post-upgrade task, tools/maintenance/refresh_pins.py, re-derives the URLs, SHA-256s and commits that go with them."
   ],
   "extends": ["config:recommended"],
@@ -21,7 +21,7 @@
   "dependencyDashboard": true,
   "dependencyDashboardTitle": "Dependency updates (Renovate)",
   "dependencyDashboardLabels": ["dependencies", "tracker"],
-  "dependencyDashboardHeader": "Self-hosted Renovate runs weekly from `.github/workflows/renovate.yml` and opens pull requests against `nightly`. Nothing merges automatically. Updates marked for approval are listed below until you tick them. See docs/ci.md, \"Dependency updates\".",
+  "dependencyDashboardHeader": "Self-hosted Renovate runs weekly from `.github/workflows/renovate.yml` and opens pull requests against `nightly`. Nothing merges automatically. Updates marked for approval are listed below until you tick them. See docs/release/ci.md, \"Dependency updates\".",
   "customManagers": [
     {
       "description": "Release-asset tools: linuxdeploy, its Qt plugin, appimagetool, the AppImage runtime, Syft and Grype.",
@@ -167,7 +167,7 @@
       "groupName": "Proton helper",
       "labels": ["dependencies", "area: proton"],
       "dependencyDashboardApproval": true,
-      "prBodyNotes": ["A Proton helper update is not complete as opened: re-run `tools/proton/provision_runtime.py`, then refresh `tools/proton/runtime-lock.json` (sourceReference for a new SDK), the notices and `tools/proton/notices/SOURCES.json` with the corresponding source (docs/proton-drive.md)."]
+      "prBodyNotes": ["A Proton helper update is not complete as opened: re-run `tools/proton/provision_runtime.py`, then refresh `tools/proton/runtime-lock.json` (sourceReference for a new SDK), the notices and `tools/proton/notices/SOURCES.json` with the corresponding source (docs/user/proton-drive.md)."]
     },
     {
       "matchManagers": ["pep621"],

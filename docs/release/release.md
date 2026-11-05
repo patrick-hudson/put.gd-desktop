@@ -211,8 +211,8 @@ source of truth after Actions artifacts expire.
 The user approved shipping and maintaining Proton on 2026-10-15. Its
 experimental designation records compatibility maturity. Upstream endorsement
 or SDK general availability is not a publication prerequisite; the concrete
-[current Proton release gates](../proton-drive.md#release-gates) and
-[SDK maintenance procedure](../proton-drive.md#maintenance-procedure) remain applicable.
+[current Proton release gates](../user/proton-drive.md#release-gates) and
+[SDK maintenance procedure](../user/proton-drive.md#maintenance-procedure) remain applicable.
 
 Linux x86-64 Build and release jobs provision and test the pinned official JS
 helper, enable its bundle explicitly, and require matching runtime, notices and
@@ -254,7 +254,7 @@ compatibility checks remain in the maintenance procedure.
 For each subsequent release carrying Proton, the release maintainer retains the
 integration maintainer's dated compatibility/migration check, pinned SDK/Crypto/
 Bun versions, runtime/manifest/notices hashes, supported asset list and current
-acceptance evidence. Follow the [maintenance procedure](../proton-drive.md#maintenance-procedure).
+acceptance evidence. Follow the [maintenance procedure](../user/proton-drive.md#maintenance-procedure).
 An upstream required update or observed service incompatibility requires a
 compatible put.gd release and preserved recovery state. Existing stable
 and nightly coverage classes continue to apply.
@@ -639,7 +639,7 @@ runtime hashes and the pinned SDK/component license snapshot remain mandatory.
 
 ## Build and audit locally
 
-Use the standard packages and SDK provisioning in [build.md](../build.md). For a
+Use the standard packages and SDK provisioning in [build.md](build.md). For a
 fixture-free native package:
 
 ```sh

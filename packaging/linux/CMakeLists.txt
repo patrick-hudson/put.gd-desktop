@@ -56,11 +56,11 @@ if(PUTGD_LAB_FIXTURE)
   install(TARGETS putgd-desktop-fixture RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}")
 endif()
 
-# SDK provisioned by docs/build.md remains privately bundled and replaceable; Qt is distro-owned.
+# SDK provisioned by docs/release/build.md remains privately bundled and replaceable; Qt is distro-owned.
 set(PUTGD_AWS_RUNTIME_DIR "${PROJECT_SOURCE_DIR}/build/sdk/lib" CACHE PATH "Official SDK runtime library directory")
 file(GLOB aws_runtime "${PUTGD_AWS_RUNTIME_DIR}/libaws*.so*" "${PUTGD_AWS_RUNTIME_DIR}/libs2n.so*")
 if(NOT aws_runtime)
-  message(FATAL_ERROR "Official AWS shared runtime missing: provision docs/build.md or set PUTGD_AWS_RUNTIME_DIR")
+  message(FATAL_ERROR "Official AWS shared runtime missing: provision docs/release/build.md or set PUTGD_AWS_RUNTIME_DIR")
 endif()
 install(FILES ${aws_runtime} DESTINATION "${CMAKE_INSTALL_LIBDIR}/putgd")
 set(runtime_manifest "{\n  \"schemaVersion\": 1,\n  \"libraries\": [\n")

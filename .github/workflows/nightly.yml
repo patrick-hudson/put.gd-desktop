@@ -216,7 +216,7 @@ jobs:
   stable-scan:
     # A stable AppImage freezes its bundled components, so every day the latest
     # stable release's own SBOMs meet the day's vulnerability data (#420,
-    # docs/release.md). It flags and keeps one issue per release current; it never
+    # docs/release/release.md). It flags and keeps one issue per release current; it never
     # gates the nightly.
     runs-on: ubuntu-24.04
     timeout-minutes: 30
@@ -284,7 +284,7 @@ jobs:
             --jq "[.[] | select(.title == \"$title\")][0].number // \"\"")
           {
             echo "The daily re-scan of \`$TAG\`'s published SBOMs ([run]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID)) flags $flagged finding(s)."
-            echo "Policy: \`packaging/sbom/policy.json\`; re-release policy: #420; docs/release.md, \"SBOMs and vulnerability scans\"."
+            echo "Policy: \`packaging/sbom/policy.json\`; re-release policy: #420; docs/release/release.md, \"SBOMs and vulnerability scans\"."
             echo
             cat "$report/vulnerability-summary.md"
           } > "$RUNNER_TEMP/issue.md"

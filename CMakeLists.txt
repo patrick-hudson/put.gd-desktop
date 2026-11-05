@@ -37,7 +37,7 @@ endif()
 
 find_package(Threads REQUIRED)
 # Release builds keep debug information, split out of each product binary into
-# <file>.debug before anything hashes or installs it (#124, docs/diagnostics.md).
+# <file>.debug before anything hashes or installs it (#124, docs/design/diagnostics.md).
 # AUTO splits Release builds; ON also splits other build types (a development
 # build with the crash trigger, to rehearse symbolization); OFF never splits.
 set(PUTGD_SPLIT_DEBUG "AUTO" CACHE STRING "Split debug information into <binary>.debug: AUTO (Release), ON or OFF")

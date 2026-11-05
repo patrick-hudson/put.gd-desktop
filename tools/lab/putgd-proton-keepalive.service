@@ -2,7 +2,7 @@
 # (account inspection and Test connection) under the builder's Proton lock, which
 # also refreshes and so uses the session. Installed with proton_lab.py
 # install-keepalive and started by putgd-proton-keepalive.timer. It is skipped,
-# not queued, while anyone holds the Proton lock. See docs/proton-drive.md.
+# not queued, while anyone holds the Proton lock. See docs/user/proton-drive.md.
 [Unit]
 Description=put.gd Proton lab session keep-alive check
 After=network-online.target

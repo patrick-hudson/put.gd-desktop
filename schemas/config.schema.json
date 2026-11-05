@@ -865,7 +865,7 @@
           "minimum": 1,
           "maximum": 365,
           "default": 14,
-          "description": "Days to keep persistent log files (docs/diagnostics.md). Omitted means 14."
+          "description": "Days to keep persistent log files (docs/design/diagnostics.md). Omitted means 14."
         },
         "logBytes": {
           "type": "integer",

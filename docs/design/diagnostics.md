@@ -378,7 +378,7 @@ Release builds compile with `-g` and, when each product binary links, move its
 debug information to `<binary>.debug` (`objcopy --only-keep-debug`, then
 `--strip-debug --add-gnu-debuglink`), before the install step hashes the S3 module
 or the AppImage inventories its files (`PUTGD_SPLIT_DEBUG`: `AUTO` splits Release
-builds, `ON` any build type, `OFF` none; see [build.md](../build.md)). Packages carry
+builds, `ON` any build type, `OFF` none; see [build.md](../release/build.md)). Packages carry
 only the stripped binaries, with their GNU build IDs.
 
 Each package job then runs `tools/releases/debug_symbols.py stage`, which checks

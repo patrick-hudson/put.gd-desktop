@@ -150,7 +150,7 @@ worker never authorizes blind replay of a possible mutation. See [S3](../user/s3
 `putgd-b2-worker` performs B2 HTTP in a fresh process per request. Proton uses the
 privately packaged `putgd-proton-runtime`, with account operations serialized by
 the provider. Their distinct collision, version and sharing semantics remain
-behind the common receipt contract. See [B2](../user/b2.md) and [Proton](../proton-drive.md).
+behind the common receipt contract. See [B2](../user/b2.md) and [Proton](../user/proton-drive.md).
 
 `SetupService` owns explicit credential storage/unlock and destination/account
 setup. Configuration and journals contain references, never secret inputs.

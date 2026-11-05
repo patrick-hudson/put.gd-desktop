@@ -1,6 +1,6 @@
 # Proton Drive integration verification
 
-> **Historical record.** This is a dated verification ledger for a shipping integration, kept for its source-specific build, test and review receipts. Use the current [Proton Drive guide](../proton-drive.md), [release gates](../proton-drive.md#release-gates) and [maintenance procedure](../proton-drive.md#maintenance-procedure) for ongoing work.
+> **Historical record.** This is a dated verification ledger for a shipping integration, kept for its source-specific build, test and review receipts. Use the current [Proton Drive guide](../user/proton-drive.md), [release gates](../user/proton-drive.md#release-gates) and [maintenance procedure](../user/proton-drive.md#maintenance-procedure) for ongoing work.
 
 ## Current disposition — 2026-10-15
 
@@ -120,7 +120,7 @@ follow only after Cinnamon passes. Source/protocol/Xvfb evidence is not release
 acceptance. Complete redistribution review and Proton third-party/service
 readiness also remain release gates.
 
-Supported limits are documented in [Proton Drive](../proton-drive.md): create-only
+Supported limits are documented in [Proton Drive](../user/proton-drive.md): create-only
 uploads; no revision-guarded remote deletion; normal Proton share-page URLs;
 fresh identity checks around sharing, without an atomic SDK revision guard.
 At the initial feature checkpoint, the default request timeout was 120 seconds

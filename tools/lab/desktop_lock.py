@@ -5,7 +5,7 @@ Each builder's GNOME or Plasma desktop serves one session at a time. Its lock
 lives on that builder, in ~/putgd-lab/locks/, so every session that can reach
 the desktop over pinned SSH sees the same lock, whatever its app, worktree or
 session family. The builder's clock decides expiry and staleness. The rules are
-in docs/remote-builders.md, "Sharing the lab between concurrent sessions".
+in docs/lab/remote-builders.md, "Sharing the lab between concurrent sessions".
 
 `--resource proton` locks the builder's put.gd Proton session instead: one user
 at a time (the lab profile's app, a VM borrowing it through
@@ -467,7 +467,7 @@ def call(host, payload, identity=IDENTITY, pins=PINS, run=subprocess.run, comman
     known_hosts = Path(pins) / host / 'known_hosts'
     if command is None and not known_hosts.is_file():
         return dict(failed, message=f'No pinned host key at {known_hosts}. Recover the verified pin '
-                                    '(docs/remote-builders.md); never trust on first use')
+                                    '(docs/lab/remote-builders.md); never trust on first use')
     try:
         result = run(command or ssh_command(host, identity, pins), input=remote_script(dict(payload, host=host)),
                      capture_output=True, text=True, timeout=90)

@@ -230,7 +230,7 @@ This also clears residents left by builds without the fix. Evidence:
 
 ## Reproduce the foundation checks
 
-Provision dependencies as documented in [build.md](../build.md), then run:
+Provision dependencies as documented in [build.md](../release/build.md), then run:
 
 ```sh
 cmake --preset dev

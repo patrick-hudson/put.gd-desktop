@@ -9,7 +9,7 @@ family on the same ref is therefore never read again. Caches saved by closed
 pull requests and deleted branches are unreachable too. On main, nightly and
 v* tags only superseded family entries are ever deleted. Exact-key caches
 (SDK prefixes, the Qt installer's) are left for GitHub's seven-day idle
-eviction. See docs/ci.md, "Cache budget".
+eviction. See docs/release/ci.md, "Cache budget".
 """
 import argparse
 import json

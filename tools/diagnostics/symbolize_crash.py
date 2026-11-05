@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Symbolize put.gd crash records (#124, docs/diagnostics.md).
+"""Symbolize put.gd crash records (#124, docs/design/diagnostics.md).
 
 Reads crash records from a diagnostics package (.zip), a log file (.jsonl), a
 running.crash file or raw helper stderr, finds each module's debug file by GNU

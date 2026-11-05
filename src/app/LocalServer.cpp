@@ -233,7 +233,7 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
   setup_->inspect(p["id"].toString(),std::move(reply));return;
  }
  // A diagnostics package, always saved locally first, then optionally
- // uploaded to a working destination (#74 §3, #123, docs/diagnostics.md).
+ // uploaded to a working destination (#74 §3, #123, docs/design/diagnostics.md).
  // notify (#122): after saving, the resident posts "diagnostics saved" with Show in folder.
  if(method=="diagnostics.bundle") {
   auto params=p;const auto notify=params.take("notify");

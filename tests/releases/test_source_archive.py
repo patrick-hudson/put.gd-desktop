@@ -57,7 +57,7 @@ class SourceArchive(unittest.TestCase):
             'packaging/linux/CMakeLists.txt': '# synthetic package input\n',
             'integrations/gnome/extension.js': '// synthetic extension\n',
             'integrations/gnome/metadata.json': '{}\n',
-            'docs/build.md': '# synthetic build guide\n',
+            'docs/release/build.md': '# synthetic build guide\n',
             'tools/verify_dependencies.py': '# synthetic verifier\n',
             'tools/releases/provision-sdk.sh': '#!/bin/sh\nexit 0\n',
             'tools/proton/runtime.ts': '// committed Proton helper\n',
@@ -67,7 +67,7 @@ class SourceArchive(unittest.TestCase):
             'tools/proton/provision_runtime.py': '# pinned provisioner\n',
             'tools/proton/notices/SOURCES.json': '{}\n',
             'tools/proton/notices/REBUILD.md': '# rebuild instructions\n',
-            'docs/proton-drive.md': '# Proton setup\n',
+            'docs/user/proton-drive.md': '# Proton setup\n',
             'tools/proton/credentials.txt': 'synthetic excluded credential input\n',
             'tools/proton/work/session.json': '{}\n',
             'work/tracked.txt': 'synthetic excluded work\n',
@@ -124,12 +124,12 @@ class SourceArchive(unittest.TestCase):
         contents = self.contents()
         for name in ['CMakeLists.txt', 'CMakePresets.json', 'LICENSE', 'THIRD_PARTY_NOTICES.md',
                      'src/main.cpp', 'cmake/dependency-lock.json', 'packaging/linux/CMakeLists.txt',
-                     'integrations/gnome/extension.js', 'docs/build.md', 'tools/verify_dependencies.py',
+                     'integrations/gnome/extension.js', 'docs/release/build.md', 'tools/verify_dependencies.py',
                      'tools/releases/provision-sdk.sh', 'tools/proton/runtime.ts',
                      'tools/proton/runtime.test.ts', 'tools/proton/runtime-lock.json',
                      'tools/proton/package-lock.json', 'tools/proton/provision_runtime.py',
                      'tools/proton/notices/SOURCES.json', 'tools/proton/notices/REBUILD.md',
-                     'docs/proton-drive.md', 'README_SOURCE.md', 'source-info.json']:
+                     'docs/user/proton-drive.md', 'README_SOURCE.md', 'source-info.json']:
             self.assertIn(name, contents)
         for name in ['credentials.txt', 'src/credentials.txt', 'src/.env', 'src/context/private.md', 'src/.context/session.md',
                      'src/.claude/commands.md', 'src/CLAUDE.md', 'src/MEMORY.md',

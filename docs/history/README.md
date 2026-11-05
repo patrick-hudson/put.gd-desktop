@@ -64,8 +64,8 @@ machine-readable content and provenance remain intact.
 
 | File | What it was | When it was current | What replaced it |
 | --- | --- | --- | --- |
-| [proton-drive-release-gates.md](proton-drive-release-gates.md) | Source-specific integration and release-gate reconciliation | 2026-10-15 | [proton-drive](../proton-drive.md) |
-| [proton-drive-verification.md](proton-drive-verification.md) | Integration investigation and verification ledger | Through 2026-10-15 | [proton-drive](../proton-drive.md) |
+| [proton-drive-release-gates.md](proton-drive-release-gates.md) | Source-specific integration and release-gate reconciliation | 2026-10-15 | [proton-drive](../user/proton-drive.md) |
+| [proton-drive-verification.md](proton-drive-verification.md) | Integration investigation and verification ledger | Through 2026-10-15 | [proton-drive](../user/proton-drive.md) |
 
 ## Plans
 
