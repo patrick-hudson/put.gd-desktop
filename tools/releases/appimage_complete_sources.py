@@ -19,6 +19,7 @@ import shutil
 import subprocess
 import tarfile
 import tempfile
+import time
 import urllib.request
 import urllib.error
 from urllib.parse import urlencode, urlsplit
@@ -124,6 +125,10 @@ def git_source(source, cache, target):
     return result
 
 
+SNAPSHOT_ATTEMPTS = 5
+SNAPSHOT_PAUSE_SECONDS = 20
+
+
 def snapshot_source(args, stamp, target):
     # A source collector runs without root. Keep snapshot indexes, caches and
     # configuration private; never update the runner's system apt state/hooks.
@@ -151,8 +156,19 @@ def snapshot_source(args, stamp, target):
         config.write_text(''.join(key + ' ' + json.dumps(str(value)) + ';\n'
                                   for key, value in settings.items()))
         env = {**os.environ, 'APT_CONFIG': str(config)}
-        subprocess.run(['apt-get', 'update', '-qq', '--snapshot', stamp], env=env, check=True)
-        subprocess.run([*args, '--snapshot', stamp], env=env, check=True, cwd=target)
+        # snapshot.ubuntu.com answers some index requests with 502 or 503 for a short
+        # while. apt-get update still exits 0 then, and only the download fails, so
+        # both are retried together.
+        for attempt in range(1, SNAPSHOT_ATTEMPTS + 1):
+            if (subprocess.run(['apt-get', 'update', '-qq', '--snapshot', stamp], env=env).returncode == 0
+                    and subprocess.run([*args, '--snapshot', stamp], env=env, cwd=target).returncode == 0):
+                return
+            if attempt < SNAPSHOT_ATTEMPTS:
+                time.sleep(SNAPSHOT_PAUSE_SECONDS * attempt)
+        raise RuntimeError(f'apt could not download {args[-1]} from the Ubuntu snapshot at {stamp} in '
+                           f'{SNAPSHOT_ATTEMPTS} attempts. See its warnings above: a failed fetch from '
+                           'snapshot.ubuntu.com means that service was failing; without one, the version '
+                           'is missing from that snapshot or its signature was refused.')
 
 
 def apt_source(package, version, target):
