@@ -289,6 +289,33 @@
       "expires": "2027-01-29",
       "issue": 1055,
       "evidence": "packaging/sbom/dispositions/511.json"
+    },
+    {
+      "id": "CVE-2026-119373",
+      "component": "sqlite",
+      "scope": "appimage-sqlite-3.53.4",
+      "reason": "Compiled but not reached: fts5MergeRowidLists in SQLite's FTS5. Qt 6.12.0's driver compiles FTS5, but put.gd creates no FTS tables, loads no extensions, attaches no databases and opens only its own private history.sqlite. Reaching this code takes a replaced history file, which already means code running as the user. Verified against put.gd's source, the Qt source and the exact libqsqlite.so; no Qt release carries SQLite 3.54.",
+      "expires": "2027-02-03",
+      "issue": 1210,
+      "evidence": "packaging/sbom/dispositions/511.json"
+    },
+    {
+      "id": "CVE-2026-119374",
+      "component": "sqlite",
+      "scope": "appimage-sqlite-3.53.4",
+      "reason": "Compiled but not reached: fts5DoSecureDelete in SQLite's FTS5. Qt 6.12.0's driver compiles FTS5, but put.gd creates no FTS tables, loads no extensions, attaches no databases and opens only its own private history.sqlite. Reaching this code takes a replaced history file, which already means code running as the user. Verified against put.gd's source, the Qt source and the exact libqsqlite.so; no Qt release carries SQLite 3.54.",
+      "expires": "2027-02-03",
+      "issue": 1210,
+      "evidence": "packaging/sbom/dispositions/511.json"
+    },
+    {
+      "id": "CVE-2026-119379",
+      "component": "sqlite",
+      "scope": "appimage-sqlite-3.53.4",
+      "reason": "Affected code is not built or shipped: SQLite's session extension (sqlite3changeset_apply). Qt 6.12.0's driver does not define SQLITE_ENABLE_SESSION; verified against the Qt source and the compile options in the exact libqsqlite.so.",
+      "expires": "2027-02-03",
+      "issue": 1210,
+      "evidence": "packaging/sbom/dispositions/511.json"
     }
   ],
   "scopes": {
@@ -319,6 +346,16 @@
       "properties": {
         "putgd:commit": "025bdad181de241e81bf853c8a2d7bf3d19261a9",
         "putgd:filesSha256": "e8906210d9994d70ab90f6d810144fce7481165e3588107ba9522380a21677bd",
+        "putgd:toolsAbsent": "true"
+      }
+    },
+    "appimage-sqlite-3.53.4": {
+      "package": "appimage",
+      "component": "sqlite",
+      "version": "3.53.4",
+      "properties": {
+        "putgd:commit": "025bdad181de241e81bf853c8a2d7bf3d19261a9",
+        "putgd:filesSha256": "38df0fcc7e82b2137ac0bfdb785da5eb58318620e408a2b43d1441bf1d57975d",
         "putgd:toolsAbsent": "true"
       }
     }

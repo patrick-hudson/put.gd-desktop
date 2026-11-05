@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "issue": "https://github.com/patrick-hudson/put.gd-desktop/issues/511",
   "reviewDate": "2026-10-23",
-  "scope": "Only the audited AppImage FFmpeg and ICU builds, and Qt's embedded HarfBuzz in the exact official libQt6Gui.so.6 (#1055). Does not waive other CVEs, native/system dependencies or release/desktop acceptance.",
+  "scope": "Only the audited AppImage FFmpeg and ICU builds, and Qt's embedded HarfBuzz and SQLite in the exact official libQt6Gui.so.6 (#1055) and libqsqlite.so (#1210). Does not waive other CVEs, native/system dependencies or release/desktop acceptance.",
   "package": {
     "ciRun": 40045151634,
     "ciArtifact": 12540539510,
@@ -52,6 +52,16 @@
       "properties": {
         "putgd:commit": "025bdad181de241e81bf853c8a2d7bf3d19261a9",
         "putgd:filesSha256": "e8906210d9994d70ab90f6d810144fce7481165e3588107ba9522380a21677bd",
+        "putgd:toolsAbsent": "true"
+      }
+    },
+    "appimage-sqlite-3.53.4": {
+      "package": "appimage",
+      "component": "sqlite",
+      "version": "3.53.4",
+      "properties": {
+        "putgd:commit": "025bdad181de241e81bf853c8a2d7bf3d19261a9",
+        "putgd:filesSha256": "38df0fcc7e82b2137ac0bfdb785da5eb58318620e408a2b43d1441bf1d57975d",
         "putgd:toolsAbsent": "true"
       }
     }
@@ -740,6 +750,57 @@
       "https://github.com/harfbuzz/harfbuzz/blob/14.5.0/src/hb-shaper-list.hh",
       "https://github.com/patrick-hudson/put.gd-desktop/blob/957f6bfadc08c00e8552b74bb97a2e7910eb7033/docs/evidence/2026-10-31-exact-asset-audit/README.md"
     ]
+  },
+  "sqlite": {
+    "issue": "https://github.com/patrick-hudson/put.gd-desktop/issues/1210",
+    "reviewDate": "2026-11-05",
+    "ids": [
+      "CVE-2026-119373",
+      "CVE-2026-119374",
+      "CVE-2026-119379"
+    ],
+    "severity": "High",
+    "reportedFixVersions": [
+      "3.54.0"
+    ],
+    "qt": "6.12.0",
+    "version": "3.53.4",
+    "assessment": "CVE-2026-119379 is in the session extension, which is not built: Qt 6.12.0's driver does not define SQLITE_ENABLE_SESSION. CVE-2026-119373 and CVE-2026-119374 are in FTS5, which is built (SQLITE_ENABLE_FTS5) but not reached: put.gd has no FTS tables, virtual tables, ATTACH or load_extension, and its one QSQLITE connection site (HistoryStore) opens only history.sqlite in put.gd's own owner-only data folder. Triggering them takes a crafted database in that place, which means an attacker already running as the user.",
+    "decision": "Scoped disposition accepted by Patrick for the first stable, not an update: no Qt release carries SQLite 3.54 (v6.12.0 ships 3.53.4; the 6.12 branch has 3.54.1), and replacing the official driver would change its source, notices and SBOM just before release. Revisit when a Qt release ships SQLite >= 3.54.0. Unlike the HarfBuzz disposition, the FTS5 code does ship.",
+    "qtSource": {
+      "repository": "https://github.com/qt/qtbase.git",
+      "commit": "025bdad181de241e81bf853c8a2d7bf3d19261a9",
+      "cmakeLists": "src/plugins/sqldrivers/sqlite/CMakeLists.txt",
+      "defines": [
+        "SQLITE_ENABLE_COLUMN_METADATA",
+        "SQLITE_ENABLE_FTS3",
+        "SQLITE_ENABLE_FTS3_PARENTHESIS",
+        "SQLITE_ENABLE_FTS4",
+        "SQLITE_ENABLE_FTS5",
+        "SQLITE_ENABLE_GEOPOLY",
+        "SQLITE_ENABLE_JSON1",
+        "SQLITE_ENABLE_MATH_FUNCTIONS",
+        "SQLITE_ENABLE_RTREE",
+        "SQLITE_OMIT_COMPLETE"
+      ]
+    },
+    "binary": {
+      "path": "usr/plugins/sqldrivers/libqsqlite.so",
+      "sha256": "5390e456cfec8e2981d9603100b98b917815945cb461fa1944002e6d5695b09b",
+      "bytes": 1630392,
+      "compileOptions": [
+        "ENABLE_COLUMN_METADATA",
+        "ENABLE_FTS3",
+        "ENABLE_FTS3_PARENTHESIS",
+        "ENABLE_FTS4",
+        "ENABLE_FTS5",
+        "ENABLE_GEOPOLY",
+        "ENABLE_MATH_FUNCTIONS",
+        "ENABLE_RTREE",
+        "OMIT_COMPLETE"
+      ],
+      "source": "v26.1104.3892-nightly AppImage"
+    }
   },
   "stillReported": [
     "libtiff CVE-2026-4775",
