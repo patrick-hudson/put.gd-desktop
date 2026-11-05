@@ -1,6 +1,6 @@
 # Live S3 transport
 
-> **Historical record.** This page describes an app version, experiment or plan that no longer exists and is kept for context only. The current design is in [overview](../overview.md); see [overview](../overview.md). Do not use it as a work list.
+> **Historical record.** This page describes an app version, experiment or plan that no longer exists and is kept for context only. The current design is in [overview](../design/overview.md); see [overview](../design/overview.md). Do not use it as a work list.
 
 ## Source114: complete live-S3 regressions
 

@@ -1,6 +1,6 @@
 # KDE resident memory checks
 
-> **Historical record.** This page describes an app version, experiment or plan that no longer exists and is kept for context only. The current design is in [overview](../overview.md); see [memory-strategy](../memory-strategy.md). Do not use it as a work list.
+> **Historical record.** This page describes an app version, experiment or plan that no longer exists and is kept for context only. The current design is in [overview](../design/overview.md); see [memory-strategy](../design/memory-strategy.md). Do not use it as a work list.
 
 KDE follows the retained Cinnamon and GNOME checkpoints. Its baseline must use
 the same frozen product revision as those checkpoints; older VM binaries and
@@ -271,7 +271,7 @@ Version `0.1.1-dev.62+ga7a3aa02d3ea` moves generic image-format discovery,
 decoding and previews into a temporary windowless `putgd-ui` process. PNG
 remains an explicit resident path. An exact complete KDE output can share its
 image buffer rather than allocating a second frame. See
-[`image-worker.md`](../image-worker.md) for transport limits, cancellation,
+[`image-worker.md`](../design/image-worker.md) for transport limits, cancellation,
 ownership checks and reproduction commands.
 
 The clean host build passed all 51 registered tests. The host lacks the SVG
@@ -310,7 +310,7 @@ saves build identities, installed binary hashes, test parameters, actual result
 references, retained failures and pending gates. It explicitly grants no keeper,
 full native, memory, remote-storage or current-version sibling acceptance.
 The user changed KDE's power settings during this run. Preserve those settings;
-the later environment-maintenance task is recorded in [vm-lab.md](../vm-lab.md).
+the later environment-maintenance task is recorded in [vm-lab.md](../lab/vm-lab.md).
 
 
 ## Reproducing allocator attribution

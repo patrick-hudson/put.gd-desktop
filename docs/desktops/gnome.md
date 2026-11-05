@@ -92,7 +92,7 @@ later bounded current-main check in
 Those receipts identify the actual tested versions and cases; they do not mark
 every scenario in `tests/desktop/gnome.yaml` complete. Full display geometry,
 helper/package lifecycle and release acceptance remain separate gates in
-[verification](../verification.md).
+[verification](../testing/verification.md).
 
 ## Bridge contract
 
@@ -121,7 +121,7 @@ reason other than the user cancelling or the portal not answering, the
 launcher runs `gio open` (or `xdg-open`) with `QProcess::startDetached`, so the
 opener runs in its own session and is not a child of the process that launched
 it; a cancelled or unanswered portal request skips the launcher (see
-[diagnostics](../diagnostics.md)). The browser or file manager is therefore
+[diagnostics](../design/diagnostics.md)). The browser or file manager is therefore
 never classified as put.gd's own window. The
 [editor refusal receipt](../evidence/2026-10-19-gnome-editor-refusal.md)
 records the physical Fedora 44 runs from the RPM and the AppImage.
@@ -142,7 +142,7 @@ no per-window screencast exclusion: a recording of a whole monitor with no
 other monitor to hold the bar contains it. The resident then reports
 `overlayPlacement: handle` and has the helper shrink the bar to its dot-and-Stop
 handle from Record on; the extension follows the bar's size changes and keeps
-it in the corner (or, for a bar outside, on its monitor). Details are in `docs/recording.md`, "Wayland
+it in the corner (or, for a bar outside, on its monitor). Details are in `docs/design/recording.md`, "Wayland
 selection, bounds and bar". The synthetic `gnome_ui_ownership_contract` covers
 these methods; it is not graphical acceptance.
 

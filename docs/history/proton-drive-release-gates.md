@@ -49,7 +49,7 @@ SDK process families and rejects a memory experiment. None certifies final main.
 | Later shared tray changes | [Issue #33 native receipt](../evidence/2026-10-14-storage-tray-native.md), source `061c2d9c569dc10b5c8681a7ad7beb3093e61b80`: three-desktop rendered states and two post-use memory windows passed | Uses a synthetic offline S3 wire oracle, not a live Proton account. Do not substitute it for the earlier live Proton campaign. |
 | Later settings changes | [Issue #37 record](../evidence/2026-10-14-settings-drafts.md), final tested candidate `337773f4d5cef719b3f54d59bdb336ba3121f453`: Cinnamon graphical/memory passed; KDE 59/59 and GNOME 60/60 development suites passed | Final host suite was 58/59 before a passing tmpfs retry. KDE graphical work stopped after a cancellation timeout; remaining KDE/GNOME graphical/memory work was not completed. Current-main three-desktop acceptance remains open. |
 | Bundling and package integrity | Integration checkpoints record repeated offline helper builds, stale-source rejection, installed runtime/manifest/notices checks. PR #30 records an ordinary distribution DEB audit | Historical artifact evidence only. The final P4/P6 receipt below supersedes the former shipping-pipeline, notices and format gaps for its recorded candidate. |
-| Authentication isolation and disposable lab setup | [Supported setup](../proton-drive.md), [native replay](../testing-tray-progress.md) and PR #30 describe the private keychain bridge, serialized refreshed-state handoff and removal of copied guest entries | This does not establish expired/revoked session acceptance. Never revoke a copied shared session to manufacture a disposable-session failure. |
+| Authentication isolation and disposable lab setup | [Supported setup](../proton-drive.md), [native replay](../testing/tray-progress.md) and PR #30 describe the private keychain bridge, serialized refreshed-state handoff and removal of copied guest entries | This does not establish expired/revoked session acceptance. Never revoke a copied shared session to manufacture a disposable-session failure. |
 | Final experimental Proton candidate | [P4/P6 receipt](../evidence/2026-10-15-proton-p4-p6-acceptance.md), clean `a5112bc`: four audited artifacts, source export/rebuild, Cinnamon-first then GNOME/KDE native checks, Fedora/AppImage smoke checks, anonymous download and secure session cleanup | Bounded VM workload; P1 controlled-only cases and four upstream type diagnostics remain disclosed. Merge local work before closing #10; wider application certification remains separate. |
 
 The historical pending statements in the integration/helper records retain their
@@ -262,8 +262,8 @@ or a bounded documented disposition. Do not call the full type-check passing.
 Build and install actual shipping packages. Preserve source/package/binary
 hashes, supported-version evidence, and visible native functional/memory results
 on Cinnamon/X11 first, followed by GNOME/Wayland and KDE/Wayland. Observe the
-remaining general release requirements in [release.md](../release.md) and
-[verification.md](../verification.md); this feature audit does not close them.
+remaining general release requirements in [release.md](../release/release.md) and
+[verification.md](../testing/verification.md); this feature audit does not close them.
 
 ## Maintenance procedure
 

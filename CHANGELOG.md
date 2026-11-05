@@ -49,6 +49,6 @@ For anyone moving from the nightly builds:
 - **Right-click upload:** in Thunar it's under Send To. With the AppImage, Files and Caja list it under Scripts.
 - **Cinnamon tray:** the tray icon can show a placeholder image for a few seconds after put.gd starts. It recovers by itself.
 - **GNOME 50:** needs the put.gd Shell extension. After installing a DEB or RPM, log out and back in, then enable it. The AppImage needs the matching extension installed separately; see the [GNOME desktop notes](docs/desktops/gnome.md).
-- **Fedora recording:** needs extra encoder packages. See the [recording guide](docs/recording.md).
+- **Fedora recording:** needs extra encoder packages. See the [recording guide](docs/design/recording.md).
 
 [26.1105.3906]: https://github.com/patrick-hudson/put.gd-desktop/releases/tag/v26.1105.3906

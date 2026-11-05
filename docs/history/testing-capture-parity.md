@@ -1,6 +1,6 @@
 # Replaying the capture regression investigation
 
-> **Historical record.** This page describes an app version, experiment or plan that no longer exists and is kept for context only. The current design is in [overview](../overview.md); see [overview](../overview.md). Do not use it as a work list.
+> **Historical record.** This page describes an app version, experiment or plan that no longer exists and is kept for context only. The current design is in [overview](../design/overview.md); see [overview](../design/overview.md). Do not use it as a work list.
 
 This is a diagnosis archive from October 9, 2026. Feature parity is **not established** by it. Source49 met Cinnamon's memory target in the separate native-listener experiment, but capture startup regressed. The two-stage helper preparation change was still under development when this packet was captured; it has no acceptance claim here.
 

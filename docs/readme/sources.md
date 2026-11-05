@@ -106,4 +106,4 @@ Frames were captured through the lab's VNC/QMP witnesses and cropped with
 Pillow (`Image.crop`, `optimize=True`); the composite images are built with the
 same library. The raw frames were not retained in the repository. The README
 claims no acceptance result from these images; acceptance evidence lives under
-`docs/evidence/` and is recorded in `docs/verification.md`.
+`docs/evidence/` and is recorded in `docs/testing/verification.md`.

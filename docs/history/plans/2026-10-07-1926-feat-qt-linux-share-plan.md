@@ -9,7 +9,7 @@ execution: code
 
 # Qt Screenshot Sharing for Linux - Plan
 
-> **Historical record.** This page describes an app version, experiment or plan that no longer exists and is kept for context only. The current design is in [overview](../../overview.md); see [overview](../../overview.md). Do not use it as a work list.
+> **Historical record.** This page describes an app version, experiment or plan that no longer exists and is kept for context only. The current design is in [overview](../../design/overview.md); see [overview](../../design/overview.md). Do not use it as a work list.
 
 ## Goal Capsule
 
@@ -27,7 +27,7 @@ Stop conditions: Do not substitute a different capture target or claim desktop s
 
 ## Acceptance status — 2026-10-13
 
-Use the [current acceptance index](../../verification.md#current-acceptance-index--2026-10-13)
+Use the [current acceptance index](../../testing/verification.md#current-acceptance-index--2026-10-13)
 for the latest versioned evidence. Later source114 and current-main checks
 supersede the historical live-S3 blockers recorded in the execution notes below.
 Hosted Linux CI passes; Windows/macOS evidence remains compile-only. Closing
@@ -764,8 +764,8 @@ Verification: Release evidence records every required profile/case, package inst
 
 Implementation checkpoint (2026-10-13): the CMake presets, U6 lab runner and
 native/AppImage release validators now exist. Follow [build](../../build.md),
-[VM lab](../../vm-lab.md) and [release](../../release.md) for their actual commands.
-Tool availability is not acceptance: [verification](../../verification.md) records
+[VM lab](../../lab/vm-lab.md) and [release](../../release/release.md) for their actual commands.
+Tool availability is not acceptance: [verification](../../testing/verification.md) records
 which source/package identities and cases passed, and which U9/U10 gates remain
 open. The requirements below remain the release contract.
 
@@ -831,7 +831,7 @@ Windows/macOS CI proves compilation of shared components only. Physical Cinnamon
 ## Implementation checkpoint: 2026-10-08
 
 This checkpoint records progress without changing the acceptance requirements.
-Detailed evidence and limitations remain in [verification.md](../../verification.md).
+Detailed evidence and limitations remain in [verification.md](../../testing/verification.md).
 
 | Work | Implemented and observed | Remaining acceptance |
 | --- | --- | --- |
@@ -854,7 +854,7 @@ local official-SDK MCP/CLI parity/configuration recovery subset. A GTK fixture M
 negotiation defect was fixed without weakening byte comparisons; its original red
 attempts remain recorded. See
 [the structured receipt](../../evidence/2026-10-08-fresh-cinnamon.json) and
-[verification](../../verification.md) for parameters, operation IDs and limitations.
+[verification](../../testing/verification.md) for parameters, operation IDs and limitations.
 This advances U6/U9 evidence; it does not close the full desktop matrix, remote S3,
 lifecycle or remaining performance gates.
 
@@ -1427,7 +1427,7 @@ and the owned test fixture was stopped. A single post-cloud diagnostic measured
 memory remains an open gate. The test resident then exited normally, with its
 exact process generation and session socket absent. Credentials remained local
 and session-only throughout; no memory-zeroization claim is made. Follow
-[the repeatable live S3 procedure](../../testing-live-s3.md) with fresh synthetic IDs.
+[the repeatable live S3 procedure](../../testing/live-s3.md) with fresh synthetic IDs.
 
 
 ### Current GNOME boundary checkpoint (2026-10-10)
@@ -1664,7 +1664,7 @@ in this report-only round. Preserve the local memory keeper and its source63
 measurements; passing RSS does not close correctness or release gates.
 
 [The review](../reviews/2026-10-11-cumulative-review.md) records exact locations,
-preconditions, proposed fixes and validation limits. [The strategy](../../memory-strategy.md)
+preconditions, proposed fixes and validation limits. [The strategy](../../design/memory-strategy.md)
 documents the resident/helper boundaries, native clipboard lifetimes, decoder
 loading, cumulative allocation policy and reproducible acceptance sequence.
 Publish this checkpoint as a draft PR; current guest live-S3/remote History,

@@ -1,6 +1,6 @@
 # VM memory, current builds and replay
 
-> **Historical record.** This page describes an app version, experiment or plan that no longer exists and is kept for context only. The current design is in [overview](../overview.md); see [memory-strategy](../memory-strategy.md). Do not use it as a work list.
+> **Historical record.** This page describes an app version, experiment or plan that no longer exists and is kept for context only. The current design is in [overview](../design/overview.md); see [memory-strategy](../design/memory-strategy.md). Do not use it as a work list.
 
 The memory dashboard is <http://127.0.0.1:8767/>. The VNC display wall is
 <http://127.0.0.1:8765/>. Keep VNC available throughout graphical interaction.
@@ -81,7 +81,7 @@ The guest collector and supplemental scripts were executed for the saved audit.
 `dashboard-readonly.py` was prepared from the executed inline GET protocol and
 syntax-checked; it is not a second historical measurement.
 
-First verify the chosen existing run directories with [the lab instructions](../vm-lab.md).
+First verify the chosen existing run directories with [the lab instructions](../lab/vm-lab.md).
 Use current forwarded ports and pinned host keys from their manifests. Do not
 boot a base, restart an app, change settings or weaken SSH host-key checking to
 collect a snapshot. If the old run was retired, select a current running overlay

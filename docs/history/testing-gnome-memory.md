@@ -1,6 +1,6 @@
 # GNOME resident memory checks
 
-> **Historical record.** This page describes an app version, experiment or plan that no longer exists and is kept for context only. The current design is in [overview](../overview.md); see [memory-strategy](../memory-strategy.md). Do not use it as a work list.
+> **Historical record.** This page describes an app version, experiment or plan that no longer exists and is kept for context only. The current design is in [overview](../design/overview.md); see [memory-strategy](../design/memory-strategy.md). Do not use it as a work list.
 
 The resident and the settings/history UI are separate processes. A GNOME memory
 result must establish the actual resident route before comparing memory. The

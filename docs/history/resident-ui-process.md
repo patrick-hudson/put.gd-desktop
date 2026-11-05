@@ -1,13 +1,13 @@
 # Resident service and an on-demand UI
 
-> **Historical record.** This page describes an app version, experiment or plan that no longer exists and is kept for context only. The current design is in [overview](../overview.md); see [architecture](../architecture.md). Do not use it as a work list.
+> **Historical record.** This page describes an app version, experiment or plan that no longer exists and is kept for context only. The current design is in [overview](../design/overview.md); see [architecture](../design/architecture.md). Do not use it as a work list.
 
 Status: retain the split and native listener boundaries. Source63 meets the 40 MiB
 resident target in the recorded local workflows on Cinnamon, GNOME and KDE;
 current real S3/remote History and full release acceptance remain pending. Read
-[the current strategy and workload limits](../memory-strategy.md). Measurements below
+[the current strategy and workload limits](../design/memory-strategy.md). Measurements below
 from source41 and earlier are historical, not the current baseline. See
-[protocol and lifecycle](../ui-process-protocol.md).
+[protocol and lifecycle](../design/ui-process-protocol.md).
 The resident must retain a tray icon and menu while all UI windows are closed.
 It must still offer capture/upload actions and reopen Settings and History
 (the former Activity view is now History). Closing the UI must leave shortcuts, clipboard ownership and operations

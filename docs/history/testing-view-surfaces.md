@@ -1,6 +1,6 @@
 # Replaying retained-window memory checks
 
-> **Historical record.** This page describes an app version, experiment or plan that no longer exists and is kept for context only. The current design is in [overview](../overview.md); see [memory-strategy](../memory-strategy.md). Do not use it as a work list.
+> **Historical record.** This page describes an app version, experiment or plan that no longer exists and is kept for context only. The current design is in [overview](../design/overview.md); see [memory-strategy](../design/memory-strategy.md). Do not use it as a work list.
 
 The 2026-10-08 experiment releases native backing stores after an explicit close
 of Settings, History or Activity. It retains widget state, protects visible owned
@@ -65,7 +65,7 @@ pass; the approximately 40 MiB goal remains open.
 
 ## GNOME and KDE comparisons
 
-Use [the immutable-base VM lab](../vm-lab.md) and the current-source protocol in
+Use [the immutable-base VM lab](../lab/vm-lab.md) and the current-source protocol in
 [testing-vm-memory-audit.md](testing-vm-memory-audit.md). Build the same frozen
 source archive with each guest's system Qt and pinned SDK. Record archive,
 package and installed executable hashes plus live PID/start time. Keep graphical

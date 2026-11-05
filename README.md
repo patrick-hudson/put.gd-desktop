@@ -34,10 +34,10 @@ The installer verifies SHA-256 before installing. Native packages use sudo only 
 Manual downloads for Linux x86_64:
 
 - **DEB:** [Ubuntu 24.04 / Mint 22](https://app.put.gd/dl/stable/ubuntu24.04), [Ubuntu / Kubuntu 26.04](https://app.put.gd/dl/stable/ubuntu26.04) or [Debian 13](https://app.put.gd/dl/stable/debian13). Install with `sudo apt install ./putgd-*.deb`.
-- **RPM:** [Fedora 44](https://app.put.gd/dl/stable/fedora44). Install with `sudo dnf install ./putgd-*.rpm`. For recording, also run `sudo dnf install openh264 gstreamer1-plugin-openh264` to replace Fedora's placeholder; the one-line installer runs this codec step for you when the Cisco repository is enabled. If it is disabled, the installer prints the enable-then-install commands; see [codec setup](docs/recording.md#packages-and-codecs).
+- **RPM:** [Fedora 44](https://app.put.gd/dl/stable/fedora44). Install with `sudo dnf install ./putgd-*.rpm`. For recording, also run `sudo dnf install openh264 gstreamer1-plugin-openh264` to replace Fedora's placeholder; the one-line installer runs this codec step for you when the Cisco repository is enabled. If it is disabled, the installer prints the enable-then-install commands; see [codec setup](docs/design/recording.md#packages-and-codecs).
 - **AppImage:** [Download](https://app.put.gd/dl/stable/appimage) for Aurora and other distributions with glibc 2.39+. Make it executable with `chmod +x putgd-*.AppImage`, then open it.
 
-DEB and RPM installs add the put.gd package repository for updates. AppImage updates are offered in the app. See [updates](docs/updates.md).
+DEB and RPM installs add the put.gd package repository for updates. AppImage updates are offered in the app. See [updates](docs/design/updates.md).
 
 **GNOME 50:** after installing a DEB or RPM, log out and back in, then run `gnome-extensions enable putgd@put.gd`. AppImage users also need the matching host extension; follow [GNOME setup](docs/desktops/gnome.md#setup).
 
@@ -59,7 +59,7 @@ Change keys in **Settings → Shortcuts**. **Capture region & edit**, **Record s
 
 - **Capture:** drag a region, capture the active window, or capture all screens. Escape cancels region selection. Ordinary captures upload immediately to the selected destination; shared uploads copy their link.
 - **Edit:** choose **Capture region & edit**, or **Edit image** in History for a file or clipboard image. Crop, add arrows or text, and use **Redact** to remove private pixels. Nothing uploads until you choose **Upload**.
-- **Record:** choose **Record screen**, drag a region, and start from the floating bar. Include system audio, pause or resume, then stop to review. Trim or add timed blur/solid covers before saving a copy or choosing **Upload**. Export MP4, WebM, GIF or animated WebP. See [recording setup](docs/recording.md), including Fedora's encoder requirements.
+- **Record:** choose **Record screen**, drag a region, and start from the floating bar. Include system audio, pause or resume, then stop to review. Trim or add timed blur/solid covers before saving a copy or choosing **Upload**. Export MP4, WebM, GIF or animated WebP. See [recording setup](docs/design/recording.md), including Fedora's encoder requirements.
 
 ![The recording bar with system audio enabled, Pause and Stop recording controls](docs/readme/recording-bar.png)
 
@@ -73,12 +73,12 @@ Change keys in **Settings → Shortcuts**. **Capture region & edit**, **Record s
 
 **Destinations.** Amazon S3, Cloudflare R2 and other S3-compatible services; Backblaze B2 through its native API; and [Proton Drive](docs/proton-drive.md), an experimental third-party integration. Proton links open a share page rather than a direct image URL. Local saving is independent of uploads.
 
-**CLI and MCP.** `putgd-cli` controls the running app from scripts. The optional MCP helper exposes capture, editing, recording, uploads and History to agents. See [CLI](docs/cli.md) and [MCP setup](docs/mcp.md).
+**CLI and MCP.** `putgd-cli` controls the running app from scripts. The optional MCP helper exposes capture, editing, recording, uploads and History to agents. See [CLI](docs/automation/cli.md) and [MCP setup](docs/automation/mcp.md).
 
 **Build from source.** C++20, Qt 6 Widgets, CMake, Ninja and the official AWS C++ SDK. Follow the [build instructions](docs/build.md).
 
-**Privacy and credentials.** Uploads go to the destination you choose. Image edits and recordings stay private until you explicitly upload them. Saved credentials use the system keychain; configuration stores references, not secret values. S3 credentials can also stay in memory for the session. The daily update check can be disabled, and updates require your action. See [credentials](docs/credentials.md) and [updates](docs/updates.md).
+**Privacy and credentials.** Uploads go to the destination you choose. Image edits and recordings stay private until you explicitly upload them. Saved credentials use the system keychain; configuration stores references, not secret values. S3 credentials can also stay in memory for the session. The daily update check can be disabled, and updates require your action. See [credentials](docs/design/credentials.md) and [updates](docs/design/updates.md).
 
 **License.** [MIT](LICENSE).
 
-[User guide](docs/user-guide.md) · [Image editor](docs/image-editor.md) · [Screen recording](docs/recording.md) · [Configuration](docs/configuration.md) · [Troubleshooting](docs/diagnostics.md) · [Developer documentation](docs/agents.md) · [Issues](https://github.com/patrick-hudson/put.gd-desktop/issues)
+[User guide](docs/user/user-guide.md) · [Image editor](docs/design/image-editor.md) · [Screen recording](docs/design/recording.md) · [Configuration](docs/design/configuration.md) · [Troubleshooting](docs/design/diagnostics.md) · [Developer documentation](docs/automation/agents.md) · [Issues](https://github.com/patrick-hudson/put.gd-desktop/issues)
