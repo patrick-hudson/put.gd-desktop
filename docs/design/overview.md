@@ -34,7 +34,8 @@ packages use dynamically linked distribution Qt. See
 | `putgd-ui-catalog` | Synthetic UI reference renderer | Test fixtures to rendered reference images | Test build/CI, outside the resident |
 | `putgd-desktop-fixture` | Independent synthetic capture/paste witness | Lab commands, synthetic windows and artifacts | Opt-in development lab package |
 
-Executable definitions: [CMakeLists.txt](../../CMakeLists.txt), [B2 rules](../../cmake/B2.cmake),
+Executable definitions: [cmake/Executables.cmake](../../cmake/Executables.cmake),
+[recording helper](../../cmake/Recording.cmake), [B2 rules](../../cmake/B2.cmake),
 [Proton packaging](../../cmake/Proton.cmake) and
 [Linux packaging](../../packaging/linux/CMakeLists.txt). Recording is built when
 `PUTGD_RECORDING` and its GStreamer/FFmpeg dependencies are available; shipping
