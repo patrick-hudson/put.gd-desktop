@@ -75,43 +75,8 @@ if(BUILD_TESTING)
 endif()
 # History and Settings views, login startup, file uploads, local IPC, and the Qt Network links.
 include(cmake/TestsHistoryUploads.cmake)
-if(BUILD_TESTING)
-  add_executable(test_region_selection tests/unit/test_region_selection.cpp)
-  target_include_directories(test_region_selection PRIVATE src)
-  target_link_libraries(test_region_selection PRIVATE putgd_build_options putgd_visual Qt6::Widgets Qt6::Test)
-  add_test(NAME region_selection_contract COMMAND test_region_selection)
-  # The hint placement measures text, so the test needs a (headless) GUI platform.
-  set_tests_properties(region_selection_contract PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
-endif()
-
-if(BUILD_TESTING AND TARGET putgd_kde_region_process)
-  # Exercise the production QWidget without a native layer role. Real KWin
-  # keyboard focus and transparent-frame dismissal remain desktop gates.
-  add_executable(test_kde_region_overlay tests/gui/test_kde_region_overlay.cpp src/platform/kde/KdeRegionOverlay.cpp)
-  target_link_libraries(test_kde_region_overlay PRIVATE putgd_kde_region_process Qt6::Widgets Qt6::Test)
-  add_test(NAME kde_region_overlay COMMAND test_kde_region_overlay)
-  set_tests_properties(kde_region_overlay PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 30)
-  add_test(NAME kde_region_overlay_multihead COMMAND test_kde_region_overlay surfacesStayOnTheirOutputs)
-  set_tests_properties(kde_region_overlay_multihead PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen:configfile=${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/offscreen-kde-multihead.json" TIMEOUT 30)
-endif()
-
-if(BUILD_TESTING AND TARGET putgd_x11)
-  add_executable(test_native_region_overlay tests/desktop/x11/test_native_region_overlay.cpp)
-  target_link_libraries(test_native_region_overlay PRIVATE putgd_x11 putgd_capture_cursor Qt6::Test PkgConfig::PUTGD_XTEST PkgConfig::PUTGD_XCB)
-  putgd_xvfb_display(xvfb)
-  add_test(NAME native_region_overlay COMMAND dbus-run-session -- ${PUTGD_XVFB_RUN} ${xvfb} -s "-screen 0 1280x800x24 -noreset" $<TARGET_FILE:test_native_region_overlay>)
-  set_tests_properties(native_region_overlay PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=xcb;XDG_SESSION_TYPE=x11;WAYLAND_DISPLAY=" TIMEOUT 60)
-endif()
-
-if(BUILD_TESTING AND TARGET putgd-capture)
-  add_executable(test_capture_preparation tests/desktop/x11/test_capture_preparation.cpp)
-  target_link_libraries(test_capture_preparation PRIVATE putgd_x11 putgd_x11_native_snapshot putgd_capture_control putgd_capture_cursor putgd_build_identity Qt6::Test Qt6::Gui Qt6::Network PkgConfig::PUTGD_XCB PkgConfig::PUTGD_XCURSOR PkgConfig::PUTGD_HOLD_XTEST)
-  target_compile_definitions(test_capture_preparation PRIVATE PUTGD_REAL_CAPTURE_HELPER="$<TARGET_FILE:putgd-capture>")
-  add_dependencies(test_capture_preparation putgd-capture)
-  putgd_xvfb_display(xvfb)
-  add_test(NAME capture_preparation_x11 COMMAND ${PUTGD_XVFB_RUN} ${xvfb} -s "-screen 0 1280x800x24 -noreset" $<TARGET_FILE:test_capture_preparation>)
-  set_tests_properties(capture_preparation_x11 PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=xcb;XDG_SESSION_TYPE=x11;WAYLAND_DISPLAY=" TIMEOUT 30)
-endif()
+# Region selection and X11 capture tests.
+include(cmake/TestsRegionCapture.cmake)
 # The Proton Drive destination.
 include(cmake/Proton.cmake)
 # The Backblaze B2 tests.
