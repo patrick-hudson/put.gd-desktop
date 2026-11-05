@@ -32,4 +32,4 @@ The OS is installed once, and tests then boot independent copy-on-write overlays
 
 ## Retire completed overlays
 
-Retire a finished run with the guarded `cleanup` command on the actual QEMU host, with a completion evidence manifest; the guard refuses a run outside this checkout's `work/lab-runs`, which must be stopped and relocated instead. The procedure is under [Retire completed overlays](vm-lab/retire-overlays.md#retire-completed-overlays).
+Retire a finished run with the guarded `cleanup` command on the actual QEMU host. A passed, fully exported standard scenario needs no manifest; custom and manual campaigns need a completion evidence manifest. The guard refuses a run outside this checkout's `work/lab-runs`, which must be stopped and relocated instead. The procedure is under [Retire completed overlays](vm-lab/retire-overlays.md#retire-completed-overlays).

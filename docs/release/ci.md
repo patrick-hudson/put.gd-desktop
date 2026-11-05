@@ -48,7 +48,7 @@ code pull request re-runs that pull request's whole build. Keep documentation in
 its own pull request (see `AGENTS.md`): a documentation-only pull request runs
 `contracts` alone, unless it touches `docs/release/build.md` or `docs/user/proton-drive.md`.
 
-The **sanitizers** job is selected separately: by `src/core/`, `src/app/`, the C++
+The **sanitizers** job is selected separately: by `src/core/`, `src/app/`, `src/ipc/`, the C++
 sources under `tests/unit/`, `tests/integration/` and `tests/fixtures/`, and by
 `cmake/`, `tools/ci/`, `CMakeLists.txt`, `CMakePresets.json` and `ci.yml`. UI,
 platform, storage and packaging changes don't select it.
@@ -64,6 +64,11 @@ so a change to them doesn't select `linux`.
 every hosted Python suite once through `tools/ci/contracts.py`:
 
 - `release`: `tests/ci`, `tests/releases` and the Python suites in `tests/unit`.
+  `tests/ci/test_layers.py` fails on a new cross-module include under `src/`
+  (`tools/ci/check_layers.py` holds the allowed edges and the pinned exceptions).
+  `tests/ci/test_docs.py` fails on a broken documentation link or anchor, a
+  document missing from its folder README, or a new file under `docs/evidence`
+  (`tools/ci/check_docs.py`).
   `tests/ci/test_ui_names.py` fails on the retired UI names (Graphite,
   `VisualStyle`, `RedesignTheme`, redesign, `PUTGD_PREVIEW_`) in code and build
   inputs; see [the visual language](../design/visual-language.md#shared-implementation).
