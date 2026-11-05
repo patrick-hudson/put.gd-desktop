@@ -12,12 +12,11 @@ no pull request, manual clone or index edit.
 
 publish SRC_DIR [--name NAME] [--amend REASON] [--dry-run] [--json]
   NAME defaults to the directory name; without a YYYY-MM-DD- prefix it gets
-  today's UTC date. SRC_DIR is the complete content of the record: new files are
-  added and identical files skipped. A file with different bytes or a different
-  executable bit, or a published file missing from SRC_DIR, is refused unless
-  --amend REASON is given. To add to a record, `fetch` it, add the files to that
-  copy and publish the copy, so nothing reads as a deletion. With --amend,
-  everything missing from SRC_DIR is deleted from the record.
+  today's UTC date. Publishing only adds: new files are added, identical files
+  are skipped, and published files that SRC_DIR lacks stay published, so a
+  directory holding only follow-up files extends an existing record. A file with
+  different bytes or a different executable bit is refused unless --amend REASON
+  is given. The command never deletes a published file.
 link NAME [PATH ...] [--json]
   Print the links of an existing record, or of files and directories inside it,
   pinned to the current remote main commit.
@@ -408,13 +407,7 @@ def title_of(text):
     return None
 
 
-def place_files(source, target, wanted, removed):
-    for relative in removed:
-        (target / relative).unlink()
-        for parent in (target / relative).parents:
-            if parent == target or any(parent.iterdir()):
-                break
-            parent.rmdir()
+def place_files(source, target, wanted):
     for relative, mode in wanted:
         path = target / relative
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -434,8 +427,11 @@ def check_record(clone, directory, name):
 
 
 def scan_secrets(clone, directory):
-    candidates = (os.environ.get('GITLEAKS_BIN'), 'gitleaks')
-    binary = next((found for found in (shutil.which(item) for item in candidates if item) if found), None)
+    named = os.environ.get('GITLEAKS_BIN')
+    binary = shutil.which(named or 'gitleaks')
+    if named and not binary:
+        raise EvidenceError(f'GITLEAKS_BIN is set to {named}, which is not an executable. '
+                            'Nothing was committed. Fix the path or unset GITLEAKS_BIN, then run again.')
     if not binary:
         note("gitleaks is not installed here; the evidence repository's CI will scan the push.")
         return
@@ -552,20 +548,22 @@ def publish(args):
         existing = clone.files(base, record)
         added = sorted(path for path in wanted if path not in existing)
         changed = sorted(path for path in wanted if path in existing and existing[path] != wanted[path])
-        deleted = sorted(path for path in existing if path not in wanted)
-        plan = {'name': name, 'added': added, 'changed': changed, 'deleted': deleted,
+        blocked = sorted(path for path in added
+                         if any(other.startswith(path + '/') for other in existing)
+                         or any(path.startswith(other + '/') for other in existing))
+        if blocked:
+            raise EvidenceError(f'{record} is already published and evidence only grows.\n'
+                                'A published file and a directory would share a name:\n' + listed(blocked)
+                                + '\nRename these in the source directory and run again.')
+        plan = {'name': name, 'added': added, 'changed': changed,
                 'unchanged': len(wanted) - len(added) - len(changed)}
-        if (changed or deleted) and reason is None:
-            problems = []
-            if changed:
-                problems.append('Different bytes or executable bit:\n' + listed(changed))
-            if deleted:
-                problems.append('Published but missing from the source (would be deleted):\n' + listed(deleted))
-            raise EvidenceError(f'{record} is already published and evidence only grows.\n' + '\n'.join(problems)
-                                + '\nTo add files, run `fetch ' + name + '`, add them to that copy and publish it. '
-                                'To really change the record, pass --amend REASON.')
-        counts = f'{len(added)} added, {len(changed)} changed, {len(deleted)} deleted, {plan["unchanged"]} unchanged'
-        if not added and not changed and not deleted:
+        if changed and reason is None:
+            raise EvidenceError(f'{record} is already published and evidence only grows.\n'
+                                'Different bytes or executable bit:\n' + listed(changed)
+                                + '\nPublish the new version under another file name, '
+                                'or pass --amend REASON to replace the published file.')
+        counts = f'{len(added)} added, {len(changed)} changed, {plan["unchanged"]} unchanged'
+        if not added and not changed:
             result = dict(plan, status='unchanged', **record_links(clone, base, name))
             print_result(result, args.json, f'Nothing to publish: {record} already matches {source}.')
             return
@@ -575,8 +573,7 @@ def publish(args):
         committed = False
         try:
             target = clone.path / record
-            place_files(source, target, [(path[len(record) + 1:], wanted[path][0]) for path in added + changed],
-                        [path[len(record) + 1:] for path in deleted])
+            place_files(source, target, [(path[len(record) + 1:], wanted[path][0]) for path in added + changed])
             check_record(clone, target, name)
             scan_secrets(clone, target)
             clone.git('add', '-A', '-f', '--', record)
@@ -586,7 +583,7 @@ def publish(args):
                     meta, path = line.split('\t', 1)
                     mode, sha, _ = meta.split()
                     staged[path] = (mode, sha)
-            if staged != wanted:
+            if staged != {**existing, **wanted}:
                 raise EvidenceError(f'{source} changed while it was being published. Nothing was committed; '
                                     'run again once it is stable.')
             if args.dry_run:
@@ -670,7 +667,7 @@ def parser():
     command.add_argument('src_dir', metavar='SRC_DIR')
     command.add_argument('--name', help='record name; defaults to the directory name, date prefixed if needed')
     command.add_argument('--amend', metavar='REASON',
-                         help='allow changing or deleting published files, with this reason')
+                         help='allow replacing published files, with this reason')
     command.add_argument('--dry-run', action='store_true', help='run every check, then neither commit nor push')
     command.add_argument('--json', action='store_true', help='print the result as one JSON object')
     command.set_defaults(handler=publish)

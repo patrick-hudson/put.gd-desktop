@@ -289,31 +289,47 @@ class PublishTests(EvidenceBase):
         trailers = real_git('interpret-trailers', '--parse', stdin=self.message())
         self.assertIn('Evidence-Amend: wrong log attached', trailers)
 
-    def test_deletion_needs_amend(self):
+    def test_files_missing_from_the_source_stay_published(self):
         source = self.source()
         self.publish_json(source)
+        published = self.remote_paths('2026-11-05-sample')
+        head = self.main_head()
         (source / 'log.txt').unlink()
-        refused = self.tool('publish', str(source), expect=1)
-        self.assertIn('would be deleted', refused.stderr)
-        self.assertIn('fetch 2026-11-05-sample', refused.stderr)
-        self.assertIn('records/2026-11-05-sample/log.txt', self.remote_paths('2026-11-05-sample'))
-        self.publish_json(source, '--amend', 'log held a private path')
-        self.assertEqual(self.remote_paths('2026-11-05-sample'), {'records/2026-11-05-sample/README.md'})
-        self.assertIn('Evidence-Amend: log held a private path', self.message())
+        unchanged = self.publish_json(source)
+        self.assertEqual(unchanged['status'], 'unchanged')
+        self.assertEqual(self.main_head(), head)
+        self.publish_json(source, '--amend', 'never deletes')
+        self.assertEqual(self.remote_paths('2026-11-05-sample'), published)
 
-    def test_file_and_directory_swaps_under_amend(self):
+    def test_follow_up_directory_extends_a_record(self):
+        self.publish_json(self.source())
+        published = self.remote_paths('2026-11-05-sample')
+        follow_up = self.root / 'follow-up' / '2026-11-05-sample'
+        follow_up.mkdir(parents=True)
+        (follow_up / 'rerun/result.json').parent.mkdir()
+        (follow_up / 'rerun/result.json').write_text('{}\n')
+        result = self.publish_json(follow_up)
+        self.assertEqual(result['added'], ['records/2026-11-05-sample/rerun/result.json'])
+        self.assertEqual(self.remote_paths('2026-11-05-sample'),
+                         published | {'records/2026-11-05-sample/rerun/result.json'})
+        self.assertNotIn('Evidence-Amend', self.message())
+
+    def test_file_and_directory_swaps_are_refused(self):
         source = self.source(files={'README.md': '# T\n', 'a': 'file\n', 'b/c.txt': 'nested\n'})
         self.publish_json(source)
+        published = self.remote_paths('2026-11-05-sample')
         (source / 'a').unlink()
         (source / 'a').mkdir()
         (source / 'a/inner.txt').write_text('inner\n')
         (source / 'b/c.txt').unlink()
         (source / 'b').rmdir()
         (source / 'b').write_text('now a file\n')
-        self.publish_json(source, '--amend', 'layout')
-        self.assertEqual(self.remote_paths('2026-11-05-sample'), {
-            'records/2026-11-05-sample/README.md', 'records/2026-11-05-sample/a/inner.txt',
-            'records/2026-11-05-sample/b'})
+        for extra in ((), ('--amend', 'layout')):
+            refused = self.tool('publish', str(source), *extra, expect=1)
+            self.assertIn('would share a name', refused.stderr)
+            self.assertIn('records/2026-11-05-sample/a/inner.txt', refused.stderr)
+            self.assertIn('records/2026-11-05-sample/b', refused.stderr)
+        self.assertEqual(self.remote_paths('2026-11-05-sample'), published)
 
     def test_multiline_amend_reason_refused(self):
         result = self.tool('publish', str(self.source()), '--amend', 'one\nForged: trailer', expect=1)
@@ -463,6 +479,13 @@ class PublishTests(EvidenceBase):
 
 
 class SecretScanTests(EvidenceBase):
+    def test_mistyped_gitleaks_bin_stops_the_publish(self):
+        before = self.main_head()
+        result = self.tool('publish', str(self.source()), expect=1,
+                           env=self.env(GITLEAKS_BIN=str(self.root / 'no-such-gitleaks')))
+        self.assertIn('GITLEAKS_BIN is set to', result.stderr)
+        self.assertEqual(self.main_head(), before)
+
     def test_findings_stop_the_commit_with_redacted_scan(self):
         before = self.main_head()
         result = self.tool('publish', str(self.source(files={'README.md': '# T\n', 'leak.txt': 'LEAKME\n'})), expect=1)
@@ -763,7 +786,6 @@ class LinkAndFetchTests(EvidenceBase):
         result = self.publish_json(destination)
         self.assertEqual(result['added'], [f'records/{SEEDED}/added.txt'])
         self.assertEqual(result['changed'], [])
-        self.assertEqual(result['deleted'], [])
 
 
 class PartialCloneTests(EvidenceBase):
@@ -797,8 +819,8 @@ class PartialCloneTests(EvidenceBase):
     def test_comparing_an_existing_record_downloads_nothing_when_refused(self):
         self.tool('link', 'old-unprefixed')
         big = real_git('rev-parse', 'refs/heads/main:records/2026-01-03-other/big.bin', cwd=self.bare)
-        source = self.source('2026-01-03-other', files={'README.md': '# Other record\n'})
-        self.assertIn('would be deleted', self.tool('publish', str(source), expect=1).stderr)
+        source = self.source('2026-01-03-other', files={'README.md': '# Other record, edited\n'})
+        self.assertIn('Different bytes', self.tool('publish', str(source), expect=1).stderr)
         self.assertIn(big, self.missing_objects())
 
     def test_handling_another_record_narrows_the_checkout(self):
