@@ -53,7 +53,7 @@ alongside the Ubuntu GNOME VM, in the
 | Fedora 45 (`ghcr.io/ublue-os/aurora:testing`, `testing-45.20261101.2`) | `aurora-testing-45.20261101.2-ec2-20261102-a1` | 6.8.2 / 6.8.2, kernel 7.2.11 | **Required** for the KDE/Wayland AppImage checks, on any builder ([Plasma 6.8 golden](../lab/aurora-vm.md#plasma-68-golden)). The nightly Aurora row uses it on `aurora-amd`. |
 | Fedora 44 (`ghcr.io/ublue-os/aurora:stable`, `44.20260908.1`) | `aurora-stable-44.20260908.1-v3-492c3f8945d1` | 6.7.4 / 6.7.4, kernel 7.1.8 | The base the `stable` tag still shipped on 2026-10-22; run it when a pass compares the two bases or a finding is base-specific. |
 
-The earlier Fedora 45 golden, `aurora-testing-45.20261022.1-852d34e885c1` (Plasma 6.7.5), was removed on 2026-11-02 with Patrick's approval, and no copy remains. Every Aurora 45 result recorded before then used it, and #478 reproduced on it.
+The earlier Fedora 45 golden, removed on 2026-11-02, is recorded in [the matrix records](../history/acceptance-matrix-records.md).
 
 `neon-kde-wayland` (BIOS, `install: appimage`) runs two KDE neon goldens for
 catching KDE bugs early; see [KDE neon VMs](../lab/neon-vm.md). Like Aurora, it has no

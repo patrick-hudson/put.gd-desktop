@@ -154,3 +154,11 @@ Dated run records moved from [implementation evidence](../testing/verification.m
 | [2026-10-14-storage-driven-tray-feedback-33.md](verification/2026-10-14-storage-driven-tray-feedback-33.md) | Storage-driven tray feedback — issue #33 | 2026-10-14 | [verification](../testing/verification.md#current-state) |
 | [2026-10-16-cinnamon-login-startup-24.md](verification/2026-10-16-cinnamon-login-startup-24.md) | Cinnamon login startup — issue #24 | 2026-10-16 | [verification](../testing/verification.md#current-state) |
 | [2026-10-16-destination-controls-regression.md](verification/2026-10-16-destination-controls-regression.md) | Destination controls regression | 2026-10-16 | [verification](../testing/verification.md#current-state) |
+
+## Acceptance matrix run records
+
+Dated results moved from the [acceptance matrix](../testing/acceptance-matrix.md) on 2026-11-05 (#1222).
+
+| File | What it was | When it was current | What replaced it |
+| --- | --- | --- | --- |
+| [acceptance-matrix-records.md](acceptance-matrix-records.md) | The removal of the earlier Fedora 45 Aurora golden and what used it | 2026-11-02 | [acceptance matrix](../testing/acceptance-matrix.md) |
