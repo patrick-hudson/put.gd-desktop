@@ -331,6 +331,16 @@ class PublishTests(EvidenceBase):
             self.assertIn('records/2026-11-05-sample/b', refused.stderr)
         self.assertEqual(self.remote_paths('2026-11-05-sample'), published)
 
+    def test_unreadable_directory_stops_the_publish(self):
+        source = self.source(files={'README.md': '# T\n', 'private/log.txt': 'x\n'})
+        (source / 'private').chmod(0)
+        try:
+            refused = self.tool('publish', str(source), expect=1)
+        finally:
+            (source / 'private').chmod(0o755)
+        self.assertIn('Cannot read', refused.stderr)
+        self.assertEqual(self.remote_paths('2026-11-05-sample'), set())
+
     def test_multiline_amend_reason_refused(self):
         result = self.tool('publish', str(self.source()), '--amend', 'one\nForged: trailer', expect=1)
         self.assertIn('one-line reason', result.stderr)

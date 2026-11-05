@@ -373,7 +373,12 @@ def scan_source(source):
     """Map each relative path in source to its git (mode, sha), refusing what cannot be published as is."""
     wanted, refused = {}, []
     root = str(source)
-    for current, directories, names in os.walk(root, followlinks=False):
+
+    def unreadable(error):
+        raise EvidenceError(f'Cannot read {error.filename}: {error.strerror}. '
+                            'Nothing was published; fix its permissions or remove it, then run again.')
+
+    for current, directories, names in os.walk(root, followlinks=False, onerror=unreadable):
         for name in sorted(directories + names):
             path = os.path.join(current, name)
             relative = os.path.relpath(path, root)
@@ -586,15 +591,15 @@ def publish(args):
             if staged != {**existing, **wanted}:
                 raise EvidenceError(f'{source} changed while it was being published. Nothing was committed; '
                                     'run again once it is stable.')
+            readme = target / 'README.md'
+            title = title_of(readme.read_text(encoding='utf-8', errors='replace')) if readme.is_file() else None
+            if not title:
+                raise EvidenceError(f'{source}/README.md has no "# " title line. Add one and run again.')
             if args.dry_run:
                 print_result(dict(plan, status='dry-run', commit=None, base=base), args.json,
                              f'Dry run: {record} would change on top of {base} ({counts}). '
                              'Checks passed; nothing was committed or pushed.')
                 return
-            readme = target / 'README.md'
-            title = title_of(readme.read_text(encoding='utf-8', errors='replace')) if readme.is_file() else None
-            if not title:
-                raise EvidenceError(f'{source}/README.md has no "# " title line. Add one and run again.')
             clone.git('commit', '-q', '--no-verify', '--cleanup=whitespace', '-F', '-',
                       stdin=commit_message(name, title, source_sha, reason))
             committed = True
@@ -635,11 +640,16 @@ def fetch(args):
     destination = Path(args.dest).expanduser().resolve() if args.dest else default
     if destination == clone.path or clone.path in destination.parents:
         raise EvidenceError(f'{destination} is inside the cache clone, which every run resets. Choose another --dest.')
-    if destination.exists() and (not destination.is_dir() or any(destination.iterdir())):
-        raise EvidenceError(f'{destination} already exists and is not empty, so nothing was copied. '
-                            'Use it as it is, or pass another --dest.')
+    def refuse_occupied():
+        if destination.exists() and (not destination.is_dir() or any(destination.iterdir())):
+            raise EvidenceError(f'{destination} already exists and is not empty, so nothing was copied. '
+                                'Use it as it is, or pass another --dest.')
+
+    refuse_occupied()
     record = 'records/' + name
     with clone.locked():
+        # A fetch that held the lock before this one may have filled the destination.
+        refuse_occupied()
         clone.ensure()
         clone.fetch()
         clone.resync()
