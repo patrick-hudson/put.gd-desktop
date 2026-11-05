@@ -64,11 +64,12 @@ so a change to them doesn't select `linux`.
 every hosted Python suite once through `tools/ci/contracts.py`:
 
 - `release`: `tests/ci`, `tests/releases` and the Python suites in `tests/unit`.
-  `tests/ci/test_layers.py` fails on a new cross-module include under `src/`
-  (`tools/ci/check_layers.py` holds the allowed edges and the pinned exceptions).
-  `tests/ci/test_docs.py` fails on a broken documentation link or anchor, a
-  document missing from its folder README, or a new file under `docs/evidence`
-  (`tools/ci/check_docs.py`).
+  `tests/ci/test_layers.py` fails on a cross-module include under `src/` that is
+  neither an allowed edge nor a pinned exception, and on a stale entry or a cycle
+  in that table (`tools/ci/check_layers.py`). `tests/ci/test_docs.py` fails on a
+  broken documentation link or anchor, a document that neither its folder README
+  nor its topic's entry page links, or a file under `docs/evidence` outside the
+  two kept directories (`tools/ci/check_docs.py`).
   `tests/ci/test_ui_names.py` fails on the retired UI names (Graphite,
   `VisualStyle`, `RedesignTheme`, redesign, `PUTGD_PREVIEW_`) in code and build
   inputs; see [the visual language](../design/visual-language.md#shared-implementation).
