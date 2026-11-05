@@ -187,6 +187,36 @@ class ExactSourceInputs(unittest.TestCase):
         self.assertEqual(run.call_args_list[-2].kwargs['env']['APT_CONFIG'], snapshot_env['APT_CONFIG'])
         self.assertTrue(all('--allow-unauthenticated' not in c.args[0] for c in run.call_args_list))
 
+    def snapshot_publication(self):
+        entry = {'source_package_name': 'apparmor', 'source_package_version': '4.0-8',
+                 'date_published': '2026-10-01T00:00:00+00:00',
+                 'date_superseded': '2026-10-03T00:00:00+00:00',
+                 'self_link': 'https://api.launchpad.net/1.0/source-publication'}
+        return io.BytesIO(json.dumps({'entries': [entry]}).encode())
+
+    def test_a_failing_snapshot_service_is_retried(self):
+        ok, failed = subprocess.CompletedProcess([], 0), subprocess.CompletedProcess([], 100)
+        # The live archive lacks the version; the snapshot's download fails once, then works.
+        results = [subprocess.CalledProcessError(100, 'apt-get'), ok, failed, ok, ok]
+        with patch.object(complete.subprocess, 'run', side_effect=results) as run, \
+                patch.object(complete.time, 'sleep') as sleep, \
+                patch.object(complete.urllib.request, 'urlopen', return_value=self.snapshot_publication()):
+            result = complete.apt_source('apparmor', '4.0-8', Path('/synthetic'))
+        self.assertEqual(result['method'], 'apt-signed-snapshot')
+        self.assertEqual(run.call_count, 5)
+        sleep.assert_called_once_with(complete.SNAPSHOT_PAUSE_SECONDS)
+
+    def test_a_snapshot_service_that_stays_down_fails_with_its_name(self):
+        failed = subprocess.CompletedProcess([], 100)
+        results = [subprocess.CalledProcessError(100, 'apt-get')] + [failed] * complete.SNAPSHOT_ATTEMPTS
+        with patch.object(complete.subprocess, 'run', side_effect=results) as run, \
+                patch.object(complete.time, 'sleep') as sleep, \
+                patch.object(complete.urllib.request, 'urlopen', return_value=self.snapshot_publication()), \
+                self.assertRaisesRegex(RuntimeError, r'apparmor=4\.0-8 .*snapshot\.ubuntu\.com'):
+            complete.apt_source('apparmor', '4.0-8', Path('/synthetic'))
+        self.assertEqual(run.call_count, 1 + complete.SNAPSHOT_ATTEMPTS)
+        self.assertEqual(sleep.call_count, complete.SNAPSHOT_ATTEMPTS - 1)
+
     def test_another_publication_cannot_substitute_a_source_version(self):
         response = io.BytesIO(json.dumps({'entries': [
             {'source_package_name': 'apparmor', 'source_package_version': 'different'}]}).encode())
