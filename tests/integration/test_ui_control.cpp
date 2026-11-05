@@ -1,5 +1,5 @@
-#include "app/UiControl.h"
-#include "ui/StdioDevice.h"
+#include "ipc/UiControl.h"
+#include "ipc/StdioDevice.h"
 #include <QProcess>
 #include <QTimer>
 #include <QJsonDocument>

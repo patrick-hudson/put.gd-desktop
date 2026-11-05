@@ -1,5 +1,5 @@
 #include "app/LocalServer.h"
-#include "app/UiControl.h"
+#include "ipc/UiControl.h"
 #include "core/BuildInfo.h"
 #include "platform/x11/X11Clipboard.h"
 #include "ui/ViewState.h"

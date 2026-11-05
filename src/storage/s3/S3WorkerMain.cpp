@@ -1,8 +1,8 @@
 #include "S3Module.h"
 #include "S3WorkerProtocol.h"
 #include "S3Multipart.h"
-#include "app/UiControl.h"
-#include "ui/StdioDevice.h"
+#include "ipc/UiControl.h"
+#include "ipc/StdioDevice.h"
 #include "core/BuildInfo.h"
 #include <QCoreApplication>
 #include <QJsonArray>

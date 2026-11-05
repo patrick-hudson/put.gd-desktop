@@ -1,4 +1,4 @@
-#include "platform/x11/CaptureControl.h"
+#include "ipc/CaptureControl.h"
 #include "platform/x11/CaptureCursorPolicy.h"
 #include "platform/x11/X11NativeSnapshot.h"
 #include <QTest>

@@ -3,7 +3,7 @@
 #include "BuildInfo.h"
 #include "SanitizedPng.h"
 #include "Settings.h"
-#include "app/UiControl.h"
+#include "ipc/UiControl.h"
 #include <QCoreApplication>
 #include <QCryptographicHash>
 #include <QDir>

@@ -1,6 +1,6 @@
 #pragma once
 #include "KdeRegionProtocol.h"
-#include "platform/x11/CaptureControl.h"
+#include "ipc/CaptureControl.h"
 #include <QPointer>
 #include <QProcess>
 #include <QTimer>

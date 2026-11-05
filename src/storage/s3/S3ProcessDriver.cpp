@@ -1,7 +1,7 @@
 #include "S3ProcessDriver.h"
 #include "S3WorkerProtocol.h"
 #include "S3Multipart.h"
-#include "app/UiControl.h"
+#include "ipc/UiControl.h"
 #include "core/BuildInfo.h"
 #include "core/Log.h"
 #include <QCoreApplication>

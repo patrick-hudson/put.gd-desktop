@@ -1,8 +1,8 @@
 #include "DataControlClipboard.h"
-#include "KdeKeyboardMap.h"
+#include "platform/kde/KdeKeyboardMap.h"
 #include <xkbcommon/xkbcommon.h>
-#include "KWinTransfer.h"
-#include "KdeClipboardFormats.h"
+#include "platform/kde/KWinTransfer.h"
+#include "platform/kde/KdeClipboardFormats.h"
 #include "core/ImageFormat.h"
 #include "core/ImageJob.h"
 #include "core/Log.h"

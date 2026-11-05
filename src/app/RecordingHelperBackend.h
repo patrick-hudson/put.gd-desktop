@@ -1,6 +1,6 @@
 #pragma once
 #include "RecordingBackend.h"
-#include "UiControl.h"
+#include "ipc/UiControl.h"
 #include "core/Log.h"
 #include <QHash>
 #include <QObject>

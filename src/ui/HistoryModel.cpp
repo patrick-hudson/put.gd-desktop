@@ -1,5 +1,5 @@
 #include "HistoryModel.h"
-#include "ByteSize.h"
+#include "core/ByteSize.h"
 #include "core/Operation.h"
 #include "PreviewReader.h"
 #include <QDateTime>

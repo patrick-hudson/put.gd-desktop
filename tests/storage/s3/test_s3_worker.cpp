@@ -1,6 +1,6 @@
 #include "storage/s3/S3Module.h"
 #include "storage/s3/S3WorkerProtocol.h"
-#include "app/UiControl.h"
+#include "ipc/UiControl.h"
 #include "core/BuildInfo.h"
 #include <QUuid>
 #include "fixtures/S3Fixture.h"

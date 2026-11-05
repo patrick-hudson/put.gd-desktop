@@ -2,8 +2,8 @@
 #include "KdeDesktopFont.h"
 #include "ui/QuickBackend.h"
 #include "KdeRegionProtocol.h"
-#include "platform/x11/CaptureControl.h"
-#include "ui/StdioDevice.h"
+#include "ipc/CaptureControl.h"
+#include "ipc/StdioDevice.h"
 #include "ui/Theme.h"
 #include "core/BuildInfo.h"
 #include <QApplication>

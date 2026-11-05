@@ -3,7 +3,7 @@
 #include "EditorWindow.h"
 #include "FileDialog.h"
 #include "WindowActivation.h"
-#include "app/UiControl.h"
+#include "ipc/UiControl.h"
 #include "core/BuildInfo.h"
 #include "editor/EditDocument.h"
 #include "editor/EditorCommands.h"
