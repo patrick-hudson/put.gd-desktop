@@ -1,0 +1,128 @@
+{
+  "tag": "v26.1105.3906",
+  "gitCommit": "c3a4c04a9df99dcc84645bdce594b9f524172876",
+  "status": "passed",
+  "assetSha256": {
+    "proton-source-catalog.json": "cf5aec9b5d652fd46b3de3618eec1b60b0289ad47808b6a8391bab35c772a928",
+    "putgd-26.1105.3906-appimage.cdx.json": "f8ecaa6fe1a65fd37c1b142c37cbd08e9899424771dac3ea8ddd6d2875ba38d8",
+    "putgd-26.1105.3906-debian13-x86_64.deb": "5baf23a7114685d3006c86d2d86abecbbdf07942eef562e07a5f54e59741e9ac",
+    "putgd-26.1105.3906-debian13.cdx.json": "734e16db0691b14a5ba7c08f5f13db3758d671603e29384ba4ed7018f5cdff78",
+    "putgd-26.1105.3906-fedora44-x86_64.rpm": "267db37a0b26ea3da8f41b12a0aeb331a0f5122a9f82afe0bcf93da14b808a5d",
+    "putgd-26.1105.3906-fedora44.cdx.json": "b70c19e69f64cd871ec80ee81307bb5c07db7a87b5d63d3807425e71f751e622",
+    "putgd-26.1105.3906-ubuntu24.04-x86_64.deb": "f01e89fa3d2522700616f200febb011c9f26a535e8353d80d6b724d47ab9eaf6",
+    "putgd-26.1105.3906-ubuntu24.04.cdx.json": "c9717a12c165ff97b65c87d5b858bd627f1582137345c8484c0c8c2af435a354",
+    "putgd-26.1105.3906-ubuntu26.04-x86_64.deb": "b5ea518739229e62961f7da321dd02178d2ac86382a885acad660fbf07ab149f",
+    "putgd-26.1105.3906-ubuntu26.04.cdx.json": "81bae47f7c8c0f2aaba91a702c85995e462beb256925cc222a9fdd3e55de9c4c",
+    "putgd-26.1105.3906-x86_64.AppImage": "2efb3e87374371666c6f3be22aa13b077b89d7b4020f42a428c72b428a3c6077",
+    "putgd-26.1105.3906-x86_64.AppImage.zsync": "2cf3f9034de150ca20932002f66408bf7e2ff951f2f9f621fb1e6efe655752a5",
+    "release-builds.json": "06e4efda523d74a06d11579651f7d9b18744663a21b276d830ff72b073f6c977",
+    "source-delivery.json": "e8d4e4f83df2a9bc2c484b87a873e309899166b17fba5dcc5318d1754704ca79"
+  },
+  "evidence": "docs/evidence/2026-11-05-v26.1105.3906-acceptance.md",
+  "rows": [
+    {
+      "gate": "desktop-check",
+      "distribution": "Linux Mint",
+      "session": "Cinnamon X11",
+      "asset": "putgd-26.1105.3906-ubuntu24.04-x86_64.deb",
+      "result": "passed",
+      "cells": "13/13"
+    },
+    {
+      "gate": "desktop-check",
+      "distribution": "Ubuntu",
+      "session": "GNOME Wayland VM",
+      "asset": "putgd-26.1105.3906-ubuntu26.04-x86_64.deb",
+      "result": "passed",
+      "cells": "13/13",
+      "note": "rerun; first attempt lost its guest session, #1214"
+    },
+    {
+      "gate": "desktop-check",
+      "distribution": "Kubuntu",
+      "session": "Plasma",
+      "asset": "putgd-26.1105.3906-ubuntu26.04-x86_64.deb",
+      "result": "passed",
+      "cells": "13/13"
+    },
+    {
+      "gate": "desktop-check",
+      "distribution": "Aurora",
+      "session": "Plasma Wayland VM",
+      "asset": "putgd-26.1105.3906-x86_64.AppImage",
+      "result": "passed",
+      "cells": "13/13"
+    },
+    {
+      "gate": "desktop-check",
+      "distribution": "Fedora",
+      "session": "GNOME Wayland",
+      "asset": "putgd-26.1105.3906-fedora44-x86_64.rpm",
+      "result": "passed",
+      "cells": "13/13"
+    },
+    {
+      "gate": "native-lifecycle",
+      "distribution": "Linux Mint 22.3",
+      "session": "Cinnamon X11 VM",
+      "asset": "putgd-26.1105.3906-ubuntu24.04-x86_64.deb",
+      "result": "passed"
+    },
+    {
+      "gate": "native-lifecycle",
+      "distribution": "Kubuntu 26.04",
+      "session": "Plasma Wayland VM",
+      "asset": "putgd-26.1105.3906-ubuntu26.04-x86_64.deb",
+      "result": "passed"
+    },
+    {
+      "gate": "native-lifecycle",
+      "distribution": "Debian 13",
+      "session": "Plasma Wayland physical",
+      "asset": "putgd-26.1105.3906-debian13-x86_64.deb",
+      "result": "passed"
+    },
+    {
+      "gate": "native-lifecycle",
+      "distribution": "Fedora 44",
+      "session": "GNOME Wayland VM",
+      "asset": "putgd-26.1105.3906-fedora44-x86_64.rpm",
+      "result": "passed"
+    },
+    {
+      "gate": "performance",
+      "distribution": "Linux Mint 22.3",
+      "session": "Cinnamon X11 physical",
+      "asset": "putgd-26.1105.3906-ubuntu24.04-x86_64.deb",
+      "result": "passed",
+      "note": "Every graded limit passed; full History traversal not measured to completion, #1066",
+      "decision": "Coordinator under authorization to publish; not a waiver Patrick reviewed"
+    },
+    {
+      "gate": "multi-head",
+      "distribution": "Linux Mint",
+      "session": "Cinnamon X11 VM, two heads",
+      "asset": "putgd-26.1105.3906-ubuntu24.04-x86_64.deb",
+      "result": "passed"
+    },
+    {
+      "gate": "exact-asset-audit",
+      "result": "passed",
+      "note": "191 findings, none blocking",
+      "sourceRebuild": {
+        "kind": "CI receipt",
+        "passed": true,
+        "archiveSha256": "1c7fd02616707753f562f5f67f778291db164f201176f43651057fd9af820946"
+      }
+    },
+    {
+      "gate": "amd-hardware-encode",
+      "distribution": "Aurora",
+      "session": "Plasma Wayland physical, Radeon 740M",
+      "asset": "putgd-26.1105.3906-x86_64.AppImage",
+      "result": "passed",
+      "note": "One 1080p60 hardware cadence sample at 54.38 distinct fps, ungraded, #1216"
+    }
+  ],
+  "releaseRun": 41951168763
+}
