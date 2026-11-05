@@ -9,8 +9,8 @@ AGENTS.md and CLAUDE.md. The rules:
 2. Every .md under docs/<folder>/ is linked from docs/<folder>/README.md. One in a topic subfolder
    docs/<folder>/<topic>/ may instead be linked from the entry document docs/<folder>/<topic>.md.
    docs/readme/ holds artwork and is indexed by docs/README.md.
-3. Directly in docs/ there is only README.md and the stubs shipped software links to, and each stub
-   links to its new location.
+3. Directly in docs/ there is only README.md and the stubs shipped software and the website link to,
+   and each stub links to its new location.
 4. Nothing is tracked under docs/evidence beyond its README and the two directories code reads.
    Those directories are records: their own files are not checked.
 5. No path under docs/ has a component the source archive's filter drops.
@@ -29,9 +29,12 @@ ROOT = Path(__file__).resolve().parents[2]
 TOP_FILES = ('README.md', 'AGENTS.md', 'CLAUDE.md')
 EVIDENCE_README = 'docs/evidence/README.md'
 EVIDENCE_KEPT = ('docs/evidence/live-s3-memory/source114/', 'docs/evidence/cold-family-metadata-race/')
-# Old path -> new location. Released packages and installed apps open the old paths.
-STUBS = {'docs/package-repositories.md': 'docs/release/package-repositories.md',
+# Old path -> new location. Released packages, installed apps and the put.gd website open the old paths.
+STUBS = {'docs/cli.md': 'docs/automation/cli.md',
+         'docs/mcp.md': 'docs/automation/mcp.md',
+         'docs/package-repositories.md': 'docs/release/package-repositories.md',
          'docs/release.md': 'docs/release/release.md',
+         'docs/user-guide.md': 'docs/user/user-guide.md',
          'docs/verification.md': 'docs/testing/verification.md'}
 # Folders whose index is not their own README.md.
 INDEXED_ELSEWHERE = {'readme': 'docs/README.md'}
@@ -204,10 +207,10 @@ def check_top_level(files, linked_from):
     for name in sorted(files):
         if posixpath.dirname(name) == 'docs' and name.endswith('.md') and name != 'docs/README.md' and name not in STUBS:
             problems.append(f'{name}: move it into a docs/<folder>/ and link it from that folder\'s README.md; '
-                            'only README.md and the stubs shipped software links to stay directly in docs/')
+                            'only README.md and the stubs that shipped software and the website link to stay directly in docs/')
     for stub, target in STUBS.items():
         if stub not in files:
-            problems.append(f'{stub}: restore this stub; shipped software links to it')
+            problems.append(f'{stub}: restore this stub; shipped software or the website links to it')
         elif target not in linked_from.get(stub, ()):
             problems.append(f'{stub}: this stub must link to its new location, {target}')
     return problems

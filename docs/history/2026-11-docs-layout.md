@@ -24,7 +24,7 @@ paths; the tables below resolve them.
 | `docs/boat-snapshots.md` | [`docs/lab/boat-snapshots.md`](../lab/boat-snapshots.md) | |
 | `docs/build.md` | [`docs/release/build.md`](../release/build.md) | |
 | `docs/ci.md` | [`docs/release/ci.md`](../release/ci.md) | |
-| `docs/cli.md` | [`docs/automation/cli.md`](../automation/cli.md) | |
+| `docs/cli.md` | [`docs/automation/cli.md`](../automation/cli.md) | Stub remains at the old path |
 | `docs/configuration.md` | [`docs/design/configuration.md`](../design/configuration.md) | |
 | `docs/credentials.md` | [`docs/design/credentials.md`](../design/credentials.md) | |
 | `docs/diagnostics.md` | [`docs/design/diagnostics.md`](../design/diagnostics.md) | |
@@ -36,7 +36,7 @@ paths; the tables below resolve them.
 | `docs/image-editor.md` | [`docs/design/image-editor.md`](../design/image-editor.md) | |
 | `docs/image-worker.md` | [`docs/design/image-worker.md`](../design/image-worker.md) | |
 | `docs/lab-storage.md` | [`docs/lab/lab-storage.md`](../lab/lab-storage.md) | |
-| `docs/mcp.md` | [`docs/automation/mcp.md`](../automation/mcp.md) | |
+| `docs/mcp.md` | [`docs/automation/mcp.md`](../automation/mcp.md) | Stub remains at the old path |
 | `docs/memory-strategy.md` | [`docs/design/memory-strategy.md`](../design/memory-strategy.md) | |
 | `docs/neon-vm.md` | [`docs/lab/neon-vm.md`](../lab/neon-vm.md) | |
 | `docs/overview.md` | [`docs/design/overview.md`](../design/overview.md) | |
@@ -62,7 +62,7 @@ paths; the tables below resolve them.
 | `docs/ui-process-protocol.md` | [`docs/design/ui-process-protocol.md`](../design/ui-process-protocol.md) | |
 | `docs/ui-process-state.md` | [`docs/design/ui-process-state.md`](../design/ui-process-state.md) | |
 | `docs/updates.md` | [`docs/design/updates.md`](../design/updates.md) | |
-| `docs/user-guide.md` | [`docs/user/user-guide.md`](../user/user-guide.md) | |
+| `docs/user-guide.md` | [`docs/user/user-guide.md`](../user/user-guide.md) | Stub remains at the old path |
 | `docs/verification.md` | [`docs/testing/verification.md`](../testing/verification.md) | Stub remains at the old path |
 | `docs/versioning.md` | [`docs/release/versioning.md`](../release/versioning.md) | |
 | `docs/visual-language.md` | [`docs/design/visual-language.md`](../design/visual-language.md) | |

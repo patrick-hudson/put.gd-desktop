@@ -23,6 +23,8 @@ tree; see [evidence retention](testing/evidence-retention.md). If you have an ol
 path from an evidence record or an earlier commit, the
 [layout change](history/2026-11-docs-layout.md) maps it to the current one.
 
-Three old paths stay as short stubs because shipped software links to them:
+Six old paths stay as short stubs. Shipped software links to
 [package-repositories.md](package-repositories.md),
-[verification.md](verification.md) and [release.md](release.md).
+[verification.md](verification.md) and [release.md](release.md); the put.gd
+website links to [cli.md](cli.md), [mcp.md](mcp.md) and
+[user-guide.md](user-guide.md).
