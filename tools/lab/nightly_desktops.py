@@ -321,12 +321,23 @@ def release_assets(github, tag, out, rows, *, release=None):
     return identity
 
 
-def catalog(github, build, out):
-    """Find a successful producer with the exact build, including reused source CI."""
-    runs = github.api(f'repos/{github.repo}/actions/runs?head_sha={build}&status=success&per_page=100')['workflow_runs']
+def ci_passed(github, run):
+    jobs = github.api(f'repos/{github.repo}/actions/runs/{run["id"]}/jobs?per_page=100')['jobs']
+    return any(job['name'] == 'ci / CI' and job['conclusion'] == 'success' for job in jobs)
+
+
+def catalog(github, build, out, staged=False):
+    """Find a successful producer with the exact build, including reused source CI.
+
+    A staged draft's Release run can still fail after staging, in its draft audit;
+    its catalog counts when that run's CI job passed.
+    """
+    status = '' if staged else '&status=success'
+    runs = github.api(f'repos/{github.repo}/actions/runs?head_sha={build}{status}&per_page=100')['workflow_runs']
     for run in runs:
         artifacts = github.api(f'repos/{github.repo}/actions/runs/{run["id"]}/artifacts?per_page=100')['artifacts']
-        if any(a['name'] == 'ui-catalog' and not a['expired'] for a in artifacts):
+        if any(a['name'] == 'ui-catalog' and not a['expired'] for a in artifacts) \
+                and (run.get('conclusion') == 'success' or staged and ci_passed(github, run)):
             github.gh('run', 'download', str(run['id']), '--repo', github.repo,
                       '--name', 'ui-catalog', '--dir', str(out))
             manifest = json.loads((out/'manifest.json').read_text())
@@ -1280,7 +1291,7 @@ def controller(args, config, *, local_workers=None):
                 result['assetChecksums'] = identity['packages']
                 result['checksumManifestSha256'] = digest(artifacts/'packages/SHA256SUMS')
             identity['driver'] = command(['git','rev-parse','HEAD']).strip()
-            identity['catalog'] = catalog(github, identity['gitCommit'], artifacts/'catalog')
+            identity['catalog'] = catalog(github, identity['gitCommit'], artifacts/'catalog', staged=stable_draft)
             save(artifacts/'identity.json', identity)
             result['build'] = identity['gitCommit']
             if previous is not None:
