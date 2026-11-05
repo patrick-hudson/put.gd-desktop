@@ -343,7 +343,7 @@ as `77`, `|` as `\`): use `;` and `tee` plus Ctrl+D.
 
 Retire the overlay with the guarded cleanup after exporting evidence. A
 smoke-only run has no passed scenario journal, so it needs the explicit
-completion manifest described in [vm-lab.md](vm-lab/retire-overlays.md#retire-completed-overlays):
+completion manifest described in [overlay retirement](vm-lab/retire-overlays.md#retire-completed-overlays):
 
 ```sh
 python3 tools/lab/lab.py reset --run "$r"
