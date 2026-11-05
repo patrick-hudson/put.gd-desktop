@@ -14,22 +14,14 @@ Prefer Patrick's Fedora 44 (`192.168.68.70`, lock host `f44`), Debian 13
 Linux Mint 22.3 (`192.168.68.74`, `m74`) and
 Aurora Fedora 45 (`192.168.68.71`, lock host `aurora-amd`) physical build/test
 servers for builds, VM hosting and graphical acceptance.
-Their existing GNOME, Plasma and Cinnamon sessions are graphical acceptance targets too:
-run and verify the app directly on the appropriate physical desktop, visible on
-its host wall tile, with saved visuals and exact host/session/source/build identities.
-Use local workstation VMs as a fallback when those hosts cannot run the required
-profile; record the reason. Connection pins, host selection, visual evidence and
+Connection pins, host selection, visual evidence and
 golden-image transfer rules are in `docs/lab/remote-builders.md`. On these five servers,
 the user authorizes dependency/tool setup and testing with passwordless
 `sudo -n`; preserve existing projects and desktop work. Keep the SSH private key
-on the workstation. Verify host capacity, KVM and display access before VM runs;
-host preference does not change the required guest versions.
+on the workstation.
 
-Aurora uses the Fedora 45 Toolbx `putgd-build`: build with
-`~/.local/bin/putgd-build-env` from the canonical `/var/home/patrick/work/put.gd`
-checkout. Its native Plasma Wayland session is the graphical target. Use
-`~/.local/bin/putgd-proton-lab` for its existing Proton lab session; the Atomic
-home and KWallet details are in `docs/lab/remote-builders.md`.
+Aurora's Toolbx build, native session, Proton lab session, Atomic home and KWallet
+details are in `docs/lab/remote-builders.md`.
 
 The five physical desktops serve one session at a time. Before any GUI work on
 one, take its lock with `python3 tools/lab/desktop_lock.py acquire`, heartbeat it,
@@ -55,8 +47,7 @@ as the exception to the no-credentials-in-source rule. Preserve immutable source
 
 Required Linux testing covers Mint, Ubuntu, Kubuntu, Fedora and Debian, with
 Cinnamon plus GNOME/KDE and real X11/Wayland coverage as mapped in
-`docs/testing/acceptance-matrix.md`. Prefer the build servers, using their native desktops
-and new VMs as needed; fall back locally with a recorded reason. Run any release
+`docs/testing/acceptance-matrix.md`. Run any release
 gate requiring physical/native hardware on the appropriate physical machine.
 Provision missing profiles; never substitute VM or XWayland evidence for such gates.
 
@@ -129,16 +120,9 @@ and `docs/build.md` for lab and package commands, and `docs/testing/verification
 for observed acceptance and blocked gates. Headless parity or an earlier partial
 walkthrough cannot establish current desktop acceptance.
 
-Keep graphical lab interactions visible through each VM or physical desktop's
-localhost VNC listener and the workstation's SSH tunnels.
 The user watches the live display wall at http://127.0.0.1:8765/; do not disable or
-redirect guest display output during graphical tests. Distinguish SSH build/log work
-from graphical acceptance, and restore an idle/locked test session through its
-visible console before using it as acceptance evidence.
-Capture visual results for every graphical acceptance run, including failures,
-and retain screenshots or recordings with the tested host/session, source/build
-identity and functional artifacts. A live tile or SSH log alone is not a saved
-visual result. Never capture a revealed credential or protected login value.
+redirect guest display output during graphical tests.
+Never capture a revealed credential or protected login value.
 
 Before launching any isolated Linux test, calculate the UTF-8 byte length of
 every resolved Unix socket path, including the harness-added runtime directory
@@ -147,8 +131,6 @@ terminating NUL. Use a short, new, private output directory and reject an
 overlong path before starting the app. Do not change a frozen performance
 harness or weaken socket ownership checks to accommodate a long artifact name.
 Preserve failed attempts and record the corrected command before retrying.
-Use `python3 tools/diagnostics/check_socket_paths.py --ui-output RUN_1 RUN_2`
-for the UI harness, or `--socket` for complete paths in other tests.
 
 Agents own lab-session unlocking. Inspect the existing run/bootstrap metadata
 for its protected local login input before asking the user for credentials.
@@ -168,19 +150,13 @@ any copy without Patrick's approval and two other copies verified against the
 same SHA-256.
 
 Retire completed disposable VM overlays after their evidence is exported and
-verified. Normal successful `tools/lab/lab.py run` calls do this automatically;
-`--keep`, failed runs and incomplete collections retain their disks for
-investigation. After custom/manual campaigns finish, use the guarded `cleanup`
+verified. After custom/manual campaigns finish, use the guarded `cleanup`
 command in `docs/lab/vm-lab.md` with a completion evidence manifest. Never remove a
 running overlay, a golden or a disk still referenced by another image. Preserve
 all host-side evidence, run identities and retirement receipts.
 
-Evidence retention is documented in `docs/testing/evidence-retention.md`. Preserve merged
-acceptance summaries, exact identities, reproducible parameters, failure context
-and cleanup receipts. Compress cold bulk evidence only with verified checksums
+Evidence retention is documented in `docs/testing/evidence-retention.md`. Compress cold bulk evidence only with verified checksums
 and a restore index; never delete test source as a substitute for archiving its
 results. Local work archives remain private and outside release source exports.
-Evidence records live in `patrick-hudson/put.gd-evidence` under `records/<name>/`.
-Publish one with `python3 tools/maintenance/evidence.py publish <dir>`, which
-validates, commits, pushes and prints commit-pinned links. Never add files under
+Never add files under
 `docs/evidence`; what remains there is read by CI and tests.
