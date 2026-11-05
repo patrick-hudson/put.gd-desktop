@@ -166,8 +166,8 @@ Record the result:
 2. Write a sanitized record directory `YYYY-MM-DD-$tag-acceptance/`, with a
    `README.md` and a `.json` giving exact identities, rows, results and blocked
    gates, and publish it with `python3 tools/maintenance/evidence.py publish <dir>`
-   ([evidence retention](../testing/evidence-retention.md)). Then add an entry with
-   its link to `docs/testing/verification.md`. Land that through a pull request into `nightly`.
+   ([evidence retention](../testing/evidence-retention.md)). Then update the current
+   state and blocked gates in `docs/testing/verification.md`, with its link. Land that through a pull request into `nightly`.
 3. Write the receipt that publication checks. Start it as `pending`:
 
 ```sh

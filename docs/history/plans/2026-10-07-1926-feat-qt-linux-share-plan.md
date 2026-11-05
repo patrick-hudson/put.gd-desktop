@@ -27,7 +27,7 @@ Stop conditions: Do not substitute a different capture target or claim desktop s
 
 ## Acceptance status — 2026-10-13
 
-Use the [current acceptance index](../../testing/verification.md#current-acceptance-index--2026-10-13)
+Use the [current acceptance index](../verification/2026-10-13-current-acceptance-index.md#current-acceptance-index--2026-10-13)
 for the latest versioned evidence. Later source114 and current-main checks
 supersede the historical live-S3 blockers recorded in the execution notes below.
 Hosted Linux CI passes; Windows/macOS evidence remains compile-only. Closing
