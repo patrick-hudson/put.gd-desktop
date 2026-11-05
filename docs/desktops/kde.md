@@ -46,7 +46,7 @@ X-KDE-DBUS-Restricted-Interfaces=org.kde.KWin.ScreenShot2;
 The screen-recording helper has its own entry, `putgd-record.desktop`, whose
 `Exec` names the helper binary and whose `X-KDE-Wayland-Interfaces` lists
 `zkde_screencast_unstable_v1`; KWin advertises its screencast protocol only to
-executables matched that way (see `docs/recording.md`, "Wayland acquisition").
+executables matched that way (see `docs/design/recording.md`, "Wayland acquisition").
 The helper also links the layer-shell region selector: a recording of a
 region without a rectangle shows the same `KdeRegionOverlay` as a region
 screenshot before any stream exists, and the ready ring, dimming and control

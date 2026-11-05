@@ -1,13 +1,13 @@
 # Native listener memory experiment
 
-> **Historical record.** This page describes an app version, experiment or plan that no longer exists and is kept for context only. The current design is in [overview](../overview.md); see [memory-strategy](../memory-strategy.md). Do not use it as a work list.
+> **Historical record.** This page describes an app version, experiment or plan that no longer exists and is kept for context only. The current design is in [overview](../design/overview.md); see [memory-strategy](../design/memory-strategy.md). Do not use it as a work list.
 
 Candidate `676f6e6d6e0b026dcdd1b4ef2ae7dabc8a29ded3` on
 `codex/optimize-resident-native-boundary` reached the physical Cinnamon memory
 target. Its version is `0.1.1-dev.49+g676f6e6d6e0b`. It remains experimental:
 region selector startup regressed, so the implementation has not been integrated.
-The [structured summary](../evidence/2026-10-09-native-listener.json) and
-[hashed raw receipts](../evidence/2026-10-09-native-listener-raw/manifest.json) preserve
+The [structured summary](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-09-native-listener.json) and
+[hashed raw receipts](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-09-native-listener-raw/manifest.json) preserve
 passing checks, failed checks, exact commands, parameters and source identities.
 Documentation commits do not change which binary was measured.
 
@@ -95,7 +95,7 @@ Pass the documented SDK prefix/source/runtime flags when using an existing
 provisioned official SDK. Do not substitute a toolchain or statically link Qt.
 The source archive used for measurements must come from this clean commit;
 archive builds require the exact exported provenance described in
-[versioning.md](../versioning.md). Build and test logs are artifacts, not success
+[versioning.md](../release/versioning.md). Build and test logs are artifacts, not success
 claims until their exit status and assertions are checked.
 
 ## Native gates and quiet physical replay
@@ -103,7 +103,7 @@ claims until their exit status and assertions are checked.
 1. Build and test one Cinnamon candidate first. Stop its old resident by verified
    PID/start/executable identity and confirm exit before installing the new one.
    Preserve the prior synthetic profile and receipts. Never boot a golden disk.
-2. Use the existing lab runner and native fixture described in [vm-lab.md](../vm-lab.md).
+2. Use the existing lab runner and native fixture described in [vm-lab.md](../lab/vm-lab.md).
    Keep graphical output visible on the VNC wall. Restore locked sessions with
    protected bootstrap input through a confirmed masked console field. No guest
    Node.js fixture is needed. Preserve twelve independent Qt/GTK capture,

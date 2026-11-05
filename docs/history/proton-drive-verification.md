@@ -10,16 +10,16 @@ gate under the user-approved decision. The [evidence and release-gate register](
 is the dated reconciliation: it credits the merged local and native campaigns,
 links the P1 recipient/service and native recovery receipts and the completed
 notice, shipping, maintenance and source-specific package acceptance records.
-The [service campaign](../evidence/2026-10-15-proton-p1-recovery.md) and
-[normal-use application follow-up](../evidence/2026-10-15-proton-p1-app-recovery.md)
+The [service campaign](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-15-proton-p1-recovery.md) and
+[normal-use application follow-up](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-15-proton-p1-app-recovery.md)
 complete P1 within their recorded scope. The
-[P2 resource campaign](../evidence/2026-10-15-proton-p2-resources.md) completes the
+[P2 resource campaign](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-15-proton-p2-resources.md) completes the
 recorded Cinnamon workload: 487.25 MiB active peak, 31.305 MiB post-use idle,
 helpers drained, and a smaller-heap experiment measured and reverted. The user
 chose optimization without a hard total active-memory ceiling; the provisional
 512 MiB reference is not a release gate. Frozen idle limits remain unchanged.
 P3 is complete in its linked redistribution/rebuild records. The
-[final P4/P6 receipt](../evidence/2026-10-15-proton-p4-p6-acceptance.md) records actual shipping artifacts, source
+[final P4/P6 receipt](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-15-proton-p4-p6-acceptance.md) records actual shipping artifacts, source
 publication and extracted rebuild, Cinnamon-first then GNOME/KDE native checks,
 Fedora/AppImage smoke checks, and retained cleanup evidence at `a5112bc`. P5
 credits the actual completed Crypto maintenance transition. The official JS

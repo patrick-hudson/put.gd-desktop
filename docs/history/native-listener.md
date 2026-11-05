@@ -1,12 +1,12 @@
 # Native listener experiment
 
-> **Historical record.** This page describes an app version, experiment or plan that no longer exists and is kept for context only. The current design is in [overview](../overview.md); see [memory-strategy](../memory-strategy.md). Do not use it as a work list.
+> **Historical record.** This page describes an app version, experiment or plan that no longer exists and is kept for context only. The current design is in [overview](../design/overview.md); see [memory-strategy](../design/memory-strategy.md). Do not use it as a work list.
 
 The retained implementation selects a Qt Core resident on Cinnamon X11 and keeps
 Qt Widgets settings, history and activity in the transient view process. GNOME
 and KDE now have their own native boundaries. Source63 passed the recorded local
 functional and memory gates on all three desktops; full remote/release acceptance
-remains pending. See [the current strategy](../memory-strategy.md) and its exact
+remains pending. See [the current strategy](../design/memory-strategy.md) and its exact
 workload limitations. A successful build or fixture is not desktop acceptance.
 
 ## Routing and process ownership
@@ -108,7 +108,7 @@ must be measured and fixed before keeping a memory win.
 
 Only after the native gate passes, run two serial physical cold five-minute and two
 closed-view measurements with the frozen tests/performance scripts. Follow the
-[current whole-workload measurement guidance](../memory-strategy.md#measure-the-complete-workload)
+[current whole-workload measurement guidance](../design/memory-strategy.md#measure-the-complete-workload)
 and the [cold-family observer](../../tests/performance/observe_cold_family.py) /
 [UI-process observer and evaluator](../../tests/performance/bench_ui_process.py). Preflight
 every complete Unix socket pathname with tools/diagnostics/check_socket_paths.py.

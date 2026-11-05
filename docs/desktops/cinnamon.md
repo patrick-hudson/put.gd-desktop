@@ -14,7 +14,7 @@ helper, which never register (#103), and matches the GNOME extension's rule. The
 same rules run on Plasma X11, which uses this adapter. `_NET_WM_PID` is set by the
 client: put.gd's Qt windows set it truthfully, and a client that lies about it
 can only get its own window refused. The [X11 editor refusal
-receipt](../evidence/2026-10-19-x11-editor-refusal.md) records the physical
+receipt](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-19-x11-editor-refusal.md) records the physical
 Kubuntu Plasma X11 run.
 
 Region selection appears over the live desktop. Application windows, animation and video keep
@@ -35,7 +35,7 @@ The close event needs an inotify instance, a per-user limit
 (`fs.inotify.max_user_instances`, 128 by default) shared with every program. When
 none is left, the helper polls each file until it ends in a stable PNG IEND trailer
 and logs `Cinnamon capture completion watch unavailable (EMFILE); polling for
-finished PNGs` ([#331](../evidence/2026-10-21-region-inotify-331/README.md)).
+finished PNGs` ([#331](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-21-region-inotify-331/README.md)).
 Cancellation discards pending results. Other X11
 sessions use post-selection root capture and require their own compositor
 acceptance; an X11 round trip alone does not prove presentation completed.

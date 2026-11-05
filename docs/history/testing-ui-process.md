@@ -1,6 +1,6 @@
 # Measuring the resident and UI helper
 
-> **Historical record.** This page describes an app version, experiment or plan that no longer exists and is kept for context only. The current design is in [overview](../overview.md); see [memory-strategy](../memory-strategy.md). Do not use it as a work list.
+> **Historical record.** This page describes an app version, experiment or plan that no longer exists and is kept for context only. The current design is in [overview](../design/overview.md); see [memory-strategy](../design/memory-strategy.md). Do not use it as a work list.
 
 `tests/performance/bench_ui_process.py` measures the resident **and every observed
 child process**, including `putgd-ui`, rather than moving a memory counter into a
@@ -221,7 +221,7 @@ contracts, not native desktop acceptance or a measured application saving.
 
 ## Replaying the source-41 observation
 
-The [current-source record](../evidence/2026-10-08-ui-process-native-memory.json)
+The [current-source record](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-08-ui-process-native-memory.json)
 links native receipts, exact executable/package identities, controlled commands,
 quiet guards and physical results. Its allowlists exclude private XDG state,
 resident logs, credentials and payloads. The tested software remains

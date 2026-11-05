@@ -1,6 +1,6 @@
 # GNOME resident memory checks
 
-> **Historical record.** This page describes an app version, experiment or plan that no longer exists and is kept for context only. The current design is in [overview](../overview.md); see [memory-strategy](../memory-strategy.md). Do not use it as a work list.
+> **Historical record.** This page describes an app version, experiment or plan that no longer exists and is kept for context only. The current design is in [overview](../design/overview.md); see [memory-strategy](../design/memory-strategy.md). Do not use it as a work list.
 
 The resident and the settings/history UI are separate processes. A GNOME memory
 result must establish the actual resident route before comparing memory. The
@@ -157,7 +157,7 @@ normal process/socket/bridge teardown. The existing populated profile remained
 unchanged. Source57 is retained in its clean isolated checkout; it is not yet
 integrated into the main branch. The original four-hour stop is preserved, and
 the user-approved 30-minute extension completed the cold check before its deadline.
-Structured results are in [the source57 evidence](../evidence/2026-10-10-gnome-core57-memory.json). Remote History direct-link copy
+Structured results are in [the source57 evidence](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-10-gnome-core57-memory.json). Remote History direct-link copy
 is explicitly unproven on this guest; the local-native diagnostic is not full parity.
 The Cinnamon regression passed with its implementation unchanged. KDE and post-S3
 memory remain separate open gates.

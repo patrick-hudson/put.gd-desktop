@@ -1,7 +1,0 @@
-{"hostname": "fedora", "kernel": "7.2.11-200.fc44.x86_64", "machine": "x86_64", "os": {"ID": "fedora", "VERSION_ID": "44", "VARIANT_ID": "workstation"}, "session_type": "wayland", "desktop": "GNOME", "qt_platform": "wayland"}
-Traceback (most recent call last):
-  File "<stdin>", line 9, in <module>
-  File "/tmp/np31/src/tools/lab/surface_driver/target.py", line 407, in preflight
-    raise RecipeBlocked('surface preflight missing target tools: ' + ', '.join(report['missing']) +
-                        '; provision distro packages before starting recipes', issue=709)
-tools.lab.surface_driver.api.RecipeBlocked: surface preflight missing target tools: python3-pyqt6; provision distro packages before starting recipes

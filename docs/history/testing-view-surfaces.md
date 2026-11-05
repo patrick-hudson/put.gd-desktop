@@ -1,6 +1,6 @@
 # Replaying retained-window memory checks
 
-> **Historical record.** This page describes an app version, experiment or plan that no longer exists and is kept for context only. The current design is in [overview](../overview.md); see [memory-strategy](../memory-strategy.md). Do not use it as a work list.
+> **Historical record.** This page describes an app version, experiment or plan that no longer exists and is kept for context only. The current design is in [overview](../design/overview.md); see [memory-strategy](../design/memory-strategy.md). Do not use it as a work list.
 
 The 2026-10-08 experiment releases native backing stores after an explicit close
 of Settings, History or Activity. It retains widget state, protects visible owned
@@ -9,9 +9,9 @@ when recreating a surface. The source change is ten files, committed as
 `427662c9bf9d4a425d672e27b085c16609b7d4f8` on the optimization branch and integrated
 as `0a2b104595e06dbdc27ae64b8677c5336d819419` on the feature branch.
 
-The [structured summary](../evidence/2026-10-08-view-surfaces.json) links the exact
+The [structured summary](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-08-view-surfaces.json) links the exact
 source archive, binaries, comparisons, commands, parameters and correctness
-receipts. The [raw manifest](../evidence/2026-10-08-view-surfaces-raw/manifest.json)
+receipts. The [raw manifest](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-08-view-surfaces-raw/manifest.json)
 contains checksums. Historical absolute work paths inside receipts describe the
 original run; the exported files under that manifest are the portable record.
 
@@ -65,7 +65,7 @@ pass; the approximately 40 MiB goal remains open.
 
 ## GNOME and KDE comparisons
 
-Use [the immutable-base VM lab](../vm-lab.md) and the current-source protocol in
+Use [the immutable-base VM lab](../lab/vm-lab.md) and the current-source protocol in
 [testing-vm-memory-audit.md](testing-vm-memory-audit.md). Build the same frozen
 source archive with each guest's system Qt and pinned SDK. Record archive,
 package and installed executable hashes plus live PID/start time. Keep graphical
