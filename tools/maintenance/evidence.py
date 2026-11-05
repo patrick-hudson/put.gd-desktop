@@ -94,8 +94,10 @@ def note(message):
 
 
 def tool_env():
+    # Inherited numbered config entries would override the clone's remote and HTTP settings.
     env = {key: value for key, value in os.environ.items()
-           if key not in DROPPED_ENV and not key.startswith('GIT_TRACE')}
+           if key not in DROPPED_ENV
+           and not key.startswith(('GIT_TRACE', 'GIT_CONFIG_COUNT', 'GIT_CONFIG_KEY_', 'GIT_CONFIG_VALUE_'))}
     env.update(LC_ALL='C', GIT_EDITOR='true', GIT_LITERAL_PATHSPECS='1')
     return env
 
@@ -112,11 +114,9 @@ def git_env(remote):
     parsed = urllib.parse.urlsplit(remote)
     # Scoped to the remote's own host, so the token cannot reach anything else git talks to.
     if parsed.scheme == 'https':
-        count = os.environ.get('GIT_CONFIG_COUNT', '')
-        index = int(count) if count.isdigit() else 0
-        env[f'GIT_CONFIG_KEY_{index}'] = f'http.https://{parsed.netloc}/.extraHeader'
-        env[f'GIT_CONFIG_VALUE_{index}'] = 'Authorization: Basic ' + credential
-        env['GIT_CONFIG_COUNT'] = str(index + 1)
+        env['GIT_CONFIG_KEY_0'] = f'http.https://{parsed.netloc}/.extraHeader'
+        env['GIT_CONFIG_VALUE_0'] = 'Authorization: Basic ' + credential
+        env['GIT_CONFIG_COUNT'] = '1'
     return env
 
 
@@ -588,7 +588,7 @@ def publish(args):
                     meta, path = line.split('\t', 1)
                     mode, sha, _ = meta.split()
                     staged[path] = (mode, sha)
-            if staged != {**existing, **wanted}:
+            if staged != {**existing, **wanted} or scan_source(source) != local:
                 raise EvidenceError(f'{source} changed while it was being published. Nothing was committed; '
                                     'run again once it is stable.')
             readme = target / 'README.md'

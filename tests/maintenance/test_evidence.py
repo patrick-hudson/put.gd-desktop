@@ -910,15 +910,22 @@ class TokenTests(EvidenceBase):
         self.assert_clean((self.root / 'scanner.env').read_text())
 
     def test_header_is_scoped_and_only_for_https(self):
-        with patch.dict(os.environ, {'GH_TOKEN': TOKEN, 'GIT_CONFIG_COUNT': '2'}), patch.object(module, 'secrets', []):
+        inherited = {'GH_TOKEN': TOKEN, 'GIT_CONFIG_COUNT': '2', 'GIT_CONFIG_GLOBAL': os.devnull,
+                     'GIT_CONFIG_KEY_0': 'url.https://elsewhere.invalid/.insteadOf',
+                     'GIT_CONFIG_VALUE_0': 'https://github.com/',
+                     'GIT_CONFIG_KEY_1': 'http.proxy', 'GIT_CONFIG_VALUE_1': 'http://elsewhere.invalid'}
+        with patch.dict(os.environ, inherited), patch.object(module, 'secrets', []):
             env = module.git_env('https://github.com/owner/repo.git')
-            self.assertEqual(env['GIT_CONFIG_COUNT'], '3')
-            self.assertEqual(env['GIT_CONFIG_KEY_2'], 'http.https://github.com/.extraHeader')
-            self.assertEqual(env['GIT_CONFIG_VALUE_2'], 'Authorization: Basic ' + self.credential)
+            self.assertEqual(env['GIT_CONFIG_COUNT'], '1')
+            self.assertEqual(env['GIT_CONFIG_KEY_0'], 'http.https://github.com/.extraHeader')
+            self.assertEqual(env['GIT_CONFIG_GLOBAL'], os.devnull)
+            self.assertEqual(env['GIT_CONFIG_VALUE_0'], 'Authorization: Basic ' + self.credential)
+            self.assertNotIn('GIT_CONFIG_KEY_1', env)
+            self.assertNotIn('GIT_CONFIG_VALUE_1', env)
             self.assertNotIn('GH_TOKEN', env)
             for remote in ('git@github.com:owner/repo.git', 'ssh://git@github.com/owner/repo.git',
                            'http://example.invalid/x.git'):
-                self.assertEqual(module.git_env(remote)['GIT_CONFIG_COUNT'], '2')
+                self.assertNotIn('GIT_CONFIG_COUNT', module.git_env(remote))
 
     def test_remote_with_embedded_credentials_refused(self):
         env = self.env(PUTGD_EVIDENCE_REMOTE=f'https://x-access-token:{TOKEN}@github.com/o/r.git')
