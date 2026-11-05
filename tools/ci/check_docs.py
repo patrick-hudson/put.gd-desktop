@@ -49,7 +49,7 @@ ARCHIVE_DROPPED = frozenset({
 ARCHIVE_DROPPED_ALLOWED = ('docs/evidence/', 'docs/history/plans/', 'docs/history/reviews/')
 
 FENCE = re.compile(r'^\s{0,3}(```+|~~~+)')
-INLINE = re.compile(r'\]\(\s*(<[^>\n]+>|[^()\s]+(?:\([^()\s]*\)[^()\s]*)*)(?:\s+"[^"]*")?\s*\)')
+INLINE = re.compile(r'\]\(\s*(<[^>\n]+>|[^()\s]+(?:\([^()\s]*\)[^()\s]*)*)(?:\s+(?:"[^"]*"|\'[^\']*\'))?\s*\)')
 REFDEF = re.compile(r'^\s{0,3}\[[^\]]+\]:\s*(\S+)')
 HTML_LINK = re.compile(r'''\b(?:href|src)="([^"]+)"''')
 HTML_ANCHOR = re.compile(r'''<[a-zA-Z][^>]*\b(?:id|name)="([^"]+)"''')
@@ -108,8 +108,12 @@ def slug(heading):
 
 def anchors(text):
     seen, found = {}, set()
-    previous = None
-    for _, line in lines_outside_fences(text):
+    previous, last = None, 0
+    for number, line in lines_outside_fences(text):
+        if number != last + 1:
+            # A fenced block sat between these lines, so the earlier one cannot be a Setext title.
+            previous = None
+        last = number
         heading = None
         match = ATX.match(line)
         if match:

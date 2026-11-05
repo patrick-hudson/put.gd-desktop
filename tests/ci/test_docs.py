@@ -108,7 +108,8 @@ class Links(Tree):
 
     def test_reference_definitions_html_images_and_titles_are_links(self):
         for text in ('[a][r]\n\n[r]: missing.md\n', '<a href="missing.md">x</a>\n', '<img src="missing.png">\n',
-                     '![image](missing.png)\n', '[a](missing.md "title")\n', '[a](<missing.md>)\n'):
+                     '![image](missing.png)\n', '[a](missing.md "title")\n', "[a](missing.md 'title')\n",
+                     '[a](<missing.md>)\n'):
             with self.subTest(text=text):
                 self.assertOneProblem(self.problems({'AGENTS.md': text}), 'broken link', 'missing')
 
@@ -127,6 +128,10 @@ class Anchors(Tree):
         found = check_docs.anchors('# Same\n\n## Same\n\nTitle\n=====\n\n<a name="explicit"></a>\n\n```\n# Fenced\n```\n\n| a |\n---\n')
         self.assertLessEqual({'same', 'same-1', 'title', 'explicit'}, found)
         self.assertNotIn('fenced', found)
+
+    def test_a_rule_after_a_fenced_block_is_not_a_setext_heading(self):
+        found = check_docs.anchors('Not a title\n```\ncode\n```\n---\n')
+        self.assertNotIn('not-a-title', found)
 
     def test_anchors_resolve_across_files_and_in_the_same_file(self):
         text = '# Here\n\n[a](docs/release/release.md#the-section) [b](#here) [c](docs/release/release.md#The-Section)\n'
