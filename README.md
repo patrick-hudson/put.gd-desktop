@@ -2,8 +2,9 @@
 
 [![Website](https://img.shields.io/badge/website-app.put.gd-0a7ea4)](https://app.put.gd/)
 [![CI](https://github.com/patrick-hudson/put.gd-desktop/actions/workflows/ci.yml/badge.svg?branch=nightly)](https://github.com/patrick-hudson/put.gd-desktop/actions/workflows/ci.yml?query=branch%3Anightly)
+[![Stable](https://img.shields.io/github/v/release/patrick-hudson/put.gd-desktop?label=stable)](https://github.com/patrick-hudson/put.gd-desktop/releases/latest)
 [![Nightly](https://img.shields.io/github/v/release/patrick-hudson/put.gd-desktop?include_prereleases&filter=v*-nightly&label=nightly)](https://github.com/patrick-hudson/put.gd-desktop/releases)
-[![Download AppImage](https://img.shields.io/badge/download-AppImage-2ea44f?logo=linux&logoColor=white)](https://app.put.gd/dl/nightly/appimage)
+[![Download AppImage](https://img.shields.io/badge/download-AppImage-2ea44f?logo=linux&logoColor=white)](https://app.put.gd/dl/stable/appimage)
 [![License: MIT](https://img.shields.io/github/license/patrick-hudson/put.gd-desktop)](LICENSE)
 
 put.gd captures screenshots and screen recordings on Linux, uploads them to your storage, and copies a shareable link to the clipboard. Edit and redact images before uploading, then find previous captures and links in History. Use S3-compatible storage, Backblaze B2 or Proton Drive, or keep captures local.
@@ -28,13 +29,13 @@ For a per-user AppImage install without sudo:
 curl -fsSL https://app.put.gd/install | sh -s -- --appimage
 ```
 
-The installer verifies SHA-256 before installing. Native packages use sudo only for `apt install` or `dnf install`; AppImage installs to `~/.local/bin/putgd.AppImage`. It defaults to stable, falling back to nightly until the first stable release. Add `--dry-run`, `--channel nightly` or `--help` after `sh -s --` as needed. [Read the installer](packaging/install.sh).
+The installer verifies SHA-256 before installing. Native packages use sudo only for `apt install` or `dnf install`; AppImage installs to `~/.local/bin/putgd.AppImage`. It installs the stable release by default. Add `--dry-run`, `--channel nightly` or `--help` after `sh -s --` as needed. [Read the installer](packaging/install.sh).
 
-Manual downloads are currently **nightly previews**, for Linux x86_64:
+Manual downloads for Linux x86_64:
 
-- **DEB:** [Ubuntu 24.04 / Mint 22](https://app.put.gd/dl/nightly/ubuntu24.04), [Ubuntu / Kubuntu 26.04](https://app.put.gd/dl/nightly/ubuntu26.04) or [Debian 13](https://app.put.gd/dl/nightly/debian13). Install with `sudo apt install ./putgd-*.deb`.
-- **RPM:** [Fedora 44](https://app.put.gd/dl/nightly/fedora44). Install with `sudo dnf install ./putgd-*.rpm`. For recording, also run `sudo dnf install openh264 gstreamer1-plugin-openh264` to replace Fedora's placeholder; the one-line installer runs this codec step for you when the Cisco repository is enabled. If it is disabled, the installer prints the enable-then-install commands; see [codec setup](docs/recording.md#packages-and-codecs).
-- **AppImage:** [Download](https://app.put.gd/dl/nightly/appimage) for Aurora and other distributions with glibc 2.39+. Make it executable with `chmod +x putgd-*.AppImage`, then open it.
+- **DEB:** [Ubuntu 24.04 / Mint 22](https://app.put.gd/dl/stable/ubuntu24.04), [Ubuntu / Kubuntu 26.04](https://app.put.gd/dl/stable/ubuntu26.04) or [Debian 13](https://app.put.gd/dl/stable/debian13). Install with `sudo apt install ./putgd-*.deb`.
+- **RPM:** [Fedora 44](https://app.put.gd/dl/stable/fedora44). Install with `sudo dnf install ./putgd-*.rpm`. For recording, also run `sudo dnf install openh264 gstreamer1-plugin-openh264` to replace Fedora's placeholder; the one-line installer runs this codec step for you when the Cisco repository is enabled. If it is disabled, the installer prints the enable-then-install commands; see [codec setup](docs/recording.md#packages-and-codecs).
+- **AppImage:** [Download](https://app.put.gd/dl/stable/appimage) for Aurora and other distributions with glibc 2.39+. Make it executable with `chmod +x putgd-*.AppImage`, then open it.
 
 DEB and RPM installs add the put.gd package repository for updates. AppImage updates are offered in the app. See [updates](docs/updates.md).
 
