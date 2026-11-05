@@ -13,7 +13,7 @@ rows and current-candidate evidence remain gates.
 
 [Evidence](evidence/2026-11-05-v26.1105.3906-acceptance.md): on the exact draft files, the stable scan and exact-asset audit passed, the
 nightly desktop check reached 65 of 65 cells with one row from a rerun (#1214), all four native packages passed install, upgrade, removal
-and fresh install, every graded Cinnamon performance limit passed, and a two-head VM capture passed. Full History traversal wasn't measured to
+and fresh install, every graded Cinnamon performance limit passed, a two-head VM capture passed, and AMD hardware encoding worked on the exact AppImage. Full History traversal wasn't measured to
 completion (#1066). Sections below this one predate this release, including gates they describe as open.
 
 ## History gallery blanking, scrolling and gap crash (#1151) — 2026-11-02
