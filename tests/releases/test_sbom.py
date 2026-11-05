@@ -2,6 +2,7 @@
 import datetime
 import copy
 import json
+import re
 from pathlib import Path
 import sys
 import tempfile
@@ -222,6 +223,38 @@ class Components(unittest.TestCase):
         sbom.classify(items, policy, 'stable', today)
         self.assertEqual(items[0]['status'], 'blocking (acceptance scope mismatch)')
 
+    def test_embedded_sqlite_scope_binds_driver_bytes_and_absent_session_extension(self):
+        driver = self.root / 'usr/plugins/sqldrivers/libqsqlite.so'
+        driver.parent.mkdir(parents=True, exist_ok=True)
+        driver.write_bytes(b'synthetic driver\0ENABLE_FTS5\0')
+        module = {'id': 'qtbase', 'source': {'commit': '1' * 40}, 'files': ['usr/lib/libQt6Sql.so.6', 'usr/plugins/sqldrivers/libqsqlite.so']}
+        entry = {'name': 'SQLite', 'version': '3.53.4', 'usedBy': ['libqsqlite.so']}
+        before = dict(sbom.embedded_scope_properties(self.root, module, entry))
+        self.assertEqual(before, {'putgd:commit': '1' * 40, 'putgd:toolsAbsent': 'true',
+                                  'putgd:filesSha256': sbom.files_digest(self.root, ['usr/plugins/sqldrivers/libqsqlite.so'])})
+        for marker in sbom.SQLITE_SESSION_MARKERS:
+            with self.subTest(marker=marker):
+                driver.write_bytes(b'synthetic driver\0' + marker + b'\0')
+                self.assertEqual(dict(sbom.embedded_scope_properties(self.root, module, entry))['putgd:toolsAbsent'], 'false')
+        driver.write_bytes(b'synthetic rebuilt driver')
+        self.assertNotEqual(dict(sbom.embedded_scope_properties(self.root, module, entry))['putgd:filesSha256'],
+                            before['putgd:filesSha256'])
+        with self.assertRaisesRegex(ValueError, 'Embedded SQLite library missing'):
+            sbom.embedded_scope_properties(self.root, module, {**entry, 'usedBy': ['libqsqlcipher.so']})
+
+    def test_put_gd_stays_out_of_the_sqlite_code_its_disposition_rules_out(self):
+        # The FTS5 CVEs in policy.json are accepted because put.gd never reaches FTS5
+        # and opens only its own history database (#1210). Changing that revokes them.
+        sources = [path for path in (sbom.ROOT / 'src').rglob('*') if path.suffix in ('.cpp', '.h')]
+        self.assertTrue(sources)
+        connections = []
+        for path in sources:
+            text = path.read_text(errors='replace')
+            self.assertIsNone(re.search(r'\bfts[345]\b|VIRTUAL\s+TABLE|\bATTACH\s+(?:DATABASE\b|[\x27"?:@$])|load_extension|sqlite3changeset|sqlite3session',
+                                        text, re.IGNORECASE), path)
+            connections += [path.name] * text.count('"QSQLITE"')
+        self.assertEqual(connections, ['HistoryStore.cpp'])
+
     def test_disposition_fingerprint_rejects_missing_or_external_files(self):
         for name in ['usr/lib/missing.so', '../outside']:
             with self.subTest(name=name), self.assertRaises(ValueError):
@@ -337,13 +370,13 @@ class Policy(unittest.TestCase):
         self.assertEqual(evidence['scopeFingerprints'], policy['scopes'])
         inputs = json.loads((sbom.ROOT / 'packaging/appimage/tools.lock.json').read_text())['buildInputs']
         for scope in policy['scopes'].values():
-            if scope['component'] == 'harfbuzz':
+            if scope['component'] in ('harfbuzz', 'sqlite'):
                 # Embedded in the official Qt binaries: bound to the locked Qt and its qtbase commit.
                 item = next(item for item in inputs['qtLicenseSources'] if item['repository'].endswith('/qtbase.git'))
-                self.assertEqual(evidence['harfbuzz']['qt'], inputs['qt'], 'Qt changes require HarfBuzz disposition reassessment')
+                self.assertEqual(evidence[scope['component']]['qt'], inputs['qt'], 'Qt changes require embedded disposition reassessment')
                 self.assertEqual(item['release'], inputs['qt'])
-                self.assertEqual(scope['version'], evidence['harfbuzz']['version'])
-                self.assertEqual(scope['properties']['putgd:commit'], evidence['harfbuzz']['qtSource']['commit'])
+                self.assertEqual(scope['version'], evidence[scope['component']]['version'])
+                self.assertEqual(scope['properties']['putgd:commit'], evidence[scope['component']]['qtSource']['commit'])
             else:
                 item = inputs[scope['component']]
                 self.assertEqual(scope['version'], item['release'])

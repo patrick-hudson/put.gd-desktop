@@ -66,6 +66,14 @@ UNSHIPPED_TOOLS = {'ffmpeg': {'ffmpeg', 'ffprobe', 'ffplay', 'zmqsend'}, 'icu': 
 WASM_SHAPER_MARKERS = (b'font_glyph_to_string', b'buffer_contents_realloc', b'glyph_outline_free',
                        b'feature_copy_contents', b'features_free', b'shape_plan_create', b'wasm_runtime_')
 WASM_RUNTIME_LIBRARY = re.compile(r'lib(?:iwasm|vmlib)\b.*')
+# Qt's embedded SQLite (#1210): the disposition covers the session extension, which
+# Qt's build does not compile, and FTS5, which it compiles but put.gd never reaches.
+# Its scope hashes the Qt SQL driver and is revoked by the session extension's entry
+# in SQLite's compile options. test_sbom.py guards put.gd's own use of SQLite.
+SQLITE_SESSION_MARKERS = (b'ENABLE_SESSION', b'ENABLE_PREUPDATE_HOOK')
+# Embedded component: (name in errors, byte markers and library name that revoke its scope).
+EMBEDDED_SCOPES = {'harfbuzz': ('HarfBuzz', WASM_SHAPER_MARKERS, WASM_RUNTIME_LIBRARY),
+                   'sqlite': ('SQLite', SQLITE_SESSION_MARKERS, None)}
 
 
 def sha256(path):
@@ -253,19 +261,22 @@ def appimage_scope_properties(root, item):
 
 
 def embedded_scope_properties(root, module, entry):
-    """Scope evidence for Qt's embedded HarfBuzz: the Qt source commit, the bytes of
-    the module's libraries that embed it, and the absence of the WebAssembly shaper."""
-    if 'harfbuzz' not in entry['name'].lower() or not entry.get('usedBy'):
+    """Scope evidence for Qt's embedded HarfBuzz and SQLite: the Qt source commit, the
+    bytes of the module's libraries that embed it, and the absence of the code its
+    disposition rules out."""
+    scope = next((scope for key, scope in EMBEDDED_SCOPES.items() if key in entry['name'].lower()), None)
+    if not scope or not entry.get('usedBy'):
         return []
+    label, markers, library = scope
     used = set(entry['usedBy'])
     files = sorted(name for name in module.get('files', []) if Path(name).name in used)
     if {Path(name).name for name in files} != used:
-        raise ValueError('Embedded HarfBuzz library missing from its Qt module: ' + ', '.join(sorted(used)))
+        raise ValueError(f'Embedded {label} library missing from its Qt module: ' + ', '.join(sorted(used)))
     digest = files_digest(root, files)
-    runtime = any(WASM_RUNTIME_LIBRARY.match(path.name) for path in root.rglob('*') if path.is_file())
-    shaper = any(marker in (root / name).read_bytes() for name in files for marker in WASM_SHAPER_MARKERS)
+    runtime = library and any(library.match(path.name) for path in root.rglob('*') if path.is_file())
+    compiled = any(marker in (root / name).read_bytes() for name in files for marker in markers)
     return [('putgd:commit', module['source']['commit']), ('putgd:filesSha256', digest),
-            ('putgd:toolsAbsent', str(not runtime and not shaper).lower())]
+            ('putgd:toolsAbsent', str(not runtime and not compiled).lower())]
 
 
 def appimage_components(root):
