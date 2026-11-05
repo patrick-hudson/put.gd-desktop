@@ -20,6 +20,7 @@ import hashlib
 import json
 from pathlib import Path
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -99,7 +100,12 @@ def sign_rpm(asset, file_name, digest, tag, fingerprint, directory):
         raise SystemExit('Unexpected RPM file name in the stage')
     signed = path.with_name(file_name)
     path.rename(signed)
-    subprocess.run(['rpmsign', '--define', '_gpg_name ' + fingerprint, '--addsign', str(signed)], check=True)
+    # Debian and Ubuntu's rpm is configured for a /usr/bin/gpg2 that those systems don't have.
+    program = shutil.which('gpg')
+    if not program:
+        raise SystemExit('gpg is not installed')
+    subprocess.run(['rpmsign', '--define', '__gpg ' + program, '--define', '_gpg_name ' + fingerprint,
+                    '--addsign', str(signed)], check=True)
     return signed.read_bytes()
 
 
