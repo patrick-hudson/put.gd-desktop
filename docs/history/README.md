@@ -170,3 +170,11 @@ Dated inventories moved from [remote builders](../lab/remote-builders.md) on 202
 | File | What it was | When it was current | What replaced it |
 | --- | --- | --- | --- |
 | [remote-builders-records.md](remote-builders-records.md) | Access inventory of the Fedora and Debian hosts; Kubuntu host preflight | 2026-10-16 and 2026-10-17 | [remote builders](../lab/remote-builders.md) |
+
+## CI run records
+
+Dated measurements and demonstrations moved from [CI coverage](../release/ci.md) on 2026-11-05 (#1222). Most section headings in that file are new labels for what moved; the moved text is unchanged.
+
+| File | What it was | When it was current | What replaced it |
+| --- | --- | --- | --- |
+| [ci-records.md](ci-records.md) | Hosted run timings, rollout and previous-pipeline measurements, stress lane results, retry and install demonstrations | 2026-10-10 to 2026-10-26 | [CI coverage](../release/ci.md) |
