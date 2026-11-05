@@ -41,7 +41,7 @@ CLOCK = '2026-06-15 12:00:00'
 DATA_ROOT = Path('/tmp')
 DATA_MARKER = '.putgd-catalog-data'
 FULL_SCOPE = {'review': True, 'recordOnly': False, 'editorOnly': False, 'handshake': False}
-# The desktop's colour scheme must not decide the render (CMakeLists.txt, #251).
+# The desktop's colour scheme must not decide the render (cmake/TestsGui.cmake, #251).
 UNSET = ('DBUS_SESSION_BUS_ADDRESS', 'XDG_CURRENT_DESKTOP', 'QT_QPA_PLATFORMTHEME', 'WAYLAND_DISPLAY', 'DISPLAY')
 TOLERANCE = image_diff.Tolerance()
 # States that must render but whose pixels are not compared, each with the

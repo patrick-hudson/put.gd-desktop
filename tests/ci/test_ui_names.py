@@ -12,7 +12,7 @@ import unittest
 ROOT = Path(__file__).resolve().parents[2]
 RETIRED = re.compile(r'\bGraphite\b|\bgraphite[A-Z]|RedesignTheme|VisualStyle|[Rr]edesign|PUTGD_PREVIEW_')
 # Code and build inputs; documentation follows in its own change.
-SCOPES = ('src/', 'tests/', 'tools/', 'packaging/', '.github/', 'CMakeLists.txt', 'CMakePresets.json')
+SCOPES = ('src/', 'tests/', 'tools/', 'packaging/', '.github/', 'CMakeLists.txt', 'CMakePresets.json', 'cmake/')
 SKIPPED = ('tests/ci/test_ui_names.py', 'tools/qemu-grid/dist/')
 
 

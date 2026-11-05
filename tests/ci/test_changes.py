@@ -70,6 +70,16 @@ class Selection(unittest.TestCase):
             with self.subTest(path=path):
                 self.assertFalse(changes.select([path])['sanitizers'])
 
+    def test_every_included_cmake_file_selects_what_the_root_file_does(self):
+        def jobs(path):
+            return {job: changes.select([path])[job] for job in ('build', 'packages', 'sanitizers', 'pipewire')}
+        included = sorted((ROOT / 'cmake').glob('*.cmake'))
+        self.assertIn(ROOT / 'cmake/TestsS3.cmake', included)
+        self.assertEqual(jobs('CMakeLists.txt'), {'build': True, 'packages': True, 'sanitizers': True, 'pipewire': True})
+        for path in included:
+            with self.subTest(path=path.name):
+                self.assertEqual(jobs(path.relative_to(ROOT).as_posix()), jobs('CMakeLists.txt'))
+
     def test_recorder_sources_and_the_pipewire_check_select_the_pipewire_job(self):
         for path in ('src/record/WaylandAcquisition.cpp', 'src/record/RecordingPipeline.cpp'):
             with self.subTest(path=path):

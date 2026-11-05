@@ -94,6 +94,18 @@ class Includes(Tree):
                    '#include "../../outside/Error.h"')
         self.assertEqual(self.edges(), [])
 
+    def test_a_block_comment_or_raw_string_hides_an_include_and_nothing_after_it(self):
+        self.write('core/Error.h')
+        self.write('ui/Comment.cpp', '/* #include "core/Error.h" */', '/*', '#include "core/Error.h"', '*/',
+                   'auto script = R"sh(', '#include "core/Error.h"', ')sh";')
+        self.assertEqual(self.edges(), [])
+        # Each of these leaves the include on line 3 live.
+        self.write('ui/Comment.cpp', '/* one */ /*', 'two */', '/* three */ #include "core/Error.h"')
+        self.write('ui/LineComment.cpp', '// not a /* comment', 'auto glob = "*/*";', '#include "core/Error.h"')
+        self.write('ui/String.cpp', 'auto opens = "/*";', "auto quote = '\"';", '#include "core/Error.h"')
+        self.assertEqual([edge[:2] for edge in self.edges()],
+                         [('src/ui/Comment.cpp', 3), ('src/ui/LineComment.cpp', 3), ('src/ui/String.cpp', 3)])
+
     def test_only_source_files_are_read(self):
         self.write('core/Error.h')
         self.write('ui/notes.txt', '#include "core/Error.h"')

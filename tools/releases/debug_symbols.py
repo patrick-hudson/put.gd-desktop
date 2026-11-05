@@ -3,7 +3,7 @@
 and assemble the release asset putgd-<version>-debug-<arch>.tar.zst from them.
 
 Release builds compile with -g and split each product binary's debug information
-into <binary>.debug at link time (CMakeLists.txt). `stage` checks every product
+into <binary>.debug at link time (cmake/ProductBinaries.cmake). `stage` checks every product
 binary in a build tree against its .debug file and against the binary the
 package installs (same GNU build ID), then writes debug-symbols-<label>.tar and
 its manifest. `combine` checks every staged build and writes one tar.zst laid
