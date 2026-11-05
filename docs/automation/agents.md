@@ -34,7 +34,7 @@ from passing tests.
 | Automatic nightly desktop checks | `tools/lab/nightly_desktops.py` | `tests/desktop/test_surface_nightly_desktops.py`, [lab sharing](../lab/remote-builders.md#sharing-the-lab-between-concurrent-sessions) |
 | UI catalog and reference images | `tests/gui/ui_catalog.cpp`, `tests/gui/catalog-references/` | [UI catalog](../design/ui-catalog.md), [visual language](../design/visual-language.md) |
 | Integer widths / member layout | `tools/diagnostics/layout/` | [read-only probe and replay](../../tools/diagnostics/layout/README.md); sizes alone do not prove RSS savings |
-| Build, dependency pins, sanitizers | `CMakePresets.json`, `CMakeLists.txt` (includes `cmake/*.cmake` in build order, one concern per file), `tools/verify_dependencies.py` | [build](../release/build.md), [thread checks](../testing/thread-sanitizer.md) |
+| Build, dependency pins, sanitizers | `CMakePresets.json`, `CMakeLists.txt` (a table of contents that includes `cmake/*.cmake` in build order), `tools/verify_dependencies.py` | [build](../release/build.md), [thread checks](../testing/thread-sanitizer.md) |
 | Commit/build identity and package versions | `cmake/BuildVersion.cmake`, `src/core/BuildInfo.h` | `tests/cmake/version_contract.cmake`, `tests/integration/test_version.cpp`, `tests/gui/test_version.cpp`, [versioning](../release/versioning.md) |
 
 Use `cmake --preset dev`, `cmake --build --preset dev`, and `ctest --preset dev`.
