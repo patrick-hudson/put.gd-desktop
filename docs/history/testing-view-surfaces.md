@@ -17,7 +17,7 @@ original run; the exported files under that manifest are the portable record.
 
 ## Build and correctness
 
-Use [the ordinary system toolchain](../build.md). Compare clean source snapshots of
+Use [the ordinary system toolchain](../release/build.md). Compare clean source snapshots of
 baseline `dac46af06feb0e8326d472c77bdf96cff117be51` and the experiment commit.
 Do not silently substitute the latest branch: it also contains versioning and
 the separately measured X11 shortcut correction.

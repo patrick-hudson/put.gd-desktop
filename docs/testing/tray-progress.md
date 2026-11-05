@@ -30,7 +30,7 @@ before quiet memory sampling.
    Never boot or modify a referenced base. Check the complete host QMP socket
    path with `tools/diagnostics/check_socket_paths.py --socket` before launch.
 2. Build the exact candidate with normal presets and official SDK provisioning
-   from [build.md](../build.md). Use C++20 and each distro's Qt 6.4.2+ libraries.
+   from [build.md](../release/build.md). Use C++20 and each distro's Qt 6.4.2+ libraries.
    Include `-DPUTGD_LAB_FIXTURE=ON` in the lab package configuration. S3 uses the
    packaged official AWS runtime/module. Proton additionally needs the pinned
    bundle provisioned before CMake and `-DPUTGD_BUNDLE_PROTON=ON`; see

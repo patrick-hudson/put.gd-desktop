@@ -18,7 +18,7 @@ One resident owns accepted work. UI windows and agent clients call that engine;
 closing a window does not cancel an accepted upload. The implementation is
 C++20 and Qt 6 Widgets (Qt API floor 6.4.2), CMake presets and Ninja. Native
 packages use dynamically linked distribution Qt. See
-[architecture](architecture.md), [build](../build.md) and [memory strategy](memory-strategy.md).
+[architecture](architecture.md), [build](../release/build.md) and [memory strategy](memory-strategy.md).
 
 | Executable | Role | Links in and out | Where it runs |
 | --- | --- | --- | --- |
@@ -91,7 +91,7 @@ X11/Wayland combinations specified by the [acceptance matrix](../testing/accepta
 | --- | --- | --- |
 | S3 (`s3`) | Official AWS C++ SDK; AWS and compatible services with the required conditional-write semantics. Destination settings select bucket, endpoint, naming and URL behavior. Exact receipts and guarded version-aware removal preserve object identity. | [S3](../user/s3.md) |
 | Backblaze B2 (`backblaze-b2`) | Native b2api v3, public or expiring authorized links, version-ID receipts and removal. Collision handling includes a documented concurrent-name exposure window; explicit overwrite is refused. | [B2](../user/b2.md) |
-| Proton Drive (`proton-drive`) | Privately packaged official-SDK helper; browser account connection, selected My files folder, private uploads or explicit share links, optional link expiry/password. Third-party integration maintained by put.gd. | [Proton Drive](../proton-drive.md) |
+| Proton Drive (`proton-drive`) | Privately packaged official-SDK helper; browser account connection, selected My files folder, private uploads or explicit share links, optional link expiry/password. Third-party integration maintained by put.gd. | [Proton Drive](../user/proton-drive.md) |
 
 `StorageProvider` and `ProviderRegistry` keep core, UI, history and desktop code
 provider-neutral. Capabilities describe supported safeguards and effects;
@@ -149,7 +149,7 @@ entries, GNOME extension and file-manager integration from `packaging/linux/`.
 The portable AppImage has AppRun and an audited runtime/media layout under
 `packaging/appimage/`; file-manager entries are per-user. Package audits track
 identities, dependencies, licenses, source and SBOMs. See [release](../release/release.md),
-[repositories](../release/package-repositories.md), [build](../build.md) and [CI](../release/ci.md).
+[repositories](../release/package-repositories.md), [build](../release/build.md) and [CI](../release/ci.md).
 
 `nightly` is the integration trunk and default branch. Nightly packages publish
 as GitHub prereleases, through [app.put.gd/dl](https://app.put.gd/dl) permalinks and
@@ -203,7 +203,7 @@ and earlier results establish their stated scope; hardware gates use the require
 | [B2](../user/b2.md) | Native B2 setup, uploads, links and version deletion. |
 | [Boat candidates](../lab/boat-candidates.md) | Exact-source candidate builds on disposable workers. |
 | [Boat snapshots](../lab/boat-snapshots.md) | Reusable sandbox recipes and package targets. |
-| [Build](../build.md) | Dependencies, official SDK, presets and packaging. |
+| [Build](../release/build.md) | Dependencies, official SDK, presets and packaging. |
 | [CI](../release/ci.md) | Job selection, required checks and artifact coverage. |
 | [CLI](../automation/cli.md) | Session JSON methods and client behavior. |
 | [Configuration](configuration.md) | Schema, roots, migration, routing and retention. |
@@ -223,7 +223,7 @@ and earlier results establish their stated scope; hardware gates use the require
 | [Memory strategy](memory-strategy.md) | Resident budget, process lifetimes and measurement. |
 | [Neon VM](../lab/neon-vm.md) | Released and development Plasma comparison profiles. |
 | [Package repositories](../release/package-repositories.md) | Signed apt/dnf installation and channel changes. |
-| [Proton Drive](../proton-drive.md) | Account/folder setup, private uploads and sharing. |
+| [Proton Drive](../user/proton-drive.md) | Account/folder setup, private uploads and sharing. |
 | [README sources](../readme/sources.md) | Provenance of product images used in the README. |
 | [Recording](recording.md) | Acquisition, private review, audio, edits and export. |
 | [Release runbook](../release/release-runbook.md) | Ordered promotion and publication procedure. |

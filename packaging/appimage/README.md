@@ -94,7 +94,7 @@ with the image. After assembly, `build-appimage.sh` runs
 CI job adds them) to fetch the bundled GPL source packages for the
 corresponding-source asset.
 
-Use the pinned SDK provisioning instructions in `docs/build.md`; build the SDK
+Use the pinned SDK provisioning instructions in `docs/release/build.md`; build the SDK
 with the same distro compiler and OpenSSL/curl, with `USE_OPENSSL=ON`. The
 application's release preset accepts `CMAKE_PREFIX_PATH` containing this SDK,
 the official Qt root, and the dependency prefix. Configure and build normally:
@@ -177,7 +177,7 @@ libva, libpipewire, the NVIDIA encode libraries, OpenH264); libva and
 libva-drm are also kept in `usr/lib/putgd-host-fallback/`, which AppRun adds to
 the library path only when the host's linker cache has no `libva.so.2`.
 `putgd-record` confines GStreamer to the image itself when it runs from the
-mount (see [recording](../../docs/recording.md), "AppImage runtime"); nothing
+mount (see [recording](../../docs/design/recording.md), "AppImage runtime"); nothing
 else in the image or on the host inherits those variables.
 
 The bundled `pipewire` plugin is the builder's (Ubuntu 24.04, PipeWire 1.0.5),
@@ -200,22 +200,22 @@ On Wayland the recorder's windows behave like the image's other windows (see
 clients, and on Plasma the helper's region selector, ring and dimming are
 LayerShellQt overlay surfaces. Frames still come from KWin's or Mutter's
 stream. The AppImage recordings in the
-[packaging receipt](../../docs/evidence/2026-10-18-recording-packaging.md)
+[packaging receipt](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-18-recording-packaging.md)
 ran before the image carried `xdg-shell`, with those windows on XWayland.
-[2026-10-19 Wayland recording](../../docs/evidence/2026-10-19-appimage-recording-wayland.md)
+[2026-10-19 Wayland recording](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-19-appimage-recording-wayland.md)
 repeats them with nightly `9042776`. On Debian 13 Plasma 6.3 Wayland, Fedora 44
 GNOME 50 Wayland and the Kubuntu Plasma X11 control:
 
 - the bar and review were native Wayland windows;
 - the region selector, ring and dimming came from the helper's layer-shell surfaces
   on Plasma and from the put.gd Shell extension on GNOME;
-- `overlayPlacement` matched [recording](../../docs/recording.md) for each compositor;
+- `overlayPlacement` matched [recording](../../docs/design/recording.md) for each compositor;
 - every clip scored far above a frozen-pattern control in MP4, WebM, GIF and WebP.
 
 The image's own `putgd-record` diagnostics (`--motion`, `--preview`,
 `--av-sync`, `--av-marker`) read its working clips and saved MP4 (H.264), WebM
 and GIF copies; run them from the extracted image with `APPDIR` set
-([recording](../../docs/recording.md), "Lab diagnostics"). H.265 MP4 and WebP
+([recording](../../docs/design/recording.md), "Lab diagnostics"). H.265 MP4 and WebP
 copies still need a distro build (and Pillow for WebP motion). The components
 they need are the `mov` and `gif` demuxers, the Opus, GIF, MJPEG and PCM
 decoders, libvpx's VP9 decoder through FFmpeg's `libvpx_vp9` wrapper, and the
@@ -266,7 +266,7 @@ normal tray Quit removed the resident and FUSE processes. The operation counts
 differed (14 versus 9), so attribute the FUSE reduction separately rather than
 claim the entire family difference is solely due to compression.
 
-[Recorded prototype evidence](../../docs/evidence/releases/2026-10-12-prototypes.json)
+[Recorded prototype evidence](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/releases/2026-10-12-prototypes.json)
 pins the package bytes, commands, observer and results. Include every mount and
 launcher process in future quiet-family measurements; never hide FUSE from RSS.
 
@@ -274,7 +274,7 @@ launcher process in future quiet-family measurements; never hide FUSE from RSS.
 
 Tagged images embed `zsync|https://app.put.gd/dl/<channel>/appimage.zsync` with
 `appimagetool -u`, `nightly` for nightly tags and `stable` for candidates and
-stable releases; untagged builds embed nothing ([AppImage updates](../../docs/release.md#appimage-updates)).
+stable releases; untagged builds embed nothing ([AppImage updates](../../docs/release/release.md#appimage-updates)).
 `tools/releases/appimage_update.py` derives both values from the tag.
 After appimagetool, `portable_appimage.py` reads the section back, writes
 `putgd-VERSION-x86_64.AppImage.zsync` with
@@ -300,7 +300,7 @@ release tag gives a lab build the live layout under the signer's lab prefix
 (`zsync|BASE/dl/nightly/appimage.zsync`, `BASE/releases/TAG/NAME`), which the signer's
 `publish-local` serves. The recorded check moves one build to the next with
 `appimageupdatetool`:
-[AppImage zsync updates (issue #293)](../../docs/evidence/2026-10-20-appimage-zsync-293/README.md).
+[AppImage zsync updates (issue #293)](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-20-appimage-zsync-293/README.md).
 
 The AppDir root holds exactly one desktop entry, `putgd.desktop`, as the AppImage
 spec requires. A linuxdeploy pass without `--desktop-file` links the first entry it
@@ -362,8 +362,8 @@ GNOME's icon but not KWin's. AppRun skips an ID the host already has, in
 another running launch), and publishes each entry with `ln`, so it never
 replaces one. On X11 the windows carry their own icon and nothing is written.
 Acceptance:
-[2026-10-19 native Wayland](../../docs/evidence/2026-10-19-appimage-native-wayland.md),
-[2026-10-19 window icons](../../docs/evidence/2026-10-19-appimage-wayland-icons.md).
+[2026-10-19 native Wayland](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-19-appimage-native-wayland.md),
+[2026-10-19 window icons](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-19-appimage-wayland-icons.md).
 
 The application AppRun is installed after deployment, so generic deployment
 hooks cannot override its host-tool environment or force unavailable GTK2 themes.

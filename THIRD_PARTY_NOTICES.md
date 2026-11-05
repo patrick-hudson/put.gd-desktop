@@ -17,7 +17,7 @@ libraries. `cmake/dependency-lock.json` identifies SDK 1.11.907 and all 15 pinne
 submodules. `tools/verify_dependencies.py` checks the actual source tree. Packaging
 copies the license texts from those exact sources, including the CRT components
 and s2n-tls, into the installed `share/doc/putgd` directory. The runtime manifest
-records the packaged shared-library SHA256 values. See `docs/build.md` for rebuilding
+records the packaged shared-library SHA256 values. See `docs/release/build.md` for rebuilding
 these dependencies with their normal CMake builds.
 
 The vendored `ext-data-control-v1.xml` retains the original copyright and permission

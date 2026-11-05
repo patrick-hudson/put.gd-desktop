@@ -9,8 +9,8 @@ paths; the tables below resolve them.
 
 ## Moved documents
 
-`docs/build.md` and `docs/proton-drive.md` did not move in this change. `docs/desktops/`,
-`docs/readme/` and `docs/history/` kept their paths.
+`docs/desktops/`, `docs/readme/` and `docs/history/` kept their paths. `docs/build.md` and
+`docs/proton-drive.md` are package inputs, so they moved in the code pull request that followed.
 
 | Old path | New path | Note |
 | --- | --- | --- |
@@ -22,6 +22,7 @@ paths; the tables below resolve them.
 | `docs/b2.md` | [`docs/user/b2.md`](../user/b2.md) | |
 | `docs/boat-candidates.md` | [`docs/lab/boat-candidates.md`](../lab/boat-candidates.md) | |
 | `docs/boat-snapshots.md` | [`docs/lab/boat-snapshots.md`](../lab/boat-snapshots.md) | |
+| `docs/build.md` | [`docs/release/build.md`](../release/build.md) | |
 | `docs/ci.md` | [`docs/release/ci.md`](../release/ci.md) | |
 | `docs/cli.md` | [`docs/automation/cli.md`](../automation/cli.md) | |
 | `docs/configuration.md` | [`docs/design/configuration.md`](../design/configuration.md) | |
@@ -40,6 +41,7 @@ paths; the tables below resolve them.
 | `docs/neon-vm.md` | [`docs/lab/neon-vm.md`](../lab/neon-vm.md) | |
 | `docs/overview.md` | [`docs/design/overview.md`](../design/overview.md) | |
 | `docs/package-repositories.md` | [`docs/release/package-repositories.md`](../release/package-repositories.md) | Stub remains at the old path |
+| `docs/proton-drive.md` | [`docs/user/proton-drive.md`](../user/proton-drive.md) | |
 | `docs/recording.md` | [`docs/design/recording.md`](../design/recording.md) | |
 | `docs/release-runbook.md` | [`docs/release/release-runbook.md`](../release/release-runbook.md) | |
 | `docs/release.md` | [`docs/release/release.md`](../release/release.md) | Stub remains at the old path |

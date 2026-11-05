@@ -14,7 +14,7 @@ on Sundays at 03:00 local time. One run:
    --wait-minutes, then skip.
 2. It fetches origin/REF (nightly) into its own tree, ~/work/put.gd-stress,
    with build/sdk and build/dependencies linked to ~/work/put.gd/build.
-3. When the disk lacks room (docs/lab-storage.md: a 10 GiB reserve plus the
+3. When the disk lacks room (docs/lab/lab-storage.md: a 10 GiB reserve plus the
    build), it removes the tree's previous build/dev first.
 4. It configures with -DPUTGD_TEST_TIMEOUT_SCALE=3 and builds at nice 10, -j3.
 5. tools/ci/stress_suite.py runs the integration tests --iterations times with
@@ -63,7 +63,7 @@ RUN_MARKER = '.putgd-stress-weekly'
 RUN_NAME = re.compile(r'^weekly-(\d{4}-\d{2}-\d{2})(?:-(\d+))?$')
 QUIET = re.compile(r'quiet|record|\ba/?v\b|audio|video|perf|latency|benchmark|memory|timing|profil', re.IGNORECASE)
 GIB = 1 << 30
-RESERVE = 10 * GIB  # docs/lab-storage.md host reserve
+RESERVE = 10 * GIB  # docs/lab/lab-storage.md host reserve
 INCREMENTAL = 2 * GIB  # headroom for rebuilding over an existing build/dev
 DEFAULT_BUILD = 4 * GIB  # until a build has been measured
 MIN_INODES = 1024
@@ -293,7 +293,7 @@ def update_tree(tree, ref, sdk_from, log):
     for name in ('sdk', 'dependencies'):
         link, target = tree / 'build' / name, sdk_from / name
         if not target.is_dir():
-            raise Skip(f'{target} is missing; provision the SDK on this builder first (docs/build.md)')
+            raise Skip(f'{target} is missing; provision the SDK on this builder first (docs/release/build.md)')
         if link.is_symlink():
             if Path(os.readlink(link)) != target:
                 raise Skip(f'{link} points to {os.readlink(link)}, not {target}')

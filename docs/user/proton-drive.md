@@ -10,7 +10,7 @@ compatibility, packaging and user recovery are put.gd responsibilities.
 See [building and verification](#building-and-verification) for build checks,
 [release gates](#release-gates) for ongoing acceptance requirements and the
 [maintenance procedure](#maintenance-procedure) for SDK updates and migrations.
-The [2026-10-15 audit](history/proton-drive-release-gates.md) preserves the earlier
+The [2026-10-15 audit](../history/proton-drive-release-gates.md) preserves the earlier
 integration decisions and source-specific receipts.
 
 The unmodified official CLI cannot supply the upload receipt this application
@@ -37,7 +37,7 @@ for example gnome-keyring with no login keyring and no prompt to create a defaul
 one. Connect then fails with "The private keychain is unavailable."
 (`keychain_unavailable`), and token refreshes report the same error. Create or
 unlock a default keyring, then connect again. KWallet and KeePassXC secret
-services were not tested; see [the round-11 evidence](evidence/2026-10-20-round11-proton/README.md).
+services were not tested; see [the round-11 evidence](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-20-round11-proton/README.md).
 
 Use **Test connection** to check that the saved account and selected upload folder
 are still accessible. A successful check satisfies the current session's
@@ -56,7 +56,7 @@ reconciling. A taken name or a failed check leaves the item unknown until Retry
 reconciles it. On a free 5 GiB plan, tested live on 2026-10-20, Proton refused every
 oversized file at draft creation with the storage quota (`quota_exceeded`, service
 error 200002) before any per-file limit, from 5.5 GiB to 100 TiB, so 200003 was not
-observed; see [the round-10 evidence](evidence/2026-10-20-round10-proton/README.md).
+observed; see [the round-10 evidence](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-20-round10-proton/README.md).
 
 Sharing is the destination default. Clear that choice for private uploads, or
 use Settings → Capture → Per-action exceptions to override publication per action. Private upload
@@ -158,7 +158,7 @@ are separate from application-level operation replay.
 
 ## Building and verification
 
-See [the helper provisioning instructions](../tools/proton/README.md). The current
+See [the helper provisioning instructions](../../tools/proton/README.md). The current
 runtime lock supports Linux x86-64. Provision before configuring with
 `cmake --preset dev -DPUTGD_BUNDLE_PROTON=ON`; use the ordinary build and test
 presets. CMake checks the artifact, current helper sources, dependency lock, pinned
@@ -168,24 +168,24 @@ An app built without this bundle reports runtime unavailability on use.
 
 Local contract tests use synthetic fixtures and prove shared pipeline/journal
 behavior, not Proton service or desktop acceptance. The bundled helper's own
-verification is in [VERIFICATION.md](../tools/proton/VERIFICATION.md). Live testing
+verification is in [VERIFICATION.md](../../tools/proton/VERIFICATION.md). Live testing
 requires an explicitly connected account and a new isolated synthetic test
 folder. Never put a user's session or credentials into golden images, source
 exports or evidence. For the tray-progress campaign, the user explicitly
 authorized copying only put.gd's Proton session into disposable VM keychains.
-Use the [private credential bridge](../tools/lab/secret_bridge/README.md), keep
+Use the [private credential bridge](../../tools/lab/secret_bridge/README.md), keep
 rotating snapshots in host memory, serialize use of the copied session, and
 carry refreshed state back under the production account lock. Remove only the
 local lab keychain entry; signing out would invalidate the shared remote session.
 The builders' lab sessions below do this for any test. See the
-[tray-progress replay](testing-tray-progress.md) for the isolated live
+[tray-progress replay](../testing/tray-progress.md) for the isolated live
 test path. Release acceptance requires parallel Cinnamon, GNOME and KDE
 functional/memory checks, authenticated helper memory, recovery, redistribution
 notices and exact shipping-asset evidence under the
-[acceptance matrix](acceptance-matrix.md) and [release runbook](release-runbook.md).
-The [2026-10-15 register](history/proton-drive-release-gates.md) records the earlier audit.
+[acceptance matrix](../testing/acceptance-matrix.md) and [release runbook](../release/release-runbook.md).
+The [2026-10-15 register](../history/proton-drive-release-gates.md) records the earlier audit.
 Upstream approval is not required for production shipment.
-See [integration verification](history/proton-drive-verification.md) for the historical
+See [integration verification](../history/proton-drive-verification.md) for the historical
 build, test and review checkpoints.
 
 ## Release gates
@@ -200,15 +200,15 @@ endorsement or SDK general availability is not a gate.
 | --- | --- |
 | P1 — Recovery and recipient evidence | Exercise real expiry/refresh/revocation with an independently authenticated session, folder permission and quota failures, and changed-revision handling at upload/sharing boundaries, on isolated synthetic items. Verify preserved operation, artifact/publication and receipt identity, no duplicate confirmed upload, no unconfirmed copied link, and actionable reconnect/retry behavior. Link creation, inspection and revocation keep their original protection settings; verify unsigned-in protected/unprotected recipient bytes, expiry and revocation. Distinguish controlled service failures from observed live behavior; do not induce service-wide limits. |
 | P2 — Authenticated process-family resources | Measure first use, small/large upload/share, cancellation/retry, repeated use and post-upload idle across the resident, UI and all Proton descendants. Retain RSS/PSS/private bytes, CPU, swap and helper lifetimes. Keep the separate 40 MiB post-use idle and applicable desktop memory gates; there is no approved hard active-memory ceiling. Confirm local-only/S3 work does not launch Proton. |
-| P3 — Redistribution and rebuild materials | Review notices, pinned source provenance and corresponding-source/relink materials for changed runtime inputs. Preserve the source catalog. A stable release requires the exact-source production rebuild receipt; nightly collection may omit that rebuild, as the [release runbook](release-runbook.md) allows, and reports it as missing. Fixture-only install checks do not prove shipping-package contents. |
+| P3 — Redistribution and rebuild materials | Review notices, pinned source provenance and corresponding-source/relink materials for changed runtime inputs. Preserve the source catalog. A stable release requires the exact-source production rebuild receipt; nightly collection may omit that rebuild, as the [release runbook](../release/release-runbook.md) allows, and reports it as missing. Fixture-only install checks do not prove shipping-package contents. |
 | P4 — Shipping pipeline and supported assets | Provision and test the pinned Linux x86-64 helper explicitly. Audit the bundled runtime/manifest/hash, notices, redistribution files and source catalog in native packages and AppImage, and verify the corresponding-source delivery against its hashes. Packaged users need no separate runtime. |
 | P5 — SDK and service compatibility | Perform the [maintenance procedure](#maintenance-procedure), including upstream migration checks, pinned updates, compatibility verification and recovery/rollback limits. Do not fabricate an extra SDK update as evidence. |
 | P6 — Exact candidate and package acceptance | Freeze source/runtime identities, run the applicable app/helper/protocol checks, install actual shipping packages and retain hashes and visible native functional/memory evidence on Cinnamon/X11, GNOME/Wayland and KDE/Wayland. Run desktop checks in parallel as required by the current acceptance matrix. |
 
-The [acceptance matrix](acceptance-matrix.md) and
-[release runbook](release-runbook.md) define the complete package/desktop gates;
-[verification](verification.md) records observed results and remaining application
-work. The [2026-10-15 audit](history/proton-drive-release-gates.md) credits its
+The [acceptance matrix](../testing/acceptance-matrix.md) and
+[release runbook](../release/release-runbook.md) define the complete package/desktop gates;
+[verification](../testing/verification.md) records observed results and remaining application
+work. The [2026-10-15 audit](../history/proton-drive-release-gates.md) credits its
 completed feature gates only to their dated sources and workloads. Its old
 issue-closure and local-merge notes are historical, not an open work list for the
 shipping integration.
@@ -269,14 +269,14 @@ when the same session already holds it.
 Aurora was added on 2026-10-29 with an independent sign-in. On that Atomic host,
 use `~/.local/bin/putgd-proton-lab` for the commands below: its installed adapter
 uses canonical `/var/home/patrick/putgd-lab/` paths and the prepared native app.
-The [Aurora builder guide](remote-builders.md#aurora-amd-fedora-45-builder)
+The [Aurora builder guide](../lab/remote-builders.md#aurora-amd-fedora-45-builder)
 records the build, keyring and keep-alive setup. Its host has QEMU and `dpkg`
 for guests, so it lends its session to VMs like the other builders.
 
 Every builder can lend its session to a VM it hosts. k72 joined on 2026-10-30,
 after VT-x was enabled in its firmware
 ([#659](https://github.com/patrick-hudson/put.gd-desktop/issues/659)). The goldens each builder lends to are in
-[the builders' Proton sessions](remote-builders.md#proton-sessions-on-the-builders).
+[the builders' Proton sessions](../lab/remote-builders.md#proton-sessions-on-the-builders).
 
 ### Where each session lives
 
@@ -336,7 +336,7 @@ python3 tools/lab/proton_lab.py lend "$run" --session ID --owner NAME --purpose 
 
 Under the builder's Proton lock, `lend`:
 1. Copies the guest brokers into the VM and gives the VM the same blank lab keyring.
-2. Exports the builder's session through the [private credential bridge](../tools/lab/secret_bridge/README.md)
+2. Exports the builder's session through the [private credential bridge](../../tools/lab/secret_bridge/README.md)
    and imports it under a new `putgd-lab-UUID` name.
 3. Runs COMMAND with `PUTGD_LAB_RUN`, `PUTGD_LAB_PROTON_REFERENCE` and
    `PUTGD_LAB_PROTON_RECEIPTS` set.
@@ -394,5 +394,5 @@ A guest that refreshed the session was carried back live for the first time on
 2026-10-29: d69's and m74's lends reported `rotated: true`, the carry-back was
 `replace_confirmed`, and each builder's `check` passed afterwards
 ([#527](https://github.com/patrick-hudson/put.gd-desktop/issues/527)). Evidence:
-[the 2026-10-23 lab sessions](evidence/2026-10-23-proton-lab-sessions/README.md) and
-[lending on every builder, 2026-10-29](evidence/2026-10-29-proton-guest-bridge/README.md).
+[the 2026-10-23 lab sessions](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-23-proton-lab-sessions/README.md) and
+[lending on every builder, 2026-10-29](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-29-proton-guest-bridge/README.md).

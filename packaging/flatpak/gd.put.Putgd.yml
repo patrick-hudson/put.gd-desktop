@@ -1,6 +1,6 @@
 # Experimental Flatpak manifest for the #14 feasibility spike. It is not a
 # release input: the release jobs, assets and checksums do not use it.
-# Findings, permissions and the measured per-desktop result: docs/flatpak.md.
+# Findings, permissions and the measured per-desktop result: docs/history/flatpak.md.
 #
 # Build from a clean clone, outside it (the putgd module copies ../.., and its
 # Git metadata gives the build identity):
@@ -28,11 +28,11 @@ finish-args:
   # CLI and MCP from the host reach the resident's private socket here.
   - --filesystem=xdg-run/putgd:create
   # The default local archive (Documents/put.gd). Other host folders are not
-  # visible; a chosen folder needs the FileChooser portal (docs/flatpak.md).
+  # visible; a chosen folder needs the FileChooser portal (docs/history/flatpak.md).
   - --filesystem=xdg-documents/put.gd:create
   # Tray. The resident's own item owns org.kde.StatusNotifierItem.putgd_<uuid>;
   # without this name no icon appears (Plasma, Cinnamon). Drop it once the item
-  # registers by object path or under the app ID (docs/flatpak.md, change 3).
+  # registers by object path or under the app ID (docs/history/flatpak.md, change 3).
   - --talk-name=org.kde.StatusNotifierWatcher
   - --own-name=org.kde.StatusNotifierItem.*
   # KDE: shortcuts through KGlobalAccel, which follows the keyboard layout.
@@ -40,7 +40,7 @@ finish-args:
   - --talk-name=org.kde.keyboard
   # GNOME: the putgd@put.gd Shell extension. org.gnome.Shell is the current
   # bridge address and exposes all of Shell's own methods to the sandbox; the
-  # proposed extension change in docs/flatpak.md replaces it with a name on a
+  # proposed extension change in docs/history/flatpak.md replaces it with a name on a
   # dedicated connection.
   - --own-name=org.putgd.App.Gnome50
   - --talk-name=org.gnome.Shell
@@ -48,13 +48,13 @@ finish-args:
   - --talk-name=org.gnome.Mutter.ScreenCast
   # Cinnamon: Muffin's screenshot service for post-selection region capture.
   # It writes into a path the sandbox chooses; until that path is shared with
-  # the host (docs/flatpak.md, change 5) region capture times out.
+  # the host (docs/history/flatpak.md, change 5) region capture times out.
   - --talk-name=org.Cinnamon
   # Notifications.
   - --talk-name=org.freedesktop.Notifications
 modules:
   # The official AWS SDK at the commit pinned in cmake/dependency-lock.json,
-  # built as docs/build.md describes. putgd copies its runtime into
+  # built as docs/release/build.md describes. putgd copies its runtime into
   # lib/putgd; the staging prefix is removed afterwards.
   - name: aws-sdk-cpp
     buildsystem: simple
@@ -156,7 +156,7 @@ modules:
       # cast grant must come from a user-installed entry, because Flatpak
       # 1.18.4 and its backports (GHSA-v64f-hrwr-j4vh) drop such keys from
       # exports and an app must not grant itself the protocol on hosts that
-      # still lack that fix. See docs/flatpak.md.
+      # still lack that fix. See docs/history/flatpak.md.
       - >-
         sed -e 's|^Exec=.*|Exec=putgd-launcher|' -e 's|^Icon=.*|Icon=gd.put.Putgd|' -e '/^X-KDE-/d'
         /app/share/applications/putgd.desktop > /app/share/applications/gd.put.Putgd.desktop

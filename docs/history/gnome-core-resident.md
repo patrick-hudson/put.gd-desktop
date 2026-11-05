@@ -37,7 +37,7 @@ platform check. Calls to QGuiApplication are reached only on graphical paths.
 
 ## Reproduce the automated checks
 
-Use the normal dependency setup from [Build](../build.md), then:
+Use the normal dependency setup from [Build](../release/build.md), then:
 
 ```sh
 cmake --preset dev

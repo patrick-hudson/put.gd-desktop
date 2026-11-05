@@ -14,6 +14,7 @@ How a commit becomes a version, what CI runs and how packages ship.
 
 ## Documents
 
+- [Build](build.md): dependencies, the official SDK, presets, sanitizers and packaging.
 - [Software versions](versioning.md): CalVer `YY.MDD.N` and build identity.
 - [CI coverage and runtime](ci.md): workflows, job selection, caches and the builder stress lane.
 - [Linux releases](release.md): branches, channels, assets and the acceptance boundary.

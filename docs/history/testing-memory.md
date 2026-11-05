@@ -3,7 +3,7 @@
 > **Historical record.** This page describes an app version, experiment or plan that no longer exists and is kept for context only. The current design is in [overview](../design/overview.md); see [memory-strategy](../design/memory-strategy.md). Do not use it as a work list.
 
 Use the production Release build and dynamically linked distribution Qt described
-in [build.md](../build.md). The separate instrumented dependencies in
+in [build.md](../release/build.md). The separate instrumented dependencies in
 [thread-sanitizer.md](../testing/thread-sanitizer.md) establish thread-checking evidence;
 their memory footprint is not a production baseline. These commands require the
 actual physical Cinnamon X11 session, Linux `/proc`, Python 3, `systemd-detect-virt`,

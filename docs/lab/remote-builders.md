@@ -20,7 +20,7 @@ tests using `sudo -n COMMAND` (or `sudo -n -i`). `sudo -n id -u` must report `0`
 Do not apply this remote authorization to the workstation or unrelated machines.
 If noninteractive sudo fails, report it rather than requesting or recording a
 password. Keep distro Qt dynamically linked and use the project's pinned official
-AWS SDK; see [build instructions](../build.md).
+AWS SDK; see [build instructions](../release/build.md).
 
 The [Linux acceptance matrix](../testing/acceptance-matrix.md) covers Mint, Ubuntu, Kubuntu,
 Fedora and Debian, GNOME/KDE, and native X11/Wayland. Combine host desktops and
@@ -638,7 +638,7 @@ Each builder holds one put.gd Proton Drive session for the test account
 phudson2@gmail.com, signed in once by Patrick: the original four on 2026-10-23
 and Aurora on 2026-10-29. Use it for live Proton
 tests on the builder or in its VMs. The tools, commands and recovery steps are in
-[Proton Drive: lab sessions](../proton-drive.md#lab-sessions-on-the-builders); the
+[Proton Drive: lab sessions](../user/proton-drive.md#lab-sessions-on-the-builders); the
 evidence is in [the 2026-10-23 lab sessions](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-23-proton-lab-sessions/README.md).
 
 | Builder | Keychain reference | Default keyring | Lab app in `~/putgd-lab/proton/` | VMs that can borrow it |

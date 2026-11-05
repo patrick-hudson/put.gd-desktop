@@ -15,7 +15,7 @@ and release of the active keyboard grab before region selection remain unchanged
 
 ## Reproduce with ordinary tools
 
-Use the system dependencies and SDK setup in [build.md](../build.md). No new package,
+Use the system dependencies and SDK setup in [build.md](../release/build.md). No new package,
 alternate compiler, production hook, or live desktop is required. Run from the
 repository root:
 

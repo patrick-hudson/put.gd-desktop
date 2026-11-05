@@ -5,12 +5,11 @@ guarantees and every document in it.
 
 | You want to | Go to |
 | --- | --- |
-| Use the app | [user/](user/README.md): user guide, troubleshooting, failure codes, S3 and B2 destinations |
+| Use the app | [user/](user/README.md): user guide, troubleshooting, failure codes, S3, B2 and Proton Drive destinations |
 | Understand the design | [design/](design/README.md): start with [overview](design/overview.md) and [architecture](design/architecture.md) |
 | Look up a desktop's behavior | [desktops/](desktops/README.md): Cinnamon, GNOME and Plasma adapters |
 | Drive it from an agent or the CLI | [automation/](automation/README.md): agent maps, `putgd-cli` and the MCP helper |
-| Build it | [build.md](build.md); for the Proton Drive provider, [proton-drive.md](proton-drive.md) |
-| Release it | [release/](release/README.md): versions, CI, channels and the release runbook |
+| Build or release it | [release/](release/README.md): build instructions, versions, CI, channels and the release runbook |
 | Test and accept it | [testing/](testing/README.md): test suites, acceptance matrix, recorded acceptance and evidence rules |
 | Run the lab | [lab/](lab/README.md): physical builders, VMs, goldens and Boat |
 | Read retired designs and plans | [history/](history/README.md) |

@@ -110,7 +110,7 @@ chain by hand. It takes the builder's Proton lock (`desktop_lock.py --resource
 proton`), provisions its signed-in session into one VM run, runs the test
 command, then collects, carries back and cleans up exactly as below, and
 `recover` finishes an interrupted lend from its receipts. The lab section of
-`docs/proton-drive.md` describes it.
+`docs/user/proton-drive.md` describes it.
 
 For a campaign that uses and refreshes the copied Proton session, retain a
 `ProtonSessionChain` in **one host process**. Import the module normally and:
