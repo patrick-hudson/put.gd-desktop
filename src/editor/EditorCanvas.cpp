@@ -324,12 +324,11 @@ void EditorCanvas::paintEvent(QPaintEvent*){
  painter.save();painter.setClipRect(target);
  painter.translate(offset_);painter.scale(scale_,scale_);painter.translate(-QPointF(bounds.topLeft()));
  // Effects paint in the export's order, whatever order they were added in:
- // redactions and blurs, then highlights (which tint the blurred result),
- // then the drawn annotations.
- for(const auto& shape:doc_.shapes()){
-  if(shape.kind==Shape::Kind::Redact)painter.fillRect(shape.rect,Qt::black);
-  else if(shape.kind==Shape::Kind::Blur){const auto& tile=blurTile(shape);const auto area=shape.rect.intersected(doc_.crop());if(!tile.isNull())painter.drawImage(QRectF(area),tile);}
- }
+ // redactions, then blurs (whose tiles hold the redactions they cover,
+ // blurred), then highlights (which tint the blurred result), then the drawn
+ // annotations.
+ for(const auto& shape:doc_.shapes())if(shape.kind==Shape::Kind::Redact)painter.fillRect(shape.rect,Qt::black);
+ for(const auto& shape:doc_.shapes())if(shape.kind==Shape::Kind::Blur){const auto& tile=blurTile(shape);const auto area=shape.rect.intersected(doc_.crop());if(!tile.isNull())painter.drawImage(QRectF(area),tile);}
  for(const auto& shape:doc_.shapes())if(shape.kind==Shape::Kind::Highlight){const auto& tile=highlightTile(shape);const auto area=shape.rect.intersected(doc_.crop());if(!tile.isNull())painter.drawImage(QRectF(area),tile);}
  for(const auto& shape:doc_.shapes())if(shape.kind!=Shape::Kind::Redact&&shape.kind!=Shape::Kind::Blur&&shape.kind!=Shape::Kind::Highlight&&!(textEditor_&&shape.id==textShape_))EditDocument::paintAnnotation(painter,shape);
  // The open field shows the text being typed; painting it here as well showed it twice.
