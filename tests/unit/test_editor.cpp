@@ -543,24 +543,26 @@ private slots:
   QCOMPARE(out.pixel(5,5),white);  // outside the box nothing changes
   QVERIFY(contrastOf(dark,out.pixel(16,14))>=4.5);
  }
- void highlightKeepsWhiteTextReadableOnDarkPages(){
-  const QRgb navy=qRgb(13,17,23),white=qRgb(230,237,243);
+ void highlightOnDarkPagesIsAMarkerWithDarkenedInk(){
+  const QRgb navy=qRgb(13,17,23),white=qRgb(230,237,243),marker=qRgb(250,204,21);
   EditDocument doc(page(navy,white));auto mark=box(Shape::Kind::Highlight,QRect(14,12,372,40));doc.add(mark);
-  const auto out=doc.render();bool kept=false;
-  QVERIFY(inkUnchanged(doc.base(),out,mark.rect,navy,kept)>200);QVERIFY(kept);
-  const QRgb tinted=out.pixel(16,14);
-  // An amber at the highest luminance that keeps white at 4.5:1, clearly above the page.
-  QVERIFY2(contrastOf(white,tinted)>=4.4,qPrintable(QString::number(contrastOf(white,tinted))));
-  QVERIFY(highlight::luminance(tinted)>=highlight::luminance(navy)+highlight::visibleLift);
-  QVERIFY(qRed(tinted)>qBlue(tinted)&&qGreen(tinted)>qBlue(tinted));  // still the marker's hue
-  // The ink is off-white, so the amber sits a little under the white floor and the ink reads at about 4.5:1.
-  QVERIFY(highlight::luminance(tinted)<=highlight::whiteFloor+0.01);QVERIFY(contrastOf(white,tinted)<5.2);
+  const auto out=doc.render();
+  // The box is the marker itself, as on a light page; outside it nothing changes.
+  QCOMPARE(out.pixel(16,14),marker);QCOMPARE(out.pixel(380,50),marker);QCOMPARE(out.pixel(5,5),navy);
+  // Light ink is darkened until it reads on the marker; it never stays light.
+  int ink=0,readable=0;
+  for(int y=mark.rect.top();y<=mark.rect.bottom();++y)for(int x=mark.rect.left();x<=mark.rect.right();++x)if(rgbDistance(doc.base().pixel(x,y),navy)>=highlight::inkDistance){++ink;readable+=contrastOf(out.pixel(x,y),marker)>=highlight::inkContrast-0.1;}
+  QVERIFY(ink>200);QCOMPARE(readable,ink);
  }
  void highlightMarkerColorsKeepTheirHue(){
   const QRgb navy=qRgb(13,17,23),white=qRgb(255,255,255),dark=qRgb(31,35,40);
-  // A blue marker on a dark page comes out blue at the same luminance as yellow would.
+  // A blue marker on a dark page is the same pastel blue it would be on paper, and the ink reads on it.
   EditDocument darkDoc(page(navy,qRgb(230,237,243)));auto blue=box(Shape::Kind::Highlight,QRect(14,12,372,40));blue.color=QColor(59,130,246);darkDoc.add(blue);
-  const QRgb tinted=darkDoc.render().pixel(16,14);QVERIFY(qBlue(tinted)>qRed(tinted));QVERIFY(highlight::luminance(tinted)<=highlight::whiteFloor+0.01);QVERIFY(contrastOf(qRgb(230,237,243),tinted)>=4.4);
+  const auto blueOut=darkDoc.render();const QRgb tinted=blueOut.pixel(16,14);
+  QVERIFY(qBlue(tinted)>qRed(tinted));QCOMPARE(tinted,highlight::atLuminance(QColor(59,130,246),highlight::markerFloor));
+  int ink=0,readable=0;
+  for(int y=blue.rect.top();y<=blue.rect.bottom();++y)for(int x=blue.rect.left();x<=blue.rect.right();++x)if(rgbDistance(darkDoc.base().pixel(x,y),navy)>=highlight::inkDistance){++ink;readable+=contrastOf(blueOut.pixel(x,y),tinted)>=highlight::inkContrast-0.1;}
+  QVERIFY(ink>200);QCOMPARE(readable,ink);
   // Near-black and white markers still show as a visible neutral tint, and black text stays readable under them.
   for(const QColor color:{QColor(17,19,23),QColor(255,255,255)}){
    EditDocument lightDoc(page(white,dark));auto mark=box(Shape::Kind::Highlight,QRect(14,12,372,40));mark.color=color;lightDoc.add(mark);
@@ -573,10 +575,12 @@ private slots:
   auto left=page(qRgb(255,255,255),qRgb(31,35,40),"Uploaded",{200,64}),right=page(qRgb(13,17,23),qRgb(230,237,243),"Uploaded",{200,64});
   QImage image(400,64,QImage::Format_RGB32);{QPainter p(&image);p.drawImage(0,0,left);p.drawImage(200,0,right);}
   EditDocument doc(image);auto mark=box(Shape::Kind::Highlight,QRect(10,10,380,44));doc.add(mark);const auto out=doc.render();
-  QCOMPARE(out.pixel(12,12),qRgb(250,204,21));
-  QVERIFY(contrastOf(qRgb(230,237,243),out.pixel(388,52))>=4.4);QVERIFY(highlight::luminance(out.pixel(388,52))>highlight::luminance(qRgb(13,17,23))+0.05);
+  // Both halves show the marker; the light half keeps its dark ink, the dark half's light ink is darkened.
+  QCOMPARE(out.pixel(12,12),qRgb(250,204,21));QCOMPARE(out.pixel(388,52),qRgb(250,204,21));
   bool kept=false;QVERIFY(inkUnchanged(doc.base(),out,QRect(10,10,190,44),qRgb(255,255,255),kept)>100);QVERIFY(kept);
-  QVERIFY(inkUnchanged(doc.base(),out,QRect(210,10,180,44),qRgb(13,17,23),kept)>100);QVERIFY(kept);
+  int ink=0,readable=0;
+  for(int y=10;y<54;++y)for(int x=210;x<390;++x)if(rgbDistance(doc.base().pixel(x,y),qRgb(13,17,23))>=highlight::inkDistance){++ink;readable+=contrastOf(out.pixel(x,y),qRgb(250,204,21))>=highlight::inkContrast-0.1;}
+  QVERIFY(ink>100);QCOMPARE(readable,ink);
  }
  void highlightFallsBackToMultiplyOrScreenWithoutABackground(){
   // Light noise: multiply. Dark noise: a screen that stays visible where multiply would vanish.

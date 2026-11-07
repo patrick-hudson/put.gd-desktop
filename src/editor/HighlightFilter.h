@@ -4,22 +4,26 @@
 #include <QList>
 #include <QPoint>
 #include <QRect>
+#include <cstdint>
 #include <vector>
 
-// The Highlight mark as a pixel filter. Inside the box, every pixel is read as
-// a mix of a background colour and ink; only the background part moves toward
-// the marker, so glyph pixels stay byte-identical. Where the background goes
-// depends on its luminance alone: light backgrounds take the marker multiplied
-// in (the classic look), dark backgrounds take the marker's hue at the highest
-// luminance that keeps white text readable at 4.5:1. Boxes with no dominant
-// background (photos, gradients) fall back to multiply or a dim screen.
-// Everything is integer sRGB arithmetic on source pixels, so the export and
-// the canvas preview agree, and the same ink mask drives text snapping.
+// The Highlight mark as a pixel filter that looks like a marker on paper
+// whatever the page. Inside the box, every pixel is read as a mix of a
+// background colour and ink. On a light background only the background part
+// moves, multiplied with the marker, so glyph pixels stay byte-identical. On a
+// dark background the background becomes the marker itself and the ink is
+// darkened (hue kept) until it reads on it, because a dark tint under light
+// text is neither visible nor readable. Boxes with no dominant background
+// (photos, gradients) fall back to multiply or a dim screen. Everything is
+// integer sRGB arithmetic on source pixels, so the export and the canvas
+// preview agree, and the same ink mask drives text snapping.
 namespace putgd::editor::highlight {
 constexpr int blockSize=16;          // background estimate grid, source pixels
 constexpr int inkDistance=70;        // sRGB distance at which a pixel is all ink
-constexpr double whiteFloor=0.183;   // highest luminance keeping white at 4.5:1
-constexpr double visibleLift=0.06;   // a dark background rises at least this much
+constexpr double markerFloor=0.45;   // marker luminance range: dark ink reads on it
+constexpr double markerCeiling=0.7;
+constexpr double inkContrast=5.0;    // darkened ink against the marker
+constexpr double darkPage=0.3;       // background luminance below which the page is dark
 constexpr qint64 maximumSnapPixels=2*1024*1024;
 
 struct Plan {
@@ -29,6 +33,8 @@ struct Plan {
  int columns=0,rows=0;                 // block grid over `area`
  std::vector<int> blockBackground;     // per block: index into backgrounds
  std::vector<QRgb> backgrounds,tinted; // distinct backgrounds and their marker colours
+ std::vector<uint8_t> recolor;         // per background: darken the ink (dark page)
+ std::vector<double> inkLuminance;     // per background: luminance the ink is lowered to
  QRgb fallback=0;                      // multiply or screen colour for the fallbacks
  bool isNull() const {return area.isEmpty();}
 };
