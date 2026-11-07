@@ -617,7 +617,7 @@ private slots:
    const QRgb a=light.pixel(40,40),b=light.pixel(200,90),oa=out.pixel(40,40),ob=out.pixel(200,90);
    const double la=highlight::luminance(a),loa=highlight::luminance(oa);
    QVERIFY2(color==QColor(255,255,255)?loa>la+0.1:loa<la*0.7,qPrintable(QString("%1: %2 -> %3").arg(color.name()).arg(la).arg(loa)));
-   QVERIFY(std::abs(contrastOf(oa,ob)-contrastOf(a,b))<0.15*contrastOf(a,b));
+   QVERIFY2(std::abs(contrastOf(oa,ob)-contrastOf(a,b))<0.05*contrastOf(a,b),qPrintable(QString("%1: contrast %2 -> %3").arg(color.name()).arg(contrastOf(a,b)).arg(contrastOf(oa,ob))));
   }
  }
  void highlightPreviewMatchesExportAtFullScale(){

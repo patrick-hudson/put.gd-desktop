@@ -25,7 +25,7 @@ const std::vector<uint8_t>& srgbTable(){
 int toSrgbFast(double linear){return srgbTable()[size_t(std::clamp(int(std::lround(linear*4096)),0,4096))];}
 constexpr double washChroma=0.6;  // how far a washed pixel's colour moves toward the marker
 constexpr int neutralChroma=24;   // markers with less channel spread than this are neutral
-constexpr double washShade=0.5,washLighten=1.6;  // neutral washes: Y scaled by washShade, Y+0.05 by washLighten
+constexpr double washShade=0.5,washShadeRatio=0.6,washLighten=1.6;  // neutral washes: Y scaled by washShade (toe) or Y+0.05 by washShadeRatio; Y+0.05 by washLighten
 int distance(QRgb a,QRgb b){
  const int dr=qRed(a)-qRed(b),dg=qGreen(a)-qGreen(b),db=qBlue(a)-qBlue(b);
  return int(std::lround(std::sqrt(double(dr*dr+dg*dg+db*db))));
@@ -334,7 +334,8 @@ void apply(QImage& image,const QRect& requested,const Plan& plan){
    for(int x=target.left();x<=target.right();++x){
     const QRgb p=line[x];const double r=lin[size_t(qRed(p))],g=lin[size_t(qGreen(p))],b=lin[size_t(qBlue(p))];
     const double y=0.2126*r+0.7152*g+0.0722*b;
-    const double l=shade<1.0?y*shade:std::min(1.0,(y+0.05)*shade-0.05);  // shade keeps dark detail; lightening keeps contrast ratios
+    // Shading: contrast ratios kept above a toe that keeps dark detail; lightening: ratios kept, clipped at white.
+    const double l=shade<1.0?std::max(y*shade,(y+0.05)*washShadeRatio-0.05):std::min(1.0,(y+0.05)*shade-0.05);
     double tr=r+(mr-r)*washChroma,tg=g+(mg-g)*washChroma,tb=b+(mb-b)*washChroma;
     const double tl=0.2126*tr+0.7152*tg+0.0722*tb;if(tl<1e-6)continue;
     const double scale=l/tl;tr*=scale;tg*=scale;tb*=scale;
