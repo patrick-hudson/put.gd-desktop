@@ -128,7 +128,7 @@
       "labels": ["dependencies", "area: packaging"]
     },
     {
-      "description": "FFmpeg for the AppImage's recorder; a new major changes its sonames (build-appimage.sh checks libavcodec.so.61).",
+      "description": "FFmpeg for the AppImage's recorder; a new major changes its sonames (build-appimage.sh reads them from the pinned build).",
       "matchPackageNames": ["FFmpeg/FFmpeg"],
       "extractVersion": "^n(?<version>\\d+\\.\\d+(?:\\.\\d+)?)$",
       "labels": ["dependencies", "area: packaging", "area: recording"]

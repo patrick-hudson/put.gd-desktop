@@ -14,9 +14,20 @@ cmake --preset release -DPUTGD_BUNDLE_PROTON=ON -DBUILD_TESTING=OFF -DPUTGD_LAB_
   -DCMAKE_PREFIX_PATH="$PWD/build/appimage-deps;$QT_ROOT_DIR;$PWD/build/sdk"
 cmake --build --preset release --parallel "${PUTGD_BUILD_JOBS:-2}"
 # The helper must link the pinned FFmpeg, never the builder's distro libraries.
-if ! readelf -d build/release/putgd-record | grep -q 'libavcodec\.so\.61'; then
-  echo 'putgd-record is not linked against the pinned FFmpeg in build/appimage-deps' >&2; exit 1
-fi
+# Each library's soname comes from the pinned build itself, so a new FFmpeg major
+# needs no edit here; a library missing from the prefix or linked at another
+# soname still fails.
+ffmpeg_lib="$PWD/build/appimage-deps/lib"
+record_needed=$(readelf -d build/release/putgd-record | sed -n 's/.*(NEEDED).*\[\(.*\)\]$/\1/p')
+for library in avcodec avformat avfilter avutil swscale swresample; do
+  soname=$(readelf -d "$ffmpeg_lib/lib$library.so" 2>/dev/null | sed -n 's/.*(SONAME).*\[\(.*\)\]$/\1/p' || true)
+  if [ -z "$soname" ] || [ ! -f "$ffmpeg_lib/$soname" ]; then
+    echo "The pinned FFmpeg in build/appimage-deps has no lib$library" >&2; exit 1
+  fi
+  if ! grep -qxF "$soname" <<<"$record_needed"; then
+    echo "putgd-record is not linked against the pinned FFmpeg $soname in build/appimage-deps" >&2; exit 1
+  fi
+done
 # The update check offers the AppImage download (#293).
 if ! build/release/putgd-cli --update-info | grep -q '"packageTarget":"appimage"'; then
   echo 'putgd-cli was not built for the AppImage update target' >&2; exit 1
