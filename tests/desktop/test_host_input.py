@@ -12,6 +12,12 @@ class FakeDevice:
         self.batches.append(events)
 
 
+class BrokenDevice(FakeDevice):
+    def emit(self, events):
+        self.batches.append(events)
+        raise OSError(19, 'No such device')
+
+
 class Stream(io.BytesIO):
     def __init__(self, requests):
         super().__init__(b''.join(json.dumps(r).encode() + b'\n' for r in requests))
@@ -88,6 +94,36 @@ class HostInputTests(unittest.TestCase):
         server, client = socket.socketpair()
         client.close()
         host_input.serve_connection(server, FakeDevice(), FakeDevice())
+
+    def test_a_failed_keyboard_release_still_releases_the_button(self):
+        class ReleaseFails(FakeDevice):
+            def emit(self, events):
+                self.batches.append(events)
+                if events[0][2] == 0:
+                    raise OSError(19, 'No such device')
+        keyboard, tablet = ReleaseFails(), FakeDevice()
+        stream = Stream([{'execute': 'input-send-event', 'id': 1, 'arguments': {'events': [
+            {'type': 'btn', 'data': {'button': 'left', 'down': True}},
+            {'type': 'key', 'data': {'down': True, 'key': {'type': 'qcode', 'data': 'alt'}}}]}}])
+        with self.assertRaises(host_input.DeviceError):
+            host_input.handle(stream, keyboard, tablet)
+        self.assertEqual(keyboard.batches[-1], [(1, 56, 0)])
+        self.assertEqual(tablet.batches[-1], [(1, 0x110, 0)])
+
+    def test_a_device_failure_stops_the_agent_even_when_closing_the_client_fails(self):
+        class ClosesBroken(Stream):
+            def close(self):
+                super().close()
+                raise BrokenPipeError(32, 'Broken pipe')
+        class Connection:
+            def __init__(self, stream): self.stream = stream
+            def __enter__(self): return self
+            def __exit__(self, *_): return False
+            def makefile(self, mode): return self.stream
+        stream = ClosesBroken([{'execute': 'input-send-event', 'arguments': {'events': [
+            {'type': 'key', 'data': {'down': True, 'key': {'type': 'qcode', 'data': 'alt'}}}]}}])
+        with self.assertRaises(host_input.DeviceError):
+            host_input.serve_connection(Connection(stream), BrokenDevice(), FakeDevice())
 
     def test_rejects_anything_outside_the_runner_subset(self):
         bad = [

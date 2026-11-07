@@ -121,13 +121,33 @@ def serve(path, user):
         keyboard.close(); tablet.close(); server.close(); os.unlink(path)
 
 
+class DeviceError(RuntimeError):
+    """A uinput write failed: the agent can no longer inject input and stops."""
+
+
+def emit(device, events):
+    try:
+        device.emit(events)
+    except OSError as error:
+        raise DeviceError(f'uinput write failed: {error}') from error
+
+
 def serve_connection(connection, keyboard, tablet):
     """One client going away (closed with replies unread, killed mid-drag) ends
-    that connection only; the devices and the listening socket stay up."""
+    that connection only; the devices and the listening socket stay up. A device
+    failure still stops the agent, even when closing the client's stream raises
+    a connection error on top of it."""
+    failure = None
     try:
         with connection, connection.makefile('rwb') as stream:
-            handle(stream, keyboard, tablet)
+            try:
+                handle(stream, keyboard, tablet)
+            except DeviceError as error:
+                failure = error
+                raise
     except ConnectionError as error:
+        if failure:
+            raise failure
         print(json.dumps({'client': 'disconnected', 'error': type(error).__name__}), file=sys.stderr, flush=True)
 
 
@@ -142,8 +162,16 @@ def handle(stream, keyboard, tablet):
         is_button = lambda code: code in BTN.values()
         keys = [(EV_KEY, code, 0) for code in sorted(held) if not is_button(code)]
         buttons = [(EV_KEY, code, 0) for code in sorted(held) if is_button(code)]
-        if keys: keyboard.emit(keys)
-        if buttons: tablet.emit(buttons)
+        # Both releases are attempted; the first device failure is raised.
+        failures = []
+        for device, batch in ((keyboard, keys), (tablet, buttons)):
+            if batch:
+                try:
+                    emit(device, batch)
+                except DeviceError as error:
+                    failures.append(error)
+        if failures:
+            raise failures[0]
 
 
 def serve_client(stream, keyboard, tablet, held):
@@ -165,8 +193,8 @@ def serve_client(stream, keyboard, tablet, held):
             is_key = lambda e: e[0] == EV_KEY and e[1] not in BTN.values()
             keys = [e for e in events if is_key(e)]
             pointer = [e for e in events if not is_key(e)]
-            if keys: keyboard.emit(keys)
-            if pointer: tablet.emit(pointer)
+            if keys: emit(keyboard, keys)
+            if pointer: emit(tablet, pointer)
             for kind, code, value in events:
                 if kind == EV_KEY:
                     (held.add if value else held.discard)(code)
