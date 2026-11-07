@@ -43,6 +43,7 @@
   endif()
   add_executable(test_editor tests/unit/test_editor.cpp)
   target_link_libraries(test_editor PRIVATE putgd_editor putgd_core Qt6::Test)
+  target_compile_definitions(test_editor PRIVATE PUTGD_TEST_FIXTURES="${PROJECT_SOURCE_DIR}/tests/fixtures")
   add_executable(test_quick_backend tests/unit/test_quick_backend.cpp)
   target_link_libraries(test_quick_backend PRIVATE putgd_quick_backend Qt6::Test ${CMAKE_DL_LIBS})
   add_test(NAME quick_backend_contract COMMAND test_quick_backend)

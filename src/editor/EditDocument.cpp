@@ -1,4 +1,5 @@
 #include "EditDocument.h"
+#include "HighlightFilter.h"
 #include <QBuffer>
 #include <QColorSpace>
 #include <QFont>
@@ -151,8 +152,8 @@ void EditDocument::paintAnnotation(QPainter& painter,const Shape& shape,const QP
   painter.drawRect(QRectF(shape.rect).adjusted(shape.width/2.0,shape.width/2.0,-shape.width/2.0,-shape.width/2.0));break;
  }
  case Shape::Kind::Highlight:
-  // A translucent marker stays visible on dark and light captures and never hides text.
-  painter.fillRect(shape.rect,QColor(shape.color.red(),shape.color.green(),shape.color.blue(),105));break;
+  // A pixel filter, applied by render() and the canvas tile, not a paint.
+  break;
  case Shape::Kind::Arrow:{
   const QLineF line(shape.from,shape.to);if(line.length()<1)break;
   const double head=std::max(12.0,shape.width*4.0),angle=std::atan2(-line.dy(),line.dx());
@@ -194,7 +195,12 @@ QImage EditDocument::render() const {
  const auto rowBytes=size_t(crop.width())*sizeof(QRgb);
  for(int y=0;y<crop.height();++y)std::memcpy(out.scanLine(y),base_.constScanLine(crop.top()+y)+qsizetype(crop.left())*qsizetype(sizeof(QRgb)),rowBytes);
  applyRedactions(out,crop);
+ // Highlights decide their colours on the redacted base, before blur, the
+ // same pixels the canvas preview reads; they tint the blurred result.
+ QList<std::pair<QRect,highlight::Plan>> highlights;
+ for(const auto& shape:state_.shapes)if(shape.kind==Shape::Kind::Highlight){const auto area=clampRect(shape.rect,crop).translated(-crop.topLeft());if(!area.isEmpty())highlights.append({area,highlight::plan(out,area,{},shape.color)});}
  for(const auto& shape:state_.shapes)if(shape.kind==Shape::Kind::Blur)blurInPlace(out,shape.rect.translated(-crop.topLeft()),shape.strength);
+ for(const auto& [area,plan]:highlights)highlight::apply(out,area,plan);
  {
   QPainter painter(&out);painter.translate(-crop.topLeft());
   for(const auto& shape:state_.shapes)if(shape.kind!=Shape::Kind::Redact&&shape.kind!=Shape::Kind::Blur){const auto path=textPaths_.constFind(shape.id);paintAnnotation(painter,shape,textPathsGeneration_==generation_&&(textPathsFrozen_||textPathsFont_==QFont())&&path!=textPaths_.cend()?&path.value():nullptr);}
@@ -211,6 +217,32 @@ QByteArray EditDocument::exportPng() const {
   QImageWriter writer(&buffer,"png");if(!writer.write(image))return {};
  }
  return encoded;
+}
+
+QList<QRect> EditDocument::redactionRects() const {
+ QList<QRect> rects;for(const auto& shape:state_.shapes)if(shape.kind==Shape::Kind::Redact)rects.append(clampRect(shape.rect,base_.rect()));return rects;
+}
+
+QImage EditDocument::highlightPreview(const Shape& shape,double scale) const {
+ const auto area=clampRect(shape.rect,state_.crop);if(area.isEmpty())return {};
+ // The plan reads full-resolution pixels (sampled); only the tint runs on the
+ // bounded preview raster, like blur.
+ const auto plan=highlight::plan(base_,area,redactionRects(),shape.color);
+ constexpr double previewPixels=1.5e6;
+ scale=std::min({1.0,scale,std::sqrt(previewPixels/(double(area.width())*area.height()))});
+ const QSize target(std::max(1,int(std::lround(area.width()*scale))),std::max(1,int(std::lround(area.height()*scale))));
+ const QImage view(base_.constScanLine(area.top())+qsizetype(area.left())*qsizetype(sizeof(QRgb)),area.width(),area.height(),base_.bytesPerLine(),base_.format());
+ auto preview=target==area.size()?view.copy():view.scaled(target,Qt::IgnoreAspectRatio,Qt::SmoothTransformation);
+ preview=preview.convertToFormat(base_.format());
+ const double sx=double(target.width())/area.width(),sy=double(target.height())/area.height();
+ auto mapped=[&](const QRect& overlap){return QRectF((overlap.left()-area.left())*sx,(overlap.top()-area.top())*sy,overlap.width()*sx,overlap.height()*sy).toAlignedRect();};
+ {
+  QPainter painter(&preview);painter.setCompositionMode(QPainter::CompositionMode_Source);
+  for(const auto& other:state_.shapes)if(other.kind==Shape::Kind::Redact){const auto overlap=other.rect.intersected(area);if(!overlap.isEmpty())painter.fillRect(mapped(overlap),Qt::black);}
+ }
+ for(const auto& other:state_.shapes)if(other.kind==Shape::Kind::Blur){const auto overlap=other.rect.intersected(area);if(!overlap.isEmpty())blurInPlace(preview,mapped(overlap),std::max(1,int(std::lround(other.strength*std::min(sx,sy)))));}
+ highlight::apply(preview,preview.rect(),plan);
+ return preview;
 }
 
 QImage EditDocument::blurPreview(const Shape& shape,double scale) const {

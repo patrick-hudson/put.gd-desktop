@@ -107,6 +107,8 @@ private:
  void placeTextWarning();
  void beginText(const QPointF& imagePoint,const Shape* existing);
  const QImage& blurTile(const Shape&);
+ const QImage& highlightTile(const Shape&);
+ const QImage& cachedTile(const Shape&,const QString& key,QImage (EditDocument::*render)(const Shape&,double) const);
  Shape::Kind kindFor(Tool) const;
  bool drawingTool() const;
  EditDocument& doc_;
