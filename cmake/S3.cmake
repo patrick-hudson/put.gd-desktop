@@ -24,10 +24,11 @@ set(s3_contract "${CMAKE_CXX_COMPILER_ID};${CMAKE_CXX_COMPILER_VERSION};${Qt6_VE
 foreach(s3_contract_file src/storage/s3/S3Driver.h src/storage/s3/S3Driver.cpp
     src/storage/s3/S3ProcessDriver.h src/storage/s3/S3ProcessDriver.cpp
     src/storage/s3/S3WorkerProtocol.h src/storage/s3/S3WorkerProtocol.cpp src/storage/s3/S3WorkerMain.cpp
-    src/storage/s3/S3Module.h src/storage/s3/S3Module.cpp src/storage/s3/S3Provider.cpp src/storage/s3/IpAddress.cpp src/storage/s3/IpAddress.h
+    src/storage/s3/S3Module.h src/storage/s3/S3Module.cpp src/storage/s3/S3Provider.cpp src/storage/s3/S3Provider.h src/storage/s3/S3Multipart.h src/storage/s3/IpAddress.cpp src/storage/s3/IpAddress.h
     src/storage/s3/S3SdkContext.h src/storage/s3/S3SdkContext.cpp src/storage/s3/SdkRuntime.h
     src/storage/s3/SdkRuntime.cpp src/storage/s3/TlsCompatibility.h src/storage/s3/TlsCompatibility.cpp src/storage/s3/PublicUrl.h src/storage/s3/PublicUrl.cpp
     src/core/StorageProvider.h src/core/StorageReceipt.h src/core/ArtifactStore.h
+    src/core/BuildInfo.h src/core/Settings.h src/ipc/UiControl.h
     src/core/Error.h src/core/ClipboardPayload.h src/secrets/CredentialStore.h cmake/dependency-lock.json)
   set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/${s3_contract_file}")
   file(SHA256 "${CMAKE_CURRENT_SOURCE_DIR}/${s3_contract_file}" s3_contract_hash)
