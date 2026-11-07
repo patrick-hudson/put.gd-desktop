@@ -186,10 +186,28 @@ place. The CI `sanitizers` job loads an ASan-instrumented QtCore for that reason
 same expression.
 
 Repeat the affected sanitizer contracts with
-`payload_contract|archive_contract|upload_naming_contract|settings_contract|operations_contract|gui_settings|gui_history_view|collision_policy_integration`
+`payload_contract|archive_contract|upload_naming_contract|settings_contract|operations_contract|gui_settings_[a-z]+|gui_history_view|collision_policy_integration`
 as the CTest `-R` expression, using the ASan/UBSan settings in [build.md](../release/build.md)
 and the instrumented Qt environment in [thread-sanitizer.md](thread-sanitizer.md).
 Keep separate JUnit/logs per attempt; a prior failure remains evidence even when
 the final source passes. Native UI witnesses and the exact controlled inputs are
 recorded in [the settings-refinement evidence](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-08-settings-refinement.json); offscreen results establish no
 compositor certification.
+
+### Settings GUI area suites
+
+The Settings GUI tests run as eight CTest entries: `gui_settings_appearance`,
+`gui_settings_general`, `gui_settings_capture`, `gui_settings_shortcuts`,
+`gui_settings_destinations`, `gui_settings_credentials`, `gui_settings_updates`
+and `gui_settings_advanced`. Each has a 90 second timeout before the shared
+CI timeout scale. Shared fixtures live in `tests/gui/SettingsGuiFixture.h`.
+Run all complete area suites and the private-bus startup unlock regression with:
+
+```sh
+ctest --preset dev -R '^gui_settings_'
+```
+
+`gui_settings_startup_unlock` runs `startupUnlockRefreshesTheOpenDestination`
+from `test_gui_settings_credentials` under `dbus-run-session`, with its own
+60 second timeout. Historical evidence retains the original `gui_settings`
+name and runtime.
