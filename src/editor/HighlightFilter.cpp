@@ -25,7 +25,7 @@ const std::vector<uint8_t>& srgbTable(){
 int toSrgbFast(double linear){return srgbTable()[size_t(std::clamp(int(std::lround(linear*4096)),0,4096))];}
 constexpr double washChroma=0.6;  // how far a washed pixel's colour moves toward the marker
 constexpr int neutralChroma=24;   // markers with less channel spread than this are neutral
-constexpr double washShade=0.5,washLighten=1.6;  // neutral washes scale Y+0.05 by these
+constexpr double washShade=0.5,washLighten=1.6;  // neutral washes: Y scaled by washShade, Y+0.05 by washLighten
 int distance(QRgb a,QRgb b){
  const int dr=qRed(a)-qRed(b),dg=qGreen(a)-qGreen(b),db=qBlue(a)-qBlue(b);
  return int(std::lround(std::sqrt(double(dr*dr+dg*dg+db*db))));
@@ -323,8 +323,9 @@ void apply(QImage& image,const QRect& requested,const Plan& plan){
   // marker in linear light and is scaled back to its own brightness, so text
   // on a photo or a coloured label keeps its exact contrast under the wash.
   // A neutral marker (black, white, grey) has no chroma to lend, so it moves
-  // the luminance instead, scaling Y+0.05 so WCAG contrast ratios are kept:
-  // a black marker shades the region, a white one lightens it.
+  // the luminance instead: a black marker shades the region (luminance
+  // halved, so dark detail survives), a white one lightens it (Y+0.05 scaled,
+  // so WCAG contrast ratios are kept).
   const QRgb m=plan.fallback;const int chroma=std::max({qRed(m),qGreen(m),qBlue(m)})-std::min({qRed(m),qGreen(m),qBlue(m)});
   const double shade=chroma>neutralChroma?1.0:luminance(m)<0.5?washShade:washLighten;
   const auto& lin=linearTable();const double mr=lin[size_t(qRed(m))],mg=lin[size_t(qGreen(m))],mb=lin[size_t(qBlue(m))];
@@ -332,7 +333,8 @@ void apply(QImage& image,const QRect& requested,const Plan& plan){
    auto* line=reinterpret_cast<QRgb*>(image.scanLine(y));
    for(int x=target.left();x<=target.right();++x){
     const QRgb p=line[x];const double r=lin[size_t(qRed(p))],g=lin[size_t(qGreen(p))],b=lin[size_t(qBlue(p))];
-    const double l=std::max(0.0,(0.2126*r+0.7152*g+0.0722*b+0.05)*shade-0.05);
+    const double y=0.2126*r+0.7152*g+0.0722*b;
+    const double l=shade<1.0?y*shade:std::min(1.0,(y+0.05)*shade-0.05);  // shade keeps dark detail; lightening keeps contrast ratios
     double tr=r+(mr-r)*washChroma,tg=g+(mg-g)*washChroma,tb=b+(mb-b)*washChroma;
     const double tl=0.2126*tr+0.7152*tg+0.0722*tb;if(tl<1e-6)continue;
     const double scale=l/tl;tr*=scale;tg*=scale;tb*=scale;
