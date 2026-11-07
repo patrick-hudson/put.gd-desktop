@@ -729,6 +729,12 @@ private slots:
   const QPoint inside(mark.rect.right()-10,mark.rect.center().y());const auto next=highlight::wordAt(doc.base(),inside);QVERIFY(!next.isNull());
   QTest::mouseClick(&canvas,Qt::LeftButton,Qt::ShiftModifier,origin+inside);
   QCOMPARE(doc.shapes().size(),1);QCOMPARE(doc.find(id)->rect,mark.rect.united(next));QCOMPARE(canvas.selected(),id);
+  // A press with a few pixels of jitter, under the drag distance, is still a word click, not a sliver.
+  canvas.select(0);const QPoint at(60,45);const QPoint jitter(5,5);const auto expected=highlight::wordAt(doc.base(),at);QVERIFY(!expected.isNull());QVERIFY(!doc.find(id)->rect.contains(at));
+  QTest::mousePress(&canvas,Qt::LeftButton,Qt::NoModifier,origin+at);
+  QMouseEvent move(QEvent::MouseMove,QPointF(origin+at+jitter),canvas.mapToGlobal(QPointF(origin+at+jitter)),Qt::NoButton,Qt::LeftButton,Qt::NoModifier);QApplication::sendEvent(&canvas,&move);
+  QTest::mouseRelease(&canvas,Qt::LeftButton,Qt::NoModifier,origin+at+jitter);
+  QCOMPARE(doc.shapes().size(),2);QCOMPARE(doc.shapes().last().rect,expected);
  }
  void snapIsRejectedOnShapesThatAreNotHighlights(){
   EditDocument doc(fixture("highlight-lcd-text.png"));

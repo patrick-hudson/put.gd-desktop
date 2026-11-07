@@ -480,8 +480,9 @@ void EditorCanvas::mouseReleaseEvent(QMouseEvent* event){
  if(kind==Drag::Create){
   const auto* shape=doc_.find(selected_);
   const bool tiny=!shape||(shape->kind==Shape::Kind::Arrow?QLineF(toWidget(QPointF(shape->from)),toWidget(QPointF(shape->to))).length()<6:(shape->rect.width()*scale_<4||shape->rect.height()*scale_<4));
-  if(tiny&&shape&&shape->kind==Shape::Kind::Highlight&&!(event->modifiers()&Qt::AltModifier)){
-   // A click highlights the word under the pointer.
+  // A click, or a press that never travelled the drag distance, highlights the word under the pointer.
+  const bool click=tiny||QLineF(press_,event->position()).length()<QGuiApplication::styleHints()->startDragDistance();
+  if(click&&shape&&shape->kind==Shape::Kind::Highlight&&!(event->modifiers()&Qt::AltModifier)){
    const auto word=highlight::wordAt(doc_.base(),pixelAt(toImage(press_))).intersected(doc_.crop());
    if(!word.isEmpty()){auto next=*shape;next.rect=word;doc_.preview(next);doc_.commitGesture();update();emit changed();updateHoverCursor(event->position(),event->modifiers());return;}
   }
