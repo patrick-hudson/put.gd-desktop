@@ -105,13 +105,15 @@ colours truer and the band darker, so black lettering on it has less headroom:
 on the darkest chromatic swatches (red, blue) black text reads at 9.5:1 on a
 white page and 8.7:1 on a dark page at 0.45, and 7.0:1 and 6.1:1 at 0.30 (the
 dark-page band is the pigment multiplied onto a page lifted to 0.85). The
-black marker's grey band is fixed at luminance 0.30 whatever the floor, so it
-always sits at those 7.0:1 and 6.1:1 figures. Yellow (luminance 0.64) is above
+black marker bypasses the floor: its pigment is the fixed grey #959595
+(luminance 0.30), so its band always sits at those 7.0:1 and 6.1:1 figures. Yellow (luminance 0.64) is above
 the floor at any of these values and never changes. `pigmentCeiling` (0.69) dims pale markers so white still shows
 on a white page, and `pageFloor` (0.85) sets how bright a dark page is lifted
-before the pigment multiplies it; neither has a reason to move. Changing the
-floor changes every editor catalog reference (the sample document carries a
-highlight), so a tuning PR regenerates them from CI like any UI change.
+before the pigment multiplies it; neither has a reason to move. The editor catalog's sample document carries a yellow highlight, which sits
+above the floor at any value up to 0.64, so a floor change alone leaves the
+catalog references as they are; a change that does reach them (the ceiling,
+the page lift, or a floor above yellow) regenerates them from CI like any UI
+change.
 
 The background estimate is block-local (16 px blocks, every block sampling a
 full window inside the box), so a box across two panels or zebra rows treats
