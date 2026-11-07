@@ -89,16 +89,14 @@ private slots:
  void markOverloadsProduceTheSamePixels(){
   for(int percent:{-1,-2,0,50,100})for(int scale:{1,2,3})QCOMPARE(IconArt::liftTray(TrayIcon{idle(),percent},scale),IconArt::liftTray(idle(),percent,scale));
  }
- void everyGlyphKeepsTheBowl(){
+ void turkeyKeepsTheBowl(){
   // The bowl's solid body and its transparent well match the mark's below y=17;
   // only the contour's width differs.
   const auto mark=IconArt::liftTray(idle(),-1,8);
-  for(const auto glyph:{TrayGlyph::Turkey,TrayGlyph::Tree}){
-   const auto image=IconArt::liftTray(TrayIcon{idle(),-1,0,glyph},8);
-   for(int y=17*8;y<192;++y)for(int x=0;x<192;++x){
-    if(mark.pixelColor(x,y)==idle())QCOMPARE(image.pixelColor(x,y),idle());
-    if(qAlpha(mark.pixel(x,y))==0)QCOMPARE(qAlpha(image.pixel(x,y)),0);
-   }
+  const auto image=IconArt::liftTray(TrayIcon{idle(),-1,0,TrayGlyph::Turkey},8);
+  for(int y=17*8;y<192;++y)for(int x=0;x<192;++x){
+   if(mark.pixelColor(x,y)==idle())QCOMPARE(image.pixelColor(x,y),idle());
+   if(qAlpha(mark.pixel(x,y))==0)QCOMPARE(qAlpha(image.pixel(x,y)),0);
   }
  }
  void seasonalArtReachesItsOwnHeight(){
@@ -129,10 +127,12 @@ private slots:
   }
  }
  void cutoutsAndTheGapStayTransparent(){
-  // Tree: the gap to the bowl on both sides and below.
+  // Tree: the star is separate from the crown, and the stand is clear of the trunk.
   for(int percent:{-1,50,100}){
    const auto tree=IconArt::liftTray(TrayIcon{idle(),percent,0,TrayGlyph::Tree},8);
-   QCOMPARE(qAlpha(tree.pixel(int(6.5*8),14*8)),0);QCOMPARE(qAlpha(tree.pixel(int(17.5*8),14*8)),0);QCOMPARE(qAlpha(tree.pixel(12*8,18*8)),0);
+   QCOMPARE(qAlpha(tree.pixel(12*8,int(4.375*8))),0);
+   QCOMPARE(qAlpha(tree.pixel(int(7.5*8),int(19.25*8))),0);QCOMPARE(qAlpha(tree.pixel(int(16.5*8),int(19.25*8))),0);
+   QCOMPARE(qAlpha(tree.pixel(12*8,int(20.75*8))),0);
 
    const auto turkey=IconArt::liftTray(TrayIcon{idle(),percent,0,TrayGlyph::Turkey},8);
    QCOMPARE(qAlpha(turkey.pixel(int(17.5*8),int(2.9*8))),0);
@@ -145,12 +145,13 @@ private slots:
    const auto clear=[&](qreal x,qreal y){return qAlpha(tree.pixel(int(x*8),int(y*8)))==0;};
    const auto solid=[&](qreal x,qreal y){return qAlpha(tree.pixel(int(x*8),int(y*8)))==255;};
    // Each tier's end is solid; the step below it is empty, both sides, then the next tier widens.
-   for(const auto& [tierY,tierX,stepY,stepX]:{std::array<qreal,4>{5.9,14.4,7,14},{9.9,15.2,11,15}}){
+   for(const auto& [tierY,tierX,stepY,stepX]:{std::array<qreal,4>{8.65,15.4,9.8,15.4},{13.3,18,14.5,18}}){
     QVERIFY(solid(tierX,tierY));QVERIFY(solid(24-tierX,tierY));QVERIFY(clear(stepX,stepY));QVERIFY(clear(24-stepX,stepY));
    }
-   QVERIFY(solid(16,14.4));QVERIFY(solid(8,14.4));
-   // The centre is unbroken from the star to the trunk: no ornaments or other holes.
-   for(qreal y=1.5;y<16.2;y+=.25)QVERIFY2(solid(12,y),qPrintable(QString::number(y)));
+   QVERIFY(solid(20,18.1));QVERIFY(solid(4,18.1));
+   // The canopy and short trunk stay solid; the shallow stand has a solid base.
+   for(qreal y=6;y<19.8;y+=.25)QVERIFY2(solid(12,y),qPrintable(QString::number(y)));
+   QVERIFY(solid(12,22.5));
   }
  }
  void aBadgeDrawsOnTheOrdinaryMark_data(){
