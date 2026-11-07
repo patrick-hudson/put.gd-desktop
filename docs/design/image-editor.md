@@ -105,18 +105,19 @@ below 32, take the fixed grey instead). It decides how pastel the dark swatches 
 is a coral at 0.45; at 0.55 it reads as pink (the council's first pick, rejected
 as "not red"), at 0.30 it is close to the raw swatch. Lowering it makes the
 colours truer and the band darker, so black lettering on it has less headroom:
-on the darkest chromatic swatches (red, blue) black text reads at 9.5:1 on a
-white page and 8.7:1 on a dark page at 0.45, and 7.0:1 and 6.1:1 at 0.30 (the
-dark-page band is the pigment multiplied onto a page lifted to 0.85). The
+on the darkest chromatic swatches (red, blue) black text reads at 10:1 on a
+white page (the band is the pigment itself; 9.5:1 on an off-white dialog) and
+8.7:1 on a dark page at 0.45, and 7.0:1 and 6.1:1 at 0.30 (the dark-page band
+is the pigment multiplied onto a page lifted to 0.85). The
 black marker bypasses the floor: its pigment is the fixed grey #959595
-(luminance 0.30), so its band always sits at those 7.0:1 and 6.1:1 figures. Yellow (luminance 0.64) is above
+(luminance 0.30), so its band always sits at those 7.0:1 and 6.1:1 figures. Yellow (luminance 0.636) is above
 the floor at any of these values and never changes. `pigmentCeiling` (0.69) dims pale markers so white still shows
 on a white page, and `pageFloor` (0.85) sets how bright a dark page is lifted
 before the pigment multiplies it; neither has a reason to move. The editor catalog's sample document carries a yellow highlight, which sits
-above the floor at any value up to 0.64, so a floor change alone leaves the
-catalog references as they are; a change that does reach them (the ceiling,
-the page lift, or a floor above yellow) regenerates them from CI like any UI
-change.
+above the floor at any value up to yellow's own luminance (0.636; keep the
+floor below it), so a floor change alone leaves the catalog references as
+they are; a change that does reach them (the ceiling, the page lift, or a
+floor above yellow) regenerates them from CI like any UI change.
 
 The background estimate is block-local (16 px blocks, every block sampling a
 full window inside the box), so a box across two panels or zebra rows treats
