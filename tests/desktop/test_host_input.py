@@ -68,7 +68,8 @@ class HostInputTests(unittest.TestCase):
         press = {'execute': 'input-send-event', 'arguments': {'events': [{'type': 'btn', 'data': {'button': 'left', 'down': True}}]}}
         move = {'execute': 'input-send-event', 'arguments': {'events': [{'type': 'abs', 'data': {'axis': 'x', 'value': 9}}]}}
         server, client = socket.socketpair()
-        agent = threading.Thread(target=host_input.serve_connection, args=(server, keyboard, tablet))
+        client.settimeout(5)  # a silent agent fails the test instead of hanging it
+        agent = threading.Thread(target=host_input.serve_connection, args=(server, keyboard, tablet), daemon=True)
         agent.start()
         replies = client.makefile('rb')
         client.sendall(json.dumps(press).encode() + b'\n')
@@ -82,6 +83,7 @@ class HostInputTests(unittest.TestCase):
         self.assertEqual(tablet.batches[-1], [(1, 0x110, 0)])
         # The next client is served normally.
         server, client = socket.socketpair()
+        client.settimeout(5)
         client.sendall(json.dumps({'execute': 'qmp_capabilities', 'id': 7}).encode() + b'\n')
         client.shutdown(socket.SHUT_WR)
         host_input.serve_connection(server, keyboard, tablet)

@@ -126,6 +126,7 @@ class DeviceError(RuntimeError):
 
 
 def emit(device, events):
+    """Write one batch to a uinput device, turning a write failure into DeviceError."""
     try:
         device.emit(events)
     except OSError as error:
@@ -175,6 +176,8 @@ def handle(stream, keyboard, tablet):
 
 
 def serve_client(stream, keyboard, tablet, held):
+    """Answer the client's QMP requests until it closes, recording in `held`
+    the keys and buttons that are pressed when each request finishes."""
     def send(message):
         stream.write(json.dumps(message).encode() + b'\n'); stream.flush()
     send({'QMP': {'version': {'qemu': {'major': 0, 'minor': 0, 'micro': 0}, 'package': 'put.gd host_input'}, 'capabilities': []}})
