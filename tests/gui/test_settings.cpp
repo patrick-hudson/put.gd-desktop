@@ -1905,6 +1905,29 @@ QVERIFY(!access->placeholderText().isEmpty());QVERIFY(!access->placeholderText()
   record->click();ready({});QKeyEvent unsupported(QEvent::KeyPress,Qt::Key_unknown,Qt::NoModifier);QApplication::sendEvent(input,&unsupported);QCOMPARE(transitions.last(),false);QVERIFY(editor.findChild<QLabel*>("shortcutRecordingStatus")->text().contains("Unsupported"));
   record->click();ready({});editor.hide();QCOMPARE(transitions.last(),false);QCOMPARE(input->text(),old);
  }
+ void shortcutRecordingExportsEveryStatusThroughAccessibility(){
+  std::function<void(Error)> prepared,restored;ShortcutEditor editor;
+  editor.setRecordingControl([&](bool active,auto reply){if(active)prepared=std::move(reply);else restored=std::move(reply);});
+  editor.setChordResolver([](const QKeyEvent& key){return key.keyCombination();});
+  editor.setActions(Settings::defaults()["actions"].toObject());editor.show();putgd::test::settle(1);
+  auto* record=editor.findChild<QPushButton*>("recordRegionShortcut");auto* input=editor.editors().value("region");
+  auto* status=editor.findChild<QLabel*>("shortcutRecordingStatus");
+  auto* accessible=QAccessible::queryAccessibleInterface(status);QVERIFY(accessible);
+  auto check=[&](const QString& expected){
+   QVERIFY2(status->text().contains(expected),qPrintable(status->text()));
+   QCOMPARE(accessible->text(QAccessible::Name),QString("Shortcut recording status"));
+   QCOMPARE(accessible->text(QAccessible::Description),status->text());
+  };
+  record->click();check("Preparing");prepared({});check("Press shortcut");
+  QTest::keyPress(input,Qt::Key_1);check("release all keys");QTest::keyRelease(input,Qt::Key_1);check("recorded.");restored({});
+  record->click();editor.cancelRecording();check("Recording canceled.");prepared({});check("Recording canceled.");
+  restored({"shortcut_restore_failed","Synthetic cancel restore failure",{}});check("Couldn't restore shortcuts: Synthetic cancel restore failure");
+  record->click();prepared({"shortcut_unavailable","Synthetic preparation failure",{}});check("Can't record: Synthetic preparation failure");restored({});
+  record->click();prepared({});QKeyEvent unsupported(QEvent::KeyPress,Qt::Key_unknown,Qt::NoModifier);QApplication::sendEvent(input,&unsupported);check("Unsupported key");restored({});
+  record->click();prepared({});QTest::keyPress(input,Qt::Key_1);QTest::keyPress(input,Qt::Key_2);check("Use one key with modifiers");restored({});
+  record->click();prepared({});QTest::keyClick(input,Qt::Key_Backspace);check("Shortcut cleared.");
+  restored({"shortcut_recording_interrupted","Superseded",{}});check("Shortcut cleared.");
+ }
  void shortcutRecordingDistinguishesSupersededRestoreFromFailure(){
   std::function<void(Error)> restored;ShortcutEditor editor;
   editor.setRecordingControl([&](bool active,auto reply){if(active)reply({});else restored=std::move(reply);});

@@ -97,11 +97,15 @@ ShortcutEditor::ShortcutEditor(QWidget* parent):QWidget(parent) {
 }
 ShortcutEditor::~ShortcutEditor(){cancelRecording();}
 void ShortcutEditor::setActions(const QJsonObject& actions){cancelRecording();for(auto it=editors_.begin();it!=editors_.end();++it)it.value()->setText(actions[it.key()].toObject()["shortcut"].toString());}
+void ShortcutEditor::setRecordingStatus(const QString& message){
+ recordingStatus_->setText(message);
+ recordingStatus_->setAccessibleDescription(message);
+}
 void ShortcutEditor::startRecording(const QString& action){
  cancelRecording();recordingAction_=action;recordingReady_=false;chord_={};pressed_.clear();
  const auto generation=++recordingGeneration_;
  editors_[action]->setPlaceholderText("Press shortcut…");if(promptChanged_)promptChanged_();
- recordingStatus_->setText("Preparing to record… Escape cancels.");recordingStatus_->show();
+ setRecordingStatus("Preparing to record… Escape cancels.");recordingStatus_->show();
  // Keep focus on the clickable keycap. Focusing its mouse-transparent child
  // while making the button unfocusable lets a real click focus the surrounding
  // scroll area: FocusOut cancels, then clicked starts recording again.
@@ -114,7 +118,7 @@ void ShortcutEditor::startRecording(const QString& action){
   if(!guard||generation!=guard->recordingGeneration_)return;
   if(error){guard->finishRecording("Can't record: "+error.message);return;}
   guard->recordingReady_=true;
-  guard->recordingStatus_->setText("Press shortcut… Release all keys to keep it. Escape cancels.");
+  guard->setRecordingStatus("Press shortcut… Release all keys to keep it. Escape cancels.");
  });
 }
 void ShortcutEditor::cancelRecording(){if(!recordingAction_.isEmpty())finishRecording("Recording canceled. The draft shortcut is unchanged.");}
@@ -125,11 +129,11 @@ void ShortcutEditor::finishRecording(const QString& message){
  ++recordingGeneration_;recordingReady_=false;pendingMouseFocusCancel_=false;
  recordButtons_[recordingAction_]->setAccessibleDescription({});
  editors_[recordingAction_]->setPlaceholderText("Not set");recordingAction_.clear();pressed_.clear();chord_={};keyboard_.reset();if(promptChanged_)promptChanged_();
- recordingStatus_->setText(message);
+ setRecordingStatus(message);
  if(recordingControl_){QPointer<ShortcutEditor> guard(this);const auto generation=recordingGeneration_;recordingControl_(false,[guard,generation](Error error){
   // Saving settings can supersede this restore. The newer binding request owns
   // its result, which is reported by the actual desktop binding labels.
-  if(guard&&generation==guard->recordingGeneration_&&error&&error.code!="shortcut_recording_interrupted")guard->recordingStatus_->setText("Couldn't restore shortcuts: "+error.message);
+  if(guard&&generation==guard->recordingGeneration_&&error&&error.code!="shortcut_recording_interrupted")guard->setRecordingStatus("Couldn't restore shortcuts: "+error.message);
  });}
 }
 bool ShortcutEditor::eventFilter(QObject* object,QEvent* event){
@@ -179,7 +183,7 @@ bool ShortcutEditor::eventFilter(QObject* object,QEvent* event){
   const auto pressed=chordResolver_?chordResolver_(*key):keyboard_?keyboard_->chord(*key):key->keyCombination();
   if(!chord_.isEmpty()&&chord_[0].key()!=pressed.key()){finishRecording("Use one key with modifiers. The draft shortcut is unchanged.");return true;}
   chord_=QKeySequence(pressed);
-  recordingStatus_->setText(chord_.toString(QKeySequence::NativeText)+" — release all keys to keep it. Escape cancels.");
+  setRecordingStatus(chord_.toString(QKeySequence::NativeText)+" — release all keys to keep it. Escape cancels.");
  }else{
   pressed_.remove(identity);
   const auto heldModifiers=key->modifiers()&(Qt::ControlModifier|Qt::ShiftModifier|Qt::AltModifier|Qt::MetaModifier)&~Qt::KeyboardModifiers(modifier);
