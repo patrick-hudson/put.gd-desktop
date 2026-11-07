@@ -17,6 +17,13 @@ int toSrgb(double linear){
  const double c=linear<=0.0031308?linear*12.92:1.055*std::pow(linear,1/2.4)-0.055;
  return int(std::lround(std::clamp(c,0.0,1.0)*255));
 }
+// Linear light to sRGB bytes through a table, for the per-pixel wash.
+const std::vector<uint8_t>& srgbTable(){
+ static const auto table=[]{std::vector<uint8_t> t(4097);for(int i=0;i<=4096;++i)t[size_t(i)]=uint8_t(toSrgb(i/4096.0));return t;}();
+ return table;
+}
+int toSrgbFast(double linear){return srgbTable()[size_t(std::clamp(int(std::lround(linear*4096)),0,4096))];}
+constexpr double washChroma=0.6;  // how far a washed pixel's colour moves toward the marker
 int distance(QRgb a,QRgb b){
  const int dr=qRed(a)-qRed(b),dg=qGreen(a)-qGreen(b),db=qBlue(a)-qBlue(b);
  return int(std::lround(std::sqrt(double(dr*dr+dg*dg+db*db))));
@@ -26,12 +33,12 @@ QRgb multiply(QRgb p,QRgb m){return qRgba(qRed(p)*qRed(m)/255,qGreen(p)*qGreen(m
 QRgb screen(QRgb p,QRgb s){return qRgba(255-(255-qRed(p))*(255-qRed(s))/255,255-(255-qGreen(p))*(255-qGreen(s))/255,255-(255-qBlue(p))*(255-qBlue(s))/255,qAlpha(p));}
 bool inside(const QList<QRect>& rects,int x,int y){for(const auto& r:rects)if(r.contains(x,y))return true;return false;}
 // The finished colour for every pixel luminance (12-bit, linear) on one page:
-// the pixel keeps the contrast it had with its page, now against the paper,
-// as the darkest point on the paper-to-black ramp that still reaches it.
+// the pixel keeps the contrast it had with its page, now against the band,
+// as the first point on the band-to-black ramp that reaches it.
 constexpr double kneeLow=0.04,kneeHigh=0.12;  // log contrast: below `kneeLow` is paper, above `kneeHigh` is kept exactly
-std::vector<QRgb> transferTable(QRgb paper,double pageLuminance){
+std::vector<QRgb> transferTable(QRgb band,double pageLuminance){
  std::array<QRgb,256> ramp{};std::array<double,256> rampLuminance{};
- for(int a=0;a<256;++a){ramp[size_t(a)]=qRgb((qRed(paper)*(255-a)+127)/255,(qGreen(paper)*(255-a)+127)/255,(qBlue(paper)*(255-a)+127)/255);rampLuminance[size_t(a)]=luminance(ramp[size_t(a)]);}
+ for(int a=0;a<256;++a){ramp[size_t(a)]=qRgb((qRed(band)*(255-a)+127)/255,(qGreen(band)*(255-a)+127)/255,(qBlue(band)*(255-a)+127)/255);rampLuminance[size_t(a)]=luminance(ramp[size_t(a)]);}
  const double paperL=rampLuminance[0];
  std::vector<QRgb> table(size_t(transferSteps+1));
  for(int i=0;i<=transferSteps;++i){
@@ -233,20 +240,30 @@ QRgb atLuminance(const QColor& color,double target){
  return qRgb(toSrgb(r*scale),toSrgb(g*scale),toSrgb(b*scale));
 }
 
-// The band a marker leaves on a page: a pastel of the marker on light pages
-// (half white), on dark pages the marker mixed with white until it is paper
-// bright, so dark text reads on it. White and black markers are neutral paper.
-QRgb paperFor(const QColor& marker,bool dark){
- const QRgb m=marker.rgb();
- if(std::min({qRed(m),qGreen(m),qBlue(m)})>=whiteMarker)return dark?qRgb(250,250,250):qRgb(232,232,232);
- if(std::max({qRed(m),qGreen(m),qBlue(m)})<=blackMarker)return qRgb(149,149,149);
- if(!dark)return qRgb((qRed(m)+256)/2,(qGreen(m)+256)/2,(qBlue(m)+256)/2);
- for(int w=89;w<255;++w){
-  const QRgb q=qRgb(((255-w)*qRed(m)+255*w+127)/255,((255-w)*qGreen(m)+255*w+127)/255,((255-w)*qBlue(m)+255*w+127)/255);
-  if(luminance(q)>=paperLuminance)return q;
+// `color` mixed with white, as little as needed, until its luminance reaches `floor`.
+QRgb whiteMix(QRgb color,double floor){
+ for(int w=0;w<255;++w){
+  const QRgb q=qRgb(((255-w)*qRed(color)+255*w+127)/255,((255-w)*qGreen(color)+255*w+127)/255,((255-w)*qBlue(color)+255*w+127)/255);
+  if(luminance(q)>=floor)return q;
  }
  return qRgb(255,255,255);
 }
+// The marker's pigment: dark markers lifted with white to the floor, pale ones
+// dimmed to the ceiling (hue kept), so dark lettering reads on it and it shows
+// on white. Black is a mid grey, so it marks rather than redacts.
+QRgb pigmentOf(const QColor& marker){
+ const QRgb m=marker.rgb();
+ if(std::max({qRed(m),qGreen(m),qBlue(m)})<=blackMarker)return qRgb(149,149,149);
+ const double l=luminance(m);
+ if(l<pigmentFloor)return whiteMix(m,pigmentFloor);
+ if(l>pigmentCeiling)return atLuminance(marker,pigmentCeiling);
+ return m;
+}
+QRgb bandOf(QRgb pigment,QRgb page){
+ const QRgb paper=whiteMix(page,pageFloor);
+ return qRgb((qRed(paper)*qRed(pigment)+127)/255,(qGreen(paper)*qGreen(pigment)+127)/255,(qBlue(paper)*qBlue(pigment)+127)/255);
+}
+QRgb bandFor(const QColor& marker,QRgb page){return bandOf(pigmentOf(marker),page);}
 
 Plan plan(const QImage& source,const QRect& requested,const QList<QRect>& redactions,const QColor& marker){
  Plan plan;const auto area=requested.intersected(source.rect());
@@ -291,12 +308,8 @@ Plan plan(const QImage& source,const QRect& requested,const QList<QRect>& redact
   if(index<0){index=int(plan.backgrounds.size());plan.backgrounds.push_back(blockColor[size_t(b)]);}
   plan.blockBackground[size_t(b)]=index;
  }
- plan.mode=Plan::Mode::Paper;
- for(const QRgb bg:plan.backgrounds){
-  const double pageLuminance=luminance(bg);
-  const QRgb paper=paperFor(marker,pageLuminance<darkPage);
-  plan.paper.push_back(paper);plan.transfer.push_back(transferTable(paper,pageLuminance));
- }
+ plan.mode=Plan::Mode::Paper;const QRgb pigment=pigmentOf(marker);
+ for(const QRgb bg:plan.backgrounds){const QRgb band=bandOf(pigment,bg);plan.band.push_back(band);plan.transfer.push_back(transferTable(band,luminance(bg)));}
  return plan;
 }
 
@@ -304,10 +317,23 @@ void apply(QImage& image,const QRect& requested,const Plan& plan){
  const auto target=requested.intersected(image.rect());
  if(plan.isNull()||target.isEmpty()||image.depth()!=32)return;
  if(plan.mode==Plan::Mode::Wash){
-  const int mr=qRed(plan.fallback),mg=qGreen(plan.fallback),mb=qBlue(plan.fallback);
+  // A tint that keeps every pixel's luminance: the colour moves toward the
+  // marker in linear light and is scaled back to its own brightness, so text
+  // on a photo or a coloured label keeps its exact contrast under the wash.
+  const auto& lin=linearTable();const double mr=lin[size_t(qRed(plan.fallback))],mg=lin[size_t(qGreen(plan.fallback))],mb=lin[size_t(qBlue(plan.fallback))];
   for(int y=target.top();y<=target.bottom();++y){
    auto* line=reinterpret_cast<QRgb*>(image.scanLine(y));
-   for(int x=target.left();x<=target.right();++x){const QRgb p=line[x];line[x]=qRgba((184*qRed(p)+71*mr+127)/255,(184*qGreen(p)+71*mg+127)/255,(184*qBlue(p)+71*mb+127)/255,qAlpha(p));}
+   for(int x=target.left();x<=target.right();++x){
+    const QRgb p=line[x];const double r=lin[size_t(qRed(p))],g=lin[size_t(qGreen(p))],b=lin[size_t(qBlue(p))];
+    const double l=0.2126*r+0.7152*g+0.0722*b;
+    double tr=r+(mr-r)*washChroma,tg=g+(mg-g)*washChroma,tb=b+(mb-b)*washChroma;
+    const double tl=0.2126*tr+0.7152*tg+0.0722*tb;if(tl<1e-6)continue;
+    const double scale=l/tl;tr*=scale;tg*=scale;tb*=scale;
+    // A channel over white: pull the colour toward the grey of the same luminance until it fits.
+    const double top=std::max({tr,tg,tb});
+    if(top>1.0){const double k=(1.0-l)/(top-l);tr=l+(tr-l)*k;tg=l+(tg-l)*k;tb=l+(tb-l)*k;}
+    line[x]=qRgba(toSrgbFast(tr),toSrgbFast(tg),toSrgbFast(tb),qAlpha(p));
+   }
   }
   return;
  }

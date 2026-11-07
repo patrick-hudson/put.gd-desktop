@@ -543,40 +543,48 @@ private slots:
   QVERIFY(canvas.cachedBlurBytes()<=EditorCanvas::blurCacheBytes);QVERIFY(canvas.cachedBlurBytes()>0);
  }
 
- void highlightOnLightPagesIsPastelPaperWithDarkInk(){
+ void highlightOnLightPagesIsTheMarkerWithDarkInk(){
   const QRgb white=qRgb(255,255,255),dark=qRgb(31,35,40),marker=qRgb(250,204,21);
   EditDocument doc(page(white,dark));auto mark=box(Shape::Kind::Highlight,QRect(14,12,372,40));mark.color=QColor(marker);doc.add(mark);
-  const auto out=doc.render();const QRgb paper=highlight::paperFor(QColor(marker),false);
-  // The page becomes a pastel of the marker (half white); outside the box nothing changes.
-  QCOMPARE(paper,qRgb(253,230,138));QCOMPARE(out.pixel(16,14),paper);QCOMPARE(out.pixel(380,50),paper);QCOMPARE(out.pixel(5,5),white);
-  // Ink keeps the contrast it had with the page, as dark lettering on the paper.
-  int ink=0,readable=0;QVERIFY(inkReadable(doc.base(),out,mark.rect,white,paper,10.0,ink,readable)>200);QCOMPARE(readable,ink);
+  const auto out=doc.render();const QRgb band=highlight::bandFor(QColor(marker),white);
+  // A white page takes the marker as it is: the classic highlighter; outside the box nothing changes.
+  QCOMPARE(band,marker);QCOMPARE(out.pixel(16,14),band);QCOMPARE(out.pixel(380,50),band);QCOMPARE(out.pixel(5,5),white);
+  // Ink keeps the contrast it had with the page, as dark lettering on the band.
+  int ink=0,readable=0;QVERIFY(inkReadable(doc.base(),out,mark.rect,white,band,9.0,ink,readable)>200);QCOMPARE(readable,ink);
+  // A grey page gets a band darker than itself, so the mark shows on panels too.
+  const QRgb grey=qRgb(224,224,224);QVERIFY(highlight::luminance(highlight::bandFor(QColor(marker),grey))<highlight::luminance(grey)/1.25);
  }
  void highlightOnDarkPagesIsPaperWithDarkInk(){
   const QRgb navy=qRgb(13,17,23),white=qRgb(230,237,243),marker=qRgb(250,204,21);
   EditDocument doc(page(navy,white));auto mark=box(Shape::Kind::Highlight,QRect(14,12,372,40));doc.add(mark);
-  const auto out=doc.render();const QRgb paper=highlight::paperFor(QColor(marker),true);
+  const auto out=doc.render();const QRgb band=highlight::bandFor(QColor(marker),navy);
   // The box is paper-bright marker colour; outside it nothing changes.
-  QVERIFY(highlight::luminance(paper)>=highlight::paperLuminance);QVERIFY(qRed(paper)>qBlue(paper)&&qGreen(paper)>qBlue(paper));
-  QCOMPARE(out.pixel(16,14),paper);QCOMPARE(out.pixel(380,50),paper);QCOMPARE(out.pixel(5,5),navy);
+  QVERIFY(highlight::luminance(band)>=0.45);QVERIFY(qRed(band)>qBlue(band)&&qGreen(band)>qBlue(band));
+  QCOMPARE(out.pixel(16,14),band);QCOMPARE(out.pixel(380,50),band);QCOMPARE(out.pixel(5,5),navy);
   // Light ink becomes dark ink with the contrast it had; it never stays light.
-  int ink=0,readable=0;QVERIFY(inkReadable(doc.base(),out,mark.rect,navy,paper,10.0,ink,readable)>200);QCOMPARE(readable,ink);
+  int ink=0,readable=0;QVERIFY(inkReadable(doc.base(),out,mark.rect,navy,band,9.0,ink,readable)>200);QCOMPARE(readable,ink);
+  // The band changes continuously with the page: a mid grey page gets a band between the two.
+  const QRgb mid=qRgb(128,128,128);const double l=highlight::luminance(highlight::bandFor(QColor(marker),mid));
+  QVERIFY(l>=highlight::luminance(band)-0.01&&l<=highlight::luminance(highlight::bandFor(QColor(marker),qRgb(255,255,255)))+0.01);
  }
  void highlightMarkerColorsKeepTheirHue(){
   const QRgb navy=qRgb(13,17,23),white=qRgb(255,255,255),dark=qRgb(31,35,40);
-  // A blue marker on a dark page is a pale blue paper, and the ink reads on it.
+  // A blue marker on a dark page is a pale blue band, and the ink reads on it.
   EditDocument darkDoc(page(navy,qRgb(230,237,243)));auto blue=box(Shape::Kind::Highlight,QRect(14,12,372,40));blue.color=QColor(59,130,246);darkDoc.add(blue);
-  const auto blueOut=darkDoc.render();const QRgb paper=blueOut.pixel(16,14);
-  QCOMPARE(paper,highlight::paperFor(blue.color,true));QVERIFY(qBlue(paper)>qRed(paper));QVERIFY(highlight::luminance(paper)>=highlight::paperLuminance);
-  int ink=0,readable=0;QVERIFY(inkReadable(darkDoc.base(),blueOut,blue.rect,navy,paper,10.0,ink,readable)>200);QCOMPARE(readable,ink);
-  // Black and white markers are neutral paper, visible on a light page, with the text still readable.
+  const auto blueOut=darkDoc.render();const QRgb band=blueOut.pixel(16,14);
+  QCOMPARE(band,highlight::bandFor(blue.color,navy));QVERIFY(qBlue(band)>qRed(band));QVERIFY(highlight::luminance(band)>=0.45);
+  int ink=0,readable=0;QVERIFY(inkReadable(darkDoc.base(),blueOut,blue.rect,navy,band,9.0,ink,readable)>200);QCOMPARE(readable,ink);
+  // Black and white markers are neutral bands, visible on a white page, with the text still readable.
   for(const QColor color:{QColor(17,19,23),QColor(255,255,255)}){
    EditDocument lightDoc(page(white,dark));auto mark=box(Shape::Kind::Highlight,QRect(14,12,372,40));mark.color=color;lightDoc.add(mark);
-   const auto out=lightDoc.render();const QRgb grey=highlight::paperFor(color,false);
-   QCOMPARE(grey,color==QColor(255,255,255)?qRgb(232,232,232):qRgb(149,149,149));QCOMPARE(out.pixel(16,14),grey);
-   QVERIFY2(rgbDistance(grey,white)>=20,qPrintable(color.name()));
+   const auto out=lightDoc.render();const QRgb grey=highlight::bandFor(color,white);
+   QCOMPARE(grey,color==QColor(255,255,255)?qRgb(216,216,216):qRgb(149,149,149));QCOMPARE(out.pixel(16,14),grey);
+   QVERIFY2(contrastOf(grey,white)>=1.4,qPrintable(color.name()));
    int count=0,ok=0;QVERIFY(inkReadable(lightDoc.base(),out,mark.rect,white,grey,4.5,count,ok)>200);QCOMPARE(ok,count);
   }
+  // Custom colours: a navy marker is lifted to a readable lavender, a near-white one dimmed so it shows on white.
+  QVERIFY(highlight::luminance(highlight::bandFor(QColor(32,32,96),white))>=0.5);
+  QVERIFY(contrastOf(highlight::bandFor(QColor(239,239,239),white),white)>=1.4);
  }
  void highlightKeepsBothBackgroundsOfATwoPanelBox(){
   // Left: white panel with dark text. Right: dark panel with light text.
@@ -584,20 +592,25 @@ private slots:
   QImage image(400,64,QImage::Format_RGB32);{QPainter p(&image);p.drawImage(0,0,left);p.drawImage(200,0,right);}
   EditDocument doc(image);auto mark=box(Shape::Kind::Highlight,QRect(10,10,380,44));doc.add(mark);const auto out=doc.render();
   // Each half gets its own paper (pastel on the light panel, paper-bright on the dark one) and dark readable ink.
-  const QRgb lightPaper=highlight::paperFor(mark.color,false),darkPaper=highlight::paperFor(mark.color,true);
+  const QRgb lightPaper=highlight::bandFor(mark.color,qRgb(255,255,255)),darkPaper=highlight::bandFor(mark.color,qRgb(13,17,23));
   QCOMPARE(out.pixel(12,12),lightPaper);QCOMPARE(out.pixel(388,52),darkPaper);QVERIFY(lightPaper!=darkPaper);
   int ink=0,readable=0;QVERIFY(inkReadable(doc.base(),out,QRect(10,10,190,44),qRgb(255,255,255),lightPaper,7.0,ink,readable)>100);QCOMPARE(readable,ink);
   QVERIFY(inkReadable(doc.base(),out,QRect(210,10,180,44),qRgb(13,17,23),darkPaper,7.0,ink,readable)>100);QCOMPARE(readable,ink);
  }
  void highlightFallsBackToAWashWithoutABackground(){
-  // Noise has no dominant background: a light wash of the marker over everything, on light and dark content.
-  auto wash=[](QRgb p){return qRgb((184*qRed(p)+71*250+127)/255,(184*qGreen(p)+71*204+127)/255,(184*qBlue(p)+71*21+127)/255);};
+  // Noise has no dominant background: a tint toward the marker that keeps every pixel's luminance,
+  // so whatever contrast a photo or a coloured label had stays, on light and dark content.
+  auto check=[&](QImage source){
+   EditDocument doc(source);doc.add(box(Shape::Kind::Highlight,QRect(20,20,260,80)));const auto out=doc.render();
+   int warmer=0,count=0;double drift=0;
+   for(int y=20;y<100;y+=3)for(int x=20;x<280;x+=3){const QRgb p=source.pixel(x,y),o=out.pixel(x,y);++count;drift=std::max(drift,std::abs(highlight::luminance(o)-highlight::luminance(p)));warmer+=(qRed(o)+qGreen(o)-2*qBlue(o))>(qRed(p)+qGreen(p)-2*qBlue(p));}
+   QVERIFY2(drift<0.02,qPrintable(QString("luminance drift %1").arg(drift)));QVERIFY2(warmer*100>=count*90,qPrintable(QString("%1 of %2 pixels moved toward yellow").arg(warmer).arg(count)));
+   QCOMPARE(out.pixel(5,5),source.pixel(5,5));
+  };
   auto light=noise({300,120},7);for(int y=0;y<light.height();++y){auto* line=reinterpret_cast<QRgb*>(light.scanLine(y));for(int x=0;x<light.width();++x)line[x]=qRgb(128+qRed(line[x])/2,128+qGreen(line[x])/2,128+qBlue(line[x])/2);}
-  EditDocument lightDoc(light);lightDoc.add(box(Shape::Kind::Highlight,QRect(20,20,260,80)));const auto lightOut=lightDoc.render();
-  QCOMPARE(lightOut.pixel(50,50),wash(light.pixel(50,50)));QCOMPARE(lightOut.pixel(5,5),light.pixel(5,5));
+  check(light);
   auto dark=noise({300,120},9);for(int y=0;y<dark.height();++y){auto* line=reinterpret_cast<QRgb*>(dark.scanLine(y));for(int x=0;x<dark.width();++x)line[x]=qRgb(qRed(line[x])/5,qGreen(line[x])/5,qBlue(line[x])/5);}
-  EditDocument darkDoc(dark);darkDoc.add(box(Shape::Kind::Highlight,QRect(20,20,260,80)));const auto darkOut=darkDoc.render();
-  QCOMPARE(darkOut.pixel(50,50),wash(dark.pixel(50,50)));QCOMPARE(darkOut.pixel(5,5),dark.pixel(5,5));
+  check(dark);
  }
  void highlightPreviewMatchesExportAtFullScale(){
   EditDocument doc(fixture("highlight-dark-table.png"));auto mark=box(Shape::Kind::Highlight,QRect(40,50,480,60));doc.add(mark);
@@ -612,7 +625,7 @@ private slots:
   EditDocument doc(fixture("highlight-lcd-text.png"));QVERIFY(!doc.base().isNull());
   const QRgb page=doc.base().pixel(12,17);QVERIFY(qRed(page)>240);
   auto mark=box(Shape::Kind::Highlight,QRect(10,15,510,21));doc.add(mark);const auto out=doc.render();
-  const QRgb paper=highlight::paperFor(mark.color,false);
+  const QRgb paper=highlight::bandFor(mark.color,page);
   int tinted=0,total=0;for(int y=mark.rect.top();y<=mark.rect.bottom();++y)for(int x=mark.rect.left();x<=mark.rect.right();++x)if(rgbDistance(doc.base().pixel(x,y),page)<8){++total;tinted+=rgbDistance(out.pixel(x,y),paper)<=6;}
   QVERIFY2(tinted*100>=total*95,qPrintable(QString("%1 of %2 paper pixels took the marker").arg(tinted).arg(total)));
   // The glyph cores read on the paper at least as well as the original text did, and the fringes stay neutral-dark.
