@@ -2,6 +2,7 @@
 #include "editor/EditDocument.h"
 #include "editor/EditorCanvas.h"
 #include "editor/EditorCommands.h"
+#include "editor/HighlightFilter.h"
 #include "ui/Theme.h"
 #include <QApplication>
 #include <QBuffer>
@@ -12,6 +13,7 @@
 #include <QTest>
 #include <QScopeGuard>
 #include <thread>
+#include <QElapsedTimer>
 #include <QtEndian>
 #include "fixtures/Waits.h"
 using namespace putgd;using namespace putgd::editor;
@@ -28,7 +30,32 @@ QImage secretVariant(const QImage& base,const QRect& mask,quint32 seed){
  for(int y=mask.top();y<=mask.bottom();++y)for(int x=mask.left();x<=mask.right();++x)image.setPixel(x,y,(random.generate()|0xff000000U)^image.pixel(x,y));
  return image;
 }
-Shape box(Shape::Kind kind,QRect rect){Shape shape;shape.kind=kind;shape.rect=rect;if(kind==Shape::Kind::Redact)shape.color=Qt::black;return shape;}
+// A flat page with one line of bold text, as a capture would show it.
+QImage page(QRgb background,QRgb ink,const QString& text=QStringLiteral("Uploaded to s3://bucket/a.png"),QSize size={400,64}){
+ QImage image(size,QImage::Format_RGB32);image.fill(background);
+ QPainter painter(&image);painter.setRenderHint(QPainter::TextAntialiasing);QFont font;font.setPixelSize(22);font.setBold(true);painter.setFont(font);painter.setPen(QColor(ink));painter.drawText(QRect(20,0,size.width()-40,size.height()),Qt::AlignVCenter|Qt::AlignLeft,text);
+ return image;
+}
+int rgbDistance(QRgb a,QRgb b){const int dr=qRed(a)-qRed(b),dg=qGreen(a)-qGreen(b),db=qBlue(a)-qBlue(b);return int(std::lround(std::sqrt(double(dr*dr+dg*dg+db*db))));}
+double contrastOf(QRgb a,QRgb b){const double la=highlight::luminance(a),lb=highlight::luminance(b);return (std::max(la,lb)+0.05)/(std::min(la,lb)+0.05);}
+// Counts pixels of `box` that are ink (far from `background`) and how many of them read on `paper`
+// as well as they read on the page (up to `minContrast`), while being darker than the paper.
+int inkReadable(const QImage& before,const QImage& after,const QRect& box,QRgb background,QRgb paper,double minContrast,int& ink,int& readable){
+ ink=0;readable=0;const double paperL=highlight::luminance(paper);
+ for(int y=box.top();y<=box.bottom();++y)for(int x=box.left();x<=box.right();++x)if(rgbDistance(before.pixel(x,y),background)>=highlight::inkDistance){
+  ++ink;const QRgb o=after.pixel(x,y);const double had=contrastOf(before.pixel(x,y),background);
+  readable+=contrastOf(o,paper)>=std::min(minContrast,had)*0.95&&highlight::luminance(o)<paperL;
+ }
+ return ink;
+}
+QImage fixture(const char* name){QImage image(QString(PUTGD_TEST_FIXTURES)+"/"+name);return image.convertToFormat(QImage::Format_RGB32);}
+// Counts pixels of `box` that are ink (far from `background`) and checks each kept its exact value.
+int inkUnchanged(const QImage& before,const QImage& after,const QRect& box,QRgb background,bool& allKept){
+ int ink=0;allKept=true;
+ for(int y=box.top();y<=box.bottom();++y)for(int x=box.left();x<=box.right();++x)if(rgbDistance(before.pixel(x,y),background)>=highlight::inkDistance){++ink;allKept=allKept&&before.pixel(x,y)==after.pixel(x,y);}
+ return ink;
+}
+Shape box(Shape::Kind kind,QRect rect){Shape shape;shape.kind=kind;shape.rect=rect;if(kind==Shape::Kind::Redact)shape.color=Qt::black;if(kind==Shape::Kind::Highlight)shape.color=QColor(250,204,21);return shape;}
 QByteArray chunk(const QByteArray& type,const QByteArray& data){
  QByteArray out(4,0);qToBigEndian<quint32>(quint32(data.size()),out.data());out+=type+data;
  // CRC-32 over type and data, computed independently of the inspector.
@@ -514,6 +541,236 @@ private slots:
   for(int i=0;i<40;++i){auto blur=box(Shape::Kind::Blur,QRect((i*61)%2500,(i*37)%1500,500,500));blur.strength=20;doc.add(blur);}
   canvas.documentChanged();canvas.actualSize();canvas.repaint();canvas.fit();canvas.repaint();
   QVERIFY(canvas.cachedBlurBytes()<=EditorCanvas::blurCacheBytes);QVERIFY(canvas.cachedBlurBytes()>0);
+ }
+
+ void highlightOnLightPagesIsTheMarkerWithDarkInk(){
+  const QRgb white=qRgb(255,255,255),dark=qRgb(31,35,40),marker=qRgb(250,204,21);
+  EditDocument doc(page(white,dark));auto mark=box(Shape::Kind::Highlight,QRect(14,12,372,40));mark.color=QColor(marker);doc.add(mark);
+  const auto out=doc.render();const QRgb band=highlight::bandFor(QColor(marker),white);
+  // A white page takes the marker as it is: the classic highlighter; outside the box nothing changes.
+  QCOMPARE(band,marker);QCOMPARE(out.pixel(16,14),band);QCOMPARE(out.pixel(380,50),band);QCOMPARE(out.pixel(5,5),white);
+  // Ink keeps the contrast it had with the page, as dark lettering on the band.
+  int ink=0,readable=0;QVERIFY(inkReadable(doc.base(),out,mark.rect,white,band,9.0,ink,readable)>200);QCOMPARE(readable,ink);
+  // A grey page gets a band darker than itself, so the mark shows on panels too.
+  const QRgb grey=qRgb(224,224,224);QVERIFY(highlight::luminance(highlight::bandFor(QColor(marker),grey))<highlight::luminance(grey)/1.25);
+ }
+ void highlightOnDarkPagesIsPaperWithDarkInk(){
+  const QRgb navy=qRgb(13,17,23),white=qRgb(230,237,243),marker=qRgb(250,204,21);
+  EditDocument doc(page(navy,white));auto mark=box(Shape::Kind::Highlight,QRect(14,12,372,40));doc.add(mark);
+  const auto out=doc.render();const QRgb band=highlight::bandFor(QColor(marker),navy);
+  // The box is paper-bright marker colour; outside it nothing changes.
+  QVERIFY(highlight::luminance(band)>=0.35);QVERIFY(qRed(band)>qBlue(band)&&qGreen(band)>qBlue(band));
+  QCOMPARE(out.pixel(16,14),band);QCOMPARE(out.pixel(380,50),band);QCOMPARE(out.pixel(5,5),navy);
+  // Light ink becomes dark ink with the contrast it had; it never stays light.
+  int ink=0,readable=0;QVERIFY(inkReadable(doc.base(),out,mark.rect,navy,band,7.0,ink,readable)>200);QCOMPARE(readable,ink);
+  // The band changes continuously with the page: a mid grey page gets a band between the two.
+  const QRgb mid=qRgb(128,128,128);const double l=highlight::luminance(highlight::bandFor(QColor(marker),mid));
+  QVERIFY(l>=highlight::luminance(band)-0.01&&l<=highlight::luminance(highlight::bandFor(QColor(marker),qRgb(255,255,255)))+0.01);
+ }
+ void highlightMarkerColorsKeepTheirHue(){
+  const QRgb navy=qRgb(13,17,23),white=qRgb(255,255,255),dark=qRgb(31,35,40);
+  // A blue marker on a dark page is a pale blue band, and the ink reads on it.
+  EditDocument darkDoc(page(navy,qRgb(230,237,243)));auto blue=box(Shape::Kind::Highlight,QRect(14,12,372,40));blue.color=QColor(59,130,246);darkDoc.add(blue);
+  const auto blueOut=darkDoc.render();const QRgb band=blueOut.pixel(16,14);
+  QCOMPARE(band,highlight::bandFor(blue.color,navy));QVERIFY(qBlue(band)>qRed(band));QVERIFY(highlight::luminance(band)>=0.35);
+  int ink=0,readable=0;QVERIFY(inkReadable(darkDoc.base(),blueOut,blue.rect,navy,band,7.0,ink,readable)>200);QCOMPARE(readable,ink);
+  // Black and white markers are neutral bands, visible on a white page, with the text still readable.
+  for(const QColor color:{QColor(17,19,23),QColor(255,255,255)}){
+   EditDocument lightDoc(page(white,dark));auto mark=box(Shape::Kind::Highlight,QRect(14,12,372,40));mark.color=color;lightDoc.add(mark);
+   const auto out=lightDoc.render();const QRgb grey=highlight::bandFor(color,white);
+   QCOMPARE(grey,color==QColor(255,255,255)?qRgb(216,216,216):qRgb(149,149,149));QCOMPARE(out.pixel(16,14),grey);
+   QVERIFY2(contrastOf(grey,white)>=1.4,qPrintable(color.name()));
+   int count=0,ok=0;QVERIFY(inkReadable(lightDoc.base(),out,mark.rect,white,grey,4.5,count,ok)>200);QCOMPARE(ok,count);
+  }
+  // Custom colours: a navy marker is lifted to a readable lavender, a near-white one dimmed so it shows on white.
+  QVERIFY(highlight::luminance(highlight::bandFor(QColor(32,32,96),white))>=0.4);
+  QVERIFY(contrastOf(highlight::bandFor(QColor(239,239,239),white),white)>=1.4);
+ }
+ void highlightKeepsIconsInAShortBox(){
+  // A 17 px box ends in a one-pixel block row. An icon's bottom stroke there must not pass for a
+  // background, or the icon above it would be painted band colour.
+  const QRgb navy=qRgb(13,17,23);QImage image=page(navy,qRgb(230,237,243));
+  {QPainter p(&image);p.fillRect(QRect(16,20,10,9),QColor(59,130,246));}  // an icon ending on the box's last row
+  EditDocument doc(image);auto mark=box(Shape::Kind::Highlight,QRect(14,12,372,17));doc.add(mark);const auto out=doc.render();
+  const QRgb band=highlight::bandFor(mark.color,navy);QCOMPARE(out.pixel(200,14),band);
+  for(const QPoint at:{QPoint(20,22),QPoint(24,27),QPoint(18,28)})QVERIFY2(contrastOf(out.pixel(at),band)>=3.0,qPrintable(QString("icon pixel %1,%2 became %3").arg(at.x()).arg(at.y()).arg(QColor(out.pixel(at)).name())));
+ }
+ void highlightKeepsBothBackgroundsOfATwoPanelBox(){
+  // Left: white panel with dark text. Right: dark panel with light text.
+  auto left=page(qRgb(255,255,255),qRgb(31,35,40),"Uploaded",{200,64}),right=page(qRgb(13,17,23),qRgb(230,237,243),"Uploaded",{200,64});
+  QImage image(400,64,QImage::Format_RGB32);{QPainter p(&image);p.drawImage(0,0,left);p.drawImage(200,0,right);}
+  EditDocument doc(image);auto mark=box(Shape::Kind::Highlight,QRect(10,10,380,44));doc.add(mark);const auto out=doc.render();
+  // Each half gets its own paper (pastel on the light panel, paper-bright on the dark one) and dark readable ink.
+  const QRgb lightPaper=highlight::bandFor(mark.color,qRgb(255,255,255)),darkPaper=highlight::bandFor(mark.color,qRgb(13,17,23));
+  QCOMPARE(out.pixel(12,12),lightPaper);QCOMPARE(out.pixel(388,52),darkPaper);QVERIFY(lightPaper!=darkPaper);
+  int ink=0,readable=0;QVERIFY(inkReadable(doc.base(),out,QRect(10,10,190,44),qRgb(255,255,255),lightPaper,7.0,ink,readable)>100);QCOMPARE(readable,ink);
+  QVERIFY(inkReadable(doc.base(),out,QRect(210,10,180,44),qRgb(13,17,23),darkPaper,7.0,ink,readable)>100);QCOMPARE(readable,ink);
+ }
+ void highlightFallsBackToAWashWithoutABackground(){
+  // Noise has no dominant background: a tint toward the marker that keeps every pixel's luminance,
+  // so whatever contrast a photo or a coloured label had stays, on light and dark content.
+  auto check=[&](QImage source){
+   EditDocument doc(source);doc.add(box(Shape::Kind::Highlight,QRect(20,20,260,80)));const auto out=doc.render();
+   int warmer=0,count=0;double drift=0;
+   for(int y=20;y<100;y+=3)for(int x=20;x<280;x+=3){const QRgb p=source.pixel(x,y),o=out.pixel(x,y);++count;drift=std::max(drift,std::abs(highlight::luminance(o)-highlight::luminance(p)));warmer+=(qRed(o)+qGreen(o)-2*qBlue(o))>(qRed(p)+qGreen(p)-2*qBlue(p));}
+   QVERIFY2(drift<0.02,qPrintable(QString("luminance drift %1").arg(drift)));QVERIFY2(warmer*100>=count*90,qPrintable(QString("%1 of %2 pixels moved toward yellow").arg(warmer).arg(count)));
+   QCOMPARE(out.pixel(5,5),source.pixel(5,5));
+  };
+  auto light=noise({300,120},7);for(int y=0;y<light.height();++y){auto* line=reinterpret_cast<QRgb*>(light.scanLine(y));for(int x=0;x<light.width();++x)line[x]=qRgb(128+qRed(line[x])/2,128+qGreen(line[x])/2,128+qBlue(line[x])/2);}
+  check(light);
+  auto dark=noise({300,120},9);for(int y=0;y<dark.height();++y){auto* line=reinterpret_cast<QRgb*>(dark.scanLine(y));for(int x=0;x<dark.width();++x)line[x]=qRgb(qRed(line[x])/5,qGreen(line[x])/5,qBlue(line[x])/5);}
+  check(dark);
+  // Neutral markers have no chroma to lend: black shades light content and white lightens dark content
+  // (as far as the brightest pixel allows), keeping contrast ratios.
+  for(const auto& [color,source]:std::initializer_list<std::pair<QColor,const QImage&>>{{QColor(17,17,17),light},{QColor(255,255,255),dark}}){
+   EditDocument doc(source);auto mark=box(Shape::Kind::Highlight,QRect(20,20,260,80));mark.color=color;doc.add(mark);const auto out=doc.render();
+   const QRgb a=source.pixel(40,40),b=source.pixel(200,90),oa=out.pixel(40,40),ob=out.pixel(200,90);
+   const double la=highlight::luminance(a),loa=highlight::luminance(oa);
+   QVERIFY2(color==QColor(255,255,255)?loa>la*1.4:loa<la*0.7,qPrintable(QString("%1: %2 -> %3").arg(color.name()).arg(la).arg(loa)));
+   QVERIFY2(std::abs(contrastOf(oa,ob)-contrastOf(a,b))<0.05*contrastOf(a,b),qPrintable(QString("%1: contrast %2 -> %3").arg(color.name()).arg(contrastOf(a,b)).arg(contrastOf(oa,ob))));
+  }
+  // A white label on a red badge over a photo keeps its contrast under every neutral and coloured wash.
+  QImage badge=noise({300,120},11);{QPainter p(&badge);p.drawImage(40,40,page(qRgb(255,40,60),qRgb(255,255,255),"Nightly: 400 x 260",{220,40}));}
+  QPoint inkAt;for(int y=40;y<80&&inkAt.isNull();++y)for(int x=40;x<260;++x)if(badge.pixel(x,y)==qRgb(255,255,255)){inkAt=QPoint(x,y);break;}
+  QVERIFY(!inkAt.isNull());const QPoint bgAt(44,44);QCOMPARE(badge.pixel(bgAt),qRgb(255,40,60));
+  const double had=contrastOf(badge.pixel(inkAt),badge.pixel(bgAt));
+  for(const QColor color:{QColor(255,255,255),QColor(17,17,17),QColor(250,204,21)}){
+   EditDocument doc(badge);auto mark=box(Shape::Kind::Highlight,QRect(20,20,260,80));mark.color=color;doc.add(mark);const auto out=doc.render();
+   const double now=contrastOf(out.pixel(inkAt),out.pixel(bgAt));
+   QVERIFY2(now>=had*0.95,qPrintable(QString("%1: label contrast %2 -> %3").arg(color.name()).arg(had).arg(now)));
+  }
+  // A big box is sampled on a grid, but a white marker's headroom must see every pixel: a one-pixel bright
+  // line that falls between the samples keeps its contrast too.
+  auto big=noise({1200,500},13);for(int y=0;y<big.height();++y){auto* line=reinterpret_cast<QRgb*>(big.scanLine(y));for(int x=0;x<big.width();++x)line[x]=qRgb(qRed(line[x])/5,qGreen(line[x])/5,qBlue(line[x])/5);}
+  for(int y=100;y<400;++y)big.setPixel(601,y,qRgb(235,235,235));
+  {EditDocument doc(big);auto mark=box(Shape::Kind::Highlight,QRect(0,0,1200,500));mark.color=QColor(255,255,255);doc.add(mark);const auto out=doc.render();
+   const double before=contrastOf(big.pixel(601,200),big.pixel(620,200)),after=contrastOf(out.pixel(601,200),out.pixel(620,200));
+   QVERIFY2(after>=before*0.95,qPrintable(QString("off-grid line contrast %1 -> %2").arg(before).arg(after)));
+   QVERIFY(highlight::luminance(out.pixel(620,200))>highlight::luminance(big.pixel(620,200)));}
+ }
+ void highlightPreviewMatchesExportAtFullScale(){
+  EditDocument doc(fixture("highlight-dark-table.png"));
+  // A highlight under this one, a blur crossing the box's edge and a redaction crossing it
+  // all show the same in the tile and the export.
+  auto under=box(Shape::Kind::Highlight,QRect(20,30,200,50));under.color=QColor(59,130,246);doc.add(under);
+  auto mark=box(Shape::Kind::Highlight,QRect(40,50,480,60));doc.add(mark);
+  auto blur=box(Shape::Kind::Blur,QRect(300,90,100,40));blur.strength=8;doc.add(blur);doc.add(box(Shape::Kind::Redact,QRect(30,55,60,10)));
+  const auto out=doc.render(),preview=doc.highlightPreview(mark,1.0);
+  QCOMPARE(preview.size(),mark.rect.size());
+  for(int y=0;y<preview.height();++y)for(int x=0;x<preview.width();++x)QCOMPARE(preview.pixel(x,y),out.pixel(mark.rect.left()+x,mark.rect.top()+y));
+  // The highlight under it is its own tile, tinted from the same pre-highlight pixels.
+  const auto lower=doc.highlightPreview(under,1.0);QCOMPARE(lower.size(),under.rect.size());
+  for(int y=0;y<lower.height();++y)for(int x=0;x<lower.width();++x)if(!mark.rect.contains(under.rect.left()+x,under.rect.top()+y))QCOMPARE(lower.pixel(x,y),out.pixel(under.rect.left()+x,under.rect.top()+y));
+ }
+ void highlightTreatsATiledPatternAsAPhoto(){
+  // Dozens of distinct flat tiles are not a page: the wash applies instead of a band per tile.
+  QImage tiles(640,320,QImage::Format_RGB32);
+  for(int y=0;y<tiles.height();++y){auto* line=reinterpret_cast<QRgb*>(tiles.scanLine(y));for(int x=0;x<tiles.width();++x){const int k=(x/16)+(y/16)*40;line[x]=qRgb(40+(k*37)%200,40+(k*59)%200,40+(k*83)%200);}}
+  EditDocument doc(tiles);doc.add(box(Shape::Kind::Highlight,QRect(0,0,640,320)));const auto out=doc.render();
+  int kept=0;for(int y=8;y<320;y+=16)for(int x=8;x<640;x+=16)kept+=std::abs(highlight::luminance(out.pixel(x,y))-highlight::luminance(tiles.pixel(x,y)))<0.02;
+  QVERIFY2(kept>700,qPrintable(QString("%1 tile centres kept their luminance").arg(kept)));
+ }
+ void highlightOnRealLcdTextIsPaperWithReadableInk(){
+  // Subpixel-rendered Cinnamon text: the stems are blue and peach columns with no neutral core.
+  EditDocument doc(fixture("highlight-lcd-text.png"));QVERIFY(!doc.base().isNull());
+  const QRgb page=doc.base().pixel(12,17);QVERIFY(qRed(page)>240);
+  auto mark=box(Shape::Kind::Highlight,QRect(10,15,510,21));doc.add(mark);const auto out=doc.render();
+  const QRgb paper=highlight::bandFor(mark.color,page);
+  int tinted=0,total=0;for(int y=mark.rect.top();y<=mark.rect.bottom();++y)for(int x=mark.rect.left();x<=mark.rect.right();++x)if(rgbDistance(doc.base().pixel(x,y),page)<8){++total;tinted+=rgbDistance(out.pixel(x,y),paper)<=6;}
+  QVERIFY2(tinted*100>=total*95,qPrintable(QString("%1 of %2 paper pixels took the marker").arg(tinted).arg(total)));
+  // The glyph cores read on the paper at least as well as the original text did, and the fringes stay neutral-dark.
+  int ink=0,readable=0;QVERIFY(inkReadable(doc.base(),out,mark.rect,page,paper,4.5,ink,readable)>300);
+  QVERIFY2(readable*100>=ink*97,qPrintable(QString("%1 of %2 ink pixels read").arg(readable).arg(ink)));
+ }
+ void highlightSnapsToTextLinesWordsAndLines(){
+  const auto paper=fixture("highlight-lcd-text.png");
+  // A thin drag through the middle of the first line grows to the line's height.
+  const auto line=highlight::snapToText(paper,QRect(40,24,440,3),{});
+  QVERIFY2(line.height()>=12&&line.height()<=22,qPrintable(QString("%1").arg(line.height())));QVERIFY(line.top()>=12&&line.bottom()<=36);
+  // A drag across the whole paragraph covers three lines and trims to the ink.
+  const auto paragraph=highlight::snapToText(paper,QRect(30,2,470,58),{});
+  QVERIFY(paragraph.top()>=10&&paragraph.top()<=20);QVERIFY(paragraph.bottom()>=55);QVERIFY(paragraph.left()>=26&&paragraph.left()<=36);
+  // Words and lines at a point.
+  const auto word=highlight::wordAt(paper,QPoint(60,25),{});QVERIFY(!word.isNull());QVERIFY(word.contains(QPoint(60,25)));QVERIFY(word.width()<120);
+  const auto whole=highlight::lineAt(paper,QPoint(60,25),{});QVERIFY(whole.contains(word));QVERIFY(whole.width()>300);
+  QVERIFY(highlight::wordAt(paper,QPoint(5,70),{}).isNull());
+  // Empty paper snaps nothing: the box stays as dragged.
+  QImage blank(300,100,QImage::Format_RGB32);blank.fill(Qt::white);QCOMPARE(highlight::snapToText(blank,QRect(10,10,100,20),{}),QRect(10,10,100,20));
+  // Dark table rows: six lines across the box, icons included.
+  const auto table=fixture("highlight-dark-table.png");const auto rows=highlight::snapToText(table,QRect(30,15,470,215),{});
+  QVERIFY(rows.top()>=12&&rows.top()<=18);QVERIFY(rows.bottom()>=218&&rows.bottom()<=228);QVERIFY(rows.right()<490);
+  const auto cell=highlight::wordAt(table,QPoint(300,95),{});QVERIFY(!cell.isNull());QVERIFY2(cell.width()<80&&cell.height()<=26,qPrintable(QString("%1x%2 at %3,%4").arg(cell.width()).arg(cell.height()).arg(cell.x()).arg(cell.y())));
+ }
+ void snappingNeverTracesRedactedText(){
+  // A word under a redaction is not text any more: no word there, and a line drag skips it.
+  const auto paper=fixture("highlight-lcd-text.png");const auto whole=highlight::lineAt(paper,QPoint(60,25),{});QVERIFY(!whole.isNull());
+  const auto word=highlight::wordAt(paper,QPoint(whole.left()+4,25),{});QVERIFY(!word.isNull());QVERIFY(word.left()<=whole.left()+4);  // the line's first word
+  const QList<QRect> redactions{word};
+  QVERIFY(highlight::wordAt(paper,word.center(),redactions).isNull());
+  // The line found from a point further along starts after the redacted word (padding may touch it).
+  const auto line=highlight::lineAt(paper,QPoint(300,25),redactions);QVERIFY(!line.isNull());QVERIFY2(line.left()>word.center().x(),qPrintable(QString("line %1 word %2").arg(line.left()).arg(word.center().x())));
+  // A drag across the line snaps to the ink after the redaction; a drag over the redacted word alone finds no text.
+  const auto snapped=highlight::snapToText(paper,QRect(40,24,440,3),redactions);QVERIFY(snapped.left()>word.center().x());QVERIFY(snapped.height()>=12);
+  const QRect over(word.left(),word.top()+word.height()/2,word.width(),2);QCOMPARE(highlight::snapToText(paper,over,redactions),over);
+  EditDocument doc(paper);doc.add(box(Shape::Kind::Redact,word));QJsonArray created;QString code,message;
+  QVERIFY(!Commands::apply(doc,{QJsonObject{{"op","add"},{"shape",QJsonObject{{"kind","highlight"},{"at",QJsonArray{word.center().x(),word.center().y()}},{"snap","word"}}}}},created,code,message));
+  QVERIFY2(message.contains("No text at that point"),qPrintable(message));
+ }
+ void highlightCommandsSnapToWordsLinesAndText(){
+  EditDocument doc(fixture("highlight-lcd-text.png"));QJsonArray created;QString code,message;
+  QVERIFY2(Commands::apply(doc,{QJsonObject{{"op","add"},{"shape",QJsonObject{{"kind","highlight"},{"at",QJsonArray{60,25}},{"snap","word"}}}}},created,code,message),qPrintable(message));
+  const auto word=doc.shapes().last().rect;QVERIFY(word.contains(QPoint(60,25)));QVERIFY(word.width()<120);
+  QVERIFY(Commands::apply(doc,{QJsonObject{{"op","add"},{"shape",QJsonObject{{"kind","highlight"},{"at",QJsonArray{60,25}},{"snap","line"}}}}},created,code,message));
+  QVERIFY(doc.shapes().last().rect.width()>300);
+  QVERIFY(Commands::apply(doc,{QJsonObject{{"op","add"},{"shape",QJsonObject{{"kind","highlight"},{"rect",QJsonArray{40,24,440,3}},{"snap","text"}}}}},created,code,message));
+  QVERIFY(doc.shapes().last().rect.height()>=12);
+  QVERIFY(Commands::apply(doc,{QJsonObject{{"op","add"},{"shape",QJsonObject{{"kind","highlight"},{"rect",QJsonArray{40,24,440,3}},{"snap","none"}}}}},created,code,message));
+  QCOMPARE(doc.shapes().last().rect,QRect(40,24,440,3));
+  // Rejections leave the document unchanged.
+  const auto before=doc.shapes().size();
+  QVERIFY(!Commands::apply(doc,{QJsonObject{{"op","add"},{"shape",QJsonObject{{"kind","rectangle"},{"rect",QJsonArray{1,1,10,10}},{"snap","text"}}}}},created,code,message));QCOMPARE(code,QString("edit_command_invalid"));
+  QVERIFY(!Commands::apply(doc,{QJsonObject{{"op","add"},{"shape",QJsonObject{{"kind","highlight"},{"at",QJsonArray{5,70}},{"snap","word"}}}}},created,code,message));QVERIFY(message.contains("No text"));
+  QVERIFY(!Commands::apply(doc,{QJsonObject{{"op","add"},{"shape",QJsonObject{{"kind","highlight"},{"rect",QJsonArray{1,1,10,10}},{"snap","word"}}}}},created,code,message));
+  QVERIFY(!Commands::apply(doc,{QJsonObject{{"op","add"},{"shape",QJsonObject{{"kind","highlight"},{"rect",QJsonArray{1,1,10,10}},{"snap","sideways"}}}}},created,code,message));
+  QCOMPARE(doc.shapes().size(),before);
+ }
+ void shiftClickInsideTheSelectedHighlightAddsTheWord(){
+  // Shift-click lands inside the selection, where a plain click would start a move; it grows the mark instead.
+  EditDocument doc(fixture("highlight-lcd-text.png"));EditorCanvas canvas(doc);canvas.resize(832,632);canvas.show();QVERIFY(putgd::test::waitForWindowExposed(&canvas));
+  canvas.setTool(Tool::Highlight);canvas.fit();QCOMPARE(canvas.zoom(),1.0);
+  const QPoint origin((canvas.width()-540)/2,(canvas.height()-80)/2);
+  const auto first=highlight::wordAt(doc.base(),QPoint(60,25),{});QVERIFY(!first.isNull());
+  auto mark=box(Shape::Kind::Highlight,first.united(QRect(first.right()+1,first.top(),120,first.height())));const auto id=doc.add(mark);canvas.select(id);
+  const QPoint inside(mark.rect.right()-10,mark.rect.center().y());const auto next=highlight::wordAt(doc.base(),inside,{});QVERIFY(!next.isNull());
+  QTest::mouseClick(&canvas,Qt::LeftButton,Qt::ShiftModifier,origin+inside);
+  QCOMPARE(doc.shapes().size(),1);QCOMPARE(doc.find(id)->rect,mark.rect.united(next));QCOMPARE(canvas.selected(),id);
+  // A press with a few pixels of jitter, under the drag distance, is still a word click, not a sliver.
+  const int threshold=QApplication::startDragDistance();QApplication::setStartDragDistance(10);const auto restoreDrag=qScopeGuard([&]{QApplication::setStartDragDistance(threshold);});
+  canvas.select(0);const QPoint at(60,45);const QPoint jitter(5,5);const auto expected=highlight::wordAt(doc.base(),at,{});QVERIFY(!expected.isNull());QVERIFY(!doc.find(id)->rect.contains(at));
+  QTest::mousePress(&canvas,Qt::LeftButton,Qt::NoModifier,origin+at);
+  QMouseEvent move(QEvent::MouseMove,QPointF(origin+at+jitter),canvas.mapToGlobal(QPointF(origin+at+jitter)),Qt::NoButton,Qt::LeftButton,Qt::NoModifier);QApplication::sendEvent(&canvas,&move);
+  QTest::mouseRelease(&canvas,Qt::LeftButton,Qt::NoModifier,origin+at+jitter);
+  QCOMPARE(doc.shapes().size(),2);QCOMPARE(doc.shapes().last().rect,expected);
+ }
+ void snapIsRejectedOnShapesThatAreNotHighlights(){
+  EditDocument doc(fixture("highlight-lcd-text.png"));
+  QJsonArray created;QString code,message;
+  for(const QJsonObject shape:{QJsonObject{{"kind","arrow"},{"from",QJsonArray{10,10}},{"to",QJsonArray{60,60}},{"snap","text"}},QJsonObject{{"kind","rectangle"},{"rect",QJsonArray{10,10,50,20}},{"snap","bogus"}},QJsonObject{{"kind","text"},{"at",QJsonArray{10,10}},{"text","hi"},{"snap","none"}}}){
+   QVERIFY(!Commands::apply(doc,{QJsonObject{{"op","add"},{"shape",shape}}},created,code,message));
+   QVERIFY2(message.contains("snap applies to highlights"),qPrintable(message));
+  }
+  QVERIFY(doc.shapes().isEmpty());
+ }
+ void highlightCostOnA4kBoxIsBounded(){
+  // A full-frame highlight on a 4K page: export filter and display tile stay well inside a frame budget on a builder.
+  EditDocument doc(page(qRgb(255,255,255),qRgb(31,35,40),"Uploaded to s3://bucket/a.png and copied the link",{3840,2160}));
+  auto mark=box(Shape::Kind::Highlight,QRect(0,0,3840,2160));doc.add(mark);
+  QElapsedTimer timer;timer.start();const auto out=doc.render();const auto exportMs=timer.elapsed();
+  timer.restart();const auto tile=doc.highlightPreview(mark,0.5);const auto tileMs=timer.elapsed();
+  timer.restart();const auto snapped=highlight::snapToText(doc.base(),QRect(100,1000,1400,120),{});const auto snapMs=timer.elapsed();
+  qInfo("4K highlight: export %lld ms, 1.5 MP tile %lld ms, snap of a 1400x120 box %lld ms",exportMs,tileMs,snapMs);
+  QVERIFY(!out.isNull());QVERIFY(!tile.isNull());QVERIFY(snapped.height()>0);
+  QVERIFY2(exportMs<10000&&tileMs<5000,"the filter is a few linear passes; anything slower is a regression");
  }
 };
 QTEST_MAIN(EditorTest)
