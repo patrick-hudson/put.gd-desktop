@@ -76,7 +76,9 @@ lettering on that band:
 - The marker's **pigment** is the colour as picked, mixed with white until its
   luminance reaches 0.45 (so black text reads on it at 8.7:1 or better) or
   dimmed to 0.69 when it is paler than that (so a white marker still shows on
-  a white page). A black marker is a mid grey: a mark, not a redaction.
+  a white page). A black or near-black marker (every channel at or below 32)
+  skips that and is a fixed mid grey, #959595: a mark, not a redaction, with
+  black text at 7:1.
 - The **band** is that pigment multiplied onto the page, after lifting the page
   with white to luminance 0.85 if it is darker. On white the band is the
   pigment itself (yellow stays #FACC15), on grey panels it is darker than the
@@ -94,6 +96,28 @@ lettering on that band:
   keeps its exact contrast. Black and white markers have no colour to lend and
   shade or lighten the region instead, keeping contrast ratios (white only as
   far as the brightest pixel in the box allows).
+
+**Tuning the colours.** The whole palette treatment hangs on three constants
+in `src/editor/HighlightFilter.h`, and the one that matters is
+`pigmentFloor` (0.45): the luminance every chromatic marker darker than that
+is lifted to with white (black and near-black markers, every channel at or
+below 32, take the fixed grey instead). It decides how pastel the dark swatches come out. Red #EF4444
+is a coral at 0.45; at 0.55 it reads as pink (the council's first pick, rejected
+as "not red"), at 0.30 it is close to the raw swatch. Lowering it makes the
+colours truer and the band darker, so black lettering on it has less headroom:
+on the darkest chromatic swatches (red, blue) black text reads at 10:1 on a
+white page (the band is the pigment itself; 9.5:1 on an off-white dialog) and
+8.7:1 on a dark page at 0.45, and 7.0:1 and 6.1:1 at 0.30 (the dark-page band
+is the pigment multiplied onto a page lifted to 0.85). The
+black marker bypasses the floor: its pigment is the fixed grey #959595
+(luminance 0.30), so its band always sits at those 7.0:1 and 6.1:1 figures. Yellow (luminance 0.6356) is above
+the floor at any of these values and never changes. `pigmentCeiling` (0.69) dims pale markers so white still shows
+on a white page, and `pageFloor` (0.85) sets how bright a dark page is lifted
+before the pigment multiplies it; neither has a reason to move. The editor catalog's sample document carries a yellow highlight, which sits
+above the floor at any value below yellow's own luminance (0.6356; keep the
+floor at or under 0.635), so a floor change alone leaves the catalog references
+as they are; a change that does reach them (the ceiling, the page lift, or a
+floor above yellow) regenerates them from CI like any UI change.
 
 The background estimate is block-local (16 px blocks, every block sampling a
 full window inside the box), so a box across two panels or zebra rows treats
