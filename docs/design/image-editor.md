@@ -76,7 +76,9 @@ lettering on that band:
 - The marker's **pigment** is the colour as picked, mixed with white until its
   luminance reaches 0.45 (so black text reads on it at 8.7:1 or better) or
   dimmed to 0.69 when it is paler than that (so a white marker still shows on
-  a white page). A black marker is a mid grey: a mark, not a redaction.
+  a white page). A black or near-black marker (every channel at or below 32)
+  skips that and is a fixed mid grey, #959595: a mark, not a redaction, with
+  black text at 7:1.
 - The **band** is that pigment multiplied onto the page, after lifting the page
   with white to luminance 0.85 if it is darker. On white the band is the
   pigment itself (yellow stays #FACC15), on grey panels it is darker than the
@@ -97,8 +99,9 @@ lettering on that band:
 
 **Tuning the colours.** The whole palette treatment hangs on three constants
 in `src/editor/HighlightFilter.h`, and the one that matters is
-`pigmentFloor` (0.45): the luminance every marker darker than that is lifted
-to with white. It decides how pastel the dark swatches come out. Red #EF4444
+`pigmentFloor` (0.45): the luminance every chromatic marker darker than that
+is lifted to with white (black and near-black markers, every channel at or
+below 32, take the fixed grey instead). It decides how pastel the dark swatches come out. Red #EF4444
 is a coral at 0.45; at 0.55 it reads as pink (the council's first pick, rejected
 as "not red"), at 0.30 it is close to the raw swatch. Lowering it makes the
 colours truer and the band darker, so black lettering on it has less headroom:
