@@ -117,6 +117,8 @@ helper/package lifecycle and release acceptance remain separate gates in
 
 The helper exports `org.putgd.Gnome50` at `/org/gnome/Shell/Extensions/Putgd` on Shell's own session-bus connection. The native adapter resolves and pins the unique owner of `org.gnome.Shell`; it owns `org.putgd.App.Gnome50`, and the extension accepts only that name's current unique owner. D-Bus authenticates the session user. This prevents other session-bus names from submitting capture/clipboard requests and avoids using a caller allow-list workaround. Same-user process compromise is outside this session IPC boundary.
 
+Discovery is event driven (#1187). The adapter sends `Hello` when it starts, when the owner of `org.gnome.Shell` changes, and when the extension emits `CapabilitiesChanged`, which it does after exporting on every enable, including the one after an unlock, and before unexporting on disable. The signal subscription stays in place while the Shell keeps its connection, and it is sent before `Hello`, so an enable cannot fall between the two. While the helper is unavailable, a failed `Hello` still retries as a safety net for a lost signal or a transient failure: after 3 s, then doubling to one probe every 15 minutes. Each timed retry asks the resident to release the code pages it maps again after the usual thirty seconds of quiet, without postponing a release that is already scheduled. An idle resident with the extension disabled or locked no longer wakes every 3 s.
+
 Extension **v18** (PR #1056) captures a window on its head's output pixel grid,
 the same grid used for desktop and region capture of that head. When
 `paint_to_content()` returns a backing texture at a ceiled scale (for example
@@ -168,8 +170,8 @@ these methods; it is not graphical acceptance.
 ## UI ownership recovery test
 
 When the final UI process exits, the adapter clears its registered PID. If that
-clear fails, window capture remains disabled until the existing three-second
-probe successfully repeats the clear. A newer live helper PID supersedes that
+clear fails, window capture remains disabled until a retry three seconds after
+each failed clear succeeds. A newer live helper PID supersedes that
 recovery. Live-helper registration failures remain blocked, and a new Shell
 owner receives the latest PID during rediscovery.
 
