@@ -110,13 +110,13 @@ white page (the band is the pigment itself; 9.5:1 on an off-white dialog) and
 8.7:1 on a dark page at 0.45, and 7.0:1 and 6.1:1 at 0.30 (the dark-page band
 is the pigment multiplied onto a page lifted to 0.85). The
 black marker bypasses the floor: its pigment is the fixed grey #959595
-(luminance 0.30), so its band always sits at those 7.0:1 and 6.1:1 figures. Yellow (luminance 0.636) is above
+(luminance 0.30), so its band always sits at those 7.0:1 and 6.1:1 figures. Yellow (luminance 0.6356) is above
 the floor at any of these values and never changes. `pigmentCeiling` (0.69) dims pale markers so white still shows
 on a white page, and `pageFloor` (0.85) sets how bright a dark page is lifted
 before the pigment multiplies it; neither has a reason to move. The editor catalog's sample document carries a yellow highlight, which sits
-above the floor at any value up to yellow's own luminance (0.636; keep the
-floor below it), so a floor change alone leaves the catalog references as
-they are; a change that does reach them (the ceiling, the page lift, or a
+above the floor at any value below yellow's own luminance (0.6356; keep the
+floor at or under 0.635), so a floor change alone leaves the catalog references
+as they are; a change that does reach them (the ceiling, the page lift, or a
 floor above yellow) regenerates them from CI like any UI change.
 
 The background estimate is block-local (16 px blocks, every block sampling a
