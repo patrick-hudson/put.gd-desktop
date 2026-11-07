@@ -142,6 +142,10 @@ signals:
  void incompleteUploadsKept(const QJsonObject& notice);
  // upload.files found no destination to upload to (#1105): Settings should open.
  void destinationRequired();
+ // Someone asked for a capture, the editor or a recording (tray, shortcut, CLI or
+ // MCP): an explicit request that shows a put.gd window, so the no-tray startup
+ // recovery must not open Settings over it (#1252).
+ void explicitRequest();
 private:
  // Scoped provider calls count requests, independently of queue/encoding/journal work.
  class StorageActivity {

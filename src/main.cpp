@@ -400,6 +400,9 @@ int main(int argc,char* argv[]) {
  server.setUiQuit(quitApplication);
  // A file-manager upload with no destination to go to opens Destinations (#1105).
  QObject::connect(&operations,&putgd::OperationService::destinationRequired,&app,[&]{startupRecovery.stop();ui.activate("destinations",{});});
+ // A capture, the editor or a recording asked for by any route counts as
+ // activation too: Settings must not open over its window (#1252).
+ QObject::connect(&operations,&putgd::OperationService::explicitRequest,&startupRecovery,&QTimer::stop);
  // #490: the resident ends with its login session, whatever the session manager
  // does with its autostart entries: when logind reports the session closing,
  // or when the X server it shortcuts and captures through goes away.
@@ -518,7 +521,8 @@ int main(int argc,char* argv[]) {
  else if(!tray.available()&&!startedForUpload) {
   // XDG autostart can precede the desktop's tray watcher or host. Give them a
   // bounded startup grace period before exposing the no-tray recovery window.
-  QObject::connect(&startupRecovery,&QTimer::timeout,&tray,[&]{if(!tray.available())showInitialView();});
+  // An editor or recording window already open has shown put.gd is running.
+  QObject::connect(&startupRecovery,&QTimer::timeout,&tray,[&]{if(!tray.available()&&operations.editingOperation().isEmpty()&&!operations.recording().active())showInitialView();});
   startupRecovery.start(10000);
  }
  {
