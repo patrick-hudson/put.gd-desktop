@@ -77,7 +77,7 @@ image. This keeps the Ubuntu 24.04 compatibility baseline coherent on newer
 hosts. The desktop supplies the running Secret Service/keyring daemon.
 
 The screen recorder `putgd-record` links a pinned upstream FFmpeg (`ffmpeg` in
-`tools.lock.json`, 7.1.5) that `tools/releases/provision-appimage.py` builds into
+`tools.lock.json`, 9.0.2) that `tools/releases/provision-appimage.py` builds into
 the same dependency prefix with FFmpeg's own `configure`, using exactly the
 options in `media.json` (`--enable-gpl` with libx264 and libx265, nothing
 non-free, no programs, only the demuxers, decoders, encoders, muxers and
@@ -105,8 +105,9 @@ cmake --build --preset release
 ```
 
 `putgd-kde-region` must exist: omitting it breaks native KDE region capture.
-`putgd-record` must exist and link `libavcodec.so.61` from the dependency
-prefix; `build-appimage.sh` refuses a helper linked against the distro FFmpeg.
+`putgd-record` must exist and link each FFmpeg library at the soname the
+dependency prefix's build gives it (9.0: `libavcodec.so.63`); `build-appimage.sh`
+refuses a helper linked against the distro FFmpeg.
 After the release build, use CMake's `DESTDIR` install into a new staging root.
 Do not reuse stale staging contents.
 
