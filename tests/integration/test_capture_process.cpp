@@ -61,6 +61,20 @@ void seedCursor(putgd::CaptureProcessController& controller){
 class CaptureProcessTests final:public QObject {
  Q_OBJECT
 private slots:
+ void pointerProbeReleasePrecedesTheNextHold(){
+  auto* connection=xcb_connect(nullptr,nullptr);QVERIFY(connection&&!xcb_connection_has_error(connection));const auto close=qScopeGuard([&]{xcb_disconnect(connection);});
+  putgd::CaptureProcessController controller(PUTGD_CAPTURE_FIXTURE);seedCursor(controller);
+  // #398's late reports ran a pre-#1202 tree. Exercise its cross-connection
+  // boundary repeatedly, without retries: each successful probe must release
+  // its grab before the resident's very next request reaches the X server.
+  for(int i=0;i<32;++i){
+   QCOMPARE(pointerGrabStatus(connection),int(XCB_GRAB_STATUS_SUCCESS));
+   QVERIFY(controller.holdCrosshair());
+   QCOMPARE(pointerGrabStatus(connection),int(XCB_GRAB_STATUS_ALREADY_GRABBED));
+   controller.releaseUnclaimedCrosshair();
+  }
+  QCOMPARE(pointerGrabStatus(connection),int(XCB_GRAB_STATUS_SUCCESS));
+ }
  void crosshairHoldLastsUntilTheHelperAsks(){
   auto* connection=xcb_connect(nullptr,nullptr);QVERIFY(connection&&!xcb_connection_has_error(connection));const auto close=qScopeGuard([&]{xcb_disconnect(connection);});
   putgd::CaptureProcessController controller(PUTGD_CAPTURE_FIXTURE);
