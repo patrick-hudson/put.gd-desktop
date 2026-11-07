@@ -28,6 +28,9 @@ public:
  Error regionError()const override;
  // The loaded extension is older than the packaged one: a log-out loads it.
  bool outdated()const;
+ // Discovery retry: the first wait and the slow safety probe it doubles up to.
+ static constexpr int firstRetryMs=3000,safetyProbeMs=15*60*1000;
+ void setDiscoveryRetryForTesting(int firstMs,int capMs);
  void selectRegion(RecordingShell::Reply) override;
  void cancelSelection() override;
  void showFrame(const QJsonObject&,RecordingShell::Reply) override;
@@ -45,6 +48,7 @@ private:
  using Reply=std::function<void(Error,QJsonObject)>;
  struct Transfer {QString id,outcome;bool screenshotFirst=false;ResourceLimits limits;QJsonObject metadata;QByteArray bytes;std::function<void(PayloadResult)> reply;quint64 generation=0;};
  void discover();
+ void followOwner(const QString&);
  void helperUnavailable(const Error&);
  void applyShortcutBindings(std::function<void(Error)> reply={});
  void invalidateShortcutBindings();
@@ -59,7 +63,8 @@ private:
  void cancelAll(const QString&,const QString&);
  QDBusConnection bus_;
  QDBusServiceWatcher watcher_;
- QTimer probe_;
+ QTimer discoveryRetry_,uiProcessRetry_;
+ int retryFirstMs_=firstRetryMs,retryCapMs_=safetyProbeMs,retryMs_=firstRetryMs;
  QString owner_;
  Error helperError_,uiProcessError_;
  qint64 uiProcess_=0;
