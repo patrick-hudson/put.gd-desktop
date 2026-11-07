@@ -206,8 +206,8 @@ example `./putgd-*.AppImage --appimage-extract`, then
 `APPDIR=$PWD/squashfs-root squashfs-root/usr/bin/putgd-record --motion COPY.mp4 8`.
 It can't read H.265 MP4 copies (FFmpeg's HEVC decoder would add 0.34 MiB to
 the image) or WebP ones (the image's FFmpeg builds no animated WebP demuxer or
-decoder): score those with a distro build of `putgd-record`, and WebP motion
-with Pillow. Each CI
+decoder): score H.265 copies with a distro build of `putgd-record`, and WebP
+copies with Pillow. Each CI
 AppImage build runs `tools/releases/appimage_diagnostics.py` on the extracted
 image: the helper writes a marker clip, exports it to MP4, WebM and GIF, and
 `--motion`, `--preview` and, for the clips with sound, `--av-sync` must read
