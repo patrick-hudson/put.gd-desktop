@@ -114,9 +114,7 @@ def serve(path, user):
     time.sleep(.5)  # let the compositor enumerate the new devices
     print(json.dumps({'listening': path, 'devices': ['put.gd lab keyboard', 'put.gd lab tablet']}), flush=True)
     try:
-        while True:
-            connection, _ = server.accept()
-            serve_connection(connection, keyboard, tablet)
+        accept_clients(server, keyboard, tablet)
     finally:
         keyboard.close(); tablet.close(); server.close(); os.unlink(path)
 
@@ -131,6 +129,13 @@ def emit(device, events):
         device.emit(events)
     except OSError as error:
         raise DeviceError(f'uinput write failed: {error}') from error
+
+
+def accept_clients(server, keyboard, tablet):
+    """Serve clients one after another for as long as the listening socket lives."""
+    while True:
+        connection, _ = server.accept()
+        serve_connection(connection, keyboard, tablet)
 
 
 def serve_connection(connection, keyboard, tablet):

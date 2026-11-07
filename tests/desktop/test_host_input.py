@@ -1,5 +1,5 @@
 """Protocol contract for the physical-desktop input agent; no uinput device is opened."""
-import io, json, socket, sys, threading, unittest
+import io, json, socket, sys, tempfile, threading, unittest
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / 'tools' / 'lab'))
 import host_input
@@ -91,6 +91,24 @@ class HostInputTests(unittest.TestCase):
         client.close()
         self.assertIn('QMP', lines[0])
         self.assertEqual(lines[1], {'return': {}, 'id': 7})
+
+    def test_the_listener_serves_the_next_client_after_one_vanishes(self):
+        tablet = FakeDevice()
+        with tempfile.TemporaryDirectory() as folder:
+            path = folder + '/agent.sock'
+            server = socket.socket(socket.AF_UNIX); server.bind(path); server.listen(4)
+            threading.Thread(target=host_input.accept_clients, args=(server, FakeDevice(), tablet), daemon=True).start()
+            first = socket.socket(socket.AF_UNIX); first.settimeout(5); first.connect(path)
+            first.sendall(json.dumps({'execute': 'input-send-event', 'arguments': {'events': [
+                {'type': 'btn', 'data': {'button': 'left', 'down': True}}]}}).encode() + b'\n')
+            first.close()  # gone with the greeting and the reply unread
+            second = socket.socket(socket.AF_UNIX); second.settimeout(5); second.connect(path)
+            second.sendall(json.dumps({'execute': 'qmp_capabilities', 'id': 9}).encode() + b'\n')
+            second.shutdown(socket.SHUT_WR)
+            lines = [json.loads(line) for line in second.makefile('rb')]
+            second.close(); server.close()
+        self.assertIn('QMP', lines[0])
+        self.assertEqual(lines[1], {'return': {}, 'id': 9})
 
     def test_a_client_gone_before_the_greeting_is_dropped_quietly(self):
         server, client = socket.socketpair()
