@@ -46,29 +46,35 @@ struct Sampler {
 
 struct Grid {
  const Plan& plan;
+ // Candidate backgrounds per block: its own and its eight neighbours', once.
+ std::vector<std::array<int,9>> candidates;std::vector<int> counts;
+ explicit Grid(const Plan& p):plan(p),candidates(size_t(p.columns*p.rows)),counts(size_t(p.columns*p.rows),0){
+  for(int by=0;by<plan.rows;++by)for(int bx=0;bx<plan.columns;++bx){
+   auto& out=candidates[size_t(by*plan.columns+bx)];int n=0;
+   for(int dy=-1;dy<=1;++dy)for(int dx=-1;dx<=1;++dx){
+    const int x=bx+dx,y=by+dy;if(x<0||y<0||x>=plan.columns||y>=plan.rows)continue;
+    const int k=plan.blockBackground[size_t(y*plan.columns+x)];bool seen=false;for(int i=0;i<n;++i)seen=seen||out[size_t(i)]==k;
+    if(!seen)out[size_t(n++)]=k;
+   }
+   counts[size_t(by*plan.columns+bx)]=n;
+  }
+ }
  int block(int sx,int sy) const {
   const int bx=std::clamp((sx-plan.area.left())/blockSize,0,plan.columns-1),by=std::clamp((sy-plan.area.top())/blockSize,0,plan.rows-1);
   return by*plan.columns+bx;
  }
- // Backgrounds of the block and its eight neighbours, without repeats.
- int candidates(int b,std::array<int,9>& out) const {
-  int n=0;const int bx=b%plan.columns,by=b/plan.columns;
-  for(int dy=-1;dy<=1;++dy)for(int dx=-1;dx<=1;++dx){
-   const int x=bx+dx,y=by+dy;if(x<0||y<0||x>=plan.columns||y>=plan.rows)continue;
-   const int k=plan.blockBackground[size_t(y*plan.columns+x)];bool seen=false;for(int i=0;i<n;++i)seen=seen||out[size_t(i)]==k;
-   if(!seen)out[size_t(n++)]=k;
-  }
-  return n;
- }
- // The nearest background to `p` among the candidates and p's distance to it.
- int nearest(QRgb p,int b,int& d) const {
-  std::array<int,9> c{};const int n=candidates(b,c);int best=c[0];d=distance(p,plan.backgrounds[size_t(best)]);
-  for(int i=1;i<n;++i){const int e=distance(p,plan.backgrounds[size_t(c[size_t(i)])]);if(e<d){d=e;best=c[size_t(i)];}}
+ // The nearest candidate background to `p` and the squared distance to it.
+ int nearest(QRgb p,int b,int& squared) const {
+  const auto& c=candidates[size_t(b)];const int n=counts[size_t(b)];
+  auto sq=[&](int k){const QRgb bg=plan.backgrounds[size_t(k)];const int dr=qRed(p)-qRed(bg),dg=qGreen(p)-qGreen(bg),db=qBlue(p)-qBlue(bg);return dr*dr+dg*dg+db*db;};
+  int best=c[0];squared=sq(best);
+  for(int i=1;i<n&&squared>0;++i){const int e=sq(c[size_t(i)]);if(e<squared){squared=e;best=c[size_t(i)];}}
   return best;
  }
 };
+constexpr int inkSquared=inkDistance*inkDistance;
 
-QRgb pixelAt(const QImage& source,const QList<QRect>& redactions,int x,int y){return inside(redactions,x,y)?qRgb(0,0,0):source.pixel(x,y);}
+QRgb pixelAt(const QImage& source,const QList<QRect>& redactions,int x,int y){return inside(redactions,x,y)?qRgb(0,0,0):reinterpret_cast<const QRgb*>(source.constScanLine(y))[x];}
 
 // Ink mask of `box` from a plan: 1 where a pixel is at least half ink.
 struct Mask {
@@ -81,7 +87,8 @@ bool inkMask(const QImage& source,const QRect& box,Mask& mask){
  const Grid grid{plan_};mask.box=box;mask.width=box.width();mask.height=box.height();mask.bits.assign(size_t(box.width())*size_t(box.height()),0);
  for(int y=0;y<box.height();++y){
   const auto* line=reinterpret_cast<const QRgb*>(source.constScanLine(box.top()+y))+box.left();
-  for(int x=0;x<box.width();++x){int d=0;grid.nearest(line[x],grid.block(box.left()+x,box.top()+y),d);if(d*2>=inkDistance)mask.bits[size_t(y)*size_t(box.width())+size_t(x)]=1;}
+  const int blockRow=grid.block(box.left(),box.top()+y);
+  for(int x=0;x<box.width();++x){int d2=0;grid.nearest(line[x],blockRow+(x/blockSize),d2);if(d2*4>=inkSquared)mask.bits[size_t(y)*size_t(box.width())+size_t(x)]=1;}
  }
  return true;
 }
@@ -258,8 +265,8 @@ Plan plan(const QImage& source,const QRect& requested,const QList<QRect>& redact
   const int b=by*plan.columns+bx;
   const int x0=area.left()+bx*blockSize,y0=area.top()+by*blockSize,x1=std::min(area.right(),x0+blockSize-1),y1=std::min(area.bottom(),y0+blockSize-1);
   for(int y=y0;y<=y1;y+=step)for(int x=x0;x<=x1;x+=step){
-   const QRgb p=pixelAt(source,redactions,x,y);int d=0;const int k=grid.nearest(p,b,d);
-   if(d>=inkDistance)inkLuminance[size_t(k)].push_back(luminance(p));
+   const QRgb p=pixelAt(source,redactions,x,y);int d2=0;const int k=grid.nearest(p,b,d2);
+   if(d2>=inkSquared)inkLuminance[size_t(k)].push_back(luminance(p));
   }
  }
  for(size_t i=0;i<plan.backgrounds.size();++i){
@@ -284,13 +291,15 @@ void apply(QImage& image,const QRect& requested,const Plan& plan){
  // Shifts per background, precomputed; coverage scales them per pixel.
  std::vector<std::array<int,3>> shift;for(size_t i=0;i<plan.backgrounds.size();++i)shift.push_back({qRed(plan.tinted[i])-qRed(plan.backgrounds[i]),qGreen(plan.tinted[i])-qGreen(plan.backgrounds[i]),qBlue(plan.tinted[i])-qBlue(plan.backgrounds[i])});
  const double sx=double(plan.area.width())/requested.width(),sy=double(plan.area.height())/requested.height();
+ const bool unscaled=sx==1.0&&sy==1.0;
  for(int y=target.top();y<=target.bottom();++y){
-  auto* line=reinterpret_cast<QRgb*>(image.scanLine(y));const int srcY=plan.area.top()+int((y-requested.top())*sy);
+  auto* line=reinterpret_cast<QRgb*>(image.scanLine(y));const int srcY=plan.area.top()+(unscaled?y-requested.top():int((y-requested.top())*sy));
+  const int blockRow=grid.block(plan.area.left(),srcY);
   for(int x=target.left();x<=target.right();++x){
-   const int srcX=plan.area.left()+int((x-requested.left())*sx);
-   int d=0;const int k=grid.nearest(line[x],grid.block(srcX,srcY),d);
-   if(d>=inkDistance)continue;
-   const int keep=inkDistance-d;  // background share, in 1/inkDistance
+   const int srcX=unscaled?x-requested.left():int((x-requested.left())*sx);
+   int d2=0;const int k=grid.nearest(line[x],blockRow+std::min(srcX/blockSize,plan.columns-1),d2);
+   if(d2>=inkSquared)continue;
+   const int keep=d2?inkDistance-int(std::lround(std::sqrt(double(d2)))):inkDistance;  // background share, in 1/inkDistance
    const QRgb p=line[x];
    line[x]=qRgba(std::clamp(qRed(p)+shift[size_t(k)][0]*keep/inkDistance,0,255),std::clamp(qGreen(p)+shift[size_t(k)][1]*keep/inkDistance,0,255),std::clamp(qBlue(p)+shift[size_t(k)][2]*keep/inkDistance,0,255),qAlpha(p));
   }
