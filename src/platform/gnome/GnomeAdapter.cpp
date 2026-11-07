@@ -63,7 +63,7 @@ GnomeAdapter::GnomeAdapter(QObject* parent):QObject(parent),bus_(QDBusConnection
  // A failed Hello still retries, backing off to a slow safety probe, so a lost
  // signal or a transient failure recovers without waking an idle resident every
  // few seconds. Each retry reports itself, so the resident can release the pages
- // it faulted back in (#1187).
+ // it mapped again (#1187).
  discoveryRetry_.setSingleShot(true);connect(&discoveryRetry_,&QTimer::timeout,this,[this]{if(!ready_){discover();emit discoveryRetried();}});
  uiProcessRetry_.setSingleShot(true);uiProcessRetry_.setInterval(firstRetryMs);
  connect(&uiProcessRetry_,&QTimer::timeout,this,[this]{
