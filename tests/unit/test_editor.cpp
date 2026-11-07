@@ -611,13 +611,24 @@ private slots:
   check(light);
   auto dark=noise({300,120},9);for(int y=0;y<dark.height();++y){auto* line=reinterpret_cast<QRgb*>(dark.scanLine(y));for(int x=0;x<dark.width();++x)line[x]=qRgb(qRed(line[x])/5,qGreen(line[x])/5,qBlue(line[x])/5);}
   check(dark);
-  // Neutral markers have no chroma to lend: black shades the region and white lightens it, keeping contrast ratios.
-  for(const QColor color:{QColor(17,17,17),QColor(255,255,255)}){
-   EditDocument doc(light);auto mark=box(Shape::Kind::Highlight,QRect(20,20,260,80));mark.color=color;doc.add(mark);const auto out=doc.render();
-   const QRgb a=light.pixel(40,40),b=light.pixel(200,90),oa=out.pixel(40,40),ob=out.pixel(200,90);
+  // Neutral markers have no chroma to lend: black shades light content and white lightens dark content
+  // (as far as the brightest pixel allows), keeping contrast ratios.
+  for(const auto& [color,source]:std::initializer_list<std::pair<QColor,const QImage&>>{{QColor(17,17,17),light},{QColor(255,255,255),dark}}){
+   EditDocument doc(source);auto mark=box(Shape::Kind::Highlight,QRect(20,20,260,80));mark.color=color;doc.add(mark);const auto out=doc.render();
+   const QRgb a=source.pixel(40,40),b=source.pixel(200,90),oa=out.pixel(40,40),ob=out.pixel(200,90);
    const double la=highlight::luminance(a),loa=highlight::luminance(oa);
-   QVERIFY2(color==QColor(255,255,255)?loa>la+0.1:loa<la*0.7,qPrintable(QString("%1: %2 -> %3").arg(color.name()).arg(la).arg(loa)));
+   QVERIFY2(color==QColor(255,255,255)?loa>la*1.4:loa<la*0.7,qPrintable(QString("%1: %2 -> %3").arg(color.name()).arg(la).arg(loa)));
    QVERIFY2(std::abs(contrastOf(oa,ob)-contrastOf(a,b))<0.05*contrastOf(a,b),qPrintable(QString("%1: contrast %2 -> %3").arg(color.name()).arg(contrastOf(a,b)).arg(contrastOf(oa,ob))));
+  }
+  // A white label on a red badge over a photo keeps its contrast under every neutral and coloured wash.
+  QImage badge=noise({300,120},11);{QPainter p(&badge);p.drawImage(40,40,page(qRgb(255,40,60),qRgb(255,255,255),"Nightly: 400 x 260",{220,40}));}
+  QPoint inkAt;for(int y=40;y<80&&inkAt.isNull();++y)for(int x=40;x<260;++x)if(badge.pixel(x,y)==qRgb(255,255,255)){inkAt=QPoint(x,y);break;}
+  QVERIFY(!inkAt.isNull());const QPoint bgAt(44,44);QCOMPARE(badge.pixel(bgAt),qRgb(255,40,60));
+  const double had=contrastOf(badge.pixel(inkAt),badge.pixel(bgAt));
+  for(const QColor color:{QColor(255,255,255),QColor(17,17,17),QColor(250,204,21)}){
+   EditDocument doc(badge);auto mark=box(Shape::Kind::Highlight,QRect(20,20,260,80));mark.color=color;doc.add(mark);const auto out=doc.render();
+   const double now=contrastOf(out.pixel(inkAt),out.pixel(bgAt));
+   QVERIFY2(now>=had*0.95,qPrintable(QString("%1: label contrast %2 -> %3").arg(color.name()).arg(had).arg(now)));
   }
  }
  void highlightPreviewMatchesExportAtFullScale(){

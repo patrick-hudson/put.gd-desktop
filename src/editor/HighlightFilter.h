@@ -38,6 +38,7 @@ struct Plan {
  std::vector<QRgb> backgrounds,band;      // distinct backgrounds and the band each becomes
  std::vector<std::vector<QRgb>> transfer; // per background: pixel luminance (0..transferSteps) to colour
  QRgb fallback=0;                         // the marker, for the wash
+ double lighten=1.0;                      // wash: how far a white marker may scale Y+0.05 before the brightest pixel clips
  bool isNull() const {return area.isEmpty();}
 };
 

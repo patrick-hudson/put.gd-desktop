@@ -275,19 +275,20 @@ Plan plan(const QImage& source,const QRect& requested,const QList<QRect>& redact
  const int step=std::clamp(int(std::ceil(std::sqrt(double(area.width())*area.height()/500000.0))),1,4);
  const int blocks=plan.columns*plan.rows;
  std::vector<QRgb> blockColor(size_t(blocks),0);std::vector<uint8_t> confident(size_t(blocks),0);
- Sampler sampler;int confidentBlocks=0;
+ Sampler sampler;int confidentBlocks=0;double brightest=0;
  for(int by=0;by<plan.rows;++by)for(int bx=0;bx<plan.columns;++bx){
   sampler.clear();
   const int x0=area.left()+bx*blockSize,y0=area.top()+by*blockSize,x1=std::min(area.right(),x0+blockSize-1),y1=std::min(area.bottom(),y0+blockSize-1);
-  for(int y=y0;y<=y1;y+=step)for(int x=x0;x<=x1;x+=step)sampler.add(pixelAt(source,redactions,x,y));
+  for(int y=y0;y<=y1;y+=step)for(int x=x0;x<=x1;x+=step){const QRgb p=pixelAt(source,redactions,x,y);sampler.add(p);brightest=std::max(brightest,luminance(p));}
   QRgb color=0;double share=0;
   if(sampler.mode(color,share)){blockColor[size_t(by*plan.columns+bx)]=color;if(share>=0.5){confident[size_t(by*plan.columns+bx)]=1;++confidentBlocks;}}
  }
  plan.fallback=marker.rgb();
  if(confidentBlocks*2<blocks){
-  // No dominant background: a photo or gradient. A light wash of the marker
-  // over everything, which keeps the picture's detail.
-  plan.mode=Plan::Mode::Wash;
+  // No dominant background: a photo or gradient. A wash of the marker over
+  // everything that keeps the picture's detail. A white marker may only
+  // lighten as far as the brightest pixel allows, so nothing clips.
+  plan.mode=Plan::Mode::Wash;plan.lighten=std::min(washLighten,1.05/(brightest+0.05));
   return plan;
  }
  // Blocks without a dominant colour (dense text, icons) borrow the nearest
@@ -324,10 +325,10 @@ void apply(QImage& image,const QRect& requested,const Plan& plan){
   // on a photo or a coloured label keeps its exact contrast under the wash.
   // A neutral marker (black, white, grey) has no chroma to lend, so it moves
   // the luminance instead: a black marker shades the region (luminance
-  // halved, so dark detail survives), a white one lightens it (Y+0.05 scaled,
-  // so WCAG contrast ratios are kept).
+  // halved, so dark detail survives), a white one lightens it (Y+0.05 scaled
+  // within the region's headroom, so WCAG contrast ratios are kept).
   const QRgb m=plan.fallback;const int chroma=std::max({qRed(m),qGreen(m),qBlue(m)})-std::min({qRed(m),qGreen(m),qBlue(m)});
-  const double shade=chroma>neutralChroma?1.0:luminance(m)<0.5?washShade:washLighten;
+  const double shade=chroma>neutralChroma?1.0:luminance(m)<0.5?washShade:plan.lighten;
   const auto& lin=linearTable();const double mr=lin[size_t(qRed(m))],mg=lin[size_t(qGreen(m))],mb=lin[size_t(qBlue(m))];
   for(int y=target.top();y<=target.bottom();++y){
    auto* line=reinterpret_cast<QRgb*>(image.scanLine(y));
