@@ -4,34 +4,35 @@
   "reviewDate": "2026-10-23",
   "scope": "Only the audited AppImage FFmpeg and ICU builds, and Qt's embedded HarfBuzz and SQLite in the exact official libQt6Gui.so.6 (#1055) and libqsqlite.so (#1210). Does not waive other CVEs, native/system dependencies or release/desktop acceptance.",
   "package": {
-    "ciRun": 40045151634,
-    "ciArtifact": 12540539510,
+    "ciRun": 42393675852,
+    "ciArtifact": 13582763892,
+    "pullRequest": 1249,
     "source": {
       "schemaVersion": 1,
-      "version": "26.1024.1133-dev+g50053b01f1bb",
-      "baseVersion": "26.1024.1133",
-      "packageVersion": "26.1024.1133~dev+g50053b01f1bb",
-      "gitCommit": "50053b01f1bbd7f3776a53513bb8c43151ce0de8",
-      "gitTree": "add0e9919319fed3a465838a4ea34d5de56938ea",
-      "commitCount": 1133,
+      "version": "26.1107.4039-dev+g6f33a8cbcc4d",
+      "baseVersion": "26.1107.4039",
+      "packageVersion": "26.1107.4039~dev+g6f33a8cbcc4d",
+      "gitCommit": "6f33a8cbcc4de041c653aa5d5ea9a9ae9b768412",
+      "gitTree": "f0f5ff501f53ca175bb10e243afb7fee8a0d4698",
+      "commitCount": 4039,
       "dirty": false,
       "sourceProvenance": "git"
     },
     "artifact": {
-      "file": "putgd-26.1024.1133-dev+g50053b01f1bb-x86_64.AppImage",
-      "sha256": "cea2f5f6fe98b7782c1eae090e4a0398b620989052a3d340450474f5eb9af426",
-      "bytes": 116472312,
+      "file": "putgd-26.1107.4039-dev+g6f33a8cbcc4d-x86_64.AppImage",
+      "sha256": "4b419fd187536e966244805ed85d8ecd35a5d562c8b35ea18cd7bf62e6a84303",
+      "bytes": 155318776,
       "mode": "0755"
     }
   },
   "scopeFingerprints": {
-    "appimage-ffmpeg-7.1.5": {
+    "appimage-ffmpeg-9.0.2": {
       "package": "appimage",
       "component": "ffmpeg",
-      "version": "7.1.5",
+      "version": "9.0.2",
       "properties": {
-        "putgd:commit": "3a0867c2bfda4a4d4309ca1a8cbdc6175e67f587",
-        "putgd:filesSha256": "94490000aa605170dd9170fa6a9dc2f29bd1989259ca251f90d5cf9e6ce4ea61",
+        "putgd:commit": "946fcce07b6dcd0331c8cc609192aeff5e1924f8",
+        "putgd:filesSha256": "4951e9d7eedc8dcf16551f993c4a230fec1bbb36a8bbcb1e00fdc295275fecc0",
         "putgd:toolsAbsent": "true"
       }
     },
@@ -68,24 +69,24 @@
   },
   "libraryFiles": [
     {
-      "path": "usr/lib/libavcodec.so.61",
-      "sha256": "066d6f55ede7b2851bc8b170cb30b6ad33aa7b312278b1e6493336c2b222a382",
-      "bytes": 3608368
+      "path": "usr/lib/libavcodec.so.63",
+      "sha256": "c69790d26c319fbe42f934255463b859ebef414f66359b48a8e2f5729efc1a32",
+      "bytes": 4203184
     },
     {
-      "path": "usr/lib/libavfilter.so.10",
-      "sha256": "80034663ce372e91402ce8d6474f7d8965b8d868bca4eb015e456bfe8a64bc5a",
-      "bytes": 350168
+      "path": "usr/lib/libavfilter.so.12",
+      "sha256": "9c403af1b915eef6bde805e03dc08fb402dbd100d53580b736de875b00c2b566",
+      "bytes": 411832
     },
     {
-      "path": "usr/lib/libavformat.so.61",
-      "sha256": "67f5ded6acf2c241b9ca094cca8ef3abcc7847aee09e5fd328c9799a87a95562",
-      "bytes": 768376
+      "path": "usr/lib/libavformat.so.63",
+      "sha256": "e420a4f09255cfb3abe0e8c197eb19632b54af9151fbac960d1ddfe8537d8058",
+      "bytes": 916080
     },
     {
-      "path": "usr/lib/libavutil.so.59",
-      "sha256": "10482e35fc7201abfc3356e1e6700e93a23ea14645850e39c3efd109691a1431",
-      "bytes": 1047264
+      "path": "usr/lib/libavutil.so.61",
+      "sha256": "0599e3cdadd4dc3cda64f3be77f8630c68b399278a686d517f494394581385b2",
+      "bytes": 1068560
     },
     {
       "path": "usr/lib/libicudata.so.73",
@@ -103,20 +104,23 @@
       "bytes": 2571736
     },
     {
-      "path": "usr/lib/libswresample.so.5",
-      "sha256": "78a00b030fae95a3ee53e13434138d5018031090a23f86ffe08f1c238fad450c",
-      "bytes": 125008
+      "path": "usr/lib/libswresample.so.7",
+      "sha256": "befada3a5b33ef7b4ceb9d2ef05a85ed334f95e7274ef70fda608bc65a4c9d2f",
+      "bytes": 145512
     },
     {
-      "path": "usr/lib/libswscale.so.8",
-      "sha256": "5b5172c972c06ed60f530423efc0b3b3e49a9cca68fe39f525652645114a29fb",
-      "bytes": 624912
+      "path": "usr/lib/libswscale.so.10",
+      "sha256": "dfd845b6017d1c979c31ccbba244b7b088cf00b86cbd847409afcda261a052a8",
+      "bytes": 2100736
     }
   ],
   "ffmpeg": {
-    "initialScanRun": 40026118521,
-    "initialScanJob": 120662743163,
-    "sourceCommit": "3a0867c2bfda4a4d4309ca1a8cbdc6175e67f587",
+    "release": "9.0.2",
+    "reviewDate": "2026-11-07",
+    "pullRequest": "https://github.com/patrick-hudson/put.gd-desktop/pull/1249",
+    "initialScanRun": 42393675852,
+    "initialScanJob": 128471351024,
+    "sourceCommit": "946fcce07b6dcd0331c8cc609192aeff5e1924f8",
     "configuredComponents": [
       "--enable-shared",
       "--disable-static",
@@ -153,391 +157,37 @@
       "--enable-encoder=h264_vaapi,hevc_vaapi,h264_nvenc,hevc_nvenc,libx264,libx265,libvpx_vp9,gif,libwebp_anim,aac,libopus,mjpeg,pcm_s16le",
       "--enable-filter=buffer,buffersink,abuffer,abuffersink,null,anull,trim,atrim,setpts,asetpts,format,aformat,aresample,scale,crop,avgblur,drawbox,split,overlay,fps,palettegen,paletteuse"
     ],
-    "backportAncestry": [
-      {
-        "cve": "CVE-2026-40962",
-        "fixCommit": "78c944bdb170d8dcece166115d92b45379b040f4",
-        "pinnedCommit": "3a0867c2bfda4a4d4309ca1a8cbdc6175e67f587",
-        "status": "ahead",
-        "mergeBase": "78c944bdb170d8dcece166115d92b45379b040f4"
-      },
-      {
-        "cve": "CVE-2026-52297",
-        "fixCommit": "c7a0013d5fedb4a875446a3cd7e6fa9beba4e81a",
-        "pinnedCommit": "3a0867c2bfda4a4d4309ca1a8cbdc6175e67f587",
-        "status": "ahead",
-        "mergeBase": "c7a0013d5fedb4a875446a3cd7e6fa9beba4e81a"
-      },
-      {
-        "cve": "CVE-2026-96611",
-        "fixCommit": "15396fa8d550cd19e8619cca919ea09ecbe84ef6",
-        "pinnedCommit": "3a0867c2bfda4a4d4309ca1a8cbdc6175e67f587",
-        "status": "ahead",
-        "mergeBase": "15396fa8d550cd19e8619cca919ea09ecbe84ef6"
-      }
-    ],
+    "previousScope": {
+      "scope": "appimage-ffmpeg-7.1.5",
+      "sourceCommit": "3a0867c2bfda4a4d4309ca1a8cbdc6175e67f587",
+      "acceptances": 29,
+      "result": "Retired with the move to 9.0.2. 28 of the 29 Critical/High matches on 7.1.5 (three fixed by backports, the rest in components the build omits) no longer match 9.0.2; CVE-2026-107696 still matches and is reassessed below."
+    },
+    "builtLibraries": {
+      "sonames": [
+        "libavcodec.so.63",
+        "libavfilter.so.12",
+        "libavformat.so.63",
+        "libavutil.so.61",
+        "libswresample.so.7",
+        "libswscale.so.10"
+      ],
+      "configurationString": "libavformat.so.63 embeds the media.json configure list, including --disable-network, --enable-protocol=file and --enable-demuxer='matroska,mov,gif'.",
+      "rtspStrings": 0,
+      "toolsShipped": []
+    },
     "findings": [
-      {
-        "id": "CVE-2025-59732",
-        "severity": "High",
-        "reportedFixVersions": [
-          "8.0"
-        ],
-        "assessment": "affected component absent from configured build",
-        "component": "OpenEXR decoder",
-        "reason": "Affected code is not built or shipped: OpenEXR decoder. Verified against the pinned source, CI configure output and exact bundled libraries.",
-        "references": [
-          "https://github.com/patrick-hudson/put.gd-desktop/actions/runs/40026118521/job/120662743163"
-        ]
-      },
-      {
-        "id": "CVE-2025-59733",
-        "severity": "High",
-        "reportedFixVersions": [
-          "8.0"
-        ],
-        "assessment": "affected component absent from configured build",
-        "component": "OpenEXR decoder",
-        "reason": "Affected code is not built or shipped: OpenEXR decoder. Verified against the pinned source, CI configure output and exact bundled libraries.",
-        "references": [
-          "https://github.com/patrick-hudson/put.gd-desktop/actions/runs/40026118521/job/120662743163"
-        ]
-      },
-      {
-        "id": "CVE-2025-59734",
-        "severity": "High",
-        "reportedFixVersions": [
-          "8.0"
-        ],
-        "assessment": "affected component absent from configured build",
-        "component": "SANM decoder",
-        "reason": "Affected code is not built or shipped: SANM decoder. Verified against the pinned source, CI configure output and exact bundled libraries.",
-        "references": [
-          "https://github.com/patrick-hudson/put.gd-desktop/actions/runs/40026118521/job/120662743163"
-        ]
-      },
-      {
-        "id": "CVE-2026-107695",
-        "severity": "High",
-        "reportedFixVersions": [
-          "8.1.3"
-        ],
-        "assessment": "affected component absent from configured build",
-        "component": "HLS demuxer",
-        "reason": "Affected code is not built or shipped: HLS demuxer. Verified against the pinned source, CI configure output and exact bundled libraries.",
-        "references": [
-          "https://github.com/patrick-hudson/put.gd-desktop/actions/runs/40026118521/job/120662743163"
-        ]
-      },
       {
         "id": "CVE-2026-107696",
         "severity": "High",
         "reportedFixVersions": [],
         "assessment": "affected component absent from configured build",
-        "component": "RTSP demuxer/network protocols",
-        "reason": "Affected code is not built or shipped: RTSP demuxer/network protocols. Verified against the pinned source, CI configure output and exact bundled libraries.",
+        "component": "RTSP demuxer and muxer",
+        "source": "ff_rtsp_connect() in libavformat/rtsp.c follows RTSP 3xx redirects without a limit (goto redirect at rtsp.c:2225 in n9.0.2). The function is under #if CONFIG_RTSP_DEMUXER || CONFIG_RTSP_MUXER, and libavformat/Makefile links rtsp.o only for the RTSP demuxer, the RTSP muxer and the SDP demuxer. None is enabled: configure's enabled demuxers are gif, matroska and mov, the muxers gif, mov, webm, matroska, mp4 and webp, and the only protocol is file.",
+        "reason": "Affected code is not built or shipped: RTSP demuxer and muxer (ff_rtsp_connect's redirect loop in libavformat/rtsp.c, compiled only for the RTSP demuxer/muxer and SDP demuxer; the build has --disable-network and only the file protocol). Verified against the pinned source, CI configure output and exact bundled libraries.",
         "references": [
-          "https://github.com/patrick-hudson/put.gd-desktop/actions/runs/40026118521/job/120662743163"
-        ]
-      },
-      {
-        "id": "CVE-2026-30754",
-        "severity": "High",
-        "reportedFixVersions": [
-          "8.1"
-        ],
-        "assessment": "affected component absent from configured build",
-        "component": "RTP muxer",
-        "reason": "Affected code is not built or shipped: RTP muxer. Verified against the pinned source, CI configure output and exact bundled libraries.",
-        "references": [
-          "https://github.com/patrick-hudson/put.gd-desktop/actions/runs/40026118521/job/120662743163"
-        ]
-      },
-      {
-        "id": "CVE-2026-30997",
-        "severity": "High",
-        "reportedFixVersions": [],
-        "assessment": "affected component absent from configured build",
-        "component": "native AV1 decoder",
-        "reason": "Affected code is not built or shipped: native AV1 decoder. Verified against the pinned source, CI configure output and exact bundled libraries.",
-        "references": [
-          "https://github.com/patrick-hudson/put.gd-desktop/actions/runs/40026118521/job/120662743163"
-        ]
-      },
-      {
-        "id": "CVE-2026-30998",
-        "severity": "High",
-        "reportedFixVersions": [],
-        "assessment": "affected component absent from configured build",
-        "component": "tools/zmqsend",
-        "reason": "Affected code is not built or shipped: tools/zmqsend. Verified against the pinned source, CI configure output and exact bundled libraries.",
-        "references": [
-          "https://github.com/patrick-hudson/put.gd-desktop/actions/runs/40026118521/job/120662743163"
-        ]
-      },
-      {
-        "id": "CVE-2026-30999",
-        "severity": "High",
-        "reportedFixVersions": [],
-        "assessment": "affected component absent from configured build",
-        "component": "tools/zmqsend (CNA references and upstream fix 144af8f; scanner description differs)",
-        "reason": "Not shipped: tools/zmqsend. The CNA references and upstream fix 144af8f81abc1385631b4e1f4672cd415a9c6e05 identify a tool memory leak; the scanner description incorrectly suggests a general av_bprint library overflow.",
-        "references": [
-          "https://github.com/patrick-hudson/put.gd-desktop/actions/runs/40026118521/job/120662743163",
-          "https://github.com/FFmpeg/FFmpeg/commit/144af8f81abc1385631b4e1f4672cd415a9c6e05",
-          "https://github.com/CVEProject/cvelistV5/blob/main/cves/2026/30xxx/CVE-2026-30999.json"
-        ]
-      },
-      {
-        "id": "CVE-2026-40962",
-        "severity": "Critical",
-        "reportedFixVersions": [
-          "8.1"
-        ],
-        "assessment": "fix already present in pinned source",
-        "backport": {
-          "cve": "CVE-2026-40962",
-          "fixCommit": "78c944bdb170d8dcece166115d92b45379b040f4",
-          "pinnedCommit": "3a0867c2bfda4a4d4309ca1a8cbdc6175e67f587",
-          "status": "ahead",
-          "mergeBase": "78c944bdb170d8dcece166115d92b45379b040f4"
-        },
-        "reason": "Already fixed in pinned FFmpeg 7.1.5: upstream backport 78c944bdb170d8dcece166115d92b45379b040f4 is an ancestor of the bundled source commit.",
-        "references": [
-          "https://github.com/FFmpeg/FFmpeg/commit/78c944bdb170d8dcece166115d92b45379b040f4"
-        ]
-      },
-      {
-        "id": "CVE-2026-52296",
-        "severity": "High",
-        "reportedFixVersions": [
-          "9.0"
-        ],
-        "assessment": "affected component absent from configured build",
-        "component": "WMA encoder",
-        "reason": "Affected code is not built or shipped: WMA encoder. Verified against the pinned source, CI configure output and exact bundled libraries.",
-        "references": [
-          "https://github.com/patrick-hudson/put.gd-desktop/actions/runs/40026118521/job/120662743163"
-        ]
-      },
-      {
-        "id": "CVE-2026-52297",
-        "severity": "High",
-        "reportedFixVersions": [
-          "9.0"
-        ],
-        "assessment": "fix already present in pinned source",
-        "backport": {
-          "cve": "CVE-2026-52297",
-          "fixCommit": "c7a0013d5fedb4a875446a3cd7e6fa9beba4e81a",
-          "pinnedCommit": "3a0867c2bfda4a4d4309ca1a8cbdc6175e67f587",
-          "status": "ahead",
-          "mergeBase": "c7a0013d5fedb4a875446a3cd7e6fa9beba4e81a"
-        },
-        "reason": "Already fixed in pinned FFmpeg 7.1.5: upstream backport c7a0013d5fedb4a875446a3cd7e6fa9beba4e81a is an ancestor of the bundled source commit.",
-        "references": [
-          "https://github.com/FFmpeg/FFmpeg/commit/c7a0013d5fedb4a875446a3cd7e6fa9beba4e81a"
-        ]
-      },
-      {
-        "id": "CVE-2026-64830",
-        "severity": "High",
-        "reportedFixVersions": [],
-        "assessment": "affected component absent from configured build",
-        "component": "VobSub demuxer",
-        "reason": "Affected code is not built or shipped: VobSub demuxer. Verified against the pinned source, CI configure output and exact bundled libraries.",
-        "references": [
-          "https://github.com/patrick-hudson/put.gd-desktop/actions/runs/40026118521/job/120662743163"
-        ]
-      },
-      {
-        "id": "CVE-2026-64832",
-        "severity": "High",
-        "reportedFixVersions": [],
-        "assessment": "affected component absent from configured build",
-        "component": "NVDEC hardware decoding (NVENC encoding is separate)",
-        "reason": "Affected code is not built or shipped: NVDEC hardware decoding (NVENC encoding is separate). Verified against the pinned source, CI configure output and exact bundled libraries.",
-        "references": [
-          "https://github.com/patrick-hudson/put.gd-desktop/actions/runs/40026118521/job/120662743163"
-        ]
-      },
-      {
-        "id": "CVE-2026-64833",
-        "severity": "High",
-        "reportedFixVersions": [],
-        "assessment": "affected component absent from configured build",
-        "component": "SPDIF muxer",
-        "reason": "Affected code is not built or shipped: SPDIF muxer. Verified against the pinned source, CI configure output and exact bundled libraries.",
-        "references": [
-          "https://github.com/patrick-hudson/put.gd-desktop/actions/runs/40026118521/job/120662743163"
-        ]
-      },
-      {
-        "id": "CVE-2026-64834",
-        "severity": "High",
-        "reportedFixVersions": [],
-        "assessment": "affected component absent from configured build",
-        "component": "RTP/ASF demuxer",
-        "reason": "Affected code is not built or shipped: RTP/ASF demuxer. Verified against the pinned source, CI configure output and exact bundled libraries.",
-        "references": [
-          "https://github.com/patrick-hudson/put.gd-desktop/actions/runs/40026118521/job/120662743163"
-        ]
-      },
-      {
-        "id": "CVE-2026-64835",
-        "severity": "High",
-        "reportedFixVersions": [],
-        "assessment": "affected component absent from configured build",
-        "component": "ADX decoder",
-        "reason": "Affected code is not built or shipped: ADX decoder. Verified against the pinned source, CI configure output and exact bundled libraries.",
-        "references": [
-          "https://github.com/patrick-hudson/put.gd-desktop/actions/runs/40026118521/job/120662743163"
-        ]
-      },
-      {
-        "id": "CVE-2026-65703",
-        "severity": "High",
-        "reportedFixVersions": [],
-        "assessment": "affected component absent from configured build",
-        "component": "TDSC decoder",
-        "reason": "Affected code is not built or shipped: TDSC decoder. Verified against the pinned source, CI configure output and exact bundled libraries.",
-        "references": [
-          "https://github.com/patrick-hudson/put.gd-desktop/actions/runs/40026118521/job/120662743163"
-        ]
-      },
-      {
-        "id": "CVE-2026-65704",
-        "severity": "High",
-        "reportedFixVersions": [],
-        "assessment": "affected component absent from configured build",
-        "component": "TY demuxer / Shorten decoder",
-        "reason": "Affected code is not built or shipped: TY demuxer / Shorten decoder. Verified against the pinned source, CI configure output and exact bundled libraries.",
-        "references": [
-          "https://github.com/patrick-hudson/put.gd-desktop/actions/runs/40026118521/job/120662743163"
-        ]
-      },
-      {
-        "id": "CVE-2026-65705",
-        "severity": "High",
-        "reportedFixVersions": [],
-        "assessment": "affected component absent from configured build",
-        "component": "floodfill filter",
-        "reason": "Affected code is not built or shipped: floodfill filter. Verified against the pinned source, CI configure output and exact bundled libraries.",
-        "references": [
-          "https://github.com/patrick-hudson/put.gd-desktop/actions/runs/40026118521/job/120662743163"
-        ]
-      },
-      {
-        "id": "CVE-2026-65706",
-        "severity": "High",
-        "reportedFixVersions": [],
-        "assessment": "affected component absent from configured build",
-        "component": "swaprect filter",
-        "reason": "Affected code is not built or shipped: swaprect filter. Verified against the pinned source, CI configure output and exact bundled libraries.",
-        "references": [
-          "https://github.com/patrick-hudson/put.gd-desktop/actions/runs/40026118521/job/120662743163"
-        ]
-      },
-      {
-        "id": "CVE-2026-66036",
-        "severity": "High",
-        "reportedFixVersions": [],
-        "assessment": "affected component absent from configured build",
-        "component": "hqdn3d filter",
-        "reason": "Affected code is not built or shipped: hqdn3d filter. Verified against the pinned source, CI configure output and exact bundled libraries.",
-        "references": [
-          "https://github.com/patrick-hudson/put.gd-desktop/actions/runs/40026118521/job/120662743163"
-        ]
-      },
-      {
-        "id": "CVE-2026-66039",
-        "severity": "High",
-        "reportedFixVersions": [],
-        "assessment": "affected component absent from configured build",
-        "component": "MACE6 decoder",
-        "reason": "Affected code is not built or shipped: MACE6 decoder. Verified against the pinned source, CI configure output and exact bundled libraries.",
-        "references": [
-          "https://github.com/patrick-hudson/put.gd-desktop/actions/runs/40026118521/job/120662743163"
-        ]
-      },
-      {
-        "id": "CVE-2026-66040",
-        "severity": "High",
-        "reportedFixVersions": [],
-        "assessment": "affected component absent from configured build",
-        "component": "PNG/APNG encoders",
-        "reason": "Affected code is not built or shipped: PNG/APNG encoders. Verified against the pinned source, CI configure output and exact bundled libraries.",
-        "references": [
-          "https://github.com/patrick-hudson/put.gd-desktop/actions/runs/40026118521/job/120662743163"
-        ]
-      },
-      {
-        "id": "CVE-2026-66041",
-        "severity": "High",
-        "reportedFixVersions": [],
-        "assessment": "affected component absent from configured build",
-        "component": "quirc filter",
-        "reason": "Affected code is not built or shipped: quirc filter. Verified against the pinned source, CI configure output and exact bundled libraries.",
-        "references": [
-          "https://github.com/patrick-hudson/put.gd-desktop/actions/runs/40026118521/job/120662743163"
-        ]
-      },
-      {
-        "id": "CVE-2026-70628",
-        "severity": "High",
-        "reportedFixVersions": [
-          "9"
-        ],
-        "assessment": "affected component absent from configured build",
-        "component": "DVB subtitle parser",
-        "reason": "Affected code is not built or shipped: DVB subtitle parser. Verified against the pinned source, CI configure output and exact bundled libraries.",
-        "references": [
-          "https://github.com/patrick-hudson/put.gd-desktop/actions/runs/40026118521/job/120662743163"
-        ]
-      },
-      {
-        "id": "CVE-2026-70632",
-        "severity": "High",
-        "reportedFixVersions": [
-          "9"
-        ],
-        "assessment": "affected component absent from configured build",
-        "component": "CFHD decoder",
-        "reason": "Affected code is not built or shipped: CFHD decoder. Verified against the pinned source, CI configure output and exact bundled libraries.",
-        "references": [
-          "https://github.com/patrick-hudson/put.gd-desktop/actions/runs/40026118521/job/120662743163"
-        ]
-      },
-      {
-        "id": "CVE-2026-8461",
-        "severity": "High",
-        "reportedFixVersions": [
-          "8.1.2"
-        ],
-        "assessment": "affected component absent from configured build",
-        "component": "MagicYUV decoder",
-        "reason": "Affected code is not built or shipped: MagicYUV decoder. Verified against the pinned source, CI configure output and exact bundled libraries.",
-        "references": [
-          "https://github.com/patrick-hudson/put.gd-desktop/actions/runs/40026118521/job/120662743163"
-        ]
-      },
-      {
-        "id": "CVE-2026-96611",
-        "severity": "High",
-        "reportedFixVersions": [
-          "9.0"
-        ],
-        "assessment": "fix already present in pinned source",
-        "backport": {
-          "cve": "CVE-2026-96611",
-          "fixCommit": "15396fa8d550cd19e8619cca919ea09ecbe84ef6",
-          "pinnedCommit": "3a0867c2bfda4a4d4309ca1a8cbdc6175e67f587",
-          "status": "ahead",
-          "mergeBase": "15396fa8d550cd19e8619cca919ea09ecbe84ef6"
-        },
-        "reason": "Already fixed in pinned FFmpeg 7.1.5: upstream backport 15396fa8d550cd19e8619cca919ea09ecbe84ef6 is an ancestor of the bundled source commit.",
-        "references": [
-          "https://github.com/FFmpeg/FFmpeg/commit/15396fa8d550cd19e8619cca919ea09ecbe84ef6"
+          "https://github.com/patrick-hudson/put.gd-desktop/actions/runs/42393675852/job/128471351024",
+          "https://github.com/FFmpeg/FFmpeg/blob/n9.0.2/libavformat/rtsp.c#L2225"
         ]
       }
     ]
@@ -803,27 +453,27 @@
     }
   },
   "stillReported": [
-    "libtiff CVE-2026-4775",
-    "gstreamer1.0-plugins-bad and libgstreamer-plugins-bad1.0-0 CVE-2025-3887"
+    "gstreamer1.0-plugins-bad and libgstreamer-plugins-bad1.0-0 CVE-2025-3887",
+    "sqlite CVE-2026-119586 (no fix version)"
   ],
   "validation": {
     "state": "passed",
-    "host": "Fedora 44 physical builder 192.168.68.70 (SSH only)",
+    "host": "Debian 13 physical builder 192.168.68.69 (SSH only)",
     "class": "Exact development-package vulnerability-policy dry run; no stable publication or graphical acceptance",
-    "extraction": "SHA-256 verified CI AppImage, type2 --appimage-extract; product entrypoints not launched",
+    "extraction": "SHA-256 verified CI AppImage (matches appimage-build.json), type2 --appimage-extract; product entrypoints not launched",
     "database": {
-      "name": "vulnerability-db_v6.1.10_2026-10-23T00:30:52Z_1792737015.tar.zst",
-      "url": "https://grype.anchore.io/databases/v6/vulnerability-db_v6.1.10_2026-10-23T00:30:52Z_1792737015.tar.zst",
-      "sha256": "6e78c0f757fe96976b37b138e54e83fd75f2ad1f6c5feae2ecb008cefa8fcc0f",
-      "built": "2026-10-23T06:30:15Z",
+      "name": "vulnerability-db_v6.1.10_2026-11-07T00:20:09Z_1794032328.tar.zst",
+      "url": "https://grype.anchore.io/databases/v6/vulnerability-db_v6.1.10_2026-11-07T00:20:09Z_1794032328.tar.zst",
+      "sha256": "f90467f0e784f8f6dd04b9a53588851e4b6fb874a4171d9edc95e91502feda5a",
+      "built": "2026-11-07T06:18:48Z",
       "schemaVersion": "v6.1.10"
     },
-    "grype": "0.121.0",
-    "syft": "1.55.0",
+    "grype": "0.121.2",
+    "syft": "1.57.0",
     "policySchema": 2,
     "channel": "stable",
-    "findings": 170,
-    "accepted": 30,
+    "findings": 175,
+    "accepted": 6,
     "blocking": 0,
     "reportedCriticalHigh": [
       {
@@ -839,41 +489,40 @@
         "status": "reported"
       },
       {
-        "id": "CVE-2026-4775",
-        "component": "libtiff",
-        "version": "4.7.2",
+        "id": "CVE-2026-119586",
+        "component": "sqlite",
+        "version": "3.53.4",
         "status": "reported"
       }
     ],
     "negativeChecks": {
-      "withoutDispositionsBlocking": 13,
-      "missingFingerprintBlocking": 13,
-      "afterExpiryBlocking": 13,
-      "preScopeHelperRejectsSchema2": true
+      "withoutDispositionsBlocking": 5,
+      "missingFingerprintBlocking": 5,
+      "afterExpiryBlocking": 5,
+      "withoutFfmpegDisposition": "CVE-2026-107696 reported (no fix version, so it does not block)"
     },
     "focusedTests": {
       "command": "python3 tests/releases/test_sbom.py -v",
-      "passed": 17,
-      "host": "Fedora builder"
+      "passed": 21,
+      "host": "Debian builder"
     },
     "reproduction": [
       "Verify appimage-build.json artifact SHA-256 before extraction.",
-      "Regenerate the AppImage SBOM from its exact CI artifact with tools/releases/sbom.py generate (or sbom.generate for one image); retain original native SBOMs.",
+      "python3 tools/releases/sbom.py generate --inputs <the run's release-* artifacts> --syft scan-tools/syft --output regenerated-sboms --timestamp <any>; its FFmpeg, ICU, HarfBuzz and SQLite scope properties equal the CI release-sbom artifact's.",
       "tools/releases/sbom.py database --output database --listing database-listing.json; import with the pinned Grype.",
-      "GRYPE_DB_CACHE_DIR=$PWD/grype-db GRYPE_DB_AUTO_UPDATE=false python3 tools/releases/sbom.py scan --sboms regenerated-sboms --grype $PWD/scan-tools/grype --output fresh-scan-v2 --database database-listing.json --release-tag v26.1024.1133",
+      "GRYPE_DB_CACHE_DIR=$PWD/grype-db GRYPE_DB_AUTO_UPDATE=false python3 tools/releases/sbom.py scan --sboms regenerated-sboms --grype $PWD/scan-tools/grype --output fresh-scan --database database-listing.json --release-tag v26.1107.4039",
       "The release tag argument selects stable policy only; no tag or release was created."
     ],
     "hashes": {
-      "scannerImplementationSha256": "9938c4b6976f564a457756ac7fc6329df341a9be9fea0fa02a9a7cbc9eb331d8",
-      "policySha256": "3bafbc4083c90a10b6cabc9ba6271455d7b8e6d54281be698f51ef5ed51ba9a6",
-      "vulnerabilityReportSha256": "3c0f83e7e560ed57faefd39c90efdb06d9b0d4b7729b126138cead8f2a0ca19f",
-      "focusedTestLogSha256": "3f4f2748495497c2b15a15b5aafcb26725188d8df1c58af9a8c49a909afa9958",
-      "appimageSbomSha256": "6025da49563026f80d0e6824310ec22e03b6cc3e22fc5e6b3538cb20fc1678b3"
+      "scannerImplementationSha256": "67f50c46b66967215a8214f5cbaf02d46deb3183319e6fcb207300d3f0e60630",
+      "policySha256": "f759c346c86830bf44db9f93923525058a7fc7f33584b1f7df7c253a09b7ffc3",
+      "vulnerabilityReportSha256": "ff75124da4d06d63d68fe83bc72ea82f368d698423446a0637956077380ab0fa",
+      "focusedTestLogSha256": "b6f3bd9f2bcf946f29b5029dab90188a15f06c149e46b992874790725e2dfb69",
+      "appimageSbomSha256": "e46e86b4cbe948a84f4402ed16d142b209c8faf3e6f30a2120187c933451b8b0"
     },
     "retainedEvidence": {
-      "builder": "/home/patrick/work/putgd-i511-20261024",
-      "workstation": "work/i511/evidence"
+      "builder": "/home/patrick/work/ff9-sbom-1249"
     },
-    "remainingGates": "CI on this PR, fingerprint checks on each new package, and a current exact stable-draft scan plus release acceptance. Issue #511 remains a release blocker until those stable gates pass."
+    "remainingGates": "CI on this PR, fingerprint checks on each new package, and a current exact stable-draft scan plus release acceptance."
   }
 }
