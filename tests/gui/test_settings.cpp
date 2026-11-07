@@ -1499,9 +1499,10 @@ private slots:
   QCOMPARE(fixture.setup.unlockSavedCredentials().size(),1);
   PUTGD_TRY_VERIFY(fixture.setup.savedCredentialsSettled());QVERIFY(wallet.reads>=1);
   PUTGD_TRY_VERIFY(hint->text().startsWith(QString::fromUtf8("AKIA…")));
-  QVERIFY(hint->text().contains("In the system keychain"));QVERIFY(!hint->text().contains("synthetic-startup"));
+  QVERIFY(hint->text().contains("In the system keychain"));QVERIFY(!hint->text().contains("AKIA-synthetic-startup"));
   PUTGD_TRY_VERIFY(unlock->isHidden());
-  QVERIFY(!QJsonDocument(window.settings()->saveViewState()).toJson().contains("synthetic-startup"));
+  // Only the four-character prefix leaves the resident; the view state keeps neither key.
+  const auto state=QJsonDocument(window.settings()->saveViewState()).toJson();QVERIFY(!state.contains("AKIA-synthetic-startup"));QVERIFY(!state.contains("synthetic-startup-secret"));
  }
  void storedCredentialHintsNeverExportFullKeysOrOverwriteInputs(){
   QTemporaryDir dir;CredentialStore secrets;S3Provider s3(secrets);auto doc=Settings::developmentTemplate();auto profiles=doc["profiles"].toArray();auto profile=profiles[0].toObject();profile["credentials"]=QJsonObject{{"mode","session"},{"reference",QJsonValue::Null}};profiles[0]=profile;doc["profiles"]=profiles;SettingsService service(dir.filePath("config.json"),[&](auto,auto value){return s3.validateSettings(value);});QVERIFY(service.save(doc,{}));secrets.setSession("development-s3",{"AKIA-synthetic-full-access","synthetic-full-secret","synthetic-token"});UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.settings();auto* hint=window.findChild<QLabel*>("storedCredentialHint");PUTGD_TRY_VERIFY(hint->text().contains("AKIA"));QVERIFY(hint->text().contains("Secret key stored"));auto* access=window.findChild<QLineEdit*>("credentialAccessKey");QVERIFY(access->text().isEmpty());// The status row identifies the key; the field only invites a replacement.
