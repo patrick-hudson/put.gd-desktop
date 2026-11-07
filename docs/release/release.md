@@ -550,7 +550,7 @@ as a new finding again:
 ```json
 "ignore": [
   {"id": "CVE-YYYY-NNNNN", "component": "ffmpeg", "reason": "the affected decoder is not built (media.json)",
-   "expires": "2027-01-21", "issue": 511, "scope": "appimage-ffmpeg-7.1.5"}
+   "expires": "2027-01-21", "issue": 511, "scope": "appimage-ffmpeg-9.0.2"}
 ]
 ```
 
@@ -569,8 +569,9 @@ The repository contract also requires reassessment when the locked source or
 `media.json` configure list changes. The existing stable severity/fix gate stays
 unchanged, and all accepted findings remain in the report with reasons and expiry.
 
-The [#511 evidence](../../packaging/sbom/dispositions/511.json) records three FFmpeg
-backports and the omitted components behind the other 26 Critical/High matches.
+The [#511 evidence](../../packaging/sbom/dispositions/511.json) records the omitted
+RTSP demuxer and muxer behind FFmpeg 9.0.2's one Critical/High match,
+CVE-2026-107696 (#1249; 7.1.5 had 29).
 It also resolves the reachability question for ICU 73.2 CVE-2025-5222: the
 [upstream fix](https://github.com/unicode-org/icu/commit/2c667e31cfd0b6bb1923627a932fd3453a5bac77)
 changes `tools/genrb/parse.cpp`, and that parser and `SRBRoot` belong to the
@@ -580,10 +581,9 @@ to those exact runtime bytes, not to the ICU source package or a system `genrb`.
 No new upstream patch or ICU ABI substitution is needed for this disposition.
 The acceptances expire on 2027-01-21 and do not cover other CVEs.
 
-The evidence package is the development-identity AppImage from `nightly`
-`50053b01f1bbd7f3776a53513bb8c43151ce0de8` (CI run 40045151634), not a published
-nightly or stable draft. Each later package must satisfy the same fingerprint
-guards, and the exact stable draft still requires its current scan and other
+The evidence package is the development-identity AppImage of pull request
+#1249 (CI run 42393675852), not a published nightly or stable draft. Each
+later package must satisfy the same fingerprint guards, and the exact stable draft still requires its current scan and other
 release acceptance. The [remaining-findings assessment](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-24-release-blockers-511-416-419/README.md)
 checks the exact source behind libtiff CVE-2026-4775 and GStreamer CVE-2025-3887.
 Qt's pinned libtiff already contains all four upstream overflow corrections.

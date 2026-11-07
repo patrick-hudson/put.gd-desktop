@@ -129,7 +129,14 @@ QP (24 for H.264, 26 for HEVC), the one rate control every VA driver offers;
 AMD's `radeonsi` and Intel's `iHD` share this path, with no B-frames. An
 encoder that does not open (no driver, no entry point, as HEVC on a UHD 630)
 is skipped for the next candidate, so other machines keep the CPU path. HEVC
-in MP4 is tagged `hvc1` for Apple players. The working clip is decoded with frame and
+in MP4 is tagged `hvc1` for Apple players. VA-API encoders are opened without
+`AV_CODEC_FLAG_GLOBAL_HEADER`, so the MP4 muxer builds `hvcC`/`avcC` from the
+first packet's in-band parameter sets. `radeonsi` rewrites those sets to what it
+actually coded (HEVC transform depth and 1088-row coding height, H.264
+`transform_8x8_mode_flag`), while libavcodec's extradata keeps its own values.
+From FFmpeg 8.0 the muxer drops in-band sets from `hvc1` tracks, so with a global
+header AMD HEVC exports decoded as garbage. Every FFmpeg from 6.1 on builds a
+valid sample entry this way (#1249). The working clip is decoded with frame and
 slice threads on every core. Audio is trimmed with `atrim` in seconds on the
 same clip timeline as the video (it starts at the first video frame; a gap
 before the first sample becomes silence, see "Timestamps and A/V sync"),
@@ -205,8 +212,9 @@ demuxers, the Opus, GIF, MJPEG and PCM decoders and libvpx's VP9 decoder
 example `./putgd-*.AppImage --appimage-extract`, then
 `APPDIR=$PWD/squashfs-root squashfs-root/usr/bin/putgd-record --motion COPY.mp4 8`.
 It can't read H.265 MP4 copies (FFmpeg's HEVC decoder would add 0.34 MiB to
-the image) or WebP ones (FFmpeg 7.1 has no animated WebP decoder): score those
-with a distro build of `putgd-record`, and WebP motion with Pillow. Each CI
+the image) or WebP ones (the image's FFmpeg builds no animated WebP demuxer or
+decoder): score H.265 copies with a distro build of `putgd-record`, and WebP
+copies with Pillow. Each CI
 AppImage build runs `tools/releases/appimage_diagnostics.py` on the extracted
 image: the helper writes a marker clip, exports it to MP4, WebM and GIF, and
 `--motion`, `--preview` and, for the clips with sound, `--av-sync` must read
