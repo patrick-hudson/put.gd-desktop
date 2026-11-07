@@ -611,6 +611,14 @@ private slots:
   check(light);
   auto dark=noise({300,120},9);for(int y=0;y<dark.height();++y){auto* line=reinterpret_cast<QRgb*>(dark.scanLine(y));for(int x=0;x<dark.width();++x)line[x]=qRgb(qRed(line[x])/5,qGreen(line[x])/5,qBlue(line[x])/5);}
   check(dark);
+  // Neutral markers have no chroma to lend: black shades the region and white lightens it, keeping contrast ratios.
+  for(const QColor color:{QColor(17,17,17),QColor(255,255,255)}){
+   EditDocument doc(light);auto mark=box(Shape::Kind::Highlight,QRect(20,20,260,80));mark.color=color;doc.add(mark);const auto out=doc.render();
+   const QRgb a=light.pixel(40,40),b=light.pixel(200,90),oa=out.pixel(40,40),ob=out.pixel(200,90);
+   const double la=highlight::luminance(a),loa=highlight::luminance(oa);
+   QVERIFY2(color==QColor(255,255,255)?loa>la+0.1:loa<la*0.7,qPrintable(QString("%1: %2 -> %3").arg(color.name()).arg(la).arg(loa)));
+   QVERIFY(std::abs(contrastOf(oa,ob)-contrastOf(a,b))<0.15*contrastOf(a,b));
+  }
  }
  void highlightPreviewMatchesExportAtFullScale(){
   EditDocument doc(fixture("highlight-dark-table.png"));auto mark=box(Shape::Kind::Highlight,QRect(40,50,480,60));doc.add(mark);
