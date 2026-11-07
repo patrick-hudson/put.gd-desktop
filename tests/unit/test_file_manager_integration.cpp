@@ -232,15 +232,18 @@ private slots:
   // The start line comes last: once it's there, the stub is ready for SIGTERM.
   write(stub,("#!/bin/sh\ntrap 'exit 0' TERM\nprintf '%s\\n' \"$WAYLAND_DISPLAY\" >> '"+quotedDisplays+"'\nprintf '%s %s\\n' \"$#\" \"$*\" >> '"+quoted+"'\nwhile :; do sleep 0.05; done\n").toUtf8(),programMode);
   const auto lines=[&]{return QString::fromUtf8(readAll(starts)).split('\n',Qt::SkipEmptyParts);};
-  const auto restart=[&](QProcess& process){process.start("/bin/sh",{"-c",FileManagerIntegration::restartScript("pcmanfm"),"putgd-restart",name});QVERIFY(process.waitForStarted());};
+  // Observe terminal state through the event loop: waitForFinished() returns
+  // false if Qt has already delivered finished, and a raw 5 s budget ignores
+  // the contention scale. Keep the exit-code and restart assertions below.
+  const auto restart=[&](QProcess& process){process.start("/bin/sh",{"-c",FileManagerIntegration::restartScript("pcmanfm"),"putgd-restart",name});QVERIFY(process.waitForStarted(putgd::test::scaled(5000)));};
   {
    QProcess desktop;desktop.start(stub,{"--desktop","--profile","the LXDE"});
    PUTGD_TRY_COMPARE(lines().size(),1);
    QProcess second;restart(second);
    // The first exits cleanly on SIGTERM; its arguments, spaces included, come back.
-   QVERIFY(desktop.waitForFinished(5000));QCOMPARE(desktop.exitCode(),0);
+   PUTGD_TRY_COMPARE(desktop.state(),QProcess::NotRunning);QCOMPARE(desktop.exitCode(),0);
    PUTGD_TRY_COMPARE(lines(),QStringList({"3 --desktop --profile the LXDE","3 --desktop --profile the LXDE"}));
-   second.terminate();QVERIFY(second.waitForFinished(5000));
+   second.terminate();PUTGD_TRY_COMPARE(second.state(),QProcess::NotRunning);
   }
   QFile::remove(starts);
   {
@@ -248,8 +251,8 @@ private slots:
    QProcess window;window.start(stub,{"/some/folder"});
    PUTGD_TRY_COMPARE(lines().size(),1);
    QProcess second;restart(second);
-   QVERIFY(window.waitForFinished(5000));
-   QVERIFY(second.waitForFinished(5000));QCOMPARE(second.exitCode(),0);
+   PUTGD_TRY_COMPARE(window.state(),QProcess::NotRunning);
+   PUTGD_TRY_COMPARE(second.state(),QProcess::NotRunning);QCOMPARE(second.exitCode(),0);
    QCOMPARE(lines(),QStringList{"1 /some/folder"});
   }
   for(const auto* variable:{"DISPLAY","WAYLAND_DISPLAY"}) {
@@ -262,9 +265,9 @@ private slots:
    QVERIFY(other.waitForStarted(putgd::test::scaled(5000)));
    PUTGD_TRY_COMPARE(lines().size(),1);
    QProcess second;restart(second);
-   QVERIFY(second.waitForFinished(5000));QCOMPARE(second.exitCode(),0);
+   PUTGD_TRY_COMPARE(second.state(),QProcess::NotRunning);QCOMPARE(second.exitCode(),0);
    QCOMPARE(other.state(),QProcess::Running);QCOMPARE(lines().size(),1);
-   other.terminate();QVERIFY(other.waitForFinished(5000));
+   other.terminate();PUTGD_TRY_COMPARE(other.state(),QProcess::NotRunning);
   }
   {
    // Wayland's default display, named by one side only, is the same display.
@@ -273,15 +276,15 @@ private slots:
    desktop.setProcessEnvironment(environment);desktop.start(stub,{"--desktop"});
    PUTGD_TRY_COMPARE(lines().size(),1);
    QProcess second;environment.remove("WAYLAND_DISPLAY");second.setProcessEnvironment(environment);restart(second);
-   QVERIFY(desktop.waitForFinished(5000));
+   PUTGD_TRY_COMPARE(desktop.state(),QProcess::NotRunning);
    PUTGD_TRY_COMPARE(lines().size(),2);
    // It comes back on the display it had, not put.gd's lack of one.
    PUTGD_TRY_COMPARE(QString::fromUtf8(readAll(displays)),QString("wayland-0\nwayland-0\n"));
-   second.terminate();QVERIFY(second.waitForFinished(5000));
+   second.terminate();PUTGD_TRY_COMPARE(second.state(),QProcess::NotRunning);
   }
   // Not running: nothing to do, and nothing starts.
   QFile::remove(starts);
-  QProcess none;restart(none);QVERIFY(none.waitForFinished(5000));QCOMPARE(none.exitCode(),0);
+  QProcess none;restart(none);PUTGD_TRY_COMPARE(none.state(),QProcess::NotRunning);QCOMPARE(none.exitCode(),0);
   QVERIFY(lines().isEmpty());
  }
  void scriptsKeepArgumentBoundaries() {
