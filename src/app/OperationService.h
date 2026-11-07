@@ -114,7 +114,8 @@ public:
  // Free space, system reserve and in-flight imports on the upload store's filesystem.
  QJsonObject artifactDisk() const {return ArtifactStore::diskBudget(root_+"/artifacts").toJson();}
  ProviderRegistry& providers() {return providers_;}
- // Shared services run SQL, encoding, and file/network work on workers.
+ // Shared services run SQL, encoding, and file/network work on workers. Each
+ // finished worker arms the idle heap reclamation once the resident is ready.
  void background(std::function<QJsonObject(Error&)>,JsonReply);
  std::shared_ptr<std::mutex> objectLock(const Destination&,const QJsonObject&,const QString& candidate);
  // A provider that takes one request at a time for a destination (its credential
@@ -122,7 +123,7 @@ public:
  std::shared_ptr<DestinationLease> destinationLease(const Destination&);
  bool ready() const {return ready_;}
  // Ask the idle gate to return freed heap once current work drains (#1149): a
- // history page or a closed interface leaves query buffers free but resident.
+ // closed interface leaves its buffers free but resident. background() arms it itself.
  void requestHeapReclamation();
 signals:
  void initialized();
