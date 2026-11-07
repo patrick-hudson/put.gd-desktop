@@ -7,7 +7,7 @@
   "extends": ["config:recommended"],
   "baseBranchPatterns": ["nightly"],
   "enabledManagers": ["custom.regex", "npm", "pep621"],
-  "ignorePaths": ["docs/**", "tests/**", "**/node_modules/**", "packaging/flatpak/**"],
+  "ignorePaths": ["docs/**", "tests/**", "**/node_modules/**"],
   "semanticCommits": "disabled",
   "commitMessagePrefix": "deps:",
   "commitMessageTopic": "{{depName}}",

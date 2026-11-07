@@ -33,7 +33,7 @@ FOLDED = {'docs': 'documentation', 'lab': 'lab', 'test': 'test'}
 _NOISE = {'docs': 'docs', 'doc': 'docs', 'lab': 'lab', 'test': 'test', 'tests': 'test', 'ci': 'test'}
 _AREAS = {'recording': 'recording', 'record': 'recording', 'uploads': 'uploads', 'upload': 'uploads',
           's3': 'uploads', 'proton': 'uploads', 'storage': 'uploads', 'packaging': 'packaging',
-          'releases': 'packaging', 'release': 'packaging', 'appimage': 'packaging', 'flatpak': 'packaging',
+          'releases': 'packaging', 'release': 'packaging', 'appimage': 'packaging',
           'deb': 'packaging', 'rpm': 'packaging', 'build': 'packaging'}
 _KINDS = {'feat': 'features', 'feature': 'features', 'fix': 'fixes', 'bugfix': 'fixes'}
 _LABELS = {'documentation': 'docs', 'bug': 'fixes', 'enhancement': 'features',

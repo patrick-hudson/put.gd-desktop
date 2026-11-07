@@ -98,7 +98,7 @@ StorageLocations StorageLocations::prepare(const QString& genericConfig,const QS
   if(!QDir().mkpath(data)) {result.error={"storage_unavailable","Cannot create the put.gd data folder",{{"path",data}}};return result;}
   QLockFile owner(data+"/resident.lock");owner.setStaleLockTime(0);
   if(!owner.tryLock(5000)) {result.error={"storage_busy","Another put.gd process is using the data folder; quit it and start put.gd again",{{"path",data}}};return result;}
-  // Windows resolves both generic locations to one folder: it is one root.
+  // Caller-supplied generic locations may share one root; migrate it once.
   const bool shared=config==data;
   result.dataRoot=prepareRoot(data,shared?QStringList{"history.sqlite","config.json"}:QStringList{"history.sqlite"},hook,dataReport,result.error);
   if(shared) {result.configRoot=result.dataRoot;configReport=dataReport;}
