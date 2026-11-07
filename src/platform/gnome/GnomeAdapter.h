@@ -38,6 +38,8 @@ public:
 signals:
  void actionRequested(const QString&);
  void capabilitiesChanged();
+ // A timed discovery retry ran while the helper was unavailable.
+ void discoveryRetried();
 private slots:
  void helperAction(const QString& action,const QString& ticket);
  void helperClipboardChanged(qulonglong revision);

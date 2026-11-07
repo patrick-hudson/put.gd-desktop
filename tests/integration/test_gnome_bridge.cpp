@@ -216,10 +216,12 @@ private slots:
   // each wait doubles, then the slow safety probe keeps looking.
   const QString missing="org.freedesktop.DBus.Error.UnknownMethod";
   stopFixture();QVERIFY(startFixture(0,missing));
-  GnomeAdapter source;source.setDiscoveryRetryForTesting(100,400);
+  GnomeAdapter source;source.setDiscoveryRetryForTesting(100,400);QSignalSpy retried(&source,&GnomeAdapter::discoveryRetried);
   PUTGD_TRY_VERIFY(!source.capabilities()["helper"].toObject()["error"].toObject()["code"].toString().isEmpty());
   const auto from=state()["hellos"].toInt();QElapsedTimer elapsed;elapsed.start();
   PUTGD_TRY_VERIFY_WITH_TIMEOUT(state()["hellos"].toInt()>=from+5,15000);
+  // Every timed retry asks the resident to release what it touched again.
+  QVERIFY(retried.size()>=5);
   // Timers never fire early: 100+200+400+400+400 ms at least, against 500 ms for a fixed first step.
   QVERIFY2(elapsed.elapsed()>=1400,qPrintable(QString::number(elapsed.elapsed())));
   QVERIFY(!helperAvailable(source));
@@ -229,14 +231,14 @@ private slots:
   stopFixture();QVERIFY(startFixture(0,missing));
   GnomeAdapter source;source.setDiscoveryRetryForTesting(600000,600000);
   PUTGD_TRY_VERIFY(!source.capabilities()["helper"].toObject()["error"].toObject()["code"].toString().isEmpty());
-  QCOMPARE(state()["hellos"].toInt(),1);
+  QCOMPARE(state()["hellos"].toInt(),1);QSignalSpy retried(&source,&GnomeAdapter::discoveryRetried);
   // Enabling the extension later, with the resident idle and no retry due, is found by its signal.
   QCOMPARE(control("Enable").type(),QDBusMessage::ReplyMessage);PUTGD_TRY_VERIFY_WITH_TIMEOUT(helperAvailable(source),3000);
   QCOMPARE(state()["hellos"].toInt(),2);PUTGD_TRY_VERIFY(state()["binds"].toInt()>0);
   // The subscription survives a disable, so the next enable is found the same way.
   QCOMPARE(control("Disable",{missing}).type(),QDBusMessage::ReplyMessage);PUTGD_TRY_VERIFY_WITH_TIMEOUT(!helperAvailable(source),3000);
   QCOMPARE(control("Enable").type(),QDBusMessage::ReplyMessage);PUTGD_TRY_VERIFY_WITH_TIMEOUT(helperAvailable(source),3000);
-  QCOMPARE(state()["hellos"].toInt(),4);
+  QCOMPARE(state()["hellos"].toInt(),4);QCOMPARE(retried.size(),0);
  }
  void lostEnableSignalRecoversThroughTheSafetyProbe(){
   stopFixture();QVERIFY(startFixture(0,"org.freedesktop.DBus.Error.UnknownMethod"));
