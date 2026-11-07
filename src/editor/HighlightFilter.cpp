@@ -278,7 +278,11 @@ Plan plan(const QImage& source,const QRect& requested,const QList<QRect>& redact
  Sampler sampler;int confidentBlocks=0;
  for(int by=0;by<plan.rows;++by)for(int bx=0;bx<plan.columns;++bx){
   sampler.clear();
-  const int x0=area.left()+bx*blockSize,y0=area.top()+by*blockSize,x1=std::min(area.right(),x0+blockSize-1),y1=std::min(area.bottom(),y0+blockSize-1);
+  // Every block samples a full cell inside the box: a partial last row or
+  // column slides back over its neighbour, so a one-pixel strip of an icon
+  // or a separator cannot pass for a background of its own.
+  const int x0=std::max(area.left(),std::min(area.left()+bx*blockSize,area.right()-blockSize+1)),y0=std::max(area.top(),std::min(area.top()+by*blockSize,area.bottom()-blockSize+1));
+  const int x1=std::min(area.right(),x0+blockSize-1),y1=std::min(area.bottom(),y0+blockSize-1);
   for(int y=y0;y<=y1;y+=step)for(int x=x0;x<=x1;x+=step)sampler.add(pixelAt(source,redactions,x,y));
   QRgb color=0;double share=0;
   if(sampler.mode(color,share)){blockColor[size_t(by*plan.columns+bx)]=color;if(share>=0.5){confident[size_t(by*plan.columns+bx)]=1;++confidentBlocks;}}

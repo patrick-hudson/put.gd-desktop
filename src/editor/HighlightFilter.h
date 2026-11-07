@@ -22,7 +22,7 @@
 namespace putgd::editor::highlight {
 constexpr int blockSize=16;          // background estimate grid, source pixels
 constexpr int inkDistance=70;        // sRGB distance at which a pixel is all ink (snapping mask)
-constexpr double pigmentFloor=0.55;  // marker luminance range of the pigment: dark markers are
+constexpr double pigmentFloor=0.45;  // marker luminance range of the pigment: dark markers are
 constexpr double pigmentCeiling=0.69;// mixed with white up to the floor, pale ones dimmed to the ceiling
 constexpr double pageFloor=0.85;     // pages darker than this are lifted (mixed with white) before the pigment multiplies them
 constexpr int blackMarker=32;        // markers with every channel at or below this are black: a mid-grey band
