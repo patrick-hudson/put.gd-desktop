@@ -150,8 +150,10 @@ menu glyphs use the same tint. The resident's full diagnostics (`ui.snapshot`
 
 The tray icon follows the local calendar, every year: a turkey from November 1
 to 30, a Christmas tree from December 1 to 31, and the ordinary mark otherwise.
-Each is a vector shape drawn on the mark's own bowl (`src/ui/IconArt.cpp`), in
-the same panel tints as the mark. Nothing else about the app icon changes.
+Both are vector silhouettes in `src/ui/IconArt.cpp`, using the same panel tints
+as the mark. The turkey keeps the mark's bowl. December's broad, three-tier fir
+uses a separate five-point star and a shallow tray-shaped stand, leaving most
+of the frame for the tree. Nothing else about the app icon changes.
 
 | State | What the icon shows | Tooltip title |
 | --- | --- | --- |
