@@ -92,10 +92,10 @@ bool shapeFrom(const QJsonObject& object,Shape& shape,const EditDocument& doc,bo
   if(pointSnap){
    QPoint at;if(!pointFrom(object["at"],at))return bad("snap word or line needs at [x, y]");
    if(!image.contains(at))return bad("at lies outside the image");
-   const auto found=snap=="word"?highlight::wordAt(doc.base(),at):highlight::lineAt(doc.base(),at);
+   const auto found=snap=="word"?highlight::wordAt(doc.base(),at,doc.redactionRects()):highlight::lineAt(doc.base(),at,doc.redactionRects());
    if(found.isNull())return bad("No text at that point");
    shape.rect=found;
-  }else if(snap=="text")shape.rect=highlight::snapToText(doc.base(),shape.rect);
+  }else if(snap=="text")shape.rect=highlight::snapToText(doc.base(),shape.rect,doc.redactionRects());
  }
  const auto bounds=arrow?QRect(shape.from,shape.to).normalized().adjusted(0,0,1,1):shape.rect;
  if(!bounds.intersects(image))return bad("Shape lies outside the image");

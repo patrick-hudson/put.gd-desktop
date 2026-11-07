@@ -229,6 +229,19 @@ QList<QRect> EditDocument::redactionRects() const {
  QList<QRect> rects;for(const auto& shape:state_.shapes)if(shape.kind==Shape::Kind::Redact)rects.append(clampRect(shape.rect,base_.rect()));return rects;
 }
 
+QRect EditDocument::highlightWindow(const Shape& shape) const {
+ // The box plus the reach, inside the box's crop, of every blur crossing its
+ // edge (three box passes of radius/2, plus one): what the preview must hold.
+ const auto area=clampRect(shape.rect,state_.crop);QRect window=area;
+ if(area.isEmpty())return window;
+ for(const auto& other:state_.shapes)if(other.kind==Shape::Kind::Blur){
+  const int reach=3*std::max(1,other.strength/2)+1;
+  const auto overlap=clampRect(other.rect,state_.crop).intersected(area.adjusted(-reach,-reach,reach,reach));
+  if(!overlap.isEmpty()&&other.rect.intersects(area))window|=overlap;
+ }
+ return window;
+}
+
 QImage EditDocument::highlightPreview(const Shape& shape,double scale) const {
  const auto area=clampRect(shape.rect,state_.crop);if(area.isEmpty())return {};
  // The plan reads full-resolution pixels (sampled); only the tint runs on the
@@ -237,12 +250,7 @@ QImage EditDocument::highlightPreview(const Shape& shape,double scale) const {
  // same neighbours it sees in the export. Other highlights are not laid: the
  // export tints each from the pre-highlight pixels too, and the later one wins.
  const auto plan=highlight::plan(base_,area,redactionRects(),shape.color);
- QRect window=area;
- for(const auto& other:state_.shapes)if(other.kind==Shape::Kind::Blur){
-  const int reach=3*std::max(1,other.strength/2)+1;
-  const auto overlap=clampRect(other.rect,state_.crop).intersected(area.adjusted(-reach,-reach,reach,reach));
-  if(!overlap.isEmpty()&&other.rect.intersects(area))window|=overlap;
- }
+ const auto window=highlightWindow(shape);
  constexpr double previewPixels=1.5e6;
  scale=std::min({1.0,scale,std::sqrt(previewPixels/(double(window.width())*window.height()))});
  const QSize target(std::max(1,int(std::lround(window.width()*scale))),std::max(1,int(std::lround(window.height()*scale))));

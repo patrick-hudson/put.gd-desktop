@@ -110,14 +110,15 @@ struct Mask {
  QRect box;int width=0,height=0;std::vector<uint8_t> bits;
  bool at(int x,int y) const {return bits[size_t(y)*size_t(width)+size_t(x)]!=0;}
 };
-bool inkMask(const QImage& source,const QRect& box,Mask& mask){
- const auto plan_=plan(source,box,{},QColor(250,204,21));
+bool inkMask(const QImage& source,const QRect& box,const QList<QRect>& redactions,Mask& mask){
+ // Redacted pixels are never ink: a snapped box must not trace what a redaction hides.
+ const auto plan_=plan(source,box,redactions,QColor(250,204,21));
  if(plan_.mode!=Plan::Mode::Paper)return false;
  const Grid grid{plan_};mask.box=box;mask.width=box.width();mask.height=box.height();mask.bits.assign(size_t(box.width())*size_t(box.height()),0);
  for(int y=0;y<box.height();++y){
   const auto* line=reinterpret_cast<const QRgb*>(source.constScanLine(box.top()+y))+box.left();
   const int blockRow=grid.block(box.left(),box.top()+y);
-  for(int x=0;x<box.width();++x){int d2=0;grid.nearest(line[x],blockRow+(x/blockSize),d2);if(d2*4>=inkSquared)mask.bits[size_t(y)*size_t(box.width())+size_t(x)]=1;}
+  for(int x=0;x<box.width();++x){if(inside(redactions,box.left()+x,box.top()+y))continue;int d2=0;grid.nearest(line[x],blockRow+(x/blockSize),d2);if(d2*4>=inkSquared)mask.bits[size_t(y)*size_t(box.width())+size_t(x)]=1;}
  }
  return true;
 }
@@ -201,12 +202,12 @@ std::vector<QRect> words(const std::vector<QRect>& glyphs,int lineHeight){
  }
  return out;
 }
-QRect wordOrLine(const QImage& source,const QPoint& point,bool wholeLine){
- if(!source.rect().contains(point)||source.depth()!=32)return {};
+QRect wordOrLine(const QImage& source,const QPoint& point,bool wholeLine,const QList<QRect>& redactions){
+ if(!source.rect().contains(point)||source.depth()!=32||inside(redactions,point.x(),point.y()))return {};
  // The line's rows come from a window around the point; its words from a
  // band of those rows wide enough for any screen line.
  const QRect window=QRect(point.x()-200,point.y()-40,400,80).intersected(source.rect());
- Mask mask;if(!inkMask(source,window,mask))return {};
+ Mask mask;if(!inkMask(source,window,redactions,mask))return {};
  const auto lines=linesOf(mask);const int py=point.y()-window.top();
  const Line* line=nullptr;for(const auto& l:lines)if(l.top<=py&&py<=l.bottom)line=&l;
  if(!line)return {};
@@ -214,7 +215,7 @@ QRect wordOrLine(const QImage& source,const QPoint& point,bool wholeLine){
  // The band keeps a line of paper above and below so the background estimate holds; glyphs come from the line's rows only.
  const int lineTop=window.top()+line->top;
  const QRect band=QRect(point.x()-1500,lineTop-height,3000,3*height).intersected(source.rect());
- Mask bandMask;if(!inkMask(source,band,bandMask))return {};
+ Mask bandMask;if(!inkMask(source,band,redactions,bandMask))return {};
  const auto parts=words(glyphs(bandMask,lineTop-band.top(),lineTop-band.top()+height-1),height);if(parts.empty())return {};
  const int px=point.x()-band.left(),slack=std::max(2,int(std::lround(0.3*height)));
  int hit=-1;for(size_t i=0;i<parts.size();++i)if(parts[i].left()-slack<=px&&px<=parts[i].right()+slack)hit=int(i);
@@ -386,14 +387,14 @@ void apply(QImage& image,const QRect& requested,const Plan& plan){
  }
 }
 
-QRect snapToText(const QImage& source,const QRect& requested){
+QRect snapToText(const QImage& source,const QRect& requested,const QList<QRect>& redactions){
  const auto box=requested.intersected(source.rect());
  if(box.isEmpty()||source.depth()!=32)return requested;
  // Look a little beyond the box so a drag through the middle of a line
  // still snaps to the whole line height.
  const auto window=box.adjusted(-8,-24,8,24).intersected(source.rect());
  if(qint64(window.width())*window.height()>maximumSnapPixels)return requested;
- Mask mask;if(!inkMask(source,window,mask))return requested;
+ Mask mask;if(!inkMask(source,window,redactions,mask))return requested;
  const auto all=linesOf(mask);std::vector<Line> lines;
  const int boxTop=box.top()-window.top(),boxBottom=box.bottom()-window.top();
  for(const auto& l:all)if(l.bottom>=boxTop&&l.top<=boxBottom)lines.push_back(l);
@@ -406,6 +407,6 @@ QRect snapToText(const QImage& source,const QRect& requested){
  if(!columnExtent(slice,lines.front().top,lines.back().bottom,left,right))return requested;
  return QRect(QPoint(box.left()+left-pad,window.top()+lines.front().top-pad),QPoint(box.left()+right+pad,window.top()+lines.back().bottom+pad)).intersected(source.rect());
 }
-QRect wordAt(const QImage& source,const QPoint& point){return wordOrLine(source,point,false);}
-QRect lineAt(const QImage& source,const QPoint& point){return wordOrLine(source,point,true);}
+QRect wordAt(const QImage& source,const QPoint& point,const QList<QRect>& redactions){return wordOrLine(source,point,false,redactions);}
+QRect lineAt(const QImage& source,const QPoint& point,const QList<QRect>& redactions){return wordOrLine(source,point,true,redactions);}
 }

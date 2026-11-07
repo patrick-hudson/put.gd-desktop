@@ -58,8 +58,10 @@ void apply(QImage& image,const QRect& target,const Plan&);
 
 // Text snapping on the plan's ink mask. The box comes back unchanged when it
 // holds no text or no dominant background, or is larger than maximumSnapPixels.
-QRect snapToText(const QImage& source,const QRect& box);
-// The word or line under `point`; a null rect when there is none.
-QRect wordAt(const QImage& source,const QPoint& point);
-QRect lineAt(const QImage& source,const QPoint& point);
+// Pixels inside `redactions` are never text, so a box cannot trace what a
+// redaction hides.
+QRect snapToText(const QImage& source,const QRect& box,const QList<QRect>& redactions={});
+// The word or line under `point`; a null rect when there is none or the point is redacted.
+QRect wordAt(const QImage& source,const QPoint& point,const QList<QRect>& redactions={});
+QRect lineAt(const QImage& source,const QPoint& point,const QList<QRect>& redactions={});
 }

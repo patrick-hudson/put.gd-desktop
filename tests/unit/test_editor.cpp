@@ -701,6 +701,17 @@ private slots:
   QVERIFY(rows.top()>=12&&rows.top()<=18);QVERIFY(rows.bottom()>=218&&rows.bottom()<=228);QVERIFY(rows.right()<490);
   const auto cell=highlight::wordAt(table,QPoint(300,95));QVERIFY(!cell.isNull());QVERIFY2(cell.width()<80&&cell.height()<=26,qPrintable(QString("%1x%2 at %3,%4").arg(cell.width()).arg(cell.height()).arg(cell.x()).arg(cell.y())));
  }
+ void snappingNeverTracesRedactedText(){
+  // A word under a redaction is not text any more: no word there, and a line drag skips it.
+  const auto paper=fixture("highlight-lcd-text.png");const auto word=highlight::wordAt(paper,QPoint(60,25));QVERIFY(!word.isNull());
+  const QList<QRect> redactions{word};
+  QVERIFY(highlight::wordAt(paper,QPoint(60,25),redactions).isNull());
+  // The line found from a point further along starts after the redacted word (padding may touch it).
+  const auto line=highlight::lineAt(paper,QPoint(300,25),redactions);QVERIFY(!line.isNull());QVERIFY2(line.left()>word.center().x(),qPrintable(QString("line %1 word %2").arg(line.left()).arg(word.center().x())));
+  EditDocument doc(paper);doc.add(box(Shape::Kind::Redact,word));QJsonArray created;QString code,message;
+  QVERIFY(!Commands::apply(doc,{QJsonObject{{"op","add"},{"shape",QJsonObject{{"kind","highlight"},{"at",QJsonArray{60,25}},{"snap","word"}}}}},created,code,message));
+  QVERIFY2(message.contains("No text at that point"),qPrintable(message));
+ }
  void highlightCommandsSnapToWordsLinesAndText(){
   EditDocument doc(fixture("highlight-lcd-text.png"));QJsonArray created;QString code,message;
   QVERIFY2(Commands::apply(doc,{QJsonObject{{"op","add"},{"shape",QJsonObject{{"kind","highlight"},{"at",QJsonArray{60,25}},{"snap","word"}}}}},created,code,message),qPrintable(message));
