@@ -102,9 +102,12 @@ to with white. It decides how pastel the dark swatches come out. Red #EF4444
 is a coral at 0.45; at 0.55 it reads as pink (the council's first pick, rejected
 as "not red"), at 0.30 it is close to the raw swatch. Lowering it makes the
 colours truer and the band darker, so black lettering on it has less headroom:
-black text reads at 8.7:1 on the darkest palette bands at 0.45, about 7:1 at
-0.30. Yellow (luminance 0.64) is above the floor at any of these values and
-never changes. `pigmentCeiling` (0.69) dims pale markers so white still shows
+on the darkest chromatic swatches (red, blue) black text reads at 9.5:1 on a
+white page and 8.7:1 on a dark page at 0.45, and 7.0:1 and 6.1:1 at 0.30 (the
+dark-page band is the pigment multiplied onto a page lifted to 0.85). The
+black marker's grey band is fixed at luminance 0.30 whatever the floor, so it
+always sits at those 7.0:1 and 6.1:1 figures. Yellow (luminance 0.64) is above
+the floor at any of these values and never changes. `pigmentCeiling` (0.69) dims pale markers so white still shows
 on a white page, and `pageFloor` (0.85) sets how bright a dark page is lifted
 before the pigment multiplies it; neither has a reason to move. Changing the
 floor changes every editor catalog reference (the sample document carries a
