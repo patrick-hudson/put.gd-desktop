@@ -221,7 +221,7 @@ private slots:
    if (!cycle) {
     // Supply a nonsecret, unfinished draft through the same checkpoint boundary
     // the resident uses. The real helper must restore and re-export it on every
-    // normal close; input-widget editing itself is covered by gui_settings.
+    // normal close; input-widget editing itself is covered by gui_settings_general.
     auto state = retained["settings"].toObject();
     auto draft = state["draft"].toObject();
     auto archive = draft["archive"].toObject();

@@ -64,7 +64,7 @@ class Selection(unittest.TestCase):
                      'tools/ci/sdk_cache.py'):
             with self.subTest(path=path):
                 self.assertTrue(changes.select([path])['sanitizers'])
-        for path in ('src/ui/SettingsWindow.cpp', 'src/storage/s3/S3Driver.cpp', 'tests/gui/test_settings.cpp',
+        for path in ('src/ui/SettingsWindow.cpp', 'src/storage/s3/S3Driver.cpp', 'tests/gui/test_settings_appearance.cpp',
                      'tests/unit/test_portable_appimage.py', 'packaging/appimage/AppRun',
                      '.github/workflows/package.yml', 'docs/ci.md'):
             with self.subTest(path=path):
