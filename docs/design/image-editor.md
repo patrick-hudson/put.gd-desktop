@@ -47,7 +47,7 @@ written before this feature inherit the region output route with no shortcut.
 | Crop | C | Drag the area to keep; Apply (Enter) or Cancel (Esc) |
 | Arrow | A | Line with a filled head; color and Thin/Medium/Thick width |
 | Rectangle | R | Outline; color and width |
-| Highlight | H | Translucent colored marker, visually distinct from Redact |
+| Highlight | H | Marker paper: the box becomes a band of the marker colour and the text keeps the contrast it had, as dark lettering on the band, on light and dark pages alike; photos get a luminance-keeping wash; snaps to text lines (Alt for a free box); click a word, double-click a line, Shift-click adds a word |
 | Text | T | One line of bold outlined text; choose any installed font family and a size from 8 to 200 image pixels |
 
 You don't need Select to adjust a mark:
@@ -65,6 +65,54 @@ You don't need Select to adjust a mark:
 - Drawing, moving and resizing stop at the edge of the (cropped) image. A
   press in the margin starts the mark on the nearest edge, and a text click in
   the margin opens no label.
+
+### Highlight
+
+The highlight is a pixel filter, not a translucent paint, and it looks like a
+marker on paper whatever the page. Inside the box the page becomes a band of
+the marker and every pixel keeps the contrast it had with its page, as dark
+lettering on that band:
+
+- The marker's **pigment** is the colour as picked, mixed with white until its
+  luminance reaches 0.45 (so black text reads on it at 8.7:1 or better) or
+  dimmed to 0.69 when it is paler than that (so a white marker still shows on
+  a white page). A black marker is a mid grey: a mark, not a redaction.
+- The **band** is that pigment multiplied onto the page, after lifting the page
+  with white to luminance 0.85 if it is darker. On white the band is the
+  pigment itself (yellow stays #FACC15), on grey panels it is darker than the
+  panel, on dark pages it is the pigment at paper brightness. One continuous
+  rule, no light/dark page class and no seam between the two.
+- Each pixel's **lettering** is the first point on the band-to-black ramp that
+  reaches the contrast the pixel had with its page (a knee below 1.04:1 keeps
+  page noise and gradients as band). The mapping depends on the pixel's own
+  luminance only, so anti-aliased edges stay smooth, LCD subpixel fringes
+  collapse to neutral and no glyph gets heavier. Light text on dark pages
+  becomes dark text; coloured text becomes near-neutral dark text.
+- A box with no dominant background (a photo, a gradient) gets a **wash** that
+  keeps every pixel's luminance: the colour moves 60 % toward the marker and is
+  scaled back to its own brightness, so text on a photo or a coloured label
+  keeps its exact contrast. Black and white markers have no colour to lend and
+  shade or lighten the region instead, keeping contrast ratios (white only as
+  far as the brightest pixel in the box allows).
+
+The background estimate is block-local (16 px blocks, every block sampling a
+full window inside the box), so a box across two panels or zebra rows treats
+each part correctly. The canvas tile and the export run the same filter on
+the same source pixels through the same per-background tables and agree
+exactly at full scale. The look was settled by a design council (Sol, Astra,
+Opus and Gemini proposals, three review gates on real exports; see
+put.gd-evidence `2026-11-07-highlight-council`).
+
+The same ink mask drives **text snapping**. Dragging snaps the box to the text
+lines it crosses, trimmed to the ink inside the dragged width, with a small pad;
+a drag through the middle of a line grows to the whole line height. Hold Alt
+to keep the free box. Clicking highlights the word under the pointer,
+double-clicking grows it to the line (stopping at column gaps wider than two
+and a half line heights), and Shift-click adds the word under the pointer to
+the selected highlight. Subpixel-rendered text (LCD filtering) is handled: the
+filter never classifies ink colours, only distances from the background, which
+is why the luminance rule replaced a per-ink contrast cap during research
+(see put.gd-evidence `2026-11-06-highlight-real-captures`).
 
 Next to the seven palette colors, the rainbow button opens a color picker for
 any custom color. The last six custom colors you picked appear beside it as
@@ -256,7 +304,7 @@ Commands: `add {shape}`, `update {shapeId, shape}`, `remove {shapeId}`,
 | `blur` | `rect` | `strength` 2–64 |
 | `arrow` | `from`, `to` `[x, y]` | `color` `#RRGGBB`, `width` 1–64 |
 | `rectangle` | `rect` | `color`, `width` |
-| `highlight` | `rect` | `color` |
+| `highlight` | `rect`, or `at` `[x, y]` with `snap` `word`/`line` | `color`; `snap` `none` (default, the rect is used as given), `text` (the rect snaps to the text lines it crosses), `word` or `line` (the mark is the word or line at `at`; `edit_command_invalid` "No text at that point" when there is none) |
 | `text` | `at` `[x, y]`, `text` (one line, ≤500) | `color`, `fontPixels` 8–200, `font` (family name ≤100 printable characters; `""` is the default sans-serif) |
 
 ```sh
