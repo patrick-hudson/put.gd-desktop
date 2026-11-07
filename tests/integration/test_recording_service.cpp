@@ -456,8 +456,10 @@ private slots:
  }
  void recordingBlocksEditingAndRestartInterruptsIt(){
   Harness h;PUTGD_TRY_VERIFY(h.operations->ready());
-  const auto id=h.prepareReady();QVERIFY(!id.isEmpty());QVERIFY(!h.rec("start",{{"id",id}}).error);
-  Error error;bool replied=false;h.operations->invoke("edit",[&](Error e,QJsonObject){error=e;replied=true;},{{"source","clipboard"}});PUTGD_TRY_VERIFY(replied);QCOMPARE(error.code,QString("recording_active"));
+  // #1252: recording.prepare and an edit request are explicit requests, which end the no-tray startup recovery.
+  QSignalSpy explicitRequests(h.operations.get(),&OperationService::explicitRequest);
+  const auto id=h.prepareReady();QVERIFY(!id.isEmpty());QCOMPARE(explicitRequests.count(),1);QVERIFY(!h.rec("start",{{"id",id}}).error);QCOMPARE(explicitRequests.count(),1);
+  Error error;bool replied=false;h.operations->invoke("edit",[&](Error e,QJsonObject){error=e;replied=true;},{{"source","clipboard"}});PUTGD_TRY_VERIFY(replied);QCOMPARE(error.code,QString("recording_active"));QCOMPARE(explicitRequests.count(),2);
   const auto staging=h.backend->staging;QVERIFY(QDir(staging).exists());
   QFile leftover(staging+"/export-9.mp4");QVERIFY(leftover.open(QIODevice::WriteOnly));leftover.write("abandoned");leftover.close();
   h.close();

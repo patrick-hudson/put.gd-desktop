@@ -27,10 +27,15 @@ public:
  // file-manager upload waits for it (#1105): a resident started for one would
  // otherwise reach the destination before its saved credentials are read.
  bool savedCredentialsSettled() const {return startupUnlockDone_&&startupUnlocks_.isEmpty();}
+ // Counts finished storeCredentials and unlockCredentials jobs, whoever started
+ // them. ui.snapshot carries it so an open Destinations page asks for its key
+ // hint again when the startup unlock ends after the page opened (#600).
+ quint64 credentialGeneration() const {return credentialGeneration_;}
 signals:
  void changed(const QString& setupId);
 private:
  bool startupUnlockDone_=false;
+ quint64 credentialGeneration_=0;
  QSet<QString> startupUnlocks_;
  struct CompletionContext {std::mutex mutex;SetupService* owner=nullptr;};
  void finish(const QString& id,Error,QJsonObject result={});

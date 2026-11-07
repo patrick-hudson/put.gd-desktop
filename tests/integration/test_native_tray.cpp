@@ -3,6 +3,7 @@
 #include "ui/TrayController.h"
 #include "fixtures/U2Fixtures.h"
 #include "core/Log.h"
+#include <QImage>
 #include <QJsonDocument>
 #include <QDBusArgument>
 #include <QDBusContext>
@@ -187,6 +188,8 @@ private slots:
   QTest::newRow("absent-tray-recovery") << QString("valid") << QString("absent") << true;
   QTest::newRow("tray-after-recovery-bound") << QString("valid") << QString("after-bound") << true;
   QTest::newRow("explicit-activation-cancels-recovery") << QString("valid") << QString("user-activation") << true;
+  // #1252: editor.open within the grace period is activation too; Settings must not open over the editor.
+  QTest::newRow("editor-cancels-recovery") << QString("valid") << QString("editor") << true;
   QTest::newRow("missing-config-recovery") << QString("missing") << QString("absent") << true;
   QTest::newRow("invalid-config-recovery") << QString("invalid") << QString("absent") << true;
   QTest::newRow("explicit-launch") << QString("valid") << QString("absent") << false;
@@ -234,8 +237,8 @@ private slots:
   QElapsedTimer elapsed; elapsed.start();
   resident.start(PUTGD_PRODUCT_APP_PATH, background ? QStringList{"--background"} : QStringList{});
   QVERIFY(resident.waitForStarted());
-  auto request = [&](const QString& method) {
-   QProcess cli; cli.start(PUTGD_PRODUCT_CLI_PATH, {"--socket", socket, method});
+  auto request = [&](const QString& method, const QJsonObject& params = {}) {
+   QProcess cli; cli.start(PUTGD_PRODUCT_CLI_PATH, {"--socket", socket, method, QString::fromUtf8(QJsonDocument(params).toJson(QJsonDocument::Compact))});
    if(!cli.waitForFinished(3000))return QJsonObject{};
    const auto response = QJsonDocument::fromJson(cli.readAllStandardOutput()).object();
    return response["ok"].toBool() ? response["result"].toObject() : QJsonObject{};
@@ -244,6 +247,19 @@ private slots:
   QJsonObject snapshot;
   PUTGD_TRY_VERIFY_WITH_TIMEOUT((snapshot=request("ui.snapshot"))["operationsReady"].toBool(), 5000);
   QElapsedTimer readyElapsed; readyElapsed.start();
+  // The editor runs in its own putgd-ui process, not the Settings helper the
+  // resident's UI controller starts, so "stopped" below still means no Settings.
+  QString editing;
+  auto editorPhase = [&] { return request("editor.inspect", {{"id", editing}})["phase"].toString(); };
+  if (trayState == "editor") {
+   const auto image = directory.filePath("edit.png");
+   QImage pixels(64, 48, QImage::Format_RGB32); pixels.fill(qRgb(40, 120, 200));
+   QVERIFY(pixels.save(image, "PNG"));
+   editing = request("editor.open", {{"source", "file"}, {"path", image}})["operationId"].toString();
+   QVERIFY(!editing.isEmpty());
+   QVERIFY(elapsed.elapsed() < 10000);
+   PUTGD_TRY_COMPARE_WITH_TIMEOUT(editorPhase(), QString("editing"), 8000);
+  }
   if (late || trayState == "after-bound") appearance.start(trayState == "after-bound" ? 12000 : 1500);
   const bool windowless = background && configuration == "valid";
   const bool recovery = trayState == "absent" || trayState == "after-bound";
@@ -268,7 +284,15 @@ private slots:
     QCOMPARE(status["lastExit"].toObject(), expectedExit);
     putgd::test::settle(100);
    }
-   if (!recovery && trayState != "user-activation") {
+   if (trayState == "editor") {
+    // Past the 10 s bound the editor is still the open window.
+    QVERIFY(elapsed.elapsed() > 10500);
+    QCOMPARE(editorPhase(), QString("editing"));
+    QVERIFY(!request("editor.cancel", {{"id", editing}}).isEmpty());
+    PUTGD_TRY_VERIFY(request("operation.inspect", {{"id", editing}})["state"].toString() == "cancelled");
+    QCOMPARE(ui()["state"].toString(), QString("stopped"));
+   }
+   else if (!recovery && trayState != "user-activation") {
     PUTGD_TRY_VERIFY(!watcher.registrations.isEmpty());
     PUTGD_TRY_VERIFY(request("ui.snapshot")["diagnostics"].toObject()["trayAvailable"].toBool());
    }

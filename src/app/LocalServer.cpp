@@ -332,7 +332,12 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
   return;
  }
  if(!p.isEmpty()) {reply(invalid(),{});return;}
- if(method=="ui.snapshot")reply({},{{"build",QJsonDocument::fromJson(buildManifestJson()).object()},{"residentEpoch",residentEpoch_},{"operationsReady",operations_.ready()},{"settings",QJsonObject{{"document",settings_.document()},{"metadata",settings_.metadata()}}},{"diagnostics",uiDiagnostics_?uiDiagnostics_():operations_.diagnostics()}});
+ if(method=="ui.snapshot"){
+  QJsonObject snapshot{{"build",QJsonDocument::fromJson(buildManifestJson()).object()},{"residentEpoch",residentEpoch_},{"operationsReady",operations_.ready()},{"settings",QJsonObject{{"document",settings_.document()},{"metadata",settings_.metadata()}}},{"diagnostics",uiDiagnostics_?uiDiagnostics_():operations_.diagnostics()}};
+  // A changed generation tells an open window that a credential read or store ended (#600).
+  if(setup_)snapshot["credentials"]=QJsonObject{{"generation",double(setup_->credentialGeneration())}};
+  reply({},snapshot);
+ }
  else if(method=="ui.viewState"){if(uiViewState_)reply({},uiViewState_());else reply({"ui_unavailable","This resident has no interface view state",{}},{});}
  // effectiveLimits: the resolved byte limits (null for none) and the disk that bounds imports.
  else if(method=="settings.get"){auto limits=settings_.snapshot().effectiveArtifactLimits();limits["disk"]=operations_.artifactDisk();reply({},{{"document",settings_.document()},{"metadata",settings_.metadata()},{"effectiveLimits",limits}});}

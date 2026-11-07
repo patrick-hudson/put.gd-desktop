@@ -249,6 +249,7 @@ void OperationService::invoke(const QString& action,JsonReply reply,const QJsonO
  // only the tray passes it, session requests cannot.
  auto stripped=requested;const auto activationToken=stripped.take("activationToken").toString();
  const QJsonObject options=stripped; // const: operator[] must not insert
+ emit explicitRequest();
  if(!ready_) {reply(startupError_?startupError_:Error{"initializing","Journal recovery is in progress",{}},{});return;}
  // Screen recording is its own session: the tray opens or raises it, a global
  // shortcut toggles it (prepare, start, stop) so the keyboard can end a recording.
@@ -507,6 +508,8 @@ Error OperationService::acceptRecording(Operation& op) {
  return {};
 }
 void OperationService::recordingCommand(const QString& command,const QJsonObject& params,JsonReply reply) {
+ // recording.prepare opens the recording selector; the other commands drive the session it opened.
+ if(command=="prepare")emit explicitRequest();
  if(!ready_&&command!="capabilities") {reply(startupError_?startupError_:Error{"initializing","Journal recovery is in progress",{}},{});return;}
  recording_->command(command,params,std::move(reply));
 }

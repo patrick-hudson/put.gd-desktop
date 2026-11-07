@@ -126,6 +126,7 @@ void SetupService::finish(const QString& id,Error error,QJsonObject result) {
  auto& record=*found;record.remove("event");record["result"]=result;record["state"]=error?"failed":"completed";record["error"]=error.toJson();
  active_.remove(activeKey(record["profileId"].toString(),record["kind"].toString()));
  startupUnlocks_.remove(id);
+ if(record["kind"]=="storeCredentials"||record["kind"]=="unlockCredentials")++credentialGeneration_;
  completed_.enqueue(id);while(completed_.size()>64)jobs_.remove(completed_.dequeue());
  emit changed(id);
 }
