@@ -374,7 +374,7 @@ Reproduce with the dev preset:
 ```sh
 cmake --preset dev
 cmake --build --preset dev
-ctest --preset dev -R '^(editor_contract|editor_job_integration|edit_operations_integration|native_tray_integration|gui_settings)$'
+ctest --preset dev -R '^(editor_contract|editor_job_integration|edit_operations_integration|native_tray_integration|gui_settings_[a-z]+)$'
 PUTGD_CLI="$PWD/build/dev/putgd-cli" uv run --project tools/mcp --locked python -m unittest discover -s tests/integration -p test_mcp.py -v
 ```
 
