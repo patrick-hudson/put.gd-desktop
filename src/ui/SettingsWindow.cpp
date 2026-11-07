@@ -1187,7 +1187,9 @@ SettingsWindow::SettingsWindow(UiSession& settings,QWidget* parent):RetainedWind
  const auto sharedForms=tabs_->findChildren<QFormLayout*>();for(int page=0;page<tabs_->count();++page)if(auto* scroll=qobject_cast<QScrollArea*>(tabs_->widget(page)))Ui::alignForms(scroll->widget(),sharedForms);Ui::alignChoices(tabs_,sharedForms);
  for(auto* field:findChildren<QLineEdit*>())if(field!=profileLabel_&&!qobject_cast<QComboBox*>(field->parentWidget())&&!qobject_cast<QAbstractSpinBox*>(field->parentWidget())&&field->maximumWidth()==QWIDGETSIZE_MAX&&!field->property("uiFullWidth").toBool())field->setMaximumWidth(Ui::scaled(480));
  for(auto* box:{general,capture,shortcutsPage,advancedPage})for(int i=0;i<box->count();++i)if(auto* widget=box->itemAt(i)->widget())widget->setMaximumWidth(Ui::scaled(760));
- connect(&settings_,&UiSession::accepted,this,[this]{configurationChanged();refreshEffectiveLimits();});connect(&settings_,&UiSession::statusChanged,this,[this]{configurationChanged();refreshDiagnostics();});connect(tabs_,&QTabWidget::currentChanged,this,&SettingsWindow::viewStateChanged);
+ connect(&settings_,&UiSession::accepted,this,[this]{configurationChanged();refreshEffectiveLimits();});connect(&settings_,&UiSession::statusChanged,this,[this]{configurationChanged();refreshDiagnostics();});
+ // The resident's startup unlock can end after Destinations opened; show the key it read (#600).
+ connect(&settings_,&UiSession::credentialsChanged,this,[this]{refreshCredentialHint();});connect(tabs_,&QTabWidget::currentChanged,this,&SettingsWindow::viewStateChanged);
  // #348: Updates stays in view while a freshly shown window settles its size and
  // rows, until the user scrolls or leaves the page.
  if(auto* scroll=qobject_cast<QScrollArea*>(tabs_->widget(0))){

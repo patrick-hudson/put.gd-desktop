@@ -10,6 +10,12 @@ if(BUILD_TESTING)
   # Delayed saves, setup polling and theme/scale cases expand this functional
   # suite; leave time for a complete run on the shared builders.
   set_tests_properties(gui_settings PROPERTIES TIMEOUT 180)
+  # #600: the startup keychain unlock against a KWallet stand-in on a private bus.
+  if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    target_link_libraries(test_gui_settings PRIVATE Qt6::DBus)
+    add_test(NAME gui_settings_startup_unlock COMMAND dbus-run-session -- $<TARGET_FILE:test_gui_settings> startupUnlockRefreshesTheOpenDestination)
+    set_tests_properties(gui_settings_startup_unlock PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen;PUTGD_ISOLATED_KEYCHAIN_TEST=1" TIMEOUT 60)
+  endif()
   # Copy image decodes the retained original in the putgd-ui image worker (#284).
   add_dependencies(test_gui_history_view putgd-ui)
   set_tests_properties(gui_history_view PROPERTIES TIMEOUT 120)

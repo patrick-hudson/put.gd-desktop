@@ -29,6 +29,8 @@
 #include "core/Log.h"
 #include "core/ArtifactStore.h"
 #include <QJsonDocument>
+#include <QDBusContext>
+#include <QDBusConnection>
 #include <QDialog>
 #include <QDir>
 #include "storage/s3/S3Provider.h"
@@ -93,6 +95,19 @@ std::shared_ptr<QString> acceptNextConfirmation(){
 // The code behind the Settings status line: people read the message, the code
 // stays in a property and the accessible description.
 QString statusCode(QWidget& window){return window.findChild<QLabel*>("settingsStatus")->property("errorCode").toString();}
+// A KWallet on the private bus answers QtKeychain the way kwalletd does, so a
+// keychain read is a real asynchronous job (#600). Reads are counted.
+class StartupWallet final:public QObject,protected QDBusContext {
+ Q_OBJECT
+ Q_CLASSINFO("D-Bus Interface","org.kde.KWallet")
+public:
+ QByteArray stored;int reads=0;
+public slots:
+ QString networkWallet(){return "isolated-synthetic-wallet";}
+ int open(const QString&,qlonglong,const QString&){return 7;}
+ int entryType(int,const QString&,const QString&,const QString&){return 2;}
+ QByteArray readEntry(int,const QString&,const QString&,const QString&){++reads;return stored;}
+};
 }
 class SettingsGui:public QObject {
  Q_OBJECT
@@ -1458,6 +1473,36 @@ private slots:
   QTemporaryDir dir;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});auto doc=Settings::developmentTemplate();auto profiles=doc["profiles"].toArray();const auto other=profiles.first();auto proton=other.toObject();proton["id"]="synthetic-proton";proton["label"]="Synthetic Proton";proton["provider"]="proton-drive";auto oldAccount=ProtonProvider::defaults();oldAccount["accountRootUid"]="synthetic-old-account";oldAccount["folderUid"]="synthetic-old-folder";proton["settings"]=oldAccount;profiles.prepend(proton);doc["profiles"]=profiles;QVERIFY(service.save(doc,{}));CredentialStore secrets;UiSessionFixture fixture(service,secrets);JsonReply complete;int starts=0;fixture.setup.setProviderSetup([&](const QString& kind,const Destination&,const QJsonObject&,JsonReply done,auto){QCOMPARE(kind,QString("connectAccount"));++starts;complete=std::move(done);});MainWindow window(fixture.session);window.show();window.navigate("destinations");auto* list=window.findChild<QListWidget*>("destinationList");window.findChild<QPushButton*>("connectProtonAccount")->click();PUTGD_TRY_VERIFY(bool(complete));
   for(int repeat=0;repeat<3;++repeat){list->setCurrentRow(1);list->setCurrentRow(0);}list->setCurrentRow(1);complete({},{{"accountRootUid","synthetic-new-account"},{"accountEmail","synthetic-new@example.invalid"},{"folders",QJsonArray{QJsonObject{{"uid","synthetic-folder"},{"name","Saved folder"}}}}});PUTGD_TRY_VERIFY(window.settings()->saveViewState()["setupJobs"].toArray().isEmpty());QCOMPARE(service.document()["profiles"].toArray()[1],other);
   list->setCurrentRow(0);auto* label=window.findChild<QLabel*>("protonAccountStatus");QVERIFY(label->isVisible());PUTGD_TRY_VERIFY(label->text().contains("synthetic-new@example.invalid"));QCOMPARE(window.findChild<QPushButton*>("connectProtonAccount")->text(),QString("Reconnect account…"));PUTGD_TRY_COMPARE(service.document()["profiles"].toArray()[0].toObject()["settings"].toObject()["accountRootUid"].toString(),QString("synthetic-new-account"));QCOMPARE(starts,1);QVERIFY(service.document()["profiles"].toArray()[0].toObject()["settings"].toObject()["folderUid"].toString().isEmpty());QCOMPARE(service.document()["profiles"].toArray()[1],other);
+ }
+ // #600: with "Unlock saved credentials when put.gd starts", the resident's
+ // startup read can end after Destinations opened. The open page then shows the
+ // stored key's prefix; before, it kept "Locked" until something else refreshed it.
+ void startupUnlockRefreshesTheOpenDestination(){
+  if(qEnvironmentVariable("PUTGD_ISOLATED_KEYCHAIN_TEST")!="1")QSKIP("Requires its dedicated private-bus invocation");
+  qputenv("XDG_CURRENT_DESKTOP","KDE");qputenv("KDE_SESSION_VERSION","4");
+  StartupWallet wallet;wallet.stored=QJsonDocument(QJsonObject{{"accessKey","AKIA-synthetic-startup"},{"secretKey","synthetic-startup-secret"}}).toJson(QJsonDocument::Compact);
+  auto bus=QDBusConnection::sessionBus();QVERIFY(bus.registerService("org.kde.kwalletd"));
+  QVERIFY(bus.registerObject("/modules/kwalletd",&wallet,QDBusConnection::ExportAllSlots));
+  auto unregister=qScopeGuard([&]{bus.unregisterObject("/modules/kwalletd");bus.unregisterService("org.kde.kwalletd");});
+  QTemporaryDir dir;CredentialStore secrets;S3Provider s3(secrets);auto doc=Settings::developmentTemplate();auto profiles=doc["profiles"].toArray();auto profile=profiles[0].toObject();profile["credentials"]=QJsonObject{{"mode","keychain"},{"reference","putgd-synthetic-startup"}};profiles[0]=profile;doc["profiles"]=profiles;
+  auto preferences=doc["preferences"].toObject();preferences["unlockCredentialsAtStartup"]=true;doc["preferences"]=preferences;
+  SettingsService service(dir.filePath("config.json"),[&](auto,auto value){return s3.validateSettings(value);});QVERIFY(service.save(doc,{}));
+  UiSessionFixture fixture(service,secrets);
+  // As in the resident's main(): a setup job's change invalidates the interface.
+  QObject::connect(&fixture.setup,&SetupService::changed,&fixture.session,&UiSession::invalidate);
+  MainWindow window(fixture.session);window.settings();window.navigate("destinations");window.resize(1440,960);window.show();
+  auto* hint=window.findChild<QLabel*>("storedCredentialHint");auto* unlock=window.findChild<QPushButton*>("unlockCredentials");QVERIFY(hint&&unlock);
+  PUTGD_TRY_COMPARE(hint->text(),QString("Locked in the system keychain"));PUTGD_TRY_VERIFY(!unlock->isHidden());
+  // Opening the page asked for the hint only; it never reads the keychain.
+  QCOMPARE(wallet.reads,0);
+  // The resident's startup read, started after the page opened.
+  QCOMPARE(fixture.setup.unlockSavedCredentials().size(),1);
+  PUTGD_TRY_VERIFY(fixture.setup.savedCredentialsSettled());QVERIFY(wallet.reads>=1);
+  PUTGD_TRY_VERIFY(hint->text().startsWith(QString::fromUtf8("AKIA…")));
+  QVERIFY(hint->text().contains("In the system keychain"));QVERIFY(!hint->text().contains("AKIA-synthetic-startup"));
+  PUTGD_TRY_VERIFY(unlock->isHidden());
+  // Only the four-character prefix leaves the resident; the view state keeps neither key.
+  const auto state=QJsonDocument(window.settings()->saveViewState()).toJson();QVERIFY(!state.contains("AKIA-synthetic-startup"));QVERIFY(!state.contains("synthetic-startup-secret"));
  }
  void storedCredentialHintsNeverExportFullKeysOrOverwriteInputs(){
   QTemporaryDir dir;CredentialStore secrets;S3Provider s3(secrets);auto doc=Settings::developmentTemplate();auto profiles=doc["profiles"].toArray();auto profile=profiles[0].toObject();profile["credentials"]=QJsonObject{{"mode","session"},{"reference",QJsonValue::Null}};profiles[0]=profile;doc["profiles"]=profiles;SettingsService service(dir.filePath("config.json"),[&](auto,auto value){return s3.validateSettings(value);});QVERIFY(service.save(doc,{}));secrets.setSession("development-s3",{"AKIA-synthetic-full-access","synthetic-full-secret","synthetic-token"});UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.settings();auto* hint=window.findChild<QLabel*>("storedCredentialHint");PUTGD_TRY_VERIFY(hint->text().contains("AKIA"));QVERIFY(hint->text().contains("Secret key stored"));auto* access=window.findChild<QLineEdit*>("credentialAccessKey");QVERIFY(access->text().isEmpty());// The status row identifies the key; the field only invites a replacement.

@@ -34,6 +34,9 @@ signals:
  void initialized();
  void unavailable(Error);
  void stateChanged();
+ // A storeCredentials or unlockCredentials job ended since the last snapshot,
+ // such as the resident's startup unlock: saved-key hints may have changed.
+ void credentialsChanged();
 private:
  void applySettings(const QJsonObject&);
  ShortcutRecordingHandler shortcutRecording_;
@@ -44,6 +47,7 @@ private:
  bool ready_=false,snapshotActive_=false,snapshotPending_=false;
  int mutations_=0;
  quint64 generation_=0;
+ qint64 credentialGeneration_=-1;
  QList<std::function<void(Error)>> snapshotCallbacks_;
 };
 }
