@@ -47,7 +47,7 @@ written before this feature inherit the region output route with no shortcut.
 | Crop | C | Drag the area to keep; Apply (Enter) or Cancel (Esc) |
 | Arrow | A | Line with a filled head; color and Thin/Medium/Thick width |
 | Rectangle | R | Outline; color and width |
-| Highlight | H | Translucent colored marker, visually distinct from Redact |
+| Highlight | H | Marker that tints only the background under the box and leaves text pixels untouched; snaps to text lines (Alt for a free box); click a word, double-click a line, Shift-click adds a word |
 | Text | T | One line of bold outlined text; choose any installed font family and a size from 8 to 200 image pixels |
 
 You don't need Select to adjust a mark:
@@ -65,6 +65,41 @@ You don't need Select to adjust a mark:
 - Drawing, moving and resizing stop at the edge of the (cropped) image. A
   press in the margin starts the mark on the nearest edge, and a text click in
   the margin opens no label.
+
+### Highlight
+
+The highlight is a pixel filter, not a translucent paint. Inside the box every
+pixel is read as a mix of the local background colour and ink; only the
+background part moves toward the marker, so glyphs, icons and anything else
+that is not background keep their exact pixels. Where the background goes
+depends on its luminance alone:
+
+- Light backgrounds take the marker multiplied in, the look of a real marker on
+  paper. Dark text keeps its contrast.
+- Dark backgrounds take the marker's hue at the highest luminance that still
+  keeps white text readable at 4.5:1 (a deep amber for yellow), lowered when
+  the brightest ink in the box is dimmer, and always visibly above the page.
+- A box with no dominant background (a photo, a gradient) falls back to
+  multiply on light content and to a dim screen of the marker on dark content,
+  where multiply would vanish.
+
+Any palette or custom colour works as a marker: the filter keeps its hue and
+sets its luminance from the background, so a near-black or white pick becomes
+a visible neutral tint and dark text under it stays readable. The background
+estimate is block-local, so a box across two panels or zebra rows tints each
+part correctly. The canvas tile and the export run the same integer filter on
+the same source pixels and agree exactly.
+
+The same ink mask drives **text snapping**. Dragging snaps the box to the text
+lines it crosses, trimmed to the ink inside the dragged width, with a small pad;
+a drag through the middle of a line grows to the whole line height. Hold Alt
+to keep the free box. Clicking highlights the word under the pointer,
+double-clicking grows it to the line (stopping at column gaps wider than two
+and a half line heights), and Shift-click adds the word under the pointer to
+the selected highlight. Subpixel-rendered text (LCD filtering) is handled: the
+filter never classifies ink colours, only distances from the background, which
+is why the luminance rule replaced a per-ink contrast cap during research
+(see put.gd-evidence `2026-11-06-highlight-real-captures`).
 
 Next to the seven palette colors, the rainbow button opens a color picker for
 any custom color. The last six custom colors you picked appear beside it as
@@ -256,7 +291,7 @@ Commands: `add {shape}`, `update {shapeId, shape}`, `remove {shapeId}`,
 | `blur` | `rect` | `strength` 2–64 |
 | `arrow` | `from`, `to` `[x, y]` | `color` `#RRGGBB`, `width` 1–64 |
 | `rectangle` | `rect` | `color`, `width` |
-| `highlight` | `rect` | `color` |
+| `highlight` | `rect`, or `at` `[x, y]` with `snap` `word`/`line` | `color`; `snap` `none` (default, the rect is used as given), `text` (the rect snaps to the text lines it crosses), `word` or `line` (the mark is the word or line at `at`; `edit_command_invalid` "No text at that point" when there is none) |
 | `text` | `at` `[x, y]`, `text` (one line, ≤500) | `color`, `fontPixels` 8–200, `font` (family name ≤100 printable characters; `""` is the default sans-serif) |
 
 ```sh
