@@ -30,7 +30,7 @@ Choose **Capture region & edit** from the rail or tray, or assign it a key in **
 - **Redact** (X) covers an area with opaque black and removes those pixels from the uploaded image. Use it for passwords, tokens, names and other private information.
 - **Blur** (B) is only a visual effect; it can leave enough detail to guess text. Prefer Redact for anything private.
 - **Crop** (C): drag the area to keep, then **Apply crop** or Enter; Escape cancels.
-- **Arrow** (A), **Rectangle** (R), **Highlight** (H) and **Text** (T) add simple marks. Select (V) moves, resizes or deletes them. Highlight tints only the background and snaps to text lines: click a word, double-click a line, hold Alt for a free box.
+- **Arrow** (A), **Rectangle** (R), **Highlight** (H) and **Text** (T) add simple marks. Select (V) moves, resizes or deletes them. Highlight looks like a marker on light and dark pages alike (text stays readable) and snaps to text lines: click a word, double-click a line, hold Alt for a free box.
 - Ctrl+Z / Ctrl+Shift+Z undo and redo; Ctrl+1 shows 100% to check edges; Ctrl+0 fits.
 
 **Upload** (Ctrl+Enter) sends only the edited image to the output shown at the bottom of the window, with the usual local copy, history and link copying. Plain Enter never uploads. **Save a copy…** writes the same edited PNG to a file. **Cancel** or closing the window discards the edit: nothing is saved or uploaded. Inputs above 24 megapixels are refused; output is PNG. An edit interrupted by quitting put.gd is listed as interrupted and is never uploaded automatically.

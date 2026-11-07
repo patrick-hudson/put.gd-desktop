@@ -47,7 +47,7 @@ written before this feature inherit the region output route with no shortcut.
 | Crop | C | Drag the area to keep; Apply (Enter) or Cancel (Esc) |
 | Arrow | A | Line with a filled head; color and Thin/Medium/Thick width |
 | Rectangle | R | Outline; color and width |
-| Highlight | H | Marker that tints only the background under the box and leaves text pixels untouched; snaps to text lines (Alt for a free box); click a word, double-click a line, Shift-click adds a word |
+| Highlight | H | Marker that looks the same on light and dark pages: on light pages it tints only the background and leaves text pixels untouched, on dark pages the box takes the marker colour and the text is darkened to stay readable; snaps to text lines (Alt for a free box); click a word, double-click a line, Shift-click adds a word |
 | Text | T | One line of bold outlined text; choose any installed font family and a size from 8 to 200 image pixels |
 
 You don't need Select to adjust a mark:
@@ -68,27 +68,28 @@ You don't need Select to adjust a mark:
 
 ### Highlight
 
-The highlight is a pixel filter, not a translucent paint. Inside the box every
-pixel is read as a mix of the local background colour and ink; only the
-background part moves toward the marker, so glyphs, icons and anything else
-that is not background keep their exact pixels. Where the background goes
-depends on its luminance alone:
+The highlight is a pixel filter, not a translucent paint, and it looks like a
+marker on paper whatever the page. Inside the box every pixel is read as a
+mix of the local background colour and ink, by its distance from that
+background:
 
-- Light backgrounds take the marker multiplied in, the look of a real marker on
-  paper. Dark text keeps its contrast.
-- Dark backgrounds take the marker's hue at the highest luminance that still
-  keeps white text readable at 4.5:1 (a deep amber for yellow), lowered when
-  the brightest ink in the box is dimmer, and always visibly above the page.
+- Light backgrounds take the marker multiplied in. Only the background part of
+  each pixel moves, so glyphs, icons and anything else that is not background
+  keep their exact pixels and dark text keeps its contrast.
+- Dark backgrounds become the marker colour itself, and the ink is unmixed by
+  its coverage and darkened (hue kept) until it reads at 5:1 on the marker. A
+  dark tint under light text was tried first and rejected on a live run: it
+  is neither a visible marker nor readable.
 - A box with no dominant background (a photo, a gradient) falls back to
   multiply on light content and to a dim screen of the marker on dark content,
   where multiply would vanish.
 
 Any palette or custom colour works as a marker: the filter keeps its hue and
-sets its luminance from the background, so a near-black or white pick becomes
-a visible neutral tint and dark text under it stays readable. The background
-estimate is block-local, so a box across two panels or zebra rows tints each
-part correctly. The canvas tile and the export run the same integer filter on
-the same source pixels and agree exactly.
+lifts its luminance into the 0.45 to 0.7 range, so dark ink reads on every
+pick and a near-black or white pick becomes a visible neutral tint. The
+background estimate is block-local, so a box across two panels or zebra rows
+treats each part correctly. The canvas tile and the export run the same
+integer filter on the same source pixels and agree exactly.
 
 The same ink mask drives **text snapping**. Dragging snaps the box to the text
 lines it crosses, trimmed to the ink inside the dragged width, with a small pad;
