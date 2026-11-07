@@ -252,15 +252,16 @@ Error openVideoEncoder(AVFormatContext* output, const RecordingConfig& config, c
         c->width = size.width(); c->height = size.height(); c->pix_fmt = format; c->time_base = timeBase; c->framerate = {fps, 1};
         if (vaapi) { c->pix_fmt = AV_PIX_FMT_VAAPI; c->hw_device_ctx = av_buffer_ref(out.device); c->hw_frames_ctx = av_buffer_ref(out.frames); }
         c->gop_size = std::max(1, fps * 2); c->max_b_frames = 0;
-        // hevc_vaapi gets no global header. Its extradata is libavcodec's own
-        // VPS/SPS/PPS, but AMD radeonsi rewrites the parameter sets it emits
-        // in-band to what it actually coded (Mesa 26.2 on a Radeon 740M:
-        // max_transform_hierarchy_depth 4 where the extradata says 0). Since
-        // FFmpeg 8.0 the MP4 muxer drops in-band parameter sets from hvc1 tracks
-        // (f0051604c7), so a decoder saw only the wrong ones and the export
-        // decoded as garbage. Without extradata the muxer builds hvcC from the
-        // first packet's in-band sets, which match the slices on every driver.
-        if ((output->oformat->flags & AVFMT_GLOBALHEADER) && name != "hevc_vaapi") c->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
+        // VA-API encoders get no global header. Their extradata is libavcodec's
+        // own parameter sets, but AMD radeonsi rewrites the ones it emits
+        // in-band to what it actually coded (Mesa 26.2 on a Radeon 740M: HEVC
+        // max_transform_hierarchy_depth 4 where the extradata says 0, H.264
+        // transform_8x8_mode_flag 0 where it says 1). Since FFmpeg 8.0 the MP4
+        // muxer drops in-band parameter sets from hvc1 tracks (f0051604c7), so
+        // a decoder saw only the wrong ones and HEVC exports decoded as garbage.
+        // Without extradata the muxer builds hvcC/avcC from the first packet's
+        // in-band sets, which match the slices on every driver.
+        if ((output->oformat->flags & AVFMT_GLOBALHEADER) && !vaapi) c->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
         // Apple players need the hvc1 sample entry for HEVC in MP4.
         if (config.format == "mp4" && config.codec == "h265") c->codec_tag = MKTAG('h', 'v', 'c', '1');
         if (name == "libx264") { av_opt_set(c->priv_data, "preset", "veryfast", 0); av_opt_set(c->priv_data, "crf", "23", 0); av_opt_set(c->priv_data, "profile", "high", 0); }
