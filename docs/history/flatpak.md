@@ -1,6 +1,6 @@
 # Flatpak feasibility spike (#14)
 
-> **Historical record.** Flatpak is out of scope. This experiment moved here from `docs/flatpak.md` in the [2026-11 layout change](2026-11-docs-layout.md). The experimental packaging and release support was removed in [#1255](https://github.com/patrick-hudson/put.gd-desktop/pull/1255). The current design is in [overview](../design/overview.md); see [release](../release/release.md). Do not use it as a work list.
+> **Historical record.** Flatpak is out of scope. This experiment moved here from `docs/flatpak.md` in the [2026-11 layout change](2026-11-docs-layout.md). Removal of the experimental packaging and release support is tracked in [#1255](https://github.com/patrick-hudson/put.gd-desktop/pull/1255). The current design is in [overview](../design/overview.md); see [release](../release/release.md). Do not use it as a work list.
 
 Status: research, 2026-10-18. Nothing here changes the DEB, RPM or AppImage, and
 nothing here is a release input. The experimental manifest is
