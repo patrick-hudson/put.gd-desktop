@@ -649,12 +649,26 @@ private slots:
    QVERIFY(highlight::luminance(out.pixel(620,200))>highlight::luminance(big.pixel(620,200)));}
  }
  void highlightPreviewMatchesExportAtFullScale(){
-  EditDocument doc(fixture("highlight-dark-table.png"));auto mark=box(Shape::Kind::Highlight,QRect(40,50,480,60));doc.add(mark);
-  // A blur inside the box and a redaction crossing its edge both show the same in the tile and the export.
-  auto blur=box(Shape::Kind::Blur,QRect(300,60,100,30));blur.strength=8;doc.add(blur);doc.add(box(Shape::Kind::Redact,QRect(30,55,60,10)));
+  EditDocument doc(fixture("highlight-dark-table.png"));
+  // A highlight under this one, a blur crossing the box's edge and a redaction crossing it
+  // all show the same in the tile and the export.
+  auto under=box(Shape::Kind::Highlight,QRect(20,30,200,50));under.color=QColor(59,130,246);doc.add(under);
+  auto mark=box(Shape::Kind::Highlight,QRect(40,50,480,60));doc.add(mark);
+  auto blur=box(Shape::Kind::Blur,QRect(300,90,100,40));blur.strength=8;doc.add(blur);doc.add(box(Shape::Kind::Redact,QRect(30,55,60,10)));
   const auto out=doc.render(),preview=doc.highlightPreview(mark,1.0);
   QCOMPARE(preview.size(),mark.rect.size());
   for(int y=0;y<preview.height();++y)for(int x=0;x<preview.width();++x)QCOMPARE(preview.pixel(x,y),out.pixel(mark.rect.left()+x,mark.rect.top()+y));
+  // The highlight under it is its own tile, tinted from the same pre-highlight pixels.
+  const auto lower=doc.highlightPreview(under,1.0);QCOMPARE(lower.size(),under.rect.size());
+  for(int y=0;y<lower.height();++y)for(int x=0;x<lower.width();++x)if(!mark.rect.contains(under.rect.left()+x,under.rect.top()+y))QCOMPARE(lower.pixel(x,y),out.pixel(under.rect.left()+x,under.rect.top()+y));
+ }
+ void highlightTreatsATiledPatternAsAPhoto(){
+  // Dozens of distinct flat tiles are not a page: the wash applies instead of a band per tile.
+  QImage tiles(640,320,QImage::Format_RGB32);
+  for(int y=0;y<tiles.height();++y){auto* line=reinterpret_cast<QRgb*>(tiles.scanLine(y));for(int x=0;x<tiles.width();++x){const int k=(x/16)+(y/16)*40;line[x]=qRgb(40+(k*37)%200,40+(k*59)%200,40+(k*83)%200);}}
+  EditDocument doc(tiles);doc.add(box(Shape::Kind::Highlight,QRect(0,0,640,320)));const auto out=doc.render();
+  int kept=0;for(int y=8;y<320;y+=16)for(int x=8;x<640;x+=16)kept+=std::abs(highlight::luminance(out.pixel(x,y))-highlight::luminance(tiles.pixel(x,y)))<0.02;
+  QVERIFY2(kept>700,qPrintable(QString("%1 tile centres kept their luminance").arg(kept)));
  }
  void highlightOnRealLcdTextIsPaperWithReadableInk(){
   // Subpixel-rendered Cinnamon text: the stems are blue and peach columns with no neutral core.
@@ -704,6 +718,26 @@ private slots:
   QVERIFY(!Commands::apply(doc,{QJsonObject{{"op","add"},{"shape",QJsonObject{{"kind","highlight"},{"rect",QJsonArray{1,1,10,10}},{"snap","word"}}}}},created,code,message));
   QVERIFY(!Commands::apply(doc,{QJsonObject{{"op","add"},{"shape",QJsonObject{{"kind","highlight"},{"rect",QJsonArray{1,1,10,10}},{"snap","sideways"}}}}},created,code,message));
   QCOMPARE(doc.shapes().size(),before);
+ }
+ void shiftClickInsideTheSelectedHighlightAddsTheWord(){
+  // Shift-click lands inside the selection, where a plain click would start a move; it grows the mark instead.
+  EditDocument doc(fixture("highlight-lcd-text.png"));EditorCanvas canvas(doc);canvas.resize(832,632);canvas.show();QVERIFY(putgd::test::waitForWindowExposed(&canvas));
+  canvas.setTool(Tool::Highlight);canvas.fit();QCOMPARE(canvas.zoom(),1.0);
+  const QPoint origin((canvas.width()-540)/2,(canvas.height()-80)/2);
+  const auto first=highlight::wordAt(doc.base(),QPoint(60,25));QVERIFY(!first.isNull());
+  auto mark=box(Shape::Kind::Highlight,first.united(QRect(first.right()+1,first.top(),120,first.height())));const auto id=doc.add(mark);canvas.select(id);
+  const QPoint inside(mark.rect.right()-10,mark.rect.center().y());const auto next=highlight::wordAt(doc.base(),inside);QVERIFY(!next.isNull());
+  QTest::mouseClick(&canvas,Qt::LeftButton,Qt::ShiftModifier,origin+inside);
+  QCOMPARE(doc.shapes().size(),1);QCOMPARE(doc.find(id)->rect,mark.rect.united(next));QCOMPARE(canvas.selected(),id);
+ }
+ void snapIsRejectedOnShapesThatAreNotHighlights(){
+  EditDocument doc(fixture("highlight-lcd-text.png"));
+  QJsonArray created;QString code,message;
+  for(const QJsonObject shape:{QJsonObject{{"kind","arrow"},{"from",QJsonArray{10,10}},{"to",QJsonArray{60,60}},{"snap","text"}},QJsonObject{{"kind","rectangle"},{"rect",QJsonArray{10,10,50,20}},{"snap","bogus"}},QJsonObject{{"kind","text"},{"at",QJsonArray{10,10}},{"text","hi"},{"snap","none"}}}){
+   QVERIFY(!Commands::apply(doc,{QJsonObject{{"op","add"},{"shape",shape}}},created,code,message));
+   QVERIFY2(message.contains("snap applies to highlights"),qPrintable(message));
+  }
+  QVERIFY(doc.shapes().isEmpty());
  }
  void highlightCostOnA4kBoxIsBounded(){
   // A full-frame highlight on a 4K page: export filter and display tile stay well inside a frame budget on a builder.

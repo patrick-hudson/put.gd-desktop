@@ -200,7 +200,13 @@ QImage EditDocument::render() const {
  QList<std::pair<QRect,highlight::Plan>> highlights;
  for(const auto& shape:state_.shapes)if(shape.kind==Shape::Kind::Highlight){const auto area=clampRect(shape.rect,crop).translated(-crop.topLeft());if(!area.isEmpty())highlights.append({area,highlight::plan(out,area,{},shape.color)});}
  for(const auto& shape:state_.shapes)if(shape.kind==Shape::Kind::Blur)blurInPlace(out,shape.rect.translated(-crop.topLeft()),shape.strength);
- for(const auto& [area,plan]:highlights)highlight::apply(out,area,plan);
+ if(highlights.size()==1)highlight::apply(out,highlights.first().first,highlights.first().second);
+ else if(!highlights.isEmpty()){
+  // Each highlight tints the pre-highlight pixels, and the later one wins
+  // where they overlap, as the canvas paints its tiles.
+  const QImage before=out.copy();
+  for(const auto& [area,plan]:highlights){QImage tile=before.copy(area);highlight::apply(tile,tile.rect(),plan);QPainter painter(&out);painter.setCompositionMode(QPainter::CompositionMode_Source);painter.drawImage(area.topLeft(),tile);}
+ }
  {
   QPainter painter(&out);painter.translate(-crop.topLeft());
   for(const auto& shape:state_.shapes)if(shape.kind!=Shape::Kind::Redact&&shape.kind!=Shape::Kind::Blur){const auto path=textPaths_.constFind(shape.id);paintAnnotation(painter,shape,textPathsGeneration_==generation_&&(textPathsFrozen_||textPathsFont_==QFont())&&path!=textPaths_.cend()?&path.value():nullptr);}
@@ -226,23 +232,33 @@ QList<QRect> EditDocument::redactionRects() const {
 QImage EditDocument::highlightPreview(const Shape& shape,double scale) const {
  const auto area=clampRect(shape.rect,state_.crop);if(area.isEmpty())return {};
  // The plan reads full-resolution pixels (sampled); only the tint runs on the
- // bounded preview raster, like blur.
+ // bounded preview raster, like blur. The raster is a window around the box
+ // that holds the reach of every blur crossing its edge, so the blur sees the
+ // same neighbours it sees in the export. Other highlights are not laid: the
+ // export tints each from the pre-highlight pixels too, and the later one wins.
  const auto plan=highlight::plan(base_,area,redactionRects(),shape.color);
+ QRect window=area;
+ for(const auto& other:state_.shapes)if(other.kind==Shape::Kind::Blur){
+  const int reach=3*std::max(1,other.strength/2)+1;
+  const auto overlap=clampRect(other.rect,state_.crop).intersected(area.adjusted(-reach,-reach,reach,reach));
+  if(!overlap.isEmpty()&&other.rect.intersects(area))window|=overlap;
+ }
  constexpr double previewPixels=1.5e6;
- scale=std::min({1.0,scale,std::sqrt(previewPixels/(double(area.width())*area.height()))});
- const QSize target(std::max(1,int(std::lround(area.width()*scale))),std::max(1,int(std::lround(area.height()*scale))));
- const QImage view(base_.constScanLine(area.top())+qsizetype(area.left())*qsizetype(sizeof(QRgb)),area.width(),area.height(),base_.bytesPerLine(),base_.format());
- auto preview=target==area.size()?view.copy():view.scaled(target,Qt::IgnoreAspectRatio,Qt::SmoothTransformation);
+ scale=std::min({1.0,scale,std::sqrt(previewPixels/(double(window.width())*window.height()))});
+ const QSize target(std::max(1,int(std::lround(window.width()*scale))),std::max(1,int(std::lround(window.height()*scale))));
+ const QImage view(base_.constScanLine(window.top())+qsizetype(window.left())*qsizetype(sizeof(QRgb)),window.width(),window.height(),base_.bytesPerLine(),base_.format());
+ auto preview=target==window.size()?view.copy():view.scaled(target,Qt::IgnoreAspectRatio,Qt::SmoothTransformation);
  preview=preview.convertToFormat(base_.format());
- const double sx=double(target.width())/area.width(),sy=double(target.height())/area.height();
- auto mapped=[&](const QRect& overlap){return QRectF((overlap.left()-area.left())*sx,(overlap.top()-area.top())*sy,overlap.width()*sx,overlap.height()*sy).toAlignedRect();};
+ const double sx=double(target.width())/window.width(),sy=double(target.height())/window.height();
+ auto mapped=[&](const QRect& rect){return QRectF((rect.left()-window.left())*sx,(rect.top()-window.top())*sy,rect.width()*sx,rect.height()*sy).toAlignedRect();};
  {
   QPainter painter(&preview);painter.setCompositionMode(QPainter::CompositionMode_Source);
-  for(const auto& other:state_.shapes)if(other.kind==Shape::Kind::Redact){const auto overlap=other.rect.intersected(area);if(!overlap.isEmpty())painter.fillRect(mapped(overlap),Qt::black);}
+  for(const auto& other:state_.shapes)if(other.kind==Shape::Kind::Redact){const auto overlap=other.rect.intersected(window);if(!overlap.isEmpty())painter.fillRect(mapped(overlap),Qt::black);}
  }
- for(const auto& other:state_.shapes)if(other.kind==Shape::Kind::Blur){const auto overlap=other.rect.intersected(area);if(!overlap.isEmpty())blurInPlace(preview,mapped(overlap),std::max(1,int(std::lround(other.strength*std::min(sx,sy)))));}
- highlight::apply(preview,preview.rect(),plan);
- return preview;
+ for(const auto& other:state_.shapes)if(other.kind==Shape::Kind::Blur){const auto overlap=clampRect(other.rect,state_.crop).intersected(window);if(!overlap.isEmpty())blurInPlace(preview,mapped(overlap),std::max(1,int(std::lround(other.strength*std::min(sx,sy)))));}
+ highlight::apply(preview,mapped(area),plan);
+ const auto cut=mapped(area).intersected(preview.rect());
+ return cut==preview.rect()?preview:preview.copy(cut);
 }
 
 QImage EditDocument::blurPreview(const Shape& shape,double scale) const {

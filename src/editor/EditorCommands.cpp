@@ -70,6 +70,8 @@ bool shapeFrom(const QJsonObject& object,Shape& shape,const EditDocument& doc,bo
   if(!object["text"].isString()||value.trimmed().isEmpty()||value.size()>EditDocument::maximumTextCharacters||value.contains('\n')||value.contains('\r'))return bad("Text must be one nonempty line of at most 500 characters");
   shape.text=value;
  }
+ const auto snap=object["snap"].toString();
+ if(object.contains("snap")&&(shape.kind!=Shape::Kind::Highlight||!object["snap"].isString()||!QStringList{"none","text","word","line"}.contains(snap)))return bad("snap applies to highlights and must be none, text, word or line");
  if(arrow){
   if(object.contains("rect")||object.contains("at"))return bad("Arrows use from and to points");
   if(object.contains("from")&&!pointFrom(object["from"],shape.from))return bad("from must be [x, y]");
@@ -82,8 +84,6 @@ bool shapeFrom(const QJsonObject& object,Shape& shape,const EditDocument& doc,bo
   if(creating&&(!object.contains("at")||!object.contains("text")))return bad("Text needs at and text");
   shape.rect=textBox(at,shape.text,shape.fontFamily,shape.fontPixels);
  }else{
-  const auto snap=object["snap"].toString();
-  if(object.contains("snap")&&(shape.kind!=Shape::Kind::Highlight||!object["snap"].isString()||!QStringList{"none","text","word","line"}.contains(snap)))return bad("snap applies to highlights and must be none, text, word or line");
   const bool pointSnap=snap=="word"||snap=="line";
   if(object.contains("from")||object.contains("to")||(object.contains("at")&&!pointSnap))return bad("Box shapes use rect");
   if(pointSnap&&object.contains("rect"))return bad("snap word or line takes an at point, not rect");

@@ -267,6 +267,16 @@ QRgb bandOf(QRgb pigment,QRgb page){
 }
 QRgb bandFor(const QColor& marker,QRgb page){return bandOf(pigmentOf(marker),page);}
 
+// How far a light neutral marker's wash may scale Y+0.05 over `area`: every
+// pixel counts here, one bright pixel the sampling grid missed would clip.
+double washLightenFor(const QImage& source,const QRect& area,const QList<QRect>& redactions,const QColor& marker){
+ const QRgb m=marker.rgb();
+ if(std::max({qRed(m),qGreen(m),qBlue(m)})-std::min({qRed(m),qGreen(m),qBlue(m)})>neutralChroma||luminance(m)<0.5)return 1.0;
+ double brightest=0;
+ for(int y=area.top();y<=area.bottom();++y)for(int x=area.left();x<=area.right();++x)brightest=std::max(brightest,luminance(pixelAt(source,redactions,x,y)));
+ return std::min(washLighten,1.05/(brightest+0.05));
+}
+
 Plan plan(const QImage& source,const QRect& requested,const QList<QRect>& redactions,const QColor& marker){
  Plan plan;const auto area=requested.intersected(source.rect());
  if(area.isEmpty()||source.depth()!=32)return plan;
@@ -292,14 +302,7 @@ Plan plan(const QImage& source,const QRect& requested,const QList<QRect>& redact
   // No dominant background: a photo or gradient. A wash of the marker over
   // everything that keeps the picture's detail. A white marker may only
   // lighten as far as the brightest pixel allows, so nothing clips.
-  plan.mode=Plan::Mode::Wash;
-  const QRgb m=marker.rgb();
-  if(std::max({qRed(m),qGreen(m),qBlue(m)})-std::min({qRed(m),qGreen(m),qBlue(m)})<=neutralChroma&&luminance(m)>=0.5){
-   // Every pixel counts here: one bright pixel the sampling grid missed would clip.
-   double brightest=0;
-   for(int y=area.top();y<=area.bottom();++y)for(int x=area.left();x<=area.right();++x)brightest=std::max(brightest,luminance(pixelAt(source,redactions,x,y)));
-   plan.lighten=std::min(washLighten,1.05/(brightest+0.05));
-  }
+  plan.mode=Plan::Mode::Wash;plan.lighten=washLightenFor(source,area,redactions,marker);
   return plan;
  }
  // Blocks without a dominant colour (dense text, icons) borrow the nearest
@@ -319,7 +322,14 @@ Plan plan(const QImage& source,const QRect& requested,const QList<QRect>& redact
  plan.blockBackground.assign(size_t(blocks),0);
  for(int b=0;b<blocks;++b){
   int index=-1;for(size_t i=0;i<plan.backgrounds.size()&&index<0;++i)if(distance(blockColor[size_t(b)],plan.backgrounds[i])<12)index=int(i);
-  if(index<0){index=int(plan.backgrounds.size());plan.backgrounds.push_back(blockColor[size_t(b)]);}
+  if(index<0){
+   if(int(plan.backgrounds.size())>=maximumBackgrounds){
+    // A tiled pattern, not a page: too many backgrounds for a paper plan.
+    plan.backgrounds.clear();plan.blockBackground.clear();plan.mode=Plan::Mode::Wash;plan.lighten=washLightenFor(source,area,redactions,marker);
+    return plan;
+   }
+   index=int(plan.backgrounds.size());plan.backgrounds.push_back(blockColor[size_t(b)]);
+  }
   plan.blockBackground[size_t(b)]=index;
  }
  plan.mode=Plan::Mode::Paper;const QRgb pigment=pigmentOf(marker);

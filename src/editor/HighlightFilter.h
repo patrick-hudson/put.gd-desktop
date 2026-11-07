@@ -27,6 +27,7 @@ constexpr double pigmentCeiling=0.69;// mixed with white up to the floor, pale o
 constexpr double pageFloor=0.85;     // pages darker than this are lifted (mixed with white) before the pigment multiplies them
 constexpr int blackMarker=32;        // markers with every channel at or below this are black: a mid-grey band
 constexpr int transferSteps=4095;    // pixel luminance resolution of the transfer tables
+constexpr int maximumBackgrounds=48; // more distinct backgrounds than this is a pattern: the wash applies
 constexpr qint64 maximumSnapPixels=2*1024*1024;
 
 struct Plan {

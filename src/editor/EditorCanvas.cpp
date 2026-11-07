@@ -21,6 +21,9 @@
 
 namespace putgd::editor {
 namespace {
+// The image pixel under a fractional image position, like every other pixel index here.
+QPoint pixelAt(const QPointF& image){return QPoint(int(std::floor(image.x())),int(std::floor(image.y())));}
+
 constexpr double minimumZoom=0.02,maximumZoom=32.0;
 constexpr int handleTargetPixels=32;
 template<size_t N>
@@ -387,6 +390,13 @@ void EditorCanvas::mousePressEvent(QMouseEvent* event){
   if(QRectF(doc_.crop()).contains(image))beginText(image,nullptr);
   return;
  }
+ // Shift-click grows the selected highlight by the word under the pointer,
+ // inside the selection too, so it comes before the move and resize hit tests.
+ if(tool_==Tool::Highlight&&(event->modifiers()&Qt::ShiftModifier))if(const auto* current=doc_.find(selected_);current&&current->kind==Shape::Kind::Highlight){
+  const auto word=highlight::wordAt(doc_.base(),pixelAt(image));
+  if(!word.isNull()){auto next=*current;next.rect=next.rect.united(word).intersected(doc_.crop());doc_.replace(next);update();emit changed();}
+  return;
+ }
  const bool force=drawingTool()&&(event->modifiers()&Qt::ControlModifier);
  // Handles and the visible body of the current selection edit it in every tool.
  if(!force)if(const auto* shape=doc_.find(selected_)){
@@ -400,12 +410,6 @@ void EditorCanvas::mousePressEvent(QMouseEvent* event){
   update();return;
  }
  if(!drawingTool())return;
- // Shift-click grows the selected highlight by the word under the pointer.
- if(tool_==Tool::Highlight&&(event->modifiers()&Qt::ShiftModifier))if(const auto* current=doc_.find(selected_);current&&current->kind==Shape::Kind::Highlight){
-  const auto word=highlight::wordAt(doc_.base(),image.toPoint());
-  if(!word.isNull()){auto next=*current;next.rect=next.rect.united(word).intersected(doc_.crop());doc_.replace(next);update();emit changed();}
-  return;
- }
  // A drawing tool picks up a visible shape to move it; Ctrl draws over it.
  if(!force)if(const auto hit=grabAt(image)){
   selected_=hit;emit selectionChanged();original_=*doc_.find(hit);drag_=Drag::Move;doc_.beginGesture();update();return;
@@ -454,7 +458,8 @@ void EditorCanvas::mouseMoveEvent(QMouseEvent* event){
     shape.rect=QRect(right?px:px-side+1,down?py:py-side+1,side,side);
    }else shape.rect=boxFrom(from,end).intersected(bounds);
    // A highlight follows the text lines it crosses; Alt keeps the free box.
-   if(shape.kind==Shape::Kind::Highlight&&!shape.rect.isEmpty()&&!(event->modifiers()&Qt::AltModifier))shape.rect=highlight::snapToText(doc_.base(),shape.rect).intersected(bounds);
+   // Snapping waits for a real drag: a click with a pixel of jitter stays tiny and highlights the word on release.
+   if(shape.kind==Shape::Kind::Highlight&&!shape.rect.isEmpty()&&!(event->modifiers()&Qt::AltModifier)&&QLineF(press_,event->position()).length()>=QGuiApplication::styleHints()->startDragDistance())shape.rect=highlight::snapToText(doc_.base(),shape.rect).intersected(bounds);
   }
  }else if(drag_==Drag::Move){const auto d=containedMove(shape,delta,bounds);shape.rect.translate(d);shape.from+=d;shape.to+=d;}
  else if(drag_==Drag::Resize){
@@ -477,7 +482,7 @@ void EditorCanvas::mouseReleaseEvent(QMouseEvent* event){
   const bool tiny=!shape||(shape->kind==Shape::Kind::Arrow?QLineF(toWidget(QPointF(shape->from)),toWidget(QPointF(shape->to))).length()<6:(shape->rect.width()*scale_<4||shape->rect.height()*scale_<4));
   if(tiny&&shape&&shape->kind==Shape::Kind::Highlight&&!(event->modifiers()&Qt::AltModifier)){
    // A click highlights the word under the pointer.
-   const auto word=highlight::wordAt(doc_.base(),toImage(press_).toPoint()).intersected(doc_.crop());
+   const auto word=highlight::wordAt(doc_.base(),pixelAt(toImage(press_))).intersected(doc_.crop());
    if(!word.isEmpty()){auto next=*shape;next.rect=word;doc_.preview(next);doc_.commitGesture();update();emit changed();updateHoverCursor(event->position(),event->modifiers());return;}
   }
   if(tiny){doc_.cancelGesture();selected_=0;emit selectionChanged();update();return;}
@@ -492,7 +497,7 @@ void EditorCanvas::mouseDoubleClickEvent(QMouseEvent* event){
  if(shape&&shape->kind==Shape::Kind::Text){beginText(QPointF(shape->rect.topLeft()),shape);return;}
  // The first click made a word highlight; the double-click grows it to the line.
  if(tool_==Tool::Highlight&&!(event->modifiers()&Qt::AltModifier))if(const auto* current=doc_.find(selected_);current&&current->kind==Shape::Kind::Highlight){
-  const auto line=highlight::lineAt(doc_.base(),toImage(event->position()).toPoint()).intersected(doc_.crop());
+  const auto line=highlight::lineAt(doc_.base(),pixelAt(toImage(event->position()))).intersected(doc_.crop());
   if(!line.isEmpty()&&line!=current->rect){auto next=*current;next.rect=line.united(current->rect);doc_.replace(next);update();emit changed();}
  }
 }
