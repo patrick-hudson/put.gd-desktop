@@ -6,6 +6,7 @@
 #include "Ui.h"
 #include "Fonts.h"
 #include "QuickBackend.h"
+#include "DialogAttachment.h"
 #include "core/AllocatorPolicy.h"
 #include "core/BuildInfo.h"
 #include "core/HostEnvironment.h"
@@ -23,6 +24,8 @@ int main(int argc,char** argv){
   std::printf("putgd-ui %s\n",putgd::buildVersion());return 0;
  }
  putgd::UiControlPipes handles;if(!handles.valid())return 2;
+ // Before the editor clears the desktop identity below: dialogs move on their own on GNOME.
+ putgd::keepModalDialogsDetached();
  // The editor draws its own theme. Qt's built-in generic platform theme avoids
  // loading the desktop's GTK/KDE integration stack into this short-lived image
  // process (about 22 MiB RSS on GNOME 50; about 85 MiB on Plasma, whose theme

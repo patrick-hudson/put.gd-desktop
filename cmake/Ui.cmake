@@ -89,6 +89,11 @@ install(FILES src/ui/fonts/IBMPlexSans-Regular.ttf src/ui/fonts/IBMPlexSans-Medi
 add_library(putgd_quick_backend STATIC src/ui/QuickBackend.cpp)
 target_include_directories(putgd_quick_backend PUBLIC src)
 target_link_libraries(putgd_quick_backend PUBLIC Qt6::Core putgd_build_options PRIVATE ${CMAKE_DL_LIBS})
+# Modal dialogs that move on their own on GNOME instead of dragging their
+# parent window along.
+add_library(putgd_dialog_attachment STATIC src/ui/DialogAttachment.cpp)
+target_include_directories(putgd_dialog_attachment PUBLIC src)
+target_link_libraries(putgd_dialog_attachment PUBLIC Qt6::Core putgd_build_options PRIVATE putgd_core)
 # PNG previews decode through the built-in handler by name (#1161).
 add_library(putgd_preview_reader STATIC src/ui/PreviewReader.cpp)
 target_include_directories(putgd_preview_reader PUBLIC src)
