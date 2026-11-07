@@ -977,7 +977,7 @@
             "check": {
               "type": "boolean",
               "default": true,
-              "description": "Check once a day. Stable builds notify once per new version; nightly builds only show it in Settings. Development, source and Flatpak builds never check."
+              "description": "Check once a day. Stable builds notify once per new version; nightly builds only show it in Settings. Development and source builds never check."
             },
             "channel": {
               "enum": ["build", "stable", "nightly"],

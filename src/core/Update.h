@@ -10,7 +10,7 @@ namespace putgd {
 // performs IO.
 namespace update {
 // Which published package this build is: ubuntu24.04, ubuntu26.04, debian13,
-// fedora44, appimage or flatpak; empty for a build no package job made.
+// fedora44, appimage; empty for a build no package job made.
 QString packageTarget();
 // False when the build was configured with PUTGD_UPDATE_CHECK=OFF.
 bool checkBuilt();
@@ -21,7 +21,7 @@ struct Build {
  QString channel; // the feed the build follows: stable (also candidates), nightly, or empty
  QString target;
  bool supported=false;
- QString reason;  // why checks are off: disabled_at_build, flatpak, no_package, development_build
+ QString reason;  // why checks are off: disabled_at_build, no_package, development_build
  QJsonObject toJson() const;
 };
 // target and built default to this build's compiled values.

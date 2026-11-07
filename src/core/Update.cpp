@@ -8,7 +8,7 @@ const QString defaultFeedBase="https://app.put.gd/update/v1/";
 const QString releasePages="https://github.com/patrick-hudson/put.gd-desktop/releases/tag/";
 const QString releaseDownloads="https://github.com/patrick-hudson/put.gd-desktop/releases/download/";
 const QString mirrorDownloads="https://pkg.put.gd/releases/";
-const QStringList targets{"ubuntu24.04","ubuntu26.04","debian13","fedora44","appimage","flatpak"};
+const QStringList targets{"ubuntu24.04","ubuntu26.04","debian13","fedora44","appimage"};
 Error invalidFeed(const QString& message) {return {"update_feed_invalid",message,{}};}
 }
 QJsonObject Build::toJson() const {
@@ -20,10 +20,9 @@ Build build(const QJsonObject& manifest,const QString& target,bool built) {
  const auto link=releaseLink(manifest);
  Build result;result.version=link.version;result.kind=link.kind;result.target=target;
  result.channel=link.kind=="nightly"?QString("nightly"):link.kind=="stable"||link.kind=="candidate"?QString("stable"):QString();
- // Flatpak updates itself from its repository; a distribution's own package
- // turns checks off at build time; untagged builds have no feed to follow.
+ // A distribution's own package turns checks off at build time;
+ // untagged builds have no feed to follow.
  if(!built)result.reason="disabled_at_build";
- else if(target=="flatpak")result.reason="flatpak";
  else if(target.isEmpty()||!targets.contains(target))result.reason="no_package";
  else if(result.channel.isEmpty())result.reason="development_build";
  result.supported=result.reason.isEmpty();

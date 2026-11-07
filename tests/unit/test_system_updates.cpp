@@ -39,7 +39,7 @@ private slots:
   QCOMPARE(action("debian13")["repository"].toString(),QString("other"));
   write("/etc/apt/sources.list.d/putgd.sources",sources({},"https://mirror.example/apt/debian13"));
   QCOMPARE(action("debian13")["repository"].toString(),QString("other"));
-  // AppImage, Flatpak and development builds never have one.
+  // AppImage and development builds never have one.
   QCOMPARE(action("appimage")["repository"].toString(),QString("none"));
   QCOMPARE(action("")["repository"].toString(),QString("none"));
  }

@@ -231,7 +231,7 @@ set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS ON)
 set(CPACK_DEBIAN_PACKAGE_PRIVATE_DIRS "${PUTGD_AWS_RUNTIME_DIR}")
 # History previews of WebP recordings and images read through Qt's WebP image
 # plugin (#189), which Debian, Ubuntu and Fedora ship apart from Qt GUI (GIF and
-# JPEG come with it). The AppImage and the Flatpak runtime carry it already.
+# JPEG come with it). The AppImage carries it already.
 set(CPACK_DEBIAN_PACKAGE_DEPENDS "libqt6sql6-sqlite, qt6-qpa-plugins, qt6-wayland, qt6-image-formats-plugins, libglib2.0-bin, hicolor-icon-theme, gtk-update-icon-cache")
 configure_file(refresh-icon-cache.sh package-inputs/postinst COPYONLY)
 configure_file(refresh-icon-cache.sh package-inputs/postrm COPYONLY)
