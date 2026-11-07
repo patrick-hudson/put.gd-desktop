@@ -685,31 +685,35 @@ private slots:
  void highlightSnapsToTextLinesWordsAndLines(){
   const auto paper=fixture("highlight-lcd-text.png");
   // A thin drag through the middle of the first line grows to the line's height.
-  const auto line=highlight::snapToText(paper,QRect(40,24,440,3));
+  const auto line=highlight::snapToText(paper,QRect(40,24,440,3),{});
   QVERIFY2(line.height()>=12&&line.height()<=22,qPrintable(QString("%1").arg(line.height())));QVERIFY(line.top()>=12&&line.bottom()<=36);
   // A drag across the whole paragraph covers three lines and trims to the ink.
-  const auto paragraph=highlight::snapToText(paper,QRect(30,2,470,58));
+  const auto paragraph=highlight::snapToText(paper,QRect(30,2,470,58),{});
   QVERIFY(paragraph.top()>=10&&paragraph.top()<=20);QVERIFY(paragraph.bottom()>=55);QVERIFY(paragraph.left()>=26&&paragraph.left()<=36);
   // Words and lines at a point.
-  const auto word=highlight::wordAt(paper,QPoint(60,25));QVERIFY(!word.isNull());QVERIFY(word.contains(QPoint(60,25)));QVERIFY(word.width()<120);
-  const auto whole=highlight::lineAt(paper,QPoint(60,25));QVERIFY(whole.contains(word));QVERIFY(whole.width()>300);
-  QVERIFY(highlight::wordAt(paper,QPoint(5,70)).isNull());
+  const auto word=highlight::wordAt(paper,QPoint(60,25),{});QVERIFY(!word.isNull());QVERIFY(word.contains(QPoint(60,25)));QVERIFY(word.width()<120);
+  const auto whole=highlight::lineAt(paper,QPoint(60,25),{});QVERIFY(whole.contains(word));QVERIFY(whole.width()>300);
+  QVERIFY(highlight::wordAt(paper,QPoint(5,70),{}).isNull());
   // Empty paper snaps nothing: the box stays as dragged.
-  QImage blank(300,100,QImage::Format_RGB32);blank.fill(Qt::white);QCOMPARE(highlight::snapToText(blank,QRect(10,10,100,20)),QRect(10,10,100,20));
+  QImage blank(300,100,QImage::Format_RGB32);blank.fill(Qt::white);QCOMPARE(highlight::snapToText(blank,QRect(10,10,100,20),{}),QRect(10,10,100,20));
   // Dark table rows: six lines across the box, icons included.
-  const auto table=fixture("highlight-dark-table.png");const auto rows=highlight::snapToText(table,QRect(30,15,470,215));
+  const auto table=fixture("highlight-dark-table.png");const auto rows=highlight::snapToText(table,QRect(30,15,470,215),{});
   QVERIFY(rows.top()>=12&&rows.top()<=18);QVERIFY(rows.bottom()>=218&&rows.bottom()<=228);QVERIFY(rows.right()<490);
-  const auto cell=highlight::wordAt(table,QPoint(300,95));QVERIFY(!cell.isNull());QVERIFY2(cell.width()<80&&cell.height()<=26,qPrintable(QString("%1x%2 at %3,%4").arg(cell.width()).arg(cell.height()).arg(cell.x()).arg(cell.y())));
+  const auto cell=highlight::wordAt(table,QPoint(300,95),{});QVERIFY(!cell.isNull());QVERIFY2(cell.width()<80&&cell.height()<=26,qPrintable(QString("%1x%2 at %3,%4").arg(cell.width()).arg(cell.height()).arg(cell.x()).arg(cell.y())));
  }
  void snappingNeverTracesRedactedText(){
   // A word under a redaction is not text any more: no word there, and a line drag skips it.
-  const auto paper=fixture("highlight-lcd-text.png");const auto word=highlight::wordAt(paper,QPoint(60,25));QVERIFY(!word.isNull());
+  const auto paper=fixture("highlight-lcd-text.png");const auto whole=highlight::lineAt(paper,QPoint(60,25),{});QVERIFY(!whole.isNull());
+  const auto word=highlight::wordAt(paper,QPoint(whole.left()+4,25),{});QVERIFY(!word.isNull());QVERIFY(word.left()<=whole.left()+4);  // the line's first word
   const QList<QRect> redactions{word};
-  QVERIFY(highlight::wordAt(paper,QPoint(60,25),redactions).isNull());
+  QVERIFY(highlight::wordAt(paper,word.center(),redactions).isNull());
   // The line found from a point further along starts after the redacted word (padding may touch it).
   const auto line=highlight::lineAt(paper,QPoint(300,25),redactions);QVERIFY(!line.isNull());QVERIFY2(line.left()>word.center().x(),qPrintable(QString("line %1 word %2").arg(line.left()).arg(word.center().x())));
+  // A drag across the line snaps to the ink after the redaction; a drag over the redacted word alone finds no text.
+  const auto snapped=highlight::snapToText(paper,QRect(40,24,440,3),redactions);QVERIFY(snapped.left()>word.center().x());QVERIFY(snapped.height()>=12);
+  const QRect over(word.left(),word.top()+word.height()/2,word.width(),2);QCOMPARE(highlight::snapToText(paper,over,redactions),over);
   EditDocument doc(paper);doc.add(box(Shape::Kind::Redact,word));QJsonArray created;QString code,message;
-  QVERIFY(!Commands::apply(doc,{QJsonObject{{"op","add"},{"shape",QJsonObject{{"kind","highlight"},{"at",QJsonArray{60,25}},{"snap","word"}}}}},created,code,message));
+  QVERIFY(!Commands::apply(doc,{QJsonObject{{"op","add"},{"shape",QJsonObject{{"kind","highlight"},{"at",QJsonArray{word.center().x(),word.center().y()}},{"snap","word"}}}}},created,code,message));
   QVERIFY2(message.contains("No text at that point"),qPrintable(message));
  }
  void highlightCommandsSnapToWordsLinesAndText(){
@@ -735,17 +739,18 @@ private slots:
   EditDocument doc(fixture("highlight-lcd-text.png"));EditorCanvas canvas(doc);canvas.resize(832,632);canvas.show();QVERIFY(putgd::test::waitForWindowExposed(&canvas));
   canvas.setTool(Tool::Highlight);canvas.fit();QCOMPARE(canvas.zoom(),1.0);
   const QPoint origin((canvas.width()-540)/2,(canvas.height()-80)/2);
-  const auto first=highlight::wordAt(doc.base(),QPoint(60,25));QVERIFY(!first.isNull());
+  const auto first=highlight::wordAt(doc.base(),QPoint(60,25),{});QVERIFY(!first.isNull());
   auto mark=box(Shape::Kind::Highlight,first.united(QRect(first.right()+1,first.top(),120,first.height())));const auto id=doc.add(mark);canvas.select(id);
-  const QPoint inside(mark.rect.right()-10,mark.rect.center().y());const auto next=highlight::wordAt(doc.base(),inside);QVERIFY(!next.isNull());
+  const QPoint inside(mark.rect.right()-10,mark.rect.center().y());const auto next=highlight::wordAt(doc.base(),inside,{});QVERIFY(!next.isNull());
   QTest::mouseClick(&canvas,Qt::LeftButton,Qt::ShiftModifier,origin+inside);
   QCOMPARE(doc.shapes().size(),1);QCOMPARE(doc.find(id)->rect,mark.rect.united(next));QCOMPARE(canvas.selected(),id);
   // A press with a few pixels of jitter, under the drag distance, is still a word click, not a sliver.
-  canvas.select(0);const QPoint at(60,45);const QPoint jitter(5,5);const auto expected=highlight::wordAt(doc.base(),at);QVERIFY(!expected.isNull());QVERIFY(!doc.find(id)->rect.contains(at));
+  const int threshold=QApplication::startDragDistance();QApplication::setStartDragDistance(10);
+  canvas.select(0);const QPoint at(60,45);const QPoint jitter(5,5);const auto expected=highlight::wordAt(doc.base(),at,{});QVERIFY(!expected.isNull());QVERIFY(!doc.find(id)->rect.contains(at));
   QTest::mousePress(&canvas,Qt::LeftButton,Qt::NoModifier,origin+at);
   QMouseEvent move(QEvent::MouseMove,QPointF(origin+at+jitter),canvas.mapToGlobal(QPointF(origin+at+jitter)),Qt::NoButton,Qt::LeftButton,Qt::NoModifier);QApplication::sendEvent(&canvas,&move);
   QTest::mouseRelease(&canvas,Qt::LeftButton,Qt::NoModifier,origin+at+jitter);
-  QCOMPARE(doc.shapes().size(),2);QCOMPARE(doc.shapes().last().rect,expected);
+  QCOMPARE(doc.shapes().size(),2);QCOMPARE(doc.shapes().last().rect,expected);QApplication::setStartDragDistance(threshold);
  }
  void snapIsRejectedOnShapesThatAreNotHighlights(){
   EditDocument doc(fixture("highlight-lcd-text.png"));
@@ -762,7 +767,7 @@ private slots:
   auto mark=box(Shape::Kind::Highlight,QRect(0,0,3840,2160));doc.add(mark);
   QElapsedTimer timer;timer.start();const auto out=doc.render();const auto exportMs=timer.elapsed();
   timer.restart();const auto tile=doc.highlightPreview(mark,0.5);const auto tileMs=timer.elapsed();
-  timer.restart();const auto snapped=highlight::snapToText(doc.base(),QRect(100,1000,1400,120));const auto snapMs=timer.elapsed();
+  timer.restart();const auto snapped=highlight::snapToText(doc.base(),QRect(100,1000,1400,120),{});const auto snapMs=timer.elapsed();
   qInfo("4K highlight: export %lld ms, 1.5 MP tile %lld ms, snap of a 1400x120 box %lld ms",exportMs,tileMs,snapMs);
   QVERIFY(!out.isNull());QVERIFY(!tile.isNull());QVERIFY(snapped.height()>0);
   QVERIFY2(exportMs<10000&&tileMs<5000,"the filter is a few linear passes; anything slower is a regression");

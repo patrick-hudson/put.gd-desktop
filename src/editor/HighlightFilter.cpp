@@ -115,10 +115,13 @@ bool inkMask(const QImage& source,const QRect& box,const QList<QRect>& redaction
  const auto plan_=plan(source,box,redactions,QColor(250,204,21));
  if(plan_.mode!=Plan::Mode::Paper)return false;
  const Grid grid{plan_};mask.box=box;mask.width=box.width();mask.height=box.height();mask.bits.assign(size_t(box.width())*size_t(box.height()),0);
+ // The redactions rasterized once, so the pixel loop does not scan the list.
+ std::vector<uint8_t> redacted(mask.bits.size(),0);
+ for(const auto& r:redactions){const auto cut=r.intersected(box);for(int y=cut.top();y<=cut.bottom();++y)std::fill_n(redacted.begin()+ptrdiff_t((y-box.top())*box.width()+(cut.left()-box.left())),cut.width(),uint8_t(1));}
  for(int y=0;y<box.height();++y){
   const auto* line=reinterpret_cast<const QRgb*>(source.constScanLine(box.top()+y))+box.left();
-  const int blockRow=grid.block(box.left(),box.top()+y);
-  for(int x=0;x<box.width();++x){if(inside(redactions,box.left()+x,box.top()+y))continue;int d2=0;grid.nearest(line[x],blockRow+(x/blockSize),d2);if(d2*4>=inkSquared)mask.bits[size_t(y)*size_t(box.width())+size_t(x)]=1;}
+  const int blockRow=grid.block(box.left(),box.top()+y);const auto* cut=redacted.data()+size_t(y)*size_t(box.width());
+  for(int x=0;x<box.width();++x){if(cut[x])continue;int d2=0;grid.nearest(line[x],blockRow+(x/blockSize),d2);if(d2*4>=inkSquared)mask.bits[size_t(y)*size_t(box.width())+size_t(x)]=1;}
  }
  return true;
 }
