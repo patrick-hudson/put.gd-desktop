@@ -151,8 +151,10 @@
       "enabled": false
     },
     {
+      "description": "AWS tags an SDK release almost daily, mostly service models put.gd does not build (only S3). Each update needs a full acceptance round, so it waits on the dashboard until someone takes it.",
       "matchPackageNames": ["aws/aws-sdk-cpp"],
       "groupName": "AWS SDK for C++",
+      "dependencyDashboardApproval": true,
       "labels": ["dependencies", "area: packaging"],
       "prBodyNotes": ["`refresh_pins.py` re-pins the SDK commit and its CRT submodules in `cmake/dependency-lock.json`; CI clones the release and verifies them with `tools/verify_dependencies.py`."]
     },

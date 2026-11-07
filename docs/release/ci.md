@@ -229,7 +229,7 @@ usual acceptance like any other change.
 | FFmpeg (AppImage recorder) | `packaging/appimage/tools.lock.json` | `n*` tags | patch releases at once; a new minor or major waits for approval (its sonames change) |
 | linuxdeploy, its Qt plugin, appimagetool, the type2 runtime | `packaging/appimage/tools.lock.json` | GitHub releases | one group |
 | Syft, Grype | `packaging/sbom/tools.lock.json` | GitHub releases | one group |
-| AWS SDK for C++ | `cmake/dependency-lock.json`, `cmake/Dependencies.cmake` | tags | one group |
+| AWS SDK for C++ | `cmake/dependency-lock.json`, `cmake/Dependencies.cmake` | tags | one group, and only after approval |
 | Proton helper: npm packages, Bun, the SDK | `tools/proton/package.json` and its lock, `tools/proton/runtime-lock.json` | npm | one group, and only after approval |
 | MCP helper | `tools/mcp/pyproject.toml` | PyPI | one group |
 
@@ -250,7 +250,8 @@ reads its Qt version from the lock, so a Qt update needs no workflow change.
 
 **Approval.** Updates that need a decision wait on the dependency dashboard, the
 issue titled "Dependency updates (Renovate)": Qt and FFmpeg minor and major
-releases, and every Proton helper update. A Proton helper update also needs its
+releases, every AWS SDK update (AWS tags one almost daily, and each needs a full
+acceptance round), and every Proton helper update. A Proton helper update also needs its
 notices and corresponding-source catalog rebuilt (docs/user/proton-drive.md), which
 Renovate cannot do. Tick an update on the dashboard and the next run opens it. At
 most five update pull requests are open at once.
