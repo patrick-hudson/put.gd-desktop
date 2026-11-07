@@ -1,10 +1,10 @@
 # Flatpak feasibility spike (#14)
 
-> **Historical record.** Flatpak is out of scope. This experiment moved here from `docs/flatpak.md` in the [2026-11 layout change](2026-11-docs-layout.md); packaging and release code still reference it. The current design is in [overview](../design/overview.md); see [release](../release/release.md). Do not use it as a work list.
+> **Historical record.** Flatpak is out of scope. This experiment moved here from `docs/flatpak.md` in the [2026-11 layout change](2026-11-docs-layout.md). The experimental packaging and release support was removed in [#1255](https://github.com/patrick-hudson/put.gd-desktop/pull/1255). The current design is in [overview](../design/overview.md); see [release](../release/release.md). Do not use it as a work list.
 
 Status: research, 2026-10-18. Nothing here changes the DEB, RPM or AppImage, and
 nothing here is a release input. The experimental manifest is
-[`packaging/flatpak/gd.put.Putgd.yml`](../../packaging/flatpak/gd.put.Putgd.yml).
+[`packaging/flatpak/gd.put.Putgd.yml` at the experiment revision](https://github.com/patrick-hudson/put.gd-desktop/blob/4e26ae0b881c/packaging/flatpak/gd.put.Putgd.yml).
 [Issue #14](https://github.com/patrick-hudson/put.gd-desktop/issues/14) plans a
 separately installed host "capture companion". This spike asked whether a
 Flatpak can ship without any new host helper, recording included, and what each
