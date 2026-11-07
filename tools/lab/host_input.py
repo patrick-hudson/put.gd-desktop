@@ -116,13 +116,37 @@ def serve(path, user):
     try:
         while True:
             connection, _ = server.accept()
-            with connection, connection.makefile('rwb') as stream:
-                handle(stream, keyboard, tablet)
+            serve_connection(connection, keyboard, tablet)
     finally:
         keyboard.close(); tablet.close(); server.close(); os.unlink(path)
 
 
+def serve_connection(connection, keyboard, tablet):
+    """One client going away (closed with replies unread, killed mid-drag) ends
+    that connection only; the devices and the listening socket stay up."""
+    try:
+        with connection, connection.makefile('rwb') as stream:
+            handle(stream, keyboard, tablet)
+    except ConnectionError as error:
+        print(json.dumps({'client': 'disconnected', 'error': type(error).__name__}), file=sys.stderr, flush=True)
+
+
 def handle(stream, keyboard, tablet):
+    """Serve one client. Keys and buttons it left pressed are released when it
+    goes away, so a client that dies mid-drag cannot leave the desktop holding
+    a button."""
+    held = set()
+    try:
+        serve_client(stream, keyboard, tablet, held)
+    finally:
+        is_button = lambda code: code in BTN.values()
+        keys = [(EV_KEY, code, 0) for code in sorted(held) if not is_button(code)]
+        buttons = [(EV_KEY, code, 0) for code in sorted(held) if is_button(code)]
+        if keys: keyboard.emit(keys)
+        if buttons: tablet.emit(buttons)
+
+
+def serve_client(stream, keyboard, tablet, held):
     def send(message):
         stream.write(json.dumps(message).encode() + b'\n'); stream.flush()
     send({'QMP': {'version': {'qemu': {'major': 0, 'minor': 0, 'micro': 0}, 'package': 'put.gd host_input'}, 'capabilities': []}})
@@ -143,6 +167,9 @@ def handle(stream, keyboard, tablet):
             pointer = [e for e in events if not is_key(e)]
             if keys: keyboard.emit(keys)
             if pointer: tablet.emit(pointer)
+            for kind, code, value in events:
+                if kind == EV_KEY:
+                    (held.add if value else held.discard)(code)
             send({'return': {}, 'id': ident})
         except (ValueError, json.JSONDecodeError) as error:
             send({'error': {'class': 'GenericError', 'desc': str(error)}, 'id': ident})

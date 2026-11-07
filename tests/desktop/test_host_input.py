@@ -1,5 +1,5 @@
 """Protocol contract for the physical-desktop input agent; no uinput device is opened."""
-import io, json, sys, unittest
+import io, json, socket, sys, threading, unittest
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / 'tools' / 'lab'))
 import host_input
@@ -42,8 +42,52 @@ class HostInputTests(unittest.TestCase):
         self.assertIn('QMP', replies[0])
         self.assertEqual([r.get('id') for r in replies[1:]], [1, 2, 3])
         self.assertTrue(all('return' in r for r in replies[1:]))
-        self.assertEqual(keys, [[(1, 29, 1), (1, 42, 1), (1, 6, 1)]])
-        self.assertEqual(pointer, [[(3, 0, 3072), (3, 1, 32767), (1, 0x110, 1)]])
+        # The client ended with them pressed, so the agent releases them.
+        self.assertEqual(keys, [[(1, 29, 1), (1, 42, 1), (1, 6, 1)], [(1, 6, 0), (1, 29, 0), (1, 42, 0)]])
+        self.assertEqual(pointer, [[(3, 0, 3072), (3, 1, 32767), (1, 0x110, 1)], [(1, 0x110, 0)]])
+
+    def test_released_input_is_not_released_again(self):
+        _, keys, pointer = self.run_agent(
+            {'execute': 'input-send-event', 'id': 1, 'arguments': {'events': [
+                {'type': 'btn', 'data': {'button': 'left', 'down': True}},
+                {'type': 'key', 'data': {'down': True, 'key': {'type': 'qcode', 'data': 'alt'}}}]}},
+            {'execute': 'input-send-event', 'id': 2, 'arguments': {'events': [
+                {'type': 'btn', 'data': {'button': 'left', 'down': False}},
+                {'type': 'key', 'data': {'down': False, 'key': {'type': 'qcode', 'data': 'alt'}}}]}})
+        self.assertEqual(keys, [[(1, 56, 1)], [(1, 56, 0)]])
+        self.assertEqual(pointer, [[(1, 0x110, 1)], [(1, 0x110, 0)]])
+
+    def test_a_client_that_vanishes_mid_drag_leaves_the_agent_serving(self):
+        keyboard, tablet = FakeDevice(), FakeDevice()
+        press = {'execute': 'input-send-event', 'arguments': {'events': [{'type': 'btn', 'data': {'button': 'left', 'down': True}}]}}
+        move = {'execute': 'input-send-event', 'arguments': {'events': [{'type': 'abs', 'data': {'axis': 'x', 'value': 9}}]}}
+        server, client = socket.socketpair()
+        agent = threading.Thread(target=host_input.serve_connection, args=(server, keyboard, tablet))
+        agent.start()
+        replies = client.makefile('rb')
+        client.sendall(json.dumps(press).encode() + b'\n')
+        replies.readline(); replies.readline()  # greeting, press acknowledged
+        # Dies mid-drag: one more request, then gone without reading its reply.
+        client.sendall(json.dumps(move).encode() + b'\n' * 4096)
+        replies.close(); client.close()
+        agent.join(5)
+        self.assertFalse(agent.is_alive())
+        self.assertEqual(tablet.batches[0], [(1, 0x110, 1)])
+        self.assertEqual(tablet.batches[-1], [(1, 0x110, 0)])
+        # The next client is served normally.
+        server, client = socket.socketpair()
+        client.sendall(json.dumps({'execute': 'qmp_capabilities', 'id': 7}).encode() + b'\n')
+        client.shutdown(socket.SHUT_WR)
+        host_input.serve_connection(server, keyboard, tablet)
+        lines = [json.loads(line) for line in client.makefile('rb')]
+        client.close()
+        self.assertIn('QMP', lines[0])
+        self.assertEqual(lines[1], {'return': {}, 'id': 7})
+
+    def test_a_client_gone_before_the_greeting_is_dropped_quietly(self):
+        server, client = socket.socketpair()
+        client.close()
+        host_input.serve_connection(server, FakeDevice(), FakeDevice())
 
     def test_rejects_anything_outside_the_runner_subset(self):
         bad = [
