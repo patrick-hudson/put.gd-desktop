@@ -1,7 +1,11 @@
 # History and Settings views, login startup, file uploads, local IPC, and the Qt Network links.
 if(BUILD_TESTING)
-  foreach(view settings_appearance settings_general settings_capture settings_shortcuts
-      settings_destinations settings_credentials settings_updates settings_advanced history_view)
+  set(PUTGD_SETTINGS_GUI_AREAS appearance general capture shortcuts destinations credentials updates advanced)
+  set(putgd_history_views history_view)
+  foreach(area IN LISTS PUTGD_SETTINGS_GUI_AREAS)
+    list(APPEND putgd_history_views settings_${area})
+  endforeach()
+  foreach(view IN LISTS putgd_history_views)
     add_executable(test_gui_${view} tests/gui/test_${view}.cpp)
     if(view MATCHES "^settings_")
       target_sources(test_gui_${view} PRIVATE tests/gui/SettingsGuiFixture.h)
@@ -12,7 +16,7 @@ if(BUILD_TESTING)
     set_tests_properties(gui_${view} PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 60)
   endforeach()
   # Area suites stay below a minute on d69; allow headroom on shared builders.
-  foreach(area appearance general capture shortcuts destinations credentials updates advanced)
+  foreach(area IN LISTS PUTGD_SETTINGS_GUI_AREAS)
     set_tests_properties(gui_settings_${area} PROPERTIES TIMEOUT 90)
   endforeach()
   # #600: the startup keychain unlock against a KWallet stand-in on a private bus.

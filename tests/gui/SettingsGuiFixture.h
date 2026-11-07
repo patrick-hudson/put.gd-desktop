@@ -77,24 +77,24 @@
 using namespace putgd;using namespace putgd::test;
 namespace {
 // Three S3 destinations: development-s3 is the capture default, clipboard is an exception to synthetic-third.
-QJsonObject threeDestinations(){
+inline QJsonObject threeDestinations(){
  auto doc=Settings::developmentTemplate();auto profiles=doc["profiles"].toArray();
  for(const auto& [id,label]:QList<QPair<QString,QString>>{{"synthetic-alternate","Synthetic alternate"},{"synthetic-third","Synthetic third"}}){auto profile=profiles.first().toObject();profile["id"]=id;profile["label"]=label;profile["credentials"]=QJsonObject{{"mode","keychain"},{"reference","putgd/"+id}};profiles.append(profile);}
  doc["profiles"]=profiles;doc["captureDefaults"]=QJsonObject{{"destination","upload"},{"profileId","development-s3"},{"publicationMode","default"}};
  auto actions=doc["actions"].toObject();for(const auto& name:Settings::actionNames()){auto action=actions[name].toObject();action["destination"]=name=="clipboard"?"upload":"default";action["profileId"]=name=="clipboard"?QJsonValue("synthetic-third"):QJsonValue(QJsonValue::Null);actions[name]=action;}doc["actions"]=actions;return doc;
 }
-QStringList profileIds(const QJsonObject& document){QStringList ids;for(const auto& p:document["profiles"].toArray())ids.append(p.toObject()["id"].toString());return ids;}
-QStringList rowLabels(QListWidget* list){QStringList labels;for(int i=0;i<list->count();++i)labels.append(list->item(i)->text().section('\n',0,0));return labels;}
+inline QStringList profileIds(const QJsonObject& document){QStringList ids;for(const auto& p:document["profiles"].toArray())ids.append(p.toObject()["id"].toString());return ids;}
+inline QStringList rowLabels(QListWidget* list){QStringList labels;for(int i=0;i<list->count();++i)labels.append(list->item(i)->text().section('\n',0,0));return labels;}
 // Chooses the named action of the next confirmation (Ui::confirm) and
 // keeps the text it showed.
-std::shared_ptr<QString> acceptNextConfirmation(){
+inline std::shared_ptr<QString> acceptNextConfirmation(){
  auto shown=std::make_shared<QString>();
  QTimer::singleShot(0,[shown]{for(auto* widget:QApplication::topLevelWidgets())if(auto* box=qobject_cast<QMessageBox*>(widget);box&&box->objectName()=="confirmAction"&&box->isVisible()){*shown=box->windowTitle()+"\n"+box->property("confirmationText").toString();box->button(QMessageBox::Yes)->click();return;}});
  return shown;
 }
 // The code behind the Settings status line: people read the message, the code
 // stays in a property and the accessible description.
-QString statusCode(QWidget& window){return window.findChild<QLabel*>("settingsStatus")->property("errorCode").toString();}
+inline QString statusCode(QWidget& window){return window.findChild<QLabel*>("settingsStatus")->property("errorCode").toString();}
 }
 
 class SettingsGuiFixture:public QObject {
