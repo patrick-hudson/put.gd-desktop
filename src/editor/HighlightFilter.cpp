@@ -275,11 +275,11 @@ Plan plan(const QImage& source,const QRect& requested,const QList<QRect>& redact
  const int step=std::clamp(int(std::ceil(std::sqrt(double(area.width())*area.height()/500000.0))),1,4);
  const int blocks=plan.columns*plan.rows;
  std::vector<QRgb> blockColor(size_t(blocks),0);std::vector<uint8_t> confident(size_t(blocks),0);
- Sampler sampler;int confidentBlocks=0;double brightest=0;
+ Sampler sampler;int confidentBlocks=0;
  for(int by=0;by<plan.rows;++by)for(int bx=0;bx<plan.columns;++bx){
   sampler.clear();
   const int x0=area.left()+bx*blockSize,y0=area.top()+by*blockSize,x1=std::min(area.right(),x0+blockSize-1),y1=std::min(area.bottom(),y0+blockSize-1);
-  for(int y=y0;y<=y1;y+=step)for(int x=x0;x<=x1;x+=step){const QRgb p=pixelAt(source,redactions,x,y);sampler.add(p);brightest=std::max(brightest,luminance(p));}
+  for(int y=y0;y<=y1;y+=step)for(int x=x0;x<=x1;x+=step)sampler.add(pixelAt(source,redactions,x,y));
   QRgb color=0;double share=0;
   if(sampler.mode(color,share)){blockColor[size_t(by*plan.columns+bx)]=color;if(share>=0.5){confident[size_t(by*plan.columns+bx)]=1;++confidentBlocks;}}
  }
@@ -288,7 +288,14 @@ Plan plan(const QImage& source,const QRect& requested,const QList<QRect>& redact
   // No dominant background: a photo or gradient. A wash of the marker over
   // everything that keeps the picture's detail. A white marker may only
   // lighten as far as the brightest pixel allows, so nothing clips.
-  plan.mode=Plan::Mode::Wash;plan.lighten=std::min(washLighten,1.05/(brightest+0.05));
+  plan.mode=Plan::Mode::Wash;
+  const QRgb m=marker.rgb();
+  if(std::max({qRed(m),qGreen(m),qBlue(m)})-std::min({qRed(m),qGreen(m),qBlue(m)})<=neutralChroma&&luminance(m)>=0.5){
+   // Every pixel counts here: one bright pixel the sampling grid missed would clip.
+   double brightest=0;
+   for(int y=area.top();y<=area.bottom();++y)for(int x=area.left();x<=area.right();++x)brightest=std::max(brightest,luminance(pixelAt(source,redactions,x,y)));
+   plan.lighten=std::min(washLighten,1.05/(brightest+0.05));
+  }
   return plan;
  }
  // Blocks without a dominant colour (dense text, icons) borrow the nearest

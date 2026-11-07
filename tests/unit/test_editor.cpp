@@ -630,6 +630,14 @@ private slots:
    const double now=contrastOf(out.pixel(inkAt),out.pixel(bgAt));
    QVERIFY2(now>=had*0.95,qPrintable(QString("%1: label contrast %2 -> %3").arg(color.name()).arg(had).arg(now)));
   }
+  // A big box is sampled on a grid, but a white marker's headroom must see every pixel: a one-pixel bright
+  // line that falls between the samples keeps its contrast too.
+  auto big=noise({1200,500},13);for(int y=0;y<big.height();++y){auto* line=reinterpret_cast<QRgb*>(big.scanLine(y));for(int x=0;x<big.width();++x)line[x]=qRgb(qRed(line[x])/5,qGreen(line[x])/5,qBlue(line[x])/5);}
+  for(int y=100;y<400;++y)big.setPixel(601,y,qRgb(235,235,235));
+  {EditDocument doc(big);auto mark=box(Shape::Kind::Highlight,QRect(0,0,1200,500));mark.color=QColor(255,255,255);doc.add(mark);const auto out=doc.render();
+   const double before=contrastOf(big.pixel(601,200),big.pixel(620,200)),after=contrastOf(out.pixel(601,200),out.pixel(620,200));
+   QVERIFY2(after>=before*0.95,qPrintable(QString("off-grid line contrast %1 -> %2").arg(before).arg(after)));
+   QVERIFY(highlight::luminance(out.pixel(620,200))>highlight::luminance(big.pixel(620,200)));}
  }
  void highlightPreviewMatchesExportAtFullScale(){
   EditDocument doc(fixture("highlight-dark-table.png"));auto mark=box(Shape::Kind::Highlight,QRect(40,50,480,60));doc.add(mark);
