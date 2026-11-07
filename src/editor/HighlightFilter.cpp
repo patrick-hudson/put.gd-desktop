@@ -35,6 +35,11 @@ const std::vector<uint8_t>& srgbTable(){
  return table;
 }
 int toSrgbFast(double linear){return srgbTable()[size_t(std::clamp(int(std::lround(linear*4096)),0,4096))];}
+// Coverage used to lay darkened ink on the marker: cover^1.5, in 1/inkDistance.
+const std::array<int,inkDistance+1>& layTable(){
+ static const auto table=[]{std::array<int,inkDistance+1> t{};for(int i=0;i<=inkDistance;++i)t[size_t(i)]=int(std::lround(inkDistance*std::pow(double(i)/inkDistance,1.5)));return t;}();
+ return table;
+}
 // `color` with its luminance lowered to `target` in linear light, hue kept.
 QRgb darkened(int r,int g,int b,double target){
  const auto& t=linearTable();double lr=t[size_t(r)],lg=t[size_t(g)],lb=t[size_t(b)];
@@ -309,7 +314,10 @@ void apply(QImage& image,const QRect& requested,const Plan& plan){
     if(cover==0){line[x]=qRgba(qRed(marker),qGreen(marker),qBlue(marker),qAlpha(p));continue;}
     auto unmix=[&](int c,int b){return std::clamp(b+(c-b)*inkDistance/cover,0,255);};
     const QRgb ink=darkened(unmix(qRed(p),qRed(bg)),unmix(qGreen(p),qGreen(bg)),unmix(qBlue(p),qBlue(bg)),plan.inkLuminance[size_t(k)]);
-    auto lay=[&](int m,int i){return std::clamp(m+(i-m)*cover/inkDistance,0,255);};
+    // Dark strokes on a light ground look heavier than light strokes on a dark
+    // one at the same sRGB coverage, so the edges are laid thinner (gamma 1.5).
+    const int laid=layTable()[size_t(cover)];
+    auto lay=[&](int m,int i){return std::clamp(m+(i-m)*laid/inkDistance,0,255);};
     line[x]=qRgba(lay(qRed(marker),qRed(ink)),lay(qGreen(marker),qGreen(ink)),lay(qBlue(marker),qBlue(ink)),qAlpha(p));
     continue;
    }
