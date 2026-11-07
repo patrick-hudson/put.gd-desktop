@@ -1502,7 +1502,6 @@ void SettingsWindow::refreshUpdateStatus(){
  if(update.isEmpty()){Ui::feedback(updateStatus_,settings_.build()["version"].toString().contains("-dev")?"Update checks aren't available for development builds":"Update status isn't available yet.");return;}
  if(!supported){
   static const QHash<QString,QString> reasons{
-   {"flatpak","Flatpak keeps this installation up to date. Use your software manager, or run flatpak update."},
    {"development_build","Update checks aren't available for development builds"},
    {"no_package","This build wasn't made by a put.gd package (for example, a build from source), so it doesn't check for updates."},
    {"disabled_at_build","Update checks were turned off when this build was made, for example by a distribution's own package."}};

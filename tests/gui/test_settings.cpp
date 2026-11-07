@@ -1952,10 +1952,10 @@ QVERIFY(!access->placeholderText().isEmpty());QVERIFY(!access->placeholderText()
   channel->setCurrentIndex(1);PUTGD_TRY_COMPARE(stored(),QString("build"));
   // A stored "build" from before #344 shows as this build's channel too.
   apply(true,"stable","build",{});PUTGD_TRY_COMPARE(channel->currentData().toString(),QString("stable"));
-  // A development build or Flatpak never checks: the row is hidden and nothing is rewritten.
+  // A development build or unknown package never checks: the row is hidden and nothing is rewritten.
   apply(false,QJsonValue(),"build","development_build");PUTGD_TRY_VERIFY(!channel->isVisibleTo(window.settings()));
   window.findChild<QCheckBox*>("notifications")->setChecked(!window.findChild<QCheckBox*>("notifications")->isChecked());PUTGD_COMPARE_STEADY(stored(),QString("build"),300);
-  apply(false,"stable","build","flatpak");PUTGD_TRY_VERIFY(!channel->isVisibleTo(window.settings()));
+  apply(false,"stable","build","no_package");PUTGD_TRY_VERIFY(!channel->isVisibleTo(window.settings()));
  }
  // #491: the real service supplies ownership before the first UI snapshot,
  // with no feed result. Saving unrelated preferences must retain the choice

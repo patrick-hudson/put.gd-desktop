@@ -397,7 +397,7 @@ def main():
                      'their corresponding source is the appimage-complete-source tarball. '
                      'The AppImage carries zsync update information for the stable channel, so AppImageUpdate, '
                      'Gear Lever and AppImageLauncher can update it with the .zsync asset. '
-                     'GNOME 50 requires the included host extension. Flatpak needs no host helper, except that Plasma Wayland loses direct screenshots; it is tracked in issue #83 (docs/history/flatpak.md).\n\n'
+                     'GNOME 50 requires the included host extension.\n\n'
                      'Proton corresponding source accompanies the packages in two transport parts and proton-source-catalog.json. '
                      'Verify SHA256SUMS, concatenate part1 then part2, and unpack the resulting tar.gz. '
                      'The combined ZIP includes the catalog; download the two source parts separately.\n\n'

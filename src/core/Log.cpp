@@ -294,13 +294,9 @@ void handle(QtMsgType type,const QMessageLogContext& context,const QString& mess
 }
 }
 QString stateRoot() {
-#ifdef Q_OS_WIN
- return QDir::fromNativeSeparators(qEnvironmentVariable("LOCALAPPDATA"))+"/putgd";
-#else
  auto base=qEnvironmentVariable("XDG_STATE_HOME");
  if(base.isEmpty()||!QDir::isAbsolutePath(base))base=QDir::homePath()+"/.local/state";
  return QDir::cleanPath(base)+"/putgd";
-#endif
 }
 void open(const QString& directory,Retention retention,const QString& process) {
  if(current())return;
