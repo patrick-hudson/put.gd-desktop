@@ -1,19 +1,24 @@
 # History and Settings views, login startup, file uploads, local IPC, and the Qt Network links.
 if(BUILD_TESTING)
-  foreach(view settings history_view)
+  foreach(view settings_appearance settings_general settings_capture settings_shortcuts
+      settings_destinations settings_credentials settings_updates settings_advanced history_view)
     add_executable(test_gui_${view} tests/gui/test_${view}.cpp)
+    if(view MATCHES "^settings_")
+      target_sources(test_gui_${view} PRIVATE tests/gui/SettingsGuiFixture.h)
+    endif()
     target_include_directories(test_gui_${view} PRIVATE tests)
     target_link_libraries(test_gui_${view} PRIVATE putgd_ui putgd_app putgd_s3 Qt6::Test)
     add_test(NAME gui_${view} COMMAND test_gui_${view})
     set_tests_properties(gui_${view} PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 60)
   endforeach()
-  # Delayed saves, setup polling and theme/scale cases expand this functional
-  # suite; leave time for a complete run on the shared builders.
-  set_tests_properties(gui_settings PROPERTIES TIMEOUT 180)
+  # Area suites stay below a minute on d69; allow headroom on shared builders.
+  foreach(area appearance general capture shortcuts destinations credentials updates advanced)
+    set_tests_properties(gui_settings_${area} PROPERTIES TIMEOUT 90)
+  endforeach()
   # #600: the startup keychain unlock against a KWallet stand-in on a private bus.
   if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
-    target_link_libraries(test_gui_settings PRIVATE Qt6::DBus)
-    add_test(NAME gui_settings_startup_unlock COMMAND dbus-run-session -- $<TARGET_FILE:test_gui_settings> startupUnlockRefreshesTheOpenDestination)
+    target_link_libraries(test_gui_settings_credentials PRIVATE Qt6::DBus)
+    add_test(NAME gui_settings_startup_unlock COMMAND dbus-run-session -- $<TARGET_FILE:test_gui_settings_credentials> startupUnlockRefreshesTheOpenDestination)
     set_tests_properties(gui_settings_startup_unlock PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen;PUTGD_ISOLATED_KEYCHAIN_TEST=1" TIMEOUT 60)
   endif()
   # Copy image decodes the retained original in the putgd-ui image worker (#284).
