@@ -2,8 +2,8 @@
   "schemaVersion": 1,
   "awsSdk": {
     "repository": "https://github.com/aws/aws-sdk-cpp.git",
-    "release": "1.11.921",
-    "commit": "a30491bf9ea107dd3c0900a67e75832b7ce6fd7a",
+    "release": "1.11.924",
+    "commit": "e8c12a9fd0cbbc4e1ff36b90e35ede7cd20e7bc8",
     "submodules": [
       {
         "path": "crt/aws-crt-cpp",
