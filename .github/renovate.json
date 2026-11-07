@@ -170,6 +170,17 @@
       "prBodyNotes": ["A Proton helper update is not complete as opened: re-run `tools/proton/provision_runtime.py`, then refresh `tools/proton/runtime-lock.json` (sourceReference for a new SDK), the notices and `tools/proton/notices/SOURCES.json` with the corresponding source (docs/user/proton-drive.md)."]
     },
     {
+      "description": "ky and TypeScript build the pinned ProtonDriveApps/sdk source (cli, incubating/account/js), which requires ky ^1.14 and TypeScript ^5.9. Stay on those majors until a new sourceReference moves them.",
+      "matchFileNames": ["tools/proton/package.json"],
+      "matchPackageNames": ["ky"],
+      "allowedVersions": "<2"
+    },
+    {
+      "matchFileNames": ["tools/proton/package.json"],
+      "matchPackageNames": ["typescript"],
+      "allowedVersions": "<6"
+    },
+    {
       "matchManagers": ["pep621"],
       "groupName": "MCP helper (Python)",
       "labels": ["dependencies", "area: lab"]
