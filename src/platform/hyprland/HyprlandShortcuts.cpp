@@ -242,6 +242,7 @@ QString HyprlandShortcuts::bindScript(const QString& action,const Chord& chord){
  return QStringLiteral("hl.bind(%1, hl.dsp.global(%2), { description = %3 })")
   .arg(HyprlandIpc::luaString(hyprlandKeys(chord)),HyprlandIpc::luaString(globalId(action)),HyprlandIpc::luaString(description(action)));
 }
+QString HyprlandShortcuts::unbindScript(const Chord& chord){return QStringLiteral("hl.unbind(%1)").arg(HyprlandIpc::luaString(hyprlandKeys(chord)));}
 QString HyprlandShortcuts::layerRuleScript(){
  return QStringLiteral("hl.layer_rule({ match = { namespace = \"^putgd-(region-selector|region-catcher|record)$\" }, no_anim = true })");
 }
@@ -277,10 +278,24 @@ HyprlandShortcuts::Plan HyprlandShortcuts::plan(const QJsonArray& binds,const QH
   else out.apply.insert(action,*chord);
  }
  // Anything of put.gd's that is not exactly one wanted bind must go first.
- for(auto it=ours.cbegin();it!=ours.cend();++it){
-  if(!wanted.contains(it.key())||it.value().size()!=1){out.reloadFirst=true;break;}
+ QList<Chord> leaving;
+ for(auto it=ours.cbegin();it!=ours.cend();++it)if(!wanted.contains(it.key())||it.value().size()!=1)leaving+=it.value();
+ for(auto it=out.apply.cbegin();it!=out.apply.cend();++it)leaving+=ours.value(description(it.key()));
+ // hl.unbind takes every bind on the chord in every submap, so anything else on it
+ // (or a put.gd bind whose key can't be read) needs the reload.
+ const auto heldByOthers=[&](const Chord& chord){
+  for(const auto& value:binds){
+   const auto bind=value.toObject();
+   if(ownDescription(bind["description"].toString()))continue;
+   if(bind["modmask"].toInt()==chord.modmask&&canonicalKey(bind["key"].toString())==chord.key)return true;
+   if(chordFromBind(bind)==chord)return true;
+  }
+  return false;
+ };
+ for(const auto& chord:std::as_const(leaving)){
+  if(chord.modmask<0||heldByOthers(chord)){out.reloadFirst=true;out.remove.clear();break;}
+  if(!out.remove.contains(chord))out.remove.append(chord);
  }
- for(auto it=out.apply.cbegin();!out.reloadFirst&&it!=out.apply.cend();++it)if(ours.contains(description(it.key())))out.reloadFirst=true;
  if(out.reloadFirst){for(const auto& action:std::as_const(out.present)){QString ignored;out.apply.insert(action,*chordFromPortable(desired.value(action),&ignored));}out.present.clear();}
  return out;
 }
@@ -289,6 +304,8 @@ HyprlandShortcuts::Plan HyprlandShortcuts::plan(const QJsonArray& binds,const QH
 HyprlandShortcuts::HyprlandShortcuts(HyprlandIpc* ipc,QObject* parent):ShortcutBackend(parent),ipc_(ipc){
  debounce_.setSingleShot(true);connect(&debounce_,&QTimer::timeout,this,&HyprlandShortcuts::apply);
  connect(ipc_,&HyprlandIpc::event,this,[this](const QString& name,const QString&){if(name=="configreloaded")configReloaded();});
+ // A reload while the event socket was away went unseen: read j/binds and put back what's gone.
+ connect(ipc_,&HyprlandIpc::listeningChanged,this,[this](bool listening){if(listening&&applied_){layerRule_=false;schedule(debounceMs);}});
  ipc_->listen();
  registry_=std::make_unique<Registry>(*this);
 }
@@ -353,10 +370,29 @@ void HyprlandShortcuts::reloadThen(std::function<void(Error)> next){
   next(error);
  });
 }
+void HyprlandShortcuts::unbindThen(QList<Chord> chords,std::function<void(Error)> next){
+ if(chords.isEmpty()){next({});return;}
+ const auto chord=chords.takeFirst();++unbinds_;
+ // A refused unbind shows up when j/binds is read again, and the reload takes over.
+ ipc_->request("eval "+unbindScript(chord),[this,chords=std::move(chords),next=std::move(next)](QByteArray,Error error)mutable{
+  if(error){next(std::move(error));return;}
+  unbindThen(std::move(chords),std::move(next));
+ });
+}
 void HyprlandShortcuts::applyBinds(QJsonArray binds,int reloads){
  auto wanted=paused_?QHash<QString,QString>{}:requested_;
  auto planned=plan(binds,wanted);
- if(planned.reloadFirst){
+ if(!planned.reloadFirst&&!planned.remove.isEmpty()&&reloads==0){
+  unbindThen(planned.remove,[this,reloads](Error error){
+   if(error){ipcError_=error.message;finish();return;}
+   readBinds([this,reloads](QJsonArray binds,Error error){
+    if(error){ipcError_=error.message;finish();return;}
+    applyBinds(std::move(binds),reloads+1);
+   });
+  });
+  return;
+ }
+ if(planned.reloadFirst||!planned.remove.isEmpty()){
   if(reloads>=maximumReloadsPerApply){ipcError_="put.gd's Hyprland binds did not clear after reload";finish();return;}
   reloadThen([this,reloads](Error error){
    if(error){ipcError_=error.message;finish();return;}
@@ -422,7 +458,7 @@ void HyprlandShortcuts::finish(){
 void HyprlandShortcuts::setPaused(bool paused,std::function<void(Error)> reply){
  if(paused==paused_&&!applying_){if(reply)reply({});return;}
  paused_=paused;
- // Paused: every put.gd bind leaves (through reload) so the recorder gets the keys.
+ // Paused: every put.gd bind leaves so the recorder gets the keys.
  if(reply)pauseReplies_.append(std::move(reply));
  schedule();emit changed();
 }
@@ -430,9 +466,9 @@ void HyprlandShortcuts::clear(){
  debounce_.stop();
  QByteArray reply;
  if(HyprlandIpc::requestBlocking("j/binds",&reply))return;
- bool ours=false;
- for(const auto& value:QJsonDocument::fromJson(reply).array())if(ownDescription(value.toObject()["description"].toString()))ours=true;
- if(ours){HyprlandIpc::requestBlocking("reload",&reply);++reloadsIssued_;}
+ const auto planned=plan(QJsonDocument::fromJson(reply).array(),{});
+ if(planned.reloadFirst){HyprlandIpc::requestBlocking("reload",&reply);++reloadsIssued_;}
+ else for(const auto& chord:planned.remove){HyprlandIpc::requestBlocking("eval "+unbindScript(chord),&reply);++unbinds_;}
  bound_.clear();actual_.clear();
 }
 QJsonObject HyprlandShortcuts::status()const{
@@ -460,7 +496,7 @@ QJsonObject HyprlandShortcuts::status()const{
 }
 QJsonObject HyprlandShortcuts::diagnostics()const{
  QJsonObject out{{"protocol","hyprland-global-shortcuts-v1"},{"registered",registry_->connected},{"listening",ipc_->listening()},
-  {"reloadsIssued",double(reloadsIssued_)},{"reloadsSeen",double(reloadsSeen_)},{"applies",double(applies_)},{"layerRule",layerRule_}};
+  {"reloadsIssued",double(reloadsIssued_)},{"unbinds",double(unbinds_)},{"reloadsSeen",double(reloadsSeen_)},{"applies",double(applies_)},{"layerRule",layerRule_}};
  if(!registry_->connected)out["registryError"]=registry_->error;
  if(!evalError_.isEmpty())out["evalError"]=evalError_;
  if(!ipcError_.isEmpty())out["ipcError"]=ipcError_;

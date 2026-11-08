@@ -181,7 +181,7 @@ QJsonObject probeMedia() {
     ImageCopySource::Facts imageCopy;
     if (session == "wayland" && imageCopyDesktop) {
         imageCopy = ImageCopySource::probe();
-        QJsonObject facts{{"available", imageCopy.available}, {"windows", imageCopy.windows}, {"protocols", imageCopy.protocols}, {"elements", imageCopyElements}};
+        QJsonObject facts{{"available", imageCopy.available}, {"windows", imageCopy.windows}, {"outputs", imageCopy.outputs}, {"protocols", imageCopy.protocols}, {"elements", imageCopyElements}};
         if (!imageCopy.available) facts["reason"] = imageCopy.reason;
         if (!imageCopy.windows) facts["windowReason"] = imageCopy.windowReason;
         result["wlrCapture"] = facts;
@@ -212,7 +212,12 @@ QJsonObject probeMedia() {
     const int sourceTypes = portal["sourceTypes"].toInt();
     QJsonArray targets;
     if (session == "x11" && liveSource) targets = QJsonArray{"monitor", "desktop", "region", "window"};
-    else if (imageCopyOk && liveSource) { targets = QJsonArray{"monitor", "desktop", "region"}; if (imageCopy.windows) targets.append("window"); }
+    else if (imageCopyOk && liveSource) {
+        // An image-copy session records one output, so a desktop of several isn't a target.
+        targets = imageCopy.outputs > 1 ? QJsonArray{"monitor", "region"} : QJsonArray{"monitor", "desktop", "region"};
+        if (imageCopy.windows) targets.append("window");
+        if (imageCopy.outputs > 1) result["targetReasons"] = QJsonObject{{"desktop", QStringLiteral("Recording the whole desktop here covers one output; record a monitor instead")}};
+    }
     else if ((portalOk || nativeOk) && liveSource) { targets = QJsonArray{"monitor", "desktop", "region"}; if (nativeOk || (portalOk && (sourceTypes & int(PortalScreenCast::Window)))) targets.append("window"); }
     result["targets"] = targets;
     // How a window is recorded: KWin's stream_window or Mutter's RecordWindow

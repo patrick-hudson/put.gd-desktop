@@ -14,7 +14,8 @@ public:
  QByteArray exportBytes=QByteArray("\0\0\0\x18" "ftypisom",12)+QByteArray(4096,'r');RecordingEdit lastEdit;RecordingConfig lastConfig;qint64 lastPreviewTime=-1;
  QJsonObject lastReviewOptions;
  QJsonObject unavailableDetails; // merged into capabilities when unavailable (message, hint)
- QJsonObject capabilities() const override {auto caps=baseCapabilities();if(!available)for(auto it=unavailableDetails.begin();it!=unavailableDetails.end();++it)caps[it.key()]=it.value();return caps;}
+ QJsonObject probedDetails; // merged into capabilities whatever the availability (targets, targetReasons)
+ QJsonObject capabilities() const override {auto caps=baseCapabilities();if(!available)for(auto it=unavailableDetails.begin();it!=unavailableDetails.end();++it)caps[it.key()]=it.value();for(auto it=probedDetails.begin();it!=probedDetails.end();++it)caps[it.key()]=it.value();return caps;}
  QJsonObject baseCapabilities() const {return {{"available",available},{"reason",available?QString():QString("fake_off")},{"targets",QJsonArray{"monitor","desktop","region","window"}},{"formats",QJsonArray{"mp4","webm","gif","webp"}},{"codecs",QJsonObject{{"mp4",QJsonArray{"h264","h265"}},{"webm",QJsonArray{"vp9"}}}},{"audio",QJsonObject{{"system",true},{"microphone",false}}},{"overlayExclusion",QJsonObject{{"region",true}}}};}
  void setEventSink(Event e) override {sink=std::move(e);}
  // placement: the overlayPlacement the helper reports ("compositor" asks the resident's shell); deferPrepare keeps the reply for the test.

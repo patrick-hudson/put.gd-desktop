@@ -47,8 +47,8 @@ int listenOn(const QByteArray& path){
  return fd;
 }
 // Hyprland's two sockets, answering like Hyprland 0.56 on Omarchy: j/binds,
-// binds, eval hl.bind / hl.layer_rule, reload (which drops runtime binds and
-// sends configreloaded>> on the event socket).
+// binds, eval hl.bind / hl.unbind / hl.layer_rule, reload (which drops runtime
+// binds and sends configreloaded>> on the event socket).
 class FakeHyprland {
 public:
  explicit FakeHyprland(const QString& directory){
@@ -67,6 +67,8 @@ public:
  // An Omarchy theme change: Hyprland reloads by itself.
  void externalReload(){std::lock_guard lock(mutex_);reload();}
  void addBind(const QJsonObject& bind){std::lock_guard lock(mutex_);binds_.append(bind);}
+ // The event socket goes away and a reload happens while it is gone.
+ void reloadUnseen(){std::lock_guard lock(mutex_);for(int fd:subscribers_)::close(fd);subscribers_.clear();binds_=base_;}
 private:
  void reload(){
   binds_=base_;
@@ -89,7 +91,17 @@ private:
   if(request=="reload"){reload();return "ok";}
   if(request.startsWith("eval ")){
    const auto lua=QString::fromUtf8(request.mid(5));
-   if(lua.contains("unbind")||lua.contains(":remove"))return "ok";
+   if(lua.contains(":remove"))return "error: :remove crashes Hyprland";
+   static const QRegularExpression unbind(QStringLiteral("^hl\\.unbind\\(\"([^\"]*)\"\\)$"));
+   if(const auto match=unbind.match(lua);match.hasMatch()){
+    int modmask=0;QString key;
+    for(const auto& part:match.captured(1).split(" + ")){
+     if(part=="SUPER")modmask|=64;else if(part=="CTRL")modmask|=4;else if(part=="ALT")modmask|=8;else if(part=="SHIFT")modmask|=1;else key=part;
+    }
+    // Exact on the chord, whatever the submap: as measured on 0.56.2.
+    QJsonArray kept;for(const auto& value:binds_){const auto b=value.toObject();if(!(b["modmask"].toInt()==modmask&&b["key"].toString().compare(key,Qt::CaseInsensitive)==0))kept.append(b);}
+    binds_=kept;return "ok";
+   }
    static const QRegularExpression bind(QStringLiteral("^hl\\.bind\\(\"([^\"]*)\", hl\\.dsp\\.global\\(\"putgd:([a-z]+)\"\\), \\{ description = \"([^\"]*)\" \\}\\)$"));
    const auto match=bind.match(lua);
    if(match.hasMatch()){
@@ -183,16 +195,37 @@ private slots:
   // Already there with the same key: nothing to do.
   auto plan=HyprlandShortcuts::plan(binds,{{"region","Ctrl+Shift+1"}});
   QVERIFY(!plan.reloadFirst);QVERIFY(plan.present.contains("region"));QVERIFY(plan.apply.isEmpty());
-  // A new key, an unbound action, a paused set and a doubled bind all reload first, then bind everything wanted.
-  plan=HyprlandShortcuts::plan(binds,{{"region","Ctrl+Shift+4"}});QVERIFY(plan.reloadFirst);QVERIFY(plan.apply.contains("region"));
-  plan=HyprlandShortcuts::plan(binds,{{"region",""}});QVERIFY(plan.reloadFirst);QVERIFY(plan.apply.isEmpty());
-  plan=HyprlandShortcuts::plan(binds,{});QVERIFY(plan.reloadFirst);
+  // A new key, an unbound action, a paused set and a doubled bind all unbind put.gd's chord; nothing reloads.
+  const QList<HyprlandShortcuts::Chord> own{{5,"1"}};
+  plan=HyprlandShortcuts::plan(binds,{{"region","Ctrl+Shift+4"}});QVERIFY(!plan.reloadFirst);QCOMPARE(plan.remove,own);QVERIFY(plan.apply.contains("region"));
+  plan=HyprlandShortcuts::plan(binds,{{"region",""}});QVERIFY(!plan.reloadFirst);QCOMPARE(plan.remove,own);QVERIFY(plan.apply.isEmpty());
+  plan=HyprlandShortcuts::plan(binds,{});QVERIFY(!plan.reloadFirst);QCOMPARE(plan.remove,own);
   auto doubled=binds;doubled.append(ownBind("region",5,"1"));
-  plan=HyprlandShortcuts::plan(doubled,{{"region","Ctrl+Shift+1"},{"window","Ctrl+Shift+2"}});QVERIFY(plan.reloadFirst);
+  plan=HyprlandShortcuts::plan(doubled,{{"region","Ctrl+Shift+1"},{"window","Ctrl+Shift+2"}});QVERIFY(!plan.reloadFirst);QCOMPARE(plan.remove,own);
   QCOMPARE(QSet<QString>(plan.apply.keyBegin(),plan.apply.keyEnd()),(QSet<QString>{"region","window"}));
   // put.gd's own binds never count as conflicts, and two actions on one key do.
   plan=HyprlandShortcuts::plan(binds,{{"region","Ctrl+Shift+1"},{"window","Ctrl+Shift+1"}});
   QCOMPARE(plan.present.size()+plan.apply.size(),1);QCOMPARE(plan.conflicts.size(),1);
+ }
+ // Anything else on put.gd's chord would go with hl.unbind, so only a reload (which restores it) is safe.
+ void planReloadsWhenUnbindWouldTakeSomeoneElse_data(){
+  QTest::addColumn<QJsonObject>("other");
+  const QJsonObject base{{"modmask",5},{"key","1"},{"keycode",0},{"submap",""},{"mouse",false},{"catch_all",false},{"description","Desktop's own"},{"dispatcher","exec"},{"arg","x"}};
+  QTest::newRow("same chord")<<base;
+  auto submap=base;submap["submap"]="resize";QTest::newRow("same chord in a submap")<<submap;
+  QJsonObject code=base;code["key"]="";code["keycode"]=10;QTest::newRow("same physical key by code")<<code;
+ }
+ void planReloadsWhenUnbindWouldTakeSomeoneElse(){
+  QFETCH(QJsonObject,other);
+  auto binds=fixtureBinds();binds.append(ownBind("region",5,"1"));binds.append(other);
+  auto plan=HyprlandShortcuts::plan(binds,{});QVERIFY(plan.reloadFirst);QVERIFY(plan.remove.isEmpty());
+  // Elsewhere on the keyboard the same bind changes nothing.
+  auto apart=fixtureBinds();apart.append(ownBind("region",5,"1"));other["modmask"]=4;apart.append(other);
+  plan=HyprlandShortcuts::plan(apart,{});QVERIFY(!plan.reloadFirst);QCOMPARE(plan.remove.size(),1);
+ }
+ void planReloadsForABindItCannotRead(){
+  auto binds=fixtureBinds();auto unreadable=ownBind("region",5,"");unreadable["key"]="";binds.append(unreadable);
+  const auto plan=HyprlandShortcuts::plan(binds,{});QVERIFY(plan.reloadFirst);QVERIFY(plan.remove.isEmpty());
  }
  void luaQuoting(){
   QCOMPARE(putgd::HyprlandIpc::luaString("a\"b\\c\nd"),QString("\"a\\\"b\\\\c\\010d\""));
@@ -250,12 +283,29 @@ private slots:
   shortcuts->bind({{"region","Ctrl+Shift+1"},{"window","Ctrl+Shift+2"},{"record","Print"},{"edit","Meta+Shift+S"},{"clipboard",""}});
   PUTGD_TRY_COMPARE(hyprland.ownCount(),2);
   PUTGD_TRY_VERIFY(hyprland.count("j/binds")>=3);
-  QCOMPARE(hyprland.count("reload"),1);  // the stale bind went through reload
+  QCOMPARE(hyprland.count("eval hl.unbind"),1);  // the stale bind went by itself, without a reload
+  QCOMPARE(hyprland.count("reload"),0);
   QCOMPARE(hyprland.binds().size(),251+2);
-  // Rebinding one action reloads and re-applies the whole set.
+  // Another program's runtime bind: gone if put.gd reloaded, so it must outlive what follows.
+  hyprland.addBind(QJsonObject{{"modmask",8},{"key","F7"},{"keycode",0},{"submap",""},{"mouse",false},{"catch_all",false},{"description","Another program"},{"dispatcher","exec"},{"arg","x"}});
+  const auto otherProgram=[&]{for(const auto& b:hyprland.binds())if(b.toObject()["description"].toString()=="Another program")return true;return false;};
+  // Rebinding one action removes just that action's old chord.
   shortcuts->bind({{"region","Ctrl+Shift+1"},{"window","Ctrl+Shift+4"},{"record","Print"}});
-  PUTGD_TRY_COMPARE(hyprland.count("reload"),2);
+  PUTGD_TRY_COMPARE(hyprland.count("eval hl.unbind"),2);
   PUTGD_TRY_COMPARE(hyprland.ownCount(),2);
+  QCOMPARE(hyprland.count("reload"),0);QVERIFY(otherProgram());
+  bool heldForRecorder=false;shortcuts->setPaused(true,[&](putgd::Error){heldForRecorder=true;});
+  PUTGD_TRY_VERIFY(heldForRecorder);QCOMPARE(hyprland.ownCount(),0);QCOMPARE(hyprland.count("reload"),0);QVERIFY(otherProgram());
+  shortcuts->setPaused(false,{});PUTGD_TRY_COMPARE(hyprland.ownCount(),2);
+  // Something else takes put.gd's key: unbind would remove it too, so this one reloads.
+  hyprland.addBind(QJsonObject{{"modmask",5},{"key","1"},{"keycode",0},{"submap",""},{"mouse",false},{"catch_all",false},{"description","Second on this key"},{"dispatcher","exec"},{"arg","x"}});
+  const int unbindsBefore=hyprland.count("eval hl.unbind");
+  shortcuts->bind({{"window","Ctrl+Shift+4"},{"record","Print"}});
+  PUTGD_TRY_COMPARE(hyprland.count("reload"),1);PUTGD_TRY_COMPARE(hyprland.ownCount(),1);QCOMPARE(hyprland.count("eval hl.unbind"),unbindsBefore);
+  shortcuts->bind({{"region","Ctrl+Shift+1"},{"window","Ctrl+Shift+4"},{"record","Print"}});PUTGD_TRY_COMPARE(hyprland.ownCount(),2);
+  // The event socket drops and Hyprland reloads meanwhile: reconnecting puts the binds back.
+  hyprland.reloadUnseen();QCOMPARE(hyprland.ownCount(),0);PUTGD_TRY_VERIFY(!ipc.listening());
+  PUTGD_TRY_VERIFY(ipc.listening());PUTGD_TRY_COMPARE(hyprland.ownCount(),2);
   // An Omarchy theme change reloads Hyprland: put.gd's binds come back.
   hyprland.externalReload();QCOMPARE(hyprland.ownCount(),0);
   PUTGD_TRY_COMPARE(hyprland.ownCount(),2);
@@ -271,10 +321,12 @@ private slots:
    shortcuts->setPaused(false,{});PUTGD_TRY_COMPARE(hyprland.ownCount(),2);
   }
   PUTGD_TRY_VERIFY(shortcuts->status()["window"].toObject()["actual"].toArray().contains("Ctrl+Shift+4"));
-  // Quit: one blocking reload leaves exactly the configuration's binds.
+  // Quit: only put.gd's chords are unbound and everything else stays where it was.
+  const int reloadsBeforeQuit=hyprland.count("reload");
   shortcuts->clear();QCOMPARE(hyprland.ownCount(),0);QCOMPARE(hyprland.binds().size(),251);
-  // Never hl.unbind, never a handle's :remove() (both remove the desktop's own binds).
-  for(const auto& request:hyprland.requests()){QVERIFY2(!request.contains("unbind"),qPrintable(request));QVERIFY2(!request.contains(":remove"),qPrintable(request));QVERIFY(!request.startsWith("keyword"));}
+  QCOMPARE(hyprland.count("reload"),reloadsBeforeQuit);
+  // Never a handle's :remove() (a stale handle crashes Hyprland), never keyword binds.
+  for(const auto& request:hyprland.requests()){QVERIFY2(!request.contains(":remove"),qPrintable(request));QVERIFY(!request.startsWith("keyword"));}
   QVERIFY(hyprland.count("eval hl.layer_rule(")>=2);
  }
 };

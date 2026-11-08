@@ -164,7 +164,7 @@ struct ImageCopySource::Impl {
   uint32_t chosen=0;bool found=false;for(const auto f:{uint32_t(WL_SHM_FORMAT_XRGB8888),uint32_t(WL_SHM_FORMAT_ARGB8888),uint32_t(WL_SHM_FORMAT_XBGR8888),uint32_t(WL_SHM_FORMAT_ABGR8888)})if(s->pendingFormats.contains(f)){chosen=f;found=true;break;}
   // Constraints come as a batch ended by done, in any order within it.
   const auto offered=s->pendingFormats;s->pendingFormats.clear();
-  if(!found||s->pendingSize.isEmpty()){s->fail({"recording_unsupported","The compositor offers no 32-bit shared-memory capture format",{{"formats",int(offered.size())},{"width",s->pendingSize.width()},{"height",s->pendingSize.height()}}});return;}
+  if(!found||s->pendingSize.isEmpty()){s->ended=true;s->fail({"recording_unsupported","The compositor offers no 32-bit shared-memory capture format",{{"formats",int(offered.size())},{"width",s->pendingSize.width()},{"height",s->pendingSize.height()}}});return;}
   const bool changed=s->constraints&&(s->pendingSize!=s->size||chosen!=s->format);
   s->size=s->pendingSize;s->format=chosen;s->formats=offered;
   if(changed){s->reallocate=true;s->constraintChanges.fetch_add(1);}
@@ -276,6 +276,7 @@ ImageCopySource::Facts ImageCopySource::probe(){
  Facts facts;Impl impl;QString reason;
  if(!impl.connect(&reason)){facts.reason=reason;facts.windowReason=reason;return facts;}
  for(auto it=impl.versions.cbegin();it!=impl.versions.cend();++it)facts.protocols[it.key()]=it.value();
+ facts.outputs=int(impl.outputs.size());
  facts.reason=impl.outputReason();facts.available=facts.reason.isEmpty();
  facts.windowReason=impl.windowReason();facts.windows=facts.windowReason.isEmpty();
  return facts;

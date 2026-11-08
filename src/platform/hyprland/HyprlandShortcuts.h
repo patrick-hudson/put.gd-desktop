@@ -23,10 +23,12 @@ class HyprlandIpc;
 // Rules, from the measurements on Omarchy 4.5 (#1275):
 // - Hyprland fires every bind on a key, so a key another bind already uses is
 //   reported as shortcut_conflict and never bound.
-// - hl.unbind and a bind handle's :remove() also remove the desktop's own binds
-//   on that key, and a stale handle crashed Hyprland. put.gd never calls them:
-//   removing or changing a put.gd bind is a "reload" (which restores the
-//   configuration's binds) followed by re-applying put.gd's current set.
+// - "reload" drops every runtime bind, other programs' too, so put.gd doesn't use
+//   it to remove its own. hl.unbind("MODS + KEY") removes exactly the binds on that
+//   chord, in every submap (measured on 0.56.2), so it is safe on a chord only
+//   put.gd's bind holds. A chord something else also uses goes through reload,
+//   which restores the configuration's binds, because unbind would take those too.
+// - A bind handle's :remove() is never called: a stale handle crashed Hyprland.
 // - Every configreloaded event (Omarchy reloads on theme and settings changes)
 //   drops runtime binds; they are re-applied.
 // - j/binds is the truth: only binds that read back are reported bound. put.gd's
@@ -68,6 +70,7 @@ public:
  static bool ownDescription(const QString& description);
  static QString globalId(const QString& action) {return QStringLiteral("putgd:")+action;}
  static QString bindScript(const QString& action,const Chord&);
+ static QString unbindScript(const Chord&);
  // Keeps Hyprland's layer animation off put.gd's selectors and recording overlays.
  static QString layerRuleScript();
  struct Plan {
@@ -75,7 +78,8 @@ public:
   QHash<QString,QJsonObject> conflicts;  // action -> the existing bind
   QHash<QString,QString> invalid;        // action -> why the key cannot be bound
   QSet<QString> present;                 // actions whose put.gd bind is already there
-  bool reloadFirst=false;                // a put.gd bind must go: stale, changed or doubled
+  QList<Chord> remove;                   // put.gd's chords to hl.unbind before binding
+  bool reloadFirst=false;                // a put.gd bind must go and hl.unbind can't take it alone
  };
  static Plan plan(const QJsonArray& binds,const QHash<QString,QString>& desired);
 private:
@@ -89,6 +93,7 @@ private:
  void readBack();
  void finish();
  void reloadThen(std::function<void(Error)>);
+ void unbindThen(QList<Chord>,std::function<void(Error)>);
  void configReloaded();
  void ensureLayerRule(std::function<void()> next);
  HyprlandIpc* ipc_;
@@ -100,6 +105,6 @@ private:
  bool paused_=false,applying_=false,reapply_=false,layerRule_=false,applied_=false;
  QList<std::function<void(Error)>> pauseReplies_;
  QTimer debounce_;
- quint64 reloadsIssued_=0,reloadsSeen_=0,applies_=0;int ipcRetryMs_=0;
+ quint64 reloadsIssued_=0,reloadsSeen_=0,applies_=0,unbinds_=0;int ipcRetryMs_=0;
 };
 }
