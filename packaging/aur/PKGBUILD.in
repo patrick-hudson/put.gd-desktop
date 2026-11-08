@@ -25,4 +25,5 @@ source=("putgd-${pkgver}-archlinux-x86_64.pkg.tar.zst::https://github.com/patric
 sha256sums=('@SHA256@')
 package() {
     cp -a "$srcdir/usr" "$pkgdir/"
+    install -Dm644 "$srcdir/usr/share/doc/putgd/LICENSE" "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
 }

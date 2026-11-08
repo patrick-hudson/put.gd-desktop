@@ -475,13 +475,13 @@ def audit_proton_ci(directory, output):
         catalog_path = ROOT / 'tools/proton/notices/SOURCES.json'
         catalog = json.loads(catalog_path.read_text())
         packages = sorted(p for p in directory.rglob('*') if p.is_file()
-                          and p.name.startswith(('putgd-', 'putgd_')) and p.suffix in ('.deb', '.rpm', '.AppImage'))
+                          and p.name.startswith(('putgd-', 'putgd_')) and (p.suffix in ('.deb', '.rpm', '.AppImage') or p.name.endswith('.pkg.tar.zst')))
         if not packages:
             raise ValueError('No CI installers supplied')
         versions = {}
         for index, package in enumerate(packages):
             label = 'appimage' if package.suffix == '.AppImage' else (
-                'fedora44' if package.suffix == '.rpm' else 'debian13')
+                'archlinux' if package.name.endswith('.pkg.tar.zst') else 'fedora44' if package.suffix == '.rpm' else 'debian13')
             work = output / str(index)
             work.mkdir()
             root = sbom.extract(package, label, work)

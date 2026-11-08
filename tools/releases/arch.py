@@ -36,6 +36,12 @@ def main():
     extracted = output / 'extracted'
     extracted.mkdir()
     subprocess.run(['bsdtar', '-xf', str(package), '-C', str(extracted)], check=True)
+    for required in ('usr/bin/putgd-record', 'usr/bin/putgd-kde-region',
+                     'usr/share/nemo/actions/putgd-upload.nemo_action',
+                     'usr/share/kio/servicemenus/putgd-upload.desktop',
+                     'usr/share/Thunar/sendto/putgd-upload.desktop'):
+        if not (extracted / required).is_file():
+            raise ValueError('Missing required Arch payload: ' + required)
     metadata = dict(line.split(' = ', 1) for line in (extracted / '.PKGINFO').read_text().splitlines()
                     if ' = ' in line and not line.startswith('depend = '))
     if metadata['pkgname'] != 'putgd' or metadata['pkgver'] != pkgver(identity['version']) + '-1':

@@ -244,6 +244,12 @@ jobs:
           path: build/arch-artifact
       - name: Install exact CI artifact, start resident, and uninstall
         run: bash tools/releases/smoke-arch.sh build/arch-artifact/*.pkg.tar.zst
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: arch-install-evidence
+          path: build/arch-smoke/
+          if-no-files-found: warn
 
   appimage:
     runs-on: ubuntu-24.04
