@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
+import http.client
 import io
 from pathlib import Path
+import ssl
 import sys
 import tempfile
 import unittest
@@ -19,7 +21,7 @@ def status(code):
 
 
 class Download(unittest.TestCase):
-    def run_download(self, outcomes):
+    def run_download(self, outcomes, clock=None):
         waits = []
         def opener(_request, timeout):
             self.assertEqual(timeout, 30)
@@ -31,7 +33,8 @@ class Download(unittest.TestCase):
             target = Path(directory) / 'tool'
             target.write_bytes(b'stale partial content')
             try:
-                http_retry.download('https://example.invalid/tool', target, timeout=30, opener=opener, sleep=waits.append)
+                http_retry.download('https://example.invalid/tool', target, timeout=30, opener=opener, sleep=waits.append,
+                                    clock=clock or (lambda: 0))
                 return target.read_bytes(), waits, None
             except Exception as error:  # the test inspects what escaped
                 return None, waits, error
@@ -41,6 +44,32 @@ class Download(unittest.TestCase):
         self.assertIsNone(error)
         self.assertEqual(body, b'tool')
         self.assertEqual(waits, [http_retry.DELAY_SECONDS] * 3)
+
+    def test_every_transient_error_type_is_retried(self):
+        for failure in (urllib.error.URLError('down'), ConnectionResetError(), http.client.IncompleteRead(b''),
+                        http.client.BadStatusLine('x'), http.client.RemoteDisconnected('gone')):
+            with self.subTest(type(failure).__name__):
+                body, waits, error = self.run_download([failure, b'tool'])
+                self.assertIsNone(error)
+                self.assertEqual((body, len(waits)), (b'tool', 1))
+
+    def test_a_certificate_failure_fails_at_once(self):
+        failure = urllib.error.URLError(ssl.SSLCertVerificationError('bad certificate'))
+        _body, waits, error = self.run_download([failure, b'never read'])
+        self.assertIs(error, failure)
+        self.assertEqual(waits, [])
+
+    def test_an_invalid_url_fails_at_once(self):
+        failure = http.client.InvalidURL('bad')
+        _body, waits, error = self.run_download([failure, b'never read'])
+        self.assertIs(error, failure)
+        self.assertEqual(waits, [])
+
+    def test_no_attempt_starts_after_the_deadline(self):
+        times = iter([0, http_retry.DEADLINE_SECONDS - 1, http_retry.DEADLINE_SECONDS])
+        _body, waits, error = self.run_download([status(504), status(504), b'never read'], clock=lambda: next(times))
+        self.assertEqual(error.code, 504)
+        self.assertEqual(len(waits), 1)
 
     def test_a_missing_asset_fails_at_once(self):
         _body, waits, error = self.run_download([status(404), b'never read'])
