@@ -14,6 +14,11 @@
 #include <QTemporaryDir>
 #include <QtTest>
 #include "fixtures/Waits.h"
+#ifdef PUTGD_TEST_IMAGE_COPY_SOURCE
+#include "record/ImageCopySource.h"
+#include <gst/app/gstappsink.h>
+#include <gst/app/gstappsrc.h>
+#endif
 #include <cstdlib>
 
 using namespace putgd;
@@ -163,6 +168,43 @@ private slots:
   QCOMPARE(image.size(),frame.nativeRect.size());
   // The 64-logical-pixel mark covers 96 buffer pixels at 1.5.
   QCOMPARE(rgb(image,90,90),qRgb(255,255,255));QCOMPARE(rgb(image,100,100),outputColours[0]);
+ }
+ void recordingFramesAreUpright_data(){QTest::addColumn<QString>("transform");QTest::addColumn<int>("rotation");QTest::newRow("90")<<"90"<<90;QTest::newRow("flipped-90")<<"flipped-90"<<90;}
+ void recordingFramesAreUpright(){
+#ifndef PUTGD_TEST_IMAGE_COPY_SOURCE
+  QSKIP("built without GStreamer");
+#else
+  // The recorder turns a rotated output's frames upright, as the screenshot path does (review #1275).
+  if(randr_.isEmpty())QSKIP("wlr-randr is not installed");
+  QFETCH(QString,transform);QFETCH(int,rotation);
+  gst_init(nullptr,nullptr);
+  const auto name=layout_.first().identity;
+  QVERIFY(runRandr({"--output",name,"--transform",transform}));
+  auto restore=qScopeGuard([&]{runRandr({"--output",name,"--transform","normal"});runRandr({"--output","HEADLESS-1","--pos","0,0","--output","HEADLESS-2","--pos","1280,0"});putgd::test::settle(500);});
+  WaylandOutputs outputs;QVERIFY(waitFor([&]{for(const auto& f:outputs.layout())if(f.identity==name&&f.rotation==rotation)return true;return false;}));
+  CaptureFrame frame;for(const auto& f:outputs.layout())if(f.identity==name)frame=f;
+  record::ImageCopySource source;QSize size;QString identity;
+  const auto error=source.open({false,name},&size,&identity);QVERIFY2(!error,qPrintable(error.message));
+  QCOMPARE(size,frame.nativeRect.size());
+  GError* parseError=nullptr;
+  GstElement* pipeline=gst_parse_launch(QStringLiteral("appsrc name=src is-live=true format=time caps=\"%1\" ! videoconvert ! video/x-raw,format=BGRx ! appsink name=sink max-buffers=2 drop=true sync=false").arg(source.caps()).toUtf8().constData(),&parseError);
+  QVERIFY2(pipeline,parseError?parseError->message:"no pipeline");
+  auto cleanup=qScopeGuard([&]{source.stop();gst_element_set_state(pipeline,GST_STATE_NULL);gst_object_unref(pipeline);});
+  GstElement* appsrc=gst_bin_get_by_name(GST_BIN(pipeline),"src");GstElement* sink=gst_bin_get_by_name(GST_BIN(pipeline),"sink");
+  QVERIFY(gst_element_set_state(pipeline,GST_STATE_PLAYING)!=GST_STATE_CHANGE_FAILURE);
+  source.attach(appsrc,[](Error){});gst_object_unref(appsrc);
+  // The fixture redraws its turned background; wait for a frame that shows it.
+  QImage image;
+  QVERIFY(waitFor([&]{
+   GstSample* sample=gst_app_sink_try_pull_sample(GST_APP_SINK(sink),200*GST_MSECOND);if(!sample)return false;
+   GstMapInfo map;GstBuffer* buffer=gst_sample_get_buffer(sample);GstStructure* caps=gst_caps_get_structure(gst_sample_get_caps(sample),0);int w=0,h=0;gst_structure_get_int(caps,"width",&w);gst_structure_get_int(caps,"height",&h);
+   if(gst_buffer_map(buffer,&map,GST_MAP_READ)){image=QImage(map.data,w,h,w*4,QImage::Format_RGB32).copy();gst_buffer_unmap(buffer,&map);}
+   gst_sample_unref(sample);return !image.isNull()&&rgb(image,image.width()/2,image.height()-5)!=qRgb(0,0,0);},15000));
+  gst_object_unref(sink);
+  QCOMPARE(image.size(),frame.nativeRect.size());
+  // Upright: the white mark at the logical top-left, the black at the top-right.
+  QCOMPARE(rgb(image,10,10),qRgb(255,255,255));QCOMPARE(rgb(image,image.width()-10,10),qRgb(0,0,0));
+#endif
  }
  void displayChangeInvalidates(){
   if(randr_.isEmpty())QSKIP("wlr-randr is not installed");

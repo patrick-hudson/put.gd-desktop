@@ -1,4 +1,5 @@
 #include "ImageCopyCapture.h"
+#include "WaylandTransform.h"
 #include "ext-image-copy-capture-v1-client-protocol.h"
 #include "ext-image-capture-source-v1-client-protocol.h"
 #include "ext-foreign-toplevel-list-v1-client-protocol.h"
@@ -28,18 +29,6 @@ constexpr int maximumText=4096;
 constexpr int captureTimeoutMs=5000;
 constexpr int maximumConstraintRetries=2;
 QString boundedText(const char* value){const auto length=strnlen(value,maximumText+1);return QString::fromUtf8(value,int(std::min<size_t>(length,maximumText)));}
-// The compositor fills the buffer in its own orientation; wl_output.transform
-// says how that buffer was turned. Undo it so the result is upright.
-QImage upright(const QImage& image,uint32_t transform){
- if(transform==WL_OUTPUT_TRANSFORM_NORMAL)return image;
- // The buffer holds the output in its own orientation; turning it by the
- // transform's angle, then mirroring a flipped one, gives the upright image
- // (checked against grim for every transform in test_budgie_labwc).
- QTransform turn;turn.rotate(90.0*(transform%4));
- auto out=(transform%4)?image.transformed(turn):image.copy();
- if(transform>=WL_OUTPUT_TRANSFORM_FLIPPED)out=out.mirrored(true,false);
- return out;
-}
 }
 QImage::Format shmImageFormat(uint32_t format){
 #if Q_BYTE_ORDER == Q_LITTLE_ENDIAN
@@ -316,7 +305,7 @@ struct ImageCopyCapture::Impl:QObject {
   if(transform==WL_OUTPUT_TRANSFORM_NORMAL){reply(std::move(view),{});return;}
   // Turning a frame upright copies it: do that off the session thread.
   auto result=std::make_shared<QImage>();QPointer<Impl> guard(this);
-  auto* worker=QThread::create([view=std::move(view),transform,result]{*result=upright(view,transform);});workers.append(worker);
+  auto* worker=QThread::create([view=std::move(view),transform,result]{*result=waylandUpright(view,transform);});workers.append(worker);
   connect(worker,&QThread::finished,this,[this,worker,result,reply=std::move(reply)]{workers.removeOne(worker);worker->deleteLater();if(result->isNull())reply({},{"capture_failed","Cannot turn the capture upright",{}});else reply(std::move(*result),{});});
   worker->start();
  }

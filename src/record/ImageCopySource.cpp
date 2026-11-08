@@ -1,6 +1,7 @@
 #include "ImageCopySource.h"
 #include "DebugLog.h"
 #include "platform/wayland/ToplevelMatch.h"
+#include "platform/wayland/WaylandTransform.h"
 #include "ext-image-copy-capture-v1-client-protocol.h"
 #include "ext-image-capture-source-v1-client-protocol.h"
 #include "ext-foreign-toplevel-list-v1-client-protocol.h"
@@ -34,7 +35,7 @@ const char* gstFormat(uint32_t format){
 }
 }
 struct ImageCopySource::Impl {
- struct Output {wl_output* native=nullptr;QString name;};
+ struct Output {wl_output* native=nullptr;QString name;uint32_t transform=WL_OUTPUT_TRANSFORM_NORMAL;};
  struct Window {Impl* owner=nullptr;void* native=nullptr;WaylandToplevel current,pending;bool done=false;};
  // One shared-memory frame buffer. GStreamer holds a slot from the push until
  // the pipeline's copy releases it; a slot from an older size is retired and
@@ -50,6 +51,11 @@ struct ImageCopySource::Impl {
  QMap<QString,int> versions;QList<Output> outputs;QList<Window*> extWindows,wlrWindows;
  ext_image_capture_source_v1* source=nullptr;ext_image_copy_capture_session_v1* session=nullptr;ext_image_copy_capture_frame_v1* frame=nullptr;
  QSize size,pendingSize;QList<uint32_t> formats,pendingFormats;uint32_t format=0;bool constraints=false,reallocate=false;
+ // How the compositor turned the buffer (the output's transform, then each frame's own event), and the
+ // upright size the stream's caps announce (review #1275: a rotated output recorded sideways).
+ uint32_t transform=WL_OUTPUT_TRANSFORM_NORMAL,frameTransform=WL_OUTPUT_TRANSFORM_NORMAL;QSize declared;
+ QString capsFor(QSize upright)const{return QStringLiteral("video/x-raw,format=%1,width=%2,height=%3,framerate=0/1").arg(QString::fromLatin1(gstFormat(format))).arg(upright.width()).arg(upright.height());}
+ void setCaps(QSize upright){declared=upright;if(GstCaps* caps=gst_caps_from_string(capsFor(upright).toUtf8().constData())){gst_app_src_set_caps(GST_APP_SRC(appsrc),caps);gst_caps_unref(caps);}}
  std::vector<Slot*> ring;Slot* inFlight=nullptr;
  GstElement* appsrc=nullptr;GstBuffer* last=nullptr;qint64 lastPush=0,presentation=-1;
  std::function<void(Error)> lost;std::thread thread;std::atomic_bool stopping{false};
@@ -121,7 +127,7 @@ struct ImageCopySource::Impl {
    zwlr_foreign_toplevel_manager_v1_add_listener(self->wlrList,&listener,self);
   }else if(name==wl_output_interface.name&&version>=4&&self->outputs.size()<16){
    Output output;output.native=static_cast<wl_output*>(wl_registry_bind(registry,id,&wl_output_interface,4));self->outputs.append(output);
-   static const wl_output_listener listener={[](void*,wl_output*,int32_t,int32_t,int32_t,int32_t,int32_t,const char*,const char*,int32_t){},
+   static const wl_output_listener listener={[](void* data,wl_output* native,int32_t,int32_t,int32_t,int32_t,int32_t,const char*,const char*,int32_t transform){auto* self=static_cast<Impl*>(data);for(auto& o:self->outputs)if(o.native==native)o.transform=uint32_t(transform);},
     [](void*,wl_output*,uint32_t,int32_t,int32_t,int32_t){},[](void*,wl_output*){},[](void*,wl_output*,int32_t){},
     [](void* data,wl_output* native,const char* value){auto* self=static_cast<Impl*>(data);for(auto& o:self->outputs)if(o.native==native)o.name=text(value);},[](void*,wl_output*,const char*){}};
    wl_output_add_listener(output.native,&listener,self);
@@ -182,10 +188,10 @@ struct ImageCopySource::Impl {
  }
  Slot* freeSlot(){std::lock_guard guard(shared->lock);for(auto* slot:ring)if(!slot->busy&&slot!=inFlight)return slot;return nullptr;}
  void capture(Slot* slot){
-  inFlight=slot;presentation=-1;
+  inFlight=slot;presentation=-1;frameTransform=transform;
   frame=ext_image_copy_capture_session_v1_create_frame(session);
   static const ext_image_copy_capture_frame_v1_listener listener={
-   [](void*,ext_image_copy_capture_frame_v1*,uint32_t){},
+   [](void* d,ext_image_copy_capture_frame_v1*,uint32_t value){static_cast<Impl*>(d)->frameTransform=value<=WL_OUTPUT_TRANSFORM_FLIPPED_270?value:WL_OUTPUT_TRANSFORM_NORMAL;},
    [](void*,ext_image_copy_capture_frame_v1*,int32_t,int32_t,int32_t,int32_t){},
    [](void* d,ext_image_copy_capture_frame_v1*,uint32_t hi,uint32_t lo,uint32_t nsec){static_cast<Impl*>(d)->presentation=qint64((quint64(hi)<<32)|lo)*1'000'000'000+nsec;},
    [](void* d,ext_image_copy_capture_frame_v1*){static_cast<Impl*>(d)->ready();},
@@ -217,8 +223,18 @@ struct ImageCopySource::Impl {
  void ready(){
   ext_image_copy_capture_frame_v1_destroy(frame);frame=nullptr;auto* slot=inFlight;inFlight=nullptr;
   if(!slot)return;
-  {std::lock_guard guard(shared->lock);slot->busy=true;}
-  GstBuffer* buffer=gst_buffer_new_wrapped_full(GST_MEMORY_FLAG_READONLY,slot->data,slot->size,0,slot->size,slot,&Impl::release);
+  transform=frameTransform;
+  GstBuffer* buffer=nullptr;
+  if(transform==WL_OUTPUT_TRANSFORM_NORMAL){
+   {std::lock_guard guard(shared->lock);slot->busy=true;}
+   buffer=gst_buffer_new_wrapped_full(GST_MEMORY_FLAG_READONLY,slot->data,slot->size,0,slot->size,slot,&Impl::release);
+  }else{
+   // A turned buffer is copied upright (as the screenshot path does) and its slot is free again at once.
+   const QImage view(static_cast<const uchar*>(slot->data),size.width(),size.height(),size.width()*4,QImage::Format_RGB32);
+   auto* image=new QImage(waylandUpright(view,transform));
+   buffer=gst_buffer_new_wrapped_full(GST_MEMORY_FLAG_READONLY,image->bits(),size_t(image->sizeInBytes()),0,size_t(image->sizeInBytes()),image,[](gpointer data){delete static_cast<QImage*>(data);});
+  }
+  if(const auto upright=waylandUprightSize(size,transform);upright!=declared)setCaps(upright);
   const qint64 now=monotonicNs();
   GST_BUFFER_PTS(buffer)=GstClockTime(presentation>0&&presentation<=now?presentation:now);
   frames.fetch_add(1);
@@ -236,7 +252,7 @@ struct ImageCopySource::Impl {
    if(reallocate&&!frame){
     if(!allocate()){fail({"recording_io","Cannot allocate capture buffers",{}});break;}
     // The stream's caps follow the source's new size; the pipeline scales into the canvas.
-    if(GstCaps* caps=gst_caps_from_string(QStringLiteral("video/x-raw,format=%1,width=%2,height=%3,framerate=0/1").arg(QString::fromLatin1(gstFormat(format))).arg(size.width()).arg(size.height()).toUtf8().constData())){gst_app_src_set_caps(GST_APP_SRC(appsrc),caps);gst_caps_unref(caps);}
+    setCaps(waylandUprightSize(size,transform));
     if(last){gst_buffer_unref(last);last=nullptr;}
    }
    if(!frame&&constraints&&!reallocate)if(auto* slot=freeSlot())capture(slot);
@@ -284,6 +300,7 @@ Error ImageCopySource::open(const Target& target,QSize* size,QString* identity,Q
   for(const auto& o:d_->outputs)if(o.name==name)output=o.native;
   if(!output)return {"recording_target","No output has this name",{{"identity",target.identity}}};
   d_->source=ext_output_image_capture_source_manager_v1_create_source(d_->outputSources,output);
+  for(const auto& o:d_->outputs)if(o.native==output)d_->transform=o.transform;
   if(identity)*identity=name;
  }
  if(!d_->source)return {"recording_target","The recording source could not be created",{}};
@@ -296,10 +313,11 @@ Error ImageCopySource::open(const Target& target,QSize* size,QString* identity,Q
  if(!d_->constraints)return {"recording_unavailable","The compositor did not describe the capture buffers",{{"protocol","ext-image-copy-capture-v1"}}};
  if(!d_->allocate())return {"recording_io","Cannot allocate capture buffers",{}};
  {std::lock_guard guard(d_->shared->lock);d_->shared->wake=eventfd(0,EFD_CLOEXEC|EFD_NONBLOCK);}
- if(size)*size=d_->size;
+ d_->declared=waylandUprightSize(d_->size,d_->transform);
+ if(size)*size=d_->declared;
  return {};
 }
-QString ImageCopySource::caps()const{return QStringLiteral("video/x-raw,format=%1,width=%2,height=%3,framerate=0/1").arg(QString::fromLatin1(gstFormat(d_->format))).arg(d_->size.width()).arg(d_->size.height());}
+QString ImageCopySource::caps()const{return d_->capsFor(d_->declared);}
 void ImageCopySource::attach(GstElement* appsrc,std::function<void(Error)> lost){
  if(d_->thread.joinable()||!appsrc)return;
  d_->appsrc=GST_ELEMENT(gst_object_ref(appsrc));d_->lost=std::move(lost);
@@ -307,6 +325,6 @@ void ImageCopySource::attach(GstElement* appsrc,std::function<void(Error)> lost)
 }
 void ImageCopySource::stop(){d_->stopping=true;d_->wakeUp();if(d_->thread.joinable())d_->thread.join();if(d_->last){gst_buffer_unref(d_->last);d_->last=nullptr;}}
 QJsonObject ImageCopySource::status()const{
- return {{"acquisition","wlr-capture"},{"frames",double(d_->frames.load())},{"keepalives",double(d_->keepalives.load())},{"sizeChanges",double(d_->constraintChanges.load())},{"width",d_->size.width()},{"height",d_->size.height()}};
+ return {{"acquisition","wlr-capture"},{"frames",double(d_->frames.load())},{"keepalives",double(d_->keepalives.load())},{"sizeChanges",double(d_->constraintChanges.load())},{"width",d_->size.width()},{"height",d_->size.height()},{"transform",int(d_->transform)}};
 }
 }

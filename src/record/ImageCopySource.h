@@ -24,13 +24,14 @@ class ImageCopySource {
 public:
  struct Target {bool window=false;QString identity;};  // window with no identity: the active window now
  struct Facts {bool available=false,windows=false;QString reason,windowReason;QJsonObject protocols;};
- // A connection, two round trips, the advertised globals; nothing is captured.
+ // A connection, three round trips, the advertised globals; nothing is captured.
  static Facts probe();
  ImageCopySource();
  ~ImageCopySource();
  ImageCopySource(const ImageCopySource&)=delete;ImageCopySource& operator=(const ImageCopySource&)=delete;
  // Resolves the target and waits (bounded) for the first buffer constraints.
- // size: the stream's buffer size; identity: the output name or window identifier.
+ // size: the stream's upright size (a rotated output's buffer turned back); identity: the
+ // output name or window identifier.
  Error open(const Target&,QSize* size,QString* identity,QString* appId=nullptr);
  // The GStreamer caps the stream's frames carry (video/x-raw, format and size).
  QString caps()const;
