@@ -229,9 +229,11 @@ lifetime-guarded late replies are harmless. Schema-1 commands serve `putgd-cli`,
 `UiSession` and the optional MCP helper. See [CLI](../automation/cli.md) and [MCP](../automation/mcp.md).
 
 On glibc Linux, startup recovery, accepted acquisition, explicit local
-image/text copying, a delivered history page, the interface helper's exit and
-each artifact cleanup pass mark allocator reclamation pending. One two-second
-quiet timer waits for selectors, operations, copy queues, workers, payload
+image/text copying, every finished background worker once the resident is
+ready (each journal read or write runs on one and frees its connection's page
+cache and results there, #1184), the interface helper's exit and each
+artifact cleanup pass mark allocator reclamation pending. One two-second quiet
+timer waits for selectors, operations, copy queues, workers, payload
 leases and recording to drain, then calls `malloc_trim(0)` once. New background
 work stops the timer. Live clipboard data and widgets are preserved. Diagnostics
 expose the pending flag, count and duration; shutdown stops the timer.
@@ -245,5 +247,8 @@ cache and return through minor faults on the next touch, the state the kernel
 leaves an idle resident in under memory pressure, so reported RSS and PSS fall
 while the heap and every live object are untouched; the memory actually
 returned is the trim's. Diagnostics expose the release's pending flag, count,
-duration and bytes. The fixed allocator policy and whole-family measurement
-budget are in [memory strategy](memory-strategy.md).
+duration and bytes. A periodic probe that maps library pages again, the GNOME
+adapter's helper discovery retry (#1187), asks for that release alone: no trim,
+and a release already scheduled keeps its time, so the retry's backoff cannot
+postpone the startup release. The fixed allocator policy and whole-family
+measurement budget are in [memory strategy](memory-strategy.md).
