@@ -43,7 +43,11 @@ HyprlandSourceAdapter::HyprlandSourceAdapter(QObject* parent):QObject(parent),sh
  connect(&shortcuts_,&ShortcutBackend::activated,this,&HyprlandSourceAdapter::actionRequested);
  connect(&region_,&WaylandRegionProcess::ended,this,[this]{catcherUnclaimed_.stop();catcher_.stop();});
  connect(&catcher_,&PressCatcher::pointer,this,[this](int kind,QPointF logical){
-  if(kind==PressCatcher::Cancel){catcher_.stop();region_.cancel();return;}
+  if(kind==PressCatcher::Cancel){
+   catcher_.stop();
+   if(region_.busy())region_.cancel();else{cancelAcquisition();earlyCancel_.start();}
+   return;
+  }
   region_.relayPointer(kind==PressCatcher::Press?QStringLiteral("press"):kind==PressCatcher::Move?QStringLiteral("move"):QStringLiteral("release"),logical);
  });
  connect(&catcher_,&PressCatcher::key,this,[this](int key,int modifiers){if(region_.grantKeyboard(key,modifiers))catcher_.stop();});
@@ -167,6 +171,7 @@ QJsonObject HyprlandSourceAdapter::capabilities()const{
 SourceAdapter::PreparedAcquisition HyprlandSourceAdapter::prepareAcquisition(const QString& action){
  QPointer<HyprlandSourceAdapter> guard(this);
  if(action=="clipboard"){const auto revision=clipboard_.revision();return [guard,revision](const ResourceLimits& limits,std::function<void(PayloadResult)> cb){if(guard)guard->clipboard_.acquire(limits,std::move(cb),revision);else cb({{},{"source_unavailable","Desktop adapter closed",{}}});};}
+ if(action=="region"&&earlyCancelPending()){earlyCancel_.invalidate();return [](const ResourceLimits&,std::function<void(PayloadResult)> cb){cb({{},{"cancelled","Region selection cancelled",{}}});};}
  if(action=="window"){
   if(region_.cleanupRequired())return [](const ResourceLimits&,std::function<void(PayloadResult)> cb){cb({{},{"capture_cleanup_pending",cleanupMessage,{}}});};
   if(region_.busy())return [](const ResourceLimits&,std::function<void(PayloadResult)> cb){cb({{},{"busy_selecting","Region selection is already active",{}}});};
@@ -198,7 +203,7 @@ SourceAdapter::PreparedAcquisition HyprlandSourceAdapter::prepareAcquisition(con
  // A live selection shows before the journal saves; its pixels still wait.
  const auto frozen=action=="region"&&!regionScreenshotFirst_?layout():QList<CaptureFrame>{};
  const auto revision=outputs_.revision();
- if(!frozen.isEmpty()&&!region_.busy()&&!region_.cleanupRequired()&&unchanged(frozen,revision)){
+ if(!frozen.isEmpty()&&!region_.busy()&&!region_.cleanupRequired()&&!earlyCancelPending()&&unchanged(frozen,revision)){
   QPointer<HyprlandSourceAdapter> guard(this);const auto generation=generation_;
   catchEarlyPress(frozen);
   auto ticket=region_.prepare(frozen,captureOutcome_,captureAppearance_,std::move(terminal),std::move(released));

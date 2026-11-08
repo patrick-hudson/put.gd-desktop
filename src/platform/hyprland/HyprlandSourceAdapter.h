@@ -11,6 +11,7 @@
 #include "platform/wayland/WaylandOutputs.h"
 #include <QJsonArray>
 #include <QPointer>
+#include <QElapsedTimer>
 #include <QTimer>
 #include <QThread>
 namespace putgd {
@@ -73,8 +74,11 @@ private:
  HyprlandIpc ipc_;
  ImageCopyCapture capture_;DataControlClipboard clipboard_;HyprlandShortcuts shortcuts_;ToplevelMapping mapping_;
  // Declared before region_: its end stops them.
- PressCatcher catcher_;QTimer catcherUnclaimed_;
+ PressCatcher catcher_;QTimer catcherUnclaimed_;QElapsedTimer earlyCancel_;
  void catchEarlyPress(const QList<CaptureFrame>&);
+ // Esc or a right click on the catcher before the selector started: the region
+ // acquisition already on its way must not open one afterwards.
+ bool earlyCancelPending()const{return earlyCancel_.isValid()&&earlyCancel_.elapsed()<3000;}
  WaylandOutputs outputs_;WaylandRegionProcess region_;
  QList<QThread*> workers_;quint64 generation_=0;
 };
