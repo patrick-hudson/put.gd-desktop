@@ -14,7 +14,7 @@ constexpr int maximumToplevels=512;
 struct Handle {ext_foreign_toplevel_handle_v1* native=nullptr;QString identifier;};
 struct State {
  ext_foreign_toplevel_list_v1* list=nullptr;hyprland_toplevel_mapping_manager_v1* mapping=nullptr;
- QList<Handle*> handles;bool overflow=false;
+ QList<Handle*> handles;QList<ext_foreign_toplevel_handle_v1*> unlisted;bool overflow=false;
  bool mapped=false,failed=false;quint64 address=0;
 };
 void global(void* data,wl_registry* registry,uint32_t name,const char* interface,uint32_t version){
@@ -32,9 +32,12 @@ void handleTitle(void*,ext_foreign_toplevel_handle_v1*,const char*){}
 void handleAppId(void*,ext_foreign_toplevel_handle_v1*,const char*){}
 void handleIdentifier(void* data,ext_foreign_toplevel_handle_v1*,const char* identifier){static_cast<Handle*>(data)->identifier=QString::fromUtf8(identifier,int(strnlen(identifier,256)));}
 const ext_foreign_toplevel_handle_v1_listener handleListener{handleClosed,handleDone,handleTitle,handleAppId,handleIdentifier};
+void ignoredIdentifier(void*,ext_foreign_toplevel_handle_v1*,const char*){}
+const ext_foreign_toplevel_handle_v1_listener ignoredListener{handleClosed,handleDone,handleTitle,handleAppId,ignoredIdentifier};
 void toplevel(void* data,ext_foreign_toplevel_list_v1*,ext_foreign_toplevel_handle_v1* native){
  auto* state=static_cast<State*>(data);
- if(state->handles.size()>=maximumToplevels){state->overflow=true;ext_foreign_toplevel_handle_v1_destroy(native);return;}
+ // Past the cap a handle is kept, its events ignored, and destroyed with the rest.
+ if(state->handles.size()>=maximumToplevels){state->overflow=true;state->unlisted.append(native);ext_foreign_toplevel_handle_v1_add_listener(native,&ignoredListener,nullptr);return;}
  auto* handle=new Handle;handle->native=native;state->handles.append(handle);
  ext_foreign_toplevel_handle_v1_add_listener(native,&handleListener,handle);
 }
@@ -62,6 +65,7 @@ QString ToplevelMapping::resolve(const QString& identifier,Error& error,int time
  wl_registry_add_listener(registry,&registryListener,&state);
  const auto cleanup=[&]{
   for(auto* handle:state.handles){ext_foreign_toplevel_handle_v1_destroy(handle->native);delete handle;}state.handles.clear();
+  for(auto* native:state.unlisted)ext_foreign_toplevel_handle_v1_destroy(native);state.unlisted.clear();
   if(state.list)ext_foreign_toplevel_list_v1_destroy(state.list);
   if(state.mapping)hyprland_toplevel_mapping_manager_v1_destroy(state.mapping);
   wl_registry_destroy(registry);

@@ -3,6 +3,8 @@
 #include <QtCore/QByteArray>
 #include <QtCore/QProcessEnvironment>
 #include <QtCore/QFile>
+#include <QtCore/QElapsedTimer>
+#include <cerrno>
 #include <cstring>
 #include <sys/socket.h>
 #include <sys/un.h>
@@ -111,15 +113,24 @@ inline QString hyprlandSocketPath(const char* name=".socket.sock") {
  if(runtime.isEmpty()||signature.isEmpty()||signature.contains('/')||signature=="."||signature=="..")return {};
  return runtime+"/hypr/"+signature+'/'+QString::fromLatin1(name);
 }
-// Whether Hyprland's request socket accepts a connection now. Nothing is sent.
-inline bool hyprlandSocketAnswers() {
+// Whether Hyprland's request socket accepts a connection. Nothing is sent.
+// Non-blocking and bounded: a full listen backlog (Hyprland reloading, or
+// hung) answers EAGAIN, retried for at most timeoutMs, so routing never
+// blocks startup.
+inline bool hyprlandSocketAnswers(int timeoutMs=1500) {
  const QByteArray path=QFile::encodeName(hyprlandSocketPath());
  sockaddr_un address{};address.sun_family=AF_UNIX;
  if(path.isEmpty()||size_t(path.size())>=sizeof address.sun_path)return false;
  std::memcpy(address.sun_path,path.constData(),size_t(path.size()));
- const int fd=::socket(AF_UNIX,SOCK_STREAM|SOCK_CLOEXEC,0);if(fd<0)return false;
- const bool answered=::connect(fd,reinterpret_cast<const sockaddr*>(&address),sizeof address)==0;
- ::close(fd);return answered;
+ QElapsedTimer elapsed;elapsed.start();
+ for(;;){
+  const int fd=::socket(AF_UNIX,SOCK_STREAM|SOCK_CLOEXEC|SOCK_NONBLOCK,0);if(fd<0)return false;
+  const int result=::connect(fd,reinterpret_cast<const sockaddr*>(&address),sizeof address);const int error=errno;
+  ::close(fd);
+  if(result==0)return true;
+  if((error!=EAGAIN&&error!=EINTR)||elapsed.elapsed()>=timeoutMs)return false;
+  ::usleep(50*1000);
+ }
 }
 // Hyprland (Omarchy and any other Hyprland session) owns independent native
 // Wayland connections in the Core route. Omarchy sets QT_QPA_PLATFORM to

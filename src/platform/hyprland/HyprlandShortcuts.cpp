@@ -57,7 +57,7 @@ struct HyprlandShortcuts::Registry:QObject {
  HyprlandShortcuts& q;
  wl_display* display=nullptr;wl_registry* registry=nullptr;hyprland_global_shortcuts_manager_v1* manager=nullptr;
  QHash<QString,Entry*> entries;QSocketNotifier* notifier=nullptr;QTimer reconnect;
- QString error=QStringLiteral("The Hyprland shortcut protocol has not connected");bool connected=false,dispatching=false,closing=false;int failures=0;
+ QString error=QStringLiteral("The Hyprland shortcut protocol has not connected");bool connected=false,dispatching=false,closing=false,everConnected=false;int failures=0;
  explicit Registry(HyprlandShortcuts& q):q(q){reconnect.setSingleShot(true);connect(&reconnect,&QTimer::timeout,this,[this]{open();});open();}
  ~Registry() override{closing=true;reset();}
  void open(){
@@ -78,7 +78,10 @@ struct HyprlandShortcuts::Registry:QObject {
   connect(notifier,&QSocketNotifier::activated,this,[this]{events();});
   connected=true;error.clear();failures=0;
   for(auto it=q.requested_.cbegin();it!=q.requested_.cend();++it)if(!it.value().isEmpty())ensure(it.key());
-  flush();emit q.changed();
+  flush();
+  // A reconnect registers the shortcuts again; read j/binds and put back any bind that is gone.
+  if(everConnected)q.schedule(0);
+  everConnected=true;emit q.changed();
  }
  bool roundTrip(){
   // wl_display_roundtrip with a deadline, before the notifier exists.

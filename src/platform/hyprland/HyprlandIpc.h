@@ -27,7 +27,7 @@ public:
  // Empty unless HYPRLAND_INSTANCE_SIGNATURE and XDG_RUNTIME_DIR name a socket.
  static QString requestSocket();
  static QString eventSocket();
- // Bounded: an unreachable socket, a silent Hyprland (2 s) or an oversized
+ // Bounded: an unreachable socket, a silent Hyprland (3 s, connect retries included) or an oversized
  // reply (8 MiB) fails with ipc_unavailable. Replies run on this object's thread.
  void request(const QString& text,Reply);
  // "j/..." requests parsed as JSON; anything else fails with ipc_reply.

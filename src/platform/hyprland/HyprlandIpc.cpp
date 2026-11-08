@@ -112,7 +112,8 @@ void HyprlandIpc::request(const QString& text,Reply reply,QDeadlineTimer deadlin
  connect(exchange->writable,&QSocketNotifier::activated,exchange,[exchange]{exchange->write();});
  exchange->timer.setSingleShot(true);
  connect(&exchange->timer,&QTimer::timeout,exchange,[exchange]{exchange->finish({},unavailable("Hyprland did not answer its IPC socket in time",exchange->text));});
- exchange->timer.start(requestTimeoutMs);
+ // One bound for the whole request, connect retries included.
+ exchange->timer.start(deadline.isForever()?requestTimeoutMs:int(qMax<qint64>(1,deadline.remainingTime())));
  exchange->write();
 }
 void HyprlandIpc::json(const QString& text,JsonReply reply){
@@ -123,6 +124,17 @@ void HyprlandIpc::json(const QString& text,JsonReply reply){
   reply(std::move(document),{});
  });
 }
+namespace {
+// poll() until ready, the deadline, or an error; a signal does not end the wait.
+int pollWithin(int fd,short events,const QDeadlineTimer& deadline){
+ for(;;){
+  // remainingTime(): -1 for a deadline that never expires, which poll() takes as no timeout.
+  pollfd ready{fd,events,0};const int count=::poll(&ready,1,int(deadline.remainingTime()));
+  if(count<0&&errno==EINTR){if(deadline.hasExpired())return 0;continue;}
+  return count;
+ }
+}
+}
 Error HyprlandIpc::requestBlocking(const QString& text,QByteArray* reply,int timeoutMs){
  const auto path=requestSocket();
  if(path.isEmpty())return unavailable("HYPRLAND_INSTANCE_SIGNATURE does not name a Hyprland session",text);
@@ -132,14 +144,14 @@ Error HyprlandIpc::requestBlocking(const QString& text,QByteArray* reply,int tim
  if(fd<0)return unavailable("Cannot connect to Hyprland's IPC socket: "+QString::fromLocal8Bit(std::strerror(errno)),text);
  const auto close=qScopeGuard([fd]{::close(fd);});const QByteArray out=text.toUtf8();qsizetype written=0;QByteArray in;
  while(written<out.size()){
-  pollfd ready{fd,POLLOUT,0};if(::poll(&ready,1,int(deadline.remainingTime()))<=0)return unavailable("Hyprland did not take the IPC request in time",text);
+  if(pollWithin(fd,POLLOUT,deadline)<=0)return unavailable("Hyprland did not take the IPC request in time",text);
   const auto sent=::send(fd,out.constData()+written,size_t(out.size()-written),MSG_NOSIGNAL);
   if(sent<0){if(errno==EINTR||errno==EAGAIN)continue;return unavailable("Hyprland's IPC socket refused the request",text);}
   written+=sent;
  }
  ::shutdown(fd,SHUT_WR);
  for(;;){
-  pollfd ready{fd,POLLIN,0};if(::poll(&ready,1,int(deadline.remainingTime()))<=0)return unavailable("Hyprland did not answer its IPC socket in time",text);
+  if(pollWithin(fd,POLLIN,deadline)<=0)return unavailable("Hyprland did not answer its IPC socket in time",text);
   char buffer[16384];const auto count=::recv(fd,buffer,sizeof buffer,0);
   if(count<0){if(errno==EINTR||errno==EAGAIN)continue;return unavailable("Hyprland's IPC reply failed",text);}
   if(count==0)break;
@@ -178,6 +190,8 @@ void HyprlandIpc::readEvents(){
  }
  QPointer<HyprlandIpc> guard(this);
  for(qsizetype end=eventBuffer_.indexOf('\n');end>=0&&guard;end=eventBuffer_.indexOf('\n')){
+  // A line this long is not an event put.gd reads, even when complete.
+  if(end>maximumEventLine){eventBuffer_.remove(0,end+1);continue;}
   const QString line=QString::fromUtf8(eventBuffer_.left(end));eventBuffer_.remove(0,end+1);
   const auto split=line.indexOf(QStringLiteral(">>"));
   if(split>0)emit event(line.left(split),line.mid(split+2));
