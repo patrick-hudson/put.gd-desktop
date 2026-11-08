@@ -171,5 +171,5 @@ private slots:
   QCOMPARE(s.state,QString("foreign_user_copy"));QVERIFY(QFile::exists(userDir(f)+"/metadata.json"));
  }
 };
-QTEST_MAIN(GnomeExtensionSetupTest)
+QTEST_GUILESS_MAIN(GnomeExtensionSetupTest)
 #include "test_gnome_extension_setup.moc"

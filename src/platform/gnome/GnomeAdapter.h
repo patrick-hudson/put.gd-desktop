@@ -58,7 +58,7 @@ private:
  // The per-user GNOME setup (GnomeExtensionSetup): once per Shell, on a worker.
  void evaluateSetup(bool force=false);
  gnome::SetupStatus currentSetup()const;
- Error helperAvailabilityError()const;
+ Error helperAvailabilityError(bool fallback=false)const;
  void emitSetupNotice(const gnome::SetupStatus&);
  using Reply=std::function<void(Error,QJsonObject)>;
  struct Transfer {QString id,outcome;bool screenshotFirst=false;ResourceLimits limits;QJsonObject metadata;QByteArray bytes;std::function<void(PayloadResult)> reply;quint64 generation=0;};

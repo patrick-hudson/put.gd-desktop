@@ -88,7 +88,7 @@ GnomeAdapter::~GnomeAdapter(){
  if(ownsName_)bus_.unregisterService(client);
 }
 QJsonObject GnomeAdapter::sync(const QString& method,const QVariantList& args,Error& error,int timeout){
- if(owner_.isEmpty()){error=helperAvailabilityError();return {};}
+ if(owner_.isEmpty()){error=helperAvailabilityError(true);return {};}
  auto message=QDBusMessage::createMethodCall(owner_,path,interface,method);message.setArguments(args);const auto response=bus_.call(message,QDBus::Block,timeout);
  auto result=parse(response,error,method=="Hello");
  if(method!="Hello"&&missingEndpoint(response)){
@@ -187,7 +187,7 @@ QJsonObject GnomeAdapter::capabilities()const{
 }
 SourceAdapter::PreparedAcquisition GnomeAdapter::prepareAcquisition(const QString& action){
  QPointer<GnomeAdapter> guard(this);const bool hotkey=!hotkeyPrepared_[action].isEmpty();const auto id=hotkey?hotkeyPrepared_[action].takeFirst():uuid();Error error;
- if(!ready_)error=helperAvailabilityError();
+ if(!ready_)error=helperAvailabilityError(true);
  else if(action=="window"&&uiProcessError_){error=uiProcessError_;if(hotkey)release(id);}
  // Both region modes require the packaged appearance protocol; an older
  // loaded extension silently ignores its tokens. Ask for re-login before preparing.
@@ -291,7 +291,7 @@ void GnomeAdapter::hideFrame(){if(selectsRegions())call("HideRecordingFrame",{},
 // upgrade that brought it is still the one running until the user logs out.
 void GnomeAdapter::listWindows(RecordingWindows::Reply reply){
  if(outdated()){reply(recordingShellError(),{});return;}
- if(!ready_){reply(helperAvailabilityError(),{});return;}
+ if(!ready_){reply(helperAvailabilityError(true),{});return;}
  if(helper_["recordingVersion"].toInt()<2){reply({"helper_incompatible","Update the put.gd GNOME extension to record windows",{}},{});return;}
  call("RecordingWindows",{},[reply](Error error,QJsonObject result){
   if(!error&&!result["windows"].isArray())error={"bridge_protocol","GNOME helper returned an invalid window list",{}};
@@ -357,9 +357,9 @@ void GnomeAdapter::applyShortcutBindings(std::function<void(Error)> reply){
 }
 // What capture reports while the helper is away: the setup step the user has to
 // take when there is one, otherwise the last discovery error.
-Error GnomeAdapter::helperAvailabilityError()const{
+Error GnomeAdapter::helperAvailabilityError(bool fallback)const{
  if(setup_.needsUser())return {setup_.code,setup_.message,setup_.details};
- if(helperError_.code.isEmpty())return {"helper_unavailable","GNOME capture needs the put.gd Shell extension.",{}};
+ if(fallback&&helperError_.code.isEmpty())return {"helper_unavailable","GNOME capture needs the put.gd Shell extension.",{}};
  return helperError_;
 }
 gnome::SetupStatus GnomeAdapter::currentSetup()const{
