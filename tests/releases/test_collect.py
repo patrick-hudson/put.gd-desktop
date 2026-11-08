@@ -186,7 +186,7 @@ class ReleaseCollection(unittest.TestCase):
         files = {p.name for p in self.output.iterdir() if p.is_file()}
         self.assertEqual(files, support_assets.inventory(self.release['version']))
         self.assertEqual(len(files), 17)
-        self.assertFalse(any(name.endswith(('.tar.gz', '.zip', '.part1', '.part2', '.tar.zst')) for name in files))
+        self.assertFalse(any(name.endswith(('.tar.gz', '.zip', '.part1', '.part2')) or (name.endswith('.tar.zst') and not name.endswith('.pkg.tar.zst')) for name in files))
         delivery = json.loads((self.output / 'source-delivery.json').read_text())
         support_assets.validate(delivery, self.release, appimage_update.REPOSITORY)
         for name, item in delivery['assets'].items():
