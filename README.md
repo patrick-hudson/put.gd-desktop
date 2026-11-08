@@ -13,7 +13,7 @@ Files go to storage you control, and there's no put.gd account. If you've used S
 | | Supported |
 | --- | --- |
 | **Desktops** | [Cinnamon](docs/desktops/cinnamon.md), [GNOME 50](docs/desktops/gnome.md), [KDE Plasma](docs/desktops/kde.md), [Budgie](docs/desktops/budgie.md)\*, [Hyprland](docs/desktops/hyprland.md)\* (tested on Omarchy) |
-| **Linux** | Ubuntu 24.04, Linux Mint 22, Ubuntu 26.04, Debian 13, Fedora 44, Arch and Arch-based distributions\*, or any other distribution with glibc 2.39 or newer through the AppImage |
+| **Linux** | Ubuntu 24.04/26.04, Linux Mint 22, Debian 13, Fedora 44/45, Arch and Arch-based distributions\*, or any other distribution with glibc 2.39 or newer through the AppImage |
 | **Storage** | Amazon S3, Cloudflare R2, Backblaze B2, any other S3-compatible service, [Proton Drive](docs/user/proton-drive.md) (experimental) |
 
 \* New, and in nightly builds only until the next stable release. See [Install](#install).
