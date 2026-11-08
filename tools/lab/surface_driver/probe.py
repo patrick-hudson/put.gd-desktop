@@ -524,7 +524,26 @@ def compositor_windows(compositor):
         return json.loads(str(gnome_witness('Windows')))
     if kind == 'kwin-script':
         return kwin_windows()
+    if kind == 'wayland-toplevels':
+        return wayland_toplevel_windows()
     raise RuntimeError('no compositor window witness configured for this Wayland profile')
+
+
+def wayland_toplevel_windows():
+    """labwc and Mir have no scripting: the toplevel protocols are the witness.
+
+    They give identifiers, app IDs, titles and the activated window, but no PID
+    and no geometry, so frame and content are None and hit-tests are refused.
+    """
+    import sys
+    sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+    import wayland_toplevels
+    seen = wayland_toplevels.snapshot(wayland_toplevels.socket_path())
+    active = (seen.get('active') or {}).get('identifier')
+    windows = [{'id': w.get('identifier'), 'title': w.get('title'), 'pid': None, 'wm_class': w.get('app_id'),
+                'frame': None, 'content': None, 'focus': w.get('identifier') == active, 'stack': i}
+               for i, w in enumerate(seen.get('ext', []))]
+    return {'windows': windows, 'protocols': seen.get('protocols', {})}
 
 
 def compositor_activate(compositor, window_id):
