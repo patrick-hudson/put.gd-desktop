@@ -383,7 +383,9 @@ else:
     def test_gnome_50_guidance(self):
         self.tool('gnome-shell', "print('GNOME Shell 50.1')")
         self.env['SUFFIX'] = '-x86_64.AppImage'
-        self.assertIn('gnome-extensions enable putgd@put.gd', self.run_script('--appimage'))
+        output = self.run_script('--appimage')
+        self.assertIn('put.gd will ask you to log out and back in once', output)
+        self.assertNotIn('gnome-extensions enable', output)
 
     def test_arguments_architecture_and_missing_dependencies(self):
         self.assertIn('Usage:', self.run_script('--help'))

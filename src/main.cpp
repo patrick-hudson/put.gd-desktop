@@ -56,6 +56,7 @@
 #endif
 #ifdef PUTGD_NATIVE_GNOME
 #include "platform/gnome/GnomeAdapter.h"
+#include "platform/gnome/GnomeExtensionSetup.h"
 #endif
 #ifdef PUTGD_NATIVE_BUDGIE
 #include "platform/budgie/BudgieSourceAdapter.h"
@@ -163,6 +164,17 @@ int main(int argc,char* argv[]) {
  if(argc==2&&std::strcmp(argv[1],"--version-json")==0){
   std::printf("%s\n",putgd::buildManifestJson());return 0;
  }
+#ifdef PUTGD_NATIVE_GNOME
+ // The GNOME extension copy put.gd installed for an AppImage: removed exactly
+ // the way it was added, without touching a copy it didn't create.
+ if(argc==2&&std::strcmp(argv[1],"--remove-gnome-extension")==0){
+  QCoreApplication removal(argc,argv);
+  const auto result=putgd::gnome::removeOwnedUserCopy(putgd::gnome::defaultSetupInputs());
+  if(result.needsUser()){std::fprintf(stderr,"put.gd: %s\n",qUtf8Printable(result.message));return 1;}
+  std::printf("put.gd: %s\n",result.details["removed"].toBool()?"removed the GNOME extension copy it installed; log out and back in to unload it.":"no put.gd-installed GNOME extension copy was found.");
+  return 0;
+ }
+#endif
  if(argc==2&&(std::strcmp(argv[1],"--version")==0||std::strcmp(argv[1],"-v")==0)) {
   std::printf("putgd %s\n",putgd::buildVersion());return 0;
  }
@@ -448,6 +460,7 @@ int main(int argc,char* argv[]) {
 #endif
 #ifdef PUTGD_NATIVE_GNOME
  if(gnome)QObject::connect(gnome,&putgd::GnomeAdapter::actionRequested,&tray,requested);
+ if(gnome)QObject::connect(gnome,&putgd::GnomeAdapter::setupNotice,&tray,&putgd::TrayController::notifyDesktopSetup);
 #endif
 #ifdef PUTGD_NATIVE_KDE
  if(kde)QObject::connect(kde,&putgd::KdeSourceAdapter::actionRequested,&tray,requested);

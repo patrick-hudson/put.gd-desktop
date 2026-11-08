@@ -59,6 +59,8 @@ public:
  // naming the session's file manager if it may need a restart, with a button that
  // restarts it (closing its windows, which the notice says first).
  void notifyFileManagerMenu(const QStringList& restartable);
+ // A desktop setup step the user has to take (GNOME: log out once, or the reason).
+ void notifyDesktopSetup(const QString& code, const QString& message);
  // A problem setting the menu up, e.g. COSMIC's action list could not be read.
  void notifyFileManagerProblem(const QString& message);
  // Quits a file manager FileManagerIntegration::restartScript knows; a PCManFM

@@ -207,6 +207,16 @@ def create_server(adapter: CliAdapter) -> MCPServer:
                 'ok': True, 'result': responses, 'error': {'code': '', 'message': '', 'details': {}}}
 
     @server.tool(annotations=read)
+    async def get_desktop_setup() -> Json:
+        """Read the per-user desktop setup state: ready, login_required or a specific reason."""
+        return await adapter.call('desktop.setup', {})
+
+    @server.tool(annotations=effect)
+    async def recheck_desktop_setup() -> Json:
+        """Run the per-user desktop setup again and return its state; idempotent."""
+        return await adapter.call('desktop.setup.recheck', {})
+
+    @server.tool(annotations=read)
     async def get_view_state() -> Json:
         """Read the Settings window's last checkpointed capture routing: for the default output and each action, the destination and sharing it shows, the resolved sharing mode, whether it inherits the default and whether each control is enabled. Without an open or retained Settings view only the interface state is returned."""
         return await adapter.call('ui.viewState', {})

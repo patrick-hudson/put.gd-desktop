@@ -64,6 +64,11 @@ public:
  // cancelled, or shut down. Report copy_suppressed only when no write committed.
  virtual void invalidateCopyEligibility() {}
  virtual void copy(const CopyPayload&,std::function<void(Error)>)=0;
+ // Per-user desktop setup this adapter runs: state, code, message, details.
+ // "not_applicable" for adapters with no per-user desktop setup.
+ virtual QJsonObject desktopSetup() const {return {{"state","not_applicable"}};}
+ // Re-runs that setup. The reply carries the state after it finished.
+ virtual void recheckDesktopSetup(std::function<void(QJsonObject)> reply) {reply(desktopSetup());}
 protected:
  // Non-secret presentation context; adapters copy it when freezing each request.
  QJsonObject captureAppearance_;

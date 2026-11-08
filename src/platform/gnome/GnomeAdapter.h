@@ -1,6 +1,7 @@
 #pragma once
 #include "app/RecordingBackend.h"
 #include "core/SourceAdapter.h"
+#include "platform/gnome/GnomeExtensionSetup.h"
 #include <QDBusConnection>
 #include <QDBusServiceWatcher>
 #include <QJsonArray>
@@ -29,6 +30,8 @@ public:
  Error regionError()const override;
  // The loaded extension is older than the packaged one: a log-out loads it.
  bool outdated()const;
+ QJsonObject desktopSetup()const override;
+ void recheckDesktopSetup(std::function<void(QJsonObject)>) override;
  // Discovery retry: the first wait and the slow safety probe it doubles up to.
  static constexpr int firstRetryMs=3000,safetyProbeMs=15*60*1000;
  void setDiscoveryRetryForTesting(int firstMs,int capMs);
@@ -43,6 +46,8 @@ signals:
  void capabilitiesChanged();
  // A timed discovery retry ran while the helper was unavailable.
  void discoveryRetried();
+ // Setup needs the user: once per state, for the notification.
+ void setupNotice(const QString& code,const QString& message);
 private slots:
  void helperAction(const QString& action,const QString& ticket);
  void helperClipboardChanged(qulonglong revision);
@@ -50,6 +55,11 @@ private slots:
 private:
  // Why a region cannot be recorded through the Shell right now.
  Error recordingShellError()const;
+ // The per-user GNOME setup (GnomeExtensionSetup): once per Shell, on a worker.
+ void evaluateSetup(bool force=false);
+ gnome::SetupStatus currentSetup()const;
+ Error helperAvailabilityError()const;
+ void emitSetupNotice(const gnome::SetupStatus&);
  using Reply=std::function<void(Error,QJsonObject)>;
  struct Transfer {QString id,outcome;bool screenshotFirst=false;ResourceLimits limits;QJsonObject metadata;QByteArray bytes;std::function<void(PayloadResult)> reply;quint64 generation=0;};
  void discover();
@@ -87,5 +97,9 @@ private:
  QHash<quint64,Reply> pending_;quint64 callSerial_=0;
  bool recording_=false;quint64 bindingGeneration_=0;
  bool ownsName_=false,ready_=false,stopping_=false;
+ gnome::SetupStatus setup_{"checking",{},{},{}};
+ bool setupRunning_=false,setupAgain_=false,setupCheckedForOwner_=false;
+ QStringList setupNotified_;
+ QList<std::function<void(QJsonObject)>> setupWaiters_;
 };
 }

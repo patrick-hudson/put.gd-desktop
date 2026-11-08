@@ -3,6 +3,7 @@
 #include <atomic>
 #include <memory>
 #include "GnomeProtocol.h"
+#include "GnomeExtensionSetup.h"
 #include "platform/NativeSession.h"
 #include "core/ImageJob.h"
 #include "core/Log.h"
@@ -14,6 +15,8 @@
 #include <QJsonDocument>
 #include <QJsonArray>
 #include <QGuiApplication>
+#include <QDir>
+#include <QFileInfo>
 #include <QKeySequence>
 #include <QUrl>
 #include <QUuid>
@@ -30,7 +33,7 @@ bool missingEndpoint(const QDBusMessage& message){
 }
 QJsonObject parse(const QDBusMessage& message,Error& error,bool hello=false){
  if(message.type()==QDBusMessage::ErrorMessage){
-  const auto guidance="GNOME capture needs the put.gd Shell extension. If it is missing, install the matching put.gd package or extension; after a new installation, log out and back in first. Then run: gnome-extensions enable putgd@put.gd";
+  const auto guidance="GNOME capture needs the put.gd Shell extension, which is not running yet.";
   error={"helper_unavailable",hello&&missingEndpoint(message)?guidance:"GNOME native helper did not complete the request",{{"dbusError",message.errorName()}}};
   if(hello&&missingEndpoint(message))error.details["helperEndpointMissing"]=true;return {};
  }
@@ -85,7 +88,7 @@ GnomeAdapter::~GnomeAdapter(){
  if(ownsName_)bus_.unregisterService(client);
 }
 QJsonObject GnomeAdapter::sync(const QString& method,const QVariantList& args,Error& error,int timeout){
- if(owner_.isEmpty()){error=helperError_.code.isEmpty()?Error{"helper_unavailable","Install and enable putgd@put.gd in GNOME 50",{}}:helperError_;return {};}
+ if(owner_.isEmpty()){error=helperAvailabilityError();return {};}
  auto message=QDBusMessage::createMethodCall(owner_,path,interface,method);message.setArguments(args);const auto response=bus_.call(message,QDBus::Block,timeout);
  auto result=parse(response,error,method=="Hello");
  if(method!="Hello"&&missingEndpoint(response)){
@@ -121,9 +124,11 @@ void GnomeAdapter::discover(){
  if(owner_.isEmpty()){helperUnavailable({"helper_unavailable","GNOME Shell is unavailable on the session bus",{}});return;}
  call("Hello",{},[this](Error error,QJsonObject hello){
   if(!error&&(hello["version"].toInt()!=gnome::protocolVersion||hello["shellMajor"].toInt()!=50))error={"helper_incompatible","GNOME helper requires protocol 1 and GNOME Shell 50",{}};
-  if(error){helperUnavailable(error);return;}
+  if(error){helperUnavailable(error);evaluateSetup();return;}
   discoveryRetry_.stop();retryMs_=retryFirstMs_;
   ready_=true;helperError_={};helper_=hello;setUiProcess(uiProcess_);helperRevision_=quint64(hello["clipboardRevision"].toDouble());++revision_;bindShortcuts(requested_);emit capabilitiesChanged();
+  evaluateSetup();
+  if(outdated())emitSetupNotice(currentSetup());
  });
 }
 // The retry runs for as long as the helper stays away, each wait twice the last
@@ -149,7 +154,7 @@ void GnomeAdapter::setUiProcess(qint64 pid){
 }
 void GnomeAdapter::helperChanged(){
  // A real change: rediscover now and restart the backoff from its first step.
- discoveryRetry_.stop();retryMs_=retryFirstMs_;
+ discoveryRetry_.stop();retryMs_=retryFirstMs_;setupCheckedForOwner_=false;
  ready_=false;invalidateShortcutBindings();helper_={};++revision_;cancelAll("helper_unavailable","GNOME helper disabled or Shell restarted");emit capabilitiesChanged();discover();
 }
 void GnomeAdapter::invalidateShortcutBindings(){
@@ -173,15 +178,16 @@ quint64 GnomeAdapter::clipboardRevision()const{
  return revision_;
 }
 QJsonObject GnomeAdapter::capabilities()const{
- auto capture=QJsonObject{{"available",ready_},{"mode","compositor-native"},{"consent","one-time-extension-setup"}};if(!ready_)capture["error"]=helperError_.toJson();
+ const auto helperError=helperAvailabilityError();
+ auto capture=QJsonObject{{"available",ready_},{"mode","compositor-native"},{"consent","one-time-extension-setup"}};if(!ready_)capture["error"]=helperError.toJson();
  auto window=capture;if(uiProcessError_){window["available"]=false;window["error"]=uiProcessError_.toJson();}
  auto clipboard=QJsonObject{{"available",ready_},{"types",QJsonArray{"files","image","text"}},{"import","bounded-mutter-selection"},{"result","st-clipboard-only"}};
- if(!ready_)clipboard["error"]=helperError_.toJson();
- return {{"adapter","gnome-wayland"},{"helper",QJsonObject{{"available",ready_},{"uuid","putgd@put.gd"},{"protocol",gnome::protocolVersion},{"shellMajor",helper_["shellMajor"]},{"extensionVersion",helper_["extensionVersion"]},{"packagedExtensionVersion",gnome::extensionVersion},{"outdated",outdated()},{"recordingVersion",helper_["recordingVersion"].toInt()},{"error",helperError_.toJson()}}},{"capture",QJsonObject{{"region",capture},{"window",window},{"desktop",capture}}},{"clipboard",clipboard},{"shortcuts",QJsonObject{{"available",ready_},{"bindings",bindings_}}}};
+ if(!ready_)clipboard["error"]=helperError.toJson();
+ return {{"adapter","gnome-wayland"},{"helper",QJsonObject{{"available",ready_},{"uuid","putgd@put.gd"},{"protocol",gnome::protocolVersion},{"shellMajor",helper_["shellMajor"]},{"extensionVersion",helper_["extensionVersion"]},{"packagedExtensionVersion",gnome::extensionVersion},{"outdated",outdated()},{"recordingVersion",helper_["recordingVersion"].toInt()},{"error",helperError.toJson()},{"setup",currentSetup().toJson()}}},{"capture",QJsonObject{{"region",capture},{"window",window},{"desktop",capture}}},{"clipboard",clipboard},{"shortcuts",QJsonObject{{"available",ready_},{"bindings",bindings_}}}};
 }
 SourceAdapter::PreparedAcquisition GnomeAdapter::prepareAcquisition(const QString& action){
  QPointer<GnomeAdapter> guard(this);const bool hotkey=!hotkeyPrepared_[action].isEmpty();const auto id=hotkey?hotkeyPrepared_[action].takeFirst():uuid();Error error;
- if(!ready_)error=helperError_.code.isEmpty()?Error{"helper_unavailable","Enable putgd@put.gd before sharing",{}}:helperError_;
+ if(!ready_)error=helperAvailabilityError();
  else if(action=="window"&&uiProcessError_){error=uiProcessError_;if(hotkey)release(id);}
  // Both region modes require the packaged appearance protocol; an older
  // loaded extension silently ignores its tokens. Ask for re-login before preparing.
@@ -260,7 +266,7 @@ bool GnomeAdapter::selectsRegions()const{return ready_&&!outdated()&&helper_["re
 bool GnomeAdapter::outdated()const{return ready_&&helper_["extensionVersion"].toInt()<gnome::extensionVersion;}
 Error GnomeAdapter::recordingShellError()const{
  if(outdated())return {"helper_outdated","The put.gd GNOME Shell extension was updated; log out and back in to load the new version",{{"loaded",helper_["extensionVersion"].toInt()},{"packaged",gnome::extensionVersion}}};
- if(!ready_)return {"region_unavailable","Recording a region on GNOME needs the put.gd Shell extension; enable putgd@put.gd",{{"helper",helperError_.toJson()}}};
+ if(!ready_)return {"region_unavailable",setup_.needsUser()?setup_.message:QString("Recording a region on GNOME needs the put.gd Shell extension."),{{"helper",helperAvailabilityError().toJson()}}};
  return {"region_unavailable","Recording a region on GNOME needs the put.gd Shell extension with recording support",{}};
 }
 Error GnomeAdapter::regionError()const{return selectsRegions()?Error{}:recordingShellError();}
@@ -285,7 +291,7 @@ void GnomeAdapter::hideFrame(){if(selectsRegions())call("HideRecordingFrame",{},
 // upgrade that brought it is still the one running until the user logs out.
 void GnomeAdapter::listWindows(RecordingWindows::Reply reply){
  if(outdated()){reply(recordingShellError(),{});return;}
- if(!ready_){reply(helperError_.code.isEmpty()?Error{"helper_unavailable","Install and enable putgd@put.gd in GNOME 50",{}}:helperError_,{});return;}
+ if(!ready_){reply(helperAvailabilityError(),{});return;}
  if(helper_["recordingVersion"].toInt()<2){reply({"helper_incompatible","Update the put.gd GNOME extension to record windows",{}},{});return;}
  call("RecordingWindows",{},[reply](Error error,QJsonObject result){
   if(!error&&!result["windows"].isArray())error={"bridge_protocol","GNOME helper returned an invalid window list",{}};
@@ -348,5 +354,60 @@ void GnomeAdapter::applyShortcutBindings(std::function<void(Error)> reply){
   }else for(const auto& action:Settings::invocableActionNames()){auto entry=bindings_[action].toObject();if(!entry.contains("error"))entry["error"]=error.code;bindings_[action]=entry;}
   emit capabilitiesChanged();if(reply)reply(error);
  });
+}
+// What capture reports while the helper is away: the setup step the user has to
+// take when there is one, otherwise the last discovery error.
+Error GnomeAdapter::helperAvailabilityError()const{
+ if(setup_.needsUser())return {setup_.code,setup_.message,setup_.details};
+ if(helperError_.code.isEmpty())return {"helper_unavailable","GNOME capture needs the put.gd Shell extension.",{}};
+ return helperError_;
+}
+gnome::SetupStatus GnomeAdapter::currentSetup()const{
+ if(ready_&&outdated()){
+  // No login can fix a stale system package, so its specific reason keeps precedence.
+  if(setup_.state=="system_copy_outdated")return setup_;
+  return {"login_required","gnome_extension_updated","The put.gd GNOME Shell extension was updated; log out and back in to load the new version",{{"loaded",helper_["extensionVersion"].toInt()},{"packaged",gnome::extensionVersion}}};
+ }
+ if(ready_)return {"ready",{},{},setup_.details};
+ return setup_;
+}
+void GnomeAdapter::emitSetupNotice(const gnome::SetupStatus& status){
+ if(!status.needsUser()||setupNotified_.contains(status.code))return;
+ setupNotified_.append(status.code);
+ emit setupNotice(status.code,status.message);
+}
+void GnomeAdapter::evaluateSetup(bool force){
+ if(!ownsName_||stopping_)return;
+ if(setupRunning_){setupAgain_=setupAgain_||force;return;}
+ if(!force&&setupCheckedForOwner_)return;
+ setupCheckedForOwner_=true;
+ auto inputs=gnome::defaultSetupInputs();
+ // Loaded and current with no owned copy to retire: nothing to do, and nothing runs.
+ if(ready_&&!outdated()&&!force){
+  const auto userCopy=QDir(inputs.dataHome).filePath(QStringLiteral("gnome-shell/extensions/")+gnome::extensionUuid);
+  if(!QFileInfo::exists(QDir(userCopy).filePath(gnome::copyMarkerName)))return;
+ }
+ setupRunning_=true;
+ auto result=std::make_shared<gnome::SetupStatus>();
+ auto* worker=QThread::create([inputs,result]{*result=gnome::runExtensionSetup(inputs);});
+ workers_.append(worker);
+ connect(worker,&QThread::finished,this,[this,worker,result]{
+  workers_.removeOne(worker);worker->deleteLater();setupRunning_=false;
+  if(stopping_)return;
+  const bool changed=setup_.state!=result->state||setup_.code!=result->code||setup_.message!=result->message;
+  setup_=*result;
+  if(changed)emit capabilitiesChanged();
+  emitSetupNotice(currentSetup());
+  auto waiters=std::move(setupWaiters_);setupWaiters_.clear();
+  if(setupAgain_){setupAgain_=false;evaluateSetup(true);}
+  for(auto& waiter:waiters)waiter(desktopSetup());
+ });
+ worker->start();
+}
+QJsonObject GnomeAdapter::desktopSetup()const{return currentSetup().toJson();}
+void GnomeAdapter::recheckDesktopSetup(std::function<void(QJsonObject)> reply){
+ setupWaiters_.append(std::move(reply));
+ if(!ownsName_||stopping_){auto waiters=std::move(setupWaiters_);setupWaiters_.clear();for(auto& waiter:waiters)waiter(desktopSetup());return;}
+ evaluateSetup(true);
 }
 }
