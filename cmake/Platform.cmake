@@ -103,6 +103,26 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   add_library(putgd_budgie STATIC src/platform/budgie/BudgieSourceAdapter.cpp src/platform/budgie/BudgieShortcuts.cpp
     src/platform/budgie/LabwcBridgeBackend.cpp)
   target_link_libraries(putgd_budgie PUBLIC putgd_wayland Qt6::DBus PRIVATE PkgConfig::PUTGD_XKBCOMMON)
+  # Hyprland (Omarchy and other Hyprland sessions): the shared capture, outputs,
+  # data control and region helper; Hyprland's IPC, toplevel mapping check and
+  # global-shortcut protocol are its own. The two hyprland-protocols XML files
+  # are vendored unmodified (hyprwm/hyprland-protocols cd1aba6, BSD-3-Clause).
+  set(putgd_hyprland_protocol_sources)
+  foreach(protocol_name hyprland-global-shortcuts-v1 hyprland-toplevel-mapping-v1)
+    set(protocol_xml "${CMAKE_CURRENT_SOURCE_DIR}/src/platform/wayland/protocols/${protocol_name}.xml")
+    add_custom_command(OUTPUT "${protocol_dir}/${protocol_name}-client-protocol.h"
+      COMMAND "${PUTGD_WAYLAND_SCANNER}" client-header "${protocol_xml}" "${protocol_dir}/${protocol_name}-client-protocol.h"
+      DEPENDS "${protocol_xml}" VERBATIM)
+    add_custom_command(OUTPUT "${protocol_dir}/${protocol_name}-protocol.c"
+      COMMAND "${PUTGD_WAYLAND_SCANNER}" private-code "${protocol_xml}" "${protocol_dir}/${protocol_name}-protocol.c"
+      DEPENDS "${protocol_xml}" VERBATIM)
+    list(APPEND putgd_hyprland_protocol_sources "${protocol_dir}/${protocol_name}-client-protocol.h" "${protocol_dir}/${protocol_name}-protocol.c")
+  endforeach()
+  add_library(putgd_hyprland STATIC src/platform/hyprland/HyprlandIpc.cpp src/platform/hyprland/HyprlandShortcuts.cpp
+    src/platform/hyprland/HyprlandSourceAdapter.cpp src/platform/hyprland/HyprlandWayland.cpp src/platform/hyprland/ToplevelMapping.cpp
+    ${putgd_hyprland_protocol_sources} "${protocol_dir}/ext-foreign-toplevel-list-v1-client-protocol.h")
+  target_include_directories(putgd_hyprland PRIVATE "${protocol_dir}")
+  target_link_libraries(putgd_hyprland PUBLIC putgd_wayland PRIVATE PkgConfig::PUTGD_WAYLAND PkgConfig::PUTGD_XKBCOMMON Threads::Threads)
   if(Qt6_VERSION VERSION_GREATER_EQUAL "6.5")
     find_package(LayerShellQt QUIET CONFIG)
     if(TARGET LayerShellQt::Interface)
@@ -110,8 +130,9 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
         target_link_libraries(${layer_shell_user} PRIVATE LayerShellQt::Interface)
         target_compile_definitions(${layer_shell_user} PRIVATE PUTGD_HAVE_LAYER_SHELL=1)
       endforeach()
-      # Budgie selects regions only through the putgd-region helper.
+      # Budgie and Hyprland select regions only through the putgd-region helper.
       target_compile_definitions(putgd_budgie PRIVATE PUTGD_HAVE_LAYER_SHELL=1)
+      target_compile_definitions(putgd_hyprland PRIVATE PUTGD_HAVE_LAYER_SHELL=1)
       set(PUTGD_LAYER_SHELL_REGION ON)
     else()
       message(STATUS "LayerShellQt unavailable: Wayland layer-shell region selection will report unavailable")

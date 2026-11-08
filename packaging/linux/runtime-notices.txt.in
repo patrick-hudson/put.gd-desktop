@@ -13,6 +13,8 @@ Apache-2.0 (the AWS SDK for C++) and, with the Proton Drive helper, GPL-3.0-or-l
   ext image-copy-capture, image-capture-    MIT-style           wayland-ext-image-*.xml,
     source, foreign-toplevel-list and wlr                       wayland-*-foreign-toplevel-*.xml
     foreign-toplevel-management bindings
+  hyprland-global-shortcuts-v1 and          BSD-3-Clause        wayland-hyprland-*.xml
+    hyprland-toplevel-mapping-v1 bindings
   AWS SDK for C++, aws-crt-cpp, aws-c-*,    Apache-2.0          aws-*-LICENSE, aws-*-NOTICE
     s2n-tls
   cJSON, libcbor (in the AWS libraries)     MIT                 aws-sdk-cJSON-LICENSE,
@@ -45,8 +47,9 @@ SDK following docs/release/build.md, update the lock deliberately, and rebuild t
 update these libraries. No compiler or Qt runtime is bundled.
 
 The ext-data-control-v1, wlr-data-control-unstable-v1, zkde-screencast-unstable-v1,
-ext-image-copy-capture-v1, ext-image-capture-source-v1, ext-foreign-toplevel-list-v1
-and wlr-foreign-toplevel-management-unstable-v1 Wayland protocol notices are retained
+ext-image-copy-capture-v1, ext-image-capture-source-v1, ext-foreign-toplevel-list-v1,
+wlr-foreign-toplevel-management-unstable-v1, hyprland-global-shortcuts-v1 and
+hyprland-toplevel-mapping-v1 Wayland protocol notices are retained
 in the wayland-<protocol>.xml file of each beside this file, including their original
 copyright and license text. Generated client bindings use those protocols.
 

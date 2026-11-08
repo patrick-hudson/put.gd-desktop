@@ -32,7 +32,13 @@ The capture and window-list protocols used on wlroots and Mir compositors,
 `ext-foreign-toplevel-list-v1.xml` from wayland-protocols 1.45 and
 `wlr-foreign-toplevel-management-unstable-v1.xml` from wlr-protocols, are vendored
 unmodified with their copyright and permission text and installed beside it as
-`share/doc/putgd/wayland-<protocol>.xml`.
+`share/doc/putgd/wayland-<protocol>.xml`. The Hyprland protocols
+`hyprland-global-shortcuts-v1.xml` and `hyprland-toplevel-mapping-v1.xml` from
+hyprwm/hyprland-protocols (commit `cd1aba6bd78775825eb230b3a4274c48b6705eb7`,
+BSD-3-Clause; Copyright 2022 Vaxry and 2025 WhySoBad respectively) are vendored the same way,
+unmodified with their copyright and license text, and installed as
+`share/doc/putgd/wayland-hyprland-global-shortcuts-v1.xml` and
+`share/doc/putgd/wayland-hyprland-toplevel-mapping-v1.xml`.
 
 The GNOME integration imports the installed Shell/GJS/Mutter APIs; it does not bundle
 a replacement GNOME runtime. The KDE integration links the distro LayerShellQt

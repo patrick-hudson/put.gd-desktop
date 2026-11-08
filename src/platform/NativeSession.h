@@ -2,6 +2,11 @@
 #include <QtCore/QString>
 #include <QtCore/QByteArray>
 #include <QtCore/QProcessEnvironment>
+#include <QtCore/QFile>
+#include <cstring>
+#include <sys/socket.h>
+#include <sys/un.h>
+#include <unistd.h>
 
 namespace putgd {
 // Environment is a routing guard, not proof of a working display. Each native
@@ -93,10 +98,49 @@ inline bool budgieCoreSessionEnvironment() {
   if(desktop.compare("KDE",Qt::CaseInsensitive)==0||desktop.compare("Cinnamon",Qt::CaseInsensitive)==0||desktop.compare("X-Cinnamon",Qt::CaseInsensitive)==0)return false;
  return true;
 }
+// Hyprland names itself in XDG_CURRENT_DESKTOP and sets HYPRLAND_INSTANCE_SIGNATURE.
+inline bool desktopNamesHyprland() {
+ for(const auto& desktop:qEnvironmentVariable("XDG_CURRENT_DESKTOP").split(':',Qt::SkipEmptyParts))
+  if(desktop.compare("Hyprland",Qt::CaseInsensitive)==0)return true;
+ return false;
+}
+// $XDG_RUNTIME_DIR/hypr/<signature>/.socket.sock, or empty when either is unset
+// or the signature could name another directory.
+inline QString hyprlandSocketPath(const char* name=".socket.sock") {
+ const auto runtime=qEnvironmentVariable("XDG_RUNTIME_DIR");const auto signature=qEnvironmentVariable("HYPRLAND_INSTANCE_SIGNATURE");
+ if(runtime.isEmpty()||signature.isEmpty()||signature.contains('/')||signature=="."||signature=="..")return {};
+ return runtime+"/hypr/"+signature+'/'+QString::fromLatin1(name);
+}
+// Whether Hyprland's request socket accepts a connection now. Nothing is sent.
+inline bool hyprlandSocketAnswers() {
+ const QByteArray path=QFile::encodeName(hyprlandSocketPath());
+ sockaddr_un address{};address.sun_family=AF_UNIX;
+ if(path.isEmpty()||size_t(path.size())>=sizeof address.sun_path)return false;
+ std::memcpy(address.sun_path,path.constData(),size_t(path.size()));
+ const int fd=::socket(AF_UNIX,SOCK_STREAM|SOCK_CLOEXEC,0);if(fd<0)return false;
+ const bool answered=::connect(fd,reinterpret_cast<const sockaddr*>(&address),sizeof address)==0;
+ ::close(fd);return answered;
+}
+// Hyprland (Omarchy and any other Hyprland session) owns independent native
+// Wayland connections in the Core route. Omarchy sets QT_QPA_PLATFORM to
+// "wayland;xcb", so a list whose first plugin is Wayland is accepted, as for
+// Budgie. A KDE, GNOME, Cinnamon or Budgie token keeps the session off this
+// route, and so does a signature whose request socket does not answer.
+inline bool hyprlandCoreSessionEnvironment() {
+ if(qEnvironmentVariable("XDG_SESSION_TYPE")!="wayland"||qEnvironmentVariableIsEmpty("WAYLAND_DISPLAY"))return false;
+ const auto platform=qEnvironmentVariable("QT_QPA_PLATFORM");
+ const auto plugin=platform.section(';',0,0).section(':',0,0);
+ if(!platform.isEmpty()&&plugin!="wayland"&&plugin!="wayland-egl")return false;
+ if(!desktopNamesHyprland()||desktopNamesBudgie())return false;
+ for(const auto& desktop:qEnvironmentVariable("XDG_CURRENT_DESKTOP").split(':',Qt::SkipEmptyParts))
+  if(desktop.compare("KDE",Qt::CaseInsensitive)==0||desktop.compare("GNOME",Qt::CaseInsensitive)==0||
+     desktop.compare("Cinnamon",Qt::CaseInsensitive)==0||desktop.compare("X-Cinnamon",Qt::CaseInsensitive)==0)return false;
+ return hyprlandSocketAnswers();
+}
 // The Core routes whose adapters open their own Wayland connections for
 // outputs and data control. Add a new compositor's route here.
 inline bool waylandCoreSessionEnvironment() {
- return kdeCoreSessionEnvironment()||budgieCoreSessionEnvironment();
+ return kdeCoreSessionEnvironment()||budgieCoreSessionEnvironment()||hyprlandCoreSessionEnvironment();
 }
 
 }

@@ -2,7 +2,8 @@
 # wildcard entries would leave the automatic %doc entries in place.
 set(native_license_names LICENSE runtime-notices.txt copyright fonts/OFL-sans.txt fonts/OFL-mono.txt fonts/SOURCE.md wayland-ext-data-control-v1.xml
   wayland-wlr-data-control-unstable-v1.xml wayland-zkde-screencast-unstable-v1.xml
-  wayland-ext-image-copy-capture-v1.xml wayland-ext-image-capture-source-v1.xml wayland-ext-foreign-toplevel-list-v1.xml wayland-wlr-foreign-toplevel-management-unstable-v1.xml)
+  wayland-ext-image-copy-capture-v1.xml wayland-ext-image-capture-source-v1.xml wayland-ext-foreign-toplevel-list-v1.xml wayland-wlr-foreign-toplevel-management-unstable-v1.xml
+  wayland-hyprland-global-shortcuts-v1.xml wayland-hyprland-toplevel-mapping-v1.xml)
 file(GLOB native_aws_notices RELATIVE "${PROJECT_BINARY_DIR}/packaging/linux/package-inputs/${CMAKE_INSTALL_DATADIR}/doc/putgd"
   "${PROJECT_BINARY_DIR}/packaging/linux/package-inputs/${CMAKE_INSTALL_DATADIR}/doc/putgd/aws-*")
 # Snapshot files and extracted leading comments are in two directories.

@@ -1,0 +1,2511 @@
+bindled
+	modmask: 0
+	submap: 
+	sym: XF86AudioRaiseVolume
+	keycode: 0
+	catchall: false
+	description: Volume up
+	dispatcher: __lua
+	arg: 12
+
+bindled
+	modmask: 0
+	submap: 
+	sym: XF86AudioLowerVolume
+	keycode: 0
+	catchall: false
+	description: Volume down
+	dispatcher: __lua
+	arg: 14
+
+bindld
+	modmask: 0
+	submap: 
+	sym: XF86AudioMute
+	keycode: 0
+	catchall: false
+	description: Mute
+	dispatcher: __lua
+	arg: 16
+
+bindld
+	modmask: 0
+	submap: 
+	sym: XF86AudioMicMute
+	keycode: 0
+	catchall: false
+	description: Mute microphone
+	dispatcher: __lua
+	arg: 18
+
+bindled
+	modmask: 0
+	submap: 
+	sym: XF86MonBrightnessUp
+	keycode: 0
+	catchall: false
+	description: Brightness up
+	dispatcher: __lua
+	arg: 20
+
+bindled
+	modmask: 0
+	submap: 
+	sym: XF86MonBrightnessDown
+	keycode: 0
+	catchall: false
+	description: Brightness down
+	dispatcher: __lua
+	arg: 22
+
+bindled
+	modmask: 1
+	submap: 
+	sym: XF86MonBrightnessUp
+	keycode: 0
+	catchall: false
+	description: Brightness maximum
+	dispatcher: __lua
+	arg: 24
+
+bindled
+	modmask: 1
+	submap: 
+	sym: XF86MonBrightnessDown
+	keycode: 0
+	catchall: false
+	description: Brightness minimum
+	dispatcher: __lua
+	arg: 26
+
+bindled
+	modmask: 0
+	submap: 
+	sym: XF86KbdBrightnessUp
+	keycode: 0
+	catchall: false
+	description: Keyboard brightness up
+	dispatcher: __lua
+	arg: 28
+
+bindled
+	modmask: 0
+	submap: 
+	sym: XF86KbdBrightnessDown
+	keycode: 0
+	catchall: false
+	description: Keyboard brightness down
+	dispatcher: __lua
+	arg: 30
+
+bindled
+	modmask: 4
+	submap: 
+	sym: XF86MonBrightnessDown
+	keycode: 0
+	catchall: false
+	description: Keyboard brightness down
+	dispatcher: __lua
+	arg: 32
+
+bindled
+	modmask: 4
+	submap: 
+	sym: XF86MonBrightnessUp
+	keycode: 0
+	catchall: false
+	description: Keyboard brightness up
+	dispatcher: __lua
+	arg: 34
+
+bindld
+	modmask: 0
+	submap: 
+	sym: XF86KbdLightOnOff
+	keycode: 0
+	catchall: false
+	description: Keyboard backlight cycle
+	dispatcher: __lua
+	arg: 36
+
+bindld
+	modmask: 0
+	submap: 
+	sym: XF86TouchpadToggle
+	keycode: 0
+	catchall: false
+	description: Toggle touchpad
+	dispatcher: __lua
+	arg: 38
+
+bindld
+	modmask: 0
+	submap: 
+	sym: XF86TouchpadOn
+	keycode: 0
+	catchall: false
+	description: Enable touchpad
+	dispatcher: __lua
+	arg: 40
+
+bindld
+	modmask: 0
+	submap: 
+	sym: XF86TouchpadOff
+	keycode: 0
+	catchall: false
+	description: Disable touchpad
+	dispatcher: __lua
+	arg: 42
+
+bindled
+	modmask: 8
+	submap: 
+	sym: XF86AudioRaiseVolume
+	keycode: 0
+	catchall: false
+	description: Volume up precise
+	dispatcher: __lua
+	arg: 44
+
+bindled
+	modmask: 8
+	submap: 
+	sym: XF86AudioLowerVolume
+	keycode: 0
+	catchall: false
+	description: Volume down precise
+	dispatcher: __lua
+	arg: 46
+
+bindled
+	modmask: 8
+	submap: 
+	sym: XF86MonBrightnessUp
+	keycode: 0
+	catchall: false
+	description: Brightness up precise
+	dispatcher: __lua
+	arg: 48
+
+bindled
+	modmask: 8
+	submap: 
+	sym: XF86MonBrightnessDown
+	keycode: 0
+	catchall: false
+	description: Brightness down precise
+	dispatcher: __lua
+	arg: 50
+
+bindld
+	modmask: 0
+	submap: 
+	sym: XF86AudioNext
+	keycode: 0
+	catchall: false
+	description: Next track
+	dispatcher: __lua
+	arg: 52
+
+bindld
+	modmask: 8
+	submap: 
+	sym: XF86AudioPlay
+	keycode: 0
+	catchall: false
+	description: Next track
+	dispatcher: __lua
+	arg: 54
+
+bindld
+	modmask: 0
+	submap: 
+	sym: XF86AudioPause
+	keycode: 0
+	catchall: false
+	description: Pause
+	dispatcher: __lua
+	arg: 56
+
+bindld
+	modmask: 0
+	submap: 
+	sym: XF86AudioPlay
+	keycode: 0
+	catchall: false
+	description: Play
+	dispatcher: __lua
+	arg: 58
+
+bindld
+	modmask: 0
+	submap: 
+	sym: XF86AudioPrev
+	keycode: 0
+	catchall: false
+	description: Previous track
+	dispatcher: __lua
+	arg: 60
+
+bindld
+	modmask: 9
+	submap: 
+	sym: XF86AudioPlay
+	keycode: 0
+	catchall: false
+	description: Previous track
+	dispatcher: __lua
+	arg: 62
+
+bindld
+	modmask: 0
+	submap: 
+	sym: XF86Eject
+	keycode: 0
+	catchall: false
+	description: Eject media
+	dispatcher: __lua
+	arg: 64
+
+bindld
+	modmask: 1
+	submap: 
+	sym: XF86AudioMute
+	keycode: 0
+	catchall: false
+	description: Switch audio output
+	dispatcher: __lua
+	arg: 66
+
+bindld
+	modmask: 1
+	submap: 
+	sym: XF86AudioPause
+	keycode: 0
+	catchall: false
+	description: Switch media source
+	dispatcher: __lua
+	arg: 68
+
+bindld
+	modmask: 1
+	submap: 
+	sym: XF86AudioPlay
+	keycode: 0
+	catchall: false
+	description: Switch media source
+	dispatcher: __lua
+	arg: 70
+
+bindd
+	modmask: 64
+	submap: 
+	sym: A
+	keycode: 0
+	catchall: false
+	description: Select all
+	dispatcher: __lua
+	arg: 11
+
+bindd
+	modmask: 64
+	submap: 
+	sym: C
+	keycode: 0
+	catchall: false
+	description: Universal copy
+	dispatcher: __lua
+	arg: 13
+
+bindd
+	modmask: 64
+	submap: 
+	sym: V
+	keycode: 0
+	catchall: false
+	description: Universal paste
+	dispatcher: __lua
+	arg: 15
+
+bindd
+	modmask: 64
+	submap: 
+	sym: X
+	keycode: 0
+	catchall: false
+	description: Universal cut
+	dispatcher: __lua
+	arg: 17
+
+bindd
+	modmask: 68
+	submap: 
+	sym: V
+	keycode: 0
+	catchall: false
+	description: Clipboard manager
+	dispatcher: __lua
+	arg: 21
+
+bindd
+	modmask: 64
+	submap: 
+	sym: I
+	keycode: 0
+	catchall: false
+	description: Switch input language
+	dispatcher: __lua
+	arg: 72
+
+bindd
+	modmask: 65
+	submap: 
+	sym: I
+	keycode: 0
+	catchall: false
+	description: Switch input language back
+	dispatcher: __lua
+	arg: 74
+
+bindnd
+	modmask: 4
+	submap: 
+	sym: SPACE
+	keycode: 0
+	catchall: false
+	description: Direct input for the terminal prefix
+	dispatcher: __lua
+	arg: 75
+
+bindd
+	modmask: 64
+	submap: 
+	sym: W
+	keycode: 0
+	catchall: false
+	description: Close window
+	dispatcher: __lua
+	arg: 77
+
+bindd
+	modmask: 64
+	submap: 
+	sym: Q
+	keycode: 0
+	catchall: false
+	description: Close window
+	dispatcher: __lua
+	arg: 79
+
+bindd
+	modmask: 12
+	submap: 
+	sym: DELETE
+	keycode: 0
+	catchall: false
+	description: Close all windows
+	dispatcher: __lua
+	arg: 81
+
+bindd
+	modmask: 64
+	submap: 
+	sym: J
+	keycode: 0
+	catchall: false
+	description: Toggle window split
+	dispatcher: __lua
+	arg: 83
+
+bindd
+	modmask: 64
+	submap: 
+	sym: P
+	keycode: 0
+	catchall: false
+	description: Pseudo window
+	dispatcher: __lua
+	arg: 85
+
+bindd
+	modmask: 64
+	submap: 
+	sym: T
+	keycode: 0
+	catchall: false
+	description: Toggle window floating/tiling
+	dispatcher: __lua
+	arg: 87
+
+bindd
+	modmask: 64
+	submap: 
+	sym: F
+	keycode: 0
+	catchall: false
+	description: Full screen
+	dispatcher: __lua
+	arg: 89
+
+bindd
+	modmask: 68
+	submap: 
+	sym: F
+	keycode: 0
+	catchall: false
+	description: Tiled full screen
+	dispatcher: __lua
+	arg: 91
+
+bindd
+	modmask: 72
+	submap: 
+	sym: F
+	keycode: 0
+	catchall: false
+	description: Full width
+	dispatcher: __lua
+	arg: 93
+
+bindd
+	modmask: 64
+	submap: 
+	sym: O
+	keycode: 0
+	catchall: false
+	description: Pop window out (float & pin)
+	dispatcher: __lua
+	arg: 95
+
+bindd
+	modmask: 72
+	submap: 
+	sym: Home
+	keycode: 0
+	catchall: false
+	description: Save window width
+	dispatcher: __lua
+	arg: 97
+
+bindd
+	modmask: 64
+	submap: 
+	sym: Home
+	keycode: 0
+	catchall: false
+	description: Restore window width
+	dispatcher: __lua
+	arg: 99
+
+bindd
+	modmask: 64
+	submap: 
+	sym: L
+	keycode: 0
+	catchall: false
+	description: Cycle workspace layout
+	dispatcher: __lua
+	arg: 101
+
+bindd
+	modmask: 72
+	submap: 
+	sym: L
+	keycode: 0
+	catchall: false
+	description: Cycle workspace layout back
+	dispatcher: __lua
+	arg: 103
+
+bindd
+	modmask: 64
+	submap: 
+	sym: LEFT
+	keycode: 0
+	catchall: false
+	description: Focus on left window
+	dispatcher: __lua
+	arg: 105
+
+bindd
+	modmask: 64
+	submap: 
+	sym: RIGHT
+	keycode: 0
+	catchall: false
+	description: Focus on right window
+	dispatcher: __lua
+	arg: 107
+
+bindd
+	modmask: 64
+	submap: 
+	sym: UP
+	keycode: 0
+	catchall: false
+	description: Focus on above window
+	dispatcher: __lua
+	arg: 109
+
+bindd
+	modmask: 64
+	submap: 
+	sym: DOWN
+	keycode: 0
+	catchall: false
+	description: Focus on below window
+	dispatcher: __lua
+	arg: 111
+
+bindd
+	modmask: 64
+	submap: 
+	sym: SUPER + code:10
+	keycode: 0
+	catchall: false
+	description: Switch to workspace 1
+	dispatcher: __lua
+	arg: 112
+
+bindd
+	modmask: 65
+	submap: 
+	sym: SUPER + SHIFT + code:10
+	keycode: 0
+	catchall: false
+	description: Move window to workspace 1
+	dispatcher: __lua
+	arg: 113
+
+bindd
+	modmask: 73
+	submap: 
+	sym: SUPER + SHIFT + ALT + code:10
+	keycode: 0
+	catchall: false
+	description: Move window silently to workspace 1
+	dispatcher: __lua
+	arg: 114
+
+bindd
+	modmask: 64
+	submap: 
+	sym: SUPER + code:11
+	keycode: 0
+	catchall: false
+	description: Switch to workspace 2
+	dispatcher: __lua
+	arg: 115
+
+bindd
+	modmask: 65
+	submap: 
+	sym: SUPER + SHIFT + code:11
+	keycode: 0
+	catchall: false
+	description: Move window to workspace 2
+	dispatcher: __lua
+	arg: 116
+
+bindd
+	modmask: 73
+	submap: 
+	sym: SUPER + SHIFT + ALT + code:11
+	keycode: 0
+	catchall: false
+	description: Move window silently to workspace 2
+	dispatcher: __lua
+	arg: 117
+
+bindd
+	modmask: 64
+	submap: 
+	sym: SUPER + code:12
+	keycode: 0
+	catchall: false
+	description: Switch to workspace 3
+	dispatcher: __lua
+	arg: 118
+
+bindd
+	modmask: 65
+	submap: 
+	sym: SUPER + SHIFT + code:12
+	keycode: 0
+	catchall: false
+	description: Move window to workspace 3
+	dispatcher: __lua
+	arg: 119
+
+bindd
+	modmask: 73
+	submap: 
+	sym: SUPER + SHIFT + ALT + code:12
+	keycode: 0
+	catchall: false
+	description: Move window silently to workspace 3
+	dispatcher: __lua
+	arg: 120
+
+bindd
+	modmask: 64
+	submap: 
+	sym: SUPER + code:13
+	keycode: 0
+	catchall: false
+	description: Switch to workspace 4
+	dispatcher: __lua
+	arg: 121
+
+bindd
+	modmask: 65
+	submap: 
+	sym: SUPER + SHIFT + code:13
+	keycode: 0
+	catchall: false
+	description: Move window to workspace 4
+	dispatcher: __lua
+	arg: 122
+
+bindd
+	modmask: 73
+	submap: 
+	sym: SUPER + SHIFT + ALT + code:13
+	keycode: 0
+	catchall: false
+	description: Move window silently to workspace 4
+	dispatcher: __lua
+	arg: 123
+
+bindd
+	modmask: 64
+	submap: 
+	sym: SUPER + code:14
+	keycode: 0
+	catchall: false
+	description: Switch to workspace 5
+	dispatcher: __lua
+	arg: 124
+
+bindd
+	modmask: 65
+	submap: 
+	sym: SUPER + SHIFT + code:14
+	keycode: 0
+	catchall: false
+	description: Move window to workspace 5
+	dispatcher: __lua
+	arg: 125
+
+bindd
+	modmask: 73
+	submap: 
+	sym: SUPER + SHIFT + ALT + code:14
+	keycode: 0
+	catchall: false
+	description: Move window silently to workspace 5
+	dispatcher: __lua
+	arg: 126
+
+bindd
+	modmask: 64
+	submap: 
+	sym: SUPER + code:15
+	keycode: 0
+	catchall: false
+	description: Switch to workspace 6
+	dispatcher: __lua
+	arg: 127
+
+bindd
+	modmask: 65
+	submap: 
+	sym: SUPER + SHIFT + code:15
+	keycode: 0
+	catchall: false
+	description: Move window to workspace 6
+	dispatcher: __lua
+	arg: 128
+
+bindd
+	modmask: 73
+	submap: 
+	sym: SUPER + SHIFT + ALT + code:15
+	keycode: 0
+	catchall: false
+	description: Move window silently to workspace 6
+	dispatcher: __lua
+	arg: 129
+
+bindd
+	modmask: 64
+	submap: 
+	sym: SUPER + code:16
+	keycode: 0
+	catchall: false
+	description: Switch to workspace 7
+	dispatcher: __lua
+	arg: 130
+
+bindd
+	modmask: 65
+	submap: 
+	sym: SUPER + SHIFT + code:16
+	keycode: 0
+	catchall: false
+	description: Move window to workspace 7
+	dispatcher: __lua
+	arg: 131
+
+bindd
+	modmask: 73
+	submap: 
+	sym: SUPER + SHIFT + ALT + code:16
+	keycode: 0
+	catchall: false
+	description: Move window silently to workspace 7
+	dispatcher: __lua
+	arg: 132
+
+bindd
+	modmask: 64
+	submap: 
+	sym: SUPER + code:17
+	keycode: 0
+	catchall: false
+	description: Switch to workspace 8
+	dispatcher: __lua
+	arg: 133
+
+bindd
+	modmask: 65
+	submap: 
+	sym: SUPER + SHIFT + code:17
+	keycode: 0
+	catchall: false
+	description: Move window to workspace 8
+	dispatcher: __lua
+	arg: 134
+
+bindd
+	modmask: 73
+	submap: 
+	sym: SUPER + SHIFT + ALT + code:17
+	keycode: 0
+	catchall: false
+	description: Move window silently to workspace 8
+	dispatcher: __lua
+	arg: 135
+
+bindd
+	modmask: 64
+	submap: 
+	sym: SUPER + code:18
+	keycode: 0
+	catchall: false
+	description: Switch to workspace 9
+	dispatcher: __lua
+	arg: 136
+
+bindd
+	modmask: 65
+	submap: 
+	sym: SUPER + SHIFT + code:18
+	keycode: 0
+	catchall: false
+	description: Move window to workspace 9
+	dispatcher: __lua
+	arg: 137
+
+bindd
+	modmask: 73
+	submap: 
+	sym: SUPER + SHIFT + ALT + code:18
+	keycode: 0
+	catchall: false
+	description: Move window silently to workspace 9
+	dispatcher: __lua
+	arg: 138
+
+bindd
+	modmask: 64
+	submap: 
+	sym: SUPER + code:19
+	keycode: 0
+	catchall: false
+	description: Switch to workspace 10
+	dispatcher: __lua
+	arg: 139
+
+bindd
+	modmask: 65
+	submap: 
+	sym: SUPER + SHIFT + code:19
+	keycode: 0
+	catchall: false
+	description: Move window to workspace 10
+	dispatcher: __lua
+	arg: 140
+
+bindd
+	modmask: 73
+	submap: 
+	sym: SUPER + SHIFT + ALT + code:19
+	keycode: 0
+	catchall: false
+	description: Move window silently to workspace 10
+	dispatcher: __lua
+	arg: 141
+
+bindd
+	modmask: 64
+	submap: 
+	sym: S
+	keycode: 0
+	catchall: false
+	description: Toggle scratchpad
+	dispatcher: __lua
+	arg: 143
+
+bindd
+	modmask: 72
+	submap: 
+	sym: S
+	keycode: 0
+	catchall: false
+	description: Move window to scratchpad
+	dispatcher: __lua
+	arg: 145
+
+bindd
+	modmask: 64
+	submap: 
+	sym: grave
+	keycode: 0
+	catchall: false
+	description: Toggle Quake console
+	dispatcher: __lua
+	arg: 147
+
+bindd
+	modmask: 64
+	submap: 
+	sym: M
+	keycode: 0
+	catchall: false
+	description: Minimize window to the dock
+	dispatcher: __lua
+	arg: 149
+
+bindd
+	modmask: 65
+	submap: 
+	sym: grave
+	keycode: 0
+	catchall: false
+	description: Move window to Quake console
+	dispatcher: __lua
+	arg: 151
+
+bindd
+	modmask: 64
+	submap: 
+	sym: TAB
+	keycode: 0
+	catchall: false
+	description: Next workspace
+	dispatcher: __lua
+	arg: 153
+
+bindd
+	modmask: 65
+	submap: 
+	sym: TAB
+	keycode: 0
+	catchall: false
+	description: Previous workspace
+	dispatcher: __lua
+	arg: 155
+
+bindd
+	modmask: 68
+	submap: 
+	sym: TAB
+	keycode: 0
+	catchall: false
+	description: Former workspace
+	dispatcher: __lua
+	arg: 157
+
+bindd
+	modmask: 73
+	submap: 
+	sym: LEFT
+	keycode: 0
+	catchall: false
+	description: Move workspace to left monitor
+	dispatcher: __lua
+	arg: 158
+
+bindd
+	modmask: 73
+	submap: 
+	sym: RIGHT
+	keycode: 0
+	catchall: false
+	description: Move workspace to right monitor
+	dispatcher: __lua
+	arg: 159
+
+bindd
+	modmask: 73
+	submap: 
+	sym: UP
+	keycode: 0
+	catchall: false
+	description: Move workspace to up monitor
+	dispatcher: __lua
+	arg: 160
+
+bindd
+	modmask: 73
+	submap: 
+	sym: DOWN
+	keycode: 0
+	catchall: false
+	description: Move workspace to down monitor
+	dispatcher: __lua
+	arg: 161
+
+bindd
+	modmask: 69
+	submap: 
+	sym: LEFT
+	keycode: 0
+	catchall: false
+	description: Move window to left monitor
+	dispatcher: __lua
+	arg: 162
+
+bindd
+	modmask: 69
+	submap: 
+	sym: RIGHT
+	keycode: 0
+	catchall: false
+	description: Move window to right monitor
+	dispatcher: __lua
+	arg: 163
+
+bindd
+	modmask: 69
+	submap: 
+	sym: UP
+	keycode: 0
+	catchall: false
+	description: Move window to up monitor
+	dispatcher: __lua
+	arg: 164
+
+bindd
+	modmask: 69
+	submap: 
+	sym: DOWN
+	keycode: 0
+	catchall: false
+	description: Move window to down monitor
+	dispatcher: __lua
+	arg: 165
+
+bindd
+	modmask: 65
+	submap: 
+	sym: LEFT
+	keycode: 0
+	catchall: false
+	description: Swap window to the left
+	dispatcher: __lua
+	arg: 167
+
+bindd
+	modmask: 65
+	submap: 
+	sym: RIGHT
+	keycode: 0
+	catchall: false
+	description: Swap window to the right
+	dispatcher: __lua
+	arg: 169
+
+bindd
+	modmask: 65
+	submap: 
+	sym: UP
+	keycode: 0
+	catchall: false
+	description: Swap window up
+	dispatcher: __lua
+	arg: 171
+
+bindd
+	modmask: 65
+	submap: 
+	sym: DOWN
+	keycode: 0
+	catchall: false
+	description: Swap window down
+	dispatcher: __lua
+	arg: 173
+
+bindd
+	modmask: 9
+	submap: 
+	sym: TAB
+	keycode: 0
+	catchall: false
+	description: Reveal active window on top
+	dispatcher: __lua
+	arg: 175
+
+bindd
+	modmask: 8
+	submap: 
+	sym: TAB
+	keycode: 0
+	catchall: false
+	description: Focus on next window
+	dispatcher: __lua
+	arg: 177
+
+bindd
+	modmask: 9
+	submap: 
+	sym: TAB
+	keycode: 0
+	catchall: false
+	description: Focus on previous window
+	dispatcher: __lua
+	arg: 179
+
+bindd
+	modmask: 8
+	submap: 
+	sym: TAB
+	keycode: 0
+	catchall: false
+	description: Reveal active window on top
+	dispatcher: __lua
+	arg: 181
+
+bindd
+	modmask: 12
+	submap: 
+	sym: TAB
+	keycode: 0
+	catchall: false
+	description: Focus on next monitor
+	dispatcher: __lua
+	arg: 183
+
+bindd
+	modmask: 13
+	submap: 
+	sym: TAB
+	keycode: 0
+	catchall: false
+	description: Focus on previous monitor
+	dispatcher: __lua
+	arg: 185
+
+bindd
+	modmask: 64
+	submap: 
+	sym: SUPER + code:20
+	keycode: 0
+	catchall: false
+	description: Expand window left
+	dispatcher: __lua
+	arg: 187
+
+bindd
+	modmask: 64
+	submap: 
+	sym: SUPER + code:21
+	keycode: 0
+	catchall: false
+	description: Shrink window left
+	dispatcher: __lua
+	arg: 189
+
+bindd
+	modmask: 65
+	submap: 
+	sym: SUPER + SHIFT + code:20
+	keycode: 0
+	catchall: false
+	description: Shrink window up
+	dispatcher: __lua
+	arg: 191
+
+bindd
+	modmask: 65
+	submap: 
+	sym: SUPER + SHIFT + code:21
+	keycode: 0
+	catchall: false
+	description: Expand window down
+	dispatcher: __lua
+	arg: 193
+
+bindd
+	modmask: 72
+	submap: 
+	sym: SUPER + ALT + code:20
+	keycode: 0
+	catchall: false
+	description: Expand window left a little
+	dispatcher: __lua
+	arg: 195
+
+bindd
+	modmask: 72
+	submap: 
+	sym: SUPER + ALT + code:21
+	keycode: 0
+	catchall: false
+	description: Shrink window left a little
+	dispatcher: __lua
+	arg: 197
+
+bindd
+	modmask: 73
+	submap: 
+	sym: SUPER + SHIFT + ALT + code:20
+	keycode: 0
+	catchall: false
+	description: Shrink window up a little
+	dispatcher: __lua
+	arg: 199
+
+bindd
+	modmask: 73
+	submap: 
+	sym: SUPER + SHIFT + ALT + code:21
+	keycode: 0
+	catchall: false
+	description: Expand window down a little
+	dispatcher: __lua
+	arg: 201
+
+bindd
+	modmask: 68
+	submap: 
+	sym: SUPER + CTRL + code:20
+	keycode: 0
+	catchall: false
+	description: Expand window left a lot
+	dispatcher: __lua
+	arg: 203
+
+bindd
+	modmask: 68
+	submap: 
+	sym: SUPER + CTRL + code:21
+	keycode: 0
+	catchall: false
+	description: Shrink window left a lot
+	dispatcher: __lua
+	arg: 205
+
+bindd
+	modmask: 69
+	submap: 
+	sym: SUPER + CTRL + SHIFT + code:20
+	keycode: 0
+	catchall: false
+	description: Shrink window up a lot
+	dispatcher: __lua
+	arg: 207
+
+bindd
+	modmask: 69
+	submap: 
+	sym: SUPER + CTRL + SHIFT + code:21
+	keycode: 0
+	catchall: false
+	description: Expand window down a lot
+	dispatcher: __lua
+	arg: 209
+
+bindd
+	modmask: 64
+	submap: 
+	sym: mouse_down
+	keycode: 0
+	catchall: false
+	description: Scroll active workspace forward
+	dispatcher: __lua
+	arg: 211
+
+bindd
+	modmask: 64
+	submap: 
+	sym: mouse_up
+	keycode: 0
+	catchall: false
+	description: Scroll active workspace backward
+	dispatcher: __lua
+	arg: 213
+
+bindd
+	modmask: 64
+	submap: 
+	sym: mouse:272
+	keycode: 0
+	catchall: false
+	description: Move window
+	dispatcher: __lua
+	arg: 215
+
+bindd
+	modmask: 64
+	submap: 
+	sym: mouse:273
+	keycode: 0
+	catchall: false
+	description: Resize window
+	dispatcher: __lua
+	arg: 217
+
+bindd
+	modmask: 64
+	submap: 
+	sym: G
+	keycode: 0
+	catchall: false
+	description: Toggle window grouping
+	dispatcher: __lua
+	arg: 219
+
+bindd
+	modmask: 72
+	submap: 
+	sym: G
+	keycode: 0
+	catchall: false
+	description: Move active window out of group
+	dispatcher: __lua
+	arg: 221
+
+bindd
+	modmask: 72
+	submap: 
+	sym: LEFT
+	keycode: 0
+	catchall: false
+	description: Move window to group on left
+	dispatcher: __lua
+	arg: 223
+
+bindd
+	modmask: 72
+	submap: 
+	sym: RIGHT
+	keycode: 0
+	catchall: false
+	description: Move window to group on right
+	dispatcher: __lua
+	arg: 225
+
+bindd
+	modmask: 72
+	submap: 
+	sym: UP
+	keycode: 0
+	catchall: false
+	description: Move window to group on top
+	dispatcher: __lua
+	arg: 227
+
+bindd
+	modmask: 72
+	submap: 
+	sym: DOWN
+	keycode: 0
+	catchall: false
+	description: Move window to group on bottom
+	dispatcher: __lua
+	arg: 229
+
+bindd
+	modmask: 72
+	submap: 
+	sym: TAB
+	keycode: 0
+	catchall: false
+	description: Next window in group
+	dispatcher: __lua
+	arg: 231
+
+bindd
+	modmask: 73
+	submap: 
+	sym: TAB
+	keycode: 0
+	catchall: false
+	description: Previous window in group
+	dispatcher: __lua
+	arg: 233
+
+bindd
+	modmask: 68
+	submap: 
+	sym: LEFT
+	keycode: 0
+	catchall: false
+	description: Move grouped window focus left
+	dispatcher: __lua
+	arg: 235
+
+bindd
+	modmask: 68
+	submap: 
+	sym: RIGHT
+	keycode: 0
+	catchall: false
+	description: Move grouped window focus right
+	dispatcher: __lua
+	arg: 237
+
+bindd
+	modmask: 72
+	submap: 
+	sym: mouse_down
+	keycode: 0
+	catchall: false
+	description: Next window in group
+	dispatcher: __lua
+	arg: 239
+
+bindd
+	modmask: 72
+	submap: 
+	sym: mouse_up
+	keycode: 0
+	catchall: false
+	description: Previous window in group
+	dispatcher: __lua
+	arg: 241
+
+bindd
+	modmask: 72
+	submap: 
+	sym: SUPER + ALT + code:10
+	keycode: 0
+	catchall: false
+	description: Switch to group window 1
+	dispatcher: __lua
+	arg: 243
+
+bindd
+	modmask: 72
+	submap: 
+	sym: SUPER + ALT + code:11
+	keycode: 0
+	catchall: false
+	description: Switch to group window 2
+	dispatcher: __lua
+	arg: 245
+
+bindd
+	modmask: 72
+	submap: 
+	sym: SUPER + ALT + code:12
+	keycode: 0
+	catchall: false
+	description: Switch to group window 3
+	dispatcher: __lua
+	arg: 247
+
+bindd
+	modmask: 72
+	submap: 
+	sym: SUPER + ALT + code:13
+	keycode: 0
+	catchall: false
+	description: Switch to group window 4
+	dispatcher: __lua
+	arg: 249
+
+bindd
+	modmask: 72
+	submap: 
+	sym: SUPER + ALT + code:14
+	keycode: 0
+	catchall: false
+	description: Switch to group window 5
+	dispatcher: __lua
+	arg: 251
+
+bindd
+	modmask: 64
+	submap: 
+	sym: SLASH
+	keycode: 0
+	catchall: false
+	description: Monitor scaling up
+	dispatcher: __lua
+	arg: 253
+
+bindd
+	modmask: 72
+	submap: 
+	sym: SLASH
+	keycode: 0
+	catchall: false
+	description: Monitor scaling down
+	dispatcher: __lua
+	arg: 255
+
+bindd
+	modmask: 64
+	submap: 
+	sym: SPACE
+	keycode: 0
+	catchall: false
+	description: Omarchy menu
+	dispatcher: __lua
+	arg: 257
+
+bindd
+	modmask: 72
+	submap: 
+	sym: SPACE
+	keycode: 0
+	catchall: false
+	description: Apps
+	dispatcher: __lua
+	arg: 259
+
+bindd
+	modmask: 68
+	submap: 
+	sym: E
+	keycode: 0
+	catchall: false
+	description: Emojis
+	dispatcher: __lua
+	arg: 261
+
+bindd
+	modmask: 68
+	submap: 
+	sym: C
+	keycode: 0
+	catchall: false
+	description: Capture menu
+	dispatcher: __lua
+	arg: 263
+
+bindd
+	modmask: 68
+	submap: 
+	sym: O
+	keycode: 0
+	catchall: false
+	description: Toggle menu
+	dispatcher: __lua
+	arg: 265
+
+bindd
+	modmask: 68
+	submap: 
+	sym: H
+	keycode: 0
+	catchall: false
+	description: Hardware menu
+	dispatcher: __lua
+	arg: 267
+
+bindd
+	modmask: 65
+	submap: 
+	sym: SUPER + SHIFT + code:201
+	keycode: 0
+	catchall: false
+	description: Omarchy menu
+	dispatcher: __lua
+	arg: 269
+
+bindd
+	modmask: 64
+	submap: 
+	sym: ESCAPE
+	keycode: 0
+	catchall: false
+	description: System menu
+	dispatcher: __lua
+	arg: 271
+
+bindld
+	modmask: 0
+	submap: 
+	sym: XF86PowerOff
+	keycode: 0
+	catchall: false
+	description: Power menu
+	dispatcher: __lua
+	arg: 273
+
+bindd
+	modmask: 64
+	submap: 
+	sym: K
+	keycode: 0
+	catchall: false
+	description: Keybindings
+	dispatcher: __lua
+	arg: 275
+
+bindd
+	modmask: 72
+	submap: 
+	sym: K
+	keycode: 0
+	catchall: false
+	description: Tmux keybindings
+	dispatcher: __lua
+	arg: 277
+
+bindd
+	modmask: 68
+	submap: 
+	sym: K
+	keycode: 0
+	catchall: false
+	description: Herdr keybindings
+	dispatcher: __lua
+	arg: 279
+
+bindd
+	modmask: 65
+	submap: 
+	sym: SPACE
+	keycode: 0
+	catchall: false
+	description: Toggle top bar
+	dispatcher: __lua
+	arg: 281
+
+bindd
+	modmask: 68
+	submap: 
+	sym: SPACE
+	keycode: 0
+	catchall: false
+	description: Background switcher
+	dispatcher: __lua
+	arg: 283
+
+bindd
+	modmask: 68
+	submap: 
+	sym: W
+	keycode: 0
+	catchall: false
+	description: Background switcher
+	dispatcher: __lua
+	arg: 285
+
+bindd
+	modmask: 69
+	submap: 
+	sym: SPACE
+	keycode: 0
+	catchall: false
+	description: Theme menu
+	dispatcher: __lua
+	arg: 287
+
+bindd
+	modmask: 68
+	submap: 
+	sym: T
+	keycode: 0
+	catchall: false
+	description: Theme menu
+	dispatcher: __lua
+	arg: 289
+
+bindd
+	modmask: 64
+	submap: 
+	sym: BACKSPACE
+	keycode: 0
+	catchall: false
+	description: Toggle transparency on a window
+	dispatcher: __lua
+	arg: 291
+
+bindd
+	modmask: 65
+	submap: 
+	sym: BACKSPACE
+	keycode: 0
+	catchall: false
+	description: Toggle window gaps
+	dispatcher: __lua
+	arg: 293
+
+bindd
+	modmask: 68
+	submap: 
+	sym: BACKSPACE
+	keycode: 0
+	catchall: false
+	description: Toggle single-window square aspect
+	dispatcher: __lua
+	arg: 295
+
+bindd
+	modmask: 76
+	submap: 
+	sym: F
+	keycode: 0
+	catchall: false
+	description: Toggle full screen desktop
+	dispatcher: __lua
+	arg: 297
+
+bindd
+	modmask: 64
+	submap: 
+	sym: comma
+	keycode: 0
+	catchall: false
+	description: Dismiss, invoke, or focus last notification
+	dispatcher: __lua
+	arg: 299
+
+bindd
+	modmask: 65
+	submap: 
+	sym: comma
+	keycode: 0
+	catchall: false
+	description: Dismiss all notifications
+	dispatcher: __lua
+	arg: 301
+
+bindd
+	modmask: 68
+	submap: 
+	sym: comma
+	keycode: 0
+	catchall: false
+	description: Control notifications with the keyboard
+	dispatcher: __lua
+	arg: 303
+
+bindd
+	modmask: 72
+	submap: 
+	sym: comma
+	keycode: 0
+	catchall: false
+	description: Dismiss last notification
+	dispatcher: __lua
+	arg: 305
+
+bindd
+	modmask: 73
+	submap: 
+	sym: comma
+	keycode: 0
+	catchall: false
+	description: Open notification history
+	dispatcher: __lua
+	arg: 307
+
+bindd
+	modmask: 76
+	submap: 
+	sym: comma
+	keycode: 0
+	catchall: false
+	description: Toggle silencing notifications
+	dispatcher: __lua
+	arg: 309
+
+bindd
+	modmask: 68
+	submap: 
+	sym: I
+	keycode: 0
+	catchall: false
+	description: Toggle locking on idle
+	dispatcher: __lua
+	arg: 311
+
+bindd
+	modmask: 68
+	submap: 
+	sym: Delete
+	keycode: 0
+	catchall: false
+	description: Toggle laptop display
+	dispatcher: __lua
+	arg: 313
+
+bindd
+	modmask: 76
+	submap: 
+	sym: Delete
+	keycode: 0
+	catchall: false
+	description: Toggle laptop display mirroring
+	dispatcher: __lua
+	arg: 315
+
+bindl
+	modmask: 0
+	submap: 
+	sym: switch:on:Lid Switch
+	keycode: 0
+	catchall: false
+	description: 
+	dispatcher: __lua
+	arg: 317
+
+bindl
+	modmask: 0
+	submap: 
+	sym: switch:off:Lid Switch
+	keycode: 0
+	catchall: false
+	description: 
+	dispatcher: __lua
+	arg: 319
+
+bindl
+	modmask: 0
+	submap: 
+	sym: switch:on:Apple SMC power/lid events
+	keycode: 0
+	catchall: false
+	description: 
+	dispatcher: __lua
+	arg: 321
+
+bindl
+	modmask: 0
+	submap: 
+	sym: switch:off:Apple SMC power/lid events
+	keycode: 0
+	catchall: false
+	description: 
+	dispatcher: __lua
+	arg: 323
+
+bindd
+	modmask: 0
+	submap: 
+	sym: PRINT
+	keycode: 0
+	catchall: false
+	description: Screenshot
+	dispatcher: __lua
+	arg: 325
+
+bindd
+	modmask: 76
+	submap: 
+	sym: C
+	keycode: 0
+	catchall: false
+	description: Screenshot
+	dispatcher: __lua
+	arg: 327
+
+bindd
+	modmask: 8
+	submap: 
+	sym: PRINT
+	keycode: 0
+	catchall: false
+	description: Screenrecording
+	dispatcher: __lua
+	arg: 329
+
+bindd
+	modmask: 72
+	submap: 
+	sym: SUPER + ALT + code:34
+	keycode: 0
+	catchall: false
+	description: Make webcam overlay smaller
+	dispatcher: __lua
+	arg: 331
+
+bindd
+	modmask: 72
+	submap: 
+	sym: SUPER + ALT + code:35
+	keycode: 0
+	catchall: false
+	description: Make webcam overlay larger
+	dispatcher: __lua
+	arg: 333
+
+bindd
+	modmask: 64
+	submap: 
+	sym: PRINT
+	keycode: 0
+	catchall: false
+	description: Color picker
+	dispatcher: __lua
+	arg: 335
+
+bindd
+	modmask: 68
+	submap: 
+	sym: PRINT
+	keycode: 0
+	catchall: false
+	description: Extract text (OCR) from screenshot
+	dispatcher: __lua
+	arg: 337
+
+bindd
+	modmask: 68
+	submap: 
+	sym: S
+	keycode: 0
+	catchall: false
+	description: Share
+	dispatcher: __lua
+	arg: 341
+
+bindd
+	modmask: 68
+	submap: 
+	sym: PERIOD
+	keycode: 0
+	catchall: false
+	description: Transcode
+	dispatcher: __lua
+	arg: 343
+
+bindd
+	modmask: 68
+	submap: 
+	sym: R
+	keycode: 0
+	catchall: false
+	description: Set reminder
+	dispatcher: __lua
+	arg: 345
+
+bindd
+	modmask: 76
+	submap: 
+	sym: R
+	keycode: 0
+	catchall: false
+	description: Show reminders
+	dispatcher: __lua
+	arg: 347
+
+bindd
+	modmask: 69
+	submap: 
+	sym: R
+	keycode: 0
+	catchall: false
+	description: Clear reminders
+	dispatcher: __lua
+	arg: 349
+
+bindd
+	modmask: 76
+	submap: 
+	sym: T
+	keycode: 0
+	catchall: false
+	description: Show time
+	dispatcher: __lua
+	arg: 351
+
+bindd
+	modmask: 76
+	submap: 
+	sym: B
+	keycode: 0
+	catchall: false
+	description: Show battery remaining
+	dispatcher: __lua
+	arg: 353
+
+bindd
+	modmask: 76
+	submap: 
+	sym: W
+	keycode: 0
+	catchall: false
+	description: Toggle weather
+	dispatcher: __lua
+	arg: 355
+
+bindd
+	modmask: 69
+	submap: 
+	sym: A
+	keycode: 0
+	catchall: false
+	description: Agent
+	dispatcher: __lua
+	arg: 357
+
+bindd
+	modmask: 68
+	submap: 
+	sym: A
+	keycode: 0
+	catchall: false
+	description: Audio
+	dispatcher: __lua
+	arg: 359
+
+bindd
+	modmask: 68
+	submap: 
+	sym: B
+	keycode: 0
+	catchall: false
+	description: Bluetooth
+	dispatcher: __lua
+	arg: 361
+
+bindd
+	modmask: 68
+	submap: 
+	sym: D
+	keycode: 0
+	catchall: false
+	description: Display
+	dispatcher: __lua
+	arg: 363
+
+bindd
+	modmask: 76
+	submap: 
+	sym: D
+	keycode: 0
+	catchall: false
+	description: Calendar
+	dispatcher: __lua
+	arg: 365
+
+bindd
+	modmask: 76
+	submap: 
+	sym: E
+	keycode: 0
+	catchall: false
+	description: World clock
+	dispatcher: __lua
+	arg: 367
+
+bindd
+	modmask: 68
+	submap: 
+	sym: N
+	keycode: 0
+	catchall: false
+	description: Network
+	dispatcher: __lua
+	arg: 369
+
+bindd
+	modmask: 68
+	submap: 
+	sym: P
+	keycode: 0
+	catchall: false
+	description: Power
+	dispatcher: __lua
+	arg: 71
+
+bindd
+	modmask: 65
+	submap: 
+	sym: T
+	keycode: 0
+	catchall: false
+	description: Activity
+	dispatcher: __lua
+	arg: 76
+
+bindd
+	modmask: 68
+	submap: 
+	sym: SUPER + CTRL + code:10
+	keycode: 0
+	catchall: false
+	description: Bar panel 1
+	dispatcher: __lua
+	arg: 80
+
+bindd
+	modmask: 68
+	submap: 
+	sym: SUPER + CTRL + code:11
+	keycode: 0
+	catchall: false
+	description: Bar panel 2
+	dispatcher: __lua
+	arg: 84
+
+bindd
+	modmask: 68
+	submap: 
+	sym: SUPER + CTRL + code:12
+	keycode: 0
+	catchall: false
+	description: Bar panel 3
+	dispatcher: __lua
+	arg: 88
+
+bindd
+	modmask: 68
+	submap: 
+	sym: SUPER + CTRL + code:13
+	keycode: 0
+	catchall: false
+	description: Bar panel 4
+	dispatcher: __lua
+	arg: 92
+
+bindd
+	modmask: 68
+	submap: 
+	sym: SUPER + CTRL + code:14
+	keycode: 0
+	catchall: false
+	description: Bar panel 5
+	dispatcher: __lua
+	arg: 96
+
+bindd
+	modmask: 68
+	submap: 
+	sym: SUPER + CTRL + code:15
+	keycode: 0
+	catchall: false
+	description: Bar panel 6
+	dispatcher: __lua
+	arg: 100
+
+bindd
+	modmask: 68
+	submap: 
+	sym: SUPER + CTRL + code:16
+	keycode: 0
+	catchall: false
+	description: Bar panel 7
+	dispatcher: __lua
+	arg: 104
+
+bindd
+	modmask: 68
+	submap: 
+	sym: SUPER + CTRL + code:17
+	keycode: 0
+	catchall: false
+	description: Bar panel 8
+	dispatcher: __lua
+	arg: 108
+
+bindd
+	modmask: 68
+	submap: 
+	sym: SUPER + CTRL + code:18
+	keycode: 0
+	catchall: false
+	description: Bar panel 9
+	dispatcher: __lua
+	arg: 142
+
+bindd
+	modmask: 68
+	submap: 
+	sym: Z
+	keycode: 0
+	catchall: false
+	description: Zoom in
+	dispatcher: __lua
+	arg: 144
+
+bindd
+	modmask: 76
+	submap: 
+	sym: Z
+	keycode: 0
+	catchall: false
+	description: Reset zoom
+	dispatcher: __lua
+	arg: 146
+
+bindd
+	modmask: 68
+	submap: 
+	sym: L
+	keycode: 0
+	catchall: false
+	description: Lock system
+	dispatcher: __lua
+	arg: 150
+
+bindd
+	modmask: 8
+	submap: 
+	sym: SPACE
+	keycode: 0
+	catchall: false
+	description: Toggle dictation
+	dispatcher: __lua
+	arg: 25
+
+bindd
+	modmask: 8
+	submap: 
+	sym: Alt_R
+	keycode: 0
+	catchall: false
+	description: Start dictation (push-to-talk)
+	dispatcher: __lua
+	arg: 27
+
+bindrnd
+	modmask: 8
+	submap: 
+	sym: Alt_R
+	keycode: 0
+	catchall: false
+	description: Stop dictation (push-to-talk)
+	dispatcher: __lua
+	arg: 29
+
+bindd
+	modmask: 64
+	submap: 
+	sym: RETURN
+	keycode: 0
+	catchall: false
+	description: Terminal
+	dispatcher: __lua
+	arg: 31
+
+bindd
+	modmask: 65
+	submap: 
+	sym: RETURN
+	keycode: 0
+	catchall: false
+	description: Browser
+	dispatcher: __lua
+	arg: 35
+
+bindd
+	modmask: 65
+	submap: 
+	sym: F
+	keycode: 0
+	catchall: false
+	description: File manager
+	dispatcher: __lua
+	arg: 39
+
+bindd
+	modmask: 73
+	submap: 
+	sym: F
+	keycode: 0
+	catchall: false
+	description: File manager (cwd)
+	dispatcher: __lua
+	arg: 43
+
+bindd
+	modmask: 65
+	submap: 
+	sym: B
+	keycode: 0
+	catchall: false
+	description: Browser
+	dispatcher: __lua
+	arg: 47
+
+bindd
+	modmask: 73
+	submap: 
+	sym: B
+	keycode: 0
+	catchall: false
+	description: Browser (private)
+	dispatcher: __lua
+	arg: 51
+
+bindd
+	modmask: 65
+	submap: 
+	sym: N
+	keycode: 0
+	catchall: false
+	description: Editor
+	dispatcher: __lua
+	arg: 55
+
+bindd
+	modmask: 72
+	submap: 
+	sym: RETURN
+	keycode: 0
+	catchall: false
+	description: Tmux
+	dispatcher: __lua
+	arg: 59
+
+bindd
+	modmask: 68
+	submap: 
+	sym: RETURN
+	keycode: 0
+	catchall: false
+	description: Herdr
+	dispatcher: __lua
+	arg: 63
+
+bindd
+	modmask: 65
+	submap: 
+	sym: Q
+	keycode: 0
+	catchall: false
+	description: Calculator
+	dispatcher: __lua
+	arg: 67
+
+bindd
+	modmask: 0
+	submap: 
+	sym: XF86Calculator
+	keycode: 0
+	catchall: false
+	description: Calculator
+	dispatcher: __lua
+	arg: 152
+
+bindd
+	modmask: 65
+	submap: 
+	sym: M
+	keycode: 0
+	catchall: false
+	description: Music
+	dispatcher: __lua
+	arg: 156
+
+bindd
+	modmask: 73
+	submap: 
+	sym: M
+	keycode: 0
+	catchall: false
+	description: Music TUI
+	dispatcher: __lua
+	arg: 168
+
+bindd
+	modmask: 65
+	submap: 
+	sym: G
+	keycode: 0
+	catchall: false
+	description: Signal
+	dispatcher: __lua
+	arg: 172
+
+bindd
+	modmask: 65
+	submap: 
+	sym: O
+	keycode: 0
+	catchall: false
+	description: Obsidian
+	dispatcher: __lua
+	arg: 176
+
+bindd
+	modmask: 65
+	submap: 
+	sym: W
+	keycode: 0
+	catchall: false
+	description: Omawrite
+	dispatcher: __lua
+	arg: 180
+
+bindd
+	modmask: 65
+	submap: 
+	sym: SLASH
+	keycode: 0
+	catchall: false
+	description: Passwords
+	dispatcher: __lua
+	arg: 184
+
+bindd
+	modmask: 65
+	submap: 
+	sym: A
+	keycode: 0
+	catchall: false
+	description: ChatGPT
+	dispatcher: __lua
+	arg: 188
+
+bindd
+	modmask: 73
+	submap: 
+	sym: A
+	keycode: 0
+	catchall: false
+	description: Grok
+	dispatcher: __lua
+	arg: 192
+
+bindd
+	modmask: 65
+	submap: 
+	sym: C
+	keycode: 0
+	catchall: false
+	description: Calendar
+	dispatcher: __lua
+	arg: 196
+
+bindd
+	modmask: 65
+	submap: 
+	sym: E
+	keycode: 0
+	catchall: false
+	description: Email
+	dispatcher: __lua
+	arg: 200
+
+bindd
+	modmask: 73
+	submap: 
+	sym: E
+	keycode: 0
+	catchall: false
+	description: New email
+	dispatcher: __lua
+	arg: 204
+
+bindd
+	modmask: 65
+	submap: 
+	sym: Y
+	keycode: 0
+	catchall: false
+	description: YouTube
+	dispatcher: __lua
+	arg: 208
+
+bindd
+	modmask: 73
+	submap: 
+	sym: G
+	keycode: 0
+	catchall: false
+	description: WhatsApp
+	dispatcher: __lua
+	arg: 212
+
+bindd
+	modmask: 69
+	submap: 
+	sym: G
+	keycode: 0
+	catchall: false
+	description: Google Messages
+	dispatcher: __lua
+	arg: 216
+
+bindd
+	modmask: 65
+	submap: 
+	sym: P
+	keycode: 0
+	catchall: false
+	description: Google Photos
+	dispatcher: __lua
+	arg: 220
+
+bindd
+	modmask: 65
+	submap: 
+	sym: S
+	keycode: 0
+	catchall: false
+	description: Google Maps
+	dispatcher: __lua
+	arg: 224
+
+bindd
+	modmask: 65
+	submap: 
+	sym: X
+	keycode: 0
+	catchall: false
+	description: X
+	dispatcher: __lua
+	arg: 228
+
+bindd
+	modmask: 73
+	submap: 
+	sym: X
+	keycode: 0
+	catchall: false
+	description: X Post
+	dispatcher: __lua
+	arg: 232
+
+bindd
+	modmask: 12
+	submap: 
+	sym: space
+	keycode: 0
+	catchall: false
+	description: Superwhisper: toggle
+	dispatcher: __lua
+	arg: 256
+
+bindnd
+	modmask: 0
+	submap: 
+	sym: Escape
+	keycode: 0
+	catchall: false
+	description: Superwhisper: cancel
+	dispatcher: __lua
+	arg: 258
+
+

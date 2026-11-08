@@ -1,6 +1,10 @@
 #include "platform/NativeSession.h"
 #include <QtTest>
 #include <QScopeGuard>
+#include <QTemporaryDir>
+#include <sys/socket.h>
+#include <sys/un.h>
+#include <unistd.h>
 class NativeSessionTest final:public QObject {
  Q_OBJECT
 private slots:
@@ -134,6 +138,48 @@ private slots:
   QCOMPARE(putgd::gnomeCoreSessionEnvironment(),gnome);
   QCOMPARE(putgd::kdeCoreSessionEnvironment(),kde);
   QCOMPARE(putgd::waylandCoreSessionEnvironment(),budgie||kde);
+ }
+ // Hyprland (#1275): the Hyprland token and an answering request socket route;
+ // Omarchy's "wayland;xcb" is accepted; KDE, GNOME, Cinnamon and Budgie tokens
+ // keep their own route; no signature or a dead socket stays off the route.
+ void hyprlandRouting_data(){
+  QTest::addColumn<QByteArray>("desktop");QTest::addColumn<QByteArray>("platform");QTest::addColumn<QByteArray>("signature");QTest::addColumn<bool>("listening");
+  QTest::addColumn<bool>("hyprland");QTest::addColumn<bool>("kde");QTest::addColumn<bool>("budgie");
+  QTest::newRow("Hyprland")<<QByteArray("Hyprland")<<QByteArray()<<QByteArray("abc_1_2")<<true<<true<<false<<false;
+  QTest::newRow("Hyprland+wayland;xcb")<<QByteArray("Hyprland")<<QByteArray("wayland;xcb")<<QByteArray("abc_1_2")<<true<<true<<false<<false;
+  QTest::newRow("hyprland-lowercase")<<QByteArray("hyprland")<<QByteArray("wayland")<<QByteArray("abc_1_2")<<true<<true<<false<<false;
+  QTest::newRow("KDE:Hyprland")<<QByteArray("KDE:Hyprland")<<QByteArray()<<QByteArray("abc_1_2")<<true<<false<<true<<false;
+  QTest::newRow("Budgie:Hyprland")<<QByteArray("Budgie:Hyprland")<<QByteArray()<<QByteArray("abc_1_2")<<true<<false<<false<<true;
+  QTest::newRow("GNOME:Hyprland")<<QByteArray("GNOME:Hyprland")<<QByteArray()<<QByteArray("abc_1_2")<<true<<false<<false<<false;
+  QTest::newRow("no-signature")<<QByteArray("Hyprland")<<QByteArray()<<QByteArray()<<true<<false<<false<<false;
+  QTest::newRow("dead-socket")<<QByteArray("Hyprland")<<QByteArray()<<QByteArray("abc_1_2")<<false<<false<<false<<false;
+  QTest::newRow("escaping-signature")<<QByteArray("Hyprland")<<QByteArray()<<QByteArray("../x")<<true<<false<<false<<false;
+  QTest::newRow("explicit-xcb")<<QByteArray("Hyprland")<<QByteArray("xcb")<<QByteArray("abc_1_2")<<true<<false<<false<<false;
+  QTest::newRow("xcb;wayland")<<QByteArray("Hyprland")<<QByteArray("xcb;wayland")<<QByteArray("abc_1_2")<<true<<false<<false<<false;
+  QTest::newRow("prefix-desktop")<<QByteArray("Hyprland-ish")<<QByteArray()<<QByteArray("abc_1_2")<<true<<false<<false<<false;
+ }
+ void hyprlandRouting(){
+  QFETCH(QByteArray,desktop);QFETCH(QByteArray,platform);QFETCH(QByteArray,signature);QFETCH(bool,listening);QFETCH(bool,hyprland);QFETCH(bool,kde);QFETCH(bool,budgie);
+  const QList<QByteArray> names{"XDG_SESSION_TYPE","WAYLAND_DISPLAY","XDG_CURRENT_DESKTOP","QT_QPA_PLATFORM","XDG_RUNTIME_DIR","HYPRLAND_INSTANCE_SIGNATURE"};
+  struct Previous{QByteArray name,value;bool present;};QList<Previous> saved;
+  for(const auto& name:names)saved.append({name,qgetenv(name),qEnvironmentVariableIsSet(name.constData())});
+  const auto restore=qScopeGuard([&]{for(const auto& p:saved){if(p.present)qputenv(p.name,p.value);else qunsetenv(p.name);}});
+  QTemporaryDir runtime;QVERIFY(runtime.isValid());
+  // The listening socket is created under the real signature "abc_1_2" only.
+  QVERIFY(QDir(runtime.path()).mkpath("hypr/abc_1_2"));
+  const QByteArray path=QFile::encodeName(runtime.path()+"/hypr/abc_1_2/.socket.sock");
+  const int server=::socket(AF_UNIX,SOCK_STREAM|SOCK_CLOEXEC,0);QVERIFY(server>=0);
+  const auto closeServer=qScopeGuard([server]{::close(server);});
+  sockaddr_un address{};address.sun_family=AF_UNIX;QVERIFY(size_t(path.size())<sizeof address.sun_path);std::memcpy(address.sun_path,path.constData(),size_t(path.size()));
+  QCOMPARE(::bind(server,reinterpret_cast<const sockaddr*>(&address),sizeof address),0);
+  if(listening)QCOMPARE(::listen(server,4),0);
+  qputenv("XDG_SESSION_TYPE","wayland");qputenv("WAYLAND_DISPLAY","wayland-1");qputenv("XDG_CURRENT_DESKTOP",desktop);qputenv("QT_QPA_PLATFORM",platform);
+  qputenv("XDG_RUNTIME_DIR",QFile::encodeName(runtime.path()));
+  if(signature.isEmpty())qunsetenv("HYPRLAND_INSTANCE_SIGNATURE");else qputenv("HYPRLAND_INSTANCE_SIGNATURE",signature);
+  QCOMPARE(putgd::hyprlandCoreSessionEnvironment(),hyprland);
+  QCOMPARE(putgd::kdeCoreSessionEnvironment(),kde);
+  QCOMPARE(putgd::budgieCoreSessionEnvironment(),budgie);
+  QCOMPARE(putgd::waylandCoreSessionEnvironment(),hyprland||kde||budgie);
  }
  void routingGuards() {
   const QList<QByteArray> names{"DISPLAY","WAYLAND_DISPLAY","XDG_SESSION_TYPE","QT_QPA_PLATFORM","XDG_CURRENT_DESKTOP"};

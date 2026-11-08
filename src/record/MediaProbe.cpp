@@ -154,22 +154,22 @@ QJsonObject probeMedia() {
     const auto session = result["session"].toString();
     const auto env = QProcessEnvironment::systemEnvironment();
     const auto desktop = env.value("XDG_CURRENT_DESKTOP").toLower();
-    // Budgie (labwc, Magpie) has no screencast service: frames come from
-    // ext-image-copy-capture through appsrc, and the portal is never used (#1275).
-    // The helper inherits the resident's environment, so this is the resident's own
-    // routing rule: a Wayland session naming Budgie, no KDE/Cinnamon token, a Wayland Qt platform.
-    const bool budgie = budgieCoreSessionEnvironment();
+    // Budgie (labwc, Magpie) has no screencast service, and Hyprland's portal
+    // opens a share picker: frames come from ext-image-copy-capture through
+    // appsrc, and the portal is never used (#1275). The helper inherits the
+    // resident's environment, so these are the resident's own routing rules.
+    const bool imageCopyDesktop = budgieCoreSessionEnvironment() || hyprlandCoreSessionEnvironment();
     const bool imageCopyElements = gst["available"].toBool() && !gst["elements"].toObject()["appsrc"].isNull() && !gst["elements"].toObject()["videoscale"].isNull();
-    const bool liveSource = gst["available"].toBool() && ((session == "x11" && gst["liveSources"].toArray().contains("ximagesrc")) || (session == "wayland" && !budgie && gst["liveSources"].toArray().contains("pipewiresrc")) || (session == "wayland" && budgie && imageCopyElements));
+    const bool liveSource = gst["available"].toBool() && ((session == "x11" && gst["liveSources"].toArray().contains("ximagesrc")) || (session == "wayland" && !imageCopyDesktop && gst["liveSources"].toArray().contains("pipewiresrc")) || (session == "wayland" && imageCopyDesktop && imageCopyElements));
     const bool liveEncoder = gst["available"].toBool() && !gst["usableH264Encoders"].toArray().isEmpty();
     result["liveCapture"] = QJsonObject{{"source", liveSource}, {"encoder", liveEncoder}, {"audio", gst["available"].toBool() && !gst["audioSources"].toArray().isEmpty() && !gst["liveAacEncoders"].toArray().isEmpty()}};
     // X11 reads the root with ximagesrc; Wayland shares a monitor or window
     // through the ScreenCast portal (the compositor's picker) into pipewiresrc.
     QJsonObject portal;
     QString portalReason;
-    const bool portalOk = session == "wayland" && !budgie && PortalScreenCast::available(portal, &portalReason);
-    // Budgie never probes the portal, so it reports none rather than a failure.
-    if (session == "wayland" && !budgie) { portal["available"] = portalOk; if (!portalOk) portal["reason"] = portalReason; result["portal"] = portal; }
+    const bool portalOk = session == "wayland" && !imageCopyDesktop && PortalScreenCast::available(portal, &portalReason);
+    // Budgie and Hyprland never probe the portal, so they report none rather than a failure.
+    if (session == "wayland" && !imageCopyDesktop) { portal["available"] = portalOk; if (!portalOk) portal["reason"] = portalReason; result["portal"] = portal; }
     // Dialog-free compositor paths first: KWin's screencast protocol on Plasma,
     // Mutter's screen cast service on GNOME; the portal (with restore tokens) otherwise.
     // Both native paths name a PipeWire node on the session daemon, so its socket
@@ -178,7 +178,7 @@ QJsonObject probeMedia() {
     if (session == "wayland") result["pipewire"] = QJsonObject{{"socket", pipewire.isEmpty() ? QJsonValue() : QJsonValue(pipewire)}};
     QString acquisition = session == "x11" ? "x11" : session == "wayland" ? "portal" : "none";
     ImageCopySource::Facts imageCopy;
-    if (session == "wayland" && budgie) {
+    if (session == "wayland" && imageCopyDesktop) {
         imageCopy = ImageCopySource::probe();
         QJsonObject facts{{"available", imageCopy.available}, {"windows", imageCopy.windows}, {"protocols", imageCopy.protocols}, {"elements", imageCopyElements}};
         if (!imageCopy.available) facts["reason"] = imageCopy.reason;
