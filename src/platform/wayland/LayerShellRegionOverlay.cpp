@@ -179,7 +179,7 @@ void LayerShellRegionOverlay::dismiss(){
  wl_callback_add_listener(dismissal_,&listener,this);wl_display_flush(native->display());
 #endif
 }
-void LayerShellRegionOverlay::finish(){if(stats_.paints&&!logged_){logged_=true;regionDebugLog(stats_.summary(QStringLiteral("kde region")));}finished_=true;hint_.stop();for(auto* surface:surfaces_)surface->hide();}
+void LayerShellRegionOverlay::finish(){if(stats_.paints&&!logged_){logged_=true;regionDebugLog(stats_.summary(QStringLiteral("wayland region")));}finished_=true;hint_.stop();for(auto* surface:surfaces_)surface->hide();}
 void LayerShellRegionOverlay::cancel(Error error){
  if(finished_){
 #ifdef PUTGD_NATIVE_REGION

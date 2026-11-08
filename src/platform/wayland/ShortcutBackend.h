@@ -11,7 +11,8 @@ namespace putgd {
 // bridge, the GlobalShortcuts portal, a compositor configuration file. Desktop
 // adapters pick one at bind time and report its per-binding status, in the
 // shape the Settings window and agents read:
-//   {"requested", "effective", "actual": [...], "bound", "state", "error"?}
+//   {"requested", "effective"?, "actual": [...], "bound", "state", "error"?}
+// ("effective" only for a bound action)
 // with state one of pending, bound, unbound, shortcut_conflict,
 // shortcut_invalid, shortcut_unavailable or recording.
 class ShortcutBackend:public QObject {

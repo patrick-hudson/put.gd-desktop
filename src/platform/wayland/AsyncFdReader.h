@@ -5,7 +5,8 @@
 #include <QTimer>
 #include <functional>
 namespace putgd {
-// Owns the read fd, never waits synchronously, and completes exactly once.
+// Owns the read fd, never waits synchronously, and completes at most once:
+// destroying a pending reader drops its reply without invoking it.
 class AsyncFdReader final:public QObject {
 public:
  using Reply=std::function<void(QByteArray,Error)>;

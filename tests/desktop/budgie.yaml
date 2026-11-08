@@ -3,9 +3,10 @@ profiles:
   - fedora44-budgie
   - ubuntu-budgie-2604
   - fedora45-budgie
-  - ubuntu-budgie-2404
+# ubuntu-budgie-2404 is Budgie 10.9 on X11: it uses the X11 adapter, so its rows
+# follow the X11 contract, never these Wayland scenarios (review #1275).
 baseline:
-  distribution: Fedora 45 Budgie (also Fedora 44, Ubuntu Budgie 26.04; Ubuntu Budgie 24.04 on X11)
+  distribution: Fedora 45 Budgie (also Fedora 44, Ubuntu Budgie 26.04)
   compositor: Budgie 10.10 / labwc 0.20 (0.9 on Fedora 44 and Ubuntu 26.04)
   session: Wayland
   qt_platform: wayland;xcb

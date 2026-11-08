@@ -64,6 +64,9 @@ def main(argv=None):
     parser.add_argument('--button', choices=sorted(BUTTONS), default='left')
     parser.add_argument('--display')
     args = parser.parse_args(argv)
+    expected = 4 if args.action == 'drag' else 2
+    if len(args.coords) != expected:
+        parser.error('%s takes %d coordinates, got %d' % (args.action, expected, len(args.coords)))
     width, height = args.extent
     p = Pointer(wire.socket_path(args.display))
     try:
