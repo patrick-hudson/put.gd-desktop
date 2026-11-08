@@ -31,7 +31,7 @@ public slots:
         if (silent_) return;
         if (!file.open(QIODevice::ReadOnly)) return;
         const auto script = QString::fromUtf8(file.readAll());
-        const auto call = QRegularExpression(R"(callDBus\("([^"]+)", "([^"]+)", "org\.putgd\.KWinWindows", "Windows", "([^"]+)")").match(script);
+        const auto call = QRegularExpression(R"re(callDBus\("([^"]+)", "([^"]+)", "org\.putgd\.KWinWindows", "Windows", "([^"]+)")re").match(script);
         if (!call.hasMatch()) return;
         auto message = QDBusMessage::createMethodCall(call.captured(1), call.captured(2), "org.putgd.KWinWindows", "Windows");
         message << call.captured(3) << QString::fromUtf8(QJsonDocument(windows_).toJson(QJsonDocument::Compact));
