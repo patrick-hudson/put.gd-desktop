@@ -30,6 +30,7 @@ signals:void settingsCreated(SettingsWindow*);void viewStateChanged();void actio
 protected:
  bool eventFilter(QObject*,QEvent*)override;
 private:
+ QString sourceGaps_; // the last capture-kind gaps seen, so statusChanged rebuilds the output popup only on change
  void updateOutputSummary();void fitBand();void updateSaveStatus();void updateAvailability();
  UiSession& session_;QToolButton* editButton_=nullptr;SettingsWindow* settings_=nullptr;HistoryWindow* history_;QTabBar* tabs_;QStackedWidget* pages_;QToolButton* destination_=nullptr;QLabel *saveStatus_=nullptr,*version_=nullptr;QPushButton* versionLink_;QPushButton* updateLink_=nullptr;FileDialog* chooser_=nullptr;QLabel* explanation_=nullptr;QWidget* outputGroup_=nullptr;
  // Edit an image file… whose chooser failed: its reason and Try again, under the command band.

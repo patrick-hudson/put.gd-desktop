@@ -110,7 +110,9 @@ QString unavailableOutput(const QJsonObject& document,const QString& action){
 // Why the desktop can't run this action's capture, from the adapter's capabilities (#1295); empty when it can or nothing is reported.
 QString unavailableSource(const QJsonObject& diagnostics,const QString& action){
  const auto kind=action=="edit"?QString("region"):action;if(!QStringList{"region","window","desktop"}.contains(kind))return {};
- const QJsonValue value=diagnostics.value("capabilities").toObject().value("source").toObject().value("capture").toObject().value(kind);const auto status=value.toObject();
+ // capture.<kind> where the adapter reports it, else the older top-level source.<kind> (as Settings reads it).
+ const auto source=diagnostics.value("capabilities").toObject().value("source").toObject();const auto capture=source.value("capture").toObject();
+ const QJsonValue value=capture.contains(kind)?capture.value(kind):source.value(kind);const auto status=value.toObject();
  if(!value.isObject()||status["available"].toBool(true))return {};
  const auto error=status["error"];const auto message=error.isObject()?error.toObject()["message"].toString():error.toString();
  const QHash<QString,QString> names{{"region","Region capture"},{"window","Window capture"},{"desktop","Desktop capture"}};
@@ -176,7 +178,9 @@ MainWindow::MainWindow(UiSession& session,QWidget* parent):QMainWindow(parent),s
   auto update=[this,button,action,explanations,glyphs]{
    const auto saved=Settings::effectiveAction(session_.document(),action);const auto key=QKeySequence(saved["shortcut"].toString()).toString(QKeySequence::NativeText);
    const auto output=unavailableOutput(session_.document(),action);const auto source=unavailableSource(session_.diagnostics(),action);const auto unavailable=output.isEmpty()?source:output;button->setEnabled(true);const auto defaults=session_.document()["captureDefaults"].toObject();button->setProperty("captureUnavailable",!unavailable.isEmpty());button->setProperty("captureBadge",!source.isEmpty()||(!output.isEmpty()&&!defaults.isEmpty()&&(saved["destination"]!=defaults["destination"]||saved["profileId"]!=defaults["profileId"]||saved["publicationMode"]!=defaults["publicationMode"])));if(action=="region")Ui::role(button,"lead");button->setIcon(Ui::icon(glyphs.value(action)));
-   button->setAccessibleDescription(unavailable.isEmpty()?explanations.value(action):(action=="edit"?"Region capture unavailable: "+unavailable+" Existing images can still be edited.":"Unavailable: "+unavailable));
+   // Both gaps, as the tooltip lists them, so a screen reader hears why this action can't run.
+   QStringList gapList;if(!output.isEmpty())gapList<<output;if(!source.isEmpty())gapList<<source;const auto gaps=gapList.join(' ');
+   button->setAccessibleDescription(gaps.isEmpty()?explanations.value(action):(action=="edit"?"Region capture unavailable: "+gaps+" Existing images can still be edited.":"Unavailable: "+gaps));
    button->setToolTip(button->accessibleName()+(key.isEmpty()?QString{}:QString(" · ")+key)+(output.isEmpty()?QString{}:QString("\n")+output)+(source.isEmpty()?QString{}:QString("\n")+source));
   };
   connect(&session_,&UiSession::accepted,button,update);connect(&session_,&UiSession::statusChanged,button,update);update();connect(button,&QToolButton::clicked,this,[this,action]{const auto reason=unavailableOutput(session_.document(),action);if(reason.isEmpty())emit actionRequested(action);else showActionFailure(action,{"output_required",reason,{}});});bandRow->addWidget(button,0,action=="region"?0:action=="window"?1:action=="desktop"?2:action=="edit"?4:action=="record"?5:7,Qt::AlignLeft);actionButtons_<<button;
@@ -265,7 +269,10 @@ MainWindow::MainWindow(UiSession& session,QWidget* parent):QMainWindow(parent),s
  for(auto* widget:QWidgetList{explanation_,saveStatus_,updateLink_,version_,versionGroup})widget->setSizePolicy(QSizePolicy::Fixed,QSizePolicy::Preferred);
  statusRow->addWidget(updateLink_);statusRow->addWidget(version_);statusRow->addWidget(versionGroup);
  for(auto* control:QList<QWidget*>{destination_,version_,versionLink_,updateLink_,explanation_,saveStatus_}){control->setProperty("uiStatus",true);Ui::role(control,control->property("visualRole").toByteArray().constData());}
- connect(&session_,&UiSession::accepted,this,[this,updateDestination]{updateDestination();updateSaveStatus();});connect(&session_,&UiSession::statusChanged,this,updateDestination);
+ connect(&session_,&UiSession::accepted,this,[this,updateDestination]{updateDestination();updateSaveStatus();});connect(&session_,&UiSession::statusChanged,this,[this,updateDestination]{
+  // Every resident snapshot (progress, history) fires statusChanged; rebuild the output popup only when a capture gap changed.
+  QString gaps;for(const auto& action:Settings::presentationOrder())gaps+=unavailableSource(session_.diagnostics(),action)+'\n';
+  if(gaps==sourceGaps_)return;sourceGaps_=gaps;updateDestination();});
  updateDestination();updateSaveStatus();tabs_->setCurrentIndex(0);Ui::styleWindow(*this);
  orderNavigation(header,tabs_,actionButtons_,band_);
  connect(&Theme::Notifier::instance(),&Theme::Notifier::changed,this,[this,updateDestination]{QTimer::singleShot(0,this,[updateDestination]{updateDestination();});});installEventFilter(this);
