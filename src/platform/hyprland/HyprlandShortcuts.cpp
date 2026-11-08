@@ -406,11 +406,13 @@ void HyprlandShortcuts::readBack(){
 }
 void HyprlandShortcuts::finish(){
  applying_=false;
+ // A change that came during this apply still has to run. Whoever waits for it,
+ // a pause above all, is answered by the apply that makes it (#1308).
+ if(reapply_){reapply_=false;emit changed();debounce_.start(0);return;}
  auto replies=std::move(pauseReplies_);pauseReplies_.clear();
  const Error result=ipcError_.isEmpty()?Error{}:Error{"shortcut_unavailable",ipcError_,{}};
  for(auto& reply:replies)if(reply)reply(result);
  emit changed();
- if(reapply_){reapply_=false;debounce_.start(0);return;}
  // A Hyprland that did not answer (restarting, reloading) is asked again, more slowly each time.
  if(!ipcError_.isEmpty()){ipcRetryMs_=std::min(30000,std::max(1000,ipcRetryMs_*2));debounce_.start(ipcRetryMs_);}
  else ipcRetryMs_=0;

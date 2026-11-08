@@ -262,6 +262,13 @@ private slots:
   bool paused=false;shortcuts->setPaused(true,[&](putgd::Error){paused=true;});
   PUTGD_TRY_VERIFY(paused);QCOMPARE(hyprland.ownCount(),0);
   shortcuts->setPaused(false,{});PUTGD_TRY_COMPARE(hyprland.ownCount(),2);
+  // #1308: a pause that lands while the re-apply is finishing is answered only once the binds are gone.
+  for(int round=0;round<25;++round){
+   hyprland.externalReload();PUTGD_TRY_COMPARE(hyprland.ownCount(),2);
+   bool quiet=false;shortcuts->setPaused(true,[&](putgd::Error){quiet=true;});
+   PUTGD_TRY_VERIFY(quiet);QCOMPARE(hyprland.ownCount(),0);
+   shortcuts->setPaused(false,{});PUTGD_TRY_COMPARE(hyprland.ownCount(),2);
+  }
   PUTGD_TRY_VERIFY(shortcuts->status()["window"].toObject()["actual"].toArray().contains("Ctrl+Shift+4"));
   // Quit: one blocking reload leaves exactly the configuration's binds.
   shortcuts->clear();QCOMPARE(hyprland.ownCount(),0);QCOMPARE(hyprland.binds().size(),251);
