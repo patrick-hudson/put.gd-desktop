@@ -125,6 +125,9 @@ public:
  // Ask the idle gate to return freed heap once current work drains (#1149): a
  // closed interface leaves its buffers free but resident. background() arms it itself.
  void requestHeapReclamation();
+ // Release the clean library pages a periodic probe mapped again (#1187), after
+ // the usual quiet. Unlike an interaction, it never postpones a release already due.
+ void requestImagePageRelease();
 signals:
  void initialized();
  void changed(const QString& id);

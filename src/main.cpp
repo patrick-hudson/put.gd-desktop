@@ -377,6 +377,9 @@ int main(int argc,char* argv[]) {
 #endif
 #ifdef PUTGD_NATIVE_GNOME
  if(gnome)QObject::connect(gnome,&putgd::GnomeAdapter::capabilitiesChanged,&ui,refreshSettingsDiagnostics);
+ // A timed retry for an unavailable extension maps D-Bus pages again; releasing
+ // them after it keeps the resident at its quiet size (#1187).
+ if(gnome)QObject::connect(gnome,&putgd::GnomeAdapter::discoveryRetried,&operations,&putgd::OperationService::requestImagePageRelease);
 #endif
 #ifdef PUTGD_NATIVE_KDE
  if(kde)QObject::connect(kde,&putgd::KdeSourceAdapter::capabilitiesChanged,&ui,refreshSettingsDiagnostics);

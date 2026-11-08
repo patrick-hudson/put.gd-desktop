@@ -177,6 +177,13 @@ void OperationService::requestHeapReclamation() {
  if(stopping_)return;
  heapReclamationPending_=true;scheduleHeapReclamation();
 }
+void OperationService::requestImagePageRelease() {
+ if(stopping_)return;
+ imagePagesPending_=true;
+ // A pending trim schedules the release itself; work that is still running
+ // schedules it when it drains.
+ if(!heapReclamationPending_&&!imagePageTimer_.isActive()&&heapReclamationIdle())imagePageTimer_.start(imagePageDelayMs_);
+}
 void OperationService::background(std::function<QJsonObject(Error&)> work,JsonReply reply) {
  heapReclamationTimer_.stop();imagePageTimer_.stop();
  QPointer<OperationService> self(this);auto* thread=QThread::create([self,work=std::move(work),reply=std::move(reply)] {Error error;auto result=work(error);if(self) QMetaObject::invokeMethod(self,[self,reply,error,result] {if(self&&!self->stopping_) reply(error,result);},Qt::QueuedConnection);});
