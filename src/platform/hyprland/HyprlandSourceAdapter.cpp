@@ -39,9 +39,7 @@ HyprlandSourceAdapter::~HyprlandSourceAdapter(){region_.shutdown();cancelAcquisi
 quint64 HyprlandSourceAdapter::clipboardRevision()const{return clipboard_.revision();}
 bool HyprlandSourceAdapter::unchanged(const QList<CaptureFrame>& before,quint64 revision)const{
  if(outputs_.revision()!=revision)return false;
- const auto now=layout();if(now.size()!=before.size())return false;
- for(const auto& frame:before){bool found=false;for(const auto& current:now)if(current.identity==frame.identity&&current.logicalRect==frame.logicalRect&&current.nativeRect==frame.nativeRect&&current.density==frame.density&&current.rotation==frame.rotation)found=true;if(!found)return false;}
- return true;
+ return sameOutputLayout(before,layout());
 }
 bool HyprlandSourceAdapter::ownWindow(qint64 pid,const QString& appId)const{
  if(putgdAppId(appId))return true;
