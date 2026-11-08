@@ -3,8 +3,9 @@
 Omarchy is an Arch Linux and Hyprland setup from omarchy.org
 ([basecamp/omarchy](https://github.com/basecamp/omarchy)). Its guest is the lab target for
 Hyprland and for Arch packages, tracked in
-[#1275](https://github.com/patrick-hudson/put.gd-desktop/issues/1275). It has no acceptance
-row yet; adding one to the matrix or the nightly desktop check is Patrick's decision.
+[#1275](https://github.com/patrick-hudson/put.gd-desktop/issues/1275). It has an acceptance
+row in the [matrix](../testing/acceptance-matrix.md#hyprland-omarchy-vm-row) that is not a
+nightly or release gate; adding it to the nightly desktop check is Patrick's decision.
 
 The golden was built end to end on a temporary EC2 instance on 2026-11-08 (UTC), uploaded
 to S3 from there, and only downloaded to the builders. The instance is terminated.

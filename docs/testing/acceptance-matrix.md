@@ -119,6 +119,48 @@ are unchanged: the [screen recording rows](#screen-recording-rows), the
 [native package full-acceptance profile](#native-package-full-acceptance-profile)
 still test each format, and the AppImage profile does not replace them.
 
+## Hyprland (Omarchy) VM row
+
+Hyprland is accepted on Omarchy 4.5 in a VM only (no physical Hyprland machine);
+it is not a nightly or release gate. Both packages run on fresh overlays of
+`omarchy-hyprland-20261108`, profile `omarchy-hyprland`, with real keyboard and
+tablet input through QEMU ([Hyprland adapter](../desktops/hyprland.md),
+[Omarchy VM](../lab/omarchy-vm.md)).
+
+| Package | Golden | Must show |
+| --- | --- | --- |
+| AppImage (no Arch package installed) | `omarchy-hyprland-20261108` | Everything below, with Nautilus through the entry under **Scripts**; the AppImage has no Nautilus plugin |
+| Arch package (`pacman -U` after `pacman -Sy`) | same | Everything below, with the Nautilus plugin, which refuses while an AppImage resident runs; its dependencies pull the GStreamer plugins Omarchy lacks |
+
+- A drag that starts right after the region hotkey (from about 0.1 s) selects
+  exactly what was dragged, on one and on two settled outputs. Just after an
+  output appears, a drag started 1.5 s after the hotkey does too; an earlier one
+  may reach the window underneath while the compositor is busy, and the next
+  drag must then work normally.
+- With a multi-second layer animation, the selector appears in one step and is
+  not in the capture.
+- Region (exact pixels, no selector outline, live and screenshot-first),
+  desktop, window (exact against `grim -T`), refusal of put.gd's own windows.
+- Shortcuts fire from real keys; conflicts with Omarchy's `PRINT` and
+  `SUPER + SHIFT + S` are reported and both still work; rebind, unbind, quit
+  and an Omarchy theme change leave `j/binds` with exactly Omarchy's binds plus
+  put.gd's current ones; a hotkey with no resident is harmless.
+- `capture_permission` with the rule text under a deny rule; capture works
+  with the documented allow rules.
+- Clipboard both ways with a GTK client, PRIMARY unchanged, Omarchy's
+  clipboard history unaffected.
+- Recording with no picker, cursor painted, motion score from a moving
+  pattern; window recording by `stableId`.
+- An output rotated and set back captures at the new geometry with the same
+  resident.
+- A real upload to an isolated `acceptance/` prefix (credentials lent through
+  `tools/lab/provision_live_credentials.py`), from a hotkey and from Nautilus,
+  each link opened from put.gd in Chromium; then the objects, history,
+  profile and keychain entries are removed.
+- Tray menu with one action run from it, notifications (a failure notice does
+  not return after a reboot), Nautilus upload menu, file dialogs,
+  System/Dark/Light.
+
 ## Screen recording rows
 
 Recording ([recording](../design/recording.md)) is accepted per package format, because
