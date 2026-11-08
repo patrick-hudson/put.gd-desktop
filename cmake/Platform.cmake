@@ -84,7 +84,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   # Compositor-neutral Wayland code: data control, outputs, the layer-shell
   # region selector and the fd reader. Desktop adapters link it.
   add_library(putgd_wayland STATIC src/platform/wayland/AsyncFdReader.cpp
-    src/platform/wayland/DataControlClipboard.cpp src/platform/wayland/DataControlSourceAdapter.cpp
+    src/platform/wayland/ClipboardKeeper.cpp src/platform/wayland/DataControlClipboard.cpp src/platform/wayland/DataControlSourceAdapter.cpp
     src/platform/wayland/LayerShellRegionOverlay.cpp src/platform/wayland/WaylandOutputs.cpp
     src/platform/wayland/ImageCopyCapture.cpp src/platform/wayland/PortalGlobalShortcuts.cpp src/platform/wayland/ShortcutBackend.h src/platform/wayland/WaylandTransform.h
     ${putgd_capture_protocol_sources}

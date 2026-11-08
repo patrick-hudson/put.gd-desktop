@@ -16,6 +16,9 @@ public:
  std::optional<quint64> lastCopyRevision()const;
  void cancel();
  void invalidateCopyEligibility();
+ // For compositors that drop a selection with its owner and desktops that ship no
+ // clipboard manager (Budgie, Hyprland): a result still owned here outlives this process.
+ void keepSelectionAfterExit();
 signals:
  void changed();
  void keyboardChanged();

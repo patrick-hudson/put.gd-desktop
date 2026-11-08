@@ -21,7 +21,7 @@ BudgieSourceAdapter::BudgieSourceAdapter(QObject* parent):QObject(parent){
  connect(&shortcuts_,&BudgieShortcuts::changed,this,&BudgieSourceAdapter::capabilitiesChanged);
  connect(&shortcuts_,&BudgieShortcuts::activated,this,&BudgieSourceAdapter::actionRequested);
 }
-BudgieSourceAdapter::~BudgieSourceAdapter(){region_.shutdown();cancelAcquisition();clipboard_.cancel();for(auto* worker:workers_){worker->wait();delete worker;}}
+BudgieSourceAdapter::~BudgieSourceAdapter(){region_.shutdown();cancelAcquisition();clipboard_.cancel();for(auto* worker:workers_){worker->wait();delete worker;}clipboard_.keepSelectionAfterExit();}
 quint64 BudgieSourceAdapter::clipboardRevision()const{return clipboard_.revision();}
 bool BudgieSourceAdapter::unchanged(const QList<CaptureFrame>& before,quint64 revision)const{
  return outputs_.revision()==revision&&sameOutputLayout(before,layout());

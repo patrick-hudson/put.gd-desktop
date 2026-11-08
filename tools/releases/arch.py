@@ -36,7 +36,7 @@ def main():
     extracted = output / 'extracted'
     extracted.mkdir()
     subprocess.run(['bsdtar', '-xf', str(package), '-C', str(extracted)], check=True)
-    for required in ('usr/bin/putgd-record', 'usr/bin/putgd-region',
+    for required in ('usr/bin/putgd-record', 'usr/bin/putgd-region', 'usr/bin/putgd-clipboard-keeper',
                      'usr/share/nemo/actions/putgd-upload.nemo_action',
                      'usr/share/kio/servicemenus/putgd-upload.desktop',
                      'usr/share/Thunar/sendto/putgd-upload.desktop'):

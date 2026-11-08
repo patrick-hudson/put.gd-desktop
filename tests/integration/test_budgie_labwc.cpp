@@ -4,6 +4,7 @@
 // acceptance rows; they never replace them. Skips when labwc is not installed.
 #include "platform/budgie/BudgieSourceAdapter.h"
 #include "platform/budgie/LabwcBridgeBackend.h"
+#include "platform/wayland/ClipboardKeeper.h"
 #include "platform/wayland/ImageCopyCapture.h"
 #include "platform/wayland/WaylandOutputs.h"
 #include <QDir>
@@ -35,8 +36,25 @@ class BudgieLabwcTest:public QObject {
  // The fixture's surfaces, by output name in WaylandOutputs order.
  QList<CaptureFrame> layout_;
  bool runRandr(const QStringList& arguments){QProcess p;p.start(randr_,arguments);return p.waitForFinished(5000)&&p.exitCode()==0;}
+ // The keeper names itself; comm stays readable although it isn't dumpable.
+ QList<int> keepersBefore_; // A real put.gd session on this machine may have its own.
+ QList<int> keepers()const{
+  QList<int> found;
+  for(const auto& entry:QDir("/proc").entryList(QDir::Dirs)){bool numeric=false;const int pid=entry.toInt(&numeric);if(!numeric)continue;QFile comm("/proc/"+entry+"/comm");if(!comm.open(QIODevice::ReadOnly)||comm.readAll().trimmed()!="putgd-clipboard")continue;
+   // CI's container has no init to reap it: an exited keeper stays listed as a zombie.
+   QFile stat("/proc/"+entry+"/stat");const auto text=stat.open(QIODevice::ReadOnly)?stat.readAll():QByteArray();const auto end=text.lastIndexOf(')');if(end>=0&&text.mid(end+2,1)!="Z"&&!keepersBefore_.contains(pid))found.append(pid);}
+  return found;
+ }
+ QByteArray paste(const QStringList& arguments={"--no-newline"}){QProcess paste;paste.start(wlPaste_,arguments);if(!waitFor([&]{return paste.state()==QProcess::NotRunning;},5000))return {};return paste.readAllStandardOutput();}
+ void takeClipboard(const QString& text){QProcess copy;copy.start(wlCopy_,{text});QVERIFY(waitFor([&]{return copy.state()==QProcess::NotRunning;},5000));}
+ void ownClipboard(BudgieSourceAdapter& adapter,const CopyPayload& payload){
+  QVERIFY(waitFor([&]{return adapter.capabilities()["clipboard"].toObject()["available"].toBool();}));
+  Error error;bool copied=false;adapter.copy(payload,[&](Error e){error=e;copied=true;});
+  QVERIFY(waitFor([&]{return copied;}));QVERIFY2(!error,qPrintable(error.message));
+ }
 private slots:
  void initTestCase(){
+  keepersBefore_=keepers();
   labwcProgram_=QStandardPaths::findExecutable("labwc");
   if(labwcProgram_.isEmpty())QSKIP("labwc is not installed");
   if(QStandardPaths::findExecutable("putgd-labwc-fixture",{QCoreApplication::applicationDirPath()}).isEmpty())QSKIP("The fixture was built without LayerShellQt");
@@ -140,6 +158,56 @@ private slots:
   PayloadResult imported;bool done=false;adapter.prepareAcquisition("clipboard")(ResourceLimits{},[&](PayloadResult r){imported=std::move(r);done=true;});
   QVERIFY(waitFor([&]{return done;}));QVERIFY2(!imported.error,qPrintable(imported.error.message));QCOMPARE(QString::fromUtf8(imported.payload.bytes),QString("labwc import text"));
   primary.start(wlPaste_,{"--primary","--no-newline"});QVERIFY(waitFor([&]{return primary.state()==QProcess::NotRunning;},5000));QCOMPARE(primary.readAllStandardOutput(),primaryBefore);
+ }
+ void clipboardOutlivesTheResident(){
+  if(wlCopy_.isEmpty()||wlPaste_.isEmpty())QSKIP("wl-clipboard is not installed");
+  QVERIFY(keepers().isEmpty());
+  {BudgieSourceAdapter adapter;ownClipboard(adapter,{"text","https://put.gd/x/after-quit",{},{}});if(QTest::currentTestFailed())return;}
+  QVERIFY(waitFor([&]{return paste()=="https://put.gd/x/after-quit";},5000));
+  QCOMPARE(keepers().size(),1);
+  const auto types=paste({"--list-types"});
+  for(const char* type:{"text/plain","UTF8_STRING","text/plain;charset=utf-8","application/x-putgd-result-"})QVERIFY2(types.contains(type),types.constData());
+  // Another app copies: the keeper leaves, with its content.
+  takeClipboard("another app");
+  QVERIFY(waitFor([&]{return keepers().isEmpty();},3000));QCOMPARE(paste(),QByteArray("another app"));
+ }
+ void aCopyStillInFlightOutlivesTheResident(){
+  if(wlCopy_.isEmpty()||wlPaste_.isEmpty())QSKIP("wl-clipboard is not installed");
+  // Review: the adapter goes away before the compositor has announced the copy.
+  Error copyError;
+  {BudgieSourceAdapter adapter;QVERIFY(waitFor([&]{return adapter.capabilities()["clipboard"].toObject()["available"].toBool();}));adapter.copy({"text","https://put.gd/x/in-flight",{},{}},[&](Error e){copyError=e;});}
+  QVERIFY(waitFor([&]{return paste()=="https://put.gd/x/in-flight";},5000));QVERIFY2(!copyError,qPrintable(copyError.message));
+  takeClipboard("after the in-flight copy");QVERIFY(waitFor([&]{return keepers().isEmpty();},3000));
+ }
+ void anImageOutlivesTheResident(){
+  if(wlCopy_.isEmpty()||wlPaste_.isEmpty())QSKIP("wl-clipboard is not installed");
+  // Larger than a pipe's buffer, so a reader takes it in several writes.
+  QByteArray png("\x89PNG\r\n\x1a\n");png.append(QByteArray(3*1024*1024,'\x5a'));
+  CopyPayload payload{"image",{},{},{}};payload.encodedImage=png;
+  {BudgieSourceAdapter adapter;ownClipboard(adapter,payload);if(QTest::currentTestFailed())return;}
+  QVERIFY(waitFor([&]{return paste({"--no-newline","--type","image/png"})==png;},5000));
+  takeClipboard("after the image");QVERIFY(waitFor([&]{return keepers().isEmpty();},3000));
+ }
+ void nothingIsKeptWhenAnotherAppOwnsTheClipboard(){
+  if(wlCopy_.isEmpty()||wlPaste_.isEmpty())QSKIP("wl-clipboard is not installed");
+  {BudgieSourceAdapter adapter;ownClipboard(adapter,{"text","https://put.gd/x/replaced",{},{}});if(QTest::currentTestFailed())return;takeClipboard("copied later");QVERIFY(waitFor([&]{return paste()=="copied later";},5000));}
+  PUTGD_VERIFY_STEADY(keepers().isEmpty(),1000);QCOMPARE(paste(),QByteArray("copied later"));
+ }
+ void aClipboardManagerIsLeftToIt(){
+  if(wlCopy_.isEmpty()||wlPaste_.isEmpty())QSKIP("wl-clipboard is not installed");
+  // What clipman and wl-clip-persist do: restore the selection when its owner goes.
+  QProcess manager;manager.start(wlPaste_,{"--watch","sh","-c",QString("cat >/dev/null; [ \"$CLIPBOARD_STATE\" = nil ] && '%1' restored-by-manager; true").arg(wlCopy_)});QVERIFY(manager.waitForStarted(3000));
+  {BudgieSourceAdapter adapter;ownClipboard(adapter,{"text","https://put.gd/x/managed",{},{}});if(QTest::currentTestFailed()){manager.kill();manager.waitForFinished(3000);return;}QVERIFY(waitFor([&]{return paste()=="https://put.gd/x/managed";},5000));}
+  const bool restored=waitFor([&]{return paste()=="restored-by-manager";},5000);
+  const bool gone=waitFor([&]{return keepers().isEmpty();},3000);
+  manager.kill();manager.waitForFinished(3000);
+  QVERIFY(restored);QVERIFY(gone);
+ }
+ void anOversizedResultIsNotKept(){
+  QVERIFY(keepers().isEmpty());
+  const QHash<QString,QByteArray> data{{"image/png",QByteArray(65*1024*1024,'x')},{"application/x-putgd-result-x",{}}};
+  QVERIFY(!startClipboardKeeper(data));
+  PUTGD_VERIFY_STEADY(keepers().isEmpty(),500);
  }
  void rotatedAndFractionalOutputs_data(){
   QTest::addColumn<QString>("transform");QTest::addColumn<int>("rotation");

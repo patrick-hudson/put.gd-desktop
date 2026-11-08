@@ -64,9 +64,10 @@ def validate_inventory(root: Path, expected_manifest: dict | None = None, *, req
     programs = list(PROGRAMS)
     if require_kde or (root / "usr/bin/putgd-region").exists():
         programs.append("putgd-region")
+    keeper = ["usr/bin/putgd-clipboard-keeper"] if (root / "usr/bin/putgd-region").exists() else []  # Budgie and Hyprland quit path; not a Qt product
     if (root / "usr/bin/putgd-record").exists():
         programs.append("putgd-record")  # optional screen-recording helper (docs/design/recording.md)
-    required = ["usr/bin/" + name for name in programs]
+    required = ["usr/bin/" + name for name in programs] + keeper
     required += ["usr/" + name for name in DESKTOP_ASSETS]
     required += ["usr/share/putgd/" + name for name in
                  ("build-info.json", "dependency-lock.json", "aws-runtime-manifest.json")]
@@ -86,7 +87,7 @@ def validate_inventory(root: Path, expected_manifest: dict | None = None, *, req
     changelog = gzip.decompress((root / "usr/share/doc/putgd/changelog.gz").read_bytes()).decode()
     if not changelog.startswith("putgd ("):
         raise ValueError("Native changelog is invalid")
-    for name in programs:
+    for name in [*programs, *(Path(path).name for path in keeper)]:
         mode = stat.S_IMODE((root / "usr/bin" / name).stat().st_mode)
         if mode != 0o755:
             raise ValueError(f"Executable mode must be 0755: {name} ({mode:04o})")
@@ -111,7 +112,7 @@ def validate_inventory(root: Path, expected_manifest: dict | None = None, *, req
     recorded = {record["file"] for record in records}
     if any(path.name not in recorded for path in private.iterdir() if path.is_file()):
         raise ValueError("Unrecorded private runtime library")
-    return {**({"proton": proton} if proton else {}), "manifest": manifest, "programs": programs,
+    return {**({"proton": proton} if proton else {}), "manifest": manifest, "programs": programs, "keeper": keeper,
             "privateLibraryDirectory": str(private.relative_to(root)),
             "runtimeModule": module,
             "inventory": [{"path": str(path.relative_to(root)), "size": path.stat().st_size,
@@ -134,6 +135,19 @@ def audit_tree(root: Path, expected_manifest=None, *, require_kde=False, require
     env = {**os.environ, "LD_LIBRARY_PATH": str(private)}
     result["compiledIdentities"] = {}
     result["elfDependencies"] = {}
+    for relative in result.get("keeper", []):
+        # Not a Qt product: no crash handler or version to check, but hardened like the rest.
+        keeper_path = root / relative
+        if not re.search(r"Type:\s+DYN\b", command(["readelf", "-hW", str(keeper_path)])):
+            raise ValueError(f"Native executable is not PIE: {relative}")
+        if "GNU_RELRO" not in command(["readelf", "-lW", str(keeper_path)]) or not re.search(r"BIND_NOW|FLAGS.*\bNOW\b", command(["readelf", "-dW", str(keeper_path)])):
+            raise ValueError(f"Native executable lacks full RELRO: {relative}")
+        resolved = command(["ldd", str(keeper_path)], env=env)
+        if "not found" in resolved:
+            raise ValueError(f"Unresolved native dependency: {keeper_path.name}\n{resolved}")
+        result["elfDependencies"][relative] = {
+            "needed": re.findall(r"\(NEEDED\).*?\[(.*?)\]", command(["readelf", "-d", str(keeper_path)])),
+            "resolved": resolved.splitlines()}
     for name in result["programs"]:
         if name == "putgd-launcher":
             continue
