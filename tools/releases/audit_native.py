@@ -75,7 +75,7 @@ def validate_inventory(root: Path, expected_manifest: dict | None = None, *, req
                   "wayland-wlr-data-control-unstable-v1.xml", "wayland-ext-image-copy-capture-v1.xml",
                   "wayland-ext-image-capture-source-v1.xml", "wayland-ext-foreign-toplevel-list-v1.xml",
                   "wayland-wlr-foreign-toplevel-management-unstable-v1.xml", "wayland-hyprland-global-shortcuts-v1.xml",
-                  "wayland-hyprland-toplevel-mapping-v1.xml", *SDK_LICENSES)]
+                  "wayland-hyprland-toplevel-mapping-v1.xml", "wayland-wlr-layer-shell-unstable-v1.xml", *SDK_LICENSES)]
     for name in required:
         path = root / name
         if not path.is_file() or path.stat().st_size == 0:

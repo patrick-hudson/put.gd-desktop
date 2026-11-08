@@ -241,7 +241,7 @@ QString HyprlandShortcuts::bindScript(const QString& action,const Chord& chord){
   .arg(HyprlandIpc::luaString(hyprlandKeys(chord)),HyprlandIpc::luaString(globalId(action)),HyprlandIpc::luaString(description(action)));
 }
 QString HyprlandShortcuts::layerRuleScript(){
- return QStringLiteral("hl.layer_rule({ match = { namespace = \"^putgd-(region-selector|record)$\" }, no_anim = true })");
+ return QStringLiteral("hl.layer_rule({ match = { namespace = \"^putgd-(region-selector|region-catcher|record)$\" }, no_anim = true })");
 }
 HyprlandShortcuts::Plan HyprlandShortcuts::plan(const QJsonArray& binds,const QHash<QString,QString>& desired){
  Plan out;

@@ -3,6 +3,7 @@
 #include "core/SourceAdapter.h"
 #include "HyprlandIpc.h"
 #include "HyprlandShortcuts.h"
+#include "PressCatcher.h"
 #include "ToplevelMapping.h"
 #include "platform/wayland/DataControlClipboard.h"
 #include "platform/wayland/ImageCopyCapture.h"
@@ -10,6 +11,7 @@
 #include "platform/wayland/WaylandOutputs.h"
 #include <QJsonArray>
 #include <QPointer>
+#include <QTimer>
 #include <QThread>
 namespace putgd {
 // Hyprland sessions (Omarchy and others), in the Core route only. Pixels come
@@ -70,6 +72,9 @@ private:
  qint64 uiProcess_=0;
  HyprlandIpc ipc_;
  ImageCopyCapture capture_;DataControlClipboard clipboard_;HyprlandShortcuts shortcuts_;ToplevelMapping mapping_;
+ // Declared before region_: its end stops them.
+ PressCatcher catcher_;QTimer catcherUnclaimed_;
+ void catchEarlyPress(const QList<CaptureFrame>&);
  WaylandOutputs outputs_;WaylandRegionProcess region_;
  QList<QThread*> workers_;quint64 generation_=0;
 };

@@ -38,7 +38,10 @@ hyprwm/hyprland-protocols (commit `cd1aba6bd78775825eb230b3a4274c48b6705eb7`,
 BSD-3-Clause; Copyright 2022 Vaxry and 2025 WhySoBad respectively) are vendored the same way,
 unmodified with their copyright and license text, and installed as
 `share/doc/putgd/wayland-hyprland-global-shortcuts-v1.xml` and
-`share/doc/putgd/wayland-hyprland-toplevel-mapping-v1.xml`.
+`share/doc/putgd/wayland-hyprland-toplevel-mapping-v1.xml`. `wlr-layer-shell-unstable-v1.xml`
+from wlr-protocols (commit `b010a03648b88d143236de193bddbfea0c08bc84`, Copyright 2017 Drew
+DeVault) is vendored unmodified the same way and installed as
+`share/doc/putgd/wayland-wlr-layer-shell-unstable-v1.xml`.
 
 The GNOME integration imports the installed Shell/GJS/Mutter APIs; it does not bundle
 a replacement GNOME runtime. The KDE integration links the distro LayerShellQt

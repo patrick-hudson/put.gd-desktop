@@ -33,7 +33,27 @@ HyprlandSourceAdapter::HyprlandSourceAdapter(QObject* parent):QObject(parent),sh
  connect(&capture_,&ImageCopyCapture::changed,this,&HyprlandSourceAdapter::capabilitiesChanged);
  connect(&clipboard_,&DataControlClipboard::changed,this,&HyprlandSourceAdapter::capabilitiesChanged);
  connect(&shortcuts_,&ShortcutBackend::changed,this,&HyprlandSourceAdapter::capabilitiesChanged);
+ // A drag that starts before the selector has surfaces reaches it through the catcher.
+ // Up at the hotkey itself, ahead of the operation that will ask for the selector.
+ catcherUnclaimed_.setSingleShot(true);catcherUnclaimed_.setInterval(3000);
+ connect(&catcherUnclaimed_,&QTimer::timeout,this,[this]{if(!region_.busy())catcher_.stop();});
+ connect(&shortcuts_,&ShortcutBackend::activated,this,[this](const QString& action){
+  if(action=="region"&&!region_.busy()&&!region_.cleanupRequired()){catchEarlyPress(layout());if(catcher_.running())catcherUnclaimed_.start();}
+ });
  connect(&shortcuts_,&ShortcutBackend::activated,this,&HyprlandSourceAdapter::actionRequested);
+ connect(&region_,&WaylandRegionProcess::ended,this,[this]{catcherUnclaimed_.stop();catcher_.stop();});
+ connect(&catcher_,&PressCatcher::pointer,this,[this](int kind,QPointF logical){
+  if(kind==PressCatcher::Cancel){catcher_.stop();region_.cancel();return;}
+  region_.relayPointer(kind==PressCatcher::Press?QStringLiteral("press"):kind==PressCatcher::Move?QStringLiteral("move"):QStringLiteral("release"),logical);
+ });
+ connect(&catcher_,&PressCatcher::key,this,[this](int key,int modifiers){if(region_.grantKeyboard(key,modifiers))catcher_.stop();});
+}
+void HyprlandSourceAdapter::catchEarlyPress(const QList<CaptureFrame>& frames){
+ catcherUnclaimed_.stop();
+ QList<PressCatcher::Area> areas;for(const auto& frame:frames)areas.append({frame.identity,frame.logicalRect});
+ catcher_.start(areas);
+ // Without a catcher nothing holds the keyboard, so the selector takes it at once.
+ region_.setDeferKeyboard(catcher_.running());
 }
 HyprlandSourceAdapter::~HyprlandSourceAdapter(){region_.shutdown();cancelAcquisition();clipboard_.cancel();for(auto* worker:workers_){worker->wait();delete worker;}}
 quint64 HyprlandSourceAdapter::clipboardRevision()const{return clipboard_.revision();}
@@ -180,7 +200,9 @@ SourceAdapter::PreparedAcquisition HyprlandSourceAdapter::prepareAcquisition(con
  const auto revision=outputs_.revision();
  if(!frozen.isEmpty()&&!region_.busy()&&!region_.cleanupRequired()&&unchanged(frozen,revision)){
   QPointer<HyprlandSourceAdapter> guard(this);const auto generation=generation_;
+  catchEarlyPress(frozen);
   auto ticket=region_.prepare(frozen,captureOutcome_,captureAppearance_,std::move(terminal),std::move(released));
+  if(!region_.busy())catcher_.stop();
   return [guard,ticket,frozen,revision,acceptedLimits,generation](const ResourceLimits& limits,std::function<void(PayloadResult)> cb){
    if(!guard){cb({{},{"source_unavailable","Desktop adapter closed",{}}});return;}
    if(limits.imagePixels!=acceptedLimits.imagePixels||limits.imageBytes!=acceptedLimits.imageBytes||limits.maxFileBytes!=acceptedLimits.maxFileBytes){guard->region_.discard(ticket);cb({{},{"input_excessive","Prepared capture limits changed",{}}});return;}
@@ -210,12 +232,14 @@ void HyprlandSourceAdapter::capture(QString action,QList<CaptureFrame> frozen,qu
  if(action=="region"&&screenshotFirst){selectFrozen(std::move(frozen),revision,limits,std::move(cb),outcome);return;}
  if(action=="region"){
   const auto generation=generation_;QPointer<HyprlandSourceAdapter> guard(this);
+  catchEarlyPress(frozen);
   region_.start(frozen,[guard,frozen,revision,limits,generation,cb=std::move(cb)](QRectF selection,Error error)mutable{
    if(!guard||guard->generation_!=generation){cb({{},{"cancelled","Desktop capture cancelled",{}}});return;}
    if(error){cb({{},std::move(error)});return;}
    if(!guard->unchanged(frozen,revision)){cb({{},{"display_changed","Display layout changed during region selection",{}}});return;}
    guard->captureScreens(frozen,revision,selection,limits,std::move(cb));
   },outcome,{},captureAppearance_);
+  if(!region_.busy())catcher_.stop();
   return;
  }
  QRectF bounds;for(const auto& frame:frozen)bounds=bounds.united(frame.logicalRect);captureScreens(std::move(frozen),revision,bounds,limits,std::move(cb));
@@ -237,12 +261,14 @@ void HyprlandSourceAdapter::selectFrozen(QList<CaptureFrame> frozen,quint64 revi
   if(error){if(!error.details.contains("stage"))error.details["stage"]="freeze";cb({{},error});return;}
   if(!guard||guard->generation_!=generation){cb({{},{"cancelled","Desktop capture cancelled",{}}});return;}
   auto pixels=std::make_shared<QList<CaptureFrame>>(std::move(frames));auto reply=std::make_shared<std::function<void(PayloadResult)>>(std::move(cb));
+  guard->catchEarlyPress(layout);
   guard->region_.start(layout,[guard,layout,revision,limits,generation,pixels,reply](QRectF selection,Error error){
    if(!guard||guard->generation_!=generation){(*reply)({{},{"cancelled","Desktop capture cancelled",{}}});return;}
    if(error){(*reply)({{},std::move(error)});return;}
    if(!guard->unchanged(layout,revision)){(*reply)({{},{"display_changed","Display layout changed during region selection",{}}});return;}
    guard->compose(std::move(*pixels),layout,revision,selection,limits,std::move(*reply));
   },outcome,*pixels,guard->captureAppearance_);
+  if(guard&&!guard->region_.busy())guard->catcher_.stop();
  });
 }
 void HyprlandSourceAdapter::captureFrames(QList<CaptureFrame> frames,QList<CaptureFrame> frozen,quint64 revision,ResourceLimits limits,std::function<void(QList<CaptureFrame>,Error)> cb){

@@ -48,8 +48,8 @@ update these libraries. No compiler or Qt runtime is bundled.
 
 The ext-data-control-v1, wlr-data-control-unstable-v1, zkde-screencast-unstable-v1,
 ext-image-copy-capture-v1, ext-image-capture-source-v1, ext-foreign-toplevel-list-v1,
-wlr-foreign-toplevel-management-unstable-v1, hyprland-global-shortcuts-v1 and
-hyprland-toplevel-mapping-v1 Wayland protocol notices are retained
+wlr-foreign-toplevel-management-unstable-v1, hyprland-global-shortcuts-v1,
+hyprland-toplevel-mapping-v1 and wlr-layer-shell-unstable-v1 Wayland protocol notices are retained
 in the wayland-<protocol>.xml file of each beside this file, including their original
 copyright and license text. Generated client bindings use those protocols.
 

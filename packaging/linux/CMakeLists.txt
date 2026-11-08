@@ -113,6 +113,8 @@ putgd_install_snapshot("${PROJECT_SOURCE_DIR}/src/platform/wayland/protocols/ext
   "${CMAKE_INSTALL_DATADIR}/doc/putgd" RENAME wayland-ext-foreign-toplevel-list-v1.xml)
 putgd_install_snapshot("${PROJECT_SOURCE_DIR}/src/platform/wayland/protocols/wlr-foreign-toplevel-management-unstable-v1.xml"
   "${CMAKE_INSTALL_DATADIR}/doc/putgd" RENAME wayland-wlr-foreign-toplevel-management-unstable-v1.xml)
+putgd_install_snapshot("${PROJECT_SOURCE_DIR}/src/platform/wayland/protocols/wlr-layer-shell-unstable-v1.xml"
+  "${CMAKE_INSTALL_DATADIR}/doc/putgd" RENAME wayland-wlr-layer-shell-unstable-v1.xml)
 putgd_install_snapshot("${PROJECT_SOURCE_DIR}/src/platform/wayland/protocols/hyprland-global-shortcuts-v1.xml"
   "${CMAKE_INSTALL_DATADIR}/doc/putgd" RENAME wayland-hyprland-global-shortcuts-v1.xml)
 putgd_install_snapshot("${PROJECT_SOURCE_DIR}/src/platform/wayland/protocols/hyprland-toplevel-mapping-v1.xml"
