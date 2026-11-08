@@ -64,9 +64,10 @@ def validate_inventory(root: Path, expected_manifest: dict | None = None, *, req
     programs = list(PROGRAMS)
     if require_kde or (root / "usr/bin/putgd-region").exists():
         programs.append("putgd-region")
+    keeper = ["usr/bin/putgd-clipboard-keeper"] if (root / "usr/bin/putgd-region").exists() else []  # Budgie and Hyprland quit path; not a Qt product
     if (root / "usr/bin/putgd-record").exists():
         programs.append("putgd-record")  # optional screen-recording helper (docs/design/recording.md)
-    required = ["usr/bin/" + name for name in programs]
+    required = ["usr/bin/" + name for name in programs] + keeper
     required += ["usr/" + name for name in DESKTOP_ASSETS]
     required += ["usr/share/putgd/" + name for name in
                  ("build-info.json", "dependency-lock.json", "aws-runtime-manifest.json")]

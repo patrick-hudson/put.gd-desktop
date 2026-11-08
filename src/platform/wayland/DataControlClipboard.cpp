@@ -208,7 +208,7 @@ struct DataControlClipboard::Impl:QObject {
  void cancel(){++generation;auto queued=std::move(pending);pending.clear();if(active)complete(failure("cancelled","Clipboard acquisition cancelled"));for(auto& request:queued)request->reply(failure("cancelled","Clipboard acquisition cancelled"));}
  void finishCopy(Error e){if(!e)lastCopyRevision=revision;copyTimer.stop();if(copyFence){wl_callback_destroy(copyFence);copyFence=nullptr;}pendingCopyData.clear();copyCommitted=false;auto cb=std::move(copyReply);copyReply={};copyToken.clear();if(cb){logging::debug(logClipboard(),"Native copy finished",{{"writer","data-control"},{"ok",!e},{"code",e.code}});cb(std::move(e));}}
  // Called on the way out. Only the result still on the clipboard is handed over.
- void keepAfterExit(){events();if(!available()||!selection)return;const auto types=offers.value(selection);for(auto* source:std::as_const(sources))if(types.contains(source->token)){startClipboardKeeper(source->data);return;}}
+ void keepAfterExit(){events();if(!available()||!selection)return;const auto types=offers.value(selection);for(auto* source:std::as_const(sources))if(types.contains(source->token)){if(!startClipboardKeeper(source->data))logging::info(logClipboard(),"Clipboard result not kept after quitting");return;}}
  void invalidateCopy(){++copyEpoch;if(copyReply&&!copyCommitted)finishCopy({"copy_suppressed","A newer sharing invocation superseded this unsent native result copy",{}});}
  void commitCopy(){
   if(!copyReply)return;

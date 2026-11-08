@@ -31,6 +31,7 @@ public:
  ~Fd(){if(fd_>=0)::close(fd_);}
  Fd(const Fd&)=delete;Fd& operator=(const Fd&)=delete;
  int get()const{return fd_;}
+ int release(){const int fd=fd_;fd_=-1;return fd;}
 };
 bool writeAll(int fd,const void* bytes,size_t size){
  auto* cursor=static_cast<const char*>(bytes);
@@ -56,9 +57,12 @@ int copyIntoMemory(const QString& path){
  return fd;
 }
 // Only async-signal-safe calls: other threads may hold locks across the fork.
-[[noreturn]] void becomeKeeper(int payload,int image,const char* path,char* const argv[],char* const envp[]){
+// A byte on started means exec failed; the pipe's close-on-exec end says it worked.
+[[noreturn]] void becomeKeeper(int payload,int image,int started,const char* path,char* const argv[],char* const envp[]){
  ::setsid();
- if(::fork()!=0)::_exit(0);
+ const pid_t daemon=::fork();
+ if(daemon<0)::_exit(127);
+ if(daemon>0)::_exit(0);
  if(::dup2(payload,STDIN_FILENO)<0||::fcntl(STDIN_FILENO,F_SETFD,0)<0)::_exit(127);
  const int null=::open("/dev/null",O_RDWR|O_CLOEXEC);
  if(null<0||::dup2(null,STDOUT_FILENO)<0||::dup2(null,STDERR_FILENO)<0)::_exit(127);
@@ -72,6 +76,7 @@ int copyIntoMemory(const QString& path){
  }
  sigset_t none;::sigemptyset(&none);::sigprocmask(SIG_SETMASK,&none,nullptr);
  if(image>=0)::fexecve(image,argv,envp);else ::execve(path,argv,envp);
+ const char failed=1;(void)!::write(started,&failed,1);
  ::_exit(127);
 }
 }
@@ -101,10 +106,15 @@ bool startClipboardKeeper(const QHash<QString,QByteArray>& data,QString helperPa
  char* const argv[]{const_cast<char*>("putgd-clipboard-keeper"),nullptr};
  std::vector<QByteArray> variables;for(const auto& variable:host::environment().toStringList())variables.push_back(variable.toLocal8Bit());
  std::vector<char*> envp;for(auto& variable:variables)envp.push_back(variable.data());envp.push_back(nullptr);
+ int pipes[2];if(::pipe2(pipes,O_CLOEXEC)<0)return false;
+ Fd readEnd(pipes[0]),writeEnd(pipes[1]);
  const pid_t child=::fork();
  if(child<0)return false;
- if(child==0)becomeKeeper(payload.get(),image.get(),program.constData(),argv,envp.data());
+ if(child==0)becomeKeeper(payload.get(),image.get(),writeEnd.get(),program.constData(),argv,envp.data());
+ ::close(writeEnd.release());
  int status=0;while(::waitpid(child,&status,0)<0&&errno==EINTR){}
- return WIFEXITED(status)&&WEXITSTATUS(status)==0;
+ if(!WIFEXITED(status)||WEXITSTATUS(status)!=0)return false;
+ char failed=0;ssize_t got;do got=::read(readEnd.get(),&failed,1);while(got<0&&errno==EINTR);
+ return got==0;
 }
 }

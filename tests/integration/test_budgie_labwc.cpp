@@ -37,11 +37,12 @@ class BudgieLabwcTest:public QObject {
  QList<CaptureFrame> layout_;
  bool runRandr(const QStringList& arguments){QProcess p;p.start(randr_,arguments);return p.waitForFinished(5000)&&p.exitCode()==0;}
  // The keeper names itself; comm stays readable although it isn't dumpable.
- static QList<int> keepers(){
+ QList<int> keepersBefore_; // A real put.gd session on this machine may have its own.
+ QList<int> keepers()const{
   QList<int> found;
   for(const auto& entry:QDir("/proc").entryList(QDir::Dirs)){bool numeric=false;const int pid=entry.toInt(&numeric);if(!numeric)continue;QFile comm("/proc/"+entry+"/comm");if(!comm.open(QIODevice::ReadOnly)||comm.readAll().trimmed()!="putgd-clipboard")continue;
    // CI's container has no init to reap it: an exited keeper stays listed as a zombie.
-   QFile stat("/proc/"+entry+"/stat");const auto text=stat.open(QIODevice::ReadOnly)?stat.readAll():QByteArray();const auto end=text.lastIndexOf(')');if(end>=0&&text.mid(end+2,1)!="Z")found.append(pid);}
+   QFile stat("/proc/"+entry+"/stat");const auto text=stat.open(QIODevice::ReadOnly)?stat.readAll():QByteArray();const auto end=text.lastIndexOf(')');if(end>=0&&text.mid(end+2,1)!="Z"&&!keepersBefore_.contains(pid))found.append(pid);}
   return found;
  }
  QByteArray paste(const QStringList& arguments={"--no-newline"}){QProcess paste;paste.start(wlPaste_,arguments);if(!waitFor([&]{return paste.state()==QProcess::NotRunning;},5000))return {};return paste.readAllStandardOutput();}
@@ -53,6 +54,7 @@ class BudgieLabwcTest:public QObject {
  }
 private slots:
  void initTestCase(){
+  keepersBefore_=keepers();
   labwcProgram_=QStandardPaths::findExecutable("labwc");
   if(labwcProgram_.isEmpty())QSKIP("labwc is not installed");
   if(QStandardPaths::findExecutable("putgd-labwc-fixture",{QCoreApplication::applicationDirPath()}).isEmpty())QSKIP("The fixture was built without LayerShellQt");

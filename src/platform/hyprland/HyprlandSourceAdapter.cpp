@@ -60,7 +60,7 @@ void HyprlandSourceAdapter::catchEarlyPress(const QList<CaptureFrame>& frames){
  // Without a catcher nothing holds the keyboard, so the selector takes it at once.
  region_.setDeferKeyboard(catcher_.running());
 }
-HyprlandSourceAdapter::~HyprlandSourceAdapter(){region_.shutdown();cancelAcquisition();clipboard_.cancel();clipboard_.keepSelectionAfterExit();for(auto* worker:workers_){worker->wait();delete worker;}}
+HyprlandSourceAdapter::~HyprlandSourceAdapter(){region_.shutdown();cancelAcquisition();clipboard_.cancel();for(auto* worker:workers_){worker->wait();delete worker;}clipboard_.keepSelectionAfterExit();}
 quint64 HyprlandSourceAdapter::clipboardRevision()const{return clipboard_.revision();}
 bool HyprlandSourceAdapter::unchanged(const QList<CaptureFrame>& before,quint64 revision)const{
  if(outputs_.revision()!=revision)return false;
