@@ -82,9 +82,14 @@ private slots:
  }
  void toplevelsListedAndActive(){
   ImageCopyCapture capture;QVERIFY(waitFor([&]{for(const auto& w:capture.toplevels())if(w.appId=="putgd-labwc-fixture")return true;return false;}));
+  // The list itself is active-aware without the toplevel capture source.
+  bool listedActive=false;for(const auto& w:capture.toplevels())listedActive|=w.appId=="putgd-labwc-fixture"&&w.activated;QVERIFY(listedActive);
   ImageCopyCapture::Toplevel active;Error error;bool done=false;
   capture.freezeActive([&](ImageCopyCapture::Toplevel window,Error failure){active=window;error=failure;done=true;});
-  QVERIFY(waitFor([&]{return done;}));QVERIFY2(!error,qPrintable(error.message));
+  QVERIFY(waitFor([&]{return done;}));
+  // labwc below 0.20 has no toplevel capture source: freezing a window target is refused up front.
+  if(!capture.windowsAvailable()){QCOMPARE(error.code,QString("window_unavailable"));return;}
+  QVERIFY2(!error,qPrintable(error.message));
   QCOMPARE(active.appId,QString("putgd-labwc-fixture"));QCOMPARE(active.title,QString("fixture-window"));QVERIFY(!active.identifier.isEmpty());
  }
  void windowCaptureOrReason(){
