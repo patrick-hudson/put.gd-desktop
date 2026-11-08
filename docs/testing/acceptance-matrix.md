@@ -129,12 +129,14 @@ tablet input through QEMU ([Hyprland adapter](../desktops/hyprland.md),
 
 | Package | Golden | Must show |
 | --- | --- | --- |
-| AppImage | `omarchy-hyprland-20261108` | Everything below |
+| AppImage | `omarchy-hyprland-20261108` | Everything below except the Nautilus checks, which belong to the Arch package: the AppImage has no Nautilus plugin, and the package's entry refuses while an AppImage resident runs |
 | Arch package (`pacman -U` after `pacman -Sy`) | same | Everything below, and its dependencies pull the GStreamer plugins Omarchy lacks |
 
 - A drag that starts right after the region hotkey (from about 0.1 s) selects
-  exactly what was dragged, on one and on two outputs and just after an output
-  appears.
+  exactly what was dragged, on one and on two settled outputs. Just after an
+  output appears, a drag started 1.5 s after the hotkey does too; an earlier one
+  may reach the window underneath while the compositor is busy, and the next
+  drag must then work normally.
 - With a multi-second layer animation, the selector appears in one step and is
   not in the capture.
 - Region (exact pixels, no selector outline, live and screenshot-first),

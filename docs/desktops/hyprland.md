@@ -129,6 +129,12 @@ hl.permission({ binary = [[/tmp/\.mount_[^/]+/usr/bin/putgd]], type = "screencop
 hl.permission({ binary = [[/tmp/\.mount_[^/]+/usr/bin/putgd-record]], type = "screencopy", mode = "allow" })
 ```
 
+Hyprland only matches the path, and `/tmp` is writable by everyone: with these
+rules, any program that runs from a matching `/tmp/.mount_…` path can capture the
+screen without a prompt. Where `enforce_permissions` matters, use the native
+package, whose rules name fixed system paths, or leave these rules out and approve
+the AppImage per run at Hyprland's permission prompt.
+
 Use Lua long strings (`[[...]]`): a `"\."` escape is a Lua error, and a Lua
 error drops Hyprland back to its default configuration. Enforcement changes
 need a Hyprland restart. An unlisted client gets Hyprland's "ask" dialog.
@@ -200,12 +206,14 @@ A/V sync (median -19 ms) were measured there too.
 - quickshell is the tray host: put.gd's item and its menu work.
 - quickshell is the notification server. It keeps **critical** notifications
   in `~/.local/state/omarchy/notifications/live.json` until they are dismissed,
-  across reboots. put.gd's failure notices stay critical, and on this server
-  only (`GetServerInformation` name `quickshell`) they also carry the spec's
-  `transient` hint, so quickshell shows them until dismissed but does not bring
-  them back after a reboot
+  across reboots. put.gd's critical notices (failures and warnings) stay
+  critical, and on this server only (`GetServerInformation` name `quickshell`)
+  they also carry the spec's `transient` hint, so quickshell shows them until
+  dismissed but does not bring them back after a reboot
   ([#1298](https://github.com/patrick-hudson/put.gd-desktop/issues/1298)).
-  History keeps each failure with its diagnostics.
+  History keeps each failed operation with its diagnostics; a file-manager upload
+  refused before it became an operation (no destination, another installation
+  running) is not in History, so that notice is the only record of it.
 - File dialogs go through the GTK portal; Nautilus 51 shows **Upload with
   put.gd** (the packaged nautilus extension). Accepted with a real S3
   destination: a hotkey upload and a Nautilus upload, each link opened from
