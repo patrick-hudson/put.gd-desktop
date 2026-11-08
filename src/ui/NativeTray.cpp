@@ -155,7 +155,9 @@ QVariantMap menuProperties(int id, const QStringList& names = {}, const QString&
   if(id==16&&!recording.isEmpty())props.insert("label","Record screen — "+recording);
   const QKeySequence shortcut(shortcuts.value(QString::fromLatin1(e.action)));
   if(Settings::presentationOrder().contains(QString::fromLatin1(e.action))){
-   QList<QStringList> keys;for(int i=0;i<shortcut.count();++i){const auto chord=shortcut[i];const auto modifiers=chord.keyboardModifiers();QStringList parts;if(modifiers&Qt::ControlModifier)parts<<"Control";if(modifiers&Qt::AltModifier)parts<<"Alt";if(modifiers&Qt::ShiftModifier)parts<<"Shift";if(modifiers&Qt::MetaModifier)parts<<"Super";parts<<QKeySequence(chord.key()).toString(QKeySequence::PortableText);keys.append(parts);}props.insert("shortcut",QVariant::fromValue(keys));
+   QList<QStringList> keys;for(int i=0;i<shortcut.count();++i){const auto chord=shortcut[i];const auto modifiers=chord.keyboardModifiers();QStringList parts;if(modifiers&Qt::ControlModifier)parts<<"Control";if(modifiers&Qt::AltModifier)parts<<"Alt";if(modifiers&Qt::ShiftModifier)parts<<"Shift";if(modifiers&Qt::MetaModifier)parts<<"Super";parts<<QKeySequence(chord.key()).toString(QKeySequence::PortableText);keys.append(parts);}
+   // An unbound action sends no shortcut: libdbusmenu rejects an empty one ("too many keys", #1294).
+   if(!keys.isEmpty())props.insert("shortcut",QVariant::fromValue(keys));
   }
  }
  if (!names.isEmpty()) for (auto it = props.begin(); it != props.end();) {
