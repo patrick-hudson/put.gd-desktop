@@ -622,8 +622,12 @@ def guest_session(run, body, timeout=60):
     user = info['guest_user']
     profile = load_profile(info['profile'])
     process = profile['session_process']
-    if process not in ('cinnamon', 'gnome-shell', 'plasmashell'):
+    if process not in ('cinnamon', 'gnome-shell', 'plasmashell', 'budgie-panel', 'quickshell'):
         raise LabError('Unsupported native desktop session process')
+    # Keep Budgie's display-manager toolkit choice, including wayland;xcb.
+    # Replacing it would conceal the native-session routing contract under test.
+    qt_environment = ('' if profile.get('desktop') == 'Budgie' else
+                      'export QT_QPA_PLATFORM=' + shlex.quote(profile['qt_platform']))
     # PanelTone needs the session's XDG_CONFIG_DIRS and XDG_DATA_DIRS too
     # (docs/design/appearance.md): Plasma lists ~/.config/kdedefaults in the first and
     # finds the Plasma style's colors file through the second. Without them a
@@ -631,11 +635,11 @@ def guest_session(run, body, timeout=60):
     script = f'''set -eu
 pid=$(pgrep -u {shlex.quote(user)} -x {shlex.quote(process)} | head -n 1)
 [ -n "$pid" ]
-for name in DISPLAY XAUTHORITY DBUS_SESSION_BUS_ADDRESS XDG_SESSION_TYPE XDG_CURRENT_DESKTOP WAYLAND_DISPLAY XDG_CONFIG_DIRS XDG_DATA_DIRS; do
+for name in DISPLAY XAUTHORITY DBUS_SESSION_BUS_ADDRESS XDG_SESSION_TYPE XDG_CURRENT_DESKTOP WAYLAND_DISPLAY XDG_CONFIG_DIRS XDG_DATA_DIRS QT_QPA_PLATFORM HYPRLAND_INSTANCE_SIGNATURE; do
  value=$(tr '\\0' '\\n' < /proc/$pid/environ | sed -n "s/^$name=//p")
  [ -z "$value" ] || export "$name=$value"
 done
-export QT_QPA_PLATFORM={shlex.quote(profile["qt_platform"])}
+{qt_environment}
 export XDG_RUNTIME_DIR=/run/user/$(id -u)
 {appimage_path_prefix(profile)}{native_display_prefix()}export XDG_CONFIG_HOME=$HOME/putgd-lab/config
 export XDG_DATA_HOME=$HOME/putgd-lab/data
@@ -1018,6 +1022,24 @@ def parse_kscreen(document):
     return {'outputs': outputs}
 
 
+def parse_hyprctl(monitors):
+    """Read `hyprctl -j monitors all`; Hyprland lists disabled outputs only with `all`."""
+    outputs = []
+    for value in sorted(monitors, key=lambda monitor: monitor.get('name', '')):
+        enabled = not value.get('disabled', False)
+        output = {'name': value['name'], 'connected': True, 'enabled': enabled,
+                  # Hyprland has no primary output; the monitor at the origin stands in for it.
+                  'primary': enabled and (value.get('x'), value.get('y')) == (0, 0),
+                  # "1920x1080@60.00Hz" -> {"1920x1080": "1920x1080@60.00"}; the first listed rate wins.
+                  'modes': {}}
+        for mode in value.get('availableModes', []):
+            output['modes'].setdefault(mode.split('@')[0], mode.removesuffix('Hz'))
+        if enabled:
+            output.update(width=value['width'], height=value['height'], x=value['x'], y=value['y'])
+        outputs.append(output)
+    return {'outputs': outputs}
+
+
 def verify_outputs(observed, heads, layout=None):
     """Require `heads` real, enabled outputs (not RandR monitors split from one output)."""
     outputs = observed['outputs'][:heads]
@@ -1087,12 +1109,39 @@ def guest_outputs(run, backend):
         return parse_xrandr(query, monitors)
     if backend == 'kscreen':
         return parse_kscreen(json.loads(guest_session(run, 'kscreen-doctor -j\n')))
+    if backend == 'wlr-randr':
+        return parse_wlr_randr(json.loads(guest_session(run, 'wlr-randr --json\n')))
+    if backend == 'hyprctl':
+        return parse_hyprctl(json.loads(guest_session(run, 'hyprctl -j monitors all\n')))
     return json.loads(guest_session(run, 'python3 -c ' + shlex.quote(MUTTER_STATE) + '\n'))
+
+
+def parse_wlr_randr(document):
+    outputs = []
+    for index, item in enumerate(document):
+        modes = item.get('modes', [])
+        current = next((mode for mode in modes if mode.get('current')), None)
+        output = {'name': item['name'], 'connected': True,
+                  'enabled': bool(item.get('enabled') and current),
+                  # wlroots has no primary-output property; retain head order.
+                  'primary': index == 0,
+                  'modes': {f"{mode['width']}x{mode['height']}":
+                            f"{mode['width']}x{mode['height']}" for mode in modes}}
+        if output['enabled']:
+            position = item['position']
+            output.update(width=current['width'], height=current['height'],
+                          x=position['x'], y=position['y'])
+        outputs.append(output)
+    return {'outputs': outputs}
 
 
 def layout_backend(profile):
     if profile['session'] == 'x11':
         return 'xrandr'
+    if profile['desktop'] == 'Budgie':
+        return 'wlr-randr'
+    if profile['desktop'] == 'Hyprland':
+        return 'hyprctl'
     return 'kscreen' if profile['desktop'] == 'KDE' else 'mutter'
 
 
@@ -1166,6 +1215,14 @@ def apply_layout(run, backend, observed, wanted):
             arguments += ['--output', output['name'], '--mode', f"{head['width']}x{head['height']}",
                           '--pos', f"{head['x'] - left}x{head['y'] - top}"] + (['--primary'] if index == 0 else [])
         guest_session(run, shlex.join(arguments) + '\n')
+    elif backend == 'wlr-randr':
+        arguments = ['wlr-randr']
+        for head, output in zip(wanted, outputs):
+            arguments += ['--output', output['name'], '--on', '--mode',
+                          f"{head['width']}x{head['height']}", '--scale', '1',
+                          '--transform', 'normal', '--pos',
+                          f"{head['x'] - left},{head['y'] - top}"]
+        guest_session(run, shlex.join(arguments) + '\n')
     elif backend == 'kscreen':
         arguments = ['kscreen-doctor']
         for index, (head, output) in enumerate(zip(wanted, outputs)):
@@ -1176,6 +1233,16 @@ def apply_layout(run, backend, observed, wanted):
             arguments += [prefix + 'enable', prefix + f'mode.{mode}',
                           prefix + f"position.{head['x'] - left},{head['y'] - top}", prefix + f'priority.{index + 1}']
         guest_session(run, shlex.join(arguments) + '\n')
+    elif backend == 'hyprctl':
+        rules = []
+        for head, output in zip(wanted, outputs):
+            mode = output['modes'].get(f"{head['width']}x{head['height']}")
+            if mode is None:
+                raise LabError(f"{output['name']} offers no {head['width']}x{head['height']} mode")
+            rules.append(f'hl.monitor({{ output = {json.dumps(output["name"])}, mode = {json.dumps(mode)}, '
+                         f'position = "{head["x"] - left}x{head["y"] - top}", scale = 1 }})')
+        # Hyprland 0.56 with a Lua config refuses `hyprctl keyword`; `eval` runs Lua.
+        guest_session(run, shlex.join(['hyprctl', 'eval', '\n'.join(rules)]) + '\n')
     else:
         config = []
         for head, output in zip(wanted, outputs):
@@ -1192,6 +1259,8 @@ uname -r | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read().strip(
 printf ',"packages":'
 if command -v dpkg-query >/dev/null; then
  dpkg-query -W -f='${Package} ${Version}\\n' 'cinnamon' 'muffin' 'gnome-shell' 'mutter*' 'gjs' 'plasma-workspace' 'kwin-wayland' 'xdg-desktop-portal*' 'libqt6core6*' 'putgd' 2>/dev/null || true
+elif command -v pacman >/dev/null; then
+ pacman -Q hyprland omarchy xdg-desktop-portal xdg-desktop-portal-hyprland qt6-base layer-shell-qt putgd 2>/dev/null || true
 else
  rpm -q gnome-shell mutter gjs plasma-workspace kwin-wayland xdg-desktop-portal qt6-qtbase putgd 2>/dev/null || true
 fi | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read().splitlines()),end="")'
@@ -2176,6 +2245,7 @@ def install_appimage(run, appimage):
         raise LabError('AppImage filename must be a plain name ending in .AppImage')
     expected_sha256 = hash_file(source)
     quoted = shlex.quote(name)
+    previous = 'appimage-previous-' + uuid.uuid4().hex
     put(run, str(source), name)  # relative to the guest home (/var/home/lab on Aurora)
     shims = ''.join(
         f'printf %s {shlex.quote(body.format(name=name))} > ~/putgd-lab/bin/{shim}\nchmod 755 ~/putgd-lab/bin/{shim}\n'
@@ -2184,7 +2254,10 @@ def install_appimage(run, appimage):
               f'chmod +x {quoted}\n'
               f'actual=$(sha256sum {quoted} | cut -d" " -f1)\n'
               f'[ "$actual" = {expected_sha256} ] || exit 65\n'
-              'mkdir -p ~/putgd-lab/bin\nrm -rf ~/putgd-lab/appimage\nmkdir -p ~/putgd-lab/appimage\n'
+              'mkdir -p ~/putgd-lab/bin\ntest ! -L ~/putgd-lab/appimage\n'
+              'if [ -e ~/putgd-lab/appimage ]; then\n'
+              f' mv ~/putgd-lab/appimage ~/putgd-lab/{previous}\n'
+              'fi\nmkdir -p ~/putgd-lab/appimage\n'
               f'(cd ~/putgd-lab/appimage && "$HOME/"{quoted} --appimage-extract >/dev/null)\n'
               + shims +
               'printf \'{"home":"%s","version":\' "$HOME"\n'

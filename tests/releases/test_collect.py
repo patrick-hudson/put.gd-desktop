@@ -81,7 +81,7 @@ class ReleaseCollection(unittest.TestCase):
         identity = {field: self.release[field] for field in ('version', 'baseVersion', 'packageVersion', 'gitCommit', 'gitTree', 'commitCount')}
         identity.update(schemaVersion=1, dirty=False, sourceProvenance='git')
         self.inputs = self.root / 'build/inputs'
-        for distro, kind, suffix, arch in [('ubuntu24.04', 'DEB', '.deb', 'amd64'), ('ubuntu26.04', 'DEB', '.deb', 'amd64'), ('debian13', 'DEB', '.deb', 'amd64'), ('fedora44', 'RPM', '.rpm', 'x86_64')]:
+        for distro, kind, suffix, arch in [('ubuntu24.04', 'DEB', '.deb', 'amd64'), ('ubuntu26.04', 'DEB', '.deb', 'amd64'), ('debian13', 'DEB', '.deb', 'amd64'), ('fedora44', 'RPM', '.rpm', 'x86_64'), ('archlinux', 'PACMAN', '.pkg.tar.zst', 'x86_64')]:
             directory = self.inputs / ('release-native-' + distro)
             directory.mkdir(parents=True)
             path = directory / ('synthetic' + suffix)
@@ -146,9 +146,9 @@ class ReleaseCollection(unittest.TestCase):
         shutil.rmtree(directory, ignore_errors=True)
         directory.mkdir()
         receipts = {}
-        for label in ('appimage', 'ubuntu24.04', 'ubuntu26.04', 'debian13', 'fedora44'):
+        for label in ('appimage', 'ubuntu24.04', 'ubuntu26.04', 'debian13', 'fedora44', 'archlinux'):
             package = (self.inputs / 'release-appimage/synthetic.AppImage' if label == 'appimage' else
-                       self.inputs / ('release-native-' + label) / ('synthetic.rpm' if label == 'fedora44' else 'synthetic.deb'))
+                       self.inputs / ('release-native-' + label) / ('synthetic.pkg.tar.zst' if label == 'archlinux' else 'synthetic.rpm' if label == 'fedora44' else 'synthetic.deb'))
             digest = hashlib.sha256(package.read_bytes()).hexdigest()
             path = directory / ('putgd-' + self.release['version'] + '-' + label + '.cdx.json')
             path.write_text(json.dumps({'bomFormat': 'CycloneDX', 'metadata': {'component': {
@@ -185,8 +185,8 @@ class ReleaseCollection(unittest.TestCase):
         collect.collect(self.root, self.inputs, self.output, TAG, installers_only=True)
         files = {p.name for p in self.output.iterdir() if p.is_file()}
         self.assertEqual(files, support_assets.inventory(self.release['version']))
-        self.assertEqual(len(files), 15)
-        self.assertFalse(any(name.endswith(('.tar.gz', '.zip', '.part1', '.part2', '.tar.zst')) for name in files))
+        self.assertEqual(len(files), 17)
+        self.assertFalse(any(name.endswith(('.tar.gz', '.zip', '.part1', '.part2')) or (name.endswith('.tar.zst') and not name.endswith('.pkg.tar.zst')) for name in files))
         delivery = json.loads((self.output / 'source-delivery.json').read_text())
         support_assets.validate(delivery, self.release, appimage_update.REPOSITORY)
         for name, item in delivery['assets'].items():
@@ -216,8 +216,8 @@ class ReleaseCollection(unittest.TestCase):
         self.assertIn('putgd-26.1022.1-x86_64.AppImage', files)
         self.assertIn('putgd-26.1022.1-appimage-complete-source.tar.gz', files)
         self.assertIn('putgd-26.1022.1-x86_64.AppImage.zsync', files)
-        self.assertEqual(len(lines), 20)
-        for label in ('appimage', 'ubuntu24.04', 'ubuntu26.04', 'debian13', 'fedora44'):
+        self.assertEqual(len(lines), 22)
+        for label in ('appimage', 'ubuntu24.04', 'ubuntu26.04', 'debian13', 'fedora44', 'archlinux'):
             self.assertIn('putgd-26.1022.1-' + label + '.cdx.json', files)
         self.assertIn('putgd-26.1022.1-debug-x86_64.tar.zst', files)
         self.assertEqual((self.output / 'putgd-26.1022.1-source.tar.gz').read_bytes(),
@@ -554,7 +554,7 @@ class ReleaseCollection(unittest.TestCase):
         expected = set(expected_members(self.release['version']) +
                        ['putgd-' + self.release['version'] + '-release.zip', 'SHA256SUMS', *proton_sources.PART_NAMES, debug_name])
         self.assertEqual(files, expected)
-        self.assertEqual(len(files), 21)
+        self.assertEqual(len(files), 23)
         self.assertEqual(appimage_update.read_update_information(self.output / ('putgd-' + self.release['version'] + '-x86_64.AppImage')),
                          'zsync|https://app.put.gd/dl/nightly/appimage.zsync')
         self.assertEqual((self.output / source.name).read_bytes(), source.read_bytes())

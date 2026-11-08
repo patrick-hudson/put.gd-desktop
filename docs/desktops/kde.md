@@ -54,6 +54,16 @@ bar are overlay layer surfaces placed outside the recorded rectangle. KWin 6.6
 and later leave every window of the client that requested a screencast stream
 out of that stream, which also keeps the bar out of monitor recordings; KWin
 6.3 (Debian 13) does not.
+
+A window recording streams one window by its KWin UUID (`stream_window`,
+#1278). KWin has no D-Bus method that lists windows, so the resident loads a
+one-shot KWin script through `org.kde.kwin.Scripting` (file under
+`$XDG_RUNTIME_DIR/putgd`, unloaded after it answers) that sends
+`workspace.windowList()` to the resident's own unique bus name; only a call
+from the bus owner of `org.kde.KWin` is believed. Loading scripts needs no
+desktop-entry permission. put.gd's own windows are left out by the
+window-capture rule (see `docs/design/recording/wayland.md`, "Window
+recordings").
 A desktop entry naming a different build executable does not grant permission.
 Restart the resident application after installing/updating its entry. Do not
 set `KWIN_SCREENSHOT_NO_PERMISSION_CHECKS` or other permission bypasses.

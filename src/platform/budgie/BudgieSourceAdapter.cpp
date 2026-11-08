@@ -29,16 +29,15 @@ bool BudgieSourceAdapter::unchanged(const QList<CaptureFrame>& before,quint64 re
  for(const auto& frame:before){bool found=false;for(const auto& current:now)if(current.identity==frame.identity&&current.logicalRect==frame.logicalRect&&current.nativeRect==frame.nativeRect&&current.density==frame.density&&current.rotation==frame.rotation)found=true;if(!found)return false;}
  return true;
 }
-QJsonObject BudgieSourceAdapter::windows()const{
- QString reason;const bool available=capture_.windowsAvailable(&reason);
- QJsonArray out;
- if(available)for(const auto& window:capture_.toplevels()){
-  if(ownAppId(window.appId))continue;
-  out.append(QJsonObject{{"identity",window.identifier},{"appId",window.appId},{"title",window.title},{"active",window.activated}});
+void BudgieSourceAdapter::listWindows(RecordingWindows::Reply reply){
+ QString reason;
+ if(!capture_.windowsAvailable(&reason)){reply({"recording_unsupported",reason,{{"protocol","ext-foreign-toplevel-image-capture-source-v1"}}},{});return;}
+ QJsonArray out;bool activeExcluded=false;
+ for(const auto& window:capture_.toplevels()){
+  if(ownAppId(window.appId)){activeExcluded|=window.activated;continue;}
+  out.append(QJsonObject{{"identity",window.identifier},{"title",window.title},{"appId",window.appId},{"rect",QJsonArray{}},{"active",window.activated},{"minimized",false}});
  }
- QJsonObject result{{"available",available},{"windows",out},{"protocol","ext-foreign-toplevel-list-v1"}};
- if(!available)result["error"]=reason;
- return result;
+ reply({},{{"windows",out},{"activeExcluded",activeExcluded}});
 }
 QJsonObject BudgieSourceAdapter::capabilities()const{
  const auto pixels=capture_.status();const auto outputs=outputs_.status();

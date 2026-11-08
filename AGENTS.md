@@ -1,6 +1,6 @@
 # Working on put.gd
 
-put.gd is Linux only: DEB, RPM and AppImage. Flatpak and Windows are out of
+put.gd is Linux only: DEB, RPM, pacman and AppImage. Flatpak and Windows are out of
 scope and must not be planned.
 
 Build with C++20, Qt 6 Widgets, CMake presets, Ninja, and the official AWS C++ SDK.

@@ -104,7 +104,7 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
  if(!request["schemaVersion"].isDouble()||request["schemaVersion"].toDouble()!=1) {reply({"unsupported_version","Request schemaVersion must be 1",{}},{});return;}
  if(request["session"].toString()!=socketPath()) {reply({"wrong_session","Request targets a different resident session",{}},{});return;}
  const auto method=request["method"].toString();const auto p=request["params"].toObject();
- if(!operations_.ready()&&(method.startsWith("operation.")||method.startsWith("history.")||method.startsWith("delete.")||method=="cache.clear"||(method.startsWith("recording.")&&method!="recording.capabilities"))) {reply({"initializing","Wait for resident journal recovery",{}},{});return;}
+ if(!operations_.ready()&&(method.startsWith("operation.")||method.startsWith("history.")||method.startsWith("delete.")||method=="cache.clear"||(method.startsWith("recording.")&&method!="recording.capabilities"&&method!="recording.windows"))) {reply({"initializing","Wait for resident journal recovery",{}},{});return;}
  if(method=="ui.quit") {
   if(!p.isEmpty()){reply(invalid(),{});return;}
   if(!uiQuit_){reply({"ui_unavailable","This resident has no application quit handler",{}},{});return;}
@@ -158,6 +158,7 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
  }
  // Screen recording: one session, backend-neutral; the service validates semantics.
  if(method=="recording.capabilities") {if(!p.isEmpty())reply(invalid(),{});else operations_.recordingCommand("capabilities",{},reply);return;}
+ if(method=="recording.windows") {if(!p.isEmpty())reply(invalid(),{});else operations_.recordingCommand("windows",{},reply);return;}
  if(method=="recording.prepare") {
   if(!fields(p,{"target","format"},{"codec","fps","adaptiveFps","audio","maxEdge"})||!p["target"].isObject()||!string(p,"format",8)||(p.contains("codec")&&!string(p,"codec",8))||(p.contains("audio")&&!p["audio"].isObject())||(p.contains("adaptiveFps")&&!p["adaptiveFps"].isBool())){reply(invalid(),{});return;}
   operations_.recordingCommand("prepare",p,reply);return;
@@ -344,7 +345,6 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
  else if(method=="settings.developmentTemplate")reply({},{{"document",Settings::developmentTemplate()},{"explicitImportRequired",true}});
  else if(method=="settings.reload") {QPointer<LocalServer> guarded(this);settings_.reloadAsync([guarded,reply](Result result) {if(guarded)reply(result.error,guarded->settings_.metadata());});}
  else if(method=="capabilities")reply({},operations_.capabilities());
- else if(method=="capture.windows")reply({},operations_.windows());
  else if(method=="diagnostics")reply({},operations_.diagnostics());
  // The daily update check (#293): its state, and a check now.
  else if(method=="update.status"){if(updates_)reply({},updates_->status());else reply({"update_check_unavailable","This resident does not check for updates",{}},{});}

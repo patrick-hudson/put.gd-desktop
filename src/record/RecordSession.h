@@ -52,8 +52,13 @@ private:
     void prepareNative(Reply);
     // wlr-capture: ext-image-copy-capture frames into appsrc, no portal and no chooser.
     void prepareImageCopy(Reply);
-    void stopEarly(const QJsonObject& details, const QString& reason);
     void finishWayland(quint32 node, int fd, const QRect& shared, const QRect& streamRect, const QString& source, Reply);
+    // A window target: the compositor ended the stream (the window closed).
+    void targetLost();
+    // A window stream's source failed: reopen it unless the window is gone.
+    void sourceLost(const Error&);
+    // Finishes a running capture on its own and opens review, like a budget stop.
+    void endCapture(const QString& reason);
     QString portalTokenKey() const;
     QString loadPortalToken() const;
     void storePortalToken(const QString&) const;
@@ -93,6 +98,10 @@ private:
     bool portalTarget_ = false;
     std::unique_ptr<ImageCopySource> imageCopy_;
     QSize imageCopySize_;
+    // A window target resolved by the resident: {rect: logical frame [x,y,w,h], title}.
+    QJsonObject window_;
+    bool targetClosed_ = false;
+    int sourceReopens_ = 0;
     QTimer progress_, barTimer_;
     SelectionOverlay* selection_ = nullptr;
     LayerShellRegionOverlay* kdeSelection_ = nullptr;

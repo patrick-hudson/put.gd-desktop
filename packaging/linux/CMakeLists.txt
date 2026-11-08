@@ -209,6 +209,14 @@ elseif(PUTGD_REPO_CHANNEL AND PUTGD_PACKAGE_TARGET STREQUAL "fedora44")
   set(CPACK_RPM_POST_UNINSTALL_SCRIPT_FILE "${repo_dir}/rpm-postun.sh")
   list(APPEND putgd_rpm_system_dirs /etc/pki /etc/pki/rpm-gpg /etc/yum.repos.d)
 endif()
+if(PUTGD_PACKAGE_TARGET STREQUAL "archlinux")
+  foreach(channel nightly stable)
+    file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/repo/putgd-${channel}.conf"
+      "[putgd-${channel}]\nSigLevel = PackageRequired DatabaseRequired\nServer = ${PUTGD_PACKAGE_REPOSITORY_URL}/pacman/x86_64/${channel}\n")
+    install(FILES "${CMAKE_CURRENT_BINARY_DIR}/repo/putgd-${channel}.conf"
+      "${repo_dir}/keys/putgd-${channel}.asc" DESTINATION "${CMAKE_INSTALL_DATADIR}/putgd/repo")
+  endforeach()
+endif()
 set(CPACK_GENERATOR DEB) # Select -G RPM for a native Fedora build.
 set(CPACK_PACKAGE_NAME putgd)
 # package-identity.cmake sets the build identity's version when CPack runs.

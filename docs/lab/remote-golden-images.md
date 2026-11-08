@@ -45,6 +45,10 @@ image hash from the table, and `zst-sha256` and `virtual-size` are also recorded
 | `p2c-provisioned-a1` (Cinnamon/X11 variant from historical run `p2c-a1`) | `ebc60005f72aaf67f1c14f51a16e09749cf09d91ad1890e50a0eedda30b40252` | `transfer-55342ecaa28c` | `transfer-f544391582e0` |
 | `gnome-wayland` (original Ubuntu GNOME install) | `ffb4aecd868da250b091c1ae9759552b71cfd3ffed12995b56560ace8f8602ad` | `transfer-8708f37d1464` | `transfer-c14ba36479ca` |
 | `kde-wayland` (original Kubuntu KDE install) | `a5b75be961ecff6bbbc0008667529648918f20f0458260971d8e077ba4e5bb7a` | `transfer-2fbac618586d` | `transfer-4af6c524fe18` |
+| `fedora44-budgie` (Budgie/Wayland) | `37f84c90fc165e6817ffc5dd969eaaf57a36c195dc04f0f3bcc269b5e1b83a80` | `fedora44-budgie`; verified 2026-11-08 | `fedora44-budgie`; verified 2026-11-08 |
+| `ubuntu-budgie-2604` (Budgie/Wayland) | `7719f71aa6dac412c7c5b58502f2d27530fa8485c6f978ef2d6be3302cd4ba74` | `ubuntu-budgie-2604`; verified 2026-11-08 | `ubuntu-budgie-2604`; verified 2026-11-08 |
+| `fedora45-budgie` (Budgie/Wayland) | `a6749512438d507ef2b2c47fe675955627464d9a5a85341002f91cd54fb401ad` | `fedora45-budgie`; verified 2026-11-08 | `fedora45-budgie`; verified 2026-11-08 |
+| `ubuntu-budgie-2404` (Budgie/X11) | `aeebdf7eba6d11f3598d4565cae78da34c70ee9be008cf77096882f35d0c7cf5` | `ubuntu-budgie-2404`; verified 2026-11-08 | `ubuntu-budgie-2404`; verified 2026-11-08 |
 
 Use the provisioned GNOME/KDE images for new provisioned runs of those profiles.
 Their manifests record `profile`, `sha256`, `standalone`, `virtualBytes`, source
@@ -54,8 +58,54 @@ bootstrap/profile before calling it a provisioned acceptance guest. The original
 `gnome-wayland`/`kde-wayland` installs and `p2c-provisioned-a1` are kept for
 history and reprovisioning. They are not interchangeable with the provisioned
 images. `cinnamon-x11` trusts only the workstation's `work/lab-bootstrap/identity`.
-All images were standalone qcow2 files with 32 GiB virtual disks when offloaded.
+The historical offloaded images above were standalone qcow2 files with 32 GiB
+virtual disks; the newer Budgie images below have 40 GiB disks.
 That is not a permanent integrity guarantee, so recheck the hash before use.
+
+### Budgie goldens (EC2, 2026-11-08)
+
+The four Budgie images above are standalone **40 GiB** qcow2 files, each at
+`<name>/image.qcow2` with `source.manifest.json`, pinned `known_hosts`,
+`upload-metadata.json` and `restore-receipt.json` on both f44 and d69. All disk and
+source files are read-only. They trust the existing per-builder bootstrap public
+keys from `work/lab-bootstrap-f44/identity` and `work/lab-bootstrap-d69/identity`;
+private keys stayed on their owning hosts. Login is the
+[standard remote guest login](#standard-remote-guest-login).
+
+| Golden / profile | Desktop and display manager | Compressed SHA-256 |
+| --- | --- | --- |
+| `fedora44-budgie` | Budgie 10.10.2, labwc 0.9.6, SDDM | `1c7c8ba1ac09c7f5eeb5e07f0d07ebf145e027bb20ca1371a847a176b4dc0c19` |
+| `ubuntu-budgie-2604` | Budgie 10.10.2, labwc 0.9.3, SDDM | `e30f799525997f2d7a2fadd4bcb9d89a40495de8353fd0740b9728d6b8b1a7e9` |
+| `fedora45-budgie` | Budgie 10.10.3, labwc 0.20.2, SDDM | `a5e95f7ad4270366aded8da2a6397770b4e6df8b93e48cb779c3dd3de8c5c855` |
+| `ubuntu-budgie-2404` | Budgie 10.9.1, X11, LightDM | `3afe192ce09b968e17ffd3329940f3c58d7327228919e0cc26acb8a84d252eac` |
+
+Built entirely on EC2 `i-0f8e59ab52b315c3b` (`m7i.2xlarge`, nested virtualization,
+`us-west-2a`) from signed/checksummed official Fedora Budgie Spin 44-1.7/45-1.4
+and Ubuntu Budgie 24.04.5/26.04.1 media. Manual login and display-manager autologin
+were visibly verified before sealing. Installation, standalone conversion,
+`qemu-img compare`/`check`, zstd compression and uploads all ran on EC2. No
+multi-GB image was uploaded from the LAN. The instance is terminated and its
+EBS volume, temporary security group and imported public key are removed.
+
+The private S3 bucket is `putgd-lab-images-626193791566` in `us-west-2`. Each image
+uses `linux/<name>/<name>.qcow2.zst` (Glacier Instant Retrieval, SSE-S3) with
+`sha256`, `zst-sha256`, `virtual-size=42949672960` and `source-instance-id`
+metadata; its manifest is `linux/<name>/<name>.manifest.json`. Small sidecars
+are under `linux/<name>/sidecars/`. A full S3 download/decompression on EC2
+matched both hashes; independent pull-only restores on both builders also
+matched both hashes and passed standalone/virtual-size and `qemu-img check`.
+No immutable golden was booted directly or replaced. Provisioning evidence is
+retained privately at
+`linux/fedora44-budgie/sidecars/campaign-provisioning-20261108.tar.gz`
+(SHA-256 `8d46effc3aaa8995ede968f4a973dce041b5b033bad187ca239ef4ec877f52c7`).
+
+Fresh d69 overlays passed real-session preflight and ran published nightly
+`26.1105.3986` DEBs/AppImage with saved VNC/QMP frames. All three labwc sessions
+(both bridge generations) fired real QEMU Ctrl+Shift+1/2/3 and removed `customputgd*` entries
+cleanly. Ubuntu 24.04's existing X11 adapter captured region/window/desktop
+and bound all three shortcuts. These are step-1 infrastructure/probe results;
+they do not certify the new Budgie adapter or a Budgie 11 desktop.
+See [Budgie runs](vm-lab.md#budgie-goldens) for profile and launch details.
 
 ### Verified Boat snapshot copies
 
@@ -172,6 +222,26 @@ Built on EC2 on 2026-11-02 from Aurora `testing-45.20261101.2`; see
 The S3 object passed a download round trip on EC2 (both hashes and `qemu-img compare`),
 and each builder's restore checked both hashes and `qemu-img check`. The
 `putgd-lab-aurora` Boat snapshot still holds the 2026-10-29 Plasma 6.7.5 golden.
+
+### Omarchy Hyprland golden
+
+Built on EC2 on 2026-11-08 from the Omarchy 4.5.0 ISO; see
+[Omarchy VM golden](omarchy-vm.md) for the facts and recipe.
+
+| Item | Verified value |
+| --- | --- |
+| S3 image key | `linux/omarchy-hyprland-20261108/omarchy-hyprland-20261108.qcow2.zst` |
+| S3 sidecars | Same prefix: `omarchy-hyprland-20261108.manifest.json`, `sidecars/known_hosts`, `sidecars/golden-boot-verify.png` |
+| Image SHA-256 | `bd74b7832c4a43f15a06f5a5b448e670a77d33ae75516b5bc5856773b69f3256` |
+| Compressed SHA-256 | `c56cfe7ddb2fe345663ff2c18f07c8ede9bc692ba6b2354267228dadb1eb2a1b` |
+| Image / compressed / virtual bytes | 4,923,523,072 / 4,869,090,452 / 51,539,607,552 |
+| Storage | Glacier Instant Retrieval, SSE-S3; small sidecars use Standard |
+| Host copies | `f44` and `d69`: `~/work/put.gd/work/lab-images/omarchy-hyprland-20261108/image.qcow2`, with `known_hosts`, the manifest and `restore-sha256sums.txt` |
+| Bootstrap key | `~/work/put.gd/work/lab-bootstrap-omarchy/identity` on `f44` and `d69` |
+
+The S3 object passed a download round trip on EC2 (both hashes and `qemu-img compare`),
+and each builder's restore checked both hashes, the format, backing file and virtual size,
+and `qemu-img check`.
 
 ### Aurora Fedora 45 cloud golden and Boat snapshot
 

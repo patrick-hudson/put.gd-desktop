@@ -27,6 +27,7 @@ import tempfile
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from release_identity import parse_tag  # noqa: E402
+import pacman_repo
 import update_feed  # noqa: E402
 
 HOSTS = {'d69': ('patrick@192.168.68.69', '/home/patrick/work/put.gd/work/remote-builders/d69/known_hosts')}
@@ -78,6 +79,11 @@ def check_staged(manifest, files, tag, sums):
         if [(entry.get('Version'), entry.get('SHA256')) for entry in entries if entry.get('Package') == 'putgd'] != expected \
                 or len(entries) != len(expected):
             raise SystemExit(f'{label}: staged Packages does not list exactly {tag or "nothing"}')
+    pacman = manifest.get('pacman')
+    if pacman and (pacman['asset'] != f'putgd-{tag[1:]}-archlinux-x86_64.pkg.tar.zst' or pacman['sha256'] != sums.get(pacman['asset'])):
+        raise SystemExit('Staged Arch asset differs from GitHub checksums')
+    for relative in manifest['sign'].get('detached', []):
+        pacman_repo.check_database(files[relative], pacman['asset'] if pacman else None, pacman['sha256'] if pacman else None)
     rpm = manifest.get('rpm')
     if (rpm is None) != (tag is None) or (rpm and (rpm['asset'] != f'putgd-{tag[1:]}-fedora44-x86_64.rpm'
                                                    or rpm['sha256'] != sums.get(rpm['asset']))):
@@ -163,7 +169,16 @@ def main(argv=None):
         signatures[relative + '.InRelease'] = gpg(['--clearsign', '--digest-algo', 'SHA512'], files[relative], fingerprint)
         signatures[relative + '.gpg'] = gpg(['--armor', '--detach-sign', '--digest-algo', 'SHA512'], files[relative],
                                             fingerprint)
+    for relative in manifest['sign'].get('detached', []):
+        signatures[relative + '.sig'] = gpg(['--detach-sign', '--digest-algo', 'SHA512'], files[relative], fingerprint)
     with tempfile.TemporaryDirectory(prefix='pgsign-') as directory:
+        if manifest.get('pacman'):
+            pacman = manifest['pacman']
+            subprocess.run(['gh', 'release', 'download', arguments.tag, '--repo', 'patrick-hudson/put.gd-desktop', '--pattern', pacman['asset'], '--dir', directory], check=True)
+            data = (Path(directory) / pacman['asset']).read_bytes()
+            if hashlib.sha256(data).hexdigest() != pacman['sha256']:
+                raise SystemExit('Downloaded Arch package differs from release checksums')
+            signatures[pacman['asset'] + '.sig'] = gpg(['--detach-sign', '--digest-algo', 'SHA512'], data, fingerprint)
         if manifest['rpm']:
             rpm = manifest['rpm']
             signatures[rpm['file']] = sign_rpm(rpm['asset'], rpm['file'], rpm['sha256'], arguments.tag, fingerprint, directory)

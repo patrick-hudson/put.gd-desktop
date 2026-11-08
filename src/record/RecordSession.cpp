@@ -25,6 +25,15 @@ namespace putgd::record {
 namespace {
 QJsonArray sizeJson(const QSize& s) { return {s.width(), s.height()}; }
 QJsonArray rectJson(const QRect& r) { return {r.x(), r.y(), r.width(), r.height()}; }
+QRect rectFromJson(const QJsonValue& value) {
+    const auto a = value.toArray();
+    if (a.size() != 4) return {};
+    for (const auto& v : a) if (!v.isDouble()) return {};
+    return QRect(a[0].toInt(), a[1].toInt(), a[2].toInt(), a[3].toInt());
+}
+// A window stream source that failed is reopened at most this often per
+// recording, a little after the failure so a closing window's notice wins.
+constexpr int sourceReopenLimit = 30, sourceReopenDelayMs = 400;
 bool integer(const QJsonValue& value, qint64 min, qint64 max, qint64* out) {
     if (!value.isDouble()) return false;
     const double number = value.toDouble();
@@ -66,42 +75,89 @@ RecordSession::RecordSession(QObject* parent) : QObject(parent), pipeline_(this)
         if (bar_) bar_->hide();
         emit event({{"event", "failed"}, {"error", error.toJson()}});
     });
-    connect(&pipeline_, &RecordingPipeline::budgetReached, this, [this](QJsonObject details) { stopEarly(details, "budget"); });
-    // A recorded window closed or its output went away: keep what was recorded.
-    connect(&pipeline_, &RecordingPipeline::sourceLost, this, [this](Error error) {
-        if (!pipeline_.running()) return;
-        stopEarly(QJsonObject{{"source", error.toJson()}}, "source_lost");
+    connect(&pipeline_, &RecordingPipeline::sourceLost, this, [this](Error error) { sourceLost(error); });
+    // wlr-capture: the recorded window closed (targetLost) or its output went away.
+    connect(&pipeline_, &RecordingPipeline::imageCopyLost, this, [this](Error error) {
+        debugLog("wlr-capture: the source ended: " + error.message);
+        if (target_.kind == "window") targetLost();
+        else if (pipeline_.running() && !pipeline_.stopping()) endCapture(QStringLiteral("source_lost"));
+    });
+    connect(&mutter_, &MutterScreenCast::lost, this, [this] { targetLost(); });
+#ifdef PUTGD_RECORD_KDE_SCREENCAST
+    connect(&kde_, &KdeScreencast::lost, this, [this] { targetLost(); });
+#endif
+    connect(&pipeline_, &RecordingPipeline::budgetReached, this, [this](QJsonObject details) {
+        // The admitted byte budget is nearly spent: finish the clip and open review.
+        showBar("stopping");
+        pipeline_.stop([this, details](Error error, qint64 durationUs) {
+            progress_.stop();
+            barTimer_.stop();
+            bounds_.hideAll();
+            if (bar_) bar_->hide();
+            // A bounded EOS timeout can leave an unindexed Matroska clip. For a
+            // disk stop, verify it decodes before promising private review.
+            if (!error && durationUs > 0 && !details.isEmpty()) {
+                QImage frame;
+                error = previewFrame(workingClip_, {}, config_, 0, 64, resolved_.canvas, frame);
+            }
+            if (error || durationUs < 1) {
+                if (!error) error = {"recording_failed", "The clip could not be finalized", {}};
+                if (!details.isEmpty()) {
+                    // Keep a drain/decoder failure's actual diagnosis. Low space
+                    // explains why we stopped, not necessarily why it failed.
+                    error.details["stopDetails"] = details;
+                    error.details["finalized"] = false;
+                }
+                emit event({{"event", "failed"}, {"error", error.toJson()}}); return;
+            }
+            durationUs_ = durationUs;
+            recorded_ = true;
+            audioCaptured_ = !pipeline_.audioEncoder().isEmpty();
+            openReview();
+            emit event({{"event", "stopped"}, {"durationUs", double(durationUs)}, {"canvas", sizeJson(resolved_.canvas)}, {"audioEncoder", pipeline_.audioEncoder()}, {"reason", "budget"}, {"stopDetails", details}});
+        });
     });
 }
-void RecordSession::stopEarly(const QJsonObject& details, const QString& reason) {
-    // The admitted byte budget is nearly spent: finish the clip and open review.
+void RecordSession::targetLost() {
+    if (target_.kind != "window" || targetClosed_ || cancelled_) return;
+    targetClosed_ = true;
+    debugLog("window: the compositor ended the stream (the window closed)");
+#ifdef PUTGD_RECORD_KDE_SCREENCAST
+    kde_.close();  // the protocol's destructor for the stream KWin closed
+#endif
+    if (pipeline_.running()) { if (!pipeline_.stopping()) endCapture(QStringLiteral("target_closed")); return; }
+    if (recorded_ || !prepared_) return;
+    // Ready, nothing recorded yet: nothing is left to record.
+    cancelLocal();
+    emit event({{"event", "failed"}, {"error", Error{"recording_target_closed", "The window closed before recording started", {}}.toJson()}});
+}
+void RecordSession::sourceLost(const Error& error) {
+    if (targetClosed_ || !pipeline_.running() || pipeline_.stopping()) return;
+    QPointer<RecordSession> guard(this);
+    QTimer::singleShot(sourceReopenDelayMs, this, [guard, error] {
+        if (!guard || guard->targetClosed_ || !guard->pipeline_.running() || guard->pipeline_.stopping()) return;
+        if (guard->sourceReopens_ < sourceReopenLimit && guard->pipeline_.reopenSource()) { ++guard->sourceReopens_; return; }
+        // The stream cannot be reopened: keep what was recorded.
+        debugLog("window: the stream could not be reopened: " + error.message);
+        guard->endCapture(QStringLiteral("source_lost"));
+    });
+}
+void RecordSession::endCapture(const QString& reason) {
     showBar("stopping");
-    pipeline_.stop([this, details, reason](Error error, qint64 durationUs) {
-        progress_.stop();
-        barTimer_.stop();
-        bounds_.hideAll();
-        if (bar_) bar_->hide();
-        // A bounded EOS timeout can leave an unindexed Matroska clip. For a
-        // disk stop, verify it decodes before promising private review.
-        if (!error && durationUs > 0 && !details.isEmpty()) {
-            QImage frame;
-            error = previewFrame(workingClip_, {}, config_, 0, 64, resolved_.canvas, frame);
-        }
-        if (error || durationUs < 1) {
-            if (!error) error = {"recording_failed", "The clip could not be finalized", {}};
-            if (!details.isEmpty()) {
-                // Keep a drain/decoder failure's actual diagnosis. Low space
-                // explains why we stopped, not necessarily why it failed.
-                error.details["stopDetails"] = details;
-                error.details["finalized"] = false;
-            }
-            emit event({{"event", "failed"}, {"error", error.toJson()}}); return;
-        }
-        durationUs_ = durationUs;
-        recorded_ = true;
-        audioCaptured_ = !pipeline_.audioEncoder().isEmpty();
-        openReview();
-        emit event({{"event", "stopped"}, {"durationUs", double(durationUs)}, {"canvas", sizeJson(resolved_.canvas)}, {"audioEncoder", pipeline_.audioEncoder()}, {"reason", reason}, {"stopDetails", details}});
+    QPointer<RecordSession> guard(this);
+    pipeline_.stop([guard, reason](Error error, qint64 durationUs) {
+        if (!guard) return;
+        guard->progress_.stop();
+        guard->barTimer_.stop();
+        guard->bounds_.hideAll();
+        if (guard->bar_) guard->bar_->hide();
+        if (!error && (durationUs < 1 || !QFileInfo(guard->workingClip_).isFile())) error = {"recording_failed", "The recording produced no retained frames", {}};
+        if (error) { error.details["stopReason"] = reason; emit guard->event({{"event", "failed"}, {"error", error.toJson()}}); return; }
+        guard->durationUs_ = durationUs;
+        guard->recorded_ = true;
+        guard->audioCaptured_ = !guard->pipeline_.audioEncoder().isEmpty();
+        guard->openReview();
+        emit guard->event({{"event", "stopped"}, {"durationUs", double(durationUs)}, {"canvas", sizeJson(guard->resolved_.canvas)}, {"audioEncoder", guard->pipeline_.audioEncoder()}, {"reason", reason}});
     });
 }
 RecordSession::~RecordSession() {
@@ -236,6 +292,7 @@ void RecordSession::prepare(const QJsonObject& params, Reply reply) {
     id_ = params["id"].toString();
     target_ = target;
     reviewOptions_ = params["reviewOptions"].toObject();
+    window_ = target_.kind == "window" ? params["window"].toObject() : QJsonObject{};
     config_ = config;
     staging_ = staging;
     workingClip_ = staging + "/working.mkv";
@@ -249,7 +306,11 @@ void RecordSession::acquire(Reply reply) {
     const auto acquisition = capabilities_["acquisition"].toString();
     if (acquisition == "kde-screencast" || acquisition == "mutter-screencast") { prepareNative(std::move(reply)); return; }
     if (acquisition == "wlr-capture") { prepareImageCopy(std::move(reply)); return; }
-    if (acquisition == "portal") { preparePortal(std::move(reply)); return; }
+    if (acquisition == "portal") {
+        if (target_.kind == "window") debugLog("window: no dialog-free screen cast here (" + capabilities_["kdeScreencast"].toObject()["reason"].toString(capabilities_["mutterScreenCast"].toObject()["reason"].toString(capabilities_["pipewire"].toObject()["socket"].isNull() ? QStringLiteral("no PipeWire socket") : QStringLiteral("none"))) + "); the portal picker chooses the window");
+        preparePortal(std::move(reply));
+        return;
+    }
     finishPrepare(std::move(reply));
 }
 void RecordSession::select(Reply reply) {
@@ -372,12 +433,38 @@ void RecordSession::preparePortal(Reply reply) {
         guard->finishWayland(stream.node, result.fd, shared, shared, QStringLiteral("portal"), reply);
     });
 }
-// Dialog-free paths: KWin streams an output or a logical region directly;
-// Mutter records a monitor connector or an area. Windows stay on the portal.
+// Dialog-free paths: KWin streams an output, a logical region or a window by
+// its UUID; Mutter records a monitor connector, an area or a window by its id.
+// The resident resolved the window (the active one, or the identity asked for)
+// and refused put.gd's own; without that identity the portal picker chooses.
 void RecordSession::prepareNative(Reply reply) {
     const auto acquisition = capabilities_["acquisition"].toString();
-    if (target_.kind == "window") { preparePortal(std::move(reply)); return; }
     QPointer<RecordSession> guard(this);
+    if (target_.kind == "window") {
+        if (target_.identity.isEmpty()) { debugLog("window: no window identity from the resident; the portal picker chooses the window"); preparePortal(std::move(reply)); return; }
+        const QRect logical = rectFromJson(window_["rect"]);
+        if (acquisition == "mutter-screencast") {
+            bool numeric = false;
+            const quint64 id = target_.identity.toULongLong(&numeric);
+            if (!numeric) { reply({"recording_target", "A GNOME window identity is Mutter's window id", {{"identity", target_.identity}}}, {}); return; }
+            mutter_.recordWindow(id, logical, [guard, reply, acquisition, logical](Error error, MutterScreenCast::Stream stream) {
+                if (!guard) return;
+                if (error) { reply(error, {}); return; }
+                guard->finishWayland(stream.node, -1, logical, logical, acquisition, reply);
+            });
+            return;
+        }
+#ifdef PUTGD_RECORD_KDE_SCREENCAST
+        kde_.streamWindow(target_.identity, logical, [guard, reply, acquisition, logical](Error error, KdeScreencast::Stream stream) {
+            if (!guard) return;
+            if (error) { reply(error, {}); return; }
+            guard->finishWayland(stream.node, -1, logical, logical, acquisition, reply);
+        });
+#else
+        preparePortal(std::move(reply));
+#endif
+        return;
+    }
     const bool region = target_.kind == "region" && !target_.rect.isEmpty();
     QRect rect = target_.rect;
     rect.setWidth(rect.width() & ~1);
@@ -472,7 +559,17 @@ void RecordSession::finishWayland(quint32 node, int fd, const QRect& shared, con
         resolved.rect = portalCrop_.translated(shared.topLeft());
     }
     resolved.canvas = QSize(resolved.rect.width() & ~1, resolved.rect.height() & ~1);
+    if (target_.kind == "window") {
+        // The window's size when recording was asked for, at its output's scale
+        // (the stream carries device pixels); later sizes are letterboxed into it.
+        QScreen* screen = QGuiApplication::screenAt(resolved.rect.center());
+        if (!screen) screen = QGuiApplication::primaryScreen();
+        resolved.canvas = windowCanvas(resolved.rect.size(), source == "portal" ? 1.0 : screen ? screen->devicePixelRatio() : 1.0);
+        if (resolved.canvas.isEmpty()) resolved.canvas = QSize(1280, 720);
+        if (resolved.rect.isEmpty()) resolved.rect = QRect(QPoint(0, 0), resolved.canvas);
+    }
     resolved.layout = QJsonObject{{"acquisition", source}, {"node", double(node)}, {"shared", rectJson(shared)}};
+    if (target_.kind == "window") resolved.layout["window"] = QJsonObject{{"identity", target_.identity}, {"title", window_["title"].toString()}};
     resolved_ = resolved;
     prepared_ = true;
     finishPrepare(reply);
@@ -579,6 +676,14 @@ void RecordSession::begin(Reply reply) {
     options.window = resolved_.window;
     if (imageCopy_) { options.imageCopy = imageCopy_.get(); options.rect = QRect(QPoint(), imageCopySize_); options.crop = portalCrop_; }
     else if (portalTarget_) { options.rect = resolved_.layout["shared"].isArray() ? QRect(resolved_.layout["shared"].toArray()[0].toInt(), resolved_.layout["shared"].toArray()[1].toInt(), resolved_.layout["shared"].toArray()[2].toInt(), resolved_.layout["shared"].toArray()[3].toInt()) : resolved_.rect; options.pipewireFd = portalFd_; options.pipewireNode = portalNode_; options.crop = portalCrop_; }
+    if (portalTarget_ && !imageCopy_ && target_.kind == "window") {
+        // A window stream changes size with the window (KWin, the portal) or
+        // moves the window inside a larger buffer (Mutter): follow the crop,
+        // keep the canvas, and survive a source that fails to renegotiate.
+        options.canvas = resolved_.canvas;
+        options.followCrop = true;
+        options.reopenableSource = true;
+    }
     options.fps = config_.fps;
     options.adaptive = config_.adaptiveFps;
     options.audio = config_.audio.system && !config_.silent();

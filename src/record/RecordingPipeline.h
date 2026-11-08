@@ -42,6 +42,16 @@ public:
         // through appsrc; rect is the stream size. Replaces ximagesrc.
         ImageCopySource* imageCopy = nullptr;
         QRect crop;                  // optional stream-relative crop for region recording
+        // A window stream: its frames change size with the window, so they are
+        // scaled, letterboxed, into this fixed canvas before the encoder.
+        QSize canvas;
+        // Mutter's window stream draws the window into a larger buffer and says
+        // where in each frame's PipeWire crop region; follow it per frame.
+        bool followCrop = false;
+        // A source error is reported as sourceLost rather than failed and the
+        // pipeline keeps running, so the session can reopen the stream
+        // (reopenSource) or end it as a stop (a recorded window closed).
+        bool reopenableSource = false;
         int fps = 30;
         bool adaptive = true;        // lower the rate when the machine cannot keep up (AdaptiveRate)
         bool audio = false;
@@ -62,7 +72,13 @@ public:
     void stop(std::function<void(Error, qint64 durationUs)>);
     static constexpr int stopDrainMs = 10000;
     void cancel();
+    // Replaces the PipeWire source with a new one on the same node, keeping the
+    // clip, its clock and its timeline. pipewiresrc before 1.5 drops its
+    // possible caps once negotiated, so KWin's renegotiation after a window
+    // resize fails it with "unhandled format"; a new source negotiates afresh.
+    bool reopenSource();
     bool running() const { return pipeline_ != nullptr; }
+    bool stopping() const { return stopping_; }
     bool paused() const { return timeline_.paused(); }
     qint64 retainedUs() const;
     qint64 fileBytes() const;
@@ -78,9 +94,11 @@ public:
     QJsonObject status() const;
 signals:
     void failed(putgd::Error);
+    // The PipeWire source failed while reopenableSource is set; once per failure.
+    void sourceLost(putgd::Error);
     void budgetReached(QJsonObject details);
     // The image-copy source ended: its window closed or its output went away.
-    void sourceLost(putgd::Error);
+    void imageCopyLost(putgd::Error);
 private:
     friend class RecordingStorageContract;
     friend class RecordingPipelineThroughput;
@@ -113,6 +131,17 @@ private:
     static GstPadProbeReturn probe(GstPad*, GstPadProbeInfo*, gpointer);
     static GstPadProbeReturn stampFrame(GstPad*, GstPadProbeInfo*, gpointer);
     static GstPadProbeReturn gateFrame(GstPad*, GstPadProbeInfo*, gpointer);
+    // reopenableSource: the source's own EOS (sent after its error) must not
+    // finalize the clip; stop() sends EOS past the source instead.
+    static GstPadProbeReturn dropSourceEos(GstPad*, GstPadProbeInfo*, gpointer);
+    // followCrop: sets the window crop from the frame's crop meta, on videocrop's sink pad.
+    static GstPadProbeReturn applyCropMeta(GstPad*, GstPadProbeInfo*, gpointer);
+    struct CropFollow { GstElement* crop = nullptr; QRect applied; gint64 changes = 0; };
+    CropFollow cropFollow_;
+    // Probes on a (new) source pad: frame stamping or the rate gate, and the EOS guard.
+    void attachSourceProbes(GstElement* source, bool stamped, bool guardEos);
+    bool sourceLost_ = false;
+    int sourceReopens_ = 0;
     // One adaptive-rate window a second while recording (not paused or stopping).
     void observeRate();
     // unthrottled: a PipeWire source asks the compositor for max_framerate 0/1 (see pipewireUnthrottledCaps).

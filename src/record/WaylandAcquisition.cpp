@@ -1,6 +1,7 @@
 #include "WaylandAcquisition.h"
 #include <QFileInfo>
 #include <algorithm>
+#include <cmath>
 
 namespace putgd::record {
 QString pipewireSocket(const QProcessEnvironment& env) {
@@ -33,5 +34,14 @@ qint64 lockedFrameTime(qint64 arrivalRunning, qint64 previous, const FrameLock& 
     if (arrival < slot - lock.toleranceNs) return -1;
     if (arrival > slot + lock.toleranceNs) return arrival;
     return slot;
+}
+CropMargins cropMargins(const QSize& frame, const QRect& region) {
+    if (frame.isEmpty() || region.isEmpty() || !QRect(QPoint(0, 0), frame).contains(region)) return {};
+    return {region.x(), region.y(), frame.width() - region.x() - region.width(), frame.height() - region.y() - region.height()};
+}
+QSize windowCanvas(const QSize& logical, qreal scale) {
+    const qreal factor = scale > 0 ? scale : 1.0;
+    const auto even = [factor](int value) { return std::max(2, int(std::lround(value * factor)) & ~1); };
+    return logical.isEmpty() ? QSize() : QSize(even(logical.width()), even(logical.height()));
 }
 }

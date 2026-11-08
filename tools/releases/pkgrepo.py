@@ -57,17 +57,18 @@ import urllib.request
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from release_identity import parse_tag, parse_version  # noqa: E402
 import appimage_update  # noqa: E402
+import pacman_repo
 import appstream_catalog  # noqa: E402
 import update_feed  # noqa: E402
 
 REPOSITORY = 'patrick-hudson/put.gd-desktop'
 DEB_LABELS = ('ubuntu24.04', 'ubuntu26.04', 'debian13')
 RPM_LABELS = {'fedora44': 'rpm/fedora/44/x86_64'}
-LABELS = DEB_LABELS + tuple(RPM_LABELS)
+LABELS = DEB_LABELS + tuple(RPM_LABELS) + ('archlinux',)
 CHANNELS = ('nightly', 'stable')
 SCOPES = {'live': '', 'lab': 'lab/'}
-PACKAGE_ASSET = re.compile(r'^putgd-(?P<version>[0-9][0-9A-Za-z.-]*)-(?P<label>ubuntu24\.04|ubuntu26\.04|debian13|fedora44)'
-                           r'-x86_64\.(?P<ext>deb|rpm)$')
+PACKAGE_ASSET = re.compile(r'^putgd-(?P<version>[0-9][0-9A-Za-z.-]*)-(?P<label>ubuntu24\.04|ubuntu26\.04|debian13|fedora44|archlinux)'
+                           r'-x86_64\.(?P<ext>deb|rpm|pkg[.]tar[.]zst)$')
 MIRROR_BASE = 'https://pkg.put.gd/'
 MAX_ZSYNC = 16 * 1024 * 1024
 SAFE_NAME = re.compile(r'^[A-Za-z0-9][A-Za-z0-9._+~-]{0,199}$')
@@ -213,6 +214,9 @@ class GitHub:
 
 def control_fields(path, label, run=subprocess.run):
     """Package name, version and architecture as the package itself states them."""
+    if label == 'archlinux':
+        fields = pacman_repo.info(path)
+        return dict(zip(('name', 'version', 'architecture'), (fields['pkgname'][0], fields['pkgver'][0], fields['arch'][0])))
     if label in RPM_LABELS:
         result = run(['rpm', '-qp', '--nosignature', '--nodigest', '--qf', '%{NAME}\\n%{VERSION}\\n%{ARCH}\\n', str(path)],
                      capture_output=True, text=True, check=True)
@@ -227,7 +231,9 @@ def control_fields(path, label, run=subprocess.run):
 
 def check_package(path, label, package_version, run=subprocess.run):
     fields = control_fields(path, label, run)
-    architecture = 'x86_64' if label in RPM_LABELS else 'amd64'
+    architecture = 'x86_64' if label in RPM_LABELS or label == 'archlinux' else 'amd64'
+    if label == 'archlinux':
+        package_version = package_version.replace('~nightly', 'nightly') + '-1'
     expected = {'name': 'putgd', 'version': package_version, 'architecture': architecture}
     if fields != expected:
         raise SignerError(f'{path.name} states {fields}, expected {expected}')
@@ -293,7 +299,7 @@ def verify_release(release, github, workdir, run=subprocess.run):
             raise SignerError('Unexpected package asset: ' + name)
         receipt = builds.get('receipts', {}).get(label, {}).get('package', {})
         if (receipt.get('sha256') != sums[name] or receipt.get('size') != assets[name]['size']
-                or receipt.get('format') != match['ext'].upper()):
+                or receipt.get('format') != ('PACMAN' if label == 'archlinux' else match['ext'].upper())):
             raise SignerError(name + ' differs from its release-builds.json receipt')
         path, digest = fetch(name, MAX_PACKAGE)
         if digest != sums[name]:
@@ -303,7 +309,10 @@ def verify_release(release, github, workdir, run=subprocess.run):
                            'checks': ['SHA256SUMS', 'release-builds.json receipt',
                                       'GitHub digest' if assets[name].get('digest') else 'GitHub digest absent',
                                       'package fields ' + ' '.join(fields.values())]}
-    if set(packages) != set(LABELS):
+    required_labels = set(DEB_LABELS) | set(RPM_LABELS)
+    if 'archlinux' in builds.get('receipts', {}):
+        required_labels.add('archlinux')
+    if set(packages) != required_labels:
         raise SignerError('Release lacks packages for ' + ', '.join(sorted(set(LABELS) - set(packages))))
     appimage = None
     name = appimage_name(identity.version)
@@ -384,7 +393,7 @@ def local_inputs(tag, directory, run=subprocess.run, base=MIRROR_BASE + SCOPES['
                 raise SignerError(path.name + ' differs from SHA256SUMS')
         appimage = appimage_inputs(tag, image, zsync, sums, base, ['SHA256SUMS'])
     # An AppImage-only lab release (#293 phase 3) leaves the lab apt/dnf repositories as they are.
-    if (packages or not appimage) and set(packages) != set(LABELS):
+    if (packages or not appimage) and not (set(DEB_LABELS) | set(RPM_LABELS)).issubset(packages):
         raise SignerError('Lab directory lacks packages for ' + ', '.join(sorted(set(LABELS) - set(packages))))
     published = iso(now_utc())
     release = {'tag_name': tag, 'published_at': published,
@@ -408,7 +417,7 @@ def clone_workspace(source, destination):
         return
 
     def copy(src, dst):
-        if src.endswith(('.deb', '.rpm', '.AppImage')):
+        if src.endswith(('.deb', '.rpm', '.pkg.tar.zst', '.pkg.tar.zst.sig', '.AppImage')):
             os.link(src, dst)
         else:
             shutil.copy2(src, dst)
@@ -456,12 +465,22 @@ class Workspace:
         for label in DEB_LABELS:
             self.reprepro(label, 'export', self.channel)
         self.createrepo(None)
+        pacman_repo.database(self.arch_dir(), self.channel)
+
+    def arch_dir(self):
+        return self.tree / "pacman" / "x86_64" / self.channel
 
     def include(self, inputs, rpm_path):
         for label in DEB_LABELS:
             self.reprepro(label, '-C', 'main', 'includedeb', self.channel, str(inputs['packages'][label]['path']))
             self.catalog_deb(label)
         self.createrepo(rpm_path)
+        package = inputs['packages'].get('archlinux')
+        if package:
+            target = self.arch_dir() / package['name']
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(package['path'], target)
+            pacman_repo.database(self.arch_dir(), self.channel, target)
 
     def dists(self, label):
         return self.tree / 'apt' / label / 'dists' / self.channel
@@ -579,6 +598,20 @@ def sign_release(release, fingerprint, gnupghome, run=subprocess.run):
             capture_output=True, text=True, env=env, stdin=subprocess.DEVNULL)
 
 
+def sign_detached(path, fingerprint, gnupghome, run=subprocess.run):
+    run(['gpg', '--batch', '--yes', '--local-user', fingerprint, '--digest-algo', 'SHA512', '--detach-sign',
+         '--output', str(path) + '.sig', str(path)], check=True,
+        env=dict(os.environ, GNUPGHOME=str(gnupghome)), stdin=subprocess.DEVNULL)
+
+
+def arch_aliases(workspace):
+    directory = workspace.arch_dir()
+    for suffix in ('', '.sig'):
+        source = directory / ('putgd-' + workspace.channel + '.db.tar.gz' + suffix)
+        if source.exists():
+            shutil.copy2(source, directory / ('putgd-' + workspace.channel + '.db' + suffix))
+
+
 def verify_gpg(keyring, signed, signature=None, run=subprocess.run):
     """True when signed (clearsigned, or with a detached signature) verifies against exactly this keyring."""
     command = ['gpgv', '--keyring', str(keyring)] + ([str(signature), str(signed)] if signature else [str(signed)])
@@ -609,7 +642,7 @@ def content_type(key):
 
 def cache_control(key):
     name = key.rsplit('/', 1)[-1]
-    if name.endswith(('.deb', '.rpm', '.AppImage', '.AppImage.zsync')) and '/dl/' not in '/' + key:
+    if name.endswith(('.deb', '.rpm', '.pkg.tar.zst', '.pkg.tar.zst.sig', '.AppImage', '.AppImage.zsync')) and '/dl/' not in '/' + key:
         return IMMUTABLE
     if ('/repodata/' in key and re.match(r'^[0-9a-f]{64}-', name)):
         return IMMUTABLE
@@ -619,13 +652,15 @@ def cache_control(key):
 def phase(key):
     """Upload order: packages, indexes, signed top-level metadata, per-release files; feeds and receipts last."""
     name = key.rsplit('/', 1)[-1]
-    if name.endswith(('.deb', '.rpm', '.AppImage')):
+    if name.endswith(('.deb', '.rpm', '.pkg.tar.zst', '.pkg.tar.zst.sig', '.AppImage')):
         return 0
     # The channel's .zsync permalink moves with the feed, after the image it names.
     if '/update/' in '/' + key or '/receipts/' in '/' + key or '/dl/' in '/' + key:
         return 4
     if '/releases/' in '/' + key:
         return 3
+    if name.endswith(('.db.tar.gz', '.db.tar.gz.sig', '.db', '.db.sig')):
+        return 2
     if name in TOP_METADATA:
         return 2
     return 1
@@ -730,6 +765,7 @@ def readback_files(workspace):
     catalogs = [f'apt/{label}/dists/{workspace.channel}/{appstream_catalog.DEP11}/{appstream_catalog.COMPONENTS}'
                 for label in DEB_LABELS]
     files += [relative for relative in catalogs if (workspace.tree / relative).exists()]
+    files += [str(p.relative_to(workspace.tree)) for p in workspace.arch_dir().glob('*.db*')]
     return files + [f'{RPM_LABELS["fedora44"]}/{workspace.channel}/repodata/repomd.xml']
 
 
@@ -779,6 +815,10 @@ class Signer:
         workspace = Workspace(root or current.root.with_name('next'), channel, self.config, self.run)
         clone_workspace(current.root, workspace.root)
         workspace.prepare()
+        keys = workspace.tree / 'keys'
+        keys.mkdir(exist_ok=True)
+        for key_channel in CHANNELS:
+            shutil.copy2(self.config.keys / ('putgd-' + key_channel + '.asc'), keys / ('putgd-' + key_channel + '.asc'))
         if inputs is None:
             workspace.export_empty()
             return workspace
@@ -868,6 +908,13 @@ class Signer:
                 raise SignerError('reprepro wrote no Release for ' + label)
             sign_release(release, self.config.nightly_fingerprint, self.config.gnupghome, self.run)
             signed += [release.with_name('InRelease'), release.with_name('Release.gpg')]
+        for path in sorted(workspace.arch_dir().glob('*')):
+            if path.name.endswith(('.pkg.tar.zst', '.db.tar.gz')):
+                sign_detached(path, self.config.nightly_fingerprint, self.config.gnupghome, self.run)
+                if not verify_gpg(self.config.keys / 'putgd-nightly.gpg', path, path.with_name(path.name + '.sig'), self.run):
+                    raise SignerError('Invalid pacman signature: ' + path.name)
+                receipt['signatures'].append({'file': str(path.relative_to(workspace.tree)) + '.sig', 'kind': 'openpgp', 'key': self.config.nightly_fingerprint})
+        arch_aliases(workspace)
         extra = []
         if inputs:
             trusted = f'put.gd {inputs["tag"]} {workspace.channel}'
@@ -963,6 +1010,7 @@ class Signer:
             feed.write_text(json.dumps(document, indent=2) + '\n')
         to_sign = {'clearsign': [f'apt/{label}/dists/stable/Release' for label in DEB_LABELS],
                    'minisign': ['update/v1/stable.json'] + ([f'releases/{inputs["tag"]}/SHA256SUMS'] if inputs else [])}
+        to_sign['detached'] = [str(p.relative_to(workspace.tree)) for p in workspace.arch_dir().glob('*.db.tar.gz')]
         check = {'packages': [f'apt/{label}/dists/stable/main/binary-amd64/Packages' for label in DEB_LABELS]}
         # The workstation downloads this RPM from GitHub itself, signs it and returns it.
         rpm = None
@@ -972,6 +1020,7 @@ class Signer:
             shutil.copy2(package['path'], stage / 'unsigned.rpm')
         manifest = {'schemaVersion': 2, 'scope': scope, 'tag': inputs['tag'] if inputs else None,
                     'stableFingerprint': self.config.stable_fingerprint, 'sign': to_sign, 'check': check, 'rpm': rpm,
+                    'pacman': ({'asset': inputs['packages']['archlinux']['name'], 'sha256': inputs['packages']['archlinux']['sha256']} if inputs and 'archlinux' in inputs['packages'] else None),
                     'sha256': {relative: sha256_file(workspace.tree / relative)
                                for group in (to_sign, check) for paths in group.values() for relative in paths},
                     'stagedAt': iso(now_utc())}
@@ -987,7 +1036,9 @@ class Signer:
         signatures = stage / 'signatures'
         wanted = ([relative + suffix for relative in manifest['sign']['clearsign'] for suffix in ('.InRelease', '.gpg')]
                   + [relative + '.minisig' for relative in manifest['sign']['minisign']]
-                  + ([manifest['rpm']['file']] if manifest['rpm'] else []))
+                  + ([manifest['rpm']['file']] if manifest['rpm'] else [])
+                  + [r + '.sig' for r in manifest['sign'].get('detached', [])]
+                  + ([manifest['pacman']['asset'] + '.sig'] if manifest.get('pacman') else []))
         return all((signatures / name.replace('/', '__')).is_file() for name in wanted)
 
     def publish_stable(self, scope, stage):
@@ -1015,6 +1066,21 @@ class Signer:
                 shutil.copy2(detached, release.with_name('Release.gpg'))
                 receipt['signatures'] += [{'file': relative.rsplit('/', 1)[0] + '/' + file, 'kind': 'openpgp',
                                            'key': self.config.stable_fingerprint} for file in ('InRelease', 'Release.gpg')]
+            for relative in manifest['sign'].get('detached', []):
+                path = workspace.tree / relative
+                signature = signatures / (relative.replace('/', '__') + '.sig')
+                if not verify_gpg(keyring, path, signature, self.run):
+                    raise SignerError('Invalid stable pacman db signature')
+                shutil.copy2(signature, str(path) + '.sig')
+                receipt['signatures'].append({'file': relative + '.sig', 'kind': 'openpgp', 'key': self.config.stable_fingerprint})
+            if manifest.get('pacman'):
+                path = workspace.arch_dir() / manifest['pacman']['asset']
+                signature = signatures / (path.name + '.sig')
+                if sha256_file(path) != manifest['pacman']['sha256'] or not verify_gpg(keyring, path, signature, self.run):
+                    raise SignerError('Invalid stable pacman package signature')
+                shutil.copy2(signature, str(path) + '.sig')
+                receipt['signatures'].append({'file': str(path.relative_to(workspace.tree)) + '.sig', 'kind': 'openpgp', 'key': self.config.stable_fingerprint})
+            arch_aliases(workspace)
             if manifest['rpm']:
                 signed = signatures / manifest['rpm']['file']
                 unsigned = {'name': manifest['rpm']['asset'], 'sha256': manifest['rpm']['sha256'], 'path': stage / 'unsigned.rpm'}

@@ -1,4 +1,5 @@
 #pragma once
+#include "core/RecordingWindows.h"
 #include "core/SourceAdapter.h"
 #include "BudgieShortcuts.h"
 #include "platform/wayland/DataControlClipboard.h"
@@ -14,7 +15,7 @@ namespace putgd {
 // selection from the putgd-region layer-shell helper, the clipboard from data
 // control. Nothing is chosen by compositor name: capabilities() reports which
 // protocols the compositor actually offers.
-class BudgieSourceAdapter final:public QObject,public SourceAdapter {
+class BudgieSourceAdapter final:public QObject,public SourceAdapter,public RecordingWindows {
  Q_OBJECT
 public:
  explicit BudgieSourceAdapter(QObject* parent=nullptr);
@@ -33,8 +34,9 @@ public:
  void bindShortcuts(const QHash<QString,QString>&);
  void setUiProcess(qint64 pid) override {uiProcess_=pid>0?pid:0;}
  void setResourceLimits(const ResourceLimits& limits){limits_=limits;}
- // The capturable windows, for window recording targets and agents (no picker exists).
- QJsonObject windows()const override;
+ // recording.windows: ext toplevel identifiers, the target a window recording
+ // takes (no picker exists). Neither protocol gives geometry, so rect is empty.
+ void listWindows(RecordingWindows::Reply) override;
  void clearShortcuts(){shortcuts_.clear();}
  // put.gd's own windows, refused by app ID: Wayland gives no PID for a toplevel.
  static bool ownAppId(const QString&);

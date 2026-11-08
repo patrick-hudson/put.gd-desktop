@@ -16,6 +16,11 @@ from audit_native import audit_tree, command, sha256
 
 
 def package_metadata(package: Path, kind: str) -> dict:
+    if kind == "PACMAN":
+        from pacman_repo import info
+        fields = info(package)
+        return {"format": "PACMAN", "name": fields['pkgname'][0], "version": fields['pkgver'][0],
+                "architecture": fields['arch'][0], "requires": fields.get('depend', [])}
     if kind == "DEB":
         with subprocess.Popen(["dpkg-deb", "--fsys-tarfile", str(package)], stdout=subprocess.PIPE) as process:
             with tarfile.open(fileobj=process.stdout, mode="r|") as archive:

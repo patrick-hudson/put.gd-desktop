@@ -23,6 +23,7 @@ struct KdeScreencast::Impl {
     QSocketNotifier* notifier = nullptr;
     Done done;
     Stream pending;
+    bool lostSignalled = false;
     explicit Impl(KdeScreencast& owner) : q(owner) {}
     static void logical_position(void* data, zxdg_output_v1*, int32_t x, int32_t y) { auto* o = static_cast<Output*>(data); o->logical.moveTopLeft({x, y}); }
     static void logical_size(void* data, zxdg_output_v1*, int32_t w, int32_t h) { auto* o = static_cast<Output*>(data); o->logical.setSize({w, h}); }
@@ -65,6 +66,7 @@ struct KdeScreencast::Impl {
         auto* self = static_cast<Impl*>(data);
         self->pending.node = node;
         debugLog(QStringLiteral("kde screencast: stream node %1 for %2").arg(node).arg(self->pending.output.isEmpty() ? QStringLiteral("region") : self->pending.output));
+        self->lostSignalled = false;
         if (auto done = std::exchange(self->done, {})) done({}, self->pending);
     }
     static void failed(void* data, zkde_screencast_stream_unstable_v1*, const char* error) {
@@ -75,7 +77,9 @@ struct KdeScreencast::Impl {
     static void closed(void* data, zkde_screencast_stream_unstable_v1*) {
         auto* self = static_cast<Impl*>(data);
         debugLog("kde screencast: stream closed by the compositor");
-        if (auto done = std::exchange(self->done, {})) done({"recording_source_lost", "KWin closed the screen cast", {}}, {});
+        if (auto done = std::exchange(self->done, {})) { done({"recording_source_lost", "KWin closed the screen cast", {}}, {}); return; }
+        // The stream was running: tell the session once (a streamed window closed).
+        if (self->stream && !self->lostSignalled) { self->lostSignalled = true; QMetaObject::invokeMethod(&self->q, [owner = QPointer<KdeScreencast>(&self->q)] { if (owner) emit owner->lost(); }, Qt::QueuedConnection); }
     }
     bool connect() {
         if (display) return true;
@@ -141,6 +145,17 @@ void KdeScreencast::streamRegion(const QRect& logical, Done done) {
     d_->pending = {0, logical, {}};
     d_->done = std::move(done);
     d_->stream = zkde_screencast_unstable_v1_stream_region(d_->screencast, logical.x(), logical.y(), uint32_t(logical.width()), uint32_t(logical.height()), wl_fixed_from_int(1), ZKDE_SCREENCAST_UNSTABLE_V1_POINTER_EMBEDDED);
+    d_->listen(d_->stream);
+}
+
+void KdeScreencast::streamWindow(const QString& uuid, const QRect& logical, Done done) {
+    QJsonObject facts;
+    QString reason;
+    if (!available(facts, &reason)) { done({"recording_unsupported", "KWin screen casting is unavailable: " + reason, {}}, {}); return; }
+    if (d_->done || d_->stream) { done({"recording_state", "A KWin screen cast is already open", {}}, {}); return; }
+    d_->pending = {0, logical, QStringLiteral("window %1").arg(uuid)};
+    d_->done = std::move(done);
+    d_->stream = zkde_screencast_unstable_v1_stream_window(d_->screencast, uuid.toUtf8().constData(), ZKDE_SCREENCAST_UNSTABLE_V1_POINTER_EMBEDDED);
     d_->listen(d_->stream);
 }
 

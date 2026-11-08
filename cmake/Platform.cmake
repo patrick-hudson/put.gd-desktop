@@ -95,7 +95,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   target_link_libraries(putgd_wayland PUBLIC putgd_app putgd_wayland_region putgd_keyboard_map Qt6::Widgets Qt6::DBus PkgConfig::PUTGD_XKBCOMMON PRIVATE PkgConfig::PUTGD_WAYLAND Threads::Threads)
   add_library(putgd_kde STATIC src/platform/kde/KWinTransfer.cpp src/platform/kde/KWinCapture.cpp
     src/platform/kde/KdeShortcuts.cpp src/platform/kde/KdeShortcutNormalization.cpp
-    src/platform/kde/KdeSourceAdapter.cpp)
+    src/platform/kde/KdeSourceAdapter.cpp src/platform/kde/KWinWindows.cpp)
   target_include_directories(putgd_kde PRIVATE "${protocol_dir}")
   target_link_libraries(putgd_kde PUBLIC putgd_wayland PRIVATE PkgConfig::PUTGD_WAYLAND Threads::Threads)
   # Budgie 10.10 (labwc) and Magpie: capture, toplevels and data control from

@@ -277,6 +277,15 @@ int main(int argc,char* argv[]) {
  // GNOME keeps clients from placing their own windows: the Shell extension
  // selects recording regions, frames them and moves the control bar.
  if(gnome)operations.recording().setShell(gnome);
+ // Window recordings follow a window Mutter names by id (#1278).
+ if(gnome)operations.recording().setWindows(gnome);
+#endif
+#ifdef PUTGD_NATIVE_KDE
+ // KWin streams a window by its UUID; the adapter lists them (#1278).
+ if(kde)operations.recording().setWindows(kde);
+#endif
+#ifdef PUTGD_NATIVE_BUDGIE
+ if(budgie)operations.recording().setWindows(budgie);
 #endif
  putgd::HistoryService history(operations);
  putgd::LocalServer server(settings,operations,history);
