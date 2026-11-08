@@ -112,6 +112,22 @@ class LiveCredentialContracts(unittest.TestCase):
             self.assertIn(b' QT_QPA_PLATFORM; do', body)
             self.assertNotIn(b'export QT_QPA_PLATFORM=', body)
 
+    def test_hyprland_guest_keeps_the_session_qt_platform(self):
+        with tempfile.TemporaryDirectory() as directory:
+            run = Path(directory)
+            (run / 'identity').write_text('synthetic identity')
+            (run / 'identity').chmod(0o600)
+            (run / 'state.json').write_text(json.dumps({'profile': 'omarchy-hyprland', 'guest_user': 'fixture',
+                'known_hosts': str(run / 'known_hosts'), 'ssh_port': 22222, 'overlay': str(run / 'disk.qcow2')}))
+            (run / 'disk.qcow2').write_text('synthetic disposable overlay')
+            request = {'op': 'import', 'reference': REF, 'credentials': {'accessKey': 'synthetic-access', 'secretKey': 'synthetic-secret', 'sessionToken': ''}}
+            with patch.object(bridge, 'exchange', return_value=b'{"ok":true}') as exchange:
+                self.assertEqual(bridge.guest_call(run, '/home/fixture/bridge', 's3', request), {'ok': True})
+            body = exchange.call_args.args[1]
+            self.assertIn(b'pgrep -u fixture -x quickshell', body)
+            self.assertIn(b' QT_QPA_PLATFORM; do', body)
+            self.assertNotIn(b'export QT_QPA_PLATFORM=', body)
+
     def test_transport_withholds_stderr_and_bounds_output(self):
         value = bridge.exchange([sys.executable, '-c',
             'import sys; data=sys.stdin.buffer.read(); sys.stderr.buffer.write(data); print("{\\"ok\\":true}")'], b'synthetic-private')
