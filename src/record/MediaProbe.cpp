@@ -159,7 +159,8 @@ QJsonObject probeMedia() {
     // appsrc, and the portal is never used (#1275). The helper inherits the
     // resident's environment, so these are the resident's own routing rules.
     const bool imageCopyDesktop = budgieCoreSessionEnvironment() || hyprlandCoreSessionEnvironment();
-    const bool imageCopyElements = gst["available"].toBool() && !gst["elements"].toObject()["appsrc"].isNull() && !gst["elements"].toObject()["videoscale"].isNull();
+    // RecordingPipeline runs appsrc ! videoscale ! videoconvert on this route.
+    const bool imageCopyElements = gst["available"].toBool() && !gst["elements"].toObject()["appsrc"].isNull() && !gst["elements"].toObject()["videoscale"].isNull() && !gst["elements"].toObject()["videoconvert"].isNull();
     const bool liveSource = gst["available"].toBool() && ((session == "x11" && gst["liveSources"].toArray().contains("ximagesrc")) || (session == "wayland" && !imageCopyDesktop && gst["liveSources"].toArray().contains("pipewiresrc")) || (session == "wayland" && imageCopyDesktop && imageCopyElements));
     const bool liveEncoder = gst["available"].toBool() && !gst["usableH264Encoders"].toArray().isEmpty();
     result["liveCapture"] = QJsonObject{{"source", liveSource}, {"encoder", liveEncoder}, {"audio", gst["available"].toBool() && !gst["audioSources"].toArray().isEmpty() && !gst["liveAacEncoders"].toArray().isEmpty()}};

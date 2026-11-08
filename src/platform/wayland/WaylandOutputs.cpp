@@ -65,7 +65,7 @@ struct WaylandOutputs::Impl:QObject {
   Impl* owner=nullptr;uint32_t global=0,version=0;wl_output* native=nullptr;zxdg_output_v1* logical=nullptr;
   Metadata pending;bool position=false,size=false,mode=false,wlDone=false,xdgDone=false,coherent=false,invalid=false;
   // Any wl_output property event (geometry, mode, scale, name, description) since the last done.
-  bool batchEvents=false,completedBefore=false;QElapsedTimer lastRebind;
+  bool batchEvents=false,completedBefore=false;QElapsedTimer lastRebind;bool rebindPending=false;
  };
  WaylandOutputs& q;wl_display* display=nullptr;wl_registry* registry=nullptr;zxdg_output_manager_v1* manager=nullptr;
  uint32_t managerName=0,managerVersion=0;wl_callback* initialSync=nullptr;
@@ -198,11 +198,15 @@ struct WaylandOutputs::Impl:QObject {
  }
  // Outside dispatch: release the stale objects and bind the same global again.
  // At most one rebind per output every 250 ms, so a compositor that sends empty
- // batches continually cannot make this loop.
+ // batches continually cannot make this loop; a request inside that window is
+ // deferred to its end, never dropped, and requests while one waits merge.
  void scheduleRebind(uint32_t global){
-  QTimer::singleShot(0,this,[this,global]{
+  auto* pending=outputs.value(global);if(!pending||pending->rebindPending)return;
+  pending->rebindPending=true;
+  const qint64 wait=pending->lastRebind.isValid()?qMax<qint64>(0,250-pending->lastRebind.elapsed()):0;
+  QTimer::singleShot(int(wait),this,[this,global]{
    auto* output=outputs.value(global);if(!output||!display||closing)return;
-   if(output->lastRebind.isValid()&&output->lastRebind.elapsed()<250)return;
+   output->rebindPending=false;
    output->lastRebind.start();
    dirty(output);output->coherent=false;
    if(output->logical){zxdg_output_v1_destroy(output->logical);output->logical=nullptr;}
