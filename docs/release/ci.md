@@ -841,3 +841,14 @@ authenticated packaged desktop and resource acceptance.
 ## Earlier measurements
 
 The rollout measurements from October 2026 and the previous pipeline's measurements are in [the CI records](../history/ci-records.md).
+
+## Arch package CI (#1275)
+
+The reusable Packages workflow also builds Arch in its `arch` job. Its
+`arch-install` job downloads that exact CI artifact into a separate clean Arch
+container, installs it and dependencies, lists and checks package files, checks
+shared-library resolution, runs `putgd-cli --version`, starts the resident
+with offscreen Qt and a validated short private socket path, then uninstalls.
+Both jobs participate in the reusable workflow result and therefore the
+required `CI` summary. Packaging/workflow paths already select this workflow.
+Arch participates in SBOM generation and tagged nightly/stable collection.

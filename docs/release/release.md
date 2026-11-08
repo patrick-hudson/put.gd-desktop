@@ -741,3 +741,15 @@ requires the current [acceptance matrix](../testing/acceptance-matrix.md),
 [release runbook](release-runbook.md) and [verification](../testing/verification.md) gates.
 A prerelease must describe its observed coverage honestly, without relabeling
 historical tests.
+
+## Arch packaging addition (#1275)
+
+The packaging implementation adds the `archlinux` native target, built against
+Arch's rolling distro libraries in a pinned `archlinux:base` container. Assets
+are named `putgd-VERSION-archlinux-x86_64.pkg.tar.zst`, with the same release
+identity, notices, private AWS runtime, Proton source binding, split debug
+artifact and package SBOM as other native builds. Nightly and stable collection
+both require the Arch receipt. Clean-container package checks do not establish
+Hyprland or other desktop acceptance. An unpublished AUR recipe template lives
+under `packaging/aur/`; [#1279](https://github.com/patrick-hudson/put.gd-desktop/issues/1279)
+tracks Patrick's publication decision.

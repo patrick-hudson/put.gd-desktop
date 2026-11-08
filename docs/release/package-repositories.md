@@ -254,3 +254,37 @@ python3 tools/releases/sign_stable.py --empty                      # on the work
 Lab-scope and live evidence (real nightlies 816 → 828 on all four desktops, 2026-10-21) is in [evidence/2026-10-21-pkg-repos-293](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-21-pkg-repos-293/README.md).
 
 The AppStream catalog (#314) was tested in the lab on 2026-10-22: search, install and remove from Discover (k72), GNOME Software (f44) and Mint's Software Manager (m74). The evidence is in [evidence/2026-10-22-appstream-catalog-314](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-22-appstream-catalog-314/README.md).
+
+## Arch Linux (campaign #1275)
+
+The Arch packaging code PR adds `pacman/x86_64/{nightly,stable}/` on pkg.put.gd.
+Each channel has `putgd-CHANNEL.db` (a copy of `.db.tar.gz`), its detached `.sig`,
+and unchanged GitHub `.pkg.tar.zst` payloads with detached `.sig` files. Both
+package and database signatures are required. The nightly key stays on d69;
+stable package/database signatures come back through `sign_stable.py`, using
+the workstation's stable key. Stable signing checks the database's package
+SHA-256 against the independently downloaded release checksums before signing.
+No stable private key is copied to d69.
+
+The installer recognizes `ID=arch` and a whitespace-delimited `arch` in
+`ID_LIKE` (including Arch derivatives). It verifies the channel's public-key
+fingerprint, imports and locally signs that key with `pacman-key`, writes
+`/etc/pacman.d/putgd.conf` only when absent, and adds one Include directive to
+`/etc/pacman.conf`. It uses `pacman -Syu putgd`; Arch partial upgrades are not
+supported. Existing repository choice is preserved. Native package removal
+leaves this administrator-owned repository configuration in place.
+
+To change channels, copy `/usr/share/putgd/repo/putgd-CHANNEL.conf` to
+`/etc/pacman.d/putgd.conf`, import `/usr/share/putgd/repo/putgd-CHANNEL.asc`, and
+locally sign its full fingerprint (the pinned public keys are in source).
+`sudo pacman -Syuu putgd` explicitly permits a downgrade to the older channel.
+
+Signer deployment is a separate operator step after code acceptance: update
+d69's signer source through its documented checkout/setup process, provision
+`zstd` for reading Arch packages, retain its current keys/configuration and
+systemd units, rehearse under the lab scope, and inspect detached signatures,
+pacman clean-container installation and CDN database readback before live use.
+No live d69 change was made by the implementation worker. Small key/index
+objects and packages use the existing signer upload flow; no VM images are
+uploaded from the LAN. Site download/install prerequisites are tracked in
+[put.gd-site #24](https://github.com/patrick-hudson/put.gd-site/issues/24).
