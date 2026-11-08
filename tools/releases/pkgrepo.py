@@ -599,7 +599,7 @@ def sign_release(release, fingerprint, gnupghome, run=subprocess.run):
 
 
 def sign_detached(path, fingerprint, gnupghome, run=subprocess.run):
-    run(['gpg', '--batch', '--yes', '--local-user', fingerprint, '--detach-sign',
+    run(['gpg', '--batch', '--yes', '--local-user', fingerprint, '--digest-algo', 'SHA512', '--detach-sign',
          '--output', str(path) + '.sig', str(path)], check=True,
         env=dict(os.environ, GNUPGHOME=str(gnupghome)), stdin=subprocess.DEVNULL)
 
@@ -1072,12 +1072,14 @@ class Signer:
                 if not verify_gpg(keyring, path, signature, self.run):
                     raise SignerError('Invalid stable pacman db signature')
                 shutil.copy2(signature, str(path) + '.sig')
+                receipt['signatures'].append({'file': relative + '.sig', 'kind': 'openpgp', 'key': self.config.stable_fingerprint})
             if manifest.get('pacman'):
                 path = workspace.arch_dir() / manifest['pacman']['asset']
                 signature = signatures / (path.name + '.sig')
                 if sha256_file(path) != manifest['pacman']['sha256'] or not verify_gpg(keyring, path, signature, self.run):
                     raise SignerError('Invalid stable pacman package signature')
                 shutil.copy2(signature, str(path) + '.sig')
+                receipt['signatures'].append({'file': str(path.relative_to(workspace.tree)) + '.sig', 'kind': 'openpgp', 'key': self.config.stable_fingerprint})
             arch_aliases(workspace)
             if manifest['rpm']:
                 signed = signatures / manifest['rpm']['file']
