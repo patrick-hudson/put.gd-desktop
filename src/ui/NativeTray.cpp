@@ -24,7 +24,13 @@
 #include <QDBusVirtualObject>
 #include <QElapsedTimer>
 #include <utility>
+#include <array>
 #include <QTimer>
+#include <QDir>
+#include <QFile>
+#include <QFileInfo>
+#include <QStandardPaths>
+#include <QtEndian>
 
 // Wire structures contain only Core types. ARGB bytes are in network order.
 struct NativeImage { int width = 0, height = 0; QByteArray bytes; };
@@ -164,6 +170,19 @@ NativeLayout menuLayout(int id, int depth, const QStringList& names, const QStri
   result.children.append(QDBusVariant(QVariant::fromValue(menuLayout(child, depth < 0 ? depth : depth - 1, names, update, shortcuts, upload,uploads,failed,recording,attention,outputs))));
  return result;
 }
+// A minimal PNG (RGBA, no filtering) for the named-icon file below. QImageWriter would load every
+// image plugin into the resident on Qt 6.8 and older, which costs memory for one small file.
+QByteArray pngBytes(const QImage& source) {
+ const auto image=source.convertToFormat(QImage::Format_RGBA8888);
+ static const auto table=[]{std::array<quint32,256> t{};for(quint32 n=0;n<256;++n){quint32 c=n;for(int k=0;k<8;++k)c=c&1?0xedb88320u^(c>>1):c>>1;t[n]=c;}return t;}();
+ const auto crc=[](const QByteArray& data){quint32 c=0xffffffffu;for(const char b:data)c=table[(c^quint8(b))&0xff]^(c>>8);return c^0xffffffffu;};
+ const auto chunk=[&](const char* type,const QByteArray& data){QByteArray out(4,'\0');qToBigEndian<quint32>(quint32(data.size()),out.data());QByteArray body=QByteArray(type,4)+data;QByteArray tail(4,'\0');qToBigEndian<quint32>(crc(body),tail.data());return out+body+tail;};
+ QByteArray header(13,'\0');qToBigEndian<quint32>(quint32(image.width()),header.data());qToBigEndian<quint32>(quint32(image.height()),header.data()+4);header[8]=8;header[9]=6;
+ QByteArray raw;raw.reserve(image.height()*(image.width()*4+1));
+ for(int y=0;y<image.height();++y){raw.append('\0');raw.append(reinterpret_cast<const char*>(image.constScanLine(y)),image.width()*4);}
+ const auto zlib=qCompress(raw,9).mid(4); // qCompress prefixes the zlib stream with its length
+ return QByteArray("\x89PNG\r\n\x1a\n",8)+chunk("IHDR",header)+chunk("IDAT",zlib)+chunk("IEND",{});
+}
 NativeImages brandIcon(const IconArt::TrayIcon& icon=IconArt::TrayIcon{Theme::trayTints(false).idle}) {
  NativeImages result;
  for (int scale : {1, 2, 3}) {
@@ -256,6 +275,14 @@ private:
  bool exportedItem_ = false, exportedMenu_ = false, registeredService_ = false;
  bool hostPresent_ = false, available_ = false, registrationInFlight_ = false;
  bool ownerKnown_ = false, hostKnown_ = false, registrationSettled_ = false, availabilityKnown_ = false;
+ // Ayatana's and Canonical's indicator-application-service ignore IconPixmap (#1294; Ubuntu Budgie 26.04's
+ // default tray applet), so for them the icon is also a PNG file named by IconName in IconThemePath, the way
+ // Qt's own tray icon does it. A new file per change, because those hosts cache an icon by name.
+ bool namedIcon_ = false;
+ QString iconDirectory_, iconName_;
+ quint64 iconSerial_ = 0;
+ void detectIconHost(quint64 generation);
+ void writeNamedIcon();
 };
 
 namespace {
@@ -318,6 +345,7 @@ NativeTrayPrivate::~NativeTrayPrivate() {
  // The watcher tracks the named service, so disappearance removes the item even
  // when other app services keep the shared session-bus connection alive.
  if (registeredService_) bus_.unregisterService(service_);
+ if (!iconName_.isEmpty()) QFile::remove(iconDirectory_ + "/" + iconName_ + ".png");
  if (exportedMenu_) bus_.unregisterObject("/Menu");
  if (exportedItem_) bus_.unregisterObject("/StatusNotifierItem");
 }
@@ -326,7 +354,36 @@ void NativeTrayPrivate::setOwner(const QString& owner) {
  ownerKnown_ = true; hostKnown_ = owner.isEmpty(); registrationSettled_ = owner.isEmpty(); availabilityKnown_ = false;
  ++generation_; ++hostQuery_; owner_ = owner; registeredOwner_.clear(); hostPresent_ = false;
  attempts_ = 0; retry_.stop(); updateAvailability();
- if (!owner_.isEmpty()) { queryHost(); registerItem(); }
+ if (!owner_.isEmpty()) detectIconHost(generation_);
+}
+void NativeTrayPrivate::detectIconHost(quint64 generation) {
+ auto call = QDBusMessage::createMethodCall("org.freedesktop.DBus", "/org/freedesktop/DBus", "org.freedesktop.DBus", "GetConnectionUnixProcessID");
+ call << owner_;
+ auto* pending = new QDBusPendingCallWatcher(bus_.asyncCall(call, callTimeoutMs), this);
+ connect(pending, &QDBusPendingCallWatcher::finished, this, [this, generation](QDBusPendingCallWatcher* p) {
+  const QDBusPendingReply<uint> result = *p; p->deleteLater();
+  if (generation != generation_) return;
+  const auto program = result.isError() ? QString{} : QFileInfo(QFile::symLinkTarget(QString("/proc/%1/exe").arg(result.value()))).fileName();
+  const bool named = program.endsWith("indicator-application-service");
+  if (named != namedIcon_) { namedIcon_ = named; if (named) writeNamedIcon(); }
+  queryHost(); registerItem();
+ });
+}
+void NativeTrayPrivate::writeNamedIcon() {
+ if (iconDirectory_.isEmpty()) {
+  const auto runtime = QStandardPaths::writableLocation(QStandardPaths::RuntimeLocation);
+  if (runtime.isEmpty()) return;
+  iconDirectory_ = runtime + "/putgd/tray";
+  if (!QDir().mkpath(iconDirectory_)) { iconDirectory_.clear(); return; }
+  QFile::setPermissions(iconDirectory_, QFile::ReadOwner | QFile::WriteOwner | QFile::ExeOwner);
+ }
+ const auto previous = iconName_.isEmpty() ? QString{} : iconDirectory_ + "/" + iconName_ + ".png";
+ const auto name = QString("putgd-tray-%1-%2").arg(QCoreApplication::applicationPid()).arg(++iconSerial_);
+ QFile file(iconDirectory_ + "/" + name + ".png");
+ if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate) || file.write(pngBytes(IconArt::liftTray({color_, percent_, recording_, glyph_}, 2))) < 0) return;
+ file.close();
+ iconName_ = name;
+ if (!previous.isEmpty()) QFile::remove(previous);
 }
 void NativeTrayPrivate::hostChanged() { attempts_ = 0; queryHost(); registerItem(); }
 void NativeTrayPrivate::queryHost() {
@@ -464,10 +521,10 @@ void NativeTrayPrivate::setActivity(const QColor& color,const QString& descripti
  const bool textChanged=description!=activityText_||tooltipTitle!=activityTitle_;
  if(!iconChanged&&!textChanged)return;
  color_=color;activityText_=description;activityTitle_=tooltipTitle;percent_=percent;recording_=recording;glyph_=glyph;
- if(iconChanged)icons_=brandIcon({color,percent,recording,glyph});
+ if(iconChanged){icons_=brandIcon({color,percent,recording,glyph});if(namedIcon_)writeNamedIcon();}
  const auto props=properties(false);QVariantMap changed;
  if(textChanged)changed.insert("ToolTip",props["ToolTip"]);
- if(iconChanged)changed.insert("IconPixmap",props["IconPixmap"]);
+ if(iconChanged){changed.insert("IconPixmap",props["IconPixmap"]);changed.insert("IconName",props["IconName"]);changed.insert("IconThemePath",props["IconThemePath"]);}
  auto signal=QDBusMessage::createSignal("/StatusNotifierItem","org.freedesktop.DBus.Properties","PropertiesChanged");
  signal.setArguments({QString::fromLatin1(itemInterface),changed,QStringList{}});bus_.send(signal);
  if(textChanged)bus_.send(QDBusMessage::createSignal("/StatusNotifierItem",itemInterface,"NewToolTip"));
@@ -476,8 +533,8 @@ void NativeTrayPrivate::setActivity(const QColor& color,const QString& descripti
 QVariantMap NativeTrayPrivate::properties(bool menu) const {
  if (menu) return {{"Version", uint(3)}, {"TextDirection", "ltr"}, {"Status", "normal"}, {"IconThemePath", QStringList{}}};
  return {{"Category", "ApplicationStatus"}, {"Id", "putgd"}, {"Title", "put.gd"}, {"Status", "Active"}, {"WindowId", 0},
-  {"IconThemePath", ""}, {"Menu", QVariant::fromValue(QDBusObjectPath("/Menu"))}, {"ItemIsMenu", false},
-  {"IconName", ""}, {"IconPixmap", QVariant::fromValue(icons_)},
+  {"IconThemePath", namedIcon_ ? iconDirectory_ : QString{}}, {"Menu", QVariant::fromValue(QDBusObjectPath("/Menu"))}, {"ItemIsMenu", false},
+  {"IconName", namedIcon_ ? iconName_ : QString{}}, {"IconPixmap", QVariant::fromValue(icons_)},
   {"OverlayIconName", ""}, {"OverlayIconPixmap", QVariant::fromValue(NativeImages{})},
   {"AttentionIconName", ""}, {"AttentionIconPixmap", QVariant::fromValue(NativeImages{})}, {"AttentionMovieName", ""},
   {"ToolTip", QVariant::fromValue(NativeTooltip{"", {}, activityTitle_, activityText_})}};
