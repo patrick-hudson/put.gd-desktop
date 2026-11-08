@@ -1,8 +1,10 @@
 # Budgie adapter
 
 Budgie 10.10 runs on labwc, a wlroots compositor with no screenshot or
-screencast service of its own. put.gd talks to it through standard Wayland
-protocols on its own connections: no portal, no picker, no `grim` or `slurp`.
+screencast service of its own. put.gd captures through standard Wayland
+protocols on its own connections: no ScreenCast portal, no picker, no `grim` or
+`slurp`. Shortcuts use Budgie's labwc bridge, or the GlobalShortcuts portal
+where a desktop offers it ([Shortcuts](#shortcuts)).
 Budgie 10.9 is an X11 desktop and uses the existing X11 adapter. Budgie 11
 (Magpie on Mir) is unreleased; see [Budgie 11](#budgie-11).
 
@@ -21,9 +23,9 @@ Tracking issue: [#1275](https://github.com/patrick-hudson/put.gd-desktop/issues/
 A Budgie session sets `XDG_CURRENT_DESKTOP=Budgie` (forge test sessions use
 `Budgie:GNOME`). The resident takes the Core route with the `budgie-wayland`
 adapter when that token is present, the session is Wayland, and
-`QT_QPA_PLATFORM` is unset or names Wayland first. Fedora's
-`startbudgielabwc` sets `QT_QPA_PLATFORM=wayland;xcb` and Ubuntu Budgie 26.04
-sets `wayland`; this route accepts both. A session that
+`QT_QPA_PLATFORM` is unset or names Wayland first. Fedora 45's
+`startbudgielabwc` sets `QT_QPA_PLATFORM=wayland;xcb`; Fedora 44 and Ubuntu
+Budgie 26.04 set `wayland`; this route accepts both. A session that
 names Budgie never gets the GNOME or KDE adapter. Bare labwc (`labwc:wlroots`)
 and other wlroots compositors keep the unavailable source: nothing here has
 accepted them.
@@ -152,8 +154,14 @@ advertised protocols, so Magpie built from the forge gets capture, clipboard,
 region and window capture where Mir advertises them (Mir 2.29+ for windows).
 Magpie keybinds (`magpierc`) are not written: an injected key did not fire a
 Magpie keybind in the 2026-11-01 probe, and no Budgie 11 shortcut contract
-exists. **No real Budgie 11 desktop has been tested.** Acceptance runs on
-the first Budgie 11 alpha (tracked as a follow-up on #1275).
+exists. Headless Magpie (58a0d7a, Mir 2.29) passes capture, window capture,
+clipboard, region (virtual pointer, exact pixels) and monitor and window
+recording; window recording failed 2 of 4 runs until #1296 (a prepare right
+after a cancel) was fixed, then passed 5/5 fresh sessions. After about six
+capture sessions on one window Magpie stops repainting that window
+([#1305](https://github.com/patrick-hudson/put.gd-desktop/issues/1305)).
+**No real Budgie 11 desktop has been tested.** Acceptance runs on the first
+Budgie 11 alpha ([#1290](https://github.com/patrick-hudson/put.gd-desktop/issues/1290)).
 
 ## Tests
 

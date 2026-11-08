@@ -4,11 +4,11 @@ Part of [Screen recording](../recording.md).
 
 ## Wayland acquisition
 
-On a Wayland session the compositor provides the pixels as a PipeWire video
+On most Wayland sessions the compositor provides the pixels as a PipeWire video
 stream and `pipewiresrc` feeds them through `videorate` at the configured
 rate into the same encoder, pause and budget logic as X11. Compositors with no
-screencast service (Budgie on labwc, Magpie) give frames through
-`ext-image-copy-capture-v1` instead. The probe picks one of four ways and
+screencast service (Budgie on labwc, Magpie) give the frames through
+`ext-image-copy-capture-v1` into `appsrc` instead, with no PipeWire stream. The probe picks one of four ways and
 reports it as `acquisition`:
 
 - `kde-screencast`: KWin's own `zkde_screencast_unstable_v1` protocol
@@ -48,7 +48,8 @@ reports it as `acquisition`:
 
 - `wlr-capture`: on a Budgie session (by the desktop token, as the adapter
   routes; never on bare labwc), always, and the ScreenCast portal is never
-  used there. `putgd-record` opens its own Wayland connection,
+  used there. A rotated or flipped output's frames are turned upright before
+  `appsrc`, and an odd window or output size is cropped to the even canvas. `putgd-record` opens its own Wayland connection,
   creates an `ext-image-copy-capture` session for one output or one window
   with `paint_cursors`, and a capture thread pushes each frame from a ring of
   four reused `wl_shm` buffers into `appsrc` (format from the compositor's shm
@@ -67,8 +68,9 @@ reports it as `acquisition`:
   identity from `recording.windows` (ext toplevel identifiers, no rect), or
   the window active at `prepare` when empty, resolved by the resident; `targets` lists it only where the toplevel capture source exists
   (labwc 0.20, Mir 2.29). A window that changes size is scaled with borders
-  into its starting size (`videoscale`); one that closes ends the recording
-  as `stopped` with reason `target_closed` and keeps the clip; an output that
+  into its starting size (`videoscale`); one that closes ends the capture (the
+  helper's `stopped` event, reason `target_closed`; the session's state becomes
+  `reviewing`, `stopReason` `target_closed`) and keeps the clip; an output that
   goes away ends it with `source_lost`. Overlays are
   layer surfaces, as on Plasma; a monitor recording includes the bar.
 `windowAcquisition` says how a `window` target is recorded here:
@@ -81,12 +83,15 @@ portal, which passes its own connection as a descriptor, in charge when it
 is missing. Monitor and window identities are optional everywhere (on X11 an
 empty monitor identity means the first connected monitor). Reasons for an
 unavailable Wayland session are `live_source_missing` (no `pipewiresrc`),
-`portal_unavailable`, `portal_too_old` or `session_bus_unavailable`.
+`portal_unavailable`, `portal_too_old` or `session_bus_unavailable`, and on
+Budgie `wlr_capture_unavailable` (a missing global or `appsrc`, named in the
+message).
 Cancelling a picker ends the operation as `cancelled`; Cancel, Stop and
 discard close the stream (`Session.Close`, `Session.Stop` or the protocol's
 `close`), which ends the share. `tests/unit` covers the portal stream
-demarshalling; the three paths are exercised on the Fedora GNOME and Debian
-KDE desktops.
+demarshalling; the PipeWire paths are exercised on the Fedora GNOME and Debian
+KDE desktops, `wlr-capture` on the Budgie goldens (Fedora 44/45, Ubuntu Budgie
+26.04) and on headless labwc in `budgie_labwc_integration`.
 
 ### Window recordings
 

@@ -60,10 +60,13 @@ Fedora 45 Budgie's Secret Service is `oo7-daemon`, whose `login` collection stay
 locked under autologin and ignores `SetAlias`, so `lab_keyring.py` can't make a
 lab default there. Instead, install `gnome-keyring` in the overlay and start a
 private `gnome-keyring-daemon --components=secrets` on `/dev/shm`, as
-`nightly_desktop_guest.prepare_live_keyring` does for KWallet guests. Record its
-unique bus name as the run's `secret_service`, so the bridge and a resident
-started with `SECRET_SERVICE_BUS_NAME`, `QTKEYCHAIN_BACKEND=libsecret` both use
-it. oo7 keeps its name and collections.
+`nightly_desktop_guest.prepare_live_keyring` does for KWallet guests: find its
+unique bus name, then run `lab_keyring.py` with `SECRET_SERVICE_BUS_NAME` set to
+it, which creates the blank `putgd lab` collection and makes it that daemon's
+default, and check `lab_keyring.py --status` reports it unlocked. Record the bus
+name as the run's `secret_service`, so the bridge and a resident started with
+`SECRET_SERVICE_BUS_NAME`, `QTKEYCHAIN_BACKEND=libsecret` both use it. oo7
+keeps its name and collections.
 
 ## Topic pages
 

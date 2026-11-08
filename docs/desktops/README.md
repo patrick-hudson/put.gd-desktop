@@ -7,7 +7,7 @@ One page per native desktop integration.
 - Real desktop support requires graphical acceptance evidence for each declared compositor. Offscreen tests prove widget and core behavior only.
 - GNOME: the adapter never calls the restricted `org.gnome.Shell.Screenshot` service as a spoofed caller, enables unsafe mode or substitutes a portal picker.
 - Plasma Wayland: the adapter never substitutes a screen picker for region selection.
-- Budgie 10.10 (labwc): capture uses ext-image-copy-capture on put.gd's own connection; the adapter never uses a portal, a picker, `grim` or `slurp`, and is chosen by the Budgie desktop token, never for bare labwc.
+- Budgie 10.10 (labwc): screenshots and recordings use ext-image-copy-capture on put.gd's own connections, never a ScreenCast portal, a picker, `grim` or `slurp`; shortcuts may use the GlobalShortcuts portal where the desktop offers it. The adapter is chosen by the Budgie desktop token, never for bare labwc.
 - Cinnamon: the adapter requires the Qt `xcb` backend, RandR, XFixes and a resident in the same X11 user session. Wayland is a separate integration and is not selected by this adapter.
 
 ## Documents

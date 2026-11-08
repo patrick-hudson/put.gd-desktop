@@ -22,11 +22,11 @@ packages use dynamically linked distribution Qt. See
 
 | Executable | Role | Links in and out | Where it runs |
 | --- | --- | --- | --- |
-| `putgd` | Resident: tray, shortcuts, source adapters, settings, operations, history, setup, recording coordination and updates | Native desktop APIs; private JSON socket for clients; private helper pipes | User's graphical login session; Qt Core on Cinnamon/X11, GNOME Wayland and KDE Wayland |
+| `putgd` | Resident: tray, shortcuts, source adapters, settings, operations, history, setup, recording coordination and updates | Native desktop APIs; private JSON socket for clients; private helper pipes | User's graphical login session; Qt Core on Cinnamon/X11, GNOME Wayland, KDE Wayland and Budgie Wayland |
 | `putgd-ui` | Main window and About; separate `--edit-image` editor and `--image-job` codec modes | Window helper uses the session socket plus supervised control pipes; editor/image jobs use private pipes and staging files | On demand; image jobs use Qt offscreen |
 | `putgd-cli` | JSON client; update-check and AppImage-install modes | Session socket for app methods; HTTPS for update modes | Same user/session, or a resident-launched temporary update child |
 | `putgd-capture` | Frozen-target X11 selection and acquisition | Resident control pipes and private PNG output; X11/Cinnamon capture APIs | Temporary graphical helper on the Cinnamon Core route |
-| `putgd-region` | KDE region selector | Private control pipes; geometry out, optional frozen background in | Temporary native Plasma Wayland helper |
+| `putgd-region` | Wayland region selector (layer-shell), shared by Plasma and Budgie | Private control pipes; geometry out, optional frozen background in | Temporary native helper on the Plasma and Budgie Wayland routes |
 | `putgd-record` | Recording, overlays, private review, previews and export | Resident control pipes; X11 or Wayland/PipeWire acquisition; private media files | Temporary recording session; also bounded poster jobs |
 | `putgd-s3-worker` | Official AWS C++ SDK requests and private S3 module | Private framed pipes, durable-checkpoint acknowledgements and credential requests; S3 HTTPS | New Linux process per driver call |
 | `putgd-b2-worker` | Native B2 HTTP and transfer work | Private newline JSON input, progress, checkpoints and result; B2 HTTPS | New process per request |

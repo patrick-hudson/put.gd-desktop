@@ -74,9 +74,9 @@ show; `tests/desktop/budgie.yaml` lists the scenarios.
 
 | Row | Golden | Package | Must show |
 | --- | --- | --- | --- |
-| Fedora 44 Budgie (labwc 0.9.6) | `fedora44-budgie` | RPM | Everything except window capture, which reports unavailable naming the protocol |
+| Fedora 44 Budgie (labwc 0.9.6) | `fedora44-budgie` | RPM (installed with `dnf` in the overlay; `lab.py install` takes the AppImage) | Everything except window capture and window recording, which report unavailable naming the protocol, in the notification and in Settings |
 | Ubuntu Budgie 26.04 (labwc 0.9.3) | `ubuntu-budgie-2604` | DEB | As Fedora 44 |
-| Fedora 45 Budgie (labwc 0.20.2) | `fedora45-budgie` | RPM and AppImage | Everything, including window capture and window recording |
+| Fedora 45 Budgie (labwc 0.20.2) | `fedora45-budgie` | AppImage (`lab.py install`) and RPM (`dnf` in the overlay) | Everything, including window capture and window recording |
 | Ubuntu Budgie 24.04 (Budgie 10.9, X11) | `ubuntu-budgie-2404` | DEB | Everything through the X11 adapter |
 | Magpie at a recorded SHA on Mir 2.29+ | none (compositor only) | dev build or AppImage | Capture, clipboard, region and window; shortcut status truthful |
 
