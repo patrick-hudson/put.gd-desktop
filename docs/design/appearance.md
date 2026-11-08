@@ -154,7 +154,8 @@ the `StatusNotifierWatcher` belongs to a process whose name ends in
 into `$XDG_RUNTIME_DIR/putgd/tray/` and names it with `IconName` and
 `IconThemePath` (a name without dashes, so GTK has no fallback to the installed
 app icon), as Qt's own tray icon does for these hosts. Each change writes a
-new file, because these hosts cache icons by name, and removes the previous one.
+new file, because these hosts cache icons by name, and the last four are kept: during
+a burst of changes the host can still be loading a name it was told about.
 The PNG is encoded directly, so no Qt image plugin is loaded into the resident.
 Every other host keeps the pixmap only
 ([#1294](https://github.com/patrick-hudson/put.gd-desktop/issues/1294)).
