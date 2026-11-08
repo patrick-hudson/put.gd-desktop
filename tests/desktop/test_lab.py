@@ -49,6 +49,28 @@ class LabContracts(unittest.TestCase):
         self.assertLess(script.index('export XDG_RUNTIME_DIR=/run/user/'), script.index(lab.native_display_prefix()))
         self.assertLess(script.index(lab.native_display_prefix()), script.index('putgd-launcher --background'))
 
+    def test_budgie_keeps_the_display_managers_toolkit_fallback_list(self):
+        import os, subprocess
+        scripts = []
+        with patch.object(lab, 'state', return_value={'guest_user': 'lab', 'profile': 'fedora45-budgie'}), \
+             patch.object(lab, 'ssh', side_effect=lambda _run, script, *a, **k: scripts.append(script) or ''):
+            lab.guest_session('run', 'printf "%s" "$QT_QPA_PLATFORM"\n')
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            environment = dict(os.environ, QT_QPA_PLATFORM='wayland;xcb',
+                               XDG_SESSION_TYPE='wayland', WAYLAND_DISPLAY='wayland-0')
+            shell = subprocess.Popen(['sleep', '30'], env=environment)
+            try:
+                (root / 'pgrep').write_text('#!/bin/sh\necho ' + str(shell.pid) + '\n')
+                (root / 'pgrep').chmod(0o700)
+                result = subprocess.check_output(['sh', '-c', scripts[0]], text=True,
+                                                 env={'PATH': str(root) + ':' + os.environ['PATH'],
+                                                      'HOME': directory})
+            finally:
+                shell.kill()
+                shell.wait()
+        self.assertEqual(result, 'wayland;xcb')
+
     def test_guest_session_takes_the_desktop_sessions_config_and_data_dirs(self):
         # #243: PanelTone reads XDG_CONFIG_DIRS (Plasma's ~/.config/kdedefaults)
         # and XDG_DATA_DIRS (the Plasma style's colors file); a resident started

@@ -112,6 +112,23 @@ class GuestPolicyContracts(unittest.TestCase):
                 self.assertEqual(policy[prefix + '.settings-daemon.plugins.power',
                                         'sleep-inactive-' + supply + '-timeout'], '0')
 
+    def test_budgie_uses_gsd_power_without_requiring_a_gnome_screensaver(self):
+        self.assertEqual(idle.settings('Budgie'), idle.settings('GNOME'))
+        with patch.object(idle, 'command') as command:
+            idle.desktop_services('Budgie', True)
+        command.assert_not_called()
+
+    def test_budgie_output_witness_does_not_accept_a_disabled_head(self):
+        observed = lab.parse_wlr_randr([
+            {'name': 'Virtual-1', 'enabled': True, 'position': {'x': 0, 'y': 0},
+             'modes': [{'width': 1280, 'height': 800, 'current': True}]},
+            {'name': 'Virtual-2', 'enabled': False, 'modes': []}])
+        self.assertTrue(lab.verify_outputs(observed, 1)['ok'])
+        self.assertFalse(lab.verify_outputs(observed, 2)['ok'])
+        self.assertEqual(lab.layout_backend({'session': 'wayland', 'desktop': 'Budgie'}),
+                         'wlr-randr')
+        self.assertEqual(lab.layout_backend({'session': 'x11', 'desktop': 'Budgie'}), 'xrandr')
+
     def test_readback_drift_fails_instead_of_accepting_successful_write(self):
         with patch.object(idle, 'command', side_effect=['', 'uint32 300']) as command:
             with self.assertRaisesRegex(idle.PolicyError, 'readback mismatch'):

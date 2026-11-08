@@ -33,9 +33,9 @@ def command(*args):
 
 
 def settings(desktop):
-    if desktop not in ('GNOME', 'Cinnamon'):
+    if desktop not in ('GNOME', 'Cinnamon', 'Budgie'):
         raise PolicyError('Unsupported GSettings desktop')
-    prefix = 'org.gnome' if desktop == 'GNOME' else 'org.cinnamon'
+    prefix = 'org.gnome' if desktop in ('GNOME', 'Budgie') else 'org.cinnamon'
     policy = [(prefix + '.desktop.session', 'idle-delay', 'uint32 0'),
               (prefix + '.desktop.screensaver', 'lock-enabled', 'false'),
               (prefix + '.desktop.screensaver', 'idle-activation-enabled', 'false')]
@@ -43,7 +43,7 @@ def settings(desktop):
     for supply in ('ac', 'battery'):
         policy += [(power, 'sleep-inactive-' + supply + '-timeout', '0'),
                    (power, 'sleep-inactive-' + supply + '-type', "'nothing'")]
-    if desktop == 'GNOME':
+    if desktop in ('GNOME', 'Budgie'):
         policy.append((power, 'idle-dim', 'false'))
     else:
         for supply in ('ac', 'battery'):
@@ -58,7 +58,7 @@ def desktop_environment(process, user, proc=Path('/proc')):
     account = pwd.getpwnam(user)
     if os.getuid() != account.pw_uid or os.getuid() == 0:
         raise PolicyError('Run as the disposable guest user')
-    if process not in ('gnome-shell', 'cinnamon', 'plasmashell', 'quickshell'):
+    if process not in ('gnome-shell', 'cinnamon', 'plasmashell', 'budgie-panel', 'quickshell'):
         raise PolicyError('Unsupported desktop session process')
     matches = []
     for path in proc.iterdir():
@@ -141,10 +141,12 @@ def omarchy_policy(apply):
 
 
 def desktop_services(desktop, apply):
-    if desktop in ('Cinnamon', 'Hyprland'):
-        # Cinnamon's screensaver is demand-activated and may legitimately have no
-        # owner; the required GetActive call below activates it and verifies its
-        # state. Omarchy's idle state is a file its shell reads (omarchy_policy).
+    if desktop in ('Cinnamon', 'Budgie', 'Hyprland'):
+        # This service is demand-activated and may legitimately have no owner.
+        # Cinnamon's GetActive call below activates it and verifies its state.
+        # Budgie Wayland has no org.gnome.ScreenSaver service. Its logind
+        # LockedHint and the independent visible-output witness remain required.
+        # Omarchy's idle state is a file its shell reads (omarchy_policy).
         return
     services = (['org.kde.Solid.PowerManagement', 'org.freedesktop.ScreenSaver']
                 if desktop == 'KDE' else
@@ -315,7 +317,7 @@ def install_autostart(user):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--desktop', choices=['GNOME', 'Cinnamon', 'KDE', 'Hyprland'])
+    parser.add_argument('--desktop', choices=['GNOME', 'Cinnamon', 'KDE', 'Budgie', 'Hyprland'])
     parser.add_argument('--process')
     parser.add_argument('--user', required=True)
     parser.add_argument('--session-type', choices=['x11', 'wayland'])
@@ -334,7 +336,9 @@ def main():
                     raise PolicyError('Refusing startup policy on a non-QEMU/KVM machine')
                 startup_guest_verified = True
                 desktop = os.environ.get('XDG_CURRENT_DESKTOP', '').lower()
-                if 'cinnamon' in desktop:
+                if 'budgie' in desktop:
+                    args.desktop, args.process = 'Budgie', 'budgie-panel'
+                elif 'cinnamon' in desktop:
                     args.desktop, args.process = 'Cinnamon', 'cinnamon'
                 elif 'gnome' in desktop or 'ubuntu' in desktop:
                     args.desktop, args.process = 'GNOME', 'gnome-shell'
