@@ -478,6 +478,15 @@ def _measure(ctx, helper, path):
 def _clip(ctx, scene, frozen):
     scene.command('freeze' if frozen else 'resume')
     scene.command('raise')
+    # Establish the native source identity before preparing a portal request.
+    # Unsupported compositor witnesses cannot drive its controls; starting one
+    # anyway can strand an external share picker after the helper is cancelled.
+    previous = ctx.profile.get('windows', {})
+    ctx.profile['windows'] = {**previous, 'recording-source': {'title': '^putgd synthetic fixture$'}}
+    try:
+        ctx.geometry('recording-source')
+    finally:
+        ctx.profile['windows'] = previous
     # Tier 1 prepares the known source rectangle, then drives the actual bar
     # and explicit Upload. Recording-selector gestures belong to Tier 2.
     rid = selectors._open_record(ctx, rect=scene.rect)

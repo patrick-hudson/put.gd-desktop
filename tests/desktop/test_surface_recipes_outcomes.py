@@ -266,8 +266,22 @@ class FileManagerUpload(unittest.TestCase):
 
 
 class RecordingExports(unittest.TestCase):
+    def test_missing_native_source_witness_never_starts_a_portal_request(self):
+        ctx = Mock()
+        previous = {'history': {'title': '^put.gd$'}}
+        ctx.profile = {'windows': previous}
+        ctx.geometry.side_effect = RecipeBlocked('native source geometry unavailable')
+        scene = SimpleNamespace(command=Mock())
+        with patch.object(outcomes.selectors, '_open_record') as prepare:
+            with self.assertRaisesRegex(RecipeBlocked, 'native source geometry unavailable'):
+                outcomes._clip(ctx, scene, False)
+        prepare.assert_not_called()
+        ctx.geometry.assert_called_once_with('recording-source')
+        self.assertIs(ctx.profile['windows'], previous)
+
     def clip(self, terminal, export_path=None):
         ctx = Mock()
+        ctx.profile = {'windows': {}}
         ctx.expect = ClipboardContext().expect
         scene = SimpleNamespace(rect=[320, 240, 640, 320], output_dir='/synthetic',
                                 record_helper='/synthetic/helper', command=Mock())
