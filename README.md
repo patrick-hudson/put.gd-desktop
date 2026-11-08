@@ -14,7 +14,7 @@ Files go to storage you control, and there's no put.gd account. If you've used S
 | --- | --- |
 | **Desktops** | [Cinnamon](docs/desktops/cinnamon.md), [GNOME 50](docs/desktops/gnome.md), [KDE Plasma](docs/desktops/kde.md), [Budgie](docs/desktops/budgie.md)\*, [Hyprland](docs/desktops/hyprland.md)\* (tested on Omarchy) |
 | **Linux** | Ubuntu 24.04/26.04, Linux Mint 22, Debian 13, Fedora 44/45, Arch and Arch-based distributions\*, or any other distribution with glibc 2.39 or newer through the AppImage |
-| **Storage** | Amazon S3, Cloudflare R2, Backblaze B2, any other S3-compatible service, [Proton Drive](docs/user/proton-drive.md) (experimental) |
+| **Storage** | Amazon S3, Cloudflare R2, Backblaze B2, other [S3-compatible services](docs/user/s3.md#s3-compatible-services), [Proton Drive](docs/user/proton-drive.md) (experimental) |
 
 \* New, and in nightly builds only until the next stable release. See [Install](#install).
 
@@ -45,7 +45,7 @@ Prefer to download a package yourself? They're all on [app.put.gd](https://app.p
 ## Get started
 
 1. Open put.gd and choose **Destinations → Add destination**.
-2. Enter your storage details, or connect Proton Drive, then click **Test connection**.
+2. Enter your storage details and click **Save to keychain**, or connect Proton Drive and choose a folder. Then click **Test connection**.
 3. Pick that destination in **Settings → Capture**.
 4. Press a shortcut:
 
@@ -55,7 +55,9 @@ Prefer to download a package yourself? They're all on [app.put.gd](https://app.p
 | `Ctrl+Shift+2` | The active window |
 | `Ctrl+Shift+3` | The whole desktop |
 
-The capture uploads and the link lands on your clipboard. Press Escape to cancel a region. You can change the keys in **Settings → Shortcuts**.
+The capture uploads, and if your destination shares links, the link lands on your clipboard. Press Escape to cancel a region.
+
+You can change the keys in **Settings → Shortcuts**, which also tells you why a shortcut couldn't be set. The buttons in the main window and tray always work. On Budgie, window capture needs labwc 0.20 or newer, so on Fedora 44 and Ubuntu 26.04 use a region instead.
 
 ## What else it does
 
@@ -73,7 +75,7 @@ The capture uploads and the link lands on your clipboard. Press Escape to cancel
 
 ## Your data
 
-Uploads go only to the destination you choose. Edits and recordings stay on your computer until you upload them. Passwords and keys are kept in your system keychain, not in config files. put.gd checks for updates once a day and you can turn that off. Proton Drive support is experimental, and its links open a share page instead of the image itself.
+Uploads go only to the destination you choose. Edits and recordings stay on your computer until you upload them. Saved passwords and keys are kept in your system keychain, not in config files. put.gd checks for updates once a day and you can turn that off. Proton Drive support is experimental, and its links open a share page instead of the image itself.
 
 ## More
 
