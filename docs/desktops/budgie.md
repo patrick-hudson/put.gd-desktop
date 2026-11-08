@@ -21,8 +21,9 @@ Tracking issue: [#1275](https://github.com/patrick-hudson/put.gd-desktop/issues/
 A Budgie session sets `XDG_CURRENT_DESKTOP=Budgie` (forge test sessions use
 `Budgie:GNOME`). The resident takes the Core route with the `budgie-wayland`
 adapter when that token is present, the session is Wayland, and
-`QT_QPA_PLATFORM` is unset or names Wayland first. `startbudgielabwc` sets
-`QT_QPA_PLATFORM=wayland;xcb`, which this route accepts. A session that
+`QT_QPA_PLATFORM` is unset or names Wayland first. Fedora's
+`startbudgielabwc` sets `QT_QPA_PLATFORM=wayland;xcb` and Ubuntu Budgie 26.04
+sets `wayland`; this route accepts both. A session that
 names Budgie never gets the GNOME or KDE adapter. Bare labwc (`labwc:wlroots`)
 and other wlroots compositors keep the unavailable source: nothing here has
 accepted them.
@@ -112,6 +113,8 @@ clears the binding and command, drops the path from `custom-keybindings` and
 resets the keys; quitting put.gd removes all of its entries. `gsettings` runs
 with the host environment, never the AppImage's libraries.
 
+![Settings → Shortcuts on Fedora 45 Budgie: Print reported as a conflict with Budgie's own screenshot binding](https://raw.githubusercontent.com/patrick-hudson/put.gd-evidence/6f522d18635d7789dc271bf3be1b5cf6bf752e43/records/2026-11-08-budgie-adapter-1275/images/budgie-shortcut-conflict.png)
+
 ## Recording
 
 Recording uses the `wlr-capture` acquisition: `ext-image-copy-capture`
@@ -156,3 +159,18 @@ the first Budgie 11 alpha (tracked as a follow-up on #1275).
 - Routing rows in `test_native_session.cpp` cover `Budgie`, `Budgie:GNOME`,
   `labwc:wlroots` and `wayland;xcb`.
 - The VM rows are in [the acceptance matrix](../testing/acceptance-matrix.md).
+  The 2026-11-08 results (Fedora 44/45, Ubuntu Budgie 26.04/24.04, headless
+  labwc and Magpie) are in the
+  [evidence record](https://github.com/patrick-hudson/put.gd-evidence/tree/6f522d18635d7789dc271bf3be1b5cf6bf752e43/records/2026-11-08-budgie-adapter-1275).
+
+## Known gaps
+
+- Budgie 10.10.2 (Ubuntu 26.04) draws a missing-icon symbol for put.gd's tray
+  item, which publishes a pixmap and no icon name; the menu works and Budgie
+  10.10.3 draws it
+  ([#1294](https://github.com/patrick-hudson/put.gd-desktop/issues/1294)).
+- On labwc 0.9 window capture is unavailable, but only the notification
+  after pressing it says so; Settings and the toolbar still offer it
+  ([#1295](https://github.com/patrick-hudson/put.gd-desktop/issues/1295)).
+- Window recording on Magpie/Mir 2.29 ended with no clip in two of four
+  headless runs ([#1296](https://github.com/patrick-hudson/put.gd-desktop/issues/1296)).
