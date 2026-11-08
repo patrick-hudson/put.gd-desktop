@@ -101,6 +101,36 @@ class Download(unittest.TestCase):
             self.assertEqual(target.read_bytes(), b'whole')
         self.assertEqual(len(waits), 1)
 
+    def test_a_body_shorter_than_its_content_length_is_retried(self):
+        class Short(Response):
+            headers = {'Content-Length': '10'}
+        responses = [Short(b'part'), Response(b'whole')]
+        waits = []
+        with tempfile.TemporaryDirectory() as directory:
+            target = Path(directory) / 'tool'
+            http_retry.download('https://example.invalid/tool', target, timeout=30, sleep=waits.append,
+                                opener=lambda _request, timeout: responses.pop(0), clock=lambda: 0)
+            self.assertEqual(target.read_bytes(), b'whole')
+        self.assertEqual(len(waits), 1)
+
+    def test_an_end_of_body_after_the_limit_is_a_failed_transfer(self):
+        now = [0]
+
+        class Late(Response):
+            def read1(self, *_args):
+                chunk = super().read1(*_args)
+                if not chunk:
+                    now[0] = http_retry.TRANSFER_SECONDS
+                return chunk
+        responses = [Late(b'part'), Response(b'whole')]
+        waits = []
+        with tempfile.TemporaryDirectory() as directory:
+            target = Path(directory) / 'tool'
+            http_retry.download('https://example.invalid/tool', target, timeout=30, sleep=waits.append,
+                                opener=lambda _request, timeout: responses.pop(0), clock=lambda: now[0])
+            self.assertEqual(target.read_bytes(), b'whole')
+        self.assertEqual(len(waits), 1)
+
     def test_a_certificate_failure_fails_at_once(self):
         failure = urllib.error.URLError(ssl.SSLCertVerificationError('bad certificate'))
         _body, waits, error = self.run_download([failure, b'never read'])

@@ -31,13 +31,22 @@ def _retryable_status(code):
 
 
 def _copy(response, output, clock):
-    """Copy one response, stopping a transfer that outlasts its limit even while data trickles in."""
+    """Copy one response, stopping a transfer that outlasts its limit or ends early."""
     limit = clock() + TRANSFER_SECONDS
-    # read1 returns after one receive, so the limit is checked between small reads.
-    while chunk := response.read1(CHUNK_BYTES):
-        output.write(chunk)
+    length = getattr(response, 'headers', {}).get('Content-Length', '')
+    received = 0
+    while True:
+        # read1 returns after one receive, so the limit is checked between small reads.
+        chunk = response.read1(CHUNK_BYTES)
         if clock() >= limit:
             raise TimeoutError(f'transfer exceeded {TRANSFER_SECONDS} s')
+        if not chunk:
+            break
+        output.write(chunk)
+        received += len(chunk)
+    # read1 reports a connection closed early as a normal end of the body.
+    if length.isdigit() and received < int(length):
+        raise http.client.IncompleteRead(b'', int(length) - received)
 
 
 def download(request, target, timeout, *, opener=urllib.request.urlopen, sleep=time.sleep, clock=time.monotonic):
