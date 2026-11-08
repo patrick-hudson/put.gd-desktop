@@ -24,10 +24,7 @@ BudgieSourceAdapter::BudgieSourceAdapter(QObject* parent):QObject(parent){
 BudgieSourceAdapter::~BudgieSourceAdapter(){region_.shutdown();cancelAcquisition();clipboard_.cancel();for(auto* worker:workers_){worker->wait();delete worker;}}
 quint64 BudgieSourceAdapter::clipboardRevision()const{return clipboard_.revision();}
 bool BudgieSourceAdapter::unchanged(const QList<CaptureFrame>& before,quint64 revision)const{
- if(outputs_.revision()!=revision)return false;
- const auto now=layout();if(now.size()!=before.size())return false;
- for(const auto& frame:before){bool found=false;for(const auto& current:now)if(current.identity==frame.identity&&current.logicalRect==frame.logicalRect&&current.nativeRect==frame.nativeRect&&current.density==frame.density&&current.rotation==frame.rotation)found=true;if(!found)return false;}
- return true;
+ return outputs_.revision()==revision&&sameOutputLayout(before,layout());
 }
 void BudgieSourceAdapter::listWindows(RecordingWindows::Reply reply){
  QString reason;

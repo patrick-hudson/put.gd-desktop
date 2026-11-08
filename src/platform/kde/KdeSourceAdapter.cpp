@@ -25,9 +25,7 @@ quint64 KdeSourceAdapter::clipboardRevision()const{return clipboard_.revision();
 QList<CaptureFrame> KdeSourceAdapter::layout()const{return core_?outputs_.layout():graphicalLayout();}
 bool KdeSourceAdapter::unchanged(const QList<CaptureFrame>& before,quint64 revision)const{
  const auto now=layout();if(core_&&outputs_.revision()!=revision)return false;
- if(now.size()!=before.size())return false;
- for(const auto& frame:before){bool found=false;for(const auto& current:now)if(current.identity==frame.identity&&current.logicalRect==frame.logicalRect&&current.nativeRect==frame.nativeRect&&current.density==frame.density&&current.rotation==frame.rotation)found=true;if(!found)return false;}
- return true;
+ return sameOutputLayout(before,now);
 }
 QJsonObject KdeSourceAdapter::capabilities()const{
  auto region=capture_.status();auto desktop=capture_.status();auto window=capture_.status();
