@@ -31,7 +31,7 @@ private slots:
  void shortcutsChanged(const QDBusObjectPath&,const QDBusArgument&);
 private:
  void open();
- void close();
+ void close(std::function<void()> closed={});
  void request(const QString& method,const QList<QVariant>& arguments,const QString& token);
  QHash<QString,QString> requested_;QHash<QString,QString> triggers_;
  QString session_,pendingRequest_,stage_,error_;quint64 generation_=0;

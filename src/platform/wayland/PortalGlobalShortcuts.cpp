@@ -7,6 +7,7 @@
 #include <QDBusPendingReply>
 #include <QJsonArray>
 #include <QKeySequence>
+#include <QPointer>
 #include <QUuid>
 
 namespace putgd {
@@ -71,7 +72,8 @@ void PortalGlobalShortcuts::request(const QString& method,const QList<QVariant>&
  connect(watcher,&QDBusPendingCallWatcher::finished,this,[this,watcher,generation,method]{
   QDBusPendingReply<QDBusObjectPath> result=*watcher;watcher->deleteLater();
   if(generation!=generation_)return;
-  if(result.isError()){error_=method+" failed: "+result.error().message();available_=method!="CreateSession"?available_:false;emit changed();}
+  // No Response follows a failed call: end the stage so status() shows the error and a re-bind retries.
+  if(result.isError()){error_=method+" failed: "+result.error().message();if(method=="CreateSession")available_=false;stage_.clear();bound_=false;emit changed();}
  });
 }
 void PortalGlobalShortcuts::open(){
@@ -93,15 +95,21 @@ void PortalGlobalShortcuts::open(){
  request("CreateSession",{QVariantMap{{"handle_token",handle},{"session_handle_token",token()}}},handle);
  emit changed();
 }
-void PortalGlobalShortcuts::close(){
+void PortalGlobalShortcuts::close(std::function<void()> closed){
  ++generation_;
- if(!session_.isEmpty()){auto message=QDBusMessage::createMethodCall(portal,session_,"org.freedesktop.portal.Session","Close");QDBusConnection::sessionBus().asyncCall(message);session_.clear();}
+ if(!session_.isEmpty()){
+  auto message=QDBusMessage::createMethodCall(portal,session_,"org.freedesktop.portal.Session","Close");
+  auto* watcher=new QDBusPendingCallWatcher(QDBusConnection::sessionBus().asyncCall(message,5000),this);
+  // The portal keeps the session's keys until Close returns; a pause waits for it.
+  connect(watcher,&QDBusPendingCallWatcher::finished,this,[watcher,closed]{watcher->deleteLater();if(closed)closed();});
+  session_.clear();
+ }else if(closed)closed();
  bound_=false;stage_.clear();
 }
 void PortalGlobalShortcuts::response(uint code,const QVariantMap& results){
  if(stage_=="create"){
   if(code!=0){error_="The portal refused a global shortcuts session";available_=false;emit changed();return;}
-  session_=results.value("session_handle").toString();stage_="bind";
+  session_=results.value("session_handle").toString();stage_="bind";available_=true;error_.clear();
   QList<Shortcut> shortcuts;for(auto it=requested_.cbegin();it!=requested_.cend();++it)if(!it.value().isEmpty())shortcuts.append({it.key(),QVariantMap{{"description",descriptions.value(it.key(),it.key())},{"preferred_trigger",xdgTrigger(it.value())}}});
   const auto handle=token();
   request("BindShortcuts",{QVariant::fromValue(QDBusObjectPath(session_)),QVariant::fromValue(shortcuts),QString(),QVariantMap{{"handle_token",handle}}},handle);
@@ -147,7 +155,10 @@ QJsonObject PortalGlobalShortcuts::status()const{
 }
 void PortalGlobalShortcuts::setPaused(bool paused,std::function<void(Error)> reply){
  if(paused==paused_){if(reply)reply({});return;}
- paused_=paused;if(paused)close();else open();
- emit changed();if(reply)reply({});
+ paused_=paused;
+ if(!paused){open();emit changed();if(reply)reply({});return;}
+ // Acknowledge only once the portal has let go of the keys, so they reach the recorder.
+ close([guard=QPointer<PortalGlobalShortcuts>(this),reply]{if(guard)emit guard->changed();if(reply)reply({});});
+ emit changed();
 }
 }
