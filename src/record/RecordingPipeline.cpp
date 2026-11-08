@@ -306,8 +306,12 @@ bool RecordingPipeline::launch(const Options& options, const QString& encoder, c
         description = pipewireSourceDescription(frameSource.isEmpty() ? QStringLiteral("pipewiresrc") : frameSource, options.pipewireNode, options.pipewireFd, frameSource.isEmpty())
             + (unthrottled ? (labCaps.isEmpty() ? pipewireUnthrottledCaps() : QStringLiteral(" ! ") + labCaps) : QString()) + captureQueue();
         if (options.crop.isValid()) description += QStringLiteral(" ! videocrop left=%1 top=%2 right=%3 bottom=%4").arg(options.crop.x()).arg(options.crop.y()).arg(std::max(0, options.rect.width() - options.crop.x() - options.crop.width())).arg(std::max(0, options.rect.height() - options.crop.y() - options.crop.height()));
-        // A window stream: the window's place in each frame (Mutter), then its
-        // frames, whatever their size after a resize, letterboxed into the canvas.
+        // A window stream: square pixels, the window's place in each frame
+        // (Mutter), then its frames, whatever their size after a resize,
+        // letterboxed into the canvas. Without the square-pixel filter a
+        // renegotiation fixates the aspect ratio the scaler offers, one that
+        // stretches the new size onto the canvas instead of adding borders.
+        if (options.canvas.isValid()) description += QStringLiteral(" ! video/x-raw,pixel-aspect-ratio=1/1");
         if (options.followCrop) description += QStringLiteral(" ! videocrop name=wcrop");
         description += convert();
         if (options.canvas.isValid()) description += QStringLiteral(" ! videoscale add-borders=true ! video/x-raw,width=%1,height=%2,pixel-aspect-ratio=1/1").arg(options.canvas.width()).arg(options.canvas.height());
