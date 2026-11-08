@@ -180,7 +180,14 @@ void OperationService::requestHeapReclamation() {
 void OperationService::background(std::function<QJsonObject(Error&)> work,JsonReply reply) {
  heapReclamationTimer_.stop();imagePageTimer_.stop();
  QPointer<OperationService> self(this);auto* thread=QThread::create([self,work=std::move(work),reply=std::move(reply)] {Error error;auto result=work(error);if(self) QMetaObject::invokeMethod(self,[self,reply,error,result] {if(self&&!self->stopping_) reply(error,result);},Qt::QueuedConnection);});
- threads_.append(thread);connect(thread,&QThread::finished,this,[this,thread] {threads_.removeOne(thread);thread->deleteLater();scheduleHeapReclamation();});thread->start();
+ threads_.append(thread);connect(thread,&QThread::finished,this,[this,thread] {
+  threads_.removeOne(thread);thread->deleteLater();
+  // Every worker opens its own journal connection and frees its page cache and
+  // query results on exit, read-only ones included (#1184). Arm the idle gate
+  // here so no caller has to remember to; failed startup has nothing to return.
+  if(ready_&&!stopping_)heapReclamationPending_=true;
+  scheduleHeapReclamation();
+ });thread->start();
 }
 std::shared_ptr<std::mutex> OperationService::objectLock(const Destination& d,const QJsonObject& object,const QString& name) {
  // Adapters supply their real destination/object identity, independent of profile revisions.
