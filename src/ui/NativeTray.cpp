@@ -282,6 +282,7 @@ private:
  // Qt's own tray icon does it. A new file per change, because those hosts cache an icon by name.
  bool namedIcon_ = false, detecting_ = false;
  QString iconDirectory_, iconName_;
+ QStringList iconFiles_;
  quint64 iconSerial_ = 0;
  void detectIconHost(quint64 generation);
  bool writeNamedIcon();
@@ -347,7 +348,7 @@ NativeTrayPrivate::~NativeTrayPrivate() {
  // The watcher tracks the named service, so disappearance removes the item even
  // when other app services keep the shared session-bus connection alive.
  if (registeredService_) bus_.unregisterService(service_);
- if (!iconName_.isEmpty()) QFile::remove(iconDirectory_ + "/" + iconName_ + ".png");
+ for (const auto& file : iconFiles_) QFile::remove(file);
  if (exportedMenu_) bus_.unregisterObject("/Menu");
  if (exportedItem_) bus_.unregisterObject("/StatusNotifierItem");
 }
@@ -394,7 +395,6 @@ bool NativeTrayPrivate::writeNamedIcon() {
   if (!QDir().mkpath(iconDirectory_)) { iconDirectory_.clear(); return false; }
   QFile::setPermissions(iconDirectory_, QFile::ReadOwner | QFile::WriteOwner | QFile::ExeOwner);
  }
- const auto previous = iconName_.isEmpty() ? QString{} : iconDirectory_ + "/" + iconName_ + ".png";
  // No dashes: GTK expands a dashed name into fallbacks (putgd-tray-1 -> putgd) and matches the installed app
  // icon in the themes before it reads this unthemed file.
  const auto name = QString("putgd_tray_%1_%2").arg(QCoreApplication::applicationPid()).arg(++iconSerial_);
@@ -402,7 +402,10 @@ bool NativeTrayPrivate::writeNamedIcon() {
  if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate) || file.write(pngBytes(IconArt::liftTray({color_, percent_, recording_, glyph_}, 2))) < 0) return false;
  file.close();
  iconName_ = name;
- if (!previous.isEmpty()) QFile::remove(previous);
+ // Keep the last few: during a burst of changes (upload progress) the host can still be loading a
+ // name it was told about, and deleting that file leaves it on the missing-icon glyph (#1294).
+ iconFiles_.append(file.fileName());
+ while (iconFiles_.size() > 4) QFile::remove(iconFiles_.takeFirst());
  return true;
 }
 void NativeTrayPrivate::hostChanged() { attempts_ = 0; queryHost(); registerItem(); }
