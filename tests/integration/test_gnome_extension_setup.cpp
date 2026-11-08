@@ -257,7 +257,7 @@ private slots:
   const QString foreign=parent+staged("old",'2');write(foreign+"/stylesheet.css","mine");write(foreign+"/.putgd-managed",QJsonDocument(QJsonObject{{"managedBy","someone"},{"files",QJsonObject{{"stylesheet.css","x"}}}}).toJson());
   // Nor reach outside its directory: this marker names a file elsewhere, and the directory has no such entry.
   const QString escaping=parent+staged("old",'4');write(escaping+"/notes.txt","mine");write(f.root.filePath("elsewhere.txt"),"mine");
-  write(escaping+"/.putgd-managed",QJsonDocument(QJsonObject{{"managedBy","put.gd"},{"files",QJsonObject{{"../../../elsewhere.txt",hash("mine")},{"notes.txt",hash("other")}}}}).toJson());
+  write(escaping+"/.putgd-managed",QJsonDocument(QJsonObject{{"managedBy","put.gd"},{"files",QJsonObject{{"../../../../../elsewhere.txt",hash("mine")},{"notes.txt",hash("other")}}}}).toJson());
   runExtensionSetup(f.inputs(dir));
   QVERIFY(!QFileInfo::exists(retired));QVERIFY(QFile::exists(foreign+"/stylesheet.css"));QVERIFY(QFile::exists(edited+"/notes.txt"));
   QVERIFY(QFile::exists(escaping+"/notes.txt"));QVERIFY(QFile::exists(f.root.filePath("elsewhere.txt")));
