@@ -269,9 +269,13 @@ MainWindow::MainWindow(UiSession& session,QWidget* parent):QMainWindow(parent),s
  for(auto* widget:QWidgetList{explanation_,saveStatus_,updateLink_,version_,versionGroup})widget->setSizePolicy(QSizePolicy::Fixed,QSizePolicy::Preferred);
  statusRow->addWidget(updateLink_);statusRow->addWidget(version_);statusRow->addWidget(versionGroup);
  for(auto* control:QList<QWidget*>{destination_,version_,versionLink_,updateLink_,explanation_,saveStatus_}){control->setProperty("uiStatus",true);Ui::role(control,control->property("visualRole").toByteArray().constData());}
- connect(&session_,&UiSession::accepted,this,[this,updateDestination]{updateDestination();updateSaveStatus();});connect(&session_,&UiSession::statusChanged,this,[this,updateDestination]{
+ connect(&session_,&UiSession::accepted,this,[this,updateDestination]{updateDestination();updateSaveStatus();});
+ const auto currentGaps=[this]{QString gaps;for(const auto& action:Settings::presentationOrder())gaps+=unavailableSource(session_.diagnostics(),action)+'\n';return gaps;};
+ // Seeded now: the first snapshot is not a change, and rebuilding an open popup for it re-lays out its labels (#1303).
+ sourceGaps_=currentGaps();
+ connect(&session_,&UiSession::statusChanged,this,[this,updateDestination,currentGaps]{
   // Every resident snapshot (progress, history) fires statusChanged; rebuild the output popup only when a capture gap changed.
-  QString gaps;for(const auto& action:Settings::presentationOrder())gaps+=unavailableSource(session_.diagnostics(),action)+'\n';
+  const auto gaps=currentGaps();
   // The buttons first (badge, tooltip, description), then the per-action output lines on top.
   if(gaps==sourceGaps_)return;sourceGaps_=gaps;for(const auto& refresh:captureButtonUpdates_)refresh();updateDestination();});
  updateDestination();updateSaveStatus();tabs_->setCurrentIndex(0);Ui::styleWindow(*this);
