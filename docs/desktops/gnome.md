@@ -83,9 +83,11 @@ The resident compares the `extensionVersion` the loaded extension reports in
 `integrations/gnome/metadata.json`). While an older one is loaded,
 `capabilities` reports `helper.outdated: true` with `extensionVersion` and
 `packagedExtensionVersion`, the setup state is `login_required`, window and desktop
-screenshots keep working, and a region capture or region recording is refused with
+screenshots keep working, and a region capture, a window recording, `recording.windows`
+or a region recording that needs the Shell's selector is refused with
 `helper_outdated`: "The put.gd GNOME Shell extension was updated; log out and back in
-to load the new version" (#131).
+to load the new version" (#131). A recording request that already carries its
+rectangle skips that selector check.
 Bump `metadata.json`'s `version` whenever the extension's D-Bus interface changes.
 
 The native resident does not initialize Qt Wayland; the on-demand graphical helper uses the session's Wayland platform. Capture and clipboard actions remain available through the production CLI and GUI. Leave the clipboard shortcut unset until the user explicitly assigns one. Binding diagnostics report the actual result for every configured action; existing Shell/system bindings are never overwritten.
