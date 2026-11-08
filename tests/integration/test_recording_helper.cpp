@@ -121,7 +121,7 @@ private slots:
   QCOMPARE(h.rec("cancel",{{"id",first}}).result["state"].toString(),QString("cancelled"));
   QVERIFY(h.rec("capabilities").result["active"].isNull());QVERIFY(h.backend->diagnostics()["active"].toBool());
   HistoryStore journal(h.operations->databasePath());
-  const auto second=h.prepare();QVERIFY(!second.isEmpty());QVERIFY(h.backend->diagnostics()["queued"].toBool());
+  const auto second=h.prepare();QVERIFY(!second.isEmpty());PUTGD_TRY_VERIFY(h.backend->diagnostics()["queued"].toBool());
   letGo();
   PUTGD_TRY_VERIFY2(h.state(second)==QString("ready"),qPrintable("the prepare after cancel ended "+journal.operation(second).state+": "+journal.operation(second).error.code));
   QVERIFY(!h.backend->diagnostics()["queued"].toBool());
@@ -130,7 +130,7 @@ private slots:
   // cancelling that queued prepare never starts a helper, and the next prepare still does.
   QVERIFY(QFile::remove(release));
   QCOMPARE(h.rec("cancel",{{"id",second}}).result["state"].toString(),QString("cancelled"));
-  const auto third=h.prepare();QVERIFY(!third.isEmpty());QVERIFY(h.backend->diagnostics()["queued"].toBool());
+  const auto third=h.prepare();QVERIFY(!third.isEmpty());PUTGD_TRY_VERIFY(h.backend->diagnostics()["queued"].toBool());
   QCOMPARE(h.rec("cancel",{{"id",third}}).result["state"].toString(),QString("cancelled"));QVERIFY(!h.backend->diagnostics()["queued"].toBool());
   letGo();
   PUTGD_TRY_VERIFY(!h.backend->diagnostics()["active"].toBool());
