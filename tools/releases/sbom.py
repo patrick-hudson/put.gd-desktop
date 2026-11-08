@@ -18,13 +18,14 @@ import json
 import os
 from pathlib import Path
 import re
-import shutil
 import subprocess
 import tarfile
 import tempfile
 from urllib.parse import quote
 import urllib.request
 import uuid
+
+import http_retry
 
 ROOT = Path(__file__).resolve().parents[2]
 TOOLS_LOCK = ROOT / 'packaging/sbom/tools.lock.json'
@@ -86,8 +87,7 @@ def sha256(path):
 
 def download(url, path):
     request = urllib.request.Request(url, headers={'User-Agent': 'putgd-sbom'})
-    with urllib.request.urlopen(request, timeout=300) as response, open(path, 'wb') as output:
-        shutil.copyfileobj(response, output)
+    http_retry.download(request, path, timeout=300)
 
 
 def fetch_tools(output, lock=TOOLS_LOCK):

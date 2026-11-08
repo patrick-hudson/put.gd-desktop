@@ -1,4 +1,5 @@
 #include "NativeTray.h"
+#include "core/NotificationServer.h"
 #include "core/ActivationToken.h"
 #include "core/Settings.h"
 #include <QSet>
@@ -413,6 +414,8 @@ void NativeTrayPrivate::notify(const QString& title, const QString& message, boo
  if (notificationsInFlight_ >= 8) return;
  auto call = QDBusMessage::createMethodCall(notificationService, notificationPath, notificationService, "Notify");
  QVariantMap hints{{"urgency", QVariant::fromValue(static_cast<uchar>(warning ? 2 : 1))}, {"desktop-entry", "putgd"}};
+ // Critical until seen; transient only where the server would restore it after a restart (#1298).
+ if (warning && putgd::notifications::failuresTransient(notificationServer_)) hints.insert("transient", true);
  QStringList names=link.isEmpty()?QStringList{}:QStringList{"default","Open in browser"};
  QHash<QString,QString> values;
  for(const auto& action:actions)if(action.key!="default"){names<<action.key<<action.label;values.insert(action.key,action.value);}

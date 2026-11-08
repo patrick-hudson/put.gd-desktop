@@ -92,7 +92,11 @@ HELP
             || die 'Could not check nightly release availability'
     fi
     [ "$status" = 302 ] || die "No usable $channel $package download (HTTP $status)"
-    note "Installing $channel / $package; verifying the release SHA256SUMS before installation."
+    if [ "$package" = archlinux ]; then
+        note "Installing $channel / $package using the configured pacman repositories and signature policy."
+    else
+        note "Installing $channel / $package; verifying the release SHA256SUMS before installation."
+    fi
 
     case "$package" in
         appimage) suffix=-x86_64.AppImage ;;
@@ -101,10 +105,18 @@ HELP
         *) suffix=-$package-x86_64.deb ;;
     esac
     if "$dry_run"; then
-        note "Would download $base/$channel/checksums and $base/$channel/$package, then verify SHA-256."
+        if [ "$package" != archlinux ]; then
+            note "Would download $base/$channel/checksums and $base/$channel/$package, then verify SHA-256."
+        fi
         case "$package" in
             appimage) note 'Would install executable ~/.local/bin/putgd.AppImage (no sudo). Start: ~/.local/bin/putgd.AppImage' ;;
-            archlinux) note 'Would trust the channel signing key, add /etc/pacman.d/putgd.conf to pacman.conf, and install putgd from the signed pkg.put.gd repository.' ;;
+            archlinux)
+                if command -v omarchy-update >/dev/null 2>&1; then
+                    note "Would ask on /dev/tty, run Omarchy's system update, then configure and sync the put.gd repository and run pacman -S putgd."
+                else
+                    note 'Would trust the channel signing key, add /etc/pacman.d/putgd.conf to pacman.conf, and run pacman -Syu putgd from the signed pkg.put.gd repository.'
+                fi
+                ;;
             fedora44)
                 note 'Would run sudo dnf install ./putgd-VERSION-fedora44-x86_64.rpm; package adds the signed pkg.put.gd update repository. Start: putgd'
                 note 'Then, in the same sudo step, if noopenh264 is installed or either codec package is missing and fedora-cisco-openh264 is enabled: dnf install -y openh264 gstreamer1-plugin-openh264'
@@ -126,19 +138,23 @@ HELP
     }
     trap cleanup 0
     trap 'exit 1' 1 2 3 15
-    fetch --output "$work/SHA256SUMS" "$base/$channel/checksums" || die 'Could not download SHA256SUMS'
-    # Select exactly one safe basename and digest; never execute release metadata.
-    entry=$(awk -v suffix="$suffix" '
-        NF == 2 && length($1) == 64 && $1 !~ /[^0-9a-fA-F]/ &&
-        $2 ~ /^putgd-[A-Za-z0-9._+-]+$/ &&
-        substr($2, length($2) - length(suffix) + 1) == suffix { line = $1 "  " $2; count++ }
-        END { if (count != 1) exit 1; print line }
-    ' "$work/SHA256SUMS") || die "SHA256SUMS must name exactly one $package package"
-    filename=${entry#*  }
-    printf '%s\n' "$entry" > "$work/selected.sha256"
-    fetch --output "$work/$filename" "$base/$channel/$package" || die 'Package download failed'
-    (cd "$work" && sha256sum --check selected.sha256) \
-        || die 'SHA-256 verification failed; nothing installed. A release may have changed; retry.'
+    # Pacman fetches and authenticates both the index and payload itself. Avoid
+    # a second, redundant GitHub download before using the signed repository.
+    if [ "$package" != archlinux ]; then
+        fetch --output "$work/SHA256SUMS" "$base/$channel/checksums" || die 'Could not download SHA256SUMS'
+        # Select exactly one safe basename and digest; never execute release metadata.
+        entry=$(awk -v suffix="$suffix" '
+            NF == 2 && length($1) == 64 && $1 !~ /[^0-9a-fA-F]/ &&
+            $2 ~ /^putgd-[A-Za-z0-9._+-]+$/ &&
+            substr($2, length($2) - length(suffix) + 1) == suffix { line = $1 "  " $2; count++ }
+            END { if (count != 1) exit 1; print line }
+        ' "$work/SHA256SUMS") || die "SHA256SUMS must name exactly one $package package"
+        filename=${entry#*  }
+        printf '%s\n' "$entry" > "$work/selected.sha256"
+        fetch --output "$work/$filename" "$base/$channel/$package" || die 'Package download failed'
+        (cd "$work" && sha256sum --check selected.sha256) \
+            || die 'SHA-256 verification failed; nothing installed. A release may have changed; retry.'
+    fi
 
     case "$package" in
         appimage)
@@ -153,6 +169,26 @@ HELP
             note 'Installed. Start: ~/.local/bin/putgd.AppImage'
             ;;
         archlinux)
+            arch_updated=false
+            if command -v omarchy-update >/dev/null 2>&1; then
+                if ! ( : < /dev/tty ) 2>/dev/null; then
+                    die 'Omarchy needs a terminal for its system update. Run omarchy update, then rerun this installer in a terminal.'
+                fi
+                note "Omarchy detected: the installer will run Omarchy's system update before installing put.gd."
+                printf 'Run the Omarchy system update now? [y/N] ' > /dev/tty
+                IFS= read -r answer < /dev/tty || die 'Omarchy system update cancelled; nothing installed'
+                case "$answer" in y|Y|yes|YES) ;; *) die 'Omarchy system update declined; nothing installed' ;; esac
+                # Our explicit confirmation precedes -y so a declined native prompt
+                # (which some updater versions report as success) cannot install put.gd.
+                # Older installer versions created this public file as root-only.
+                # Repair readability so the native updater can query pacman normally.
+                if [ -f /etc/pacman.d/putgd.conf ] && [ ! -r /etc/pacman.d/putgd.conf ]; then
+                    note 'Repairing read permissions on the existing public put.gd repository file.'
+                    sudo chmod 0644 /etc/pacman.d/putgd.conf < /dev/tty
+                fi
+                omarchy-update -y < /dev/tty || die 'Omarchy system update failed; nothing installed'
+                arch_updated=true
+            fi
             fetch --output "$work/putgd.asc" "https://pkg.put.gd/keys/putgd-$channel.asc"
             # Pinned channel fingerprint comes from the public key shipped in source.
             case "$channel" in
@@ -162,6 +198,8 @@ HELP
             command -v sudo >/dev/null 2>&1 || die 'Missing sudo'
             sudo sh -c '
                 set -eu
+                # Repository configuration contains public URLs and must be readable by pacman users.
+                umask 022
                 actual=$(gpg --show-keys --with-colons "$1" | awk -F: '\''$1 == "fpr" { print $10; exit }'\'')
                 [ "$actual" = "$2" ] || exit 1
                 pacman-key --add "$1"
@@ -169,11 +207,19 @@ HELP
                 if [ ! -e /etc/pacman.d/putgd.conf ]; then
                     printf "[putgd-%s]\nSigLevel = PackageRequired DatabaseRequired\nServer = https://pkg.put.gd/pacman/x86_64/%s\n" "$3" "$3" > /etc/pacman.d/putgd.conf
                 fi
+                chmod 0644 /etc/pacman.d/putgd.conf
                 if ! grep -qxF "Include = /etc/pacman.d/putgd.conf" /etc/pacman.conf; then
                     printf "\nInclude = /etc/pacman.d/putgd.conf\n" >> /etc/pacman.conf
                 fi
-                pacman -Syu putgd
-            ' sh "$work/putgd.asc" "$fingerprint" "$channel" < /dev/tty
+                if [ "$4" = true ]; then
+                    # Omarchy refreshed the system repositories before this file existed.
+                    # Sync only the newly configured repository, then install normally.
+                    pacman --config /etc/pacman.d/putgd.conf -Sy
+                    pacman -S putgd
+                else
+                    pacman -Syu putgd
+                fi
+            ' sh "$work/putgd.asc" "$fingerprint" "$channel" "$arch_updated" < /dev/tty
             ;;
         *)
             command -v sudo >/dev/null 2>&1 || die 'Missing sudo; install sudo or use --appimage'

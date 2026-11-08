@@ -11,12 +11,12 @@ import subprocess
 import sys
 import tempfile
 import time
-import urllib.request
 
 from audit_native import sha256 as digest
 from audit_proton import audit_proton
 import appimage_notices
 import appimage_update
+import http_retry
 from release_identity import parse_tag
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -42,8 +42,7 @@ def tools(directory: Path) -> tuple[dict, dict[str, Path]]:
             temporary = path.with_suffix(path.suffix + ".download")
             try:
                 # A socket timeout, so a stalled download fails instead of hanging the build (#467).
-                with urllib.request.urlopen(item["url"], timeout=120) as response, temporary.open("wb") as target:
-                    shutil.copyfileobj(response, target)
+                http_retry.download(item["url"], temporary, timeout=120)
                 if digest(temporary) != item["sha256"]:
                     raise ValueError("Official deployment tool digest mismatch: " + item["name"])
                 temporary.replace(path)
