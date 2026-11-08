@@ -161,7 +161,7 @@ The installed metainfo only lets a software centre show put.gd once it's install
 
 | Key | Where it lives | Signs |
 | --- | --- | --- |
-| Nightly GPG `4032E28D893BAF66F4AC23D9A11D38D55536B371` | d69, `~/.local/share/putgd-signer/gnupg` (0700, no passphrase) | `InRelease`, `Release.gpg`, RPMs |
+| Nightly GPG `4032E28D893BAF66F4AC23D9A11D38D55536B371` | d69, `~/.local/share/putgd-signer/gnupg` (0700, no passphrase) | `InRelease`, `Release.gpg`, RPMs, pacman databases and packages |
 | Nightly minisign `71440FA5E439AEBB` | d69, `~/.local/share/putgd-signer/minisign/nightly.key` | `SHA256SUMS`, feed |
 | Stable GPG `C0962EFA929F5A5477A4509C0CC9E5A0F0B6FC1C` | Patrick's workstation keyring (passphrase) | as nightly, at stable publication |
 | Stable minisign `A4388FB41F96A6D7` | workstation, `~/.minisign/putgd-stable.key` (passphrase) | as nightly |

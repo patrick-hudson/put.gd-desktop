@@ -5,13 +5,13 @@ workflow run and are linked with `needs:`. Nightlies can reuse completed source
 checks for their exact commit; an absent or failed lookup runs the tests again.
 No job waits for another workflow to finish.
 
-put.gd is Linux-only: DEB, RPM and AppImage. Native Windows support was
+put.gd is Linux-only: DEB, RPM, pacman and AppImage. Native Windows support was
 dropped on 2026-10-31; CI no longer compiles or provisions Windows.
 
 | Workflow | Runs on | Does |
 | --- | --- | --- |
 | `ci.yml` | every pull request, pushes to `nightly`, manual runs; called by nightly and release | contracts, Linux tests, clang ASan/UBSan core tests, packages, the AppImage's pipewiresrc on PipeWire 1.6; on `nightly` pushes, cache pruning |
-| `package.yml` | called by `ci.yml` | four native packages, AppImage, their SBOMs and vulnerability scan, and with a tag the collected `release-assets` |
+| `package.yml` | called by `ci.yml` | five native packages, AppImage, their SBOMs and vulnerability scan, and with a tag the collected `release-assets` |
 | `nightly.yml` | 05:23 UTC daily and manual | skip unchanged source, or tag, test, package and publish a nightly, then notify put.gd-site; re-scan the latest stable release's SBOMs |
 | `release.yml` | pushes to `main` and manual | tag the stable merge commit, test, package and stage a draft |
 | `renovate.yml` | 04:17 UTC Mondays and manual; pull requests that change it | open dependency-update pull requests against `nightly`; on pull requests, a read-only lookup ([dependency updates](#dependency-updates)) |

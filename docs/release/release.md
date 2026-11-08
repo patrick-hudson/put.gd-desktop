@@ -2,7 +2,7 @@
 
 Release builds use C++20, Qt 6, the pinned official AWS SDK, CMake presets, Ninja
 and native packaging tools. The application is MIT licensed. The first public
-track is a prerelease. Supported packages are DEB, RPM and AppImage.
+track is a prerelease. Supported packages are DEB, RPM, pacman and AppImage.
 
 ## Branches and channels
 
@@ -36,7 +36,7 @@ Earlier tags keep their names and stay readable: `v0.1.1-nightly.N`, the
 unpublished `v0.1.1-rc.1` draft, and before 2026-10-18
 `vBASE-dev.COUNT.UTC+gSHORT`. Every calendar version sorts after them.
 Nightlies never replace GitHub's Latest stable release. New releases publish
-five installers and ten small support files. Source downloads are linked
+six installers and eleven small support files. Source downloads are linked
 separately; debug files stay in CI artifacts. Older releases retain their original
 asset layouts and remain verifiable.
 
@@ -65,7 +65,7 @@ a rewritten committer date on `nightly` HEAD could cause that; check the commit
 and its date.
 
 Nightly notes state automated coverage: Linux test suites, package audits and
-the extracted-source production build. put.gd ships only Linux DEB, RPM and
+the extracted-source production build. put.gd ships only Linux DEB, RPM, pacman and
 AppImage packages; native Windows support was dropped on 2026-10-31. Nightlies
 are development releases, not new graphical, memory or live-S3 certification.
 
