@@ -5,6 +5,7 @@
 #include <QCoreApplication>
 #include <QGuiApplication>
 #include <QSocketNotifier>
+#include <QElapsedTimer>
 #include <QTimer>
 #include <QMap>
 #include <QSet>
@@ -61,8 +62,10 @@ QList<CaptureFrame> WaylandOutputs::framesFromMetadata(const QList<Metadata>& me
 }
 struct WaylandOutputs::Impl:QObject {
  struct Output {
-  Impl* owner=nullptr;uint32_t global=0;wl_output* native=nullptr;zxdg_output_v1* logical=nullptr;
+  Impl* owner=nullptr;uint32_t global=0,version=0;wl_output* native=nullptr;zxdg_output_v1* logical=nullptr;
   Metadata pending;bool position=false,size=false,mode=false,wlDone=false,xdgDone=false,coherent=false,invalid=false;
+  // Any wl_output property event (geometry, mode, scale, name, description) since the last done.
+  bool batchEvents=false,completedBefore=false;QElapsedTimer lastRebind;
  };
  WaylandOutputs& q;wl_display* display=nullptr;wl_registry* registry=nullptr;zxdg_output_manager_v1* manager=nullptr;
  uint32_t managerName=0,managerVersion=0;wl_callback* initialSync=nullptr;
@@ -108,25 +111,37 @@ struct WaylandOutputs::Impl:QObject {
  }
  void commit(Output* output){
   output->coherent=output->logical&&output->position&&output->size&&output->mode&&output->wlDone&&output->xdgDone&&!output->invalid;
+  if(output->coherent)output->completedBefore=true;
   publish();
  }
  static void geometry(void* data,wl_output*,int32_t,int32_t,int32_t,int32_t,int32_t,const char*,const char*,int32_t transform){
-  auto* output=static_cast<Output*>(data);output->wlDone=false;if(output->pending.transform!=transform)output->owner->dirty(output);output->pending.transform=transform;
+  auto* output=static_cast<Output*>(data);output->wlDone=false;output->batchEvents=true;if(output->pending.transform!=transform)output->owner->dirty(output);output->pending.transform=transform;
  }
  static void mode(void* data,wl_output*,uint32_t flags,int32_t width,int32_t height,int32_t){
+  static_cast<Output*>(data)->batchEvents=true;
   if(!(flags&WL_OUTPUT_MODE_CURRENT))return;
   auto* output=static_cast<Output*>(data);output->wlDone=false;
   if(!output->mode||output->pending.mode!=QSize(width,height))output->owner->dirty(output);
   output->mode=true;output->pending.mode=QSize(width,height);
  }
  static void done(void* data,wl_output*){
-  auto* output=static_cast<Output*>(data);output->wlDone=true;
+  auto* output=static_cast<Output*>(data);
+  // A batch with no wl_output property event on an output that was already
+  // complete: the compositor changed something it did not resend. Hyprland
+  // 0.56 does this when an output's transform returns to normal (#1299): it
+  // sends the new xdg-output logical size and done, but no geometry, so the
+  // transform stays stale. A real transform, mode, scale or position change
+  // always carries a wl_output event; a fresh bind always carries the full
+  // current state, so rebind that output instead of keeping a stale one.
+  const bool empty=!output->batchEvents&&output->completedBefore;output->batchEvents=false;
+  if(empty){output->owner->scheduleRebind(output->global);return;}
+  output->wlDone=true;
   // Version 3 makes wl_output.done the atomic completion event for both
   // protocols. The deprecated xdg done event is deliberately ignored there.
   if(output->logical&&zxdg_output_v1_get_version(output->logical)>=3)output->xdgDone=true;
   output->owner->commit(output);
  }
- static void scale(void* data,wl_output*,int32_t factor){auto* output=static_cast<Output*>(data);output->wlDone=false;if(output->pending.scale!=factor)output->owner->dirty(output);output->pending.scale=factor;}
+ static void scale(void* data,wl_output*,int32_t factor){auto* output=static_cast<Output*>(data);output->wlDone=false;output->batchEvents=true;if(output->pending.scale!=factor)output->owner->dirty(output);output->pending.scale=factor;}
  static void name(Output* output,const char* value){
   const auto length=strnlen(value,257);const auto bytes=QByteArray(value,int(std::min(size_t(256),length)));const auto text=QString::fromUtf8(bytes);
   if(length>256||text.toUtf8()!=bytes||!validName(text)||(!output->pending.name.isEmpty()&&output->pending.name!=text)){
@@ -135,8 +150,8 @@ struct WaylandOutputs::Impl:QObject {
   if(output->pending.name!=text)output->owner->dirty(output);
   output->pending.name=text;
  }
- static void nativeName(void* data,wl_output*,const char* value){auto* output=static_cast<Output*>(data);output->wlDone=false;name(output,value);}
- static void description(void*,wl_output*,const char*){}
+ static void nativeName(void* data,wl_output*,const char* value){auto* output=static_cast<Output*>(data);output->wlDone=false;output->batchEvents=true;name(output,value);}
+ static void description(void* data,wl_output*,const char*){static_cast<Output*>(data)->batchEvents=true;}
  static void logicalPosition(void* data,zxdg_output_v1*,int32_t x,int32_t y){
   auto* output=static_cast<Output*>(data);output->xdgDone=false;if(zxdg_output_v1_get_version(output->logical)>=3)output->wlDone=false;if(!output->position||output->pending.logical.topLeft()!=QPoint(x,y))output->owner->dirty(output);
   output->position=true;output->pending.logical.moveTopLeft(QPoint(x,y));
@@ -171,12 +186,30 @@ struct WaylandOutputs::Impl:QObject {
     if(self->overflowOutputs.size()+self->unsupportedOutputs.size()<maximumOutputs)rejected.insert(id);else self->overflowUntracked=true;
     self->publish();return;
    }
-   auto* output=new Output;output->owner=self;output->global=id;
-   output->native=static_cast<wl_output*>(wl_registry_bind(registry,id,&wl_output_interface,std::min(version,uint32_t(4))));self->outputs.insert(id,output);
-   static const wl_output_listener listener={geometry,mode,done,scale,nativeName,description};
-   wl_output_add_listener(output->native,&listener,output);self->makeLogical(output);
+   auto* output=new Output;output->owner=self;output->global=id;output->version=std::min(version,uint32_t(4));self->outputs.insert(id,output);
+   self->bindOutput(output);
   }
   self->publish();
+ }
+ void bindOutput(Output* output){
+  output->native=static_cast<wl_output*>(wl_registry_bind(registry,output->global,&wl_output_interface,output->version));
+  static const wl_output_listener listener={geometry,mode,done,scale,nativeName,description};
+  wl_output_add_listener(output->native,&listener,output);makeLogical(output);
+ }
+ // Outside dispatch: release the stale objects and bind the same global again.
+ // At most one rebind per output every 250 ms, so a compositor that sends empty
+ // batches continually cannot make this loop.
+ void scheduleRebind(uint32_t global){
+  QTimer::singleShot(0,this,[this,global]{
+   auto* output=outputs.value(global);if(!output||!display||closing)return;
+   if(output->lastRebind.isValid()&&output->lastRebind.elapsed()<250)return;
+   output->lastRebind.start();
+   dirty(output);output->coherent=false;
+   if(output->logical){zxdg_output_v1_destroy(output->logical);output->logical=nullptr;}
+   if(wl_output_get_version(output->native)>=3)wl_output_release(output->native);else wl_output_destroy(output->native);
+   output->native=nullptr;output->position=output->size=output->mode=output->wlDone=output->xdgDone=output->batchEvents=output->completedBefore=false;
+   bindOutput(output);flush();publish();
+  });
  }
  void destroyOutput(Output* output){
   if(output->logical)zxdg_output_v1_destroy(output->logical);
