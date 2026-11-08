@@ -25,6 +25,8 @@ import wall_probe
 
 def pixel_inventory(c, outputs):
     """Current native mode/transform, independent of every VNC listener."""
+    if c.profile['desktop'] == 'Hyprland':
+        raise RuntimeError('VM wall pixel inventory does not support Hyprland guests')
     if c.profile['session'] == 'wayland' and c.profile['desktop'] != 'KDE':
         values = json.loads(c.session('python3 -c ' + shlex.quote(multi_output.MUTTER_OUTPUTS) + '\n'))
         return {v['name']: {'size': [v['pixelWidth'], v['pixelHeight']],

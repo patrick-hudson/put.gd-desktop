@@ -1635,6 +1635,34 @@ Virtual-3 disconnected (normal left inverted right x axis y axis)
         self.assertTrue(result['ok'], result['errors'])
         self.assertEqual(result['outputs'][1]['x'], -1280)
 
+    def test_hyprctl_outputs_keep_disabled_heads_and_first_rate_per_size(self):
+        # Shape of `hyprctl -j monitors all` on Hyprland 0.56 (Omarchy 4.5 guest, 2026-11-08).
+        monitors = [
+            {'name': 'Virtual-2', 'disabled': True, 'x': 0, 'y': 0, 'width': 0, 'height': 0,
+             'availableModes': ['1280x1024@75.03Hz']},
+            {'name': 'Virtual-1', 'disabled': False, 'x': 0, 'y': 0, 'width': 1920, 'height': 1080,
+             'availableModes': ['1280x800@74.99Hz', '1920x1080@60.00Hz', '1920x1080@50.00Hz']}]
+        observed = lab.parse_hyprctl(monitors)
+        self.assertEqual([output['name'] for output in observed['outputs']], ['Virtual-1', 'Virtual-2'])
+        self.assertEqual(observed['outputs'][0]['modes']['1920x1080'], '1920x1080@60.00')
+        self.assertFalse(observed['outputs'][1]['enabled'])
+        self.assertNotIn('width', observed['outputs'][1])
+        result = lab.verify_outputs(observed, 1, lab.parse_layout('1920x1080+0+0'))
+        self.assertTrue(result['ok'], result['errors'])
+        self.assertEqual(lab.layout_backend({'session': 'wayland', 'desktop': 'Hyprland'}), 'hyprctl')
+
+    def test_hyprctl_layout_uses_lua_eval_not_keyword(self):
+        # Hyprland 0.56 with a Lua config refuses `hyprctl keyword`.
+        observed = lab.parse_hyprctl([{'name': 'Virtual-1', 'x': 0, 'y': 0, 'width': 1280, 'height': 800,
+                                       'availableModes': ['1920x1080@60.00Hz']}])
+        with patch.object(lab, 'guest_session') as session:
+            lab.apply_layout('run', 'hyprctl', observed, lab.parse_layout('1920x1080+0+0'))
+        script = session.call_args.args[1]
+        self.assertTrue(script.startswith('hyprctl eval '), script)
+        self.assertIn('hl.monitor({ output = "Virtual-1", mode = "1920x1080@60.00", position = "0x0", scale = 1 })', script)
+        with patch.object(lab, 'guest_session'), self.assertRaisesRegex(lab.LabError, 'no 2560x1440 mode'):
+            lab.apply_layout('run', 'hyprctl', observed, lab.parse_layout('2560x1440+0+0'))
+
     def test_qmp_handles_unsolicited_events_without_losing_command_reply(self):
         with tempfile.TemporaryDirectory() as directory:
             path = str(Path(directory) / 'qmp.sock')
