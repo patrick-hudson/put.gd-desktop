@@ -280,7 +280,7 @@ private:
  // Ayatana's and Canonical's indicator-application-service ignore IconPixmap (#1294; Ubuntu Budgie 26.04's
  // default tray applet), so for them the icon is also a PNG file named by IconName in IconThemePath, the way
  // Qt's own tray icon does it. A new file per change, because those hosts cache an icon by name.
- bool namedIcon_ = false;
+ bool namedIcon_ = false, detecting_ = false;
  QString iconDirectory_, iconName_;
  quint64 iconSerial_ = 0;
  void detectIconHost(quint64 generation);
@@ -356,18 +356,32 @@ void NativeTrayPrivate::setOwner(const QString& owner) {
  ownerKnown_ = true; hostKnown_ = owner.isEmpty(); registrationSettled_ = owner.isEmpty(); availabilityKnown_ = false;
  ++generation_; ++hostQuery_; owner_ = owner; registeredOwner_.clear(); hostPresent_ = false;
  attempts_ = 0; retry_.stop(); updateAvailability();
- if (!owner_.isEmpty()) detectIconHost(generation_);
+ if (!owner_.isEmpty()) detectIconHost(generation_); else detecting_ = false;
 }
 void NativeTrayPrivate::detectIconHost(quint64 generation) {
+ // Registration waits for this answer, so the host's first GetAll already has the right icon (review #1275).
+ detecting_ = true;
  auto call = QDBusMessage::createMethodCall("org.freedesktop.DBus", "/org/freedesktop/DBus", "org.freedesktop.DBus", "GetConnectionUnixProcessID");
  call << owner_;
  auto* pending = new QDBusPendingCallWatcher(bus_.asyncCall(call, callTimeoutMs), this);
  connect(pending, &QDBusPendingCallWatcher::finished, this, [this, generation](QDBusPendingCallWatcher* p) {
   const QDBusPendingReply<uint> result = *p; p->deleteLater();
   if (generation != generation_) return;
-  const auto program = result.isError() ? QString{} : QFileInfo(QFile::symLinkTarget(QString("/proc/%1/exe").arg(result.value()))).fileName();
+  detecting_ = false;
+  // An upgraded package leaves the running service's exe as "... (deleted)".
+  auto program = result.isError() ? QString{} : QFileInfo(QFile::symLinkTarget(QString("/proc/%1/exe").arg(result.value()))).fileName();
+  if (program.endsWith(" (deleted)")) program.chop(int(qstrlen(" (deleted)")));
   const bool named = program.endsWith("indicator-application-service");
-  if (named != namedIcon_) { namedIcon_ = named; if (named) writeNamedIcon(); }
+  if (named != namedIcon_) {
+   namedIcon_ = named; if (named) writeNamedIcon();
+   // Already registered with this host: tell it the icon changed.
+   if (!registeredOwner_.isEmpty()) {
+    const auto props = properties(false);
+    auto signal = QDBusMessage::createSignal("/StatusNotifierItem", "org.freedesktop.DBus.Properties", "PropertiesChanged");
+    signal.setArguments({QString::fromLatin1(itemInterface), QVariantMap{{"IconName", props["IconName"]}, {"IconThemePath", props["IconThemePath"]}}, QStringList{}}); bus_.send(signal);
+    bus_.send(QDBusMessage::createSignal("/StatusNotifierItem", itemInterface, "NewIcon"));
+   }
+  }
   queryHost(); registerItem();
  });
 }
@@ -407,6 +421,7 @@ void NativeTrayPrivate::queryHost() {
  });
 }
 void NativeTrayPrivate::registerItem() {
+ if (detecting_) return;  // detectIconHost registers when it knows the host
  if (owner_.isEmpty() || registrationInFlight_ || registeredOwner_ == owner_ || attempts_ >= 3) return;
  retry_.stop(); ++attempts_; registrationInFlight_ = true;
  const auto generation = generation_; const auto owner = owner_;
@@ -687,9 +702,13 @@ void NativeTray::setActivity(const QColor& color,const QString& description,int 
 void NativeTray::setUpdateLabel(const QString& label) {d_->setUpdateLabel(label);}
 void NativeTray::setCommands(const QHash<QString,QString>& shortcuts,const QString& upload,int uploads,bool failed,const QString& recording,const QString& attention) {d_->setCommands(shortcuts,upload,uploads,failed,recording,attention);}
 void NativeTrayPrivate::setCommands(const QHash<QString,QString>& shortcuts,const QString& upload,int uploads,bool failed,const QString& recording,const QString& attention) {
- if(shortcuts_==shortcuts&&uploadStatus_==upload&&uploads_==uploads&&failed_==failed&&recordingText_==recording&&attentionLabel_==attention)return;shortcuts_=shortcuts;uploadStatus_=upload;uploads_=uploads;failed_=failed;recordingText_=recording;attentionLabel_=attention;++menuRevision_;
- NativePropertyList changed;for(int id=1;id<=entryCount;++id)if(knownId(id))changed.append({id,menuProperties(id,{"label","visible","enabled","shortcut"},updateLabel_,shortcuts_,uploadStatus_,uploads_,failed_,recordingText_,attentionLabel_,outputs_)});
- auto properties=QDBusMessage::createSignal("/Menu",menuInterface,"ItemsPropertiesUpdated");properties.setArguments({QVariant::fromValue(changed),QVariant::fromValue(NativeRemovedList{})});bus_.send(properties);
+ if(shortcuts_==shortcuts&&uploadStatus_==upload&&uploads_==uploads&&failed_==failed&&recordingText_==recording&&attentionLabel_==attention)return;
+ // An entry whose shortcut was cleared sends none any more (#1294); hosts that apply this signal must hear it removed.
+ QSet<int> hadShortcut;for(int id=1;id<=entryCount;++id)if(knownId(id)&&menuProperties(id,{"shortcut"},updateLabel_,shortcuts_).contains("shortcut"))hadShortcut.insert(id);
+ shortcuts_=shortcuts;uploadStatus_=upload;uploads_=uploads;failed_=failed;recordingText_=recording;attentionLabel_=attention;++menuRevision_;
+ NativePropertyList changed;NativeRemovedList removed;
+ for(int id=1;id<=entryCount;++id)if(knownId(id)){changed.append({id,menuProperties(id,{"label","visible","enabled","shortcut"},updateLabel_,shortcuts_,uploadStatus_,uploads_,failed_,recordingText_,attentionLabel_,outputs_)});if(hadShortcut.contains(id)&&!changed.last().properties.contains("shortcut"))removed.append({id,{"shortcut"}});}
+ auto properties=QDBusMessage::createSignal("/Menu",menuInterface,"ItemsPropertiesUpdated");properties.setArguments({QVariant::fromValue(changed),QVariant::fromValue(removed)});bus_.send(properties);
  auto signal=QDBusMessage::createSignal("/Menu",menuInterface,"LayoutUpdated");signal.setArguments({menuRevision_,0});bus_.send(signal);
 }
 void NativeTrayPrivate::setUpdateLabel(const QString& label) {
