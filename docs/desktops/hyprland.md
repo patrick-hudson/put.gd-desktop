@@ -233,7 +233,7 @@ them on at runtime with a multi-second `layers`/`fadeLayers` animation and give
 slurp a later rule with `no_anim = false` (Omarchy ships `no_anim` for its
 `selection` layer): slurp then fades in over the animation while put.gd's
 selector appears in one step, and a capture contains no selector.
-Acceptance evidence: [2026-11-08-hyprland-omarchy-1275](https://github.com/patrick-hudson/put.gd-evidence/tree/e2a01bbb98cb76f7a5bd4af98f50f45867924dd2/records/2026-11-08-hyprland-omarchy-1275). The Omarchy golden has no pacman sync databases: run
+Acceptance evidence: [2026-11-08-hyprland-omarchy-1275](https://github.com/patrick-hudson/put.gd-evidence/tree/c9a112da7d03c36c899182c4c65308fd3709b88f/records/2026-11-08-hyprland-omarchy-1275). The Omarchy golden has no pacman sync databases: run
 `sudo pacman -Sy` before `pacman -U`, never `-Syu`. Hyprland cannot run headless
 in CI (aquamarine needs a DRM device), so CI covers routing, key and bind
 normalisation, the bind plan, refusal frames and the shortcut backend against a
