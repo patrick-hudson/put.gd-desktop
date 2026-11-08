@@ -145,6 +145,12 @@ KDE neon (User for released Plasma, Unstable for Plasma git master) uses the
 `bootstrap-neon-guest.sh`, because neon uses plasmalogin and wraps `apt-get` in
 `/usr/sbin`. Its goldens and provisioning are in [KDE neon VMs](../neon-vm.md).
 
+Omarchy (Arch Linux and Hyprland) uses the `omarchy-hyprland` profile (UEFI,
+`install: appimage`, session process `quickshell`). Its golden is installed by the
+Omarchy ISO's own unattended installer on EC2, not by `bootstrap-guest.sh`, and
+unlocks its LUKS root with a keyfile in the initramfs so overlays boot without a
+prompt. The facts and recipe are in [Omarchy VM golden](../omarchy-vm.md).
+
 `bootstrap-guest.sh` supports apt-based guests and Fedora's dnf. Run it inside
 the guest with only the lab public key. It restores SSH file labels on SELinux
 guests and enables their SSH firewall service when Firewalld is running. Its
