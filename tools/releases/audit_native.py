@@ -145,6 +145,9 @@ def audit_tree(root: Path, expected_manifest=None, *, require_kde=False, require
         resolved = command(["ldd", str(keeper_path)], env=env)
         if "not found" in resolved:
             raise ValueError(f"Unresolved native dependency: {keeper_path.name}\n{resolved}")
+        result["elfDependencies"][relative] = {
+            "needed": re.findall(r"\(NEEDED\).*?\[(.*?)\]", command(["readelf", "-d", str(keeper_path)])),
+            "resolved": resolved.splitlines()}
     for name in result["programs"]:
         if name == "putgd-launcher":
             continue
