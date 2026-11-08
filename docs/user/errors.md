@@ -44,7 +44,7 @@ helper). Capture errors use the code in the second column.
 | `login_required` | `gnome_login_required` (`gnome_extension_updated` after an update) | Log out and back in once |
 | `user_extensions_disabled` | `gnome_user_extensions_off` | Turn on **Extensions** in the Extensions app; put.gd's extension starts with them |
 | `disabled_by_user` | `gnome_extension_disabled` | Turn the put.gd extension on again in the Extensions app |
-| `foreign_user_copy` | `gnome_foreign_extension` | A copy put.gd didn't install is in `~/.local/share/gnome-shell/extensions/putgd@put.gd`; remove it and start put.gd again |
+| `foreign_user_copy` | `gnome_foreign_extension` | A copy put.gd didn't install is in your user extensions folder (by default `~/.local/share/gnome-shell/extensions/putgd@put.gd`); remove it, start put.gd, then log out and back in once |
 | `unsupported_shell` | `gnome_shell_unsupported` | This GNOME Shell isn't 50; use a supported session |
 | `settings_locked` | `gnome_settings_locked` | Your administrator has locked GNOME's extension list |
 | `settings_unavailable` | `gnome_settings_unavailable` | `gsettings` is missing or failed; the message gives the reason |

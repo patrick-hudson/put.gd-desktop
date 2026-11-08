@@ -8,11 +8,13 @@ The left rail starts **Capture region**, **Capture window**, **Capture desktop**
 
 On GNOME 50, put.gd's capture and shortcuts need a Shell extension that put.gd sets
 up for you. After installing, whether by the one-line installer, a DEB or RPM, or an
-AppImage, start put.gd and log out and back in once when it asks. There is nothing to
-run or download. If something else is in the way, put.gd says what in plain words.
+AppImage, start put.gd and log out and back in once when it asks, then start put.gd
+again unless you turned on Launch at login. There is nothing to run or download. If
+something else is in the way, put.gd says what in plain words.
 
 To remove the extension copy put.gd installed for an AppImage, quit put.gd and run
-`putgd.AppImage --remove-gnome-extension`.
+the AppImage with `--remove-gnome-extension` (the installer puts it at
+`~/.local/bin/putgd.AppImage`; use your own path for a hand-downloaded one).
 
 ## Choose outputs
 

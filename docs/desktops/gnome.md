@@ -21,20 +21,25 @@ These sources establish API intent. They do not establish graphical acceptance.
 Use normal distro packages: `gnome-shell` 50, its GJS/Mutter GI runtime, the `gnome-extensions` command supplied by Shell, and the standard GLib runtime. The extension preferences GUI is optional. The application additionally links the distro Qt DBus module (`qt6-base-dev`) and needs the distro Wayland platform plugin (`qt6-wayland`). Root packaging installs the extension files; do not install a substitute Shell/GJS runtime.
 
 A GNOME 50 user does one thing after installing put.gd by any route (one-line
-installer, DEB, RPM or an AppImage): start it, then **log out and back in once**.
-put.gd says when and why. The resident does the rest, in the session, as the user;
-a package's post-install script runs as root and can't set per-user GNOME state.
+installer, DEB, RPM or an AppImage): start it, then **log out and back in once**
+when it asks (the state is `login_required`). It doesn't ask when the extension is
+already loaded and current, and another state says when a logout won't help. The
+resident does the rest, in the session, as the user; a package's post-install
+script runs as root and can't set per-user GNOME state.
 
 - Native packages install the helper under
   `/usr/share/gnome-shell/extensions/putgd@put.gd/`. The resident uses that system
   copy.
 - An AppImage carries the matching extension. On first start, when no system copy
   exists, the resident installs it to
-  `~/.local/share/gnome-shell/extensions/putgd@put.gd/` and writes a
+  `$XDG_DATA_HOME/gnome-shell/extensions/putgd@put.gd/` (by default under
+  `~/.local/share`) and writes a
   `.putgd-managed` marker (the files' SHA-256 digests) next to it. It never installs
   a user copy beside a system copy, because a user copy shadows a newer system
-  package, and it never overwrites a copy it didn't create: no marker, or a file that
-  no longer matches, reports `foreign_user_copy` and leaves the directory alone. A
+  package, and it never overwrites a copy it didn't create: no marker, a file that
+  no longer matches, or anything added to the directory reports `foreign_user_copy`
+  and leaves it alone. GNOME loads a user copy ahead of a package's, so an older
+  manual copy must be removed before the package can load. A
   copy it owns is kept in step with the running AppImage (never downgraded) and is
   removed if a system copy later appears.
 - `putgd --remove-gnome-extension` (or `putgd.AppImage --remove-gnome-extension`)
@@ -77,9 +82,10 @@ The resident compares the `extensionVersion` the loaded extension reports in
 `Hello` with the packaged `metadata.json` version (compiled in from
 `integrations/gnome/metadata.json`). While an older one is loaded,
 `capabilities` reports `helper.outdated: true` with `extensionVersion` and
-`packagedExtensionVersion`, the setup state is `login_required`, screenshots keep
-working, and a region recording is refused with `helper_outdated`: "The put.gd GNOME
-Shell extension was updated; log out and back in to load the new version" (#131).
+`packagedExtensionVersion`, the setup state is `login_required`, window and desktop
+screenshots keep working, and a region capture or region recording is refused with
+`helper_outdated`: "The put.gd GNOME Shell extension was updated; log out and back in
+to load the new version" (#131).
 Bump `metadata.json`'s `version` whenever the extension's D-Bus interface changes.
 
 The native resident does not initialize Qt Wayland; the on-demand graphical helper uses the session's Wayland platform. Capture and clipboard actions remain available through the production CLI and GUI. Leave the clipboard shortcut unset until the user explicitly assigns one. Binding diagnostics report the actual result for every configured action; existing Shell/system bindings are never overwritten.
