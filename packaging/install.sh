@@ -170,6 +170,12 @@ HELP
                 case "$answer" in y|Y|yes|YES) ;; *) die 'Omarchy system update declined; nothing installed' ;; esac
                 # Our explicit confirmation precedes -y so a declined native prompt
                 # (which some updater versions report as success) cannot install put.gd.
+                # Older installer versions created this public file as root-only.
+                # Repair readability so the native updater can query pacman normally.
+                if [ -f /etc/pacman.d/putgd.conf ] && [ ! -r /etc/pacman.d/putgd.conf ]; then
+                    note 'Repairing read permissions on the existing public put.gd repository file.'
+                    sudo chmod 0644 /etc/pacman.d/putgd.conf < /dev/tty
+                fi
                 omarchy-update -y < /dev/tty || die 'Omarchy system update failed; nothing installed'
                 arch_updated=true
             fi
@@ -191,6 +197,7 @@ HELP
                 if [ ! -e /etc/pacman.d/putgd.conf ]; then
                     printf "[putgd-%s]\nSigLevel = PackageRequired DatabaseRequired\nServer = https://pkg.put.gd/pacman/x86_64/%s\n" "$3" "$3" > /etc/pacman.d/putgd.conf
                 fi
+                chmod 0644 /etc/pacman.d/putgd.conf
                 if ! grep -qxF "Include = /etc/pacman.d/putgd.conf" /etc/pacman.conf; then
                     printf "\nInclude = /etc/pacman.d/putgd.conf\n" >> /etc/pacman.conf
                 fi

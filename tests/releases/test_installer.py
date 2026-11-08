@@ -173,7 +173,9 @@ else:
         self.assertIn('/pacman/x86_64/nightly', config.read_text())
         self.assertEqual(config.stat().st_mode & 0o777, 0o644)
         before = config.read_text()
+        config.chmod(0o600)
         self.run_script('--channel', 'nightly')
+        self.assertEqual(config.stat().st_mode & 0o777, 0o644)
         self.assertEqual(config.read_text(), before)
         self.assertEqual((self.root / 'pacman.conf').read_text().count('Include = '), 1)
 
@@ -214,6 +216,20 @@ else:
         self.assertEqual(config.read_text(), 'existing admin choice\n')
         self.assertEqual((self.root / 'pacman.conf').read_bytes(), before)
         self.assertFalse(any(Path(c[0]).name in ('sudo','pacman','pacman-key') for c in self.calls()))
+
+    @unittest.skipIf(os.geteuid() == 0, "root can read a mode-000 file")
+    def test_omarchy_repairs_unreadable_existing_repo_before_update(self):
+        self.arch_with_updater()
+        config = self.root / 'pacman.d/putgd.conf'
+        config.write_text('existing channel choice\n')
+        config.chmod(0)
+        self.run_script('--channel', 'nightly', terminal_input='y\n')
+        calls = self.calls()
+        repair = next(i for i,c in enumerate(calls) if Path(c[0]).name == 'sudo' and c[1:2] == ['chmod'])
+        update = next(i for i,c in enumerate(calls) if Path(c[0]).name == 'omarchy-update')
+        self.assertLess(repair, update)
+        self.assertEqual(config.read_text(), 'existing channel choice\n')
+        self.assertEqual(config.stat().st_mode & 0o777, 0o644)
 
     def test_omarchy_decline_leaves_repo_and_keys_untouched(self):
         self.arch_with_updater()
