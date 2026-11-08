@@ -41,34 +41,49 @@ void MutterScreenCast::fail(const Error& error) {
     if (done) done(error, {});
 }
 
-void MutterScreenCast::recordMonitor(const QString& connector, const QRect& logical, Done done) {
-    if (done_ || !session_.isEmpty()) { done({"recording_state", "A Mutter screen cast is already open", {}}, {}); return; }
-    done_ = std::move(done);
+void MutterScreenCast::create(const char* method, const QList<QVariant>& arguments, const QRect& logical, const Error& refused, const QString& label) {
     auto bus = QDBusConnection::sessionBus();
     const QDBusReply<QDBusObjectPath> created = bus.call(QDBusMessage::createMethodCall(service, rootPath, service, "CreateSession") << QVariantMap{}, QDBus::Block, 10000);
     if (!created.isValid()) { fail({"recording_source_failed", "Mutter refused a screen cast session: " + created.error().message(), {}}); return; }
     session_ = created.value().path();
-    QDBusMessage record = QDBusMessage::createMethodCall(service, session_, sessionInterface, "RecordMonitor");
-    record << connector << QVariantMap{{"cursor-mode", uint(1)}};
+    // Closed comes when Mutter ends the session itself: a recorded window went away.
+    bus.connect(service, session_, sessionInterface, "Closed", this, SLOT(sessionClosed()));
+    QDBusMessage record = QDBusMessage::createMethodCall(service, session_, sessionInterface, QString::fromLatin1(method));
+    record.setArguments(arguments);
     const QDBusReply<QDBusObjectPath> stream = bus.call(record, QDBus::Block, 10000);
-    if (!stream.isValid()) { fail({"recording_target", "Mutter has no monitor with this connector: " + stream.error().message(), {{"identity", connector}}}); return; }
-    debugLog(QStringLiteral("mutter screencast: session %1 monitor '%2'").arg(session_, connector));
+    if (!stream.isValid()) { auto error = refused; error.message += ": " + stream.error().message(); fail(error); return; }
+    debugLog(QStringLiteral("mutter screencast: session %1 %2").arg(session_, label));
     start(stream.value().path(), logical);
+}
+
+void MutterScreenCast::recordMonitor(const QString& connector, const QRect& logical, Done done) {
+    if (done_ || !session_.isEmpty()) { done({"recording_state", "A Mutter screen cast is already open", {}}, {}); return; }
+    done_ = std::move(done);
+    create("RecordMonitor", {connector, QVariantMap{{"cursor-mode", uint(1)}}}, logical, {"recording_target", "Mutter has no monitor with this connector", {{"identity", connector}}}, QStringLiteral("monitor '%1'").arg(connector));
 }
 
 void MutterScreenCast::recordArea(const QRect& logical, Done done) {
     if (done_ || !session_.isEmpty()) { done({"recording_state", "A Mutter screen cast is already open", {}}, {}); return; }
     done_ = std::move(done);
-    auto bus = QDBusConnection::sessionBus();
-    const QDBusReply<QDBusObjectPath> created = bus.call(QDBusMessage::createMethodCall(service, rootPath, service, "CreateSession") << QVariantMap{}, QDBus::Block, 10000);
-    if (!created.isValid()) { fail({"recording_source_failed", "Mutter refused a screen cast session: " + created.error().message(), {}}); return; }
-    session_ = created.value().path();
-    QDBusMessage record = QDBusMessage::createMethodCall(service, session_, sessionInterface, "RecordArea");
-    record << logical.x() << logical.y() << logical.width() << logical.height() << QVariantMap{{"cursor-mode", uint(1)}};
-    const QDBusReply<QDBusObjectPath> stream = bus.call(record, QDBus::Block, 10000);
-    if (!stream.isValid()) { fail({"recording_target", "Mutter refused the area: " + stream.error().message(), {}}); return; }
-    debugLog(QStringLiteral("mutter screencast: session %1 area %2,%3 %4x%5").arg(session_).arg(logical.x()).arg(logical.y()).arg(logical.width()).arg(logical.height()));
-    start(stream.value().path(), logical);
+    create("RecordArea", {logical.x(), logical.y(), logical.width(), logical.height(), QVariantMap{{"cursor-mode", uint(1)}}}, logical, {"recording_target", "Mutter refused the area", {}},
+           QStringLiteral("area %1,%2 %3x%4").arg(logical.x()).arg(logical.y()).arg(logical.width()).arg(logical.height()));
+}
+
+void MutterScreenCast::recordWindow(quint64 windowId, const QRect& logical, Done done) {
+    if (done_ || !session_.isEmpty()) { done({"recording_state", "A Mutter screen cast is already open", {}}, {}); return; }
+    done_ = std::move(done);
+    create("RecordWindow", {QVariantMap{{"window-id", QVariant::fromValue<qulonglong>(windowId)}, {"cursor-mode", uint(1)}}}, logical,
+           {"recording_target", "Mutter has no window with this id", {{"identity", QString::number(windowId)}}}, QStringLiteral("window %1").arg(windowId));
+}
+
+void MutterScreenCast::sessionClosed() {
+    debugLog("mutter screencast: session closed by Mutter");
+    const bool streaming = !session_.isEmpty() && !done_;
+    if (auto done = std::exchange(done_, {})) done({"recording_source_lost", "Mutter closed the screen cast", {}}, {});
+    if (!session_.isEmpty()) QDBusConnection::sessionBus().disconnect(service, session_, sessionInterface, "Closed", this, SLOT(sessionClosed()));
+    session_.clear();
+    stream_.clear();
+    if (streaming) emit lost();
 }
 
 void MutterScreenCast::start(const QString& stream, const QRect& logical) {
@@ -89,6 +104,7 @@ void MutterScreenCast::start(const QString& stream, const QRect& logical) {
 
 void MutterScreenCast::close() {
     if (session_.isEmpty()) return;
+    QDBusConnection::sessionBus().disconnect(service, session_, sessionInterface, "Closed", this, SLOT(sessionClosed()));
     QDBusConnection::sessionBus().asyncCall(QDBusMessage::createMethodCall(service, session_, sessionInterface, "Stop"), 5000);
     debugLog("mutter screencast: session stopped");
     session_.clear();

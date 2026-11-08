@@ -104,6 +104,26 @@ private slots:
         QCOMPARE(late.running, keepalive.running + 1);
         QCOMPARE(late.ageNs, 21 * ms);
     }
+    // #1278: Mutter draws a recorded window into a larger buffer and names its
+    // place in each frame's crop region; videocrop takes it as margins.
+    void cutsTheWindowOutOfItsBuffer() {
+        QCOMPARE(cropMargins(QSize(1920, 1080), QRect(0, 0, 640, 480)), (CropMargins{0, 0, 1280, 600}));
+        QCOMPARE(cropMargins(QSize(1920, 1080), QRect(10, 20, 960, 640)), (CropMargins{10, 20, 950, 420}));
+        QCOMPARE(cropMargins(QSize(640, 480), QRect(0, 0, 640, 480)), CropMargins{});
+        // Nothing sensible to cut: crop nothing rather than an invalid margin.
+        QCOMPARE(cropMargins(QSize(640, 480), QRect()), CropMargins{});
+        QCOMPARE(cropMargins(QSize(640, 480), QRect(600, 0, 100, 100)), CropMargins{});
+        QCOMPARE(cropMargins(QSize(), QRect(0, 0, 10, 10)), CropMargins{});
+    }
+    // The canvas a window recording keeps: its frame at the output scale, even.
+    void sizesTheWindowCanvas() {
+        QCOMPARE(windowCanvas(QSize(641, 481), 1.0), QSize(640, 480));
+        QCOMPARE(windowCanvas(QSize(640, 480), 2.0), QSize(1280, 960));
+        QCOMPARE(windowCanvas(QSize(333, 201), 1.5), QSize(500, 302));
+        QCOMPARE(windowCanvas(QSize(1, 1), 1.0), QSize(2, 2));
+        QCOMPARE(windowCanvas(QSize(640, 480), 0), QSize(640, 480));
+        QVERIFY(windowCanvas(QSize(), 1.0).isEmpty());
+    }
 };
 QTEST_GUILESS_MAIN(WaylandAcquisition)
 #include "test_wayland_acquisition.moc"

@@ -112,6 +112,23 @@ class GuestPolicyContracts(unittest.TestCase):
                 self.assertEqual(policy[prefix + '.settings-daemon.plugins.power',
                                         'sleep-inactive-' + supply + '-timeout'], '0')
 
+    def test_budgie_uses_gsd_power_without_requiring_a_gnome_screensaver(self):
+        self.assertEqual(idle.settings('Budgie'), idle.settings('GNOME'))
+        with patch.object(idle, 'command') as command:
+            idle.desktop_services('Budgie', True)
+        command.assert_not_called()
+
+    def test_budgie_output_witness_does_not_accept_a_disabled_head(self):
+        observed = lab.parse_wlr_randr([
+            {'name': 'Virtual-1', 'enabled': True, 'position': {'x': 0, 'y': 0},
+             'modes': [{'width': 1280, 'height': 800, 'current': True}]},
+            {'name': 'Virtual-2', 'enabled': False, 'modes': []}])
+        self.assertTrue(lab.verify_outputs(observed, 1)['ok'])
+        self.assertFalse(lab.verify_outputs(observed, 2)['ok'])
+        self.assertEqual(lab.layout_backend({'session': 'wayland', 'desktop': 'Budgie'}),
+                         'wlr-randr')
+        self.assertEqual(lab.layout_backend({'session': 'x11', 'desktop': 'Budgie'}), 'xrandr')
+
     def test_readback_drift_fails_instead_of_accepting_successful_write(self):
         with patch.object(idle, 'command', side_effect=['', 'uint32 300']) as command:
             with self.assertRaisesRegex(idle.PolicyError, 'readback mismatch'):
@@ -181,6 +198,26 @@ class GuestPolicyContracts(unittest.TestCase):
                                 for supply in ('AC', 'Battery', 'LowBattery')))
             self.assertTrue(any(call[-1] == 'reparseConfiguration' for call in calls))
             self.assertTrue(any(call[-1] == 'configure' for call in calls))
+
+    def test_omarchy_stay_awake_is_applied_and_read_back(self):
+        calls = []
+        state = {'enabled': False}
+        def command(*args):
+            calls.append(args)
+            if args[1] == 'stay-awake':
+                state['enabled'] = True
+                return 'disabled'
+            return json.dumps({'enabled': state['enabled']})
+        with patch.object(idle.Path, 'is_file', return_value=True), patch.object(idle, 'command', side_effect=command):
+            self.assertEqual(idle.omarchy_policy(True), [{'command': 'omarchy-toggle-idle', 'state': 'stay-awake'}])
+        self.assertEqual([call[1] for call in calls], ['stay-awake', 'status'])
+        state['enabled'] = False
+        with patch.object(idle.Path, 'is_file', return_value=True), patch.object(idle, 'command', side_effect=command), \
+                self.assertRaisesRegex(idle.PolicyError, 'Stay Awake is off'):
+            idle.omarchy_policy(False)
+        with patch.object(idle.Path, 'is_file', return_value=False), \
+                self.assertRaisesRegex(idle.PolicyError, 'only Omarchy'):
+            idle.omarchy_policy(True)
 
     def test_unrelated_unit_is_preserved(self):
         with tempfile.TemporaryDirectory() as directory, patch.dict(os.environ, {'XDG_CONFIG_HOME': directory}):

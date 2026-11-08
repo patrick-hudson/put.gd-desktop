@@ -281,6 +281,24 @@ void GnomeAdapter::showFrame(const QJsonObject& frame,RecordingShell::Reply repl
  call("ShowRecordingFrame",{json(frame)},std::move(reply),4000);
 }
 void GnomeAdapter::hideFrame(){if(selectsRegions())call("HideRecordingFrame",{},[](Error,QJsonObject){});}
+// Recording protocol 2 adds RecordingWindows. An extension loaded before the
+// upgrade that brought it is still the one running until the user logs out.
+void GnomeAdapter::listWindows(RecordingWindows::Reply reply){
+ if(outdated()){reply(recordingShellError(),{});return;}
+ if(!ready_){reply(helperError_.code.isEmpty()?Error{"helper_unavailable","Install and enable putgd@put.gd in GNOME 50",{}}:helperError_,{});return;}
+ if(helper_["recordingVersion"].toInt()<2){reply({"helper_incompatible","Update the put.gd GNOME extension to record windows",{}},{});return;}
+ call("RecordingWindows",{},[reply](Error error,QJsonObject result){
+  if(!error&&!result["windows"].isArray())error={"bridge_protocol","GNOME helper returned an invalid window list",{}};
+  if(error){reply(error,{});return;}
+  QJsonArray windows;
+  for(const auto& value:result["windows"].toArray()){
+   const auto w=value.toObject();const auto r=w["rect"].toArray();
+   if(!w["identity"].isString()||w["identity"].toString().isEmpty()||w["identity"].toString().size()>32||r.size()!=4)continue;
+   windows.append(QJsonObject{{"identity",w["identity"].toString()},{"title",w["title"].toString().left(512)},{"appId",w["appId"].toString().left(256)},{"rect",r},{"active",w["active"].toBool()},{"minimized",w["minimized"].toBool()}});
+  }
+  reply({},{{"windows",windows},{"activeExcluded",result["activeExcluded"].toBool()}});
+ });
+}
 void GnomeAdapter::release(const QString& id){if(!owner_.isEmpty()&&!stopping_)call("Release",{id},[](Error,QJsonObject){});}
 void GnomeAdapter::cancelAll(const QString& code,const QString& message){
  ++generation_;const auto hotkeys=std::move(hotkeyPrepared_);hotkeyPrepared_.clear();for(const auto& tickets:hotkeys)for(const auto& id:tickets)release(id);

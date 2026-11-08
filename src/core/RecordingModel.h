@@ -19,6 +19,10 @@ struct RecordingTarget {
     QString kind;      // monitor | desktop | region | window
     QString identity;  // monitor output name or window identity; empty for desktop/region
     QRect rect;        // region only: logical desktop rectangle
+    // A window on KDE/GNOME Wayland as the resident resolved it before the helper
+    // starts: {identity, title, appId, rect: logical frame [x, y, w, h]}. Never
+    // parsed from a request; the helper receives it beside the target.
+    QJsonObject window;
     QJsonObject toJson() const;
 };
 struct RecordingAudio {

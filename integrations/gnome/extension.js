@@ -43,6 +43,7 @@ const XML = `<node><interface name="${IFACE}">
 <method name="SelectArea"><arg type="s" direction="in"/><arg type="s" direction="out"/></method>
 <method name="ShowRecordingFrame"><arg type="s" direction="in"/><arg type="s" direction="out"/></method>
 <method name="HideRecordingFrame"><arg type="s" direction="out"/></method>
+<method name="RecordingWindows"><arg type="s" direction="out"/></method>
 <signal name="Action"><arg type="s"/><arg type="s"/></signal>
 <signal name="ClipboardChanged"><arg type="t"/></signal>
 <signal name="CapabilitiesChanged"/>
@@ -955,7 +956,7 @@ export default class PutgdExtension extends Extension {
     HelloAsync(_args, invocation) {
         this._run(invocation, () => ({version: 1, shellMajor: Number(Config.PACKAGE_VERSION.split('.')[0]),
             extensionVersion: this.metadata.version, clipboardRevision: this._revision, uiProcessVersion: 1,
-            recordingVersion: 1, previewVersion: 1}));
+            recordingVersion: 2, previewVersion: 1}));
     }
 
     InvalidateCopyAsync(_args, invocation) {
@@ -1560,6 +1561,29 @@ export default class PutgdExtension extends Extension {
             this._recordingFrame ??= new RecordingFrame();
             this._recordingFrame.show(rect, frame.kind, frame.state !== 'ready', bar.placed ? bar.rect : null);
             return {version: 1, bar};
+        });
+    }
+
+    // Recording protocol 2: the windows a recording can follow, for Mutter's
+    // RecordWindow (window-id). The focused one is `active`; put.gd's own
+    // windows (the resident and the processes it started) are left out, and
+    // activeExcluded says the focused window was one of them.
+    RecordingWindowsAsync(_args, invocation) {
+        this._run(invocation, sender => {
+            const focus = global.display.focus_window;
+            const tracker = Shell.WindowTracker.get_default();
+            let activeExcluded = false;
+            const windows = [];
+            for (const window of global.display.get_tab_list(Meta.TabList.NORMAL_ALL, null)) {
+                if (this._residentWindow(window, sender)) {
+                    activeExcluded ||= window === focus;
+                    continue;
+                }
+                windows.push({identity: String(window.get_id()), title: window.get_title() ?? '',
+                    appId: tracker.get_window_app(window)?.get_id() ?? window.get_wm_class() ?? '',
+                    rect: rectangle(window.get_frame_rect()), active: window === focus, minimized: window.minimized});
+            }
+            return {version: 1, windows, activeExcluded};
         });
     }
 

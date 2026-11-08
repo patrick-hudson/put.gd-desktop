@@ -284,14 +284,19 @@ class Workflows(unittest.TestCase):
             self.assertIn("if: inputs.release_tag != ''\n        run: python3 tools/releases/verify_tag.py",
                           job(packages, name))
             self.assertIn('bash tools/ci/sdk-source.sh', job(packages, name))
+        self.assertIn('bash tools/releases/build-arch.sh', job(packages, 'arch'))
+        install = job(packages, 'arch-install')
+        self.assertIn('needs: arch', install)
+        self.assertIn('name: release-native-archlinux', install)
+        self.assertIn('bash tools/releases/smoke-arch.sh', install)
         collect = job(packages, 'collect')
         self.assertIn("if: inputs.release_tag != ''", collect)
-        self.assertIn('needs: [native, appimage, appimage-sources, sbom]', collect)
+        self.assertIn('needs: [native, arch, arch-install, appimage, appimage-sources, sbom]', collect)
         self.assertIn('python3 tools/releases/collect.py', collect)
         self.assertIn('name: release-assets', collect)
         # Every run, tagged or not, makes the SBOMs and their vulnerability report (#420).
         sbom = job(packages, 'sbom')
-        self.assertIn('needs: [native, appimage]', sbom)
+        self.assertIn('needs: [native, arch, arch-install, appimage]', sbom)
         self.assertNotIn('if:', sbom.split('steps:', 1)[0])
         for text in ('sbom.py tools', 'sbom.py database', 'sbom.py generate', 'sbom.py scan', '--release-tag "$RELEASE_TAG"',
                      'name: release-sbom', 'name: vulnerability-report'):

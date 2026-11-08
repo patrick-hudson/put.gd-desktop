@@ -16,7 +16,7 @@ set_target_properties(putgd_core PROPERTIES POSITION_INDEPENDENT_CODE ON)
 # newer version once a day (#293). The package jobs set the target; a build
 # without one (development, source archive) never checks. A distribution
 # packaging put.gd itself sets PUTGD_UPDATE_CHECK=OFF.
-set(putgd_package_targets ubuntu24.04 ubuntu26.04 debian13 fedora44 appimage)
+set(putgd_package_targets ubuntu24.04 ubuntu26.04 debian13 fedora44 archlinux appimage)
 set(PUTGD_PACKAGE_TARGET "" CACHE STRING "Published package this build is for: ${putgd_package_targets}, or empty")
 set_property(CACHE PUTGD_PACKAGE_TARGET PROPERTY STRINGS "" ${putgd_package_targets})
 option(PUTGD_UPDATE_CHECK "Let tagged package builds check app.put.gd once a day for a newer version" ON)

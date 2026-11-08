@@ -1,5 +1,6 @@
 #pragma once
 #include "core/RecordingModel.h"
+#include "core/RecordingWindows.h"
 #include <functional>
 #include <memory>
 

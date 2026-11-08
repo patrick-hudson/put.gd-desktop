@@ -192,3 +192,25 @@ Use the same bundle option with Release when packaging. Provisioning is explicit
 CMake does not fetch it. Users receive the executable in the package and need no
 separate CLI/runtime installation. See [Proton Drive](../user/proton-drive.md) for the
 account, sharing, unsupported deletion and current acceptance limits.
+
+## Arch Linux native package
+
+Build in a disposable `archlinux:base` container, using distro Qt dynamically.
+As root run `bash tools/releases/install-native-deps.sh`, then create an
+unprivileged builder owning the full Git checkout. As that user run
+`RELEASE_TAG=vYY.MDD.N-nightly bash tools/releases/build-arch.sh` (omit
+RELEASE_TAG for development). The script verifies the pinned official AWS SDK,
+provisions Proton, uses the Release CMake install and `packaging/arch/PKGBUILD`,
+and preserves native runtime hashes by disabling makepkg stripping.
+
+`tools/releases/arch.py` derives pkgver from the compiled CalVer identity:
+`26.1107.4000-nightly` becomes `26.1107.4000nightly-1`; the numeric final
+release sorts after its alphabetic nightly suffix in libalpm. No epoch or
+manual application version bump is used. The installed build-info retains the
+original version. Packages include recording, LayerShellQt, Nautilus/Caja
+plugins and Nemo/Dolphin/Thunar actions. Peony has no official Arch package.
+
+CI downloads the package artifact in a separate clean Arch container and runs
+`bash tools/releases/smoke-arch.sh PACKAGE.pkg.tar.zst` to install dependencies,
+check payload and linkage, start the resident offscreen, and uninstall. This
+establishes package behavior; compositor acceptance remains separate.

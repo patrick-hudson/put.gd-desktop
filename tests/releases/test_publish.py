@@ -487,7 +487,7 @@ class NightlyPublicationTest(unittest.TestCase):
             self.invoke()
         linked.assert_called_once()
         self.assertEqual(set(self.remote_files), publish.support_assets.inventory(self.release['version']))
-        self.assertEqual(len(self.remote_files), 15)
+        self.assertEqual(len(self.remote_files), 17)
         notes = (self.directory / 'release-notes.md').read_text()
         self.assertIn('/releases/tag/sources-' + self.tag, notes)
         self.assertIn('CI artifacts', notes)
@@ -560,7 +560,7 @@ class NightlyPublicationTest(unittest.TestCase):
                 with self.assertRaises(ValueError) as error:
                     self.invoke()
                 message = str(error.exception)
-                self.assertIn('installers-v1 (15 assets expected)', message)
+                self.assertIn('installers-v1 (17 assets expected)', message)
                 self.assertIn('missing: ' + installer if problem == 'missing' else 'extra: ' + extra,
                               message)
                 self.assertFalse(self.commands)
@@ -574,7 +574,7 @@ class NightlyPublicationTest(unittest.TestCase):
     def test_cli_publishes_all_twenty_one_verified_assets_as_nightly_prerelease(self):
         self.invoke()
         self.assertEqual(self.remote_files, self.files)
-        self.assertEqual(len(self.remote_files), 21)
+        self.assertEqual(len(self.remote_files), 23)
         self.assertFalse(self.metadata['draft'])
         self.assertTrue(self.metadata['prerelease'])
         self.assertIn('--latest=false', self.commands[0])
@@ -693,7 +693,7 @@ class NightlyPublicationTest(unittest.TestCase):
     def test_positive_inventory_is_required_before_any_remote_mutation(self):
         checksums = (self.directory / 'SHA256SUMS').read_text().splitlines()
         (self.directory / 'SHA256SUMS').write_text('\n'.join(checksums[:-1]) + '\n')
-        with self.assertRaisesRegex(ValueError, '21 assets expected'):
+        with self.assertRaisesRegex(ValueError, '23 assets expected'):
             self.invoke()
         self.assertEqual(self.commands, [])
 

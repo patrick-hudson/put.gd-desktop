@@ -5,13 +5,13 @@ workflow run and are linked with `needs:`. Nightlies can reuse completed source
 checks for their exact commit; an absent or failed lookup runs the tests again.
 No job waits for another workflow to finish.
 
-put.gd is Linux-only: DEB, RPM and AppImage. Native Windows support was
+put.gd is Linux-only: DEB, RPM, pacman and AppImage. Native Windows support was
 dropped on 2026-10-31; CI no longer compiles or provisions Windows.
 
 | Workflow | Runs on | Does |
 | --- | --- | --- |
 | `ci.yml` | every pull request, pushes to `nightly`, manual runs; called by nightly and release | contracts, Linux tests, clang ASan/UBSan core tests, packages, the AppImage's pipewiresrc on PipeWire 1.6; on `nightly` pushes, cache pruning |
-| `package.yml` | called by `ci.yml` | four native packages, AppImage, their SBOMs and vulnerability scan, and with a tag the collected `release-assets` |
+| `package.yml` | called by `ci.yml` | five native packages, AppImage, their SBOMs and vulnerability scan, and with a tag the collected `release-assets` |
 | `nightly.yml` | 05:23 UTC daily and manual | skip unchanged source, or tag, test, package and publish a nightly, then notify put.gd-site; re-scan the latest stable release's SBOMs |
 | `release.yml` | pushes to `main` and manual | tag the stable merge commit, test, package and stage a draft |
 | `renovate.yml` | 04:17 UTC Mondays and manual; pull requests that change it | open dependency-update pull requests against `nightly`; on pull requests, a read-only lookup ([dependency updates](#dependency-updates)) |
@@ -137,7 +137,7 @@ uses it, and release builds stay on distro Qt. `json_ref_lifetime_contract` stil
 rejects the #76 pattern in source.
 
 **packages** calls `package.yml`. It builds and audits the Ubuntu 24.04,
-Ubuntu 26.04 and Debian 13 DEBs, the Fedora 44 RPM and the AppImage, and compiles the curated source
+Ubuntu 26.04 and Debian 13 DEBs, the Fedora 44 RPM, Arch pacman package and the AppImage, and compiles the curated source
 export on Ubuntu 24.04. `native.py` also audits the file-manager plugins
 (`tools/releases/audit_file_manager_plugins.py`, #1105): `readelf -d` NEEDED
 entries, `nm -D` symbol sources for Peony, the RPM's co-owned directories and
@@ -841,3 +841,14 @@ authenticated packaged desktop and resource acceptance.
 ## Earlier measurements
 
 The rollout measurements from October 2026 and the previous pipeline's measurements are in [the CI records](../history/ci-records.md).
+
+## Arch package CI (#1275)
+
+The reusable Packages workflow also builds Arch in its `arch` job. Its
+`arch-install` job downloads that exact CI artifact into a separate clean Arch
+container, installs it and dependencies, lists and checks package files, checks
+shared-library resolution, runs `putgd-cli --version`, starts the resident
+with offscreen Qt and a validated short private socket path, then uninstalls.
+Both jobs participate in the reusable workflow result and therefore the
+required `CI` summary. Packaging/workflow paths already select this workflow.
+Arch participates in SBOM generation and tagged nightly/stable collection.

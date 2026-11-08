@@ -44,7 +44,8 @@ The resident compares the `extensionVersion` the loaded extension reports in
 `capabilities` reports `helper.outdated: true` with `extensionVersion` and
 `packagedExtensionVersion`, screenshots keep working, and a region recording
 is refused with `helper_outdated`: "The put.gd GNOME Shell extension was
-updated; log out and back in to load the new version" (#131). Bump
+updated; log out and back in to load the new version" (#131), and so are a
+window recording and `recording.windows` (#1278). Bump
 `metadata.json`'s `version` whenever the extension's D-Bus interface changes.
 
 For a standalone helper installation, install the release's matching GNOME ZIP
@@ -164,8 +165,17 @@ other monitor to hold the bar contains it. The resident then reports
 `overlayPlacement: handle` and has the helper shrink the bar to its dot-and-Stop
 handle from Record on; the extension follows the bar's size changes and keeps
 it in the corner (or, for a bar outside, on its monitor). Details are in `docs/design/recording.md`, "Wayland
-selection, bounds and bar". The synthetic `gnome_ui_ownership_contract` covers
-these methods; it is not graphical acceptance.
+selection, bounds and bar".
+
+Recording protocol 2 (`recordingVersion: 2`, extension version 19) adds
+`RecordingWindows()`: the Alt+Tab list (`get_tab_list(NORMAL_ALL)`) as
+`{identity: Mutter window id, title, appId, rect, active, minimized}` with
+the focused window `active`, leaving out every window `_residentWindow`
+attributes to put.gd (`activeExcluded` says the focused one was). The resident
+resolves a window recording from it and the helper passes the id to Mutter's
+`RecordWindow` (`window-id`); see `docs/design/recording/wayland.md`, "Window
+recordings". The synthetic `gnome_ui_ownership_contract` covers these methods;
+it is not graphical acceptance.
 
 ## UI ownership recovery test
 

@@ -19,6 +19,7 @@ Physical builders, disposable VMs, goldens and cloud workers.
 - [Disposable graphical lab](vm-lab.md): `tools/lab/lab.py`, VM lifecycle, provisioning and cleanup.
 - [Aurora VM layer](aurora-vm.md): the Universal Blue layer for AppImage testing.
 - [KDE neon VMs](neon-vm.md): released Plasma and Plasma master goldens.
+- [Omarchy VM golden](omarchy-vm.md): the Arch and Hyprland golden, its unattended LUKS unlock and guest traps.
 - [Boat candidates](boat-candidates.md): exact candidate builds in disposable Boat workers.
 - [Boat snapshots](boat-snapshots.md): snapshot recipes and package targets.
 - [Lab storage and retention](lab-storage.md): capacity checks and storage retention.

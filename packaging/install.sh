@@ -17,7 +17,7 @@ Usage: curl -fsSL https://app.put.gd/install | sh -s -- [OPTIONS]
   --appimage                Install ~/.local/bin/putgd.AppImage without sudo
   --dry-run                 Show the plan; only checks channel availability online
   --help                    Show this help
-Native packages use sudo only for apt/dnf install, with prompts on your terminal.
+Native packages use sudo only for apt/dnf/pacman install, with prompts on your terminal.
 AppImage requires glibc 2.39+ and a working AppImage/FUSE runtime.
 HELP
     }
@@ -58,7 +58,9 @@ HELP
                 ubuntu:26.04|kubuntu:26.04) package=ubuntu26.04 ;;
                 debian:13|debian:13.*) package=debian13 ;;
                 fedora:44) package=fedora44 ;;
+                arch:*) package=archlinux ;;
                 *)
+                    case " $ID_LIKE " in *' arch '*) package=archlinux ;; esac
                     case " $ID_LIKE :$UBUNTU_CODENAME" in
                         *' ubuntu '*:noble) package=ubuntu24.04 ;;
                     esac
@@ -94,6 +96,7 @@ HELP
 
     case "$package" in
         appimage) suffix=-x86_64.AppImage ;;
+        archlinux) suffix=-archlinux-x86_64.pkg.tar.zst ;;
         fedora44) suffix=-fedora44-x86_64.rpm ;;
         *) suffix=-$package-x86_64.deb ;;
     esac
@@ -101,6 +104,7 @@ HELP
         note "Would download $base/$channel/checksums and $base/$channel/$package, then verify SHA-256."
         case "$package" in
             appimage) note 'Would install executable ~/.local/bin/putgd.AppImage (no sudo). Start: ~/.local/bin/putgd.AppImage' ;;
+            archlinux) note 'Would trust the channel signing key, add /etc/pacman.d/putgd.conf to pacman.conf, and install putgd from the signed pkg.put.gd repository.' ;;
             fedora44)
                 note 'Would run sudo dnf install ./putgd-VERSION-fedora44-x86_64.rpm; package adds the signed pkg.put.gd update repository. Start: putgd'
                 note 'Then, in the same sudo step, if noopenh264 is installed or either codec package is missing and fedora-cisco-openh264 is enabled: dnf install -y openh264 gstreamer1-plugin-openh264'
@@ -116,7 +120,8 @@ HELP
     work=$(mktemp -d "${TMPDIR:-/tmp}/putgd-install.XXXXXX") || die 'Could not create a private download directory'
     staged=
     cleanup() {
-        rm -rf "$work"
+        find "$work" -maxdepth 1 -type f -delete
+        rmdir "$work"
         [ -z "$staged" ] || rm -f "$staged"
     }
     trap cleanup 0
@@ -146,6 +151,29 @@ HELP
             staged=
             # AppRun manages its temporary desktop entries at launch; no install flag exists.
             note 'Installed. Start: ~/.local/bin/putgd.AppImage'
+            ;;
+        archlinux)
+            fetch --output "$work/putgd.asc" "https://pkg.put.gd/keys/putgd-$channel.asc"
+            # Pinned channel fingerprint comes from the public key shipped in source.
+            case "$channel" in
+                nightly) fingerprint=4032E28D893BAF66F4AC23D9A11D38D55536B371 ;;
+                stable) fingerprint=C0962EFA929F5A5477A4509C0CC9E5A0F0B6FC1C ;;
+            esac
+            command -v sudo >/dev/null 2>&1 || die 'Missing sudo'
+            sudo sh -c '
+                set -eu
+                actual=$(gpg --show-keys --with-colons "$1" | awk -F: '\''$1 == "fpr" { print $10; exit }'\'')
+                [ "$actual" = "$2" ] || exit 1
+                pacman-key --add "$1"
+                pacman-key --lsign-key "$2"
+                if [ ! -e /etc/pacman.d/putgd.conf ]; then
+                    printf "[putgd-%s]\nSigLevel = PackageRequired DatabaseRequired\nServer = https://pkg.put.gd/pacman/x86_64/%s\n" "$3" "$3" > /etc/pacman.d/putgd.conf
+                fi
+                if ! grep -qxF "Include = /etc/pacman.d/putgd.conf" /etc/pacman.conf; then
+                    printf "\nInclude = /etc/pacman.d/putgd.conf\n" >> /etc/pacman.conf
+                fi
+                pacman -Syu putgd
+            ' sh "$work/putgd.asc" "$fingerprint" "$channel" < /dev/tty
             ;;
         *)
             command -v sudo >/dev/null 2>&1 || die 'Missing sudo; install sudo or use --appimage'

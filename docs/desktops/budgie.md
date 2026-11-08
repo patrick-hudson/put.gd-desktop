@@ -68,9 +68,10 @@ On labwc 0.20 the result is the client's content only: the server-side title
 bar is not included, and a window covered by another still captures its own
 pixels (occlusion does not apply, unlike KDE and X11).
 
-`capture.windows` (MCP `list_windows`) lists the capturable windows with
-their identity, app ID, title and active state. Window titles never appear in
-`capabilities` or diagnostics.
+`recording.windows` (MCP `list_recording_windows`) lists the capturable
+windows with their identity (the ext toplevel identifier), app ID, title and
+active state; `rect` is empty because neither protocol gives geometry. Window
+titles never appear in `capabilities` or diagnostics.
 
 ## Shortcuts
 
@@ -126,9 +127,10 @@ with the protocol named, and no chooser ever shows. Details are in
 - Region: cropped from the output it lies on; a region spanning outputs is
   `recording_unsupported`.
 - Window: an empty `target.identity` means the window active when the
-  recording is prepared; otherwise an identity from `capture.windows`. A window
-  that changes size is scaled, with borders, into its starting size; a window
-  that closes ends the recording and keeps the clip.
+  recording is prepared, resolved by the resident; otherwise an identity from
+  `recording.windows`. A window that changes size is scaled, with borders, into
+  its starting size; a window that closes ends the recording
+  (`target_closed`) and keeps the clip.
 - The ready ring, dimming and control bar are layer surfaces outside the
   recorded rectangle. A monitor recording includes the bar, as on KWin 6.3.
 

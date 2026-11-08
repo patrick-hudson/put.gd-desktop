@@ -51,6 +51,12 @@ struct Harness {
 };
 }
 
+// KWin or the GNOME extension listing windows (or failing to).
+struct FakeWindows final:RecordingWindows {
+ QJsonArray windows;bool activeExcluded=false;Error error;int lists=0;
+ void listWindows(Reply reply) override {++lists;if(error)reply(error,{});else reply({},{{"windows",windows},{"activeExcluded",activeExcluded}});}
+};
+QJsonObject listedWindow(const QString& identity,const QString& title,bool active){return {{"identity",identity},{"title",title},{"appId",title.toLower()},{"rect",QJsonArray{40,50,800,600}},{"active",active},{"minimized",false}};}
 class RecordingServiceContract:public QObject {
  Q_OBJECT
 private slots:
@@ -720,6 +726,50 @@ private slots:
   QCOMPARE(h.backend->log.last(),QString("select"));QCOMPARE(h.backend->lastControlParams["rect"].toArray(),QJsonArray({10,10,300,200}));
   h.backend->pendingPrepare({},{});PUTGD_TRY_COMPARE(h.state(id),QString("ready"));QVERIFY(!h.rec("inspect",{{"id",id}}).result["selecting"].toBool());
   QVERIFY(!h.rec("cancel",{{"id",id}}).error);
+ }
+ // #1278: on KDE and GNOME Wayland a window target is resolved from the desktop's
+ // window list before the helper starts: the active external window, or the
+ // identity recording.windows listed; put.gd's own windows are never recorded.
+ void windowTargetsResolveFromTheDesktopWindowList(){
+  Harness h;PUTGD_TRY_VERIFY(h.operations->ready());HistoryStore journal(h.operations->databasePath());
+  QCOMPARE(h.rec("windows").error.code,QString("recording_unsupported"));QVERIFY(!h.rec("capabilities").result["windowList"].toBool());
+  FakeWindows windows;h.operations->recording().setWindows(&windows);
+  windows.windows={listedWindow("{11111111-1111-1111-1111-111111111111}","Notes",false),listedWindow("{22222222-2222-2222-2222-222222222222}","Video",true)};
+  QVERIFY(h.rec("capabilities").result["windowList"].toBool());QVERIFY(h.rec("capabilities").result["commands"].toArray().contains("windows"));
+  const auto listed=h.rec("windows");QVERIFY2(!listed.error,qPrintable(listed.error.message));QCOMPARE(listed.result["windows"].toArray(),windows.windows);QVERIFY(!listed.result["activeExcluded"].toBool());
+  QCOMPARE(call(*h.server,"recording.windows",{{"x",1}}).error.code,QString("invalid_request"));
+  // No identity: the active window, with its geometry and title for the helper.
+  auto id=h.prepareReady({{"target",QJsonObject{{"kind","window"}}}});QVERIFY(!id.isEmpty());
+  QCOMPARE(h.backend->lastTarget.identity,QString("{22222222-2222-2222-2222-222222222222}"));QCOMPARE(h.backend->lastTarget.window["rect"].toArray(),QJsonArray({40,50,800,600}));QCOMPARE(h.backend->lastTarget.window["title"].toString(),QString("Video"));
+  auto inspected=h.rec("inspect",{{"id",id}}).result;QCOMPARE(inspected["target"].toObject()["identity"].toString(),QString("{22222222-2222-2222-2222-222222222222}"));QCOMPARE(inspected["window"].toObject()["appId"].toString(),QString("video"));
+  // The window closed while recording: the helper ended the capture and review opens.
+  QVERIFY(!h.rec("start",{{"id",id}}).error);
+  h.backend->sink({{"id",id},{"event","stopped"},{"durationUs",4000000.0},{"canvas",QJsonArray{800,600}},{"reason","target_closed"}});
+  PUTGD_TRY_COMPARE(h.state(id),QString("reviewing"));QCOMPARE(h.rec("inspect",{{"id",id}}).result["stopReason"].toString(),QString("target_closed"));
+  QVERIFY(!h.rec("cancel",{{"id",id}}).error);
+  // An identity: that window, whatever has focus.
+  id=h.prepareReady({{"target",QJsonObject{{"kind","window"},{"identity","{11111111-1111-1111-1111-111111111111}"}}}});QVERIFY(!id.isEmpty());
+  QCOMPARE(h.backend->lastTarget.window["title"].toString(),QString("Notes"));QVERIFY(!h.rec("cancel",{{"id",id}}).error);
+  // An identity that is not listed (put.gd's own windows never are): refused before any helper.
+  h.backend->log.clear();
+  id=h.rec("prepare",{{"target",QJsonObject{{"kind","window"},{"identity","{33333333-3333-3333-3333-333333333333}"}}},{"format","mp4"}}).result["recordingId"].toString();QVERIFY(!id.isEmpty());
+  PUTGD_TRY_COMPARE(journal.operation(id).state,QString("failed"));QCOMPARE(journal.operation(id).error.code,QString("recording_target"));QVERIFY(!h.backend->log.contains("prepare"));
+  // put.gd itself has focus.
+  windows.windows={listedWindow("{11111111-1111-1111-1111-111111111111}","Notes",false)};windows.activeExcluded=true;
+  id=h.rec("prepare",{{"target",QJsonObject{{"kind","window"}}},{"format","mp4"}}).result["recordingId"].toString();
+  PUTGD_TRY_COMPARE(journal.operation(id).state,QString("failed"));QCOMPARE(journal.operation(id).error.code,QString("recording_target"));QCOMPARE(journal.operation(id).error.details["reason"].toString(),QString("own_window"));
+  // An extension loaded before the upgrade must be reloaded first.
+  windows.error={"helper_outdated","The put.gd GNOME Shell extension was updated; log out and back in to load the new version",{}};
+  id=h.rec("prepare",{{"target",QJsonObject{{"kind","window"}}},{"format","mp4"}}).result["recordingId"].toString();
+  PUTGD_TRY_COMPARE(journal.operation(id).state,QString("failed"));QCOMPARE(journal.operation(id).error.code,QString("helper_outdated"));QVERIFY(!h.backend->log.contains("prepare"));
+  QCOMPARE(h.rec("windows").error.code,QString("helper_outdated"));
+  // One that is off or missing leaves the choice to the portal's picker (logged).
+  windows.error={"helper_unavailable","GNOME helper is unavailable",{}};
+  id=h.prepareReady({{"target",QJsonObject{{"kind","window"}}}});QVERIFY(!id.isEmpty());
+  QVERIFY(h.backend->lastTarget.identity.isEmpty());QVERIFY(h.backend->lastTarget.window.isEmpty());
+  QVERIFY(!h.rec("cancel",{{"id",id}}).error);
+  // Other targets never ask for the window list.
+  const auto lists=windows.lists;id=h.prepareReady();QVERIFY(!id.isEmpty());QCOMPARE(windows.lists,lists);QVERIFY(!h.rec("cancel",{{"id",id}}).error);
  }
 };
 

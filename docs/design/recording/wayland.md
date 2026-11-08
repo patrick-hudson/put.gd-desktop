@@ -30,8 +30,9 @@ reports it as `acquisition`:
   answers session clients on the GNOME desktops tested; where it refuses,
   the error is reported and the portal remains the way to share.
 - `portal`: `org.freedesktop.portal.ScreenCast` (version 2 or later) on the
-  session bus, used for `window` targets everywhere and for everything when
-  neither native path is available. `portal {portalVersion, sourceTypes,
+  session bus, used for everything when neither native path is available, and
+  for a `window` target when the resident could not resolve the window (see
+  [Window recordings](#window-recordings)). `portal {portalVersion, sourceTypes,
   cursorModes}` carries the portal's facts and `targets` lists `window` only
   when the portal offers it. `prepare` opens a portal session
   (`CreateSession`, `SelectSources`, `Start`) and the compositor shows its
@@ -63,12 +64,15 @@ reports it as `acquisition`:
   chooser. Monitor streams the named output; `desktop` only with one output;
   a `region` is cropped (`videocrop`, native pixels) from the output it lies
   on, and one spanning outputs is `recording_unsupported`. `window` takes an
-  identity from `capture.windows`, or the window active at `prepare` when
-  empty; `targets` lists it only where the toplevel capture source exists
+  identity from `recording.windows` (ext toplevel identifiers, no rect), or
+  the window active at `prepare` when empty, resolved by the resident; `targets` lists it only where the toplevel capture source exists
   (labwc 0.20, Mir 2.29). A window that changes size is scaled with borders
   into its starting size (`videoscale`); one that closes ends the recording
-  as `stopped` with reason `source_lost` and keeps the clip. Overlays are
+  as `stopped` with reason `target_closed` and keeps the clip; an output that
+  goes away ends it with `source_lost`. Overlays are
   layer surfaces, as on Plasma; a monitor recording includes the bar.
+`windowAcquisition` says how a `window` target is recorded here:
+`kde-screencast`, `mutter-screencast`, `wlr-capture`, `portal` or `x11`.
 
 Both PipeWire native paths name a node on the session's PipeWire daemon, so the probe
 also requires its socket (`pipewire {socket}`; `PIPEWIRE_REMOTE`,
@@ -83,6 +87,71 @@ discard close the stream (`Session.Close`, `Session.Stop` or the protocol's
 `close`), which ends the share. `tests/unit` covers the portal stream
 demarshalling; the three paths are exercised on the Fedora GNOME and Debian
 KDE desktops.
+
+### Window recordings
+
+On Plasma and GNOME Wayland a `window` target never shows the portal's picker
+(#1278). Before the helper starts, the resident resolves the window from the
+desktop's window list, which `recording.windows` (MCP `list_recording_windows`)
+also returns: `{windows: [{identity, title, appId, rect, active, minimized}],
+activeExcluded}`. A target without `identity` records the `active` window; one
+with an identity records that window whatever has focus. put.gd's own windows
+are never listed, so asking for one, or for the active window while put.gd has
+focus, fails `recording_target` (`details.reason` `own_window` or
+`no_active_window`). The resolved window is frozen for the recording; `inspect`
+shows it as `target.identity` and `window {identity, title, appId, rect}`.
+
+- **KDE**: KWin has no D-Bus call that lists windows, so the resident loads a
+  one-shot KWin script (`org.kde.kwin.Scripting`) that reads
+  `workspace.windowList()` (normal windows and dialogs) and calls the
+  resident's own unique bus name back; a call from anyone but the bus owner of
+  `org.kde.KWin` is ignored. It takes about 0.1 s. The identity is KWin's
+  window UUID, and the helper streams it with `zkde_screencast_unstable_v1`
+  `stream_window` and an embedded pointer. Own windows: the resident, any
+  process it started (views helper, editor, recording helper) and the
+  `putgd-ui` app ID, the window-capture rule.
+- **GNOME**: the put.gd Shell extension's recording protocol 2 adds
+  `RecordingWindows` (the Alt+Tab list, the focused window `active`) with
+  Mutter's window ids, and the helper calls Mutter's `RecordWindow` with
+  `window-id` and an embedded cursor. Own windows: the extension's
+  `_residentWindow` rule. The extension's `metadata.json` version is 19: an
+  older extension still loaded after a package upgrade makes a window
+  recording fail `helper_outdated` ("log out and back in") instead of falling
+  back to the picker, and `recording.windows` answers the same.
+- If the window list is unavailable for another reason (the extension is off,
+  KWin scripting failed), the resident logs it and the portal picker chooses
+  the window, as it does where the helper has no native path.
+
+The stream follows the window, not a screen area. Moving the window changes
+nothing in the clip. A resize changes the stream: KWin renegotiates its size,
+and Mutter draws the window into a larger fixed buffer and names its place in
+each frame's PipeWire crop region, which the pipeline applies with a runtime
+`videocrop`. Every frame is then scaled, letterboxed, into the canvas taken
+from the window's size at `prepare` (at its output's scale), so the encoder
+never sees a size change. `pipewiresrc` before 1.5 (Debian 13 ships 1.4.2)
+forgets its negotiated caps and fails KWin's renegotiation with `unhandled
+format`; the helper drops that source's EOS, reopens a new `pipewiresrc` on the
+same node 0.4 s later (at most 30 times per recording) and the clip goes on.
+
+A covered window keeps recording its own live content, and so does a
+minimized one: KWin 6.3, 6.6 and 6.8 and Mutter (GNOME 50) all keep rendering
+the window for its stream. The pointer is embedded while it is over the window.
+KWin 6.6 and later include the server-side title bar in a window stream, KWin
+6.3 does not; a client-side decoration is part of the window everywhere. When
+the window closes, KWin sends the stream's `closed` event and Mutter its
+session's `Closed` signal: a running capture stops into review with
+`stopReason: target_closed` and the clip so far (0.12–0.24 s after the window
+closed), and a ready session that never recorded fails
+`recording_target_closed`. A source that cannot be reopened stops the same way
+with `stopReason: source_lost`.
+
+Acceptance on Kubuntu 26.04 (KWin 6.6.6), Debian 13 (KWin 6.3.6), Aurora
+(KWin 6.8.2), Fedora 44 (GNOME 50.6) and Ubuntu 26.04 (GNOME 50.1, VM) with
+the PR packages: no picker (ready in 0.23–0.70 s), motion through move,
+resize, cover and minimize, a clean end on close, the GNOME version gate before
+and after re-login, and unchanged monitor and region recordings. The numbers
+and frames are in the
+[receipt](https://github.com/patrick-hudson/put.gd-evidence/blob/b14f4c69d381d05a0ebd57215a94bccce01b2322/records/2026-11-08-native-window-recording-1278/README.md).
 
 ### Timestamps and A/V sync
 
@@ -220,8 +289,8 @@ the **dimming** of everything else while recording or paused and the
   the bus does too. Mutter has no per-window screencast exclusion, so a whole
   single-monitor recording on GNOME contains the handle (or nothing, after
   `recording.overlay {visible: false}`).
-- A `window` stream (portal) carries only that window: `overlayExcluded` is
-  true and no ring is drawn.
+- A `window` stream (native or portal) carries only that window:
+  `overlayExcluded` is true and no ring is drawn.
 
 `overlayPlacement` reports where the bar went: `outside`, `handle` (no room
 outside: X11, KDE and the GNOME Shell keep it in the area's corner and it
