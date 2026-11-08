@@ -30,17 +30,18 @@ class Installer(unittest.TestCase):
         self.os_release.write_text('ID=ubuntu\nVERSION_ID=24.04\n')
         self.script = self.root / 'install.sh'
         self.script.write_text(SOURCE.read_text().replace('/etc/os-release', str(self.os_release))
-                               .replace('/run/ostree-booted', str(self.root / 'ostree-booted')))
+                               .replace('/run/ostree-booted', str(self.root / 'ostree-booted'))
+                               .replace('/etc/pacman', str(self.root / 'pacman')))
         self.log = self.root / 'calls.jsonl'
         self.env = dict(os.environ, HOME=str(self.home), TMPDIR=str(self.root),
                         PATH=str(self.bin), CALLS=str(self.log), ARCH='x86_64', STABLE='302',
                         NIGHTLY='302', CHECKSUM_MODE='ok', SUFFIX='-ubuntu24.04-x86_64.deb',
                         CODEC='openh264,gstreamer1-plugin-openh264', CISCO_REPO='enabled')
-        for name in ('cat', 'mktemp', 'rm', 'awk', 'sha256sum', 'cp', 'chmod', 'mv', 'mkdir', 'sh', 'find', 'rmdir'):
+        for name in ('cat', 'mktemp', 'rm', 'awk', 'sha256sum', 'cp', 'chmod', 'mv', 'mkdir', 'sh', 'find', 'rmdir', 'grep'):
             (self.bin / name).symlink_to(shutil.which(name))
         self.tool('uname', "import os; print(os.environ['ARCH'])")
         self.tool('getconf', "import os; print(os.environ.get('GLIBC', 'glibc 2.39'))")
-        for name in ('apt', 'dnf', 'sudo', 'rpm'):
+        for name in ('apt', 'dnf', 'sudo', 'rpm', 'pacman', 'pacman-key'):
             self.tool(name, "import json, os, sys\nwith open(os.environ['CALLS'], 'a') as f: "
                       "f.write(json.dumps(sys.argv) + '\\n')")
         with (self.bin / 'sudo').open('a') as f:
@@ -62,7 +63,7 @@ elif os.environ.get('PACKAGE_INSTALL_FAIL') == '1': sys.exit(1)
 args = sys.argv[1:]
 with open(os.environ['CALLS'], 'a') as f: f.write(json.dumps(['curl'] + args) + '\\n')
 url = args[-1]
-assert url.startswith('https://app.put.gd/dl/'), url
+assert url.startswith(('https://app.put.gd/dl/', 'https://pkg.put.gd/keys/')), url
 assert args[args.index('--proto') + 1] == '=https'
 if '--write-out' in args:
     print(os.environ[url.split('/')[-2].upper()], end='')
@@ -157,6 +158,28 @@ else:
     def test_nightly_missing_does_not_fallback(self):
         self.env['NIGHTLY'] = '404'
         self.assertIn('HTTP 404', self.run_script('--channel', 'nightly', '--dry-run', ok=False))
+
+    def test_arch_installer_sets_signed_repo_and_preserves_channel(self):
+        self.os_release.write_text('ID=endeavouros\nID_LIKE="arch"\n')
+        self.env['SUFFIX'] = '-archlinux-x86_64.pkg.tar.zst'
+        self.tool('gpg', 'print("fpr:::::::::4032E28D893BAF66F4AC23D9A11D38D55536B371:")')
+        (self.root / 'pacman.d').mkdir()
+        (self.root / 'pacman.conf').write_text('[options]\n')
+        self.run_script('--channel', 'nightly')
+        config = self.root / 'pacman.d/putgd.conf'
+        self.assertIn('PackageRequired DatabaseRequired', config.read_text())
+        self.assertIn('/pacman/x86_64/nightly', config.read_text())
+        before = config.read_text()
+        self.run_script('--channel', 'nightly')
+        self.assertEqual(config.read_text(), before)
+        self.assertEqual((self.root / 'pacman.conf').read_text().count('Include = '), 1)
+
+    def test_arch_key_mismatch_stops_before_trusting_key(self):
+        self.os_release.write_text('ID=arch\n')
+        self.env['SUFFIX'] = '-archlinux-x86_64.pkg.tar.zst'
+        self.tool('gpg', 'print("fpr:::::::::BAD:")')
+        self.run_script('--channel', 'nightly', ok=False)
+        self.assertFalse((self.root / 'pacman.d/putgd.conf').exists())
 
     def test_appimage_install_and_replace(self):
         self.env['SUFFIX'] = '-x86_64.AppImage'
