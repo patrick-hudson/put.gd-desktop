@@ -19,6 +19,10 @@
     add_test(NAME gnome_image_decode COMMAND test_gnome_image_decode)
     set_tests_properties(gnome_image_decode PROPERTIES TIMEOUT 60)
     add_test(NAME gnome_bridge_contract COMMAND test_gnome_bridge)
+    add_executable(test_gnome_extension_setup tests/integration/test_gnome_extension_setup.cpp)
+    target_link_libraries(test_gnome_extension_setup PRIVATE putgd_gnome Qt6::Test)
+    add_test(NAME gnome_extension_setup COMMAND test_gnome_extension_setup)
+    set_tests_properties(gnome_extension_setup PROPERTIES TIMEOUT 60)
     find_program(PUTGD_DBUS_RUN_SESSION NAMES dbus-run-session REQUIRED)
     add_test(NAME gnome_core_transport_integration COMMAND "${PUTGD_DBUS_RUN_SESSION}" -- $<TARGET_FILE:test_gnome_bridge> --core-adapter-transport)
     set_tests_properties(gnome_core_transport_integration PROPERTIES

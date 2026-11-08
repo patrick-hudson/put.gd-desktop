@@ -210,7 +210,7 @@ class ProductionCliTests(unittest.IsolatedAsyncioTestCase):
             async with ClientSession(read, write) as session:
                 await session.initialize()
                 discovered = (await session.list_tools()).tools
-                expected = {'inspect', 'get_view_state', 'perform_action', 'get_operation', 'retry_operation',
+                expected = {'inspect', 'get_view_state', 'get_desktop_setup', 'recheck_desktop_setup', 'perform_action', 'get_operation', 'retry_operation',
                             'copy_result', 'cancel_operation', 'list_history', 'get_history_entry',
                             'make_history_preview', 'copy_history_link', 'copy_history_links', 'open_history_link', 'delete_history_uploads', 'reload_configuration',
                             'patch_configuration', 'open_editor', 'get_editor', 'edit_image',
@@ -362,6 +362,8 @@ class ProductionCliTests(unittest.IsolatedAsyncioTestCase):
                     ('get_diagnostics_upload_target', {}, 'diagnostics.uploadTarget', {}),
                     ('get_diagnostics_upload_target', {'profile_id': 'synthetic-s3'}, 'diagnostics.uploadTarget', {'profileId': 'synthetic-s3'}),
                     ('get_view_state', {}, 'ui.viewState', {}),
+                    ('get_desktop_setup', {}, 'desktop.setup', {}),
+                    ('recheck_desktop_setup', {}, 'desktop.setup.recheck', {}),
                     ('perform_action', {'action': 'edit'}, 'action.invoke', {'action': 'edit'}),
                     ('upload_files', {'paths': ['/synthetic dir/a.png', '/synthetic dir/folder']}, 'upload.files', {'paths': ['/synthetic dir/a.png', '/synthetic dir/folder']}),
                     ('upload_files', {'paths': ['/synthetic dir/a.png'], 'profile_id': 'synthetic-s3'}, 'upload.files', {'paths': ['/synthetic dir/a.png'], 'profileId': 'synthetic-s3'}),

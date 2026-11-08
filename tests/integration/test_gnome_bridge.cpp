@@ -199,8 +199,8 @@ private slots:
   QFETCH(QString,failure);QFETCH(QString,code);QFETCH(bool,guidance);stopFixture();QVERIFY(startFixture(0,failure));
   GnomeAdapter source;PUTGD_TRY_VERIFY(!source.capabilities()["helper"].toObject()["error"].toObject()["code"].toString().isEmpty());
   PayloadResult result;bool done=false;source.acquire("desktop",{},[&](PayloadResult value){result=std::move(value);done=true;});QVERIFY(done);QCOMPARE(result.error.code,code);
-  QCOMPARE(result.error.message.contains("gnome-extensions enable putgd@put.gd"),guidance);
-  if(guidance){QVERIFY(result.error.message.contains("install"));QVERIFY(result.error.message.contains("log out and back in"));}
+  QCOMPARE(result.error.message.contains("not running yet"),guidance);
+  QVERIFY(!result.error.message.contains("gnome-extensions enable"));
   if(failure.startsWith("org."))QCOMPARE(result.error.details["dbusError"].toString(),failure);
  }
  void absentHelperPublishesOnlyWhatChanges(){
@@ -262,7 +262,7 @@ private slots:
   QCOMPARE(result.error.details["dbusError"].toString(),missing);QVERIFY(!result.error.message.contains("gnome-extensions enable"));
   control("SetErrors",{missing,missing});done=false;
   source.acquire("desktop",{},[&](PayloadResult value){result=std::move(value);done=true;});QVERIFY(done);
-  QVERIFY(result.error.message.contains("gnome-extensions enable putgd@put.gd"));
+  QVERIFY(result.error.message.contains("not running yet"));
   control("SetErrors",{QString{},QString{}});done=false;
   source.acquire("desktop",{},[&](PayloadResult value){result=std::move(value);done=true;});PUTGD_TRY_VERIFY(done);QVERIFY2(!result.error,qPrintable(result.error.message));
  }

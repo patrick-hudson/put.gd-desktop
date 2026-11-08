@@ -250,7 +250,7 @@ HELP
     esac
     if command -v gnome-shell >/dev/null 2>&1; then
         case "$(gnome-shell --version 2>/dev/null || true)" in
-            'GNOME Shell 50'*) note 'GNOME 50: log out and back in, then run: gnome-extensions enable putgd@put.gd (AppImage users must install the host extension first; see the README).' ;;
+            'GNOME Shell 50'*) note 'GNOME 50: put.gd will ask you to log out and back in once to finish setting up.' ;;
         esac
     fi
 }

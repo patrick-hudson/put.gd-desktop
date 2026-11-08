@@ -72,6 +72,8 @@ OUTPUT_FOLDER_FIELDS = {'root', 'images', 'videos', 'text', 'other'}
 # A backstop above the CLI's own bounded wait, whose longest case is 3 s to connect,
 # 3 s to send and 45 s for recording.stop (LocalServer::replyDeadlineMs).
 CLI_TIMEOUT = 60
+# The resident bounds gsettings and its wait for the Shell; desktop.setup.recheck can take that long.
+DESKTOP_SETUP_RECHECK_TIMEOUT = 100
 
 
 def safe_recording_target(target: Any) -> bool:
@@ -205,6 +207,16 @@ def create_server(adapter: CliAdapter) -> MCPServer:
             responses[name] = reply
         return {'schemaVersion': 1, 'requestId': responses['configuration']['requestId'],
                 'ok': True, 'result': responses, 'error': {'code': '', 'message': '', 'details': {}}}
+
+    @server.tool(annotations=read)
+    async def get_desktop_setup() -> Json:
+        """Read the per-user desktop setup state: ready, login_required or a specific reason."""
+        return await adapter.call('desktop.setup', {})
+
+    @server.tool(annotations=effect)
+    async def recheck_desktop_setup() -> Json:
+        """Run the per-user desktop setup again and return its state; idempotent."""
+        return await adapter.call('desktop.setup.recheck', {}, timeout=DESKTOP_SETUP_RECHECK_TIMEOUT)
 
     @server.tool(annotations=read)
     async def get_view_state() -> Json:

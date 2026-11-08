@@ -688,6 +688,9 @@ void TrayController::notifyUpdate(const QJsonObject& result) {
  if(!available())return;
  notifyMessage("update_available","put.gd — update available","put.gd "+result["latest"].toString()+" is available. Settings → General → Updates has the download.",false,QUrl(result["notesUrl"].toString()));
 }
+void TrayController::notifyDesktopSetup(const QString& code, const QString& message) {
+ notifyMessage(code, "put.gd", message, code != "gnome_login_required" && code != "gnome_extension_updated");
+}
 void TrayController::notifyFailure(const Error& error) {
  if(error)latchFailure(error);
  if (error) notifyMessage(error.code,"put.gd", error.message, true);

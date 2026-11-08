@@ -72,6 +72,8 @@ int LocalServer::replyDeadlineMs(const QString& method) {
  if(method=="history.preview")return historyPreviewReplyMs;
  // Checking a large folder over GVfs or KIOFuse stats every file before the reply.
  if(method=="upload.files")return uploadFilesReplyMs;
+ // Setup runs gsettings and waits for the Shell, each with its own bound.
+ if(method=="desktop.setup.recheck")return desktopSetupRecheckReplyMs;
  // The checker child has 40 s of its own (#293).
  if(method=="update.check")return UpdateService::childTimeoutMs+base;
  return base;
@@ -345,6 +347,8 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
  else if(method=="settings.developmentTemplate")reply({},{{"document",Settings::developmentTemplate()},{"explicitImportRequired",true}});
  else if(method=="settings.reload") {QPointer<LocalServer> guarded(this);settings_.reloadAsync([guarded,reply](Result result) {if(guarded)reply(result.error,guarded->settings_.metadata());});}
  else if(method=="capabilities")reply({},operations_.capabilities());
+ else if(method=="desktop.setup")reply({},operations_.desktopSetup());
+ else if(method=="desktop.setup.recheck")operations_.recheckDesktopSetup([reply](QJsonObject result){reply({},result);});
  else if(method=="diagnostics")reply({},operations_.diagnostics());
  // The daily update check (#293): its state, and a check now.
  else if(method=="update.status"){if(updates_)reply({},updates_->status());else reply({"update_check_unavailable","This resident does not check for updates",{}},{});}

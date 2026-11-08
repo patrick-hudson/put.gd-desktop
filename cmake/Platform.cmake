@@ -24,7 +24,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   target_link_libraries(putgd_x11_core PUBLIC putgd_app putgd_x11_listeners putgd_x11_native_snapshot putgd_capture_control putgd_capture_cursor putgd_build_identity)
 endif()
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
-  add_library(putgd_gnome STATIC src/platform/gnome/GnomeProtocol.cpp src/platform/gnome/GnomeAdapter.cpp)
+  add_library(putgd_gnome STATIC src/platform/gnome/GnomeProtocol.cpp src/platform/gnome/GnomeAdapter.cpp src/platform/gnome/GnomeExtensionSetup.cpp)
   target_link_libraries(putgd_gnome PUBLIC putgd_app Qt6::DBus)
   # The packaged Shell extension's version: a lower loaded one needs a re-login (#131).
   file(READ "${CMAKE_CURRENT_SOURCE_DIR}/integrations/gnome/metadata.json" putgd_gnome_metadata)
