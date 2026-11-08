@@ -60,7 +60,7 @@ int copyIntoMemory(const QString& path){
 // A byte on started means exec failed; the pipe's close-on-exec end says it worked.
 [[noreturn]] void becomeKeeper(int payload,int image,int started,const char* path,char* const argv[],char* const envp[]){
  // Above the standard streams, which this function replaces (a closed one may have been reused).
- const auto high=[](int fd){return fd<0||fd>STDERR_FILENO?fd:::fcntl(fd,F_DUPFD_CLOEXEC,STDERR_FILENO+1);};
+ const auto high=[](int fd){return fd<0||fd>STDERR_FILENO?fd:(::fcntl(fd,F_DUPFD_CLOEXEC,STDERR_FILENO+1));};
  payload=high(payload);image=high(image);started=high(started);
  const auto failed=[started]{const char byte=1;(void)!::write(started,&byte,1);::_exit(127);};
  ::setsid();
