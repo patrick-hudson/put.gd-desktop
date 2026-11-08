@@ -82,7 +82,7 @@ GIF/WebP (`invalid_request`); `audio.microphone` is reserved and refused
 `recording_unsupported`, `recording_active`, `recording_state`,
 `recording_busy`, `recording_stale`, `recording_mask_unknown`,
 `region_unavailable` (a Wayland desktop without a region selector),
-`wlr_capture_unavailable` (Budgie: a missing image-copy global or `appsrc`, named in the message),
+`wlr_capture_unavailable` (Budgie: a missing image-copy global or a failed connection, named in the message),
 `recording_animation_too_long`, `recording_animation_too_large`,
 `recording_export_failed`, `file_exists`, plus the shared `invalid_request`,
 `queue_full`, `busy_selecting`, `editor_active` and `output_required`.

@@ -60,9 +60,9 @@ reports it as `acquisition`:
   stamping and cadence lock as a PipeWire frame; the stream buffer goes back to
   the ring when that probe copies it. `wlrCapture {available, windows,
   protocols, reason?, windowReason?, elements}` carries the facts; a missing
-  global or `appsrc` makes recording unavailable as
-  `wlr_capture_unavailable` with the protocol named in `message`, never a
-  chooser. Monitor streams the named output; `desktop` only with one output;
+  global or a failed connection makes recording unavailable as
+  `wlr_capture_unavailable` with the protocol named in `message`, and a missing
+  `appsrc` or `videoscale` as `live_source_missing`, never a chooser. Monitor streams the named output; `desktop` only with one output;
   a `region` is cropped (`videocrop`, native pixels) from the output it lies
   on, and one spanning outputs is `recording_unsupported`. `window` takes an
   identity from `recording.windows` (ext toplevel identifiers, no rect), or
@@ -82,10 +82,11 @@ also requires its socket (`pipewire {socket}`; `PIPEWIRE_REMOTE`,
 portal, which passes its own connection as a descriptor, in charge when it
 is missing. Monitor and window identities are optional everywhere (on X11 an
 empty monitor identity means the first connected monitor). Reasons for an
-unavailable Wayland session are `live_source_missing` (no `pipewiresrc`),
+unavailable Wayland session are `live_source_missing` (no `pipewiresrc`; on
+Budgie no `appsrc` or `videoscale`),
 `portal_unavailable`, `portal_too_old` or `session_bus_unavailable`, and on
-Budgie `wlr_capture_unavailable` (a missing global or `appsrc`, named in the
-message).
+Budgie `wlr_capture_unavailable` (a missing Wayland global or a failed
+connection, named in the message).
 Cancelling a picker ends the operation as `cancelled`; Cancel, Stop and
 discard close the stream (`Session.Close`, `Session.Stop` or the protocol's
 `close`), which ends the share. `tests/unit` covers the portal stream
