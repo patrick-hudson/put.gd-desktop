@@ -1,4 +1,5 @@
 #include "platform/gnome/GnomeExtensionSetup.h"
+#include <QCryptographicHash>
 #include <QDir>
 #include <QFile>
 #include <QJsonDocument>
@@ -248,11 +249,14 @@ private slots:
  }
  void staleRetiredCopyGoesByItsOwnMarker(){
   Fixture f;const auto dir=bundle(f);const QString parent=f.root.filePath("home/.local/share/gnome-shell/"),retired=parent+staged("old",'1');
+  const auto hash=[](const QByteArray& bytes){return QString::fromLatin1(QCryptographicHash::hash(bytes,QCryptographicHash::Sha256).toHex());};
   write(retired+"/stylesheet.css","old");
-  write(retired+"/.putgd-managed",QJsonDocument(QJsonObject{{"managedBy","put.gd"},{"files",QJsonObject{{"stylesheet.css","x"}}}}).toJson());
+  write(retired+"/.putgd-managed",QJsonDocument(QJsonObject{{"managedBy","put.gd"},{"files",QJsonObject{{"stylesheet.css",hash("old")}}}}).toJson());
+  // A marker can't vouch for a file it doesn't match.
+  const QString edited=parent+staged("old",'3');write(edited+"/notes.txt","mine");write(edited+"/.putgd-managed",QJsonDocument(QJsonObject{{"managedBy","put.gd"},{"files",QJsonObject{{"notes.txt",hash("something else")}}}}).toJson());
   const QString foreign=parent+staged("old",'2');write(foreign+"/stylesheet.css","mine");write(foreign+"/.putgd-managed",QJsonDocument(QJsonObject{{"managedBy","someone"},{"files",QJsonObject{{"stylesheet.css","x"}}}}).toJson());
   runExtensionSetup(f.inputs(dir));
-  QVERIFY(!QFileInfo::exists(retired));QVERIFY(QFile::exists(foreign+"/stylesheet.css"));
+  QVERIFY(!QFileInfo::exists(retired));QVERIFY(QFile::exists(foreign+"/stylesheet.css"));QVERIFY(QFile::exists(edited+"/notes.txt"));
  }
  void stagingCleanupLeavesAnythingUncertain(){
   Fixture f;const auto dir=bundle(f);const QString parent=f.root.filePath("home/.local/share/gnome-shell/");

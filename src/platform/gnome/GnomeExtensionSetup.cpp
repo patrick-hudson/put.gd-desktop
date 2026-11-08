@@ -101,12 +101,16 @@ bool removeCopyFiles(const QString& userDir,const QStringList& files){
  QFile::remove(dir.filePath(copyMarkerName));
  return QDir().rmdir(userDir);
 }
-// The file names a stale directory's own marker lists: a retired copy can be an
-// older version with files this AppImage doesn't carry. Empty when there's no marker.
-QStringList namesInMarker(const QString& path){
- QFile file(path);if(!file.open(QIODevice::ReadOnly))return {};
+// The files a stale directory's own marker lists and still match: a retired copy
+// can be an older version with files this AppImage doesn't carry.
+QStringList verifiedMarkerFiles(const QDir& directory){
+ QFile file(directory.filePath(copyMarkerName));if(!file.open(QIODevice::ReadOnly))return {};
  const auto marker=QJsonDocument::fromJson(file.read(1024*1024)).object();
- return marker["managedBy"].toString()=="put.gd"?marker["files"].toObject().keys():QStringList{};
+ if(marker["managedBy"].toString()!="put.gd")return {};
+ const auto listed=marker["files"].toObject();
+ QStringList verified;
+ for(auto it=listed.begin();it!=listed.end();++it)if(fileSha256(directory.filePath(it.key()))==it.value().toString())verified.append(it.key());
+ return verified;
 }
 // A crash can leave a staging directory behind. Only what installCopy itself would
 // have left goes: a real directory with its exact name, holding nothing but plain
@@ -118,7 +122,7 @@ void removeStaleStaging(const QString& parent,QStringList bundled){
   if(!ownName.match(directory.fileName()).hasMatch())continue;
   const QDir stale(directory.filePath());
   const auto contents=stale.entryInfoList(QDir::AllEntries|QDir::Hidden|QDir::System|QDir::NoDotAndDotDot);
-  const auto expected=bundled+namesInMarker(stale.filePath(copyMarkerName));
+  const auto expected=bundled+verifiedMarkerFiles(stale);
   const bool ours=std::all_of(contents.begin(),contents.end(),[&](const QFileInfo& entry){
    return entry.isFile()&&!entry.isSymLink()&&expected.contains(entry.fileName());
   });
