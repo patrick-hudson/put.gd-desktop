@@ -101,16 +101,24 @@ bool removeCopyFiles(const QString& userDir,const QStringList& files){
  QFile::remove(dir.filePath(copyMarkerName));
  return QDir().rmdir(userDir);
 }
+// The file names a stale directory's own marker lists: a retired copy can be an
+// older version with files this AppImage doesn't carry. Empty when there's no marker.
+QStringList namesInMarker(const QString& path){
+ QFile file(path);if(!file.open(QIODevice::ReadOnly))return {};
+ const auto marker=QJsonDocument::fromJson(file.read(1024*1024)).object();
+ return marker["managedBy"].toString()=="put.gd"?marker["files"].toObject().keys():QStringList{};
+}
 // A crash can leave a staging directory behind. Only what installCopy itself would
 // have left goes: a real directory with its exact name, holding nothing but plain
-// files named like the extension's. Anything else stays where it is.
-void removeStaleStaging(const QString& parent,QStringList expected){
- expected.append(copyMarkerName);
+// files named like the extension's or in its own marker. Anything else stays.
+void removeStaleStaging(const QString& parent,QStringList bundled){
+ bundled.append(copyMarkerName);
  const QRegularExpression ownName(QRegularExpression::anchoredPattern(QStringLiteral("\\.putgd-extension-(new|old)-[0-9a-f]{32}")));
  for(const auto& directory:QDir(parent).entryInfoList(QDir::Dirs|QDir::NoSymLinks|QDir::Hidden|QDir::NoDotAndDotDot)){
   if(!ownName.match(directory.fileName()).hasMatch())continue;
   const QDir stale(directory.filePath());
   const auto contents=stale.entryInfoList(QDir::AllEntries|QDir::Hidden|QDir::System|QDir::NoDotAndDotDot);
+  const auto expected=bundled+namesInMarker(stale.filePath(copyMarkerName));
   const bool ours=std::all_of(contents.begin(),contents.end(),[&](const QFileInfo& entry){
    return entry.isFile()&&!entry.isSymLink()&&expected.contains(entry.fileName());
   });

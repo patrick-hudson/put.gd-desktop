@@ -246,6 +246,14 @@ private slots:
   QVERIFY(!QFileInfo::exists(fresh));QVERIFY(!QFileInfo::exists(retired));
   QVERIFY(QFile::exists(userDir(f)+"/extension.js"));
  }
+ void staleRetiredCopyGoesByItsOwnMarker(){
+  Fixture f;const auto dir=bundle(f);const QString parent=f.root.filePath("home/.local/share/gnome-shell/"),retired=parent+staged("old",'1');
+  write(retired+"/stylesheet.css","old");
+  write(retired+"/.putgd-managed",QJsonDocument(QJsonObject{{"managedBy","put.gd"},{"files",QJsonObject{{"stylesheet.css","x"}}}}).toJson());
+  const QString foreign=parent+staged("old",'2');write(foreign+"/stylesheet.css","mine");write(foreign+"/.putgd-managed",QJsonDocument(QJsonObject{{"managedBy","someone"},{"files",QJsonObject{{"stylesheet.css","x"}}}}).toJson());
+  runExtensionSetup(f.inputs(dir));
+  QVERIFY(!QFileInfo::exists(retired));QVERIFY(QFile::exists(foreign+"/stylesheet.css"));
+ }
  void stagingCleanupLeavesAnythingUncertain(){
   Fixture f;const auto dir=bundle(f);const QString parent=f.root.filePath("home/.local/share/gnome-shell/");
   // Matches the old wide glob, but isn't a name put.gd makes.

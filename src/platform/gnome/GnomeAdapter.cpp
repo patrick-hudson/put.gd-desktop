@@ -366,6 +366,8 @@ Error GnomeAdapter::helperAvailabilityError(bool fallback)const{
  return helperError_;
 }
 gnome::SetupStatus GnomeAdapter::currentSetup()const{
+ // The first run hasn't reported yet, so a logout prompt could be the wrong answer.
+ if(setupRunning_&&setup_.state=="checking"&&outdated())return {"checking",{},QStringLiteral("Checking put.gd's GNOME extension."),{}};
  return gnome::reportedSetup(setup_,ready_,helper_["extensionVersion"].toInt(),gnome::extensionVersion);
 }
 void GnomeAdapter::emitSetupNotice(const gnome::SetupStatus& status){

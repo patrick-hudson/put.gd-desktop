@@ -399,6 +399,8 @@ private slots:
  void outdatedExtensionAsksForALogOut(){
   QFETCH(int,loadedVersion);stopFixture();QVERIFY(startFixture(loadedVersion));
   GnomeAdapter source;PUTGD_TRY_VERIFY(helperAvailable(source));
+  // Until the setup run reports there is no logout to ask for.
+  PUTGD_TRY_COMPARE(source.capabilities()["helper"].toObject()["setup"].toObject()["state"].toString(),QString("login_required"));
   const auto helper=source.capabilities()["helper"].toObject();
   QVERIFY(helper["outdated"].toBool());QCOMPARE(helper["packagedExtensionVersion"].toInt(),putgd::gnome::extensionVersion);
   QVERIFY(!source.selectsRegions());
