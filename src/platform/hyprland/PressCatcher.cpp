@@ -147,7 +147,11 @@ struct PressCatcher::Impl {
  }
  static void capabilities(void* data,wl_seat* seat,uint32_t caps){
   auto& self=*static_cast<Impl*>(data);
-  if(!(caps&WL_SEAT_CAPABILITY_POINTER)&&self.pointer){wl_pointer_destroy(self.pointer);self.pointer=nullptr;self.over=nullptr;self.down=false;}
+  if(!(caps&WL_SEAT_CAPABILITY_POINTER)&&self.pointer){
+   // No release can come now: a drag in progress ends here.
+   if(self.down){emit self.q.pointer(PressCatcher::Cancel,self.at);self.finishLater();}
+   wl_pointer_destroy(self.pointer);self.pointer=nullptr;self.over=nullptr;self.down=false;
+  }
   if(!(caps&WL_SEAT_CAPABILITY_KEYBOARD)&&self.keyboard){wl_keyboard_destroy(self.keyboard);self.keyboard=nullptr;}
   if((caps&WL_SEAT_CAPABILITY_POINTER)&&!self.pointer){
    self.pointer=wl_seat_get_pointer(seat);
