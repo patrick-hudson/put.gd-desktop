@@ -378,14 +378,20 @@ void GnomeAdapter::emitSetupNotice(const gnome::SetupStatus& status){
 }
 void GnomeAdapter::evaluateSetup(bool force){
  if(!ownsName_||stopping_)return;
- if(setupRunning_){setupAgain_=setupAgain_||force;return;}
  if(!force&&setupCheckedForOwner_)return;
+ // A request during a run (a recheck, or a new Shell) needs a run of its own.
+ if(setupRunning_){setupAgain_=true;return;}
  setupCheckedForOwner_=true;
- // Loaded and current with no owned copy to retire: nothing to do, and nothing runs.
- if(ready_&&!outdated()&&!force&&!QFileInfo::exists(gnome::ownedCopyMarkerPath()))return;
  setupRunning_=true;
  auto result=std::make_shared<gnome::SetupStatus>();
- auto* worker=QThread::create([result]{*result=gnome::runExtensionSetup(gnome::defaultSetupInputs());});
+ // Loaded and current with no owned copy to retire: nothing to do. The check needs
+ // the session's data directory, which only the worker may look up.
+ const bool idle=ready_&&!outdated()&&!force;
+ auto* worker=QThread::create([idle,result]{
+  const auto inputs=gnome::defaultSetupInputs();
+  if(idle&&!gnome::ownedCopyMarkerExists(inputs)){*result={"ready",{},{},{}};return;}
+  *result=gnome::runExtensionSetup(inputs);
+ });
  workers_.append(worker);
  connect(worker,&QThread::finished,this,[this,worker,result]{
   workers_.removeOne(worker);worker->deleteLater();setupRunning_=false;
@@ -394,8 +400,9 @@ void GnomeAdapter::evaluateSetup(bool force){
   setup_=*result;
   if(changed)emit capabilitiesChanged();
   emitSetupNotice(currentSetup());
+  // Waiters ask for the state after their request, so a queued run answers them.
+  if(setupAgain_){setupAgain_=false;evaluateSetup(true);return;}
   auto waiters=std::move(setupWaiters_);setupWaiters_.clear();
-  if(setupAgain_){setupAgain_=false;evaluateSetup(true);}
   for(auto& waiter:waiters)waiter(desktopSetup());
  });
  worker->start();

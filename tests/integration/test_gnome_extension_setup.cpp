@@ -166,6 +166,30 @@ private slots:
   QVERIFY(!s.needsUser());QVERIFY(s.details["removed"].toBool());QVERIFY(!QDir(userDir(f)).exists());
   QCOMPARE(f.writes,QStringList{"enabled-extensions=['other@x']"});
  }
+ void markerWithPathsIsForeign(){
+  Fixture f;const auto dir=bundle(f);runExtensionSetup(f.inputs(dir));
+  write(userDir(f)+"/.putgd-managed",QJsonDocument(QJsonObject{{"managedBy","put.gd"},{"files",QJsonObject{{"../outside","x"}}}}).toJson());
+  QCOMPARE(runExtensionSetup(f.inputs(dir)).state,QString("foreign_user_copy"));
+ }
+ void extraFileMakesCopyForeign(){
+  Fixture f;const auto dir=bundle(f);runExtensionSetup(f.inputs(dir));write(userDir(f)+"/notes.txt","mine");
+  QCOMPARE(runExtensionSetup(f.inputs(dir)).state,QString("foreign_user_copy"));
+  QVERIFY(QFile::exists(userDir(f)+"/notes.txt"));
+ }
+ void blockedExtensionsLeaveNothingBehind(){
+  Fixture f;f.settings["allow-extension-installation"]="false";const auto dir=bundle(f);runExtensionSetup(f.inputs(dir));
+  QVERIFY(!QFile::exists(userDir(f)));QVERIFY(f.writes.isEmpty());
+ }
+ void removeWhenSettingsFailKeepsCopy(){
+  Fixture f;const auto dir=bundle(f);runExtensionSetup(f.inputs(dir));
+  auto in=f.inputs();in.gsettings=[](const QStringList&)->ProcessResult{return {true,1,{},"no schema"};};
+  QCOMPARE(removeOwnedUserCopy(in).state,QString("settings_unavailable"));QVERIFY(QFile::exists(userDir(f)+"/extension.js"));
+ }
+ void removeKeepsEntryBelongingToSystemPackage(){
+  Fixture f;const auto dir=bundle(f);runExtensionSetup(f.inputs(dir));f.writes.clear();system(f);
+  QVERIFY(removeOwnedUserCopy(f.inputs()).details["removed"].toBool());
+  QVERIFY(!QDir(userDir(f)).exists());QVERIFY(f.writes.isEmpty());
+ }
  void removeLeavesForeignCopy(){
   Fixture f;write(userDir(f)+"/metadata.json","{}");const auto s=removeOwnedUserCopy(f.inputs());
   QCOMPARE(s.state,QString("foreign_user_copy"));QVERIFY(QFile::exists(userDir(f)+"/metadata.json"));

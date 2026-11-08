@@ -72,6 +72,8 @@ int LocalServer::replyDeadlineMs(const QString& method) {
  if(method=="history.preview")return historyPreviewReplyMs;
  // Checking a large folder over GVfs or KIOFuse stats every file before the reply.
  if(method=="upload.files")return uploadFilesReplyMs;
+ // Setup runs gsettings and waits for the Shell, each with its own bound.
+ if(method=="desktop.setup.recheck")return desktopSetupRecheckReplyMs;
  // The checker child has 40 s of its own (#293).
  if(method=="update.check")return UpdateService::childTimeoutMs+base;
  return base;

@@ -67,6 +67,12 @@ UserCopy inspectUserCopy(const QString& path){
  const auto document=QJsonDocument::fromJson(file.readAll()).object();
  if(document["managedBy"].toString()!="put.gd")return copy;
  const auto files=document["files"].toObject();if(files.isEmpty())return copy;
+ // Only plain names: the marker decides which files later removal touches.
+ for(const auto& name:files.keys())if(name.contains('/')||name=="."||name==".."||name==copyMarkerName)return copy;
+ // A directory holding anything else has been added to since put.gd wrote it.
+ QStringList expected=files.keys();expected.append(copyMarkerName);expected.sort();
+ auto present=QDir(path).entryList(QDir::AllEntries|QDir::Hidden|QDir::NoDotAndDotDot);present.sort();
+ if(present!=expected)return copy;
  for(auto it=files.begin();it!=files.end();++it){
   if(fileSha256(QDir(path).filePath(it.key()))!=it.value().toString())return copy;
   copy.files.append(it.key());
@@ -251,6 +257,10 @@ SetupStatus runExtensionSetup(const SetupInputs& in){
 
  if(!systemCopy){
   if(in.bundledDir.isEmpty())return status("not_installed","gnome_extension_missing",QStringLiteral("put.gd's GNOME extension is not installed. Reinstall the put.gd package."),details);
+  // Before anything is written: a blocked system must not gain a copy or a setting.
+  const auto allowReply=runGet(in,"allow-extension-installation");
+  if(allowReply.started&&allowReply.exitCode==0&&allowReply.standardOutput.trimmed()=="false")
+   return status("extension_blocked","gnome_extension_blocked",QStringLiteral("This system does not allow per-user GNOME extensions, so an AppImage can't add put.gd's. Ask your administrator to install the put.gd package."),details);
   const auto bundledVersion=metadataVersion(in.bundledDir);
   const bool replacing=userCopy.managed;
   // Keep a copy in step with this AppImage; an older image never downgrades a newer copy.
@@ -300,10 +310,6 @@ SetupStatus runExtensionSetup(const SetupInputs& in){
 
  if(userExtensionsOff)
   return status("user_extensions_disabled","gnome_user_extensions_off",QStringLiteral("GNOME extensions are turned off for this account. Turn on Extensions in the Extensions app, and put.gd's extension will start too."),details);
- const auto allowReply=runGet(in,"allow-extension-installation");
- if(!systemCopy&&allowReply.started&&allowReply.exitCode==0&&allowReply.standardOutput.trimmed()=="false")
-  return status("extension_blocked","gnome_extension_blocked",QStringLiteral("This system does not allow per-user GNOME extensions, so an AppImage can't add put.gd's. Ask your administrator to install the put.gd package."),details);
-
  shell=in.shell();
  for(int waited=0;enabledChanged&&waited<30;++waited){
   const auto current=shell.extension["state"].toInt();
@@ -332,18 +338,24 @@ SetupStatus removeOwnedUserCopy(const SetupInputs& in){
  const auto copy=inspectUserCopy(userDir);
  if(copy.exists&&!copy.managed)return status("foreign_user_copy","gnome_foreign_extension",
   QStringLiteral("The copy in %1 was not installed by put.gd, so it was left alone.").arg(userDir));
- if(copy.managed&&!removeCopyFiles(userDir,copy.files))return installFailed(QStringLiteral("cannot remove the files in %1").arg(userDir));
- const auto enabledReply=runGet(in,"enabled-extensions");
- if(enabledReply.started&&enabledReply.exitCode==0){
+ if(!copy.managed)return ready({{"removed",false}});
+ // With a system package installed the entry is the package's now; keep it.
+ int systemVersion=0;
+ if(!hasSystemCopy(in.dataDirs,&systemVersion)){
+  // The setting goes first, so a failure here leaves a working install, not a stale entry.
+  const auto enabledReply=runGet(in,"enabled-extensions");
+  if(!enabledReply.started||enabledReply.exitCode!=0)return settingsUnavailable(enabledReply);
   const auto enabled=parseStringList(enabledReply.standardOutput);
-  if(enabled&&enabled->contains(extensionUuid)){
+  if(!enabled)return settingsUnavailable({true,enabledReply.exitCode,{},QStringLiteral("unexpected reply: %1").arg(enabledReply.standardOutput.trimmed())});
+  if(enabled->contains(extensionUuid)){
    QStringList quoted;
    for(const auto& entry:*enabled)if(entry!=extensionUuid)quoted.append(QStringLiteral("'%1'").arg(QString(entry).replace('\\',QStringLiteral("\\\\")).replace('\'',QStringLiteral("\\'"))));
    const auto write=in.gsettings({"set",settingsSchema,"enabled-extensions","["+quoted.join(", ")+"]"});
    if(!write.started||write.exitCode!=0)return settingsUnavailable(write);
   }
  }
- return ready({{"removed",copy.managed}});
+ if(!removeCopyFiles(userDir,copy.files))return installFailed(QStringLiteral("cannot remove the files in %1").arg(userDir));
+ return ready({{"removed",true}});
 }
 
 QJsonObject SetupStatus::toJson()const{
@@ -354,10 +366,8 @@ QJsonObject SetupStatus::toJson()const{
  return result;
 }
 
-QString ownedCopyMarkerPath(){
- const auto environment=host::environment();
- const auto dataHome=environment.contains("XDG_DATA_HOME")?environment.value("XDG_DATA_HOME"):QDir(environment.value("HOME")).filePath(".local/share");
- return QDir(dataHome).filePath(QStringLiteral("gnome-shell/extensions/%1/%2").arg(extensionUuid,copyMarkerName));
+bool ownedCopyMarkerExists(const SetupInputs& in){
+ return QFileInfo::exists(QDir(in.dataHome).filePath(QStringLiteral("gnome-shell/extensions/%1/%2").arg(extensionUuid,copyMarkerName)));
 }
 
 SetupInputs defaultSetupInputs(){

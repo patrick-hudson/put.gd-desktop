@@ -66,8 +66,8 @@ SetupStatus removeOwnedUserCopy(const SetupInputs&);
 // The real environment: host paths, the host's gsettings and the session bus.
 // Blocking (it reads the systemd user session's environment), so a worker's job.
 SetupInputs defaultSetupInputs();
-// Where this resident would find a copy it owns: cheap, no process.
-QString ownedCopyMarkerPath();
+// Whether a put.gd-owned copy's marker is in the session's data directory.
+bool ownedCopyMarkerExists(const SetupInputs&);
 
 // GVariant text-format helpers used on `gsettings get` output. Exposed for tests.
 std::optional<QStringList> parseStringList(const QString& text);

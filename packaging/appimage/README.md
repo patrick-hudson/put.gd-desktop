@@ -408,8 +408,10 @@ command-line tools (`libglib2.0-bin` on Debian/Ubuntu, `glib2` on Fedora).
 The image carries the matching GNOME 50 Shell extension
 (`usr/share/gnome-shell/extensions/putgd@put.gd/`). On first start under GNOME 50,
 when no system copy exists, the resident installs it to
-`~/.local/share/gnome-shell/extensions/putgd@put.gd/` with a `.putgd-managed` marker
-and enables it for the next login, so a GNOME 50 user logs out and back in once
+`$XDG_DATA_HOME/gnome-shell/extensions/putgd@put.gd/` (by default under
+`~/.local/share`) with a `.putgd-managed` marker and enables it for the next login,
+so a GNOME 50 user logs out and back in once. If extensions are turned off, or the
+user turned this one off, put.gd reports that instead and leaves it off
 (see [GNOME](../../docs/desktops/gnome.md)). `--remove-gnome-extension` takes that
 copy away again.
 The production CLI can be called through the extracted AppDir's
