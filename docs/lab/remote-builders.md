@@ -135,7 +135,9 @@ match during bootstrap.
 The prepared environment has Fedora GCC 16.2.1, CMake, Ninja, Qt 6.11.2 development
 packages, QtKeychain 0.17.0, an official AWS SDK prefix and the bundled
 Proton runtime. Verify that the SDK matches `cmake/dependency-lock.json` before
-building current sources; refresh it with `tools/ci/provision-linux-sdk.sh` when needed. Qt stays dynamically linked to distro libraries. Fedora's
+building current sources. If it differs, provision a matching prefix in a fresh
+isolated checkout with `tools/ci/provision-linux-sdk.sh`; the script requires
+unused SDK source/build paths. Preserve the prepared checkout and its prefix. Qt stays dynamically linked to distro libraries. Fedora's
 `openssl3-devel` / `openssl3-libs` 3.5.8 compatibility packages support this SDK;
 the OpenSSL 4 dependency update is tracked in
 [#646](https://github.com/patrick-hudson/put.gd-desktop/issues/646). The container
