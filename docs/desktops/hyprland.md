@@ -1,0 +1,202 @@
+# Hyprland adapter (Omarchy)
+
+The `hyprland-wayland` adapter runs put.gd's resident on Hyprland in the Core
+route: region, desktop and window capture, global shortcuts, clipboard import
+and result copy, and screen recording, with no picker, no dialog and no
+substitute tool. Tray, notifications, file dialogs and the Nautilus upload menu
+use the desktop's own services. Tracking issue
+[#1275](https://github.com/patrick-hudson/put.gd-desktop/issues/1275).
+
+## Status
+
+| Target | Session | Status |
+| --- | --- | --- |
+| Omarchy 4.5.0 (Hyprland 0.56.2, Lua config) | Wayland, SDDM autologin, uwsm | **Accepted** on the `omarchy-hyprland-20261108` VM golden, AppImage and the Arch package ([acceptance matrix](../testing/acceptance-matrix.md#hyprland-omarchy-vm-row)) |
+| Other Hyprland 0.56+ sessions with a Lua config (plain Arch, other dotfiles) | Wayland | Same adapter by protocol; **not accepted** |
+| Hyprland on the legacy `hyprland.conf` parser | Wayland | Capture, clipboard and recording work; shortcuts report unavailable with that reason |
+
+Omarchy runs in VMs only in the lab (software rendering, `virtio-vga`); no
+physical Hyprland machine has been tested. Hyprland is an acceptance-matrix VM
+row, not a nightly or release gate.
+
+Versions on the accepted golden: Omarchy 4.5.0-3, kernel 7.2.15-1-omarchy,
+Hyprland 0.56.2, quickshell (Omarchy's bar, dock, tray, notifications, lock and
+idle), xdg-desktop-portal 1.22.1 with xdg-desktop-portal-hyprland 1.4.1 and
+-gtk 1.15.3, Qt 6.12.0, layer-shell-qt 6.8.1, GStreamer 1.28.8, PipeWire 1.6.9,
+Nautilus 51.1, Chromium 155.
+
+## Routing
+
+The resident takes the Hyprland Core route when all of these hold:
+
+- `XDG_SESSION_TYPE=wayland` and `WAYLAND_DISPLAY` is set;
+- `QT_QPA_PLATFORM` is unset or its first plugin is Wayland (Omarchy sets
+  `wayland;xcb`);
+- `XDG_CURRENT_DESKTOP` contains a `Hyprland` token and no KDE, GNOME, Cinnamon
+  or Budgie token;
+- `HYPRLAND_INSTANCE_SIGNATURE` names a request socket,
+  `$XDG_RUNTIME_DIR/hypr/<signature>/.socket.sock`, that accepts a connection.
+
+Nothing is chosen by the word Omarchy. `capabilities` reports
+`adapter: hyprland-wayland` and diagnostics `resident: hyprland-core`.
+
+## Protocols
+
+| Protocol | Use |
+| --- | --- |
+| `ext-image-copy-capture-v1` with the output and foreign-toplevel image capture sources | Desktop, region and window pixels (the shared Wayland layer). Screenshots exclude the cursor; recordings paint it |
+| `ext-foreign-toplevel-list-v1` | Window identities; the identifier equals Hyprland's `stableId` |
+| `hyprland-toplevel-mapping-v1` | Confirms that the identifier a window capture reads is the window IPC reported |
+| `hyprland-global-shortcuts-v1` | put.gd's `putgd:<action>` shortcuts |
+| `wlr-layer-shell` (layer-shell-qt) | The region selector (`putgd-region-selector`) and recording overlays (`putgd-record`) on the overlay layer, above Omarchy's bar, dock and notifications |
+| `ext-data-control-v1` | Clipboard import and result copy |
+
+put.gd does not use `wlr-screencopy`, `hyprland-toplevel-export`, grim, slurp,
+the Screenshot portal, the GlobalShortcuts portal or the ScreenCast portal (its
+share picker). Both Hyprland protocol files are vendored unmodified from
+hyprwm/hyprland-protocols (commit `cd1aba6`, BSD-3-Clause) and installed with
+the package's notices.
+
+Hyprland's IPC is spoken directly on its sockets, never through `hyprctl`, so an
+AppImage's library path never reaches a child process: `j/activewindow`,
+`j/clients`, `j/binds`, `binds`, `eval <lua>` and `reload` on `.socket.sock`,
+and the `configreloaded>>` event on `.socket2.sock`. Right after a reload
+Hyprland briefly refuses connections; requests retry within a 3 s deadline.
+
+## Capture
+
+- **Region**: the shared `putgd-region` helper on the overlay layer covers the
+  whole output, Omarchy's bar and notifications included. Live selection is the
+  default; screenshot-first mode reads every output before the selector maps.
+  A layout change during selection ends it with `display_changed`.
+- **Desktop**: every output, composed at native density.
+- **Window**: the window the shortcut or CLI call finds active, frozen through
+  `j/activewindow`. Its `stableId` is the capture identifier and its `pid`
+  decides ownership: put.gd's own windows (the resident, Settings, the editor,
+  the recorder, the region helper, any process below the resident) are refused
+  with `target_unavailable`, with the app ID as a second check. The
+  toplevel-mapping protocol must map the identifier to the same window address,
+  else `capture_target`. There is no fallback to region selection.
+
+Window capture is client content only: no border, gaps, shadow or the
+titlebar Omarchy's hyprbars plugin draws on floating workspaces. It works for a
+window covered by another (only its own pixels), on another workspace and in a
+hidden special workspace (the scratchpad), all measured on Omarchy 4.5.
+
+Fractional scale (1.25) and rotated outputs capture upright at native density;
+outputs of different scale are composed at the highest density. After an output
+is rotated and set back, Hyprland 0.56 leaves the running resident with the
+rotated transform, so desktop capture reports `display_changed` until put.gd
+restarts ([#1299](https://github.com/patrick-hudson/put.gd-desktop/issues/1299)).
+
+## Capture permissions
+
+Omarchy leaves `ecosystem:enforce_permissions` off, so any client may capture.
+When a user enables it, Hyprland answers a denied client with a transparent
+frame (it still draws the cursor), not an error. put.gd treats a frame that is
+at least 99% `0x00000000` as `capture_permission` and names the rule to add for
+the binary that is actually running. For the package:
+
+```lua
+hl.permission({ binary = [[/usr/bin/putgd]], type = "screencopy", mode = "allow" })
+hl.permission({ binary = [[/usr/bin/putgd-record]], type = "screencopy", mode = "allow" })
+```
+
+An AppImage runs from a new `/tmp/.mount_<random>` directory on every start, so
+its rules are regular expressions:
+
+```lua
+hl.permission({ binary = [[/tmp/\.mount_[^/]+/usr/bin/putgd]], type = "screencopy", mode = "allow" })
+hl.permission({ binary = [[/tmp/\.mount_[^/]+/usr/bin/putgd-record]], type = "screencopy", mode = "allow" })
+```
+
+Use Lua long strings (`[[...]]`): a `"\."` escape is a Lua error, and a Lua
+error drops Hyprland back to its default configuration. Enforcement changes
+need a Hyprland restart. An unlisted client gets Hyprland's "ask" dialog.
+
+![put.gd reports a denied capture with the rule to add (CI build 26.1108.4146-dev+g3af1e6b2b0a5)](https://raw.githubusercontent.com/patrick-hudson/put.gd-evidence/3c57254830be09016030f82bf5b51d561f298bdf/records/2026-11-08-hyprland-omarchy-1275/pictures/omarchy-capture-permission-refused.png)
+
+## Shortcuts
+
+put.gd registers `putgd:region`, `putgd:window` and so on with
+`hyprland-global-shortcuts-v1` on its own Wayland connection and binds each key
+at runtime:
+
+```lua
+hl.bind("CTRL + SHIFT + 1", hl.dsp.global("putgd:region"), { description = "put.gd: Region capture" })
+```
+
+Nothing is written to `hyprland.lua`, `bindings.lua` or any other file. A press
+arrives as the protocol's `pressed` event. The rules, from measurements on
+Omarchy 4.5:
+
+- **Conflicts are refused.** Hyprland fires every bind on a key, so before
+  binding put.gd compares modifiers and key with every existing bind (including
+  `code:` binds, which `j/binds` lists with an empty key; their key comes from
+  the plain-text `binds` reply). A match is `shortcut_conflict` and the key is
+  not bound. Omarchy's own `PRINT` (screenshot) and `SUPER + SHIFT + S` (Google
+  Maps) are examples; put.gd's defaults `Ctrl+Shift+1/2/3` are free.
+- **put.gd never calls `hl.unbind` or a bind handle's `:remove()`.** Both also
+  remove the desktop's own binds on that key, and calling `:remove()` on a stale
+  handle crashed Hyprland 0.56.2. To change or remove its binds, pause for the
+  shortcut recorder, or quit, put.gd runs `reload`, which restores the
+  configuration's binds, then re-applies its current set.
+- **Binds come back after every reload.** Omarchy reloads Hyprland on theme and
+  settings changes; each `configreloaded` event re-applies put.gd's binds and
+  layer rule.
+- **`j/binds` is the truth.** Only binds that read back are reported `bound`;
+  put.gd's are the ones whose description starts with `put.gd: `. A bind left
+  by a resident that crashed is adopted, not doubled; with no resident running
+  it points at a shortcut nobody registered and does nothing.
+- After a quit, `j/binds` holds exactly the configuration's binds.
+
+On the legacy `hyprland.conf` parser `eval` is unavailable and shortcuts report
+`shortcut_unavailable` with that reason; put.gd writes no `keyword` binds.
+
+![Settings shows Ctrl+Shift+1/2/3 bound and Omarchy's Print and Super+Shift+S as conflicts (CI build 26.1108.4146-dev+g3af1e6b2b0a5)](https://raw.githubusercontent.com/patrick-hudson/put.gd-evidence/3c57254830be09016030f82bf5b51d561f298bdf/records/2026-11-08-hyprland-omarchy-1275/pictures/omarchy-settings-shortcuts-conflicts.png)
+
+Settings → Shortcuts shows each binding's state, and `putgd-cli capabilities`
+reports it under `source.shortcuts` (`backend: hyprland-ipc`, per-action
+`state`, `actual`, `error`, and `hyprland` diagnostics).
+
+## Recording
+
+Recording uses the `wlr-capture` acquisition (`ext-image-copy-capture` frames
+into `appsrc`), never the ScreenCast portal, whose `SelectSources` opens
+`hyprland-preview-share-picker`. Recordings paint the cursor. A window
+recording without an identity records the active window by `stableId`;
+`recording.windows` lists external windows from Hyprland's IPC. A region
+recording crops one output; a region spanning outputs is
+`recording_unsupported`. On Omarchy, install `gst-plugin-va` for hardware
+encoding (the Arch package suggests it); without it recording uses x264 or
+OpenH264. In the software-rendered lab VM the desktop itself draws about 8
+frames per second at 1920x1080, and recordings keep that pace; system audio and
+A/V sync (median -19 ms) were measured there too.
+
+## Clipboard, tray, notifications and files
+
+- Clipboard import works while put.gd is unfocused; results copy as
+  `image/png` with put.gd's private marker. PRIMARY is never written. Omarchy's
+  clipboard history (`wl-paste --watch`) keeps recording in both directions.
+- quickshell is the tray host: put.gd's item and its menu work.
+- quickshell is the notification server. It keeps **critical** notifications
+  in `~/.local/state/omarchy/notifications/live.json` until they are dismissed,
+  across reboots; put.gd's failure notices are currently critical
+  ([#1298](https://github.com/patrick-hudson/put.gd-desktop/issues/1298)).
+- File dialogs go through the GTK portal; Nautilus 51 shows **Upload with
+  put.gd** (the packaged nautilus extension). A real upload and opening its link
+  in Chromium are not accepted yet
+  ([#1300](https://github.com/patrick-hudson/put.gd-desktop/issues/1300)). System, Dark and Light follow the
+  portal's `color-scheme` (Omarchy: dark).
+
+## Lab
+
+Golden `omarchy-hyprland-20261108`, profile `omarchy-hyprland`
+([Omarchy VM](../lab/omarchy-vm.md)). Animations are off in that VM
+(`animations:enabled = false`), so the selector's `no_anim` layer rule cannot be
+observed there ([#1301](https://github.com/patrick-hudson/put.gd-desktop/issues/1301)).
+Acceptance evidence: [2026-11-08-hyprland-omarchy-1275](https://github.com/patrick-hudson/put.gd-evidence/tree/3c57254830be09016030f82bf5b51d561f298bdf/records/2026-11-08-hyprland-omarchy-1275). The Omarchy golden has no pacman sync databases: run
+`sudo pacman -Sy` before `pacman -U`, never `-Syu`. Hyprland cannot run headless
+in CI (aquamarine needs a DRM device), so CI covers routing, key and bind
+normalisation, the bind plan, refusal frames and the shortcut backend against a
+fake IPC server; the compositor itself is covered by the golden.

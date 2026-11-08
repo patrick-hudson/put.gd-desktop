@@ -209,6 +209,8 @@ release sorts after its alphabetic nightly suffix in libalpm. No epoch or
 manual application version bump is used. The installed build-info retains the
 original version. Packages include recording, LayerShellQt, Nautilus/Caja
 plugins and Nemo/Dolphin/Thunar actions. Peony has no official Arch package.
+`gst-plugin-va` is an optional dependency for hardware (VA-API) recording
+encoders, as the DEB recommends `gstreamer1.0-vaapi`; Omarchy installs none.
 
 CI downloads the package artifact in a separate clean Arch container and runs
 `bash tools/releases/smoke-arch.sh PACKAGE.pkg.tar.zst` to install dependencies,

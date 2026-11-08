@@ -102,6 +102,33 @@ are unchanged: the [screen recording rows](#screen-recording-rows), the
 [native package full-acceptance profile](#native-package-full-acceptance-profile)
 still test each format, and the AppImage profile does not replace them.
 
+## Hyprland (Omarchy) VM row
+
+Hyprland is accepted on Omarchy 4.5 in a VM only (no physical Hyprland machine);
+it is not a nightly or release gate. Both packages run on fresh overlays of
+`omarchy-hyprland-20261108`, profile `omarchy-hyprland`, with real keyboard and
+tablet input through QEMU ([Hyprland adapter](../desktops/hyprland.md),
+[Omarchy VM](../lab/omarchy-vm.md)).
+
+| Package | Golden | Must show |
+| --- | --- | --- |
+| AppImage | `omarchy-hyprland-20261108` | Everything below |
+| Arch package (`pacman -U` after `pacman -Sy`) | same | Everything below, and its dependencies pull the GStreamer plugins Omarchy lacks |
+
+- Region (exact pixels, no selector outline, live and screenshot-first),
+  desktop, window (exact against `grim -T`), refusal of put.gd's own windows.
+- Shortcuts fire from real keys; conflicts with Omarchy's `PRINT` and
+  `SUPER + SHIFT + S` are reported and both still work; rebind, unbind, quit
+  and an Omarchy theme change leave `j/binds` with exactly Omarchy's binds plus
+  put.gd's current ones; a hotkey with no resident is harmless.
+- `capture_permission` with the rule text under a deny rule; capture works
+  with the documented allow rules.
+- Clipboard both ways with a GTK client, PRIMARY unchanged, Omarchy's
+  clipboard history unaffected.
+- Recording with no picker, cursor painted, motion score from a moving
+  pattern; window recording by `stableId`.
+- Tray menu, notifications, Nautilus upload menu, file dialogs, System/Dark/Light.
+
 ## Screen recording rows
 
 Recording ([recording](../design/recording.md)) is accepted per package format, because

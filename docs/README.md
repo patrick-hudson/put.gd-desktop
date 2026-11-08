@@ -7,7 +7,7 @@ guarantees and every document in it.
 | --- | --- |
 | Use the app | [user/](user/README.md): user guide, troubleshooting, failure codes, S3, B2 and Proton Drive destinations |
 | Understand the design | [design/](design/README.md): start with [overview](design/overview.md) and [architecture](design/architecture.md) |
-| Look up a desktop's behavior | [desktops/](desktops/README.md): Cinnamon, GNOME and Plasma adapters |
+| Look up a desktop's behavior | [desktops/](desktops/README.md): Cinnamon, GNOME, Plasma and Hyprland adapters |
 | Drive it from an agent or the CLI | [automation/](automation/README.md): agent maps, `putgd-cli` and the MCP helper |
 | Build or release it | [release/](release/README.md): build instructions, versions, CI, channels and the release runbook |
 | Test and accept it | [testing/](testing/README.md): test suites, acceptance matrix, recorded acceptance and evidence rules |
