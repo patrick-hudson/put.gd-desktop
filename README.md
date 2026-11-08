@@ -40,7 +40,7 @@ curl -fsSL https://app.put.gd/install | sh -s -- --channel nightly
 
 Prefer to download a package yourself? They're all on [app.put.gd](https://app.put.gd/).
 
-**On GNOME 50**, finish with one more step: log out and back in, then run `gnome-extensions enable putgd@put.gd`. AppImage users need the [host extension](docs/desktops/gnome.md#setup) too.
+**On GNOME 50**, finish by logging out and back in, then run `gnome-extensions enable putgd@put.gd`. With the AppImage, [install the GNOME extension](docs/desktops/gnome.md#setup) first.
 
 ## Get started
 
