@@ -189,12 +189,14 @@ void HyprlandIpc::readEvents(){
   eventBuffer_.append(buffer,count);
  }
  QPointer<HyprlandIpc> guard(this);
- for(qsizetype end=eventBuffer_.indexOf('\n');end>=0&&guard;end=eventBuffer_.indexOf('\n')){
+ for(qsizetype end=eventBuffer_.indexOf('\n');end>=0;end=eventBuffer_.indexOf('\n')){
   // A line this long is not an event put.gd reads, even when complete.
   if(end>maximumEventLine){eventBuffer_.remove(0,end+1);continue;}
   const QString line=QString::fromUtf8(eventBuffer_.left(end));eventBuffer_.remove(0,end+1);
   const auto split=line.indexOf(QStringLiteral(">>"));
   if(split>0)emit event(line.left(split),line.mid(split+2));
+  // A slot may have destroyed this object.
+  if(!guard)return;
  }
  // A line this long is not an event put.gd reads.
  if(guard&&eventBuffer_.size()>maximumEventLine)eventBuffer_.clear();

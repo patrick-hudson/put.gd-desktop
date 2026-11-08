@@ -15,6 +15,7 @@ Apache-2.0 (the AWS SDK for C++) and, with the Proton Drive helper, GPL-3.0-or-l
     foreign-toplevel-management bindings
   hyprland-global-shortcuts-v1 and          BSD-3-Clause        wayland-hyprland-*.xml
     hyprland-toplevel-mapping-v1 bindings
+  wlr-layer-shell-unstable-v1 bindings      MIT-style           wayland-wlr-layer-shell-unstable-v1.xml
   AWS SDK for C++, aws-crt-cpp, aws-c-*,    Apache-2.0          aws-*-LICENSE, aws-*-NOTICE
     s2n-tls
   cJSON, libcbor (in the AWS libraries)     MIT                 aws-sdk-cJSON-LICENSE,

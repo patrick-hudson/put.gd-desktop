@@ -36,7 +36,7 @@ HyprlandSourceAdapter::HyprlandSourceAdapter(QObject* parent):QObject(parent),sh
  // A drag that starts before the selector has surfaces reaches it through the catcher.
  // Up at the hotkey itself, ahead of the operation that will ask for the selector.
  catcherUnclaimed_.setSingleShot(true);catcherUnclaimed_.setInterval(3000);
- connect(&catcherUnclaimed_,&QTimer::timeout,this,[this]{if(!region_.busy())catcher_.stop();});
+ connect(&catcherUnclaimed_,&QTimer::timeout,this,[this]{if(!region_.busy()){catcher_.stop();region_.disarmPointerRelay();}});
  connect(&shortcuts_,&ShortcutBackend::activated,this,[this](const QString& action){
   if(action=="region"&&!region_.busy()&&!region_.cleanupRequired()){catchEarlyPress(layout());if(catcher_.running())catcherUnclaimed_.start();}
  });
@@ -51,7 +51,7 @@ HyprlandSourceAdapter::HyprlandSourceAdapter(QObject* parent):QObject(parent),sh
 void HyprlandSourceAdapter::catchEarlyPress(const QList<CaptureFrame>& frames){
  catcherUnclaimed_.stop();
  QList<PressCatcher::Area> areas;for(const auto& frame:frames)areas.append({frame.identity,frame.logicalRect});
- catcher_.start(areas);
+ if(!catcher_.running()&&catcher_.start(areas))region_.armPointerRelay();
  // Without a catcher nothing holds the keyboard, so the selector takes it at once.
  region_.setDeferKeyboard(catcher_.running());
 }

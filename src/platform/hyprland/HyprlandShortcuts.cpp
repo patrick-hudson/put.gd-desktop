@@ -161,6 +161,8 @@ std::optional<HyprlandShortcuts::Chord> HyprlandShortcuts::chordFromPortable(con
  const QKeySequence sequence=QKeySequence::fromString(portableText,QKeySequence::PortableText);
  if(sequence.count()!=1){if(error)*error="Hyprland binds hold a single key chord";return {};}
  const auto combination=sequence[0];const int key=combination.key();const auto modifiers=combination.keyboardModifiers();
+ // A keypad key would otherwise bind the ordinary key of the same name.
+ if(modifiers&Qt::KeypadModifier){if(error)*error="Keypad keys cannot be bound on Hyprland";return {};}
  QString name;
  if(key>=Qt::Key_F1&&key<=Qt::Key_F35)name=QStringLiteral("F%1").arg(key-Qt::Key_F1+1);
  else if(namedKeys.contains(key))name=namedKeys.value(key);

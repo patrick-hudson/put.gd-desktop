@@ -147,6 +147,8 @@ struct PressCatcher::Impl {
  }
  static void capabilities(void* data,wl_seat* seat,uint32_t caps){
   auto& self=*static_cast<Impl*>(data);
+  if(!(caps&WL_SEAT_CAPABILITY_POINTER)&&self.pointer){wl_pointer_destroy(self.pointer);self.pointer=nullptr;self.over=nullptr;self.down=false;}
+  if(!(caps&WL_SEAT_CAPABILITY_KEYBOARD)&&self.keyboard){wl_keyboard_destroy(self.keyboard);self.keyboard=nullptr;}
   if((caps&WL_SEAT_CAPABILITY_POINTER)&&!self.pointer){
    self.pointer=wl_seat_get_pointer(seat);
    // Only events of the version bound below can arrive, so the rest stay unset.
@@ -170,7 +172,8 @@ struct PressCatcher::Impl {
   auto& self=*static_cast<Impl*>(data);
   if(std::strcmp(interface,wl_compositor_interface.name)==0&&!self.compositor)self.compositor=static_cast<wl_compositor*>(wl_registry_bind(registry,name,&wl_compositor_interface,1));
   else if(std::strcmp(interface,wl_shm_interface.name)==0&&!self.shm)self.shm=static_cast<wl_shm*>(wl_registry_bind(registry,name,&wl_shm_interface,1));
-  else if(std::strcmp(interface,zwlr_layer_shell_v1_interface.name)==0&&!self.shell)self.shell=static_cast<zwlr_layer_shell_v1*>(wl_registry_bind(registry,name,&zwlr_layer_shell_v1_interface,1));
+  // on_demand needs version 4; an older compositor gets no catcher and the selector works alone.
+  else if(std::strcmp(interface,zwlr_layer_shell_v1_interface.name)==0&&!self.shell&&version>=4)self.shell=static_cast<zwlr_layer_shell_v1*>(wl_registry_bind(registry,name,&zwlr_layer_shell_v1_interface,4));
   else if(std::strcmp(interface,wl_seat_interface.name)==0&&!self.seat){
    self.seat=static_cast<wl_seat*>(wl_registry_bind(registry,name,&wl_seat_interface,std::min(version,3u)));
    static const wl_seat_listener listener=[]{wl_seat_listener l{};l.capabilities=capabilities;l.name=seatName;return l;}();

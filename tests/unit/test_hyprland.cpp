@@ -201,6 +201,7 @@ private slots:
   QCOMPARE(HyprlandShortcuts::bindScript("region",*chord),QString("hl.bind(\"CTRL + SHIFT + 1\", hl.dsp.global(\"putgd:region\"), { description = \"put.gd: Region capture\" })"));
   QVERIFY(HyprlandShortcuts::layerRuleScript().contains("putgd-(region-selector|region-catcher|record)"));
   QVERIFY(HyprlandShortcuts::layerRuleScript().contains("no_anim = true"));
+  QString keypad;QVERIFY(!HyprlandShortcuts::chordFromPortable("Num+1",&keypad));QVERIFY(keypad.contains("Keypad"));
   QVERIFY(putgd::HyprlandIpc::okReply("ok\n"));QVERIFY(!putgd::HyprlandIpc::okReply("error: x"));
  }
  void refusalFrames(){
