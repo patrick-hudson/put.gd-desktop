@@ -67,7 +67,7 @@ int main(int argc,char** argv) {
  const auto build=QJsonDocument::fromJson(putgd::buildManifestJson()).object();
  QString nonce,generation; QList<putgd::CaptureFrame> frozen;
  std::unique_ptr<putgd::LayerShellRegionOverlay> selector;QString outcome;bool screenshotFirst=false;QList<putgd::CaptureFrame> backdrop;
- bool bootstrapped=false,ready=false,begun=false,resultSent=false,settled=false,teardownPending=false;
+ bool bootstrapped=false,ready=false,begun=false,resultSent=false,settled=false,teardownPending=false,deferKeyboard=false;
  QTimer teardownDeadline;teardownDeadline.setSingleShot(true);
  std::function<void(bool)> teardownReply;
 #ifdef PUTGD_REGION_TEARDOWN_FENCE
@@ -133,7 +133,7 @@ int main(int argc,char** argv) {
  QObject::connect(&control,&putgd::CaptureControl::frame,&app,[&](const QString& type,const QJsonObject& payload){
   if(settled||teardownPending) return;
   if(type=="bootstrap") {
-   if(bootstrapped || payload.size()!=4+int(payload.contains("outcome"))+int(payload.contains("frozen"))+int(payload.contains("appearance")) || payload["build"].toObject()!=build ||
+   if(bootstrapped || payload.size()!=4+int(payload.contains("outcome"))+int(payload.contains("frozen"))+int(payload.contains("appearance"))+int(payload.contains("deferKeyboard")) || payload["build"].toObject()!=build ||
       (payload.contains("frozen")&&(!payload["frozen"].isObject()||payload["frozen"].toObject().size()!=2||!payload["frozen"]["fd"].isDouble()||!payload["frozen"]["frames"].isArray())) ||
       !payload["nonce"].isString() || QUuid(payload["nonce"].toString()).isNull() ||
       !payload["generation"].isString() || !payload["layout"].isArray() || (payload.contains("outcome")&&(!payload["outcome"].isString()||payload["outcome"].toString().size()>256))) { close(4); return; }
@@ -141,6 +141,8 @@ int main(int argc,char** argv) {
    putgd::Theme::setScheme(payload["appearance"]["scheme"]=="light"?putgd::Theme::Scheme::Light:putgd::Theme::Scheme::Dark);
    bool numeric=false; const auto g=payload["generation"].toString(); const auto number=g.toULongLong(&numeric);
    if(!numeric || !number || QString::number(number)!=g) { close(4); return; }
+   if(payload.contains("deferKeyboard")&&payload["deferKeyboard"]!=true){close(4);return;}
+   deferKeyboard=payload.contains("deferKeyboard");
    outcome=payload["outcome"].toString();nonce=payload["nonce"].toString(); generation=g; bootstrapped=true;
    putgd::Error error; frozen=putgd::waylandRegionLayout(payload["layout"].toArray(),error);
    if(error) { close(4); return; }
@@ -156,6 +158,17 @@ int main(int argc,char** argv) {
    if(!control.send("ready",message)) { close(4); return; }
    if(!QGuiApplication::platformName().startsWith("wayland")) { fail("region_unavailable"); return; }
    if(!putgd::waylandRegionLayoutsMatch(frozen,layout())) fail("display_changed");
+   return;
+  }
+  if(type=="pointer") {
+   if(!begun || payload.size()!=5 || payload["nonce"]!=nonce || payload["generation"]!=generation || !payload["kind"].isString() || !payload["x"].isDouble() || !payload["y"].isDouble()) { close(4); return; }
+   // The selection may already have ended on the helper's own input.
+   if(selector && !resultSent) selector->relayPointer(payload["kind"].toString(),QPointF(payload["x"].toDouble(),payload["y"].toDouble()));
+   return;
+  }
+  if(type=="takeover") {
+   if(!begun || payload.size()!=4 || payload["nonce"]!=nonce || payload["generation"]!=generation || !payload["key"].isDouble() || !payload["modifiers"].isDouble()) { close(4); return; }
+   if(selector && !resultSent) selector->takeKeyboard(payload["key"].toInt(),payload["modifiers"].toInt());
    return;
   }
   if(!ready || payload.size()!=2 || payload["nonce"]!=nonce || payload["generation"]!=generation) { close(4); return; }
@@ -181,6 +194,7 @@ int main(int argc,char** argv) {
      deadline.start(10000);
     });
    });
+   selector->setDeferKeyboard(deferKeyboard);
    selector->start(); return;
   }
   if(type=="accept" && resultSent) { close(0); return; }

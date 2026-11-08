@@ -1,12 +1,15 @@
 #pragma once
 #include "RegionProtocol.h"
 #include "ipc/CaptureControl.h"
+#include <QPair>
+#include <QPointF>
 #include <QPointer>
 #include <QProcess>
 #include <QTimer>
 #include <atomic>
 #include <functional>
 #include <memory>
+#include <optional>
 #include "core/Log.h"
 
 namespace putgd {
@@ -47,7 +50,21 @@ public:
  bool cleanupRequired() const { return cleanupRequired_; }
  qint64 processId() const { return process_?process_->processId():0; }
  QJsonObject diagnostics() const;
+ // A drag that began before the selector could take input (kind: press, move
+ // or release; logical layout coordinates). Held until the helper has begun,
+ // keeping only the latest of consecutive moves.
+ void relayPointer(const QString& kind,QPointF logical);
+ // Hyprland ends a held button whenever a surface takes the keyboard. With this
+ // set the selector maps without it and then accepts it on demand, which ends
+ // nothing. grantKeyboard hands it the keyboard outright, with the key that asked
+ // for it; false until the helper has begun.
+ void setDeferKeyboard(bool defer) { deferKeyboard_=defer; }
+ bool grantKeyboard(int qtKey,int qtModifiers);
+signals:
+ // The helper is gone, however the selection ended.
+ void ended();
 private:
+ void sendPointer(const QString& kind,QPointF logical);
  void receive(const QString&,const QJsonObject&);
  void fail(Error);
  void finish(int,QProcess::ExitStatus);
@@ -55,7 +72,11 @@ private:
  void abandon(const std::shared_ptr<Prepared>&);
  int frozenFd_=-1;
  QString helperPath_,nonce_,launchStartTicks_; quint64 generation_=0; qint64 launchPid_=0;
- QList<CaptureFrame> frames_; QRectF result_;
+ QList<CaptureFrame> frames_; QRectF result_; QList<QPair<QString,QPointF>> pendingPointer_;
+ // The control channel allows 64 frames a second: moves go out at most every
+ // 33 ms, the latest one winning; a press or release flushes it first.
+ QTimer moveFlush_; std::optional<QPointF> pendingMove_; bool deferKeyboard_=false;
+ void flushMove();
  QProcess* process_=nullptr; CaptureControl* control_=nullptr;
  QTimer deadline_,stopDeadline_;
  std::function<void(QRectF,Error)> reply_;

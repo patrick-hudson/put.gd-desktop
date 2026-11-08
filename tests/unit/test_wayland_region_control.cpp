@@ -51,11 +51,26 @@ int fixture(const QString& mode) {
   }
   auto cancelled=envelope(); cancelled["code"]="cancelled";send("cancelled",cancelled);return 0;
  }
+ if(mode=="pointer-relay") {
+  // The press, the latest move and the release.
+  for(const char* expected:{"press:10:20","move:30:40","release:31:41"}) {
+   if(!std::getline(std::cin,line)) return 3;
+   const auto frame=QJsonDocument::fromJson(QByteArray::fromStdString(line)).object();const auto p=frame["payload"].toObject();
+   if(frame["type"]!="pointer" || QStringLiteral("%1:%2:%3").arg(p["kind"].toString()).arg(p["x"].toDouble()).arg(p["y"].toDouble())!=QLatin1String(expected)) return 9;
+  }
+ }
  if(mode=="crash-before-teardown") { std::raise(SIGKILL); return 8; }
  if(mode=="terminal-flood" || mode=="mismatched-terminal") {
   auto terminal=envelope();terminal["code"]=mode=="terminal-flood"?"cancelled":"display_changed";
   for(int i=0;i<80;++i) { send("cancelled",terminal);std::this_thread::sleep_for(std::chrono::milliseconds(100)); }
   return 0;
+ }
+ if(mode=="keyboard-grant") {
+  // The selector was told to wait for the keyboard, and gets it with the key that asked.
+  if(first["deferKeyboard"]!=true) return 9;
+  if(!std::getline(std::cin,line)) return 3;
+  const auto frame=QJsonDocument::fromJson(QByteArray::fromStdString(line)).object();
+  if(frame["type"]!="takeover"||frame["payload"]["key"].toInt()!=int(Qt::Key_Left)||frame["payload"]["modifiers"].toInt()!=int(Qt::ShiftModifier)) return 9;
  }
  auto result=envelope(); result["rectangle"]=waylandRegionRectangle(mode=="outside"?QRectF(900,0,20,20):QRectF(-20,20,60,40));
  send("result",result);
@@ -273,6 +288,28 @@ private slots:
   QCOMPARE(replies,1);QVERIFY2(!error,qPrintable(error.message));QCOMPARE(selected,QRectF(-20,20,60,40));
   // A ticket delivers once.
   process.begin(ticket,[&](QRectF,Error e){error=e;++replies;});QCOMPARE(replies,2);QCOMPARE(error.code,QString("capture_protocol"));
+ }
+ void earlyDragIsHeldUntilTheHelperHasBegun() {
+  // A drag caught before the selector had surfaces arrives in order, its moves merged.
+  qputenv("PUTGD_TEST_KDE_REGION_HELPER","pointer-relay");WaylandRegionProcess process(QCoreApplication::applicationFilePath());
+  int ended=0;connect(&process,&WaylandRegionProcess::ended,this,[&]{++ended;});
+  QRectF selected;Error error;int replies=0;
+  process.start(frames(),[&](QRectF rectangle,Error e){selected=rectangle;error=e;++replies;});
+  process.relayPointer("press",{10,20});process.relayPointer("move",{20,30});process.relayPointer("move",{30,40});process.relayPointer("release",{31,41});
+  PUTGD_TRY_COMPARE(replies,1);qunsetenv("PUTGD_TEST_KDE_REGION_HELPER");
+  QVERIFY2(!error,qPrintable(error.message));QCOMPARE(selected,QRectF(-20,20,60,40));QCOMPARE(ended,1);
+  // Nothing relayed once it is over.
+  process.relayPointer("press",{1,1});QVERIFY(!process.busy());
+ }
+ void keyboardWaitsForTheGrant() {
+  qputenv("PUTGD_TEST_KDE_REGION_HELPER","keyboard-grant");WaylandRegionProcess process(QCoreApplication::applicationFilePath());
+  process.setDeferKeyboard(true);
+  QRectF selected;Error error;int replies=0;
+  process.start(frames(),[&](QRectF rectangle,Error e){selected=rectangle;error=e;++replies;});
+  QVERIFY(!process.grantKeyboard(Qt::Key_Left,Qt::ShiftModifier));  // not before the helper has begun
+  PUTGD_TRY_VERIFY(process.grantKeyboard(Qt::Key_Left,Qt::ShiftModifier));
+  PUTGD_TRY_COMPARE(replies,1);qunsetenv("PUTGD_TEST_KDE_REGION_HELPER");
+  QVERIFY2(!error,qPrintable(error.message));QCOMPARE(selected,QRectF(-20,20,60,40));
  }
  void preparedSelectionDeliversThroughEarlyBegin() {
   // The durable continuation arrived first: the selection completes it directly.

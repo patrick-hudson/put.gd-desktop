@@ -49,7 +49,7 @@ public:
    |LayerShellQt::Window::AnchorBottom|LayerShellQt::Window::AnchorLeft
    |LayerShellQt::Window::AnchorRight;
   layer->setAnchors(anchors);
-  layer->setExclusiveZone(-1);layer->setKeyboardInteractivity(LayerShellQt::Window::KeyboardInteractivityExclusive);
+  layer->setExclusiveZone(-1);layer->setKeyboardInteractivity(owner_.deferKeyboard_?LayerShellQt::Window::KeyboardInteractivityNone:LayerShellQt::Window::KeyboardInteractivityExclusive);
 #endif
  }
  // Damage only the outline rings and pills of the previous and next state;
@@ -72,6 +72,7 @@ protected:
   if(!pillsReady()){if(!fontWaiters.contains(&owner_))fontWaiters.append(&owner_);}
   else paintRegionChrome(p,rect(),owner_.selection_.translated(-logicalRect_.topLeft()),regionSizeLabel(owner_.selection_,owner_.frames_),own==owner_.hintScreen_,owner_.hint_.opacity(),regionLabelDisplay(displays,owner_.selection_)==own);
   owner_.stats_.painted(work.nsecsElapsed()/1e6);
+  owner_.surfacePainted(this);
  }
  int ownScreen() const {for(int i=0;i<owner_.frames_.size();++i)if(owner_.frames_[i].identity==identity_)return i;return 0;}
  void mousePressEvent(QMouseEvent* e) override{if(e->button()==Qt::RightButton)owner_.cancel();else if(e->button()==Qt::LeftButton)owner_.press(logicalRect_.topLeft()+e->position());}
@@ -135,6 +136,27 @@ bool LayerShellRegionOverlay::addSurface(const CaptureFrame& frame,QScreen* scre
  if(surface->windowHandle()->screen()!=screen){cancel({"display_changed","A selection surface is not on its output",{}});return false;}
  surface->show();return true;
 }
+void LayerShellRegionOverlay::surfacePainted(const void* surface){
+ if(shown_||!deferKeyboard_)return;drawn_.insert(surface);if(drawn_.size()!=surfaces_.size())return;shown_=true;
+ // Not yet: this first paint is still to be committed, and a commit that maps the
+ // surface with the keyboard is what ends a held button. Qt Wayland holds
+ // requestUpdate() until the compositor has rendered the committed buffer.
+ for(auto* each:surfaces_)if(auto* window=each->windowHandle()){awaitingMapped_.insert(window);window->installEventFilter(this);window->requestUpdate();}
+}
+void LayerShellRegionOverlay::acceptKeyboardOnDemand(){
+#ifdef PUTGD_NATIVE_REGION
+ if(finished_)return;
+ for(auto* each:surfaces_){LayerShellQt::Window::get(each->windowHandle())->setKeyboardInteractivity(LayerShellQt::Window::KeyboardInteractivityOnDemand);each->update();}
+#endif
+}
+void LayerShellRegionOverlay::takeKeyboard(int qtKey,int qtModifiers){
+ if(finished_||dragging_||surfaces_.isEmpty())return;
+#ifdef PUTGD_NATIVE_REGION
+ for(auto* surface:surfaces_){LayerShellQt::Window::get(surface->windowHandle())->setKeyboardInteractivity(LayerShellQt::Window::KeyboardInteractivityExclusive);surface->update();}
+#endif
+ QKeyEvent press(QEvent::KeyPress,qtKey,Qt::KeyboardModifiers(qtModifiers));QCoreApplication::sendEvent(surfaces_.first(),&press);
+}
+void LayerShellRegionOverlay::relayPointer(const QString& kind,QPointF logical){if(kind=="press")press(logical);else if(kind=="move")move(logical);else if(kind=="release")release(logical);}
 void LayerShellRegionOverlay::select(const QRectF& logical){if(finished_||logical.isEmpty())return;press(logical.topLeft());release(logical.bottomRight());}
 void LayerShellRegionOverlay::press(QPointF p){if(finished_)return;keyboardScreen_=-1;anchor_=waylandRegionEdge(p);dragging_=true;selection_=QRectF(anchor_,QSizeF{});for(auto* surface:surfaces_)surface->updateSelection();}
 void LayerShellRegionOverlay::move(QPointF p){if(!dragging_||finished_)return;const auto endpoint=waylandRegionEdge(p);selection_=QRectF(anchor_,endpoint).normalized();++stats_.moves;for(auto* surface:surfaces_)surface->updateSelection();}
@@ -159,6 +181,7 @@ void LayerShellRegionOverlay::accept(){
 #endif
 }
 bool LayerShellRegionOverlay::eventFilter(QObject* watched,QEvent* event){
+ if(event->type()==QEvent::UpdateRequest&&awaitingMapped_.remove(static_cast<QWindow*>(watched))&&awaitingMapped_.isEmpty())QTimer::singleShot(0,this,[this]{acceptKeyboardOnDemand();});
  if(event->type()==QEvent::UpdateRequest&&awaitingFrames_.remove(static_cast<QWindow*>(watched))&&awaitingFrames_.isEmpty())QTimer::singleShot(0,this,[this]{dismiss();});
  return QObject::eventFilter(watched,event);
 }
