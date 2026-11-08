@@ -36,7 +36,7 @@ class Installer(unittest.TestCase):
                         PATH=str(self.bin), CALLS=str(self.log), ARCH='x86_64', STABLE='302',
                         NIGHTLY='302', CHECKSUM_MODE='ok', SUFFIX='-ubuntu24.04-x86_64.deb',
                         CODEC='openh264,gstreamer1-plugin-openh264', CISCO_REPO='enabled')
-        for name in ('cat', 'mktemp', 'rm', 'awk', 'sha256sum', 'cp', 'chmod', 'mv', 'mkdir', 'sh'):
+        for name in ('cat', 'mktemp', 'rm', 'awk', 'sha256sum', 'cp', 'chmod', 'mv', 'mkdir', 'sh', 'find', 'rmdir'):
             (self.bin / name).symlink_to(shutil.which(name))
         self.tool('uname', "import os; print(os.environ['ARCH'])")
         self.tool('getconf', "import os; print(os.environ.get('GLIBC', 'glibc 2.39'))")
@@ -116,7 +116,7 @@ else:
             ('ubuntu:26.04', 'ubuntu26.04'), ('kubuntu:26.04', 'ubuntu26.04'),
             ('debian:13', 'debian13'), ('debian:13.1', 'debian13'),
             ('fedora:44', 'fedora44'), ('fedora:45', 'appimage'),
-            ('arch:rolling', 'appimage'), ('ubuntu:22.04', 'appimage')):
+            ('arch:rolling', 'archlinux'), ('ubuntu:22.04', 'appimage')):
             with self.subTest(fields=fields):
                 distro, version = fields.split(':')
                 self.os_release.write_text(f'ID={distro}\nVERSION_ID={version}\n')

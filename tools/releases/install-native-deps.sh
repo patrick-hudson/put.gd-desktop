@@ -23,5 +23,8 @@ case "$ID" in
     bash "$install" gcc-c++ ccache git ca-certificates python3 nodejs npm cmake ninja-build pkgconf-pkg-config tar gzip xz binutils file rpm-build cpio qt6-qtbase-devel qt6-qtsvg-devel qt6-qtbase-private-devel qt6-qtwayland-devel qtkeychain-qt6-devel layer-shell-qt-devel libxcb-devel xcb-util-keysyms-devel xcb-util-devel xcb-util-image-devel libXcursor-devel libxkbcommon-devel libxkbcommon-x11-devel libcurl-devel openssl-devel zlib-devel wayland-devel wayland-protocols-devel gstreamer1-devel gstreamer1-plugins-base-devel ffmpeg-free-devel \
       glib2-devel nautilus-devel caja-devel gtk3-devel
     ;;
+  arch)
+    pacman -Syu --noconfirm --needed base-devel ccache git ca-certificates python nodejs npm cmake ninja pkgconf tar gzip xz binutils file libarchive zstd qt6-base qt6-svg qt6-wayland qt6-imageformats qtkeychain-qt6 layer-shell-qt libxcb xcb-util-keysyms xcb-util-image libxcursor libxkbcommon libxkbcommon-x11 curl openssl zlib wayland wayland-protocols gstreamer gst-plugins-base gst-plugins-good gst-plugins-bad gst-plugins-ugly gst-libav gst-plugin-pipewire ffmpeg glib2 nautilus caja gtk3 libsecret xdg-utils
+    ;;
   *) echo "Unsupported native release builder: $ID" >&2; exit 1 ;;
 esac

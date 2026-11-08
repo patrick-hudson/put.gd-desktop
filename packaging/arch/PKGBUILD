@@ -1,0 +1,27 @@
+# Build an already verified CMake Release tree. Run tools/releases/arch.py.
+pkgname=putgd
+pkgver=0.0.0
+pkgrel=1
+pkgdesc='Native Linux screen and clipboard sharing'
+arch=('x86_64')
+url='https://put.gd'
+license=('MIT' 'Apache-2.0' 'GPL-3.0-or-later')
+depends=('gcc-libs' 'glibc' 'qt6-base>=6.4.2' 'qt6-svg' 'qt6-wayland'
+         'qt6-imageformats' 'qtkeychain-qt6' 'layer-shell-qt' 'libxcb'
+         'xcb-util-keysyms' 'xcb-util-image' 'libxcursor' 'libxkbcommon'
+         'libxkbcommon-x11' 'curl' 'openssl' 'zlib' 'glib2' 'gtk3'
+         'gstreamer' 'gst-plugins-base-libs' 'gst-plugins-base' 'gst-plugins-good'
+         'gst-plugins-bad' 'gst-plugins-ugly' 'gst-libav' 'gst-plugin-pipewire'
+         'ffmpeg' 'libsecret' 'xdg-utils' 'hicolor-icon-theme')
+optdepends=('gvfs: network locations' 'xdg-desktop-portal: desktop portal services'
+            'nautilus: Files upload menu' 'caja: Caja upload menu'
+            'nemo: Nemo upload menu' 'dolphin: Dolphin upload menu'
+            'thunar: Thunar send-to menu')
+makedepends=('cmake' 'ninja' 'python' 'git' 'pkgconf' 'wayland-protocols' 'nautilus' 'caja')
+# CMake has already stripped product binaries and recorded private runtime hashes.
+# makepkg must preserve these exact bytes, including bundled Proton code.
+options=('!strip' '!debug')
+package() {
+    DESTDIR="$pkgdir" cmake --install "$PUTGD_BUILD"
+    install -Dm644 "$pkgdir/usr/share/doc/putgd/LICENSE" "$pkgdir/usr/share/licenses/putgd/LICENSE"
+}

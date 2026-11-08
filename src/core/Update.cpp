@@ -8,7 +8,7 @@ const QString defaultFeedBase="https://app.put.gd/update/v1/";
 const QString releasePages="https://github.com/patrick-hudson/put.gd-desktop/releases/tag/";
 const QString releaseDownloads="https://github.com/patrick-hudson/put.gd-desktop/releases/download/";
 const QString mirrorDownloads="https://pkg.put.gd/releases/";
-const QStringList targets{"ubuntu24.04","ubuntu26.04","debian13","fedora44","appimage"};
+const QStringList targets{"ubuntu24.04","ubuntu26.04","debian13","fedora44","archlinux","appimage"};
 Error invalidFeed(const QString& message) {return {"update_feed_invalid",message,{}};}
 }
 QJsonObject Build::toJson() const {

@@ -195,6 +195,56 @@ jobs:
           if-no-files-found: warn
           retention-days: 30
 
+  arch:
+    runs-on: ubuntu-24.04
+    container: archlinux:base@sha256:823e937464d1528b306a8e1137ef406b9c56e5fee43c7a19e93684d554af74e1
+    timeout-minutes: 90
+    steps:
+      - name: Bootstrap checkout
+        run: pacman -Syu --noconfirm --needed git ca-certificates
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          ref: ${{ inputs.release_tag || github.sha }}
+      - name: Distro dependencies and build user
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          bash tools/releases/install-native-deps.sh
+          useradd -m builder
+          chown -R builder "$GITHUB_WORKSPACE"
+      - name: Build verified dependencies and production package
+        run: runuser -u builder -- bash tools/releases/build-arch.sh
+      - name: Stage flat native evidence
+        if: always()
+        run: python tools/releases/stage_artifacts.py --kind native --packages-only
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: release-native-archlinux
+          path: build/release-artifact/
+          compression-level: 0
+          if-no-files-found: error
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: debug-symbols-archlinux
+          path: build/debug-symbols/
+          if-no-files-found: error
+
+  arch-install:
+    needs: arch
+    runs-on: ubuntu-24.04
+    container: archlinux:base@sha256:823e937464d1528b306a8e1137ef406b9c56e5fee43c7a19e93684d554af74e1
+    timeout-minutes: 15
+    steps:
+      - run: pacman -Syu --noconfirm --needed git ca-certificates python
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: release-native-archlinux
+          path: build/arch-artifact
+      - name: Install exact CI artifact, start resident, and uninstall
+        run: bash tools/releases/smoke-arch.sh build/arch-artifact/*.pkg.tar.zst
+
   appimage:
     runs-on: ubuntu-24.04
     # Package attempts are bounded and bypass the hosted runner's slow Azure mirror (#500).
@@ -406,7 +456,7 @@ jobs:
   sbom:
     # CycloneDX SBOMs of every package and their Grype report (#420, docs/release/release.md).
     # packaging/sbom/policy.json decides which findings flag and which block this channel.
-    needs: [native, appimage]
+    needs: [native, arch, arch-install, appimage]
     runs-on: ubuntu-24.04
     # Normally 3 minutes, most of it importing the Grype database.
     timeout-minutes: 30
@@ -472,7 +522,7 @@ jobs:
 
   collect:
     if: inputs.release_tag != ''
-    needs: [native, appimage, appimage-sources, sbom]
+    needs: [native, arch, arch-install, appimage, appimage-sources, sbom]
     runs-on: ubuntu-24.04
     timeout-minutes: 75
     steps:
