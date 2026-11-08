@@ -169,6 +169,37 @@ private slots:
   PayloadResult result;bool done=false;prepared(ResourceLimits{},[&](PayloadResult r){result=std::move(r);done=true;});
   QVERIFY(waitFor([&]{return done;}));QCOMPARE(result.error.code,QString("display_changed"));
  }
+ // The layer-shell selector in putgd-region, driven by a virtual pointer drag:
+ // exact size, only the fixture's pixels (no outline), live and screenshot first.
+ // The region lies on one of two outputs, so only that output is read.
+ void regionDragExactPixels_data(){QTest::addColumn<bool>("screenshotFirst");QTest::newRow("live")<<false;QTest::newRow("screenshot-first")<<true;}
+ void regionDragExactPixels(){
+  QFETCH(bool,screenshotFirst);
+  const auto pointer=QDir(QStringLiteral(PUTGD_SOURCE_DIR)).filePath("tools/lab/wayland_pointer.py");
+  if(!QFile::exists(QCoreApplication::applicationDirPath()+"/putgd-region"))QSKIP("putgd-region was not built");
+  // Earlier cases turn and rescale outputs; start once the layout is back and still.
+  WaylandOutputs outputs;const auto original=[&]{const auto now=outputs.layout();if(now.size()!=layout_.size())return false;for(int i=0;i<now.size();++i)if(now[i].identity!=layout_[i].identity||now[i].logicalRect!=layout_[i].logicalRect||now[i].density!=layout_[i].density||now[i].rotation!=layout_[i].rotation)return false;return true;};
+  PUTGD_VERIFY_STEADY(original(),1000);
+  BudgieSourceAdapter adapter;adapter.setRegionScreenshotFirst(screenshotFirst);
+  QVERIFY(waitFor([&]{return adapter.capabilities()["capture"].toObject()["region"].toObject()["available"].toBool();}));
+  PayloadResult result;bool done=false;
+  adapter.prepareAcquisition("region")(ResourceLimits{},[&](PayloadResult r){result=std::move(r);done=true;});
+  QRectF bounds;for(const auto& frame:layout_)bounds=bounds.united(frame.logicalRect);
+  // The fixture's first output is plain colour away from its marks and the window.
+  const QPoint start=layout_.first().logicalRect.toRect().topLeft()+QPoint(80,200);
+  bool dragged=false;
+  QVERIFY(waitFor([&]{
+   if(done)return true;
+   QProcess drag;drag.start("python3",{"-I",pointer,"drag",QString::number(start.x()-bounds.x()),QString::number(start.y()-bounds.y()),QString::number(start.x()-bounds.x()+200),QString::number(start.y()-bounds.y()+150),"--extent",QString::number(int(bounds.width())),QString::number(int(bounds.height()))});
+   dragged|=drag.waitForFinished(5000)&&drag.exitCode()==0;
+   return done;
+  },20000));
+  QVERIFY(dragged);
+  QVERIFY2(!result.error,qPrintable(result.error.message));
+  QCOMPARE(result.payload.image.size(),QSize(200,150));
+  const auto image=result.payload.image.convertToFormat(QImage::Format_RGB32);
+  for(int y=0;y<image.height();++y)for(int x=0;x<image.width();++x)if(rgb(image,x,y)!=outputColours[0])QFAIL(qPrintable(QStringLiteral("pixel %1,%2 is not the fixture background").arg(x).arg(y)));
+ }
  void ownWindowsRefused(){
   for(const char* id:{"putgd","putgd-ui","putgd-record","putgd-region"})QVERIFY(BudgieSourceAdapter::ownAppId(QString::fromLatin1(id)));
   QVERIFY(!BudgieSourceAdapter::ownAppId("putgd-labwc-fixture"));

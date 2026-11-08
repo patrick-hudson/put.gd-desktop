@@ -135,7 +135,7 @@ void BudgieSourceAdapter::captureScreens(QList<CaptureFrame> frozen,quint64 revi
  // Only the outputs the selection touches are read.
  QList<CaptureFrame> needed;for(const auto& frame:frozen)if(frame.logicalRect.intersects(selection))needed.append(frame);
  if(needed.isEmpty()){cb({{},{"capture_geometry","The selection lies outside every output",{}}});return;}
- captureFrames(std::move(needed),revision,limits,[guard,layout,revision,selection,limits,cb=std::move(cb)](QList<CaptureFrame> frames,Error error)mutable{
+ captureFrames(std::move(needed),layout,revision,limits,[guard,layout,revision,selection,limits,cb=std::move(cb)](QList<CaptureFrame> frames,Error error)mutable{
   if(error){cb({{},error});return;}
   if(!guard){cb({{},{"cancelled","Desktop capture cancelled",{}}});return;}
   guard->compose(std::move(frames),std::move(layout),revision,selection,limits,std::move(cb));
@@ -144,7 +144,7 @@ void BudgieSourceAdapter::captureScreens(QList<CaptureFrame> frozen,quint64 revi
 void BudgieSourceAdapter::selectFrozen(QList<CaptureFrame> frozen,quint64 revision,ResourceLimits limits,std::function<void(PayloadResult)> cb,const QString& outcome){
  QPointer<BudgieSourceAdapter> guard(this);const auto generation=generation_;auto layout=frozen;
  // Read every output before any selector surface maps; open menus stay in frame.
- captureFrames(std::move(frozen),revision,limits,[guard,layout,revision,limits,generation,outcome,cb=std::move(cb)](QList<CaptureFrame> frames,Error error)mutable{
+ captureFrames(std::move(frozen),layout,revision,limits,[guard,layout,revision,limits,generation,outcome,cb=std::move(cb)](QList<CaptureFrame> frames,Error error)mutable{
   if(error){if(!error.details.contains("stage"))error.details["stage"]="freeze";cb({{},error});return;}
   if(!guard||guard->generation_!=generation){cb({{},{"cancelled","Desktop capture cancelled",{}}});return;}
   auto pixels=std::make_shared<QList<CaptureFrame>>(std::move(frames));auto reply=std::make_shared<std::function<void(PayloadResult)>>(std::move(cb));
@@ -156,9 +156,10 @@ void BudgieSourceAdapter::selectFrozen(QList<CaptureFrame> frozen,quint64 revisi
   },outcome,*pixels,guard->captureAppearance_);
  });
 }
-void BudgieSourceAdapter::captureFrames(QList<CaptureFrame> frozen,quint64 revision,ResourceLimits limits,std::function<void(QList<CaptureFrame>,Error)> cb){
+void BudgieSourceAdapter::captureFrames(QList<CaptureFrame> frames,QList<CaptureFrame> frozen,quint64 revision,ResourceLimits limits,std::function<void(QList<CaptureFrame>,Error)> cb){
+ // frames: the outputs to read; frozen: the whole layout, which must not change.
  struct Batch {QList<CaptureFrame> frames,frozenLayout;qint64 bytes=0,pixels=0;int index=0;std::function<void(QList<CaptureFrame>,Error)> reply;std::function<void()> next;};
- auto batch=std::make_shared<Batch>();batch->frames=frozen;batch->frozenLayout=frozen;batch->reply=std::move(cb);QPointer<BudgieSourceAdapter> guard(this);const auto generation=generation_;std::weak_ptr<Batch> weak=batch;
+ auto batch=std::make_shared<Batch>();batch->frames=std::move(frames);batch->frozenLayout=std::move(frozen);batch->reply=std::move(cb);QPointer<BudgieSourceAdapter> guard(this);const auto generation=generation_;std::weak_ptr<Batch> weak=batch;
  batch->next=[guard,batchWeak=weak,revision,limits,generation]{auto batch=batchWeak.lock();if(!batch)return;
   auto fail=[batch](Error error){auto cb=std::move(batch->reply);batch->next={};if(cb)cb({},error);};
   if(!guard||generation!=guard->generation_){fail({"cancelled","Desktop capture cancelled",{}});return;}
