@@ -19,6 +19,7 @@ EXACT_PATHS = frozenset({
     'tools/releases/build-appimage.sh', 'tools/releases/provision-appimage.py',
     'tools/releases/portable_appimage.py', 'tools/releases/appimage_notices.py',
     'tools/releases/appimage_update.py', 'tools/releases/appimage_diagnostics.py',
+    'tools/releases/http_retry.py',
     'tools/releases/appimage_complete_sources.py', 'tools/releases/audit_native.py',
     'tools/releases/audit_proton.py', 'tools/releases/release_identity.py',
 })
