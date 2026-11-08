@@ -136,6 +136,14 @@ if(BUILD_TESTING AND TARGET putgd_budgie)
     target_link_libraries(putgd-labwc-fixture PRIVATE putgd_build_options Qt6::Widgets LayerShellQt::Interface)
     add_dependencies(test_budgie_labwc putgd-labwc-fixture)
   endif()
+  if(TARGET putgd-record)
+    # The recorder's image-copy source on headless labwc: rotated outputs record upright (#1275 review).
+    # Here, after the test target exists (Recording.cmake is included first).
+    target_sources(test_budgie_labwc PRIVATE src/record/ImageCopySource.cpp src/record/DebugLog.cpp)
+    target_include_directories(test_budgie_labwc PRIVATE src "${protocol_dir}")
+    target_compile_definitions(test_budgie_labwc PRIVATE PUTGD_TEST_IMAGE_COPY_SOURCE=1)
+    target_link_libraries(test_budgie_labwc PRIVATE PkgConfig::PUTGD_GST PkgConfig::PUTGD_WAYLAND)
+  endif()
   add_test(NAME budgie_labwc_integration COMMAND dbus-run-session -- $<TARGET_FILE:test_budgie_labwc>)
   set_tests_properties(budgie_labwc_integration PROPERTIES TIMEOUT 120)
   # The labwc bridge's gsettings sequencing against a fake gsettings; needs no labwc.

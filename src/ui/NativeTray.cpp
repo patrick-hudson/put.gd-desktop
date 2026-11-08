@@ -284,7 +284,7 @@ private:
  QString iconDirectory_, iconName_;
  quint64 iconSerial_ = 0;
  void detectIconHost(quint64 generation);
- void writeNamedIcon();
+ bool writeNamedIcon();
 };
 
 namespace {
@@ -371,9 +371,10 @@ void NativeTrayPrivate::detectIconHost(quint64 generation) {
   // An upgraded package leaves the running service's exe as "... (deleted)".
   auto program = result.isError() ? QString{} : QFileInfo(QFile::symLinkTarget(QString("/proc/%1/exe").arg(result.value()))).fileName();
   if (program.endsWith(" (deleted)")) program.chop(int(qstrlen(" (deleted)")));
-  const bool named = program.endsWith("indicator-application-service");
+  // Without a file to name, keep the pixmap-only item rather than announce an empty name.
+  const bool named = program.endsWith("indicator-application-service") && (namedIcon_ || writeNamedIcon());
   if (named != namedIcon_) {
-   namedIcon_ = named; if (named) writeNamedIcon();
+   namedIcon_ = named;
    // Already registered with this host: tell it the icon changed.
    if (!registeredOwner_.isEmpty()) {
     const auto props = properties(false);
@@ -385,12 +386,12 @@ void NativeTrayPrivate::detectIconHost(quint64 generation) {
   queryHost(); registerItem();
  });
 }
-void NativeTrayPrivate::writeNamedIcon() {
+bool NativeTrayPrivate::writeNamedIcon() {
  if (iconDirectory_.isEmpty()) {
   const auto runtime = QStandardPaths::writableLocation(QStandardPaths::RuntimeLocation);
-  if (runtime.isEmpty()) return;
+  if (runtime.isEmpty()) return false;
   iconDirectory_ = runtime + "/putgd/tray";
-  if (!QDir().mkpath(iconDirectory_)) { iconDirectory_.clear(); return; }
+  if (!QDir().mkpath(iconDirectory_)) { iconDirectory_.clear(); return false; }
   QFile::setPermissions(iconDirectory_, QFile::ReadOwner | QFile::WriteOwner | QFile::ExeOwner);
  }
  const auto previous = iconName_.isEmpty() ? QString{} : iconDirectory_ + "/" + iconName_ + ".png";
@@ -398,10 +399,11 @@ void NativeTrayPrivate::writeNamedIcon() {
  // icon in the themes before it reads this unthemed file.
  const auto name = QString("putgd_tray_%1_%2").arg(QCoreApplication::applicationPid()).arg(++iconSerial_);
  QFile file(iconDirectory_ + "/" + name + ".png");
- if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate) || file.write(pngBytes(IconArt::liftTray({color_, percent_, recording_, glyph_}, 2))) < 0) return;
+ if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate) || file.write(pngBytes(IconArt::liftTray({color_, percent_, recording_, glyph_}, 2))) < 0) return false;
  file.close();
  iconName_ = name;
  if (!previous.isEmpty()) QFile::remove(previous);
+ return true;
 }
 void NativeTrayPrivate::hostChanged() { attempts_ = 0; queryHost(); registerItem(); }
 void NativeTrayPrivate::queryHost() {

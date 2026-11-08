@@ -9,11 +9,12 @@ namespace putgd {
 // (or the frame's transform event) says how that buffer was turned. Shared by the
 // resident's screenshots (ImageCopyCapture) and the recorder (ImageCopySource), so
 // both undo it the same way: turn by the transform's angle, then mirror a flipped
-// one (checked against grim for every transform in test_budgie_labwc).
+// one (test_budgie_labwc checks screenshots for 90, 180, 270, flipped and
+// flipped-90, and recordings for 90 and flipped-90).
 inline QImage waylandUpright(const QImage& image,uint32_t transform){
  if(transform==WL_OUTPUT_TRANSFORM_NORMAL||transform>WL_OUTPUT_TRANSFORM_FLIPPED_270)return image;
  QTransform turn;turn.rotate(90.0*(transform%4));
- auto out=(transform%4)?image.transformed(turn):image.copy();
+ auto out=(transform%4)?image.transformed(turn):image;  // mirrored() below makes the copy
  if(transform>=WL_OUTPUT_TRANSFORM_FLIPPED)out=out.mirrored(true,false);
  return out;
 }

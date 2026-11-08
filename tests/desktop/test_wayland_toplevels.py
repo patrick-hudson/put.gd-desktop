@@ -113,7 +113,10 @@ class ProbeWitnessTest(unittest.TestCase):
             old = os.environ.get('WAYLAND_DISPLAY')
             os.environ['WAYLAND_DISPLAY'] = path
             try:
+                # Prove the shipped source ran: the fallback import would put the module back.
+                sys.modules.pop('wayland_toplevels', None)
                 seen = probe.wayland_toplevel_windows({'kind': 'wayland-toplevels', 'witness_source': source})
+                self.assertNotIn('wayland_toplevels', sys.modules)
             finally:
                 if old is None:
                     os.environ.pop('WAYLAND_DISPLAY')

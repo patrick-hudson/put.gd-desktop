@@ -65,7 +65,7 @@ struct ImageCopyCapture::Impl:QObject {
  QMap<uint32_t,Output*> outputs;QList<ExtWindow*> extWindows;QList<WlrWindow*> wlrWindows;bool toplevelOverflow=false;
  QHash<quint64,Request*> requests;quint64 nextId=0;
  struct Freeze {Impl* owner=nullptr;wl_callback* callback=nullptr;std::function<void(Toplevel,Error)> reply;};QList<Freeze*> freezes;
- QList<QThread*> workers;QSet<quint64> turning;bool cancelling=false;
+ QList<QThread*> workers;QSet<quint64> turning;QHash<quint64,Error> turnedAway;bool cancelling=false;
  QSocketNotifier* readNotifier=nullptr;QSocketNotifier* writeNotifier=nullptr;QTimer reconnect;wl_callback* initialSync=nullptr;
  QString error="Image copy capture has not connected";bool connected=false,dispatching=false,lossPending=false,closing=false;
  explicit Impl(ImageCopyCapture& q):q(q){reconnect.setInterval(1000);connect(&reconnect,&QTimer::timeout,this,[this]{if(!display)open();});open();reconnect.start();}
@@ -211,8 +211,8 @@ struct ImageCopyCapture::Impl:QObject {
  void cancelAll(const Error& reason){
   cancelling=true;
   const auto pending=requests.values();for(auto* request:pending)finish(request,{},reason);
-  // Frames being turned upright answer cancelled when their worker ends.
-  turning.clear();
+  // Frames being turned upright answer with this reason (cancelled, or a lost connection) when their worker ends.
+  for(const auto id:turning)turnedAway.insert(id,reason);turning.clear();
   cancelling=false;
   for(auto* freeze:freezes){if(freeze->callback)wl_callback_destroy(freeze->callback);auto reply=std::move(freeze->reply);delete freeze;if(reply)reply({},reason);}freezes.clear();
  }
@@ -318,7 +318,7 @@ struct ImageCopyCapture::Impl:QObject {
   auto* worker=QThread::create([view=std::move(view),transform,result]{*result=waylandUpright(view,transform);});workers.append(worker);
   connect(worker,&QThread::finished,this,[this,worker,result,id,reply=std::move(reply)]{
    workers.removeOne(worker);worker->deleteLater();
-   if(!turning.remove(id)){reply({},{"cancelled","Image capture cancelled",{}});return;}
+   if(!turning.remove(id)){reply({},turnedAway.take(id));return;}
    if(result->isNull())reply({},{"capture_failed","Cannot turn the capture upright",{}});else reply(std::move(*result),{});});
   worker->start();
  }

@@ -43,7 +43,7 @@ struct ImageCopySource::Impl {
  // Shared with every slot: a buffer GStreamer releases after this source is
  // gone still finds its lock, and no wake descriptor.
  struct Shared {std::mutex lock;int wake=-1;};
- struct Slot {std::shared_ptr<Shared> shared;wl_buffer* buffer=nullptr;void* data=MAP_FAILED;size_t size=0;bool busy=false,retired=false;};
+ struct Slot {std::shared_ptr<Shared> shared;wl_buffer* buffer=nullptr;void* data=MAP_FAILED;size_t size=0;QSize dims;bool busy=false,retired=false;};
  std::shared_ptr<Shared> shared=std::make_shared<Shared>();
  wl_display* display=nullptr;wl_registry* registry=nullptr;wl_shm* shm=nullptr;
  ext_image_copy_capture_manager_v1* copy=nullptr;ext_output_image_capture_source_manager_v1* outputSources=nullptr;
@@ -178,7 +178,7 @@ struct ImageCopySource::Impl {
   for(int i=0;i<ringSize;++i){
    const int fd=int(::syscall(SYS_memfd_create,"putgd-record-frame",MFD_CLOEXEC));
    if(fd<0||ftruncate(fd,off_t(bytes))<0){if(fd>=0)::close(fd);return false;}
-   auto* slot=new Slot;slot->shared=shared;slot->size=bytes;slot->data=mmap(nullptr,bytes,PROT_READ|PROT_WRITE,MAP_SHARED,fd,0);
+   auto* slot=new Slot;slot->shared=shared;slot->size=bytes;slot->dims=size;slot->data=mmap(nullptr,bytes,PROT_READ|PROT_WRITE,MAP_SHARED,fd,0);
    if(slot->data==MAP_FAILED){::close(fd);delete slot;return false;}
    auto* pool=wl_shm_create_pool(shm,fd,int32_t(bytes));::close(fd);
    slot->buffer=wl_shm_pool_create_buffer(pool,0,size.width(),size.height(),stride,format);wl_shm_pool_destroy(pool);
@@ -230,11 +230,12 @@ struct ImageCopySource::Impl {
    buffer=gst_buffer_new_wrapped_full(GST_MEMORY_FLAG_READONLY,slot->data,slot->size,0,slot->size,slot,&Impl::release);
   }else{
    // A turned buffer is copied upright (as the screenshot path does) and its slot is free again at once.
-   const QImage view(static_cast<const uchar*>(slot->data),size.width(),size.height(),size.width()*4,QImage::Format_RGB32);
+   // The slot's own size: a newer constraint batch may already have changed `size` (review #1275).
+   const QImage view(static_cast<const uchar*>(slot->data),slot->dims.width(),slot->dims.height(),slot->dims.width()*4,QImage::Format_RGB32);
    auto* image=new QImage(waylandUpright(view,transform));
    buffer=gst_buffer_new_wrapped_full(GST_MEMORY_FLAG_READONLY,image->bits(),size_t(image->sizeInBytes()),0,size_t(image->sizeInBytes()),image,[](gpointer data){delete static_cast<QImage*>(data);});
   }
-  if(const auto upright=waylandUprightSize(size,transform);upright!=declared)setCaps(upright);
+  if(const auto upright=waylandUprightSize(slot->dims,transform);upright!=declared)setCaps(upright);
   const qint64 now=monotonicNs();
   GST_BUFFER_PTS(buffer)=GstClockTime(presentation>0&&presentation<=now?presentation:now);
   frames.fetch_add(1);

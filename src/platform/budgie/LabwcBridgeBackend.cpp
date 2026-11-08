@@ -246,8 +246,9 @@ void LabwcBridgeBackend::reread(){
  QString error;keybinds_=readKeybinds(rcPath_,&error);rcError_=error;
  // A conflict lasts only while its owner still holds the key (another put.gd action that moved, or
  // a binding changed in Control Center); once the key is free this action is written.
+ // An unreadable rc.xml says nothing about the owner: keep the conflict until a read succeeds.
  bool freed=false;
- for(auto it=conflicts_.begin();it!=conflicts_.end();){
+ if(rcError_.isEmpty())for(auto it=conflicts_.begin();it!=conflicts_.end();){
   const auto key=normalizedLabwcKey(it.value()["key"].toString());const auto self=ownPrefix+it.key();bool held=false;
   for(const auto& keybind:keybinds_)if(keybind.bridge!=self&&normalizedLabwcKey(keybind.key)==key)held=true;
   if(held)++it;else{it=conflicts_.erase(it);freed=true;}
