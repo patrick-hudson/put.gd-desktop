@@ -63,6 +63,9 @@ SetupStatus runExtensionSetup(const SetupInputs&);
 // Removes a put.gd-owned user copy (exact files, then the directory) and its
 // enabled-extensions entry. Never touches a copy put.gd didn't install.
 SetupStatus removeOwnedUserCopy(const SetupInputs&);
+// What the setup APIs and the notice report: the last run's result combined with
+// what the Shell has loaded. Pure, so every combination is testable without a Shell.
+SetupStatus reportedSetup(const SetupStatus& last,bool helperReady,int loadedVersion,int packagedVersion);
 // The real environment: host paths, the host's gsettings and the session bus.
 // Blocking (it reads the systemd user session's environment), so a worker's job.
 SetupInputs defaultSetupInputs();
