@@ -78,7 +78,7 @@ private:
  void catchEarlyPress(const QList<CaptureFrame>&);
  // Esc or a right click on the catcher before the selector started: the region
  // acquisition already on its way must not open one afterwards.
- bool earlyCancelPending()const{return earlyCancel_.isValid()&&earlyCancel_.elapsed()<3000;}
+ bool takeEarlyCancel(){const bool pending=earlyCancel_.isValid()&&earlyCancel_.elapsed()<3000;earlyCancel_.invalidate();return pending;}
  WaylandOutputs outputs_;WaylandRegionProcess region_;
  QList<QThread*> workers_;quint64 generation_=0;
 };

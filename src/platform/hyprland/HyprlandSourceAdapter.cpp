@@ -45,7 +45,8 @@ HyprlandSourceAdapter::HyprlandSourceAdapter(QObject* parent):QObject(parent),sh
  connect(&catcher_,&PressCatcher::pointer,this,[this](int kind,QPointF logical){
   if(kind==PressCatcher::Cancel){
    catcher_.stop();
-   if(region_.busy())region_.cancel();else{cancelAcquisition();earlyCancel_.start();}
+   // Not cancelAcquisition(): a clipboard import in flight is not part of this.
+   if(region_.busy())region_.cancel();else{++generation_;capture_.cancel();earlyCancel_.start();}
    return;
   }
   region_.relayPointer(kind==PressCatcher::Press?QStringLiteral("press"):kind==PressCatcher::Move?QStringLiteral("move"):QStringLiteral("release"),logical);
@@ -171,7 +172,7 @@ QJsonObject HyprlandSourceAdapter::capabilities()const{
 SourceAdapter::PreparedAcquisition HyprlandSourceAdapter::prepareAcquisition(const QString& action){
  QPointer<HyprlandSourceAdapter> guard(this);
  if(action=="clipboard"){const auto revision=clipboard_.revision();return [guard,revision](const ResourceLimits& limits,std::function<void(PayloadResult)> cb){if(guard)guard->clipboard_.acquire(limits,std::move(cb),revision);else cb({{},{"source_unavailable","Desktop adapter closed",{}}});};}
- if(action=="region"&&earlyCancelPending()){earlyCancel_.invalidate();return [](const ResourceLimits&,std::function<void(PayloadResult)> cb){cb({{},{"cancelled","Region selection cancelled",{}}});};}
+ if(action=="region"&&takeEarlyCancel())return [](const ResourceLimits&,std::function<void(PayloadResult)> cb){cb({{},{"cancelled","Region selection cancelled",{}}});};
  if(action=="window"){
   if(region_.cleanupRequired())return [](const ResourceLimits&,std::function<void(PayloadResult)> cb){cb({{},{"capture_cleanup_pending",cleanupMessage,{}}});};
   if(region_.busy())return [](const ResourceLimits&,std::function<void(PayloadResult)> cb){cb({{},{"busy_selecting","Region selection is already active",{}}});};
@@ -199,11 +200,17 @@ SourceAdapter::PreparedAcquisition HyprlandSourceAdapter::prepareAcquisition(con
  return [guard,action,frozen,revision,outcome=captureOutcome_,screenshot=action=="region"&&regionScreenshotFirst_](const ResourceLimits& limits,std::function<void(PayloadResult)> cb){if(!guard){cb({{},{"source_unavailable","Desktop adapter closed",{}}});return;}guard->capture(action,frozen,revision,limits,std::move(cb),outcome,screenshot);};
 }
 SourceAdapter::PreparedAcquisition HyprlandSourceAdapter::prepareAcquisition(const QString& action,const ResourceLimits& acceptedLimits,std::function<void(Error)> terminal,std::function<void()> released){
+ if(action=="region"&&takeEarlyCancel()){
+  const Error cancelled{"cancelled","Region selection cancelled",{}};
+  if(terminal)terminal(cancelled);
+  if(released)released();
+  return [cancelled](const ResourceLimits&,std::function<void(PayloadResult)> cb){cb({{},cancelled});};
+ }
 #if defined(PUTGD_HAVE_LAYER_SHELL) && QT_VERSION >= QT_VERSION_CHECK(6,5,0)
  // A live selection shows before the journal saves; its pixels still wait.
  const auto frozen=action=="region"&&!regionScreenshotFirst_?layout():QList<CaptureFrame>{};
  const auto revision=outputs_.revision();
- if(!frozen.isEmpty()&&!region_.busy()&&!region_.cleanupRequired()&&!earlyCancelPending()&&unchanged(frozen,revision)){
+ if(!frozen.isEmpty()&&!region_.busy()&&!region_.cleanupRequired()&&unchanged(frozen,revision)){
   QPointer<HyprlandSourceAdapter> guard(this);const auto generation=generation_;
   catchEarlyPress(frozen);
   auto ticket=region_.prepare(frozen,captureOutcome_,captureAppearance_,std::move(terminal),std::move(released));
@@ -228,6 +235,8 @@ SourceAdapter::PreparedAcquisition HyprlandSourceAdapter::prepareAcquisition(con
 void HyprlandSourceAdapter::acquire(const QString& action,const ResourceLimits& limits,std::function<void(PayloadResult)> cb){prepareAcquisition(action)(limits,std::move(cb));}
 void HyprlandSourceAdapter::capture(QString action,QList<CaptureFrame> frozen,quint64 revision,ResourceLimits limits,std::function<void(PayloadResult)> cb,const QString& outcome,bool screenshotFirst){
  if(action!="region"&&action!="desktop"){cb({{},{"source_unsupported","Unknown capture action",{}}});return;}
+ // Cancelled on the catcher while this operation was still being accepted.
+ if(action=="region"&&takeEarlyCancel()){cb({{},{"cancelled","Region selection cancelled",{}}});return;}
  if(region_.cleanupRequired()){cb({{},{"capture_cleanup_pending",cleanupMessage,{}}});return;}
 #if !defined(PUTGD_HAVE_LAYER_SHELL) || QT_VERSION < QT_VERSION_CHECK(6,5,0)
  if(action=="region"){cb({{},{"region_unavailable","Native region selection requires current distro per-window LayerShellQt",{}}});return;}
