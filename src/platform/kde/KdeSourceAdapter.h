@@ -6,10 +6,13 @@
 #include "KdeRegionOverlay.h"
 #include "KdeOutputs.h"
 #include "KdeRegionProcess.h"
+#include "KWinWindows.h"
+#include "core/RecordingWindows.h"
 #include <QPointer>
 #include <QThread>
 namespace putgd {
-class KdeSourceAdapter final:public QObject,public SourceAdapter {
+// Also the window list for window recordings (KWin window UUIDs).
+class KdeSourceAdapter final:public QObject,public SourceAdapter,public RecordingWindows {
  Q_OBJECT
 public:
  explicit KdeSourceAdapter(QObject* parent=nullptr);
@@ -29,6 +32,9 @@ public:
  void bindShortcuts(const QHash<QString,QString>&);
  void setUiProcess(qint64 pid) override {uiProcess_=pid>0?pid:0;}
  void setResourceLimits(const ResourceLimits& limits){limits_=limits;}
+ // put.gd's own windows are left out as for window capture: the resident, the
+ // processes it started (views, editor, recording helper) and the putgd-ui app ID.
+ void listWindows(RecordingWindows::Reply) override;
 signals:
  void actionRequested(const QString&);void capabilitiesChanged();
 private:
@@ -46,7 +52,7 @@ private:
  qint64 uiProcess_=0;
  bool core_=false;
  KWinCapture capture_;DataControlClipboard clipboard_;KdeShortcuts shortcuts_;
- KdeOutputs outputs_;KdeRegionProcess region_;
+ KdeOutputs outputs_;KdeRegionProcess region_;KWinWindows windows_;
  QPointer<KdeRegionOverlay> overlay_;QList<QThread*> workers_;quint64 generation_=0;
 };
 }

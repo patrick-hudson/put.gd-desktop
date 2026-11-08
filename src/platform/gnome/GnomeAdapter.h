@@ -7,8 +7,9 @@
 #include <QPointer>
 #include <QTimer>
 namespace putgd {
-// Also the recording shell: the extension's selector, frame actors and bar placement.
-class GnomeAdapter final:public QObject,public SourceAdapter,public RecordingShell {
+// Also the recording shell: the extension's selector, frame actors and bar
+// placement; and the window list for window recordings (Mutter's window ids).
+class GnomeAdapter final:public QObject,public SourceAdapter,public RecordingShell,public RecordingWindows {
  Q_OBJECT
 public:
  explicit GnomeAdapter(QObject* parent=nullptr);
@@ -35,6 +36,8 @@ public:
  void cancelSelection() override;
  void showFrame(const QJsonObject&,RecordingShell::Reply) override;
  void hideFrame() override;
+ // Recording protocol 2: the extension's RecordingWindows, without put.gd's own.
+ void listWindows(RecordingWindows::Reply) override;
 signals:
  void actionRequested(const QString&);
  void capabilitiesChanged();

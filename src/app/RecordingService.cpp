@@ -101,7 +101,9 @@ QJsonObject RecordingService::capabilities() const {
     result["editCommands"] = QJsonArray{"setTrim", "resetTrim", "addMask", "updateMask", "removeMask"};
     result["limits"] = QJsonObject{{"animationMaxUs", double(limit.animationMaxUs)}, {"animationMaxEdge", limit.animationMaxEdge},
         {"maxFileBytes", double(settings.limits.maxFileBytes)}, {"maxMasks", recording::maximumMasks}};
-    result["commands"] = QJsonArray{"prepare", "start", "pause", "resume", "stop", "cancel", "inspect", "select", "raise", "overlay", "edit", "preview", "review", "saveCopy", "upload"};
+    result["commands"] = QJsonArray{"windows", "prepare", "start", "pause", "resume", "stop", "cancel", "inspect", "select", "raise", "overlay", "edit", "preview", "review", "saveCopy", "upload"};
+    // recording.windows lists the identities a window target takes (KDE, GNOME Wayland).
+    result["windowList"] = windows_ != nullptr;
     return result;
 }
 QJsonObject RecordingService::publicJson(const Session& s) const {
@@ -114,6 +116,7 @@ QJsonObject RecordingService::publicJson(const Session& s) const {
     if (s.overlayExcluded) o["overlayExcluded"] = *s.overlayExcluded;
     if (!s.overlayPlacement.isEmpty()) o["overlayPlacement"] = s.overlayPlacement;
     o["selecting"] = !s.selector.isEmpty();
+    if (!s.target.window.isEmpty()) o["window"] = s.target.window;
     if (!s.stopReason.isEmpty()) o["stopReason"] = s.stopReason;
     if (!s.stopDetails.isEmpty()) o["stopDetails"] = s.stopDetails;
     return o;
@@ -331,6 +334,15 @@ void RecordingService::command(const QString& command, const QJsonObject& params
     if (stopping_) { reply({"session_unavailable", "The resident is shutting down", {}}, {}); return; }
     QPointer<RecordingService> self(this);
     if (command == "capabilities") { backend_->refreshCapabilities([self, reply] { if (self && !self->stopping_) reply({}, self->capabilities()); }); return; }
+    if (command == "windows") {
+        if (!windows_) { reply({"recording_unsupported", "This desktop does not list windows for recording; a window target without an identity records the focused window", {}}, {}); return; }
+        windows_->listWindows([self, reply](Error error, QJsonObject result) {
+            if (!self || self->stopping_) return;
+            if (error) { reply(error, {}); return; }
+            reply({}, {{"windows", result["windows"].toArray()}, {"activeExcluded", result["activeExcluded"].toBool()}});
+        });
+        return;
+    }
     if (command == "prepare") {
         // The helper probe is lazy; make it current before judging support.
         auto probed = std::make_shared<bool>(false);
@@ -407,8 +419,41 @@ void RecordingService::prepareSession(const QJsonObject& params, JsonReply reply
         });
     }
 }
+void RecordingService::resolveWindow(quint64 generation) {
+    windows_->listWindows(marshal(generation, [this](Error error, QJsonObject result) {
+        auto& s = *session_;
+        if (s.state != "preparing") return;
+        if (error) {
+            // An integration loaded before an upgrade must be reloaded (#131); one
+            // that is off or missing leaves the window to the portal's picker.
+            if (error.code == "helper_outdated") { fail(error); return; }
+            logging::warning(logRecording(), "Recording a window through the portal picker", {{"operationId", s.op.id}, {"error", error.toJson()}});
+            prepareBackend(s.generation);
+            return;
+        }
+        QJsonObject chosen;
+        for (const auto& value : result["windows"].toArray()) {
+            const auto window = value.toObject();
+            if (s.target.identity.isEmpty() ? window["active"].toBool() : window["identity"].toString() == s.target.identity) { chosen = window; break; }
+        }
+        if (chosen.isEmpty()) {
+            if (!s.target.identity.isEmpty()) { fail({"recording_target", "No external window has this identity; recording.windows lists them", {{"identity", s.target.identity}}}); return; }
+            fail({"recording_target", result["activeExcluded"].toBool() ? "put.gd's own windows are not recorded; focus another window or pass its identity from recording.windows"
+                                                                         : "No external window has focus; focus one or pass its identity from recording.windows",
+                  {{"reason", result["activeExcluded"].toBool() ? "own_window" : "no_active_window"}}});
+            return;
+        }
+        s.target.identity = chosen["identity"].toString();
+        s.target.window = QJsonObject{{"identity", s.target.identity}, {"title", chosen["title"].toString()}, {"appId", chosen["appId"].toString()}, {"rect", chosen["rect"].toArray()}};
+        logging::info(logRecording(), "Recording window resolved", {{"operationId", s.op.id}, {"identity", s.target.identity}, {"appId", chosen["appId"].toString()}, {"elapsedMs", s.clock.elapsed()}});
+        host_.observe(s.op);
+        emit changed(s.op.id);
+        prepareBackend(s.generation);
+    }));
+}
 void RecordingService::beginPrepare(quint64 generation) {
     auto& s = *session_;
+    if (s.target.kind == "window" && windows_) { resolveWindow(generation); return; }
     // A region without a rectangle is chosen by the shell where the helper
     // cannot show a selector (GNOME); the helper then streams just that area.
     // A shell that cannot select and knows why (an extension that is off, or
