@@ -1160,7 +1160,7 @@ def parse_notifications(text,since=0):
             values = strings(block)
             integers = re.findall(r'^\s*uint32 (\d+)',block,re.M)
             serial = re.search(r'\bserial=(\d+)',block)
-            if len(values)>=4 and values[0]=='put.gd' and serial and sender:
+            if len(values)>=4 and values[0] in ('put.gd','putgd') and serial and sender:
                 actions = re.search(r'array \[\s*(.*?)\s*\]',block,re.S)
                 action_strings = strings(actions[1]) if actions else []
                 timeout = re.findall(r'^\s*int32 (-?\d+)',block,re.M)

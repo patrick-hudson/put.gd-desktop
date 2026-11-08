@@ -2258,7 +2258,8 @@ class NotificationFilter:
         if header.startswith('method call') and 'member=Notify' in header:
             serial = re.search(r'\bserial=(\d+)', header)
             app = re.search(r'^\s*string "((?:[^"\\]|\\.)*)"', block, re.M)
-            if serial and sender and app and app[1] == 'put.gd' and self.sender_owned(sender):
+            # NativeTray uses put.gd; the QApplication tray uses its applicationName, putgd.
+            if serial and sender and app and app[1] in ('put.gd', 'putgd') and self.sender_owned(sender):
                 if len(self.pending) >= 256:
                     self.pending.pop(next(iter(self.pending)))
                 self.pending[(sender, serial[1])] = True
@@ -2386,7 +2387,8 @@ def notification_monitor(query):
                 owners[sender] = False
         return owners[sender]
     keeper = NotificationFilter(query['server'], sender_owned)
-    rules = ["type='method_call',interface='" + NOTIFY_INTERFACE + "',member='Notify',arg0='put.gd'",
+    rules = [*("type='method_call',interface='" + NOTIFY_INTERFACE + "',member='Notify',arg0='" + app + "'"
+               for app in ('put.gd', 'putgd')),
              "type='method_return',sender='" + query['server'] + "'",
              "type='signal',interface='" + NOTIFY_INTERFACE + "',sender='" + query['server'] + "'"]
     child = subprocess.Popen(['dbus-monitor', '--session', *rules], stdout=subprocess.PIPE,

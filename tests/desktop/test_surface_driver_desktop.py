@@ -243,6 +243,17 @@ class NotificationPrivacy(unittest.TestCase):
         rows=parse_notifications(text)
         self.assertEqual([(r['id'],r['summary'],[e['action'] for e in r['action_events']]) for r in rows],[(5,'Done',['default'])])
 
+    def test_widget_tray_application_name_keeps_private_ownership_and_correlation(self):
+        from tools.lab.surface_driver.context import parse_notifications
+        for block in (notify(':1.77',3,app='putgd'),reply(':1.77',3,9),signal('ActionInvoked',9),
+                      notify(':1.42',4,app='putgd helper')):
+            self.assertFalse(self.filter.keep(block),block)
+        text=''.join(b for b in (notify(':1.42',7,app='putgd'),reply(':1.42',7,5),signal('ActionInvoked',5))
+                     if self.filter.keep(b))
+        rows=parse_notifications(text)
+        self.assertEqual([(r['id'],r['summary'],[e['action'] for e in r['action_events']]) for r in rows],
+                         [(5,'Done',['default'])])
+
     def test_reader_reports_a_dead_monitor_and_reads_memory_over_a_private_socket(self):
         import os,socket,threading
         with tempfile.TemporaryDirectory() as directory:
