@@ -3,11 +3,10 @@
 
 Callers verify the result against a pinned SHA-256, so retrying cannot change
 what is accepted. Permanent failures, such as a 404 or a bad certificate, fail
-at once. No new attempt starts after DEADLINE_SECONDS, which keeps a long outage
-inside the calling job's timeout.
+at once. No new attempt starts after DEADLINE_SECONDS and no transfer runs longer
+than TRANSFER_SECONDS, which keeps a long outage inside the calling job's timeout.
 """
 import http.client
-import shutil
 import ssl
 import sys
 import time
@@ -17,12 +16,28 @@ import urllib.request
 ATTEMPTS = 20
 DELAY_SECONDS = 15
 DEADLINE_SECONDS = 420
-RETRYABLE_STATUS = {408, 425, 429, 500, 502, 503, 504}
+TRANSFER_SECONDS = 300
+CHUNK_BYTES = 1 << 20
+RETRYABLE_4XX = {408, 425, 429}
 TRANSIENT = (urllib.error.URLError, TimeoutError, ConnectionError, http.client.IncompleteRead, http.client.BadStatusLine)
 
 
 def _permanent(error):
     return isinstance(getattr(error, 'reason', None), ssl.SSLCertVerificationError)
+
+
+def _retryable_status(code):
+    return code in RETRYABLE_4XX or 500 <= code < 600
+
+
+def _copy(response, output, clock):
+    """Copy one response, stopping a transfer that outlasts its limit even while data trickles in."""
+    limit = clock() + TRANSFER_SECONDS
+    # read1 returns after one receive, so the limit is checked between small reads.
+    while chunk := response.read1(CHUNK_BYTES):
+        output.write(chunk)
+        if clock() >= limit:
+            raise TimeoutError(f'transfer exceeded {TRANSFER_SECONDS} s')
 
 
 def download(request, target, timeout, *, opener=urllib.request.urlopen, sleep=time.sleep, clock=time.monotonic):
@@ -31,10 +46,10 @@ def download(request, target, timeout, *, opener=urllib.request.urlopen, sleep=t
     for attempt in range(1, ATTEMPTS + 1):
         try:
             with opener(request, timeout=timeout) as response, open(target, 'wb') as output:
-                shutil.copyfileobj(response, output)
+                _copy(response, output, clock)
             return
         except urllib.error.HTTPError as error:
-            if error.code not in RETRYABLE_STATUS or attempt == ATTEMPTS or clock() >= give_up:
+            if not _retryable_status(error.code) or attempt == ATTEMPTS or clock() >= give_up:
                 raise
             reason = f'HTTP {error.code}'
             last_error = error
