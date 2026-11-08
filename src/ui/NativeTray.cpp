@@ -278,8 +278,8 @@ private:
  bool hostPresent_ = false, available_ = false, registrationInFlight_ = false;
  bool ownerKnown_ = false, hostKnown_ = false, registrationSettled_ = false, availabilityKnown_ = false;
  // Ayatana's and Canonical's indicator-application-service ignore IconPixmap (#1294; Ubuntu Budgie 26.04's
- // default tray applet), so for them the icon is also a PNG file named by IconName in IconThemePath, the way
- // Qt's own tray icon does it. A new file per change, because those hosts cache an icon by name.
+ // default tray applet), so for them the icon is also a PNG file, its absolute path in IconName.
+ // A new file per change, because those hosts cache an icon by name.
  bool namedIcon_ = false, detecting_ = false;
  QString iconDirectory_, iconName_;
  QStringList iconFiles_;
@@ -557,8 +557,10 @@ void NativeTrayPrivate::setActivity(const QColor& color,const QString& descripti
 QVariantMap NativeTrayPrivate::properties(bool menu) const {
  if (menu) return {{"Version", uint(3)}, {"TextDirection", "ltr"}, {"Status", "normal"}, {"IconThemePath", QStringList{}}};
  return {{"Category", "ApplicationStatus"}, {"Id", "putgd"}, {"Title", "put.gd"}, {"Status", "Active"}, {"WindowId", 0},
-  {"IconThemePath", namedIcon_ ? iconDirectory_ : QString{}}, {"Menu", QVariant::fromValue(QDBusObjectPath("/Menu"))}, {"ItemIsMenu", false},
-  {"IconName", namedIcon_ ? iconName_ : QString{}}, {"IconPixmap", QVariant::fromValue(icons_)},
+  {"IconThemePath", QString{}}, {"Menu", QVariant::fromValue(QDBusObjectPath("/Menu"))}, {"ItemIsMenu", false},
+  // The file's absolute path, not a name in a theme path: GTK re-reads a search path only every few
+  // seconds, so a host looking up a just-written name draws the missing-icon glyph (#1294).
+  {"IconName", namedIcon_ ? iconDirectory_ + "/" + iconName_ + ".png" : QString{}}, {"IconPixmap", QVariant::fromValue(icons_)},
   {"OverlayIconName", ""}, {"OverlayIconPixmap", QVariant::fromValue(NativeImages{})},
   {"AttentionIconName", ""}, {"AttentionIconPixmap", QVariant::fromValue(NativeImages{})}, {"AttentionMovieName", ""},
   {"ToolTip", QVariant::fromValue(NativeTooltip{"", {}, activityTitle_, activityText_})}};
