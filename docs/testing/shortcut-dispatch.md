@@ -134,7 +134,7 @@ shows no line.
 The `kde_shortcut_normalization` unit suite checks symbols and consumed modifiers
 across synthetic US/French layouts and Latin-1 shifted symbols such as £, § and ·,
 plus one-level `$`, keypad `(` and `<>`-key copies. `shortcut_keyboard` checks the
-recorder's unshifted-key choice on US, French and German fixture maps. `kde_keyboard_map` checks malformed, truncated,
+recorder's unshifted-key choice on US, French and German fixture maps. `wayland_keyboard_map` checks malformed, truncated,
 unsupported and oversized maps and descriptor cleanup. `kde_shortcuts_integration`
 uses a disposable D-Bus fixture to check registration, layout changes, conflicts
 and lifecycle races, including a layout change while the initial event-subscription

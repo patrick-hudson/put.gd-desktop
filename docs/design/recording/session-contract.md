@@ -32,7 +32,7 @@ All methods go through `putgd-cli` unchanged. `id` is the recording ID.
 | Method | Params | Result / effect |
 | --- | --- | --- |
 | `recording.capabilities` | | availability and reason, target kinds, formats, codecs per format, audio sources, `active` recording ID, limits, `timeUnit`; no capture, no prompt |
-| `recording.windows` | | KDE Plasma and GNOME Wayland: the windows a `window` target can follow, `windows [{identity, title, appId, rect, active, minimized}]` and `activeExcluded` (the focused window is put.gd's own); put.gd's windows are never listed. `recording_unsupported` elsewhere, `helper_outdated` while an older GNOME extension is loaded ([Window recordings](wayland.md#window-recordings)); no capture, no prompt |
+| `recording.windows` | | KDE Plasma, GNOME Wayland and Budgie (labwc 0.20+, Magpie on Mir 2.29+; ext toplevel identifiers, `rect` empty): the windows a `window` target can follow, `windows [{identity, title, appId, rect, active, minimized}]` and `activeExcluded` (the focused window is put.gd's own); put.gd's windows are never listed. `recording_unsupported` elsewhere, `helper_outdated` while an older GNOME extension is loaded ([Window recordings](wayland.md#window-recordings)); no capture, no prompt |
 | `recording.prepare` | `target {kind: monitor\|desktop\|region\|window, identity?, rect?}`, `format mp4\|webm\|gif\|webp`, `codec?`, `fps? (1–60; omitted: preferences.recordingFrameRate)`, `adaptiveFps? (boolean, default true)`, `audio? {system?, microphone?}`, `maxEdge?` | durable intent, then ready bounds/controls and any OS consent; replies at once with `state: preparing`; poll `inspect` for `ready`. A region without `rect` opens the desktop's selector (Escape cancels; `inspect` shows `selecting: true`); the chosen bounds appear in `inspect` as `target.rect`, and `overlayExcluded` / `overlayPlacement` say whether the control bar stayed out of the recorded pixels. Refused with `disk_space_insufficient` (details `freeBytes`, `reserveBytes`, `availableBytes`, `requiredBytes`, `shortfallBytes`, `hint`) before anything is accepted when free disk above the reserve can't hold three 64 MiB budgets (#213) |
 | `recording.select` | `{id, rect: [x, y, w, h]}` | completes an open region selector with that rectangle as a drag would (X11 root pixels, logical desktop pixels on Wayland); `recording_state` when no selector is open |
 | `recording.start` / `pause` / `resume` / `stop` | `{id}` | acknowledged once the backend reached the state; a duplicate of the in-flight command returns the current state, a different one is `recording_busy`; an acknowledged user `stop` returns `durationUs` and `stopReason: user` and enters `reviewing`, including when stopped through CLI, MCP or the toggle shortcut. A `stop` that arrives after the helper stopped on its own (its budget) answers with the existing `reviewing` state and preserves `stopReason: budget` and `stopDetails`, like a duplicate stop |
@@ -82,9 +82,16 @@ GIF/WebP (`invalid_request`); `audio.microphone` is reserved and refused
 `recording_unsupported`, `recording_active`, `recording_state`,
 `recording_busy`, `recording_stale`, `recording_mask_unknown`,
 `region_unavailable` (a Wayland desktop without a region selector),
+`wlr_capture_unavailable` (Budgie: a missing image-copy global or a failed connection, named in the message),
 `recording_animation_too_long`, `recording_animation_too_large`,
 `recording_export_failed`, `file_exists`, plus the shared `invalid_request`,
 `queue_full`, `busy_selecting`, `editor_active` and `output_required`.
+
+Once `cancel` answers, `capabilities.active` is null, but the previous
+`putgd-record` can take up to its stop deadline (2 s) to exit. A `prepare` in
+that window waits for the exit and then starts, instead of failing with
+`recording_active`. Only one prepare waits; cancelling it first means it never
+starts a helper ([#1296](https://github.com/patrick-hudson/put.gd-desktop/issues/1296)).
 
 ## Settings
 

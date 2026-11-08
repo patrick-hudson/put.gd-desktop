@@ -122,7 +122,7 @@ and package acceptance are described in the release workflow documentation.
 ## Packages and ordering
 
 CPack and `cmake --install` use the built manifest and check `putgd`, `putgd-cli`
-and `putgd-ui`, plus `putgd-kde-region` when that target is built, before installing
+and `putgd-ui`, plus `putgd-region` when that target is built, before installing
 files. They compare both the printable version and the full embedded manifest,
 so a reused release label cannot hide executables compiled from different commits.
 The selector identity commands also work without a display.

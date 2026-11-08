@@ -14,7 +14,7 @@ The production registry contains S3, Backblaze B2 and Proton Drive. Shared core,
 GUI, history and platform contracts are provider-neutral; AWS headers stay under
 `src/storage/s3/`.
 
-Cinnamon/X11, GNOME Wayland and KDE Wayland use `QCoreApplication` residents.
+Cinnamon/X11, GNOME Wayland, KDE Wayland and Budgie Wayland use `QCoreApplication` residents.
 `src/platform/NativeSession.h` guards routing before application construction;
 the adapters independently verify their native connections and capabilities.
 Other or ambiguous routes retain a `QApplication` fallback, including GNOME/X11
@@ -26,7 +26,8 @@ QtGui remains linked for image and key-sequence support on Core routes.
 | --- | --- | --- |
 | Cinnamon/X11 | Native XCB shortcuts, target/layout snapshots and `X11Clipboard`; session-bus tray | `putgd-capture` selects and captures against the frozen target |
 | GNOME Wayland | `GnomeAdapter` authenticates the GNOME Shell bridge over the session bus; the extension owns Shell selection, capture, shortcuts and clipboard MIME transfer | Shell actors provide selection; `putgd-ui` provides application windows |
-| KDE Wayland | Independent native Wayland output/data-control connections, KGlobalAccel and KWin ScreenShot2; session-bus tray | `putgd-kde-region` provides the LayerShellQt selector; KWin pixel capture stays in the resident, preserving executable authorization |
+| KDE Wayland | Independent native Wayland output/data-control connections, KGlobalAccel and KWin ScreenShot2; session-bus tray | `putgd-region` provides the LayerShellQt selector; KWin pixel capture stays in the resident, preserving executable authorization |
+| Budgie Wayland (labwc, Magpie) | Independent native Wayland output/data-control/ext-image-copy-capture connections; the labwc bridge or GlobalShortcuts portal for shortcuts; session-bus tray | `putgd-region` provides the LayerShellQt selector; screenshots stay in the resident, recordings copy frames in `putgd-record` ([Budgie](../desktops/budgie.md)) |
 
 Targets and display layouts are frozen at invocation. A later focus change never
 retargets a window capture. Layout changes invalidate acquisition; app-owned

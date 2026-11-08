@@ -8,6 +8,8 @@ filenames, history URLs, authorization values or credential references.
 |---|---|
 | `output_required` | Choose an upload destination or enable Keep a local copy in General; neither output is currently enabled |
 | `source_unsupported` | Inspect native support and choose an available source |
+| `window_unavailable` | This compositor offers no window capture; the message names the missing protocol (on Budgie, labwc 0.20 or later and Mir 2.29 or later have it). Capture a region or the desktop instead |
+| `wlr_capture_unavailable` | This Budgie session cannot record: the compositor does not offer the Wayland protocol the message names, or the connection to it failed. Update the compositor, or restart the session if the connection failed |
 | `busy_selecting` | Finish or cancel that interactive selection |
 | `queue_full`, `input_excessive` | Finish queued work or adjust documented resource limits |
 | `disk_space_insufficient` | Free up space in put.gd's data folder and try again (the details give `freeBytes`, `reserveBytes` and what was needed; a recording also gives `shortfallBytes`): an import needs its bytes, and a recording three 64 MiB budgets, above the system reserve. Nothing was accepted |
