@@ -7,6 +7,7 @@
 #include "KdeScreencast.h"
 #endif
 #include "RecordingPipeline.h"
+#include "ImageCopySource.h"
 #include "ReviewWindow.h"
 #include "X11Targets.h"
 #include "core/RecordingModel.h"
@@ -18,7 +19,7 @@
 #include <functional>
 #include <memory>
 
-namespace putgd { class KdeRegionOverlay; }
+namespace putgd { class LayerShellRegionOverlay; }
 namespace putgd::record {
 // The helper's view of one recording session: resolves the target (after a
 // drag selection when a region has no rectangle), shows the ready bounds,
@@ -49,6 +50,8 @@ private:
     // Wayland: share through the portal picker, then continue like X11 with the stream as the target.
     void preparePortal(Reply);
     void prepareNative(Reply);
+    // wlr-capture: ext-image-copy-capture frames into appsrc, no portal and no chooser.
+    void prepareImageCopy(Reply);
     void finishWayland(quint32 node, int fd, const QRect& shared, const QRect& streamRect, const QString& source, Reply);
     // A window target: the compositor ended the stream (the window closed).
     void targetLost();
@@ -93,13 +96,15 @@ private:
     quint32 portalNode_ = 0;
     QRect portalCrop_;
     bool portalTarget_ = false;
+    std::unique_ptr<ImageCopySource> imageCopy_;
+    QSize imageCopySize_;
     // A window target resolved by the resident: {rect: logical frame [x,y,w,h], title}.
     QJsonObject window_;
     bool targetClosed_ = false;
     int sourceReopens_ = 0;
     QTimer progress_, barTimer_;
     SelectionOverlay* selection_ = nullptr;
-    KdeRegionOverlay* kdeSelection_ = nullptr;
+    LayerShellRegionOverlay* kdeSelection_ = nullptr;
     BoundsOverlay bounds_;
     ControlBar* bar_ = nullptr;
     ReviewWindow* review_ = nullptr;

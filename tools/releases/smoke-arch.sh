@@ -12,7 +12,7 @@ pacman -Qkk putgd
 pacman -Ql putgd
 pacman -Qi putgd
 putgd-cli --version
-for binary in /usr/bin/putgd /usr/bin/putgd-cli /usr/bin/putgd-ui /usr/bin/putgd-record /usr/bin/putgd-kde-region; do
+for binary in /usr/bin/putgd /usr/bin/putgd-cli /usr/bin/putgd-ui /usr/bin/putgd-record /usr/bin/putgd-region; do
   test -x "$binary"
   if ldd "$binary" | grep 'not found'; then exit 1; fi
 done

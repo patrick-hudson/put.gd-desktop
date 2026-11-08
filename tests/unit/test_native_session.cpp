@@ -104,6 +104,37 @@ private slots:
   QList<const char*> argv;for(const auto& argument:storage)argv.append(argument.constData());
   QCOMPARE(putgd::kdeCoreSessionArguments(static_cast<int>(argv.size()),argv.constData()),expected);
  }
+ // Budgie (#1275): the Budgie token routes, Budgie beats GNOME and KDE, bare
+ // labwc stays unavailable, and startbudgielabwc's "wayland;xcb" is accepted.
+ void budgieRouting_data(){
+  QTest::addColumn<QByteArray>("type");QTest::addColumn<QByteArray>("wayland");QTest::addColumn<QByteArray>("desktop");QTest::addColumn<QByteArray>("platform");
+  QTest::addColumn<bool>("budgie");QTest::addColumn<bool>("gnome");QTest::addColumn<bool>("kde");
+  QTest::newRow("Budgie")<<QByteArray("wayland")<<QByteArray("wayland-0")<<QByteArray("Budgie")<<QByteArray()<<true<<false<<false;
+  QTest::newRow("Budgie:GNOME")<<QByteArray("wayland")<<QByteArray("wayland-0")<<QByteArray("Budgie:GNOME")<<QByteArray()<<true<<false<<false;
+  QTest::newRow("budgie-lowercase")<<QByteArray("wayland")<<QByteArray("wayland-0")<<QByteArray("budgie")<<QByteArray()<<true<<false<<false;
+  QTest::newRow("labwc:wlroots")<<QByteArray("wayland")<<QByteArray("wayland-0")<<QByteArray("labwc:wlroots")<<QByteArray()<<false<<false<<false;
+  QTest::newRow("wayland;xcb")<<QByteArray("wayland")<<QByteArray("wayland-0")<<QByteArray("Budgie")<<QByteArray("wayland;xcb")<<true<<false<<false;
+  QTest::newRow("wayland;xcb-gnome")<<QByteArray("wayland")<<QByteArray("wayland-0")<<QByteArray("Budgie:GNOME")<<QByteArray("wayland;xcb")<<true<<false<<false;
+  QTest::newRow("xcb;wayland")<<QByteArray("wayland")<<QByteArray("wayland-0")<<QByteArray("Budgie")<<QByteArray("xcb;wayland")<<false<<false<<false;
+  QTest::newRow("explicit-xcb")<<QByteArray("wayland")<<QByteArray("wayland-0")<<QByteArray("Budgie")<<QByteArray("xcb")<<false<<false<<false;
+  QTest::newRow("x11-session")<<QByteArray("x11")<<QByteArray()<<QByteArray("Budgie:GNOME")<<QByteArray()<<false<<false<<false;
+  QTest::newRow("missing-display")<<QByteArray("wayland")<<QByteArray()<<QByteArray("Budgie")<<QByteArray()<<false<<false<<false;
+  QTest::newRow("prefix-desktop")<<QByteArray("wayland")<<QByteArray("wayland-0")<<QByteArray("Budgie-unknown")<<QByteArray()<<false<<false<<false;
+  QTest::newRow("Budgie:KDE")<<QByteArray("wayland")<<QByteArray("wayland-0")<<QByteArray("Budgie:KDE")<<QByteArray()<<false<<false<<false;
+  QTest::newRow("GNOME-only")<<QByteArray("wayland")<<QByteArray("wayland-0")<<QByteArray("GNOME")<<QByteArray()<<false<<true<<false;
+ }
+ void budgieRouting(){
+  QFETCH(QByteArray,type);QFETCH(QByteArray,wayland);QFETCH(QByteArray,desktop);QFETCH(QByteArray,platform);QFETCH(bool,budgie);QFETCH(bool,gnome);QFETCH(bool,kde);
+  const QList<QByteArray> names{"XDG_SESSION_TYPE","WAYLAND_DISPLAY","XDG_CURRENT_DESKTOP","QT_QPA_PLATFORM"};
+  struct Previous{QByteArray name,value;bool present;};QList<Previous> saved;
+  for(const auto& name:names)saved.append({name,qgetenv(name),qEnvironmentVariableIsSet(name.constData())});
+  const auto restore=qScopeGuard([&]{for(const auto& p:saved){if(p.present)qputenv(p.name,p.value);else qunsetenv(p.name);}});
+  qputenv("XDG_SESSION_TYPE",type);qputenv("WAYLAND_DISPLAY",wayland);qputenv("XDG_CURRENT_DESKTOP",desktop);qputenv("QT_QPA_PLATFORM",platform);
+  QCOMPARE(putgd::budgieCoreSessionEnvironment(),budgie);
+  QCOMPARE(putgd::gnomeCoreSessionEnvironment(),gnome);
+  QCOMPARE(putgd::kdeCoreSessionEnvironment(),kde);
+  QCOMPARE(putgd::waylandCoreSessionEnvironment(),budgie||kde);
+ }
  void routingGuards() {
   const QList<QByteArray> names{"DISPLAY","WAYLAND_DISPLAY","XDG_SESSION_TYPE","QT_QPA_PLATFORM","XDG_CURRENT_DESKTOP"};
   struct Previous {QByteArray name,value;bool present;};QList<Previous> saved;

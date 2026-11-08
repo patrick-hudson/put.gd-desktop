@@ -81,10 +81,11 @@
   set_tests_properties(gui_theme gui_application PROPERTIES ENVIRONMENT_MODIFICATION "${putgd_no_desktop_scheme}")
   add_executable(test_gui_tray tests/gui/test_tray.cpp)
   target_include_directories(test_gui_tray PRIVATE tests)
-  target_link_libraries(test_gui_tray PRIVATE putgd_tray putgd_ui_supervisor putgd_ui_state Qt6::Test)
+  target_link_libraries(test_gui_tray PRIVATE putgd_tray putgd_ui_supervisor putgd_ui_state Qt6::Test Qt6::DBus)
   target_compile_definitions(test_gui_tray PRIVATE PUTGD_PRODUCT_UI_PATH="$<TARGET_FILE:putgd-ui>")
   add_dependencies(test_gui_tray putgd-ui)
-  add_test(NAME gui_tray COMMAND test_gui_tray)
+  # A private bus with nothing to activate (#1307): its synthetic failures must never reach a desktop's notifications.
+  add_test(NAME gui_tray COMMAND dbus-run-session --config-file=${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/dbus-session-isolated.conf -- $<TARGET_FILE:test_gui_tray>)
   set_tests_properties(gui_tray PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
   add_executable(test_gui_tray_season tests/gui/test_tray_season.cpp)
   target_include_directories(test_gui_tray_season PRIVATE tests)

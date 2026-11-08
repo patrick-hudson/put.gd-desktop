@@ -17,7 +17,9 @@ compositor without a dialog where it can (KWin's screencast protocol on
 Plasma, Mutter's screen cast service on GNOME, ext-image-copy-capture frames
 on Hyprland and Budgie, never the portal there) and otherwise through the
 ScreenCast portal, whose picker is shown once per target kind thanks to
-restore tokens; see "Wayland acquisition". A region without a rectangle is
+restore tokens. Budgie (labwc, Magpie) has no screencast service: the helper
+copies frames itself with `ext-image-copy-capture` (`wlr-capture`), never
+through the portal; see "Wayland acquisition". A region without a rectangle is
 chosen first with the desktop's own screenshot selector (KDE's layer-shell
 selector, the GNOME Shell extension's), and the ready ring, the dimming and
 the control bar stay outside the recorded area; see "Wayland selection, bounds

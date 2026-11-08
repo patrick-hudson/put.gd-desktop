@@ -66,6 +66,23 @@ needs splitting into "already released" and "new on master":
 | Unstable (git master) | `neon-unstable-noble-20261023-d613510c07bd` | master / 6.8.80, Qt 6.11.1 | Furthest-edge KDE target |
 | User (release) | `neon-user-6.8.1-20261023-9ef808278853` | 6.8.1 / 6.8.1, Qt 6.11.1 | Newest released Plasma; the comparison point for Unstable findings |
 
+Budgie runs as VM rows on the [Budgie goldens](../lab/vm-lab.md#budgie-goldens)
+([#1275](https://github.com/patrick-hudson/put.gd-desktop/issues/1275)). They are
+not in `nightly_desktops.py` or the required release gates; adding them is
+Patrick's call. The [Budgie page](../desktops/budgie.md) says what each row must
+show; `tests/desktop/budgie.yaml` lists the scenarios.
+
+| Row | Golden | Package | Must show |
+| --- | --- | --- | --- |
+| Fedora 44 Budgie (labwc 0.9.6) | `fedora44-budgie` | RPM (installed with `dnf` in the overlay; `lab.py install` takes the AppImage) | Everything except window capture and window recording. Window capture fails with `window_unavailable` naming the protocol (notification, Capture window tooltip, Settings → Advanced → Desktop support details). Window recording is not offered: `recording.capabilities` omits the `window` target with the reason and `recording.windows` answers `recording_unsupported` naming the protocol |
+| Ubuntu Budgie 26.04 (labwc 0.9.3) | `ubuntu-budgie-2604` | DEB | As Fedora 44 |
+| Fedora 45 Budgie (labwc 0.20.2) | `fedora45-budgie` | AppImage (`lab.py install`) and RPM (`dnf` in the overlay) | Everything, including window capture and window recording |
+| Ubuntu Budgie 24.04 (Budgie 10.9, X11) | `ubuntu-budgie-2404` | DEB | Everything through the X11 adapter |
+| Magpie at a recorded SHA on Mir 2.29+ | none (compositor only) | dev build or AppImage | Capture, clipboard, region and window; shortcut status truthful |
+
+Hotkeys count only with real keyboard input (QMP or VNC), never `wtype`. The
+headless `budgie_labwc_integration` test is supporting evidence only.
+
 XWayland or `QT_QPA_PLATFORM=xcb` inside a Wayland session does not establish a
 native GNOME/X11 or KDE/X11 result. Verify the actual login session/compositor
 and Qt platform, along with the OS and desktop versions, in the evidence.

@@ -29,7 +29,7 @@ The resident keeps these costs in temporary helpers:
 | Image editing and sanitized export | `putgd-ui --edit-image` |
 | Generic image discovery, decode and previews | `putgd-ui --image-job`, offscreen |
 | Cinnamon graphical acquisition | `putgd-capture` |
-| KDE region surfaces | `putgd-kde-region`; authorized KWin capture stays resident |
+| KDE region surfaces | `putgd-region`; authorized KWin capture stays resident |
 | Recording, review, GStreamer and FFmpeg | `putgd-record` |
 | AWS SDK/module and TLS | `putgd-s3-worker`, per Linux driver call |
 | Native B2 HTTP; Proton SDK/account work | `putgd-b2-worker`; `putgd-proton-runtime` |

@@ -27,6 +27,12 @@ installed as `share/doc/putgd/wayland-ext-data-control-v1.xml`. The vendored
 `wlr-data-control-unstable-v1.xml`, used on compositors that predate ext (for
 example KWin 6.3), likewise retains its Simon Ser and Ivan Molodetskikh notice and
 is installed as `share/doc/putgd/wayland-wlr-data-control-unstable-v1.xml`.
+The capture and window-list protocols used on wlroots and Mir compositors,
+`ext-image-copy-capture-v1.xml`, `ext-image-capture-source-v1.xml` and
+`ext-foreign-toplevel-list-v1.xml` from wayland-protocols 1.45 and
+`wlr-foreign-toplevel-management-unstable-v1.xml` from wlr-protocols, are vendored
+unmodified with their copyright and permission text and installed beside it as
+`share/doc/putgd/wayland-<protocol>.xml`.
 
 The GNOME integration imports the installed Shell/GJS/Mutter APIs; it does not bundle
 a replacement GNOME runtime. The KDE integration links the distro LayerShellQt

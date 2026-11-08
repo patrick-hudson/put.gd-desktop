@@ -1,8 +1,8 @@
 #include <QCursor>
 #include "ui/SelectionOutline.h"
 #include "ui/RegionSelection.h"
-#include "KdeRegionOverlay.h"
-#include "KdeRegionProtocol.h"
+#include "LayerShellRegionOverlay.h"
+#include "RegionProtocol.h"
 #include <QGuiApplication>
 #include <QScreen>
 #include <QPainter>
@@ -29,13 +29,13 @@ namespace {
 // Pill fonts in this process: 0 load on first use, 1 loading on a worker, 2 loaded.
 std::atomic_int pillFonts{0};
 // Overlays that drew frames without pills meanwhile; GUI thread only.
-QList<QPointer<KdeRegionOverlay>> fontWaiters;
+QList<QPointer<LayerShellRegionOverlay>> fontWaiters;
 bool pillsReady(){return pillFonts.load()!=1;}
 }
-class KdeRegionOverlay::Surface final:public QWidget {
+class LayerShellRegionOverlay::Surface final:public QWidget {
 public:
- Surface(KdeRegionOverlay& owner,const CaptureFrame& frame,QScreen* screen):QWidget(nullptr,Qt::Tool|Qt::FramelessWindowHint),owner_(owner),logicalRect_(frame.logicalRect),identity_(frame.identity){
-  setFont(nativeRegionFont());setObjectName("putgd-kde-region-overlay");setAccessibleName(owner_.recording_?"Recording region":"Capture region");describeRegion(this,{},owner_.recording_,QStringLiteral("Display %1").arg(activeScreen()+1),logicalRect_,owner_.frames_,false,owner_.outcome_);setAttribute(Qt::WA_TranslucentBackground);setScreen(screen);
+ Surface(LayerShellRegionOverlay& owner,const CaptureFrame& frame,QScreen* screen):QWidget(nullptr,Qt::Tool|Qt::FramelessWindowHint),owner_(owner),logicalRect_(frame.logicalRect),identity_(frame.identity){
+  setFont(nativeRegionFont());setObjectName("putgd-wayland-region-overlay");setAccessibleName(owner_.recording_?"Recording region":"Capture region");describeRegion(this,{},owner_.recording_,QStringLiteral("Display %1").arg(activeScreen()+1),logicalRect_,owner_.frames_,false,owner_.outcome_);setAttribute(Qt::WA_TranslucentBackground);setScreen(screen);
   // Place the window on its output before the platform window exists. Qt moves a
   // top-level whose geometry centre lies on another screen to that screen, and
   // the layer surface binds the QWindow's output: a surface left at (0,0) lands
@@ -93,12 +93,12 @@ protected:
   }
  }
  void closeEvent(QCloseEvent* e) override{owner_.cancel({"display_changed","The compositor dismissed a selection surface",{}});e->accept();}
-private:KdeRegionOverlay& owner_;QRectF logicalRect_;QString identity_;QRegion painted_;
+private:LayerShellRegionOverlay& owner_;QRectF logicalRect_;QString identity_;QRegion painted_;
 };
-KdeRegionOverlay::KdeRegionOverlay(QList<CaptureFrame> frames,QObject* parent,bool recording,QString outcome,bool frozen):QObject(parent),frames_(std::move(frames)),outcome_(std::move(outcome)),recording_(recording),frozen_(frozen){}
+LayerShellRegionOverlay::LayerShellRegionOverlay(QList<CaptureFrame> frames,QObject* parent,bool recording,QString outcome,bool frozen):QObject(parent),frames_(std::move(frames)),outcome_(std::move(outcome)),recording_(recording),frozen_(frozen){}
 // The hint fade and the clearing commit before dismissal: clearing repaints everything.
-void KdeRegionOverlay::repaint(){for(auto* surface:surfaces_){if(clearing_)surface->update();else surface->updateSelection();}}
-std::thread KdeRegionOverlay::preloadFonts(){
+void LayerShellRegionOverlay::repaint(){for(auto* surface:surfaces_){if(clearing_)surface->update();else surface->updateSelection();}}
+std::thread LayerShellRegionOverlay::preloadFonts(){
  pillFonts=1;
  return std::thread([]{
   // Qt shares the font database under its own lock; engines stay per thread.
@@ -107,14 +107,14 @@ std::thread KdeRegionOverlay::preloadFonts(){
   QMetaObject::invokeMethod(qApp,[]{for(const auto& overlay:std::exchange(fontWaiters,{}))if(overlay)overlay->fontsLoaded();},Qt::QueuedConnection);
  });
 }
-void KdeRegionOverlay::fontsLoaded(){if(!finished_)repaint();}
-KdeRegionOverlay::~KdeRegionOverlay(){
+void LayerShellRegionOverlay::fontsLoaded(){if(!finished_)repaint();}
+LayerShellRegionOverlay::~LayerShellRegionOverlay(){
 #ifdef PUTGD_NATIVE_REGION
  if(dismissal_)wl_callback_destroy(dismissal_);
 #endif
  finish();for(auto* surface:surfaces_)delete surface;
 }
-void KdeRegionOverlay::start(){
+void LayerShellRegionOverlay::start(){
 #ifndef PUTGD_NATIVE_REGION
  cancel({"region_unavailable","Native region selection requires current distro Qt and per-window LayerShellQt",{}});return;
 #else
@@ -128,19 +128,19 @@ void KdeRegionOverlay::start(){
  hint_.start();
 #endif
 }
-bool KdeRegionOverlay::addSurface(const CaptureFrame& frame,QScreen* screen){
+bool LayerShellRegionOverlay::addSurface(const CaptureFrame& frame,QScreen* screen){
  auto* surface=new Surface(*this,frame,screen);surfaces_.append(surface);surface->winId();
  // Every output needs its own selector surface; one that Qt moved elsewhere
  // would leave its head without input and map drags to the wrong output.
  if(surface->windowHandle()->screen()!=screen){cancel({"display_changed","A selection surface is not on its output",{}});return false;}
  surface->show();return true;
 }
-void KdeRegionOverlay::select(const QRectF& logical){if(finished_||logical.isEmpty())return;press(logical.topLeft());release(logical.bottomRight());}
-void KdeRegionOverlay::press(QPointF p){if(finished_)return;keyboardScreen_=-1;anchor_=kdeRegionEdge(p);dragging_=true;selection_=QRectF(anchor_,QSizeF{});for(auto* surface:surfaces_)surface->updateSelection();}
-void KdeRegionOverlay::move(QPointF p){if(!dragging_||finished_)return;const auto endpoint=kdeRegionEdge(p);selection_=QRectF(anchor_,endpoint).normalized();++stats_.moves;for(auto* surface:surfaces_)surface->updateSelection();}
-void KdeRegionOverlay::release(QPointF p){if(!dragging_||finished_)return;move(p);if(selection_.width()<1||selection_.height()<1){cancel();return;}accept();
+void LayerShellRegionOverlay::select(const QRectF& logical){if(finished_||logical.isEmpty())return;press(logical.topLeft());release(logical.bottomRight());}
+void LayerShellRegionOverlay::press(QPointF p){if(finished_)return;keyboardScreen_=-1;anchor_=waylandRegionEdge(p);dragging_=true;selection_=QRectF(anchor_,QSizeF{});for(auto* surface:surfaces_)surface->updateSelection();}
+void LayerShellRegionOverlay::move(QPointF p){if(!dragging_||finished_)return;const auto endpoint=waylandRegionEdge(p);selection_=QRectF(anchor_,endpoint).normalized();++stats_.moves;for(auto* surface:surfaces_)surface->updateSelection();}
+void LayerShellRegionOverlay::release(QPointF p){if(!dragging_||finished_)return;move(p);if(selection_.width()<1||selection_.height()<1){cancel();return;}accept();
 }
-void KdeRegionOverlay::accept(){
+void LayerShellRegionOverlay::accept(){
  if(finished_)return;
  dragging_=false;
 #ifdef PUTGD_NATIVE_REGION
@@ -158,11 +158,11 @@ void KdeRegionOverlay::accept(){
  finish();emit selected(selection_);
 #endif
 }
-bool KdeRegionOverlay::eventFilter(QObject* watched,QEvent* event){
+bool LayerShellRegionOverlay::eventFilter(QObject* watched,QEvent* event){
  if(event->type()==QEvent::UpdateRequest&&awaitingFrames_.remove(static_cast<QWindow*>(watched))&&awaitingFrames_.isEmpty())QTimer::singleShot(0,this,[this]{dismiss();});
  return QObject::eventFilter(watched,event);
 }
-void KdeRegionOverlay::dismiss(){
+void LayerShellRegionOverlay::dismiss(){
 #ifdef PUTGD_NATIVE_REGION
  if(dismissing_)return;
  dismissing_=true;
@@ -172,15 +172,15 @@ void KdeRegionOverlay::dismiss(){
  auto* native=qGuiApp->nativeInterface<QNativeInterface::QWaylandApplication>();
  if(!native){emit cancelled({"region_unavailable","Qt has no native Wayland connection",{}});return;}
  static const wl_callback_listener listener{[](void* data,wl_callback* callback,uint32_t){
-  auto* owner=static_cast<KdeRegionOverlay*>(data);wl_callback_destroy(callback);owner->dismissal_=nullptr;
+  auto* owner=static_cast<LayerShellRegionOverlay*>(data);wl_callback_destroy(callback);owner->dismissal_=nullptr;
   emit owner->selected(owner->selection_);
  }};
  dismissal_=wl_display_sync(native->display());
  wl_callback_add_listener(dismissal_,&listener,this);wl_display_flush(native->display());
 #endif
 }
-void KdeRegionOverlay::finish(){if(stats_.paints&&!logged_){logged_=true;regionDebugLog(stats_.summary(QStringLiteral("kde region")));}finished_=true;hint_.stop();for(auto* surface:surfaces_)surface->hide();}
-void KdeRegionOverlay::cancel(Error error){
+void LayerShellRegionOverlay::finish(){if(stats_.paints&&!logged_){logged_=true;regionDebugLog(stats_.summary(QStringLiteral("wayland region")));}finished_=true;hint_.stop();for(auto* surface:surfaces_)surface->hide();}
+void LayerShellRegionOverlay::cancel(Error error){
  if(finished_){
 #ifdef PUTGD_NATIVE_REGION
   if(!dismissal_&&(dismissing_||!clearing_))return;

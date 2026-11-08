@@ -5,7 +5,14 @@ namespace putgd {
 // A validated complete single-output snapshot already is the composed image.
 // QImage shares immutable pixels until a writer detaches; partial captures and
 // every rejected metadata/budget case retain the shared geometry implementation.
-inline QImage composeKdeFrames(const QList<CaptureFrame>& frames,const QRectF& selection,
+// Whether a frozen layout still describes the outputs: same outputs, rectangles, density and
+// rotation. Shared by the Wayland adapters' "did the display change?" checks.
+inline bool sameOutputLayout(const QList<CaptureFrame>& before,const QList<CaptureFrame>& now){
+ if(now.size()!=before.size())return false;
+ for(const auto& frame:before){bool found=false;for(const auto& current:now)if(current.identity==frame.identity&&current.logicalRect==frame.logicalRect&&current.nativeRect==frame.nativeRect&&current.density==frame.density&&current.rotation==frame.rotation)found=true;if(!found)return false;}
+ return true;
+}
+inline QImage composeOutputFrames(const QList<CaptureFrame>& frames,const QRectF& selection,
                               qint64 maxPixels,Error& error) {
  if(frames.size()==1){
   const auto& frame=frames.constFirst();const auto rect=frame.logicalRect;

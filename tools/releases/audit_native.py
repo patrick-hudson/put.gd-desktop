@@ -62,8 +62,8 @@ def validate_inventory(root: Path, expected_manifest: dict | None = None, *, req
             raise ValueError(f"Package symlink escapes extracted tree: {relative}")
     proton = audit_proton(root, required=require_proton, expected_manifest=expected_proton_manifest)
     programs = list(PROGRAMS)
-    if require_kde or (root / "usr/bin/putgd-kde-region").exists():
-        programs.append("putgd-kde-region")
+    if require_kde or (root / "usr/bin/putgd-region").exists():
+        programs.append("putgd-region")
     if (root / "usr/bin/putgd-record").exists():
         programs.append("putgd-record")  # optional screen-recording helper (docs/design/recording.md)
     required = ["usr/bin/" + name for name in programs]
@@ -72,7 +72,9 @@ def validate_inventory(root: Path, expected_manifest: dict | None = None, *, req
                  ("build-info.json", "dependency-lock.json", "aws-runtime-manifest.json")]
     required += ["usr/share/doc/putgd/" + name for name in
                  ("LICENSE", "runtime-notices.txt", "copyright", "changelog.gz", "wayland-ext-data-control-v1.xml",
-                  "wayland-wlr-data-control-unstable-v1.xml", *SDK_LICENSES)]
+                  "wayland-wlr-data-control-unstable-v1.xml", "wayland-ext-image-copy-capture-v1.xml",
+                  "wayland-ext-image-capture-source-v1.xml", "wayland-ext-foreign-toplevel-list-v1.xml",
+                  "wayland-wlr-foreign-toplevel-management-unstable-v1.xml", *SDK_LICENSES)]
     for name in required:
         path = root / name
         if not path.is_file() or path.stat().st_size == 0:

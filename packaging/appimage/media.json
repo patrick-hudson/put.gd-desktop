@@ -4,6 +4,7 @@
   "gstreamer": {
     "plugins": [
       "coreelements",
+      "app",
       "videotestsrc",
       "videoconvertscale",
       "videorate",
@@ -22,6 +23,8 @@
       "voaacenc"
     ],
     "requiredElements": [
+      "appsrc",
+      "videoscale",
       "ximagesrc",
       "pipewiresrc",
       "pulsesrc",

@@ -1,5 +1,5 @@
 #include "KdeSourceAdapter.h"
-#include "KdeCaptureCompose.h"
+#include "platform/wayland/CaptureCompose.h"
 #include <QGuiApplication>
 #include <QCoreApplication>
 #include <QScreen>
@@ -19,15 +19,13 @@ const QString cleanupMessage="Region helper exited before confirming surface cle
 struct WindowSnapshot {QImage image;Error error;bool done=false;std::function<void(PayloadResult)> accepted;ResourceLimits acceptedLimits;};
 PayloadResult imageResult(const QImage& image,const ResourceLimits& limits,Error error={}){if(error)return {{},error};if(image.isNull())return {{},{"capture_failed","KWin provided no image",{}}};if(qint64(image.width())*image.height()>limits.imagePixels||image.sizeInBytes()>limits.imageBytes)return {{},{"input_excessive","Capture exceeds accepted operation resource limits",{}}};ClipboardPayload payload;payload.kind="image";payload.mime="image/png";payload.image=image;return {payload,{}};}
 }
-KdeSourceAdapter::KdeSourceAdapter(QObject* parent):QObject(parent),core_(!qobject_cast<QGuiApplication*>(QCoreApplication::instance())){connect(&outputs_,&KdeOutputs::changed,this,[this]{if(region_.busy())region_.cancel({"display_changed","Display layout changed during region selection",{}});emit capabilitiesChanged();});connect(&capture_,&KWinCapture::changed,this,&KdeSourceAdapter::capabilitiesChanged);connect(&clipboard_,&DataControlClipboard::changed,this,&KdeSourceAdapter::capabilitiesChanged);connect(&shortcuts_,&KdeShortcuts::changed,this,&KdeSourceAdapter::capabilitiesChanged);connect(&shortcuts_,&KdeShortcuts::activated,this,&KdeSourceAdapter::actionRequested);connect(&clipboard_,&DataControlClipboard::keyboardChanged,this,[this]{shortcuts_.setKeyboardMap(clipboard_.keyboardMap());});shortcuts_.setKeyboardMap(clipboard_.keyboardMap());}
-KdeSourceAdapter::~KdeSourceAdapter(){region_.shutdown();cancelAcquisition();clipboard_.cancel();for(auto* worker:workers_){worker->wait();delete worker;}const auto selectors=findChildren<KdeRegionOverlay*>(QString{},Qt::FindDirectChildrenOnly);for(auto* selector:selectors)delete selector;}
+KdeSourceAdapter::KdeSourceAdapter(QObject* parent):QObject(parent),core_(!qobject_cast<QGuiApplication*>(QCoreApplication::instance())){connect(&outputs_,&WaylandOutputs::changed,this,[this]{if(region_.busy())region_.cancel({"display_changed","Display layout changed during region selection",{}});emit capabilitiesChanged();});connect(&capture_,&KWinCapture::changed,this,&KdeSourceAdapter::capabilitiesChanged);connect(&clipboard_,&DataControlClipboard::changed,this,&KdeSourceAdapter::capabilitiesChanged);connect(&shortcuts_,&KdeShortcuts::changed,this,&KdeSourceAdapter::capabilitiesChanged);connect(&shortcuts_,&KdeShortcuts::activated,this,&KdeSourceAdapter::actionRequested);connect(&clipboard_,&DataControlClipboard::keyboardChanged,this,[this]{shortcuts_.setKeyboardMap(clipboard_.keyboardMap());});shortcuts_.setKeyboardMap(clipboard_.keyboardMap());}
+KdeSourceAdapter::~KdeSourceAdapter(){region_.shutdown();cancelAcquisition();clipboard_.cancel();for(auto* worker:workers_){worker->wait();delete worker;}const auto selectors=findChildren<LayerShellRegionOverlay*>(QString{},Qt::FindDirectChildrenOnly);for(auto* selector:selectors)delete selector;}
 quint64 KdeSourceAdapter::clipboardRevision()const{return clipboard_.revision();}
 QList<CaptureFrame> KdeSourceAdapter::layout()const{return core_?outputs_.layout():graphicalLayout();}
 bool KdeSourceAdapter::unchanged(const QList<CaptureFrame>& before,quint64 revision)const{
  const auto now=layout();if(core_&&outputs_.revision()!=revision)return false;
- if(now.size()!=before.size())return false;
- for(const auto& frame:before){bool found=false;for(const auto& current:now)if(current.identity==frame.identity&&current.logicalRect==frame.logicalRect&&current.nativeRect==frame.nativeRect&&current.density==frame.density&&current.rotation==frame.rotation)found=true;if(!found)return false;}
- return true;
+ return sameOutputLayout(before,now);
 }
 QJsonObject KdeSourceAdapter::capabilities()const{
  auto region=capture_.status();auto desktop=capture_.status();auto window=capture_.status();
@@ -147,13 +145,13 @@ void KdeSourceAdapter::capture(QString action,QList<CaptureFrame> frozen,quint64
     guard->captureScreens(frozen,revision,selection,limits,std::move(cb));
    },outcome,{},captureAppearance_);return;
   }
-  auto* selector=new KdeRegionOverlay(frozen,this,false,outcome);overlay_=selector;auto reply=std::make_shared<std::function<void(PayloadResult)>>(std::move(cb));const auto generation=generation_;
-  connect(selector,&KdeRegionOverlay::selected,this,[this,selector,frozen,revision,limits,reply,generation](QRectF selection){
+  auto* selector=new LayerShellRegionOverlay(frozen,this,false,outcome);overlay_=selector;auto reply=std::make_shared<std::function<void(PayloadResult)>>(std::move(cb));const auto generation=generation_;
+  connect(selector,&LayerShellRegionOverlay::selected,this,[this,selector,frozen,revision,limits,reply,generation](QRectF selection){
    overlay_=nullptr;
    connect(selector,&QObject::destroyed,this,[this,frozen,revision,selection,limits,reply,generation]{if(generation!=generation_){(*reply)({{},{"cancelled","Desktop capture cancelled",{}}});return;}captureScreens(frozen,revision,selection,limits,std::move(*reply));});
    selector->deleteLater();
   });
-  connect(selector,&KdeRegionOverlay::cancelled,this,[this,selector,reply](Error error){overlay_=nullptr;selector->deleteLater();(*reply)({{},error});});selector->start();return;
+  connect(selector,&LayerShellRegionOverlay::cancelled,this,[this,selector,reply](Error error){overlay_=nullptr;selector->deleteLater();(*reply)({{},error});});selector->start();return;
  }
  QRectF bounds;for(const auto& frame:frozen)bounds=bounds.united(frame.logicalRect);captureScreens(std::move(frozen),revision,bounds,limits,std::move(cb));
 }
@@ -180,11 +178,11 @@ void KdeSourceAdapter::selectFrozen(QList<CaptureFrame> frozen,quint64 revision,
    guard->compose(std::move(*pixels),layout,revision,selection,limits,std::move(*reply));
   };
   if(guard->core_){guard->region_.start(layout,std::move(selected),outcome,*pixels,guard->captureAppearance_);return;}
-  auto* selector=new KdeRegionOverlay(*pixels,guard,false,outcome,true);guard->overlay_=selector;
-  connect(selector,&KdeRegionOverlay::selected,guard,[guard,selector,selected](QRectF selection){
+  auto* selector=new LayerShellRegionOverlay(*pixels,guard,false,outcome,true);guard->overlay_=selector;
+  connect(selector,&LayerShellRegionOverlay::selected,guard,[guard,selector,selected](QRectF selection){
    guard->overlay_=nullptr;connect(selector,&QObject::destroyed,guard,[selected,selection]{selected(selection,{});});selector->deleteLater();
   });
-  connect(selector,&KdeRegionOverlay::cancelled,guard,[guard,selector,selected](Error error){guard->overlay_=nullptr;selector->deleteLater();selected({},std::move(error));});
+  connect(selector,&LayerShellRegionOverlay::cancelled,guard,[guard,selector,selected](Error error){guard->overlay_=nullptr;selector->deleteLater();selected({},std::move(error));});
   selector->start();
  });
 }
@@ -219,7 +217,7 @@ void KdeSourceAdapter::captureFrames(QList<CaptureFrame> frozen,quint64 revision
  auto next=batch->next;next();
 }
 void KdeSourceAdapter::compose(QList<CaptureFrame> frames,QList<CaptureFrame> frozen,quint64 revision,QRectF selection,const ResourceLimits& limits,std::function<void(PayloadResult)> cb){
- const auto generation=generation_;auto result=std::make_shared<PayloadResult>();auto* worker=QThread::create([frames=std::move(frames),selection,limits,result]{result->payload.image=composeKdeFrames(frames,selection,std::min(limits.imagePixels,limits.imageBytes/4),result->error);result->payload.kind="image";result->payload.mime="image/png";});workers_.append(worker);
+ const auto generation=generation_;auto result=std::make_shared<PayloadResult>();auto* worker=QThread::create([frames=std::move(frames),selection,limits,result]{result->payload.image=composeOutputFrames(frames,selection,std::min(limits.imagePixels,limits.imageBytes/4),result->error);result->payload.kind="image";result->payload.mime="image/png";});workers_.append(worker);
  connect(worker,&QThread::finished,this,[this,worker,generation,frozen=std::move(frozen),revision,result,cb=std::move(cb)]()mutable{workers_.removeOne(worker);worker->deleteLater();if(generation!=generation_)cb({{},{"cancelled","Capture acquisition cancelled",{}}});else if(!unchanged(frozen,revision))cb({{},{"display_changed","Display layout changed during capture composition",{}}});else cb(std::move(*result));});worker->start();
 }
 void KdeSourceAdapter::cancelAcquisition(){++generation_;capture_.cancel();clipboard_.cancel();region_.cancel();if(overlay_)overlay_->cancel();}

@@ -288,7 +288,7 @@ class Safety(unittest.TestCase):
                 driver.verified_wayland(identity, {'WAYLAND_DISPLAY': '/tmp/other-display'}, root)
 
     def test_complete_owned_helper_family_is_visible(self):
-        for exe in ('putgd-capture', 'putgd-kde-region', 'putgd-s3-worker', 'putgd-proton-drive', 'putgd-ui (deleted)'):
+        for exe in ('putgd-capture', 'putgd-region', 'putgd-s3-worker', 'putgd-proton-drive', 'putgd-ui (deleted)'):
             identity = {'pid': 17, 'exe': '/owned/' + exe, 'startTicks': 1}
             with self.subTest(exe=exe), mock.patch.object(driver.Path, 'iterdir', return_value=[Path('/proc/17')]), \
                  mock.patch.object(driver, 'process', return_value=identity), \

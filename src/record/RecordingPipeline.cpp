@@ -1,4 +1,6 @@
 #include "RecordingPipeline.h"
+#include "ImageCopySource.h"
+#include <QPointer>
 #include "DebugLog.h"
 #include "WaylandAcquisition.h"
 #include <QFile>
@@ -295,7 +297,14 @@ bool RecordingPipeline::launch(const Options& options, const QString& encoder, c
     // first-frame-anchored timestamps of releases before #86, =compositor maps
     // each frame's header time instead of stamping its arrival.
     const QString frameSource = options.pipewireNode && qEnvironmentVariable("PUTGD_RECORD_PIPEWIRE_TIMESTAMPS") != "legacy" ? frameClockSource() : QString();
-    if (options.pipewireNode) {
+    if (options.imageCopy) {
+        // The stream's caps follow the source; a window that changes size is
+        // scaled, borders added, into the size it started at.
+        description = QStringLiteral("appsrc name=src is-live=true format=time do-timestamp=false leaky-type=downstream max-buffers=2 caps=\"%1\" ! videoscale ! video/x-raw,width=%2,height=%3,pixel-aspect-ratio=1/1")
+            .arg(options.imageCopy->caps()).arg(options.rect.width()).arg(options.rect.height()) + captureQueue();
+        if (options.crop.isValid()) description += QStringLiteral(" ! videocrop left=%1 top=%2 right=%3 bottom=%4").arg(options.crop.x()).arg(options.crop.y()).arg(std::max(0, options.rect.width() - options.crop.x() - options.crop.width())).arg(std::max(0, options.rect.height() - options.crop.y() - options.crop.height()));
+        description += convert();
+    } else if (options.pipewireNode) {
         // The stream arrives at the compositor's pace; videorate after the
         // conversion holds the configured frame rate, and a region is cropped
         // out of the shared monitor (crop values are stream-relative) before
@@ -349,11 +358,13 @@ bool RecordingPipeline::launch(const Options& options, const QString& encoder, c
     frameClock_.gate = &gate_;
     gate_.periodNs = GST_SECOND / options.fps; gate_.delivered = 0; gate_.kept = 0; gate_.lastKept = -1; gate_.toleranceNs = GST_SECOND / options.fps / 2;
     // Lab A/B: PUTGD_RECORD_ADAPTIVE_RATE=off keeps the configured rate whatever the load.
-    rate_ = AdaptiveRate(options.fps, options.adaptive && qEnvironmentVariable("PUTGD_RECORD_ADAPTIVE_RATE") != "off", !options.pipewireNode);
+    rate_ = AdaptiveRate(options.fps, options.adaptive && qEnvironmentVariable("PUTGD_RECORD_ADAPTIVE_RATE") != "off", !options.pipewireNode && !options.imageCopy);
     rateClock_.invalidate();
     rateChange_ = {};
     clockName_.clear();
-    if (!frameSource.isEmpty()) {
+    // Image-copy frames carry the compositor's CLOCK_MONOTONIC presentation
+    // time, as PipeWire frames do, and take the same stamping and cadence lock.
+    if (!frameSource.isEmpty() || options.imageCopy) {
         // The monotonic system clock is the compositors' frame clock, so frame
         // ages read directly; pulsesrc slaves to it rather than providing the
         // clock (pipewiresrc would otherwise offer its own stream clock).
@@ -442,6 +453,14 @@ bool RecordingPipeline::launch(const Options& options, const QString& encoder, c
     if (failed) { debugLog("start failed: " + failure); gst_element_set_state(pipeline, GST_STATE_NULL); gst_object_unref(pipeline); QFile::remove(options.output); return false; }
     if (GstClock* clock = gst_pipeline_get_clock(GST_PIPELINE(pipeline))) { clockName_ = QString::fromUtf8(G_OBJECT_TYPE_NAME(clock)); gst_object_unref(clock); }
     debugLog("started with " + encoder + (audioEncoder.isEmpty() ? QString() : " + " + audioEncoder) + " on " + clockName_ + (options.pipewireNode ? (unthrottled ? QStringLiteral(", max_framerate unthrottled") : QStringLiteral(", max_framerate throttled")) : QString()));
+    if (options.imageCopy) {
+        GstElement* source = gst_bin_get_by_name(GST_BIN(pipeline), "src");
+        QPointer<RecordingPipeline> guard(this);
+        options.imageCopy->attach(source, [guard](Error error) {
+            QMetaObject::invokeMethod(guard, [guard, error] { if (guard) emit guard->imageCopyLost(error); }, Qt::QueuedConnection);
+        });
+        if (source) gst_object_unref(source);
+    }
     pipeline_ = pipeline;
     options_ = options;
     unthrottled_ = options.pipewireNode && unthrottled;
@@ -718,6 +737,8 @@ bool RecordingPipeline::relaunchThrottled() {
 void RecordingPipeline::tearDown() {
     bus_.stop();
     if (!pipeline_) return;
+    // The capture thread pushes into appsrc; it stops before the pipeline does.
+    if (options_.imageCopy) options_.imageCopy->stop();
     gst_element_set_state(pipeline_, GST_STATE_NULL);
     // Flushing in NULL ends any EOS send still waiting on a branch.
     for (auto& drain : drains_) if (drain.joinable()) drain.join();

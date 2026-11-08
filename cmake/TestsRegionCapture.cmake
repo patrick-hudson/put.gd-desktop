@@ -8,15 +8,15 @@ if(BUILD_TESTING)
   set_tests_properties(region_selection_contract PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
 endif()
 
-if(BUILD_TESTING AND TARGET putgd_kde_region_process)
+if(BUILD_TESTING AND TARGET putgd_wayland_region)
   # Exercise the production QWidget without a native layer role. Real KWin
   # keyboard focus and transparent-frame dismissal remain desktop gates.
-  add_executable(test_kde_region_overlay tests/gui/test_kde_region_overlay.cpp src/platform/kde/KdeRegionOverlay.cpp)
-  target_link_libraries(test_kde_region_overlay PRIVATE putgd_kde_region_process Qt6::Widgets Qt6::Test)
-  add_test(NAME kde_region_overlay COMMAND test_kde_region_overlay)
-  set_tests_properties(kde_region_overlay PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 30)
-  add_test(NAME kde_region_overlay_multihead COMMAND test_kde_region_overlay surfacesStayOnTheirOutputs)
-  set_tests_properties(kde_region_overlay_multihead PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen:configfile=${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/offscreen-kde-multihead.json" TIMEOUT 30)
+  add_executable(test_wayland_region_overlay tests/gui/test_wayland_region_overlay.cpp src/platform/wayland/LayerShellRegionOverlay.cpp)
+  target_link_libraries(test_wayland_region_overlay PRIVATE putgd_wayland_region Qt6::Widgets Qt6::Test)
+  add_test(NAME wayland_region_overlay COMMAND test_wayland_region_overlay)
+  set_tests_properties(wayland_region_overlay PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 30)
+  add_test(NAME wayland_region_overlay_multihead COMMAND test_wayland_region_overlay surfacesStayOnTheirOutputs)
+  set_tests_properties(wayland_region_overlay_multihead PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen:configfile=${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/offscreen-kde-multihead.json" TIMEOUT 30)
 endif()
 
 if(BUILD_TESTING AND TARGET putgd_x11)

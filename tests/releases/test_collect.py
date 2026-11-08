@@ -380,7 +380,7 @@ class ReleaseCollection(unittest.TestCase):
 
     def test_source_build_with_optional_helpers_accepted(self):
         path = self.inputs / 'release-native-ubuntu24.04/source-build-results.json'
-        programs = self.source_result['identityMatchedPrograms'] + ['putgd-kde-region', 'putgd-record']
+        programs = self.source_result['identityMatchedPrograms'] + ['putgd-region', 'putgd-record']
         path.write_text(json.dumps({**self.source_result, 'identityMatchedPrograms': programs}))
         self.assertEqual(self.run_collection(), self.release)
 

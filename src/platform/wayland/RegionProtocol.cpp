@@ -1,4 +1,4 @@
-#include "KdeRegionProtocol.h"
+#include "RegionProtocol.h"
 #include <QSet>
 #include <cmath>
 #include <fcntl.h>
@@ -26,10 +26,10 @@ QRectF rectangle(const QJsonObject& o, Error& error) {
  return r;
 }
 }
-QJsonObject kdeRegionRectangle(const QRectF& r) {
+QJsonObject waylandRegionRectangle(const QRectF& r) {
  return {{"x",r.x()},{"y",r.y()},{"width",r.width()},{"height",r.height()}};
 }
-QJsonArray kdeRegionLayout(const QList<CaptureFrame>& frames, Error& error) {
+QJsonArray waylandRegionLayout(const QList<CaptureFrame>& frames, Error& error) {
  error={}; QJsonArray result; QSet<QString> names;
  if(frames.isEmpty() || frames.size()>32) { error=invalid(); return {}; }
  for(const auto& frame:frames) {
@@ -39,12 +39,12 @@ QJsonArray kdeRegionLayout(const QList<CaptureFrame>& frames, Error& error) {
    error=invalid(); return {};
   }
   names.insert(frame.identity);
-  result.append(QJsonObject{{"identity",frame.identity},{"logicalRect",kdeRegionRectangle(frame.logicalRect)},
+  result.append(QJsonObject{{"identity",frame.identity},{"logicalRect",waylandRegionRectangle(frame.logicalRect)},
                             {"rotation",frame.rotation}});
  }
  return result;
 }
-QList<CaptureFrame> kdeRegionLayout(const QJsonArray& array, Error& error) {
+QList<CaptureFrame> waylandRegionLayout(const QJsonArray& array, Error& error) {
  error={}; QList<CaptureFrame> frames; QSet<QString> names;
  if(array.isEmpty() || array.size()>32) { error=invalid(); return {}; }
  for(const auto& value:array) {
@@ -65,9 +65,9 @@ QList<CaptureFrame> kdeRegionLayout(const QJsonArray& array, Error& error) {
  }
  return frames;
 }
-bool kdeRegionLayoutsMatch(const QList<CaptureFrame>& frozen,const QList<CaptureFrame>& current) {
- Error error; kdeRegionLayout(frozen,error); if(error) return false;
- kdeRegionLayout(current,error); if(error || current.size()!=frozen.size()) return false;
+bool waylandRegionLayoutsMatch(const QList<CaptureFrame>& frozen,const QList<CaptureFrame>& current) {
+ Error error; waylandRegionLayout(frozen,error); if(error) return false;
+ waylandRegionLayout(current,error); if(error || current.size()!=frozen.size()) return false;
  for(const auto& frame:frozen) {
   bool found=false;
   for(const auto& now:current)
@@ -76,8 +76,8 @@ bool kdeRegionLayoutsMatch(const QList<CaptureFrame>& frozen,const QList<Capture
  }
  return true;
 }
-QRectF kdeRegionRectangle(const QJsonObject& object,const QList<CaptureFrame>& frames,Error& error) {
- error={}; kdeRegionLayout(frames,error); if(error) return {};
+QRectF waylandRegionRectangle(const QJsonObject& object,const QList<CaptureFrame>& frames,Error& error) {
+ error={}; waylandRegionLayout(frames,error); if(error) return {};
  const auto r=rectangle(object,error); if(error) return {};
  QRectF bounds; bool intersects=false;
  for(const auto& frame:frames) { bounds=bounds.united(frame.logicalRect); intersects|=r.intersects(frame.logicalRect); }
@@ -89,8 +89,8 @@ Error frozenInvalid() { return {"capture_geometry", "The frozen region frames ar
 constexpr qint64 frozenBytesLimit=qint64(4)<<30;
 constexpr int frozenSeals=F_SEAL_SEAL|F_SEAL_SHRINK|F_SEAL_GROW|F_SEAL_WRITE;
 }
-KdeFrozenFrames kdeFrozenFrames(const QList<CaptureFrame>& layout,const QList<CaptureFrame>& pixels,Error& error) {
- error={}; KdeFrozenFrames result;
+WaylandFrozenFrames waylandFrozenFrames(const QList<CaptureFrame>& layout,const QList<CaptureFrame>& pixels,Error& error) {
+ error={}; WaylandFrozenFrames result;
  if(layout.isEmpty() || layout.size()!=pixels.size()) { error=frozenInvalid(); return {}; }
  qint64 total=0; QList<QImage> images;
  for(int i=0;i<layout.size();++i) {
@@ -117,7 +117,7 @@ KdeFrozenFrames kdeFrozenFrames(const QList<CaptureFrame>& layout,const QList<Ca
  if(!ok) { ::close(fd); error={"capture_unavailable","Cannot share the frozen frames with the region helper",{{"stage","freeze"},{"check","memfd_write"}}}; return {}; }
  result.fd=fd; return result;
 }
-bool kdeFrozenPixels(int fd,const QJsonArray& frames,QList<CaptureFrame>& layout,Error& error) {
+bool waylandFrozenPixels(int fd,const QJsonArray& frames,QList<CaptureFrame>& layout,Error& error) {
  error={};
  struct Close { int fd; ~Close() { if(fd>=0) ::close(fd); } } owner{fd};
  if(fd<3 || frames.size()!=layout.size() || ::fcntl(fd,F_SETFD,FD_CLOEXEC)!=0) { error=frozenInvalid(); return false; }

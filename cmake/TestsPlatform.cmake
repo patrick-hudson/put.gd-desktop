@@ -1,9 +1,9 @@
 # KDE, X11 and native session tests, and the version contract.
 # Included inside if(BUILD_TESTING) in the top-level CMakeLists.txt.
-  if(TARGET putgd_kde_region_process)
-    add_executable(test_kde_region_control tests/unit/test_kde_region_control.cpp)
-    target_link_libraries(test_kde_region_control PRIVATE putgd_kde_region_process Qt6::Test)
-    add_test(NAME kde_region_control COMMAND test_kde_region_control)
+  if(TARGET putgd_wayland_region)
+    add_executable(test_wayland_region_control tests/unit/test_wayland_region_control.cpp)
+    target_link_libraries(test_wayland_region_control PRIVATE putgd_wayland_region Qt6::Test)
+    add_test(NAME wayland_region_control COMMAND test_wayland_region_control)
   endif()
   add_executable(test_native_session tests/unit/test_native_session.cpp)
   target_include_directories(test_native_session PRIVATE src)
@@ -80,9 +80,9 @@
     add_executable(test_kwin_windows tests/integration/test_kwin_windows.cpp)
     target_link_libraries(test_kwin_windows PRIVATE putgd_kde Qt6::Test Qt6::DBus)
     add_test(NAME kwin_windows_integration COMMAND dbus-run-session -- $<TARGET_FILE:test_kwin_windows>)
-    add_executable(test_kde_keyboard_map tests/unit/test_kde_keyboard_map.cpp)
-    target_link_libraries(test_kde_keyboard_map PRIVATE putgd_kde Qt6::Test)
-    add_test(NAME kde_keyboard_map COMMAND test_kde_keyboard_map)
+    add_executable(test_wayland_keyboard_map tests/unit/test_wayland_keyboard_map.cpp)
+    target_link_libraries(test_wayland_keyboard_map PRIVATE putgd_kde Qt6::Test)
+    add_test(NAME wayland_keyboard_map COMMAND test_wayland_keyboard_map)
     add_executable(test_shortcut_keyboard tests/unit/test_shortcut_keyboard.cpp)
     target_link_libraries(test_shortcut_keyboard PRIVATE putgd_shortcut_keyboard Qt6::Test PkgConfig::PUTGD_XKBCOMMON)
     add_test(NAME shortcut_keyboard COMMAND test_shortcut_keyboard)
@@ -92,8 +92,8 @@
       DEPENDS "${xdg_output_protocol}" VERBATIM)
     foreach(protocol_name ext-data-control-v1 wlr-data-control-unstable-v1)
       add_custom_command(OUTPUT "${protocol_dir}/${protocol_name}-server-protocol.h"
-        COMMAND "${PUTGD_WAYLAND_SCANNER}" server-header "${CMAKE_CURRENT_SOURCE_DIR}/src/platform/kde/protocols/${protocol_name}.xml" "${protocol_dir}/${protocol_name}-server-protocol.h"
-        DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/src/platform/kde/protocols/${protocol_name}.xml" VERBATIM)
+        COMMAND "${PUTGD_WAYLAND_SCANNER}" server-header "${CMAKE_CURRENT_SOURCE_DIR}/src/platform/wayland/protocols/${protocol_name}.xml" "${protocol_dir}/${protocol_name}-server-protocol.h"
+        DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/src/platform/wayland/protocols/${protocol_name}.xml" VERBATIM)
     endforeach()
     add_executable(test_kde_ownership tests/integration/test_kde_ownership.cpp
       "${protocol_dir}/xdg-output-unstable-v1-server-protocol.h"
@@ -122,3 +122,38 @@
     add_test(NAME wayland_data_control_source COMMAND test_wayland_data_control_source)
     set_tests_properties(wayland_data_control_source PROPERTIES TIMEOUT 60)
   endif()
+# The Budgie adapter and shared Wayland capture against a real headless labwc
+# (#1275). It skips where labwc is not installed; the Ubuntu 26.04 CI leg has it.
+if(BUILD_TESTING AND TARGET putgd_budgie)
+  add_executable(test_budgie_labwc tests/integration/test_budgie_labwc.cpp)
+  target_link_libraries(test_budgie_labwc PRIVATE putgd_budgie Qt6::Test)
+  target_compile_definitions(test_budgie_labwc PRIVATE PUTGD_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
+  if(TARGET putgd-region)
+    add_dependencies(test_budgie_labwc putgd-region)
+  endif()
+  if(PUTGD_LAYER_SHELL_REGION)
+    add_executable(putgd-labwc-fixture tests/fixtures/labwc_fixture.cpp)
+    target_link_libraries(putgd-labwc-fixture PRIVATE putgd_build_options Qt6::Widgets LayerShellQt::Interface)
+    add_dependencies(test_budgie_labwc putgd-labwc-fixture)
+  endif()
+  if(TARGET putgd-record)
+    # The recorder's image-copy source on headless labwc: rotated outputs record upright (#1275 review).
+    # Here, after the test target exists (Recording.cmake is included first).
+    target_sources(test_budgie_labwc PRIVATE src/record/ImageCopySource.cpp src/record/DebugLog.cpp)
+    target_include_directories(test_budgie_labwc PRIVATE src "${protocol_dir}")
+    target_compile_definitions(test_budgie_labwc PRIVATE PUTGD_TEST_IMAGE_COPY_SOURCE=1)
+    target_link_libraries(test_budgie_labwc PRIVATE PkgConfig::PUTGD_GST PkgConfig::PUTGD_WAYLAND)
+  endif()
+  add_test(NAME budgie_labwc_integration COMMAND dbus-run-session -- $<TARGET_FILE:test_budgie_labwc>)
+  set_tests_properties(budgie_labwc_integration PROPERTIES TIMEOUT 120)
+  # The labwc bridge's gsettings sequencing against a fake gsettings; needs no labwc.
+  add_executable(test_labwc_bridge tests/integration/test_labwc_bridge.cpp)
+  target_link_libraries(test_labwc_bridge PRIVATE putgd_budgie Qt6::Test)
+  add_test(NAME labwc_bridge_contract COMMAND dbus-run-session -- $<TARGET_FILE:test_labwc_bridge>)
+  set_tests_properties(labwc_bridge_contract PROPERTIES TIMEOUT 120)
+  # GlobalShortcuts portal backend against a scripted portal on a private bus.
+  add_executable(test_portal_global_shortcuts tests/integration/test_portal_global_shortcuts.cpp)
+  target_link_libraries(test_portal_global_shortcuts PRIVATE putgd_wayland Qt6::DBus Qt6::Test)
+  add_test(NAME portal_global_shortcuts_contract COMMAND dbus-run-session -- $<TARGET_FILE:test_portal_global_shortcuts>)
+  set_tests_properties(portal_global_shortcuts_contract PROPERTIES TIMEOUT 60)
+endif()

@@ -2,6 +2,8 @@
 #include "fixtures/TrayCatalog.h"
 #include "fixtures/CatalogLabels.h"
 #include "fixtures/FakeRecordingBackend.h"
+#include <QDBusConnection>
+#include <QDBusConnectionInterface>
 #include "ui/TrayController.h"
 #include "app/LocalServer.h"
 #include "app/UiProcessController.h"
@@ -72,7 +74,17 @@ class ResidentTray final : public QObject {
  Q_OBJECT
 private slots:
  // These tests are about status, not the season; test_tray_season covers that.
- void initTestCase(){qputenv("PUTGD_TRAY_CALENDAR_NOW","2026-06-15T12:00:00");}
+ void initTestCase(){
+  // This suite posts synthetic critical failures. On a desktop's real bus they land in its notifications (#1307),
+  // so it runs only where nothing can show them: no bus, or a private one with no notification server to reach.
+  const auto bus=QDBusConnection::sessionBus();
+  if(bus.isConnected()&&bus.interface()){
+   const QString server("org.freedesktop.Notifications");
+   if(bus.interface()->isServiceRegistered(server).value()||bus.interface()->activatableServiceNames().value().contains(server))
+    QFAIL("Refusing a session bus with a notification server: run through ctest (gui_tray), which uses dbus-run-session with tests/fixtures/dbus-session-isolated.conf");
+  }
+  qputenv("PUTGD_TRAY_CALENDAR_NOW","2026-06-15T12:00:00");
+ }
  void diagnosticsNamesTheWorkThatActuallyRan(){
   for(const auto& action:QStringList{"region","window","desktop","edit"}){
    QJsonObject failed{{"action",action},{"state","failed"},{"items",QJsonArray{}}};
