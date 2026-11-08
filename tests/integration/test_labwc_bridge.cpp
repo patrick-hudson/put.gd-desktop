@@ -1,7 +1,9 @@
 // The labwc bridge backend's gsettings sequencing (#1275), against a fake
 // gsettings on PATH that stores keys in a file and answers slowly. No labwc,
 // dconf or Budgie needed: rc.xml is a plain file the test edits.
+#include "platform/budgie/BudgieShortcuts.h"
 #include "platform/budgie/LabwcBridgeBackend.h"
+#include <QDBusConnection>
 #include <QFile>
 #include <QTemporaryDir>
 #include <QtTest>
@@ -67,6 +69,20 @@ private slots:
   writeRc("<keybind key=\"C-S-9\" bridge=\"someone/else\"><action name=\"Execute\" command=\"x\"/></keybind>");
   QVERIFY(putgd::test::waitFor([&]{return value("region","binding")=="'<Control><Shift>1'";},15000));
   QVERIFY(bridge.status()["region"].toObject()["state"].toString()!="shortcut_conflict");
+ }
+ void aSecondResidentBindsNothing(){
+  // Another process owns org.putgd.App.Budgie: a bound key would call it, so no backend is probed or written.
+  auto squatter=QDBusConnection::connectToBus(QDBusConnection::SessionBus,QStringLiteral("squatter"));
+  if(!squatter.isConnected())QSKIP("no session bus");
+  QVERIFY(squatter.registerService("org.putgd.App.Budgie"));
+  {
+   BudgieShortcuts shortcuts;shortcuts.bind({{"region","Ctrl+Shift+1"}});
+   QVERIFY(putgd::test::waitFor([&]{return shortcuts.capabilities()["backend"].toString()=="none";},5000));
+   QCOMPARE(shortcuts.capabilities()["available"].toBool(true),false);
+   QCOMPARE(shortcuts.capabilities()["bindings"].toObject()["region"].toObject()["state"].toString(),QString("shortcut_unavailable"));
+   PUTGD_VERIFY_STEADY(!QFile::exists(store_+".log"),1000);
+  }
+  squatter.unregisterService("org.putgd.App.Budgie");QDBusConnection::disconnectFromBus(QStringLiteral("squatter"));
  }
 };
 QTEST_GUILESS_MAIN(LabwcBridgeTest)

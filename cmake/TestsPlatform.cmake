@@ -141,7 +141,7 @@ if(BUILD_TESTING AND TARGET putgd_budgie)
   # The labwc bridge's gsettings sequencing against a fake gsettings; needs no labwc.
   add_executable(test_labwc_bridge tests/integration/test_labwc_bridge.cpp)
   target_link_libraries(test_labwc_bridge PRIVATE putgd_budgie Qt6::Test)
-  add_test(NAME labwc_bridge_contract COMMAND test_labwc_bridge)
+  add_test(NAME labwc_bridge_contract COMMAND dbus-run-session -- $<TARGET_FILE:test_labwc_bridge>)
   set_tests_properties(labwc_bridge_contract PROPERTIES TIMEOUT 120)
   # GlobalShortcuts portal backend against a scripted portal on a private bus.
   add_executable(test_portal_global_shortcuts tests/integration/test_portal_global_shortcuts.cpp)

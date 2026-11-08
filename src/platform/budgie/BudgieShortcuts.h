@@ -25,16 +25,21 @@ public:
  ~BudgieShortcuts() override;
  void bind(const QHash<QString,QString>&);
  void setRecording(bool,std::function<void(Error)>);
- // {"available","backend","service","error"?,"bindings":{...}}
+ // {"backend","service","available"?,"error"?,"bindings":{...}}; "available" is omitted while the
+ // backend is still being chosen.
  QJsonObject capabilities()const;
- // Called by the D-Bus adaptor. Returns false for an action that is not bound.
+ // Called by the D-Bus adaptor. Returns false for an action that is not bound, and for
+ // every action while a shortcut is being recorded (the recorder owns the keys then).
  bool trigger(const QString& action);
+ bool recording()const{return recording_;}
  // Removes what the backend wrote; the resident calls it as it quits.
  void clear();
 signals:
  void activated(const QString&);void changed();
 private:
  void choose();
+ void probed(bool bridge,const QString& reason);
+ void portalProbed(bool portal,const QString& reason,const QString& portalReason);
  void use(ShortcutBackend*);
  QHash<QString,QString> requested_;
  QPointer<ShortcutBackend> backend_;
