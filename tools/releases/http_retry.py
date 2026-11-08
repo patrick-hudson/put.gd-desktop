@@ -37,12 +37,16 @@ def download(request, target, timeout, *, opener=urllib.request.urlopen, sleep=t
             if error.code not in RETRYABLE_STATUS or attempt == ATTEMPTS or clock() >= give_up:
                 raise
             reason = f'HTTP {error.code}'
+            last_error = error
         except TRANSIENT as error:
             if _permanent(error) or attempt == ATTEMPTS or clock() >= give_up:
                 raise
             reason = type(error).__name__
+            last_error = error
         print(f'download attempt {attempt}/{ATTEMPTS} failed ({reason}); retrying in {DELAY_SECONDS} s', file=sys.stderr, flush=True)
         sleep(DELAY_SECONDS)
+        if clock() >= give_up:
+            raise last_error
 
 
 if __name__ == '__main__':
