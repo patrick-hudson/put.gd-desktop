@@ -17,6 +17,7 @@
 #include "ui/Theme.h"
 #include "ui/Fonts.h"
 #include "ui/Ui.h"
+#include "ui/DialogAttachment.h"
 #include <QApplication>
 #include <QBuffer>
 #include <QImage>
@@ -171,6 +172,8 @@ int main(int argc, char** argv) {
     if (!handles.valid()) return 2;
     // Raster overlays and frame previews only: no desktop theme plugins.
     if (qEnvironmentVariableIsEmpty("QT_QPA_PLATFORM") && qEnvironmentVariableIsEmpty("DISPLAY") && qEnvironmentVariableIsEmpty("WAYLAND_DISPLAY")) qputenv("QT_QPA_PLATFORM", "offscreen");
+    // The review window's confirmations move on their own on GNOME.
+    keepModalDialogsDetached();
     QGuiApplication::setDesktopSettingsAware(false);
     qunsetenv("QT_QPA_PLATFORMTHEME");
     qunsetenv("QT_STYLE_OVERRIDE");

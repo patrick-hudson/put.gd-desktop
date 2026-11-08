@@ -64,11 +64,21 @@ class Selection(unittest.TestCase):
                      'tools/ci/sdk_cache.py'):
             with self.subTest(path=path):
                 self.assertTrue(changes.select([path])['sanitizers'])
-        for path in ('src/ui/SettingsWindow.cpp', 'src/storage/s3/S3Driver.cpp', 'tests/gui/test_settings.cpp',
+        for path in ('src/ui/SettingsWindow.cpp', 'src/storage/s3/S3Driver.cpp', 'tests/gui/test_settings_appearance.cpp',
                      'tests/unit/test_portable_appimage.py', 'packaging/appimage/AppRun',
                      '.github/workflows/package.yml', 'docs/ci.md'):
             with self.subTest(path=path):
                 self.assertFalse(changes.select([path])['sanitizers'])
+
+    def test_every_included_cmake_file_selects_what_the_root_file_does(self):
+        def jobs(path):
+            return {job: changes.select([path])[job] for job in ('build', 'packages', 'sanitizers', 'pipewire')}
+        included = sorted((ROOT / 'cmake').glob('*.cmake'))
+        self.assertIn(ROOT / 'cmake/TestsS3.cmake', included)
+        self.assertEqual(jobs('CMakeLists.txt'), {'build': True, 'packages': True, 'sanitizers': True, 'pipewire': True})
+        for path in included:
+            with self.subTest(path=path.name):
+                self.assertEqual(jobs(path.relative_to(ROOT).as_posix()), jobs('CMakeLists.txt'))
 
     def test_recorder_sources_and_the_pipewire_check_select_the_pipewire_job(self):
         for path in ('src/record/WaylandAcquisition.cpp', 'src/record/RecordingPipeline.cpp'):

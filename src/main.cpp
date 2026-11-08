@@ -377,6 +377,9 @@ int main(int argc,char* argv[]) {
 #endif
 #ifdef PUTGD_NATIVE_GNOME
  if(gnome)QObject::connect(gnome,&putgd::GnomeAdapter::capabilitiesChanged,&ui,refreshSettingsDiagnostics);
+ // A timed retry for an unavailable extension maps D-Bus pages again; releasing
+ // them after it keeps the resident at its quiet size (#1187).
+ if(gnome)QObject::connect(gnome,&putgd::GnomeAdapter::discoveryRetried,&operations,&putgd::OperationService::requestImagePageRelease);
 #endif
 #ifdef PUTGD_NATIVE_KDE
  if(kde)QObject::connect(kde,&putgd::KdeSourceAdapter::capabilitiesChanged,&ui,refreshSettingsDiagnostics);
@@ -400,6 +403,9 @@ int main(int argc,char* argv[]) {
  server.setUiQuit(quitApplication);
  // A file-manager upload with no destination to go to opens Destinations (#1105).
  QObject::connect(&operations,&putgd::OperationService::destinationRequired,&app,[&]{startupRecovery.stop();ui.activate("destinations",{});});
+ // A capture, the editor or a recording asked for by any route counts as
+ // activation too: Settings must not open over its window (#1252).
+ QObject::connect(&operations,&putgd::OperationService::explicitRequest,&startupRecovery,&QTimer::stop);
  // #490: the resident ends with its login session, whatever the session manager
  // does with its autostart entries: when logind reports the session closing,
  // or when the X server it shortcuts and captures through goes away.
@@ -472,12 +478,12 @@ int main(int argc,char* argv[]) {
  configureLogin();QObject::connect(&settings,&putgd::SettingsService::accepted,&app,configureLogin);
  // "Upload with put.gd" in file managers (#1105): the per-user entries, written
  // at every start (DING or COSMIC may have arrived since) and when the AppImage's
- // switch changes; the notice once per installation.
+ // switch changes; the AppImage's notice once per installation (DEB/RPM have none).
  const auto fileManagerMutex=std::make_shared<std::mutex>();
  const auto fileManagerGeneration=std::make_shared<std::atomic_ullong>(0);
  const auto configureFileManagers=[&] {
   // A development build's DEB/RPM-style run has no system menu files to go with
-  // per-user ones, and its stamp would announce a menu that isn't there.
+  // per-user ones.
   if(putgd::host::installationClass()=="system"&&QFileInfo(QCoreApplication::applicationFilePath()).canonicalFilePath()!=QStringLiteral("/usr/bin/putgd"))return;
   const auto ticket=++*fileManagerGeneration;
   putgd::FileManagerContext context;
@@ -518,7 +524,8 @@ int main(int argc,char* argv[]) {
  else if(!tray.available()&&!startedForUpload) {
   // XDG autostart can precede the desktop's tray watcher or host. Give them a
   // bounded startup grace period before exposing the no-tray recovery window.
-  QObject::connect(&startupRecovery,&QTimer::timeout,&tray,[&]{if(!tray.available())showInitialView();});
+  // An editor or recording window already open has shown put.gd is running.
+  QObject::connect(&startupRecovery,&QTimer::timeout,&tray,[&]{if(!tray.available()&&operations.editingOperation().isEmpty()&&!operations.recording().active())showInitialView();});
   startupRecovery.start(10000);
  }
  {

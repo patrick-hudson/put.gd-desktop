@@ -32,13 +32,23 @@ QPainterPath turkeySilhouette() {
  return tray().united(p);
 }
 QPainterPath treeSilhouette() {
- QPainterPath p;p.moveTo(12,.5);
- // A star on a tall tree standing in the bowl's well, clear of it all round. A tree
- // on the rim needs a wide head on a stem, which at 16 px is the mark's arrow. The
- // square steps cut 1.5 units between tiers: anything shallower closes up at tray size.
- for(const auto& point:{QPointF(12.6,1.9),QPointF(14.1,2),QPointF(13,3),QPointF(13.25,3.8),QPointF(15,5.5),QPointF(15,6.25),QPointF(13,6.25),QPointF(13,7.75),QPointF(15.75,9.5),QPointF(15.75,10.25),QPointF(13.25,10.25),QPointF(13.25,11.75),QPointF(16.5,14),QPointF(16.5,14.75),QPointF(13.25,14.75),QPointF(13.25,16.5),QPointF(10.75,16.5),QPointF(10.75,14.75),QPointF(7.5,14.75),QPointF(7.5,14),QPointF(10.75,11.75),QPointF(10.75,10.25),QPointF(8.25,10.25),QPointF(8.25,9.5),QPointF(11,7.75),QPointF(11,6.25),QPointF(9,6.25),QPointF(9,5.5),QPointF(10.75,3.8),QPointF(11,3),QPointF(9.9,2),QPointF(11.4,1.9)})p.lineTo(point);
- p.closeSubpath();
- return tray().united(p);
+ // Broad fir boughs use most of the frame; the tray becomes a small tree stand.
+ QPainterPath tree;tree.moveTo(12,4.75);
+ tree.lineTo(16.25,9);tree.lineTo(13.75,9);
+ tree.lineTo(19,13.75);tree.lineTo(15.75,13.75);
+ tree.lineTo(21.5,18.5);tree.lineTo(13.25,18.5);
+ tree.lineTo(13.25,20);tree.lineTo(10.75,20);tree.lineTo(10.75,18.5);
+ tree.lineTo(2.5,18.5);tree.lineTo(8.25,13.75);
+ tree.lineTo(5,13.75);tree.lineTo(10.25,9);
+ tree.lineTo(7.75,9);tree.closeSubpath();
+ // The star's lower points stay clear of the tree's crown.
+ QPainterPath star;star.moveTo(12,.5);
+ for(const auto& point:{QPointF(12.7,1.9),QPointF(14.3,2.1),QPointF(13.1,3.2),QPointF(13.4,4.7),QPointF(12,4),QPointF(10.6,4.7),QPointF(10.9,3.2),QPointF(9.7,2.1),QPointF(11.3,1.9)})star.lineTo(point);
+ star.closeSubpath();
+ QPainterPath stand;stand.moveTo(6.5,20);stand.lineTo(8.25,20);stand.lineTo(8.25,21);stand.quadTo(8.25,21.5,8.75,21.5);
+ stand.lineTo(15.25,21.5);stand.quadTo(15.75,21.5,15.75,21);stand.lineTo(15.75,20);stand.lineTo(17.5,20);
+ stand.lineTo(17.5,21);stand.quadTo(17.5,23.25,15.25,23.25);stand.lineTo(8.75,23.25);stand.quadTo(6.5,23.25,6.5,21);stand.closeSubpath();
+ return tree.united(star).united(stand);
 }
 const QPainterPath& glyphOutline(TrayGlyph glyph) {
  static const QPainterPath mark=arrow().united(tray()),bird=turkeySilhouette(),fir=treeSilhouette();

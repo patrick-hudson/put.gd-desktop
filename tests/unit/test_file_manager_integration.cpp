@@ -109,7 +109,7 @@ private slots:
   Fixture f;auto& c=f.context;c.installation="system";
   auto result=FileManagerIntegration::apply(c);
   QVERIFY2(!result.error,qPrintable(result.error.message));
-  QVERIFY(result.firstRun);QVERIFY(result.written.isEmpty());QVERIFY(result.restartable.isEmpty());
+  QVERIFY(result.firstRun);QVERIFY(!result.announce);QVERIFY(result.written.isEmpty());QVERIFY(result.restartable.isEmpty());
   QVERIFY(!QFileInfo::exists(f.ding()));QVERIFY(!QFileInfo::exists(f.cosmic()));
   QCOMPARE(readAll(QDir(c.dataRoot).filePath("file-manager/system.stamp")),QByteArray("26.1031.1\n"));
   // DING installed and COSMIC Files added later: both appear at the next start.
@@ -132,46 +132,50 @@ private slots:
   result=FileManagerIntegration::apply(c);
   QCOMPARE(result.removed,QStringList{f.ding()});QVERIFY(!QFileInfo::exists(f.ding()));QVERIFY(QFileInfo::exists(f.cosmic()));
  }
- void systemFirstRunNamesFileManagersToRestart() {
-  Fixture f;auto& c=f.context;c.installation="system";c.desktop="ubuntu:GNOME";
-  f.installPlugin("nautilus/extensions-4","libputgd-nautilus.so");f.installPlugin("caja/extensions-2.0","libputgd-caja.so");
-  f.installPlugin("peony-extensions","libputgd-peony.so");
-  write(QDir(c.searchPath).filePath("nautilus"),"#!/bin/sh\n",programMode);write(QDir(c.searchPath).filePath("peony"),"#!/bin/sh\n",programMode);
+ void systemFirstRunHasNoNotice_data() {
+  QTest::addColumn<QString>("desktop");QTest::addColumn<QString>("plugin");QTest::addColumn<QString>("manager");
+  // Fedora's RPM on GNOME: the package installed the Files plugin, so no notice and no Restart Files.
+  QTest::newRow("GNOME")<<"GNOME"<<"nautilus/extensions-4"<<"nautilus";
+  QTest::newRow("MATE")<<"MATE"<<"caja/extensions-2.0"<<"caja";
+  QTest::newRow("UKUI")<<"UKUI"<<"peony-extensions"<<"peony";
+  QTest::newRow("LXDE")<<"LXDE"<<""<<"pcmanfm";
+  QTest::newRow("LXQt")<<"LXQt"<<""<<"pcmanfm-qt";
+  QTest::newRow("KDE")<<"KDE"<<""<<"dolphin";
+  QTest::newRow("Cinnamon")<<"X-Cinnamon"<<""<<"nemo";
+ }
+ void systemFirstRunHasNoNotice() {
+  QFETCH(QString,desktop);QFETCH(QString,plugin);QFETCH(QString,manager);
+  Fixture f;auto& c=f.context;c.installation="system";c.desktop=desktop;
+  if(!plugin.isEmpty())f.installPlugin(plugin,"libputgd-"+manager+".so");
+  write(QDir(c.dataDirs[0]).filePath("file-manager/actions/putgd-upload.desktop"),"[Desktop Entry]\n");
+  write(QDir(c.searchPath).filePath(manager),"#!/bin/sh\n",programMode);
   auto result=FileManagerIntegration::apply(c);
-  QVERIFY(result.firstRun);QCOMPARE(result.restartable,QStringList{"nautilus"});
+  QVERIFY2(!result.error,qPrintable(result.error.message));
+  QVERIFY(result.firstRun);QVERIFY(!result.announce);QVERIFY(result.restartable.isEmpty());
+  QVERIFY(!result.toJson()["announce"].toBool());
   result=FileManagerIntegration::apply(c);
-  QVERIFY(!result.firstRun);QVERIFY(result.restartable.isEmpty());
+  QVERIFY(!result.firstRun);QVERIFY(!result.announce);
   // An upgrade keeps the stamp: no second notice.
   c.version="26.1101.1";result=FileManagerIntegration::apply(c);
   QVERIFY(!result.firstRun);QCOMPARE(readAll(QDir(c.dataRoot).filePath("file-manager/system.stamp")),QByteArray("26.1101.1\n"));
  }
  void firstRunNamesOnlyTheSessionsFileManager_data() {
-  QTest::addColumn<QString>("desktop");QTest::addColumn<QString>("installation");QTest::addColumn<QStringList>("restartable");
-  const QStringList plugin{"nautilus"};
-  QTest::newRow("GNOME")<<"ubuntu:GNOME"<<"system"<<plugin;
-  QTest::newRow("Flashback")<<"GNOME-Flashback:GNOME"<<"system"<<plugin;
-  QTest::newRow("Unity")<<"Unity:Unity7:ubuntu"<<"system"<<plugin;
-  QTest::newRow("MATE")<<"MATE"<<"system"<<QStringList{"caja"};
-  QTest::newRow("UKUI")<<"UKUI"<<"system"<<QStringList{"peony"};
-  QTest::newRow("LXDE names PCManFM, not Files")<<"LXDE"<<"system"<<QStringList{"pcmanfm"};
-  QTest::newRow("LXQt names PCManFM-Qt, not PCManFM")<<"LXQt"<<"system"<<QStringList{"pcmanfm-qt"};
-  QTest::newRow("LXDE AppImage")<<"LXDE"<<"appimage"<<QStringList{"pcmanfm"};
-  QTest::newRow("LXQt AppImage")<<"LXQt"<<"appimage"<<QStringList{"pcmanfm-qt"};
-  QTest::newRow("GNOME AppImage has no plugin")<<"GNOME"<<"appimage"<<QStringList{};
-  QTest::newRow("XFCE")<<"XFCE"<<"system"<<QStringList{};
-  QTest::newRow("Cinnamon")<<"X-Cinnamon"<<"system"<<QStringList{};
-  QTest::newRow("KDE")<<"KDE"<<"system"<<QStringList{};
-  QTest::newRow("Budgie names no file manager")<<"Budgie:GNOME"<<"system"<<QStringList{};
-  QTest::newRow("Two desktops: the first decides")<<"MATE:LXDE"<<"system"<<QStringList{"caja"};
-  QTest::newRow("Two desktops, the other way round")<<"LXDE:MATE"<<"system"<<QStringList{"pcmanfm"};
-  QTest::newRow("COSMIC")<<"COSMIC"<<"system"<<QStringList{};
+  QTest::addColumn<QString>("desktop");QTest::addColumn<QStringList>("restartable");
+  QTest::newRow("LXDE names PCManFM")<<"LXDE"<<QStringList{"pcmanfm"};
+  QTest::newRow("LXQt names PCManFM-Qt, not PCManFM")<<"LXQt"<<QStringList{"pcmanfm-qt"};
+  QTest::newRow("GNOME has no plugin")<<"GNOME"<<QStringList{};
+  QTest::newRow("MATE")<<"MATE"<<QStringList{};
+  QTest::newRow("XFCE")<<"XFCE"<<QStringList{};
+  QTest::newRow("Cinnamon")<<"X-Cinnamon"<<QStringList{};
+  QTest::newRow("KDE")<<"KDE"<<QStringList{};
+  QTest::newRow("Budgie names no file manager")<<"Budgie:LXDE"<<QStringList{};
+  QTest::newRow("Two desktops: the first decides")<<"LXQt:LXDE"<<QStringList{"pcmanfm-qt"};
+  QTest::newRow("Two desktops, the other way round")<<"LXDE:LXQt"<<QStringList{"pcmanfm"};
+  QTest::newRow("COSMIC")<<"COSMIC"<<QStringList{};
  }
  void firstRunNamesOnlyTheSessionsFileManager() {
-  QFETCH(QString,desktop);QFETCH(QString,installation);QFETCH(QStringList,restartable);
-  Fixture f;auto& c=f.context;c.installation=installation;c.desktop=desktop;
-  f.installPlugin("nautilus/extensions-4","libputgd-nautilus.so");f.installPlugin("caja/extensions-2.0","libputgd-caja.so");
-  f.installPlugin("peony-extensions","libputgd-peony.so");
-  if(installation=="system")write(QDir(c.dataDirs[0]).filePath("file-manager/actions/putgd-upload.desktop"),"[Desktop Entry]\n");
+  QFETCH(QString,desktop);QFETCH(QStringList,restartable);
+  Fixture f;auto& c=f.context;c.installation="appimage";c.desktop=desktop;
   for(const auto* name:{"nautilus","caja","peony","pcmanfm","pcmanfm-qt"})write(QDir(c.searchPath).filePath(name),"#!/bin/sh\n",programMode);
   if(desktop=="COSMIC")f.installCosmic();
   const auto result=FileManagerIntegration::apply(c);
@@ -181,19 +185,22 @@ private slots:
  void firstRunAnnouncesOnlyAnEntryThatExists_data() {
   QTest::addColumn<QString>("desktop");QTest::addColumn<QString>("kdeVersion");QTest::addColumn<QString>("installation");QTest::addColumn<bool>("announce");
   QTest::newRow("UKUI AppImage")<<"UKUI"<<""<<"appimage"<<false;
-  QTest::newRow("UKUI DEB")<<"UKUI"<<""<<"system"<<true;
+  QTest::newRow("UKUI DEB")<<"UKUI"<<""<<"system"<<false;
   QTest::newRow("Plasma 5 AppImage")<<"KDE"<<"5"<<"appimage"<<false;
-  QTest::newRow("Plasma 5 DEB")<<"KDE"<<"5"<<"system"<<true;
+  QTest::newRow("Plasma 5 DEB")<<"KDE"<<"5"<<"system"<<false;
+  QTest::newRow("Plasma 6 DEB")<<"KDE"<<"6"<<"system"<<false;
+  QTest::newRow("GNOME RPM")<<"GNOME"<<""<<"system"<<false;
+  QTest::newRow("Cinnamon DEB")<<"X-Cinnamon"<<""<<"system"<<false;
   QTest::newRow("Plasma 6 AppImage")<<"KDE"<<"6"<<"appimage"<<true;
-  QTest::newRow("Deepin")<<"Deepin"<<""<<"system"<<false;
+  QTest::newRow("Deepin")<<"Deepin"<<""<<"appimage"<<false;
   QTest::newRow("Trinity")<<"TDE"<<""<<"appimage"<<false;
-  QTest::newRow("Enlightenment")<<"Enlightenment"<<""<<"system"<<false;
+  QTest::newRow("Enlightenment")<<"Enlightenment"<<""<<"appimage"<<false;
   QTest::newRow("LXDE AppImage")<<"LXDE"<<""<<"appimage"<<true;
-  QTest::newRow("COSMIC without COSMIC Files")<<"COSMIC"<<""<<"system"<<false;
+  QTest::newRow("COSMIC without COSMIC Files")<<"COSMIC"<<""<<"appimage"<<false;
   QTest::newRow("Cinnamon")<<"X-Cinnamon"<<""<<"appimage"<<true;
  }
  void firstRunAnnouncesCosmicWithCosmicFiles() {
-  Fixture f;auto& c=f.context;c.installation="system";c.desktop="COSMIC";f.installCosmic();
+  Fixture f;auto& c=f.context;c.installation="appimage";c.desktop="COSMIC";f.installCosmic();
   QVERIFY(FileManagerIntegration::apply(c).announce);
  }
  void firstRunAnnouncesOnlyAnEntryThatExists() {
@@ -232,15 +239,18 @@ private slots:
   // The start line comes last: once it's there, the stub is ready for SIGTERM.
   write(stub,("#!/bin/sh\ntrap 'exit 0' TERM\nprintf '%s\\n' \"$WAYLAND_DISPLAY\" >> '"+quotedDisplays+"'\nprintf '%s %s\\n' \"$#\" \"$*\" >> '"+quoted+"'\nwhile :; do sleep 0.05; done\n").toUtf8(),programMode);
   const auto lines=[&]{return QString::fromUtf8(readAll(starts)).split('\n',Qt::SkipEmptyParts);};
-  const auto restart=[&](QProcess& process){process.start("/bin/sh",{"-c",FileManagerIntegration::restartScript("pcmanfm"),"putgd-restart",name});QVERIFY(process.waitForStarted());};
+  // Observe terminal state through the event loop: waitForFinished() returns
+  // false if Qt has already delivered finished, and a raw 5 s budget ignores
+  // the contention scale. Keep the exit-code and restart assertions below.
+  const auto restart=[&](QProcess& process){process.start("/bin/sh",{"-c",FileManagerIntegration::restartScript("pcmanfm"),"putgd-restart",name});QVERIFY(process.waitForStarted(putgd::test::scaled(5000)));};
   {
    QProcess desktop;desktop.start(stub,{"--desktop","--profile","the LXDE"});
    PUTGD_TRY_COMPARE(lines().size(),1);
    QProcess second;restart(second);
    // The first exits cleanly on SIGTERM; its arguments, spaces included, come back.
-   QVERIFY(desktop.waitForFinished(5000));QCOMPARE(desktop.exitCode(),0);
+   PUTGD_TRY_COMPARE(desktop.state(),QProcess::NotRunning);QCOMPARE(desktop.exitCode(),0);
    PUTGD_TRY_COMPARE(lines(),QStringList({"3 --desktop --profile the LXDE","3 --desktop --profile the LXDE"}));
-   second.terminate();QVERIFY(second.waitForFinished(5000));
+   second.terminate();PUTGD_TRY_COMPARE(second.state(),QProcess::NotRunning);
   }
   QFile::remove(starts);
   {
@@ -248,8 +258,8 @@ private slots:
    QProcess window;window.start(stub,{"/some/folder"});
    PUTGD_TRY_COMPARE(lines().size(),1);
    QProcess second;restart(second);
-   QVERIFY(window.waitForFinished(5000));
-   QVERIFY(second.waitForFinished(5000));QCOMPARE(second.exitCode(),0);
+   PUTGD_TRY_COMPARE(window.state(),QProcess::NotRunning);
+   PUTGD_TRY_COMPARE(second.state(),QProcess::NotRunning);QCOMPARE(second.exitCode(),0);
    QCOMPARE(lines(),QStringList{"1 /some/folder"});
   }
   for(const auto* variable:{"DISPLAY","WAYLAND_DISPLAY"}) {
@@ -262,9 +272,9 @@ private slots:
    QVERIFY(other.waitForStarted(putgd::test::scaled(5000)));
    PUTGD_TRY_COMPARE(lines().size(),1);
    QProcess second;restart(second);
-   QVERIFY(second.waitForFinished(5000));QCOMPARE(second.exitCode(),0);
+   PUTGD_TRY_COMPARE(second.state(),QProcess::NotRunning);QCOMPARE(second.exitCode(),0);
    QCOMPARE(other.state(),QProcess::Running);QCOMPARE(lines().size(),1);
-   other.terminate();QVERIFY(other.waitForFinished(5000));
+   other.terminate();PUTGD_TRY_COMPARE(other.state(),QProcess::NotRunning);
   }
   {
    // Wayland's default display, named by one side only, is the same display.
@@ -273,15 +283,15 @@ private slots:
    desktop.setProcessEnvironment(environment);desktop.start(stub,{"--desktop"});
    PUTGD_TRY_COMPARE(lines().size(),1);
    QProcess second;environment.remove("WAYLAND_DISPLAY");second.setProcessEnvironment(environment);restart(second);
-   QVERIFY(desktop.waitForFinished(5000));
+   PUTGD_TRY_COMPARE(desktop.state(),QProcess::NotRunning);
    PUTGD_TRY_COMPARE(lines().size(),2);
    // It comes back on the display it had, not put.gd's lack of one.
    PUTGD_TRY_COMPARE(QString::fromUtf8(readAll(displays)),QString("wayland-0\nwayland-0\n"));
-   second.terminate();QVERIFY(second.waitForFinished(5000));
+   second.terminate();PUTGD_TRY_COMPARE(second.state(),QProcess::NotRunning);
   }
   // Not running: nothing to do, and nothing starts.
   QFile::remove(starts);
-  QProcess none;restart(none);QVERIFY(none.waitForFinished(5000));QCOMPARE(none.exitCode(),0);
+  QProcess none;restart(none);PUTGD_TRY_COMPARE(none.state(),QProcess::NotRunning);QCOMPARE(none.exitCode(),0);
   QVERIFY(lines().isEmpty());
  }
  void scriptsKeepArgumentBoundaries() {

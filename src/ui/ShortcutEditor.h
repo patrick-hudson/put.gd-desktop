@@ -38,6 +38,7 @@ public:
 protected:
  bool eventFilter(QObject*,QEvent*) override;
 private:
+ void setRecordingStatus(const QString& message);
  void startRecording(const QString& action);
  void finishRecording(const QString& message);
  QHash<QString,QLineEdit*> editors_;QHash<QString,QLabel*> bindingStates_;QLabel* status_;QPlainTextEdit* details_;

@@ -13,6 +13,7 @@ ASSET_PATTERNS = {
     'ubuntu24.04': re.compile(r'^putgd-[^/]+-ubuntu24\.04-x86_64\.deb$'),
     'ubuntu26.04': re.compile(r'^putgd-[^/]+-ubuntu26\.04-x86_64\.deb$'),
     'debian13': re.compile(r'^putgd-[^/]+-debian13-x86_64\.deb$'),
+    'archlinux': re.compile(r'^putgd-[^/]+-archlinux-x86_64[.]pkg[.]tar[.]zst$'),
     'fedora44': re.compile(r'^putgd-[^/]+-fedora44-x86_64\.rpm$'),
     'appimage': re.compile(r'^putgd-[^/]+-x86_64\.AppImage$'),
 }

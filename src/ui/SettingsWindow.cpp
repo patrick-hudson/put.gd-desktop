@@ -1187,7 +1187,9 @@ SettingsWindow::SettingsWindow(UiSession& settings,QWidget* parent):RetainedWind
  const auto sharedForms=tabs_->findChildren<QFormLayout*>();for(int page=0;page<tabs_->count();++page)if(auto* scroll=qobject_cast<QScrollArea*>(tabs_->widget(page)))Ui::alignForms(scroll->widget(),sharedForms);Ui::alignChoices(tabs_,sharedForms);
  for(auto* field:findChildren<QLineEdit*>())if(field!=profileLabel_&&!qobject_cast<QComboBox*>(field->parentWidget())&&!qobject_cast<QAbstractSpinBox*>(field->parentWidget())&&field->maximumWidth()==QWIDGETSIZE_MAX&&!field->property("uiFullWidth").toBool())field->setMaximumWidth(Ui::scaled(480));
  for(auto* box:{general,capture,shortcutsPage,advancedPage})for(int i=0;i<box->count();++i)if(auto* widget=box->itemAt(i)->widget())widget->setMaximumWidth(Ui::scaled(760));
- connect(&settings_,&UiSession::accepted,this,[this]{configurationChanged();refreshEffectiveLimits();});connect(&settings_,&UiSession::statusChanged,this,[this]{configurationChanged();refreshDiagnostics();});connect(tabs_,&QTabWidget::currentChanged,this,&SettingsWindow::viewStateChanged);
+ connect(&settings_,&UiSession::accepted,this,[this]{configurationChanged();refreshEffectiveLimits();});connect(&settings_,&UiSession::statusChanged,this,[this]{configurationChanged();refreshDiagnostics();});
+ // The resident's startup unlock can end after Destinations opened; show the key it read (#600).
+ connect(&settings_,&UiSession::credentialsChanged,this,[this]{refreshCredentialHint();});connect(tabs_,&QTabWidget::currentChanged,this,&SettingsWindow::viewStateChanged);
  // #348: Updates stays in view while a freshly shown window settles its size and
  // rows, until the user scrolls or leaves the page.
  if(auto* scroll=qobject_cast<QScrollArea*>(tabs_->widget(0))){
@@ -1502,7 +1504,6 @@ void SettingsWindow::refreshUpdateStatus(){
  if(update.isEmpty()){Ui::feedback(updateStatus_,settings_.build()["version"].toString().contains("-dev")?"Update checks aren't available for development builds":"Update status isn't available yet.");return;}
  if(!supported){
   static const QHash<QString,QString> reasons{
-   {"flatpak","Flatpak keeps this installation up to date. Use your software manager, or run flatpak update."},
    {"development_build","Update checks aren't available for development builds"},
    {"no_package","This build wasn't made by a put.gd package (for example, a build from source), so it doesn't check for updates."},
    {"disabled_at_build","Update checks were turned off when this build was made, for example by a distribution's own package."}};

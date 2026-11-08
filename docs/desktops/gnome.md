@@ -57,6 +57,25 @@ Disable with `gnome-extensions disable putgd@put.gd`. Remove a packaged helper
 through the package manager; remove only its owned user directory for a manual
 installation. Disable removes all helper bindings, signals, pending selectors, transfer buffers, and the exported endpoint. Re-enable recreates them once. Shell/session restart requires the resident application's helper discovery to reconnect and rebind accepted settings.
 
+## Modal dialogs
+
+GNOME's session defaults `org.gnome.mutter attach-modal-dialogs` to `true`. On
+Fedora 44 this comes from `[org.gnome.mutter:GNOME]` in
+`00_org.gnome.shell.gschema.override`, so `gsettings get` shows that default only
+when `XDG_CURRENT_DESKTOP=GNOME` is set. A value the user set wins over it either
+way. With the setting on, Mutter attaches each modal dialog to its parent and drags
+the parent along with it. Qt 6.8 and later mark modal windows through
+`xdg-dialog-v1`, so the editor's Custom color dialog used to drag the whole
+editor. On GNOME, `putgd-ui` and `putgd-record` therefore add `xdg_wm_dialog_v1`
+to `QT_WAYLAND_DISABLED_INTERFACES` before Qt starts
+(`src/ui/DialogAttachment.cpp`). Their dialogs then move on their own whatever the
+setting says. Qt still blocks the parent, the dialog stays above it, and programs
+put.gd starts get the user's own value back. Plasma does not attach dialogs.
+Cinnamon leaves `org.cinnamon.muffin attach-modal-dialogs` off by default. A
+user who turns it on gets attached put.gd dialogs there, because the X11 modal
+hint is not covered by this setting
+([evidence](https://github.com/patrick-hudson/put.gd-evidence/tree/3268fed84fc28f2ecfbb274bb1a9a2ba17816c59/records/2026-11-07-gnome-attached-dialogs)).
+
 ## Acceptance boundary
 
 On GNOME 50, Ubuntu AppIndicators renders the native icon/menu but omits SNI
@@ -97,6 +116,8 @@ helper/package lifecycle and release acceptance remain separate gates in
 ## Bridge contract
 
 The helper exports `org.putgd.Gnome50` at `/org/gnome/Shell/Extensions/Putgd` on Shell's own session-bus connection. The native adapter resolves and pins the unique owner of `org.gnome.Shell`; it owns `org.putgd.App.Gnome50`, and the extension accepts only that name's current unique owner. D-Bus authenticates the session user. This prevents other session-bus names from submitting capture/clipboard requests and avoids using a caller allow-list workaround. Same-user process compromise is outside this session IPC boundary.
+
+Discovery is event driven (#1187). The adapter sends `Hello` when it starts, when the owner of `org.gnome.Shell` changes, and when the extension emits `CapabilitiesChanged`, which it does after exporting on every enable, including the one after an unlock, and before unexporting on disable. The signal subscription stays in place while the Shell keeps its connection, and it is sent before `Hello`, so an enable cannot fall between the two. While the helper is unavailable, a failed `Hello` still retries as a safety net for a lost signal or a transient failure: after 3 s, then doubling to one probe every 15 minutes. Each timed retry asks the resident to release the code pages it maps again after the usual thirty seconds of quiet, without postponing a release that is already scheduled. An idle resident with the extension disabled or locked no longer wakes every 3 s.
 
 Extension **v18** (PR #1056) captures a window on its head's output pixel grid,
 the same grid used for desktop and region capture of that head. When
@@ -149,8 +170,8 @@ these methods; it is not graphical acceptance.
 ## UI ownership recovery test
 
 When the final UI process exits, the adapter clears its registered PID. If that
-clear fails, window capture remains disabled until the existing three-second
-probe successfully repeats the clear. A newer live helper PID supersedes that
+clear fails, window capture remains disabled until a retry three seconds after
+each failed clear succeeds. A newer live helper PID supersedes that
 recovery. Live-helper registration failures remain blocked, and a new Shell
 owner receives the latest PID during rediscovery.
 

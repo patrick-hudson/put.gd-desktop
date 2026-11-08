@@ -52,8 +52,8 @@
     "qt": "6.12.0",
     "layerShellQt": {
       "repository": "https://github.com/KDE/layer-shell-qt.git",
-      "release": "6.8.1",
-      "commit": "7103418a91fd5f756ef281a5c59555c2a86d9c0c"
+      "release": "6.8.2",
+      "commit": "842f397180f349380e9f7d466c9e746e4dd7faaa"
     },
     "extraCmakeModules": {
       "repository": "https://github.com/KDE/extra-cmake-modules.git",
@@ -99,8 +99,8 @@
     },
     "ffmpeg": {
       "repository": "https://github.com/FFmpeg/FFmpeg.git",
-      "release": "7.1.5",
-      "commit": "3a0867c2bfda4a4d4309ca1a8cbdc6175e67f587"
+      "release": "9.0.2",
+      "commit": "946fcce07b6dcd0331c8cc609192aeff5e1924f8"
     },
     "mimalloc": {
       "repository": "https://github.com/microsoft/mimalloc.git",

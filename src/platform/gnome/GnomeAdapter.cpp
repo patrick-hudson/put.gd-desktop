@@ -1,4 +1,5 @@
 #include "GnomeAdapter.h"
+#include <algorithm>
 #include <atomic>
 #include <memory>
 #include "GnomeProtocol.h"
@@ -57,16 +58,28 @@ GnomeAdapter::GnomeAdapter(QObject* parent):QObject(parent),bus_(QDBusConnection
  if(!supported){helperError_={"session_unsupported","GNOME adapter requires a native GNOME Wayland session",{}};return;}
  ownsName_=bus_.registerService(client);if(!ownsName_){helperError_={"helper_unavailable","Another resident process owns the GNOME bridge client name",{}};return;}
  connect(&watcher_,&QDBusServiceWatcher::serviceOwnerChanged,this,[this]{helperChanged();});
- probe_.setInterval(3000);connect(&probe_,&QTimer::timeout,this,[this]{
-  if(!ready_)discover();
+ // Discovery follows events: the Shell's owner change and the extension's
+ // CapabilitiesChanged, which it sends after exporting on every enable and unlock.
+ // A failed Hello still retries, backing off to a slow safety probe, so a lost
+ // signal or a transient failure recovers without waking an idle resident every
+ // few seconds. Each retry reports itself, so the resident can release the pages
+ // it mapped again (#1187).
+ discoveryRetry_.setSingleShot(true);connect(&discoveryRetry_,&QTimer::timeout,this,[this]{if(!ready_){discover();emit discoveryRetried();}});
+ uiProcessRetry_.setSingleShot(true);uiProcessRetry_.setInterval(firstRetryMs);
+ connect(&uiProcessRetry_,&QTimer::timeout,this,[this]{
   // Closing the UI must not leave window hotkeys disabled after a transient
   // clear failure. Retry only while no helper is registered; a newer live PID
   // supersedes this recovery and stays fail-closed until its own registration.
-  else if(!uiProcess_&&uiProcessError_)setUiProcess(0);
- });probe_.start();discover();
+  if(ready_&&!uiProcess_&&uiProcessError_)setUiProcess(0);
+ });
+ discover();
+}
+void GnomeAdapter::setDiscoveryRetryForTesting(int firstMs,int capMs){
+ retryFirstMs_=firstMs;retryCapMs_=capMs;retryMs_=firstMs;uiProcessRetry_.setInterval(firstMs);
+ if(discoveryRetry_.isActive())discoveryRetry_.start(retryMs_);
 }
 GnomeAdapter::~GnomeAdapter(){
- stopping_=true;probe_.stop();cancelAll("source_unavailable","GNOME adapter closed");
+ stopping_=true;discoveryRetry_.stop();uiProcessRetry_.stop();cancelAll("source_unavailable","GNOME adapter closed");
  auto pending=std::move(pending_);pending_.clear();for(auto& reply:pending)reply({"source_unavailable","GNOME adapter closed",{}},{});
  for(auto* worker:workers_){worker->wait();delete worker;}
  if(ownsName_)bus_.unregisterService(client);
@@ -92,21 +105,34 @@ void GnomeAdapter::call(const QString& method,const QVariantList& args,Reply rep
   callback(error,result);
  });
 }
+void GnomeAdapter::followOwner(const QString& owner){
+ if(owner_==owner)return;
+ // Signals stay subscribed while the Shell keeps its connection, so none can be
+ // lost between an extension disable and the next enable.
+ if(!owner_.isEmpty()){bus_.disconnect(owner_,path,interface,"Action",this,SLOT(helperAction(QString,QString)));bus_.disconnect(owner_,path,interface,"ClipboardChanged",this,SLOT(helperClipboardChanged(qulonglong)));bus_.disconnect(owner_,path,interface,"CapabilitiesChanged",this,SLOT(helperChanged()));}
+ owner_=owner;
+ if(!owner_.isEmpty()){bus_.connect(owner_,path,interface,"Action",this,SLOT(helperAction(QString,QString)));bus_.connect(owner_,path,interface,"ClipboardChanged",this,SLOT(helperClipboardChanged(qulonglong)));bus_.connect(owner_,path,interface,"CapabilitiesChanged",this,SLOT(helperChanged()));}
+}
 void GnomeAdapter::discover(){
  if(!ownsName_||stopping_)return;
- const auto owner=bus_.interface()->serviceOwner(service);if(!owner.isValid()||owner.value().isEmpty()){helperUnavailable({"helper_unavailable","GNOME Shell is unavailable on the session bus",{}});return;}
- if(owner_!=owner.value()){owner_=owner.value();bus_.connect(owner_,path,interface,"Action",this,SLOT(helperAction(QString,QString)));bus_.connect(owner_,path,interface,"ClipboardChanged",this,SLOT(helperClipboardChanged(qulonglong)));bus_.connect(owner_,path,interface,"CapabilitiesChanged",this,SLOT(helperChanged()));}
+ // The match rules are sent before Hello, so an enable the Shell handles after
+ // this Hello still reaches the adapter as CapabilitiesChanged.
+ const auto owner=bus_.interface()->serviceOwner(service);followOwner(owner.isValid()?owner.value():QString());
+ if(owner_.isEmpty()){helperUnavailable({"helper_unavailable","GNOME Shell is unavailable on the session bus",{}});return;}
  call("Hello",{},[this](Error error,QJsonObject hello){
   if(!error&&(hello["version"].toInt()!=gnome::protocolVersion||hello["shellMajor"].toInt()!=50))error={"helper_incompatible","GNOME helper requires protocol 1 and GNOME Shell 50",{}};
   if(error){helperUnavailable(error);return;}
+  discoveryRetry_.stop();retryMs_=retryFirstMs_;
   ready_=true;helperError_={};helper_=hello;setUiProcess(uiProcess_);helperRevision_=quint64(hello["clipboardRevision"].toDouble());++revision_;bindShortcuts(requested_);emit capabilitiesChanged();
  });
 }
-// The probe retries for as long as the helper stays away. Only a change may reach
-// the UI: every signal costs it a new snapshot and a reload of the History page.
+// The retry runs for as long as the helper stays away, each wait twice the last
+// up to the safety probe's. Only a change may reach the UI: every signal costs it
+// a new snapshot and a reload of the History page.
 void GnomeAdapter::helperUnavailable(const Error& error){
  const auto before=capabilities();ready_=false;helperError_=error;invalidateShortcutBindings();
  if(capabilities()!=before)emit capabilitiesChanged();
+ if(!stopping_&&!discoveryRetry_.isActive()){discoveryRetry_.start(retryMs_);retryMs_=std::min(retryCapMs_,retryMs_*2);}
 }
 void GnomeAdapter::setUiProcess(qint64 pid){
  uiProcess_=pid>0&&pid<=std::numeric_limits<quint32>::max()?pid:0;uiProcessError_={};
@@ -117,12 +143,14 @@ void GnomeAdapter::setUiProcess(qint64 pid){
   // Ack registration before the supervisor can let its child display a window.
   // A failed update disables window acquisition, including Shell hotkey tickets.
   sync("SetUiProcess",{quint32(uiProcess_)},uiProcessError_);
+  if(!uiProcess_&&uiProcessError_&&!stopping_)uiProcessRetry_.start();
  }
  emit capabilitiesChanged();
 }
 void GnomeAdapter::helperChanged(){
- if(!owner_.isEmpty()){bus_.disconnect(owner_,path,interface,"Action",this,SLOT(helperAction(QString,QString)));bus_.disconnect(owner_,path,interface,"ClipboardChanged",this,SLOT(helperClipboardChanged(qulonglong)));bus_.disconnect(owner_,path,interface,"CapabilitiesChanged",this,SLOT(helperChanged()));}
- ready_=false;invalidateShortcutBindings();owner_.clear();helper_={};++revision_;cancelAll("helper_unavailable","GNOME helper disabled or Shell restarted");emit capabilitiesChanged();discover();
+ // A real change: rediscover now and restart the backoff from its first step.
+ discoveryRetry_.stop();retryMs_=retryFirstMs_;
+ ready_=false;invalidateShortcutBindings();helper_={};++revision_;cancelAll("helper_unavailable","GNOME helper disabled or Shell restarted");emit capabilitiesChanged();discover();
 }
 void GnomeAdapter::invalidateShortcutBindings(){
  bindings_={};for(const auto& action:Settings::invocableActionNames()){

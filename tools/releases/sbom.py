@@ -29,9 +29,9 @@ import uuid
 ROOT = Path(__file__).resolve().parents[2]
 TOOLS_LOCK = ROOT / 'packaging/sbom/tools.lock.json'
 POLICY = ROOT / 'packaging/sbom/policy.json'
-LABELS = ('appimage', 'ubuntu24.04', 'ubuntu26.04', 'debian13', 'fedora44')
+LABELS = ('appimage', 'ubuntu24.04', 'ubuntu26.04', 'debian13', 'fedora44', 'archlinux')
 DISTROS = {'appimage': 'ubuntu:24.04', 'ubuntu24.04': 'ubuntu:24.04', 'ubuntu26.04': 'ubuntu:26.04',
-           'debian13': 'debian:13', 'fedora44': 'fedora:44'}
+           'debian13': 'debian:13', 'fedora44': 'fedora:44', 'archlinux': 'archlinux:base'}
 SEVERITIES = ('Critical', 'High', 'Medium', 'Low', 'Negligible', 'Unknown')
 # Origins: code put.gd builds or ships itself, and the Ubuntu packages the AppImage
 # freezes, are put.gd's to fix; components Syft found on its own are reported with them.
@@ -132,6 +132,8 @@ def extract(package, label, work):
         subprocess.run([str(package), '--appimage-extract'], check=True, cwd=work, stdout=subprocess.DEVNULL)
         root.rmdir()
         (work / 'squashfs-root').rename(root)
+    elif label == 'archlinux':
+        subprocess.run(['tar', '--zstd', '-xf', str(package.resolve()), '-C', str(root)], check=True)
     elif package.suffix == '.deb':
         subprocess.run(['dpkg-deb', '-x', str(package), str(root)], check=True)
     else:

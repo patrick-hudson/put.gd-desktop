@@ -47,7 +47,7 @@ std::condition_variable controlChanged;
 std::deque<QJsonObject> acks;
 bool parentGone = false;
 
-// One newline-terminated line from stdin (portable: the worker also builds on Windows).
+// One bounded, newline-terminated line from stdin.
 QByteArray readLine(bool& eof) {
     QByteArray line;
     while (true) {

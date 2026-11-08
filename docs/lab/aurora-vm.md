@@ -40,7 +40,7 @@ host before calling it hung.
 The four original goldens below are standalone qcow2 files (virtual 48 GiB) under
 `~/work/put.gd/work/lab-images/`, each with `source.manifest.json`,
 `image-info.json`, the pinned guest `known_hosts` and the bootstrap inputs.
-The [immutable-golden rules](vm-lab.md#base-protection-and-inventory) apply.
+The [immutable-golden rules](vm-lab/hosts-and-bases.md#base-protection-and-inventory) apply.
 The three Fedora 44 goldens exist only on `f44` (no Debian or S3 copy, so the
 [two-copies rule](remote-golden-images.md) is not satisfied for them); the
 current Fedora 45 golden is on all five builders and in S3. The two older Fedora 45
@@ -91,7 +91,7 @@ allowance is outside put.gd's supported test scope.
    The generic `bootstrap-guest.sh` does not fit: Aurora has no `dnf` and its
    display manager is plasmalogin. The committed script already writes the
    plasmalogin drop-in and installs the common visibility autostart helper.
-   Use the [verified guest preflight](vm-lab.md#visible-guest-preflight) before acceptance.
+   Use the [verified guest preflight](vm-lab/guests-and-displays.md#visible-guest-preflight) before acceptance.
    This describes new provisioning; existing golden bytes remain unchanged.
 5. Clean `systemctl poweroff` over SSH, `qemu-img check`, `qemu-img convert`
    to a new standalone image, `qemu-img compare` against the source, SHA-256,
@@ -296,7 +296,7 @@ hotkeys). Two profile keys differ from the package-based profiles:
 Run the commands on `f44` from a checkout that contains this runner. The lab
 roots (`work/lab-runs`, `work/lab-images`, the lifecycle lock) are resolved
 from the checkout, so a scratch tree needs the `overlay_cleanup.ROOT`
-override described in [the remote-lab notes](vm-lab.md#retire-completed-overlays)
+override described in [the remote-lab notes](vm-lab/retire-overlays.md#retire-completed-overlays)
 or the canonical checkout itself. Pick the golden with `--golden`: the Fedora
 45 directory for acceptance, the v3 directory for the Fedora 44 base. The
 Fedora 45 golden's `known_hosts` pins `[127.0.0.1]:22426` and `:22427`; the
@@ -343,7 +343,7 @@ as `77`, `|` as `\`): use `;` and `tee` plus Ctrl+D.
 
 Retire the overlay with the guarded cleanup after exporting evidence. A
 smoke-only run has no passed scenario journal, so it needs the explicit
-completion manifest described in [vm-lab.md](vm-lab.md#retire-completed-overlays):
+completion manifest described in [overlay retirement](vm-lab/retire-overlays.md#retire-completed-overlays):
 
 ```sh
 python3 tools/lab/lab.py reset --run "$r"

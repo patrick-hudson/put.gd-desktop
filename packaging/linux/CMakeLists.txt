@@ -201,6 +201,14 @@ elseif(PUTGD_REPO_CHANNEL AND PUTGD_PACKAGE_TARGET STREQUAL "fedora44")
   set(CPACK_RPM_POST_UNINSTALL_SCRIPT_FILE "${repo_dir}/rpm-postun.sh")
   list(APPEND putgd_rpm_system_dirs /etc/pki /etc/pki/rpm-gpg /etc/yum.repos.d)
 endif()
+if(PUTGD_PACKAGE_TARGET STREQUAL "archlinux")
+  foreach(channel nightly stable)
+    file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/repo/putgd-${channel}.conf"
+      "[putgd-${channel}]\nSigLevel = PackageRequired DatabaseRequired\nServer = ${PUTGD_PACKAGE_REPOSITORY_URL}/pacman/x86_64/${channel}\n")
+    install(FILES "${CMAKE_CURRENT_BINARY_DIR}/repo/putgd-${channel}.conf"
+      "${repo_dir}/keys/putgd-${channel}.asc" DESTINATION "${CMAKE_INSTALL_DATADIR}/putgd/repo")
+  endforeach()
+endif()
 set(CPACK_GENERATOR DEB) # Select -G RPM for a native Fedora build.
 set(CPACK_PACKAGE_NAME putgd)
 # package-identity.cmake sets the build identity's version when CPack runs.
@@ -231,7 +239,7 @@ set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS ON)
 set(CPACK_DEBIAN_PACKAGE_PRIVATE_DIRS "${PUTGD_AWS_RUNTIME_DIR}")
 # History previews of WebP recordings and images read through Qt's WebP image
 # plugin (#189), which Debian, Ubuntu and Fedora ship apart from Qt GUI (GIF and
-# JPEG come with it). The AppImage and the Flatpak runtime carry it already.
+# JPEG come with it). The AppImage carries it already.
 set(CPACK_DEBIAN_PACKAGE_DEPENDS "libqt6sql6-sqlite, qt6-qpa-plugins, qt6-wayland, qt6-image-formats-plugins, libglib2.0-bin, hicolor-icon-theme, gtk-update-icon-cache")
 configure_file(refresh-icon-cache.sh package-inputs/postinst COPYONLY)
 configure_file(refresh-icon-cache.sh package-inputs/postrm COPYONLY)

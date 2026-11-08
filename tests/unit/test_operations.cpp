@@ -654,6 +654,41 @@ private slots:
   PUTGD_COMPARE_STEADY(memory()["imagePageReleaseCount"].toInt(),1,2500);
 #endif
  }
+ void probeRequestsOneMoreImagePageRelease() {
+#ifndef __GLIBC__
+  QSKIP("Allocator reclamation uses glibc on supported Linux builds");
+#else
+  QTemporaryDir directory;ProviderRegistry registry;SettingsService settings(directory.filePath("config.json"));Source source;
+  OperationService operations(directory.filePath("data"),settings,registry,source);operations.setImagePageDelayForTesting(100);
+  const auto memory=[&]{return operations.diagnostics()["memory"].toObject();};
+  PUTGD_TRY_VERIFY(operations.ready());PUTGD_TRY_COMPARE_WITH_TIMEOUT(memory()["imagePageReleaseCount"].toInt(),1,6000);
+  const auto trims=memory()["allocatorReclamationCount"].toInt();
+  // A quiet resident's GNOME discovery probe maps its D-Bus pages again (#1187):
+  // one release follows it, with no trim and no repeating timer.
+  operations.requestImagePageRelease();QVERIFY(memory()["imagePageReleasePending"].toBool());
+  PUTGD_TRY_COMPARE_WITH_TIMEOUT(memory()["imagePageReleaseCount"].toInt(),2,3000);
+  PUTGD_COMPARE_STEADY(memory()["imagePageReleaseCount"].toInt(),2,1500);QCOMPARE(memory()["allocatorReclamationCount"].toInt(),trims);
+  operations.shutdown();operations.requestImagePageRelease();QVERIFY(!memory()["imagePageReleasePending"].toBool());
+#endif
+ }
+ void probeDoesNotPostponeAReleaseAlreadyDue() {
+#ifndef __GLIBC__
+  QSKIP("Allocator reclamation uses glibc on supported Linux builds");
+#else
+  QTemporaryDir directory;ProviderRegistry registry;SettingsService settings(directory.filePath("config.json"));Source source;
+  OperationService operations(directory.filePath("data"),settings,registry,source);operations.setImagePageDelayForTesting(6000);
+  const auto memory=[&]{return operations.diagnostics()["memory"].toObject();};
+  PUTGD_TRY_VERIFY(operations.ready());PUTGD_TRY_COMPARE_WITH_TIMEOUT(memory()["allocatorReclamationCount"].toInt(),1,5000);
+  // The startup release is now due within 6 s. Probes during that wait, as the
+  // GNOME retry's first steps are, must not push it back.
+  QElapsedTimer elapsed;elapsed.start();QVERIFY(memory()["imagePageReleasePending"].toBool());
+  putgd::test::settle(4000);operations.requestImagePageRelease();QCOMPARE(memory()["imagePageReleaseCount"].toInt(),0);
+  // Postponed, it would come 10 s or more after the trim.
+  PUTGD_TRY_COMPARE_WITH_TIMEOUT(memory()["imagePageReleaseCount"].toInt(),1,4500);
+  QVERIFY2(elapsed.elapsed()<8500,qPrintable(QString::number(elapsed.elapsed())));
+  PUTGD_COMPARE_STEADY(memory()["imagePageReleaseCount"].toInt(),1,1500);
+#endif
+ }
  void shutdownCancelsImagePageRelease() {
 #ifndef __GLIBC__
   QSKIP("Allocator reclamation uses glibc on supported Linux builds");
@@ -693,6 +728,29 @@ private slots:
   putgd::test::settle(2200);PUTGD_TRY_COMPARE(count(),0);PUTGD_TRY_VERIFY(!replied);
   barrier->set_value();released=true;PUTGD_TRY_VERIFY(replied);PUTGD_TRY_COMPARE_WITH_TIMEOUT(count(),1,5000);
   QVERIFY(!operations.diagnostics()["memory"].toObject()["allocatorReclamationPending"].toBool());
+  QCOMPARE(source.reads,0);QCOMPARE(source.copies,0);
+#endif
+ }
+ void readOnlyJournalWorkRearmsHeapCleanup() {
+#ifndef __GLIBC__
+  QSKIP("Allocator reclamation uses glibc on supported Linux builds");
+#else
+  QTemporaryDir directory;ProviderRegistry registry;SettingsService settings(directory.filePath("config.json"));Source source;
+  OperationService operations(directory.filePath("data"),settings,registry,source);PUTGD_TRY_VERIFY(operations.ready());HistoryService history(operations);
+  const auto memory=[&]{return operations.diagnostics()["memory"].toObject();};
+  const auto count=[&]{return memory()["allocatorReclamationCount"].toInt();};
+  PUTGD_TRY_COMPARE_WITH_TIMEOUT(count(),1,5000);QVERIFY(!memory()["allocatorReclamationPending"].toBool());
+  // Each read frees its journal connection and results on its worker. A bare
+  // operation.recent or operation.inspect from the CLI or MCP helper must hand
+  // that heap back as history.list does, without a later call to arm it (#1184).
+  bool replied=false;operations.recent([&](Error e,QJsonObject){QVERIFY(!e);replied=true;});PUTGD_TRY_VERIFY(replied);
+  PUTGD_TRY_COMPARE_WITH_TIMEOUT(count(),2,5000);
+  replied=false;operations.inspect("missing-operation",[&](Error,QJsonObject){replied=true;});PUTGD_TRY_VERIFY(replied);
+  PUTGD_TRY_COMPARE_WITH_TIMEOUT(count(),3,5000);
+  replied=false;history.list(HistoryQuery{},[&](Error e,QJsonObject){QVERIFY(!e);replied=true;});PUTGD_TRY_VERIFY(replied);
+  PUTGD_TRY_COMPARE_WITH_TIMEOUT(count(),4,5000);
+  // One quiet-period cleanup per read, and no repeating idle timer.
+  QVERIFY(!memory()["allocatorReclamationPending"].toBool());PUTGD_COMPARE_STEADY(count(),4,2500);
   QCOMPARE(source.reads,0);QCOMPARE(source.copies,0);
 #endif
  }

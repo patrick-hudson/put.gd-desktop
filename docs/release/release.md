@@ -2,7 +2,7 @@
 
 Release builds use C++20, Qt 6, the pinned official AWS SDK, CMake presets, Ninja
 and native packaging tools. The application is MIT licensed. The first public
-track is a prerelease. Supported packages are DEB, RPM and AppImage.
+track is a prerelease. Supported packages are DEB, RPM, pacman and AppImage.
 
 ## Branches and channels
 
@@ -36,7 +36,7 @@ Earlier tags keep their names and stay readable: `v0.1.1-nightly.N`, the
 unpublished `v0.1.1-rc.1` draft, and before 2026-10-18
 `vBASE-dev.COUNT.UTC+gSHORT`. Every calendar version sorts after them.
 Nightlies never replace GitHub's Latest stable release. New releases publish
-five installers and ten small support files. Source downloads are linked
+six installers and eleven small support files. Source downloads are linked
 separately; debug files stay in CI artifacts. Older releases retain their original
 asset layouts and remain verifiable.
 
@@ -65,7 +65,7 @@ a rewritten committer date on `nightly` HEAD could cause that; check the commit
 and its date.
 
 Nightly notes state automated coverage: Linux test suites, package audits and
-the extracted-source production build. put.gd ships only Linux DEB, RPM and
+the extracted-source production build. put.gd ships only Linux DEB, RPM, pacman and
 AppImage packages; native Windows support was dropped on 2026-10-31. Nightlies
 are development releases, not new graphical, memory or live-S3 certification.
 
@@ -267,10 +267,11 @@ and nightly coverage classes continue to apply.
 | Ubuntu 26.04 / Kubuntu DEB | pinned Ubuntu 26.04 container | distro Qt and LayerShellQt |
 | Debian 13 DEB | pinned Debian 13 container | distro Qt 6.8, LayerShellQt and FFmpeg 7.1 |
 | Fedora 44 RPM | pinned Fedora 44 container | distro Qt and LayerShellQt |
+| Arch Linux pacman | pinned Arch container, rolling repositories | distro Qt and LayerShellQt |
 | x86_64 AppImage | Ubuntu 24.04, official Qt 6.12.0, locked ECM/LayerShellQt | dynamically bundled Qt/plugins |
 
 AppImage requires glibc 2.39 or newer; it does not substitute the host libc.
-DEB/RPM continue using system Qt. AppImage's normal bundled runtime is the
+DEB/RPM/pacman continue using system Qt. AppImage's normal bundled runtime is the
 explicit distribution exception added by the user's October 12 release request.
 The GTK platform theme must remain available for native dialogs/fonts. Never
 substitute a newer-glibc build or omit KDE region support to produce an asset.
@@ -282,7 +283,7 @@ replaces Fedora's `noopenh264` placeholder. Recommends do not replace an install
 conflicting placeholder: Fedora recording needs the explicit command
 `sudo dnf install openh264 gstreamer1-plugin-openh264`. The one-line installer
 runs that codec step when the Cisco repository is enabled; otherwise it prints
-the enable-then-install commands (see [codec setup](../design/recording.md#packages-and-codecs)).
+the enable-then-install commands (see [codec setup](../design/recording/packages-and-codecs.md#packages-and-codecs)).
 Each DEB therefore installs only
 on the release it was built for: the Ubuntu 24.04 and 26.04 DEBs need
 `libavcodec60` and `libavcodec62`, which Debian 13 does not ship, so Debian 13
@@ -438,12 +439,12 @@ permalink yet): [live update](https://github.com/patrick-hudson/put.gd-evidence/
 
 ## GitHub downloads and source
 
-The main GitHub Release page has 15 uploaded assets:
+The main GitHub Release page has 17 uploaded assets:
 
-- Five installers: Ubuntu 24.04, Ubuntu 26.04 and Debian 13 DEBs, the Fedora 44
-  RPM, and the x86_64 AppImage.
+- Six installers: Ubuntu 24.04, Ubuntu 26.04 and Debian 13 DEBs, the Fedora 44
+  RPM, the Arch Linux pacman package, and the x86_64 AppImage.
 - The AppImage `.zsync`, needed by update clients.
-- Five package SBOMs (`putgd-VERSION-LABEL.cdx.json`).
+- Six package SBOMs (`putgd-VERSION-LABEL.cdx.json`).
 - `SHA256SUMS`, `release-builds.json`, `source-delivery.json`, and the current
   `proton-source-catalog.json`.
 
@@ -495,7 +496,7 @@ size and checksum; a source-build receipt, when present, must match as well.
 ## SBOMs and vulnerability scans
 
 The stable draft workflow also runs `tools/releases/audit_assets.py` on exact
-GitHub downloads, including all five packages/SBOMs, the linked complete/curated
+GitHub downloads, including all six packages/SBOMs, the linked complete/curated
 sources and the pinned Proton transport parts. It verifies the published SBOM
 declarations against the extracted files before regenerating/scanning them with
 the current database and stable policy. Official Bun advisories supplement the
@@ -505,7 +506,7 @@ See [the runbook](release-runbook.md#4-run-acceptance-on-the-stable-draft) for t
 builder command and the separate manual review/acceptance boundary.
 
 Every `package.yml` run, tagged or not, ends with an `sbom` job (#420). It
-downloads the five packages, pins Syft and Grype by version and SHA-256
+downloads the six packages, pins Syft and Grype by version and SHA-256
 (`packaging/sbom/tools.lock.json`), and runs `tools/releases/sbom.py`:
 
 1. **SBOM.** Each package is unpacked (the AppImage with `--appimage-extract`, DEBs
@@ -550,7 +551,7 @@ as a new finding again:
 ```json
 "ignore": [
   {"id": "CVE-YYYY-NNNNN", "component": "ffmpeg", "reason": "the affected decoder is not built (media.json)",
-   "expires": "2027-01-21", "issue": 511, "scope": "appimage-ffmpeg-7.1.5"}
+   "expires": "2027-01-21", "issue": 511, "scope": "appimage-ffmpeg-9.0.2"}
 ]
 ```
 
@@ -569,8 +570,9 @@ The repository contract also requires reassessment when the locked source or
 `media.json` configure list changes. The existing stable severity/fix gate stays
 unchanged, and all accepted findings remain in the report with reasons and expiry.
 
-The [#511 evidence](../../packaging/sbom/dispositions/511.json) records three FFmpeg
-backports and the omitted components behind the other 26 Critical/High matches.
+The [#511 evidence](../../packaging/sbom/dispositions/511.json) records the omitted
+RTSP demuxer and muxer behind FFmpeg 9.0.2's one Critical/High match,
+CVE-2026-107696 (#1249; 7.1.5 had 29).
 It also resolves the reachability question for ICU 73.2 CVE-2025-5222: the
 [upstream fix](https://github.com/unicode-org/icu/commit/2c667e31cfd0b6bb1923627a932fd3453a5bac77)
 changes `tools/genrb/parse.cpp`, and that parser and `SRBRoot` belong to the
@@ -580,10 +582,9 @@ to those exact runtime bytes, not to the ICU source package or a system `genrb`.
 No new upstream patch or ICU ABI substitution is needed for this disposition.
 The acceptances expire on 2027-01-21 and do not cover other CVEs.
 
-The evidence package is the development-identity AppImage from `nightly`
-`50053b01f1bbd7f3776a53513bb8c43151ce0de8` (CI run 40045151634), not a published
-nightly or stable draft. Each later package must satisfy the same fingerprint
-guards, and the exact stable draft still requires its current scan and other
+The evidence package is the development-identity AppImage of pull request
+#1249 (CI run 42393675852), not a published nightly or stable draft. Each
+later package must satisfy the same fingerprint guards, and the exact stable draft still requires its current scan and other
 release acceptance. The [remaining-findings assessment](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-24-release-blockers-511-416-419/README.md)
 checks the exact source behind libtiff CVE-2026-4775 and GStreamer CVE-2025-3887.
 Qt's pinned libtiff already contains all four upstream overflow corrections.
@@ -664,7 +665,7 @@ change. Its receipt explicitly records desktop acceptance pending after assembly
 
 ## GitHub build and publication
 
-`.github/workflows/package.yml` builds and audits the four native packages and
+`.github/workflows/package.yml` builds and audits the five native packages and
 the AppImage. CI calls it on pull requests that touch packaging, CMake, Proton
 or CI inputs, on every push to `nightly`, and from the nightly and release runs
 with an exact tag. Builders are ABI-separated, keep read-only permissions and
@@ -678,8 +679,8 @@ AppImage), so the build's update check offers that same package. `native.py
 Each package job stages split debug files with `tools/releases/debug_symbols.py stage`, verifying them against the installed binary build IDs, and uploads them
 as separate CI artifacts. They are not downloaded for SBOMs or publication.
 
-With a tag, `collect --installers-only` requires the four native installers and
-AppImage from one clean tagged commit/tree/count/version, the five matching
+With a tag, `collect --installers-only` requires the five native installers and
+AppImage from one clean tagged commit/tree/count/version, the six matching
 SBOMs, the exact application source export and complete AppImage source receipt.
 It recalculates hashes and assigns distro-specific filenames. The AppImage's
 embedded update information and `.zsync` must describe this release's bytes and
@@ -741,3 +742,15 @@ requires the current [acceptance matrix](../testing/acceptance-matrix.md),
 [release runbook](release-runbook.md) and [verification](../testing/verification.md) gates.
 A prerelease must describe its observed coverage honestly, without relabeling
 historical tests.
+
+## Arch packaging addition (#1275)
+
+The packaging implementation adds the `archlinux` native target, built against
+Arch's rolling distro libraries in a pinned `archlinux:base` container. Assets
+are named `putgd-VERSION-archlinux-x86_64.pkg.tar.zst`, with the same release
+identity, notices, private AWS runtime, Proton source binding, split debug
+artifact and package SBOM as other native builds. Nightly and stable collection
+both require the Arch receipt. Clean-container package checks do not establish
+Hyprland or other desktop acceptance. An unpublished AUR recipe template lives
+under `packaging/aur/`; [#1279](https://github.com/patrick-hudson/put.gd-desktop/issues/1279)
+tracks Patrick's publication decision.

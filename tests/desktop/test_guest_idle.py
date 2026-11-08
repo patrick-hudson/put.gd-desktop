@@ -199,6 +199,26 @@ class GuestPolicyContracts(unittest.TestCase):
             self.assertTrue(any(call[-1] == 'reparseConfiguration' for call in calls))
             self.assertTrue(any(call[-1] == 'configure' for call in calls))
 
+    def test_omarchy_stay_awake_is_applied_and_read_back(self):
+        calls = []
+        state = {'enabled': False}
+        def command(*args):
+            calls.append(args)
+            if args[1] == 'stay-awake':
+                state['enabled'] = True
+                return 'disabled'
+            return json.dumps({'enabled': state['enabled']})
+        with patch.object(idle.Path, 'is_file', return_value=True), patch.object(idle, 'command', side_effect=command):
+            self.assertEqual(idle.omarchy_policy(True), [{'command': 'omarchy-toggle-idle', 'state': 'stay-awake'}])
+        self.assertEqual([call[1] for call in calls], ['stay-awake', 'status'])
+        state['enabled'] = False
+        with patch.object(idle.Path, 'is_file', return_value=True), patch.object(idle, 'command', side_effect=command), \
+                self.assertRaisesRegex(idle.PolicyError, 'Stay Awake is off'):
+            idle.omarchy_policy(False)
+        with patch.object(idle.Path, 'is_file', return_value=False), \
+                self.assertRaisesRegex(idle.PolicyError, 'only Omarchy'):
+            idle.omarchy_policy(True)
+
     def test_unrelated_unit_is_preserved(self):
         with tempfile.TemporaryDirectory() as directory, patch.dict(os.environ, {'XDG_CONFIG_HOME': directory}):
             unit = Path(directory) / 'systemd/user/putgd-lab-visible.service'

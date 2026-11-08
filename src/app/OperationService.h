@@ -114,7 +114,8 @@ public:
  // Free space, system reserve and in-flight imports on the upload store's filesystem.
  QJsonObject artifactDisk() const {return ArtifactStore::diskBudget(root_+"/artifacts").toJson();}
  ProviderRegistry& providers() {return providers_;}
- // Shared services run SQL, encoding, and file/network work on workers.
+ // Shared services run SQL, encoding, and file/network work on workers. Each
+ // finished worker arms the idle heap reclamation once the resident is ready.
  void background(std::function<QJsonObject(Error&)>,JsonReply);
  std::shared_ptr<std::mutex> objectLock(const Destination&,const QJsonObject&,const QString& candidate);
  // A provider that takes one request at a time for a destination (its credential
@@ -122,8 +123,11 @@ public:
  std::shared_ptr<DestinationLease> destinationLease(const Destination&);
  bool ready() const {return ready_;}
  // Ask the idle gate to return freed heap once current work drains (#1149): a
- // history page or a closed interface leaves query buffers free but resident.
+ // closed interface leaves its buffers free but resident. background() arms it itself.
  void requestHeapReclamation();
+ // Release the clean library pages a periodic probe mapped again (#1187), after
+ // the usual quiet. Unlike an interaction, it never postpones a release already due.
+ void requestImagePageRelease();
 signals:
  void initialized();
  void changed(const QString& id);
@@ -142,6 +146,10 @@ signals:
  void incompleteUploadsKept(const QJsonObject& notice);
  // upload.files found no destination to upload to (#1105): Settings should open.
  void destinationRequired();
+ // Someone asked for a capture, the editor or a recording (tray, shortcut, CLI or
+ // MCP): an explicit request that shows a put.gd window, so the no-tray startup
+ // recovery must not open Settings over it (#1252).
+ void explicitRequest();
 private:
  // Scoped provider calls count requests, independently of queue/encoding/journal work.
  class StorageActivity {

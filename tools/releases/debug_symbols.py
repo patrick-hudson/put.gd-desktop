@@ -3,7 +3,7 @@
 and assemble the release asset putgd-<version>-debug-<arch>.tar.zst from them.
 
 Release builds compile with -g and split each product binary's debug information
-into <binary>.debug at link time (CMakeLists.txt). `stage` checks every product
+into <binary>.debug at link time (cmake/ProductBinaries.cmake). `stage` checks every product
 binary in a build tree against its .debug file and against the binary the
 package installs (same GNU build ID), then writes debug-symbols-<label>.tar and
 its manifest. `combine` checks every staged build and writes one tar.zst laid
@@ -36,7 +36,7 @@ PRODUCTS = ('putgd', 'putgd-cli', 'putgd-ui', 'putgd-capture', 'putgd-kde-region
 # Built on every Linux packaging job; the others depend on the desktop libraries present.
 REQUIRED = ('putgd', 'putgd-cli', 'putgd-ui', 'putgd-capture', 'putgd-s3-worker', 'putgd-b2-worker', 'libputgd-s3.so')
 # Package matrix names in .github/workflows/package.yml, plus the AppImage.
-LABELS = ('ubuntu24.04', 'ubuntu26.04', 'debian13', 'fedora44', 'appimage')
+LABELS = ('ubuntu24.04', 'ubuntu26.04', 'debian13', 'fedora44', 'archlinux', 'appimage')
 ARCHITECTURE = 'x86_64'
 BUILD_ID = re.compile(r'[0-9a-f]{16,64}')
 SHT_NOTE = 7

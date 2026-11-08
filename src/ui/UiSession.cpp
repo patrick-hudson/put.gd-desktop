@@ -7,7 +7,10 @@ UiSession::UiSession(SessionClient& client,QObject* parent):QObject(parent),clie
 UiSession::~UiSession(){previews_.clear();previews_.waitForDone();}
 SessionClient::RequestId UiSession::request(const QString& method,const QJsonObject& params,QObject* receiver,SessionClient::Reply reply){return client_.request(method,params,receiver,std::move(reply));}
 void UiSession::applySettings(const QJsonObject& settings){document_=settings["document"].toObject();metadata_=settings["metadata"].toObject();}
-void UiSession::applySnapshot(const QJsonObject& data){const auto previous=revision();const auto wasReady=ready_;applySettings(data["settings"].toObject());diagnostics_=data["diagnostics"].toObject();build_=data["build"].toObject();epoch_=data["residentEpoch"].toString();ready_=data["operationsReady"].toBool();if(previous!=revision())emit accepted(revision());emit statusChanged();if(!wasReady&&ready_)emit initialized();emit operationsChanged();}
+void UiSession::applySnapshot(const QJsonObject& data){const auto previous=revision();const auto wasReady=ready_;applySettings(data["settings"].toObject());diagnostics_=data["diagnostics"].toObject();build_=data["build"].toObject();epoch_=data["residentEpoch"].toString();ready_=data["operationsReady"].toBool();if(previous!=revision())emit accepted(revision());emit statusChanged();if(!wasReady&&ready_)emit initialized();emit operationsChanged();
+ // A credential read or store ended in the resident, whoever started it (#600).
+ if(const auto credentials=data["credentials"].toObject();credentials.contains("generation")){const auto previous=std::exchange(credentialGeneration_,credentials["generation"].toInteger());if(previous>=0&&previous!=credentialGeneration_)emit credentialsChanged();}
+}
 void UiSession::refreshSnapshot(std::function<void(Error)> callback){
  if(callback)snapshotCallbacks_.append(std::move(callback));
  if(snapshotActive_||mutations_){snapshotPending_=true;return;}

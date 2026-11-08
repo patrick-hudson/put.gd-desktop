@@ -85,6 +85,13 @@ public:
  QByteArray exportPng() const;
  // Display-resolution blur for one shape, computed from the redacted base.
  QImage blurPreview(const Shape&,double scale) const;
+ // Display-resolution highlight for one shape: the redacted, blurred base
+ // under the box with the marker filter applied. Its colours are decided on
+ // full-resolution pixels, so the preview matches the export at any zoom.
+ // The source pixels highlightPreview reads for `shape`: its box and the reach of blurs crossing its edge.
+ QRect highlightWindow(const Shape& shape) const;
+ QImage highlightPreview(const Shape&,double scale) const;
+ QList<QRect> redactionRects() const;
 
  static QRect clampRect(const QRect&,const QRect& bounds);
  static void blurInPlace(QImage&,const QRect&,int radius);

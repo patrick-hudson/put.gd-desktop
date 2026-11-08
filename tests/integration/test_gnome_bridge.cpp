@@ -16,6 +16,7 @@
 #include <QDBusConnectionInterface>
 #include <QScopeGuard>
 #include <QProcess>
+#include <QElapsedTimer>
 #include <QUuid>
 #include <cstdio>
 #include "fixtures/Waits.h"
@@ -133,8 +134,12 @@ public slots:
  void FailRegistration(uint pid,uint count){failPid_=pid;failures_=count;}
  QString State(){return json({{"outcome",lastOutcome_},{"regionMode",lastRegionMode_},{"acquires",acquires_},{"previews",previews_},{"releases",releases_},{"previewsAtAcquire",previewsAtAcquire_},{"lastPreview",lastPreview_},{"imageMimes",lastAcquireMimes_},{"currentPid",int(currentPid_)},{"registrations",registrations_},{"hellos",hellos_},{"binds",binds_},{"lastBindings",lastBindings_},{"copyMime",copyMime_},{"copyData",QString::fromLatin1(copyBytes_.toBase64())},{"commits",commits_}});}
  void TriggerWindow(const QString& ticket){emit Action("window",ticket);}
+ // As the extension's enable() and disable(): announce first, then (un)export.
+ void Enable(){helloError_.clear();emit CapabilitiesChanged();}
+ void Disable(const QString& error){emit CapabilitiesChanged();helloError_=error;}
  signals:
  void Action(const QString& action,const QString& ticket);
+ void CapabilitiesChanged();
 };
 class GnomeAdapterTransportTest final:public QObject {
  Q_OBJECT
@@ -200,11 +205,50 @@ private slots:
   const QString missing="org.freedesktop.DBus.Error.UnknownMethod",denied="org.freedesktop.DBus.Error.AccessDenied";
   const auto failure=[](const GnomeAdapter& source){return source.capabilities()["helper"].toObject()["error"].toObject()["details"].toObject()["dbusError"].toString();};
   stopFixture();QVERIFY(startFixture(0,missing));
-  GnomeAdapter source;source.bindShortcuts({{"region","Ctrl+Shift+1"}});PUTGD_TRY_COMPARE(failure(source),missing);putgd::test::settle(100);
+  GnomeAdapter source;source.setDiscoveryRetryForTesting(300,600);source.bindShortcuts({{"region","Ctrl+Shift+1"}});PUTGD_TRY_COMPARE(failure(source),missing);putgd::test::settle(100);
   QSignalSpy published(&source,&GnomeAdapter::capabilitiesChanged);const auto retriedFrom=state()["hellos"].toInt();
   PUTGD_TRY_VERIFY_WITH_TIMEOUT(state()["hellos"].toInt()>=retriedFrom+2,10000);QCOMPARE(published.size(),0);
   control("SetErrors",{denied,QString{}});PUTGD_TRY_VERIFY_WITH_TIMEOUT(failure(source)==denied,5000);PUTGD_COMPARE_STEADY(published.size(),1,3300);
   control("SetErrors",{QString{},QString{}});PUTGD_TRY_VERIFY_WITH_TIMEOUT(helperAvailable(source),5000);QVERIFY(published.size()>1);
+ }
+ void missingExtensionBacksOffToTheSafetyProbe(){
+  // A missing extension must not wake the resident every few seconds (#1187):
+  // each wait doubles, then the slow safety probe keeps looking.
+  const QString missing="org.freedesktop.DBus.Error.UnknownMethod";
+  stopFixture();QVERIFY(startFixture(0,missing));
+  GnomeAdapter source;source.setDiscoveryRetryForTesting(100,400);QSignalSpy retried(&source,&GnomeAdapter::discoveryRetried);
+  PUTGD_TRY_VERIFY(!source.capabilities()["helper"].toObject()["error"].toObject()["code"].toString().isEmpty());
+  const auto from=state()["hellos"].toInt();QElapsedTimer elapsed;elapsed.start();
+  PUTGD_TRY_VERIFY_WITH_TIMEOUT(state()["hellos"].toInt()>=from+5,15000);
+  // Every timed retry asks the resident to release what it touched again.
+  QVERIFY(retried.size()>=5);
+  // Timers never fire early: 100+200+400+400+400 ms at least, against 500 ms for a fixed first step.
+  QVERIFY2(elapsed.elapsed()>=1400,qPrintable(QString::number(elapsed.elapsed())));
+  QVERIFY(!helperAvailable(source));
+ }
+ void extensionSignalsDiscoverWithoutWaitingForTheProbe(){
+  const QString missing="org.freedesktop.DBus.Error.UnknownMethod";
+  stopFixture();QVERIFY(startFixture(0,missing));
+  GnomeAdapter source;source.setDiscoveryRetryForTesting(600000,600000);
+  PUTGD_TRY_VERIFY(!source.capabilities()["helper"].toObject()["error"].toObject()["code"].toString().isEmpty());
+  QCOMPARE(state()["hellos"].toInt(),1);QSignalSpy retried(&source,&GnomeAdapter::discoveryRetried);
+  // Enabling the extension later, with the resident idle and no retry due, is found by its signal.
+  QCOMPARE(control("Enable").type(),QDBusMessage::ReplyMessage);PUTGD_TRY_VERIFY_WITH_TIMEOUT(helperAvailable(source),3000);
+  QCOMPARE(state()["hellos"].toInt(),2);PUTGD_TRY_VERIFY(state()["binds"].toInt()>0);
+  // The subscription survives a disable, so the next enable is found the same way.
+  QCOMPARE(control("Disable",{missing}).type(),QDBusMessage::ReplyMessage);PUTGD_TRY_VERIFY_WITH_TIMEOUT(!helperAvailable(source),3000);
+  QCOMPARE(control("Enable").type(),QDBusMessage::ReplyMessage);PUTGD_TRY_VERIFY_WITH_TIMEOUT(helperAvailable(source),3000);
+  QCOMPARE(state()["hellos"].toInt(),4);QCOMPARE(retried.size(),0);
+ }
+ void lostEnableSignalRecoversThroughTheSafetyProbe(){
+  stopFixture();QVERIFY(startFixture(0,"org.freedesktop.DBus.Error.UnknownMethod"));
+  GnomeAdapter source;source.setDiscoveryRetryForTesting(200,400);
+  PUTGD_TRY_VERIFY(!source.capabilities()["helper"].toObject()["error"].toObject()["code"].toString().isEmpty());
+  // The helper comes back without announcing it: only the probe can find it.
+  QCOMPARE(control("SetErrors",{QString{},QString{}}).type(),QDBusMessage::ReplyMessage);
+  PUTGD_TRY_VERIFY_WITH_TIMEOUT(helperAvailable(source),5000);
+  // Found, the probe stops.
+  const auto found=state()["hellos"].toInt();PUTGD_COMPARE_STEADY(state()["hellos"].toInt(),found,1500);
  }
  void endpointDisappearingAfterDiscoveryGetsGuidanceButMissingMethodsDoNot(){
   GnomeAdapter source;PUTGD_TRY_VERIFY(helperAvailable(source));const QString missing="org.freedesktop.DBus.Error.UnknownMethod";

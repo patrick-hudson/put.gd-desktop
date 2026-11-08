@@ -58,7 +58,7 @@ def desktop_environment(process, user, proc=Path('/proc')):
     account = pwd.getpwnam(user)
     if os.getuid() != account.pw_uid or os.getuid() == 0:
         raise PolicyError('Run as the disposable guest user')
-    if process not in ('gnome-shell', 'cinnamon', 'plasmashell', 'budgie-panel'):
+    if process not in ('gnome-shell', 'cinnamon', 'plasmashell', 'budgie-panel', 'quickshell'):
         raise PolicyError('Unsupported desktop session process')
     matches = []
     for path in proc.iterdir():
@@ -78,7 +78,8 @@ def desktop_environment(process, user, proc=Path('/proc')):
     env = dict(os.environ, HOME=account.pw_dir, LC_ALL='C')
     # Unset inherited app sandbox homes when absent from the desktop environment.
     for name in ('XDG_CONFIG_HOME', 'XDG_DATA_HOME', 'XDG_STATE_HOME', 'XDG_CACHE_HOME',
-                 'XDG_CONFIG_DIRS', 'XDG_DATA_DIRS', 'DISPLAY', 'XAUTHORITY', 'WAYLAND_DISPLAY'):
+                 'XDG_CONFIG_DIRS', 'XDG_DATA_DIRS', 'DISPLAY', 'XAUTHORITY', 'WAYLAND_DISPLAY',
+                 'HYPRLAND_INSTANCE_SIGNATURE', 'OMARCHY_PATH'):
         env.pop(name, None)
         if session.get(name):
             env[name] = session[name]
@@ -123,12 +124,29 @@ def screensaver_inactive(desktop):
         raise PolicyError('Guest screensaver remains active; restore the visible console first')
 
 
+def omarchy_policy(apply):
+    """Omarchy's shell owns idle lock and screensaver; its Stay Awake state turns both off."""
+    toggle = '/usr/share/omarchy/bin/omarchy-toggle-idle'
+    if not Path(toggle).is_file():
+        raise PolicyError('Unsupported Hyprland idle policy: only Omarchy (omarchy-toggle-idle) is supported')
+    if apply:
+        command(toggle, 'stay-awake')
+    try:
+        status = json.loads(command(toggle, 'status'))
+    except ValueError as error:
+        raise PolicyError('Omarchy idle status is not valid JSON') from error
+    if not isinstance(status, dict) or status.get('enabled') is not True:
+        raise PolicyError('Omarchy idle policy readback mismatch: Stay Awake is off')
+    return [{'command': 'omarchy-toggle-idle', 'state': 'stay-awake'}]
+
+
 def desktop_services(desktop, apply):
-    if desktop in ('Cinnamon', 'Budgie'):
+    if desktop in ('Cinnamon', 'Budgie', 'Hyprland'):
         # This service is demand-activated and may legitimately have no owner.
         # Cinnamon's GetActive call below activates it and verifies its state.
         # Budgie Wayland has no org.gnome.ScreenSaver service. Its logind
         # LockedHint and the independent visible-output witness remain required.
+        # Omarchy's idle state is a file its shell reads (omarchy_policy).
         return
     services = (['org.kde.Solid.PowerManagement', 'org.freedesktop.ScreenSaver']
                 if desktop == 'KDE' else
@@ -243,7 +261,8 @@ def preflight(desktop, process, user, session_type, apply=False):
     os.environ.clear()
     os.environ.update(environment)
     desktop_services(desktop, apply)
-    policies = kde_policy(apply) if desktop == 'KDE' else apply_gsettings(desktop, apply)
+    policies = (kde_policy(apply) if desktop == 'KDE' else omarchy_policy(apply) if desktop == 'Hyprland'
+                else apply_gsettings(desktop, apply))
     power = inhibitor(apply)
     x11 = None
     if session_type == 'x11':
@@ -298,7 +317,7 @@ def install_autostart(user):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--desktop', choices=['GNOME', 'Cinnamon', 'KDE', 'Budgie'])
+    parser.add_argument('--desktop', choices=['GNOME', 'Cinnamon', 'KDE', 'Budgie', 'Hyprland'])
     parser.add_argument('--process')
     parser.add_argument('--user', required=True)
     parser.add_argument('--session-type', choices=['x11', 'wayland'])
@@ -325,6 +344,8 @@ def main():
                     args.desktop, args.process = 'GNOME', 'gnome-shell'
                 elif 'kde' in desktop:
                     args.desktop, args.process = 'KDE', 'plasmashell'
+                elif 'hyprland' in desktop:
+                    args.desktop, args.process = 'Hyprland', 'quickshell'
                 else:
                     raise PolicyError('Unsupported startup desktop')
                 args.session_type = os.environ.get('XDG_SESSION_TYPE')

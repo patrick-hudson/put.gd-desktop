@@ -47,7 +47,7 @@ written before this feature inherit the region output route with no shortcut.
 | Crop | C | Drag the area to keep; Apply (Enter) or Cancel (Esc) |
 | Arrow | A | Line with a filled head; color and Thin/Medium/Thick width |
 | Rectangle | R | Outline; color and width |
-| Highlight | H | Translucent colored marker, visually distinct from Redact |
+| Highlight | H | Marker paper: the box becomes a band of the marker colour and the text keeps the contrast it had, as dark lettering on the band, on light and dark pages alike; photos get a luminance-keeping wash; snaps to text lines (Alt for a free box); click a word, double-click a line, Shift-click adds a word |
 | Text | T | One line of bold outlined text; choose any installed font family and a size from 8 to 200 image pixels |
 
 You don't need Select to adjust a mark:
@@ -65,6 +65,78 @@ You don't need Select to adjust a mark:
 - Drawing, moving and resizing stop at the edge of the (cropped) image. A
   press in the margin starts the mark on the nearest edge, and a text click in
   the margin opens no label.
+
+### Highlight
+
+The highlight is a pixel filter, not a translucent paint, and it looks like a
+marker on paper whatever the page. Inside the box the page becomes a band of
+the marker and every pixel keeps the contrast it had with its page, as dark
+lettering on that band:
+
+- The marker's **pigment** is the colour as picked, mixed with white until its
+  luminance reaches 0.45 (so black text reads on it at 8.7:1 or better) or
+  dimmed to 0.69 when it is paler than that (so a white marker still shows on
+  a white page). A black or near-black marker (every channel at or below 32)
+  skips that and is a fixed mid grey, #959595: a mark, not a redaction, with
+  black text at 7:1.
+- The **band** is that pigment multiplied onto the page, after lifting the page
+  with white to luminance 0.85 if it is darker. On white the band is the
+  pigment itself (yellow stays #FACC15), on grey panels it is darker than the
+  panel, on dark pages it is the pigment at paper brightness. One continuous
+  rule, no light/dark page class and no seam between the two.
+- Each pixel's **lettering** is the first point on the band-to-black ramp that
+  reaches the contrast the pixel had with its page (a knee below 1.04:1 keeps
+  page noise and gradients as band). The mapping depends on the pixel's own
+  luminance only, so anti-aliased edges stay smooth, LCD subpixel fringes
+  collapse to neutral and no glyph gets heavier. Light text on dark pages
+  becomes dark text; coloured text becomes near-neutral dark text.
+- A box with no dominant background (a photo, a gradient) gets a **wash** that
+  keeps every pixel's luminance: the colour moves 60 % toward the marker and is
+  scaled back to its own brightness, so text on a photo or a coloured label
+  keeps its exact contrast. Black and white markers have no colour to lend and
+  shade or lighten the region instead, keeping contrast ratios (white only as
+  far as the brightest pixel in the box allows).
+
+**Tuning the colours.** The whole palette treatment hangs on three constants
+in `src/editor/HighlightFilter.h`, and the one that matters is
+`pigmentFloor` (0.45): the luminance every chromatic marker darker than that
+is lifted to with white (black and near-black markers, every channel at or
+below 32, take the fixed grey instead). It decides how pastel the dark swatches come out. Red #EF4444
+is a coral at 0.45; at 0.55 it reads as pink (the council's first pick, rejected
+as "not red"), at 0.30 it is close to the raw swatch. Lowering it makes the
+colours truer and the band darker, so black lettering on it has less headroom:
+on the darkest chromatic swatches (red, blue) black text reads at 10:1 on a
+white page (the band is the pigment itself; 9.5:1 on an off-white dialog) and
+8.7:1 on a dark page at 0.45, and 7.0:1 and 6.1:1 at 0.30 (the dark-page band
+is the pigment multiplied onto a page lifted to 0.85). The
+black marker bypasses the floor: its pigment is the fixed grey #959595
+(luminance 0.30), so its band always sits at those 7.0:1 and 6.1:1 figures. Yellow (luminance 0.6356) is above
+the floor at any of these values and never changes. `pigmentCeiling` (0.69) dims pale markers so white still shows
+on a white page, and `pageFloor` (0.85) sets how bright a dark page is lifted
+before the pigment multiplies it; neither has a reason to move. The editor catalog's sample document carries a yellow highlight, which sits
+above the floor at any value below yellow's own luminance (0.6356; keep the
+floor at or under 0.635), so a floor change alone leaves the catalog references
+as they are; a change that does reach them (the ceiling, the page lift, or a
+floor above yellow) regenerates them from CI like any UI change.
+
+The background estimate is block-local (16 px blocks, every block sampling a
+full window inside the box), so a box across two panels or zebra rows treats
+each part correctly. The canvas tile and the export run the same filter on
+the same source pixels through the same per-background tables and agree
+exactly at full scale. The look was settled by a design council (Sol, Astra,
+Opus and Gemini proposals, three review gates on real exports; see
+put.gd-evidence `2026-11-07-highlight-council`).
+
+The same ink mask drives **text snapping**. Dragging snaps the box to the text
+lines it crosses, trimmed to the ink inside the dragged width, with a small pad;
+a drag through the middle of a line grows to the whole line height. Hold Alt
+to keep the free box. Clicking highlights the word under the pointer,
+double-clicking grows it to the line (stopping at column gaps wider than two
+and a half line heights), and Shift-click adds the word under the pointer to
+the selected highlight. Subpixel-rendered text (LCD filtering) is handled: the
+filter never classifies ink colours, only distances from the background, which
+is why the luminance rule replaced a per-ink contrast cap during research
+(see put.gd-evidence `2026-11-06-highlight-real-captures`).
 
 Next to the seven palette colors, the rainbow button opens a color picker for
 any custom color. The last six custom colors you picked appear beside it as
@@ -256,7 +328,7 @@ Commands: `add {shape}`, `update {shapeId, shape}`, `remove {shapeId}`,
 | `blur` | `rect` | `strength` 2–64 |
 | `arrow` | `from`, `to` `[x, y]` | `color` `#RRGGBB`, `width` 1–64 |
 | `rectangle` | `rect` | `color`, `width` |
-| `highlight` | `rect` | `color` |
+| `highlight` | `rect`, or `at` `[x, y]` with `snap` `word`/`line` | `color`; `snap` `none` (default, the rect is used as given), `text` (the rect snaps to the text lines it crosses), `word` or `line` (the mark is the word or line at `at`; `edit_command_invalid` "No text at that point" when there is none) |
 | `text` | `at` `[x, y]`, `text` (one line, ≤500) | `color`, `fontPixels` 8–200, `font` (family name ≤100 printable characters; `""` is the default sans-serif) |
 
 ```sh
@@ -302,7 +374,7 @@ Reproduce with the dev preset:
 ```sh
 cmake --preset dev
 cmake --build --preset dev
-ctest --preset dev -R '^(editor_contract|editor_job_integration|edit_operations_integration|native_tray_integration|gui_settings)$'
+ctest --preset dev -R '^(editor_contract|editor_job_integration|edit_operations_integration|native_tray_integration|gui_settings_[a-z]+)$'
 PUTGD_CLI="$PWD/build/dev/putgd-cli" uv run --project tools/mcp --locked python -m unittest discover -s tests/integration -p test_mcp.py -v
 ```
 
@@ -317,4 +389,4 @@ restart recovery. Synthetic screenshots of the themed window are produced by
 `putgd-ui-catalog` (`20-`–`25-editor-*.png`). Offscreen results are not
 desktop acceptance. Graphical, memory and MCP evidence is in the
 [2026-10-17 receipt](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-17-issue51-edit-and-upload.md), and the
-lab drivers are described in the [VM lab guide](../lab/vm-lab.md#editor-acceptance-drivers).
+lab drivers are described in the [VM lab guide](../lab/vm-lab/input-and-evidence.md#editor-acceptance-drivers).

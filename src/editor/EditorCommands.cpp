@@ -1,4 +1,5 @@
 #include "EditorCommands.h"
+#include "HighlightFilter.h"
 #include <QFont>
 #include <QFontMetrics>
 #include <QRegularExpression>
@@ -36,9 +37,10 @@ QRect textBox(const QPoint& at,const QString& text,const QString& family,int pix
 }
 struct Failure{QString code,message;};
 // Fields absent from `object` keep the values already in `shape`.
-bool shapeFrom(const QJsonObject& object,Shape& shape,const QRect& image,bool creating,Failure& failure){
+bool shapeFrom(const QJsonObject& object,Shape& shape,const EditDocument& doc,bool creating,Failure& failure){
+ const auto image=doc.imageRect();
  auto bad=[&](const QString& message){failure={"edit_command_invalid",message};return false;};
- if(!only(object,{"kind","rect","from","to","at","color","width","strength","fontPixels","font","text"}))return bad("Shape has unsupported fields");
+ if(!only(object,{"kind","rect","from","to","at","color","width","strength","fontPixels","font","text","snap"}))return bad("Shape has unsupported fields");
  if(creating){
   if(!kinds().contains(object["kind"].toString()))return bad("Shape kind must be redact, blur, arrow, rectangle, text or highlight");
   shape.kind=kinds().value(object["kind"].toString());
@@ -68,6 +70,8 @@ bool shapeFrom(const QJsonObject& object,Shape& shape,const QRect& image,bool cr
   if(!object["text"].isString()||value.trimmed().isEmpty()||value.size()>EditDocument::maximumTextCharacters||value.contains('\n')||value.contains('\r'))return bad("Text must be one nonempty line of at most 500 characters");
   shape.text=value;
  }
+ const auto snap=object["snap"].toString();
+ if(object.contains("snap")&&(shape.kind!=Shape::Kind::Highlight||!object["snap"].isString()||!QStringList{"none","text","word","line"}.contains(snap)))return bad("snap applies to highlights and must be none, text, word or line");
  if(arrow){
   if(object.contains("rect")||object.contains("at"))return bad("Arrows use from and to points");
   if(object.contains("from")&&!pointFrom(object["from"],shape.from))return bad("from must be [x, y]");
@@ -80,9 +84,18 @@ bool shapeFrom(const QJsonObject& object,Shape& shape,const QRect& image,bool cr
   if(creating&&(!object.contains("at")||!object.contains("text")))return bad("Text needs at and text");
   shape.rect=textBox(at,shape.text,shape.fontFamily,shape.fontPixels);
  }else{
-  if(object.contains("from")||object.contains("to")||object.contains("at"))return bad("Box shapes use rect");
+  const bool pointSnap=snap=="word"||snap=="line";
+  if(object.contains("from")||object.contains("to")||(object.contains("at")&&!pointSnap))return bad("Box shapes use rect");
+  if(pointSnap&&object.contains("rect"))return bad("snap word or line takes an at point, not rect");
   if(object.contains("rect")&&!rectFrom(object["rect"],shape.rect))return bad("rect must be [x, y, width, height] with positive size");
-  if(creating&&!object.contains("rect"))return bad("Box shapes need rect");
+  if(creating&&!object.contains("rect")&&!pointSnap)return bad("Box shapes need rect");
+  if(pointSnap){
+   QPoint at;if(!pointFrom(object["at"],at))return bad("snap word or line needs at [x, y]");
+   if(!image.contains(at))return bad("at lies outside the image");
+   const auto found=snap=="word"?highlight::wordAt(doc.base(),at,doc.redactionRects()):highlight::lineAt(doc.base(),at,doc.redactionRects());
+   if(found.isNull())return bad("No text at that point");
+   shape.rect=found;
+  }else if(snap=="text")shape.rect=highlight::snapToText(doc.base(),shape.rect,doc.redactionRects());
  }
  const auto bounds=arrow?QRect(shape.from,shape.to).normalized().adjusted(0,0,1,1):shape.rect;
  if(!bounds.intersects(image))return bad("Shape lies outside the image");
@@ -123,12 +136,12 @@ bool apply(EditDocument& doc,const QJsonArray& commands,QJsonArray& created,QStr
   int shapeId=0;
   if(op=="add"){
    if(!only(command,{"op","shape"})||!command["shape"].isObject())return stop("edit_command_invalid","add needs only a shape object");
-   Shape shape;if(!shapeFrom(command["shape"].toObject(),shape,draft.imageRect(),true,failure))return stop(failure.code,failure.message);
+   Shape shape;if(!shapeFrom(command["shape"].toObject(),shape,draft,true,failure))return stop(failure.code,failure.message);
    ids.append(double(draft.add(shape)));
   }else if(op=="update"){
    if(!only(command,{"op","shapeId","shape"})||!integer(command["shapeId"],1,INT_MAX,shapeId)||!command["shape"].isObject())return stop("edit_command_invalid","update needs shapeId and a shape object");
    const auto* current=draft.find(quint64(shapeId));if(!current)return stop("edit_shape_missing","No shape has this id");
-   auto shape=*current;if(!shapeFrom(command["shape"].toObject(),shape,draft.imageRect(),false,failure))return stop(failure.code,failure.message);
+   auto shape=*current;if(!shapeFrom(command["shape"].toObject(),shape,draft,false,failure))return stop(failure.code,failure.message);
    draft.replace(shape);
   }else if(op=="remove"){
    if(!only(command,{"op","shapeId"})||!integer(command["shapeId"],1,INT_MAX,shapeId))return stop("edit_command_invalid","remove needs shapeId");

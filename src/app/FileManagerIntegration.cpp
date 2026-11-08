@@ -473,11 +473,6 @@ QStringList FileManagerIntegration::systemDirectories(const FileManagerContext& 
  return directories;
 }
 QString FileManagerIntegration::restartScript(const QString& name) {
- // Files comes back in the background so its desktop services keep running;
- // Caja and Peony are restarted by their desktop sessions.
- if(name=="nautilus")return QStringLiteral("nautilus -q; i=0; while pgrep -u \"$(id -u)\" -x nautilus >/dev/null && [ $i -lt 50 ]; do sleep 0.1; i=$((i+1)); done; exec nautilus --gapplication-service");
- if(name=="caja")return QStringLiteral("caja -q; sleep 2; pgrep -u \"$(id -u)\" -x caja >/dev/null || exec caja --no-default-window");
- if(name=="peony")return QStringLiteral("peony -q");
  // PCManFM has no quit option; both quit cleanly on SIGTERM and their sessions
  // don't bring back a clean exit. One that draws the desktop or runs as a daemon
  // comes back with its own arguments and display ($1 names the process; another session's stays).
@@ -612,21 +607,20 @@ FileManagerResult FileManagerIntegration::apply(const FileManagerContext& c) {
   result.firstRun=!stamp.exists();
   if(commit(stampPath,(c.version+'\n').toUtf8(),dataMode,false)==Write::Failed)fail(ioError("Cannot write the file manager version stamp",stampPath));
  }
- if(result.firstRun) {
-  // The session's own file manager only: Files on PATH says nothing on LXDE.
+ // Only the AppImage announces its entries: a DEB or RPM installs them with the
+ // package, so there is nothing to tell the user at its first start.
+ if(result.firstRun&&!system) {
+  // The session's own file manager only: PCManFM on PATH says nothing on LXQt.
   const auto desktops=(c.desktop.isEmpty()?qEnvironmentVariable("XDG_CURRENT_DESKTOP"):c.desktop).split(':');
   const auto onDesktop=[&](const QStringList& names){return std::any_of(desktops.begin(),desktops.end(),[&](const QString& desktop){return names.contains(desktop,Qt::CaseInsensitive);});};
   // docs/design/file-manager-upload.md's unsupported list: no entry there, so no notice claiming one.
   const auto plasma5=onDesktop({"KDE"})&&(c.kdeVersion.isEmpty()?qEnvironmentVariable("KDE_SESSION_VERSION"):c.kdeVersion)=="5";
-  result.announce=!onDesktop({"Deepin","DDE","Enlightenment","TDE","Trinity"})&&!(appImage&&(onDesktop({"UKUI"})||plasma5))&&(cosmicFiles||!onDesktop({"COSMIC"}));
+  result.announce=!onDesktop({"Deepin","DDE","Enlightenment","TDE","Trinity","UKUI"})&&!plasma5&&(cosmicFiles||!onDesktop({"COSMIC"}));
   // libfm and libfm-qt load FileManager-Actions at a process's first file menu. One whose
   // actions folder didn't exist then doesn't see a new entry (LXDE and LXQt guests, #1105).
   const QString actionsFile="file-manager/actions/putgd-upload.desktop";
-  const auto actions=system?inDataDirectories(dataDirectories(c),actionsFile):next.files.contains(QDir(c.dataHome).filePath(actionsFile));
+  const auto actions=next.files.contains(QDir(c.dataHome).filePath(actionsFile));
   const struct {const char* name;QStringList desktops;bool installed;} managers[]={
-   {"nautilus",{"GNOME","Unity"},system&&systemPlugin(c,"nautilus/extensions-4")},
-   {"caja",{"MATE"},system&&systemPlugin(c,"caja/extensions-2.0")},
-   {"peony",{"UKUI"},system&&systemPlugin(c,"peony-extensions")},
    {"pcmanfm",{"LXDE"},actions},
    {"pcmanfm-qt",{"LXQt"},actions}};
   // At most one: the notice and its button name the session's file manager. The list

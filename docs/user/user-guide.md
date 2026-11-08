@@ -30,7 +30,7 @@ Choose **Capture region & edit** from the rail or tray, or assign it a key in **
 - **Redact** (X) covers an area with opaque black and removes those pixels from the uploaded image. Use it for passwords, tokens, names and other private information.
 - **Blur** (B) is only a visual effect; it can leave enough detail to guess text. Prefer Redact for anything private.
 - **Crop** (C): drag the area to keep, then **Apply crop** or Enter; Escape cancels.
-- **Arrow** (A), **Rectangle** (R), **Highlight** (H) and **Text** (T) add simple marks. Select (V) moves, resizes or deletes them.
+- **Arrow** (A), **Rectangle** (R), **Highlight** (H) and **Text** (T) add simple marks. Select (V) moves, resizes or deletes them. Highlight looks like a marker on light and dark pages alike (text stays readable) and snaps to text lines: click a word, double-click a line, hold Alt for a free box.
 - Ctrl+Z / Ctrl+Shift+Z undo and redo; Ctrl+1 shows 100% to check edges; Ctrl+0 fits.
 
 **Upload** (Ctrl+Enter) sends only the edited image to the output shown at the bottom of the window, with the usual local copy, history and link copying. Plain Enter never uploads. **Save a copy…** writes the same edited PNG to a file. **Cancel** or closing the window discards the edit: nothing is saved or uploaded. Inputs above 24 megapixels are refused; output is PNG. An edit interrupted by quitting put.gd is listed as interrupted and is never uploaded automatically.
@@ -71,7 +71,7 @@ General contains notifications, launch at login, Appearance (Match the desktop, 
 
 ## History and recovery
 
-History combines current operations and persistent file receipts in list or gallery view. Search local stored names, expand filters for dates/content/destination/upload/local/remote status, and select a file to inspect its retained result. Browsing does not list or download cloud files. Previews use bounded retained images; videos show a still with a play glyph and their length, made after the upload finishes (see [screen recording](../design/recording.md#history-poster-frames)). Selecting a file whose preview is missing (an older video, a failed poster or one cleanup removed) makes it from the retained file or an unchanged local copy; when neither is left, the inspector says "Preview unavailable" and the list keeps a type fallback. The default 50-artifact page can split a large batch across pages.
+History combines current operations and persistent file receipts in list or gallery view. Search local stored names, expand filters for dates/content/destination/upload/local/remote status, and select a file to inspect its retained result. Browsing does not list or download cloud files. Previews use bounded retained images; videos show a still with a play glyph and their length, made after the upload finishes (see [screen recording](../design/recording/history-posters.md#history-poster-frames)). Selecting a file whose preview is missing (an older video, a failed poster or one cleanup removed) makes it from the retained file or an unchanged local copy; when neither is left, the inspector says "Preview unavailable" and the list keeps a type fallback. The default 50-artifact page can split a large batch across pages.
 
 S3 progress uses body bytes and a matching total. Proton displays encrypted transfer bytes separately from source size because overhead and retries make a percentage misleading. Counters can go backward during retries. A complete counter can still be finalizing; the confirmed receipt establishes completion.
 
@@ -86,3 +86,15 @@ History maintenance clears local records or eligible retry artifacts/previews wi
 Hovering the unchanged tray shows active work without opening the window: blue for capture/preparation/queue waits, green for storage activity, and a brief red/blue flash for genuine errors. Cancelling capture does not flash an error. The tooltip shows up to three active operations and an additional count. Closing all UI views releases the helper while the resident and tray remain.
 
 Offscreen tests prove widget/core behavior only. Native desktop acceptance uses the installed-package lab, independent paste, actual capture bytes, and visible console witnesses described in [testing](../testing/testing.md).
+
+### Arch Linux and derivatives
+
+Arch packaging is being introduced under
+[#1275](https://github.com/patrick-hudson/put.gd-desktop/issues/1275).
+After the package repository and website rollout, the normal install script
+recognizes Arch and Arch-based systems (including EndeavourOS, CachyOS and
+Omarchy) and configures signed pacman updates. Keep the system fully updated
+with `sudo pacman -Syu`. Remove put.gd with `sudo pacman -R putgd`; repository
+configuration remains administrator-owned. AppImage is also available; package
+availability does not imply acceptance of every derivative's compositor.
+The AUR recipe is a draft and has not been published.

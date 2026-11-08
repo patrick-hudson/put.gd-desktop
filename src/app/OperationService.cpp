@@ -177,10 +177,24 @@ void OperationService::requestHeapReclamation() {
  if(stopping_)return;
  heapReclamationPending_=true;scheduleHeapReclamation();
 }
+void OperationService::requestImagePageRelease() {
+ if(stopping_)return;
+ imagePagesPending_=true;
+ // A pending trim schedules the release itself; work that is still running
+ // schedules it when it drains.
+ if(!heapReclamationPending_&&!imagePageTimer_.isActive()&&heapReclamationIdle())imagePageTimer_.start(imagePageDelayMs_);
+}
 void OperationService::background(std::function<QJsonObject(Error&)> work,JsonReply reply) {
  heapReclamationTimer_.stop();imagePageTimer_.stop();
  QPointer<OperationService> self(this);auto* thread=QThread::create([self,work=std::move(work),reply=std::move(reply)] {Error error;auto result=work(error);if(self) QMetaObject::invokeMethod(self,[self,reply,error,result] {if(self&&!self->stopping_) reply(error,result);},Qt::QueuedConnection);});
- threads_.append(thread);connect(thread,&QThread::finished,this,[this,thread] {threads_.removeOne(thread);thread->deleteLater();scheduleHeapReclamation();});thread->start();
+ threads_.append(thread);connect(thread,&QThread::finished,this,[this,thread] {
+  threads_.removeOne(thread);thread->deleteLater();
+  // Every worker opens its own journal connection and frees its page cache and
+  // query results on exit, read-only ones included (#1184). Arm the idle gate
+  // here so no caller has to remember to; failed startup has nothing to return.
+  if(ready_&&!stopping_)heapReclamationPending_=true;
+  scheduleHeapReclamation();
+ });thread->start();
 }
 std::shared_ptr<std::mutex> OperationService::objectLock(const Destination& d,const QJsonObject& object,const QString& name) {
  // Adapters supply their real destination/object identity, independent of profile revisions.
@@ -249,6 +263,7 @@ void OperationService::invoke(const QString& action,JsonReply reply,const QJsonO
  // only the tray passes it, session requests cannot.
  auto stripped=requested;const auto activationToken=stripped.take("activationToken").toString();
  const QJsonObject options=stripped; // const: operator[] must not insert
+ emit explicitRequest();
  if(!ready_) {reply(startupError_?startupError_:Error{"initializing","Journal recovery is in progress",{}},{});return;}
  // Screen recording is its own session: the tray opens or raises it, a global
  // shortcut toggles it (prepare, start, stop) so the keyboard can end a recording.
@@ -507,6 +522,8 @@ Error OperationService::acceptRecording(Operation& op) {
  return {};
 }
 void OperationService::recordingCommand(const QString& command,const QJsonObject& params,JsonReply reply) {
+ // recording.prepare opens the recording selector; the other commands drive the session it opened.
+ if(command=="prepare")emit explicitRequest();
  if(!ready_&&command!="capabilities") {reply(startupError_?startupError_:Error{"initializing","Journal recovery is in progress",{}},{});return;}
  recording_->command(command,params,std::move(reply));
 }

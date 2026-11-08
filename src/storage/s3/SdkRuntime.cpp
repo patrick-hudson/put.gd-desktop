@@ -173,10 +173,8 @@ public:
     }
     void InitStaticState() override {
         Aws::Http::CurlHttpClient::InitGlobalState();
-#ifndef _WIN32
         // Preserve the default SDK factory's process-level SIGPIPE behavior.
         std::signal(SIGPIPE, +[](int) {});
-#endif
     }
     void CleanupStaticState() override { Aws::Http::CurlHttpClient::CleanupGlobalState(); }
 };

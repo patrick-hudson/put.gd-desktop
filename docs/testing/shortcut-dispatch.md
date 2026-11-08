@@ -40,7 +40,7 @@ cmake --build --preset dev
 export TMPDIR=$(mktemp -d /tmp/pgsc.XXXXXX)
 python3 tools/diagnostics/check_socket_paths.py --socket \
   "$TMPDIR/test_native_tray-XXXXXX/r/putgd/session.sock"
-ctest --preset dev -R '^(native_shortcut_rejection_integration|x11_isolated|gui_settings|native_tray_integration|gui_tray)$'
+ctest --preset dev -R '^(native_shortcut_rejection_integration|x11_isolated|gui_settings_shortcuts|native_tray_integration|gui_tray)$'
 ctest --preset dev
 ```
 

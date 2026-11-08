@@ -114,15 +114,75 @@ def serve(path, user):
     time.sleep(.5)  # let the compositor enumerate the new devices
     print(json.dumps({'listening': path, 'devices': ['put.gd lab keyboard', 'put.gd lab tablet']}), flush=True)
     try:
-        while True:
-            connection, _ = server.accept()
-            with connection, connection.makefile('rwb') as stream:
-                handle(stream, keyboard, tablet)
+        accept_clients(server, keyboard, tablet)
     finally:
         keyboard.close(); tablet.close(); server.close(); os.unlink(path)
 
 
+class DeviceError(RuntimeError):
+    """A uinput write failed: the agent can no longer inject input and stops."""
+
+
+def emit(device, events):
+    """Write one batch to a uinput device, turning a write failure into DeviceError."""
+    try:
+        device.emit(events)
+    except OSError as error:
+        raise DeviceError(f'uinput write failed: {error}') from error
+
+
+def accept_clients(server, keyboard, tablet):
+    """Serve clients one after another for as long as the listening socket lives."""
+    while True:
+        connection, _ = server.accept()
+        serve_connection(connection, keyboard, tablet)
+
+
+def serve_connection(connection, keyboard, tablet):
+    """One client going away (closed with replies unread, killed mid-drag) ends
+    that connection only; the devices and the listening socket stay up. A device
+    failure still stops the agent, even when closing the client's stream raises
+    a connection error on top of it."""
+    failure = None
+    try:
+        with connection, connection.makefile('rwb') as stream:
+            try:
+                handle(stream, keyboard, tablet)
+            except DeviceError as error:
+                failure = error
+                raise
+    except ConnectionError as error:
+        if failure:
+            raise failure
+        print(json.dumps({'client': 'disconnected', 'error': type(error).__name__}), file=sys.stderr, flush=True)
+
+
 def handle(stream, keyboard, tablet):
+    """Serve one client. Keys and buttons it left pressed are released when it
+    goes away, so a client that dies mid-drag cannot leave the desktop holding
+    a button."""
+    held = set()
+    try:
+        serve_client(stream, keyboard, tablet, held)
+    finally:
+        is_button = lambda code: code in BTN.values()
+        keys = [(EV_KEY, code, 0) for code in sorted(held) if not is_button(code)]
+        buttons = [(EV_KEY, code, 0) for code in sorted(held) if is_button(code)]
+        # Both releases are attempted; the first device failure is raised.
+        failures = []
+        for device, batch in ((keyboard, keys), (tablet, buttons)):
+            if batch:
+                try:
+                    emit(device, batch)
+                except DeviceError as error:
+                    failures.append(error)
+        if failures:
+            raise failures[0]
+
+
+def serve_client(stream, keyboard, tablet, held):
+    """Answer the client's QMP requests until it closes, recording in `held`
+    the keys and buttons that are pressed when each request finishes."""
     def send(message):
         stream.write(json.dumps(message).encode() + b'\n'); stream.flush()
     send({'QMP': {'version': {'qemu': {'major': 0, 'minor': 0, 'micro': 0}, 'package': 'put.gd host_input'}, 'capabilities': []}})
@@ -141,8 +201,11 @@ def handle(stream, keyboard, tablet):
             is_key = lambda e: e[0] == EV_KEY and e[1] not in BTN.values()
             keys = [e for e in events if is_key(e)]
             pointer = [e for e in events if not is_key(e)]
-            if keys: keyboard.emit(keys)
-            if pointer: tablet.emit(pointer)
+            if keys: emit(keyboard, keys)
+            if pointer: emit(tablet, pointer)
+            for kind, code, value in events:
+                if kind == EV_KEY:
+                    (held.add if value else held.discard)(code)
             send({'return': {}, 'id': ident})
         except (ValueError, json.JSONDecodeError) as error:
             send({'error': {'class': 'GenericError', 'desc': str(error)}, 'id': ident})

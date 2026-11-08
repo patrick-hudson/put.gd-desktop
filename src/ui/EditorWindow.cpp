@@ -531,7 +531,7 @@ void EditorWindow::refresh(){
  {
   // The panel names the tool (or the selected mark) and how to use it.
   static const QStringList titles{"Select","Redact","Blur","Crop","Arrow","Rectangle","Highlight","Text"};
-  static const QStringList help{"Click a mark to select it.","Drag over private information to cover it with a redaction, an opaque black box.","Drag over an area to blur it.","Drag to choose the area to keep, or set it below, then apply the crop.","Drag from the tail to the point of the arrow.","Drag to frame a detail with an outline.","Drag across text to highlight it without covering it.","Click the image to place a label. Enter finishes the text."};
+  static const QStringList help{"Click a mark to select it.","Drag over private information to cover it with a redaction, an opaque black box.","Drag over an area to blur it.","Drag to choose the area to keep, or set it below, then apply the crop.","Drag from the tail to the point of the arrow.","Drag to frame a detail with an outline.","Drag across text to highlight it; the box snaps to the lines. Click a word, double-click a line, Shift-click to add a word. Hold Alt for a free box.","Click the image to place a label. Enter finishes the text."};
   int index=int(tool);QString title=titles.value(index);
   // A selected mark names itself, whichever tool picked it up.
   if(shape&&tool!=Tool::Crop){const QHash<int,QString> kinds{{int(editor::Shape::Kind::Redact),"Redaction"},{int(editor::Shape::Kind::Blur),"Blur"},{int(editor::Shape::Kind::Arrow),"Arrow"},{int(editor::Shape::Kind::Rectangle),"Rectangle"},{int(editor::Shape::Kind::Highlight),"Highlight"},{int(editor::Shape::Kind::Text),"Text"}};title=kinds.value(int(shape->kind),"Mark");}

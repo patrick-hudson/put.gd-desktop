@@ -28,13 +28,13 @@ from passing tests.
 | Edit & upload editor and agent editing | `src/editor/`, `src/ui/EditorWindow.*`, `src/ui/ImageEditor.*`, `src/core/EditorJob.*`, `src/core/SanitizedPng.*` | `tests/unit/test_editor.cpp`, `tests/gui/test_editor_window.cpp`, `tests/integration/test_editor_job.cpp`, [image editor](../design/image-editor.md) |
 | File-manager “Upload with put.gd” | `src/app/FileManagerIntegration.*`, `src/app/file-manager-script.sh`, `src/app/file-manager-launcher.sh`, `src/filemanager/` | `tests/unit/test_file_manager_integration.cpp`, `tests/unit/test_file_manager_launcher.py`, [file-manager upload](../design/file-manager-upload.md) |
 | Core listener/native tray and ephemeral capture | `src/platform/NativeSession.h`, `src/ui/NativeTray.*`, `src/platform/x11/`, `src/capture/` | `tests/integration/`, [architecture](../design/architecture.md), [desktop gates](../testing/acceptance-matrix.md) |
-| Clipboard on Wayland desktops with no native adapter | `src/platform/wayland/`, `src/platform/kde/DataControlClipboard.*` | `wayland_data_control_source`; [copying the link](../design/file-manager-upload.md#copying-the-link) |
+| Clipboard on Wayland desktops with no native adapter | `src/platform/wayland/` (`DataControlSourceAdapter.*`, `DataControlClipboard.*`) | `wayland_data_control_source`; [copying the link](../design/file-manager-upload.md#copying-the-link) |
 | Resident/post-use memory and capture latency | `tests/performance/`, `src/app/OperationService.*` | [memory strategy](../design/memory-strategy.md); synthetic lab results are separate from physical budgets |
 | Surface driver and desktop outcomes | `tools/lab/surface_driver/` | `tests/desktop/test_surface*.py`, [prerequisites](../testing/surface-driver-prerequisites.md) |
 | Automatic nightly desktop checks | `tools/lab/nightly_desktops.py` | `tests/desktop/test_surface_nightly_desktops.py`, [lab sharing](../lab/remote-builders.md#sharing-the-lab-between-concurrent-sessions) |
 | UI catalog and reference images | `tests/gui/ui_catalog.cpp`, `tests/gui/catalog-references/` | [UI catalog](../design/ui-catalog.md), [visual language](../design/visual-language.md) |
 | Integer widths / member layout | `tools/diagnostics/layout/` | [read-only probe and replay](../../tools/diagnostics/layout/README.md); sizes alone do not prove RSS savings |
-| Build, dependency pins, sanitizers | `CMakePresets.json`, `cmake/`, `tools/verify_dependencies.py` | [build](../release/build.md), [thread checks](../testing/thread-sanitizer.md) |
+| Build, dependency pins, sanitizers | `CMakePresets.json`, `CMakeLists.txt` (a table of contents that includes `cmake/*.cmake` in build order), `tools/verify_dependencies.py` | [build](../release/build.md), [thread checks](../testing/thread-sanitizer.md) |
 | Commit/build identity and package versions | `cmake/BuildVersion.cmake`, `src/core/BuildInfo.h` | `tests/cmake/version_contract.cmake`, `tests/integration/test_version.cpp`, `tests/gui/test_version.cpp`, [versioning](../release/versioning.md) |
 
 Use `cmake --preset dev`, `cmake --build --preset dev`, and `ctest --preset dev`.

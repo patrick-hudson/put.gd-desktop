@@ -7,7 +7,7 @@
   "extends": ["config:recommended"],
   "baseBranchPatterns": ["nightly"],
   "enabledManagers": ["custom.regex", "npm", "pep621"],
-  "ignorePaths": ["docs/**", "tests/**", "**/node_modules/**", "packaging/flatpak/**"],
+  "ignorePaths": ["tests/**", "**/node_modules/**"],
   "semanticCommits": "disabled",
   "commitMessagePrefix": "deps:",
   "commitMessageTopic": "{{depName}}",
@@ -57,6 +57,14 @@
       "customType": "regex",
       "managerFilePatterns": ["/^cmake/Dependencies\\.cmake$/"],
       "matchStrings": ["find_package\\(AWSSDK (?<currentValue>[0-9.]+) EXACT"],
+      "depNameTemplate": "aws/aws-sdk-cpp",
+      "datasourceTemplate": "github-tags"
+    },
+    {
+      "description": "The SDK source link in the S3 guide follows the locked release (tests/ci/test_sdk_docs.py).",
+      "customType": "regex",
+      "managerFilePatterns": ["/^docs/user/s3\\.md$/"],
+      "matchStrings": ["github\\.com/aws/aws-sdk-cpp/blob/(?<currentValue>[0-9.]+)/"],
       "depNameTemplate": "aws/aws-sdk-cpp",
       "datasourceTemplate": "github-tags"
     },
@@ -128,7 +136,7 @@
       "labels": ["dependencies", "area: packaging"]
     },
     {
-      "description": "FFmpeg for the AppImage's recorder; a new major changes its sonames (build-appimage.sh checks libavcodec.so.61).",
+      "description": "FFmpeg for the AppImage's recorder; a new major changes its sonames (build-appimage.sh reads them from the pinned build).",
       "matchPackageNames": ["FFmpeg/FFmpeg"],
       "extractVersion": "^n(?<version>\\d+\\.\\d+(?:\\.\\d+)?)$",
       "labels": ["dependencies", "area: packaging", "area: recording"]
@@ -168,6 +176,17 @@
       "labels": ["dependencies", "area: proton"],
       "dependencyDashboardApproval": true,
       "prBodyNotes": ["A Proton helper update is not complete as opened: re-run `tools/proton/provision_runtime.py`, then refresh `tools/proton/runtime-lock.json` (sourceReference for a new SDK), the notices and `tools/proton/notices/SOURCES.json` with the corresponding source (docs/user/proton-drive.md)."]
+    },
+    {
+      "description": "ky and TypeScript build the pinned ProtonDriveApps/sdk source (cli, incubating/account/js), which requires ky ^1.14 and TypeScript ^5.9. Stay on those majors until a new sourceReference moves them.",
+      "matchFileNames": ["tools/proton/package.json"],
+      "matchPackageNames": ["ky"],
+      "allowedVersions": "<2"
+    },
+    {
+      "matchFileNames": ["tools/proton/package.json"],
+      "matchPackageNames": ["typescript"],
+      "allowedVersions": "<6"
     },
     {
       "matchManagers": ["pep621"],

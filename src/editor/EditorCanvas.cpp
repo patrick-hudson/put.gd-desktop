@@ -1,4 +1,5 @@
 #include "EditorCanvas.h"
+#include "HighlightFilter.h"
 #include "ui/Theme.h"
 #include "ui/Ui.h"
 #include <QLabel>
@@ -20,6 +21,9 @@
 
 namespace putgd::editor {
 namespace {
+// The image pixel under a fractional image position, like every other pixel index here.
+QPoint pixelAt(const QPointF& image){return QPoint(int(std::floor(image.x())),int(std::floor(image.y())));}
+
 constexpr double minimumZoom=0.02,maximumZoom=32.0;
 constexpr int handleTargetPixels=32;
 template<size_t N>
@@ -271,13 +275,24 @@ QRect EditorCanvas::resized(QRect r,int handle,const QPoint& d,const QRect& boun
 }
 
 const QImage& EditorCanvas::blurTile(const Shape& shape){
- const double bucket=std::pow(2.0,std::round(std::log2(std::max(scale_,1e-3))*2)/2);
- QString key=QString("%1,%2,%3,%4/%5/%6/%7,%8,%9,%10").arg(shape.rect.x()).arg(shape.rect.y()).arg(shape.rect.width()).arg(shape.rect.height()).arg(shape.strength).arg(bucket)
-  .arg(doc_.crop().x()).arg(doc_.crop().y()).arg(doc_.crop().width()).arg(doc_.crop().height());
+ QString key=QString("B%1/").arg(shape.strength);
  for(const auto& other:doc_.shapes())if(other.kind==Shape::Kind::Redact&&other.rect.intersects(shape.rect))key+=QString(";%1,%2,%3,%4").arg(other.rect.x()).arg(other.rect.y()).arg(other.rect.width()).arg(other.rect.height());
+ return cachedTile(shape,key,&EditDocument::blurPreview);
+}
+const QImage& EditorCanvas::highlightTile(const Shape& shape){
+ // Redactions and blurs in the preview's window (the box plus the reach of
+ // blurs crossing its edge) change its pixels, so they key the tile.
+ QString key=QString("H%1/").arg(shape.color.name());const auto window=doc_.highlightWindow(shape);
+ for(const auto& other:doc_.shapes())if((other.kind==Shape::Kind::Redact||other.kind==Shape::Kind::Blur)&&other.rect.intersects(window))key+=QString(";%1,%2,%3,%4,%5").arg(other.rect.x()).arg(other.rect.y()).arg(other.rect.width()).arg(other.rect.height()).arg(other.kind==Shape::Kind::Blur?other.strength:0);
+ return cachedTile(shape,key,&EditDocument::highlightPreview);
+}
+const QImage& EditorCanvas::cachedTile(const Shape& shape,const QString& prefix,QImage (EditDocument::*render)(const Shape&,double) const){
+ const double bucket=std::pow(2.0,std::round(std::log2(std::max(scale_,1e-3))*2)/2);
+ const QString key=prefix+QString("%1,%2,%3,%4/%5/%6,%7,%8,%9").arg(shape.rect.x()).arg(shape.rect.y()).arg(shape.rect.width()).arg(shape.rect.height()).arg(bucket)
+  .arg(doc_.crop().x()).arg(doc_.crop().y()).arg(doc_.crop().width()).arg(doc_.crop().height());
  auto& tile=tiles_[shape.id];tile.used=++tick_;
  if(tile.key==key)return tile.image;
- cacheBytes_-=tile.image.sizeInBytes();tile.image=doc_.blurPreview(shape,bucket);tile.key=key;cacheBytes_+=tile.image.sizeInBytes();
+ cacheBytes_-=tile.image.sizeInBytes();tile.image=(doc_.*render)(shape,bucket);tile.key=key;cacheBytes_+=tile.image.sizeInBytes();
  // Least-recently painted tiles are recomputed later rather than retained.
  while(cacheBytes_>blurCacheBytes&&tiles_.size()>1){
   auto oldest=tiles_.end();for(auto it=tiles_.begin();it!=tiles_.end();++it)if(it.key()!=shape.id&&(oldest==tiles_.end()||it->used<oldest->used))oldest=it;
@@ -308,11 +323,14 @@ void EditorCanvas::paintEvent(QPaintEvent*){
  }
  painter.save();painter.setClipRect(target);
  painter.translate(offset_);painter.scale(scale_,scale_);painter.translate(-QPointF(bounds.topLeft()));
- for(const auto& shape:doc_.shapes()){
-  if(shape.kind==Shape::Kind::Redact)painter.fillRect(shape.rect,Qt::black);
-  else if(shape.kind==Shape::Kind::Blur){const auto& tile=blurTile(shape);const auto area=shape.rect.intersected(doc_.crop());if(!tile.isNull())painter.drawImage(QRectF(area),tile);}
-  else if(!(textEditor_&&shape.id==textShape_))EditDocument::paintAnnotation(painter,shape);
- }
+ // Effects paint in the export's order, whatever order they were added in:
+ // redactions, then blurs (whose tiles hold the redactions they cover,
+ // blurred), then highlights (which tint the blurred result), then the drawn
+ // annotations.
+ for(const auto& shape:doc_.shapes())if(shape.kind==Shape::Kind::Redact)painter.fillRect(shape.rect,Qt::black);
+ for(const auto& shape:doc_.shapes())if(shape.kind==Shape::Kind::Blur){const auto& tile=blurTile(shape);const auto area=shape.rect.intersected(doc_.crop());if(!tile.isNull())painter.drawImage(QRectF(area),tile);}
+ for(const auto& shape:doc_.shapes())if(shape.kind==Shape::Kind::Highlight){const auto& tile=highlightTile(shape);const auto area=shape.rect.intersected(doc_.crop());if(!tile.isNull())painter.drawImage(QRectF(area),tile);}
+ for(const auto& shape:doc_.shapes())if(shape.kind!=Shape::Kind::Redact&&shape.kind!=Shape::Kind::Blur&&shape.kind!=Shape::Kind::Highlight&&!(textEditor_&&shape.id==textShape_))EditDocument::paintAnnotation(painter,shape);
  // The open field shows the text being typed; painting it here as well showed it twice.
  painter.restore();
  if(tool_==Tool::Crop){
@@ -375,6 +393,13 @@ void EditorCanvas::mousePressEvent(QMouseEvent* event){
   if(QRectF(doc_.crop()).contains(image))beginText(image,nullptr);
   return;
  }
+ // Shift-click grows the selected highlight by the word under the pointer,
+ // inside the selection too, so it comes before the move and resize hit tests.
+ if(tool_==Tool::Highlight&&(event->modifiers()&Qt::ShiftModifier))if(const auto* current=doc_.find(selected_);current&&current->kind==Shape::Kind::Highlight){
+  const auto word=highlight::wordAt(doc_.base(),pixelAt(image),doc_.redactionRects());
+  if(!word.isNull()){auto next=*current;next.rect=next.rect.united(word).intersected(doc_.crop());doc_.replace(next);update();emit changed();}
+  return;
+ }
  const bool force=drawingTool()&&(event->modifiers()&Qt::ControlModifier);
  // Handles and the visible body of the current selection edit it in every tool.
  if(!force)if(const auto* shape=doc_.find(selected_)){
@@ -435,6 +460,9 @@ void EditorCanvas::mouseMoveEvent(QMouseEvent* event){
     const int side=std::min({std::max({reachX,reachY,1}),roomX,roomY});
     shape.rect=QRect(right?px:px-side+1,down?py:py-side+1,side,side);
    }else shape.rect=boxFrom(from,end).intersected(bounds);
+   // A highlight follows the text lines it crosses; Alt keeps the free box.
+   // Snapping waits for a real drag: a click with a pixel of jitter stays tiny and highlights the word on release.
+   if(shape.kind==Shape::Kind::Highlight&&!shape.rect.isEmpty()&&!(event->modifiers()&Qt::AltModifier)&&QLineF(press_,event->position()).length()>=QGuiApplication::styleHints()->startDragDistance())shape.rect=highlight::snapToText(doc_.base(),shape.rect,doc_.redactionRects()).intersected(bounds);
   }
  }else if(drag_==Drag::Move){const auto d=containedMove(shape,delta,bounds);shape.rect.translate(d);shape.from+=d;shape.to+=d;}
  else if(drag_==Drag::Resize){
@@ -455,6 +483,12 @@ void EditorCanvas::mouseReleaseEvent(QMouseEvent* event){
  if(kind==Drag::Create){
   const auto* shape=doc_.find(selected_);
   const bool tiny=!shape||(shape->kind==Shape::Kind::Arrow?QLineF(toWidget(QPointF(shape->from)),toWidget(QPointF(shape->to))).length()<6:(shape->rect.width()*scale_<4||shape->rect.height()*scale_<4));
+  // A click, or a press that never travelled the drag distance, highlights the word under the pointer.
+  const bool click=tiny||QLineF(press_,event->position()).length()<QGuiApplication::styleHints()->startDragDistance();
+  if(click&&shape&&shape->kind==Shape::Kind::Highlight&&!(event->modifiers()&Qt::AltModifier)){
+   const auto word=highlight::wordAt(doc_.base(),pixelAt(toImage(press_)),doc_.redactionRects()).intersected(doc_.crop());
+   if(!word.isEmpty()){auto next=*shape;next.rect=word;doc_.preview(next);doc_.commitGesture();update();emit changed();updateHoverCursor(event->position(),event->modifiers());return;}
+  }
   if(tiny){doc_.cancelGesture();selected_=0;emit selectionChanged();update();return;}
  }
  doc_.commitGesture();
@@ -464,7 +498,12 @@ void EditorCanvas::mouseReleaseEvent(QMouseEvent* event){
 
 void EditorCanvas::mouseDoubleClickEvent(QMouseEvent* event){
  const auto* shape=doc_.find(shapeAt(toImage(event->position())));
- if(shape&&shape->kind==Shape::Kind::Text)beginText(QPointF(shape->rect.topLeft()),shape);
+ if(shape&&shape->kind==Shape::Kind::Text){beginText(QPointF(shape->rect.topLeft()),shape);return;}
+ // The first click made a word highlight; the double-click grows it to the line.
+ if(tool_==Tool::Highlight&&!(event->modifiers()&Qt::AltModifier))if(const auto* current=doc_.find(selected_);current&&current->kind==Shape::Kind::Highlight){
+  const auto line=highlight::lineAt(doc_.base(),pixelAt(toImage(event->position())),doc_.redactionRects()).intersected(doc_.crop());
+  if(!line.isEmpty()&&line!=current->rect){auto next=*current;next.rect=line.united(current->rect);doc_.replace(next);update();emit changed();}
+ }
 }
 
 void EditorCanvas::wheelEvent(QWheelEvent* event){

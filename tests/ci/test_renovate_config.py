@@ -55,6 +55,16 @@ class RenovateConfig(unittest.TestCase):
         seen = {match['depName'] for match in python_pattern(managers[1]['matchStrings'][0]).finditer(text)}
         self.assertEqual(seen, pinned)
 
+    def test_ignore_paths_never_hide_a_regex_managed_file(self):
+        # Renovate skips ignorePaths before custom managers read their files.
+        def glob(pattern):
+            text = re.escape(pattern).replace(r'\*\*/', '(?:.*/)?').replace(r'\*\*', '.*').replace(r'\*', '[^/]*')
+            return re.compile(text + r'\Z')
+        ignored = [glob(pattern) for pattern in CONFIG['ignorePaths']]
+        for manager in CONFIG['customManagers']:
+            for path in managed_files(manager):
+                self.assertFalse(any(pattern.match(path) for pattern in ignored), path)
+
     def test_regex_managers_leave_workflow_actions_to_dependabot(self):
         for manager in CONFIG['customManagers']:
             for path in managed_files(manager):
