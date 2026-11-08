@@ -86,3 +86,15 @@ History maintenance clears local records or eligible retry artifacts/previews wi
 Hovering the unchanged tray shows active work without opening the window: blue for capture/preparation/queue waits, green for storage activity, and a brief red/blue flash for genuine errors. Cancelling capture does not flash an error. The tooltip shows up to three active operations and an additional count. Closing all UI views releases the helper while the resident and tray remain.
 
 Offscreen tests prove widget/core behavior only. Native desktop acceptance uses the installed-package lab, independent paste, actual capture bytes, and visible console witnesses described in [testing](../testing/testing.md).
+
+### Arch Linux and derivatives
+
+Arch packaging is being introduced under
+[#1275](https://github.com/patrick-hudson/put.gd-desktop/issues/1275).
+After the package repository and website rollout, the normal install script
+recognizes Arch and Arch-based systems (including EndeavourOS, CachyOS and
+Omarchy) and configures signed pacman updates. Keep the system fully updated
+with `sudo pacman -Syu`. Remove put.gd with `sudo pacman -R putgd`; repository
+configuration remains administrator-owned. AppImage is also available; package
+availability does not imply acceptance of every derivative's compositor.
+The AUR recipe is a draft and has not been published.
