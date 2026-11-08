@@ -6,6 +6,7 @@
 #include "core/BuildInfo.h"
 #include "ipc/StdioDevice.h"
 #include <QCoreApplication>
+#include <QElapsedTimer>
 #include <QFile>
 #include <QJsonArray>
 #include <QJsonDocument>
@@ -67,6 +68,14 @@ int main(int argc, char** argv) {
         }
         if (type == "appearance") return;
         // Keep teardown alive while the resident reads late replies, as the real helper does.
+        if (type == "shutdown" && mode == "slow-shutdown-held") {
+            // The test decides when the old helper exits (PUTGD_TEST_RECORD_RELEASE appears), within the backend's 2 s deadline.
+            const auto release = qEnvironmentVariable("PUTGD_TEST_RECORD_RELEASE");
+            auto* poll = new QTimer(&app); auto* clock = new QElapsedTimer; clock->start();
+            QObject::connect(poll, &QTimer::timeout, &app, [&app, release, clock] { if (QFile::exists(release) || clock->elapsed() > 1700) app.exit(0); });
+            poll->start(20);
+            return;
+        }
         if (type == "shutdown") { QTimer::singleShot(mode.startsWith("slow-shutdown") ? 300 : 0, &app, [&] { app.exit(mode == "exit-dirty" ? 7 : 0); }); return; }
         if (type != "command") { app.exit(3); return; }
         const auto requestId = payload["requestId"].toString(), command = payload["command"].toString();
