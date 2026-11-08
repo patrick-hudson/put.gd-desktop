@@ -665,6 +665,8 @@ private slots:
   const auto value = notifications.values.first(); QCOMPARE(value["app"].toString(), QString("put.gd"));
   QCOMPARE(value["summary"].toString(), QString("put.gd — failed")); QCOMPARE(value["timeout"].toInt(), 10000);
   QCOMPARE(value["hints"].toMap()["urgency"].toUInt(), uint(2)); QVERIFY(value["actions"].toStringList().isEmpty());
+  // #1298: a failure is never restored by a server that persists notifications.
+  QVERIFY(value["hints"].toMap()["transient"].toBool());
   // #151: a notification with buttons stays until used or dismissed, except where the
   // server keeps it, buttons and all, in its list (GNOME Shell, Plasma).
   tray.notify("put.gd — partial", "Synthetic failure", true, {}, {{"save-diagnostics", "Save diagnostics for this upload", "op"}});

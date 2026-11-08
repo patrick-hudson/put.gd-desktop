@@ -413,6 +413,11 @@ void NativeTrayPrivate::notify(const QString& title, const QString& message, boo
  if (notificationsInFlight_ >= 8) return;
  auto call = QDBusMessage::createMethodCall(notificationService, notificationPath, notificationService, "Notify");
  QVariantMap hints{{"urgency", QVariant::fromValue(static_cast<uchar>(warning ? 2 : 1))}, {"desktop-entry", "putgd"}};
+ // A failure notice stays on screen until seen (critical), but a server that
+ // persists notifications must not bring it back after a restart (#1298):
+ // Omarchy's shell otherwise shows an old failure again after every reboot.
+ // History keeps the failure and its diagnostics.
+ if (warning) hints.insert("transient", true);
  QStringList names=link.isEmpty()?QStringList{}:QStringList{"default","Open in browser"};
  QHash<QString,QString> values;
  for(const auto& action:actions)if(action.key!="default"){names<<action.key<<action.label;values.insert(action.key,action.value);}

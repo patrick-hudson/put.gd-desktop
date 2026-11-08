@@ -631,6 +631,8 @@ void TrayController::sendTrayMessage(const QString& title, const QString& messag
  if(trayMessagesInFlight_>=8)return;
  auto call=QDBusMessage::createMethodCall("org.freedesktop.Notifications","/org/freedesktop/Notifications","org.freedesktop.Notifications","Notify");
  QStringList names;QHash<QString,QString> values;QVariantMap hints{{"urgency",QVariant::fromValue(static_cast<uchar>(warning?2:1))}};
+ // Critical until seen, but never restored by a persisting server after a restart (#1298).
+ if(warning)hints.insert("transient",true);
  for(const auto& action:actions){names<<action.key<<action.label;values.insert(action.key,action.value);}
  // Buttons stay until used, as NativeTray's do where the server has no list to keep them in.
  if(!values.isEmpty()){
