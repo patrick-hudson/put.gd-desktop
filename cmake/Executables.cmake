@@ -64,6 +64,16 @@ if(TARGET putgd_wayland)
     target_link_libraries(putgd-region PRIVATE PkgConfig::PUTGD_WAYLAND)
   endif()
   install(TARGETS putgd-region RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+  # Holds the last clipboard result after the resident quits on compositors with
+  # no clipboard manager. C with only libwayland-client: see the file's header.
+  add_executable(putgd-clipboard-keeper src/platform/wayland/clipboard_keeper_main.c
+    "${protocol_dir}/ext-data-control-v1-client-protocol.h" "${protocol_dir}/ext-data-control-v1-protocol.c"
+    "${protocol_dir}/wlr-data-control-unstable-v1-client-protocol.h" "${protocol_dir}/wlr-data-control-unstable-v1-protocol.c")
+  target_include_directories(putgd-clipboard-keeper PRIVATE "${protocol_dir}" src/platform/wayland)
+  target_compile_options(putgd-clipboard-keeper PRIVATE -Wall -Wextra)
+  set_target_properties(putgd-clipboard-keeper PROPERTIES LINKER_LANGUAGE C)
+  target_link_libraries(putgd-clipboard-keeper PRIVATE PkgConfig::PUTGD_WAYLAND)
+  install(TARGETS putgd-clipboard-keeper RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 endif()
 if(TARGET putgd_x11_core)
   pkg_check_modules(PUTGD_XCURSOR REQUIRED IMPORTED_TARGET xcursor)
