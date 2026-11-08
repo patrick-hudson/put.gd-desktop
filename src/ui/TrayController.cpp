@@ -696,7 +696,7 @@ void TrayController::notifyDiagnosticsSaved(const QJsonObject& result) {
 }
 namespace {
 QString fileManagerName(const QString& name){
- static const QHash<QString,QString> names{{"nautilus","Files"},{"caja","Caja"},{"peony","Peony"},{"pcmanfm","PCManFM"},{"pcmanfm-qt","PCManFM-Qt"}};
+ static const QHash<QString,QString> names{{"pcmanfm","PCManFM"},{"pcmanfm-qt","PCManFM-Qt"}};
  return names.value(name,name);
 }
 }

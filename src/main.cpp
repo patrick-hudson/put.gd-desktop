@@ -478,12 +478,12 @@ int main(int argc,char* argv[]) {
  configureLogin();QObject::connect(&settings,&putgd::SettingsService::accepted,&app,configureLogin);
  // "Upload with put.gd" in file managers (#1105): the per-user entries, written
  // at every start (DING or COSMIC may have arrived since) and when the AppImage's
- // switch changes; the notice once per installation.
+ // switch changes; the AppImage's notice once per installation (DEB/RPM have none).
  const auto fileManagerMutex=std::make_shared<std::mutex>();
  const auto fileManagerGeneration=std::make_shared<std::atomic_ullong>(0);
  const auto configureFileManagers=[&] {
   // A development build's DEB/RPM-style run has no system menu files to go with
-  // per-user ones, and its stamp would announce a menu that isn't there.
+  // per-user ones.
   if(putgd::host::installationClass()=="system"&&QFileInfo(QCoreApplication::applicationFilePath()).canonicalFilePath()!=QStringLiteral("/usr/bin/putgd"))return;
   const auto ticket=++*fileManagerGeneration;
   putgd::FileManagerContext context;
