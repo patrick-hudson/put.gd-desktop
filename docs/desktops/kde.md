@@ -13,7 +13,7 @@ remains required.
 Build dependencies are `libwayland-dev`, `wayland-protocols` and Qt DBus. Both
 data-control protocol files are vendored unmodified. CMake runs the distro `wayland-scanner`
 `client-header` and `private-code` modes against the unmodified protocol XML
-in `src/platform/kde/protocols/`. Keep generated files in the build tree.
+in `src/platform/wayland/protocols/`. Keep generated files in the build tree.
 Region selection also needs the current distro LayerShellQt interface development
 package with Qt 6.5 or later for per-window shell integration: ScreenShot2's interactive method selects a **window or whole screen**,
 not a rectangular region. The adapter uses compositor-positioned overlay layer
@@ -48,7 +48,7 @@ The screen-recording helper has its own entry, `putgd-record.desktop`, whose
 `zkde_screencast_unstable_v1`; KWin advertises its screencast protocol only to
 executables matched that way (see `docs/design/recording/wayland.md`, "Wayland acquisition").
 The helper also links the layer-shell region selector: a recording of a
-region without a rectangle shows the same `KdeRegionOverlay` as a region
+region without a rectangle shows the same `LayerShellRegionOverlay` as a region
 screenshot before any stream exists, and the ready ring, dimming and control
 bar are overlay layer surfaces placed outside the recorded rectangle. KWin 6.6
 and later leave every window of the client that requested a screencast stream

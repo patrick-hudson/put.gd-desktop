@@ -20,7 +20,7 @@ name order is time order. The resident starts a new file when it starts and when
 current file reaches the rotation size. Other files in the folder are never touched.
 
 Only the resident opens log files. Helpers (`putgd-ui`, `putgd-capture`,
-`putgd-kde-region`, `putgd-record`, `putgd-s3-worker`, and `putgd-ui --edit-image`)
+`putgd-region`, `putgd-record`, `putgd-s3-worker`, and `putgd-ui --edit-image`)
 keep their existing restrictions and write nothing to disk: the resident reads their
 stderr and records it, bounded to 64 KiB per helper generation and 2 KiB per line,
 then records how each one exited. The resident sets `QT_FORCE_STDERR_LOGGING=1` for
@@ -256,7 +256,7 @@ The last 10 records are kept in `unclean-exits.json`. `diagnostics.uncleanExit` 
 
 ## Crash records
 
-Every put.gd executable (`putgd`, `putgd-ui`, `putgd-capture`, `putgd-kde-region`,
+Every put.gd executable (`putgd`, `putgd-ui`, `putgd-capture`, `putgd-region`,
 `putgd-record`, `putgd-s3-worker` and `putgd-b2-worker`) links a small crash handler (#124,
 `src/core/CrashHandler.cpp`) that installs itself before `main`, from the
 executable's `.preinit_array`. ld.so runs that before any shared library's

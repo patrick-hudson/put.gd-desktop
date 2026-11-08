@@ -146,6 +146,20 @@ menu glyphs use the same tint. The resident's full diagnostics (`ui.snapshot`
 `diagnostics`, and diagnostics packages) report the choice as
 `trayTint {panel, source, color}`.
 
+The item publishes its glyph as `IconPixmap`. Ayatana's and Canonical's
+`indicator-application-service` (the tray of Ubuntu Budgie 26.04's default
+applet, and of Unity) ignore pixmaps and draw a missing-icon symbol instead. When
+the `StatusNotifierWatcher` belongs to a process whose name ends in
+`indicator-application-service`, the item also writes the current glyph as a PNG
+into `$XDG_RUNTIME_DIR/putgd/tray/` and publishes its absolute path as `IconName`:
+GTK re-reads an icon search path only every few seconds, so a host looking up a
+just-written name in `IconThemePath` draws the missing-icon symbol. Each change
+writes a new file, because these hosts cache icons by name, and the last four are
+kept, since a host can still be loading one it was told about.
+The PNG is encoded directly, so no Qt image plugin is loaded into the resident.
+Every other host keeps the pixmap only
+([#1294](https://github.com/patrick-hudson/put.gd-desktop/issues/1294)).
+
 ### Seasonal glyphs
 
 The tray icon follows the local calendar, every year: a turkey from November 1
