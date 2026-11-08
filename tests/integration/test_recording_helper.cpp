@@ -191,6 +191,16 @@ private slots:
   QCOMPARE(h.rec("cancel",{{"id",id}}).result["state"].toString(),QString("cancelled"));
   PUTGD_TRY_VERIFY(!h.backend->diagnostics()["active"].toBool());
  }
+ // A monitor plugged or unplugged changes what an image-copy session can record.
+ void imageCopyProbesFollowTheOutputs(){
+  const auto cleanup=qScopeGuard([]{qunsetenv("PUTGD_TEST_RECORD_PROBE_TAG");});
+  qputenv("PUTGD_TEST_RECORD_PROBE_TAG","first");qputenv("PUTGD_TEST_RECORD_MODE","probe-wlr-capture");
+  {Harness h;PUTGD_TRY_VERIFY(h.operations->ready());QCOMPARE(h.rec("capabilities").result["probeTag"].toString(),QString("first"));
+   qputenv("PUTGD_TEST_RECORD_PROBE_TAG","second");QCOMPARE(h.rec("capabilities").result["probeTag"].toString(),QString("second"));}
+  qunsetenv("PUTGD_TEST_RECORD_MODE");qputenv("PUTGD_TEST_RECORD_PROBE_TAG","first");
+  {Harness h;PUTGD_TRY_VERIFY(h.operations->ready());QCOMPARE(h.rec("capabilities").result["probeTag"].toString(),QString("first"));
+   qputenv("PUTGD_TEST_RECORD_PROBE_TAG","second");QCOMPARE(h.rec("capabilities").result["probeTag"].toString(),QString("first"));}
+ }
  void brokenProbesReportUnavailableTruthfully(){
   qputenv("PUTGD_TEST_RECORD_MODE","probe-garbage");
   {Harness h;PUTGD_TRY_VERIFY(h.operations->ready());const auto caps=h.rec("capabilities");QVERIFY(!caps.error);QVERIFY(!caps.result["available"].toBool());QCOMPARE(caps.result["reason"].toString(),QString("recording_probe_invalid"));

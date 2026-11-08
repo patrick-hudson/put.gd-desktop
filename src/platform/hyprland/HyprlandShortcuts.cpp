@@ -468,7 +468,11 @@ void HyprlandShortcuts::clear(){
  if(HyprlandIpc::requestBlocking("j/binds",&reply))return;
  const auto planned=plan(QJsonDocument::fromJson(reply).array(),{});
  if(planned.reloadFirst){HyprlandIpc::requestBlocking("reload",&reply);++reloadsIssued_;}
- else for(const auto& chord:planned.remove){HyprlandIpc::requestBlocking("eval "+unbindScript(chord),&reply);++unbinds_;}
+ else for(const auto& chord:planned.remove){
+  ++unbinds_;
+  // Binds left behind on exit point at a shortcut nobody registered, so a failure gets the reload.
+  if(HyprlandIpc::requestBlocking("eval "+unbindScript(chord),&reply)||!HyprlandIpc::okReply(reply)){HyprlandIpc::requestBlocking("reload",&reply);++reloadsIssued_;break;}
+ }
  bound_.clear();actual_.clear();
 }
 QJsonObject HyprlandShortcuts::status()const{

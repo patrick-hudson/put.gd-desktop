@@ -67,6 +67,7 @@ public:
  // An Omarchy theme change: Hyprland reloads by itself.
  void externalReload(){std::lock_guard lock(mutex_);reload();}
  void addBind(const QJsonObject& bind){std::lock_guard lock(mutex_);binds_.append(bind);}
+ void refuseUnbinds(bool refuse){std::lock_guard lock(mutex_);refuseUnbinds_=refuse;}
  // The event socket goes away and a reload happens while it is gone.
  void reloadUnseen(){std::lock_guard lock(mutex_);for(int fd:subscribers_)::close(fd);subscribers_.clear();binds_=base_;}
 private:
@@ -94,6 +95,7 @@ private:
    if(lua.contains(":remove"))return "error: :remove crashes Hyprland";
    static const QRegularExpression unbind(QStringLiteral("^hl\\.unbind\\(\"([^\"]*)\"\\)$"));
    if(const auto match=unbind.match(lua);match.hasMatch()){
+    if(refuseUnbinds_)return "error: refused";
     int modmask=0;QString key;
     for(const auto& part:match.captured(1).split(" + ")){
      if(part=="SUPER")modmask|=64;else if(part=="CTRL")modmask|=4;else if(part=="ALT")modmask|=8;else if(part=="SHIFT")modmask|=1;else key=part;
@@ -132,7 +134,7 @@ private:
    }
   }
  }
- QJsonArray base_,binds_;QStringList log_;QList<int> subscribers_;
+ QJsonArray base_,binds_;QStringList log_;QList<int> subscribers_;bool refuseUnbinds_=false;
  int request_=-1,events_=-1;std::thread thread_;std::atomic_bool stop_{false};std::mutex mutex_;
 };
 }
@@ -325,6 +327,12 @@ private slots:
   const int reloadsBeforeQuit=hyprland.count("reload");
   shortcuts->clear();QCOMPARE(hyprland.ownCount(),0);QCOMPARE(hyprland.binds().size(),251);
   QCOMPARE(hyprland.count("reload"),reloadsBeforeQuit);
+  // A refused unbind falls back to the reload, while running and at quit.
+  shortcuts->bind({{"region","Ctrl+Shift+1"},{"window","Ctrl+Shift+4"}});PUTGD_TRY_COMPARE(hyprland.ownCount(),2);
+  hyprland.refuseUnbinds(true);
+  shortcuts->bind({{"region","Ctrl+Shift+7"},{"window","Ctrl+Shift+4"}});
+  PUTGD_TRY_COMPARE(hyprland.count("reload"),reloadsBeforeQuit+1);PUTGD_TRY_COMPARE(hyprland.ownCount(),2);
+  shortcuts->clear();QCOMPARE(hyprland.ownCount(),0);QCOMPARE(hyprland.count("reload"),reloadsBeforeQuit+2);
   // Never a handle's :remove() (a stale handle crashes Hyprland), never keyword binds.
   for(const auto& request:hyprland.requests()){QVERIFY2(!request.contains(":remove"),qPrintable(request));QVERIFY(!request.startsWith("keyword"));}
   QVERIFY(hyprland.count("eval hl.layer_rule(")>=2);

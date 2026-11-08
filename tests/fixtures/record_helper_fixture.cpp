@@ -26,7 +26,8 @@ int main(int argc, char** argv) {
         if (mode == "probe-fails") return 9;
         const QJsonObject caps{{"schemaVersion", 1}, {"available", true}, {"targets", QJsonArray{"monitor", "desktop", "region", "window"}},
             {"formats", QJsonArray{"mp4", "webm", "gif", "webp"}}, {"codecs", QJsonObject{{"mp4", QJsonArray{"h264", "h265"}}, {"webm", QJsonArray{"vp9"}}}},
-            {"audio", QJsonObject{{"system", true}, {"microphone", false}}}, {"overlayExclusion", QJsonObject{{"region", true}}}, {"fixture", mode}};
+            {"audio", QJsonObject{{"system", true}, {"microphone", false}}}, {"overlayExclusion", QJsonObject{{"region", true}}}, {"fixture", mode},
+            {"probeTag", qEnvironmentVariable("PUTGD_TEST_RECORD_PROBE_TAG")}, {"acquisition", mode == "probe-wlr-capture" ? QStringLiteral("wlr-capture") : QStringLiteral("x11")}};
         const auto json = QJsonDocument(caps).toJson(QJsonDocument::Compact);
         std::fwrite(json.constData(), 1, size_t(json.size()), stdout);
         std::fputc('\n', stdout);

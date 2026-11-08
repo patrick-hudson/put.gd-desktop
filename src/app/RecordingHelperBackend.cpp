@@ -68,7 +68,9 @@ QJsonObject RecordingHelperBackend::capabilities() const {
 }
 void RecordingHelperBackend::refreshCapabilities(std::function<void()> done) {
     const auto now = QDateTime::currentMSecsSinceEpoch();
-    if (!cached_.isEmpty() && (cached_["available"].toBool() || now - cachedAt_ < failedProbeCacheMs)) { done(); return; }
+    // On the image-copy route the targets follow the outputs connected right now.
+    const bool followsOutputs = cached_["acquisition"].toString() == "wlr-capture";
+    if (!cached_.isEmpty() && !followsOutputs && (cached_["available"].toBool() || now - cachedAt_ < failedProbeCacheMs)) { done(); return; }
     if (!QFileInfo(helperPath_).isExecutable()) { cached_ = unavailable("recording_helper_missing"); cachedAt_ = now; done(); return; }
     probeWaiters_.append(std::move(done));
     if (probe_) return;
