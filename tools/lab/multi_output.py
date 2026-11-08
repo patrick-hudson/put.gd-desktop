@@ -337,6 +337,9 @@ PY
 
     def setup(self):
         self.profile = lab.load_profile(lab.state(self.run)['profile'])
+        if self.profile['desktop'] == 'Hyprland':
+            # Geometry and pixel inventories cover X11, KWin and Mutter only.
+            raise RuntimeError('Multi-output campaigns do not support Hyprland guests')
         if self.args.appimage:
             package = lab.install_appimage(self.run, self.args.appimage)
             save(self.run / 'package.json', package)
