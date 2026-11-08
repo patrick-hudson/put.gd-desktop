@@ -169,7 +169,7 @@ QJsonObject probeMedia() {
     QJsonObject portal;
     QString portalReason;
     const bool portalOk = session == "wayland" && !imageCopyDesktop && PortalScreenCast::available(portal, &portalReason);
-    // Budgie and Hyprland never probe the portal, so they report none rather than a failure.
+    // The accepted Budgie and Hyprland routes use direct frames and report no portal; failed routing falls back to it.
     if (session == "wayland" && !imageCopyDesktop) { portal["available"] = portalOk; if (!portalOk) portal["reason"] = portalReason; result["portal"] = portal; }
     // Dialog-free compositor paths first: KWin's screencast protocol on Plasma,
     // Mutter's screen cast service on GNOME; the portal (with restore tokens) otherwise.

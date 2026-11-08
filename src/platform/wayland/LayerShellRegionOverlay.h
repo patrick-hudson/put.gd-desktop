@@ -37,7 +37,7 @@ private:
  bool addSurface(const CaptureFrame&,QScreen*);
  void accept();
  bool eventFilter(QObject*,QEvent*) override;
- class Surface;void press(QPointF);void move(QPointF);void release(QPointF);void finish();void dismiss();void surfacePainted(const void*);void acceptKeyboardOnDemand();QSet<const void*> drawn_;bool shown_=false,deferKeyboard_=false;QSet<QWindow*> awaitingMapped_;
+ class Surface;void press(QPointF);void move(QPointF);void release(QPointF);void finish();void dismiss();void surfacePainted(const void*);void acceptKeyboardOnDemand();QSet<const void*> drawn_;bool shown_=false,deferKeyboard_=false,keyboardTaken_=false;QSet<QWindow*> awaitingMapped_;
  int keyboardScreen_=-1;
  QList<CaptureFrame> frames_;QString outcome_;QList<Surface*> surfaces_;QRectF selection_;QPointF anchor_;bool dragging_=false,finished_=false,clearing_=false,dismissing_=false;QSet<QWindow*> awaitingFrames_;
  bool recording_=false,frozen_=false;

@@ -145,12 +145,13 @@ void LayerShellRegionOverlay::surfacePainted(const void* surface){
 }
 void LayerShellRegionOverlay::acceptKeyboardOnDemand(){
 #ifdef PUTGD_NATIVE_REGION
- if(finished_)return;
+ if(finished_||keyboardTaken_)return;
  for(auto* each:surfaces_){LayerShellQt::Window::get(each->windowHandle())->setKeyboardInteractivity(LayerShellQt::Window::KeyboardInteractivityOnDemand);each->update();}
 #endif
 }
 void LayerShellRegionOverlay::takeKeyboard(int qtKey,int qtModifiers){
  if(finished_||dragging_||surfaces_.isEmpty())return;
+ keyboardTaken_=true;
 #ifdef PUTGD_NATIVE_REGION
  for(auto* surface:surfaces_){LayerShellQt::Window::get(surface->windowHandle())->setKeyboardInteractivity(LayerShellQt::Window::KeyboardInteractivityExclusive);surface->update();}
 #endif

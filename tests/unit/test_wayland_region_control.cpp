@@ -301,6 +301,17 @@ private slots:
   // Nothing relayed once it is over.
   process.relayPointer("press",{1,1});QVERIFY(!process.busy());
  }
+ void earlyDragWaitsForTheHelperToStart() {
+  // Armed at the hotkey: a press before the helper exists is not dropped.
+  qputenv("PUTGD_TEST_KDE_REGION_HELPER","pointer-relay");WaylandRegionProcess process(QCoreApplication::applicationFilePath());
+  process.relayPointer("press",{1,1});  // not armed: nothing to keep
+  process.armPointerRelay();process.relayPointer("press",{10,20});process.relayPointer("move",{30,40});
+  QRectF selected;Error error;int replies=0;
+  process.start(frames(),[&](QRectF rectangle,Error e){selected=rectangle;error=e;++replies;});
+  process.relayPointer("release",{31,41});
+  PUTGD_TRY_COMPARE(replies,1);qunsetenv("PUTGD_TEST_KDE_REGION_HELPER");
+  QVERIFY2(!error,qPrintable(error.message));QCOMPARE(selected,QRectF(-20,20,60,40));
+ }
  void keyboardWaitsForTheGrant() {
   qputenv("PUTGD_TEST_KDE_REGION_HELPER","keyboard-grant");WaylandRegionProcess process(QCoreApplication::applicationFilePath());
   process.setDeferKeyboard(true);

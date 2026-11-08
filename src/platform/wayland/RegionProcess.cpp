@@ -66,7 +66,7 @@ void WaylandRegionProcess::start(const QList<CaptureFrame>& frames,std::function
  WaylandFrozenFrames frozen;
  if(!pixels.isEmpty()) { frozen=waylandFrozenFrames(frames,pixels,error); if(error) { callback({},std::move(error)); return; } }
  closeFrozen(); frozenFd_=frozen.fd;
- frames_=frames; reply_=std::move(callback); result_={}; failure_={}; pendingPointer_.clear(); pendingMove_.reset(); moveFlush_.stop();
+ frames_=frames; reply_=std::move(callback); result_={}; failure_={}; if(!pointerArmed_) pendingPointer_.clear(); pointerArmed_=false; pendingMove_.reset(); moveFlush_.stop();
  ready_=begun_=resultReceived_=accepted_=cancelling_=terminal_=teardownCertified_=false;
  nonce_=QUuid::createUuid().toString(QUuid::WithoutBraces); ++generation_;
  launchPid_=0; launchStartTicks_.clear();
@@ -129,8 +129,8 @@ void WaylandRegionProcess::begin(const Ticket& ticket,std::function<void(QRectF,
  state->reply=std::move(callback);
 }
 void WaylandRegionProcess::relayPointer(const QString& kind,QPointF logical) {
- if(!busy() || terminal_ || cancelling_) return;
- if(begun_) {
+ if(busy() ? (terminal_ || cancelling_) : !pointerArmed_) return;
+ if(busy() && begun_) {
   if(kind=="move") { pendingMove_=logical; if(!moveFlush_.isActive()) { flushMove(); moveFlush_.start(33); } return; }
   flushMove(); moveFlush_.stop();
   if(busy() && !terminal_) sendPointer(kind,logical);
@@ -226,7 +226,7 @@ void WaylandRegionProcess::fail(Error error) {
 void WaylandRegionProcess::finish(int code,QProcess::ExitStatus status) {
  if(!process_) return;
  deadline_.stop(); stopDeadline_.stop();
- moveFlush_.stop(); pendingMove_.reset();
+ moveFlush_.stop(); pendingMove_.reset(); pendingPointer_.clear(); pointerArmed_=false;
  emit ended();
  if(begun_ && launchPid_>0 && !teardownCertified_) cleanupRequired_=true;
  lastExit_={{"generation",QString::number(generation_)},{"code",code},
