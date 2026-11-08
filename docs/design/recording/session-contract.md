@@ -86,6 +86,12 @@ GIF/WebP (`invalid_request`); `audio.microphone` is reserved and refused
 `recording_export_failed`, `file_exists`, plus the shared `invalid_request`,
 `queue_full`, `busy_selecting`, `editor_active` and `output_required`.
 
+Once `cancel` answers, `capabilities.active` is null, but the previous
+`putgd-record` can take up to its stop deadline (2 s) to exit. A `prepare` in
+that window waits for the exit and then starts, instead of failing with
+`recording_active`. Only one prepare waits; cancelling it first means it never
+starts a helper ([#1296](https://github.com/patrick-hudson/put.gd-desktop/issues/1296)).
+
 ## Settings
 
 | Field | Meaning |

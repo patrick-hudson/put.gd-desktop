@@ -69,6 +69,12 @@ On labwc 0.20 the result is the client's content only: the server-side title
 bar is not included, and a window covered by another still captures its own
 pixels (occlusion does not apply, unlike KDE and X11).
 
+Where window capture is unavailable (labwc 0.9 on Fedora 44 and Ubuntu 26.04),
+the Capture window button carries the alert badge and the protocol in its
+tooltip, and Settings → Advanced → Desktop support details shows a Window
+capture row with the same reason
+([#1295](https://github.com/patrick-hudson/put.gd-desktop/issues/1295)).
+
 `recording.windows` (MCP `list_recording_windows`) lists the capturable
 windows with their identity (the ext toplevel identifier), app ID, title and
 active state; `rect` is empty because neither protocol gives geometry. Window
@@ -163,14 +169,11 @@ the first Budgie 11 alpha (tracked as a follow-up on #1275).
   labwc and Magpie) are in the
   [evidence record](https://github.com/patrick-hudson/put.gd-evidence/tree/6f522d18635d7789dc271bf3be1b5cf6bf752e43/records/2026-11-08-budgie-adapter-1275).
 
-## Known gaps
+## Tray
 
-- Budgie 10.10.2 (Ubuntu 26.04) draws a missing-icon symbol for put.gd's tray
-  item, which publishes a pixmap and no icon name; the menu works and Budgie
-  10.10.3 draws it
-  ([#1294](https://github.com/patrick-hudson/put.gd-desktop/issues/1294)).
-- On labwc 0.9 window capture is unavailable, but only the notification
-  after pressing it says so; Settings and the toolbar still offer it
-  ([#1295](https://github.com/patrick-hudson/put.gd-desktop/issues/1295)).
-- Window recording on Magpie/Mir 2.29 ended with no clip in two of four
-  headless runs ([#1296](https://github.com/patrick-hudson/put.gd-desktop/issues/1296)).
+Ubuntu Budgie 26.04's default tray applet is Ayatana's AppIndicator applet. Its
+`indicator-application-service` ignores pixmaps, so put.gd also names its tray
+glyph there ([Tray icon](../design/appearance.md#tray-icon), #1294). Fedora's
+Budgie tray and Budgie 10.9's X11 tray draw the pixmap. Menu entries without a
+shortcut send no `shortcut` property: libdbusmenu rejects an empty one, which
+budgie-panel logged as "Unable to parse shortcut, too many keys".
