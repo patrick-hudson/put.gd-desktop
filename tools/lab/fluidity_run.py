@@ -501,7 +501,7 @@ class Driver:
             end = tuple(int(v) for v in a.end.split(',')) if a.end else (output[0] + output[2] * 4 // 5, output[1] + output[3] * 4 // 5)
             self.cli(build, 'action.invoke', {'action': a.action})
             time.sleep(a.settle)
-            selector = 'putgd-kde-region|putgd-capture|putgd-record|putgd$'
+            selector = 'putgd-region|putgd-kde-region|putgd-capture|putgd-record|putgd$'
             compositor = 'kwin_wayland|gnome-shell|cinnamon$|Xorg'
             before = {'selector': self.cpu_ms(selector), 'compositor': self.cpu_ms(compositor)}
             result['dragSeconds'] = round(self.drag(start, end, a.moves, a.duration, agent, geometry), 3)

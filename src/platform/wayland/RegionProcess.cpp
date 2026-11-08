@@ -1,4 +1,4 @@
-#include "KdeRegionProcess.h"
+#include "RegionProcess.h"
 #include "core/BuildInfo.h"
 #include <QCoreApplication>
 #include <QJsonDocument>
@@ -22,26 +22,26 @@ QString processStartTicks(qint64 pid) {
  return ok && ticks>0?QString::number(ticks):QString{};
 }
 }
-struct KdeRegionProcess::Prepared {
+struct WaylandRegionProcess::Prepared {
  bool settled=false; QRectF selection; Error error;
  std::function<void(QRectF,Error)> reply; std::function<void(Error)> terminal; std::function<void()> released;
 };
-KdeRegionProcess::Preparation::~Preparation() {
+WaylandRegionProcess::Preparation::~Preparation() {
  if(consumed_.load() || !owner_) return;
  // A prepared continuation can die on a journal worker. Marshal the cleanup.
- QPointer<KdeRegionProcess> owner=owner_; auto state=state_;
+ QPointer<WaylandRegionProcess> owner=owner_; auto state=state_;
  QMetaObject::invokeMethod(owner,[owner,state]{ if(owner) owner->abandon(state); },Qt::QueuedConnection);
 }
-KdeRegionProcess::KdeRegionProcess(QObject* parent):KdeRegionProcess(QString{},parent) {}
-KdeRegionProcess::KdeRegionProcess(QString helperPath,QObject* parent)
+WaylandRegionProcess::WaylandRegionProcess(QObject* parent):WaylandRegionProcess(QString{},parent) {}
+WaylandRegionProcess::WaylandRegionProcess(QString helperPath,QObject* parent)
  :QObject(parent),helperPath_(std::move(helperPath)),deadline_(this),stopDeadline_(this) {
- if(helperPath_.isEmpty()) helperPath_=QCoreApplication::applicationDirPath()+"/putgd-kde-region";
+ if(helperPath_.isEmpty()) helperPath_=QCoreApplication::applicationDirPath()+"/putgd-region";
  deadline_.setSingleShot(true); stopDeadline_.setSingleShot(true);
  connect(&deadline_,&QTimer::timeout,this,[this]{fail(unavailable(ready_?"capture_timeout":"capture_start_timeout"));});
  connect(&stopDeadline_,&QTimer::timeout,this,[this]{if(process_) process_->kill();});
 }
-KdeRegionProcess::~KdeRegionProcess() { shutdown(); }
-void KdeRegionProcess::shutdown() {
+WaylandRegionProcess::~WaylandRegionProcess() { shutdown(); }
+void WaylandRegionProcess::shutdown() {
  if(closing_) return;
  closing_=true; reply_={}; deadline_.stop(); stopDeadline_.stop();
  if(control_) control_->stop();
@@ -51,18 +51,18 @@ void KdeRegionProcess::shutdown() {
  }
  closeFrozen(); frames_.clear(); result_={};
 }
-QJsonObject KdeRegionProcess::diagnostics() const {
+QJsonObject WaylandRegionProcess::diagnostics() const {
  return {{"active",busy()},{"processId",processId()},{"lastExit",lastExit_},{"cleanupRequired",cleanupRequired_},{"build",build()}};
 }
-void KdeRegionProcess::closeFrozen() { if(frozenFd_>=0) ::close(frozenFd_); frozenFd_=-1; }
-void KdeRegionProcess::start(const QList<CaptureFrame>& frames,std::function<void(QRectF,Error)> callback,QString outcome,const QList<CaptureFrame>& pixels,QJsonObject appearance) {
+void WaylandRegionProcess::closeFrozen() { if(frozenFd_>=0) ::close(frozenFd_); frozenFd_=-1; }
+void WaylandRegionProcess::start(const QList<CaptureFrame>& frames,std::function<void(QRectF,Error)> callback,QString outcome,const QList<CaptureFrame>& pixels,QJsonObject appearance) {
  if(closing_) { callback({},unavailable("cancelled")); return; }
  if(busy()) { callback({},unavailable("busy_selecting")); return; }
  if(cleanupRequired_) { callback({},{"capture_cleanup_pending","Restart put.gd before capturing again: the region helper did not confirm surface cleanup",{}}); return; }
- Error error; const auto layout=kdeRegionLayout(frames,error);
+ Error error; const auto layout=waylandRegionLayout(frames,error);
  if(error) { callback({},std::move(error)); return; }
- KdeFrozenFrames frozen;
- if(!pixels.isEmpty()) { frozen=kdeFrozenFrames(frames,pixels,error); if(error) { callback({},std::move(error)); return; } }
+ WaylandFrozenFrames frozen;
+ if(!pixels.isEmpty()) { frozen=waylandFrozenFrames(frames,pixels,error); if(error) { callback({},std::move(error)); return; } }
  closeFrozen(); frozenFd_=frozen.fd;
  frames_=frames; reply_=std::move(callback); result_={}; failure_={};
  ready_=begun_=resultReceived_=accepted_=cancelling_=terminal_=teardownCertified_=false;
@@ -104,7 +104,7 @@ void KdeRegionProcess::start(const QList<CaptureFrame>& frames,std::function<voi
  });
  deadline_.start(10000); child->start(helperPath_,{});
 }
-KdeRegionProcess::Ticket KdeRegionProcess::prepare(const QList<CaptureFrame>& frames,QString outcome,QJsonObject appearance,std::function<void(Error)> terminal,std::function<void()> released) {
+WaylandRegionProcess::Ticket WaylandRegionProcess::prepare(const QList<CaptureFrame>& frames,QString outcome,QJsonObject appearance,std::function<void(Error)> terminal,std::function<void()> released) {
  auto ticket=std::make_shared<Preparation>(); ticket->owner_=this;
  auto state=std::make_shared<Prepared>(); ticket->state_=state;
  state->terminal=std::move(terminal); state->released=std::move(released);
@@ -119,20 +119,20 @@ KdeRegionProcess::Ticket KdeRegionProcess::prepare(const QList<CaptureFrame>& fr
  },std::move(outcome),{},std::move(appearance));
  return ticket;
 }
-void KdeRegionProcess::begin(const Ticket& ticket,std::function<void(QRectF,Error)> callback) {
+void WaylandRegionProcess::begin(const Ticket& ticket,std::function<void(QRectF,Error)> callback) {
  if(!ticket || ticket->owner_!=this || ticket->consumed_.exchange(true)) { callback({},unavailable("capture_protocol")); return; }
  const auto state=ticket->state_;
  if(state->settled) { callback(state->selection,state->error); return; }
  state->reply=std::move(callback);
 }
-void KdeRegionProcess::discard(const Ticket& ticket) {
+void WaylandRegionProcess::discard(const Ticket& ticket) {
  if(ticket && ticket->owner_==this && !ticket->consumed_.exchange(true)) abandon(ticket->state_);
 }
-void KdeRegionProcess::abandon(const std::shared_ptr<Prepared>& state) {
+void WaylandRegionProcess::abandon(const std::shared_ptr<Prepared>& state) {
  // Only an unsettled preparation can own the one running helper.
  if(!closing_ && !state->settled) cancel();
 }
-void KdeRegionProcess::receive(const QString& type,const QJsonObject& payload) {
+void WaylandRegionProcess::receive(const QString& type,const QJsonObject& payload) {
  if(!busy() || terminal_) return;
  if(payload["nonce"]!=nonce_ || payload["generation"]!=QString::number(generation_)) {
   fail(unavailable("capture_protocol")); return;
@@ -146,7 +146,7 @@ void KdeRegionProcess::receive(const QString& type,const QJsonObject& payload) {
    if(control_) control_->send("cancel",{{"nonce",nonce_},{"generation",QString::number(generation_)}});
    return;
   }
-  begun_=true; QPointer<KdeRegionProcess> guard(this);
+  begun_=true; QPointer<WaylandRegionProcess> guard(this);
   const bool sent=control_->send("begin",{{"nonce",nonce_},{"generation",QString::number(generation_)}});
   if(!guard) return;
   if(!sent) { fail(unavailable("capture_protocol")); return; }
@@ -167,10 +167,10 @@ void KdeRegionProcess::receive(const QString& type,const QJsonObject& payload) {
   if(failure_ || !ready_ || !begun_ || resultReceived_ || payload.size()!=3 || !payload["rectangle"].isObject()) {
    fail(unavailable("capture_protocol")); return;
   }
-  Error error; const auto selection=kdeRegionRectangle(payload["rectangle"].toObject(),frames_,error);
+  Error error; const auto selection=waylandRegionRectangle(payload["rectangle"].toObject(),frames_,error);
   if(error) { fail(std::move(error)); return; }
   result_=selection; resultReceived_=true; teardownCertified_=true;
-  QPointer<KdeRegionProcess> guard(this);
+  QPointer<WaylandRegionProcess> guard(this);
   accepted_=control_->send("accept",{{"nonce",nonce_},{"generation",QString::number(generation_)}});
   if(!guard) return;
   if(!accepted_) { fail(unavailable("capture_protocol")); return; }
@@ -178,21 +178,21 @@ void KdeRegionProcess::receive(const QString& type,const QJsonObject& payload) {
  }
  fail(unavailable("capture_protocol"));
 }
-void KdeRegionProcess::cancel(Error error) {
+void WaylandRegionProcess::cancel(Error error) {
  if(!busy() || cancelling_) return;
  cancelling_=true; if(!failure_) failure_=std::move(error);
  deadline_.stop();
  if(ready_ && control_) { control_->send("cancel",{{"nonce",nonce_},{"generation",QString::number(generation_)}}); }
  if(!stopDeadline_.isActive()) stopDeadline_.start(2000);
 }
-void KdeRegionProcess::fail(Error error) {
+void WaylandRegionProcess::fail(Error error) {
  if(!busy()) return;
  if(!failure_) failure_=std::move(error);
  cancelling_=true; deadline_.stop();
  if(ready_ && control_) { control_->send("cancel",{{"nonce",nonce_},{"generation",QString::number(generation_)}}); }
  if(!stopDeadline_.isActive()) stopDeadline_.start(2000);
 }
-void KdeRegionProcess::finish(int code,QProcess::ExitStatus status) {
+void WaylandRegionProcess::finish(int code,QProcess::ExitStatus status) {
  if(!process_) return;
  deadline_.stop(); stopDeadline_.stop();
  if(begun_ && launchPid_>0 && !teardownCertified_) cleanupRequired_=true;

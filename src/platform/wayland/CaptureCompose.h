@@ -5,7 +5,7 @@ namespace putgd {
 // A validated complete single-output snapshot already is the composed image.
 // QImage shares immutable pixels until a writer detaches; partial captures and
 // every rejected metadata/budget case retain the shared geometry implementation.
-inline QImage composeKdeFrames(const QList<CaptureFrame>& frames,const QRectF& selection,
+inline QImage composeOutputFrames(const QList<CaptureFrame>& frames,const QRectF& selection,
                               qint64 maxPixels,Error& error) {
  if(frames.size()==1){
   const auto& frame=frames.constFirst();const auto rect=frame.logicalRect;

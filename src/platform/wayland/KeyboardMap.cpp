@@ -1,4 +1,4 @@
-#include "KdeKeyboardMap.h"
+#include "KeyboardMap.h"
 #include <xkbcommon/xkbcommon.h>
 #include <wayland-client-protocol.h>
 #include <sys/stat.h>
@@ -6,7 +6,7 @@
 #include <cerrno>
 #include <vector>
 namespace putgd {
-xkb_keymap* readKdeKeyboardMap(xkb_context* context,uint32_t format,int fd,uint32_t size){
+xkb_keymap* readWaylandKeyboardMap(xkb_context* context,uint32_t format,int fd,uint32_t size){
  struct Descriptor {int fd;~Descriptor(){if(fd>=0)close(fd);}} descriptor{fd};
  // Bound transient text as well as retained compiled state. Never mmap an
  // externally supplied, potentially truncated FD or print keymap contents.

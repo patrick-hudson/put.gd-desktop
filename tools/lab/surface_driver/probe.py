@@ -1634,7 +1634,7 @@ def native_capture_process(pid):
 
 def selector_process(pid):
     """Bind anonymous selector covers to the controller-verified helper inventory."""
-    return verified_helper_process(pid, ('putgd-capture', 'putgd-kde-region', 'putgd-ui'))
+    return verified_helper_process(pid, ('putgd-capture', 'putgd-region', 'putgd-kde-region', 'putgd-ui'))
 
 
 SHELL_PICKS = ('shell-at-spi', 'gnome-shell-at-spi', 'kwin-shell-at-spi')

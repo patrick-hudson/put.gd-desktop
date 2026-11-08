@@ -3,9 +3,9 @@
 #include "KWinCapture.h"
 #include "platform/wayland/DataControlClipboard.h"
 #include "KdeShortcuts.h"
-#include "KdeRegionOverlay.h"
-#include "KdeOutputs.h"
-#include "KdeRegionProcess.h"
+#include "platform/wayland/LayerShellRegionOverlay.h"
+#include "platform/wayland/WaylandOutputs.h"
+#include "platform/wayland/RegionProcess.h"
 #include <QPointer>
 #include <QThread>
 namespace putgd {
@@ -46,7 +46,7 @@ private:
  qint64 uiProcess_=0;
  bool core_=false;
  KWinCapture capture_;DataControlClipboard clipboard_;KdeShortcuts shortcuts_;
- KdeOutputs outputs_;KdeRegionProcess region_;
- QPointer<KdeRegionOverlay> overlay_;QList<QThread*> workers_;quint64 generation_=0;
+ WaylandOutputs outputs_;WaylandRegionProcess region_;
+ QPointer<LayerShellRegionOverlay> overlay_;QList<QThread*> workers_;quint64 generation_=0;
 };
 }

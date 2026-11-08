@@ -200,7 +200,8 @@ def installed_helper_digests(run):
         if not isinstance(receipt, dict) or not isinstance(receipt.get('installedBinarySha256'), dict):
             raise ValueError('missing installed identities')
         result = {}
-        for name in ('putgd-capture', 'putgd-kde-region', 'putgd-ui'):
+        # putgd-kde-region is the helper's name in builds before the Wayland move.
+        for name in ('putgd-capture', 'putgd-region', 'putgd-kde-region', 'putgd-ui'):
             digest = receipt['installedBinarySha256'].get('/usr/bin/'+name)
             if digest is not None:
                 if not isinstance(digest, str) or len(digest) != 64 or any(c not in '0123456789abcdef' for c in digest):

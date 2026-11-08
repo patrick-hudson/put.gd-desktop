@@ -24,10 +24,10 @@ if(PUTGD_RECORDING AND CMAKE_SYSTEM_NAME STREQUAL "Linux")
       target_include_directories(putgd-record PRIVATE "${protocol_dir}")
       target_compile_definitions(putgd-record PRIVATE PUTGD_RECORD_KDE_SCREENCAST=1)
       target_link_libraries(putgd-record PRIVATE PkgConfig::PUTGD_WAYLAND)
-      if(PUTGD_KDE_NATIVE_REGION)
+      if(PUTGD_LAYER_SHELL_REGION)
         # The screenshot region selector and overlay layer surfaces for the
         # ready ring, dimming and control bar on Plasma Wayland.
-        target_sources(putgd-record PRIVATE src/platform/kde/KdeRegionOverlay.cpp)
+        target_sources(putgd-record PRIVATE src/platform/wayland/LayerShellRegionOverlay.cpp)
         target_compile_definitions(putgd-record PRIVATE PUTGD_HAVE_LAYER_SHELL=1 PUTGD_RECORD_LAYER_SHELL=1)
         target_link_libraries(putgd-record PRIVATE LayerShellQt::Interface)
       endif()

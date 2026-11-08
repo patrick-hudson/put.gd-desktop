@@ -18,7 +18,7 @@
 #include <cmath>
 #include <unistd.h>
 #ifdef PUTGD_RECORD_LAYER_SHELL
-#include "platform/kde/KdeRegionOverlay.h"
+#include "platform/wayland/LayerShellRegionOverlay.h"
 #endif
 
 namespace putgd::record {
@@ -285,8 +285,8 @@ void RecordSession::select(Reply reply) {
             frame.rotation = screen->angleBetween(screen->nativeOrientation(), screen->orientation());
             frames.append(frame);
         }
-        kdeSelection_ = new KdeRegionOverlay(frames, this, true);
-        connect(kdeSelection_, &KdeRegionOverlay::selected, this, [guard, reply](const QRectF& logical) {
+        kdeSelection_ = new LayerShellRegionOverlay(frames, this, true);
+        connect(kdeSelection_, &LayerShellRegionOverlay::selected, this, [guard, reply](const QRectF& logical) {
             if (!guard || !guard->kdeSelection_) return;
             guard->kdeSelection_->deleteLater();
             guard->kdeSelection_ = nullptr;
@@ -294,7 +294,7 @@ void RecordSession::select(Reply reply) {
             // Emitted from a Wayland callback: open the stream and the surfaces outside it.
             QTimer::singleShot(0, guard, [guard, reply] { if (guard) guard->acquire(reply); });
         });
-        connect(kdeSelection_, &KdeRegionOverlay::cancelled, this, [guard, cancelled](const Error& error) {
+        connect(kdeSelection_, &LayerShellRegionOverlay::cancelled, this, [guard, cancelled](const Error& error) {
             if (!guard || !guard->kdeSelection_) return;
             guard->kdeSelection_->deleteLater();
             guard->kdeSelection_ = nullptr;

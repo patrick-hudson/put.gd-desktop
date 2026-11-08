@@ -34,11 +34,11 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   pkg_check_modules(PUTGD_WAYLAND REQUIRED IMPORTED_TARGET wayland-client)
   pkg_check_modules(PUTGD_XKBCOMMON REQUIRED IMPORTED_TARGET xkbcommon>=1.0.0)
   # The compositor keymap reader, shared by the KDE adapter and the shortcut recorder.
-  add_library(putgd_keyboard_map STATIC src/platform/kde/KdeKeyboardMap.cpp)
+  add_library(putgd_keyboard_map STATIC src/platform/wayland/KeyboardMap.cpp)
   target_include_directories(putgd_keyboard_map PUBLIC src)
   target_link_libraries(putgd_keyboard_map PUBLIC putgd_build_options PkgConfig::PUTGD_XKBCOMMON PRIVATE PkgConfig::PUTGD_WAYLAND)
   find_program(PUTGD_WAYLAND_SCANNER wayland-scanner REQUIRED)
-  set(data_control_protocol "${CMAKE_CURRENT_SOURCE_DIR}/src/platform/kde/protocols/ext-data-control-v1.xml")
+  set(data_control_protocol "${CMAKE_CURRENT_SOURCE_DIR}/src/platform/wayland/protocols/ext-data-control-v1.xml")
   set(protocol_dir "${CMAKE_CURRENT_BINARY_DIR}/wayland-protocols")
   file(MAKE_DIRECTORY "${protocol_dir}")
   add_custom_command(OUTPUT "${protocol_dir}/ext-data-control-v1-client-protocol.h"
@@ -47,7 +47,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   add_custom_command(OUTPUT "${protocol_dir}/ext-data-control-v1-protocol.c"
     COMMAND "${PUTGD_WAYLAND_SCANNER}" private-code "${data_control_protocol}" "${protocol_dir}/ext-data-control-v1-protocol.c"
     DEPENDS "${data_control_protocol}" VERBATIM)
-  set(wlr_data_control_protocol "${CMAKE_CURRENT_SOURCE_DIR}/src/platform/kde/protocols/wlr-data-control-unstable-v1.xml")
+  set(wlr_data_control_protocol "${CMAKE_CURRENT_SOURCE_DIR}/src/platform/wayland/protocols/wlr-data-control-unstable-v1.xml")
   add_custom_command(OUTPUT "${protocol_dir}/wlr-data-control-unstable-v1-client-protocol.h"
     COMMAND "${PUTGD_WAYLAND_SCANNER}" client-header "${wlr_data_control_protocol}" "${protocol_dir}/wlr-data-control-unstable-v1-client-protocol.h"
     DEPENDS "${wlr_data_control_protocol}" VERBATIM)
@@ -65,26 +65,34 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   add_custom_command(OUTPUT "${protocol_dir}/xdg-output-unstable-v1-protocol.c"
     COMMAND "${PUTGD_WAYLAND_SCANNER}" private-code "${xdg_output_protocol}" "${protocol_dir}/xdg-output-unstable-v1-protocol.c"
     DEPENDS "${xdg_output_protocol}" VERBATIM)
-  add_library(putgd_kde_region_process STATIC src/platform/kde/KdeRegionProcess.cpp src/platform/kde/KdeRegionProtocol.cpp)
-  target_link_libraries(putgd_kde_region_process PUBLIC putgd_app putgd_capture_control putgd_build_identity putgd_visual)
+  add_library(putgd_wayland_region STATIC src/platform/wayland/RegionProcess.cpp src/platform/wayland/RegionProtocol.cpp)
+  target_link_libraries(putgd_wayland_region PUBLIC putgd_app putgd_capture_control putgd_build_identity putgd_visual)
   find_package(Threads REQUIRED)
-  add_library(putgd_kde STATIC src/platform/kde/KWinTransfer.cpp src/platform/kde/KWinCapture.cpp
-    src/platform/kde/KdeShortcuts.cpp src/platform/kde/KdeShortcutNormalization.cpp
+  # Compositor-neutral Wayland code: data control, outputs, the layer-shell
+  # region selector and the fd reader. Desktop adapters link it.
+  add_library(putgd_wayland STATIC src/platform/wayland/AsyncFdReader.cpp
     src/platform/wayland/DataControlClipboard.cpp src/platform/wayland/DataControlSourceAdapter.cpp
-    src/platform/kde/KdeRegionOverlay.cpp src/platform/kde/KdeSourceAdapter.cpp src/platform/kde/KdeOutputs.cpp
+    src/platform/wayland/LayerShellRegionOverlay.cpp src/platform/wayland/WaylandOutputs.cpp
     "${protocol_dir}/ext-data-control-v1-client-protocol.h" "${protocol_dir}/ext-data-control-v1-protocol.c"
     "${protocol_dir}/wlr-data-control-unstable-v1-client-protocol.h" "${protocol_dir}/wlr-data-control-unstable-v1-protocol.c"
     "${protocol_dir}/xdg-output-unstable-v1-client-protocol.h" "${protocol_dir}/xdg-output-unstable-v1-protocol.c")
+  target_include_directories(putgd_wayland PRIVATE "${protocol_dir}")
+  target_link_libraries(putgd_wayland PUBLIC putgd_app putgd_wayland_region putgd_keyboard_map Qt6::Widgets Qt6::DBus PkgConfig::PUTGD_XKBCOMMON PRIVATE PkgConfig::PUTGD_WAYLAND Threads::Threads)
+  add_library(putgd_kde STATIC src/platform/kde/KWinTransfer.cpp src/platform/kde/KWinCapture.cpp
+    src/platform/kde/KdeShortcuts.cpp src/platform/kde/KdeShortcutNormalization.cpp
+    src/platform/kde/KdeSourceAdapter.cpp)
   target_include_directories(putgd_kde PRIVATE "${protocol_dir}")
-  target_link_libraries(putgd_kde PUBLIC putgd_app putgd_kde_region_process putgd_keyboard_map Qt6::Widgets Qt6::DBus PkgConfig::PUTGD_XKBCOMMON PRIVATE PkgConfig::PUTGD_WAYLAND Threads::Threads)
+  target_link_libraries(putgd_kde PUBLIC putgd_wayland PRIVATE PkgConfig::PUTGD_WAYLAND Threads::Threads)
   if(Qt6_VERSION VERSION_GREATER_EQUAL "6.5")
     find_package(LayerShellQt QUIET CONFIG)
     if(TARGET LayerShellQt::Interface)
-      target_link_libraries(putgd_kde PRIVATE LayerShellQt::Interface)
-      target_compile_definitions(putgd_kde PRIVATE PUTGD_HAVE_LAYER_SHELL=1)
-      set(PUTGD_KDE_NATIVE_REGION ON)
+      foreach(layer_shell_user putgd_wayland putgd_kde)
+        target_link_libraries(${layer_shell_user} PRIVATE LayerShellQt::Interface)
+        target_compile_definitions(${layer_shell_user} PRIVATE PUTGD_HAVE_LAYER_SHELL=1)
+      endforeach()
+      set(PUTGD_LAYER_SHELL_REGION ON)
     else()
-      message(STATUS "LayerShellQt unavailable: KDE native region selection will report unavailable")
+      message(STATUS "LayerShellQt unavailable: Wayland layer-shell region selection will report unavailable")
     endif()
   endif()
 endif()

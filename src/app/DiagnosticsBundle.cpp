@@ -333,7 +333,7 @@ QJsonObject DiagnosticsBundles::coredumps(const QString& configured,const QDateT
  // coredumpctl exits 1 with nothing on stdout when no dump matches.
  if(status==1&&listing.trimmed().isEmpty())return {{"available",true},{"entries",QJsonArray{}}};
  if(status!=0||parse.error!=QJsonParseError::NoError||!document.isArray())return {{"available",false},{"reason","coredumpctl_failed"},{"entries",QJsonArray{}}};
- static const QStringList products{"putgd","putgd-ui","putgd-capture","putgd-kde-region","putgd-record","putgd-s3-worker","putgd-cli"};
+ static const QStringList products{"putgd","putgd-ui","putgd-capture","putgd-region","putgd-record","putgd-s3-worker","putgd-cli"};
  QList<QJsonObject> matches;
  for(const auto& value:document.array()) {
   const auto dump=value.toObject();

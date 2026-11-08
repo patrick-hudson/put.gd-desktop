@@ -18,7 +18,7 @@
 #include <functional>
 #include <memory>
 
-namespace putgd { class KdeRegionOverlay; }
+namespace putgd { class LayerShellRegionOverlay; }
 namespace putgd::record {
 // The helper's view of one recording session: resolves the target (after a
 // drag selection when a region has no rectangle), shows the ready bounds,
@@ -89,7 +89,7 @@ private:
     bool portalTarget_ = false;
     QTimer progress_, barTimer_;
     SelectionOverlay* selection_ = nullptr;
-    KdeRegionOverlay* kdeSelection_ = nullptr;
+    LayerShellRegionOverlay* kdeSelection_ = nullptr;
     BoundsOverlay bounds_;
     ControlBar* bar_ = nullptr;
     ReviewWindow* review_ = nullptr;

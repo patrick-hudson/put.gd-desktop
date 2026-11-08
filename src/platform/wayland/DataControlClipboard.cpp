@@ -1,8 +1,8 @@
 #include "DataControlClipboard.h"
-#include "platform/kde/KdeKeyboardMap.h"
+#include "platform/wayland/KeyboardMap.h"
 #include <xkbcommon/xkbcommon.h>
-#include "platform/kde/KWinTransfer.h"
-#include "platform/kde/KdeClipboardFormats.h"
+#include "AsyncFdReader.h"
+#include "platform/wayland/ClipboardFormats.h"
 #include "core/ImageFormat.h"
 #include "core/ImageJob.h"
 #include "core/Log.h"
@@ -106,7 +106,7 @@ struct DataControlClipboard::Impl:QObject {
     // names from every prior map even after those maps were released.
     auto* context=xkb_context_new(xkb_context_flags(XKB_CONTEXT_NO_ENVIRONMENT_NAMES|XKB_CONTEXT_NO_DEFAULT_INCLUDES));
     if(context)xkb_context_set_log_fn(context,[](xkb_context*,xkb_log_level,const char*,va_list){});
-    auto* next=readKdeKeyboardMap(context,format,fd,size);
+    auto* next=readWaylandKeyboardMap(context,format,fd,size);
     if(context)xkb_context_unref(context);
     if(self->keyboardMap)xkb_keymap_unref(self->keyboardMap);
     self->keyboardMap=next;emit self->q.keyboardChanged();
@@ -146,7 +146,7 @@ struct DataControlClipboard::Impl:QObject {
   if(!available()){complete(failure("clipboard_unavailable","Data-control clipboard is unavailable"));return;}if(active->revision!=revision){complete(failure("clipboard_changed","Clipboard changed after invocation; invoke sharing again"));return;}
   if(!selection){complete(failure("source_unsupported","Clipboard has no owner"));return;}
   const auto offered=offers.value(selection);bool needsDiscovery=false;
-  active->formats=kdeClipboardImportFormats(offered,[&]{needsDiscovery=true;return QList<QByteArray>{};});
+  active->formats=dataControlImportFormats(offered,[&]{needsDiscovery=true;return QList<QByteArray>{};});
   if(!needsDiscovery){nextFormat();return;}
   // Unknown plugin aliases keep their original priority without instantiating
   // image codecs in the Core resident or blocking its Wayland event loop.
@@ -161,7 +161,7 @@ struct DataControlClipboard::Impl:QObject {
    if(currentGeneration!=generation||active!=request)return;
    if(active->revision!=revision){complete(failure("clipboard_changed","Clipboard changed during image format discovery"));return;}
    if(*error){complete({{},*error});return;}
-   active->formats=kdeClipboardImportFormats(offered,[&]{return *types;});nextFormat();
+   active->formats=dataControlImportFormats(offered,[&]{return *types;});nextFormat();
   });worker->start();
  }
  void nextFormat(){if(!active)return;if(active->formats.isEmpty()){complete(failure("source_unsupported","Clipboard offers no supported local files, image, or text"));return;}if(!selection||active->revision!=revision){complete(failure("clipboard_changed","Clipboard changed before import"));return;}

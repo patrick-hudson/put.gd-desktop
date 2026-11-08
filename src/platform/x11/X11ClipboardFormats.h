@@ -3,7 +3,7 @@
 #include <QList>
 #include <functional>
 namespace putgd {
-// X11 counterpart of kdeClipboardImportFormats, in the existing X11 text order.
+// X11 counterpart of dataControlImportFormats, in the existing X11 text order.
 // The discovery callback lists Qt image types, which instantiates every
 // installed image plugin. Defer it for PNG and for offers whose other targets
 // are recognized text/file-list formats or selection atoms such as TARGETS,

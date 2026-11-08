@@ -1,9 +1,9 @@
 # KDE, X11 and native session tests, and the version contract.
 # Included inside if(BUILD_TESTING) in the top-level CMakeLists.txt.
-  if(TARGET putgd_kde_region_process)
-    add_executable(test_kde_region_control tests/unit/test_kde_region_control.cpp)
-    target_link_libraries(test_kde_region_control PRIVATE putgd_kde_region_process Qt6::Test)
-    add_test(NAME kde_region_control COMMAND test_kde_region_control)
+  if(TARGET putgd_wayland_region)
+    add_executable(test_wayland_region_control tests/unit/test_wayland_region_control.cpp)
+    target_link_libraries(test_wayland_region_control PRIVATE putgd_wayland_region Qt6::Test)
+    add_test(NAME wayland_region_control COMMAND test_wayland_region_control)
   endif()
   add_executable(test_native_session tests/unit/test_native_session.cpp)
   target_include_directories(test_native_session PRIVATE src)
@@ -77,9 +77,9 @@
     add_executable(test_kde_shortcuts tests/integration/test_kde_shortcuts.cpp)
     target_link_libraries(test_kde_shortcuts PRIVATE putgd_kde Qt6::Test)
     add_test(NAME kde_shortcuts_integration COMMAND dbus-run-session -- $<TARGET_FILE:test_kde_shortcuts>)
-    add_executable(test_kde_keyboard_map tests/unit/test_kde_keyboard_map.cpp)
-    target_link_libraries(test_kde_keyboard_map PRIVATE putgd_kde Qt6::Test)
-    add_test(NAME kde_keyboard_map COMMAND test_kde_keyboard_map)
+    add_executable(test_wayland_keyboard_map tests/unit/test_wayland_keyboard_map.cpp)
+    target_link_libraries(test_wayland_keyboard_map PRIVATE putgd_kde Qt6::Test)
+    add_test(NAME wayland_keyboard_map COMMAND test_wayland_keyboard_map)
     add_executable(test_shortcut_keyboard tests/unit/test_shortcut_keyboard.cpp)
     target_link_libraries(test_shortcut_keyboard PRIVATE putgd_shortcut_keyboard Qt6::Test PkgConfig::PUTGD_XKBCOMMON)
     add_test(NAME shortcut_keyboard COMMAND test_shortcut_keyboard)
@@ -89,8 +89,8 @@
       DEPENDS "${xdg_output_protocol}" VERBATIM)
     foreach(protocol_name ext-data-control-v1 wlr-data-control-unstable-v1)
       add_custom_command(OUTPUT "${protocol_dir}/${protocol_name}-server-protocol.h"
-        COMMAND "${PUTGD_WAYLAND_SCANNER}" server-header "${CMAKE_CURRENT_SOURCE_DIR}/src/platform/kde/protocols/${protocol_name}.xml" "${protocol_dir}/${protocol_name}-server-protocol.h"
-        DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/src/platform/kde/protocols/${protocol_name}.xml" VERBATIM)
+        COMMAND "${PUTGD_WAYLAND_SCANNER}" server-header "${CMAKE_CURRENT_SOURCE_DIR}/src/platform/wayland/protocols/${protocol_name}.xml" "${protocol_dir}/${protocol_name}-server-protocol.h"
+        DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/src/platform/wayland/protocols/${protocol_name}.xml" VERBATIM)
     endforeach()
     add_executable(test_kde_ownership tests/integration/test_kde_ownership.cpp
       "${protocol_dir}/xdg-output-unstable-v1-server-protocol.h"
