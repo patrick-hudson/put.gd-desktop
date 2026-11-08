@@ -4,6 +4,16 @@ Open put.gd to reach one window with **History**, **Destinations**, and **Settin
 
 The left rail starts **Capture region**, **Capture window**, **Capture desktop**, **Upload clipboard**, or **Record screen** after finished settings edits are saved. The tray lists the same captures in this order: Capture Region, Capture Region & Edit, Capture Window, Capture Desktop, Capture Screen Recording, then Edit Image (from the clipboard or a file) and Upload Clipboard. Screen captures close this window to keep it out of the capture. Clipboard imports keep it open. A save failure keeps the window open; retry saving and start the action again. Store or clear unfinished credential entry before a screen capture. Region capture supports Escape to cancel. Window capture targets the focused external app where supported; desktop capture includes enabled monitors and panels. Clipboard import prefers copied local files, then an image, then plain text. Text URLs are imported as text. **Edit & upload** selects a region and opens a small editor first; see [Edit before uploading](#edit-before-uploading). The information button and action tooltips explain the selected action and its saved output. Capture is also available through global shortcuts and the CLI.
 
+## GNOME 50: log out once
+
+On GNOME 50, put.gd's capture and shortcuts need a Shell extension that put.gd sets
+up for you. After installing, whether by the one-line installer, a DEB or RPM, or an
+AppImage, start put.gd and log out and back in once when it asks. There is nothing to
+run or download. If something else is in the way, put.gd says what in plain words.
+
+To remove the extension copy put.gd installed for an AppImage, quit put.gd and run
+`putgd.AppImage --remove-gnome-extension`.
+
 ## Choose outputs
 
 In **Settings → Capture**, select the default upload destination or **No destination (uploads off)**. Expand **Per-action exceptions** to choose an output for a particular action. **Use default** follows future default changes; an explicit exception keeps its own destination and sharing choice. Shortcuts remain independent.

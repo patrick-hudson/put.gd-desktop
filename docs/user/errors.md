@@ -33,6 +33,27 @@ filenames, history URLs, authorization values or credential references.
 | `storage_migration_failed` | Fix access to the reported folders and start put.gd again; the move resumes from its staging folder and nothing was removed |
 | `storage_unavailable` | Make the user configuration and data folders resolvable and writable |
 
+## GNOME 50 setup states
+
+GNOME 50 needs one step: log out and back in once. Until then these states report
+what's missing (`capabilities.helper.setup`, `desktop.setup`, `putgd-cli`, the MCP
+helper). Capture errors use the code in the second column.
+
+| State | Code | What to do |
+|---|---|---|
+| `login_required` | `gnome_login_required` (`gnome_extension_updated` after an update) | Log out and back in once |
+| `user_extensions_disabled` | `gnome_user_extensions_off` | Turn on **Extensions** in the Extensions app; put.gd's extension starts with them |
+| `disabled_by_user` | `gnome_extension_disabled` | Turn the put.gd extension on again in the Extensions app |
+| `foreign_user_copy` | `gnome_foreign_extension` | A copy put.gd didn't install is in `~/.local/share/gnome-shell/extensions/putgd@put.gd`; remove it and start put.gd again |
+| `unsupported_shell` | `gnome_shell_unsupported` | This GNOME Shell isn't 50; use a supported session |
+| `settings_locked` | `gnome_settings_locked` | Your administrator has locked GNOME's extension list |
+| `settings_unavailable` | `gnome_settings_unavailable` | `gsettings` is missing or failed; the message gives the reason |
+| `install_failed` | `gnome_extension_install_failed` | A directory under `~/.local/share/gnome-shell/` isn't writable; the message names it |
+| `not_installed` | `gnome_extension_missing` | Reinstall the put.gd package |
+| `extension_blocked` | `gnome_extension_blocked` | Per-user extensions are off on this system; use the DEB or RPM |
+| `extension_error` | `gnome_extension_error` | GNOME Shell couldn't start the extension; the message gives its reason |
+| `system_copy_outdated` | `gnome_system_extension_outdated` | Update the put.gd package to match this AppImage |
+
 Unknown publication/deletion, failed local save and successful remote upload are
 independent states. Cancelling a job cannot promise rollback after a network mutation
 was sent. Origin deletion does not invalidate browser/CDN caches or remove local files.
