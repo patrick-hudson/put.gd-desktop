@@ -127,7 +127,15 @@ tablet input through QEMU ([Hyprland adapter](../desktops/hyprland.md),
   clipboard history unaffected.
 - Recording with no picker, cursor painted, motion score from a moving
   pattern; window recording by `stableId`.
-- Tray menu, notifications, Nautilus upload menu, file dialogs, System/Dark/Light.
+- An output rotated and set back captures at the new geometry with the same
+  resident.
+- A real upload to an isolated `acceptance/` prefix (credentials lent through
+  `tools/lab/provision_live_credentials.py`), from a hotkey and from Nautilus,
+  each link opened from put.gd in Chromium; then the objects, history,
+  profile and keychain entries are removed.
+- Tray menu with one action run from it, notifications (a failure notice does
+  not return after a reboot), Nautilus upload menu, file dialogs,
+  System/Dark/Light.
 
 ## Screen recording rows
 

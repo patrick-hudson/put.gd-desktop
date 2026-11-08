@@ -84,10 +84,12 @@ window covered by another (only its own pixels), on another workspace and in a
 hidden special workspace (the scratchpad), all measured on Omarchy 4.5.
 
 Fractional scale (1.25) and rotated outputs capture upright at native density;
-outputs of different scale are composed at the highest density. After an output
-is rotated and set back, Hyprland 0.56 leaves the running resident with the
-rotated transform, so desktop capture reports `display_changed` until put.gd
-restarts ([#1299](https://github.com/patrick-hudson/put.gd-desktop/issues/1299)).
+outputs of different scale are composed at the highest density. When an output
+is set back to normal, Hyprland 0.56 sends an existing client only the
+xdg-output size and `done`, with no `wl_output.geometry`; put.gd rebinds an
+output whose `done` carries no wl_output change, so the running resident
+captures the new geometry without a restart
+([#1299](https://github.com/patrick-hudson/put.gd-desktop/issues/1299)).
 
 ## Capture permissions
 
@@ -181,12 +183,19 @@ A/V sync (median -19 ms) were measured there too.
 - quickshell is the tray host: put.gd's item and its menu work.
 - quickshell is the notification server. It keeps **critical** notifications
   in `~/.local/state/omarchy/notifications/live.json` until they are dismissed,
-  across reboots; put.gd's failure notices are currently critical
+  across reboots. put.gd's failure notices stay critical, and on this server
+  only (`GetServerInformation` name `quickshell`) they also carry the spec's
+  `transient` hint, so quickshell shows them until dismissed but does not bring
+  them back after a reboot
   ([#1298](https://github.com/patrick-hudson/put.gd-desktop/issues/1298)).
+  History keeps each failure with its diagnostics.
 - File dialogs go through the GTK portal; Nautilus 51 shows **Upload with
-  put.gd** (the packaged nautilus extension). A real upload and opening its link
-  in Chromium are not accepted yet
-  ([#1300](https://github.com/patrick-hudson/put.gd-desktop/issues/1300)). System, Dark and Light follow the
+  put.gd** (the packaged nautilus extension). Accepted with a real S3
+  destination: a hotkey upload and a Nautilus upload, each link opened from
+  put.gd in Omarchy's default browser (Chromium, through the portal)
+  ([#1300](https://github.com/patrick-hudson/put.gd-desktop/issues/1300)). With
+  the Arch package installed, its Nautilus entry refuses while an AppImage
+  resident runs, as on every desktop. System, Dark and Light follow the
   portal's `color-scheme` (Omarchy: dark).
 
 ## Lab
@@ -195,7 +204,7 @@ Golden `omarchy-hyprland-20261108`, profile `omarchy-hyprland`
 ([Omarchy VM](../lab/omarchy-vm.md)). Animations are off in that VM
 (`animations:enabled = false`), so the selector's `no_anim` layer rule cannot be
 observed there ([#1301](https://github.com/patrick-hudson/put.gd-desktop/issues/1301)).
-Acceptance evidence: [2026-11-08-hyprland-omarchy-1275](https://github.com/patrick-hudson/put.gd-evidence/tree/3c57254830be09016030f82bf5b51d561f298bdf/records/2026-11-08-hyprland-omarchy-1275). The Omarchy golden has no pacman sync databases: run
+Acceptance evidence: [2026-11-08-hyprland-omarchy-1275](https://github.com/patrick-hudson/put.gd-evidence/tree/e2a01bbb98cb76f7a5bd4af98f50f45867924dd2/records/2026-11-08-hyprland-omarchy-1275). The Omarchy golden has no pacman sync databases: run
 `sudo pacman -Sy` before `pacman -U`, never `-Syu`. Hyprland cannot run headless
 in CI (aquamarine needs a DRM device), so CI covers routing, key and bind
 normalisation, the bind plan, refusal frames and the shortcut backend against a
