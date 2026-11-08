@@ -8,7 +8,15 @@
 
 Press a shortcut, drag over what you want to share, and the link is on your clipboard, ready to paste into a chat or a ticket.
 
-Files go to storage you control: Amazon S3, Cloudflare R2, Backblaze B2, any other S3-compatible service, or Proton Drive. There's no put.gd account. If you've used ShareX on Windows or CleanShot X on a Mac, it's that idea for Linux.
+Files go to storage you control, and there's no put.gd account. If you've used ShareX on Windows or CleanShot X on a Mac, it's that idea for Linux.
+
+| | Supported |
+| --- | --- |
+| **Desktops** | [Cinnamon](docs/desktops/cinnamon.md), [GNOME 50](docs/desktops/gnome.md), [KDE Plasma](docs/desktops/kde.md), [Budgie](docs/desktops/budgie.md)\*, [Hyprland](docs/desktops/hyprland.md)\* (tested on Omarchy) |
+| **Linux** | Ubuntu 24.04, Linux Mint 22, Ubuntu 26.04, Debian 13, Fedora 44, Arch and Arch-based distributions\*, or any other distribution with glibc 2.39 or newer through the AppImage |
+| **Storage** | Amazon S3, Cloudflare R2, Backblaze B2, any other S3-compatible service, [Proton Drive](docs/user/proton-drive.md) (experimental) |
+
+\* New, and in nightly builds only until the next stable release. See [Install](#install).
 
 ![The put.gd image editor with crop, annotation, redaction and blur tools, and an Upload button](docs/readme/editor.png)
 
@@ -22,6 +30,12 @@ This installs the right package for your Linux distribution (x86_64) and verifie
 
 ```sh
 curl -fsSL https://app.put.gd/install | sh -s -- --appimage
+```
+
+For Budgie, Hyprland or the Arch package, use the nightly channel until the next stable release:
+
+```sh
+curl -fsSL https://app.put.gd/install | sh -s -- --channel nightly
 ```
 
 Prefer to download a package yourself? They're all on [app.put.gd](https://app.put.gd/).
@@ -56,20 +70,6 @@ The capture uploads and the link lands on your clipboard. Press Escape to cancel
 ![History in gallery view, with search and filters](docs/readme/history.png)
 
 **Automate it.** [`putgd-cli`](docs/automation/cli.md) controls the app from scripts, and an optional [MCP helper](docs/automation/mcp.md) gives AI agents the same controls.
-
-## What it runs on
-
-| | |
-| --- | --- |
-| **Desktops** | [Cinnamon](docs/desktops/cinnamon.md), [GNOME 50](docs/desktops/gnome.md), [KDE Plasma](docs/desktops/kde.md), [Budgie](docs/desktops/budgie.md), [Hyprland](docs/desktops/hyprland.md) (tested on Omarchy) |
-| **Packages** | Ubuntu 24.04 and Mint 22, Ubuntu 26.04, Debian 13, Fedora 44, Arch and Arch-based distributions |
-| **Anything else** | The AppImage, on any distribution with glibc 2.39 or newer |
-
-Budgie, Hyprland and the Arch package are new and only in nightly builds until the next stable release. To get them now:
-
-```sh
-curl -fsSL https://app.put.gd/install | sh -s -- --channel nightly
-```
 
 ## Your data
 
