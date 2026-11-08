@@ -6,6 +6,7 @@
 #include "ResidentSession.h"
 #include "client/SessionProtocol.h"
 #include "core/HostEnvironment.h"
+#include "core/NotificationServer.h"
 #include <QCoreApplication>
 #include <QDBusConnection>
 #include <QDBusMessage>
@@ -137,7 +138,12 @@ void notify(const QString& title,const QString& body,bool failure){
  const auto icon=QDir::isAbsolutePath(iconFile)&&QFileInfo(iconFile).isFile()?iconFile:QStringLiteral("putgd");
  auto call=QDBusMessage::createMethodCall("org.freedesktop.Notifications","/org/freedesktop/Notifications","org.freedesktop.Notifications","Notify");
  // Resident: Cinnamon otherwise removes put.gd's notices at once while a put.gd window has focus.
- const QVariantMap hints{{"urgency",QVariant::fromValue(static_cast<uchar>(failure?2:1))},{"desktop-entry","putgd"},{"resident",true}};
+ QVariantMap hints{{"urgency",QVariant::fromValue(static_cast<uchar>(failure?2:1))},{"desktop-entry","putgd"},{"resident",true}};
+ // Critical until seen; transient only where the server would restore it after a restart (#1298).
+ if(failure){
+  const auto server=bus.call(QDBusMessage::createMethodCall("org.freedesktop.Notifications","/org/freedesktop/Notifications","org.freedesktop.Notifications","GetServerInformation"),QDBus::Block,2000);
+  if(server.type()==QDBusMessage::ReplyMessage&&!server.arguments().isEmpty()&&putgd::notifications::failuresTransient(server.arguments().constFirst().toString()))hints.insert("transient",true);
+ }
  // A default action: clicking the notice then reports ActionInvoked, which ends the client's wait.
  call.setArguments({QStringLiteral("put.gd"),uint(0),icon,title.left(512),body.left(4096),QStringList{"default","Dismiss"},hints,failure?0:10000});
  // Subscribed before Notify: a close that comes at once is delivered once the loop runs.

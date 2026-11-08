@@ -68,6 +68,8 @@ assert args[args.index('--proto') + 1] == '=https'
 if '--write-out' in args:
     print(os.environ[url.split('/')[-2].upper()], end='')
     sys.exit(0)
+if os.environ.get('REJECT_RELEASE_DOWNLOADS') == '1' and url.startswith('https://app.put.gd/dl/'):
+    sys.exit(22)
 assert args[args.index('--proto-redir') + 1] == '=https'
 out = pathlib.Path(args[args.index('--output') + 1])
 payload = b'checked package fixture\\n'
@@ -90,15 +92,17 @@ else:
         path.write_text('#!' + sys.executable + '\n' + body + '\n')
         path.chmod(0o755)
 
-    def run_script(self, *args, ok=True):
+    def run_script(self, *args, ok=True, terminal_input=None):
         master, slave = pty.openpty()
         def terminal():
             os.setsid()
             fcntl.ioctl(slave, termios.TIOCSCTTY, 0)
         try:
+            if terminal_input is not None:
+                os.write(master, terminal_input.encode())
             result = subprocess.run(['/bin/sh', str(self.script), *args], env=self.env,
-                                    stdin=slave, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                                    preexec_fn=terminal, text=True, timeout=15)
+                                    input='', stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                                    pass_fds=(slave,), preexec_fn=terminal, text=True, timeout=15)
         finally:
             os.close(slave)
             os.close(master)
@@ -169,10 +173,100 @@ else:
         config = self.root / 'pacman.d/putgd.conf'
         self.assertIn('PackageRequired DatabaseRequired', config.read_text())
         self.assertIn('/pacman/x86_64/nightly', config.read_text())
+        self.assertEqual(config.stat().st_mode & 0o777, 0o644)
         before = config.read_text()
+        config.chmod(0o600)
         self.run_script('--channel', 'nightly')
+        self.assertEqual(config.stat().st_mode & 0o777, 0o644)
         self.assertEqual(config.read_text(), before)
         self.assertEqual((self.root / 'pacman.conf').read_text().count('Include = '), 1)
+
+    def arch_with_updater(self, status=0):
+        # Command availability, including on an unrecognized derivative, selects the updater.
+        self.os_release.write_text('ID=example\nID_LIKE=arch\n')
+        self.env['SUFFIX'] = '-archlinux-x86_64.pkg.tar.zst'
+        self.tool('gpg', 'print("fpr:::::::::4032E28D893BAF66F4AC23D9A11D38D55536B371:")')
+        (self.root / 'pacman.d').mkdir()
+        (self.root / 'pacman.conf').write_text('[options]\n')
+        self.tool('omarchy-update', "import os,sys,json\nassert os.isatty(0)\n"
+                  "with open(os.environ['CALLS'],'a') as f: f.write(json.dumps(sys.argv)+'\\n')\n"
+                  f"sys.exit({status})")
+
+    def test_omarchy_update_precedes_repo_and_install(self):
+        self.arch_with_updater()
+        out = self.run_script('--channel', 'nightly', terminal_input='y\n')
+        self.assertIn("Omarchy's system update", out)
+        calls = self.calls()
+        update = next(i for i,c in enumerate(calls) if Path(c[0]).name == 'omarchy-update')
+        trust = next(i for i,c in enumerate(calls) if Path(c[0]).name == 'pacman-key')
+        self.assertLess(update, trust)
+        self.assertEqual(calls[update][1:], ['-y'])
+        self.assertEqual([c[1:] for c in calls if Path(c[0]).name == 'pacman'], [['--config', str(self.root / 'pacman.d/putgd.conf'), '-Sy'], ['-S', 'putgd']])
+
+    def test_omarchy_dry_run_explains_update_without_running_it(self):
+        self.arch_with_updater()
+        out = self.run_script('--channel', 'nightly', '--dry-run')
+        self.assertIn("Omarchy's system update", out)
+        self.assertTrue(all(Path(c[0]).name == 'curl' for c in self.calls()))
+
+    def test_omarchy_update_failure_preserves_configuration(self):
+        self.arch_with_updater(status=1)
+        config = self.root / 'pacman.d/putgd.conf'
+        config.write_text('existing admin choice\n')
+        before = (self.root / 'pacman.conf').read_bytes()
+        self.assertIn('system update failed', self.run_script('--channel', 'nightly', ok=False, terminal_input='y\n'))
+        self.assertEqual(config.read_text(), 'existing admin choice\n')
+        self.assertEqual((self.root / 'pacman.conf').read_bytes(), before)
+        self.assertFalse(any(Path(c[0]).name in ('sudo','pacman','pacman-key') for c in self.calls()))
+
+    @unittest.skipIf(os.geteuid() == 0, "root can read a mode-000 file")
+    def test_omarchy_repairs_unreadable_existing_repo_before_update(self):
+        self.arch_with_updater()
+        config = self.root / 'pacman.d/putgd.conf'
+        config.write_text('existing channel choice\n')
+        config.chmod(0)
+        self.run_script('--channel', 'nightly', terminal_input='y\n')
+        calls = self.calls()
+        repair = next(i for i,c in enumerate(calls) if Path(c[0]).name == 'sudo' and c[1:2] == ['chmod'])
+        update = next(i for i,c in enumerate(calls) if Path(c[0]).name == 'omarchy-update')
+        self.assertLess(repair, update)
+        self.assertEqual(config.read_text(), 'existing channel choice\n')
+        self.assertEqual(config.stat().st_mode & 0o777, 0o644)
+
+    def test_omarchy_decline_leaves_repo_and_keys_untouched(self):
+        self.arch_with_updater()
+        self.assertIn('declined', self.run_script('--channel', 'nightly', ok=False, terminal_input='n\n'))
+        self.assertFalse((self.root / 'pacman.d/putgd.conf').exists())
+        self.assertFalse(any(Path(c[0]).name in ('sudo','pacman','pacman-key','omarchy-update') for c in self.calls()))
+
+    def test_omarchy_without_terminal_stops_with_recovery(self):
+        self.arch_with_updater()
+        r = subprocess.run(['/bin/sh', str(self.script), '--channel', 'nightly'], env=self.env,
+                           input='', capture_output=True, text=True, start_new_session=True, timeout=15)
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn('Run omarchy update', r.stdout+r.stderr)
+        self.assertFalse((self.root / 'pacman.d/putgd.conf').exists())
+        self.assertFalse(any(Path(c[0]).name in ('sudo','pacman','pacman-key','omarchy-update') for c in self.calls()))
+
+    def test_omarchy_name_without_updater_keeps_arch_upgrade(self):
+        self.os_release.write_text('ID=omarchy\nID_LIKE=arch\n')
+        self.env['SUFFIX'] = '-archlinux-x86_64.pkg.tar.zst'
+        self.tool('gpg', 'print("fpr:::::::::4032E28D893BAF66F4AC23D9A11D38D55536B371:")')
+        (self.root / 'pacman.d').mkdir()
+        (self.root / 'pacman.conf').write_text('[options]\n')
+        self.run_script('--channel', 'nightly')
+        self.assertEqual([c[1:] for c in self.calls() if Path(c[0]).name == 'pacman'], [['-Syu','putgd']])
+
+    def test_arch_installs_from_signed_repo_without_direct_release_download(self):
+        self.os_release.write_text('ID=arch\n')
+        self.env['REJECT_RELEASE_DOWNLOADS'] = '1'
+        self.tool('gpg', 'print("fpr:::::::::4032E28D893BAF66F4AC23D9A11D38D55536B371:")')
+        (self.root / 'pacman.d').mkdir()
+        (self.root / 'pacman.conf').write_text('[options]\n')
+        self.run_script('--channel', 'nightly')
+        config = self.root / 'pacman.d/putgd.conf'
+        self.assertIn('PackageRequired DatabaseRequired', config.read_text())
+        self.assertEqual([c[1:] for c in self.calls() if Path(c[0]).name == 'pacman'], [['-Syu', 'putgd']])
 
     def test_arch_key_mismatch_stops_before_trusting_key(self):
         self.os_release.write_text('ID=arch\n')
