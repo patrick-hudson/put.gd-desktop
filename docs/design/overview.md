@@ -27,6 +27,7 @@ packages use dynamically linked distribution Qt. See
 | `putgd-cli` | JSON client; update-check and AppImage-install modes | Session socket for app methods; HTTPS for update modes | Same user/session, or a resident-launched temporary update child |
 | `putgd-capture` | Frozen-target X11 selection and acquisition | Resident control pipes and private PNG output; X11/Cinnamon capture APIs | Temporary graphical helper on the Cinnamon Core route |
 | `putgd-region` | Wayland region selector (layer-shell), shared by Plasma and Budgie | Private control pipes; geometry out, optional frozen background in | Temporary native helper on the Plasma and Budgie Wayland routes |
+| `putgd-clipboard-keeper` | Holds the last clipboard result after the resident quits, on Budgie and Hyprland | The content on an anonymous memory file on standard input; Wayland data control | Detached and short-lived: exits once anything else owns the clipboard |
 | `putgd-record` | Recording, overlays, private review, previews and export | Resident control pipes; X11 or Wayland/PipeWire acquisition; private media files | Temporary recording session; also bounded poster jobs |
 | `putgd-s3-worker` | Official AWS C++ SDK requests and private S3 module | Private framed pipes, durable-checkpoint acknowledgements and credential requests; S3 HTTPS | New Linux process per driver call |
 | `putgd-b2-worker` | Native B2 HTTP and transfer work | Private newline JSON input, progress, checkpoints and result; B2 HTTPS | New process per request |

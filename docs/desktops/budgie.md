@@ -47,6 +47,10 @@ every global the compositor offers. Nothing is chosen by compositor name.
 | Region selector | `zwlr_layer_shell_v1` through LayerShellQt | The `putgd-region` helper, as on Plasma. |
 | Clipboard | `ext-data-control-v1` (or `wlr-data-control` v2) | Shared with Plasma. |
 
+Labwc drops a selection when its owner disconnects, and stock Budgie has no
+clipboard manager. A helper keeps a copied link available after a normal quit, so it
+doesn't disappear with put.gd. See [Clipboard after quitting](../design/clipboard-keeper.md).
+
 The capture, toplevel and data-control code lives in `src/platform/wayland/`
 and is compositor-neutral; only the shortcut bridge and the D-Bus trigger are
 in `src/platform/budgie/`. Protocol XML is vendored unmodified

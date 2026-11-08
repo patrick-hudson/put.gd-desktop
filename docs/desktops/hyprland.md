@@ -203,6 +203,10 @@ A/V sync (median -19 ms) were measured there too.
 - Clipboard import works while put.gd is unfocused; results copy as
   `image/png` with put.gd's private marker. PRIMARY is never written. Omarchy's
   clipboard history (`wl-paste --watch`) keeps recording in both directions.
+- A result still on the clipboard stays there after a normal put.gd quit, although
+  Hyprland drops a selection with its owner. Omarchy's clipboard history records
+  copies but doesn't put them back on the clipboard. A crash, `kill -9` or a result
+  over 64 MiB isn't kept. See [Clipboard after quitting](../design/clipboard-keeper.md).
 - quickshell is the tray host: put.gd's item and its menu work.
 - quickshell is the notification server. It keeps **critical** notifications
   in `~/.local/state/omarchy/notifications/live.json` until they are dismissed,

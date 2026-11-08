@@ -35,5 +35,6 @@ the [overview](overview.md) and [architecture](architecture.md).
 - [Configuration](configuration.md): `config.json`, its folders and its fields.
 - [Credentials](credentials.md): credential references, secret storage and unlock.
 - [Appearance and themes](appearance.md): System, Dark and Light, theme tokens and tray tint.
+- [Clipboard after quitting](clipboard-keeper.md): the helper that holds a copied result on Budgie and Hyprland.
 - [Visual language](visual-language.md): the desktop visual language and its shared implementation.
 - [UI catalog](ui-catalog.md): `putgd-ui-catalog` and the reference images CI compares.
