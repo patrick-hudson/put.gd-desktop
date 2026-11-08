@@ -53,6 +53,22 @@ class Download(unittest.TestCase):
                 self.assertIsNone(error)
                 self.assertEqual((body, len(waits)), (b'tool', 1))
 
+    def test_a_connection_lost_mid_body_is_retried_from_the_start(self):
+        class Dying(io.BytesIO):
+            def read(self, *_args):
+                raise ConnectionResetError('died')
+        with_partial = [Dying(b'x')]
+        waits = []
+        calls = []
+        def opener(_request, timeout):
+            calls.append(timeout)
+            return with_partial.pop() if with_partial else Response(b'whole')
+        with tempfile.TemporaryDirectory() as directory:
+            target = Path(directory) / 'tool'
+            http_retry.download('https://example.invalid/tool', target, timeout=30, opener=opener, sleep=waits.append)
+            self.assertEqual(target.read_bytes(), b'whole')
+        self.assertEqual((len(calls), len(waits)), (2, 1))
+
     def test_a_certificate_failure_fails_at_once(self):
         failure = urllib.error.URLError(ssl.SSLCertVerificationError('bad certificate'))
         _body, waits, error = self.run_download([failure, b'never read'])

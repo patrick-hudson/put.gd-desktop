@@ -43,3 +43,9 @@ def download(request, target, timeout, *, opener=urllib.request.urlopen, sleep=t
             reason = type(error).__name__
         print(f'download attempt {attempt}/{ATTEMPTS} failed ({reason}); retrying in {DELAY_SECONDS} s', file=sys.stderr, flush=True)
         sleep(DELAY_SECONDS)
+
+
+if __name__ == '__main__':
+    if len(sys.argv) != 3:
+        sys.exit('usage: http_retry.py URL OUTPUT')
+    download(sys.argv[1], sys.argv[2], timeout=120)
