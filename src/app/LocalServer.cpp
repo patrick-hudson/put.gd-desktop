@@ -344,6 +344,7 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
  else if(method=="settings.developmentTemplate")reply({},{{"document",Settings::developmentTemplate()},{"explicitImportRequired",true}});
  else if(method=="settings.reload") {QPointer<LocalServer> guarded(this);settings_.reloadAsync([guarded,reply](Result result) {if(guarded)reply(result.error,guarded->settings_.metadata());});}
  else if(method=="capabilities")reply({},operations_.capabilities());
+ else if(method=="capture.windows")reply({},operations_.windows());
  else if(method=="diagnostics")reply({},operations_.diagnostics());
  // The daily update check (#293): its state, and a check now.
  else if(method=="update.status"){if(updates_)reply({},updates_->status());else reply({"update_check_unavailable","This resident does not check for updates",{}},{});}

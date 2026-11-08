@@ -3,6 +3,7 @@
 #include "Error.h"
 #include "Settings.h"
 #include <QByteArray>
+#include <QJsonArray>
 #include <QJsonObject>
 #include <QString>
 #include <QStringList>
@@ -64,6 +65,12 @@ public:
  // cancelled, or shut down. Report copy_suppressed only when no write committed.
  virtual void invalidateCopyEligibility() {}
  virtual void copy(const CopyPayload&,std::function<void(Error)>)=0;
+ // Windows a recording or agent can name by identity where the desktop has no
+ // window picker: {"available", "error"?, "windows": [{identity, appId, title,
+ // active}]}. Titles are user data, so this is never part of capabilities().
+ virtual QJsonObject windows() const {
+  return {{"available",false},{"error",QStringLiteral("This desktop does not list windows by identity")},{"windows",QJsonArray{}}};
+ }
 protected:
  // Non-secret presentation context; adapters copy it when freezing each request.
  QJsonObject captureAppearance_;

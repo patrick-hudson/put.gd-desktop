@@ -7,6 +7,7 @@
 #include "KdeScreencast.h"
 #endif
 #include "RecordingPipeline.h"
+#include "ImageCopySource.h"
 #include "ReviewWindow.h"
 #include "X11Targets.h"
 #include "core/RecordingModel.h"
@@ -49,6 +50,9 @@ private:
     // Wayland: share through the portal picker, then continue like X11 with the stream as the target.
     void preparePortal(Reply);
     void prepareNative(Reply);
+    // wlr-capture: ext-image-copy-capture frames into appsrc, no portal and no chooser.
+    void prepareImageCopy(Reply);
+    void stopEarly(const QJsonObject& details, const QString& reason);
     void finishWayland(quint32 node, int fd, const QRect& shared, const QRect& streamRect, const QString& source, Reply);
     QString portalTokenKey() const;
     QString loadPortalToken() const;
@@ -87,6 +91,8 @@ private:
     quint32 portalNode_ = 0;
     QRect portalCrop_;
     bool portalTarget_ = false;
+    std::unique_ptr<ImageCopySource> imageCopy_;
+    QSize imageCopySize_;
     QTimer progress_, barTimer_;
     SelectionOverlay* selection_ = nullptr;
     LayerShellRegionOverlay* kdeSelection_ = nullptr;

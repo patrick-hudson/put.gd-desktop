@@ -1,4 +1,5 @@
 #include "MediaProbe.h"
+#include "ImageCopySource.h"
 #include "EncoderCheck.h"
 #include "core/RecordingModel.h"
 #include "PortalScreenCast.h"
@@ -89,7 +90,7 @@ QJsonObject probeMedia() {
         g_free(version);
         QJsonObject elements;
         QStringList directories;
-        for (const char* name : {"ximagesrc", "pipewiresrc", "pulsesrc", "vah264lpenc", "vah264enc", "vaapih264enc", "x264enc", "openh264enc",
+        for (const char* name : {"ximagesrc", "pipewiresrc", "appsrc", "pulsesrc", "vah264lpenc", "vah264enc", "vaapih264enc", "x264enc", "openh264enc",
                                  "avenc_aac", "fdkaacenc", "voaacenc", "matroskamux", "mp4mux", "webmmux", "videoconvert", "videoscale", "videorate",
                                  "videocrop", "compositor", "appsink", "webpenc", "vp9enc", "x265enc", "h264parse", "aacparse", "audioconvert", "audioresample"})
             elements[name] = element(name, directories);
@@ -150,25 +151,38 @@ QJsonObject probeMedia() {
     result["codecs"] = codecs;
 
     const auto session = result["session"].toString();
-    const bool liveSource = gst["available"].toBool() && ((session == "x11" && gst["liveSources"].toArray().contains("ximagesrc")) || (session == "wayland" && gst["liveSources"].toArray().contains("pipewiresrc")));
+    const auto env = QProcessEnvironment::systemEnvironment();
+    const auto desktop = env.value("XDG_CURRENT_DESKTOP").toLower();
+    // Budgie (labwc, Magpie) has no screencast service: frames come from
+    // ext-image-copy-capture through appsrc, and the portal is never used (#1275).
+    bool budgie = false;
+    for (const auto& name : desktop.split(':', Qt::SkipEmptyParts)) if (name == "budgie") budgie = true;
+    const bool imageCopyElements = gst["available"].toBool() && !gst["elements"].toObject()["appsrc"].isNull() && !gst["elements"].toObject()["videoscale"].isNull();
+    const bool liveSource = gst["available"].toBool() && ((session == "x11" && gst["liveSources"].toArray().contains("ximagesrc")) || (session == "wayland" && !budgie && gst["liveSources"].toArray().contains("pipewiresrc")) || (session == "wayland" && budgie && imageCopyElements));
     const bool liveEncoder = gst["available"].toBool() && !gst["usableH264Encoders"].toArray().isEmpty();
     result["liveCapture"] = QJsonObject{{"source", liveSource}, {"encoder", liveEncoder}, {"audio", gst["available"].toBool() && !gst["audioSources"].toArray().isEmpty() && !gst["liveAacEncoders"].toArray().isEmpty()}};
     // X11 reads the root with ximagesrc; Wayland shares a monitor or window
     // through the ScreenCast portal (the compositor's picker) into pipewiresrc.
     QJsonObject portal;
     QString portalReason;
-    const bool portalOk = session == "wayland" && PortalScreenCast::available(portal, &portalReason);
+    const bool portalOk = session == "wayland" && !budgie && PortalScreenCast::available(portal, &portalReason);
     if (session == "wayland") { portal["available"] = portalOk; if (!portalOk) portal["reason"] = portalReason; result["portal"] = portal; }
     // Dialog-free compositor paths first: KWin's screencast protocol on Plasma,
     // Mutter's screen cast service on GNOME; the portal (with restore tokens) otherwise.
     // Both native paths name a PipeWire node on the session daemon, so its socket
     // must be reachable; the portal passes its own connection as a descriptor.
-    const auto env = QProcessEnvironment::systemEnvironment();
-    const auto desktop = env.value("XDG_CURRENT_DESKTOP").toLower();
     const QString pipewire = pipewireSocket(env);
     if (session == "wayland") result["pipewire"] = QJsonObject{{"socket", pipewire.isEmpty() ? QJsonValue() : QJsonValue(pipewire)}};
     QString acquisition = session == "x11" ? "x11" : session == "wayland" ? "portal" : "none";
-    if (session == "wayland" && pipewire.isEmpty()) {
+    ImageCopySource::Facts imageCopy;
+    if (session == "wayland" && budgie) {
+        imageCopy = ImageCopySource::probe();
+        QJsonObject facts{{"available", imageCopy.available}, {"windows", imageCopy.windows}, {"protocols", imageCopy.protocols}, {"elements", imageCopyElements}};
+        if (!imageCopy.available) facts["reason"] = imageCopy.reason;
+        if (!imageCopy.windows) facts["windowReason"] = imageCopy.windowReason;
+        result["wlrCapture"] = facts;
+        acquisition = "wlr-capture";
+    } else if (session == "wayland" && pipewire.isEmpty()) {
         // leave the portal in charge: it carries its own PipeWire connection
     } else if (session == "wayland" && desktop.contains("kde")) {
 #ifdef PUTGD_RECORD_KDE_SCREENCAST
@@ -189,10 +203,12 @@ QJsonObject probeMedia() {
         if (ok) acquisition = "mutter-screencast";
     }
     result["acquisition"] = acquisition;
-    const bool nativeOk = acquisition == "kde-screencast" || acquisition == "mutter-screencast";
+    const bool imageCopyOk = acquisition == "wlr-capture" && imageCopy.available && imageCopyElements;
+    const bool nativeOk = acquisition == "kde-screencast" || acquisition == "mutter-screencast" || imageCopyOk;
     const int sourceTypes = portal["sourceTypes"].toInt();
     QJsonArray targets;
     if (session == "x11" && liveSource) targets = QJsonArray{"monitor", "desktop", "region", "window"};
+    else if (imageCopyOk && liveSource) { targets = QJsonArray{"monitor", "desktop", "region"}; if (imageCopy.windows) targets.append("window"); }
     else if ((portalOk || nativeOk) && liveSource) { targets = QJsonArray{"monitor", "desktop", "region"}; if (portalOk && (sourceTypes & int(PortalScreenCast::Window))) targets.append("window"); }
     result["targets"] = targets;
     result["audio"] = QJsonObject{{"system", result["liveCapture"].toObject()["audio"].toBool()}, {"microphone", false}};
@@ -205,11 +221,13 @@ QJsonObject probeMedia() {
             : !liveEncoder ? (gst["liveH264Encoders"].toArray().isEmpty() ? QStringLiteral("live_encoder_missing") : QStringLiteral("h264_encoder_unusable"))
             : !decoderOk ? QStringLiteral("h264_decoder_unusable")
             : formats.isEmpty() ? QStringLiteral("export_encoder_missing")
+            : acquisition == "wlr-capture" ? QStringLiteral("wlr_capture_unavailable")
             : session == "wayland" ? (portalReason.isEmpty() ? QStringLiteral("portal_unavailable") : portalReason)
             : QStringLiteral("session_unsupported");
     // Recording keeps an H.264 working clip, so without a working H.264 encoder
     // or decoder nothing records; say what to install rather than only why.
     const auto reason = result["reason"].toString();
+    if (reason == "wlr_capture_unavailable") result["message"] = imageCopy.reason.isEmpty() ? QStringLiteral("The compositor does not offer ext-image-copy-capture-v1") : imageCopy.reason;
     if (reason == "live_encoder_missing" || reason == "h264_encoder_unusable" || reason == "h264_decoder_unusable") {
         result["message"] = reason == "h264_decoder_unusable" ? QStringLiteral("Screen recording needs an H.264 decoder, and FFmpeg cannot open one here.")
             : reason == "h264_encoder_unusable" ? QStringLiteral("Screen recording needs an H.264 encoder, and none of the installed ones (%1) works here.").arg(strings(gst["liveH264Encoders"].toArray()).join(", "))

@@ -57,6 +57,9 @@
 #ifdef PUTGD_NATIVE_GNOME
 #include "platform/gnome/GnomeAdapter.h"
 #endif
+#ifdef PUTGD_NATIVE_BUDGIE
+#include "platform/budgie/BudgieSourceAdapter.h"
+#endif
 #ifdef PUTGD_NATIVE_KDE
 #include "platform/kde/KdeSourceAdapter.h"
 #include "platform/wayland/DataControlSourceAdapter.h"
@@ -175,6 +178,11 @@ int main(int argc,char* argv[]) {
 #ifdef PUTGD_NATIVE_KDE
  kdeCoreResident=putgd::kdeCoreSessionEnvironment()&&putgd::kdeCoreSessionArguments(argc,argv);
 #endif
+ bool budgieCoreResident=false;
+#ifdef PUTGD_NATIVE_BUDGIE
+ // The same safe argument set as KDE's Core route.
+ budgieCoreResident=putgd::budgieCoreSessionEnvironment()&&putgd::kdeCoreSessionArguments(argc,argv);
+#endif
 #if defined(Q_OS_LINUX) && defined(__GLIBC__)
  // Every resident handles large transient rasters: captures, bridge transfers
  // and Edit & upload staging/handoffs. A fixed mmap threshold returns them on
@@ -185,7 +193,7 @@ int main(int argc,char* argv[]) {
   qWarning("Could not apply the resident allocation policy");
 #endif
  std::unique_ptr<QCoreApplication> application;
- if(coreResident||gnomeCoreResident||kdeCoreResident)application=std::make_unique<QCoreApplication>(argc,argv);
+ if(coreResident||gnomeCoreResident||kdeCoreResident||budgieCoreResident)application=std::make_unique<QCoreApplication>(argc,argv);
  else {
   std::unique_ptr<QApplication> graphical;
   {putgd::GenericResidentTheme theme;graphical=std::make_unique<QApplication>(argc,argv);}
@@ -218,24 +226,31 @@ int main(int argc,char* argv[]) {
  std::unique_ptr<putgd::SourceAdapter> source;
  std::function<void()> bindSource;
  const auto bindings=[&settings]{QHash<QString,QString> result;const auto snapshot=settings.snapshot();for(auto i=snapshot.actions.cbegin();i!=snapshot.actions.cend();++i)result.insert(i.key(),i.value().shortcut);return result;};
- const auto wayland=gnomeCoreResident||kdeCoreResident||(!coreResident&&QGuiApplication::platformName().startsWith("wayland")&&qEnvironmentVariable("XDG_SESSION_TYPE")=="wayland");
+ const auto wayland=gnomeCoreResident||kdeCoreResident||budgieCoreResident||(!coreResident&&QGuiApplication::platformName().startsWith("wayland")&&qEnvironmentVariable("XDG_SESSION_TYPE")=="wayland");
  const auto desktop=qEnvironmentVariable("XDG_CURRENT_DESKTOP").split(':',Qt::SkipEmptyParts);
 
 #ifdef PUTGD_NATIVE_X11
  putgd::X11SourceAdapter* native=nullptr;
  putgd::X11CoreSourceAdapter* coreNative=nullptr;
  if(coreResident){auto adapter=std::make_unique<putgd::X11CoreSourceAdapter>();coreNative=adapter.get();source=std::move(adapter);}
- if(!coreResident&&!gnomeCoreResident&&!kdeCoreResident&&QGuiApplication::platformName()=="xcb"&&qEnvironmentVariable("XDG_SESSION_TYPE")!="wayland"&&qEnvironmentVariableIsEmpty("WAYLAND_DISPLAY")) {
+ if(!coreResident&&!gnomeCoreResident&&!kdeCoreResident&&!budgieCoreResident&&QGuiApplication::platformName()=="xcb"&&qEnvironmentVariable("XDG_SESSION_TYPE")!="wayland"&&qEnvironmentVariableIsEmpty("WAYLAND_DISPLAY")) {
   auto adapter=std::make_unique<putgd::X11SourceAdapter>();native=adapter.get();source=std::move(adapter);
  }
 #endif
 #ifdef PUTGD_NATIVE_GNOME
  putgd::GnomeAdapter* gnome=nullptr;
- if(wayland&&desktop.contains("GNOME",Qt::CaseInsensitive)){auto adapter=std::make_unique<putgd::GnomeAdapter>();gnome=adapter.get();source=std::move(adapter);bindSource=[gnome,bindings]{gnome->bindShortcuts(bindings());};}
+ // A Budgie session may carry a GNOME token; Budgie wins (decision 2, #1275).
+ if(wayland&&desktop.contains("GNOME",Qt::CaseInsensitive)&&!putgd::desktopNamesBudgie()){auto adapter=std::make_unique<putgd::GnomeAdapter>();gnome=adapter.get();source=std::move(adapter);bindSource=[gnome,bindings]{gnome->bindShortcuts(bindings());};}
 #endif
 #ifdef PUTGD_NATIVE_KDE
  putgd::KdeSourceAdapter* kde=nullptr;
- if(wayland&&desktop.contains("KDE",Qt::CaseInsensitive)){auto adapter=std::make_unique<putgd::KdeSourceAdapter>();kde=adapter.get();source=std::move(adapter);bindSource=[kde,bindings,&settings]{kde->setResourceLimits(settings.snapshot().limits);kde->bindShortcuts(bindings());};}
+ if(wayland&&desktop.contains("KDE",Qt::CaseInsensitive)&&!putgd::desktopNamesBudgie()){auto adapter=std::make_unique<putgd::KdeSourceAdapter>();kde=adapter.get();source=std::move(adapter);bindSource=[kde,bindings,&settings]{kde->setResourceLimits(settings.snapshot().limits);kde->bindShortcuts(bindings());};}
+#endif
+#ifdef PUTGD_NATIVE_BUDGIE
+ putgd::BudgieSourceAdapter* budgie=nullptr;
+ if(budgieCoreResident){auto adapter=std::make_unique<putgd::BudgieSourceAdapter>();budgie=adapter.get();source=std::move(adapter);bindSource=[budgie,bindings,&settings]{budgie->setResourceLimits(settings.snapshot().limits);budgie->bindShortcuts(bindings());};}
+#endif
+#ifdef PUTGD_NATIVE_KDE
  // Any other Wayland desktop has no capture, but may still offer the clipboard.
  putgd::DataControlSourceAdapter* dataControl=nullptr;
  if(!source&&wayland){auto adapter=std::make_unique<putgd::DataControlSourceAdapter>();dataControl=adapter.get();source=std::move(adapter);}
@@ -367,6 +382,9 @@ int main(int argc,char* argv[]) {
 #ifdef PUTGD_NATIVE_KDE
   if(kde){kde->setShortcutRecording(active,std::move(reply));return;}
 #endif
+#ifdef PUTGD_NATIVE_BUDGIE
+  if(budgie){budgie->setShortcutRecording(active,std::move(reply));return;}
+#endif
   reply(active?putgd::Error{"shortcut_recording_unavailable","Global shortcut recording is unavailable in this session.",{}}:putgd::Error{});
  });
  QObject::connect(&ui,&putgd::UiProcessController::helperPidChanged,&app,[&](qint64 pid){source->setUiProcess(pid);if(!pid)operations.requestHeapReclamation();});
@@ -385,6 +403,9 @@ int main(int argc,char* argv[]) {
  if(kde)QObject::connect(kde,&putgd::KdeSourceAdapter::capabilitiesChanged,&ui,refreshSettingsDiagnostics);
  if(dataControl)QObject::connect(dataControl,&putgd::DataControlSourceAdapter::capabilitiesChanged,&ui,refreshSettingsDiagnostics);
 #endif
+#ifdef PUTGD_NATIVE_BUDGIE
+ if(budgie)QObject::connect(budgie,&putgd::BudgieSourceAdapter::capabilitiesChanged,&ui,refreshSettingsDiagnostics);
+#endif
  const auto quitApplication=[&]{ui.shutdown([&]{app.quit();});};
  QTimer startupRecovery;startupRecovery.setSingleShot(true);startupRecovery.setTimerType(Qt::PreciseTimer);
  putgd::TrayController tray(operations,[&](const QString& requested,const QString& activationToken){startupRecovery.stop();ui.activate(requested,{},activationToken);},quitApplication);
@@ -399,6 +420,11 @@ int main(int argc,char* argv[]) {
 #endif
 #ifdef PUTGD_NATIVE_KDE
  if(kde)QObject::connect(kde,&putgd::KdeSourceAdapter::actionRequested,&tray,requested);
+#endif
+#ifdef PUTGD_NATIVE_BUDGIE
+ if(budgie)QObject::connect(budgie,&putgd::BudgieSourceAdapter::actionRequested,&tray,requested);
+ // Budgie's settings and rc.xml keep nothing of put.gd once it quits.
+ if(budgie)QObject::connect(&app,&QCoreApplication::aboutToQuit,budgie,[budgie]{budgie->clearShortcuts();});
 #endif
  server.setUiQuit(quitApplication);
  // A file-manager upload with no destination to go to opens Destinations (#1105).
@@ -444,8 +470,8 @@ int main(int argc,char* argv[]) {
  bundles.setEnvironment([&]{
   QJsonArray screens;
   if(qobject_cast<QGuiApplication*>(QCoreApplication::instance()))for(const auto* screen:QGuiApplication::screens())screens.append(QJsonObject{{"devicePixelRatio",screen->devicePixelRatio()},{"logicalDpi",screen->logicalDotsPerInch()}});
-  return QJsonObject{{"platform",coreResident||gnomeCoreResident||kdeCoreResident?QStringLiteral("none"):QGuiApplication::platformName()},
-   {"resident",coreResident?"x11-core":gnomeCoreResident?"gnome-core":kdeCoreResident?"kde-core":"graphical"},{"trayAvailable",tray.available()},
+  return QJsonObject{{"platform",coreResident||gnomeCoreResident||kdeCoreResident||budgieCoreResident?QStringLiteral("none"):QGuiApplication::platformName()},
+   {"resident",coreResident?"x11-core":gnomeCoreResident?"gnome-core":kdeCoreResident?"kde-core":budgieCoreResident?"budgie-core":"graphical"},{"trayAvailable",tray.available()},
    {"portal",portalStatus},{"screenCount",screens.size()},{"screens",screens}};
  });
  QObject::connect(&settings,&putgd::SettingsService::statusChanged,&ui,&putgd::UiProcessController::invalidate);
@@ -532,8 +558,8 @@ int main(int argc,char* argv[]) {
   QJsonObject startup{{"build",QJsonDocument::fromJson(putgd::buildManifestJson()).object()},{"os",QSysInfo::prettyProductName()},
    {"kernel",QSysInfo::kernelVersion()},{"architecture",QSysInfo::currentCpuArchitecture()},{"desktop",qEnvironmentVariable("XDG_CURRENT_DESKTOP")},
    {"sessionType",qEnvironmentVariable("XDG_SESSION_TYPE")},{"qtRuntime",qVersion()},{"qtCompiled",QT_VERSION_STR},
-   {"platform",coreResident||gnomeCoreResident||kdeCoreResident?QStringLiteral("none"):QGuiApplication::platformName()},
-   {"resident",coreResident?"x11-core":gnomeCoreResident?"gnome-core":kdeCoreResident?"kde-core":"graphical"},
+   {"platform",coreResident||gnomeCoreResident||kdeCoreResident||budgieCoreResident?QStringLiteral("none"):QGuiApplication::platformName()},
+   {"resident",coreResident?"x11-core":gnomeCoreResident?"gnome-core":kdeCoreResident?"kde-core":budgieCoreResident?"budgie-core":"graphical"},
    {"trayAvailable",tray.available()},{"locations",locations.report},{"capabilities",source->capabilities()}};
   putgd::logging::info(putgd::logApp(),"Resident started",startup);
   if(!replacedResident.isEmpty())putgd::logging::info(putgd::logApp(),"Replaced a resident from an ended login session",replacedResident);

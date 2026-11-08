@@ -34,6 +34,7 @@ ALLOWED = {
     'platform/gnome': {'core', 'platform'},
     'platform/wayland': {'core', 'ipc', 'platform'},
     'platform/kde': {'core', 'platform', 'platform/wayland'},
+    'platform/budgie': {'core', 'platform/wayland'},
     'platform/x11': {'core', 'ipc', 'platform'},
     'storage/b2': {'core', 'secrets'},
     'storage/proton': {'core'},
@@ -43,7 +44,7 @@ ALLOWED = {
     'capture': {'core', 'ipc', 'platform/x11', 'ui'},
     'record': {'core', 'ipc', 'platform', 'platform/wayland', 'platform/x11', 'ui'},
     'cli': {'core'},
-    'main': {'app', 'core', 'platform', 'platform/gnome', 'platform/kde', 'platform/wayland', 'platform/x11',
+    'main': {'app', 'core', 'platform', 'platform/budgie', 'platform/gnome', 'platform/kde', 'platform/wayland', 'platform/x11',
              'storage/b2', 'storage/proton', 'storage/s3', 'ui'},
 }
 

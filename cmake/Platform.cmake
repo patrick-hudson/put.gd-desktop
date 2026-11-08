@@ -65,6 +65,19 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   add_custom_command(OUTPUT "${protocol_dir}/xdg-output-unstable-v1-protocol.c"
     COMMAND "${PUTGD_WAYLAND_SCANNER}" private-code "${xdg_output_protocol}" "${protocol_dir}/xdg-output-unstable-v1-protocol.c"
     DEPENDS "${xdg_output_protocol}" VERBATIM)
+  # Vendored, unmodified capture and toplevel protocols: ext-image-copy-capture
+  # with its output and toplevel sources, and both toplevel lists.
+  set(putgd_capture_protocol_sources)
+  foreach(protocol_name ext-image-copy-capture-v1 ext-image-capture-source-v1 ext-foreign-toplevel-list-v1 wlr-foreign-toplevel-management-unstable-v1)
+    set(protocol_xml "${CMAKE_CURRENT_SOURCE_DIR}/src/platform/wayland/protocols/${protocol_name}.xml")
+    add_custom_command(OUTPUT "${protocol_dir}/${protocol_name}-client-protocol.h"
+      COMMAND "${PUTGD_WAYLAND_SCANNER}" client-header "${protocol_xml}" "${protocol_dir}/${protocol_name}-client-protocol.h"
+      DEPENDS "${protocol_xml}" VERBATIM)
+    add_custom_command(OUTPUT "${protocol_dir}/${protocol_name}-protocol.c"
+      COMMAND "${PUTGD_WAYLAND_SCANNER}" private-code "${protocol_xml}" "${protocol_dir}/${protocol_name}-protocol.c"
+      DEPENDS "${protocol_xml}" VERBATIM)
+    list(APPEND putgd_capture_protocol_sources "${protocol_dir}/${protocol_name}-client-protocol.h" "${protocol_dir}/${protocol_name}-protocol.c")
+  endforeach()
   add_library(putgd_wayland_region STATIC src/platform/wayland/RegionProcess.cpp src/platform/wayland/RegionProtocol.cpp)
   target_link_libraries(putgd_wayland_region PUBLIC putgd_app putgd_capture_control putgd_build_identity putgd_visual)
   find_package(Threads REQUIRED)
@@ -73,6 +86,8 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   add_library(putgd_wayland STATIC src/platform/wayland/AsyncFdReader.cpp
     src/platform/wayland/DataControlClipboard.cpp src/platform/wayland/DataControlSourceAdapter.cpp
     src/platform/wayland/LayerShellRegionOverlay.cpp src/platform/wayland/WaylandOutputs.cpp
+    src/platform/wayland/ImageCopyCapture.cpp src/platform/wayland/PortalGlobalShortcuts.cpp src/platform/wayland/ShortcutBackend.h
+    ${putgd_capture_protocol_sources}
     "${protocol_dir}/ext-data-control-v1-client-protocol.h" "${protocol_dir}/ext-data-control-v1-protocol.c"
     "${protocol_dir}/wlr-data-control-unstable-v1-client-protocol.h" "${protocol_dir}/wlr-data-control-unstable-v1-protocol.c"
     "${protocol_dir}/xdg-output-unstable-v1-client-protocol.h" "${protocol_dir}/xdg-output-unstable-v1-protocol.c")
@@ -83,6 +98,11 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     src/platform/kde/KdeSourceAdapter.cpp)
   target_include_directories(putgd_kde PRIVATE "${protocol_dir}")
   target_link_libraries(putgd_kde PUBLIC putgd_wayland PRIVATE PkgConfig::PUTGD_WAYLAND Threads::Threads)
+  # Budgie 10.10 (labwc) and Magpie: capture, toplevels and data control from
+  # the shared Wayland code; the labwc bridge and D-Bus trigger are Budgie's.
+  add_library(putgd_budgie STATIC src/platform/budgie/BudgieSourceAdapter.cpp src/platform/budgie/BudgieShortcuts.cpp
+    src/platform/budgie/LabwcBridgeBackend.cpp)
+  target_link_libraries(putgd_budgie PUBLIC putgd_wayland Qt6::DBus PRIVATE PkgConfig::PUTGD_XKBCOMMON)
   if(Qt6_VERSION VERSION_GREATER_EQUAL "6.5")
     find_package(LayerShellQt QUIET CONFIG)
     if(TARGET LayerShellQt::Interface)
@@ -90,6 +110,8 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
         target_link_libraries(${layer_shell_user} PRIVATE LayerShellQt::Interface)
         target_compile_definitions(${layer_shell_user} PRIVATE PUTGD_HAVE_LAYER_SHELL=1)
       endforeach()
+      # Budgie selects regions only through the putgd-region helper.
+      target_compile_definitions(putgd_budgie PRIVATE PUTGD_HAVE_LAYER_SHELL=1)
       set(PUTGD_LAYER_SHELL_REGION ON)
     else()
       message(STATUS "LayerShellQt unavailable: Wayland layer-shell region selection will report unavailable")

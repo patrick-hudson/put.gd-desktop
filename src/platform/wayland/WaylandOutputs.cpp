@@ -72,8 +72,8 @@ struct WaylandOutputs::Impl:QObject {
  bool dispatching=false,lossPending=false,closing=false;
  explicit Impl(WaylandOutputs& q):q(q){
   reconnect.setInterval(1000);connect(&reconnect,&QTimer::timeout,this,[this]{if(!display)open();});
-  if(!qobject_cast<QGuiApplication*>(QCoreApplication::instance())&&kdeCoreSessionEnvironment()){open();reconnect.start();}
-  else error="Native output discovery is reserved for the KDE Core session";
+  if(!qobject_cast<QGuiApplication*>(QCoreApplication::instance())&&waylandCoreSessionEnvironment()){open();reconnect.start();}
+  else error="Native output discovery is reserved for a Wayland Core session";
  }
  ~Impl() override{closing=true;reconnect.stop();reset();}
  void publish(const QString& connectionError={}){

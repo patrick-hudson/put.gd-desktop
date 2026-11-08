@@ -66,36 +66,42 @@ RecordSession::RecordSession(QObject* parent) : QObject(parent), pipeline_(this)
         if (bar_) bar_->hide();
         emit event({{"event", "failed"}, {"error", error.toJson()}});
     });
-    connect(&pipeline_, &RecordingPipeline::budgetReached, this, [this](QJsonObject details) {
-        // The admitted byte budget is nearly spent: finish the clip and open review.
-        showBar("stopping");
-        pipeline_.stop([this, details](Error error, qint64 durationUs) {
-            progress_.stop();
-            barTimer_.stop();
-            bounds_.hideAll();
-            if (bar_) bar_->hide();
-            // A bounded EOS timeout can leave an unindexed Matroska clip. For a
-            // disk stop, verify it decodes before promising private review.
-            if (!error && durationUs > 0 && !details.isEmpty()) {
-                QImage frame;
-                error = previewFrame(workingClip_, {}, config_, 0, 64, resolved_.canvas, frame);
+    connect(&pipeline_, &RecordingPipeline::budgetReached, this, [this](QJsonObject details) { stopEarly(details, "budget"); });
+    // A recorded window closed or its output went away: keep what was recorded.
+    connect(&pipeline_, &RecordingPipeline::sourceLost, this, [this](Error error) {
+        if (!pipeline_.running()) return;
+        stopEarly(QJsonObject{{"source", error.toJson()}}, "source_lost");
+    });
+}
+void RecordSession::stopEarly(const QJsonObject& details, const QString& reason) {
+    // The admitted byte budget is nearly spent: finish the clip and open review.
+    showBar("stopping");
+    pipeline_.stop([this, details, reason](Error error, qint64 durationUs) {
+        progress_.stop();
+        barTimer_.stop();
+        bounds_.hideAll();
+        if (bar_) bar_->hide();
+        // A bounded EOS timeout can leave an unindexed Matroska clip. For a
+        // disk stop, verify it decodes before promising private review.
+        if (!error && durationUs > 0 && !details.isEmpty()) {
+            QImage frame;
+            error = previewFrame(workingClip_, {}, config_, 0, 64, resolved_.canvas, frame);
+        }
+        if (error || durationUs < 1) {
+            if (!error) error = {"recording_failed", "The clip could not be finalized", {}};
+            if (!details.isEmpty()) {
+                // Keep a drain/decoder failure's actual diagnosis. Low space
+                // explains why we stopped, not necessarily why it failed.
+                error.details["stopDetails"] = details;
+                error.details["finalized"] = false;
             }
-            if (error || durationUs < 1) {
-                if (!error) error = {"recording_failed", "The clip could not be finalized", {}};
-                if (!details.isEmpty()) {
-                    // Keep a drain/decoder failure's actual diagnosis. Low space
-                    // explains why we stopped, not necessarily why it failed.
-                    error.details["stopDetails"] = details;
-                    error.details["finalized"] = false;
-                }
-                emit event({{"event", "failed"}, {"error", error.toJson()}}); return;
-            }
-            durationUs_ = durationUs;
-            recorded_ = true;
-            audioCaptured_ = !pipeline_.audioEncoder().isEmpty();
-            openReview();
-            emit event({{"event", "stopped"}, {"durationUs", double(durationUs)}, {"canvas", sizeJson(resolved_.canvas)}, {"audioEncoder", pipeline_.audioEncoder()}, {"reason", "budget"}, {"stopDetails", details}});
-        });
+            emit event({{"event", "failed"}, {"error", error.toJson()}}); return;
+        }
+        durationUs_ = durationUs;
+        recorded_ = true;
+        audioCaptured_ = !pipeline_.audioEncoder().isEmpty();
+        openReview();
+        emit event({{"event", "stopped"}, {"durationUs", double(durationUs)}, {"canvas", sizeJson(resolved_.canvas)}, {"audioEncoder", pipeline_.audioEncoder()}, {"reason", reason}, {"stopDetails", details}});
     });
 }
 RecordSession::~RecordSession() {
@@ -242,6 +248,7 @@ void RecordSession::acquire(Reply reply) {
     if (cancelled_) { reply({"cancelled", "Recording canceled before the source opened", {}}, {}); return; }
     const auto acquisition = capabilities_["acquisition"].toString();
     if (acquisition == "kde-screencast" || acquisition == "mutter-screencast") { prepareNative(std::move(reply)); return; }
+    if (acquisition == "wlr-capture") { prepareImageCopy(std::move(reply)); return; }
     if (acquisition == "portal") { preparePortal(std::move(reply)); return; }
     finishPrepare(std::move(reply));
 }
@@ -403,6 +410,51 @@ void RecordSession::prepareNative(Reply reply) {
     preparePortal(std::move(reply));
 #endif
 }
+void RecordSession::prepareImageCopy(Reply reply) {
+    // Never the ScreenCast portal here: a missing or refused protocol is the
+    // error, with its name, and no chooser ever shows (#1275 decision 9).
+    ImageCopySource::Target source;
+    QRect shared;
+    QScreen* screen = nullptr;
+    const auto screens = QGuiApplication::screens();
+    if (target_.kind == "window") {
+        source.window = true;
+        source.identity = target_.identity;
+    } else if (target_.kind == "region") {
+        for (QScreen* candidate : screens) if (candidate->geometry().contains(target_.rect)) screen = candidate;
+        if (!screen) { reply({"recording_unsupported", "A region recording here covers one output; this region spans outputs or leaves them", {{"rect", rectJson(target_.rect)}}}, {}); return; }
+    } else if (target_.kind == "monitor") {
+        for (QScreen* candidate : screens) if ((target_.identity.isEmpty() && candidate == QGuiApplication::primaryScreen()) || candidate->name() == target_.identity) screen = candidate;
+        if (!screen) { reply({"recording_target", "No monitor has this name", {{"identity", target_.identity}}}, {}); return; }
+    } else if (target_.kind == "desktop") {
+        if (screens.size() != 1) { reply({"recording_unsupported", "Recording the whole desktop here covers one output; record a monitor instead", {{"outputs", int(screens.size())}}}, {}); return; }
+        screen = screens.first();
+    }
+    if (screen) { source.identity = screen->name(); shared = screen->geometry(); }
+    imageCopy_ = std::make_unique<ImageCopySource>();
+    QSize size; QString identity, appId;
+    if (auto e = imageCopy_->open(source, &size, &identity, &appId)) { imageCopy_.reset(); reply(e, {}); return; }
+    imageCopySize_ = size;
+    portalTarget_ = true;
+    portalCrop_ = {};
+    ResolvedTarget resolved;
+    if (target_.kind == "region") {
+        // The stream is the output in native pixels; the region is logical.
+        const double sx = double(size.width()) / shared.width(), sy = double(size.height()) / shared.height();
+        const QRect logical = target_.rect.translated(-shared.topLeft());
+        portalCrop_ = QRect(qRound(logical.x() * sx), qRound(logical.y() * sy), qRound(logical.width() * sx) & ~1, qRound(logical.height() * sy) & ~1);
+        resolved.rect = target_.rect;
+        resolved.canvas = portalCrop_.size();
+    } else {
+        resolved.rect = shared.isEmpty() ? QRect(QPoint(), size) : shared;
+        resolved.canvas = QSize(size.width() & ~1, size.height() & ~1);
+    }
+    resolved.layout = QJsonObject{{"acquisition", "wlr-capture"}, {"identity", identity}, {"stream", sizeJson(size)}, {"shared", rectJson(shared.isEmpty() ? QRect(QPoint(), size) : shared)}};
+    if (!appId.isEmpty()) resolved.layout["appId"] = appId;
+    resolved_ = resolved;
+    prepared_ = true;
+    finishPrepare(std::move(reply));
+}
 // `shared` is the monitor or area the stream covers; `streamRect` is what the
 // stream frames show (equal unless a region is cropped out of a portal share).
 void RecordSession::finishWayland(quint32 node, int fd, const QRect& shared, const QRect& streamRect, const QString& source, Reply reply) {
@@ -525,7 +577,8 @@ void RecordSession::begin(Reply reply) {
     RecordingPipeline::Options options;
     options.rect = resolved_.rect;
     options.window = resolved_.window;
-    if (portalTarget_) { options.rect = resolved_.layout["shared"].isArray() ? QRect(resolved_.layout["shared"].toArray()[0].toInt(), resolved_.layout["shared"].toArray()[1].toInt(), resolved_.layout["shared"].toArray()[2].toInt(), resolved_.layout["shared"].toArray()[3].toInt()) : resolved_.rect; options.pipewireFd = portalFd_; options.pipewireNode = portalNode_; options.crop = portalCrop_; }
+    if (imageCopy_) { options.imageCopy = imageCopy_.get(); options.rect = QRect(QPoint(), imageCopySize_); options.crop = portalCrop_; }
+    else if (portalTarget_) { options.rect = resolved_.layout["shared"].isArray() ? QRect(resolved_.layout["shared"].toArray()[0].toInt(), resolved_.layout["shared"].toArray()[1].toInt(), resolved_.layout["shared"].toArray()[2].toInt(), resolved_.layout["shared"].toArray()[3].toInt()) : resolved_.rect; options.pipewireFd = portalFd_; options.pipewireNode = portalNode_; options.crop = portalCrop_; }
     options.fps = config_.fps;
     options.adaptive = config_.adaptiveFps;
     options.audio = config_.audio.system && !config_.silent();

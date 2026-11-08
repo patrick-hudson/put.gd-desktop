@@ -18,6 +18,13 @@ inline bool cinnamonCoreSessionEnvironment() {
   if(desktop.compare("Cinnamon",Qt::CaseInsensitive)==0||desktop.compare("X-Cinnamon",Qt::CaseInsensitive)==0)return true;
  return false;
 }
+// A Budgie session names Budgie in XDG_CURRENT_DESKTOP; forge test sessions use
+// Budgie:GNOME. Budgie always wins over the GNOME token it may carry.
+inline bool desktopNamesBudgie() {
+ for(const auto& desktop:qEnvironmentVariable("XDG_CURRENT_DESKTOP").split(':',Qt::SkipEmptyParts))
+  if(desktop.compare("Budgie",Qt::CaseInsensitive)==0)return true;
+ return false;
+}
 // GNOME's resident bridge uses the session bus without a Qt GUI connection.
 // Keep ambiguous sessions and explicit graphical overrides on QApplication.
 inline bool gnomeCoreSessionEnvironment() {
@@ -26,6 +33,7 @@ inline bool gnomeCoreSessionEnvironment() {
  if(platform.contains(';'))return false;
  const auto plugin=platform.section(':',0,0);
  if(!platform.isEmpty()&&plugin!="wayland"&&plugin!="wayland-egl")return false;
+ if(desktopNamesBudgie())return false;
  bool gnome=false;
  for(const auto& desktop:qEnvironmentVariable("XDG_CURRENT_DESKTOP").split(':',Qt::SkipEmptyParts)){
   if(desktop.compare("KDE",Qt::CaseInsensitive)==0||desktop.compare("Cinnamon",Qt::CaseInsensitive)==0||desktop.compare("X-Cinnamon",Qt::CaseInsensitive)==0)return false;
@@ -53,6 +61,7 @@ inline bool kdeCoreSessionEnvironment() {
  if(platform.contains(';'))return false;
  const auto plugin=platform.section(':',0,0);
  if(!platform.isEmpty()&&plugin!="wayland"&&plugin!="wayland-egl")return false;
+ if(desktopNamesBudgie())return false;
  bool kde=false;
  for(const auto& desktop:qEnvironmentVariable("XDG_CURRENT_DESKTOP").split(':',Qt::SkipEmptyParts)){
   if(desktop.compare("GNOME",Qt::CaseInsensitive)==0||desktop.compare("Cinnamon",Qt::CaseInsensitive)==0||desktop.compare("X-Cinnamon",Qt::CaseInsensitive)==0)return false;
@@ -68,6 +77,26 @@ inline bool kdeCoreSessionArguments(int argc,const char* const* argv) {
      argument!="-v"&&argument!="--version")return false;
  }
  return true;
+}
+
+// Budgie 10.10 on labwc, and Budgie 11 on Magpie, own independent native Wayland
+// connections in the Core route. startbudgielabwc sets QT_QPA_PLATFORM to
+// "wayland;xcb" when it is unset, so a list whose first plugin is Wayland is
+// accepted here. A KDE or Cinnamon token keeps the session off this route.
+inline bool budgieCoreSessionEnvironment() {
+ if(qEnvironmentVariable("XDG_SESSION_TYPE")!="wayland"||qEnvironmentVariableIsEmpty("WAYLAND_DISPLAY"))return false;
+ const auto platform=qEnvironmentVariable("QT_QPA_PLATFORM");
+ const auto plugin=platform.section(';',0,0).section(':',0,0);
+ if(!platform.isEmpty()&&plugin!="wayland"&&plugin!="wayland-egl")return false;
+ if(!desktopNamesBudgie())return false;
+ for(const auto& desktop:qEnvironmentVariable("XDG_CURRENT_DESKTOP").split(':',Qt::SkipEmptyParts))
+  if(desktop.compare("KDE",Qt::CaseInsensitive)==0||desktop.compare("Cinnamon",Qt::CaseInsensitive)==0||desktop.compare("X-Cinnamon",Qt::CaseInsensitive)==0)return false;
+ return true;
+}
+// The Core routes whose adapters open their own Wayland connections for
+// outputs and data control. Add a new compositor's route here.
+inline bool waylandCoreSessionEnvironment() {
+ return kdeCoreSessionEnvironment()||budgieCoreSessionEnvironment();
 }
 
 }

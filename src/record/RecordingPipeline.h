@@ -18,6 +18,7 @@
 #include <vector>
 
 namespace putgd::record {
+class ImageCopySource;
 // One live GStreamer capture: ximagesrc (root rectangle or window) or
 // pipewiresrc (a PipeWire screen-cast stream, optionally cropped) → leaky
 // capture queue → [videocrop] → videoconvert → videorate → queue → H.264
@@ -37,6 +38,9 @@ public:
         unsigned long window = 0;
         int pipewireFd = -1;         // portal ScreenCast: PipeWire remote fd and node; replaces ximagesrc
         quint32 pipewireNode = 0;
+        // ext-image-copy-capture (wlr-capture): frames come from this source
+        // through appsrc; rect is the stream size. Replaces ximagesrc.
+        ImageCopySource* imageCopy = nullptr;
         QRect crop;                  // optional stream-relative crop for region recording
         int fps = 30;
         bool adaptive = true;        // lower the rate when the machine cannot keep up (AdaptiveRate)
@@ -75,6 +79,8 @@ public:
 signals:
     void failed(putgd::Error);
     void budgetReached(QJsonObject details);
+    // The image-copy source ended: its window closed or its output went away.
+    void sourceLost(putgd::Error);
 private:
     friend class RecordingStorageContract;
     friend class RecordingPipelineThroughput;

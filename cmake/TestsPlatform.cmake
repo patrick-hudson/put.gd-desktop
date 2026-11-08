@@ -119,3 +119,16 @@
     add_test(NAME wayland_data_control_source COMMAND test_wayland_data_control_source)
     set_tests_properties(wayland_data_control_source PROPERTIES TIMEOUT 60)
   endif()
+# The Budgie adapter and shared Wayland capture against a real headless labwc
+# (#1275). It skips where labwc is not installed; the Ubuntu 26.04 CI leg has it.
+if(BUILD_TESTING AND TARGET putgd_budgie)
+  add_executable(test_budgie_labwc tests/integration/test_budgie_labwc.cpp)
+  target_link_libraries(test_budgie_labwc PRIVATE putgd_budgie Qt6::Test)
+  if(PUTGD_LAYER_SHELL_REGION)
+    add_executable(putgd-labwc-fixture tests/fixtures/labwc_fixture.cpp)
+    target_link_libraries(putgd-labwc-fixture PRIVATE putgd_build_options Qt6::Widgets LayerShellQt::Interface)
+    add_dependencies(test_budgie_labwc putgd-labwc-fixture)
+  endif()
+  add_test(NAME budgie_labwc_integration COMMAND dbus-run-session -- $<TARGET_FILE:test_budgie_labwc>)
+  set_tests_properties(budgie_labwc_integration PROPERTIES TIMEOUT 120)
+endif()

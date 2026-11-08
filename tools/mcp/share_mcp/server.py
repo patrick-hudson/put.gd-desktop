@@ -340,6 +340,11 @@ def create_server(adapter: CliAdapter) -> MCPServer:
         return await adapter.call('editor.raise', {'id': id}) if identifier(id) else invalid()
 
     @server.tool(annotations=read)
+    async def list_windows() -> Json:
+        """List the windows put.gd can capture or record by identity on desktops with no window picker (Budgie on labwc, Magpie): {available, error?, windows: [{identity, appId, title, active}]}. Use an identity as prepare_recording's target {kind: window, identity}; an omitted identity means the window active when the recording is prepared. put.gd's own windows are not listed. Elsewhere available is false with the reason."""
+        return await adapter.call('capture.windows', {})
+
+    @server.tool(annotations=read)
     async def get_recording_capabilities() -> Json:
         """Read screen-recording support: availability, target kinds, formats/codecs, audio sources, the active recording ID, limits and the microsecond time unit. Starts nothing and shows no prompt."""
         return await adapter.call('recording.capabilities', {})
