@@ -2,6 +2,7 @@
 #include "ImageCopySource.h"
 #include "EncoderCheck.h"
 #include "core/RecordingModel.h"
+#include "platform/NativeSession.h"
 #include "PortalScreenCast.h"
 #include "WaylandAcquisition.h"
 #include <QFileInfo>
@@ -155,8 +156,9 @@ QJsonObject probeMedia() {
     const auto desktop = env.value("XDG_CURRENT_DESKTOP").toLower();
     // Budgie (labwc, Magpie) has no screencast service: frames come from
     // ext-image-copy-capture through appsrc, and the portal is never used (#1275).
-    bool budgie = false;
-    for (const auto& name : desktop.split(':', Qt::SkipEmptyParts)) if (name == "budgie") budgie = true;
+    // The helper inherits the resident's environment, so this is the resident's own
+    // routing rule: a Wayland session naming Budgie, no KDE/Cinnamon token, a Wayland Qt platform.
+    const bool budgie = budgieCoreSessionEnvironment();
     const bool imageCopyElements = gst["available"].toBool() && !gst["elements"].toObject()["appsrc"].isNull() && !gst["elements"].toObject()["videoscale"].isNull();
     const bool liveSource = gst["available"].toBool() && ((session == "x11" && gst["liveSources"].toArray().contains("ximagesrc")) || (session == "wayland" && !budgie && gst["liveSources"].toArray().contains("pipewiresrc")) || (session == "wayland" && budgie && imageCopyElements));
     const bool liveEncoder = gst["available"].toBool() && !gst["usableH264Encoders"].toArray().isEmpty();
@@ -166,7 +168,8 @@ QJsonObject probeMedia() {
     QJsonObject portal;
     QString portalReason;
     const bool portalOk = session == "wayland" && !budgie && PortalScreenCast::available(portal, &portalReason);
-    if (session == "wayland") { portal["available"] = portalOk; if (!portalOk) portal["reason"] = portalReason; result["portal"] = portal; }
+    // Budgie never probes the portal, so it reports none rather than a failure.
+    if (session == "wayland" && !budgie) { portal["available"] = portalOk; if (!portalOk) portal["reason"] = portalReason; result["portal"] = portal; }
     // Dialog-free compositor paths first: KWin's screencast protocol on Plasma,
     // Mutter's screen cast service on GNOME; the portal (with restore tokens) otherwise.
     // Both native paths name a PipeWire node on the session daemon, so its socket
