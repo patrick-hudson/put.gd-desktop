@@ -174,8 +174,9 @@ private slots:
  void aCopyStillInFlightOutlivesTheResident(){
   if(wlCopy_.isEmpty()||wlPaste_.isEmpty())QSKIP("wl-clipboard is not installed");
   // Review: the adapter goes away before the compositor has announced the copy.
-  {BudgieSourceAdapter adapter;QVERIFY(waitFor([&]{return adapter.capabilities()["clipboard"].toObject()["available"].toBool();}));adapter.copy({"text","https://put.gd/x/in-flight",{},{}},[](Error){});}
-  QVERIFY(waitFor([&]{return paste()=="https://put.gd/x/in-flight";},5000));
+  Error copyError;
+  {BudgieSourceAdapter adapter;QVERIFY(waitFor([&]{return adapter.capabilities()["clipboard"].toObject()["available"].toBool();}));adapter.copy({"text","https://put.gd/x/in-flight",{},{}},[&](Error e){copyError=e;});}
+  QVERIFY(waitFor([&]{return paste()=="https://put.gd/x/in-flight";},5000));QVERIFY2(!copyError,qPrintable(copyError.message));
   takeClipboard("after the in-flight copy");QVERIFY(waitFor([&]{return keepers().isEmpty();},3000));
  }
  void anImageOutlivesTheResident(){
