@@ -75,6 +75,8 @@ tooltip, and Settings → Advanced → Desktop support details shows a Window
 capture row with the same reason
 ([#1295](https://github.com/patrick-hudson/put.gd-desktop/issues/1295)).
 
+![Ubuntu Budgie 26.04 on labwc 0.9.3: the Capture window button with its alert badge, its tooltip naming the missing protocol, and the Window capture row in Desktop support details](https://raw.githubusercontent.com/patrick-hudson/put.gd-evidence/9457580e1236faa8ff065950ab7145d13cc88b4a/records/2026-11-08-budgie-acceptance-round2-1275/images/budgie-window-unavailable-ui.png)
+
 `recording.windows` (MCP `list_recording_windows`) lists the capturable
 windows with their identity (the ext toplevel identifier), app ID, title and
 active state; `rect` is empty because neither protocol gives geometry. Window
@@ -167,7 +169,10 @@ the first Budgie 11 alpha (tracked as a follow-up on #1275).
 - The VM rows are in [the acceptance matrix](../testing/acceptance-matrix.md).
   The 2026-11-08 results (Fedora 44/45, Ubuntu Budgie 26.04/24.04, headless
   labwc and Magpie) are in the
-  [evidence record](https://github.com/patrick-hudson/put.gd-evidence/tree/6f522d18635d7789dc271bf3be1b5cf6bf752e43/records/2026-11-08-budgie-adapter-1275).
+  [evidence record](https://github.com/patrick-hudson/put.gd-evidence/tree/6f522d18635d7789dc271bf3be1b5cf6bf752e43/records/2026-11-08-budgie-adapter-1275);
+  link opening in the real browser, A/V sync, fps against KDE, the tray, the
+  window-capture gap and Magpie are in
+  [round 2](https://github.com/patrick-hudson/put.gd-evidence/tree/9457580e1236faa8ff065950ab7145d13cc88b4a/records/2026-11-08-budgie-acceptance-round2-1275).
 
 ## Tray
 
@@ -177,3 +182,5 @@ glyph there ([Tray icon](../design/appearance.md#tray-icon), #1294). Fedora's
 Budgie tray and Budgie 10.9's X11 tray draw the pixmap. Menu entries without a
 shortcut send no `shortcut` property: libdbusmenu rejects an empty one, which
 budgie-panel logged as "Unable to parse shortcut, too many keys".
+
+![Tray glyphs after the fix: Ubuntu Budgie 26.04 draws the named glyph, Fedora 44 and 45 the pixmap; before, the Ayatana applet drew a missing-icon symbol](https://raw.githubusercontent.com/patrick-hudson/put.gd-evidence/9457580e1236faa8ff065950ab7145d13cc88b4a/records/2026-11-08-budgie-acceptance-round2-1275/images/budgie-tray-named-icon.png)
