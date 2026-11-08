@@ -139,8 +139,10 @@ Proton runtime. Its SDK must be the release in `cmake/dependency-lock.json`:
 asks for that version `EXACT`. If it differs, or the prefix's origin is unknown,
 provision a new prefix in a fresh isolated checkout with
 `tools/ci/provision-linux-sdk.sh`, which clones and verifies the locked source
-into unused SDK source and build paths. Preserve the prepared checkout and its
-prefix. Qt stays dynamically linked to distro libraries. Fedora's
+into unused SDK source and build paths. That checkout has no Proton runtime;
+for Proton work, provision one there and configure with `-DPUTGD_BUNDLE_PROTON=ON`
+as [the build guide](../release/build.md) describes. Preserve the prepared checkout
+and its prefix. Qt stays dynamically linked to distro libraries. Fedora's
 `openssl3-devel` / `openssl3-libs` 3.5.8 compatibility packages support this SDK;
 the OpenSSL 4 dependency update is tracked in
 [#646](https://github.com/patrick-hudson/put.gd-desktop/issues/646). The container
