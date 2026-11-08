@@ -65,9 +65,11 @@ same value: `ready`, `login_required` ("Log out and back in once to finish setti
 put.gd."), or one of the failures in [errors](../user/errors.md#gnome-50-setup-states).
 A notification and the capture status in the app say the same thing. The state is
 derived from the running Shell and the loaded extension, so it stays honest after any
-change made outside put.gd. A connected but older extension asks for a logout only when
-a logout would load the update: `install_failed` is reported even while the old
-extension runs, and so is any other state a logout can't fix.
+change made outside put.gd. A connected but older extension asks for a logout when
+that would load the update: `install_failed` is reported even while the old extension
+runs, and so is any other state a logout can't fix. `settings_unavailable` is the
+exception that stays `login_required`, because the files are already in place and a
+loaded extension proves it is enabled.
 
 The resident rechecks at start, when the Shell's bus owner changes, and on
 `desktop.setup.recheck`. It reads the session's `XDG_CONFIG_HOME` and `XDG_DATA_HOME`
@@ -84,12 +86,14 @@ The resident compares the `extensionVersion` the loaded extension reports in
 `Hello` with the packaged `metadata.json` version (compiled in from
 `integrations/gnome/metadata.json`). While an older one is loaded,
 `capabilities` reports `helper.outdated: true` with `extensionVersion` and
-`packagedExtensionVersion`, the setup state is `login_required`, window and desktop
+`packagedExtensionVersion`, the setup state is `login_required` unless a logout can't
+load the update (see **One state** above), window and desktop
 screenshots keep working (an extension too old to report `uiProcessVersion` refuses
 window capture with `helper_incompatible` while the put.gd UI is open), and a region capture, a window recording, `recording.windows`
 or a region recording that needs the Shell's selector is refused with
 `helper_outdated`: "The put.gd GNOME Shell extension was updated; log out and back in
-to load the new version" (#131). A recording request that already carries its
+to load the new version" (#131), or the setup state's own message when a logout
+can't help. A recording request that already carries its
 rectangle skips that selector check.
 Bump `metadata.json`'s `version` whenever the extension's D-Bus interface changes.
 

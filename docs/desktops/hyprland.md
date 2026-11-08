@@ -161,13 +161,15 @@ Omarchy 4.5:
   the plain-text `binds` reply). A match is `shortcut_conflict` and the key is
   not bound. Omarchy's own `PRINT` (screenshot) and `SUPER + SHIFT + S` (Google
   Maps) are examples; put.gd's defaults `Ctrl+Shift+1/2/3` are free.
-- **Removing a put.gd bind touches only put.gd's key.** `reload` drops every runtime
-  bind, including other programs', so put.gd doesn't use it for this. `hl.unbind` is
-  exact on modifiers and key (measured on 0.56.2), but takes every bind on that chord
-  in every submap, so put.gd calls it only for a chord that nothing else holds. To
-  change or remove its binds, pause for the shortcut recorder, or quit, put.gd unbinds
-  those chords. If something else holds the chord, or put.gd's bind can't be read, it
-  runs `reload`, which restores the configuration's binds, and re-applies its set.
+- **Removing a put.gd bind normally touches only put.gd's key.** `reload` drops every
+  runtime bind, including other programs', so it isn't the normal path. `hl.unbind`
+  matches the chord as written (spaces and case ignored, modifier order not), taking
+  every bind written that way in every submap (measured on 0.56.2); put.gd writes its
+  binds in one fixed order and calls it only for a chord nothing else holds. To change
+  or remove its binds, pause for the shortcut recorder, or quit, put.gd unbinds those
+  chords. If something else holds the chord, or put.gd's bind can't be read, it runs
+  `reload` and re-applies its set: the configuration's binds come back, but other
+  programs' runtime binds are lost, so this path is only for that shared-key case.
 - **put.gd never calls a bind handle's `:remove()`.** A stale handle crashed
   Hyprland 0.56.2.
 - **Binds come back after every reload.** Omarchy reloads Hyprland on theme and
