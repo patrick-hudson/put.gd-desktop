@@ -68,6 +68,8 @@ assert args[args.index('--proto') + 1] == '=https'
 if '--write-out' in args:
     print(os.environ[url.split('/')[-2].upper()], end='')
     sys.exit(0)
+if os.environ.get('REJECT_RELEASE_DOWNLOADS') == '1' and url.startswith('https://app.put.gd/dl/'):
+    sys.exit(22)
 assert args[args.index('--proto-redir') + 1] == '=https'
 out = pathlib.Path(args[args.index('--output') + 1])
 payload = b'checked package fixture\\n'
@@ -254,6 +256,17 @@ else:
         (self.root / 'pacman.conf').write_text('[options]\n')
         self.run_script('--channel', 'nightly')
         self.assertEqual([c[1:] for c in self.calls() if Path(c[0]).name == 'pacman'], [['-Syu','putgd']])
+
+    def test_arch_installs_from_signed_repo_without_direct_release_download(self):
+        self.os_release.write_text('ID=arch\n')
+        self.env['REJECT_RELEASE_DOWNLOADS'] = '1'
+        self.tool('gpg', 'print("fpr:::::::::4032E28D893BAF66F4AC23D9A11D38D55536B371:")')
+        (self.root / 'pacman.d').mkdir()
+        (self.root / 'pacman.conf').write_text('[options]\n')
+        self.run_script('--channel', 'nightly')
+        config = self.root / 'pacman.d/putgd.conf'
+        self.assertIn('PackageRequired DatabaseRequired', config.read_text())
+        self.assertEqual([c[1:] for c in self.calls() if Path(c[0]).name == 'pacman'], [['-Syu', 'putgd']])
 
     def test_arch_key_mismatch_stops_before_trusting_key(self):
         self.os_release.write_text('ID=arch\n')
