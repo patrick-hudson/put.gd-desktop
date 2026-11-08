@@ -142,6 +142,9 @@ def audit_tree(root: Path, expected_manifest=None, *, require_kde=False, require
             raise ValueError(f"Native executable is not PIE: {relative}")
         if "GNU_RELRO" not in command(["readelf", "-lW", str(keeper_path)]) or not re.search(r"BIND_NOW|FLAGS.*\bNOW\b", command(["readelf", "-dW", str(keeper_path)])):
             raise ValueError(f"Native executable lacks full RELRO: {relative}")
+        resolved = command(["ldd", str(keeper_path)], env=env)
+        if "not found" in resolved:
+            raise ValueError(f"Unresolved native dependency: {keeper_path.name}\n{resolved}")
     for name in result["programs"]:
         if name == "putgd-launcher":
             continue

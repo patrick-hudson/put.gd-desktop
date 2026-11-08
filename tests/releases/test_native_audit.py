@@ -121,6 +121,38 @@ class NativeInventoryTests(unittest.TestCase):
             return json.dumps({"packageTarget": "debian13", "supported": False, "reason": "development_build"})
         return Path(argv[0]).name + " " + self.manifest["version"]
 
+    def with_keeper(self, mode=0o755):
+        self.write("usr/bin/putgd-region", "binary", 0o755)
+        self.write("usr/bin/putgd-clipboard-keeper", "binary", mode)
+
+    def test_clipboard_keeper_required_with_the_wayland_helpers(self):
+        self.write("usr/bin/putgd-region", "binary", 0o755)
+        with self.assertRaisesRegex(ValueError, "Required release file.*putgd-clipboard-keeper"):
+            audit.validate_inventory(self.root, self.manifest)
+
+    def test_clipboard_keeper_must_be_executable(self):
+        self.with_keeper(0o644)
+        with self.assertRaisesRegex(ValueError, "Executable mode must be 0755: putgd-clipboard-keeper"):
+            audit.validate_inventory(self.root, self.manifest)
+
+    def test_clipboard_keeper_is_hardened_and_resolves(self):
+        self.with_keeper()
+        for option, output, error in (("-hW", "Type: EXEC", "not PIE"), ("-lW", "", "full RELRO")):
+            def commands(argv, *, env=None):
+                if argv[:2] == ["readelf", option] and argv[2].endswith("putgd-clipboard-keeper"):
+                    return output
+                return self.commands(argv, env=env)
+            with self.subTest(option=option), patch.object(audit, "command", side_effect=commands):
+                with self.assertRaisesRegex(ValueError, error + ".*putgd-clipboard-keeper"):
+                    audit.audit_tree(self.root, self.manifest)
+        def unresolved(argv, *, env=None):
+            if argv[0] == "ldd" and argv[1].endswith("putgd-clipboard-keeper"):
+                return "\tlibwayland-client.so.0 => not found"
+            return self.commands(argv, env=env)
+        with patch.object(audit, "command", side_effect=unresolved):
+            with self.assertRaisesRegex(ValueError, "Unresolved native dependency: putgd-clipboard-keeper"):
+                audit.audit_tree(self.root, self.manifest)
+
     def test_non_pie_or_partial_relro_is_rejected(self):
         for option, output, error in (("-hW", "Type: EXEC", "not PIE"),
                                       ("-lW", "LOAD", "full RELRO"),
