@@ -45,17 +45,11 @@ Linux packaging renders menu PNG sizes from `packaging/linux/putgd.svg` at build
 Build the pinned AWS SDK with its own official CMake project. The app configuration
 never downloads dependencies. SDK libraries install under `build/sdk`; this is a normal
 CMake dependency install prefix, not a replacement compiler or Qt distribution.
+The provisioning script reads the release from `cmake/dependency-lock.json`,
+verifies the source and submodule commits, then builds the official SDK.
 
 ```sh
-git clone --depth 1 --branch 1.11.907 --recurse-submodules --shallow-submodules \
-  https://github.com/aws/aws-sdk-cpp.git build/dependencies/aws-sdk-cpp
-python3 tools/verify_dependencies.py build/dependencies/aws-sdk-cpp
-cmake -S build/dependencies/aws-sdk-cpp -B build/aws -G Ninja \
-  -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="$PWD/build/sdk" \
-  -DBUILD_ONLY=s3 -DBUILD_SHARED_LIBS=ON -DENABLE_TESTING=OFF \
-  -DAUTORUN_UNIT_TESTS=OFF -DENABLE_UNITY_BUILD=ON -DUSE_OPENSSL=ON
-cmake --build build/aws --parallel 2
-cmake --install build/aws
+bash tools/ci/provision-linux-sdk.sh
 cmake --preset dev
 cmake --build --preset dev
 ctest --preset dev
