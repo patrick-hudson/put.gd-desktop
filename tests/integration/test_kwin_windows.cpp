@@ -4,6 +4,7 @@
 // way KWin's org.kde.kwin.Scripting does and answers through callDBus's call;
 // only the bus owner of org.kde.KWin is believed. Never desktop proof.
 #include "platform/kde/KWinWindows.h"
+#include "fixtures/Waits.h"
 #include <QDBusConnection>
 #include <QDBusConnectionInterface>
 #include <QDBusMessage>
@@ -98,24 +99,24 @@ private slots:
         QJsonObject result;
         bool done = false;
         windows.list([](const QJsonObject&) { return false; }, [&](Error e, QJsonObject r) { error = e; result = r; done = true; });
-        QTRY_VERIFY_WITH_TIMEOUT(done, 5000);
+        PUTGD_TRY_VERIFY_WITH_TIMEOUT(done, 5000);
         QVERIFY2(!error, qPrintable(error.message));
         QCOMPARE(result["windows"].toArray().size(), 1);
         QVERIFY(result["windows"].toArray()[0].toObject()["active"].toBool());
         QCOMPARE(kwin.loaded.size(), 1);
-        QTRY_COMPARE(kwin.unloaded, kwin.loaded);
+        PUTGD_TRY_COMPARE(kwin.unloaded, kwin.loaded);
         // Another client calling the callback with the request's token is not KWin.
         kwin.silent = true;
         done = false;
         windows.list({}, [&](Error e, QJsonObject r) { error = e; result = r; done = true; });
-        QTRY_COMPARE(kwin.loaded.size(), 2);
+        PUTGD_TRY_COMPARE(kwin.loaded.size(), 2);
         const auto token = kwin.loaded.last().mid(QString("putgd-recording-windows-").size());
         auto spoof = QDBusMessage::createMethodCall(QDBusConnection::sessionBus().baseService(), "/org/putgd/KWinWindows", "org.putgd.KWinWindows", "Windows");
         spoof << token << QString::fromUtf8(QJsonDocument(QJsonArray{raw("{44444444-4444-4444-4444-444444444444}", 4100, "spoof", true)}).toJson(QJsonDocument::Compact));
         auto other = QDBusConnection::connectToBus(QDBusConnection::SessionBus, "spoofer");
         other.asyncCall(spoof);
         // KWin never answers: the request times out instead of taking the spoofed list.
-        QTRY_VERIFY_WITH_TIMEOUT(done, KWinWindows::timeoutMs + 2000);
+        PUTGD_TRY_VERIFY_WITH_TIMEOUT(done, KWinWindows::timeoutMs + 2000);
         QCOMPARE(error.code, QString("helper_unavailable"));
         QCOMPARE(error.message, QString("KWin did not list its windows"));
         QDBusConnection::disconnectFromBus("spoofer");

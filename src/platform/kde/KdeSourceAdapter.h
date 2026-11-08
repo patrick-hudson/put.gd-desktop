@@ -7,7 +7,7 @@
 #include "KdeOutputs.h"
 #include "KdeRegionProcess.h"
 #include "KWinWindows.h"
-#include "app/RecordingBackend.h"
+#include "core/RecordingWindows.h"
 #include <QPointer>
 #include <QThread>
 namespace putgd {
