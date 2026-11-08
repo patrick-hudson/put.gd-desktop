@@ -178,7 +178,7 @@ quint64 GnomeAdapter::clipboardRevision()const{
  return revision_;
 }
 QJsonObject GnomeAdapter::capabilities()const{
- const auto helperError=helperAvailabilityError();
+ const auto helperError=ready_?Error{}:helperAvailabilityError();
  auto capture=QJsonObject{{"available",ready_},{"mode","compositor-native"},{"consent","one-time-extension-setup"}};if(!ready_)capture["error"]=helperError.toJson();
  auto window=capture;if(uiProcessError_){window["available"]=false;window["error"]=uiProcessError_.toJson();}
  auto clipboard=QJsonObject{{"available",ready_},{"types",QJsonArray{"files","image","text"}},{"import","bounded-mutter-selection"},{"result","st-clipboard-only"}};
