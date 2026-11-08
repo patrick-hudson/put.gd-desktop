@@ -39,7 +39,9 @@ class BudgieLabwcTest:public QObject {
  // The keeper names itself; comm stays readable although it isn't dumpable.
  static QList<int> keepers(){
   QList<int> found;
-  for(const auto& entry:QDir("/proc").entryList(QDir::Dirs)){bool numeric=false;const int pid=entry.toInt(&numeric);if(!numeric)continue;QFile comm("/proc/"+entry+"/comm");if(comm.open(QIODevice::ReadOnly)&&comm.readAll().trimmed()=="putgd-clipboard")found.append(pid);}
+  for(const auto& entry:QDir("/proc").entryList(QDir::Dirs)){bool numeric=false;const int pid=entry.toInt(&numeric);if(!numeric)continue;QFile comm("/proc/"+entry+"/comm");if(!comm.open(QIODevice::ReadOnly)||comm.readAll().trimmed()!="putgd-clipboard")continue;
+   // CI's container has no init to reap it: an exited keeper stays listed as a zombie.
+   QFile stat("/proc/"+entry+"/stat");const auto text=stat.open(QIODevice::ReadOnly)?stat.readAll():QByteArray();const auto end=text.lastIndexOf(')');if(end>=0&&text.mid(end+2,1)!="Z")found.append(pid);}
   return found;
  }
  QByteArray paste(const QStringList& arguments={"--no-newline"}){QProcess paste;paste.start(wlPaste_,arguments);if(!waitFor([&]{return paste.state()==QProcess::NotRunning;},5000))return {};return paste.readAllStandardOutput();}
