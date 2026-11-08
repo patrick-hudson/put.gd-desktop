@@ -338,8 +338,8 @@ SetupStatus removeOwnedUserCopy(const SetupInputs& in){
  const auto copy=inspectUserCopy(userDir);
  if(copy.exists&&!copy.managed)return status("foreign_user_copy","gnome_foreign_extension",
   QStringLiteral("The copy in %1 was not installed by put.gd, so it was left alone.").arg(userDir));
- if(!copy.managed)return ready({{"removed",false}});
  // With a system package installed the entry is the package's now; keep it.
+ // Without one, a stale entry is cleared even if the copy is already gone.
  int systemVersion=0;
  if(!hasSystemCopy(in.dataDirs,&systemVersion)){
   // The setting goes first, so a failure here leaves a working install, not a stale entry.
@@ -354,8 +354,8 @@ SetupStatus removeOwnedUserCopy(const SetupInputs& in){
    if(!write.started||write.exitCode!=0)return settingsUnavailable(write);
   }
  }
- if(!removeCopyFiles(userDir,copy.files))return installFailed(QStringLiteral("cannot remove the files in %1").arg(userDir));
- return ready({{"removed",true}});
+ if(copy.managed&&!removeCopyFiles(userDir,copy.files))return installFailed(QStringLiteral("cannot remove the files in %1").arg(userDir));
+ return ready({{"removed",copy.managed}});
 }
 
 QJsonObject SetupStatus::toJson()const{

@@ -410,8 +410,9 @@ The image carries the matching GNOME 50 Shell extension
 when no system copy exists, the resident installs it to
 `$XDG_DATA_HOME/gnome-shell/extensions/putgd@put.gd/` (by default under
 `~/.local/share`) with a `.putgd-managed` marker and enables it for the next login,
-so a GNOME 50 user logs out and back in once. If extensions are turned off, or the
-user turned this one off, put.gd reports that instead and leaves it off
+so a GNOME 50 user logs out and back in once. A copy put.gd did not create is left
+alone and reported, and if extensions are turned off, or the user turned this one
+off, put.gd reports that instead and leaves it off
 (see [GNOME](../../docs/desktops/gnome.md)). `--remove-gnome-extension` takes that
 copy away again.
 The production CLI can be called through the extracted AppDir's

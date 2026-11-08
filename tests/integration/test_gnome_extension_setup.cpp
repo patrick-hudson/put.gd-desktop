@@ -190,6 +190,11 @@ private slots:
   QVERIFY(removeOwnedUserCopy(f.inputs()).details["removed"].toBool());
   QVERIFY(!QDir(userDir(f)).exists());QVERIFY(f.writes.isEmpty());
  }
+ void removeClearsStaleEntryWithoutCopy(){
+  Fixture f;f.settings["enabled-extensions"]="['a@x', 'putgd@put.gd']";
+  const auto s=removeOwnedUserCopy(f.inputs());QVERIFY(!s.needsUser());QVERIFY(!s.details["removed"].toBool());
+  QCOMPARE(f.writes,QStringList{"enabled-extensions=['a@x']"});
+ }
  void removeLeavesForeignCopy(){
   Fixture f;write(userDir(f)+"/metadata.json","{}");const auto s=removeOwnedUserCopy(f.inputs());
   QCOMPARE(s.state,QString("foreign_user_copy"));QVERIFY(QFile::exists(userDir(f)+"/metadata.json"));
