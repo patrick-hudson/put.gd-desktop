@@ -93,7 +93,7 @@ private:
  void readBack();
  void finish();
  void reloadThen(std::function<void(Error)>);
- void unbindThen(QList<Chord>,std::function<void(Error)>);
+ void unbindThen(QList<Chord>,std::function<void()>);
  void configReloaded();
  void ensureLayerRule(std::function<void()> next);
  HyprlandIpc* ipc_;

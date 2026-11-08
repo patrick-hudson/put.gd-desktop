@@ -370,12 +370,11 @@ void HyprlandShortcuts::reloadThen(std::function<void(Error)> next){
   next(error);
  });
 }
-void HyprlandShortcuts::unbindThen(QList<Chord> chords,std::function<void(Error)> next){
- if(chords.isEmpty()){next({});return;}
+void HyprlandShortcuts::unbindThen(QList<Chord> chords,std::function<void()> next){
+ if(chords.isEmpty()){next();return;}
  const auto chord=chords.takeFirst();++unbinds_;
- // A refused unbind shows up when j/binds is read again, and the reload takes over.
- ipc_->request("eval "+unbindScript(chord),[this,chords=std::move(chords),next=std::move(next)](QByteArray,Error error)mutable{
-  if(error){next(std::move(error));return;}
+ // A refused or failed unbind shows up when j/binds is read again, and the reload takes over.
+ ipc_->request("eval "+unbindScript(chord),[this,chords=std::move(chords),next=std::move(next)](QByteArray,Error)mutable{
   unbindThen(std::move(chords),std::move(next));
  });
 }
@@ -383,8 +382,7 @@ void HyprlandShortcuts::applyBinds(QJsonArray binds,int reloads){
  auto wanted=paused_?QHash<QString,QString>{}:requested_;
  auto planned=plan(binds,wanted);
  if(!planned.reloadFirst&&!planned.remove.isEmpty()&&reloads==0){
-  unbindThen(planned.remove,[this,reloads](Error error){
-   if(error){ipcError_=error.message;finish();return;}
+  unbindThen(planned.remove,[this,reloads]{
    readBinds([this,reloads](QJsonArray binds,Error error){
     if(error){ipcError_=error.message;finish();return;}
     applyBinds(std::move(binds),reloads+1);
