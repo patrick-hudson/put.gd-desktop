@@ -328,7 +328,9 @@ class LiveOutcomes(unittest.TestCase):
             outcomes_live._cleanup(ctx,{'id':'owned-history'})
         self.assertIs(ctx.profile['windows'],previous)
         ctx.click.assert_any_call('text:Revoke link…',window='history')
-        ctx.note.assert_called_once_with('revocation_count=1')
+        self.assertEqual([call.args for call in ctx.note.call_args_list], [
+            ('revocation_count=1',),
+            ('proton_retained_file_count=1; synthetic private file; share revoked',)])
 
     def test_cleanup_ownership_rejects_foreign_receipts_before_any_input(self):
         def expect(ok,note):
