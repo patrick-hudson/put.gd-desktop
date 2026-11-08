@@ -154,14 +154,23 @@ with the protocol named, and no chooser ever shows. Details are in
 Budgie 11 has no release and no installable session. The adapter works from
 advertised protocols, so Magpie built from the forge gets capture, clipboard,
 region and window capture where Mir advertises them (Mir 2.29+ for windows).
-Magpie keybinds (`magpierc`) are not written: an injected key did not fire a
-Magpie keybind in the 2026-11-01 probe, and no Budgie 11 shortcut contract
-exists. Headless Magpie (58a0d7a, Mir 2.29) passes capture, window capture,
+
+Magpie keybinds (`magpierc`) are not written. With real keys on a direct-seat
+Magpie 58a0d7a, modifier plus printable combos fire (`Ctrl+Alt+b`, `Ctrl+Shift+K`),
+but a binding has to name the shifted symbol (`Ctrl+Shift+!` for physical
+Ctrl+Shift+1), and Magpie's key translation can't match F keys, Return, Print or
+keys with no modifier
+([#1289](https://github.com/patrick-hudson/put.gd-desktop/issues/1289)).
+
+Headless Magpie (Mir 2.29 `mir:virtual`) passes capture, window capture,
 clipboard, region (virtual pointer, exact pixels) and monitor and window
-recording; window recording failed 2 of 4 runs until #1296 (a prepare right
-after a cancel) was fixed, then passed 5/5 fresh sessions. After about six
-capture sessions on one window Magpie stops repainting that window
-([#1305](https://github.com/patrick-hudson/put.gd-desktop/issues/1305)).
+recording. Window recording failed 2 of 4 runs until #1296 (a prepare right after
+a cancel) was fixed, then passed 5/5 fresh sessions. `mir:virtual` has no
+compositing, so only a capture consumes a window's buffers, and a capture session
+can get a single stale frame
+([#1305](https://github.com/patrick-hudson/put.gd-desktop/issues/1305)): judge
+Magpie motion on a real output, where captures and recordings are steady.
+
 **No real Budgie 11 desktop has been tested.** Acceptance runs on the first
 Budgie 11 alpha ([#1290](https://github.com/patrick-hudson/put.gd-desktop/issues/1290)).
 
