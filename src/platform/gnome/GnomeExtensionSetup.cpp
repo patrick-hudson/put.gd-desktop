@@ -103,13 +103,17 @@ bool removeCopyFiles(const QString& userDir,const QStringList& files){
 }
 // The files a stale directory's own marker lists and still match: a retired copy
 // can be an older version with files this AppImage doesn't carry.
-QStringList verifiedMarkerFiles(const QDir& directory){
- QFile file(directory.filePath(copyMarkerName));if(!file.open(QIODevice::ReadOnly))return {};
+QStringList verifiedMarkerFiles(const QDir& directory,const QFileInfoList& contents){
+ const auto plain=[](const QFileInfo& entry){return entry.isFile()&&!entry.isSymLink();};
+ const auto markerEntry=std::find_if(contents.begin(),contents.end(),[](const QFileInfo& entry){return entry.fileName()==QLatin1String(copyMarkerName);});
+ if(markerEntry==contents.end()||!plain(*markerEntry))return {};
+ QFile file(markerEntry->filePath());if(!file.open(QIODevice::ReadOnly))return {};
  const auto marker=QJsonDocument::fromJson(file.read(1024*1024)).object();
  if(marker["managedBy"].toString()!="put.gd")return {};
  const auto listed=marker["files"].toObject();
  QStringList verified;
- for(auto it=listed.begin();it!=listed.end();++it)if(fileSha256(directory.filePath(it.key()))==it.value().toString())verified.append(it.key());
+ // Only what is really in this directory is hashed, whatever the marker names.
+ for(const auto& entry:contents)if(plain(entry)&&listed.contains(entry.fileName())&&fileSha256(entry.filePath())==listed[entry.fileName()].toString())verified.append(entry.fileName());
  return verified;
 }
 // A crash can leave a staging directory behind. Only what installCopy itself would
@@ -122,7 +126,7 @@ void removeStaleStaging(const QString& parent,QStringList bundled){
   if(!ownName.match(directory.fileName()).hasMatch())continue;
   const QDir stale(directory.filePath());
   const auto contents=stale.entryInfoList(QDir::AllEntries|QDir::Hidden|QDir::System|QDir::NoDotAndDotDot);
-  const auto expected=bundled+verifiedMarkerFiles(stale);
+  const auto expected=bundled+verifiedMarkerFiles(stale,contents);
   const bool ours=std::all_of(contents.begin(),contents.end(),[&](const QFileInfo& entry){
    return entry.isFile()&&!entry.isSymLink()&&expected.contains(entry.fileName());
   });
