@@ -55,14 +55,14 @@ public:
  void saveDiagnostics(const QString& operationId);
  // "Diagnostics package saved" with a Show in folder button.
  void notifyDiagnosticsSaved(const QJsonObject& bundleResult);
- // "Upload with put.gd" in file managers (#1105): the notice once per install,
+ // "Upload with put.gd" in file managers (#1105): the AppImage's notice once per install,
  // naming the session's file manager if it may need a restart, with a button that
  // restarts it (closing its windows, which the notice says first).
  void notifyFileManagerMenu(const QStringList& restartable);
  // A problem setting the menu up, e.g. COSMIC's action list could not be read.
  void notifyFileManagerProblem(const QString& message);
- // Quits a file manager FileManagerIntegration::restartScript knows; Files, and a
- // PCManFM drawing the desktop, start again in the background. False for other names.
+ // Quits a file manager FileManagerIntegration::restartScript knows; a PCManFM
+ // drawing the desktop starts again in the background. False for other names.
  static bool restartFileManager(const QString& name);
  // The update check's state (#293): a stable update shows a menu entry that
  // opens Settings; nightly updates show only in Settings.
