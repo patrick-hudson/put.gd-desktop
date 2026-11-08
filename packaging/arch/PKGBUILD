@@ -16,7 +16,8 @@ depends=('gcc-libs' 'glibc' 'qt6-base>=6.4.2' 'qt6-svg' 'qt6-wayland'
 optdepends=('gvfs: network locations' 'xdg-desktop-portal: desktop portal services'
             'nautilus: Files upload menu' 'caja: Caja upload menu'
             'nemo: Nemo upload menu' 'dolphin: Dolphin upload menu'
-            'thunar: Thunar send-to menu')
+            'thunar: Thunar send-to menu'
+            'gst-plugin-va: hardware (VA-API) video encoding for screen recording')
 makedepends=('cmake' 'ninja' 'python' 'git' 'pkgconf' 'wayland-protocols' 'nautilus' 'caja')
 # CMake has already stripped product binaries and recorded private runtime hashes.
 # makepkg must preserve these exact bytes, including bundled Proton code.
