@@ -74,7 +74,7 @@ show; `tests/desktop/budgie.yaml` lists the scenarios.
 
 | Row | Golden | Package | Must show |
 | --- | --- | --- | --- |
-| Fedora 44 Budgie (labwc 0.9.6) | `fedora44-budgie` | RPM (installed with `dnf` in the overlay; `lab.py install` takes the AppImage) | Everything except window capture and window recording, which report unavailable naming the protocol, in the notification and in Settings |
+| Fedora 44 Budgie (labwc 0.9.6) | `fedora44-budgie` | RPM (installed with `dnf` in the overlay; `lab.py install` takes the AppImage) | Everything except window capture and window recording. Window capture fails with `window_unavailable` naming the protocol (notification, Capture window tooltip, Settings → Advanced → Desktop support details). Window recording is not offered: `recording.capabilities` omits the `window` target with the reason and `recording.windows` answers `recording_unsupported` naming the protocol |
 | Ubuntu Budgie 26.04 (labwc 0.9.3) | `ubuntu-budgie-2604` | DEB | As Fedora 44 |
 | Fedora 45 Budgie (labwc 0.20.2) | `fedora45-budgie` | AppImage (`lab.py install`) and RPM (`dnf` in the overlay) | Everything, including window capture and window recording |
 | Ubuntu Budgie 24.04 (Budgie 10.9, X11) | `ubuntu-budgie-2404` | DEB | Everything through the X11 adapter |

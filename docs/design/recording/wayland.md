@@ -90,8 +90,8 @@ Cancelling a picker ends the operation as `cancelled`; Cancel, Stop and
 discard close the stream (`Session.Close`, `Session.Stop` or the protocol's
 `close`), which ends the share. `tests/unit` covers the portal stream
 demarshalling; the PipeWire paths are exercised on the Fedora GNOME and Debian
-KDE desktops, `wlr-capture` on the Budgie goldens (Fedora 44/45, Ubuntu Budgie
-26.04) and on headless labwc in `budgie_labwc_integration`.
+KDE desktops, `wlr-capture` on the Fedora 45 and Ubuntu Budgie 26.04 goldens
+and on headless labwc in `budgie_labwc_integration`.
 
 ### Window recordings
 

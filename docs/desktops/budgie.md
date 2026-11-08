@@ -72,6 +72,8 @@ bar is not included, and a window covered by another still captures its own
 pixels (occlusion does not apply, unlike KDE and X11).
 
 Where window capture is unavailable (labwc 0.9 on Fedora 44 and Ubuntu 26.04),
+pressing the window shortcut or button fails with `window_unavailable` and a
+notification naming the missing protocol (no fallback to region selection),
 the Capture window button carries the alert badge and the protocol in its
 tooltip, and Settings → Advanced → Desktop support details shows a Window
 capture row with the same reason

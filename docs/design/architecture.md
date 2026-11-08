@@ -14,7 +14,7 @@ The production registry contains S3, Backblaze B2 and Proton Drive. Shared core,
 GUI, history and platform contracts are provider-neutral; AWS headers stay under
 `src/storage/s3/`.
 
-Cinnamon/X11, GNOME Wayland and KDE Wayland use `QCoreApplication` residents.
+Cinnamon/X11, GNOME Wayland, KDE Wayland and Budgie Wayland use `QCoreApplication` residents.
 `src/platform/NativeSession.h` guards routing before application construction;
 the adapters independently verify their native connections and capabilities.
 Other or ambiguous routes retain a `QApplication` fallback, including GNOME/X11
