@@ -665,8 +665,8 @@ private slots:
   const auto value = notifications.values.first(); QCOMPARE(value["app"].toString(), QString("put.gd"));
   QCOMPARE(value["summary"].toString(), QString("put.gd — failed")); QCOMPARE(value["timeout"].toInt(), 10000);
   QCOMPARE(value["hints"].toMap()["urgency"].toUInt(), uint(2)); QVERIFY(value["actions"].toStringList().isEmpty());
-  // #1298: a failure is never restored by a server that persists notifications.
-  QVERIFY(value["hints"].toMap()["transient"].toBool());
+  // #1298: transient only on a server that restores its list after a restart (quickshell).
+  QVERIFY(!value["hints"].toMap().contains("transient"));
   // #151: a notification with buttons stays until used or dismissed, except where the
   // server keeps it, buttons and all, in its list (GNOME Shell, Plasma).
   tray.notify("put.gd — partial", "Synthetic failure", true, {}, {{"save-diagnostics", "Save diagnostics for this upload", "op"}});
@@ -678,7 +678,7 @@ private slots:
   emit notifications.ActionInvoked(2, "save-diagnostics"); putgd::test::settle(50); PUTGD_TRY_COMPARE(notifications.closed, QList<uint>{2});
   tray.notify("put.gd — completed", "Synthetic link", false, QUrl("https://example.invalid/a")); PUTGD_TRY_COMPARE(notifications.values.size(), 3);
   QCOMPARE(notifications.values[2]["timeout"].toInt(), 10000);
-  for (const auto& [server, timeout] : std::initializer_list<std::pair<QString, int>>{{"Plasma", 10000}, {"gnome-shell", 10000}, {"cinnamon", 0}}) {
+  for (const auto& [server, timeout] : std::initializer_list<std::pair<QString, int>>{{"Plasma", 10000}, {"gnome-shell", 10000}, {"cinnamon", 0}, {"quickshell", 0}}) {
    // A new notification server owner is asked its name again.
    notifications.server = server; const int queries = notifications.serverQueries;
    QVERIFY(peer.unregisterService("org.freedesktop.Notifications")); QVERIFY(peer.registerService("org.freedesktop.Notifications"));
@@ -687,11 +687,14 @@ private slots:
    tray.notify("put.gd — diagnostics saved", "Synthetic package", false, {}, {{"show-in-folder", "Show in folder", "/synthetic.zip"}});
    PUTGD_TRY_COMPARE(notifications.values.size(), sent + 1); QCOMPARE(notifications.values.last()["timeout"].toInt(), timeout);
    QCOMPARE(notifications.values.last()["hints"].toMap().contains("resident"), timeout == 0);
+   tray.notify("put.gd — failed", "Synthetic failure", true); PUTGD_TRY_COMPARE(notifications.values.size(), sent + 2);
+   QCOMPARE(notifications.values.last()["hints"].toMap().value("transient").toBool(), server == "quickshell");
+   QCOMPARE(notifications.values.last()["hints"].toMap()["urgency"].toUInt(), uint(2));
   }
   notifications.server.clear();
   QCOMPARE(NativeTray::notificationTimeoutMs("cinnamon", false), 10000); QCOMPARE(NativeTray::notificationTimeoutMs({}, true), 0);
   // #1105: notifications don't need a tray; GNOME without a StatusNotifier host still shows them.
-  changeHost(false); PUTGD_TRY_VERIFY(!tray.available()); tray.notify("Shown", "No tray"); PUTGD_TRY_COMPARE(notifications.values.size(), 3 + 3 + 1);
+  changeHost(false); PUTGD_TRY_VERIFY(!tray.available()); tray.notify("Shown", "No tray"); PUTGD_TRY_COMPARE(notifications.values.size(), 3 + 4 * 2 + 1);
   QCOMPARE(notifications.values.last()["summary"].toString(), QString("Shown"));
  }
  void firstNotificationOwnerAppearancePreservesClickTarget() {

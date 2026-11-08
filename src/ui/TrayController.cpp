@@ -8,6 +8,7 @@
 #include "core/Log.h"
 #include "platform/HostOpen.h"
 #include "core/HostEnvironment.h"
+#include "core/NotificationServer.h"
 #ifdef Q_OS_LINUX
 #include "NativeTray.h"
 #include <QDBusConnection>
@@ -604,16 +605,30 @@ void TrayController::notifyMessage(const QString& code, const QString& title, co
 // The urgency is a D-Bus byte: GNOME Shell shows no banner for an int or for 0 (#1105).
 void TrayController::showTrayMessage(const QString& title, const QString& message, bool warning, const QList<NotificationAction>& actions) {
  auto bus=QDBusConnection::sessionBus();
- if(actions.isEmpty()||!bus.isConnected()){sendTrayMessage(title,message,warning,actions);return;}
+ // A warning is transient only where the server would restore it after a restart (#1298): ask its name first.
+ if(warning&&bus.isConnected()){
+  auto* named=new QDBusPendingCallWatcher(bus.asyncCall(QDBusMessage::createMethodCall("org.freedesktop.Notifications","/org/freedesktop/Notifications","org.freedesktop.Notifications","GetServerInformation")),this);
+  connect(named,&QDBusPendingCallWatcher::finished,this,[this,title,message,actions](QDBusPendingCallWatcher* p) {
+   p->deleteLater();
+   const QDBusPendingReply<QString,QString,QString,QString> server=*p;
+   askCapabilities(title,message,true,actions,server.isValid()&&putgd::notifications::failuresTransient(server.argumentAt<0>()));
+  });
+  return;
+ }
+ askCapabilities(title,message,warning,actions,false);
+}
+void TrayController::askCapabilities(const QString& title, const QString& message, bool warning, const QList<NotificationAction>& actions, bool transient) {
+ auto bus=QDBusConnection::sessionBus();
+ if(actions.isEmpty()||!bus.isConnected()){sendTrayMessage(title,message,warning,actions,transient);return;}
  // A server with no buttons, like UKUI's, would keep the notice up with nothing to press.
  auto* asked=new QDBusPendingCallWatcher(bus.asyncCall(QDBusMessage::createMethodCall("org.freedesktop.Notifications","/org/freedesktop/Notifications","org.freedesktop.Notifications","GetCapabilities")),this);
- connect(asked,&QDBusPendingCallWatcher::finished,this,[this,title,message,warning,actions](QDBusPendingCallWatcher* p) {
+ connect(asked,&QDBusPendingCallWatcher::finished,this,[this,title,message,warning,actions,transient](QDBusPendingCallWatcher* p) {
   p->deleteLater();
   const QDBusPendingReply<QStringList> capabilities=*p;
-  sendTrayMessage(title,message,warning,capabilities.isValid()&&!capabilities.value().contains("actions")?QList<NotificationAction>{}:actions);
+  sendTrayMessage(title,message,warning,capabilities.isValid()&&!capabilities.value().contains("actions")?QList<NotificationAction>{}:actions,transient);
  });
 }
-void TrayController::sendTrayMessage(const QString& title, const QString& message, bool warning, const QList<NotificationAction>& actions) {
+void TrayController::sendTrayMessage(const QString& title, const QString& message, bool warning, const QList<NotificationAction>& actions, bool transient) {
  static constexpr int balloonMs=30000;
  const auto fallback=[this,tray=QPointer<QSystemTrayIcon>(tray_),title,message,warning,actions]{
   if(!tray)return;
@@ -631,8 +646,7 @@ void TrayController::sendTrayMessage(const QString& title, const QString& messag
  if(trayMessagesInFlight_>=8)return;
  auto call=QDBusMessage::createMethodCall("org.freedesktop.Notifications","/org/freedesktop/Notifications","org.freedesktop.Notifications","Notify");
  QStringList names;QHash<QString,QString> values;QVariantMap hints{{"urgency",QVariant::fromValue(static_cast<uchar>(warning?2:1))}};
- // Critical until seen, but never restored by a persisting server after a restart (#1298).
- if(warning)hints.insert("transient",true);
+ if(transient)hints.insert("transient",true);
  for(const auto& action:actions){names<<action.key<<action.label;values.insert(action.key,action.value);}
  // Buttons stay until used, as NativeTray's do where the server has no list to keep them in.
  if(!values.isEmpty()){
