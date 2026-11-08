@@ -1,6 +1,6 @@
 #include "platform/kde/KdeSourceAdapter.h"
-#include "platform/kde/KdeClipboardFormats.h"
-#include "platform/kde/KdeCaptureCompose.h"
+#include "platform/wayland/ClipboardFormats.h"
+#include "platform/wayland/CaptureCompose.h"
 #include "core/ImageFormat.h"
 #include <QtTest>
 #include <QDBusConnection>
@@ -271,8 +271,8 @@ private slots:
   compositor.disconnectClients();PUTGD_TRY_VERIFY(!clipboard.keyboardMap());PUTGD_TRY_VERIFY(clipboard.keyboardMap());
  }
  void outputConnectionLossAndReconnectNotifyStatus(){
-  NativeOutputFixture compositor;QVERIFY2(compositor.ready(),qPrintable(compositor.error()));KdeOutputs outputs;
-  PUTGD_TRY_VERIFY(outputs.status()["available"].toBool());QSignalSpy changed(&outputs,&KdeOutputs::changed);
+  NativeOutputFixture compositor;QVERIFY2(compositor.ready(),qPrintable(compositor.error()));WaylandOutputs outputs;
+  PUTGD_TRY_VERIFY(outputs.status()["available"].toBool());QSignalSpy changed(&outputs,&WaylandOutputs::changed);
   compositor.socketAvailable(false);compositor.disconnectClients();
   PUTGD_TRY_COMPARE(outputs.status()["error"].toString(),QString("Native output connection is unavailable"));
   const auto lostRevision=outputs.revision();const auto lostSignals=changed.count();QVERIFY(lostSignals>0);
@@ -284,14 +284,14 @@ private slots:
   QCOMPARE(outputs.layout().front().identity,QString("DP-1"));
  }
  void lowVersionOutputReportsProtocolNotOverflow(){
-  NativeOutputFixture compositor(3,true,1);QVERIFY2(compositor.ready(),qPrintable(compositor.error()));KdeOutputs outputs;
+  NativeOutputFixture compositor(3,true,1);QVERIFY2(compositor.ready(),qPrintable(compositor.error()));WaylandOutputs outputs;
   PUTGD_TRY_COMPARE(outputs.status()["error"].toString(),QString("Compositor output protocol lacks wl_output v2 batch completion"));
-  QVERIFY(outputs.layout().isEmpty());const auto revision=outputs.revision();QSignalSpy changed(&outputs,&KdeOutputs::changed);
+  QVERIFY(outputs.layout().isEmpty());const auto revision=outputs.revision();QSignalSpy changed(&outputs,&WaylandOutputs::changed);
   compositor.remove();PUTGD_TRY_COMPARE(outputs.status()["error"].toString(),QString("Waiting for compositor outputs"));
   QVERIFY(outputs.revision()>revision);QVERIFY(changed.count()>0);
  }
  void nativeV3WaitsForWlDone(){
-  NativeOutputFixture compositor;QVERIFY2(compositor.ready(),qPrintable(compositor.error()));KdeOutputs outputs;
+  NativeOutputFixture compositor;QVERIFY2(compositor.ready(),qPrintable(compositor.error()));WaylandOutputs outputs;
   PUTGD_TRY_VERIFY(outputs.status()["available"].toBool());const auto revision=outputs.revision();
   compositor.logical(QRect(-2560,0,2560,1440),false);PUTGD_TRY_VERIFY(!outputs.status()["available"].toBool());QVERIFY(outputs.revision()>revision);
   compositor.deprecatedDone();putgd::test::settle(20);PUTGD_TRY_VERIFY(!outputs.status()["available"].toBool());
@@ -299,14 +299,14 @@ private slots:
   const auto frames=outputs.layout();QCOMPARE(frames.size(),1);QCOMPARE(frames[0].logicalRect,QRectF(-2560,0,2560,1440));QCOMPARE(frames[0].density,1.5);
  }
  void nativeV2CannotCompleteDuringPendingNativeBatch(){
-  NativeOutputFixture compositor(2);QVERIFY2(compositor.ready(),qPrintable(compositor.error()));KdeOutputs outputs;
+  NativeOutputFixture compositor(2);QVERIFY2(compositor.ready(),qPrintable(compositor.error()));WaylandOutputs outputs;
   PUTGD_TRY_VERIFY(outputs.status()["available"].toBool());
   compositor.nativeMode(QSize(5120,2880),2);compositor.logical(QRect(0,0,3200,1800),true);
   PUTGD_TRY_VERIFY(!outputs.status()["available"].toBool());compositor.nativeDone();PUTGD_TRY_VERIFY(outputs.status()["available"].toBool());
   QCOMPARE(outputs.layout().front().logicalRect,QRectF(0,0,3200,1800));QCOMPARE(outputs.layout().front().density,1.6);
  }
  void nativeV2CannotReuseOldLogicalCompletion(){
-  NativeOutputFixture compositor(2);QVERIFY2(compositor.ready(),qPrintable(compositor.error()));KdeOutputs outputs;
+  NativeOutputFixture compositor(2);QVERIFY2(compositor.ready(),qPrintable(compositor.error()));WaylandOutputs outputs;
   PUTGD_TRY_VERIFY(outputs.status()["available"].toBool());const auto revision=outputs.revision();
   compositor.nativeMode(QSize(5120,2880),2);compositor.nativeDone();
   PUTGD_TRY_VERIFY(!outputs.status()["available"].toBool());QVERIFY(outputs.layout().isEmpty());QVERIFY(outputs.revision()>revision);
@@ -314,21 +314,21 @@ private slots:
   QCOMPARE(outputs.layout().front().logicalRect,QRectF(0,0,3200,1800));QCOMPARE(outputs.layout().front().density,1.6);
  }
  void nativeV2UnchangedBatchesPreserveSnapshot(){
-  NativeOutputFixture compositor(2);QVERIFY2(compositor.ready(),qPrintable(compositor.error()));KdeOutputs outputs;
+  NativeOutputFixture compositor(2);QVERIFY2(compositor.ready(),qPrintable(compositor.error()));WaylandOutputs outputs;
   PUTGD_TRY_VERIFY(outputs.status()["available"].toBool());const auto revision=outputs.revision();
   compositor.nativeMode(QSize(3840,2160),2);compositor.nativeDone();compositor.logical(QRect(0,0,2560,1440),true);
   putgd::test::settle(20);PUTGD_TRY_VERIFY(outputs.status()["available"].toBool());PUTGD_TRY_COMPARE(outputs.revision(),revision);
   PUTGD_TRY_COMPARE(outputs.layout().front().logicalRect,QRectF(0,0,2560,1440));PUTGD_TRY_COMPARE(outputs.layout().front().density,1.5);
  }
  void nativeRemovalAndAwayBackInvalidateSnapshots(){
-  NativeOutputFixture compositor;QVERIFY2(compositor.ready(),qPrintable(compositor.error()));KdeOutputs outputs;
+  NativeOutputFixture compositor;QVERIFY2(compositor.ready(),qPrintable(compositor.error()));WaylandOutputs outputs;
   PUTGD_TRY_VERIFY(outputs.status()["available"].toBool());const auto before=outputs.layout();auto revision=outputs.revision();
   compositor.transformAwayAndBack();PUTGD_TRY_VERIFY(outputs.revision()>revision);PUTGD_TRY_VERIFY(outputs.status()["available"].toBool());
   QCOMPARE(outputs.layout().front().logicalRect,before.front().logicalRect);QCOMPARE(outputs.layout().front().rotation,before.front().rotation);
   revision=outputs.revision();compositor.remove();PUTGD_TRY_VERIFY(outputs.layout().isEmpty());QVERIFY(outputs.revision()>revision);QVERIFY(!outputs.status()["available"].toBool());
  }
  void nativeOutputRequiresCurrentMode(){
-  NativeOutputFixture compositor(3,false);QVERIFY2(compositor.ready(),qPrintable(compositor.error()));KdeOutputs outputs;
+  NativeOutputFixture compositor(3,false);QVERIFY2(compositor.ready(),qPrintable(compositor.error()));WaylandOutputs outputs;
   PUTGD_TRY_VERIFY(compositor.discovered());QVERIFY(!outputs.status()["available"].toBool());
   compositor.nativeMode(QSize(3840,2160),2);compositor.nativeDone();PUTGD_TRY_VERIFY(outputs.status()["available"].toBool());
  }
@@ -350,18 +350,18 @@ private slots:
  void coreApplicationOwnsNoGraphicalConnection(){QVERIFY(!qobject_cast<QGuiApplication*>(QCoreApplication::instance()));}
  void nativeLogicalGeometryPreservesFractionalScaleAndRotation(){
   QString error;
-  const KdeOutputs::Metadata fractional{"DP-1",QRect(-1920,0,2560,1440),QSize(3840,2160),0,2};
-  const KdeOutputs::Metadata rotated{"DP-2",QRect(640,0,1080,1920),QSize(1920,1080),1,1};
-  auto frames=KdeOutputs::framesFromMetadata({rotated,fractional},&error);
+  const WaylandOutputs::Metadata fractional{"DP-1",QRect(-1920,0,2560,1440),QSize(3840,2160),0,2};
+  const WaylandOutputs::Metadata rotated{"DP-2",QRect(640,0,1080,1920),QSize(1920,1080),1,1};
+  auto frames=WaylandOutputs::framesFromMetadata({rotated,fractional},&error);
   QVERIFY2(error.isEmpty(),qPrintable(error));QCOMPARE(frames.size(),2);
   QCOMPARE(frames[0].identity,QString("DP-1"));QCOMPARE(frames[0].logicalRect,QRectF(fractional.logical));QCOMPARE(frames[0].density,1.5);
   QCOMPARE(frames[0].nativeRect.size(),QSize(3840,2160));QCOMPARE(frames[1].logicalRect,QRectF(rotated.logical));
   QCOMPARE(frames[1].nativeRect.size(),QSize(1080,1920));QCOMPARE(frames[1].rotation,90);
  }
  void nativeOutputMetadataFailsClosed(){
-  const KdeOutputs::Metadata valid{"DP-1",QRect(0,0,1920,1080),QSize(1920,1080),0,1};
+  const WaylandOutputs::Metadata valid{"DP-1",QRect(0,0,1920,1080),QSize(1920,1080),0,1};
   for(int mode=0;mode<7;++mode){
-   auto altered=valid;QList<KdeOutputs::Metadata> outputs;
+   auto altered=valid;QList<WaylandOutputs::Metadata> outputs;
    if(mode==0)altered.name.clear();
    if(mode==1)altered.logical.setWidth(0);
    if(mode==2)altered.transform=8;
@@ -369,14 +369,14 @@ private slots:
    if(mode==4)altered.mode.setHeight(0);
    if(mode==5)altered.logical.moveLeft(1000001);
    outputs.append(altered);if(mode==6)outputs.append(valid);
-   QString error;QVERIFY(KdeOutputs::framesFromMetadata(outputs,&error).isEmpty());QVERIFY(!error.isEmpty());
+   QString error;QVERIFY(WaylandOutputs::framesFromMetadata(outputs,&error).isEmpty());QVERIFY(!error.isEmpty());
   }
  }
  void fullOutputCompositionSharesImmutablePixels(){
   CaptureFrame frame;frame.identity="DP-1";frame.logicalRect=QRectF(-10.25,5.5,64,32);
   frame.nativeRect=QRect(-20,11,128,64);frame.density=2;frame.rotation=1;
   frame.pixels=QImage(128,64,QImage::Format_ARGB32);frame.pixels.fill(Qt::red);frame.pixels.setDevicePixelRatio(2);
-  Error error;auto result=composeKdeFrames({frame},frame.logicalRect,128*64,error);
+  Error error;auto result=composeOutputFrames({frame},frame.logicalRect,128*64,error);
   QVERIFY(!error);QCOMPARE(result.constBits(),frame.pixels.constBits());
   QCOMPARE(result.devicePixelRatio(),qreal(2));QCOMPARE(result.pixelColor(30,20),QColor(Qt::red));
   frame.pixels.fill(Qt::blue);QCOMPARE(result.pixelColor(30,20),QColor(Qt::red));
@@ -397,7 +397,7 @@ private slots:
    if(variant==7)candidate.pixels={};
    Error expectedError,actualError;
    const auto expected=composeFrames({candidate},selection,budget,expectedError);
-   const auto actual=composeKdeFrames({candidate},selection,budget,actualError);
+   const auto actual=composeOutputFrames({candidate},selection,budget,actualError);
    QCOMPARE(actualError.code,expectedError.code);QCOMPARE(actual.size(),expected.size());QCOMPARE(actual,expected);
   }
  }
@@ -412,28 +412,28 @@ private slots:
  void standardTextAndUriOffersSkipImageDiscovery(){
   int discoveries=0;const auto discover=[&]{++discoveries;return QList<QByteArray>{"image/jpeg","application/x-plugin-image"};};
   const QStringList offered{"UTF8_STRING","text/plain","text/uri-list","text/plain;charset=utf-8"};
-  QCOMPARE(kdeClipboardImportFormats(offered,discover),QStringList({"text/uri-list","text/plain;charset=utf-8","text/plain","UTF8_STRING"}));
+  QCOMPARE(dataControlImportFormats(offered,discover),QStringList({"text/uri-list","text/plain;charset=utf-8","text/plain","UTF8_STRING"}));
   QCOMPARE(discoveries,0);
-  QVERIFY(kdeClipboardImportFormats({},discover).isEmpty());QCOMPARE(discoveries,0);
+  QVERIFY(dataControlImportFormats({},discover).isEmpty());QCOMPARE(discoveries,0);
  }
  void pngPrioritySkipsImageDiscoveryDespiteAlternativeOffers(){
   int discoveries=0;const auto discover=[&]{++discoveries;return QList<QByteArray>{"image/jpeg","image/png","application/x-plugin-image"};};
   const QStringList offered{"image/jpeg","text/plain","application/x-plugin-image","image/png","text/uri-list"};
-  QCOMPARE(kdeClipboardImportFormats(offered,discover),QStringList({"text/uri-list","image/png","text/plain"}));
+  QCOMPARE(dataControlImportFormats(offered,discover),QStringList({"text/uri-list","image/png","text/plain"}));
   QCOMPARE(discoveries,0);
   // A URI list without local files advances to PNG; terminal PNG errors never
   // fall back to another image, matching the production importer contract.
-  QCOMPARE(kdeClipboardImportFormats({"image/png"},discover),QStringList({"image/png"}));QCOMPARE(discoveries,0);
+  QCOMPARE(dataControlImportFormats({"image/png"},discover),QStringList({"image/png"}));QCOMPARE(discoveries,0);
  }
  void customImageAliasesRetainDiscoveryAndOriginalOrder(){
   int discoveries=0;const auto discover=[&]{++discoveries;return QList<QByteArray>{"image/webp","application/x-plugin-image","image/jpeg","image/png"};};
   const QStringList offered{"image/jpeg","text/plain","application/x-plugin-image","image/webp","text/uri-list"};
-  QCOMPARE(kdeClipboardImportFormats(offered,discover),QStringList({"text/uri-list","image/webp","application/x-plugin-image","image/jpeg","text/plain"}));QCOMPARE(discoveries,1);
-  QCOMPARE(kdeClipboardImportFormats({"application/x-plugin-image","text/plain"},discover),QStringList({"application/x-plugin-image","text/plain"}));QCOMPARE(discoveries,2);
+  QCOMPARE(dataControlImportFormats(offered,discover),QStringList({"text/uri-list","image/webp","application/x-plugin-image","image/jpeg","text/plain"}));QCOMPARE(discoveries,1);
+  QCOMPARE(dataControlImportFormats({"application/x-plugin-image","text/plain"},discover),QStringList({"application/x-plugin-image","text/plain"}));QCOMPARE(discoveries,2);
  }
  void unknownNonImageOffersKeepDiscoveryFallback(){
   int discoveries=0;const auto discover=[&]{++discoveries;return QList<QByteArray>{"application/x-unknown"};};
-  QCOMPARE(kdeClipboardImportFormats({"application/x-unknown","text/plain"},discover),QStringList({"application/x-unknown","text/plain"}));QCOMPARE(discoveries,1);
+  QCOMPARE(dataControlImportFormats({"application/x-unknown","text/plain"},discover),QStringList({"application/x-unknown","text/plain"}));QCOMPARE(discoveries,1);
  }
  void recordingWaitsForNativeInactiveAndRestoresLatestBindings(){
   KdeShortcuts source;QVERIFY(keyboardMap(source));source.bind({{"window","Ctrl+1"}});PUTGD_TRY_VERIFY(source.status()["window"].toObject()["bound"].toBool());QVERIFY(shortcuts_.active.contains("window"));

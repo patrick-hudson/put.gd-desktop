@@ -101,10 +101,18 @@ if(PUTGD_RELEASE_TAG)
 endif()
 configure_file(runtime-notices.txt.in package-inputs/runtime-notices.txt @ONLY)
 install(FILES "${CMAKE_CURRENT_BINARY_DIR}/package-inputs/runtime-notices.txt" DESTINATION "${CMAKE_INSTALL_DATADIR}/doc/putgd")
-putgd_install_snapshot("${PROJECT_SOURCE_DIR}/src/platform/kde/protocols/ext-data-control-v1.xml"
+putgd_install_snapshot("${PROJECT_SOURCE_DIR}/src/platform/wayland/protocols/ext-data-control-v1.xml"
   "${CMAKE_INSTALL_DATADIR}/doc/putgd" RENAME wayland-ext-data-control-v1.xml)
-putgd_install_snapshot("${PROJECT_SOURCE_DIR}/src/platform/kde/protocols/wlr-data-control-unstable-v1.xml"
+putgd_install_snapshot("${PROJECT_SOURCE_DIR}/src/platform/wayland/protocols/wlr-data-control-unstable-v1.xml"
   "${CMAKE_INSTALL_DATADIR}/doc/putgd" RENAME wayland-wlr-data-control-unstable-v1.xml)
+putgd_install_snapshot("${PROJECT_SOURCE_DIR}/src/platform/wayland/protocols/ext-image-copy-capture-v1.xml"
+  "${CMAKE_INSTALL_DATADIR}/doc/putgd" RENAME wayland-ext-image-copy-capture-v1.xml)
+putgd_install_snapshot("${PROJECT_SOURCE_DIR}/src/platform/wayland/protocols/ext-image-capture-source-v1.xml"
+  "${CMAKE_INSTALL_DATADIR}/doc/putgd" RENAME wayland-ext-image-capture-source-v1.xml)
+putgd_install_snapshot("${PROJECT_SOURCE_DIR}/src/platform/wayland/protocols/ext-foreign-toplevel-list-v1.xml"
+  "${CMAKE_INSTALL_DATADIR}/doc/putgd" RENAME wayland-ext-foreign-toplevel-list-v1.xml)
+putgd_install_snapshot("${PROJECT_SOURCE_DIR}/src/platform/wayland/protocols/wlr-foreign-toplevel-management-unstable-v1.xml"
+  "${CMAKE_INSTALL_DATADIR}/doc/putgd" RENAME wayland-wlr-foreign-toplevel-management-unstable-v1.xml)
 putgd_install_snapshot("${PROJECT_SOURCE_DIR}/src/platform/kde/protocols/zkde-screencast-unstable-v1.xml"
   "${CMAKE_INSTALL_DATADIR}/doc/putgd" RENAME wayland-zkde-screencast-unstable-v1.xml)
 # SDK license must come from the exact source tree provisioned by the build contract.

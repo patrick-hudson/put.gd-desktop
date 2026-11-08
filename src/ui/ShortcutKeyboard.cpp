@@ -3,7 +3,7 @@
 #include <QGuiApplication>
 #include <QKeyEvent>
 #ifdef PUTGD_SHORTCUT_KEYBOARD
-#include "platform/kde/KdeKeyboardMap.h"
+#include "platform/wayland/KeyboardMap.h"
 #include <QtGui/qguiapplication_platform.h>
 #include <xkbcommon/xkbcommon.h>
 #if QT_VERSION >= QT_VERSION_CHECK(6,5,0)
@@ -71,7 +71,7 @@ struct ShortcutKeyboard::Private {
 const wl_keyboard_listener ShortcutKeyboard::Private::listener{
  [](void* data,wl_keyboard*,uint32_t format,int32_t fd,uint32_t size){
   auto* d=static_cast<Private*>(data);
-  if(auto* next=readKdeKeyboardMap(d->context,format,fd,size)){if(d->map)xkb_keymap_unref(d->map);d->map=next;}
+  if(auto* next=readWaylandKeyboardMap(d->context,format,fd,size)){if(d->map)xkb_keymap_unref(d->map);d->map=next;}
  },
  [](void*,wl_keyboard*,uint32_t,wl_surface*,wl_array*){},
  [](void*,wl_keyboard*,uint32_t,wl_surface*){},

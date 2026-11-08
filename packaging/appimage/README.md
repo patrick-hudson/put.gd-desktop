@@ -104,7 +104,7 @@ cmake --preset release -DCMAKE_PREFIX_PATH="$SDK_PREFIX;$QT_ROOT;$DEPENDENCY_PRE
 cmake --build --preset release
 ```
 
-`putgd-kde-region` must exist: omitting it breaks native KDE region capture.
+`putgd-region` must exist: omitting it breaks native KDE region capture.
 `putgd-record` must exist and link each FFmpeg library at the soname the
 dependency prefix's build gives it (9.0: `libavcodec.so.63`); `build-appimage.sh`
 refuses a helper linked against the distro FFmpeg.

@@ -282,8 +282,10 @@ def guest_call(run, broker, provider, request):
             _fail()
         profile = lab.load_profile(info['profile'])
         session = profile['session_process']
-        if session not in ('cinnamon', 'gnome-shell', 'plasmashell'):
+        if session not in ('cinnamon', 'gnome-shell', 'plasmashell', 'budgie-panel'):
             _fail()
+        # Budgie keeps its session's own Qt platform (wayland;xcb or wayland), as lab.guest_session does.
+        budgie = profile.get('desktop') == 'Budgie'
         user = info['guest_user']
         if not re.fullmatch(r'[a-z_][a-z0-9_-]*[$]?', user):
             _fail()
@@ -297,12 +299,11 @@ def guest_call(run, broker, provider, request):
 set -eu
 pid=$(pgrep -u {shlex.quote(user)} -x {shlex.quote(session)} | head -n 1)
 [ -n "$pid" ]
-for name in DISPLAY XAUTHORITY DBUS_SESSION_BUS_ADDRESS XDG_SESSION_TYPE XDG_CURRENT_DESKTOP WAYLAND_DISPLAY; do
+for name in DISPLAY XAUTHORITY DBUS_SESSION_BUS_ADDRESS XDG_SESSION_TYPE XDG_CURRENT_DESKTOP WAYLAND_DISPLAY{' QT_QPA_PLATFORM' if budgie else ''}; do
  value=$(tr '\\0' '\\n' < /proc/$pid/environ | sed -n "s/^$name=//p")
  [ -z "$value" ] || export "$name=$value"
 done
-export QT_QPA_PLATFORM={shlex.quote(profile['qt_platform'])}
-export XDG_RUNTIME_DIR=/run/user/$(id -u)
+{'' if budgie else 'export QT_QPA_PLATFORM=' + shlex.quote(profile['qt_platform']) + chr(10)}export XDG_RUNTIME_DIR=/run/user/$(id -u)
 {lab.guest_secret_prefix(info)}\
 exec {shlex.quote(program)} <<'{nonce}'
 '''.encode('ascii') + body + nonce.encode('ascii') + b'\n'

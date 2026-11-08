@@ -9,13 +9,13 @@ class QWindow;
 class QScreen;
 struct wl_callback;
 namespace putgd {
-class KdeRegionOverlay final:public QObject {
+class LayerShellRegionOverlay final:public QObject {
  Q_OBJECT
 public:
  // frozen: frames carry the pixels captured before selection (#629), shown as
  // the backdrop; otherwise the layer surfaces are transparent over the live desktop.
- explicit KdeRegionOverlay(QList<CaptureFrame>,QObject* parent=nullptr,bool recording=false,QString outcome={},bool frozen=false);
- ~KdeRegionOverlay() override;
+ explicit LayerShellRegionOverlay(QList<CaptureFrame>,QObject* parent=nullptr,bool recording=false,QString outcome={},bool frozen=false);
+ ~LayerShellRegionOverlay() override;
  void start();void cancel(Error={"cancelled","Region selection cancelled",{}});
  // The first font metrics populate Qt's whole font database. This does it on a
  // worker; until it ends, surfaces map and draw the outline without the hint and
@@ -26,7 +26,7 @@ public:
 signals:
  void selected(const QRectF&);void cancelled(const putgd::Error&);
 private:
- friend class KdeRegionOverlayTest;
+ friend class WaylandRegionOverlayTest;
  bool addSurface(const CaptureFrame&,QScreen*);
  void accept();
  bool eventFilter(QObject*,QEvent*) override;

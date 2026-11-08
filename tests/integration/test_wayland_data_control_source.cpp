@@ -181,6 +181,15 @@ private slots:
   const auto error=copied(adapter,text("https://put.gd/after"));QVERIFY2(!error,qPrintable(error.code));
   QVERIFY(adapter.lastCopyRevision()==adapter.clipboardRevision());
  }
+ // Mir announces no initial selection, so readiness comes from the sync (#1275). The first real
+ // copy after that must still count as a change, or an import prepared while empty takes it.
+ void aFirstCopyAfterAnAssumedEmptyClipboardIsAChange(){
+  Compositor compositor(true,false);QVERIFY2(compositor.error.isEmpty(),qPrintable(compositor.error));
+  DataControlSourceAdapter adapter;QVERIFY(test::waitFor([&]{return compositor.bound();}));QVERIFY(ready(adapter));
+  const auto before=adapter.clipboardRevision();
+  compositor.otherOwner({"text/plain"},"copied after connecting");
+  QVERIFY(test::waitFor([&]{return adapter.clipboardRevision()==before+1;}));
+ }
 };
 QTEST_GUILESS_MAIN(DataControlSourceTest)
 #include "test_wayland_data_control_source.moc"

@@ -40,8 +40,11 @@ SurfaceMode surfaceMode() {
     static const SurfaceMode mode = [] {
         if (!QGuiApplication::platformName().startsWith("wayland")) return SurfaceMode::X11;
 #ifdef PUTGD_RECORD_LAYER_SHELL
-        // KWin implements wlr-layer-shell; the same selector serves KDE screenshots.
-        if (qEnvironmentVariable("XDG_CURRENT_DESKTOP").contains("KDE", Qt::CaseInsensitive)) return SurfaceMode::LayerShell;
+        // KWin and labwc (Budgie 10.10) implement wlr-layer-shell; the same
+        // selector serves their screenshots. Add a desktop here only once its
+        // compositor's layer surfaces are accepted.
+        for (const auto& desktop : qEnvironmentVariable("XDG_CURRENT_DESKTOP").split(':', Qt::SkipEmptyParts))
+            if (desktop.compare("KDE", Qt::CaseInsensitive) == 0 || desktop.compare("Budgie", Qt::CaseInsensitive) == 0) return SurfaceMode::LayerShell;
 #endif
         return SurfaceMode::Compositor;
     }();

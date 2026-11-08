@@ -6,7 +6,7 @@ namespace putgd {
 // The discovery callback instantiates Qt image plugins. Defer it for PNG and
 // offers containing only already-recognized standard text/file-list formats.
 // Unknown MIME names retain discovery, including plugin aliases outside image/.
-inline QStringList kdeClipboardImportFormats(const QStringList& offered,
+inline QStringList dataControlImportFormats(const QStringList& offered,
                                              const std::function<QList<QByteArray>()>& discover) {
  QStringList formats;
  if(offered.contains("text/uri-list"))formats.append("text/uri-list");

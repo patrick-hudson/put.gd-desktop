@@ -1,4 +1,4 @@
-#include "KdeOutputs.h"
+#include "WaylandOutputs.h"
 #include "platform/NativeSession.h"
 #include "xdg-output-unstable-v1-client-protocol.h"
 #include <wayland-client.h>
@@ -32,7 +32,7 @@ bool validName(const QString& name){
  return true;
 }
 }
-QList<CaptureFrame> KdeOutputs::framesFromMetadata(const QList<Metadata>& metadata,QString* error){
+QList<CaptureFrame> WaylandOutputs::framesFromMetadata(const QList<Metadata>& metadata,QString* error){
  if(error)error->clear();
  const auto fail=[error](const char* reason){if(error)*error=QString::fromLatin1(reason);return QList<CaptureFrame>{};};
  if(metadata.isEmpty()||metadata.size()>maximumOutputs)return fail("No usable bounded output layout is available");
@@ -59,21 +59,21 @@ QList<CaptureFrame> KdeOutputs::framesFromMetadata(const QList<Metadata>& metada
  std::sort(frames.begin(),frames.end(),[](const auto& a,const auto& b){return a.identity<b.identity;});
  return frames;
 }
-struct KdeOutputs::Impl:QObject {
+struct WaylandOutputs::Impl:QObject {
  struct Output {
   Impl* owner=nullptr;uint32_t global=0;wl_output* native=nullptr;zxdg_output_v1* logical=nullptr;
   Metadata pending;bool position=false,size=false,mode=false,wlDone=false,xdgDone=false,coherent=false,invalid=false;
  };
- KdeOutputs& q;wl_display* display=nullptr;wl_registry* registry=nullptr;zxdg_output_manager_v1* manager=nullptr;
+ WaylandOutputs& q;wl_display* display=nullptr;wl_registry* registry=nullptr;zxdg_output_manager_v1* manager=nullptr;
  uint32_t managerName=0,managerVersion=0;wl_callback* initialSync=nullptr;
  QSocketNotifier* readNotifier=nullptr;QSocketNotifier* writeNotifier=nullptr;QTimer reconnect;
  QMap<uint32_t,Output*> outputs;QSet<uint32_t> overflowOutputs,unsupportedOutputs;bool overflowUntracked=false;
  QList<CaptureFrame> current;quint64 epoch=0;QString error="Native output discovery has not connected";
  bool dispatching=false,lossPending=false,closing=false;
- explicit Impl(KdeOutputs& q):q(q){
+ explicit Impl(WaylandOutputs& q):q(q){
   reconnect.setInterval(1000);connect(&reconnect,&QTimer::timeout,this,[this]{if(!display)open();});
-  if(!qobject_cast<QGuiApplication*>(QCoreApplication::instance())&&kdeCoreSessionEnvironment()){open();reconnect.start();}
-  else error="Native output discovery is reserved for the KDE Core session";
+  if(!qobject_cast<QGuiApplication*>(QCoreApplication::instance())&&waylandCoreSessionEnvironment()){open();reconnect.start();}
+  else error="Native output discovery is reserved for a Wayland Core session";
  }
  ~Impl() override{closing=true;reconnect.stop();reset();}
  void publish(const QString& connectionError={}){
@@ -234,9 +234,9 @@ struct KdeOutputs::Impl:QObject {
   reset();++epoch;publish();
  }
 };
-KdeOutputs::KdeOutputs(QObject* parent):QObject(parent),d_(std::make_unique<Impl>(*this)){}
-KdeOutputs::~KdeOutputs()=default;
-QList<CaptureFrame> KdeOutputs::layout()const{d_->events();return d_->current;}
-quint64 KdeOutputs::revision()const{d_->events();return d_->epoch;}
-QJsonObject KdeOutputs::status()const{d_->events();return {{"available",!d_->current.isEmpty()},{"protocol","wl-output+xdg-output"},{"protocol_version",int(d_->managerVersion)},{"outputs",d_->current.size()},{"revision",qint64(d_->epoch)},{"error",d_->error}};}
+WaylandOutputs::WaylandOutputs(QObject* parent):QObject(parent),d_(std::make_unique<Impl>(*this)){}
+WaylandOutputs::~WaylandOutputs()=default;
+QList<CaptureFrame> WaylandOutputs::layout()const{d_->events();return d_->current;}
+quint64 WaylandOutputs::revision()const{d_->events();return d_->epoch;}
+QJsonObject WaylandOutputs::status()const{d_->events();return {{"available",!d_->current.isEmpty()},{"protocol","wl-output+xdg-output"},{"protocol_version",int(d_->managerVersion)},{"outputs",d_->current.size()},{"revision",qint64(d_->epoch)},{"error",d_->error}};}
 }

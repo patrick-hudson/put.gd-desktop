@@ -18,7 +18,7 @@
 #include <cmath>
 #include <unistd.h>
 #ifdef PUTGD_RECORD_LAYER_SHELL
-#include "platform/kde/KdeRegionOverlay.h"
+#include "platform/wayland/LayerShellRegionOverlay.h"
 #endif
 
 namespace putgd::record {
@@ -76,6 +76,12 @@ RecordSession::RecordSession(QObject* parent) : QObject(parent), pipeline_(this)
         emit event({{"event", "failed"}, {"error", error.toJson()}});
     });
     connect(&pipeline_, &RecordingPipeline::sourceLost, this, [this](Error error) { sourceLost(error); });
+    // wlr-capture: the recorded window closed (targetLost) or its output went away.
+    connect(&pipeline_, &RecordingPipeline::imageCopyLost, this, [this](Error error) {
+        debugLog("wlr-capture: the source ended: " + error.message);
+        if (target_.kind == "window") targetLost();
+        else if (pipeline_.running() && !pipeline_.stopping()) endCapture(QStringLiteral("source_lost"));
+    });
     connect(&mutter_, &MutterScreenCast::lost, this, [this] { targetLost(); });
 #ifdef PUTGD_RECORD_KDE_SCREENCAST
     connect(&kde_, &KdeScreencast::lost, this, [this] { targetLost(); });
@@ -259,6 +265,8 @@ void RecordSession::cancelLocal() {
     if (kdeSelection_) { kdeSelection_->disconnect(this); kdeSelection_->cancel(); kdeSelection_->deleteLater(); kdeSelection_ = nullptr; }
 #endif
     pipeline_.cancel();
+    // The pipeline has stopped using it; the next prepare opens its own (review #1275).
+    imageCopy_.reset();
     portal_.close();
     mutter_.close();
 #ifdef PUTGD_RECORD_KDE_SCREENCAST
@@ -299,6 +307,7 @@ void RecordSession::acquire(Reply reply) {
     if (cancelled_) { reply({"cancelled", "Recording canceled before the source opened", {}}, {}); return; }
     const auto acquisition = capabilities_["acquisition"].toString();
     if (acquisition == "kde-screencast" || acquisition == "mutter-screencast") { prepareNative(std::move(reply)); return; }
+    if (acquisition == "wlr-capture") { prepareImageCopy(std::move(reply)); return; }
     if (acquisition == "portal") {
         if (target_.kind == "window") debugLog("window: no dialog-free screen cast here (" + capabilities_["kdeScreencast"].toObject()["reason"].toString(capabilities_["mutterScreenCast"].toObject()["reason"].toString(capabilities_["pipewire"].toObject()["socket"].isNull() ? QStringLiteral("no PipeWire socket") : QStringLiteral("none"))) + "); the portal picker chooses the window");
         preparePortal(std::move(reply));
@@ -346,8 +355,8 @@ void RecordSession::select(Reply reply) {
             frame.rotation = screen->angleBetween(screen->nativeOrientation(), screen->orientation());
             frames.append(frame);
         }
-        kdeSelection_ = new KdeRegionOverlay(frames, this, true);
-        connect(kdeSelection_, &KdeRegionOverlay::selected, this, [guard, reply](const QRectF& logical) {
+        kdeSelection_ = new LayerShellRegionOverlay(frames, this, true);
+        connect(kdeSelection_, &LayerShellRegionOverlay::selected, this, [guard, reply](const QRectF& logical) {
             if (!guard || !guard->kdeSelection_) return;
             guard->kdeSelection_->deleteLater();
             guard->kdeSelection_ = nullptr;
@@ -355,7 +364,7 @@ void RecordSession::select(Reply reply) {
             // Emitted from a Wayland callback: open the stream and the surfaces outside it.
             QTimer::singleShot(0, guard, [guard, reply] { if (guard) guard->acquire(reply); });
         });
-        connect(kdeSelection_, &KdeRegionOverlay::cancelled, this, [guard, cancelled](const Error& error) {
+        connect(kdeSelection_, &LayerShellRegionOverlay::cancelled, this, [guard, cancelled](const Error& error) {
             if (!guard || !guard->kdeSelection_) return;
             guard->kdeSelection_->deleteLater();
             guard->kdeSelection_ = nullptr;
@@ -490,6 +499,51 @@ void RecordSession::prepareNative(Reply reply) {
     preparePortal(std::move(reply));
 #endif
 }
+void RecordSession::prepareImageCopy(Reply reply) {
+    // Never the ScreenCast portal here: a missing or refused protocol is the
+    // error, with its name, and no chooser ever shows (#1275 decision 9).
+    ImageCopySource::Target source;
+    QRect shared;
+    QScreen* screen = nullptr;
+    const auto screens = QGuiApplication::screens();
+    if (target_.kind == "window") {
+        source.window = true;
+        source.identity = target_.identity;
+    } else if (target_.kind == "region") {
+        for (QScreen* candidate : screens) if (candidate->geometry().contains(target_.rect)) screen = candidate;
+        if (!screen) { reply({"recording_unsupported", "A region recording here covers one output; this region spans outputs or leaves them", {{"rect", rectJson(target_.rect)}}}, {}); return; }
+    } else if (target_.kind == "monitor") {
+        for (QScreen* candidate : screens) if ((target_.identity.isEmpty() && candidate == QGuiApplication::primaryScreen()) || candidate->name() == target_.identity) screen = candidate;
+        if (!screen) { reply({"recording_target", "No monitor has this name", {{"identity", target_.identity}}}, {}); return; }
+    } else if (target_.kind == "desktop") {
+        if (screens.size() != 1) { reply({"recording_unsupported", "Recording the whole desktop here covers one output; record a monitor instead", {{"outputs", int(screens.size())}}}, {}); return; }
+        screen = screens.first();
+    }
+    if (screen) { source.identity = screen->name(); shared = screen->geometry(); }
+    imageCopy_ = std::make_unique<ImageCopySource>();
+    QSize size; QString identity, appId;
+    if (auto e = imageCopy_->open(source, &size, &identity, &appId)) { imageCopy_.reset(); reply(e, {}); return; }
+    imageCopySize_ = size;
+    portalTarget_ = true;
+    portalCrop_ = {};
+    ResolvedTarget resolved;
+    if (target_.kind == "region") {
+        // The stream is the output in native pixels; the region is logical.
+        const double sx = double(size.width()) / shared.width(), sy = double(size.height()) / shared.height();
+        const QRect logical = target_.rect.translated(-shared.topLeft());
+        portalCrop_ = QRect(qRound(logical.x() * sx), qRound(logical.y() * sy), qRound(logical.width() * sx) & ~1, qRound(logical.height() * sy) & ~1);
+        resolved.rect = target_.rect;
+        resolved.canvas = portalCrop_.size();
+    } else {
+        resolved.rect = shared.isEmpty() ? QRect(QPoint(), size) : shared;
+        resolved.canvas = QSize(size.width() & ~1, size.height() & ~1);
+    }
+    resolved.layout = QJsonObject{{"acquisition", "wlr-capture"}, {"identity", identity}, {"stream", sizeJson(size)}, {"shared", rectJson(shared.isEmpty() ? QRect(QPoint(), size) : shared)}};
+    if (!appId.isEmpty()) resolved.layout["appId"] = appId;
+    resolved_ = resolved;
+    prepared_ = true;
+    finishPrepare(std::move(reply));
+}
 // `shared` is the monitor or area the stream covers; `streamRect` is what the
 // stream frames show (equal unless a region is cropped out of a portal share).
 void RecordSession::finishWayland(quint32 node, int fd, const QRect& shared, const QRect& streamRect, const QString& source, Reply reply) {
@@ -622,8 +676,14 @@ void RecordSession::begin(Reply reply) {
     RecordingPipeline::Options options;
     options.rect = resolved_.rect;
     options.window = resolved_.window;
-    if (portalTarget_) { options.rect = resolved_.layout["shared"].isArray() ? QRect(resolved_.layout["shared"].toArray()[0].toInt(), resolved_.layout["shared"].toArray()[1].toInt(), resolved_.layout["shared"].toArray()[2].toInt(), resolved_.layout["shared"].toArray()[3].toInt()) : resolved_.rect; options.pipewireFd = portalFd_; options.pipewireNode = portalNode_; options.crop = portalCrop_; }
-    if (portalTarget_ && target_.kind == "window") {
+    if (imageCopy_) {
+        options.imageCopy = imageCopy_.get(); options.rect = QRect(QPoint(), imageCopySize_); options.crop = portalCrop_;
+        // 4:2:0 encoders refuse odd sizes: a window or output stream (often odd for a window) loses
+        // its last odd column or row to the even canvas, as the region crop already does (review #1275).
+        if (!options.crop.isValid() && resolved_.canvas != imageCopySize_) options.crop = QRect(QPoint(), resolved_.canvas);
+    }
+    else if (portalTarget_) { options.rect = resolved_.layout["shared"].isArray() ? QRect(resolved_.layout["shared"].toArray()[0].toInt(), resolved_.layout["shared"].toArray()[1].toInt(), resolved_.layout["shared"].toArray()[2].toInt(), resolved_.layout["shared"].toArray()[3].toInt()) : resolved_.rect; options.pipewireFd = portalFd_; options.pipewireNode = portalNode_; options.crop = portalCrop_; }
+    if (portalTarget_ && !imageCopy_ && target_.kind == "window") {
         // A window stream changes size with the window (KWin, the portal) or
         // moves the window inside a larger buffer (Mutter): follow the crop,
         // keep the canvas, and survive a source that fails to renegotiate.

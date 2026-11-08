@@ -30,6 +30,9 @@ class NativeInventoryTests(unittest.TestCase):
         path.write_bytes(gzip.compress(b"putgd (0.1.2-rc.1) unstable; urgency=medium\n"))
         self.write("usr/share/doc/putgd/wayland-ext-data-control-v1.xml", "protocol")
         self.write("usr/share/doc/putgd/wayland-wlr-data-control-unstable-v1.xml", "protocol")
+        for name in ("ext-image-copy-capture-v1", "ext-image-capture-source-v1", "ext-foreign-toplevel-list-v1",
+                     "wlr-foreign-toplevel-management-unstable-v1"):
+            self.write(f"usr/share/doc/putgd/wayland-{name}.xml", "protocol")
         for asset in audit.DESKTOP_ASSETS:
             self.write("usr/" + asset, "asset")
         for name in audit.PROGRAMS:

@@ -25,7 +25,13 @@
 #include <QDBusVirtualObject>
 #include <QElapsedTimer>
 #include <utility>
+#include <array>
 #include <QTimer>
+#include <QDir>
+#include <QFile>
+#include <QFileInfo>
+#include <QStandardPaths>
+#include <QtEndian>
 
 // Wire structures contain only Core types. ARGB bytes are in network order.
 struct NativeImage { int width = 0, height = 0; QByteArray bytes; };
@@ -150,7 +156,9 @@ QVariantMap menuProperties(int id, const QStringList& names = {}, const QString&
   if(id==16&&!recording.isEmpty())props.insert("label","Record screen — "+recording);
   const QKeySequence shortcut(shortcuts.value(QString::fromLatin1(e.action)));
   if(Settings::presentationOrder().contains(QString::fromLatin1(e.action))){
-   QList<QStringList> keys;for(int i=0;i<shortcut.count();++i){const auto chord=shortcut[i];const auto modifiers=chord.keyboardModifiers();QStringList parts;if(modifiers&Qt::ControlModifier)parts<<"Control";if(modifiers&Qt::AltModifier)parts<<"Alt";if(modifiers&Qt::ShiftModifier)parts<<"Shift";if(modifiers&Qt::MetaModifier)parts<<"Super";parts<<QKeySequence(chord.key()).toString(QKeySequence::PortableText);keys.append(parts);}props.insert("shortcut",QVariant::fromValue(keys));
+   QList<QStringList> keys;for(int i=0;i<shortcut.count();++i){const auto chord=shortcut[i];const auto modifiers=chord.keyboardModifiers();QStringList parts;if(modifiers&Qt::ControlModifier)parts<<"Control";if(modifiers&Qt::AltModifier)parts<<"Alt";if(modifiers&Qt::ShiftModifier)parts<<"Shift";if(modifiers&Qt::MetaModifier)parts<<"Super";parts<<QKeySequence(chord.key()).toString(QKeySequence::PortableText);keys.append(parts);}
+   // An unbound action sends no shortcut: libdbusmenu rejects an empty one ("too many keys", #1294).
+   if(!keys.isEmpty())props.insert("shortcut",QVariant::fromValue(keys));
   }
  }
  if (!names.isEmpty()) for (auto it = props.begin(); it != props.end();) {
@@ -164,6 +172,19 @@ NativeLayout menuLayout(int id, int depth, const QStringList& names, const QStri
  if (depth != 0) for (int child : childrenOf(id))
   result.children.append(QDBusVariant(QVariant::fromValue(menuLayout(child, depth < 0 ? depth : depth - 1, names, update, shortcuts, upload,uploads,failed,recording,attention,outputs))));
  return result;
+}
+// A minimal PNG (RGBA, no filtering) for the named-icon file below. QImageWriter would load every
+// image plugin into the resident on Qt 6.8 and older, which costs memory for one small file.
+QByteArray pngBytes(const QImage& source) {
+ const auto image=source.convertToFormat(QImage::Format_RGBA8888);
+ static const auto table=[]{std::array<quint32,256> t{};for(quint32 n=0;n<256;++n){quint32 c=n;for(int k=0;k<8;++k)c=c&1?0xedb88320u^(c>>1):c>>1;t[n]=c;}return t;}();
+ const auto crc=[](const QByteArray& data){quint32 c=0xffffffffu;for(const char b:data)c=table[(c^quint8(b))&0xff]^(c>>8);return c^0xffffffffu;};
+ const auto chunk=[&](const char* type,const QByteArray& data){QByteArray out(4,'\0');qToBigEndian<quint32>(quint32(data.size()),out.data());QByteArray body=QByteArray(type,4)+data;QByteArray tail(4,'\0');qToBigEndian<quint32>(crc(body),tail.data());return out+body+tail;};
+ QByteArray header(13,'\0');qToBigEndian<quint32>(quint32(image.width()),header.data());qToBigEndian<quint32>(quint32(image.height()),header.data()+4);header[8]=8;header[9]=6;
+ QByteArray raw;raw.reserve(image.height()*(image.width()*4+1));
+ for(int y=0;y<image.height();++y){raw.append('\0');raw.append(reinterpret_cast<const char*>(image.constScanLine(y)),image.width()*4);}
+ const auto zlib=qCompress(raw,9).mid(4); // qCompress prefixes the zlib stream with its length
+ return QByteArray("\x89PNG\r\n\x1a\n",8)+chunk("IHDR",header)+chunk("IDAT",zlib)+chunk("IEND",{});
 }
 NativeImages brandIcon(const IconArt::TrayIcon& icon=IconArt::TrayIcon{Theme::trayTints(false).idle}) {
  NativeImages result;
@@ -257,6 +278,15 @@ private:
  bool exportedItem_ = false, exportedMenu_ = false, registeredService_ = false;
  bool hostPresent_ = false, available_ = false, registrationInFlight_ = false;
  bool ownerKnown_ = false, hostKnown_ = false, registrationSettled_ = false, availabilityKnown_ = false;
+ // Ayatana's and Canonical's indicator-application-service ignore IconPixmap (#1294; Ubuntu Budgie 26.04's
+ // default tray applet), so for them the icon is also a PNG file, its absolute path in IconName.
+ // A new file per change, because those hosts cache an icon by name.
+ bool namedIcon_ = false, detecting_ = false;
+ QString iconDirectory_, iconName_;
+ QStringList iconFiles_;
+ quint64 iconSerial_ = 0;
+ void detectIconHost(quint64 generation);
+ bool writeNamedIcon();
 };
 
 namespace {
@@ -319,6 +349,7 @@ NativeTrayPrivate::~NativeTrayPrivate() {
  // The watcher tracks the named service, so disappearance removes the item even
  // when other app services keep the shared session-bus connection alive.
  if (registeredService_) bus_.unregisterService(service_);
+ for (const auto& file : iconFiles_) QFile::remove(file);
  if (exportedMenu_) bus_.unregisterObject("/Menu");
  if (exportedItem_) bus_.unregisterObject("/StatusNotifierItem");
 }
@@ -327,7 +358,56 @@ void NativeTrayPrivate::setOwner(const QString& owner) {
  ownerKnown_ = true; hostKnown_ = owner.isEmpty(); registrationSettled_ = owner.isEmpty(); availabilityKnown_ = false;
  ++generation_; ++hostQuery_; owner_ = owner; registeredOwner_.clear(); hostPresent_ = false;
  attempts_ = 0; retry_.stop(); updateAvailability();
- if (!owner_.isEmpty()) { queryHost(); registerItem(); }
+ if (!owner_.isEmpty()) detectIconHost(generation_); else detecting_ = false;
+}
+void NativeTrayPrivate::detectIconHost(quint64 generation) {
+ // Registration waits for this answer, so the host's first GetAll already has the right icon (review #1275).
+ detecting_ = true;
+ auto call = QDBusMessage::createMethodCall("org.freedesktop.DBus", "/org/freedesktop/DBus", "org.freedesktop.DBus", "GetConnectionUnixProcessID");
+ call << owner_;
+ auto* pending = new QDBusPendingCallWatcher(bus_.asyncCall(call, callTimeoutMs), this);
+ connect(pending, &QDBusPendingCallWatcher::finished, this, [this, generation](QDBusPendingCallWatcher* p) {
+  const QDBusPendingReply<uint> result = *p; p->deleteLater();
+  if (generation != generation_) return;
+  detecting_ = false;
+  // An upgraded package leaves the running service's exe as "... (deleted)".
+  auto program = result.isError() ? QString{} : QFileInfo(QFile::symLinkTarget(QString("/proc/%1/exe").arg(result.value()))).fileName();
+  if (program.endsWith(" (deleted)")) program.chop(int(qstrlen(" (deleted)")));
+  // Without a file to name, keep the pixmap-only item rather than announce an empty name.
+  const bool named = program.endsWith("indicator-application-service") && (namedIcon_ || writeNamedIcon());
+  if (named != namedIcon_) {
+   namedIcon_ = named;
+   // Already registered with this host: tell it the icon changed.
+   if (!registeredOwner_.isEmpty()) {
+    const auto props = properties(false);
+    auto signal = QDBusMessage::createSignal("/StatusNotifierItem", "org.freedesktop.DBus.Properties", "PropertiesChanged");
+    signal.setArguments({QString::fromLatin1(itemInterface), QVariantMap{{"IconName", props["IconName"]}, {"IconThemePath", props["IconThemePath"]}}, QStringList{}}); bus_.send(signal);
+    bus_.send(QDBusMessage::createSignal("/StatusNotifierItem", itemInterface, "NewIcon"));
+   }
+  }
+  queryHost(); registerItem();
+ });
+}
+bool NativeTrayPrivate::writeNamedIcon() {
+ if (iconDirectory_.isEmpty()) {
+  const auto runtime = QStandardPaths::writableLocation(QStandardPaths::RuntimeLocation);
+  if (runtime.isEmpty()) return false;
+  iconDirectory_ = runtime + "/putgd/tray";
+  if (!QDir().mkpath(iconDirectory_)) { iconDirectory_.clear(); return false; }
+  QFile::setPermissions(iconDirectory_, QFile::ReadOwner | QFile::WriteOwner | QFile::ExeOwner);
+ }
+ // No dashes: GTK expands a dashed name into fallbacks (putgd-tray-1 -> putgd) and matches the installed app
+ // icon in the themes before it reads this unthemed file.
+ const auto name = QString("putgd_tray_%1_%2").arg(QCoreApplication::applicationPid()).arg(++iconSerial_);
+ QFile file(iconDirectory_ + "/" + name + ".png");
+ if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate) || file.write(pngBytes(IconArt::liftTray({color_, percent_, recording_, glyph_}, 2))) < 0) return false;
+ file.close();
+ iconName_ = name;
+ // Keep the last few: during a burst of changes (upload progress) the host can still be loading a
+ // name it was told about, and deleting that file leaves it on the missing-icon glyph (#1294).
+ iconFiles_.append(file.fileName());
+ while (iconFiles_.size() > 4) QFile::remove(iconFiles_.takeFirst());
+ return true;
 }
 void NativeTrayPrivate::hostChanged() { attempts_ = 0; queryHost(); registerItem(); }
 void NativeTrayPrivate::queryHost() {
@@ -347,6 +427,7 @@ void NativeTrayPrivate::queryHost() {
  });
 }
 void NativeTrayPrivate::registerItem() {
+ if (detecting_) return;  // detectIconHost registers when it knows the host
  if (owner_.isEmpty() || registrationInFlight_ || registeredOwner_ == owner_ || attempts_ >= 3) return;
  retry_.stop(); ++attempts_; registrationInFlight_ = true;
  const auto generation = generation_; const auto owner = owner_;
@@ -467,10 +548,10 @@ void NativeTrayPrivate::setActivity(const QColor& color,const QString& descripti
  const bool textChanged=description!=activityText_||tooltipTitle!=activityTitle_;
  if(!iconChanged&&!textChanged)return;
  color_=color;activityText_=description;activityTitle_=tooltipTitle;percent_=percent;recording_=recording;glyph_=glyph;
- if(iconChanged)icons_=brandIcon({color,percent,recording,glyph});
+ if(iconChanged){icons_=brandIcon({color,percent,recording,glyph});if(namedIcon_)writeNamedIcon();}
  const auto props=properties(false);QVariantMap changed;
  if(textChanged)changed.insert("ToolTip",props["ToolTip"]);
- if(iconChanged)changed.insert("IconPixmap",props["IconPixmap"]);
+ if(iconChanged){changed.insert("IconPixmap",props["IconPixmap"]);changed.insert("IconName",props["IconName"]);changed.insert("IconThemePath",props["IconThemePath"]);}
  auto signal=QDBusMessage::createSignal("/StatusNotifierItem","org.freedesktop.DBus.Properties","PropertiesChanged");
  signal.setArguments({QString::fromLatin1(itemInterface),changed,QStringList{}});bus_.send(signal);
  if(textChanged)bus_.send(QDBusMessage::createSignal("/StatusNotifierItem",itemInterface,"NewToolTip"));
@@ -479,8 +560,10 @@ void NativeTrayPrivate::setActivity(const QColor& color,const QString& descripti
 QVariantMap NativeTrayPrivate::properties(bool menu) const {
  if (menu) return {{"Version", uint(3)}, {"TextDirection", "ltr"}, {"Status", "normal"}, {"IconThemePath", QStringList{}}};
  return {{"Category", "ApplicationStatus"}, {"Id", "putgd"}, {"Title", "put.gd"}, {"Status", "Active"}, {"WindowId", 0},
-  {"IconThemePath", ""}, {"Menu", QVariant::fromValue(QDBusObjectPath("/Menu"))}, {"ItemIsMenu", false},
-  {"IconName", ""}, {"IconPixmap", QVariant::fromValue(icons_)},
+  {"IconThemePath", QString{}}, {"Menu", QVariant::fromValue(QDBusObjectPath("/Menu"))}, {"ItemIsMenu", false},
+  // The file's absolute path, not a name in a theme path: GTK re-reads a search path only every few
+  // seconds, so a host looking up a just-written name draws the missing-icon glyph (#1294).
+  {"IconName", namedIcon_ ? iconDirectory_ + "/" + iconName_ + ".png" : QString{}}, {"IconPixmap", QVariant::fromValue(icons_)},
   {"OverlayIconName", ""}, {"OverlayIconPixmap", QVariant::fromValue(NativeImages{})},
   {"AttentionIconName", ""}, {"AttentionIconPixmap", QVariant::fromValue(NativeImages{})}, {"AttentionMovieName", ""},
   {"ToolTip", QVariant::fromValue(NativeTooltip{"", {}, activityTitle_, activityText_})}};
@@ -629,9 +712,13 @@ void NativeTray::setActivity(const QColor& color,const QString& description,int 
 void NativeTray::setUpdateLabel(const QString& label) {d_->setUpdateLabel(label);}
 void NativeTray::setCommands(const QHash<QString,QString>& shortcuts,const QString& upload,int uploads,bool failed,const QString& recording,const QString& attention) {d_->setCommands(shortcuts,upload,uploads,failed,recording,attention);}
 void NativeTrayPrivate::setCommands(const QHash<QString,QString>& shortcuts,const QString& upload,int uploads,bool failed,const QString& recording,const QString& attention) {
- if(shortcuts_==shortcuts&&uploadStatus_==upload&&uploads_==uploads&&failed_==failed&&recordingText_==recording&&attentionLabel_==attention)return;shortcuts_=shortcuts;uploadStatus_=upload;uploads_=uploads;failed_=failed;recordingText_=recording;attentionLabel_=attention;++menuRevision_;
- NativePropertyList changed;for(int id=1;id<=entryCount;++id)if(knownId(id))changed.append({id,menuProperties(id,{"label","visible","enabled","shortcut"},updateLabel_,shortcuts_,uploadStatus_,uploads_,failed_,recordingText_,attentionLabel_,outputs_)});
- auto properties=QDBusMessage::createSignal("/Menu",menuInterface,"ItemsPropertiesUpdated");properties.setArguments({QVariant::fromValue(changed),QVariant::fromValue(NativeRemovedList{})});bus_.send(properties);
+ if(shortcuts_==shortcuts&&uploadStatus_==upload&&uploads_==uploads&&failed_==failed&&recordingText_==recording&&attentionLabel_==attention)return;
+ // An entry whose shortcut was cleared sends none any more (#1294); hosts that apply this signal must hear it removed.
+ QSet<int> hadShortcut;for(int id=1;id<=entryCount;++id)if(knownId(id)&&menuProperties(id,{"shortcut"},updateLabel_,shortcuts_).contains("shortcut"))hadShortcut.insert(id);
+ shortcuts_=shortcuts;uploadStatus_=upload;uploads_=uploads;failed_=failed;recordingText_=recording;attentionLabel_=attention;++menuRevision_;
+ NativePropertyList changed;NativeRemovedList removed;
+ for(int id=1;id<=entryCount;++id)if(knownId(id)){changed.append({id,menuProperties(id,{"label","visible","enabled","shortcut"},updateLabel_,shortcuts_,uploadStatus_,uploads_,failed_,recordingText_,attentionLabel_,outputs_)});if(hadShortcut.contains(id)&&!changed.last().properties.contains("shortcut"))removed.append({id,{"shortcut"}});}
+ auto properties=QDBusMessage::createSignal("/Menu",menuInterface,"ItemsPropertiesUpdated");properties.setArguments({QVariant::fromValue(changed),QVariant::fromValue(removed)});bus_.send(properties);
  auto signal=QDBusMessage::createSignal("/Menu",menuInterface,"LayoutUpdated");signal.setArguments({menuRevision_,0});bus_.send(signal);
 }
 void NativeTrayPrivate::setUpdateLabel(const QString& label) {

@@ -166,10 +166,12 @@ private slots:
   QVERIFY(started);QVERIFY(pid>0);
   PUTGD_TRY_VERIFY_WITH_TIMEOUT(QFile::exists(ready),5000);
   const QDir descriptors(QString("/proc/%1/fd").arg(pid));
+  // The marker exists from the moment the shell's redirect opens it, while fd 1 still points at it;
+  // wait for the redirect to end, so the descriptors below are the ones the program runs with (#1291).
+  for(int fd=0;fd<=2;++fd)PUTGD_TRY_COMPARE_WITH_TIMEOUT(QFileInfo(descriptors.filePath(QString::number(fd))).symLinkTarget(),QString("/dev/null"),5000);
   const auto entries=descriptors.entryList(QDir::AllEntries|QDir::NoDotAndDotDot);
   QVERIFY(!entries.isEmpty());
   for(const auto& fd:entries)QVERIFY2(QFileInfo(descriptors.filePath(fd)).symLinkTarget()!=root_.path(),qPrintable(fd));
-  for(int fd=0;fd<=2;++fd)QCOMPARE(QFileInfo(descriptors.filePath(QString::number(fd))).symLinkTarget(),QString("/dev/null"));
   // The sweep runs in the child, never in the resident.
   QCOMPARE(::fcntl(low.handle(),F_GETFD)&FD_CLOEXEC,0);QCOMPARE(::fcntl(high.handle(),F_GETFD)&FD_CLOEXEC,0);
  }

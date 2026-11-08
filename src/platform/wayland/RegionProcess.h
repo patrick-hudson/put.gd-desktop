@@ -1,5 +1,5 @@
 #pragma once
-#include "KdeRegionProtocol.h"
+#include "RegionProtocol.h"
 #include "ipc/CaptureControl.h"
 #include <QPointer>
 #include <QProcess>
@@ -12,12 +12,12 @@
 namespace putgd {
 // Owns one geometry-only helper. No callback can authorize capture before its
 // fenced unmap/result handshake and normal zero exit have both completed.
-class KdeRegionProcess final: public QObject {
+class WaylandRegionProcess final: public QObject {
  Q_OBJECT
 public:
- explicit KdeRegionProcess(QObject* parent=nullptr);
- explicit KdeRegionProcess(QString helperPath,QObject* parent=nullptr);
- ~KdeRegionProcess() override;
+ explicit WaylandRegionProcess(QObject* parent=nullptr);
+ explicit WaylandRegionProcess(QString helperPath,QObject* parent=nullptr);
+ ~WaylandRegionProcess() override;
  // pixels (Screenshot first, #629): the frozen frames, in layout order, that the
  // helper shows as its backdrop. Empty keeps the transparent live selector.
  void start(const QList<CaptureFrame>&,std::function<void(QRectF,Error)>,QString outcome={},const QList<CaptureFrame>& pixels={},QJsonObject appearance={});
@@ -31,8 +31,8 @@ public:
  public:
   ~Preparation();
  private:
-  friend class KdeRegionProcess;
-  QPointer<KdeRegionProcess> owner_;
+  friend class WaylandRegionProcess;
+  QPointer<WaylandRegionProcess> owner_;
   std::shared_ptr<Prepared> state_;
   std::atomic_bool consumed_=false;
  };
@@ -60,7 +60,7 @@ private:
  QTimer deadline_,stopDeadline_;
  std::function<void(QRectF,Error)> reply_;
  Error failure_; QJsonObject lastExit_;
- HelperOutput output_{"putgd-kde-region",logCapture()};
+ HelperOutput output_{"putgd-region",logCapture()};
  bool ready_=false,begun_=false,resultReceived_=false,accepted_=false,cancelling_=false,terminal_=false,teardownCertified_=false,cleanupRequired_=false,closing_=false;
 };
 }

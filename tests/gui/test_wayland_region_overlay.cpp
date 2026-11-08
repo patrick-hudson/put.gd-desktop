@@ -1,8 +1,8 @@
 // Production widget input/painting without a Wayland compositor or layer role.
 // This does not establish native KWin focus, dismissal or capture correctness.
-#include "platform/kde/KdeRegionOverlay.h"
-#include "platform/kde/KdeDesktopFont.h"
-#include "platform/kde/KdeRegionProtocol.h"
+#include "platform/wayland/LayerShellRegionOverlay.h"
+#include "platform/wayland/PlasmaDesktopFont.h"
+#include "platform/wayland/RegionProtocol.h"
 #include "ui/RegionSelection.h"
 #include <QtTest>
 #include <QApplication>
@@ -12,18 +12,18 @@
 #include <QTemporaryDir>
 #include <QWindow>
 namespace putgd {
-class KdeRegionOverlayTest final:public QObject {
+class WaylandRegionOverlayTest final:public QObject {
  Q_OBJECT
- QWidget* add(KdeRegionOverlay& overlay,const QRectF& logical){
+ QWidget* add(LayerShellRegionOverlay& overlay,const QRectF& logical){
   CaptureFrame frame{QString("Display %1").arg(overlay.frames_.size()+1),logical,logical.toAlignedRect(),1,0,{}};
   overlay.frames_.append(frame);overlay.addSurface(frame,QGuiApplication::primaryScreen());
-  for(auto* w:QApplication::topLevelWidgets())if(w->isVisible()&&w->objectName()=="putgd-kde-region-overlay"&&w->size()==logical.size().toSize())return w;
+  for(auto* w:QApplication::topLevelWidgets())if(w->isVisible()&&w->objectName()=="putgd-wayland-region-overlay"&&w->size()==logical.size().toSize())return w;
   return nullptr;
  }
 private slots:
  void resolvedOutcomeIsVisibleAndAccessible(){
   for(const QString outcome:{QString("Uploads right away to Team Drive · Shared link"),QString("Saves locally"),QString("Opens the image editor")}){
-   KdeRegionOverlay overlay({},nullptr,false,outcome);auto* surface=add(overlay,QRectF(0,0,800,600));QVERIFY(surface);
+   LayerShellRegionOverlay overlay({},nullptr,false,outcome);auto* surface=add(overlay,QRectF(0,0,800,600));QVERIFY(surface);
    QVERIFY(surface->accessibleDescription().endsWith(outcome));
    QTest::keyClick(surface,Qt::Key_Right);QVERIFY(surface->accessibleDescription().endsWith(outcome));
    QTest::mousePress(surface,Qt::LeftButton,{},QPoint(30,40));QTest::mouseMove(surface,QPoint(200,160));
@@ -32,8 +32,8 @@ private slots:
   }
  }
  void keyboardStepsAndAccessibleGeometry(){
-  KdeRegionOverlay overlay({});const QRectF screen(-800,100,800,600);auto* surface=add(overlay,screen);QVERIFY(surface);
-  QSignalSpy accepted(&overlay,&KdeRegionOverlay::selected);QSignalSpy cancelled(&overlay,&KdeRegionOverlay::cancelled);
+  LayerShellRegionOverlay overlay({});const QRectF screen(-800,100,800,600);auto* surface=add(overlay,screen);QVERIFY(surface);
+  QSignalSpy accepted(&overlay,&LayerShellRegionOverlay::selected);QSignalSpy cancelled(&overlay,&LayerShellRegionOverlay::cancelled);
   auto* accessible=QAccessible::queryAccessibleInterface(surface);QVERIFY(accessible);QCOMPARE(accessible->text(QAccessible::Name),QString("Capture region"));
   QVERIFY(accessible->text(QAccessible::Description).contains("Drag to select"));
   QVERIFY(surface->accessibleDescription().contains("Enter to capture"));
@@ -47,7 +47,7 @@ private slots:
   QTest::keyClick(surface,Qt::Key_Return);QCOMPARE(accepted.size(),1);
  }
  void recordingHintsReflectSelection(){
-  KdeRegionOverlay overlay({},nullptr,true);auto* surface=add(overlay,QRectF(0,0,640,480));QVERIFY(surface);
+  LayerShellRegionOverlay overlay({},nullptr,true);auto* surface=add(overlay,QRectF(0,0,640,480));QVERIFY(surface);
   QCOMPARE(surface->accessibleName(),QString("Recording region"));QVERIFY(surface->accessibleDescription().contains("Enter to choose"));
   QVERIFY(surface->accessibleDescription().contains("Enter to choose"));
   QTest::mousePress(surface,Qt::LeftButton,{},QPoint(40,40));QTest::mouseMove(surface,QPoint(200,200));QVERIFY(surface->accessibleDescription().contains("Release to choose recording area"));
@@ -56,16 +56,16 @@ private slots:
  }
  void enterUsesReceivingScreenAndEscapeCancels(){
   for(bool cancel:{false,true}){
-   KdeRegionOverlay overlay({});auto* left=add(overlay,QRectF(-800,0,800,600));auto* right=add(overlay,QRectF(0,100,640,480));QVERIFY(left);QVERIFY(right);
-   QSignalSpy accepted(&overlay,&KdeRegionOverlay::selected);QSignalSpy cancelled(&overlay,&KdeRegionOverlay::cancelled);
+   LayerShellRegionOverlay overlay({});auto* left=add(overlay,QRectF(-800,0,800,600));auto* right=add(overlay,QRectF(0,100,640,480));QVERIFY(left);QVERIFY(right);
+   QSignalSpy accepted(&overlay,&LayerShellRegionOverlay::selected);QSignalSpy cancelled(&overlay,&LayerShellRegionOverlay::cancelled);
    QTest::keyClick(right,cancel?Qt::Key_Escape:Qt::Key_Return);QCOMPARE(accepted.size(),cancel?0:1);QCOMPARE(cancelled.size(),cancel?1:0);
    if(!cancel)QCOMPARE(qvariant_cast<QRectF>(accepted.first().first()),QRectF(0,100,640,480));
    QVERIFY(!left->isVisible());QVERIFY(!right->isVisible());
   }
  }
  void keyboardSwitchesScreenWithoutInvalidGeometry(){
-  KdeRegionOverlay overlay({});auto* left=add(overlay,QRectF(-800,0,800,600));auto* right=add(overlay,QRectF(0,100,640,480));QVERIFY(left);QVERIFY(right);
-  QSignalSpy accepted(&overlay,&KdeRegionOverlay::selected);QTest::keyClick(left,Qt::Key_Right);QCOMPARE(overlay.selection_,QRectF(-600,150,400,300));
+  LayerShellRegionOverlay overlay({});auto* left=add(overlay,QRectF(-800,0,800,600));auto* right=add(overlay,QRectF(0,100,640,480));QVERIFY(left);QVERIFY(right);
+  QSignalSpy accepted(&overlay,&LayerShellRegionOverlay::selected);QTest::keyClick(left,Qt::Key_Right);QCOMPARE(overlay.selection_,QRectF(-600,150,400,300));
   QTest::keyClick(left,Qt::Key_Tab);QCOMPARE(overlay.selection_,QRectF(200,250,400,300));
   QVERIFY(left->accessibleDescription().contains("Display 2"));
   QTest::keyClick(right,Qt::Key_Backtab);QCOMPARE(overlay.selection_,QRectF(-600,150,400,300));
@@ -73,7 +73,7 @@ private slots:
   QCOMPARE(left->accessibleDescription(),right->accessibleDescription());QTest::keyClick(right,Qt::Key_Return);QCOMPARE(accepted.size(),1);
  }
  void keyboardBoundsAndMouseTakeover(){
-  KdeRegionOverlay overlay({});auto* surface=add(overlay,QRectF(100,-200,640,480));QVERIFY(surface);QSignalSpy accepted(&overlay,&KdeRegionOverlay::selected);
+  LayerShellRegionOverlay overlay({});auto* surface=add(overlay,QRectF(100,-200,640,480));QVERIFY(surface);QSignalSpy accepted(&overlay,&LayerShellRegionOverlay::selected);
   QTest::keyClick(surface,Qt::Key_Left);for(int i=0;i<100;++i)QTest::keyClick(surface,Qt::Key_Left,Qt::ControlModifier);
   QCOMPARE(overlay.selection_.left(),100.0);for(int i=0;i<100;++i)QTest::keyClick(surface,Qt::Key_Up,Qt::ShiftModifier|Qt::ControlModifier);
   QCOMPARE(overlay.selection_.height(),1.0);
@@ -81,13 +81,13 @@ private slots:
   QCOMPARE(accepted.size(),1);QCOMPARE(qvariant_cast<QRectF>(accepted.first().first()),QRectF(180,-100,220,220));
  }
  void keyboardStopsDragAndEscapeStillWorks(){
-  KdeRegionOverlay overlay({});auto* surface=add(overlay,QRectF(0,0,640,480));QVERIFY(surface);QSignalSpy accepted(&overlay,&KdeRegionOverlay::selected);QSignalSpy cancelled(&overlay,&KdeRegionOverlay::cancelled);
+  LayerShellRegionOverlay overlay({});auto* surface=add(overlay,QRectF(0,0,640,480));QVERIFY(surface);QSignalSpy accepted(&overlay,&LayerShellRegionOverlay::selected);QSignalSpy cancelled(&overlay,&LayerShellRegionOverlay::cancelled);
   QTest::mousePress(surface,Qt::LeftButton,{},QPoint(100,100));QTest::mouseMove(surface,QPoint(300,300));QTest::keyClick(surface,Qt::Key_Right);
   const auto selected=overlay.selection_;QTest::mouseRelease(surface,Qt::LeftButton,{},QPoint(400,400));QCOMPARE(accepted.size(),0);QCOMPARE(overlay.selection_,selected);
   QTest::keyClick(surface,Qt::Key_Escape);QCOMPARE(cancelled.size(),1);QVERIFY(!surface->isVisible());
  }
  void mouseCancellationAndAgentSelection(){
-  for(int mode=0;mode<3;++mode){KdeRegionOverlay overlay({});auto* surface=add(overlay,QRectF(0,0,640,480));QVERIFY(surface);QSignalSpy accepted(&overlay,&KdeRegionOverlay::selected);QSignalSpy cancelled(&overlay,&KdeRegionOverlay::cancelled);
+  for(int mode=0;mode<3;++mode){LayerShellRegionOverlay overlay({});auto* surface=add(overlay,QRectF(0,0,640,480));QVERIFY(surface);QSignalSpy accepted(&overlay,&LayerShellRegionOverlay::selected);QSignalSpy cancelled(&overlay,&LayerShellRegionOverlay::cancelled);
    if(mode==0)QTest::mouseClick(surface,Qt::RightButton,{},QPoint(80,100));
    else if(mode==1)QTest::mouseClick(surface,Qt::LeftButton,{},QPoint(80,100));
    else overlay.select(QRectF(20,30,100,120));
@@ -97,7 +97,7 @@ private slots:
  void hintAndSizeShowWithoutScrimAndClearBeforeDismissal(){
   // #629: no scrim; a one-line hint pill and a size label next to the selection.
   for(const auto& variant:{QString("dark"),QString("light"),QString("text150")}){
-   KdeRegionOverlay overlay({});auto* surface=add(overlay,QRectF(0,0,800,600));QVERIFY(surface);
+   LayerShellRegionOverlay overlay({});auto* surface=add(overlay,QRectF(0,0,800,600));QVERIFY(surface);
    const bool light=variant=="light";Theme::setScheme(light?Theme::Scheme::Light:Theme::Scheme::Dark);
    QFont font=surface->font();font.setPixelSize(variant=="text150"?21:14);surface->setFont(font);QTest::keyClick(surface,Qt::Key_Right);
    QCOMPARE(overlay.selection_,QRectF(200,150,400,300));QVERIFY(!overlay.clearing_);QVERIFY(!overlay.finished_);
@@ -117,40 +117,40 @@ private slots:
   }
  }
  // #1048: each output's surface is on that output, and drags map to the global
- // layout. Runs under the kde_region_overlay_multihead ctest's three-screen
+ // layout. Runs under the wayland_region_overlay_multihead ctest's three-screen
  // fixture: side by side, then a 128 px gap and a portrait head.
  void surfacesStayOnTheirOutputs(){
   const auto screens=QGuiApplication::screens();if(screens.size()<3)QSKIP("Needs the three-screen offscreen fixture");
   QList<CaptureFrame> frames;for(auto* screen:screens)frames.append(CaptureFrame{screen->name(),screen->geometry(),screen->geometry(),1,0,{}});
-  const auto open=[&](KdeRegionOverlay& overlay){
+  const auto open=[&](LayerShellRegionOverlay& overlay){
    QList<QWidget*> surfaces;overlay.frames_=frames;
    for(int i=0;i<frames.size();++i){
     if(!overlay.addSurface(frames[i],screens[i]))return QList<QWidget*>{};
-    for(auto* w:QApplication::topLevelWidgets())if(w->isVisible()&&w->objectName()=="putgd-kde-region-overlay"&&!surfaces.contains(w)&&w->geometry()==frames[i].logicalRect.toAlignedRect())surfaces.append(w);
+    for(auto* w:QApplication::topLevelWidgets())if(w->isVisible()&&w->objectName()=="putgd-wayland-region-overlay"&&!surfaces.contains(w)&&w->geometry()==frames[i].logicalRect.toAlignedRect())surfaces.append(w);
     if(surfaces.size()!=i+1)return QList<QWidget*>{};
    }
    return surfaces;
   };
-  const auto encoded=[&](const QRectF& selection){Error error;const auto rectangle=kdeRegionRectangle(kdeRegionRectangle(selection),frames,error);return error?QRectF():rectangle;};
+  const auto encoded=[&](const QRectF& selection){Error error;const auto rectangle=waylandRegionRectangle(waylandRegionRectangle(selection),frames,error);return error?QRectF():rectangle;};
   {
-   KdeRegionOverlay overlay({});const auto surfaces=open(overlay);QCOMPARE(surfaces.size(),3);
+   LayerShellRegionOverlay overlay({});const auto surfaces=open(overlay);QCOMPARE(surfaces.size(),3);
    for(int i=0;i<3;++i){QCOMPARE(surfaces[i]->windowHandle()->screen(),screens[i]);QCOMPARE(surfaces[i]->geometry(),screens[i]->geometry());QVERIFY(surfaces[i]->isVisible());}
    // A region inside the secondary head (the #380 inside-1 drag).
-   QSignalSpy accepted(&overlay,&KdeRegionOverlay::selected);
+   QSignalSpy accepted(&overlay,&LayerShellRegionOverlay::selected);
    QTest::mousePress(surfaces[1],Qt::LeftButton,{},QPoint(80,80));QTest::mouseMove(surfaces[1],QPoint(240,200));QTest::mouseRelease(surfaces[1],Qt::LeftButton,{},QPoint(240,200));
    QCOMPARE(accepted.size(),1);const auto selected=qvariant_cast<QRectF>(accepted.first().first());
    QCOMPARE(selected,QRectF(1360,80,160,120));QCOMPARE(encoded(selected),selected);
   }
   {
    // A span: the press surface keeps the pointer grab past its right edge.
-   KdeRegionOverlay overlay({});const auto surfaces=open(overlay);QCOMPARE(surfaces.size(),3);QSignalSpy accepted(&overlay,&KdeRegionOverlay::selected);
+   LayerShellRegionOverlay overlay({});const auto surfaces=open(overlay);QCOMPARE(surfaces.size(),3);QSignalSpy accepted(&overlay,&LayerShellRegionOverlay::selected);
    QTest::mousePress(surfaces[0],Qt::LeftButton,{},QPoint(640,400));QTest::mouseMove(surfaces[0],QPoint(1920,440));QTest::mouseRelease(surfaces[0],Qt::LeftButton,{},QPoint(1920,440));
    QCOMPARE(accepted.size(),1);const auto selected=qvariant_cast<QRectF>(accepted.first().first());
    QCOMPARE(selected,QRectF(640,400,1280,40));QCOMPARE(encoded(selected),selected);
   }
   {
    // The portrait head beyond the gap.
-   KdeRegionOverlay overlay({});const auto surfaces=open(overlay);QCOMPARE(surfaces.size(),3);QSignalSpy accepted(&overlay,&KdeRegionOverlay::selected);
+   LayerShellRegionOverlay overlay({});const auto surfaces=open(overlay);QCOMPARE(surfaces.size(),3);QSignalSpy accepted(&overlay,&LayerShellRegionOverlay::selected);
    QTest::mousePress(surfaces[2],Qt::LeftButton,{},QPoint(100,900));QTest::mouseRelease(surfaces[2],Qt::LeftButton,{},QPoint(260,1020));
    QCOMPARE(accepted.size(),1);const auto selected=qvariant_cast<QRectF>(accepted.first().first());
    QCOMPARE(selected,QRectF(2788,900,160,120));QCOMPARE(encoded(selected),selected);
@@ -158,9 +158,9 @@ private slots:
  }
  void pillsFollowOnceTheFontsLoad(){
   // A surface maps before the worker finishes; the pills arrive with a repaint.
-  auto worker=KdeRegionOverlay::preloadFonts();
+  auto worker=LayerShellRegionOverlay::preloadFonts();
   const auto join=qScopeGuard([&]{if(worker.joinable())worker.join();});
-  KdeRegionOverlay overlay({},nullptr,false,"Saves locally");auto* surface=add(overlay,QRectF(0,0,800,600));QVERIFY(surface);
+  LayerShellRegionOverlay overlay({},nullptr,false,"Saves locally");auto* surface=add(overlay,QRectF(0,0,800,600));QVERIFY(surface);
   QVERIFY(!surface->grab().isNull());
   worker.join();QCoreApplication::processEvents();
   QVERIFY(!surface->grab().isNull());overlay.cancel();
@@ -186,9 +186,9 @@ private slots:
  void screenshotFirstDrawsTheFrozenFrame(){
   // #629: the frozen pixels are the backdrop; the selection only adds an outline.
   QImage pixels(1600,1200,QImage::Format_RGB32);pixels.fill(QColor(Qt::magenta));
-  KdeRegionOverlay overlay({},nullptr,false,{},true);
+  LayerShellRegionOverlay overlay({},nullptr,false,{},true);
   CaptureFrame frame{"Display 1",QRectF(0,0,800,600),QRect(0,0,1600,1200),2,0,pixels};overlay.frames_.append(frame);overlay.addSurface(frame,QGuiApplication::primaryScreen());
-  QWidget* surface=nullptr;for(auto* w:QApplication::topLevelWidgets())if(w->isVisible()&&w->objectName()=="putgd-kde-region-overlay")surface=w;QVERIFY(surface);
+  QWidget* surface=nullptr;for(auto* w:QApplication::topLevelWidgets())if(w->isVisible()&&w->objectName()=="putgd-wayland-region-overlay")surface=w;QVERIFY(surface);
   overlay.hint_.expire();QTest::keyClick(surface,Qt::Key_Right);surface->repaint();const auto image=surface->grab().toImage();
   QCOMPARE(image.pixelColor(5,500),QColor(Qt::magenta));QCOMPARE(image.pixelColor(400,300),QColor(Qt::magenta));QCOMPARE(image.pixelColor(300,151),QColor(Qt::white));
   // The size label reports the frozen frame's output pixels.
@@ -197,5 +197,5 @@ private slots:
  }
 };
 }
-QTEST_MAIN(putgd::KdeRegionOverlayTest)
-#include "test_kde_region_overlay.moc"
+QTEST_MAIN(putgd::WaylandRegionOverlayTest)
+#include "test_wayland_region_overlay.moc"

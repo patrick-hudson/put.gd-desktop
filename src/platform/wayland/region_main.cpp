@@ -1,7 +1,7 @@
-#include "KdeRegionOverlay.h"
-#include "KdeDesktopFont.h"
+#include "LayerShellRegionOverlay.h"
+#include "PlasmaDesktopFont.h"
 #include "ui/QuickBackend.h"
-#include "KdeRegionProtocol.h"
+#include "RegionProtocol.h"
 #include "ipc/CaptureControl.h"
 #include "ipc/StdioDevice.h"
 #include "ui/Theme.h"
@@ -39,7 +39,7 @@ int main(int argc,char** argv) {
   std::printf("%s\n",putgd::buildManifestJson());return 0;
  }
  if(argc==2 && (std::strcmp(argv[1],"--version")==0 || std::strcmp(argv[1],"-v")==0)) {
-  std::printf("putgd-kde-region %s\n",putgd::buildVersion()); return 0;
+  std::printf("putgd-region %s\n",putgd::buildVersion()); return 0;
  }
  putgd::UiControlPipes handles; if(!handles.valid()) return 2;
  // This helper paints its own surfaces and pills from the app theme. Plasma's
@@ -57,16 +57,16 @@ int main(int argc,char** argv) {
  if(plasmaFont) QGuiApplication::setFont(putgd::kdeDesktopFont(putgd::kdeGlobalsPaths()));
  // Load the pill font while this process waits for its bootstrap; a surface does
  // not wait for it to map.
- std::thread fonts=putgd::KdeRegionOverlay::preloadFonts();
+ std::thread fonts=putgd::LayerShellRegionOverlay::preloadFonts();
  const auto joinFonts=qScopeGuard([&]{fonts.join();});
- app.setDesktopFileName("putgd-kde-region");
- QCoreApplication::setOrganizationName("putgd"); QCoreApplication::setApplicationName("putgd-kde-region");
+ app.setDesktopFileName("putgd-region");
+ QCoreApplication::setOrganizationName("putgd"); QCoreApplication::setApplicationName("putgd-region");
  QCoreApplication::setApplicationVersion(putgd::buildVersion());
  putgd::StdioDevice pipes(handles.input(),handles.output()); if(!pipes.isOpen()) return 2;
  putgd::CaptureControl control(pipes); QTimer deadline; deadline.setSingleShot(true); deadline.start(10000);
  const auto build=QJsonDocument::fromJson(putgd::buildManifestJson()).object();
  QString nonce,generation; QList<putgd::CaptureFrame> frozen;
- std::unique_ptr<putgd::KdeRegionOverlay> selector;QString outcome;bool screenshotFirst=false;QList<putgd::CaptureFrame> backdrop;
+ std::unique_ptr<putgd::LayerShellRegionOverlay> selector;QString outcome;bool screenshotFirst=false;QList<putgd::CaptureFrame> backdrop;
  bool bootstrapped=false,ready=false,begun=false,resultSent=false,settled=false,teardownPending=false;
  QTimer teardownDeadline;teardownDeadline.setSingleShot(true);
  std::function<void(bool)> teardownReply;
@@ -142,40 +142,40 @@ int main(int argc,char** argv) {
    bool numeric=false; const auto g=payload["generation"].toString(); const auto number=g.toULongLong(&numeric);
    if(!numeric || !number || QString::number(number)!=g) { close(4); return; }
    outcome=payload["outcome"].toString();nonce=payload["nonce"].toString(); generation=g; bootstrapped=true;
-   putgd::Error error; frozen=putgd::kdeRegionLayout(payload["layout"].toArray(),error);
+   putgd::Error error; frozen=putgd::waylandRegionLayout(payload["layout"].toArray(),error);
    if(error) { close(4); return; }
    // Screenshot first (#629): the resident's frozen frames become the backdrop.
    if(payload.contains("frozen")) {
     const auto descriptor=payload["frozen"].toObject();const auto fd=descriptor["fd"].toInteger();
     // The geometry-only layout keeps validating results; the selector draws these.
     backdrop=frozen;
-    if(fd<3 || fd>65535 || !putgd::kdeFrozenPixels(int(fd),descriptor["frames"].toArray(),backdrop,error)) { close(4); return; }
+    if(fd<3 || fd>65535 || !putgd::waylandFrozenPixels(int(fd),descriptor["frames"].toArray(),backdrop,error)) { close(4); return; }
     screenshotFirst=true;
    }
    ready=true; auto message=envelope(); message["build"]=build;
    if(!control.send("ready",message)) { close(4); return; }
    if(!QGuiApplication::platformName().startsWith("wayland")) { fail("region_unavailable"); return; }
-   if(!putgd::kdeRegionLayoutsMatch(frozen,layout())) fail("display_changed");
+   if(!putgd::waylandRegionLayoutsMatch(frozen,layout())) fail("display_changed");
    return;
   }
   if(!ready || payload.size()!=2 || payload["nonce"]!=nonce || payload["generation"]!=generation) { close(4); return; }
   if(type=="cancel") { fail("cancelled"); return; }
   if(type=="begin") {
-   if(begun || !putgd::kdeRegionLayoutsMatch(frozen,layout())) { if(begun) close(4); else fail("display_changed"); return; }
+   if(begun || !putgd::waylandRegionLayoutsMatch(frozen,layout())) { if(begun) close(4); else fail("display_changed"); return; }
    begun=true; deadline.start(120000);
-   selector=std::make_unique<putgd::KdeRegionOverlay>(screenshotFirst?backdrop:frozen,nullptr,false,outcome,screenshotFirst);
-   QObject::connect(selector.get(),&putgd::KdeRegionOverlay::cancelled,&app,[&](const putgd::Error& error){
+   selector=std::make_unique<putgd::LayerShellRegionOverlay>(screenshotFirst?backdrop:frozen,nullptr,false,outcome,screenshotFirst);
+   QObject::connect(selector.get(),&putgd::LayerShellRegionOverlay::cancelled,&app,[&](const putgd::Error& error){
     // Destroy outside the emitting Surface event handler.
     const auto code=error.code; QTimer::singleShot(0,&app,[&,code]{fail(code);});
    });
-   QObject::connect(selector.get(),&putgd::KdeRegionOverlay::selected,&app,[&](const QRectF& rectangle){
+   QObject::connect(selector.get(),&putgd::LayerShellRegionOverlay::selected,&app,[&](const QRectF& rectangle){
     // selected is emitted only after a rendered transparent frame and the unmap fence.
     // The signal can originate from an overlay callback, so defer destruction.
     QTimer::singleShot(0,&app,[&,rectangle]{
      if(settled || teardownPending || resultSent) return;
-     if(!putgd::kdeRegionLayoutsMatch(frozen,layout())) { fail("display_changed"); return; }
-     putgd::Error error; const auto encoded=putgd::kdeRegionRectangle(rectangle);
-     putgd::kdeRegionRectangle(encoded,frozen,error); if(error) { fail("capture_geometry"); return; }
+     if(!putgd::waylandRegionLayoutsMatch(frozen,layout())) { fail("display_changed"); return; }
+     putgd::Error error; const auto encoded=putgd::waylandRegionRectangle(rectangle);
+     putgd::waylandRegionRectangle(encoded,frozen,error); if(error) { fail("capture_geometry"); return; }
      selector.reset(); resultSent=true; auto message=envelope(); message["rectangle"]=encoded;
      if(!control.send("result",message)) { close(4); return; }
      deadline.start(10000);

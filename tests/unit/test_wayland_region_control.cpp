@@ -1,6 +1,6 @@
-#include "platform/kde/KdeRegionProcess.h"
-#include "platform/kde/KdeCaptureCompose.h"
-#include "platform/kde/KdeRegionProtocol.h"
+#include "platform/wayland/RegionProcess.h"
+#include "platform/wayland/CaptureCompose.h"
+#include "platform/wayland/RegionProtocol.h"
 #include <QCoreApplication>
 #include <QJsonDocument>
 #include <QtTest>
@@ -57,7 +57,7 @@ int fixture(const QString& mode) {
   for(int i=0;i<80;++i) { send("cancelled",terminal);std::this_thread::sleep_for(std::chrono::milliseconds(100)); }
   return 0;
  }
- auto result=envelope(); result["rectangle"]=kdeRegionRectangle(mode=="outside"?QRectF(900,0,20,20):QRectF(-20,20,60,40));
+ auto result=envelope(); result["rectangle"]=waylandRegionRectangle(mode=="outside"?QRectF(900,0,20,20):QRectF(-20,20,60,40));
  send("result",result);
  if(mode=="duplicate") send("result",result);
  if(!std::getline(std::cin,line)) return 3;
@@ -67,40 +67,40 @@ int fixture(const QString& mode) {
  return mode=="nonzero-exit"?7:0;
 }
 }
-class KdeRegionControlTest:public QObject {
+class WaylandRegionControlTest:public QObject {
  Q_OBJECT
 private slots:
  void resolvedAppearanceReachesTheRegionHelper(){
-  qputenv("PUTGD_TEST_KDE_REGION_HELPER","appearance-light");KdeRegionProcess process(QCoreApplication::applicationFilePath());int callbacks=0;Error error;
+  qputenv("PUTGD_TEST_KDE_REGION_HELPER","appearance-light");WaylandRegionProcess process(QCoreApplication::applicationFilePath());int callbacks=0;Error error;
   process.start(frames(),[&](QRectF rect,Error e){QVERIFY(!rect.isEmpty());error=e;++callbacks;},{},{},{{"scheme","light"}});
   PUTGD_TRY_COMPARE(callbacks,1);qunsetenv("PUTGD_TEST_KDE_REGION_HELPER");QVERIFY2(!error,qPrintable(error.message));QVERIFY(!process.busy());
  }
  void layoutAndRectangleRoundTrip() {
-  Error e; const auto encoded=kdeRegionLayout(frames(),e);QVERIFY(!e);QCOMPARE(encoded.size(),2);
-  const auto decoded=kdeRegionLayout(encoded,e);QVERIFY(!e);QVERIFY(kdeRegionLayoutsMatch(frames(),decoded));
-  const QRectF selected(-20,20,60,40);QCOMPARE(kdeRegionRectangle(kdeRegionRectangle(selected),decoded,e),selected);QVERIFY(!e);
-  auto reordered=decoded;std::reverse(reordered.begin(),reordered.end());QVERIFY(kdeRegionLayoutsMatch(frames(),reordered));
-  reordered[0].logicalRect.translate(1,0);QVERIFY(!kdeRegionLayoutsMatch(frames(),reordered));
+  Error e; const auto encoded=waylandRegionLayout(frames(),e);QVERIFY(!e);QCOMPARE(encoded.size(),2);
+  const auto decoded=waylandRegionLayout(encoded,e);QVERIFY(!e);QVERIFY(waylandRegionLayoutsMatch(frames(),decoded));
+  const QRectF selected(-20,20,60,40);QCOMPARE(waylandRegionRectangle(waylandRegionRectangle(selected),decoded,e),selected);QVERIFY(!e);
+  auto reordered=decoded;std::reverse(reordered.begin(),reordered.end());QVERIFY(waylandRegionLayoutsMatch(frames(),reordered));
+  reordered[0].logicalRect.translate(1,0);QVERIFY(!waylandRegionLayoutsMatch(frames(),reordered));
  }
  void frozenFramesTravelInASealedMemfd() {
   // #629: the helper reads only a sealed memfd of exactly the announced size.
   QList<CaptureFrame> layout{{"DP-1",QRectF(0,0,40,30),{},1,0,{}},{"DP-2",QRectF(40,0,20,15),{},1,0,{}}};
   auto pixels=layout;pixels[0].pixels=QImage(80,60,QImage::Format_RGB32);pixels[0].pixels.fill(Qt::red);pixels[0].density=2;pixels[0].nativeRect=QRect(0,0,80,60);
   pixels[1].pixels=QImage(20,15,QImage::Format_ARGB32_Premultiplied);pixels[1].pixels.fill(Qt::blue);pixels[1].nativeRect=QRect(80,0,20,15);
-  Error error;auto frozen=kdeFrozenFrames(layout,pixels,error);QVERIFY(!error);QVERIFY(frozen.fd>=3);
+  Error error;auto frozen=waylandFrozenFrames(layout,pixels,error);QVERIFY(!error);QVERIFY(frozen.fd>=3);
   QVERIFY(::fcntl(frozen.fd,F_GETFD)&FD_CLOEXEC);
-  auto received=layout;QVERIFY(kdeFrozenPixels(::dup(frozen.fd),frozen.frames,received,error));QVERIFY(!error);
+  auto received=layout;QVERIFY(waylandFrozenPixels(::dup(frozen.fd),frozen.frames,received,error));QVERIFY(!error);
   QCOMPARE(received[0].pixels.size(),QSize(80,60));QCOMPARE(received[0].pixels.pixelColor(10,10),QColor(Qt::red));QCOMPARE(received[0].density,2.0);QCOMPARE(received[0].nativeRect,QRect(0,0,80,60));
   QCOMPARE(received[1].pixels.pixelColor(5,5),QColor(Qt::blue));QCOMPARE(received[1].nativeRect,QRect(80,0,20,15));
   // The memfd cannot be written once sealed.
   QCOMPARE(::write(frozen.fd,"x",1),ssize_t(-1));
   // A wrong announced size, or an ordinary unsealed file, is refused.
-  auto wrong=frozen.frames;auto row=wrong[1].toObject();row["width"]=21;wrong[1]=row;received=layout;QVERIFY(!kdeFrozenPixels(::dup(frozen.fd),wrong,received,error));QVERIFY(bool(error));
+  auto wrong=frozen.frames;auto row=wrong[1].toObject();row["width"]=21;wrong[1]=row;received=layout;QVERIFY(!waylandFrozenPixels(::dup(frozen.fd),wrong,received,error));QVERIFY(bool(error));
   QTemporaryFile file;QVERIFY(file.open());QByteArray bytes(80*60*4+20*15*4,'\0');QCOMPARE(file.write(bytes),qint64(bytes.size()));QVERIFY(file.flush());
-  received=layout;QVERIFY(!kdeFrozenPixels(::dup(file.handle()),frozen.frames,received,error));QVERIFY(bool(error));
+  received=layout;QVERIFY(!waylandFrozenPixels(::dup(file.handle()),frozen.frames,received,error));QVERIFY(bool(error));
   ::close(frozen.fd);
   // Pixels must match the layout one to one.
-  pixels.removeLast();QCOMPARE(kdeFrozenFrames(layout,pixels,error).fd,-1);QVERIFY(bool(error));
+  pixels.removeLast();QCOMPARE(waylandFrozenFrames(layout,pixels,error).fd,-1);QVERIFY(bool(error));
  }
  void invalidLayoutIsRejected() {
   for(int kind=0;kind<5;++kind) {
@@ -110,10 +110,10 @@ private slots:
    if(kind==2) f[0].logicalRect.setX(std::numeric_limits<double>::infinity());
    if(kind==3) f[0].pixels=QImage(1,1,QImage::Format_ARGB32);
    if(kind==4) f[0].rotation=45;
-   Error e;QVERIFY(kdeRegionLayout(f,e).isEmpty());QCOMPARE(e.code,QString("capture_geometry"));
+   Error e;QVERIFY(waylandRegionLayout(f,e).isEmpty());QCOMPARE(e.code,QString("capture_geometry"));
   }
-  Error e;auto encoded=kdeRegionLayout(frames(),e);auto row=encoded[0].toObject();row["pixels"]="forbidden";encoded[0]=row;
-  QVERIFY(kdeRegionLayout(encoded,e).isEmpty());QVERIFY(e);
+  Error e;auto encoded=waylandRegionLayout(frames(),e);auto row=encoded[0].toObject();row["pixels"]="forbidden";encoded[0]=row;
+  QVERIFY(waylandRegionLayout(encoded,e).isEmpty());QVERIFY(e);
  }
  void dragEdgesAreHalfOpen_data() {
   // KWin 6.6.6 positions for real tablet drags (#333). The lab's ceil(x*32768/w)
@@ -142,15 +142,15 @@ private slots:
  }
  void edgeIsThePixelUnderTheHotspot() {
   QFETCH(qreal,position);QFETCH(qreal,edge);
-  QCOMPARE(kdeRegionEdge(QPointF(position,position)),QPointF(edge,edge));
+  QCOMPARE(waylandRegionEdge(QPointF(position,position)),QPointF(edge,edge));
  }
  void dragEdgesAreHalfOpen() {
   QFETCH(QPointF,press);QFETCH(QPointF,release);QFETCH(QRectF,expected);
-  const QRectF selection=QRectF(kdeRegionEdge(press),kdeRegionEdge(release)).normalized();
+  const QRectF selection=QRectF(waylandRegionEdge(press),waylandRegionEdge(release)).normalized();
   QCOMPARE(selection,expected);
   CaptureFrame frame;frame.identity="HDMI-A-1";frame.logicalRect=QRectF(0,0,1920,1080);frame.nativeRect=QRect(0,0,1920,1080);
   frame.pixels=QImage(1920,1080,QImage::Format_ARGB32);frame.pixels.fill(Qt::white);
-  Error e;const auto image=composeKdeFrames({frame},selection,qint64(1)<<31,e);QVERIFY(!e);
+  Error e;const auto image=composeOutputFrames({frame},selection,qint64(1)<<31,e);QVERIFY(!e);
   QCOMPARE(image.size(),expected.size().toSize());
  }
  void fractionalScaleKeepsLogicalSize_data() {
@@ -167,14 +167,14 @@ private slots:
   const QSize native(qRound(1536*scale),qRound(864*scale));
   CaptureFrame frame;frame.identity="HDMI-A-1";frame.logicalRect=QRectF(0,0,1536,864);frame.nativeRect=QRect(QPoint(0,0),native);frame.density=scale;
   frame.pixels=QImage(native,QImage::Format_ARGB32);frame.pixels.fill(Qt::white);
-  const QRectF selection=QRectF(kdeRegionEdge(press),kdeRegionEdge(release)).normalized();
-  Error e;const auto image=composeKdeFrames({frame},selection,qint64(1)<<31,e);QVERIFY(!e);
+  const QRectF selection=QRectF(waylandRegionEdge(press),waylandRegionEdge(release)).normalized();
+  Error e;const auto image=composeOutputFrames({frame},selection,qint64(1)<<31,e);QVERIFY(!e);
   QCOMPARE(image.size(),pixels);
  }
  void invalidSelectionIsRejected() {
   for(const auto& rectangle:{QRectF(0,0,0,20),QRectF(900,0,20,20),QRectF(-700,0,100,20),
                             QRectF(0,std::numeric_limits<double>::quiet_NaN(),20,20)}) {
-   Error e;QVERIFY(kdeRegionRectangle(kdeRegionRectangle(rectangle),frames(),e).isEmpty());QVERIFY(e);
+   Error e;QVERIFY(waylandRegionRectangle(waylandRegionRectangle(rectangle),frames(),e).isEmpty());QVERIFY(e);
   }
  }
  void privatePeerExitGate_data() {
@@ -186,7 +186,7 @@ private slots:
  void privatePeerExitGate() {
   QFETCH(QByteArray,mode);QFETCH(bool,success);
   qputenv("PUTGD_TEST_KDE_REGION_HELPER",mode);
-  KdeRegionProcess process(QCoreApplication::applicationFilePath());int callbacks=0;QRectF result;Error error;
+  WaylandRegionProcess process(QCoreApplication::applicationFilePath());int callbacks=0;QRectF result;Error error;
   process.start(frames(),[&](QRectF rect,Error e){QVERIFY(!process.busy());result=rect;error=e;++callbacks;});
   PUTGD_TRY_COMPARE(callbacks,1);qunsetenv("PUTGD_TEST_KDE_REGION_HELPER");
   QCOMPARE(!bool(error),success);QCOMPARE(result.isEmpty(),!success);
@@ -197,7 +197,7 @@ private slots:
  }
  void cancellationAndBusyAreBounded() {
   qputenv("PUTGD_TEST_KDE_REGION_HELPER","wait-cancel");
-  KdeRegionProcess process(QCoreApplication::applicationFilePath());int cancelled=0,busy=0;
+  WaylandRegionProcess process(QCoreApplication::applicationFilePath());int cancelled=0,busy=0;
   process.start(frames(),[&](QRectF rect,Error e){QVERIFY(rect.isEmpty());QCOMPARE(e.code,QString("cancelled"));++cancelled;});
   process.start(frames(),[&](QRectF rect,Error e){QVERIFY(rect.isEmpty());QCOMPARE(e.code,QString("busy_selecting"));++busy;});
   QCOMPARE(busy,1);putgd::test::settle(30);process.cancel();process.cancel();PUTGD_TRY_COMPARE(cancelled,1);
@@ -214,7 +214,7 @@ private slots:
  }
  void terminalFramesCannotExtendShutdown() {
   QFETCH(QByteArray,mode);QFETCH(QString,expectedCode);qputenv("PUTGD_TEST_KDE_REGION_HELPER",mode);
-  KdeRegionProcess process(QCoreApplication::applicationFilePath());int callbacks=0;Error error;QElapsedTimer elapsed;elapsed.start();
+  WaylandRegionProcess process(QCoreApplication::applicationFilePath());int callbacks=0;Error error;QElapsedTimer elapsed;elapsed.start();
   process.start(frames(),[&](QRectF rectangle,Error e){QVERIFY(rectangle.isEmpty());error=e;++callbacks;});
   PUTGD_TRY_COMPARE_WITH_TIMEOUT(callbacks,1,4000);qunsetenv("PUTGD_TEST_KDE_REGION_HELPER");
   QVERIFY2(elapsed.elapsed()<4000,"Repeated terminal frames postponed the shutdown bound");
@@ -223,7 +223,7 @@ private slots:
  }
  void abruptPreFenceExitBlocksFurtherSelection() {
   qputenv("PUTGD_TEST_KDE_REGION_HELPER","crash-before-teardown");
-  KdeRegionProcess process(QCoreApplication::applicationFilePath());int completed=0;Error error;
+  WaylandRegionProcess process(QCoreApplication::applicationFilePath());int completed=0;Error error;
   process.start(frames(),[&](QRectF r,Error e){QVERIFY(r.isEmpty());error=e;++completed;});
   PUTGD_TRY_COMPARE(completed,1);qunsetenv("PUTGD_TEST_KDE_REGION_HELPER");
   QCOMPARE(error.code,QString("capture_crashed"));QVERIFY(process.cleanupRequired());QVERIFY(!process.busy());
@@ -240,7 +240,7 @@ private slots:
   QFETCH(bool,explicitShutdown);qputenv("PUTGD_TEST_KDE_REGION_HELPER","wait-cancel");
   bool tearingDown=false;int callbacks=0,reentries=0;
   struct Owner {
-   bool& tearingDown;KdeRegionProcess process;
+   bool& tearingDown;WaylandRegionProcess process;
    Owner(bool& flag):tearingDown(flag),process(QCoreApplication::applicationFilePath()){}
    ~Owner(){tearingDown=true;}
   };
@@ -263,7 +263,7 @@ private slots:
  }
  void preparedSelectionWaitsForBegin() {
   // The selector runs ahead of the journal; its geometry is held until begin().
-  qputenv("PUTGD_TEST_KDE_REGION_HELPER","ok");KdeRegionProcess process(QCoreApplication::applicationFilePath());
+  qputenv("PUTGD_TEST_KDE_REGION_HELPER","ok");WaylandRegionProcess process(QCoreApplication::applicationFilePath());
   int terminals=0,releases=0;
   auto ticket=process.prepare(frames(),{},{},[&](Error){++terminals;},[&]{++releases;});
   QVERIFY(process.busy());PUTGD_TRY_COMPARE(releases,1);QVERIFY(!process.busy());QCOMPARE(terminals,0);
@@ -276,7 +276,7 @@ private slots:
  }
  void preparedSelectionDeliversThroughEarlyBegin() {
   // The durable continuation arrived first: the selection completes it directly.
-  qputenv("PUTGD_TEST_KDE_REGION_HELPER","ok");KdeRegionProcess process(QCoreApplication::applicationFilePath());
+  qputenv("PUTGD_TEST_KDE_REGION_HELPER","ok");WaylandRegionProcess process(QCoreApplication::applicationFilePath());
   int terminals=0,releases=0,replies=0;QRectF selected;
   auto ticket=process.prepare(frames(),{},{},[&](Error){++terminals;},[&]{++releases;});
   process.begin(ticket,[&](QRectF rectangle,Error){selected=rectangle;++replies;});QCOMPARE(replies,0);
@@ -285,7 +285,7 @@ private slots:
  }
  void preparedCancellationReportsTerminalMetadata() {
   // Esc before the journal finishes: the operation learns of it without a begin().
-  qputenv("PUTGD_TEST_KDE_REGION_HELPER","wait-cancel");KdeRegionProcess process(QCoreApplication::applicationFilePath());
+  qputenv("PUTGD_TEST_KDE_REGION_HELPER","wait-cancel");WaylandRegionProcess process(QCoreApplication::applicationFilePath());
   int releases=0;Error terminal;
   auto ticket=process.prepare(frames(),{},{},[&](Error e){terminal=e;},[&]{++releases;});
   putgd::test::settle(100);process.cancel();PUTGD_TRY_COMPARE(releases,1);qunsetenv("PUTGD_TEST_KDE_REGION_HELPER");
@@ -294,14 +294,14 @@ private slots:
  }
  void droppedPreparationCancelsItsSelector() {
   // The journal failed: nothing will ever ask for this geometry.
-  qputenv("PUTGD_TEST_KDE_REGION_HELPER","wait-cancel");KdeRegionProcess process(QCoreApplication::applicationFilePath());
+  qputenv("PUTGD_TEST_KDE_REGION_HELPER","wait-cancel");WaylandRegionProcess process(QCoreApplication::applicationFilePath());
   int releases=0;
   // A prepared continuation can die on a journal worker, not the session thread.
   {auto ticket=process.prepare(frames(),{},{},{},[&]{++releases;});PUTGD_VERIFY_STEADY(process.busy(),100);std::thread worker([ticket=std::move(ticket)]()mutable{ticket.reset();});worker.join();}
   PUTGD_TRY_COMPARE(releases,1);qunsetenv("PUTGD_TEST_KDE_REGION_HELPER");QVERIFY(!process.busy());
  }
  void busyPreparationFailsWithoutDisturbingTheSelector() {
-  qputenv("PUTGD_TEST_KDE_REGION_HELPER","wait-cancel");KdeRegionProcess process(QCoreApplication::applicationFilePath());
+  qputenv("PUTGD_TEST_KDE_REGION_HELPER","wait-cancel");WaylandRegionProcess process(QCoreApplication::applicationFilePath());
   int firstReleases=0,secondReleases=0;Error second;
   auto first=process.prepare(frames(),{},{},{},[&]{++firstReleases;});
   auto other=process.prepare(frames(),{},{},[&](Error e){second=e;},[&]{++secondReleases;});
@@ -309,7 +309,7 @@ private slots:
   process.discard(first);PUTGD_TRY_COMPARE(firstReleases,1);qunsetenv("PUTGD_TEST_KDE_REGION_HELPER");
  }
  void missingHelperFailsOnce() {
-  KdeRegionProcess process("/does-not-exist-putgd-kde-region");int callbacks=0;
+  WaylandRegionProcess process("/does-not-exist-putgd-region");int callbacks=0;
   process.start(frames(),[&](QRectF r,Error e){QVERIFY(r.isEmpty());QCOMPARE(e.code,QString("capture_start_failed"));++callbacks;});
   PUTGD_TRY_COMPARE(callbacks,1);QVERIFY(!process.busy());putgd::test::settle(30);PUTGD_TRY_COMPARE(callbacks,1);
  }
@@ -317,6 +317,6 @@ private slots:
 int main(int argc,char** argv) {
  const auto mode=qEnvironmentVariable("PUTGD_TEST_KDE_REGION_HELPER");
  if(!mode.isEmpty()) return fixture(mode);
- QCoreApplication app(argc,argv);KdeRegionControlTest test;return QTest::qExec(&test,argc,argv);
+ QCoreApplication app(argc,argv);WaylandRegionControlTest test;return QTest::qExec(&test,argc,argv);
 }
-#include "test_kde_region_control.moc"
+#include "test_wayland_region_control.moc"

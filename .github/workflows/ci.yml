@@ -155,6 +155,8 @@ jobs:
           if [ '${{ matrix.distribution }}' = '26.04' ]; then
             # faketime pins the UI catalog's clock; Pillow and numpy speed up its image comparison.
             apt-get install -y "${apt[@]}" liblayershellqtinterface-dev faketime python3-pil python3-numpy
+            # budgie_labwc_integration runs the Budgie adapter against a real headless labwc (#1275).
+            apt-get install -y "${apt[@]}" labwc wl-clipboard wlr-randr
           fi
           useradd --create-home --shell /bin/bash putgd-ci
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

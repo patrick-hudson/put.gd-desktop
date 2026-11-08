@@ -31,7 +31,7 @@ import subprocess
 import tarfile
 import tempfile
 
-PRODUCTS = ('putgd', 'putgd-cli', 'putgd-ui', 'putgd-capture', 'putgd-kde-region', 'putgd-record',
+PRODUCTS = ('putgd', 'putgd-cli', 'putgd-ui', 'putgd-capture', 'putgd-region', 'putgd-record',
             'putgd-s3-worker', 'putgd-b2-worker', 'libputgd-s3.so')
 # Built on every Linux packaging job; the others depend on the desktop libraries present.
 REQUIRED = ('putgd', 'putgd-cli', 'putgd-ui', 'putgd-capture', 'putgd-s3-worker', 'putgd-b2-worker', 'libputgd-s3.so')
