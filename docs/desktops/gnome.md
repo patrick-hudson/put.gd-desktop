@@ -59,7 +59,7 @@ last login), appending activates it immediately, with no logout.
 A deliberate off switch stays off: an entry in `disabled-extensions`
 (`gnome-extensions disable`, the Extensions app) is respected and reported.
 
-**One state.** `capabilities.helper.setup`, the `desktop.setup` and
+**One state.** `capabilities.source.helper.setup`, the `desktop.setup` and
 `desktop.setup.recheck` session methods, `putgd-cli` and the MCP helper report the
 same value: `ready`, `login_required` ("Log out and back in once to finish setting up
 put.gd."), or one of the failures in [errors](../user/errors.md#gnome-50-setup-states).

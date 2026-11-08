@@ -36,7 +36,7 @@ filenames, history URLs, authorization values or credential references.
 ## GNOME 50 setup states
 
 GNOME 50 needs one step: log out and back in once. Until then these states report
-what's missing (`capabilities.helper.setup`, `desktop.setup`, `putgd-cli`, the MCP
+what's missing (`capabilities.source.helper.setup`, `desktop.setup`, `putgd-cli`, the MCP
 helper). Capture errors use the code in the second column.
 
 | State | Code | What to do |
