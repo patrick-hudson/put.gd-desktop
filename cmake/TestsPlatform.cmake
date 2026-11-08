@@ -157,3 +157,14 @@ if(BUILD_TESTING AND TARGET putgd_budgie)
   add_test(NAME portal_global_shortcuts_contract COMMAND dbus-run-session -- $<TARGET_FILE:test_portal_global_shortcuts>)
   set_tests_properties(portal_global_shortcuts_contract PROPERTIES TIMEOUT 60)
 endif()
+# Hyprland (#1275): key/bind contracts against an Omarchy 4.5 bind list, the
+# permission refusal and rule text, and the shortcut backend against a fake
+# Hyprland IPC server. The real compositor is covered by the Omarchy golden.
+if(BUILD_TESTING AND TARGET putgd_hyprland)
+  add_executable(test_hyprland tests/unit/test_hyprland.cpp)
+  target_include_directories(test_hyprland PRIVATE tests)
+  target_link_libraries(test_hyprland PRIVATE putgd_hyprland Qt6::Test)
+  target_compile_definitions(test_hyprland PRIVATE PUTGD_TEST_FIXTURES="${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures")
+  add_test(NAME hyprland_contracts COMMAND test_hyprland)
+  set_tests_properties(hyprland_contracts PROPERTIES TIMEOUT 120)
+endif()

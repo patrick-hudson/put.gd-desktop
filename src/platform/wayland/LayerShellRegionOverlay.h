@@ -23,6 +23,13 @@ public:
  [[nodiscard]] static std::thread preloadFonts();
  // Completes the selection with a logical rectangle, as a drag would (agent control).
  void select(const QRectF& logical);
+ // A drag seen before these surfaces took input (kind: press, move or release; layout coordinates).
+ void relayPointer(const QString& kind,QPointF logical);
+ // Before start(): map without the keyboard, then accept it on demand once drawn
+ // (Hyprland releases every held button when a surface takes it while mapping).
+ void setDeferKeyboard(bool defer){deferKeyboard_=defer;}
+ // Takes the keyboard outright and handles the key that asked for it.
+ void takeKeyboard(int qtKey,int qtModifiers);
 signals:
  void selected(const QRectF&);void cancelled(const putgd::Error&);
 private:
@@ -30,7 +37,7 @@ private:
  bool addSurface(const CaptureFrame&,QScreen*);
  void accept();
  bool eventFilter(QObject*,QEvent*) override;
- class Surface;void press(QPointF);void move(QPointF);void release(QPointF);void finish();void dismiss();
+ class Surface;void press(QPointF);void move(QPointF);void release(QPointF);void finish();void dismiss();void surfacePainted(const void*);void acceptKeyboardOnDemand();QSet<const void*> drawn_;bool shown_=false,deferKeyboard_=false,keyboardTaken_=false;QSet<QWindow*> awaitingMapped_;
  int keyboardScreen_=-1;
  QList<CaptureFrame> frames_;QString outcome_;QList<Surface*> surfaces_;QRectF selection_;QPointF anchor_;bool dragging_=false,finished_=false,clearing_=false,dismissing_=false;QSet<QWindow*> awaitingFrames_;
  bool recording_=false,frozen_=false;

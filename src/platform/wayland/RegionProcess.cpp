@@ -5,6 +5,7 @@
 #include <QPointer>
 #include <QUuid>
 #include <QFile>
+#include <utility>
 #include <unistd.h>
 #include <fcntl.h>
 
@@ -36,7 +37,8 @@ WaylandRegionProcess::WaylandRegionProcess(QObject* parent):WaylandRegionProcess
 WaylandRegionProcess::WaylandRegionProcess(QString helperPath,QObject* parent)
  :QObject(parent),helperPath_(std::move(helperPath)),deadline_(this),stopDeadline_(this) {
  if(helperPath_.isEmpty()) helperPath_=QCoreApplication::applicationDirPath()+"/putgd-region";
- deadline_.setSingleShot(true); stopDeadline_.setSingleShot(true);
+ deadline_.setSingleShot(true); stopDeadline_.setSingleShot(true); moveFlush_.setSingleShot(true);
+ connect(&moveFlush_,&QTimer::timeout,this,[this]{if(pendingMove_){flushMove();if(busy())moveFlush_.start(33);}});
  connect(&deadline_,&QTimer::timeout,this,[this]{fail(unavailable(ready_?"capture_timeout":"capture_start_timeout"));});
  connect(&stopDeadline_,&QTimer::timeout,this,[this]{if(process_) process_->kill();});
 }
@@ -64,7 +66,7 @@ void WaylandRegionProcess::start(const QList<CaptureFrame>& frames,std::function
  WaylandFrozenFrames frozen;
  if(!pixels.isEmpty()) { frozen=waylandFrozenFrames(frames,pixels,error); if(error) { callback({},std::move(error)); return; } }
  closeFrozen(); frozenFd_=frozen.fd;
- frames_=frames; reply_=std::move(callback); result_={}; failure_={};
+ frames_=frames; reply_=std::move(callback); result_={}; failure_={}; if(!pointerArmed_) pendingPointer_.clear(); pointerArmed_=false; pendingMove_.reset(); moveFlush_.stop();
  ready_=begun_=resultReceived_=accepted_=cancelling_=terminal_=teardownCertified_=false;
  nonce_=QUuid::createUuid().toString(QUuid::WithoutBraces); ++generation_;
  launchPid_=0; launchStartTicks_.clear();
@@ -91,6 +93,7 @@ void WaylandRegionProcess::start(const QList<CaptureFrame>& frames,std::function
   if(launchStartTicks_.isEmpty()) { fail(unavailable("capture_start_failed")); return; }
   QJsonObject bootstrap{{"appearance",appearance},{"build",build()},{"nonce",nonce_},{"generation",QString::number(generation_)},{"layout",layout},{"outcome",outcome}};
   if(frozen.fd>=0) bootstrap["frozen"]=QJsonObject{{"fd",frozen.fd},{"frames",frozen.frames}};
+  if(deferKeyboard_) bootstrap["deferKeyboard"]=true;
   // The child holds its own copy now.
   closeFrozen();
   if(!control_->send("bootstrap",bootstrap)) fail(unavailable("capture_protocol"));
@@ -125,6 +128,31 @@ void WaylandRegionProcess::begin(const Ticket& ticket,std::function<void(QRectF,
  if(state->settled) { callback(state->selection,state->error); return; }
  state->reply=std::move(callback);
 }
+void WaylandRegionProcess::relayPointer(const QString& kind,QPointF logical) {
+ if(busy() ? (terminal_ || cancelling_) : !pointerArmed_) return;
+ if(busy() && begun_) {
+  if(kind=="move") { pendingMove_=logical; if(!moveFlush_.isActive()) { flushMove(); moveFlush_.start(33); } return; }
+  flushMove(); moveFlush_.stop();
+  if(busy() && !terminal_) sendPointer(kind,logical);
+  return;
+ }
+ if(kind=="move" && !pendingPointer_.isEmpty() && pendingPointer_.last().first=="move") pendingPointer_.last().second=logical;
+ else pendingPointer_.append({kind,logical});
+}
+bool WaylandRegionProcess::grantKeyboard(int qtKey,int qtModifiers) {
+ if(!busy() || terminal_ || cancelling_ || !begun_ || !deferKeyboard_ || !control_) return false;
+ if(!control_->send("takeover",{{"nonce",nonce_},{"generation",QString::number(generation_)},{"key",qtKey},{"modifiers",qtModifiers}})) { fail(unavailable("capture_protocol")); return false; }
+ return true;
+}
+void WaylandRegionProcess::flushMove() {
+ if(!pendingMove_) return;
+ const auto point=*pendingMove_; pendingMove_.reset();
+ sendPointer("move",point);
+}
+void WaylandRegionProcess::sendPointer(const QString& kind,QPointF logical) {
+ if(!control_) return;
+ if(!control_->send("pointer",{{"nonce",nonce_},{"generation",QString::number(generation_)},{"kind",kind},{"x",logical.x()},{"y",logical.y()}})) fail(unavailable("capture_protocol"));
+}
 void WaylandRegionProcess::discard(const Ticket& ticket) {
  if(ticket && ticket->owner_==this && !ticket->consumed_.exchange(true)) abandon(ticket->state_);
 }
@@ -150,7 +178,10 @@ void WaylandRegionProcess::receive(const QString& type,const QJsonObject& payloa
   const bool sent=control_->send("begin",{{"nonce",nonce_},{"generation",QString::number(generation_)}});
   if(!guard) return;
   if(!sent) { fail(unavailable("capture_protocol")); return; }
-  deadline_.start(120000); return;
+  deadline_.start(120000);
+  const auto pending=std::exchange(pendingPointer_,{});
+  for(const auto& [kind,point]:pending){ sendPointer(kind,point); if(!guard||!process_||terminal_) return; }
+  return;
  }
  if(type=="cancelled" || type=="error") {
   const auto code=payload["code"].toString();
@@ -195,6 +226,8 @@ void WaylandRegionProcess::fail(Error error) {
 void WaylandRegionProcess::finish(int code,QProcess::ExitStatus status) {
  if(!process_) return;
  deadline_.stop(); stopDeadline_.stop();
+ moveFlush_.stop(); pendingMove_.reset(); pendingPointer_.clear(); pointerArmed_=false;
+ emit ended();
  if(begun_ && launchPid_>0 && !teardownCertified_) cleanupRequired_=true;
  lastExit_={{"generation",QString::number(generation_)},{"code",code},
             {"status",status==QProcess::NormalExit?"normal":"crash"},

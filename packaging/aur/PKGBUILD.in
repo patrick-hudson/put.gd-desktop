@@ -17,7 +17,8 @@ depends=('gcc-libs' 'glibc' 'qt6-base>=6.4.2' 'qt6-svg' 'qt6-wayland'
 optdepends=('gvfs: network locations' 'xdg-desktop-portal: desktop portal services'
             'nautilus: Files upload menu' 'caja: Caja upload menu'
             'nemo: Nemo upload menu' 'dolphin: Dolphin upload menu'
-            'thunar: Thunar send-to menu')
+            'thunar: Thunar send-to menu'
+            'gst-plugin-va: hardware (VA-API) video encoding for screen recording')
 options=('!strip' '!debug')
 provides=('putgd')
 conflicts=('putgd')
