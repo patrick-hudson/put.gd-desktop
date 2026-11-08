@@ -7,6 +7,7 @@
 #include <wayland-client.h>
 #include <QHash>
 #include <QJsonArray>
+#include <QSet>
 #include <QMap>
 #include <QPointer>
 #include <QSocketNotifier>
@@ -51,7 +52,10 @@ struct ImageCopyCapture::Impl:QObject {
   Impl* owner=nullptr;quint64 id=0;bool window=false;QString target;ResourceLimits limits;Reply reply;
   ext_image_capture_source_v1* source=nullptr;ext_image_copy_capture_session_v1* session=nullptr;ext_image_copy_capture_frame_v1* frame=nullptr;
   wl_shm_pool* pool=nullptr;wl_buffer* buffer=nullptr;void* map=MAP_FAILED;size_t mapSize=0;int stride=0;
-  QSize size;QList<uint32_t> formats;QImage::Format imageFormat=QImage::Format_Invalid;uint32_t transform=WL_OUTPUT_TRANSFORM_NORMAL;int retries=0;QTimer* timer=nullptr;
+  // size/formats accumulate the batch being announced; a batch ends with done and is kept until a
+  // frame is allocated from it, so one that arrives while a frame is in flight is not lost.
+  QSize size,batchSize,allocated;QList<uint32_t> formats,batchFormats;bool batchReady=false;
+  QImage::Format imageFormat=QImage::Format_Invalid;uint32_t transform=WL_OUTPUT_TRANSFORM_NORMAL;int retries=0;QTimer* timer=nullptr;
  };
  ImageCopyCapture& q;
  wl_display* display=nullptr;wl_registry* registry=nullptr;wl_shm* shm=nullptr;
@@ -61,7 +65,7 @@ struct ImageCopyCapture::Impl:QObject {
  QMap<uint32_t,Output*> outputs;QList<ExtWindow*> extWindows;QList<WlrWindow*> wlrWindows;bool toplevelOverflow=false;
  QHash<quint64,Request*> requests;quint64 nextId=0;
  struct Freeze {Impl* owner=nullptr;wl_callback* callback=nullptr;std::function<void(Toplevel,Error)> reply;};QList<Freeze*> freezes;
- QList<QThread*> workers;
+ QList<QThread*> workers;QSet<quint64> turning;bool cancelling=false;
  QSocketNotifier* readNotifier=nullptr;QSocketNotifier* writeNotifier=nullptr;QTimer reconnect;wl_callback* initialSync=nullptr;
  QString error="Image copy capture has not connected";bool connected=false,dispatching=false,lossPending=false,closing=false;
  explicit Impl(ImageCopyCapture& q):q(q){reconnect.setInterval(1000);connect(&reconnect,&QTimer::timeout,this,[this]{if(!display)open();});open();reconnect.start();}
@@ -93,7 +97,8 @@ struct ImageCopyCapture::Impl:QObject {
   dispatching=false;flush();
  }
  void lost(){
-  if(dispatching){if(!lossPending){lossPending=true;QTimer::singleShot(0,this,[this]{lossPending=false;lost();});}return;}
+  // Never inside dispatch or cancelAll(): both walk objects that a nested cancel would delete.
+  if(dispatching||cancelling){if(!lossPending){lossPending=true;QTimer::singleShot(0,this,[this]{lossPending=false;lost();});}return;}
   cancelAll({"capture_failed","The Wayland compositor connection for image capture was lost",{}});reset();error="The Wayland compositor connection for image capture was lost";notify();
  }
  void reset(){
@@ -204,7 +209,11 @@ struct ImageCopyCapture::Impl:QObject {
  }
  // Capture -----------------------------------------------------------------
  void cancelAll(const Error& reason){
+  cancelling=true;
   const auto pending=requests.values();for(auto* request:pending)finish(request,{},reason);
+  // Frames being turned upright answer cancelled when their worker ends.
+  turning.clear();
+  cancelling=false;
   for(auto* freeze:freezes){if(freeze->callback)wl_callback_destroy(freeze->callback);auto reply=std::move(freeze->reply);delete freeze;if(reply)reply({},reason);}freezes.clear();
  }
  void release(Request* request){
@@ -246,20 +255,20 @@ struct ImageCopyCapture::Impl:QObject {
    [](void* data,ext_image_copy_capture_session_v1*,uint32_t width,uint32_t height){auto* r=static_cast<Request*>(data);r->size=QSize(int(std::min<uint32_t>(width,65536)),int(std::min<uint32_t>(height,65536)));},
    [](void* data,ext_image_copy_capture_session_v1*,uint32_t format){auto* r=static_cast<Request*>(data);if(r->formats.size()<64)r->formats.append(format);},
    [](void*,ext_image_copy_capture_session_v1*,wl_array*){},[](void*,ext_image_copy_capture_session_v1*,uint32_t,wl_array*){},
-   [](void* data,ext_image_copy_capture_session_v1*){auto* r=static_cast<Request*>(data);r->owner->constraints(r);},
+   [](void* data,ext_image_copy_capture_session_v1*){auto* r=static_cast<Request*>(data);r->batchFormats=r->formats;r->batchSize=r->size;r->batchReady=true;r->formats.clear();r->owner->constraints(r);},
    [](void* data,ext_image_copy_capture_session_v1*){auto* r=static_cast<Request*>(data);r->owner->finish(r,{},{r->window?"target_unavailable":"capture_failed",r->window?"The window closed during capture":"The compositor stopped the capture",{}});}};
   ext_image_copy_capture_session_v1_add_listener(request->session,&listener,request);
   flush();
  }
  void constraints(Request* request){
-  if(request->frame)return; // A new constraint set while a frame is in flight arrives with its failure.
+  // A batch that ends while a frame is in flight is kept; that frame's buffer_constraints failure uses it.
+  if(request->frame||!request->batchReady)return;
+  request->batchReady=false;
   uint32_t chosen=0;QImage::Format format=QImage::Format_Invalid;
   for(const auto preferred:{uint32_t(WL_SHM_FORMAT_XRGB8888),uint32_t(WL_SHM_FORMAT_ARGB8888),uint32_t(WL_SHM_FORMAT_XBGR8888),uint32_t(WL_SHM_FORMAT_ABGR8888)})
-   if(request->formats.contains(preferred)){chosen=preferred;format=shmImageFormat(preferred);break;}
-  // A constraint batch ends with done; the next batch starts a fresh format list.
-  request->formats.clear();
+   if(request->batchFormats.contains(preferred)){chosen=preferred;format=shmImageFormat(preferred);break;}
   if(format==QImage::Format_Invalid){finish(request,{},{"capture_unavailable","The compositor offers no 32-bit shared-memory capture format",{}});return;}
-  const auto width=request->size.width(),height=request->size.height();
+  const auto width=request->batchSize.width(),height=request->batchSize.height();
   if(width<1||height<1){finish(request,{},{"capture_failed","The compositor reported an empty capture buffer",{}});return;}
   if(qint64(width)*height>request->limits.imagePixels){finish(request,{},{"input_excessive","Capture exceeds accepted operation resource limits",{}});return;}
   const int stride=width*4;const auto bytes=size_t(stride)*size_t(height);
@@ -269,7 +278,7 @@ struct ImageCopyCapture::Impl:QObject {
   if(request->pool){wl_shm_pool_destroy(request->pool);request->pool=nullptr;}
   const int fd=int(::syscall(SYS_memfd_create,"putgd-capture",MFD_CLOEXEC));
   if(fd<0||ftruncate(fd,off_t(bytes))<0){if(fd>=0)close(fd);finish(request,{},{"capture_failed","Cannot allocate the capture buffer",{}});return;}
-  request->map=mmap(nullptr,bytes,PROT_READ|PROT_WRITE,MAP_SHARED,fd,0);request->mapSize=bytes;request->stride=stride;request->imageFormat=format;
+  request->map=mmap(nullptr,bytes,PROT_READ|PROT_WRITE,MAP_SHARED,fd,0);request->mapSize=bytes;request->stride=stride;request->imageFormat=format;request->allocated=QSize(width,height);
   if(request->map==MAP_FAILED){close(fd);finish(request,{},{"capture_failed","Cannot map the capture buffer",{}});return;}
   request->pool=wl_shm_create_pool(shm,fd,int32_t(bytes));close(fd);
   request->buffer=wl_shm_pool_create_buffer(request->pool,0,width,height,stride,chosen);
@@ -288,8 +297,8 @@ struct ImageCopyCapture::Impl:QObject {
  }
  void failed(Request* request,uint32_t reason){
   if(reason==EXT_IMAGE_COPY_CAPTURE_FRAME_V1_FAILURE_REASON_BUFFER_CONSTRAINTS&&request->retries<maximumConstraintRetries){
-   // The session sends fresh constraints and done; allocate again then.
-   ++request->retries;ext_image_copy_capture_frame_v1_destroy(request->frame);request->frame=nullptr;return;
+   // Fresh constraints and done follow; if they already arrived during the frame, allocate from them now.
+   ++request->retries;ext_image_copy_capture_frame_v1_destroy(request->frame);request->frame=nullptr;constraints(request);return;
   }
   if(reason==EXT_IMAGE_COPY_CAPTURE_FRAME_V1_FAILURE_REASON_STOPPED){finish(request,{},{request->window?"target_unavailable":"capture_failed",request->window?"The window closed during capture":"The compositor stopped the capture",{}});return;}
   finish(request,{},{"capture_failed","The compositor could not copy the frame",{{"reason",int(reason)}}});
@@ -298,15 +307,19 @@ struct ImageCopyCapture::Impl:QObject {
   // The image owns the mapping from here; every protocol object goes now.
   void* map=request->map;const size_t size=request->mapSize;request->map=MAP_FAILED;
   struct Mapping {void* address;size_t size;};auto* mapping=new Mapping{map,size};
-  QImage view(static_cast<uchar*>(map),request->size.width(),request->size.height(),request->stride,format,[](void* info){auto* m=static_cast<Mapping*>(info);munmap(m->address,m->size);delete m;},mapping);
+  // The allocated size, not a newer announcement: the mapping is that big (review #1275).
+  QImage view(static_cast<uchar*>(map),request->allocated.width(),request->allocated.height(),request->stride,format,[](void* info){auto* m=static_cast<Mapping*>(info);munmap(m->address,m->size);delete m;},mapping);
   const auto transform=request->transform;const auto id=request->id;
   requests.remove(id);auto reply=std::move(request->reply);release(request);delete request;
   if(view.isNull()){reply({},{"capture_failed","Cannot read the capture buffer",{}});return;}
   if(transform==WL_OUTPUT_TRANSFORM_NORMAL){reply(std::move(view),{});return;}
   // Turning a frame upright copies it: do that off the session thread.
-  auto result=std::make_shared<QImage>();QPointer<Impl> guard(this);
+  auto result=std::make_shared<QImage>();turning.insert(id);
   auto* worker=QThread::create([view=std::move(view),transform,result]{*result=waylandUpright(view,transform);});workers.append(worker);
-  connect(worker,&QThread::finished,this,[this,worker,result,reply=std::move(reply)]{workers.removeOne(worker);worker->deleteLater();if(result->isNull())reply({},{"capture_failed","Cannot turn the capture upright",{}});else reply(std::move(*result),{});});
+  connect(worker,&QThread::finished,this,[this,worker,result,id,reply=std::move(reply)]{
+   workers.removeOne(worker);worker->deleteLater();
+   if(!turning.remove(id)){reply({},{"cancelled","Image capture cancelled",{}});return;}
+   if(result->isNull())reply({},{"capture_failed","Cannot turn the capture upright",{}});else reply(std::move(*result),{});});
   worker->start();
  }
  void freeze(std::function<void(Toplevel,Error)> reply){

@@ -42,7 +42,7 @@ public:
  void freezeActive(std::function<void(Toplevel,Error)>);
  void captureOutput(const QString& name,const ResourceLimits&,Reply);
  void captureToplevel(const QString& identifier,const ResourceLimits&,Reply);
- // Ends every request in flight with cancelled.
+ // Ends every request in flight with cancelled, including a frame still being turned upright.
  void cancel();
 signals:
  void changed();
