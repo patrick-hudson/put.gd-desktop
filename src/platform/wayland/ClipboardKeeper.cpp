@@ -59,13 +59,14 @@ int copyIntoMemory(const QString& path){
 // Only async-signal-safe calls: other threads may hold locks across the fork.
 // A byte on started means exec failed; the pipe's close-on-exec end says it worked.
 [[noreturn]] void becomeKeeper(int payload,int image,int started,const char* path,char* const argv[],char* const envp[]){
+ const auto failed=[started]{const char byte=1;(void)!::write(started,&byte,1);::_exit(127);};
  ::setsid();
  const pid_t daemon=::fork();
  if(daemon<0)::_exit(127);
  if(daemon>0)::_exit(0);
- if(::dup2(payload,STDIN_FILENO)<0||::fcntl(STDIN_FILENO,F_SETFD,0)<0)::_exit(127);
+ if(::dup2(payload,STDIN_FILENO)<0||::fcntl(STDIN_FILENO,F_SETFD,0)<0)failed();
  const int null=::open("/dev/null",O_RDWR|O_CLOEXEC);
- if(null<0||::dup2(null,STDOUT_FILENO)<0||::dup2(null,STDERR_FILENO)<0)::_exit(127);
+ if(null<0||::dup2(null,STDOUT_FILENO)<0||::dup2(null,STDERR_FILENO)<0)failed();
  // It outlives this process: no sockets, locks or AppImage mount descriptor.
 #if defined(SYS_close_range) && defined(CLOSE_RANGE_CLOEXEC)
  if(::syscall(SYS_close_range,3U,~0U,CLOSE_RANGE_CLOEXEC)!=0)
@@ -76,8 +77,8 @@ int copyIntoMemory(const QString& path){
  }
  sigset_t none;::sigemptyset(&none);::sigprocmask(SIG_SETMASK,&none,nullptr);
  if(image>=0)::fexecve(image,argv,envp);else ::execve(path,argv,envp);
- const char failed=1;(void)!::write(started,&failed,1);
- ::_exit(127);
+ failed();
+ __builtin_unreachable();
 }
 }
 bool startClipboardKeeper(const QHash<QString,QByteArray>& data,QString helperPath){

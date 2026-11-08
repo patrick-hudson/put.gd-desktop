@@ -87,7 +87,7 @@ def validate_inventory(root: Path, expected_manifest: dict | None = None, *, req
     changelog = gzip.decompress((root / "usr/share/doc/putgd/changelog.gz").read_bytes()).decode()
     if not changelog.startswith("putgd ("):
         raise ValueError("Native changelog is invalid")
-    for name in programs:
+    for name in [*programs, *(Path(path).name for path in keeper)]:
         mode = stat.S_IMODE((root / "usr/bin" / name).stat().st_mode)
         if mode != 0o755:
             raise ValueError(f"Executable mode must be 0755: {name} ({mode:04o})")
@@ -112,7 +112,7 @@ def validate_inventory(root: Path, expected_manifest: dict | None = None, *, req
     recorded = {record["file"] for record in records}
     if any(path.name not in recorded for path in private.iterdir() if path.is_file()):
         raise ValueError("Unrecorded private runtime library")
-    return {**({"proton": proton} if proton else {}), "manifest": manifest, "programs": programs,
+    return {**({"proton": proton} if proton else {}), "manifest": manifest, "programs": programs, "keeper": keeper,
             "privateLibraryDirectory": str(private.relative_to(root)),
             "runtimeModule": module,
             "inventory": [{"path": str(path.relative_to(root)), "size": path.stat().st_size,
@@ -135,6 +135,13 @@ def audit_tree(root: Path, expected_manifest=None, *, require_kde=False, require
     env = {**os.environ, "LD_LIBRARY_PATH": str(private)}
     result["compiledIdentities"] = {}
     result["elfDependencies"] = {}
+    for relative in result.get("keeper", []):
+        # Not a Qt product: no crash handler or version to check, but hardened like the rest.
+        keeper_path = root / relative
+        if not re.search(r"Type:\s+DYN\b", command(["readelf", "-hW", str(keeper_path)])):
+            raise ValueError(f"Native executable is not PIE: {relative}")
+        if "GNU_RELRO" not in command(["readelf", "-lW", str(keeper_path)]) or not re.search(r"BIND_NOW|FLAGS.*\bNOW\b", command(["readelf", "-dW", str(keeper_path)])):
+            raise ValueError(f"Native executable lacks full RELRO: {relative}")
     for name in result["programs"]:
         if name == "putgd-launcher":
             continue
