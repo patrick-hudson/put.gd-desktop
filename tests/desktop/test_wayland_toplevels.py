@@ -32,6 +32,12 @@ class Peer(threading.Thread):
         self.requests = []
 
     def run(self):
+        try:
+            self.serve()
+        finally:
+            self.server.close()
+
+    def serve(self):
         conn, _ = self.server.accept()
         buffer, syncs = b'', 0
         with conn:
@@ -93,6 +99,47 @@ class WaylandToplevelsTest(unittest.TestCase):
         (object_id, opcode, payload), = messages
         reader = wt.Reader(payload)
         self.assertEqual((object_id, opcode, reader.string(), reader.uint()), (7, 3, 'héllo', 5))
+
+
+class ProbeWitnessTest(unittest.TestCase):
+    def test_the_probe_runs_the_shipped_witness_source(self):
+        # The probe is exec'd on the target with no file of its own (review #1275).
+        sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+        from tools.lab.surface_driver import probe
+        source = (Path(__file__).resolve().parents[2] / 'tools' / 'lab' / 'wayland_toplevels.py').read_text()
+        with tempfile.TemporaryDirectory(prefix='wt-') as root:
+            path = os.path.join(root, 'w')
+            Peer(path, 'beta').start()
+            old = os.environ.get('WAYLAND_DISPLAY')
+            os.environ['WAYLAND_DISPLAY'] = path
+            try:
+                seen = probe.wayland_toplevel_windows({'kind': 'wayland-toplevels', 'witness_source': source})
+            finally:
+                if old is None:
+                    os.environ.pop('WAYLAND_DISPLAY')
+                else:
+                    os.environ['WAYLAND_DISPLAY'] = old
+        self.assertEqual([w['id'] for w in seen['windows']], ['a1', 'b2'])
+        self.assertEqual([w['focus'] for w in seen['windows']], [False, True])
+        self.assertTrue(all(w['frame'] is None for w in seen['windows']))
+
+    def test_layout_refuses_a_witness_without_geometry(self):
+        sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+        from tools.lab.surface_driver import probe
+        rows = {'windows': [{'id': 'a1', 'title': 'A', 'pid': None, 'frame': None, 'stack': 0}]}
+        original = probe.compositor_windows
+        probe.compositor_windows = lambda compositor: rows
+        old = os.environ.get('XDG_SESSION_TYPE')
+        os.environ['XDG_SESSION_TYPE'] = 'wayland'
+        try:
+            with self.assertRaisesRegex(RuntimeError, 'no window geometry'):
+                probe.layout({'compositor': {'kind': 'wayland-toplevels'}})
+        finally:
+            probe.compositor_windows = original
+            if old is None:
+                os.environ.pop('XDG_SESSION_TYPE')
+            else:
+                os.environ['XDG_SESSION_TYPE'] = old
 
 
 if __name__ == '__main__':

@@ -525,19 +525,27 @@ def compositor_windows(compositor):
     if kind == 'kwin-script':
         return kwin_windows()
     if kind == 'wayland-toplevels':
-        return wayland_toplevel_windows()
+        return wayland_toplevel_windows(compositor)
     raise RuntimeError('no compositor window witness configured for this Wayland profile')
 
 
-def wayland_toplevel_windows():
+def wayland_toplevel_windows(compositor=None):
     """labwc and Mir have no scripting: the toplevel protocols are the witness.
 
     They give identifiers, app IDs, titles and the activated window, but no PID
     and no geometry, so frame and content are None and hit-tests are refused.
+    The probe runs from shipped source with no file of its own, so the context
+    sends the witness's source with the compositor settings (witness_source).
     """
-    import sys
-    sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-    import wayland_toplevels
+    source = (compositor or {}).get('witness_source')
+    if source:
+        import types
+        wayland_toplevels = types.ModuleType('wayland_toplevels')
+        exec(compile(source, 'wayland_toplevels.py', 'exec'), wayland_toplevels.__dict__)
+    else:
+        import sys
+        sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+        import wayland_toplevels
     seen = wayland_toplevels.snapshot(wayland_toplevels.socket_path())
     active = (seen.get('active') or {}).get('identifier')
     windows = [{'id': w.get('identifier'), 'title': w.get('title'), 'pid': None, 'wm_class': w.get('app_id'),
@@ -2089,6 +2097,9 @@ def layout(query):
                          'stack': rank.get(top), 'minimized': w['states']['minimized']})
         return {'windows': rows, 'coordinate_space': 'framebuffer'}
     for w in compositor_windows(query.get('compositor'))['windows']:
+        if w.get('frame') is None:
+            # labwc/Mir witnesses report no geometry: refuse rather than invent a rectangle.
+            raise RuntimeError('this compositor witness reports no window geometry, so the desktop layout is unknown')
         rows.append({'id': str(w['id']), 'title': w.get('title') or '', 'pid': w.get('pid'), 'process': process_name(w.get('pid')),
                      'owned': bool(w.get('pid') and owned(w['pid'])), 'rect': list(w['frame']),
                      'stack': w.get('stack'), 'minimized': bool(w.get('minimized') or w.get('hidden'))})
