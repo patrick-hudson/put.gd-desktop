@@ -110,7 +110,7 @@ QString unavailableOutput(const QJsonObject& document,const QString& action){
 // Why the desktop can't run this action's capture, from the adapter's capabilities (#1295); empty when it can or nothing is reported.
 QString unavailableSource(const QJsonObject& diagnostics,const QString& action){
  const auto kind=action=="edit"?QString("region"):action;if(!QStringList{"region","window","desktop"}.contains(kind))return {};
- const auto value=diagnostics["capabilities"].toObject()["source"].toObject()["capture"].toObject()[kind];const auto status=value.toObject();
+ const QJsonValue value=diagnostics.value("capabilities").toObject().value("source").toObject().value("capture").toObject().value(kind);const auto status=value.toObject();
  if(!value.isObject()||status["available"].toBool(true))return {};
  const auto error=status["error"];const auto message=error.isObject()?error.toObject()["message"].toString():error.toString();
  const QHash<QString,QString> names{{"region","Region capture"},{"window","Window capture"},{"desktop","Desktop capture"}};
