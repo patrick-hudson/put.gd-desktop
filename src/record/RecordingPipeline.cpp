@@ -9,6 +9,7 @@
 #include <QThread>
 #include <algorithm>
 #include <gst/base/gstbasesrc.h>
+#include <gst/video/video.h>
 #include <ctime>
 #include <cstring>
 
@@ -231,6 +232,47 @@ GstPadProbeReturn RecordingPipeline::stampFrame(GstPad* pad, GstPadProbeInfo* in
     return GST_PAD_PROBE_OK;
 }
 
+GstPadProbeReturn RecordingPipeline::dropSourceEos(GstPad*, GstPadProbeInfo* info, gpointer) {
+    GstEvent* event = GST_PAD_PROBE_INFO_EVENT(info);
+    return event && GST_EVENT_TYPE(event) == GST_EVENT_EOS ? GST_PAD_PROBE_DROP : GST_PAD_PROBE_OK;
+}
+
+GstPadProbeReturn RecordingPipeline::applyCropMeta(GstPad* pad, GstPadProbeInfo* info, gpointer user) {
+    auto* follow = static_cast<CropFollow*>(user);
+    GstBuffer* buffer = GST_PAD_PROBE_INFO_BUFFER(info);
+    const GstVideoCropMeta* meta = buffer ? gst_buffer_get_video_crop_meta(buffer) : nullptr;
+    if (!meta || !follow->crop) return GST_PAD_PROBE_OK;
+    const QRect region(int(meta->x), int(meta->y), int(meta->width), int(meta->height));
+    // Applied here, so no later element crops the frame a second time.
+    buffer = gst_buffer_make_writable(buffer);
+    GST_PAD_PROBE_INFO_DATA(info) = buffer;
+    if (!buffer) return GST_PAD_PROBE_DROP;
+    if (GstVideoCropMeta* own = gst_buffer_get_video_crop_meta(buffer)) gst_buffer_remove_meta(buffer, &own->meta);
+    if (region == follow->applied) return GST_PAD_PROBE_OK;
+    GstCaps* caps = gst_pad_get_current_caps(pad);
+    GstVideoInfo video;
+    const bool known = caps && gst_video_info_from_caps(&video, caps);
+    if (caps) gst_caps_unref(caps);
+    if (!known) return GST_PAD_PROBE_OK;
+    // videocrop takes new margins on its next buffer (this one) and renegotiates;
+    // the scaler behind it keeps the encoder's canvas.
+    const auto margins = cropMargins(QSize(GST_VIDEO_INFO_WIDTH(&video), GST_VIDEO_INFO_HEIGHT(&video)), region);
+    g_object_set(follow->crop, "left", margins.left, "top", margins.top, "right", margins.right, "bottom", margins.bottom, nullptr);
+    follow->applied = region;
+    ++follow->changes;
+    return GST_PAD_PROBE_OK;
+}
+
+void RecordingPipeline::attachSourceProbes(GstElement* source, bool stamped, bool guardEos) {
+    GstPad* pad = source ? gst_element_get_static_pad(source, "src") : nullptr;
+    if (!pad) return;
+    if (stamped) gst_pad_add_probe(pad, GST_PAD_PROBE_TYPE_BUFFER, &RecordingPipeline::stampFrame, &frameClock_, nullptr);
+    // ximagesrc (and the legacy PipeWire lab mode): the rate gate drops frames before the capture queue.
+    else gst_pad_add_probe(pad, GST_PAD_PROBE_TYPE_BUFFER, &RecordingPipeline::gateFrame, &gate_, nullptr);
+    if (guardEos) gst_pad_add_probe(pad, GST_PAD_PROBE_TYPE_EVENT_DOWNSTREAM, &RecordingPipeline::dropSourceEos, nullptr, nullptr);
+    gst_object_unref(pad);
+}
+
 GstPadProbeReturn RecordingPipeline::gateFrame(GstPad*, GstPadProbeInfo* info, gpointer user) {
     auto* gate = static_cast<RateGate*>(user);
     GstBuffer* buffer = GST_PAD_PROBE_INFO_BUFFER(info);
@@ -246,7 +288,7 @@ GstPadProbeReturn RecordingPipeline::gateFrame(GstPad*, GstPadProbeInfo* info, g
 }
 
 bool RecordingPipeline::launch(const Options& options, const QString& encoder, const QString& audioEncoder, bool unthrottled, QString& failure) {
-    const QSize encoded = options.crop.isValid() ? options.crop.size() : options.rect.size();
+    const QSize encoded = options.canvas.isValid() ? options.canvas : options.crop.isValid() ? options.crop.size() : options.rect.size();
     const int kbps = bitrateKbps(encoded, options.fps);
     QString description;
     // Lab A/B runs: PUTGD_RECORD_PIPEWIRE_TIMESTAMPS=legacy restores the
@@ -264,7 +306,11 @@ bool RecordingPipeline::launch(const Options& options, const QString& encoder, c
         description = pipewireSourceDescription(frameSource.isEmpty() ? QStringLiteral("pipewiresrc") : frameSource, options.pipewireNode, options.pipewireFd, frameSource.isEmpty())
             + (unthrottled ? (labCaps.isEmpty() ? pipewireUnthrottledCaps() : QStringLiteral(" ! ") + labCaps) : QString()) + captureQueue();
         if (options.crop.isValid()) description += QStringLiteral(" ! videocrop left=%1 top=%2 right=%3 bottom=%4").arg(options.crop.x()).arg(options.crop.y()).arg(std::max(0, options.rect.width() - options.crop.x() - options.crop.width())).arg(std::max(0, options.rect.height() - options.crop.y() - options.crop.height()));
+        // A window stream: the window's place in each frame (Mutter), then its
+        // frames, whatever their size after a resize, letterboxed into the canvas.
+        if (options.followCrop) description += QStringLiteral(" ! videocrop name=wcrop");
         description += convert();
+        if (options.canvas.isValid()) description += QStringLiteral(" ! videoscale add-borders=true ! video/x-raw,width=%1,height=%2,pixel-aspect-ratio=1/1").arg(options.canvas.width()).arg(options.canvas.height());
     } else {
         // ximagesrc skips frame numbers when a grab runs late, leaving gaps in
         // the timestamps. The va encoders (vah264lpenc, vah264enc) stamp their
@@ -311,15 +357,20 @@ bool RecordingPipeline::launch(const Options& options, const QString& encoder, c
         gst_pipeline_use_clock(GST_PIPELINE(pipeline), system);
         gst_object_unref(system);
         GstElement* source = gst_bin_get_by_name(GST_BIN(pipeline), "src");
-        GstPad* pad = source ? gst_element_get_static_pad(source, "src") : nullptr;
-        if (pad) gst_pad_add_probe(pad, GST_PAD_PROBE_TYPE_BUFFER, &RecordingPipeline::stampFrame, &frameClock_, nullptr);
-        if (pad) gst_object_unref(pad);
+        attachSourceProbes(source, true, options.reopenableSource);
         if (source) gst_object_unref(source);
     } else if (GstElement* source = gst_bin_get_by_name(GST_BIN(pipeline), "src")) {
-        // ximagesrc (and the legacy PipeWire lab mode): the rate gate drops frames before the capture queue.
-        if (GstPad* pad = gst_element_get_static_pad(source, "src")) { gst_pad_add_probe(pad, GST_PAD_PROBE_TYPE_BUFFER, &RecordingPipeline::gateFrame, &gate_, nullptr); gst_object_unref(pad); }
+        attachSourceProbes(source, false, options.reopenableSource);
         gst_object_unref(source);
     }
+    cropFollow_ = {};
+    if (GstElement* crop = options.followCrop ? gst_bin_get_by_name(GST_BIN(pipeline), "wcrop") : nullptr) {
+        // The pipeline owns the element; the pointer is dropped at teardown.
+        cropFollow_.crop = crop;
+        if (GstPad* pad = gst_element_get_static_pad(crop, "sink")) { gst_pad_add_probe(pad, GST_PAD_PROBE_TYPE_BUFFER, &RecordingPipeline::applyCropMeta, &cropFollow_, nullptr); gst_object_unref(pad); }
+        gst_object_unref(crop);
+    }
+    sourceLost_ = false;
     debugLog("pipeline: " + description);
     auto attach = [&](const char* element, Rebase& rebase) {
         GstElement* queue = gst_bin_get_by_name(GST_BIN(pipeline), element);
@@ -529,6 +580,20 @@ void RecordingPipeline::poll() {
             return;
         }
         Error error{"recording_failed", QStringLiteral("Capture failed: %1").arg(e ? QString::fromUtf8(e->message) : QString()), {{"debug", QString::fromUtf8(debug ? debug : "").left(512)}}};
+        // A window stream's source failing (the window closed, or an old
+        // pipewiresrc refusing KWin's renegotiation after a resize) leaves the
+        // clip open: the session reopens the source or stops. A drain already
+        // under way ends without the source either way.
+        if (options_.reopenableSource && GST_MESSAGE_SRC(message) && QByteArrayView(GST_OBJECT_NAME(GST_MESSAGE_SRC(message))) == "src") {
+            const bool report = !stopping_ && !sourceLost_;
+            sourceLost_ = true;
+            debugLog(QStringLiteral("source failed%1: %2").arg(report ? QString() : QStringLiteral(" (reported)"), error.message));
+            if (e) g_error_free(e);
+            g_free(debug);
+            gst_message_unref(message);
+            if (report) { gst_object_unref(bus); emit sourceLost(error); return; }
+            continue;
+        }
         const auto disk = storage();
         // A previous low-space stop is context, not evidence that a later
         // encoder/source/drain error was caused by storage. Even a generic WRITE
@@ -598,6 +663,43 @@ void RecordingPipeline::observeRate() {
     rateChange_ = {{"from", from}, {"to", rate_.current()}, {"reason", rate_.reason()}, {"atUs", double(retainedUs())}};
     debugLog(QStringLiteral("rate lowered from %1 to %2 fps (%3)").arg(from).arg(rate_.current()).arg(rate_.reason()));
 }
+bool RecordingPipeline::reopenSource() {
+    if (!pipeline_ || stopping_ || !options_.pipewireNode) return false;
+    GstElement* old = gst_bin_get_by_name(GST_BIN(pipeline_), "src");
+    if (!old) return false;
+    GstElementFactory* factory = gst_element_get_factory(old);
+    const QByteArray element = factory ? QByteArray(gst_plugin_feature_get_name(GST_PLUGIN_FEATURE(factory))) : QByteArray("pipewiresrc");
+    GstPad* pad = gst_element_get_static_pad(old, "src");
+    GstPad* peer = pad ? gst_pad_get_peer(pad) : nullptr;
+    if (!peer) { if (pad) gst_object_unref(pad); gst_object_unref(old); return false; }
+    gst_pad_unlink(pad, peer);
+    gst_object_unref(pad);
+    gst_element_set_state(old, GST_STATE_NULL);
+    gst_bin_remove(GST_BIN(pipeline_), old);
+    gst_object_unref(old);
+    // The same element and properties as at launch (pipewireSourceDescription).
+    GstElement* fresh = gst_element_factory_make(element.constData(), "src");
+    if (!fresh) { gst_object_unref(peer); return false; }
+    const bool stamped = element != "pipewiresrc";
+    gst_util_set_object_arg(G_OBJECT(fresh), "path", QByteArray::number(options_.pipewireNode).constData());
+    if (options_.pipewireFd >= 0) gst_util_set_object_arg(G_OBJECT(fresh), "fd", QByteArray::number(options_.pipewireFd).constData());
+    gst_util_set_object_arg(G_OBJECT(fresh), "min-buffers", "1");
+    gst_util_set_object_arg(G_OBJECT(fresh), "keepalive-time", "1000");
+    gst_util_set_object_arg(G_OBJECT(fresh), "resend-last", "true");
+    if (!stamped) gst_util_set_object_arg(G_OBJECT(fresh), "do-timestamp", "true");
+    gst_bin_add(GST_BIN(pipeline_), fresh);
+    GstPad* freshPad = gst_element_get_static_pad(fresh, "src");
+    const bool linked = freshPad && gst_pad_link(freshPad, peer) == GST_PAD_LINK_OK;
+    if (freshPad) gst_object_unref(freshPad);
+    gst_object_unref(peer);
+    if (!linked) { gst_element_set_state(fresh, GST_STATE_NULL); gst_bin_remove(GST_BIN(pipeline_), fresh); return false; }
+    attachSourceProbes(fresh, stamped, true);
+    sourceLost_ = false;
+    ++sourceReopens_;
+    if (!gst_element_sync_state_with_parent(fresh)) return false;
+    debugLog(QStringLiteral("source reopened on node %1 (%2 so far)").arg(options_.pipewireNode).arg(sourceReopens_));
+    return true;
+}
 bool RecordingPipeline::relaunchThrottled() {
     tearDown();
     const auto options = options_;
@@ -619,6 +721,10 @@ void RecordingPipeline::tearDown() {
     gst_object_unref(pipeline_);
     pipeline_ = nullptr;
     gst_buffer_replace(&frameClock_.lastKept, nullptr);
+    if (cropFollow_.changes || sourceReopens_) debugLog(QStringLiteral("window stream: crop changed %1 times, source reopened %2 times").arg(cropFollow_.changes).arg(sourceReopens_));
+    cropFollow_ = {};
+    sourceLost_ = false;
+    sourceReopens_ = 0;
     // Lateness: running time at the encoder minus the buffer's time; age: how
     // old a compositor frame time was when the frame reached the source pad.
     debugLog(QStringLiteral("timestamps: clock %1, video lateness %2, audio lateness %3, frame age %4, arrival-stamped frames %5, audio re-anchored %6 times")

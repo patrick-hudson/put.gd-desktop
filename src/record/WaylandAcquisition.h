@@ -1,4 +1,6 @@
 #pragma once
+#include <QRect>
+#include <QSize>
 #include <QProcessEnvironment>
 #include <QString>
 #include <QtGlobal>
@@ -55,4 +57,13 @@ inline QString pipewireUnthrottledCaps() { return QStringLiteral(" ! video/x-raw
 struct FrameLock { qint64 periodNs = 0; qint64 toleranceNs = 0; };
 inline FrameLock frameLock(int fps) { const qint64 period = fps > 0 ? 1'000'000'000 / fps : 0; return {period, period * 7 / 10}; }
 qint64 lockedFrameTime(qint64 arrivalRunning, qint64 previous, const FrameLock& lock);
+
+// The videocrop margins that cut `region` (a frame's PipeWire crop region,
+// buffer pixels) out of a frame of `frame` size. A region that is empty or
+// reaches outside the frame crops nothing.
+struct CropMargins { int left = 0, top = 0, right = 0, bottom = 0; bool operator==(const CropMargins&) const = default; };
+CropMargins cropMargins(const QSize& frame, const QRect& region);
+// A window recording's fixed canvas: the window's logical frame size at the
+// output scale, in even pixels (the H.264 encoders need even sizes), at least 2.
+QSize windowCanvas(const QSize& logical, qreal scale);
 }

@@ -49,9 +49,10 @@ const context = {
     Shell: {Screenshot: class {}}, GObject: {registerClass: cls => cls}, St: {Widget: class {}},
     Extension: class {}, Main: {sessionMode: {isLocked: false}},
     global: {display: {focus_window: null}},
+    Meta: {TabList: {NORMAL_ALL: 2}},
 };
 // Direct eval captures only these deliberately mocked Shell dependencies.
-const {Clutter, Gio, GLib, Shell, GObject, St, Extension, Main, global} = context;
+const {Clutter, Gio, GLib, Shell, GObject, St, Extension, Main, global, Meta} = context;
 eval(source);
 context.PutgdExtension = globalThis.PutgdExtension;
 function fixture() {
@@ -650,4 +651,26 @@ print('PASS recording bar placement prefers below, above, another monitor, then 
         print('PASS Preview leaves a failed request for Acquire to report');
     }
     delete context.Gio.MemoryOutputStream;
+}
+{
+    // Recording protocol 2: the windows a window recording can follow (Mutter's
+    // window ids), the focused one active, put.gd's own never listed.
+    const {extension} = fixture();
+    const window = (pid, id, title, minimized = false) => ({get_pid: () => pid, get_id: () => id, get_title: () => title,
+        get_wm_class: () => title.toLowerCase(), minimized, get_frame_rect: () => ({x: id, y: 2, width: 300, height: 200})});
+    const notes = window(3000, 42, 'Notes'), video = window(3000, 43, 'Video', true), dashboard = window(residentPid, 7, 'put.gd');
+    context.global.display.get_tab_list = type => type === context.Meta.TabList.NORMAL_ALL ? [dashboard, notes, video] : [];
+    context.Shell.WindowTracker = {get_default: () => ({get_window_app: w => w === notes ? {get_id: () => 'org.example.Notes.desktop'} : null})};
+    context.global.display.focus_window = notes;
+    assert.deepEqual(await bridge(extension, 'RecordingWindowsAsync', []), {version: 1, windows: [
+        {identity: '42', title: 'Notes', appId: 'org.example.Notes.desktop', rect: [42, 2, 300, 200], active: true, minimized: false},
+        {identity: '43', title: 'Video', appId: 'video', rect: [43, 2, 300, 200], active: false, minimized: true}], activeExcluded: false});
+    context.global.display.focus_window = dashboard;
+    const own = await bridge(extension, 'RecordingWindowsAsync', []);
+    assert.equal(own.activeExcluded, true);
+    assert.deepEqual(own.windows.map(w => [w.identity, w.active]), [['42', false], ['43', false]]);
+    globalThis.Config = {PACKAGE_VERSION: '50.0'};
+    extension.metadata = {version: 19};
+    assert.equal((await bridge(extension, 'HelloAsync', [])).recordingVersion, 2);
+    print('PASS RecordingWindows lists external windows, marks the focused one and leaves out put.gd\'s own');
 }

@@ -142,7 +142,8 @@ void RecordingHelperBackend::prepare(const QString& id, const RecordingTarget& t
     connect(process, qOverload<int, QProcess::ExitStatus>(&QProcess::finished), this, [this, generation](int code, QProcess::ExitStatus status) { exited(generation, code, status); });
     child_ = std::move(child);
     // A sentinel request waits for `ready`; the helper's prepare result then answers the caller.
-    const QJsonObject params{{"id", id}, {"target", target.toJson()}, {"config", config.toJson()}, {"staging", staging}, {"reviewOptions", reviewOptions}};
+    QJsonObject params{{"id", id}, {"target", target.toJson()}, {"config", config.toJson()}, {"staging", staging}, {"reviewOptions", reviewOptions}};
+    if (target.kind == "window" && !target.window.isEmpty()) params["window"] = target.window;
     auto userReply = std::move(reply);
     child_->outstanding.insert("prepare", {[this, params, userReply](Error error, QJsonObject) { if (error) { userReply(error, {}); return; } send("prepare", params, prepareMs_, userReply); }});
     startup_.start(startupMs_);

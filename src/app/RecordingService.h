@@ -37,11 +37,13 @@ public:
     // The desktop shell that selects regions and frames the recording where the
     // helper cannot (GNOME); not owned, and it must outlive the service.
     void setShell(RecordingShell* shell) { shell_ = shell; }
+    // The desktop's window list for window recordings (KDE, GNOME Wayland); not owned.
+    void setWindows(RecordingWindows* windows) { windows_ = windows; }
     QJsonObject capabilities() const;
     bool active() const { return session_.has_value(); }
     QString activeId() const { return session_ ? session_->op.id : QString{}; }
-    // capabilities | prepare | start | pause | resume | stop | cancel | inspect |
-    // select | raise | overlay | edit | preview | saveCopy | upload
+    // capabilities | windows | prepare | start | pause | resume | stop | cancel |
+    // inspect | select | raise | overlay | edit | preview | saveCopy | upload
     void command(const QString& command, const QJsonObject& params, JsonReply);
     // The tray and shortcut entry: with no session, prepare a dragged region with
     // the default configuration; otherwise "open" raises the session's window and
@@ -107,6 +109,9 @@ private:
     void prepareSession(const QJsonObject& params, JsonReply);
     // After the durable intent: a shell selection when needed, then the backend.
     void beginPrepare(quint64 generation);
+    // A window target: the active external window or the identity asked for,
+    // from the desktop's window list, before the helper opens its stream.
+    void resolveWindow(quint64 generation);
     void prepareBackend(quint64 generation);
     void prepared(Error, const QJsonObject& result);
     QJsonObject shellFrame(const Session&, const QString& state) const;
@@ -121,6 +126,7 @@ private:
     Host host_;
     std::unique_ptr<RecordingBackend> backend_;
     RecordingShell* shell_ = nullptr;
+    RecordingWindows* windows_ = nullptr;
     std::optional<Session> session_;
     quint64 generation_ = 0;
     bool stopping_ = false;

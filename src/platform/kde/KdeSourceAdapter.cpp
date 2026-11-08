@@ -9,6 +9,7 @@
 #include <QDBusPendingCallWatcher>
 #include <QDBusPendingReply>
 #include <QUuid>
+#include <QFile>
 #include <cmath>
 namespace putgd {
 namespace {
@@ -110,6 +111,19 @@ void KdeSourceAdapter::verifyExternalWindow(const QString& windowId,std::functio
   if(info.value("resourceClass").toString()=="putgd-ui"||info.value("desktopFile").toString()=="putgd-ui"){reply({"target_unavailable","Focus an external window and invoke the window shortcut or CLI",{}});return;}
   reply({});
  });
+}
+void KdeSourceAdapter::listWindows(RecordingWindows::Reply reply){
+ const qint64 resident=QCoreApplication::applicationPid(),ui=uiProcess_;
+ const auto parent=[](qint64 pid)->qint64{
+  QFile stat(QStringLiteral("/proc/%1/stat").arg(pid));if(pid<=0||!stat.open(QIODevice::ReadOnly))return 0;
+  // "pid (comm) state ppid ...": comm may hold spaces and parentheses.
+  const auto text=QString::fromUtf8(stat.read(4096));const auto fields=text.mid(text.lastIndexOf(')')+2).split(' ');return fields.size()>1?fields[1].toLongLong():0;
+ };
+ windows_.list([resident,ui,parent](const QJsonObject& w){
+  const auto pid=qint64(w["pid"].toDouble());
+  if(w["resourceClass"].toString()=="putgd-ui"||w["desktopFile"].toString()=="putgd-ui")return true;
+  return pid>0&&(pid==resident||(ui>0&&pid==ui)||parent(pid)==resident);
+ },std::move(reply));
 }
 void KdeSourceAdapter::acquire(const QString& action,const ResourceLimits& limits,std::function<void(PayloadResult)> cb){prepareAcquisition(action)(limits,std::move(cb));}
 void KdeSourceAdapter::capture(QString action,QList<CaptureFrame> frozen,quint64 revision,ResourceLimits limits,std::function<void(PayloadResult)> cb,const QString& outcome,bool screenshotFirst){

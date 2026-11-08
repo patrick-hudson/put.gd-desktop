@@ -193,8 +193,11 @@ QJsonObject probeMedia() {
     const int sourceTypes = portal["sourceTypes"].toInt();
     QJsonArray targets;
     if (session == "x11" && liveSource) targets = QJsonArray{"monitor", "desktop", "region", "window"};
-    else if ((portalOk || nativeOk) && liveSource) { targets = QJsonArray{"monitor", "desktop", "region"}; if (portalOk && (sourceTypes & int(PortalScreenCast::Window))) targets.append("window"); }
+    else if ((portalOk || nativeOk) && liveSource) { targets = QJsonArray{"monitor", "desktop", "region"}; if (nativeOk || (portalOk && (sourceTypes & int(PortalScreenCast::Window)))) targets.append("window"); }
     result["targets"] = targets;
+    // How a window is recorded: KWin's stream_window or Mutter's RecordWindow
+    // with the window the resident resolved, else the portal picker.
+    if (targets.contains("window")) result["windowAcquisition"] = session == "x11" ? QStringLiteral("x11") : nativeOk ? acquisition : QStringLiteral("portal");
     result["audio"] = QJsonObject{{"system", result["liveCapture"].toObject()["audio"].toBool()}, {"microphone", false}};
     result["overlayExclusion"] = QJsonObject{};
     const bool implemented = session == "x11" || portalOk || nativeOk;
