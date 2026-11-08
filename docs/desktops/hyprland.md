@@ -48,7 +48,7 @@ Nothing is chosen by the word Omarchy. `capabilities` reports
 | `ext-foreign-toplevel-list-v1` | Window identities; the identifier equals Hyprland's `stableId` |
 | `hyprland-toplevel-mapping-v1` | Confirms that the identifier a window capture reads is the window IPC reported |
 | `hyprland-global-shortcuts-v1` | put.gd's `putgd:<action>` shortcuts |
-| `wlr-layer-shell` (layer-shell-qt) | The region selector (`putgd-region-selector`) and recording overlays (`putgd-record`) on the overlay layer, above Omarchy's bar, dock and notifications |
+| `wlr-layer-shell` (layer-shell-qt, and directly for the press catcher) | The region selector (`putgd-region-selector`), the press catcher (`putgd-region-catcher`) and recording overlays (`putgd-record`) on the overlay layer, above Omarchy's bar, dock and notifications |
 | `ext-data-control-v1` | Clipboard import and result copy |
 
 put.gd does not use `wlr-screencopy`, `hyprland-toplevel-export`, grim, slurp,
@@ -69,6 +69,23 @@ Hyprland briefly refuses connections; requests retry within a 3 s deadline.
   whole output, Omarchy's bar and notifications included. Live selection is the
   default; screenshot-first mode reads every output before the selector maps.
   A layout change during selection ends it with `display_changed`.
+- **Dragging straight after the hotkey**: the selector is a separate process, so
+  its surfaces appear a moment after the hotkey. A press in that gap would go to
+  the window underneath, which then keeps the whole drag. The resident therefore
+  keeps one idle Wayland connection and maps a transparent catcher surface the
+  moment the hotkey arrives (about 0.05 s on the Omarchy VM), and relays a drag
+  that starts on it to the selector, which draws it. The catcher stays under the
+  selector until the selection ends. Three Hyprland 0.56 behaviours shape this:
+  only a layer surface that accepts the keyboard gets pointer focus without the
+  pointer moving, so the catcher takes it on demand; a surface that takes the
+  keyboard as it maps, or becomes exclusive, releases every held button and the
+  real release is then swallowed, so the selector maps without the keyboard; and
+  switching to on-demand afterwards releases nothing but only takes effect on the
+  next pointer motion, so until then Esc and keyboard selection reach the selector
+  through the catcher. A press Hyprland handles before it has processed the
+  catcher (under heavy compositor load, such as just after an output appears on a
+  2-vCPU VM) still goes to the window underneath; the selector then works normally
+  for the next drag.
 - **Desktop**: every output, composed at native density.
 - **Window**: the window the shortcut or CLI call finds active, frozen through
   `j/activewindow`. Its `stableId` is the capture identifier and its `pid`
@@ -202,8 +219,12 @@ A/V sync (median -19 ms) were measured there too.
 
 Golden `omarchy-hyprland-20261108`, profile `omarchy-hyprland`
 ([Omarchy VM](../lab/omarchy-vm.md)). Animations are off in that VM
-(`animations:enabled = false`), so the selector's `no_anim` layer rule cannot be
-observed there ([#1301](https://github.com/patrick-hudson/put.gd-desktop/issues/1301)).
+(`animations:enabled = false`). To observe the selector's `no_anim` layer rule
+([#1301](https://github.com/patrick-hudson/put.gd-desktop/issues/1301)), turn
+them on at runtime with a multi-second `layers`/`fadeLayers` animation and give
+slurp a later rule with `no_anim = false` (Omarchy ships `no_anim` for its
+`selection` layer): slurp then fades in over the animation while put.gd's
+selector appears in one step, and a capture contains no selector.
 Acceptance evidence: [2026-11-08-hyprland-omarchy-1275](https://github.com/patrick-hudson/put.gd-evidence/tree/e2a01bbb98cb76f7a5bd4af98f50f45867924dd2/records/2026-11-08-hyprland-omarchy-1275). The Omarchy golden has no pacman sync databases: run
 `sudo pacman -Sy` before `pacman -U`, never `-Syu`. Hyprland cannot run headless
 in CI (aquamarine needs a DRM device), so CI covers routing, key and bind

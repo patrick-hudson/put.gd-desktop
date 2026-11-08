@@ -115,6 +115,11 @@ tablet input through QEMU ([Hyprland adapter](../desktops/hyprland.md),
 | AppImage | `omarchy-hyprland-20261108` | Everything below |
 | Arch package (`pacman -U` after `pacman -Sy`) | same | Everything below, and its dependencies pull the GStreamer plugins Omarchy lacks |
 
+- A drag that starts right after the region hotkey (from about 0.1 s) selects
+  exactly what was dragged, on one and on two outputs and just after an output
+  appears.
+- With a multi-second layer animation, the selector appears in one step and is
+  not in the capture.
 - Region (exact pixels, no selector outline, live and screenshot-first),
   desktop, window (exact against `grim -T`), refusal of put.gd's own windows.
 - Shortcuts fire from real keys; conflicts with Omarchy's `PRINT` and
