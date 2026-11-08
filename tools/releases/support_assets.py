@@ -20,10 +20,10 @@ def source_tag(release):
 
 def inventory(version):
     return {*(f'putgd-{version}-{distro}-x86_64{suffix}' for distro, suffix in (
-        ('ubuntu24.04', '.deb'), ('ubuntu26.04', '.deb'), ('debian13', '.deb'), ('fedora44', '.rpm'))),
+        ('ubuntu24.04', '.deb'), ('ubuntu26.04', '.deb'), ('debian13', '.deb'), ('fedora44', '.rpm'), ('archlinux', '.pkg.tar.zst'))),
         f'putgd-{version}-x86_64.AppImage', f'putgd-{version}-x86_64.AppImage.zsync',
         *(f'putgd-{version}-{label}.cdx.json' for label in
-          ('ubuntu24.04', 'ubuntu26.04', 'debian13', 'fedora44', 'appimage')),
+          ('ubuntu24.04', 'ubuntu26.04', 'debian13', 'fedora44', 'archlinux', 'appimage')),
         'SHA256SUMS', 'release-builds.json', 'source-delivery.json', 'proton-source-catalog.json'}
 
 

@@ -50,10 +50,12 @@ QStringList moveCommands(const QString& manager,const QString& channel) {
  // The package installs both channels' files under /usr/share/putgd/repo,
  // byte for byte what each channel's package installs, so dpkg takes the next
  // package without a conffile prompt.
+ if(manager=="pacman")return {"sudo install -m 644 /usr/share/putgd/repo/putgd-"+channel+".conf /etc/pacman.d/putgd.conf", "sudo pacman-key --add /usr/share/putgd/repo/putgd-"+channel+".asc", "sudo pacman-key --lsign-key "+QString(channel=="nightly"?"4032E28D893BAF66F4AC23D9A11D38D55536B371":"C0962EFA929F5A5477A4509C0CC9E5A0F0B6FC1C"), installFromRepositoryCommand(manager,channel)};
  if(manager=="apt")return {"sudo install -m 644 /usr/share/putgd/repo/putgd-"+channel+".sources /etc/apt/sources.list.d/putgd.sources","sudo apt update",installFromRepositoryCommand(manager,channel)};
  return {"sudo install -m 644 /usr/share/putgd/repo/putgd-"+channel+".repo /etc/yum.repos.d/putgd.repo",installFromRepositoryCommand(manager,channel)};
 }
 QString installFromRepositoryCommand(const QString& manager,const QString& channel) {
+ if(manager=="pacman")return "sudo pacman -Syuu putgd";
  return manager=="apt"?"sudo apt install --allow-downgrades putgd/"+channel:QString("sudo dnf distro-sync --refresh putgd");
 }
 QString channelDocs() {return "https://github.com/patrick-hudson/put.gd-desktop/blob/main/docs/package-repositories.md#switching-channels";}
@@ -71,9 +73,9 @@ UpdaterChoice softwareUpdater(const QString& currentDesktop,const std::function<
  return {};
 }
 QJsonObject systemAction(const QString& target,const QString& root,const QString& repository,const UpdaterChoice& choice) {
- const bool deb=debTargets.contains(target),rpm=target=="fedora44";
- if(!deb&&!rpm)return {{"kind","download"},{"repository","none"}};
- const QString file=deb?"/etc/apt/sources.list.d/putgd.sources":"/etc/yum.repos.d/putgd.repo";
+ const bool deb=debTargets.contains(target),rpm=target=="fedora44",arch=target=="archlinux";
+ if(!deb&&!rpm&&!arch)return {{"kind","download"},{"repository","none"}};
+ const QString file=arch?"/etc/pacman.d/putgd.conf":deb?"/etc/apt/sources.list.d/putgd.sources":"/etc/yum.repos.d/putgd.repo";
  bool exists=false;const auto text=readSmall(root+file,exists);
  if(!exists)return {{"kind","download"},{"repository","absent"},{"file",file}};
  // Only this build's repository counts; anything else is the user's own setup.
@@ -87,6 +89,13 @@ QJsonObject systemAction(const QString& target,const QString& root,const QString
    state=stanza.contains("enabled")&&falseValue(stanza.value("enabled"))?"disabled":"managed";
    if(state=="managed")break;
   }
+ } else if(arch) {
+  for(const auto& section:sections(text)) {
+   const auto id=section.value("[id]");
+   if((id=="putgd-nightly"||id=="putgd-stable")&&section.value("server")==repository+"/pacman/x86_64/"+id.mid(6)){
+    channel=id.mid(6);state="managed";break;
+   }
+  }
  } else {
   for(const auto& section:sections(text)) {
    const auto url=section.value("baseurl");
@@ -97,8 +106,8 @@ QJsonObject systemAction(const QString& target,const QString& root,const QString
   }
  }
  if(state!="managed")return {{"kind","download"},{"repository",state},{"file",file}};
- QJsonObject result{{"kind","software-updates"},{"manager",deb?"apt":"dnf"},{"repository","managed"},{"file",file},{"channel",channel},
-  {"command",deb?"sudo apt update && sudo apt upgrade":"sudo dnf upgrade --refresh"},{"updater",QJsonValue()},{"otherChannel",QJsonValue()},{"older",QJsonValue()}};
+ QJsonObject result{{"kind","software-updates"},{"manager",arch?"pacman":deb?"apt":"dnf"},{"repository","managed"},{"file",file},{"channel",channel},
+  {"command",arch?"sudo pacman -Syu":deb?"sudo apt update && sudo apt upgrade":"sudo dnf upgrade --refresh"},{"updater",QJsonValue()},{"otherChannel",QJsonValue()},{"older",QJsonValue()}};
  if(channel=="nightly"||channel=="stable"){
   const auto other=channel=="nightly"?QString("stable"):QString("nightly");
   result["otherChannel"]=QJsonObject{{"channel",other},{"commands",QJsonArray::fromStringList(moveCommands(result["manager"].toString(),other))},{"docs",channelDocs()}};

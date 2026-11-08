@@ -19,13 +19,14 @@ def expected_members(version):
         'putgd-' + version + '-ubuntu26.04-x86_64.deb',
         'putgd-' + version + '-debian13-x86_64.deb',
         'putgd-' + version + '-fedora44-x86_64.rpm',
+        'putgd-' + version + '-archlinux-x86_64.pkg.tar.zst',
         'putgd-' + version + '-x86_64.AppImage',
         'putgd-' + version + '-x86_64.AppImage.zsync',
         'putgd-' + version + '-appimage-complete-source.tar.gz',
         'putgd-' + version + '-source.tar.gz',
         'putgd-gnome50-' + version + '.zip', 'release-builds.json', 'proton-source-catalog.json',
         # Each package's CycloneDX SBOM (tools/releases/sbom.py, #420).
-        *('putgd-' + version + '-' + label + '.cdx.json' for label in ('appimage', 'ubuntu24.04', 'ubuntu26.04', 'debian13', 'fedora44')),
+        *('putgd-' + version + '-' + label + '.cdx.json' for label in ('appimage', 'ubuntu24.04', 'ubuntu26.04', 'debian13', 'fedora44', 'archlinux')),
     ]
 
 

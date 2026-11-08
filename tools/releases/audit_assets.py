@@ -351,7 +351,7 @@ def audit(args):
             appimage = label == 'appimage'
             artifact = receipt['artifact'] if appimage else receipt['package']
             filename = (artifact['file'] if appimage else
-                        f'putgd-{release["version"]}-{label}-x86_64' + ('.rpm' if label == 'fedora44' else '.deb'))
+                        f'putgd-{release["version"]}-{label}-x86_64' + ('.pkg.tar.zst' if label == 'archlinux' else '.rpm' if label == 'fedora44' else '.deb'))
             package = directory / filename
             if sha256(package) != artifact['sha256']:
                 raise ValueError('Package differs from CI audit: ' + label)
@@ -386,7 +386,7 @@ def audit(args):
                     raise ValueError('Missing combined-work GPL notice')
             else:
                 observed = validate_inventory(root, expected, require_proton=True)
-                observed['metadata'] = package_metadata(package, 'DEB' if package.suffix == '.deb' else 'RPM')
+                observed['metadata'] = package_metadata(package, 'PACMAN' if label == 'archlinux' else 'DEB' if package.suffix == '.deb' else 'RPM')
                 found_license = ET.parse(root / appimage_notices.METAINFO).getroot().findtext('project_license')
                 if set(re.findall(r'[A-Za-z0-9.+-]+', found_license or '')) != {'MIT', 'AND', 'Apache-2.0', 'GPL-3.0-or-later'}:
                     raise ValueError('Native AppStream license differs from bundled components')
@@ -475,13 +475,13 @@ def audit_proton_ci(directory, output):
         catalog_path = ROOT / 'tools/proton/notices/SOURCES.json'
         catalog = json.loads(catalog_path.read_text())
         packages = sorted(p for p in directory.rglob('*') if p.is_file()
-                          and p.name.startswith(('putgd-', 'putgd_')) and p.suffix in ('.deb', '.rpm', '.AppImage'))
+                          and p.name.startswith(('putgd-', 'putgd_')) and (p.suffix in ('.deb', '.rpm', '.AppImage') or p.name.endswith('.pkg.tar.zst')))
         if not packages:
             raise ValueError('No CI installers supplied')
         versions = {}
         for index, package in enumerate(packages):
             label = 'appimage' if package.suffix == '.AppImage' else (
-                'fedora44' if package.suffix == '.rpm' else 'debian13')
+                'archlinux' if package.name.endswith('.pkg.tar.zst') else 'fedora44' if package.suffix == '.rpm' else 'debian13')
             work = output / str(index)
             work.mkdir()
             root = sbom.extract(package, label, work)
