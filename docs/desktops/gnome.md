@@ -20,20 +20,60 @@ These sources establish API intent. They do not establish graphical acceptance.
 
 Use normal distro packages: `gnome-shell` 50, its GJS/Mutter GI runtime, the `gnome-extensions` command supplied by Shell, and the standard GLib runtime. The extension preferences GUI is optional. The application additionally links the distro Qt DBus module (`qt6-base-dev`) and needs the distro Wayland platform plugin (`qt6-wayland`). Root packaging installs the extension files; do not install a substitute Shell/GJS runtime.
 
-Native packages install the helper under
-`/usr/share/gnome-shell/extensions/putgd@put.gd/`. For a new installation:
+A GNOME 50 user does one thing after installing put.gd by any route (one-line
+installer, DEB, RPM or an AppImage): start it, then **log out and back in once**
+when it asks (the state is `login_required`). It doesn't ask when the extension is
+already loaded and current, and another state says when a logout won't help. The
+resident does the rest, in the session, as the user; a package's post-install
+script runs as root and can't set per-user GNOME state.
 
-1. Install the matching DEB or RPM.
-2. Log out of GNOME and log back in, so Shell discovers the new system extension.
-3. Run `gnome-extensions enable putgd@put.gd` in the new session. It becomes active
-   immediately; another logout is unnecessary.
+- Native packages install the helper under
+  `/usr/share/gnome-shell/extensions/putgd@put.gd/`. The resident uses that system
+  copy.
+- An AppImage carries the matching extension. On first start, when no system copy
+  exists, the resident installs it to
+  `$XDG_DATA_HOME/gnome-shell/extensions/putgd@put.gd/` (by default under
+  `~/.local/share`) and writes a
+  `.putgd-managed` marker (the files' SHA-256 digests) next to it. It never installs
+  a user copy beside a system copy, because a user copy shadows a newer system
+  package, and it never overwrites a copy it didn't create: no marker, a file that
+  no longer matches, or anything added to the directory reports `foreign_user_copy`
+  and leaves it alone. GNOME loads a user copy ahead of a package's, so an older
+  manual copy must be removed before the package can load. A
+  copy it owns is kept in step with the running AppImage (never downgraded) and is
+  removed if a system copy later appears.
+- `putgd --remove-gnome-extension` (or `putgd.AppImage --remove-gnome-extension`)
+  removes that owned copy and its setting, then asks you to log out to unload it.
+  Quit put.gd first. Deleting the directory by hand also works.
 
-Before that first re-login, `gnome-extensions enable` can report
-`Extension "putgd@put.gd" doesn't exist` even though the package installed it.
-Do not also copy the source directory into your user extension directory. A user copy can shadow a newer
-system package. Check `gnome-extensions info putgd@put.gd` and retain the loaded
-path/version in the acceptance receipt. If a previous manual installation exists,
-disable it and remove only that owned user copy before testing the package.
+**Why one logout is enough.** Before the Shell has discovered an extension,
+`gnome-extensions enable` refuses it (`Extension "putgd@put.gd" doesn't exist`), but
+the `org.gnome.shell enabled-extensions` setting is read at the next Shell start, so
+adding the UUID first makes the extension activate at that login with no second step.
+The resident appends to that list through `gsettings` with the host environment
+(`host::environment()`), so an AppImage's libraries never reach it, and every
+existing entry keeps its exact text. Only GNOME 50 sessions run this; nothing changes
+on other desktops, other GNOME versions, or when the extension is already loaded and
+current. If the Shell already knows the extension (a package installed before the
+last login), appending activates it immediately, with no logout.
+A deliberate off switch stays off: an entry in `disabled-extensions`
+(`gnome-extensions disable`, the Extensions app) is respected and reported.
+
+**One state.** `capabilities.source.helper.setup`, the `desktop.setup` and
+`desktop.setup.recheck` session methods, `putgd-cli` and the MCP helper report the
+same value: `ready`, `login_required` ("Log out and back in once to finish setting up
+put.gd."), or one of the failures in [errors](../user/errors.md#gnome-50-setup-states).
+A notification and the capture status in the app say the same thing. The state is
+derived from the running Shell and the loaded extension, so it stays honest after any
+change made outside put.gd.
+
+The resident rechecks at start, when the Shell's bus owner changes, and on
+`desktop.setup.recheck`. It reads the session's `XDG_CONFIG_HOME` and `XDG_DATA_HOME`
+from the systemd user manager so a resident with a private environment (the lab
+harness) cannot read one dconf database and write another.
+
+Check `gnome-extensions info putgd@put.gd` and retain the loaded
+path/version in the acceptance receipt.
 
 After upgrading an enabled extension, log out of GNOME and log back in before
 verifying the new version. Replacing the installed files or checking their hashes
@@ -42,20 +82,19 @@ The resident compares the `extensionVersion` the loaded extension reports in
 `Hello` with the packaged `metadata.json` version (compiled in from
 `integrations/gnome/metadata.json`). While an older one is loaded,
 `capabilities` reports `helper.outdated: true` with `extensionVersion` and
-`packagedExtensionVersion`, screenshots keep working, and a region recording
-is refused with `helper_outdated`: "The put.gd GNOME Shell extension was
-updated; log out and back in to load the new version" (#131), and so are a
-window recording and `recording.windows` (#1278). Bump
-`metadata.json`'s `version` whenever the extension's D-Bus interface changes.
+`packagedExtensionVersion`, the setup state is `login_required`, window and desktop
+screenshots keep working (an extension too old to report `uiProcessVersion` refuses
+window capture with `helper_incompatible` while the put.gd UI is open), and a region capture, a window recording, `recording.windows`
+or a region recording that needs the Shell's selector is refused with
+`helper_outdated`: "The put.gd GNOME Shell extension was updated; log out and back in
+to load the new version" (#131). A recording request that already carries its
+rectangle skips that selector check.
+Bump `metadata.json`'s `version` whenever the extension's D-Bus interface changes.
 
-For a standalone helper installation, install the release's matching GNOME ZIP
-with `gnome-extensions install /absolute/path/to/putgd-gnome50-VERSION.zip`, log out
-and back in so Shell discovers it, then run
-`gnome-extensions enable putgd@put.gd`. Keep its identity aligned with the
-application. The native resident does not initialize Qt Wayland; the on-demand graphical helper uses the session's Wayland platform. Capture and clipboard actions remain available through the production CLI and GUI. Leave the clipboard shortcut unset until the user explicitly assigns one. Binding diagnostics report the actual result for every configured action; existing Shell/system bindings are never overwritten.
+The native resident does not initialize Qt Wayland; the on-demand graphical helper uses the session's Wayland platform. Capture and clipboard actions remain available through the production CLI and GUI. Leave the clipboard shortcut unset until the user explicitly assigns one. Binding diagnostics report the actual result for every configured action; existing Shell/system bindings are never overwritten.
 
 Disable with `gnome-extensions disable putgd@put.gd`. Remove a packaged helper
-through the package manager; remove only its owned user directory for a manual
+through the package manager and an AppImage's owned copy with `--remove-gnome-extension`; remove only your own user directory for a manual
 installation. Disable removes all helper bindings, signals, pending selectors, transfer buffers, and the exported endpoint. Re-enable recreates them once. Shell/session restart requires the resident application's helper discovery to reconnect and rebind accepted settings.
 
 ## Modal dialogs

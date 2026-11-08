@@ -86,6 +86,8 @@ Methods and parameters:
 | `settings.patch` | recursive `patch`, `expectedRevision`; null is a value |
 | `settings.reorderProfiles` | `order` (every profile ID exactly once), `expectedRevision`; display order only |
 | `capabilities`, `diagnostics` | empty object |
+| `desktop.setup` | empty object; the per-user desktop setup state: `ready`, `login_required` or a [specific reason](../user/errors.md#gnome-50-setup-states) on GNOME Wayland (`unsupported_shell` for a GNOME other than 50); `not_applicable` for adapters with no per-user setup, including other desktops and GNOME on X11 |
+| `desktop.setup.recheck` | empty object; run that setup again and return its state |
 | `ui.quit` | empty object; explicitly exit the resident application |
 | `ui.moveDestination` | `direction` up/down, optional `profileId`; drives the open Settings window |
 | `ui.diagnostics` | `action` (`inspect`, `setDebugLogging`, `clearLogs`, `openPackage`, `setPackage`, `savePackage`, `showInFolder`, `closePackage`), with `enabled`, `includeNames`, absolute `folder`, `upload` or `operation` where they apply; drives Settings → Advanced → Diagnostics |
