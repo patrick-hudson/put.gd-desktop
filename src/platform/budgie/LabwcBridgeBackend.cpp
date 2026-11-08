@@ -153,8 +153,12 @@ void LabwcBridgeBackend::probe(std::function<void(bool,QString)> reply,QString c
  if(rc.isEmpty())rc=configDirectory+"/budgie-desktop/labwc/rc.xml";
  auto* process=new QProcess;process->setProcessEnvironment(environment);process->setProgram("gsettings");
  process->setArguments({"get",schema,"custom-keybindings"});
- QObject::connect(process,&QProcess::finished,process,[process,rc,reply](int code,QProcess::ExitStatus status){
+ // A gsettings that blocks (dconf or the bus not answering) must not leave the backend choice waiting.
+ auto timedOut=std::make_shared<bool>(false);auto* deadline=new QTimer(process);deadline->setSingleShot(true);
+ QObject::connect(deadline,&QTimer::timeout,process,[process,timedOut]{*timedOut=true;process->kill();});deadline->start(gsettingsTimeoutMs);
+ QObject::connect(process,&QProcess::finished,process,[process,rc,reply,timedOut](int code,QProcess::ExitStatus status){
   process->deleteLater();
+  if(*timedOut){reply(false,"gsettings did not answer within "+QString::number(gsettingsTimeoutMs/1000)+" s");return;}
   if(status!=QProcess::NormalExit||code!=0){reply(false,"Budgie's media-keys schema is not installed");return;}
   if(!QFileInfo::exists(rc)){reply(false,"Budgie's labwc configuration "+rc+" does not exist");return;}
   reply(true,{});
@@ -195,12 +199,16 @@ void LabwcBridgeBackend::bind(const QHash<QString,QString>& desired){
  apply();
 }
 void LabwcBridgeBackend::apply(){
+ // Paused: nothing is written; resuming applies the latest request.
+ if(paused_){reapply_=false;report();return;}
  if(applying_){reapply_=true;return;}
  applying_=true;reapply_=false;
  available_=QFileInfo::exists(rcPath_);if(!available_){lastError_="Budgie's labwc configuration "+rcPath_+" does not exist";applying_=false;report();return;}
  reread();conflicts_.clear();invalid_.clear();
  run({"get",schema,"custom-keybindings"},[this](int code,QString out){
   if(code!=0){available_=false;applying_=false;report();return;}
+  // A pause acknowledged while this read was queued wins: no key may reach rc.xml while recording.
+  if(paused_){applying_=false;reapply_=false;report();return;}
   const auto current=parseStrv(out);QStringList others;for(const auto& path:current)if(!path.startsWith(basePath+ownPrefix))others.append(path);
   QStringList ours;QStringList removed;
   for(const auto& path:current)if(path.startsWith(basePath+ownPrefix))removed.append(path);
@@ -235,6 +243,15 @@ void LabwcBridgeBackend::apply(){
 }
 void LabwcBridgeBackend::reread(){
  QString error;keybinds_=readKeybinds(rcPath_,&error);rcError_=error;
+ // A conflict lasts only while its owner still holds the key (another put.gd action that moved, or
+ // a binding changed in Control Center); once the key is free this action is written.
+ bool freed=false;
+ for(auto it=conflicts_.begin();it!=conflicts_.end();){
+  const auto key=normalizedLabwcKey(it.value()["key"].toString());const auto self=ownPrefix+it.key();bool held=false;
+  for(const auto& keybind:keybinds_)if(keybind.bridge!=self&&normalizedLabwcKey(keybind.key)==key)held=true;
+  if(held)++it;else{it=conflicts_.erase(it);freed=true;}
+ }
+ if(freed&&!applying_&&!paused_)QTimer::singleShot(0,this,[this]{apply();});
  for(auto it=pending_.begin();it!=pending_.end();){
   const auto action=*it;bool found=false;
   for(const auto& keybind:keybinds_)if(keybind.bridge==ownPrefix+action&&keybind.command==trigger(action)&&normalizedLabwcKey(keybind.key)==normalizedLabwcKey(written_.value(action)))found=true;
