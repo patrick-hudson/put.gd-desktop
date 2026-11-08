@@ -70,25 +70,24 @@ link was copied on the `v26.1101.3698-nightly` DEB and AppImage.
 
 ## Turning it on
 
-- **DEB and RPM:** installed with the package, always on. Files, Caja and
-  Peony load their plugins only when they start, and Files keeps running after
-  its last window closes, so the entry may appear only after a restart. The
-  first time put.gd runs after installing, its notice names the desktop's own
-  file manager if it needs one. If the desktop's notifications can show buttons,
-  it offers **Restart Files** (or Caja, Peony), which closes all of that file
-  manager's windows.
+- **DEB and RPM:** installed with the package, always on, with no notice:
+  installing the package is the user's own step. Files, Caja and Peony load
+  their plugins only when they start, and Files keeps running after its last
+  window closes, so the entry may appear only after the file manager restarts
+  or the user logs in again.
 - **AppImage:** the first time it runs, put.gd writes per-user entries and
   shows "Upload with put.gd is now in your file manager's right-click menu",
   once per installation. **Settings → General → File manager → File manager
   menu** turns them off (removing only the files this AppImage wrote) and on
   again; `preferences.fileManagerMenu` holds the switch.
-- **PCManFM and PCManFM-Qt**, with the DEB, RPM or AppImage: they load their
-  entries at the first file menu they show, so one that has already shown a
-  menu may not show the new entry until it restarts. On LXDE and LXQt the notice
-  says to restart it if the entry is missing and, the same way, offers
-  **Restart PCManFM** (or PCManFM-Qt). It closes all of their windows; the
-  desktop comes back. With no notification server, as on a plain LXDE, the
-  notice is a balloon and a click on it restarts.
+- **PCManFM and PCManFM-Qt**, with the AppImage: they load their entries at
+  the first file menu they show, so one that has already shown a menu may not
+  show the new entry until it restarts. On LXDE and LXQt the AppImage's notice
+  says to restart it if the entry is missing and, if the desktop's
+  notifications can show buttons, offers **Restart PCManFM** (or PCManFM-Qt).
+  It closes all of their windows; the desktop comes back. With no notification
+  server, as on a plain LXDE, the notice is a balloon and a click on it
+  restarts. The DEB and RPM show no notice there either.
 
 Where the entry isn't supported ([the list above](#where-the-entry-appears)),
 there is no notice.
