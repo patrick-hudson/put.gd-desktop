@@ -173,6 +173,26 @@ The S3 object passed a download round trip on EC2 (both hashes and `qemu-img com
 and each builder's restore checked both hashes and `qemu-img check`. The
 `putgd-lab-aurora` Boat snapshot still holds the 2026-10-29 Plasma 6.7.5 golden.
 
+### Omarchy Hyprland golden
+
+Built on EC2 on 2026-11-08 from the Omarchy 4.5.0 ISO; see
+[Omarchy VM golden](omarchy-vm.md) for the facts and recipe.
+
+| Item | Verified value |
+| --- | --- |
+| S3 image key | `linux/omarchy-hyprland-20261108/omarchy-hyprland-20261108.qcow2.zst` |
+| S3 sidecars | Same prefix: `omarchy-hyprland-20261108.manifest.json`, `sidecars/known_hosts`, `sidecars/golden-boot-verify.png` |
+| Image SHA-256 | `bd74b7832c4a43f15a06f5a5b448e670a77d33ae75516b5bc5856773b69f3256` |
+| Compressed SHA-256 | `c56cfe7ddb2fe345663ff2c18f07c8ede9bc692ba6b2354267228dadb1eb2a1b` |
+| Image / compressed / virtual bytes | 4,923,523,072 / 4,869,090,452 / 51,539,607,552 |
+| Storage | Glacier Instant Retrieval, SSE-S3; small sidecars use Standard |
+| Host copies | `f44` and `d69`: `~/work/put.gd/work/lab-images/omarchy-hyprland-20261108/image.qcow2`, with `known_hosts`, the manifest and `restore-sha256sums.txt` |
+| Bootstrap key | `~/work/put.gd/work/lab-bootstrap-omarchy/identity` on `f44` and `d69` |
+
+The S3 object passed a download round trip on EC2 (both hashes and `qemu-img compare`),
+and each builder's restore checked both hashes, the format, backing file and virtual size,
+and `qemu-img check`.
+
 ### Aurora Fedora 45 cloud golden and Boat snapshot
 
 For [#665](https://github.com/patrick-hudson/put.gd-desktop/issues/665), Patrick
