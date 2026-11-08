@@ -13,6 +13,47 @@ For opt-in parallel package preparation on disposable cloud workers, use
 [exact candidate builds on Boat](boat-candidates.md). Its artifact and snapshot
 receipts are separate from the graphical acceptance evidence below.
 
+## Budgie goldens
+
+The [golden inventory](remote-golden-images.md#budgie-goldens-ec2-2026-11-08)
+lists four immutable, EC2-built sources on f44, d69 and S3. Use the matching
+profile from companion [code PR #1287](https://github.com/patrick-hudson/put.gd-desktop/pull/1287):
+
+| Profile / golden directory | Native session | Package input |
+| --- | --- | --- |
+| `fedora44-budgie` | Budgie 10.10.2 / labwc 0.9.6 Wayland | AppImage |
+| `ubuntu-budgie-2604` | Budgie 10.10.2 / labwc 0.9.3 Wayland | DEB (Ubuntu 26.04) |
+| `fedora45-budgie` | Budgie 10.10.3 / labwc 0.20.2 Wayland | AppImage |
+| `ubuntu-budgie-2404` | Budgie 10.9.1 X11 | DEB (Ubuntu 24.04) |
+
+On d69, with no other owner using the example ports, run a fresh overlay:
+
+```sh
+python3 tools/lab/lab.py launch \
+  --profile fedora45-budgie \
+  --golden /home/patrick/work/put.gd/work/lab-images/fedora45-budgie/image.qcow2 \
+  --run /home/patrick/work/put.gd/work/lab-runs/b1 \
+  --bootstrap-key /home/patrick/work/put.gd/work/lab-bootstrap-d69/identity \
+  --known-hosts /home/patrick/work/put.gd/work/lab-images/fedora45-budgie/known_hosts \
+  --ssh-port 22442 --vnc-display 82 --timeout 300
+```
+
+Use f44's existing bootstrap key and pinned builder connection on f44. Keep
+the guest's VNC listener on the [display wall](remote-vm-displays.md). The approved
+login is `lab` / `putgd-lab`; SDDM autologin selects the real Budgie session on
+the three Wayland images, and LightDM does so on Ubuntu 24.04 X11. Preserve the
+native Qt platform environment: Fedora 45 sets `wayland;xcb`, while Fedora 44
+and Ubuntu 26.04 set `wayland`; Ubuntu 24.04 leaves it unset and uses X11.
+
+`install` accepts the published DEB or AppImage in the table, then `start`
+requires live session/idle/output preflight and verifies the resident binary.
+`run` also creates a fresh overlay and retires successful completed runs; follow
+[package and run](vm-lab/package-and-run.md) and
+[overlay retirement](vm-lab/retire-overlays.md) for full scenario commands and
+custom/manual completion manifests. Profiles remain marked
+`requires-graphical-acceptance`: step-1 bridge/tray/protocol checks do not replace
+exact-build application acceptance. Never modify the golden for package updates.
+
 ## Topic pages
 
 The lab guide is split by topic, with the text unchanged.
