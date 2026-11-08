@@ -265,6 +265,8 @@ void RecordSession::cancelLocal() {
     if (kdeSelection_) { kdeSelection_->disconnect(this); kdeSelection_->cancel(); kdeSelection_->deleteLater(); kdeSelection_ = nullptr; }
 #endif
     pipeline_.cancel();
+    // The pipeline has stopped using it; the next prepare opens its own (review #1275).
+    imageCopy_.reset();
     portal_.close();
     mutter_.close();
 #ifdef PUTGD_RECORD_KDE_SCREENCAST
@@ -674,7 +676,12 @@ void RecordSession::begin(Reply reply) {
     RecordingPipeline::Options options;
     options.rect = resolved_.rect;
     options.window = resolved_.window;
-    if (imageCopy_) { options.imageCopy = imageCopy_.get(); options.rect = QRect(QPoint(), imageCopySize_); options.crop = portalCrop_; }
+    if (imageCopy_) {
+        options.imageCopy = imageCopy_.get(); options.rect = QRect(QPoint(), imageCopySize_); options.crop = portalCrop_;
+        // 4:2:0 encoders refuse odd sizes: a window or output stream (often odd for a window) loses
+        // its last odd column or row to the even canvas, as the region crop already does (review #1275).
+        if (!options.crop.isValid() && resolved_.canvas != imageCopySize_) options.crop = QRect(QPoint(), resolved_.canvas);
+    }
     else if (portalTarget_) { options.rect = resolved_.layout["shared"].isArray() ? QRect(resolved_.layout["shared"].toArray()[0].toInt(), resolved_.layout["shared"].toArray()[1].toInt(), resolved_.layout["shared"].toArray()[2].toInt(), resolved_.layout["shared"].toArray()[3].toInt()) : resolved_.rect; options.pipewireFd = portalFd_; options.pipewireNode = portalNode_; options.crop = portalCrop_; }
     if (portalTarget_ && !imageCopy_ && target_.kind == "window") {
         // A window stream changes size with the window (KWin, the portal) or
