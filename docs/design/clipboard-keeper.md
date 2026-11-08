@@ -1,13 +1,14 @@
 # Clipboard after quitting
 
 Wlroots compositors (labwc, Hyprland) drop a selection when its owner
-disconnects. Stock Budgie and Omarchy have no clipboard manager to keep it, so a
-link put.gd copied would be gone as soon as put.gd quit.
+disconnects. Stock Budgie has no clipboard manager. Omarchy's clipboard history
+records copies but doesn't restore the selection. So without this, a link put.gd
+copied would stop pasting as soon as put.gd quit.
 
 On Budgie and Hyprland, the source adapter's destructor asks
 `DataControlClipboard::keepSelectionAfterExit`. If the selection is still the
-result put.gd copied (its offer carries that copy's private marker type), the
-resident starts `putgd-clipboard-keeper`, detached, with the exact types and
+result put.gd copied (its offer carries that copy's private marker type), after
+a bounded wait for a copy still in flight, the resident starts `putgd-clipboard-keeper`, detached, with the exact types and
 bytes. The resident then exits as usual. Plasma, GNOME, Cinnamon and X11 never
 reach this code.
 
@@ -17,9 +18,11 @@ reach this code.
 `libwayland-client`.
 
 1. It reads the content from an anonymous memory file on standard input
-   (`ClipboardKeeperFormat.h`). Nothing is written to disk, and the process is
-   not dumpable, so the content can't reach a core file. Results over 64 MiB
-   aren't kept, and quitting then loses them.
+   (`ClipboardKeeperFormat.h`). It writes no files, and the process is not
+   dumpable, so the content can't reach a core file. It asks the kernel to keep
+   the content out of swap; over the user's memory-lock limit it can still swap,
+   like any process memory. Results over 64 MiB aren't kept, and quitting then
+   loses them.
 2. It connects with its own data-control device and looks at the selection:
    - Still put.gd's copy: it waits for the resident to let go (10 s at most).
    - Empty: it gives a clipboard manager 300 ms to restore it.

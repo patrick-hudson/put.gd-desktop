@@ -48,8 +48,8 @@ every global the compositor offers. Nothing is chosen by compositor name.
 | Clipboard | `ext-data-control-v1` (or `wlr-data-control` v2) | Shared with Plasma. |
 
 Labwc drops a selection when its owner disconnects, and stock Budgie has no
-clipboard manager, so a copied link would disappear when put.gd quits. See
-[Clipboard after quitting](../design/clipboard-keeper.md).
+clipboard manager. A helper keeps a copied link available after a normal quit, so it
+doesn't disappear with put.gd. See [Clipboard after quitting](../design/clipboard-keeper.md).
 
 The capture, toplevel and data-control code lives in `src/platform/wayland/`
 and is compositor-neutral; only the shortcut bridge and the D-Bus trigger are
