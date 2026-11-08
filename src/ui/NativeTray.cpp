@@ -380,7 +380,9 @@ void NativeTrayPrivate::writeNamedIcon() {
   QFile::setPermissions(iconDirectory_, QFile::ReadOwner | QFile::WriteOwner | QFile::ExeOwner);
  }
  const auto previous = iconName_.isEmpty() ? QString{} : iconDirectory_ + "/" + iconName_ + ".png";
- const auto name = QString("putgd-tray-%1-%2").arg(QCoreApplication::applicationPid()).arg(++iconSerial_);
+ // No dashes: GTK expands a dashed name into fallbacks (putgd-tray-1 -> putgd) and matches the installed app
+ // icon in the themes before it reads this unthemed file.
+ const auto name = QString("putgd_tray_%1_%2").arg(QCoreApplication::applicationPid()).arg(++iconSerial_);
  QFile file(iconDirectory_ + "/" + name + ".png");
  if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate) || file.write(pngBytes(IconArt::liftTray({color_, percent_, recording_, glyph_}, 2))) < 0) return;
  file.close();
