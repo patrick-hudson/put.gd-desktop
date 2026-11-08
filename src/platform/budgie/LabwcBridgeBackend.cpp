@@ -9,6 +9,8 @@
 #include <QXmlStreamReader>
 #include <xkbcommon/xkbcommon.h>
 #include <algorithm>
+#include <optional>
+#include <unistd.h>
 
 namespace putgd {
 namespace {
@@ -26,6 +28,30 @@ const QHash<int,QString> namedKeys{{Qt::Key_Print,"Print"},{Qt::Key_Escape,"Esca
  {Qt::Key_Return,"Return"},{Qt::Key_Enter,"KP_Enter"},{Qt::Key_Insert,"Insert"},{Qt::Key_Delete,"Delete"},{Qt::Key_Pause,"Pause"},
  {Qt::Key_Home,"Home"},{Qt::Key_End,"End"},{Qt::Key_Left,"Left"},{Qt::Key_Up,"Up"},{Qt::Key_Right,"Right"},{Qt::Key_Down,"Down"},
  {Qt::Key_PageUp,"Page_Up"},{Qt::Key_PageDown,"Page_Down"},{Qt::Key_Space,"space"},{Qt::Key_Menu,"Menu"},{Qt::Key_ScrollLock,"Scroll_Lock"}};
+// The session's labwc: its --config-dir (startbudgielabwc passes
+// $XDG_CONFIG_HOME/budgie-desktop/labwc) and the XDG_CONFIG_HOME it runs with,
+// whose dconf database gsettings must read. A resident started with another
+// XDG_CONFIG_HOME would otherwise read an empty database and drop the user's
+// own custom keybindings when it rewrites the list.
+struct LabwcSession {QString configDir,xdgConfigHome;};
+std::optional<LabwcSession> runningLabwc(){
+ const auto uid=getuid();
+ for(const auto& entry:QDir("/proc").entryList(QDir::Dirs|QDir::NoDotAndDotDot)){
+  bool numeric=false;entry.toInt(&numeric);if(!numeric)continue;
+  QFile comm("/proc/"+entry+"/comm");if(!comm.open(QIODevice::ReadOnly)||comm.readAll().trimmed()!="labwc")continue;
+  if(QFileInfo("/proc/"+entry).ownerId()!=uid)continue;
+  QFile cmdline("/proc/"+entry+"/cmdline");QFile environ("/proc/"+entry+"/environ");
+  if(!cmdline.open(QIODevice::ReadOnly)||!environ.open(QIODevice::ReadOnly))continue;
+  LabwcSession session;
+  const auto args=cmdline.read(65536).split('\0');
+  for(qsizetype i=0;i+1<args.size();++i)if(args[i]=="--config-dir"||args[i]=="-C")session.configDir=QString::fromLocal8Bit(args[i+1]);
+  QString home;
+  for(const auto& line:environ.read(1<<20).split('\0')){if(line.startsWith("XDG_CONFIG_HOME="))session.xdgConfigHome=QString::fromLocal8Bit(line.mid(16));else if(line.startsWith("HOME="))home=QString::fromLocal8Bit(line.mid(5));}
+  if(session.xdgConfigHome.isEmpty()&&!home.isEmpty())session.xdgConfigHome=home+"/.config";
+  return session;
+ }
+ return {};
+}
 bool validAction(const QString& action){static const QRegularExpression pattern("^[a-z]{1,32}$");return pattern.match(action).hasMatch();}
 QString quoted(const QString& value){QString out=value;out.replace('\\',"\\\\").replace('\'',"\\'");return "'"+out+"'";}
 }
@@ -119,9 +145,13 @@ QList<LabwcBridgeBackend::Keybind> LabwcBridgeBackend::readKeybinds(const QStrin
  return out;
 }
 void LabwcBridgeBackend::probe(std::function<void(bool,QString)> reply,QString configDirectory){
- if(configDirectory.isEmpty())configDirectory=qEnvironmentVariable("XDG_CONFIG_HOME",QDir::homePath()+"/.config");
- const auto rc=configDirectory+"/budgie-desktop/labwc/rc.xml";
- auto* process=new QProcess;process->setProcessEnvironment(host::environment());process->setProgram("gsettings");
+ auto environment=host::environment();QString rc;
+ const auto session=configDirectory.isEmpty()?runningLabwc():std::nullopt;
+ if(session&&!session->configDir.isEmpty())rc=session->configDir+"/rc.xml";
+ if(session&&!session->xdgConfigHome.isEmpty())environment.insert("XDG_CONFIG_HOME",session->xdgConfigHome);
+ if(configDirectory.isEmpty())configDirectory=session&&!session->xdgConfigHome.isEmpty()?session->xdgConfigHome:qEnvironmentVariable("XDG_CONFIG_HOME",QDir::homePath()+"/.config");
+ if(rc.isEmpty())rc=configDirectory+"/budgie-desktop/labwc/rc.xml";
+ auto* process=new QProcess;process->setProcessEnvironment(environment);process->setProgram("gsettings");
  process->setArguments({"get",schema,"custom-keybindings"});
  QObject::connect(process,&QProcess::finished,process,[process,rc,reply](int code,QProcess::ExitStatus status){
   process->deleteLater();
@@ -133,9 +163,12 @@ void LabwcBridgeBackend::probe(std::function<void(bool,QString)> reply,QString c
  process->start();
 }
 LabwcBridgeBackend::LabwcBridgeBackend(QObject* parent,QString configDirectory):ShortcutBackend(parent),configDirectory_(std::move(configDirectory)){
- if(configDirectory_.isEmpty())configDirectory_=qEnvironmentVariable("XDG_CONFIG_HOME",QDir::homePath()+"/.config");
- rcPath_=configDirectory_+"/budgie-desktop/labwc/rc.xml";environment_=host::environment();
- if(configDirectory_!=qEnvironmentVariable("XDG_CONFIG_HOME",QDir::homePath()+"/.config"))environment_.insert("XDG_CONFIG_HOME",configDirectory_);
+ environment_=host::environment();
+ const auto session=configDirectory_.isEmpty()?runningLabwc():std::nullopt;
+ if(configDirectory_.isEmpty())configDirectory_=session&&!session->xdgConfigHome.isEmpty()?session->xdgConfigHome:qEnvironmentVariable("XDG_CONFIG_HOME",QDir::homePath()+"/.config");
+ rcPath_=session&&!session->configDir.isEmpty()?session->configDir+"/rc.xml":configDirectory_+"/budgie-desktop/labwc/rc.xml";
+ // gsettings reads the session's dconf database, wherever this process's own config lives.
+ environment_.insert("XDG_CONFIG_HOME",configDirectory_);
  available_=QFileInfo::exists(rcPath_);if(!available_)lastError_="Budgie's labwc configuration "+rcPath_+" does not exist";
  // The bridge replaces rc.xml, so watch its directory as well as the file.
  watcher_.addPath(QFileInfo(rcPath_).absolutePath());if(available_)watcher_.addPath(rcPath_);
