@@ -36,6 +36,12 @@ except ImportError:
 
 
 class Profiles(unittest.TestCase):
+    def test_driver_package_labels_match_coverage_schema(self):
+        from tools.lab.surface_driver.api import PACKAGES
+        self.assertEqual(PACKAGES, surface_map.PACKAGES)
+        row = surface_map.make_entry('region.to-upload', 'omarchy-hyprland', 'arch', functional='blocked')
+        self.assertEqual(row['package'], 'arch')
+
     def test_all_model_desktops(self):
         for row in json.loads((ROOT/'tools/lab/surface_map/model.json').read_text())['desktops']:
             p=load_profile(row['id'])
