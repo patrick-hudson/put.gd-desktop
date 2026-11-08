@@ -30,8 +30,9 @@ reports it as `acquisition`:
   answers session clients on the GNOME desktops tested; where it refuses,
   the error is reported and the portal remains the way to share.
 - `portal`: `org.freedesktop.portal.ScreenCast` (version 2 or later) on the
-  session bus, used for everything when neither native path is available, and
-  for a `window` target when the resident could not resolve the window (see
+  session bus, used for everything when neither native path is available
+  (never on Budgie or Hyprland, whose route is `wlr-capture` below, even when that
+  route is unavailable), and for a `window` target when the resident could not resolve the window (see
   [Window recordings](#window-recordings)). `portal {portalVersion, sourceTypes,
   cursorModes}` carries the portal's facts and `targets` lists `window` only
   when the portal offers it. `prepare` opens a portal session
@@ -46,9 +47,9 @@ reports it as `acquisition`:
   (`videocrop`, stream-relative), which is chosen before the portal session
   opens (see below).
 
-- `wlr-capture`: on a Budgie session (by the desktop token, as the adapter
-  routes; never on bare labwc), always, and the ScreenCast portal is never
-  used there. A rotated or flipped output's frames are turned upright before
+- `wlr-capture`: on a Budgie or Hyprland session (by the desktop token, as the
+  adapter routes; never on bare labwc), always, and the ScreenCast portal is
+  never used there. A rotated or flipped output's frames are turned upright before
   `appsrc`, and an odd window or output size is cropped to the even canvas. `putgd-record` opens its own Wayland connection,
   creates an `ext-image-copy-capture` session for one output or one window
   with `paint_cursors`, and a capture thread pushes each frame from a ring of
@@ -58,11 +59,14 @@ reports it as `acquisition`:
   pipewiresrc's keepalive does, so the timeline keeps advancing. Each buffer
   carries the frame's `presentation_time` (CLOCK_MONOTONIC) and takes the same
   stamping and cadence lock as a PipeWire frame; the stream buffer goes back to
-  the ring when that probe copies it. `wlrCapture {available, windows,
+  the ring when that probe copies it. `wlrCapture {available, windows, outputs,
   protocols, reason?, windowReason?, elements}` carries the facts; a missing
-  global or a failed connection makes recording unavailable as
-  `wlr_capture_unavailable` with the protocol named in `message`, and a missing
-  `appsrc` or `videoscale` as `live_source_missing`, never a chooser. Monitor streams the named output; `desktop` only with one output;
+  global or a failed connection makes `recording.prepare` return
+  `recording_unavailable` with `details.reason` `wlr_capture_unavailable` and the
+  protocol named in `message`, and a missing `appsrc`, `videoscale` or
+  `videoconvert` the same code with `details.reason` `live_source_missing`,
+  never a chooser. Monitor streams the named output; `desktop` only with one
+  output (with several, `targets` leaves it out and `targetReasons.desktop` says why);
   a `region` is cropped (`videocrop`, native pixels) from the output it lies
   on, and one spanning outputs is `recording_unsupported`. `window` takes an
   identity from `recording.windows` (ext toplevel identifiers, no rect), or
@@ -83,10 +87,11 @@ portal, which passes its own connection as a descriptor, in charge when it
 is missing. Monitor and window identities are optional everywhere (on X11 an
 empty monitor identity means the first connected monitor). Reasons for an
 unavailable Wayland session are `live_source_missing` (no `pipewiresrc`; on
-Budgie no `appsrc` or `videoscale`),
+Budgie and Hyprland no `appsrc`, `videoscale` or `videoconvert`),
 `portal_unavailable`, `portal_too_old` or `session_bus_unavailable`, and on
-Budgie `wlr_capture_unavailable` (a missing Wayland global or a failed
-connection, named in the message).
+Budgie and Hyprland `wlr_capture_unavailable` (a missing Wayland global or a
+failed connection, named in the message). `recording.prepare` returns all of
+them as `recording_unavailable` with the reason in `details.reason`.
 Cancelling a picker ends the operation as `cancelled`; Cancel, Stop and
 discard close the stream (`Session.Close`, `Session.Stop` or the protocol's
 `close`), which ends the share. `tests/unit` covers the portal stream
@@ -122,8 +127,9 @@ shows it as `target.identity` and `window {identity, title, appId, rect}`.
   `window-id` and an embedded cursor. Own windows: the extension's
   `_residentWindow` rule. The extension's `metadata.json` version is 19: an
   older extension still loaded after a package upgrade makes a window
-  recording fail `helper_outdated` ("log out and back in") instead of falling
-  back to the picker, and `recording.windows` answers the same.
+  recording fail `helper_outdated` instead of falling back to the picker, and
+  `recording.windows` answers the same. Its message says to log out and back in,
+  or gives the setup state's own message when a login can't help.
 - If the window list is unavailable for another reason (the extension is off,
   KWin scripting failed), the resident logs it and the portal picker chooses
   the window, as it does where the helper has no native path.
@@ -252,8 +258,9 @@ share was ever opened.
   so after a package upgrade the old one stays loaded. When the loaded
   `extensionVersion` (from `Hello`) is below the packaged `metadata.json`
   version, the resident refuses with `helper_outdated`, "The put.gd GNOME
-  Shell extension was updated; log out and back in to load the new version",
-  rather than asking for an extension that is already enabled (#131), and
+  Shell extension was updated; log out and back in to load the new version"
+  (or the setup state's own message when a login can't help, such as a failed
+  update), rather than asking for an extension that is already enabled (#131), and
   `capabilities` reports `helper.outdated` with both versions.
 - Elsewhere on Wayland a region needs `target.rect`.
 

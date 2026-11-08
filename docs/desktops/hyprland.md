@@ -161,14 +161,19 @@ Omarchy 4.5:
   the plain-text `binds` reply). A match is `shortcut_conflict` and the key is
   not bound. Omarchy's own `PRINT` (screenshot) and `SUPER + SHIFT + S` (Google
   Maps) are examples; put.gd's defaults `Ctrl+Shift+1/2/3` are free.
-- **put.gd never calls `hl.unbind` or a bind handle's `:remove()`.** Both also
-  remove the desktop's own binds on that key, and calling `:remove()` on a stale
-  handle crashed Hyprland 0.56.2. To change or remove its binds, pause for the
-  shortcut recorder, or quit, put.gd runs `reload`, which restores the
-  configuration's binds, then re-applies its current set.
+- **Removing a put.gd bind touches only put.gd's key.** `reload` drops every runtime
+  bind, including other programs', so put.gd doesn't use it for this. `hl.unbind` is
+  exact on modifiers and key (measured on 0.56.2), but takes every bind on that chord
+  in every submap, so put.gd calls it only for a chord that nothing else holds. To
+  change or remove its binds, pause for the shortcut recorder, or quit, put.gd unbinds
+  those chords. If something else holds the chord, or put.gd's bind can't be read, it
+  runs `reload`, which restores the configuration's binds, and re-applies its set.
+- **put.gd never calls a bind handle's `:remove()`.** A stale handle crashed
+  Hyprland 0.56.2.
 - **Binds come back after every reload.** Omarchy reloads Hyprland on theme and
   settings changes; each `configreloaded` event re-applies put.gd's binds and
-  layer rule.
+  layer rule, and reconnecting the event socket does the same, because a reload
+  can happen while it is away.
 - **`j/binds` is the truth.** Only binds that read back are reported `bound`;
   put.gd's are the ones whose description starts with `put.gd: `. A bind left
   by a resident that crashed is adopted, not doubled; with no resident running
@@ -190,7 +195,8 @@ Recording uses the `wlr-capture` acquisition (`ext-image-copy-capture` frames
 into `appsrc`), never the ScreenCast portal, whose `SelectSources` opens
 `hyprland-preview-share-picker`. Recordings paint the cursor. A window
 recording without an identity records the active window by `stableId`;
-`recording.windows` lists external windows from Hyprland's IPC. A region
+`recording.windows` lists external windows from Hyprland's IPC. `desktop` is a
+target only with one output; with several, record a monitor. A region
 recording crops one output; a region spanning outputs is
 `recording_unsupported`. On Omarchy, install `gst-plugin-va` for hardware
 encoding (the Arch package suggests it); without it recording uses x264 or

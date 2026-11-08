@@ -47,9 +47,10 @@ python3 tools/lab/lab.py launch --profile omarchy-hyprland \
 - Hyprland 0.56 reads a Lua configuration. `hyprctl keyword` is refused; use
   `hyprctl eval '<lua>'` (for example `hl.monitor({ output = "Virtual-1", mode =
   "1920x1080@60", position = "0x0", scale = 1 })`). `hyprctl dispatch` takes Lua too.
-- Never run `hl.unbind(...)` or a bind handle's `:remove()` in a guest you still need: both
-  remove Omarchy's own binds on the same key, and a stale handle crashed Hyprland, which then
-  restarted in `--safe-mode`. `hyprctl reload` restores the configuration's binds.
+- Never run a bind handle's `:remove()` in a guest you still need: a stale handle crashed
+  Hyprland, which then restarted in `--safe-mode`. `hl.unbind(...)` is exact on modifiers and
+  key but takes every bind on that chord, Omarchy's own and other submaps' included.
+  `hyprctl reload` restores the configuration's binds and drops every runtime one.
 - A Lua mistake in `~/.config/hypr/*.lua` makes Hyprland fall back to defaults. Regex strings
   belong in long brackets: `[[/tmp/\.mount_[^/]+/usr/bin/putgd]]`.
 - Critical-urgency notifications stay in quickshell's `~/.local/state/omarchy/notifications/live.json`

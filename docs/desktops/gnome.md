@@ -65,7 +65,9 @@ same value: `ready`, `login_required` ("Log out and back in once to finish setti
 put.gd."), or one of the failures in [errors](../user/errors.md#gnome-50-setup-states).
 A notification and the capture status in the app say the same thing. The state is
 derived from the running Shell and the loaded extension, so it stays honest after any
-change made outside put.gd.
+change made outside put.gd. A connected but older extension asks for a logout only when
+a logout would load the update: `install_failed` is reported even while the old
+extension runs, and so is any other state a logout can't fix.
 
 The resident rechecks at start, when the Shell's bus owner changes, and on
 `desktop.setup.recheck`. It reads the session's `XDG_CONFIG_HOME` and `XDG_DATA_HOME`
