@@ -63,7 +63,7 @@ FRAME_MS = 1000 / 30
 ANIMATIONS = ('gif', 'webp')
 SESSION_VARIABLES = ('DISPLAY', 'XAUTHORITY', 'DBUS_SESSION_BUS_ADDRESS', 'XDG_SESSION_TYPE', 'XDG_CURRENT_DESKTOP',
                      'WAYLAND_DISPLAY', 'XDG_SESSION_DESKTOP', 'DESKTOP_SESSION', 'KDE_FULL_SESSION', 'KDE_SESSION_VERSION',
-                     'XDG_DATA_HOME')
+                     'XDG_DATA_HOME', 'HYPRLAND_INSTANCE_SIGNATURE')
 
 
 class RunError(RuntimeError):
@@ -77,12 +77,12 @@ def log(message):
 def session_environment():
     """The desktop session's environment for clients started from SSH."""
     uid = os.getuid()
-    for process in ('plasmashell', 'gnome-shell', 'cinnamon'):
+    for process in ('plasmashell', 'gnome-shell', 'cinnamon', 'quickshell'):
         pids = subprocess.run(['pgrep', '-u', str(uid), '-x', process], capture_output=True, text=True).stdout.split()
         if pids:
             break
     else:
-        raise RunError('no desktop session process (plasmashell, gnome-shell, cinnamon) for this user')
+        raise RunError('no desktop session process (plasmashell, gnome-shell, cinnamon, quickshell) for this user')
     pairs = Path('/proc/%s/environ' % pids[0]).read_bytes().decode(errors='replace').split('\0')
     found = dict(pair.split('=', 1) for pair in pairs if '=' in pair)
     runtime = '/run/user/%d' % uid

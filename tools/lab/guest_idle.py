@@ -131,8 +131,11 @@ def omarchy_policy(apply):
         raise PolicyError('Unsupported Hyprland idle policy: only Omarchy (omarchy-toggle-idle) is supported')
     if apply:
         command(toggle, 'stay-awake')
-    status = json.loads(command(toggle, 'status'))
-    if status.get('enabled') is not True:
+    try:
+        status = json.loads(command(toggle, 'status'))
+    except ValueError as error:
+        raise PolicyError('Omarchy idle status is not valid JSON') from error
+    if not isinstance(status, dict) or status.get('enabled') is not True:
         raise PolicyError('Omarchy idle policy readback mismatch: Stay Awake is off')
     return [{'command': 'omarchy-toggle-idle', 'state': 'stay-awake'}]
 
