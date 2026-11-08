@@ -2,6 +2,11 @@
 # Clean runtime container: no build dependencies or source-tree libraries.
 set -euo pipefail
 package=$(realpath "$1")
+# The official minimal image excludes docs. Test the complete payload, including
+# mandatory notices, without modifying the system's pacman configuration.
+pacman_config=$(mktemp /tmp/pc.XXXXXX)
+sed '/^[[:space:]]*NoExtract[[:space:]]*=/d' /etc/pacman.conf > "$pacman_config"
+pacman() { command pacman --config "$pacman_config" "$@"; }
 pacman -U --noconfirm "$package"
 pacman -Qkk putgd
 pacman -Ql putgd
