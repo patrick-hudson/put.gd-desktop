@@ -92,7 +92,11 @@ HELP
             || die 'Could not check nightly release availability'
     fi
     [ "$status" = 302 ] || die "No usable $channel $package download (HTTP $status)"
-    note "Installing $channel / $package; verifying the release SHA256SUMS before installation."
+    if [ "$package" = archlinux ]; then
+        note "Installing $channel / $package using the configured pacman repositories and signature policy."
+    else
+        note "Installing $channel / $package; verifying the release SHA256SUMS before installation."
+    fi
 
     case "$package" in
         appimage) suffix=-x86_64.AppImage ;;
@@ -101,7 +105,9 @@ HELP
         *) suffix=-$package-x86_64.deb ;;
     esac
     if "$dry_run"; then
-        note "Would download $base/$channel/checksums and $base/$channel/$package, then verify SHA-256."
+        if [ "$package" != archlinux ]; then
+            note "Would download $base/$channel/checksums and $base/$channel/$package, then verify SHA-256."
+        fi
         case "$package" in
             appimage) note 'Would install executable ~/.local/bin/putgd.AppImage (no sudo). Start: ~/.local/bin/putgd.AppImage' ;;
             archlinux)
@@ -132,19 +138,23 @@ HELP
     }
     trap cleanup 0
     trap 'exit 1' 1 2 3 15
-    fetch --output "$work/SHA256SUMS" "$base/$channel/checksums" || die 'Could not download SHA256SUMS'
-    # Select exactly one safe basename and digest; never execute release metadata.
-    entry=$(awk -v suffix="$suffix" '
-        NF == 2 && length($1) == 64 && $1 !~ /[^0-9a-fA-F]/ &&
-        $2 ~ /^putgd-[A-Za-z0-9._+-]+$/ &&
-        substr($2, length($2) - length(suffix) + 1) == suffix { line = $1 "  " $2; count++ }
-        END { if (count != 1) exit 1; print line }
-    ' "$work/SHA256SUMS") || die "SHA256SUMS must name exactly one $package package"
-    filename=${entry#*  }
-    printf '%s\n' "$entry" > "$work/selected.sha256"
-    fetch --output "$work/$filename" "$base/$channel/$package" || die 'Package download failed'
-    (cd "$work" && sha256sum --check selected.sha256) \
-        || die 'SHA-256 verification failed; nothing installed. A release may have changed; retry.'
+    # Pacman fetches and authenticates both the index and payload itself. Avoid
+    # a second, redundant GitHub download before using the signed repository.
+    if [ "$package" != archlinux ]; then
+        fetch --output "$work/SHA256SUMS" "$base/$channel/checksums" || die 'Could not download SHA256SUMS'
+        # Select exactly one safe basename and digest; never execute release metadata.
+        entry=$(awk -v suffix="$suffix" '
+            NF == 2 && length($1) == 64 && $1 !~ /[^0-9a-fA-F]/ &&
+            $2 ~ /^putgd-[A-Za-z0-9._+-]+$/ &&
+            substr($2, length($2) - length(suffix) + 1) == suffix { line = $1 "  " $2; count++ }
+            END { if (count != 1) exit 1; print line }
+        ' "$work/SHA256SUMS") || die "SHA256SUMS must name exactly one $package package"
+        filename=${entry#*  }
+        printf '%s\n' "$entry" > "$work/selected.sha256"
+        fetch --output "$work/$filename" "$base/$channel/$package" || die 'Package download failed'
+        (cd "$work" && sha256sum --check selected.sha256) \
+            || die 'SHA-256 verification failed; nothing installed. A release may have changed; retry.'
+    fi
 
     case "$package" in
         appimage)
