@@ -364,8 +364,8 @@ Error GnomeAdapter::helperAvailabilityError()const{
 }
 gnome::SetupStatus GnomeAdapter::currentSetup()const{
  if(ready_&&outdated()){
-  // No login can fix a stale system package, so its specific reason keeps precedence.
-  if(setup_.state=="system_copy_outdated")return setup_;
+  // No login fixes a stale system package or a copy put.gd can't replace.
+  if(setup_.state=="system_copy_outdated"||setup_.state=="foreign_user_copy")return setup_;
   return {"login_required","gnome_extension_updated","The put.gd GNOME Shell extension was updated; log out and back in to load the new version",{{"loaded",helper_["extensionVersion"].toInt()},{"packaged",gnome::extensionVersion}}};
  }
  if(ready_)return {"ready",{},{},setup_.details};
@@ -381,15 +381,11 @@ void GnomeAdapter::evaluateSetup(bool force){
  if(setupRunning_){setupAgain_=setupAgain_||force;return;}
  if(!force&&setupCheckedForOwner_)return;
  setupCheckedForOwner_=true;
- auto inputs=gnome::defaultSetupInputs();
  // Loaded and current with no owned copy to retire: nothing to do, and nothing runs.
- if(ready_&&!outdated()&&!force){
-  const auto userCopy=QDir(inputs.dataHome).filePath(QStringLiteral("gnome-shell/extensions/")+gnome::extensionUuid);
-  if(!QFileInfo::exists(QDir(userCopy).filePath(gnome::copyMarkerName)))return;
- }
+ if(ready_&&!outdated()&&!force&&!QFileInfo::exists(gnome::ownedCopyMarkerPath()))return;
  setupRunning_=true;
  auto result=std::make_shared<gnome::SetupStatus>();
- auto* worker=QThread::create([inputs,result]{*result=gnome::runExtensionSetup(inputs);});
+ auto* worker=QThread::create([result]{*result=gnome::runExtensionSetup(gnome::defaultSetupInputs());});
  workers_.append(worker);
  connect(worker,&QThread::finished,this,[this,worker,result]{
   workers_.removeOne(worker);worker->deleteLater();setupRunning_=false;

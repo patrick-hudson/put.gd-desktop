@@ -405,9 +405,13 @@ Notification clicks use the host `gio open` command and its configured HTTP(S)
 URI handler to open the uploaded image in the browser. Install the distro GIO
 command-line tools (`libglib2.0-bin` on Debian/Ubuntu, `glib2` on Fedora).
 
-The GNOME 50 Shell extension lives on the host and must be installed/enabled from
-the same application source. Bundling its files inside the AppImage does not
-install a host Shell extension. Keep that setup visible in release instructions.
+The image carries the matching GNOME 50 Shell extension
+(`usr/share/gnome-shell/extensions/putgd@put.gd/`). On first start under GNOME 50,
+when no system copy exists, the resident installs it to
+`~/.local/share/gnome-shell/extensions/putgd@put.gd/` with a `.putgd-managed` marker
+and enables it for the next login, so a GNOME 50 user logs out and back in once
+(see [GNOME](../../docs/desktops/gnome.md)). `--remove-gnome-extension` takes that
+copy away again.
 The production CLI can be called through the extracted AppDir's
 `usr/bin/putgd-cli`; MCP continues forwarding only to that production CLI.
 

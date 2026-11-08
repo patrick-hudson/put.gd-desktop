@@ -64,7 +64,10 @@ SetupStatus runExtensionSetup(const SetupInputs&);
 // enabled-extensions entry. Never touches a copy put.gd didn't install.
 SetupStatus removeOwnedUserCopy(const SetupInputs&);
 // The real environment: host paths, the host's gsettings and the session bus.
+// Blocking (it reads the systemd user session's environment), so a worker's job.
 SetupInputs defaultSetupInputs();
+// Where this resident would find a copy it owns: cheap, no process.
+QString ownedCopyMarkerPath();
 
 // GVariant text-format helpers used on `gsettings get` output. Exposed for tests.
 std::optional<QStringList> parseStringList(const QString& text);

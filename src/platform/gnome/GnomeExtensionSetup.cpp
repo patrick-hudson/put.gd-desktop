@@ -98,6 +98,12 @@ std::optional<QString> installCopy(const QString& bundledDir,const QString& user
  if(!QDir().mkpath(base))return QStringLiteral("cannot create %1").arg(base);
  const auto id=QUuid::createUuid().toString(QUuid::Id128);
  const auto parentOfExtensions=QFileInfo(base).path();
+ // A crash can leave our own staging directories; each holds only files put.gd wrote.
+ for(const auto& name:QDir(parentOfExtensions).entryList({".putgd-extension-*"},QDir::Dirs|QDir::Hidden|QDir::NoDotAndDotDot)){
+  const QDir stale(QDir(parentOfExtensions).filePath(name));
+  for(const auto& file:stale.entryList(QDir::Files|QDir::Hidden))QFile::remove(stale.filePath(file));
+  QDir().rmdir(stale.path());
+ }
  const auto staging=QDir(parentOfExtensions).filePath(".putgd-extension-new-"+id);
  const auto retired=QDir(parentOfExtensions).filePath(".putgd-extension-old-"+id);
  if(!QDir().mkpath(staging))return QStringLiteral("cannot create %1").arg(staging);
@@ -346,6 +352,12 @@ QJsonObject SetupStatus::toJson()const{
  if(!message.isEmpty())result["message"]=message;
  if(!details.isEmpty())result["details"]=details;
  return result;
+}
+
+QString ownedCopyMarkerPath(){
+ const auto environment=host::environment();
+ const auto dataHome=environment.contains("XDG_DATA_HOME")?environment.value("XDG_DATA_HOME"):QDir(environment.value("HOME")).filePath(".local/share");
+ return QDir(dataHome).filePath(QStringLiteral("gnome-shell/extensions/%1/%2").arg(extensionUuid,copyMarkerName));
 }
 
 SetupInputs defaultSetupInputs(){
