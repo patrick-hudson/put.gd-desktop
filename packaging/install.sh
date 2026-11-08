@@ -93,7 +93,7 @@ HELP
     fi
     [ "$status" = 302 ] || die "No usable $channel $package download (HTTP $status)"
     if [ "$package" = archlinux ]; then
-        note "Installing $channel / $package from the signature-required pkg.put.gd repository."
+        note "Installing $channel / $package using the configured pacman repositories and signature policy."
     else
         note "Installing $channel / $package; verifying the release SHA256SUMS before installation."
     fi
