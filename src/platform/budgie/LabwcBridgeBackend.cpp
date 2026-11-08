@@ -204,7 +204,8 @@ void LabwcBridgeBackend::apply(){
  if(applying_){reapply_=true;return;}
  applying_=true;reapply_=false;
  available_=QFileInfo::exists(rcPath_);if(!available_){lastError_="Budgie's labwc configuration "+rcPath_+" does not exist";applying_=false;report();return;}
- reread();conflicts_.clear();invalid_.clear();
+ // Its own old conflicts go first, so its reread doesn't count them as freed.
+ conflicts_.clear();invalid_.clear();reread();
  run({"get",schema,"custom-keybindings"},[this](int code,QString out){
   if(code!=0){available_=false;applying_=false;report();return;}
   // A pause acknowledged while this read was queued wins: no key may reach rc.xml while recording.
@@ -251,7 +252,8 @@ void LabwcBridgeBackend::reread(){
   for(const auto& keybind:keybinds_)if(keybind.bridge!=self&&normalizedLabwcKey(keybind.key)==key)held=true;
   if(held)++it;else{it=conflicts_.erase(it);freed=true;}
  }
- if(freed&&!applying_&&!paused_)QTimer::singleShot(0,this,[this]{apply();});
+ // During an apply the freed key is written by the re-apply that apply's last step runs.
+ if(freed&&!paused_){if(applying_)reapply_=true;else QTimer::singleShot(0,this,[this]{apply();});}
  for(auto it=pending_.begin();it!=pending_.end();){
   const auto action=*it;bool found=false;
   for(const auto& keybind:keybinds_)if(keybind.bridge==ownPrefix+action&&keybind.command==trigger(action)&&normalizedLabwcKey(keybind.key)==normalizedLabwcKey(written_.value(action)))found=true;

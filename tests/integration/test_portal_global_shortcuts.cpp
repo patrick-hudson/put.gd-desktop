@@ -12,6 +12,8 @@
 #include <QTimer>
 #include <QtTest>
 #include <atomic>
+#include <mutex>
+#include <QHash>
 #include "fixtures/Waits.h"
 
 using namespace putgd;
@@ -26,7 +28,11 @@ const QString root=QStringLiteral("/org/freedesktop/portal/desktop");
 // Answers on its own connection in its own thread, as the real portal would.
 class FakePortal final:public QDBusVirtualObject {
 public:
- std::atomic<int> failCreate{0},failBind{0},closes{0};std::atomic<int> closeDelayMs{0};std::atomic<qint64> closedAt{0};
+ std::atomic<int> failCreate{0},failBind{0};std::atomic<int> closeDelayMs{0};
+ // Per session: when its Close returned. A previous case's destructor closes its own session asynchronously.
+ std::mutex lock;QString lastSession;QHash<QString,qint64> closed;
+ QString latest(){std::lock_guard guard(lock);return lastSession;}
+ qint64 closedAt(const QString& path){std::lock_guard guard(lock);return closed.value(path,-1);}
  QElapsedTimer clock;
  QDBusConnection bus{QDBusConnection::connectToBus(QDBusConnection::SessionBus,QStringLiteral("fake-portal"))};
  FakePortal(){clock.start();}
@@ -41,7 +47,8 @@ public:
    if(failCreate.fetch_sub(1)>0){connection.send(message.createErrorReply("org.freedesktop.DBus.Error.Failed","scripted CreateSession failure"));return true;}
    const auto options=qdbus_cast<QVariantMap>(message.arguments().at(0));const auto path=requestPath(options);
    connection.send(message.createReply(QVariant::fromValue(QDBusObjectPath(path))));
-   respond(path,0,{{"session_handle",root+"/session/fake/"+options.value("session_handle_token").toString()}});return true;
+   const auto session=root+"/session/fake/"+options.value("session_handle_token").toString();{std::lock_guard guard(lock);lastSession=session;}
+   respond(path,0,{{"session_handle",session}});return true;
   }
   if(member=="BindShortcuts"){
    if(failBind.fetch_sub(1)>0){connection.send(message.createErrorReply("org.freedesktop.DBus.Error.Failed","scripted BindShortcuts failure"));return true;}
@@ -51,8 +58,8 @@ public:
    respond(path,0,{{"shortcuts",QVariant::fromValue(bound)}});return true;
   }
   if(member=="Close"){
-   const auto reply=message.createReply();const int delay=closeDelayMs;
-   QTimer::singleShot(delay,[this,connection,reply]{++closes;closedAt=clock.elapsed();QDBusConnection(connection).send(reply);});return true;
+   const auto reply=message.createReply();const int delay=closeDelayMs;const auto path=message.path();
+   QTimer::singleShot(delay,[this,connection,reply,path]{{std::lock_guard guard(lock);closed.insert(path,clock.elapsed());}QDBusConnection(connection).send(reply);});return true;
   }
   return false;
  }
@@ -78,7 +85,7 @@ private slots:
   QMetaObject::invokeMethod(worker_,[this]{delete worker_;worker_=nullptr;},Qt::BlockingQueuedConnection);
   thread_.quit();thread_.wait();
  }
- void init(){fake_->failCreate=0;fake_->failBind=0;fake_->closeDelayMs=0;fake_->closes=0;}
+ void init(){fake_->failCreate=0;fake_->failBind=0;fake_->closeDelayMs=0;}
  void aFailedBindReportsTheErrorAndRebindRetries(){
   fake_->failBind=1;PortalGlobalShortcuts shortcuts;
   shortcuts.bind({{"region","Ctrl+Shift+1"}});
@@ -98,11 +105,13 @@ private slots:
  void pauseWaitsForTheSessionToClose(){
   PortalGlobalShortcuts shortcuts;shortcuts.bind({{"region","Ctrl+Shift+1"}});
   QVERIFY(putgd::test::waitFor([&]{return state(shortcuts)=="bound";},5000));
+  const auto session=fake_->latest();QVERIFY(!session.isEmpty());
   fake_->closeDelayMs=400;bool paused=false;qint64 pausedAt=0;
   shortcuts.setPaused(true,[&](Error){paused=true;pausedAt=fake_->clock.elapsed();});
   QVERIFY(!paused);
   QVERIFY(putgd::test::waitFor([&]{return paused;},5000));
-  QCOMPARE(fake_->closes.load(),1);QVERIFY(pausedAt>=fake_->closedAt.load());
+  // This session's Close returned before the pause was acknowledged.
+  QVERIFY(fake_->closedAt(session)>=0);QVERIFY2(pausedAt>=fake_->closedAt(session),qPrintable(QString("paused at %1, closed at %2").arg(pausedAt).arg(fake_->closedAt(session))));
   QCOMPARE(state(shortcuts),QString("recording"));
  }
 };
