@@ -249,6 +249,8 @@ int main(void)
  const size_t size=(size_t)info.st_size;
  const unsigned char* bytes=mmap(NULL,size,PROT_READ,MAP_PRIVATE,STDIN_FILENO,0);
  if(bytes==MAP_FAILED||!parse(bytes,size))return 2;
+ // Keep it out of swap where the memory-lock limit allows; a larger result can still swap.
+ (void)mlock(bytes,size);
  const int null=open("/dev/null",O_RDONLY|O_CLOEXEC);
  if(null<0||dup2(null,STDIN_FILENO)<0)return 2;
  close(null);

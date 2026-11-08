@@ -21,6 +21,7 @@
 #include <QPointer>
 #include <QThread>
 #include <QTimer>
+#include <QElapsedTimer>
 #include <QJsonArray>
 #include <QUuid>
 #include <unistd.h>
@@ -207,8 +208,19 @@ struct DataControlClipboard::Impl:QObject {
  void complete(PayloadResult result){++generation;auto request=std::move(active);active.reset();if(request)request->cancelled->store(true);if(reader){auto* transfer=reader.data();reader=nullptr;transfer->cancel();transfer->deleteLater();}QPointer<Impl> self(this);if(request&&request->reply){auto cb=std::move(request->reply);cb(std::move(result));}if(self)QTimer::singleShot(0,this,[this]{pump();});}
  void cancel(){++generation;auto queued=std::move(pending);pending.clear();if(active)complete(failure("cancelled","Clipboard acquisition cancelled"));for(auto& request:queued)request->reply(failure("cancelled","Clipboard acquisition cancelled"));}
  void finishCopy(Error e){if(!e)lastCopyRevision=revision;copyTimer.stop();if(copyFence){wl_callback_destroy(copyFence);copyFence=nullptr;}pendingCopyData.clear();copyCommitted=false;auto cb=std::move(copyReply);copyReply={};copyToken.clear();if(cb){logging::debug(logClipboard(),"Native copy finished",{{"writer","data-control"},{"ok",!e},{"code",e.code}});cb(std::move(e));}}
- // Called on the way out. Only the result still on the clipboard is handed over.
- void keepAfterExit(){events();if(!available()||!selection)return;const auto types=offers.value(selection);for(auto* source:std::as_const(sources))if(types.contains(source->token)){if(!startClipboardKeeper(source->data))logging::info(logClipboard(),"Clipboard result not kept after quitting");return;}}
+ // Drains what the compositor has sent, briefly: a hung compositor must not hold up quitting.
+ void settleForExit(){
+  if(!display)return;
+  bool synced=false;auto* fence=wl_display_sync(display);
+  static const wl_callback_listener settled={[](void* data,wl_callback*,uint32_t){*static_cast<bool*>(data)=true;}};
+  wl_callback_add_listener(fence,&settled,&synced);flush();
+  QElapsedTimer waited;waited.start();
+  while(display&&!synced&&waited.elapsed()<250){pollfd p{wl_display_get_fd(display),POLLIN,0};poll(&p,1,50);events();}
+  if(display)wl_callback_destroy(fence);
+ }
+ // Called on the way out. Only the result still on the clipboard is handed over. The first
+ // pass commits a copy still waiting on its fence; the second sees that copy's selection.
+ void keepAfterExit(){settleForExit();if(copyReply)settleForExit();if(!available()||!selection)return;const auto types=offers.value(selection);for(auto* source:std::as_const(sources))if(types.contains(source->token)){if(!startClipboardKeeper(source->data))logging::info(logClipboard(),"Clipboard result not kept after quitting");return;}}
  void invalidateCopy(){++copyEpoch;if(copyReply&&!copyCommitted)finishCopy({"copy_suppressed","A newer sharing invocation superseded this unsent native result copy",{}});}
  void commitCopy(){
   if(!copyReply)return;
