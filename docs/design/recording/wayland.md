@@ -6,8 +6,10 @@ Part of [Screen recording](../recording.md).
 
 On a Wayland session the compositor provides the pixels as a PipeWire video
 stream and `pipewiresrc` feeds them through `videorate` at the configured
-rate into the same encoder, pause and budget logic as X11. The probe picks
-one of three ways to obtain that stream and reports it as `acquisition`:
+rate into the same encoder, pause and budget logic as X11. Compositors with no
+screencast service (Budgie on labwc, Magpie) give frames through
+`ext-image-copy-capture-v1` instead. The probe picks one of four ways and
+reports it as `acquisition`:
 
 - `kde-screencast`: KWin's own `zkde_screencast_unstable_v1` protocol
   (version 3 or later) on a Plasma session. `kdeScreencast {available,
@@ -43,7 +45,32 @@ one of three ways to obtain that stream and reports it as `acquisition`:
   (`videocrop`, stream-relative), which is chosen before the portal session
   opens (see below).
 
-Both native paths name a node on the session's PipeWire daemon, so the probe
+- `wlr-capture`: on a Budgie session (by the desktop token, as the adapter
+  routes; never on bare labwc), always, and the ScreenCast portal is never
+  used there. `putgd-record` opens its own Wayland connection,
+  creates an `ext-image-copy-capture` session for one output or one window
+  with `paint_cursors`, and a capture thread pushes each frame from a ring of
+  four reused `wl_shm` buffers into `appsrc` (format from the compositor's shm
+  format, `leaky-type=downstream`). A frame arrives only when the source
+  changed; on a still screen the last frame is resent once a second, as
+  pipewiresrc's keepalive does, so the timeline keeps advancing. Each buffer
+  carries the frame's `presentation_time` (CLOCK_MONOTONIC) and takes the same
+  stamping and cadence lock as a PipeWire frame; the stream buffer goes back to
+  the ring when that probe copies it. `wlrCapture {available, windows,
+  protocols, reason?, windowReason?, elements}` carries the facts; a missing
+  global or `appsrc` makes recording unavailable as
+  `wlr_capture_unavailable` with the protocol named in `message`, never a
+  chooser. Monitor streams the named output; `desktop` only with one output;
+  a `region` is cropped (`videocrop`, native pixels) from the output it lies
+  on, and one spanning outputs is `recording_unsupported`. `window` takes an
+  identity from `capture.windows`, or the window active at `prepare` when
+  empty; `targets` lists it only where the toplevel capture source exists
+  (labwc 0.20, Mir 2.29). A window that changes size is scaled with borders
+  into its starting size (`videoscale`); one that closes ends the recording
+  as `stopped` with reason `source_lost` and keeps the clip. Overlays are
+  layer surfaces, as on Plasma; a monitor recording includes the bar.
+
+Both PipeWire native paths name a node on the session's PipeWire daemon, so the probe
 also requires its socket (`pipewire {socket}`; `PIPEWIRE_REMOTE`,
 `PIPEWIRE_RUNTIME_DIR` and `XDG_RUNTIME_DIR` are honoured) and leaves the
 portal, which passes its own connection as a descriptor, in charge when it
@@ -136,7 +163,7 @@ or a right click leaves nothing behind: the operation ends `cancelled` and no
 share was ever opened.
 
 - **KDE Plasma**: the helper itself shows the layer-shell screenshot selector
-  (`KdeRegionOverlay`, the same class `putgd-kde-region` runs), which reports
+  (`LayerShellRegionOverlay`, the same class `putgd-region` runs), which reports
   a logical rectangle only after KWin has rendered its surfaces transparent
   and unmapped them; then `stream_region` (or the portal plus `videocrop`)
   starts for exactly that rectangle. The helper sends `selecting` while it is

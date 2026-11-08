@@ -1,0 +1,156 @@
+# Budgie adapter
+
+Budgie 10.10 runs on labwc, a wlroots compositor with no screenshot or
+screencast service of its own. put.gd talks to it through standard Wayland
+protocols on its own connections: no portal, no picker, no `grim` or `slurp`.
+Budgie 10.9 is an X11 desktop and uses the existing X11 adapter. Budgie 11
+(Magpie on Mir) is unreleased; see [Budgie 11](#budgie-11).
+
+Tracking issue: [#1275](https://github.com/patrick-hudson/put.gd-desktop/issues/1275).
+
+## Versions
+
+| Budgie | Session | Ships in | put.gd |
+|---|---|---|---|
+| 10.9.x | X11, Magpie v0 (Mutter fork) | Ubuntu 24.04, 25.10, Debian 13 | X11 adapter, unchanged |
+| 10.10.x | Wayland, labwc | Fedora 44/45, Ubuntu 26.04, Debian forky, Arch | `budgie-wayland` adapter |
+| 11.x | Wayland, Magpie on Mir | not released | compatible by protocol, not tested on a real Budgie 11 desktop |
+
+## Routing
+
+A Budgie session sets `XDG_CURRENT_DESKTOP=Budgie` (forge test sessions use
+`Budgie:GNOME`). The resident takes the Core route with the `budgie-wayland`
+adapter when that token is present, the session is Wayland, and
+`QT_QPA_PLATFORM` is unset or names Wayland first. `startbudgielabwc` sets
+`QT_QPA_PLATFORM=wayland;xcb`, which this route accepts. A session that
+names Budgie never gets the GNOME or KDE adapter. Bare labwc (`labwc:wlroots`)
+and other wlroots compositors keep the unavailable source: nothing here has
+accepted them.
+
+`capabilities` reports `adapter: budgie-wayland`, the outputs, each capture
+kind with its reason when unavailable, the clipboard protocol, the shortcut
+backend with every binding's state, and `imageCopy.protocols`, the version of
+every global the compositor offers. Nothing is chosen by compositor name.
+
+## Protocols
+
+| Need | Protocol | Notes |
+|---|---|---|
+| Screen and region pixels | `ext-image-copy-capture-v1` + `ext-output-image-capture-source-manager-v1` | Required. No `wlr-screencopy` path. No cursor in screenshots. |
+| Window pixels | `ext-foreign-toplevel-image-capture-source-manager-v1` | labwc 0.20+, Mir 2.29+. Missing: window capture reports `window_unavailable` with the protocol named. |
+| Window list | `ext-foreign-toplevel-list-v1` | The only list whose handles capture accepts. |
+| Active window | `zwlr-foreign-toplevel-management-unstable-v1` | The only list with an activated state. |
+| Outputs | `wl_output` v4 names, `zxdg_output_manager_v1` | Logical rectangles, density, rotation. |
+| Region selector | `zwlr_layer_shell_v1` through LayerShellQt | The `putgd-region` helper, as on Plasma. |
+| Clipboard | `ext-data-control-v1` (or `wlr-data-control` v2) | Shared with Plasma. |
+
+The capture, toplevel and data-control code lives in `src/platform/wayland/`
+and is compositor-neutral; only the shortcut bridge and the D-Bus trigger are
+in `src/platform/budgie/`. Protocol XML is vendored unmodified
+(wayland-protocols 1.45, wlr-protocols) and installed beside the notices.
+
+Every capture maps one `wl_shm` buffer and releases the compositor buffer and
+pool when the frame is ready. A rotated or flipped output's buffer is turned
+upright; its native size must equal the frozen layout or the capture fails
+with `display_changed`, as does any output change during selection.
+
+## Window capture
+
+The window shortcut, `action.invoke window` and the CLI freeze the active
+window at invocation: the one ext handle whose app ID and title match the one
+activated wlr handle. No match, or more than one (two windows with the same
+app ID and title), fails with `capture_target`; there is no fallback to region
+selection. put.gd's own windows (`putgd`, `putgd-ui`, `putgd-record`,
+`putgd-region`) are refused by app ID: Wayland gives no PID for a toplevel, so
+this is weaker than the X11 and KDE PID rules.
+
+On labwc 0.20 the result is the client's content only: the server-side title
+bar is not included, and a window covered by another still captures its own
+pixels (occlusion does not apply, unlike KDE and X11).
+
+`capture.windows` (MCP `list_windows`) lists the capturable windows with
+their identity, app ID, title and active state. Window titles never appear in
+`capabilities` or diagnostics.
+
+## Shortcuts
+
+The resident owns `org.putgd.App.Budgie` on the session bus. A bound key runs
+
+```
+dbus-send --session --type=method_call --dest=org.putgd.App.Budgie /org/putgd/App org.putgd.App.Budgie.Trigger string:<action>
+```
+
+so no binary path is written into the desktop's settings (an AppImage moves)
+and no process starts per key press. `Trigger` accepts only an action put.gd
+has bound; with no resident running the call fails harmlessly.
+
+The backend is chosen when shortcuts are bound:
+
+1. **labwc bridge** (Budgie 10.10): the
+   `org.buddiesofbudgie.settings-daemon.plugins.media-keys` schema answers and
+   `$XDG_CONFIG_HOME/budgie-desktop/labwc/rc.xml` exists.
+2. **GlobalShortcuts portal**, when the desktop's portal offers it (Budgie
+   10.10 does not).
+3. **None**: each binding reports `shortcut_unavailable` with the reason; the
+   tray and CLI still work.
+
+With the bridge, each action is a relocatable custom keybinding at
+`.../custom-keybindings/customputgd<action>/`, named `put.gd: Region capture`
+and so on. The id contains `custom` because the bridge only removes stale
+entries whose id does. The bridge turns it into
+`<keybind bridge="customputgd<action>" key="C-S-1">` in `rc.xml`, about 10 s after
+login and within ~100 ms afterwards. Before writing, put.gd compares the
+key's modifier set and keysym with every `key=` in `rc.xml`; a key Budgie
+already uses (for example `Print` for its own screenshot) reports
+`shortcut_conflict` naming the owner and is not written, so Budgie's binding
+survives. A binding stays `pending` until its `rc.xml` entry appears.
+`rc.xml` is what put.gd reports as bound, so a change made in Budgie Control
+Center shows in Settings. While Settings records a new shortcut, put.gd's
+keys are cleared from `rc.xml` so the key reaches the recorder. Unbinding
+clears the binding and command, drops the path from `custom-keybindings` and
+resets the keys; quitting put.gd removes all of its entries. `gsettings` runs
+with the host environment, never the AppImage's libraries.
+
+## Recording
+
+Recording uses the `wlr-capture` acquisition: `ext-image-copy-capture`
+frames of one output or one window go from `putgd-record`'s own Wayland
+connection into `appsrc` and the existing cadence lock, pause, budget and
+encoder pipeline. The cursor is painted into the frames. The ScreenCast
+portal is never used on Budgie: a missing or refused protocol is the error,
+with the protocol named, and no chooser ever shows. Details are in
+[Wayland recording](../design/recording/wayland.md).
+
+- Monitor: one output. Desktop: only with a single output (record a monitor
+  otherwise).
+- Region: cropped from the output it lies on; a region spanning outputs is
+  `recording_unsupported`.
+- Window: an empty `target.identity` means the window active when the
+  recording is prepared; otherwise an identity from `capture.windows`. A window
+  that changes size is scaled, with borders, into its starting size; a window
+  that closes ends the recording and keeps the clip.
+- The ready ring, dimming and control bar are layer surfaces outside the
+  recorded rectangle. A monitor recording includes the bar, as on KWin 6.3.
+
+## Budgie 11
+
+Budgie 11 has no release and no installable session. The adapter works from
+advertised protocols, so Magpie built from the forge gets capture, clipboard,
+region and window capture where Mir advertises them (Mir 2.29+ for windows).
+Magpie keybinds (`magpierc`) are not written: an injected key did not fire a
+Magpie keybind in the 2026-11-01 probe, and no Budgie 11 shortcut contract
+exists. **No real Budgie 11 desktop has been tested.** Acceptance runs on
+the first Budgie 11 alpha (tracked as a follow-up on #1275).
+
+## Tests
+
+- `budgie_labwc_integration` runs the adapter and shared capture against a
+  real headless labwc (`WLR_BACKENDS=headless WLR_RENDERER=pixman`) with a
+  known-colour client: exact output and desktop pixels, window capture or its
+  reason, every output transform, fractional scale, clipboard both ways and
+  display-change invalidation. The Ubuntu 26.04 CI leg installs labwc; the
+  test skips where labwc is absent. Headless results are supporting evidence,
+  never desktop acceptance.
+- Routing rows in `test_native_session.cpp` cover `Budgie`, `Budgie:GNOME`,
+  `labwc:wlroots` and `wayland;xcb`.
+- The VM rows are in [the acceptance matrix](../testing/acceptance-matrix.md).
