@@ -203,6 +203,15 @@ class PlasmaProperties(unittest.TestCase):
         self.assertTrue(scope.launch.call_args.kwargs['environment']['XDG_DATA_HOME'].startswith(scope.root+'/'))
         scope.stop.assert_not_called()
 
+    def test_existing_oo7_keeps_its_name_and_collections_while_private_client_is_pinned(self):
+        scope=self.keyring_scope(dict(owner=':1.7',pid=99,provider='oo7-daemon'))
+        self.assertEqual(keyring.isolated_service(scope)['bus_name'],':1.100')
+        scope.restart.assert_called_once_with({'QTKEYCHAIN_BACKEND':'libsecret','KDE_SESSION_VERSION':'',
+                                              'SECRET_SERVICE_BUS_NAME':':1.100'})
+        self.assertNotIn('--replace',scope.launch.call_args.args[0])
+        self.assertTrue(scope.launch.call_args.kwargs['environment']['XDG_DATA_HOME'].startswith(scope.root+'/'))
+        scope.stop.assert_not_called()
+
     def test_owner_change_or_ambiguous_connection_refuses_private_client_restart(self):
         prior=dict(owner=':1.7',pid=99,provider='ksecretd')
         for scope in (self.keyring_scope(prior,dict(prior,owner=':1.8')),

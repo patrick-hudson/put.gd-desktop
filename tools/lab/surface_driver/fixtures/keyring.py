@@ -28,7 +28,7 @@ def isolated_service(scope):
     if ctx.placement not in ('guest','boat') or not ctx.profile.get('guest'):
         raise RecipeBlocked('isolated Secret Service requires a disposable nested guest',issue=919)
     prior = scope.json(OWNER)
-    if prior['owner'] and prior.get('provider') != 'ksecretd':
+    if prior['owner'] and prior.get('provider') not in ('ksecretd', 'oo7-daemon'):
         raise RecipeBlocked('isolated Secret Service refuses an already owned bus name; existing wallets are preserved',issue=919)
     if ctx.shell('command -v gnome-keyring-daemon >/dev/null')['returncode']:
         raise RecipeBlocked('KDE fixture needs profiles/provision-probes.sh --keyring-overlay in the disposable overlay',issue=919)

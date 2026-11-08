@@ -43,7 +43,7 @@ SCHEMA_VERSION = 2
 
 FUNCTIONAL = ('passed', 'failed', 'blocked')
 VISUAL = ('frames', 'reviewed-ok', 'reviewed-wrong')
-PACKAGES = ('deb', 'rpm', 'appimage', 'source')
+PACKAGES = ('deb', 'rpm', 'arch', 'appimage', 'source')
 PLACEMENTS = ('native', 'guest', 'boat')
 DESTINATIONS = ('local', 's3', 'b2', 'proton')
 HOSTS = ('m74', 'f44', 'd69', 'k72', 'aurora-amd', 'boat')

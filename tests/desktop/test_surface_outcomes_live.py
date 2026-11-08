@@ -193,6 +193,35 @@ class LiveOutcomes(unittest.TestCase):
                                 target=SimpleNamespace(physical=None),profile={'guest':'unit'},_live_admitted=True)
             with self.assertRaises(RecipeBlocked):admit(ctx)
 
+    def test_opt_in_vm_live_requires_exact_owned_run_and_slot_without_desktop_lease(self):
+        for actual, package, slot_run, expected in (
+                ('ubuntu-budgie-2404', 'deb', '/synthetic/run', None),
+                ('cinnamon-x11', 'deb', '/synthetic/run', 'owned guest/package'),
+                ('ubuntu-budgie-2404', 'appimage', '/synthetic/run', 'owned guest/package'),
+                ('ubuntu-budgie-2404', 'deb', '/other/run', 'slot does not own')):
+            ctx = SimpleNamespace(destination='s3', placement='guest', host='f44',
+                desktop='ubuntu-budgie-2404', package=package, _live_admitted=True,
+                target=SimpleNamespace(physical=None, run=Path('/synthetic/run'), root='/dev/shm/app'),
+                profile={'guest':'ubuntu-budgie-2404', 'browser':{'profile_root':'/dev/shm/browser'}},
+                shell=lambda command: {'returncode':0, 'stdout':'tmpfs'})
+            def read(path):
+                if path.name == 'session': return 'synthetic-session'
+                if path.name == 'owner.json':
+                    return json.dumps({'session':'synthetic-session', 'run':slot_run})
+                raise AssertionError('unexpected file read')
+            with patch('tools.lab.lab.verify_owned_guest') as owned, \
+                 patch('tools.lab.lab.state', return_value={'profile':actual}), \
+                 patch('tools.lab.nightly_desktops.private_file', side_effect=lambda p:p), \
+                 patch.object(Path, 'read_text', read), patch.object(Path, 'is_symlink', return_value=False), \
+                 patch.dict('os.environ', PUTGD_TIER1_SESSION='synthetic-session'), \
+                 patch('tools.lab.desktop_lock.Desktop') as desktop:
+                if expected:
+                    with self.assertRaisesRegex(RecipeBlocked, expected): admit(ctx)
+                else:
+                    admit(ctx)
+                owned.assert_called_once_with(ctx.target.run)
+                desktop.assert_not_called()
+
     def test_named_appimage_guests_still_require_the_desktop_lock(self):
         """Approved package/profile pairs reach the lease guard for both live providers."""
         for host, desktop, guest in (('m74', 'mint-cinnamon-x11', 'cinnamon-x11-appimage'),

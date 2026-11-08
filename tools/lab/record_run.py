@@ -77,12 +77,12 @@ def log(message):
 def session_environment():
     """The desktop session's environment for clients started from SSH."""
     uid = os.getuid()
-    for process in ('plasmashell', 'gnome-shell', 'cinnamon', 'quickshell'):
+    for process in ('plasmashell', 'gnome-shell', 'cinnamon', 'quickshell', 'budgie-panel'):
         pids = subprocess.run(['pgrep', '-u', str(uid), '-x', process], capture_output=True, text=True).stdout.split()
         if pids:
             break
     else:
-        raise RunError('no desktop session process (plasmashell, gnome-shell, cinnamon, quickshell) for this user')
+        raise RunError('no desktop session process (plasmashell, gnome-shell, cinnamon, quickshell, budgie-panel) for this user')
     pairs = Path('/proc/%s/environ' % pids[0]).read_bytes().decode(errors='replace').split('\0')
     found = dict(pair.split('=', 1) for pair in pairs if '=' in pair)
     runtime = '/run/user/%d' % uid

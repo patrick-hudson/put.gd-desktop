@@ -178,7 +178,7 @@ def prepare_live_keyring(run, out):
     from tools.lab.surface_driver.fixtures.keyring import OWNER, UNIQUE_SERVICE
     lab.verify_owned_guest(run)
     prior = json.loads(lab.guest_session(run, "python3 - <<'PY'\n"+OWNER+'\nPY\n'))
-    if prior['provider'] != 'ksecretd':
+    if prior['provider'] not in ('ksecretd', 'oo7-daemon'):
         return
     root = '/dev/shm/nd-keys'
     from tools.lab.surface_driver.target import checked_socket

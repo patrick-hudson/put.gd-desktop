@@ -38,6 +38,14 @@ def key_set_two(text):
                 settings=first['settings'])
 
 
+# These opt-in VM rows are deliberately absent from the nightly controller.
+VM_ROWS = {'fedora45-budgie': ('fedora45-budgie', ('appimage',)),
+           'fedora44-budgie': ('fedora44-budgie', ('rpm',)),
+           'ubuntu-budgie-2604': ('ubuntu-budgie-2604', ('deb',)),
+           'ubuntu-budgie-2404': ('ubuntu-budgie-2404', ('deb',)),
+           'omarchy-hyprland': ('omarchy-hyprland', ('arch', 'appimage'))}
+
+
 def admit(ctx):
     """Require an approved disposable guest, held leases and private storage before live setup."""
     if (ctx.destination not in ('s3', 'proton') or ctx.placement != 'guest'
@@ -46,7 +54,8 @@ def admit(ctx):
     allowed = {'mint-cinnamon-x11': ('d69', 'f44', 'm74'), 'ubuntu-gnome-wayland': ('d69', 'f44'),
                'kubuntu-kde-wayland': ('f44', 'k72'), 'aurora-kde-wayland': ('f44', 'd69', 'aurora-amd'),
                'fedora-gnome-wayland': ('f44',)}
-    if ctx.host not in allowed.get(ctx.desktop, ()):
+    vm_row = VM_ROWS.get(ctx.desktop)
+    if ctx.host not in (('f44', 'd69') if vm_row else allowed.get(ctx.desktop, ())):
         raise RecipeBlocked('Tier 1 live desktop is not on an authorized builder')
     # Additional AppImage coverage is confined to the two declared builder guests.
     # Bind the requested profile to the actual owned run before any secret read.
@@ -56,18 +65,31 @@ def admit(ctx):
     if ctx.package == 'appimage' and appimage_profile and ctx.profile.get('guest') == appimage_profile:
         from tools.lab import lab
         appimage_guest = lab.state(ctx.target.run)['profile'] == appimage_profile
+    if vm_row:
+        from tools.lab import lab
+        lab.verify_owned_guest(ctx.target.run)
+        if (ctx.profile.get('guest') != vm_row[0] or lab.state(ctx.target.run)['profile'] != vm_row[0]
+                or ctx.package not in vm_row[1]):
+            raise RecipeBlocked('Tier 1 live VM row does not match its owned guest/package')
     expected = {'aurora-kde-wayland': 'appimage', 'fedora-gnome-wayland': 'rpm'}.get(ctx.desktop, 'deb')
-    if not appimage_guest and ctx.package != expected:
+    if not vm_row and not appimage_guest and ctx.package != expected:
         raise RecipeBlocked('Tier 1 live requires an approved guest package/profile combination')
     from tools.lab import desktop_lock
     session = os.environ.get('PUTGD_TIER1_SESSION', '')
     if not session:
         raise RecipeBlocked('Tier 1 live requires an explicit lock session')
-    lock = desktop_lock.Desktop(Path.home()/'putgd-lab/locks', ctx.host)
-    lock.heartbeat(session)  # Refuses another holder, expiry and missing locks.
+    if not vm_row:
+        lock = desktop_lock.Desktop(Path.home()/'putgd-lab/locks', ctx.host)
+        lock.heartbeat(session)  # Refuses another holder, expiry and missing locks.
     guest_lock = Path.home()/'putgd-lab/locks/tier1-guest.lock.d/session'
     if guest_lock.is_symlink() or guest_lock.read_text().strip() != session:
         raise RecipeBlocked('Tier 1 live requires the builder guest slot lock')
+    if vm_row:
+        from tools.lab.nightly_desktops import private_file
+        private_file(guest_lock)
+        owner = json.loads(private_file(guest_lock.with_name('owner.json')).read_text())
+        if owner.get('session') != session or owner.get('run') != str(ctx.target.run):
+            raise RecipeBlocked('Tier 1 live VM slot does not own this exact run')
     if ctx.destination == 'proton':
         desktop_lock.Desktop(Path.home()/'putgd-lab/locks', ctx.host, resource='proton').heartbeat(session)
         if Path(os.environ.get('PUTGD_LAB_RUN', '/missing')).resolve() != ctx.target.run:
@@ -192,6 +214,7 @@ def provider(scope):
         folder = _setup(scope, profile_id, 'createFolder', {'input': {'name': prefix.rstrip('/')}})
         profile['settings'].update(folderUid=folder['uid'], folderName=folder.get('name', prefix.rstrip('/')))
         fixture['folder_uid'] = folder['uid']
+        ctx.note('proton_isolated_folder='+prefix.rstrip('/'))
         scope.patch({'profiles': [profile]})
     fixture['credential_reference'] = reference
     if ctx.destination == 'proton':

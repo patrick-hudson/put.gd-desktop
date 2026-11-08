@@ -31,7 +31,7 @@ def fake_keyring(scope):
         raise RecipeBlocked('fake credential collection is restricted to a disposable nested guest',issue=666)
     scope.initialize()
     bus_name='org.freedesktop.secrets'
-    if ctx.profile.get('compositor',{}).get('kind')=='kwin-script':
+    if ctx.profile.get('compositor',{}).get('kind')=='kwin-script' or ctx.profile.get('isolated_keyring'):
         bus_name=isolated_service(scope).get('bus_name',bus_name)
     program=KEYRING.replace("SERVICE_BUS='org.freedesktop.secrets'",'SERVICE_BUS='+repr(bus_name))
     label='putgd fixture '+scope.token

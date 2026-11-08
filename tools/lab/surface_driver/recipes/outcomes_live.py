@@ -60,6 +60,7 @@ def _cleanup(ctx, detail):
                                  in ('revoked', 'failed', 'unknown', 'changed') else None), 'UI revocation settled', timeout=180)
         ctx.expect(final['shareStatus'] == 'revoked' and not final['linkAvailable'], 'History confirms link revoked')
         ctx.note('revocation_count=1')
+        ctx.note('proton_retained_file_count=1; synthetic private file; share revoked')
     else:
         # Qt 6.4 does not expose this button's objectName. The exact caption
         # still binds the unique visible owned inspector action.
