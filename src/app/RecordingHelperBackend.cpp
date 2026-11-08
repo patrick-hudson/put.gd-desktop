@@ -56,10 +56,11 @@ RecordingHelperBackend::~RecordingHelperBackend() {
         if (child_->process) { child_->process->disconnect(this); child_->process->kill(); child_->process->waitForFinished(1000); }
         for (auto& pending : child_->outstanding) pending.reply(helperError("recording_helper_closed", "The resident is shutting down"), {});
     }
+    if (queued_) { auto reply = std::move(queued_->reply); queued_.reset(); reply(helperError("recording_helper_closed", "The resident is shutting down"), {}); }
 }
 void RecordingHelperBackend::setTimeouts(int startupMs, int commandMs, int prepareMs, int exportMs) { startupMs_ = startupMs; commandMs_ = commandMs; prepareMs_ = prepareMs; exportMs_ = exportMs; }
 QJsonObject RecordingHelperBackend::diagnostics() const {
-    return {{"helper", QFileInfo(helperPath_).isExecutable()}, {"active", child_ != nullptr}, {"processId", child_ && child_->process ? child_->process->processId() : 0}, {"lastExit", lastExit_}, {"probed", !cached_.isEmpty()}};
+    return {{"helper", QFileInfo(helperPath_).isExecutable()}, {"active", child_ != nullptr}, {"processId", child_ && child_->process ? child_->process->processId() : 0}, {"lastExit", lastExit_}, {"probed", !cached_.isEmpty()}, {"queued", queued_.has_value()}};
 }
 QJsonObject RecordingHelperBackend::capabilities() const {
     if (!cached_.isEmpty()) return cached_;
@@ -110,7 +111,14 @@ void RecordingHelperBackend::finishProbe() {
 QJsonObject RecordingHelperBackend::envelope() const { return {{"role", "record"}, {"nonce", child_ ? child_->nonce : QString{}}, {"generation", QString::number(child_ ? child_->generation : 0)}}; }
 
 void RecordingHelperBackend::prepare(const QString& id, const RecordingTarget& target, const RecordingConfig& config, const QString& staging, Reply reply, const QJsonObject& reviewOptions) {
-    if (child_ && !child_->exited) { reply(helperError("recording_active", "A recording helper is already running"), {}); return; }
+    if (child_ && !child_->exited) {
+        // The previous session already ended (the resident reports no active
+        // recording) and its helper is still shutting down: a prepare right after
+        // a cancel or a failure waits for that exit instead of failing (#1296).
+        if (child_->shuttingDown && !queued_) { queued_ = Queued{id, target, config, staging, std::move(reply), reviewOptions}; return; }
+        reply(helperError("recording_active", "A recording helper is already running"), {});
+        return;
+    }
     if (child_) child_.reset();
     auto child = std::make_unique<Child>();
     child->id = id;
@@ -138,7 +146,7 @@ void RecordingHelperBackend::prepare(const QString& id, const RecordingTarget& t
         frame["appearance"] = QJsonObject{{"scheme", scheme_}};
         if (child_->control->send("bootstrap", frame).isEmpty()) failChild(generation, helperError("recording_helper_protocol", "Cannot bootstrap the recording helper"));
     });
-    connect(process, &QProcess::errorOccurred, this, [this, generation](QProcess::ProcessError error) { if (error == QProcess::FailedToStart) { if (child_ && child_->generation == generation && !child_->exited) { child_->exited = true; output_.failedToStart(child_->process->errorString()); failChild(generation, helperError("recording_helper_start_failed", "The recording helper could not be started")); } } });
+    connect(process, &QProcess::errorOccurred, this, [this, generation](QProcess::ProcessError error) { if (error == QProcess::FailedToStart) { if (child_ && child_->generation == generation && !child_->exited) { child_->exited = true; output_.failedToStart(child_->process->errorString()); failChild(generation, helperError("recording_helper_start_failed", "The recording helper could not be started")); launchQueued(); } } });
     connect(process, qOverload<int, QProcess::ExitStatus>(&QProcess::finished), this, [this, generation](int code, QProcess::ExitStatus status) { exited(generation, code, status); });
     child_ = std::move(child);
     // A sentinel request waits for `ready`; the helper's prepare result then answers the caller.
@@ -264,6 +272,13 @@ void RecordingHelperBackend::exited(quint64 generation, int code, QProcess::Exit
         if (!guard) return;
     }
     if (child_ && child_->generation == generation) { if (child_->process) child_->process->deleteLater(); child_.reset(); }
+    launchQueued();
+}
+void RecordingHelperBackend::launchQueued() {
+    if (!queued_ || (child_ && !child_->exited)) return;
+    auto next = std::move(*queued_);
+    queued_.reset();
+    prepare(next.id, next.target, next.config, next.staging, std::move(next.reply), next.reviewOptions);
 }
 void RecordingHelperBackend::control(const QString& id, const QString& command, const QJsonObject& params, Reply reply) {
     if (!child_ || child_->id != id) { reply(helperError("recording_helper_closed", "No recording helper owns this session"), {}); return; }
@@ -286,6 +301,8 @@ qint64 RecordingHelperBackend::processId(const QString& id) const {
     return child_ && child_->id == id && !child_->exited && child_->process ? child_->process->processId() : 0;
 }
 void RecordingHelperBackend::discard(const QString& id) {
+    // Cancelled while it waited for the previous helper: it never starts one.
+    if (queued_ && queued_->id == id) { auto reply = std::move(queued_->reply); queued_.reset(); reply(helperError("recording_helper_closed", "The recording session was discarded"), {}); return; }
     if (!child_ || child_->id != id || child_->shuttingDown) return;
     child_->shuttingDown = true;
     startup_.stop();

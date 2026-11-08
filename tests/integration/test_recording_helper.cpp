@@ -103,6 +103,29 @@ private slots:
    QCOMPARE(h.rec("inspect",{{"id",id}}).error.code,QString("recording_unavailable"));QCOMPARE(h.provider->uploads.load(),0);
   }
  }
+ void prepareRightAfterCancelWaitsForTheOldHelper(){
+  // #1296: once cancel returns the resident reports no active recording, while
+  // the old helper still shuts down (300 ms here). A prepare in that window
+  // starts when that helper exits instead of failing with recording_active.
+  Harness h;PUTGD_TRY_VERIFY(h.operations->ready());qputenv("PUTGD_TEST_RECORD_MODE","slow-shutdown");
+  const auto first=h.prepare();QVERIFY(!first.isEmpty());PUTGD_TRY_COMPARE(h.state(first),QString("ready"));
+  QCOMPARE(h.rec("cancel",{{"id",first}}).result["state"].toString(),QString("cancelled"));
+  QVERIFY(h.rec("capabilities").result["active"].isNull());QVERIFY(h.backend->diagnostics()["active"].toBool());
+  HistoryStore journal(h.operations->databasePath());
+  const auto second=h.prepare();QVERIFY(!second.isEmpty());
+  PUTGD_TRY_VERIFY2(h.state(second)==QString("ready"),qPrintable("the prepare after cancel ended "+journal.operation(second).state+": "+journal.operation(second).error.code));
+  QVERIFY(!h.backend->diagnostics()["queued"].toBool());
+  QCOMPARE(h.backend->diagnostics()["lastExit"].toObject()["status"].toString(),QString("normal"));
+  // Cancelled while it waits: it never starts a helper, and the next prepare still does.
+  QCOMPARE(h.rec("cancel",{{"id",second}}).result["state"].toString(),QString("cancelled"));
+  const auto third=h.prepare();QVERIFY(!third.isEmpty());QVERIFY(h.backend->diagnostics()["queued"].toBool());
+  QCOMPARE(h.rec("cancel",{{"id",third}}).result["state"].toString(),QString("cancelled"));QVERIFY(!h.backend->diagnostics()["queued"].toBool());
+  PUTGD_TRY_VERIFY(!h.backend->diagnostics()["active"].toBool());
+  const auto fourth=h.prepare();QVERIFY(!fourth.isEmpty());PUTGD_TRY_COMPARE(h.state(fourth),QString("ready"));
+  QVERIFY(!h.rec("cancel",{{"id",fourth}}).error);PUTGD_TRY_VERIFY(!h.backend->diagnostics()["active"].toBool());
+  for(const auto& id:{first,second,third,fourth})PUTGD_TRY_COMPARE(journal.operation(id).state,QString("cancelled"));
+  QCOMPARE(h.provider->uploads.load(),0);
+ }
  void protocolFaultsStillFailTheHelper_data(){
   QTest::addColumn<QString>("mode");
   QTest::newRow("unknown request")<<QString("unknown-result");

@@ -8,6 +8,7 @@
 #include <QProcess>
 #include <QTimer>
 #include <memory>
+#include <optional>
 
 namespace putgd {
 // Supervises one transient `putgd-record` process per recording session over
@@ -53,10 +54,16 @@ private:
     void failChild(quint64 generation, const Error&);
     void exited(quint64 generation, int code, QProcess::ExitStatus);
     void finishProbe();
+    void launchQueued();
     QJsonObject envelope() const;
     QString helperPath_, scheme_ = QStringLiteral("dark");
     Event sink_;
     std::unique_ptr<Child> child_;
+    // A prepare that arrived while the previous session's helper was still
+    // shutting down (#1296): the resident had already ended that session, so
+    // it starts as soon as the old helper exits, which stopDeadline_ bounds.
+    struct Queued { QString id; RecordingTarget target; RecordingConfig config; QString staging; Reply reply; QJsonObject reviewOptions; };
+    std::optional<Queued> queued_;
     quint64 generation_ = 0;
     QTimer startup_, stopDeadline_;
     // prepare covers a hands-on drag selection and OS consent; the overlay stays visible and Escape cancels.
