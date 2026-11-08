@@ -141,11 +141,17 @@ void X11Shortcuts::events(){while(auto* raw=xcb_poll_for_event(connection_)){con
   if(generic->extension==xinputOpcode_&&(generic->event_type==XCB_INPUT_RAW_KEY_PRESS||generic->event_type==XCB_INPUT_RAW_KEY_RELEASE)){
    const auto* key=reinterpret_cast<xcb_input_raw_key_press_event_t*>(raw);const auto code=uint8_t(key->detail);
    if(generic->event_type==XCB_INPUT_RAW_KEY_RELEASE)matcher_.release(code);
-   else if(const auto action=matcher_.press(code);(symbols_&&xcb_key_symbols_get_keysym(symbols_,code,0)==XK_Escape&&(emit escapePressed(),false))||(action&&!recording_)){
-    // The server queues a passive grab's core press right after this raw
-    // event. A roundtrip brings it into this drain, so both are matched here.
-    auto* sync=xcb_get_input_focus_reply(connection_,xcb_get_input_focus(connection_),nullptr);free(sync);
-    pending_.append({*action,code,key->time});
+   else{
+    const auto action=matcher_.press(code);
+    // Escape cancels a held crosshair; the handler ignores it otherwise, even
+    // while shortcuts are paused for recording.
+    if(symbols_&&xcb_key_symbols_get_keysym(symbols_,code,0)==XK_Escape)emit escapePressed();
+    if(action&&!recording_){
+     // The server queues a passive grab's core press right after this raw
+     // event. A roundtrip brings it into this drain, so both are matched here.
+     auto* sync=xcb_get_input_focus_reply(connection_,xcb_get_input_focus(connection_),nullptr);free(sync);
+     pending_.append({*action,code,key->time});
+    }
    }
   }
  }
