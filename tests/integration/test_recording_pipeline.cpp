@@ -112,6 +112,7 @@ private slots:
         qInfo("%s", qPrintable(summary));
         QVERIFY(encoded > 0);
         QVERIFY(retained > 0);
+        QVERIFY(clip.frames > 0);
         QVERIFY2(clip.frames >= encoded - 2 && clip.frames <= encoded, qPrintable(summary));
         QVERIFY2(clip.irregular <= std::max(2, clip.frames / 20), qPrintable(summary));
         QVERIFY2(std::llabs(retained * 1000 - clip.durationNs) <= 2 * GST_SECOND / 60, qPrintable(summary));
@@ -165,6 +166,7 @@ private slots:
         QVERIFY(delivered > 0);
         QVERIFY(captured > 0);
         QVERIFY(retained > 0);
+        QVERIFY(clip.frames > 0);
         // The source still grabs at 60; the gate keeps half of it.
         QVERIFY2(captured >= delivered * 0.4 && captured <= delivered * 0.6, qPrintable(summary));
         QVERIFY2(clip.irregular <= std::max(2, clip.frames / 20), qPrintable(summary));
