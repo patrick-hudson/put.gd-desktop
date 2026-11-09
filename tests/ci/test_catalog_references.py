@@ -14,6 +14,24 @@ spec.loader.exec_module(check)
 
 
 class Checking(unittest.TestCase):
+    def test_output_is_replaced_only_when_it_is_ours(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            foreign = root / 'foreign'
+            foreign.mkdir()
+            (foreign / 'notes.txt').write_text('keep')
+            with self.assertRaises(SystemExit):
+                check.prepare_output(foreign)
+            self.assertEqual((foreign / 'notes.txt').read_text(), 'keep')
+            ours = root / 'ours'
+            ours.mkdir()
+            (ours / check.REPORT).write_text('{}')
+            (ours / 'old.png').write_text('x')
+            check.prepare_output(ours)
+            self.assertEqual(list(ours.iterdir()), [])
+            check.prepare_output(root / 'new' / 'dir')
+            self.assertTrue((root / 'new' / 'dir').is_dir())
+
     def test_main_requires_complete_renders(self):
         with tempfile.TemporaryDirectory() as tmp:
             output = Path(tmp) / 'dark'
@@ -39,7 +57,8 @@ class Checking(unittest.TestCase):
                 self.assertEqual(json.loads((output / check.REPORT).read_text())['ok'], result == 0)
                 return result
 
-            for document in (None, {'kind': 'synthetic-ui-catalog'}, manifest_with(sourceReads=1),
+            for document in (None, {'kind': 'synthetic-ui-catalog'},
+                             manifest_with(kind='not-a-synthetic-catalog'), manifest_with(sourceReads=1),
                              manifest_with(captures=[{'file': '10-same.png'}, {'file': 'missing.png'}]),
                              manifest_with(images=['10-same.png', 'missing.png']),
                              manifest_with(images=[]), manifest_with(captures=[]),
