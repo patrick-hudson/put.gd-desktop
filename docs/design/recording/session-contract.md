@@ -140,6 +140,17 @@ The clip keeps its configured frame rate and full timeline; repeated frames
 fill the lowered capture cadence. Software x264 still encodes those repeats,
 so lowering capture rate alone has a limited CPU benefit ([#1045](https://github.com/patrick-hudson/put.gd-desktop/issues/1045)).
 
+On the one setup measured so far, an AMD Radeon 740M (Plasma 6.8.2, 1080p,
+`vah264enc` against `x264enc`), hardware and software encoding hold the same
+cadence at 60 fps. Ten alternating pairs measured 59.81 and 59.82 distinct source
+frames per second, and the recorder reported zero dropped frames and capture-queue
+leaks. Other GPUs and loaded hosts are unverified. On that setup, a notification
+with a timeout bar lowers the cadence with either encoder while it is on screen, to about 50 distinct frames per second in the same test: source
+arrivals roughly double, the cadence lock drops the extra arrivals as early, and
+the recorded window's own frame clock slows too. With no recorder running, the
+same notifications cost the window nothing. See the
+[#1216 record](https://github.com/patrick-hudson/put.gd-evidence/blob/60f55f661388abea6f37f53cc2d816cb19d01b9c/records/2026-11-09-amd-cadence-1216/README.md).
+
 `recording.inspect` (MCP `get_recording`) reports these under `progress`:
 
 | Field | Meaning |
