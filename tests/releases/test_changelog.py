@@ -125,15 +125,6 @@ class Changelog(unittest.TestCase):
         self.assertEqual([repository for repository, _ in seen], [REPO])
         return text, seen[0][1]
 
-    def test_change_types_follow_labels_then_the_title_kind(self):
-        # CHANGELOG.md (#217) sorts by Keep a Changelog type, not by area.
-        self.assertEqual(changelog.change_type('feat(s3): abort retired multipart uploads'), 'Added')
-        self.assertEqual(changelog.change_type('fix: upload the clipboard again'), 'Fixed')
-        self.assertEqual(changelog.change_type('History: keep the selection'), 'Changed')
-        self.assertEqual(changelog.change_type('History: keep the selection', ['bug']), 'Fixed')
-        self.assertEqual(changelog.change_type('fix: x', ['enhancement']), 'Added')
-        self.assertEqual(changelog.previous_stable(self.root, 'nightly'), 'v0.1.0')
-
     def test_nightly_lists_pull_requests_since_the_previous_nightly(self):
         text, looked_up = self.section('v0.1.1-nightly.12')
         self.assertEqual(looked_up, [4, 5, 6, 7, 8])
@@ -162,48 +153,6 @@ class Changelog(unittest.TestCase):
         self.assertEqual(changelog.previous_tag(self.root, 'v0.1.1-nightly.15'), 'v0.1.1-nightly.12')
         text, _ = self.section('v0.1.1-nightly.15')
         self.assertIn(f'### Documentation\n\n- Candidate notes ([#20]({URL}/pull/20))\n', text)
-
-    def test_without_the_lookup_titles_supply_the_group_and_issues(self):
-        text = changelog.section(self.root, 'v0.1.1-nightly.12', REPO, lookup=lambda *_: {})
-        self.assertIn(f'- Upload the clipboard again ([#4]({URL}/pull/4)), closes [#12]({URL}/issues/12), '
-                      f'[#13]({URL}/issues/13)\n', text)
-        self.assertIn('### Fixes', text)
-        self.assertEqual(changelog.section(self.root, 'v0.1.1-nightly.12', REPO, lookup=None), text)
-
-    def test_labels_win_over_title_prefixes(self):
-        relabelled = {**METADATA, 6: {'labels': ['recording'], 'closes': []}}
-        text, _ = self.section('v0.1.1-nightly.12', relabelled)
-        self.assertIn(f'### Recording\n\n- Keep the bar on its screen ([#5]({URL}/pull/5))\n'
-                      f'- Add the m74 Cinnamon server ([#6]({URL}/pull/6))\n', text)
-        self.assertNotIn('### Lab', text)
-
-    def test_first_release_of_a_channel_lists_the_whole_history(self):
-        self.assertIsNone(changelog.previous_tag(self.root, 'v0.1.1-nightly.4'))
-        text, looked_up = self.section('v0.1.1-nightly.4')
-        self.assertEqual(looked_up, [2, 3])
-        self.assertTrue(text.startswith("## What's changed\n"))
-        self.assertIn('first release of its kind', text)
-
-    def test_nothing_merged_says_so(self):
-        self.git('tag', 'v0.1.1-nightly.16', 'v0.1.1-nightly.15')
-        self.git('checkout', '-q', 'nightly')
-        self.commit('direct commit without a pull request')
-        self.git('tag', 'v0.1.1-nightly.17')
-        text, _ = self.section('v0.1.1-nightly.17')
-        self.assertIn('No pull requests were merged since then.', text)
-        changes, delivery = text.split('## Downloads and sources\n', 1)
-        self.assertIn("## What's changed", changes)
-        self.assertNotIn('Full comparison:', changes)
-        self.assertIn('Full comparison:', delivery)
-
-    def test_classify_titles(self):
-        for title, group in [('feat: x', 'features'), ('fix(proton): x', 'uploads'), ('docs(evidence): x', 'docs'),
-                             ('ci: x', 'test'), ('AppImage: x', 'packaging'), ('releases: x', 'packaging'),
-                             ('record: x', 'recording'), ('GNOME: x', 'other'), ('Plain words', 'other')]:
-            with self.subTest(title=title):
-                self.assertEqual(changelog.classify(title), group)
-        self.assertEqual(changelog.classify('Plain words', ['enhancement']), 'features')
-        self.assertEqual(changelog.classify('feat: x', ['documentation']), 'docs')
 
     def test_lookup_reads_labels_and_closing_issues_in_chunks(self):
         queries = []

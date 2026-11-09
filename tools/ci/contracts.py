@@ -26,14 +26,18 @@ GROUPS = {
     'lab': {
         'globs': ('tests/desktop/test_*.py', 'tests/maintenance/test_*.py',
                   'tests/performance/test_bench_ui_process.py'),
+        # The pytest workflow step owns these suites and their surface-tests.xml report.
+        'exclude': ('tests/desktop/test_surface*.py', 'tests/desktop/test_review_adversarial.py'),
         'scope': 'Host protocol and storage safety contracts only; no graphical desktop acceptance',
     },
 }
 
 
 def suites(group):
+    excluded = {path for pattern in GROUPS[group].get('exclude', ())
+                for path in ROOT.glob(pattern)}
     found = sorted({path.relative_to(ROOT).as_posix() for pattern in GROUPS[group]['globs']
-                    for path in ROOT.glob(pattern) if path.is_file()})
+                    for path in ROOT.glob(pattern) if path.is_file() and path not in excluded})
     if not found:
         raise ValueError('Contract group has no suites: ' + group)
     return found

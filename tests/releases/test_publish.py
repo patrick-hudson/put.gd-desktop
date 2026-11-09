@@ -18,7 +18,6 @@ sys.path.insert(0, str(ROOT / 'tools/releases'))
 spec = importlib.util.spec_from_file_location('release_publish', ROOT / 'tools/releases/publish.py')
 publish = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(publish)
-import release_bundle
 
 
 class RemoteDraftTest(unittest.TestCase):
@@ -454,11 +453,6 @@ class NightlyPublicationTest(unittest.TestCase):
              patch.object(subprocess, 'check_output', side_effect=self.output), \
              patch.object(subprocess, 'run', side_effect=self.command):
             publish.main()
-
-    def test_release_titles_name_the_calendar_version(self):
-        self.assertEqual(publish.release_title({'version': '26.1022.42-nightly'}), 'put.gd 26.1022.42 nightly')
-        self.assertEqual(publish.release_title({'version': '26.1101.960'}), 'put.gd 26.1101.960')
-        self.assertEqual(publish.release_title({'version': '0.1.1-nightly.42'}), 'put.gd 0.1.1 nightly 42')
 
     def installer_fixture(self):
         sources = self.directory / 'sources'

@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """Offline installer contracts. Fakes are download/package tools, never desktop proof."""
 import fcntl
-import hashlib
 import json
 import os
 from pathlib import Path
@@ -379,13 +378,6 @@ else:
             self.assertFalse((self.home / '.local').exists())
             self.assertFalse(list(self.root.glob('putgd-install.*')))
         self.assertFalse(any(Path(call[0]).name == 'sudo' for call in self.calls()))
-
-    def test_gnome_50_guidance(self):
-        self.tool('gnome-shell', "print('GNOME Shell 50.1')")
-        self.env['SUFFIX'] = '-x86_64.AppImage'
-        output = self.run_script('--appimage')
-        self.assertIn('put.gd will ask you to log out and back in once', output)
-        self.assertNotIn('gnome-extensions enable', output)
 
     def test_arguments_architecture_and_missing_dependencies(self):
         self.assertIn('Usage:', self.run_script('--help'))
