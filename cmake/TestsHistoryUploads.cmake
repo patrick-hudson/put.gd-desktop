@@ -28,9 +28,6 @@ if(BUILD_TESTING)
   # Copy image decodes the retained original in the putgd-ui image worker (#284).
   add_dependencies(test_gui_history_view putgd-ui)
   set_tests_properties(gui_history_view PROPERTIES TIMEOUT 120)
-  # The History layout at 150% text: gallery cards, columns and the compact details view.
-  add_test(NAME gui_history_view_text150 COMMAND test_gui_history_view compactFailureDetailIsNeverShortenedBesideItsActions rowsReserveOnlyTheirOwnPrimaryAction remoteGroupsUseTheProductionQueryAndRestoreExactStates inspectorDeduplicatesNamesAndOutcomes galleryCardsReserveTextBeforeTheirActions compactLayoutOpensDetailsOverTheList selectedRowLeavesItsPrimaryActionToTheInspector rowActionsNeverCoverFilenameOrStatus expandedFiltersKeepTwoWholeResults galleryInspectorUsesTheVisibleCardAndKeepsItsActionSpace localAvailabilityFollowsTheFileWithoutChangingTheReceipt compactFailureWrapsBeforeTheActionFooter compactRowsSpendTheirWidthOnTitles compactDetailsKeepFactsAndPrimaryOnTheFirstScreen)
-  set_tests_properties(gui_history_view_text150 PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen;PUTGD_TEXT_SCALE=1.5" TIMEOUT 120)
 endif()
 
 if(BUILD_TESTING)

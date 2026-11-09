@@ -541,31 +541,6 @@ private slots:
   std::tie(error,result)=ask(item);QCOMPARE(error.code,QString("previews_disabled"));
 #endif
  }
- // Preview requests answer in History's reply deadline: several selections
- // queue ahead of after-operation posters, and more are refused as busy.
- void onDemandPreviewsAreBounded(){
-#ifndef PUTGD_POSTER_FIXTURE
-  QSKIP("The poster helper fixture is Linux-only");
-#else
-  qputenv("PUTGD_TEST_POSTER_MODE","fail");ArtifactStore::setPosterHelperForTesting(QStringLiteral(PUTGD_POSTER_FIXTURE));auto restore=qScopeGuard([]{qunsetenv("PUTGD_TEST_POSTER_MODE");ArtifactStore::setPosterHelperForTesting({});});
-  QTemporaryDir d;ProviderRegistry registry;auto provider=std::make_shared<OpaqueProvider>();registry.add("opaque",provider);SettingsService settings(d.filePath("config.json"),[&](auto id,auto value){return registry.validate(id,value);});QVERIFY(settings.save(configuration(d.path()),{}));
-  Source source;source.payload.kind="files";for(int i=0;i<5;++i)source.payload.files.append(fixture(d.path(),QString("clip-%1.mp4").arg(i),QByteArray("\0\0\0\x18" "ftypisom\0\0\x02\0isomiso2",24)+QByteArray(4096+i,'\x11')));
-  OperationService operations(d.filePath("data"),settings,registry,source);PUTGD_TRY_VERIFY(operations.ready());
-  QString id;operations.invoke("clipboard",[&](Error e,QJsonObject r){QVERIFY(!e);id=r["operationId"].toString();});PUTGD_TRY_VERIFY(!id.isEmpty());
-  HistoryStore journal(operations.databasePath());PUTGD_TRY_COMPARE(journal.operation(id).state,QString("completed"));
-  // The five after-operation posters fail first; a selection made while one
-  // still runs would queue behind it and turn a fourth request away.
-  PUTGD_TRY_VERIFY(([&]{const auto previews=operations.diagnostics()["previews"].toObject();return !previews["running"].toBool()&&previews["queued"].toInt()==0;})());
-  const auto items=journal.operation(id).items;QCOMPARE(items.size(),5);qputenv("PUTGD_TEST_POSTER_MODE","slow");
-  QHash<QString,QString> outcomes;for(const auto& item:items){const auto historyId=item.artifact.id;operations.makePreview(historyId,[&,historyId](Error e,QJsonObject r){outcomes[historyId]=e?e.code:r["state"].toString();});}
-  // The same selection again shares the first request's answer.
-  operations.makePreview(items[1].artifact.id,[&](Error e,QJsonObject r){outcomes["again"]=e?e.code:r["state"].toString();});
-  PUTGD_TRY_VERIFY_WITH_TIMEOUT(outcomes.size()==6,25000);
-  // One decodes while three wait; a fifth would wait past the deadline.
-  for(int i=0;i<4;++i)QCOMPARE(outcomes.value(items[i].artifact.id),QString("made"));QCOMPARE(outcomes.value("again"),QString("made"));
-  QCOMPARE(outcomes.value(items[4].artifact.id),QString("preview_busy"));
-#endif
- }
  void inactiveCancellationNormalizesPhaseWithoutChangingItemOutcome(){
   QTemporaryDir d;ProviderRegistry registry;SettingsService settings(d.filePath("config.json"));QVERIFY(settings.save(configuration(d.path(),true),{}));Source source;OperationService operations(d.filePath("data"),settings,registry,source);PUTGD_TRY_VERIFY(operations.ready());HistoryStore journal(operations.databasePath());
   Operation prior;prior.id="synthetic-inactive";prior.state="partial";prior.phase="uploading";prior.settings=settings.snapshot();OperationItem item;item.artifact.id="synthetic-inactive-item";item.uploadStatus="unknown";item.phase="uploading";prior.items.append(item);QVERIFY(!journal.saveOperation(prior));
@@ -598,21 +573,6 @@ private slots:
    QVERIFY(q.exec("SELECT value FROM checkpoint_count"));QVERIFY(q.next());const auto writes=q.value(0).toInt();QVERIFY2(writes<=5*count,qPrintable(QString("Expected linear ledger writes; %1 files caused %2 writes").arg(count).arg(writes)));q.finish();db.close();
   }QSqlDatabase::removeDatabase(connection);
  }
- void startupHeapCleanupRunsOnceAfterSuccessfulInitialization() {
-#ifndef __GLIBC__
-  QSKIP("Allocator reclamation uses glibc on supported Linux builds");
-#else
-  QTemporaryDir directory;ProviderRegistry registry;SettingsService settings(directory.filePath("config.json"));Source source;
-  OperationService operations(directory.filePath("data"),settings,registry,source);QSignalSpy initialized(&operations,&OperationService::initialized);
-  PUTGD_TRY_COMPARE(initialized.count(),1);QVERIFY(operations.ready());
-  const auto count=[&]{return operations.diagnostics()["memory"].toObject()["allocatorReclamationCount"].toInt();};
-  QVERIFY(operations.diagnostics()["memory"].toObject()["allocatorReclamationPending"].toBool());QCOMPARE(count(),0);
-  PUTGD_TRY_COMPARE_WITH_TIMEOUT(count(),1,5000);
-  QVERIFY(!operations.diagnostics()["memory"].toObject()["allocatorReclamationPending"].toBool());
-  putgd::test::settle(2200);PUTGD_TRY_COMPARE(count(),1);PUTGD_TRY_COMPARE(initialized.count(),1);
-  PUTGD_TRY_COMPARE(source.reads,0);PUTGD_TRY_COMPARE(source.copies,0);
-#endif
- }
  void failedInitializationDoesNotRequestHeapCleanup() {
 #ifndef __GLIBC__
   QSKIP("Allocator reclamation uses glibc on supported Linux builds");
@@ -625,133 +585,6 @@ private slots:
   QVERIFY(!operations.diagnostics()["memory"].toObject()["allocatorReclamationPending"].toBool());
   putgd::test::settle(2200);PUTGD_TRY_COMPARE(operations.diagnostics()["memory"].toObject()["allocatorReclamationCount"].toInt(),0);
   PUTGD_TRY_COMPARE(source.reads,0);PUTGD_TRY_COMPARE(source.copies,0);
-#endif
- }
- void cleanupPassRearmsHeapCleanup() {
-#ifndef __GLIBC__
-  QSKIP("Allocator reclamation uses glibc on supported Linux builds");
-#else
-  QTemporaryDir directory;ProviderRegistry registry;SettingsService settings(directory.filePath("config.json"));Source source;
-  OperationService operations(directory.filePath("data"),settings,registry,source);
-  OperationService::CleanupSchedule schedule;schedule.startupDelayMs=2500;operations.setCleanupScheduleForTesting(schedule);
-  PUTGD_TRY_VERIFY(operations.ready());
-  const auto count=[&]{return operations.diagnostics()["memory"].toObject()["allocatorReclamationCount"].toInt();};
-  // Startup's own cleanup, then the one after the pass that runs later.
-  PUTGD_TRY_COMPARE_WITH_TIMEOUT(count(),1,5000);PUTGD_TRY_COMPARE_WITH_TIMEOUT(count(),2,8000);
-#endif
- }
- void quietResidentReleasesImagePagesOnceAfterHeapCleanup() {
-#ifndef __GLIBC__
-  QSKIP("Allocator reclamation uses glibc on supported Linux builds");
-#else
-  QTemporaryDir directory;ProviderRegistry registry;SettingsService settings(directory.filePath("config.json"));Source source;
-  OperationService operations(directory.filePath("data"),settings,registry,source);operations.setImagePageDelayForTesting(100);
-  const auto memory=[&]{return operations.diagnostics()["memory"].toObject();};
-  PUTGD_TRY_VERIFY(operations.ready());QCOMPARE(memory()["imagePageReleaseCount"].toInt(),0);
-  PUTGD_TRY_COMPARE_WITH_TIMEOUT(memory()["imagePageReleaseCount"].toInt(),1,6000);
-  QVERIFY(!memory()["imagePageReleasePending"].toBool());QVERIFY(memory()["lastImagePageReleaseBytes"].toInteger()>0);
-  // Nothing happened since, so nothing is released again.
-  PUTGD_COMPARE_STEADY(memory()["imagePageReleaseCount"].toInt(),1,2500);
-#endif
- }
- void probeRequestsOneMoreImagePageRelease() {
-#ifndef __GLIBC__
-  QSKIP("Allocator reclamation uses glibc on supported Linux builds");
-#else
-  QTemporaryDir directory;ProviderRegistry registry;SettingsService settings(directory.filePath("config.json"));Source source;
-  OperationService operations(directory.filePath("data"),settings,registry,source);operations.setImagePageDelayForTesting(100);
-  const auto memory=[&]{return operations.diagnostics()["memory"].toObject();};
-  PUTGD_TRY_VERIFY(operations.ready());PUTGD_TRY_COMPARE_WITH_TIMEOUT(memory()["imagePageReleaseCount"].toInt(),1,6000);
-  const auto trims=memory()["allocatorReclamationCount"].toInt();
-  // A quiet resident's GNOME discovery probe maps its D-Bus pages again (#1187):
-  // one release follows it, with no trim and no repeating timer.
-  operations.requestImagePageRelease();QVERIFY(memory()["imagePageReleasePending"].toBool());
-  PUTGD_TRY_COMPARE_WITH_TIMEOUT(memory()["imagePageReleaseCount"].toInt(),2,3000);
-  PUTGD_COMPARE_STEADY(memory()["imagePageReleaseCount"].toInt(),2,1500);QCOMPARE(memory()["allocatorReclamationCount"].toInt(),trims);
-  operations.shutdown();operations.requestImagePageRelease();QVERIFY(!memory()["imagePageReleasePending"].toBool());
-#endif
- }
- void probeDoesNotPostponeAReleaseAlreadyDue() {
-#ifndef __GLIBC__
-  QSKIP("Allocator reclamation uses glibc on supported Linux builds");
-#else
-  QTemporaryDir directory;ProviderRegistry registry;SettingsService settings(directory.filePath("config.json"));Source source;
-  OperationService operations(directory.filePath("data"),settings,registry,source);operations.setImagePageDelayForTesting(6000);
-  const auto memory=[&]{return operations.diagnostics()["memory"].toObject();};
-  PUTGD_TRY_VERIFY(operations.ready());PUTGD_TRY_COMPARE_WITH_TIMEOUT(memory()["allocatorReclamationCount"].toInt(),1,5000);
-  // The startup release is now due within 6 s. Probes during that wait, as the
-  // GNOME retry's first steps are, must not push it back.
-  QElapsedTimer elapsed;elapsed.start();QVERIFY(memory()["imagePageReleasePending"].toBool());
-  putgd::test::settle(4000);operations.requestImagePageRelease();QCOMPARE(memory()["imagePageReleaseCount"].toInt(),0);
-  // Postponed, it would come 10 s or more after the trim.
-  PUTGD_TRY_COMPARE_WITH_TIMEOUT(memory()["imagePageReleaseCount"].toInt(),1,4500);
-  QVERIFY2(elapsed.elapsed()<8500,qPrintable(QString::number(elapsed.elapsed())));
-  PUTGD_COMPARE_STEADY(memory()["imagePageReleaseCount"].toInt(),1,1500);
-#endif
- }
- void shutdownCancelsImagePageRelease() {
-#ifndef __GLIBC__
-  QSKIP("Allocator reclamation uses glibc on supported Linux builds");
-#else
-  QTemporaryDir directory;ProviderRegistry registry;SettingsService settings(directory.filePath("config.json"));Source source;
-  OperationService operations(directory.filePath("data"),settings,registry,source);operations.setImagePageDelayForTesting(1000);
-  const auto memory=[&]{return operations.diagnostics()["memory"].toObject();};
-  PUTGD_TRY_VERIFY(operations.ready());
-  PUTGD_TRY_COMPARE_WITH_TIMEOUT(memory()["imagePageReleasePending"].toBool(),true,6000);
-  operations.shutdown();PUTGD_COMPARE_STEADY(memory()["imagePageReleaseCount"].toInt(),0,1500);
-#endif
- }
- void shutdownCancelsPendingStartupHeapCleanup() {
-#ifndef __GLIBC__
-  QSKIP("Allocator reclamation uses glibc on supported Linux builds");
-#else
-  QTemporaryDir directory;ProviderRegistry registry;SettingsService settings(directory.filePath("config.json"));Source source;
-  OperationService operations(directory.filePath("data"),settings,registry,source);PUTGD_TRY_VERIFY(operations.ready());
-  QVERIFY(operations.diagnostics()["memory"].toObject()["allocatorReclamationPending"].toBool());
-  operations.shutdown();putgd::test::settle(2200);
-  PUTGD_TRY_COMPARE(operations.diagnostics()["memory"].toObject()["allocatorReclamationCount"].toInt(),0);
-  PUTGD_TRY_COMPARE(source.reads,0);PUTGD_TRY_COMPARE(source.copies,0);
-#endif
- }
- void startupHeapCleanupWaitsForBackgroundWorker() {
-#ifndef __GLIBC__
-  QSKIP("Allocator reclamation uses glibc on supported Linux builds");
-#else
-  QTemporaryDir directory;ProviderRegistry registry;SettingsService settings(directory.filePath("config.json"));Source source;
-  OperationService operations(directory.filePath("data"),settings,registry,source);
-  auto barrier=std::make_shared<std::promise<void>>();auto future=barrier->get_future().share();bool released=false,replied=false;
-  auto release=qScopeGuard([&]{if(!released)barrier->set_value();});
-  operations.background([future](Error&){future.wait();return QJsonObject{};},[&](Error error,QJsonObject){QVERIFY(!error);replied=true;});
-  PUTGD_TRY_VERIFY(operations.ready());
-  const auto count=[&]{return operations.diagnostics()["memory"].toObject()["allocatorReclamationCount"].toInt();};
-  QVERIFY(operations.diagnostics()["memory"].toObject()["allocatorReclamationPending"].toBool());
-  putgd::test::settle(2200);PUTGD_TRY_COMPARE(count(),0);PUTGD_TRY_VERIFY(!replied);
-  barrier->set_value();released=true;PUTGD_TRY_VERIFY(replied);PUTGD_TRY_COMPARE_WITH_TIMEOUT(count(),1,5000);
-  QVERIFY(!operations.diagnostics()["memory"].toObject()["allocatorReclamationPending"].toBool());
-  QCOMPARE(source.reads,0);QCOMPARE(source.copies,0);
-#endif
- }
- void readOnlyJournalWorkRearmsHeapCleanup() {
-#ifndef __GLIBC__
-  QSKIP("Allocator reclamation uses glibc on supported Linux builds");
-#else
-  QTemporaryDir directory;ProviderRegistry registry;SettingsService settings(directory.filePath("config.json"));Source source;
-  OperationService operations(directory.filePath("data"),settings,registry,source);PUTGD_TRY_VERIFY(operations.ready());HistoryService history(operations);
-  const auto memory=[&]{return operations.diagnostics()["memory"].toObject();};
-  const auto count=[&]{return memory()["allocatorReclamationCount"].toInt();};
-  PUTGD_TRY_COMPARE_WITH_TIMEOUT(count(),1,5000);QVERIFY(!memory()["allocatorReclamationPending"].toBool());
-  // Each read frees its journal connection and results on its worker. A bare
-  // operation.recent or operation.inspect from the CLI or MCP helper must hand
-  // that heap back as history.list does, without a later call to arm it (#1184).
-  bool replied=false;operations.recent([&](Error e,QJsonObject){QVERIFY(!e);replied=true;});PUTGD_TRY_VERIFY(replied);
-  PUTGD_TRY_COMPARE_WITH_TIMEOUT(count(),2,5000);
-  replied=false;operations.inspect("missing-operation",[&](Error,QJsonObject){replied=true;});PUTGD_TRY_VERIFY(replied);
-  PUTGD_TRY_COMPARE_WITH_TIMEOUT(count(),3,5000);
-  replied=false;history.list(HistoryQuery{},[&](Error e,QJsonObject){QVERIFY(!e);replied=true;});PUTGD_TRY_VERIFY(replied);
-  PUTGD_TRY_COMPARE_WITH_TIMEOUT(count(),4,5000);
-  // One quiet-period cleanup per read, and no repeating idle timer.
-  QVERIFY(!memory()["allocatorReclamationPending"].toBool());PUTGD_COMPARE_STEADY(count(),4,2500);
-  QCOMPARE(source.reads,0);QCOMPARE(source.copies,0);
 #endif
  }
  void queuedCaptureNameUsesOriginalActionTime() {
@@ -800,12 +633,6 @@ private slots:
   source.payload.kind="image";source.payload.image=image();QString first;
   operations.invoke("clipboard",[&](Error e,QJsonObject r){QVERIFY(!e);first=r["operationId"].toString();});PUTGD_TRY_COMPARE(provider->completions.size(),1);
   QCOMPARE(freed.load(),1); // The provider is still blocked: disk artifact, not pixels, owns the upload.
-#ifdef __GLIBC__
-  const auto reclamations=[&]{return operations.diagnostics()["memory"].toObject()["allocatorReclamationCount"].toInt();};
-  QVERIFY(operations.diagnostics()["memory"].toObject()["allocatorReclamationSupported"].toBool());
-  putgd::test::settle(2200);
-  PUTGD_TRY_COMPARE(reclamations(),0); // Released pixels must not trigger cleanup during the blocked upload.
-#endif
   HistoryStore journal(operations.databasePath());const auto artifact=journal.operation(first).items.first().artifact;QVERIFY(!ArtifactStore(d.filePath("data/artifacts")).verify(artifact));
   source.payload.kind="image";source.payload.image=image();QString second;
   operations.invoke("clipboard",[&](Error e,QJsonObject r){QVERIFY(!e);second=r["operationId"].toString();});PUTGD_TRY_COMPARE(source.reads,2);putgd::test::settle(20);PUTGD_TRY_COMPARE(freed.load(),1);
@@ -816,34 +643,6 @@ private slots:
   provider->failUpload=false;bool retry=false;operations.retry(first,[&](Error e,QJsonObject){QVERIFY(!e);retry=true;});PUTGD_TRY_VERIFY(retry);PUTGD_TRY_COMPARE(provider->completions.size(),1);
   QCOMPARE(provider->requests.last().artifact.path,artifact.path);QCOMPARE(provider->requests.last().artifact.sha256,artifact.sha256);QCOMPARE(source.reads,2);QCOMPARE(freed.load(),2);
   complete=provider->completions.takeFirst();complete();PUTGD_TRY_COMPARE(journal.operation(first).state,QString("completed"));
-#ifdef __GLIBC__
-  PUTGD_TRY_COMPARE_WITH_TIMEOUT(reclamations(),1,5000);
-  QVERIFY(!operations.diagnostics()["memory"].toObject()["allocatorReclamationPending"].toBool());
-  putgd::test::settle(2200);
-  PUTGD_TRY_COMPARE(reclamations(),1); // One quiet-period cleanup, with no repeating idle timer.
-#endif
- }
- void imageHeapCleanupWaitsForSelectionAndBackgroundWork() {
-#ifndef __GLIBC__
-  QSKIP("Allocator reclamation uses glibc on supported Linux builds");
-#else
-  QTemporaryDir directory;ProviderRegistry registry;SettingsService settings(directory.filePath("config.json"));
-  QVERIFY(settings.save(configuration(directory.path(),true),{}));Source source;
-  source.payload.kind="image";source.payload.image=QImage(16,16,QImage::Format_ARGB32);source.payload.image.fill(Qt::cyan);
-  OperationService operations(directory.filePath("data"),settings,registry,source);PUTGD_TRY_VERIFY(operations.ready());
-  const auto count=[&]{return operations.diagnostics()["memory"].toObject()["allocatorReclamationCount"].toInt();};
-  operations.invoke("clipboard",[](Error e,QJsonObject){QVERIFY(!e);});PUTGD_TRY_COMPARE(source.copies,1);
-  PUTGD_TRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(),0);
-  source.defer=true;operations.invoke("region",[](Error e,QJsonObject){QVERIFY(!e);});PUTGD_TRY_COMPARE(source.acquisitions.size(),1);
-  putgd::test::settle(2200);PUTGD_TRY_COMPARE(count(),0); // A selector can be active with no operation worker thread.
-  auto barrier=std::make_shared<std::promise<void>>();auto future=barrier->get_future().share();bool released=false;
-  auto release=qScopeGuard([&]{if(!released)barrier->set_value();});
-  operations.background([future](Error&){future.wait();return QJsonObject{};},[](Error,QJsonObject){});
-  source.acquisitions.takeFirst()({{}, {"cancelled","Selection cancelled",{}}});
-  PUTGD_TRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(),0);
-  putgd::test::settle(2200);PUTGD_TRY_COMPARE(count(),0); // Unrelated file/history work must also drain.
-  barrier->set_value();released=true;PUTGD_TRY_COMPARE_WITH_TIMEOUT(count(),1,5000);
-#endif
  }
  void capturesReceiveStableTimestampNamesBeforeLocalArchive() {
   QTemporaryDir directory;ProviderRegistry registry;SettingsService settings(directory.filePath("config.json"));

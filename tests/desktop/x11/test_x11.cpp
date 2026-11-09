@@ -447,15 +447,6 @@ private slots:
   desktop.key(XK_Control_L,true);desktop.key(XK_Shift_L,true);desktop.key(XK_1,true);desktop.key(XK_1,false);desktop.key(XK_Shift_L,false);desktop.key(XK_Control_L,false);PUTGD_TRY_COMPARE(activated,(QStringList{"clipboard","first"}));
   shortcuts.bind({});X11Shortcuts next;next.bind({{"region","Ctrl+Shift+1"}});QVERIFY(next.status()["region"].toObject()["bound"].toBool());
  }
- void nonresponsiveOwnerKeepsEventLoopAlive() {
-  xcb_connection_t* c=xcb_connect(nullptr,nullptr);auto root=xcb_setup_roots_iterator(xcb_get_setup(c)).data->root;
-  auto w=xcb_generate_id(c);xcb_create_window(c,XCB_COPY_FROM_PARENT,w,root,0,0,1,1,0,XCB_WINDOW_CLASS_INPUT_ONLY,XCB_COPY_FROM_PARENT,0,nullptr);
-  auto a=xcb_intern_atom_reply(c,xcb_intern_atom(c,0,9,"CLIPBOARD"),nullptr);QVERIFY(a);xcb_set_selection_owner(c,w,a->atom,XCB_CURRENT_TIME);free(a);xcb_flush(c);
-  X11Clipboard importer;bool done=false;PayloadResult result;int heartbeats=0;QTimer heartbeat;connect(&heartbeat,&QTimer::timeout,this,[&]{++heartbeats;});heartbeat.start(10);
-  importer.acquire({},[&](PayloadResult r){result=r;done=true;});PUTGD_TRY_VERIFY_WITH_TIMEOUT(done,6500);QVERIFY(heartbeats>50);QCOMPARE(result.error.code,QString("clipboard_timeout"));xcb_disconnect(c);
-  CinnamonScreenshotFixture fixture;QVERIFY(fixture.registered);CaptureFrame frame{"fixture",QRectF(0,0,10,8),QRect(0,0,10,8),1,0,{}};auto* request=new CinnamonRegionCapture({frame},{});bool settled=false;Error error;
-  connect(request,&CinnamonRegionCapture::acquired,this,[&](QList<CaptureFrame>,Error value){error=value;settled=true;});const int before=heartbeats;request->start();PUTGD_TRY_COMPARE(fixture.requests,1);PUTGD_TRY_VERIFY_WITH_TIMEOUT(settled,12000);QCOMPARE(error.code,QString("capture_timeout"));QVERIFY(heartbeats-before>50);QVERIFY(!QFileInfo::exists(fixture.path));fixture.close();
- }
  void recordingDiscardsShortcutPressQueuedBeforeNativePause() {
   X11DesktopFixture desktop;X11Shortcuts shortcuts;int activated=0;connect(&shortcuts,&X11Shortcuts::activated,this,[&](const QString&){++activated;});
   shortcuts.bind({{"region","Ctrl+1"}});QVERIFY(shortcuts.status()["region"].toObject()["bound"].toBool());

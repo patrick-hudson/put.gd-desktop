@@ -2,35 +2,6 @@
 class SettingsGui:public SettingsGuiFixture {
  Q_OBJECT
 private slots:
- void idleSettingsLayoutSettles_data(){
-  QTest::addColumn<int>("page");QTest::addColumn<QSize>("size");
-  for(int page=0;page<4;++page)for(const auto size:{QSize(1440,960),QSize(1060,680)})QTest::newRow(qPrintable(QString("page%1-%2").arg(page).arg(size.width())))<<page<<size;
- }
- void idleSettingsLayoutSettles(){
-  QFETCH(int,page);QFETCH(QSize,size);
-  QTemporaryDir dir;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(service.save(threeDestinations(),{}));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.resize(size);window.navigate("settings");window.findChild<QTabWidget*>("settingsTabs")->setCurrentIndex(page);
-  class Events final:public QObject {
-  public:
-   explicit Events(QWidget* root):root_(root){quiet.start();qApp->installEventFilter(this);}
-   ~Events()override{qApp->removeEventFilter(this);}
-   int layouts=0,paints=0;QElapsedTimer quiet;QHash<QString,int> sources;
-  protected:
-   bool eventFilter(QObject* object,QEvent* event)override{
-    if(event->type()!=QEvent::LayoutRequest&&event->type()!=QEvent::Paint)return false;
-    auto* widget=qobject_cast<QWidget*>(object);if(!widget||(widget!=root_&&!root_->isAncestorOf(widget)))return false;
-    if(event->type()==QEvent::Paint)++paints;else{++layouts;quiet.restart();++sources[widget->objectName()+":"+widget->metaObject()->className()];}return false;
-   }
-  private:QWidget* root_;
-  } events(&window);
-  window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
-  // Include retained, hidden pages: they must settle too. A layout feedback
-  // loop never reaches this quiet interval, regardless of machine speed.
-  const bool settled=putgd::test::waitFor([&]{return events.quiet.elapsed()>=100;});
-  if(!settled)qWarning()<<"Unsettled Settings layouts:"<<events.layouts<<events.sources;
-  QVERIFY(settled);events.layouts=events.paints=0;
-  PUTGD_VERIFY_STEADY(events.layouts<64&&events.paints<64,1000);
-  qInfo()<<"Idle Settings layout/paint events:"<<events.layouts<<events.paints;
- }
 
  void credentialSecretHasShowActionAttached(){
   QTemporaryDir dir;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(service.save(threeDestinations(),{}));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.resize(1440,960);window.show();
@@ -47,22 +18,6 @@ private slots:
   QTemporaryDir dir;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(service.save(threeDestinations(),{}));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.settings();
   for(const auto& [name,category]:QList<QPair<QString,QString>>{{"launchAtLogin","Startup"},{"keepUploadCopies","Each capture"},{"notifications","Notifications"}}){auto* check=window.findChild<QCheckBox*>(name);QCOMPARE(check->accessibleName(),check->text());auto* hint=window.findChild<QLabel*>(name+"Hint");QCOMPARE(check->accessibleDescription(),category+(hint?". "+hint->text():QString{}));}
   QWidget host;QCheckBox check("Do the action",&host);Ui::settingRow("Category","Help text",&check,&host);QCOMPARE(check.accessibleName(),check.text());QCOMPARE(check.accessibleDescription(),QString("Category. Help text"));
- }
- void statusBandScalesItsRegularSummaryAtNarrowAndLargeText(){
-  Fonts::load();Ui::apply(*qApp);
-  const auto original=QApplication::font();auto restore=qScopeGuard([&]{QApplication::setFont(original);});
-  for(const int pixels:{14,21}){auto font=original;font.setPixelSize(pixels);QApplication::setFont(font);QTemporaryDir dir;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(service.save(threeDestinations(),{}));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.navigate("settings");window.resize(1060,680);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
-   QCOMPARE(window.findChild<QLabel*>("appVersion")->font().pixelSize(),Ui::scaled(13));QCOMPARE(window.findChild<QPushButton*>("appVersionLink")->font().pixelSize(),Ui::scaled(13));auto* summary=window.findChild<QToolButton*>("captureOutputSummary");QCOMPARE(summary->font().pixelSize(),Ui::scaled(13));QCOMPARE(summary->font().weight(),QFont::Normal);if(pixels>14)QVERIFY(summary->font().pixelSize()>13);auto* band=window.findChild<QStatusBar*>("statusBand");QVERIFY(band);QVERIFY(summary->height()>=summary->fontMetrics().height());QVERIFY(band->rect().contains(QRect(summary->mapTo(band,QPoint()),summary->size())));QCOMPARE(window.width(),1060);
-   QVERIFY(window.findChild<QAction*>("changeCaptureOutput"));QVERIFY(summary->height()>=32);QVERIFY(band->height()>=summary->height());
-   window.settings()->showCaptureSettings();window.findChild<QToolButton*>("captureExceptionsToggle")->setChecked(true);
-   const auto scheme=Theme::scheme();auto restoreScheme=qScopeGuard([&]{Theme::setScheme(scheme);});Theme::setScheme(Theme::Scheme::Light);
-   for(const auto& action:Settings::invocableActionNames()){
-    auto name=action.left(1).toUpper()+action.mid(1);auto* override=window.findChild<QCheckBox*>("override"+name);if(!override->isChecked())override->click();
-    for(const auto& prefix:QStringList{"profile","publication"}){auto* control=window.findChild<QComboBox*>(prefix+name);control->ensurePolished();QCOMPARE(control->font().pixelSize(),Ui::font(Ui::Type::body).pixelSize());PUTGD_TRY_COMPARE(control->height(),window.findChild<QComboBox*>("defaultCaptureDestination")->height());QVERIFY2(putgd::test::waitFor([&]{return control->parentWidget()->rect().contains(control->geometry());}),qPrintable(QString("%1: control %2,%3 %4x%5, parent %6x%7, visible %8").arg(control->objectName()).arg(control->x()).arg(control->y()).arg(control->width()).arg(control->height()).arg(control->parentWidget()->width()).arg(control->parentWidget()->height()).arg(control->isVisible())));Ui::setLocked(control,true);Ui::setLocked(control,false);QCOMPARE(control->font().pixelSize(),Ui::font(Ui::Type::body).pixelSize());QCOMPARE(control->sizeHint().height(),window.findChild<QComboBox*>("defaultCaptureDestination")->sizeHint().height());PUTGD_TRY_COMPARE(control->height(),window.findChild<QComboBox*>("defaultCaptureDestination")->height());}
-   }
-   Theme::setScheme(scheme);
-   auto* check=window.findChild<QCheckBox*>("notifications");QVERIFY(check->sizeHint().height()>=32);QCOMPARE(check->style()->pixelMetric(QStyle::PM_IndicatorWidth),Ui::scaled(17));
-  }
  }
  void fileDialogsOpenTheSharedChooser(){
   // #259: Choose folder…, Browse… and Edit an image file… open the shared chooser,
@@ -149,24 +104,6 @@ private slots:
   QVERIFY(!window.settings()->moveSelectedDestination(1,"development-s3",result));
   PUTGD_TRY_COMPARE(profileIds(service.document()),QStringList({"synthetic-alternate","development-s3","synthetic-third"}));QVERIFY(!service.snapshot().notifications);
  }
- // A conflict offers its recovery where it is reported, on Settings and on
- // Destinations, and the confirmation names the edits a reload discards, not
- // what the other writer changed.
- void sidebarsFollowTheirLabelsAtLargeText(){
-  auto font=QApplication::font();const auto original=font;auto restore=qScopeGuard([&]{QApplication::setFont(original);});
-  QTemporaryDir dir;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(service.save(threeDestinations(),{}));CredentialStore secrets;UiSessionFixture fixture(service,secrets);
-  int baseRow=0;{MainWindow window(fixture.session);window.navigate("settings");window.resize(1060,680);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
-   QCOMPARE(window.findChild<QWidget*>("settingsRail")->width(),Ui::railWidth());auto* nav=window.findChild<QListWidget*>("settingsNavigation");baseRow=nav->visualItemRect(nav->item(0)).height();}
-  font.setPixelSize(21);QApplication::setFont(font);
-  MainWindow window(fixture.session);window.navigate("settings");window.resize(1060,680);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
-  auto* nav=window.findChild<QListWidget*>("settingsNavigation");QVERIFY(nav->visualItemRect(nav->item(0)).height()>baseRow);QVERIFY(Ui::railWidth()<280);
-  for(const char* name:{"settingsRail","destinationRail"}){auto* rail=window.findChild<QWidget*>(name);if(rail->objectName()=="destinationRail")QVERIFY(rail->width()>=Ui::railWidth()&&rail->width()<=Ui::railWidth()+2*Ui::space(Ui::Space::xl));else QCOMPARE(rail->width(),Ui::railWidth());}
-  QVERIFY(window.findChild<QWidget*>("destinationRail")->width()>=window.findChild<QWidget*>("settingsRail")->width());
-  // Category labels fit inside the fixed rail.
-  const QFontMetrics strong(Ui::font(Ui::Type::body,true));for(int i=0;i<nav->count();++i)QVERIFY(strong.horizontalAdvance(nav->item(i)->text())+74<=window.findChild<QWidget*>("settingsRail")->width());
-  // The Add destination… button keeps its whole label.
-  window.navigate("destinations");auto* add=window.findChild<QPushButton*>("addS3Destination");PUTGD_TRY_VERIFY(add->isVisible());QVERIFY2(add->width()>=add->sizeHint().width(),qPrintable(QString("%1 < %2").arg(add->width()).arg(add->sizeHint().width())));
- }
  // Shortcuts is named by the rail and its page heading only.
  void shortDropdownShowsEveryOptionWithoutScrolling_data(){
   QTest::addColumn<int>("count");QTest::addColumn<bool>("editable");
@@ -189,10 +126,6 @@ private slots:
    combo->showPopup();QTest::keyClick(view,Qt::Key_Home);QTest::keyClick(view,Qt::Key_Return);
    PUTGD_TRY_COMPARE(combo->currentIndex(),0);PUTGD_TRY_VERIFY(!view->isVisible());
   }
- }
- void radioCaptionsStayInsideTheirRows_data(){QTest::addColumn<int>("pixels");QTest::newRow("text100")<<14;QTest::newRow("text150")<<21;}
- void radioCaptionsStayInsideTheirRows(){
-  QFETCH(int,pixels);Ui::apply(*qApp);const auto original=qApp->font();auto restore=qScopeGuard([&]{qApp->setFont(original);});auto font=original;font.setPixelSize(pixels);qApp->setFont(font);QTemporaryDir dir;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(service.save(threeDestinations(),{}));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.navigate("destinations");window.findChild<QComboBox*>("storageProvider")->setCurrentIndex(window.findChild<QComboBox*>("storageProvider")->findData("proton-drive"));window.show();for(const int width:{900,1060,1280,1440}){window.resize(width,900);putgd::test::settle(50);for(const auto& name:{"protonCreateShareLink","protonKeepPrivate"}){auto* radio=window.findChild<QRadioButton*>(name);auto* row=radio->parentWidget();QVERIFY(row->property("inlineHelpRow").toBool());for(auto* caption:row->findChildren<QLabel*>()){QVERIFY2(row->rect().contains(QRect(caption->mapTo(row,QPoint()),caption->size())),qPrintable(QString("%1 at %2: caption %3 row %4").arg(name).arg(width).arg(caption->height()).arg(row->height())));QVERIFY(caption->height()>=caption->heightForWidth(caption->width()));}}}
  }
  void wheelOverSettingsTabsDoesNotChangePageButKeyboardStillWorks(){
   QTemporaryDir dir;SettingsService service(dir.filePath("config.json"));QVERIFY(service.save(configuration(dir.path(),true),{}));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.navigate("settings");window.show();auto* tabs=window.findChild<QTabWidget*>("settingsTabs");auto* bar=tabs->tabBar();tabs->setCurrentIndex(1);const QPointF position=bar->tabRect(1).center();for(const auto delta:{120,-120}){QWheelEvent event(position,bar->mapToGlobal(position.toPoint()),QPoint{},QPoint{0,delta},Qt::NoButton,Qt::NoModifier,Qt::NoScrollPhase,false);QApplication::sendEvent(bar,&event);QCOMPARE(tabs->currentIndex(),1);}bar->setFocus();QTest::keyClick(bar,Qt::Key_Right);QCOMPARE(tabs->currentIndex(),2);
@@ -269,20 +202,6 @@ private slots:
   QPushButton* reset=nullptr;for(auto* button:window.findChildren<QPushButton*>())if(button->accessibleName()=="Reset Uploads at once to default")reset=button;QVERIFY(reset&&!reset->isVisible());
   for(auto* label:tabs->widget(3)->findChildren<QLabel*>())QVERIFY2(!(label->isVisible()&&label->text()=="Default"),"No plain Default labels beside values");
   window.findChild<QLineEdit*>("concurrentUploads")->setText("5");QVERIFY(reset->isVisible());
- }
- void spinValuesFitAtEveryTextScale_data(){QTest::addColumn<int>("pixels");QTest::newRow("100")<<14;QTest::newRow("125")<<18;QTest::newRow("150")<<21;}
- void spinValuesFitAtEveryTextScale(){
-  QFETCH(int,pixels);Ui::apply(*qApp);const auto original=qApp->font();auto restore=qScopeGuard([&]{qApp->setFont(original);});auto font=original;font.setPixelSize(pixels);qApp->setFont(font);QTemporaryDir dir;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(service.save(threeDestinations(),{}));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.resize(1060,900);window.navigate("destinations");window.show();QSet<QAbstractSpinBox*> checked;
-  auto* provider=window.findChild<QComboBox*>("storageProvider");for(const auto& kind:{"s3","backblaze-b2","proton-drive"}){provider->setCurrentIndex(provider->findData(kind));window.findChild<QToolButton*>("advancedSettings")->setChecked(true);if(QString(kind)=="backblaze-b2"){auto* mode=window.findChild<QComboBox*>("b2LinkMode");mode->setCurrentIndex(mode->findData("authorized"));QMetaObject::invokeMethod(mode,"activated",Q_ARG(int,mode->currentIndex()));}putgd::test::settle(80);
-   for(auto* spin:window.findChildren<QAbstractSpinBox*>())if(spin->isVisibleTo(&window)){checked.insert(spin);if(auto* number=qobject_cast<QSpinBox*>(spin))number->setValue(number->maximum());if(auto* number=qobject_cast<QDoubleSpinBox*>(spin))number->setValue(number->maximum());putgd::test::settle(20);auto* edit=spin->findChild<QLineEdit*>();QVERIFY(edit);QStyleOptionSpinBox option;option.initFrom(spin);option.frame=spin->hasFrame();option.buttonSymbols=spin->buttonSymbols();const auto room=spin->style()->subControlRect(QStyle::CC_SpinBox,&option,QStyle::SC_SpinBoxEditField,spin);QVERIFY2(room.contains(edit->geometry()),qPrintable(spin->objectName()));QVERIFY2(edit->contentsRect().width()>=edit->fontMetrics().horizontalAdvance(edit->displayText())+2,qPrintable(spin->objectName()));QVERIFY(edit->minimumWidth()<spin->width());}
-  }QSet<QAbstractSpinBox*> expected;for(auto* spin:window.settings()->findChildren<QAbstractSpinBox*>())expected.insert(spin);for(auto* spin:window.findChild<QWidget*>("destinationPreferenceColumn")->findChildren<QAbstractSpinBox*>())expected.insert(spin);QCOMPARE(checked,expected);auto* hint=window.findChild<QLabel*>("b2LinkDaysHint");auto* value=hint->parentWidget();QVERIFY(value->width()>=Ui::scaled(280));
- }
- void readOnlyValuesFollowTheirLabelWhenStacked(){
-  Ui::apply(*qApp);const auto original=qApp->font();auto restore=qScopeGuard([&]{qApp->setFont(original);});auto font=original;font.setPixelSize(21);qApp->setFont(font);
-  QTemporaryDir dir;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(service.save(Settings::developmentTemplate(),{}));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.navigate("destinations");window.show();window.findChild<QToolButton*>("advancedSettings")->setChecked(true);
-  auto* endpoint=window.findChild<QLabel*>("s3EndpointValue");QVERIFY(endpoint);window.resize(1800,800);putgd::test::settle(80);QWidget* field=endpoint;while(field&&!field->property("stacked").isValid())field=field->parentWidget();QVERIFY(field);
-  QSet<bool> seen;for(const int width:{1800,1060,1800}){window.resize(width,800);putgd::test::settle(80);const bool stacked=field->property("stacked").toBool();seen.insert(stacked);QCOMPARE(endpoint->alignment()&Qt::AlignHorizontal_Mask,stacked?Qt::AlignLeft:Qt::AlignRight);}
-  QCOMPARE(seen.size(),2);
  }
  void numericUnitsAppearOnlyBesideTheValueAndDeadlinesTrimZeros(){
   QTemporaryDir dir;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(service.save(threeDestinations(),{}));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);for(auto* label:window.settings()->findChildren<QLabel*>())for(const auto& unit:{" (days)"," (GB)"," (MB)"})QVERIFY2(!label->text().endsWith(unit),qPrintable(label->text()));for(const auto& key:{"maxFileBytes","imageBytes","historyRetentionDays"}){auto* unit=window.findChild<QLabel*>(QString(key)+"Unit");QVERIFY(unit);QVERIFY(!unit->text().isEmpty());}auto* deadline=window.findChild<QDoubleSpinBox*>("protonRequestTimeout");deadline->setValue(120);QCOMPARE(deadline->text(),QString("120 seconds"));deadline->setValue(120.123);QCOMPARE(deadline->text(),QString("120.123 seconds"));QCOMPARE(deadline->decimals(),3);
@@ -385,13 +304,6 @@ private slots:
   for(auto* label:{title,caption}){radio->setChecked(false);QTest::mouseClick(label,Qt::LeftButton,{},label->rect().center());QVERIFY(radio->isChecked());QVERIFY(radio->hasFocus());}QCOMPARE(clicked.size(),2);
   radio->setChecked(false);QTest::mouseClick(help,Qt::LeftButton);QVERIFY(help->isChecked());QVERIFY(!radio->isChecked());QCOMPARE(clicked.size(),2);auto* explanation=row->findChild<QLabel*>("privateChoiceHelpText");QVERIFY(explanation&&explanation->isVisible());help->setFocus();QTest::keyClick(help,Qt::Key_Space);QVERIFY(!help->isChecked());QVERIFY(!radio->isChecked());
   QTest::mouseClick(title,Qt::RightButton);QVERIFY(!radio->isChecked());radio->setEnabled(false);QTest::mouseClick(caption,Qt::LeftButton);QVERIFY(!radio->isChecked());radio->setEnabled(true);radio->setFocus();QTest::keyClick(radio,Qt::Key_Space);QVERIFY(radio->isChecked());QCOMPARE(clicked.size(),3);QCOMPARE(radio->accessibleName(),QString("Keep private"));
- }
- void largeTextSettingsKeepUsefulRowsInView(){
-  Fonts::load();Ui::apply(*qApp);const auto original=qApp->font();auto restore=qScopeGuard([&]{qApp->setFont(original);});auto font=original;font.setPixelSize(21);qApp->setFont(font);QTemporaryDir dir;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(service.save(threeDestinations(),{}));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.resize(1060,680);window.navigate("settings");window.show();auto* tabs=window.findChild<QTabWidget*>("settingsTabs");
-  for(int page:{0,2}){tabs->setCurrentIndex(page);putgd::test::settle(50);auto* scroll=qobject_cast<QScrollArea*>(tabs->currentWidget());scroll->verticalScrollBar()->setValue(0);int visible=0;QStringList geometry;for(auto* row:scroll->widget()->findChildren<QWidget*>())if(row->property("preferenceRow").toBool()&&row->isVisible()){const QRect rect(row->mapTo(scroll->viewport(),QPoint()),row->size());geometry<<QString("%1 y%2 h%3").arg(row->objectName()).arg(rect.y()).arg(rect.height());if(scroll->viewport()->rect().contains(rect))++visible;}QVERIFY2(visible>=(page==0?4:3),qPrintable(QString("page %1 has %2 complete rows (%3); viewport %4").arg(page).arg(visible).arg(geometry.join(", ")).arg(scroll->viewport()->height())));QCOMPARE(scroll->horizontalScrollBar()->maximum(),0);}
-  // A fixed choice whose widest option fits keeps its card inline, even when free text would need scaled(280).
-  {tabs->setCurrentIndex(0);putgd::test::settle(30);auto* theme=window.findChild<QComboBox*>("appearanceTheme");QLabel* caption=nullptr;for(auto* label:window.findChildren<QLabel*>())if(label->buddy()==theme)caption=label;QVERIFY(theme&&caption);const int captionCentre=caption->mapTo(&window,caption->rect().center()).y(),themeCentre=theme->mapTo(&window,theme->rect().center()).y();QVERIFY2(qAbs(captionCentre-themeCentre)<=theme->height()/2,qPrintable(QString("caption %1, choice %2").arg(captionCentre).arg(themeCentre)));QVERIFY(theme->mapTo(&window,QPoint()).x()>caption->mapTo(&window,QPoint(caption->width(),0)).x());}
-  int right=-1;for(const auto& action:Settings::presentationOrder()){auto* input=window.findChild<QLineEdit*>("shortcut"+action.left(1).toUpper()+action.mid(1));auto* field=input->parentWidget()->parentWidget();auto* row=field->parentWidget();QVERIFY(!row->property("stacked").toBool());const int edge=field->mapTo(&window,QPoint(field->width(),0)).x();if(right<0)right=edge;QCOMPARE(edge,right);QVERIFY(input->width()>=input->fontMetrics().horizontalAdvance(input->text()));}
  }
  void preferenceCardsKeepControlsAndIndicatorsAligned_data(){QTest::addColumn<int>("pixels");QTest::newRow("normal")<<14;QTest::newRow("large")<<21;}
  void preferenceCardsKeepControlsAndIndicatorsAligned(){

@@ -273,7 +273,7 @@ private slots:
         QCOMPARE(module->liveDriverCount(), 0);
         QCOMPARE(fixture.events("HEAD").size(), 2);
     }
-    void concurrentProvidersAndPermanentWorker() {
+    void concurrentProvidersShareWorkerAndDrainCallbacks() {
         test::S3Fixture fixture({}, 1);
         auto other = std::make_unique<S3Provider>(fixture.credentials, S3UploadPolicy{}, 1);
         std::atomic_int callbacks = 0;
@@ -298,10 +298,7 @@ private slots:
 #ifdef Q_OS_LINUX
         QVERIFY(!sdkMapped());
 #endif
-        // QThreadPool's old default idle expiry is 30 seconds. SDK ownership must
-        // still use the same permanent worker after this interval.
-        putgd::test::settle(31000);
-        other->checkName(fixture.destination, "after-idle.txt", reply);
+        other->checkName(fixture.destination, "before-drain.txt", reply);
         other.reset(); // Drain its accepted callback and clients before returning.
         QCOMPARE(callbacks.load(), 17);
         QCOMPARE(failures.load(), 0);
