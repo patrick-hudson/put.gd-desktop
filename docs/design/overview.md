@@ -185,6 +185,7 @@ and [prerequisites](../testing/surface-driver-prerequisites.md) govern reproduci
 The automatic [nightly desktop controller](../../tools/lab/nightly_desktops.py) runs
 from d69's [timer](../../tools/lab/putgd-nightly-desktops.timer) and posts a red/green
 table to pinned [issue #1003](https://github.com/patrick-hudson/put.gd-desktop/issues/1003).
+One cell per row enforces the [idle memory gate](../testing/acceptance-matrix.md).
 Each build needs desktop functional and memory evidence. Offscreen tests, fixtures
 and earlier results establish their stated scope; hardware gates use the required physical host. See [acceptance matrix](../testing/acceptance-matrix.md),
 [VM lab](../lab/vm-lab.md), [verification](../testing/verification.md) and [evidence retention](../testing/evidence-retention.md).
