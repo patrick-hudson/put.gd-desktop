@@ -160,6 +160,7 @@ struct Exchange {
     QByteArray body;           // at most maximumReplyBytes
     Headers headers;
     QUrl url;                  // the address that answered
+    int sends = 0;             // times the transport wrote the request; more than one is its own resend
     bool reached = false;      // the complete request was handed to the transport
     bool connected = false;    // the connection was up before the request ended
     bool stopped = false;      // cancelled
@@ -208,7 +209,7 @@ public:
         out.url = url;
         bool requestSent = false;
         QObject::connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
-        QObject::connect(reply, &QNetworkReply::requestSent, &loop, [&] { requestSent = true; out.connected = true; });
+        QObject::connect(reply, &QNetworkReply::requestSent, &loop, [&] { requestSent = true; out.connected = true; ++out.sends; });
         QObject::connect(reply, &QNetworkReply::encrypted, &loop, [&] { out.connected = true; });
         QObject::connect(reply, &QNetworkReply::metaDataChanged, &loop, [&] { out.connected = true; });
         QObject::connect(reply, &QNetworkReply::uploadProgress, &loop, [&](qint64 bytes, qint64) { if (bytes > 0) out.connected = true; if (sent) sent(bytes); });
@@ -570,9 +571,13 @@ private:
         const auto base = r.url;
         const auto address = [&](const QString& text, bool transportRule) -> QString {
             const auto trimmed = text.trimmed();
-            if (trimmed.isEmpty() || trimmed.size() > 4096 || !controlFree(trimmed)) return {};
+            if (trimmed.isEmpty() || trimmed.size() > 4096) return {};
+            // A link is one unbroken address. Anything else, such as a JSON reply the
+            // URL value did not pick apart, is not a link.
+            for (const auto c : trimmed) if (c.isSpace() || c.unicode() < 0x21 || c.unicode() == 0x7f || QStringLiteral("\"<>{}|\\^`").contains(c)) return {};
             auto url = QUrl(trimmed, QUrl::TolerantMode);
-            if (url.isRelative()) url = base.resolved(url);
+            // A path from the server's root is completed with the address that answered.
+            if (url.isRelative()) { if (!trimmed.startsWith('/')) return {}; url = base.resolved(url); }
             if (!url.isValid() || url.host().isEmpty() || !QStringList{"http", "https"}.contains(url.scheme())) return {};
             if (transportRule && !transportAllowed(url, allowInsecure())) return {};
             return url.toString(QUrl::FullyEncoded);
@@ -627,8 +632,10 @@ private:
         QJsonObject details{{"requestStage", "delete"}, {"httpStatus", r.status}};
         if (!refused.isEmpty()) { error = {"http_delete_refused", "The deletion URL could not be used: " + refused + ".", details}; return {{"status", "failed"}, {"progress", progress}}; }
         if (r.status >= 200 && r.status < 300) return finish("removed");
-        // Gone already: an earlier attempt whose reply was lost removed it.
-        if (r.status == 404 || r.status == 410) return finish(phase == "delete_intent" ? "removed" : "missing");
+        // Gone. It was this deletion when an earlier attempt's reply was lost, or when
+        // the server closed the connection on this request and the transport, which
+        // repeats a request that has no body, then found nothing left to delete.
+        if (r.status == 404 || r.status == 410) return finish(phase == "delete_intent" || r.sends > 1 ? "removed" : "missing");
         if (r.status == 0) {
             details["transport"] = r.detail;
             uncertain = r.reached;

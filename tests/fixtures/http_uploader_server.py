@@ -57,13 +57,17 @@ class Handler(BaseHTTPRequestHandler):
             body = json.dumps(body).encode()
         elif isinstance(body, str):
             body = body.encode()
-        self.send_response(code)
-        self.send_header('Content-Type', content_type)
-        self.send_header('Content-Length', str(len(body)))
-        for name, value in (headers or {}).items():
-            self.send_header(name, value)
-        self.end_headers()
-        self.wfile.write(body)
+        try:
+            self.send_response(code)
+            self.send_header('Content-Type', content_type)
+            self.send_header('Content-Length', str(len(body)))
+            for name, value in (headers or {}).items():
+                self.send_header(name, value)
+            self.end_headers()
+            self.wfile.write(body)
+        except (BrokenPipeError, ConnectionResetError):
+            # The client gave up waiting: a late reply has nowhere to go.
+            self.close_connection = True
 
     def drop(self):
         # An abrupt close: no status line reaches the client.
@@ -188,7 +192,7 @@ class Handler(BaseHTTPRequestHandler):
                 else:
                     fields[field] = part.get_payload(decode=True).decode()
             if content is None:
-                content = fields.get('content', '').encode()
+                content, name = fields.get('content', '').encode(), fields.get('name', '')
         elif content_type.startswith('application/x-www-form-urlencoded'):
             kind = 'form'
             fields = dict(urllib.parse.parse_qsl(data.decode(), keep_blank_values=True))
@@ -215,6 +219,12 @@ class Handler(BaseHTTPRequestHandler):
         if auth != 'none' and offered not in (token, 'Bearer ' + token):
             event['refused'] = True
             return self.reply(401, {'error': 'token %s is not valid' % offered})
+        # These redirects ask for the request again, or loop: nothing is stored here.
+        if style in ('moved', 'moved-away'):
+            target = '%s/upload/json%s' % (self.origin(OTHER_HOST if style == 'moved-away' else None), ('?' + parsed.query) if parsed.query else '')
+            return self.reply(307, '', 'text/plain', {'Location': target})
+        if style == 'loop':
+            return self.reply(302, '', 'text/plain', {'Location': self.origin() + '/upload/loop'})
         rule = self.rule('upload')
         if rule.get('delay'):
             time.sleep(rule['delay'])
@@ -252,16 +262,6 @@ class Handler(BaseHTTPRequestHandler):
             return self.reply(200, {'ok': True})
         if style in ('see', 'away'):
             return self.reply(303 if style == 'see' else 302, '', 'text/plain', {'Location': '%s/result/%s' % (self.origin(OTHER_HOST if style == 'away' else None), file_id)})
-        if style in ('moved', 'moved-away'):
-            # The redirect asks for the same request again: what was stored here is discarded.
-            with lock:
-                state['files'].pop(file_id, None)
-                blobs.pop(file_id, None)
-            event.pop('stored', None)
-            target = '%s/upload/json%s' % (self.origin(OTHER_HOST if style == 'moved-away' else None), ('?' + parsed.query) if parsed.query else '')
-            return self.reply(307, '', 'text/plain', {'Location': target})
-        if style == 'loop':
-            return self.reply(302, '', 'text/plain', {'Location': self.origin() + '/upload/loop'})
         return self.reply(404, {'error': 'unknown reply style'})
 
 

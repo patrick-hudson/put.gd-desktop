@@ -128,6 +128,15 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
   if(!uiCommand_){reply({"ui_unavailable","This resident has no graphical interface",{}},{});return;}
   uiCommand_("moveDestination",p,std::move(reply));return;
  }
+ // #1361: drives the Custom uploader form in the open Destinations page the way a
+ // user does. import reads a .sxcu file into the form, where its secret values wait,
+ // masked, until store; the reply is the form's state and never carries a value.
+ if(method=="ui.customUploader") {
+  static const QStringList actions{"inspect","import","openImport","closeImport","store","test"};const auto action=p["action"].toString();
+  if(!fields(p,{"action"},{"path","profileId"})||!actions.contains(action)||(action=="import")!=p.contains("path")||(p.contains("path")&&(!string(p,"path",4096)||!QDir::isAbsolutePath(p["path"].toString())))||(p.contains("profileId")&&!string(p,"profileId",64))){reply(invalid(),{});return;}
+  if(!uiCommand_){reply({"ui_unavailable","This resident has no graphical interface",{}},{});return;}
+  uiCommand_("customUploader",p,std::move(reply));return;
+ }
  if(method=="action.invoke") {
   if(!fields(p,{"action"},{"source","path","mode"})||!string(p,"action")||(p.contains("source")&&!string(p,"source",32))||(p.contains("path")&&!string(p,"path",4096))||(p.contains("mode")&&(p["action"]!="record"||!string(p,"mode",16)))){reply(invalid(),{});return;}
   auto options=p;options.remove("action");operations_.invoke(p["action"].toString(),reply,options);return;

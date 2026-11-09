@@ -68,7 +68,12 @@ void importUploaderFile(SettingsService& settings, CredentialStore& credentials,
     auto imported = importSxcu(bytes);
     bytes.fill('\0');
     if (imported.error) { reply(imported.error, {}); return; }
-    if (params["allowInsecureHttp"].toBool()) imported.settings["allowInsecureHttp"] = true;
+    if (params["allowInsecureHttp"].toBool()) {
+        imported.settings["allowInsecureHttp"] = true;
+        // The caller has made that choice: the note asking for it no longer applies.
+        for (qsizetype i = imported.notes.size() - 1; i >= 0; --i) if (imported.notes[i].contains("Turn on Allow plain HTTP")) imported.notes.removeAt(i);
+        if (!transportAllowed(QUrl(imported.settings["requestUrl"].toString()), false)) imported.notes.append("This destination sends files and credentials over plain HTTP, as allowed for it.");
+    }
     if (auto error = validateSettings(imported.settings)) { reply(error, {}); return; }
 
     auto document = settings.document();

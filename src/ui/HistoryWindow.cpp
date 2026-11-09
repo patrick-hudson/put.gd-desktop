@@ -1018,8 +1018,12 @@ void HistoryWindow::loadSelectedItem(){
  // to this item is not shown, and a local-only result has no link field.
  for(auto* b:{g->copy_,g->open_,g->editAgain_})b->setVisible(b->isEnabled());auto observed=data;observed["operation"]=g->model_->record(g->table_->currentIndex().row())["operation"];g->capabilityHint_->setText(missingLocalCopyHint(observed));g->outcome_->setVisible(localAvailable);g->capabilityHint_->setVisible(!localAvailable);g->changeLocalCopies_->setVisible(!localAvailable);g->link_->setVisible(data["linkAvailable"].toBool());g->link_->parentWidget()->setVisible(g->copy_->isEnabled()||data["linkAvailable"].toBool());g->updateSummary();g->inspectSelectedDeletion();g->updateActions();
  // Remote deletion needs a settled confirmed upload and a provider that can delete exactly that target.
- {const auto caps=data["capabilities"].toObject();g->remove_->setVisible(HistoryModel::remoteDeletable(data)&&caps["delete"].toBool()&&caps["stat"].toBool()&&(caps["conditionalDelete"].toBool()||caps["versionAddressing"].toBool())&&!caps["deletionEffect"].toString().isEmpty());}
- if(data["superseded"].toBool()||data["remoteStatus"]=="superseded")Ui::feedback(g->status_,"Superseded: this stored link may serve replacement content. Deletion still targets the original receipt.",true);else if(!g->sharingFeedback_.isEmpty())Ui::feedback(g->status_,g->sharingFeedback_,g->sharingFeedbackError_);const auto previewPath=data["previewPath"].toString();
+ {const auto caps=data["capabilities"].toObject();g->remove_->setVisible(HistoryModel::remoteDeletable(data)&&caps["delete"].toBool()&&(caps["referenceDelete"].toBool()||(caps["stat"].toBool()&&(caps["conditionalDelete"].toBool()||caps["versionAddressing"].toBool())))&&!caps["deletionEffect"].toString().isEmpty());
+  // #1361: an upload that came back without a deletion URL says why it cannot be deleted here.
+  if(HistoryModel::remoteDeletable(data)&&!caps["delete"].toBool()&&!caps["removeUnavailable"].toString().isEmpty()){g->deletionStatus_->setText(caps["removeUnavailable"].toString());g->deletionStatus_->show();}}
+ if(data["superseded"].toBool()||data["remoteStatus"]=="superseded")Ui::feedback(g->status_,"Superseded: this stored link may serve replacement content. Deletion still targets the original receipt.",true);
+ // #1361: a server that names its own uploads cannot be asked whether one arrived.
+ else if(data["uploadStatus"]=="unknown"&&data["capabilities"].toObject()["serverNamesObjects"].toBool())Ui::feedback(g->status_,"This upload may already be on the server: its reply never arrived, and this destination cannot be asked. Retry upload sends the file again and may leave a second copy there.",true);else if(!g->sharingFeedback_.isEmpty())Ui::feedback(g->status_,g->sharingFeedback_,g->sharingFeedbackError_);const auto previewPath=data["previewPath"].toString();
   // Cache replies use artifacts/../previews; older detail snapshots can use previews.
   // Equivalent spellings must not clear the image while a redundant read is queued.
   if(g->shownItemId_!=data["id"].toString()||QDir::cleanPath(g->shownPreviewPath_)!=QDir::cleanPath(previewPath)||!QFileInfo(previewPath).isFile()){g->shownItemId_.clear();g->shownPreviewPath_.clear();g->updatePreviewState();g->pendingPreviewPath_=previewPath;g->startPreview();}
@@ -1262,7 +1266,7 @@ namespace {
 // service and the bucket or folder recorded at upload.
 QString originalDestination(const QJsonObject& receipt,const QJsonArray& profiles){
  const auto d=receipt["destination"].toObject();const auto provider=d["providerId"].toString();const auto settings=d["settings"].toObject();
- const QString service=provider=="s3"?"S3":provider=="backblaze-b2"?"Backblaze B2":provider=="proton-drive"?"Proton Drive":provider;QString label;
+ const QString service=provider=="s3"?"S3":provider=="backblaze-b2"?"Backblaze B2":provider=="proton-drive"?"Proton Drive":provider=="custom-http"?"Custom uploader":provider;QString label;
  for(const auto& v:profiles)if(v.toObject()["id"]==d["profileId"]&&!d["profileId"].toString().isEmpty())label=v.toObject()["label"].toString();
  QStringList parts{label.isEmpty()?service:label};
  if(!settings["bucket"].toString().isEmpty())parts<<settings["bucket"].toString();if(!settings["folderName"].toString().isEmpty())parts<<settings["folderName"].toString();

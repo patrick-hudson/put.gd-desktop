@@ -66,6 +66,7 @@ TOLERATED = {
     ('src/platform/x11/NativeRegionOverlay.h', 'ui'): 'the X11 selector shares the region widgets',
     ('src/platform/x11/X11SourceAdapter.cpp', 'ui'): 'the X11 adapter opens the shared region overlay',
     ('src/platform/x11/X11SourceAdapter.h', 'ui'): 'the X11 adapter opens the shared region overlay',
+    ('src/ui/CustomUploaderPanel.cpp', 'storage/http'): 'the custom uploader form reads .sxcu files and names secret values with the provider\'s rules',
     ('src/ui/EditorWindow.h', 'editor'): 'the editor window hosts the canvas; editor and ui are not yet split',
     ('src/ui/ImageEditor.cpp', 'editor'): 'the image editor drives the edit document; editor and ui are not yet split',
     ('src/ui/SettingsWindow.cpp', 'storage/b2'): 'Settings bounds its link fields with the provider\'s limits',
