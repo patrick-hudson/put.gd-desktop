@@ -227,6 +227,8 @@ memory window and the coordinator's OK for each logout.
   - The tray icon is present, and its menu opens with a real click.
   - The put.gd icon shows in the title bar (where the window decoration draws app icons) and in the task switcher.
 - **C. Idle memory:** after a 180 s idle window, the resident's RSS and PSS are under the 40 MiB budget.
+  - The nightly desktop check enforces the budget and the library list on every row, in its **Idle memory** cell. It reads a fresh private resident in the row's guest, without the driver's forced accessibility bridge. A size over the budget is not run, not red, when the guest or builder load is at or above its core count; a forbidden library is red at any load. The receipt records RSS, PSS, USS, the libraries, the load and the resident's image page release.
+  - The resident unmaps its clean library pages about 32 s after going quiet ([architecture](../design/architecture.md)), so the window's RSS leaves them out and a growth in shared libraries barely moves it. The library list is the check that catches that kind of regression.
   - No GTK, KDE platform theme, `libssl` or `libQt6Network` is mapped in the resident.
     `libcrypto` is not on the list, but the bundled Qt does not link it, so a `libcrypto` mapping in the
     AppImage resident is still recorded as a finding. (The Fedora native package maps it through the
@@ -521,6 +523,7 @@ On the accepted nightly, installed by item L.
   - The tray icon is present, and its menu opens with a real click.
   - The put.gd icon shows in the menu, the title bar (where the decoration draws app icons) and the task switcher.
 - **C. Idle memory:** after a 180 s idle window on a quiet host, the resident's RSS and PSS are under the 40 MiB budget.
+  - The nightly desktop check's **Idle memory** cell enforces this on every row; see the AppImage profile's C for how it reads and what it records.
   - Record what the resident maps: GTK, the KDE platform theme, `libssl` and `libQt6Network`, against the AppImage's C (none).
     `libcrypto` is expected on Fedora only: Fedora's distro `libQt6Core` links it directly, so every program
     on that Qt maps it ([#1171](https://github.com/patrick-hudson/put.gd-desktop/issues/1171)); it is not a
