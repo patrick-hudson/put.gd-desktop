@@ -114,4 +114,3 @@ with `sudo pacman -Syu`. Remove put.gd with `sudo pacman -R putgd`; repository
 configuration remains administrator-owned. AppImage is also available; package
 availability does not imply acceptance of every derivative's compositor.
 The AUR recipe is a draft and has not been published.
-
