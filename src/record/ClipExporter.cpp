@@ -191,7 +191,9 @@ QString baseVideoGraph(const ExportRequest& request, AVRational timeBase, qint64
         }
     }
     if (outputSize != request.canvas) graph += QStringLiteral(",scale=w=%1:h=%2:flags=lanczos").arg(outputSize.width()).arg(outputSize.height());
-    if (outputFps > 0) graph += QStringLiteral(",fps=%1:start_time=0").arg(outputFps);
+    // fps holds the last frame until the first excluded frame's time, which a
+    // stepped clip can leave a kept frame past the trim end: end with the audio.
+    if (outputFps > 0) graph += QStringLiteral(",fps=%1:start_time=0,trim=end=%2").arg(outputFps).arg(seconds(trimEnd - request.edit.trimStart));
     return graph;
 }
 struct Encoder {

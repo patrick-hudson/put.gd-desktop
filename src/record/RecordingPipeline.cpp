@@ -183,7 +183,10 @@ GstPadProbeReturn RecordingPipeline::restoreEncodedTime(GstPad*, GstPadProbeInfo
     { std::lock_guard lock(repeats->mutex); if (!repeats->inEncoder.empty()) { input = repeats->inEncoder.front(); repeats->inEncoder.pop_front(); } }
     if (input < 0) return GST_PAD_PROBE_OK;
     const gint64 output = gint64(GST_BUFFER_PTS(buffer));
-    if (!repeats->stepped.load()) { repeats->encoderOffset = output - input; return GST_PAD_PROBE_OK; }
+    const bool stepped = repeats->stepped.load();
+    // A step before the encoder's first output still needs its constant offset.
+    if (!stepped || !repeats->offsetKnown) { repeats->encoderOffset = output - input; repeats->offsetKnown = true; }
+    if (!stepped) return GST_PAD_PROBE_OK;
     buffer = gst_buffer_make_writable(buffer);
     GST_PAD_PROBE_INFO_DATA(info) = buffer;
     if (!buffer) return GST_PAD_PROBE_DROP;
@@ -393,7 +396,7 @@ bool RecordingPipeline::launch(const Options& options, const QString& encoder, c
     // Lab A/B: PUTGD_RECORD_ENCODE_REPEATS=on keeps encoding videorate's repeats after a step.
     encodeRepeats_ = qEnvironmentVariable("PUTGD_RECORD_ENCODE_REPEATS") == "on";
     repeatSkip_.restamps = encoderRestamps(encoder);
-    repeatSkip_.dropping = false; repeatSkip_.stepped = false; repeatSkip_.skipped = 0; repeatSkip_.encoderOffset = 0;
+    repeatSkip_.dropping = false; repeatSkip_.stepped = false; repeatSkip_.skipped = 0; repeatSkip_.encoderOffset = 0; repeatSkip_.offsetKnown = false;
     { std::lock_guard lock(repeatSkip_.mutex); repeatSkip_.inEncoder.clear(); }
     // Lab A/B: PUTGD_RECORD_ADAPTIVE_RATE=off keeps the configured rate whatever the load.
     rate_ = AdaptiveRate(options.fps, options.adaptive && qEnvironmentVariable("PUTGD_RECORD_ADAPTIVE_RATE") != "off", !options.pipewireNode && !options.imageCopy);

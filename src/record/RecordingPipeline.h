@@ -120,7 +120,7 @@ private:
     // and restoreEncodedTime puts it back on the output, in order. `stepped` is
     // sticky for restamping; `dropping` ends at Stop, so the clip ends where its
     // last slot was instead of at the last kept frame.
-    struct RepeatSkip { std::atomic<bool> dropping{false}, stepped{false}; std::atomic<gint64> skipped{0}; bool restamps = false; std::mutex mutex; std::deque<gint64> inEncoder; gint64 encoderOffset = 0; };
+    struct RepeatSkip { std::atomic<bool> dropping{false}, stepped{false}; std::atomic<gint64> skipped{0}; bool restamps = false; std::mutex mutex; std::deque<gint64> inEncoder; gint64 encoderOffset = 0; bool offsetKnown = false; };
     // The rate gate before the capture queue: frames the source delivered,
     // frames kept, and the period kept frames are spaced by (the configured
     // frame's until the adaptive rate lowers it). ximagesrc's frames pass
