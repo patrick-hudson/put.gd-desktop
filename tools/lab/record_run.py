@@ -34,11 +34,27 @@ numbers, identities, host load and the kernel's GPU hang count for the run.
                 [--rect X,Y,W,H] [--identity NAME] [--format mp4 ...] [--rounds 3]
                 [--output NAME] [--vnc-port 5900] [--lead 2] [--pause-at 8]
                 [--pause-for 3] [--after 8] [--prepare-timeout 120] [--frames]
+                [--mic off|virtual|NAME] [--system on|off|tone] [--unplug-at S]
 
 PATH is an AppImage (extracted once under DIR for its putgd-cli) or a directory
 holding `putgd` and `putgd-cli` (an installed package: /usr/bin). APPDIR is an
 extracted AppImage whose putgd-record reports `pairTimesS` (#143 or later).
---pause-for 0 records without a pause. --real-data-home lets an AppImage use
+--pause-for 0 records without a pause.
+
+Microphone runs (#1364) never use a real microphone. `--mic virtual` creates a
+simulated one with virtual_mic.py (a null sink remapped into a source), plays
+the marker's tone bursts into it and asks put.gd to record that device; the
+modules are unloaded by their ids when the run ends, also after a failure.
+`--mic NAME` records an existing source; `--mic default` records the system
+default input, expecting the refusal where that is an output's monitor;
+`--mic muted` makes the simulated microphone and plays the bursts into it but
+leaves put.gd's microphone off, so the clip must not hold them.
+`--system off` records no system audio; `--system tone` moves the default
+output to a private null sink and plays a quiet 440 Hz tone into it, so the
+clip must hold the microphone's bursts and that tone. `--unplug-at S` removes
+the simulated microphone S seconds into each recording, which must still end
+with a playable clip. Each clip's entry then has `tones` (band levels at 440 Hz
+and at the marker's 1 kHz) beside the A/V offsets. --real-data-home lets an AppImage use
 KWin's screencast protocol (its entry must be in the user's own data dir). The same data directory serves every
 build, so one portal approval with restoring allowed covers the whole run.
 When `prepare` waits for a portal picker, the driver says so and keeps waiting
@@ -222,6 +238,8 @@ class Driver:
         self.cover = None
         self.resident = None
         self.cover_rect = None
+        self.mic_state = None
+        self.tone = None
 
     # -- helpers -------------------------------------------------------------
     def cli(self, build, method, params=None, timeout=60):
@@ -240,6 +258,53 @@ class Driver:
         env = dict(os.environ, APPDIR=str(self.analyzer))
         return subprocess.run([str(self.analyzer / 'usr/bin/putgd-record'), *map(str, arguments)], env=env,
                               capture_output=True, text=True, timeout=timeout)
+
+    # -- simulated microphone (#1364) ------------------------------------------
+    def virtual_mic(self, *arguments):
+        result = subprocess.run([sys.executable, str(HERE / 'virtual_mic.py'), *arguments], capture_output=True, text=True, env=self.env)
+        try:
+            return json.loads(result.stdout)
+        except ValueError:
+            raise RunError('virtual_mic %s: %s' % (arguments[0], (result.stdout + result.stderr).strip()[-300:]))
+
+    def open_microphone(self):
+        a = self.args
+        if a.mic not in ('virtual', 'muted') and a.system != 'tone':
+            return None
+        self.mic_state = self.run / 'virtual-mic.json'
+        create = ['create', '--name', 'putgd_lab_%d' % os.getpid(), '--state', str(self.mic_state)]
+        if a.system == 'tone':
+            create.append('--system-sink')
+        state = self.virtual_mic(*create)
+        if a.mic in ('virtual', 'muted'):
+            # The marker's bursts are the simulated voice: they play into the microphone's sink, not the speakers.
+            a.audio_device = state['sink']
+        if a.system == 'tone':
+            self.tone = subprocess.Popen([sys.executable, str(HERE / 'virtual_mic.py'), 'tone', '--state', str(self.mic_state),
+                                          '--seconds', '3600'], env=self.env, start_new_session=True,
+                                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        return state
+
+    def close_microphone(self):
+        if self.tone and self.tone.poll() is None:
+            os.killpg(self.tone.pid, signal.SIGTERM)
+            self.tone.wait(10)
+        if self.mic_state and self.mic_state.is_file():
+            return self.virtual_mic('remove', '--state', str(self.mic_state))
+        return None
+
+    def microphone_device(self):
+        a = self.args
+        if a.mic == 'virtual':
+            return json.loads(self.mic_state.read_text())['source']
+        return None if a.mic in ('off', 'default') else a.mic
+
+    def tones(self, clip):
+        result = self.helper('--av-sync', clip, '--tone', 440, '--tone', 1000)
+        try:
+            return json.loads(result.stdout).get('tones')
+        except ValueError:
+            return {'error': (result.stdout + result.stderr).strip()[-200:]}
 
     def av_sync(self, clip):
         result = self.helper('--av-sync', clip)
@@ -305,7 +370,9 @@ class Driver:
         if a.video == 'marker':
             marker = self.run / 'marker.mkv'
             if not marker.is_file():
-                self.helper('--av-marker', marker, 60).check_returncode()
+                # With a microphone in the run every clip must show motion too: the marker gets a sweeping bar.
+                extra = ['--moving'] if a.mic != 'off' or a.system == 'tone' or a.marker_motion else []
+                self.helper('--av-marker', marker, 60, *extra).check_returncode()
             command += ['--media', str(marker)]
         elif a.video == 'pattern':
             command += ['--pattern']
@@ -322,7 +389,8 @@ class Driver:
         if not state.get('ok') or state.get('state') != 'covered':
             raise RunError('cover not placed: %s' % json.dumps(state))
         self.cover_rect = state['rect']
-        time.sleep(1.5)
+        # --precheck-wait: time to dismiss a banner the desktop put over the cover before it is checked.
+        time.sleep(max(1.5, a.precheck_wait))
         if a.vnc_port == 0:
             # A disposable lab guest shows no one's windows and has no loopback tile; the frame gate still applies.
             report = {'skipped': 'no loopback VNC tile (disposable guest)'}
@@ -381,6 +449,11 @@ class Driver:
         if not archive.get('keepUploads') or archive.get('root') != root:
             self.cli(build, 'settings.patch', {'patch': {'archive': {'keepUploads': True, 'root': root}},
                                                'expectedRevision': (settings.get('metadata') or {}).get('observedRevision')})
+        if self.args.no_notifications and ((settings.get('document') or {}).get('preferences') or {}).get('notifications'):
+            # A resident that warns at every start (a missing GNOME extension) would put its banner over the cover.
+            settings = self.cli(build, 'settings.get')
+            self.cli(build, 'settings.patch', {'patch': {'preferences': {'notifications': False}},
+                                               'expectedRevision': (settings.get('metadata') or {}).get('observedRevision')})
         return caps
 
     def stop_resident(self, build):
@@ -418,8 +491,19 @@ class Driver:
             if a.rect:
                 target['rect'] = a.rect
             sound = fmt not in ANIMATIONS
-            prepared = self.cli(build, 'recording.prepare', {'target': target, 'format': fmt, 'fps': 30,
-                                                              'audio': {'system': sound}})
+            audio = {'system': sound and a.system != 'off'}
+            if a.mic not in ('off', 'muted') and sound:
+                audio['microphone'] = True
+                if self.microphone_device():
+                    audio['microphoneDevice'] = self.microphone_device()
+            result['audio'] = audio
+            caps_audio = caps.get('audio') or {}
+            result['capabilityAudio'] = {k: caps_audio.get(k) for k in ('system', 'microphone', 'microphoneReason', 'microphoneDevice') if k in caps_audio}
+            if a.mic not in ('off', 'muted'):
+                listed = self.cli(build, 'recording.microphones', {'device': audio['microphoneDevice']} if audio.get('microphoneDevice') else {})
+                result['microphones'] = {'available': listed.get('available'), 'reason': listed.get('reason'), 'device': listed.get('device'),
+                                         'devices': [d.get('id') for d in listed.get('devices') or []], 'defaultIsMonitor': listed.get('defaultIsMonitor')}
+            prepared = self.cli(build, 'recording.prepare', {'target': target, 'format': fmt, 'fps': 30, 'audio': audio})
             rid = prepared['recordingId']
             ready = self.wait_state(build, rid, ('ready',), a.prepare_timeout)
             result['canvas'] = ready.get('canvas')
@@ -430,7 +514,17 @@ class Driver:
             # Where the control bar went once recording: outside the recorded pixels, or a handle inside them.
             placed = self.cli(build, 'recording.inspect', {'id': rid})
             result['overlay'] = {'excluded': placed.get('overlayExcluded'), 'placement': placed.get('overlayPlacement')}
-            time.sleep(max(0, a.pause_at - 0.5))
+            result['progressAtStart'] = {k: (placed.get('progress') or {}).get(k) for k in ('audioSources', 'audioEncoder', 'recordingMicrophone', 'microphoneLost')}
+            if a.unplug_at is not None and self.mic_state:
+                time.sleep(max(0, a.unplug_at - 0.5))
+                self.virtual_mic('unplug', '--state', str(self.mic_state))
+                result['unpluggedAtS'] = round(time.monotonic() - started, 3)
+                time.sleep(2.5)
+                after = self.cli(build, 'recording.inspect', {'id': rid})
+                result['afterUnplug'] = {'state': after.get('state'), 'microphoneLost': (after.get('progress') or {}).get('microphoneLost')}
+                time.sleep(max(0, a.pause_at - a.unplug_at - 2.5))
+            else:
+                time.sleep(max(0, a.pause_at - 0.5))
             if a.pause_for > 0:
                 self.cli(build, 'recording.pause', {'id': rid})
                 result['pauseClipS'] = round(time.monotonic() - started, 3)
@@ -460,11 +554,13 @@ class Driver:
                 entry['error'] = 'missing'
             else:
                 entry.update(bytes=clip.stat().st_size, motion=self.motion(clip))
+                if sound and (a.mic != 'off' or a.system == 'tone'):
+                    entry['tones'] = self.tones(clip)
                 if a.video == 'marker' and sound:
                     measured = self.av_sync(clip)
                     entry.update({k: measured[k] for k in ('pairs', 'medianMs', 'spreadMs', 'offsetsMs', 'pairTimesS', 'error')
                                   if k in measured})
-                    if measured.get('pairs', 0) < a.min_pairs:
+                    if measured.get('pairs', 0) < a.min_pairs and not a.keep_unpaired:
                         clip.unlink()  # no marker: the clip may show something else
                         entry['destroyed'] = True
             result['clips'][kind] = entry
@@ -502,6 +598,7 @@ class Driver:
             for build in builds:
                 self.start_resident(build)
                 self.stop_resident(build)
+            report['microphone'] = self.open_microphone()
             report['cover'] = self.open_cover()
             for number in range(1, a.rounds + 1):
                 for fmt in a.format:
@@ -524,6 +621,10 @@ class Driver:
             log('stopped: %s' % error)
         finally:
             self.close_cover()
+            try:
+                report['microphoneRemoved'] = self.close_microphone()
+            except RunError as error:
+                report['microphoneRemoved'] = {'error': str(error)}
             if self.real_data is not None and self.real_data.exists():
                 self.real_data.rename(self.run / 'real-data-putgd')
             report['gpuHangs'] = self.gpu_hangs(since)
@@ -560,6 +661,13 @@ def main(argv=None):
     parser.add_argument('--prepare-timeout', type=float, default=120)
     parser.add_argument('--min-pairs', type=int, default=8)
     parser.add_argument('--frames', action='store_true', help='keep one cover-checked frame of each saved copy')
+    parser.add_argument('--mic', default='off', help="off, virtual (a simulated microphone made for the run), muted (simulated and playing, not recorded), default, or a source name")
+    parser.add_argument('--system', choices=('on', 'off', 'tone'), default='on', help='system audio: recorded, not recorded, or a quiet 440 Hz tone on a private default output')
+    parser.add_argument('--unplug-at', type=float, help='remove the simulated microphone this many seconds into each recording')
+    parser.add_argument('--precheck-wait', type=float, default=1.5, help='seconds between placing the cover and checking it')
+    parser.add_argument('--no-notifications', action='store_true', help="turn the run's own put.gd notifications off (private config), so none covers the cover")
+    parser.add_argument('--marker-motion', action='store_true', help='add a sweeping bar to the marker clip so marker recordings also score motion')
+    parser.add_argument('--keep-unpaired', action='store_true', help="keep clips without marker pairs (runs where the microphone is off or unplugged)")
     parser.add_argument('--real-data-home', action='store_true',
                         help="use the user's data directory (an AppImage's KWin screencast entry); moved into --run afterwards")
     return Driver(parser.parse_args(argv)).main()

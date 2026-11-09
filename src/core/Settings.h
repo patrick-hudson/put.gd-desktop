@@ -72,6 +72,13 @@ struct Settings {
     // second for recordings that don't ask for a rate; the recorder may still
     // lower it while a recording runs when the machine can't keep up.
     int recordingFrameRate = 30;
+    // #1364: preferences.recordingMicrophone remembers the bar's microphone
+    // toggle (off until the user turns it on); recordingMicrophoneDevice names
+    // the input to open, empty for the system default; recordingClickHighlights
+    // draws a ring at the pointer on each click, off by default.
+    bool recordingMicrophone = false;
+    QString recordingMicrophoneDevice;
+    bool recordingClickHighlights = false;
     // preferences.appearance.theme (#60): system, dark or light.
     QString appearanceTheme = "system";
     bool notifications = true;

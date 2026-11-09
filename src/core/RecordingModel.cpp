@@ -47,9 +47,14 @@ QString RecordingConfig::mime() const {
     return "image/webp";
 }
 QString RecordingConfig::extension() const { return format; }
+QJsonObject RecordingAudio::toJson() const {
+    QJsonObject o{{"system", system}, {"microphone", microphone}};
+    if (!microphoneDevice.isEmpty()) o["microphoneDevice"] = microphoneDevice;
+    return o;
+}
 QJsonObject RecordingConfig::toJson() const {
     QJsonObject o{{"format", format}, {"codec", codec}, {"fps", fps}, {"adaptiveFps", adaptiveFps},
-        {"audio", QJsonObject{{"system", audio.system}, {"microphone", audio.microphone}}}, {"mime", mime()}};
+        {"audio", audio.toJson()}, {"clickHighlights", clickHighlights}, {"mime", mime()}};
     if (maxEdge) o["maxEdge"] = *maxEdge;
     if (budgetBytes > 0) o["budgetBytes"] = double(budgetBytes);
     return o;
@@ -126,7 +131,7 @@ Error parseTarget(const QJsonValue& value, RecordingTarget& out) {
     return {};
 }
 Error parseConfig(const QJsonObject& params, RecordingConfig& out) {
-    if (!knownKeys(params, {"format", "codec", "fps", "adaptiveFps", "audio", "maxEdge"})) return invalid("Unknown recording configuration field");
+    if (!knownKeys(params, {"format", "codec", "fps", "adaptiveFps", "audio", "clickHighlights", "maxEdge"})) return invalid("Unknown recording configuration field");
     RecordingConfig config;
     config.format = params["format"].toString();
     if (!formats().contains(config.format)) return invalid("Format must be mp4, webm, gif or webp", "format");
@@ -142,15 +147,19 @@ Error parseConfig(const QJsonObject& params, RecordingConfig& out) {
     if (params.contains("adaptiveFps") && !params["adaptiveFps"].isBool()) return invalid("adaptiveFps must be a boolean", "adaptiveFps");
     config.adaptiveFps = params["adaptiveFps"].toBool(true);
     if (params.contains("audio")) {
-        if (!params["audio"].isObject() || !knownKeys(params["audio"].toObject(), {"system", "microphone"})) return invalid("audio takes system and microphone booleans", "audio");
+        if (!params["audio"].isObject() || !knownKeys(params["audio"].toObject(), {"system", "microphone", "microphoneDevice"})) return invalid("audio takes system and microphone booleans and an optional microphoneDevice", "audio");
         const auto audio = params["audio"].toObject();
         if (audio.contains("system") && !audio["system"].isBool()) return invalid("audio.system must be a boolean", "audio.system");
         if (audio.contains("microphone") && !audio["microphone"].isBool()) return invalid("audio.microphone must be a boolean", "audio.microphone");
+        if (audio.contains("microphoneDevice") && !validMicrophoneDevice(audio["microphoneDevice"])) return invalid("audio.microphoneDevice is the name of an input device, at most 256 characters", "audio.microphoneDevice");
         config.audio.system = audio["system"].toBool();
         config.audio.microphone = audio["microphone"].toBool();
-        if (config.audio.microphone) return {"recording_unsupported", "Microphone capture is not offered by this version", {{"field", "audio.microphone"}}};
+        config.audio.microphoneDevice = audio["microphoneDevice"].toString();
         if (config.silent() && config.audio.system) return invalid("GIF and WebP are silent formats; audio cannot be included", "audio.system");
+        if (config.silent() && config.audio.microphone) return invalid("GIF and WebP are silent formats; audio cannot be included", "audio.microphone");
     }
+    if (params.contains("clickHighlights") && !params["clickHighlights"].isBool()) return invalid("clickHighlights must be a boolean", "clickHighlights");
+    config.clickHighlights = params["clickHighlights"].toBool();
     if (params.contains("maxEdge")) {
         qint64 edge = 0;
         if (!integer(params["maxEdge"], 16, 8192, &edge)) return invalid("maxEdge must be an integer from 16 to 8192", "maxEdge");
@@ -159,6 +168,15 @@ Error parseConfig(const QJsonObject& params, RecordingConfig& out) {
     out = config;
     return {};
 }
+bool validMicrophoneDevice(const QJsonValue& value) {
+    if (!value.isString()) return false;
+    const auto name = value.toString();
+    if (name.size() > 256) return false;
+    // A source name never holds control characters; refuse them before they reach a pipeline description.
+    for (const QChar c : name) if (c.unicode() < 0x20 || c.unicode() == 0x7f) return false;
+    return true;
+}
+bool monitorSourceName(const QString& name) { return name.endsWith(QStringLiteral(".monitor"), Qt::CaseInsensitive) || name == QStringLiteral("@DEFAULT_MONITOR@"); }
 qint64 alignToFrame(qint64 us, int fps) {
     if (fps < 1) return us;
     const double frame = 1000000.0 / fps;

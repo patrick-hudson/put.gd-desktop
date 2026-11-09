@@ -114,6 +114,7 @@ OperationService::OperationService(QString root,SettingsService& settings,Provid
   enqueue(std::move(job));
  };
  host.finish=[this](Operation op){finish(op);};
+ host.remember=[this](const QJsonObject& preferences){settings_.patchAsync({{"preferences",preferences}},settings_.revision(),[](Result){});};
  recording_=std::make_unique<RecordingService>(root_+"/recording",std::move(host),this);
  connect(recording_.get(),&RecordingService::changed,this,[this](const QString& id){emit changed(id);emit observationsChanged();});
  cleanupTimer_.setInterval(cleanupSchedule_.intervalMs);

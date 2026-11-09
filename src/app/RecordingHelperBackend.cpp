@@ -116,6 +116,32 @@ void RecordingHelperBackend::finishProbe() {
     QPointer<RecordingHelperBackend> guard(this);
     for (const auto& waiter : waiters) { if (!guard) return; waiter(); }
 }
+void RecordingHelperBackend::microphones(const QString& device, Reply reply) {
+    const QJsonObject none{{"available", false}, {"reason", "microphone_probe_failed"}, {"message", "The microphone list could not be read."}, {"devices", QJsonArray{}}, {"defaultIsMonitor", false}};
+    if (!QFileInfo(helperPath_).isExecutable()) { reply({}, none); return; }
+    auto* process = new QProcess(this);
+    auto* deadline = new QTimer(process);
+    deadline->setSingleShot(true);
+    auto answered = std::make_shared<bool>(false);
+    auto finish = [process, reply, none, answered](bool ok) {
+        if (std::exchange(*answered, true)) return;
+        QJsonObject result = none;
+        if (ok) {
+            const auto document = QJsonDocument::fromJson(process->readAllStandardOutput().left(probeLimit));
+            if (document.isObject() && document.object()["available"].isBool() && document.object()["devices"].isArray()) result = document.object();
+        }
+        process->deleteLater();
+        reply({}, result);
+    };
+    connect(deadline, &QTimer::timeout, process, [process, finish] { process->kill(); finish(false); });
+    connect(process, &QProcess::errorOccurred, this, [finish](QProcess::ProcessError error) { if (error == QProcess::FailedToStart) finish(false); });
+    connect(process, qOverload<int, QProcess::ExitStatus>(&QProcess::finished), this, [finish](int code, QProcess::ExitStatus status) { finish(status == QProcess::NormalExit && code == 0); });
+    QStringList arguments{"--microphones"};
+    if (!device.isEmpty()) arguments.append(device);
+    deadline->start(startupMs_);
+    process->setProcessChannelMode(QProcess::SeparateChannels);
+    process->start(helperPath_, arguments, QIODevice::ReadOnly);
+}
 QJsonObject RecordingHelperBackend::envelope() const { return {{"role", "record"}, {"nonce", child_ ? child_->nonce : QString{}}, {"generation", QString::number(child_ ? child_->generation : 0)}}; }
 
 void RecordingHelperBackend::prepare(const QString& id, const RecordingTarget& target, const RecordingConfig& config, const QString& staging, Reply reply, const QJsonObject& reviewOptions) {

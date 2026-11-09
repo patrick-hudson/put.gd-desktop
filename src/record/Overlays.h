@@ -99,7 +99,12 @@ private:
 class ControlBar final : public QWidget {
     Q_OBJECT
 public:
-    struct Options { QString targetLabel; QStringList formats; QJsonObject codecs; bool audioSupported = false; };
+    struct Options {
+        QString targetLabel; QStringList formats; QJsonObject codecs; bool audioSupported = false;
+        // #1364: whether an input can be opened, its name, and otherwise why not.
+        bool microphoneAvailable = false; QString microphoneLabel, microphoneUnavailable;
+        bool clickHighlights = false;
+    };
     explicit ControlBar(const Options&, const RecordingConfig&, QWidget* parent = nullptr);
     // X11: positions the bar around rootRect (root pixels) on any screen;
     // returns false when it had to sit inside it.
@@ -126,6 +131,15 @@ public:
     bool requestedAudio() const { return audioIntent_; }
     bool effectiveAudio() const { return config_.audio.system; }
     QJsonObject audioState() const { return {{"requested", requestedAudio()}, {"effective", effectiveAudio()}}; }
+    // The microphone toggle: what the user asked for and what is (or will be) recorded.
+    bool requestedMicrophone() const { return microphoneIntent_; }
+    bool effectiveMicrophone() const { return config_.audio.microphone; }
+    QJsonObject microphoneState() const;
+    // The input's newest peak level, 0..1, for the meter beside the toggle.
+    void setMicrophoneLevel(float level);
+    float microphoneLevel() const;
+    // The microphone went away during the recording; the bar says so.
+    void setMicrophoneLost(const QString& reason);
 signals:
     void recordRequested();
     void pauseRequested();
@@ -152,7 +166,10 @@ private:
     // The largest size the full bar takes in any state; placement decides with it.
     QSize widestSize();
     RecordingConfig config_;
-    bool audioIntent_ = false;
+    bool audioIntent_ = false, microphoneIntent_ = false;
+    QString microphoneLost_;
+    QCheckBox* microphone_ = nullptr;
+    QWidget* meter_ = nullptr;
     Options options_;
     QString state_ = "ready";
     Placed placed_ = Placed::None;

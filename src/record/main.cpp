@@ -4,6 +4,7 @@
 // live GStreamer capture, the private working clip, frame previews and the
 // FFmpeg export; only control metadata crosses the pipes.
 #include "MediaProbe.h"
+#include "Microphones.h"
 #include "BundledRuntime.h"
 #include "Poster.h"
 #include "ClipExporter.h"
@@ -48,6 +49,18 @@ int main(int argc, char** argv) {
     if (argc == 2 && std::strcmp(argv[1], "--capabilities") == 0) {
         QCoreApplication app(argc, argv);
         const auto json = QJsonDocument(record::probeMedia()).toJson(QJsonDocument::Compact);
+        std::fwrite(json.constData(), 1, size_t(json.size()), stdout);
+        std::fputc('\n', stdout);
+        return 0;
+    }
+    if ((argc == 2 || argc == 3) && std::strcmp(argv[1], "--microphones") == 0) {
+        // #1364: the inputs a recording can narrate from, and which one the given
+        // device name (or the system default) resolves to. Asks the sound
+        // server; opens no device. Monitors of outputs are never listed.
+        QCoreApplication app(argc, argv);
+        GError* error = nullptr;
+        if (!gst_init_check(nullptr, nullptr, &error)) { if (error) g_error_free(error); return 6; }
+        const auto json = QJsonDocument(record::microphonesJson(argc == 3 ? QString::fromLocal8Bit(argv[2]) : QString())).toJson(QJsonDocument::Compact);
         std::fwrite(json.constData(), 1, size_t(json.size()), stdout);
         std::fputc('\n', stdout);
         return 0;
@@ -118,18 +131,25 @@ int main(int argc, char** argv) {
         std::printf("motion=%.3f compared=%d samples=%d durationMs=%lld size=%dx%d\n", compared ? total / compared : 0.0, compared, samples, static_cast<long long>(durationUs / 1000), canvas.width(), canvas.height());
         return 0;
     }
-    if (argc == 4 && std::strcmp(argv[1], "--av-marker") == 0) {
+    if ((argc == 4 || (argc == 5 && std::strcmp(argv[4], "--moving") == 0)) && std::strcmp(argv[1], "--av-marker") == 0) {
         // Lab diagnostic: write the synthetic A/V marker clip to play while recording.
+        // `--moving` adds a sweeping bar, for clips that must also show motion.
         QCoreApplication app(argc, argv);
-        if (auto error = record::writeAvMarker(QString::fromLocal8Bit(argv[2]), std::atoi(argv[3]))) { std::fprintf(stderr, "%s: %s\n", qPrintable(error.code), qPrintable(error.message)); return 1; }
+        if (auto error = record::writeAvMarker(QString::fromLocal8Bit(argv[2]), std::atoi(argv[3]), 0, -1, 0, argc == 5)) { std::fprintf(stderr, "%s: %s\n", qPrintable(error.code), qPrintable(error.message)); return 1; }
         return 0;
     }
-    if (argc == 3 && std::strcmp(argv[1], "--av-sync") == 0) {
+    if (argc >= 3 && argc % 2 == 1 && std::strcmp(argv[1], "--av-sync") == 0) {
         // Lab diagnostic: A/V sync of a recording of the synthetic marker clip
         // (flashes with simultaneous tone bursts); prints one JSON object.
+        // `--tone HZ` (repeatable, #1364) adds that tone's level across the track.
         QCoreApplication app(argc, argv);
         QJsonObject result;
-        if (auto error = record::measureAvSync(QString::fromLocal8Bit(argv[2]), result)) { std::fprintf(stderr, "%s: %s\n", qPrintable(error.code), qPrintable(error.message)); return 1; }
+        QList<double> tones;
+        for (int i = 3; i + 1 < argc; i += 2) {
+            if (std::strcmp(argv[i], "--tone") != 0 || std::atof(argv[i + 1]) <= 0) { std::fprintf(stderr, "usage: --av-sync CLIP [--tone HZ]...\n"); return 2; }
+            tones.append(std::atof(argv[i + 1]));
+        }
+        if (auto error = record::measureAvSync(QString::fromLocal8Bit(argv[2]), result, tones)) { std::fprintf(stderr, "%s: %s\n", qPrintable(error.code), qPrintable(error.message)); return 1; }
         std::printf("%s\n", QJsonDocument(result).toJson(QJsonDocument::Compact).constData());
         return 0;
     }

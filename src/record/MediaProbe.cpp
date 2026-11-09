@@ -1,5 +1,6 @@
 #include "MediaProbe.h"
 #include "ImageCopySource.h"
+#include "Microphones.h"
 #include "EncoderCheck.h"
 #include "core/RecordingModel.h"
 #include "platform/NativeSession.h"
@@ -93,7 +94,7 @@ QJsonObject probeMedia() {
         QStringList directories;
         for (const char* name : {"ximagesrc", "pipewiresrc", "appsrc", "pulsesrc", "vah264lpenc", "vah264enc", "vaapih264enc", "x264enc", "openh264enc",
                                  "avenc_aac", "fdkaacenc", "voaacenc", "matroskamux", "mp4mux", "webmmux", "videoconvert", "videoscale", "videorate",
-                                 "videocrop", "compositor", "appsink", "webpenc", "vp9enc", "x265enc", "h264parse", "aacparse", "audioconvert", "audioresample"})
+                                 "videocrop", "compositor", "appsink", "webpenc", "vp9enc", "x265enc", "h264parse", "aacparse", "audioconvert", "audioresample", "audiomixer", "identity"})
             elements[name] = element(name, directories);
         gst["elements"] = elements;
         gst["pluginDirectories"] = QJsonArray::fromStringList(directories);
@@ -223,7 +224,14 @@ QJsonObject probeMedia() {
     // How a window is recorded: KWin's stream_window or Mutter's RecordWindow
     // with the window the resident resolved, else the portal picker.
     if (targets.contains("window")) result["windowAcquisition"] = session == "x11" ? QStringLiteral("x11") : nativeOk ? acquisition : QStringLiteral("portal");
-    result["audio"] = QJsonObject{{"system", result["liveCapture"].toObject()["audio"].toBool()}, {"microphone", false}};
+    // #1364: the microphone needs the same capture and AAC elements as system
+    // audio, plus audiomixer for the mix. Whether an input is connected changes
+    // while the resident runs, so that part is asked fresh (`--microphones`).
+    QString missingMicrophoneElement;
+    const bool microphone = result["liveCapture"].toObject()["audio"].toBool() && gst["elements"].toObject().contains("pulsesrc") && !gst["elements"].toObject()["pulsesrc"].isNull() && microphoneElements(&missingMicrophoneElement);
+    QJsonObject audio{{"system", result["liveCapture"].toObject()["audio"].toBool()}, {"microphone", microphone}};
+    if (!microphone) audio["microphoneReason"] = QStringLiteral("microphone_elements_missing");
+    result["audio"] = audio;
     result["overlayExclusion"] = QJsonObject{};
     const bool implemented = session == "x11" || portalOk || nativeOk;
     result["available"] = gst["available"].toBool() && liveSource && liveEncoder && decoderOk && !formats.isEmpty() && implemented;

@@ -58,7 +58,31 @@ std::vector<double> onsets(const std::vector<Sample>& signal, double low, double
 }
 }
 
-Error measureAvSync(const QString& clip, QJsonObject& result) {
+namespace {
+// One tone's level over time (Goertzel, 50 ms blocks).
+struct ToneLevel {
+    double hz = 0, coefficient = 0, s1 = 0, s2 = 0;
+    int block = 0, filled = 0;
+    std::vector<double> amplitudes;
+    ToneLevel(double frequency, int rate) : hz(frequency), coefficient(2.0 * std::cos(2.0 * M_PI * frequency / rate)), block(std::max(1, rate / 20)) {}
+    void add(float sample) {
+        const double s0 = sample + coefficient * s1 - s2;
+        s2 = s1; s1 = s0;
+        if (++filled < block) return;
+        amplitudes.push_back(2.0 * std::sqrt(std::max(0.0, s1 * s1 + s2 * s2 - coefficient * s1 * s2)) / block);
+        s1 = s2 = 0; filled = 0;
+    }
+    QJsonObject json() const {
+        if (amplitudes.empty()) return {{"medianAmplitude", 0.0}, {"maxAmplitude", 0.0}, {"activeFraction", 0.0}, {"blocks", 0}};
+        auto sorted = amplitudes;
+        std::sort(sorted.begin(), sorted.end());
+        const auto active = std::count_if(sorted.begin(), sorted.end(), [](double a) { return a > 0.005; });
+        return {{"medianAmplitude", sorted[sorted.size() / 2]}, {"maxAmplitude", sorted.back()}, {"activeFraction", double(active) / double(sorted.size())}, {"blocks", int(sorted.size())}};
+    }
+};
+}
+
+Error measureAvSync(const QString& clip, QJsonObject& result, const QList<double>& tones) {
     AVFormatContext* format = nullptr;
     if (avformat_open_input(&format, QFile::encodeName(clip).constData(), nullptr, nullptr) < 0) return failed("av_sync_open", "Cannot open the clip");
     struct Closer { AVFormatContext*& f; ~Closer() { avformat_close_input(&f); } } closer{format};
@@ -66,7 +90,14 @@ Error measureAvSync(const QString& clip, QJsonObject& result) {
     const int videoIndex = av_find_best_stream(format, AVMEDIA_TYPE_VIDEO, -1, -1, nullptr, 0);
     const int audioIndex = av_find_best_stream(format, AVMEDIA_TYPE_AUDIO, -1, -1, nullptr, 0);
     if (videoIndex < 0) return failed("av_sync_no_video", "The clip has no video stream");
-    if (audioIndex < 0) return failed("av_sync_no_audio", "The clip has no audio stream; record with system audio");
+    if (audioIndex < 0) {
+        if (tones.isEmpty()) return failed("av_sync_no_audio", "The clip has no audio stream; record with system audio");
+        // A clip recorded with every audio source off: that is the answer.
+        QJsonObject levels;
+        for (const double hz : tones) levels[QString::number(hz)] = ToneLevel(hz, 48000).json();
+        result = {{"tones", levels}, {"audioStream", false}, {"error", "av_sync_no_audio"}};
+        return {};
+    }
     Decoder video, audio;
     if (auto e = video.open(format->streams[videoIndex], 0)) return e;
     if (auto e = audio.open(format->streams[audioIndex], 1)) return e;
@@ -77,6 +108,16 @@ Error measureAvSync(const QString& clip, QJsonObject& result) {
     if (swr_alloc_set_opts2(&swr, &mono, AV_SAMPLE_FMT_FLT, rate, &audio.context->ch_layout, audio.context->sample_fmt, rate, 0, nullptr) < 0 || swr_init(swr) < 0) { swr_free(&swr); return failed("av_sync_decoder", "Cannot convert the audio"); }
     struct SwrCloser { SwrContext*& s; ~SwrCloser() { swr_free(&s); } } swrCloser{swr};
 
+    std::vector<ToneLevel> levels;
+    for (const double hz : tones) if (hz > 0 && hz < rate / 2.0) levels.emplace_back(hz, rate);
+    // With tones asked for, what the marker analysis is missing is reported, not fatal.
+    auto missing = [&](const QString& code, const QString& message) -> Error {
+        if (tones.isEmpty()) return failed(code, message);
+        QJsonObject found;
+        for (const auto& level : levels) found[QString::number(level.hz)] = level.json();
+        result = {{"tones", found}, {"audioStream", true}, {"error", code}, {"message", message}};
+        return {};
+    };
     std::vector<Sample> luma, envelope;
     const int window = std::max(1, rate / 500);  // 2 ms RMS windows
     double windowSum = 0, windowStart = NAN, audioSeconds = 0;
@@ -100,6 +141,7 @@ Error measureAvSync(const QString& clip, QJsonObject& result) {
                 uint8_t* out[1] = {reinterpret_cast<uint8_t*>(converted.data())};
                 const int got = swr_convert(swr, out, int(converted.size()), const_cast<const uint8_t**>(frame->extended_data), frame->nb_samples);
                 for (int i = 0; i < got; ++i) {
+                    for (auto& level : levels) level.add(converted[size_t(i)]);
                     if (windowCount == 0) windowStart = t + double(i) / rate;
                     windowSum += double(converted[size_t(i)]) * converted[size_t(i)];
                     if (++windowCount == window) { envelope.push_back({windowStart, std::sqrt(windowSum / window)}); windowSum = 0; windowCount = 0; }
@@ -120,18 +162,18 @@ Error measureAvSync(const QString& clip, QJsonObject& result) {
     av_frame_free(&frame);
     av_packet_free(&packet);
     if (error) return error;
-    if (luma.size() < 4 || envelope.size() < 4) return failed("av_sync_short", "The clip is too short to measure");
+    if (luma.size() < 4 || envelope.size() < 4) return missing("av_sync_short", "The clip is too short to measure");
     std::sort(luma.begin(), luma.end(), [](const Sample& a, const Sample& b) { return a.time < b.time; });
 
     double lo = 255, hi = 0, peak = 0;
     for (const auto& s : luma) { lo = std::min(lo, s.value); hi = std::max(hi, s.value); }
     for (const auto& s : envelope) peak = std::max(peak, s.value);
-    if (hi - lo < 40) return failed("av_sync_no_flashes", "No flashes in the video: put the marker clip in the recorded area");
-    if (peak < 0.01) return failed("av_sync_no_bursts", "The audio is silent: the marker's sound did not reach the recording");
+    if (hi - lo < 40) return missing("av_sync_no_flashes", "No flashes in the video: put the marker clip in the recorded area");
+    if (peak < 0.01) return missing("av_sync_no_bursts", "The audio is silent: the marker's sound did not reach the recording");
     const double middle = (lo + hi) / 2;
     const auto flashes = onsets(luma, middle - (hi - lo) * 0.1, middle, 0.3);
     const auto bursts = onsets(envelope, peak * 0.1, peak * 0.3, 0.3);
-    if (flashes.size() < 2) return failed("av_sync_no_flashes", "Fewer than two flashes in the video");
+    if (flashes.size() < 2) return missing("av_sync_no_flashes", "Fewer than two flashes in the video");
     std::vector<double> gaps;
     for (size_t i = 1; i < flashes.size(); ++i) gaps.push_back(flashes[i] - flashes[i - 1]);
     std::nth_element(gaps.begin(), gaps.begin() + gaps.size() / 2, gaps.end());
@@ -146,7 +188,7 @@ Error measureAvSync(const QString& clip, QJsonObject& result) {
         offsets.append(std::round(ms * 10) / 10);
         pairTimes.append(std::round(flash * 1000) / 1000);
     }
-    if (values.empty()) return failed("av_sync_unpaired", "No flash has a tone burst within half a period");
+    if (values.empty()) return missing("av_sync_unpaired", "No flash has a tone burst within half a period");
     auto sorted = values;
     std::sort(sorted.begin(), sorted.end());
     const double median = sorted[sorted.size() / 2];
@@ -154,10 +196,16 @@ Error measureAvSync(const QString& clip, QJsonObject& result) {
         {"offsetsMs", offsets}, {"pairTimesS", pairTimes}, {"medianMs", std::round(median * 10) / 10}, {"minMs", std::round(sorted.front() * 10) / 10}, {"maxMs", std::round(sorted.back() * 10) / 10},
         {"spreadMs", std::round((sorted.back() - sorted.front()) * 10) / 10}, {"videoFrames", int(luma.size())}, {"audioSeconds", std::round(audioSeconds * 100) / 100},
         {"peak", std::round(peak * 1000) / 1000}};
+    if (!tones.isEmpty()) {
+        QJsonObject found;
+        for (const auto& level : levels) found[QString::number(level.hz)] = level.json();
+        result["tones"] = found;
+        result["audioStream"] = true;
+    }
     return {};
 }
 
-Error writeAvMarker(const QString& path, int seconds, int audioDelayMs, int audioGapAtMs, int audioGapMs) {
+Error writeAvMarker(const QString& path, int seconds, int audioDelayMs, int audioGapAtMs, int audioGapMs, bool moving) {
     constexpr int fps = 30, rate = 48000, width = 1280, height = 720, chunk = 1024;
     if (seconds < 2 || seconds > 600) return failed("invalid_request", "The marker lasts 2 to 600 seconds");
     if (audioDelayMs < 0 || audioDelayMs >= 1000) return failed("invalid_request", "The audio delay is 0 to 999 ms");
@@ -212,6 +260,11 @@ Error writeAvMarker(const QString& path, int seconds, int audioDelayMs, int audi
         frame->format = AV_PIX_FMT_YUVJ420P; frame->width = width; frame->height = height;
         if (av_frame_get_buffer(frame, 0) < 0) return failed("av_marker_encoder", "Cannot allocate a frame");
         for (int y = 0; y < height; ++y) std::fill_n(frame->data[0] + qint64(y) * frame->linesize[0], width, uint8_t(flash ? 255 : 0));
+        if (moving && !flash) {
+            constexpr int bar = 48;
+            const int x = (index * 16) % (width - bar);
+            for (int y = 0; y < height; ++y) std::fill_n(frame->data[0] + qint64(y) * frame->linesize[0] + x, bar, uint8_t(255));
+        }
         for (int plane = 1; plane < 3; ++plane) for (int y = 0; y < height / 2; ++y) std::fill_n(frame->data[plane] + qint64(y) * frame->linesize[plane], width / 2, uint8_t(128));
         frame->pts = index;
         if (auto e = encode(video, videoStream, frame)) return e;

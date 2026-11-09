@@ -30,6 +30,9 @@ public:
         std::function<void(Operation, ClipboardPayload, std::function<void()> released)> admit;
         // Terminal cancel/failure without any upload.
         std::function<void(Operation)> finish;
+        // Saves a change the recording bar made to a remembered preference
+        // (#1364: the microphone toggle); optional.
+        std::function<void(const QJsonObject& preferences)> remember;
     };
     RecordingService(QString stagingRoot, Host, QObject* parent = nullptr);
     ~RecordingService() override;
@@ -89,6 +92,8 @@ private:
         bool captureStopped = false;
         // Capture capability survives silent export formats during review.
         bool capturedSystemAudio = false;
+        // #1364: the track also (or only) holds the microphone.
+        bool capturedMicrophone = false;
         // Which bound set the budget at prepare (disk_space or max_file_bytes), and after
         // a budget stop {reason, message, hint, budgetBytes, maxFileBytes, durationUs, freeBytes?, ...}.
         QString budgetLimit;
@@ -107,6 +112,14 @@ private:
     void handleEvent(const QJsonObject&);
     void stoppedOnBudget(Session&, const QJsonObject& observed = {});
     void prepareSession(const QJsonObject& params, JsonReply);
+    // What a capture reported it records: {audioSources: {system, microphone}}, or
+    // only audioEncoder from a backend that predates the microphone.
+    static void noteCaptured(Session&, const QJsonObject& result, bool required);
+    // The input a prepare (or the capabilities) asks about: the request's own
+    // device, else the one chosen in Settings, else the system default.
+    QString microphoneDevice(const QJsonObject& params) const;
+    // capabilities() with what the sound server offers right now.
+    QJsonObject withMicrophone(QJsonObject capabilities, const QJsonObject& microphones) const;
     // After the durable intent: a shell selection when needed, then the backend.
     void beginPrepare(quint64 generation);
     // A window target: the active external window or the identity asked for,
@@ -130,5 +143,8 @@ private:
     std::optional<Session> session_;
     quint64 generation_ = 0;
     bool stopping_ = false;
+    // The tray, dashboard and shortcut entry asks for the remembered microphone
+    // toggle; without a microphone it still prepares, with the toggle unavailable.
+    bool rememberedMicrophone_ = false;
 };
 }

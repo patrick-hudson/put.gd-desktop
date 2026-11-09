@@ -3,6 +3,7 @@
 #include "Overlays.h"
 #include "PortalScreenCast.h"
 #include "MutterScreenCast.h"
+#include "Microphones.h"
 #ifdef PUTGD_RECORD_KDE_SCREENCAST
 #include "KdeScreencast.h"
 #endif
@@ -84,6 +85,18 @@ private:
     QString staging_, workingClip_;
     qint64 durationUs_ = 0;
     bool audioCaptured_ = false;
+    // #1364: what the clip's audio track holds, the input the session resolved
+    // at prepare, and the meter's open microphone before Record. The device is
+    // open only while the bar's toggle is on and closed when the capture ends.
+    bool capturedSystem_ = false, capturedMicrophone_ = false;
+    MicrophoneChoice microphone_;
+    MicrophoneMonitor monitor_;
+    QTimer levelTimer_;
+    void updateMicrophoneMonitor();
+    void closeMicrophone();
+    // Reads what the finished capture recorded.
+    void noteCaptured();
+    QJsonObject audioSources() const { return {{"system", capturedSystem_}, {"microphone", capturedMicrophone_}}; }
     bool prepared_ = false, recorded_ = false, overlayExcluded_ = true, cancelled_ = false, starting_ = false;
     // recording.overlay {visible: false} keeps the bar hidden across state changes until raise.
     bool barHidden_ = false;

@@ -1,5 +1,6 @@
 #include "core/ByteSize.h"
 #include "Settings.h"
+#include "RecordingModel.h"
 #include "UploadNaming.h"
 #include <QDir>
 #include <QJsonArray>
@@ -262,7 +263,7 @@ Error Settings::validate(const QJsonObject& original, const ProfileValidator& va
         return invalid("/retention/logBytes", ByteSize::labels("Log storage is 1 MiB to 1 GiB."));
     const auto preferences = doc["preferences"].toObject();
     QStringList preferenceKeys{"notifications", "launchAtLogin"};
-    for (const auto* optional : {"uploadClipboardBehavior", "regionSelectionMode", "recordingFrameRate", "unlockCredentialsAtStartup", "editorRecentColors", "diagnostics", "appearance", "updates", "fileManagerFolders", "fileManagerMenu"})
+    for (const auto* optional : {"uploadClipboardBehavior", "regionSelectionMode", "recordingFrameRate", "recordingMicrophone", "recordingMicrophoneDevice", "recordingClickHighlights", "unlockCredentialsAtStartup", "editorRecentColors", "diagnostics", "appearance", "updates", "fileManagerFolders", "fileManagerMenu"})
         if (preferences.contains(optional)) preferenceKeys.append(optional);
     if (!doc["preferences"].isObject() || !keys(preferences, preferenceKeys) ||
         !preferences["notifications"].isBool() || !preferences["launchAtLogin"].isBool())
@@ -313,6 +314,12 @@ Error Settings::validate(const QJsonObject& original, const ProfileValidator& va
         return invalid("/preferences/regionSelectionMode", "Choose live or screenshot_first for region selection.");
     if (preferences.contains("recordingFrameRate") && !(integer(preferences["recordingFrameRate"], 30, 30) || integer(preferences["recordingFrameRate"], 60, 60)))
         return invalid("/preferences/recordingFrameRate", "Choose 30 or 60 frames per second for recordings.");
+    if (preferences.contains("recordingMicrophone") && !preferences["recordingMicrophone"].isBool())
+        return invalid("/preferences/recordingMicrophone", "The recording microphone toggle is true or false.");
+    if (preferences.contains("recordingMicrophoneDevice") && !recording::validMicrophoneDevice(preferences["recordingMicrophoneDevice"]))
+        return invalid("/preferences/recordingMicrophoneDevice", "The recording microphone is the name of an input device, at most 256 characters; leave it empty for the system default.");
+    if (preferences.contains("recordingClickHighlights") && !preferences["recordingClickHighlights"].isBool())
+        return invalid("/preferences/recordingClickHighlights", "Click highlights in recordings are true or false.");
     if (preferences.contains("fileManagerFolders") && !choice(preferences["fileManagerFolders"], {"zip", "files"}))
         return invalid("/preferences/fileManagerFolders", "Choose zip or files for folders uploaded from a file manager.");
     if (preferences.contains("fileManagerMenu") && !preferences["fileManagerMenu"].isBool())
@@ -389,6 +396,9 @@ Settings Settings::fromValidated(const QJsonObject& original) {
     settings.uploadClipboardBehavior = doc["preferences"].toObject()["uploadClipboardBehavior"].toString("each_link");
     settings.regionSelectionMode = doc["preferences"].toObject()["regionSelectionMode"].toString("live");
     settings.recordingFrameRate = doc["preferences"].toObject()["recordingFrameRate"].toInt(30);
+    settings.recordingMicrophone = doc["preferences"].toObject()["recordingMicrophone"].toBool(false);
+    settings.recordingMicrophoneDevice = doc["preferences"].toObject()["recordingMicrophoneDevice"].toString();
+    settings.recordingClickHighlights = doc["preferences"].toObject()["recordingClickHighlights"].toBool(false);
     settings.appearanceTheme = doc["preferences"].toObject()["appearance"].toObject()["theme"].toString("system");
     settings.notifications = doc["preferences"].toObject()["notifications"].toBool();
     settings.launchAtLogin = doc["preferences"].toObject()["launchAtLogin"].toBool();

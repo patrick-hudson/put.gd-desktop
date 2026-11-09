@@ -406,7 +406,7 @@ Error driveVideo(const QString& path, Graph& graph, qint64 fromUs, qint64 untilU
 }
 
 Error exportClip(const ExportRequest& request, ExportResult& result, const std::atomic_bool& cancelled, const std::function<void(double)>& progress) {
-    const bool wantAudio = request.config.audio.system && !request.config.silent();
+    const bool wantAudio = request.config.audio.any() && !request.config.silent();
     Input input;
     if (auto e = input.open(request.input, wantAudio)) return e;
     debugLog(QStringLiteral("export %1 wantAudio=%2 audioIndex=%3 streams=%4").arg(request.config.format).arg(wantAudio).arg(input.audioIndex).arg(input.format->nb_streams));

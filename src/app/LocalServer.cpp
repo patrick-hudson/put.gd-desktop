@@ -64,7 +64,7 @@ int LocalServer::replyDeadlineMs(const QString& method) {
  constexpr int base=15000;
  // A record toggle can stop the helper through action.invoke as well.
  if(method=="recording.stop"||method=="action.invoke")return recording::helperStopMs+base;
- if(QStringList{"recording.capabilities","recording.prepare","recording.select","recording.start","recording.pause","recording.resume","recording.raise","recording.overlay","recording.preview","recording.review"}.contains(method))return recording::helperCommandMs+base;
+ if(QStringList{"recording.capabilities","recording.microphones","recording.prepare","recording.select","recording.start","recording.pause","recording.resume","recording.raise","recording.overlay","recording.preview","recording.review"}.contains(method))return recording::helperCommandMs+base;
  // Reading the logs and compressing up to 20 MiB stays well inside 45 s; an
  // upload adds the destination test and the upload itself (#123).
  if(method=="diagnostics.bundle")return diagnosticsBundleReplyMs;
@@ -161,8 +161,9 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
  // Screen recording: one session, backend-neutral; the service validates semantics.
  if(method=="recording.capabilities") {if(!p.isEmpty())reply(invalid(),{});else operations_.recordingCommand("capabilities",{},reply);return;}
  if(method=="recording.windows") {if(!p.isEmpty())reply(invalid(),{});else operations_.recordingCommand("windows",{},reply);return;}
+ if(method=="recording.microphones") {if(!fields(p,{},{"device"})||(p.contains("device")&&!string(p,"device",256))){reply(invalid(),{});return;}operations_.recordingCommand("microphones",p,reply);return;}
  if(method=="recording.prepare") {
-  if(!fields(p,{"target","format"},{"codec","fps","adaptiveFps","audio","maxEdge"})||!p["target"].isObject()||!string(p,"format",8)||(p.contains("codec")&&!string(p,"codec",8))||(p.contains("audio")&&!p["audio"].isObject())||(p.contains("adaptiveFps")&&!p["adaptiveFps"].isBool())){reply(invalid(),{});return;}
+  if(!fields(p,{"target","format"},{"codec","fps","adaptiveFps","audio","clickHighlights","maxEdge"})||!p["target"].isObject()||!string(p,"format",8)||(p.contains("codec")&&!string(p,"codec",8))||(p.contains("audio")&&!p["audio"].isObject())||(p.contains("adaptiveFps")&&!p["adaptiveFps"].isBool())||(p.contains("clickHighlights")&&!p["clickHighlights"].isBool())){reply(invalid(),{});return;}
   operations_.recordingCommand("prepare",p,reply);return;
  }
  if(QStringList{"recording.start","recording.pause","recording.resume","recording.stop","recording.cancel","recording.inspect","recording.raise"}.contains(method)) {
