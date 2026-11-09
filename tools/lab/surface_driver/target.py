@@ -8,6 +8,7 @@ from contextlib import contextmanager
 from functools import wraps
 import os
 from pathlib import Path
+import re
 import shlex
 import selectors
 import stat
@@ -373,7 +374,10 @@ class Target:
         try:
             return json.loads(self.session(self.prefix() + "python3 - <<'SD_PY'\n" + code + 'SD_PY\n', timeout + 10))
         except (lab.LabError, subprocess.TimeoutExpired, ValueError) as error:
-            raise RecipeBlocked('target session command unavailable: ' + type(error).__name__) from error
+            # Only the fixed exit status crosses the evidence boundary: 255 is SSH itself.
+            status = re.search(r'\(exit (\d+)\)', str(error))
+            raise RecipeBlocked('target session command unavailable: ' + type(error).__name__ +
+                                (' exit ' + status[1] if status else '')) from error
 
     def identity(self):
         code="""import json,os,platform

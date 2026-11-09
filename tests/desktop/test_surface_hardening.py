@@ -66,6 +66,28 @@ class LeaseSafety(unittest.TestCase):
                 target.heartbeat(force=True)
 
 
+class SessionCommandFailure(unittest.TestCase):
+    """The receipt keeps a fixed reason and exit status, never guest output (#1214)."""
+
+    def blocked(self, error):
+        target = Target.__new__(Target)
+        target.heartbeat = lambda **_: None
+        target.prefix = lambda: ''
+        target.session = Mock(side_effect=error)
+        target.physical = None
+        with self.assertRaises(RecipeBlocked) as raised:
+            target.execute('true')
+        return str(raised.exception)
+
+    def test_ssh_exit_status_is_recorded_without_stderr(self):
+        reason = self.blocked(lab.LabError('ssh failed (exit 255)'))
+        self.assertEqual(reason, 'target session command unavailable: LabError exit 255')
+
+    def test_timeout_has_no_exit_status(self):
+        self.assertEqual(self.blocked(subprocess.TimeoutExpired('ssh', 5)),
+                         'target session command unavailable: TimeoutExpired')
+
+
 class GuestPeerSafety(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory(prefix='sd-qmp-')

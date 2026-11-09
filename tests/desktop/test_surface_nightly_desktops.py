@@ -401,6 +401,83 @@ class NightlyTests(unittest.TestCase):
                 lock.return_value.release.assert_called_once()
                 self.assertFalse(slot.exists())
 
+    def lost_session_row(self, errors):
+        """Run a row whose first cell fails with the given cleanup errors (#1214)."""
+        from tools.lab import lab, nightly_desktop_guest as guest
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root/'putgd-lab/locks').mkdir(parents=True)
+            pins = root/'pins'
+            pins.write_text('localhost ssh-ed25519 synthetic-public-pin\n')
+            artifacts = root/'artifacts'
+            (artifacts/'packages').mkdir(parents=True)
+            package = artifacts/'packages/putgd-test-test.deb'
+            package.write_bytes(b'synthetic package')
+            identity = dict(driver=BUILD, gitCommit=BUILD, packages={package.name:nightly.digest(package)})
+            row = dict(name='Test', profile='test', knownHosts=str(pins), bootstrapKey='unused',
+                       package='deb', asset='test.deb', desktop='test', golden='/unused/golden')
+            cells = []
+            def command(argv, **kwargs):
+                if argv[:2] == ['git', 'rev-parse']:
+                    return BUILD
+                if 'launch' in argv:
+                    run = Path(argv[argv.index('--run')+1])
+                    run.mkdir(parents=True)
+                    (run/'state.json').write_text('{}')
+                if '-m' in argv:
+                    cells.append(Path(argv[argv.index('--out')+1]).name)
+                    target = Path(argv[argv.index('--out')+1])
+                    target.mkdir()
+                    (target/'receipt.json').write_text(json.dumps(dict(environment=dict(cleanup_errors=errors))))
+            observed = dict(nightly.cell(assertion='private target cleanup failed'),
+                            observations=['target session command unavailable: LabError exit 255'])
+            with patch.object(nightly, 'ROOT', root), patch.object(nightly.Path, 'home', return_value=root), \
+                    patch.object(nightly, 'await_host', return_value=0), patch.object(nightly, 'preflight', return_value={}), \
+                    patch.object(nightly, 'command', side_effect=command), patch.object(nightly, 'verdict', return_value=observed), \
+                    patch.object(guest, 'prepare', return_value=root/'profiles'), \
+                    patch.object(lab, 'state', return_value=dict(id='test', golden_sha256='a'*64)), \
+                    patch.object(lab, 'reset'), patch.object(nightly, 'guest_clients_live', return_value=False), \
+                    patch.object(nightly, 'retire') as retire, patch('tools.lab.desktop_lock.Desktop') as lock:
+                lock.return_value.acquire.return_value = {}
+                lock.return_value.release.return_value = {}
+                lock.return_value.heartbeat.return_value = {}
+                lock.return_value.status.return_value = dict(state='free')
+                records = nightly.worker_run(dict(host='d69', rows=[row]), 'vtest', identity, artifacts, root/'output', 10**6)
+            return records[0], cells, retire, (root/'putgd-lab/locks/tier1-guest.lock.d').exists()
+
+    def test_lost_session_stops_the_row_with_the_first_failure(self):
+        record, cells, retire, slot = self.lost_session_row(['resident quit transport unavailable; private session retained'])
+        self.assertEqual(cells, ['region_upload-1'])
+        reason = record['notRunReason']
+        self.assertIn('guest session lost in region_upload attempt 1: target session command unavailable', reason)
+        self.assertEqual(record['stoppedEarly']['flow'], 'region_upload')
+        self.assertEqual(record['cells']['region_upload']['status'], 'not_run')
+        self.assertEqual(record['cells']['region_upload']['assertion'], reason)
+        untouched = [v for k, v in record['cells'].items() if k != 'region_upload']
+        self.assertTrue(all(v['status'] == 'not_run' and not v.get('attempts') and v['assertion'].endswith(reason) for v in untouched))
+        retire.assert_called_once()
+        self.assertFalse(slot)
+        self.assertNotIn('cleanupBlocked', record)
+
+    def test_lost_session_that_also_left_unsafe_cleanup_stays_retained(self):
+        record, cells, retire, slot = self.lost_session_row(['resident quit transport unavailable; private session retained',
+                                                             'previous clipboard restoration unavailable; private session retained'])
+        self.assertEqual(len(cells), 1)
+        retire.assert_not_called()
+        self.assertTrue(slot and record['cleanupBlocked'])
+        self.assertTrue(record['notRunReason'].startswith('guest session lost in region_upload attempt 1'))
+
+    def test_only_an_unquittable_resident_counts_as_a_lost_session(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            out = Path(tmp)
+            self.assertFalse(nightly.lost_guest_session(out))
+            (out/'receipt.json').write_text('not json')
+            self.assertFalse(nightly.lost_guest_session(out))
+            for errors, lost in (([], False), (['private session root cleanup refused'], False),
+                                 (['resident quit was rejected; private session retained'], True)):
+                (out/'receipt.json').write_text(json.dumps(dict(environment=dict(cleanup_errors=errors))))
+                self.assertEqual(nightly.lost_guest_session(out), lost)
+
     def test_wait_does_not_outlive_worker_deadline(self):
         with tempfile.TemporaryDirectory() as tmp:
             clock = [0]

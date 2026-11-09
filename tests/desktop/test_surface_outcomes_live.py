@@ -301,6 +301,25 @@ class LiveOutcomes(unittest.TestCase):
         ctx.click.assert_any_call('text:Revoke link…',window='history')
         ctx.note.assert_called_once_with('revocation_count=1')
 
+    def test_unresolved_s3_delete_retries_through_the_app_not_the_first_delete_button(self):
+        details=[{'id':'owned','remoteStatus':'unknown','deleteOperationId':'delete-1'},
+                 {'id':'owned','remoteStatus':'unknown','deleteOperationId':'delete-1'},
+                 {'id':'owned','remoteStatus':'removed','linkAvailable':False}]
+        def wait(fn,*a,**kw):
+            while not (value:=fn()):pass
+            return value
+        def call(method,params=None):
+            if method=='history.detail':return details.pop(0)
+            return {}
+        ctx=SimpleNamespace(destination='s3',profile={},click=Mock(),focus=Mock(),scroll=Mock(),frame=Mock(),note=Mock(),
+                            geometry=Mock(return_value=dict(x=0,y=0,width=1280,height=760)),
+                            wait=wait,call=Mock(side_effect=call),expect=lambda ok,note:self.assertTrue(ok,note))
+        with patch.object(outcomes_live.outcomes,'_history'):
+            outcomes_live._cleanup(ctx,{'id':'owned'})
+        ctx.call.assert_any_call('delete.retry',{'id':'delete-1'})
+        ctx.click.assert_not_called()
+        ctx.note.assert_any_call('deletion_count=1')
+
     def test_cleanup_ownership_rejects_foreign_receipts_before_any_input(self):
         def expect(ok,note):
             if not ok:raise RecipeFailed(note)

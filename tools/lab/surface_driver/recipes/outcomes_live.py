@@ -31,6 +31,14 @@ def _owned(ctx, service, detail, oid):
                    'cleanup cannot leave the newly created Proton folder')
 
 
+def _retry_deletion(ctx, current):
+    """An unresolved delete leaves Retry deletion, not the first-delete button."""
+    ctx.call('delete.retry', {'id': current['deleteOperationId']})
+    ctx.note('deletion_retried=1')
+    return ctx.wait(lambda: (d if (d := ctx.call('history.detail', {'id': current['id']})).get('remoteStatus')
+                             in ('removed', 'already_missing') else None), 'retried deletion settled', timeout=90)
+
+
 def _cleanup(ctx, detail):
     """Reuse #687's exact-row UI deletion; Proton uses its supported revoke UI."""
     outcomes._history(ctx, detail)
@@ -61,20 +69,24 @@ def _cleanup(ctx, detail):
         ctx.expect(final['shareStatus'] == 'revoked' and not final['linkAvailable'], 'History confirms link revoked')
         ctx.note('revocation_count=1')
     else:
-        # Qt 6.4 does not expose this button's objectName. The exact caption
-        # still binds the unique visible owned inspector action.
-        ctx.click('text:Delete from destination…', window='history')
-        history._wait_window(ctx, 'confirmAction')
-        ctx.call('ui.history', {'action': 'copyDeletionDetails'})
-        prepared = json.loads(ctx.clipboard_text())
-        ctx.expect([t['historyId'] for t in prepared['targets']] == [detail['id']]
-                   and bool(prepared['acknowledgement']), 'deletion confirms exact owned history ID and effects')
-        ctx.frame('delete-exact-owned-object', window='confirmAction')
-        history._confirm_button(ctx, 'confirmAction', 'Delete 1 file')
-        final = ctx.wait(lambda: (d if (d := ctx.call('history.detail', {'id': detail['id']})).get('remoteStatus')
-                                 in ('removed', 'already_missing', 'failed', 'unknown', 'changed', 'version_retained',
-                                     'hidden_version_retained', 'unsupported_safe_removal') else None),
-                         'UI deletion settled', timeout=180)
+        current = ctx.call('history.detail', {'id': detail['id']})
+        if current.get('deleteOperationId') and current.get('remoteStatus') in ('failed', 'unknown'):
+            final = _retry_deletion(ctx, current)
+        else:
+            # Qt 6.4 does not expose this button's objectName. The exact caption
+            # still binds the unique visible owned inspector action.
+            ctx.click('text:Delete from destination…', window='history')
+            history._wait_window(ctx, 'confirmAction')
+            ctx.call('ui.history', {'action': 'copyDeletionDetails'})
+            prepared = json.loads(ctx.clipboard_text())
+            ctx.expect([t['historyId'] for t in prepared['targets']] == [detail['id']]
+                       and bool(prepared['acknowledgement']), 'deletion confirms exact owned history ID and effects')
+            ctx.frame('delete-exact-owned-object', window='confirmAction')
+            history._confirm_button(ctx, 'confirmAction', 'Delete 1 file')
+            final = ctx.wait(lambda: (d if (d := ctx.call('history.detail', {'id': detail['id']})).get('remoteStatus')
+                                     in ('removed', 'already_missing', 'failed', 'unknown', 'changed', 'version_retained',
+                                         'hidden_version_retained', 'unsupported_safe_removal') else None),
+                             'UI deletion settled', timeout=180)
         ctx.expect(final['remoteStatus'] in ('removed', 'already_missing') and not final['linkAvailable'],
                    'History confirms object removal')
         ctx.note('deletion_count=1')
