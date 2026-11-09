@@ -49,8 +49,9 @@ Part of [Screen recording](../recording.md).
   subsequent stop,
   progress and helper-initiated stop events, crash, silence, wrong build,
   export timeout, broken probes, missing helper) and, when built, the product
-  `putgd-record`: its probe JSON, the identity handshake, the explicit
-  `capture_not_implemented` refusal and its normal exit.
+  `putgd-record`: its probe JSON, the identity handshake, a direct `prepare`
+  that a real X11 session accepts and a headless one refuses with
+  `capture_unavailable` or `recording_target`, and its normal exit.
 - `tests/integration/test_mcp.py`: tool → method forwarding parity, the
   preview image route against the synthetic peer, a `recording.stop` that the
   peer answers after 16 s still reaching the caller through the production CLI,
