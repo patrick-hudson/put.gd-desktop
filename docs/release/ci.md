@@ -194,7 +194,13 @@ source export compiled on Ubuntu 24.04 has its own compiler cache, saved even wh
 restore them. Superseded entries are pruned by the existing cache maintenance.
 No application build directory or version manifest is reused. AppImage's required
 `appimage-sources` job caches exact Ubuntu source downloads and revalidates their
-source identity and checksums. It runs alongside image checks and SBOM generation.
+source identity and checksums. Its key is the SHA-256 of the image's Ubuntu source
+packages and versions, read from the AppImage receipt, so editing a description or a
+pin that selects no Ubuntu source doesn't change it. With no entry for that key it
+restores the newest tree and downloads only what is missing. Each package version has
+its own directory, checked against its `.dsc` on every restore: a copy that fails is
+downloaded again, and versions the image no longer bundles are dropped before saving.
+It runs alongside image checks and SBOM generation.
 Its tarball uses gzip level 1; installers keep their existing compression.
 
 Downstream package checks download installers and receipts only. Debug symbols
@@ -398,7 +404,8 @@ reads the newest one on a ref. Three rules keep the total bounded:
   callers grant them, and the job runs only on `nightly` pushes). It deletes, by id:
   every entry of a rolling family (`ccache-*` and `ctest-cost-*` by
   `<run>-<attempt>` suffix, `qt-asan-core-<distro>-`, `putgd-pkgs-v1-*` by ISO
-  week, and `grype-db-v6-*` by database) older than the newest on the
+  week, `grype-db-v6-*` by database, and `appimage-distro-sources-v1-*` whatever
+  its package hash) older than the newest on the
   same ref, and every cache of a closed pull request or deleted branch. On `main`,
   `nightly` and `v*` tags it deletes only those superseded entries. Merging a
   pull request pushes to `nightly`, so its caches go with the next run. Exact-key
