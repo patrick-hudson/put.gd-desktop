@@ -141,7 +141,10 @@ in S3. On 2026-11-02, with Patrick's approval, the two older Fedora 45 goldens w
 deleted from the builders: `-852d34e885c1`, which never had a complete S3 image, so
 no copy remains, and the 2026-10-29 cloud golden, which remains in S3 and in the
 Boat snapshot. Deleting `-852d34e885c1` was an approved exception to the two-copies
-rule above, made knowing it can't be restored. The Fedora 44 evaluation goldens remain `f44`-only.
+rule above, made knowing it can't be restored. The Fedora 44 v3 golden stays `f44`-only, also
+an approved exception (2026-11-09): it is an optional row and can be rebuilt from its
+source tag. Fedora 44 v1 and v2 were removed from `f44` on 2026-11-07, also approved exceptions
+to that rule, so no copy of either remains.
 
 **Which Fedora 45 golden counts for acceptance.** Since 2026-11-02 the Aurora
 Fedora 45 row in the [acceptance matrix](../testing/acceptance-matrix.md) uses
@@ -161,7 +164,7 @@ and the matrix has been updated.
 | `aurora-testing-45.20261022.1-ec2-20261029-a1` (Fedora 45 cloud restore base, Plasma 6.7.5) | `a71cdd0cc8b485ee7e384670245293dbafd7fe46b8cbb05b4fbccf0d1f0d8128` | removed 2026-11-02; S3 only | removed 2026-11-02; S3 only |
 | `aurora-testing-45.20261022.1-852d34e885c1` (Fedora 45 base, Plasma 6.7.5) | `33fedf977f1e0cb7e34b944700f1959f4da5c708fa85dbbc9879077af1278556` | removed 2026-11-02 | removed 2026-11-02; no copy remains |
 | `aurora-stable-44.20260908.1-v3-492c3f8945d1` (Fedora 44 base) | `6a2fb407830f95228bb06f4d20d7cd0bd1aec8ed937ef59430e50eb608b62c2d` | same name | none |
-| `aurora-stable-44.20260908.1-v2-af46889e2a54`, `-f9c006a376e1` (history) | see [Aurora VM](aurora-vm.md#goldens-on-f44) | same name | none |
+| `aurora-stable-44.20260908.1-v2-af46889e2a54`, `-f9c006a376e1` (history) | see [Aurora VM](aurora-vm.md#goldens-on-f44) | removed 2026-11-07; no copy remains | none |
 
 ### Probe-equipped Boat copies
 
