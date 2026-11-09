@@ -264,6 +264,10 @@ jobs:
         # Keep signed distro metadata and archive/security failover without adding
         # a ~650-package snapshot to the repository's shared 10 GB cache (#500).
         run: sudo python3 tools/ci/hosted_apt_mirrors.py
+      - name: Install only the packages the build names
+        # Recommended packages (eslint, gdal and the like) added hundreds of installs.
+        # The image's contents come from the named build inputs below.
+        run: echo 'APT::Install-Recommends "false";' | sudo tee /etc/apt/apt.conf.d/99putgd-no-recommends
       - name: Standard build dependencies
         env:
           PUTGD_PKG_LABEL: appimage
