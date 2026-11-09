@@ -447,13 +447,13 @@ class NightlyTests(unittest.TestCase):
 
     def test_lost_session_stops_the_row_with_the_first_failure(self):
         record, cells, retire, slot = self.lost_session_row(['resident quit transport unavailable; private session retained'])
-        self.assertEqual(cells, ['region_upload-1'])
+        self.assertEqual(cells, ['idle_memory-1'])
         reason = record['notRunReason']
-        self.assertIn('guest session lost in region_upload attempt 1: target session command unavailable', reason)
-        self.assertEqual(record['stoppedEarly']['flow'], 'region_upload')
-        self.assertEqual(record['cells']['region_upload']['status'], 'not_run')
-        self.assertEqual(record['cells']['region_upload']['assertion'], reason)
-        untouched = [v for k, v in record['cells'].items() if k != 'region_upload']
+        self.assertIn('guest session lost in idle_memory attempt 1: target session command unavailable', reason)
+        self.assertEqual(record['stoppedEarly']['flow'], 'idle_memory')
+        self.assertEqual(record['cells']['idle_memory']['status'], 'not_run')
+        self.assertEqual(record['cells']['idle_memory']['assertion'], reason)
+        untouched = [v for k, v in record['cells'].items() if k != 'idle_memory']
         self.assertTrue(all(v['status'] == 'not_run' and not v.get('attempts') and v['assertion'].endswith(reason) for v in untouched))
         retire.assert_called_once()
         self.assertFalse(slot)
@@ -462,7 +462,7 @@ class NightlyTests(unittest.TestCase):
     def test_lost_session_after_a_passing_recipe_reports_the_cleanup_failure(self):
         record, _, _, _ = self.lost_session_row(['resident quit transport unavailable; private session retained'],
                                                 rows=[{'functional': 'passed', 'note': 'operationId=unrelated'}])
-        self.assertTrue(record['notRunReason'].endswith('region_upload attempt 1: private target cleanup failed'))
+        self.assertTrue(record['notRunReason'].endswith('idle_memory attempt 1: private target cleanup failed'))
         self.assertNotIn('unrelated', record['notRunReason'])
 
     def test_lost_session_that_also_left_unsafe_cleanup_stays_retained(self):
@@ -471,7 +471,7 @@ class NightlyTests(unittest.TestCase):
         self.assertEqual(len(cells), 1)
         retire.assert_not_called()
         self.assertTrue(slot and record['cleanupBlocked'])
-        self.assertTrue(record['notRunReason'].startswith('guest session lost in region_upload attempt 1'))
+        self.assertTrue(record['notRunReason'].startswith('guest session lost in idle_memory attempt 1'))
 
     def test_only_an_unquittable_resident_counts_as_a_lost_session(self):
         with tempfile.TemporaryDirectory() as tmp:
