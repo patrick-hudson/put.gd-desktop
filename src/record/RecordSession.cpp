@@ -73,6 +73,7 @@ RecordSession::RecordSession(QObject* parent) : QObject(parent), pipeline_(this)
         barTimer_.stop();
         bounds_.hideAll();
         if (bar_) bar_->hide();
+        releaseAcquisition();
         emit event({{"event", "failed"}, {"error", error.toJson()}});
     });
     connect(&pipeline_, &RecordingPipeline::sourceLost, this, [this](Error error) { sourceLost(error); });

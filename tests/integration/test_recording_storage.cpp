@@ -6,6 +6,7 @@
 #include <QSignalSpy>
 #include <QTemporaryDir>
 #include <QtTest>
+#include <poll.h>
 #include <unistd.h>
 
 namespace putgd::record {
@@ -19,6 +20,8 @@ class RecordingStorageContract : public QObject {
     static constexpr qint64 MiB = 1LL << 20;
     static RecordingStorage healthy() { return {1536 * MiB, 1536 * MiB, 1234}; }
     static RecordingStorage low() { return {1180 * MiB, 1536 * MiB, 2345}; }
+    // A pipe's write end reports POLLERR once its read end is really closed.
+    static bool readerClosed(int writeEnd) { pollfd end{writeEnd, 0, 0}; return ::poll(&end, 1, 0) == 1 && (end.revents & POLLERR); }
     void setup(RecordSession& session, const QTemporaryDir& dir) {
         session.workingClip_ = dir.filePath("working.mkv");
         session.resolved_.rect = QRect(0, 0, 320, 240);
@@ -100,20 +103,28 @@ private slots:
         PUTGD_TRY_VERIFY_WITH_TIMEOUT(session.pipeline_.retainedUs() > 200000, 8000);
         session.showBar("recording"); QVERIFY(session.bar_->isVisible());
         // Stands in for the portal's PipeWire descriptor, the one part of the share visible without a compositor.
-        int share[2];QCOMPARE(::pipe(share),0);::close(share[1]);session.portalFd_=share[0];
+        int share[2];QCOMPARE(::pipe(share),0);session.portalFd_=share[0];
+        auto keepWriteEnd=qScopeGuard([&]{::close(share[1]);});
         int replies=0;Error stopError;
         session.stop([&](Error error,QJsonObject){stopError=error;++replies;});
         // A second Stop is refused while the first drains, and must leave the share in use alone.
         QString busy;session.stop([&](Error error,QJsonObject){busy=error.code;});
-        QCOMPARE(busy,QString("recording_busy"));QCOMPARE(session.portalFd_,share[0]);
+        QCOMPARE(busy,QString("recording_busy"));QCOMPARE(session.portalFd_,share[0]);QVERIFY(!readerClosed(share[1]));
         PUTGD_TRY_COMPARE(replies,1);QVERIFY2(!stopError,qPrintable(stopError.message));
-        QCOMPARE(session.portalFd_,-1);
+        QCOMPARE(session.portalFd_,-1);QVERIFY(readerClosed(share[1]));
         QVERIFY(session.recorded_);QVERIFY(session.review_&&session.review_->isVisible());QVERIFY(!session.bar_->isVisible());
         session.review_->hide();
         session.command("raise",{},[&](Error error,QJsonObject){QVERIFY(!error);++replies;});
         QCOMPARE(replies,2);QVERIFY(session.review_->isVisible());QVERIFY(!session.bar_->isVisible());
         session.command("overlay",{{"visible",true}},[](Error error,QJsonObject result){QVERIFY(!error);QVERIFY(!result["visible"].toBool());});
         session.showBar("paused");QVERIFY(!session.bar_->isVisible());
+    }
+    void pipelineFailureEndsTheShare() {
+        QTemporaryDir dir; RecordSession session; setup(session, dir);
+        int share[2]; QCOMPARE(::pipe(share), 0); session.portalFd_ = share[0];
+        auto keepWriteEnd = qScopeGuard([&] { ::close(share[1]); });
+        emit session.pipeline_.failed(Error{"recording_failed", "The encoder stopped", {}});
+        QCOMPARE(session.portalFd_, -1); QVERIFY(readerClosed(share[1]));
     }
     void automaticStop_data() {
         QTest::addColumn<bool>("paused");
