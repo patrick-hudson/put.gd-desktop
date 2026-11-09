@@ -14,6 +14,7 @@ root=$(cd "$here/../../.." && pwd)
 if [ "${1:-}" = --install ]; then
     shift
     export DEBIAN_FRONTEND=noninteractive
+    eval "${PUTGD_UBUNTU_MIRRORS:-}"
     apt-get update
     apt-get install -y --no-install-recommends pipewire-bin gstreamer1.0-tools libpipewire-0.3-dev \
         gcc g++ pkg-config qt6-base-dev
