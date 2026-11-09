@@ -56,7 +56,7 @@ if(BUILD_TESTING)
   include(cmake/TestsPlatform.cmake)
   # Helper-process, editor and IPC tests.
   include(cmake/TestsHelpers.cmake)
-  # The UI catalog, its references, the interface benchmarks and the GUI tests.
+  # The UI catalog, the interface benchmarks and the GUI tests.
   include(cmake/TestsGui.cmake)
   # Update, release link and small core unit tests.
   include(cmake/TestsUpdate.cmake)

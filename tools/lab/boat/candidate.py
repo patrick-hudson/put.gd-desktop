@@ -234,7 +234,7 @@ def recipe(target, packages, ci):
         script += step(linux, 'Build', {"matrix.distribution == '26.04' && 'ON' || 'OFF'": 'ON'})
         script += 'catalog_runtime=$(mktemp -d /tmp/pgc.XXXXXX)\n'
         script += 'python3 tools/diagnostics/check_socket_paths.py --socket "$catalog_runtime/putgd/session.sock" > /out/socket-preflight.json\n'
-        # CI renders the catalog inside CTest (ui_catalog_dark); a worker renders it directly.
+        # CI renders the catalog inside CTest (ui_catalog_render); a worker renders it directly.
         script += ('mkdir -p build/ui-catalog\n'
                    'QT_QPA_PLATFORM=offscreen XDG_RUNTIME_DIR="$catalog_runtime" build/dev/putgd-ui-catalog build/ui-catalog\n'
                    'python3 tools/lab/surface_map/surface_map.py check --catalog build/ui-catalog\n')

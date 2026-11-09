@@ -205,7 +205,7 @@ QPixmap steadyGrab(QWidget& root,const std::function<void()>& prepare={}){
  qWarning("Capture of %s did not settle",qPrintable(root.objectName()));return frame;
 }
 // The synthetic data folders. Their paths show in Settings, so reference
-// renders (tools/ci/check_catalog_references.py) name a fixed, empty parent in
+// renders (tools/ci/check_catalog_render.py) name a fixed, empty parent in
 // PUTGD_CATALOG_DATA_DIR; otherwise each is a new temporary directory.
 class DataDir {
 public:
