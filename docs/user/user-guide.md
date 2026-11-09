@@ -57,7 +57,7 @@ Recording needs an H.264 encoder. When none works, put.gd says so and what to in
 - **Fedora**: Fedora installs a placeholder OpenH264 library that the RPM's weak dependencies do not replace. Replace it explicitly with Cisco's: `sudo dnf install openh264 gstreamer1-plugin-openh264`. The one-line installer runs this codec step for you when the repository is enabled and the placeholder remains or either codec package is missing. If the `fedora-cisco-openh264` repository was turned off, it prints the commands instead: first run `sudo dnf config-manager setopt fedora-cisco-openh264.enabled=1`, then the codec install.
 - **AppImage**: it carries its own recorder. It encodes with your graphics driver where it can (VA-API or NVIDIA) and otherwise with its bundled x264 and x265, so it needs no setup.
 
-Hardware and software encoding are equally smooth at 60 fps. On KDE Plasma, a notification with a countdown bar can make a 60 fps recording less smooth while it is on screen, about 50 frames per second in testing, with either encoder.
+In testing on an AMD Radeon 740M with KDE Plasma, hardware and software encoding were equally smooth at 60 fps. On that setup, a notification with a countdown bar made a 60 fps recording less smooth while it was on screen, about 50 frames per second, with either encoder. Other GPUs may differ.
 
 ## Destinations and credentials
 
