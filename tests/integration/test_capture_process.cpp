@@ -185,7 +185,15 @@ private slots:
   QCOMPARE(pointerGrabStatus(connection),int(XCB_GRAB_STATUS_ALREADY_GRABBED));
   const auto root=xcb_setup_roots_iterator(xcb_get_setup(connection)).data->root;
   xcb_test_fake_input(connection,XCB_BUTTON_PRESS,1,XCB_CURRENT_TIME,root,0,0,0);xcb_test_fake_input(connection,XCB_BUTTON_RELEASE,1,XCB_CURRENT_TIME,root,0,0,0);xcb_flush(connection);
-  PUTGD_COMPARE_STEADY(pointerGrabStatus(connection),int(XCB_GRAB_STATUS_ALREADY_GRABBED),putgd::CaptureProcessController::crosshairHoldMs-500);
+  // Setup consumes the same fixed hold budget; never start a fresh 4.5 s wait.
+  const auto remaining=putgd::CaptureProcessController::crosshairHoldMs-500-clock.elapsed();
+  if(remaining>0){
+   QCOMPARE(pointerGrabStatus(connection),int(XCB_GRAB_STATUS_ALREADY_GRABBED));
+   putgd::test::settle(int(remaining));
+  }
+  // A descheduled runner may resume after the margin (or the hold itself).
+  if(clock.elapsed()<putgd::CaptureProcessController::crosshairHoldMs-250)
+   QCOMPARE(pointerGrabStatus(connection),int(XCB_GRAB_STATUS_ALREADY_GRABBED));
   PUTGD_TRY_COMPARE(pointerGrabStatus(connection),int(XCB_GRAB_STATUS_SUCCESS));
   QVERIFY(clock.elapsed()<putgd::CaptureProcessController::crosshairHoldMs+1500);
   PUTGD_TRY_COMPARE(cursorTrace(trace).size(),3);

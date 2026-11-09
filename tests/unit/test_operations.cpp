@@ -1613,7 +1613,10 @@ private slots:
   auto drain=qScopeGuard([&]{provider->deferUploads=false;for(auto complete:provider->completions)complete();provider->completions.clear();});
   QString batch,action;operations.invoke("clipboard",[&](Error e,QJsonObject r){QVERIFY(!e);batch=r["operationId"].toString();});PUTGD_TRY_COMPARE(provider->completions.size(),2);
   source.payload=textPayload();operations.invoke("clipboard",[&](Error e,QJsonObject r){QVERIFY(!e);action=r["operationId"].toString();});PUTGD_TRY_COMPARE(source.reads,2);
-  PUTGD_TRY_COMPARE(operations.activeObservations().size(),2);putgd::test::settle(150);PUTGD_TRY_COMPARE(provider->completions.size(),2);
+  // Both occupied slots are held by the batch. Its next item and the new
+  // action must be inside acquire(), not merely observed during acquisition.
+  PUTGD_TRY_COMPARE(operations.diagnostics()["uploadSlots"].toObject()["waiting"].toInt(),2);
+  PUTGD_TRY_COMPARE(provider->completions.size(),2);
   provider->completions.takeFirst()();PUTGD_TRY_COMPARE(provider->requests.size(),3);QVERIFY2(provider->requests[2].artifact.path.contains(action),qPrintable(provider->requests[2].artifact.path));
   provider->deferUploads=false;while(!provider->completions.isEmpty())provider->completions.takeFirst()();
   PUTGD_TRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(),0);QCOMPARE(provider->uploads.load(),5);
