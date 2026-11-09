@@ -874,6 +874,10 @@ private slots:
   QList<QPoint> jitter;for(int x=0;x<=200;++x)jitter.append(QPoint(x,50+(x%2?1:-1)));
   const auto smooth=smoothStroke(jitter);QCOMPARE(smooth.first(),jitter.first());QCOMPARE(smooth.last(),jitter.last());QVERIFY(smooth.size()<20);
   for(const auto& p:smooth)QVERIFY(std::abs(p.y()-50)<=1);
+  // A stroke over the limit is thinned, never cut: its end stays where it was drawn.
+  QList<QPoint> long_;for(int i=0;i<3*maximumPenPoints;++i)long_.append(QPoint(i%100,i/100));
+  Shape stroke;stroke.kind=Shape::Kind::Pen;stroke.points=long_;const auto id=doc.add(stroke);
+  QVERIFY(doc.find(id)->points.size()<=maximumPenPoints);QCOMPARE(doc.find(id)->points.first(),long_.first());QCOMPARE(doc.find(id)->points.last(),long_.last());
  }
  void canvasDrawsStepsPenEllipsesAndLines(){
   EditDocument doc(noise({400,300},61));EditorCanvas canvas(doc);canvas.resize(832,632);canvas.show();QVERIFY(putgd::test::waitForWindowExposed(&canvas));

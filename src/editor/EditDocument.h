@@ -52,6 +52,8 @@ QPainterPath stepLabelPath(const Shape&);
 // Light smoothing for a hand-drawn stroke: a moving average, then points
 // closer than half a pixel to the simplified line are dropped.
 QList<QPoint> smoothStroke(const QList<QPoint>&);
+// At most maximumPenPoints, thinning the interior and keeping both ends.
+QList<QPoint> limitStroke(QList<QPoint>);
 // Scales a pen stroke from its current extent onto `box`.
 QList<QPoint> fitStroke(const QList<QPoint>&,const QRect& from,const QRect& box);
 // The pen path through a stroke's points (quadratic segments through midpoints).

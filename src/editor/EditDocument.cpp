@@ -93,6 +93,12 @@ void simplify(const std::vector<QPointF>& points,size_t first,size_t last,double
  if(worst>tolerance){keep[index]=true;simplify(points,first,index,tolerance,keep);simplify(points,index,last,tolerance,keep);}
 }
 }
+QList<QPoint> limitStroke(QList<QPoint> points){
+ // Thin the interior evenly rather than cutting the end: a long live drag
+ // keeps following the pointer, and both ends stay where they were drawn.
+ while(points.size()>maximumPenPoints){QList<QPoint> fewer;fewer.reserve(points.size()/2+2);for(qsizetype i=0;i<points.size();++i)if(i%2==0||i==points.size()-1)fewer.append(points[i]);points=std::move(fewer);}
+ return points;
+}
 QList<QPoint> smoothStroke(const QList<QPoint>& raw){
  if(raw.size()<3)return raw;
  // A five-point moving average (shorter at the ends) evens out hand jitter;
@@ -107,9 +113,7 @@ QList<QPoint> smoothStroke(const QList<QPoint>& raw){
  simplify(smooth,0,smooth.size()-1,0.5,keep);
  QList<QPoint> result;
  for(size_t i=0;i<smooth.size();++i)if(keep[i]){const QPoint p(int(std::lround(smooth[i].x())),int(std::lround(smooth[i].y())));if(result.isEmpty()||result.last()!=p)result.append(p);}
- // Keep within the stored limit by dropping every other interior point.
- while(result.size()>maximumPenPoints){QList<QPoint> fewer;for(qsizetype i=0;i<result.size();++i)if(i%2==0||i==result.size()-1)fewer.append(result[i]);result=fewer;}
- return result;
+ return limitStroke(std::move(result));
 }
 QList<QPoint> fitStroke(const QList<QPoint>& points,const QRect& from,const QRect& box){
  QList<QPoint> result;result.reserve(points.size());
@@ -158,13 +162,13 @@ quint64 EditDocument::add(Shape shape){
  shape.text.truncate(maximumTextCharacters);
  shape.strength=std::clamp(shape.strength,minimumBlur,maximumBlur);
  shape.number=std::clamp(shape.number,1,maximumStepNumber);
- if(shape.points.size()>maximumPenPoints)shape.points.resize(maximumPenPoints);
+ shape.points=limitStroke(std::move(shape.points));
  auto before=state_;state_.shapes.append(shape);++generation_;if(!gesture_)push(std::move(before));
  return shape.id;
 }
 bool EditDocument::replace(const Shape& changed){
  for(qsizetype i=0;i<state_.shapes.size();++i)if(state_.shapes.at(i).id==changed.id){
-  auto next=changed;next.text.truncate(maximumTextCharacters);next.strength=std::clamp(next.strength,minimumBlur,maximumBlur);next.number=std::clamp(next.number,1,maximumStepNumber);if(next.points.size()>maximumPenPoints)next.points.resize(maximumPenPoints);
+  auto next=changed;next.text.truncate(maximumTextCharacters);next.strength=std::clamp(next.strength,minimumBlur,maximumBlur);next.number=std::clamp(next.number,1,maximumStepNumber);next.points=limitStroke(std::move(next.points));
   if(state_.shapes.at(i)==next)return false;
   // Copy first, then write through the list: it detaches from the snapshot.
   // (A reference taken before the copy wrote into both, losing the step.)

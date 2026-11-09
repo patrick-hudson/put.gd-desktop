@@ -522,7 +522,7 @@ void EditorCanvas::mouseMoveEvent(QMouseEvent* event){
    // Each move adds a point once the pointer has travelled two screen pixels.
    const auto* live=doc_.find(selected_);shape=live?*live:original_;
    const QPoint point(int(std::lround(end.x())),int(std::lround(end.y())));
-   if(shape.points.size()<maximumPenPoints*4&&QLineF(toWidget(QPointF(shape.points.last())),toWidget(QPointF(point))).length()>=2)shape.points.append(point);
+   if(QLineF(toWidget(QPointF(shape.points.last())),toWidget(QPointF(point))).length()>=2)shape.points.append(point);
   }else if(shape.kind==Shape::Kind::Step){
    const auto d=containedMove(shape,delta,bounds);translateShape(shape,d);
   }else{
