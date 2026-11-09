@@ -174,7 +174,7 @@ private slots:
         QVERIFY2(captured >= delivered * 0.4 && captured <= delivered * 0.6, qPrintable(summary));
         QVERIFY2(encoded >= captured * 0.75 && encoded <= captured * 1.2, qPrintable(summary));
         // The kept frames keep their real times: rising, and spanning the clip's timeline.
-        QVERIFY2(clip.minGapNs > 0, qPrintable(summary));
+        QVERIFY2(clip.minGapNs > 0 && clip.maxGapNs < GST_SECOND / 2, qPrintable(summary));
         QVERIFY2(std::llabs(retained * 1000 - clip.durationNs) <= 3 * GST_SECOND / 60, qPrintable(summary));
     }
     // #1115: a compositor that refuses max_framerate 0/1 gets the plain request
