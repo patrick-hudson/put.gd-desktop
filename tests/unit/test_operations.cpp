@@ -1282,7 +1282,7 @@ private slots:
   QCOMPARE(ops.diagnostics()["artifactCleanup"].toObject()["intervalMs"].toInt(),60*60*1000);
   QStringList ids;
   for(int i=0;i<4;++i){QString id;ops.invoke("clipboard",[&](Error e,QJsonObject r){QVERIFY(!e);id=r["operationId"].toString();});PUTGD_TRY_VERIFY(!id.isEmpty());
-   PUTGD_TRY_VERIFY(([&]{HistoryStore store(ops.databasePath());return QStringList({"partial","failed"}).contains(store.operation(id).state);})());PUTGD_TRY_VERIFY(ops.activeObservations().isEmpty());ids<<id;}
+   PUTGD_TRY_VERIFY(([&]{HistoryStore store(ops.databasePath());return QStringList({"partial","failed"}).contains(store.operation(id).state);})());PUTGD_TRY_COMPARE(ops.diagnostics()["activeOperations"].toInt(),0);ids<<id;}
   HistoryStore store(ops.databasePath());QStringList spools;for(const auto& id:ids)spools<<store.operation(id).items[0].artifact.path;
   // A preview the user's cache holds is left to Clean artifacts.
   const auto preview=d.filePath("data/previews/"+QUuid::createUuid().toString(QUuid::WithoutBraces)+".png");QVERIFY(QDir().mkpath(QFileInfo(preview).path()));
@@ -1412,7 +1412,10 @@ private slots:
   auto drain=qScopeGuard([&]{provider->deferUploads=false;for(auto complete:provider->completions)complete();provider->completions.clear();});
   QString batch,action;operations.invoke("clipboard",[&](Error e,QJsonObject r){QVERIFY(!e);batch=r["operationId"].toString();});PUTGD_TRY_COMPARE(provider->completions.size(),2);
   source.payload=textPayload();operations.invoke("clipboard",[&](Error e,QJsonObject r){QVERIFY(!e);action=r["operationId"].toString();});PUTGD_TRY_COMPARE(source.reads,2);
-  PUTGD_TRY_COMPARE(operations.activeObservations().size(),2);putgd::test::settle(150);PUTGD_TRY_COMPARE(provider->completions.size(),2);
+  // Both occupied slots are held by the batch. Its next item and the new
+  // action must be inside acquire(), not merely observed during acquisition.
+  PUTGD_TRY_COMPARE(operations.diagnostics()["uploadSlots"].toObject()["waiting"].toInt(),2);
+  PUTGD_TRY_COMPARE(provider->completions.size(),2);
   provider->completions.takeFirst()();PUTGD_TRY_COMPARE(provider->requests.size(),3);QVERIFY2(provider->requests[2].artifact.path.contains(action),qPrintable(provider->requests[2].artifact.path));
   provider->deferUploads=false;while(!provider->completions.isEmpty())provider->completions.takeFirst()();
   PUTGD_TRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(),0);QCOMPARE(provider->uploads.load(),5);
