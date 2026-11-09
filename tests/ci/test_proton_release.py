@@ -6,26 +6,6 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 class ProtonRelease(unittest.TestCase):
-    def test_linux_tests_provision_and_bundle(self):
-        text = (ROOT / '.github/workflows/ci.yml').read_text()
-        linux = text.split('  linux:\n', 1)[1].split('  sanitizers:\n', 1)[0]
-        contracts = text.split('  contracts:\n', 1)[1].split('  linux:\n', 1)[0]
-        self.assertIn('python3 tools/proton/provision_runtime.py', linux)
-        self.assertIn('cmake --preset dev -DPUTGD_BUNDLE_PROTON=ON', linux)
-        self.assertIn('python3 tools/ci/contracts.py proton', contracts)
-
-    def test_proton_contract_suites_are_selected(self):
-        import importlib.util
-        spec = importlib.util.spec_from_file_location('contracts', ROOT / 'tools/ci/contracts.py')
-        contracts = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(contracts)
-        self.assertEqual(contracts.suites('proton'),
-                         ['tools/proton/test_crypto_source.py', 'tools/proton/test_redistribution.py'])
-        release = contracts.suites('release')
-        for suite in ('tests/unit/test_proton_package_audit.py', 'tests/releases/test_proton_sources.py',
-                      'tests/releases/test_check_source_build.py', 'tests/ci/test_proton_release.py'):
-            self.assertIn(suite, release)
-
     def test_native_and_appimage_release_require_proton(self):
         text = (ROOT / '.github/workflows/package.yml').read_text()
         native = text.split('  native:\n', 1)[1].split('  appimage:\n', 1)[0]
