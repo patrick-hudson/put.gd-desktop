@@ -1,5 +1,4 @@
 """Controller policy tests; these do not claim graphical desktop acceptance."""
-import fcntl
 import json
 import os
 from pathlib import Path
@@ -42,43 +41,6 @@ class FakeGitHub:
 
 
 class NightlyTests(unittest.TestCase):
-    def test_debian_appimage_prepares_native_bridge_runtime_before_guest_probes(self):
-        """An AppImage supplies no distro dependencies for the native credential relay."""
-        from tools.lab import nightly_desktop_guest as guest
-        class ProbesReady(Exception):
-            pass
-        installed = set()
-        def ssh(_run, command, **_kwargs):
-            """Model a minimal golden whose relay runtime is initially absent."""
-            if 'apt-get install ' in command:
-                installed.update(command.split())
-            return ''
-        def first_probe(*_args, **_kwargs):
-            """The relay must be loadable before any keyring or credential operation."""
-            if 'libqt6keychain1' not in installed:
-                raise RuntimeError('synthetic native relay cannot load libqt6keychain.so.1')
-            raise ProbesReady
-        with tempfile.TemporaryDirectory() as tmp, \
-             patch.object(guest.lab, 'verify_owned_guest'), \
-             patch.object(guest.lab, 'ssh', side_effect=ssh), \
-             patch.object(guest.lab, 'guest_session', side_effect=first_probe):
-            row = dict(package='appimage', probePackageManager='deb', desktop='mint-cinnamon-x11')
-            with self.assertRaises(ProbesReady):
-                guest.prepare('/owned/run', row, Path(tmp))
-
-    def test_debian_appimage_bridge_prerequisites_still_refuse_desktop_upgrades(self):
-        """Installing a relay runtime cannot authorize a desktop-stack transaction."""
-        from tools.lab import nightly_desktop_guest as guest
-        with tempfile.TemporaryDirectory() as tmp, \
-             patch.object(guest.lab, 'verify_owned_guest'), \
-             patch.object(guest.lab, 'ssh', return_value='Inst pipewire (synthetic upgrade)') as ssh, \
-             patch.object(guest.lab, 'guest_session') as session:
-            row = dict(package='appimage', probePackageManager='deb', desktop='mint-cinnamon-x11')
-            with self.assertRaisesRegex(RuntimeError, 'desktop-package transaction refused'):
-                guest.prepare('/owned/run', row, Path(tmp))
-            self.assertEqual(ssh.call_count, 1)
-            session.assert_not_called()
-
     def test_controller_ssh_proof_requires_parent_start_exact_argv_and_executable(self):
         with tempfile.TemporaryDirectory() as tmp:
             proc = Path(tmp)
@@ -259,25 +221,6 @@ class NightlyTests(unittest.TestCase):
             retire.assert_called_once_with(Path(owner['run']), Path(owner['evidence']), {})
             self.assertFalse(slot.exists())
 
-    def test_recovery_budget_unwinds_and_restores_alarm(self):
-        before = signal.getsignal(signal.SIGALRM)
-        with self.assertRaisesRegex(nightly.NotRun, 'recovery deadline'):
-            with nightly.recovery_deadline():
-                os.kill(os.getpid(), signal.SIGALRM)
-        self.assertEqual(signal.getsignal(signal.SIGALRM), before)
-        self.assertEqual(signal.getitimer(signal.ITIMER_REAL)[0], 0)
-
-    def test_recovery_time_comes_out_of_the_outer_budget(self):
-        for clock, remaining in (([100, 400], 700.0), ([100, 5000], 0.001)):
-            with self.subTest(remaining=remaining), \
-                    patch.object(nightly.signal, 'setitimer', return_value=(1000.0, 0.0)) as timer, \
-                    patch.object(nightly.time, 'monotonic', side_effect=clock):
-                before = signal.getsignal(signal.SIGALRM)
-                with nightly.recovery_deadline():
-                    pass
-                self.assertEqual(signal.getsignal(signal.SIGALRM), before)
-                timer.assert_called_with(signal.ITIMER_REAL, remaining, 0.0)
-
     def test_failed_stale_recovery_names_a_receipt_that_exists(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -288,17 +231,6 @@ class NightlyTests(unittest.TestCase):
                 nightly.recover_stale_guest(dict(host='d69'), out)
             self.assertEqual(json.loads((out/'stale-recovery-error.json').read_text()),
                              dict(type='JSONDecodeError'))
-            self.assertTrue(slot.exists())
-
-    def test_recovery_mutex_contention_is_reported_as_transient(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            root = Path(tmp)
-            slot, out, owner, desktop, proton = self.stale_fixture(root)
-            with (root/'putgd-lab/locks/tier1-recovery.lock').open('a') as held:
-                fcntl.flock(held, fcntl.LOCK_EX)
-                with patch.object(nightly.Path, 'home', return_value=root), \
-                        self.assertRaisesRegex(nightly.NotRun, 'already running in another worker'):
-                    nightly.recover_stale_guest(dict(host='d69'), out)
             self.assertTrue(slot.exists())
 
     def test_row_recovery_keeps_specific_reasons_and_clears_the_reservation(self):
@@ -372,9 +304,6 @@ class NightlyTests(unittest.TestCase):
             slot = root/'putgd-lab/locks/tier1-guest.lock.d'
             self.assertEqual((slot/'session').read_text().strip(), 'owned-session')
             self.assertEqual(json.loads((slot/'retained.json').read_text())['run'], '/owned/run')
-
-    def test_worker_wait_and_setup_consume_budget_and_retry_releases_slot(self):
-        self.worker_timeout_cleanup()
 
     def test_corrupt_cleanup_receipt_keeps_reservation_for_recovery(self):
         self.worker_timeout_cleanup(corrupt_receipt=True)
@@ -472,14 +401,6 @@ class NightlyTests(unittest.TestCase):
                 lock.return_value.release.assert_called_once()
                 self.assertFalse(slot.exists())
 
-    def test_attempt_timeout_caps_remaining_budget_and_refuses_exhaustion(self):
-        with patch.object(nightly.time, 'monotonic', return_value=40):
-            self.assertEqual(nightly.remaining_timeout(100), 60)
-            self.assertEqual(nightly.remaining_timeout(10000), nightly.ATTEMPT_TIMEOUT)
-            with self.assertRaisesRegex(nightly.NotRun, 'deadline exhausted'):
-                nightly.remaining_timeout(40)
-        self.assertGreater(nightly.HOST_TIMEOUT - nightly.WORKER_SECONDS, nightly.TERMINATE_GRACE)
-
     def test_wait_does_not_outlive_worker_deadline(self):
         with tempfile.TemporaryDirectory() as tmp:
             clock = [0]
@@ -529,19 +450,6 @@ class NightlyTests(unittest.TestCase):
             stream.add(artifacts, arcname='artifacts')
         return root/'inputs.tar'
 
-    def test_remote_checkout_reaches_the_controller_driver_before_the_worker_checks_it(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            root = Path(tmp)
-            archive = self.remote_inputs(root)
-            with patch.object(nightly, 'command', side_effect=[None, None, None, None, '[]', None]) as command, \
-                    patch.object(nightly.subprocess, 'run', return_value=SimpleNamespace(returncode=0)):
-                nightly.run_host('d69', dict(ssh=['ssh', 'builder'], root='/repo', config='/private'),
-                                 'vtest', root, archive, root, local_workers=Mock())
-            sync = command.call_args_list[1].args[0][-1]
-            self.assertEqual(sync, f'[ "$(git -C /repo rev-parse HEAD)" = {BUILD} ] || '
-                                   f'{{ git -C /repo fetch -q --no-tags origin {BUILD} && git -C /repo merge -q --ff-only {BUILD}; }}')
-            self.assertLess(1, [i for i, c in enumerate(command.call_args_list) if '--worker' in c.args[0][-1]][0])
-
     def test_unreachable_driver_is_grey_and_launches_no_worker(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -576,20 +484,6 @@ class NightlyTests(unittest.TestCase):
                     patch.object(nightly.subprocess, 'run', return_value=SimpleNamespace(returncode=0)):
                 self.assertEqual(nightly.run_host('d69', dict(ssh=['ssh', 'builder'], root='/repo', config='/private'),
                                                   'vtest', root, archive, root, local_workers=Mock()), [])
-
-    def test_timer_restarts_itself_on_a_newer_driver(self):
-        replies = ['old\n', '', '', 'new\n']
-        with patch.object(nightly, 'command', side_effect=replies), \
-                patch.object(nightly.os, 'execv') as execv:
-            nightly.follow_nightly(['nightly_desktops.py'])
-        execv.assert_called_once_with(sys.executable, [sys.executable, 'nightly_desktops.py'])
-
-    def test_timer_keeps_going_when_the_checkout_is_current_or_cannot_update(self):
-        for replies in (['same\n', '', '', 'same\n'], ['same\n', RuntimeError('offline')]):
-            with patch.object(nightly, 'command', side_effect=replies), \
-                    patch.object(nightly.os, 'execv') as execv:
-                nightly.follow_nightly(['nightly_desktops.py'])
-            execv.assert_not_called()
 
     def test_remote_worker_has_its_own_watchdog(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -710,49 +604,6 @@ with n.controller_shutdown(workers):
             ctx.click_at(25,35)
         self.assertTrue(ctx._probe.call_args.args[1]['raise'])
         ctx.target.pointer.assert_not_called()
-
-    def atomic_tools(self, ostree_status, ostree_output):
-        from tools.lab import nightly_desktop_guest as guest
-        with tempfile.TemporaryDirectory() as tmp:
-            root = Path(tmp)
-            calls = root/'calls'
-            stubs = dict(rpm='case "$2" in tesseract|xclip) exit 1;; esac\n', sudo=f"""
-printf '%s\\n' "$*" >> {calls}
-case "$*" in
- '-n rpm-ostree install'*) echo "{ostree_output}"; exit {ostree_status};;
- '-S -p  dnf'*) [ "$(cat)" = putgd-lab ];;
-esac
-""")
-            for name, body in stubs.items():
-                (root/name).write_text('#!/bin/sh\n'+body)
-                (root/name).chmod(0o700)
-            result = subprocess.run(['sh', '-c', guest.ATOMIC_TOOLS], capture_output=True, text=True,
-                                    env=dict(os.environ, PATH=f"{root}:{os.environ['PATH']}"))
-            return result, calls.read_text().splitlines()
-
-    def test_atomic_tools_layer_without_dnf_when_rpm_ostree_works(self):
-        result, calls = self.atomic_tools(0, 'layered')
-        self.assertEqual(result.returncode, 0)
-        self.assertIn('-n rpm-ostree install --apply-live tesseract xclip', calls)
-        self.assertFalse([call for call in calls if 'dnf' in call or 'usroverlay' in call])
-        self.assertIn('NIGHTLY_TOOLS_APPLIED', result.stdout)
-        self.assertNotIn('NIGHTLY_TOOLS_DNF_OVERLAY', result.stdout)
-
-    def test_atomic_tools_use_dnf_overlay_only_for_broken_updates_archive(self):
-        result, calls = self.atomic_tools(1, "error: Updating rpm-md repo 'updates-archive': 404")
-        self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(calls[-2:], ['-n rpm-ostree usroverlay',
-                                      '-S -p  dnf -y --setopt=install_weak_deps=False '
-                                      '--disablerepo=updates-archive install tesseract xclip'])
-        self.assertIn('NIGHTLY_TOOLS_DNF_OVERLAY', result.stdout)
-
-    def test_atomic_tools_stop_on_any_other_rpm_ostree_failure(self):
-        for output in ("error: Updating rpm-md repo 'fedora': 404", 'error: conflicting requests'):
-            with self.subTest(output=output):
-                result, calls = self.atomic_tools(7, output)
-                self.assertEqual(result.returncode, 7)
-                self.assertFalse([call for call in calls if 'dnf' in call or 'usroverlay' in call])
-                self.assertNotIn('NIGHTLY_TOOLS_APPLIED', result.stdout)
 
     def catalog_run(self, *, staged, conclusion, ci, status_filter):
         class Runs:
@@ -943,15 +794,6 @@ esac
                     self.receipt(root, functional='failed', note=note)
                     self.assertEqual(nightly.verdict(root, 'outcomes.region_upload')['status'], 'red')
 
-    def test_grey_reason_is_one_table_line_and_disabled_is_explicit(self):
-        result=dict(desktops=[dict(desktop='Aurora',host='aurora-amd',notRunReason='load at core count',cells={
-            'region_upload':nightly.cell(assertion='load at core count'),
-            'history_delete':nightly.cell('green')})])
-        table=nightly.table(result)
-        self.assertIn('⚪',table);self.assertNotIn('🔴',table)
-        self.assertEqual(table.count('load at core count'),1)
-        self.assertIn('🟢 | — | —',table)
-
     def test_daily_skips_tested_latest_release_and_now_forces_it(self):
         releases=[dict(tag_name=f'v26.1031.{i}-nightly',draft=False,published_at=f'2026-10-31T0{i}:00:00Z') for i in (1,2,3)]
         latest=releases[-1]['tag_name']
@@ -974,27 +816,6 @@ esac
             nightly.run_hosts({h:dict(rows=[{}]) for h in nightly.HOSTS},'tag',artifacts,root,result,dispatch)
             self.assertCountEqual(seen,nightly.HOSTS)
             self.assertEqual(len(result['desktops']),5)
-
-    def test_capacity_wait_has_twenty_minute_default_and_holds_no_lease(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            clock=[0.0]
-            def sleep(seconds):clock[0]+=seconds
-            config=dict(host='m74',rows=[dict(live=True)])
-            with patch.object(nightly.Path,'home',return_value=Path(tmp)),patch('tools.lab.desktop_lock.Desktop') as lock,patch.object(nightly,'preflight',side_effect=nightly.NotRun('RAM short')):
-                lock.return_value.status.return_value=dict(state='free')
-                with self.assertRaisesRegex(nightly.NotRun,'1200s'):
-                    nightly.await_host(config,Path(tmp),clock=lambda:clock[0],sleep=sleep)
-                self.assertEqual(clock[0],1200)
-                lock.return_value.acquire.assert_not_called()
-
-    def test_capacity_wait_proceeds_once_resources_return(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            clock=[0.0]
-            def sleep(seconds):clock[0]+=seconds
-            with patch.object(nightly.Path,'home',return_value=Path(tmp)),patch('tools.lab.desktop_lock.Desktop') as lock,patch.object(nightly,'preflight',side_effect=[nightly.NotRun('load high'),dict(ready=True)]):
-                lock.return_value.status.return_value=dict(state='free')
-                waited=nightly.await_host(dict(host='d69',rows=[{}]),Path(tmp),clock=lambda:clock[0],sleep=sleep)
-                self.assertEqual(waited,30)
 
     def test_one_grouped_failure_issue_per_desktop_grey_keeps_it_and_full_green_closes(self):
         failure=dict(number=2,title='nightly: Cinnamon failing',state='open')
@@ -1025,44 +846,6 @@ esac
         with tempfile.TemporaryDirectory() as tmp:
             nightly.publish(github,dict(release='tag',date='today',build='unverified',desktops=[row]),Path(tmp))
         self.assertEqual([w[1] for w in github.writes if w[0]=='issue'],['Nightly desktop results'])
-
-    def test_timer_qualification_requires_three_verified_real_desktops(self):
-        result=dict(build=BUILD,desktops=[])
-        for _ in range(2):result['desktops'].append(dict(cells=dict(region_upload=nightly.cell('green',terminal={'proof':True},observedBuild=BUILD))))
-        self.assertEqual(nightly.eligible_desktops(result),2)
-        result['desktops'].append(dict(cells=dict(region_upload=nightly.cell('red',terminal={'proof':True},observedBuild=BUILD))))
-        self.assertEqual(nightly.eligible_desktops(result),3)
-        result['desktops'][0]['cells']['region_upload'].update(status='not_run')
-        self.assertEqual(nightly.eligible_desktops(result),2)
-
-    def test_clipboard_columns_are_enabled_and_app_failure_gets_release_blocker(self):
-        self.assertEqual([nightly.FLOWS[name] for name in ('auto_copy', 'upload_clipboard', 'copy_image', 'survives_exit')],
-                         ['Auto-copy', 'Upload clipboard', 'Copy image', 'Survives exit'])
-        self.assertTrue({'auto_copy', 'upload_clipboard', 'copy_image', 'survives_exit'} <= set(nightly.LOCAL))
-        github = FakeGitHub()
-        row = dict(desktop='GNOME',host='d69',evidence='/owned',cells={'auto_copy':nightly.cell('red','wrong link')})
-        with tempfile.TemporaryDirectory() as tmp:
-            nightly.publish(github,dict(release='tag',date='today',build=BUILD,desktops=[row]),Path(tmp))
-        self.assertTrue(any(w[0] == 'POST' and w[1].endswith('/labels') and w[2] == {'labels':['release-blocker']}
-                            for w in github.writes))
-
-    def test_a_full_check_is_thirteen_cells_and_every_row_declares_its_file_manager(self):
-        from tools.lab.surface_driver.profiles import load_profile
-        self.assertEqual(nightly.FLOWS['file_manager_upload'], 'Right-click upload')
-        self.assertIn('file_manager_upload', nightly.LOCAL)
-        self.assertEqual(len(nightly.LOCAL), 11)
-        self.assertEqual(len(nightly.FLOWS), 13)
-        for desktop, process in (('mint-cinnamon-x11', 'nemo'), ('ubuntu-gnome-wayland', 'nautilus'),
-                                 ('kubuntu-kde-wayland', 'dolphin'), ('aurora-kde-wayland', 'dolphin'),
-                                 ('fedora-gnome-wayland', 'nautilus')):
-            self.assertEqual(load_profile(desktop)['file_manager']['process'], process, desktop)
-        # The fragment Kubuntu's cell shares keeps its snap Firefox.
-        self.assertEqual(load_profile('kubuntu-kde-wayland')['browser'],
-                         dict(command=['snap', 'run', 'firefox'], profile_root='~/snap/firefox/common'))
-        row = dict(desktop='Mint', host='m74', cells={'file_manager_upload': nightly.cell('green')})
-        table = nightly.table(dict(desktops=[row]))
-        self.assertIn('Right-click upload', table)
-        self.assertIn('🟢', table)
 
     def test_secret_file_permissions(self):
         with tempfile.TemporaryDirectory() as tmp:

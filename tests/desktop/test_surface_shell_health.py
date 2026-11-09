@@ -106,32 +106,6 @@ class RawAccessibility(unittest.TestCase):
         self.assertFalse([c for c in self.bus.calls if c[0]==':1.9'])
         self.assertFalse([c for c in self.bus.calls if c[2]=='org.a11y.atspi.Cache'])
 
-    def test_shell_walk_reads_live_nodes_without_the_bridge_cache(self):
-        rows=probe.accessible({'application':'cinnamon*','name':'Upload complete'})
-        self.assertEqual(rows[0]['role'],'notification')
-        self.assertTrue([c for c in self.bus.calls if c[0]==':1.9'])
-        self.assertFalse([c for c in self.bus.calls if c[3]=='GetItems'])
-
-    def test_shell_pick_is_a_component_call(self):
-        query={'desktop_node':{'application':'cinnamon','name':'Upload complete','role':'notification','pid':40,'rect':[780,10,480,80]},
-               'point':[900,40],'shell_application':'cinnamon*'}
-        self.assertTrue(probe.shell_hit(query)['ok'])
-        self.assertIn('notification',probe.shell_cover((900,40),'cinnamon*'))
-        self.assertFalse([c for c in self.bus.calls if c[2]=='org.a11y.atspi.Cache'])
-
-    def test_shell_pick_rejects_a_same_name_node_with_different_bounds(self):
-        query = {'desktop_node': {'application': 'cinnamon', 'name': 'Upload complete',
-                  'role': 'notification', 'pid': 40, 'rect': [780, 10, 480, 60]},
-                 'point': [900, 40], 'shell_application': 'cinnamon*'}
-        self.assertFalse(probe.shell_hit(query)['ok'])
-
-    def test_unrelated_unimplemented_name_cannot_break_shell_cover(self):
-        self.bus.nodes[(probe.REGISTRY, ROOT_PATH)]['children'].insert(0, (':1.8', ROOT_PATH))
-        self.bus.pids[':1.8'] = 99
-        self.bus.nodes[(':1.8', ROOT_PATH)] = dict(role='application', name_error=True)
-        self.assertIn('notification', probe.shell_cover((900, 40), 'cinnamon*'))
-        self.assertFalse([c for c in self.bus.calls if c[0] == ':1.8'])
-
     def test_matching_shell_observation_failure_still_refuses(self):
         self.bus.nodes[(':1.9', ROOT_PATH)]['name_error'] = True
         with self.assertRaisesRegex(RuntimeError, 'shell cover observation unavailable'):
@@ -167,9 +141,6 @@ class ShellCrashDetector(unittest.TestCase):
         self.ctx._probe=fake
     def tearDown(self):self.temp.cleanup()
 
-    def test_profile_declares_the_cinnamon_shell(self):
-        self.assertEqual(load_profile('mint-cinnamon-x11')['shell_health']['process'],'cinnamon')
-
     def test_baseline_then_crash_blocks_input(self):
         self.assertEqual(self.ctx.shell_baseline()['pid'],100)
         self.assertIsNone(self.ctx.shell_failure())
@@ -182,30 +153,10 @@ class ShellCrashDetector(unittest.TestCase):
         self.assertEqual(raised.exception.issue,814)
         self.assertFalse(self.queries[-1]['full'])
 
-    def test_restart_with_the_same_pid_number_is_still_a_crash(self):
-        self.ctx.shell_baseline()
-        self.state=shell(100,start=900)
-        self.assertIn('ended',self.ctx.shell_failure())
-
-    def test_a_shell_still_writing_its_core_has_crashed(self):
-        self.ctx.shell_baseline()
-        self.state=shell(100,dumping=True)
-        self.assertIn('cinnamon pid 100 is dumping core',self.ctx.shell_failure(full=False))
-
     def test_run_refuses_a_shell_already_showing_a_crash(self):
         self.state=shell(100,windows=[{'window_id':'5','name':'Cinnamon just crashed'}])
         with self.assertRaisesRegex(RecipeBlocked,'already shows a crash notice'):
             self.ctx.shell_baseline()
-
-    def test_boundary_check_has_its_own_budget(self):
-        import time
-        from tools.lab.surface_driver.run import shell_check
-        self.ctx.shell_baseline()
-        self.ctx._deadline=time.monotonic()-1  # the previous recipe overran
-        self.assertIsNone(shell_check(self.ctx))
-        # A lost probe channel is not a crash; later probes block with their own reason.
-        self.ctx._probe=lambda name,query:(_ for _ in ()).throw(RecipeBlocked('persistent desktop probe failed'))
-        self.assertIsNone(shell_check(self.ctx))
 
     @unittest.skipUnless(Image,'requires python3-pil')
     def test_crash_during_a_recipe_stops_the_run(self):

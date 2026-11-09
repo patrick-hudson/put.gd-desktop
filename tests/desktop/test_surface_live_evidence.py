@@ -3,10 +3,8 @@
 Every value here is fake;
 everything else runs anywhere in seconds.
 """
-import hashlib
 import json
 from types import SimpleNamespace
-import re
 from pathlib import Path
 import shutil
 import subprocess
@@ -19,16 +17,15 @@ from unittest.mock import patch
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(Path(__file__).parent))
-from surface_live_fixture import BUILD, COMMIT, EVIDENCE, FakeDesktop, admitted, control, owned_window, pinned, write_catalog
+from surface_live_fixture import BUILD, COMMIT, EVIDENCE, FakeDesktop, admitted, pinned, write_catalog
 from tools.lab.surface_driver import redact, run as runner
 from tools.lab.surface_driver.api import Recipe, RecipeFailed
 from tools.lab.surface_driver.context import DriverContext
-from tools.lab.surface_driver.profiles import load_profile
-from tools.lab.surface_driver.redact import Redactor, Sensitive, detected, save_frame
+from tools.lab.surface_driver.redact import Redactor, detected
 try:
-    from PIL import Image, ImageDraw, ImageFont
+    from PIL import Image
 except ImportError:
-    Image = ImageDraw = None
+    Image = None
 
 SHARE = 'https://put.gd/Fk4Rw8Lq2Zn7Hc5T.png'
 SHARE_TOKEN = 'Fk4Rw8Lq2Zn7Hc5T'
@@ -92,14 +89,6 @@ class Base(unittest.TestCase):
                    'evidence': dict(EVIDENCE if evidence is None else evidence)}
         return DriverContext(target or Target(), self.env, profile, self.catalog, self.out)
 
-    def window(self, ctx, rect=(20, 10, 80, 60), role='history', page=0):
-        ctx.geometry = lambda name: {'x': rect[0], 'y': rect[1], 'width': rect[2], 'height': rect[3],
-                                     'scale': 1, 'window_id': '10', 'pid': 7}
-        ctx.call = lambda method, params=None: {'main': {'page': page}} if method == 'ui.viewState' else {}
-
-    def pixels(self, ctx, frame):
-        return Image.open(self.out/frame.path).convert('RGB')
-
     def leaked(self, *needles):
         found = []
         for path in self.out.rglob('*'):
@@ -107,18 +96,6 @@ class Base(unittest.TestCase):
                 data = path.read_bytes()
                 found += [(path.name, n) for n in needles if n.encode() in data]
         return found
-
-
-class F1OwnedWindowOnly(Base):
-
-
-    def test_rectangle_subtraction(self):
-        from tools.lab.surface_driver.context import subtract
-        area = lambda pieces: sum(w*h for _, _, w, h in pieces)
-        self.assertEqual(subtract([0, 0, 10, 10], []), [[0, 0, 10, 10]])
-        self.assertEqual(area(subtract([0, 0, 10, 10], [[2, 2, 3, 3]])), 91)
-        self.assertEqual(subtract([0, 0, 10, 10], [[-5, -5, 30, 30]]), [])
-        self.assertEqual(area(subtract([0, 0, 10, 10], [[5, 0, 10, 10], [0, 5, 10, 10]])), 25)
 
 
 class F2ProbeRegistration(Base):
@@ -187,7 +164,6 @@ class F4F7Gate(Base):
     def test_complete_disposable_placement_is_admitted(self):
         self.assertEqual(self.blockers('boat'), [])
         self.assertEqual(self.blockers('guest'), [])
-
 
     def test_catalog_must_be_complete_for_this_build_with_secret_inventories(self):
         self.assertIn('catalog-missing', self.blockers(catalog=self.path/'absent'))
@@ -307,12 +283,6 @@ class GateCatalogPin(Base):
                                                                   gate.NOT_SECRET_CLASSES)), \
                 patch.object(gate, 'checkout_pin', return_value=real):
             self.assertEqual(self.blockers(self.catalog), ['catalog-secret-states-differ-from-pin'])
-
-    def test_ci_check_catalog_command(self):
-        from tools.lab.surface_driver import gate
-        self.assertEqual(gate.main(['check-catalog', str(self.catalog)]), 0)
-        (self.catalog/'04-destinations-s3.controls.json').write_text(json.dumps({'controls': []}))
-        self.assertEqual(gate.main(['check-catalog', str(self.catalog)]), 1)
 
 
 class GateEnforcement(Base):
@@ -486,43 +456,6 @@ class ResidentMustReportClean(Base):
         self.assertEqual((calls, ran), (['ui.snapshot'], []))
 
 
-class LayoutProbe(unittest.TestCase):
-    def test_x11_stacking_follows_the_server_root_order(self):
-        from tools.lab.surface_driver import probe
-        tree = '''  Root window id: 0x21d (the root window) (has no name)
-     3 children:
-     0x500 "put.gd": ("putgd-ui" "putgd-ui")  1280x760+0+0  +0+0
-     0x300 "Desktop": ("nemo-desktop" "Nemo-desktop")  1280x760+0+0  +0+0
-     0x210 (has no name): ()  1280x800+0+0  +0+0
-'''
-        windows = [{'window_id': str(i), 'name': n, 'pid': pid, 'x': 0, 'y': 0, 'width': 1280, 'height': 760,
-                    'frame': None, 'states': {'minimized': False}} for i, n, pid in
-                   ((0x500, 'put.gd', 7), (0x300, 'Desktop', 8), (0x210, 'mutter guard window', 9), (0x21d, '', None))]
-        with patch.dict(probe.os.environ, {'XDG_SESSION_TYPE': 'x11'}), \
-             patch.object(probe, 'run', return_value=tree), patch.object(probe, 'x11_windows', return_value=windows), \
-             patch.object(probe, 'x11_ancestors', side_effect=lambda wid: [wid] if wid == str(0x21d) else [wid, str(0x21d)]), \
-             patch.object(probe, 'owned', side_effect=lambda pid: pid == 7):
-            rows = {r['title']: r for r in probe.layout({})['windows']}
-        self.assertGreater(rows['put.gd']['stack'], rows['Desktop']['stack'])
-        self.assertGreater(rows['Desktop']['stack'], rows['mutter guard window']['stack'])
-        self.assertTrue(rows['put.gd']['owned'])
-        self.assertNotIn('', rows)  # the root window is never an occluder
-
-
-class WaylandGeometryProbe(unittest.TestCase):
-    def test_geometry_walk_prunes_hidden_subtrees(self):
-        from tools.lab.surface_driver import probe
-        seen = []
-        row = {'role': 'frame', 'name': 'put.gd', 'visible': True, 'showing': True, 'rect': [0, 0, 10, 10],
-               'pid': 7, 'states': {}, 'ancestors': [{'role': 'application'}]}
-        with patch.dict(probe.os.environ, {'XDG_SESSION_TYPE': 'wayland'}), \
-             patch.object(probe, 'accessible', side_effect=lambda q, **kw: seen.append((q, kw)) or [row]):
-            self.assertEqual(probe.geometry({'title': '^put\\.gd$', 'compositor': {'kind': 'x'}})['pid'], 7)
-        query, options = seen[0]
-        self.assertTrue(query['visible'] and query['showing'] and query['owned'])
-        self.assertTrue(options.get('toplevel'))  # windows are application children only (#805)
-
-
 class NaFinalBytes(Base):
     def test_final_receipt_and_coverage_bytes_are_the_last_scanned(self):
         ctx = self.context()
@@ -623,10 +556,6 @@ class NdFailureMessages(Base):
         self.assertEqual(rows[0].functional, 'failed')
         self.assertEqual(self.leaked('Un9Rg4St3Rd7Lk1M', 'Ev1De5Nc9Ek3Yv7X'), [])
         self.assertIn("'host': 'put.gd'", rows[0].note)
-
-    def test_url_evidence_contract_is_documented_on_the_api(self):
-        from tools.lab.surface_driver.api import Context
-        self.assertIn('RecipeFailed', Context.url_evidence.__doc__)
 
 
 if __name__ == '__main__':

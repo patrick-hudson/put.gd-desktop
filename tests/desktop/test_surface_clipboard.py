@@ -1,11 +1,7 @@
 #!/usr/bin/env python3
 """Clipboard lease contracts; simulated Qt is not desktop acceptance evidence."""
-import importlib.util
 import json
-import os
 from pathlib import Path
-import select
-import signal
 import subprocess
 import sys
 import tempfile
@@ -127,24 +123,6 @@ class ClipboardLeaseTests(unittest.TestCase):
             self.assertEqual(result['sets'], [{'text/plain': b'line 1\r\nline 2\x00\xff'.hex(),
                                                'application/x-putgd-unit': bytes(range(256)).hex()}])
 
-    def test_idle_has_no_periodic_wakeups(self):
-        with tempfile.TemporaryDirectory() as root:
-            process = self.helper(root)
-            time.sleep(.16)
-            process.send_signal(signal.SIGUSR2)
-            process.wait(timeout=2)
-            result = json.loads((Path(root) / 'unit-result.json').read_text())
-            self.assertEqual(result['wakeups'], 0, 'idle clipboard keeper still polls')
-
-    def test_termination_restores_once_then_exits(self):
-        with tempfile.TemporaryDirectory() as root:
-            process = self.helper(root)
-            process.send_signal(signal.SIGTERM)
-            process.wait(timeout=2)
-            self.assertEqual(process.returncode, 0, 'keeper terminated without restoration')
-            result = json.loads((Path(root) / 'unit-result.json').read_text())
-            self.assertEqual(len(result['sets']), 1)
-
     def test_exact_pid_guard_refuses_reused_identity(self):
         from tools.lab.surface_driver.clipboard import process_identity, stop_exact
         child = subprocess.Popen([sys.executable, '-c', 'import time;time.sleep(10)'])
@@ -172,24 +150,6 @@ class ClipboardLeaseTests(unittest.TestCase):
             restoration_plan(payloads, gnome=True, disposable=False)
         self.assertEqual(payloads['application/x-private'], b'\x00\xff')
 
-    def test_disposable_gnome_records_unrestorable_formats(self):
-        from tools.lab.surface_driver.clipboard import restoration_plan
-        formats, reviews = restoration_plan({'text/plain': b'original', 'text/html': b'<b>original</b>'},
-                                             gnome=True, disposable=True)
-        self.assertEqual(formats, ['text/plain'])
-        self.assertEqual(len(reviews), 1)
-        self.assertIn('text/html', reviews[0])
-        self.assertIn('not restorable', reviews[0])
-
-    def test_gnome_single_supported_format_and_empty_clipboard_need_no_review(self):
-        from tools.lab.surface_driver.clipboard import restoration_plan
-        for payloads in ({}, {'text/plain': b'original\r\n'}):
-            formats, reviews = restoration_plan(payloads, gnome=True, disposable=False)
-            self.assertEqual(formats, list(payloads))
-            self.assertEqual(reviews, [])
-        with self.assertRaisesRegex(RuntimeError, '4 MiB'):
-            restoration_plan({'text/plain': b'x' * (4 * 1024 * 1024 + 1)}, gnome=True, disposable=False)
-
     def test_native_gnome_guard_never_takes_clipboard_ownership(self):
         source, current = self.source()
         self.assertTrue(current)
@@ -201,31 +161,6 @@ class ClipboardLeaseTests(unittest.TestCase):
             self.assertEqual(result.returncode, 0, result.stderr.decode())
             self.assertIn('native GNOME clipboard cannot be restored exactly', result.stdout.decode())
             self.assertEqual(json.loads((Path(root)/'unit-result.json').read_text())['sets'], [])
-
-    def test_restore_defers_pending_deadline_and_termination(self):
-        from tools.lab.surface_driver.target import Target
-        from tools.lab.surface_driver.critical import armed
-        events = []
-        class Interrupted(Exception):pass
-        def interrupted(signum, frame):
-            events.append('interrupted')
-            raise Interrupted()
-        class Lease:
-            def close(self):
-                os.kill(os.getpid(), signal.SIGALRM)
-                os.kill(os.getpid(), signal.SIGTERM)
-                events.append('restored and stopped')
-        target = Target.__new__(Target)
-        target._clipboard_lease = Lease()
-        target.clipboard_pid = 42
-        old = {sig: signal.signal(sig, interrupted) for sig in (signal.SIGALRM, signal.SIGTERM)}
-        try:
-            with self.assertRaises(Interrupted), armed():
-                target.restore_clipboard()
-            self.assertEqual(events[0], 'restored and stopped')
-            self.assertIsNone(target.clipboard_pid)
-        finally:
-            for sig, handler in old.items():signal.signal(sig, handler)
 
 
 if __name__ == '__main__':

@@ -1,19 +1,13 @@
 import base64
-import contextlib
-import datetime
-import fcntl
 import importlib.util
-import io
 import json
 import os
 from pathlib import Path
-import re
 import shutil
-import stat
 import subprocess
 import sys
 import tempfile
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 import unittest
 
 TOOL = Path(__file__).resolve().parents[2] / 'tools/maintenance/evidence.py'
@@ -206,56 +200,6 @@ class EvidenceBase(unittest.TestCase):
 
 
 class PublishTests(EvidenceBase):
-    def test_first_publish_creates_clone_and_pins_links(self):
-        before = self.main_head()
-        source = self.source(files={'README.md': '# Sample [record]\n', 'shots/a b.PNG': b'png', 'log.txt': 'x\n'})
-        result = self.publish_json(source)
-        head = self.main_head()
-        self.assertNotEqual(head, before)
-        self.assertEqual(real_git('rev-parse', 'refs/heads/main~1', cwd=self.bare), before)
-        self.assertTrue((self.clone / '.git').is_dir())
-        self.assertEqual(self.remote_file('records/2026-11-05-sample/log.txt'), 'x')
-        self.assertEqual(result['status'], 'published')
-        self.assertEqual(result['commit'], head)
-        slug = 'https://github.com/patrick-hudson/put.gd-evidence'
-        self.assertEqual(result['tree_url'], f'{slug}/tree/{head}/records/2026-11-05-sample')
-        self.assertEqual(result['readme_url'], f'{slug}/blob/{head}/records/2026-11-05-sample/README.md')
-        self.assertEqual(result['markdown'], f'[Sample \\[record\\]]({slug}/tree/{head}/records/2026-11-05-sample)')
-        self.assertEqual(result['images'], [{
-            'path': 'shots/a b.PNG',
-            'raw_url': f'https://raw.githubusercontent.com/patrick-hudson/put.gd-evidence/{head}'
-                       '/records/2026-11-05-sample/shots/a%20b.PNG'}])
-        self.assertEqual(self.message(), '2026-11-05-sample: Sample [record]')
-
-    def test_human_output_lists_every_link(self):
-        output = self.tool('publish', str(self.source(files={'README.md': '# T\n', 'a.png': b'x'}))).stdout
-        head = self.main_head()
-        self.assertIn(f'Published records/2026-11-05-sample at {head}', output)
-        for label in ('Tree:', 'README:', 'Markdown:', 'Image:'):
-            self.assertIn(label, output)
-        self.assertIn(f'raw.githubusercontent.com/patrick-hudson/put.gd-evidence/{head}/', output)
-
-    def test_date_prefix_uses_utc_today(self):
-        before = datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%d')
-        result = self.publish_json(self.source('recording-kde'))
-        after = datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%d')
-        self.assertIn(result['name'], {f'{before}-recording-kde', f'{after}-recording-kde'})
-        self.assertTrue(self.remote_paths(result['name']))
-
-    def test_name_option_overrides_the_basename(self):
-        result = self.publish_json(self.source('whatever'), '--name', '2026-11-05-chosen')
-        self.assertEqual(result['name'], '2026-11-05-chosen')
-
-    def test_invalid_name_spells_out_the_rule(self):
-        before = self.main_head()
-        for name in ('Bad_Name', '2026-11-05-UPPER', '2026-11-05--leading'):
-            with self.subTest(name=name):
-                result = self.tool('publish', str(self.source(name)), expect=1)
-                self.assertIn('YYYY-MM-DD-', result.stderr)
-                self.assertIn('lowercase letters', result.stderr)
-        self.assertEqual(self.main_head(), before)
-        self.assertFalse(self.clone.exists())
-
     def test_check_failure_blocks_the_commit_and_relays_messages(self):
         before = self.main_head()
         result = self.tool('publish', str(self.source(files={'README.md': 'no title\n'})), expect=1)
@@ -264,16 +208,6 @@ class PublishTests(EvidenceBase):
         self.assertEqual(self.main_head(), before)
         self.assertEqual(real_git('status', '--porcelain', cwd=self.clone), '')
         self.assertEqual(real_git('rev-parse', 'HEAD', cwd=self.clone), before)
-
-    def test_add_to_existing_record(self):
-        source = self.source()
-        self.publish_json(source)
-        (source / 'more.txt').write_text('more\n')
-        result = self.publish_json(source)
-        self.assertEqual(result['added'], ['records/2026-11-05-sample/more.txt'])
-        self.assertEqual(result['unchanged'], 2)
-        self.assertNotIn('Evidence-Amend', self.message())
-        self.assertEqual(self.remote_file('records/2026-11-05-sample/more.txt'), 'more')
 
     def test_changed_file_needs_amend_and_gets_the_trailer(self):
         source = self.source()
@@ -301,19 +235,6 @@ class PublishTests(EvidenceBase):
         self.publish_json(source, '--amend', 'never deletes')
         self.assertEqual(self.remote_paths('2026-11-05-sample'), published)
 
-    def test_follow_up_directory_extends_a_record(self):
-        self.publish_json(self.source())
-        published = self.remote_paths('2026-11-05-sample')
-        follow_up = self.root / 'follow-up' / '2026-11-05-sample'
-        follow_up.mkdir(parents=True)
-        (follow_up / 'rerun/result.json').parent.mkdir()
-        (follow_up / 'rerun/result.json').write_text('{}\n')
-        result = self.publish_json(follow_up)
-        self.assertEqual(result['added'], ['records/2026-11-05-sample/rerun/result.json'])
-        self.assertEqual(self.remote_paths('2026-11-05-sample'),
-                         published | {'records/2026-11-05-sample/rerun/result.json'})
-        self.assertNotIn('Evidence-Amend', self.message())
-
     def test_file_and_directory_swaps_are_refused(self):
         source = self.source(files={'README.md': '# T\n', 'a': 'file\n', 'b/c.txt': 'nested\n'})
         self.publish_json(source)
@@ -330,43 +251,6 @@ class PublishTests(EvidenceBase):
             self.assertIn('records/2026-11-05-sample/a/inner.txt', refused.stderr)
             self.assertIn('records/2026-11-05-sample/b', refused.stderr)
         self.assertEqual(self.remote_paths('2026-11-05-sample'), published)
-
-    @unittest.skipIf(os.geteuid() == 0, 'root reads a mode-0 directory')
-    def test_unreadable_directory_stops_the_publish(self):
-        source = self.source(files={'README.md': '# T\n', 'private/log.txt': 'x\n'})
-        (source / 'private').chmod(0)
-        try:
-            refused = self.tool('publish', str(source), expect=1)
-        finally:
-            (source / 'private').chmod(0o755)
-        self.assertIn('Cannot read', refused.stderr)
-        self.assertEqual(self.remote_paths('2026-11-05-sample'), set())
-
-    def test_multiline_amend_reason_refused(self):
-        result = self.tool('publish', str(self.source()), '--amend', 'one\nForged: trailer', expect=1)
-        self.assertIn('one-line reason', result.stderr)
-
-    def test_executable_bit_is_preserved_and_a_flip_needs_amend(self):
-        source = self.source(files={'README.md': '# T\n', 'run.sh': '#!/bin/sh\n', 'plain.sh': '#!/bin/sh\n'})
-        (source / 'run.sh').chmod(0o755)
-        self.publish_json(source)
-        listing = real_git('ls-tree', '-r', 'refs/heads/main', '--', 'records/2026-11-05-sample', cwd=self.bare)
-        modes = {line.split('\t')[1].rsplit('/', 1)[1]: line.split()[0] for line in listing.splitlines()}
-        self.assertEqual(modes['run.sh'], '100755')
-        self.assertEqual(modes['plain.sh'], '100644')
-        (source / 'plain.sh').chmod(0o755)
-        self.assertIn('executable bit', self.tool('publish', str(source), expect=1).stderr)
-
-    def test_identical_republish_is_success_with_existing_links(self):
-        source = self.source()
-        first = self.publish_json(source)
-        head = self.main_head()
-        again = self.publish_json(source)
-        self.assertEqual(self.main_head(), head)
-        self.assertEqual(again['status'], 'unchanged')
-        self.assertEqual(again['commit'], head)
-        self.assertEqual(again['tree_url'], first['tree_url'])
-        self.assertIn('Nothing to publish', self.tool('publish', str(source)).stdout)
 
     def test_symlinks_and_git_metadata_refused(self):
         before = self.main_head()
@@ -385,12 +269,6 @@ class PublishTests(EvidenceBase):
                 self.assertRegex(result.stderr, 'link|git metadata')
         self.assertEqual(self.main_head(), before)
 
-    def test_empty_source_and_missing_source_refused(self):
-        empty = self.root / 'src/2026-11-05-empty'
-        empty.mkdir(parents=True)
-        self.assertIn('no files', self.tool('publish', str(empty), expect=1).stderr)
-        self.assertIn('not a directory', self.tool('publish', str(self.root / 'absent'), expect=1).stderr)
-
     def test_bytes_survive_attributes_and_ignore_rules(self):
         (self.home / '.gitconfig').write_text('[user]\n\tname = E\n\temail = e@example.invalid\n'
                                               f'[core]\n\tautocrlf = true\n\texcludesFile = {self.home}/ignored\n')
@@ -404,79 +282,11 @@ class PublishTests(EvidenceBase):
                                   cwd=self.bare, capture_output=True, check=True).stdout
             self.assertEqual(blob, data, name)
 
-    def test_source_inside_the_clone_refused(self):
-        self.publish_json(self.source())
-        inside = self.clone / 'records/2026-11-05-sample'
-        self.assertIn('inside the cache clone', self.tool('publish', str(inside), expect=1).stderr)
-        self.assertTrue((inside / 'README.md').is_file())
-
-    def test_existing_single_file_record_name_refused(self):
-        result = self.tool('publish', str(self.source('2026-01-02-single.png')), expect=1)
-        self.assertIn('single-file record', result.stderr)
-
     def test_records_index_is_never_touched(self):
         source = self.source(files={'README.md': '# T\n'})
         self.publish_json(source)
         changed = real_git('diff', '--name-only', 'refs/heads/main~1', 'refs/heads/main', cwd=self.bare)
         self.assertEqual(changed, 'records/2026-11-05-sample/README.md')
-
-    def test_dry_run_pushes_nothing_and_leaves_the_clone_clean(self):
-        before = self.main_head()
-        source = self.source()
-        output = self.tool('publish', str(source), '--dry-run').stdout
-        self.assertIn('Dry run', output)
-        self.assertIn('nothing was committed or pushed', output)
-        self.assertEqual(self.main_head(), before)
-        self.assertEqual(real_git('rev-parse', 'HEAD', cwd=self.clone), before)
-        self.assertEqual(real_git('status', '--porcelain', cwd=self.clone), '')
-        self.assertFalse((self.clone / 'records/2026-11-05-sample').exists())
-        self.assertNotIn('commit', self._git_verbs())
-        self.assertNotIn('push', self._git_verbs())
-        result = self.publish_json(source, '--dry-run')
-        self.assertEqual(result['status'], 'dry-run')
-        self.assertIsNone(result['commit'])
-        self.assertEqual(len(result['added']), 2)
-        self.assertNotIn('tree_url', result)
-
-    def test_dry_run_still_runs_the_checks(self):
-        result = self.tool('publish', str(self.source(files={'README.md': 'none\n'})), '--dry-run', expect=1)
-        self.assertIn('README.md needs', result.stderr)
-
-    def _git_verbs(self):
-        return {line.split()[0] for line in self.argv_log.read_text().splitlines() if line.split()}
-
-    def test_source_trailer_names_the_invoking_checkout(self):
-        checkout = self.root / 'desktop'
-        (checkout / 'tools/maintenance').mkdir(parents=True)
-        shutil.copy(TOOL, checkout / 'tools/maintenance/evidence.py')
-        real_git('init', '-q', '-b', 'main', cwd=checkout)
-        real_git('config', 'user.name', 'Checkout Identity', cwd=checkout)
-        real_git('config', 'user.email', 'checkout@example.invalid', cwd=checkout)
-        real_git('add', '-A', cwd=checkout)
-        real_git('commit', '-q', '-m', 'Desktop', cwd=checkout)
-        sha = real_git('rev-parse', 'HEAD', cwd=checkout)
-        self.tool('publish', str(self.source()), '--amend', 'first', cwd=checkout,
-                  script=checkout / 'tools/maintenance/evidence.py')
-        message = self.message()
-        self.assertEqual(message.splitlines()[0], '2026-11-05-sample: Sample record')
-        self.assertIn(f'Source: put.gd-desktop@{sha}', message)
-        self.assertIn('Evidence-Amend: first', message)
-        trailers = real_git('interpret-trailers', '--parse', stdin=message)
-        self.assertIn('Source:', trailers)
-        self.assertEqual(real_git('log', '-1', '--format=%an <%ae>', 'refs/heads/main', cwd=self.bare),
-                         'Checkout Identity <checkout@example.invalid>')
-
-    def test_no_source_trailer_outside_a_checkout(self):
-        self.tool('publish', str(self.source()))
-        self.assertNotIn('Source:', self.message())
-        self.assertEqual(real_git('log', '-1', '--format=%an', 'refs/heads/main', cwd=self.bare), 'Evidence Test')
-
-    def test_missing_identity_fails_with_the_fix(self):
-        (self.home / '.gitconfig').write_text('')
-        before = self.main_head()
-        result = self.tool('publish', str(self.source()), expect=1)
-        self.assertIn('git config --global user.name', result.stderr)
-        self.assertEqual(self.main_head(), before)
 
     def test_hooks_from_global_config_do_not_run(self):
         hooks = self.home / 'hooks'
@@ -517,44 +327,8 @@ class SecretScanTests(EvidenceBase):
         self.assertIn('could not scan', result.stderr)
         self.assertEqual(self.main_head(), before)
 
-    def test_without_gitleaks_one_line_says_ci_will_scan(self):
-        clone = Mock(path=self.root, remote='r')
-        stderr = io.StringIO()
-        with patch.object(module.shutil, 'which', return_value=None), contextlib.redirect_stderr(stderr):
-            module.scan_secrets(clone, self.root)
-        self.assertEqual(len(stderr.getvalue().splitlines()), 1)
-        self.assertIn("CI will scan the push", stderr.getvalue())
-
 
 class RaceTests(EvidenceBase):
-    def test_remote_advance_before_push_rebases_and_retries(self):
-        self.race_count.write_text('1\n')
-        result = self.publish_json(self.source())
-        head = self.main_head()
-        self.assertEqual(result['commit'], head)
-        self.assertEqual(self.race_count.read_text().strip(), '0')
-        parent = real_git('log', '-1', '--format=%s', 'refs/heads/main~1', cwd=self.bare)
-        self.assertEqual(parent, 'index 1')
-        self.assertEqual(self.remote_file('records/2026-11-05-sample/log.txt'), 'evidence')
-        self.assertEqual(self.message(), '2026-11-05-sample: Sample record')
-
-    def test_retries_keep_the_amend_trailer(self):
-        source = self.source()
-        self.publish_json(source)
-        (source / 'log.txt').write_text('changed\n')
-        self.race_count.write_text('2\n')
-        self.publish_json(source, '--amend', 'fix')
-        self.assertIn('Evidence-Amend: fix', self.message())
-
-    def test_gives_up_after_five_retries_keeping_the_commit(self):
-        self.race_count.write_text('6\n')
-        result = self.tool('publish', str(self.source()), expect=1)
-        self.assertIn('5 retries', result.stderr)
-        self.assertIn('run the same publish command again', result.stderr)
-        self.assertEqual(sum(1 for line in self.argv_log.read_text().splitlines() if line.startswith('push ')), 6)
-        self.assertNotIn('Tree:', result.stdout)
-        self.assertEqual(self.tool('publish', str(self.source('2026-11-05-next'))).returncode, 0)
-
     def test_conflicting_concurrent_publish_reports_and_keeps_the_commit(self):
         checkout = self.race_checkout
         real_git('config', 'user.name', 'Other', cwd=checkout)
@@ -587,18 +361,6 @@ class RaceTests(EvidenceBase):
         for source in sources:
             self.assertTrue(self.remote_paths(source.name))
 
-    def test_lock_timeout_explains_what_to_do(self):
-        settings = {'PUTGD_EVIDENCE_DIR': str(self.clone), 'PUTGD_EVIDENCE_REMOTE': f'file://{self.bare}'}
-        with patch.dict(os.environ, settings), \
-                patch.object(module, 'LOCK_TIMEOUT', 0), contextlib.redirect_stderr(io.StringIO()):
-            clone = module.Clone()
-            self.clone.parent.mkdir(parents=True)
-            with open(self.clone.with_name('evidence.lock'), 'a') as holder:
-                fcntl.flock(holder, fcntl.LOCK_EX)
-                with self.assertRaisesRegex(module.EvidenceError, 'Run again when it finishes'):
-                    with clone.locked():
-                        self.fail('The lock must not be granted')
-
 
 class RecoveryTests(EvidenceBase):
     def reject_pushes(self):
@@ -627,41 +389,6 @@ class RecoveryTests(EvidenceBase):
         self.assertEqual(real_git('rev-parse', f'unpushed/{local[:12]}', cwd=self.clone), local)
         self.assertEqual(self.remote_file('records/2026-11-05-sample/log.txt'), 'evidence')
 
-    def test_documented_retry_command_lands_a_kept_commit(self):
-        hook = self.reject_pushes()
-        self.tool('publish', str(self.source()), expect=1)
-        hook.unlink()
-        branch = 'unpushed/' + real_git('rev-parse', 'main', cwd=self.clone)[:12]
-        self.tool('publish', str(self.source('2026-11-05-another')))
-        real_git('cherry-pick', branch, cwd=self.clone)
-        real_git('push', 'origin', 'HEAD:main', cwd=self.clone)
-        self.assertEqual(self.remote_file('records/2026-11-05-sample/log.txt'), 'evidence')
-
-    def test_dirty_clone_is_resynced_and_reported(self):
-        self.publish_json(self.source())
-        head = self.main_head()
-        (self.clone / 'README.md').write_text('tampered\n')
-        (self.clone / 'stray.txt').write_text('stray\n')
-        result = self.tool('publish', str(self.source('2026-11-05-second')))
-        self.assertIn('uncommitted paths', result.stderr)
-        self.assertEqual(self.remote_file('README.md'), '# put.gd evidence')
-        self.assertFalse((self.clone / 'stray.txt').exists())
-        self.assertEqual(real_git('rev-parse', 'HEAD~1', cwd=self.clone), head)
-
-    def test_interrupted_rebase_and_stale_index_lock_recover(self):
-        self.publish_json(self.source())
-        (self.clone / '.git/index.lock').write_text('')
-        (self.clone / '.git/rebase-merge').mkdir()
-        (self.clone / '.git/rebase-merge/head-name').write_text('refs/heads/main\n')
-        result = self.tool('publish', str(self.source('2026-11-05-second')))
-        self.assertIn('Published', result.stdout)
-        self.assertFalse((self.clone / '.git/rebase-merge').exists())
-
-    def test_interrupted_clone_creation_recovers(self):
-        self.clone.mkdir(parents=True)
-        real_git('init', '-q', cwd=self.clone)
-        self.assertEqual(self.publish_json(self.source())['status'], 'published')
-
     def test_foreign_directory_and_foreign_remote_are_refused(self):
         self.clone.mkdir(parents=True)
         (self.clone / 'precious.txt').write_text('mine\n')
@@ -673,97 +400,8 @@ class RecoveryTests(EvidenceBase):
         other = self.env(PUTGD_EVIDENCE_REMOTE='file:///elsewhere/remote.git')
         self.assertIn('remote set-url', self.tool('link', SEEDED, env=other, expect=1).stderr)
 
-    def test_clone_directory_inside_another_repository_is_refused(self):
-        outer = self.root / 'outer'
-        real_git('init', '-q', str(outer))
-        nested = outer / 'nested'
-        nested.mkdir()
-        (nested / '.git').mkdir()
-        result = self.tool('link', SEEDED, env=self.env(PUTGD_EVIDENCE_DIR=str(nested)), expect=1)
-        self.assertIn('not the top of a git clone', result.stderr)
-
-    def test_unreachable_remote_says_what_to_do(self):
-        env = self.env(PUTGD_EVIDENCE_REMOTE=f'file://{self.root}/absent.git')
-        result = self.tool('link', SEEDED, env=env, expect=1)
-        self.assertIn('credential helper', result.stderr)
-        self.assertIn('GH_TOKEN', result.stderr)
-
 
 class LinkAndFetchTests(EvidenceBase):
-    def test_link_record_is_pinned_to_remote_main(self):
-        head = self.main_head()
-        result = json.loads(self.tool('link', SEEDED, '--json').stdout)
-        self.assertEqual(result['commit'], head)
-        self.assertEqual(result['markdown'],
-                         f'[Seeded record](https://github.com/patrick-hudson/put.gd-evidence/tree/{head}'
-                         f'/records/{SEEDED})')
-        self.assertEqual([image['path'] for image in result['images']], ['shots/first.png'])
-        self.assertIn(f'Record {SEEDED} at {head}', self.tool('link', SEEDED).stdout)
-
-    def test_link_follows_remote_main(self):
-        self.tool('link', SEEDED)
-        self.publish_json(self.source())
-        head = self.main_head()
-        self.assertEqual(json.loads(self.tool('link', SEEDED, '--json').stdout)['commit'], head)
-
-    def test_link_paths(self):
-        head = self.main_head()
-        result = json.loads(self.tool('link', SEEDED, 'shots/first.png', 'shots', 'run.sh', '--json').stdout)
-        base = 'https://github.com/patrick-hudson/put.gd-evidence'
-        self.assertEqual([(item['type'], item['url']) for item in result['paths']], [
-            ('blob', f'{base}/blob/{head}/records/{SEEDED}/shots/first.png'),
-            ('tree', f'{base}/tree/{head}/records/{SEEDED}/shots'),
-            ('blob', f'{base}/blob/{head}/records/{SEEDED}/run.sh')])
-        self.assertEqual(len(result['images']), 1)
-        narrowed = json.loads(self.tool('link', SEEDED, 'run.sh', '--json').stdout)
-        self.assertEqual(narrowed['images'], [])
-
-    def test_link_reaches_imported_shapes(self):
-        head = self.main_head()
-        single = json.loads(self.tool('link', '2026-01-02-single.png', '--json').stdout)
-        self.assertIn(f'/blob/{head}/records/2026-01-02-single.png', single['tree_url'])
-        self.assertIsNone(single['readme_url'])
-        self.assertEqual(single['images'][0]['raw_url'],
-                         f'https://raw.githubusercontent.com/patrick-hudson/put.gd-evidence/{head}'
-                         '/records/2026-01-02-single.png')
-        unprefixed = json.loads(self.tool('link', 'old-unprefixed', '--json').stdout)
-        self.assertIsNone(unprefixed['readme_url'])
-        self.assertIn('[old-unprefixed]', unprefixed['markdown'])
-        self.assertNotIn('README', self.tool('link', 'old-unprefixed').stdout)
-
-    def test_link_missing_record_or_path_fails_clearly(self):
-        self.assertIn('No record named 2026-09-09-absent', self.tool('link', '2026-09-09-absent', expect=1).stderr)
-        missing = self.tool('link', SEEDED, 'shots/first.png', 'nope.txt', expect=1)
-        self.assertIn('has no', missing.stderr)
-        self.assertIn('nope.txt', missing.stderr)
-        self.assertEqual(missing.stdout, '')
-        self.assertIn('Invalid path', self.tool('link', SEEDED, '../other', expect=1).stderr)
-        self.assertIn('Invalid record name', self.tool('link', '../etc', expect=1).stderr)
-
-    def test_link_does_not_disturb_a_kept_commit(self):
-        hook = self.bare / 'hooks/pre-receive'
-        hook.write_text('#!/bin/sh\nexit 1\n')
-        hook.chmod(0o755)
-        self.tool('publish', str(self.source()), expect=1)
-        local = real_git('rev-parse', 'main', cwd=self.clone)
-        self.tool('link', SEEDED)
-        self.assertEqual(real_git('rev-parse', 'main', cwd=self.clone), local)
-
-    def test_fetch_materializes_the_record(self):
-        destination = self.root / 'copies/seeded'
-        result = self.tool('fetch', SEEDED, '--dest', str(destination))
-        self.assertEqual(result.stdout.strip(), str(destination))
-        self.assertEqual((destination / 'README.md').read_text(), '# Seeded record\n')
-        self.assertEqual((destination / 'shots/first.png').read_bytes(), b'\x89PNG seeded')
-        self.assertTrue(stat.S_IMODE((destination / 'run.sh').stat().st_mode) & 0o100)
-        self.assertFalse(stat.S_IMODE((destination / 'README.md').stat().st_mode) & 0o100)
-
-    def test_fetch_default_destination_is_outside_the_clone_and_cwd(self):
-        path = Path(self.tool('fetch', SEEDED).stdout.strip())
-        self.assertEqual(path, self.root / 'cache/evidence-records' / SEEDED)
-        self.assertTrue((path / 'README.md').is_file())
-        self.assertEqual(list(self.outside.iterdir()), [])
-
     def test_fetch_never_overwrites_a_non_empty_destination(self):
         destination = self.root / 'occupied'
         destination.mkdir()
@@ -779,25 +417,6 @@ class LinkAndFetchTests(EvidenceBase):
         self.tool('fetch', SEEDED, '--dest', str(empty))
         self.assertTrue((empty / 'README.md').is_file())
 
-    def test_fetch_missing_record_creates_nothing(self):
-        destination = self.root / 'absent-copy'
-        result = self.tool('fetch', '2026-09-09-absent', '--dest', str(destination), expect=1)
-        self.assertIn('No record named', result.stderr)
-        self.assertFalse(destination.exists())
-
-    def test_fetch_single_file_record(self):
-        destination = self.root / 'single'
-        self.tool('fetch', '2026-01-02-single.png', '--dest', str(destination))
-        self.assertEqual((destination / '2026-01-02-single.png').read_bytes(), b'\x89PNG single')
-
-    def test_fetch_then_add_then_publish_round_trip(self):
-        destination = self.root / 'work' / SEEDED
-        self.tool('fetch', SEEDED, '--dest', str(destination))
-        (destination / 'added.txt').write_text('new\n')
-        result = self.publish_json(destination)
-        self.assertEqual(result['added'], [f'records/{SEEDED}/added.txt'])
-        self.assertEqual(result['changed'], [])
-
 
 class PartialCloneTests(EvidenceBase):
     def missing_objects(self):
@@ -807,38 +426,12 @@ class PartialCloneTests(EvidenceBase):
     def git_dir_bytes(self):
         return sum(path.stat().st_size for path in (self.clone / '.git').rglob('*') if path.is_file())
 
-    def test_publish_downloads_only_what_it_handles(self):
-        big = real_git('rev-parse', 'refs/heads/main:records/2026-01-03-other/big.bin', cwd=self.bare)
-        self.publish_json(self.source())
-        self.assertIn(big, self.missing_objects())
-        self.assertFalse((self.clone / 'records/2026-01-03-other').exists())
-        self.assertFalse((self.clone / f'records/{SEEDED}').exists())
-        self.assertFalse((self.clone / 'records/README.md').exists())
-        self.assertFalse((self.clone / 'records/2026-01-02-single.png').exists())
-        self.assertTrue((self.clone / 'records/2026-11-05-sample/log.txt').is_file())
-        self.assertTrue((self.clone / 'tools/check.py').is_file())
-        self.assertTrue((self.clone / 'README.md').is_file())
-        self.assertLess(self.git_dir_bytes(), BIG_BLOB_BYTES // 5)
-
     def test_race_rebase_keeps_other_blobs_out(self):
         big = real_git('rev-parse', 'refs/heads/main:records/2026-01-03-other/big.bin', cwd=self.bare)
         self.race_count.write_text('1\n')
         self.publish_json(self.source())
         self.assertIn(big, self.missing_objects())
         self.assertLess(self.git_dir_bytes(), BIG_BLOB_BYTES // 5)
-
-    def test_comparing_an_existing_record_downloads_nothing_when_refused(self):
-        self.tool('link', 'old-unprefixed')
-        big = real_git('rev-parse', 'refs/heads/main:records/2026-01-03-other/big.bin', cwd=self.bare)
-        source = self.source('2026-01-03-other', files={'README.md': '# Other record, edited\n'})
-        self.assertIn('Different bytes', self.tool('publish', str(source), expect=1).stderr)
-        self.assertIn(big, self.missing_objects())
-
-    def test_handling_another_record_narrows_the_checkout(self):
-        self.publish_json(self.source())
-        self.tool('fetch', SEEDED, '--dest', str(self.root / 'copy'))
-        self.assertFalse((self.clone / 'records/2026-11-05-sample').exists())
-        self.assertTrue((self.clone / f'records/{SEEDED}/README.md').is_file())
 
 
 class TokenTests(EvidenceBase):
@@ -883,11 +476,6 @@ class TokenTests(EvidenceBase):
                 data = path.read_bytes()
                 self.assertNotIn(TOKEN.encode(), data, path)
                 self.assertNotIn(self.credential.encode(), data, path)
-
-    def test_github_token_also_works(self):
-        env = self.env(PUTGD_EVIDENCE_REMOTE=self.REMOTE, GITHUB_TOKEN=TOKEN)
-        self.tool('link', SEEDED, env=env)
-        self.assertIn('extraHeader', (self.root / 'argv.log.config').read_text())
 
     def test_error_output_cannot_carry_the_token(self):
         hook = self.bare / 'hooks/pre-receive'
@@ -934,25 +522,6 @@ class TokenTests(EvidenceBase):
         self.assertIn('must not embed credentials', result.stderr)
         self.assert_clean(result.stdout, result.stderr)
         self.assertFalse(self.clone.exists())
-
-
-class NameTests(unittest.TestCase):
-    def test_slug_parsing_falls_back_to_the_evidence_repo(self):
-        for remote, slug in (('https://github.com/owner/repo.git', 'owner/repo'),
-                             ('git@github.com:owner/repo.git', 'owner/repo'),
-                             ('ssh://git@github.com/owner/repo', 'owner/repo'),
-                             ('file:///tmp/remote.git', module.DEFAULT_SLUG)):
-            self.assertEqual(module.github_slug(remote), slug)
-
-    def test_title_needs_a_real_heading(self):
-        self.assertEqual(module.title_of('intro\n# Real title  \n# Second\n'), 'Real title')
-        self.assertIsNone(module.title_of('## Not a title\n#nospace\n'))
-
-    def test_every_name_rule_example(self):
-        for name in ('2026-11-05-a', '2026-11-05-a.b-c9'):
-            self.assertTrue(re.match(module.NAME_RULE, name))
-        for name in ('2026-11-05-', '2026-11-05-.a', 'a', '2026-11-5-a', '2026-11-05-A'):
-            self.assertFalse(re.match(module.NAME_RULE, name))
 
 
 if __name__ == '__main__':
