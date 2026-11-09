@@ -18,6 +18,7 @@
 #include <QWheelEvent>
 #include <QtMath>
 #include <algorithm>
+#include <limits>
 
 namespace putgd::editor {
 namespace {
@@ -54,10 +55,38 @@ QPoint insideFrom(const QPoint& was,const QPoint& p,const QRect& bounds){
  return {axis(p.x(),was.x(),bounds.left(),bounds.left()+bounds.width()),axis(p.y(),was.y(),bounds.top(),bounds.top()+bounds.height())};
 }
 QPoint containedMove(const Shape& shape,const QPoint& d,const QRect& bounds){
- const bool arrow=shape.kind==Shape::Kind::Arrow;
- const auto box=arrow?QRect(shape.from,shape.to).normalized():shape.rect;const auto room=arrow?bounds.adjusted(0,0,1,1):bounds;
+ // Line ends and pen points may sit on the image's far edge, one past its last pixel.
+ const bool points=shape.twoPoint()||shape.kind==Shape::Kind::Pen;
+ const auto box=shape.box();const auto room=points?bounds.adjusted(0,0,1,1):bounds;
  auto axis=[](int delta,int low,int high){return std::clamp(delta,std::min(low,0),std::max(high,0));};
  return {axis(d.x(),room.left()-box.left(),room.right()-box.right()),axis(d.y(),room.top()-box.top(),room.bottom()-box.bottom())};
+}
+void translateShape(Shape& shape,const QPoint& d){shape.rect.translate(d);shape.from+=d;shape.to+=d;for(auto& p:shape.points)p+=d;}
+// Shift snaps a line to the nearest 45°, kept as long as the image allows.
+QPoint snapLine(const QPoint& from,const QPointF& to,const QRect& bounds){
+ const QPointF v=to-QPointF(from);const double length=std::hypot(v.x(),v.y());if(length<1)return from;
+ const double angle=std::round(std::atan2(v.y(),v.x())/(M_PI/4))*(M_PI/4);
+ const QPointF dir(std::cos(angle),std::sin(angle));double reach=length;
+ auto limit=[&](double start,double step,double low,double high){if(step>1e-9)reach=std::min(reach,(high-start)/step);else if(step<-1e-9)reach=std::min(reach,(low-start)/step);};
+ limit(from.x(),dir.x(),bounds.left(),bounds.left()+bounds.width());limit(from.y(),dir.y(),bounds.top(),bounds.top()+bounds.height());
+ // Whole pixels along the diagonal keep it exactly 45°.
+ const bool diagonal=std::abs(std::abs(dir.x())-std::abs(dir.y()))<1e-6;
+ if(diagonal){const int side=int(std::floor(std::max(0.0,reach)*std::abs(dir.x())+1e-9));return from+QPoint(dir.x()>0?side:-side,dir.y()>0?side:-side);}
+ return from+QPoint(int(std::lround(dir.x()*std::max(0.0,reach))),int(std::lround(dir.y()*std::max(0.0,reach))));
+}
+double distanceToStroke(const QPointF& p,const QList<QPoint>& points){
+ double best=std::numeric_limits<double>::max();
+ if(points.size()==1)return QLineF(p,QPointF(points.first())).length();
+ for(qsizetype i=1;i<points.size();++i){
+  const QPointF a(points[i-1]),b(points[i]);const QPointF ab=b-a;const double length=QPointF::dotProduct(ab,ab);
+  const double t=length<=0?0:std::clamp(QPointF::dotProduct(p-a,ab)/length,0.0,1.0);best=std::min(best,QLineF(p,a+t*ab).length());
+ }
+ return best;
+}
+// The distance from an ellipse outline, approximated through its normalized radius.
+double distanceToEllipse(const QPointF& p,const QRectF& box){
+ const double a=std::max(0.5,box.width()/2),b=std::max(0.5,box.height()/2);const auto c=box.center();
+ const double r=std::hypot((p.x()-c.x())/a,(p.y()-c.y())/b);return std::abs(r-1)*std::min(a,b);
 }
 QColor canvasBackground(){return Theme::current().well;}
 QColor accent(){return Theme::current().accent;}
@@ -78,7 +107,8 @@ void dualLine(QPainter& painter,const QPointF& a,const QPointF& b,const QColor& 
 }
 QString kindLabel(Shape::Kind kind){
  switch(kind){case Shape::Kind::Redact:return "Redaction";case Shape::Kind::Blur:return "Blur";case Shape::Kind::Arrow:return "Arrow";
- case Shape::Kind::Rectangle:return "Rectangle";case Shape::Kind::Highlight:return "Highlight";case Shape::Kind::Text:return "Text label";}
+ case Shape::Kind::Rectangle:return "Rectangle";case Shape::Kind::Highlight:return "Highlight";case Shape::Kind::Text:return "Text label";
+ case Shape::Kind::Step:return "Step";case Shape::Kind::Pen:return "Pen stroke";case Shape::Kind::Ellipse:return "Ellipse";case Shape::Kind::Line:return "Line";}
  return "Mark";
 }
 double distanceToSegment(const QPointF& p,const QPointF& a,const QPointF& b){
@@ -93,6 +123,8 @@ Qt::CursorShape resizeCursor(int handle){return handle==0||handle==4?Qt::SizeFDi
 EditorCanvas::EditorCanvas(EditDocument& doc,QWidget* parent):QWidget(parent),doc_(doc){
  setFocusPolicy(Qt::StrongFocus);setMouseTracking(true);setAttribute(Qt::WA_OpaquePaintEvent);
  setMinimumSize(320,240);setAccessibleName("Image being edited");
+ // A document can open with steps already on it (an agent's first edits).
+ for(const auto& shape:doc_.shapes())if(shape.kind==Shape::Kind::Step){nextStep_=doc_.nextStepNumber();break;}
  // Screen readers hear the selection, or the crop, and the keys that act on it.
  connect(this,&EditorCanvas::selectionChanged,this,&EditorCanvas::announce);connect(this,&EditorCanvas::changed,this,&EditorCanvas::announce);
  auto* warning=new Ui::Banner(Ui::Banner::Tone::Warning,{},this);textWarning_=warning;textWarning_->setObjectName("annotationTextWarning");
@@ -124,9 +156,9 @@ void EditorCanvas::applyStyleToSelection(){
  if(const auto* current=doc_.find(selected_)){
   auto shape=*current;
   using Kind=Shape::Kind;const auto k=shape.kind;
-  if(k==Kind::Arrow||k==Kind::Rectangle||k==Kind::Text||k==Kind::Highlight)shape.color=style.color;
-  if(k==Kind::Arrow||k==Kind::Rectangle)shape.width=style.width;
-  if(k==Kind::Blur)shape.strength=style.strength;
+  if(k!=Kind::Redact&&k!=Kind::Blur)shape.color=style.color;
+  if(k==Kind::Arrow||k==Kind::Rectangle||k==Kind::Line||k==Kind::Ellipse||k==Kind::Pen)shape.width=style.width;
+  if(k==Kind::Blur){shape.strength=style.strength;shape.pixelate=style.pixelate;}
   if(k==Kind::Text){shape.fontPixels=style.fontPixels;shape.fontFamily=style.fontFamily;}
   if(shape.kind==Shape::Kind::Text&&!shape.text.isEmpty())shape=boundedText(*current,shape);
   if(doc_.replace(shape))emit changed();
@@ -170,9 +202,17 @@ void EditorCanvas::resizeEvent(QResizeEvent*){
 
 Shape::Kind EditorCanvas::kindFor(Tool tool) const {
  switch(tool){case Tool::Redact:return Shape::Kind::Redact;case Tool::Blur:return Shape::Kind::Blur;case Tool::Arrow:return Shape::Kind::Arrow;
- case Tool::Highlight:return Shape::Kind::Highlight;case Tool::Text:return Shape::Kind::Text;default:return Shape::Kind::Rectangle;}
+ case Tool::Highlight:return Shape::Kind::Highlight;case Tool::Text:return Shape::Kind::Text;case Tool::Step:return Shape::Kind::Step;
+ case Tool::Pen:return Shape::Kind::Pen;case Tool::Ellipse:return Shape::Kind::Ellipse;case Tool::Line:return Shape::Kind::Line;default:return Shape::Kind::Rectangle;}
 }
-bool EditorCanvas::drawingTool() const {return tool_==Tool::Redact||tool_==Tool::Blur||tool_==Tool::Arrow||tool_==Tool::Rectangle||tool_==Tool::Highlight;}
+bool EditorCanvas::drawingTool() const {return tool_==Tool::Redact||tool_==Tool::Blur||tool_==Tool::Arrow||tool_==Tool::Rectangle||tool_==Tool::Highlight||tool_==Tool::Step||tool_==Tool::Pen||tool_==Tool::Ellipse||tool_==Tool::Line;}
+void EditorCanvas::setNextStepNumber(int number){
+ nextStep_=std::clamp(number,1,maximumStepNumber);
+ // With no steps yet, this is where counting starts again after an undo.
+ bool any=false;for(const auto& shape:doc_.shapes())any=any||shape.kind==Shape::Kind::Step;
+ if(!any)stepStart_=nextStep_;
+ announce();
+}
 
 // Outward rounding: a partly covered source pixel is inside the box.
 QRect EditorCanvas::boxFrom(const QPointF& a,const QPointF& b) const {
@@ -196,10 +236,14 @@ int EditorCanvas::arrowHandleAt(const Shape& shape,const QPointF& p) const {
 quint64 EditorCanvas::grabAt(const QPointF& p) const {
  const auto& shapes=doc_.shapes();const double tolerance=6/scale_;
  for(auto it=shapes.crbegin();it!=shapes.crend();++it){
-  if(it->kind==Shape::Kind::Arrow){if(distanceToSegment(p,it->from,it->to)<=std::max(tolerance,double(it->width)))return it->id;continue;}
+  if(it->twoPoint()){if(distanceToSegment(p,it->from,it->to)<=std::max(tolerance,double(it->width)))return it->id;continue;}
+  if(it->kind==Shape::Kind::Pen){if(distanceToStroke(p,it->points)<=std::max(tolerance,double(it->width)))return it->id;continue;}
   const QRectF box(it->rect);
   if(!box.adjusted(-tolerance,-tolerance,tolerance,tolerance).contains(p))continue;
   if(it->kind==Shape::Kind::Rectangle){const double edge=tolerance+it->width/2.0;if(box.adjusted(edge,edge,-edge,-edge).contains(p))continue;}
+  // An ellipse is grabbed by its outline too, so its inside stays drawable.
+  if(it->kind==Shape::Kind::Ellipse){const auto inset=QRectF(box).adjusted(it->width/2.0,it->width/2.0,-it->width/2.0,-it->width/2.0);if(distanceToEllipse(p,inset)>tolerance+it->width/2.0)continue;}
+  if(it->kind==Shape::Kind::Step&&QLineF(p,box.center()).length()>box.width()/2+tolerance)continue;
   return it->id;
  }
  return 0;
@@ -214,7 +258,7 @@ void EditorCanvas::updateHoverCursor(const QPointF& position,Qt::KeyboardModifie
  const auto image=toImage(position);
  if(const auto* shape=doc_.find(selected_);shape&&(tool_!=Tool::Text||shape->kind==Shape::Kind::Text)){
   const int h=selectionHandleAt(*shape,position);
-  if(h>=0){setCursor(shape->kind==Shape::Kind::Arrow?Qt::SizeAllCursor:resizeCursor(h));return;}
+  if(h>=0){setCursor(shape->twoPoint()?Qt::SizeAllCursor:resizeCursor(h));return;}
  }
  quint64 hit=0;
  if(tool_==Tool::Select)hit=shapeAt(image);
@@ -225,14 +269,15 @@ void EditorCanvas::updateHoverCursor(const QPointF& position,Qt::KeyboardModifie
 quint64 EditorCanvas::shapeAt(const QPointF& p) const {
  const auto& shapes=doc_.shapes();const double tolerance=6/scale_;
  for(auto it=shapes.crbegin();it!=shapes.crend();++it){
-  if(it->kind==Shape::Kind::Arrow){if(distanceToSegment(p,it->from,it->to)<=std::max(tolerance,double(it->width)))return it->id;continue;}
+  if(it->twoPoint()){if(distanceToSegment(p,it->from,it->to)<=std::max(tolerance,double(it->width)))return it->id;continue;}
+  if(it->kind==Shape::Kind::Pen){if(distanceToStroke(p,it->points)<=std::max(tolerance,double(it->width)))return it->id;continue;}
   if(QRectF(it->rect).adjusted(-tolerance,-tolerance,tolerance,tolerance).contains(p))return it->id;
  }
  return 0;
 }
 int EditorCanvas::selectionHandleAt(const Shape& shape,const QPointF& p) const {
- if(shape.kind==Shape::Kind::Arrow)return arrowHandleAt(shape,p);
- return handleAt(shape.rect,p,shape.kind==Shape::Kind::Text);
+ if(shape.twoPoint())return arrowHandleAt(shape,p);
+ return handleAt(shape.box(),p,shape.kind==Shape::Kind::Text||shape.kind==Shape::Kind::Step);
 }
 // Size edits stop where both the layout box and the exported glyph stroke
 // fit. A label clipped by a later crop can shrink without jumping its anchor.
@@ -263,6 +308,24 @@ Shape EditorCanvas::scaledText(const Shape& original,int handle,const QPointF& n
  shape.fontPixels=std::clamp(int(std::lround(original.fontPixels*scale)),minimumFontPixels,maximumFontPixels);
  return boundedText(original,shape,handle);
 }
+// A step corner scales the circle around the opposite corner, as text does.
+Shape EditorCanvas::scaledStep(const Shape& original,int handle,const QPointF& now) const {
+ const QRectF box(original.rect);
+ const QPointF corners[4]={box.topLeft(),box.topRight(),box.bottomRight(),box.bottomLeft()};
+ const QPointF anchor=corners[(handle/2+2)%4];
+ const auto area=doc_.crop();
+ // The side follows the pointer's larger reach from the fixed corner, and
+ // stops where the circle would leave the image.
+ const QPointF clamped=inside(now,area);
+ int side=int(std::lround(std::max(std::abs(clamped.x()-anchor.x()),std::abs(clamped.y()-anchor.y()))));
+ const bool left=handle==0||handle==6,top=handle==0||handle==2;
+ const int room=std::min(left?int(std::lround(anchor.x()))-area.left():area.left()+area.width()-int(std::lround(anchor.x())),top?int(std::lround(anchor.y()))-area.top():area.top()+area.height()-int(std::lround(anchor.y())));
+ side=std::clamp(std::min(side,std::max(room,minimumStepPixels)),minimumStepPixels,maximumStepPixels);
+ auto shape=original;
+ const QPoint fixed(int(std::lround(anchor.x())),int(std::lround(anchor.y())));
+ shape.rect=QRect(left?fixed.x()-side:fixed.x(),top?fixed.y()-side:fixed.y(),side,side);
+ return shape;
+}
 // The edges a handle moves stay inside bounds; one already outside (a mark
 // cropped since) may come in but never jumps there or moves farther out.
 QRect EditorCanvas::resized(QRect r,int handle,const QPoint& d,const QRect& bounds) const {
@@ -275,7 +338,7 @@ QRect EditorCanvas::resized(QRect r,int handle,const QPoint& d,const QRect& boun
 }
 
 const QImage& EditorCanvas::blurTile(const Shape& shape){
- QString key=QString("B%1/").arg(shape.strength);
+ QString key=QString("%1%2/").arg(shape.pixelate?"P":"B").arg(shape.strength);
  for(const auto& other:doc_.shapes())if(other.kind==Shape::Kind::Redact&&other.rect.intersects(shape.rect))key+=QString(";%1,%2,%3,%4").arg(other.rect.x()).arg(other.rect.y()).arg(other.rect.width()).arg(other.rect.height());
  return cachedTile(shape,key,&EditDocument::blurPreview);
 }
@@ -283,7 +346,7 @@ const QImage& EditorCanvas::highlightTile(const Shape& shape){
  // Redactions and blurs in the preview's window (the box plus the reach of
  // blurs crossing its edge) change its pixels, so they key the tile.
  QString key=QString("H%1/").arg(shape.color.name());const auto window=doc_.highlightWindow(shape);
- for(const auto& other:doc_.shapes())if((other.kind==Shape::Kind::Redact||other.kind==Shape::Kind::Blur)&&other.rect.intersects(window))key+=QString(";%1,%2,%3,%4,%5").arg(other.rect.x()).arg(other.rect.y()).arg(other.rect.width()).arg(other.rect.height()).arg(other.kind==Shape::Kind::Blur?other.strength:0);
+ for(const auto& other:doc_.shapes())if((other.kind==Shape::Kind::Redact||other.kind==Shape::Kind::Blur)&&other.rect.intersects(window))key+=QString(";%1,%2,%3,%4,%5").arg(other.rect.x()).arg(other.rect.y()).arg(other.rect.width()).arg(other.rect.height()).arg(other.kind==Shape::Kind::Blur?(other.pixelate?-other.strength:other.strength):0);
  return cachedTile(shape,key,&EditDocument::highlightPreview);
 }
 const QImage& EditorCanvas::cachedTile(const Shape& shape,const QString& prefix,QImage (EditDocument::*render)(const Shape&,double) const){
@@ -304,6 +367,8 @@ const QImage& EditorCanvas::cachedTile(const Shape& shape,const QString& prefix,
 
 void EditorCanvas::documentChanged(){
  if(!doc_.find(selected_)){selected_=0;emit selectionChanged();}
+ bool steps=false;for(const auto& shape:doc_.shapes())steps=steps||shape.kind==Shape::Kind::Step;
+ nextStep_=steps?doc_.nextStepNumber():stepStart_;
  QSet<quint64> live;for(const auto& shape:doc_.shapes())live.insert(shape.id);
  for(auto it=tiles_.begin();it!=tiles_.end();){if(!live.contains(it.key())){cacheBytes_-=it->image.sizeInBytes();it=tiles_.erase(it);}else ++it;}
  if(fitted_)fit();else{clampOffset();placeTextEditor();update();}
@@ -346,10 +411,10 @@ void EditorCanvas::paintEvent(QPaintEvent*){
  auto handles=[&](const QList<QPointF>& points){painter.setPen(QPen(underStroke(),2));painter.setBrush(guide());for(const auto& point:points)painter.drawRect(QRectF(point-QPointF(4,4),QSizeF(8,8)));};
  if(tool_==Tool::Crop){const auto r=toWidget(cropDraft_);handles({r.topLeft(),QPointF(r.center().x(),r.top()),r.topRight(),QPointF(r.right(),r.center().y()),r.bottomRight(),QPointF(r.center().x(),r.bottom()),r.bottomLeft(),QPointF(r.left(),r.center().y())});}
  else if(const auto* shape=doc_.find(selected_);shape&&!textEditor_){
-  if(shape->kind==Shape::Kind::Arrow)handles({toWidget(QPointF(shape->from)),toWidget(QPointF(shape->to))});
+  if(shape->twoPoint())handles({toWidget(QPointF(shape->from)),toWidget(QPointF(shape->to))});
   else{
-   const auto r=toWidget(shape->rect);dualRect(painter,r.adjusted(-2,-2,2,2),guide(),1,Qt::DashLine);
-   if(shape->kind==Shape::Kind::Text)handles({r.topLeft(),r.topRight(),r.bottomRight(),r.bottomLeft()});
+   const auto r=toWidget(shape->box());dualRect(painter,r.adjusted(-2,-2,2,2),guide(),1,Qt::DashLine);
+   if(shape->kind==Shape::Kind::Text||shape->kind==Shape::Kind::Step)handles({r.topLeft(),r.topRight(),r.bottomRight(),r.bottomLeft()});
    else handles({r.topLeft(),QPointF(r.center().x(),r.top()),r.topRight(),QPointF(r.right(),r.center().y()),r.bottomRight(),QPointF(r.center().x(),r.bottom()),r.bottomLeft(),QPointF(r.left(),r.center().y())});
   }
  }
@@ -418,11 +483,19 @@ void EditorCanvas::mousePressEvent(QMouseEvent* event){
   selected_=hit;emit selectionChanged();original_=*doc_.find(hit);drag_=Drag::Move;doc_.beginGesture();update();return;
  }
  Shape shape;shape.kind=kindFor(tool_);shape.color=shape.kind==Shape::Kind::Redact?QColor(Qt::black):style_.color;
- shape.width=style_.width;shape.strength=style_.strength;shape.fontPixels=style_.fontPixels;shape.fontFamily=style_.fontFamily;
+ shape.width=style_.width;shape.strength=style_.strength;shape.pixelate=style_.pixelate;shape.fontPixels=style_.fontPixels;shape.fontFamily=style_.fontFamily;
  // A press in the margin starts the mark at the nearest image edge.
  const auto start=inside(image,doc_.crop());
  const QPoint at(int(std::floor(start.x())),int(std::floor(start.y())));
  shape.from=shape.to=at;shape.rect=boxFrom(start,start);
+ if(shape.kind==Shape::Kind::Pen)shape.points={QPoint(int(std::lround(start.x())),int(std::lround(start.y())))};
+ // A step drops centred on the click with the next number; dragging before
+ // release places it, and a step never leaves the image.
+ if(shape.kind==Shape::Kind::Step){
+  const int side=std::min({style_.stepPixels,doc_.crop().width(),doc_.crop().height()});shape.number=nextStep_;
+  shape.rect=QRect(at.x()-side/2,at.y()-side/2,side,side);
+  const auto& area=doc_.crop();shape.rect.moveLeft(std::clamp(shape.rect.left(),area.left(),std::max(area.left(),area.right()-side+1)));shape.rect.moveTop(std::clamp(shape.rect.top(),area.top(),std::max(area.top(),area.bottom()-side+1)));
+ }
  doc_.beginGesture();selected_=doc_.add(shape);original_=*doc_.find(selected_);drag_=Drag::Create;emit selectionChanged();update();
 }
 
@@ -443,8 +516,16 @@ void EditorCanvas::mouseMoveEvent(QMouseEvent* event){
  auto shape=original_;const auto bounds=doc_.crop();
  if(drag_==Drag::Create){
   const auto end=inside(now,bounds);
-  if(shape.kind==Shape::Kind::Arrow)shape.to=QPoint(int(std::lround(end.x())),int(std::lround(end.y())));
-  else{
+  if(shape.kind==Shape::Kind::Line&&(event->modifiers()&Qt::ShiftModifier))shape.to=snapLine(shape.from,end,bounds);
+  else if(shape.twoPoint())shape.to=QPoint(int(std::lround(end.x())),int(std::lround(end.y())));
+  else if(shape.kind==Shape::Kind::Pen){
+   // Each move adds a point once the pointer has travelled two screen pixels.
+   const auto* live=doc_.find(selected_);shape=live?*live:original_;
+   const QPoint point(int(std::lround(end.x())),int(std::lround(end.y())));
+   if(shape.points.size()<maximumPenPoints*4&&QLineF(toWidget(QPointF(shape.points.last())),toWidget(QPointF(point))).length()>=2)shape.points.append(point);
+  }else if(shape.kind==Shape::Kind::Step){
+   const auto d=containedMove(shape,delta,bounds);translateShape(shape,d);
+  }else{
    const auto from=inside(start,bounds);
    // A drag wholly in one margin is discarded rather than kept as a sliver
    // on the image's edge.
@@ -464,10 +545,17 @@ void EditorCanvas::mouseMoveEvent(QMouseEvent* event){
    // Snapping waits for a real drag: a click with a pixel of jitter stays tiny and highlights the word on release.
    if(shape.kind==Shape::Kind::Highlight&&!shape.rect.isEmpty()&&!(event->modifiers()&Qt::AltModifier)&&QLineF(press_,event->position()).length()>=QGuiApplication::styleHints()->startDragDistance())shape.rect=highlight::snapToText(doc_.base(),shape.rect,doc_.redactionRects()).intersected(bounds);
   }
- }else if(drag_==Drag::Move){const auto d=containedMove(shape,delta,bounds);shape.rect.translate(d);shape.from+=d;shape.to+=d;}
+ }else if(drag_==Drag::Move){const auto d=containedMove(shape,delta,bounds);translateShape(shape,d);}
  else if(drag_==Drag::Resize){
-  if(shape.kind==Shape::Kind::Arrow){if(handle_==0)shape.from=insideFrom(shape.from,shape.from+delta,bounds);else shape.to=insideFrom(shape.to,shape.to+delta,bounds);}
+  if(shape.twoPoint()){
+   auto& end=handle_==0?shape.from:shape.to;const auto& other=handle_==0?shape.to:shape.from;
+   // Shift keeps a line on the nearest 45° from its other end.
+   if(shape.kind==Shape::Kind::Line&&(event->modifiers()&Qt::ShiftModifier))end=snapLine(other,inside(now,bounds),bounds);
+   else end=insideFrom(end,end+delta,bounds);
+  }
   else if(shape.kind==Shape::Kind::Text)shape=scaledText(original_,handle_,now);
+  else if(shape.kind==Shape::Kind::Step)shape=scaledStep(original_,handle_,now);
+  else if(shape.kind==Shape::Kind::Pen){const auto from=original_.box();auto to=resized(from,handle_,delta,bounds);if(to.width()<1)to.setWidth(1);if(to.height()<1)to.setHeight(1);shape.points=fitStroke(original_.points,from,to);}
   else shape.rect=resized(shape.rect,handle_,delta,bounds);
  }
  doc_.preview(shape);update();
@@ -482,7 +570,10 @@ void EditorCanvas::mouseReleaseEvent(QMouseEvent* event){
  if(kind==Drag::CropNew||kind==Drag::CropMove||kind==Drag::CropResize||kind==Drag::None)return;
  if(kind==Drag::Create){
   const auto* shape=doc_.find(selected_);
-  const bool tiny=!shape||(shape->kind==Shape::Kind::Arrow?QLineF(toWidget(QPointF(shape->from)),toWidget(QPointF(shape->to))).length()<6:(shape->rect.width()*scale_<4||shape->rect.height()*scale_<4));
+  // A pen click leaves a dot and a step is placed by its click; neither is too small.
+  const bool tiny=!shape||(shape->twoPoint()?QLineF(toWidget(QPointF(shape->from)),toWidget(QPointF(shape->to))).length()<6:shape->kind==Shape::Kind::Pen||shape->kind==Shape::Kind::Step?false:(shape->rect.width()*scale_<4||shape->rect.height()*scale_<4));
+  if(shape&&shape->kind==Shape::Kind::Pen){auto next=*shape;next.points=smoothStroke(next.points);doc_.preview(next);}
+  if(shape&&shape->kind==Shape::Kind::Step)nextStep_=std::min(shape->number+1,maximumStepNumber);
   // A click, or a press that never travelled the drag distance, highlights the word under the pointer.
   const bool click=tiny||QLineF(press_,event->position()).length()<QGuiApplication::styleHints()->startDragDistance();
   if(click&&shape&&shape->kind==Shape::Kind::Highlight&&!(event->modifiers()&Qt::AltModifier)){
@@ -562,17 +653,26 @@ bool EditorCanvas::nudge(const QPoint& d,bool resize){
  }
  const auto* current=doc_.find(selected_);if(!current)return false;
  auto shape=*current;using Kind=Shape::Kind;const auto area=doc_.crop();
- if(!resize){const auto step=containedMove(shape,d,area);shape.rect.translate(step);shape.from+=step;shape.to+=step;}
- else if(shape.kind==Kind::Arrow){shape.to=insideFrom(shape.to,shape.to+d,area);if(shape.to==shape.from)return true;}
+ if(!resize){const auto step=containedMove(shape,d,area);translateShape(shape,step);}
+ else if(shape.twoPoint()){shape.to=insideFrom(shape.to,shape.to+d,area);if(shape.to==shape.from)return true;}
  else if(shape.kind==Kind::Text){
   shape.fontPixels=std::clamp(shape.fontPixels+d.x()+d.y(),minimumFontPixels,maximumFontPixels);
   shape=boundedText(*current,shape);
+ }else if(shape.kind==Kind::Step){
+  // The circle grows from its top-left corner, as far as the image allows.
+  const int room=std::min(area.left()+area.width()-shape.rect.left(),area.top()+area.height()-shape.rect.top());
+  const int side=std::clamp(shape.rect.width()+d.x()+d.y(),minimumStepPixels,std::max(minimumStepPixels,std::min(maximumStepPixels,room)));
+  if(side==shape.rect.width())return true;shape.rect.setSize(QSize(side,side));
+ }else if(shape.kind==Kind::Pen){
+  const auto from=shape.box();auto to=from;
+  to.setRight(std::clamp(from.right()+d.x(),from.left(),std::max(area.right()+1,from.right())));to.setBottom(std::clamp(from.bottom()+d.y(),from.top(),std::max(area.bottom()+1,from.bottom())));
+  if(to==from)return true;shape.points=fitStroke(shape.points,from,to);
  }else{
   // The moving edges stay on the crop; one already outside may only come in.
   shape.rect.setRight(std::clamp(shape.rect.right()+d.x(),std::min(area.left(),current->rect.right()),std::max(area.right(),current->rect.right())));
   shape.rect.setBottom(std::clamp(shape.rect.bottom()+d.y(),std::min(area.top(),current->rect.bottom()),std::max(area.bottom(),current->rect.bottom())));
   if(shape.rect.width()<1||shape.rect.height()<1)return true;}
- const auto bounds=shape.kind==Kind::Arrow?QRect(shape.from,shape.to).normalized():shape.rect;
+ const auto bounds=shape.twoPoint()||shape.kind==Kind::Pen?shape.box().adjusted(0,0,1,1):shape.rect;
  if(!bounds.intersects(doc_.imageRect()))return true;
  if(doc_.replace(shape)){update();emit changed();if(shape.kind==Kind::Text)emit selectionChanged();}
  return true;
@@ -599,23 +699,27 @@ quint64 EditorCanvas::placeMark(){
  if(tool_==Tool::Text){beginText(QPointF(area.left()+area.width()/4.0,area.center().y()-style_.fontPixels/2.0),nullptr);return 0;}
  if(!drawingTool())return 0;
  Shape shape;shape.kind=kindFor(tool_);shape.color=shape.kind==Shape::Kind::Redact?QColor(Qt::black):style_.color;
- shape.width=style_.width;shape.strength=style_.strength;shape.fontPixels=style_.fontPixels;shape.fontFamily=style_.fontFamily;
+ shape.width=style_.width;shape.strength=style_.strength;shape.pixelate=style_.pixelate;shape.fontPixels=style_.fontPixels;shape.fontFamily=style_.fontFamily;
  // A quarter of the visible image, centred; another placement steps down and
- // right rather than hiding exactly under the last one.
- QRect box(QPoint(),QSize(std::max(1,area.width()/2),std::max(1,area.height()/2)));box.moveCenter(area.center());
- const int offset=std::max(8,std::min(area.width(),area.height())/20);
- auto occupied=[&](const QRect& r){for(const auto& other:doc_.shapes())if(other.kind==shape.kind&&(other.kind==Shape::Kind::Arrow?other.from==r.bottomLeft():other.rect==r))return true;return false;};
- for(int i=0;i<16&&occupied(box);++i){const auto moved=box.translated(offset,offset);if(!area.contains(moved))break;box=moved;}
+ // right rather than hiding exactly under the last one. A step is its own size.
+ const bool step=shape.kind==Shape::Kind::Step;const int side=std::min({style_.stepPixels,area.width(),area.height()});
+ QRect box(QPoint(),step?QSize(side,side):QSize(std::max(1,area.width()/2),std::max(1,area.height()/2)));box.moveCenter(area.center());
+ const int offset=step?side+side/4:std::max(8,std::min(area.width(),area.height())/20);
+ auto occupied=[&](const QRect& r){for(const auto& other:doc_.shapes())if(other.kind==shape.kind&&(other.twoPoint()?other.from==r.bottomLeft():other.kind==Shape::Kind::Pen?other.box().left()==r.left()&&other.box().center().y()==r.center().y():other.rect==r))return true;return false;};
+ for(int i=0;i<16&&occupied(box);++i){const auto moved=box.translated(offset,step?0:offset);if(!area.contains(moved))break;box=moved;}
  shape.rect=box;shape.from=box.bottomLeft();shape.to=box.topRight();
- selected_=doc_.add(shape);emit selectionChanged();update();emit changed();
+ if(step)shape.number=nextStep_;
+ // A pen mark without a pointer is one gentle wave across the box.
+ if(shape.kind==Shape::Kind::Pen)for(int i=0;i<=32;++i)shape.points.append(QPoint(box.left()+int(std::lround(box.width()*i/32.0)),box.center().y()+int(std::lround(std::sin(i*M_PI/8)*box.height()/6.0))));
+ selected_=doc_.add(shape);if(step)nextStep_=std::min(shape.number+1,maximumStepNumber);emit selectionChanged();update();emit changed();
  return selected_;
 }
 
 std::optional<QRect> EditorCanvas::selectionGeometry() const {
  if(tool_==Tool::Crop)return cropDraft_;
  const auto* shape=doc_.find(selected_);if(!shape)return std::nullopt;
- if(shape->kind==Shape::Kind::Arrow)return QRect(shape->from.x(),shape->from.y(),shape->to.x()-shape->from.x(),shape->to.y()-shape->from.y());
- return shape->rect;
+ if(shape->twoPoint())return QRect(shape->from.x(),shape->from.y(),shape->to.x()-shape->from.x(),shape->to.y()-shape->from.y());
+ return shape->box();
 }
 bool EditorCanvas::setSelectionGeometry(const QRect& r){
  const auto image=doc_.imageRect();
@@ -625,10 +729,15 @@ bool EditorCanvas::setSelectionGeometry(const QRect& r){
  }
  const auto* current=doc_.find(selected_);if(!current)return false;
  auto shape=*current;using Kind=Shape::Kind;
- if(shape.kind==Kind::Arrow){shape.from=r.topLeft();shape.to=QPoint(r.x()+r.width(),r.y()+r.height());if(shape.from==shape.to)return false;}
+ if(shape.twoPoint()){shape.from=r.topLeft();shape.to=QPoint(r.x()+r.width(),r.y()+r.height());if(shape.from==shape.to)return false;}
  else if(shape.kind==Kind::Text)shape.rect.moveTopLeft(r.topLeft());
+ else if(shape.kind==Kind::Step){
+  // A step stays round: the changed side sets the diameter.
+  const int side=r.width()!=current->rect.width()?r.width():r.height();
+  if(side<minimumStepPixels||side>maximumStepPixels)return false;shape.rect=QRect(r.topLeft(),QSize(side,side));
+ }else if(shape.kind==Kind::Pen){if(r.width()<1||r.height()<1)return false;shape.points=fitStroke(shape.points,shape.box(),r);}
  else{if(r.width()<1||r.height()<1)return false;shape.rect=r;if(shape.kind==Kind::Redact||shape.kind==Kind::Blur)shape.rect=EditDocument::clampRect(r,image);}
- const auto bounds=shape.kind==Kind::Arrow?QRect(shape.from,shape.to).normalized().adjusted(0,0,1,1):shape.rect;
+ const auto bounds=shape.twoPoint()||shape.kind==Kind::Pen?shape.box().adjusted(0,0,1,1):shape.rect;
  if(!bounds.intersects(image)||!doc_.replace(shape))return false;
  update();emit changed();return true;
 }
@@ -644,12 +753,14 @@ QString EditorCanvas::selectionSummary() const {
  const auto& shapes=doc_.shapes();
  for(qsizetype i=0;i<shapes.size();++i){
   const auto& shape=shapes[i];if(shape.id!=selected_)continue;
-  const auto where=shape.kind==Shape::Kind::Arrow?QString("from %1, %2 to %3, %4").arg(shape.from.x()).arg(shape.from.y()).arg(shape.to.x()).arg(shape.to.y())
-   :shape.kind==Shape::Kind::Text?QString("\"%1\" at x %2, y %3, %4 px").arg(shape.text).arg(shape.rect.x()).arg(shape.rect.y()).arg(shape.fontPixels):box(shape.rect);
+  const auto where=shape.twoPoint()?QString("from %1, %2 to %3, %4").arg(shape.from.x()).arg(shape.from.y()).arg(shape.to.x()).arg(shape.to.y())
+   :shape.kind==Shape::Kind::Text?QString("\"%1\" at x %2, y %3, %4 px").arg(shape.text).arg(shape.rect.x()).arg(shape.rect.y()).arg(shape.fontPixels)
+   :shape.kind==Shape::Kind::Step?QString("number %1 centred at x %2, y %3, %4 px across").arg(shape.number).arg(stepCentre(shape.rect).x()).arg(stepCentre(shape.rect).y()).arg(shape.rect.width()):box(shape.box());
   return QString("%1 %2 of %3 selected, %4. Arrow keys move it, Shift+arrow keys resize it, Delete removes it, [ and ] cycle marks, Tab leaves the canvas for properties, Escape deselects.").arg(kindLabel(shape.kind)).arg(i+1).arg(shapes.size()).arg(where)+panHelp;
  }
  QString text=shapes.isEmpty()?QString("No marks."):shapes.size()==1?QString("1 mark, none selected."):QString("%1 marks, none selected.").arg(shapes.size());
  if(drawingTool()||tool_==Tool::Text)text+=QString(" Insert places a %1 in the middle.").arg(kindLabel(kindFor(tool_)).toLower());
+ if(tool_==Tool::Step)text+=QString(" The next step is number %1.").arg(nextStep_);
  if(!shapes.isEmpty())text+=" [ and ] cycle marks; Escape deselects. Tab leaves the canvas.";
  return text+panHelp;
 }

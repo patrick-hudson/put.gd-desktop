@@ -51,8 +51,10 @@ EDITOR_OPS = {'add', 'update', 'remove', 'crop', 'resetCrop', 'undo', 'redo'}
 # The editor window's view and selection controls, one per drive_editor call.
 EDITOR_VIEW_ACTIONS = {'inspect', 'tool', 'select', 'selectNext', 'selectPrevious', 'selectAffectedText', 'removeMark', 'place', 'geometry', 'applyCrop',
                        'cancelCrop', 'zoom', 'fit', 'actualSize', 'pan', 'showSavedCopy', 'copySavedPath', 'dismissSavedCopy', 'discard',
-                       'keepEditing', 'confirmDiscard', 'keyboardHelp', 'geometryDetails', 'saveDetails', 'propertiesWidth'}
-EDITOR_TOOLS = {'select', 'redact', 'blur', 'crop', 'arrow', 'rectangle', 'highlight', 'text'}
+                       'keepEditing', 'confirmDiscard', 'keyboardHelp', 'geometryDetails', 'saveDetails', 'propertiesWidth',
+                       'blurStyle', 'stepNumber'}
+EDITOR_TOOLS = {'select', 'redact', 'blur', 'crop', 'arrow', 'line', 'rectangle', 'ellipse', 'pen', 'highlight', 'text', 'step'}
+EDITOR_BLUR_STYLES = {'blur', 'pixelate'}
 RECORDING_TARGETS = {'monitor', 'desktop', 'region', 'window'}
 RECORDING_FORMATS = {'mp4', 'webm', 'gif', 'webp'}
 RECORDING_CODECS = {'h264', 'h265', 'vp9'}
@@ -261,7 +263,7 @@ def create_server(adapter: CliAdapter) -> MCPServer:
 
     @server.tool(annotations=ToolAnnotations(read_only_hint=False, destructive_hint=False, open_world_hint=False))
     async def edit_image(id: str, commands: list[Json]) -> Json:
-        """Apply 1-100 edits atomically in the open editor, shown live in its window. Ops: add {shape}, update {shapeId, shape}, remove {shapeId}, crop {rect}, resetCrop, undo, redo. Shapes use source-image pixels: redact/blur/rectangle/highlight {kind, rect:[x,y,w,h]}, arrow {kind, from:[x,y], to:[x,y]}, text {kind, at:[x,y], text}; optional color '#RRGGBB' (not redact/blur), width 1-64, strength 2-64 (blur), fontPixels 8-200 and font family name or '' for the default (text). A redaction removes the pixels it covers; blur is only a visual effect."""
+        """Apply 1-100 edits atomically in the open editor, shown live in its window. Ops: add {shape}, update {shapeId, shape}, remove {shapeId}, crop {rect}, resetCrop, undo, redo. Shapes use source-image pixels: redact/blur/rectangle/ellipse/highlight {kind, rect:[x,y,w,h]}, arrow/line {kind, from:[x,y], to:[x,y]}, pen {kind, points:[[x,y],...] 1-2000}, step {kind, at:[x,y] centre, optional number 1-999 (default one more than the highest step) and size 16-256 diameter}, text {kind, at:[x,y], text}; optional color '#RRGGBB' (not redact/blur), width 1-64 (arrow, line, rectangle, ellipse, pen), strength 2-64 and style 'blur' or 'pixelate' (blur; strength is the block size when pixelated), fontPixels 8-200 and font family name or '' for the default (text). A redaction removes the pixels it covers; blur and pixelate are only visual effects."""
         if not identifier(id) or not safe_commands(commands):
             return invalid()
         return await adapter.call('editor.apply', {'id': id, 'commands': commands})
@@ -293,6 +295,11 @@ def create_server(adapter: CliAdapter) -> MCPServer:
             params['overwrite'] = True
         return await adapter.call('editor.saveCopy', params)
 
+    @server.tool(annotations=ToolAnnotations(read_only_hint=False, destructive_hint=False, open_world_hint=False))
+    async def copy_editor_image(id: str) -> Json:
+        """Copy image (Ctrl+Shift+C): put the same sanitized PNG that Upload and save_editor_copy produce on the desktop clipboard, replacing what it held. Nothing is uploaded and no history item is created; returns copied, bytes, sha256, width and height."""
+        return await adapter.call('editor.copy', {'id': id}) if identifier(id) else invalid()
+
     @server.tool(annotations=effect)
     async def submit_editor(id: str) -> Json:
         """Finalize the open edit and send only the sanitized result through the configured destination (may publish a public link and copy it). Inspect the operation afterwards."""
@@ -313,8 +320,9 @@ def create_server(adapter: CliAdapter) -> MCPServer:
     @server.tool(annotations=ToolAnnotations(read_only_hint=False, destructive_hint=False, open_world_hint=False))
     async def drive_editor(id: str, action: str, tool: str | None = None, shape_id: int | None = None,
                            rect: list[int] | None = None, percent: float | None = None,
-                           delta: list[int] | None = None, pixels: int | None = None) -> Json:
-        """Work the open editor window's view and selection controls as a user does, one action per call; each reply is the window's view: tool, selectedShapeId, geometry [x,y,w,h] of the selection or pending crop (an arrow's tail at x,y and head at x+w,y+h), cropPending, the accessible selection summary, zoomPercent, fitted, visibleRect (image pixels shown), canvasSize, geometryDetails {open, visible}, propertiesWidth (logical pixels), editingText, busy, the tool style, the footer message, lastSave (saved/failed, stage chooser/write, path, reason; a saved copy's current is false once the draft changed after it), lastShowInFolder, lastCopiedPath, saveFeedbackVisible, saveDetailsOpen, cancelLabel (Cancel, or Discard… once there are edits), destination, preparationFailure and discardConfirmation {open, text}. Actions: inspect, tool {tool select|redact|blur|crop|arrow|rectangle|highlight|text}, select {shape_id, or none to clear}, selectNext / selectPrevious (] and [; Tab leaves the canvas with the selection kept), selectAffectedText (cycle annotation text clipped by the saved image or pending crop, preserving that crop), removeMark (Remove mark / Delete, one undoable step on the selection), place (the current drawing tool's mark centred at a quarter of the image, Insert), geometry {rect [x,y,w,h] in image pixels for the selection or the pending crop; one undo step}, applyCrop / cancelCrop, zoom {percent 2-3200}, fit, actualSize, pan {delta [dx,dy] canvas pixels}, propertiesWidth {pixels 200-10000, capped at one third of the window}, showSavedCopy (Show in folder for the last saved copy), geometryDetails (toggle Position and size for annotation marks; crop fields stay visible), keyboardHelp (toggle the named keyboard help disclosure), copySavedPath (Copy path: its full path to the clipboard), saveDetails (toggle the save failure's full path and reason), dismissSavedCopy (dismiss the footer feedback, keeping its saved path), discard (the Cancel / Discard… button: closes at once without edits, else opens the discard confirmation), keepEditing (answers that confirmation, or dismisses a preparation failure) and confirmDiscard (discards; nothing uploads). Other actions wait while the confirmation is open. Other shape edits go through edit_image; nothing uploads; cancel_editor still discards without asking."""
+                           delta: list[int] | None = None, pixels: int | None = None,
+                           style: str | None = None, number: int | None = None) -> Json:
+        """Work the open editor window's view and selection controls as a user does, one action per call; each reply is the window's view: tool, selectedShapeId, geometry [x,y,w,h] of the selection or pending crop (an arrow's tail at x,y and head at x+w,y+h), cropPending, the accessible selection summary, zoomPercent, fitted, visibleRect (image pixels shown), canvasSize, geometryDetails {open, visible}, propertiesWidth (logical pixels), editingText, busy, the tool style (with blurStyle and stepSize), nextStepNumber, copying, lastCopy (copying/copied/failed with reason), the footer message, lastSave (saved/failed, stage chooser/write, path, reason; a saved copy's current is false once the draft changed after it), lastShowInFolder, lastCopiedPath, saveFeedbackVisible, saveDetailsOpen, cancelLabel (Cancel, or Discard… once there are edits), destination, preparationFailure and discardConfirmation {open, text}. Actions: inspect, tool {tool select|redact|blur|crop|arrow|line|rectangle|ellipse|pen|highlight|text|step}, blurStyle {style blur|pixelate: the Blur tool's Style buttons, restyling a selected blur}, stepNumber {number 1-999: the Step tool's Next number, or a selected step's Number}, select {shape_id, or none to clear}, selectNext / selectPrevious (] and [; Tab leaves the canvas with the selection kept), selectAffectedText (cycle annotation text clipped by the saved image or pending crop, preserving that crop), removeMark (Remove mark / Delete, one undoable step on the selection), place (the current drawing tool's mark centred at a quarter of the image, Insert), geometry {rect [x,y,w,h] in image pixels for the selection or the pending crop; one undo step}, applyCrop / cancelCrop, zoom {percent 2-3200}, fit, actualSize, pan {delta [dx,dy] canvas pixels}, propertiesWidth {pixels 200-10000, capped at one third of the window}, showSavedCopy (Show in folder for the last saved copy), geometryDetails (toggle Position and size for annotation marks; crop fields stay visible), keyboardHelp (toggle the named keyboard help disclosure), copySavedPath (Copy path: its full path to the clipboard), saveDetails (toggle the save failure's full path and reason), dismissSavedCopy (dismiss the footer feedback, keeping its saved path), discard (the Cancel / Discard… button: closes at once without edits, else opens the discard confirmation), keepEditing (answers that confirmation, or dismisses a preparation failure) and confirmDiscard (discards; nothing uploads). Other actions wait while the confirmation is open. Other shape edits go through edit_image; nothing uploads; cancel_editor still discards without asking."""
         if not identifier(id) or action not in EDITOR_VIEW_ACTIONS:
             return invalid()
         params: Json = {'id': id, 'action': action}
@@ -344,6 +352,14 @@ def create_server(adapter: CliAdapter) -> MCPServer:
             if type(pixels) is not int or not 200 <= pixels <= 10000:
                 return invalid()
             params['pixels'] = pixels
+        if style is not None:
+            if style not in EDITOR_BLUR_STYLES:
+                return invalid()
+            params['style'] = style
+        if number is not None:
+            if type(number) is not int or not 1 <= number <= 999:
+                return invalid()
+            params['number'] = number
         return await adapter.call('editor.view', params)
 
     @server.tool(annotations=ToolAnnotations(read_only_hint=False, destructive_hint=False, open_world_hint=False))

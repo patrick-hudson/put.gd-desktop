@@ -42,6 +42,10 @@ QString EditorSession::takeAppearance(){std::lock_guard lock(mutex_);return std:
 QString EditorSession::phase() const {std::lock_guard lock(mutex_);return phase_;}
 void EditorSession::setPhase(const QString& phase){std::lock_guard lock(mutex_);phase_=phase;}
 QList<EditorSession::Pending> EditorSession::take(){std::lock_guard lock(mutex_);return std::exchange(queue_,{});}
+void EditorSession::setCopyHandler(CopyHandler handler){std::lock_guard lock(mutex_);copyHandler_=std::move(handler);}
+EditorSession::CopyHandler EditorSession::copyHandler() const {std::lock_guard lock(mutex_);return copyHandler_;}
+void EditorSession::finishCopy(Error error){std::lock_guard lock(mutex_);copyResult_=std::move(error);}
+std::optional<Error> EditorSession::takeCopyResult(){std::lock_guard lock(mutex_);return std::exchange(copyResult_,std::nullopt);}
 
 namespace {
 // At most six distinct lowercase #rrggbb strings, as the settings validator accepts.
@@ -158,7 +162,26 @@ EditorResult EditorJob::supervise(const std::function<bool(QFile&)>& stage,const
  request["appearance"]=appearance_=="light"?QStringLiteral("light"):QStringLiteral("dark");
  QProcess process;process.setProcessChannelMode(QProcess::SeparateChannels);process.setReadChannel(QProcess::StandardOutput);
  UiControl control(process);
- bool ready=false,editing=false,finalizing=false,checkpoint=false,protocolFailed=false;QJsonObject reply;qint64 stderrBytes=0;
+ bool ready=false,editing=false,finalizing=false,checkpoint=false,protocolFailed=false,copying=false;QJsonObject reply;qint64 stderrBytes=0;
+ // Copy image: the helper staged copy.png in this private directory. Read it
+ // through the pinned identities, check it is the sanitized PNG it announced,
+ // remove it, then hand the bytes to the clipboard. Never kept or uploaded.
+ const auto copyPath=directory.path()+"/copy.png";
+ const auto takeCopy=[&](const QJsonObject& payload,QByteArray& bytes)->Error{
+  const Error invalid{"edit_output_invalid","The editor returned an image that is not a sanitized PNG",{}};
+  qint64 count=0;const auto hash=payload["sha256"].toString();
+  struct stat directoryNow{},identity{};
+  const int fd=::open(QFile::encodeName(copyPath).constData(),O_RDONLY|O_CLOEXEC|O_NOFOLLOW|O_NONBLOCK);
+  ::unlink(QFile::encodeName(copyPath).constData());
+  if(fd<0)return {"editor_io","The edited image for the clipboard is missing",{}};
+  QFile file;if(!file.open(fd,QIODevice::ReadOnly,QFileDevice::AutoCloseHandle)){::close(fd);return {"editor_io","The edited image for the clipboard is missing",{}};}
+  if(!ownedDirectory(directory.path(),directoryNow)||!sameFile(directoryIdentity,directoryNow)||::fstat(fd,&identity)||!S_ISREG(identity.st_mode)||identity.st_uid!=getuid()||(identity.st_mode&0777)!=0600)return {"editor_io","The edited image for the clipboard is not private",{}};
+  if(!number(payload["bytes"],count)||count<1||count>maximumCopyBytes||identity.st_size!=count||hash.size()!=64||QByteArray::fromHex(hash.toLatin1()).toHex()!=hash.toLatin1())return invalid;
+  bytes=file.read(count+1);
+  if(bytes.size()!=count||QString::fromLatin1(QCryptographicHash::hash(bytes,QCryptographicHash::Sha256).toHex())!=hash)return invalid;
+  QSize size;if(inspectSanitizedPng(bytes,&size)||size.width()!=payload["width"].toInt()||size.height()!=payload["height"].toInt())return invalid;
+  return {};
+ };
  struct Outstanding {EditorSession::Reply reply;qint64 deadline=0;};
  QHash<QString,Outstanding> outstanding;
  QElapsedTimer clock,phaseClock;clock.start();phaseClock.start();
@@ -183,6 +206,15 @@ EditorResult EditorJob::supervise(const std::function<bool(QFile&)>& stage,const
    const auto callback=found->reply;outstanding.remove(id);
    if(payload["ok"].toBool()){if(payload.size()!=6||!payload["result"].isObject()){protocolFailed=true;return;}callback({},payload["result"].toObject());}
    else{if(payload.size()!=7||!payload["code"].isString()||!payload["message"].isString()){protocolFailed=true;return;}callback({payload["code"].toString().left(64),payload["message"].toString().left(512),{}},{});}
+   return;
+  }
+  if(type=="copyImage"&&editing&&!finalizing&&!checkpoint&&!copying){
+   if(payload.size()!=7||!payload["width"].isDouble()||!payload["height"].isDouble()){protocolFailed=true;return;}
+   copying=true;QByteArray bytes;auto error=takeCopy(payload,bytes);
+   const auto handler=session->copyHandler();
+   if(!error&&!handler)error={"clipboard_unavailable","The clipboard is not available",{}};
+   if(error){session->finishCopy(error);return;}
+   handler(std::move(bytes),[session](Error result){session->finishCopy(std::move(result));});
    return;
   }
   if(type=="checkpoint"&&ready&&!checkpoint&&payload["ok"].isBool()){
@@ -219,6 +251,11 @@ EditorResult EditorJob::supervise(const std::function<bool(QFile&)>& stage,const
   if(ready&&!checkpoint){
    const auto scheme=session->takeAppearance();
    if(!scheme.isEmpty()){auto frame=envelope(nonce);frame["scheme"]=scheme;if(control.send("appearance",frame).isEmpty()){protocolFailed=true;break;}}
+  }
+  if(copying)if(const auto copied=session->takeCopyResult()){
+   copying=false;auto frame=envelope(nonce);frame["ok"]=!*copied;
+   if(*copied){frame["code"]=copied->code.left(64);frame["message"]=copied->message.left(256);}
+   if(!checkpoint&&control.send("copyResult",frame).isEmpty()){protocolFailed=true;break;}
   }
   for(auto& pending:session->take()){
    if(!editing||finalizing||checkpoint){pending.reply(failure("editor_finalizing"),{});continue;}

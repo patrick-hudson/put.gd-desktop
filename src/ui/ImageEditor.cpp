@@ -24,6 +24,7 @@
 #include <QUuid>
 #include <memory>
 #ifdef Q_OS_UNIX
+#include <cerrno>
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -79,6 +80,19 @@ public:
   if(!intact()||output.size()!=0||!output.seek(0)||output.write(bytes)!=bytes.size()||!output.flush()||::fsync(output.handle())!=0||!intact())return {};
   return QString::fromLatin1(QCryptographicHash::hash(bytes,QCryptographicHash::Sha256).toHex());
  }
+ // Copy image: a new owner-only copy.png beside the output, written once and
+ // flushed; the resident reads, checks and removes it before the next copy.
+ QString writeCopy(const QByteArray& bytes){
+  if(!intact())return {};
+  const int fd=::openat(directoryFd,"copy.png",O_WRONLY|O_CREAT|O_EXCL|O_CLOEXEC|O_NOFOLLOW,0600);
+  if(fd<0)return {};
+  qint64 written=0;
+  while(written<bytes.size()){const auto n=::write(fd,bytes.constData()+written,size_t(bytes.size()-written));if(n<0&&errno==EINTR)continue;if(n<=0)break;written+=n;}
+  if(::fchmod(fd,0600)!=0||written!=bytes.size()||::fsync(fd)!=0){::close(fd);discardCopy();return {};}
+  ::close(fd);
+  return QString::fromLatin1(QCryptographicHash::hash(bytes,QCryptographicHash::Sha256).toHex());
+ }
+ void discardCopy(){if(directoryFd>=0)::unlinkat(directoryFd,"copy.png",0);}
  const QString& directory() const {return directory_;}
  QFile input,output;
 private:
@@ -161,11 +175,36 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
    window->setBusy("Handing off for upload…");finish(result);
   });
  };
+ // Copy image: the window renders the sanitized PNG off the GUI thread, this
+ // stages it as copy.png and the resident puts it on the clipboard through
+ // its native adapter. One copy at a time; nothing is handed off for upload.
+ constexpr qint64 copyBytes=128LL*1024*1024;
+ bool copyPending=false;std::function<void(QJsonObject,QString,QString)> copyReply;QJsonObject copyInfo;
+ const auto copyFailed=[&](const QString& code,const QString& reason){
+  copyPending=false;window->showCopyFailed(reason);
+  if(auto reply=std::exchange(copyReply,{}))reply({},code,"The image was not copied: "+reason);
+ };
+ const std::function<bool(std::function<void(QJsonObject,QString,QString)>)> startCopy=[&](std::function<void(QJsonObject,QString,QString)> reply)->bool{
+  if(terminal||finalizing||!window||copyPending)return false;
+  const bool started=window->exportForCopy([&](const QByteArray& png,const QSize& size){
+   if(terminal)return;
+   if(png.isEmpty()){copyFailed("edit_export_failed","the edited image could not be encoded as PNG");return;}
+   if(png.size()>copyBytes){copyFailed("input_excessive",QString("the edited image is %1, over the %2 clipboard limit").arg(ByteSize::localized(png.size(),1),ByteSize::localized(copyBytes,1)));return;}
+   const auto digest=files.writeCopy(png);
+   if(digest.isEmpty()){copyFailed("image_job_io","the image could not be prepared for the clipboard");return;}
+   copyInfo={{"bytes",double(png.size())},{"sha256",digest},{"width",size.width()},{"height",size.height()}};
+   auto frame=envelope(nonce);frame["bytes"]=QString::number(png.size());frame["sha256"]=digest;frame["width"]=size.width();frame["height"]=size.height();
+   if(control.send("copyImage",frame).isEmpty())fail();
+  });
+  if(started){copyPending=true;copyReply=std::move(reply);}
+  return started;
+ };
  // Agent commands arrive from the resident's editor.* session methods.
  const auto command=[&](const QString& name,const QJsonObject& params,QString& code,QString& message,bool& deferred,std::function<void(QJsonObject,QString,QString)> done)->QJsonObject{
   auto denied=[&](const QString& c,const QString& m){code=c;message=m;return QJsonObject{};};
   const bool open=!terminal&&!finalizing;
-  if(window->savingCopy()&&QStringList{"saveCopy","submit","cancel"}.contains(name))return denied("editor_busy","A copy is still being saved");
+  if(window->savingCopy()&&QStringList{"saveCopy","submit","cancel","copy"}.contains(name))return denied("editor_busy","A copy is still being saved");
+  if(window->copying()&&QStringList{"saveCopy","submit","cancel","copy"}.contains(name))return denied("editor_busy","The image is still being copied");
   if(name=="inspect"){
    if(!params.isEmpty())return denied("invalid_request","inspect has no parameters");
    auto state=editor::Commands::state(*document);state["phase"]=terminal?"closing":finalizing?"finalizing":"editing";state["destination"]=destination;
@@ -223,6 +262,14 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
    if(!deferred)return denied("editor_busy","A copy is still being saved");
    return {};
   }
+  if(name=="copy"){
+   // Copy image as Ctrl+Shift+C does: the sanitized PNG to the clipboard.
+   if(!params.isEmpty())return denied("invalid_request","copy has no parameters");
+   if(!open)return denied("editor_finalizing","The edit was already submitted or discarded");
+   deferred=startCopy([done](QJsonObject result,QString code,QString message){done(std::move(result),std::move(code),std::move(message));});
+   if(!deferred)return denied("editor_busy","The image is still being copied or saved");
+   return {};
+  }
   if(name=="fileDialog"){
    // #259: Save a copy… as the button opens it (the desktop's chooser, or the
    // themed fallback), its state, or a cancel; editor.saveCopy saves to a path.
@@ -263,6 +310,15 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
    if(object.size()!=4||(scheme!="dark"&&scheme!="light")){fail();return;}
    Theme::setScheme(scheme=="light"?Theme::Scheme::Light:Theme::Scheme::Dark);return;
   }
+  if(type=="copyResult"&&active&&window&&copyPending){
+   // The resident's answer for the staged copy; copy.png is already gone.
+   if(!object["ok"].isBool()||object.size()!=(object["ok"].toBool()?4:6)||(!object["ok"].toBool()&&(!object["code"].isString()||!object["message"].isString()))){fail();return;}
+   files.discardCopy();
+   if(!object["ok"].toBool()){copyFailed(object["code"].toString().left(64),object["message"].toString().left(256));return;}
+   copyPending=false;window->showCopied();
+   if(auto reply=std::exchange(copyReply,{})){auto result=copyInfo;result["copied"]=true;reply(result,{},{});}
+   return;
+  }
   if(type!="command"&&object.size()!=3){fail();return;}
   if(type=="activate"&&!active&&!terminal){
    active=true;
@@ -285,6 +341,7 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
    window=std::make_unique<EditorWindow>(*document);window->setRecentColors(recentColors);window->setDestination(destination);
    QObject::connect(window.get(),&EditorWindow::cancelRequested,&app,[&]{window->setBusy("Discarding…");refuse("edit_cancelled");});
    QObject::connect(window.get(),&EditorWindow::uploadRequested,&app,submit);
+   QObject::connect(window.get(),&EditorWindow::copyRequested,&app,[&]{startCopy({});});
    deadline.stop();
    window->show();window->raise();window->activateWindow();
    if(control.send("editing",envelope(nonce)).isEmpty())fail();

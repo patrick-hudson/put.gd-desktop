@@ -6,7 +6,7 @@
 #include <QPointer>
 #include <QWidget>
 #include <functional>
-class QTimer;class QSplitter;class QVBoxLayout;class QScrollArea;class QLabel;class QPushButton;class QToolButton;class QComboBox;class QSlider;class QButtonGroup;class QFontComboBox;class QSpinBox;class QHBoxLayout;class QGridLayout;class QDialog;
+class QTimer;class QSplitter;class QVBoxLayout;class QScrollArea;class QLabel;class QPushButton;class QToolButton;class QComboBox;class QSlider;class QButtonGroup;class QFontComboBox;class QSpinBox;class QHBoxLayout;class QGridLayout;class QBoxLayout;class QDialog;
 
 namespace putgd {
 class FileDialog;
@@ -69,9 +69,18 @@ public:
  // window's own controls (see ImageEditor.cpp for the actions).
  QJsonObject viewState() const;
  QJsonObject viewCommand(const QJsonObject& params,QString& code,QString& message);
+ // Copy image (Ctrl+Shift+C): the host hands the PNG from exportForCopy to
+ // the resident, which owns the clipboard; the window shows the outcome.
+ bool requestCopy();
+ using ExportDone=std::function<void(const QByteArray& png,const QSize& size)>;
+ bool exportForCopy(ExportDone done);
+ bool copying() const {return copying_;}
+ void showCopied();
+ void showCopyFailed(const QString& reason);
 signals:
  void uploadRequested();
  void cancelRequested();
+ void copyRequested();
 protected:
  void closeEvent(QCloseEvent*) override;
  void showEvent(QShowEvent*) override;
@@ -113,7 +122,9 @@ private:
  QToolButton* status_=nullptr;
  QToolButton *undo_=nullptr,*redo_=nullptr;
  QToolButton* savedMore_=nullptr;
- QWidget *colorRow_=nullptr,*widthRow_=nullptr,*blurRow_=nullptr,*textRow_=nullptr,*cropRow_=nullptr;
+ QWidget *colorRow_=nullptr,*widthRow_=nullptr,*blurRow_=nullptr,*textRow_=nullptr,*cropRow_=nullptr,*blurStyleRow_=nullptr,*stepRow_=nullptr;
+ QToolButton *blurStyle_=nullptr,*pixelateStyle_=nullptr;
+ QLabel* stepLabel_=nullptr;QSpinBox* stepNumber_=nullptr;bool syncingStep_=false;int stepPixels_=editor::defaultStepPixels;quint64 copyFeedback_=0;
  QComboBox* width_=nullptr;
  QSlider* strength_=nullptr;
  Ui::ElidedLabel* saveTarget_=nullptr;
@@ -127,6 +138,8 @@ private:
  QWidget *geometryFields_=nullptr,*geometryRow_=nullptr,*placeRow_=nullptr,*sizeLabels_=nullptr,*optionsRule_=nullptr;
  bool syncingGeometry_=false;
  Ui::WindowHeader* header_=nullptr;
+ QPushButton *copyImage_=nullptr;QJsonObject lastCopy_;
+ QGridLayout* toolbarGrid_=nullptr;QBoxLayout *toolsLayout_=nullptr,*actionsLayout_=nullptr;QWidget* actionsSeparator_=nullptr;bool toolbarWrapped_=false;
  QPushButton *upload_=nullptr,*save_=nullptr,*cancel_=nullptr,*place_=nullptr,*showFolder_=nullptr,*copyPath_=nullptr,*chooseAnother_=nullptr,*remove_=nullptr;
  QSplitter* splitter_=nullptr;int propertiesWidth_=240;
  QWidget *canvasViewport_=nullptr,*side_=nullptr,*document_=nullptr;QScrollArea* propertiesScroll_=nullptr;
@@ -142,6 +155,6 @@ private:
  // and the document generation the saved copy holds.
  QJsonObject lastSave_,lastShowInFolder_;QString lastCopiedPath_;quint64 savedGeneration_=0,folderRequest_=0;
  QColor annotationColor_=QColor(220,38,38),highlightColor_=QColor(250,204,21);
- bool closing_=false,busy_=false,shown_=false,savingCopy_=false;
+ bool closing_=false,busy_=false,shown_=false,savingCopy_=false,copying_=false;
 };
 }

@@ -1,5 +1,6 @@
 #include "fixtures/U2Fixtures.h"
 #include "core/SanitizedPng.h"
+#include <QCryptographicHash>
 #include <QDirIterator>
 #include <QImageReader>
 #include <QRandomGenerator>
@@ -170,6 +171,28 @@ private slots:
   verifyNoSecret(f.dir.filePath("data"));verifyNoSecret(f.dir.filePath("archive"));
   QCOMPARE(QDir(f.dir.filePath("data/editing")).entryList(QDir::NoDotAndDotDot|QDir::AllEntries).size(),0);
   QCOMPARE(f.source.reads,1);
+ }
+ // #1362: Copy image reaches the resident's clipboard adapter as the sanitized
+ // PNG; it uploads nothing, adds no history item or artifact, and editing goes on.
+ void copyImagePutsTheSanitizedPngOnTheClipboardOnly(){
+  Fixture f;PUTGD_TRY_VERIFY(f.operations->ready());
+  QVERIFY(f.operations->capabilities()["editor"].toObject()["commands"].toArray().contains("copy"));
+  const auto id=call([&](JsonReply r){f.operations->invoke("edit",r);}).result["operationId"].toString();QVERIFY(!id.isEmpty());
+  HistoryStore journal(f.operations->databasePath());PUTGD_TRY_COMPARE(journal.operation(id).state,QString("editing"));
+  QVERIFY(!command(*f.operations,id,"apply",redactSecret()).error);
+  const auto before=f.source.copies;
+  auto copied=command(*f.operations,id,"copy");QVERIFY2(!copied.error,qPrintable(copied.error.code+": "+copied.error.message));
+  QVERIFY(copied.result["copied"].toBool());QCOMPARE(copied.result["operationId"].toString(),id);
+  QCOMPARE(f.source.copies,before+1);QCOMPARE(f.source.copied.kind,QString("image"));
+  const auto png=f.source.copied.encodedImage;QVERIFY(!inspectSanitizedPng(png));
+  QCOMPARE(copied.result["sha256"].toString(),QString::fromLatin1(QCryptographicHash::hash(png,QCryptographicHash::Sha256).toHex()));
+  QCOMPARE(QImage::fromData(png,"PNG").convertToFormat(QImage::Format_RGB32).pixel(secret.center()),qRgb(0,0,0));
+  // Still editing: no item, no artifact, no upload.
+  QCOMPARE(journal.operation(id).state,QString("editing"));QVERIFY(journal.operation(id).items.isEmpty());QCOMPARE(f.provider->uploads.load(),0);
+  {QDirIterator it(f.dir.filePath("data/artifacts"),QDir::Files,QDirIterator::Subdirectories);QVERIFY(!it.hasNext());}
+  QVERIFY(!command(*f.operations,id,"cancel").error);PUTGD_TRY_COMPARE_WITH_TIMEOUT(journal.operation(id).state,QString("cancelled"),20000);
+  QVERIFY(journal.operation(id).items.isEmpty());QCOMPARE(f.provider->uploads.load(),0);
+  QCOMPARE(QDir(f.dir.filePath("data/editing")).entryList(QDir::NoDotAndDotDot|QDir::AllEntries).size(),0);
  }
  void failedUploadRetriesTheEditedBytesOnly(){
   // Retry binds to the finalized digest: it never reacquires or reopens the source.

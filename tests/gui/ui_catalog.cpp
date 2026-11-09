@@ -243,9 +243,9 @@ QImage iconSpecimen(){
 // real 20 px rows (the editor toolbar, and Recording review's mask tools that
 // share the redact glyph) at 1:1 and magnified 3x without smoothing.
 QImage editorIcons(){
- const auto& t=Theme::current();const int rowHeight=Ui::scaled(20)+16;QImage image(1800,112+3*(3*rowHeight+32),QImage::Format_RGB32);image.fill(t.surface);QPainter p(&image);
+ const auto& t=Theme::current();const int rowHeight=Ui::scaled(20)+16;QImage image(2400,112+3*(3*rowHeight+32),QImage::Format_RGB32);image.fill(t.surface);QPainter p(&image);
  QFont small=p.font();small.setPixelSize(11);p.setFont(small);p.setPen(t.textMuted);
- const QStringList names{"edit","select","redact","blur","crop","annotate-arrow","rectangle","highlight","text","undo","redo","remove","save"};
+ const QStringList names{"edit","select","redact","blur","crop","annotate-arrow","line","rectangle","ellipse","pen","highlight","text","step","undo","redo","remove","save","copy"};
  for(int i=0;i<names.size();++i){const int x=12+i*86;Ui::icon(names[i]).paint(&p,QRect(x+23,14,40,40));p.drawText(QRect(x,60,86,20),Qt::AlignCenter,names[i]);}
  auto row=[&](const QStringList& icons,int step){
   const int glyph=Ui::scaled(20);step=std::max(step,glyph+12);QImage strip(16+icons.size()*step,glyph+16,QImage::Format_RGB32);strip.fill(t.bg);QPainter q(&strip);
@@ -253,8 +253,8 @@ QImage editorIcons(){
   return strip;
  };
  int y=112;auto show=[&](const QString& title,const QImage& strip){p.drawText(QPoint(12,y-6),title);p.drawImage(QPoint(12,y),strip);p.drawImage(QPoint(32+strip.width(),y),strip.scaled(strip.size()*3,Qt::IgnoreAspectRatio,Qt::FastTransformation));y+=3*strip.height()+32;};
- show("Editor toolbar, 20 px (1:1, then 3x)",row({"select","redact","blur","crop","|","annotate-arrow","rectangle","highlight","text"},40));
- show("Editor view tools | document actions",row({"undo","redo","refresh","remove","|","save","upload"},32));
+ show("Editor toolbar, 20 px (1:1, then 3x)",row({"select","crop","|","annotate-arrow","line","rectangle","ellipse","pen","highlight","text","step","|","redact","blur"},40));
+ show("Editor view tools | document actions",row({"undo","redo","refresh","remove","|","copy","save","upload"},32));
  show("Recording review mask tools, 20 px",row({"blur","redact","|","mask-in","mask-out","remove"},32));
  return image;
 }
@@ -614,6 +614,35 @@ int main(int argc,char** argv){
   editor.setDestination("Private upload to Project archive");
   const auto clean=editor.viewState();if(!clean["preparationFailure"].isNull()||clean["saveFeedbackVisible"].toBool()||!clean["message"].isNull())return 2;
   editor.selectTool(editor::Tool::Arrow);editor.setRecentColors({"#123456","#abcdef"});if(!grab("29b-editor-recent-colours"))return 2;
+  editor.allowClose();editor.close();
+ }
+ {
+  // #1362: step numbers, pen, ellipse, line, pixelate and Copy image.
+  editor::EditDocument doc(syntheticCapture(2));QJsonArray created;QString code,message;
+  const QJsonArray edits{
+   QJsonObject{{"op","add"},{"shape",QJsonObject{{"kind","step"},{"at",QJsonArray{90,112}}}}},
+   QJsonObject{{"op","add"},{"shape",QJsonObject{{"kind","step"},{"at",QJsonArray{360,236}},{"color","#facc15"}}}},
+   QJsonObject{{"op","add"},{"shape",QJsonObject{{"kind","step"},{"at",QJsonArray{636,236}},{"color","#3b82f6"}}}},
+   QJsonObject{{"op","add"},{"shape",QJsonObject{{"kind","ellipse"},{"rect",QJsonArray{600,186,300,150}}}}},
+   QJsonObject{{"op","add"},{"shape",QJsonObject{{"kind","line"},{"from",QJsonArray{61,470}},{"to",QJsonArray{640,470}},{"color","#22c55e"}}}},
+   QJsonObject{{"op","add"},{"shape",QJsonObject{{"kind","pen"},{"width",4},{"points",QJsonArray{QJsonArray{70,520},QJsonArray{110,500},QJsonArray{150,530},QJsonArray{195,505},QJsonArray{240,526},QJsonArray{290,498},QJsonArray{340,520}}}}}},
+   QJsonObject{{"op","add"},{"shape",QJsonObject{{"kind","blur"},{"rect",QJsonArray{337,194,256,130}},{"style","pixelate"},{"strength",14}}}}};
+  if(!editor::Commands::apply(doc,edits,created,code,message)){qCritical("%s",qPrintable(message));return 2;}
+  EditorWindow editor(doc);editor.setDestination("Private upload to Project archive");editor.resize(1180,820);editor.show();
+  auto grab=[&](const QString& name){putgd::test::settle(450);app.processEvents();if(!checkSteppers(editor))return false;const auto image=steadyGrab(editor);const auto path=QDir(output).filePath(name+".png");if(!image.save(path))return false;if(!native.step(editor,name)||!writeInventory(output,name,editor))return false;captures.append(QJsonObject{{"file",name+".png"},{"controls",name+".controls.json"},{"width",image.width()},{"height",image.height()}});return true;};
+  editor.selectTool(editor::Tool::Step);if(!grab("30-editor-step"))return 2;
+  editor.selectTool(editor::Tool::Select);editor.canvas().select(quint64(created[1].toDouble()));if(!grab("30a-editor-step-selected"))return 2;
+  editor.selectTool(editor::Tool::Pen);if(!grab("30b-editor-pen"))return 2;
+  editor.selectTool(editor::Tool::Select);editor.canvas().select(quint64(created[5].toDouble()));if(!grab("30c-editor-pen-selected"))return 2;
+  editor.selectTool(editor::Tool::Ellipse);if(!grab("30d-editor-ellipse"))return 2;
+  editor.selectTool(editor::Tool::Select);editor.canvas().select(quint64(created[4].toDouble()));if(!grab("30e-editor-line-selected"))return 2;
+  editor.selectTool(editor::Tool::Blur);editor.viewCommand({{"action","blurStyle"},{"style","pixelate"}},code,message);if(!code.isEmpty()||!grab("30f-editor-pixelate"))return 2;
+  editor.selectTool(editor::Tool::Select);editor.canvas().select(quint64(created[6].toDouble()));if(!grab("30g-editor-pixelate-selected"))return 2;
+  editor.canvas().select(0);editor.showCopied();if(!grab("30h-editor-image-copied"))return 2;
+  editor.exportForCopy([](const QByteArray&,const QSize&){});editor.showCopyFailed("the clipboard is not available");if(!grab("30i-editor-copy-failed"))return 2;
+  editor.viewCommand({{"action","dismissSavedCopy"}},code,message);
+  editor.selectTool(editor::Tool::Line);editor.resize(900,620);if(!grab("30j-editor-compact-toolbar"))return 2;
+  editor.resize(editor.minimumSizeHint().width(),620);if(!grab("30k-editor-minimum-width"))return 2;
   editor.allowClose();editor.close();
  }
  {

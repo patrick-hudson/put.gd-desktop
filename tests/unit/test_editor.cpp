@@ -8,6 +8,7 @@
 #include <QBuffer>
 #include <QColorSpace>
 #include <QImageWriter>
+#include <QJsonDocument>
 #include <QPainter>
 #include <QRandomGenerator>
 #include <QTest>
@@ -771,6 +772,158 @@ private slots:
   qInfo("4K highlight: export %lld ms, 1.5 MP tile %lld ms, snap of a 1400x120 box %lld ms",exportMs,tileMs,snapMs);
   QVERIFY(!out.isNull());QVERIFY(!tile.isNull());QVERIFY(snapped.height()>0);
   QVERIFY2(exportMs<10000&&tileMs<5000,"the filter is a few linear passes; anything slower is a regression");
+ }
+
+ // #1362: step numbers, pen, ellipse, line and pixelate.
+ void newMarksNeverRevealRedactedPixelsInAnyOrder_data(){
+  QTest::addColumn<bool>("redactFirst");QTest::addColumn<bool>("cropped");
+  QTest::newRow("redact-first")<<true<<false;QTest::newRow("redact-last")<<false<<false;QTest::newRow("redact-last-cropped")<<false<<true;
+ }
+ void newMarksNeverRevealRedactedPixelsInAnyOrder(){
+  QFETCH(bool,redactFirst);QFETCH(bool,cropped);
+  const QRect mask(40,30,60,24);const auto base=noise({220,160},31);
+  const auto a=secretVariant(base,mask,41),b=secretVariant(base,mask,42);
+  auto edit=[&](const QImage& source){
+   EditDocument doc(source);if(redactFirst)doc.add(box(Shape::Kind::Redact,mask));
+   // A pixelation and a blur straddling the mask read only redacted pixels.
+   auto pixelate=box(Shape::Kind::Blur,mask.adjusted(-13,-7,17,9));pixelate.pixelate=true;pixelate.strength=9;doc.add(pixelate);
+   auto mosaic=box(Shape::Kind::Blur,QRect(mask.right()+1,mask.top(),20,mask.height()));mosaic.pixelate=true;mosaic.strength=64;doc.add(mosaic);
+   Shape step;step.kind=Shape::Kind::Step;step.rect=QRect(mask.left()+4,mask.top()-6,36,36);step.number=12;doc.add(step);
+   Shape pen;pen.kind=Shape::Kind::Pen;pen.width=6;pen.points={{30,40},{55,36},{80,52},{120,44}};doc.add(pen);
+   doc.add(box(Shape::Kind::Ellipse,mask.adjusted(-6,-6,6,6)));
+   Shape line;line.kind=Shape::Kind::Line;line.from={10,10};line.to=mask.center();line.width=8;doc.add(line);
+   if(!redactFirst)doc.add(box(Shape::Kind::Redact,mask));
+   if(cropped)doc.setCrop(QRect(45,20,120,80));
+   return doc;
+  };
+  const auto first=edit(a),second=edit(b);
+  QCOMPARE(first.render(),second.render());
+  const auto png=first.exportPng();QVERIFY(!png.isEmpty());QCOMPARE(png,second.exportPng());QVERIFY(!inspectSanitizedPng(png));
+ }
+ void pixelateAveragesBlocksOnTheShapesOwnGrid(){
+  QImage source(60,40,QImage::Format_RGB32);for(int y=0;y<40;++y)for(int x=0;x<60;++x)source.setPixel(x,y,qRgb(x*4,y*6,(x+y)%256));
+  EditDocument doc(source);auto shape=box(Shape::Kind::Blur,QRect(10,10,23,12));shape.pixelate=true;shape.strength=5;doc.add(shape);
+  const auto out=doc.render();
+  // Each 5 px block holds its pixels' average; the last column and row are partial blocks.
+  auto average=[&](QRect block){qint64 r=0,g=0,b=0;for(int y=block.top();y<=block.bottom();++y)for(int x=block.left();x<=block.right();++x){r+=qRed(source.pixel(x,y));g+=qGreen(source.pixel(x,y));b+=qBlue(source.pixel(x,y));}const qint64 n=qint64(block.width())*block.height();return qRgb(int(r/n),int(g/n),int(b/n));};
+  for(const auto& block:{QRect(10,10,5,5),QRect(15,15,5,5),QRect(30,10,3,5),QRect(30,20,3,2)})
+   for(int y=block.top();y<=block.bottom();++y)for(int x=block.left();x<=block.right();++x)QCOMPARE(out.pixel(x,y),average(block));
+  QCOMPARE(out.pixel(9,10),source.pixel(9,10));QCOMPARE(out.pixel(33,15),source.pixel(33,15));QCOMPARE(out.pixel(20,22),source.pixel(20,22));
+  // A crop through the area keeps the blocks where they were on the image.
+  QVERIFY(doc.setCrop(QRect(12,12,40,20)));const auto cropped=doc.render();
+  QCOMPARE(cropped.pixel(15-12,15-12),average(QRect(15,15,5,5)));QCOMPARE(cropped.pixel(19-12,19-12),average(QRect(15,15,5,5)));
+  QCOMPARE(cropped.pixel(0,0),average(QRect(12,12,3,3)));
+  // The canvas tile is the export's blocks at full scale, here and cut by the crop.
+  QCOMPARE(doc.blurPreview(*doc.find(doc.shapes().first().id),1.0),cropped.copy(QRect(0,0,21,10)));
+  QVERIFY(doc.setCrop(doc.imageRect()));QCOMPARE(doc.blurPreview(doc.shapes().first(),1.0),out.copy(QRect(10,10,23,12)));
+ }
+ void stepLabelsSitInsideAReadableDisc(){
+  EditDocument doc(QImage(200,120,QImage::Format_RGB32));
+  for(const auto& [color,number]:{std::pair{QColor(250,204,21),7},std::pair{QColor(220,38,38),123}}){
+   Shape step;step.kind=Shape::Kind::Step;step.rect=QRect(60,20,64,64);step.number=number;step.color=color;
+   const auto label=stepLabelPath(step).boundingRect();QVERIFY(!label.isEmpty());
+   // The label is centred and stays inside the circle, three digits too.
+   QVERIFY(std::abs(label.center().x()-QRectF(step.rect).center().x())<1.5);QVERIFY(std::abs(label.center().y()-QRectF(step.rect).center().y())<1.5);
+   const auto radius=step.rect.width()/2.0;for(const auto& corner:{label.topLeft(),label.topRight(),label.bottomLeft(),label.bottomRight()})QVERIFY(QLineF(corner,QRectF(step.rect).center()).length()<radius);
+   QImage image(200,120,QImage::Format_RGB32);image.fill(Qt::white);{QPainter painter(&image);EditDocument::paintAnnotation(painter,step);}
+   // Yellow takes a dark label, red a white one: never white on yellow.
+   const auto ink=image.pixel(label.center().toPoint());
+   if(color==QColor(250,204,21))QVERIFY(contrastOf(ink,color.rgb())>4.5);else QVERIFY(qRed(ink)>200&&qGreen(ink)>200);
+  }
+ }
+ void commandsAddEveryNewMark(){
+  EditDocument doc(noise({300,200},51));QJsonArray created;QString code,message;
+  auto apply=[&](const QJsonArray& commands){return Commands::apply(doc,commands,created,code,message);};
+  auto add=[](QJsonObject shape){return QJsonObject{{"op","add"},{"shape",shape}};};
+  QVERIFY2(apply({add({{"kind","step"},{"at",QJsonArray{50,50}}}),add({{"kind","step"},{"at",QJsonArray{100,50}},{"size",64},{"color","#3b82f6"}}),
+   add({{"kind","pen"},{"points",QJsonArray{QJsonArray{10,10},QJsonArray{20,15},QJsonArray{30,12}}},{"width",8}}),
+   add({{"kind","ellipse"},{"rect",QJsonArray{120,100,80,40}},{"width",2}}),add({{"kind","line"},{"from",QJsonArray{5,190}},{"to",QJsonArray{200,190}}}),
+   add({{"kind","blur"},{"rect",QJsonArray{200,10,60,60}},{"style","pixelate"},{"strength",8}})}),qPrintable(message));
+  QCOMPARE(created.size(),6);
+  auto json=[&](int index){return Commands::shapeJson(*doc.find(quint64(created[index].toDouble())));};
+  // Steps count up from 1; the centre and size round-trip.
+  QCOMPARE(json(0)["number"].toInt(),1);QCOMPARE(json(1)["number"].toInt(),2);QCOMPARE(json(1)["at"].toArray(),(QJsonArray{100,50}));QCOMPARE(json(1)["size"].toInt(),64);QCOMPARE(json(0)["size"].toInt(),defaultStepPixels);
+  QCOMPARE(json(2)["points"].toArray().size(),3);QCOMPARE(json(2)["width"].toInt(),8);QCOMPARE(json(2)["rect"].toArray(),(QJsonArray{10,10,21,6}));
+  QCOMPARE(json(3)["rect"].toArray(),(QJsonArray{120,100,80,40}));QCOMPARE(json(4)["to"].toArray(),(QJsonArray{200,190}));
+  QCOMPARE(json(5)["style"].toString(),QString("pixelate"));QVERIFY(doc.find(quint64(created[5].toDouble()))->pixelate);
+  // Removing a step leaves the others; the next is still one past the highest.
+  const QJsonValue second=created[1];QVERIFY(apply({QJsonObject{{"op","remove"},{"shapeId",created[0]}}}));
+  QVERIFY(apply({add({{"kind","step"},{"at",QJsonArray{150,50}}})}));QCOMPARE(Commands::shapeJson(*doc.find(quint64(created[0].toDouble())))["number"].toInt(),3);
+  QCOMPARE(Commands::shapeJson(*doc.find(quint64(second.toDouble())))["number"].toInt(),2);
+  QVERIFY(apply({add({{"kind","step"},{"at",QJsonArray{200,50}},{"number",7}})}));QCOMPARE(doc.nextStepNumber(),8);
+  // A size change keeps the centre; a blur goes back to blur.
+  QVERIFY(apply({QJsonObject{{"op","update"},{"shapeId",second},{"shape",QJsonObject{{"size",32}}}}}));QCOMPARE(Commands::shapeJson(*doc.find(quint64(second.toDouble())))["at"].toArray(),(QJsonArray{100,50}));
+  const auto shapes=doc.shapes().size();
+  for(const auto& bad:{QJsonObject{{"kind","step"},{"rect",QJsonArray{0,0,10,10}}},QJsonObject{{"kind","step"}},QJsonObject{{"kind","step"},{"at",QJsonArray{1,1}},{"number",0}},
+       QJsonObject{{"kind","step"},{"at",QJsonArray{1,1}},{"size",8}},QJsonObject{{"kind","pen"}},QJsonObject{{"kind","pen"},{"points",QJsonArray{}}},
+       QJsonObject{{"kind","pen"},{"points",QJsonArray{QJsonArray{1}}}},QJsonObject{{"kind","line"},{"from",QJsonArray{1,1}},{"to",QJsonArray{1,1}}},
+       QJsonObject{{"kind","rectangle"},{"rect",QJsonArray{1,1,5,5}},{"style","pixelate"}},QJsonObject{{"kind","blur"},{"rect",QJsonArray{1,1,5,5}},{"style","mosaic"}},
+       QJsonObject{{"kind","ellipse"},{"rect",QJsonArray{900,900,5,5}}},QJsonObject{{"kind","rectangle"},{"rect",QJsonArray{1,1,5,5}},{"number",3}},
+       QJsonObject{{"kind","pen"},{"points",QJsonArray{QJsonArray{-50,-50},QJsonArray{-40,-40}}}}}){
+   QVERIFY2(!apply({add(bad)}),qPrintable(QJsonDocument(bad).toJson(QJsonDocument::Compact)));QCOMPARE(code,QString("edit_command_invalid"));
+  }
+  QJsonArray many;for(int i=0;i<=maximumPenPoints;++i)many.append(QJsonArray{i%300,i%200});
+  QVERIFY(!apply({add({{"kind","pen"},{"points",many}})}));many.removeLast();QVERIFY(apply({add({{"kind","pen"},{"points",many}})}));
+  QCOMPARE(doc.shapes().size(),shapes+1);
+ }
+ void penStrokesCountTowardTheHistoryBound(){
+  EditDocument doc(noise({100,100},3));const auto before=doc.historyBytes();
+  Shape pen;pen.kind=Shape::Kind::Pen;for(int i=0;i<maximumPenPoints;++i)pen.points.append(QPoint(i%100,i/20));doc.add(pen);doc.add(box(Shape::Kind::Rectangle,QRect(1,1,5,5)));
+  QVERIFY(doc.historyBytes()-before>=qint64(maximumPenPoints)*qint64(sizeof(QPoint)));
+  // Smoothing evens out jitter, keeps both ends and stays within the limit.
+  QList<QPoint> jitter;for(int x=0;x<=200;++x)jitter.append(QPoint(x,50+(x%2?1:-1)));
+  const auto smooth=smoothStroke(jitter);QCOMPARE(smooth.first(),jitter.first());QCOMPARE(smooth.last(),jitter.last());QVERIFY(smooth.size()<20);
+  for(const auto& p:smooth)QVERIFY(std::abs(p.y()-50)<=1);
+ }
+ void canvasDrawsStepsPenEllipsesAndLines(){
+  EditDocument doc(noise({400,300},61));EditorCanvas canvas(doc);canvas.resize(832,632);canvas.show();QVERIFY(putgd::test::waitForWindowExposed(&canvas));
+  canvas.fit();QCOMPARE(canvas.zoom(),1.0);const QPoint origin((canvas.width()-400)/2,(canvas.height()-300)/2);
+  auto drag=[&](const QList<QPoint>& path,Qt::KeyboardModifiers modifiers={}){
+   QTest::mousePress(&canvas,Qt::LeftButton,modifiers,origin+path.first());
+   for(const auto& point:path.mid(1)){QMouseEvent move(QEvent::MouseMove,QPointF(origin+point),canvas.mapToGlobal(QPointF(origin+point)),Qt::NoButton,Qt::LeftButton,modifiers);QApplication::sendEvent(&canvas,&move);}
+   QTest::mouseRelease(&canvas,Qt::LeftButton,modifiers,origin+path.last());
+  };
+  auto last=[&]{return doc.shapes().last();};
+  // Step: each click drops the next number, centred on the click.
+  canvas.setTool(Tool::Step);
+  QTest::mouseClick(&canvas,Qt::LeftButton,{},origin+QPoint(60,60));QCOMPARE(last().kind,Shape::Kind::Step);QCOMPARE(last().number,1);QCOMPARE(stepCentre(last().rect),QPoint(60,60));
+  QTest::mouseClick(&canvas,Qt::LeftButton,{},origin+QPoint(140,60));QCOMPARE(last().number,2);QCOMPARE(canvas.nextStepNumber(),3);
+  // The next number can be changed; counting continues from it.
+  canvas.setNextStepNumber(10);QTest::mouseClick(&canvas,Qt::LeftButton,{},origin+QPoint(220,60));QCOMPARE(last().number,10);QCOMPARE(canvas.nextStepNumber(),11);
+  // A click on a step picks it up instead of dropping another one.
+  const auto steps=doc.shapes().size();drag({{140,62},{140,120}});QCOMPARE(doc.shapes().size(),steps);QCOMPARE(stepCentre(doc.shapes()[1].rect),QPoint(140,118));
+  // Undo recounts from the highest step left.
+  QVERIFY(doc.undo());QVERIFY(doc.undo());canvas.documentChanged();QCOMPARE(canvas.nextStepNumber(),3);
+  // A step near the edge stays wholly on the image.
+  QTest::mouseClick(&canvas,Qt::LeftButton,{},origin+QPoint(398,2));QVERIFY(doc.imageRect().contains(last().rect));
+  // Pen: a drag draws a smoothed stroke, one undo step.
+  canvas.setTool(Tool::Pen);const auto before=doc.shapes().size();
+  QList<QPoint> path;for(int x=20;x<=200;x+=4)path.append(QPoint(x,200+(x/4%2?2:-2)));drag(path);
+  QCOMPARE(doc.shapes().size(),before+1);QCOMPARE(last().kind,Shape::Kind::Pen);QVERIFY(last().points.size()>=2);QVERIFY(last().points.size()<path.size());
+  QCOMPARE(last().points.first(),QPoint(20,202));QVERIFY(QLineF(last().points.last(),QPoint(200,198)).length()<=3);
+  QVERIFY(doc.undo());QCOMPARE(doc.shapes().size(),before);QVERIFY(doc.redo());canvas.documentChanged();
+  // The stroke is picked up by its line and moves as one.
+  const auto penId=last().id;canvas.setTool(Tool::Ellipse);drag({{100,200},{100,230}});QCOMPARE(doc.find(penId)->points.first(),QPoint(20,232));
+  // Ellipse: drawn from a drag, grabbed by its outline, its inside stays drawable.
+  drag({{250,150},{350,250}});const auto ellipseId=last().id;QCOMPARE(last().kind,Shape::Kind::Ellipse);QCOMPARE(last().rect,QRect(250,150,100,100));
+  const auto count=doc.shapes().size();drag({{300,151},{300,141}});QCOMPARE(doc.shapes().size(),count);QCOMPARE(doc.find(ellipseId)->rect.top(),140);
+  drag({{290,180},{310,200}});QCOMPARE(doc.shapes().size(),count+1);
+  // Line: Shift keeps it on 45°.
+  canvas.setTool(Tool::Line);drag({{30,280},{130,190}},Qt::ShiftModifier);QCOMPARE(last().kind,Shape::Kind::Line);
+  const auto v=last().to-last().from;QCOMPARE(std::abs(v.x()),std::abs(v.y()));QVERIFY(v.x()>0&&v.y()<0);
+  drag({{30,100},{130,104}},Qt::ShiftModifier);QCOMPARE(last().to.y(),100);
+  drag({{30,20},{130,28}});QCOMPARE(last().to,QPoint(130,28));
+ }
+ void newMarksPlaceMoveAndResizeWithoutThePointer(){
+  EditDocument doc(noise({400,300},71));EditorCanvas canvas(doc);canvas.resize(832,632);canvas.show();QVERIFY(putgd::test::waitForWindowExposed(&canvas));
+  for(const auto tool:{Tool::Step,Tool::Pen,Tool::Ellipse,Tool::Line}){
+   canvas.setTool(tool);const auto id=canvas.placeMark();QVERIFY(id);const auto placed=*doc.find(id);QVERIFY(doc.imageRect().adjusted(0,0,1,1).contains(placed.box()));
+   canvas.setFocus();QTest::keyClick(&canvas,Qt::Key_Right);QCOMPARE(doc.find(id)->box(),placed.box().translated(1,0));
+   QTest::keyClick(&canvas,Qt::Key_Right,Qt::ShiftModifier);QVERIFY(doc.find(id)->box()!=placed.box().translated(1,0));
+   QVERIFY(canvas.selectionGeometry());QVERIFY(!canvas.selectionSummary().isEmpty());
+  }
+  // A step's geometry keeps it round.
+  canvas.setTool(Tool::Step);const auto id=canvas.placeMark();QVERIFY(canvas.setSelectionGeometry(QRect(10,10,50,20)));QCOMPARE(doc.find(id)->rect,QRect(10,10,50,50));
  }
 };
 QTEST_MAIN(EditorTest)
