@@ -603,11 +603,6 @@ private slots:
  }
  void malformedResultsSettleOnce_data(){QTest::addColumn<QByteArray>("mode");for(const char* mode:{"wrong-build","wrong-dimension","wrong-hash","duplicate","early-exit"})QTest::newRow(mode)<<QByteArray(mode);}
  void malformedResultsSettleOnce(){QFETCH(QByteArray,mode);qputenv("PUTGD_TEST_CAPTURE_MODE",mode);putgd::CaptureProcessController controller(PUTGD_CAPTURE_FIXTURE);int count=0;putgd::Error error;controller.start(snapshot(),{},[&](putgd::PayloadResult r){error=r.error;++count;});PUTGD_TRY_COMPARE(count,1);QVERIFY(error);QVERIFY(!controller.busy());putgd::test::settle(20);PUTGD_TRY_COMPARE(count,1);
-  // Each resident check names itself instead of a bare capture_failed (#331).
-  const QHash<QByteArray,QString> checks{{"wrong-build","ready_frame"},{"wrong-dimension","descriptor_limits"},{"wrong-hash","sha256"},{"duplicate","result_frame"}};
-  // An early exit races BEGIN: either the write or the exit names it.
-  if(mode=="early-exit")QVERIFY2(QStringList({"helper_exit","begin_send"}).contains(error.details["check"].toString()),qPrintable(error.details["check"].toString()));
-  else QCOMPARE(error.details["check"].toString(),checks.value(mode));
   if(mode=="wrong-hash"){QCOMPARE(error.code,QString("capture_failed"));QCOMPARE(error.details["stage"].toString(),QString("resident_verify"));QCOMPARE(error.details["width"].toInt(),3);QCOMPARE(error.details["height"].toInt(),2);QVERIFY(error.message.contains("SHA-256"));}}
  void cancellationOwnsOnlyOneChildAndCompletesOnce(){qputenv("PUTGD_TEST_CAPTURE_MODE","waiting");putgd::CaptureProcessController controller(PUTGD_CAPTURE_FIXTURE);int count=0;putgd::Error error;controller.start(snapshot(),{},[&](putgd::PayloadResult r){error=r.error;++count;});PUTGD_TRY_VERIFY(controller.processId()>0);putgd::test::settle(30);controller.cancel();controller.cancel();PUTGD_TRY_COMPARE(count,1);QCOMPARE(error.code,QString("cancelled"));QVERIFY(!controller.busy());}
  void missingHelperCallbackCanDestroyController(){

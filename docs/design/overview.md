@@ -32,7 +32,7 @@ packages use dynamically linked distribution Qt. See
 | `putgd-s3-worker` | Official AWS C++ SDK requests and private S3 module | Private framed pipes, durable-checkpoint acknowledgements and credential requests; S3 HTTPS | New Linux process per driver call |
 | `putgd-b2-worker` | Native B2 HTTP and transfer work | Private newline JSON input, progress, checkpoints and result; B2 HTTPS | New process per request |
 | `putgd-proton-runtime` | Packaged official-SDK integration for Proton account, file and sharing work | Private helper protocol, secret service and Proton APIs | On demand from the Proton provider; separately provisioned package input |
-| `putgd-ui-catalog` | Synthetic UI reference renderer | Test fixtures to rendered reference images | Test build/CI, outside the resident |
+| `putgd-ui-catalog` | Synthetic UI catalog renderer | Test fixtures to rendered catalog images | Test build/CI, outside the resident |
 | `putgd-desktop-fixture` | Independent synthetic capture/paste witness | Lab commands, synthetic windows and artifacts | Opt-in development lab package |
 
 Executable definitions: [cmake/Executables.cmake](../../cmake/Executables.cmake),
@@ -116,7 +116,7 @@ The editor and recording review have on-demand windows and explicit Upload actio
 IconArt glyphs. System, dark and light appearance use one persisted preference;
 open windows follow changes. The tray follows the panel tone. See
 [visual language](visual-language.md), [appearance](appearance.md) and the
-[UI catalog](ui-catalog.md), whose synthetic reference images are compared in CI.
+[UI catalog](ui-catalog.md), whose complete synthetic dark render is published by CI for inspection.
 
 ## Agent interfaces
 
@@ -241,7 +241,7 @@ and earlier results establish their stated scope; hardware gates use the require
 | [Tray progress](../testing/tray-progress.md) | Native progress, concurrency and notification recipes. |
 | [ThreadSanitizer](../testing/thread-sanitizer.md) | Instrumented dependency setup and thread checks. |
 | [Troubleshooting](../user/troubleshooting.md) | Diagnose common session and storage problems. |
-| [UI catalog](ui-catalog.md) | Render and compare synthetic UI reference states. |
+| [UI catalog](ui-catalog.md) | Render and inspect synthetic UI states. |
 | [UI protocol](ui-process-protocol.md) | Session/control transports and helper lifecycle. |
 | [UI state](ui-process-state.md) | Safe RAM checkpoints and state classification. |
 | [Updates](updates.md) | Check scheduling, channel choice and AppImage installation. |

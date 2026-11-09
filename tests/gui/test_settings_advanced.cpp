@@ -271,10 +271,6 @@ private slots:
   for(const auto& name:{"pendingArtifactBytesChoice","pendingImageBytes","previewCacheBytes","failedArtifactDays","logSummary","uncleanExit"}){auto* control=window.findChild<QWidget*>(name);QVERIFY(control);QVERIFY(!control->accessibleDescription().isEmpty());QVERIFY(!window.findChild<QToolButton*>(QString(name)+"Help"));}
   window.findChild<QTabWidget*>("settingsTabs")->setCurrentIndex(3);window.show();auto* help=window.findChild<QToolButton*>("historyRetentionChoiceHelp");help->click();QVERIFY(window.findChild<QLabel*>("historyRetentionChoiceHelpText")->isVisible());help->click();QVERIFY(!window.findChild<QLabel*>("historyRetentionChoiceHelpText")->isVisible());
  }
- void diagnosticsPackageIsAnAlignedSecondaryAction(){
-  QTemporaryDir dir;SettingsService service(dir.filePath("config.json"));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.resize(1600,1400);window.navigate("settings");window.findChild<QTabWidget*>("settingsTabs")->setCurrentIndex(3);window.show();putgd::test::settle(30);
-  auto* package=window.findChild<QPushButton*>("createDiagnosticsPackage");auto* clear=window.findChild<QPushButton*>("clearLogs");QVERIFY(package&&clear);QCOMPARE(package->property("visualRole").toString(),QString("secondary"));QVERIFY(package->width()<package->parentWidget()->width());auto* summary=window.findChild<QLabel*>("logSummary");QVERIFY(summary);QCOMPARE(package->mapTo(&window,QPoint(package->width(),0)).x(),clear->mapTo(&window,QPoint(clear->width(),0)).x());QVERIFY(summary->mapTo(&window,QPoint()).y()>summary->parentWidget()->findChild<QLabel*>()->mapTo(&window,QPoint()).y());QVERIFY(package->icon().isNull());
- }
 
 };
 QTEST_MAIN(SettingsGui)

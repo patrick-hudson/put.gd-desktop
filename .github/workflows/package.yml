@@ -16,6 +16,28 @@ env:
   CCACHE_DIR: ${{ github.workspace }}/build/ccache-package
   CCACHE_BASEDIR: ${{ github.workspace }}
   CCACHE_MAXSIZE: 256M
+  # Ubuntu containers name one archive host, so an outage there fails every
+  # retry. List others, serving hosts first (an open port is not enough: a host
+  # can accept connections and then stall). APT fails over file by
+  # file and still verifies everything against the Ubuntu keyring.
+  PUTGD_UBUNTU_MIRRORS: |
+    apt_root=${PUTGD_APT_ROOT:-/etc/apt}
+    sources=$(grep -lE 'http://archive\.ubuntu\.com/ubuntu' "$apt_root"/sources.list "$apt_root"/sources.list.d/* 2>/dev/null || true)
+    if [ -n "$sources" ]; then
+      up=() down=()
+      for host in us.archive.ubuntu.com mirrors.edge.kernel.org azure.archive.ubuntu.com archive.ubuntu.com; do
+        probe="exec 3<>/dev/tcp/$host/80; printf 'HEAD /ubuntu/dists/noble/InRelease HTTP/1.0\r\nHost: $host\r\n\r\n' >&3; head -n 1 <&3 | grep -q ' 200 '"
+        if timeout 8 bash -c "$probe" 2>/dev/null; then up+=("$host"); else down+=("$host"); fi
+      done
+      priority=0
+      : > "$apt_root/putgd-mirrors.txt"
+      for host in "${up[@]}" "${down[@]}"; do
+        priority=$((priority + 1))
+        printf 'http://%s/ubuntu/\tpriority:%d\n' "$host" "$priority" >> "$apt_root/putgd-mirrors.txt"
+      done
+      sed -i -E "s#http://archive\.ubuntu\.com/ubuntu/?#mirror+file:$apt_root/putgd-mirrors.txt#" $sources
+      echo "Ubuntu mirrors reachable: ${up[*]:-none}"
+    fi
 
 jobs:
   native:
@@ -56,7 +78,8 @@ jobs:
         # each attempt stopped after 10 minutes (#467).
         shell: bash
         run: |
-          apt=(-o Acquire::Retries=3 -o Acquire::http::Timeout=60 -o Acquire::https::Timeout=60)
+          apt=(-o Acquire::Retries=3 -o Acquire::http::Timeout=20 -o Acquire::https::Timeout=20)
+          eval "$PUTGD_UBUNTU_MIRRORS"
           bounded() { timeout --kill-after=30s 10m "$@"; }
           for attempt in 1 2 3; do
             if command -v apt-get >/dev/null; then
@@ -497,7 +520,7 @@ jobs:
           (cd build/pipewire && "$image" --appimage-extract > /dev/null)
       - name: Link pipewiresrc on Ubuntu 26.04's PipeWire
         run: |
-          docker run --rm --volume "$PWD:/src:ro" --workdir /src \
+          docker run --rm --env PUTGD_UBUNTU_MIRRORS --volume "$PWD:/src:ro" --workdir /src \
             ubuntu:26.04@sha256:f144425ff09be612d6d9ad965196e9cdc23dae1f42110a8a11a3e9a8198759f7 \
             bash tests/desktop/pipewire/ci_check.sh --install build/pipewire/squashfs-root
 
