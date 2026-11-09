@@ -210,8 +210,8 @@ jobs:
           # The export's directory is named after the build's version, so it changes
           # every commit; its debug information is discarded with the build.
           CCACHE_NOHASHDIR: 'true'
-        # ccache still preprocesses and hashes the exported files, so a file missing
-        # from the export fails here, and every program is really linked and run.
+        # ccache still hashes each exported source and header, so one the compile needs
+        # that is missing from the export fails here. Every program is really linked and run.
         run: |
           export CCACHE_DIR="$PWD/build/ccache-source-export"
           ccache --zero-stats
