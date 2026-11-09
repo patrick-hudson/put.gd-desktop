@@ -673,27 +673,25 @@ def main() -> int:
     argv += ["--executable", str(media_scanner)]
     subprocess.run(argv, check=True, env=environment)
     media_origins = relocate_media(appdir, media_plugins, media_scanner)
-    # Deploy the native theme explicitly, including its ordinary shared-library
-    # dependencies; do not replace GTK dialogs with Qt-only fallback dialogs.
+    # The native theme (do not replace GTK dialogs with Qt-only fallback dialogs),
+    # the layer-shell plugin and the Wayland client plugins are deployed explicitly,
+    # with their ordinary shared-library dependencies, in one pass: each pass
+    # rewalks the whole AppDir and takes about 40 seconds on a hosted runner.
     theme = appdir / "usr/plugins/platformthemes/libqgtk3.so"
     theme.parent.mkdir(parents=True, exist_ok=True)
     shutil.copy2(gtk, theme)
-    subprocess.run([str(executables["linuxdeploy-x86_64.AppImage"]), "--appdir", str(appdir),
-                    "--library", str(theme), *excludes], check=True, env=environment)
     layer = appdir / "usr/plugins/wayland-shell-integration/liblayer-shell.so"
     layer.parent.mkdir(parents=True, exist_ok=True)
     shutil.copy2(layer_plugins[0], layer)
-    subprocess.run([str(executables["linuxdeploy-x86_64.AppImage"]), "--appdir", str(appdir),
-                    "--library", str(layer), *excludes], check=True, env=environment)
-    # Its build RUNPATH names the CI's dependency prefix and Qt install (#421).
-    appimage_notices.set_origin_runpath(appdir, layer)
-    wayland = []
+    plugins = ["--library", str(theme), "--library", str(layer)]
     for name in WAYLAND_CLIENT_PLUGINS:
-        wayland += ["--library", str(appdir / "usr/plugins" / name)]
+        plugins += ["--library", str(appdir / "usr/plugins" / name)]
         (appdir / "usr/plugins" / name).parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(qt / "plugins" / name, appdir / "usr/plugins" / name)
-    subprocess.run([str(executables["linuxdeploy-x86_64.AppImage"]), "--appdir", str(appdir), *wayland, *excludes],
+    subprocess.run([str(executables["linuxdeploy-x86_64.AppImage"]), "--appdir", str(appdir), *plugins, *excludes],
                    check=True, env=environment)
+    # Its build RUNPATH names the CI's dependency prefix and Qt install (#421).
+    appimage_notices.set_origin_runpath(appdir, layer)
     fallbacks = stage_host_fallbacks(appdir, media)
     gpl = gpl_components(appdir, media)
     write_gpl_notice(appdir, gpl, lock["buildInputs"]["ffmpeg"], args.version)
