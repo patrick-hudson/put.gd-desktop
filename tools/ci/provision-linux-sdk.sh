@@ -2,7 +2,7 @@
 # Hosted Linux test jobs: build the pinned SDK prefix and keep the license and
 # notice files that Linux packaging configuration reads (packaging/linux), so a
 # cache hit needs no SDK checkout.
-# Release package builders still clone and verify the full source every run.
+# Release package builders still clone and verify the source every run.
 set -euo pipefail
 bash tools/ci/sdk-source.sh
 bash tools/releases/provision-sdk.sh
