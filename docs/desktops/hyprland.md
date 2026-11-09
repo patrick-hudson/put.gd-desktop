@@ -108,6 +108,22 @@ output whose `done` carries no wl_output change, so the running resident
 captures the new geometry without a restart
 ([#1299](https://github.com/patrick-hudson/put.gd-desktop/issues/1299)).
 
+## Capture monitor, delay and repeat
+
+- **Capture monitor** (#1363): the output that contains the position `j/cursorpos`
+  reports, read whole at native density. The request is sent at invocation.
+- **Repeat last region**: the remembered rectangle, from the outputs it lies on.
+- **Delayed capture**: the countdown is an overlay layer surface of `putgd-region`
+  with the scope `putgd-capture-countdown` and no keyboard interactivity. put.gd's
+  `no_anim` layer rule names that scope too, so the pill leaves in one step; it
+  still commits a transparent frame, unmaps and syncs before anything is read.
+  Hyprland's `j/locked` request answers the lock check when the delay ends, with
+  logind's `LockedHint` and the freedesktop screensaver service beside it (Omarchy's
+  lock leaves the hint off, so `j/locked` is the one that answers there). A countdown
+  whose last frame was not presented is refused as well.
+
+See [capture monitor, delay and repeat](../design/capture-delay.md).
+
 ## Capture permissions
 
 Omarchy leaves `ecosystem:enforce_permissions` off, so any client may capture.

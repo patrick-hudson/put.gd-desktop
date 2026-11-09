@@ -2,7 +2,7 @@
 
 Open put.gd to reach one window with **History**, **Destinations**, and **Settings**. The tray's **Settings and setup** and **Upload history** commands open that window, and clicking the tray icon opens History, which also shows current work. (The tray's former **Recent activity** command opened the same History page and has been removed.) Closing the window keeps the tray and accepted work running. The launcher reopens it. The tray pane and its capture commands are unchanged.
 
-The left rail starts **Capture region**, **Capture window**, **Capture desktop**, **Upload clipboard**, or **Record screen** after finished settings edits are saved. The tray lists the same captures in this order: Capture Region, Capture Region & Edit, Capture Window, Capture Desktop, Capture Screen Recording, then Edit Image (from the clipboard or a file) and Upload Clipboard. Screen captures close this window to keep it out of the capture. Clipboard imports keep it open. A save failure keeps the window open; retry saving and start the action again. Store or clear unfinished credential entry before a screen capture. Region capture supports Escape to cancel. Window capture targets the focused external app where supported; desktop capture includes enabled monitors and panels. Clipboard import prefers copied local files, then an image, then plain text. Text URLs are imported as text. **Edit & upload** selects a region and opens a small editor first; see [Edit before uploading](#edit-before-uploading). The information button and action tooltips explain the selected action and its saved output. Capture is also available through global shortcuts and the CLI.
+The left rail starts **Capture region**, **Capture window**, **Capture monitor**, **Capture desktop**, **Upload clipboard**, or **Record screen** after finished settings edits are saved. The tray lists the same captures in this order: Capture Region, Repeat Last Region, Capture Window, Capture Monitor, Capture Desktop and the Capture Delay choice, then Capture Region & Edit, Edit Image (from the clipboard or a file), Capture Screen Recording and Upload Clipboard. Screen captures close this window to keep it out of the capture. Clipboard imports keep it open. A save failure keeps the window open; retry saving and start the action again. Store or clear unfinished credential entry before a screen capture. Region capture supports Escape to cancel. Window capture targets the focused external app where supported; monitor capture takes the one monitor the pointer is on, at its full size; desktop capture includes enabled monitors and panels. See [One monitor, a delay, or the same region again](#one-monitor-a-delay-or-the-same-region-again). Clipboard import prefers copied local files, then an image, then plain text. Text URLs are imported as text. **Edit & upload** selects a region and opens a small editor first; see [Edit before uploading](#edit-before-uploading). The information button and action tooltips explain the selected action and its saved output. Capture is also available through global shortcuts and the CLI.
 
 ## GNOME 50: log out once
 
@@ -30,6 +30,35 @@ In **Settings → General → Local copies**, **Keep a local copy** controls loc
 | None | Off | Report an output error before capturing or importing |
 
 Local image results copy image MIME, text results copy text, and file results use local file URIs. Private uploads create no share link and do not change the clipboard. An upload failure does not turn an upload-only action into local saving; local-save and upload recovery remain separate. Existing files, accepted operations, and historical receipts are preserved when outputs change.
+
+## One monitor, a delay, or the same region again
+
+**Capture monitor** takes the monitor your pointer is on, at its full size. On a desk
+with several monitors, Capture desktop gives one very wide picture of all of them;
+this is the one in between. It has its own output and its own shortcut, both set like
+the other captures' (the shortcut starts unassigned).
+
+**Capture delay** waits 3, 5 or 10 seconds before a region, window, monitor or desktop
+capture, so you can open a menu, hover a button or hold a key first. Choose it in the
+tray's **Capture delay** submenu, or right-click one of those capture buttons in the
+window and open **Capture delay** there; the choice stays until you set it back to None. A small pill at the top of the
+screen counts down. It doesn't take the keyboard and you can keep working around it;
+click it to cancel, and nothing is captured. It is never in the picture.
+
+- For a region you choose the area first; the countdown runs afterwards. With
+  **Screenshot first** region selection, the countdown runs first and the screen is
+  frozen when it ends.
+- A delayed window or monitor capture takes the window that is active, or the monitor
+  under the pointer, when the countdown ends.
+- A capture started with a keyboard shortcut is always immediate.
+- If the screen locks before the countdown ends, nothing is captured.
+
+**Repeat last region** captures the same rectangle as your last region capture, with
+no selection step: handy for a series of the same area. It's in the tray, in the
+right-click menu of **Capture region**, and has its own shortcut (unassigned to begin
+with). It uses Capture region's output. put.gd forgets the rectangle when it quits,
+and says so instead of capturing when there is nothing to repeat yet or the monitors
+have changed since.
 
 ## Upload from your file manager
 
