@@ -11,6 +11,7 @@
 #include <QFile>
 #include <QFileInfo>
 #include <QHash>
+#include <QSet>
 #include <QImageWriter>
 #include <QJsonArray>
 #include <QJsonDocument>
@@ -184,6 +185,9 @@ EditorResult EditorJob::supervise(const std::function<bool(QFile&)>& stage,const
  };
  struct Outstanding {EditorSession::Reply reply;qint64 deadline=0;};
  QHash<QString,Outstanding> outstanding;
+ // Requests answered with editor_timeout: the helper may still finish them
+ // (a large Save a copy or Copy image); its late answer is dropped, not fatal.
+ QSet<QString> expired;
  QElapsedTimer clock,phaseClock;clock.start();phaseClock.start();
  QObject::connect(&control,&UiControl::failed,&process,[&](Error){protocolFailed=true;});
  HelperOutput helperOutput("putgd-ui --edit-image",logUi());
@@ -202,6 +206,7 @@ EditorResult EditorJob::supervise(const std::function<bool(QFile&)>& stage,const
   if(type=="editing"&&finalizing&&!checkpoint&&payload.size()==3){finalizing=false;session->setPhase("editing");phaseClock.restart();return;}
   if(type=="commandResult"&&editing){
    const auto id=payload["requestId"].toString();const auto found=outstanding.constFind(id);
+   if(found==outstanding.cend()&&payload["ok"].isBool()&&expired.remove(id))return;
    if(found==outstanding.cend()||!payload["ok"].isBool()){protocolFailed=true;return;}
    const auto callback=found->reply;outstanding.remove(id);
    if(payload["ok"].toBool()){if(payload.size()!=6||!payload["result"].isObject()){protocolFailed=true;return;}callback({},payload["result"].toObject());}
@@ -264,7 +269,7 @@ EditorResult EditorJob::supervise(const std::function<bool(QFile&)>& stage,const
    if(control.send("command",frame).isEmpty()){protocolFailed=true;pending.reply(failure("editor_protocol"),{});break;}
    outstanding.insert(id,{std::move(pending.reply),clock.elapsed()+commandTimeoutMs_});
   }
-  for(auto it=outstanding.begin();it!=outstanding.end();){if(clock.elapsed()>it->deadline){it->reply({"editor_timeout","The editor did not answer this command in time",{}},{});it=outstanding.erase(it);}else ++it;}
+  for(auto it=outstanding.begin();it!=outstanding.end();){if(clock.elapsed()>it->deadline){it->reply({"editor_timeout","The editor did not answer this command in time",{}},{});if(expired.size()<256)expired.insert(it.key());it=outstanding.erase(it);}else ++it;}
   process.waitForReadyRead(50);
  }
  for(auto& pending:outstanding)pending.reply({"editor_closed","The editor closed before answering",{}},{});

@@ -14,6 +14,7 @@
 #include <QTest>
 #include <thread>
 #include <mutex>
+#include <atomic>
 #include <csignal>
 #include <sys/resource.h>
 #include <unistd.h>
@@ -172,6 +173,23 @@ private slots:
   // Upload hands off exactly the copied PNG.
   QVERIFY(!ask(*session,"submit").error);worker.join();
   QVERIFY2(!result.error,qPrintable(result.error.code));QCOMPARE(result.png,png);
+ }
+ // A command that outlives its deadline answers editor_timeout; the helper's
+ // late answer must not end the edit (a large Copy image or Save a copy).
+ void lateAnswersAfterATimeoutKeepTheEditorOpen(){
+  QTemporaryDir root;auto session=std::make_shared<EditorSession>();EditorResult result;std::atomic_int copies{0};
+  session->setCopyHandler([&](QByteArray,std::function<void(Error)> done){++copies;done({});});
+  std::thread worker([&]{auto image=noise({4000,3000},61);result=EditorJob(root.filePath("editing"),PUTGD_PRODUCT_UI_PATH,20000,120000,50).run(image,"Synthetic",256*1024*1024,session);});
+  auto joined=qScopeGuard([&]{session->cancel();if(worker.joinable())worker.join();});
+  QVERIFY(waitPhase(*session,"editing"));
+  QCOMPARE(ask(*session,"copy").error.code,QString("editor_timeout"));
+  // The copy still lands, and the editor keeps answering afterwards.
+  for(int i=0;i<300&&copies.load()==0;++i)QTest::qSleep(50);
+  QCOMPARE(copies.load(),1);
+  Answer view;for(int i=0;i<100;++i){view=ask(*session,"view");if(!view.error&&!view.result["copying"].toBool())break;QTest::qSleep(50);}
+  QVERIFY2(!view.error,qPrintable(view.error.code));QCOMPARE(view.result["lastCopy"].toObject()["status"].toString(),QString("copied"));
+  QCOMPARE(session->phase(),QString("editing"));
+  QVERIFY(!ask(*session,"cancel").error);worker.join();QCOMPARE(result.error.code,QString("cancelled"));
  }
  void copyImageWithoutAClipboardFailsAndKeepsEditing(){
   QTemporaryDir root;auto session=std::make_shared<EditorSession>();EditorResult result;
