@@ -140,7 +140,7 @@ struct ImageCopyCapture::Impl:QObject {
    output->native=static_cast<wl_output*>(wl_registry_bind(self->registry,id,&wl_output_interface,4));self->outputs.insert(id,output);
    static const wl_output_listener listener={[](void*,wl_output*,int32_t,int32_t,int32_t,int32_t,int32_t,const char*,const char*,int32_t){},
     [](void*,wl_output*,uint32_t,int32_t,int32_t,int32_t){},[](void*,wl_output*){},[](void*,wl_output*,int32_t){},
-    [](void* data,wl_output*,const char* value){static_cast<Output*>(data)->name=boundedText(value);},[](void*,wl_output*,const char*){}};
+    [](void* data,wl_output*,const char* value){auto* output=static_cast<Output*>(data);output->name=boundedText(value);output->owner->notify();},[](void*,wl_output*,const char*){}};
    wl_output_add_listener(output->native,&listener,output);
   }else if(name==wl_output_interface.name&&version<4)self->versions["wl_output"]=int(version);
   self->notify();
@@ -198,6 +198,8 @@ struct ImageCopyCapture::Impl:QObject {
   if(!outputSources)return QStringLiteral("The compositor does not offer ext-output-image-capture-source-manager-v1");
   if(!shm)return QStringLiteral("The compositor does not offer wl_shm");
   if(outputs.isEmpty())return versions.contains("wl_output")?QStringLiteral("Output capture needs wl_output version 4 for output names"):QStringLiteral("Waiting for compositor outputs");
+  // wl_output.name follows the bind, a round trip after the initial sync; until then captureOutput can't find the output.
+  for(const auto* output:outputs)if(output->name.isEmpty())return QStringLiteral("Waiting for compositor outputs");
   return {};
  }
  QString windowReason()const{
