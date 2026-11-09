@@ -248,10 +248,10 @@ needed. An 80 GiB virtual capacity is not an 80 GiB initial allocation.
 
 ## Verification boundaries
 
-Run `python3 -m unittest discover -s tests/desktop -p test_windows_lab.py -v`
-for host disk/firmware/TPM isolation, immutable base and unclean seal checks.
-These use synthetic state and real qemu-img/qemu-io; they do not certify an installed
-Windows desktop, TPM behavior inside Windows or application acceptance.
+The former host disk/firmware/TPM isolation, immutable base and unclean seal
+checks used synthetic state and real qemu-img/qemu-io. They were retired in the
+B1 test-suite cleanup and did not certify an installed Windows desktop, TPM
+behavior inside Windows or application acceptance.
 Actual desktop installation, disk-only boot, activation/expiry, secure boot/TPM,
 independent clone boots and the Windows application matrix must each be recorded
 separately. This helper does not port the Linux fixture runner or build a Windows app.

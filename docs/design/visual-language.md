@@ -249,5 +249,4 @@ redesign experiment remains [a historical record](../history/ui-redesign-experim
 Those records, the 2026-10-26 receipts and other dated evidence keep the names
 they were written with: Graphite, `Graphite.h`, `VisualStyle`, `RedesignTheme`
 and `putgd-redesign-preview` became `putgd::Ui` (`Ui.h`), `Ui::styleWindow` and
-`putgd-ui-catalog` on 2026-10-29. `tests/ci/test_ui_names.py` keeps the retired
-names out of code.
+`putgd-ui-catalog` on 2026-10-29.

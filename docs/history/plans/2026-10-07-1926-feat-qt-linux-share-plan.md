@@ -442,7 +442,7 @@ Goal: A clean checkout builds the app skeleton and test targets on the minimum L
 
 Requirements: R24–R26. Dependencies: none.
 
-Files: CMakeLists.txt, CMakePresets.json, cmake/Dependencies.cmake, cmake/dependency-lock.json, src/main.cpp, tests/unit/test_build_contract.cpp, .github/workflows/build.yml, README.md, AGENTS.md.
+Files: CMakeLists.txt, CMakePresets.json, cmake/Dependencies.cmake, cmake/dependency-lock.json, src/main.cpp, the original build-contract test (retired in the B1 test-suite cleanup), .github/workflows/build.yml, README.md, AGENTS.md.
 
 Approach: Implement KTD1/KTD9 build boundaries and dev, release, ASan/UBSan, and TSan presets. Keep AWS SDK build options separate from app C++20 settings; import SDK targets and pin source/transitive hashes. Add Linux headless tests and shared core/UI compile jobs for Windows/macOS with native stubs. Record dependency provisioning, supported compilers, and the standing Anthropic review authorization in AGENTS.md.
 
