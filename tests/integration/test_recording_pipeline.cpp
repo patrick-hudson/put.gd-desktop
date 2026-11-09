@@ -117,11 +117,12 @@ private slots:
         QVERIFY2(clip.irregular <= std::max(2, clip.frames / 20), qPrintable(summary));
         QVERIFY2(std::llabs(retained * 1000 - clip.durationNs) <= 2 * GST_SECOND / 60, qPrintable(summary));
     }
-    // #984: a machine that stays busy while the recorder takes a core and more
-    // lowers the rate from 60 to 30 after the warm-up and three windows. The
-    // gate keeps every other grab, videorate repeats them, and the clip keeps
-    // 60 frames a second on the grid for the whole recording.
-    void aBusyMachineLowersTheRateAndTheClipKeepsItsGrid() {
+    // #984, #1045: a machine that stays busy while the recorder takes a core and
+    // more lowers the rate from 60 to 30 after the warm-up and three windows. The
+    // gate keeps every other grab and videorate fills the rest of the clip's slots
+    // with repeats, which stop before the encoder: it encodes only the kept
+    // frames, with variable-rate timestamps on the clip's full timeline.
+    void aBusyMachineLowersTheRateAndSkipsTheRepeats() {
         QStringList encoders;
         for (const char* name : {"x264enc", "openh264enc"}) if (GstElementFactory* factory = gst_element_factory_find(name)) { encoders << name; gst_object_unref(factory); }
         if (encoders.isEmpty()) QSKIP("No CPU H.264 encoder is installed");
@@ -155,22 +156,26 @@ private slots:
         const auto after = pipeline.status();
         const double delivered = after["framesDelivered"].toDouble() - before["framesDelivered"].toDouble();
         const double captured = after["framesCaptured"].toDouble() - before["framesCaptured"].toDouble();
+        const double encoded = after["framesEncoded"].toDouble() - before["framesEncoded"].toDouble();
         bool stopped = false; Error stopError; qint64 retained = 0;
         pipeline.stop([&](Error error, qint64 durationUs) { stopped = true; stopError = error; retained = durationUs; });
         PUTGD_TRY_VERIFY_WITH_TIMEOUT(stopped, RecordingPipeline::stopDrainMs + 2000);
         QVERIFY2(!stopError, qPrintable(stopError.message));
         const Clip clip = inspect(options.output, 60);
-        const QString summary = QStringLiteral("after the step: delivered %1, captured %2 in 3 s; clip frames %3, duration %4 ms, irregular %5, retained %6 ms")
-            .arg(delivered).arg(captured).arg(clip.frames).arg(clip.durationNs / 1000000).arg(clip.irregular).arg(retained / 1000);
+        const QString summary = QStringLiteral("after the step: delivered %1, captured %2, encoded %3 in 3 s; clip frames %4, duration %5 ms, gaps %6..%7 ms, retained %8 ms")
+            .arg(delivered).arg(captured).arg(encoded).arg(clip.frames).arg(clip.durationNs / 1000000).arg(clip.minGapNs / 1000000.0, 0, 'f', 1).arg(clip.maxGapNs / 1000000.0, 0, 'f', 1).arg(retained / 1000);
         qInfo("%s", qPrintable(summary));
         QVERIFY(delivered > 0);
         QVERIFY(captured > 0);
         QVERIFY(retained > 0);
         QVERIFY(clip.frames > 0);
-        // The source still grabs at 60; the gate keeps half of it.
+        // The source still grabs at 60; the gate keeps half of it, and only
+        // those reach the encoder: a repeat would double this count.
         QVERIFY2(captured >= delivered * 0.4 && captured <= delivered * 0.6, qPrintable(summary));
-        QVERIFY2(clip.irregular <= std::max(2, clip.frames / 20), qPrintable(summary));
-        QVERIFY2(std::llabs(retained * 1000 - clip.durationNs) <= 2 * GST_SECOND / 60, qPrintable(summary));
+        QVERIFY2(encoded >= captured * 0.75 && encoded <= captured * 1.2, qPrintable(summary));
+        // The kept frames keep their real times: rising, and spanning the clip's timeline.
+        QVERIFY2(clip.minGapNs > 0, qPrintable(summary));
+        QVERIFY2(std::llabs(retained * 1000 - clip.durationNs) <= 3 * GST_SECOND / 60, qPrintable(summary));
     }
     // #1115: a compositor that refuses max_framerate 0/1 gets the plain request
     // for the same encoder. No daemon answers here, so both attempts fail and the

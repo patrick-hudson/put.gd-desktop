@@ -167,7 +167,11 @@ struct AudioGraph {
 qint64 streamOrigin(const AVStream* stream) { return stream->start_time == AV_NOPTS_VALUE ? 0 : stream->start_time; }
 QString baseVideoGraph(const ExportRequest& request, AVRational timeBase, qint64 origin, const QSize& outputSize, int outputFps) {
     const auto start = origin + av_rescale_q(request.edit.trimStart, microseconds, timeBase), end = origin + av_rescale_q(request.edit.exportEnd(request.durationUs), microseconds, timeBase);
-    QStringList chain{QStringLiteral("trim=start_pts=%1:end_pts=%2").arg(start).arg(end), "setpts=PTS-STARTPTS", "format=rgb24"};
+    // The rebase takes the trim start, not the first frame, and fps below starts
+    // at 0, repeating the first frame up to the trim start: a recording whose
+    // adaptive rate stepped down keeps only the kept frames (#1045), so the
+    // first one can lie after the trim start while the audio starts on it.
+    QStringList chain{QStringLiteral("trim=start_pts=%1:end_pts=%2").arg(start).arg(end), QStringLiteral("setpts=PTS-%1").arg(start), "format=rgb24"};
     QString graph = "[in]" + chain.join(',');
     int label = 0;
     const auto trimEnd = request.edit.exportEnd(request.durationUs);
@@ -187,7 +191,7 @@ QString baseVideoGraph(const ExportRequest& request, AVRational timeBase, qint64
         }
     }
     if (outputSize != request.canvas) graph += QStringLiteral(",scale=w=%1:h=%2:flags=lanczos").arg(outputSize.width()).arg(outputSize.height());
-    if (outputFps > 0) graph += QStringLiteral(",fps=%1").arg(outputFps);
+    if (outputFps > 0) graph += QStringLiteral(",fps=%1:start_time=0").arg(outputFps);
     return graph;
 }
 struct Encoder {

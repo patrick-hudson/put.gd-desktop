@@ -12,8 +12,10 @@
 #include <QStringList>
 #include <QTimer>
 #include <atomic>
+#include <deque>
 #include <functional>
 #include <gst/gst.h>
+#include <mutex>
 #include <thread>
 #include <vector>
 
@@ -109,6 +111,16 @@ private:
     // Lab statistics for PUTGD_RECORD_DEBUG_LOG, written on streaming threads and read after teardown.
     struct Spread { gint64 count = 0, min = 0, max = 0, sum = 0; void add(gint64); QString text() const; };
     struct Rebase { std::atomic<gint64> firstPassed{-1}; std::atomic<gint64> lastPassed{-1}; std::atomic<gint64> passed{0}; Spread lateness; AudioClockGuard clock; };
+    // After a step of the adaptive rate (#1045): videorate's repeats, flagged GAP,
+    // stop before the encoder, which encodes only the kept frames with their
+    // real timestamps. The caps keep the configured rate, because a mid-stream
+    // rate change is refused by matroskamux and would re-initialise the encoder.
+    // Encoders that keep their input PTS need nothing more; the va encoders
+    // restamp their output contiguously, so each input time waits in `inEncoder`
+    // and restoreEncodedTime puts it back on the output, in order. `stepped` is
+    // sticky for restamping; `dropping` ends at Stop, so the clip ends where its
+    // last slot was instead of at the last kept frame.
+    struct RepeatSkip { std::atomic<bool> dropping{false}, stepped{false}; std::atomic<gint64> skipped{0}; bool restamps = false; std::mutex mutex; std::deque<gint64> inEncoder; gint64 encoderOffset = 0; };
     // The rate gate before the capture queue: frames the source delivered,
     // frames kept, and the period kept frames are spaced by (the configured
     // frame's until the adaptive rate lowers it). ximagesrc's frames pass
@@ -129,6 +141,7 @@ private:
     // early after a repeat takes the next slot instead of being dropped.
     struct FrameClock { RateGate* gate = nullptr; gint64 previous = -1, arrival = 0, headerPts = -1, repeatedPts = 0, lastArrival = -1, lastPassed = -1; GstBuffer* lastKept = nullptr; gint64 distinctContents = 0, sameContents = 0, early = 0, resyncs = 0, afterRepeat = 0; bool compositorTimes = false, locked = true, lastWasRepeat = false; Spread age, interval; FrameLock lock; };
     static GstPadProbeReturn probe(GstPad*, GstPadProbeInfo*, gpointer);
+    static GstPadProbeReturn restoreEncodedTime(GstPad*, GstPadProbeInfo*, gpointer);
     static GstPadProbeReturn stampFrame(GstPad*, GstPadProbeInfo*, gpointer);
     static GstPadProbeReturn gateFrame(GstPad*, GstPadProbeInfo*, gpointer);
     // reopenableSource: the source's own EOS (sent after its error) must not
@@ -160,6 +173,8 @@ private:
     quint64 stops_ = 0;
     FrameClock frameClock_;
     RateGate gate_;
+    RepeatSkip repeatSkip_;
+    bool encodeRepeats_ = false;
     AdaptiveRate rate_;
     QElapsedTimer rateClock_;
     struct RateMarks { gint64 delivered = 0, leaked = 0; CpuSample cpu; } rateMarks_;
