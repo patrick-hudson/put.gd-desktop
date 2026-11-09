@@ -90,19 +90,17 @@ and a failed integration test is retried once and reported (see
 offscreen contracts do not establish compositor support or physical memory
 acceptance. The Release-preset compile happens in the package builders, not here.
 
-On the 26.04 leg only (`-DPUTGD_UI_CATALOG_REFERENCES=ON`), the suite includes
-the [UI catalog](../design/ui-catalog.md) tests. `ui_catalog_dark` and `ui_catalog_light`
-compare every rendered state except those in `IMAGE_EXEMPT` with
-`tests/gui/catalog-references`, within the
-`tools/ci/image_diff.py` tolerance. `ui_catalog_text_150` keeps the catalog's
-layout checks at 150% text. They run in the `cpu` pool alongside the other
-tests. When one fails, the `ui-catalog-check` artifact holds each render with
-its expected, actual and diff images. After the tests, the surface map check
-reads the dark render, which is also uploaded as the `ui-catalog` artifact
-that the nightly workflow publishes. On 2026-10-30 (#708) the three tests took
-188–197 s each. The leg's Test step took 247 s, against 241–270 s for the
-previous tests plus a separate catalog render step, and the whole run took
-787 s against 810–870 s.
+On the 26.04 leg only (`-DPUTGD_UI_CATALOG_RENDER=ON`), the suite includes
+one [UI catalog](../design/ui-catalog.md) test, `ui_catalog_render`, in the
+`cpu` pool. It renders the complete dark catalog and rejects renderer failures,
+incomplete or restricted manifests, source reads, missing images and skipped
+captures. It does not compare pixels or require reference-image updates.
+After the tests, the surface map and secret-control gate check
+`build/dev/ui-catalog/dark`. CI uploads that directory, including `manifest.json`,
+as the `ui-catalog` artifact with `if-no-files-found: error`. Nightly publishing
+and desktop admission still consume that exact-build artifact. Review rendered
+UI changes by inspecting it; automatic detection of visual differences has
+been removed along with the light and 150% text catalog CTests.
 
 **sanitizers** builds the `clang-asan` preset (the `asan` preset's
 `-fsanitize=address,undefined`, compiled with clang) in an Ubuntu 26.04 container and

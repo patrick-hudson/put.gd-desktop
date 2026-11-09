@@ -115,9 +115,9 @@ the floor at any of these values and never changes. `pigmentCeiling` (0.69) dims
 on a white page, and `pageFloor` (0.85) sets how bright a dark page is lifted
 before the pigment multiplies it; neither has a reason to move. The editor catalog's sample document carries a yellow highlight, which sits
 above the floor at any value below yellow's own luminance (0.6356; keep the
-floor at or under 0.635), so a floor change alone leaves the catalog references
-as they are; a change that does reach them (the ceiling, the page lift, or a
-floor above yellow) regenerates them from CI like any UI change.
+floor at or under 0.635), so a floor change alone leaves the catalog sample
+unchanged. Inspect the CI catalog render for changes to the ceiling, page lift
+or a floor above yellow, like any UI change.
 
 The background estimate is block-local (16 px blocks, every block sampling a
 full window inside the box), so a box across two panels or zebra rows treats
