@@ -15,7 +15,7 @@ if [ "${1:-}" = --install ]; then
     shift
     export DEBIAN_FRONTEND=noninteractive
     eval "${PUTGD_UBUNTU_MIRRORS:-}"
-    apt=(-o Acquire::Retries=3 -o Acquire::http::Timeout=60 -o Acquire::https::Timeout=60)
+    apt=(-o Acquire::Retries=3 -o Acquire::http::Timeout=20 -o Acquire::https::Timeout=20)
     apt-get update "${apt[@]}"
     apt-get install -y "${apt[@]}" --no-install-recommends pipewire-bin gstreamer1.0-tools libpipewire-0.3-dev \
         gcc g++ pkg-config qt6-base-dev

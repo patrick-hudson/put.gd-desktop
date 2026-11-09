@@ -61,14 +61,14 @@ class UbuntuMirrors(unittest.TestCase):
         source = self.apt / 'sources.list.d/ubuntu.sources'
         source.write_text('Types: deb\nURIs: http://archive.ubuntu.com/ubuntu/\nSuites: noble\n'
                           'Types: deb\nURIs: http://security.ubuntu.com/ubuntu/\nSuites: noble-security\n')
-        output = self.run_snippet(['archive.ubuntu.com'])
-        self.assertEqual(self.mirrors(), ['http://us.archive.ubuntu.com/ubuntu/',
+        output = self.run_snippet(['us.archive.ubuntu.com'])
+        self.assertEqual(self.mirrors(), ['http://mirrors.edge.kernel.org/ubuntu/',
                                           'http://azure.archive.ubuntu.com/ubuntu/',
-                                          'http://mirrors.edge.kernel.org/ubuntu/',
-                                          'http://archive.ubuntu.com/ubuntu/'])
+                                          'http://archive.ubuntu.com/ubuntu/',
+                                          'http://us.archive.ubuntu.com/ubuntu/'])
         self.assertIn(f'URIs: mirror+file:{self.apt}/putgd-mirrors.txt\n', source.read_text())
         self.assertIn('URIs: http://security.ubuntu.com/ubuntu/\n', source.read_text())
-        self.assertIn('Ubuntu mirrors reachable: us.archive.ubuntu.com', output)
+        self.assertIn('Ubuntu mirrors reachable: mirrors.edge.kernel.org', output)
 
     def test_mirror_priorities_are_explicit_so_apt_does_not_shuffle_them(self):
         (self.apt / 'sources.list').write_text('deb http://archive.ubuntu.com/ubuntu noble main\n')
@@ -76,7 +76,8 @@ class UbuntuMirrors(unittest.TestCase):
         lines = (self.apt / 'putgd-mirrors.txt').read_text().splitlines()
         self.assertEqual([line.split('\t')[1] for line in lines],
                          [f'priority:{number}' for number in range(1, 5)])
-        self.assertEqual(self.mirrors()[0], 'http://archive.ubuntu.com/ubuntu/')
+        self.assertEqual(self.mirrors()[0], 'http://us.archive.ubuntu.com/ubuntu/')
+        self.assertEqual(self.mirrors()[-1], 'http://archive.ubuntu.com/ubuntu/')
 
     def test_all_hosts_down_still_writes_a_list(self):
         (self.apt / 'sources.list').write_text('deb http://archive.ubuntu.com/ubuntu noble main\n')

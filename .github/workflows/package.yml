@@ -17,15 +17,17 @@ env:
   CCACHE_BASEDIR: ${{ github.workspace }}
   CCACHE_MAXSIZE: 256M
   # Ubuntu containers name one archive host, so an outage there fails every
-  # retry. List others behind it, reachable hosts first. APT fails over file by
+  # retry. List others, serving hosts first (an open port is not enough: a host
+  # can accept connections and then stall). APT fails over file by
   # file and still verifies everything against the Ubuntu keyring.
   PUTGD_UBUNTU_MIRRORS: |
     apt_root=${PUTGD_APT_ROOT:-/etc/apt}
     sources=$(grep -lE 'http://archive\.ubuntu\.com/ubuntu' "$apt_root"/sources.list "$apt_root"/sources.list.d/* 2>/dev/null || true)
     if [ -n "$sources" ]; then
       up=() down=()
-      for host in archive.ubuntu.com us.archive.ubuntu.com azure.archive.ubuntu.com mirrors.edge.kernel.org; do
-        if timeout 5 bash -c "exec 3<>/dev/tcp/$host/80" 2>/dev/null; then up+=("$host"); else down+=("$host"); fi
+      for host in us.archive.ubuntu.com mirrors.edge.kernel.org azure.archive.ubuntu.com archive.ubuntu.com; do
+        probe="exec 3<>/dev/tcp/$host/80; printf 'HEAD /ubuntu/dists/noble/InRelease HTTP/1.0\r\nHost: $host\r\n\r\n' >&3; head -n 1 <&3 | grep -q ' 200 '"
+        if timeout 8 bash -c "$probe" 2>/dev/null; then up+=("$host"); else down+=("$host"); fi
       done
       priority=0
       : > "$apt_root/putgd-mirrors.txt"
@@ -76,7 +78,7 @@ jobs:
         # each attempt stopped after 10 minutes (#467).
         shell: bash
         run: |
-          apt=(-o Acquire::Retries=3 -o Acquire::http::Timeout=60 -o Acquire::https::Timeout=60)
+          apt=(-o Acquire::Retries=3 -o Acquire::http::Timeout=20 -o Acquire::https::Timeout=20)
           eval "$PUTGD_UBUNTU_MIRRORS"
           bounded() { timeout --kill-after=30s 10m "$@"; }
           for attempt in 1 2 3; do
