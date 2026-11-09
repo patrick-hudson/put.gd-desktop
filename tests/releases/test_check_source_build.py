@@ -64,6 +64,21 @@ if '--build' not in sys.argv:
             helper.write_bytes(helper.read_bytes() + b'# altered fixture\\n')
 ''' % self.manifest)
         cmake.chmod(0o755)
+        ninja = self.bin / 'ninja'
+        ninja.write_text('''#!/usr/bin/env python3
+import os
+print("ninja: Entering directory")
+print("a.o: #deps 3, deps mtime 1 (VALID)")
+for path in ("../../tools/proton/provision_runtime.py", "/usr/include/stdio.h", "../sdk/include/aws.h"):
+    print("    " + path)
+print("")
+print("gone.o: #deps 1, deps mtime 1 (STALE)")
+print("    ../../src/deleted_since.h")
+print("b.o: #deps 1, deps mtime 1 (VALID)")
+if os.environ.get("PUTGD_SYNTHETIC_MISSING"):
+    print("    ../../src/dropped.h")
+''')
+        ninja.chmod(0o755)
         self.environment = patch.dict(os.environ, {'PATH': str(self.bin) + os.pathsep + os.environ['PATH']})
         self.environment.start()
         self.addCleanup(self.environment.stop)
@@ -100,6 +115,24 @@ if '--build' not in sys.argv:
                 self.build(bundle_proton=True)
         result = json.loads((self.root / 'output/results.json').read_text())
         self.assertFalse(result['passed'])
+
+    def inputs_only(self):
+        build = self.root / 'checkout/build/release'
+        build.mkdir(parents=True)
+        return self.build(inputs_of=build)
+
+    def test_inputs_only_dry_runs_and_never_writes_the_compile_receipt(self):
+        result = self.inputs_only()
+        self.assertEqual((result['passed'], result['checkedInputs']), (True, 1))
+        self.assertEqual(result['commands'][-1][-2:], ['--', '-n'])
+        self.assertFalse((self.root / 'output/results.json').exists())
+
+    def test_inputs_only_rejects_a_compiled_file_the_export_lacks(self):
+        with patch.dict(os.environ, {'PUTGD_SYNTHETIC_MISSING': '1'}):
+            with self.assertRaisesRegex(ValueError, 'src/dropped.h'):
+                self.inputs_only()
+        self.assertFalse(json.loads((self.root / 'output/inputs-check.json').read_text())['passed'])
+        self.assertFalse((self.root / 'output/results.json').exists())
 
 
 if __name__ == '__main__':
