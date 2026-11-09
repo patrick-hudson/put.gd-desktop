@@ -110,6 +110,8 @@ private slots:
         const QString summary = QStringLiteral("encoded %1, dropped %2, clip frames %3, duration %4 ms, gaps %5..%6 ms, irregular %7, retained %8 ms")
             .arg(encoded).arg(dropped).arg(clip.frames).arg(clip.durationNs / 1000000).arg(clip.minGapNs / 1000000.0, 0, 'f', 1).arg(clip.maxGapNs / 1000000.0, 0, 'f', 1).arg(clip.irregular).arg(retained / 1000);
         qInfo("%s", qPrintable(summary));
+        QVERIFY(encoded > 0);
+        QVERIFY(retained > 0);
         QVERIFY2(clip.frames >= encoded - 2 && clip.frames <= encoded, qPrintable(summary));
         QVERIFY2(clip.irregular <= std::max(2, clip.frames / 20), qPrintable(summary));
         QVERIFY2(std::llabs(retained * 1000 - clip.durationNs) <= 2 * GST_SECOND / 60, qPrintable(summary));
@@ -160,6 +162,9 @@ private slots:
         const QString summary = QStringLiteral("after the step: delivered %1, captured %2 in 3 s; clip frames %3, duration %4 ms, irregular %5, retained %6 ms")
             .arg(delivered).arg(captured).arg(clip.frames).arg(clip.durationNs / 1000000).arg(clip.irregular).arg(retained / 1000);
         qInfo("%s", qPrintable(summary));
+        QVERIFY(delivered > 0);
+        QVERIFY(captured > 0);
+        QVERIFY(retained > 0);
         // The source still grabs at 60; the gate keeps half of it.
         QVERIFY2(captured >= delivered * 0.4 && captured <= delivered * 0.6, qPrintable(summary));
         QVERIFY2(clip.irregular <= std::max(2, clip.frames / 20), qPrintable(summary));

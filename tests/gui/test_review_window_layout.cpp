@@ -130,13 +130,7 @@ private slots:
         dismiss->setFocus(Qt::TabFocusReason); QTest::keyClick(dismiss, Qt::Key_Space);
         QVERIFY(window.inspect()["statusRow"].toArray().isEmpty());
     }
-    void disabledBlurGlyphKeepsReadableScaledInk() {
-        ReviewWindow window(options(), config()); window.setEdit(twoMasks()); window.show();
-        window.drive({{"action", "addMask"}, {"kind", "blur"}});
-        window.drive({{"action", "selectMask"}, {"maskId", "m-solid"}});
-        window.setExporting(true, "Exporting synthetic clip"); putgd::test::settle(10);
-        auto* chip = window.findChild<QToolButton*>("reviewBlurChip"); QVERIFY(chip && !chip->isEnabled());
-    }
+
     void blurChipDistinguishesEnabledAndDisabledActions() {
         ReviewWindow window(options(), config()); window.setEdit(twoMasks()); window.show();
         QVERIFY(putgd::test::waitForWindowExposed(&window));

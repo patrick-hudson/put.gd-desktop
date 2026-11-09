@@ -360,7 +360,7 @@ private slots:
   JsonReply complete;fixture.setup.setProviderSetup([&](const QString& kind,const Destination&,const QJsonObject&,JsonReply reply,auto){if(kind=="testDestination")complete=reply;else reply({},{});});window.findChild<QPushButton*>("testDestination")->click();PUTGD_TRY_VERIFY(bool(complete));complete({},{{"testScope","account-folder"}});PUTGD_TRY_VERIFY(list->item(0)->text().contains("Account and folder checked"));QVERIFY(window.findChild<QLabel*>("protonAccountStatus")->text().contains("sharing aren't tested"));
  }
 
- void addDestinationUsesAQuietNavigationRow(){
+ void addDestinationHasMenuAndKeyboardFocus(){
   QTemporaryDir dir;SettingsService service(dir.filePath("config.json"));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.navigate("destinations");window.show();putgd::test::settle(30);auto* add=window.findChild<QPushButton*>("addS3Destination");QVERIFY(add);QVERIFY(add->menu());QVERIFY(add->focusPolicy()&Qt::TabFocus);
  }
  void providerCaptionMeasuresTheHelpTargetAtLargeText(){

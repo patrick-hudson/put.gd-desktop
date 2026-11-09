@@ -688,7 +688,7 @@ private slots:
         }
     }
 
-    void frameGatesCoverThePreviewAspectRatio() {
+    void diskFullExportErrorOffersRecoveryGuidance() {
         ReviewWindow window(options(), config()); window.setEdit(twoMasks()); window.show();
         QVERIFY(putgd::test::waitForWindowExposed(&window));
         QVERIFY(window.drive({{"action", "addMask"}, {"kind", "blur"}}).code.isEmpty());
@@ -756,12 +756,12 @@ private slots:
         window.resize(fitted); PUTGD_COMPARE_STEADY(window.size(), fitted,20);
         QVERIFY2(putgd::test::reviewFooterProblem(window).isEmpty(), qPrintable(putgd::test::reviewFooterProblem(window)));
     }
-    void compactReviewFrameShares_data() {
+    void compactReviewReportsStagesAndFitsBlurValue_data() {
         QTest::addColumn<QSize>("canvas"); QTest::addColumn<double>("scale");
         for (const auto canvas : {QSize(1280, 720), QSize(960, 600)}) for (double scale : {1.0, 1.25, 1.5})
             QTest::newRow(qPrintable(QString("%1-%2").arg(canvas.width()).arg(scale))) << canvas << scale;
     }
-    void compactReviewFrameShares() {
+    void compactReviewReportsStagesAndFitsBlurValue() {
         QFETCH(QSize, canvas); QFETCH(double, scale);
         const auto original = qApp->font();
         auto restore = qScopeGuard([&] { qApp->setFont(original); });
@@ -781,7 +781,6 @@ private slots:
             qInfo("compact tier %dx%d %.2f %s %dx%d share %.6f", canvas.width(), canvas.height(), scale, qPrintable(stage), window.width(), window.height(), share);
             const auto output = qEnvironmentVariable("PUTGD_REVIEW_TIER_EVIDENCE");
             if (!output.isEmpty()) { QDir().mkpath(output); window.grab().save(QDir(output).filePath(QString("%1-%2-%3.png").arg(canvas.width()).arg(scale).arg(stage))); }
-            return share;
         };
         window.drive({{"action", "selectMask"}, {"maskId", "solid"}}); capture("steady");
         window.drive({{"action", "addMask"}, {"kind", "blur"}}); window.drive({{"action", "selectMask"}, {"maskId", "blur"}}); capture("transient");

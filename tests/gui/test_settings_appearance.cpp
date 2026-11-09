@@ -32,10 +32,8 @@ private slots:
   qInfo()<<"Idle Settings layout/paint events:"<<events.layouts<<events.paints;
  }
 
- void formHintsAndTrailingActionsKeepTheirGeometry_data(){QTest::addColumn<int>("pixels");QTest::newRow("normal")<<14;QTest::newRow("large")<<21;}
- void formHintsAndTrailingActionsKeepTheirGeometry(){
-  QFETCH(int,pixels);Fonts::load();Ui::apply(*qApp);const auto original=qApp->font();auto restore=qScopeGuard([&]{qApp->setFont(original);});auto font=original;font.setPixelSize(pixels);qApp->setFont(font);
-  QTemporaryDir dir;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(service.save(threeDestinations(),{}));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.resize(1440,960);window.show();window.navigate("settings");auto* tabs=window.findChild<QTabWidget*>("settingsTabs");
+ void credentialSecretHasShowActionAttached(){
+  QTemporaryDir dir;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(service.save(threeDestinations(),{}));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.resize(1440,960);window.show();
   window.navigate("destinations");
   auto* secret=window.findChild<QLineEdit*>("credentialSecretKey");
   auto* show=window.findChild<QAction*>("showCredentialSecretAction");

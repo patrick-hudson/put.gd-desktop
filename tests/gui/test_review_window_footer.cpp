@@ -39,9 +39,12 @@ private slots:
                     const auto children = widget->findChildren<QWidget*>(QString(), Qt::FindDirectChildrenOnly);
                     if (std::none_of(children.cbegin(), children.cend(), [&](QWidget* child) { return !child->isWindow() && child->isVisibleTo(&window); })) leaves.append(widget);
                 }
+                const auto name = [](QWidget* widget) {
+                    return widget->objectName().isEmpty() ? QString::fromLatin1(widget->metaObject()->className()) : widget->objectName();
+                };
                 for (int i = 0; i < leaves.size(); ++i) for (int j = i + 1; j < leaves.size(); ++j) {
                     const QRect a(leaves[i]->mapTo(&window, QPoint()), leaves[i]->size()), b(leaves[j]->mapTo(&window, QPoint()), leaves[j]->size());
-                    QVERIFY2(!a.intersects(b), qPrintable(QString("%1/%2 overlap at %3").arg(leaves[i]->objectName(), leaves[j]->objectName()).arg(width)));
+                    QVERIFY2(!a.intersects(b), qPrintable(QString("%1/%2 overlap at %3").arg(name(leaves[i]), name(leaves[j])).arg(width)));
                 }
                 auto* destination = window.findChild<QWidget*>("reviewDestinationSummary");
                 auto* metadata = window.findChild<QWidget*>("reviewMetadata");
