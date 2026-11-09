@@ -136,9 +136,20 @@ Queue leaks and late grabs step 60 → 30 → 15; other explicit rates halve to 
 rises during the recording. X11 gates frames after the source; PipeWire changes
 the cadence lock's period, retaining its configured-frame tolerance.
 `videorate` follows `videoconvert`, so repeated frames are not converted again.
-The clip keeps its configured frame rate and full timeline; repeated frames
-fill the lowered capture cadence. Software x264 still encodes those repeats,
-so lowering capture rate alone has a limited CPU benefit ([#1045](https://github.com/patrick-hudson/put.gd-desktop/issues/1045)).
+After a reduction its repeats (the buffers it flags `GAP`) stop before the
+encoder, which encodes only the kept frames with variable-rate timestamps
+([#1045](https://github.com/patrick-hudson/put.gd-desktop/issues/1045)). The caps
+keep the configured rate, because `matroskamux` refuses a mid-stream change and
+it would re-initialise the encoder. `x264enc`, `openh264enc` and `vaapih264enc`
+keep their input timestamps; `vah264lpenc` and `vah264enc` stamp their output
+contiguously, so the helper puts each frame's input time back on its output, in
+order (they run with `b-frames=0`). The clip keeps its full timeline; a player
+or export holds each kept frame until the next. A recording that never reduces
+its rate is encoded as before. Stop ends the skip so the clip reaches its last
+slot. Keyframes stay 2 × the configured rate apart in encoded frames, so they
+are further apart in time after a reduction (4 s at 60 → 30). Export rebases
+video on the trim start and its `fps` filter starts at 0, because a trim can
+start between two kept frames while the audio starts on it.
 
 `recording.inspect` (MCP `get_recording`) reports these under `progress`:
 
@@ -151,7 +162,9 @@ so lowering capture rate alone has a limited CPU benefit ([#1045](https://github
 
 For lab A/B runs, set `recording.prepare` `adaptiveFps: false` (MCP
 `adaptive_fps: false`) or `PUTGD_RECORD_ADAPTIVE_RATE=off` in the helper's
-environment. `PUTGD_RECORD_DEBUG_LOG` includes one `rate window:` line per
+environment, and `PUTGD_RECORD_ENCODE_REPEATS=on` keeps encoding the repeats
+after a reduction. `PUTGD_RECORD_DEBUG_LOG` includes one `rate window:` line per
 second with delivered/leaked counts and machine/recorder CPU shares, plus
-`rate lowered …` when it changes. Use synthetic content and the desktop lock
+`rate lowered …` when it changes and `repeats: N skipped before the encoder`
+when the capture ends. Use synthetic content and the desktop lock
 when running the [fluidity harness](../../lab/remote-builders.md).
