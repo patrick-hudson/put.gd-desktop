@@ -742,14 +742,26 @@ with n.controller_shutdown(workers):
         self.assertEqual(sum(w[0]=='POST' and w[1].endswith('/1/comments') for w in github.writes),1)
         self.assertFalse(any(w[0]=='PATCH' for w in github.writes))
 
-    def receipt(self, root, *, functional='passed', review=True, cleanup=None, note='pixel oracle mismatch'):
+    def receipt(self, root, *, functional='passed', review=True, cleanup=None, note='pixel oracle mismatch', recipe='outcomes.region_upload'):
         value = dict(environment=dict(build=BUILD, observed_build=dict(gitCommit=BUILD,dirty=False),
                 coverage_export=dict(published=True,scanned_before_copy=True,copy_scan_passed=True),
                 cleanup_errors=cleanup), secret_scan=dict(passed=True),
-            interactions=[dict(recipe='outcomes.region_upload',functional=functional,review=review,visual='frames',note=note)])
+            interactions=[dict(recipe=recipe,functional=functional,review=review,visual='frames',note=note)])
         (root/'receipt.json').write_text(json.dumps(value))
         (root/'coverage.json').write_text('{}')
         mark_terminal(root, 0 if functional == 'passed' else 2)
+
+    def test_idle_reading_reaches_the_cell_and_only_that_cell(self):
+        reading = '{"forbidden": [], "pssKb": 12000, "rssKb": 32000}'
+        with tempfile.TemporaryDirectory() as tmp:
+            self.receipt(Path(tmp), note='idle_memory='+reading, recipe='outcomes.idle_memory')
+            self.assertEqual(nightly.verdict(tmp,'outcomes.idle_memory')['memory'], json.loads(reading))
+        with tempfile.TemporaryDirectory() as tmp:
+            self.receipt(Path(tmp))
+            self.assertNotIn('memory', nightly.verdict(tmp,'outcomes.region_upload'))
+        with tempfile.TemporaryDirectory() as tmp:
+            self.receipt(Path(tmp), functional='blocked', note='no reading', recipe='outcomes.idle_memory')
+            self.assertEqual(nightly.verdict(tmp,'outcomes.idle_memory')['memory'], None)
 
     def test_review_does_not_gate_automatic_oracles(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -839,6 +851,17 @@ with n.controller_shutdown(workers):
             for v in row['cells'].values():v.update(status='green')
             nightly.publish(github,result,Path(tmp))
             self.assertIn(('PATCH','repos/owner/repo/issues/2',dict(state='closed')),github.writes)
+
+    def test_the_public_receipt_carries_the_memory_reading(self):
+        github=FakeGitHub()
+        value=nightly.cell('green','',memory=dict(rssKb=32000))
+        row=dict(desktop='Cinnamon',host='m74',evidence='/owned/run',cells=dict(idle_memory=value))
+        with tempfile.TemporaryDirectory() as tmp:
+            nightly.publish(github,dict(release='tag',date='today',build=BUILD,desktops=[row]),Path(tmp))
+            table=(Path(tmp)/'results.md').read_text()
+        receipt=next(w[2] for w in github.writes if w[0]=='POST' and 'comments' in w[1])
+        self.assertIn('"rssKb": 32000',receipt['body'])
+        self.assertIn('Idle memory',table)
 
     def test_grey_infrastructure_creates_no_failure_issue(self):
         github=FakeGitHub()
