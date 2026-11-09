@@ -687,7 +687,15 @@ print('PASS recording bar placement prefers below, above, another monitor, then 
     context.Gio.MemoryOutputStream = {new_resizable: () => ({})};
     context.Shell.Screenshot = class {screenshot_area(x, y, width, height) {areas.push([x, y, width, height]); throw Object.assign(new Error('Synthetic stop'), {bridgeCode: 'capture_failed'});}};
     context.Main.layoutManager = {monitors: [{index: 0, x: 0, y: 0, width: 1920, height: 1080}, {index: 1, x: 1920, y: 0, width: 2560, height: 1440}], primaryIndex: 0,
-        addTopChrome: actor => chrome.push(actor), removeChrome: actor => chrome.splice(chrome.indexOf(actor), 1)};
+        // As GNOME Shell 50's Params.parse: an unknown chrome parameter throws.
+        addTopChrome: (actor, params = {}) => {
+            for (const name of Object.keys(params)) {
+                if (!['trackFullscreen', 'affectsStruts'].includes(name))
+                    throw new Error(`Unrecognized parameter "${name}"`);
+            }
+            chrome.push(actor);
+        },
+        removeChrome: actor => chrome.splice(chrome.indexOf(actor), 1)};
     context.Main.panel.height = 32;
     globalThis.Config = {PACKAGE_VERSION: '50.0'};
     const prepared = async action => {

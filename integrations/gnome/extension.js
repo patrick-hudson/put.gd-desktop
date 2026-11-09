@@ -108,7 +108,9 @@ class CaptureCountdown {
             this._settle(false);
             return Clutter.EVENT_STOP;
         });
-        Main.layoutManager.addTopChrome(this._label, {affectsInputRegion: true, trackFullscreen: false});
+        // Shell 50 picks reactive chrome by itself; its chrome parameters are only
+        // trackFullscreen and affectsStruts, and any other name throws.
+        Main.layoutManager.addTopChrome(this._label, {trackFullscreen: false});
         const [, width] = this._label.get_preferred_width(-1);
         // Below the top bar on the monitor that has it.
         const bar = monitor.index === Main.layoutManager.primaryIndex ? Main.panel.height : 0;
