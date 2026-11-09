@@ -183,7 +183,9 @@ part of the required `CI` summary when selected.
 The 2026-10-26 baseline is in [the CI records](../history/ci-records.md#nightly-baseline-2026-10-26).
 
 Package compiler caches are separate per distro/AppImage and dependency
-fingerprint, capped at 256 MiB each. Only `nightly` pushes save them; other runs
+fingerprint, capped at 256 MiB each (384 MiB on Arch, which also compiles the SDK
+through ccache: Arch rolls, so an exact SDK prefix cache would rarely hit). The
+source export compiled on Ubuntu 24.04 has its own compiler cache. Only `nightly` pushes save them; other runs
 restore them. Superseded entries are pruned by the existing cache maintenance.
 No application build directory or version manifest is reused. AppImage's required
 `appimage-sources` job caches exact Ubuntu source downloads and revalidates their
@@ -346,12 +348,16 @@ Measured run times from 2026-10-19 are in [the CI records](../history/ci-records
   carries the SDK `LICENSE` files that packaging configuration reads, so a hit
   needs no clone. Package builders still clone and verify the pinned SDK source
   and all submodules every run, because packages ship those licenses and the
-  source export rebuilds against that tree.
+  source export rebuilds against that tree. The clone is sparse: only S3 is built
+  and no client is regenerated, so the other generated service clients (165,000
+  files) and the code generator's API models (333 MB) are left out.
+  `tools/verify_dependencies.py` still checks the commit, every submodule pin and
+  tracked modifications.
 - **ccache for the Linux test and sanitizer builds.** Compiler outputs are cached
   per job. Only pushes to `nightly` save one, trimmed to the entries that build
   used; every other run restores the newest `nightly` cache and does not save.
   See [cache budget](#cache-budget). The build-identity source changes every
-  commit and is always recompiled. Package builders compile from scratch.
+  commit and is always recompiled. Package builders use their own caches ([below](#nightly-runtime-and-artifact-transfers)); on a cache hit ccache still preprocesses and hashes the sources, so a file missing from the source export fails the build.
 - **Parallel builds.** Application and SDK builds use every runner CPU.
 - **Parallel tests, longest first.** CTest runs twelve tests at once and restores
   the previous run's durations, so the longest tests start first. See
