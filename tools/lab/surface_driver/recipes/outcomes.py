@@ -844,6 +844,14 @@ def idle_memory(ctx):
                  timeout=IDLE_SECONDS+30, interval=1)
         host_load, host_cpus = os.getloadavg()[0], os.cpu_count()
         summary = idle_summary(scope.json(IDLE_READ.replace('IDENTITY', repr(resident))), host_load, host_cpus)
+        # Asked only after the read, because answering faults pages back in. The resident
+        # unmaps its clean library pages once quiet, so these say what the RSS leaves out.
+        try:
+            released = ctx.call('diagnostics').get('memory', {})
+        except RecipeFailed:
+            released = {}
+        summary.update(imagePageReleases=released.get('imagePageReleaseCount'),
+                       imagePageReleaseBytes=released.get('lastImagePageReleaseBytes'))
         ctx.note('idle_memory='+json.dumps(summary, sort_keys=True))
         judge_idle(summary)
     finally:

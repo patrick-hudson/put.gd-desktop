@@ -369,6 +369,7 @@ SwapPss:               0 kB
         ctx.target = SimpleNamespace(physical=False, root='/tmp/sd', socket='/tmp/sd/runtime/putgd/session.sock', app_executable='putgd')
         ctx.expect = ClipboardContext().expect
         ctx.wait.side_effect = lambda predicate, *a, **k: True
+        ctx.call.return_value = dict(memory=dict(imagePageReleaseCount=1, lastImagePageReleaseBytes=25*2**20))
         ctx.shell.side_effect = shell_results
         return ctx
 
@@ -381,13 +382,15 @@ SwapPss:               0 kB
         scope.restart.side_effect = lambda *_: order.append('restart:'+ctx.target.app_executable)
         ctx.wait.side_effect = lambda *_a, **_k: order.append('window')
         scope.json.side_effect = lambda *_a, **_k: order.append('read') or dict(rollup=self.ROLLUP % (32000, 12000), names=[], load=.1, cpus=2)
+        ctx.call.side_effect = lambda *_a, **_k: order.append('diagnostics') or dict(memory=dict(imagePageReleaseCount=1, lastImagePageReleaseBytes=25*2**20))
         with patch.object(outcomes, 'Scope', return_value=scope), \
                 patch('tools.lab.surface_driver.fixtures.resident.identity', return_value=dict(pid=4, start='9')):
             outcomes.idle_memory(ctx)
-        self.assertEqual(order, ['restart:/tmp/sd/fx-1/idle-resident', 'window', 'read'])
+        self.assertEqual(order, ['restart:/tmp/sd/fx-1/idle-resident', 'window', 'read', 'diagnostics'])
         self.assertIn(b'unset QT_LINUX_ACCESSIBILITY_ALWAYS_ON', scope.write.call_args.args[1])
         noted = next(call.args[0] for call in ctx.note.call_args_list if call.args[0].startswith('idle_memory='))
-        self.assertEqual(_json.loads(noted.split('=', 1)[1])['rssKb'], 32000)
+        recorded = _json.loads(noted.split('=', 1)[1])
+        self.assertEqual((recorded['rssKb'], recorded['imagePageReleases'], recorded['imagePageReleaseBytes']), (32000, 1, 25*2**20))
         scope.defer.assert_called_once()
         label, restore = scope.defer.call_args.args
         self.assertEqual(label, 'original resident route')
