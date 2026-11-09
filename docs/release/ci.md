@@ -148,8 +148,12 @@ installation (#500). It keeps the runner's official archive/security fallback
 and signing settings, including legacy direct and folded deb822 source URIs.
 Its standard build-dependency attempts have a 300-second deadline, a 120-second
 silence limit and three attempts; the shared installer records failures and retry outcomes. It
-adds no AppImage package snapshot to the shared 10 GB cache. Native container
-snapshots and dependency pins are unchanged. See the
+adds no AppImage package snapshot to the shared 10 GB cache: it restores
+`native (ubuntu24.04)`'s snapshot when one exists and never saves one. On a hit it downloads only
+the packages missing from that snapshot or newer than it; on a miss it downloads them all. That container installs `zstd`, because
+`actions/cache` treats gzip and zstd caches as different caches. The restored files land three
+levels above the hosted workspace, not in `/var/cache`, because the cache stores the path
+relative to the container's shallower workspace. Native dependency pins are unchanged. See the
 [independent mirror and journal-retry evidence](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-24-ci-mirror-journal/README.md)
 for targeted checks and the outstanding hosted-run/stress gates.
 
