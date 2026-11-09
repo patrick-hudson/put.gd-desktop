@@ -47,7 +47,7 @@ private:
  void startPreview();void previewFailure(const Error&);void updatePreviewState();void updateActions();
  bool expandPreview();void updateSavedCopy();void showSavedCopy();void copySavedPath();void dismissSavedCopy();
  QPointer<QDialog> expandedPreview_;QPushButton* expandPreview_=nullptr;
- QJsonObject copyJob_;bool savedCopyDismissed_=false;
+ QJsonObject copyJob_;bool savedCopyDismissed_=false;bool rowMenuOpen_=false;
  QString savedPath_;QJsonObject savedFolderResult_;QWidget* savedCopy_=nullptr;Ui::ElidedLabel* savedLabel_=nullptr;
  QGridLayout* actions_=nullptr;QWidget* browserAction_=nullptr;QLabel* previewStatus_=nullptr;QPushButton* retryPreview_=nullptr;QHash<QString,Error> previewErrors_;
  // #190: ask the resident for a selected image's or video's missing preview,
