@@ -494,6 +494,7 @@ class SmokeCheck(unittest.TestCase):
 
 class QuitResidents(unittest.TestCase):
     def test_collection_waits_for_the_resident_but_not_a_clipboard_keeper(self):
+        """Only a live resident delays collection after the quit request."""
         for name, remains in [('putgd', True), ('putgd-clipboard-keeper', False)]:
             with self.subTest(name=name), tempfile.TemporaryDirectory(prefix='pg-w-') as temp:
                 root = Path(temp)
@@ -508,6 +509,7 @@ class QuitResidents(unittest.TestCase):
                     while Path(f'/proc/{child.pid}/exe').resolve() != (root/name).resolve() and time.monotonic() < deadline:
                         time.sleep(.01)
                     def ssh(run, command):
+                        """Execute process probes against this fixture PID only."""
                         if command == proton.QUIT_RESIDENTS:
                             return ''  # An unresponsive resident must still prevent collection.
                         return subprocess.check_output(['sh', '-c', command], text=True,
