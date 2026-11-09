@@ -70,9 +70,6 @@ every hosted Python suite once through `tools/ci/contracts.py`:
   broken documentation link or anchor, a document that neither its folder README
   nor its topic's entry page links, or a file under `docs/evidence` outside the
   two kept directories (`tools/ci/check_docs.py`).
-  `tests/ci/test_ui_names.py` fails on the retired UI names (Graphite,
-  `VisualStyle`, `RedesignTheme`, redesign, `PUTGD_PREVIEW_`) in code and build
-  inputs; see [the visual language](../design/visual-language.md#shared-implementation).
 - `proton`: the helper source and redistribution suites in `tools/proton`.
 - `lab`: every `tests/desktop/test_*.py`, `tests/maintenance` and the UI-process
   benchmark contract. QEMU disk utilities are installed so overlay tests run.

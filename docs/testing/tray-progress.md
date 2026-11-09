@@ -266,8 +266,6 @@ reserved for a confirmed completion. The reveal and hold timings stay with the
 product: activity appears after 200 ms, a shown upload holds at least 600 ms,
 and "Finishing upload" covers the short hold after the last transfer. Rounded
 tooltip sizes use the app's MB/GB format (`ByteSize::summary`).
-`tests/desktop/test_lab_ui_contract.py` fails when any title, label or unit the
-runner matches leaves the app source.
 
 A failure latches until it is opened. Only the runner's original local-save
 failure ID, or explicit `proton_account_busy` failures on original concurrent or
