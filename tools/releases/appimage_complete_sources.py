@@ -259,7 +259,10 @@ def distro_download(cached, package, version, apt):
     if cached.exists() or cached.is_symlink():
         try:
             validate_dsc(source_files, package, version)
-            return json.loads(metadata.read_text())
+            origin = json.loads(metadata.read_text())
+            if not isinstance(origin, dict):
+                raise ValueError('its download.json is not an object')
+            return origin
         except (ValueError, OSError) as error:
             print(f'::warning::Downloading {package}={version} again: its restored copy is unusable ({error})',
                   file=sys.stderr)

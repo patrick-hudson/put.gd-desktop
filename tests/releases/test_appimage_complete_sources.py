@@ -166,10 +166,12 @@ class CompleteSources(unittest.TestCase):
             (entry / 'download.json').unlink()
         def bad_metadata(entry):
             (entry / 'download.json').write_text('{')
+        def non_object_metadata(entry):
+            (entry / 'download.json').write_text('[]')
         def linked_dsc(entry):
             (entry / 'files/source.dsc').rename(entry / 'moved.dsc')
             (entry / 'files/source.dsc').symlink_to(entry / 'moved.dsc')
-        for damage in (tamper, extra, no_metadata, bad_metadata, linked_dsc):
+        for damage in (tamper, extra, no_metadata, bad_metadata, non_object_metadata, linked_dsc):
             with self.subTest(damage=damage.__name__), patch('sys.stderr') as stderr:
                 self.collect_counting_downloads()
                 damage(self.distro_entry())
