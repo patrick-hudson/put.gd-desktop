@@ -74,44 +74,40 @@ def _sanitized(path):
     return path.startswith(SANITIZER_PREFIXES) and not (path.startswith('tests/') and path.endswith('.py'))
 
 
-# Catalog independence is narrower than build neutrality: lab Python can consume
-# the catalog, and shared settings/models can change synthetic window states.
-# Do not infer independence for new source/tool directories. In particular all
-# UI/editor/record sources, assets, fonts/icons, build inputs, fixtures, catalog
-# tests, surface-map/inventory and surface-driver code render by default.
-CATALOG_INDEPENDENT_PREFIXES = (
-    'tests/unit/', 'tests/integration/', 'tests/storage/', 'tests/releases/',
-    'tests/maintenance/', 'tests/ci/', 'tools/maintenance/', 'tools/mcp/',
-) + PIPEWIRE_CHECK_PREFIXES
-# These transport implementations are not used by the synthetic catalog's
-# providers. Provider defaults, public URL helpers and shared storage contracts
-# are deliberately absent: Settings and history can display their results.
-CATALOG_INDEPENDENT_FILES = CONTRACT_FILES | frozenset({
-    'tools/lab/lab.py',
-    *('src/storage/s3/' + name + suffix
-      for name in ('S3Driver', 'S3ProcessDriver', 'S3WorkerProtocol', 'S3SdkContext',
-                   'SdkRuntime', 'IpAddress', 'TlsCompatibility')
-      for suffix in ('.cpp', '.h')),
-    'src/storage/s3/S3WorkerMain.cpp', 'src/storage/s3/S3Multipart.h',
-    'src/storage/s3/S3ErrorDiagnostics.h',
+# PRs render only direct catalog inputs to keep ordinary source checks short.
+# A catalog mismatch missed here is caught by the render on the next nightly
+# push, and the live gate fails closed. Unknown PR paths intentionally skip.
+CATALOG_PREFIXES = ('src/ui/', 'src/editor/', 'src/record/ReviewWindow',
+                    'src/record/Overlays', 'tools/lab/surface_map/')
+# QWidget include audit: ReviewWindow.h and Overlays.h are covered above;
+# ReviewWindow.cpp also includes QWidgetAction. FormatBox is a QComboBox.
+# Bundled fonts/icons live under src/ui/; record.qrc maps those same icons.
+CATALOG_FILES = frozenset({
+    'src/record/FormatBox.h', 'src/record/record.qrc',
+    'tests/gui/ui_catalog.cpp', 'tests/gui/catalog_build_identity.cpp',
+    'cmake/TestsGui.cmake', 'tools/ci/check_catalog_render.py', 'tools/ci/changes.py',
+    'tools/lab/surface_driver/secret-states.json',
+    'tools/lab/surface_driver/redact.py', 'tools/lab/surface_driver/gate.py',
 })
 
 
 def _catalog(path):
-    if _packaging(path) or (path.startswith('tests/') and 'catalog' in PurePosixPath(path).name):
-        return True
-    parent = str(PurePosixPath(path).parent)
-    independent_test = path.endswith(CONTRACT_SUFFIXES.get(parent, ()))
-    return not (independent_test or _documentation(path) or path in CATALOG_INDEPENDENT_FILES
-                or path.startswith(CATALOG_INDEPENDENT_PREFIXES))
+    return path in CATALOG_FILES or path.startswith(CATALOG_PREFIXES)
 
 
 def select(paths):
+    # Full runs (or callers without a known diff base) retain complete coverage.
+    if paths is None:
+        return {'catalog': True, 'build': True, 'packages': True, 'sanitizers': True,
+                'pipewire': True, 'paths': None}
     paths = sorted(set(paths))
     packages = any(_packaging(path) for path in paths)
     catalog = any(_catalog(path) for path in paths)
-    build = catalog or packages or any(not _documentation(path) and not _contract_only(path)
-                            and not path.startswith(PIPEWIRE_CHECK_PREFIXES) for path in paths)
+    # Build selection is independent of the catalog flag. Catalog consumers that
+    # would otherwise be contract-only still need the Linux job to check them.
+    build = packages or any(path in CATALOG_FILES or path.startswith('tools/lab/surface_map/')
+                            or (not _documentation(path) and not _contract_only(path)
+                                and not path.startswith(PIPEWIRE_CHECK_PREFIXES)) for path in paths)
     sanitizers = any(_sanitized(path) for path in paths)
     pipewire = packages or any(path.startswith(PIPEWIRE_PREFIXES) for path in paths)
     return {'catalog': catalog, 'build': build, 'packages': packages, 'sanitizers': sanitizers, 'pipewire': pipewire,
@@ -135,7 +131,7 @@ def main():
     if args.event == 'pull_request':
         result = select(changed_paths(args.root, args.base, args.head))
     else:
-        result = {'catalog': True, 'build': True, 'packages': True, 'sanitizers': True, 'pipewire': True, 'paths': None}
+        result = select(None)
     if args.reuse_source_ci and args.event != 'pull_request':
         from reuse_ci import reuse
         if reuse(args.root):

@@ -39,7 +39,7 @@ class Selection(unittest.TestCase):
                      'tools/lab/surface_driver/gate.py'):
             with self.subTest(path=path):
                 self.assertSelects([path], True, False)
-        self.assertSelects(['tools/lab/surface_driver/context.py'], True, False)
+        self.assertSelects(['tools/lab/surface_driver/context.py'], False, False)
 
     def test_compiled_or_ctest_inputs_build(self):
         for path in ('src/core/Settings.cpp', 'tests/unit/test_settings.cpp', 'tests/desktop/x11/test_x11.cpp',
@@ -108,41 +108,46 @@ class Selection(unittest.TestCase):
 
 
 class CatalogSelection(unittest.TestCase):
-    def test_known_independent_inputs_skip_catalog(self):
-        for path in ('src/storage/s3/S3Driver.cpp', 'src/storage/s3/S3WorkerProtocol.h',
+    def test_unlisted_inputs_skip_catalog_without_skipping_source_builds(self):
+        for path in ('src/storage/s3/S3Driver.cpp', 'src/core/Settings.cpp',
+                     'src/core/RecordingModel.h', 'src/app/OperationService.cpp',
+                     'src/record/RecordingPipeline.cpp', 'src/record/AvSync.cpp',
+                     'schemas/config.schema.json', 'CMakeLists.txt', 'CMakePresets.json',
+                     'tests/fixtures/UiSessionFixture.h', 'tests/ci/test_catalog_references.py',
+                     'tools/lab/surface_driver/inspect.py', 'tools/lab/surface_driver/context.py',
+                     'some/new/directory/file.txt', 'tools/lab/new_inventory.py',
                      'tests/unit/test_settings.cpp', 'tools/lab/lab.py', 'docs/ci.md'):
             with self.subTest(path=path):
                 self.assertFalse(changes.select([path])['catalog'])
-        # The source suite still runs for a transport-only change.
-        self.assertTrue(changes.select(['src/storage/s3/S3Driver.cpp'])['build'])
+        for path in ('src/core/Settings.cpp', 'src/storage/s3/S3Driver.cpp',
+                     'src/record/RecordingPipeline.cpp', 'some/new/directory/file.txt'):
+            with self.subTest(build=path):
+                self.assertTrue(changes.select([path])['build'])
 
-    def test_ui_and_shared_inputs_render_catalog(self):
+    def test_allowlisted_inputs_render_catalog(self):
         for path in ('src/ui/SettingsWindow.cpp', 'src/editor/EditorCommands.cpp',
-                     'src/record/ReviewWindow.cpp', 'src/record/record.qrc',
-                     'src/core/Settings.cpp', 'src/core/RecordingModel.h',
-                     'src/app/OperationService.cpp', 'schemas/config.schema.json',
-                     'src/storage/proton/ProtonProvider.cpp', 'src/storage/s3/PublicUrl.cpp',
-                     'assets/fonts/new.ttf', 'assets/icons/new.svg',
+                     'src/record/ReviewWindow.cpp', 'src/record/ReviewWindow.h',
+                     'src/record/Overlays.cpp', 'src/record/Overlays.h',
+                     'src/record/FormatBox.h', 'src/record/record.qrc',
+                     'src/ui/fonts/IBMPlexSans-Regular.ttf', 'src/ui/fonts.qrc',
+                     'src/ui/icons/check.png', 'src/ui/IconArt.cpp',
                      'tests/gui/ui_catalog.cpp', 'tests/gui/catalog_build_identity.cpp',
-                     'tests/fixtures/UiSessionFixture.h', 'tests/ci/test_catalog_references.py',
-                     'cmake/TestsGui.cmake', 'CMakeLists.txt', 'CMakePresets.json',
-                     'tools/ci/check_catalog_render.py',
+                     'cmake/TestsGui.cmake', 'tools/ci/check_catalog_render.py', 'tools/ci/changes.py',
                      'tools/lab/surface_map/model.json', 'tools/lab/surface_map/surface_map.py',
                      'tools/lab/surface_driver/secret-states.json',
-                     'tools/lab/surface_driver/redact.py', 'tools/lab/surface_driver/gate.py',
-                     'tools/lab/surface_driver/inspect.py'):
+                     'tools/lab/surface_driver/redact.py', 'tools/lab/surface_driver/gate.py'):
             with self.subTest(path=path):
                 result = changes.select([path])
                 self.assertTrue(result['catalog'])
                 self.assertTrue(result['build'])
-
-    def test_unknown_inputs_render_catalog(self):
-        for path in ('some/new/directory/file.txt', 'src/storage/s3/NewTransport.cpp',
-                     'tools/lab/new_inventory.py'):
-            with self.subTest(path=path):
-                self.assertTrue(changes.select([path])['catalog'])
-        self.assertTrue(changes.select(['src/storage/s3/S3Driver.cpp', 'src/ui/Theme.cpp'])['catalog'])
+        self.assertTrue(changes.select(['src/core/Settings.cpp', 'src/ui/Theme.cpp'])['catalog'])
         self.assertFalse(changes.select([])['catalog'])
+
+    def test_unknown_base_keeps_full_selection(self):
+        result = changes.select(None)
+        self.assertIsNone(result['paths'])
+        for group in ('catalog', 'build', 'packages', 'sanitizers', 'pipewire'):
+            self.assertTrue(result[group], group)
 
     def test_workflow_uses_same_catalog_selection_for_all_consumers(self):
         workflow = (ROOT / '.github/workflows/ci.yml').read_text()
@@ -170,6 +175,7 @@ class CatalogSelection(unittest.TestCase):
                                         env=dict(os.environ, GITHUB_OUTPUT=str(output),
                                                  GITHUB_STEP_SUMMARY=str(summary)))
                 self.assertTrue(json.loads(result.stdout)['catalog'])
+                self.assertIsNone(json.loads(result.stdout)['paths'])
                 self.assertIn('catalog=true', output.read_text().splitlines())
                 self.assertIn('| UI catalog | yes |', summary.read_text())
 
