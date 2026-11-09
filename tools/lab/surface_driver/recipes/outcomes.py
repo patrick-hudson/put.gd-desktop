@@ -825,6 +825,7 @@ def idle_memory(ctx):
                'idle memory uses only an owned disposable guest')
     scope = Scope(ctx)
     original = ctx.target.app_executable
+    red = None
     def restore():
         ctx.target.app_executable = original
         scope.restart({})
@@ -854,9 +855,16 @@ def idle_memory(ctx):
                        imagePageReleaseBytes=released.get('lastImagePageReleaseBytes'))
         ctx.note('idle_memory='+json.dumps(summary, sort_keys=True))
         judge_idle(summary)
+    except RecipeFailed as error:
+        red = error
+        raise
     finally:
+        # A red reading stands: a cleanup failure must not turn it grey.
         if scope.close():
-            ctx.blocked('idle memory cleanup failed')
+            if red:
+                ctx.note('idle_memory_cleanup_failed=1')
+            else:
+                ctx.blocked('idle memory cleanup failed')
 
 @recipe('history.delete-remote', 'confirm.history-delete', desktop_drawn=True, timeout=300)
 def history_delete(ctx):

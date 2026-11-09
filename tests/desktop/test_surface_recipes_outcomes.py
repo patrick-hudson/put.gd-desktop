@@ -387,6 +387,7 @@ SwapPss:               0 kB
                 patch('tools.lab.surface_driver.fixtures.resident.identity', return_value=dict(pid=4, start='9')):
             outcomes.idle_memory(ctx)
         self.assertEqual(order, ['restart:/tmp/sd/fx-1/idle-resident', 'window', 'read', 'diagnostics'])
+        self.assertIn("{'pid': 4, 'start': '9'}", scope.json.call_args.args[0])
         self.assertIn(b'unset QT_LINUX_ACCESSIBILITY_ALWAYS_ON', scope.write.call_args.args[1])
         noted = next(call.args[0] for call in ctx.note.call_args_list if call.args[0].startswith('idle_memory='))
         recorded = _json.loads(noted.split('=', 1)[1])
@@ -396,6 +397,18 @@ SwapPss:               0 kB
         self.assertEqual(label, 'original resident route')
         restore()
         self.assertEqual(ctx.target.app_executable, 'putgd')
+
+    def test_cleanup_failure_cannot_hide_a_red_reading(self):
+        ctx = self.recipe_context(lambda *_a, **_k: dict(returncode=0, stdout='', stderr=''))
+        ctx.blocked.side_effect = RecipeBlocked('idle memory cleanup failed')
+        scope = Mock(root='/tmp/sd/fx-1', close=Mock(return_value=['resident: LabError']))
+        scope.json.return_value = dict(rollup=self.ROLLUP % (32000, 12000), names=['libssl.so.3'], load=.1, cpus=2)
+        with patch.object(outcomes, 'Scope', return_value=scope), \
+                patch('tools.lab.surface_driver.fixtures.resident.identity', return_value=dict(pid=4, start='9')), \
+                self.assertRaisesRegex(RecipeFailed, 'libssl.so.3'):
+            outcomes.idle_memory(ctx)
+        ctx.blocked.assert_not_called()
+        ctx.note.assert_any_call('idle_memory_cleanup_failed=1')
 
     def test_cleanup_failure_is_grey_not_a_memory_result(self):
         ctx = self.recipe_context(lambda *_a, **_k: dict(returncode=0, stdout='', stderr=''))

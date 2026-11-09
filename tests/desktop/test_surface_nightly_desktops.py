@@ -862,6 +862,8 @@ with n.controller_shutdown(workers):
         receipt=next(w[2] for w in github.writes if w[0]=='POST' and 'comments' in w[1])
         self.assertIn('"rssKb": 32000',receipt['body'])
         self.assertIn('Idle memory',table)
+        cells=next(line for line in table.splitlines() if line.startswith('| Cinnamon')).split(' | ')
+        self.assertIn('🟢',cells[1])
 
     def test_grey_infrastructure_creates_no_failure_issue(self):
         github=FakeGitHub()
