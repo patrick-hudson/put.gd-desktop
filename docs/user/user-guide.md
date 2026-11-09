@@ -40,12 +40,14 @@ Right-click files or folders in your file manager and choose **Upload with put.g
 Choose **Capture region & edit** from the rail or tray, or assign it a key in **Settings → Shortcuts** (it has no default key). Drag the region to edit; Escape cancels. To edit something you already have, use **Edit image** at the top of History (the clipboard image or a PNG/JPEG file), right-click the rail button, or drop a PNG or JPEG on it. **Edit again** on a History item reopens its local copy when **Keep a local copy** was on; the edited result is uploaded as a new item. In the editor:
 
 - **Redact** (X) covers an area with opaque black and removes those pixels from the uploaded image. Use it for passwords, tokens, names and other private information.
-- **Blur** (B) is only a visual effect; it can leave enough detail to guess text. Prefer Redact for anything private.
+- **Blur** (B) is only a visual effect; it can leave enough detail to guess text. Its **Pixelate** style draws square blocks instead and is just as reversible. Prefer Redact for anything private.
 - **Crop** (C): drag the area to keep, then **Apply crop** or Enter; Escape cancels.
-- **Arrow** (A), **Rectangle** (R), **Highlight** (H) and **Text** (T) add simple marks. Select (V) moves, resizes or deletes them. Highlight looks like a marker on light and dark pages alike (text stays readable) and snaps to text lines: click a word, double-click a line, hold Alt for a free box.
+- **Arrow** (A), **Line** (L), **Rectangle** (R), **Ellipse** (E), **Pen** (P), **Highlight** (H) and **Text** (T) add simple marks; Shift keeps a line at 45° and makes squares and circles.
+- **Step number** (N) drops numbered discs: each click places the next number. Change **Next number** to start elsewhere; deleting one leaves the others as they are.
+- Any drawing tool picks up a mark you can see under the pointer; hold Ctrl to draw over it. Select (V) moves, resizes or deletes them. Highlight looks like a marker on light and dark pages alike (text stays readable) and snaps to text lines: click a word, double-click a line, hold Alt for a free box.
 - Ctrl+Z / Ctrl+Shift+Z undo and redo; Ctrl+1 shows 100% to check edges; Ctrl+0 fits.
 
-**Upload** (Ctrl+Enter) sends only the edited image to the output shown at the bottom of the window, with the usual local copy, history and link copying. Plain Enter never uploads. **Save a copy…** writes the same edited PNG to a file. **Cancel** or closing the window discards the edit: nothing is saved or uploaded. Inputs above 24 megapixels are refused; output is PNG. An edit interrupted by quitting put.gd is listed as interrupted and is never uploaded automatically.
+**Upload** (Ctrl+Enter) sends only the edited image to the output shown at the bottom of the window, with the usual local copy, history and link copying. Plain Enter never uploads. **Save a copy…** writes the same edited PNG to a file, and **Copy image** (Ctrl+Shift+C) puts it on the clipboard to paste elsewhere; neither uploads or adds anything to History. **Cancel** or closing the window discards the edit: nothing is saved or uploaded. Inputs above 24 megapixels are refused; output is PNG. An edit interrupted by quitting put.gd is listed as interrupted and is never uploaded automatically.
 
 ## Record the screen
 

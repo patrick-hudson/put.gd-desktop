@@ -43,21 +43,25 @@ written before this feature inherit the region output route with no shortcut.
 | --- | --- | --- |
 | Select | V | Pick, move, resize (handles) or delete (Delete) a mark; arrows nudge, Shift×10 |
 | Redact | X | Opaque black rectangle; covered source pixels are removed from the result |
-| Blur | B | Box blur with a strength slider; **a visual effect only** |
+| Blur | B | Box blur with a strength slider, or **Pixelate** (Style: Blur / Pixelate): square blocks of the chosen size; both are **a visual effect only** and carry the same warning |
 | Crop | C | Drag the area to keep; Apply (Enter) or Cancel (Esc) |
 | Arrow | A | Line with a filled head; color and Thin/Medium/Thick width |
-| Rectangle | R | Outline; color and width |
+| Line | L | Straight line without a head; color and width; Shift keeps it at 0°, 45° or 90° while drawing or dragging an end |
+| Rectangle | R | Outline; color and width; Shift draws a square |
+| Ellipse | E | Outline; color and width; Shift draws a circle |
+| Pen | P | Freehand stroke with light smoothing (a short moving average, then points within half a pixel of the line are dropped; at most 2,000 points); color and width; a click leaves a dot |
 | Highlight | H | Marker paper: the box becomes a band of the marker colour and the text keeps the contrast it had, as dark lettering on the band, on light and dark pages alike; photos get a luminance-keeping wash; snaps to text lines (Alt for a free box); click a word, double-click a line, Shift-click adds a word |
 | Text | T | One line of bold outlined text; choose any installed font family and a size from 8 to 200 image pixels |
+| Step number | N | Click to drop a numbered disc (40 image pixels across by default, 16–256). Numbers count up from 1; **Next number** sets the next one, and following clicks count on from it. Deleting a step leaves the others as they are; undo, redo and agent edits count on from the highest step left. The disc takes the palette colour with a white label and rim, or a near-black one where white would fall under 3:1 (yellow, orange, green, white). Dragging a corner resizes it and keeps it round; a selected step's field edits its number |
 
 You don't need Select to adjust a mark:
 
 - Any drawing tool picks up what you can see under the pointer, and the cursor
   shows a move arrow there. Drag to move the mark, or click it to select it and
   edit its color, width or strength.
-  - A rectangle is grabbed by its outline, so you can still draw inside it.
-  - An arrow is grabbed by its line.
-  - Redactions, blurs and highlights are grabbed anywhere they cover.
+  - A rectangle or ellipse is grabbed by its outline, so you can still draw inside it.
+  - An arrow, a line or a pen stroke is grabbed by its line.
+  - Redactions, blurs, highlights and steps are grabbed anywhere they cover.
 - Hold Ctrl to draw a new mark on top of an existing one.
 - With Text, dragging a label moves it, and clicking it edits it.
 - A selected text label has four corner handles. Dragging one scales the
@@ -162,7 +166,14 @@ similar), because Qt would otherwise still load the desktop's theme plugin; on
 Plasma that plugin brings in Qt Quick and the GPU driver (about 85 MiB).
 
 Use **Redact** for passwords and other private information. Blur and pixelation
-can leave information that helps reconstruct or infer text.
+can leave information that helps reconstruct or infer text; Pixelate shows the
+same warning as Blur ("Pixelation may be reversible.") with **Choose Redact tool**.
+
+**Copy image** (Ctrl+Shift+C, beside **Save a copy…**) puts the same sanitized
+PNG that Upload and Save a copy produce on the clipboard. It uploads nothing,
+creates no History item and keeps editing open; the button reads "Image copied"
+briefly, and a failure shows its reason above the footer. See
+[Copy image](#copy-image) for the process boundary.
 
 ## Sources
 
@@ -207,6 +218,8 @@ generation `1`. UiControl's known frame types gained `editing`, `finalizing`,
    allocation limit and shows the window, then sends `editing`.
 3. Agent commands: `command` (requestId, command, params) → `commandResult`
    (ok with result, or code and message).
+   Copy image: `copyImage` (bytes, sha256, width, height) → `copyResult` (ok, or
+   code and message); see [Copy image](#copy-image).
 4. `finalizing` when the user or an agent submits; the helper writes the export
    once, `fsync`s it, and sends `checkpoint` (bytes, sha256, width, height). A
    failure checkpoint carries `edit_cancelled`, `source_unsupported`,
@@ -223,6 +236,25 @@ IEND with valid CRCs and no trailing bytes. Text, EXIF, ICC, time and private
 chunks are refused. Those exact bytes become the operation's single immutable
 artifact (`image/png`); they are not re-encoded, and retry reuses them.
 
+## Copy image
+
+On Wayland the editor process cannot own the clipboard, so Copy image goes
+through the resident's native clipboard adapter, the one that copies links:
+
+1. The helper renders the sanitized PNG from a snapshot, off the GUI thread,
+   exactly as Save a copy does, and writes it once to a new owner-only
+   `copy.png` (0600, `O_EXCL|O_NOFOLLOW`, fsynced) in its pinned staging
+   directory, then sends `copyImage` with its size, digest and dimensions.
+   One copy runs at a time; Upload, Cancel and Save a copy wait for it.
+2. The resident opens and removes `copy.png`, checks owner, mode, size
+   (at most 128 MiB), digest and the sanitized-PNG chunk structure, and hands
+   the bytes to the native adapter as an explicit copy (it supersedes pending
+   automatic link copies, like History's Copy image). It answers `copyResult`.
+3. Nothing else keeps the bytes: no artifact, History item, archive copy or
+   upload input, and the operation stays `editing`. A failed check or an
+   unavailable clipboard (`clipboard_unavailable`) is reported to the window and
+   the agent; editing continues.
+
 ## Sanitized export
 
 Every edit is geometry in source-image pixels; no pixel snapshots are kept for
@@ -233,8 +265,12 @@ none of the reader's text, color-space or container data:
 2. Overwrite every redaction rectangle with opaque black using Source composition
    and no antialiasing. Canvas drags round outward, so a partly covered pixel is
    covered.
-3. Blur, reading only already-redacted pixels and only inside its own rectangle.
-4. Draw arrows, rectangles, highlights and text.
+3. Blur and pixelate, reading only already-redacted pixels and only inside their
+   own rectangles. Pixelation blocks sit on a grid anchored at the mark's own
+   top-left corner, so a crop never shifts them; each block is the average of
+   its pixels inside the mark.
+4. Draw arrows, lines, rectangles, ellipses, pen strokes, step numbers,
+   highlights and text.
 5. Clear the hidden color of fully transparent pixels; encode PNG.
 
 Two inputs that differ only inside a mask therefore export byte-identical PNGs,
@@ -315,19 +351,28 @@ Every editor capability is available through session methods, the production
 | `editor.apply` | `edit_image` | `id`, `commands` (1–100); atomic: all or nothing |
 | `editor.preview` | `preview_editor` | `id`, optional `maxEdge` 64–1600; sanitized PNG (base64 / MCP image) |
 | `editor.saveCopy` | `save_editor_copy` | `id`, absolute `.png` `path`, optional `overwrite` |
+| `editor.copy` | `copy_editor_image` | `id`; Copy image: the sanitized PNG on the clipboard; returns `copied`, `bytes`, `sha256`, `width`, `height` |
 | `editor.submit` | `submit_editor` | `id`; same as Upload |
 | `editor.cancel` | `cancel_editor` | `id`; discard without confirmation |
 | `editor.raise` | `raise_editor` | `id`, optional `activationToken`; asks the desktop to bring the window to front and answers what it did: `raised: true` once the window is active, otherwise after 1.5 s `raised: false` with `reason: activation_refused` and a message (#911) |
 
 Commands: `add {shape}`, `update {shapeId, shape}`, `remove {shapeId}`,
 `crop {rect}`, `resetCrop`, `undo`, `redo`. Rectangles are `[x, y, width, height]`.
+`editor.view` also takes `blurStyle {style: blur|pixelate}` (the Blur tool's
+Style buttons; it restyles a selected blur) and `stepNumber {number}` (Next
+number, or the selected step's Number); its state reports `nextStepNumber`,
+`style.blurStyle`, `style.stepSize`, `copying` and `lastCopy`.
 
 | Shape kind | Geometry | Optional style |
 | --- | --- | --- |
 | `redact` | `rect` (clamped to the image) | none; always opaque black |
-| `blur` | `rect` | `strength` 2–64 |
+| `blur` | `rect` | `strength` 2–64 (the block size when pixelated), `style` `blur` (default) or `pixelate` |
 | `arrow` | `from`, `to` `[x, y]` | `color` `#RRGGBB`, `width` 1–64 |
+| `line` | `from`, `to` `[x, y]` (different points) | `color`, `width` |
 | `rectangle` | `rect` | `color`, `width` |
+| `ellipse` | `rect` | `color`, `width` |
+| `pen` | `points` `[[x, y], …]`, 1–2000, drawn in order | `color`, `width`; `inspect` also reports its extent as `rect` |
+| `step` | `at` `[x, y]`, the centre | `number` 1–999 (default: one more than the highest step), `size` 16–256 (diameter, default 40), `color` |
 | `highlight` | `rect`, or `at` `[x, y]` with `snap` `word`/`line` | `color`; `snap` `none` (default, the rect is used as given), `text` (the rect snaps to the text lines it crosses), `word` or `line` (the mark is the word or line at `at`; `edit_command_invalid` "No text at that point" when there is none) |
 | `text` | `at` `[x, y]`, `text` (one line, ≤500) | `color`, `fontPixels` 8–200, `font` (family name ≤100 printable characters; `""` is the default sans-serif) |
 
@@ -386,7 +431,12 @@ termination, oversize admission and a missing helper. `edit_operations_integrati
 checks that an uploaded edit leaves no unredacted pixels in any retained raster,
 that cancellation stores nothing, file sources, single-session raising and
 restart recovery. Synthetic screenshots of the themed window are produced by
-`putgd-ui-catalog` (`20-`–`25-editor-*.png`). Offscreen results are not
+`putgd-ui-catalog` (`20-`–`29-editor-*.png`; the step, pen, ellipse, line,
+pixelate, Copy image and narrow-toolbar states are `30-`–`30k-editor-*.png`).
+`editor_contract` also checks that the new marks never reveal redacted pixels in
+any order or crop, the pixelation grid, step numbering and pen smoothing;
+`editor_job_integration` and `edit_operations_integration` check Copy image
+against the real helper and resident. Offscreen results are not
 desktop acceptance. Graphical, memory and MCP evidence is in the
 [2026-10-17 receipt](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-17-issue51-edit-and-upload.md), and the
 lab drivers are described in the [VM lab guide](../lab/vm-lab/input-and-evidence.md#editor-acceptance-drivers).
