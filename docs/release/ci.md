@@ -133,7 +133,7 @@ uses it, and release builds stay on distro Qt. `json_ref_lifetime_contract` stil
 rejects the #76 pattern in source.
 
 **packages** calls `package.yml`. It builds and audits the Ubuntu 24.04,
-Ubuntu 26.04 and Debian 13 DEBs, the Fedora 44 RPM, Arch pacman package and the AppImage, and compiles the curated source
+Ubuntu 26.04 and Debian 13 DEBs, the Fedora 44 RPM, Arch pacman package and the AppImage. Outside pull requests to `nightly`, it also compiles the curated source
 export on Ubuntu 24.04. `native.py` also audits the file-manager plugins
 (`tools/releases/audit_file_manager_plugins.py`, #1105): `readelf -d` NEEDED
 entries, `nm -D` symbol sources for Peony, the RPM's co-owned directories and
@@ -186,7 +186,7 @@ The 2026-10-26 baseline is in [the CI records](../history/ci-records.md#nightly-
 Package compiler caches are separate per distro/AppImage and dependency
 fingerprint, capped at 256 MiB each (384 MiB on Arch, which also compiles the SDK
 through ccache: Arch rolls, so an exact SDK prefix cache would rarely hit). Arch's key names only the distro, so a restore can cross a dependency update; ccache's own hashing of the compiler and headers keeps stale objects from being reused. The
-source export compiled on Ubuntu 24.04 has its own compiler cache. Only `nightly` pushes save them; other runs
+source export compiled on Ubuntu 24.04 has its own compiler cache, saved even when a newer push cancels the compile. Only `nightly` pushes save them; other runs
 restore them. Superseded entries are pruned by the existing cache maintenance.
 No application build directory or version manifest is reused. AppImage's required
 `appimage-sources` job caches exact Ubuntu source downloads and revalidates their
@@ -359,6 +359,7 @@ Measured run times from 2026-10-19 are in [the CI records](../history/ci-records
   used; every other run restores the newest `nightly` cache and does not save.
   See [cache budget](#cache-budget). The build-identity source changes every
   commit and is always recompiled. Package builders use their own caches ([below](#nightly-runtime-and-artifact-transfers)); on a cache hit ccache still hashes each source and header, so a source or header that the compile needs but the source export lacks fails the build. Files the compile doesn't read, such as the SDK provisioning script, aren't exercised by this check.
+- **No second compile on pull requests to `nightly`.** They check the source export instead of compiling it: `check_source_build.py --inputs-of` configures the extracted export, dry-runs Ninja and compares the package build's recorded inputs with the archive, in about 15 seconds. Pushes to `nightly`, pull requests to `main` and stable tags still compile it, and only that compile writes the receipt a stable release requires.
 - **Parallel builds.** Application and SDK builds use every runner CPU.
 - **Parallel tests, longest first.** CTest runs twelve tests at once and restores
   the previous run's durations, so the longest tests start first. See
