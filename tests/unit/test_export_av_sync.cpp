@@ -137,6 +137,10 @@ private slots:
         QTest::addColumn<qint64>("trimStart");
         QTest::newRow("mp4") << "mp4" << "h264" << qint64(0);
         QTest::newRow("mp4 trimmed") << "mp4" << "h264" << qint64(1'000'000);
+        // #1045: a trim can start between two frames, as it does here 10 ms past
+        // the frame at 1 s of this 30 fps clip. Rebasing video on its first frame
+        // played it that gap early. A stepped clip has such gaps throughout.
+        QTest::newRow("mp4 trimmed between frames") << "mp4" << "h264" << qint64(1'010'000);
         QTest::newRow("webm") << "webm" << "vp9" << qint64(0);
         QTest::newRow("webm trimmed") << "webm" << "vp9" << qint64(1'000'000);
     }

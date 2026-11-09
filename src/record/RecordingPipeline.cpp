@@ -17,7 +17,7 @@
 
 namespace putgd::record {
 namespace {
-struct ProbeContext { const PauseTimeline* timeline; void* rebase; bool audio; };
+struct ProbeContext { const PauseTimeline* timeline; void* rebase; bool audio; void* repeats = nullptr; };
 QString shellQuote(const QString& value) { QString s = value; s.replace('\\', "\\\\").replace('"', "\\\""); return '"' + s + '"'; }
 int bitrateKbps(const QSize& size, int fps) {
     // About 0.1 bit per pixel per frame, bounded for tiny and huge canvases.
@@ -39,9 +39,13 @@ QString x264Preset(const QSize& size, int fps) {
     if (pixelRate > 1920.0 * 1080 * 45) return QStringLiteral("superfast");
     return QStringLiteral("veryfast");
 }
+// The bundled va encoders stamp their output start + N frames whatever the
+// input PTS said (vaapih264enc, x264enc and openh264enc keep the input PTS),
+// so a capture that drops repeats must restore each output buffer's time.
+bool encoderRestamps(const QString& name) { return name == "vah264lpenc" || name == "vah264enc"; }
 QString encoderDescription(const QString& name, int kbps, int fps, const QSize& size) {
     const int keyint = std::max(1, fps * 2);
-    if (name == "vah264lpenc" || name == "vah264enc") return QStringLiteral("%1 bitrate=%2 key-int-max=%3").arg(name).arg(kbps).arg(keyint);
+    if (encoderRestamps(name)) return QStringLiteral("%1 bitrate=%2 key-int-max=%3 b-frames=0").arg(name).arg(kbps).arg(keyint);
     // Intel's iHD driver refuses CBR and VBR for this element; constant QP is the one mode every VA driver has.
     if (name == "vaapih264enc") return QStringLiteral("vaapih264enc rate-control=cqp init-qp=24 keyframe-period=%1").arg(keyint);
     // A recording has no latency budget: frame threads (one frame in flight
@@ -146,16 +150,48 @@ GstPadProbeReturn RecordingPipeline::probe(GstPad* pad, GstPadProbeInfo* info, g
     if (!mapped) return GST_PAD_PROBE_DROP;
     if (now >= 0) rebase->lateness.add(now - pts);
     const gint64 offset = gint64(GST_BUFFER_PTS(buffer)) - *mapped;
-    buffer = gst_buffer_make_writable(buffer);
-    GST_PAD_PROBE_INFO_DATA(info) = buffer;
     const gint64 shifted = std::max<gint64>(0, *mapped);
-    GST_BUFFER_PTS(buffer) = GstClockTime(shifted);
-    if (GST_BUFFER_DTS_IS_VALID(buffer)) GST_BUFFER_DTS(buffer) = GstClockTime(std::max<gint64>(0, gint64(GST_BUFFER_DTS(buffer)) - offset));
     // Encoders may carry a constant timestamp offset (the VA encoders add an
-    // hour); durations are measured from the first retained buffer.
+    // hour); durations are measured from the first retained buffer. A skipped
+    // repeat still counts here: the clip's timeline runs through it.
     if (rebase->firstPassed.load() < 0) rebase->firstPassed.store(shifted);
     rebase->lastPassed.store(shifted);
+    // After the adaptive rate stepped down, videorate's repeats (its GAP-flagged
+    // duplicates of the last kept frame) stay out of the encoder (#1045).
+    auto* repeats = static_cast<RepeatSkip*>(context->repeats);
+    if (repeats && repeats->dropping.load() && GST_BUFFER_FLAG_IS_SET(buffer, GST_BUFFER_FLAG_GAP)) { repeats->skipped.fetch_add(1); return GST_PAD_PROBE_DROP; }
+    buffer = gst_buffer_make_writable(buffer);
+    GST_PAD_PROBE_INFO_DATA(info) = buffer;
+    if (!buffer) return GST_PAD_PROBE_DROP;
+    GST_BUFFER_PTS(buffer) = GstClockTime(shifted);
+    if (GST_BUFFER_DTS_IS_VALID(buffer)) GST_BUFFER_DTS(buffer) = GstClockTime(std::max<gint64>(0, gint64(GST_BUFFER_DTS(buffer)) - offset));
     rebase->passed.fetch_add(1);
+    if (repeats && repeats->restamps) { std::lock_guard lock(repeats->mutex); repeats->inEncoder.push_back(shifted); }
+    return GST_PAD_PROBE_OK;
+}
+
+// The va encoders stamp their output contiguously, one frame after another
+// whatever the input PTS said. Once repeats are skipped each output buffer takes
+// back the time of the input it came from (in order: b-frames=0), kept at
+// the encoder's own constant offset (#1045). Before the step the encoder's
+// own stamps stand, as for every recording that never lowers its rate.
+GstPadProbeReturn RecordingPipeline::restoreEncodedTime(GstPad*, GstPadProbeInfo* info, gpointer user) {
+    auto* repeats = static_cast<RepeatSkip*>(user);
+    GstBuffer* buffer = GST_PAD_PROBE_INFO_BUFFER(info);
+    if (!buffer || !GST_BUFFER_PTS_IS_VALID(buffer)) return GST_PAD_PROBE_OK;
+    gint64 input = -1;
+    { std::lock_guard lock(repeats->mutex); if (!repeats->inEncoder.empty()) { input = repeats->inEncoder.front(); repeats->inEncoder.pop_front(); } }
+    if (input < 0) return GST_PAD_PROBE_OK;
+    const gint64 output = gint64(GST_BUFFER_PTS(buffer));
+    const bool stepped = repeats->stepped.load();
+    // A step before the encoder's first output still needs its constant offset.
+    if (!stepped || !repeats->offsetKnown) { repeats->encoderOffset = output - input; repeats->offsetKnown = true; }
+    if (!stepped) return GST_PAD_PROBE_OK;
+    buffer = gst_buffer_make_writable(buffer);
+    GST_PAD_PROBE_INFO_DATA(info) = buffer;
+    if (!buffer) return GST_PAD_PROBE_DROP;
+    const gint64 restored = input + repeats->encoderOffset;
+    GST_BUFFER_PTS(buffer) = GST_BUFFER_DTS(buffer) = GstClockTime(restored);
     return GST_PAD_PROBE_OK;
 }
 
@@ -357,6 +393,11 @@ bool RecordingPipeline::launch(const Options& options, const QString& encoder, c
     frameClock_.lock = frameLock(options.fps);
     frameClock_.gate = &gate_;
     gate_.periodNs = GST_SECOND / options.fps; gate_.delivered = 0; gate_.kept = 0; gate_.lastKept = -1; gate_.toleranceNs = GST_SECOND / options.fps / 2;
+    // Lab A/B: PUTGD_RECORD_ENCODE_REPEATS=on keeps encoding videorate's repeats after a step.
+    encodeRepeats_ = qEnvironmentVariable("PUTGD_RECORD_ENCODE_REPEATS") == "on";
+    repeatSkip_.restamps = encoderRestamps(encoder);
+    repeatSkip_.dropping = false; repeatSkip_.stepped = false; repeatSkip_.skipped = 0; repeatSkip_.encoderOffset = 0; repeatSkip_.offsetKnown = false;
+    { std::lock_guard lock(repeatSkip_.mutex); repeatSkip_.inEncoder.clear(); }
     // Lab A/B: PUTGD_RECORD_ADAPTIVE_RATE=off keeps the configured rate whatever the load.
     rate_ = AdaptiveRate(options.fps, options.adaptive && qEnvironmentVariable("PUTGD_RECORD_ADAPTIVE_RATE") != "off", !options.pipewireNode && !options.imageCopy);
     rateClock_.invalidate();
@@ -391,13 +432,17 @@ bool RecordingPipeline::launch(const Options& options, const QString& encoder, c
         GstElement* queue = gst_bin_get_by_name(GST_BIN(pipeline), element);
         if (!queue) return false;
         GstPad* pad = gst_element_get_static_pad(queue, "sink");
-        auto* context = new ProbeContext{&timeline_, &rebase, &rebase == &audio_};
+        auto* context = new ProbeContext{&timeline_, &rebase, &rebase == &audio_, &rebase == &audio_ ? nullptr : &repeatSkip_};
         gst_pad_add_probe(pad, GST_PAD_PROBE_TYPE_BUFFER, &RecordingPipeline::probe, context, [](gpointer data) { delete static_cast<ProbeContext*>(data); });
         gst_object_unref(pad);
         gst_object_unref(queue);
         return true;
     };
     if (!attach("venc", video_) || (options.audio && !audioEncoder.isEmpty() && !attach("aenc", audio_))) { failure = "probe attach failed"; gst_object_unref(pipeline); return false; }
+    if (repeatSkip_.restamps) if (GstElement* venc = gst_bin_get_by_name(GST_BIN(pipeline), "venc")) {
+        if (GstPad* pad = gst_element_get_static_pad(venc, "src")) { gst_pad_add_probe(pad, GST_PAD_PROBE_TYPE_BUFFER, &RecordingPipeline::restoreEncodedTime, &repeatSkip_, nullptr); gst_object_unref(pad); }
+        gst_object_unref(venc);
+    }
     // Frames the capture queue had to leak: the stages behind it were slower
     // than the frame rate, and the clip repeats frames there (lab statistic).
     dropped_.store(0);
@@ -536,6 +581,9 @@ void RecordingPipeline::stop(std::function<void(Error, qint64)> done) {
     if (stopping_) { done({"recording_busy", "Already stopping", {}}, 0); return; }
     stopping_ = true;
     stopCallback_ = std::move(done);
+    // What is still in flight is encoded with its repeats, so the clip ends at
+    // the last slot it reached rather than at the last kept frame (#1045).
+    repeatSkip_.dropping.store(false);
     // Stop ends the clip now: nothing captured after it is kept, however long the
     // drain takes (a recording stopped while paused already keeps nothing after the pause).
     timeline_.pause(std::max<gint64>(0, runningTime()));
@@ -683,6 +731,11 @@ void RecordingPipeline::observeRate() {
                  .arg(against.isEmpty() ? QString() : ", against: " + against));
     if (!lowered) return;
     gate_.periodNs.store(GST_SECOND / rate_.current());
+    // videorate still produces the configured rate for the clip; from here on
+    // its repeats stop before the encoder and the encoder gets variable-rate
+    // timestamps (#1045). The caps stay: a mid-stream rate change is refused by
+    // matroskamux and would re-initialise the encoder.
+    if (!encodeRepeats_) { repeatSkip_.stepped.store(true); repeatSkip_.dropping.store(true); }
     rateChange_ = {{"from", from}, {"to", rate_.current()}, {"reason", rate_.reason()}, {"atUs", double(retainedUs())}};
     debugLog(QStringLiteral("rate lowered from %1 to %2 fps (%3)").arg(from).arg(rate_.current()).arg(rate_.reason()));
 }
@@ -756,6 +809,7 @@ void RecordingPipeline::tearDown() {
                  .arg(clockName_, video_.lateness.text(), audio_.lateness.text(), frameClock_.age.text()).arg(frameClock_.arrival).arg(audio_.clock.corrections()));
     debugLog(QStringLiteral("frames: %1 reached the video encoder, %2 leaked at the capture queue; source arrivals %3 (interval %4), %5 with a repeated compositor time, contents %6 new / %7 same dropped, cadence lock %8 early dropped / %9 resyncs / %10 changes slotted after a repeat")
                  .arg(video_.passed.load()).arg(dropped_.load()).arg(frameClock_.interval.count + (frameClock_.lastArrival >= 0 ? 1 : 0)).arg(frameClock_.interval.text()).arg(frameClock_.repeatedPts).arg(frameClock_.distinctContents).arg(frameClock_.sameContents).arg(frameClock_.early).arg(frameClock_.resyncs).arg(frameClock_.afterRepeat));
+    if (repeatSkip_.skipped.load()) debugLog(QStringLiteral("repeats: %1 skipped before the encoder").arg(repeatSkip_.skipped.load()));
     stopping_ = false;
 }
 }
