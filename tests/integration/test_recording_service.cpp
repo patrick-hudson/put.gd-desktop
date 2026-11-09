@@ -94,6 +94,15 @@ private slots:
   QCOMPARE(call(server,"recording.inspect",{{"id","nothing"}}).error.code,QString("recording_unavailable"));
   QCOMPARE(operations.diagnostics()["activeOperations"].toInt(),0);
  }
+ // An image-copy session records one output: a desktop of several says why, the rest stays generic.
+ void aDroppedTargetExplainsItself(){
+  Harness h;PUTGD_TRY_VERIFY(h.operations->ready());
+  h.backend->probedDetails={{"targets",QJsonArray{"monitor","region"}},{"targetReasons",QJsonObject{{"desktop","Recording the whole desktop here covers one output; record a monitor instead"}}}};
+  const auto desktop=h.rec("prepare",{{"target",QJsonObject{{"kind","desktop"}}},{"format","mp4"}});
+  QCOMPARE(desktop.error.code,QString("recording_unsupported"));QCOMPARE(desktop.error.message,QString("Recording the whole desktop here covers one output; record a monitor instead"));
+  const auto window=h.rec("prepare",{{"target",QJsonObject{{"kind","window"}}},{"format","mp4"}});
+  QCOMPARE(window.error.code,QString("recording_unsupported"));QCOMPARE(window.error.message,QString("This target kind is not supported here"));
+ }
  void unavailableProbeExplainsWhatToInstall(){
   Harness h;PUTGD_TRY_VERIFY(h.operations->ready());h.backend->available=false;
   h.backend->unavailableDetails={{"reason","h264_encoder_unusable"},{"message","Screen recording needs an H.264 encoder, and none of the installed ones (openh264enc) works here."},{"hint","Install Cisco's OpenH264."}};

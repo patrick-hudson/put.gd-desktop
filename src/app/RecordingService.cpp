@@ -369,7 +369,7 @@ void RecordingService::prepareSession(const QJsonObject& params, JsonReply reply
             reply({"recording_unavailable", message.isEmpty() ? QStringLiteral("Screen recording is not available on this installation") : hint.isEmpty() ? message : message + ' ' + hint, details}, {});
             return;
         }
-        if (!caps["targets"].toArray().contains(s.target.kind)) { reply({"recording_unsupported", "This target kind is not supported here", {{"kind", s.target.kind}}}, {}); return; }
+        if (!caps["targets"].toArray().contains(s.target.kind)) { reply({"recording_unsupported", caps["targetReasons"].toObject()[s.target.kind].toString(QStringLiteral("This target kind is not supported here")), {{"kind", s.target.kind}}}, {}); return; }
         if (!caps["formats"].toArray().contains(s.config.format)) { reply({"recording_unsupported", "This output format is not supported here", {{"format", s.config.format}}}, {}); return; }
         if (!s.config.codec.isEmpty() && !caps["codecs"].toObject()[s.config.format].toArray().contains(s.config.codec)) { reply({"recording_unsupported", "This codec is not supported here", {{"codec", s.config.codec}}}, {}); return; }
         if (s.config.audio.system && !caps["audio"].toObject()["system"].toBool()) { reply({"recording_unsupported", "System audio capture is not supported here", {{"field", "audio.system"}}}, {}); return; }

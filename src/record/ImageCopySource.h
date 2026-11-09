@@ -23,7 +23,7 @@ namespace putgd::record {
 class ImageCopySource {
 public:
  struct Target {bool window=false;QString identity;};  // window with no identity: the active window now
- struct Facts {bool available=false,windows=false;QString reason,windowReason;QJsonObject protocols;};
+ struct Facts {bool available=false,windows=false;int outputs=0;QString reason,windowReason;QJsonObject protocols;};
  // A connection, three round trips, the advertised globals; nothing is captured.
  static Facts probe();
  ImageCopySource();

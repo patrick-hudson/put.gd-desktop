@@ -68,7 +68,9 @@ QJsonObject RecordingHelperBackend::capabilities() const {
 }
 void RecordingHelperBackend::refreshCapabilities(std::function<void()> done) {
     const auto now = QDateTime::currentMSecsSinceEpoch();
-    if (!cached_.isEmpty() && (cached_["available"].toBool() || now - cachedAt_ < failedProbeCacheMs)) { done(); return; }
+    // On the image-copy route the targets follow the outputs connected right now.
+    const bool followsOutputs = cached_["acquisition"].toString() == "wlr-capture";
+    if (!cached_.isEmpty() && !followsOutputs && (cached_["available"].toBool() || now - cachedAt_ < failedProbeCacheMs)) { done(); return; }
     if (!QFileInfo(helperPath_).isExecutable()) { cached_ = unavailable("recording_helper_missing"); cachedAt_ = now; done(); return; }
     probeWaiters_.append(std::move(done));
     if (probe_) return;
@@ -87,11 +89,17 @@ void RecordingHelperBackend::finishProbe() {
     probe_ = nullptr;
     probeDeadline_.stop();
     QJsonObject result = unavailable("recording_probe_failed");
+    // A failed re-probe mustn't drop the route that decides how soon the next one runs.
+    const auto route = cached_["acquisition"];
+    if (route.isString()) result["acquisition"] = route;
     if (process) {
         const auto output = process->readAllStandardOutput();
         const auto document = QJsonDocument::fromJson(output.left(probeLimit));
         if (process->exitStatus() == QProcess::NormalExit && process->exitCode() == 0 && output.size() <= probeLimit && document.isObject() && validCapabilities(document.object())) result = document.object();
-        else if (process->exitStatus() == QProcess::NormalExit && process->exitCode() == 0) result = unavailable("recording_probe_invalid");
+        else if (process->exitStatus() == QProcess::NormalExit && process->exitCode() == 0) {
+            result = unavailable("recording_probe_invalid");
+            if (route.isString()) result["acquisition"] = route;
+        }
         if (probeOutput_.pid() > 0) {
             const bool running = process->state() != QProcess::NotRunning;
             if (running) { process->kill(); process->waitForFinished(1000); }
