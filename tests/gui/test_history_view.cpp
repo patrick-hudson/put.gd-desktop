@@ -1049,7 +1049,7 @@ private slots:
   const auto kept=d.filePath("kept.txt");{QFile file(kept);QVERIFY(file.open(QIODevice::WriteOnly));file.write("synthetic");}
   for(const QString id:{QString("key-first"),QString("key-second")}){HistoryStore ledger(operations.databasePath());Operation op;op.id=id;op.created="2020-01-01T00:00:00.000Z";op.state="completed";op.settings=settings.snapshot();OperationItem item;item.artifact.id=id+"-item";item.artifact.name=id+".txt";item.artifact.mime="text/plain";item.artifact.category="text";item.uploadStatus="local_only";item.local.status="saved";item.local.path=kept;op.items.append(item);QVERIFY(!ledger.saveOperation(op));}
   HistoryService history(operations);UiSessionFixture fixture(settings,operations,history);HistoryWindow window(fixture.session);window.resize(1100,700);window.show();auto* list=window.findChild<QListView*>("historyList");PUTGD_TRY_COMPARE(list->model()->rowCount(),2);
-  selectRow(list,operationRow(list,"key-second"));window.activateWindow();list->setFocus();putgd::test::settle(20);QVERIFY(window.windowHandle());
+  selectRow(list,operationRow(list,"key-second"));QVERIFY(window.windowHandle());window.activateWindow();list->setFocus();putgd::test::settle(20);
   auto rowMenus=[]{QList<QMenu*> menus;for(auto* widget:QApplication::topLevelWidgets())if(auto* menu=qobject_cast<QMenu*>(widget);menu&&menu->objectName()=="historyRowMenu"&&menu->isVisible())menus<<menu;return menus;};
   // Sent from inside the first menu's event loop, where Qt delivers the key press.
   QTimer::singleShot(0,&window,[&]{QTest::keyClick(window.windowHandle(),Qt::Key_Menu);});
