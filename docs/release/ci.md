@@ -90,9 +90,10 @@ and a failed integration test is retried once and reported (see
 offscreen contracts do not establish compositor support or physical memory
 acceptance. The Release-preset compile happens in the package builders, not here.
 
-On the 26.04 leg only (`-DPUTGD_UI_CATALOG_RENDER=ON`), the suite includes
+On the 26.04 leg (`-DPUTGD_UI_CATALOG_RENDER=ON`), the suite includes
 one [UI catalog](../design/ui-catalog.md) test, `ui_catalog_render`, in the
-`cpu` pool. It renders the complete dark catalog and rejects renderer failures,
+`cpu` pool. On a pull request it runs only when a changed path can alter the
+catalog (the `catalog` output of `tools/ci/changes.py`). Every other run renders it. It renders the complete dark catalog and rejects renderer failures,
 incomplete or restricted manifests, source reads, missing images and skipped
 captures. It does not compare pixels or require reference-image updates.
 After the tests, the surface map and secret-control gate check

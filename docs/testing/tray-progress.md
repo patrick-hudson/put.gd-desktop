@@ -433,17 +433,10 @@ This procedure covers Linux SNI/QMP behavior. The pinned Proton runtime
 supports Linux x86-64. Use the [acceptance matrix](acceptance-matrix.md) for
 current package and desktop requirements.
 
-Pure host contracts can be run independently without builds, guests or service
-access:
-
-```sh
-python3 -B tests/desktop/test_tray_progress_lab.py
-```
-
-They check the replay's socket, identity, privacy, color, accounting and
-nonsecret-settings assertions. They do not establish a probe build, live S3 or
-Proton success, a desktop functional pass, human rendering inspection or memory
-acceptance. Record those actual executions separately.
+The replay's host contract tests were [removed](removed-tests.md). A replay run
+itself shows whether the tool still works. It does not establish a probe build,
+live S3 or Proton success, a desktop functional pass, human rendering inspection
+or memory acceptance. Record those actual executions separately.
 
 ## Opening an upload from its notification
 
