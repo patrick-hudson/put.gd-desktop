@@ -246,7 +246,7 @@ namespace {
 // One pill's removal: blank frame rendered, unmap, display sync.
 class CountdownDismissal final:public QObject {
 public:
- CountdownDismissal(CountdownPill& pill,std::function<void(bool)> done):QObject(&pill),pill_(pill),done_(std::move(done)){}
+ CountdownDismissal(CountdownPill& pill,std::function<void(bool,bool)> done):QObject(&pill),pill_(pill),done_(std::move(done)){}
  void start(){
   pill_.blank();
   auto* window=pill_.windowHandle();
@@ -254,11 +254,13 @@ public:
   // Qt Wayland withholds requestUpdate() until the frame callback of the buffer
   // just committed has fired: the compositor has rendered the empty frame.
   window->installEventFilter(this);window->requestUpdate();
-  QTimer::singleShot(250,this,[this]{unmap();});
+  // A frame callback comes within a frame or two on a screen that is on and
+  // unlocked. None for a whole second means this surface is not being shown.
+  QTimer::singleShot(1000,this,[this]{unmap();});
  }
 protected:
  bool eventFilter(QObject* watched,QEvent* event)override{
-  if(event->type()==QEvent::UpdateRequest)QTimer::singleShot(0,this,[this]{unmap();});
+  if(event->type()==QEvent::UpdateRequest&&!unmapped_){presented_=true;QTimer::singleShot(0,this,[this]{unmap();});}
   return QObject::eventFilter(watched,event);
  }
 private:
@@ -276,17 +278,17 @@ private:
   if(!done_)return;
   auto done=std::exchange(done_,{});
   if(fence_){wl_callback_destroy(fence_);fence_=nullptr;}
-  deleteLater();done(acknowledged);
+  deleteLater();done(acknowledged,presented_);
  }
- CountdownPill& pill_;std::function<void(bool)> done_;wl_callback* fence_=nullptr;bool unmapped_=false;
+ CountdownPill& pill_;std::function<void(bool,bool)> done_;wl_callback* fence_=nullptr;bool unmapped_=false,presented_=false;
 };
 }
 #endif
-void hideLayerShellCountdown(CountdownPill& pill,std::function<void(bool)> done){
+void hideLayerShellCountdown(CountdownPill& pill,std::function<void(bool,bool)> done){
 #ifdef PUTGD_NATIVE_REGION
  (new CountdownDismissal(pill,std::move(done)))->start();
 #else
- pill.hide();done(false);
+ pill.hide();done(false,false);
 #endif
 }
 }

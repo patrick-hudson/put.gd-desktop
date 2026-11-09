@@ -1,4 +1,5 @@
 #include "RegionProcess.h"
+#include "platform/SessionLock.h"
 #include "core/BuildInfo.h"
 #include <QCoreApplication>
 #include <QJsonDocument>
@@ -188,13 +189,14 @@ void WaylandRegionProcess::receive(const QString& type,const QJsonObject& payloa
  }
  if(type=="cancelled" || type=="error") {
   const auto code=payload["code"].toString();
-  const QStringList allowed{"cancelled","display_changed","region_unavailable","capture_geometry","capture_timeout"};
+  const QStringList allowed{"cancelled","display_changed","region_unavailable","capture_geometry","capture_timeout","session_locked"};
   if(!ready_ || resultReceived_ || payload.size()!=3 || !allowed.contains(code) ||
      (type=="cancelled")!=(code=="cancelled")) {
    fail(unavailable("capture_protocol")); return;
   }
   terminal_=teardownCertified_=true;
-  if(!failure_) failure_=unavailable(code);
+  // The countdown's last frame never reached the screen (#1363): nothing is captured.
+  if(!failure_) failure_=code=="session_locked"?countdownNotShown():unavailable(code);
   deadline_.stop(); if(!stopDeadline_.isActive()) stopDeadline_.start(2000); return;
  }
  if(type=="result") {

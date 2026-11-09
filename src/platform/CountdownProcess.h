@@ -11,11 +11,13 @@ namespace putgd {
 // X11, putgd-region on layer-shell compositors). That mode reads no pixels,
 // takes no target and no keyboard: it shows the pill, and exits once the pill
 // is gone from the screen. Exit status is the whole protocol: 0 the delay ran
-// out, cancelledExit the user clicked the pill, buildExit the helper is another
-// build. Anything else, or a helper that outlives its delay, is a failure.
+// out, cancelledExit the user clicked the pill, hiddenExit the pill was not on
+// screen when the delay ran out (locked or blanked: nothing may be captured),
+// buildExit the helper is another build. Anything else, or a helper that
+// outlives its delay, is a failure.
 class CountdownProcess final:public QObject {
 public:
- static constexpr int cancelledExit=10,buildExit=5;
+ static constexpr int cancelledExit=10,hiddenExit=11,buildExit=5;
  // The arguments a helper's main() takes to enter countdown mode.
  static constexpr const char* argument="--countdown";
  explicit CountdownProcess(QString helper,QObject* parent=nullptr);

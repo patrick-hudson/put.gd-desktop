@@ -80,7 +80,7 @@ int main(int argc,char** argv) {
    QTimer::singleShot(0,&app,[&,expired] {
     // A cancelled countdown is followed by no capture: the pill just goes.
     if(!expired) { pill.reset(); app.exit(putgd::CountdownProcess::cancelledExit); return; }
-    putgd::hideLayerShellCountdown(*pill,[&](bool acknowledged) { pill.reset(); app.exit(acknowledged?0:4); });
+    putgd::hideLayerShellCountdown(*pill,[&](bool acknowledged,bool presented) { pill.reset(); app.exit(!acknowledged?4:presented?0:putgd::CountdownProcess::hiddenExit); });
    });
   });
   if(!putgd::showLayerShellCountdown(*pill)) return 1;
@@ -245,10 +245,12 @@ int main(int argc,char** argv) {
       QTimer::singleShot(0,&app,[&,report,expired] {
        if(settled || teardownPending || resultSent || !pill) return;
        if(!expired) { fail("cancelled"); return; }
-       putgd::hideLayerShellCountdown(*pill,[&,report](bool acknowledged) {
+       putgd::hideLayerShellCountdown(*pill,[&,report](bool acknowledged,bool presented) {
         if(settled || teardownPending || resultSent) return;
         pill.reset();
         if(!acknowledged) { close(4); return; }
+        // Not on screen when the delay ran out: locked or blanked, so no capture.
+        if(!presented) { fail("session_locked"); return; }
         if(!putgd::waylandRegionLayoutsMatch(frozen,layout())) { fail("display_changed"); return; }
         report();
        });

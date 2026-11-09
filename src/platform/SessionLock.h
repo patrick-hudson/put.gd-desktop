@@ -1,4 +1,5 @@
 #pragma once
+#include "core/Error.h"
 #include <QObject>
 #include <functional>
 namespace putgd {
@@ -12,4 +13,9 @@ namespace putgd {
 // answers on the freedesktop service, and lockers that only set logind's hint
 // answer there.
 void querySessionLocked(QObject* context,std::function<void(bool locked)> done);
+// The countdown was not on screen when it ended (#1363): a compositor stops
+// presenting every ordinary surface while the session is locked or the output
+// is off, and not every desktop has a lock query (Budgie's gtklock sets none).
+// The layer-shell countdown reports it, and nothing is captured.
+inline Error countdownNotShown() { return {QStringLiteral("session_locked"),QStringLiteral("The countdown was not on screen when the capture delay ended (a locked or blanked screen), so nothing was captured."),{{QStringLiteral("check"),QStringLiteral("countdown_presented")}}}; }
 }

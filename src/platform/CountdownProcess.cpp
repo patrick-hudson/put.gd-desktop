@@ -1,5 +1,6 @@
 #include "CountdownProcess.h"
 #include "core/BuildInfo.h"
+#include "SessionLock.h"
 #include <QCoreApplication>
 #include <QFileInfo>
 #include <utility>
@@ -27,6 +28,7 @@ void CountdownProcess::start(int seconds,const QJsonObject& appearance,std::func
   if(process_!=child)return;
   if(cancelling_||(status==QProcess::NormalExit&&code==cancelledExit))finish({"cancelled","Capture countdown cancelled",{}});
   else if(status==QProcess::NormalExit&&code==0)finish({});
+  else if(status==QProcess::NormalExit&&code==hiddenExit)finish(countdownNotShown());
   else if(status==QProcess::NormalExit&&code==buildExit)finish({"capture_unavailable","put.gd was updated while it was running; quit and start it again",{{"check","countdown_build"}}});
   else finish(unavailable("exit",{{"exitCode",code},{"crashed",status!=QProcess::NormalExit}}));
  });
