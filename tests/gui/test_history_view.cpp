@@ -16,6 +16,7 @@
 #include "ui/MainWindow.h"
 #include "ui/Ui.h"
 #include "fixtures/UiSessionFixture.h"
+#include "storage/s3/S3Provider.h"
 #include "app/DiagnosticsBundle.h"
 #include <QFile>
 #include <QFileDialog>
@@ -650,6 +651,22 @@ private slots:
   PUTGD_TRY_VERIFY(status->text().contains("Link: "+outcome));if(outcome=="failed")QVERIFY(status->text().contains("Synthetic sharing failure"));
   PUTGD_TRY_VERIFY((outcome=="shared"?reopened.findChild<QLineEdit*>("historyLink")->isVisible():readableStatus(reopened.findChild<QLabel*>("historyOutcome")->text()).contains("Sharing failed")));QVERIFY(status->text().contains("Link: "+outcome));
   QCOMPARE(provider->mutations.load(),1);QCOMPARE(provider->storage.uploads.load(),1);QCOMPARE(source.reads,1);QCOMPARE(source.copies,0);
+ }
+ void expiredS3CopyOffersExplicitUnlockWithoutOpeningKeyring(){
+  QTemporaryDir d;CredentialStore secrets;ProviderRegistry registry;registry.add("s3",std::make_shared<S3Provider>(secrets));
+  SettingsService settings(d.filePath("config.json"));QVERIFY(settings.save(Settings::defaults(),{}));Source source;
+  OperationService operations(d.filePath("data"),settings,registry,source);PUTGD_TRY_VERIFY(operations.ready());
+  Operation op;op.id="expired-s3";op.created=QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs);op.state="completed";op.settings=settings.snapshot();
+  OperationItem item;item.artifact.id="expired-s3-item";item.artifact.name="private.txt";item.uploadStatus="uploaded";item.remoteStatus="present";
+  auto profile=Settings::developmentTemplate()["profiles"].toArray().first().toObject();auto storage=profile["settings"].toObject();storage["linkMode"]="presigned";
+  item.receipt.destination={"s3","original-profile","original-revision",storage,{{"mode","keychain"},{"reference","synthetic-not-loaded"}}};
+  item.receipt.objectReference={{"schemaVersion",1},{"key","private.txt"},{"versionId",""},{"sha256",QString(64,'a')},{"bytes",0},{"linkExpiresAt","2000-01-01T00:00:00.000Z"}};item.receipt.publicationId="synthetic";item.receipt.concurrencyToken="etag";item.receipt.directUrl="https://example.invalid/private?X-Amz-Signature=expired";op.items={item};
+  {HistoryStore store(operations.databasePath());QVERIFY(!store.saveOperation(op));}
+  HistoryService history(operations);UiSessionFixture fixture(settings,operations,history);HistoryWindow window(fixture.session);window.show();
+  auto* table=window.findChild<QListView*>("historyList");PUTGD_TRY_COMPARE(table->model()->rowCount(),1);inspectRow(table,0);
+  auto* copy=window.findChild<QPushButton*>("copyHistoryLink");PUTGD_TRY_VERIFY(copy->isVisible()&&copy->isEnabled());QCOMPARE(copy->text(),QString("Refresh and copy link"));
+  QVERIFY(window.findChild<QLabel*>("historyLinkExpiry")->text().startsWith("Link expired on"));copy->click();
+  PUTGD_TRY_VERIFY(window.findChild<QPushButton*>("historyUnlockLinkCredentials")->isVisible());QCOMPARE(source.copies,0);
  }
  void linkRowShowsTheConfirmedExpiry(){
   // History's link row says when the link expires, and that it expired once it has (#253).

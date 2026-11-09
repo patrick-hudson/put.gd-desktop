@@ -22,8 +22,14 @@ QString publicationIdentity(const StorageReceipt& receipt,const ProviderRegistry
 QJsonObject publicRecord(QJsonObject data) {
  if(data.contains("shareReceipt"))data["receipt"]=data.take("shareReceipt");
  // A link past its confirmed expiry no longer opens, so it is not offered for copying (#253).
- const auto expires=QDateTime::fromString(data.value("shareExpiresAt").toString(),Qt::ISODateWithMs);
- data["linkAvailable"]=OperationItem::fromJson(data).linkAvailable()&&!(expires.isValid()&&expires<=QDateTime::currentDateTimeUtc());
+ auto expiry=data.value("shareExpiresAt").toString();
+ if(expiry.isEmpty())expiry=data["receipt"].toObject()["objectReference"].toObject()["linkExpiresAt"].toString();
+ if(!expiry.isEmpty())data["linkExpiresAt"]=expiry;
+ const auto expires=QDateTime::fromString(expiry,Qt::ISODateWithMs);
+ const bool available=OperationItem::fromJson(data).linkAvailable();
+ if(!expiry.isEmpty())data["linkRefreshable"]=available&&!QStringList{"pending","deleting","unknown","superseded"}.contains(data["remoteStatus"].toString())&&expires.isValid()&&expires<=QDateTime::currentDateTimeUtc()&&
+   !data["receipt"].toObject()["objectReference"].toObject()["linkExpiresAt"].toString().isEmpty();
+ data["linkAvailable"]=available&&!(expires.isValid()&&expires<=QDateTime::currentDateTimeUtc());
  return data;
 }
 // The journal's own layout: <root>/artifacts/<operation>/<item> and
@@ -190,6 +196,19 @@ Error HistoryStore::indexPublications(const ProviderRegistry& providers) {
   // The next keyset query ends naturally when all remaining IDs have been inspected.
   QSqlQuery remaining(db_);remaining.prepare("SELECT 1 FROM history WHERE id>? AND publication_identity='' AND upload_status='uploaded' LIMIT 1");remaining.addBindValue(after);if(!remaining.exec())return sqlError();if(!remaining.next())return {};
  }
+}
+Error HistoryStore::refreshLink(const QString& id,const StorageReceipt& before,const StorageReceipt& after) {
+ if(error_)return error_;
+ if(!db_.transaction())return sqlError();
+ Error e;const auto current=detail(id,&e);
+ if(e||!current["linkRefreshable"].toBool()||current["receipt"].toObject()!=before.toJson()) {db_.rollback();return e?e:Error{"link_changed","The recorded link changed; select it again",{}};}
+ auto a=before.objectReference,b=after.objectReference;a.remove("linkExpiresAt");b.remove("linkExpiresAt");
+ const auto expiry=QDateTime::fromString(after.objectReference["linkExpiresAt"].toString(),Qt::ISODateWithMs);
+ if(after.validate()||after.directUrl.isEmpty()||!expiry.isValid()||expiry<=QDateTime::currentDateTimeUtc()||a!=b||before.destination.toJson()!=after.destination.toJson()||before.publicationId!=after.publicationId||before.concurrencyToken!=after.concurrencyToken){db_.rollback();return {"link_identity_changed","Refresh did not confirm the recorded object",{}};}
+ QSqlQuery q(db_);q.prepare("SELECT data FROM item_state WHERE id=?");q.addBindValue(id);
+ if(!q.exec()||!q.next()){db_.rollback();return sqlError();}
+ auto remote=decode(q.value(0));q.finish();remote["shareReceipt"]=after.toJson();
+ if(!persistRemote(db_,id,remote)||!db_.commit()){db_.rollback();return sqlError();}return {};
 }
 Error HistoryStore::recordCopiedLink(const QString& historyId,QString& operationId) {
  operationId.clear();if(error_)return error_;

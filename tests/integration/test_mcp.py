@@ -212,7 +212,7 @@ class ProductionCliTests(unittest.IsolatedAsyncioTestCase):
                 discovered = (await session.list_tools()).tools
                 expected = {'inspect', 'get_view_state', 'get_desktop_setup', 'recheck_desktop_setup', 'perform_action', 'get_operation', 'retry_operation',
                             'copy_result', 'cancel_operation', 'list_history', 'get_history_entry',
-                            'make_history_preview', 'copy_history_link', 'copy_history_links', 'open_history_link', 'delete_history_uploads', 'reload_configuration',
+                            'make_history_preview', 'copy_history_link', 'unlock_history_link_credentials', 'copy_history_links', 'open_history_link', 'delete_history_uploads', 'reload_configuration',
                             'patch_configuration', 'open_editor', 'get_editor', 'edit_image',
                             'preview_editor', 'save_editor_copy', 'submit_editor', 'cancel_editor',
                             'raise_editor', 'get_recording_capabilities', 'list_recording_windows', 'prepare_recording', 'control_recording',
@@ -304,6 +304,8 @@ class ProductionCliTests(unittest.IsolatedAsyncioTestCase):
                     ('drive_history', {'action': 'confirmCancelAll'}, 'ui.history', {'action': 'confirmCancelAll'}),
                     ('drive_history', {'action': 'keepUploading'}, 'ui.history', {'action': 'keepUploading'}),
                     ('copy_history_link', {'id': 'synthetic-entry'}, 'history.copyLink', {'id': 'synthetic-entry'}),
+                    ('unlock_history_link_credentials', {'id': 'synthetic-entry'}, 'history.unlockLinkCredentials', {'id': 'synthetic-entry'}),
+                    ('patch_configuration', {'patch': {'profiles': [{'id': 'synthetic-s3', 'provider': 's3', 'settings': {'linkMode': 'presigned', 'linkValidityDays': 3}}]}, 'expected_revision': 'synthetic-revision'}, 'settings.patch', {'patch': {'profiles': [{'id': 'synthetic-s3', 'provider': 's3', 'settings': {'linkMode': 'presigned', 'linkValidityDays': 3}}]}, 'expectedRevision': 'synthetic-revision'}),
                     ('copy_history_links', {'ids': ['synthetic-entry', 'synthetic-second']}, 'history.copyLinks', {'ids': ['synthetic-entry', 'synthetic-second']}),
                     ('open_history_link', {'id': 'synthetic-entry'}, 'history.openLink', {'id': 'synthetic-entry'}),
                     ('list_history', {'limit': 2, 'offset': 1, 'search': 'name with spaces', 'remote_status': 'removed'}, 'history.list', {'limit': 2, 'offset': 1, 'search': 'name with spaces', 'remoteStatus': 'removed'}),

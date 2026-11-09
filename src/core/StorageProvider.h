@@ -84,6 +84,12 @@ bool shareResultMatchesReceipt(const ShareResult&,const StorageReceipt&);
 class StorageProvider {
 public:
  virtual ~StorageProvider()=default;
+ // Explicit user action only: never called by refreshLink or background history reads.
+ virtual void unlockLinkCredentials(const StorageReceipt&,std::function<void(Error)> reply) {reply({"link_refresh_unsupported","No saved link credentials are available",{}});}
+ // Explicit copy-time renewal. Implementations use only this saved receipt and cached credentials.
+ virtual void refreshLink(const StorageReceipt& receipt,std::function<void(StatResult)> reply) {
+  reply({"unknown",receipt,{"link_refresh_unsupported","This provider cannot refresh an expiring link",{}}});
+ }
  // True when uploads reliably report preparing/uploading/finalizing phases.
  // Such uploads become active only upon uploading/finalizing; telemetry remains optional.
  virtual bool reportsUploadProgress() const { return false; }

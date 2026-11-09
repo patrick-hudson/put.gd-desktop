@@ -227,7 +227,7 @@ void DiagnosticsBundles::check(const QString& profileId,std::function<void(Error
  const auto profile=snapshot.profiles.value(profileId);
  if(profile.isEmpty()){done({"profile_not_found","No destination has this ID",{{"profileId",profileId}}},{});return;}
  const auto provider=profile["provider"].toString();const bool proton=provider=="proton-drive";
- const auto settings=profile["settings"].toObject();const bool authorizedB2=provider=="backblaze-b2"&&settings["linkMode"]=="authorized";
+ const auto settings=profile["settings"].toObject();const bool authorizedB2=(provider=="backblaze-b2"&&settings["linkMode"]=="authorized")||(provider=="s3"&&settings["linkMode"]=="presigned");
  QJsonObject target{{"profileId",profileId},{"label",profile["label"].toString()},{"provider",provider},{"publicLink",true},
   {"warning",proton?QStringLiteral("Anyone with the link can download this package until the link expires in %1 days.").arg(OperationService::diagnosticsShareDays)
    :authorizedB2?QStringLiteral("Anyone with the link can download this package until the link expires in %1 days. Delete it from History when it is no longer needed.").arg(settings["linkValidityDays"].toInt(7))

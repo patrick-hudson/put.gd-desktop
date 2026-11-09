@@ -41,6 +41,7 @@ public:
  QJsonObject sharing(const QString&,Error* = nullptr) const;
  // Record a successful explicit link copy without rewriting item/deletion ledgers
  // or claiming that a copied subset recovered an entire batch.
+ Error refreshLink(const QString& historyId,const StorageReceipt& before,const StorageReceipt& after);
  Error recordCopiedLink(const QString& historyId,QString& operationId);
  Error updateRemote(const QString& historyId,const QString& status,const Error& = {});
 private:

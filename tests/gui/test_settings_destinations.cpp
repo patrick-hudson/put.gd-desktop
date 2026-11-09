@@ -2,6 +2,17 @@
 class SettingsGui:public SettingsGuiFixture {
  Q_OBJECT
 private slots:
+ void s3PresignedFormPersistsAndExplainsAccess(){
+  QTemporaryDir dir;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(service.save(threeDestinations(),{}));
+  CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.navigate("destinations");window.show();
+  window.findChild<QListWidget*>("destinationList")->setCurrentRow(1);
+  auto* mode=window.findChild<QComboBox*>("b2LinkMode");PUTGD_TRY_VERIFY(mode->isVisible());
+  QVERIFY(mode->findData("presigned")>=0);mode->setCurrentIndex(mode->findData("presigned"));emit mode->activated(mode->currentIndex());
+  auto* days=window.findChild<QSpinBox*>("b2LinkDays");PUTGD_TRY_VERIFY(days->isVisible());days->setValue(2);emit days->editingFinished();
+  PUTGD_TRY_COMPARE(service.document()["profiles"].toArray()[1].toObject()["settings"].toObject()["linkMode"].toString(),QString("presigned"));
+  PUTGD_TRY_COMPARE(service.document()["profiles"].toArray()[1].toObject()["settings"].toObject()["linkValidityDays"].toInt(),2);
+  QVERIFY(!window.findChild<QComboBox*>("s3AclMode")->isVisible());QVERIFY(!window.findChild<QLineEdit*>("s3PublicUrlBase")->isVisible());
+ }
  void disclosureIconsSurviveEveryToggleAndProviderChange(){
   QTemporaryDir dir;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(service.save(threeDestinations(),{}));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.navigate("settings");window.show();
   for(auto* toggle:window.settings()->findChildren<QToolButton*>())if(toggle->property("uiDisclosure").toBool()){toggle->setChecked(false);const auto closed=toggle->icon().pixmap(toggle->iconSize()).toImage();toggle->setChecked(true);QCOMPARE(toggle->arrowType(),Qt::NoArrow);QVERIFY(!toggle->icon().isNull());QVERIFY(toggle->icon().pixmap(toggle->iconSize()).toImage()!=closed);toggle->setChecked(false);QCOMPARE(toggle->icon().pixmap(toggle->iconSize()).toImage(),closed);}

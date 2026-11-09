@@ -9,6 +9,22 @@ using namespace putgd;
 class HistoryTest:public QObject {
  Q_OBJECT
 private slots:
+ void expiredLinkRefreshPreservesIdentityAndSurvivesReopen() {
+  QTemporaryDir d;const auto path=d.filePath("history.sqlite");HistoryStore store(path);
+  Operation op;op.id="expiring";op.created="2026-11-09T00:00:00.000Z";op.state="completed";op.settings=Settings::fromValidated(Settings::defaults());
+  OperationItem item;item.artifact.id="expired-item";item.artifact.name="synthetic.txt";item.uploadStatus="uploaded";
+  auto& receipt=item.receipt;receipt.destination={"opaque","original","original-revision",{{"opaque","saved"}},{{"mode","keychain"},{"reference","original-reference"}}};
+  receipt.objectReference={{"schemaVersion",1},{"opaque","object-id"},{"linkExpiresAt","2000-01-01T00:00:00.000Z"}};
+  receipt.publicationId="publication";receipt.concurrencyToken="token";receipt.directUrl="https://example.invalid/old?token=synthetic";op.items={item};
+  QVERIFY(!store.saveOperation(op));QVERIFY(!store.detail(item.artifact.id)["linkAvailable"].toBool());QVERIFY(store.detail(item.artifact.id)["linkRefreshable"].toBool());
+  auto renewed=receipt;renewed.directUrl="https://example.invalid/fresh?token=synthetic";renewed.objectReference["linkExpiresAt"]="2099-01-01T00:00:00.000Z";
+  auto wrong=renewed;wrong.destination.profileId="current";QCOMPARE(store.refreshLink(item.artifact.id,receipt,wrong).code,QString("link_identity_changed"));
+  QVERIFY(!store.refreshLink(item.artifact.id,receipt,renewed));
+  HistoryStore reopened(path);QCOMPARE(reopened.detail(item.artifact.id)["receipt"].toObject(),renewed.toJson());QVERIFY(reopened.detail(item.artifact.id)["linkAvailable"].toBool());QCOMPARE(reopened.operation(op.id).items[0].receipt.toJson(),renewed.toJson());
+  QVERIFY(store.refreshLink(item.artifact.id,receipt,renewed));
+  QVERIFY(!store.updateRemote(item.artifact.id,"removed"));QVERIFY(!store.detail(item.artifact.id)["linkRefreshable"].toBool());
+ }
+
  // History's "Other files" (2026-10-26): text+other is an aggregate of the two
  // stored categories; exact categories, including an unknown "files", match exactly.
  void otherFilesAggregateKeepsExactCategories() {

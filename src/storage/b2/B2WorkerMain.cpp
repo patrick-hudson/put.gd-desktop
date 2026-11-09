@@ -358,6 +358,14 @@ public:
         if (method == "upload") return upload(error, uncertain);
         if (method == "reconcile") return reconcile(error);
         if (method == "stat") return stat(error);
+        if (method == "refreshLink") {
+            auto result=stat(error);if(error||result["status"]!="own")return result;
+            auto saved=StorageReceipt::fromJson(request_["receipt"].toObject());
+            if(settings()["linkMode"]!="authorized"){error={"link_refresh_unsupported","This link does not expire",{}};return {};}
+            QString expires;saved.directUrl=link(saved.objectReference["key"].toString(),expires,error);
+            if(error)return {};saved.objectReference["linkExpiresAt"]=expires;
+            return {{"status","own"},{"receipt",saved.toJson()}};
+        }
         if (method == "remove") return remove(error, uncertain);
         if (method == "abandon") return abandon(error);
         if (method == "testDestination") return testDestination(error);
