@@ -185,7 +185,7 @@ The 2026-10-26 baseline is in [the CI records](../history/ci-records.md#nightly-
 
 Package compiler caches are separate per distro/AppImage and dependency
 fingerprint, capped at 256 MiB each (384 MiB on Arch, which also compiles the SDK
-through ccache: Arch rolls, so an exact SDK prefix cache would rarely hit). The
+through ccache: Arch rolls, so an exact SDK prefix cache would rarely hit). Arch's key names only the distro, so a restore can cross a dependency update; ccache's own hashing of the compiler and headers keeps stale objects from being reused. The
 source export compiled on Ubuntu 24.04 has its own compiler cache. Only `nightly` pushes save them; other runs
 restore them. Superseded entries are pruned by the existing cache maintenance.
 No application build directory or version manifest is reused. AppImage's required
