@@ -358,7 +358,7 @@ Measured run times from 2026-10-19 are in [the CI records](../history/ci-records
   per job. Only pushes to `nightly` save one, trimmed to the entries that build
   used; every other run restores the newest `nightly` cache and does not save.
   See [cache budget](#cache-budget). The build-identity source changes every
-  commit and is always recompiled. Package builders use their own caches ([below](#nightly-runtime-and-artifact-transfers)); on a cache hit ccache still preprocesses and hashes the sources, so a file missing from the source export fails the build.
+  commit and is always recompiled. Package builders use their own caches ([below](#nightly-runtime-and-artifact-transfers)); on a cache hit ccache still hashes each source and header, so one the compile needs that is missing from the source export fails the build. Files the compile doesn't read, such as the SDK provisioning script, aren't exercised by this check.
 - **Parallel builds.** Application and SDK builds use every runner CPU.
 - **Parallel tests, longest first.** CTest runs twelve tests at once and restores
   the previous run's durations, so the longest tests start first. See
