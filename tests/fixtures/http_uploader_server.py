@@ -11,6 +11,8 @@ request path names, so one process plays every case:
   /upload/text    the link as the whole reply                      (empty URL value)
   /upload/bare    {"id"} only, for a URL built around it           https://host/f/{json:id}
   /upload/nolink  200 with nothing a template finds
+  /upload/confirm  JSON whose deletion URL shows an "are you sure?" page; only its form's POST deletes
+  /upload/pretend  JSON whose deletion URL answers 200 and deletes nothing
   /upload/see     303 to /result/<id> on this host                 {responseurl} or {json:..}
   /upload/away    302 to /result/<id> on another host name
   /upload/moved   307 to /upload/json on this host
@@ -130,6 +132,14 @@ class Handler(BaseHTTPRequestHandler):
             if not entry:
                 return self.reply(404, {'error': 'no such upload'})
             return self.reply(200, self.links(parts[1]))
+        if parts[0] in ('confirm', 'pretend') and len(parts) == 3:
+            self.record('delete', {'deleteKind': parts[0]})
+            if parts[0] == 'pretend':
+                return self.reply(200, {'deleted': True})
+            # The form posts back to a slightly different path, as XBackBone's does.
+            return self.reply(200, '<html><body><form method="post" action="%s/confirm/%s/%s"><p>Are you sure?</p><input type="hidden" name="csrf" value="synthetic&amp;csrf">'
+                              '<button type="submit">Yes</button></form><form method="post" action="/logout"><button>Log out</button></form></body></html>' %
+                              (self.origin(), parts[1].split('.')[0], parts[2]), 'text/html')
         if parts[0] == 'delete' and len(parts) == 3:
             self.record('delete')
             rule = self.rule('delete')
@@ -162,6 +172,16 @@ class Handler(BaseHTTPRequestHandler):
             return self.reply(200, {})
         if self.path.startswith('/upload/'):
             return self.upload(self.body())
+        parts = self.path.strip('/').split('/')
+        if parts[0] == 'confirm' and len(parts) == 3:
+            fields = dict(urllib.parse.parse_qsl(self.body().decode(), keep_blank_values=True))
+            self.record('confirm', {'fields': fields})
+            with lock:
+                entry = state['files'].get(parts[1])
+                valid = bool(entry) and entry['deleteToken'] == parts[2] and not entry.get('deleted') and fields.get('csrf') == 'synthetic&csrf'
+                if valid:
+                    entry['deleted'] = True
+            return self.reply(302, '', 'text/plain', {'Location': self.origin() + '/'}) if valid else self.reply(404, {'error': 'no such file'})
         self.reply(404, {'error': 'unknown path'})
 
     do_PUT = do_POST
@@ -170,9 +190,12 @@ class Handler(BaseHTTPRequestHandler):
     def links(self, file_id):
         entry = state['files'][file_id]
         base = self.origin()
+        # The deletion address a style hands out: direct, behind a confirmation page (with a
+        # file-like suffix the form's own address drops), or one that deletes nothing.
+        kind = entry.get('deleteKind', 'delete')
         return {'id': file_id, 'files': [{'url': '%s/f/%s/%s' % (base, file_id, urllib.parse.quote(entry['name'])),
                                           'thumb': '%s/f/%s/thumb' % (base, file_id),
-                                          'delete': '%s/delete/%s/%s' % (base, file_id, entry['deleteToken'])}]}
+                                          'delete': '%s/%s/%s%s/%s' % (base, kind, file_id, '.png' if kind == 'confirm' else '', entry['deleteToken'])}]}
 
     def upload(self, data):
         parsed = urllib.parse.urlsplit(self.path)
@@ -236,7 +259,8 @@ class Handler(BaseHTTPRequestHandler):
         with lock:
             blobs[file_id] = content
             state['files'][file_id] = {'name': name or 'file', 'type': file_type, 'bytes': len(content), 'sha256': hashlib.sha256(content).hexdigest(),
-                                       'deleteToken': uuid.uuid4().hex, 'deleted': False}
+                                       'deleteToken': uuid.uuid4().hex, 'deleted': False,
+                                       'deleteKind': style if style in ('confirm', 'pretend') else 'delete'}
             links = self.links(file_id)
         event['stored'] = file_id
         if rule.get('drop'):
@@ -244,7 +268,7 @@ class Handler(BaseHTTPRequestHandler):
         if rule.get('status'):
             return self.reply(rule['status'], rule.get('body', {'error': 'synthetic failure'}), rule.get('type', 'application/json'))
         first = links['files'][0]
-        if style == 'json':
+        if style in ('json', 'confirm', 'pretend'):
             return self.reply(200, links)
         if style == 'xml':
             return self.reply(200, '<?xml version="1.0"?><upload><file id="%s"><url>%s</url><thumb>%s</thumb><delete href="%s"/></file></upload>' %

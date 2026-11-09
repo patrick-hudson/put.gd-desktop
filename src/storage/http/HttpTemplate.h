@@ -1,5 +1,6 @@
 #pragma once
 #include <QByteArray>
+#include <QHash>
 #include <QList>
 #include <QPair>
 #include <QString>
@@ -31,12 +32,19 @@ QString migrateOldSyntax(const QString& text, const QStringList& regexList = {})
 bool usesOldSyntax(const QString& text);
 // Whether a request template reads {input}, the text being uploaded.
 bool readsInput(const QString& text);
+// The credential-store keys a template names with {secret:key}, put.gd's own placeholder
+// for a stored value used outside its own row, such as a token inside a deletion URL.
+QStringList secretReferences(const QString& text);
 
 struct RequestValues {
     QString fileName;
     QString input;          // the text being uploaded; only when hasInput
     bool hasInput = false;
     enum class Encode { None, Url, Json, Xml } encode = Encode::None;  // applied to file name and input only
+    // Stored values for {secret:key}. Without them a placeholder stands for itself, or
+    // for a sample when only the shape of the result matters.
+    const QHash<QString, QString>* secrets = nullptr;
+    bool sampleSecrets = false;
 };
 // Renders a request value. `problem` is set when it needs {input} and none is available.
 QString renderRequest(const QString& text, const RequestValues&, QString* problem = nullptr);
@@ -46,6 +54,12 @@ struct ResponseValues {
     QList<QPair<QByteArray, QByteArray>> headers;
     QString responseUrl;                                // the final address after redirects
     QString fileName;
+    // Stored values for {secret:key}; without them such a placeholder renders as empty text.
+    const QHash<QString, QString>* secrets = nullptr;
+    // Keep each {secret:key} as written and escape everything else, so the result is
+    // still a template. A deletion URL is recorded that way, without its token, and only
+    // filled in when the deletion is sent.
+    bool keepSecrets = false;
 };
 // Renders a response value; a placeholder that finds nothing renders as empty text.
 QString renderResponse(const QString& text, const ResponseValues&);

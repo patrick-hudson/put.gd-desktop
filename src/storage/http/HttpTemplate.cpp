@@ -277,18 +277,42 @@ QString encodeValue(const QString& value, RequestValues::Encode encode) {
 }
 QString pick(const QStringList& values) { return values.isEmpty() ? QString() : values[QRandomGenerator::global()->bounded(int(values.size()))]; }
 
+QString escaped(const QString& text) {
+    QString out;
+    for (const auto c : text) { if (QStringLiteral("{}|\\").contains(c)) out.append('\\'); out.append(c); }
+    return out;
+}
 struct Renderer {
     const RequestValues* request = nullptr;
     const ResponseValues* response = nullptr;
     QString* problem = nullptr;
-    QString sequence(const Template& nodes) const {
+    // A response rendered without stored values stays a template: see ResponseValues.
+    bool symbolic() const { return response && response->keepSecrets; }
+    QString sequence(const Template& nodes, bool top = true) const {
         QString out;
-        for (const auto& node : nodes) out += node.call ? call(node) : node.text;
+        for (const auto& node : nodes) {
+            if (!node.call) out += top && symbolic() ? escaped(node.text) : node.text;
+            else if (node.text == "secret") out += secret(node, top);
+            else out += top && symbolic() ? escaped(call(node)) : call(node);
+        }
         return out;
+    }
+    QString secret(const TemplateNode& node, bool top) const {
+        bool plain = true;
+        QString key;
+        if (!node.parameters.isEmpty()) for (const auto& part : node.parameters[0]) { if (part.call) plain = false; else key += part.text; }
+        if (!plain || key.isEmpty()) return {};
+        if (request && request->sampleSecrets) return QStringLiteral("secret");
+        // Kept as written; inside another placeholder's parameter it has no value yet.
+        if (symbolic()) return top ? "{secret:" + escaped(key) + "}" : QString();
+        const auto* values = request ? request->secrets : response->secrets;
+        if (!values) return {};
+        if (!values->contains(key) && problem && problem->isEmpty()) *problem = "A stored value this destination refers to is missing.";
+        return values->value(key);
     }
     QString call(const TemplateNode& node) const {
         QStringList p;
-        for (const auto& parameter : node.parameters) p.append(sequence(parameter));
+        for (const auto& parameter : node.parameters) p.append(sequence(parameter, false));
         const auto& name = node.text;
         if (name == "random") return pick(p);
         if (name == "base64") return p.isEmpty() ? QString() : base64(p[0]);
@@ -340,8 +364,8 @@ struct Renderer {
 };
 
 const QStringList interactive{"select", "prompt", "inputbox", "outputbox", "output"};
-const QStringList requestFunctions{"filename", "input", "random", "base64"};
-const QStringList responseFunctions{"json", "xml", "regex", "header", "response", "responseurl", "filename", "random", "base64"};
+const QStringList requestFunctions{"filename", "input", "random", "base64", "secret"};
+const QStringList responseFunctions{"json", "xml", "regex", "header", "response", "responseurl", "filename", "random", "base64", "secret"};
 QString literalOf(const Template& nodes, bool& plain) {
     QString out;
     for (const auto& node : nodes) { if (node.call) plain = false; else out += node.text; }
@@ -360,7 +384,13 @@ QString checkNodes(const Template& nodes, TemplateUse use) {
         }
         const int count = int(node.parameters.size());
         if (name == "random" && count < 2) return QStringLiteral("{random} needs at least two choices.");
-        if (QStringList{"base64", "json", "xml", "regex", "header"}.contains(name) && count < 1) return QString("{%1} needs a parameter.").arg(name);
+        if (QStringList{"base64", "json", "xml", "regex", "header", "secret"}.contains(name) && count < 1) return QString("{%1} needs a parameter.").arg(name);
+        if (name == "secret") {
+            bool plain = true;
+            const auto key = literalOf(node.parameters[0], plain);
+            if (!plain || count != 1 || key.trimmed().isEmpty()) return QStringLiteral("{secret} takes the name of one stored value, such as {secret:arguments/token}.");
+            continue;
+        }
         if (name == "json" || name == "xml") {
             bool plain = true;
             const auto path = literalOf(node.parameters.last(), plain);
@@ -409,6 +439,25 @@ QString templateProblem(const QString& text, TemplateUse use) {
     return checkNodes(nodes, use);
 }
 bool usesOldSyntax(const QString& text) { return oldPlaceholder().match(text).hasMatch(); }
+namespace {
+void collectSecrets(const Template& nodes, QStringList& out) {
+    for (const auto& node : nodes) {
+        if (!node.call) continue;
+        if (node.text == "secret" && !node.parameters.isEmpty()) {
+            bool plain = true;
+            const auto key = literalOf(node.parameters[0], plain);
+            if (plain && !key.isEmpty() && !out.contains(key)) out.append(key);
+            continue;
+        }
+        for (const auto& parameter : node.parameters) collectSecrets(parameter, out);
+    }
+}
+}
+QStringList secretReferences(const QString& text) {
+    QStringList out;
+    if (text.contains("secret", Qt::CaseInsensitive)) collectSecrets(parseTemplate(text), out);
+    return out;
+}
 bool readsInput(const QString& text) { return nodesReadInput(parseTemplate(text)); }
 QString migrateOldSyntax(const QString& text, const QStringList& regexList) {
     QString out;

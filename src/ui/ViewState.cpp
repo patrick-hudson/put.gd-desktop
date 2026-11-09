@@ -65,6 +65,11 @@ bool uploaderSettings(const QJsonValue& value){
    if(row["secret"].toBool()?row.size()!=2:(row.size()!=3||!row["value"].isString()))return false;
   }
  }
+ // Other secret values: names only.
+ if(const auto extra=settings.take("secrets");!extra.isUndefined()){
+  if(!extra.isArray()||extra.toArray().size()>32)return false;
+  for(const auto& entry:extra.toArray()){const auto row=entry.toObject();if(!entry.isObject()||row.size()!=2||!row["name"].isString()||row["secret"]!=true)return false;}
+ }
  // A secret request body has no text in settings.
  if(settings["dataSecret"].toBool()&&!settings["data"].toString().isEmpty())return false;
  return scalars(settings,uploaderScalars);

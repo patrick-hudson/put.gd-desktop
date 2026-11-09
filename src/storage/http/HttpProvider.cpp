@@ -1,4 +1,5 @@
 #include "HttpProvider.h"
+#include "HttpTemplate.h"
 #include <QCoreApplication>
 #include <QDir>
 #include <QElapsedTimer>
@@ -81,8 +82,21 @@ QJsonObject HttpUploaderProvider::call(const QString& method, const Destination&
     if (stopping_.load()) { error = {"operation_cancelled", "The application is stopping", {}}; return {}; }
     if (auto e = http::validateSettings(destination.settings)) { error = e; return {}; }
     QJsonObject secrets;
-    // Deletion sends nothing but the deletion URL the upload returned.
-    if (method != "remove") {
+    if (method == "remove") {
+        // Deletion sends nothing but the deletion URL the upload returned. Where that
+        // URL names a stored value, such as a token, only that value is handed over.
+        const auto keys = http::secretReferences(params["receipt"].toObject()["objectReference"].toObject()["deletionUrl"].toString());
+        if (!keys.isEmpty()) {
+            const auto cached = credentials_.cached(destination.profileId, destination.credentialReference);
+            for (const auto& key : keys) {
+                if (!cached || !cached->values.contains(key)) {
+                    error = {"credential_setup_required", "Deleting this upload needs its destination's stored credentials. Unlock them, or enter and store them in Settings, then try again.", {}};
+                    return {};
+                }
+                secrets[key] = cached->values.value(key);
+            }
+        }
+    } else {
         if (auto e = readiness(destination)) { error = e; return {}; }
         const auto keys = http::secretKeys(destination.settings);
         if (!keys.isEmpty()) {

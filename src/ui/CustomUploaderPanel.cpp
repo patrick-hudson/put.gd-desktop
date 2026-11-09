@@ -40,13 +40,13 @@ private:
 };
 }
 
-UploaderRows::UploaderRows(const QString& list, const QString& noun, QWidget* parent) : QWidget(parent), list_(list), noun_(noun) {
+UploaderRows::UploaderRows(const QString& list, const QString& noun, QWidget* parent, bool alwaysSecret) : QWidget(parent), list_(list), noun_(noun), alwaysSecret_(alwaysSecret) {
     setObjectName("uploader" + titled(list));
     column_ = new QVBoxLayout(this);
     column_->setContentsMargins(0, 0, 0, 0);
     column_->setSpacing(space(Space::s));
     add_ = new QPushButton("Add " + noun, this);
-    add_->setObjectName("uploaderAdd" + titled(noun));
+    add_->setObjectName("uploaderAdd" + titled(list == "secrets" ? QStringLiteral("secret") : noun));
     Ui::role(add_, "textAction");
     add_->setProperty("uiFlush", true);
     column_->addWidget(add_, 0, Qt::AlignLeft);
@@ -67,7 +67,8 @@ void UploaderRows::addRow(const QString& name, const QString& value, bool secret
     for (auto* field : {row.name, row.value}) field->setMinimumHeight(Ui::scaled(Ui::Metric::control));
     Ui::setMono(row.name);
     row.secret = new QCheckBox("Secret", row.box);
-    row.secret->setChecked(secret);
+    row.secret->setChecked(secret || alwaysSecret_);
+    row.secret->setVisible(!alwaysSecret_);
     row.secret->setToolTip("A secret value is kept in the credential store, never in the configuration file. Type a new value to replace a stored one.");
     auto* reveal = row.value->addAction(Ui::icon("eye"), QLineEdit::TrailingPosition);
     reveal->setCheckable(true);
@@ -120,7 +121,7 @@ void UploaderRows::refreshRow(const Row& row) {
     row.value->setPlaceholderText(!secret ? QStringLiteral("Value") : stored_.contains(key) ? storedPlaceholder : storedKnown_ ? QStringLiteral("Not stored yet") : QStringLiteral("Secret value"));
 }
 void UploaderRows::renumber() {
-    const auto noun = titled(noun_);
+    const auto noun = list_ == "secrets" ? QStringLiteral("Secret") : titled(noun_);
     for (qsizetype i = 0; i < rows_.size(); ++i) {
         const auto& row = rows_[i];
         const auto index = QString::number(i);
@@ -196,7 +197,7 @@ QJsonArray UploaderRows::state() const {
 QString CustomUploaderPanel::provider() { return QString::fromLatin1(http::providerId); }
 QJsonObject CustomUploaderPanel::defaultSettings() { return http::defaults(); }
 CustomUploaderPanel::CustomUploaderPanel(QWidget* parent) : QWidget(parent) { setObjectName("customUploaderEditor"); }
-QList<UploaderRows*> CustomUploaderPanel::lists() const { return {headers_, parameters_, arguments_}; }
+QList<UploaderRows*> CustomUploaderPanel::lists() const { return {headers_, parameters_, arguments_, secrets_}; }
 void CustomUploaderPanel::finished() {
     syncVisibility();
     if (!loading_) emit edited();
@@ -254,6 +255,8 @@ void CustomUploaderPanel::build(const RowBuilder& row) {
     row(requestForm_, "URL parameters", parameters_, {});
     arguments_ = new UploaderRows("arguments", "field", this);
     argumentsRow_ = row(requestForm_, "Form fields", arguments_, "{filename} is the file name; {input} is the text being uploaded.");
+    secrets_ = new UploaderRows("secrets", "secret value", this, true);
+    row(requestForm_, "Other secret values", secrets_, "A stored value used inside an address: write {secret:secrets/name} in the request URL or the deletion URL.");
     auto* dataBox = new QWidget(this);
     dataBox->setObjectName("uploaderDataBox");
     auto* dataColumn = new QVBoxLayout(dataBox);
@@ -363,6 +366,7 @@ void CustomUploaderPanel::setSettings(const QJsonObject& s) {
     headers_->setRows(s["headers"].toArray());
     parameters_->setRows(s["parameters"].toArray());
     arguments_->setRows(s["arguments"].toArray());
+    secrets_->setRows(s["secrets"].toArray());
     dataSecret_->setChecked(s["dataSecret"].toBool());
     data_->setPlainText(s["dataSecret"].toBool() ? QString() : s["data"].toString());
     dataTyped_.clear();
@@ -391,6 +395,7 @@ QJsonObject CustomUploaderPanel::settings() const {
     s["headers"] = headers_->rows();
     s["parameters"] = parameters_->rows();
     s["arguments"] = arguments_->rows();
+    s["secrets"] = secrets_->rows();
     s["dataSecret"] = dataSecret_->isChecked();
     s["data"] = dataSecret_->isChecked() ? QString() : data_->toPlainText();
     QJsonArray accepts;
@@ -551,7 +556,7 @@ void CustomUploaderPanel::openImport() {
 void CustomUploaderPanel::showProblem(const QString& field, const QString& message) {
     if (!built_) return;
     const QHash<QString, QWidget*> fields{{"requestUrl", url_}, {"requestMethod", method_}, {"body", body_}, {"fileFormName", fileForm_}, {"headers", headers_}, {"parameters", parameters_},
-                                          {"arguments", arguments_}, {"data", findChild<QWidget*>("uploaderDataBox")}, {"accepts", findChild<QWidget*>("uploaderAccepts")},
+                                          {"arguments", arguments_}, {"secrets", secrets_}, {"data", findChild<QWidget*>("uploaderDataBox")}, {"accepts", findChild<QWidget*>("uploaderAccepts")},
                                           {"responseUrl", responseUrl_}, {"thumbnailUrl", thumbnailUrl_}, {"deletionUrl", deletionUrl_}, {"errorMessage", errorMessage_},
                                           {"requestTimeoutMs", requestTimeout_}};
     auto* target = fields.value(field, url_);
@@ -578,7 +583,7 @@ QJsonObject CustomUploaderPanel::state() const {
     QJsonObject out{{"requestMethod", s["requestMethod"]}, {"requestUrl", s["requestUrl"]}, {"allowInsecureHttp", s["allowInsecureHttp"]}, {"body", s["body"]},
                     {"fileFormName", s["fileFormName"]}, {"accepts", s["accepts"]}, {"responseUrl", s["responseUrl"]}, {"thumbnailUrl", s["thumbnailUrl"]},
                     {"deletionUrl", s["deletionUrl"]}, {"errorMessage", s["errorMessage"]}, {"headers", headers_->state()}, {"parameters", parameters_->state()},
-                    {"arguments", arguments_->state()}, {"dataSecret", s["dataSecret"]}, {"notice", notice_->isVisible() ? notice_->text() : QString()},
+                    {"arguments", arguments_->state()}, {"secrets", secrets_->state()}, {"dataSecret", s["dataSecret"]}, {"notice", notice_->isVisible() ? notice_->text() : QString()},
                     {"importOpen", findChild<QDialog*>("importSxcuDialog") != nullptr}};
     QJsonArray typed, missing;
     const auto values = typedSecrets();

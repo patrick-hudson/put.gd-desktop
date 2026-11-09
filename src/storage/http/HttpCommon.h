@@ -22,6 +22,9 @@ inline constexpr qint64 maximumInputBytes = 16LL * 1024 * 1024; // text sent thr
 
 // The three lists whose values are secret unless a row says otherwise.
 const QStringList& rowLists();
+// "secrets": values with no row of their own, named so {secret:secrets/name} can use them
+// in the request URL or the deletion URL. Always secret.
+inline QString extraSecretsList() { return QStringLiteral("secrets"); }
 QJsonObject defaults();
 // Pure: reads no file, unlocks nothing and contacts nothing. A row marked secret must
 // carry no value; its value lives in the credential store under secretKey().
@@ -47,7 +50,9 @@ QString boundedMessage(const QString&, int maximum = 300);
 // A .sxcu file read into destination settings. Every header, parameter and argument
 // value and the Data body are secrets: they are returned in `secrets` (credential-store
 // key → value) and never appear in `settings`, except a value that is exactly
-// {filename} or {input}. Nothing here is written anywhere.
+// {filename} or {input}. A secret repeated inside the request URL or a response value,
+// as some services write their deletion URL, becomes {secret:key} there. Nothing here
+// is written anywhere.
 struct SxcuImport {
     Error error;
     QString name;                    // suggested destination name

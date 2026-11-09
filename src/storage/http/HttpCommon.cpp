@@ -6,6 +6,7 @@
 #include <QRegularExpression>
 #include <QSet>
 #include <QUrlQuery>
+#include <algorithm>
 namespace putgd::http {
 namespace {
 Error bad(const QString& what, const QString& field = {}) {
@@ -29,7 +30,9 @@ bool managedHeader(const QString& name) {
     static const QStringList managed{"host", "content-length", "transfer-encoding", "connection", "upgrade", "expect", "te", "trailer", "keep-alive", "proxy-connection"};
     return managed.contains(name.toLower());
 }
-QString singular(const QString& list) { return list == "headers" ? QStringLiteral("header") : list == "parameters" ? QStringLiteral("parameter") : QStringLiteral("argument"); }
+QString singular(const QString& list) {
+    return list == "headers" ? QStringLiteral("header") : list == "parameters" ? QStringLiteral("parameter") : list == "secrets" ? QStringLiteral("secret value") : QStringLiteral("argument");
+}
 // The request URL with its placeholders filled by a sample, as the transport rule sees it.
 QUrl sampleUrl(const QString& text) {
     RequestValues sample;
@@ -37,6 +40,7 @@ QUrl sampleUrl(const QString& text) {
     sample.input = "text";
     sample.hasInput = true;
     sample.encode = RequestValues::Encode::Url;
+    sample.sampleSecrets = true;
     return QUrl(renderRequest(text, sample), QUrl::StrictMode);
 }
 Error urlProblem(const QString& text, bool allowInsecure) {
@@ -82,7 +86,7 @@ QJsonObject defaults() {
     return {{"accepts", QJsonArray{"image", "text", "file"}}, {"allowInsecureHttp", false}, {"arguments", QJsonArray{}}, {"body", "multipart"},
             {"connectTimeoutMs", 10000}, {"data", ""}, {"dataSecret", false}, {"deletionUrl", ""}, {"errorMessage", ""}, {"fileFormName", "file"},
             {"headers", QJsonArray{}}, {"parameters", QJsonArray{}}, {"requestMethod", "POST"}, {"requestTimeoutMs", 600000}, {"requestUrl", ""},
-            {"responseUrl", ""}, {"thumbnailUrl", ""}};
+            {"responseUrl", ""}, {"secrets", QJsonArray{}}, {"thumbnailUrl", ""}};
 }
 QString secretKey(const QString& list, const QString& name) { return list + "/" + name; }
 QStringList secretKeys(const QJsonObject& settings) {
@@ -91,6 +95,7 @@ QStringList secretKeys(const QJsonObject& settings) {
         for (const auto& value : settings[list].toArray())
             if (value.toObject()["secret"].toBool()) keys.append(secretKey(list, value.toObject()["name"].toString()));
     if (settings["dataSecret"].toBool()) keys.append(dataSecretKey());
+    for (const auto& value : settings[extraSecretsList()].toArray()) keys.append(secretKey(extraSecretsList(), value.toObject()["name"].toString()));
     return keys;
 }
 QString secretLabel(const QString& key) {
@@ -167,6 +172,29 @@ Error validateSettings(const QJsonObject& s) {
                 return bad("the value of " + singular(list) + " " + name.left(64) + " is too long or has control characters", list);
             if (const auto problem = templateProblem(content, TemplateUse::Request); !problem.isEmpty()) return bad(singular(list) + " " + name.left(64) + ": " + problem, list);
         }
+    }
+    {
+        // Named values with no row of their own: a name each, never a value.
+        const auto extra = s[extraSecretsList()].toArray();
+        if (!s[extraSecretsList()].isArray() || extra.size() > maximumRows) return bad(QString("at most %1 other secret values").arg(maximumRows), "secrets");
+        static const QRegularExpression plainName("^[A-Za-z0-9._-]{1,64}$");
+        QSet<QString> names;
+        for (const auto& value : extra) {
+            const auto row = value.toObject();
+            const auto name = row["name"].toString();
+            if (!value.isObject() || QStringList(row.keys()) != QStringList{"name", "secret"} || row["secret"] != true || !plainName.match(name).hasMatch() || names.contains(name))
+                return bad("each other secret value has a unique name of letters, digits, dots, hyphens or underscores, and no value in settings", "secrets");
+            names.insert(name);
+        }
+    }
+    {
+        // {secret:key} may only name a value this destination stores.
+        const auto known = secretKeys(s);
+        QStringList texts{s["requestUrl"].toString(), s["responseUrl"].toString(), s["thumbnailUrl"].toString(), s["deletionUrl"].toString(), s["errorMessage"].toString()};
+        for (const auto& list : rowLists()) for (const auto& value : s[list].toArray()) texts.append(value.toObject()["value"].toString());
+        for (const auto& text : texts)
+            for (const auto& key : secretReferences(text))
+                if (!known.contains(key)) return bad("{secret:" + boundedMessage(key, 64) + "} names a value this destination does not store; add it as a secret row", "secrets");
     }
     if (!s["data"].isString() || s["data"].toString().size() > maximumDataChars) return bad("the request body text is too long", "data");
     if (s["dataSecret"].toBool() && !s["data"].toString().isEmpty()) return bad("a secret request body is kept in the credential store, not in settings", "data");
@@ -357,7 +385,51 @@ SxcuImport readSxcu(const QByteArray& json) {
     }
     if (secretBytes > maximumSecretBytes) { out.error = sxcuError("sxcu_unsupported", "The file's header, parameter and argument values are too large to store."); return out; }
 
-    auto responseUrl = migrate(fieldText("URL"));
+    // A stored value written out again elsewhere in the file is named there, not repeated:
+    // XBackBone, for one, ends its deletion URL with the upload token.
+    QList<QPair<QString, QString>> known; // value → key, longest first
+    for (auto it = out.secrets.cbegin(); it != out.secrets.cend(); ++it) if (it.key() != dataSecretKey() && it.value().size() >= 6 && !it.value().contains('{')) known.append({it.value(), it.key()});
+    std::sort(known.begin(), known.end(), [](const auto& a, const auto& b) { return a.first.size() > b.first.size(); });
+    QJsonArray extra;
+    const auto named = [&](QString value) {
+        for (const auto& [secret, key] : known) {
+            QString name;
+            for (const auto c : key) { if (QStringLiteral("{}|\\").contains(c)) name.append('\\'); name.append(c); }
+            value.replace(secret, "{secret:" + name + "}");
+        }
+        return value;
+    };
+    // A long opaque run of letters and digits left in an address is treated as a key:
+    // it moves to a secret value of its own.
+    const auto opaque = [&](QString value, const QString& name, qsizetype from) {
+        static const QRegularExpression run("[A-Za-z0-9_-]{20,}"), digit("[0-9]"), letter("[A-Za-z]");
+        for (int guard = 0; guard < maximumRows; ++guard) {
+            QRegularExpressionMatch found;
+            for (auto it = run.globalMatch(value, from); it.hasNext();) {
+                const auto match = it.next();
+                const auto text = match.captured();
+                // Inside a placeholder it is a path or pattern, not a key.
+                const auto before = value.left(match.capturedStart());
+                if (before.count('{') > before.count('}') || !text.contains(digit) || !text.contains(letter)) continue;
+                found = match;
+                break;
+            }
+            if (!found.hasMatch()) break;
+            const auto row = name + (extra.isEmpty() ? QString() : "-" + QString::number(extra.size() + 1));
+            extra.append(QJsonObject{{"name", row}, {"secret", true}});
+            out.secrets.insert(secretKey(extraSecretsList(), row), found.captured());
+            value = value.left(found.capturedStart()) + "{secret:" + secretKey(extraSecretsList(), row) + "}" + value.mid(found.capturedEnd());
+        }
+        return value;
+    };
+    {
+        auto address = named(requestUrl);
+        const auto authority = address.indexOf("://");
+        const auto path = authority < 0 ? -1 : address.indexOf('/', authority + 3);
+        if (path > 0) address = opaque(address, "url-key", path);
+        if (address != requestUrl) { settings["requestUrl"] = address; requestUrl = address; }
+    }
+    auto responseUrl = named(migrate(fieldText("URL")));
     // Before 12.4 a ResponseType said where the link was when URL was empty.
     if (responseUrl.isEmpty()) {
         const auto type = fieldText("ResponseType").trimmed().toLower();
@@ -365,9 +437,16 @@ SxcuImport readSxcu(const QByteArray& json) {
         else if (type == "locationheader") responseUrl = "{header:Location}";
     }
     settings["responseUrl"] = responseUrl;
-    settings["thumbnailUrl"] = migrate(fieldText("ThumbnailURL"));
-    settings["deletionUrl"] = migrate(fieldText("DeletionURL"));
+    settings["thumbnailUrl"] = named(migrate(fieldText("ThumbnailURL")));
+    {
+        auto deletion = named(migrate(fieldText("DeletionURL")));
+        // After the host: the host name itself is no key.
+        const auto authority = deletion.indexOf("://");
+        deletion = opaque(deletion, "deletion-key", authority < 0 ? 0 : qMax<qsizetype>(0, deletion.indexOf('/', authority + 3)));
+        settings["deletionUrl"] = deletion;
+    }
     settings["errorMessage"] = migrate(fieldText("ErrorMessage"));
+    settings[extraSecretsList()] = extra;
     for (const auto& [key, sxcuName] : QList<QPair<const char*, const char*>>{{"responseUrl", "URL"}, {"thumbnailUrl", "ThumbnailURL"}, {"deletionUrl", "DeletionURL"}, {"errorMessage", "ErrorMessage"}}) {
         const auto value = settings[key].toString();
         if (value.size() > maximumTemplateChars || !controlFree(value)) { out.error = sxcuError("sxcu_unsupported", QString("%1 is too long or has control characters.").arg(sxcuName)); return out; }

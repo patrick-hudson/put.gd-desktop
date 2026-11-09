@@ -62,6 +62,11 @@ private slots:
         QTest::newRow("response") << "{response}" << false << "";
         QTest::newRow("responseurl") << "{responseurl}" << false << "";
         QTest::newRow("case") << "{JSON:url}{ResponseURL}" << false << "";
+        QTest::newRow("secret in request") << "https://h.test/hook/{secret:secrets/url-key}" << true << "";
+        QTest::newRow("secret in response") << "{json:url}/delete/{secret:arguments/token}" << false << "";
+        QTest::newRow("secret needs a name") << "{secret}" << false << "needs a parameter";
+        QTest::newRow("secret takes one name") << "{secret:a|b}" << false << "one stored value";
+        QTest::newRow("secret name is literal") << "{secret:{json:key}}" << false << "one stored value";
     }
     void templateSyntax() {
         QFETCH(QString, text);
@@ -151,6 +156,73 @@ private slots:
         QCOMPARE(renderRequest("{input}", values), QString("line one\n&lt;two&gt; &amp; &quot;three&quot;"));
         QVERIFY(readsInput("x {base64:{input}}"));
         QVERIFY(!readsInput("{filename}"));
+    }
+    void secretReferencesStayNamesUntilTheyAreNeeded() {
+        const QString deletion = "{json:url}/delete/{secret:arguments/token}";
+        QCOMPARE(secretReferences(deletion), QStringList({"arguments/token"}));
+        QCOMPARE(secretReferences("{json:url}"), QStringList());
+        QCOMPARE(secretReferences("{base64:{secret:headers/X}}:{secret:secrets/k}"), QStringList({"headers/X", "secrets/k"}));
+        const QHash<QString, QString> stored{{"arguments/token", "tok_ABC123"}};
+        auto values = reply(quotes("{'url':'https://h.test/u/a|b'}"));
+        // Recorded form: the reply's part is filled in and escaped, the stored value is still a name.
+        values.keepSecrets = true;
+        const auto recorded = renderResponse(deletion, values);
+        QCOMPARE(recorded, QString("https://h.test/u/a\\|b/delete/{secret:arguments/token}"));
+        QVERIFY(!recorded.contains("tok_ABC123"));
+        // Filled in only when it is sent.
+        ResponseValues sending;
+        sending.secrets = &stored;
+        QCOMPARE(renderResponse(recorded, sending), QString("https://h.test/u/a|b/delete/tok_ABC123"));
+        // Without stored values and without keeping names, nothing is made up.
+        QCOMPARE(renderResponse(deletion, reply(quotes("{'url':'https://h.test/u/a'}"))), QString("https://h.test/u/a/delete/"));
+        // A request names it the same way, and says when the value is missing.
+        RequestValues request;
+        request.secrets = &stored;
+        QString problem;
+        QCOMPARE(renderRequest("/hook/{secret:arguments/token}", request, &problem), QString("/hook/tok_ABC123"));
+        QVERIFY(problem.isEmpty());
+        renderRequest("/hook/{secret:secrets/other}", request, &problem);
+        QVERIFY(problem.contains("missing"));
+    }
+    void importNamesARepeatedTokenInsteadOfRepeatingIt() {
+        // XBackBone 3.8.2 writes its upload token into the deletion URL as well.
+        const QString key = "token_1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d";
+        const QJsonObject file{{"Version", "16.1.0"}, {"Name", "admin-ShareX"}, {"DestinationType", "ImageUploader, TextUploader, FileUploader"}, {"RequestMethod", "POST"},
+                               {"RequestURL", "https://media.example.test/upload"}, {"Body", "MultipartFormData"},
+                               {"Arguments", QJsonObject{{"file", "{filename}"}, {"text", "{input}"}, {"token", key}}}, {"FileFormName", "upload"},
+                               {"URL", "{json:url}"}, {"ThumbnailURL", "{json:url}/raw"}, {"DeletionURL", "{json:url}/delete/" + key}};
+        const auto result = importSxcu(sxcu(file));
+        QVERIFY2(!result.error, qPrintable(result.error.message));
+        const auto s = result.settings;
+        QCOMPARE(s["deletionUrl"].toString(), QString("{json:url}/delete/{secret:arguments/token}"));
+        QCOMPARE(s["thumbnailUrl"].toString(), QString("{json:url}/raw"));
+        QCOMPARE(row("file", s, "arguments"), QJsonObject({{"name", "file"}, {"secret", false}, {"value", "{filename}"}}));
+        QCOMPARE(row("text", s, "arguments"), QJsonObject({{"name", "text"}, {"secret", false}, {"value", "{input}"}}));
+        QCOMPARE(row("token", s, "arguments"), QJsonObject({{"name", "token"}, {"secret", true}}));
+        QCOMPARE(result.secrets.keys(), QStringList({"arguments/token"}));
+        QVERIFY(!QJsonDocument(s).toJson().contains(key.toUtf8()));
+        QVERIFY2(!validateSettings(s), qPrintable(validateSettings(s).message));
+        // A key that appears only inside an address becomes a secret value of its own.
+        const QJsonObject hook{{"Version", "17.0.0"}, {"DestinationType", "FileUploader"}, {"RequestURL", "https://hooks.example.test/api/upload/9f8e7d6c5b4a39281706f5e4d3c2b1a0"},
+                               {"Body", "Binary"}, {"URL", "{json:url}"}, {"DeletionURL", "https://hooks.example.test/delete/{json:id}/a1b2c3d4e5f60718293a4b5c6d7e8f90"}};
+        const auto hooked = importSxcu(sxcu(hook));
+        QVERIFY2(!hooked.error, qPrintable(hooked.error.message));
+        QCOMPARE(hooked.settings["requestUrl"].toString(), QString("https://hooks.example.test/api/upload/{secret:secrets/url-key}"));
+        QCOMPARE(hooked.settings["deletionUrl"].toString(), QString("https://hooks.example.test/delete/{json:id}/{secret:secrets/deletion-key-2}"));
+        QCOMPARE(hooked.settings["secrets"].toArray(), QJsonArray({QJsonObject{{"name", "url-key"}, {"secret", true}}, QJsonObject{{"name", "deletion-key-2"}, {"secret", true}}}));
+        QCOMPARE(hooked.secrets.value("secrets/url-key"), QString("9f8e7d6c5b4a39281706f5e4d3c2b1a0"));
+        QCOMPARE(hooked.secrets.value("secrets/deletion-key-2"), QString("a1b2c3d4e5f60718293a4b5c6d7e8f90"));
+        const auto bytes = QJsonDocument(hooked.settings).toJson();
+        QVERIFY(!bytes.contains("9f8e7d6c") && !bytes.contains("a1b2c3d4"));
+        QVERIFY2(!validateSettings(hooked.settings), qPrintable(validateSettings(hooked.settings).message));
+        // An ordinary path stays as written.
+        auto plain = hook;
+        plain["RequestURL"] = "https://hooks.example.test/api/v2/files/upload";
+        plain["DeletionURL"] = "{json:deletion_url}";
+        const auto kept = importSxcu(sxcu(plain));
+        QCOMPARE(kept.settings["requestUrl"].toString(), QString("https://hooks.example.test/api/v2/files/upload"));
+        QVERIFY(kept.settings["secrets"].toArray().isEmpty());
+        QVERIFY(kept.secrets.isEmpty());
     }
     void oldPlaceholders_data() {
         QTest::addColumn<QString>("old");
@@ -363,6 +435,11 @@ private slots:
         QTest::newRow("secret data with text") << "dataSecret" << QJsonValue(true) << "";
         QTest::newRow("response template") << "responseUrl" << QJsonValue("{json:a[*]}") << "JSON path";
         QTest::newRow("timeout") << "requestTimeoutMs" << QJsonValue(10) << "timeouts";
+        QTest::newRow("secret value name") << "secrets" << QJsonValue(QJsonArray{QJsonObject{{"name", "url-key"}, {"secret", true}}}) << "";
+        QTest::newRow("secret value with a value") << "secrets" << QJsonValue(QJsonArray{QJsonObject{{"name", "url-key"}, {"secret", true}, {"value", token}}}) << "no value in settings";
+        QTest::newRow("secret value not secret") << "secrets" << QJsonValue(QJsonArray{QJsonObject{{"name", "url-key"}, {"secret", false}}}) << "no value in settings";
+        QTest::newRow("secret value odd name") << "secrets" << QJsonValue(QJsonArray{QJsonObject{{"name", "a b"}, {"secret", true}}}) << "unique name";
+        QTest::newRow("reference to nothing") << "deletionUrl" << QJsonValue("{json:url}/delete/{secret:arguments/token}") << "does not store";
         QTest::newRow("insecure switch type") << "allowInsecureHttp" << QJsonValue("yes") << "true or false";
     }
     void settingsRules() {
@@ -389,6 +466,19 @@ private slots:
         settings["data"] = "";
         QVERIFY(!validateSettings(settings));
         QCOMPARE(secretKeys(settings), QStringList({"data"}));
+        // A reference is good once the value it names is a secret row.
+        settings = defaults();
+        settings["deletionUrl"] = "{json:url}/delete/{secret:arguments/token}";
+        settings["arguments"] = QJsonArray{QJsonObject{{"name", "token"}, {"secret", true}}};
+        QVERIFY2(!validateSettings(settings), qPrintable(validateSettings(settings).message));
+        settings["arguments"] = QJsonArray{QJsonObject{{"name", "token"}, {"secret", false}, {"value", "plain"}}};
+        QVERIFY(validateSettings(settings).message.contains("does not store"));
+        settings = defaults();
+        settings["requestUrl"] = "https://h.example.test/hook/{secret:secrets/url-key}";
+        settings["secrets"] = QJsonArray{QJsonObject{{"name", "url-key"}, {"secret", true}}};
+        QVERIFY2(!validateSettings(settings), qPrintable(validateSettings(settings).message));
+        QCOMPARE(secretKeys(settings), QStringList({"secrets/url-key"}));
+        QCOMPARE(secretLabel("secrets/url-key"), QString("secret value url-key"));
         // GET has no body.
         settings = defaults();
         settings["requestMethod"] = "GET";

@@ -14,7 +14,8 @@ namespace putgd {
 class UploaderRows final : public QWidget {
     Q_OBJECT
 public:
-    UploaderRows(const QString& list, const QString& noun, QWidget* parent = nullptr);
+    // alwaysSecret: rows have no Secret switch; every value is one (the "secrets" list).
+    UploaderRows(const QString& list, const QString& noun, QWidget* parent = nullptr, bool alwaysSecret = false);
     void setRows(const QJsonArray& rows);
     // Rows as the configuration stores them: a secret row has a name only.
     QJsonArray rows() const;
@@ -38,7 +39,7 @@ private:
     QPushButton* add_ = nullptr;
     QList<Row> rows_;
     QSet<QString> stored_;
-    bool storedKnown_ = false, loading_ = false;
+    bool storedKnown_ = false, loading_ = false, alwaysSecret_ = false;
 };
 
 // Settings → Destinations → Custom uploader (HTTP) (#1361): the request, what the
@@ -88,7 +89,7 @@ private:
     QCheckBox *insecure_ = nullptr, *dataSecret_ = nullptr, *images_ = nullptr, *text_ = nullptr, *files_ = nullptr;
     QPlainTextEdit* data_ = nullptr;
     QSpinBox *connectTimeout_ = nullptr, *requestTimeout_ = nullptr;
-    UploaderRows *headers_ = nullptr, *parameters_ = nullptr, *arguments_ = nullptr;
+    UploaderRows *headers_ = nullptr, *parameters_ = nullptr, *arguments_ = nullptr, *secrets_ = nullptr;
     QPushButton* import_ = nullptr;
     QLabel *notice_ = nullptr, *problem_ = nullptr;
     QFormLayout *requestForm_ = nullptr, *responseForm_ = nullptr;

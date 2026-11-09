@@ -47,7 +47,7 @@ public:
         s["headers"] = rows({secretRow("Authorization")});
         s["requestTimeoutMs"] = 5000;
         s["connectTimeoutMs"] = 2000;
-        if (style == "json" || style == "see" || style == "away" || style == "moved") { s["responseUrl"] = "{json:files[0].url}"; s["thumbnailUrl"] = "{json:files[0].thumb}"; s["deletionUrl"] = "{json:files[0].delete}"; }
+        if (style == "json" || style == "see" || style == "away" || style == "moved" || style == "confirm" || style == "pretend") { s["responseUrl"] = "{json:files[0].url}"; s["thumbnailUrl"] = "{json:files[0].thumb}"; s["deletionUrl"] = "{json:files[0].delete}"; }
         s["errorMessage"] = "{json:error}";
         return s;
     }
@@ -535,6 +535,69 @@ private slots:
         QCOMPARE(f.remove(uploaded.receipt, removed.progress).status, QString("removed"));
         QCOMPARE(f.remove(uploaded.receipt).status, QString("missing"));
         QCOMPARE(f.events("delete").size(), 2);
+    }
+    void deletionUrlNamesAStoredValueInsteadOfRecordingIt() {
+        // As XBackBone's deletion URL does: a stored value is part of the address.
+        HttpFixture f;
+        f.reset();
+        const QString key = "k-" + token;
+        auto destination = f.destination;
+        destination.settings["secrets"] = rows({secretRow("delete-key")});
+        destination.settings["deletionUrl"] = "{json:files[0].delete}?key={secret:secrets/delete-key}";
+        // The request also names {input}, which is empty for a file that is not text.
+        destination.settings["arguments"] = rows({plainRow("text", "{input}"), plainRow("file", "{filename}")});
+        QVERIFY2(!http::validateSettings(destination.settings), qPrintable(http::validateSettings(destination.settings).message));
+        f.store({{"headers/Authorization", "Bearer " + token}, {"secrets/delete-key", key}});
+        const auto uploaded = f.upload(f.image(), destination);
+        QVERIFY2(uploaded.status == "uploaded", qPrintable(uploaded.error.code + ": " + uploaded.error.message));
+        QCOMPARE(f.events("upload")[0].toObject()["fields"].toObject()["text"].toString(), QString());
+        // The receipt, which History keeps, has the name and not the value.
+        const auto recorded = uploaded.receipt.objectReference["deletionUrl"].toString();
+        QVERIFY2(recorded.endsWith("?key={secret:secrets/delete-key}"), qPrintable(recorded));
+        QVERIFY(!QJsonDocument(uploaded.receipt.toJson()).toJson().contains(token.toUtf8()));
+        // Without the stored value nothing is sent.
+        f.credentials.forget(destination.profileId, destination.credentialReference);
+        auto result = f.remove(uploaded.receipt);
+        QCOMPARE(result.status, QString("failed"));
+        QCOMPARE(result.error.code, QString("credential_setup_required"));
+        QCOMPARE(f.events("delete").size(), 0);
+        // With it, the deletion carries the value, and only there.
+        f.store({{"headers/Authorization", "Bearer " + token}, {"secrets/delete-key", key}});
+        result = f.remove(uploaded.receipt);
+        QCOMPARE(result.status, QString("removed"));
+        const auto event = f.events("delete")[0].toObject();
+        QCOMPARE(event["query"].toObject()["key"].toString(), key);
+        QVERIFY(!event["headers"].toObject().contains("authorization"));
+        QVERIFY(!QJsonDocument(result.progress).toJson().contains(token.toUtf8()));
+        QCOMPARE(f.stored(), 0);
+    }
+    void deletionIsConfirmedOnTheServersOwnPageAndThenVerified() {
+        HttpFixture f;
+        f.reset();
+        // The deletion URL shows "are you sure?", as XBackBone's does: its form is sent once.
+        auto destination = f.destination;
+        destination.settings = f.settings("confirm");
+        auto uploaded = f.upload(f.image(), destination);
+        QCOMPARE(uploaded.status, QString("uploaded"));
+        auto result = f.remove(uploaded.receipt);
+        QVERIFY2(result.status == "removed", qPrintable(result.error.code + ": " + result.error.message));
+        QCOMPARE(f.events("delete").size(), 1);
+        const auto confirmed = f.events("confirm");
+        QCOMPARE(confirmed.size(), 1);
+        QCOMPARE(confirmed[0].toObject()["fields"].toObject()["csrf"].toString(), QString("synthetic&csrf"));
+        QVERIFY(!confirmed[0].toObject()["headers"].toObject().contains("authorization"));
+        QCOMPARE(f.fetch(uploaded.receipt.directUrl).first, 404);
+        QCOMPARE(f.stored(), 0);
+        // A server that answers 200 and deletes nothing is not believed.
+        destination.settings = f.settings("pretend");
+        uploaded = f.upload(f.image(), destination);
+        QCOMPARE(uploaded.status, QString("uploaded"));
+        result = f.remove(uploaded.receipt);
+        QCOMPARE(result.status, QString("failed"));
+        QCOMPARE(result.error.code, QString("http_delete_unconfirmed"));
+        QVERIFY2(result.error.message.contains("still serves the file"), qPrintable(result.error.message));
+        QCOMPARE(f.fetch(uploaded.receipt.directUrl).first, 200);
+        QCOMPARE(f.stored(), 1);
     }
     void deletionFailuresAndLostReplies() {
         HttpFixture f;

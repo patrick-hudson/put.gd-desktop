@@ -23,6 +23,7 @@
 #include <QJsonDocument>
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
+#include <QRegularExpression>
 #include <QTemporaryDir>
 #include <QTimer>
 #include <QUrl>
@@ -297,6 +298,42 @@ const QByteArray& syntheticPng() {
     return bytes;
 }
 
+// A deletion page that asks "are you sure?" with a form posting back to its own server,
+// as XBackBone's does. The user has already confirmed in put.gd, so that form is sent
+// once. Only a POST form on the same host, with nothing to fill in, whose address ends
+// with the deletion URL's own last segment, qualifies.
+struct Confirmation { QUrl action; QByteArray body; bool found = false; };
+Confirmation confirmationForm(const QString& html, const QUrl& page) {
+    static const QRegularExpression form("<form\\b([^>]*)>(.*?)</form>", QRegularExpression::CaseInsensitiveOption | QRegularExpression::DotMatchesEverythingOption);
+    static const QRegularExpression input("<input\\b([^>]*)>", QRegularExpression::CaseInsensitiveOption);
+    const auto attribute = [](const QString& tag, const QString& name) {
+        const QRegularExpression pattern("\\b" + name + "\\s*=\\s*(?:\"([^\"]*)\"|'([^']*)'|([^\\s>]+))", QRegularExpression::CaseInsensitiveOption);
+        const auto match = pattern.match(tag);
+        return match.hasMatch() ? QString(match.captured(1) + match.captured(2) + match.captured(3)).replace("&amp;", "&") : QString();
+    };
+    const auto last = page.path().section('/', -1);
+    if (html.size() > 1024 * 1024 || last.isEmpty()) return {};
+    for (auto it = form.globalMatch(html); it.hasNext();) {
+        const auto match = it.next();
+        if (attribute(match.captured(1), "method").compare("post", Qt::CaseInsensitive) != 0) continue;
+        const auto action = page.resolved(QUrl(attribute(match.captured(1), "action")));
+        if (!action.isValid() || !sameHost(page, action) || action.path().section('/', -1) != last) continue;
+        QByteArray body;
+        bool fillable = false;
+        for (auto fields = input.globalMatch(match.captured(2)); fields.hasNext();) {
+            const auto tag = fields.next().captured(1);
+            const auto type = attribute(tag, "type").toLower();
+            if (type == "submit" || type == "button") continue;
+            if (type != "hidden") { fillable = true; break; }
+            if (!body.isEmpty()) body.append('&');
+            body += QUrl::toPercentEncoding(attribute(tag, "name")) + '=' + QUrl::toPercentEncoding(attribute(tag, "value"));
+        }
+        if (fillable || match.captured(2).contains("<select", Qt::CaseInsensitive) || match.captured(2).contains("<textarea", Qt::CaseInsensitive)) continue;
+        return {action, body, true};
+    }
+    return {};
+}
+
 class Worker {
 public:
     Worker(const QJsonObject& request) : request_(request), destination_(Destination::fromJson(request["destination"].toObject())),
@@ -383,6 +420,7 @@ private:
         out.verb = s["requestMethod"].toString().toLatin1();
         RequestValues values;
         values.fileName = fileName;
+        values.secrets = &secrets_;
         if (kind == "text" && artifact.bytes <= maximumInputBytes) {
             QFile file(artifact.path);
             if (file.open(QIODevice::ReadOnly)) { values.input = QString::fromUtf8(file.readAll()); values.hasInput = true; }
@@ -391,6 +429,9 @@ private:
             error = {"http_text_only", "This uploader sends text in its request ({input}); it cannot upload this file.", {{"kind", kind}}};
             return false;
         }
+        // A request that carries the file may still name {input}, as XBackBone's does:
+        // for a file that is not text it is empty, as it is in ShareX.
+        values.hasInput = true;
         QString problem;
         auto address = values;
         address.encode = RequestValues::Encode::Url;
@@ -539,7 +580,7 @@ private:
             uncertain = answered;
             return {{"status", answered ? "unknown" : "failed"}};
         }
-        ResponseValues values{r.text(), r.headers, r.url.toString(QUrl::FullyEncoded), fileName};
+        ResponseValues values{r.text(), r.headers, r.url.toString(QUrl::FullyEncoded), fileName, &secrets_, false};
         if (r.status == 0) {
             QJsonObject details{{"requestStage", "upload"}, {"transport", r.detail}};
             if (!r.reached && !answered) {
@@ -601,7 +642,17 @@ private:
         receipt.objectReference = {{"schemaVersion", 1}, {"nonce", reference["nonce"]}, {"url", link}, {"sha256", artifact.sha256}, {"bytes", double(artifact.bytes)}};
         if (const auto thumbnail = address(renderResponse(settings()["thumbnailUrl"].toString(), values), false); !thumbnail.isEmpty()) receipt.objectReference["thumbnailUrl"] = thumbnail;
         // A deletion URL that breaks the transport rule is not kept: the upload stands, deletion is unavailable.
-        if (const auto deletion = address(renderResponse(settings()["deletionUrl"].toString(), values), true); !deletion.isEmpty()) receipt.objectReference["deletionUrl"] = deletion;
+        if (const auto deletion = address(renderResponse(settings()["deletionUrl"].toString(), values), true); !deletion.isEmpty()) {
+            // A stored value in it, such as a token, is recorded by name only: the
+            // receipt keeps {secret:key}, filled in when the deletion is sent.
+            if (secretReferences(settings()["deletionUrl"].toString()).isEmpty()) receipt.objectReference["deletionUrl"] = deletion;
+            else {
+                auto symbolic = values;
+                symbolic.secrets = nullptr;
+                symbolic.keepSecrets = true;
+                receipt.objectReference["deletionUrl"] = renderResponse(settings()["deletionUrl"].toString(), symbolic).trimmed();
+            }
+        }
         return {{"status", "uploaded"}, {"receipt", receipt.toJson()}};
     }
     // One GET of the deletion URL the upload returned, after its intent is journaled.
@@ -614,7 +665,16 @@ private:
         progress["target"] = target;
         const auto phase = progress["phase"].toString();
         if (phase == "done") return {{"status", "removed"}, {"progress", progress}};
-        const QUrl url(expected.objectReference["deletionUrl"].toString(), QUrl::StrictMode);
+        // The recorded deletion URL may name stored values; they are filled in only here.
+        const auto recorded = expected.objectReference["deletionUrl"].toString();
+        ResponseValues stored;
+        stored.secrets = &secrets_;
+        for (const auto& key : secretReferences(recorded))
+            if (!secrets_.contains(key)) {
+                error = {"credential_setup_required", "Deleting this upload needs a stored value of its destination (" + secretLabel(key) + "). Unlock or store the destination's credentials, then try again.", {}};
+                return {{"status", "failed"}, {"progress", progress}};
+            }
+        const QUrl url(secretReferences(recorded).isEmpty() ? recorded : renderResponse(recorded, stored), QUrl::StrictMode);
         if (!url.isValid() || url.host().isEmpty() || !transportAllowed(url, allowInsecure())) {
             error = {"http_delete_unsupported", "This upload came back without a deletion URL, so put.gd cannot delete it from the server.", {}};
             return {{"status", "unsupported_safe_removal"}, {"progress", progress}};
@@ -627,11 +687,37 @@ private:
             if (auto e = checkpoint(progress)) { error = e; return QJsonObject{{"status", "unknown"}, {"progress", progress}}; }
             return QJsonObject{{"status", status}, {"progress", progress}};
         };
+        // What the link serves now, to tell afterwards whether the file really went.
+        const QUrl link(expected.directUrl, QUrl::StrictMode);
+        const auto before = link.isValid() && !link.host().isEmpty() ? client_.get(link, true) : Exchange{};
+        if (cancelled.load()) { error = stoppedError(); return {{"status", "failed"}, {"progress", progress}}; }
         QString refused;
-        const auto r = client_.get(url, allowInsecure(), &refused);
+        auto r = client_.get(url, allowInsecure(), &refused);
         QJsonObject details{{"requestStage", "delete"}, {"httpStatus", r.status}};
         if (!refused.isEmpty()) { error = {"http_delete_refused", "The deletion URL could not be used: " + refused + ".", details}; return {{"status", "failed"}, {"progress", progress}}; }
-        if (r.status >= 200 && r.status < 300) return finish("removed");
+        if (r.status >= 200 && r.status < 300) {
+            if (const auto confirm = confirmationForm(r.text(), r.url); confirm.found && transportAllowed(confirm.action, allowInsecure())) {
+                Body body(confirm.body, QString(), 0, {});
+                body.open(QIODevice::ReadOnly);
+                r = client_.send("POST", confirm.action, {{QByteArray("Content-Type"), QByteArray("application/x-www-form-urlencoded")}}, &body);
+                details["confirmed"] = true;
+                details["httpStatus"] = r.status;
+            }
+        }
+        // The answer to a confirmation is often a redirect back to the site.
+        if (r.status >= 200 && r.status < 400) {
+            // A server can answer politely and delete nothing. If the link served the
+            // file before and serves the very same bytes now, it is still there.
+            if (before.status >= 200 && before.status < 300) {
+                const auto after = client_.get(link, true);
+                if (after.status >= 200 && after.status < 300 && after.body == before.body) {
+                    error = {"http_delete_unconfirmed", QString("The server answered the deletion request (HTTP %1), but the link still serves the file. Nothing is confirmed deleted. "
+                             "This server may want the deletion confirmed on its own page, or may serve a cached copy for a while; try again later or delete it on the server.").arg(r.status), details};
+                    return {{"status", "failed"}, {"progress", progress}};
+                }
+            }
+            return finish("removed");
+        }
         // Gone. It was this deletion when an earlier attempt's reply was lost, or when
         // the server closed the connection on this request and the transport, which
         // repeats a request that has no body, then found nothing left to delete.
