@@ -58,6 +58,7 @@ class Plan(unittest.TestCase):
 
     def test_package_and_source_caches_keep_one_entry_per_environment(self):
         for prefix in ('ccache-package-appimage-' + SDK + '-',
+                       'ccache-package-archlinux-', 'ccache-source-export-' + SDK + '-',
                        'appimage-distro-sources-v1-' + 'ab' * 32 + '-'):
             self.assertEqual(deleted([cache(prefix + '1-1', hour=1), cache(prefix + '2-1', hour=2)]),
                              {(prefix + '1-1', NIGHTLY): 'superseded by ' + prefix + '2-1'})

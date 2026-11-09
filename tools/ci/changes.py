@@ -3,7 +3,8 @@
 
 The contracts job always runs. `build` selects the Linux test matrix; `packages` selects the native/AppImage package builds;
 `sanitizers` selects the clang ASan/UBSan core contract job; `pipewire` selects
-the AppImage pipewiresrc check against a PipeWire 1.6 daemon.
+the AppImage pipewiresrc check against a PipeWire 1.6 daemon. `catalog` selects
+the complete UI render and both catalog safeguards in the Linux 26.04 leg.
 Any path not explicitly known to be build-neutral selects `build`, so a new
 directory is tested by default. Push, schedule, dispatch and called runs
 select everything unless a nightly explicitly reuses successful source CI for the exact commit.
@@ -73,21 +74,48 @@ def _sanitized(path):
     return path.startswith(SANITIZER_PREFIXES) and not (path.startswith('tests/') and path.endswith('.py'))
 
 
-# The surface driver's secret-control pin and the classifier that produces it
-# (redact.SECRET_FIELD, gate.NOT_SECRET_CLASSES): a change must be checked
-# against a freshly rendered catalog, which only the build matrix renders.
-CATALOG_CHECK_FILES = frozenset({'tools/lab/surface_driver/secret-states.json', 'tools/lab/surface_driver/redact.py',
-                                 'tools/lab/surface_driver/gate.py'})
+# PRs render only direct catalog inputs to keep ordinary source checks short.
+# A catalog mismatch missed here is caught by the render on the next nightly
+# push, and the live gate fails closed. Unknown PR paths intentionally skip.
+CATALOG_PREFIXES = ('src/ui/', 'src/editor/', 'src/record/ReviewWindow',
+                    'src/record/Overlays', 'tools/lab/surface_map/')
+# QWidget include audit: ReviewWindow.h and Overlays.h are covered above;
+# ReviewWindow.cpp also includes QWidgetAction. FormatBox is a QComboBox.
+# Bundled fonts/icons live under src/ui/; record.qrc maps those same icons.
+CATALOG_FILES = frozenset({
+    'src/record/FormatBox.h', 'src/record/MaskBox.h', 'src/record/BarPlacement.cpp', 'src/record/BarPlacement.h',
+    'src/record/record.qrc',
+    # Synthetic states compiled into the catalog. Waits.h is left out: every test
+    # includes it and it cannot change what the catalog renders.
+    'tests/fixtures/UiSessionFixture.h', 'tests/fixtures/TrayCatalog.h',
+    'tests/fixtures/CatalogLabels.h', 'tests/fixtures/ReviewLayout.h',
+    'tests/gui/ui_catalog.cpp', 'tests/gui/catalog_build_identity.cpp',
+    'cmake/TestsGui.cmake', 'tools/ci/check_catalog_render.py', 'tools/ci/changes.py',
+    'tools/lab/surface_driver/secret-states.json',
+    'tools/lab/surface_driver/redact.py', 'tools/lab/surface_driver/gate.py',
+})
+
+
+def _catalog(path):
+    return path in CATALOG_FILES or path.startswith(CATALOG_PREFIXES)
 
 
 def select(paths):
+    # Full runs (or callers without a known diff base) retain complete coverage.
+    if paths is None:
+        return {'catalog': True, 'build': True, 'packages': True, 'sanitizers': True,
+                'pipewire': True, 'paths': None}
     paths = sorted(set(paths))
     packages = any(_packaging(path) for path in paths)
-    build = packages or any(path in CATALOG_CHECK_FILES or (not _documentation(path) and not _contract_only(path)
-                            and not path.startswith(PIPEWIRE_CHECK_PREFIXES)) for path in paths)
+    catalog = any(_catalog(path) for path in paths)
+    # Build selection is independent of the catalog flag. Catalog consumers that
+    # would otherwise be contract-only still need the Linux job to check them.
+    build = packages or any(path in CATALOG_FILES or path.startswith('tools/lab/surface_map/')
+                            or (not _documentation(path) and not _contract_only(path)
+                                and not path.startswith(PIPEWIRE_CHECK_PREFIXES)) for path in paths)
     sanitizers = any(_sanitized(path) for path in paths)
     pipewire = packages or any(path.startswith(PIPEWIRE_PREFIXES) for path in paths)
-    return {'build': build, 'packages': packages, 'sanitizers': sanitizers, 'pipewire': pipewire,
+    return {'catalog': catalog, 'build': build, 'packages': packages, 'sanitizers': sanitizers, 'pipewire': pipewire,
             'paths': paths}
 
 
@@ -108,7 +136,7 @@ def main():
     if args.event == 'pull_request':
         result = select(changed_paths(args.root, args.base, args.head))
     else:
-        result = {'build': True, 'packages': True, 'sanitizers': True, 'pipewire': True, 'paths': None}
+        result = select(None)
     if args.reuse_source_ci and args.event != 'pull_request':
         from reuse_ci import reuse
         if reuse(args.root):
@@ -116,6 +144,7 @@ def main():
     result['event'] = args.event
     if os.environ.get('GITHUB_OUTPUT'):
         with open(os.environ['GITHUB_OUTPUT'], 'a') as stream:
+            stream.write(f"catalog={str(result['catalog']).lower()}\n")
             stream.write(f"build={str(result['build']).lower()}\n")
             stream.write(f"packages={str(result['packages']).lower()}\n")
             stream.write(f"sanitizers={str(result['sanitizers']).lower()}\n")
@@ -123,6 +152,7 @@ def main():
     if os.environ.get('GITHUB_STEP_SUMMARY'):
         with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as stream:
             stream.write('| Job group | Selected |\n| --- | --- |\n| contracts | yes |\n')
+            stream.write(f"| UI catalog | {'yes' if result['catalog'] else 'no'} |\n")
             stream.write(f"| linux | {'yes' if result['build'] else 'no'} |\n")
             stream.write(f"| packages | {'yes' if result['packages'] else 'no'} |\n")
             stream.write(f"| sanitizers | {'yes' if result['sanitizers'] else 'no'} |\n")
