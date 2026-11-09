@@ -61,7 +61,7 @@
       "datasourceTemplate": "github-tags"
     },
     {
-      "description": "The SDK source link in the S3 guide follows the locked release (tests/ci/test_sdk_docs.py).",
+      "description": "The SDK source link in the S3 guide follows the locked release.",
       "customType": "regex",
       "managerFilePatterns": ["/^docs/user/s3\\.md$/"],
       "matchStrings": ["github\\.com/aws/aws-sdk-cpp/blob/(?<currentValue>[0-9.]+)/"],

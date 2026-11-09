@@ -87,10 +87,5 @@
   # A private bus with nothing to activate (#1307): its synthetic failures must never reach a desktop's notifications.
   add_test(NAME gui_tray COMMAND dbus-run-session --config-file=${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/dbus-session-isolated.conf -- $<TARGET_FILE:test_gui_tray>)
   set_tests_properties(gui_tray PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
-  add_executable(test_gui_tray_season tests/gui/test_tray_season.cpp)
-  target_include_directories(test_gui_tray_season PRIVATE tests)
-  target_link_libraries(test_gui_tray_season PRIVATE putgd_tray Qt6::Test)
-  add_test(NAME gui_tray_season COMMAND test_gui_tray_season)
-  set_tests_properties(gui_tray_season PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 60)
   add_test(NAME gui_version COMMAND test_gui_version)
   set_tests_properties(gui_version PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 30)

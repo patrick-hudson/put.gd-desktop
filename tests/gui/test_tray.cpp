@@ -73,7 +73,7 @@ public:
 class ResidentTray final : public QObject {
  Q_OBJECT
 private slots:
- // These tests are about status, not the season; test_tray_season covers that.
+ // These tests exercise tray status.
  void initTestCase(){
   // This suite posts synthetic critical failures. On a desktop's real bus they land in its notifications (#1307),
   // so it runs only where nothing can show them: no bus, or a private one with no notification server to reach.
