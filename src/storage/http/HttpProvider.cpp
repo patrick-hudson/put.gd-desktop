@@ -1,0 +1,228 @@
+#include "HttpProvider.h"
+#include <QCoreApplication>
+#include <QDir>
+#include <QElapsedTimer>
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QProcess>
+#include <QUuid>
+#include <future>
+namespace putgd {
+namespace {
+Error parseError(const QJsonObject& value) { return {value["code"].toString("http_failed"), value["message"].toString("The custom uploader request failed"), value["details"].toObject()}; }
+}
+HttpUploaderProvider::HttpUploaderProvider(CredentialStore& credentials) : credentials_(credentials) {}
+HttpUploaderProvider::~HttpUploaderProvider() { stopping_ = true; }
+QString HttpUploaderProvider::workerPath() {
+    const auto app = QDir::cleanPath(QCoreApplication::applicationDirPath());
+#ifdef PUTGD_HTTP_BUILD_APP_DIR
+    if (app == QString::fromUtf8(PUTGD_HTTP_BUILD_APP_DIR)) return QString::fromUtf8(PUTGD_HTTP_WORKER_PATH);
+#endif
+    return QDir(app).absoluteFilePath("putgd-http-worker");
+}
+QJsonObject HttpUploaderProvider::diagnostics() const { return {{"activeHelpers", active_.load()}, {"protocolVersion", 1}}; }
+ProviderCapabilities HttpUploaderProvider::capabilities(const Destination& destination) const {
+    ProviderCapabilities caps;
+    // The server chooses the name and address of what it stores, so nothing here can
+    // create conditionally, look an upload up afterwards or address a version.
+    caps.serverNamesObjects = true;
+    caps.referenceDelete = true;
+    caps.remove = !destination.settings["deletionUrl"].toString().isEmpty();
+    caps.urls = true;
+    caps.maximumNameBytes = 255;
+    caps.deletionEffect = "Asks the server to delete this upload through the deletion URL it returned with the link. "
+                          "What the server removes, and how soon the link stops working, is up to the server.";
+    return caps;
+}
+ProviderCapabilities HttpUploaderProvider::receiptCapabilities(const StorageReceipt& receipt) const {
+    auto caps = capabilities(receipt.destination);
+    // Deletion depends on what this upload's reply carried, not on today's settings.
+    caps.remove = !receipt.objectReference["deletionUrl"].toString().isEmpty();
+    if (!caps.remove) caps.removeUnavailable = "This upload came back without a deletion URL, so put.gd cannot delete it from the server. Delete it on the server itself.";
+    return caps;
+}
+// A diagnostics package shows which fields a destination sets, never a value: a row
+// marked non-secret can still hold something its owner would not publish.
+QJsonObject HttpUploaderProvider::diagnosticSettings(const QJsonObject& settings) const {
+    auto out = settings;
+    for (const auto& list : http::rowLists()) {
+        QJsonArray rows;
+        for (const auto& value : settings[list].toArray()) rows.append(QJsonObject{{"name", value.toObject()["name"]}, {"secret", value.toObject()["secret"]}});
+        out[list] = rows;
+    }
+    if (!settings["data"].toString().isEmpty()) out["data"] = "<set>";
+    return out;
+}
+QString HttpUploaderProvider::serializationKey(const Destination& destination, const QJsonObject& object, const QString& candidate) const {
+    // Each upload is its own object: the name check hands out a nonce the receipt keeps.
+    return destination.settings["requestUrl"].toString() + "#" + (object["nonce"].isString() ? object["nonce"].toString() : candidate);
+}
+Error HttpUploaderProvider::validateSettings(const QJsonObject& settings) const { return http::validateSettings(settings); }
+Error HttpUploaderProvider::readiness(const Destination& destination) const {
+    if (auto e = http::validateSettings(destination.settings)) return e;
+    if (destination.settings["requestUrl"].toString().isEmpty())
+        return {"http_setup_required", "This destination has no request URL yet. Enter it in Settings, or import a .sxcu file.", {}};
+    const auto keys = http::secretKeys(destination.settings);
+    if (keys.isEmpty()) return {};
+    const auto cached = credentials_.cached(destination.profileId, destination.credentialReference);
+    if (!cached)
+        return {"credential_setup_required", "Credentials are not loaded for this destination. Unlock saved credentials, or enter its secret values in Settings and store them.", {}};
+    QStringList missing;
+    for (const auto& key : keys) if (!cached->values.contains(key)) missing.append(http::secretLabel(key));
+    if (!missing.isEmpty())
+        return {"credential_setup_required", "This destination has no stored value for: " + missing.join(", ") + ". Enter it in Settings and store the credentials.", {}};
+    return {};
+}
+
+QJsonObject HttpUploaderProvider::call(const QString& method, const Destination& destination, QJsonObject params, Error& error, bool* uncertain,
+                                       std::shared_ptr<std::atomic_bool> cancellation, std::function<void(const UploadProgress&)> progress,
+                                       DurableCheckpoint checkpoint) {
+    if (uncertain) *uncertain = false;
+    if (stopping_.load()) { error = {"operation_cancelled", "The application is stopping", {}}; return {}; }
+    if (auto e = http::validateSettings(destination.settings)) { error = e; return {}; }
+    QJsonObject secrets;
+    // Deletion sends nothing but the deletion URL the upload returned.
+    if (method != "remove") {
+        if (auto e = readiness(destination)) { error = e; return {}; }
+        const auto keys = http::secretKeys(destination.settings);
+        if (!keys.isEmpty()) {
+            const auto cached = credentials_.cached(destination.profileId, destination.credentialReference);
+            for (const auto& key : keys) secrets[key] = cached ? cached->values.value(key) : QString();
+        }
+    }
+    params["schemaVersion"] = 1;
+    params["method"] = method;
+    params["destination"] = destination.toJson();
+    params["secrets"] = secrets;
+    secrets = {};
+    QProcess process;
+    process.setProcessChannelMode(QProcess::SeparateChannels);
+    ++active_;
+    struct Release { std::atomic_int& count; ~Release() { --count; } } release{active_};
+    process.start(workerPath(), {"--stdio"});
+    if (!process.waitForStarted(10000)) { error = {"http_worker_start", "The custom uploader helper could not start; reinstall put.gd", {}}; return {}; }
+    auto bytes = QJsonDocument(params).toJson(QJsonDocument::Compact);
+    params = {};
+    bytes.append('\n');
+    // Stored values travel only on this pipe. Once request bytes are delivered, a lost
+    // or malformed completion cannot establish whether the server stored anything.
+    const auto delivered = process.write(bytes);
+    bytes.fill('\0');
+    bytes.clear();
+    if (uncertain) *uncertain = delivered > 0;
+    if (!process.waitForBytesWritten(10000)) { process.kill(); process.waitForFinished(5000); error = {"http_outcome_unknown", "The custom uploader helper did not accept its request", {}}; return {}; }
+    const qint64 perRequest = destination.settings["requestTimeoutMs"].toInt(600000);
+    QElapsedTimer silence;
+    silence.start();
+    QByteArray pending;
+    QJsonObject final;
+    bool got = false, cancelSent = false;
+    QElapsedTimer cancelClock;
+    const auto handle = [&](const QJsonObject& value) -> bool {
+        if (value["event"] == "progress") {
+            auto fields = value;
+            fields.remove("event");
+            const auto report = UploadProgress::fromJson(fields);
+            if (!report) { error = {"http_protocol", "Invalid upload progress from the custom uploader helper", {}}; return false; }
+            if (progress && method == "upload") progress(*report);
+            return true;
+        }
+        if (value["event"] == "checkpoint") {
+            if (!value["journal"].isObject() || !QStringList{"remove", "testDestination"}.contains(method)) { error = {"http_protocol", "Unexpected checkpoint from the custom uploader helper", {}}; return false; }
+            Error saved;
+            if (checkpoint) {
+                auto promise = std::make_shared<std::promise<Error>>();
+                auto future = promise->get_future();
+                checkpoint(value["journal"].toObject(), [promise](Error e) { promise->set_value(e); });
+                saved = future.get();
+            }
+            QJsonObject ack{{"ack", !saved}};
+            if (saved) ack["error"] = QJsonObject{{"code", saved.code}, {"message", saved.message}};
+            process.write(QJsonDocument(ack).toJson(QJsonDocument::Compact) + '\n');
+            return true;
+        }
+        if (got || !value["ok"].isBool()) { error = {"http_protocol", "Invalid completion from the custom uploader helper", {}}; return false; }
+        final = value;
+        got = true;
+        return true;
+    };
+    while (process.state() != QProcess::NotRunning || process.bytesAvailable()) {
+        process.waitForReadyRead(100);
+        process.readAllStandardError();
+        process.setReadChannel(QProcess::StandardOutput);
+        const auto chunk = process.readAll();
+        if (!chunk.isEmpty()) silence.restart();
+        pending += chunk;
+        if (pending.size() > 8 * 1024 * 1024) { error = {"http_protocol", "Custom uploader helper output exceeded its bound", {}}; break; }
+        bool failed = false;
+        while (pending.contains('\n')) {
+            const auto line = pending.left(pending.indexOf('\n'));
+            pending.remove(0, line.size() + 1);
+            QJsonParseError parse;
+            const auto document = QJsonDocument::fromJson(line, &parse);
+            if (parse.error != QJsonParseError::NoError || !document.isObject() || !handle(document.object())) {
+                if (!error) error = {"http_protocol", "Malformed custom uploader helper output", {}};
+                failed = true;
+                break;
+            }
+        }
+        if (failed || got) break;
+        if (!cancelSent && (stopping_.load() || (cancellation && cancellation->load()))) {
+            process.write("{\"cancel\":true}\n");
+            cancelSent = true;
+            cancelClock.start();
+        }
+        // Stuck work: no output for several request deadlines, or a cancellation the
+        // worker did not finish within a grace period.
+        if ((cancelSent && cancelClock.elapsed() > 30000) || silence.elapsed() > 3 * perRequest + 60000) {
+            error = {"http_outcome_unknown", "The custom uploader helper stopped responding; the upload may or may not be stored on the server", {{"reason", cancelSent ? "cancelled" : "deadline"}}};
+            break;
+        }
+        if (process.state() == QProcess::NotRunning && !process.bytesAvailable()) break;
+    }
+    process.closeWriteChannel();
+    if (!process.waitForFinished(got ? 5000 : 100)) { process.kill(); process.waitForFinished(5000); }
+    if (error) return {};
+    if (!got) { error = {"http_outcome_unknown", "The custom uploader helper ended without a result; the upload may or may not be stored on the server", {}}; return {}; }
+    if (uncertain) *uncertain = final["uncertain"].toBool();
+    if (!final["ok"].toBool()) error = parseError(final["error"].toObject());
+    return final["result"].toObject();
+}
+void HttpUploaderProvider::checkName(const Destination& destination, const QString&, std::function<void(NameCheck)> reply, std::shared_ptr<std::atomic_bool>) {
+    // No request: the server picks the name, so a proposed name is always free. The
+    // nonce makes every upload its own object, two files of one name included.
+    if (auto e = readiness(destination)) { reply({"inconclusive", {}, {}, e}); return; }
+    reply({"absent", {{"schemaVersion", 1}, {"nonce", QUuid::createUuid().toString(QUuid::WithoutBraces)}}, {}, {}});
+}
+void HttpUploaderProvider::upload(const UploadRequest& request, std::function<void(UploadResult)> reply) {
+    Error e;
+    bool uncertain = false;
+    const auto r = call("upload", request.destination,
+                        {{"artifact", request.artifact.toJson()}, {"candidate", request.candidate}, {"publicationId", request.publicationId},
+                         {"objectReference", request.objectReference}},
+                        e, &uncertain, request.cancellation, request.progress);
+    const auto status = r["status"].toString();
+    if (status == "uploaded" && !e) { reply({"uploaded", StorageReceipt::fromJson(r["receipt"].toObject()), {}}); return; }
+    reply({uncertain || status == "unknown" ? "unknown" : "failed", {}, e ? e : Error{"http_failed", "The custom uploader request failed", {}}});
+}
+void HttpUploaderProvider::stat(const StorageReceipt&, std::function<void(StatResult)> reply) {
+    reply({"unknown", {}, {"unsupported_capability", "A custom uploader cannot look up a stored upload", {}}});
+}
+void HttpUploaderProvider::reconcile(const UploadRequest&, std::function<void(StatResult)> reply) {
+    reply({"unknown", {}, {"unsupported_capability", "A custom uploader cannot check whether an upload was stored", {}}});
+}
+void HttpUploaderProvider::remove(const DeleteRequest& request, DurableCheckpoint checkpoint, std::function<void(DeleteResult)> reply) {
+    Error e;
+    bool uncertain = false;
+    const auto r = call("remove", request.receipt.destination, {{"receipt", request.receipt.toJson()}, {"progress", request.progress}}, e, &uncertain,
+                        request.cancellation, {}, checkpoint);
+    auto status = r["status"].toString();
+    if (status.isEmpty()) status = uncertain ? "unknown" : "failed";
+    reply({status, r["progress"].toObject(), e});
+}
+void HttpUploaderProvider::testDestination(const Destination& destination, DurableCheckpoint checkpoint, std::function<void(QJsonObject, Error)> reply) {
+    Error e;
+    const auto r = call("testDestination", destination, {}, e, nullptr, {}, {}, checkpoint);
+    reply(r, e);
+}
+}

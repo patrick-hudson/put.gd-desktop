@@ -72,6 +72,7 @@ int LocalServer::replyDeadlineMs(const QString& method) {
  if(method=="history.preview")return historyPreviewReplyMs;
  // Checking a large folder over GVfs or KIOFuse stats every file before the reply.
  if(method=="upload.files")return uploadFilesReplyMs;
+ if(method=="settings.importUploader")return uploaderImportReplyMs;
  // Setup runs gsettings and waits for the Shell, each with its own bound.
  if(method=="desktop.setup.recheck")return desktopSetupRecheckReplyMs;
  // The checker child has 40 s of its own (#293).
@@ -322,6 +323,10 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
   QJsonObject document;if(auto error=Settings::reorderProfiles(settings_.document(),p["order"].toArray(),document)) {reply(error,{});return;}
   if(document==settings_.document()) {reply({},{{"changed",false},{"metadata",settings_.metadata()}});return;}
   QPointer<LocalServer> guarded(this);settings_.saveAsync(document,p["expectedRevision"].toString(),[guarded,reply](Result result) {if(guarded)reply(result.error,{{"changed",true},{"metadata",guarded->settings_.metadata()}});});return;
+ }
+ if(method=="settings.importUploader") {
+  if(!uploaderImport_) {reply({"import_unavailable","This resident cannot import an uploader file",{}},{});return;}
+  uploaderImport_(p,std::move(reply));return;
  }
  if(method=="settings.importDevelopment") {
   if(!fields(p,{"expectedRevision"})||!p["expectedRevision"].isString()) {reply(invalid(),{});return;}

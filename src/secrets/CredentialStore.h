@@ -3,12 +3,16 @@
 #include <QObject>
 #include <QMutex>
 #include <QHash>
+#include <QMap>
 #include <functional>
 #include <optional>
 namespace putgd {
 struct Credentials {
     QString accessKey, secretKey, sessionToken;
     quint64 generation = 0;
+    // A custom HTTP uploader's secret header, parameter and argument values by their
+    // credential-store key (#1361); such an entry has no access or secret key.
+    QMap<QString, QString> values = {};
 };
 // Only explicit setup calls perform secret-store IO. Request workers read this cache.
 class CredentialStore : public QObject {

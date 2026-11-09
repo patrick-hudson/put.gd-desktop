@@ -38,6 +38,7 @@ ALLOWED = {
     'platform/hyprland': {'core', 'platform', 'platform/wayland'},
     'platform/x11': {'core', 'ipc', 'platform'},
     'storage/b2': {'core', 'secrets'},
+    'storage/http': {'core', 'secrets'},
     'storage/proton': {'core'},
     'storage/s3': {'core', 'ipc', 'secrets'},
     'app': {'client', 'core', 'ipc', 'secrets'},
@@ -46,7 +47,7 @@ ALLOWED = {
     'record': {'core', 'ipc', 'platform', 'platform/wayland', 'platform/x11', 'ui'},
     'cli': {'core'},
     'main': {'app', 'core', 'platform', 'platform/budgie', 'platform/gnome', 'platform/hyprland', 'platform/kde', 'platform/wayland', 'platform/x11',
-             'storage/b2', 'storage/proton', 'storage/s3', 'ui'},
+             'storage/b2', 'storage/http', 'storage/proton', 'storage/s3', 'ui'},
 }
 
 # (including file, included module): why that file may still do it.

@@ -1,0 +1,435 @@
+// Custom HTTP uploader rules (#1361): .sxcu files, both placeholder generations, the
+// JSON path and XPath subsets, and settings validation. No network, no files.
+#include "storage/http/HttpCommon.h"
+#include "storage/http/HttpTemplate.h"
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QTest>
+using namespace putgd;
+using namespace putgd::http;
+namespace {
+const char* token = "PUTGD-SYNTHETIC-SXCU-TOKEN-0123456789";
+QByteArray sxcu(QJsonObject object) { return QJsonDocument(object).toJson(QJsonDocument::Compact); }
+QJsonObject zipline() {
+    return {{"Version", "17.0.0"}, {"Name", "Zipline"}, {"DestinationType", "ImageUploader, TextUploader, FileUploader"}, {"RequestMethod", "POST"},
+            {"RequestURL", "https://files.example.test/api/upload"}, {"Headers", QJsonObject{{"authorization", token}, {"x-zipline-format", "random"}}},
+            {"Body", "MultipartFormData"}, {"FileFormName", "file"}, {"URL", "{json:files[0].url}"}, {"ThumbnailURL", "{json:files[0].url}"},
+            {"DeletionURL", "{json:deletesUrl}"}, {"ErrorMessage", "{json:error}"}};
+}
+QJsonObject row(const QString& name, const QJsonObject& settings, const QString& list) {
+    for (const auto& value : settings[list].toArray()) if (value.toObject()["name"] == name) return value.toObject();
+    return {};
+}
+QString quotes(QString text) { return text.replace('\'', '"'); }
+ResponseValues reply(const QString& body, const QString& url = "https://files.example.test/api/upload") {
+    return {body, {{"Location", "https://files.example.test/u/a.png"}, {"X-Delete-Key", "d3l"}, {"content-type", "application/json"}}, url, "shot one.png"};
+}
+}
+class HttpUploaderRules : public QObject {
+    Q_OBJECT
+private slots:
+    void templateSyntax_data() {
+        QTest::addColumn<QString>("text");
+        QTest::addColumn<bool>("request");
+        QTest::addColumn<QString>("problem"); // a fragment of the expected problem; empty when usable
+        QTest::newRow("plain") << "Bearer abc" << true << "";
+        QTest::newRow("filename") << "{filename}" << true << "";
+        QTest::newRow("nested base64") << "Basic {base64:user:{filename}}" << true << "";
+        QTest::newRow("random") << "{random:a.example|b.example}" << true << "";
+        QTest::newRow("random needs two") << "{random:only}" << true << "two choices";
+        QTest::newRow("escaped braces") << "\\{not a placeholder\\}" << true << "";
+        QTest::newRow("unclosed") << "{json:url" << false << "closing brace";
+        QTest::newRow("empty name") << "{}" << false << "no name";
+        QTest::newRow("unknown") << "{clipboard}" << true << "not supported";
+        QTest::newRow("select is interactive") << "{select:a|b}" << true << "asks the user";
+        QTest::newRow("prompt is interactive") << "{prompt:Title|default}" << true << "asks the user";
+        QTest::newRow("inputbox is interactive") << "{inputbox:Title}" << true << "asks the user";
+        QTest::newRow("outputbox is interactive") << "{outputbox:Result|{response}}" << false << "asks the user";
+        QTest::newRow("json in request") << "{json:url}" << true << "reads the reply";
+        QTest::newRow("input in response") << "{input}" << false << "{input}";
+        QTest::newRow("json") << "{json:files[0].url}" << false << "";
+        QTest::newRow("json with input") << "{json:{response}|data.link}" << false << "";
+        QTest::newRow("json wildcard") << "{json:files[*].url}" << false << "JSON path";
+        QTest::newRow("json recursive") << "{json:$..url}" << false << "JSON path";
+        QTest::newRow("json filter") << "{json:files[?(@.ok)].url}" << false << "JSON path";
+        QTest::newRow("xml") << "{xml:/files/file[1]/url}" << false << "";
+        QTest::newRow("xml function") << "{xml:string(/a/b)}" << false << "XPath";
+        QTest::newRow("xml axis") << "{xml:/a/following-sibling::b}" << false << "XPath";
+        QTest::newRow("regex") << "{regex:href=\"(.+?)\"|1}" << false << "";
+        QTest::newRow("regex invalid") << "{regex:(unclosed|1}" << false << "regular expression";
+        QTest::newRow("header") << "{header:Location}" << false << "";
+        QTest::newRow("header needs name") << "{header}" << false << "needs a parameter";
+        QTest::newRow("response") << "{response}" << false << "";
+        QTest::newRow("responseurl") << "{responseurl}" << false << "";
+        QTest::newRow("case") << "{JSON:url}{ResponseURL}" << false << "";
+    }
+    void templateSyntax() {
+        QFETCH(QString, text);
+        QFETCH(bool, request);
+        QFETCH(QString, problem);
+        const auto found = templateProblem(text, request ? TemplateUse::Request : TemplateUse::Response);
+        if (problem.isEmpty()) QVERIFY2(found.isEmpty(), qPrintable(found));
+        else QVERIFY2(found.contains(problem), qPrintable(found));
+        // A problem never repeats the value: it may hold a credential.
+        if (text.size() > 12) QVERIFY(!found.contains(text));
+    }
+    void responseValues_data() {
+        QTest::addColumn<QString>("text");
+        QTest::addColumn<QString>("body");
+        QTest::addColumn<QString>("expected");
+        // moc misreads raw string literals here, so quotes() writes the double quotes.
+        const QString json = quotes("{'files':[{'url':'https://h.test/u/a.png','id':7,'ok':true}],'data':{'link':'https://h.test/l','a b':'spaced'},'error':'quota'}");
+        const QString xml = quotes("<?xml version='1.0'?><r:upload xmlns:r='urn:x'><file id='1'><url>https://h.test/1</url></file><file id='2' kind='main'><url>https://h.test/2</url><note> two </note></file><delete href='https://h.test/d'/></r:upload>");
+        const QString html = quotes("<p>ok</p><a class='link' href='https://h.test/v/x1'>open</a> <a href='https://h.test/del/x1'>delete</a>");
+        QTest::newRow("json array") << "{json:files[0].url}" << json << "https://h.test/u/a.png";
+        QTest::newRow("json dollar") << "{json:$.data.link}" << json << "https://h.test/l";
+        QTest::newRow("json bracket name") << "{json:data['a b']}" << json << "spaced";
+        QTest::newRow("json number") << "https://h.test/f/{json:files[0].id}" << json << "https://h.test/f/7";
+        QTest::newRow("json bool") << "{json:files[0].ok}" << json << "true";
+        QTest::newRow("json missing") << "{json:files[1].url}" << json << "";
+        QTest::newRow("json object is no text") << "{json:data}" << json << "";
+        QTest::newRow("json not json") << "{json:url}" << "<html>" << "";
+        QTest::newRow("json given input") << "{json:{response}|error}" << json << "quota";
+        QTest::newRow("xml path") << "{xml:/upload/file/url}" << xml << "https://h.test/1";
+        QTest::newRow("xml index") << "{xml:/upload/file[2]/url}" << xml << "https://h.test/2";
+        QTest::newRow("xml last") << "{xml:/upload/file[last()]/url}" << xml << "https://h.test/2";
+        QTest::newRow("xml attribute predicate") << "{xml:/upload/file[@kind='main']/url}" << xml << "https://h.test/2";
+        QTest::newRow("xml descendant") << "{xml://note}" << xml << " two ";
+        QTest::newRow("xml attribute") << "{xml:/upload/delete/@href}" << xml << "https://h.test/d";
+        QTest::newRow("xml descendant attribute") << "{xml://file[2]/@id}" << xml << "2";
+        QTest::newRow("xml text") << "{xml://file[1]/url/text()}" << xml << "https://h.test/1";
+        QTest::newRow("xml prefix ignored") << "{xml:/r:upload/file/url}" << xml << "https://h.test/1";
+        QTest::newRow("xml wildcard") << "{xml:/*/delete/@href}" << xml << "https://h.test/d";
+        QTest::newRow("xml missing") << "{xml:/upload/nothing}" << xml << "";
+        QTest::newRow("xml malformed") << "{xml:/a}" << "<a><b></a>" << "";
+        QTest::newRow("regex group") << "{regex:href=\"([^\"]+)\"|1}" << html << "https://h.test/v/x1";
+        // The backslash escapes the next character of a placeholder, so a regex needs it doubled.
+        QTest::newRow("regex whole") << "{regex:https://h\\\\.test/del/\\\\w+}" << html << "https://h.test/del/x1";
+        QTest::newRow("regex single backslash is an escape") << "{regex:del/\\w+}" << html << "";
+        QTest::newRow("regex named") << "{regex:class=\"link\" href=\"(?<u>[^\"]+)\"|u}" << html << "https://h.test/v/x1";
+        QTest::newRow("regex no match") << "{regex:nothing(here)|1}" << html << "";
+        QTest::newRow("regex given input") << "{regex:{header:Location}|/u/(.+)$|1}" << html << "a.png";
+        QTest::newRow("header") << "{header:location}" << "" << "https://files.example.test/u/a.png";
+        QTest::newRow("header missing") << "{header:X-None}" << "" << "";
+        QTest::newRow("response") << "{response}" << "https://h.test/raw\n" << "https://h.test/raw\n";
+        QTest::newRow("responseurl") << "{responseurl}" << "" << "https://files.example.test/api/upload";
+        QTest::newRow("filename is encoded") << "https://h.test/{filename}" << "" << "https://h.test/shot%20one.png";
+        QTest::newRow("mixed") << "{json:data.link}?d={header:X-Delete-Key}" << json << "https://h.test/l?d=d3l";
+        QTest::newRow("escape") << "\\{json:url\\}" << json << "{json:url}";
+    }
+    void responseValues() {
+        QFETCH(QString, text);
+        QFETCH(QString, body);
+        QFETCH(QString, expected);
+        QVERIFY2(templateProblem(text, TemplateUse::Response).isEmpty(), qPrintable(templateProblem(text, TemplateUse::Response)));
+        QCOMPARE(renderResponse(text, reply(body)), expected);
+    }
+    void requestValues() {
+        RequestValues values;
+        values.fileName = "a \"b\".png";
+        QCOMPARE(renderRequest("name={filename}", values), QString("name=a \"b\".png"));
+        values.encode = RequestValues::Encode::Url;
+        QCOMPARE(renderRequest("/put/{filename}", values), QString("/put/a%20%22b%22.png"));
+        values.encode = RequestValues::Encode::Json;
+        QCOMPARE(renderRequest("{filename}", values), QString("a \\\"b\\\".png"));
+        values.encode = RequestValues::Encode::None;
+        QCOMPARE(renderRequest("Basic {base64:user:pass}", values), QString("Basic dXNlcjpwYXNz"));
+        const auto picked = renderRequest("{random:one|two|three}", values);
+        QVERIFY(QStringList({"one", "two", "three"}).contains(picked));
+        // {input} needs text; a file that is not text reports it instead of sending nothing.
+        QString problem;
+        QCOMPARE(renderRequest("{input}", values, &problem), QString());
+        QVERIFY(problem.contains("{input}"));
+        values.input = "line one\n<two> & \"three\"";
+        values.hasInput = true;
+        problem.clear();
+        QCOMPARE(renderRequest("{input}", values, &problem), values.input);
+        QVERIFY(problem.isEmpty());
+        values.encode = RequestValues::Encode::Json;
+        QCOMPARE(renderRequest("{input}", values), QString("line one\\n<two> & \\\"three\\\""));
+        values.encode = RequestValues::Encode::Xml;
+        QCOMPARE(renderRequest("{input}", values), QString("line one\n&lt;two&gt; &amp; &quot;three&quot;"));
+        QVERIFY(readsInput("x {base64:{input}}"));
+        QVERIFY(!readsInput("{filename}"));
+    }
+    void oldPlaceholders_data() {
+        QTest::addColumn<QString>("old");
+        QTest::addColumn<QStringList>("regexList");
+        QTest::addColumn<QString>("converted");
+        QTest::newRow("json") << "$json:files[0].url$" << QStringList{} << "{json:files[0].url}";
+        QTest::newRow("two") << "https://h.test/$json:id$/$json:name$" << QStringList{} << "https://h.test/{json:id}/{json:name}";
+        QTest::newRow("response") << "$response$" << QStringList{} << "{response}";
+        QTest::newRow("header") << "$header:Location$" << QStringList{} << "{header:Location}";
+        QTest::newRow("literal braces") << "{\"k\":\"$json:v$\"}" << QStringList{} << "\\{\"k\":\"{json:v}\"\\}";
+        QTest::newRow("escaped dollar") << "cost \\$5 $json:v$" << QStringList{} << "cost $5 {json:v}";
+        QTest::newRow("regex list") << "$regex:1|1$" << QStringList{"href=\"(.+?)\""} << "{regex:href=\"(.+?)\"|1}";
+        QTest::newRow("regex list comma") << "$regex:2,1$" << QStringList{"a", "b{2}|c"} << "{regex:b\\{2\\}\\|c|1}";
+        QTest::newRow("regex list whole") << "$regex:1$" << QStringList{"\\d+"} << "{regex:\\\\d+}";
+        QTest::newRow("no placeholder") << "https://h.test/plain" << QStringList{} << "https://h.test/plain";
+    }
+    void oldPlaceholders() {
+        QFETCH(QString, old);
+        QFETCH(QStringList, regexList);
+        QFETCH(QString, converted);
+        QCOMPARE(migrateOldSyntax(old, regexList), converted);
+        if (old.contains('$') && !old.contains("\\$")) QVERIFY(usesOldSyntax(old));
+        QVERIFY2(templateProblem(converted, TemplateUse::Response).isEmpty(), qPrintable(templateProblem(converted, TemplateUse::Response)));
+    }
+    void oldRegexListStillMatches() {
+        const auto converted = migrateOldSyntax("$regex:1|1$", {"href=\"(.+?)\""});
+        QCOMPARE(renderResponse(converted, reply("<a href=\"https://h.test/x\">")), QString("https://h.test/x"));
+        // An unpaired dollar leaves an unclosed placeholder, which is reported.
+        QVERIFY(!templateProblem(migrateOldSyntax("$json:url"), TemplateUse::Response).isEmpty());
+    }
+    void importKeepsEveryValueOutOfSettings() {
+        const auto result = importSxcu(sxcu(zipline()));
+        QVERIFY2(!result.error, qPrintable(result.error.message));
+        QCOMPARE(result.name, QString("Zipline"));
+        const auto s = result.settings;
+        QVERIFY2(!validateSettings(s), qPrintable(validateSettings(s).message));
+        QCOMPARE(s["requestUrl"].toString(), QString("https://files.example.test/api/upload"));
+        QCOMPARE(s["body"].toString(), QString("multipart"));
+        QCOMPARE(s["fileFormName"].toString(), QString("file"));
+        QCOMPARE(s["accepts"].toArray(), QJsonArray({"image", "text", "file"}));
+        QCOMPARE(s["responseUrl"].toString(), QString("{json:files[0].url}"));
+        QCOMPARE(s["deletionUrl"].toString(), QString("{json:deletesUrl}"));
+        QCOMPARE(s["errorMessage"].toString(), QString("{json:error}"));
+        // Both headers are secret by default, the harmless one included.
+        QCOMPARE(row("authorization", s, "headers"), QJsonObject({{"name", "authorization"}, {"secret", true}}));
+        QCOMPARE(row("x-zipline-format", s, "headers"), QJsonObject({{"name", "x-zipline-format"}, {"secret", true}}));
+        QCOMPARE(result.secrets.value("headers/authorization"), QString(token));
+        QCOMPARE(result.secrets.value("headers/x-zipline-format"), QString("random"));
+        QCOMPARE(secretKeys(s), QStringList({"headers/authorization", "headers/x-zipline-format"}));
+        QVERIFY(!QJsonDocument(s).toJson().contains(token));
+        for (const auto& note : result.notes) QVERIFY(!note.contains(token));
+    }
+    void importCases_data() {
+        QTest::addColumn<QByteArray>("file");
+        QTest::addColumn<QString>("errorCode");
+        QTest::addColumn<QString>("fragment"); // of the error message, or of a note when imported
+        auto base = zipline();
+        const auto with = [&](std::initializer_list<QPair<QString, QJsonValue>> changes) { auto o = base; for (const auto& [k, v] : changes) { if (v.isUndefined()) o.remove(k); else o[k] = v; } return sxcu(o); };
+        QTest::newRow("not json") << QByteArray("RequestURL=https://x") << "sxcu_invalid" << "JSON object";
+        QTest::newRow("array") << QByteArray("[1,2]") << "sxcu_invalid" << "JSON object";
+        QTest::newRow("truncated") << sxcu(base).left(40) << "sxcu_invalid" << "JSON object";
+        QTest::newRow("too large") << QByteArray(300 * 1024, ' ') << "sxcu_invalid" << "too large";
+        QTest::newRow("no url") << with({{"RequestURL", QJsonValue::Undefined}}) << "sxcu_invalid" << "RequestURL";
+        QTest::newRow("shortener") << with({{"DestinationType", "URLShortener"}}) << "sxcu_unsupported_type" << "URL shortener";
+        QTest::newRow("sharing") << with({{"DestinationType", "URLSharingService"}}) << "sxcu_unsupported_type" << "URL sharing service";
+        QTest::newRow("shortener and sharing") << with({{"DestinationType", "URLShortener, URLSharingService"}}) << "sxcu_unsupported_type" << "not an uploader";
+        QTest::newRow("shortener flag") << with({{"DestinationType", 8}}) << "sxcu_unsupported_type" << "URL shortener";
+        QTest::newRow("unknown type") << with({{"DestinationType", "VideoUploader"}}) << "sxcu_invalid" << "destination type";
+        QTest::newRow("uploader and shortener") << with({{"DestinationType", "ImageUploader, URLShortener"}}) << "" << "uploader part only";
+        QTest::newRow("no type") << with({{"DestinationType", QJsonValue::Undefined}}) << "" << "names no destination type";
+        QTest::newRow("delete method") << with({{"RequestMethod", "DELETE"}}) << "sxcu_unsupported" << "DELETE";
+        QTest::newRow("unknown body") << with({{"Body", "Protobuf"}}) << "sxcu_invalid" << "request body";
+        QTest::newRow("select") << with({{"Arguments", QJsonObject{{"album", "{select:a|b}"}}}}) << "sxcu_unsupported" << "asks the user";
+        QTest::newRow("prompt in header") << with({{"Headers", QJsonObject{{"X-Key", "{prompt:Key}"}}}}) << "sxcu_unsupported" << "asks the user";
+        QTest::newRow("bad url template") << with({{"URL", "{json:files[*].url}"}}) << "sxcu_unsupported" << "JSON path";
+        QTest::newRow("unclosed") << with({{"URL", "{json:url"}}) << "sxcu_unsupported" << "closing brace";
+        QTest::newRow("bad header name") << with({{"Headers", QJsonObject{{"Bad Header", "x"}}}}) << "sxcu_invalid" << "header name";
+        QTest::newRow("headers not object") << with({{"Headers", "authorization: x"}}) << "sxcu_invalid" << "Headers";
+        QTest::newRow("user info") << with({{"RequestURL", "https://user:pw@files.example.test/up"}}) << "sxcu_unsupported" << "user name";
+        QTest::newRow("ftp") << with({{"RequestURL", "ftp://files.example.test/up"}}) << "sxcu_unsupported" << "http(s)";
+        QTest::newRow("plain http imports with a note") << with({{"RequestURL", "http://files.example.test/up"}}) << "" << "plain HTTP";
+        QTest::newRow("no scheme") << with({{"RequestURL", "files.example.test/up"}}) << "" << "https:// was added";
+        QTest::newRow("managed header") << with({{"Headers", QJsonObject{{"Content-Length", "12"}, {"authorization", token}}}}) << "" << "left out";
+        QTest::newRow("name pattern") << with({{"Arguments", QJsonObject{{"name", "shot-%y%mo%d"}}}}) << "" << "name pattern";
+    }
+    void importCases() {
+        QFETCH(QByteArray, file);
+        QFETCH(QString, errorCode);
+        QFETCH(QString, fragment);
+        const auto result = importSxcu(file);
+        QCOMPARE(result.error.code, errorCode);
+        if (!errorCode.isEmpty()) {
+            QVERIFY2(result.error.message.contains(fragment), qPrintable(result.error.message));
+            QVERIFY(result.settings.isEmpty());
+            QVERIFY(result.secrets.isEmpty());
+            QVERIFY(!result.error.message.contains(token));
+            return;
+        }
+        QVERIFY2(result.notes.join('\n').contains(fragment), qPrintable(result.notes.join('\n')));
+        QVERIFY(!QJsonDocument(result.settings).toJson().contains(token));
+        QVERIFY(!result.notes.join('\n').contains(token));
+    }
+    void importOlderFile() {
+        // Chibisafe's generator still writes the $…$ form; 13.x files carry a Version.
+        const QJsonObject file{{"Version", "13.7.0"}, {"Name", "chibisafe"}, {"DestinationType", "ImageUploader, FileUploader"}, {"RequestMethod", "POST"},
+                               {"RequestURL", "https://safe.example.test/api/upload"}, {"Headers", QJsonObject{{"x-api-key", token}}}, {"Body", "MultipartFormData"},
+                               {"FileFormName", "file"}, {"URL", "$json:url$"}, {"ThumbnailURL", "$json:thumb$"}};
+        const auto result = importSxcu(sxcu(file));
+        QVERIFY2(!result.error, qPrintable(result.error.message));
+        QCOMPARE(result.settings["responseUrl"].toString(), QString("{json:url}"));
+        QCOMPARE(result.settings["thumbnailUrl"].toString(), QString("{json:thumb}"));
+        QCOMPARE(result.settings["accepts"].toArray(), QJsonArray({"image", "file"}));
+        QVERIFY(result.notes.join(' ').contains("older"));
+        // No Version at all: the placeholders themselves tell the generations apart.
+        auto unversioned = file;
+        unversioned.remove("Version");
+        QCOMPARE(importSxcu(sxcu(unversioned)).settings["responseUrl"].toString(), QString("{json:url}"));
+        auto modern = unversioned;
+        modern["URL"] = "{json:url}";
+        modern["ThumbnailURL"] = "";
+        QCOMPARE(importSxcu(sxcu(modern)).settings["responseUrl"].toString(), QString("{json:url}"));
+    }
+    void importLegacyFields() {
+        // Before 12.4: RequestType, no Body, RegexList and ResponseType.
+        const QJsonObject file{{"Name", "legacy"}, {"RequestType", "POST"}, {"RequestURL", "https://old.example.test/upload.php?key=abc123&mode=json"},
+                               {"FileFormName", "upload"}, {"Arguments", QJsonObject{{"title", "$filename$"}, {"secret", "s3cr3t-value"}}},
+                               {"RegexList", QJsonArray{"\"link\":\"(.+?)\""}}, {"URL", "$regex:1,1$"}, {"DeletionURL", "https://old.example.test/del/$json:id$"}};
+        const auto result = importSxcu(sxcu(file));
+        QVERIFY2(!result.error, qPrintable(result.error.message));
+        const auto s = result.settings;
+        QCOMPARE(s["requestMethod"].toString(), QString("POST"));
+        QCOMPARE(s["body"].toString(), QString("multipart"));
+        QCOMPARE(s["fileFormName"].toString(), QString("upload"));
+        // The query moved to parameters, each a secret.
+        QCOMPARE(s["requestUrl"].toString(), QString("https://old.example.test/upload.php"));
+        QCOMPARE(result.secrets.value("parameters/key"), QString("abc123"));
+        QCOMPARE(result.secrets.value("parameters/mode"), QString("json"));
+        // Only the bare file-name placeholder stays in settings.
+        QCOMPARE(row("title", s, "arguments"), QJsonObject({{"name", "title"}, {"secret", false}, {"value", "{filename}"}}));
+        QCOMPARE(row("secret", s, "arguments"), QJsonObject({{"name", "secret"}, {"secret", true}}));
+        QCOMPARE(s["responseUrl"].toString(), QString("{regex:\"link\":\"(.+?)\"|1}"));
+        QCOMPARE(s["deletionUrl"].toString(), QString("https://old.example.test/del/{json:id}"));
+        QCOMPARE(renderResponse(s["responseUrl"].toString(), reply(quotes("{'link':'https://old.example.test/i/9','id':'9'}"))), QString("https://old.example.test/i/9"));
+        const auto bytes = QJsonDocument(s).toJson();
+        QVERIFY(!bytes.contains("abc123"));
+        QVERIFY(!bytes.contains("s3cr3t-value"));
+        // ResponseType named where the link was when URL was empty.
+        QJsonObject redirect{{"RequestType", "POST"}, {"RequestURL", "https://old.example.test/u"}, {"FileFormName", "f"}, {"ResponseType", "RedirectionURL"}};
+        QCOMPARE(importSxcu(sxcu(redirect)).settings["responseUrl"].toString(), QString("{responseurl}"));
+        redirect["ResponseType"] = "LocationHeader";
+        QCOMPARE(importSxcu(sxcu(redirect)).settings["responseUrl"].toString(), QString("{header:Location}"));
+        redirect["ResponseType"] = "Text";
+        QCOMPARE(importSxcu(sxcu(redirect)).settings["responseUrl"].toString(), QString());
+    }
+    void importTextBodies() {
+        const QJsonObject paste{{"Version", "15.0.0"}, {"Name", "paste"}, {"DestinationType", "TextUploader"}, {"RequestMethod", "POST"},
+                                {"RequestURL", "https://paste.example.test/api"}, {"Body", "JSON"}, {"Data", QString("{\"key\":\"%1\",\"text\":\"{input}\"}").arg(token)},
+                                {"Arguments", QJsonObject{{"ignored", "x"}}}, {"URL", "https://paste.example.test/{json:id}"}};
+        const auto result = importSxcu(sxcu(paste));
+        QVERIFY2(!result.error, qPrintable(result.error.message));
+        QCOMPARE(result.settings["body"].toString(), QString("json"));
+        QCOMPARE(result.settings["accepts"].toArray(), QJsonArray({"text"}));
+        // The Data body is a secret as a whole; Arguments are not sent with a JSON body.
+        QCOMPARE(result.settings["dataSecret"].toBool(), true);
+        QCOMPARE(result.settings["data"].toString(), QString());
+        QVERIFY(result.secrets.value(dataSecretKey()).contains(token));
+        QVERIFY(result.settings["arguments"].toArray().isEmpty());
+        QVERIFY(result.notes.join(' ').contains("Arguments"));
+        QVERIFY(!QJsonDocument(result.settings).toJson().contains(token));
+        const QJsonObject form{{"Version", "15.0.0"}, {"DestinationType", "TextUploader"}, {"RequestURL", "https://paste.example.test/new"}, {"Body", "FormURLEncoded"},
+                               {"Arguments", QJsonObject{{"content", "{input}"}, {"name", "{filename}"}, {"key", token}}}};
+        const auto encoded = importSxcu(sxcu(form));
+        QVERIFY2(!encoded.error, qPrintable(encoded.error.message));
+        QCOMPARE(encoded.settings["body"].toString(), QString("form"));
+        QCOMPARE(row("content", encoded.settings, "arguments")["value"].toString(), QString("{input}"));
+        QCOMPARE(encoded.secrets.keys(), QStringList({"arguments/key"}));
+        // A modern file without Body has none, and GET carries no body at all.
+        const QJsonObject get{{"Version", "15.0.0"}, {"DestinationType", "TextUploader"}, {"RequestMethod", "GET"}, {"RequestURL", "https://paste.example.test/add"},
+                              {"Parameters", QJsonObject{{"content", "{input}"}}}, {"Body", "MultipartFormData"}};
+        const auto none = importSxcu(sxcu(get));
+        QVERIFY2(!none.error, qPrintable(none.error.message));
+        QCOMPARE(none.settings["body"].toString(), QString("none"));
+        QCOMPARE(none.settings["requestMethod"].toString(), QString("GET"));
+    }
+    void settingsRules_data() {
+        QTest::addColumn<QString>("field");
+        QTest::addColumn<QJsonValue>("value");
+        QTest::addColumn<QString>("fragment"); // empty: accepted
+        QTest::newRow("defaults") << "" << QJsonValue() << "";
+        QTest::newRow("url") << "requestUrl" << QJsonValue("https://h.example.test/up") << "";
+        QTest::newRow("url with filename") << "requestUrl" << QJsonValue("https://h.example.test/put/{filename}") << "";
+        QTest::newRow("loopback http") << "requestUrl" << QJsonValue("http://127.0.0.1:8080/up") << "";
+        QTest::newRow("plain http") << "requestUrl" << QJsonValue("http://h.example.test/up") << "plain HTTP";
+        QTest::newRow("query in url") << "requestUrl" << QJsonValue("https://h.example.test/up?key=1") << "Parameters";
+        QTest::newRow("placeholder host") << "requestUrl" << QJsonValue("https://{filename}.example.test/up") << "host name";
+        QTest::newRow("user info") << "requestUrl" << QJsonValue("https://u:p@h.example.test/up") << "user name";
+        QTest::newRow("method") << "requestMethod" << QJsonValue("DELETE") << "method";
+        QTest::newRow("body") << "body" << QJsonValue("yaml") << "body";
+        QTest::newRow("accepts empty") << "accepts" << QJsonValue(QJsonArray{}) << "at least one";
+        QTest::newRow("accepts unknown") << "accepts" << QJsonValue(QJsonArray{"video"}) << "at least one";
+        QTest::newRow("secret row with value") << "headers" << QJsonValue(QJsonArray{QJsonObject{{"name", "Authorization"}, {"secret", true}, {"value", token}}}) << "unless secret";
+        QTest::newRow("secret row") << "headers" << QJsonValue(QJsonArray{QJsonObject{{"name", "Authorization"}, {"secret", true}}}) << "";
+        QTest::newRow("plain row") << "headers" << QJsonValue(QJsonArray{QJsonObject{{"name", "X-Format"}, {"secret", false}, {"value", "png"}}}) << "";
+        QTest::newRow("plain row no value") << "headers" << QJsonValue(QJsonArray{QJsonObject{{"name", "X-Format"}, {"secret", false}}}) << "unless secret";
+        QTest::newRow("duplicate header") << "headers" << QJsonValue(QJsonArray{QJsonObject{{"name", "X-A"}, {"secret", true}}, QJsonObject{{"name", "x-a"}, {"secret", true}}}) << "twice";
+        QTest::newRow("managed header") << "headers" << QJsonValue(QJsonArray{QJsonObject{{"name", "Host"}, {"secret", true}}}) << "cannot be set";
+        QTest::newRow("content type") << "headers" << QJsonValue(QJsonArray{QJsonObject{{"name", "Content-Type"}, {"secret", false}, {"value", "image/png"}}}) << "binary body only";
+        QTest::newRow("header line break") << "headers" << QJsonValue(QJsonArray{QJsonObject{{"name", "X-A"}, {"secret", false}, {"value", "a\r\nX-B: c"}}}) << "control characters";
+        QTest::newRow("argument placeholder") << "arguments" << QJsonValue(QJsonArray{QJsonObject{{"name", "t"}, {"secret", false}, {"value", "{json:x}"}}}) << "reads the reply";
+        QTest::newRow("secret data with text") << "dataSecret" << QJsonValue(true) << "";
+        QTest::newRow("response template") << "responseUrl" << QJsonValue("{json:a[*]}") << "JSON path";
+        QTest::newRow("timeout") << "requestTimeoutMs" << QJsonValue(10) << "timeouts";
+        QTest::newRow("insecure switch type") << "allowInsecureHttp" << QJsonValue("yes") << "true or false";
+    }
+    void settingsRules() {
+        QFETCH(QString, field);
+        QFETCH(QJsonValue, value);
+        QFETCH(QString, fragment);
+        auto settings = defaults();
+        if (!field.isEmpty()) settings[field] = value;
+        const auto error = validateSettings(settings);
+        if (fragment.isEmpty()) QVERIFY2(!error, qPrintable(error.message));
+        else QVERIFY2(error.message.contains(fragment), qPrintable(error.code + ": " + error.message));
+        // A refusal never repeats a value.
+        QVERIFY(!error.message.contains(token));
+    }
+    void settingsRejectUnknownAndSecretBody() {
+        auto settings = defaults();
+        settings["token"] = token;
+        QCOMPARE(validateSettings(settings).code, QString("http_settings_invalid"));
+        settings = defaults();
+        settings["body"] = "json";
+        settings["dataSecret"] = true;
+        settings["data"] = QString("{\"key\":\"%1\"}").arg(token);
+        QVERIFY(validateSettings(settings).message.contains("credential store"));
+        settings["data"] = "";
+        QVERIFY(!validateSettings(settings));
+        QCOMPARE(secretKeys(settings), QStringList({"data"}));
+        // GET has no body.
+        settings = defaults();
+        settings["requestMethod"] = "GET";
+        QVERIFY(validateSettings(settings).message.contains("GET"));
+        settings["body"] = "none";
+        QVERIFY(!validateSettings(settings));
+        // Plain HTTP beyond loopback needs the destination's own switch.
+        settings = defaults();
+        settings["requestUrl"] = "http://192.168.68.71:18361/api/upload";
+        QCOMPARE(validateSettings(settings).code, QString("http_insecure_url"));
+        settings["allowInsecureHttp"] = true;
+        QVERIFY(!validateSettings(settings));
+    }
+    void kindsAndHosts() {
+        QCOMPARE(artifactKind("image/png", "images"), QString("image"));
+        QCOMPARE(artifactKind("text/plain", "text"), QString("text"));
+        QCOMPARE(artifactKind("video/mp4", "videos"), QString("file"));
+        QCOMPARE(artifactKind("application/zip", "other"), QString("file"));
+        auto settings = defaults();
+        settings["accepts"] = QJsonArray{"image"};
+        QVERIFY(acceptsKind(settings, "image"));
+        QVERIFY(!acceptsKind(settings, "text"));
+        QVERIFY(!acceptsKind(settings, "file"));
+        settings["accepts"] = QJsonArray{"file"};
+        QVERIFY(acceptsKind(settings, "image"));
+        QVERIFY(sameHost(QUrl("https://a.test/x"), QUrl("https://A.test/y")));
+        QVERIFY(sameHost(QUrl("http://a.test/x"), QUrl("https://a.test/x")));
+        QVERIFY(!sameHost(QUrl("https://a.test/x"), QUrl("http://a.test/x")));
+        QVERIFY(!sameHost(QUrl("https://a.test/x"), QUrl("https://b.test/x")));
+        QVERIFY(!sameHost(QUrl("https://a.test/x"), QUrl("https://a.test:8443/x")));
+        QVERIFY(!sameHost(QUrl("http://127.0.0.1:8000/x"), QUrl("http://localhost:8000/x")));
+        QVERIFY(transportAllowed(QUrl("https://a.test"), false));
+        QVERIFY(transportAllowed(QUrl("http://localhost:1"), false));
+        QVERIFY(!transportAllowed(QUrl("http://a.test"), false));
+        QVERIFY(transportAllowed(QUrl("http://a.test"), true));
+        QVERIFY(!transportAllowed(QUrl("ftp://a.test"), true));
+        QCOMPARE(boundedMessage("line one\r\nline\ttwo\x01"), QString("line one line two"));
+        QCOMPARE(boundedMessage(QString(500, 'x'), 20).size(), 20);
+        QCOMPARE(secretLabel("headers/Authorization"), QString("header Authorization"));
+        QCOMPARE(secretLabel("data"), QString("request body"));
+    }
+};
+QTEST_APPLESS_MAIN(HttpUploaderRules)
+#include "test_http_uploader.moc"
