@@ -3,7 +3,8 @@
 
 The contracts job always runs. `build` selects the Linux test matrix; `packages` selects the native/AppImage package builds;
 `sanitizers` selects the clang ASan/UBSan core contract job; `pipewire` selects
-the AppImage pipewiresrc check against a PipeWire 1.6 daemon.
+the AppImage pipewiresrc check against a PipeWire 1.6 daemon. `catalog` selects
+the complete UI render and both catalog safeguards in the Linux 26.04 leg.
 Any path not explicitly known to be build-neutral selects `build`, so a new
 directory is tested by default. Push, schedule, dispatch and called runs
 select everything unless a nightly explicitly reuses successful source CI for the exact commit.
@@ -73,21 +74,47 @@ def _sanitized(path):
     return path.startswith(SANITIZER_PREFIXES) and not (path.startswith('tests/') and path.endswith('.py'))
 
 
-# The surface driver's secret-control pin and the classifier that produces it
-# (redact.SECRET_FIELD, gate.NOT_SECRET_CLASSES): a change must be checked
-# against a freshly rendered catalog, which only the build matrix renders.
-CATALOG_CHECK_FILES = frozenset({'tools/lab/surface_driver/secret-states.json', 'tools/lab/surface_driver/redact.py',
-                                 'tools/lab/surface_driver/gate.py'})
+# Catalog independence is narrower than build neutrality: lab Python can consume
+# the catalog, and shared settings/models can change synthetic window states.
+# Do not infer independence for new source/tool directories. In particular all
+# UI/editor/record sources, assets, fonts/icons, build inputs, fixtures, catalog
+# tests, surface-map/inventory and surface-driver code render by default.
+CATALOG_INDEPENDENT_PREFIXES = (
+    'tests/unit/', 'tests/integration/', 'tests/storage/', 'tests/releases/',
+    'tests/maintenance/', 'tests/ci/', 'tools/maintenance/', 'tools/mcp/',
+) + PIPEWIRE_CHECK_PREFIXES
+# These transport implementations are not used by the synthetic catalog's
+# providers. Provider defaults, public URL helpers and shared storage contracts
+# are deliberately absent: Settings and history can display their results.
+CATALOG_INDEPENDENT_FILES = CONTRACT_FILES | frozenset({
+    'tools/lab/lab.py',
+    *('src/storage/s3/' + name + suffix
+      for name in ('S3Driver', 'S3ProcessDriver', 'S3WorkerProtocol', 'S3SdkContext',
+                   'SdkRuntime', 'IpAddress', 'TlsCompatibility')
+      for suffix in ('.cpp', '.h')),
+    'src/storage/s3/S3WorkerMain.cpp', 'src/storage/s3/S3Multipart.h',
+    'src/storage/s3/S3ErrorDiagnostics.h',
+})
+
+
+def _catalog(path):
+    if _packaging(path) or (path.startswith('tests/') and 'catalog' in PurePosixPath(path).name):
+        return True
+    parent = str(PurePosixPath(path).parent)
+    independent_test = path.endswith(CONTRACT_SUFFIXES.get(parent, ()))
+    return not (independent_test or _documentation(path) or path in CATALOG_INDEPENDENT_FILES
+                or path.startswith(CATALOG_INDEPENDENT_PREFIXES))
 
 
 def select(paths):
     paths = sorted(set(paths))
     packages = any(_packaging(path) for path in paths)
-    build = packages or any(path in CATALOG_CHECK_FILES or (not _documentation(path) and not _contract_only(path)
-                            and not path.startswith(PIPEWIRE_CHECK_PREFIXES)) for path in paths)
+    catalog = any(_catalog(path) for path in paths)
+    build = catalog or packages or any(not _documentation(path) and not _contract_only(path)
+                            and not path.startswith(PIPEWIRE_CHECK_PREFIXES) for path in paths)
     sanitizers = any(_sanitized(path) for path in paths)
     pipewire = packages or any(path.startswith(PIPEWIRE_PREFIXES) for path in paths)
-    return {'build': build, 'packages': packages, 'sanitizers': sanitizers, 'pipewire': pipewire,
+    return {'catalog': catalog, 'build': build, 'packages': packages, 'sanitizers': sanitizers, 'pipewire': pipewire,
             'paths': paths}
 
 
@@ -108,7 +135,7 @@ def main():
     if args.event == 'pull_request':
         result = select(changed_paths(args.root, args.base, args.head))
     else:
-        result = {'build': True, 'packages': True, 'sanitizers': True, 'pipewire': True, 'paths': None}
+        result = {'catalog': True, 'build': True, 'packages': True, 'sanitizers': True, 'pipewire': True, 'paths': None}
     if args.reuse_source_ci and args.event != 'pull_request':
         from reuse_ci import reuse
         if reuse(args.root):
@@ -116,6 +143,7 @@ def main():
     result['event'] = args.event
     if os.environ.get('GITHUB_OUTPUT'):
         with open(os.environ['GITHUB_OUTPUT'], 'a') as stream:
+            stream.write(f"catalog={str(result['catalog']).lower()}\n")
             stream.write(f"build={str(result['build']).lower()}\n")
             stream.write(f"packages={str(result['packages']).lower()}\n")
             stream.write(f"sanitizers={str(result['sanitizers']).lower()}\n")
@@ -123,6 +151,7 @@ def main():
     if os.environ.get('GITHUB_STEP_SUMMARY'):
         with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as stream:
             stream.write('| Job group | Selected |\n| --- | --- |\n| contracts | yes |\n')
+            stream.write(f"| UI catalog | {'yes' if result['catalog'] else 'no'} |\n")
             stream.write(f"| linux | {'yes' if result['build'] else 'no'} |\n")
             stream.write(f"| packages | {'yes' if result['packages'] else 'no'} |\n")
             stream.write(f"| sanitizers | {'yes' if result['sanitizers'] else 'no'} |\n")

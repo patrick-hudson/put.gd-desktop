@@ -1,5 +1,6 @@
 """Path selection must never skip a job that a changed input can affect."""
 import importlib.util
+import json
 import os
 from pathlib import Path
 import subprocess
@@ -38,7 +39,7 @@ class Selection(unittest.TestCase):
                      'tools/lab/surface_driver/gate.py'):
             with self.subTest(path=path):
                 self.assertSelects([path], True, False)
-        self.assertSelects(['tools/lab/surface_driver/context.py'], False, False)
+        self.assertSelects(['tools/lab/surface_driver/context.py'], True, False)
 
     def test_compiled_or_ctest_inputs_build(self):
         for path in ('src/core/Settings.cpp', 'tests/unit/test_settings.cpp', 'tests/desktop/x11/test_x11.cpp',
@@ -104,6 +105,73 @@ class Selection(unittest.TestCase):
         self.assertSelects(['docs/ci.md', 'src/main.cpp'], True, False)
         self.assertSelects(['docs/ci.md', 'packaging/appimage/AppRun'], True, True)
         self.assertSelects([], False, False)
+
+
+class CatalogSelection(unittest.TestCase):
+    def test_known_independent_inputs_skip_catalog(self):
+        for path in ('src/storage/s3/S3Driver.cpp', 'src/storage/s3/S3WorkerProtocol.h',
+                     'tests/unit/test_settings.cpp', 'tools/lab/lab.py', 'docs/ci.md'):
+            with self.subTest(path=path):
+                self.assertFalse(changes.select([path])['catalog'])
+        # The source suite still runs for a transport-only change.
+        self.assertTrue(changes.select(['src/storage/s3/S3Driver.cpp'])['build'])
+
+    def test_ui_and_shared_inputs_render_catalog(self):
+        for path in ('src/ui/SettingsWindow.cpp', 'src/editor/EditorCommands.cpp',
+                     'src/record/ReviewWindow.cpp', 'src/record/record.qrc',
+                     'src/core/Settings.cpp', 'src/core/RecordingModel.h',
+                     'src/app/OperationService.cpp', 'schemas/config.schema.json',
+                     'src/storage/proton/ProtonProvider.cpp', 'src/storage/s3/PublicUrl.cpp',
+                     'assets/fonts/new.ttf', 'assets/icons/new.svg',
+                     'tests/gui/ui_catalog.cpp', 'tests/gui/catalog_build_identity.cpp',
+                     'tests/fixtures/UiSessionFixture.h', 'tests/ci/test_catalog_references.py',
+                     'cmake/TestsGui.cmake', 'CMakeLists.txt', 'CMakePresets.json',
+                     'tools/ci/check_catalog_render.py',
+                     'tools/lab/surface_map/model.json', 'tools/lab/surface_map/surface_map.py',
+                     'tools/lab/surface_driver/secret-states.json',
+                     'tools/lab/surface_driver/redact.py', 'tools/lab/surface_driver/gate.py',
+                     'tools/lab/surface_driver/inspect.py'):
+            with self.subTest(path=path):
+                result = changes.select([path])
+                self.assertTrue(result['catalog'])
+                self.assertTrue(result['build'])
+
+    def test_unknown_inputs_render_catalog(self):
+        for path in ('some/new/directory/file.txt', 'src/storage/s3/NewTransport.cpp',
+                     'tools/lab/new_inventory.py'):
+            with self.subTest(path=path):
+                self.assertTrue(changes.select([path])['catalog'])
+        self.assertTrue(changes.select(['src/storage/s3/S3Driver.cpp', 'src/ui/Theme.cpp'])['catalog'])
+        self.assertFalse(changes.select([])['catalog'])
+
+    def test_workflow_uses_same_catalog_selection_for_all_consumers(self):
+        workflow = (ROOT / '.github/workflows/ci.yml').read_text()
+        decision = "matrix.distribution == '26.04' && needs.changes.outputs.catalog == 'true'"
+        self.assertIn('catalog: ${{ steps.select.outputs.catalog }}', workflow)
+        self.assertIn("-DPUTGD_UI_CATALOG_RENDER=${{ " + decision + " && 'ON' || 'OFF' }}", workflow)
+        checks = workflow.split('      - name: Check the surface map against the UI catalog\n', 1)[1]
+        checks = checks.split('      - name:', 1)[0]
+        self.assertIn('if: ' + decision, checks)
+        self.assertIn('surface_map.py check --catalog build/dev/ui-catalog/dark', checks)
+        self.assertIn('tools.lab.surface_driver.gate check-catalog build/dev/ui-catalog/dark', checks)
+        upload = workflow.split('      - name: Preserve the UI catalog\n', 1)[1]
+        upload = upload.split('      - name:', 1)[0]
+        self.assertIn('if: ' + decision, upload)
+        self.assertIn('name: ui-catalog', upload)
+        self.assertIn('if-no-files-found: error', upload)
+
+    def test_full_runs_render_and_export_catalog_decision(self):
+        for event in ('push', 'schedule', 'workflow_dispatch', 'workflow_call'):
+            with self.subTest(event=event), tempfile.TemporaryDirectory(prefix='pgselect-') as directory:
+                output = Path(directory) / 'output'
+                summary = Path(directory) / 'summary'
+                result = subprocess.run([sys.executable, str(ROOT / 'tools/ci/changes.py'),
+                                         '--event', event], check=True, text=True, capture_output=True,
+                                        env=dict(os.environ, GITHUB_OUTPUT=str(output),
+                                                 GITHUB_STEP_SUMMARY=str(summary)))
+                self.assertTrue(json.loads(result.stdout)['catalog'])
+                self.assertIn('catalog=true', output.read_text().splitlines())
+                self.assertIn('| UI catalog | yes |', summary.read_text())
 
 
 class GitDiff(unittest.TestCase):
