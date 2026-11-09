@@ -680,6 +680,9 @@ class CustomUploaderResidentTests(unittest.IsolatedAsyncioTestCase):
                 self.assertEqual(profile['settings']['headers'], [{'name': 'Authorization', 'secret': True}])
                 self.assertEqual(profile['settings']['responseUrl'], '{json:files[0].url}')
                 self.assertEqual(profile['credentials'], {'mode': 'session', 'reference': None})
+                # What the resident saved is what schemas/config.schema.json describes.
+                from jsonschema import Draft202012Validator
+                Draft202012Validator(json.loads((Path(__file__).resolve().parents[2] / 'schemas/config.schema.json').read_text())).validate(configuration['document'])
                 current = configuration['metadata']['observedRevision']
                 hint = await call('get_destination_credentials', {'profile_id': 'scripted', 'expected_revision': current})
                 self.assertEqual(hint['result']['storedValues'], ['headers/Authorization'])
@@ -698,7 +701,14 @@ class CustomUploaderResidentTests(unittest.IsolatedAsyncioTestCase):
                 self.assertEqual(self.stored(), [])
 
                 async def upload():
-                    accepted = await call('upload_files', {'paths': [str(payload)], 'profile_id': 'scripted'})
+                    # A resident reads its saved credentials about three seconds after it
+                    # starts and answers `initializing` to uploads until it has.
+                    deadline = time.monotonic() + 20
+                    while True:
+                        accepted = await call('upload_files', {'paths': [str(payload)], 'profile_id': 'scripted'})
+                        if accepted['ok'] or accepted['error']['code'] != 'initializing' or time.monotonic() > deadline:
+                            break
+                        await asyncio.sleep(.25)
                     self.assertTrue(accepted['ok'], accepted)
                     operation = accepted['result']['operationId']
                     finished = await until('get_operation', {'id': operation}, lambda result: result['state'] in ('completed', 'partial', 'failed', 'cancelled'))

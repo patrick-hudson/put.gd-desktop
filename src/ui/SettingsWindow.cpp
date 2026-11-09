@@ -1942,6 +1942,8 @@ void SettingsWindow::save(){
  settings_.saveAsync(doc,observed_,[g=QPointer<SettingsWindow>(this)](Result result){
   if(!g)return;
   if(!result){if(result.error.code!="config_invalid"&&result.error.code!="s3_settings_invalid"&&!result.error.code.startsWith("http_")){g->autosaveFailure(result.error);return;}g->persistNextEdit();return;}
+  // The whole draft was accepted: nothing in the custom uploader form is refused any more.
+  if(g->uploader_)g->uploader_->showProblem({},{});
   g->saving_=false;g->autosaveBlocked_=false;for(auto* button:g->retryAutosave_)button->hide();g->baseRevision_=g->settings_.revision();g->baseDocument_=g->settings_.document();g->observed_=g->settings_.metadata()["observedRevision"].toString();if(!g->settings_.document()["profiles"].toArray().isEmpty())g->initialProfile_=false;g->draft_=g->candidate();
   for(auto it=g->submittedEditSerials_.cbegin();it!=g->submittedEditSerials_.cend();++it)if(g->pendingEdits_.contains(it.key())&&g->pendingEditSerials_.value(it.key())==it.value()){g->pendingEdits_.remove(it.key());g->pendingEditSerials_.remove(it.key());g->inlineError(g->editControls_.take(it.key()),{});}
   g->submittedEditSerials_.clear();g->dirty_=g->candidate()!=g->settings_.document();if(!g->pendingEdits_.contains("/profiles"))g->reorderBaseline_.clear();
