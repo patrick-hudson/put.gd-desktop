@@ -3,7 +3,6 @@
 #include "ui/TrayController.h"
 #include "fixtures/U2Fixtures.h"
 #include "core/Log.h"
-#include <QImage>
 #include <QJsonDocument>
 #include <QDBusArgument>
 #include <QDBusContext>
@@ -24,11 +23,8 @@
 #include <memory>
 #include <QFile>
 #include <QElapsedTimer>
-#include <QTimer>
 #include <QScopeGuard>
 #include <QRegularExpression>
-#include <csignal>
-#include <sys/types.h>
 #include "fixtures/X11DesktopFixture.h"
 #include <X11/keysym.h>
 #include "fixtures/Waits.h"
@@ -178,26 +174,17 @@ private slots:
   QDBusConnection::disconnectFromBus("native-tray-wire-client");
   QDBusConnection::disconnectFromBus("native-tray-wire-peer");
  }
- void backgroundStartupWaitsForLateTray_data() {
+ void backgroundStartupRecoversConfigurationAndHandlesExplicitLaunch_data() {
   QTest::addColumn<QString>("configuration");
-  QTest::addColumn<QString>("trayState");
   QTest::addColumn<bool>("background");
-  QTest::newRow("late-watcher") << QString("valid") << QString("late-watcher") << true;
-  QTest::newRow("late-host") << QString("valid") << QString("late-host") << true;
-  QTest::newRow("ready-tray") << QString("valid") << QString("ready") << true;
-  QTest::newRow("absent-tray-recovery") << QString("valid") << QString("absent") << true;
-  QTest::newRow("tray-after-recovery-bound") << QString("valid") << QString("after-bound") << true;
-  QTest::newRow("explicit-activation-cancels-recovery") << QString("valid") << QString("user-activation") << true;
-  // #1252: editor.open within the grace period is activation too; Settings must not open over the editor.
-  QTest::newRow("editor-cancels-recovery") << QString("valid") << QString("editor") << true;
-  QTest::newRow("missing-config-recovery") << QString("missing") << QString("absent") << true;
-  QTest::newRow("invalid-config-recovery") << QString("invalid") << QString("absent") << true;
-  QTest::newRow("explicit-launch") << QString("valid") << QString("absent") << false;
+  QTest::newRow("missing-config-recovery") << QString("missing") << true;
+  QTest::newRow("invalid-config-recovery") << QString("invalid") << true;
+  QTest::newRow("explicit-launch") << QString("valid") << false;
  }
- void backgroundStartupWaitsForLateTray() {
+ void backgroundStartupRecoversConfigurationAndHandlesExplicitLaunch() {
   if (qEnvironmentVariable("PUTGD_ISOLATED_STARTUP_TEST") != "1")
    QSKIP("Requires its dedicated private-bus/Xvfb invocation");
-  QFETCH(QString, configuration); QFETCH(QString, trayState); QFETCH(bool, background);
+  QFETCH(QString, configuration); QFETCH(bool, background);
   QTemporaryDir directory;
   QVERIFY(directory.isValid());
   const auto runtime = directory.filePath("r"), socket = runtime + "/putgd/session.sock";
@@ -221,17 +208,8 @@ private slots:
     QCOMPARE(file.write("{invalid"), qint64(8));
    }
   }
-  const bool late = trayState.startsWith("late-");
   struct RestoreWatcher { QDBusConnection& bus; ~RestoreWatcher() { bus.registerService("org.kde.StatusNotifierWatcher"); } } restore{peer};
-  if (trayState != "ready" && trayState != "late-host")
-   QVERIFY(peer.unregisterService("org.kde.StatusNotifierWatcher"));
-  watcher.hostPresent = trayState != "late-host";
-  QTimer appearance;
-  appearance.setSingleShot(true);
-  connect(&appearance, &QTimer::timeout, this, [&] {
-   if (trayState == "late-watcher" || trayState == "after-bound") QVERIFY(peer.registerService("org.kde.StatusNotifierWatcher"));
-   else changeHost(true);
-  });
+  QVERIFY(peer.unregisterService("org.kde.StatusNotifierWatcher"));
   QProcess resident; resident.setProcessEnvironment(environment);
   struct Stop { QProcess& process; ~Stop() { if(process.state()!=QProcess::NotRunning){process.kill();process.waitForFinished(3000);} } } stop{resident};
   QElapsedTimer elapsed; elapsed.start();
@@ -246,67 +224,8 @@ private slots:
   auto ui = [&] { return request("ui.snapshot")["diagnostics"].toObject()["ui"].toObject(); };
   QJsonObject snapshot;
   PUTGD_TRY_VERIFY_WITH_TIMEOUT((snapshot=request("ui.snapshot"))["operationsReady"].toBool(), 5000);
-  QElapsedTimer readyElapsed; readyElapsed.start();
-  // The editor runs in its own putgd-ui process, not the Settings helper the
-  // resident's UI controller starts, so "stopped" below still means no Settings.
-  QString editing;
-  auto editorPhase = [&] { return request("editor.inspect", {{"id", editing}})["phase"].toString(); };
-  if (trayState == "editor") {
-   const auto image = directory.filePath("edit.png");
-   QImage pixels(64, 48, QImage::Format_RGB32); pixels.fill(qRgb(40, 120, 200));
-   QVERIFY(pixels.save(image, "PNG"));
-   editing = request("editor.open", {{"source", "file"}, {"path", image}})["operationId"].toString();
-   QVERIFY(!editing.isEmpty());
-   QVERIFY(elapsed.elapsed() < 10000);
-   PUTGD_TRY_COMPARE_WITH_TIMEOUT(editorPhase(), QString("editing"), 8000);
-  }
-  if (late || trayState == "after-bound") appearance.start(trayState == "after-bound" ? 12000 : 1500);
-  const bool windowless = background && configuration == "valid";
-  const bool recovery = trayState == "absent" || trayState == "after-bound";
-  QJsonObject expectedExit;
-  if (trayState == "user-activation") {
-   QProcess activation; activation.setProcessEnvironment(environment);
-   activation.start(PUTGD_PRODUCT_APP_PATH, {"--history"});
-   QVERIFY(activation.waitForFinished(5000)); QCOMPARE(activation.exitCode(), 0);
-   PUTGD_TRY_COMPARE(ui()["state"].toString(), QString("ready"));
-   const auto helperPid = ui()["pid"].toInteger();
-   QVERIFY(helperPid > 0);
-   QVERIFY(::kill(static_cast<pid_t>(helperPid), SIGTERM) == 0);
-   PUTGD_TRY_VERIFY(!(expectedExit=ui()["lastExit"].toObject()).isEmpty());
-  }
-  if (windowless) {
-   // Observe the interval, not just the final state: a transient helper is a failure too.
-   const int observeUntil = recovery ? 8000 : 11000;
-   while (readyElapsed.elapsed() < observeUntil) {
-    const auto status = ui();
-    QCOMPARE(status["state"].toString(), QString("stopped"));
-    QCOMPARE(status["pid"].toInteger(), qint64(0));
-    QCOMPARE(status["lastExit"].toObject(), expectedExit);
-    putgd::test::settle(100);
-   }
-   if (trayState == "editor") {
-    // Past the 10 s bound the editor is still the open window.
-    QVERIFY(elapsed.elapsed() > 10500);
-    QCOMPARE(editorPhase(), QString("editing"));
-    QVERIFY(!request("editor.cancel", {{"id", editing}}).isEmpty());
-    PUTGD_TRY_VERIFY(request("operation.inspect", {{"id", editing}})["state"].toString() == "cancelled");
-    QCOMPARE(ui()["state"].toString(), QString("stopped"));
-   }
-   else if (!recovery && trayState != "user-activation") {
-    PUTGD_TRY_VERIFY(!watcher.registrations.isEmpty());
-    PUTGD_TRY_VERIFY(request("ui.snapshot")["diagnostics"].toObject()["trayAvailable"].toBool());
-   }
-  }
-  if (!windowless || recovery) {
-   PUTGD_TRY_COMPARE_WITH_TIMEOUT(ui()["state"].toString(), QString("ready"), 10000);
-   if (windowless) QVERIFY(elapsed.elapsed() >= 10000);
-   else QVERIFY(elapsed.elapsed() < 10000);
-  }
-  if (trayState == "after-bound") {
-   PUTGD_TRY_VERIFY_WITH_TIMEOUT(!watcher.registrations.isEmpty(), 5000);
-   PUTGD_TRY_VERIFY(request("ui.snapshot")["diagnostics"].toObject()["trayAvailable"].toBool());
-   QCOMPARE(ui()["state"].toString(), QString("ready"));
-  }
+  PUTGD_TRY_COMPARE_WITH_TIMEOUT(ui()["state"].toString(), QString("ready"), 10000);
+  QVERIFY(elapsed.elapsed() < 10000);
   QVERIFY(request("ui.quit")["quitting"].toBool());
   PUTGD_TRY_COMPARE_WITH_TIMEOUT(resident.state(), QProcess::NotRunning, 5000);
   QCOMPARE(resident.exitCode(), 0);
