@@ -85,6 +85,7 @@ def system_library_licenses(appdir: Path, claimed: set[str],
             origins.setdefault(original.resolve().name, original)
     origins.update(extra_origins or {})
     packages: dict[str, list[str]] = {}
+    deployed: list[tuple[Path, Path]] = []
     for path in sorted(appdir.rglob("*")):
         if path.is_symlink() or not path.is_file() or str(path.relative_to(appdir)) in claimed:
             continue
@@ -102,12 +103,20 @@ def system_library_licenses(appdir: Path, claimed: set[str],
             if len(paths) != 1:
                 raise ValueError("Cannot identify deployed system library: " + name)
             source = Path(paths.pop())
-        owner = subprocess.run(["dpkg-query", "-S", str(source)], text=True, capture_output=True)
-        if owner.returncode:
-            owner = subprocess.run(["dpkg-query", "-S", str(source.resolve())], text=True, capture_output=True)
-        if owner.returncode:
+        deployed.append((path, source))
+    # One dpkg-query for every file: it reads the whole package database on each call.
+    queries = dict.fromkeys(str(item) for _, source in deployed for item in (source, source.resolve()))
+    listing = subprocess.run(["dpkg-query", "-S", *queries], text=True, capture_output=True).stdout
+    file_owners: dict[str, str] = {}
+    for line in listing.splitlines():
+        if ": " in line:
+            owner, listed = line.split(": ", 1)
+            file_owners.setdefault(listed.strip(), owner)
+    for path, source in deployed:
+        owner = file_owners.get(str(source)) or file_owners.get(str(source.resolve()))
+        if owner is None:
             raise ValueError("Cannot identify distro license for: " + str(source))
-        package = owner.stdout.split(": ", 1)[0].split(":", 1)[0]
+        package = owner.split(":", 1)[0]
         packages.setdefault(package, []).append(str(path.relative_to(appdir)))
         if len(packages[package]) > 1:
             continue

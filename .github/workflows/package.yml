@@ -81,9 +81,11 @@ jobs:
           apt=(-o Acquire::Retries=3 -o Acquire::http::Timeout=20 -o Acquire::https::Timeout=20)
           eval "$PUTGD_UBUNTU_MIRRORS"
           bounded() { timeout --kill-after=30s 10m "$@"; }
+          # actions/cache needs zstd to write what the AppImage job, outside any container, can restore.
+          zstd=$([ '${{ matrix.name }}' != ubuntu24.04 ] || echo zstd)
           for attempt in 1 2 3; do
             if command -v apt-get >/dev/null; then
-              bounded apt-get update --error-on=any "${apt[@]}" && bounded apt-get install -y "${apt[@]}" git ca-certificates && exit 0
+              bounded apt-get update --error-on=any "${apt[@]}" && bounded apt-get install -y "${apt[@]}" git ca-certificates $zstd && exit 0
             else
               bounded dnf install -y --setopt=retries=10 --setopt=timeout=60 --setopt=minrate=1000 $([ "$attempt" = 1 ] || echo --refresh) git ca-certificates && exit 0
             fi
@@ -336,6 +338,16 @@ jobs:
         # Keep signed distro metadata and archive/security failover without adding
         # a ~650-package snapshot to the repository's shared 10 GB cache (#500).
         run: sudo python3 tools/ci/hosted_apt_mirrors.py
+      - name: Identify the package snapshot
+        id: pkg-key
+        run: echo "week=$(date -u +%G-W%V)" >> "$GITHUB_OUTPUT"
+      # The same Ubuntu 24.04 packages native (ubuntu24.04) already caches, so this
+      # avoids a 2.5-minute download without using more of the shared cache budget.
+      - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: /var/cache/putgd-packages
+          key: putgd-pkgs-v1-ubuntu24.04-${{ hashFiles('tools/releases/install-native-deps.sh', 'tools/ci/install-packages.sh') }}-${{ steps.pkg-key.outputs.week }}
+          restore-keys: putgd-pkgs-v1-ubuntu24.04-${{ hashFiles('tools/releases/install-native-deps.sh', 'tools/ci/install-packages.sh') }}-
       - name: Standard build dependencies
         env:
           PUTGD_PKG_LABEL: appimage
@@ -345,7 +357,11 @@ jobs:
         run: |
           # Retried package installs (#368); sudo keeps the summary file for the retry report.
           pkg_install() { sudo --preserve-env=GITHUB_STEP_SUMMARY,PUTGD_PKG_LABEL,PUTGD_PKG_TIMEOUT,PUTGD_PKG_STALL,PUTGD_PKG_ATTEMPTS bash tools/ci/install-packages.sh "$@"; }
-          sudo --preserve-env=GITHUB_STEP_SUMMARY,PUTGD_PKG_LABEL,PUTGD_PKG_TIMEOUT,PUTGD_PKG_STALL,PUTGD_PKG_ATTEMPTS bash tools/releases/install-native-deps.sh
+          # actions/cache stores this path relative to the container's shallower workspace,
+          # so here it restores three levels above this workspace, not to /var/cache.
+          PUTGD_PKG_CACHE=$(realpath -m "$GITHUB_WORKSPACE/../../../var/cache/putgd-packages")
+          export PUTGD_PKG_CACHE
+          sudo --preserve-env=GITHUB_STEP_SUMMARY,PUTGD_PKG_CACHE,PUTGD_PKG_LABEL,PUTGD_PKG_TIMEOUT,PUTGD_PKG_STALL,PUTGD_PKG_ATTEMPTS bash tools/releases/install-native-deps.sh
           # patchelf and the bundled libraries, then screen recording: the pinned FFmpeg's build inputs and the GStreamer plugins the image bundles.
           pkg_install patchelf libgtk-3-dev libsecret-1-dev qt6-base-private-dev libx11-xcb-dev libxcb-cursor-dev libxcb-icccm4-dev libxcb-render-util0-dev libxcb-sync-dev \
             nasm libva-dev libvpx-dev libwebp-dev libopus-dev libffmpeg-nvenc-dev libx264-dev libx265-dev gstreamer1.0-plugins-base gstreamer1.0-plugins-good gstreamer1.0-plugins-bad gstreamer1.0-plugins-ugly gstreamer1.0-pipewire gstreamer1.0-pulseaudio gstreamer1.0-vaapi
