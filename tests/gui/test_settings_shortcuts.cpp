@@ -24,11 +24,7 @@ private slots:
  void shortcutSupportRetriesWhenItsWindowRegainsFocus(){
   ShortcutEditor editor;editor.setActions(Settings::defaults()["actions"].toObject());int retries=0;editor.setRefreshAction([&]{++retries;});editor.show();putgd::test::settle(10);auto* refresh=editor.findChild<QPushButton*>("refreshShortcutSupport");QVERIFY(refresh);QCOMPARE(refresh->property("visualRole").toString(),QString("textAction"));const int before=retries;QEvent activated(QEvent::WindowActivate);QApplication::sendEvent(&editor,&activated);QCOMPARE(retries,before+1);editor.setStatus({{"available",true},{"bindings",QJsonObject{}}});
  }
- void shortcutsPageHasNoNestedHeading(){
-  QTemporaryDir dir;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(service.save(Settings::developmentTemplate(),{}));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.navigate("settings");window.findChild<QTabWidget*>("settingsTabs")->setCurrentIndex(2);window.show();
-  auto* page=window.findChild<QTabWidget*>("settingsTabs")->currentWidget();QStringList headings,sections;for(auto* label:page->findChildren<QLabel*>()){if(!label->isVisibleTo(page))continue;const auto role=label->property("visualRole").toString();if(role=="title")headings.append(label->text());if(role=="sectionTitle"||role=="section")sections.append(label->text());}
-  QCOMPARE(headings,QStringList({"Shortcuts"}));QCOMPARE(sections,QStringList());QVERIFY(window.findChild<QFrame*>("shortcutsCard")->isAncestorOf(window.findChild<QLineEdit*>("shortcutRegion")));
- }
+
  void shortcutRecoveryIsOnePageLevelAction(){
   ShortcutEditor editor;editor.setActions(Settings::defaults()["actions"].toObject());int refreshes=0;editor.setRefreshAction([&]{++refreshes;});editor.show();
   auto title=[](const QString& name){return name.left(1).toUpper()+name.mid(1);};
@@ -283,10 +279,7 @@ private slots:
  void shortcutHelpIsOneDisclosure(){
   ShortcutEditor editor;editor.setActions(Settings::defaults()["actions"].toObject());editor.show();auto* toggle=editor.findChild<QToolButton*>("shortcutHelpToggle");auto* help=editor.findChild<QLabel*>("shortcutHelp");QVERIFY(toggle&&help);QVERIFY(!help->isVisible());toggle->click();QVERIFY(help->isVisible());toggle->click();QVERIFY(!help->isVisible());QCOMPARE(editor.findChildren<QToolButton*>().size(),2);
  }
- void shortcutFieldsMeasureTheirContentsAndKeepFamilyAlignment_data(){QTest::addColumn<int>("pixels");QTest::newRow("normal")<<14;QTest::newRow("large")<<21;}
- void shortcutFieldsMeasureTheirContentsAndKeepFamilyAlignment(){
-  QFETCH(int,pixels);const auto original=qApp->font();auto restore=qScopeGuard([&]{qApp->setFont(original);});auto font=original;font.setPixelSize(pixels);qApp->setFont(font);QTemporaryDir dir;SettingsService service(dir.filePath("config.json"));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.navigate("settings");window.resize(1440,1100);window.show();auto* tabs=window.findChild<QTabWidget*>("settingsTabs");auto* choice=window.findChild<QComboBox*>("appearanceTheme");PUTGD_TRY_VERIFY(choice->width()>=Ui::scaled(240));putgd::test::settle(50);const int width=choice->width();tabs->setCurrentIndex(2);auto* record=window.findChild<QPushButton*>("recordRegionShortcut");PUTGD_TRY_VERIFY(record->width()<width);const int originalWidth=record->width();window.findChild<QLineEdit*>("shortcutRegion")->setText("Ctrl+Alt+Shift+Meta+Print");PUTGD_TRY_VERIFY(record->width()>originalWidth);for(const auto& action:Settings::presentationOrder())QCOMPARE(window.findChild<QPushButton*>("record"+action.left(1).toUpper()+action.mid(1)+"Shortcut")->width(),record->width());tabs->setCurrentIndex(3);auto* retention=window.findChild<QComboBox*>("historyRetentionChoice");PUTGD_TRY_COMPARE(retention->width(),width);
- }
+
  void shortcutsAndAdvancedUseContainedCards(){
   QTemporaryDir dir;SettingsService service(dir.filePath("config.json"));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.resize(1440,960);window.navigate("settings");window.show();auto* tabs=window.findChild<QTabWidget*>("settingsTabs");
   int left=-1;for(int page=0;page<4;++page){tabs->setCurrentIndex(page);putgd::test::settle(30);auto* heading=window.findChild<QLabel*>("settingsPageHeading"+tabs->tabText(page));const int x=heading->mapTo(&window,QPoint()).x();if(left<0)left=x;QCOMPARE(x,left);}

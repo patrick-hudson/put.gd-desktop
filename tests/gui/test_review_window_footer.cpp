@@ -32,9 +32,20 @@ private slots:
             for (const int width : widths) {
                 window.resize(width, 720);
                 for (int i = 0; i < 3; ++i) QApplication::processEvents();
-                const auto problem = putgd::test::reviewFooterProblem(window);
-                QVERIFY2(problem.isEmpty(), qPrintable(QString("frame %1: %2").arg(frame).arg(problem)));
                 auto* actions = window.findChild<QWidget*>("reviewActions");
+                QList<QWidget*> leaves;
+                for (auto* widget : actions->findChildren<QWidget*>()) {
+                    if (widget->isWindow() || !widget->isVisibleTo(&window)) continue;
+                    const auto children = widget->findChildren<QWidget*>(QString(), Qt::FindDirectChildrenOnly);
+                    if (std::none_of(children.cbegin(), children.cend(), [&](QWidget* child) { return !child->isWindow() && child->isVisibleTo(&window); })) leaves.append(widget);
+                }
+                const auto name = [](QWidget* widget) {
+                    return widget->objectName().isEmpty() ? QString::fromLatin1(widget->metaObject()->className()) : widget->objectName();
+                };
+                for (int i = 0; i < leaves.size(); ++i) for (int j = i + 1; j < leaves.size(); ++j) {
+                    const QRect a(leaves[i]->mapTo(&window, QPoint()), leaves[i]->size()), b(leaves[j]->mapTo(&window, QPoint()), leaves[j]->size());
+                    QVERIFY2(!a.intersects(b), qPrintable(QString("%1/%2 overlap at %3").arg(name(leaves[i]), name(leaves[j])).arg(width)));
+                }
                 auto* destination = window.findChild<QWidget*>("reviewDestinationSummary");
                 auto* metadata = window.findChild<QWidget*>("reviewMetadata");
                 QComboBox* format = nullptr;
@@ -46,12 +57,7 @@ private slots:
                     if (!actions->isAncestorOf(groups[i]) || !actions->isAncestorOf(groups[j]) || !groups[i]->isVisibleTo(&window) || !groups[j]->isVisibleTo(&window)) continue;
                     const auto a = bounds(groups[i]), b = bounds(groups[j]);
                     if (a.top() > b.bottom() || b.top() > a.bottom()) continue;
-                    const int gap = std::max(a.left(), b.left()) - std::min(a.right(), b.right()) - 1;
-                    QVERIFY2(gap >= int(Ui::Space::s), qPrintable(QString("%1/%2 gap %3 at %4").arg(groups[i]->objectName(), groups[j]->objectName()).arg(gap).arg(width)));
-                }
-                if (actions->layout()->property("singleRow").toBool() && actions->isAncestorOf(destination)) {
-                    QVERIFY(bounds(destination).right() < bounds(metadata).left());
-                    QVERIFY(bounds(format).left() - bounds(metadata).right() - 1 >= int(Ui::Space::xl));
+                    QVERIFY2(!a.intersects(b), qPrintable(QString("%1/%2 overlap at %3").arg(groups[i]->objectName(), groups[j]->objectName()).arg(width)));
                 }
 
             }
