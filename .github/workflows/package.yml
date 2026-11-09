@@ -195,10 +195,34 @@ jobs:
         if: matrix.name == 'ubuntu24.04'
         run: |
           python3 tools/releases/source_archive.py --root "$PWD" --identity build/release/build-identity/build-info.json --output-dir build/source-export
+      - name: Restore source-export compiler cache
+        if: matrix.name == 'ubuntu24.04' && (inputs.release_tag == '' || !endsWith(inputs.release_tag, '-nightly'))
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: build/ccache-source-export
+          key: ccache-source-export-${{ steps.sdk-key.outputs.key }}-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: ccache-source-export-${{ steps.sdk-key.outputs.key }}-
       - name: Compile the source export on development and stable builds
         if: matrix.name == 'ubuntu24.04' && (inputs.release_tag == '' || !endsWith(inputs.release_tag, '-nightly'))
+        env:
+          CMAKE_C_COMPILER_LAUNCHER: ccache
+          CMAKE_CXX_COMPILER_LAUNCHER: ccache
+          # The export's directory is named after the build's version, so it changes
+          # every commit; its debug information is discarded with the build.
+          CCACHE_NOHASHDIR: 'true'
+        # ccache still preprocesses and hashes the exported files, so a file missing
+        # from the export fails here, and every program is really linked and run.
         run: |
+          export CCACHE_DIR="$PWD/build/ccache-source-export"
+          ccache --zero-stats
           python3 tools/releases/check_source_build.py --receipt build/source-export/source-archive.json --sdk-prefix "$PWD/build/sdk" --sdk-source "$PWD/build/dependencies/aws-sdk-cpp" --output build/source-build --bundle-proton --proton-source "$PWD/build/dependencies/proton-runtime/sdk-source" --proton-crypto-source "$PWD/build/dependencies/proton-runtime/crypto-source" --proton-offline
+          ccache --show-stats
+      - name: Save source-export compiler cache
+        if: matrix.name == 'ubuntu24.04' && inputs.release_tag == '' && github.event_name == 'push' && github.ref == 'refs/heads/nightly'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: build/ccache-source-export
+          key: ccache-source-export-${{ steps.sdk-key.outputs.key }}-${{ github.run_id }}-${{ github.run_attempt }}
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: debug-symbols-${{ matrix.name }}
@@ -229,6 +253,13 @@ jobs:
         with:
           fetch-depth: 0
           ref: ${{ inputs.release_tag || github.sha }}
+      - name: Restore release compiler cache
+        # Restored before the build user takes ownership of the workspace.
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: build/ccache-package
+          key: ccache-package-archlinux-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: ccache-package-archlinux-
       - name: Distro dependencies and build user
         run: |
           git config --global --add safe.directory "$GITHUB_WORKSPACE"
@@ -236,7 +267,18 @@ jobs:
           useradd -m builder
           chown -R builder "$GITHUB_WORKSPACE"
       - name: Build verified dependencies and production package
+        env:
+          CMAKE_C_COMPILER_LAUNCHER: ccache
+          CMAKE_CXX_COMPILER_LAUNCHER: ccache
+          # Holds the SDK's objects as well as the application's.
+          CCACHE_MAXSIZE: 384M
         run: runuser -u builder -- bash tools/releases/build-arch.sh
+      - name: Save release compiler cache
+        if: github.event_name == 'push' && github.ref == 'refs/heads/nightly'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: build/ccache-package
+          key: ccache-package-archlinux-${{ github.run_id }}-${{ github.run_attempt }}
       - name: Stage flat native evidence
         if: always()
         run: python tools/releases/stage_artifacts.py --kind native --packages-only
