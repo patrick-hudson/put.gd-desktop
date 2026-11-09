@@ -495,13 +495,23 @@ jobs:
           # The AppImage's GPL corresponding source includes the bundled distro source packages.
           printf 'Types: deb-src\nURIs: http://archive.ubuntu.com/ubuntu/\nSuites: noble noble-updates noble-security\nComponents: main restricted universe multiverse\nSigned-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg\n' | sudo tee /etc/apt/sources.list.d/putgd-appimage-src.sources > /dev/null
           sudo --preserve-env=GITHUB_STEP_SUMMARY,PUTGD_PKG_TIMEOUT,PUTGD_PKG_STALL,PUTGD_PKG_ATTEMPTS bash tools/ci/install-packages.sh
+      - name: Key distro source downloads by the bundled Ubuntu packages
+        id: source-key
+        run: |
+          # Keep the assignment separate: a failing command inside echo's $() would not fail the step.
+          key=$(python3 tools/releases/appimage_complete_sources.py --receipt build/appimage-output/appimage-build.json --print-cache-key)
+          echo "value=$key" >> "$GITHUB_OUTPUT"
       - name: Restore authenticated distro source downloads
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         id: source-cache
         with:
           path: build/dependencies/appimage-complete-source/ubuntu
-          key: appimage-distro-sources-v1-${{ hashFiles('packaging/appimage/*.json') }}-${{ github.run_id }}-${{ github.run_attempt }}
-          restore-keys: appimage-distro-sources-v1-${{ hashFiles('packaging/appimage/*.json') }}-
+          key: appimage-distro-sources-v1-${{ steps.source-key.outputs.value }}-${{ github.run_id }}-${{ github.run_attempt }}
+          # Each package version has its own directory, checked against its .dsc, so an older
+          # tree only saves downloads: anything it lacks is fetched, anything extra is dropped.
+          restore-keys: |
+            appimage-distro-sources-v1-${{ steps.source-key.outputs.value }}-
+            appimage-distro-sources-v1-
       - name: Collect exact bundled-component sources
         run: |
           python3 tools/releases/appimage_complete_sources.py --receipt build/appimage-output/appimage-build.json \
