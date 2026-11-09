@@ -174,7 +174,12 @@ def main():
         placed = d.ok('editor.view', {'id': op, 'action': 'place'})
         step = [s for s in d.ok('editor.inspect', {'id': op})['shapes'] if s['id'] == placed['selectedShapeId']][0]
         d.check('Next number sets the placed step', step['number'] == 10, step)
-        d.ok('editor.apply', {'id': op, 'commands': [{'op': 'undo'}, {'op': 'redo'}, {'op': 'remove', 'shapeId': step['id']}]})
+        count = len(d.ok('editor.inspect', {'id': op})['shapes'])
+        d.ok('editor.apply', {'id': op, 'commands': [{'op': 'undo'}]})
+        d.check('undo removes the placed step', len(d.ok('editor.inspect', {'id': op})['shapes']) == count - 1)
+        d.ok('editor.apply', {'id': op, 'commands': [{'op': 'redo'}]})
+        d.check('redo restores it', any(s['id'] == step['id'] and s['number'] == 10 for s in d.ok('editor.inspect', {'id': op})['shapes']))
+        d.ok('editor.apply', {'id': op, 'commands': [{'op': 'remove', 'shapeId': step['id']}]})
         d.ok('editor.view', {'id': op, 'action': 'tool', 'tool': 'blur'})
         view = d.ok('editor.view', {'id': op, 'action': 'blurStyle', 'style': 'pixelate'})
         d.check('blur style pixelate', view['style']['blurStyle'] == 'pixelate')
@@ -192,8 +197,9 @@ def main():
         d.check('clipboard bytes are the copied PNG', digest == copied['sha256'], {'clipboard': digest, 'reply': copied['sha256']})
         width, height, channels, rows = decode(pasted)
         d.check('pasted size', (width, height) == (1200, 760), (width, height))
-        x, y = TOKEN[0] + 10, TOKEN[1] + 10
-        d.check('redacted token is black in the paste', rows[y][x * channels:x * channels + 3] == b'\x00\x00\x00', list(rows[y][x * channels:x * channels + 3]))
+        leaks = [(x, y) for y in range(TOKEN[1], TOKEN[1] + TOKEN[3]) for x in range(TOKEN[0], TOKEN[0] + TOKEN[2])
+                 if rows[y][x * channels:x * channels + 3] != b'\x00\x00\x00']
+        d.check('redacted token is black in the paste', not leaks, leaks[:5])
         saved = d.ok('editor.saveCopy', {'id': op, 'path': str(out / 'saved-copy.png'), 'overwrite': True})
         d.check('Save a copy is the same PNG', saved['sha256'] == copied['sha256'])
         view = d.ok('editor.view', {'id': op, 'action': 'inspect'})
@@ -203,6 +209,7 @@ def main():
             d.ok('editor.submit', {'id': op})
             for _ in range(600):
                 operation = d.call('operation.inspect', {'id': op}, retry_starting=False)
+                d.check('operation.inspect answers', operation.get('ok'), operation.get('error'))
                 result = operation.get('result') or {}
                 state = result.get('state') or (result.get('operation') or {}).get('state')
                 if state in ('completed', 'failed', 'partial', 'cancelled'):
@@ -214,6 +221,9 @@ def main():
             d.ok('editor.cancel', {'id': op})
         d.log['ok'] = True
     finally:
+        # A failed run leaves no editor open unless asked to.
+        if not d.log['ok'] and not args.keep_open and d.log.get('operationId'):
+            d.call('editor.cancel', {'id': d.log['operationId']}, retry_starting=False)
         d.save()
     print(json.dumps({'ok': d.log['ok'], 'operationId': d.log.get('operationId'), 'checks': len(d.log['checks'])}))
 

@@ -179,26 +179,31 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
  // stages it as copy.png and the resident puts it on the clipboard through
  // its native adapter. One copy at a time; nothing is handed off for upload.
  constexpr qint64 copyBytes=128LL*1024*1024;
- bool copyPending=false;std::function<void(QJsonObject,QString,QString)> copyReply;QJsonObject copyInfo;
+ bool copyPending=false;std::function<void(QJsonObject,QString,QString)> copyReply;QJsonObject copyInfo;QString copyId;
+ // A copy the resident never answers fails here, so the window never stays busy.
+ QTimer copyDeadline;copyDeadline.setSingleShot(true);copyDeadline.setInterval(30000);
  const auto copyFailed=[&](const QString& code,const QString& reason){
-  copyPending=false;window->showCopyFailed(reason);
+  copyPending=false;copyDeadline.stop();copyId.clear();files.discardCopy();window->showCopyFailed(reason);
   if(auto reply=std::exchange(copyReply,{}))reply({},code,"The image was not copied: "+reason);
  };
  const std::function<bool(std::function<void(QJsonObject,QString,QString)>)> startCopy=[&](std::function<void(QJsonObject,QString,QString)> reply)->bool{
   if(terminal||finalizing||!window||copyPending)return false;
-  const bool started=window->exportForCopy([&](const QByteArray& png,const QSize& size){
+  // Writing, flushing and hashing the staged copy run on the export worker.
+  const bool started=window->exportForCopy([&](const QByteArray& png,const QSize& size,const QString& digest){
    if(terminal)return;
    if(png.isEmpty()){copyFailed("edit_export_failed","the edited image could not be encoded as PNG");return;}
    if(png.size()>copyBytes){copyFailed("input_excessive",QString("the edited image is %1, over the %2 clipboard limit").arg(ByteSize::localized(png.size(),1),ByteSize::localized(copyBytes,1)));return;}
-   const auto digest=files.writeCopy(png);
    if(digest.isEmpty()){copyFailed("image_job_io","the image could not be prepared for the clipboard");return;}
    copyInfo={{"bytes",double(png.size())},{"sha256",digest},{"width",size.width()},{"height",size.height()}};
-   auto frame=envelope(nonce);frame["bytes"]=QString::number(png.size());frame["sha256"]=digest;frame["width"]=size.width();frame["height"]=size.height();
-   if(control.send("copyImage",frame).isEmpty())fail();
-  });
+   copyId=QUuid::createUuid().toString(QUuid::WithoutBraces);
+   auto frame=envelope(nonce);frame["copyId"]=copyId;frame["bytes"]=QString::number(png.size());frame["sha256"]=digest;frame["width"]=size.width();frame["height"]=size.height();
+   if(control.send("copyImage",frame).isEmpty()){fail();return;}
+   copyDeadline.start();
+  },[&files,copyBytes](const QByteArray& png){return png.size()>copyBytes?QString():files.writeCopy(png);});
   if(started){copyPending=true;copyReply=std::move(reply);}
   return started;
  };
+ QObject::connect(&copyDeadline,&QTimer::timeout,&app,[&]{if(copyPending)copyFailed("editor_timeout","the clipboard did not answer in time");});
  // Agent commands arrive from the resident's editor.* session methods.
  const auto command=[&](const QString& name,const QJsonObject& params,QString& code,QString& message,bool& deferred,std::function<void(QJsonObject,QString,QString)> done)->QJsonObject{
   auto denied=[&](const QString& c,const QString& m){code=c;message=m;return QJsonObject{};};
@@ -310,12 +315,13 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
    if(object.size()!=4||(scheme!="dark"&&scheme!="light")){fail();return;}
    Theme::setScheme(scheme=="light"?Theme::Scheme::Light:Theme::Scheme::Dark);return;
   }
-  if(type=="copyResult"&&active&&window&&copyPending){
+  if(type=="copyResult"&&active&&window){
    // The resident's answer for the staged copy; copy.png is already gone.
-   if(!object["ok"].isBool()||object.size()!=(object["ok"].toBool()?4:6)||(!object["ok"].toBool()&&(!object["code"].isString()||!object["message"].isString()))){fail();return;}
-   files.discardCopy();
+   if(!object["ok"].isBool()||!object["copyId"].isString()||object.size()!=(object["ok"].toBool()?5:7)||(!object["ok"].toBool()&&(!object["code"].isString()||!object["message"].isString()))){fail();return;}
+   // An answer for a copy that already timed out here is dropped.
+   if(!copyPending||object["copyId"].toString()!=copyId)return;
    if(!object["ok"].toBool()){copyFailed(object["code"].toString().left(64),object["message"].toString().left(256));return;}
-   copyPending=false;window->showCopied();
+   copyPending=false;copyDeadline.stop();copyId.clear();window->showCopied();
    if(auto reply=std::exchange(copyReply,{})){auto result=copyInfo;result["copied"]=true;reply(result,{},{});}
    return;
   }

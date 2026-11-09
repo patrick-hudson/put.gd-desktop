@@ -295,7 +295,7 @@ def create_server(adapter: CliAdapter) -> MCPServer:
             params['overwrite'] = True
         return await adapter.call('editor.saveCopy', params)
 
-    @server.tool(annotations=ToolAnnotations(read_only_hint=False, destructive_hint=False, open_world_hint=False))
+    @server.tool(annotations=effect)
     async def copy_editor_image(id: str) -> Json:
         """Copy image (Ctrl+Shift+C): put the same sanitized PNG that Upload and save_editor_copy produce on the desktop clipboard, replacing what it held. Nothing is uploaded and no history item is created; returns copied, bytes, sha256, width and height."""
         return await adapter.call('editor.copy', {'id': id}) if identifier(id) else invalid()

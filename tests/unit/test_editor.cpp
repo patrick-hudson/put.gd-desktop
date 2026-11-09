@@ -853,6 +853,9 @@ private slots:
   QVERIFY(apply({add({{"kind","step"},{"at",QJsonArray{200,50}},{"number",7}})}));QCOMPARE(doc.nextStepNumber(),8);
   // A size change keeps the centre; a blur goes back to blur.
   QVERIFY(apply({QJsonObject{{"op","update"},{"shapeId",second},{"shape",QJsonObject{{"size",32}}}}}));QCOMPARE(Commands::shapeJson(*doc.find(quint64(second.toDouble())))["at"].toArray(),(QJsonArray{100,50}));
+  {quint64 pixelation=0;for(const auto& shape:doc.shapes())if(shape.kind==Shape::Kind::Blur)pixelation=shape.id;QVERIFY(pixelation);
+   QVERIFY(apply({QJsonObject{{"op","update"},{"shapeId",double(pixelation)},{"shape",QJsonObject{{"style","blur"}}}}}));
+   QVERIFY(!doc.find(pixelation)->pixelate);QCOMPARE(Commands::shapeJson(*doc.find(pixelation))["style"].toString(),QString("blur"));}
   const auto shapes=doc.shapes().size();
   for(const auto& bad:{QJsonObject{{"kind","step"},{"rect",QJsonArray{0,0,10,10}}},QJsonObject{{"kind","step"}},QJsonObject{{"kind","step"},{"at",QJsonArray{1,1}},{"number",0}},
        QJsonObject{{"kind","step"},{"at",QJsonArray{1,1}},{"size",8}},QJsonObject{{"kind","pen"}},QJsonObject{{"kind","pen"},{"points",QJsonArray{}}},

@@ -218,7 +218,7 @@ EditorWindow::EditorWindow(editor::EditDocument& doc,QWidget* parent):QWidget(pa
  properties->addWidget(stepRow_);
  connect(stepNumber_,&QSpinBox::valueChanged,this,[this](int value){
   if(syncingStep_||busy_)return;
-  if(const auto* shape=doc_.find(canvas_->selected());shape&&shape->kind==editor::Shape::Kind::Step){auto next=*shape;next.number=value;if(doc_.replace(next)){canvas_->update();refresh();}return;}
+  if(const auto* shape=doc_.find(canvas_->selected());shape&&shape->kind==editor::Shape::Kind::Step){auto next=*shape;next.number=value;if(doc_.replace(next)){canvas_->documentChanged();refresh();}return;}
   canvas_->setNextStepNumber(value);refresh();
  });
  textRow_=column(panel,layout);layout->addWidget(fieldLabel("Font",textRow_));
@@ -738,7 +738,7 @@ bool EditorWindow::requestCopy(){
  if(busy_||savingCopy_||copying_)return false;
  emit copyRequested();return true;
 }
-bool EditorWindow::exportForCopy(ExportDone done){
+bool EditorWindow::exportForCopy(ExportDone done,std::function<QString(const QByteArray&)> stage){
  if(busy_||savingCopy_||copying_)return false;
  finishPendingEdits();
  // The same snapshot and render as Save a copy, off the GUI thread.
@@ -746,10 +746,10 @@ bool EditorWindow::exportForCopy(ExportDone done){
  copying_=true;lastCopy_={{"status","copying"}};
  for(auto* button:{save_,saveInstead_,chooseAnother_,upload_,cancel_,copyImage_})button->setEnabled(false);
  copyImage_->setMinimumWidth(copyImage_->sizeHint().width());copyImage_->setText("Copying…");
- struct Result {QByteArray png;QSize size;};
+ struct Result {QByteArray png;QSize size;QString staged;};
  auto result=std::make_shared<Result>();
- auto* thread=QThread::create([snapshot=std::move(snapshot),result]{result->png=snapshot.exportPng();result->size=snapshot.crop().size();});
- connect(thread,&QThread::finished,this,[result,done=std::move(done)]{done(result->png,result->size);});
+ auto* thread=QThread::create([snapshot=std::move(snapshot),result,stage=std::move(stage)]{result->png=snapshot.exportPng();result->size=snapshot.crop().size();if(stage&&!result->png.isEmpty())result->staged=stage(result->png);});
+ connect(thread,&QThread::finished,this,[result,done=std::move(done)]{done(result->png,result->size,result->staged);});
  connect(thread,&QThread::finished,thread,&QObject::deleteLater);
  thread->start();return true;
 }

@@ -639,7 +639,7 @@ int main(int argc,char** argv){
   editor.selectTool(editor::Tool::Blur);editor.viewCommand({{"action","blurStyle"},{"style","pixelate"}},code,message);if(!code.isEmpty()||!grab("30f-editor-pixelate"))return 2;
   editor.selectTool(editor::Tool::Select);editor.canvas().select(quint64(created[6].toDouble()));if(!grab("30g-editor-pixelate-selected"))return 2;
   editor.canvas().select(0);editor.showCopied();if(!grab("30h-editor-image-copied"))return 2;
-  editor.exportForCopy([](const QByteArray&,const QSize&){});editor.showCopyFailed("the clipboard is not available");if(!grab("30i-editor-copy-failed"))return 2;
+  editor.exportForCopy([](const QByteArray&,const QSize&,const QString&){});editor.showCopyFailed("the clipboard is not available");if(!grab("30i-editor-copy-failed"))return 2;
   editor.viewCommand({{"action","dismissSavedCopy"}},code,message);
   editor.selectTool(editor::Tool::Line);editor.resize(900,620);if(!grab("30j-editor-compact-toolbar"))return 2;
   editor.resize(editor.minimumSizeHint().width(),620);if(!grab("30k-editor-minimum-width"))return 2;

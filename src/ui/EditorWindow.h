@@ -72,8 +72,10 @@ public:
  // Copy image (Ctrl+Shift+C): the host hands the PNG from exportForCopy to
  // the resident, which owns the clipboard; the window shows the outcome.
  bool requestCopy();
- using ExportDone=std::function<void(const QByteArray& png,const QSize& size)>;
- bool exportForCopy(ExportDone done);
+ // `stage` runs on the worker after encoding (the host writes and hashes the
+ // staged file there); `done` gets the PNG, its size and stage's result.
+ using ExportDone=std::function<void(const QByteArray& png,const QSize& size,const QString& staged)>;
+ bool exportForCopy(ExportDone done,std::function<QString(const QByteArray&)> stage={});
  bool copying() const {return copying_;}
  void showCopied();
  void showCopyFailed(const QString& reason);

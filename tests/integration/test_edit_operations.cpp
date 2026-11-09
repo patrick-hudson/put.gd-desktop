@@ -186,7 +186,8 @@ private slots:
   QCOMPARE(f.source.copies,before+1);QCOMPARE(f.source.copied.kind,QString("image"));
   const auto png=f.source.copied.encodedImage;QVERIFY(!inspectSanitizedPng(png));
   QCOMPARE(copied.result["sha256"].toString(),QString::fromLatin1(QCryptographicHash::hash(png,QCryptographicHash::Sha256).toHex()));
-  QCOMPARE(QImage::fromData(png,"PNG").convertToFormat(QImage::Format_RGB32).pixel(secret.center()),qRgb(0,0,0));
+  {const auto pasted=QImage::fromData(png,"PNG").convertToFormat(QImage::Format_RGB32);
+   for(int y=secret.top();y<=secret.bottom();++y)for(int x=secret.left();x<=secret.right();++x)QCOMPARE(pasted.pixel(x,y),qRgb(0,0,0));}
   // Still editing: no item, no artifact, no upload.
   QCOMPARE(journal.operation(id).state,QString("editing"));QVERIFY(journal.operation(id).items.isEmpty());QCOMPARE(f.provider->uploads.load(),0);
   {QDirIterator it(f.dir.filePath("data/artifacts"),QDir::Files,QDirIterator::Subdirectories);QVERIFY(!it.hasNext());}

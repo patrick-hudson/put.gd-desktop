@@ -12,6 +12,7 @@
 #include <QFileInfo>
 #include <QHash>
 #include <QSet>
+#include <QScopeGuard>
 #include <QImageWriter>
 #include <QJsonArray>
 #include <QJsonDocument>
@@ -163,24 +164,30 @@ EditorResult EditorJob::supervise(const std::function<bool(QFile&)>& stage,const
  request["appearance"]=appearance_=="light"?QStringLiteral("light"):QStringLiteral("dark");
  QProcess process;process.setProcessChannelMode(QProcess::SeparateChannels);process.setReadChannel(QProcess::StandardOutput);
  UiControl control(process);
- bool ready=false,editing=false,finalizing=false,checkpoint=false,protocolFailed=false,copying=false;QJsonObject reply;qint64 stderrBytes=0;
+ bool ready=false,editing=false,finalizing=false,checkpoint=false,protocolFailed=false,copying=false;QString copyId;QJsonObject reply;qint64 stderrBytes=0;
  // Copy image: the helper staged copy.png in this private directory. Read it
  // through the pinned identities, check it is the sanitized PNG it announced,
  // remove it, then hand the bytes to the clipboard. Never kept or uploaded.
- const auto copyPath=directory.path()+"/copy.png";
+ // The staging directory stays pinned by descriptor: copy.png is opened and
+ // removed through it, so a replaced path cannot redirect the handoff.
+ const int stagingFd=::open(QFile::encodeName(directory.path()).constData(),O_RDONLY|O_CLOEXEC|O_NOFOLLOW|O_DIRECTORY);
+ const auto closeStaging=qScopeGuard([stagingFd]{if(stagingFd>=0)::close(stagingFd);});
+ struct stat stagingIdentity{};const bool stagingPinned=stagingFd>=0&&!::fstat(stagingFd,&stagingIdentity)&&sameFile(stagingIdentity,directoryIdentity);
  const auto takeCopy=[&](const QJsonObject& payload,QByteArray& bytes)->Error{
   const Error invalid{"edit_output_invalid","The editor returned an image that is not a sanitized PNG",{}};
   qint64 count=0;const auto hash=payload["sha256"].toString();
-  struct stat directoryNow{},identity{};
-  const int fd=::open(QFile::encodeName(copyPath).constData(),O_RDONLY|O_CLOEXEC|O_NOFOLLOW|O_NONBLOCK);
-  ::unlink(QFile::encodeName(copyPath).constData());
+  struct stat identity{};
+  if(!stagingPinned)return {"editor_io","The editor's private staging is not available",{}};
+  const int fd=::openat(stagingFd,"copy.png",O_RDONLY|O_CLOEXEC|O_NOFOLLOW|O_NONBLOCK);
+  ::unlinkat(stagingFd,"copy.png",0);
   if(fd<0)return {"editor_io","The edited image for the clipboard is missing",{}};
   QFile file;if(!file.open(fd,QIODevice::ReadOnly,QFileDevice::AutoCloseHandle)){::close(fd);return {"editor_io","The edited image for the clipboard is missing",{}};}
-  if(!ownedDirectory(directory.path(),directoryNow)||!sameFile(directoryIdentity,directoryNow)||::fstat(fd,&identity)||!S_ISREG(identity.st_mode)||identity.st_uid!=getuid()||(identity.st_mode&0777)!=0600)return {"editor_io","The edited image for the clipboard is not private",{}};
+  if(::fstat(fd,&identity)||!S_ISREG(identity.st_mode)||identity.st_uid!=getuid()||(identity.st_mode&0777)!=0600)return {"editor_io","The edited image for the clipboard is not private",{}};
   if(!number(payload["bytes"],count)||count<1||count>maximumCopyBytes||identity.st_size!=count||hash.size()!=64||QByteArray::fromHex(hash.toLatin1()).toHex()!=hash.toLatin1())return invalid;
   bytes=file.read(count+1);
   if(bytes.size()!=count||QString::fromLatin1(QCryptographicHash::hash(bytes,QCryptographicHash::Sha256).toHex())!=hash)return invalid;
-  QSize size;if(inspectSanitizedPng(bytes,&size)||size.width()!=payload["width"].toInt()||size.height()!=payload["height"].toInt())return invalid;
+  // The same pixel admission as the upload handoff, before any adapter decodes it.
+  QSize size;if(inspectSanitizedPng(bytes,&size)||size.width()!=payload["width"].toInt()||size.height()!=payload["height"].toInt()||qint64(size.width())*size.height()>admissionPixels)return invalid;
   return {};
  };
  struct Outstanding {EditorSession::Reply reply;qint64 deadline=0;};
@@ -214,8 +221,8 @@ EditorResult EditorJob::supervise(const std::function<bool(QFile&)>& stage,const
    return;
   }
   if(type=="copyImage"&&editing&&!finalizing&&!checkpoint&&!copying){
-   if(payload.size()!=7||!payload["width"].isDouble()||!payload["height"].isDouble()){protocolFailed=true;return;}
-   copying=true;QByteArray bytes;auto error=takeCopy(payload,bytes);
+   if(payload.size()!=8||!payload["width"].isDouble()||!payload["height"].isDouble()||!payload["copyId"].isString()||payload["copyId"].toString().size()>64){protocolFailed=true;return;}
+   copying=true;copyId=payload["copyId"].toString();QByteArray bytes;auto error=takeCopy(payload,bytes);
    const auto handler=session->copyHandler();
    if(!error&&!handler)error={"clipboard_unavailable","The clipboard is not available",{}};
    if(error){session->finishCopy(error);return;}
@@ -258,7 +265,7 @@ EditorResult EditorJob::supervise(const std::function<bool(QFile&)>& stage,const
    if(!scheme.isEmpty()){auto frame=envelope(nonce);frame["scheme"]=scheme;if(control.send("appearance",frame).isEmpty()){protocolFailed=true;break;}}
   }
   if(copying)if(const auto copied=session->takeCopyResult()){
-   copying=false;auto frame=envelope(nonce);frame["ok"]=!*copied;
+   copying=false;auto frame=envelope(nonce);frame["copyId"]=copyId;frame["ok"]=!*copied;
    if(*copied){frame["code"]=copied->code.left(64);frame["message"]=copied->message.left(256);}
    if(!checkpoint&&control.send("copyResult",frame).isEmpty()){protocolFailed=true;break;}
   }

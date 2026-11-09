@@ -685,6 +685,18 @@
    "checks.cancelAccepted": ["mcp.editor-output"],
    "checks.cancelStoresNothing": ["mcp.editor-output"]
   },
+  "editor_tools_check": {
+   "checks.every new kind was created": ["cli.editor"],
+   "checks.tool step": ["editor.tool-step"],
+   "checks.tool pen": ["editor.tool-pen"],
+   "checks.tool ellipse": ["editor.tool-ellipse"],
+   "checks.tool line": ["editor.tool-line"],
+   "checks.Next number sets the placed step": ["editor.step-number"],
+   "checks.blur style pixelate": ["editor.blur-style"],
+   "checks.clipboard bytes are the copied PNG": ["editor.copy-image"],
+   "checks.redacted token is black in the paste": ["editor.copy-image"],
+   "checks.upload completed": ["editor.upload"]
+  },
   "record_run": {
    "rounds": ["cli.recording", "bar.record", "bar.pause", "bar.stop", "review.format"]
   }

@@ -700,12 +700,12 @@ private slots:
   QSignalSpy requested(&window,&EditorWindow::copyRequested);
   auto* copy=window.findChild<QPushButton*>("editorCopyImage");QVERIFY(copy&&copy->isVisible());copy->click();QCOMPARE(requested.count(),1);
   QTest::keyClick(&window,Qt::Key_C,Qt::ControlModifier|Qt::ShiftModifier);QCOMPARE(requested.count(),2);
-  QByteArray exported;bool finished=false;QVERIFY(window.exportForCopy([&](const QByteArray& png,const QSize& size){exported=png;finished=size==doc.crop().size();}));
+  QByteArray exported;bool finished=false;QVERIFY(window.exportForCopy([&](const QByteArray& png,const QSize& size,const QString&){exported=png;finished=size==doc.crop().size();}));
   QVERIFY(window.copying());QVERIFY(!copy->isEnabled());QVERIFY(!window.findChild<QPushButton*>("editorUpload")->isEnabled());QVERIFY(!window.exportForCopy({}));QVERIFY(!window.saveCopy());
   QVERIFY(putgd::test::waitFor([&]{return finished;},10000));window.showCopied();
   QVERIFY(!window.copying());QCOMPARE(copy->text(),QString("Image copied"));QCOMPARE(view({{"action","inspect"}})["lastCopy"].toObject()["status"].toString(),QString("copied"));
   QTemporaryDir dir;QString reason;QCOMPARE(writeCopy(window,dir.filePath("same.png"),reason),exported);
-  window.exportForCopy([](const QByteArray&,const QSize&){});window.showCopyFailed("no clipboard owner");
+  window.exportForCopy([](const QByteArray&,const QSize&,const QString&){});window.showCopyFailed("no clipboard owner");
   state=view({{"action","inspect"}});QCOMPARE(state["lastCopy"].toObject()["status"].toString(),QString("failed"));QCOMPARE(state["message"].toObject()["tone"].toString(),QString("error"));
   window.allowClose();
  }
