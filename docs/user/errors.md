@@ -9,7 +9,7 @@ filenames, history URLs, authorization values or credential references.
 | `output_required` | Choose an upload destination or enable Keep a local copy in General; neither output is currently enabled |
 | `source_unsupported` | Inspect native support and choose an available source |
 | `window_unavailable` | This compositor offers no window capture; the message names the missing protocol (on Budgie, labwc 0.20 or later and Mir 2.29 or later have it). Capture a region or the desktop instead |
-| `wlr_capture_unavailable` | This Budgie session cannot record: the compositor does not offer the Wayland protocol the message names, or the connection to it failed. Update the compositor, or restart the session if the connection failed |
+| `recording_unavailable` | `recording.prepare` can't start here; `details.reason` says why (a later request for a recording that has ended returns the same code with no reason). When it is `wlr_capture_unavailable` (Budgie and Hyprland), the compositor does not offer the Wayland protocol the message names, or the connection to it failed: update the compositor, or restart the session if the connection failed |
 | `busy_selecting` | Finish or cancel that interactive selection |
 | `queue_full`, `input_excessive` | Finish queued work or adjust documented resource limits |
 | `disk_space_insufficient` | Free up space in put.gd's data folder and try again (the details give `freeBytes`, `reserveBytes` and what was needed; a recording also gives `shortfallBytes`): an import needs its bytes, and a recording three 64 MiB budgets, above the system reserve. Nothing was accepted |
@@ -35,8 +35,9 @@ filenames, history URLs, authorization values or credential references.
 
 ## GNOME 50 setup states
 
-GNOME 50 needs one step: log out and back in once. Until then these states report
-what's missing (`capabilities.source.helper.setup`, `desktop.setup`, `putgd-cli`, the MCP
+If GNOME 50 setup reports `login_required`, log out and back in once. Any other
+state below has its own step. These states report what's missing
+(`result.source.helper.setup` in `putgd-cli capabilities`, `desktop.setup`, the MCP
 helper). Capture errors use the code in the second column.
 
 | State | Code | What to do |
@@ -48,7 +49,7 @@ helper). Capture errors use the code in the second column.
 | `unsupported_shell` | `gnome_shell_unsupported` | This GNOME Shell isn't 50; use a supported session |
 | `settings_locked` | `gnome_settings_locked` | Your administrator has locked GNOME's extension list |
 | `settings_unavailable` | `gnome_settings_unavailable` | `gsettings` is missing or failed; the message gives the reason |
-| `install_failed` | `gnome_extension_install_failed` | A directory under `~/.local/share/gnome-shell/` isn't writable; the message names it |
+| `install_failed` | `gnome_extension_install_failed` | A directory under `~/.local/share/gnome-shell/` isn't writable; the message names it. Logging out won't help until that's fixed; then start put.gd again |
 | `not_installed` | `gnome_extension_missing` | Reinstall the put.gd package |
 | `extension_blocked` | `gnome_extension_blocked` | Per-user extensions are off on this system; use the DEB or RPM |
 | `extension_error` | `gnome_extension_error` | GNOME Shell couldn't start the extension; the message gives its reason |

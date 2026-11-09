@@ -77,12 +77,14 @@ follows the upload to `completed` or `failed`.
 Codec rules: MP4 takes `h264` (default) or `h265`; WebM takes `vp9`; GIF and
 WebP take none. `audio.system` is the computer's playback and is refused for
 GIF/WebP (`invalid_request`); `audio.microphone` is reserved and refused
-(`recording_unsupported`). Errors: `recording_unavailable`,
+(`recording_unsupported`). Errors: `recording_unavailable` (from `prepare`,
+`details.reason` says why; on Budgie and Hyprland `wlr_capture_unavailable` is a
+missing image-copy global or a failed connection, named in the message; `inspect` and
+later commands on a recording that has ended return it with no reason),
 `disk_space_insufficient`, `recording_disk_full` (capture could not be finalized),
 `recording_unsupported`, `recording_active`, `recording_state`,
 `recording_busy`, `recording_stale`, `recording_mask_unknown`,
 `region_unavailable` (a Wayland desktop without a region selector),
-`wlr_capture_unavailable` (Budgie: a missing image-copy global or a failed connection, named in the message),
 `recording_animation_too_long`, `recording_animation_too_large`,
 `recording_export_failed`, `file_exists`, plus the shared `invalid_request`,
 `queue_full`, `busy_selecting`, `editor_active` and `output_required`.
