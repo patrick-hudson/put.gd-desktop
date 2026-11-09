@@ -493,9 +493,9 @@ class SmokeCheck(unittest.TestCase):
 
 
 class QuitResidents(unittest.TestCase):
-    def test_collection_waits_for_the_resident_but_not_a_clipboard_keeper(self):
-        """Only a live resident delays collection after the quit request."""
-        for name, remains in [('putgd', True), ('putgd-clipboard-keeper', False)]:
+    def test_collection_waits_for_provider_processes_but_not_a_clipboard_keeper(self):
+        """A resident or provider helper delays collection; a keeper does not."""
+        for name, remains in [('putgd', True), ('putgd-proton', True), ('putgd-clipboard-keeper', False)]:
             with self.subTest(name=name), tempfile.TemporaryDirectory(prefix='pg-w-') as temp:
                 root = Path(temp)
                 shutil.copy(shutil.which('sleep'), root/name)
