@@ -44,6 +44,7 @@ qemu-system-x86_64 -enable-kvm -machine q35 -cpu host -smp 2 -m 6144 \
   -netdev user,id=net0,hostfwd=tcp:127.0.0.1:22220-:22 \
   -device virtio-net-pci,netdev=net0 -vnc 127.0.0.1:20 -display none \
   -daemonize -pidfile "$provision_control/qemu.pid"
+python3 -c 'import shlex, sys; print("provision_control=" + shlex.quote(sys.argv[1])); print("provision_disk=" + shlex.quote(sys.argv[2]))' "$provision_control" "$provision_disk"
 ```
 
 Connect a VNC viewer to `127.0.0.1:5920`. Install Mint normally onto the disposable
@@ -52,10 +53,14 @@ throwaway guest password entered in the installer, never in a command or reposit
 While this new disk is still being provisioned, prepare its SSH identity and a
 small FAT seed using normal `dosfstools`/`mtools` utilities. Reuse an existing
 verified bootstrap identity when appropriate; never overwrite one used by existing
-runs. The commands below create fresh inputs only in the new control directory:
+runs. The commands below create fresh inputs only in the new control directory.
+The install usually outlives the first shell, so replace the second line with
+the `provision_control=` line the first block printed:
 
 ```sh
 set -eu
+provision_control='/path/printed/by/the/first/block'
+test -d "$provision_control"
 ssh-keygen -q -t ed25519 -N '' -f "$provision_control/identity"
 truncate -s 16M "$provision_control/seed.img"
 mkfs.vfat -n PUTGDLAB "$provision_control/seed.img"
@@ -66,7 +71,8 @@ mcopy -i "$provision_control/seed.img" tools/lab/package_scope.py ::package_scop
 mcopy -i "$provision_control/seed.img" "$provision_control/identity.pub" ::identity.pub
 ```
 
-Shut down this new provisioning guest before restarting it. With the ISO
+Shut down this new provisioning guest before restarting it. In a new shell,
+paste both assignments the first block printed. With the ISO
 detached (`-boot order=c`, remove `-cdrom`), add
 `-drive "file=$provision_control/seed.img,format=raw,if=virtio"` to the one-time
 QEMU command for this same unprovisioned disk. The seed contains the public key, bootstrap script, visibility helper, package supervisor and scope launcher only. In the guest terminal:

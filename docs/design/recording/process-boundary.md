@@ -37,8 +37,13 @@ child's pipes, mirroring the capture and editor helpers:
   interface scheme changes while the helper runs; the bar, review window and
   selector restyle at once (#198, [appearance](../appearance.md#recording-overlays)).
   Any other value ends the helper as a protocol error.
-- `shutdown` after upload, cancel or failure; the helper must exit normally
-  within 2 s or it is killed. Discard settles outstanding requests before
+- `shutdown` after upload, cancel, or a failure the helper reported or the
+  service raised (`RecordingService::fail` discards the session); the helper
+  must exit normally within 2 s or it is killed. A helper not yet `ready` gets
+  no frame and runs out that deadline. A failure the backend finds in the child
+  itself (`failChild`: a missed startup deadline, a wrong build, a protocol
+  violation or a stderr flood) kills it at once, with no `shutdown`.
+  Discard settles outstanding requests before
   shutdown, so a late `commandResult` from the authenticated, ready helper
   during teardown is ignored rather than treated as an unknown request.
   Envelope checks still apply; unknown request IDs during an active session

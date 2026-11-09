@@ -21,9 +21,12 @@ Part of [Screen recording](../recording.md).
 - Every accepted `edit` advances `revision`. `upload` and `edit` take the
   revision they were reviewed at and fail with `recording_stale` otherwise.
 - Animated exports (GIF, WebP) are silent and must fit
-  `limits.recordingAnimationSeconds` (retained duration) and
-  `limits.recordingAnimationEdge` (output long edge); set `maxEdge` on the
-  recording to downscale explicitly. Nothing is scaled or shortened silently.
+  `limits.recordingAnimationSeconds` (retained duration); a longer clip is
+  refused, never shortened. An output whose long edge is over
+  `limits.recordingAnimationEdge` gets the recording's `maxEdge` set to that
+  limit once the canvas is known (at `ready`, at stop, or when GIF or WebP is
+  chosen in review), and `inspect` shows the new `maxEdge` and `outputSize`. A
+  smaller `maxEdge` is kept.
 
 ## Session methods
 
@@ -33,7 +36,7 @@ All methods go through `putgd-cli` unchanged. `id` is the recording ID.
 | --- | --- | --- |
 | `recording.capabilities` | | availability and reason, target kinds, formats, codecs per format, audio sources, `active` recording ID, limits, `timeUnit`; no capture, no prompt |
 | `recording.windows` | | KDE Plasma, GNOME Wayland and Budgie (labwc 0.20+, Magpie on Mir 2.29+; ext toplevel identifiers, `rect` empty): the windows a `window` target can follow, `windows [{identity, title, appId, rect, active, minimized}]` and `activeExcluded` (the focused window is put.gd's own); put.gd's windows are never listed. `recording_unsupported` elsewhere, `helper_outdated` while an older GNOME extension is loaded ([Window recordings](wayland.md#window-recordings)); no capture, no prompt |
-| `recording.prepare` | `target {kind: monitor\|desktop\|region\|window, identity?, rect?}`, `format mp4\|webm\|gif\|webp`, `codec?`, `fps? (1–60; omitted: preferences.recordingFrameRate)`, `adaptiveFps? (boolean, default true)`, `audio? {system?, microphone?}`, `maxEdge?` | durable intent, then ready bounds/controls and any OS consent; replies at once with `state: preparing`; poll `inspect` for `ready`. A region without `rect` opens the desktop's selector (Escape cancels; `inspect` shows `selecting: true`); the chosen bounds appear in `inspect` as `target.rect`, and `overlayExcluded` / `overlayPlacement` say whether the control bar stayed out of the recorded pixels. Refused with `disk_space_insufficient` (details `freeBytes`, `reserveBytes`, `availableBytes`, `requiredBytes`, `shortfallBytes`, `hint`) before anything is accepted when free disk above the reserve can't hold three 64 MiB budgets (#213) |
+| `recording.prepare` | `target {kind: monitor\|desktop\|region\|window, identity?, rect?}`, `format mp4\|webm\|gif\|webp`, `codec?`, `fps? (1–60; omitted: preferences.recordingFrameRate)`, `adaptiveFps? (boolean, default true)`, `audio? {system?, microphone?}`, `maxEdge?` | durable intent, then ready bounds/controls and any OS consent; replies at once with `state: preparing`; poll `inspect` for `ready`. A region without `rect` opens the desktop's selector (Escape cancels; `inspect` shows `selecting: true`); the chosen bounds appear in `inspect` as `target.rect`, and `overlayExcluded` / `overlayPlacement` say whether the control bar stayed out of the recorded pixels. Refused with `disk_space_insufficient` (details `freeBytes`, `reserveBytes` for the system reserve, `reservedBytes` for uploads in progress, `availableBytes`, `requiredBytes`, `shortfallBytes`, `hint`) before anything is accepted when free disk above both reservations can't hold three 64 MiB budgets (#213) |
 | `recording.select` | `{id, rect: [x, y, w, h]}` | completes an open region selector with that rectangle as a drag would (X11 root pixels, logical desktop pixels on Wayland); `recording_state` when no selector is open |
 | `recording.start` / `pause` / `resume` / `stop` | `{id}` | acknowledged once the backend reached the state; a duplicate of the in-flight command returns the current state, a different one is `recording_busy`; an acknowledged user `stop` returns `durationUs` and `stopReason: user` and enters `reviewing`, including when stopped through CLI, MCP or the toggle shortcut. A `stop` that arrives after the helper stopped on its own (its budget) answers with the existing `reviewing` state and preserves `stopReason: budget` and `stopDetails`, like a duplicate stop |
 | `recording.cancel` | `{id}` | discards the clip; the operation ends `cancelled` |
