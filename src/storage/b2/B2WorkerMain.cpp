@@ -362,6 +362,12 @@ public:
             auto result=stat(error);if(error||result["status"]!="own")return result;
             auto saved=StorageReceipt::fromJson(request_["receipt"].toObject());
             if(settings()["linkMode"]!="authorized"){error={"link_refresh_unsupported","This link does not expire",{}};return {};}
+            // Download-only tokens work by filename, so the saved version must
+            // still be the version that name serves. Never renew onto a replacement.
+            const auto versions=client_.versions(saved.objectReference["key"].toString(),error);
+            if(!versions)return {};
+            QJsonObject latest;for(const auto& value:*versions){const auto file=value.toObject();if(file["action"]=="start")continue;latest=file;break;}
+            if(latest["action"]!="upload"||latest["fileId"]!=saved.objectReference["fileId"])return {{"status","foreign"}};
             QString expires;saved.directUrl=link(saved.objectReference["key"].toString(),expires,error);
             if(error)return {};saved.objectReference["linkExpiresAt"]=expires;
             return {{"status","own"},{"receipt",saved.toJson()}};

@@ -401,6 +401,11 @@ private slots:
         auto original=expired.objectReference,renewed=fresh.receipt.objectReference;original.remove("linkExpiresAt");renewed.remove("linkExpiresAt");QCOMPARE(original,renewed);
         QVERIFY(QDateTime::fromString(fresh.receipt.objectReference["linkExpiresAt"].toString(),Qt::ISODateWithMs)>QDateTime::currentDateTimeUtc());
         QCOMPARE(f.events("b2_get_download_authorization").size(),2);
+        // A retained old version is not proof that a filename-based link still serves it.
+        const auto recorded=f.versions().first().toObject();auto replacement=recorded;replacement["fileId"]="newer-foreign-version";replacement["fileInfo"]=QJsonObject{};
+        f.reset({{"versions",QJsonArray{recorded,replacement}}});
+        const auto refused=f.await<StatResult>([&](auto cb){f.provider.refreshLink(expired,cb);});
+        QCOMPARE(refused.status,QString("foreign"));QVERIFY(f.events("b2_get_download_authorization").isEmpty());
     }
     void testConnectionPublicAndAuthorized() {
         B2Fixture f;
