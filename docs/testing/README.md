@@ -15,6 +15,7 @@ What must be tested, how, and what has been recorded.
 
 - [Testing](testing.md): the repository's test suites and what each proves.
 - [Implementation evidence](verification.md): observed acceptance and blocked gates.
+- [Removed tests](removed-tests.md): what the November 2026 cuts removed, what no longer gets caught and how to bring a test back.
 - [Acceptance matrix](acceptance-matrix.md): required coverage and execution placement.
 - [Evidence retention](evidence-retention.md): what to keep, where records go and how to publish them.
 - [ThreadSanitizer dependency build](thread-sanitizer.md): the instrumented Qt used for thread checks.
