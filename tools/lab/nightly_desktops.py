@@ -37,7 +37,8 @@ import uuid
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
-FLOWS = dict(region_upload='Region', window_desktop='Window / desktop',
+# The idle-memory cell runs first: a fresh guest, before any cell can leave residue.
+FLOWS = dict(idle_memory='Idle memory', region_upload='Region', window_desktop='Window / desktop',
              recording_upload='Recording → upload', edit_upload='Edit → upload',
              link_browser='Link → browser', history_delete='History delete',
              auto_copy='Auto-copy', upload_clipboard='Upload clipboard',
@@ -347,6 +348,15 @@ def catalog(github, build, out, staged=False):
     raise RuntimeError('no exact-build UI catalog available')
 
 
+def idle_reading(rows):
+    """The idle-memory recipe's flat summary for the public receipt, if it got that far."""
+    match = next(filter(None, (re.search(r'idle_memory=(\{.*?\})', r.get('note') or '') for r in rows)), None)
+    try:
+        return json.loads(match[1]) if match else None
+    except ValueError:
+        return None
+
+
 def verdict(out, recipe):
     """Only terminal audited automatic assertions count; review/visual flags do not."""
     from tools.lab.surface_driver.collect import require_terminal
@@ -375,9 +385,10 @@ def verdict(out, recipe):
         if (env.get('cleanup_errors') or env.get('interrupted') or not rows
                 or input_blocked or any(text in assertion.lower() for text in infrastructure)):
             status = 'not_run'
+        memory = {'memory': idle_reading(rows)} if recipe == 'outcomes.idle_memory' else {}
         return cell(status, assertion[-1800:], terminal=terminal, observedBuild=observed['gitCommit'],
                     observations=list(dict.fromkeys((r.get('note') or '')[-1800:] for r in rows)),
-                    receiptSha256=digest(Path(out)/'receipt.json'), receipt=str(Path(out)/'receipt.json'))
+                    receiptSha256=digest(Path(out)/'receipt.json'), receipt=str(Path(out)/'receipt.json'), **memory)
     except (OSError, ValueError, KeyError, RuntimeError, TypeError):
         return cell(assertion='terminal audited receipt missing or invalid', receipt=str(Path(out)/'receipt.json'))
 
@@ -1071,8 +1082,8 @@ def publish(github, result, out, *, previous=None):
     for row in result['desktops']:
         compact = {}
         for flow, value in row['cells'].items():
-            compact[flow] = {k:value[k] for k in ('status','assertion','seconds','observedBuild','terminal','receipt','receiptSha256') if k in value}
-            compact[flow]['attempts'] = [{k:a[k] for k in ('status','assertion','terminal','receipt','receiptSha256','attempt') if k in a}
+            compact[flow] = {k:value[k] for k in ('status','assertion','seconds','observedBuild','terminal','receipt','receiptSha256','memory') if k in value}
+            compact[flow]['attempts'] = [{k:a[k] for k in ('status','assertion','terminal','receipt','receiptSha256','attempt','memory') if k in a}
                                          for a in value.get('attempts', [])]
         receipt = dict(desktop=row['desktop'], host=row['host'], release=result['release'],
             build=result['build'], cells=compact, evidence=row['evidence'],

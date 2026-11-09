@@ -11,6 +11,7 @@ import glob
 import hashlib
 import io
 import json
+import os
 import re
 import shlex
 import time
@@ -776,6 +777,94 @@ print(json.dumps(result))
             if not all(ctx.evidence.frames[f['path']]['visible_pixels'] for f in result['frames']):
                 ctx.blocked('Firefox navigation matched, but its required content frame is fully masked', issue=952)
 
+
+
+IDLE_SECONDS = 180
+IDLE_BUDGET_KB = 40*1024  # Acceptance matrix gate C.
+# Matched on mapped basenames. libgdk_pixbuf is not GTK; libcrypto is recorded only.
+IDLE_FORBIDDEN = re.compile(r'lib(?:gtk|gdk)-\d|libqgtk3\.so|KDEPlasmaPlatformTheme\d*\.so|libssl\.so|libQt6Network\.so')
+IDLE_READ = r"""import json,os
+from pathlib import Path
+p=Path('/proc')/str(IDENTITY['pid'])
+assert (p/'stat').read_text().split(') ',1)[1].split()[19]==IDENTITY['start']
+fields=[line.split(None,5) for line in (p/'maps').read_text().splitlines()]
+names=sorted({f[5].rsplit('/',1)[-1] for f in fields if len(f)==6 and f[5].startswith('/')})
+print(json.dumps(dict(rollup=(p/'smaps_rollup').read_text(),names=names,load=os.getloadavg()[0],cpus=os.cpu_count())))
+"""
+
+
+def idle_summary(reading, host_load, host_cpus):
+    """The receipt's flat record of one idle reading; sizes in kB as the kernel gives them."""
+    kb = {m[1]: int(m[2]) for m in re.finditer(r'^(Rss|Pss|Private_Clean|Private_Dirty|Swap):\s+(\d+) kB$',
+                                               reading['rollup'], re.M)}
+    return dict(rssKb=kb['Rss'], pssKb=kb['Pss'], ussKb=kb['Private_Clean']+kb['Private_Dirty'], swapKb=kb['Swap'],
+                forbidden=[n for n in reading['names'] if IDLE_FORBIDDEN.match(n)],
+                libcrypto=[n for n in reading['names'] if n.startswith('libcrypto.so')],
+                guestLoad=round(reading['load'], 2), guestCpus=reading['cpus'],
+                builderLoad=round(host_load, 2), builderCpus=host_cpus)
+
+
+def judge_idle(summary):
+    """Gate C. A library map does not depend on load; a size over the bar on a busy host proves nothing."""
+    mib = lambda kb: format(kb/1024, '.2f')+' MiB'
+    if summary['forbidden']:
+        raise RecipeFailed('forbidden libraries mapped in the idle resident: '+', '.join(summary['forbidden']))
+    if max(summary['rssKb'], summary['pssKb']) < IDLE_BUDGET_KB:
+        return
+    text = 'idle resident RSS '+mib(summary['rssKb'])+', PSS '+mib(summary['pssKb'])+' at or over the 40 MiB budget'
+    if summary['guestLoad'] >= summary['guestCpus'] or summary['builderLoad'] >= summary['builderCpus']:
+        raise RecipeBlocked(text+', but the host was not quiet')
+    raise RecipeFailed(text)
+
+
+@recipe('cli.launcher-background', timeout=320)
+def idle_memory(ctx):
+    from ..fixtures.resident import identity
+    ctx.expect(ctx.destination == 'local' and ctx.placement in ('boat', 'guest')
+               and ctx.profile.get('guest') and not ctx.target.physical,
+               'idle memory uses only an owned disposable guest')
+    scope = Scope(ctx)
+    original = ctx.target.app_executable
+    red = None
+    def restore():
+        ctx.target.app_executable = original
+        scope.restart({})
+    try:
+        scope.initialize()
+        # The driver forces Qt's accessibility bridge on for its probes. That is the
+        # row's workload, not the resident's: measure a fresh process without it.
+        wrapper = scope.root+'/idle-resident'
+        scope.write(wrapper, ('#!/bin/sh\nunset QT_LINUX_ACCESSIBILITY_ALWAYS_ON\nexec '+shlex.quote(original)+' "$@"\n').encode())
+        scope.python('import os\nos.chmod('+repr(wrapper)+',0o700)')
+        scope.defer('original resident route', restore, priority=500)
+        ctx.target.app_executable = wrapper
+        scope.restart({})
+        resident = identity(scope)  # Exactly the socket's owner, never a process-name match.
+        started = time.monotonic()
+        ctx.wait(lambda: time.monotonic()-started >= IDLE_SECONDS, str(IDLE_SECONDS)+' s idle window',
+                 timeout=IDLE_SECONDS+30, interval=1)
+        host_load, host_cpus = os.getloadavg()[0], os.cpu_count()
+        summary = idle_summary(scope.json(IDLE_READ.replace('IDENTITY', repr(resident))), host_load, host_cpus)
+        # Asked only after the read, because answering faults pages back in. The resident
+        # unmaps its clean library pages once quiet, so these say what the RSS leaves out.
+        try:
+            released = ctx.call('diagnostics').get('memory', {})
+        except RecipeFailed:
+            released = {}
+        summary.update(imagePageReleases=released.get('imagePageReleaseCount'),
+                       imagePageReleaseBytes=released.get('lastImagePageReleaseBytes'))
+        ctx.note('idle_memory='+json.dumps(summary, sort_keys=True))
+        judge_idle(summary)
+    except RecipeFailed as error:
+        red = error
+        raise
+    finally:
+        # A red reading stands: a cleanup failure must not turn it grey.
+        if scope.close():
+            if red:
+                ctx.note('idle_memory_cleanup_failed=1')
+            else:
+                ctx.blocked('idle memory cleanup failed')
 
 @recipe('history.delete-remote', 'confirm.history-delete', desktop_drawn=True, timeout=300)
 def history_delete(ctx):

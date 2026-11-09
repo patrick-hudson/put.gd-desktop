@@ -447,13 +447,13 @@ class NightlyTests(unittest.TestCase):
 
     def test_lost_session_stops_the_row_with_the_first_failure(self):
         record, cells, retire, slot = self.lost_session_row(['resident quit transport unavailable; private session retained'])
-        self.assertEqual(cells, ['region_upload-1'])
+        self.assertEqual(cells, ['idle_memory-1'])
         reason = record['notRunReason']
-        self.assertIn('guest session lost in region_upload attempt 1: target session command unavailable', reason)
-        self.assertEqual(record['stoppedEarly']['flow'], 'region_upload')
-        self.assertEqual(record['cells']['region_upload']['status'], 'not_run')
-        self.assertEqual(record['cells']['region_upload']['assertion'], reason)
-        untouched = [v for k, v in record['cells'].items() if k != 'region_upload']
+        self.assertIn('guest session lost in idle_memory attempt 1: target session command unavailable', reason)
+        self.assertEqual(record['stoppedEarly']['flow'], 'idle_memory')
+        self.assertEqual(record['cells']['idle_memory']['status'], 'not_run')
+        self.assertEqual(record['cells']['idle_memory']['assertion'], reason)
+        untouched = [v for k, v in record['cells'].items() if k != 'idle_memory']
         self.assertTrue(all(v['status'] == 'not_run' and not v.get('attempts') and v['assertion'].endswith(reason) for v in untouched))
         retire.assert_called_once()
         self.assertFalse(slot)
@@ -462,7 +462,7 @@ class NightlyTests(unittest.TestCase):
     def test_lost_session_after_a_passing_recipe_reports_the_cleanup_failure(self):
         record, _, _, _ = self.lost_session_row(['resident quit transport unavailable; private session retained'],
                                                 rows=[{'functional': 'passed', 'note': 'operationId=unrelated'}])
-        self.assertTrue(record['notRunReason'].endswith('region_upload attempt 1: private target cleanup failed'))
+        self.assertTrue(record['notRunReason'].endswith('idle_memory attempt 1: private target cleanup failed'))
         self.assertNotIn('unrelated', record['notRunReason'])
 
     def test_lost_session_that_also_left_unsafe_cleanup_stays_retained(self):
@@ -471,7 +471,7 @@ class NightlyTests(unittest.TestCase):
         self.assertEqual(len(cells), 1)
         retire.assert_not_called()
         self.assertTrue(slot and record['cleanupBlocked'])
-        self.assertTrue(record['notRunReason'].startswith('guest session lost in region_upload attempt 1'))
+        self.assertTrue(record['notRunReason'].startswith('guest session lost in idle_memory attempt 1'))
 
     def test_only_an_unquittable_resident_counts_as_a_lost_session(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -825,14 +825,26 @@ with n.controller_shutdown(workers):
         self.assertEqual(sum(w[0]=='POST' and w[1].endswith('/1/comments') for w in github.writes),1)
         self.assertFalse(any(w[0]=='PATCH' for w in github.writes))
 
-    def receipt(self, root, *, functional='passed', review=True, cleanup=None, note='pixel oracle mismatch'):
+    def receipt(self, root, *, functional='passed', review=True, cleanup=None, note='pixel oracle mismatch', recipe='outcomes.region_upload'):
         value = dict(environment=dict(build=BUILD, observed_build=dict(gitCommit=BUILD,dirty=False),
                 coverage_export=dict(published=True,scanned_before_copy=True,copy_scan_passed=True),
                 cleanup_errors=cleanup), secret_scan=dict(passed=True),
-            interactions=[dict(recipe='outcomes.region_upload',functional=functional,review=review,visual='frames',note=note)])
+            interactions=[dict(recipe=recipe,functional=functional,review=review,visual='frames',note=note)])
         (root/'receipt.json').write_text(json.dumps(value))
         (root/'coverage.json').write_text('{}')
         mark_terminal(root, 0 if functional == 'passed' else 2)
+
+    def test_idle_reading_reaches_the_cell_and_only_that_cell(self):
+        reading = '{"forbidden": [], "pssKb": 12000, "rssKb": 32000}'
+        with tempfile.TemporaryDirectory() as tmp:
+            self.receipt(Path(tmp), note='idle_memory='+reading, recipe='outcomes.idle_memory')
+            self.assertEqual(nightly.verdict(tmp,'outcomes.idle_memory')['memory'], json.loads(reading))
+        with tempfile.TemporaryDirectory() as tmp:
+            self.receipt(Path(tmp))
+            self.assertNotIn('memory', nightly.verdict(tmp,'outcomes.region_upload'))
+        with tempfile.TemporaryDirectory() as tmp:
+            self.receipt(Path(tmp), functional='blocked', note='no reading', recipe='outcomes.idle_memory')
+            self.assertEqual(nightly.verdict(tmp,'outcomes.idle_memory')['memory'], None)
 
     def test_review_does_not_gate_automatic_oracles(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -922,6 +934,19 @@ with n.controller_shutdown(workers):
             for v in row['cells'].values():v.update(status='green')
             nightly.publish(github,result,Path(tmp))
             self.assertIn(('PATCH','repos/owner/repo/issues/2',dict(state='closed')),github.writes)
+
+    def test_the_public_receipt_carries_the_memory_reading(self):
+        github=FakeGitHub()
+        value=nightly.cell('green','',memory=dict(rssKb=32000))
+        row=dict(desktop='Cinnamon',host='m74',evidence='/owned/run',cells=dict(idle_memory=value))
+        with tempfile.TemporaryDirectory() as tmp:
+            nightly.publish(github,dict(release='tag',date='today',build=BUILD,desktops=[row]),Path(tmp))
+            table=(Path(tmp)/'results.md').read_text()
+        receipt=next(w[2] for w in github.writes if w[0]=='POST' and 'comments' in w[1])
+        self.assertIn('"rssKb": 32000',receipt['body'])
+        self.assertIn('Idle memory',table)
+        cells=next(line for line in table.splitlines() if line.startswith('| Cinnamon')).split(' | ')
+        self.assertIn('🟢',cells[1])
 
     def test_grey_infrastructure_creates_no_failure_issue(self):
         github=FakeGitHub()
