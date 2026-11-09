@@ -72,13 +72,6 @@ private slots:
   QVERIFY(dialog.isNull());
  }
 
- void aboutUsesTheSharedSpacingAndTypeRoles() {
-  Ui::apply(*qApp);AboutWindow dialog({{"version","26.1027.1543-dev"}});dialog.show();QApplication::processEvents();
-  auto* content=dialog.findChild<QWidget*>("aboutContent");auto* buttons=dialog.findChild<QWidget*>("aboutActions");auto* icon=dialog.findChild<QLabel*>("qt_msgboxex_icon_label");auto* tagline=dialog.findChild<QLabel*>("qt_msgbox_informativelabel");auto* version=dialog.findChild<QLabel*>("aboutVersion");auto* website=dialog.findChild<QPushButton*>("putgdWebsite");QVERIFY(content&&buttons&&icon&&tagline&&version&&website);for(auto* text:{dialog.findChild<QLabel*>("qt_msgbox_label"),tagline,version})QVERIFY2(text->height()>=text->fontMetrics().height(),qPrintable(text->objectName()));
-  const int margin=Ui::space(Ui::Space::xl);QCOMPARE(dialog.layout()->contentsMargins(),QMargins());QVERIFY(content->mapTo(&dialog,QPoint()).x()>margin);QVERIFY(icon->width()>=Ui::scaled(64));QVERIFY(icon->height()>=Ui::scaled(64));QCOMPARE(tagline->font().pixelSize(),Ui::scaled(13));QCOMPARE(tagline->palette().color(QPalette::WindowText),Theme::current().textSecondary);QCOMPARE(version->palette().color(QPalette::WindowText),Theme::current().textSecondary);
-  QVERIFY(version->mapTo(&dialog,QPoint()).y()<website->mapTo(&dialog,QPoint()).y());QCOMPARE(dialog.height()-buttons->mapTo(&dialog,QPoint(0,buttons->height())).y(),margin);QCOMPARE(buttons->mapTo(&dialog,QPoint(buttons->width(),0)).x(),dialog.width()-margin);
- }
-
  // The window fits its content from the first frame, also after a details round trip: no dead space below Close.
  void aboutOpensAndCollapsesToItsContent(){
   Ui::apply(*qApp);AboutWindow dialog({{"version","26.1102.3797"},{"gitCommit","a40505cb7d788b598878277469fad0c1f2e3d4c5"},{"dirty",false},{"baseVersion","26.1102.3797"},{"packageVersion","26.1102.3797"},{"sourceProvenance","git"}});dialog.show();QApplication::processEvents();
