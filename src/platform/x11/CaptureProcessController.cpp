@@ -87,7 +87,7 @@ CaptureProcessController::Ticket CaptureProcessController::prepare(const QJsonOb
  requestedCursor_=cursorCompatible_?residentCursor:0;
  if(!holdable||!residentCursor){releaseCrosshair();forgetHeldButtons();}
  else if(!cursorCache_.holding()&&cursorCache_.holdPointer())holdDeadline_.start(crosshairHoldMs);
- earlyTerminal_=std::move(earlyTerminal);earlyReleased_=std::move(earlyReleased);region_=frozen["action"]=="region";previewed_=false;previewCursor_=0;selection_.reset();delayMs_=delaySeconds>0?delaySeconds*1000:0;
+ earlyTerminal_=std::move(earlyTerminal);earlyReleased_=std::move(earlyReleased);region_=frozen["action"]=="region";previewed_=false;previewCursor_=0;selection_.reset();selectionLayout_={};delayMs_=delaySeconds>0?delaySeconds*1000:0;
  launchPid_=0;launchStartTicks_.clear();limits_=limits;nonce_=QUuid::createUuid().toString(QUuid::WithoutBraces);++generation_;ticket->generation_=generation_;preparation_=ticket;prepared_=true;beginRequested_=begun_=false;failure_={};result_={};ready_=resultReceived_=accepted_=exited_=cancelling_=false;
  directory_=std::make_unique<QTemporaryDir>("/tmp/putgd-capture-XXXXXX");
  // Recursive QTemporaryDir removal could erase a replacement inode.
@@ -210,10 +210,10 @@ void CaptureProcessController::receive(const QString& type,const QJsonObject& pa
  }
  if(type=="result"){
   // A region result also names the logical rectangle that was selected (#1363).
-  const auto selection=payload["selection"].toArray();bool selectionOk=region_==payload.contains("selection")&&(!region_||selection.size()==4);
+  const auto selection=payload["selection"].toArray();bool selectionOk=region_==payload.contains("selection")&&region_==payload.contains("layout")&&(!region_||(selection.size()==4&&X11NativeSnapshot::describes(payload["layout"].toArray())));
   for(const auto& value:selection)selectionOk=selectionOk&&value.isDouble()&&std::isfinite(value.toDouble());
-  if(!ready_||!begun_||resultReceived_||payload.size()!=6+int(region_)||!selectionOk||!payload["bytes"].isString()||!payload["sha256"].isString()||!payload["width"].isDouble()||!payload["height"].isDouble()){fail(unavailable("capture_protocol","result_frame"));return;}
-  if(region_)selection_=QRectF(selection[0].toDouble(),selection[1].toDouble(),selection[2].toDouble(),selection[3].toDouble());
+  if(!ready_||!begun_||resultReceived_||payload.size()!=6+2*int(region_)||!selectionOk||!payload["bytes"].isString()||!payload["sha256"].isString()||!payload["width"].isDouble()||!payload["height"].isDouble()){fail(unavailable("capture_protocol","result_frame"));return;}
+  if(region_){selection_=QRectF(selection[0].toDouble(),selection[1].toDouble(),selection[2].toDouble(),selection[3].toDouble());selectionLayout_=payload["layout"].toArray();}
   resultReceived_=true;deadline_.start(10000);decode(payload);return;
  }
  fail(unavailable("capture_protocol","frame_type"));

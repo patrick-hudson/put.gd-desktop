@@ -75,7 +75,7 @@ int main(int argc,char** argv){
    if(mode.startsWith("preview-late")){QTimer::singleShot(mode=="preview-late-long"?6000:700,&app,[&,ready]{control.send("ready",ready);});return;}
    control.send("ready",ready);
    if(mode=="early-exit"){app.quit();return;}
-   if(mode=="prebegin-result"){auto result=identity;result["bytes"]="45";result["sha256"]=QString(64,'0');result["width"]=1;result["height"]=1;if(bootstrap["target"].toObject()["action"]=="region")result["selection"]=QJsonArray{10,20,30,40};control.send("result",result);}
+   if(mode=="prebegin-result"){auto result=identity;result["bytes"]="45";result["sha256"]=QString(64,'0');result["width"]=1;result["height"]=1;if(bootstrap["target"].toObject()["action"]=="region"){result["selection"]=QJsonArray{10,20,30,40};result["layout"]=QJsonArray{QJsonObject{{"identity","monitor"},{"logical",QJsonArray{0,0,640,480}},{"native",QJsonArray{0,0,640,480}},{"rotation",0}}};}control.send("result",result);}
    return;
   }
   if(!bootstrapped||payload.size()!=(type=="preview"?4:type=="begin"||type=="handoff_done"?3:2)||payload["nonce"]!=identity["nonce"]||payload["generation"]!=identity["generation"]){control.stop();app.exit(4);return;}
@@ -113,7 +113,7 @@ int main(int argc,char** argv){
    begun=true;if(mode=="waiting")return;
    QFile output(bootstrap["path"].toString());if(!output.open(QIODevice::WriteOnly)){app.exit(5);return;}const int side=mode=="large"?700:3;QImage image(side,mode=="large"?700:2,QImage::Format_ARGB32);image.fill(Qt::blue);image.save(&output,"PNG");output.close();if(!output.open(QIODevice::ReadOnly)){app.exit(5);return;}const auto bytes=output.readAll();output.close();auto result=identity;result["bytes"]=QString::number(bytes.size());result["sha256"]=QString::fromLatin1(QCryptographicHash::hash(bytes,QCryptographicHash::Sha256).toHex());result["width"]=mode=="wrong-dimension"?1000000000:image.width();result["height"]=image.height();if(mode=="wrong-hash")result["sha256"]=QString(64,'0');
    // A region result names its logical selection (#1363); other actions never do.
-   if(bootstrap["target"].toObject()["action"]=="region"&&mode!="no-selection")result["selection"]=QJsonArray{10,20,30,40};
+   if(bootstrap["target"].toObject()["action"]=="region"&&mode!="no-selection"){result["selection"]=QJsonArray{10,20,30,40};result["layout"]=QJsonArray{QJsonObject{{"identity","monitor"},{"logical",QJsonArray{0,0,640,480}},{"native",QJsonArray{0,0,640,480}},{"rotation",0}}};}
    control.send("result",result);if(mode=="duplicate")control.send("result",result);return;
   }
   if(type=="accept"&&begun){app.quit();return;}

@@ -2,6 +2,7 @@
 #include "X11Reply.h"
 #include "X11WindowOwner.h"
 #include <QGuiApplication>
+#include <QJsonObject>
 #include <QScreen>
 #include <QWindow>
 #include <QPixmap>
@@ -9,6 +10,11 @@
 #include <cstring>
 namespace putgd {
 namespace {using x11::reply;Error targetError(){return {"capture_target","Focused external window is unavailable or changed",{}};}}
+QJsonArray describeLayout(const QList<CaptureFrame>& frames){
+ QJsonArray out;
+ for(const auto& frame:frames)out.append(QJsonObject{{"identity",frame.identity},{"logical",QJsonArray{frame.logicalRect.x(),frame.logicalRect.y(),frame.logicalRect.width(),frame.logicalRect.height()}},{"native",QJsonArray{frame.nativeRect.x(),frame.nativeRect.y(),frame.nativeRect.width(),frame.nativeRect.height()}},{"rotation",frame.rotation}});
+ return out;
+}
 X11Capture::X11Capture(QObject* parent):QObject(parent) {
  if(QGuiApplication::platformName()!="xcb")return;
  connection_=xcb_connect(nullptr,nullptr);if(xcb_connection_has_error(connection_))return;

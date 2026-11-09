@@ -39,7 +39,7 @@ private:
  QJsonObject freeze(const QString& action,Error&);
  // Remembers a region the helper captured, for Repeat last region (resident memory only).
  std::function<void(PayloadResult)> remembering(const QJsonObject& frozen,std::function<void(PayloadResult)>);
- struct RegionMemory {QJsonArray selection;QJsonObject layout;};
+ struct RegionMemory {QJsonArray selection,layout;};
  std::optional<RegionMemory> lastRegion_;
  CountdownProcess countdown_{QStringLiteral("putgd-capture")};
  X11NativeSnapshot capture_;X11Clipboard clipboard_;X11Shortcuts shortcuts_;CaptureProcessController helper_;qint64 uiProcess_=0;

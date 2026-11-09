@@ -1,5 +1,6 @@
 #pragma once
 #include "platform/Geometry.h"
+#include <QJsonArray>
 #include <QObject>
 #include <xcb/xcb.h>
 namespace putgd {
@@ -18,6 +19,9 @@ struct X11Target {
  // before selection, and the result is cut from those frames.
  bool screenshotFirst=false;
 };
+// The monitors a region was chosen on, for Repeat last region (#1363): one
+// {identity, logical, native, rotation} per monitor, in layout order.
+QJsonArray describeLayout(const QList<CaptureFrame>&);
 class X11Capture final:public QObject {
  Q_OBJECT
 public:

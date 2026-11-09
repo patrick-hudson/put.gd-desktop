@@ -66,10 +66,21 @@ QRect X11NativeSnapshot::windowRect(xcb_window_t window,Error& error){
  uint32_t sides[4]={};auto extents=x11::reply(xcb_get_property_reply(connection_,xcb_get_property(connection_,0,window,atom("_NET_FRAME_EXTENTS"),XCB_ATOM_CARDINAL,0,4),nullptr));if(extents&&extents->format==32&&xcb_get_property_value_length(extents.get())==16)std::memcpy(sides,xcb_get_property_value(extents.get()),16);for(auto v:sides)if(v>32767){error=targetError();return {};}
  return QRect(coordinates->dst_x-int(sides[0]),coordinates->dst_y-int(sides[2]),geometry->width+int(sides[0]+sides[1]),geometry->height+int(sides[2]+sides[3]));
 }
-bool X11NativeSnapshot::sameArrangement(const QJsonObject& layout,const QJsonObject& other){
- return !layout.isEmpty()&&layout["outputs"]==other["outputs"]&&layout["root"]==other["root"]&&layout["scale"]==other["scale"];
+bool X11NativeSnapshot::describes(const QJsonArray& layout){
+ if(layout.isEmpty()||layout.size()>64)return false;
+ for(const auto& value:layout){const auto frame=value.toObject();if(frame.size()!=4||frame["identity"].toString().isEmpty()||frame["identity"].toString().size()>1024||!finiteRectangle(frame["logical"].toArray())||!integers(frame["native"].toArray())||!frame["rotation"].isDouble()||frame["rotation"].toDouble()!=frame["rotation"].toInt())return false;}
+ return true;
 }
-QJsonObject X11NativeSnapshot::freeze(const QString& action,const QSet<qint64>& excluded,Error& error,const QJsonArray& selection){
+bool X11NativeSnapshot::sameNativeOutputs(const QJsonArray& remembered,Error& error){
+ const auto current=layout(error)["outputs"].toArray();if(error||current.size()!=remembered.size())return false;
+ for(const auto& value:remembered){
+  const auto frame=value.toObject();bool found=false;
+  for(const auto& output:current){const auto o=output.toObject();const int bits=o["rotation"].toInt();const int rotation=bits&XCB_RANDR_ROTATION_ROTATE_90?90:bits&XCB_RANDR_ROTATION_ROTATE_180?180:bits&XCB_RANDR_ROTATION_ROTATE_270?270:0;if(o["identity"]==frame["identity"]&&o["native"]==frame["native"]&&rotation==frame["rotation"].toInt())found=true;}
+  if(!found)return false;
+ }
+ return true;
+}
+QJsonObject X11NativeSnapshot::freeze(const QString& action,const QSet<qint64>& excluded,Error& error,const QJsonArray& selection,const QJsonArray& selectionLayout){
  if(!actions().contains(action)){error={"invalid_action","Unsupported native capture action",{}};return {};}
  const auto before=layout(error);if(error)return {};
  xcb_window_t window=0;QRect geometry;QJsonArray area;
@@ -87,15 +98,17 @@ QJsonObject X11NativeSnapshot::freeze(const QString& action,const QSet<qint64>& 
   geometry=windowRect(window,error);if(error)return {};
  }
  if(layout(error)!=before){if(!error)error=changedError();return {};}
- return {{"schemaVersion",1},{"action",action},{"window",QString::number(window)},{"windowRect",window?rectangle(geometry):QJsonArray{}},{"area",area},{"selection",action=="repeat"?selection:QJsonArray{}},{"layout",before}};
+ return {{"schemaVersion",1},{"action",action},{"window",QString::number(window)},{"windowRect",window?rectangle(geometry):QJsonArray{}},{"area",area},{"selection",action=="repeat"?selection:QJsonArray{}},{"selectionLayout",action=="repeat"?selectionLayout:QJsonArray{}},{"layout",before}};
 }
 Error X11NativeSnapshot::validate(const QJsonObject& snapshot){
- if(snapshot.size()!=7||snapshot["schemaVersion"]!=1||!actions().contains(snapshot["action"].toString())||!snapshot["window"].isString()||!snapshot["windowRect"].isArray()||!snapshot["area"].isArray()||!snapshot["selection"].isArray()||!snapshot["layout"].isObject())return {"capture_protocol","Invalid frozen capture descriptor",{}};
+ if(snapshot.size()!=8||snapshot["schemaVersion"]!=1||!actions().contains(snapshot["action"].toString())||!snapshot["window"].isString()||!snapshot["windowRect"].isArray()||!snapshot["area"].isArray()||!snapshot["selection"].isArray()||!snapshot["selectionLayout"].isArray()||!snapshot["layout"].isObject())return {"capture_protocol","Invalid frozen capture descriptor",{}};
  // A monitor capture carries its output's native rectangle and a repeat its
  // logical selection; no other action carries either.
  const auto area=snapshot["area"].toArray(),selection=snapshot["selection"].toArray();
  if(snapshot["action"]=="monitor"?!integers(area):!area.isEmpty())return {"capture_protocol","Invalid frozen monitor area",{}};
  if(snapshot["action"]=="repeat"?!finiteRectangle(selection):!selection.isEmpty())return {"capture_protocol","Invalid frozen selection",{}};
+ const auto selectionLayout=snapshot["selectionLayout"].toArray();
+ if(snapshot["action"]=="repeat"?!describes(selectionLayout):!selectionLayout.isEmpty())return {"capture_protocol","Invalid frozen selection layout",{}};
  bool ok=false;const auto value=snapshot["window"].toString();const auto window=value.toULongLong(&ok);if(!ok||window>UINT32_MAX||QString::number(window)!=value||(snapshot["action"]=="window")!=(window!=0)||(window?!integers(snapshot["windowRect"].toArray()):!snapshot["windowRect"].toArray().isEmpty()))return {"capture_protocol","Invalid frozen window identity",{}};
  const auto l=snapshot["layout"].toObject();const auto frames=l["outputs"].toArray();if(l.size()!=4||!l["outputs"].isArray()||frames.isEmpty()||frames.size()>64||!integers(l["root"].toArray())||l["scale"].toString().size()!=64||!l["configuration"].isString())return {"capture_protocol","Invalid frozen display descriptor",{}};
  bool numeric=false;const auto config=l["configuration"].toString();const auto timestamp=config.toULongLong(&numeric);if(!numeric||timestamp>UINT32_MAX||QString::number(timestamp)!=config)return {"capture_protocol","Invalid display configuration identity",{}};

@@ -1,5 +1,6 @@
 #include "X11NativeSnapshot.h"
 #include "X11Capture.h"
+#include "core/SourceAdapter.h"
 #include <QJsonArray>
 #include <xcb/randr.h>
 namespace putgd {
@@ -18,7 +19,12 @@ X11Target X11NativeSnapshot::resolve(const QJsonObject& snapshot,X11Capture& cap
  if(target.window){target.nativeWindowRect=rectangle(snapshot["windowRect"].toArray());target.logicalSelection={};for(const auto& f:target.layout){const QRect part=f.nativeRect.intersected(target.nativeWindowRect);if(part.isEmpty())continue;target.logicalSelection=target.logicalSelection.united(QRectF(f.logicalRect.x()+(part.x()-f.nativeRect.x())/f.density,f.logicalRect.y()+(part.y()-f.nativeRect.y())/f.density,part.width()/f.density,part.height()/f.density));}if(target.logicalSelection.isEmpty()){error=targetError();return {};}}
  // A monitor capture is that output, whole; a repeat is the remembered selection.
  if(target.action=="monitor"){target.nativeArea=rectangle(snapshot["area"].toArray());target.logicalSelection={};for(const auto& f:target.layout)if(f.nativeRect==target.nativeArea)target.logicalSelection=f.logicalRect;if(target.logicalSelection.isEmpty()){error=changedError();return {};}}
- if(target.action=="repeat"){const auto s=snapshot["selection"].toArray();target.logicalSelection=QRectF(s[0].toDouble(),s[1].toDouble(),s[2].toDouble(),s[3].toDouble());}
+ if(target.action=="repeat"){
+  // The remembered rectangle means the same place only on the same monitors:
+  // names, logical and native rectangles (so the scale factor too) and rotation.
+  if(describeLayout(target.layout)!=snapshot["selectionLayout"].toArray()){error=SourceAdapter::lastRegionLayoutChanged();return {};}
+  const auto s=snapshot["selection"].toArray();target.logicalSelection=QRectF(s[0].toDouble(),s[1].toDouble(),s[2].toDouble(),s[3].toDouble());
+ }
  if(!unchanged(snapshot,error))return {};
  return target;
 }

@@ -21,15 +21,16 @@ QJsonObject X11CoreSourceAdapter::freeze(const QString& action,Error& error){
  QSet<qint64> excluded{QCoreApplication::applicationPid()};if(uiProcess_)excluded.insert(uiProcess_);if(helper_.processId())excluded.insert(helper_.processId());
  if(action!="repeat")return capture_.freeze(action,excluded,error);
  if(!lastRegion_){error=noLastRegion();return {};}
- const auto frozen=capture_.freeze(action,excluded,error,lastRegion_->selection);
- if(!error&&!X11NativeSnapshot::sameArrangement(lastRegion_->layout,frozen["layout"].toObject())){error=lastRegionLayoutChanged();return {};}
- return frozen;
+ // Outputs, native rectangles and rotations are checked here; the helper, which
+ // knows Qt's logical rectangles, checks the rest before it reads anything.
+ if(!capture_.sameNativeOutputs(lastRegion_->layout,error)){if(!error)error=lastRegionLayoutChanged();return {};}
+ return capture_.freeze(action,excluded,error,lastRegion_->selection,lastRegion_->layout);
 }
 std::function<void(PayloadResult)> X11CoreSourceAdapter::remembering(const QJsonObject& frozen,std::function<void(PayloadResult)> callback){
  if(frozen["action"]!="region")return callback;
  QPointer<X11CoreSourceAdapter> guard(this);
- return [guard,layout=frozen["layout"].toObject(),callback=std::move(callback)](PayloadResult result)mutable{
-  if(guard&&!result.error)if(const auto selected=guard->helper_.selection())guard->lastRegion_=RegionMemory{QJsonArray{selected->x(),selected->y(),selected->width(),selected->height()},layout};
+ return [guard,callback=std::move(callback)](PayloadResult result)mutable{
+  if(guard&&!result.error)if(const auto selected=guard->helper_.selection())guard->lastRegion_=RegionMemory{QJsonArray{selected->x(),selected->y(),selected->width(),selected->height()},guard->helper_.selectionLayout()};
   callback(std::move(result));
  };
 }

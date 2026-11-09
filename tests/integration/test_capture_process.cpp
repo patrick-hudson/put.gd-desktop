@@ -38,7 +38,7 @@ QList<QJsonObject> cursorTrace(const QString& path){
 }
 }
 
-QJsonObject snapshot(){return {{"schemaVersion",1},{"action","desktop"},{"window","0"},{"windowRect",QJsonArray{}},{"area",QJsonArray{}},{"selection",QJsonArray{}},{"layout",QJsonObject{{"outputs",QJsonArray{QJsonObject{{"identity","monitor"},{"native",QJsonArray{0,0,640,480}},{"rotation",1}}}},{"configuration","1"},{"root",QJsonArray{0,0,640,480}},{"scale",QString(64,'a')}}}};}
+QJsonObject snapshot(){return {{"schemaVersion",1},{"action","desktop"},{"window","0"},{"windowRect",QJsonArray{}},{"area",QJsonArray{}},{"selection",QJsonArray{}},{"selectionLayout",QJsonArray{}},{"layout",QJsonObject{{"outputs",QJsonArray{QJsonObject{{"identity","monitor"},{"native",QJsonArray{0,0,640,480}},{"rotation",1}}}},{"configuration","1"},{"root",QJsonArray{0,0,640,480}},{"scale",QString(64,'a')}}}};}
 namespace {
 QJsonObject regionSnapshot(char fingerprint){auto result=snapshot();result["action"]="region";auto layout=result["layout"].toObject();layout["scale"]=QString(64,QChar(fingerprint));result["layout"]=layout;return result;}
 }

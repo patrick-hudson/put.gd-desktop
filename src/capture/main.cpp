@@ -188,7 +188,8 @@ int main(int argc,char** argv){
     });
     auto* worker=encoder;QObject::connect(worker,&QThread::finished,&app,[&,worker,encoded]{encoder=nullptr;worker->deleteLater();if(settled||cancelled)return;if(encoded->error){finish(encoded->error);return;}putgd::Error changed;if(!native.unchanged(frozen,changed)){finish(changed);return;}resultSent=true;auto reply=envelope();reply["bytes"]=QString::number(encoded->bytes);reply["sha256"]=encoded->hash;reply["width"]=encoded->width;reply["height"]=encoded->height;
      // The resident remembers a captured region for Repeat last region (#1363).
-     if(target.action=="region"&&selectedRect)reply["selection"]=rectangle(*selectedRect);
+     // with the monitors it was chosen on: name, logical and native rectangle, rotation.
+     if(target.action=="region"&&selectedRect){reply["selection"]=rectangle(*selectedRect);reply["layout"]=putgd::describeLayout(target.layout);}
      control.send("result",reply);deadline.start(10000);});worker->start();
    };
   if(target.action=="region"){
