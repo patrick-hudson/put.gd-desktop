@@ -218,8 +218,8 @@ generation `1`. UiControl's known frame types gained `editing`, `finalizing`,
    allocation limit and shows the window, then sends `editing`.
 3. Agent commands: `command` (requestId, command, params) → `commandResult`
    (ok with result, or code and message).
-   Copy image: `copyImage` (bytes, sha256, width, height) → `copyResult` (ok, or
-   code and message); see [Copy image](#copy-image).
+   Copy image: `copyImage` (copyId, bytes, sha256, width, height) → `copyResult`
+   (copyId, ok, or code and message); see [Copy image](#copy-image).
 4. `finalizing` when the user or an agent submits; the helper writes the export
    once, `fsync`s it, and sends `checkpoint` (bytes, sha256, width, height). A
    failure checkpoint carries `edit_cancelled`, `source_unsupported`,
@@ -228,7 +228,10 @@ generation `1`. UiControl's known frame types gained `editing`, `finalizing`,
 5. `checkpointAccepted`; the helper exits 0.
 
 Startup is limited to 20 s and finalization to 120 s; editing itself has no
-deadline. Each agent command must answer within 8 s, and at most 16 may wait.
+deadline. Each agent command must answer within 8 s, and at most 16 may wait;
+a command past its deadline answers `editor_timeout`, and the helper's late
+answer to it (a large Save a copy or Copy image still finishing) is dropped
+rather than ending the edit.
 The resident accepts the handoff only after a normal zero exit, unchanged pinned
 input/output identities, the authenticated digest, and a structural check that
 the PNG contains only IHDR, PLTE, tRNS, gAMA, cHRM, sRGB, pHYs, IDAT and a final
@@ -242,14 +245,20 @@ On Wayland the editor process cannot own the clipboard, so Copy image goes
 through the resident's native clipboard adapter, the one that copies links:
 
 1. The helper renders the sanitized PNG from a snapshot, off the GUI thread,
-   exactly as Save a copy does, and writes it once to a new owner-only
-   `copy.png` (0600, `O_EXCL|O_NOFOLLOW`, fsynced) in its pinned staging
-   directory, then sends `copyImage` with its size, digest and dimensions.
-   One copy runs at a time; Upload, Cancel and Save a copy wait for it.
-2. The resident opens and removes `copy.png`, checks owner, mode, size
-   (at most 128 MiB), digest and the sanitized-PNG chunk structure, and hands
-   the bytes to the native adapter as an explicit copy (it supersedes pending
-   automatic link copies, like History's Copy image). It answers `copyResult`.
+   exactly as Save a copy does, and on the same worker writes it once to a new
+   owner-only `copy.png` (0600, `O_EXCL|O_NOFOLLOW`, fsynced) through its
+   pinned staging directory descriptor, then sends `copyImage` with a new
+   copy ID, its size, digest and dimensions. One copy runs at a time; Upload,
+   Cancel and Save a copy wait for it, at most 30 s: without an answer by then
+   the copy fails in the window and to the agent, and a later answer for that
+   copy ID is ignored.
+2. The resident opens and removes `copy.png` with `openat`/`unlinkat` through a
+   descriptor of the staging directory whose identity matches the one it
+   created, checks owner, mode, size (at most 128 MiB), digest, the
+   sanitized-PNG chunk structure and the 24-megapixel admission, and hands the
+   bytes to the native adapter as an explicit copy (it supersedes pending
+   automatic link copies, like History's Copy image). It answers `copyResult`
+   with the same copy ID.
 3. Nothing else keeps the bytes: no artifact, History item, archive copy or
    upload input, and the operation stays `editing`. A failed check or an
    unavailable clipboard (`clipboard_unavailable`) is reported to the window and
