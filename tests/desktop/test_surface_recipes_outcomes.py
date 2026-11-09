@@ -430,5 +430,45 @@ class ClipboardOracles(unittest.TestCase):
                 self.exit_case(session, manager, after, b'clobbered')
 
 
+class BarHandlePlacement(unittest.TestCase):
+    def run_recipe(self, caps, placement, widths, pause=True):
+        @contextmanager
+        def local(_ctx):
+            yield
+        ctx = SimpleNamespace(expect=lambda ok, note: self.assertTrue(ok, note), geometry=Mock(side_effect=[dict(width=w) for w in widths]),
+                              frame=Mock(), review=Mock(), blocked=Mock(), note=Mock())
+        selectors = outcomes.selectors
+        with patch.object(selectors, '_env', return_value=dict(screens=[(0, 0, 1280, 800)])), \
+                patch.object(selectors, '_local', local), patch.object(selectors, '_ready', return_value='rec'), \
+                patch.object(selectors, '_inspect', return_value=dict(overlayPlacement=placement)), \
+                patch.object(selectors, '_call', return_value=caps), \
+                patch.object(selectors, '_start') as start, patch.object(selectors, '_stop') as stop, \
+                patch.object(selectors, '_visible', return_value=pause), patch.object(selectors, '_cancel_record'):
+            selectors.bar_handle(ctx)
+        start.assert_called_once(), stop.assert_called_once()
+        return ctx
+
+    def test_kde_screencast_hiding_the_requester_expects_hidden_and_a_full_bar(self):
+        caps = dict(acquisition='kde-screencast', kdeScreencast=dict(hidesRequester=True))
+        ctx = self.run_recipe(caps, 'hidden', [788, 560])
+        self.assertIn('no handle to collapse', ctx.review.call_args.args[0])
+
+    def test_kde_screencast_that_hides_the_requester_still_refuses_a_collapsed_bar(self):
+        caps = dict(acquisition='kde-screencast', kdeScreencast=dict(hidesRequester=True))
+        with self.assertRaises(AssertionError):
+            self.run_recipe(caps, 'hidden', [788, 120])
+        with self.assertRaises(AssertionError):
+            self.run_recipe(caps, 'hidden', [788, 560], pause=False)
+
+    def test_older_kwin_and_x11_keep_the_handle(self):
+        for caps in (dict(acquisition='kde-screencast', kdeScreencast=dict(hidesRequester=False)),
+                     dict(acquisition='x11')):
+            with self.subTest(caps=caps):
+                ctx = self.run_recipe(caps, 'handle', [600, 120])
+                self.assertIn('width collapse', ctx.review.call_args.args[0])
+            with self.subTest(caps=caps, placement='hidden'), self.assertRaises(AssertionError):
+                self.run_recipe(caps, 'hidden', [600, 120])
+
+
 if __name__ == '__main__':
     unittest.main()
