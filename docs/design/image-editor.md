@@ -206,7 +206,7 @@ regardless of other open put.gd windows. Nothing is preloaded or kept warm.
 The helper uses the existing UiControl framing (version, strict sequence, size
 and rate limits) with a separate payload role `image-edit`, a UUID nonce and
 generation `1`. UiControl's known frame types gained `editing`, `finalizing`,
-`command` and `commandResult` for this helper only:
+`command`, `commandResult`, `copyImage` and `copyResult` for this helper only:
 
 1. `bootstrap`: role, nonce, generation, build, input (`input.img`) and output descriptors
    (path, device, inode, bytes, sha256), limits (imagePixels, outputBytes) and a
@@ -250,8 +250,9 @@ through the resident's native clipboard adapter, the one that copies links:
    pinned staging directory descriptor, then sends `copyImage` with a new
    copy ID, its size, digest and dimensions. One copy runs at a time; Upload,
    Cancel and Save a copy wait for it, at most 30 s: without an answer by then
-   the copy fails in the window and to the agent, and a later answer for that
-   copy ID is ignored.
+   the copy fails in the window (and to an agent whose `editor.copy` is still
+   waiting; one that passed the 8 s command deadline has already had
+   `editor_timeout`), and a later answer for that copy ID is ignored.
 2. The resident opens and removes `copy.png` with `openat`/`unlinkat` through a
    descriptor of the staging directory whose identity matches the one it
    created, checks owner, mode, size (at most 128 MiB), digest, the
