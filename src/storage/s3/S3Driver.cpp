@@ -900,7 +900,7 @@ void NetworkS3Driver::stat(const StorageReceipt& expected, std::function<void(St
         // The recorded ID names the only object the key can hold; keep the receipt as recorded.
         if (found.status == "own") found.receipt.objectReference["versionId"] = expected.objectReference["versionId"];
     }
-    if (found.status == "own") found.receipt=expected;
+    if (found.status == "own" && expected.destination.settings.value("linkMode")=="presigned") found.receipt=expected;
     reply(found);
 }
 void NetworkS3Driver::refreshLink(const StorageReceipt& expected,std::function<void(StatResult)> reply) {
