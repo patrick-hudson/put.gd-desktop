@@ -433,10 +433,10 @@ This procedure covers Linux SNI/QMP behavior. The pinned Proton runtime
 supports Linux x86-64. Use the [acceptance matrix](acceptance-matrix.md) for
 current package and desktop requirements.
 
-The replay's host contract tests were [removed](removed-tests.md). A replay run
-itself shows whether the tool still works. It does not establish a probe build,
-live S3 or Proton success, a desktop functional pass, human rendering inspection
-or memory acceptance. Record those actual executions separately.
+The replay's host contract tests were [removed](removed-tests.md), so run the
+replay itself to confirm the tool still works. Record each replay and any probe
+build, desktop functional pass, human rendering inspection or memory acceptance
+as its own execution.
 
 ## Opening an upload from its notification
 

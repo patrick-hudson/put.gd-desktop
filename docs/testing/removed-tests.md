@@ -69,8 +69,9 @@ those races.
 [#1336](https://github.com/patrick-hudson/put.gd-desktop/pull/1336) runs
 `ui_catalog_render` on a pull request only when a changed path can alter the
 catalog. See [ci.md](../release/ci.md). Every push to `nightly` still renders it.
-A mismatch that a pull request skips therefore fails on the next nightly push,
-and the live gate fails closed until it is fixed.
+An incomplete render, surface map mismatch or secret-control change that a pull
+request skips therefore fails on the next nightly push, and the live gate fails
+closed until it is fixed. Purely visual changes are not compared at any stage.
 
 ## If a regression shows up
 
