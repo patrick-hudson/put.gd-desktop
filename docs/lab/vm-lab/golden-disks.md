@@ -44,7 +44,7 @@ qemu-system-x86_64 -enable-kvm -machine q35 -cpu host -smp 2 -m 6144 \
   -netdev user,id=net0,hostfwd=tcp:127.0.0.1:22220-:22 \
   -device virtio-net-pci,netdev=net0 -vnc 127.0.0.1:20 -display none \
   -daemonize -pidfile "$provision_control/qemu.pid"
-printf "provision_control='%s'\n" "$provision_control"
+python3 -c 'import shlex, sys; print("provision_control=" + shlex.quote(sys.argv[1]))' "$provision_control"
 ```
 
 Connect a VNC viewer to `127.0.0.1:5920`. Install Mint normally onto the disposable

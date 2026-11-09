@@ -7,7 +7,7 @@ Part of [Screen recording](../recording.md).
 While stored previews are on (`retention.previewCacheBytes` above 0, the
 default), History shows a still for every stored video (#112): screen
 recordings and MP4, WebM, Matroska, QuickTime, AVI and Ogg files shared from
-the clipboard or a file manager. At 0 no poster is made. The list draws a play glyph and the length over it, so a still
+the clipboard or a file manager. At 0 no poster is made for a new operation or on request; an operation already running keeps the value it started with. The list draws a play glyph and the length over it, so a still
 is never mistaken for a screenshot; the inspector shows it larger, with the
 length beside the size. GIF and WebP recordings are images and keep the image
 preview (their first frame, through the image job). Animated WebP reads
@@ -70,9 +70,10 @@ flashes empty (#285). The resident:
   answers `made` with `previewPath` and `source` (`artifact` or `local`).
 
 Every failure is soft: the inspector's preview area says "Couldn't make a
-preview" with the error's message, or names the cause ("Local original
-unavailable", "Previews are turned off", "No preview for this file type"). The
-refusals are `preview_source_missing` (neither
+preview" with the error's message, or names the cause ("Previews are turned off"). For a file type
+with no preview, the area is replaced by "No preview for this file type". For
+`preview_source_missing` it is hidden, and the inspector's local-copy hint
+explains what is gone. The refusals are `preview_source_missing` (neither
 file is left), `preview_source_changed` (the local copy differs),
 `preview_unsupported` (not an image or video), `previews_disabled`
 (`retention.previewCacheBytes` is 0), `operation_active`, `preview_busy` and
