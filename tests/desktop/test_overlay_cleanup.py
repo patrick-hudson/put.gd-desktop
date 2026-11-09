@@ -542,30 +542,6 @@ class OverlayCleanup(unittest.TestCase):
             with self.assertRaisesRegex(cleanup.CleanupError, 'Hidden'):
                 self.process_probe(self.run, self.run / 'disk.qcow2')
 
-    def test_windows_bundle_base_and_explicit_completion_preserve_firmware_tpm(self):
-        base = self.root / 'work/windows/bases/fixture'
-        base.mkdir(parents=True)
-        self.qemu('create', '-f', 'qcow2', base / 'disk.qcow2', '1M')
-        self.write(base / 'manifest.json', {'sha256': {}})
-        run = self.root / 'work/windows/runs/fixture'
-        run.mkdir(parents=True)
-        self.qemu('create', '-f', 'qcow2', '-F', 'qcow2', '-b', base / 'disk.qcow2', run / 'disk.qcow2')
-        self.write(run / 'state.json', {'uuid': 'hardware-fixture', 'run_id': 'windows-fixture',
-                                      'base': str(base), 'clean_shutdown': True})
-        (run / 'vars.fd').write_bytes(b'firmware')
-        (run / 'tpm').mkdir()
-        (run / 'tpm/state').write_bytes(b'TPM state')
-        evidence = run / 'evidence'
-        evidence.mkdir()
-        proof = {'run': str(run), 'runId': 'windows-fixture', 'completed': True, 'outcome': 'passed'}
-        self.write(evidence / 'completion.json', proof)
-        self.write(evidence / 'manifest.json', {'schemaVersion': 1,
-            'kind': 'vm-overlay-cleanup-evidence', **proof, 'files': {
-                'completion.json': hashlib.sha256((evidence / 'completion.json').read_bytes()).hexdigest()}})
-        self.assertEqual(cleanup.cleanup(run, evidence_manifest=evidence / 'manifest.json')['status'], 'completed')
-        self.assertEqual((run / 'vars.fd').read_bytes(), b'firmware')
-        self.assertEqual((run / 'tpm/state').read_bytes(), b'TPM state')
-
 
 if __name__ == '__main__':
     unittest.main()

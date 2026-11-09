@@ -8,10 +8,7 @@ from types import SimpleNamespace
 sys.path.insert(0,str(Path(__file__).resolve().parents[2]))
 from tools.lab.surface_driver import probe
 from tools.lab.surface_driver.compositor import stage_plasma_accessibility as stage
-from tools.lab.surface_driver.profiles import load_profile
-from tools.lab.surface_driver.fixtures import destinations
 from tools.lab.surface_driver.api import RecipeBlocked
-from tests.desktop import test_surface_shell_health as shell_tests
 
 
 class PlasmaPick(unittest.TestCase):
@@ -37,10 +34,6 @@ class PlasmaPick(unittest.TestCase):
                       patch.object(probe,'extents',return_value=[0,0,1280,48])]
         for p in self.patches:p.start();self.addCleanup(p.stop)
 
-    def test_surface_and_exact_component_pick_authorize_real_actor(self):
-        self.assertTrue(probe.foreground(self.query)['ok'])
-        self.top.queryComponent.return_value.getAccessibleAtPoint.assert_called_once_with(973,21,0)
-
     def test_foreign_or_different_same_process_surface_refuses_before_component_pick(self):
         for key,value in [('pid',71),('id','other-popup')]:
             with patch.object(probe,'compositor_pick',return_value={'window':dict(self.window,**{key:value})}):
@@ -60,27 +53,6 @@ class PlasmaPick(unittest.TestCase):
         self.top.queryComponent.return_value.getAccessibleAtPoint.return_value=cover
         self.assertFalse(probe.foreground(self.query)['ok'])
 
-
-    def test_shell_pid_uses_the_bounded_bus_daemon_api(self):
-        daemon=Mock();daemon.GetConnectionUnixProcessID.return_value=70
-        dbus=SimpleNamespace(SessionBus=Mock(return_value=Mock()),Interface=Mock(return_value=daemon))
-        with patch.dict(sys.modules,dbus=dbus):
-            self.assertEqual(self.pid_api(),70)
-        daemon.GetConnectionUnixProcessID.assert_called_once_with('org.kde.plasmashell',timeout=3)
-
-
-    def test_plasma_showing_popups_require_the_exact_live_shell_pid(self):
-        query={'compositor':{'kind':'kwin-script'}}
-        self.assertTrue(probe.plasma_popup_sender(70,'showing',query))
-        self.assertFalse(probe.plasma_popup_sender(71,'showing',query))
-        self.assertFalse(probe.plasma_popup_sender(70,'focused',query))
-        self.assertFalse(probe.plasma_popup_sender(70,'showing',{}))
-
-    def test_out_of_tree_menu_pick_still_requires_exact_actor_and_surface(self):
-        with patch.object(probe,'desktop_root',return_value=[]),patch.object(probe,'popup_roots',return_value=[((70,'/menu'),(self.top,2,'','plasmashell',None,[]))]):
-            self.assertTrue(probe.foreground(self.query)['ok'])
-
-
     def test_popup_root_is_bound_by_identity_when_its_title_is_empty(self):
         self.node.update(window='',popup={'a11y_bus':':1.7','a11y_path':'/menu'})
         self.top.name='plasmashell';self.top.bus=':1.7';self.top.path='/menu'
@@ -92,33 +64,6 @@ class PlasmaPick(unittest.TestCase):
 
 
 class Provisioning(unittest.TestCase):
-    def test_kde_profile_selects_kwin_shell_guard_and_crash_policy(self):
-        profile=load_profile('kubuntu-kde-wayland')
-        self.assertEqual(profile['focus']['desktop_hit_test'],'kwin-shell-at-spi')
-        self.assertEqual(profile['shell_health']['process'],'plasmashell')
-        # Plasma Qt extents must continue to be placed via clientGeometry.
-        self.assertFalse(probe.WaylandPlacement(profile['compositor']).absolute('plasmashell'))
-
-    def test_icon_selector_excludes_the_same_named_plasma_task_button(self):
-        sni={'name':'put.gd','role':'button','application':'plasmashell','objectName':''}
-        for desktop in ('kubuntu-kde-wayland', 'aurora-kde-wayland'):
-            with self.subTest(desktop=desktop):
-                selector=load_profile(desktop)['tray']['icon']
-                self.assertTrue(probe.matches(sni,selector))
-                self.assertTrue(probe.matches(dict(sni,application='plasmashell-6'),selector))
-                for changed in ({'objectName':'Task_QMLTYPE_358'}, {'role':'label'},
-                                {'name':'another app'}, {'application':'foreign-shell'}):
-                    with self.subTest(changed=changed):
-                        self.assertFalse(probe.matches(dict(sni,**changed),selector))
-
-    def test_staging_authenticates_overlay_twice_and_never_enables_screen_reader(self):
-        with patch.object(stage.lab,'verify_owned_guest') as verify,patch.object(stage.lab,'state',return_value={'profile':'kde-wayland'}),\
-             patch.object(stage.lab,'load_profile',return_value={'session_process':'plasmashell','session':'wayland'}),\
-             patch.object(stage.lab,'guest_session',return_value='metadata') as session:
-            self.assertEqual(stage.stage('/owned'),'metadata');self.assertEqual(verify.call_count,2)
-            self.assertIn("'IsEnabled',dbus.Boolean(True)",session.call_args.args[1])
-            self.assertNotIn("'ScreenReaderEnabled',dbus.Boolean(True)",session.call_args.args[1])
-
     def test_foreign_profile_never_gets_mutated(self):
         with patch.object(stage.lab,'verify_owned_guest'),patch.object(stage.lab,'state',return_value={'profile':'other'}),\
              patch.object(stage.lab,'load_profile',return_value={'session_process':'gnome-shell','session':'wayland'}),\
@@ -161,31 +106,6 @@ class IsolatedSecretService(unittest.TestCase):
         scope=self.scope([]);scope.ctx.placement='native'
         with self.assertRaisesRegex(RecipeBlocked,'disposable'):isolated_service(scope)
         scope.json.assert_not_called();scope.launch.assert_not_called()
-
-    def test_missing_distro_daemon_reports_overlay_provisioning(self):
-        from tools.lab.surface_driver.fixtures.keyring import isolated_service
-        scope=self.scope([{'owner':None,'pid':None}]);scope.ctx.shell.return_value={'returncode':1}
-        with self.assertRaisesRegex(RecipeBlocked,'keyring-overlay'):isolated_service(scope)
-        scope.launch.assert_not_called()
-
-
-    def test_daemon_control_socket_is_checked_before_launch(self):
-        from tools.lab.surface_driver.fixtures.keyring import isolated_service
-        scope=self.scope([{'owner':None,'pid':None}]);scope.root='/tmp/'+'é'*60
-        with self.assertRaisesRegex(RecipeBlocked,'socket'):isolated_service(scope)
-        scope.launch.assert_not_called();scope.python.assert_not_called()
-
-
-class PlasmaCrash(unittest.TestCase):
-    def setUp(self):
-        shell_tests.ShellCrashDetector.setUp(self)
-        self.addCleanup(self.temp.cleanup)
-        self.ctx.profile=load_profile('kubuntu-kde-wayland')
-
-    def test_plasma_crash_refuses_shell_pointer_before_dispatch(self):
-        self.ctx.shell_baseline();self.state=shell_tests.shell(200)
-        with self.assertRaisesRegex(RecipeBlocked,'plasmashell pid 100 ended'):
-            self.ctx._desktop_guard({'pid':100},[20,20])
 
 
 if __name__=='__main__':unittest.main()

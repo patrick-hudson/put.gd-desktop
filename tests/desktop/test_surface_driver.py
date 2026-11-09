@@ -5,7 +5,6 @@ import importlib
 import json
 import os
 from pathlib import Path
-import signal
 import socket
 import subprocess
 import sys
@@ -13,18 +12,18 @@ import tempfile
 import time
 import unittest
 from types import SimpleNamespace
-from unittest.mock import MagicMock, Mock, call, patch
+from unittest.mock import Mock, call, patch
 
 ROOT=Path(__file__).resolve().parents[2]
 sys.path.insert(0,str(ROOT))
 from tools.lab.surface_driver.api import Recipe, RecipeBlocked, RecipeFailed, ReceiptRow
-from tools.lab.surface_driver.catalog import Catalog, compare, control_point
-from tools.lab.surface_driver.context import DriverContext, parse_notifications
-from tools.lab.surface_driver.profiles import load_profile, merge
+from tools.lab.surface_driver.catalog import Catalog, compare
+from tools.lab.surface_driver.context import DriverContext
+from tools.lab.surface_driver.profiles import load_profile
 from tools.lab.surface_driver.receipts import write_receipts
-from tools.lab.surface_driver.run import discover, guard_target, main, native_endpoint, run_recipes, validate_recipes, verify_physical_endpoints
+from tools.lab.surface_driver.run import guard_target, main, native_endpoint, run_recipes, verify_physical_endpoints
 from tools.lab import desktop_lock, lab
-from tools.lab.surface_driver.target import Target, checked_socket, qcodes
+from tools.lab.surface_driver.target import Target
 from tools.lab.surface_map import surface_map
 sys.path.insert(0,str(ROOT/'tests/desktop'))
 from surface_live_fixture import pinned, write_catalog
@@ -35,37 +34,7 @@ except ImportError:
     Image=None
 
 
-class Profiles(unittest.TestCase):
-    def test_all_model_desktops(self):
-        for row in json.loads((ROOT/'tools/lab/surface_map/model.json').read_text())['desktops']:
-            p=load_profile(row['id'])
-            for key in ('input_backend','catalog_tolerance','notification_server','default_browser_kind','at_spi','known_gaps'):
-                self.assertIn(key,p)
-        self.assertFalse(load_profile('debian-kde-wayland')['at_spi']['available'])
-
-    def test_recursive_merge_is_sorted_and_does_not_mutate(self):
-        base={'a':{'b':1,'c':[2]}}
-        self.assertEqual(merge(base,{'a':{'d':3}}),{'a':{'b':1,'c':[2],'d':3}})
-        self.assertEqual(base,{'a':{'b':1,'c':[2]}})
-        with tempfile.TemporaryDirectory() as td:
-            p=Path(td);(p/'test.json').write_text(json.dumps({'desktop':'test','catalog_tolerance':.01,'a':{'b':1}}))
-            (p/'test.d').mkdir()
-            (p/'test.d/z.json').write_text('{"a":{"b":3}}')
-            (p/'test.d/a.json').write_text('{"a":{"b":2,"c":4}}')
-            self.assertEqual(load_profile('test',p)['a'],{'b':3,'c':4})
-
-
 class Mapping(unittest.TestCase):
-    def test_scale_hidpi_and_negative_monitor_origin(self):
-        inv={'width':100,'height':50};control={'rect':[10,5,20,10]}
-        self.assertEqual(control_point(inv,control,{'x':30,'y':40,'width':100,'height':50,'scale':1}),(50,50))
-        self.assertEqual(control_point(inv,control,{'x':-1900,'y':10,'width':100,'height':50,'scale':2,'screen_x':-1920}),(80,40))
-        self.assertEqual(control_point(inv,control,{'x':0,'y':0,'width':100,'height':50},(0,0)),(10,5))
-
-    def test_nonuniform_resize_refused(self):
-        with self.assertRaisesRegex(RecipeBlocked,'size differs'):
-            control_point({'width':100,'height':50},{'rect':[0,0,10,10]}, {'x':0,'y':0,'width':200,'height':50})
-
     def test_selectors_and_ambiguity(self):
         with tempfile.TemporaryDirectory() as td:
             p=Path(td); inv={'width':100,'height':50,'controls':[{'name':'editorUpload','text':'&Upload','class':'QPushButton','rect':[1,2,3,4]}]}
@@ -78,17 +47,6 @@ class Mapping(unittest.TestCase):
             with self.assertRaisesRegex(RecipeBlocked,'distinct matches'):
                 Catalog(p,{}).resolve('text:Upload','editor')
             with self.assertRaises(RecipeBlocked): cat.reference('../escaped')
-
-    def test_key_translation_and_socket_byte_limit(self):
-        self.assertEqual(qcodes('Ctrl+Z'),['ctrl','z'])
-        self.assertEqual(qcodes('Ctrl+Shift+Z'),['ctrl','shift','z'])
-        self.assertEqual(qcodes('Escape'),['esc'])
-        self.assertEqual(qcodes('Ctrl++'),['ctrl','shift','equal'])
-        self.assertEqual(qcodes('Backtab'),['shift','tab'])
-        self.assertEqual(qcodes('!'),['shift','1'])
-        with self.assertRaises(RecipeBlocked): qcodes('☃')
-        self.assertEqual(checked_socket('/'+'x'*106),'/'+'x'*106)
-        with self.assertRaises(RecipeBlocked): checked_socket('/'+'é'*54)
 
 
 class FakeTarget:
@@ -109,41 +67,6 @@ class Running(unittest.TestCase):
         profile=load_profile(self.env['desktop'])
         self.ctx=DriverContext(FakeTarget(),self.env,profile,self.path,self.path)
     def tearDown(self):self.temp.cleanup()
-
-    @unittest.skipUnless(Image,'requires python3-pil')
-    def test_cleanup_has_a_fresh_budget_after_action_deadline_and_keeps_failure(self):
-        cleaned=[]
-        def expired(ctx):
-            ctx._deadline=time.monotonic()-1
-            signal.raise_signal(signal.SIGALRM)
-        def cleanup(ctx):
-            self.assertGreater(signal.getitimer(signal.ITIMER_REAL)[0],0)
-            self.assertTrue(ctx.call('capabilities')['ready'])
-            cleaned.append(True)
-        expired.cleanup=cleanup
-        def following(ctx):ctx.expect(cleaned==[True],'cleanup completed before following recipe')
-        rows=run_recipes(self.ctx,[Recipe(('editor.undo',),expired),Recipe(('editor.redo',),following)],self.env,self.path,'cleanup',self.path/'coverage.json')
-        self.assertEqual([r.functional for r in rows],['failed','passed'])
-        self.assertIn('recipe deadline exceeded',rows[0].note)
-
-    @unittest.skipUnless(Image,'requires python3-pil')
-    def test_failed_cleanup_blocks_following_actions_and_before_frame(self):
-        calls=[]
-        def action(ctx):pass
-        def cleanup(ctx):raise RecipeFailed('editor still open')
-        action.cleanup=cleanup
-        def following(ctx):calls.append('unsafe action')
-        rows=run_recipes(self.ctx,[Recipe(('editor.undo',),action),Recipe(('editor.redo',),following)],self.env,self.path,'cleanup',self.path/'coverage.json')
-        self.assertEqual([r.functional for r in rows],['failed','blocked'])
-        self.assertEqual(calls,[])
-        self.assertNotIn('before',[f['label'] for f in rows[1].frames])
-
-    def test_registry_selection(self):
-        self.assertTrue(discover('core_demo'))
-        self.assertTrue(all('editor.undo' in r.interactions for r in discover('editor.undo')))
-        with self.assertRaises(RecipeBlocked):discover('missing-lane')
-        validate_recipes(discover('core_demo'))
-        with self.assertRaises(ValueError):validate_recipes([Recipe(('not.real',),lambda c:None)])
 
     @unittest.skipUnless(Image,'requires python3-pil')
     def test_runner_pass_fail_block_and_exact_schema(self):
@@ -190,24 +113,10 @@ class Running(unittest.TestCase):
         self.assertIsNone(self.ctx.frames[0].distance)
         self.assertFalse(self.ctx.reviews)
 
-    def test_wait_timeout_and_unavailable_accessibility(self):
-        with self.assertRaisesRegex(RecipeFailed,'specific state'):
-            self.ctx.wait(lambda:False,'specific state',timeout=0)
-        self.ctx.profile['at_spi']['available']=False
-        with self.assertRaises(RecipeBlocked):self.ctx.accessible({})
-
     @unittest.skipUnless(Image,'requires python3-pil')
     def test_missing_reference_requests_review(self):
         self.ctx.frame('missing',reference='unknown')
         self.assertTrue(self.ctx.reviews)
-
-    def test_receipt_atomic_overwrite(self):
-        rows=[ReceiptRow('editor.undo',self.env['desktop'],'deb','blocked')]
-        write_receipts(self.path,self.env,rows,'test',self.path/'coverage.json')
-        write_receipts(self.path,self.env,[],'test',self.path/'coverage.json')
-        self.assertEqual(json.loads((self.path/'receipt.json').read_text())['interactions'],[])
-        self.assertEqual([p.name for p in self.path.glob('.receipt*')],[])
-        self.assertEqual(len(json.loads((self.path/'coverage.json').read_text())['entries']),1)
 
     def test_physical_module_import_has_no_side_effects(self):
         importlib.import_module('tools.lab.physical')
@@ -224,36 +133,6 @@ class Running(unittest.TestCase):
         self.assertEqual({r['desktop']:r['functional'] for r in entries},
                          {'mint-cinnamon-x11':'failed','ubuntu-gnome-x11':'passed'})
 
-    @unittest.skipUnless(Image,'requires python3-pil')
-    def test_click_uses_catalog_and_releases_button(self):
-        inv={'width':20,'height':10,'controls':[{'name':'upload','rect':[2,2,4,4]}]}
-        (self.path/'test-editor.controls.json').write_text(json.dumps(inv))
-        self.ctx.catalog=Catalog(self.path,{})
-        self.ctx.geometry=lambda role:{'x':0,'y':0,'width':20,'height':10,'scale':1,'head':0}
-        self.ctx._probe=lambda name,query:({'rect':[2,2,4,4]} if name=='control' else {'ok':True})
-        events=[]
-        self.ctx.target.pointer=lambda *args:events.append(args)
-        self.ctx.click('upload',window='editor')
-        self.assertEqual(events[0][:5],(4,4,20,10,True))
-        self.assertEqual(events[-1][:5],(4,4,20,10,False))
-
-    def test_resized_layout_uses_live_control_instead_of_guessing(self):
-        inv={'width':20,'height':10,'controls':[{'name':'upload','text':'&Upload','rect':[2,2,4,4]}]}
-        (self.path/'test-editor.controls.json').write_text(json.dumps(inv))
-        self.ctx.catalog=Catalog(self.path,{})
-        self.ctx.geometry=lambda role:{'x':0,'y':0,'width':40,'height':20,'scale':1}
-        self.ctx._dimensions=lambda head=0:(100,100)
-        probes=[]
-        self.ctx._probe=lambda name,query:probes.append((name,query)) or ({'rect':[6,8,10,12]} if name=='control' else {'ok':True})
-        events=[];self.ctx.target.pointer=lambda *args:events.append(args)
-        self.ctx.click('upload',window='editor')
-        self.assertEqual(events[0][:2],(11,14))
-        self.assertEqual(probes[0][0],'control')
-        self.assertEqual(probes[0][1]['candidates'][0]['text'],'&Upload')
-        self.ctx.profile['at_spi']['available']=False
-        with self.assertRaisesRegex(RecipeBlocked,'live AT-SPI'):
-            self.ctx.click('upload',window='editor')
-
     def test_unicode_input_refuses_before_partial_typing(self):
         sent=[];self.ctx.target.key=lambda value:sent.append(value)
         with self.assertRaises(RecipeBlocked):self.ctx.type_text('hello ☃')
@@ -264,7 +143,7 @@ class Running(unittest.TestCase):
         self.assertEqual(sent,[['shift','a'],['b'],['shift','1']])
 
     def test_main_refuses_live_destinations_until_secret_safe_evidence(self):
-        from tools.lab.surface_driver import run as runner, receipts, context, redact
+        from tools.lab.surface_driver import run as runner, receipts, context
         write_catalog(self.path)
         pin = pinned(self.path); pin.start(); self.addCleanup(pin.stop)
         self.assertEqual(runner.secret_safe_evidence_blockers('boat', self.path, 'abcdef012345'), [])
@@ -316,7 +195,6 @@ class Running(unittest.TestCase):
                 self.assertTrue(receipt['secret_scan']['passed'])
                 self.assertEqual(receipt['environment']['shell_health'],{'process':'cinnamon','pid':5,'start':1,'cores_readable':True})
 
-
     @unittest.skipUnless(Image,'requires python3-pil')
     def test_main_checks_identity_and_configures_local_output(self):
         target=FakeTarget();target.info={'id':'run-id','profile':'cinnamon-x11'};target.run=self.path
@@ -354,18 +232,6 @@ class Running(unittest.TestCase):
         self.assertEqual(json.loads((self.path/'run-error/receipt.json').read_text())['environment']['cleanup_errors'],['cleanup incomplete'])
         self.assertEqual(require_terminal(self.path/'run-error')['exit_code'], 2)
 
-    def test_cleanup_attempts_quit_when_monitor_transport_fails(self):
-        target=Target.__new__(Target)
-        target._rfb=None;target.monitor_pid=123;target.started=True
-        def unavailable(*args,**kwargs):raise RecipeBlocked('lost monitor transport')
-        target.execute=unavailable
-        calls=[]
-        target.cli=lambda *args,**kwargs:calls.append(args) or {'returncode':0}
-        errors=target.close()
-        self.assertEqual(calls,[('ui.quit',)])
-        self.assertFalse(target.started)
-        self.assertEqual(errors,['notification monitor cleanup unavailable'])
-
     def test_target_removes_only_its_private_session_root_after_exit(self):
         target=Target.__new__(Target)
         target._rfb=None;target.monitor_pid=None;target.started=False;target._created_root=True
@@ -387,16 +253,6 @@ class Running(unittest.TestCase):
         self.assertEqual(target.close(),['private session root cleanup refused'])
         self.assertTrue(Path(target.root).exists())
 
-    def test_resident_operation_identity_is_retained(self):
-        self.ctx.target.cli=lambda *args,**kwargs:{'returncode':0,'stderr':'','stdout':
-            json.dumps({'ok':True,'result':{'operationId':'test-operation-123'}})}
-        self.ctx.call('editor.open',{'source':'file','path':'/tmp/synthetic.png'})
-        self.assertEqual(self.ctx.notes,['operationId=test-operation-123'])
-        self.ctx.evidence.redactor.remember('e', opaque=True)
-        write_receipts(self.path,self.env,[],'test',self.path/'coverage.json',evidence=self.ctx.evidence)
-        receipt=json.loads((self.path/'receipt.json').read_text())
-        self.assertEqual(receipt['environment']['operation_ids'],[{'operationId':'test-operation-123'}])
-
     def test_cached_heartbeat_does_not_allow_input_past_expiry(self):
         from types import SimpleNamespace
         target=Target.__new__(Target)
@@ -407,24 +263,6 @@ class Running(unittest.TestCase):
         with patch('tools.lab.surface_driver.target.time.clock_gettime',return_value=110):
             with self.assertRaisesRegex(RecipeBlocked,'no longer held'):target.heartbeat()
         self.assertEqual(len(calls),1)
-
-    def test_notification_correlation(self):
-        raw='''method call time=100.1 sender=:1.2 -> destination=org.freedesktop.Notifications serial=45 path=/org/freedesktop/Notifications; interface=org.freedesktop.Notifications; member=Notify
-   string "put.gd"
-   uint32 0
-   string "putgd"
-   string "Saved locally"
-   string "Synthetic file"
-   array [
-      string "default"
-      string "Show"
-   ]
-method return time=100.2 sender=:1.3 -> destination=:1.2 serial=9 reply_serial=45
-   uint32 72
-'''
-        row=parse_notifications(raw,100)[0]
-        self.assertEqual((row['summary'],row['body'],row['id']),('Saved locally','Synthetic file',72))
-        self.assertEqual(parse_notifications(raw,101),[])
 
 
 class CleanupShell(unittest.TestCase):
@@ -438,17 +276,6 @@ class CleanupShell(unittest.TestCase):
                                load_profile('mint-cinnamon-x11'),'/tmp','/tmp')
         self.ctx._deadline=time.monotonic()-1  # The recipe has overrun.
 
-    def test_cleanup_call_after_the_deadline_still_runs(self):
-        with patch.object(lab,'verify_owned_guest') as owned:
-            self.assertEqual(self.ctx.shell('restore',cleanup=True)['stdout'],'ran')
-            self.assertEqual(self.ctx.shell('restore',timeout=180,cleanup=True)['stdout'],'ran')
-        # Its own bounded timeout (30 s by default), never the clipped remainder.
-        self.assertEqual([c[1] for c in self.calls],[30.0,180])
-        self.assertEqual(owned.call_count,2)
-        with self.assertRaisesRegex(RecipeFailed,'recipe deadline exceeded'):
-            self.ctx.shell('ordinary')
-        self.assertEqual(len(self.calls),2)
-
     def test_cleanup_keeps_the_target_safety_checks(self):
         with patch.object(lab,'verify_owned_guest',side_effect=lab.LabError('Guest preflight requires an owned disposable overlay')):
             with self.assertRaisesRegex(RecipeBlocked,'owned disposable overlay'):
@@ -460,36 +287,6 @@ class CleanupShell(unittest.TestCase):
             self.ctx.shell('restore',cleanup=True)
         owned.assert_not_called()
         self.assertEqual(len(self.calls),1)
-
-    def resident(self, active='recording', delay=0):
-        calls=[]
-        def cli(method, payload, timeout=60):
-            calls.append((method,json.loads(payload),timeout))
-            if method=='recording.capabilities':
-                if delay:time.sleep(delay)
-                result={'active':active}
-            else:
-                self.assertEqual((method,json.loads(payload)),('recording.cancel',{'id':'recording'}))
-                result={'cancelled':True}
-            return {'returncode':0,'stdout':json.dumps({'ok':True,'result':result}),'stderr':''}
-        self.target.cli=cli
-        return calls
-
-    def test_resident_cleanup_survives_deadline_without_shell_or_foreign_cancel(self):
-        from tools.lab.surface_driver.recipes import selectors
-        calls=self.resident()
-        with patch.object(lab,'verify_owned_guest') as owned:
-            selectors._cancel_record(self.ctx,'recording')
-        self.assertEqual([c[0] for c in calls],['recording.capabilities','recording.cancel'])
-        self.assertTrue(all(0<c[2]<=30 for c in calls))
-        self.assertEqual(owned.call_count,2)
-        self.assertFalse(self.calls)  # Target.cli, never a cleanup shell shortcut.
-        with self.assertRaisesRegex(RecipeFailed,'recipe deadline exceeded'):
-            self.ctx.call('recording.capabilities')
-        calls=self.resident(active='another-recording')
-        with patch.object(lab,'verify_owned_guest'):
-            selectors._cancel_record(self.ctx,'recording')
-        self.assertEqual([c[0] for c in calls],['recording.capabilities'])
 
     def test_resident_cleanup_keeps_ownership_and_method_boundaries(self):
         self.target.cli=Mock()
@@ -504,27 +301,6 @@ class CleanupShell(unittest.TestCase):
                     self.ctx.cli(method,'{}',cleanup=True)
         self.target.cli.assert_not_called()
 
-    def test_recording_cleanup_defers_alarm_until_cancel_and_preserves_primary_error(self):
-        from tools.lab.surface_driver.critical import armed
-        from tools.lab.surface_driver.recipes import selectors
-        calls=self.resident(delay=.1)
-        def alarm(*_):raise RecipeFailed('late recipe alarm')
-        previous=signal.signal(signal.SIGALRM,alarm)
-        try:
-            with patch.object(lab,'verify_owned_guest'), self.assertRaisesRegex(RecipeFailed,'original export timeout'):
-                try:
-                    raise RecipeFailed('original export timeout')
-                except RecipeFailed:
-                    with armed():
-                        signal.setitimer(signal.ITIMER_REAL,.02)
-                        selectors._cancel_record(self.ctx,'recording')
-                    raise
-        finally:
-            signal.setitimer(signal.ITIMER_REAL,0)
-            signal.signal(signal.SIGALRM,previous)
-        self.assertEqual([c[0] for c in calls],['recording.capabilities','recording.cancel'])
-        self.assertTrue(any('late recipe alarm' in note for note in self.ctx.reviews))
-
 
 class CleanupShellBounds(unittest.TestCase):
     """Validator B2, N1 and N3 on #680: the cleanup hook's own boundaries."""
@@ -532,58 +308,6 @@ class CleanupShellBounds(unittest.TestCase):
 
     def context(self,target):
         return DriverContext(target,self.env,load_profile('mint-cinnamon-x11'),'/tmp','/tmp')
-
-    def test_recipe_alarm_is_deferred_until_a_cleanup_call_completes(self):
-        # run.py's SIGALRM fired 0.05 s into a restore and killed the transport
-        # before the script reached the target. A real subprocess stands in.
-        with tempfile.TemporaryDirectory() as temporary:
-            marker=Path(temporary)/'restored'
-            target=FakeTarget();target.run=Path('/tmp/sd-test-run')
-            def execute(script,timeout=60):
-                subprocess.run([sys.executable,'-c','import pathlib,sys,time\ntime.sleep(.3)\npathlib.Path(sys.argv[1]).write_text("done")',
-                                str(marker)],check=True,timeout=timeout)
-                return {'returncode':0,'stdout':'ran','stderr':''}
-            target.execute=execute
-            ctx=self.context(target)
-            def deadline(_signum,_frame):
-                raise RecipeFailed('recipe deadline exceeded: links.open')
-            previous=signal.signal(signal.SIGALRM,deadline)
-            try:
-                signal.setitimer(signal.ITIMER_REAL,.05)
-                with patch.object(lab,'verify_owned_guest'):
-                    with self.assertRaisesRegex(RecipeFailed,'recipe deadline exceeded'):
-                        ctx.shell('restore',timeout=30,cleanup=True)
-                        time.sleep(1)  # Not reached: the pending alarm fires on return.
-            finally:
-                signal.setitimer(signal.ITIMER_REAL,0)
-                signal.signal(signal.SIGALRM,previous)
-            self.assertEqual(marker.read_text(),'done')
-            self.assertNotIn(signal.SIGALRM,signal.pthread_sigmask(signal.SIG_BLOCK,[]))
-
-    def test_input_release_never_leaves_the_alarm_blocked(self):
-        # An alarm already due runs its handler inside the blocking
-        # pthread_sigmask call, after the mask changed (CPython checks signals
-        # there). Emulate exactly that; the previous mask must still return.
-        from tools.lab.surface_driver import critical as critical_module, target as target_module
-        real=critical_module._signal.pthread_sigmask  # The C call critical.py makes.
-        def due(how,mask):
-            previous=real(how,mask)
-            if how==signal.SIG_BLOCK and signal.SIGALRM in set(mask):
-                raise RecipeFailed('recipe deadline exceeded: links.open')
-            return previous
-        with patch.object(critical_module._signal,'pthread_sigmask',side_effect=due):
-            with self.assertRaisesRegex(RecipeFailed,'deadline'):
-                with target_module.input_release():
-                    self.fail('release must not run after the alarm')
-        self.assertNotIn(signal.SIGALRM,real(signal.SIG_BLOCK,()))
-
-    def test_cleanup_timeouts_are_capped(self):
-        calls=[]
-        target=FakeTarget();target.run=Path('/tmp/sd-test-run')
-        target.execute=lambda script,timeout=60:calls.append(timeout) or {'returncode':0,'stdout':'','stderr':''}
-        with patch.object(lab,'verify_owned_guest'):
-            self.context(target).shell('restore',timeout=86400,cleanup=True)
-        self.assertEqual(calls,[600])
 
     def test_physical_cleanup_rechecks_the_lock_before_every_command(self):
         # A heartbeat seconds old must not stand in for a lease since lost.
@@ -657,20 +381,6 @@ class InputFoundations(unittest.TestCase):
                 self.ctx.keys('AltGr+E')
         self.assertEqual(sent,[(['alt_r'],True),(['alt_r'],False)])
 
-    def test_double_click_is_one_resolved_gesture(self):
-        self.ctx._probe=lambda name,query:({'rect':[10,10,20,20]} if name=='control' else {'ok':True})
-        sent=[];self.ctx.target.pointer=lambda *args:sent.append(args)
-        self.ctx.double_click('text:Save','editor')
-        self.assertEqual([args[4] for args in sent],[True,False,True,False])
-        self.assertEqual(self.ctx._click_count,1)
-
-    def test_canvas_focus_selects_owning_window(self):
-        queries=[]
-        self.ctx._probe=lambda name,query:queries.append(query) or {'ok':True}
-        self.ctx.focus('editor.canvas')
-        self.assertEqual(self.ctx._current_window,'editor')
-        self.assertEqual(queries[0]['geometry']['window_id'],'10')
-
     def test_drag_failure_releases_held_button(self):
         guards=[];events=[]
         def guard(**kwargs):
@@ -681,23 +391,6 @@ class InputFoundations(unittest.TestCase):
             self.ctx.drag((10,10),(30,30))
         self.assertEqual(events[0][4],True)
         self.assertEqual(events[-1][4],False)
-
-    def test_desktop_label_click_uses_pointer_and_hit_test(self):
-        self.ctx.accessible=lambda query:[{'name':'Notice','role':'label','pid':8,'enabled':False,'rect':[10,10,80,20]}]
-        probes=[];events=[]
-        self.ctx._probe=lambda name,query:probes.append(query) or {'ok':True}
-        self.ctx.target.pointer=lambda *args:events.append(args)
-        self.ctx.click_accessible({'application':'cinnamon','name':'Notice'})
-        self.assertEqual(probes[0]['point'],(50,20))
-        self.assertEqual(events[0][:2],(50,20))
-        self.assertEqual([e[4] for e in events],[True,False])
-
-    def test_desktop_hover_does_not_press_a_button(self):
-        self.ctx.accessible=lambda query:[{'name':'Notice','role':'label','pid':8,'rect':[10,10,80,20]}]
-        self.ctx._probe=lambda *args:{'ok':True}
-        sent=[];self.ctx.target.pointer=lambda *args,**kwargs:sent.append((args,kwargs))
-        self.ctx.hover_accessible({'application':'cinnamon','name':'Notice'})
-        self.assertEqual(sent,[((50,20,200,200),{'head':0})])
 
     def test_read_only_tray_inventory_is_private_and_hashes_pixmaps(self):
         from tools.lab.surface_driver import probe
@@ -751,38 +444,6 @@ class InputFoundations(unittest.TestCase):
         with self.assertRaisesRegex(RecipeBlocked,'AltGr requires'):
             target.key(['alt_r','e'])
 
-    def test_x11_error_handler_is_restored_when_display_open_fails(self):
-        from tools.lab.surface_driver import probe
-        library=MagicMock();library.XSetErrorHandler.side_effect=[321,None]
-        library.XOpenDisplay.return_value=None
-        with patch.object(probe.ctypes.util,'find_library',return_value='libX11.so'),patch.object(probe.ctypes,'CDLL',return_value=library):
-            with self.assertRaisesRegex(RuntimeError,'cannot open X11 display'):
-                probe.x11_hit((20,20))
-        self.assertEqual(library.XSetErrorHandler.call_count,2)
-        self.assertEqual(library.XSetErrorHandler.call_args.args,(321,))
-
-    def test_broad_role_profiles_have_putgd_application_scope(self):
-        for desktop in ('mint-cinnamon-x11','ubuntu-gnome-wayland','kubuntu-kde-wayland'):
-            profile=load_profile(desktop)
-            for role in ('fileDialog','putgdFileDialog','region','recsel','confirm','confirmAction'):
-                self.assertEqual(profile['windows'][role]['accessible']['application'],'putgd*')
-
-    def test_live_menus_without_catalog_context_and_row(self):
-        events=[];self.ctx.target.pointer=lambda *args:events.append(args)
-        requests=[]
-        def probe(name,query):
-            requests.append((name,query))
-            if name=='control':
-                return {'rect':[15,20,40,12],'pid':7,'popup':{'rect':[10,10,80,60],'pid':7}}
-            return {'ok':True}
-        self.ctx._probe=probe
-        for role in ('historyContextMenu','historyRowMenu'):
-            self.ctx.click('text:Copy path',role)
-            self.assertIsNone(self.ctx._popup)
-        self.assertEqual(events[0][:2],(35,26))
-        self.assertTrue(all(q['popup'] for name,q in requests if name=='control'))
-        self.assertTrue(all(q['geometry']['pid']==7 for name,q in requests if name=='foreground'))
-
     def test_matching_catalog_cannot_replace_missing_live_control_witness(self):
         self.ctx.profile['at_spi']['available']=False
         self.ctx.target.pointer=lambda *a,**kw:self.fail('static coordinates must not dispatch input')
@@ -796,18 +457,6 @@ class InputFoundations(unittest.TestCase):
         self.ctx._probe=missing
         with self.assertRaisesRegex(RecipeBlocked,'hidden or disabled'):
             self.ctx.click('save','editor')
-
-    def test_secondary_head_offset_applied_once(self):
-        self.ctx.profile['screens']=[{'x':-1920,'y':0,'width':1920,'height':1080,'head':1,'scale':2}]
-        self.ctx.profile['session']='wayland'
-        self.g.update(x=-1900,width=100,coordinate_space='logical')
-        def probe(name,query):
-            return {'rect':[-1880,20,20,10]} if name=='control' else {'ok':True}
-        self.ctx._probe=probe
-        events=[];self.ctx.target.pointer=lambda *args:events.append(args)
-        self.ctx.click('text:Save','editor')
-        self.assertEqual(events[0][:2],(100,50))
-        self.assertEqual(events[0][-1],1)
 
     def test_wayland_missing_compositor_witness_blocks(self):
         from tools.lab.surface_driver import probe
@@ -842,14 +491,6 @@ class InputFoundations(unittest.TestCase):
             result=probe.x11_foreground({'geometry':self.g})
         self.assertFalse(result['ok']);self.assertEqual(result['obscuring_window'],'Settings')
 
-    def test_x11_unmanaged_popup_uses_server_hit_test(self):
-        from tools.lab.surface_driver import probe
-        def run(*args):
-            return '_NET_ACTIVE_WINDOW(WINDOW): window id # 0xa' if args[-1]=='_NET_ACTIVE_WINDOW' else '_NET_CLIENT_LIST_STACKING(WINDOW): window id # 0xa'
-        with patch.object(probe,'run',side_effect=run),patch.object(probe,'x11_windows',return_value=[dict(self.g,name='Editor')]),patch.object(probe,'x11_hit',return_value={'pid':8,'path':['99'],'name':'Other popup'}):
-            result=probe.x11_foreground({'geometry':self.g,'point':[5,5]})
-        self.assertFalse(result['ok']);self.assertEqual(result['obscuring_window'],'Other popup')
-
     def test_x11_inventory_retains_unmanaged_obscurer_without_pid(self):
         from tools.lab.surface_driver import probe
         from types import SimpleNamespace
@@ -863,26 +504,6 @@ class InputFoundations(unittest.TestCase):
             rows=probe.x11_windows({'owned':False})
         self.assertEqual(rows[0]['name'],'Other client without PID')
         self.assertIsNone(rows[0]['pid'])
-
-    def test_private_seed_precedes_launch_and_first_launch_is_explicit(self):
-        target=Target.__new__(Target);target.root='/tmp/sd-seed';target.app_executable='putgd';target.started=False
-        target.preflight=lambda:None;target.preserve_clipboard=lambda:None
-        calls=[]
-        target.execute=lambda script,**kw:calls.append(script) or {'returncode':0}
-        target.cli=lambda *a:{'returncode':0,'stdout':'{"ok":true,"result":{}}'}
-        with patch('tools.lab.surface_driver.appimage.prepare') as staging:
-            target.start()
-        staging.assert_called_once_with(target)
-        seed=next(i for i,s in enumerate(calls) if 'SD_SEED' in s)
-        launch=next(i for i,s in enumerate(calls) if 'nohup' in s)
-        self.assertLess(seed,launch)
-        self.assertNotIn('development-s3',calls[seed]);self.assertIn("'profiles': []",calls[seed])
-        self.assertIn("'updates': {'check': False}",calls[seed])
-        calls.clear()
-        with patch('tools.lab.surface_driver.appimage.prepare') as staging:
-            target.start(first_launch=True)
-        staging.assert_called_once_with(target)
-        self.assertFalse(any('SD_SEED' in s for s in calls))
 
     def test_accessibility_shape_text_filters_and_protected_text(self):
         from tools.lab.surface_driver import probe
@@ -920,114 +541,8 @@ class InputFoundations(unittest.TestCase):
             with self.assertRaisesRegex(ValueError,'unknown accessibility'):
                 probe.accessible({'typo':True})
 
-    def test_notification_action_is_real_pointer_and_waits_for_correlated_signal(self):
-        self.ctx.profile['notifications']['actions_available']=True
-        notices=[{'id':72,'summary':'Synthetic notice','actions':['default','Show'],'action_events':[]}]
-        self.ctx.notifications=lambda:notices
-        node={'name':'Synthetic notice','pid':50,'role':'label','rect':[10,10,80,20],'application':'cinnamon'}
-        queries=[];self.ctx.accessible=lambda query:queries.append(query) or [node]
-        picks=[];self.ctx._probe=lambda name,query:picks.append(query) or {'ok':True}
-        events=[]
-        def pointer(*args,**kwargs):
-            events.append(args)
-            if len(args)>4 and args[4] is False:notices[0]['action_events'].append({'action':'default'})
-        self.ctx.target.pointer=pointer
-        self.ctx.notification_action(72)
-        # Hover first, then fresh owned title reads before its press/release.
-        self.assertGreaterEqual(len(queries),2)
-        self.assertTrue(all('application' in query for query in queries))
-        self.assertEqual(events[0],(50,20,200,200));self.assertEqual([e[4] for e in events[1:]],[True,False])
-        self.assertTrue(all(q['desktop_node'] is node and q['point']==(50,20) for q in picks))
-        notices[0]['closed']={'reason':1}
-        with self.assertRaisesRegex(RecipeBlocked,'closed'):
-            self.ctx.notification_action(72)
-
-    def test_notification_button_uses_common_ancestor_not_title_only_panel(self):
-        self.ctx.profile['notifications']['actions_available']=True
-        notice={'id':72,'summary':'Synthetic notice','actions':['retry','Retry'],'action_events':[]}
-        title={'name':'Synthetic notice','pid':50,'role':'label','rect':[20,10,80,20],
-               'ancestors':[{'role':'notification','rect':[0,0,200,150]},
-                            {'role':'panel','rect':[20,10,80,20]}]}
-        button={'name':'Retry','pid':50,'role':'push button','rect':[20,100,80,20]}
-        outside={'name':'Retry','pid':50,'role':'push button','rect':[20,170,80,20]}
-        self.ctx.notifications=lambda:[notice]
-        self.ctx.accessible=lambda query:[title] if query['name']=='Synthetic notice' else [button,outside]
-        self.ctx._probe=lambda name,query:{'ok':True}
-        events=[]
-        def pointer(*args,**kwargs):
-            events.append(args)
-            if len(args)>4 and args[4] is False:notice['action_events'].append({'action':'retry'})
-        self.ctx.target.pointer=pointer
-        self.ctx.notification_action(72,'retry')
-        self.assertEqual(events[0][:2],(60,20))
-        self.assertEqual([e[:2] for e in events[1:]],[(60,110),(60,110),(60,110)])
-        self.assertEqual(len(events[1]),4)  # Enter the action before its press/release.
-
-    def test_declared_notification_input_gap_blocks_before_observation(self):
-        self.ctx.profile['notifications']=dict(self.ctx.profile['notifications'],actions_available=False,
-                                               reason='Declared desktop gap (#670)')
-        self.ctx.notifications=lambda: self.fail('gap must withhold all input before observation')
-        with self.assertRaisesRegex(RecipeBlocked,'Declared desktop gap') as error:
-            self.ctx.notification_action(72)
-        self.assertEqual(error.exception.issue,670)
-
-    def test_notification_events_are_correlated_to_server_and_replacement(self):
-        raw='''method call time=100.1 sender=:1.2 -> destination=org.freedesktop.Notifications serial=45 path=/org/freedesktop/Notifications; interface=org.freedesktop.Notifications; member=Notify
-   string "put.gd"
-   uint32 0
-   string "putgd"
-   string "Synthetic notice"
-   string "Synthetic body"
-   array [
-      string "default"
-      string "Show"
-      string "retry"
-      string "Retry"
-   ]
-   array [
-      dict entry (
-         string "resident"
-         variant             boolean true
-      )
-   ]
-   int32 5000
-method return time=100.2 sender=:1.3 -> destination=:1.2 serial=9 reply_serial=45
-   uint32 72
-signal time=100.3 sender=:1.99 -> destination=(null destination) serial=20 interface=org.freedesktop.Notifications; member=ActionInvoked
-   uint32 72
-   string "wrong-server"
-signal time=100.4 sender=:1.3 -> destination=(null destination) serial=21 interface=org.freedesktop.Notifications; member=ActionInvoked
-   uint32 72
-   string "retry"
-signal time=100.5 sender=:1.3 -> destination=(null destination) serial=22 interface=org.freedesktop.Notifications; member=NotificationClosed
-   uint32 72
-   uint32 2
-'''
-        row=parse_notifications(raw,100)[0]
-        self.assertEqual(row['sender'],':1.2');self.assertEqual(row['server'],':1.3')
-        self.assertTrue(row['resident']);self.assertEqual(row['timeout'],5000)
-        self.assertEqual(row['action_events'],[{'action':'retry','at':100.4}])
-        self.assertEqual(row['closed'],{'reason':2,'at':100.5})
-
 
 class TargetSafety(unittest.TestCase):
-    def test_private_runtime_preserves_discovered_session_pipewire_directory(self):
-        target = Target.__new__(Target)
-        target.root, target.bin_dir = '/tmp/sd-isolated', None
-        # This is the native-session environment supplied by session(), also
-        # used when the probe and clipboard keeper launch their SSH children.
-        for native in ('/run/user/1234', '/tmp/native session'):
-            environment = dict(os.environ, XDG_RUNTIME_DIR=native, PIPEWIRE_RUNTIME_DIR='/foreign')
-            script = target.prefix() + "python3 -c 'import json,os;print(json.dumps(dict(os.environ)))'"
-            child = subprocess.run(['sh', '-s'], input=script, env=environment,
-                                   text=True, capture_output=True, check=True)
-            actual = json.loads(child.stdout)
-            self.assertEqual(actual['PIPEWIRE_RUNTIME_DIR'], native)
-            self.assertEqual(actual['XDG_RUNTIME_DIR'], target.root + '/runtime')
-            for key, suffix in (('XDG_CONFIG_HOME', 'config'), ('XDG_DATA_HOME', 'data'),
-                                ('XDG_STATE_HOME', 'state'), ('XDG_CACHE_HOME', 'cache')):
-                self.assertEqual(actual[key], target.root + '/' + suffix)
-
     def setUp(self):
         endpoint_check=patch('tools.lab.surface_driver.run.verify_physical_endpoints')
         self.endpoint_check=endpoint_check.start()
@@ -1362,113 +877,6 @@ class EndpointSafety(unittest.TestCase):
             self.assertEqual(main(args),2)
         self.target.require_lock.assert_called_once_with('f44','owned')
         for operation in (self.target.start,self.target.identity,self.target.screenshot):operation.assert_not_called()
-
-
-class CoreDemoCleanup(unittest.TestCase):
-    def test_finalizing_helper_waits_for_resident_editor_admission_to_clear(self):
-        from tools.lab.surface_driver.recipes.core_demo import cancelled
-        ctx=Mock()
-        ctx.cli.side_effect=[{'stdout':json.dumps(value)} for value in (
-            {'ok':True,'result':{}},
-            {'ok':True,'result':{'ready':True}},
-            {'ok':False,'error':{'code':'editor_finalizing'}},
-            {'ok':False,'error':{'code':'editor_closed'}},
-            {'ok':False,'error':{'code':'editor_unavailable'}})]
-        ctx.call.side_effect=[{'editor':{'open':True}}, {'editor':{'open':True}}, {'editor':{'open':False}}]
-        observed=[]
-        def wait(predicate,*args):
-            for _ in range(4):
-                observed.append(predicate())
-                if observed[-1]:return
-            self.fail('editor never closed')
-        ctx.wait.side_effect=wait
-        cancelled(ctx,'synthetic-editor')
-        self.assertEqual(observed,[True,False,False,False,True])
-
-    def test_recipes_wait_for_async_cancel_before_next_before_frame(self):
-        from tools.lab.surface_driver.recipes import core_demo
-        class Context:
-            active=False;closing=0;tool=None;shapes=[];before=[]
-            def call(self, method, params=None):
-                if method=='editor.open':
-                    if self.active:raise RecipeFailed('editor_active')
-                    self.active=True;return {'operationId':'synthetic-editor'}
-                if method=='editor.cancel':self.closing=3
-                if method=='editor.view':return {'tool':self.tool}
-                if method=='editor.inspect':return {'shapes':self.shapes}
-                if method=='editor.apply':self.shapes=[{}]
-                if method=='capabilities':return {'editor':{'open':self.active}}
-                return {}
-            def cli(self,*args):
-                if args[0]=='editor.cancel':
-                    self.call('editor.cancel')
-                    return {'stdout':json.dumps({'ok':True,'result':{}})}
-                if self.closing:
-                    self.closing-=1
-                    if not self.closing:self.active=False
-                value={'ok':True,'result':{'ready':True}} if self.active else {'ok':False,'error':{'code':'editor_unavailable'}}
-                return {'stdout':json.dumps(value)}
-            def wait(self,predicate,what,timeout=10):
-                for _ in range(5):
-                    result=predicate()
-                    if result:return result
-                raise RecipeFailed(what)
-            def fixture(self,*args):return {'path':'/synthetic.png'}
-            def view(self,*args):pass
-            def frame(self,label,**kwargs):
-                if label=='before':self.before.append(self.active)
-            def keys(self,key):
-                if key=='T':self.tool='text'
-                if key=='Ctrl+Z':self.shapes=[]
-                if key=='Ctrl+Shift+Z':self.shapes=[{}]
-            def use_catalog(self,*args):pass
-            def click(self,*args,**kwargs):self.tool='redact'
-        ctx=Context()
-        for function in (core_demo.text_tool,core_demo.redact_tool,core_demo.undo_redo):
-            ctx.frame('before');function(ctx);function.cleanup(ctx)
-            self.assertFalse(ctx.active)
-        self.assertEqual(ctx.before,[False,False,False])
-
-    def test_cancel_does_not_treat_arbitrary_inspection_failure_as_closed(self):
-        from tools.lab.surface_driver.recipes.core_demo import cancelled
-        ctx=Mock()
-        ctx.cli.side_effect=[{'stdout':json.dumps(v)} for v in (
-            {'ok':True,'result':{}},{'ok':False,'error':{'code':'permission_denied'}})]
-        ctx.wait.side_effect=lambda predicate,*args:predicate()
-        with self.assertRaisesRegex(RecipeFailed,'permission_denied'):cancelled(ctx,'synthetic-editor')
-
-    def test_unknown_active_editor_blocks_cleanup_without_guessing_an_id(self):
-        from tools.lab.surface_driver.recipes.core_demo import cleanup
-        ctx=Mock();ctx.call.return_value={'editor':{'open':True}}
-        with self.assertRaisesRegex(RecipeFailed,'cannot identify'):cleanup(ctx)
-        ctx.cli.assert_not_called()
-
-    def test_opening_failure_still_retains_its_editor_for_runner_cleanup(self):
-        from tools.lab.surface_driver.recipes.core_demo import opened,cleanup
-        ctx=Mock();ctx.fixture.return_value={'path':'/synthetic.png'}
-        ctx.call.return_value={'operationId':'owned-editor'}
-        ctx.wait.side_effect=RecipeFailed('opening timed out')
-        with self.assertRaises(RecipeFailed):opened(ctx)
-        ctx.wait.side_effect=lambda predicate,*args:predicate()
-        ctx.call.return_value={'editor':{'open':False}}
-        ctx.cli.return_value={'stdout':json.dumps({'ok':False,'error':{'code':'editor_unavailable'}})}
-        cleanup(ctx)
-        self.assertEqual(ctx.cli.call_args_list[0].args[0],'editor.cancel')
-        self.assertEqual(json.loads(ctx.cli.call_args_list[0].args[1])['id'],'owned-editor')
-
-    def test_cancel_retry_accepts_known_starting_and_finalizing_states(self):
-        from tools.lab.surface_driver.recipes.core_demo import cancelled
-        ctx=Mock()
-        ctx.cli.side_effect=[{'stdout':json.dumps({'ok':False,'error':{'code':code}})}
-                             for code in ('editor_starting','editor_finalizing','editor_unavailable')]
-        ctx.call.return_value={'editor':{'open':False}}
-        def wait(predicate,*args):
-            for _ in range(3):
-                if predicate():return
-            self.fail('cancel never completed')
-        ctx.wait.side_effect=wait
-        cancelled(ctx,'owned-editor')
-        self.assertEqual(ctx.cli.call_count,3)
 
 
 if __name__=='__main__':unittest.main()

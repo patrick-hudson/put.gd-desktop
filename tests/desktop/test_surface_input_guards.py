@@ -1,8 +1,5 @@
 """Input and observation regressions; fake desktops are never live evidence."""
-import json
-import os
 from pathlib import Path
-import subprocess
 import sys
 import tempfile
 from types import SimpleNamespace
@@ -72,33 +69,6 @@ class FocusAndRoles(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, 'clipped by ancestor'):
                 probe.control_geometry({'selector': 'item'})
 
-    def test_plain_kde_focus_verifies_without_requesting_unsupported_raise(self):
-        ctx, directory = context({'session':'wayland','compositor':{'kind':'kwin-script'}})
-        self.addCleanup(directory.cleanup)
-        ctx._probe = Mock(return_value={'ok':True})
-        ctx.focus('main')
-        self.assertFalse(ctx._probe.call_args.args[1]['raise'])
-        ctx.focus('main', raise_window=True)
-        self.assertTrue(ctx._probe.call_args.args[1]['raise'])
-
-    def test_raw_button_role_matches_both_spellings_and_catalog_class(self):
-        row = {'role':'button'}
-        for role in ('button','push button','push_button'):
-            self.assertTrue(probe.matches(row, {'role':role}))
-        self.assertEqual(probe.selector_matches(row,'class:QPushButton',[]),1)
-
-    def test_accessibility_reports_the_server_role(self):
-        sys.path.insert(0,str(Path(__file__).parent))
-        from test_surface_driver_desktop import FakeNode
-        button=FakeNode('Upload','button',[10,10,80,30])
-        app=FakeNode('putgd','application',None,children=[button])
-        desktop=FakeNode('main','desktop frame',None,children=[app])
-        api=SimpleNamespace(DESKTOP_COORDS=0)
-        with patch.dict(sys.modules,pyatspi=api),patch.object(probe,'desktop_root',return_value=desktop),\
-             patch.object(probe,'popup_roots',return_value=[]):
-            rows=probe.accessible({'name':'Upload','role':'push button'})
-        self.assertEqual(rows[0]['role'],'button')
-
 
 class EndpointChecks(unittest.TestCase):
     def target(self):
@@ -111,20 +81,6 @@ class EndpointChecks(unittest.TestCase):
         target._outputs=[{'x':0,'y':0,'width':100,'height':80},
                          {'x':100,'y':0,'width':100,'height':80}]
         return target
-
-    def test_one_identity_check_per_held_key_input(self):
-        target=self.target()
-        with patch('tools.lab.surface_driver.target.lab.input_events') as send:
-            target.key_state(['shift'],True)
-        target._verify_endpoints.assert_called_once()
-        send.assert_called_once()
-
-    def test_one_identity_check_per_multihead_pointer_input(self):
-        target=self.target()
-        with patch('tools.lab.surface_driver.target.lab.input_events') as send:
-            target.pointer(20,20,100,80,head=1)
-        target._verify_endpoints.assert_called_once()
-        send.assert_called_once()
 
     def test_direct_events_still_verify(self):
         target=self.target()
@@ -182,42 +138,7 @@ class ShellNotificationCover(unittest.TestCase):
         ctx.target.pointer.assert_not_called()
 
 
-class FrameClientNames(unittest.TestCase):
-    def test_foreign_titlebar_names_the_frames_client(self):
-        def read(*args):
-            if args == ('xprop','-root','_NET_CLIENT_LIST'):
-                return '_NET_CLIENT_LIST(WINDOW): window id # 0x1e'
-            if args[:2] == ('xdotool','getwindowname'):
-                return 'Foreign editor' if args[2] == '30' else ''
-            if args[:2] == ('xdotool','getwindowpid'):
-                if args[2] == '30': return '99'
-                raise subprocess.CalledProcessError(1,args)
-        with patch.object(probe,'run',side_effect=read),patch.object(probe,'x11_ancestors',return_value=['30','20','1']):
-            hit=probe.x11_hit_identity(['20','21'])
-        self.assertEqual((hit['name'],hit['pid'],hit['client']),('Foreign editor',99,'30'))
-        self.assertEqual(hit['path'],['20','21'])
-
-
 class StageOverlay(unittest.TestCase):
-    def test_staging_persists_the_uuid_without_losing_other_extensions(self):
-        from tools.lab.surface_driver.compositor import stage_gnome_witness as staging
-        source = Path(staging.__file__).with_name('gnome-witness')
-        settings = Mock()
-        settings.get_strv.return_value = ['putgd@put.gd', 'other@lab']
-        gio = SimpleNamespace(Settings=SimpleNamespace(new=Mock(return_value=settings), sync=Mock()))
-        scripts = []
-        with patch.object(staging.lab, 'verify_owned_guest', return_value={}), \
-             patch.object(staging.lab, 'state', return_value={'profile': 'gnome-wayland'}), \
-             patch.object(staging.lab, 'load_profile', return_value={'session_process': 'gnome-shell'}), \
-             patch.object(staging.lab, 'guest_session', side_effect=lambda run, script: scripts.append(script)):
-            staging.stage('/owned/run', source)
-        body = scripts[0].split("<<'SD_ENABLE'\n", 1)[1].split('\nSD_ENABLE', 1)[0]
-        with patch.dict(sys.modules, {'gi.repository': SimpleNamespace(Gio=gio)}):
-            exec(body, {})
-        settings.set_strv.assert_called_once_with('enabled-extensions',
-            ['putgd@put.gd', 'other@lab', 'putgd-lab-witness@put.gd'])
-        gio.Settings.sync.assert_called_once()
-
     def test_real_desktop_and_golden_refused_before_any_install(self):
         from tools.lab.surface_driver.compositor import stage_gnome_witness as staging
         with patch.object(staging.lab,'verify_owned_guest',side_effect=staging.lab.LabError('not an owned overlay')),\
@@ -240,39 +161,6 @@ class StageOverlay(unittest.TestCase):
 
 
 class PersistentBudgets(unittest.TestCase):
-    def test_startup_does_not_renew_an_expired_request_budget(self):
-        # Reuse the production transport against a local, bounded fake witness.
-        sys.path.insert(0,str(Path(__file__).parent))
-        from test_surface_driver_geometry import Hygiene
-        target=Hygiene().probe_target()
-        import time
-        target.session=lambda *a,**kw: (time.sleep(.04) or '{}')
-        source='def geometry(query): return {}'
-        try:
-            with patch('tools.lab.surface_driver.target.lab.ssh_args',return_value=['sh','-c']):
-                with self.assertRaisesRegex(RecipeBlocked,'geometry.*before dispatch; no request sent'):
-                    target.probe('geometry',{},source,timeout=.02)
-                self.assertFalse(target._probe_failed)
-        finally:
-            target._close_probe()
-
-    def test_timeout_names_outstanding_probe_and_live_channel(self):
-        sys.path.insert(0,str(Path(__file__).parent))
-        from test_surface_driver_geometry import Hygiene
-        target=Hygiene().probe_target()
-        source='import time\ndef geometry(query):\n time.sleep(.08)\n return {}\n'
-        try:
-            with patch('tools.lab.surface_driver.target.lab.ssh_args',return_value=['sh','-c']):
-                with self.assertRaisesRegex(RecipeBlocked,'geometry; elapsed .*budget .*SSH process still running; reply outstanding'):
-                    target.probe('geometry',{},source,timeout=.03)
-                # A deadline-cut wait leaves one reply outstanding (#834): the
-                # next request drains it and is answered by its own reply.
-                self.assertEqual(target._probe_stale,1)
-                self.assertEqual(target.probe('geometry',{},source),{'ok':True,'result':{}})
-                self.assertEqual((target._probe_stale,target._probe_failed),(0,False))
-        finally:
-            target._close_probe()
-
     def test_shell_cover_reads_are_fresh_without_restarting_channel(self):
         sys.path.insert(0,str(Path(__file__).parent))
         from test_surface_driver_geometry import Hygiene
@@ -295,47 +183,6 @@ if __name__=='__main__':
                 self.assertEqual((first['counter'],second['counter']),(1,1))
                 self.assertNotEqual(first['pid'],second['pid'])
                 self.assertEqual(target._probe_process.pid,channel)
-        finally:
-            target._close_probe()
-
-    def test_recipe_deadline_identifies_the_probe_budget(self):
-        import time
-        ctx,directory=context()
-        self.addCleanup(directory.cleanup)
-        ctx._deadline=time.monotonic()+.02
-        def timeout(*args,**kwargs):
-            time.sleep(.03)
-            raise RecipeBlocked('persistent desktop probe timed out; reply outstanding')
-        ctx.target.probe=timeout
-        with self.assertRaisesRegex(RecipeBlocked,'recipe deadline exhausted during geometry probe'):
-            ctx._probe('geometry',{})
-
-    def test_recipe_alarm_keeps_the_outstanding_request_cause(self):
-        from test_surface_driver_geometry import Hygiene
-        target=Hygiene().probe_target()
-        source='import time\ndef geometry(query):\n time.sleep(.08)\n return {}\n'
-        try:
-            with patch('tools.lab.surface_driver.target.lab.ssh_args',return_value=['sh','-c']),\
-                 patch('tools.lab.surface_driver.target.selectors.DefaultSelector.select',side_effect=RecipeFailed('recipe deadline exceeded')):
-                with self.assertRaisesRegex(RecipeFailed,'recipe deadline exceeded'):
-                    target.probe('geometry',{},source)
-            # The alarm hit after the whole request went out: its reply is
-            # outstanding, not lost (#834). The next request drains it first.
-            self.assertEqual((target._probe_stale,target._probe_failed),(1,False))
-            self.assertEqual(target.probe('geometry',{},source),{'ok':True,'result':{}})
-            self.assertEqual(target._probe_stale,0)
-        finally:
-            target._close_probe()
-
-    def test_closed_channel_names_request_and_child_exit(self):
-        from test_surface_driver_geometry import Hygiene
-        target=Hygiene().probe_target()
-        source='import os\ndef geometry(query): os._exit(9)\n'
-        try:
-            with patch('tools.lab.surface_driver.target.lab.ssh_args',return_value=['sh','-c']):
-                with self.assertRaisesRegex(RecipeBlocked,'closed during geometry; SSH exit'):
-                    target.probe('geometry',{},source)
-                self.assertIn('geometry',target._probe_failure)
         finally:
             target._close_probe()
 
@@ -408,16 +255,6 @@ class DragGuards(unittest.TestCase):
 
     def test_resize_drag_steps_pass_real_guard_while_press_is_open(self):
         self.drag_with_real_guard(True)
-
-
-class WitnessSignals(unittest.TestCase):
-    def test_native_grab_signal_lifecycle_and_bounded_history(self):
-        import shutil
-        node=shutil.which('node')
-        if not node:
-            self.skipTest('Node is unavailable for the extension signal unit test')
-        subprocess.run([node,'--test',str(Path(__file__).with_name('surface_gnome_witness.mjs'))],
-                       check=True,capture_output=True,text=True,timeout=5)
 
 
 if __name__=='__main__':

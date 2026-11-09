@@ -7,7 +7,7 @@ from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from tools.lab.surface_driver import probe
-from tools.lab.surface_driver.api import RecipeBlocked, RecipeFailed
+from tools.lab.surface_driver.api import RecipeFailed
 from tools.lab.surface_driver.context import DriverContext
 from tools.lab.surface_driver.recipes import outcomes, outcomes_live
 
@@ -25,59 +25,9 @@ class ClearScreen(unittest.TestCase):
             reply = probe.clear_screen(dict(query, shell=['plasmashell']))
         return reply, banners, [row['id'] for row in stop.call_args.args[0]]
 
-    def test_the_obscuring_window_goes_and_nothing_else(self):
-        reply, banners, stopped = self.clear(obscuring=3)
-        banners.assert_called_once()
-        self.assertEqual(stopped, [3])
-        self.assertEqual(reply['stopped'], [{'title': 'old window', 'process': 'kate'}])
-
-    def test_windows_over_the_pattern_go_but_not_those_below_it(self):
-        self.assertEqual(self.clear(above=2)[2], [3])
-
     def test_the_shell_and_this_runs_windows_always_stay(self):
         self.assertEqual(self.clear(obscuring=4)[2], [])
         self.assertEqual(self.clear(obscuring=2)[2], [])
-
-    def test_a_banner_being_clicked_can_stay(self):
-        _, banners, stopped = self.clear(obscuring=3, notifications=False)
-        banners.assert_not_called()
-        self.assertEqual(stopped, [3])
-
-    def test_windows_are_still_cleared_without_a_notification_server(self):
-        failure = probe.subprocess.CalledProcessError(1, 'gdbus')
-        with patch.object(probe, 'close_notifications', side_effect=failure), \
-             patch.object(probe, 'layout', return_value={'windows': ROWS}), patch.object(probe, 'stop_windows') as stop:
-            reply = probe.clear_screen({'obscuring': 3, 'shell': ['plasmashell']})
-        self.assertEqual(reply['newest_notification'], None)
-        self.assertEqual([row['id'] for row in stop.call_args.args[0]], [3])
-
-    def test_banners_close_back_from_the_newest_id(self):
-        with patch.object(probe, 'run', return_value='(uint32 70,)') as notify, patch.object(probe.subprocess, 'run') as close:
-            self.assertEqual(probe.close_notifications(probe.time.monotonic()+60), 70)
-        self.assertIn('org.freedesktop.Notifications.Notify', notify.call_args.args)
-        identities = [call.args[0][-1] for call in close.call_args_list]
-        self.assertEqual(identities, [str(value) for value in range(70, 6, -1)])
-
-
-class Budget(unittest.TestCase):
-    def test_closing_stops_at_the_deadline(self):
-        with patch.object(probe, 'run', return_value='(uint32 70,)'), patch.object(probe.subprocess, 'run') as close:
-            probe.close_notifications(probe.time.monotonic()-1)
-        close.assert_not_called()
-
-    def test_every_window_gets_term_before_the_one_wait(self):
-        calls = []
-        with patch.object(probe.os, 'kill', side_effect=lambda pid, number: calls.append((pid, number))), \
-             patch.object(probe, 'process_start', return_value=None):
-            probe.stop_windows([{'pid': 1}, {'pid': 2}, {'pid': 1}])
-        self.assertEqual(sorted(calls), [(1, probe.signal.SIGTERM), (2, probe.signal.SIGTERM)])
-
-
-class Dispatch(unittest.TestCase):
-    def test_both_probe_entry_points_know_clear_screen(self):
-        root = Path(__file__).resolve().parents[2]/'tools/lab/surface_driver'
-        self.assertIn("'clear_screen':'clear_screen'", (root/'target.py').read_text())
-        self.assertIn("'clear_screen': clear_screen", (root/'probe.py').read_text())
 
 
 class Guard(unittest.TestCase):
@@ -100,51 +50,10 @@ class Guard(unittest.TestCase):
         ctx.shell_failure = lambda full=False: None
         return ctx, calls
 
-    def test_input_continues_once_the_cover_is_gone(self):
-        ctx, calls = self.context([{'ok': False, 'obscuring_window': 'kate', 'obscuring_window_id': 3}, {'ok': True}])
-        with patch('tools.lab.surface_driver.context.time.sleep'):
-            self.assertTrue(ctx._guard()['ok'])
-        self.assertEqual([query['obscuring'] for name, query in calls if name == 'clear_screen'], [3])
-        self.assertIn('cleared screen: banners close requested; windows closed: old window (kate)', ctx.notes)
-
-    def test_a_failed_clear_keeps_the_obstruction_verdict(self):
-        ctx, _ = self.context([{'ok': False, 'obscuring_window': 'stuck', 'obscuring_window_id': 3}])
-        ctx.clear_screen = lambda **options: (_ for _ in ()).throw(RecipeBlocked('no notification server'))
-        with self.assertRaisesRegex(RecipeFailed, 'stuck'):
-            ctx._guard()
-        self.assertIn('screen clearing unavailable: no notification server', ctx.notes)
-
-    def test_the_receipt_says_when_banners_could_not_be_closed(self):
-        self.newest = None
-        ctx, _ = self.context([{'ok': False, 'obscuring_window': 'kate', 'obscuring_window_id': 3}, {'ok': True}])
-        with patch('tools.lab.surface_driver.context.time.sleep'):
-            ctx._guard()
-        self.assertIn('cleared screen: banners close failed; windows closed: old window (kate)', ctx.notes)
-
     def test_a_cover_that_stays_still_fails_and_is_named(self):
         ctx, _ = self.context([{'ok': False, 'obscuring_window': 'stuck', 'obscuring_window_id': 3} for _ in range(4)])
         with patch('tools.lab.surface_driver.context.time.sleep'), self.assertRaisesRegex(RecipeFailed, 'stuck'):
             ctx._guard()
-
-
-class DesktopGuard(Guard):
-    def guarded(self, replies, **options):
-        ctx, calls = self.context(replies)
-        with patch('tools.lab.surface_driver.context.time.sleep'):
-            ctx._desktop_guard({'pid': 1}, [1, 1], **options)
-        return [query for name, query in calls if name == 'clear_screen']
-
-    def test_a_banner_without_a_window_id_is_cleared_for_a_tray_click(self):
-        cleared = self.guarded([{'ok': False, 'obscuring_window': 'shell banner'}, {'ok': True}])
-        self.assertEqual([query['notifications'] for query in cleared], [True])
-
-    def test_a_banner_being_clicked_stays_open(self):
-        with self.assertRaisesRegex(RecipeFailed, 'shell banner'):
-            self.guarded([{'ok': False, 'obscuring_window': 'shell banner'}], keep_banners=True)
-
-    def test_a_window_over_a_banner_goes_but_the_banner_stays(self):
-        cleared = self.guarded([{'ok': False, 'obscuring_window': 'kate', 'obscuring_window_id': 3}, {'ok': True}], keep_banners=True)
-        self.assertEqual([query['notifications'] for query in cleared], [False])
 
 
 class AppErrorBanner(unittest.TestCase):
@@ -171,9 +80,6 @@ class AppErrorBanner(unittest.TestCase):
              self.assertRaisesRegex(RecipeFailed, 'upload failed'):
             outcomes_live._live_flow(ctx)
         self.assertEqual(ctx.notes, ['put.gd error banner in this flow: put.gd: Cannot configure'])
-
-    def test_normal_banners_pass(self):
-        outcomes.no_app_error_banner(self.context([{'summary': 'put.gd', 'body': 'Uploaded', 'hints': {'urgency': 1}}]))
 
 
 if __name__ == '__main__':

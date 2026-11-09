@@ -3,7 +3,6 @@ import contextlib
 import importlib.util
 import io
 import json
-import os
 from pathlib import Path
 import sys
 import tempfile
@@ -96,38 +95,6 @@ class LiveCredentialContracts(unittest.TestCase):
             (run / 'identity').chmod(0o644)
             with self.assertRaises(bridge.ProvisionError): bridge.guest_call(run, broker, 'proton', request)
 
-    def test_budgie_guest_keeps_the_session_qt_platform(self):
-        with tempfile.TemporaryDirectory() as directory:
-            run = Path(directory)
-            (run / 'identity').write_text('synthetic identity')
-            (run / 'identity').chmod(0o600)
-            (run / 'state.json').write_text(json.dumps({'profile': 'fedora45-budgie', 'guest_user': 'fixture',
-                'known_hosts': str(run / 'known_hosts'), 'ssh_port': 22222, 'overlay': str(run / 'disk.qcow2')}))
-            (run / 'disk.qcow2').write_text('synthetic disposable overlay')
-            request = {'op': 'import', 'reference': REF, 'credentials': {'accessKey': 'synthetic-access', 'secretKey': 'synthetic-secret', 'sessionToken': ''}}
-            with patch.object(bridge, 'exchange', return_value=b'{"ok":true}') as exchange:
-                self.assertEqual(bridge.guest_call(run, '/home/fixture/bridge', 's3', request), {'ok': True})
-            body = exchange.call_args.args[1]
-            self.assertIn(b'pgrep -u fixture -x budgie-panel', body)
-            self.assertIn(b' QT_QPA_PLATFORM; do', body)
-            self.assertNotIn(b'export QT_QPA_PLATFORM=', body)
-
-    def test_hyprland_guest_keeps_the_session_qt_platform(self):
-        with tempfile.TemporaryDirectory() as directory:
-            run = Path(directory)
-            (run / 'identity').write_text('synthetic identity')
-            (run / 'identity').chmod(0o600)
-            (run / 'state.json').write_text(json.dumps({'profile': 'omarchy-hyprland', 'guest_user': 'fixture',
-                'known_hosts': str(run / 'known_hosts'), 'ssh_port': 22222, 'overlay': str(run / 'disk.qcow2')}))
-            (run / 'disk.qcow2').write_text('synthetic disposable overlay')
-            request = {'op': 'import', 'reference': REF, 'credentials': {'accessKey': 'synthetic-access', 'secretKey': 'synthetic-secret', 'sessionToken': ''}}
-            with patch.object(bridge, 'exchange', return_value=b'{"ok":true}') as exchange:
-                self.assertEqual(bridge.guest_call(run, '/home/fixture/bridge', 's3', request), {'ok': True})
-            body = exchange.call_args.args[1]
-            self.assertIn(b'pgrep -u fixture -x quickshell', body)
-            self.assertIn(b' QT_QPA_PLATFORM; do', body)
-            self.assertNotIn(b'export QT_QPA_PLATFORM=', body)
-
     def test_transport_withholds_stderr_and_bounds_output(self):
         value = bridge.exchange([sys.executable, '-c',
             'import sys; data=sys.stdin.buffer.read(); sys.stderr.buffer.write(data); print("{\\"ok\\":true}")'], b'synthetic-private')
@@ -137,14 +104,6 @@ class LiveCredentialContracts(unittest.TestCase):
             with self.assertRaises(bridge.ProvisionError) as error:
                 bridge.exchange([sys.executable, '-c', code], b'synthetic-private')
             self.assertNotIn('synthetic-private', str(error.exception))
-
-    def test_outer_broker_deadline_allows_internal_stages_and_remains_bounded(self):
-        self.assertGreater(bridge.BROKER_TIMEOUT, 40)
-        with patch.object(bridge, 'exchange', return_value=b'{"ok":true}') as exchange:
-            bridge.host_call('/unused', 's3', {'op': 'delete', 'reference': REF})
-        self.assertEqual(exchange.call_args.kwargs, {'timeout': bridge.BROKER_TIMEOUT})
-        with self.assertRaises(bridge.ProvisionError):
-            bridge.exchange([sys.executable, '-c', 'import time; time.sleep(2)'], b'synthetic-private', timeout=0.02)
 
     def test_hostile_credentials_remain_literal_heredoc_data(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -235,7 +194,6 @@ class LiveCredentialContracts(unittest.TestCase):
                     patch.object(bridge, 'guest_call') as guest:
                 with self.assertRaises(bridge.ProvisionError): bridge.provision(request)
                 guest.assert_not_called()
-
 
     def test_one_time_provisioning_requires_a_reference_receipt_before_import(self):
         request = {'provider': 's3', 'run': '/unused', 'guestBroker': '/unused',

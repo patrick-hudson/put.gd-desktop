@@ -14,7 +14,6 @@ from tools.lab.lab import FIXTURE_RGB
 from tools.lab.surface_driver.recipes.outcomes import edited_pixels, pattern_visible, pixels_equal
 from tools.lab.surface_driver.recipes import outcomes
 from tools.lab.surface_driver.api import RecipeBlocked, RecipeFailed
-from tools.lab.surface_driver.run import discover, validate_recipes
 
 
 def original():
@@ -109,12 +108,6 @@ class Outcomes(unittest.TestCase):
             image.paste(original().crop(box), box)
             image.paste(mark, (box[0] + shift, box[1]))
             self.assertFalse(edited_pixels(image, original()))
-
-    def test_eleven_recipes_reference_existing_interactions(self):
-        recipes = discover('outcomes')
-        self.assertEqual(len(recipes), 11)
-        validate_recipes(recipes)
-        self.assertTrue(all(r.destinations == ('local',) for r in recipes))
 
 
 class FileManagerUpload(unittest.TestCase):

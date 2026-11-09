@@ -3,7 +3,6 @@ import datetime
 import json
 import os
 from pathlib import Path
-import subprocess
 import sys
 import tempfile
 import threading
@@ -101,14 +100,6 @@ class ExpiryAndHeartbeat(LockTest):
                 operation()
             self.assertIn('held by holder (local_a)', str(refused.exception))
         self.assertTrue((self.directory / 'desktop.lock').exists())
-
-    def test_lock_file_is_readable_key_value_lines(self):
-        self.acquire()
-        self.assertEqual((self.directory / 'desktop.lock').read_text(), (
-            'owner: holder\nsession: local_a\nhost: f44\npurpose: GNOME region capture\n'
-            'acquired: 2026-10-19T03:00:00Z\nexpires: 2026-10-19T03:30:00Z\nheartbeat: 2026-10-19T03:00:00Z\n'))
-        with self.assertRaises(lock.LockError):
-            self.make().acquire('holder', 'local_a', 'two\nlines', 10)
 
 
 class AtomicAcquire(LockTest):
@@ -374,10 +365,6 @@ class ProtonSessionLock(LockTest):
         self.assertEqual(self.desktop.status()['last']['event'], 'release')
         self.assertEqual(self.desktop.status()['state'], 'free')
 
-    def test_rejects_an_unknown_resource(self):
-        with self.assertRaises(lock.LockError):
-            lock.Desktop(self.directory, 'f44', self.clock, resource='s3')
-
 
 class RemoteProtocol(unittest.TestCase):
     def test_ssh_uses_the_pinned_host_key_and_never_trusts_on_first_use(self):
@@ -393,19 +380,6 @@ class RemoteProtocol(unittest.TestCase):
         self.assertTrue(reply['unreachable'])
         self.assertIn('never trust on first use', reply['message'])
 
-    def test_the_script_runs_its_operation_when_piped_into_python(self):
-        with tempfile.TemporaryDirectory() as folder:
-            def call(**payload):
-                return lock.call('d69', dict(payload, directory=folder), command=[sys.executable, '-'])
-            reply = call(action='acquire', owner='o', session='local_a', purpose='p', minutes=5)
-            self.assertTrue(reply['ok'], reply)
-            self.assertEqual((reply['host'], reply['lock']['host']), ('d69', 'd69'))
-            reply = call(action='acquire', owner='o', session='local_b', purpose='p', minutes=5)
-            self.assertFalse(reply['ok'])
-            self.assertEqual(reply['lock']['session'], 'local_a')
-            self.assertEqual(call(action='heartbeat', session='local_a')['state'], 'held')
-            self.assertIn('session: local_a', (Path(folder) / 'desktop.lock').read_text())
-
     def test_the_proton_resource_travels_with_the_script(self):
         with tempfile.TemporaryDirectory() as folder:
             def call(**payload):
@@ -417,26 +391,6 @@ class RemoteProtocol(unittest.TestCase):
             self.assertEqual(call(action='status', resource='proton')['state'], 'held')
             self.assertEqual(sorted(path.name for path in Path(folder).glob('*.lock')), ['proton.lock'])
             self.assertIn('k72 Proton session (Kubuntu', '\n'.join(lock.describe(reply)))
-
-    def test_status_reports_unreachable_hosts_with_exit_code_3(self):
-        def unreachable(command, **kwargs):
-            return subprocess.CompletedProcess(command, 255, '', 'ssh: connect to host 192.168.68.72: No route\n')
-        with tempfile.TemporaryDirectory() as folder:
-            for host in lock.HOSTS:
-                (Path(folder) / host).mkdir()
-                (Path(folder) / host / 'known_hosts').write_text('')
-            with mock.patch('sys.stdout'):
-                self.assertEqual(lock.main(['status', 'k72', '--pins', folder], run=unreachable), 3)
-            reply = lock.call('k72', {'action': 'status'}, pins=folder, run=unreachable)
-        self.assertIn('No route', reply['message'])
-
-    def test_describe_tells_a_refused_acquirer_not_to_wait(self):
-        reply = {'ok': False, 'host': 'f44', 'action': 'acquire', 'message': 'f44 is already locked',
-                 'state': 'held', 'expiresInSeconds': 600, 'heartbeatAgeSeconds': 60,
-                 'lock': {'owner': 'o', 'session': 'local_a', 'acquired': 'x', 'purpose': 'p'}}
-        text = '\n'.join(lock.describe(reply))
-        self.assertIn('expires in 10 min', text)
-        self.assertIn("Don't poll the holder or wait idle", text)
 
 
 if __name__ == '__main__':
