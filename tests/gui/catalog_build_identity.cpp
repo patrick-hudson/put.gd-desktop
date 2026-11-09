@@ -1,6 +1,5 @@
 // The UI catalog's fixed build identity. The footer and the About window show
-// the version, so reference images (tests/gui/catalog-references) need the
-// same one in every build. putgd-ui-catalog compiles this file; its definitions
+// the version, so synthetic renders use the same one in every build. putgd-ui-catalog compiles this file; its definitions
 // come before the static putgd_build_identity archive, so the generated
 // build-identity/BuildInfo.cpp is never linked in.
 #include "core/BuildInfo.h"

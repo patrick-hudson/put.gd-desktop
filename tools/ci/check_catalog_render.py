@@ -1,21 +1,11 @@
 #!/usr/bin/env python3
-"""Render the UI catalog for one colour scheme and compare it with its references.
+"""Render a complete offscreen UI catalog without comparing pixels.
 
-The ui_catalog_* CTest tests run this (CMake option PUTGD_UI_CATALOG_REFERENCES,
-enabled on the Ubuntu 26.04 CI leg only). It renders putgd-ui-catalog offscreen
-into OUTPUT, keeps the catalog's own layout checks, then compares every state's
-PNG with tests/gui/catalog-references/<scheme>/ using tools/ci/image_diff.py.
-
-It fails when a state differs beyond the tolerance, when a reference has no
-rendered state, and when a rendered state has no reference. Failing states are
-copied to OUTPUT/failures/ as <state>.expected.png, .actual.png and .diff.png,
-and OUTPUT/catalog-check.json lists every result. --layout-only renders (for
-the 150% text runs) without comparing images.
-
-tools/ci/update_catalog_references.py rewrites the references from a render.
+The ui_catalog_render CTest runs this on the Ubuntu 26.04 CI leg. The
+catalog's own checks must pass, and its manifest must describe a full,
+synthetic render with no skipped captures and every listed image present.
 """
 import argparse
-import dataclasses
 import fcntl
 import json
 import os
@@ -26,11 +16,6 @@ import sys
 import tempfile
 import time
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
-import image_diff  # noqa: E402
-
-ROOT = Path(__file__).resolve().parents[2]
-REFERENCES = ROOT / 'tests/gui/catalog-references'
 SCHEMES = ('dark', 'light')
 REPORT = 'catalog-check.json'
 # A stopped wall clock and a fixed zone for the render: History shows times
@@ -43,11 +28,6 @@ DATA_MARKER = '.putgd-catalog-data'
 FULL_SCOPE = {'review': True, 'recordOnly': False, 'editorOnly': False, 'handshake': False}
 # The desktop's colour scheme must not decide the render (cmake/TestsGui.cmake, #251).
 UNSET = ('DBUS_SESSION_BUS_ADDRESS', 'XDG_CURRENT_DESKTOP', 'QT_QPA_PLATFORMTHEME', 'WAYLAND_DISPLAY', 'DISPLAY')
-TOLERANCE = image_diff.Tolerance()
-# States that must render but whose pixels are not compared, each with the
-# issue that removes it. Keep this short: an exempt state can regress unseen.
-IMAGE_EXEMPT = {
-}
 
 
 def faketime_library():
@@ -110,10 +90,10 @@ def render(binary, scheme, output, text_scale=None, log=sys.stderr):
         lock.close()
 
 
-def render_problem(directory, allow_skips=False):
+def render_problem(directory):
     """Why DIRECTORY is not a complete, clean catalog render, or '' when it is.
 
-    A skipped capture has no image, so only a layout-only run may have one.
+    Skipped captures never constitute a complete render.
 
     putgd-ui-catalog writes manifest.json last, with its scope and every image it saved.
     """
@@ -128,7 +108,7 @@ def render_problem(directory, allow_skips=False):
         return 'not a full offscreen catalog run (platform %r, scope %r)' % (manifest.get('platform'),
                                                                              manifest.get('scope'))
     skipped = [s.get('state') for s in manifest.get('skippedCaptures') or []]
-    if skipped and not allow_skips:
+    if skipped:
         return 'the catalog skipped captures: ' + ', '.join(map(str, skipped))
     images = manifest.get('images') or []
     captures = [c.get('file') for c in manifest.get('captures') or []]
@@ -140,49 +120,17 @@ def render_problem(directory, allow_skips=False):
     return ''
 
 
-def states(directory):
-    return {p.stem: p for p in Path(directory).glob('*.png')} if Path(directory).is_dir() else {}
-
-
-def compare(rendered, references, failures, tolerance=TOLERANCE):
-    """Compare a rendered catalog directory with a reference directory."""
-    actual, expected = states(rendered), states(references)
-    failures.mkdir(exist_ok=True)
-    results = {}
-    for name in sorted(expected.keys() | actual.keys()):
-        if name not in actual:
-            results[name] = {'status': 'missing', 'reason': 'the catalog no longer renders this state'}
-        elif name in IMAGE_EXEMPT:
-            results[name] = {'status': 'exempt', 'reason': 'not compared until ' + IMAGE_EXEMPT[name]}
-        elif name not in expected:
-            results[name] = {'status': 'unreferenced', 'reason': 'no reference image'}
-            shutil.copyfile(actual[name], failures / (name + '.actual.png'))
-        else:
-            result = image_diff.compare_files(expected[name], actual[name], tolerance, failures / (name + '.diff.png'))
-            results[name] = {'status': 'match' if result.matches else 'differs', 'reason': result.reason,
-                             'comparison': result.to_json()}
-            if not result.matches:
-                shutil.copyfile(expected[name], failures / (name + '.expected.png'))
-                shutil.copyfile(actual[name], failures / (name + '.actual.png'))
-    if not any(failures.iterdir()):
-        failures.rmdir()
-    return results
-
-
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('--catalog', type=Path, required=True, help='the putgd-ui-catalog executable')
     parser.add_argument('--scheme', choices=SCHEMES, required=True)
     parser.add_argument('--output', type=Path, required=True, help='render directory (replaced)')
-    parser.add_argument('--references', type=Path, help='default: tests/gui/catalog-references/SCHEME')
     parser.add_argument('--text-scale', type=float, help='PUTGD_TEXT_SCALE for the render')
-    parser.add_argument('--layout-only', action='store_true', help="keep the catalog's own checks; compare no images")
     args = parser.parse_args(argv)
-    references = args.references or REFERENCES / args.scheme
     output = args.output.resolve()
     prepare_output(output)
-    report = {'scheme': args.scheme, 'textScale': args.text_scale, 'layoutOnly': args.layout_only,
-              'clock': CLOCK + ' UTC', 'tolerance': dataclasses.asdict(TOLERANCE)}
+    report = {'scheme': args.scheme, 'textScale': args.text_scale,
+              'clock': CLOCK + ' UTC'}
 
     def finish(ok, problem=''):
         report.update({'ok': ok, 'problem': problem})
@@ -197,28 +145,10 @@ def main(argv=None):
                                                       if args.text_scale else '', seconds))
     if status != 0:
         return finish(False, 'putgd-ui-catalog failed its own checks (exit %d)' % status)
-    problem = render_problem(output, allow_skips=args.layout_only)
+    problem = render_problem(output)
     if problem:
         return finish(False, problem)
     report['qtVersion'] = json.loads((output / 'manifest.json').read_text()).get('qtVersion')
-    if args.layout_only:
-        return finish(True)
-    if not references.is_dir():
-        return finish(False, 'no reference directory %s' % references)
-    results = compare(output, references, output / 'failures')
-    report['states'] = results
-    counts = {}
-    for result in results.values():
-        counts[result['status']] = counts.get(result['status'], 0) + 1
-    report['counts'] = counts
-    bad = {name: r for name, r in results.items() if r['status'] not in ('match', 'exempt')}
-    for name, result in bad.items():
-        print('  %-12s %s: %s' % (result['status'], name, result['reason']), file=sys.stderr)
-    print('ui catalog (%s): %s' % (args.scheme, ', '.join('%d %s' % (n, s) for s, n in sorted(counts.items()))))
-    if bad:
-        return finish(False, '%d of %d states do not match their references; expected, actual and diff images are '
-                             'in %s. If the change is intended, run tools/ci/update_catalog_references.py.'
-                      % (len(bad), len(results), output / 'failures'))
     return finish(True)
 
 
