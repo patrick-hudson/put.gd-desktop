@@ -94,11 +94,12 @@ Budgie and Hyprland no `appsrc`, `videoscale` or `videoconvert`),
 Budgie and Hyprland `wlr_capture_unavailable` (a missing Wayland global or a
 failed connection, named in the message). `recording.prepare` returns all of
 them as `recording_unavailable` with the reason in `details.reason`.
-Cancelling a picker ends the operation as `cancelled`; Cancel, Stop and
-discard close the stream (`Session.Close`, `Session.Stop` or the protocol's
-`close`), which ends the share. Today only Cancel and discard do this: Stop
-ends the capture but leaves the share open through private review, until
-Discard or Upload ends the helper
+Cancelling a picker ends the operation as `cancelled`. The intended contract
+is that Cancel, Stop and discard close the stream (`Session.Close`,
+`Session.Stop` or the protocol's `close`), which ends the share. Today only
+Cancel and discard do this: Stop ends the capture but leaves the share open
+through private review, until Discard or a successful Upload export ends the
+helper. A failed export returns to review with the share still open
 ([#1346](https://github.com/patrick-hudson/put.gd-desktop/issues/1346)).
 `tests/unit` covers the portal stream
 demarshalling; the PipeWire paths are exercised on the Fedora GNOME and Debian

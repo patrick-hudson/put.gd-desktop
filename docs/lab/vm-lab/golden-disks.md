@@ -44,7 +44,7 @@ qemu-system-x86_64 -enable-kvm -machine q35 -cpu host -smp 2 -m 6144 \
   -netdev user,id=net0,hostfwd=tcp:127.0.0.1:22220-:22 \
   -device virtio-net-pci,netdev=net0 -vnc 127.0.0.1:20 -display none \
   -daemonize -pidfile "$provision_control/qemu.pid"
-python3 -c 'import shlex, sys; print("provision_control=" + shlex.quote(sys.argv[1]))' "$provision_control"
+python3 -c 'import shlex, sys; print("provision_control=" + shlex.quote(sys.argv[1])); print("provision_disk=" + shlex.quote(sys.argv[2]))' "$provision_control" "$provision_disk"
 ```
 
 Connect a VNC viewer to `127.0.0.1:5920`. Install Mint normally onto the disposable
@@ -71,7 +71,8 @@ mcopy -i "$provision_control/seed.img" tools/lab/package_scope.py ::package_scop
 mcopy -i "$provision_control/seed.img" "$provision_control/identity.pub" ::identity.pub
 ```
 
-Shut down this new provisioning guest before restarting it. With the ISO
+Shut down this new provisioning guest before restarting it. In a new shell,
+paste both assignments the first block printed. With the ISO
 detached (`-boot order=c`, remove `-cdrom`), add
 `-drive "file=$provision_control/seed.img,format=raw,if=virtio"` to the one-time
 QEMU command for this same unprovisioned disk. The seed contains the public key, bootstrap script, visibility helper, package supervisor and scope launcher only. In the guest terminal:

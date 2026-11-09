@@ -81,6 +81,8 @@ the decoder's own errors (`poster_failed`, `poster_timeout`,
 `input_excessive`, `poster_helper_missing`, `preview_failed`). A selection
 that failed is not retried automatically: the resident remembers the failure
 until it restarts, and History does not ask again in that window. The
+transient refusals (`preview_busy`, `operation_active`, `initializing`) are
+not remembered, so selecting the item again asks again. The
 inspector's **Retry preview** button sends `history.preview {id, retry: true}`,
 which forgets the failure and tries again in the same session; it is not
 offered for `preview_unsupported`, `preview_source_missing` or
