@@ -643,7 +643,11 @@ class Guest:
             lab.ssh(self.run, QUIT_RESIDENTS)
         deadline = time.monotonic() + timeout
         while time.monotonic() < deadline:
-            left = lab.ssh(self.run, 'pgrep -u "$(id -u)" "^putgd" || true').split()
+            # Keep waiting for provider helpers after an abnormal resident exit.
+            # Only the keeper (Linux comm truncates it to 15 bytes) cannot use sessions.
+            left = lab.ssh(self.run, '''for pid in $(pgrep -u "$(id -u)" "^putgd"); do
+    [ "$(cat /proc/$pid/comm 2>/dev/null)" = putgd-clipboard ] || printf '%s\\n' "$pid"
+done''').split()
             if not left:
                 return
             time.sleep(1)
