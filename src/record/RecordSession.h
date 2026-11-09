@@ -67,6 +67,8 @@ private:
     void begin(Reply);
     void stop(Reply);
     void cancelLocal();
+    // Ends the compositor's share once capture is over, so review stays private.
+    void releaseAcquisition();
     void preview(const QJsonObject& params, Reply);
     void exportClip(const QJsonObject& params, Reply);
     bool parseEdit(const QJsonObject&, RecordingEdit&) const;

@@ -6,6 +6,7 @@
 #include <QSignalSpy>
 #include <QTemporaryDir>
 #include <QtTest>
+#include <unistd.h>
 
 namespace putgd::record {
 // Only storage values and prepared target metadata are injected. The production
@@ -98,9 +99,15 @@ private slots:
         QVERIFY(!start(session));
         PUTGD_TRY_VERIFY_WITH_TIMEOUT(session.pipeline_.retainedUs() > 200000, 8000);
         session.showBar("recording"); QVERIFY(session.bar_->isVisible());
+        // Stands in for the portal's PipeWire descriptor, the one part of the share visible without a compositor.
+        int share[2];QCOMPARE(::pipe(share),0);::close(share[1]);session.portalFd_=share[0];
         int replies=0;Error stopError;
         session.stop([&](Error error,QJsonObject){stopError=error;++replies;});
+        // A second Stop is refused while the first drains, and must leave the share in use alone.
+        QString busy;session.stop([&](Error error,QJsonObject){busy=error.code;});
+        QCOMPARE(busy,QString("recording_busy"));QCOMPARE(session.portalFd_,share[0]);
         PUTGD_TRY_COMPARE(replies,1);QVERIFY2(!stopError,qPrintable(stopError.message));
+        QCOMPARE(session.portalFd_,-1);
         QVERIFY(session.recorded_);QVERIFY(session.review_&&session.review_->isVisible());QVERIFY(!session.bar_->isVisible());
         session.review_->hide();
         session.command("raise",{},[&](Error error,QJsonObject){QVERIFY(!error);++replies;});

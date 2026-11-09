@@ -94,6 +94,7 @@ RecordSession::RecordSession(QObject* parent) : QObject(parent), pipeline_(this)
             barTimer_.stop();
             bounds_.hideAll();
             if (bar_) bar_->hide();
+            releaseAcquisition();
             // A bounded EOS timeout can leave an unindexed Matroska clip. For a
             // disk stop, verify it decodes before promising private review.
             if (!error && durationUs > 0 && !details.isEmpty()) {
@@ -151,6 +152,7 @@ void RecordSession::endCapture(const QString& reason) {
         guard->barTimer_.stop();
         guard->bounds_.hideAll();
         if (guard->bar_) guard->bar_->hide();
+        guard->releaseAcquisition();
         if (!error && (durationUs < 1 || !QFileInfo(guard->workingClip_).isFile())) error = {"recording_failed", "The recording produced no retained frames", {}};
         if (error) { error.details["stopReason"] = reason; emit guard->event({{"event", "failed"}, {"error", error.toJson()}}); return; }
         guard->durationUs_ = durationUs;
@@ -265,6 +267,15 @@ void RecordSession::cancelLocal() {
     if (kdeSelection_) { kdeSelection_->disconnect(this); kdeSelection_->cancel(); kdeSelection_->deleteLater(); kdeSelection_ = nullptr; }
 #endif
     pipeline_.cancel();
+    releaseAcquisition();
+    bounds_.hideAll();
+    if (bar_) bar_->hide();
+    if (review_) review_->hide();
+    QFile::remove(workingClip_);
+}
+void RecordSession::releaseAcquisition() {
+    // A Stop refused during the drain lands here with frames still flowing.
+    if (pipeline_.running()) return;
     // The pipeline has stopped using it; the next prepare opens its own (review #1275).
     imageCopy_.reset();
     portal_.close();
@@ -273,10 +284,6 @@ void RecordSession::cancelLocal() {
     kde_.close();
 #endif
     if (portalFd_ >= 0) { ::close(portalFd_); portalFd_ = -1; }
-    bounds_.hideAll();
-    if (bar_) bar_->hide();
-    if (review_) review_->hide();
-    QFile::remove(workingClip_);
 }
 void RecordSession::prepare(const QJsonObject& params, Reply reply) {
     if (prepared_ || selection_ || kdeSelection_) { reply({"recording_state", "The helper already has a session", {}}, {}); return; }
@@ -717,6 +724,7 @@ void RecordSession::stop(Reply reply) {
         guard->barTimer_.stop();
         guard->bounds_.hideAll();
         if (guard->bar_) guard->bar_->hide();
+        guard->releaseAcquisition();
         if (error) { reply(error, {}); return; }
         if (durationUs < 1 || !QFileInfo(guard->workingClip_).isFile()) { reply({"recording_failed", "The recording produced no retained frames", {}}, {}); return; }
         guard->durationUs_ = durationUs;
