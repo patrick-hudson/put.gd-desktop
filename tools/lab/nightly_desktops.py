@@ -432,6 +432,28 @@ def controller_ssh_identities(*, proc=Path('/proc')):
 
 
 RECOVERY_SECONDS = 180
+# A cell that cannot quit its resident has lost the guest session (#1214). The
+# next cells run against a guest that cannot pass them, so the row stops.
+LOST_SESSION_ERRORS = frozenset(('resident quit transport unavailable; private session retained',
+                                 'resident quit was rejected; private session retained'))
+
+
+def lost_guest_session(out):
+    """Whether this attempt's receipt shows its resident could not be quit."""
+    try:
+        errors = json.loads((Path(out)/'receipt.json').read_text()).get('environment', {}).get('cleanup_errors') or []
+        return bool(LOST_SESSION_ERRORS.intersection(errors))
+    except (OSError, ValueError, AttributeError, TypeError):
+        return False
+
+
+def failed_recipe_note(out, fallback):
+    """A failed recipe's own note; a recipe that passed only has its cleanup to report."""
+    try:
+        rows = json.loads((Path(out)/'receipt.json').read_text()).get('interactions', [])
+        return next((r['note'] for r in rows if r.get('functional') != 'passed' and r.get('note')), fallback)
+    except (OSError, ValueError, AttributeError, TypeError):
+        return fallback
 
 
 def worker_identity():
@@ -547,12 +569,10 @@ def recover_guest(config, owner, out, cells):
             save(out/'proton-release.json', proton.release(session, verified_clean=True))
     elif state['state'] != 'free':
         raise NotRun('guest recovery refused: owned Proton lease has no matching lend receipt')
-    local_loss = {'resident quit transport unavailable; private session retained',
-                  'resident quit was rejected; private session retained'}
     for path in evidence.glob('*/receipt.json'):
         environment = json.loads(path.read_text()).get('environment', {})
         errors = environment.get('cleanup_errors', [])
-        if (any(error not in local_loss for error in errors) or
+        if (any(error not in LOST_SESSION_ERRORS for error in errors) or
                 'retained' in str(environment.get('private_cleanup', '')) and not errors):
             raise NotRun('guest retained: inspect private cleanup in '+str(path)+' before explicit recovery')
     if (run/'state.json').exists():
@@ -930,9 +950,22 @@ def worker_run(config, tag, identity, artifacts, out, deadline):
                                 command(check, log=rowout/(name+'-check-after.json'), env=env)
                                 if not returned:
                                     raise NotRun('Proton guest provisioning did not complete; source check passed')
+                            if lost_guest_session(target):
+                                # The failing cell is the row's reported result (#1214).
+                                note = failed_recipe_note(target, observed.get('assertion', ''))
+                                reason = f'guest session lost in {flow} attempt {attempt}: {note}'
+                                record['stoppedEarly'] = dict(flow=flow, attempt=attempt, reason=reason)
+                                record['notRunReason'] = reason
+                                cells[flow]['assertion'] = reason
+                                for value in cells.values():
+                                    if not value.get('attempts'):
+                                        value['assertion'] = 'row stopped; '+reason
+                                break
                             if observed['status'] == 'green':
                                 break
                         cells[flow]['seconds'] = round(time.monotonic()-flow_started, 3)
+                        if record.get('stoppedEarly'):
+                            break
                 finally:
                     # Work is over. Do not deliver a budget alarm in retirement.
                     signal.setitimer(signal.ITIMER_REAL, 0)
@@ -966,6 +999,8 @@ def worker_run(config, tag, identity, artifacts, out, deadline):
         except Exception as error:
             # Only our fixed messages are public. Harness/SSH exception payloads stay private.
             reason = str(error) if isinstance(error, NotRun) or type(error) is RuntimeError else 'controller '+type(error).__name__+'; private evidence retained'
+            if record.get('stoppedEarly'):
+                reason = record['stoppedEarly']['reason']+'; '+reason
             record['notRunReason'] = reason
             for value in cells.values():
                 if value['status'] == 'not_run' and not value.get('attempts'):

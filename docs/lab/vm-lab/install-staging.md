@@ -43,8 +43,10 @@ and boot ID.
 The outer sudo stays in the SSH connection's `session-N.scope`, outside the
 job's scope. Ending that login (`systemctl stop session-N.scope`,
 `loginctl terminate-session` or `terminate-user`) sends its processes SIGTERM
-and SIGHUP, and sudo relays them to its child (with a pty, to the child's
-process group). A scope separates cgroups, not signals. So the wrapper's first
+and SIGHUP, and sudo relays them to its child. No terminal is involved: `lab.py`
+connects without `-t`, feeds the script to `sh -s`, and starts the job with
+`nohup setsid --wait` and standard input from `/dev/null`, so sudo runs without
+a PTY. A scope separates cgroups, not signals. So the wrapper's first
 step inside the scope is to fork: only a waiter stays sudo's child and reports
 the wrapper's exit status, while the wrapper continues in a new session in the
 scope, reparented to PID 1. A relayed signal ends only sudo and the waiter; the

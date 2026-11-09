@@ -32,8 +32,7 @@ encoders I420. Bitrate for the bitrate-driven encoders is about 0.1 bit per
 pixel per frame, bounded to 1.5–20 Mbit/s; the legacy `vaapih264enc` runs
 at constant QP 24 because Intel's iHD driver refuses CBR and VBR for it
 (that refusal, surfacing as "Internal data stream error", was why it used
-to fail on Mint 22.3 and Ubuntu 26.04); on the workstation it captures 720p
-at half the CPU of `x264enc veryfast`. Pause drops raw frames and samples on the
+to fail on Mint 22.3 and Ubuntu 26.04). Pause drops raw frames and samples on the
 encoders' sink pads (never encoded buffers, which would leave P-frames with
 missing references that strict decoders such as OpenH264 refuse). Pause and
 Resume record one interval of pipeline running time that both branches share
@@ -52,23 +51,16 @@ audio. A recording stopped while paused keeps nothing after the pause. The
 retained duration is measured from the first retained frame because some
 encoders carry a constant timestamp offset.
 
-**Encoder order and the Skylake GPU hangs (#89).** The order stays GPU first.
-The lab's Intel HD 530 hosts logged seven i915 hangs between 2026-10-17 and
-2026-10-20: six on k72 and one on d69. All of them were `Resetting rcs0 for
-preemption time out` with `ecode 9:1:85dffffb`, in the compositor's
-context (Xorg or `kwin_wayland`) on the render engine. The video engine that
-`vah264lpenc` uses (`vcs0`) never reset. Four of the seven came with no
-VA-API encode running. One happened during a CPU GIF export, one at idle with
-builds running, and two before any recording work. The other three, in two
-events, overlapped a `vah264lpenc` recording at host load 5–9. m74 (the same GPU, Mint X11)
-recorded with `vah264lpenc` without a hang, and k72 was taken out of the
-lab for a hardware check on 2026-10-20. A software encoder first would cost
+**Encoder order (#89).** The order stays GPU first. The i915 hangs investigated
+under #89 were in the compositor's context on the render engine, and the video
+engine that `vah264lpenc` uses never reset. A software encoder first would cost
 every Intel/AMD/NVIDIA user CPU time to work around one host's render-engine
-fault, so the order is unchanged. The encoder actually used stays in
+fault. The encoder actually used stays in
 `recording.capabilities` (`gstreamer.usableH264Encoders`, the first is used)
 and in `recording.inspect` progress. If a GPU's encoder fails at
-`prepare`, the probe moves on to the next one. Kernel versions, drivers and
-the per-host table are in
+`prepare`, the probe moves on to the next one. The observations are in
+[recording encoder records](../../history/recording-encoder-records.md);
+kernel versions, drivers and the per-host table are in
 [the closeout receipt](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-20-recording-closeout.md#89-gpu-first-encoder-order-kept).
 
 Stop ends the clip at once: from that running time on nothing is kept, however
@@ -157,15 +149,8 @@ not backported to 8.0. FFmpeg 7.1 (Debian 13) and 8.1 (Fedora 44) print
 nothing (#119). `export_av_sync_contract` decodes every audio packet of WebM
 exports with the native and libopus decoders.
 
-On the workstation (i9-9880H, UHD 630, Quadro T2000, 60 s 2238×1318 clip
-with audio, `putgd-record --export`): H.264 and H.265 on NVENC export at
-about 3.9× real time (15.6 s), H.264 on the Intel iGPU through VA-API at
-2.6× (23.5 s), `libx264` at 2.1×, VP9 at 1.7×, a 10 s GIF at 0.9×; `libx265`
-stays below real time (0.68× at `faster`), which is why the GPU paths come
-first. On an AMD Radeon 740M (Aurora Fedora 45, Plasma 6.8.2 Wayland, Mesa 26.2.6 from
-negativo17), live H.264 used `vah264enc`, and H.264 and H.265 exports used
-`h264_vaapi` and `hevc_vaapi`, with the GPU's encode engine counters confirming
-the work (#138). Fedora's stock Mesa on AMD has not been tested. H.265 links do not play in Firefox or Chrome on Linux; both format
+`libx265` can stay below real time at `faster`, which is why the GPU paths come
+first ([measured speeds](../../history/recording-encoder-records.md#export-speeds-on-the-workstation-2026-10-18)). H.265 links do not play in Firefox or Chrome on Linux; both format
 menus say so in the item tooltip and the review status, and the default
 stays H.264. Each decode pass
 opens its own demuxer and verifies that a backward seek did not overshoot the
@@ -201,8 +186,8 @@ one demux pass, finds the flash onsets (mean luma rising edges) and burst
 onsets (2 ms RMS envelope), pairs each flash with the nearest burst within
 half a period and prints JSON with every offset (`offsetsMs`, audio minus
 video, positive when the sound is late), `medianMs` and `spreadMs`; the
-marker itself measures 0 ms. None is read by the resident and none carries
-frames.
+marker itself measures 0 ms. The resident never runs these diagnostic modes
+or reads what they write.
 
 The AppImage's own helper runs all of these on its working clips and on saved
 MP4 (H.264), WebM and GIF copies: its FFmpeg adds the `mov` and `gif`

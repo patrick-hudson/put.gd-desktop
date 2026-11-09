@@ -171,6 +171,14 @@ Dated inventories moved from [remote builders](../lab/remote-builders.md) on 202
 | --- | --- | --- | --- |
 | [remote-builders-records.md](remote-builders-records.md) | Access inventory of the Fedora and Debian hosts; Kubuntu host preflight | 2026-10-16 and 2026-10-17 | [remote builders](../lab/remote-builders.md) |
 
+## Recording run records
+
+Dated observations moved from [capture and export engine](../design/recording/capture-and-export.md) on 2026-11-09 (#1230).
+
+| File | What it was | When it was current | What replaced it |
+| --- | --- | --- | --- |
+| [recording-encoder-records.md](recording-encoder-records.md) | Skylake GPU hangs behind the encoder order, workstation encoder speeds, AMD hardware encoding check | 2026-10-17 to 2026-11-04 | [capture and export engine](../design/recording/capture-and-export.md) |
+
 ## CI run records
 
 Dated measurements and demonstrations moved from [CI coverage](../release/ci.md) on 2026-11-05 (#1222). Most section headings in that file are new labels for what moved; the moved text is unchanged.

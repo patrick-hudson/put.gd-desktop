@@ -15,8 +15,9 @@ reports it as `acquisition`:
   (version 3 or later) on a Plasma session. `kdeScreencast {available,
   version, outputs:[{name, logical}]}` carries the facts. A monitor or
   `desktop` target streams the named output (the first output when the
-  identity is empty) and a `region` with a rectangle streams exactly that
-  logical rectangle (`stream_region`), so no crop is needed. KWin only
+  identity is empty) and a `region` with a rectangle streams that logical
+  rectangle (`stream_region`) with an odd width or height rounded down to
+  even, so no crop is needed. KWin only
   advertises the protocol to executables whose application desktop entry
   lists it in `X-KDE-Wayland-Interfaces`; packaging installs
   `putgd-record.desktop` with `Exec=<bindir>/putgd-record` for that, the
@@ -26,7 +27,8 @@ reports it as `acquisition`:
   session (`mutterScreenCast {available, service}`). A monitor or `desktop`
   target calls `RecordMonitor` with the Qt screen's connector name (the
   primary screen when the identity is empty), a `region` with a rectangle
-  calls `RecordArea`; `PipeWireStreamAdded` delivers the node. The service
+  calls `RecordArea` with the same even-size rounding;
+  `PipeWireStreamAdded` delivers the node. The service
   answers session clients on the GNOME desktops tested; where it refuses,
   the error is reported and the portal remains the way to share.
 - `portal`: `org.freedesktop.portal.ScreenCast` (version 2 or later) on the
@@ -92,9 +94,14 @@ Budgie and Hyprland no `appsrc`, `videoscale` or `videoconvert`),
 Budgie and Hyprland `wlr_capture_unavailable` (a missing Wayland global or a
 failed connection, named in the message). `recording.prepare` returns all of
 them as `recording_unavailable` with the reason in `details.reason`.
-Cancelling a picker ends the operation as `cancelled`; Cancel, Stop and
-discard close the stream (`Session.Close`, `Session.Stop` or the protocol's
-`close`), which ends the share. `tests/unit` covers the portal stream
+Cancelling a picker ends the operation as `cancelled`. The intended contract
+is that Cancel, Stop and discard close the stream (`Session.Close`,
+`Session.Stop` or the protocol's `close`), which ends the share. Today only
+Cancel and discard do this: Stop ends the capture but leaves the share open
+through private review, until Discard or a successful Upload export ends the
+helper. A failed export returns to review with the share still open
+([#1346](https://github.com/patrick-hudson/put.gd-desktop/issues/1346)).
+`tests/unit` covers the portal stream
 demarshalling; the PipeWire paths are exercised on the Fedora GNOME and Debian
 KDE desktops, `wlr-capture` on the Fedora 45 and Ubuntu Budgie 26.04 goldens
 and on headless labwc in `budgie_labwc_integration`.
@@ -247,7 +254,7 @@ share was ever opened.
   (`LayerShellRegionOverlay`, the same class `putgd-region` runs), which reports
   a logical rectangle only after KWin has rendered its surfaces transparent
   and unmapped them; then `stream_region` (or the portal plus `videocrop`)
-  starts for exactly that rectangle. The helper sends `selecting` while it is
+  starts for that rectangle, even-sized as above. The helper sends `selecting` while it is
   open.
 - **GNOME**: clients cannot place surfaces, so the resident asks the put.gd
   Shell extension (recording protocol 1, `SelectArea`) for the rectangle with

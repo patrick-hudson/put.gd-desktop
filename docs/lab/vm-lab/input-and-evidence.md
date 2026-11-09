@@ -17,11 +17,13 @@ Start it with authorized `sudo -n` only to open `/dev/uinput`; it drops to the
 desktop user before listening, and no udev rule or persistent permission
 changes. Forward the socket over the pinned SSH host key, then point a private
 run directory's `qmp.sock` at it so `lab.key`, `lab.pointer` and
-`lab.input_events` work unchanged:
+`lab.input_events` work unchanged. Run `systemd-run` from the checkout on the
+desktop host. systemd starts the unit in `/`, so the script path must be
+absolute:
 
 ```sh
 sudo -n systemd-run --unit=putgd-lab-input --collect \
-  /usr/bin/python3 tools/lab/host_input.py serve \
+  /usr/bin/python3 "$PWD/tools/lab/host_input.py" serve \
   --socket /run/user/1000/putgd-lab-input.sock --user patrick
 ssh -NT ... -o StreamLocalBindUnlink=yes \
   -L "$run/qmp.sock:/run/user/1000/putgd-lab-input.sock" patrick@HOST
@@ -40,8 +42,8 @@ with the region scenario, so the resident and the clipboard fixture are live:
 
 | Driver | Covers |
 | --- | --- |
-| `tools/lab/edit_acceptance.py RUN` | Graphical Edit & upload: hotkey, region-selected source, every tool, undo/redo, crop, save copy, submit, cancel, PNG sanitization and screenshots. It drives the editor at its opening Fit zoom: the scale comes from `editor.view` and `lab.locate_scaled_fixture_paint` finds the scaled image from its quadrant boundaries. On GNOME, restart the guest session after installing a new package so gnome-shell loads its put.gd extension (an older one lacks the edit shortcut). |
-| `tools/lab/edit_memory.py RUN [SAMPLER]` | Whole-family RSS+swap (`family_sampler.py` in the guest) for desktop, region and 24 MP file cases. Gate: incremental peak at most 3R + 96 MiB, and the resident returns within 8 MiB of baseline once the fixture takes the clipboard. |
+| `tools/lab/edit_acceptance.py RUN` | Graphical Edit & upload: hotkey, region-selected source, redaction drawn and moved with the mouse, keyboard text, undo/redo, the other shape kinds (blur, arrow, highlight, rectangle) and an atomic rejection through `editor.apply`, preview, Ctrl+Enter submit, pixel checks on the saved PNG (redactions black, untouched areas unchanged), an independent paste and screenshots. Crop, save copy and cancel are covered by `mcp_editor_e2e.py` below, not here. It drives the editor at its opening Fit zoom: the scale comes from `editor.view` and `lab.locate_scaled_fixture_paint` finds the scaled image from its quadrant boundaries. On GNOME, restart the guest session after installing a new package so gnome-shell loads its put.gd extension (an older one lacks the edit shortcut). |
+| `tools/lab/edit_memory.py RUN [SAMPLER]` | Whole-family RSS+swap (`family_sampler.py` in the guest) for generated PNG files opened with `editor.open`: 1080p, 4K and 24 MP edit-and-submit cycles, 100 edits with undo/redo churn on 4K, five open/cancel cycles on 4K, and a 6000×4001 file that must be refused. It does not run the desktop or region capture sources. Gate: incremental peak at most 3R + 96 MiB per case, and the resident returns within 8 MiB of baseline once the fixture takes the clipboard. |
 | `tools/lab/mcp_editor_e2e.py EVIDENCE` | Official MCP client through `putgd-mcp` and the target's production `putgd-cli` (a small wrapper running it over pinned SSH): all editor tools, preview image, save copy, submit and cancel. |
 | `tools/lab/guest_reboot.py RUN` | Reboot through the session manager when a session-loaded integration such as the GNOME extension must reload; verifies the boot time changed. |
 

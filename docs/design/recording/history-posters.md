@@ -4,9 +4,10 @@ Part of [Screen recording](../recording.md).
 
 ## History poster frames
 
-History shows a still for every stored video (#112): screen recordings and
-MP4, WebM, Matroska, QuickTime, AVI and Ogg files shared from the clipboard or
-a file manager. The list draws a play glyph and the length over it, so a still
+While stored previews are on (`retention.previewCacheBytes` above 0, the
+default), History shows a still for every stored video (#112): screen
+recordings and MP4, WebM, Matroska, QuickTime, AVI and Ogg files shared from
+the clipboard or a file manager. At 0 no poster is made for a new operation or on request; an operation already running keeps the value it started with. The list draws a play glyph and the length over it, so a still
 is never mistaken for a screenshot; the inspector shows it larger, with the
 length beside the size. GIF and WebP recordings are images and keep the image
 preview (their first frame, through the image job). Animated WebP reads
@@ -42,8 +43,8 @@ frame. Posters share the image previews' cache (`<data>/previews/ID.png`,
 owner-only, `retention.previewCacheBytes`, cleared by cleanup), are recorded
 as the item's `previewPath` and reach `history.list`, `history.detail`, CLI
 `inspect` and MCP like image previews. A missing helper or codec, or a corrupt,
-truncated past its first frame or oversized file, leaves "Preview unavailable"
-and a `No preview` log record with the failure; the AppImage's FFmpeg has
+truncated past its first frame or oversized file, leaves the item without a
+poster and a `No preview` log record with the failure; the AppImage's FFmpeg has
 no H.265 decoder, so H.265 MP4 files have no poster there.
 
 ### Previews made on selection
@@ -68,16 +69,26 @@ flashes empty (#285). The resident:
 - records the preview on the item, as an after-operation poster is, and
   answers `made` with `previewPath` and `source` (`artifact` or `local`).
 
-Every failure is soft: the inspector keeps "Preview unavailable" and no
-status message appears. The refusals are `preview_source_missing` (neither
+Every failure is soft: the inspector's preview area says "Couldn't make a
+preview" with the error's message, or names the cause ("Previews are turned off"). For a file type
+with no preview, the area is replaced by "No preview for this file type",
+unless no local copy is left, when the inspector's local-copy hint shows
+instead. For `preview_source_missing` the area is hidden and the same hint
+explains what is gone. The refusals are `preview_source_missing` (neither
 file is left), `preview_source_changed` (the local copy differs),
 `preview_unsupported` (not an image or video), `previews_disabled`
 (`retention.previewCacheBytes` is 0), `operation_active`, `preview_busy` and
 the decoder's own errors (`poster_failed`, `poster_timeout`,
 `input_excessive`, `poster_helper_missing`, `preview_failed`). A selection
-that failed is not decoded again until the resident restarts; History does
-not ask again in that window. The CLI (`putgd-cli history.preview
-'{"id":"..."}'`) and MCP (`make_history_preview`) make the same request.
+that failed is not retried automatically: the resident remembers the failure
+until it restarts, and History does not ask again in that window. The
+transient refusals (`preview_busy`, `operation_active`, `initializing`) are
+not remembered, so selecting the item again asks again. The
+inspector's **Retry preview** button sends `history.preview {id, retry: true}`,
+which forgets the failure and tries again in the same session; it is not
+offered for `preview_unsupported`, `preview_source_missing` or
+`previews_disabled`. The CLI (`putgd-cli history.preview '{"id":"..."}'`) and
+MCP (`make_history_preview`) make the same request and take the same `retry`.
 
 Measured on d69 (Debian 13, FFmpeg 7.1, i5-6500T, load 1.2), three runs each
 with identical results, through the same limits:

@@ -17,6 +17,7 @@ from pathlib import Path
 import re
 import shutil
 import subprocess
+import sys
 import tarfile
 import tempfile
 import time
@@ -73,6 +74,24 @@ def inventory(receipt):
         if match is None or match['source']['commit'] != pin['commit']:
             raise ValueError('Qt source inventory differs from pinned modules')
     return sorted(records, key=lambda item: item['id'])
+
+
+def distro_source_key(source):
+    return source['sourcePackage'] + '@' + source['sourceVersion']
+
+
+def distro_cache_entry(key):
+    return hashlib.sha256(key.encode()).hexdigest()
+
+
+def distro_cache_key(receipt):
+    """Identify the Ubuntu source downloads this image needs: each source package and version.
+
+    These pairs alone choose what lands in the cached tree. The tree holds nothing else, and
+    each download's checksums come from its own .dsc, so no pin file or description belongs here.
+    """
+    keys = {distro_source_key(item['source']) for item in inventory(receipt) if item['id'].startswith('ubuntu:')}
+    return hashlib.sha256('\n'.join(sorted(keys)).encode()).hexdigest()
 
 
 def runtime_inputs(receipt, path):
@@ -202,7 +221,7 @@ def apt_source(package, version, target):
 def validate_dsc(target, package, version):
     files = list(target.iterdir())
     dsc = [p for p in files if p.suffix == '.dsc']
-    if len(dsc) != 1:
+    if len(dsc) != 1 or dsc[0].is_symlink() or not dsc[0].is_file():
         raise ValueError('Missing exact distro source package: ' + package)
     text = dsc[0].read_text()
     if not re.search(r'(?m)^Source: ' + re.escape(package) + r'$', text) or not re.search(r'(?m)^Version: ' + re.escape(version) + r'$', text):
@@ -221,6 +240,51 @@ def validate_dsc(target, package, version):
             raise ValueError('Distro source checksum differs: ' + name)
     if {p.name for p in files} != expected:
         raise ValueError('Unrecorded distro source file')
+
+
+def _discard(path):
+    if path.is_dir() and not path.is_symlink():
+        shutil.rmtree(path)
+    else:
+        path.unlink()
+
+
+def distro_download(cached, package, version, apt):
+    """Return a download's provenance, reusing a restored copy only if it matches its .dsc.
+
+    A restored entry that fails is fetched again. Keeping it would fail every later run
+    too, since a failed run saves nothing to replace it.
+    """
+    source_files, metadata = cached / 'files', cached / 'download.json'
+    if cached.exists() or cached.is_symlink():
+        try:
+            validate_dsc(source_files, package, version)
+            origin = json.loads(metadata.read_text())
+            if not isinstance(origin, dict):
+                raise ValueError('its download.json is not an object')
+            return origin
+        except (ValueError, OSError) as error:
+            print(f'::warning::Downloading {package}={version} again: its restored copy is unusable ({error})',
+                  file=sys.stderr)
+            _discard(cached)
+    source_files.mkdir(parents=True)
+    origin = apt(package, version, source_files)
+    validate_dsc(source_files, package, version)
+    metadata.write_text(json.dumps(origin))
+    return origin
+
+
+def prune_distro_cache(cache, entries):
+    """Drop restored downloads of package versions this image no longer bundles.
+
+    The tree is restored across package updates and saved again, so without this it
+    would grow with every superseded version.
+    """
+    root = cache / 'ubuntu'
+    if root.is_dir():
+        for path in root.iterdir():
+            if path.name not in entries:
+                _discard(path)
 
 
 def fetch_archive(item, target):
@@ -266,13 +330,14 @@ def build(receipt_path, output, timestamp, cache, runtime_lock, *, git=git_sourc
         stage = Path(temp)
         files = []
         sources = []
+        distro_entries = set()
         for item in components:
             if 'external' in item:
                 sources.append(item)
                 continue
             source = item['source']
             if item['id'].startswith('ubuntu:'):
-                key = source['sourcePackage'] + '@' + source['sourceVersion']
+                key = distro_source_key(source)
                 previous = next((s for s in sources if s.get('sourceKey') == key), None)
                 if previous:
                     sources.append({**item, 'sourceKey': key, 'directory': previous['directory']})
@@ -280,25 +345,20 @@ def build(receipt_path, output, timestamp, cache, runtime_lock, *, git=git_sourc
                 name = 'ubuntu/' + source['sourcePackage'] + '-' + hashlib.sha256(key.encode()).hexdigest()[:12]
                 target = stage / name
                 target.mkdir(parents=True)
-                cached = cache / 'ubuntu' / hashlib.sha256(key.encode()).hexdigest()
-                source_files = cached / 'files'
-                metadata = cached / 'download.json'
-                source_files.mkdir(parents=True, exist_ok=True)
-                if not metadata.exists():
-                    origin = apt(source['sourcePackage'], source['sourceVersion'], source_files)
-                    validate_dsc(source_files, source['sourcePackage'], source['sourceVersion'])
-                    metadata.write_text(json.dumps(origin))
-                validate_dsc(source_files, source['sourcePackage'], source['sourceVersion'])
-                for path in source_files.iterdir():
+                entry = distro_cache_entry(key)
+                distro_entries.add(entry)
+                cached = cache / 'ubuntu' / entry
+                download = distro_download(cached, source['sourcePackage'], source['sourceVersion'], apt)
+                for path in (cached / 'files').iterdir():
                     shutil.copyfile(path, target / path.name)
-                sources.append({**item, 'sourceKey': key, 'directory': name,
-                                'download': json.loads(metadata.read_text())})
+                sources.append({**item, 'sourceKey': key, 'directory': name, 'download': download})
             else:
                 name = 'upstream/' + item['id']
                 target = stage / name
                 target.parent.mkdir(exist_ok=True)
                 trees = git(source, cache, target)
                 sources.append({**item, 'directory': name, 'trees': trees})
+        prune_distro_cache(cache, distro_entries)
         for item in closure['recipes']:
             target = stage / 'runtime' / item['id']
             target.parent.mkdir(exist_ok=True)
@@ -394,11 +454,17 @@ def verify(directory, receipt, image):
 def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument('--receipt', type=Path, required=True)
-    p.add_argument('--output-dir', type=Path, required=True)
-    p.add_argument('--timestamp', type=int, required=True)
+    p.add_argument('--output-dir', type=Path)
+    p.add_argument('--timestamp', type=int)
+    p.add_argument('--print-cache-key', action='store_true', help='Print the Ubuntu source cache key and exit')
     p.add_argument('--cache', type=Path, default=ROOT / 'build/dependencies/appimage-complete-source')
     p.add_argument('--runtime-lock', type=Path, default=ROOT / 'packaging/appimage/runtime-source.json')
     a = p.parse_args()
+    if a.print_cache_key:
+        print(distro_cache_key(json.loads(a.receipt.read_text())))
+        return
+    if a.output_dir is None or a.timestamp is None:
+        p.error('--output-dir and --timestamp are required to collect sources')
     print(json.dumps(build(a.receipt, a.output_dir, a.timestamp, a.cache, a.runtime_lock)))
 
 

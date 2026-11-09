@@ -55,7 +55,7 @@ GPL FFmpeg inside, the image is a GPL-2.0-or-later combined work:
 `usr/share/doc/putgd/APPIMAGE-GPL-NOTICE.txt` says so and names the bundled
 versions, the licence texts are under `usr/share/doc/putgd/bundled-licenses`,
 and every release publishes the corresponding source as
-`putgd-VERSION-appimage-media-source.tar.gz` (see [releases](../../release/release.md)).
+`putgd-VERSION-appimage-complete-source.tar.gz` (see [releases](../../release/release.md)).
 GStreamer comes from the Ubuntu 24.04 builder: the core libraries, the plugins
 the live pipeline uses (`coreelements`, `videotestsrc` for the probe,
 `videoconvertscale`, `videorate`, `videocrop`, `audioconvert`, `audioresample`,

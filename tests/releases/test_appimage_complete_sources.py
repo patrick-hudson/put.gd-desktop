@@ -84,6 +84,104 @@ class CompleteSources(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'checksum differs'):
             complete.validate_dsc(target, 'gtk+3.0', '3.24')
 
+    def changed_receipt(self, change):
+        receipt = json.loads(json.dumps(self.receipt))
+        change(receipt, receipt['notices']['inventory']['components'])
+        return complete.distro_cache_key(receipt)
+
+    def test_cache_key_ignores_everything_but_ubuntu_package_versions(self):
+        key = complete.distro_cache_key(self.receipt)
+        def unrelated(receipt, components):
+            receipt['build']['version'] = '26.1109.1200-dev'
+            receipt['artifact']['sha256'] = 'c' * 64
+            receipt['recordingRuntime'] = {'purpose': 'reworded description'}
+            receipt['toolLock']['tools'][0]['sha256'] = 'c' * 64
+            components[-1]['source']['url'] = 'https://example.invalid/moved'
+            components[-1]['name'] = 'renamed binary package'
+        self.assertEqual(self.changed_receipt(unrelated), key)
+        def reordered(_, components):
+            components.reverse()
+            components.append({**components[0], 'id': 'ubuntu:another-binary-of-the-same-source'})
+        self.assertEqual(self.changed_receipt(reordered), key)
+
+    def test_cache_key_changes_with_a_package_or_version(self):
+        key = complete.distro_cache_key(self.receipt)
+        def version(_, components):
+            components[-1]['source']['sourceVersion'] = '3.24.41-4ubuntu1.1'
+        def package(_, components):
+            components[-1]['source']['sourcePackage'] = 'gtk4'
+        def added(_, components):
+            components.append({'id': 'ubuntu:pcre2', 'source': {'sourcePackage': 'pcre2', 'sourceVersion': '10.42-4ubuntu2.1'}})
+        for change in (version, package, added):
+            with self.subTest(change=change.__name__):
+                self.assertNotEqual(self.changed_receipt(change), key)
+
+    def test_prose_in_the_pin_files_cannot_reach_the_cache_key(self):
+        workflow = (ROOT / '.github/workflows/package.yml').read_text()
+        self.assertNotIn("hashFiles('packaging/appimage", workflow)
+        self.assertIn('key: appimage-distro-sources-v1-${{ steps.source-key.outputs.value }}-', workflow)
+
+    def test_cli_prints_the_cache_key(self):
+        result = subprocess.run([sys.executable, str(ROOT / 'tools/releases/appimage_complete_sources.py'),
+                                 '--receipt', str(self.path), '--print-cache-key'],
+                                check=True, text=True, capture_output=True)
+        self.assertEqual(result.stdout.strip(), complete.distro_cache_key(self.receipt))
+
+    def distro_entry(self, key='gtk+3.0@3.24.41-4ubuntu1'):
+        return self.root / 'cache/ubuntu' / complete.distro_cache_entry(key)
+
+    def collect_counting_downloads(self):
+        calls = []
+        def apt(package, version, target):
+            calls.append((package, version))
+            self.fake_apt(package, version, target)
+            return {'method': 'fixture'}
+        result = complete.build(self.path, self.root / 'output', 1700000000, self.root / 'cache',
+                                ROOT / 'packaging/appimage/runtime-source.json', git=self.fake_git, apt=apt,
+                                fetch=lambda item, path: path.write_bytes(b'synthetic runtime source'))
+        return result, calls
+
+    def bundle_names(self, result):
+        with complete.tarfile.open(self.root / 'output' / result['file']) as archive:
+            return archive.getnames()
+
+    def test_restored_tree_supplies_matches_and_loses_stale_versions(self):
+        self.collect_counting_downloads()
+        stale = self.root / 'cache/ubuntu' / complete.distro_cache_entry('gtk+3.0@3.20-old')
+        (stale / 'files').mkdir(parents=True)
+        (stale / 'files/stale-marker.tar.gz').write_bytes(b'superseded source')
+        (stale / 'download.json').write_text('{}')
+        result, calls = self.collect_counting_downloads()
+        self.assertEqual(calls, [])
+        self.assertFalse(stale.exists())
+        self.assertTrue(self.distro_entry().is_dir())
+        self.assertFalse([name for name in self.bundle_names(result) if 'stale-marker' in name])
+
+    def test_tampered_or_incomplete_restored_download_is_fetched_again(self):
+        def tamper(entry):
+            (entry / 'files/orig.tar.gz').write_bytes(b'tampered')
+        def extra(entry):
+            (entry / 'files/planted.txt').write_bytes(b'unrecorded')
+        def no_metadata(entry):
+            (entry / 'download.json').unlink()
+        def bad_metadata(entry):
+            (entry / 'download.json').write_text('{')
+        def non_object_metadata(entry):
+            (entry / 'download.json').write_text('[]')
+        def linked_dsc(entry):
+            (entry / 'files/source.dsc').rename(entry / 'moved.dsc')
+            (entry / 'files/source.dsc').symlink_to(entry / 'moved.dsc')
+        for damage in (tamper, extra, no_metadata, bad_metadata, non_object_metadata, linked_dsc):
+            with self.subTest(damage=damage.__name__), patch('sys.stderr') as stderr:
+                self.collect_counting_downloads()
+                damage(self.distro_entry())
+                result, calls = self.collect_counting_downloads()
+                self.assertEqual(calls, [('gtk+3.0', '3.24.41-4ubuntu1')])
+                self.assertIn('::warning::', ''.join(call.args[0] for call in stderr.write.call_args_list))
+                names = self.bundle_names(result)
+                self.assertFalse([name for name in names if 'planted' in name])
+                self.assertEqual(complete.verify(self.root / 'output', result, self.receipt).name, result['file'])
+
     def test_runtime_binary_change_requires_new_source_closure(self):
         self.receipt['toolLock']['tools'][0]['sha256'] = 'b' * 64
         with self.assertRaisesRegex(ValueError, 'another runtime binary'):

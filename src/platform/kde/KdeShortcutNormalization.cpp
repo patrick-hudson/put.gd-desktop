@@ -24,6 +24,9 @@ constexpr NamedKey NamedKeys[]={
  {Qt::Key_Menu,XKB_KEY_Menu},{Qt::Key_Help,XKB_KEY_Help}
 };
 bool asciiLetter(int key) {return key>=Qt::Key_A&&key<=Qt::Key_Z;}
+// Latin-1 keysyms equal their code points. KWin consumes Shift for these symbols
+// (section, sterling, degree) as for ASCII punctuation, and keeps it for letters.
+bool latin1Symbol(int key) {return key>=0xa0&&key<=0xff&&!QChar::isLetter(uint(key));}
 int qtKey(xkb_keysym_t symbol) {
  if(symbol>='a'&&symbol<='z')return static_cast<int>(symbol-'a'+'A');
  if(symbol>=0x20&&symbol<=0x7e)return static_cast<int>(symbol);
@@ -48,8 +51,8 @@ NormalizedKdeShortcut normalizeKdeShortcut(const QKeySequence& requested,xkb_key
  const auto chord=requested[0];
  const auto explicitQt=chord.keyboardModifiers();
  const int requestedKey=chord.key();
- const auto target=requestedKey>=0x20&&requestedKey<=0x7e?static_cast<xkb_keysym_t>(requestedKey):XKB_KEY_NoSymbol;
- const bool literalKey=asciiLetter(requestedKey)||(requestedKey>=0x80&&requestedKey!=Qt::Key_unknown)||
+ const auto target=(requestedKey>=0x20&&requestedKey<=0x7e)||latin1Symbol(requestedKey)?static_cast<xkb_keysym_t>(requestedKey):XKB_KEY_NoSymbol;
+ const bool literalKey=asciiLetter(requestedKey)||(requestedKey>=0x80&&requestedKey!=Qt::Key_unknown&&!latin1Symbol(requestedKey))||
   explicitQt.testFlag(Qt::KeypadModifier)||explicitQt.testFlag(Qt::GroupSwitchModifier)||
   (requestedKey>0&&requestedKey!=Qt::Key_unknown&&!explicitQt.testFlag(Qt::ShiftModifier));
  const auto allowed=Qt::KeyboardModifiers(Qt::ShiftModifier|Qt::ControlModifier|Qt::AltModifier|Qt::MetaModifier|Qt::KeypadModifier|Qt::GroupSwitchModifier);
@@ -63,8 +66,8 @@ NormalizedKdeShortcut normalizeKdeShortcut(const QKeySequence& requested,xkb_key
   return failure("shortcut_unavailable");
  // Only explicit-Shift printable chords need consumed-Shift normalization.
  // Existing unshifted symbols (including AltGr-produced ones) remain literal.
- // This fix changes printable punctuation/digit registration only. Qt/KWin's
- // established letter (including Latin fallback), non-ASCII and special-key
+ // This covers printable punctuation, digits and Latin-1 symbols only. Qt/KWin's
+ // established letter (including Latin fallback), other non-ASCII and special-key
  // translations remain literal; reproducing private Qt translation would widen the contract.
  if(literalKey)return {requested,{}};
  struct Modifier {Qt::KeyboardModifier qt;const char* name;xkb_mod_index_t index;};
