@@ -87,6 +87,7 @@ void RecordingService::discardStaging(const QString& root) {
 void RecordingService::shutdown() {
     if (stopping_) return;
     stopping_ = true;
+    unwatchClicks();
     if (session_ && backend_) { closeShell(*session_); backend_->control(session_->op.id, "cancel", {}, [](Error, QJsonObject) {}); backend_->discard(session_->op.id); }
     session_.reset();
 }
@@ -104,6 +105,8 @@ QJsonObject RecordingService::capabilities() const {
     result["commands"] = QJsonArray{"windows", "microphones", "prepare", "start", "pause", "resume", "stop", "cancel", "inspect", "select", "raise", "overlay", "edit", "preview", "review", "saveCopy", "upload"};
     // recording.windows lists the identities a window target takes (KDE, GNOME Wayland).
     result["windowList"] = windows_ != nullptr;
+    // #1364: whether this desktop can highlight clicks, by which route, and who draws the ring.
+    result["clickHighlights"] = clickCapability();
     return result;
 }
 QJsonObject RecordingService::publicJson(const Session& s) const {
@@ -205,8 +208,9 @@ void RecordingService::invoke(const QString& mode, JsonReply reply) {
     if (step == "prepare") {
         // The bar's microphone toggle and the click highlights are remembered (#1364).
         const auto settings = host_.settings();
-        if (settings.recordingMicrophone) { prepare["audio"] = QJsonObject{{"microphone", true}}; rememberedMicrophone_ = true; }
+        if (settings.recordingMicrophone) prepare["audio"] = QJsonObject{{"microphone", true}};
         if (settings.recordingClickHighlights) prepare["clickHighlights"] = true;
+        rememberedPreferences_ = true;
     }
     const auto params = step == "prepare" ? prepare : QJsonObject{{"id", session_->op.id}};
     command(step, params, [step, reply](Error error, QJsonObject result) {
@@ -219,6 +223,9 @@ void RecordingService::transition(Session& s, const QString& state, const QStrin
     s.state = state;
     s.pending.clear();
     s.op.phase = phase.isEmpty() ? state : phase;
+    // Click highlights (#1364) follow the capture: on at Record, kept across a pause, off once it stops.
+    if (state == "recording") watchClicks(s);
+    else if (state != "paused") unwatchClicks();
     // The shell's ring stays through start; dimming covers recording, pause and the stop.
     if (s.shellFrame && shell_ && (state == "recording" || state == "paused")) shell_->showFrame(shellFrame(s, state), [](Error, QJsonObject) {});
     else if (s.shellFrame && state != "ready" && state != "starting" && state != "stopping") closeShell(s);
@@ -249,6 +256,7 @@ void RecordingService::closeShell(Session& s) {
 }
 void RecordingService::fail(Error error) {
     if (!session_) return;
+    unwatchClicks();
     closeShell(*session_);
     auto s = std::move(*session_);
     session_.reset();
@@ -270,6 +278,7 @@ void RecordingService::fail(Error error) {
     emit changed(s.op.id);
 }
 void RecordingService::cancelActive(JsonReply reply) {
+    unwatchClicks();
     closeShell(*session_);
     auto s = std::move(*session_);
     session_.reset();
@@ -419,13 +428,13 @@ void RecordingService::command(const QString& command, const QJsonObject& params
     if (command == "prepare") {
         // The helper probe is lazy; make it current before judging support.
         auto probed = std::make_shared<bool>(false);
-        const bool remembered = std::exchange(rememberedMicrophone_, false);
+        const bool remembered = std::exchange(rememberedPreferences_, false);
         backend_->refreshCapabilities([self, reply, params, probed, remembered] {
             if (!self || self->stopping_ || std::exchange(*probed, true)) return;
             // A recording that asks for the microphone needs one now. The remembered
             // toggle is not a request: without a microphone the bar shows it
             // unavailable and the recording goes on without narration.
-            if (!params["audio"].toObject()["microphone"].toBool() || remembered) { self->prepareSession(params, reply); return; }
+            if (!params["audio"].toObject()["microphone"].toBool() || remembered) { self->prepareSession(params, reply, remembered); return; }
             if (!self->backend_->capabilities()["audio"].toObject()["microphone"].toBool() && self->backend_->capabilities()["available"].toBool()) {
                 reply({"recording_unsupported", "Microphone recording is not supported here", {{"field", "audio.microphone"}, {"reason", "microphone_elements_missing"}}}, {});
                 return;
@@ -438,7 +447,7 @@ void RecordingService::command(const QString& command, const QJsonObject& params
                         reply({"recording_unsupported", microphones["message"].toString("No microphone is available."), {{"field", "audio.microphone"}, {"reason", microphones["reason"].toString("no_microphone")}}}, {});
                         return;
                     }
-                    self->prepareSession(params, reply);
+                    self->prepareSession(params, reply, false);
                 }, Qt::QueuedConnection);
             });
         });
@@ -446,7 +455,43 @@ void RecordingService::command(const QString& command, const QJsonObject& params
     }
     commandSession(command, params, std::move(reply));
 }
-void RecordingService::prepareSession(const QJsonObject& params, JsonReply reply) {
+QJsonObject RecordingService::clickCapability() const {
+    if (clicks_) return clicks_->clickCapability();
+    // X11: the helper's own probe (XInput2 raw button events).
+    const auto probed = backend_->capabilities()["clickHighlights"].toObject();
+    if (!probed.isEmpty()) return probed;
+    return {{"available", false}, {"route", "none"}, {"drawnBy", "recorder"}, {"targets", QJsonArray{}}, {"reason", "click_route_missing"},
+            {"message", "This desktop gives put.gd no pointer clicks, so recordings cannot highlight them."}};
+}
+void RecordingService::watchClicks(Session& s) {
+    if (!s.config.clickHighlights || !clicks_ || clicksWatched_) return;
+    clicksWatched_ = true;
+    const auto generation = s.generation;
+    QPointer<RecordingService> guard(this);
+    auto current = [guard, generation] { return guard && !guard->stopping_ && guard->session_ && guard->session_->generation == generation; };
+    clicks_->watchClicks(s.target.toJson(), [guard, current](QJsonObject click) {
+        if (!guard) return;
+        QMetaObject::invokeMethod(guard, [guard, current, click] {
+            // Presses while paused are not part of the clip.
+            if (!current() || guard->session_->state != "recording") return;
+            guard->backend_->control(guard->session_->op.id, "click", click, [](Error, QJsonObject) {});
+        }, Qt::QueuedConnection);
+    }, [guard, current](Error error, QJsonObject) {
+        if (!guard || !error) return;
+        QMetaObject::invokeMethod(guard, [guard, current, error] {
+            if (!current()) return;
+            // The recording goes on without highlights; inspect says why.
+            logging::warning(logRecording(), "Click highlights are unavailable for this recording", {{"operationId", guard->session_->op.id}, {"error", logging::errorFields(error)}});
+            guard->session_->progress["clickHighlightsError"] = error.message;
+            guard->unwatchClicks();
+        }, Qt::QueuedConnection);
+    });
+}
+void RecordingService::unwatchClicks() {
+    if (!std::exchange(clicksWatched_, false) || !clicks_) return;
+    clicks_->unwatchClicks();
+}
+void RecordingService::prepareSession(const QJsonObject& params, JsonReply reply, bool remembered) {
     if (session_) { reply({"recording_active", "A recording is already active; stop or cancel it first", {{"recordingId", session_->op.id}}}, {}); return; }
     {
         Session s;
@@ -468,6 +513,19 @@ void RecordingService::prepareSession(const QJsonObject& params, JsonReply reply
         if (!caps["formats"].toArray().contains(s.config.format)) { reply({"recording_unsupported", "This output format is not supported here", {{"format", s.config.format}}}, {}); return; }
         if (!s.config.codec.isEmpty() && !caps["codecs"].toObject()[s.config.format].toArray().contains(s.config.codec)) { reply({"recording_unsupported", "This codec is not supported here", {{"codec", s.config.codec}}}, {}); return; }
         if (s.config.audio.system && !caps["audio"].toObject()["system"].toBool()) { reply({"recording_unsupported", "System audio capture is not supported here", {{"field", "audio.system"}}}, {}); return; }
+        if (s.config.clickHighlights) {
+            const auto clicks = clickCapability();
+            const bool here = clicks["available"].toBool();
+            if (!here || !clicks["targets"].toArray().contains(s.target.kind)) {
+                if (!remembered) {
+                    reply({"recording_unsupported", here ? QStringLiteral("Click highlights are not available for a %1 recording on this desktop").arg(s.target.kind)
+                                                         : clicks["message"].toString("Click highlights are not available on this desktop"),
+                           {{"field", "clickHighlights"}, {"reason", here ? QStringLiteral("click_target_unsupported") : clicks["reason"].toString("click_route_missing")}}}, {});
+                    return;
+                }
+                s.config.clickHighlights = false;
+            }
+        }
         // The device chosen in Settings unless the request names one; empty is the system default input.
         if (s.config.audio.microphoneDevice.isEmpty()) s.config.audio.microphoneDevice = host_.settings().recordingMicrophoneDevice;
         // With "auto" or "No limit", free disk space is the real bound: keep the

@@ -1,5 +1,6 @@
 #pragma once
 #include "AdaptiveRate.h"
+#include "ClickOverlay.h"
 #include "Microphones.h"
 #include "PauseTimeline.h"
 #include "RecordingStorage.h"
@@ -98,6 +99,10 @@ public:
     // to another source): the clip goes on and that input is silent from there.
     bool microphoneLost() const { return microphone_.lost.load(); }
     QString microphoneLostReason() const { return microphoneLostReason_; }
+    // #1364: a click at this canvas position now; drawn as a ring into the
+    // frames from here on. Ignored unless a capture is running.
+    void addClick(QPointF canvasPoint, int button);
+    ClickOverlay& clicks() { return clicks_; }
     // The microphone's peak level since the last call, 0..1, for the bar's meter.
     float takeMicrophoneLevel() { return microphone_.level.take(); }
     // Frames that reached the video encoder, and frames the capture queue had
@@ -165,6 +170,11 @@ private:
         gint64 first = -1, expected = 0, count = 0; QStringList drift; };
     static GstPadProbeReturn tapAudio(GstPad*, GstPadProbeInfo*, gpointer);
     AudioTap microphone_, system_;
+    ClickOverlay clicks_;
+    // The encoder's input format, read from its caps for the ring's planes.
+    struct ClickFrame { bool known = false; int width = 0, height = 0; bool nv12 = false; };
+    ClickFrame clickFrame_;
+    static void drawClicks(RecordingPipeline* self, GstPad* pad, GstBuffer* buffer, gint64 runningNs);
     QString microphoneLostReason_;
     // The poll's watch for a microphone that stopped delivering buffers.
     gint64 microphoneSeen_ = 0;

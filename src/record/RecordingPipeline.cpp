@@ -18,7 +18,7 @@
 
 namespace putgd::record {
 namespace {
-struct ProbeContext { const PauseTimeline* timeline; void* rebase; bool audio; void* repeats = nullptr; };
+struct ProbeContext { const PauseTimeline* timeline; void* rebase; bool audio; void* repeats = nullptr; RecordingPipeline* pipeline = nullptr; };
 QString shellQuote(const QString& value) { QString s = value; s.replace('\\', "\\\\").replace('"', "\\\""); return '"' + s + '"'; }
 int bitrateKbps(const QSize& size, int fps) {
     // About 0.1 bit per pixel per frame, bounded for tiny and huge canvases.
@@ -170,12 +170,15 @@ GstPadProbeReturn RecordingPipeline::probe(GstPad* pad, GstPadProbeInfo* info, g
     if (rebase->firstPassed.load() < 0) rebase->firstPassed.store(shifted);
     rebase->lastPassed.store(shifted);
     // After the adaptive rate stepped down, videorate's repeats (its GAP-flagged
-    // duplicates of the last kept frame) stay out of the encoder (#1045).
+    // duplicates of the last kept frame) stay out of the encoder (#1045). While a
+    // click's ring is opening they are frames of its animation and are kept (#1364).
     auto* repeats = static_cast<RepeatSkip*>(context->repeats);
-    if (repeats && repeats->dropping.load() && GST_BUFFER_FLAG_IS_SET(buffer, GST_BUFFER_FLAG_GAP)) { repeats->skipped.fetch_add(1); return GST_PAD_PROBE_DROP; }
+    const bool ring = context->pipeline && context->pipeline->clicks_.active(pts);
+    if (repeats && repeats->dropping.load() && !ring && GST_BUFFER_FLAG_IS_SET(buffer, GST_BUFFER_FLAG_GAP)) { repeats->skipped.fetch_add(1); return GST_PAD_PROBE_DROP; }
     buffer = gst_buffer_make_writable(buffer);
     GST_PAD_PROBE_INFO_DATA(info) = buffer;
     if (!buffer) return GST_PAD_PROBE_DROP;
+    if (ring) drawClicks(context->pipeline, pad, buffer, pts);
     GST_BUFFER_PTS(buffer) = GstClockTime(shifted);
     if (GST_BUFFER_DTS_IS_VALID(buffer)) GST_BUFFER_DTS(buffer) = GstClockTime(std::max<gint64>(0, gint64(GST_BUFFER_DTS(buffer)) - offset));
     rebase->passed.fetch_add(1);
@@ -338,6 +341,50 @@ GstPadProbeReturn RecordingPipeline::gateFrame(GstPad*, GstPadProbeInfo* info, g
     return GST_PAD_PROBE_OK;
 }
 
+void RecordingPipeline::drawClicks(RecordingPipeline* self, GstPad* pad, GstBuffer* buffer, gint64 runningNs) {
+    auto& frame = self->clickFrame_;
+    if (!frame.known) {
+        // Once per capture, on the streaming thread: the encoder's negotiated input.
+        GstCaps* caps = gst_pad_get_current_caps(pad);
+        GstVideoInfo video;
+        if (caps && gst_video_info_from_caps(&video, caps)) {
+            frame.width = GST_VIDEO_INFO_WIDTH(&video);
+            frame.height = GST_VIDEO_INFO_HEIGHT(&video);
+            frame.nv12 = GST_VIDEO_INFO_FORMAT(&video) == GST_VIDEO_FORMAT_NV12;
+            frame.known = frame.nv12 || GST_VIDEO_INFO_FORMAT(&video) == GST_VIDEO_FORMAT_I420;
+        }
+        if (caps) gst_caps_unref(caps);
+        if (!frame.known) return;
+    }
+    GstCaps* caps = gst_pad_get_current_caps(pad);
+    GstVideoInfo video;
+    const bool described = caps && gst_video_info_from_caps(&video, caps);
+    if (caps) gst_caps_unref(caps);
+    GstVideoFrame mapped;
+    // A repeat shares its pixels with the frame before it; mapping the writable
+    // buffer for writing gives this frame its own copy.
+    if (!described || !gst_video_frame_map(&mapped, &video, buffer, GstMapFlags(GST_MAP_READWRITE))) return;
+    const ClickOverlay::Plane luma{static_cast<std::uint8_t*>(GST_VIDEO_FRAME_PLANE_DATA(&mapped, 0)), GST_VIDEO_FRAME_PLANE_STRIDE(&mapped, 0), frame.width, frame.height, 1, 1, 1};
+    const int chromaWidth = (frame.width + 1) / 2, chromaHeight = (frame.height + 1) / 2;
+    if (frame.nv12) {
+        auto* interleaved = static_cast<std::uint8_t*>(GST_VIDEO_FRAME_PLANE_DATA(&mapped, 1));
+        const int stride = GST_VIDEO_FRAME_PLANE_STRIDE(&mapped, 1);
+        self->clicks_.draw(luma, {interleaved, stride, chromaWidth, chromaHeight, 2, 2, 2}, {interleaved + 1, stride, chromaWidth, chromaHeight, 2, 2, 2}, runningNs);
+    } else {
+        self->clicks_.draw(luma, {static_cast<std::uint8_t*>(GST_VIDEO_FRAME_PLANE_DATA(&mapped, 1)), GST_VIDEO_FRAME_PLANE_STRIDE(&mapped, 1), chromaWidth, chromaHeight, 1, 2, 2},
+                           {static_cast<std::uint8_t*>(GST_VIDEO_FRAME_PLANE_DATA(&mapped, 2)), GST_VIDEO_FRAME_PLANE_STRIDE(&mapped, 2), chromaWidth, chromaHeight, 1, 2, 2}, runningNs);
+    }
+    gst_video_frame_unmap(&mapped);
+    // A ring's frame is a picture of its own, not a repeat to skip.
+    GST_BUFFER_FLAG_UNSET(buffer, GST_BUFFER_FLAG_GAP);
+}
+void RecordingPipeline::addClick(QPointF canvasPoint, int button) {
+    if (!pipeline_ || stopping_ || timeline_.paused()) return;
+    const gint64 now = runningTime();
+    if (now < 0) return;
+    clicks_.add(canvasPoint, button, now);
+}
+
 GstPadProbeReturn RecordingPipeline::tapAudio(GstPad* pad, GstPadProbeInfo* info, gpointer user) {
     auto* tap = static_cast<AudioTap*>(user);
     GstBuffer* buffer = GST_PAD_PROBE_INFO_BUFFER(info);
@@ -442,6 +489,8 @@ bool RecordingPipeline::launch(const Options& options, const QString& encoder, c
     audio_.firstPassed = -1; audio_.lastPassed = -1; audio_.passed = 0; audio_.lateness = {}; audio_.clock.reset();
     for (AudioTap* tap : {&microphone_, &system_}) { tap->clock.reset(); tap->level.take(); tap->lost.store(false); tap->source = nullptr; tap->device.clear(); tap->buffers.store(0); tap->first = -1; tap->expected = 0; tap->count = 0; tap->drift.clear(); }
     microphone_.meter = true;
+    clicks_.clear();
+    clickFrame_ = {};
     microphoneLostReason_.clear();
     microphoneSeen_ = 0;
     microphoneQuiet_.invalidate();
@@ -509,7 +558,7 @@ bool RecordingPipeline::launch(const Options& options, const QString& encoder, c
         GstElement* queue = gst_bin_get_by_name(GST_BIN(pipeline), element);
         if (!queue) return false;
         GstPad* pad = gst_element_get_static_pad(queue, "sink");
-        auto* context = new ProbeContext{&timeline_, &rebase, &rebase == &audio_, &rebase == &audio_ ? nullptr : &repeatSkip_};
+        auto* context = new ProbeContext{&timeline_, &rebase, &rebase == &audio_, &rebase == &audio_ ? nullptr : &repeatSkip_, &rebase == &audio_ ? nullptr : this};
         gst_pad_add_probe(pad, GST_PAD_PROBE_TYPE_BUFFER, &RecordingPipeline::probe, context, [](gpointer data) { delete static_cast<ProbeContext*>(data); });
         gst_object_unref(pad);
         gst_object_unref(queue);
@@ -946,6 +995,7 @@ void RecordingPipeline::tearDown() {
                  .arg(clockName_, video_.lateness.text(), audio_.lateness.text(), frameClock_.age.text()).arg(frameClock_.arrival).arg(audio_.clock.corrections() + microphone_.clock.corrections() + system_.clock.corrections()));
     debugLog(QStringLiteral("frames: %1 reached the video encoder, %2 leaked at the capture queue; source arrivals %3 (interval %4), %5 with a repeated compositor time, contents %6 new / %7 same dropped, cadence lock %8 early dropped / %9 resyncs / %10 changes slotted after a repeat")
                  .arg(video_.passed.load()).arg(dropped_.load()).arg(frameClock_.interval.count + (frameClock_.lastArrival >= 0 ? 1 : 0)).arg(frameClock_.interval.text()).arg(frameClock_.repeatedPts).arg(frameClock_.distinctContents).arg(frameClock_.sameContents).arg(frameClock_.early).arg(frameClock_.resyncs).arg(frameClock_.afterRepeat));
+    if (clicks_.received()) debugLog(QStringLiteral("clicks: %1 received, rings drawn into %2 frames").arg(clicks_.received()).arg(clicks_.drawn()));
     if (!microphone_.drift.isEmpty()) debugLog("audio tap microphone (buffer:ms from contiguous@ms): " + microphone_.drift.join(' '));
     if (!system_.drift.isEmpty()) debugLog("audio tap system (buffer:ms from contiguous@ms): " + system_.drift.join(' '));
     if (repeatSkip_.skipped.load()) debugLog(QStringLiteral("repeats: %1 skipped before the encoder").arg(repeatSkip_.skipped.load()));

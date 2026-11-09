@@ -142,7 +142,7 @@ protected:
         const QRectF track = QRectF(rect()).adjusted(0.5, 1.5, -0.5, -1.5);
         const qreal radius = track.height() / 2;
         painter.setPen(Qt::NoPen);
-        painter.setBrush(tokens.border);
+        painter.setBrush(tokens.borderStrong);
         painter.drawRoundedRect(track, radius, radius);
         if (level_ <= 0.0f) return;
         QRectF fill = track;
@@ -570,6 +570,7 @@ void ControlBar::refresh() {
     lockedFacts_->setToolTip(options_.targetLabel + " · " + lockedAudio_->text() + " · " + format_->currentText());
     QStringList facts;
     for (const auto& fact : {options_.targetLabel, lockedAudio_->text(), lockedFormat_->text()}) if (!fact.isEmpty()) facts.append(fact);
+    if (options_.clickHighlights) facts.append(QStringLiteral("Click highlights"));
     lockedFacts_->setText(facts.join(QStringLiteral(" · ")));
     lockedFacts_->setAccessibleName(lockedFacts_->text());
     lockedFormat_->setAccessibleName(QStringLiteral("Recording format: ") + lockedFormat_->text());

@@ -44,6 +44,9 @@ const XML = `<node><interface name="${IFACE}">
 <method name="ShowRecordingFrame"><arg type="s" direction="in"/><arg type="s" direction="out"/></method>
 <method name="HideRecordingFrame"><arg type="s" direction="out"/></method>
 <method name="RecordingWindows"><arg type="s" direction="out"/></method>
+<method name="WatchClicks"><arg type="s" direction="out"/></method>
+<method name="UnwatchClicks"><arg type="s" direction="out"/></method>
+<signal name="Click"><arg type="s"/></signal>
 <signal name="Action"><arg type="s"/><arg type="s"/></signal>
 <signal name="ClipboardChanged"><arg type="t"/></signal>
 <signal name="CapabilitiesChanged"/>
@@ -795,6 +798,7 @@ export default class PutgdExtension extends Extension {
                 for (const id of this._requests.keys())
                     this._drop(id, 'helper_unavailable', 'GNOME session locked');
                 this._hideRecordingFrame();
+                this._unwatchClicks();
             }
         });
         this._acceleratorSignal = global.display.connect('accelerator-activated', (_display, id) => {
@@ -807,6 +811,7 @@ export default class PutgdExtension extends Extension {
                 for (const id of this._requests.keys())
                     this._drop(id, 'helper_unavailable', 'Resident application disconnected');
                 this._hideRecordingFrame();
+                this._unwatchClicks();
                 this._unbind();
                 this._uiProcess = 0;
                 this._uiProcessOwner = null;
@@ -827,6 +832,7 @@ export default class PutgdExtension extends Extension {
         for (const id of this._requests.keys())
             this._drop(id, 'helper_unavailable', 'GNOME extension disabled');
         this._hideRecordingFrame();
+        this._unwatchClicks();
         this._unbind();
         if (this._ownerSignal)
             this._selection.disconnect(this._ownerSignal);
@@ -956,7 +962,7 @@ export default class PutgdExtension extends Extension {
     HelloAsync(_args, invocation) {
         this._run(invocation, () => ({version: 1, shellMajor: Number(Config.PACKAGE_VERSION.split('.')[0]),
             extensionVersion: this.metadata.version, clipboardRevision: this._revision, uiProcessVersion: 1,
-            recordingVersion: 2, previewVersion: 1}));
+            recordingVersion: 3, previewVersion: 1}));
     }
 
     InvalidateCopyAsync(_args, invocation) {
@@ -1585,6 +1591,89 @@ export default class PutgdExtension extends Extension {
             }
             return {version: 1, windows, activeExcluded};
         });
+    }
+
+    // Recording protocol 3 (#1364): pointer button presses while a recording
+    // draws click highlights. Mutter hands a press over a client window to the
+    // client before a Shell actor or an extension's event filter sees it, but
+    // it stamps the window's user time first, inside the same event, so the
+    // press is read from Clutter's current event there. A key press stamps the
+    // user time too and is told apart by the event's type. Presses on the
+    // Shell's own actors arrive on the stage. Nothing is grabbed or consumed.
+    // Only the resident that asked hears them: the signal goes to its unique
+    // bus name, never to the whole session bus.
+    WatchClicksAsync(_args, invocation) {
+        this._run(invocation, sender => {
+            this._unwatchClicks();
+            this._watchClicks(sender);
+            return {version: 1};
+        });
+    }
+
+    UnwatchClicksAsync(_args, invocation) {
+        this._run(invocation, () => {
+            this._unwatchClicks();
+            return {};
+        });
+    }
+
+    _watchClicks(sender) {
+        const clicks = {windows: new Map(), lastTime: -1, lastButton: 0};
+        const emit = (event, window) => {
+            const button = event.get_button();
+            if (button < 1 || button > 3)
+                return;
+            // Both hooks can see one press on a Shell-drawn window decoration.
+            const time = event.get_time();
+            if (time === clicks.lastTime && button === clicks.lastButton)
+                return;
+            clicks.lastTime = time;
+            clicks.lastButton = button;
+            const [x, y] = event.get_coords();
+            const click = {x: Math.round(x), y: Math.round(y), button};
+            if (window)
+                click.window = {identity: String(window.get_id()), rect: rectangle(window.get_frame_rect())};
+            Gio.DBus.session.emit_signal(sender, PATH, IFACE, 'Click', new GLib.Variant('(s)', [JSON.stringify(click)]));
+        };
+        const watch = window => {
+            if (!window || clicks.windows.has(window))
+                return;
+            clicks.windows.set(window, [
+                window.connect('notify::user-time', () => {
+                    const event = Clutter.get_current_event();
+                    if (event && event.type() === Clutter.EventType.BUTTON_PRESS)
+                        emit(event, window);
+                }),
+                window.connect('unmanaged', () => {
+                    for (const id of clicks.windows.get(window) ?? [])
+                        window.disconnect(id);
+                    clicks.windows.delete(window);
+                }),
+            ]);
+        };
+        for (const actor of global.get_window_actors())
+            watch(actor.meta_window);
+        clicks.created = global.display.connect('window-created', (_display, window) => watch(window));
+        clicks.stage = global.stage.connect('captured-event', (_actor, event) => {
+            if (event.type() === Clutter.EventType.BUTTON_PRESS)
+                emit(event, null);
+            return Clutter.EVENT_PROPAGATE;
+        });
+        this._clicks = clicks;
+    }
+
+    _unwatchClicks() {
+        const clicks = this._clicks;
+        if (!clicks)
+            return;
+        this._clicks = null;
+        global.display.disconnect(clicks.created);
+        global.stage.disconnect(clicks.stage);
+        for (const [window, ids] of clicks.windows) {
+            for (const id of ids)
+                window.disconnect(id);
+        }
+        clicks.windows.clear();
     }
 
     HideRecordingFrameAsync(_args, invocation) {

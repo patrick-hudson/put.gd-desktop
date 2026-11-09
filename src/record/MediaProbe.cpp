@@ -1,6 +1,7 @@
 #include "MediaProbe.h"
 #include "ImageCopySource.h"
 #include "Microphones.h"
+#include "ClickOverlay.h"
 #include "EncoderCheck.h"
 #include "core/RecordingModel.h"
 #include "platform/NativeSession.h"
@@ -232,6 +233,16 @@ QJsonObject probeMedia() {
     QJsonObject audio{{"system", result["liveCapture"].toObject()["audio"].toBool()}, {"microphone", microphone}};
     if (!microphone) audio["microphoneReason"] = QStringLiteral("microphone_elements_missing");
     result["audio"] = audio;
+    // #1364: click highlights. On X11 the helper reads button presses from the X
+    // server's XInput2 raw events and draws the rings; on Wayland the desktop
+    // reports them to the resident, which answers for those routes itself.
+    if (session == "x11") {
+        QString why;
+        const bool raw = X11ClickSource::available(&why);
+        QJsonObject clicks{{"available", raw}, {"route", "x11-xinput2"}, {"drawnBy", "recorder"}, {"targets", raw ? QJsonArray{"monitor", "desktop", "region", "window"} : QJsonArray{}}};
+        if (!raw) { clicks["reason"] = "xinput2_unavailable"; clicks["message"] = QStringLiteral("Click highlights need XInput 2.1 raw button events, and %1.").arg(why); }
+        result["clickHighlights"] = clicks;
+    }
     result["overlayExclusion"] = QJsonObject{};
     const bool implemented = session == "x11" || portalOk || nativeOk;
     result["available"] = gst["available"].toBool() && liveSource && liveEncoder && decoderOk && !formats.isEmpty() && implemented;

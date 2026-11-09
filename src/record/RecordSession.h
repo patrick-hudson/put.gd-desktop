@@ -4,6 +4,7 @@
 #include "PortalScreenCast.h"
 #include "MutterScreenCast.h"
 #include "Microphones.h"
+#include "ClickOverlay.h"
 #ifdef PUTGD_RECORD_KDE_SCREENCAST
 #include "KdeScreencast.h"
 #endif
@@ -90,6 +91,13 @@ private:
     // open only while the bar's toggle is on and closed when the capture ends.
     bool capturedSystem_ = false, capturedMicrophone_ = false;
     MicrophoneChoice microphone_;
+    // Click highlights (#1364): on X11 the helper reads presses from the X
+    // server; elsewhere the resident sends what the desktop reported (`click`).
+    X11ClickSource x11Clicks_;
+    void startClicks();
+    // A press in desktop coordinates (and, for a window recording, the window's
+    // rectangle at that moment): drawn where it falls in the picture.
+    void click(QPointF desktop, int button, const QRectF& window);
     MicrophoneMonitor monitor_;
     QTimer levelTimer_;
     void updateMicrophoneMonitor();

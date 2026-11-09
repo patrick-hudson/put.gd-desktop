@@ -6,12 +6,12 @@ if(PUTGD_RECORDING AND CMAKE_SYSTEM_NAME STREQUAL "Linux")
   pkg_check_modules(PUTGD_GST IMPORTED_TARGET gstreamer-1.0>=1.24 gstreamer-video-1.0>=1.24 gstreamer-app-1.0>=1.24)
   pkg_check_modules(PUTGD_AV IMPORTED_TARGET libavcodec>=60.31 libavformat>=60.16 libavfilter>=9.12 libavutil>=58.29 libswscale>=7.5 libswresample>=4.12)
   if(PUTGD_GST_FOUND AND PUTGD_AV_FOUND)
-    add_executable(putgd-record src/record/main.cpp src/record/MediaProbe.cpp src/record/EncoderCheck.cpp src/record/BundledRuntime.cpp src/record/PortalScreenCast.cpp src/record/MutterScreenCast.cpp src/record/WaylandAcquisition.cpp src/record/X11Targets.cpp src/record/AdaptiveRate.cpp src/record/RecordingPipeline.cpp src/record/PauseTimeline.cpp src/record/ClipExporter.cpp src/record/Poster.cpp src/record/RecordSession.cpp src/record/Microphones.cpp src/record/Overlays.cpp src/record/record.qrc src/record/BarPlacement.cpp src/record/ReviewWindow.cpp src/record/DebugLog.cpp src/record/AvSync.cpp src/core/RecordingModel.cpp)
+    add_executable(putgd-record src/record/main.cpp src/record/MediaProbe.cpp src/record/EncoderCheck.cpp src/record/BundledRuntime.cpp src/record/PortalScreenCast.cpp src/record/MutterScreenCast.cpp src/record/WaylandAcquisition.cpp src/record/X11Targets.cpp src/record/AdaptiveRate.cpp src/record/RecordingPipeline.cpp src/record/PauseTimeline.cpp src/record/ClipExporter.cpp src/record/Poster.cpp src/record/RecordSession.cpp src/record/Microphones.cpp src/record/ClickOverlay.cpp src/record/Overlays.cpp src/record/record.qrc src/record/BarPlacement.cpp src/record/ReviewWindow.cpp src/record/DebugLog.cpp src/record/AvSync.cpp src/core/RecordingModel.cpp)
     # wlr-capture (#1275): ext-image-copy-capture frames into appsrc on compositors
     # with no screencast service (Budgie on labwc, Magpie).
     target_sources(putgd-record PRIVATE src/record/ImageCopySource.cpp ${putgd_capture_protocol_sources})
     target_include_directories(putgd-record PRIVATE src "${protocol_dir}")
-    target_link_libraries(putgd-record PRIVATE PkgConfig::PUTGD_WAYLAND)
+    target_link_libraries(putgd-record PRIVATE PkgConfig::PUTGD_WAYLAND PkgConfig::PUTGD_XCB_XINPUT)
     target_link_libraries(putgd-record PRIVATE putgd_build_options putgd_build_identity putgd_ui_control putgd_dialog_attachment putgd_x11_native_snapshot putgd_host_open putgd_visual putgd_fonts putgd_file_dialog Qt6::Core Qt6::Gui Qt6::Widgets Qt6::DBus PkgConfig::PUTGD_GST PkgConfig::PUTGD_AV PkgConfig::PUTGD_XCB)
     if(TARGET putgd_kde)
       # KWin's screencast protocol (vendored XML) for the dialog-free KDE path.
@@ -49,7 +49,7 @@ if(PUTGD_RECORDING AND CMAKE_SYSTEM_NAME STREQUAL "Linux")
       add_test(NAME recording_storage_integration COMMAND test_recording_storage)
       set_tests_properties(recording_storage_integration PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 90)
       # #6: the live pipeline keeps 60 fps from a moving Xvfb root on the grid.
-      add_executable(test_recording_pipeline tests/integration/test_recording_pipeline.cpp src/record/AdaptiveRate.cpp src/record/RecordingPipeline.cpp src/record/Microphones.cpp src/core/RecordingModel.cpp src/record/PauseTimeline.cpp src/record/DebugLog.cpp src/record/WaylandAcquisition.cpp src/record/AvSync.cpp src/record/ImageCopySource.cpp ${putgd_capture_protocol_sources})
+      add_executable(test_recording_pipeline tests/integration/test_recording_pipeline.cpp src/record/AdaptiveRate.cpp src/record/RecordingPipeline.cpp src/record/Microphones.cpp src/record/ClickOverlay.cpp src/core/RecordingModel.cpp src/record/PauseTimeline.cpp src/record/DebugLog.cpp src/record/WaylandAcquisition.cpp src/record/AvSync.cpp src/record/ImageCopySource.cpp ${putgd_capture_protocol_sources})
       target_include_directories(test_recording_pipeline PRIVATE src tests $<TARGET_PROPERTY:putgd-record,INCLUDE_DIRECTORIES>)
       target_compile_definitions(test_recording_pipeline PRIVATE $<TARGET_PROPERTY:putgd-record,COMPILE_DEFINITIONS>)
       target_link_libraries(test_recording_pipeline PRIVATE $<TARGET_PROPERTY:putgd-record,LINK_LIBRARIES> Qt6::Test)

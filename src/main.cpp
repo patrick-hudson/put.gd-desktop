@@ -60,12 +60,15 @@
 #endif
 #ifdef PUTGD_NATIVE_BUDGIE
 #include "platform/budgie/BudgieSourceAdapter.h"
+#include "platform/budgie/BudgieClicks.h"
 #endif
 #ifdef PUTGD_NATIVE_HYPRLAND
 #include "platform/hyprland/HyprlandSourceAdapter.h"
+#include "platform/hyprland/HyprlandClicks.h"
 #endif
 #ifdef PUTGD_NATIVE_KDE
 #include "platform/kde/KdeSourceAdapter.h"
+#include "platform/kde/KWinClickEffect.h"
 #include "platform/wayland/DataControlSourceAdapter.h"
 #endif
 namespace {
@@ -303,17 +306,26 @@ int main(int argc,char* argv[]) {
  if(gnome)operations.recording().setShell(gnome);
  // Window recordings follow a window Mutter names by id (#1278).
  if(gnome)operations.recording().setWindows(gnome);
+ // Click highlights (#1364): the extension reports presses; the recorder draws the rings.
+ if(gnome)operations.recording().setClicks(gnome);
 #endif
 #ifdef PUTGD_NATIVE_KDE
  // KWin streams a window by its UUID; the adapter lists them (#1278).
  if(kde)operations.recording().setWindows(kde);
+ // Click highlights (#1364): KWin's own Mouse Click Animation effect, on for the recording.
+ if(kde)operations.recording().setClicks(new putgd::KWinClickEffect(QCoreApplication::instance()));
 #endif
 #ifdef PUTGD_NATIVE_BUDGIE
  if(budgie)operations.recording().setWindows(budgie);
+ // Click highlights (#1364) have no route on labwc; the capability says why.
+ static putgd::BudgieClicks budgieClicks;
+ if(budgie)operations.recording().setClicks(&budgieClicks);
 #endif
 #ifdef PUTGD_NATIVE_HYPRLAND
  // Window recordings follow a window by Hyprland's stableId, put.gd's own refused by PID (#1275).
  if(hyprland)operations.recording().setWindows(hyprland);
+ // Click highlights (#1364): non-consuming runtime mouse binds report each press on the event socket.
+ if(hyprland)operations.recording().setClicks(new putgd::HyprlandClicks(QCoreApplication::instance()));
 #endif
  putgd::HistoryService history(operations);
  putgd::LocalServer server(settings,operations,history);

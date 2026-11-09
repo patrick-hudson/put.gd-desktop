@@ -1,5 +1,6 @@
 #pragma once
 #include "RecordingBackend.h"
+#include "core/RecordingClicks.h"
 #include "core/Operation.h"
 #include <QElapsedTimer>
 #include <QObject>
@@ -42,6 +43,9 @@ public:
     void setShell(RecordingShell* shell) { shell_ = shell; }
     // The desktop's window list for window recordings (KDE, GNOME Wayland); not owned.
     void setWindows(RecordingWindows* windows) { windows_ = windows; }
+    // Where the desktop reports pointer presses for click highlights (#1364);
+    // not owned. Unset on X11, where the helper reads them from the X server.
+    void setClicks(RecordingClicks* clicks) { clicks_ = clicks; }
     QJsonObject capabilities() const;
     bool active() const { return session_.has_value(); }
     QString activeId() const { return session_ ? session_->op.id : QString{}; }
@@ -111,7 +115,16 @@ private:
     void cancelActive(JsonReply);
     void handleEvent(const QJsonObject&);
     void stoppedOnBudget(Session&, const QJsonObject& observed = {});
-    void prepareSession(const QJsonObject& params, JsonReply);
+    // `remembered`: the tray, dashboard and shortcut entry, whose microphone
+    // and click-highlight choices are preferences, not requests: where one is
+    // unavailable the recording prepares without it instead of failing.
+    void prepareSession(const QJsonObject& params, JsonReply, bool remembered = false);
+    // {available, route, drawnBy, targets, reason?, message?} for this desktop.
+    QJsonObject clickCapability() const;
+    // Click highlights run from Record to Stop: the desktop's presses go to the
+    // helper, which draws them (or the compositor's own effect is switched on).
+    void watchClicks(Session&);
+    void unwatchClicks();
     // What a capture reported it records: {audioSources: {system, microphone}}, or
     // only audioEncoder from a backend that predates the microphone.
     static void noteCaptured(Session&, const QJsonObject& result, bool required);
@@ -140,11 +153,12 @@ private:
     std::unique_ptr<RecordingBackend> backend_;
     RecordingShell* shell_ = nullptr;
     RecordingWindows* windows_ = nullptr;
+    RecordingClicks* clicks_ = nullptr;
+    bool clicksWatched_ = false;
     std::optional<Session> session_;
     quint64 generation_ = 0;
     bool stopping_ = false;
-    // The tray, dashboard and shortcut entry asks for the remembered microphone
-    // toggle; without a microphone it still prepares, with the toggle unavailable.
-    bool rememberedMicrophone_ = false;
+    // Set by invoke() for the prepare it issues: its choices are remembered preferences.
+    bool rememberedPreferences_ = false;
 };
 }

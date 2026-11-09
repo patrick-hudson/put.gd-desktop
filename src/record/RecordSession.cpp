@@ -268,6 +268,15 @@ void RecordSession::command(const QString& command, const QJsonObject& params, R
         else reply({}, result.state);
         return;
     }
+    if (command == "click") {
+        // #1364: a press the desktop reported to the resident, in logical desktop pixels.
+        const auto rect = params["window"].toObject()["rect"].toArray();
+        const QRectF window = rect.size() == 4 ? QRectF(rect[0].toDouble(), rect[1].toDouble(), rect[2].toDouble(), rect[3].toDouble()) : QRectF();
+        if (target_.kind != "window" || params["window"].toObject()["identity"].toString() == target_.identity || target_.identity.isEmpty())
+            click(QPointF(params["x"].toDouble(), params["y"].toDouble()), params["button"].toInt(), window);
+        reply({}, {});
+        return;
+    }
     if (command == "preview") { preview(params, std::move(reply)); return; }
     if (command == "export") { exportClip(params, std::move(reply)); return; }
     reply({"unknown_method", "Unknown recording helper command", {}}, {});
@@ -280,6 +289,36 @@ void RecordSession::noteCaptured() {
 void RecordSession::closeMicrophone() {
     levelTimer_.stop();
     monitor_.close();
+    // The capture is over: nothing more is read from the X server's pointer either.
+    x11Clicks_.stop();
+}
+void RecordSession::startClicks() {
+    if (!config_.clickHighlights) return;
+    // The ring is sized in logical pixels: canvas pixels per desktop unit of the recorded area.
+    // Wayland areas are logical; X11 root pixels are the screen's device pixels.
+    double density = 1.0;
+    if (portalTarget_) { if (resolved_.rect.width() > 0) density = double(resolved_.canvas.width()) / resolved_.rect.width(); }
+    else {
+        for (QScreen* screen : QGuiApplication::screens()) {
+            const qreal dpr = screen->devicePixelRatio();
+            if (QRectF(QPointF(screen->geometry().topLeft()) * dpr, QSizeF(screen->geometry().size()) * dpr).contains(QPointF(resolved_.rect.center()))) density = dpr;
+        }
+    }
+    pipeline_.clicks().setScale(density);
+    if (portalTarget_ || surfaceMode() != SurfaceMode::X11) return;
+    QString failure;
+    QPointer<RecordSession> guard(this);
+    // X11: root pixels, or the recorded window's own pixels.
+    if (!x11Clicks_.start(resolved_.window, [guard](QPointF at, int button) { if (guard) guard->click(at, button, guard->resolved_.window ? QRectF(QPointF(0, 0), QSizeF(guard->resolved_.canvas)) : QRectF()); }, &failure))
+        debugLog("clicks: the X server gives no raw button events: " + failure);
+}
+void RecordSession::click(QPointF desktop, int button, const QRectF& window) {
+    if (!config_.clickHighlights || !pipeline_.running() || button < 1 || button > 3) return;
+    // What the frames show: the recorded window where one is recorded, else the recorded area.
+    const QRectF area = target_.kind == "window" ? window : QRectF(resolved_.rect);
+    QPointF at;
+    if (!mapClick(desktop, area, resolved_.canvas, &at)) return;
+    pipeline_.addClick(at, button);
 }
 void RecordSession::updateMicrophoneMonitor() {
     // The input is open for the meter only while the toggle is on and nothing
@@ -644,6 +683,7 @@ void RecordSession::finishPrepare(Reply reply) {
     options.microphoneAvailable = microphone_.available();
     options.microphoneLabel = microphone_.device.label;
     options.microphoneUnavailable = microphone_.message;
+    options.clickHighlights = config_.clickHighlights;
     delete bar_;
     bar_ = new ControlBar(options, config_);
     // What the bar can record is what the session records: a remembered toggle
@@ -764,6 +804,7 @@ void RecordSession::begin(Reply reply) {
     if (options.encoders.isEmpty()) { showBar("ready"); reply({"recording_unsupported", "No H.264 encoder is installed", {}}, {}); return; }
     if (auto e = pipeline_.start(options)) { showBar("ready"); updateMicrophoneMonitor(); reply(e, {}); return; }
     if (options.microphone) levelTimer_.start();
+    startClicks();
     if (pipeline_.microphoneLost() && bar_) bar_->setMicrophoneLost(pipeline_.microphoneLostReason());
     bounds_.setDimmed(true);
     showBar("recording");
