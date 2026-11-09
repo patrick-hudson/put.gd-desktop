@@ -7,6 +7,10 @@ struct X11Target {
  QString action;
  xcb_window_t window=XCB_WINDOW_NONE;
  QRect nativeWindowRect;
+ // Capture monitor (#1363): the native rectangle of the output under the pointer.
+ QRect nativeArea;
+ // Delayed capture (#1363): a live region counts down between selection and pixels.
+ int delaySeconds=0;
  QList<CaptureFrame> layout;
  QRectF logicalSelection;
  QString outcome;

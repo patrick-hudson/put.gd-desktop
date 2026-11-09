@@ -1,6 +1,6 @@
 #include "X11Shortcuts.h"
 #include "X11Reply.h"
-#include "X11SessionLock.h"
+#include "platform/SessionLock.h"
 #include "core/Log.h"
 #include "platform/NativeSession.h"
 #include <QKeySequence>

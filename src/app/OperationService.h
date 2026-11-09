@@ -32,6 +32,7 @@ public:
  OperationService(QString dataRoot,SettingsService&,ProviderRegistry&,SourceAdapter&,QObject* parent=nullptr);
  ~OperationService() override;
  // `edit` accepts options {source: region|window|desktop|clipboard|file, path}.
+ // region, window, monitor, desktop and repeat accept {delaySeconds: 0|3|5|10}.
  void invoke(const QString& action,JsonReply,const QJsonObject& options={});
  // Relays one editor.* command to the open editor for this operation.
  void editorCommand(const QString& id,const QString& command,const QJsonObject& params,JsonReply);
@@ -81,6 +82,8 @@ public:
  QJsonObject desktopSetup() const {return source_.desktopSetup();}
  void recheckDesktopSetup(std::function<void(QJsonObject)> reply) {source_.recheckDesktopSetup(std::move(reply));}
  QString settingsRevision() const {return settings_.revision();}
+ // The tray's capture delay choice (#1363): saves preferences.captureDelaySeconds.
+ void setCaptureDelayPreference(int seconds);
  // With an item ID, cancels only that file's upload; the batch's other files continue.
  void cancel(const QString& id,JsonReply,const QString& itemId={});
  void retry(const QString& id,JsonReply);
@@ -225,6 +228,8 @@ private:
  struct PendingCopy;struct UploadCopy;struct UploadCopyGroup;
  void beginUploadCopies(const Operation&,bool importing=false);
  void startEditing(Operation,std::shared_ptr<std::atomic_bool>,ClipboardPayload);
+ // The sharing actions and Repeat last region, after invoke() has handled recording.
+ void invokeCapture(const QString& action,JsonReply,const QJsonObject& options,const QString& activationToken);
  QString editorDestination(const Operation&) const;
  void abandonUploadCopies(const QString&);
  // A batch item finished its upload stage, with or without a link (each_link ordering).

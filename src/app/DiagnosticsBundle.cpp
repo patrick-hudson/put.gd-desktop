@@ -209,7 +209,7 @@ void DiagnosticsBundles::create(const BundleRequest& request,JsonReply reply) {
  });
 }
 QString DiagnosticsBundles::defaultUploadProfile(const Settings& settings) {
- for(const auto& action:QStringList{"region","window","desktop","clipboard","edit",Settings::recordingActionName()}) {
+ for(const auto& action:QStringList{"region","window","desktop","clipboard","edit","monitor",Settings::recordingActionName()}) {
   const auto route=settings.actions.value(action);
   if(route.destination=="upload"&&settings.profiles.contains(route.profileId))return route.profileId;
  }

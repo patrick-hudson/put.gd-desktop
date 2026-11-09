@@ -1,6 +1,7 @@
 #pragma once
 #include "core/Error.h"
 #include <xcb/xcb.h>
+#include <QJsonArray>
 #include <QJsonObject>
 #include <QSet>
 namespace putgd {
@@ -12,7 +13,15 @@ public:
  X11NativeSnapshot();
  ~X11NativeSnapshot();
  bool available()const;
- QJsonObject freeze(const QString& action,const QSet<qint64>& excluded,Error&);
+ // monitor (#1363) freezes the output under the pointer as "area". repeat takes
+ // the remembered logical rectangle as `selection`; the caller has already
+ // compared layouts with sameArrangement().
+ QJsonObject freeze(const QString& action,const QSet<qint64>& excluded,Error&,const QJsonArray& selection={});
+ // Whether two frozen layouts hold the same outputs, root and scaling. The
+ // RandR configuration timestamp also moves when the same layout is applied again.
+ static bool sameArrangement(const QJsonObject& layout,const QJsonObject& other);
+ // The current layout alone, for that comparison.
+ QJsonObject currentLayout(Error& error){return layout(error);}
  bool unchanged(const QJsonObject&,Error&);
  X11Target resolve(const QJsonObject&,X11Capture&,Error&);
  static Error validate(const QJsonObject&);

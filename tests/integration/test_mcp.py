@@ -32,6 +32,12 @@ class AdapterTests(unittest.IsolatedAsyncioTestCase):
         for name, args in [
             ('perform_action', {'action': 'shell'}),
             ('perform_action', {'action': 'clipboard', 'shell': 'ignored-extra'}),
+            # Delayed capture (#1363): 3, 5 or 10 seconds, on the screenshots and repeat only.
+            ('perform_action', {'action': 'monitor', 'delay_seconds': 4}),
+            ('perform_action', {'action': 'region', 'delay_seconds': -3}),
+            ('perform_action', {'action': 'clipboard', 'delay_seconds': 3}),
+            ('perform_action', {'action': 'edit', 'delay_seconds': 5}),
+            ('perform_action', {'action': 'record', 'delay_seconds': 10}),
             ('delete_history_uploads', {'ids': [], 'acknowledgement': ''}),
             ('patch_configuration', {'patch': {'accessKey': 'synthetic'}, 'expected_revision': 'r'}),
             ('patch_configuration', {'patch': {'captureDefaults': {'accessKey': 'synthetic'}}, 'expected_revision': 'r'}),
@@ -103,6 +109,8 @@ class AdapterTests(unittest.IsolatedAsyncioTestCase):
         for name, args in [
             ('perform_action', {'action': 17}),
             ('perform_action', {}),
+            ('perform_action', {'action': 'region', 'delay_seconds': '3'}),
+            ('perform_action', {'action': 'region', 'delay_seconds': 3.5}),
             ('perform_action', {'action': 'clipboard', 'extra': True}),
             ('list_history', {'limit': '10'}),
             ('list_history', {'limit': True}),
@@ -365,6 +373,14 @@ class ProductionCliTests(unittest.IsolatedAsyncioTestCase):
                     ('get_desktop_setup', {}, 'desktop.setup', {}),
                     ('recheck_desktop_setup', {}, 'desktop.setup.recheck', {}),
                     ('perform_action', {'action': 'edit'}, 'action.invoke', {'action': 'edit'}),
+                    # Capture monitor, Repeat last region and the capture delay (#1363).
+                    ('perform_action', {'action': 'monitor'}, 'action.invoke', {'action': 'monitor'}),
+                    ('perform_action', {'action': 'repeat'}, 'action.invoke', {'action': 'repeat'}),
+                    ('perform_action', {'action': 'region', 'delay_seconds': 10}, 'action.invoke', {'action': 'region', 'delaySeconds': 10}),
+                    ('perform_action', {'action': 'window', 'delay_seconds': 3}, 'action.invoke', {'action': 'window', 'delaySeconds': 3}),
+                    ('perform_action', {'action': 'monitor', 'delay_seconds': 5}, 'action.invoke', {'action': 'monitor', 'delaySeconds': 5}),
+                    ('perform_action', {'action': 'repeat', 'delay_seconds': 3}, 'action.invoke', {'action': 'repeat', 'delaySeconds': 3}),
+                    ('perform_action', {'action': 'desktop', 'delay_seconds': 0}, 'action.invoke', {'action': 'desktop', 'delaySeconds': 0}),
                     ('upload_files', {'paths': ['/synthetic dir/a.png', '/synthetic dir/folder']}, 'upload.files', {'paths': ['/synthetic dir/a.png', '/synthetic dir/folder']}),
                     ('upload_files', {'paths': ['/synthetic dir/a.png'], 'profile_id': 'synthetic-s3'}, 'upload.files', {'paths': ['/synthetic dir/a.png'], 'profileId': 'synthetic-s3'}),
                     ('open_editor', {}, 'editor.open', {'source': 'region'}),

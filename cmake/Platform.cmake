@@ -4,8 +4,13 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   pkg_check_modules(PUTGD_XCB REQUIRED IMPORTED_TARGET xcb xcb-randr xcb-keysyms xcb-xfixes xcb-render)
   # XInput2 raw key events let shortcuts fire while a menu holds the keyboard (#341).
   pkg_check_modules(PUTGD_XCB_XINPUT REQUIRED IMPORTED_TARGET xcb-xinput)
-  add_library(putgd_x11_listeners STATIC src/platform/x11/X11Clipboard.cpp src/platform/x11/X11Shortcuts.cpp src/platform/x11/X11SessionLock.cpp)
-  target_link_libraries(putgd_x11_listeners PUBLIC putgd_app Qt6::Gui PRIVATE PkgConfig::PUTGD_XCB PkgConfig::PUTGD_XCB_XINPUT Qt6::DBus)
+  # The screen-lock query (session and system bus) and the countdown helper
+  # supervisor, shared by every desktop adapter (#1363).
+  add_library(putgd_session_lock STATIC src/platform/SessionLock.cpp src/platform/CountdownProcess.cpp)
+  target_include_directories(putgd_session_lock PUBLIC src)
+  target_link_libraries(putgd_session_lock PUBLIC Qt6::Core putgd_build_options putgd_build_identity PRIVATE Qt6::DBus)
+  add_library(putgd_x11_listeners STATIC src/platform/x11/X11Clipboard.cpp src/platform/x11/X11Shortcuts.cpp)
+  target_link_libraries(putgd_x11_listeners PUBLIC putgd_app putgd_session_lock Qt6::Gui PRIVATE PkgConfig::PUTGD_XCB PkgConfig::PUTGD_XCB_XINPUT Qt6::DBus)
   pkg_check_modules(PUTGD_XCB_DAMAGE REQUIRED IMPORTED_TARGET xcb-damage)
   add_library(putgd_x11 STATIC src/platform/x11/X11Capture.cpp src/platform/x11/CinnamonRegionCapture.cpp
     src/platform/x11/X11CompositorSettle.cpp src/platform/x11/X11SourceAdapter.cpp src/platform/x11/NativeRegionOverlay.cpp
@@ -25,7 +30,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
 endif()
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   add_library(putgd_gnome STATIC src/platform/gnome/GnomeProtocol.cpp src/platform/gnome/GnomeAdapter.cpp src/platform/gnome/GnomeExtensionSetup.cpp)
-  target_link_libraries(putgd_gnome PUBLIC putgd_app Qt6::DBus)
+  target_link_libraries(putgd_gnome PUBLIC putgd_app putgd_session_lock Qt6::DBus)
   # The packaged Shell extension's version: a lower loaded one needs a re-login (#131).
   file(READ "${CMAKE_CURRENT_SOURCE_DIR}/integrations/gnome/metadata.json" putgd_gnome_metadata)
   string(JSON putgd_gnome_extension_version GET "${putgd_gnome_metadata}" version)
@@ -86,13 +91,13 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   add_library(putgd_wayland STATIC src/platform/wayland/AsyncFdReader.cpp
     src/platform/wayland/ClipboardKeeper.cpp src/platform/wayland/DataControlClipboard.cpp src/platform/wayland/DataControlSourceAdapter.cpp
     src/platform/wayland/LayerShellRegionOverlay.cpp src/platform/wayland/WaylandOutputs.cpp
-    src/platform/wayland/ImageCopyCapture.cpp src/platform/wayland/PortalGlobalShortcuts.cpp src/platform/wayland/ShortcutBackend.h src/platform/wayland/WaylandTransform.h
+    src/platform/wayland/ImageCopyCapture.cpp src/platform/wayland/CursorOutputProbe.cpp src/platform/wayland/PortalGlobalShortcuts.cpp src/platform/wayland/ShortcutBackend.h src/platform/wayland/WaylandTransform.h
     ${putgd_capture_protocol_sources}
     "${protocol_dir}/ext-data-control-v1-client-protocol.h" "${protocol_dir}/ext-data-control-v1-protocol.c"
     "${protocol_dir}/wlr-data-control-unstable-v1-client-protocol.h" "${protocol_dir}/wlr-data-control-unstable-v1-protocol.c"
     "${protocol_dir}/xdg-output-unstable-v1-client-protocol.h" "${protocol_dir}/xdg-output-unstable-v1-protocol.c")
   target_include_directories(putgd_wayland PRIVATE "${protocol_dir}")
-  target_link_libraries(putgd_wayland PUBLIC putgd_app putgd_wayland_region putgd_keyboard_map Qt6::Widgets Qt6::DBus PkgConfig::PUTGD_XKBCOMMON PRIVATE PkgConfig::PUTGD_WAYLAND Threads::Threads)
+  target_link_libraries(putgd_wayland PUBLIC putgd_app putgd_wayland_region putgd_session_lock putgd_keyboard_map Qt6::Widgets Qt6::DBus PkgConfig::PUTGD_XKBCOMMON PRIVATE PkgConfig::PUTGD_WAYLAND Threads::Threads)
   add_library(putgd_kde STATIC src/platform/kde/KWinTransfer.cpp src/platform/kde/KWinCapture.cpp
     src/platform/kde/KdeShortcuts.cpp src/platform/kde/KdeShortcutNormalization.cpp
     src/platform/kde/KdeSourceAdapter.cpp src/platform/kde/KWinWindows.cpp)

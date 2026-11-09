@@ -9,6 +9,8 @@
 #include <QTimer>
 #include <atomic>
 #include <memory>
+#include <optional>
+#include <QRectF>
 namespace putgd {
 // Owns exactly one ephemeral child and its private payload until validated exit.
 class CaptureProcessController final:public QObject {
@@ -31,10 +33,13 @@ public:
  bool preparedReady()const;
  // screenshotFirst (#629): the helper reads every monitor after begin, before
  // its selector maps, and cuts the region from those frames.
- Ticket prepare(const QJsonObject& frozen,const ResourceLimits&,std::function<void(Error)> earlyTerminal={},std::function<void()> earlyReleased={},QString outcome={},bool screenshotFirst=false,QJsonObject appearance={});
+ // delaySeconds (#1363): a live region counts down after selection, in the helper.
+ Ticket prepare(const QJsonObject& frozen,const ResourceLimits&,std::function<void(Error)> earlyTerminal={},std::function<void()> earlyReleased={},QString outcome={},bool screenshotFirst=false,QJsonObject appearance={},int delaySeconds=0);
+ // The logical rectangle of the last accepted region result, until the next request.
+ std::optional<QRectF> selection()const{return selection_;}
  void begin(const Ticket&,std::function<void(PayloadResult)>);
  void discard(const Ticket&);
- void start(const QJsonObject& frozen,const ResourceLimits&,std::function<void(PayloadResult)>,QString outcome={},bool screenshotFirst=false,QJsonObject appearance={});
+ void start(const QJsonObject& frozen,const ResourceLimits&,std::function<void(PayloadResult)>,QString outcome={},bool screenshotFirst=false,QJsonObject appearance={},int delaySeconds=0);
  void cancel();
  // The crosshair at the key press, while the helper loads: the resident's server
  // cursor and the pointer, handed to the helper's mapped surfaces with the clicks
@@ -70,7 +75,7 @@ private:
  std::function<void()> earlyReleased_;
  std::weak_ptr<Preparation> preparation_;
  QTimer deadline_,stopDeadline_,holdDeadline_;QThread* decoder_=nullptr;
- PayloadResult result_;Error failure_;QJsonObject lastExit_;
+ PayloadResult result_;Error failure_;QJsonObject lastExit_;std::optional<QRectF> selection_;int delayMs_=0;
  HelperOutput output_{"putgd-capture",logCapture()};
  bool cursorCompatible_=false,prepared_=false,beginRequested_=false,begun_=false,region_=false,previewed_=false;
  bool ready_=false,resultReceived_=false,accepted_=false,exited_=false,cancelling_=false,closing_=false;

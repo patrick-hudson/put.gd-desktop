@@ -129,6 +129,10 @@ QImage symbol(const QString& name,const QColor& color,int scale,const QColor& se
   rounded(3,4,18,16);p.drawLine(3,9,21,9);p.drawLine(7,6.5,9,6.5);
  } else if(name=="desktop") {
   rounded(2.9,3,18.2,14);p.drawLine(12,17,12,21);p.drawLine(7,21,17,21);
+ } else if(name=="monitor") {
+  // One display with the pointer on it: the monitor under the pointer (#1363).
+  rounded(2.9,3,18.2,14);p.drawLine(12,17,12,21);p.drawLine(7,21,17,21);
+  QPainterPath pointer;pointer.moveTo(10,6.5);pointer.lineTo(10,13.5);pointer.lineTo(11.9,11.7);pointer.lineTo(14.6,11.7);pointer.closeSubpath();p.drawPath(pointer);
  } else if(name=="clipboard") {
   QPainterPath board;board.moveTo(8,5);board.lineTo(6,5);board.quadTo(4,5,4,7);board.lineTo(4,19);board.quadTo(4,21,6,21);board.lineTo(18,21);board.quadTo(20,21,20,19);board.lineTo(20,7);board.quadTo(20,5,18,5);board.lineTo(16,5);p.drawPath(board);
   rounded(8,3,8,4,1);p.drawLine(12,17,12,10);QPainterPath upload;upload.moveTo(8.5,13.5);upload.lineTo(12,10);upload.lineTo(15.5,13.5);p.drawPath(upload);

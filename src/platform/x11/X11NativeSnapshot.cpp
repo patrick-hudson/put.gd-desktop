@@ -11,12 +11,15 @@
 #include <xcb/randr.h>
 #include <cstring>
 #include <algorithm>
+#include <cmath>
 namespace putgd {
 namespace {
 Error targetError(){return {"capture_target","Focused external window is unavailable or changed",{}};}
 Error changedError(){return {"display_changed","Display layout or scale changed during source acquisition",{}};}
 QJsonArray rectangle(const QRect& r){return {r.x(),r.y(),r.width(),r.height()};}
 QRect rectangle(const QJsonArray& a){return {a[0].toInt(),a[1].toInt(),a[2].toInt(),a[3].toInt()};}
+bool finiteRectangle(const QJsonArray& a){if(a.size()!=4)return false;for(const auto& v:a)if(!v.isDouble()||!std::isfinite(v.toDouble())||std::abs(v.toDouble())>1e7)return false;return a[2].toDouble()>0&&a[3].toDouble()>0;}
+QStringList actions(){return {"region","window","desktop","monitor","repeat"};}
 bool integers(const QJsonArray& a){if(a.size()!=4)return false;for(const auto& v:a)if(!v.isDouble()||v.toDouble()!=v.toInteger()||v.toInteger()<-32768||v.toInteger()>131070)return false;return a[2].toInteger()>0&&a[3].toInteger()>0;}
 }
 X11NativeSnapshot::X11NativeSnapshot(){
@@ -63,10 +66,19 @@ QRect X11NativeSnapshot::windowRect(xcb_window_t window,Error& error){
  uint32_t sides[4]={};auto extents=x11::reply(xcb_get_property_reply(connection_,xcb_get_property(connection_,0,window,atom("_NET_FRAME_EXTENTS"),XCB_ATOM_CARDINAL,0,4),nullptr));if(extents&&extents->format==32&&xcb_get_property_value_length(extents.get())==16)std::memcpy(sides,xcb_get_property_value(extents.get()),16);for(auto v:sides)if(v>32767){error=targetError();return {};}
  return QRect(coordinates->dst_x-int(sides[0]),coordinates->dst_y-int(sides[2]),geometry->width+int(sides[0]+sides[1]),geometry->height+int(sides[2]+sides[3]));
 }
-QJsonObject X11NativeSnapshot::freeze(const QString& action,const QSet<qint64>& excluded,Error& error){
- if(action!="region"&&action!="window"&&action!="desktop"){error={"invalid_action","Unsupported native capture action",{}};return {};}
+bool X11NativeSnapshot::sameArrangement(const QJsonObject& layout,const QJsonObject& other){
+ return !layout.isEmpty()&&layout["outputs"]==other["outputs"]&&layout["root"]==other["root"]&&layout["scale"]==other["scale"];
+}
+QJsonObject X11NativeSnapshot::freeze(const QString& action,const QSet<qint64>& excluded,Error& error,const QJsonArray& selection){
+ if(!actions().contains(action)){error={"invalid_action","Unsupported native capture action",{}};return {};}
  const auto before=layout(error);if(error)return {};
- xcb_window_t window=0;QRect geometry;
+ xcb_window_t window=0;QRect geometry;QJsonArray area;
+ if(action=="monitor"){
+  // The pointer's root position names the output: frozen here, at invocation.
+  auto pointer=x11::reply(xcb_query_pointer_reply(connection_,xcb_query_pointer(connection_,root_),nullptr));
+  if(pointer&&pointer->same_screen)for(const auto& output:before["outputs"].toArray()){const auto native=output.toObject()["native"].toArray();if(rectangle(native).contains(pointer->root_x,pointer->root_y)){area=native;break;}}
+  if(area.isEmpty()){error={"capture_target","The pointer is not over a monitor",{}};return {};}
+ }
  if(action=="window"){
   auto active=x11::reply(xcb_get_property_reply(connection_,xcb_get_property(connection_,0,root_,atom("_NET_ACTIVE_WINDOW"),XCB_ATOM_WINDOW,0,1),nullptr));if(!active||active->format!=32||xcb_get_property_value_length(active.get())!=4){error=targetError();return {};}
   std::memcpy(&window,xcb_get_property_value(active.get()),4);if(!window||window==root_){error=targetError();return {};}
@@ -75,10 +87,15 @@ QJsonObject X11NativeSnapshot::freeze(const QString& action,const QSet<qint64>& 
   geometry=windowRect(window,error);if(error)return {};
  }
  if(layout(error)!=before){if(!error)error=changedError();return {};}
- return {{"schemaVersion",1},{"action",action},{"window",QString::number(window)},{"windowRect",window?rectangle(geometry):QJsonArray{}},{"layout",before}};
+ return {{"schemaVersion",1},{"action",action},{"window",QString::number(window)},{"windowRect",window?rectangle(geometry):QJsonArray{}},{"area",area},{"selection",action=="repeat"?selection:QJsonArray{}},{"layout",before}};
 }
 Error X11NativeSnapshot::validate(const QJsonObject& snapshot){
- if(snapshot.size()!=5||snapshot["schemaVersion"]!=1||!QStringList{"region","window","desktop"}.contains(snapshot["action"].toString())||!snapshot["window"].isString()||!snapshot["windowRect"].isArray()||!snapshot["layout"].isObject())return {"capture_protocol","Invalid frozen capture descriptor",{}};
+ if(snapshot.size()!=7||snapshot["schemaVersion"]!=1||!actions().contains(snapshot["action"].toString())||!snapshot["window"].isString()||!snapshot["windowRect"].isArray()||!snapshot["area"].isArray()||!snapshot["selection"].isArray()||!snapshot["layout"].isObject())return {"capture_protocol","Invalid frozen capture descriptor",{}};
+ // A monitor capture carries its output's native rectangle and a repeat its
+ // logical selection; no other action carries either.
+ const auto area=snapshot["area"].toArray(),selection=snapshot["selection"].toArray();
+ if(snapshot["action"]=="monitor"?!integers(area):!area.isEmpty())return {"capture_protocol","Invalid frozen monitor area",{}};
+ if(snapshot["action"]=="repeat"?!finiteRectangle(selection):!selection.isEmpty())return {"capture_protocol","Invalid frozen selection",{}};
  bool ok=false;const auto value=snapshot["window"].toString();const auto window=value.toULongLong(&ok);if(!ok||window>UINT32_MAX||QString::number(window)!=value||(snapshot["action"]=="window")!=(window!=0)||(window?!integers(snapshot["windowRect"].toArray()):!snapshot["windowRect"].toArray().isEmpty()))return {"capture_protocol","Invalid frozen window identity",{}};
  const auto l=snapshot["layout"].toObject();const auto frames=l["outputs"].toArray();if(l.size()!=4||!l["outputs"].isArray()||frames.isEmpty()||frames.size()>64||!integers(l["root"].toArray())||l["scale"].toString().size()!=64||!l["configuration"].isString())return {"capture_protocol","Invalid frozen display descriptor",{}};
  bool numeric=false;const auto config=l["configuration"].toString();const auto timestamp=config.toULongLong(&numeric);if(!numeric||timestamp>UINT32_MAX||QString::number(timestamp)!=config)return {"capture_protocol","Invalid display configuration identity",{}};

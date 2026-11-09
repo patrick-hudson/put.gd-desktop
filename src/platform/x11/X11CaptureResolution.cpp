@@ -16,6 +16,9 @@ X11Target X11NativeSnapshot::resolve(const QJsonObject& snapshot,X11Capture& cap
  for(const auto& frame:target.layout){bool matched=false;for(const auto& output:outputs){const auto f=output.toObject();const int bits=f["rotation"].toInt();const int rotation=bits&XCB_RANDR_ROTATION_ROTATE_90?90:bits&XCB_RANDR_ROTATION_ROTATE_180?180:bits&XCB_RANDR_ROTATION_ROTATE_270?270:0;if(f["identity"]==frame.identity&&rectangle(f["native"].toArray())==frame.nativeRect&&rotation==frame.rotation){matched=true;break;}}if(!matched){error=changedError();return {};}}
  target.action=snapshot["action"].toString();target.window=xcb_window_t(snapshot["window"].toString().toUInt());
  if(target.window){target.nativeWindowRect=rectangle(snapshot["windowRect"].toArray());target.logicalSelection={};for(const auto& f:target.layout){const QRect part=f.nativeRect.intersected(target.nativeWindowRect);if(part.isEmpty())continue;target.logicalSelection=target.logicalSelection.united(QRectF(f.logicalRect.x()+(part.x()-f.nativeRect.x())/f.density,f.logicalRect.y()+(part.y()-f.nativeRect.y())/f.density,part.width()/f.density,part.height()/f.density));}if(target.logicalSelection.isEmpty()){error=targetError();return {};}}
+ // A monitor capture is that output, whole; a repeat is the remembered selection.
+ if(target.action=="monitor"){target.nativeArea=rectangle(snapshot["area"].toArray());target.logicalSelection={};for(const auto& f:target.layout)if(f.nativeRect==target.nativeArea)target.logicalSelection=f.logicalRect;if(target.logicalSelection.isEmpty()){error=changedError();return {};}}
+ if(target.action=="repeat"){const auto s=snapshot["selection"].toArray();target.logicalSelection=QRectF(s[0].toDouble(),s[1].toDouble(),s[2].toDouble(),s[3].toDouble());}
  if(!unchanged(snapshot,error))return {};
  return target;
 }

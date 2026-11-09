@@ -8,5 +8,8 @@ namespace putgd {
 // Cinnamon's and the freedesktop screensaver services and logind's LockedHint
 // are asked without activating anything. A service that is absent counts as
 // unlocked; one that does not answer in time counts as locked.
+// Every desktop adapter also asks when a capture delay ends (#1363): Plasma
+// answers on the freedesktop service, and lockers that only set logind's hint
+// answer there.
 void querySessionLocked(QObject* context,std::function<void(bool locked)> done);
 }

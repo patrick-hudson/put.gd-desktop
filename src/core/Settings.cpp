@@ -51,11 +51,15 @@ QJsonObject Settings::effectiveArtifactLimits() const {
             {"pendingArtifactBytes", value(limits.pendingArtifactBytes)}};
 }
 
-QStringList Settings::actionNames() { return {"region", "window", "desktop", "clipboard", "edit"}; }
+QStringList Settings::actionNames() { return {"region", "window", "desktop", "clipboard", "edit", "monitor"}; }
 QStringList Settings::requiredActionNames() { return {"region", "window", "desktop", "clipboard"}; }
 QString Settings::recordingActionName() { return QStringLiteral("record"); }
-QStringList Settings::invocableActionNames() { return actionNames() << recordingActionName(); }
-QStringList Settings::presentationOrder() { return {"region", "window", "desktop", "edit", "record", "clipboard"}; }
+QString Settings::repeatActionName() { return QStringLiteral("repeat"); }
+QStringList Settings::invocableActionNames() { return actionNames() << recordingActionName() << repeatActionName(); }
+QStringList Settings::presentationOrder() { return {"region", "window", "monitor", "desktop", "edit", "record", "clipboard"}; }
+QStringList Settings::shortcutOrder() { return {"region", "repeat", "window", "monitor", "desktop", "edit", "record", "clipboard"}; }
+QList<int> Settings::captureDelayChoices() { return {0, 3, 5, 10}; }
+bool Settings::delayableAction(const QString& action) { return QStringList{"region", "window", "monitor", "desktop", "repeat"}.contains(action); }
 
 QJsonObject Settings::normalized(const QJsonObject& original) {
     auto doc = original;
@@ -85,6 +89,18 @@ QJsonObject Settings::normalized(const QJsonObject& original) {
         actions[recordingActionName()] = QJsonObject{{"shortcut", QString{}}};
         changed = true;
     }
+    // Capture monitor and Repeat last region (#1363) came later still. Monitor
+    // copies the desktop route; repeat is a key only and always follows region.
+    if (!actions.contains("monitor") && actions["desktop"].isObject()) {
+        auto inherited = actions["desktop"].toObject();
+        inherited["shortcut"] = QString{};
+        actions["monitor"] = inherited;
+        changed = true;
+    }
+    if (!actions.contains(repeatActionName())) {
+        actions[repeatActionName()] = QJsonObject{{"shortcut", QString{}}};
+        changed = true;
+    }
     if (!changed) return doc;
     auto result = doc;
     result["actions"] = actions;
@@ -97,11 +113,12 @@ QJsonObject Settings::defaults() {
     int shortcut = 1;
     for (const auto& action : actionNames()) {
         actions[action] = QJsonObject{{"destination", "upload"}, {"profileId", QJsonValue::Null},
-            {"shortcut", action == "clipboard" || action == "edit" ? QString{} : QStringLiteral("Ctrl+Shift+%1").arg(shortcut)}};
+            {"shortcut", shortcut > 3 ? QString{} : QStringLiteral("Ctrl+Shift+%1").arg(shortcut)}};
         ++shortcut;
     }
     // Recording keeps following the region route; only its key is its own.
     actions[recordingActionName()] = QJsonObject{{"shortcut", QString{}}};
+    actions[repeatActionName()] = QJsonObject{{"shortcut", QString{}}};
     auto documents = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation);
     if (documents.isEmpty()) documents = QDir::homePath();
     return {{"schemaVersion", 1}, {"actions", actions}, {"profiles", QJsonArray{}},
@@ -172,16 +189,21 @@ Error Settings::validate(const QJsonObject& original, const ProfileValidator& va
     auto definedActions = doc["actions"].toObject();
     const bool hasRecord = definedActions.contains(recordingActionName());
     definedActions.remove(recordingActionName());
+    definedActions.remove(repeatActionName());
     if (!doc["actions"].isObject() || !keys(definedActions, actionNames()))
-        return invalid("/actions", "Define exactly region, window, desktop, clipboard, and optional edit and record actions.");
+        return invalid("/actions", "Define exactly region, window, desktop, clipboard, and optional edit, monitor, record and repeat actions.");
     auto validatedActions = actionNames();
     if (hasRecord) validatedActions.append(recordingActionName());
+    validatedActions.append(repeatActionName());
     for (const auto& name : validatedActions) {
         // A copy: operator[] on the temporary object would return a reference into it.
         const QJsonValue value = doc["actions"].toObject().value(name);
         const auto action = value.toObject();
+        // Repeat last region is a key only: it always uses the region route.
+        if (name == repeatActionName() && !(value.isObject() && keys(action, {"shortcut"})))
+            return invalid("/actions/" + name, "Repeat last region holds only a shortcut; it uses the region capture's output.");
         // A shortcut-only record entry follows the region route.
-        const bool inheritedRecord = name == recordingActionName() && value.isObject() && keys(action, {"shortcut"});
+        const bool inheritedRecord = (name == recordingActionName() || name == repeatActionName()) && value.isObject() && keys(action, {"shortcut"});
         if (inheritedRecord) {
             if (!text(action["shortcut"], 0, 128)) return invalid("/actions/" + name, "Action fields or profile references are invalid.");
         } else if (!value.isObject() || !(keys(action, {"destination", "profileId", "shortcut"}) || keys(action, {"destination", "profileId", "shortcut", "publicationMode"})) ||
@@ -262,7 +284,7 @@ Error Settings::validate(const QJsonObject& original, const ProfileValidator& va
         return invalid("/retention/logBytes", ByteSize::labels("Log storage is 1 MiB to 1 GiB."));
     const auto preferences = doc["preferences"].toObject();
     QStringList preferenceKeys{"notifications", "launchAtLogin"};
-    for (const auto* optional : {"uploadClipboardBehavior", "regionSelectionMode", "recordingFrameRate", "unlockCredentialsAtStartup", "editorRecentColors", "diagnostics", "appearance", "updates", "fileManagerFolders", "fileManagerMenu"})
+    for (const auto* optional : {"uploadClipboardBehavior", "regionSelectionMode", "captureDelaySeconds", "recordingFrameRate", "unlockCredentialsAtStartup", "editorRecentColors", "diagnostics", "appearance", "updates", "fileManagerFolders", "fileManagerMenu"})
         if (preferences.contains(optional)) preferenceKeys.append(optional);
     if (!doc["preferences"].isObject() || !keys(preferences, preferenceKeys) ||
         !preferences["notifications"].isBool() || !preferences["launchAtLogin"].isBool())
@@ -311,6 +333,8 @@ Error Settings::validate(const QJsonObject& original, const ProfileValidator& va
         return invalid("/preferences/uploadClipboardBehavior", "Choose each_link or list for upload clipboard behavior.");
     if (preferences.contains("regionSelectionMode") && !choice(preferences["regionSelectionMode"], {"live", "screenshot_first"}))
         return invalid("/preferences/regionSelectionMode", "Choose live or screenshot_first for region selection.");
+    if (preferences.contains("captureDelaySeconds") && !(preferences["captureDelaySeconds"].isDouble() && integer(preferences["captureDelaySeconds"], 0, 10) && captureDelayChoices().contains(preferences["captureDelaySeconds"].toInt())))
+        return invalid("/preferences/captureDelaySeconds", "Choose 0, 3, 5 or 10 seconds for the capture delay.");
     if (preferences.contains("recordingFrameRate") && !(integer(preferences["recordingFrameRate"], 30, 30) || integer(preferences["recordingFrameRate"], 60, 60)))
         return invalid("/preferences/recordingFrameRate", "Choose 30 or 60 frames per second for recordings.");
     if (preferences.contains("fileManagerFolders") && !choice(preferences["fileManagerFolders"], {"zip", "files"}))
@@ -323,8 +347,8 @@ Error Settings::validate(const QJsonObject& original, const ProfileValidator& va
 QJsonObject Settings::effectiveAction(const QJsonObject& original,const QString& name) {
     const auto doc=normalized(original);
     auto action=doc["actions"].toObject()[name].toObject();
-    if(name==recordingActionName()&&!action.contains("destination")) {
-        // A shortcut-only record entry follows the region route with its own key.
+    if((name==recordingActionName()||name==repeatActionName())&&!action.contains("destination")) {
+        // A shortcut-only record or repeat entry follows the region route with its own key.
         auto inherited=effectiveAction(doc,"region");
         inherited["shortcut"]=action["shortcut"];
         return inherited;
@@ -347,6 +371,8 @@ Settings Settings::fromValidated(const QJsonObject& original) {
     // Recording follows the region route unless the document routes it itself (effectiveAction).
     const auto record = effectiveAction(doc, recordingActionName());
     settings.actions.insert(recordingActionName(), {record["destination"].toString(), record["profileId"].toString(), record["shortcut"].toString(), record["publicationMode"].toString("default")});
+    const auto repeat = effectiveAction(doc, repeatActionName());
+    settings.actions.insert(repeatActionName(), {repeat["destination"].toString(), repeat["profileId"].toString(), repeat["shortcut"].toString(), repeat["publicationMode"].toString("default")});
     for (const auto& entry : doc["profiles"].toArray()) settings.profiles.insert(entry.toObject()["id"].toString(), entry.toObject());
     const auto archive = doc["archive"].toObject();
     settings.archive.keepUploads = archive["keepUploads"].toBool();
@@ -389,6 +415,7 @@ Settings Settings::fromValidated(const QJsonObject& original) {
     settings.uploadClipboardBehavior = doc["preferences"].toObject()["uploadClipboardBehavior"].toString("each_link");
     settings.regionSelectionMode = doc["preferences"].toObject()["regionSelectionMode"].toString("live");
     settings.recordingFrameRate = doc["preferences"].toObject()["recordingFrameRate"].toInt(30);
+    settings.captureDelaySeconds = doc["preferences"].toObject()["captureDelaySeconds"].toInt(0);
     settings.appearanceTheme = doc["preferences"].toObject()["appearance"].toObject()["theme"].toString("system");
     settings.notifications = doc["preferences"].toObject()["notifications"].toBool();
     settings.launchAtLogin = doc["preferences"].toObject()["launchAtLogin"].toBool();

@@ -62,6 +62,9 @@ public:
  // nothing. grantKeyboard hands it the keyboard outright, with the key that asked
  // for it; false until the helper has begun.
  void setDeferKeyboard(bool defer) { deferKeyboard_=defer; }
+ // Delayed capture (#1363): the next live selection (start or prepare) shows the
+ // countdown after the area is chosen and answers once its pill is gone.
+ void setDelaySeconds(int seconds) { delaySeconds_=seconds>0?seconds:0; }
  bool grantKeyboard(int qtKey,int qtModifiers);
 signals:
  // The helper is gone, however the selection ended.
@@ -73,7 +76,7 @@ private:
  void finish(int,QProcess::ExitStatus);
  void closeFrozen();
  void abandon(const std::shared_ptr<Prepared>&);
- int frozenFd_=-1;
+ int frozenFd_=-1,delaySeconds_=0,delayMs_=0;
  QString helperPath_,nonce_,launchStartTicks_; quint64 generation_=0; qint64 launchPid_=0;
  QList<CaptureFrame> frames_; QRectF result_; QList<QPair<QString,QPointF>> pendingPointer_;
  // The control channel allows 64 frames a second: moves go out at most every

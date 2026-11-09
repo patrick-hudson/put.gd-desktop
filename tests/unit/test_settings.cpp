@@ -436,7 +436,7 @@ private slots:
         const auto settings = putgd::Settings::fromValidated(document);
         QCOMPARE(settings.actions.value("record").destination, QStringLiteral("local"));
         QVERIFY(settings.actions.value("record").shortcut.isEmpty());
-        QCOMPARE(putgd::Settings::invocableActionNames().last(), QStringLiteral("record"));
+        QVERIFY(putgd::Settings::invocableActionNames().contains(QStringLiteral("record")));
         // A document that binds the recording key keeps it; it never inherits the region key.
         auto bound = normalized;
         auto boundActions = bound["actions"].toObject();
@@ -447,6 +447,64 @@ private slots:
         QVERIFY(!putgd::Settings::validate(bound));
         QCOMPARE(putgd::Settings::fromValidated(bound).actions.value("record").shortcut, QStringLiteral("Ctrl+Shift+9"));
         QCOMPARE(putgd::Settings::fromValidated(bound).actions.value("region").shortcut, QStringLiteral("Ctrl+Shift+1"));
+    }
+    // Capture monitor and Repeat last region (#1363) came after schema 1 shipped,
+    // like edit and record: an older document gains both without a shortcut.
+    void absentMonitorCopiesTheDesktopRouteAndRepeatIsAKeyOnly() {
+        auto document = putgd::Settings::defaults();
+        auto actions = document["actions"].toObject();
+        auto desktop = actions["desktop"].toObject();
+        desktop["destination"] = "local";
+        actions["desktop"] = desktop;
+        actions.remove("monitor");
+        actions.remove("repeat");
+        document["actions"] = actions;
+        QVERIFY(!putgd::Settings::validate(document));
+        const auto normalized = putgd::Settings::normalized(document);
+        const auto monitor = normalized["actions"].toObject()["monitor"].toObject();
+        QCOMPARE(monitor["destination"].toString(), QStringLiteral("local"));
+        QVERIFY(monitor["shortcut"].toString().isEmpty());
+        QCOMPARE(normalized["actions"].toObject()["repeat"].toObject().keys(), QStringList{"shortcut"});
+        const auto settings = putgd::Settings::fromValidated(document);
+        QCOMPARE(settings.actions.value("monitor").destination, QStringLiteral("local"));
+        // Repeat always follows the region route and only its key is its own.
+        QCOMPARE(settings.actions.value("repeat").destination, settings.actions.value("region").destination);
+        QVERIFY(settings.actions.value("repeat").shortcut.isEmpty());
+        QVERIFY(putgd::Settings::defaults()["actions"].toObject()["monitor"].toObject()["shortcut"].toString().isEmpty());
+        QVERIFY(putgd::Settings::defaults()["actions"].toObject()["repeat"].toObject()["shortcut"].toString().isEmpty());
+        auto keyed = normalized;
+        auto keyedActions = keyed["actions"].toObject();
+        keyedActions["repeat"] = QJsonObject{{"shortcut", "Ctrl+Shift+8"}};
+        keyed["actions"] = keyedActions;
+        QVERIFY(!putgd::Settings::validate(keyed));
+        QCOMPARE(putgd::Settings::fromValidated(keyed).actions.value("repeat").shortcut, QStringLiteral("Ctrl+Shift+8"));
+        // A route of its own is refused: repeat is the region capture's output.
+        keyedActions["repeat"] = QJsonObject{{"destination", "local"}, {"profileId", QJsonValue::Null}, {"shortcut", ""}};
+        keyed["actions"] = keyedActions;
+        QCOMPARE(putgd::Settings::validate(keyed).details["path"].toString(), QStringLiteral("/actions/repeat"));
+        QVERIFY(putgd::Settings::presentationOrder().contains(QStringLiteral("monitor")));
+        QVERIFY(!putgd::Settings::presentationOrder().contains(QStringLiteral("repeat")));
+        QCOMPARE(putgd::Settings::shortcutOrder().size(), putgd::Settings::invocableActionNames().size());
+        for (const auto& action : putgd::Settings::invocableActionNames()) QVERIFY2(putgd::Settings::shortcutOrder().contains(action), qPrintable(action));
+    }
+    void captureDelayIsOptionalAndOneOfFourValues() {
+        auto document = putgd::Settings::defaults();
+        QCOMPARE(putgd::Settings::fromValidated(document).captureDelaySeconds, 0);
+        for (const int seconds : {0, 3, 5, 10}) {
+            auto preferences = document["preferences"].toObject();
+            preferences["captureDelaySeconds"] = seconds;
+            document["preferences"] = preferences;
+            QVERIFY2(!putgd::Settings::validate(document), qPrintable(QString::number(seconds)));
+            QCOMPARE(putgd::Settings::fromValidated(document).captureDelaySeconds, seconds);
+        }
+        for (const auto& value : QList<QJsonValue>{1, 4, 7, -3, 60, 3.5, QStringLiteral("3"), true, QJsonValue::Null}) {
+            auto preferences = document["preferences"].toObject();
+            preferences["captureDelaySeconds"] = value;
+            document["preferences"] = preferences;
+            QCOMPARE(putgd::Settings::validate(document).details["path"].toString(), QStringLiteral("/preferences/captureDelaySeconds"));
+        }
+        QVERIFY(putgd::Settings::delayableAction("region") && putgd::Settings::delayableAction("monitor") && putgd::Settings::delayableAction("repeat"));
+        QVERIFY(!putgd::Settings::delayableAction("clipboard") && !putgd::Settings::delayableAction("edit") && !putgd::Settings::delayableAction("record"));
     }
     // validate() once read each action through a reference into a destroyed
     // temporary object, and the Debian 13 resident crashed saving this document

@@ -5,10 +5,23 @@
 #include <QWidget>
 #include <QSet>
 #include <thread>
+#include <functional>
 class QWindow;
 class QScreen;
 struct wl_callback;
 namespace putgd {
+// Delayed capture (#1363): maps the countdown pill as an overlay layer surface
+// at the top centre of `screen`, or of the output the compositor picks (the
+// active one) when none is given. It takes no keyboard and covers only itself.
+// False when this build has no per-window layer shell.
+bool showLayerShellCountdown(QWidget& pill,QScreen* screen=nullptr);
+// Takes the pill off the screen so that a capture cannot contain it: a
+// transparent frame is committed and rendered first (KWin animates a closing
+// surface from its last frame, and a screenshot renders that animation), then
+// the surface is unmapped and a display sync orders the caller after the
+// compositor has processed it. done(false) when that could not be confirmed.
+class CountdownPill;
+void hideLayerShellCountdown(CountdownPill& pill,std::function<void(bool acknowledged)> done);
 class LayerShellRegionOverlay final:public QObject {
  Q_OBJECT
 public:
