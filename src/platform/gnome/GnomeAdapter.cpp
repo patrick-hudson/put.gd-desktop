@@ -128,7 +128,9 @@ void GnomeAdapter::discover(){
   discoveryRetry_.stop();retryMs_=retryFirstMs_;
   ready_=true;helperError_={};helper_=hello;setUiProcess(uiProcess_);helperRevision_=quint64(hello["clipboardRevision"].toDouble());++revision_;bindShortcuts(requested_);emit capabilitiesChanged();
   evaluateSetup();
-  if(outdated())emitSetupNotice(currentSetup());
+  // A run that just started reports when it ends; until then the failure it may
+  // find is unknown and the notice would ask for a logout that can't help.
+  if(outdated()&&!setupRunning_)emitSetupNotice(currentSetup());
  });
 }
 // The retry runs for as long as the helper stays away, each wait twice the last
@@ -265,7 +267,8 @@ bool GnomeAdapter::selectsRegions()const{return ready_&&!outdated()&&helper_["re
 // An extension older than the packaged one is still the one loaded at login (#131).
 bool GnomeAdapter::outdated()const{return ready_&&helper_["extensionVersion"].toInt()<gnome::extensionVersion;}
 Error GnomeAdapter::recordingShellError()const{
- if(outdated())return {"helper_outdated","The put.gd GNOME Shell extension was updated; log out and back in to load the new version",{{"loaded",helper_["extensionVersion"].toInt()},{"packaged",gnome::extensionVersion}}};
+ // The setup state decides the wording: "log out" only when a login would help.
+ if(outdated())return {"helper_outdated",currentSetup().message,{{"loaded",helper_["extensionVersion"].toInt()},{"packaged",gnome::extensionVersion}}};
  if(!ready_)return {"region_unavailable",setup_.needsUser()?setup_.message:QString("Recording a region on GNOME needs the put.gd Shell extension."),{{"helper",helperAvailabilityError().toJson()}}};
  return {"region_unavailable","Recording a region on GNOME needs the put.gd Shell extension with recording support",{}};
 }
@@ -363,13 +366,9 @@ Error GnomeAdapter::helperAvailabilityError(bool fallback)const{
  return helperError_;
 }
 gnome::SetupStatus GnomeAdapter::currentSetup()const{
- if(ready_&&outdated()){
-  // No login fixes a stale system package or a copy put.gd can't replace.
-  if(setup_.state=="system_copy_outdated"||setup_.state=="foreign_user_copy")return setup_;
-  return {"login_required","gnome_extension_updated","The put.gd GNOME Shell extension was updated; log out and back in to load the new version",{{"loaded",helper_["extensionVersion"].toInt()},{"packaged",gnome::extensionVersion}}};
- }
- if(ready_)return {"ready",{},{},setup_.details};
- return setup_;
+ // The first run hasn't reported yet, so a logout prompt could be the wrong answer.
+ if(setupRunning_&&setup_.state=="checking"&&outdated())return {"checking",{},QStringLiteral("Checking put.gd's GNOME extension."),{}};
+ return gnome::reportedSetup(setup_,ready_,helper_["extensionVersion"].toInt(),gnome::extensionVersion);
 }
 void GnomeAdapter::emitSetupNotice(const gnome::SetupStatus& status){
  if(!status.needsUser()||setupNotified_.contains(status.code))return;

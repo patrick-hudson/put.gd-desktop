@@ -13,11 +13,13 @@
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QProcess>
+#include <QRegularExpression>
 #include <QSaveFile>
 #include <QThread>
 #include <QHash>
 #include <QUuid>
 #include <QVariantMap>
+#include <algorithm>
 #include <utility>
 
 namespace putgd::gnome {
@@ -93,9 +95,49 @@ bool writeFile(const QString& path,const QByteArray& bytes){
  if(file.write(bytes)!=bytes.size())return false;
  return file.commit();
 }
+bool removeCopyFiles(const QString& userDir,const QStringList& files){
+ const QDir dir(userDir);
+ for(const auto& name:files)QFile::remove(dir.filePath(name));
+ QFile::remove(dir.filePath(copyMarkerName));
+ return QDir().rmdir(userDir);
+}
+// The files a stale directory's own marker lists and still match: a retired copy
+// can be an older version with files this AppImage doesn't carry.
+QStringList verifiedMarkerFiles(const QDir& directory,const QFileInfoList& contents){
+ const auto plain=[](const QFileInfo& entry){return entry.isFile()&&!entry.isSymLink();};
+ const auto markerEntry=std::find_if(contents.begin(),contents.end(),[](const QFileInfo& entry){return entry.fileName()==QLatin1String(copyMarkerName);});
+ if(markerEntry==contents.end()||!plain(*markerEntry))return {};
+ QFile file(markerEntry->filePath());if(!file.open(QIODevice::ReadOnly))return {};
+ const auto marker=QJsonDocument::fromJson(file.read(1024*1024)).object();
+ if(marker["managedBy"].toString()!="put.gd")return {};
+ const auto listed=marker["files"].toObject();
+ QStringList verified;
+ // Only what is really in this directory is hashed, whatever the marker names.
+ for(const auto& entry:contents)if(plain(entry)&&listed.contains(entry.fileName())&&fileSha256(entry.filePath())==listed[entry.fileName()].toString())verified.append(entry.fileName());
+ return verified;
+}
+// A crash can leave a staging directory behind. Only what installCopy itself would
+// have left goes: a real directory with its exact name, holding nothing but plain
+// files named like the extension's or in its own marker. Anything else stays.
+void removeStaleStaging(const QString& parent,QStringList bundled){
+ bundled.append(copyMarkerName);
+ const QRegularExpression ownName(QRegularExpression::anchoredPattern(QStringLiteral("\\.putgd-extension-(new|old)-[0-9a-f]{32}")));
+ for(const auto& directory:QDir(parent).entryInfoList(QDir::Dirs|QDir::NoSymLinks|QDir::Hidden|QDir::NoDotAndDotDot)){
+  if(!ownName.match(directory.fileName()).hasMatch())continue;
+  const QDir stale(directory.filePath());
+  const auto contents=stale.entryInfoList(QDir::AllEntries|QDir::Hidden|QDir::System|QDir::NoDotAndDotDot);
+  const auto expected=bundled+verifiedMarkerFiles(stale,contents);
+  const bool ours=std::all_of(contents.begin(),contents.end(),[&](const QFileInfo& entry){
+   return entry.isFile()&&!entry.isSymLink()&&expected.contains(entry.fileName());
+  });
+  if(!ours)continue;
+  for(const auto& entry:contents)QFile::remove(entry.filePath());
+  QDir().rmdir(stale.path());
+ }
+}
 // A copy fails partway only in the staging directory; the live copy is replaced
-// by rename.
-std::optional<QString> installCopy(const QString& bundledDir,const QString& userDir,int version,bool replacing){
+// by rename. `replaced` is the owned copy being updated, if there is one.
+std::optional<QString> installCopy(const QString& bundledDir,const QString& userDir,int version,const UserCopy& replaced){
  const QDir source(bundledDir);
  const auto names=source.entryList(QDir::Files);
  if(names.isEmpty())return QStringLiteral("the AppImage's extension files are missing");
@@ -104,12 +146,8 @@ std::optional<QString> installCopy(const QString& bundledDir,const QString& user
  if(!QDir().mkpath(base))return QStringLiteral("cannot create %1").arg(base);
  const auto id=QUuid::createUuid().toString(QUuid::Id128);
  const auto parentOfExtensions=QFileInfo(base).path();
- // A crash can leave our own staging directories; each holds only files put.gd wrote.
- for(const auto& name:QDir(parentOfExtensions).entryList({".putgd-extension-*"},QDir::Dirs|QDir::Hidden|QDir::NoDotAndDotDot)){
-  const QDir stale(QDir(parentOfExtensions).filePath(name));
-  for(const auto& file:stale.entryList(QDir::Files|QDir::Hidden))QFile::remove(stale.filePath(file));
-  QDir().rmdir(stale.path());
- }
+ removeStaleStaging(parentOfExtensions,names);
+ const bool replacing=replaced.managed;
  const auto staging=QDir(parentOfExtensions).filePath(".putgd-extension-new-"+id);
  const auto retired=QDir(parentOfExtensions).filePath(".putgd-extension-old-"+id);
  if(!QDir().mkpath(staging))return QStringLiteral("cannot create %1").arg(staging);
@@ -133,18 +171,9 @@ std::optional<QString> installCopy(const QString& bundledDir,const QString& user
   if(replacing)QDir().rename(retired,userDir);
   return abandon(QStringLiteral("cannot write %1").arg(userDir));
  }
- if(replacing){
-  const QDir old(retired);
-  for(const auto& name:old.entryList(QDir::Files|QDir::Hidden))QFile::remove(old.filePath(name));
-  QDir().rmdir(retired);
- }
+ // The files inspectUserCopy verified, and nothing else that may have appeared since.
+ if(replacing)removeCopyFiles(retired,replaced.files);
  return std::nullopt;
-}
-bool removeCopyFiles(const QString& userDir,const QStringList& files){
- const QDir dir(userDir);
- for(const auto& name:files)QFile::remove(dir.filePath(name));
- QFile::remove(dir.filePath(copyMarkerName));
- return QDir().rmdir(userDir);
 }
 QString settingsReason(const ProcessResult& result){
  if(!result.started)return QStringLiteral("gsettings is not installed");
@@ -268,7 +297,7 @@ SetupStatus runExtensionSetup(const SetupInputs& in){
   const bool changed=!newer&&bundledVersion==userCopy.version&&
    (fileSha256(QDir(in.bundledDir).filePath("extension.js"))!=fileSha256(QDir(userDir).filePath("extension.js")));
   if(newer||changed){
-   if(auto error=installCopy(in.bundledDir,userDir,bundledVersion,replacing))return installFailed(*error);
+   if(auto error=installCopy(in.bundledDir,userDir,bundledVersion,userCopy))return installFailed(*error);
    // A replaced copy still loaded from memory; the next login picks up the new one.
    if(replacing&&(newer||changed))loginNeededForFiles=loginNeededForFiles||loadedPath==userDir;
   }
@@ -356,6 +385,20 @@ SetupStatus removeOwnedUserCopy(const SetupInputs& in){
  }
  if(copy.managed&&!removeCopyFiles(userDir,copy.files))return installFailed(QStringLiteral("cannot remove the files in %1").arg(userDir));
  return ready({{"removed",copy.managed}});
+}
+
+SetupStatus reportedSetup(const SetupStatus& last,bool helperReady,int loadedVersion,int packagedVersion){
+ if(!helperReady)return last;
+ // The write failed, so the disk doesn't hold what a connected helper implies.
+ if(last.state=="install_failed")return last;
+ if(loadedVersion>=packagedVersion)return {"ready",{},{},last.details};
+ // A login loads what is on disk. Most states that need the user mean that won't
+ // bring the packaged version, so asking for one would send them the wrong way.
+ // A failed gsettings read is the exception: the files are in place and the loaded
+ // extension proves it is already enabled.
+ if(last.needsUser()&&last.state!="login_required"&&last.state!="settings_unavailable")return last;
+ return {"login_required","gnome_extension_updated",QStringLiteral("The put.gd GNOME Shell extension was updated; log out and back in to load the new version"),
+  {{"loaded",loadedVersion},{"packaged",packagedVersion}}};
 }
 
 QJsonObject SetupStatus::toJson()const{

@@ -1,9 +1,11 @@
 #include "platform/gnome/GnomeExtensionSetup.h"
+#include <QCryptographicHash>
 #include <QDir>
 #include <QFile>
 #include <QJsonDocument>
 #include <QTemporaryDir>
 #include <QtTest>
+#include <unistd.h>
 using namespace putgd::gnome;
 
 // Every path here works on private directories and an in-memory gsettings: no
@@ -50,6 +52,8 @@ class GnomeExtensionSetupTest final:public QObject {
   write(dir+"/extension.js","// system");
  }
  static QString userDir(Fixture& f){return f.root.filePath("home/.local/share/gnome-shell/extensions/putgd@put.gd");}
+ // A name installCopy gives a staging ("new") or retired ("old") directory.
+ static QString staged(const char* kind,char fill){return QStringLiteral(".putgd-extension-%1-%2").arg(QLatin1String(kind),QString(32,QLatin1Char(fill)));}
 private slots:
  void gvariantList(){
   QCOMPARE(*parseStringList("@as []"),QStringList{});
@@ -194,6 +198,91 @@ private slots:
   Fixture f;f.settings["enabled-extensions"]="['a@x', 'putgd@put.gd']";
   const auto s=removeOwnedUserCopy(f.inputs());QVERIFY(!s.needsUser());QVERIFY(!s.details["removed"].toBool());
   QCOMPARE(f.writes,QStringList{"enabled-extensions=['a@x']"});
+ }
+ // A managed update that can't be written must not read as "log out".
+ void failedUpdateIsReportedWhileTheOldExtensionIsConnected(){
+  Fixture f;auto dir=bundle(f,18,"// old");runExtensionSetup(f.inputs(dir,18));f.shell.extension={{"state",1},{"version",18},{"path",userDir(f)}};
+  dir=bundle(f,19,"// new");
+  if(geteuid()==0)QSKIP("Root ignores the directory mode this test relies on");
+  const auto parent=f.root.filePath("home/.local/share/gnome-shell");
+  QVERIFY(QFile::setPermissions(parent,QFile::ReadOwner|QFile::ExeOwner));
+  const auto last=runExtensionSetup(f.inputs(dir,19));
+  QVERIFY(QFile::setPermissions(parent,QFile::ReadOwner|QFile::WriteOwner|QFile::ExeOwner));
+  QCOMPARE(last.state,QString("install_failed"));QVERIFY(!last.message.contains("log out",Qt::CaseInsensitive));
+  const auto shown=reportedSetup(last,true,18,19);
+  QCOMPARE(shown.state,QString("install_failed"));QCOMPARE(shown.code,QString("gnome_extension_install_failed"));QCOMPARE(shown.message,last.message);
+  // A current helper hides it no better: a same-version update can fail too.
+  QCOMPARE(reportedSetup(last,true,19,19).state,QString("install_failed"));
+  QFile js(userDir(f)+"/extension.js");QVERIFY(js.open(QIODevice::ReadOnly));QCOMPARE(js.readAll(),QByteArray("// old"));
+ }
+ void outdatedHelperKeepsStatesALoginCannotFix_data(){
+  QTest::addColumn<QString>("state");
+  for(const auto* state:{"install_failed","not_installed","extension_blocked","foreign_user_copy","system_copy_outdated","disabled_by_user","user_extensions_disabled","settings_locked","extension_error"})QTest::newRow(state)<<QString::fromLatin1(state);
+ }
+ void outdatedHelperKeepsStatesALoginCannotFix(){
+  QFETCH(QString,state);const SetupStatus last{state,"code_"+state,"what to do about "+state,{}};
+  const auto shown=reportedSetup(last,true,18,19);QCOMPARE(shown.state,state);QCOMPARE(shown.code,last.code);QCOMPARE(shown.message,last.message);
+ }
+ void outdatedHelperAsksForALoginOnlyWhenOneHelps_data(){
+  QTest::addColumn<QString>("state");QTest::addColumn<QString>("code");
+  QTest::newRow("checking")<<"checking"<<"";QTest::newRow("ready")<<"ready"<<"";
+  QTest::newRow("login_required")<<"login_required"<<"gnome_login_required";QTest::newRow("settings_unavailable")<<"settings_unavailable"<<"gnome_settings_unavailable";
+ }
+ void outdatedHelperAsksForALoginOnlyWhenOneHelps(){
+  QFETCH(QString,state);QFETCH(QString,code);const SetupStatus last{state,code,code.isEmpty()?QString{}:"message",{}};
+  const auto shown=reportedSetup(last,true,18,19);
+  QCOMPARE(shown.state,QString("login_required"));QCOMPARE(shown.code,QString("gnome_extension_updated"));QVERIFY(shown.message.contains("log out and back in"));
+  QCOMPARE(shown.details["loaded"].toInt(),18);QCOMPARE(shown.details["packaged"].toInt(),19);
+ }
+ void currentHelperIsReadyAndAbsentHelperKeepsTheRun(){
+  const SetupStatus last{"foreign_user_copy","gnome_foreign_extension","remove it",{{"path","/x"}}};
+  const auto current=reportedSetup(last,true,19,19);QCOMPARE(current.state,QString("ready"));QVERIFY(!current.needsUser());QCOMPARE(current.details["path"].toString(),QString("/x"));
+  QCOMPARE(reportedSetup(last,false,0,19).state,last.state);
+ }
+ void staleStagingIsCleanedWhenItIsPlainlyOurs(){
+  Fixture f;const auto dir=bundle(f);const QString parent=f.root.filePath("home/.local/share/gnome-shell/");
+  const QString fresh=parent+staged("new",'a'),retired=parent+staged("old",'0');
+  write(fresh+"/extension.js","partial");write(retired+"/metadata.json","{}");write(retired+"/.putgd-managed","{}");
+  runExtensionSetup(f.inputs(dir));
+  QVERIFY(!QFileInfo::exists(fresh));QVERIFY(!QFileInfo::exists(retired));
+  QVERIFY(QFile::exists(userDir(f)+"/extension.js"));
+ }
+ void staleRetiredCopyGoesByItsOwnMarker(){
+  Fixture f;const auto dir=bundle(f);const QString parent=f.root.filePath("home/.local/share/gnome-shell/"),retired=parent+staged("old",'1');
+  const auto hash=[](const QByteArray& bytes){return QString::fromLatin1(QCryptographicHash::hash(bytes,QCryptographicHash::Sha256).toHex());};
+  write(retired+"/stylesheet.css","old");
+  write(retired+"/.putgd-managed",QJsonDocument(QJsonObject{{"managedBy","put.gd"},{"files",QJsonObject{{"stylesheet.css",hash("old")}}}}).toJson());
+  // A marker can't vouch for a file it doesn't match.
+  const QString edited=parent+staged("old",'3');write(edited+"/notes.txt","mine");write(edited+"/.putgd-managed",QJsonDocument(QJsonObject{{"managedBy","put.gd"},{"files",QJsonObject{{"notes.txt",hash("something else")}}}}).toJson());
+  const QString foreign=parent+staged("old",'2');write(foreign+"/stylesheet.css","mine");write(foreign+"/.putgd-managed",QJsonDocument(QJsonObject{{"managedBy","someone"},{"files",QJsonObject{{"stylesheet.css","x"}}}}).toJson());
+  // Nor reach outside its directory: this marker names a file elsewhere, and the directory has no such entry.
+  const QString escaping=parent+staged("old",'4');write(escaping+"/notes.txt","mine");write(f.root.filePath("elsewhere.txt"),"mine");
+  write(escaping+"/.putgd-managed",QJsonDocument(QJsonObject{{"managedBy","put.gd"},{"files",QJsonObject{{"../../../../../elsewhere.txt",hash("mine")},{"notes.txt",hash("other")}}}}).toJson());
+  runExtensionSetup(f.inputs(dir));
+  QVERIFY(!QFileInfo::exists(retired));QVERIFY(QFile::exists(foreign+"/stylesheet.css"));QVERIFY(QFile::exists(edited+"/notes.txt"));
+  QVERIFY(QFile::exists(escaping+"/notes.txt"));QVERIFY(QFile::exists(f.root.filePath("elsewhere.txt")));
+ }
+ void stagingCleanupLeavesAnythingUncertain(){
+  Fixture f;const auto dir=bundle(f);const QString parent=f.root.filePath("home/.local/share/gnome-shell/");
+  // Matches the old wide glob, but isn't a name put.gd makes.
+  const QStringList otherNames{".putgd-extension-backup",staged("new",'b')+"x",staged("new",'B'),".putgd-extension-old-short"};
+  for(const auto& name:otherNames)write(parent+name+"/extension.js","mine");
+  // Put.gd's exact name, with contents put.gd wouldn't have left.
+  const QString extra=parent+staged("new",'c');write(extra+"/extension.js","mine");write(extra+"/notes.txt","mine");
+  const QString nested=parent+staged("old",'d');write(nested+"/extension.js","mine");write(nested+"/sub/file","mine");
+  const QString linkedFile=parent+staged("new",'e');write(f.root.filePath("elsewhere.txt"),"mine");QDir().mkpath(linkedFile);QVERIFY(QFile::link(f.root.filePath("elsewhere.txt"),linkedFile+"/extension.js"));
+  runExtensionSetup(f.inputs(dir));
+  for(const auto& name:otherNames)QVERIFY2(QFile::exists(parent+name+"/extension.js"),qPrintable(name));
+  QVERIFY(QFile::exists(extra+"/extension.js"));QVERIFY(QFile::exists(extra+"/notes.txt"));
+  QVERIFY(QFile::exists(nested+"/extension.js"));QVERIFY(QFile::exists(nested+"/sub/file"));
+  QVERIFY(QFileInfo(linkedFile+"/extension.js").isSymLink());QVERIFY(QFile::exists(f.root.filePath("elsewhere.txt")));
+ }
+ void stagingCleanupDoesNotFollowASymlink(){
+  Fixture f;const auto dir=bundle(f);const QString parent=f.root.filePath("home/.local/share/gnome-shell/");
+  const QString target=f.root.filePath("target");write(target+"/extension.js","mine");write(target+"/.hidden","mine");
+  const QString link=parent+staged("old",'f');QDir().mkpath(parent);QVERIFY(QFile::link(target,link));
+  runExtensionSetup(f.inputs(dir));
+  QVERIFY(QFileInfo(link).isSymLink());QVERIFY(QFile::exists(target+"/extension.js"));QVERIFY(QFile::exists(target+"/.hidden"));
  }
  void removeLeavesForeignCopy(){
   Fixture f;write(userDir(f)+"/metadata.json","{}");const auto s=removeOwnedUserCopy(f.inputs());
