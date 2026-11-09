@@ -643,7 +643,8 @@ class Guest:
             lab.ssh(self.run, QUIT_RESIDENTS)
         deadline = time.monotonic() + timeout
         while time.monotonic() < deadline:
-            left = lab.ssh(self.run, 'pgrep -u "$(id -u)" "^putgd" || true').split()
+            # A clipboard keeper can outlive Quit; it has no provider/session access.
+            left = lab.ssh(self.run, 'pgrep -u "$(id -u)" -x putgd || true').split()
             if not left:
                 return
             time.sleep(1)

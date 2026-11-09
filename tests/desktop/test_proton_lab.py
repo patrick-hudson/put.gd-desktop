@@ -493,6 +493,36 @@ class SmokeCheck(unittest.TestCase):
 
 
 class QuitResidents(unittest.TestCase):
+    def test_collection_waits_for_the_resident_but_not_a_clipboard_keeper(self):
+        for name, remains in [('putgd', True), ('putgd-clipboard-keeper', False)]:
+            with self.subTest(name=name), tempfile.TemporaryDirectory(prefix='pg-w-') as temp:
+                root = Path(temp)
+                shutil.copy(shutil.which('sleep'), root/name)
+                child = subprocess.Popen([str(root/name), '30'])
+                try:
+                    (root/'pid').write_text(str(child.pid))
+                    # Restrict real pgrep to our child, preserving its actual name matching.
+                    (root/'pgrep').write_text('#!/bin/sh\nexec '+shutil.which('pgrep')+' "$@" -F "$FIXTURE_PID"\n')
+                    (root/'pgrep').chmod(0o755)
+                    deadline = time.monotonic() + 5
+                    while Path(f'/proc/{child.pid}/exe').resolve() != (root/name).resolve() and time.monotonic() < deadline:
+                        time.sleep(.01)
+                    def ssh(run, command):
+                        if command == proton.QUIT_RESIDENTS:
+                            return ''  # An unresponsive resident must still prevent collection.
+                        return subprocess.check_output(['sh', '-c', command], text=True,
+                            env=dict(os.environ, PATH=f"{root}:{os.environ['PATH']}", FIXTURE_PID=str(root/'pid')))
+                    with mock.patch.object(proton.lab, 'state', return_value={}), mock.patch.object(proton.lab, 'cli'), mock.patch.object(proton.lab, 'ssh', side_effect=ssh):
+                        guest = proton.Guest(root)
+                        if remains:
+                            with self.assertRaises(proton.LabFailure):
+                                guest.stop_app(timeout=.05)
+                        else:
+                            guest.stop_app(timeout=.05)
+                finally:
+                    child.kill()
+                    child.wait()
+
     def test_a_private_resident_is_quit_with_its_own_environment(self):
         with tempfile.TemporaryDirectory(prefix='pg-q-') as temp:
             root = Path(temp)
