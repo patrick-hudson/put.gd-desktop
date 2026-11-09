@@ -157,7 +157,7 @@ class NativeTrayWire final : public QObject {
  }
 private slots:
  void initTestCase() {
-  // Status and titles here, not the season: test_tray and test_tray_season cover that.
+  // Status and titles here; test_tray also covers seasonal behavior.
   qputenv("PUTGD_TRAY_CALENDAR_NOW","2026-06-15T12:00:00");
   QVERIFY(!QCoreApplication::instance()->inherits("QGuiApplication"));
   QVERIFY(peer.isConnected()); QVERIFY(client.isConnected());

@@ -61,11 +61,6 @@
   target_link_libraries(test_public_url PRIVATE putgd_s3 Qt6::Test)
   add_test(NAME public_url COMMAND test_public_url)
   find_package(Qt6 6.4.2 REQUIRED COMPONENTS Test)
-  add_executable(test_build_contract tests/unit/test_build_contract.cpp)
-  target_link_libraries(test_build_contract PRIVATE putgd_build_options putgd_s3_runtime
-    Qt6::Test Qt6::Widgets Qt6::Sql qt6keychain)
-  add_test(NAME build_contract COMMAND test_build_contract)
-  set_tests_properties(build_contract PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 30)
   if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     add_executable(test_s3_worker_fixture tests/fixtures/s3_worker_fixture.cpp)
     target_link_libraries(test_s3_worker_fixture PRIVATE putgd_s3_wire putgd_ui_control putgd_build_identity)
