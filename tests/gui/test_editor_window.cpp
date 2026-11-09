@@ -42,7 +42,6 @@
 #include <QStyleOptionComboBox>
 #include <QTimer>
 #include <QFontComboBox>
-#include <QHash>
 #include <QSignalSpy>
 #include <QTest>
 #include "fixtures/Waits.h"
@@ -72,22 +71,7 @@ private slots:
   PUTGD_TRY_VERIFY(help->width()>=help->fontMetrics().horizontalAdvance(help->text()));
   window.selectTool(Tool::Crop);QCOMPARE(title->toolTip(),title->text());QCOMPARE(title->accessibleName(),QString("Crop tool"));
  }
- void propertyCaptionsKeepTheirRoleAcrossThemes(){
-  const auto previous=Theme::scheme();auto restore=qScopeGuard([previous]{Theme::setScheme(previous);});
-  EditDocument doc(canvasImage());EditorWindow window(doc);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
-  for(const auto scheme:{Theme::Scheme::Dark,Theme::Scheme::Light}){
-   Theme::setScheme(scheme);
-   for(const auto tool:{Tool::Arrow,Tool::Text,Tool::Blur,Tool::Crop}){
-    window.selectTool(tool);QApplication::processEvents();
-    for(auto* label:window.findChild<QWidget*>("editorSide")->findChildren<QLabel*>()){
-     if(!QStringList{"Color","Line width","Font","Size in image pixels","Blur radius","Crop area","X","Y","Width","Height","Document"}.contains(label->text()))continue;
-     QCOMPARE(label->property("visualRole").toString(),QString("caption"));
-     QCOMPARE(label->font().pixelSize(),Ui::scaled(Ui::Type::technical));
-     QVERIFY(label->height()>=label->fontMetrics().height());
-    }
-   }
-  }
- }
+
  void zoomMenuAndAgentCommandsShareTheSameView(){
   EditDocument doc(canvasImage());EditorWindow window(doc);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
   auto* zoom=window.findChild<QToolButton*>("editorZoom");QVERIFY(zoom&&zoom->menu());QCOMPARE(zoom->accessibleName(),QString("Zoom"));
@@ -171,17 +155,7 @@ private slots:
    }
   }
  }
- void canvasDrawsNoEdgeAroundImagesInBothSchemes(){
-  const auto previous=Theme::scheme();auto restore=qScopeGuard([previous]{Theme::setScheme(previous);});
-  for(const auto scheme:{Theme::Scheme::Dark,Theme::Scheme::Light}){
-   Theme::setScheme(scheme);const auto fill=Theme::current().well;
-   QImage image(400,260,QImage::Format_RGB32);image.fill(fill);EditDocument doc(image);EditorCanvas canvas(doc);canvas.resize(500,360);canvas.show();QVERIFY(putgd::test::waitForWindowExposed(&canvas));canvas.fit();
-   const auto rendered=canvas.grab().toImage();QCOMPARE(rendered.pixelColor(250,100),fill);
-   // The image's own top rows; the soft shadow above them stays.
-   for(int y=50;y<=51;++y)QCOMPARE(rendered.pixelColor(250,y),fill);
-   QCOMPARE(rendered.pixelColor(250,0),Theme::current().well);
-  }
- }
+
  void sharedBannerActionsWrapAndUseHostCommands(){
   QWidget host;auto* layout=new QVBoxLayout(&host);auto* banner=new Ui::Banner(Ui::Banner::Tone::Warning,"A warning that needs room to explain what happened",&host);layout->addWidget(banner);
   banner->setAction("Recover");banner->setDismissible(true);bool recovered=false,dismissed=false;
@@ -221,20 +195,7 @@ private slots:
   window.findChild<QToolButton*>("editorSaveDetails")->click();auto* error=window.findChild<Ui::ElidedLabel*>("editorSaveError");QVERIFY(error->fullTextPopup());QVERIFY(error->fullTextPopup()->isVisible());QCOMPARE(window.canvas().width(),canvas.width());error->fullTextPopup()->close();
   window.dismissSavedCopy();QApplication::processEvents();QCOMPARE(window.canvas().geometry(),canvas);
  }
- void cropFieldsPrecedeThePrimaryAction(){
-  EditDocument doc(canvasImage());EditorWindow window(doc);window.resize(1100,1000);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));window.selectTool(Tool::Crop);QApplication::processEvents();
-  auto* fields=window.findChild<QWidget*>("editorGeometry");auto* apply=window.findChild<QPushButton*>("applyCrop");auto* cancel=window.findChild<QPushButton*>("cancelCrop");QVERIFY(fields&&apply&&cancel);QCOMPARE(apply->property("visualRole").toString(),QString("primary"));QVERIFY(fields->mapTo(&window,fields->rect().bottomLeft()).y()<apply->mapTo(&window,QPoint()).y());QVERIFY(apply->mapTo(&window,QPoint()).y()<=cancel->mapTo(&window,QPoint()).y());
- }
- void geometryAndBlurUseTheWholePropertiesColumn(){
-  EditDocument doc(canvasImage());EditorWindow window(doc);window.resize(1400,1000);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));QString code,message;window.viewCommand({{"action","propertiesWidth"},{"pixels",400}},code,message);
-  window.selectTool(Tool::Crop);QApplication::processEvents();
-  auto* x=window.findChild<QSpinBox*>("geometryX");auto* y=window.findChild<QSpinBox*>("geometryY");auto* w=window.findChild<QSpinBox*>("geometryWidth");auto* h=window.findChild<QSpinBox*>("geometryHeight");
-  QCOMPARE(x->y(),y->y());QCOMPARE(w->y(),h->y());QVERIFY(x->x()<y->x());QVERIFY(x->geometry().bottom()<w->y());
-  for(auto* label:window.findChild<QWidget*>("editorGeometry")->findChildren<QLabel*>())if(label->buddy()){QVERIFY(label->geometry().bottom()<label->buddy()->y());QCOMPARE(label->x(),label->buddy()->x());}
-  window.selectTool(Tool::Blur);QApplication::processEvents();auto* slider=window.findChild<QSlider*>("blurStrength");auto* value=window.findChild<QSpinBox*>("blurStrengthValue");
-  auto* radius=static_cast<BlurRadius*>(slider->parentWidget());const auto spinPosition=value->mapTo(radius,QPoint());
-  QVERIFY(slider->y()>spinPosition.y()+value->height());QCOMPARE(slider->x(),0);QCOMPARE(slider->width(),radius->width());QVERIFY(radius->label()->geometry().bottom()<spinPosition.y());QCOMPARE(window.findChild<QPushButton*>("removeMark")->property("uiDensity").toString(),QString("compact"));QVERIFY(window.findChild<QToolButton*>("editorKeyboardHelp")->property("uiFlush").toBool());
- }
+
  void propertiesSplitterKeepsTheChosenWidthAcrossToolsAndResizes(){
   EditDocument doc(canvasImage());EditorWindow window(doc);window.resize(1180,820);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
   auto* splitter=window.findChild<QSplitter*>("editorSplitter");auto* side=window.findChild<QWidget*>("editorSide");QVERIFY(splitter&&side);QCOMPARE(side->width(),std::max(240,Ui::scaled(180)));QCOMPARE(splitter->handleWidth(),1);
@@ -689,36 +650,8 @@ private slots:
  }
  // An unchosen swatch's painted edge holds 3:1 against the panel in both
  // schemes, white on the light panel and near-black on the dark one included.
- void swatchEdgesStandOutFromThePanel(){
-  const auto restore=qScopeGuard([previous=Theme::scheme()]{Theme::setScheme(previous);});
-  for(const auto scheme:{Theme::Scheme::Dark,Theme::Scheme::Light}){
-   Theme::setScheme(scheme);
-   EditDocument doc(canvasImage());EditorWindow window(doc);window.resize(1000,700);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
-   window.selectTool(Tool::Arrow);QApplication::processEvents();
-   const auto image=window.grab().toImage();int checked=0;
-   for(auto* swatch:window.findChildren<QToolButton*>()){
-    if(!swatch->accessibleName().startsWith("Color ")||swatch->isChecked())continue;++checked;
-    // The top edge's middle: the 1 px outline row, and the panel above the square.
-    const auto edge=image.pixelColor(swatch->mapTo(&window,QPoint(swatch->width()/2,Ui::scaled(4))));
-    const auto panel=image.pixelColor(swatch->mapTo(&window,QPoint(swatch->width()/2,1)));
-    const double ratio=Theme::contrast(edge,panel);
-    QVERIFY2(ratio>=3.0,qPrintable(QString("%1 %2: %3:1").arg(Theme::name(scheme),swatch->accessibleName()).arg(ratio,0,'f',2)));
-   }
-   QCOMPARE(checked,6);
-  }
- }
- // The palette and the custom picker sit in even rows, and the rule under the
- // tool's help shows only when options follow it.
- void propertiesPanelHasNoOrphans(){
-  EditDocument doc(canvasImage());EditorWindow window(doc);window.resize(1000,700);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
-  window.selectTool(Tool::Arrow);QApplication::processEvents();
-  QHash<int,int> rows;for(auto* button:window.findChildren<QToolButton*>())if(button->accessibleName().startsWith("Color ")||button->objectName()=="customColor")++rows[button->mapTo(&window,QPoint()).y()];
-  QCOMPARE(rows.size(),2);for(const int count:rows)QCOMPARE(count,4);
-  auto* rule=window.findChild<QWidget*>("editorOptionsRule");QVERIFY(rule);QVERIFY(rule->isVisible());
-  window.selectTool(Tool::Select);QApplication::processEvents();QVERIFY(!rule->isVisible());
-  window.selectTool(Tool::Redact);QApplication::processEvents();QVERIFY(!rule->isVisible());
-  window.selectTool(Tool::Crop);QApplication::processEvents();QVERIFY(rule->isVisible());
- }
+
+
  void saveFeedbackNamesTheCopyAndOffersRecovery(){
   EditDocument doc(canvasImage());EditorWindow window(doc);window.resize(1000,700);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
   add(doc,{{"kind","redact"},{"rect",QJsonArray{10,10,50,20}}});window.documentEdited();

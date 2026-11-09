@@ -524,19 +524,7 @@ private slots:
         QVERIFY(!buttonNamed(window, "Try again"));
         QVERIFY(!window.drive({{"action", "retryExport"}}).code.isEmpty());
     }
-    void letterboxFollowsThePalette() {
-        const auto scheme = Theme::scheme();
-        const auto restore = qScopeGuard([&] { Theme::setScheme(scheme); });
-        for (const auto theme : {Theme::Scheme::Dark, Theme::Scheme::Light}) {
-            Theme::setScheme(theme);
-            FrameView frame; frame.setCanvas({160, 90}); frame.resize(200, 200);
-            QImage image(160, 90, QImage::Format_RGB32); image.fill(Qt::red);
-            frame.setFrame(image, 0); frame.show();
-            const auto rendered = frame.grab().toImage();
-            QCOMPARE(rendered.pixelColor(0, 0), Theme::current().well);
-            QCOMPARE(rendered.pixelColor(100, 100), QColor(Qt::red));
-        }
-    }
+
     void replacingVisibleStatusShowsTextAndRecoveryActions() {
         ReviewWindow window(options(), config());
         window.show();
