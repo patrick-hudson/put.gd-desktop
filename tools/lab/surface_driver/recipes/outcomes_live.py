@@ -31,12 +31,18 @@ def _owned(ctx, service, detail, oid):
                    'cleanup cannot leave the newly created Proton folder')
 
 
+DELETION_SETTLED = ('removed', 'already_missing', 'failed', 'unknown', 'changed', 'version_retained',
+                    'hidden_version_retained', 'unsupported_safe_removal')
+
+
 def _retry_deletion(ctx, current):
     """An unresolved delete leaves Retry deletion, not the first-delete button."""
     ctx.call('delete.retry', {'id': current['deleteOperationId']})
     ctx.note('deletion_retried=1')
+    # The retry is answered before it runs, so the status it started from can still be read back.
+    settled = [status for status in DELETION_SETTLED if status != current['remoteStatus']]
     return ctx.wait(lambda: (d if (d := ctx.call('history.detail', {'id': current['id']})).get('remoteStatus')
-                             in ('removed', 'already_missing') else None), 'retried deletion settled', timeout=90)
+                             in settled else None), 'retried deletion settled', timeout=90)
 
 
 def _cleanup(ctx, detail):
@@ -84,9 +90,7 @@ def _cleanup(ctx, detail):
             ctx.frame('delete-exact-owned-object', window='confirmAction')
             history._confirm_button(ctx, 'confirmAction', 'Delete 1 file')
             final = ctx.wait(lambda: (d if (d := ctx.call('history.detail', {'id': detail['id']})).get('remoteStatus')
-                                     in ('removed', 'already_missing', 'failed', 'unknown', 'changed', 'version_retained',
-                                         'hidden_version_retained', 'unsupported_safe_removal') else None),
-                             'UI deletion settled', timeout=180)
+                                     in DELETION_SETTLED else None), 'UI deletion settled', timeout=180)
         ctx.expect(final['remoteStatus'] in ('removed', 'already_missing') and not final['linkAvailable'],
                    'History confirms object removal')
         ctx.note('deletion_count=1')
