@@ -29,7 +29,7 @@ QCODES = {
     'ret': 28, 'ctrl': 29, 'semicolon': 39, 'apostrophe': 40, 'grave_accent': 41, 'shift': 42, 'backslash': 43,
     'comma': 51, 'dot': 52, 'slash': 53, 'shift_r': 54, 'kp_multiply': 55, 'alt': 56, 'spc': 57, 'caps_lock': 58,
     'ctrl_r': 97, 'alt_r': 100, 'home': 102, 'up': 103, 'pgup': 104, 'left': 105, 'right': 106, 'end': 107,
-    'down': 108, 'pgdn': 109, 'insert': 110, 'delete': 111, 'meta_l': 125, 'meta_r': 126, 'menu': 127,
+    'down': 108, 'pgdn': 109, 'insert': 110, 'delete': 111, 'meta_l': 125, 'meta_r': 126, 'compose': 127,
     'f11': 87, 'f12': 88,
     **{c: code for c, code in zip('1234567890', range(2, 12))},
     **{c: code for c, code in zip('qwertyuiop', range(16, 26))},

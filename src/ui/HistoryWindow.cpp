@@ -50,6 +50,7 @@
 #include <QPushButton>
 #include <QResizeEvent>
 #include <QScrollArea>
+#include <QScopedValueRollback>
 #include <QSaveFile>
 #include <QShowEvent>
 #include <QSignalBlocker>
@@ -1068,7 +1069,10 @@ void HistoryWindow::editAgain(const QJsonObject& record){
 // Opening it on a row of a multi-selection keeps the selection and offers
 // the batch actions.
 void HistoryWindow::showRowMenu(const QModelIndex& i,const QPoint& point,bool overflow,bool collective){
- if(model_->busy())return;
+ // A real Menu key arrives twice on xcb and Wayland: a keyboard context-menu
+ // event, then the key press matching the row shortcut while the menu is open (#835).
+ if(model_->busy()||rowMenuOpen_)return;
+ QScopedValueRollback open(rowMenuOpen_,true);
  auto* selection=table_->selectionModel();
  if((collective||!overflow)&&selection->selectedRows().size()>1&&selection->isSelected(i)){
   selection->setCurrentIndex(i,QItemSelectionModel::NoUpdate);QMenu menu(this);menu.setObjectName("historyRowMenu");menu.addSection(QString("%1 selected").arg(selection->selectedRows().size()));

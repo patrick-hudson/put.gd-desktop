@@ -28,6 +28,7 @@
 #include <QComboBox>
 #include <QMenu>
 #include <QClipboard>
+#include <QContextMenuEvent>
 #include <QScrollArea>
 #include <QSplitter>
 #include <QLineEdit>
@@ -1039,6 +1040,22 @@ private slots:
   auto remote=[&](const QString& id){for(int row=0;row<model->rowCount();++row)if(model->record(row)["id"]==id)return model->record(row)["remoteStatus"].toString();return QString{};};
   PUTGD_TRY_VERIFY(remote(chosen[0])=="removed"&&remote(chosen[1])=="removed");QVERIFY(remote(kept)!="removed");QLabel* feedback=nullptr;for(auto* label:window.findChildren<QLabel*>())if(label->accessibleName()=="History status")feedback=label;QVERIFY(feedback);PUTGD_TRY_VERIFY(feedback->text().startsWith("Deleted from destination: "));for(const auto& name:chosenNames)QVERIFY(feedback->text().contains(name));QVERIFY(!feedback->text().contains("completed"));
   window.findChild<QAction*>("historyClearSelection")->trigger();QVERIFY(list->selectionModel()->selectedRows().isEmpty());QVERIFY(bar->isHidden());QCOMPARE(source.reads,3);
+ }
+ // A real Menu key on xcb and Wayland: the plugin posts a keyboard context-menu
+ // event to the window, and the key press that follows matches the row shortcut
+ // while the first menu is open. It must open one menu for the selected row (#835).
+ void realMenuKeyOpensOneRowMenuForTheSelectedRow(){
+  QTemporaryDir d;ProviderRegistry registry;auto provider=std::make_shared<OpaqueProvider>();registry.add("opaque",provider);SettingsService settings(d.filePath("config.json"),[&](auto id,auto doc){return registry.validate(id,doc);});QVERIFY(settings.save(configuration(d.path()),{}));Source source;source.payload=textPayload();OperationService operations(d.filePath("data"),settings,registry,source);PUTGD_TRY_VERIFY(operations.ready());
+  const auto kept=d.filePath("kept.txt");{QFile file(kept);QVERIFY(file.open(QIODevice::WriteOnly));file.write("synthetic");}
+  for(const QString id:{QString("key-first"),QString("key-second")}){HistoryStore ledger(operations.databasePath());Operation op;op.id=id;op.created="2020-01-01T00:00:00.000Z";op.state="completed";op.settings=settings.snapshot();OperationItem item;item.artifact.id=id+"-item";item.artifact.name=id+".txt";item.artifact.mime="text/plain";item.artifact.category="text";item.uploadStatus="local_only";item.local.status="saved";item.local.path=kept;op.items.append(item);QVERIFY(!ledger.saveOperation(op));}
+  HistoryService history(operations);UiSessionFixture fixture(settings,operations,history);HistoryWindow window(fixture.session);window.resize(1100,700);window.show();auto* list=window.findChild<QListView*>("historyList");PUTGD_TRY_COMPARE(list->model()->rowCount(),2);
+  selectRow(list,operationRow(list,"key-second"));QVERIFY(window.windowHandle());window.activateWindow();list->setFocus();putgd::test::settle(20);
+  auto rowMenus=[]{QList<QMenu*> menus;for(auto* widget:QApplication::topLevelWidgets())if(auto* menu=qobject_cast<QMenu*>(widget);menu&&menu->objectName()=="historyRowMenu"&&menu->isVisible())menus<<menu;return menus;};
+  // Sent from inside the first menu's event loop, where Qt delivers the key press.
+  QTimer::singleShot(0,&window,[&]{QTest::keyClick(window.windowHandle(),Qt::Key_Menu);});
+  int peak=0,ticks=0;QTimer watcher;watcher.setInterval(5);connect(&watcher,&QTimer::timeout,&window,[&]{const auto menus=rowMenus();if(menus.isEmpty())return;peak=qMax(peak,int(menus.size()));if(++ticks<12)return;for(auto* action:menus.last()->actions())if(action->text()=="Copy details"){action->trigger();break;}for(auto* menu:rowMenus())menu->close();});watcher.start();
+  QContextMenuEvent keyboard(QContextMenuEvent::Keyboard,QPoint(),QPoint());QCoreApplication::sendEvent(window.windowHandle(),&keyboard);watcher.stop();
+  QCOMPARE(peak,1);QVERIFY(rowMenus().isEmpty());QCOMPARE(QJsonDocument::fromJson(QApplication::clipboard()->text().toUtf8()).object()["operationId"].toString(),QString("key-second"));QCOMPARE(list->selectionModel()->selectedRows().size(),1);
  }
  // The row menu lists what the row can do now, from the same state as its
  // inline action and the inspector, and never a command the resident refuses.

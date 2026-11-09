@@ -1,6 +1,7 @@
 """Protocol contract for the physical-desktop input agent; no uinput device is opened."""
 import io, json, socket, sys, tempfile, threading, unittest
 from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / 'tools' / 'lab'))
 import host_input
 
@@ -163,6 +164,13 @@ class HostInputTests(unittest.TestCase):
         for name in ['ctrl', 'shift', 'alt', 'ret', 'esc', 'delete', 'spc', 'v', 'z', 't', 'o', 'k', '5', 'f9', 'f12', 'meta_l']:
             self.assertIn(name, host_input.QCODES)
         self.assertEqual(len(set(host_input.QCODES.values())), len(host_input.QCODES))
+
+    def test_portable_menu_key_is_the_physical_menu_key(self):
+        # QEMU's qcode "menu" is KEY_MENU, which reaches no PS/2 guest; the Menu
+        # key on a keyboard is KEY_COMPOSE, qcode "compose" (#835).
+        from tools.lab.surface_driver.target import qcodes
+        self.assertEqual(qcodes('Menu'), ['compose'])
+        self.assertEqual(host_input.QCODES['compose'], 127)
 
 
 if __name__ == '__main__':

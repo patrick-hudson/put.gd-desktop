@@ -24,7 +24,7 @@ from .critical import critical, entry
 QT_KEYS = {'Ctrl':'ctrl','Control':'ctrl','Shift':'shift','Alt':'alt','AltGr':'alt_r','Meta':'meta_l','Super':'meta_l',
            'Return':'ret','Enter':'ret','Escape':'esc','Esc':'esc','Space':'spc','Backspace':'backspace',
            'Tab':'tab','Backtab':'tab','Delete':'delete','Insert':'insert','Home':'home','End':'end',
-           'PageUp':'pgup','PageDown':'pgdn','Left':'left','Right':'right','Up':'up','Down':'down','Menu':'menu'}
+           'PageUp':'pgup','PageDown':'pgdn','Left':'left','Right':'right','Up':'up','Down':'down','Menu':'compose'}
 PUNCTUATION = dict(zip('-=[];\'`,./\\', ['minus','equal','bracket_left','bracket_right','semicolon','apostrophe','grave_accent','comma','dot','slash','backslash']))
 SHIFTED = dict(zip('!@#$%^&*()_+{}:"~<>?|', '1234567890-=[];\'`,./\\'))
 
@@ -685,7 +685,7 @@ print(json.dumps({'hostname':platform.node(),'kernel':platform.release(),'machin
         if self.physical and not (self.run / 'qmp.sock').exists():
             if 'alt_r' in codes:
                 raise RecipeBlocked('AltGr requires QMP-compatible input; the VNC keysym backend does not support it')
-            aliases={'meta_l':'super','spc':' ','pgup':'pageup','pgdn':'pagedown', **{v:k for k,v in PUNCTUATION.items()}}
+            aliases={'meta_l':'super','compose':'menu','spc':' ','pgup':'pageup','pgdn':'pagedown', **{v:k for k,v in PUNCTUATION.items()}}
             self.vnc().key(*(aliases.get(c,c) for c in codes))
         else:
             lab.key(self.run, codes)
