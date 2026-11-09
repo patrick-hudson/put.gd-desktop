@@ -681,7 +681,7 @@ print(json.dumps({'hostname':platform.node(),'kernel':platform.release(),'machin
         if self.physical and not (self.run / 'qmp.sock').exists():
             if 'alt_r' in codes:
                 raise RecipeBlocked('AltGr requires QMP-compatible input; the VNC keysym backend does not support it')
-            aliases={'meta_l':'super','spc':' ','pgup':'pageup','pgdn':'pagedown', **{v:k for k,v in PUNCTUATION.items()}}
+            aliases={'meta_l':'super','compose':'menu','spc':' ','pgup':'pageup','pgdn':'pagedown', **{v:k for k,v in PUNCTUATION.items()}}
             self.vnc().key(*(aliases.get(c,c) for c in codes))
         else:
             lab.key(self.run, codes)
