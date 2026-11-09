@@ -43,8 +43,8 @@ unknown and must inspect the saved publication identity before any retry/rename.
 `refreshLink` is an explicit copy-time operation. S3 and B2 verify the saved
 publication and use only its original destination and cached credential reference;
 they never unlock credentials. History commits a changed URL and `linkExpiresAt`
-only after checking that every other receipt field still matches. `stat` preserves
-the original presigned receipt, including expiry, so deletion identity remains stable.
+only after checking that every other receipt field still matches. `stat` leaves an expiring link’s saved URL and expiry unchanged, so deletion
+identity remains stable.
 `unlockLinkCredentials` is a separate explicit user action on the credential
 store's owning thread; it may ask the desktop keyring to unlock the original
 saved reference even when that profile no longer exists in current settings.
