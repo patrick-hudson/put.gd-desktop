@@ -2,6 +2,7 @@
 """Compile a byte-verified curated source export with the normal release preset."""
 import argparse
 import json
+import os
 from pathlib import Path
 import subprocess
 import sys
@@ -11,8 +12,30 @@ import time
 from audit_native import sha256
 
 
+def package_inputs(build):
+    """Repository files a finished Ninja build's compiles read, from its deps log."""
+    root = build.parents[1]
+    listing = subprocess.check_output(['ninja', '-C', str(build), '-t', 'deps'], text=True)
+    inputs, valid = set(), False
+    for line in listing.splitlines():
+        if not line.startswith(' '):
+            valid = line.endswith('(VALID)')
+        elif valid:
+            path = Path(os.path.normpath(build / line.strip()))
+            if path.is_relative_to(root) and path.relative_to(root).parts[0] != 'build':
+                inputs.add(path.relative_to(root).as_posix())
+    if not inputs:
+        raise ValueError('The package build recorded no source inputs: ' + str(build))
+    return inputs
+
+
 def check_build(receipt_path, sdk_prefix, sdk_source, output, *, bundle_proton=False,
-                proton_source=None, proton_crypto_source=None, proton_offline=False):
+                proton_source=None, proton_crypto_source=None, proton_offline=False, inputs_of=None):
+    """Compile the export, or with inputs_of only prove it holds that build's inputs.
+
+    An inputs-only check configures the export and dry-runs Ninja. It writes
+    inputs-check.json, never the results.json a stable release requires.
+    """
     receipt = json.loads(receipt_path.read_text())
     if receipt['format'] != 'source.tar.gz':
         raise ValueError('Expected a curated source archive receipt')
@@ -33,7 +56,8 @@ def check_build(receipt_path, sdk_prefix, sdk_source, output, *, bundle_proton=F
                   'protonSource': str(proton_source) if proton_source else None,
                   'protonCryptoSource': str(proton_crypto_source) if proton_crypto_source else None,
                   'protonOffline': proton_offline,
-                  'scope': 'Actual source-export production compilation; no desktop or memory acceptance'}
+                  'scope': ('Source-export inputs only; nothing compiled' if inputs_of else
+                            'Actual source-export production compilation; no desktop or memory acceptance')}
     (output / 'parameters.json').write_text(json.dumps(parameters, indent=2) + '\n')
     result = {'schemaVersion': 1, 'passed': False, 'archive': artifact, 'commands': []}
     started = time.monotonic()
@@ -43,6 +67,12 @@ def check_build(receipt_path, sdk_prefix, sdk_source, output, *, bundle_proton=F
         source = output / archive_root
         if (source / '.git').exists():
             raise ValueError('Source archive must not contain Git metadata')
+        if inputs_of:
+            inputs = package_inputs(inputs_of)
+            missing = sorted(path for path in inputs if not (source / path).is_file())
+            if missing:
+                raise ValueError('The source export lacks files the package build compiled; '
+                                 'add them to tools/releases/source_archive.py: ' + ', '.join(missing[:20]))
         identity = receipt['identity']
         commands = [
             ['cmake', '--preset', 'release', '-DBUILD_TESTING=OFF', '-DPUTGD_LAB_FIXTURE=OFF',
@@ -53,7 +83,7 @@ def check_build(receipt_path, sdk_prefix, sdk_source, output, *, bundle_proton=F
              '-DPUTGD_SOURCE_TREE=' + identity['gitTree'],
              '-DPUTGD_SOURCE_COMMIT_COUNT=' + str(identity['commitCount']),
              '-DPUTGD_SOURCE_COMMIT_TIME=' + str(receipt['timestamp'])],
-            ['cmake', '--build', '--preset', 'release'],
+            ['cmake', '--build', '--preset', 'release', *(['--', '-n'] if inputs_of else ['--parallel', str(os.cpu_count() or 1)])],
         ]
         if bundle_proton:
             provision = [sys.executable, 'tools/proton/provision_runtime.py']
@@ -68,7 +98,14 @@ def check_build(receipt_path, sdk_prefix, sdk_source, output, *, bundle_proton=F
         with (output / 'build.log').open('x') as log:
             for command in commands:
                 result['commands'].append(command)
-                subprocess.run(command, cwd=source, stdout=log, stderr=subprocess.STDOUT, check=True)
+                try:
+                    subprocess.run(command, cwd=source, stdout=log, stderr=subprocess.STDOUT, check=True)
+                except subprocess.CalledProcessError:
+                    sys.stderr.write(''.join((output / 'build.log').read_text(errors='replace').splitlines(True)[-40:]))
+                    raise
+        if inputs_of:
+            result.update(passed=True, checkedInputs=len(inputs))
+            return result
         build = source / 'build/release'
         manifest = json.loads((build / 'build-identity/build-info.json').read_text())
         if (manifest['sourceProvenance'] != 'supplied' or manifest['gitCommit'] != identity['gitCommit']
@@ -98,7 +135,7 @@ def check_build(receipt_path, sdk_prefix, sdk_source, output, *, bundle_proton=F
         result.update(passed=True, compiledBuild=manifest, identityMatchedPrograms=verified)
     finally:
         result['wallSeconds'] = time.monotonic() - started
-        (output / 'results.json').write_text(json.dumps(result, indent=2) + '\n')
+        (output / ('inputs-check.json' if inputs_of else 'results.json')).write_text(json.dumps(result, indent=2) + '\n')
     return result
 
 
@@ -112,6 +149,7 @@ def main():
     parser.add_argument('--proton-source', type=Path, help='Existing pinned Proton SDK checkout (read-only)')
     parser.add_argument('--proton-crypto-source', type=Path, help='Existing approved crypto checkout (read-only)')
     parser.add_argument('--proton-offline', action='store_true', help='Require cached locked npm inputs and both existing Proton checkouts')
+    parser.add_argument('--inputs-of', type=Path, help='Finished package build directory: only prove the export holds its inputs, compiling nothing')
     args = parser.parse_args()
     if not args.bundle_proton and (args.proton_source or args.proton_crypto_source or args.proton_offline):
         parser.error('Proton provisioning options require --bundle-proton')
@@ -119,7 +157,8 @@ def main():
                          bundle_proton=args.bundle_proton,
                          proton_source=args.proton_source.resolve() if args.proton_source else None,
                          proton_crypto_source=args.proton_crypto_source.resolve() if args.proton_crypto_source else None,
-                         proton_offline=args.proton_offline)
+                         proton_offline=args.proton_offline,
+                         inputs_of=args.inputs_of.resolve() if args.inputs_of else None)
     print(json.dumps(result))
 
 

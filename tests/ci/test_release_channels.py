@@ -104,7 +104,8 @@ class Workflows(unittest.TestCase):
         self.assertIn('  workflow_call:\n', packages)
         for text in ('name: ubuntu24.04', 'name: ubuntu26.04', 'name: debian13', 'name: fedora44',
                      'python3 tools/releases/native.py', 'bash tools/releases/build-appimage.sh',
-                     'python3 tools/releases/check_source_build.py', "if: matrix.name == 'ubuntu24.04'"):
+                     'python3 tools/releases/check_source_build.py', "if: matrix.name == 'ubuntu24.04'",
+                     'check_source_build.py --inputs-of build/release'):
             self.assertIn(text, packages)
         for name in ('native', 'appimage'):
             self.assertIn("if: inputs.release_tag != ''\n        run: python3 tools/releases/verify_tag.py",

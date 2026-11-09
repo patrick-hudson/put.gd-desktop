@@ -195,15 +195,21 @@ jobs:
         if: matrix.name == 'ubuntu24.04'
         run: |
           python3 tools/releases/source_archive.py --root "$PWD" --identity build/release/build-identity/build-info.json --output-dir build/source-export
+      - name: Check the source export holds every build input
+        # A second full compile on every pull request found nothing the file check misses.
+        # Nightly pushes, pull requests to main and stable tags still compile it below.
+        if: matrix.name == 'ubuntu24.04' && github.event_name == 'pull_request' && github.base_ref != 'main'
+        run: python3 tools/releases/check_source_build.py --inputs-of build/release --receipt build/source-export/source-archive.json --sdk-prefix "$PWD/build/sdk" --sdk-source "$PWD/build/dependencies/aws-sdk-cpp" --output build/source-input-check --bundle-proton --proton-source "$PWD/build/dependencies/proton-runtime/sdk-source" --proton-crypto-source "$PWD/build/dependencies/proton-runtime/crypto-source" --proton-offline
       - name: Restore source-export compiler cache
-        if: matrix.name == 'ubuntu24.04' && (inputs.release_tag == '' || !endsWith(inputs.release_tag, '-nightly'))
+        if: matrix.name == 'ubuntu24.04' && (github.event_name != 'pull_request' || github.base_ref == 'main') && (inputs.release_tag == '' || !endsWith(inputs.release_tag, '-nightly'))
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: build/ccache-source-export
           key: ccache-source-export-${{ steps.sdk-key.outputs.key }}-${{ github.run_id }}-${{ github.run_attempt }}
           restore-keys: ccache-source-export-${{ steps.sdk-key.outputs.key }}-
       - name: Compile the source export on development and stable builds
-        if: matrix.name == 'ubuntu24.04' && (inputs.release_tag == '' || !endsWith(inputs.release_tag, '-nightly'))
+        id: source-compile
+        if: matrix.name == 'ubuntu24.04' && (github.event_name != 'pull_request' || github.base_ref == 'main') && (inputs.release_tag == '' || !endsWith(inputs.release_tag, '-nightly'))
         env:
           CMAKE_C_COMPILER_LAUNCHER: ccache
           CMAKE_CXX_COMPILER_LAUNCHER: ccache
@@ -218,7 +224,8 @@ jobs:
           python3 tools/releases/check_source_build.py --receipt build/source-export/source-archive.json --sdk-prefix "$PWD/build/sdk" --sdk-source "$PWD/build/dependencies/aws-sdk-cpp" --output build/source-build --bundle-proton --proton-source "$PWD/build/dependencies/proton-runtime/sdk-source" --proton-crypto-source "$PWD/build/dependencies/proton-runtime/crypto-source" --proton-offline
           ccache --show-stats
       - name: Save source-export compiler cache
-        if: matrix.name == 'ubuntu24.04' && inputs.release_tag == '' && github.event_name == 'push' && github.ref == 'refs/heads/nightly'
+        # Also when a newer push cancels the compile, or busy days never fill this cache.
+        if: always() && (steps.source-compile.outcome == 'success' || steps.source-compile.outcome == 'cancelled') && matrix.name == 'ubuntu24.04' && inputs.release_tag == '' && github.event_name == 'push' && github.ref == 'refs/heads/nightly'
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: build/ccache-source-export
