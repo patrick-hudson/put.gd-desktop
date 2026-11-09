@@ -220,8 +220,16 @@ EditorResult EditorJob::supervise(const std::function<bool(QFile&)>& stage,const
    else{if(payload.size()!=7||!payload["code"].isString()||!payload["message"].isString()){protocolFailed=true;return;}callback({payload["code"].toString().left(64),payload["message"].toString().left(512),{}},{});}
    return;
   }
-  if(type=="copyImage"&&editing&&!finalizing&&!checkpoint&&!copying){
+  if(type=="copyImage"&&editing&&!finalizing&&!checkpoint){
    if(payload.size()!=8||!payload["width"].isDouble()||!payload["height"].isDouble()||!payload["copyId"].isString()||payload["copyId"].toString().size()>64){protocolFailed=true;return;}
+   if(copying){
+    // The helper gave up on an earlier copy that the clipboard still holds:
+    // refuse this one (its staged file goes too) and keep the edit open.
+    if(stagingPinned)::unlinkat(stagingFd,"copy.png",0);
+    auto frame=envelope(nonce);frame["copyId"]=payload["copyId"];frame["ok"]=false;frame["code"]="editor_busy";frame["message"]="The previous copy is still being delivered to the clipboard";
+    if(control.send("copyResult",frame).isEmpty())protocolFailed=true;
+    return;
+   }
    copying=true;copyId=payload["copyId"].toString();QByteArray bytes;auto error=takeCopy(payload,bytes);
    const auto handler=session->copyHandler();
    if(!error&&!handler)error={"clipboard_unavailable","The clipboard is not available",{}};

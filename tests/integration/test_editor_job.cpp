@@ -191,6 +191,26 @@ private slots:
   QCOMPARE(session->phase(),QString("editing"));
   QVERIFY(!ask(*session,"cancel").error);worker.join();QCOMPARE(result.error.code,QString("cancelled"));
  }
+ // The clipboard stalls past the helper's copy deadline: the copy fails and the
+ // window frees up, a retry is refused while the first is still delivering,
+ // the late result is ignored, and copying works again afterwards.
+ void stalledClipboardFailsTheCopyAndKeepsEditing(){
+  qputenv("PUTGD_TEST_EDITOR_COPY_DEADLINE_MS","400");auto restore=qScopeGuard([]{qunsetenv("PUTGD_TEST_EDITOR_COPY_DEADLINE_MS");});
+  QTemporaryDir root;auto session=std::make_shared<EditorSession>();EditorResult result;
+  std::mutex mutex;std::function<void(Error)> held;std::atomic_int delivered{0};
+  session->setCopyHandler([&](QByteArray,std::function<void(Error)> done){std::lock_guard lock(mutex);if(!held){held=std::move(done);return;}++delivered;done({});});
+  std::thread worker([&]{auto image=noise({160,100},67);result=EditorJob(root.filePath("editing"),PUTGD_PRODUCT_UI_PATH).run(image,"Synthetic",64*1024*1024,session);});
+  auto joined=qScopeGuard([&]{session->cancel();if(worker.joinable())worker.join();});
+  QVERIFY(waitPhase(*session,"editing"));
+  QCOMPARE(ask(*session,"copy").error.code,QString("editor_timeout"));
+  QVERIFY(!ask(*session,"view").result["copying"].toBool());
+  QCOMPARE(ask(*session,"copy").error.code,QString("editor_busy"));
+  QCOMPARE(session->phase(),QString("editing"));QCOMPARE(filesUnder(root.filePath("editing")),2);
+  {std::lock_guard lock(mutex);QVERIFY(bool(held));held({});}
+  Answer copied;for(int i=0;i<40;++i){copied=ask(*session,"copy");if(copied.error.code!="editor_busy")break;QTest::qSleep(50);}
+  QVERIFY2(!copied.error,qPrintable(copied.error.code));QCOMPARE(delivered.load(),1);
+  QVERIFY(!ask(*session,"cancel").error);worker.join();QCOMPARE(result.error.code,QString("cancelled"));
+ }
  void copyImageWithoutAClipboardFailsAndKeepsEditing(){
   QTemporaryDir root;auto session=std::make_shared<EditorSession>();EditorResult result;
   std::thread worker([&]{auto image=noise({64,48},57);result=EditorJob(root.filePath("editing"),PUTGD_PRODUCT_UI_PATH).run(image,"Synthetic",64*1024*1024,session);});

@@ -6,7 +6,7 @@
 #include <QPointer>
 #include <QWidget>
 #include <functional>
-class QTimer;class QSplitter;class QVBoxLayout;class QScrollArea;class QLabel;class QPushButton;class QToolButton;class QComboBox;class QSlider;class QButtonGroup;class QFontComboBox;class QSpinBox;class QHBoxLayout;class QGridLayout;class QBoxLayout;class QDialog;
+class QTimer;class QThread;class QSplitter;class QVBoxLayout;class QScrollArea;class QLabel;class QPushButton;class QToolButton;class QComboBox;class QSlider;class QButtonGroup;class QFontComboBox;class QSpinBox;class QHBoxLayout;class QGridLayout;class QBoxLayout;class QDialog;
 
 namespace putgd {
 class FileDialog;
@@ -16,6 +16,7 @@ class EditorWindow final:public QWidget {
  Q_OBJECT
 public:
  EditorWindow(editor::EditDocument&,QWidget* parent=nullptr);
+ ~EditorWindow() override;
  editor::EditorCanvas& canvas() {return *canvas_;}
  void setBusy(const QString& message);
  void setFailure(const QString& message);
@@ -126,7 +127,7 @@ private:
  QToolButton* savedMore_=nullptr;
  QWidget *colorRow_=nullptr,*widthRow_=nullptr,*blurRow_=nullptr,*textRow_=nullptr,*cropRow_=nullptr,*blurStyleRow_=nullptr,*stepRow_=nullptr;
  QToolButton *blurStyle_=nullptr,*pixelateStyle_=nullptr;
- QLabel* stepLabel_=nullptr;QSpinBox* stepNumber_=nullptr;bool syncingStep_=false;int stepPixels_=editor::defaultStepPixels;quint64 copyFeedback_=0;
+ QLabel* stepLabel_=nullptr;QSpinBox* stepNumber_=nullptr;QPointer<QThread> copyThread_;bool syncingStep_=false;int stepPixels_=editor::defaultStepPixels;quint64 copyFeedback_=0;
  QComboBox* width_=nullptr;
  QSlider* strength_=nullptr;
  Ui::ElidedLabel* saveTarget_=nullptr;

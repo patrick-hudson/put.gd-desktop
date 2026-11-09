@@ -182,6 +182,8 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
  bool copyPending=false;std::function<void(QJsonObject,QString,QString)> copyReply;QJsonObject copyInfo;QString copyId;
  // A copy the resident never answers fails here, so the window never stays busy.
  QTimer copyDeadline;copyDeadline.setSingleShot(true);copyDeadline.setInterval(30000);
+ // Tests may only shorten it.
+ if(const auto test=qEnvironmentVariableIntValue("PUTGD_TEST_EDITOR_COPY_DEADLINE_MS");test>=100&&test<30000)copyDeadline.setInterval(test);
  const auto copyFailed=[&](const QString& code,const QString& reason){
   copyPending=false;copyDeadline.stop();copyId.clear();files.discardCopy();window->showCopyFailed(reason);
   if(auto reply=std::exchange(copyReply,{}))reply({},code,"The image was not copied: "+reason);

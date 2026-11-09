@@ -749,7 +749,10 @@ bool EditorWindow::exportForCopy(ExportDone done,std::function<QString(const QBy
  struct Result {QByteArray png;QSize size;QString staged;};
  auto result=std::make_shared<Result>();
  auto* thread=QThread::create([snapshot=std::move(snapshot),result,stage=std::move(stage)]{result->png=snapshot.exportPng();result->size=snapshot.crop().size();if(stage&&!result->png.isEmpty())result->staged=stage(result->png);});
- connect(thread,&QThread::finished,this,[result,done=std::move(done)]{done(result->png,result->size,result->staged);});
+ // The window joins this worker before it goes, so `stage` never outlives the
+ // host's staging; a callback for a closed window is never made.
+ copyThread_=thread;
+ connect(thread,&QThread::finished,this,[result,done=std::move(done)]{if(done)done(result->png,result->size,result->staged);});
  connect(thread,&QThread::finished,thread,&QObject::deleteLater);
  thread->start();return true;
 }
@@ -1007,4 +1010,5 @@ void EditorWindow::closeEvent(QCloseEvent* event){
 void EditorWindow::showEvent(QShowEvent* event){
  QWidget::showEvent(event);if(!shown_){shown_=true;placeProperties();canvas_->fit();canvas_->setFocus();}
 }
+EditorWindow::~EditorWindow(){if(copyThread_)copyThread_->wait();}
 }
