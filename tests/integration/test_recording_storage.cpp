@@ -121,10 +121,18 @@ private slots:
     }
     void pipelineFailureEndsTheShare() {
         QTemporaryDir dir; RecordSession session; setup(session, dir);
+        auto& pipeline = session.pipeline_;
+        pipeline.storageProbe_ = [] { return healthy(); };
         int share[2]; QCOMPARE(::pipe(share), 0); session.portalFd_ = share[0];
         auto keepWriteEnd = qScopeGuard([&] { ::close(share[1]); });
-        emit session.pipeline_.failed(Error{"recording_failed", "The encoder stopped", {}});
-        QCOMPARE(session.portalFd_, -1); QVERIFY(readerClosed(share[1]));
+        QSignalSpy events(&session, &RecordSession::event);
+        const auto started = start(session); QVERIFY2(!started, qPrintable(started.message));
+        QVERIFY(!readerClosed(share[1]));
+        GError* error = g_error_new_literal(GST_STREAM_ERROR, GST_STREAM_ERROR_FAILED, "synthetic media failure");
+        gst_element_post_message(pipeline.pipeline_, gst_message_new_error(GST_OBJECT(pipeline.pipeline_), error, "synthetic"));
+        g_error_free(error);
+        PUTGD_TRY_COMPARE(terminal(events)["event"].toString(), QString("failed"));
+        QVERIFY(!pipeline.running()); QCOMPARE(session.portalFd_, -1); QVERIFY(readerClosed(share[1]));
     }
     void automaticStop_data() {
         QTest::addColumn<bool>("paused");
