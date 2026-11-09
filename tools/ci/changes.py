@@ -83,7 +83,12 @@ CATALOG_PREFIXES = ('src/ui/', 'src/editor/', 'src/record/ReviewWindow',
 # ReviewWindow.cpp also includes QWidgetAction. FormatBox is a QComboBox.
 # Bundled fonts/icons live under src/ui/; record.qrc maps those same icons.
 CATALOG_FILES = frozenset({
-    'src/record/FormatBox.h', 'src/record/record.qrc',
+    'src/record/FormatBox.h', 'src/record/MaskBox.h', 'src/record/BarPlacement.cpp', 'src/record/BarPlacement.h',
+    'src/record/record.qrc',
+    # Synthetic states compiled into the catalog. Waits.h is left out: every test
+    # includes it and it cannot change what the catalog renders.
+    'tests/fixtures/UiSessionFixture.h', 'tests/fixtures/TrayCatalog.h',
+    'tests/fixtures/CatalogLabels.h', 'tests/fixtures/ReviewLayout.h',
     'tests/gui/ui_catalog.cpp', 'tests/gui/catalog_build_identity.cpp',
     'cmake/TestsGui.cmake', 'tools/ci/check_catalog_render.py', 'tools/ci/changes.py',
     'tools/lab/surface_driver/secret-states.json',
