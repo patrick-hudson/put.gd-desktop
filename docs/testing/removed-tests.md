@@ -15,7 +15,7 @@ appears, and the fix decides whether a test comes back.
 
 ## What went
 
-Each pull request's description lists the exact functions it removed.
+Each pull request's diff shows the exact tests it removed.
 
 | Pull request | Lines removed | What went | What no longer gets caught |
 | --- | ---: | --- | --- |
@@ -44,7 +44,9 @@ Each pull request's description lists the exact functions it removed.
 `tests/desktop`. The tools themselves were kept.
 
 `test_native_acceptance.py` was reduced to its native keychain ownership and
-post-login evidence checks.
+post-login evidence checks. `test_surface_recipes_history.py` lost 50 tests and
+`test_surface_recipes_links.py` lost 51, leaving their wrong-identity, failed-result,
+restore and stray-browser checks.
 
 `test_staging_recovery.py` covers code normal lab installs run, unlike the others
 on this list. It went because an install failure shows in the nightly check, and
@@ -70,8 +72,9 @@ those races.
 `ui_catalog_render` on a pull request only when a changed path can alter the
 catalog. See [ci.md](../release/ci.md). Every push to `nightly` still renders it.
 An incomplete render, surface map mismatch or secret-control change that a pull
-request skips therefore fails on the next nightly push, and the live gate fails
-closed until it is fixed. Purely visual changes are not compared at any stage.
+request skips therefore fails the render or its checks on the next nightly push.
+A secret-control mismatch also makes the live gate fail closed until it is fixed.
+Purely visual changes are not compared at any stage.
 
 ## If a regression shows up
 
@@ -80,5 +83,6 @@ request that removed it, with `git revert` for a whole batch or by copying the
 one function. Fix any flakiness before it returns, and keep it only if it meets
 the bar at the top of this page.
 
-The flake ledger reopens a closed `flaky-test` issue if a test that still exists
-fails again.
+The flake ledger reopens a closed `flaky-test` issue when a test that still exists
+fails and then passes its retry on a run that can write to the tracker. A test that
+fails both attempts fails the job instead.

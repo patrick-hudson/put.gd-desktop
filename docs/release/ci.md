@@ -93,11 +93,11 @@ acceptance. The Release-preset compile happens in the package builders, not here
 On the 26.04 leg (`-DPUTGD_UI_CATALOG_RENDER=ON`), the suite includes
 one [UI catalog](../design/ui-catalog.md) test, `ui_catalog_render`, in the
 `cpu` pool. On a pull request it runs only when a changed path can alter the
-catalog (the `catalog` output of `tools/ci/changes.py`). Every other run renders it. It renders the complete dark catalog and rejects renderer failures,
+catalog (the `catalog` output of `tools/ci/changes.py`). Every other run renders it. The test renders the complete dark catalog and rejects renderer failures,
 incomplete or restricted manifests, source reads, missing images and skipped
 captures. It does not compare pixels or require reference-image updates.
-After the tests, the surface map and secret-control gate check
-`build/dev/ui-catalog/dark`. CI uploads that directory, including `manifest.json`,
+When the catalog was rendered, the surface map and secret-control gate then check
+`build/dev/ui-catalog/dark`, and CI uploads that directory, including `manifest.json`,
 as the `ui-catalog` artifact with `if-no-files-found: error`. Nightly publishing
 and desktop admission still consume that exact-build artifact. Review rendered
 UI changes by inspecting it; automatic detection of visual differences has
