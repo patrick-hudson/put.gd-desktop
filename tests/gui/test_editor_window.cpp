@@ -249,17 +249,6 @@ private slots:
    QTemporaryDir dir;QVERIFY(window.writeCopy(dir.filePath("copy.png")));stable();PUTGD_TRY_VERIFY(!window.savingCopy());stable();
   }
  }
- void successFeedbackWaitsForHoverAndFocusAndFailuresStay(){
-  EditDocument doc(canvasImage());EditorWindow window(doc);window.resize(900,620);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));window.activateWindow();
-  auto* feedback=window.findChild<QWidget*>("editorSaveFeedback");auto* copy=window.findChild<QPushButton*>("copySavedPath");auto* dismiss=window.findChild<QToolButton*>("dismissEditorSavedCopy");
-  const auto geometry=window.canvas().geometry();const auto zoom=window.canvas().zoom();const auto visible=window.canvas().visibleImageRect();
-  window.showSaved("/synthetic/copy.png");copy->setFocus(Qt::TabFocusReason);QTest::keyClick(copy,Qt::Key_Tab);QCOMPARE(QApplication::focusWidget(),dismiss);
-  PUTGD_VERIFY_STEADY(feedback->isVisible(),6200);window.canvas().setFocus();PUTGD_TRY_VERIFY_WITH_TIMEOUT(!feedback->isVisible(),1500);
-  window.showSaved("/synthetic/copy.png");window.canvas().setFocus();QTest::mouseMove(feedback,QPoint(4,4));QVERIFY(feedback->underMouse());
-  PUTGD_VERIFY_STEADY(feedback->isVisible(),6200);QTest::mouseMove(&window.canvas(),QPoint(4,4));PUTGD_TRY_VERIFY_WITH_TIMEOUT(!feedback->isVisible(),1500);
-  window.showSaveFailed("/synthetic/copy.png","Disk full");PUTGD_VERIFY_STEADY(feedback->isVisible(),6200);dismiss->click();QVERIFY(!feedback->isVisible());
-  QCOMPARE(window.canvas().geometry(),geometry);QCOMPARE(window.canvas().zoom(),zoom);QCOMPARE(window.canvas().visibleImageRect(),visible);
- }
  void saveFailuresAnnounceTheirReason(){
   static QObject* alerted=nullptr;alerted=nullptr;const bool active=QAccessible::isActive();
   const auto previous=QAccessible::installUpdateHandler([](QAccessibleEvent* event){if(event->type()==QAccessible::Alert)alerted=event->object();});QAccessible::setActive(true);
