@@ -71,8 +71,9 @@ flashes empty (#285). The resident:
 
 Every failure is soft: the inspector's preview area says "Couldn't make a
 preview" with the error's message, or names the cause ("Previews are turned off"). For a file type
-with no preview, the area is replaced by "No preview for this file type". For
-`preview_source_missing` it is hidden, and the inspector's local-copy hint
+with no preview, the area is replaced by "No preview for this file type",
+unless no local copy is left, when the inspector's local-copy hint shows
+instead. For `preview_source_missing` the area is hidden and the same hint
 explains what is gone. The refusals are `preview_source_missing` (neither
 file is left), `preview_source_changed` (the local copy differs),
 `preview_unsupported` (not an image or video), `previews_disabled`
