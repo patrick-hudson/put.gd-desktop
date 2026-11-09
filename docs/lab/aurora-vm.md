@@ -37,9 +37,10 @@ host before calling it hung.
 
 ## Goldens on `f44`
 
-The goldens below are standalone qcow2 files (virtual 48 GiB) under
+The goldens still on disk are standalone qcow2 files (virtual 48 GiB) under
 `~/work/put.gd/work/lab-images/`, each with `source.manifest.json`,
 `image-info.json`, the pinned guest `known_hosts` and the bootstrap inputs.
+Rows marked removed in the table below are kept as history.
 The [immutable-golden rules](vm-lab/hosts-and-bases.md#base-protection-and-inventory) apply.
 The Fedora 44 v3 golden exists only on `f44`. Patrick decided on 2026-11-09 that it
 stays there as an exception to the [two-copies rule](remote-golden-images.md): it is

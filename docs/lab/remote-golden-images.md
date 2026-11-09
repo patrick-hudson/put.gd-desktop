@@ -143,7 +143,8 @@ no copy remains, and the 2026-10-29 cloud golden, which remains in S3 and in the
 Boat snapshot. Deleting `-852d34e885c1` was an approved exception to the two-copies
 rule above, made knowing it can't be restored. The Fedora 44 v3 golden stays `f44`-only, also
 an approved exception (2026-11-09): it is an optional row and can be rebuilt from its
-source tag. Fedora 44 v1 and v2 were removed from `f44` on 2026-11-07, with Patrick's approval.
+source tag. Fedora 44 v1 and v2 were removed from `f44` on 2026-11-07, also approved exceptions
+to that rule, so no copy of either remains.
 
 **Which Fedora 45 golden counts for acceptance.** Since 2026-11-02 the Aurora
 Fedora 45 row in the [acceptance matrix](../testing/acceptance-matrix.md) uses
