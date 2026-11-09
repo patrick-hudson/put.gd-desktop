@@ -401,7 +401,7 @@ class NightlyTests(unittest.TestCase):
                 lock.return_value.release.assert_called_once()
                 self.assertFalse(slot.exists())
 
-    def lost_session_row(self, errors):
+    def lost_session_row(self, errors, rows=({'functional': 'blocked', 'note': 'target session command unavailable: LabError exit 255'},)):
         """Run a row whose first cell fails with the given cleanup errors (#1214)."""
         from tools.lab import lab, nightly_desktop_guest as guest
         with tempfile.TemporaryDirectory() as tmp:
@@ -428,7 +428,7 @@ class NightlyTests(unittest.TestCase):
                     cells.append(Path(argv[argv.index('--out')+1]).name)
                     target = Path(argv[argv.index('--out')+1])
                     target.mkdir()
-                    (target/'receipt.json').write_text(json.dumps(dict(environment=dict(cleanup_errors=errors))))
+                    (target/'receipt.json').write_text(json.dumps(dict(environment=dict(cleanup_errors=errors), interactions=list(rows))))
             observed = dict(nightly.cell(assertion='private target cleanup failed'),
                             observations=['target session command unavailable: LabError exit 255'])
             with patch.object(nightly, 'ROOT', root), patch.object(nightly.Path, 'home', return_value=root), \
@@ -458,6 +458,12 @@ class NightlyTests(unittest.TestCase):
         retire.assert_called_once()
         self.assertFalse(slot)
         self.assertNotIn('cleanupBlocked', record)
+
+    def test_lost_session_after_a_passing_recipe_reports_the_cleanup_failure(self):
+        record, _, _, _ = self.lost_session_row(['resident quit transport unavailable; private session retained'],
+                                                rows=[{'functional': 'passed', 'note': 'operationId=unrelated'}])
+        self.assertTrue(record['notRunReason'].endswith('region_upload attempt 1: private target cleanup failed'))
+        self.assertNotIn('unrelated', record['notRunReason'])
 
     def test_lost_session_that_also_left_unsafe_cleanup_stays_retained(self):
         record, cells, retire, slot = self.lost_session_row(['resident quit transport unavailable; private session retained',

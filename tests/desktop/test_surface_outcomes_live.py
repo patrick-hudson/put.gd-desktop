@@ -306,8 +306,9 @@ class LiveOutcomes(unittest.TestCase):
                  {'id':'owned','remoteStatus':'unknown','deleteOperationId':'delete-1'},
                  {'id':'owned','remoteStatus':'failed','linkAvailable':False}]
         def wait(fn,*a,**kw):
-            while not (value:=fn()):pass
-            return value
+            for _ in range(5):
+                if value:=fn():return value
+            raise AssertionError('wait never settled')
         def call(method,params=None):
             if method=='history.detail':return details.pop(0)
             return {}
@@ -323,8 +324,9 @@ class LiveOutcomes(unittest.TestCase):
                  {'id':'owned','remoteStatus':'unknown','deleteOperationId':'delete-1'},
                  {'id':'owned','remoteStatus':'removed','linkAvailable':False}]
         def wait(fn,*a,**kw):
-            while not (value:=fn()):pass
-            return value
+            for _ in range(5):
+                if value:=fn():return value
+            raise AssertionError('wait never settled')
         def call(method,params=None):
             if method=='history.detail':return details.pop(0)
             return {}
@@ -333,7 +335,7 @@ class LiveOutcomes(unittest.TestCase):
                             wait=wait,call=Mock(side_effect=call),expect=lambda ok,note:self.assertTrue(ok,note))
         with patch.object(outcomes_live.outcomes,'_history'):
             outcomes_live._cleanup(ctx,{'id':'owned'})
-        ctx.call.assert_any_call('delete.retry',{'id':'delete-1'})
+        self.assertEqual([c.args[1] for c in ctx.call.call_args_list if c.args[0]=='delete.retry'],[{'id':'delete-1'}])
         ctx.click.assert_not_called()
         ctx.note.assert_any_call('deletion_count=1')
 

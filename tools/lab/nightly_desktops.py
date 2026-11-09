@@ -436,6 +436,15 @@ def lost_guest_session(out):
         return False
 
 
+def failed_recipe_note(out, fallback):
+    """A failed recipe's own note; a recipe that passed only has its cleanup to report."""
+    try:
+        rows = json.loads((Path(out)/'receipt.json').read_text()).get('interactions', [])
+        return next((r['note'] for r in rows if r.get('functional') != 'passed' and r.get('note')), fallback)
+    except (OSError, ValueError, AttributeError, TypeError):
+        return fallback
+
+
 def worker_identity():
     from tools.lab.desktop_lock import process_start
     return dict(pid=os.getpid(), start=process_start(os.getpid()),
@@ -932,7 +941,7 @@ def worker_run(config, tag, identity, artifacts, out, deadline):
                                     raise NotRun('Proton guest provisioning did not complete; source check passed')
                             if lost_guest_session(target):
                                 # The failing cell is the row's reported result (#1214).
-                                note = next(filter(None, observed.get('observations', [])), observed.get('assertion', ''))
+                                note = failed_recipe_note(target, observed.get('assertion', ''))
                                 reason = f'guest session lost in {flow} attempt {attempt}: {note}'
                                 record['stoppedEarly'] = dict(flow=flow, attempt=attempt, reason=reason)
                                 record['notRunReason'] = reason
