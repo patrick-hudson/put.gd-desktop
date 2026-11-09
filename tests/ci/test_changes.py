@@ -113,7 +113,7 @@ class CatalogSelection(unittest.TestCase):
                      'src/core/RecordingModel.h', 'src/app/OperationService.cpp',
                      'src/record/RecordingPipeline.cpp', 'src/record/AvSync.cpp',
                      'schemas/config.schema.json', 'CMakeLists.txt', 'CMakePresets.json',
-                     'tests/fixtures/UiSessionFixture.h', 'tests/ci/test_catalog_references.py',
+                     'tests/fixtures/Waits.h', 'tests/ci/test_catalog_references.py',
                      'tools/lab/surface_driver/inspect.py', 'tools/lab/surface_driver/context.py',
                      'some/new/directory/file.txt', 'tools/lab/new_inventory.py',
                      'tests/unit/test_settings.cpp', 'tools/lab/lab.py', 'docs/ci.md'):
@@ -134,6 +134,7 @@ class CatalogSelection(unittest.TestCase):
                      'tests/gui/ui_catalog.cpp', 'tests/gui/catalog_build_identity.cpp',
                      'cmake/TestsGui.cmake', 'tools/ci/check_catalog_render.py', 'tools/ci/changes.py',
                      'tools/lab/surface_map/model.json', 'tools/lab/surface_map/surface_map.py',
+                     'tests/fixtures/UiSessionFixture.h', 'src/record/BarPlacement.cpp', 'src/record/MaskBox.h',
                      'tools/lab/surface_driver/secret-states.json',
                      'tools/lab/surface_driver/redact.py', 'tools/lab/surface_driver/gate.py'):
             with self.subTest(path=path):
