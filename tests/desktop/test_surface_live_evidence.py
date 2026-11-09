@@ -370,10 +370,10 @@ class GatePinProvenance(unittest.TestCase):
             self.assertIn('driver-pin-differs-from-build', self.gate.classifier_blockers(self.commit)[1])
 
     def test_one_control_removed_from_one_state_is_refused(self):
-        with self.edited_pin(lambda states: states['04-destinations-s3'].remove('credentialAccessKey')):
+        with self.edited_pin(lambda states: states['09-stored-credential-hint'].remove('credentialAccessKey')):
             pin, blockers = self.gate.classifier_blockers(self.commit)
         self.assertIn('driver-pin-differs-from-build', blockers)
-        self.assertIn('credentialAccessKey', pin['04-destinations-s3'])  # the comparison uses the build's pin
+        self.assertIn('credentialAccessKey', pin['09-stored-credential-hint'])  # the comparison uses the build's pin
 
     def test_a_loaded_classifier_that_differs_from_the_build_is_refused(self):
         import re as _re
