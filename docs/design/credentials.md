@@ -46,9 +46,14 @@ in the error's details is set only if that removal itself failed.
 
 Configuration stores `{"mode":"keychain","reference":"putgd/profile-name"}` or
 `{"mode":"session","reference":null}`. Receipts preserve this reference to restore
-access to an original destination. They never preserve keys or tokens.
-No secret is written to configuration, operation journals, payload spools, the
-persistent log or exported diagnostics. The log redacts authorization headers, session
+access to an original destination. They never preserve access keys, secret keys or session tokens. Expiring S3/B2
+download URLs are bearer secrets retained as History links; they do not serve as
+object identity and their query values never enter logs or diagnostics.
+Access keys, secret keys and session tokens are never written to configuration,
+operation journals, payload spools, the persistent log or exported diagnostics.
+Operation journals, destination-test journals and the History database can retain
+bearer download links in receipts; treat those private records as sensitive.
+The log redacts authorization headers, session
 tokens, presigned query strings, share-link fragments and secret-shaped values when it
 writes each record, and the AWS SDK never logs above Warn (Info with debug logging),
 so request headers are not logged ([diagnostics.md](diagnostics.md#redaction)).
@@ -57,6 +62,13 @@ includes keychain data ([diagnostics.md](diagnostics.md#diagnostics-package)). K
 this implementation does not promise locked or securely wiped process memory.
 
 The explicit GUI **Show** action can read an unlocked saved S3 secret access key through `setup.revealCredentialSecret`. It returns only that secret from the resident cache for the saved profile and accepted/observed revision; it does no keychain IO. If the cache is empty, unlock saved credentials explicitly first. The CLI rejects this method and the MCP helper does not expose it. The UI holds the revealed value read-only until Hide, a destination/provider change, page hide, close, reload, or credential clearing. Revealed saved values never become credential drafts, setup job records, snapshots, diagnostics, or checkpoints.
+
+Copying an expired S3/B2 History link reads only cached credentials. A missing
+cache returns `credential_setup_required` and offers **Unlock saved credentials**;
+History never unlocks as part of copying or browsing. The separate explicit
+`history.unlockLinkCredentials` action (also available through CLI/MCP) reads only
+the saved receipt's original keychain reference. A later copy performs renewal.
+Session credentials must be entered again through Destinations after restart.
 
 A GUI setup form can use `save`, `unlock`, `cached` and `forget`, followed by
 `S3Provider::readiness` and explicit `testDestination`. Callbacks from the provider

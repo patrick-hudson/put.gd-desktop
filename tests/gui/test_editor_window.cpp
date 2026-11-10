@@ -6,6 +6,7 @@
 #include "editor/EditorCommands.h"
 #include "platform/HostOpen.h"
 #include <QApplication>
+#include <QPainter>
 #include <QAccessible>
 #ifdef Q_OS_LINUX
 #include <QDBusConnection>
@@ -58,6 +59,70 @@ class EditorWindowTest:public QObject {
  static QImage canvasImage(){QImage image(400,260,QImage::Format_RGB32);image.fill(QColor("#20242c"));return image;}
  static void add(EditDocument& doc,const QJsonObject& shape){QJsonArray created;QString code,message;QVERIFY2(Commands::apply(doc,{QJsonObject{{"op","add"},{"shape",shape}}},created,code,message),qPrintable(message));}
 private slots:
+ void redactionEdgesNeverSampleCoveredContent_data(){
+  QTest::addColumn<double>("zoom");QTest::addColumn<QString>("effect");
+  for(double zoom:{0.83,0.29,0.51,0.67})for(const auto& effect:{"none","blur","pixelate","highlight"})
+   QTest::newRow(qPrintable(QString("%1-%2").arg(zoom).arg(effect)))<<zoom<<QString(effect);
+ }
+ void redactionEdgesNeverSampleCoveredContent(){
+  QFETCH(double,zoom);QFETCH(QString,effect);
+  const QRect secret(101,79,157,113);
+  auto render=[&](const QColor& color){
+   QImage image(600,400,QImage::Format_RGB32);image.fill(Qt::white);
+   {QPainter painter(&image);painter.fillRect(secret,color);}
+   EditDocument doc(image);add(doc,{{"kind","redact"},{"rect",QJsonArray{secret.x(),secret.y(),secret.width(),secret.height()}}});
+   if(effect!="none"){QJsonObject shape{{"kind",effect=="highlight"?"highlight":"blur"},{"rect",QJsonArray{90,65,190,145}}};if(effect!="highlight")shape["style"]=effect=="pixelate"?"pixelate":"blur";add(doc,shape);}
+   EditorCanvas canvas(doc);canvas.resize(540,360);canvas.show();canvas.setZoom(zoom);
+   QImage result(canvas.size(),QImage::Format_RGB32);canvas.render(&result);return result;
+  };
+  // Changing only covered pixels must never change even one displayed pixel,
+  // including the filtered edge and tiles overlapping the redaction.
+  QCOMPARE(render(Qt::magenta),render(Qt::green));
+ }
+ void maskEdgesMatchScaledExport_data(){
+  QTest::addColumn<double>("zoom");QTest::addColumn<double>("dpr");QTest::addColumn<bool>("alpha");QTest::addColumn<bool>("cropped");
+  for(double zoom:{0.29,0.83,1.37})for(double dpr:{1.0,1.5,2.0})for(bool alpha:{false,true})for(bool cropped:{false,true})
+   QTest::newRow(qPrintable(QString("%1-%2-%3-%4").arg(zoom).arg(dpr).arg(alpha).arg(cropped)))<<zoom<<dpr<<alpha<<cropped;
+ }
+ void maskEdgesMatchScaledExport(){
+  QFETCH(double,zoom);QFETCH(double,dpr);QFETCH(bool,alpha);QFETCH(bool,cropped);
+  const QRect crop=cropped?QRect(70,40,450,300):QRect(0,0,600,400);
+  QImage image(600,400,QImage::Format_ARGB32_Premultiplied);image.fill(Qt::green);
+  {QPainter painter(&image);painter.setCompositionMode(QPainter::CompositionMode_Source);painter.fillRect(crop,QColor(240,180,210,alpha?100:255));}
+  EditDocument doc(image);doc.setCrop(crop);add(doc,{{"kind","redact"},{"rect",QJsonArray{201,149,157,113}}});
+  EditDocument exported(doc.render());
+  auto render=[&](EditDocument& document){EditorCanvas canvas(document);canvas.resize(540,360);canvas.show();canvas.setZoom(zoom);QImage result(QSize(540,360)*dpr,QImage::Format_RGB32);result.setDevicePixelRatio(dpr);canvas.render(&result);return result;};
+  const auto actual=render(doc),expected=render(exported);
+  auto changed=image;{QPainter painter(&changed);painter.fillRect(QRect(201,149,157,113),Qt::green);}
+  EditDocument other(changed);other.setCrop(crop);add(other,{{"kind","redact"},{"rect",QJsonArray{201,149,157,113}}});
+  QCOMPARE(actual,render(other)); // Covered-content invariance stays byte-exact at every DPR.
+  // Clipped/full-span Qt filtering can round a channel by one, with one
+  // further step for alpha compositing. Only the export comparison permits
+  // this; covered-content invariance above remains byte-exact.
+  const int rounding=alpha?2:1;
+  for(int y=0;y<actual.height();++y)for(int x=0;x<actual.width();++x){
+   const auto a=actual.pixelColor(x,y),b=expected.pixelColor(x,y);
+   QVERIFY(std::abs(a.red()-b.red())<=rounding&&std::abs(a.green()-b.green())<=rounding&&std::abs(a.blue()-b.blue())<=rounding);
+  }
+ }
+
+ void sanitizedViewTracksMaskCropAndViewChanges(){
+  QImage image(800,500,QImage::Format_RGB32);image.fill(Qt::magenta);EditDocument doc(image);
+  EditorCanvas canvas(doc);canvas.resize(540,360);canvas.show();canvas.setZoom(0.83);
+  auto render=[](EditorCanvas& view){QImage result(view.size(),QImage::Format_RGB32);view.render(&result);return result;};
+  double zoom=0.83;auto verify=[&]{
+   canvas.documentChanged();canvas.fit();canvas.setZoom(zoom);EditorCanvas fresh(doc);fresh.resize(canvas.size());fresh.show();fresh.setZoom(zoom);
+   QCOMPARE(render(canvas),render(fresh));
+  };
+  Shape mask;mask.kind=Shape::Kind::Redact;mask.rect={101,79,157,113};mask.id=doc.add(mask);verify();
+  mask.rect.translate(21,17);QVERIFY(doc.replace(mask));verify();
+  QVERIFY(doc.setCrop({30,20,700,450}));verify();
+  zoom=0.29;verify();
+  QVERIFY(doc.remove(mask.id));verify();
+  QVERIFY(doc.undo());verify();
+  canvas.hide();canvas.show();verify();
+ }
+
  void propertyHeadingFitsAndKeepsItsSelectionAccessible(){
   {EditDocument doc(canvasImage());EditorWindow window(doc);}
   const auto previous=QApplication::font();auto restore=qScopeGuard([previous]{QApplication::setFont(previous);});

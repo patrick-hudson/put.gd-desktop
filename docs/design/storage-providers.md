@@ -49,11 +49,20 @@ by such a reference or under the conditional and versioned safeguards above.
 the custom uploader reduces rows to names and addresses to scheme and host.
 
 A version-1 receipt preserves provider/profile/revision, original non-secret destination,
-credential-store/session reference, versioned opaque object reference, concurrency token,
-publication marker and direct URL as separate fields. Core/history/CLI never parse the
+credential-store/session reference, versioned opaque object reference (including link
+expiry when present), concurrency token, publication marker and direct URL as separate fields. Core/history/CLI never parse the
 URL, assume bucket/key/ETag fields, or reroute through current profiles. Upload results
 are uploaded, collision, failed or unknown. Reconciliation is own, foreign, missing or
 unknown and must inspect the saved publication identity before any retry/rename.
+
+`refreshLink` is an explicit copy-time operation. S3 and B2 verify the saved
+publication and use only its original destination and cached credential reference;
+they never unlock credentials. History commits a changed URL and `linkExpiresAt`
+only after checking that every other receipt field still matches. `stat` leaves an expiring link’s saved URL and expiry unchanged, so deletion
+identity remains stable. B2 also checks that its filename-based download URL still serves the recorded file version before issuing another token.
+`unlockLinkCredentials` is a separate explicit user action on the credential
+store's owning thread; it may ask the desktop keyring to unlock the original
+saved reference even when that profile no longer exists in current settings.
 
 Deletion receives the exact receipt, persistent deletion operation ID and versioned
 opaque progress. Before each driver network step call `DurableCheckpoint`, then await

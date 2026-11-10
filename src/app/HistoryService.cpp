@@ -25,11 +25,41 @@ void HistoryService::detail(const QString& id,JsonReply reply) {if(!operations_.
 void HistoryService::preview(const QString& id,JsonReply reply,bool retry) {operations_.makePreview(id,std::move(reply),retry);}
 void HistoryService::clear(JsonReply reply) {if(!operations_.ready()){reply({"initializing","Wait for resident journal recovery",{}},{});return;}const auto path=operations_.databasePath();operations_.background([path](Error& e) {HistoryStore store(path);e=store.clear();return QJsonObject{{"cleared",!e},{"pendingDeletionTargetsRetained",true}};},[this,reply=std::move(reply)](Error e,QJsonObject result){if(!e)notifyChanged();reply(e,result);});}
 void HistoryService::copyImage(const QString& id,JsonReply reply) {if(!operations_.ready()){reply({"initializing","Wait for resident journal recovery",{}},{});return;}operations_.copyHistoryImage(id,std::move(reply));}
+QJsonObject HistoryService::copyableLink(const QString& id,Error& e) {
+
+  HistoryStore store(operations_.databasePath());auto data=store.detail(id,&e);if(e)return QJsonObject{};
+  if(data["linkRefreshable"].toBool()) {
+   auto receipt=StorageReceipt::fromJson(data["receipt"].toObject());auto provider=operations_.providers().find(receipt.destination.providerId);
+   if(!provider){e={"provider_unavailable","Restore access to the original destination",{}};return QJsonObject{};}
+   auto lock=operations_.objectLock(receipt.destination,receipt.objectReference,{});std::unique_lock guard(*lock);
+   data=store.detail(id,&e);if(e)return QJsonObject{};
+   if(data["linkRefreshable"].toBool()) {
+    receipt=StorageReceipt::fromJson(data["receipt"].toObject());
+    auto result=awaitProvider<StatResult>([&](auto cb){provider->refreshLink(receipt,cb);});
+    if(result.error||result.status!="own"){e=result.error?result.error:Error{"link_refresh_failed","The original uploaded object is no longer available",{}};return QJsonObject{};}
+    if((e=store.refreshLink(id,receipt,result.receipt)))return QJsonObject{};
+    data=store.detail(id,&e);
+   }
+  }
+  return data;
+
+}
+void HistoryService::unlockLinkCredentials(const QString& id,JsonReply reply) {
+ detail(id,[this,reply](Error e,QJsonObject data){
+  if(e){reply(e,{});return;}
+  const auto receipt=StorageReceipt::fromJson(data["receipt"].toObject());
+  auto provider=operations_.providers().find(receipt.destination.providerId);
+  if(!data["linkRefreshable"].toBool()||!provider||receipt.destination.credentialReference["mode"]!="keychain"){reply({"credential_setup_required","Restore the original destination credentials in Settings",{}},{});return;}
+  provider->unlockLinkCredentials(receipt,[reply](Error e){reply(e,{{"unlocked",!e}});});
+ });
+}
 void HistoryService::copyLink(const QString& id,JsonReply reply) {
+ if(!operations_.ready()){reply({"initializing","Wait for resident journal recovery",{}},{});return;}
  const auto ticket=operations_.invalidateCopyEligibility();
- detail(id,[this,id,reply,ticket](Error e,QJsonObject data) {
+ operations_.background([this,id](Error& e) {return copyableLink(id,e); },[this,id,reply,ticket](Error e,QJsonObject data) {
   if(e){reply(e,{});return;}
   if(!data["linkAvailable"].toBool()){reply({"link_unavailable","This recorded link is no longer available",{}},{});return;}
+  notifyChanged();
   operations_.copyHistoryUrl(data["receipt"].toObject()["directUrl"].toString(),[this,id,reply](Error e,QJsonObject result) {
    if(e||!result["copied"].toBool()){reply(e,result);return;}
    const auto path=operations_.databasePath();
@@ -44,9 +74,9 @@ void HistoryService::copyLink(const QString& id,JsonReply reply) {
 void HistoryService::copyLinks(const QStringList& ids,JsonReply reply) {
  if(!operations_.ready()){reply({"initializing","Wait for resident journal recovery",{}},{});return;}
  const auto ticket=operations_.invalidateCopyEligibility();const auto path=operations_.databasePath();
- operations_.background([path,ids](Error& e) {
-  HistoryStore store(path);QStringList urls;
-  for(const auto& id:ids){const auto data=store.detail(id,&e);if(e)return QJsonObject{};if(!data["linkAvailable"].toBool()){e={"link_unavailable","This recorded link is no longer available",{{"historyId",id}}};return QJsonObject{};}urls.append(data["receipt"].toObject()["directUrl"].toString());}
+ operations_.background([this,ids](Error& e) {
+  QStringList urls;
+  for(const auto& id:ids){const auto data=copyableLink(id,e);if(e)return QJsonObject{};if(!data["linkAvailable"].toBool()){e={"link_unavailable","This recorded link is no longer available",{{"historyId",id}}};return QJsonObject{};}urls.append(data["receipt"].toObject()["directUrl"].toString());}
   return QJsonObject{{"text",urls.join('\n')}};
  },[this,ids,reply,ticket](Error e,QJsonObject links) {
   if(e){reply(e,{});return;}

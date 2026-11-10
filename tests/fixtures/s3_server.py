@@ -55,6 +55,28 @@ def signature(handler, body):
         return True
     except (AssertionError, KeyError, TypeError, ValueError): return False
 
+def presigned_signature(handler):
+    try:
+        parsed = urllib.parse.urlsplit(handler.path)
+        query = dict(urllib.parse.parse_qsl(parsed.query, keep_blank_values=True))
+        signature_value = query.pop('X-Amz-Signature')
+        access, date, region, service, terminal = query['X-Amz-Credential'].split('/')
+        assert access == ACCESS and service == 's3' and terminal == 'aws4_request'
+        assert query['X-Amz-Algorithm'] == 'AWS4-HMAC-SHA256'
+        signed_at = __import__('calendar').timegm(time.strptime(query['X-Amz-Date'], '%Y%m%dT%H%M%SZ'))
+        assert 1 <= int(query['X-Amz-Expires']) <= 604800
+        assert signed_at <= time.time() <= signed_at + int(query['X-Amz-Expires'])
+        names = query['X-Amz-SignedHeaders'].split(';')
+        headers = ''.join(name + ':' + ' '.join(handler.headers[name].split()) + '\n' for name in names)
+        encoded = '&'.join(urllib.parse.quote(k, safe='-_.~') + '=' + urllib.parse.quote(v, safe='-_.~') for k, v in sorted(query.items()))
+        canonical = '\n'.join((handler.command, parsed.path, encoded, headers, query['X-Amz-SignedHeaders'], 'UNSIGNED-PAYLOAD'))
+        scope = '/'.join((date, region, service, terminal))
+        to_sign = 'AWS4-HMAC-SHA256\n' + query['X-Amz-Date'] + '\n' + scope + '\n' + digest(canonical.encode())
+        key = ('AWS4' + SECRET).encode()
+        for value in (date, region, service, terminal): key = hmac.new(key, value.encode(), hashlib.sha256).digest()
+        return hmac.compare_digest(hmac.new(key, to_sign.encode(), hashlib.sha256).hexdigest(), signature_value)
+    except (AssertionError, KeyError, TypeError, ValueError): return False
+
 class Handler(BaseHTTPRequestHandler):
     protocol_version = 'HTTP/1.1'
     def log_message(self, *_): pass
@@ -77,7 +99,7 @@ class Handler(BaseHTTPRequestHandler):
                 return self.handle_wire(body)
             if self.path == '/__reset':
                 blobs.clear()
-                state.update({'events': [], 'objects': {}, 'versioning': '', 'versionless': False, 'rules': [], 'sequence': 0, 'uploads': {}})
+                state.update({'private': False, 'events': [], 'objects': {}, 'versioning': '', 'versionless': False, 'rules': [], 'sequence': 0, 'uploads': {}})
                 state.update(json.loads(body))
                 state['sequence'] = max([state['sequence']] + [int(v['version']) for versions in state['objects'].values() for v in versions if v['version'].isdigit()])
                 self.respond(200, b'{}')
@@ -110,11 +132,12 @@ class Handler(BaseHTTPRequestHandler):
         bucket = split[0]
         key = split[1] if len(split) > 1 else ''
         query = urllib.parse.parse_qs(parsed.query, keep_blank_values=True)
-        signed = bool(self.headers.get('Authorization'))
+        presigned = 'X-Amz-Signature' in query
+        signed = bool(self.headers.get('Authorization')) or presigned
         event = {'method': self.command, 'path': self.path, 'bucket': bucket, 'key': key,
                  'headers': {k.lower(): v for k,v in self.headers.items()}, 'body': base64.b64encode(body).decode() if len(body) <= INLINE_BYTES else '',
                  'bodyBytes': len(body), 'bodySha256': digest(body),
-                 'signatureValid': signature(self, body) if signed else False}
+                 'signatureValid': presigned_signature(self) if presigned else signature(self, body) if signed else False}
         with lock:
             state['events'].append(event)
             rule = None
@@ -154,6 +177,10 @@ class Handler(BaseHTTPRequestHandler):
                 xml = '<VersioningConfiguration xmlns="http://s3.amazonaws.com/doc/2006-03-01/">' + ('<Status>' + state['versioning'] + '</Status>' if state['versioning'] else '') + '</VersioningConfiguration>'
                 self.respond(200, xml.encode()); return
             if self.command in ('GET', 'HEAD'):
+                if self.command == 'GET' and state.get('private') and not signed:
+                    if state.get('unsignedAuthError'):
+                        self.respond(400,b'<Error><Code>InvalidArgument</Code><Message>Authorization header is required</Message></Error>'); return
+                    self.error(403); return
                 if self.command == 'GET' and rule and 'responseBody' in rule:
                     self.respond(200, rule['responseBody'].encode()); return
                 if not selected or selected.get('marker'):

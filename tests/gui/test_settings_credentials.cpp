@@ -278,12 +278,12 @@ QVERIFY(!access->placeholderText().isEmpty());QVERIFY(!access->placeholderText()
   PUTGD_TRY_COMPARE_WITH_TIMEOUT(window.saveViewState()["setupJobs"].toArray().size(),1,2000);
   QVERIFY(!window.findChild<QPushButton*>("testDestination")->isEnabled());
   // Controls are disabled one by one, not their sections: labels stay enabled.
-  QVERIFY(!window.findChild<QLineEdit*>("s3Bucket")->isEnabled());QVERIFY(!window.findChild<QPushButton*>("storeCredentials")->isEnabled());QVERIFY(window.findChild<QWidget*>("destinationEditor")->isEnabled());QVERIFY(window.findChild<QLabel*>("storedCredentialHint")->isEnabled());
+  QVERIFY(!window.findChild<QLineEdit*>("s3Bucket")->isEnabled());QVERIFY(!window.findChild<QComboBox*>("b2LinkMode")->isEnabled());QVERIFY(!window.findChild<QPushButton*>("storeCredentials")->isEnabled());QVERIFY(window.findChild<QWidget*>("destinationEditor")->isEnabled());QVERIFY(window.findChild<QLabel*>("storedCredentialHint")->isEnabled());
   finish["second-s3"]({});
   PUTGD_TRY_VERIFY_WITH_TIMEOUT(window.saveViewState()["setupJobs"].toArray().isEmpty(),2000);
   QVERIFY(window.findChild<QPushButton*>("testDestination")->isEnabled());QCOMPARE(starts,2);
   // Afterwards each control returns to its provider's state.
-  QVERIFY(window.findChild<QLineEdit*>("s3Bucket")->isEnabled());QVERIFY(window.findChild<QComboBox*>("s3AclMode")->isEnabled());QVERIFY(!window.findChild<QComboBox*>("b2LinkMode")->isEnabled());
+  QVERIFY(window.findChild<QLineEdit*>("s3Bucket")->isEnabled());QVERIFY(window.findChild<QComboBox*>("s3AclMode")->isEnabled());QVERIFY(window.findChild<QComboBox*>("b2LinkMode")->isEnabled());
  }
  void storedCredentialsShowOneStatusRowAboveSpacedActions(){
   QTemporaryDir dir;CredentialStore secrets;S3Provider s3(secrets);auto doc=Settings::developmentTemplate();auto profiles=doc["profiles"].toArray();auto profile=profiles[0].toObject();profile["credentials"]=QJsonObject{{"mode","session"},{"reference",QJsonValue::Null}};profiles[0]=profile;doc["profiles"]=profiles;SettingsService service(dir.filePath("config.json"),[&](auto,auto value){return s3.validateSettings(value);});QVERIFY(service.save(doc,{}));secrets.setSession("development-s3",{"AKIA-synthetic-full-access","synthetic-full-secret",{}});

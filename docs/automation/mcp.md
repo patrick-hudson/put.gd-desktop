@@ -66,7 +66,9 @@ such as `session_unavailable` and `config_conflict` retain their original envelo
 | `list_history` | optional pagination/filters → history.list | Offline local metadata. `category: "text+other"` selects History's **Other files** aggregate (stored `text` and `other`); every other category keeps exact matching ([CLI semantics](cli.md)) |
 | `get_history_entry` | id → history.detail | Original receipt/local-copy/deletion state |
 | `make_history_preview` | id → history.preview | Makes a missing image preview or video poster (never made, failed or cleaned up) from the retained file or an unchanged local copy; returns `previewPath` and `state` `ready`/`made`, or why there is none ([recording.md](../design/recording/history-posters.md#previews-made-on-selection)) |
-| `copy_history_link` | id → history.copyLink | Writes stored direct URL to clipboard |
+| `copy_history_link` | id → history.copyLink | Copies the recorded link; expired S3 presigned/B2 authorized links refresh from their saved destination and cached credentials first. Never unlocks the keyring |
+| `unlock_history_link_credentials` | id → history.unlockLinkCredentials | Explicitly unlocks the original saved credential reference for an expired link; the desktop keyring may prompt. Call copy separately afterwards |
+| `copy_history_links` | ids → history.copyLinks | Renews expired S3/B2 links and copies them in selection order. Failures before the clipboard write copy nothing; a later recording error or transport timeout can occur after the clipboard was written |
 | `open_history_link` | id → history.openLink | Opens the stored direct URL in the default browser exactly as clicking the link-ready notification does: the XDG portal's OpenURI, else `gio open` with the host's environment ([diagnostics.md](../design/diagnostics.md#opening-links-and-folders-on-the-host)). Returns `route` (`portal`/`launcher`), `opened` and `fallbackFrom`; `link_not_opened` when nothing opened it |
 | `delete_history_uploads` | nonempty ids; optional acknowledgement | Omitted acknowledgement prepares effects; exact returned acknowledgement confirms remote deletion |
 | `reload_configuration` | settings.reload | Validates/reloads existing file; no source/provider activity |
@@ -193,3 +195,5 @@ behavior. The source55 Cinnamon live S3 check used the production CLI and GUI,
 so it does not establish MCP cloud parity. Each new build also needs current display/failure cases, full compositor
 release gates and release lifecycle evidence. [verification.md](../testing/verification.md) records the
 source-specific checks and outstanding acceptance.
+
+Use `patch_configuration` to set S3 `linkMode` (`public` or `presigned`) and `linkValidityDays` (integer 1–7). The resident validates these settings. Presigned URLs are bearer secrets: do not put tool-returned links in logs or review material.
