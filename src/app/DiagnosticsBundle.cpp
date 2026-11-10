@@ -23,7 +23,7 @@
 namespace putgd {
 namespace {
 const QStringList nameKeys{"name","candidate","fileName","folderName","label","notificationText"};
-const QStringList urlKeys{"url","directUrl","publicUrl","publicUrlBase","link","shareUrl"};
+const QStringList urlKeys{"url","directUrl","publicUrl","publicUrlBase","link","shareUrl","requestUrl"};
 const QStringList objectKeys{"key","objectKey","objectPrefix"};
 const QStringList idKeys{"accountRootUid","folderUid","shareUid","linkUid","volumeId","nodeUid"};
 const QStringList pathKeys{"path","localPath","previewPath","directory","stagingPath","root","from","to","modulePath","configPath"};
@@ -185,6 +185,16 @@ void DiagnosticsBundles::create(const BundleRequest& request,JsonReply reply) {
  Context context;
  context.databasePath=operations_.databasePath();context.logsDirectory=stateRoot_+"/logs";context.defaultFolder=defaultFolder(snapshot);
  context.home=QDir::homePath();context.settings=snapshot.document;
+ // Each provider says what of its settings a package may carry: a custom uploader
+ // keeps the names of its headers, parameters and arguments and drops every value (#1361).
+ {
+  auto profiles=context.settings["profiles"].toArray();
+  for(qsizetype index=0;index<profiles.size();++index) {
+   auto profile=profiles[index].toObject();
+   if(const auto provider=operations_.providers().find(profile["provider"].toString())) {profile["settings"]=provider->diagnosticSettings(profile["settings"].toObject());profiles[index]=profile;}
+  }
+  context.settings["profiles"]=profiles;
+ }
  context.diagnostics=diagnostics_?diagnostics_():operations_.diagnostics();
  context.environment=environment_?environment_():QJsonObject{};
  const auto locations=context.diagnostics["locations"].toObject();
@@ -378,6 +388,7 @@ QJsonObject DiagnosticsBundles::build(const Context& context,const BundleRequest
   redactor.literal("label",profile["label"].toString());
   redactor.literal("bucket",settings["bucket"].toString());redactor.literal("endpoint",settings["endpoint"].toString());
   redactor.literal("url",settings["publicUrlBase"].toString());redactor.literal("name",settings["folderName"].toString());
+  redactor.literal("url",settings["requestUrl"].toString());
   for(const auto* key:{"accountRootUid","folderUid"})redactor.literal("id",settings[key].toString());
  }
  HistoryStore store(context.databasePath);if(store.error()){error=store.error();return {};}

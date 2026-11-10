@@ -18,6 +18,7 @@ from passing tests.
 | Provider contract | `src/core/StorageProvider.h`, `src/core/StorageReceipt.h` | `tests/integration/test_storage_contract.cpp`, [providers](../design/storage-providers.md) |
 | S3 / explicit credential resolution | `src/storage/s3/`, `src/secrets/` | `tests/integration/`, [credentials](../design/credentials.md), [S3](../user/s3.md) |
 | Backblaze B2 native API | `src/storage/b2/` | `tests/integration/test_b2.cpp`, [B2](../user/b2.md) |
+| Custom HTTP uploader and `.sxcu` import | `src/storage/http/`, `src/ui/CustomUploaderPanel.*` | `tests/unit/test_http_uploader.cpp`, `tests/integration/test_http_uploader.cpp`, `tools/lab/http_receivers/`, [custom uploader](../user/custom-uploader.md), [HTTP receivers](../lab/http-receivers.md) |
 | Proton Drive helper adapter | `src/storage/proton/` | `tests/integration/test_proton.cpp`, `tests/integration/test_proton_transport.cpp`, [Proton Drive](../user/proton-drive.md) |
 | Settings/activity/history widgets and login startup | `src/ui/`, `src/app/LoginStartup.*` | `tests/gui/`, `tests/unit/test_login_startup.cpp`, [user guide](../user/user-guide.md) |
 | Disposable desktop VM lab / development package | `tools/lab/`, `packaging/linux/` | `tests/desktop/test_lab.py`, [VM lab](../lab/vm-lab.md), [remote hosts](../lab/remote-builders.md) |
@@ -106,7 +107,7 @@ silence means go after that deadline. Before any logout or display-server restar
 check for Patrick's own apps. If any are present, ask Patrick first; his apps are
 never leftovers, and silence never means go.
 The automatic nightly desktop check runs from a d69 timer across the five builders
-and reports to pinned issue #1003; release lab leases before 07:15 UTC. See
+and reports to pinned issue #1003; release lab leases before 10:15 UTC. See
 [Sharing the lab between concurrent sessions](../lab/remote-builders.md#sharing-the-lab-between-concurrent-sessions).
 
 Every graphical run must stay visible at the workstation's display wall and

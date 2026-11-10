@@ -148,7 +148,8 @@ Dispatch lanes and admission are bounded. SDK automatic retries are disabled;
 the adapter reconciles its own bounded attempts. A crashed, timed-out or abnormal
 worker never authorizes blind replay of a possible mutation. See [S3](../user/s3.md).
 
-`putgd-b2-worker` performs B2 HTTP in a fresh process per request. Proton uses the
+`putgd-b2-worker` performs B2 HTTP in a fresh process per request, and
+`putgd-http-worker` the one request of a custom HTTP uploader. Proton uses the
 privately packaged `putgd-proton-runtime`, with account operations serialized by
 the provider. Their distinct collision, version and sharing semantics remain
 behind the common receipt contract. See [B2](../user/b2.md) and [Proton](../user/proton-drive.md).

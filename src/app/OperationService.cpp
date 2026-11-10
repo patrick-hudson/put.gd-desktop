@@ -657,9 +657,10 @@ Operation OperationService::run(Job job) {
  auto publicationMode=routeOf(op).publicationMode;
  if(publicationMode=="default")publicationMode=provider->defaultPublicationMode(op.destination);
  if(publicationMode=="private"&&!capabilities.privateUploads){op.error={"unsupported_capability","This provider cannot perform a private upload",{}};op.state="failed";save();return op;}
- if(!capabilities.conditionalCreate||(op.settings.collisionPolicy=="overwrite"&&!capabilities.conditionalReplace)) {op.error={"unsupported_capability","Provider cannot enforce this collision policy",{}};op.state="failed";save();return op;}
+ // A server that names its own objects has no name to collide with: the policy does not apply (#1361).
+ if(!capabilities.serverNamesObjects&&(!capabilities.conditionalCreate||(op.settings.collisionPolicy=="overwrite"&&!capabilities.conditionalReplace))) {op.error={"unsupported_capability","Provider cannot enforce this collision policy",{}};op.state="failed";save();return op;}
  bool needsNames=job.acquire;for(const auto& item:op.items)if(!terminalUpload(item.uploadStatus)&&item.candidate.isEmpty())needsNames=true;
- if(needsNames) {QList<Artifact> list;for(const auto& item:op.items)list.append(item.artifact);auto names=UploadNaming::batch(list,op.settings.namingMode,op.settings.collisionPolicy,capabilities.maximumNameBytes);QJsonArray chosen;
+ if(needsNames) {QList<Artifact> list;for(const auto& item:op.items)list.append(item.artifact);auto names=UploadNaming::batch(list,op.settings.namingMode,capabilities.serverNamesObjects?QStringLiteral("keep"):op.settings.collisionPolicy,capabilities.maximumNameBytes);QJsonArray chosen;
   for(int i=0;i<op.items.size();++i) {
    if(!op.items[i].candidate.isEmpty())continue;
    // A diagnostics package ignores naming templates: an unguessable name.
@@ -734,6 +735,12 @@ Operation OperationService::run(Job job) {
   OperationItem item;{std::lock_guard lock(itemsMutex);item=op.items[index];}
   ArtifactStore artifacts(root_+"/artifacts");
   auto lock=objectLock(op.destination,item.objectReference,item.candidate);std::unique_lock guard(*lock);
+  if(item.uploadStatus=="unknown"&&capabilities.serverNamesObjects) {
+   // Nothing can tell whether the earlier request stored the file. This runs only
+   // on an explicit Retry, which sends it again; the server may then hold two copies.
+   logging::warning(providerLog(op.destination.providerId),"Uncertain upload sent again; the destination cannot be checked",itemFields(op,item));
+   item.uploadStatus="stored";item.error={};if(auto error=artifacts.verify(item.artifact)) {item.uploadStatus="failed";item.error=error;commit(item,index);return;}if(!commit(item,index))return;
+  }
   if(item.uploadStatus=="unknown") {
    item.phase="reconciling";show(item,index);
    auto stat=storageRequest<StatResult>([&](auto cb) {auto request=item.uploadRequest(op.destination,op.requestTimeoutMs);request.cancellation=cancel;provider->reconcile(request,cb);});
