@@ -678,7 +678,7 @@ private slots:
   else{selectRow(list,0);QVERIFY(rowMenuAction(list,"Copy link"));}
   PUTGD_TRY_COMPARE(copies,QStringList{"expired-item"});PUTGD_TRY_VERIFY(unlock->isVisible());QVERIFY(unlocks.isEmpty());QCOMPARE(source.copies,0);
   // A later detail reply for this same item must retain the bound unlock action.
-  putgd::test::settle(750);QVERIFY(unlock->isVisible());QVERIFY(unlocks.isEmpty());unlock->click();PUTGD_TRY_COMPARE(unlocks,QStringList{"expired-item"});
+  PUTGD_VERIFY_STEADY(unlock->isVisible(),750);QVERIFY(unlocks.isEmpty());unlock->click();PUTGD_TRY_COMPARE(unlocks,QStringList{"expired-item"});
  }
  void expiredCopyIgnoresReplyAfterSelectionChanges_data(){expiredCopyEntryPointsOfferUnlockForTheirOwnItem_data();}
  void expiredCopyIgnoresReplyAfterSelectionChanges(){
@@ -691,10 +691,10 @@ private slots:
   const int first=operationRow(list,"first"),second=operationRow(list,"second");inspectRow(list,first);auto* copy=window.findChild<QPushButton*>("copyHistoryLink");PUTGD_TRY_VERIFY(copy->isEnabled());
   if(entry!="button")window.command({{"action","closeDetails"}},[](Error e,QJsonObject){QVERIFY(!e);});
   if(entry=="button")copy->click();else if(entry=="row"){auto* primary=window.findChild<QToolButton*>("historyRowPrimary");PUTGD_TRY_VERIFY(primary->isVisible());primary->click();}else QVERIFY(rowMenuAction(list,"Copy link"));
-  PUTGD_TRY_COMPARE(copies,QStringList{"first-item"});inspectRow(list,second);PUTGD_TRY_COMPARE(window.findChild<QLabel*>("historyTitle")->text(),QString("second.txt"));putgd::test::settle(450);
-  auto* unlock=window.findChild<QPushButton*>("historyUnlockLinkCredentials");QVERIFY(unlock->isHidden());QVERIFY(unlocks.isEmpty());QCOMPARE(source.copies,0);
+  PUTGD_TRY_COMPARE(copies,QStringList{"first-item"});inspectRow(list,second);PUTGD_TRY_COMPARE(window.findChild<QLabel*>("historyTitle")->text(),QString("second.txt"));
+  auto* unlock=window.findChild<QPushButton*>("historyUnlockLinkCredentials");PUTGD_VERIFY_STEADY(unlock->isHidden(),450);QVERIFY(unlocks.isEmpty());QCOMPARE(source.copies,0);
   // A hidden/stale button can never fall back to whichever detail is current.
-  unlock->click();putgd::test::settle(20);QVERIFY(unlocks.isEmpty());
+  unlock->click();PUTGD_VERIFY_STEADY(unlocks.isEmpty(),30);
  }
  void linkRowShowsTheConfirmedExpiry(){
   // History's link row says when the link expires, and that it expired once it has (#253).
