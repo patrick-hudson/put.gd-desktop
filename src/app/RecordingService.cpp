@@ -499,8 +499,10 @@ QJsonObject RecordingService::clickCapability() const {
             {"message", "This desktop gives put.gd no pointer clicks, so recordings cannot highlight them."}};
 }
 void RecordingService::watchClicks(Session& s, std::function<void()> then) {
-    if (!s.config.clickHighlights || !clicks_ || clicksWatched_) { if (then) then(); return; }
+    // Once per recording: a watch that failed is not asked again at the next transition or resume.
+    if (!s.config.clickHighlights || !clicks_ || clicksWatched_ || s.clickWatchTried) { if (then) then(); return; }
     clicksWatched_ = true;
+    s.clickWatchTried = true;
     const auto generation = s.generation;
     QPointer<RecordingService> guard(this);
     auto current = [guard, generation] { return guard && !guard->stopping_ && guard->session_ && guard->session_->generation == generation; };

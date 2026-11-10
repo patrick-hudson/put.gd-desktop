@@ -26,8 +26,11 @@ public:
     void watchClicks(const QJsonObject& target, RecordingClicks::Sink, RecordingClicks::Reply) override;
     void unwatchClicks() override;
     static constexpr const char* description = "put.gd: click highlight";
-    // The Lua that arms the binds for `token`, adding them when `bind`.
+    // The Lua that arms the binds for `token`, adding one on each of `keys` (all three when `bind`).
     static QString armScript(const QString& token, bool bind);
+    static QString armScript(const QString& token, const QStringList& keys);
+    // The bare mouse chords that have no bind of put.gd's yet.
+    static QStringList missing(const QJsonArray& binds);
     static QString disarmScript();
     // The bare mouse chords put.gd may unbind: those no other bind holds.
     static QStringList removable(const QJsonArray& binds);

@@ -147,8 +147,10 @@ int main(int argc, char** argv) {
         QJsonObject result;
         QList<double> tones;
         for (int i = 3; i + 1 < argc; i += 2) {
-            if (std::strcmp(argv[i], "--tone") != 0 || std::atof(argv[i + 1]) <= 0) { std::fprintf(stderr, "usage: --av-sync CLIP [--tone HZ]...\n"); return 2; }
-            tones.append(std::atof(argv[i + 1]));
+            bool number = false;
+            const double hz = QString::fromLocal8Bit(argv[i + 1]).toDouble(&number);
+            if (std::strcmp(argv[i], "--tone") != 0 || !number || hz <= 0) { std::fprintf(stderr, "usage: --av-sync CLIP [--tone HZ]...\n"); return 2; }
+            tones.append(hz);
         }
         if (auto error = record::measureAvSync(QString::fromLocal8Bit(argv[2]), result, tones)) { std::fprintf(stderr, "%s: %s\n", qPrintable(error.code), qPrintable(error.message)); return 1; }
         std::printf("%s\n", QJsonDocument(result).toJson(QJsonDocument::Compact).constData());

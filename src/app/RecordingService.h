@@ -98,6 +98,7 @@ private:
         bool capturedSystemAudio = false;
         // #1364: the track also (or only) holds the microphone.
         bool capturedMicrophone = false;
+        bool clickWatchTried = false;  // the desktop was asked to report clicks for this recording, whatever it answered
         // Which bound set the budget at prepare (disk_space or max_file_bytes), and after
         // a budget stop {reason, message, hint, budgetBytes, maxFileBytes, durationUs, freeBytes?, ...}.
         QString budgetLimit;

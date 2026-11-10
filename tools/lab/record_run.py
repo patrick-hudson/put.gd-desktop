@@ -315,9 +315,16 @@ class Driver:
         return state
 
     def close_microphone(self):
+        # Whatever the tone does, the simulated devices are removed afterwards.
         if self.tone and self.tone.poll() is None:
-            os.killpg(self.tone.pid, signal.SIGTERM)
-            self.tone.wait(10)
+            try:
+                os.killpg(self.tone.pid, signal.SIGTERM)
+                self.tone.wait(10)
+            except ProcessLookupError:
+                pass
+            except subprocess.TimeoutExpired:
+                os.killpg(self.tone.pid, signal.SIGKILL)
+                self.tone.wait(5)
         if self.mic_state and self.mic_state.is_file():
             return self.virtual_mic('remove', '--state', str(self.mic_state))
         return None
@@ -360,6 +367,7 @@ class Driver:
             client.close()
 
     def click_watches(self, clip, watches):
+        """What changed in the clip at each (from ms, to ms, x, y), as `putgd-record --click-check` reports it."""
         result = self.helper('--click-check', clip, *['%d,%d,%d,%d' % watch for watch in watches])
         try:
             return json.loads(result.stdout).get('watches') or []
@@ -373,7 +381,7 @@ class Driver:
         errors = [entry['error'] for entry in sent if 'error' in entry]
         if not presses:
             return {'ok': False, 'error': errors or 'no press was sent'}
-        area = [int(v) for v in a.rect.split(',')] if a.target == 'region' else list(self.cover_rect)
+        area = list(a.rect) if a.target == 'region' else list(self.cover_rect)
         # inspect's canvas is [width, height] in clip pixels.
         width = canvas[0] if isinstance(canvas, (list, tuple)) and canvas else (canvas or {}).get('width', area[2])
         scale = width / area[2]
@@ -432,9 +440,11 @@ class Driver:
     def tones(self, clip):
         result = self.helper('--av-sync', clip, '--tone', 440, '--tone', 1000)
         try:
-            return json.loads(result.stdout).get('tones')
+            tones = json.loads(result.stdout).get('tones')
         except ValueError:
-            return {'error': (result.stdout + result.stderr).strip()[-200:]}
+            tones = None
+        # An analyzer without --tone prints usage; say so instead of leaving the entry empty.
+        return tones if tones is not None else {'error': (result.stdout + result.stderr).strip()[-200:] or 'the analyzer reported no tones'}
 
     def av_sync(self, clip):
         result = self.helper('--av-sync', clip)
@@ -706,7 +716,9 @@ class Driver:
                     measured = self.av_sync(clip)
                     entry.update({k: measured[k] for k in ('pairs', 'medianMs', 'spreadMs', 'offsetsMs', 'pairTimesS', 'error')
                                   if k in measured})
-                    if measured.get('pairs', 0) < a.min_pairs and not a.keep_unpaired:
+                    # With every audio source off the marker cannot pair by design: that clip is kept.
+                    silent = a.system == 'off' and a.mic in ('off', 'muted')
+                    if measured.get('pairs', 0) < a.min_pairs and not a.keep_unpaired and not silent:
                         clip.unlink()  # no marker: the clip may show something else
                         entry['destroyed'] = True
             result['clips'][kind] = entry
@@ -747,6 +759,9 @@ class Driver:
             # A resident's first start with a fresh configuration can open a window; let that happen before the cover is up.
             for build in builds:
                 self.start_resident(build)
+                # Quit at once and the window is cut off while it opens: put.gd then leaves a notification
+                # ("The window could not be opened") that stays on screen, over the cover.
+                time.sleep(3)
                 self.stop_resident(build)
             report['microphone'] = self.open_microphone()
             report['cover'] = self.open_cover()

@@ -995,7 +995,7 @@ SettingsWindow::SettingsWindow(UiSession& settings,QWidget* parent):RetainedWind
  auto* recordingForm=section(capture,"Screen recording","Record screen, from the tray, the dashboard or its shortcut.");
  recordingFrameRate_=choices(this,"recordingFrameRate",{});recordingFrameRate_->addItem("30 frames per second",30);recordingFrameRate_->addItem("60 frames per second",60);setting(recordingForm,"Frame rate",recordingFrameRate_,"/preferences/recordingFrameRate");
  // #1364: which input the recording bar's Microphone toggle opens, and rings at clicks.
- recordingMicrophone_=choices(this,"recordingMicrophoneDevice",{});recordingMicrophone_->addItem("System default",QString());setting(recordingForm,"Microphone",recordingMicrophone_,"/preferences/recordingMicrophoneDevice");
+ recordingMicrophone_=choices(this,"recordingMicrophoneDevice",{});recordingMicrophone_->addItem("System default",QString());setting(recordingForm,"Microphone",recordingMicrophone_,"/preferences/recordingMicrophoneDevice");connect(recordingMicrophone_,&QComboBox::activated,this,[this]{refreshRecordingInputs(true);});
  recordingMicrophoneStatus_=Ui::label({},"body");recordingMicrophoneStatus_->setObjectName("recordingMicrophoneStatus");Ui::role(recordingMicrophoneStatus_,"muted");recordingMicrophoneStatus_->setWordWrap(true);recordingMicrophoneStatus_->hide();recordingForm->addRow(recordingMicrophoneStatus_);
  recordingClicks_=new PreferenceCheck("Draw a ring at each click");recordingClicks_->setObjectName("recordingClickHighlights");setting(recordingForm,"Click highlights",recordingClicks_,"/preferences/recordingClickHighlights",{});
  recordingClicksStatus_=Ui::label({},"body");recordingClicksStatus_->setObjectName("recordingClickHighlightsStatus");Ui::role(recordingClicksStatus_,"muted");recordingClicksStatus_->setWordWrap(true);recordingClicksStatus_->hide();recordingForm->addRow(recordingClicksStatus_);
@@ -1258,21 +1258,34 @@ void SettingsWindow::status(const Error& error){
 static QString captureGap(const QJsonValue& value){const auto status=value.toObject();if(!value.isObject()||status["available"].toBool(true))return {};const auto error=status["error"];const auto message=error.isObject()?error.toObject()["message"].toString():error.toString();return message.isEmpty()?QString("This desktop doesn't provide it."):message;}
 // #1364: the inputs to choose from and whether this desktop can highlight clicks.
 // Both are asked of the resident; neither opens a device.
-void SettingsWindow::refreshRecordingInputs(){
+void SettingsWindow::showEvent(QShowEvent* event){RetainedWindow::showEvent(event);refreshRecordingInputs(true);}
+void SettingsWindow::refreshRecordingInputs(bool force){
+ // Every status change comes through here. The sound server is asked only while this page can show
+ // the answer and not more often than every ten seconds: each ask runs the recording helper once.
+ if(!isVisible())return;
+ if(!force&&recordingInputsAsked_.isValid()&&recordingInputsAsked_.elapsed()<recordingInputsEveryMs)return;
+ recordingInputsAsked_.start();
  const QString device=recordingMicrophone_->currentData().toString();
  QJsonObject params;if(!device.isEmpty())params["device"]=device;
  settings_.request("recording.microphones",params,this,[g=QPointer<SettingsWindow>(this)](Error error,QJsonObject microphones){if(g&&!error)g->showRecordingMicrophones(microphones);});
- settings_.request("recording.capabilities",{},this,[g=QPointer<SettingsWindow>(this)](Error error,QJsonObject capabilities){if(g&&!error)g->showClickHighlights(capabilities["clickHighlights"].toObject());});
+ // What the desktop offers for click highlights does not change while Settings is open; its capability
+ // answer also asks the sound server, so it is fetched once.
+ if(std::exchange(clickHighlightsAsked_,true))return;
+ settings_.request("recording.capabilities",{},this,[g=QPointer<SettingsWindow>(this)](Error error,QJsonObject capabilities){if(!g)return;if(error){g->clickHighlightsAsked_=false;return;}g->showClickHighlights(capabilities["clickHighlights"].toObject());});
 }
 void SettingsWindow::showRecordingMicrophones(const QJsonObject& microphones){
  const QString chosen=recordingMicrophone_->currentData().toString();
- const bool wasLoading=std::exchange(loading_,true);
- recordingMicrophone_->clear();recordingMicrophone_->addItem("System default",QString());
- bool listed=chosen.isEmpty();
- for(const auto& value:microphones["devices"].toArray()){const auto device=value.toObject();const auto id=device["id"].toString();if(id.isEmpty())continue;recordingMicrophone_->addItem(device["label"].toString(id),id);recordingMicrophone_->setItemData(recordingMicrophone_->count()-1,id,Qt::ToolTipRole);listed=listed||id==chosen;}
- if(!listed)recordingMicrophone_->addItem(chosen+" (not connected)",chosen);
- recordingMicrophone_->setCurrentIndex(std::max(0,recordingMicrophone_->findData(chosen)));
- loading_=wasLoading;
+ // The same devices as last time (and the choice still among them): the list stays as it is, open or not.
+ if(const auto devices=microphones["devices"].toArray();!std::exchange(recordingDevicesShown_,true)||devices!=recordingDevices_||recordingMicrophone_->findData(chosen)<0){
+  recordingDevices_=devices;
+  const bool wasLoading=std::exchange(loading_,true);
+  recordingMicrophone_->clear();recordingMicrophone_->addItem("System default",QString());
+  bool listed=chosen.isEmpty();
+  for(const auto& value:devices){const auto device=value.toObject();const auto id=device["id"].toString();if(id.isEmpty())continue;recordingMicrophone_->addItem(device["label"].toString(id),id);recordingMicrophone_->setItemData(recordingMicrophone_->count()-1,id,Qt::ToolTipRole);listed=listed||id==chosen;}
+  if(!listed)recordingMicrophone_->addItem(chosen+" (not connected)",chosen);
+  recordingMicrophone_->setCurrentIndex(std::max(0,recordingMicrophone_->findData(chosen)));
+  loading_=wasLoading;
+ }
  // What the bar's toggle would do right now with this choice.
  const bool available=microphones["available"].toBool();
  recordingMicrophoneStatus_->setText(available?QStringLiteral("Records from %1.").arg(microphones["device"].toObject()["label"].toString()):QStringLiteral("No microphone available: %1").arg(microphones["message"].toString("no input device was found.").replace(QStringLiteral("choose a device in Settings"),QStringLiteral("choose a device above"))));
@@ -2399,7 +2412,7 @@ QStringList SettingsWindow::draftEdits()const{
   if(group=="actions")return "Capture → "+actionLabel(parts.value(1))+" output";
   if(group=="captureDefaults")return QString("Capture → Capture output");
   for(auto prefix=path;!prefix.isEmpty();prefix=prefix.left(qMax(0,int(prefix.lastIndexOf('/'))))){
-   if(names.contains(prefix)){const auto page=group=="limits"||group=="retention"||path.startsWith("/preferences/diagnostics")?QString("Advanced"):group=="archive"||group=="naming"||path=="/preferences/uploadClipboardBehavior"||path=="/preferences/regionSelectionMode"||path=="/preferences/recordingFrameRate"?QString("Capture"):QString("General");return page+" → "+names.value(prefix);}
+   if(names.contains(prefix)){const auto page=group=="limits"||group=="retention"||path.startsWith("/preferences/diagnostics")?QString("Advanced"):group=="archive"||group=="naming"||path=="/preferences/uploadClipboardBehavior"||path=="/preferences/regionSelectionMode"||path=="/preferences/recordingFrameRate"||path=="/preferences/recordingMicrophoneDevice"||path=="/preferences/recordingClickHighlights"?QString("Capture"):QString("General");return page+" → "+names.value(prefix);}
   }
   return "Settings → "+parts.join(" › ");
  };

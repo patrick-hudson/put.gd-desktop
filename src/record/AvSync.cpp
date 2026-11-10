@@ -94,7 +94,7 @@ Error measureAvSync(const QString& clip, QJsonObject& result, const QList<double
         if (tones.isEmpty()) return failed("av_sync_no_audio", "The clip has no audio stream; record with system audio");
         // A clip recorded with every audio source off: that is the answer.
         QJsonObject levels;
-        for (const double hz : tones) levels[QString::number(hz)] = ToneLevel(hz, 48000).json();
+        for (const double hz : tones) levels[QString::number(hz)] = QJsonObject{{"medianAmplitude", 0.0}, {"maxAmplitude", 0.0}, {"activeFraction", 0.0}, {"blocks", 0}};
         result = {{"tones", levels}, {"audioStream", false}, {"error", "av_sync_no_audio"}};
         return {};
     }

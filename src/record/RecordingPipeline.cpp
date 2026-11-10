@@ -182,7 +182,11 @@ GstPadProbeReturn RecordingPipeline::probe(GstPad* pad, GstPadProbeInfo* info, g
     buffer = gst_buffer_make_writable(buffer);
     GST_PAD_PROBE_INFO_DATA(info) = buffer;
     if (!buffer) return GST_PAD_PROBE_DROP;
-    if (ring) drawClicks(context->pipeline, pad, buffer, pts);
+    if (ring) {
+        // The ring's own picture takes the frame's place (and its reference).
+        buffer = drawClicks(context->pipeline, pad, buffer, pts);
+        GST_PAD_PROBE_INFO_DATA(info) = buffer;
+    }
     GST_BUFFER_PTS(buffer) = GstClockTime(shifted);
     if (GST_BUFFER_DTS_IS_VALID(buffer)) GST_BUFFER_DTS(buffer) = GstClockTime(std::max<gint64>(0, gint64(GST_BUFFER_DTS(buffer)) - offset));
     rebase->passed.fetch_add(1);
@@ -345,29 +349,43 @@ GstPadProbeReturn RecordingPipeline::gateFrame(GstPad*, GstPadProbeInfo* info, g
     return GST_PAD_PROBE_OK;
 }
 
-void RecordingPipeline::drawClicks(RecordingPipeline* self, GstPad* pad, GstBuffer* buffer, gint64 runningNs) {
+GstBuffer* RecordingPipeline::drawClicks(RecordingPipeline* self, GstPad* pad, GstBuffer* buffer, gint64 runningNs) {
     auto& frame = self->clickFrame_;
-    if (!frame.known) {
-        // Once per capture, on the streaming thread: the encoder's negotiated input.
-        GstCaps* caps = gst_pad_get_current_caps(pad);
-        GstVideoInfo video;
-        if (caps && gst_video_info_from_caps(&video, caps)) {
-            frame.width = GST_VIDEO_INFO_WIDTH(&video);
-            frame.height = GST_VIDEO_INFO_HEIGHT(&video);
-            frame.nv12 = GST_VIDEO_INFO_FORMAT(&video) == GST_VIDEO_FORMAT_NV12;
-            frame.known = frame.nv12 || GST_VIDEO_INFO_FORMAT(&video) == GST_VIDEO_FORMAT_I420;
-        }
-        if (caps) gst_caps_unref(caps);
-        if (!frame.known) return;
-    }
     GstCaps* caps = gst_pad_get_current_caps(pad);
     GstVideoInfo video;
     const bool described = caps && gst_video_info_from_caps(&video, caps);
     if (caps) gst_caps_unref(caps);
+    if (!described) return buffer;
+    if (!frame.known) {
+        // Once per capture, on the streaming thread: the encoder's negotiated input.
+        frame.width = GST_VIDEO_INFO_WIDTH(&video);
+        frame.height = GST_VIDEO_INFO_HEIGHT(&video);
+        frame.nv12 = GST_VIDEO_INFO_FORMAT(&video) == GST_VIDEO_FORMAT_NV12;
+        frame.known = true;
+        frame.drawable = frame.nv12 || GST_VIDEO_INFO_FORMAT(&video) == GST_VIDEO_FORMAT_I420;
+    }
+    if (!frame.drawable) return buffer;
+    // A ring's frame is a picture of its own in plain memory: the frame is copied out and the rings
+    // are drawn on the copy. Drawing in place is not safe. The frame may share its pixels with the
+    // one before it (a repeat), and it may live in the encoder's own memory: a VA encoder hands its
+    // surface pool to the converter, and a surface mapped to change a few pixels came back holding
+    // nothing else (a green frame with the ring on it, measured with vah264lpenc on Intel).
+    GstVideoFrame source;
+    if (!gst_video_frame_map(&source, &video, buffer, GST_MAP_READ)) return buffer;
+    GstBuffer* picture = gst_buffer_new_allocate(nullptr, GST_VIDEO_INFO_SIZE(&video), nullptr);
     GstVideoFrame mapped;
-    // A repeat shares its pixels with the frame before it; mapping the writable
-    // buffer for writing gives this frame its own copy.
-    if (!described || !gst_video_frame_map(&mapped, &video, buffer, GstMapFlags(GST_MAP_READWRITE))) return;
+    if (!picture || !gst_video_frame_map(&mapped, &video, picture, GST_MAP_WRITE)) {
+        gst_video_frame_unmap(&source);
+        if (picture) gst_buffer_unref(picture);
+        return buffer;
+    }
+    const bool copied = gst_video_frame_copy(&mapped, &source);
+    gst_video_frame_unmap(&source);
+    if (!copied) {
+        gst_video_frame_unmap(&mapped);
+        gst_buffer_unref(picture);
+        return buffer;
+    }
     const ClickOverlay::Plane luma{static_cast<std::uint8_t*>(GST_VIDEO_FRAME_PLANE_DATA(&mapped, 0)), GST_VIDEO_FRAME_PLANE_STRIDE(&mapped, 0), frame.width, frame.height, 1, 1, 1};
     const int chromaWidth = (frame.width + 1) / 2, chromaHeight = (frame.height + 1) / 2;
     if (frame.nv12) {
@@ -379,8 +397,12 @@ void RecordingPipeline::drawClicks(RecordingPipeline* self, GstPad* pad, GstBuff
                            {static_cast<std::uint8_t*>(GST_VIDEO_FRAME_PLANE_DATA(&mapped, 2)), GST_VIDEO_FRAME_PLANE_STRIDE(&mapped, 2), chromaWidth, chromaHeight, 1, 2, 2}, runningNs);
     }
     gst_video_frame_unmap(&mapped);
+    // Times and flags come along; the original's layout metadata describes its own memory and stays behind.
+    gst_buffer_copy_into(picture, buffer, GstBufferCopyFlags(GST_BUFFER_COPY_FLAGS | GST_BUFFER_COPY_TIMESTAMPS), 0, -1);
     // A ring's frame is a picture of its own, not a repeat to skip.
-    GST_BUFFER_FLAG_UNSET(buffer, GST_BUFFER_FLAG_GAP);
+    GST_BUFFER_FLAG_UNSET(picture, GST_BUFFER_FLAG_GAP);
+    gst_buffer_unref(buffer);
+    return picture;
 }
 void RecordingPipeline::addClick(QPointF canvasPoint, int button, qint64 ageNs) {
     if (!pipeline_ || stopping_ || timeline_.paused()) return;

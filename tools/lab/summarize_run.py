@@ -5,6 +5,7 @@ import sys
 
 
 def main():
+    """Prints the run's builds, then each round's audio, tones, A/V offsets and click measurement."""
     try:
         report = json.load(open(sys.argv[1]))
     except (OSError, ValueError) as error:

@@ -248,7 +248,41 @@ struct ImageCopySource::Impl {
   if(gst_app_src_push_buffer(GST_APP_SRC(appsrc),buffer)!=GST_FLOW_OK)stopping=true;
   lastPush=monotonicNs();
  }
+ // The capture session, with the compositor painting the cursor unless this source draws it; waits for its constraints.
+ Error startSession(){
+  if(session){ext_image_copy_capture_session_v1_destroy(session);session=nullptr;}
+  constraints=false;pendingFormats.clear();pendingSize={};
+  session=ext_image_copy_capture_manager_v1_create_session(copy,source,ownCursor?0u:uint32_t(EXT_IMAGE_COPY_CAPTURE_MANAGER_V1_OPTIONS_PAINT_CURSORS));
+  static const ext_image_copy_capture_session_v1_listener listener={&Impl::sessionSize,&Impl::sessionFormat,[](void*,ext_image_copy_capture_session_v1*,wl_array*){},[](void*,ext_image_copy_capture_session_v1*,uint32_t,wl_array*){},&Impl::sessionDone,&Impl::sessionStopped};
+  ext_image_copy_capture_session_v1_add_listener(session,&listener,this);
+  QElapsedTimer clock;clock.start();
+  while(!constraints&&!failure&&clock.elapsed()<openTimeoutMs)if(wl_display_roundtrip(display)<0)return {"recording_unavailable","The Wayland connection failed",{}};
+  if(failure)return failure;
+  if(!constraints)return {"recording_unavailable","The compositor did not describe the capture buffers",{{"protocol","ext-image-copy-capture-v1"}}};
+  return {};
+ }
  // Own cursor ------------------------------------------------------------------
+ void closeCursor(){
+  if(cursorFrame){ext_image_copy_capture_frame_v1_destroy(cursorFrame);cursorFrame=nullptr;}
+  if(cursorCapture){ext_image_copy_capture_session_v1_destroy(cursorCapture);cursorCapture=nullptr;}
+  if(cursorSession){ext_image_copy_capture_cursor_session_v1_destroy(cursorSession);cursorSession=nullptr;}
+  freeCursorBuffer();
+  cursorIn=false;cursorPixels.clear();setPointer(false,{});
+ }
+ // A plain arrow, hotspot at its tip, for a pointer whose picture the compositor has not delivered
+ // (yet): a recording never shows clicks around nothing.
+ static const std::vector<uint32_t>& arrow(QSize* size){
+  static const char* const rows[]={
+   "X           ","XX          ","X.X         ","X..X        ","X...X       ","X....X      ","X.....X     ","X......X    ","X.......X   ",
+   "X........X  ","X.........X ","X......XXXXX","X...X..X    ","X..X X..X   ","X.X  X..X   ","XX    X..X  ","X     X..X  ","       XX   "};
+  static const std::vector<uint32_t> pixels=[]{
+   std::vector<uint32_t> out;
+   for(const char* row:rows)for(const char* c=row;*c;++c)out.push_back(*c=='X'?0xff000000u:*c=='.'?0xffffffffu:0u);
+   return out;
+  }();
+  *size=QSize(12,int(std::size(rows)));
+  return pixels;
+ }
  void dropClean(){if(clean){release(clean);clean=nullptr;}}
  void freeCursorBuffer(){
   if(cursorBuffer){wl_buffer_destroy(cursorBuffer);cursorBuffer=nullptr;}
@@ -328,10 +362,14 @@ struct ImageCopySource::Impl {
   const int w=clean->dims.width(),h=clean->dims.height();const size_t bytes=size_t(w)*4*size_t(h);
   auto* pixels=static_cast<uint32_t*>(g_try_malloc(bytes));if(!pixels)return;
   std::memcpy(pixels,clean->data,bytes);
-  if(cursorIn&&!cursorPixels.empty()){
-   const int left=cursorAt.x()-cursorHot.x(),top=cursorAt.y()-cursorHot.y(),cw=cursorImage.width(),ch=cursorImage.height();
+  if(cursorIn){
+   // The compositor's own cursor picture; until it has come, a plain arrow at the same place.
+   QSize shape=cursorImage;const bool own=!cursorPixels.empty();
+   const std::vector<uint32_t>& picture=own?cursorPixels:arrow(&shape);
+   const QPoint hot=own?cursorHot:QPoint();
+   const int left=cursorAt.x()-hot.x(),top=cursorAt.y()-hot.y(),cw=shape.width(),ch=shape.height();
    for(int y=std::max(0,-top);y<ch&&top+y<h;++y){
-    const uint32_t* from=cursorPixels.data()+size_t(y)*size_t(cw);uint32_t* row=pixels+size_t(top+y)*size_t(w);
+    const uint32_t* from=picture.data()+size_t(y)*size_t(cw);uint32_t* row=pixels+size_t(top+y)*size_t(w);
     for(int x=std::max(0,-left);x<cw&&left+x<w;++x){
      const uint32_t s=from[x],a=s>>24;
      if(!a)continue;
@@ -460,17 +498,7 @@ Error ImageCopySource::open(const Target& target,QSize* size,QString* identity,Q
  // The cursor is this source's to draw only for an upright output on a seat with a pointer:
  // a window source has no cursor session in wlroots, and a turned output's is not handled here.
  d_->ownCursor=pointer&&!target.window&&d_->seat&&d_->seatPointer&&d_->transform==WL_OUTPUT_TRANSFORM_NORMAL;
- d_->session=ext_image_copy_capture_manager_v1_create_session(d_->copy,d_->source,d_->ownCursor?0u:uint32_t(EXT_IMAGE_COPY_CAPTURE_MANAGER_V1_OPTIONS_PAINT_CURSORS));
- static const ext_image_copy_capture_session_v1_listener listener={&Impl::sessionSize,&Impl::sessionFormat,[](void*,ext_image_copy_capture_session_v1*,wl_array*){},[](void*,ext_image_copy_capture_session_v1*,uint32_t,wl_array*){},&Impl::sessionDone,&Impl::sessionStopped};
- ext_image_copy_capture_session_v1_add_listener(d_->session,&listener,d_.get());
- QElapsedTimer clock;clock.start();
- while(!d_->constraints&&!d_->failure&&clock.elapsed()<openTimeoutMs)if(wl_display_roundtrip(d_->display)<0)return {"recording_unavailable","The Wayland connection failed",{}};
- if(d_->failure)return d_->failure;
- if(!d_->constraints)return {"recording_unavailable","The compositor did not describe the capture buffers",{{"protocol","ext-image-copy-capture-v1"}}};
- if(!d_->allocate())return {"recording_io","Cannot allocate capture buffers",{}};
- {std::lock_guard guard(d_->shared->lock);d_->shared->wake=eventfd(0,EFD_CLOEXEC|EFD_NONBLOCK);}
- d_->declared=waylandUprightSize(d_->size,d_->transform);
- if(size)*size=d_->declared;
+ if(auto e=d_->startSession())return e;
  if(d_->ownCursor){
   // The first frames should already carry the cursor: wait, briefly, until the
   // cursor session has said where it is and its picture has arrived, or that it is elsewhere.
@@ -481,8 +509,19 @@ Error ImageCopySource::open(const Target& target,QSize* size,QString* identity,Q
    d_->pumpCursor();
    if(!d_->cursorPixels.empty()||(trips>=2&&!d_->cursorIn))break;
   }
-  if(pointerOpened)*pointerOpened=true;
+  // The pointer is on this output and its picture did not come: this compositor cannot give it, so
+  // the compositor paints the cursor as in any other recording, and the stream has no pointer position.
+  // A pointer that is elsewhere proves nothing: it may come to this output later.
+  if(d_->cursorIn&&d_->cursorPixels.empty()){
+   d_->closeCursor();d_->ownCursor=false;
+   if(auto e=d_->startSession())return e;
+  }
  }
+ if(!d_->allocate())return {"recording_io","Cannot allocate capture buffers",{}};
+ {std::lock_guard guard(d_->shared->lock);d_->shared->wake=eventfd(0,EFD_CLOEXEC|EFD_NONBLOCK);}
+ d_->declared=waylandUprightSize(d_->size,d_->transform);
+ if(size)*size=d_->declared;
+ if(pointerOpened)*pointerOpened=d_->ownCursor;
  return {};
 }
 bool ImageCopySource::pointer(QPoint* at,bool* ever)const{

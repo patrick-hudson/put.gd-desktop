@@ -45,6 +45,7 @@ import rfb  # noqa: E402
 
 
 def main():
+    """Starts a private resident, shows each asked state of the bar (or Settings) and saves a frame of the desktop for it."""
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('--run', required=True)
     parser.add_argument('--build', required=True, metavar='LABEL=PATH')

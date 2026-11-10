@@ -172,9 +172,10 @@ private:
     AudioTap microphone_, system_;
     ClickOverlay clicks_;
     // The encoder's input format, read from its caps for the ring's planes.
-    struct ClickFrame { bool known = false; int width = 0, height = 0; bool nv12 = false; };
+    struct ClickFrame { bool known = false, drawable = false; int width = 0, height = 0; bool nv12 = false; };
     ClickFrame clickFrame_;
-    static void drawClicks(RecordingPipeline* self, GstPad* pad, GstBuffer* buffer, gint64 runningNs);
+    // The buffer to encode in the frame's place: its own picture with the rings drawn, or the frame itself when that cannot be made. Takes the reference.
+    static GstBuffer* drawClicks(RecordingPipeline* self, GstPad* pad, GstBuffer* buffer, gint64 runningNs);
     QString microphoneLostReason_;
     // The poll's watch for a microphone that stopped delivering buffers.
     gint64 microphoneSeen_ = 0;

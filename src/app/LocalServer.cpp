@@ -106,7 +106,7 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
  if(!request["schemaVersion"].isDouble()||request["schemaVersion"].toDouble()!=1) {reply({"unsupported_version","Request schemaVersion must be 1",{}},{});return;}
  if(request["session"].toString()!=socketPath()) {reply({"wrong_session","Request targets a different resident session",{}},{});return;}
  const auto method=request["method"].toString();const auto p=request["params"].toObject();
- if(!operations_.ready()&&(method.startsWith("operation.")||method.startsWith("history.")||method.startsWith("delete.")||method=="cache.clear"||(method.startsWith("recording.")&&method!="recording.capabilities"&&method!="recording.windows"))) {reply({"initializing","Wait for resident journal recovery",{}},{});return;}
+ if(!operations_.ready()&&(method.startsWith("operation.")||method.startsWith("history.")||method.startsWith("delete.")||method=="cache.clear"||(method.startsWith("recording.")&&method!="recording.capabilities"&&method!="recording.windows"&&method!="recording.microphones"))) {reply({"initializing","Wait for resident journal recovery",{}},{});return;}
  if(method=="ui.quit") {
   if(!p.isEmpty()){reply(invalid(),{});return;}
   if(!uiQuit_){reply({"ui_unavailable","This resident has no application quit handler",{}},{});return;}

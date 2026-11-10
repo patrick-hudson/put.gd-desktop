@@ -887,6 +887,10 @@ private slots:
   id=h.prepareReady({{"clickHighlights",true}});QVERIFY(!h.rec("start",{{"id",id}}).error);
   PUTGD_TRY_VERIFY(h.rec("inspect",{{"id",id}}).result["progress"].toObject()["clickHighlightsError"].toString().contains("KWin"));
   QCOMPARE(h.state(id),QString("recording"));
+  // A watch that failed is not asked again: not at the next transition, not at a resume.
+  const auto asked=clicks.watches;
+  QVERIFY(!h.rec("pause",{{"id",id}}).error);QVERIFY(!h.rec("resume",{{"id",id}}).error);
+  PUTGD_COMPARE_STEADY(clicks.watches,asked,200);
   QVERIFY(!h.rec("cancel",{{"id",id}}).error);
   clicks.error={};
   // The remembered preference is not a request: where the desktop has no route the record action still works.

@@ -4,6 +4,7 @@
 #include "core/Settings.h"
 #include "RetainedWindow.h"
 #include "FileDialog.h"
+#include <QElapsedTimer>
 #include <QHash>
 #include <QJsonArray>
 #include <QVector>
@@ -71,6 +72,7 @@ signals:
 protected:
  void closeEvent(QCloseEvent*) override;
  bool eventFilter(QObject*,QEvent*)override;
+ void showEvent(QShowEvent*)override;
 private:
  template<class T>T findControl(const QString& name)const{auto value=findChild<T>(name);return value?value:destinationPage_->findChild<T>(name);}
  static qint64 displayUnit(const QString&);
@@ -160,11 +162,15 @@ private:
  QLineEdit *root_,*profileId_,*profileLabel_,*reference_,*access_,*secret_,*token_;QComboBox *profile_,*credentialMode_,*acl_,*naming_,*collision_,*addressing_,*regionChoices_,*regionSelection_,*recordingFrameRate_,*recordingMicrophone_,*uploadClipboard_,*appearance_;QPlainTextEdit* providerJson_;QCheckBox *keep_,*notifications_,*login_,*unlockAtStartup_,*fileManagerMenu_,*recordingClicks_;
  // #1364: Capture → Screen recording's microphone choice and click highlights
  // ask the resident what the sound server and the desktop offer right now.
- void refreshRecordingInputs();
+ // force: ask now (the page was just shown, or the device choice changed); otherwise at most every
+ // recordingInputsEveryMs and only while the page is showing, because each ask starts the recording helper.
+ void refreshRecordingInputs(bool force=false);
 public:
  // What `recording.microphones` and the capability's `clickHighlights` answered; public for the UI catalog.
  void showRecordingMicrophones(const QJsonObject& microphones);void showClickHighlights(const QJsonObject& capability);
 private:
- QLabel *recordingMicrophoneStatus_=nullptr,*recordingClicksStatus_=nullptr;QComboBox* fileManagerFolders_;
+ QLabel *recordingMicrophoneStatus_=nullptr,*recordingClicksStatus_=nullptr;
+ QElapsedTimer recordingInputsAsked_;bool clickHighlightsAsked_=false;QJsonArray recordingDevices_;bool recordingDevicesShown_=false;
+ static constexpr int recordingInputsEveryMs=10000;QComboBox* fileManagerFolders_;
 };
 }

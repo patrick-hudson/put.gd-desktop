@@ -41,11 +41,26 @@ QJsonObject HyprlandClicks::clickCapability() const {
     return capability;
 }
 QString HyprlandClicks::armScript(const QString& token, bool bind) {
+    QStringList all;
+    for (const auto& button : buttons) all.append(QString::fromLatin1(button.key));
+    return armScript(token, bind ? all : QStringList{});
+}
+QStringList HyprlandClicks::missing(const QJsonArray& binds) {
+    QStringList keys;
+    for (const auto& button : buttons) {
+        bool found = false;
+        for (const auto& value : binds) if (ours(value.toObject()) && bare(value.toObject(), button.key)) { found = true; break; }
+        if (!found) keys.append(QString::fromLatin1(button.key));
+    }
+    return keys;
+}
+QString HyprlandClicks::armScript(const QString& token, const QStringList& keys) {
     QString script = QStringLiteral("_G.putgd_clicks = %1").arg(HyprlandIpc::luaString(token));
-    if (!bind) return script;
-    for (const auto& button : buttons)
+    for (const auto& button : buttons) {
+        if (!keys.contains(QString::fromLatin1(button.key))) continue;
         script += QStringLiteral("; hl.bind(%1, function() local t = _G.putgd_clicks; if not t then return end; local p = hl.get_cursor_pos(); if p then hl.dispatch(hl.dsp.event(\"putgd-click \" .. t .. \" %2 \" .. p.x .. \" \" .. p.y)) end end, { non_consuming = true, ignore_mods = true, description = %3 })")
                       .arg(HyprlandIpc::luaString(QString::fromLatin1(button.key))).arg(button.number).arg(HyprlandIpc::luaString(QString::fromLatin1(description)));
+    }
     return script;
 }
 QString HyprlandClicks::disarmScript() { return QStringLiteral("_G.putgd_clicks = nil"); }
@@ -79,11 +94,9 @@ void HyprlandClicks::arm(RecordingClicks::Reply reply) {
     ipc_.json("j/binds", [guard, generation, reply](QJsonDocument document, Error error) {
         if (!guard || guard->generation_ != generation || !guard->sink_) return;
         if (error) { reply(error, {}); return; }
-        // Binds a recording left in place (a shared chord, a crash) are reused, not doubled.
-        int present = 0;
-        for (const auto& value : document.array()) if (ours(value.toObject())) ++present;
-        const bool bind = present < int(std::size(buttons));
-        guard->ipc_.request("eval " + armScript(guard->token_, bind), [guard, generation, reply](QByteArray answer, Error error) {
+        // A bind a recording left in place (a shared chord, a crash) is reused, not doubled:
+        // only the buttons without one of put.gd's binds get one.
+        guard->ipc_.request("eval " + armScript(guard->token_, missing(document.array())), [guard, generation, reply](QByteArray answer, Error error) {
             if (!guard || guard->generation_ != generation) return;
             if (!error && !HyprlandIpc::okReply(answer)) {
                 const auto text = QString::fromUtf8(answer.left(300)).trimmed();

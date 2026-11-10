@@ -297,6 +297,14 @@ private slots:
   binds.append(bind("mouse:273",0,"my menu"));
   QCOMPARE(HyprlandClicks::removable(binds),QStringList({"mouse:272","mouse:274"}));
   QCOMPARE(HyprlandClicks::removable(QJsonArray{bind("mouse:272",0,"someone else")}),QStringList{});
+  // Only a button without one of put.gd's binds gets one: a bind left on a shared chord is reused, never
+  // doubled, and however many were left, a button that has none is still bound.
+  QCOMPARE(HyprlandClicks::missing(QJsonArray{}),QStringList({"mouse:272","mouse:274","mouse:273"}));
+  QCOMPARE(HyprlandClicks::missing(binds),QStringList{});
+  QCOMPARE(HyprlandClicks::missing(QJsonArray{bind("mouse:273",0,ours),bind("mouse:273",0,ours),bind("mouse:273",0,ours),bind("mouse:272",0,"someone else"),bind("mouse:274",64,ours)}),QStringList({"mouse:272","mouse:274"}));
+  const auto partial=HyprlandClicks::armScript("abc123",QStringList{"mouse:274"});
+  QCOMPARE(partial.count("hl.bind("),1);QVERIFY(partial.contains("\"mouse:274\""));QVERIFY(!partial.contains("\"mouse:272\""));QVERIFY(partial.startsWith("_G.putgd_clicks = \"abc123\""));
+  QCOMPARE(HyprlandClicks::armScript("abc123",QStringList{}),HyprlandClicks::armScript("abc123",false));
   int button=0;double x=0,y=0;
   QVERIFY(HyprlandClicks::parseEvent("putgd-click abc123 3 399.9609375 299.9755859375","abc123",&button,&x,&y));
   QCOMPARE(button,3);QVERIFY(std::abs(x-399.96)<0.01&&std::abs(y-299.98)<0.01);
