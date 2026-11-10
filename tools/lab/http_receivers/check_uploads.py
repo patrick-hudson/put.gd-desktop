@@ -105,12 +105,15 @@ def check(resident, sxcu, mode, payload, keep, allow_http, imported_profiles):
     request = {'path': str(sxcu), 'expectedRevision': resident.revision(), 'profileId': profile, 'credentialMode': mode}
     if allow_http:
         request['allowInsecureHttp'] = True
+    # Tracked before the call: a reply that is lost or unreadable must not leave the
+    # destination behind. No destination of this name existed a moment ago (checked above).
+    imported_profiles.append(profile)
     imported = resident.call('settings.importUploader', request)
     if not imported['ok']:
+        # A refusal created nothing, so there is nothing of this run's to remove.
+        imported_profiles.remove(profile)
         report['error'] = 'import: ' + imported['error']['code'] + ': ' + imported['error']['message']
         return report
-    # Only what this run created is removed afterwards.
-    imported_profiles.append(profile)
     report['label'], report['storedValues'], report['notes'] = imported['result']['label'], imported['result']['storedValues'], imported['result']['notes']
     settings = next(entry for entry in resident.call('settings.get')['result']['document']['profiles'] if entry['id'] == profile)['settings']
     report['deletionUrl'], report['accepts'] = settings['deletionUrl'], settings['accepts']

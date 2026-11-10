@@ -352,6 +352,8 @@ void CustomUploaderPanel::syncVisibility() {
     requestForm_->setRowVisible(dataRow_, body == "json" || body == "xml");
     const QUrl url(url_->text().trimmed());
     requestForm_->setRowVisible(insecureRow_, insecure_->isChecked() || (url.scheme() == "http" && !http::loopbackHost(url.host())));
+    // A body kept secret cannot be masked like a one-line field; say so to whatever reads this form.
+    data_->setProperty("putgdSensitive", dataSecret_->isChecked());
     data_->setPlaceholderText(!dataSecret_->isChecked() ? QString() : !dataTyped_.isEmpty() ? QString::fromUtf8("•••••••• imported, not stored yet")
                                                         : dataStored_ ? storedPlaceholder : QStringLiteral("Type the body text, then store credentials"));
 }

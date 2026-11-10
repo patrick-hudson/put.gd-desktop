@@ -110,8 +110,11 @@ QJsonObject inventory(QWidget& root){
   // Same native window only: a child dialog's coordinates are not this capture's.
   if(w->window()!=root.window()||!w->isVisibleTo(&root)||w->width()<=0||w->height()<=0||w->visibleRegion().isEmpty())continue;
   if(auto* b=qobject_cast<QAbstractButton*>(w)){QJsonObject extra{{"checkable",b->isCheckable()},{"checked",b->isChecked()}};if(!b->shortcut().isEmpty())extra["shortcut"]=b->shortcut().toString(QKeySequence::PortableText);QString text=b->text();if(auto* t=qobject_cast<QToolButton*>(b);t&&t->defaultAction()&&text.isEmpty())text=t->defaultAction()->text();if(text.isEmpty())text=b->toolTip();add(w,"button",text,extra);}
-  else if(auto* e=qobject_cast<QLineEdit*>(w)){if(qobject_cast<QAbstractSpinBox*>(w->parentWidget())||qobject_cast<QComboBox*>(w->parentWidget()))continue;add(w,"field",e->placeholderText().isEmpty()?e->toolTip():e->placeholderText(),{{"readOnly",e->isReadOnly()},{"echo",int(e->echoMode())}});}
-  else if(qobject_cast<QPlainTextEdit*>(w)||qobject_cast<QTextEdit*>(w))add(w,"text-area",w->toolTip());
+  else if(auto* e=qobject_cast<QLineEdit*>(w)){if(qobject_cast<QAbstractSpinBox*>(w->parentWidget())||qobject_cast<QComboBox*>(w->parentWidget()))continue;QJsonObject extra{{"readOnly",e->isReadOnly()},{"echo",int(e->echoMode())}};
+    // A masked field holds a secret whatever it is called: the surface driver's classifier reads this.
+    if(e->echoMode()!=QLineEdit::Normal||w->property("putgdSensitive").toBool())extra["sensitive"]=true;
+    add(w,"field",e->placeholderText().isEmpty()?e->toolTip():e->placeholderText(),extra);}
+  else if(qobject_cast<QPlainTextEdit*>(w)||qobject_cast<QTextEdit*>(w))add(w,"text-area",w->toolTip(),w->property("putgdSensitive").toBool()?QJsonObject{{"sensitive",true}}:QJsonObject{});
   else if(auto* c=qobject_cast<QComboBox*>(w))add(w,"choice",c->currentText(),{{"count",c->count()}});
   else if(auto* s=qobject_cast<QAbstractSpinBox*>(w))add(w,"stepper",s->text());
   else if(auto* s=qobject_cast<QAbstractSlider*>(w)){if(qobject_cast<QScrollBar*>(w))continue;add(w,"slider",w->toolTip(),{{"value",s->value()},{"min",s->minimum()},{"max",s->maximum()}});}
