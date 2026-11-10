@@ -173,7 +173,7 @@ void UiApplicationController::receive(const QString& type,const QString& sequenc
   auto answer=[guard=QPointer<UiApplicationController>(this),sequence](Error error,QJsonObject result){if(guard&&!guard->exiting_)guard->control_.send("commandResult",{{"replyTo",sequence},{"error",error.toJson()},{"result",result}});};
   Error error;QJsonObject result;
   if(payload["version"]!=1)error={"ui_command_unsupported","This window does not support that command version.",{{"version",payload["version"]}}};
-  else if(!QStringList{"moveDestination","diagnostics","historySaveDiagnostics","history","fileDialog"}.contains(name))error={"ui_command_unknown","This window does not support that command.",{}};
+  else if(!QStringList{"moveDestination","diagnostics","historySaveDiagnostics","history","fileDialog","customUploader"}.contains(name))error={"ui_command_unknown","This window does not support that command.",{}};
   else if(!main_||!main_->isVisible()||closing_)error={"ui_view_closed",name=="historySaveDiagnostics"||name=="history"?"Open History before driving it.":name=="fileDialog"?"Open put.gd's window (History or Settings) before driving it.":"Open Settings before driving it.",{}};
   // #259: the open, save and folder choosers, as their buttons open them.
   else if(name=="fileDialog"){
@@ -193,6 +193,8 @@ void UiApplicationController::receive(const QString& type,const QString& sequenc
   else if(name=="diagnostics"){main_->settings()->diagnosticsCommand(params,answer);return;}
   else if(name=="historySaveDiagnostics"){main_->history()->saveDiagnosticsFor(params["id"].toString(),answer);return;}
   else if(name=="history"){main_->history()->command(params,answer);return;}
+  // #1361: the Custom uploader form in Destinations; its secret values never leave the window.
+  else if(name=="customUploader"){main_->navigate("destinations");main_->settings()->uploaderCommand(params,answer);return;}
   else error=main_->settings()->moveSelectedDestination(params["direction"].toString()=="up"?-1:1,params["profileId"].toString(),result);
   answer(error,result);return;
  }
@@ -287,6 +289,8 @@ void UiApplicationController::invokeAction(){
  if(exiting_||quitting_||closing_||pendingAction_.isEmpty()||actionDispatching_)return;
  actionDispatching_=true;const auto action=pendingAction_;const bool screen=action!="clipboard"&&!pendingOptions_.contains("source");
  auto params=pendingOptions_;params["action"]=action;
+ // The dashboard's captures start after the chosen delay (#1363), as the tray's do.
+ if(Settings::delayableAction(action))if(const int delay=session_.document()["preferences"].toObject()["captureDelaySeconds"].toInt();delay>0)params["delaySeconds"]=delay;
  session_.request("action.invoke",params,this,[this,screen](Error error,QJsonObject){
   actionDispatching_=false;if(exiting_||quitting_||closing_){clearPendingAction(false);return;}
   if(error){clearPendingAction(true);notify(error);return;}

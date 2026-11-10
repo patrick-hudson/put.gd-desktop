@@ -674,3 +674,152 @@ print('PASS recording bar placement prefers below, above, another monitor, then 
     assert.equal((await bridge(extension, 'HelloAsync', [])).recordingVersion, 2);
     print('PASS RecordingWindows lists external windows, marks the focused one and leaves out put.gd\'s own');
 }
+// Capture version 2 (#1363): Capture monitor, Repeat last region and the capture
+// countdown. Synthetic Shell: which monitors are read, what is refused and when
+// the pill is on stage. Not graphical acceptance.
+{
+    const layout = [{identity: 'DP-1', logical: [0, 0, 1920, 1080], density: 1, rotation: 0},
+        {identity: 'DP-2', logical: [1920, 0, 2560, 1440], density: 1, rotation: 0}];
+    const tokens = {surfaceRaised: '#2a2a2a', text: '#f0f0ec', borderStrong: '#737373'};
+    const bounds = (extra = {}) => JSON.stringify({imageMimes: ['image/png'], textBytes: 1, imageBytes: 67108864, imagePixels: 16777216, maxFiles: 1, appearance: {tokens}, ...extra});
+    const areas = [], chrome = [];
+    const originalScreenshot = context.Shell.Screenshot, originalLayout = context.Main.layoutManager;
+    context.Gio.MemoryOutputStream = {new_resizable: () => ({})};
+    context.Shell.Screenshot = class {screenshot_area(x, y, width, height) {areas.push([x, y, width, height]); throw Object.assign(new Error('Synthetic stop'), {bridgeCode: 'capture_failed'});}};
+    context.Main.layoutManager = {monitors: [{index: 0, x: 0, y: 0, width: 1920, height: 1080}, {index: 1, x: 1920, y: 0, width: 2560, height: 1440}], primaryIndex: 0,
+        // As GNOME Shell 50's Params.parse: an unknown chrome parameter throws.
+        addTopChrome: (actor, params = {}) => {
+            for (const name of Object.keys(params)) {
+                if (!['trackFullscreen', 'affectsStruts'].includes(name))
+                    throw new Error(`Unrecognized parameter "${name}"`);
+            }
+            chrome.push(actor);
+        },
+        removeChrome: actor => chrome.splice(chrome.indexOf(actor), 1)};
+    context.Main.panel.height = 32;
+    globalThis.Config = {PACKAGE_VERSION: '50.0'};
+    const prepared = async action => {
+        const {extension} = fixture();
+        extension._layout = async () => layout;
+        const request = id();
+        await extension._prepare(request, action, resident);
+        return {extension, request};
+    };
+    {
+        const {extension} = fixture();
+        extension.metadata = {version: 20};
+        assert.equal((await bridge(extension, 'HelloAsync', [])).captureVersion, 2);
+    }
+    {
+        context.global.display.get_current_monitor = () => 1;
+        const {extension, request} = await prepared('monitor');
+        // The pointer moves on afterwards; the monitor was frozen at Prepare.
+        context.global.display.get_current_monitor = () => 0;
+        assert.equal((await bridge(extension, 'AcquireAsync', [request, bounds()])).error.code, 'capture_failed');
+        assert.deepEqual(areas, [[1920, 0, 2560, 1440]]);
+        context.global.display.get_current_monitor = () => 7;
+        await assert.rejects(prepared('monitor'), error => error.bridgeCode === 'capture_target');
+        print('PASS Capture monitor reads only the monitor the pointer was on at Prepare');
+    }
+    {
+        areas.length = 0;
+        const key = fixture().extension._layoutKey(layout);
+        const area = [2000, 100, 300, 150];
+        const {extension, request} = await prepared('repeat');
+        assert.equal((await bridge(extension, 'AcquireAsync', [request, bounds({area, layoutKey: key})])).error.code, 'capture_failed');
+        assert.deepEqual(areas, [[1920, 0, 2560, 1440]]);
+        const movedKey = fixture().extension._layoutKey([layout[0], {...layout[1], logical: [1920, 200, 2560, 1440]}]);
+        const moved = await prepared('repeat');
+        assert.equal((await bridge(moved.extension, 'AcquireAsync', [moved.request, bounds({area, layoutKey: movedKey})])).error.code, 'repeat_layout_changed');
+        const rescaled = await prepared('repeat');
+        assert.equal((await bridge(rescaled.extension, 'AcquireAsync', [rescaled.request, bounds({area, layoutKey: fixture().extension._layoutKey([layout[0], {...layout[1], density: 1.5}])})])).error.code, 'repeat_layout_changed');
+        const none = await prepared('repeat');
+        assert.equal((await bridge(none.extension, 'AcquireAsync', [none.request, bounds()])).error.code, 'repeat_unavailable');
+        const outside = await prepared('repeat');
+        assert.equal((await bridge(outside.extension, 'AcquireAsync', [outside.request, bounds({area: [5000, 0, 10, 10], layoutKey: key})])).error.code, 'capture_geometry');
+        const malformed = await prepared('repeat');
+        assert.equal((await bridge(malformed.extension, 'AcquireAsync', [malformed.request, bounds({area: [0, 0, -5, 10], layoutKey: key})])).error.code, 'bridge_protocol');
+        assert.equal(areas.length, 1);
+        print('PASS Repeat last region reads the monitors its rectangle lies on and refuses a changed layout');
+    }
+    {
+        context.global.display.get_current_monitor = () => 1;
+        const {extension} = fixture();
+        const first = id();
+        const counting = bridge(extension, 'CountdownAsync', [first, JSON.stringify({seconds: 3, appearance: {tokens}})]); await flush();
+        assert.equal(chrome.length, 1);
+        assert.equal(chrome[0].text, 'Capturing in 3 · Click to cancel');
+        // Top centre of the pointer's monitor, which has no top bar.
+        assert.equal(chrome[0].y, 24);
+        assert.equal(chrome[0].x, Math.round(1920 + (2560 - chrome[0].get_preferred_width()[1]) / 2));
+        tick(1000);
+        assert.equal(chrome[0].text, 'Capturing in 2 · Click to cancel');
+        tick(1000); tick(1000);
+        assert.deepEqual(await counting, {version: 1, requestId: first});
+        assert.equal(chrome.length, 0); assert.equal(extension._requests.has(first), false);
+        print('PASS the countdown shows on the pointer\'s monitor and its actor is gone before it answers');
+        // Below the top bar on the monitor that has it.
+        context.global.display.get_current_monitor = () => 0;
+        const barred = id();
+        const underBar = bridge(extension, 'CountdownAsync', [barred, JSON.stringify({seconds: 3, appearance: {tokens}})]); await flush();
+        assert.equal(chrome[0].y, 56);
+        chrome[0].emit('button-release-event');
+        assert.equal((await underBar).error.code, 'cancelled');
+        assert.equal(chrome.length, 0); assert.equal(extension._requests.has(barred), false);
+        print('PASS a click on the countdown cancels it');
+        const released = id();
+        const waiting = bridge(extension, 'CountdownAsync', [released, JSON.stringify({seconds: 10, appearance: {tokens}})]); await flush();
+        assert.deepEqual(await bridge(extension, 'ReleaseAsync', [released]), {});
+        assert.equal((await waiting).error.code, 'cancelled'); assert.equal(chrome.length, 0);
+        print('PASS Release removes a running countdown');
+        // A delay that ends on a locked screen captures nothing.
+        const locked = id();
+        const ending = bridge(extension, 'CountdownAsync', [locked, JSON.stringify({seconds: 3, appearance: {tokens}})]); await flush();
+        tick(1000); tick(1000);
+        context.Main.sessionMode.isLocked = true;
+        tick(1000);
+        assert.equal((await ending).error.code, 'session_locked');
+        context.Main.sessionMode.isLocked = false;
+        assert.equal(chrome.length, 0);
+        assert.equal((await bridge(extension, 'CountdownAsync', [id(), JSON.stringify({seconds: 4})])).error.code, 'bridge_protocol');
+        print('PASS a countdown that ends on a locked screen answers session_locked');
+        // The Shell disables extensions when it locks, and may do so before the
+        // extension's own session handler runs: still the lock, not a broken helper.
+        const disabledByLock = id();
+        const lockedOut = bridge(extension, 'CountdownAsync', [disabledByLock, JSON.stringify({seconds: 10, appearance: {tokens}})]); await flush();
+        assert.equal(chrome.length, 1);
+        // What disable() releases besides the requests.
+        Object.assign(extension, {_bindings: new Map(), _dbus: {emit_signal() {}, unexport() {}}});
+        context.Main.sessionMode.isLocked = true;
+        extension.disable();
+        assert.equal((await lockedOut).error.code, 'session_locked'); assert.equal(chrome.length, 0);
+        context.Main.sessionMode.isLocked = false;
+        print('PASS a lock that disables the extension mid-countdown answers session_locked');
+    }
+    {
+        // A live region: area first, then the countdown, then the pixels.
+        pendingSelectors.length = 0; areas.length = 0;
+        const {extension, request} = await prepared('region');
+        const acquired = bridge(extension, 'AcquireAsync', [request, bounds({delaySeconds: 3})]); await flush();
+        assert.equal(pendingSelectors.length, 1); assert.equal(chrome.length, 0);
+        pendingSelectors.shift().resolve({x: 2000, y: 100, width: 64, height: 36}); await flush();
+        assert.equal(areas.length, 0); assert.equal(chrome.length, 1);
+        // On the monitor the selection is on.
+        assert.equal(chrome[0].x, Math.round(1920 + (2560 - chrome[0].get_preferred_width()[1]) / 2));
+        tick(1000); tick(1000); await flush();
+        assert.equal(areas.length, 0);
+        tick(1000); await flush();
+        assert.equal((await acquired).error.code, 'capture_failed');
+        assert.equal(chrome.length, 0); assert.deepEqual(areas, [[0, 0, 1920, 1080]]);
+        const cancelled = await prepared('region');
+        const dropped = bridge(cancelled.extension, 'AcquireAsync', [cancelled.request, bounds({delaySeconds: 5})]); await flush();
+        pendingSelectors.shift().resolve({x: 40, y: 50, width: 64, height: 36}); await flush();
+        chrome[0].emit('button-release-event');
+        assert.equal((await dropped).error.code, 'cancelled');
+        assert.equal(areas.length, 1); assert.equal(chrome.length, 0);
+        assert.equal((await bridge(extension, 'AcquireAsync', [id(), bounds({delaySeconds: 4})])).error.code, 'bridge_protocol');
+        print('PASS a delayed live region counts down after the selection and before any pixel');
+    }
+    context.Shell.Screenshot = originalScreenshot; context.Main.layoutManager = originalLayout;
+    delete context.Gio.MemoryOutputStream;
+}

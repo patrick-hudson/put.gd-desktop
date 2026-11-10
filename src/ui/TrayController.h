@@ -129,7 +129,7 @@ private:
  QString activityText_,activityTitle_="put.gd";
  QAction *uploadStatus_=nullptr,*cancelUpload_=nullptr,*uploadSeparator_=nullptr,*failedUploads_=nullptr;
  QSet<QString> activeUploads_,failedItems_;
- QAction* outputSummary_=nullptr;QMenu* outputMenu_=nullptr;
+ QAction* outputSummary_=nullptr;QMenu* outputMenu_=nullptr;QMenu* delayMenu_=nullptr;
  void showAbout();
  void showView(const QString&);
  OperationService& operations_;

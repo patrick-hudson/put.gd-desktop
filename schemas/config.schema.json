@@ -406,6 +406,82 @@
             }
           ],
           "description": "Edit & upload: native region selection, then the on-demand editor. Optional; when absent it inherits the region output route with no shortcut."
+        },
+        "monitor": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "destination",
+            "profileId",
+            "shortcut"
+          ],
+          "properties": {
+            "destination": {
+              "enum": [
+                "upload",
+                "local",
+                "default"
+              ]
+            },
+            "profileId": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "shortcut": {
+              "type": "string",
+              "maxLength": 128
+            },
+            "publicationMode": {
+              "type": "string",
+              "enum": [
+                "default",
+                "share",
+                "private"
+              ],
+              "default": "default"
+            }
+          },
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "destination": {
+                    "const": "default"
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "profileId": {
+                    "type": "null"
+                  },
+                  "publicationMode": {
+                    "const": "default"
+                  }
+                }
+              }
+            }
+          ],
+          "description": "Capture monitor: the monitor under the pointer, at its native size. Optional; when absent it copies the desktop output route with no shortcut."
+        },
+        "repeat": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["shortcut"],
+          "properties": {
+            "shortcut": {
+              "type": "string",
+              "maxLength": 128
+            }
+          },
+          "description": "Repeat last region: a shortcut only. It captures the rectangle of the last region capture again, with the region action's output. Optional; when absent it has no shortcut."
         }
       }
     },
@@ -542,6 +618,22 @@
               "properties": {
                 "settings": {
                   "$ref": "#/$defs/b2Settings"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "provider": {
+                  "const": "custom-http"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "settings": {
+                  "$ref": "#/$defs/customHttpSettings"
                 }
               }
             }
@@ -906,6 +998,11 @@
           "default": "live",
           "description": "How region capture shows the screen while you drag. live keeps the desktop updating (an open menu must close first); screenshot_first captures every monitor before the selector opens and cuts the region from that frozen frame, so open menus are included. Recording region selection is always live. Omitted means live."
         },
+        "captureDelaySeconds": {
+          "enum": [0, 3, 5, 10],
+          "default": 0,
+          "description": "Seconds the tray and the dashboard wait before a region, window, monitor or desktop capture, or a repeat of the last region. A countdown shows meanwhile and can be cancelled. Shortcut captures are always immediate, and session requests pass their own delaySeconds. Omitted means 0."
+        },
         "recordingFrameRate": {
           "enum": [
             30,
@@ -1207,6 +1304,209 @@
         }
       }
     },
+    "customHttpRow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "secret"
+      ],
+      "description": "A header, URL parameter or form field. A secret row carries its name only: its value is in the credential store.",
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "secret": {
+          "type": "boolean"
+        },
+        "value": {
+          "type": "string",
+          "maxLength": 8192
+        }
+      },
+      "if": {
+        "properties": {
+          "secret": {
+            "const": true
+          }
+        }
+      },
+      "then": {
+        "not": {
+          "required": [
+            "value"
+          ]
+        }
+      },
+      "else": {
+        "required": [
+          "value"
+        ]
+      }
+    },
+    "customHttpSettings": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Custom HTTP uploader destination (#1361): one request, described by hand or imported from a ShareX .sxcu file. The provider validator is authoritative.",
+      "required": [
+        "accepts",
+        "allowInsecureHttp",
+        "arguments",
+        "body",
+        "connectTimeoutMs",
+        "data",
+        "dataSecret",
+        "deletionUrl",
+        "errorMessage",
+        "fileFormName",
+        "headers",
+        "parameters",
+        "requestMethod",
+        "requestTimeoutMs",
+        "requestUrl",
+        "responseUrl",
+        "secrets",
+        "thumbnailUrl"
+      ],
+      "properties": {
+        "requestMethod": {
+          "enum": [
+            "GET",
+            "POST",
+            "PUT",
+            "PATCH"
+          ],
+          "default": "POST"
+        },
+        "requestUrl": {
+          "type": "string",
+          "maxLength": 2048,
+          "description": "Where uploads are sent: HTTPS, or HTTP to a literal loopback host, without a query (use parameters). {filename} may fill part of the path. Empty until the destination is set up."
+        },
+        "allowInsecureHttp": {
+          "type": "boolean",
+          "default": false,
+          "description": "Allow plain HTTP to a host other than loopback. Files and credentials then travel unencrypted."
+        },
+        "accepts": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 3,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "image",
+              "text",
+              "file"
+            ]
+          },
+          "description": "What the destination takes; file covers everything."
+        },
+        "body": {
+          "enum": [
+            "none",
+            "multipart",
+            "form",
+            "json",
+            "xml",
+            "binary"
+          ],
+          "default": "multipart"
+        },
+        "fileFormName": {
+          "type": "string",
+          "maxLength": 256,
+          "description": "The multipart field that carries the file; empty sends form fields only."
+        },
+        "headers": {
+          "type": "array",
+          "maxItems": 32,
+          "items": {
+            "$ref": "#/$defs/customHttpRow"
+          }
+        },
+        "parameters": {
+          "type": "array",
+          "maxItems": 32,
+          "items": {
+            "$ref": "#/$defs/customHttpRow"
+          }
+        },
+        "arguments": {
+          "type": "array",
+          "maxItems": 32,
+          "items": {
+            "$ref": "#/$defs/customHttpRow"
+          }
+        },
+        "secrets": {
+          "type": "array",
+          "maxItems": 32,
+          "description": "Named stored values with no row of their own, used as {secret:secrets/name} in the request URL or the deletion URL. Names only.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "name",
+              "secret"
+            ],
+            "properties": {
+              "name": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9._-]{1,64}$"
+              },
+              "secret": {
+                "const": true
+              }
+            }
+          }
+        },
+        "data": {
+          "type": "string",
+          "maxLength": 65536,
+          "description": "The JSON or XML body text; empty when dataSecret is true."
+        },
+        "dataSecret": {
+          "type": "boolean",
+          "default": false,
+          "description": "The body text is a secret kept in the credential store."
+        },
+        "responseUrl": {
+          "type": "string",
+          "maxLength": 4096,
+          "description": "Where the reply holds the link, such as {json:files[0].url}; empty when the whole reply is the link."
+        },
+        "thumbnailUrl": {
+          "type": "string",
+          "maxLength": 4096,
+          "description": "Optional thumbnail link."
+        },
+        "deletionUrl": {
+          "type": "string",
+          "maxLength": 4096,
+          "description": "Optional deletion URL; without one an upload cannot be deleted from History."
+        },
+        "errorMessage": {
+          "type": "string",
+          "maxLength": 4096,
+          "description": "Optional text shown when the server refuses an upload."
+        },
+        "connectTimeoutMs": {
+          "type": "integer",
+          "minimum": 1000,
+          "maximum": 120000,
+          "default": 10000
+        },
+        "requestTimeoutMs": {
+          "type": "integer",
+          "minimum": 1000,
+          "maximum": 3600000,
+          "default": 600000
+        }
+      }
+    },
     "protonSettings": {
       "type": "object",
       "additionalProperties": false,
@@ -1368,6 +1668,31 @@
             },
             "required": [
               "edit"
+            ]
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "captureDefaults"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "actions": {
+            "properties": {
+              "monitor": {
+                "properties": {
+                  "destination": {
+                    "const": "default"
+                  }
+                }
+              }
+            },
+            "required": [
+              "monitor"
             ]
           }
         }

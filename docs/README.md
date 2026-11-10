@@ -5,7 +5,7 @@ guarantees and every document in it.
 
 | You want to | Go to |
 | --- | --- |
-| Use the app | [user/](user/README.md): user guide, troubleshooting, failure codes, S3, B2 and Proton Drive destinations |
+| Use the app | [user/](user/README.md): user guide, troubleshooting, failure codes, S3, B2, Proton Drive and custom uploader destinations |
 | Understand the design | [design/](design/README.md): start with [overview](design/overview.md) and [architecture](design/architecture.md) |
 | Look up a desktop's behavior | [desktops/](desktops/README.md): Budgie, Cinnamon, GNOME, Hyprland and Plasma adapters |
 | Drive it from an agent or the CLI | [automation/](automation/README.md): agent maps, `putgd-cli` and the MCP helper |

@@ -32,7 +32,7 @@ The resident keeps these costs in temporary helpers:
 | KDE region surfaces | `putgd-region`; authorized KWin capture stays resident |
 | Recording, review, GStreamer and FFmpeg | `putgd-record` |
 | AWS SDK/module and TLS | `putgd-s3-worker`, per Linux driver call |
-| Native B2 HTTP; Proton SDK/account work | `putgd-b2-worker`; `putgd-proton-runtime` |
+| Native B2 HTTP; custom uploader HTTP; Proton SDK/account work | `putgd-b2-worker`; `putgd-http-worker`; `putgd-proton-runtime` |
 | Update network checks and AppImage installation | short-lived `putgd-cli` |
 
 GNOME retains its authenticated Shell bridge. Native tray menus are rendered by

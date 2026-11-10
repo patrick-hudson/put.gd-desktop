@@ -143,7 +143,8 @@ Result SettingsService::reload() {
     return acceptLoaded(loaded.candidate,loaded.revision,loaded.error,++sequence_);
 }
 Result SettingsService::save(const QJsonObject& candidate,const QString& expectedRevision) {
-    std::lock_guard guard(ioMutex_);if(auto error=writeCandidate(path_,validator_,credentialValidator_,candidate,expectedRevision)){logRejected(error,"save");return {error};}return reload();
+    std::lock_guard guard(ioMutex_);if(auto error=writeCandidate(path_,validator_,credentialValidator_,candidate,expectedRevision)){logRejected(error,"save");return {error};}
+    auto loaded=loadValidated(path_,validator_,credentialValidator_);auto result=acceptLoaded(loaded.candidate,loaded.revision,loaded.error,++sequence_);result.written=true;return result;
 }
 Result SettingsService::patch(const QJsonObject& patchObject, const QString& expectedRevision) {
     return save(overlay(document(), patchObject), expectedRevision);
@@ -157,10 +158,11 @@ void SettingsService::asyncLoad(const QJsonObject& candidate,const QString& expe
         Error error;if(write)error=writeCandidate(path,validator,credentialValidator,candidate,expected);
         LoadedSettings loaded;if(!error)loaded=loadValidated(path,validator,credentialValidator);
         const auto sequence=++guarded->sequence_;
-        QMetaObject::invokeMethod(guarded,[guarded,loaded,error,sequence,callback] {
+        QMetaObject::invokeMethod(guarded,[guarded,loaded,error,sequence,callback,write] {
             if(!guarded)return;
             if(error)logRejected(error,"save");
-            const auto result=error?Result{error}:guarded->acceptLoaded(loaded.candidate,loaded.revision,loaded.error,sequence);
+            auto result=error?Result{error}:guarded->acceptLoaded(loaded.candidate,loaded.revision,loaded.error,sequence);
+            result.written=write&&!error;
             if(callback)callback(result);
         },Qt::QueuedConnection);
     },Qt::QueuedConnection);

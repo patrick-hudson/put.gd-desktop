@@ -12,6 +12,8 @@
 #include "ui/SettingsWindow.h"
 #include "platform/HostOpen.h"
 #include "storage/proton/ProtonProvider.h"
+#include "storage/http/HttpImport.h"
+#include "ui/CustomUploaderPanel.h"
 #include "ui/Ui.h"
 #include "ui/EditorWindow.h"
 #include "editor/EditorCommands.h"
@@ -76,6 +78,7 @@
 #include "record/ReviewWindow.h"
 #include "fixtures/ReviewLayout.h"
 #include "ui/RegionOverlay.h"
+#include "ui/CountdownPill.h"
 #include "record/Overlays.h"
 #endif
 using namespace putgd;
@@ -103,13 +106,20 @@ QJsonObject inventory(QWidget& root){
  QJsonArray controls,keys;
  auto rectOf=[&](QWidget* w){const auto tl=w->mapTo(&root,QPoint());return QJsonArray{tl.x(),tl.y(),w->width(),w->height()};};
  auto add=[&](QWidget* w,const QString& kind,const QString& text,QJsonObject extra={}){QJsonObject c{{"name",w->objectName()},{"class",QString::fromLatin1(w->metaObject()->className())},{"kind",kind},{"text",text},{"rect",rectOf(w)},{"enabled",w->isEnabled()}};for(auto it=extra.begin();it!=extra.end();++it)c[it.key()]=it.value();controls.append(c);};
+#ifdef PUTGD_CATALOG_REVIEW
+ // CountdownPill handles cancellation on its root rather than on a child button.
+ if(dynamic_cast<CountdownPill*>(&root))add(&root,"button",root.accessibleDescription());
+#endif
  if(auto* menu=qobject_cast<QMenu*>(&root))for(auto* a:menu->actions()){if(a->isSeparator())continue;const auto r=menu->actionGeometry(a);controls.append(QJsonObject{{"name",a->objectName()},{"class","QAction"},{"kind","menu-item"},{"text",a->text()},{"rect",QJsonArray{r.x(),r.y(),r.width(),r.height()}},{"enabled",a->isEnabled()},{"submenu",a->menu()!=nullptr}});}
  for(auto* w:root.findChildren<QWidget*>()){
   // Same native window only: a child dialog's coordinates are not this capture's.
   if(w->window()!=root.window()||!w->isVisibleTo(&root)||w->width()<=0||w->height()<=0||w->visibleRegion().isEmpty())continue;
   if(auto* b=qobject_cast<QAbstractButton*>(w)){QJsonObject extra{{"checkable",b->isCheckable()},{"checked",b->isChecked()}};if(!b->shortcut().isEmpty())extra["shortcut"]=b->shortcut().toString(QKeySequence::PortableText);QString text=b->text();if(auto* t=qobject_cast<QToolButton*>(b);t&&t->defaultAction()&&text.isEmpty())text=t->defaultAction()->text();if(text.isEmpty())text=b->toolTip();add(w,"button",text,extra);}
-  else if(auto* e=qobject_cast<QLineEdit*>(w)){if(qobject_cast<QAbstractSpinBox*>(w->parentWidget())||qobject_cast<QComboBox*>(w->parentWidget()))continue;add(w,"field",e->placeholderText().isEmpty()?e->toolTip():e->placeholderText(),{{"readOnly",e->isReadOnly()},{"echo",int(e->echoMode())}});}
-  else if(qobject_cast<QPlainTextEdit*>(w)||qobject_cast<QTextEdit*>(w))add(w,"text-area",w->toolTip());
+  else if(auto* e=qobject_cast<QLineEdit*>(w)){if(qobject_cast<QAbstractSpinBox*>(w->parentWidget())||qobject_cast<QComboBox*>(w->parentWidget()))continue;QJsonObject extra{{"readOnly",e->isReadOnly()},{"echo",int(e->echoMode())}};
+    // A masked field holds a secret whatever it is called: the surface driver's classifier reads this.
+    if(e->echoMode()!=QLineEdit::Normal||w->property("putgdSensitive").toBool())extra["sensitive"]=true;
+    add(w,"field",e->placeholderText().isEmpty()?e->toolTip():e->placeholderText(),extra);}
+  else if(qobject_cast<QPlainTextEdit*>(w)||qobject_cast<QTextEdit*>(w))add(w,"text-area",w->toolTip(),w->property("putgdSensitive").toBool()?QJsonObject{{"sensitive",true}}:QJsonObject{});
   else if(auto* c=qobject_cast<QComboBox*>(w))add(w,"choice",c->currentText(),{{"count",c->count()}});
   else if(auto* s=qobject_cast<QAbstractSpinBox*>(w))add(w,"stepper",s->text());
   else if(auto* s=qobject_cast<QAbstractSlider*>(w)){if(qobject_cast<QScrollBar*>(w))continue;add(w,"slider",w->toolTip(),{{"value",s->value()},{"min",s->minimum()},{"max",s->maximum()}});}
@@ -509,6 +519,27 @@ int main(int argc,char** argv){
   if(!save("settings-b2-stepper-1060",scrollPose(destinationScroll,hint,40,true)))return 2;
   mode->setCurrentIndex(mode->findData("public"));provider->setCurrentIndex(provider->findData("s3"));
  }
+ // #1361: the custom uploader form: new, filled from an imported .sxcu with its token
+ // masked, and with its values stored for the session. The token is synthetic.
+ {
+  fixture.setup.setNamedCredentials(putgd::http::namedCredentials);
+  auto* provider=window.findChild<QComboBox*>("storageProvider");provider->setCurrentIndex(provider->findData("custom-http"));
+  auto* uploader=window.findChild<CustomUploaderPanel*>("customUploaderEditor");if(!uploader||!waitUntil([&]{return window.settings()->flushAutosave()&&uploader->isVisible();}))return 2;
+  auto* storage=window.findChild<QComboBox*>("credentialMode");storage->setCurrentIndex(storage->findData("session"));if(!waitUntil([&]{return window.settings()->flushAutosave();}))return 2;
+  destinationScroll->verticalScrollBar()->setValue(0);if(!save("settings-uploader-new"))return 2;
+  const QByteArray file="{\"Version\":\"17.0.0\",\"Name\":\"Example files\",\"DestinationType\":\"ImageUploader, TextUploader, FileUploader\",\"RequestMethod\":\"POST\",\"RequestURL\":\"https://files.example.test/api/upload\",\"Headers\":{\"authorization\":\"PUTGD-SYNTHETIC-CATALOG-TOKEN-not-real\"},\"Body\":\"MultipartFormData\",\"Arguments\":{\"name\":\"{filename}\"},\"FileFormName\":\"file\",\"URL\":\"{json:files[0].url}\",\"DeletionURL\":\"{json:files[0].delete}\",\"ErrorMessage\":\"{json:error}\"}";
+  if(uploader->importBytes(file)||!waitUntil([&]{return window.settings()->flushAutosave();}))return 2;
+  destinationScroll->verticalScrollBar()->setValue(0);if(!save("settings-uploader-imported"))return 2;
+  if(!save("settings-uploader-response",scrollPose(destinationScroll,window.findChild<QWidget*>("uploaderErrorMessage"),40)))return 2;
+  window.findChild<QPushButton*>("storeCredentials")->click();if(!waitUntil([&]{return window.findChild<QLabel*>("storedCredentialHint")->text().contains("1 stored");}))return 2;
+  if(!save("settings-uploader-stored",scrollPose(destinationScroll,window.findChild<QWidget*>("uploaderHeaders"),120,true)))return 2;
+  if(!save("settings-uploader-credentials",scrollPose(destinationScroll,window.findChild<QWidget*>("credentialsEditor"),40)))return 2;
+  uploader->openImport();auto* dialog=window.findChild<QDialog*>("importSxcuDialog");if(!dialog||!waitUntil([&]{return dialog->isVisible();}))return 2;
+  {putgd::test::settle(150);const auto image=steadyGrab(*dialog);if(!image.save(QDir(output).filePath("settings-uploader-import-dialog.png")))return 2;captures.append(QJsonObject{{"file","settings-uploader-import-dialog.png"},{"width",image.width()},{"height",image.height()}});}
+  dialog->reject();provider->setCurrentIndex(provider->findData("s3"));if(!waitUntil([&]{return window.settings()->flushAutosave();}))return 2;
+  // The session slot belongs to the destination, not the service: put the S3 keys back for the captures below.
+  window.findChild<QLineEdit*>("credentialAccessKey")->setText("EXAM-synthetic-preview-access");window.findChild<QLineEdit*>("credentialSecretKey")->setText("synthetic-preview-secret");window.findChild<QPushButton*>("storeCredentials")->click();if(!waitUntil([&]{return window.findChild<QLabel*>("storedCredentialHint")->text().contains("EXAM");}))return 2;
+ }
  window.navigate("settings");tabs->setCurrentIndex(0);if(!save("settings-general-compact"))return 2;window.findChild<QToolButton*>("updatePrivacyDetails")->setChecked(true);if(auto* scroll=qobject_cast<QScrollArea*>(tabs->currentWidget()))scroll->ensureWidgetVisible(window.findChild<QWidget*>("updatePrivacyFields"),0,40);if(!save("settings-update-privacy"))return 2;window.findChild<QToolButton*>("updatePrivacyDetails")->setChecked(false);tabs->setCurrentIndex(2);if(!save("settings-shortcuts-compact"))return 2;tabs->setCurrentIndex(3);if(!save("11-advanced-compact"))return 2;window.navigate("destinations");destinations->setCurrentRow(0);destinationScroll->verticalScrollBar()->setValue(0);if(!save("12-proton-compact"))return 2;{auto* advanced=window.findChild<QToolButton*>("advancedSettings");advanced->setChecked(true);putgd::test::settle(100);destinationScroll->ensureWidgetVisible(window.findChild<QWidget*>("protonRequestTimeout"),0,40);if(!save("settings-proton-steppers-1060"))return 2;advanced->setChecked(false);}destinations->setCurrentRow(1);{auto* label=window.findChild<QLineEdit*>("destinationLabel");if(!label)return 2;const auto original=label->text();label->selectAll();label->insert(QString("Production screenshots for customer support — ").repeated(3).left(120));destinationScroll->verticalScrollBar()->setValue(0);if(!save("17-destination-long-name-compact"))return 2;if(!waitUntil([&]{return window.settings()->flushAutosave()&&window.findChild<QLabel*>("storedCredentialHint")->text().contains("EXAM");}))return 2;if(!save("18-destination-credentials-compact",scrollPose(destinationScroll,window.findChild<QWidget*>("credentialActions"),40)))return 2;label->selectAll();label->insert(original);destinationScroll->verticalScrollBar()->setValue(0);}
  window.navigate("settings");tabs->setCurrentIndex(1);if(!save("13-capture-compact"))return 2;window.findChild<QToolButton*>("categoryFoldersToggle")->setChecked(true);putgd::test::settle(100);if(auto* scroll=qobject_cast<QScrollArea*>(tabs->currentWidget()))scroll->ensureWidgetVisible(window.findChild<QWidget*>("folderOther"),0,24);if(!save("settings-category-folders"))return 2;window.findChild<QToolButton*>("categoryFoldersToggle")->setChecked(false);if(auto* scroll=qobject_cast<QScrollArea*>(tabs->currentWidget()))scroll->verticalScrollBar()->setValue(0);window.findChild<QToolButton*>("captureExceptionsToggle")->setChecked(true);if(!save("14-capture-exceptions-compact"))return 2;{auto* scroll=qobject_cast<QScrollArea*>(tabs->currentWidget());putgd::test::settle(100);scroll->ensureWidgetVisible(window.findChild<QWidget*>("captureRowRegion"),0,80);if(!save("settings-exceptions-compact"))return 2;scroll->verticalScrollBar()->setValue(0);}
  window.findChild<QToolButton*>("captureExceptionsToggle")->setChecked(false);auto* destination=window.findChild<QComboBox*>("defaultCaptureDestination");destination->setCurrentIndex(destination->findData(QString{}));window.findChild<QCheckBox*>("keepUploadCopies")->setChecked(false);if(!waitUntil([&]{return !settings.snapshot().archive.keepUploads&&settings.snapshot().actions["region"].destination=="local";}))return 2;if(!save("15-capture-no-output"))return 2;for(auto* button:window.findChildren<QToolButton*>("captureActionButton"))if(button->property("captureAction")=="region")button->click();if(!save("main-unavailable-recovery"))return 2;window.findChild<QToolButton*>("dismissActionRecovery")->click();
@@ -776,6 +807,8 @@ int main(int argc,char** argv){
   RegionOverlay screenshot({selectionFrame},nullptr,"Uploads right away to Team Drive · Shared link");screenshot.start();
   for(auto* w:QApplication::topLevelWidgets())if(w->isVisible()&&w->objectName()=="putgd-region-overlay"){if(!shot(*w,"46-region-entire-display"))return 2;QTest::keyClick(w,Qt::Key_Right);if(!shot(*w,"44-region-keyboard"))return 2;RegionHintFade::setElapsedForTesting(regionHintHoldMs+regionHintFadeMs);QTest::mousePress(w,Qt::LeftButton,{},QPoint(w->width()/2-200,8));QTest::mouseMove(w,QPoint(w->width()/2+200,220));if(!shot(*w,"44a-region-badge-outside-selection"))return 2;break;}
   screenshot.cancel();
+  // Delayed capture (#1363): the countdown pill, as every desktop's surface draws it.
+  {CountdownPill countdown(5,[](bool){});countdown.setWindowFlags(Qt::FramelessWindowHint);countdown.show();if(!shot(countdown,"46a-capture-countdown"))return 2;}
   RegionHintFade::setElapsedForTesting(0);
   record::SelectionOverlay selector;selector.start();
   for(auto* w:QApplication::topLevelWidgets())if(w->isVisible()&&w->objectName()=="putgd-record-select"){if(!shot(*w,"47-record-entire-display"))return 2;QTest::keyClick(w,Qt::Key_Right);if(!shot(*w,"45-record-region-keyboard"))return 2;RegionHintFade::setElapsedForTesting(regionHintHoldMs+regionHintFadeMs);QTest::mousePress(w,Qt::LeftButton,{},QPoint(w->width()/2-200,8));QTest::mouseMove(w,QPoint(w->width()/2+200,220));if(!shot(*w,"45a-record-badge-outside-selection"))return 2;break;}

@@ -27,6 +27,8 @@
 #include <gst/app/gstappsink.h>
 #include <gst/app/gstappsrc.h>
 #endif
+#include <QElapsedTimer>
+#include <QJsonDocument>
 #include <cstdlib>
 
 namespace putgd {
@@ -64,6 +66,23 @@ class BudgieLabwcTest:public QObject {
   QVERIFY(waitFor([&]{return adapter.capabilities()["clipboard"].toObject()["available"].toBool();}));
   Error error;bool copied=false;adapter.copy(payload,[&](Error e){error=e;copied=true;});
   QVERIFY(waitFor([&]{return copied;}));QVERIFY2(!error,qPrintable(error.message));
+ }
+ // #1363 helpers: the virtual pointer over the whole layout, and one action through the adapter.
+ QRectF bounds()const{QRectF all;for(const auto& frame:layout_)all=all.united(frame.logicalRect);return all;}
+ bool pointer(const QStringList& command){
+  const auto tool=QDir(QStringLiteral(PUTGD_SOURCE_DIR)).filePath("tools/lab/wayland_pointer.py");const auto all=bounds();
+  QProcess process;process.start("python3",QStringList{"-I",tool}+command+QStringList{"--extent",QString::number(int(all.width())),QString::number(int(all.height()))});
+  return process.waitForFinished(5000)&&process.exitCode()==0;
+ }
+ bool layoutRestored(){
+  WaylandOutputs outputs;
+  return waitFor([&]{const auto now=outputs.layout();if(now.size()!=layout_.size())return false;for(int i=0;i<now.size();++i)if(now[i].identity!=layout_[i].identity||now[i].logicalRect!=layout_[i].logicalRect||now[i].density!=layout_[i].density||now[i].rotation!=layout_[i].rotation)return false;return true;});
+ }
+ PayloadResult acquire(BudgieSourceAdapter& adapter,const QString& action){
+  PayloadResult result;bool done=false;
+  adapter.prepareAcquisition(action)(ResourceLimits{},[&](PayloadResult r){result=std::move(r);done=true;});
+  if(!waitFor([&]{return done;},20000))result.error={"timeout","The acquisition did not answer",{}};
+  return result;
  }
 private slots:
  void initTestCase(){
@@ -433,6 +452,115 @@ private slots:
   },20000));
   QVERIFY(dragged);
   QVERIFY2(!result.error,qPrintable(result.error.message));
+  QCOMPARE(result.payload.image.size(),QSize(200,150));
+  const auto image=result.payload.image.convertToFormat(QImage::Format_RGB32);
+  for(int y=0;y<image.height();++y)for(int x=0;x<image.width();++x)if(rgb(image,x,y)!=outputColours[0])QFAIL(qPrintable(QStringLiteral("pixel %1,%2 is not the fixture background").arg(x).arg(y)));
+ }
+ // Capture monitor (#1363): the output the pointer is on, whole and at its native
+ // size. labwc gives clients no pointer position; a cursor session per output
+ // reports it, with no surface mapped.
+ void monitorUnderThePointer(){
+  QVERIFY(layoutRestored());
+  BudgieSourceAdapter adapter;QVERIFY(waitFor([&]{return adapter.capabilities()["capture"].toObject()["monitor"].toObject()["available"].toBool();}));
+  const auto origin=bounds().topLeft();
+  for(int round=0;round<2;++round)for(int index=0;index<layout_.size();++index){
+   const auto& frame=layout_[index];const auto at=frame.logicalRect.center()-origin+QPointF(round*37,round*-21);
+   QVERIFY(pointer({"move",QString::number(int(at.x())),QString::number(int(at.y()))}));
+   const auto result=acquire(adapter,"monitor");QVERIFY2(!result.error,qPrintable(result.error.code+": "+result.error.message+" "+QString::fromUtf8(QJsonDocument(result.error.details).toJson(QJsonDocument::Compact))));
+   QCOMPARE(result.payload.image.size(),frame.nativeRect.size());
+   QCOMPARE(rgb(result.payload.image,10,10),qRgb(255,255,255));
+   QCOMPARE(rgb(result.payload.image,result.payload.image.width()/2,result.payload.image.height()-5),outputColours[index]);
+  }
+  // On the last pixel column of the first output the cursor image reaches into
+  // the second; the hotspot still decides.
+  const auto edge=layout_.first().logicalRect.topRight()-origin+QPointF(-1,300);
+  QVERIFY(pointer({"move",QString::number(int(edge.x())),QString::number(int(edge.y()))}));
+  const auto result=acquire(adapter,"monitor");QVERIFY2(!result.error,qPrintable(result.error.message));
+  QCOMPARE(rgb(result.payload.image,result.payload.image.width()/2,result.payload.image.height()-5),outputColours[0]);
+ }
+ // Repeat last region (#1363): the same rectangle with no selector, refused
+ // before any region was captured and after the layout changed.
+ void repeatLastRegion(){
+  if(!QFile::exists(QCoreApplication::applicationDirPath()+"/putgd-region"))QSKIP("putgd-region was not built");
+  QVERIFY(layoutRestored());
+  BudgieSourceAdapter adapter;QVERIFY(waitFor([&]{return adapter.capabilities()["capture"].toObject()["region"].toObject()["available"].toBool();}));
+  QCOMPARE(acquire(adapter,"repeat").error.code,QString("repeat_unavailable"));
+  QCOMPARE(adapter.capabilities()["capture"].toObject()["repeat"].toObject()["remembered"].toBool(),false);
+  // A region on the second output, across its colour and nothing else.
+  const auto start=(layout_.last().logicalRect.topLeft()-bounds().topLeft()).toPoint()+QPoint(120,260);
+  PayloadResult region;bool done=false;
+  adapter.prepareAcquisition("region")(ResourceLimits{},[&](PayloadResult r){region=std::move(r);done=true;});
+  bool dragged=false;
+  QVERIFY(waitFor([&]{if(done)return true;dragged|=pointer({"drag",QString::number(start.x()),QString::number(start.y()),QString::number(start.x()+180),QString::number(start.y()+90)});return done;},20000));
+  QVERIFY(dragged);QVERIFY2(!region.error,qPrintable(region.error.message));QCOMPARE(region.payload.image.size(),QSize(180,90));
+  QCOMPARE(adapter.capabilities()["capture"].toObject()["repeat"].toObject()["remembered"].toBool(),true);
+  for(int round=0;round<2;++round){
+   const auto repeat=acquire(adapter,"repeat");QVERIFY2(!repeat.error,qPrintable(repeat.error.message));
+   QCOMPARE(repeat.payload.image.size(),QSize(180,90));
+   QCOMPARE(repeat.payload.image.convertToFormat(QImage::Format_RGB32),region.payload.image.convertToFormat(QImage::Format_RGB32));
+   QCOMPARE(rgb(repeat.payload.image,90,45),outputColours[layout_.size()-1]);
+  }
+  if(randr_.isEmpty())QSKIP("wlr-randr is not installed");
+  // The second output moves down: the remembered rectangle no longer means the same place.
+  const auto name=layout_.last().identity;QVERIFY(runRandr({"--output",name,"--pos","1280,100"}));
+  auto restore=qScopeGuard([&]{runRandr({"--output",name,"--pos","1280,0"});putgd::test::settle(500);});
+  WaylandOutputs outputs;QVERIFY(waitFor([&]{for(const auto& frame:outputs.layout())if(frame.identity==name&&frame.logicalRect.y()==100)return true;return false;}));
+  PUTGD_TRY_COMPARE(acquire(adapter,"repeat").error.code,QString("repeat_layout_changed"));
+ }
+ // Delayed capture (#1363): the pill is on screen while it counts, gone from the
+ // capture that follows, and a click on it cancels.
+ void countdownShowsAndLeavesNoTrace(){
+  if(!QFile::exists(QCoreApplication::applicationDirPath()+"/putgd-region"))QSKIP("putgd-region was not built");
+  QVERIFY(layoutRestored());
+  BudgieSourceAdapter adapter;QVERIFY(waitFor([&]{return adapter.capabilities()["delay"].toObject()["available"].toBool();}));
+  QVERIFY(pointer({"move","300","500"}));
+  const auto before=acquire(adapter,"desktop");QVERIFY2(!before.error,qPrintable(before.error.message));
+  const auto differs=[&](const QImage& now){const auto a=before.payload.image.convertToFormat(QImage::Format_RGB32),b=now.convertToFormat(QImage::Format_RGB32);if(a.size()!=b.size())return QRect();QRect box;for(int y=0;y<a.height();++y)for(int x=0;x<a.width();++x)if(a.pixel(x,y)!=b.pixel(x,y))box=box.united(QRect(x,y,1,1));return box;};
+  // Counting: a desktop read through the same protocol shows the pill.
+  Error ended;bool done=false;QElapsedTimer clock;clock.start();
+  adapter.countdown(3,[&](Error error){ended=error;done=true;});
+  ImageCopyCapture capture;QVERIFY(waitFor([&]{return capture.outputsAvailable();}));
+  QRect pill;
+  QVERIFY(waitFor([&]{
+   if(done)return true;
+   for(const auto& frame:layout_){QImage image;bool read=false;capture.captureOutput(frame.identity,ResourceLimits{},[&](QImage result,Error){image=std::move(result);read=true;});
+    if(!waitFor([&]{return read;},3000)||image.isNull())continue;
+    const auto origin=(frame.logicalRect.topLeft()-bounds().topLeft()).toPoint();const auto reference=before.payload.image.copy(QRect(origin,image.size())).convertToFormat(QImage::Format_RGB32);const auto now=image.convertToFormat(QImage::Format_RGB32);
+    for(int y=0;y<now.height();++y)for(int x=0;x<now.width();++x)if(now.pixel(x,y)!=reference.pixel(x,y))pill=pill.united(QRect(origin+QPoint(x,y),QSize(1,1)));}
+   return !pill.isEmpty();
+  },5000));
+  QVERIFY2(!pill.isEmpty(),"The countdown pill never showed");
+  QVERIFY(waitFor([&]{return done;},8000));QVERIFY2(!ended,qPrintable(ended.code+": "+ended.message));
+  QVERIFY2(clock.elapsed()>=2900,qPrintable(QString::number(clock.elapsed())));
+  // Its answer means its surface is gone: the very next read is the bare desktop.
+  const auto after=acquire(adapter,"desktop");QVERIFY2(!after.error,qPrintable(after.error.message));
+  const auto left=differs(after.payload.image);QVERIFY2(left.isEmpty(),qPrintable(QStringLiteral("pixels changed at %1,%2 %3x%4").arg(left.x()).arg(left.y()).arg(left.width()).arg(left.height())));
+  // A click on the pill cancels; nothing is captured by a cancelled countdown.
+  done=false;ended={};adapter.countdown(10,[&](Error error){ended=error;done=true;});
+  const auto target=pill.center();
+  QVERIFY(waitFor([&]{if(done)return true;pointer({"click",QString::number(target.x()),QString::number(target.y())});return done;},8000));
+  QCOMPARE(ended.code,QString("cancelled"));
+  // And the session API's cancel ends one the same way.
+  done=false;ended={};adapter.countdown(10,[&](Error error){ended=error;done=true;});
+  putgd::test::settle(700);adapter.cancelAcquisition();
+  QVERIFY(waitFor([&]{return done;},5000));QCOMPARE(ended.code,QString("cancelled"));
+ }
+ // A delayed live region (#1363): area first, then the countdown, then the pixels.
+ void delayedRegionCountsDownAfterSelection(){
+  if(!QFile::exists(QCoreApplication::applicationDirPath()+"/putgd-region"))QSKIP("putgd-region was not built");
+  QVERIFY(layoutRestored());
+  BudgieSourceAdapter adapter;QVERIFY(waitFor([&]{return adapter.capabilities()["capture"].toObject()["region"].toObject()["available"].toBool();}));
+  const QPoint start=(layout_.first().logicalRect.topLeft()-bounds().topLeft()).toPoint()+QPoint(80,200);
+  adapter.setCaptureDelay(3);
+  PayloadResult result;bool done=false;QElapsedTimer clock;
+  adapter.prepareAcquisition("region")(ResourceLimits{},[&](PayloadResult r){result=std::move(r);done=true;});
+  adapter.setCaptureDelay(0);
+  // The selector maps a moment after the request, so drag until one lands, as the
+  // undelayed case does. The result can't come sooner than the delay after that.
+  bool dragged=false;clock.start();
+  QVERIFY(waitFor([&]{if(done)return true;dragged|=pointer({"drag",QString::number(start.x()),QString::number(start.y()),QString::number(start.x()+200),QString::number(start.y()+150)});return done;},30000));
+  QVERIFY(dragged);QVERIFY2(!result.error,qPrintable(result.error.code+": "+result.error.message));
+  QVERIFY2(clock.elapsed()>=2900,qPrintable(QString::number(clock.elapsed())));
   QCOMPARE(result.payload.image.size(),QSize(200,150));
   const auto image=result.payload.image.convertToFormat(QImage::Format_RGB32);
   for(int y=0;y<image.height();++y)for(int x=0;x<image.width();++x)if(rgb(image,x,y)!=outputColours[0])QFAIL(qPrintable(QStringLiteral("pixel %1,%2 is not the fixture background").arg(x).arg(y)));

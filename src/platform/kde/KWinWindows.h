@@ -5,6 +5,7 @@
 #include <QJsonArray>
 #include <QJsonObject>
 #include <QObject>
+#include <QPointF>
 #include <functional>
 #include <memory>
 
@@ -28,6 +29,10 @@ public:
     ~KWinWindows() override;
     // Replies {windows: [{identity, title, appId, rect, active, minimized}], activeExcluded}.
     void list(Own, Reply);
+    // Capture monitor (#1363): the pointer's position in KWin's logical layout
+    // (workspace.cursorPos), read the same way. Wayland gives clients no global
+    // pointer position, and ScreenShot2's "active screen" follows a user option.
+    void pointer(std::function<void(Error, QPointF)>);
     static constexpr int timeoutMs = 3000;
 public slots:
     // The script's callback: `token` names the request, `json` is its window array.
@@ -35,6 +40,7 @@ public slots:
 private:
     struct Request;
     void finish(const QString& token, Error, const QJsonArray& raw = {});
+    void run(const QString& token, std::shared_ptr<Request>, const QString& script);
     QHash<QString, std::shared_ptr<Request>> requests_;
     bool registered_ = false;
 };
@@ -44,4 +50,6 @@ private:
 QJsonObject kwinRecordingWindows(const QJsonArray& raw, const KWinWindows::Own& own);
 // The KWin script that lists windows and calls `service` back with `token`.
 QString kwinWindowListScript(const QString& service, const QString& token);
+// The KWin script that reports the pointer position the same way, as [x, y].
+QString kwinPointerScript(const QString& service, const QString& token);
 }

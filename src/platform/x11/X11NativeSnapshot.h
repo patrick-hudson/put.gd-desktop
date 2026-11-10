@@ -1,6 +1,7 @@
 #pragma once
 #include "core/Error.h"
 #include <xcb/xcb.h>
+#include <QJsonArray>
 #include <QJsonObject>
 #include <QSet>
 namespace putgd {
@@ -12,7 +13,19 @@ public:
  X11NativeSnapshot();
  ~X11NativeSnapshot();
  bool available()const;
- QJsonObject freeze(const QString& action,const QSet<qint64>& excluded,Error&);
+ // monitor (#1363) freezes the output under the pointer as "area". repeat takes
+ // the remembered logical rectangle as `selection` and the monitors it was
+ // chosen on as `selectionLayout`; resolve() refuses when they are no longer
+ // the monitors there are.
+ QJsonObject freeze(const QString& action,const QSet<qint64>& excluded,Error&,const QJsonArray& selection={},const QJsonArray& selectionLayout={});
+ // A layout as a region result reports it and a repeat carries it: one
+ // {identity, logical, native, rotation} per monitor. Qt's logical rectangles
+ // depend on the scale factor, so only the helper writes one (describeLayout
+ // in X11Capture.h); this checks its shape.
+ static bool describes(const QJsonArray&);
+ // Whether the remembered monitors have the native rectangles and rotations of
+ // the current RandR outputs: the check the resident can make without Qt.
+ bool sameNativeOutputs(const QJsonArray& remembered,Error&);
  bool unchanged(const QJsonObject&,Error&);
  X11Target resolve(const QJsonObject&,X11Capture&,Error&);
  static Error validate(const QJsonObject&);

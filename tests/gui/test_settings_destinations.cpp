@@ -428,6 +428,99 @@ private slots:
     advanced->setChecked(true);PUTGD_TRY_COMPARE(scroll->horizontalScrollBar()->maximum(),0);advanced->setChecked(false);
    }}
  }
+ // #1361: importing a .sxcu fills the Custom uploader form. Its token waits in a masked
+ // field of the window; the configuration, the settings draft and the UI checkpoint get
+ // names only, before and after it is stored.
+ void customUploaderImportKeepsItsTokenOutOfSettingsAndCheckpoints(){
+  const QByteArray token="PUTGD-SYNTHETIC-GUI-TOKEN-0123456789abcdef";
+  QTemporaryDir dir;CredentialStore secrets;ProviderRegistry registry;
+  registry.add("s3",std::make_shared<S3Provider>(secrets));registry.add("custom-http",std::make_shared<HttpUploaderProvider>(secrets));
+  SettingsService service(dir.filePath("config.json"),[&](auto id,auto values){return registry.validate(id,values);},nullptr,[&](auto id,auto reference){return registry.validateCredentials(id,reference);});
+  QVERIFY(service.save(Settings::developmentTemplate(),{}));
+  UiSessionFixture fixture(service,secrets);fixture.setup.setNamedCredentials(http::namedCredentials);
+  MainWindow window(fixture.session);window.navigate("destinations");window.show();
+  auto* provider=window.findChild<QComboBox*>("storageProvider");
+  QVERIFY(provider->findData("custom-http")>=0);
+  provider->setCurrentIndex(provider->findData("custom-http"));
+  const auto saved=[&]{return service.document()["profiles"].toArray()[0].toObject();};
+  PUTGD_TRY_COMPARE(saved()["provider"].toString(),QString("custom-http"));
+  // A new one is saved with its defaults and says what it still needs.
+  QCOMPARE(saved()["settings"].toObject(),http::defaults());
+  auto* panel=window.findChild<CustomUploaderPanel*>("customUploaderEditor");QVERIFY(panel&&panel->isVisible());
+  QVERIFY(!window.findChild<QLineEdit*>("credentialAccessKey")->isVisible());
+  QVERIFY(window.settings()->destinationRowLines(0).join(' ').contains("Needs a request URL"));
+  auto* mode=window.findChild<QComboBox*>("credentialMode");mode->setCurrentIndex(mode->findData("session"));emit mode->activated(mode->currentIndex());
+  PUTGD_TRY_COMPARE(saved()["credentials"].toObject()["mode"].toString(),QString("session"));
+  // The file repeats its token in the deletion URL, as XBackBone's does.
+  const QByteArray file="{\"Version\":\"16.1.0\",\"Name\":\"Lab media\",\"DestinationType\":\"ImageUploader, FileUploader\",\"RequestMethod\":\"POST\",\"RequestURL\":\"https://media.example.test/upload\",\"Body\":\"MultipartFormData\",\"Arguments\":{\"file\":\"{filename}\",\"token\":\""+token+"\"},\"FileFormName\":\"upload\",\"URL\":\"{json:url}\",\"DeletionURL\":\"{json:url}/delete/"+token+"\"}";
+  QVERIFY(!panel->importBytes(file));
+  PUTGD_TRY_COMPARE(saved()["settings"].toObject()["requestUrl"].toString(),QString("https://media.example.test/upload"));
+  const auto settings=saved()["settings"].toObject();
+  QCOMPARE(settings["arguments"].toArray(),QJsonArray({QJsonObject{{"name","file"},{"secret",false},{"value","{filename}"}},QJsonObject{{"name","token"},{"secret",true}}}));
+  QCOMPARE(settings["deletionUrl"].toString(),QString("{json:url}/delete/{secret:arguments/token}"));
+  QCOMPARE(settings["accepts"].toArray(),QJsonArray({"image","file"}));
+  // Held in the window, masked, and nowhere else.
+  QCOMPARE(panel->typedSecrets().value("arguments/token"),QString::fromLatin1(token));
+  auto* value=window.findChild<QLineEdit*>("uploaderFieldValue1");QVERIFY(value);
+  QCOMPARE(value->echoMode(),QLineEdit::Password);
+  QVERIFY(window.settings()->hasCredentialInputs());
+  QVERIFY(window.findChild<QLabel*>("uploaderNotice")->text().contains("1 secret value is held in this window"));
+  // A value typed or imported but not stored is not "ready": the list says what is missing.
+  PUTGD_TRY_VERIFY(window.settings()->destinationRowLines(0).join(' ').contains("Needs credentials"));
+  // "Add credentials…" goes to a field of this form, not to the hidden S3 keys: the
+  // value that is still missing, or the store button when every value is typed.
+  auto* addCredentials=window.findChild<QPushButton*>("addDestinationCredentials");QVERIFY(addCredentials&&addCredentials->isVisible());
+  const auto held=panel->typedSecrets();panel->clearTypedSecrets();
+  addCredentials->click();PUTGD_TRY_COMPARE(QApplication::focusWidget(),static_cast<QWidget*>(value));
+  panel->setTypedSecrets(held);
+  addCredentials->click();PUTGD_TRY_COMPARE(QApplication::focusWidget(),static_cast<QWidget*>(window.findChild<QPushButton*>("storeCredentials")));
+  QFile config(dir.filePath("config.json"));QVERIFY(config.open(QIODevice::ReadOnly));QVERIFY(!config.readAll().contains(token));config.close();
+  const auto checkpoint=window.settings()->saveViewState();
+  QVERIFY2(!checkpoint.contains("stateError"),qPrintable(checkpoint["stateError"].toString()));
+  QVERIFY(!QJsonDocument(checkpoint).toJson().contains(token));
+  QVERIFY(!QJsonDocument(panel->state()).toJson().contains(token));
+  QCOMPARE(panel->missingSecrets(),QStringList());
+  // Stored for the session: the field empties and shows the value as stored.
+  auto* store=window.findChild<QPushButton*>("storeCredentials");PUTGD_TRY_VERIFY(store->isEnabled());store->click();
+  PUTGD_TRY_VERIFY(window.findChild<QLabel*>("storedCredentialHint")->text().contains("1 stored"));
+  PUTGD_TRY_VERIFY(panel->typedSecrets().isEmpty());
+  QVERIFY(value->text().isEmpty());QVERIFY(value->placeholderText().contains("stored"));
+  PUTGD_TRY_VERIFY(window.settings()->destinationRowLines(0).join(' ').contains("Ready to test"));
+  const auto cached=secrets.cached("development-s3",saved()["credentials"].toObject());
+  QVERIFY(cached);QCOMPARE(cached->values.value("arguments/token"),QString::fromLatin1(token));
+  QVERIFY(!window.settings()->hasCredentialInputs());
+  QVERIFY(config.open(QIODevice::ReadOnly));QVERIFY(!config.readAll().contains(token));config.close();
+  QVERIFY(!QJsonDocument(window.settings()->saveViewState()).toJson().contains(token));
+  // Plain HTTP beyond loopback is refused beside the address until the destination allows it.
+  auto* url=window.findChild<QLineEdit*>("uploaderUrl");url->setText("http://media.example.test/upload");emit url->editingFinished();
+  auto* problem=window.findChild<QLabel*>("uploaderUrlError");QVERIFY(problem);
+  PUTGD_TRY_VERIFY(problem->isVisible()&&problem->text().contains("plain HTTP"));
+  QCOMPARE(saved()["settings"].toObject()["requestUrl"].toString(),QString("https://media.example.test/upload"));
+  auto* allow=window.findChild<QCheckBox*>("uploaderAllowHttp");QVERIFY(allow->isVisible());allow->click();
+  PUTGD_TRY_COMPARE(saved()["settings"].toObject()["requestUrl"].toString(),QString("http://media.example.test/upload"));
+  QCOMPARE(saved()["settings"].toObject()["allowInsecureHttp"].toBool(),true);
+  PUTGD_TRY_VERIFY(!problem->isVisible());
+  // The deletion URL names this value, so it cannot stop being a secret: the change is
+  // refused beside the form and the saved row stays as it was.
+  auto* secret=window.findChild<QCheckBox*>("uploaderFieldSecret1");secret->click();
+  auto* refused=window.findChild<QLabel*>("uploaderSecretsError");QVERIFY(refused);
+  PUTGD_TRY_VERIFY(refused->isVisible()&&refused->text().contains("does not store"));
+  QCOMPARE(saved()["settings"].toObject()["arguments"].toArray()[1].toObject(),QJsonObject({{"name","token"},{"secret",true}}));
+  // The wheel scrolls the form: a timeout under the pointer keeps its value and takes no focus.
+  auto* timeout=window.findChild<QSpinBox*>("uploaderConnectTimeout");QVERIFY(timeout);const int seconds=timeout->value();
+  QCOMPARE(timeout->focusPolicy(),Qt::StrongFocus);
+  for(const auto delta:{120,-120}){QWheelEvent event(QPointF(5,5),timeout->mapToGlobal(QPoint(5,5)),QPoint{},QPoint{0,delta},Qt::NoButton,Qt::NoModifier,Qt::NoScrollPhase,false);QApplication::sendEvent(timeout,&event);QCOMPARE(timeout->value(),seconds);}
+  // A saved timeout finer than a second survives the form until its own field is changed.
+  auto fine=panel->settings();fine["connectTimeoutMs"]=1500;panel->setSettings(fine);
+  QCOMPARE(panel->settings()["connectTimeoutMs"].toInt(),1500);
+  timeout->setValue(2);QCOMPARE(panel->settings()["connectTimeoutMs"].toInt(),2000);
+  // An import into a destination that already allows plain HTTP keeps the switch and says so.
+  const QByteArray plain="{\"Version\":\"16.1.0\",\"Name\":\"Plain\",\"DestinationType\":\"ImageUploader\",\"RequestMethod\":\"POST\",\"RequestURL\":\"http://media.example.test/upload\",\"Body\":\"MultipartFormData\",\"FileFormName\":\"file\",\"URL\":\"{json:url}\"}";
+  QVERIFY(!panel->importBytes(plain));
+  QVERIFY(allow->isChecked());
+  const auto notice=window.findChild<QLabel*>("uploaderNotice")->text();
+  QVERIFY2(notice.contains("as allowed for it")&&!notice.contains("Turn on Allow plain HTTP"),qPrintable(notice));
+ }
 
 };
 QTEST_MAIN(SettingsGui)
