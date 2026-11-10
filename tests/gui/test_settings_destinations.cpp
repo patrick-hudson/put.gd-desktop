@@ -3,7 +3,7 @@ class SettingsGui:public SettingsGuiFixture {
  Q_OBJECT
 private slots:
  void s3PresignedFormPersistsAndExplainsAccess(){
-  QTemporaryDir dir;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(service.save(threeDestinations(),{}));
+  QTemporaryDir dir;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});auto doc=threeDestinations();auto profiles=doc["profiles"].toArray();auto profile=profiles[1].toObject();auto storage=profile["settings"].toObject();storage["publicUrlBase"]="https://cdn.example.invalid";storage["endpoint"]="https://s3.example.invalid";storage["addressing"]="path";profile["settings"]=storage;profiles[1]=profile;doc["profiles"]=profiles;QVERIFY(service.save(doc,{}));
   CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.navigate("destinations");window.show();
   window.findChild<QListWidget*>("destinationList")->setCurrentRow(1);
   auto* mode=window.findChild<QComboBox*>("b2LinkMode");PUTGD_TRY_VERIFY(mode->isVisible());
@@ -12,6 +12,9 @@ private slots:
   PUTGD_TRY_COMPARE(service.document()["profiles"].toArray()[1].toObject()["settings"].toObject()["linkMode"].toString(),QString("presigned"));
   PUTGD_TRY_COMPARE(service.document()["profiles"].toArray()[1].toObject()["settings"].toObject()["linkValidityDays"].toInt(),2);
   QVERIFY(!window.findChild<QComboBox*>("s3AclMode")->isVisible());QVERIFY(!window.findChild<QLineEdit*>("s3PublicUrlBase")->isVisible());
+  auto* example=window.findChild<QLabel*>("linkExample");QVERIFY(example);QVERIFY(example->text().startsWith("https://s3.example.invalid/"));QVERIFY(!example->text().contains("cdn.example.invalid"));QVERIFY(example->text().endsWith("?X-Amz-Signature=…"));QVERIFY(example->isVisible());
+  QCOMPARE(service.document()["profiles"].toArray()[1].toObject()["settings"].toObject()["publicUrlBase"].toString(),QString("https://cdn.example.invalid"));
+  mode->setCurrentIndex(mode->findData("public"));emit mode->activated(mode->currentIndex());PUTGD_TRY_VERIFY(example->text().startsWith("https://cdn.example.invalid/"));QVERIFY(!example->text().contains("X-Amz-Signature"));QVERIFY(example->isVisible());
  }
  void disclosureIconsSurviveEveryToggleAndProviderChange(){
   QTemporaryDir dir;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(service.save(threeDestinations(),{}));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.navigate("settings");window.show();
