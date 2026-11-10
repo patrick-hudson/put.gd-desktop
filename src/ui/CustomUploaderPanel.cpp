@@ -193,6 +193,11 @@ QJsonArray UploaderRows::state() const {
     }
     return out;
 }
+QLineEdit* UploaderRows::missingValue() const {
+    for (const auto& row : rows_)
+        if (row.secret->isChecked() && row.value->text().isEmpty() && !stored_.contains(http::secretKey(list_, row.name->text().trimmed()))) return row.value;
+    return nullptr;
+}
 
 QString CustomUploaderPanel::provider() { return QString::fromLatin1(http::providerId); }
 QJsonObject CustomUploaderPanel::defaultSettings() { return http::defaults(); }
@@ -451,6 +456,12 @@ void CustomUploaderPanel::setStored(const QStringList& keys, bool known) {
     dataStored_ = set.contains(http::dataSecretKey());
     for (auto* list : lists()) list->setStored(set, known);
     syncVisibility();
+}
+QWidget* CustomUploaderPanel::credentialField() const {
+    if (!built_) return nullptr;
+    for (auto* list : lists()) if (auto* field = list->missingValue(); field && field->isVisibleTo(this)) return field;
+    if (dataSecret_->isChecked() && !dataStored_ && data_->isVisibleTo(this) && data_->toPlainText().isEmpty()) return data_;
+    return nullptr;
 }
 QStringList CustomUploaderPanel::missingSecrets() const {
     QStringList out;

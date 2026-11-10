@@ -26,6 +26,8 @@ public:
     // Which secret rows the credential store holds; `known` is false while it is locked.
     void setStored(const QSet<QString>& keys, bool known);
     QJsonArray state() const;
+    // The value field of the first secret row that has nothing stored and nothing typed.
+    QLineEdit* missingValue() const;
 signals:
     void changed();      // something the configuration stores changed
     void typedChanged(); // a secret value was typed or cleared
@@ -64,6 +66,9 @@ public:
     void setStored(const QStringList& keys, bool known);
     // The names of secret values the request needs that are neither typed nor stored.
     QStringList missingSecrets() const;
+    // Where "Add credentials…" puts the cursor: the first secret value that is neither
+    // typed nor stored. Null when none is missing; typed values then only wait for Store.
+    QWidget* credentialField() const;
     // Reads a .sxcu into the form. Its secret values become typed values, held here until stored.
     Error importBytes(const QByteArray&);
     Error importFile(const QString& path);

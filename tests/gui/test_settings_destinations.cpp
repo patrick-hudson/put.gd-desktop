@@ -432,6 +432,13 @@ private slots:
   QVERIFY(window.findChild<QLabel*>("uploaderNotice")->text().contains("1 secret value is held in this window"));
   // A value typed or imported but not stored is not "ready": the list says what is missing.
   PUTGD_TRY_VERIFY(window.settings()->destinationRowLines(0).join(' ').contains("Needs credentials"));
+  // "Add credentials…" goes to a field of this form, not to the hidden S3 keys: the
+  // value that is still missing, or the store button when every value is typed.
+  auto* addCredentials=window.findChild<QPushButton*>("addDestinationCredentials");QVERIFY(addCredentials&&addCredentials->isVisible());
+  const auto held=panel->typedSecrets();panel->clearTypedSecrets();
+  addCredentials->click();PUTGD_TRY_COMPARE(QApplication::focusWidget(),static_cast<QWidget*>(value));
+  panel->setTypedSecrets(held);
+  addCredentials->click();PUTGD_TRY_COMPARE(QApplication::focusWidget(),static_cast<QWidget*>(window.findChild<QPushButton*>("storeCredentials")));
   QFile config(dir.filePath("config.json"));QVERIFY(config.open(QIODevice::ReadOnly));QVERIFY(!config.readAll().contains(token));config.close();
   const auto checkpoint=window.settings()->saveViewState();
   QVERIFY2(!checkpoint.contains("stateError"),qPrintable(checkpoint["stateError"].toString()));
