@@ -106,7 +106,7 @@ silence means go after that deadline. Before any logout or display-server restar
 check for Patrick's own apps. If any are present, ask Patrick first; his apps are
 never leftovers, and silence never means go.
 The automatic nightly desktop check runs from a d69 timer across the five builders
-and reports to pinned issue #1003; release lab leases before 07:15 UTC. See
+and reports to pinned issue #1003; release lab leases before 10:15 UTC. See
 [Sharing the lab between concurrent sessions](../lab/remote-builders.md#sharing-the-lab-between-concurrent-sessions).
 
 Every graphical run must stay visible at the workstation's display wall and
