@@ -50,8 +50,9 @@ choice (editable only before Record; GIF/WebP disable audio), and Record,
 Pause/Resume, Stop and Cancel. The microphone checkbox is off by default and
 remembered; ticked, it opens the input and the meter beside it shows its level,
 before and during the recording. With no input to open (none connected, or the
-system default is an output's monitor) it is unavailable and its tooltip says
-why. From Record on the bar's facts name what is recorded (**With system
+system default is an output's monitor) it reads **No microphone**, its box is
+empty and unavailable, and its tooltip says why; the remembered choice is
+kept. From Record on the bar's facts name what is recorded (**With system
 audio**, **With microphone**, **System audio and microphone**, **Click
 highlights**) and, if the input goes away, **Microphone disconnected**. From Record on the checkbox is locked but still
 shows whether the clip records system audio: ticked with the app theme's

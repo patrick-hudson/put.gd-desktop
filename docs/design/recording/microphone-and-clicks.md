@@ -34,10 +34,16 @@ WebP stay silent.
   missing. put.gd does not pick another input in its place.
 - **A microphone that goes away does not end the recording.** The clip goes on,
   silent on that input from there; the bar says **Microphone disconnected** and
-  `recording.inspect` reports `progress.microphoneLost`. Its stream is never
-  moved to another input: see [Capture and mix](#capture-and-mix).
-- **Without one, the bar says so.** The toggle reads **No microphone** and is
-  off; its tooltip and `recordingMicrophone.unavailable` give the reason.
+  `recording.inspect` reports `progress.microphoneLost`. Nothing of another
+  input is recorded in its place: with PipeWire the stream is pinned to its
+  device and is never moved; under PulseAudio itself, which may move it, the
+  recording drops the stream's audio from the moment its device changes. See
+  [Capture and mix](#capture-and-mix).
+- **Without one, the bar says so.** The toggle reads **No microphone**, its box
+  is empty and it cannot be ticked; its tooltip and
+  `recordingMicrophone.unavailable` give the reason. What the user chose last
+  time (`requested`) is kept apart from what is recorded (`effective`), so the
+  choice is there again once a microphone is.
 
 ### Device
 
@@ -76,9 +82,9 @@ and `audio.microphoneMessage`). A `prepare` that asks for the microphone when
 none is available is refused with `recording_unsupported`, `details.field`
 `audio.microphone` and `details.reason` from the table, before anything is
 accepted. The remembered toggle is not a request: with it on and no microphone,
-the tray, dashboard and shortcut still open a recording, the toggle shows
-ticked and unavailable with the reason in its tooltip, and nothing is recorded
-from an input.
+the tray, dashboard and shortcut still open a recording, the toggle reads
+**No microphone** with an empty box and the reason in its tooltip, the
+remembered choice stays as it was, and nothing is recorded from an input.
 
 The list comes from GStreamer's PulseAudio device provider
 (`pulsedeviceprovider`, started so that it knows the server's default source),
