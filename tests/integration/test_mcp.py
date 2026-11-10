@@ -216,7 +216,7 @@ class ProductionCliTests(unittest.IsolatedAsyncioTestCase):
                             'patch_configuration', 'open_editor', 'get_editor', 'edit_image',
                             'preview_editor', 'save_editor_copy', 'copy_editor_image', 'submit_editor', 'cancel_editor',
                             'raise_editor', 'get_recording_capabilities', 'list_recording_windows', 'list_recording_microphones', 'prepare_recording', 'control_recording',
-                            'get_recording', 'select_recording_region', 'set_recording_overlay', 'edit_recording', 'preview_recording', 'drive_recording_review',
+                            'get_recording', 'select_recording_region', 'set_recording_overlay', 'set_recording_audio', 'edit_recording', 'preview_recording', 'drive_recording_review',
                             'save_recording_copy', 'upload_recording', 'reorder_destinations', 'move_destination',
                             'clear_logs', 'create_diagnostics_bundle', 'get_diagnostics_upload_target', 'show_diagnostics_package',
                             'settings_diagnostics', 'history_save_diagnostics', 'drive_history', 'get_update_status', 'check_for_updates',
@@ -452,6 +452,9 @@ class ProductionCliTests(unittest.IsolatedAsyncioTestCase):
                     ('get_recording', {'id': 'synthetic-operation'}, 'recording.inspect', {'id': 'synthetic-operation'}),
                     ('select_recording_region', {'id': 'synthetic-operation', 'rect': [40, 50, 640, 360]}, 'recording.select', {'id': 'synthetic-operation', 'rect': [40, 50, 640, 360]}),
                     ('set_recording_overlay', {'id': 'synthetic-operation', 'visible': False}, 'recording.overlay', {'id': 'synthetic-operation', 'visible': False}),
+                    # #1364: the ready bar's audio toggles; an omitted one is not sent.
+                    ('set_recording_audio', {'id': 'synthetic-operation', 'microphone': True}, 'recording.audio', {'id': 'synthetic-operation', 'microphone': True}),
+                    ('set_recording_audio', {'id': 'synthetic-operation', 'microphone': False, 'system': True}, 'recording.audio', {'id': 'synthetic-operation', 'microphone': False, 'system': True}),
                     ('edit_recording', {'id': 'synthetic-operation', 'revision': 1, 'commands': [
                         {'op': 'setTrim', 'start': 10000000, 'end': 30000000},
                         {'op': 'addMask', 'mask': {'kind': 'blur', 'rect': [100, 100, 200, 50], 'start': 12000000, 'end': 15000000}},
@@ -531,6 +534,9 @@ class ProductionCliTests(unittest.IsolatedAsyncioTestCase):
                                    ('prepare_recording', {'target': {'kind': 'desktop'}, 'format': 'mp4', 'microphone': True, 'microphone_device': ''}),
                                    ('prepare_recording', {'target': {'kind': 'desktop'}, 'format': 'mp4', 'click_highlights': 'yes'}),
                                    ('list_recording_microphones', {'device': 'x' * 257}),
+                                   ('set_recording_audio', {'id': 'synthetic-operation'}),
+                                   ('set_recording_audio', {'id': 'synthetic-operation', 'microphone': 'yes'}),
+                                   ('set_recording_audio', {'id': 'synthetic-operation', 'system': 1}),
                                    ('control_recording', {'id': 'synthetic-operation', 'command': 'explode'}),
                                    ('select_recording_region', {'id': 'synthetic-operation', 'rect': [1, 2, 0, 4]}),
                                    ('select_recording_region', {'id': 'synthetic-operation', 'rect': [1, 2, 3]}),

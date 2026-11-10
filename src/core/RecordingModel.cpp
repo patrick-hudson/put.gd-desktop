@@ -103,9 +103,12 @@ Error checkTransition(const QString& state, const QString& command) {
         {"upload", {"reviewing"}},
         {"inspect", states()},
         {"raise", {"ready", "starting", "recording", "paused", "stopping", "reviewing", "exporting"}},
-        {"overlay", {"ready", "starting", "recording", "paused"}}};
+        {"overlay", {"ready", "starting", "recording", "paused"}},
+        // The ready bar's audio toggles (#1364): what the clip records is fixed at Record.
+        {"audio", {"ready"}}};
     if (!allowed.contains(command)) return {"unknown_method", "Unknown recording command", {}};
-    if (!allowed[command].contains(state)) return {"recording_state", QStringLiteral("Cannot %1 a recording that is %2").arg(command, state), {{"state", state}, {"command", command}}};
+    if (!allowed[command].contains(state)) return {"recording_state", command == QLatin1String("audio") ? QStringLiteral("The audio sources can be changed only while the recording is ready; it is %1").arg(state)
+                                                                                                         : QStringLiteral("Cannot %1 a recording that is %2").arg(command, state), {{"state", state}, {"command", command}}};
     return {};
 }
 Error parseTarget(const QJsonValue& value, RecordingTarget& out) {

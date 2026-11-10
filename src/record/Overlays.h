@@ -1,4 +1,5 @@
 #pragma once
+#include <optional>
 #include "core/Error.h"
 #include "core/RecordingModel.h"
 #include <QJsonObject>
@@ -140,6 +141,13 @@ public:
     float microphoneLevel() const;
     // The microphone went away during the recording; the bar says so.
     void setMicrophoneLost(const QString& reason);
+    // The input the toggle would open changed while the bar is at Ready: a microphone was plugged
+    // in or pulled, or the default input changed. The toggle, its text and what will be recorded
+    // follow; what the user asked for is kept, so a remembered choice takes effect again once there
+    // is a microphone. Emits configChanged when what will be recorded changed.
+    void setMicrophone(bool available, const QString& label, const QString& unavailable);
+    // The toggles set as a click sets them (recording.audio); an absent value leaves its toggle alone.
+    void chooseAudio(std::optional<bool> system, std::optional<bool> microphone);
 signals:
     void recordRequested();
     void pauseRequested();

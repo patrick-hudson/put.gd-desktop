@@ -38,12 +38,23 @@ public:
  qint64 processId(const QString&) const override {return pid;}
  // review: the window's answer; onReview may first emit what the window proposes (an edit event), as the helper does.
  std::function<void(const QJsonObject&)> onReview;
- void control(const QString&,const QString& command,const QJsonObject& params,Reply reply) override {
-  log<<command;lastControlParams=params;
+ Error audioError;QString controlId;  // audioError: the helper refuses the audio command (no microphone to switch on)
+ void control(const QString& id,const QString& command,const QJsonObject& params,Reply reply) override {
+  log<<command;lastControlParams=params;controlId=id;
   if(command=="review"){if(onReview)onReview(params);reply({},{{"action",params["action"]},{"playheadUs",3000000.0},{"visible",true}});return;}
   if(command=="cancel"){++cancels;reply({},{});return;}
   if(command=="start"&&failStart){reply({"recording_start_failed","Synthetic source refused",{}},{});return;}
   if(command=="click"){clicks.append(params);reply(clickError,{});return;}
+  // recording.audio: the helper sets the bar's toggles, says so in events and answers with what it will record.
+  if(command=="audio"){
+   if(audioError){reply(audioError,{});return;}
+   auto audio=lastConfig.audio;
+   if(params["system"].isBool())audio.system=params["system"].toBool();
+   if(params["microphone"].isBool())audio.microphone=params["microphone"].toBool();
+   lastConfig.audio=audio;
+   if(sink){sink({{"id",controlId},{"event","configChanged"},{"config",lastConfig.toJson()}});sink({{"id",controlId},{"event","progress"},{"recordingMicrophone",QJsonObject{{"requested",audio.microphone},{"effective",audio.microphone},{"available",true}}}});}
+   reply({},{{"audio",audio.toJson()}});return;
+  }
   if(command=="start"){
    capturedSystemAudio=captureSystemAudio&&lastConfig.audio.system;
    QJsonObject result{{"audioEncoder",capturedSystemAudio||capturedMicrophone()?QString("synthetic-aac"):QString()}};

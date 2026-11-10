@@ -463,6 +463,7 @@ private slots:
    {"recording.prepare",{{"target",region()},{"format","mp4"},{"audio",true}}},
    {"recording.start",{}},{"recording.stop",{{"id",""}}},{"recording.inspect",{{"id","x"},{"extra",1}}},
    {"recording.overlay",{{"id","x"}}},{"recording.overlay",{{"id","x"},{"visible","yes"}}},
+   {"recording.audio",{{"id","x"}}},{"recording.audio",{{"id","x"},{"microphone","yes"}}},{"recording.audio",{{"id","x"},{"system",1}}},{"recording.audio",{{"id","x"},{"microphone",true},{"device","mic"}}},
    {"recording.edit",{{"id","x"},{"commands",QJsonArray{}}}},{"recording.edit",{{"id","x"},{"revision","1"},{"commands",QJsonArray{}}}},
    {"recording.preview",{{"id","x"}}},{"recording.preview",{{"id","x"},{"time","0"}}},
    {"recording.saveCopy",{{"id","x"}}},{"recording.saveCopy",{{"id","x"},{"path","/p.mp4"},{"overwrite","no"}}},
@@ -655,7 +656,7 @@ private slots:
  // resident's answer (recording_helper_timeout included) always reaches it.
  void clientWaitsOutlastHelperDeadlines(){
   QVERIFY(LocalServer::replyDeadlineMs("recording.stop")>recording::helperStopMs);
-  for(const auto* method:{"recording.capabilities","recording.prepare","recording.select","recording.start","recording.pause","recording.resume","recording.raise","recording.overlay","recording.preview","recording.review"})
+  for(const auto* method:{"recording.capabilities","recording.prepare","recording.select","recording.start","recording.pause","recording.resume","recording.raise","recording.overlay","recording.audio","recording.preview","recording.review"})
    QVERIFY2(LocalServer::replyDeadlineMs(method)>recording::helperCommandMs,method);
   // Exports answer when they start, so they keep the ordinary wait.
   for(const auto* method:{"recording.saveCopy","recording.upload","recording.inspect","capabilities"})QCOMPARE(LocalServer::replyDeadlineMs(method),15000);
@@ -837,6 +838,42 @@ private slots:
   // Unticking it is remembered too.
   h.backend->sink({{"id",id},{"event","configChanged"},{"config",QJsonObject{{"format","mp4"},{"codec","h264"},{"fps",30},{"audio",QJsonObject{{"system",false},{"microphone",false}}}}},{"microphoneRequested",false}});
   PUTGD_TRY_VERIFY(!h.settings.snapshot().recordingMicrophone);
+  QVERIFY(!h.rec("cancel",{{"id",id}}).error);
+ }
+ // #1364: recording.audio sets the ready bar's toggles for an agent, as a click does for a user: a
+ // microphone that was plugged in after prepare is switched on without starting over. It is this
+ // session's choice only, never the remembered preference, and only while the bar offers it.
+ void theAudioSourcesCanBeSetWhileReady(){
+  Harness h;PUTGD_TRY_VERIFY(h.operations->ready());
+  h.backend->microphoneSupported=true;
+  auto id=h.prepareReady();QVERIFY(!id.isEmpty());
+  QVERIFY(!h.rec("inspect",{{"id",id}}).result["config"].toObject()["audio"].toObject()["microphone"].toBool());
+  // The helper has no microphone to switch on: its refusal and its reason reach the caller, nothing changes.
+  h.backend->audioError={"recording_unsupported","No microphone is connected.",{{"field","audio.microphone"},{"reason","no_microphone"}}};
+  auto refused=h.rec("audio",{{"id",id},{"microphone",true}});
+  QCOMPARE(refused.error.code,QString("recording_unsupported"));QCOMPARE(refused.error.details["reason"].toString(),QString("no_microphone"));
+  QVERIFY(!h.rec("inspect",{{"id",id}}).result["config"].toObject()["audio"].toObject()["microphone"].toBool());
+  // One was plugged in: the same call switches it on, and the answer is the session as inspect gives it.
+  h.backend->audioError={};
+  h.backend->microphoneList={{"available",true},{"device",QJsonObject{{"id","mic-usb"},{"label","USB microphone"}}},{"devices",QJsonArray{QJsonObject{{"id","mic-usb"},{"label","USB microphone"},{"default",true}}}},{"defaultIsMonitor",false}};
+  auto set=h.rec("audio",{{"id",id},{"microphone",true}});QVERIFY2(!set.error,qPrintable(set.error.message));
+  QCOMPARE(h.backend->log.last(),QString("audio"));QCOMPARE(h.backend->lastControlParams,QJsonObject({{"microphone",true}}));
+  QCOMPARE(set.result["state"].toString(),QString("ready"));
+  QVERIFY(set.result["config"].toObject()["audio"].toObject()["microphone"].toBool());
+  QVERIFY(set.result["progress"].toObject()["recordingMicrophone"].toObject()["effective"].toBool());
+  QVERIFY(!h.settings.snapshot().recordingMicrophone);  // an agent's call is not the user's remembered choice
+  // Both toggles in one call; a toggle that is not named is left alone.
+  set=h.rec("audio",{{"id",id},{"system",true}});QVERIFY(!set.error);
+  QCOMPARE(set.result["config"].toObject()["audio"].toObject(),QJsonObject({{"system",true},{"microphone",true}}));
+  QCOMPARE(h.backend->lastControlParams,QJsonObject({{"system",true}}));
+  // What is recorded is what was set.
+  QVERIFY(!h.rec("start",{{"id",id}}).error);
+  QCOMPARE(h.rec("inspect",{{"id",id}}).result["progress"].toObject()["audioSources"].toObject(),QJsonObject({{"system",true},{"microphone",true}}));
+  // From Record on the sources are fixed.
+  const auto controls=h.backend->log.size();
+  auto late=h.rec("audio",{{"id",id},{"microphone",false}});
+  QCOMPARE(late.error.code,QString("recording_state"));QVERIFY2(late.error.message.contains("only while the recording is ready"),qPrintable(late.error.message));
+  QCOMPARE(h.backend->log.size(),controls);
   QVERIFY(!h.rec("cancel",{{"id",id}}).error);
  }
  // #1364: click highlights run from Record to Stop. The desktop's presses go to

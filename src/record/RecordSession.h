@@ -104,6 +104,15 @@ private:
     QTimer levelTimer_;
     void updateMicrophoneMonitor();
     void closeMicrophone();
+    // While the bar is at Ready the session follows the sound server's inputs (#1364): a microphone
+    // plugged in after `prepare` can be used without starting over, and one that is pulled is no longer
+    // offered. Asked once a second; listing opens no device.
+    void followMicrophones();
+    std::function<MicrophoneList()> listMicrophones_ = &listMicrophones;
+    QTimer microphoneWatch_;
+    // An audio command (recording.audio) changes the toggles for this session only: it is not the
+    // user's choice to remember.
+    bool commandedAudio_ = false;
     // Reads what the finished capture recorded.
     void noteCaptured();
     QJsonObject audioSources() const { return {{"system", capturedSystem_}, {"microphone", capturedMicrophone_}}; }

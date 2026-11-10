@@ -64,7 +64,7 @@ int LocalServer::replyDeadlineMs(const QString& method) {
  constexpr int base=15000;
  // A record toggle can stop the helper through action.invoke as well.
  if(method=="recording.stop"||method=="action.invoke")return recording::helperStopMs+base;
- if(QStringList{"recording.capabilities","recording.microphones","recording.prepare","recording.select","recording.start","recording.pause","recording.resume","recording.raise","recording.overlay","recording.preview","recording.review"}.contains(method))return recording::helperCommandMs+base;
+ if(QStringList{"recording.capabilities","recording.microphones","recording.prepare","recording.select","recording.start","recording.pause","recording.resume","recording.raise","recording.overlay","recording.audio","recording.preview","recording.review"}.contains(method))return recording::helperCommandMs+base;
  // Reading the logs and compressing up to 20 MiB stays well inside 45 s; an
  // upload adds the destination test and the upload itself (#123).
  if(method=="diagnostics.bundle")return diagnosticsBundleReplyMs;
@@ -172,6 +172,8 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
  }
  if(method=="recording.select") {if(!fields(p,{"id","rect"})||!string(p,"id")||!p["rect"].isArray()||p["rect"].toArray().size()!=4){reply(invalid(),{});return;}operations_.recordingCommand("select",p,reply);return;}
  if(method=="recording.overlay") {if(!fields(p,{"id","visible"})||!string(p,"id")||!p["visible"].isBool()){reply(invalid(),{});return;}operations_.recordingCommand("overlay",p,reply);return;}
+ // #1364: the ready bar's audio toggles. At least one of the two, each a boolean.
+ if(method=="recording.audio") {if(!fields(p,{"id"},{"system","microphone"})||!string(p,"id")||(!p.contains("system")&&!p.contains("microphone"))||(p.contains("system")&&!p["system"].isBool())||(p.contains("microphone")&&!p["microphone"].isBool())){reply(invalid(),{});return;}operations_.recordingCommand("audio",p,reply);return;}
  if(method=="recording.edit") {if(!fields(p,{"id","revision","commands"})||!string(p,"id")||!p["revision"].isDouble()||!p["commands"].isArray()||p["commands"].toArray().size()>100){reply(invalid(),{});return;}operations_.recordingCommand("edit",p,reply);return;}
  if(method=="recording.preview") {if(!fields(p,{"id","time"},{"maxEdge"})||!string(p,"id")||!p["time"].isDouble()||(p.contains("maxEdge")&&!p["maxEdge"].isDouble())){reply(invalid(),{});return;}operations_.recordingCommand("preview",p,reply);return;}
  if(method=="recording.review") {

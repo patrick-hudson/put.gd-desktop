@@ -59,7 +59,13 @@ modules are unloaded by their ids when the run ends, also after a failure.
 `--mic NAME` records an existing source; `--mic default` records the system
 default input, expecting the refusal where that is an output's monitor;
 `--mic muted` makes the simulated microphone and plays the bursts into it but
-leaves put.gd's microphone off, so the clip must not hold them.
+leaves put.gd's microphone off, so the clip must not hold them. `--mic late`
+prepares each recording with no microphone to open and plugs the simulated one
+in while the bar is at Ready (as the default input), switches it on with
+`recording.audio`, pulls it, and plugs it in again: `recording.inspect` must
+follow every step (`readyFollow` in the round's entry, with the seconds each
+took and, with --frames, a frame of the desktop per step), and the clip that is
+then recorded must hold the bursts.
 `--system off` records no system audio; `--system tone` moves the default
 output to a private null sink and plays a quiet 440 Hz tone into it, so the
 clip must hold the microphone's bursts and that tone. `--system leak` plays the
@@ -67,7 +73,15 @@ same tone without recording system audio and makes that output's monitor the
 default input: the clip must hold no 440 Hz at all, also after `--unplug-at`
 has pulled the microphone and the sound server has moved its stream there. `--unplug-at S` removes
 the simulated microphone S seconds into each recording, which must still end
-with a playable clip of the whole time recorded. Each clip's entry then has `tones` (band levels at 440 Hz
+with a playable clip of the whole time recorded. `--output-gone-at S` (with
+`--system tone`) removes the private output that system audio is recorded from,
+S seconds in, as a headset pulled or a monitor switched off would: with
+`--output-fallback` another private output is made the default first, so there
+is one to move to; without it nothing is left but what the sound server makes
+up, and on a machine with a sound card that needs `--cards-off`, which turns
+every card's profile off for the run (no lab sound can then reach a real
+output) and puts the profiles and the defaults back. The recording must go on
+and the clip must hold the whole time recorded. Each clip's entry then has `tones` (band levels at 440 Hz
 and at the marker's 1 kHz) beside the A/V offsets. A round whose clip is more than 1.5 s shorter than the
 time recorded, lacks the simulated microphone's bursts, holds them with the microphone off or holds the
 unrecorded output's tone lists that under `problems`, and the run exits 1. --real-data-home lets an AppImage use
@@ -276,6 +290,7 @@ class Driver:
         self.resident = None
         self.cover_rect = None
         self.hyprland_focus_before = None
+        self.card_state = None
         self.mic_state = None
         self.tone = None
 
@@ -307,27 +322,38 @@ class Driver:
 
     def open_microphone(self):
         a = self.args
-        if a.mic not in ('virtual', 'muted') and a.system not in ('tone', 'leak'):
+        if a.mic not in ('virtual', 'muted', 'late') and a.system not in ('tone', 'leak'):
             return None
+        cards = self.cards_off() if a.cards_off else None
         self.mic_state = self.run / 'virtual-mic.json'
         create = ['create', '--name', 'putgd_lab_%d' % os.getpid(), '--state', str(self.mic_state)]
         if a.system in ('tone', 'leak'):
             create.append('--system-sink')
+        if a.mic == 'off' and a.system == 'tone':
+            # Nothing of the lab's but the output system audio is recorded from.
+            create.append('--no-microphone')
+        if a.mic == 'late':
+            # The marker's bursts need their output from the start; the microphone itself is plugged in at Ready.
+            create.append('--unplugged')
+        if a.mic_default:
+            # A desktop with a microphone: the simulated one is the default input.
+            create.append('--default')
         if a.system == 'leak':
             # The default input becomes that output's monitor: what a pulled microphone's stream is moved to.
             create.append('--monitor-default')
         state = self.virtual_mic(*create)
-        if a.mic in ('virtual', 'muted'):
+        if a.mic in ('virtual', 'muted', 'late'):
             # The marker's bursts are the simulated voice: they play into the microphone's sink, not the speakers.
             a.audio_device = state['sink']
         if a.system in ('tone', 'leak'):
             self.tone = subprocess.Popen([sys.executable, str(HERE / 'virtual_mic.py'), 'tone', '--state', str(self.mic_state),
                                           '--seconds', '3600'], env=self.env, start_new_session=True,
                                          stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        if cards:
+            state['cardsOff'] = cards
         return state
 
-    def close_microphone(self):
-        # Whatever the tone does, the simulated devices are removed afterwards.
+    def stop_tone(self):
         try:
             if self.tone and self.tone.poll() is None:
                 try:
@@ -338,15 +364,80 @@ class Driver:
                     self.tone.wait(5)
         except (ProcessLookupError, subprocess.TimeoutExpired) as error:
             log('the tone player did not end cleanly: %s' % error)
+
+    def close_microphone(self):
+        # Whatever the tone does, the simulated devices are removed afterwards, and then the cards come back.
+        try:
+            self.stop_tone()
         finally:
-            removed = self.virtual_mic('remove', '--state', str(self.mic_state)) if self.mic_state and self.mic_state.is_file() else None
+            try:
+                removed = self.virtual_mic('remove', '--state', str(self.mic_state)) if self.mic_state and self.mic_state.is_file() else None
+            finally:
+                self.cards_on()
         return removed
+
+    def pactl(self, *arguments):
+        return subprocess.run(['pactl', *arguments], env=self.env, capture_output=True, text=True).stdout.strip()
+
+    def recording_sources(self):
+        """The sources put.gd's recorder reads from now, by name, as the sound server lists its streams."""
+        names = {line.split('\t')[0]: line.split('\t')[1] for line in self.pactl('list', 'short', 'sources').splitlines() if '\t' in line}
+        found, source, ours = [], None, False
+        for line in (self.pactl('list', 'source-outputs') + '\nSource Output #end').splitlines():
+            line = line.strip()
+            if line.startswith('Source Output #'):
+                if ours and source is not None:
+                    found.append(names.get(source, 'source %s (gone)' % source))
+                source, ours = None, False
+            elif line.startswith('Source: '):
+                source = line[8:]
+            elif 'application.process.binary = "putgd-record"' in line or 'application.name = "putgd-record"' in line:
+                ours = True
+        return found
+
+    def cards_off(self):
+        """For a run that removes its output with nothing to fall back on: every sound card's profile off.
+
+        No real output or input exists for the length of the run, so nothing of the lab's can be moved to one and
+        heard. The profiles and the defaults are written to RUN/cards.json first and put back when the run ends;
+        after a crash, `pactl set-card-profile NAME PROFILE` for each entry of that file does the same."""
+        cards, name = {}, None
+        for line in self.pactl('list', 'cards').splitlines():
+            line = line.strip()
+            if line.startswith('Name: '):
+                name = line[6:]
+            elif line.startswith('Active Profile: ') and name:
+                cards[name] = line[16:]
+        self.card_state = {'defaultSink': self.pactl('get-default-sink'), 'defaultSource': self.pactl('get-default-source'), 'cards': cards}
+        (self.run / 'cards.json').write_text(json.dumps(self.card_state, indent=1) + '\n')
+        for card in cards:
+            self.pactl('set-card-profile', card, 'off')
+        time.sleep(1.5)
+        left = [line.split('\t')[1] for line in self.pactl('list', 'short', 'sinks').splitlines() if '\t' in line]
+        self.card_state['sinksWhileOff'] = left
+        return self.card_state
+
+    def cards_on(self):
+        if not self.card_state:
+            return
+        state, self.card_state = self.card_state, None
+        for card, profile in state['cards'].items():
+            self.pactl('set-card-profile', card, profile)
+        time.sleep(1.5)
+        # The server's defaults as they were, by name: turning a card off makes it forget them.
+        if state.get('defaultSink'):
+            self.pactl('set-default-sink', state['defaultSink'])
+        if state.get('defaultSource'):
+            self.pactl('set-default-source', state['defaultSource'])
+        restored = {'defaultSink': self.pactl('get-default-sink'), 'defaultSource': self.pactl('get-default-source')}
+        if restored != {k: state.get(k) for k in restored}:
+            log('the defaults are %s, were %s' % (json.dumps(restored), json.dumps({k: state.get(k) for k in restored})))
 
     def microphone_device(self):
         a = self.args
         if a.mic == 'virtual':
             return json.loads(self.mic_state.read_text())['source']
-        return None if a.mic in ('off', 'default') else a.mic
+        return None if a.mic in ('off', 'default', 'muted', 'late') else a.mic
 
     def clicks(self):
         """--click entries as (seconds, x, y, button), in time order."""
@@ -657,7 +748,7 @@ class Driver:
                 target['rect'] = a.rect
             sound = fmt not in ANIMATIONS
             audio = {'system': sound and a.system not in ('off', 'leak')}
-            if a.mic not in ('off', 'muted') and sound:
+            if a.mic not in ('off', 'muted', 'late') and sound:
                 audio['microphone'] = True
                 if self.microphone_device():
                     audio['microphoneDevice'] = self.microphone_device()
@@ -677,6 +768,8 @@ class Driver:
             rid = prepared['recordingId']
             ready = self.wait_state(build, rid, ('ready',), a.prepare_timeout)
             result['canvas'] = ready.get('canvas')
+            if a.mic == 'late':
+                result['readyFollow'] = self.follow_at_ready(build, rid, name)
             time.sleep(a.lead)
             asked = time.monotonic()
             self.cli(build, 'recording.start', {'id': rid})
@@ -698,6 +791,22 @@ class Driver:
                 after = self.cli(build, 'recording.inspect', {'id': rid})
                 result['afterUnplug'] = {'state': after.get('state'), 'microphoneLost': (after.get('progress') or {}).get('microphoneLost')}
                 time.sleep(max(0, a.pause_at - a.unplug_at - 2.5))
+            elif a.output_gone_at is not None and self.mic_state:
+                time.sleep(max(0, a.output_gone_at - 0.5))
+                if not a.output_fallback:
+                    # With nothing to move to, nothing of the lab's may go looking for another output either.
+                    self.stop_tone()
+                gone = self.virtual_mic('unplug-output', '--state', str(self.mic_state), *(['--fallback'] if a.output_fallback else []))
+                result['outputGoneAtS'] = round(time.monotonic() - started, 3)
+                result['outputGone'] = {k: gone.get(k) for k in ('fallback', 'defaultSink', 'defaultSource', 'sinks')}
+                time.sleep(2.5)
+                after = self.cli(build, 'recording.inspect', {'id': rid})
+                progress = after.get('progress') or {}
+                result['afterOutputGone'] = {'state': after.get('state'), 'error': after.get('error'), 'durationUs': progress.get('durationUs'),
+                                             'systemAudioLost': progress.get('systemAudioLost'), 'recordedFrom': self.recording_sources()}
+                if after.get('state') != 'recording':
+                    raise RunError('the recording is %s after its output went: %s' % (after.get('state'), json.dumps(after.get('error'))))
+                time.sleep(max(0, a.pause_at - a.output_gone_at - 2.5))
             else:
                 time.sleep(max(0, a.pause_at - 0.5))
             if a.pause_for > 0:
@@ -727,6 +836,9 @@ class Driver:
             self.cli(build, 'recording.cancel', {'id': rid})
         finally:
             self.stop_resident(build)
+            if a.mic == 'late' and self.mic_state and json.loads(self.mic_state.read_text()).get('plugged'):
+                # The next round starts without a microphone again.
+                self.virtual_mic('unplug', '--state', str(self.mic_state))
         working = self.run / 'working' / (rid + '.mkv')
         result['clips'] = {}
         for kind, clip in (('working', working), ('export', copy)):
@@ -801,6 +913,77 @@ class Driver:
         self.hyprland_focus_before = before
         return {'onFocusUnderFullscreen': {'before': before, 'during': during}}
 
+    def desktop_frame(self, path):
+        """One frame of the desktop through the tile the run's presses and cover check use; False where there is none."""
+        a = self.args
+        if a.click_vnc:
+            host, _, port = a.click_vnc.rpartition(':')
+        elif a.vnc_port:
+            host, port = '127.0.0.1', a.vnc_port
+        else:
+            return False
+        import rfb
+        client = rfb.RFB(int(port), host=host or '127.0.0.1')
+        try:
+            client.frame()
+            time.sleep(0.3)
+            client.screenshot(str(path))
+        finally:
+            client.close()
+        return True
+
+    def follow_at_ready(self, build, rid, name):
+        """At Ready: a microphone is plugged in, switched on, pulled and plugged in again; the bar must follow each.
+
+        The session was prepared with no microphone to open. `recording.inspect` must say so, then show the one
+        that was plugged in within a few seconds, take `recording.audio {microphone: true}` without a new prepare,
+        drop it when it is pulled while keeping that it was asked for, and record from it again, unasked, once it
+        is back. With --frames a frame of the desktop is kept at each step (RUN/frames/NAME-ready-STEP.png)."""
+        steps = []
+
+        def microphone():
+            return (self.cli(build, 'recording.inspect', {'id': rid}).get('progress') or {}).get('recordingMicrophone') or {}
+
+        def wait(want, what, timeout=8):
+            began = time.monotonic()
+            while time.monotonic() - began < timeout:
+                state = microphone()
+                if want(state):
+                    return state, round(time.monotonic() - began, 2)
+                time.sleep(0.2)
+            raise RunError('at Ready the bar did not show %s within %d s: %s' % (what, timeout, json.dumps(microphone())))
+
+        def step(label, state, waited=None):
+            entry = {'step': label, 'microphone': state, 'waitedS': waited}
+            if self.args.frames:
+                # The bar has drawn the new state by the time the next frame is on the tile.
+                time.sleep(0.6)
+                frame = self.run / 'frames' / ('%s-ready-%s.png' % (name, label))
+                frame.parent.mkdir(exist_ok=True)
+                entry['frame'] = frame.name if self.desktop_frame(frame) else None
+            steps.append(entry)
+
+        state = microphone()
+        if state.get('available'):
+            raise RunError('a microphone is available before one was plugged in: %s' % json.dumps(state))
+        step('none', state)
+        self.virtual_mic('plug', '--state', str(self.mic_state), '--default')
+        state, waited = wait(lambda m: m.get('available') and not m.get('effective'), 'the microphone that was plugged in')
+        step('plugged', state, waited)
+        self.cli(build, 'recording.audio', {'id': rid, 'microphone': True})
+        state, waited = wait(lambda m: m.get('effective'), 'the microphone switched on')
+        step('on', state, waited)
+        self.virtual_mic('unplug', '--state', str(self.mic_state))
+        state, waited = wait(lambda m: not m.get('available') and not m.get('effective') and m.get('requested'), 'that the microphone is gone')
+        step('pulled', state, waited)
+        self.virtual_mic('plug', '--state', str(self.mic_state), '--default')
+        state, waited = wait(lambda m: m.get('available') and m.get('effective'), 'the microphone back, and on without being asked again')
+        step('back', state, waited)
+        config = (self.cli(build, 'recording.inspect', {'id': rid}).get('config') or {}).get('audio') or {}
+        if not config.get('microphone'):
+            raise RunError('the session does not record the microphone that is back: %s' % json.dumps(config))
+        return steps
+
     def cover_x11_window(self):
         """The cover's X window id, as `recording.prepare` takes it for a window target on X11."""
         listed = subprocess.run(['xprop', '-root', '_NET_CLIENT_LIST'], env=self.env, capture_output=True, text=True).stdout
@@ -829,13 +1012,15 @@ class Driver:
 
         marker, tone = peak(1000), peak(440)
         if a.video == 'marker' and marker is not None:
-            if a.mic == 'virtual' and marker < 0.05:
+            if a.mic in ('virtual', 'late') and marker < 0.05:
                 problems.append("the simulated microphone's bursts are not in the clip (1 kHz peak %.4f)" % marker)
             if a.mic == 'muted' and marker > 0.01:
                 problems.append('the microphone is off and its bursts are in the clip (1 kHz peak %.4f)' % marker)
         # The quiet tone is recorded at about 0.017; nothing near that may come from an output that is not recorded.
         if a.system == 'leak' and tone is not None and tone > 0.0085:
             problems.append("an output's sound is in the clip (440 Hz peak %.4f)" % tone)
+        if a.output_gone_at is not None and (result.get('afterOutputGone') or {}).get('state') != 'recording':
+            problems.append('the recording did not go on after its output went')
         if a.unplug_at is not None and self.mic_state:
             if not (result.get('afterUnplug') or {}).get('microphoneLost'):
                 problems.append('the recording did not say that the microphone was lost')
@@ -930,10 +1115,14 @@ def main(argv=None):
     parser.add_argument('--prepare-timeout', type=float, default=120)
     parser.add_argument('--min-pairs', type=int, default=8)
     parser.add_argument('--frames', action='store_true', help='keep one cover-checked frame of each saved copy')
-    parser.add_argument('--mic', default='off', help="off, virtual (a simulated microphone made for the run), muted (simulated and playing, not recorded), default, or a source name")
+    parser.add_argument('--mic', default='off', help="off, virtual (a simulated microphone made for the run), muted (simulated and playing, not recorded), late (simulated, plugged in while the bar is at Ready), default, or a source name")
     parser.add_argument('--system', choices=('on', 'off', 'tone', 'leak'), default='on',
                         help="system audio: recorded, not recorded, a quiet 440 Hz tone on a private default output, or 'leak': that tone playing but not recorded, with the output's monitor as the default input (the clip must hold none of it)")
     parser.add_argument('--unplug-at', type=float, help='remove the simulated microphone this many seconds into each recording')
+    parser.add_argument('--output-gone-at', type=float, help='with --system tone: remove the private output this many seconds into each recording')
+    parser.add_argument('--output-fallback', action='store_true', help='with --output-gone-at: make another private output the default first')
+    parser.add_argument('--mic-default', action='store_true', help='make the simulated microphone the default input (a desktop with a microphone)')
+    parser.add_argument('--cards-off', action='store_true', help="turn the sound cards' profiles off for the run and put them back (for --output-gone-at without a fallback)")
     parser.add_argument('--precheck-wait', type=float, default=1.5, help='seconds between placing the cover and checking it')
     parser.add_argument('--no-notifications', action='store_true', help="turn the run's own put.gd notifications off (private config), so none covers the cover")
     parser.add_argument('--marker-motion', action='store_true', help='add a sweeping bar to the marker clip so marker recordings also score motion')

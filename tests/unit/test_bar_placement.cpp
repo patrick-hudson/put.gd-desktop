@@ -203,6 +203,66 @@ private slots:
         QVERIFY(!none.findChild<QWidget*>("microphoneLevel")->isVisible());
         QCOMPARE(none.microphoneState()["unavailable"].toString(), options.microphoneUnavailable);
     }
+    // #1364: the bar follows the sound server while it is at Ready. A microphone plugged in after the
+    // bar opened can be ticked without starting over, one that is pulled is no longer offered, and
+    // what the user asked for outlives both.
+    void theReadyBarFollowsAMicrophoneThatComesAndGoes() {
+        auto options = barOptions();
+        options.audioSupported = true;
+        options.microphoneUnavailable = "No microphone is connected.";
+        ControlBar bar(options, putgd::RecordingConfig{}); bar.show(); QApplication::processEvents();
+        auto* microphone = bar.findChild<QCheckBox*>("microphone");
+        auto* meter = bar.findChild<QWidget*>("microphoneLevel");
+        QVERIFY(microphone && meter);
+        QCOMPARE(microphone->text(), QString("No microphone"));
+        QVERIFY(!microphone->isEnabled() && !microphone->isChecked());
+        QSignalSpy changes(&bar, &ControlBar::configChanged);
+        // Plugged in. The user had not asked for it: the toggle is offered, nothing is recorded yet.
+        bar.setMicrophone(true, "USB microphone", {});
+        QCOMPARE(microphone->text(), QString("Microphone"));
+        QVERIFY(microphone->isEnabled() && !microphone->isChecked() && !meter->isVisible());
+        QCOMPARE(changes.size(), 0);
+        QCOMPARE(bar.microphoneState(), QJsonObject({{"requested", false}, {"effective", false}, {"available", true}, {"device", "USB microphone"}}));
+        // It can be ticked now.
+        microphone->click();
+        QCOMPARE(changes.size(), 1);
+        QVERIFY(bar.effectiveMicrophone() && bar.config().audio.microphone && meter->isVisible());
+        // Pulled: the box is empty and off again, nothing of it is recorded, the choice is kept.
+        bar.setMicrophone(false, {}, "No microphone is connected.");
+        QCOMPARE(changes.size(), 2);
+        QCOMPARE(microphone->text(), QString("No microphone"));
+        QVERIFY(!microphone->isEnabled() && !microphone->isChecked() && !meter->isVisible());
+        QVERIFY(bar.requestedMicrophone() && !bar.effectiveMicrophone() && !bar.config().audio.microphone);
+        QCOMPARE(bar.microphoneState(), QJsonObject({{"requested", true}, {"effective", false}, {"available", false}, {"unavailable", "No microphone is connected."}}));
+        QVERIFY(microphone->toolTip().contains("No microphone is connected"));
+        // Another one is plugged in: the kept choice takes effect without a click, on the new device.
+        bar.setMicrophone(true, "Headset", {});
+        QCOMPARE(changes.size(), 3);
+        QVERIFY(microphone->isEnabled() && microphone->isChecked() && bar.effectiveMicrophone() && meter->isVisible());
+        QVERIFY(microphone->toolTip().contains("Headset"));
+        // The same news twice is no news.
+        bar.setMicrophone(true, "Headset", {});
+        QCOMPARE(changes.size(), 3);
+        // A command sets the toggles as a click does, and leaves alone what it does not name.
+        bar.chooseAudio(true, std::nullopt);
+        QCOMPARE(changes.size(), 4);
+        QVERIFY(bar.config().audio.system && bar.config().audio.microphone);
+        // The first checkbox is System audio, as the tests above take it.
+        auto* system = bar.findChild<QCheckBox*>();
+        QVERIFY(system && system != microphone && system->isChecked());
+        bar.chooseAudio(std::nullopt, false);
+        QCOMPARE(changes.size(), 5);
+        QVERIFY(bar.config().audio.system && !bar.config().audio.microphone && !microphone->isChecked() && !meter->isVisible());
+        bar.chooseAudio(true, false);
+        QCOMPARE(changes.size(), 5);
+        // From Record on the device is the pipeline's: the bar no longer follows.
+        bar.chooseAudio(std::nullopt, true);
+        bar.setState("recording");
+        bar.setMicrophone(false, {}, "No microphone is connected.");
+        bar.chooseAudio(false, false);
+        QVERIFY(bar.effectiveMicrophone() && bar.config().audio.system);
+        QCOMPARE(bar.microphoneState()["available"].toBool(), true);
+    }
     void unavailableAudioRemainsReadableInBothSchemes() {
         const auto previous = putgd::Theme::scheme();
         const auto restore = qScopeGuard([previous] { putgd::Theme::setScheme(previous); });

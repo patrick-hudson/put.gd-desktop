@@ -633,6 +633,30 @@ QJsonObject ControlBar::microphoneState() const {
 }
 void ControlBar::setMicrophoneLevel(float level) { if (meter_->isVisible()) static_cast<LevelBar*>(meter_)->setLevel(level); }
 float ControlBar::microphoneLevel() const { return static_cast<const LevelBar*>(meter_)->level(); }
+void ControlBar::setMicrophone(bool available, const QString& label, const QString& unavailable) {
+    if (state_ != "ready") return;
+    if (options_.microphoneAvailable == available && options_.microphoneLabel == label && options_.microphoneUnavailable == unavailable) return;
+    options_.microphoneAvailable = available;
+    options_.microphoneLabel = label;
+    options_.microphoneUnavailable = unavailable;
+    const bool effective = microphoneIntent_ && available && !config_.silent();
+    const bool changed = effective != config_.audio.microphone;
+    config_.audio.microphone = effective;
+    refresh();
+    if (changed) emit configChanged(config_);
+}
+void ControlBar::chooseAudio(std::optional<bool> system, std::optional<bool> microphone) {
+    if (state_ != "ready") return;
+    bool changed = false;
+    if (system && audioIntent_ != *system) { audioIntent_ = *system; changed = true; }
+    if (microphone && microphoneIntent_ != *microphone) { microphoneIntent_ = *microphone; changed = true; }
+    if (!changed) return;
+    config_.audio.system = audioIntent_ && options_.audioSupported && !config_.silent();
+    config_.audio.microphone = microphoneIntent_ && options_.microphoneAvailable && !config_.silent();
+    // refresh() draws both boxes from what was asked for.
+    refresh();
+    emit configChanged(config_);
+}
 void ControlBar::setMicrophoneLost(const QString& reason) {
     if (microphoneLost_ == reason) return;
     microphoneLost_ = reason;

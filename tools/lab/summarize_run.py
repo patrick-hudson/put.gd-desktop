@@ -20,9 +20,13 @@ def main():
             print('   microphones', {k: entry['microphones'].get(k) for k in ('available', 'reason', 'defaultIsMonitor')}, 'device', (entry['microphones'].get('device') or {}).get('id'))
         if entry.get('problems'):
             print('   PROBLEMS: %s' % '; '.join(entry['problems']))
-        for key in ('error', 'recordedS', 'microphoneLostAtStop', 'afterUnplug', 'unpluggedAtS', 'captureStepMs', 'exportMinusWorkingMs', 'clickHighlightsError'):
+        for key in ('error', 'recordedS', 'microphoneLostAtStop', 'outputGoneAtS', 'outputGone', 'afterOutputGone', 'afterUnplug', 'unpluggedAtS', 'captureStepMs', 'exportMinusWorkingMs', 'clickHighlightsError'):
             if entry.get(key) is not None:
                 print('   %s %s' % (key, entry[key]))
+        for step in entry.get('readyFollow') or []:
+            m = step.get('microphone') or {}
+            print('   ready %-8s available %-5s effective %-5s requested %-5s %s%s' % (step.get('step'), m.get('available'), m.get('effective'), m.get('requested'),
+                                                                                    m.get('device') or m.get('unavailable') or '', '' if step.get('waitedS') is None else ' | after %.1f s' % step['waitedS']))
         if entry.get('clickHighlights'):
             print('   clickHighlights', {k: entry['clickHighlights'].get(k) for k in ('available', 'route', 'drawnBy', 'targets', 'reason')})
         for kind, clip in (entry.get('clips') or {}).items():

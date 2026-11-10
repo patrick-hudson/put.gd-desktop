@@ -105,7 +105,7 @@ QJsonObject RecordingService::capabilities() const {
     result["editCommands"] = QJsonArray{"setTrim", "resetTrim", "addMask", "updateMask", "removeMask"};
     result["limits"] = QJsonObject{{"animationMaxUs", double(limit.animationMaxUs)}, {"animationMaxEdge", limit.animationMaxEdge},
         {"maxFileBytes", double(settings.limits.maxFileBytes)}, {"maxMasks", recording::maximumMasks}};
-    result["commands"] = QJsonArray{"windows", "microphones", "prepare", "start", "pause", "resume", "stop", "cancel", "inspect", "select", "raise", "overlay", "edit", "preview", "review", "saveCopy", "upload"};
+    result["commands"] = QJsonArray{"windows", "microphones", "prepare", "start", "pause", "resume", "stop", "cancel", "inspect", "select", "raise", "overlay", "audio", "edit", "preview", "review", "saveCopy", "upload"};
     // recording.windows lists the identities a window target takes (KDE, GNOME Wayland).
     result["windowList"] = windows_ != nullptr;
     // #1364: whether this desktop can highlight clicks, by which route, and who draws the ring.
@@ -769,6 +769,16 @@ void RecordingService::commandSession(const QString& command, const QJsonObject&
             return;
         }
         backend_->control(s.op.id, "select", {{"rect", rectJson(rect)}}, marshal(s.generation, [this, reply](Error error, QJsonObject) { reply(error, error ? QJsonObject{} : publicJson(*session_)); }));
+        return;
+    }
+    if (command == "audio") {
+        // The bar's audio toggles, for an agent: only while the bar offers them. The helper answers with
+        // what it will record; its configChanged and progress events have brought the session up to date
+        // by then.
+        if (s.state != "ready") { reply({"recording_state", "The audio sources can be changed only while the recording is ready", {{"state", s.state}}}, {}); return; }
+        QJsonObject forwarded;
+        for (const auto* key : {"system", "microphone"}) if (params[key].isBool()) forwarded[key] = params[key].toBool();
+        backend_->control(s.op.id, "audio", forwarded, marshal(s.generation, [this, reply](Error error, QJsonObject) { reply(error, error ? QJsonObject{} : publicJson(*session_)); }));
         return;
     }
     if (command == "raise" || command == "overlay") {

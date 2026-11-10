@@ -68,6 +68,8 @@ QRect desktopRoot() {
 RecordSession::RecordSession(QObject* parent) : QObject(parent), pipeline_(this), monitor_(this), levelTimer_(this), progress_(this), barTimer_(this), bounds_(this) {
     // The meter beside the microphone toggle, about 12 times a second while an input is open.
     levelTimer_.setInterval(80);
+    microphoneWatch_.setInterval(1000);
+    connect(&microphoneWatch_, &QTimer::timeout, this, &RecordSession::followMicrophones);
     connect(&levelTimer_, &QTimer::timeout, this, [this] {
         if (!bar_) return;
         if (pipeline_.running()) bar_->setMicrophoneLevel(pipeline_.takeMicrophoneLevel());
@@ -213,6 +215,23 @@ void RecordSession::command(const QString& command, const QJsonObject& params, R
     if (command == "resume") { if (auto e = pipeline_.resume()) reply(e, {}); else { showBar("recording"); emitProgress(); reply({}, pipeline_.status()); } return; }
     if (command == "stop") { stop(std::move(reply)); return; }
     if (command == "cancel") { cancelLocal(); reply({}, {}); return; }
+    if (command == "audio") {
+        // recording.audio: the bar's two toggles, set as a click sets them, while the bar is at Ready.
+        if (!bar_ || pipeline_.running() || recorded_ || starting_ || cancelled_) { reply({"recording_state", "The audio sources can be changed only before Record", {}}, {}); return; }
+        const bool system = params["system"].toBool(false), microphone = params["microphone"].toBool(false);
+        if ((system || microphone) && config_.silent()) { reply({"recording_unsupported", "GIF and WebP are silent", {{"field", "audio"}, {"reason", "silent_format"}}}, {}); return; }
+        if (system && !capabilities_["audio"].toObject()["system"].toBool()) { reply({"recording_unsupported", "System audio cannot be recorded here", {{"field", "audio.system"}}}, {}); return; }
+        if (microphone) {
+            // A microphone plugged in a moment ago counts: look now rather than at the next tick.
+            followMicrophones();
+            if (!microphone_.available()) { reply({"recording_unsupported", microphone_.message.isEmpty() ? QStringLiteral("No microphone can be opened") : microphone_.message, {{"field", "audio.microphone"}, {"reason", microphone_.reason}}}, {}); return; }
+        }
+        commandedAudio_ = true;
+        bar_->chooseAudio(params["system"].isBool() ? std::optional<bool>(system) : std::nullopt, params["microphone"].isBool() ? std::optional<bool>(microphone) : std::nullopt);
+        commandedAudio_ = false;
+        reply({}, {{"audio", config_.audio.toJson()}, {"microphone", bar_->microphoneState()}});
+        return;
+    }
     if (command == "setEdit") {
         RecordingEdit edit;
         if (!parseEdit(params["edit"].toObject(), edit)) { reply({"invalid_request", "Invalid edit", {}}, {}); return; }
@@ -344,6 +363,23 @@ void RecordSession::click(QPointF desktop, int button, const QRectF& window, qin
     QPointF at;
     if (!mapClick(desktop, area, resolved_.canvas, &at)) return;
     pipeline_.addClick(at, button, ageNs);
+}
+void RecordSession::followMicrophones() {
+    // Only at Ready: from Record on the device is the one the pipeline opened, and its loss is the pipeline's to report.
+    if (!bar_ || recorded_ || cancelled_) { microphoneWatch_.stop(); return; }
+    if (pipeline_.running() || starting_ || microphone_.reason == QLatin1String("microphone_elements_missing")) return;
+    const auto now = chooseMicrophone(listMicrophones_(), config_.audio.microphoneDevice);
+    if (now.device.id == microphone_.device.id && now.device.label == microphone_.device.label && now.reason == microphone_.reason) return;
+    debugLog(now.available() ? "microphone: now " + now.device.id : "microphone: now unavailable (" + now.reason + ")");
+    microphone_ = now;
+    const bool before = bar_->effectiveMicrophone();
+    // The bar announces a change of what will be recorded itself (configChanged, handled where the bar is made).
+    bar_->setMicrophone(now.available(), now.device.label, now.message);
+    if (bar_->effectiveMicrophone() == before) {
+        // The toggle's own state changed all the same: available or not, and which device.
+        updateMicrophoneMonitor();
+        emit event({{"event", "progress"}, {"recordingAudio", bar_->audioState()}, {"recordingMicrophone", bar_->microphoneState()}});
+    }
 }
 void RecordSession::updateMicrophoneMonitor() {
     // The input is open for the meter only while the toggle is on and nothing
@@ -724,7 +760,10 @@ void RecordSession::finishPrepare(Reply reply) {
         guard->config_ = config;
         guard->config_.budgetBytes = budget;
         guard->updateMicrophoneMonitor();
-        emit guard->event({{"event", "configChanged"}, {"config", config.toJson()}, {"microphoneRequested", guard->bar_->requestedMicrophone()}});
+        QJsonObject changed{{"event", "configChanged"}, {"config", config.toJson()}};
+        // What the user ticked is remembered for next time; what a command set is not.
+        if (!guard->commandedAudio_) changed["microphoneRequested"] = guard->bar_->requestedMicrophone();
+        emit guard->event(changed);
         emit guard->event({{"event", "progress"}, {"recordingAudio", guard->bar_->audioState()}, {"recordingMicrophone", guard->bar_->microphoneState()}});
     });
     connect(bar_, &ControlBar::recordRequested, this, [guard] {
@@ -776,6 +815,7 @@ void RecordSession::finishPrepare(Reply reply) {
     }
     showBar("ready");
     updateMicrophoneMonitor();
+    microphoneWatch_.start();
     emit event({{"event", "progress"}, {"recordingAudio", bar_->audioState()}, {"recordingMicrophone", bar_->microphoneState()}});
     reply({}, {{"canvas", sizeJson(resolved_.canvas)}, {"rect", rectJson(resolved_.rect)}, {"window", double(resolved_.window)}, {"overlayExcluded", overlayExcluded_}, {"overlayPlacement", overlayPlacement_},
                {"audio", config_.audio.toJson()}, {"microphone", bar_->microphoneState()}});
@@ -831,6 +871,8 @@ void RecordSession::begin(Reply reply) {
     options.audioEncoders = available(audioEncoders);
     if (options.encoders.isEmpty()) { showBar("ready"); reply({"recording_unsupported", "No H.264 encoder is installed", {}}, {}); return; }
     if (auto e = pipeline_.start(options)) { showBar("ready"); updateMicrophoneMonitor(); reply(e, {}); return; }
+    // From here the device is the pipeline's; the bar no longer follows the sound server's inputs.
+    microphoneWatch_.stop();
     if (options.microphone) levelTimer_.start();
     startClicks();
     if (pipeline_.microphoneLost() && bar_) bar_->setMicrophoneLost(pipeline_.microphoneLostReason());

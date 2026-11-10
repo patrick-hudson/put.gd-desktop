@@ -454,6 +454,18 @@ def create_server(adapter: CliAdapter) -> MCPServer:
         return await adapter.call('recording.overlay', {'id': id, 'visible': visible})
 
     @server.tool(annotations=ToolAnnotations(read_only_hint=False, destructive_hint=False, open_world_hint=False))
+    async def set_recording_audio(id: str, microphone: bool | None = None, system: bool | None = None) -> Json:
+        """Set the ready recording bar's audio toggles as a click would, before control_recording start: microphone and/or system (system audio); an omitted one stays as it is. The bar follows the sound server while it is ready (get_recording shows progress.recordingMicrophone {available, device?, unavailable?}), so a microphone plugged in after prepare_recording can be switched on here without starting over. Refused with recording_unsupported and the reason when there is no microphone to open, and with recording_state once recording has started. The choice is this recording's only; the user's remembered preference is not changed."""
+        if not identifier(id) or (microphone is None and system is None) or any(value is not None and type(value) is not bool for value in (microphone, system)):
+            return invalid()
+        params: Json = {'id': id}
+        if microphone is not None:
+            params['microphone'] = microphone
+        if system is not None:
+            params['system'] = system
+        return await adapter.call('recording.audio', params)
+
+    @server.tool(annotations=ToolAnnotations(read_only_hint=False, destructive_hint=False, open_world_hint=False))
     async def edit_recording(id: str, revision: int, commands: list[Json]) -> Json:
         """Apply 1-100 review edits atomically at the current edit revision (from get_recording). Times are microseconds on the recorded clip (pauses removed); rects are output-canvas pixels. Ops: setTrim {start, end|null}, resetTrim, addMask {mask}, updateMask {maskId, mask}, removeMask {maskId}; mask = {kind: blur|solid, rect: [x,y,w,h], start, end, strength?}. Masks keep their source times when the trim changes. A stale revision is refused."""
         if not identifier(id) or type(revision) is not int or revision < 1 or not safe_recording_commands(commands):
