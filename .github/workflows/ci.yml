@@ -228,7 +228,7 @@ jobs:
     steps:
       - name: Install distro dependencies
         # Three bounded attempts; a mirror that stalls is moved to the end of the list (#467).
-        timeout-minutes: 25
+        timeout-minutes: 30
         shell: bash
         run: |
           apt=(-o Acquire::Retries=3 -o Acquire::http::Timeout=20 -o Acquire::https::Timeout=20)
@@ -412,7 +412,7 @@ jobs:
     steps:
       - name: Install distro dependencies
         # Three bounded attempts; a mirror that stalls is moved to the end of the list (#467).
-        timeout-minutes: 25
+        timeout-minutes: 30
         shell: bash
         run: |
           apt=(-o Acquire::Retries=3 -o Acquire::http::Timeout=20 -o Acquire::https::Timeout=20)

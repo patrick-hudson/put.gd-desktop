@@ -179,7 +179,7 @@ class UbuntuMirrors(unittest.TestCase):
 
     def test_install_retries_without_a_mirror_list(self):
         # Debian containers and Ubuntu images without archive.ubuntu.com have no list to rotate.
-        status, output, calls = self.install(
+        status, _output, calls = self.install(
             'echo "apt-get $1" >> "$CALLS"; [ "$(grep -c "apt-get update" "$CALLS")" -gt 1 ]')
         self.assertEqual(status, 0)
         self.assertEqual(calls, ['apt-get update', 'dpkg --configure -a', 'apt-get update', 'apt-get install'])
