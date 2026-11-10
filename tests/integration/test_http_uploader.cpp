@@ -1269,6 +1269,37 @@ private slots:
         QCOMPARE(credentials.cached("uploader", session)->values.value("headers/Authorization"), token);
         QVERIFY(error.details["destinationWritten"].toBool());
     }
+    // A deletion is confirmed by what the link serves before and after. A check whose
+    // reply was cut short is held against the other as far as it came: a link that still
+    // answers with the bytes it had is not a deleted file, whichever of the two was cut.
+    void aDeletionIsNotConfirmedByALinkCheckThatWasCutShort_data() {
+        QTest::addColumn<bool>("before");
+        QTest::newRow("the check before the deletion") << true;
+        QTest::newRow("the check after the deletion") << false;
+    }
+    void aDeletionIsNotConfirmedByALinkCheckThatWasCutShort() {
+        QFETCH(bool, before);
+        HttpFixture f;
+        f.reset();
+        // This receiver answers the deletion politely and deletes nothing.
+        auto destination = f.destination;
+        destination.settings = f.settings("pretend");
+        const auto uploaded = f.upload(f.image(), destination);
+        QVERIFY2(uploaded.status == "uploaded", qPrintable(uploaded.error.code + ": " + uploaded.error.message));
+        const QJsonObject whole{{"call", "file"}}, cut{{"call", "file"}, {"cut", "length"}};
+        if (before) f.rules({cut, whole});
+        else f.rules({whole, cut});
+        const auto result = f.remove(uploaded.receipt);
+        QVERIFY2(result.status == "failed", qPrintable(result.status + " " + result.error.code + ": " + result.error.message));
+        QCOMPARE(result.error.code, QString("http_delete_unconfirmed"));
+        QVERIFY2(result.error.message.contains("cut off"), qPrintable(result.error.message));
+        QCOMPARE(f.stored(), 1);
+        // Where the file really went, a cut-short check before the deletion does not hide it.
+        const auto real = f.upload(f.image());
+        f.rules({cut});
+        QCOMPARE(f.remove(real.receipt).status, QString("removed"));
+        QCOMPARE(f.stored(), 1);
+    }
     // Two imports in flight must not share a destination's stored values: the second is
     // refused while the first is being saved, whether the ID was given or derived.
     void importsAreOneAtATime_data() {

@@ -995,18 +995,19 @@ private:
         if (r.status >= 200 && r.status < 400) {
             // A server can answer politely and delete nothing. If the link served the
             // file before and serves the very same bytes now, it is still there.
-            // Only whole replies are compared: one that was cut short proves nothing, and
-            // a link that still answers is not a deleted file.
-            if (before.status >= 200 && before.status < 300 && !before.cut) {
+            // Two whole replies are the same file when their bytes are. A reply that was
+            // cut short, before or after, is held against the other as far as it came:
+            // a link that still answers with the bytes it had is not a deleted file, and
+            // a check that was cut short proves nothing either way.
+            if (before.status >= 200 && before.status < 300) {
                 const auto after = client_.get(link, allowInsecure());
-                if (after.status >= 200 && after.status < 300 && after.cut) {
-                    error = {"http_delete_unconfirmed", QString("The server answered the deletion request (HTTP %1), but the link still answers and its reply was cut off (%2). "
-                             "Nothing is confirmed deleted; try again later or delete it on the server.").arg(r.status).arg(after.detail), details};
-                    return {{"status", "failed"}, {"progress", progress}};
-                }
-                if (after.status >= 200 && after.status < 300 && after.body == before.body) {
-                    error = {"http_delete_unconfirmed", QString("The server answered the deletion request (HTTP %1), but the link still serves the file. Nothing is confirmed deleted. "
-                             "This server may want the deletion confirmed on its own page, or may serve a cached copy for a while; try again later or delete it on the server.").arg(r.status), details};
+                const bool partial = before.cut || after.cut;
+                const auto common = qMin(before.body.size(), after.body.size());
+                const bool same = partial ? before.body.left(common) == after.body.left(common) : after.body == before.body;
+                if (after.status >= 200 && after.status < 300 && same) {
+                    error = {"http_delete_unconfirmed", QString("The server answered the deletion request (HTTP %1), but the link still serves the file%2. Nothing is confirmed deleted. "
+                             "This server may want the deletion confirmed on its own page, or may serve a cached copy for a while; try again later or delete it on the server.").arg(r.status)
+                             .arg(partial ? QStringLiteral(", as far as the check of the link got before its reply was cut off") : QString()), details};
                     return {{"status", "failed"}, {"progress", progress}};
                 }
             }

@@ -211,6 +211,8 @@ class Handler(BaseHTTPRequestHandler):
             rule = self.rule('file')
             if rule.get('status'):
                 return self.reply(rule['status'], rule.get('body', ''))
+            # A "file" rule may cut the file's own reply short, as an upload rule does.
+            self.cut = rule.get('cut')
             with lock:
                 entry = state['files'].get(parts[1])
             if not entry or entry.get('deleted'):
