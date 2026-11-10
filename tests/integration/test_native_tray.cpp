@@ -775,7 +775,7 @@ private slots:
   QVERIFY(!backend->started);PUTGD_TRY_VERIFY(started);QVERIFY(backend->started);QVERIFY2(since.elapsed()>=400,qPrintable(QString::number(since.elapsed())));
   // A notice while the capture runs is kept back.
   emit operations.recording().budgetStopped("synthetic",{{"reason","disk_space"},{"message","Synthetic second notice."}});
-  putgd::test::settle(150);QCOMPARE(notifications.values.size(),before+1);
+  PUTGD_COMPARE_STEADY(notifications.values.size(),before+1,150);
   bool cancelled=false;operations.scroll().command("cancel",{{"id",id}},[&](Error,QJsonObject){cancelled=true;});PUTGD_TRY_VERIFY(cancelled);
   PUTGD_TRY_COMPARE(notifications.values.size(),before+2);QCOMPARE(notifications.values.last()["body"].toString(),QString("Synthetic second notice."));
   // With nothing open, nothing is closed and the start is not held.

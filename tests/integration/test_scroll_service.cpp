@@ -43,7 +43,7 @@ private slots:
  backend->commands.clear();backend->started=false;shell.holdFrames=true;
  auto placing=call("scroll.prepare",{{"rect",QJsonArray{0,0,64,64}}});const auto placingId=placing.second["id"].toString();QVERIFY(!placingId.isEmpty());QCOMPARE(placing.second["state"].toString(),QString("ready"));QVERIFY(bool(shell.placed));
  QProcess early;early.start(PUTGD_CLI_PATH,{"--socket",server.socketPath(),"scroll.start",QString::fromUtf8(QJsonDocument(QJsonObject{{"id",placingId}}).toJson(QJsonDocument::Compact))});
- QTest::qWait(400);QCOMPARE(early.state(),QProcess::Running);QVERIFY(!backend->started);
+ PUTGD_VERIFY_STEADY(early.state()==QProcess::Running&&!backend->started,400);
  QCOMPARE(call("scroll.start",{{"id",placingId}}).first.code,QString("scroll_busy"));
  std::exchange(shell.placed,{})({},{});QVERIFY(waitFor([&]{return early.state()==QProcess::NotRunning;}));
  const auto earlyReply=QJsonDocument::fromJson(early.readAllStandardOutput()).object();QVERIFY2(earlyReply["error"].toObject()["code"].toString().isEmpty(),qPrintable(QJsonDocument(earlyReply).toJson()));QCOMPARE(earlyReply["result"].toObject()["state"].toString(),QString("capturing"));
@@ -51,7 +51,7 @@ private slots:
  backend->commands.clear();backend->started=false;
  auto ending=call("scroll.prepare",{{"rect",QJsonArray{0,0,64,64}}});const auto endingId=ending.second["id"].toString();QVERIFY(!endingId.isEmpty());QVERIFY(bool(shell.placed));
  QProcess waiting;waiting.start(PUTGD_CLI_PATH,{"--socket",server.socketPath(),"scroll.start",QString::fromUtf8(QJsonDocument(QJsonObject{{"id",endingId}}).toJson(QJsonDocument::Compact))});
- QTest::qWait(300);QCOMPARE(waiting.state(),QProcess::Running);QVERIFY(!call("scroll.cancel",{{"id",endingId}}).first);QVERIFY(waitFor([&]{return waiting.state()==QProcess::NotRunning;}));
+ PUTGD_VERIFY_STEADY(waiting.state()==QProcess::Running,300);QVERIFY(!call("scroll.cancel",{{"id",endingId}}).first);QVERIFY(waitFor([&]{return waiting.state()==QProcess::NotRunning;}));
  QCOMPARE(QJsonDocument::fromJson(waiting.readAllStandardOutput()).object()["error"].toObject()["code"].toString(),QString("cancelled"));QVERIFY(!backend->started);
  std::exchange(shell.placed,{})({},{});shell.holdFrames=false;
  // holdStart: whoever cleared the screen for the capture gets its time; start waits, it is not refused.
