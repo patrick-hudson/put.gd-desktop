@@ -28,6 +28,7 @@ the [overview](overview.md) and [architecture](architecture.md).
 - [Storage provider contract](storage-providers.md): what a `StorageProvider` must do.
 - [Screen recording](recording.md): the recording contract, helper, review, export and packages.
 - [Image editor](image-editor.md): the Capture region & edit workflow, privacy boundaries and agent control.
+- [Capture monitor, delay and repeat](capture-delay.md): the monitor under the pointer, the capture countdown and Repeat last region.
 - [File dialogs](file-dialogs.md): open, save and folder dialogs through `putgd::FileDialog`.
 - [File manager upload](file-manager-upload.md): **Upload with put.gd** from a file manager.
 - [Updates](updates.md): the daily check, feed contract and per-format update paths.

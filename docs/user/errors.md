@@ -10,7 +10,11 @@ filenames, history URLs, authorization values or credential references.
 | `source_unsupported` | Inspect native support and choose an available source |
 | `window_unavailable` | This compositor offers no window capture; the message names the missing protocol (on Budgie, labwc 0.20 or later and Mir 2.29 or later have it). Capture a region or the desktop instead |
 | `recording_unavailable` | `recording.prepare` can't start here; `details.reason` says why (a later request for a recording that has ended returns the same code with no reason). When it is `wlr_capture_unavailable` (Budgie and Hyprland), the compositor does not offer the Wayland protocol the message names, or the connection to it failed: update the compositor, or restart the session if the connection failed |
-| `busy_selecting` | Finish or cancel that interactive selection |
+| `busy_selecting` | Finish or cancel that interactive selection, or wait for the running capture countdown |
+| `repeat_unavailable` | Repeat last region has nothing to repeat: no region was captured since put.gd started. Capture a region first |
+| `repeat_layout_changed` | The monitors changed (added, removed, moved, resized, rescaled or rotated) since the last region capture. Capture a region again |
+| `session_locked` | The screen was locked or blanked when a capture delay ended (the countdown was no longer on screen), so nothing was captured. Unlock and capture again |
+| `delay_unavailable` | This desktop can't show the capture countdown (the message says why), so a delayed capture is refused. Capture without a delay |
 | `queue_full`, `input_excessive` | Finish queued work or adjust documented resource limits |
 | `disk_space_insufficient` | Free up space in put.gd's data folder and try again (the details give `freeBytes`, `reserveBytes` and what was needed; a recording also gives `shortfallBytes`): an import needs its bytes, and a recording three 64 MiB budgets, above the system reserve. Nothing was accepted |
 | `source_unavailable` | Fix the reported item index; invoke again; nothing was published |
