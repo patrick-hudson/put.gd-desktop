@@ -58,8 +58,10 @@ same tone without recording system audio and makes that output's monitor the
 default input: the clip must hold no 440 Hz at all, also after `--unplug-at`
 has pulled the microphone and the sound server has moved its stream there. `--unplug-at S` removes
 the simulated microphone S seconds into each recording, which must still end
-with a playable clip. Each clip's entry then has `tones` (band levels at 440 Hz
-and at the marker's 1 kHz) beside the A/V offsets. --real-data-home lets an AppImage use
+with a playable clip of the whole time recorded. Each clip's entry then has `tones` (band levels at 440 Hz
+and at the marker's 1 kHz) beside the A/V offsets. A round whose clip is more than 1.5 s shorter than the
+time recorded, lacks the simulated microphone's bursts, holds them with the microphone off or holds the
+unrecorded output's tone lists that under `problems`, and the run exits 1. --real-data-home lets an AppImage use
 KWin's screencast protocol (its entry must be in the user's own data dir). The same data directory serves every
 build, so one portal approval with restoring allowed covers the whole run.
 When `prepare` waits for a portal picker, the driver says so and keeps waiting
@@ -688,6 +690,8 @@ class Driver:
             if clicker:
                 clicker.join(30)
                 result['clickHighlightsError'] = (self.cli(build, 'recording.inspect', {'id': rid}).get('progress') or {}).get('clickHighlightsError')
+            # The recording clock's share of the time since Record: what the clip must hold.
+            result['recordedS'] = round(time.monotonic() - started - max(0, a.pause_for), 3)
             try:
                 stopped = self.cli(build, 'recording.stop', {'id': rid}, timeout=60)
             except RunError as error:
@@ -733,6 +737,10 @@ class Driver:
             result['rawCaptureStepMs'] = capture_step(w['pairTimesS'], w['offsetsMs'], result['pauseClipS'], raw=True)
             if e.get('pairTimesS'):
                 result['exportMinusWorkingMs'] = export_shift(w, e, result['pauseClipS'])
+        problems = self.clip_problems(result, sound)
+        if problems:
+            result['problems'] = problems
+            log('problems: %s' % '; '.join(problems))
         if a.frames and copy.is_file():
             result['frame'] = self.keep_frame(copy, name, result.get('durationUs'))
             if not result['frame'].get('ok'):
@@ -741,6 +749,36 @@ class Driver:
                     clip.unlink(missing_ok=True)
                     result['clips'][kind]['destroyed'] = True
         return result
+
+    def clip_problems(self, result, sound):
+        """What a finished round's clip gets wrong that no offset shows: too short, or the wrong sound in it."""
+        a = self.args
+        problems = []
+        clip_s = (result.get('durationUs') or 0) / 1e6
+        # A clip much shorter than the time recorded stopped taking frames part-way (#1364: a clock that
+        # stopped with the microphone). A clip the recorder ended itself (low disk) is short by design.
+        if not result.get('stoppedEarly') and clip_s < result.get('recordedS', 0) - 1.5:
+            problems.append('the clip holds %.1f s of the %.1f s recorded' % (clip_s, result['recordedS']))
+        if not sound:
+            return problems
+        tones = (result['clips'].get('working') or {}).get('tones') or {}
+
+        def peak(hz):
+            band = tones.get(str(hz))
+            return band.get('maxAmplitude') or 0 if isinstance(band, dict) else None
+
+        marker, tone = peak(1000), peak(440)
+        if a.video == 'marker' and marker is not None:
+            if a.mic == 'virtual' and marker < 0.05:
+                problems.append("the simulated microphone's bursts are not in the clip (1 kHz peak %.4f)" % marker)
+            if a.mic == 'muted' and marker > 0.01:
+                problems.append('the microphone is off and its bursts are in the clip (1 kHz peak %.4f)' % marker)
+        # The quiet tone is recorded at about 0.017; nothing near that may come from an output that is not recorded.
+        if a.system == 'leak' and tone is not None and tone > 0.0085:
+            problems.append("an output's sound is in the clip (440 Hz peak %.4f)" % tone)
+        if a.unplug_at is not None and self.mic_state and not (result.get('afterUnplug') or {}).get('microphoneLost'):
+            problems.append('the recording did not say that the microphone was lost')
+        return problems
 
     def gpu_hangs(self, since):
         out = subprocess.run(['journalctl', '-k', '--since', since, '--no-pager', '-o', 'short-iso'], capture_output=True,
@@ -795,7 +833,7 @@ class Driver:
                 self.real_data.rename(self.run / 'real-data-putgd')
             report['gpuHangs'] = self.gpu_hangs(since)
             out.write_text(json.dumps(report, indent=1) + '\n')
-        return 1 if report.get('error') else 0
+        return 1 if report.get('error') or any(entry.get('problems') for entry in report['rounds']) else 0
 
 
 def parse_rect(text):

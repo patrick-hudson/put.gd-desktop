@@ -18,7 +18,9 @@ def main():
             entry.get('format'), entry.get('audio'), (entry.get('progressAtStart') or {}).get('audioSources'), entry.get('export'), entry.get('durationUs')))
         if entry.get('microphones'):
             print('   microphones', {k: entry['microphones'].get(k) for k in ('available', 'reason', 'defaultIsMonitor')}, 'device', (entry['microphones'].get('device') or {}).get('id'))
-        for key in ('error', 'afterUnplug', 'unpluggedAtS', 'captureStepMs', 'exportMinusWorkingMs', 'clickHighlightsError'):
+        if entry.get('problems'):
+            print('   PROBLEMS: %s' % '; '.join(entry['problems']))
+        for key in ('error', 'recordedS', 'afterUnplug', 'unpluggedAtS', 'captureStepMs', 'exportMinusWorkingMs', 'clickHighlightsError'):
             if entry.get(key) is not None:
                 print('   %s %s' % (key, entry[key]))
         if entry.get('clickHighlights'):
