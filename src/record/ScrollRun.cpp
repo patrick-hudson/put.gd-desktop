@@ -256,7 +256,7 @@ std::optional<RunResult> ScrollRun::scrollToTop() {
 // page then is). The pointer stays where it was parked, so a hover effect
 // under it can be in this image; moving it away would be an injection after Stop.
 RunResult ScrollRun::viewportAfterStop() {
-    if (!haveFrame_) return RunResult::Stopped;
+    if (!haveFrame_ || (opts_.discarded && opts_.discarded())) return RunResult::Stopped;
     ignoreStop_ = true;
     const Wait w = waitSettled(opts_.stepTimeoutMs);
     ignoreStop_ = false;
@@ -346,6 +346,8 @@ RunResult ScrollRun::run(const std::atomic<bool>* stop) {
                 firstChange = -1;  // when it moved is not known
                 r = stitcher_.addFrame(last_, lastSig_, hint, unc);
                 if (opts_.onStep) opts_.onStep(r, hint, notches);
+                // The fresh frame differs in place only: it is the proof that nothing scrolled.
+                if (r.status == StepStatus::NoMovement) screen = Screen::Same;
             }
         }
 

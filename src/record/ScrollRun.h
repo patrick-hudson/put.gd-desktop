@@ -104,6 +104,9 @@ struct RunOptions {
     // After a way up that moved the page: this many single steps down may move
     // nothing (an overscrolled view takes them) before the capture gives up.
     int stillStepsAfterTop = 8;
+    // Asked when the stop flag ends the way to the top: true when no image is
+    // wanted (Cancel), so the loop does not wait for the viewport to settle.
+    std::function<bool()> discarded;
     // Every stitch attempt with the hint and notches used (diagnostics, tests).
     std::function<void(const scroll::StepResult&, int hint, int notches)> onStep;
     // After the first frame and after every step; called on the loop's thread.

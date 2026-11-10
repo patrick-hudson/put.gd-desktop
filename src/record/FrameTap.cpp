@@ -83,7 +83,12 @@ std::optional<RunFrame> FrameTap::freshFrame(int timeoutMs) {
         const Source source = source_;
         const qint64 given = frames_.load();
         stop();
-        if (start(source)) return std::nullopt;
+        if (start(source)) {
+            // The stream cannot be linked again: no frame will come.
+            { std::lock_guard lock(mutex_); if (reason_.isEmpty()) reason_ = QStringLiteral("the stream could not be linked again"); }
+            lost_.store(true);
+            return std::nullopt;
+        }
         frames_.store(given);
         return nextFrame(timeoutMs);
     }

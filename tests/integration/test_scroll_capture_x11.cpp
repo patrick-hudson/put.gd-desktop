@@ -44,6 +44,13 @@ struct Fixture {
         QByteArray seen;
         return putgd::test::waitFor([&] { seen += process.readAllStandardOutput(); return seen.contains("ready "); }, 10000);
     }
+    // Where the page is: the fixture prints `position N` whenever its scroll position settles.
+    int position() {
+        printed += process.readAllStandardOutput();
+        const int at = printed.lastIndexOf("position ");
+        return at < 0 ? -1 : printed.mid(at + 9, printed.indexOf('\n', at) - at - 9).trimmed().toInt();
+    }
+    QByteArray printed;
     ~Fixture() { process.kill(); process.waitForFinished(3000); }
 };
 
@@ -319,6 +326,36 @@ private slots:
         QVERIFY(capture.files().isEmpty());
         PUTGD_VERIFY_STEADY(!capture.has("finished"), 400);
         QCOMPARE(capture.control("stop").error.code, QString("scroll_state"));
+        QVERIFY(capture.leave());
+    }
+    // Stop while the page is still on its way to the top used to keep nothing
+    // (real desktop round of 2026-11-10). The image is the viewport as the
+    // page came to rest, and nothing is injected after the stop.
+    void stopOnTheWayToTheTopKeepsTheViewport() {
+        Fixture fixture;
+        QVERIFY(fixture.start({"--rows=600", "--notch=100", "--start=500"}));
+        RawInput input;
+        QVERIFY(input.open());
+        Capture capture;
+        capture.prepare({{"rect", rectJson(page)}, {"maxHeight", 30000}, {"fromTop", true}, {"autoStart", true}});
+        QVERIFY(putgd::test::waitFor([&] { return capture.last("progress")["state"].toString() == "scrollingToTop" || capture.ended(); }, 30000));
+        // A few steps up, well short of the 20 the way takes.
+        QVERIFY(putgd::test::waitFor([&] { const int at = fixture.position(); return (at > 0 && at <= 17000) || capture.ended(); }, 30000));
+        const auto stopped = capture.control("stop");
+        QVERIFY2(!stopped.error, qPrintable(stopped.error.code + ": " + stopped.error.message));
+        QCOMPARE(stopped.result["endReason"].toString(), QString("stopped"));
+        QCOMPARE(stopped.result["height"].toInt(), page.height());
+        input.read();
+        const int wheel = input.wheel;
+        const int at = fixture.position();
+        QVERIFY2(at > 0 && at < 500 * ruler::rowHeight, qPrintable(QString::number(at)));
+        QCOMPARE(at % ruler::rowHeight, 0);
+        exact(capture, 0, 0, at / ruler::rowHeight, (at + page.height() - 1) / ruler::rowHeight, (at + page.height() - 1) % ruler::rowHeight);
+        // From the stop reply on the page stays where it is: no more wheel steps.
+        putgd::test::settle(400);
+        input.read();
+        QCOMPARE(input.wheel, wheel);
+        QCOMPARE(fixture.position(), at);
         QVERIFY(capture.leave());
     }
     // Escape on X11, whatever window has the keyboard: Stop, with the image kept.

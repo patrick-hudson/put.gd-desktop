@@ -615,6 +615,7 @@ void ScrollCapture::work(std::shared_ptr<Job> job) {
         options.stitch.maxOutputRows = applied;
         options.pointer = true;
         options.fromTop = job->fromTop;
+        options.discarded = [job] { return job->discard.load(); };
         // Rule 1: a place outside the rectangle, on its output and off the bar,
         // for the pointer while the first frame is read. Stream pixels.
         const double sx = double(width) / job->rect.width(), sy = double(height) / job->rect.height();
