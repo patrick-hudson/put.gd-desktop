@@ -543,7 +543,8 @@ void ControlBar::refresh() {
     microphone_->setText(options_.microphoneAvailable ? QStringLiteral("Microphone") : QStringLiteral("No microphone"));
     Ui::setLocked(microphone_, !microphone_->isEnabled());
     microphone_->blockSignals(true);
-    microphone_->setChecked(microphoneIntent_);
+    // Without a microphone the box is empty whatever was chosen last time; the choice is kept for when one is there.
+    microphone_->setChecked(microphoneIntent_ && options_.microphoneAvailable);
     microphone_->blockSignals(false);
     microphone_->setToolTip(config_.silent() ? QStringLiteral("GIF and WebP are silent")
         : !options_.microphoneAvailable ? (options_.microphoneUnavailable.isEmpty() ? QStringLiteral("No microphone is available") : options_.microphoneUnavailable)

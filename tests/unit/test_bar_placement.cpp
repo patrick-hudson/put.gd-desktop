@@ -187,15 +187,17 @@ private slots:
         ControlBar mixed(options, both); mixed.show(); mixed.setState("recording");
         const auto text = mixed.findChild<QLabel*>("recordingFacts")->text();
         QVERIFY2(text.contains("System audio and microphone") && text.contains("Click highlights"), qPrintable(text));
-        // No input to open (none connected, or the default is an output's monitor):
-        // the remembered choice stays ticked but nothing is recorded, and the tooltip says why.
+        // No input to open (none connected, or the default is an output's monitor): the box
+        // reads "No microphone" and is empty, the remembered choice is kept for when one is
+        // there, nothing is recorded, and the tooltip says why.
         options.microphoneAvailable = false;
         options.microphoneLabel.clear();
         options.microphoneUnavailable = "The system's default input is the monitor of an output, not a microphone.";
         putgd::RecordingConfig remembered; remembered.audio.microphone = true;
         ControlBar none(options, remembered); none.show(); QApplication::processEvents();
         auto* off = none.findChild<QCheckBox*>("microphone");
-        QVERIFY(off->isChecked() && !off->isEnabled());
+        QVERIFY(!off->isChecked() && !off->isEnabled());
+        QCOMPARE(off->text(), QString("No microphone"));
         QVERIFY(none.requestedMicrophone() && !none.effectiveMicrophone() && !none.config().audio.microphone);
         QVERIFY(off->toolTip().contains("monitor"));
         QVERIFY(!none.findChild<QWidget*>("microphoneLevel")->isVisible());
