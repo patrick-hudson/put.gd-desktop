@@ -13,6 +13,7 @@ Part of [Screen recording](../recording.md).
 | `get_recording` | `recording.inspect` |
 | `select_recording_region` | `recording.select` |
 | `set_recording_overlay` | `recording.overlay` |
+| `set_recording_audio` | `recording.audio` |
 | `edit_recording` | `recording.edit` |
 | `preview_recording` (MCP image) | `recording.preview` |
 | `drive_recording_review` | `recording.review` |

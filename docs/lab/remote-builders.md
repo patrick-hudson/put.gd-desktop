@@ -358,7 +358,13 @@ tools for that are `tools/lab/cover_player.py` and `tools/lab/record_run.py`
   the run: on PipeWire 1.0.5 (Mint 22, Ubuntu 24.04) a remapped source left
   without a reader sometimes passes pure silence to every later reader. `unplug`
   and `remove` unload that loopback before the source, so it can never be moved
-  to a real input.
+  to a real input. `create --unplugged` makes the microphone's sink alone and
+  `plug [--default]` loads the source later, the way a microphone is plugged in
+  (`--default`: it becomes the default input). `unplug-output [--fallback]`
+  removes the private output system audio is recorded from: with `--fallback`
+  another private output is made the default first; without it the command
+  refuses while a real output exists, because what plays into the removed one
+  would be moved there and heard.
 - `record_run.py --mic virtual|muted|default|NAME` records with a microphone:
   `virtual` creates the simulated one, plays the `--av-marker` clip's bursts
   into it and removes it afterwards; `muted` does the same with the bar's
@@ -378,6 +384,20 @@ tools for that are `tools/lab/cover_player.py` and `tools/lab/record_run.py`
   holds them with the toggle off, holds the unrecorded output's tone, says the
   microphone was lost when nothing removed it, or does not say so after
   `--unplug-at`. `summarize_run.py RESULTS.json` prints a run on one screen.
+  `--mic late` prepares with no microphone to open and, while the bar is at
+  Ready, plugs the simulated one in as the default input, switches it on with
+  `recording.audio`, pulls it and plugs it in again: `recording.inspect` must
+  follow each step within eight seconds (`readyFollow` in the results, a frame
+  of the desktop per step with `--frames`), and the clip recorded afterwards
+  must hold the bursts. `--output-gone-at S` (with `--system tone`) removes the
+  recorded output S seconds in: with `--output-fallback` another private output
+  takes over; without it nothing is left, which on a machine with a sound card
+  needs `--cards-off` (every card's profile off for the run, written to
+  `RUN/cards.json` first and put back with the defaults afterwards, so no lab
+  sound can reach a real output). `--mic-default` makes the simulated microphone
+  the default input for the run, to show that a moved system-audio stream never
+  lands on it. The recording must go on and hold the whole time recorded;
+  `afterOutputGone.recordedFrom` names the source the recorder reads afterwards.
 - `record_run.py --click S,X,Y[,BUTTON]` (repeatable) presses a button at a
   desktop pixel S seconds into each recording, as real input through the
   desktop's VNC tile (`--click-vnc HOST:PORT` in a guest: QEMU's VNC on the VM

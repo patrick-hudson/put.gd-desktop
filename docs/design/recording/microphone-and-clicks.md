@@ -45,10 +45,21 @@ WebP stay silent.
   is empty and it cannot be ticked; its tooltip and
   `recordingMicrophone.unavailable` give the reason. What the user chose last
   time (`requested`) is kept apart from what is recorded (`effective`), so the
-  choice is there again once a microphone is. Which input the toggle would open
-  is settled once, at `prepare`: a microphone connected while the bar is
-  already at **Ready to record** is not picked up by that session. Cancel and
-  prepare again to use it.
+  choice is there again once a microphone is.
+- **The bar follows the sound server while it is at Ready.** Open the bar, see
+  **No microphone**, plug one in: within about a second the toggle reads
+  **Microphone** and can be ticked, without cancelling. One that is pulled is no
+  longer offered; one that comes back is recorded again without a second click
+  if it was asked for. The helper asks the sound server for its inputs once a
+  second from Ready to Record (listing opens no device) and applies the same
+  choice as at `prepare`, so an output's monitor is still never a microphone and
+  the device is still opened only while the toggle is on. From Record on the
+  device is the pipeline's, and its loss is reported as above. Measured with
+  a simulated microphone plugged in, switched on, pulled and plugged in again at
+  Ready (`record_run.py --mic late`, 26.1110.4480) on Plasma 6.3.6 and on
+  Cinnamon X11: `recording.inspect` showed the microphone 0.3 s after it became
+  the default input and its loss 0.7 s after, and the clip recorded afterwards
+  holds it.
 
 ### Device
 
@@ -159,6 +170,19 @@ prepared) starts the recording without it and reports the same way.
 The clip's audio then has no packets after the loss; the export fills the rest
 with silence, as it does for a pause's hole.
 
+**System audio when its output goes.** System audio records the default
+output's monitor and is not pinned: when that output is unplugged or switched
+off, the sound server moves the stream to the new default output's monitor, and
+the recording goes on. Measured on X11, where the system-audio source is the
+pipeline's clock (Cinnamon 6.6.9, PipeWire 1.0.5 with WirePlumber 0.4.17,
+26.1110.4465), with the output removed 6 s into a recording: with another
+output to move to, 14.5 s kept of 14.3 s recorded and the sound continuous; with
+none (the sound card's profile off, so the server makes its stand-in
+`auto_null`), 14.5 s of 14.4 s; and with a microphone as the default input the
+stream went to the new output's monitor, never to the microphone (no trace of
+the microphone's signal in the clip). The last holds on Plasma 6.3.6 with
+WirePlumber 0.5.8 too. `tools/lab/record_run.py --output-gone-at` is the check.
+
 ### What a session reports
 
 `recording.inspect` `progress` gains:
@@ -168,6 +192,16 @@ with silence, as it does for a pause's hole.
 | `audioSources {system, microphone}` | What the clip's audio track holds, from Record on |
 | `recordingMicrophone {requested, effective, available, device?, unavailable?, lost?}` | The bar's toggle: what the user asked for, what is recorded, the device's label or why there is none |
 | `microphoneLost` | Present once the microphone went away: the sentence the bar shows |
+
+While the session is `ready`, `recordingMicrophone` and `config.audio` change
+when an input appears or goes, and `recording.audio {id, microphone?, system?}`
+(MCP `set_recording_audio`) sets the bar's two toggles as a click does; an
+omitted one stays as it is. Asking for the microphone where none can be opened
+is refused with `recording_unsupported` and the reason (the helper looks at the
+sound server first, so one plugged in that instant counts); from Record on the
+call is refused with `recording_state`. A toggle the user ticks is remembered
+for the next recording; one set through `recording.audio` is this session's
+only.
 
 `config.audio` is `{system, microphone, microphoneDevice?}`. In review only the
 output changes: a silent format drops the track, and going back to MP4 or WebM
