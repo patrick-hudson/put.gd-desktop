@@ -374,8 +374,11 @@ void CustomUploaderPanel::setSettings(const QJsonObject& s) {
     images_->setChecked(accepts.contains("image"));
     text_->setChecked(accepts.contains("text"));
     files_->setChecked(accepts.contains("file"));
-    connectTimeout_->setValue(qMax(1, s["connectTimeoutMs"].toInt(10000) / 1000));
-    requestTimeout_->setValue(qMax(1, s["requestTimeoutMs"].toInt(600000) / 1000));
+    // The form shows whole seconds. A finer saved value is kept until its field is changed.
+    loadedConnectMs_ = s["connectTimeoutMs"].toInt(10000);
+    loadedRequestMs_ = s["requestTimeoutMs"].toInt(600000);
+    connectTimeout_->setValue(qMax(1, loadedConnectMs_ / 1000));
+    requestTimeout_->setValue(qMax(1, loadedRequestMs_ / 1000));
     responseUrl_->setText(s["responseUrl"].toString());
     thumbnailUrl_->setText(s["thumbnailUrl"].toString());
     deletionUrl_->setText(s["deletionUrl"].toString());
@@ -403,8 +406,8 @@ QJsonObject CustomUploaderPanel::settings() const {
     if (text_->isChecked()) accepts.append("text");
     if (files_->isChecked()) accepts.append("file");
     s["accepts"] = accepts;
-    s["connectTimeoutMs"] = connectTimeout_->value() * 1000;
-    s["requestTimeoutMs"] = requestTimeout_->value() * 1000;
+    s["connectTimeoutMs"] = connectTimeout_->value() == qMax(1, loadedConnectMs_ / 1000) ? loadedConnectMs_ : connectTimeout_->value() * 1000;
+    s["requestTimeoutMs"] = requestTimeout_->value() == qMax(1, loadedRequestMs_ / 1000) ? loadedRequestMs_ : requestTimeout_->value() * 1000;
     s["responseUrl"] = responseUrl_->text().trimmed();
     s["thumbnailUrl"] = thumbnailUrl_->text().trimmed();
     s["deletionUrl"] = deletionUrl_->text().trimmed();
@@ -460,14 +463,20 @@ QStringList CustomUploaderPanel::missingSecrets() const {
 Error CustomUploaderPanel::importBytes(const QByteArray& bytes) {
     auto result = http::importSxcu(bytes);
     if (result.error) { setNotice({}); return result.error; }
+    // This destination's own switch stays on: a person who allowed plain HTTP for it has
+    // already made that choice, and the imported address is shown beside it.
+    const bool plainHttpAllowed = insecure_->isChecked();
     setSettings(result.settings);
+    if (plainHttpAllowed) { insecure_->setChecked(true); syncVisibility(); }
     setTypedSecrets(result.secrets);
     QStringList held;
     for (auto it = result.secrets.cbegin(); it != result.secrets.cend(); ++it) held.append(http::secretLabel(it.key()));
     QString text = "Imported" + (result.name.isEmpty() ? QString() : " " + result.name) + ".";
     if (!held.isEmpty())
         text += QString(" %1 secret value%2 held in this window until you store %3: %4.").arg(held.size()).arg(held.size() == 1 ? " is" : "s are", held.size() == 1 ? "it" : "them", held.join(", "));
-    for (const auto& note : result.notes) text += " " + note;
+    for (const auto& note : result.notes)
+        text += " " + (plainHttpAllowed && note == http::plainHttpNote()
+            ? QStringLiteral("This destination sends files and credentials over plain HTTP, as allowed for it.") : note);
     setNotice(text, true);
     emit edited();
     emit secretsEdited();

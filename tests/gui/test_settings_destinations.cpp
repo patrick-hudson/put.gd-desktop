@@ -461,6 +461,20 @@ private slots:
   auto* refused=window.findChild<QLabel*>("uploaderSecretsError");QVERIFY(refused);
   PUTGD_TRY_VERIFY(refused->isVisible()&&refused->text().contains("does not store"));
   QCOMPARE(saved()["settings"].toObject()["arguments"].toArray()[1].toObject(),QJsonObject({{"name","token"},{"secret",true}}));
+  // The wheel scrolls the form: a timeout under the pointer keeps its value and takes no focus.
+  auto* timeout=window.findChild<QSpinBox*>("uploaderConnectTimeout");QVERIFY(timeout);const int seconds=timeout->value();
+  QCOMPARE(timeout->focusPolicy(),Qt::StrongFocus);
+  for(const auto delta:{120,-120}){QWheelEvent event(QPointF(5,5),timeout->mapToGlobal(QPoint(5,5)),QPoint{},QPoint{0,delta},Qt::NoButton,Qt::NoModifier,Qt::NoScrollPhase,false);QApplication::sendEvent(timeout,&event);QCOMPARE(timeout->value(),seconds);}
+  // A saved timeout finer than a second survives the form until its own field is changed.
+  auto fine=panel->settings();fine["connectTimeoutMs"]=1500;panel->setSettings(fine);
+  QCOMPARE(panel->settings()["connectTimeoutMs"].toInt(),1500);
+  timeout->setValue(2);QCOMPARE(panel->settings()["connectTimeoutMs"].toInt(),2000);
+  // An import into a destination that already allows plain HTTP keeps the switch and says so.
+  const QByteArray plain="{\"Version\":\"16.1.0\",\"Name\":\"Plain\",\"DestinationType\":\"ImageUploader\",\"RequestMethod\":\"POST\",\"RequestURL\":\"http://media.example.test/upload\",\"Body\":\"MultipartFormData\",\"FileFormName\":\"file\",\"URL\":\"{json:url}\"}";
+  QVERIFY(!panel->importBytes(plain));
+  QVERIFY(allow->isChecked());
+  const auto notice=window.findChild<QLabel*>("uploaderNotice")->text();
+  QVERIFY2(notice.contains("as allowed for it")&&!notice.contains("Turn on Allow plain HTTP"),qPrintable(notice));
  }
 
 };

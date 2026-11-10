@@ -4,6 +4,7 @@
 #include <QJsonObject>
 #include <QRandomGenerator>
 #include <QRegularExpression>
+#include <QSet>
 #include <QUrl>
 #include <QXmlStreamReader>
 #include <cmath>
@@ -371,7 +372,15 @@ QString literalOf(const Template& nodes, bool& plain) {
     for (const auto& node : nodes) { if (node.call) plain = false; else out += node.text; }
     return out;
 }
-QString checkNodes(const Template& nodes, TemplateUse use) {
+// The most parameters each placeholder reads; one more is a mistake, not something to ignore.
+int maximumParameters(const QString& name) {
+    if (name == "random") return 8192;                // any number of choices
+    if (name == "regex") return 3;                    // text | pattern | group
+    if (name == "json" || name == "xml") return 2;    // text | path
+    if (name == "base64" || name == "header" || name == "secret") return 1;
+    return 0;                                         // filename, input, response, responseurl
+}
+QString checkNodes(const Template& nodes, TemplateUse use, bool nested = false) {
     for (const auto& node : nodes) {
         if (!node.call) continue;
         const auto& name = node.text;
@@ -389,8 +398,13 @@ QString checkNodes(const Template& nodes, TemplateUse use) {
             bool plain = true;
             const auto key = literalOf(node.parameters[0], plain);
             if (!plain || count != 1 || key.trimmed().isEmpty()) return QStringLiteral("{secret} takes the name of one stored value, such as {secret:arguments/token}.");
+            // A value read from the reply is recorded with its stored values still named, not
+            // filled in; a name inside another placeholder would have nothing to stand for.
+            if (nested && use == TemplateUse::Response) return QStringLiteral("{secret:…} stands on its own here; it cannot be used inside another placeholder.");
             continue;
         }
+        if (const int most = maximumParameters(name); count > most)
+            return most == 0 ? QString("{%1} takes no parameter.").arg(name) : QString("{%1} takes at most %2 parameter%3.").arg(name).arg(most).arg(most == 1 ? "" : "s");
         if (name == "json" || name == "xml") {
             bool plain = true;
             const auto path = literalOf(node.parameters.last(), plain);
@@ -405,7 +419,7 @@ QString checkNodes(const Template& nodes, TemplateUse use) {
             if (plain && !QRegularExpression(pattern).isValid()) return QStringLiteral("The regular expression is not valid.");
         }
         for (const auto& parameter : node.parameters)
-            if (const auto problem = checkNodes(parameter, use); !problem.isEmpty()) return problem;
+            if (const auto problem = checkNodes(parameter, use, true); !problem.isEmpty()) return problem;
     }
     return {};
 }
@@ -560,6 +574,7 @@ QString xpathValue(const QString& xml, const QString& path) {
             return {};
         }
         QList<int> next;
+        QSet<int> seen;
         for (const int index : context) {
             QList<int> parents;
             if (step.descendant) descendants(tree, index, parents); else parents.append(index);
@@ -567,7 +582,7 @@ QString xpathValue(const QString& xml, const QString& path) {
                 QList<int> group;
                 for (const int child : tree.nodes[parent].children) if (nameMatches(tree.nodes[child], step.name)) group.append(child);
                 for (const auto& predicate : step.predicates) group = filter(tree, group, predicate);
-                for (const int child : group) if (!next.contains(child)) next.append(child);
+                for (const int child : group) if (!seen.contains(child)) { seen.insert(child); next.append(child); }
             }
         }
         if (next.isEmpty()) return {};

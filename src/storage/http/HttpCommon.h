@@ -50,9 +50,15 @@ QString boundedMessage(const QString&, int maximum = 300);
 // A .sxcu file read into destination settings. Every header, parameter and argument
 // value and the Data body are secrets: they are returned in `secrets` (credential-store
 // key → value) and never appear in `settings`, except a value that is exactly
-// {filename} or {input}. A secret repeated inside the request URL or a response value,
-// as some services write their deletion URL, becomes {secret:key} there. Nothing here
-// is written anywhere.
+// {filename} or {input}. A secret of six characters or more that the file repeats as
+// literal text after the host of the request URL or the deletion URL, as some services
+// end their deletion URL with the token, becomes {secret:key} there. Shorter values are
+// switches such as "true" and stay as written. A long run of letters and digits left in
+// those two addresses becomes a secret value of its own. A link that repeats a secret
+// is refused; a thumbnail URL or error message that does is left out with a note.
+// Nothing here is written anywhere.
+// The note an import carries when its address is plain HTTP to another machine.
+QString plainHttpNote();
 struct SxcuImport {
     Error error;
     QString name;                    // suggested destination name

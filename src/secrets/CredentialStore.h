@@ -7,6 +7,10 @@
 #include <functional>
 #include <optional>
 namespace putgd {
+// Named values of one destination (#1361): how many one entry may hold, and their
+// combined size in characters, names included. Setup and the store apply the same two.
+inline constexpr int maximumNamedValues = 160;
+inline constexpr qsizetype maximumNamedValueChars = 131072;
 struct Credentials {
     QString accessKey, secretKey, sessionToken;
     quint64 generation = 0;

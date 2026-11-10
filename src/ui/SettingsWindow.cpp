@@ -1218,6 +1218,8 @@ SettingsWindow::SettingsWindow(UiSession& settings,QWidget* parent):RetainedWind
  connect(this,&SettingsWindow::viewStateChanged,this,&SettingsWindow::updateStoreButtons);
  setupTimer_=new QTimer(this);setupTimer_->setInterval(500);connect(setupTimer_,&QTimer::timeout,this,&SettingsWindow::pollSetup);
  for(auto* label:findChildren<QLabel*>())label->setTextFormat(Qt::PlainText);
+ // The wheel scrolls the page: a number under the pointer must not change, or take focus, as the page moves past it.
+ for(auto* spin:findChildren<QAbstractSpinBox*>()){spin->setFocusPolicy(Qt::StrongFocus);spin->installEventFilter(this);}
  refresh();refreshDiagnostics();refreshDestinationList();updateProviderVisibility_();refreshEffectiveLimits();fitRails();
 }
 SettingsWindow::~SettingsWindow(){
@@ -1229,6 +1231,7 @@ SettingsWindow::~SettingsWindow(){
 bool SettingsWindow::eventFilter(QObject* watched,QEvent* event){
  if(watched==destinationPage_&&event->type()==QEvent::Hide)resetCredentialSecretDisplay();
  if(watched==tabs_->tabBar()&&event->type()==QEvent::Wheel){event->ignore();return true;}
+ if(event->type()==QEvent::Wheel&&qobject_cast<QAbstractSpinBox*>(watched)){event->ignore();return true;}
  if(revealUpdates_&&(event->type()==QEvent::Move||event->type()==QEvent::Resize)&&watched==updatesCard_)revealUpdates();
  if(event->type()==QEvent::Hide&&watched==generalPage_&&!event->spontaneous())revealUpdates_=false;
  return RetainedWindow::eventFilter(watched,event);

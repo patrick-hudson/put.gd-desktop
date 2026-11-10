@@ -19,8 +19,9 @@ Error validCredentials(const Credentials& value) {
             if (it.key().isEmpty() || it.key().size() > 300 || it.value().size() > 65536) return {"credential_invalid", "A stored value is too long", {}};
             total += it.key().size() + it.value().size();
         }
-        if (value.values.size() > 128 || total > 131072 || !value.accessKey.isEmpty() || !value.secretKey.isEmpty() || !value.sessionToken.isEmpty())
-            return {"credential_invalid", "The stored values are too large", {}};
+        if (!value.accessKey.isEmpty() || !value.secretKey.isEmpty() || !value.sessionToken.isEmpty()) return {"credential_invalid", "Named values are stored without an access key", {}};
+        if (value.values.size() > maximumNamedValues || total > maximumNamedValueChars)
+            return {"credential_invalid", "This destination's secret values are too large to store together: at most 128 KB, names included", {}};
         return {};
     }
     if (value.accessKey.isEmpty() || value.secretKey.isEmpty() || value.accessKey.size() > 4096 ||

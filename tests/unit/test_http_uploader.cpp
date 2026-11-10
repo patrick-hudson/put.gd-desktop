@@ -67,6 +67,15 @@ private slots:
         QTest::newRow("secret needs a name") << "{secret}" << false << "needs a parameter";
         QTest::newRow("secret takes one name") << "{secret:a|b}" << false << "one stored value";
         QTest::newRow("secret name is literal") << "{secret:{json:key}}" << false << "one stored value";
+        // One parameter too many is a mistake to report, not something to ignore.
+        QTest::newRow("header takes one name") << "{header:Location|extra}" << false << "at most 1 parameter";
+        QTest::newRow("filename takes none") << "{filename:png}" << true << "takes no parameter";
+        QTest::newRow("regex takes three") << "{regex:{response}|a(b)|1|2}" << false << "at most 3 parameters";
+        QTest::newRow("json takes text and path") << "{json:{response}|url}" << false << "";
+        QTest::newRow("random takes many") << "{random:a|b|c|d|e}" << true << "";
+        // A reply value keeps its stored values named; inside another placeholder a name has nothing to stand for.
+        QTest::newRow("nested secret in response") << "{json:url}/{base64:{secret:secrets/t}}" << false << "stands on its own";
+        QTest::newRow("nested secret in request") << "{base64:{secret:secrets/t}}" << true << "";
     }
     void templateSyntax() {
         QFETCH(QString, text);
@@ -105,6 +114,8 @@ private slots:
         QTest::newRow("xml text") << "{xml://file[1]/url/text()}" << xml << "https://h.test/1";
         QTest::newRow("xml prefix ignored") << "{xml:/r:upload/file/url}" << xml << "https://h.test/1";
         QTest::newRow("xml wildcard") << "{xml:/*/delete/@href}" << xml << "https://h.test/d";
+        QTest::newRow("xml nested descendants once each") << "{xml://upload//url}" << xml << "https://h.test/1";
+        QTest::newRow("xml any descendant") << "{xml://*//url}" << xml << "https://h.test/1";
         QTest::newRow("xml missing") << "{xml:/upload/nothing}" << xml << "";
         QTest::newRow("xml malformed") << "{xml:/a}" << "<a><b></a>" << "";
         QTest::newRow("regex group") << "{regex:href=\"([^\"]+)\"|1}" << html << "https://h.test/v/x1";
@@ -223,6 +234,68 @@ private slots:
         QCOMPARE(kept.settings["requestUrl"].toString(), QString("https://hooks.example.test/api/v2/files/upload"));
         QVERIFY(kept.settings["secrets"].toArray().isEmpty());
         QVERIFY(kept.secrets.isEmpty());
+    }
+    // A stored value is named only where it stands as literal text after the host, and it
+    // never reaches what is shown or recorded: the link, its thumbnail, an error message.
+    void importNamesStoredValuesOnlyAsLiteralText() {
+        const QString key = token;
+        QJsonObject file{{"Version", "17.0.0"}, {"DestinationType", "ImageUploader"}, {"RequestMethod", "POST"}, {"RequestURL", "https://media.example.test/upload/images"},
+                         {"Body", "MultipartFormData"}, {"FileFormName", "file"},
+                         {"Arguments", QJsonObject{{"domain", "media.example.test"}, {"folder", "images"}, {"token", key}}},
+                         {"URL", "https://media.example.test/{json:images.url}"}, {"ThumbnailURL", "{json:thumb}?t=" + key}, {"ErrorMessage", "{json:error} (" + key + ")"},
+                         {"DeletionURL", "https://media.example.test/delete/{json:images.id}/" + key}};
+        const auto result = importSxcu(sxcu(file));
+        QVERIFY2(!result.error, qPrintable(result.error.message));
+        // The host is no key, a placeholder's own text is left alone, and a path segment
+        // that is a stored value is named.
+        QCOMPARE(result.settings["requestUrl"].toString(), QString("https://media.example.test/upload/{secret:arguments/folder}"));
+        QCOMPARE(result.settings["responseUrl"].toString(), QString("https://media.example.test/{json:images.url}"));
+        QCOMPARE(result.settings["deletionUrl"].toString(), QString("https://media.example.test/delete/{json:images.id}/{secret:arguments/token}"));
+        // What would be shown or recorded is left out and said so, without the value.
+        QCOMPARE(result.settings["thumbnailUrl"].toString(), QString());
+        QCOMPARE(result.settings["errorMessage"].toString(), QString());
+        const auto notes = result.notes.join(' ');
+        QVERIFY2(notes.contains("ThumbnailURL repeated the value of argument token") && notes.contains("ErrorMessage repeated the value of argument token"), qPrintable(notes));
+        QVERIFY(!notes.contains(key));
+        QVERIFY(!QJsonDocument(result.settings).toJson().contains(key.toUtf8()));
+        QVERIFY2(!validateSettings(result.settings), qPrintable(validateSettings(result.settings).message));
+        // The link itself cannot be left out: the file is refused, naming the row and never its value.
+        auto shared = file;
+        shared["URL"] = "https://media.example.test/{json:name}?t=" + key;
+        const auto refused = importSxcu(sxcu(shared));
+        QCOMPARE(refused.error.code, QString("sxcu_unsupported"));
+        QVERIFY2(refused.error.message.contains("URL repeats the value of argument token"), qPrintable(refused.error.message));
+        QVERIFY(!refused.error.message.contains(key));
+        QVERIFY(refused.secrets.isEmpty() && refused.settings.isEmpty());
+        // More key-like runs than a destination can store: refused, not left in the address.
+        auto crowded = file;
+        QString address = "https://media.example.test/delete";
+        for (int i = 0; i < maximumRows + 2; ++i) address += QString("/k%1abcdefghijklmnopqrstuvwxyz").arg(i, 2, 10, QChar('0'));
+        crowded["DeletionURL"] = address;
+        const auto tooMany = importSxcu(sxcu(crowded));
+        QCOMPARE(tooMany.error.code, QString("sxcu_unsupported"));
+        QVERIFY2(tooMany.error.message.contains("more key-like values"), qPrintable(tooMany.error.message));
+        // A numeric type with a bit put.gd does not know is not quietly dropped.
+        auto typed = file;
+        typed["DestinationType"] = 65;
+        QCOMPARE(importSxcu(sxcu(typed)).error.code, QString("sxcu_invalid"));
+        typed["DestinationType"] = 5;
+        QCOMPARE(importSxcu(sxcu(typed)).settings["accepts"].toArray(), QJsonArray({"image", "file"}));
+    }
+    // By hand as well: only the deletion URL may name a stored value among the reply values.
+    void storedValuesStayOutOfWhatIsShownOrRecorded() {
+        auto settings = defaults();
+        settings["requestUrl"] = "https://h.example.test/up";
+        settings["arguments"] = QJsonArray{QJsonObject{{"name", "token"}, {"secret", true}}};
+        settings["deletionUrl"] = "{json:url}/delete/{secret:arguments/token}";
+        QVERIFY2(!validateSettings(settings), qPrintable(validateSettings(settings).message));
+        for (const auto* field : {"responseUrl", "thumbnailUrl", "errorMessage"}) {
+            auto shown = settings;
+            shown[field] = "{json:url}?t={secret:arguments/token}";
+            const auto error = validateSettings(shown);
+            QVERIFY2(error.message.contains("must not contain a stored secret"), qPrintable(QString(field) + ": " + error.message));
+            QCOMPARE(error.details["field"].toString(), QString(field));
+        }
     }
     void oldPlaceholders_data() {
         QTest::addColumn<QString>("old");

@@ -13,7 +13,7 @@ bool validInput(const QString& kind,const QJsonObject& input) {
  // Named values of a custom HTTP uploader: {"values":{key:value}}; the provider checks them.
  if(input.size()==1&&input.contains("values")) {
   const auto values=input["values"].toObject();
-  if(!input["values"].isObject()||values.size()>128)return false;
+  if(!input["values"].isObject()||values.size()>maximumNamedValues)return false;
   for(auto it=values.begin();it!=values.end();++it)if(it.key().isEmpty()||it.key().size()>300||!it.value().isString()||it.value().toString().size()>65536)return false;
   return true;
  }

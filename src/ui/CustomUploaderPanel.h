@@ -89,6 +89,7 @@ private:
     QCheckBox *insecure_ = nullptr, *dataSecret_ = nullptr, *images_ = nullptr, *text_ = nullptr, *files_ = nullptr;
     QPlainTextEdit* data_ = nullptr;
     QSpinBox *connectTimeout_ = nullptr, *requestTimeout_ = nullptr;
+    int loadedConnectMs_ = 10000, loadedRequestMs_ = 600000;  // as saved, possibly finer than a second
     UploaderRows *headers_ = nullptr, *parameters_ = nullptr, *arguments_ = nullptr, *secrets_ = nullptr;
     QPushButton* import_ = nullptr;
     QLabel *notice_ = nullptr, *problem_ = nullptr;

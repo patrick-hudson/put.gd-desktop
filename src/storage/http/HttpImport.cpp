@@ -9,6 +9,10 @@
 #include <QRegularExpression>
 namespace putgd::http {
 namespace {
+// Every secret a destination can have fits one credential-store entry: three row lists,
+// the other secret values and the request body.
+static_assert(4 * maximumRows + 1 <= maximumNamedValues);
+static_assert(maximumSecretBytes <= maximumNamedValueChars);
 Error invalid(const QString& message) { return {"invalid_request", message, {}}; }
 // A profile ID from the uploader's name: lower-case letters, digits and hyphens.
 QString slug(const QString& name) {
@@ -43,7 +47,8 @@ void importUploaderFile(SettingsService& settings, CredentialStore& credentials,
     static const QStringList allowed{"path", "expectedRevision", "label", "profileId", "credentialMode", "allowInsecureHttp"};
     for (auto it = params.begin(); it != params.end(); ++it) if (!allowed.contains(it.key())) { reply(invalid("Unknown import field"), {}); return; }
     const auto path = params["path"].toString();
-    const auto mode = params["credentialMode"].toString("keychain");
+    // Absent means the keychain; anything present must say which, in so many words.
+    const auto mode = params.contains("credentialMode") ? params["credentialMode"].toString() : QStringLiteral("keychain");
     static const QRegularExpression identifier("^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$");
     if (!params["path"].isString() || path.size() > 4096 || !QDir::isAbsolutePath(path) || !params["expectedRevision"].isString() ||
         (params.contains("label") && (!params["label"].isString() || params["label"].toString().trimmed().isEmpty() || params["label"].toString().size() > 128)) ||
@@ -71,7 +76,7 @@ void importUploaderFile(SettingsService& settings, CredentialStore& credentials,
     if (params["allowInsecureHttp"].toBool()) {
         imported.settings["allowInsecureHttp"] = true;
         // The caller has made that choice: the note asking for it no longer applies.
-        for (qsizetype i = imported.notes.size() - 1; i >= 0; --i) if (imported.notes[i].contains("Turn on Allow plain HTTP")) imported.notes.removeAt(i);
+        imported.notes.removeAll(plainHttpNote());
         if (!transportAllowed(QUrl(imported.settings["requestUrl"].toString()), false)) imported.notes.append("This destination sends files and credentials over plain HTTP, as allowed for it.");
     }
     if (auto error = validateSettings(imported.settings)) { reply(error, {}); return; }

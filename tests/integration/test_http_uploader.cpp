@@ -200,6 +200,29 @@ private slots:
         QVERIFY(f.provider.serializationKey(f.destination, first.objectReference, "a.png") != f.provider.serializationKey(f.destination, second.objectReference, "a.png"));
         QCOMPARE(f.events("upload").size(), 0);
     }
+    // A diagnostics package says which fields a destination sets and where its request
+    // goes: never a row value, a path someone typed a key into, or a reply template's text.
+    void diagnosticsShowTheShapeOfSettingsNotTheirText() {
+        HttpFixture f;
+        auto settings = http::defaults();
+        settings["requestUrl"] = "https://media.example.test:8443/hooks/typed-in-key/{filename}";
+        settings["headers"] = QJsonArray{QJsonObject{{"name", "Authorization"}, {"secret", true}}, QJsonObject{{"name", "X-Album"}, {"secret", false}, {"value", "private-album"}}};
+        settings["data"] = "{\"album\":\"private-album\"}";
+        settings["responseUrl"] = "https://cdn.example.test/typed-in-key/{json:files[0].name}";
+        settings["deletionUrl"] = "{json:url}/delete/{secret:headers/Authorization}";
+        settings["errorMessage"] = "typed-in-key {regex:error=(\\\\w+)|1}";
+        const auto shown = f.provider.diagnosticSettings(settings);
+        QCOMPARE(shown["requestUrl"].toString(), QString("https://media.example.test:8443/<set: filename>"));
+        QCOMPARE(shown["headers"].toArray(), QJsonArray({QJsonObject{{"name", "Authorization"}, {"secret", true}}, QJsonObject{{"name", "X-Album"}, {"secret", false}}}));
+        QCOMPARE(shown["data"].toString(), QString("<set>"));
+        QCOMPARE(shown["responseUrl"].toString(), QString("<set: json>"));
+        QCOMPARE(shown["deletionUrl"].toString(), QString("<set: json, secret>"));
+        QCOMPARE(shown["errorMessage"].toString(), QString("<set: regex>"));
+        QCOMPARE(shown["thumbnailUrl"].toString(), QString());
+        const auto bytes = QJsonDocument(shown).toJson();
+        QVERIFY(!bytes.contains("typed-in-key") && !bytes.contains("private-album") && !bytes.contains("files[0]"));
+        QCOMPARE(QStringList(shown.keys()), QStringList(settings.keys()));
+    }
     void bodyTypes_data() {
         QTest::addColumn<QString>("body");
         QTest::addColumn<QString>("method");
@@ -614,12 +637,19 @@ private slots:
         QCOMPARE(result.status, QString("failed"));
         QCOMPARE(result.error.code, QString("http_delete_refused"));
         QCOMPARE(f.stored(), 1);
-        // Deleted, but the connection closes before the reply. Qt Network repeats a
-        // request that has no body, finds the file gone, and that is this deletion.
+        // Deleted, but the connection closes before the reply. Some Qt Network versions
+        // repeat a request that has no body, find the file gone, and that is this
+        // deletion. Others report the lost reply, and the explicit retry finds it gone.
         f.rules({{{"call", "delete"}, {"store", true}, {"drop", true}}});
         result = f.remove(uploaded.receipt);
-        QCOMPARE(result.status, QString("removed"));
         QCOMPARE(f.stored(), 0);
+        if (result.status == "unknown") {
+            QCOMPARE(result.error.code, QString("http_outcome_unknown"));
+            QCOMPARE(result.progress["phase"].toString(), QString("delete_intent"));
+            f.rules({});
+            result = f.remove(uploaded.receipt, result.progress);
+        }
+        QCOMPARE(result.status, QString("removed"));
         // No reply however often it is asked: unknown, and the explicit retry finds it gone.
         const auto second = f.upload(f.image());
         f.rules({{{"call", "delete"}, {"store", true}, {"drop", true}, {"remaining", 8}}});

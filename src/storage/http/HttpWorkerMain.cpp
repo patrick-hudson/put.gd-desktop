@@ -580,7 +580,9 @@ private:
             uncertain = answered;
             return {{"status", answered ? "unknown" : "failed"}};
         }
-        ResponseValues values{r.text(), r.headers, r.url.toString(QUrl::FullyEncoded), fileName, &secrets_, false};
+        // No stored value is handed to what reads the reply: the link, its thumbnail and
+        // a server's message are recorded and shown.
+        ResponseValues values{r.text(), r.headers, r.url.toString(QUrl::FullyEncoded), fileName, nullptr, false};
         if (r.status == 0) {
             QJsonObject details{{"requestStage", "upload"}, {"transport", r.detail}};
             if (!r.reached && !answered) {
@@ -642,7 +644,10 @@ private:
         receipt.objectReference = {{"schemaVersion", 1}, {"nonce", reference["nonce"]}, {"url", link}, {"sha256", artifact.sha256}, {"bytes", double(artifact.bytes)}};
         if (const auto thumbnail = address(renderResponse(settings()["thumbnailUrl"].toString(), values), false); !thumbnail.isEmpty()) receipt.objectReference["thumbnailUrl"] = thumbnail;
         // A deletion URL that breaks the transport rule is not kept: the upload stands, deletion is unavailable.
-        if (const auto deletion = address(renderResponse(settings()["deletionUrl"].toString(), values), true); !deletion.isEmpty()) {
+        // Filled in only to judge the address; what is recorded names its stored values.
+        auto filled = values;
+        filled.secrets = &secrets_;
+        if (const auto deletion = address(renderResponse(settings()["deletionUrl"].toString(), filled), true); !deletion.isEmpty()) {
             // A stored value in it, such as a token, is recorded by name only: the
             // receipt keeps {secret:key}, filled in when the deletion is sent.
             if (secretReferences(settings()["deletionUrl"].toString()).isEmpty()) receipt.objectReference["deletionUrl"] = deletion;

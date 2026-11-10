@@ -1,4 +1,5 @@
 #include "HttpCommon.h"
+#include <functional>
 #include "HttpTemplate.h"
 #include <QHash>
 #include <QJsonArray>
@@ -202,6 +203,10 @@ Error validateSettings(const QJsonObject& s) {
         const auto content = s[key].toString();
         if (!s[key].isString() || content.size() > maximumTemplateChars || !controlFree(content)) return bad("a response value is too long or has control characters", key);
         if (const auto problem = templateProblem(content, TemplateUse::Response); !problem.isEmpty()) return bad(QString(key) + ": " + problem, key);
+        // The link is recorded and shared, its thumbnail recorded, an error message shown
+        // and logged. Only the deletion URL is kept with its stored values still named.
+        if (QLatin1String(key) != QLatin1String("deletionUrl") && !secretReferences(content).isEmpty())
+            return bad(QString(key) + ": {secret:…} cannot be used here; this value is shown and recorded, so it must not contain a stored secret", key);
     }
     if (!integer(s["connectTimeoutMs"], 1000, 120000) || !integer(s["requestTimeoutMs"], 1000, 3600000))
         return bad("timeouts must be whole milliseconds within their limits", "requestTimeoutMs");
@@ -210,6 +215,9 @@ Error validateSettings(const QJsonObject& s) {
 
 namespace {
 SxcuImport readSxcu(const QByteArray& json);
+}
+QString plainHttpNote() {
+    return QStringLiteral("The address uses plain HTTP, which sends files and credentials unencrypted. Turn on Allow plain HTTP to use it.");
 }
 SxcuImport importSxcu(const QByteArray& json) {
     auto out = readSxcu(json);
@@ -241,7 +249,8 @@ SxcuImport readSxcu(const QByteArray& json) {
     QStringList types;
     const auto destination = field("DestinationType");
     if (destination.isDouble()) {
-        const int flags = destination.toInt();
+        const int flags = destination.toInt(-1);
+        if (flags < 0 || flags > 31) { out.error = sxcuError("sxcu_invalid", "This file names a destination type put.gd does not know."); return out; }
         const QStringList order{"imageuploader", "textuploader", "fileuploader", "urlshortener", "urlsharingservice"};
         for (int bit = 0; bit < order.size(); ++bit) if (flags & (1 << bit)) types.append(order[bit]);
     } else for (const auto& part : destination.toString().split(',', Qt::SkipEmptyParts)) types.append(part.trimmed().toLower());
@@ -386,35 +395,76 @@ SxcuImport readSxcu(const QByteArray& json) {
     if (secretBytes > maximumSecretBytes) { out.error = sxcuError("sxcu_unsupported", "The file's header, parameter and argument values are too large to store."); return out; }
 
     // A stored value written out again elsewhere in the file is named there, not repeated:
-    // XBackBone, for one, ends its deletion URL with the upload token.
+    // XBackBone, for one, ends its deletion URL with the upload token. Only literal text
+    // after the host counts: inside a placeholder the same letters are a path or a
+    // pattern, and a host name is no key. Values under six characters are switches such
+    // as "true" or "json"; naming those would rewrite half the address.
     QList<QPair<QString, QString>> known; // value → key, longest first
-    for (auto it = out.secrets.cbegin(); it != out.secrets.cend(); ++it) if (it.key() != dataSecretKey() && it.value().size() >= 6 && !it.value().contains('{')) known.append({it.value(), it.key()});
+    static const QRegularExpression syntax("[{}|\\\\]");
+    for (auto it = out.secrets.cbegin(); it != out.secrets.cend(); ++it)
+        if (it.key() != dataSecretKey() && it.value().size() >= 6 && !it.value().contains(syntax)) known.append({it.value(), it.key()});
     std::sort(known.begin(), known.end(), [](const auto& a, const auto& b) { return a.first.size() > b.first.size(); });
-    QJsonArray extra;
-    const auto named = [&](QString value) {
-        for (const auto& [secret, key] : known) {
+    const auto afterHost = [](const QString& value) -> qsizetype {
+        const auto authority = value.indexOf("://");
+        if (authority < 0) return 0;
+        const auto path = value.indexOf('/', authority + 3);
+        return path < 0 ? value.size() : path;
+    };
+    // Walks the literal text of a template from `from` on. `met` is told of each stored
+    // value found there and returns what stands in its place.
+    const auto literal = [&](const QString& value, qsizetype from, const std::function<QString(const QString& key, const QString& secret)>& met) {
+        QString result;
+        int depth = 0;
+        for (qsizetype i = 0; i < value.size();) {
+            const auto c = value[i];
+            if (c == '\\' && i + 1 < value.size()) { result += value.mid(i, 2); i += 2; continue; }
+            if (c == '{') ++depth;
+            else if (c == '}' && depth > 0) --depth;
+            else if (depth == 0 && i >= from) {
+                bool replaced = false;
+                for (const auto& [secret, key] : known)
+                    if (QStringView(value).mid(i).startsWith(secret)) { result += met(key, secret); i += secret.size(); replaced = true; break; }
+                if (replaced) continue;
+            }
+            result += c;
+            ++i;
+        }
+        return result;
+    };
+    const auto named = [&](const QString& value) {
+        return literal(value, afterHost(value), [](const QString& key, const QString&) {
             QString name;
             for (const auto c : key) { if (QStringLiteral("{}|\\").contains(c)) name.append('\\'); name.append(c); }
-            value.replace(secret, "{secret:" + name + "}");
-        }
-        return value;
+            return "{secret:" + name + "}";
+        });
     };
+    // The stored values a text repeats. A link is shared and recorded, and an error
+    // message is shown and logged: neither may carry one, named or written out.
+    const auto repeated = [&](const QString& value) {
+        QStringList labels;
+        literal(value, afterHost(value), [&](const QString& key, const QString& secret) { if (!labels.contains(secretLabel(key))) labels.append(secretLabel(key)); return secret; });
+        return labels;
+    };
+    QJsonArray extra;
+    bool tooManyKeys = false;
     // A long opaque run of letters and digits left in an address is treated as a key:
     // it moves to a secret value of its own.
     const auto opaque = [&](QString value, const QString& name, qsizetype from) {
         static const QRegularExpression run("[A-Za-z0-9_-]{20,}"), digit("[0-9]"), letter("[A-Za-z]");
-        for (int guard = 0; guard < maximumRows; ++guard) {
-            QRegularExpressionMatch found;
+        const auto next = [&] {
             for (auto it = run.globalMatch(value, from); it.hasNext();) {
                 const auto match = it.next();
                 const auto text = match.captured();
                 // Inside a placeholder it is a path or pattern, not a key.
                 const auto before = value.left(match.capturedStart());
                 if (before.count('{') > before.count('}') || !text.contains(digit) || !text.contains(letter)) continue;
-                found = match;
-                break;
+                return match;
             }
-            if (!found.hasMatch()) break;
+            return QRegularExpressionMatch();
+        };
+        for (auto found = next(); found.hasMatch(); found = next()) {
+            // More than can be stored: nothing is left behind in the address.
+            if (extra.size() >= maximumRows) { tooManyKeys = true; break; }
             const auto row = name + (extra.isEmpty() ? QString() : "-" + QString::number(extra.size() + 1));
             extra.append(QJsonObject{{"name", row}, {"secret", true}});
             out.secrets.insert(secretKey(extraSecretsList(), row), found.captured());
@@ -424,12 +474,14 @@ SxcuImport readSxcu(const QByteArray& json) {
     };
     {
         auto address = named(requestUrl);
-        const auto authority = address.indexOf("://");
-        const auto path = authority < 0 ? -1 : address.indexOf('/', authority + 3);
-        if (path > 0) address = opaque(address, "url-key", path);
+        address = opaque(address, "url-key", afterHost(address));
         if (address != requestUrl) { settings["requestUrl"] = address; requestUrl = address; }
     }
-    auto responseUrl = named(migrate(fieldText("URL")));
+    auto responseUrl = migrate(fieldText("URL"));
+    if (const auto labels = repeated(responseUrl); !labels.isEmpty()) {
+        out.error = sxcuError("sxcu_unsupported", QString("URL repeats the value of %1. put.gd records and shares the link, so it cannot contain a stored secret. Remove that value from the file's URL, or set this destination up by hand.").arg(labels.join(", ")));
+        return out;
+    }
     // Before 12.4 a ResponseType said where the link was when URL was empty.
     if (responseUrl.isEmpty()) {
         const auto type = fieldText("ResponseType").trimmed().toLower();
@@ -437,15 +489,21 @@ SxcuImport readSxcu(const QByteArray& json) {
         else if (type == "locationheader") responseUrl = "{header:Location}";
     }
     settings["responseUrl"] = responseUrl;
-    settings["thumbnailUrl"] = named(migrate(fieldText("ThumbnailURL")));
+    for (const auto& [key, sxcuName] : QList<QPair<const char*, const char*>>{{"thumbnailUrl", "ThumbnailURL"}, {"errorMessage", "ErrorMessage"}}) {
+        auto value = migrate(fieldText(sxcuName));
+        if (const auto labels = repeated(value); !labels.isEmpty()) {
+            out.notes.append(QString("%1 repeated the value of %2 and was left out: it would be shown and recorded.").arg(sxcuName, labels.join(", ")));
+            value.clear();
+        }
+        settings[key] = value;
+    }
     {
         auto deletion = named(migrate(fieldText("DeletionURL")));
         // After the host: the host name itself is no key.
-        const auto authority = deletion.indexOf("://");
-        deletion = opaque(deletion, "deletion-key", authority < 0 ? 0 : qMax<qsizetype>(0, deletion.indexOf('/', authority + 3)));
+        deletion = opaque(deletion, "deletion-key", afterHost(deletion));
         settings["deletionUrl"] = deletion;
     }
-    settings["errorMessage"] = migrate(fieldText("ErrorMessage"));
+    if (tooManyKeys) { out.error = sxcuError("sxcu_unsupported", "The file's addresses hold more key-like values than a destination can store."); return out; }
     settings[extraSecretsList()] = extra;
     for (const auto& [key, sxcuName] : QList<QPair<const char*, const char*>>{{"responseUrl", "URL"}, {"thumbnailUrl", "ThumbnailURL"}, {"deletionUrl", "DeletionURL"}, {"errorMessage", "ErrorMessage"}}) {
         const auto value = settings[key].toString();
@@ -459,7 +517,7 @@ SxcuImport readSxcu(const QByteArray& json) {
     relaxed["allowInsecureHttp"] = true;
     if (auto error = validateSettings(relaxed)) { out.error = sxcuError("sxcu_unsupported", error.message.replace("Invalid custom uploader settings: ", "This file cannot be used: ")); return out; }
     const auto url = sampleUrl(requestUrl);
-    if (!transportAllowed(url, false)) out.notes.append("The address uses plain HTTP, which sends files and credentials unencrypted. Turn on Allow plain HTTP to use it.");
+    if (!transportAllowed(url, false)) out.notes.append(plainHttpNote());
     out.name = boundedMessage(fieldText("Name"), 96);
     if (out.name.isEmpty()) out.name = url.host();
     out.settings = settings;

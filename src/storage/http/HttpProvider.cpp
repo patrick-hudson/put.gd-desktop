@@ -1,4 +1,5 @@
 #include "HttpProvider.h"
+#include <functional>
 #include "HttpTemplate.h"
 #include <QCoreApplication>
 #include <QDir>
@@ -52,6 +53,32 @@ QJsonObject HttpUploaderProvider::diagnosticSettings(const QJsonObject& settings
         out[list] = rows;
     }
     if (!settings["data"].toString().isEmpty()) out["data"] = "<set>";
+    // An address or a reply template can hold a key someone typed into it by hand. The
+    // package keeps where the request goes and which placeholders each value uses.
+    const auto shape = [](const QString& text) {
+        QStringList names;
+        const std::function<void(const http::Template&)> collect = [&](const http::Template& nodes) {
+            for (const auto& node : nodes) {
+                if (!node.call) continue;
+                // Only the placeholder vocabulary: anything else is someone's own text.
+                static const QStringList vocabulary{"json", "xml", "regex", "header", "response", "responseurl", "filename", "input", "random", "base64", "secret"};
+                const auto name = vocabulary.contains(node.text) ? node.text : QStringLiteral("other");
+                if (!names.contains(name)) names.append(name);
+                for (const auto& parameter : node.parameters) collect(parameter);
+            }
+        };
+        collect(http::parseTemplate(text));
+        return names.isEmpty() ? QStringLiteral("<set>") : "<set: " + names.join(", ") + ">";
+    };
+    if (const auto address = settings["requestUrl"].toString(); !address.isEmpty()) {
+        const auto authority = address.indexOf("://");
+        const auto path = authority < 0 ? -1 : address.indexOf('/', authority + 3);
+        const QUrl url(path < 0 ? address : address.left(path), QUrl::StrictMode);
+        out["requestUrl"] = url.isValid() && !url.host().isEmpty() && url.userInfo().isEmpty() ? url.scheme() + "://" + url.authority() + (path < 0 || path + 1 >= address.size() ? QString() : "/" + shape(address.mid(path)))
+                                                                                                : shape(address);
+    }
+    for (const auto* key : {"responseUrl", "thumbnailUrl", "deletionUrl", "errorMessage"})
+        if (const auto text = settings[key].toString(); !text.isEmpty()) out[key] = shape(text);
     return out;
 }
 QString HttpUploaderProvider::serializationKey(const Destination& destination, const QJsonObject& object, const QString& candidate) const {
