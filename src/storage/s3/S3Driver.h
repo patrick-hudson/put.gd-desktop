@@ -10,6 +10,7 @@ public:
     virtual ~S3Driver() = default;
     virtual void checkName(const Destination&, const QString&, std::function<void(NameCheck)>, std::shared_ptr<std::atomic_bool> cancellation = {}) = 0;
     virtual void upload(const UploadRequest&, std::function<void(UploadResult)>) = 0;
+    virtual void refreshLink(const StorageReceipt& value, std::function<void(StatResult)> reply) {reply({"unknown",value,{"unsupported","Link refresh unavailable",{}}});}
     virtual void stat(const StorageReceipt&, std::function<void(StatResult)>) = 0;
     virtual void reconcile(const UploadRequest&, std::function<void(StatResult)>) = 0;
     virtual void remove(const DeleteRequest&, DurableCheckpoint, std::function<void(DeleteResult)>) = 0;
@@ -23,6 +24,7 @@ public:
     ~NetworkS3Driver() override;
     void checkName(const Destination&, const QString&, std::function<void(NameCheck)>, std::shared_ptr<std::atomic_bool> cancellation = {}) override;
     void upload(const UploadRequest&, std::function<void(UploadResult)>) override;
+    void refreshLink(const StorageReceipt&, std::function<void(StatResult)>) override;
     void stat(const StorageReceipt&, std::function<void(StatResult)>) override;
     void reconcile(const UploadRequest&, std::function<void(StatResult)>) override;
     void remove(const DeleteRequest&, DurableCheckpoint, std::function<void(DeleteResult)>) override;

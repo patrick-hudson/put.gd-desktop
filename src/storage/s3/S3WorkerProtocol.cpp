@@ -6,6 +6,8 @@
 #include <QJsonDocument>
 #include <QRegularExpression>
 #include <QUrl>
+#include <QDateTime>
+#include <QUrlQuery>
 #include <cmath>
 #include <initializer_list>
 #include <limits>
@@ -61,7 +63,10 @@ bool webUrl(const QJsonValue& value, bool allowHttpLoopback) {
            (url.scheme() == QStringLiteral("https") ||
             (allowHttpLoopback && url.scheme() == QStringLiteral("http") && classifyIpAddress(url.host()).loopback));
 }
-bool settings(const QJsonObject& object) {
+bool settings(const QJsonObject& input) {
+    auto object=input;object.remove("linkMode");object.remove("linkValidityDays");
+    if(input.contains("linkMode")&&!choice(input.value("linkMode"),{"public","presigned"}))return false;
+    if(input.contains("linkValidityDays")&&!integer(input.value("linkValidityDays"),1,7))return false;
     if (!keys(object, {"bucket", "region", "endpoint", "objectPrefix", "storageClass", "aclMode", "publicUrlBase",
                        "addressing", "connectTimeoutMs", "requestTimeoutMs", "lowSpeedBytesPerSecond", "lowSpeedTimeSeconds"})) return false;
     if (!text(object["bucket"], 3, 63) || !text(object["region"], 1, maximumFrameBytes) || !text(object["objectPrefix"], 0, 1022) ||
@@ -90,7 +95,7 @@ QString objectKey(const Destination& destination, const QString& candidate) {
 // Receipts have exactly five fields. No generic provider object is accepted here.
 bool reference(const QJsonObject& object, bool receipt) {
     if (receipt) {
-        return keys(object, {"schemaVersion", "key", "versionId", "sha256", "bytes"}) &&
+        return keys(object, {"schemaVersion", "key", "versionId", "sha256", "bytes"}, {"linkExpiresAt"}) &&
                integer(object["schemaVersion"], 1, 1) && text(object["key"], 1, 1024) &&
                text(object["versionId"], 0, 4096) && hash(object["sha256"]) &&
                integer(object["bytes"], 0, maximumArtifactBytes);
@@ -203,12 +208,19 @@ bool decode(const QJsonObject& object, StorageReceipt& receipt) {
     if (!bounded(object) || !keys(object, {"schemaVersion", "destination", "objectReference", "concurrencyToken", "publicationId", "directUrl"}) ||
         !integer(object["schemaVersion"], 1, 1) || !object["destination"].isObject() || !decode(object["destination"].toObject(), value.destination) ||
         !object["objectReference"].isObject() || !reference(object["objectReference"].toObject(), true) ||
-        !text(object["concurrencyToken"], 1, 4096) || !text(object["publicationId"], 1, 4096) || !webUrl(object["directUrl"], true)) return false;
+        !text(object["concurrencyToken"], 1, 4096) || !text(object["publicationId"], 1, 4096) || !text(object["directUrl"], 1, maximumFrameBytes)) return false;
     value.objectReference = object["objectReference"].toObject();
     value.concurrencyToken = object["concurrencyToken"].toString();
     value.publicationId = object["publicationId"].toString();
     value.directUrl = object["directUrl"].toString();
-    if (value.directUrl != publicObjectUrl(value.destination.settings, value.objectReference["key"].toString()) || value.validate()) return false;
+    auto unsignedSettings=value.destination.settings;unsignedSettings["publicUrlBase"]=QJsonValue::Null;
+    const QUrl url(value.directUrl);auto origin=url;origin.setQuery(QString{});
+    if(value.destination.settings.value("linkMode")=="presigned") {
+        if(origin.toString(QUrl::FullyEncoded)!=publicObjectUrl(unsignedSettings,value.objectReference["key"].toString()) ||
+           !QUrlQuery(url).hasQueryItem("X-Amz-Signature") ||
+           !QDateTime::fromString(value.objectReference["linkExpiresAt"].toString(),Qt::ISODateWithMs).isValid())return false;
+    } else if(value.directUrl!=publicObjectUrl(value.destination.settings,value.objectReference["key"].toString()))return false;
+    if(value.validate())return false;
     receipt = std::move(value);
     return true;
 }
@@ -368,7 +380,7 @@ bool validateRequest(const QString& method, const QJsonObject& object) {
         return decode(object, request);
     }
     if (method == QStringLiteral("reconcile")) { UploadRequest request; return decodeReconcileRequest(object, request); }
-    if (method == QStringLiteral("stat")) {
+    if ((method == QStringLiteral("stat") || method == QStringLiteral("refreshLink"))) {
         StorageReceipt receipt;
         return decodeReceiptRequest(object, receipt);
     }
@@ -412,7 +424,7 @@ bool decodeTestDestinationResult(const QJsonObject& object) {
     StorageReceipt receipt;
     if (!object["receipt"].isObject() || !decode(object["receipt"].toObject(), receipt)) return false;
     if (keys(object, {"uploadStatus", "receipt"})) return true;
-    if (!keys(object, {"uploadStatus", "receipt", "publicReachable", "cleanupStatus", "cleanupProgress"}, {"multipart"}) ||
+    if (!keys(object, {"uploadStatus", "receipt", "publicReachable", "cleanupStatus", "cleanupProgress"}, {"multipart","presignedReachable","unsignedDenied"}) ||
         !object["publicReachable"].isBool() || !deleteStatus(object["cleanupStatus"]) || !object["cleanupProgress"].isObject()) return false;
     if (!object.contains("multipart")) return true;
     // The multipart permission probe: created, listed and aborted, or the stage S3 refused.

@@ -2,6 +2,41 @@
 class SettingsGui:public SettingsGuiFixture {
  Q_OBJECT
 private slots:
+ void s3PresignedFormPersistsAndExplainsAccess(){
+  QTemporaryDir dir;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});auto doc=threeDestinations();auto profiles=doc["profiles"].toArray();auto profile=profiles[1].toObject();auto storage=profile["settings"].toObject();storage["publicUrlBase"]="https://cdn.example.invalid";storage["endpoint"]="https://s3.example.invalid";storage["addressing"]="path";profile["settings"]=storage;profiles[1]=profile;doc["profiles"]=profiles;QVERIFY(service.save(doc,{}));
+  CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.navigate("destinations");window.show();
+  window.findChild<QListWidget*>("destinationList")->setCurrentRow(1);
+  auto* mode=window.findChild<QComboBox*>("b2LinkMode");PUTGD_TRY_VERIFY(mode->isVisible());
+  QVERIFY(mode->findData("presigned")>=0);mode->setCurrentIndex(mode->findData("presigned"));emit mode->activated(mode->currentIndex());
+  auto* days=window.findChild<QSpinBox*>("b2LinkDays");PUTGD_TRY_VERIFY(days->isVisible());days->setValue(2);emit days->editingFinished();
+  PUTGD_TRY_COMPARE(service.document()["profiles"].toArray()[1].toObject()["settings"].toObject()["linkMode"].toString(),QString("presigned"));
+  PUTGD_TRY_COMPARE(service.document()["profiles"].toArray()[1].toObject()["settings"].toObject()["linkValidityDays"].toInt(),2);
+  QVERIFY(!window.findChild<QComboBox*>("s3AclMode")->isVisible());QVERIFY(!window.findChild<QLineEdit*>("s3PublicUrlBase")->isVisible());
+  auto* example=window.findChild<QLabel*>("linkExample");QVERIFY(example);QVERIFY(example->text().startsWith("https://s3.example.invalid/"));QVERIFY(!example->text().contains("cdn.example.invalid"));QVERIFY(example->text().endsWith("?X-Amz-Signature=…"));QVERIFY(example->isVisible());
+  QCOMPARE(service.document()["profiles"].toArray()[1].toObject()["settings"].toObject()["publicUrlBase"].toString(),QString("https://cdn.example.invalid"));
+  mode->setCurrentIndex(mode->findData("public"));emit mode->activated(mode->currentIndex());PUTGD_TRY_VERIFY(example->text().startsWith("https://cdn.example.invalid/"));QVERIFY(!example->text().contains("X-Amz-Signature"));QVERIFY(example->isVisible());
+ }
+ void switchingLegacyS3ToPresignedSavesDependencies_data(){
+  QTest::addColumn<QString>("acl");QTest::addColumn<bool>("hasDays");
+  for(const auto& acl:QStringList{"omit","public-read"})for(bool days:{false,true})QTest::newRow(qPrintable(acl+(days?"-explicit-days":"-legacy")))<<acl<<days;
+ }
+ void switchingLegacyS3ToPresignedSavesDependencies(){
+  QFETCH(QString,acl);QFETCH(bool,hasDays);QTemporaryDir dir;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});auto doc=threeDestinations();auto profiles=doc["profiles"].toArray();auto p=profiles[1].toObject();auto storage=p["settings"].toObject();storage["aclMode"]=acl;storage.remove("linkMode");storage.remove("linkValidityDays");if(hasDays)storage["linkValidityDays"]=3;p["settings"]=storage;profiles[1]=p;doc["profiles"]=profiles;QVERIFY(service.save(doc,{}));
+  CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.navigate("destinations");window.show();window.findChild<QListWidget*>("destinationList")->setCurrentRow(1);
+  // An unrelated queued edit must survive the mode's dependent leaf edits.
+  auto* label=window.findChild<QLineEdit*>("destinationLabel");label->setText("Retained label");emit label->editingFinished();auto* mode=window.findChild<QComboBox*>("b2LinkMode");mode->setCurrentIndex(mode->findData("presigned"));emit mode->activated(mode->currentIndex());
+  PUTGD_TRY_COMPARE(service.document()["profiles"].toArray()[1].toObject()["settings"].toObject()["linkMode"].toString(),QString("presigned"));
+  auto saved=service.document()["profiles"].toArray()[1].toObject();QCOMPARE(saved["settings"].toObject()["linkValidityDays"].toInt(),hasDays?3:7);QCOMPARE(saved["settings"].toObject()["aclMode"].toString(),acl);QCOMPARE(saved["label"].toString(),QString("Retained label"));QVERIFY(!window.settings()->changesUnsaved());
+  bool tested=false;fixture.setup.setProviderSetup([&](const QString& kind,const Destination&,const QJsonObject&,JsonReply reply,auto){tested|=kind=="testDestination";reply({},{});});window.findChild<QPushButton*>("testDestination")->click();PUTGD_TRY_VERIFY(tested);
+  mode->setCurrentIndex(mode->findData("public"));emit mode->activated(mode->currentIndex());PUTGD_TRY_COMPARE(service.document()["profiles"].toArray()[1].toObject()["settings"].toObject()["linkMode"].toString(),QString("public"));QCOMPARE(window.findChild<QComboBox*>("s3AclMode")->currentData().toString(),acl);QVERIFY(!window.settings()->changesUnsaved());
+ }
+ void b2ModeSavesItsDomainDependency(){
+  QTemporaryDir dir;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});auto doc=threeDestinations();auto profiles=doc["profiles"].toArray();auto p=profiles[1].toObject();p["provider"]="backblaze-b2";auto storage=b2::defaults();storage["bucket"]="synthetic";storage["publicUrlBase"]="https://cdn.example.invalid";p["settings"]=storage;profiles[1]=p;doc["profiles"]=profiles;QVERIFY(service.save(doc,{}));
+  CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.navigate("destinations");window.show();window.findChild<QListWidget*>("destinationList")->setCurrentRow(1);auto* mode=window.findChild<QComboBox*>("b2LinkMode");mode->setCurrentIndex(mode->findData("authorized"));emit mode->activated(mode->currentIndex());
+  PUTGD_TRY_VERIFY(service.document()["profiles"].toArray()[1].toObject()["settings"].toObject()["publicUrlBase"].isNull());
+  bool tested=false;fixture.setup.setProviderSetup([&](const QString& kind,const Destination&,const QJsonObject&,JsonReply reply,auto){tested|=kind=="testDestination";reply({},{});});window.findChild<QPushButton*>("testDestination")->click();PUTGD_TRY_VERIFY(tested);
+  mode->setCurrentIndex(mode->findData("public"));emit mode->activated(mode->currentIndex());PUTGD_TRY_COMPARE(service.document()["profiles"].toArray()[1].toObject()["settings"].toObject()["linkMode"].toString(),QString("public"));auto* domain=window.findChild<QLineEdit*>("s3PublicUrlBase");QCOMPARE(service.document()["profiles"].toArray()[1].toObject()["settings"].toObject()["publicUrlBase"],domain->text().isEmpty()?QJsonValue(QJsonValue::Null):QJsonValue(domain->text()));
+ }
  void disclosureIconsSurviveEveryToggleAndProviderChange(){
   QTemporaryDir dir;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(service.save(threeDestinations(),{}));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.navigate("settings");window.show();
   for(auto* toggle:window.settings()->findChildren<QToolButton*>())if(toggle->property("uiDisclosure").toBool()){toggle->setChecked(false);const auto closed=toggle->icon().pixmap(toggle->iconSize()).toImage();toggle->setChecked(true);QCOMPARE(toggle->arrowType(),Qt::NoArrow);QVERIFY(!toggle->icon().isNull());QVERIFY(toggle->icon().pixmap(toggle->iconSize()).toImage()!=closed);toggle->setChecked(false);QCOMPARE(toggle->icon().pixmap(toggle->iconSize()).toImage(),closed);}

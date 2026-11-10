@@ -13,7 +13,7 @@ QString objectKey(const Destination& destination, const QString& candidate) {
     if (!prefix.isEmpty() && !prefix.endsWith('/')) prefix += '/';
     return prefix + candidate;
 }
-Error accessError() { return {"credential_setup_required", "Restore explicit credentials for this original destination", {}}; }
+Error accessError() { return {"credential_setup_required", "Credentials are not loaded for this original destination. Choose Unlock saved credentials, or restore its session credentials in Settings", {}}; }
 Error cancelled() { return {"cancelled", "Cancellation requested; sent requests may still have taken effect", {}}; }
 Error busy() { return {"provider_busy", "S3 work queue is full", {}}; }
 bool stopped(const std::shared_ptr<std::atomic_bool>& token) { return token && token->load(); }
@@ -191,7 +191,10 @@ QString S3Provider::serializationKey(const Destination& destination, const QJson
 Error S3Provider::validateSettings(const QJsonObject& settings) const {
     const QStringList fields{"bucket", "region", "endpoint", "objectPrefix", "storageClass", "aclMode", "publicUrlBase", "addressing", "connectTimeoutMs", "requestTimeoutMs", "lowSpeedBytesPerSecond", "lowSpeedTimeSeconds"};
     auto bad = [] { return Error{"s3_settings_invalid", "Invalid S3 settings; use a supported endpoint, addressing, ACL, storage class and positive timeouts", {}}; };
-    if (settings.keys().size() != fields.size()) return bad();
+    auto base = settings; base.remove("linkMode"); base.remove("linkValidityDays");
+    if (base.keys().size() != fields.size()) return bad();
+    if (settings.contains("linkMode") && !QStringList{"public", "presigned"}.contains(settings["linkMode"].toString())) return bad();
+    if (settings.contains("linkValidityDays")) {const auto days=settings["linkValidityDays"].toDouble();if(days<1||days>7||days!=int(days))return bad();}
     for (const auto& field : fields) if (!settings.contains(field)) return bad();
     for (const auto& field : {"bucket", "region", "endpoint", "objectPrefix", "storageClass", "aclMode", "addressing"})
         if (!settings[field].isString()) return bad();
@@ -281,5 +284,20 @@ void S3Provider::testDestination(const Destination& destination, DurableCheckpoi
     state_->run(*this, destination, {}, [destination, save, reply](S3Driver& driver) {
         driver.testDestination(destination, save, reply);
     }, [reply](Error error) { reply({}, error); });
+}
+}
+
+namespace putgd {
+void S3Provider::refreshLink(const StorageReceipt& receipt, std::function<void(StatResult)> reply) {
+    if(receipt.destination.settings["linkMode"]!="presigned") {reply({"unknown",receipt,{"link_refresh_unsupported","This link does not expire",{}}});return;}
+    reply=once(std::move(reply));
+    state_->run(*this,receipt.destination,{},[receipt,reply](S3Driver& driver){driver.refreshLink(receipt,reply);},
+        [reply](Error e){reply({"unknown",{},e});});
+}
+}
+
+namespace putgd {
+void S3Provider::unlockLinkCredentials(const StorageReceipt& receipt,std::function<void(Error)> reply) {
+    state_->credentials.unlock(receipt.destination.profileId,receipt.destination.credentialReference,std::move(reply));
 }
 }
