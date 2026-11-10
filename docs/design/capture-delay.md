@@ -102,10 +102,12 @@ no service to ask, and Omarchy's lock leaves the hint off too. So on Plasma, Bud
 and Hyprland the countdown itself is the second witness. Before it leaves the screen
 the pill commits one more frame and waits for the compositor's frame callback. A
 compositor that is showing a lock screen, or has the output blanked, does not present
-client surfaces and never sends it; after one second the helper gives up, the
+client surfaces and never sends it; after three seconds the helper gives up, the
 countdown is reported as not shown, and the capture is refused with `session_locked`
 ("The countdown was not on screen when the capture delay ended (a locked or blanked
-screen), so nothing was captured.").
+screen), so nothing was captured."). The wait is that long because a busy compositor
+answers late: one second was missed once by a software-rendered guest that was
+starting a browser.
 
 An immediate capture has no countdown to witness it. On Budgie one requested by an
 agent while gtklock is up gets what labwc is showing, which is the lock screen and
