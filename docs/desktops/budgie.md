@@ -90,6 +90,33 @@ windows with their identity (the ext toplevel identifier), app ID, title and
 active state; `rect` is empty because neither protocol gives geometry. Window
 titles never appear in `capabilities` or diagnostics.
 
+## Capture monitor, delay and repeat
+
+Capture monitor (#1363) needs the output the pointer is on, and labwc gives
+clients no pointer position and has no IPC to ask. put.gd creates one
+`ext-image-copy-capture` cursor session per output on a short connection of its
+own and takes the output whose session reports the cursor's hotspot inside its
+buffer. A cursor image that straddles two outputs is reported by both; only one
+contains the hotspot. No surface is mapped for this and pointer focus never moves,
+so a hover state under the pointer is still in the capture. A seat without a
+pointer, or a compositor without cursor sessions, is refused with `capture_target`
+and the reason. `capabilities.source.capture.monitor.pointer` names the method.
+
+Repeat last region reads the outputs its remembered rectangle lies on. A delayed
+capture shows its countdown as an overlay layer surface of `putgd-region` (scope
+`putgd-capture-countdown`) with no keyboard interactivity; it commits a transparent
+frame, unmaps and syncs before anything is read.
+
+labwc has no lock query, and Budgie's locker (gtklock, started through
+`org.buddiesofbudgie.BudgieScreenlock`) sets neither logind's `LockedHint` nor a
+screensaver service. The countdown is its own witness instead: its last frame must
+be presented before it leaves, and labwc presents no client surface under a session
+lock, so a delay that ends on a locked or blanked screen is refused with
+`session_locked`. An immediate capture requested by an agent while gtklock is up
+still completes, with a picture of the lock screen and nothing behind it: labwc
+gives a client nothing to refuse on. See
+[capture monitor, delay and repeat](../design/capture-delay.md).
+
 ## Shortcuts
 
 The resident owns `org.putgd.App.Budgie` on the session bus. A bound key runs

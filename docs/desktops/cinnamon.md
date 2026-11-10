@@ -17,6 +17,27 @@ can only get its own window refused. The [X11 editor refusal
 receipt](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-19-x11-editor-refusal.md) records the physical
 Kubuntu Plasma X11 run.
 
+Capture monitor (#1363) freezes the RandR output whose rectangle contains the
+pointer (`QueryPointer` on the root window) with the layout, in the resident, and
+the helper reads only that output from visible pixels: the image is the CRTC's
+native size, panels included. A pointer over no output is refused with
+`capture_target`. Repeat last region captures the remembered logical rectangle
+through the path a selected region takes, with no selector; the helper reports each
+region's rectangle with its result and the resident keeps it in memory with the
+monitors it was chosen on (name, native and logical rectangle, rotation). A repeat
+compares only those, not the desktop-settings fingerprint, so restoring a changed
+layout makes it work again. See
+[capture monitor, delay and repeat](../design/capture-delay.md).
+
+A delayed capture shows its countdown as an override-redirect window of
+`putgd-capture`, at the top centre of the pointer's monitor. It takes no focus and
+no grab; a click on it cancels. For a live region the same helper shows it after
+the selection; every other delayed capture runs the helper's countdown mode first
+and freezes its target when that exits. The pill is hidden and the compositor's
+repaints over it have settled before anything is read. When the delay ends on a
+locked screen (Cinnamon's or the freedesktop screensaver service, or logind's
+`LockedHint`), nothing is captured: `session_locked`.
+
 Region selection appears over the live desktop. Application windows, animation and video keep
 updating before and during the drag. Drag with the left button; Escape or the right
 button cancels. Monitor identity, geometry, scale and rotation are fixed when the

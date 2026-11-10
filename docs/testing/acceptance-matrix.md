@@ -161,6 +161,43 @@ tablet input through QEMU ([Hyprland adapter](../desktops/hyprland.md),
   not return after a reboot), Nautilus upload menu, file dialogs,
   System/Dark/Light.
 
+## Capture monitor, delay and repeat rows
+
+Capture monitor, delayed capture and Repeat last region (#1363) are accepted on every
+adapter, each in a session with two monitors of different sizes, from the release
+packages. See [capture monitor, delay and repeat](../design/capture-delay.md).
+
+| Desktop | Placement and package | Two monitors |
+| --- | --- | --- |
+| Cinnamon / X11 | Mint guest (`cinnamon-x11`), DEB `ubuntu24.04` | `lab.py launch` with its usual arguments (`--profile`, `--golden`, `--run`, `--bootstrap-key`, `--known-hosts`) plus `--heads 2 --layout 1280x800+0+0,1024x768+1280+0`, then `lab.py layout --run RUN` |
+| GNOME 50 | Ubuntu guest (`gnome-wayland`), DEB `ubuntu26.04`; first with the golden's older extension still loaded, then after a reboot | the same |
+| Plasma | Kubuntu guest (`kde-wayland`), DEB `ubuntu26.04` | the same |
+| Budgie (labwc) | Fedora 45 Budgie guest (`fedora45-budgie`), AppImage | the same launch. `lab.py layout --run RUN` ended in "ssh failed" on this guest (2026-11-10); both heads are on after the launch, so read the layout with `wlr-randr` in the session and set it with `wlr-randr --output NAME --pos X,Y` if it is not the one wanted |
+| Hyprland | Omarchy guest (`omarchy-hyprland`), Arch package | the same |
+
+Each row must show:
+
+1. Capture monitor with the pointer on each monitor gives that monitor's native size,
+   and a desktop capture the union.
+2. Repeat last region: refused with `repeat_unavailable` before any region; after one,
+   the same rectangle again (same size, and the same pixels when nothing under it
+   changed; change what is under it to see that the repeat is a new capture, not the
+   old image); `repeat_layout_changed` after a monitor moves, and working again once
+   the layout is restored.
+3. A delayed desktop capture shows the countdown on the pointer's monitor, the image
+   has no pill, and a hover state held through the delay is in it.
+4. A delayed live region counts down after the selection; with Screenshot first it
+   counts down before the frozen selector.
+5. A click on the pill and `operation.cancel` both end the operation `cancelled` with
+   no file.
+6. A lock during the countdown ends it `session_locked` with no file.
+7. The tray's Capture monitor, Repeat last region and Capture delay entries, the
+   capture buttons' context menu, and the two unbound Shortcuts rows; a shortcut
+   capture stays immediate with a tray delay chosen.
+8. GNOME with the older extension loaded: `helper_outdated` for monitor, repeat and
+   any delay, the two rows in Desktop support details, window and desktop screenshots
+   still working, and a region capture refused with `helper_outdated` as it was before.
+
 ## Screen recording rows
 
 Recording ([recording](../design/recording.md)) is accepted per package format, because
