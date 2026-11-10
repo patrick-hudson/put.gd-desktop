@@ -151,7 +151,13 @@ worker never authorizes blind replay of a possible mutation. See [S3](../user/s3
 `putgd-b2-worker` performs B2 HTTP in a fresh process per request, and
 `putgd-http-worker` the one request of a custom HTTP uploader. Proton uses the
 privately packaged `putgd-proton-runtime`, with account operations serialized by
-the provider. Their distinct collision, version and sharing semantics remain
+the provider. One runtime process serves an operation's name check, upload and
+link (`StorageProvider::openSession`, held with the destination lease on the
+operation's thread); other Proton requests start one each. That process starts
+when the action is invoked (`StorageProvider::anticipate`) and is handed to the
+operation's thread, which is why it is not a QProcess. The provider checks
+the runtime's hash once per file, in the background after start when a Proton
+destination is configured. Their distinct collision, version and sharing semantics remain
 behind the common receipt contract. See [B2](../user/b2.md) and [Proton](../user/proton-drive.md).
 
 `SetupService` owns explicit credential storage/unlock and destination/account
