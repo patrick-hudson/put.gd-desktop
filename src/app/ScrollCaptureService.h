@@ -23,6 +23,8 @@ signals:
  void warning(const QString& id,const QString& message);
 private:
  void prepare(QJsonObject,bool edit,bool autoStart,JsonReply);
+ void prepareProbed(QJsonObject,bool,bool,JsonReply);
+ void placeShellBar();
  void event(QJsonObject);
  void complete(QJsonObject);
  void rememberResult();
@@ -37,6 +39,7 @@ private:
  std::unique_ptr<ScrollBackend> backend_;
  RecordingShell* shell_=nullptr;
  int requestedCap_=30000;
+ bool shellAutoStart_=false;
  bool shellSelecting_=false;
  bool edit_=false;
 };

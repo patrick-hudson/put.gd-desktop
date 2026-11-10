@@ -1,4 +1,5 @@
 #include "ScrollCaptureService.h"
+#include "core/EditorJob.h"
 #include <QDir>
 #include <QFileInfo>
 #include <QLocale>
@@ -19,10 +20,14 @@ bool fields(const QJsonObject& p,QStringList allowed){for(auto i=p.begin();i!=p.
 ScrollCaptureService::ScrollCaptureService(QString root,Host host,QObject* parent):QObject(parent),root_(std::move(root)),host_(std::move(host)){QDir().mkpath(root_);QFile::setPermissions(root_,QFile::ReadOwner|QFile::WriteOwner|QFile::ExeOwner);RecordingService::discardStaging(root_);setBackend(std::make_unique<UnavailableScrollBackend>());}
 ScrollCaptureService::~ScrollCaptureService(){shutdown();}
 void ScrollCaptureService::setBackend(std::unique_ptr<ScrollBackend> backend){if(active())return;backend_=std::move(backend);QPointer<ScrollCaptureService> g(this);backend_->setEventSink([g](QJsonObject e){if(g)QMetaObject::invokeMethod(g,[g,e]{if(g)g->event(e);},Qt::QueuedConnection);});}
-QJsonObject ScrollCaptureService::capabilities()const{auto c=backend_->capabilities();c["maxHeight"]=host_.settings().scrollCaptureMaxHeight;return c;}
+QJsonObject ScrollCaptureService::capabilities()const{auto c=backend_->capabilities();if(c["reason"]=="scroll_not_probed"||c["reason"]=="scroll_probe_pending"||c["reason"]=="scroll_probe_failed")backend_->refreshCapabilities([]{});c["maxHeight"]=host_.settings().scrollCaptureMaxHeight;return c;}
 void ScrollCaptureService::update(QString state){if(shell_&&view_.contains("rect")&&(state=="capturing"||state=="ready"))shell_->showFrame({{"rect",view_["rect"]},{"kind","region"},{"state",state=="capturing"?"recording":"ready"},{"pid",double(backend_->processId(id_))}},[](Error,QJsonObject){});view_["state"]=state;op_.phase=state;host_.observe(op_);}
 void ScrollCaptureService::invoke(bool edit,JsonReply reply){if(active()){command("stop",{{"id",id_}},reply);return;}prepare({},edit,true,reply);}
 void ScrollCaptureService::prepare(QJsonObject p,bool edit,bool autoStart,JsonReply reply){
+ QPointer<ScrollCaptureService> g(this);
+ backend_->refreshCapabilities([g,p,edit,autoStart,reply]{if(g)QMetaObject::invokeMethod(g,[g,p,edit,autoStart,reply]{if(g)g->prepareProbed(p,edit,autoStart,reply);},Qt::QueuedConnection);});
+}
+void ScrollCaptureService::prepareProbed(QJsonObject p,bool edit,bool autoStart,JsonReply reply){
  if(!fields(p,{"rect","maxHeight"})||(p.contains("rect")&&!rect(p["rect"]))||(p.contains("maxHeight")&&(!p["maxHeight"].isDouble()||p["maxHeight"].toDouble()!=p["maxHeight"].toInt()||p["maxHeight"].toInt()<2000||p["maxHeight"].toInt()>60000))){reply(invalid(),{});return;}
  if(active()){reply({"scroll_active","A scrolling capture is active",{{"operationId",id_}}},{});return;}
  if(!capabilities()["available"].toBool()){reply({"scroll_unavailable","Scrolling capture is unavailable",{{"reason",capabilities()["reason"]}}},{});return;}
@@ -31,13 +36,13 @@ void ScrollCaptureService::prepare(QJsonObject p,bool edit,bool autoStart,JsonRe
  edit_=edit;id_=op_.id;directory_=root_+"/"+id_;QDir().mkpath(directory_);QFile::setPermissions(directory_,QFile::ReadOwner|QFile::WriteOwner|QFile::ExeOwner);
  op_.state="acquiring";view_={{"id",id_},{"operationId",id_},{"state","preparing"},{"height",0},{"steps",0},{"pixelsPerNotch",0}};
  const auto settings=op_.settings;p["maxHeight"]=p["maxHeight"].toInt(settings.scrollCaptureMaxHeight);p["fromTop"]=settings.scrollCaptureFromTop;p["autoStart"]=autoStart;
- if(p.contains("rect")){const int width=p["rect"].toArray()[2].toInt();p["maxHeight"]=int(std::min<qint64>({p["maxHeight"].toInt(),settings.limits.imagePixels/width,settings.limits.imageBytes/(4LL*width),edit?24000000/width:60000}));}
- if(edit)p["maxHeight"]=std::min(p["maxHeight"].toInt(),60000); // backend also applies the editor pixel budget below
- p["imagePixels"]=double(edit?std::min<qint64>(settings.limits.imagePixels,24000000):settings.limits.imagePixels);p["imageBytes"]=double(settings.limits.imageBytes);
+ p["maxPixels"]=double(std::min<qint64>({settings.limits.imagePixels,settings.limits.imageBytes/4,edit?EditorJob::admissionPixels:settings.limits.imagePixels}));
+ shellAutoStart_=shell_&&autoStart;
+ if(shell_)p["autoStart"]=false;
  p["selection"]=shell_?"shell":"helper";
  requestedCap_=p["maxHeight"].toInt();const auto id=id_;QPointer<ScrollCaptureService> g(this);
  host_.persist(op_,[g,id,p,reply](Error e){if(!g)return;if(g->id_!=id){reply({"cancelled","Scrolling capture ended",{}},{});return;}if(e){g->terminate(e);reply(e,{});return;}
- g->backend_->prepare(id,p,g->directory_,[g,id,p,reply](Error e,QJsonObject result){if(!g)return;QMetaObject::invokeMethod(g,[g,id,p,e,result,reply]{if(!g)return;if(g->id_!=id){reply({"cancelled","Scrolling capture ended",{}},{});return;}if(e){g->terminate(e);reply(e,{});return;}g->update(result["state"].toString("selecting"));if(p.contains("rect"))g->view_["rect"]=p["rect"];reply({},g->view_);
+ g->backend_->prepare(id,p,g->directory_,[g,id,p,reply](Error e,QJsonObject result){if(!g)return;QMetaObject::invokeMethod(g,[g,id,p,e,result,reply]{if(!g)return;if(g->id_!=id){reply({"cancelled","Scrolling capture ended",{}},{});return;}if(e){g->terminate(e);reply(e,{});return;}g->update(result["state"].toString("selecting"));if(p.contains("rect")){g->view_["rect"]=p["rect"];if(g->shell_)g->placeShellBar();}reply({},g->view_);
  if(g->shell_&&!p.contains("rect")){g->shellSelecting_=true;g->shell_->selectRegion([g,id](Error e,QJsonObject r){if(!g||g->id_!=id||!g->shellSelecting_)return;g->shellSelecting_=false;if(e){g->terminate(e,e.code=="cancelled");return;}g->command("select",{{"id",id},{"rect",r["rect"]}},[](Error,QJsonObject){});});}
  },Qt::QueuedConnection);});});
 }
@@ -53,13 +58,22 @@ void ScrollCaptureService::command(const QString& cmd,const QJsonObject& p,JsonR
  if(cmd=="select"&&shellSelecting_){shellSelecting_=false;shell_->cancelSelection();}
  pending_=cmd;if(cmd=="stop")update("finishing");QPointer<ScrollCaptureService> g(this);
  auto controlParams=p;controlParams.remove("id");
- backend_->control(id,cmd,controlParams,[g,id,cmd,p,reply](Error e,QJsonObject r){if(!g)return;QMetaObject::invokeMethod(g,[g,id,cmd,p,e,r,reply]{if(!g)return;if(g->id_!=id){if(g->results_.contains(id))reply({},g->results_[id]);else reply({"scroll_not_found","Session ended",{}},{});return;}g->pending_.clear();if(e){g->terminate(e);reply(e,{});return;}if(cmd=="cancel")g->terminate({},true);else if(cmd=="stop")g->complete(r);else {if(cmd=="select")g->view_["rect"]=p["rect"];g->update(r["state"].toString(cmd=="start"?"capturing":"ready"));}reply({},g->results_.contains(id)?g->results_[id]:g->view_);},Qt::QueuedConnection);});
+ backend_->control(id,cmd,controlParams,[g,id,cmd,p,reply](Error e,QJsonObject r){if(!g)return;QMetaObject::invokeMethod(g,[g,id,cmd,p,e,r,reply]{if(!g)return;if(g->id_!=id){if(g->results_.contains(id))reply({},g->results_[id]);else reply({"scroll_not_found","Session ended",{}},{});return;}g->pending_.clear();if(e){g->terminate(e,e.code=="cancelled");reply(e,{});return;}if(cmd=="cancel")g->terminate({},true);else if(cmd=="stop"){if(r["state"]=="cancelled")g->terminate({},true);else g->complete(r);}else {if(cmd=="select")g->view_["rect"]=p["rect"];g->update(r["state"].toString(cmd=="start"?"capturing":"ready"));if(cmd=="select"&&g->shell_)g->placeShellBar();}reply({},g->results_.contains(id)?g->results_[id]:g->view_);},Qt::QueuedConnection);});
+}
+void ScrollCaptureService::placeShellBar(){
+ const auto id=id_;QPointer<ScrollCaptureService> g(this);
+ shell_->showFrame({{"rect",view_["rect"]},{"kind","region"},{"state","ready"},{"pid",double(backend_->processId(id))}},[g,id](Error e,QJsonObject r){
+  if(!g)return;QMetaObject::invokeMethod(g,[g,id,e,r]{if(!g||g->id_!=id)return;
+   auto start=[g,id](Error error,QJsonObject){if(!g)return;QMetaObject::invokeMethod(g,[g,id,error]{if(!g||g->id_!=id)return;if(error){g->terminate(error);return;}if(g->shellAutoStart_)g->command("start",{{"id",id}},[](Error,QJsonObject){});},Qt::QueuedConnection);};
+   if(e||!r["bar"].toObject()["outside"].toBool())g->backend_->control(id,"overlay",{{"visible",false}},start);else start({},{});
+  },Qt::QueuedConnection);
+ });
 }
 void ScrollCaptureService::event(QJsonObject e){if(e["id"]!=id_||id_.isEmpty())return;const auto type=e.take("event").toString();if(type=="finished")complete(e);else if(type=="cancelled")terminate({},true);else if(type=="failed"){auto error=e["error"].toObject();terminate({error["code"].toString("scroll_failed"),error["message"].toString(),error["details"].toObject()});}else if(type=="selected"){view_["rect"]=e["rect"];update("ready");}else if(type=="progress"){for(auto i=e.begin();i!=e.end();++i)view_[i.key()]=i.value();update("capturing");}}
 void ScrollCaptureService::complete(QJsonObject r){
  const auto path=r["path"].toString();const auto bytes=r["bytes"].toInteger();const int w=r["width"].toInt(),h=r["height"].toInt();const auto reason=r["endReason"].toString();const int cap=r["appliedMaxHeight"].toInt();
  Error bad{"scroll_output_invalid","Scrolling capture output failed validation",{}};
- if(QFileInfo(path).absolutePath()!=directory_||bytes<33||bytes>op_.settings.limits.imageBytes||w<1||h<1||qint64(w)*h>op_.settings.limits.imagePixels||cap<1||cap>requestedCap_||h>cap||qint64(w)*h*4>op_.settings.limits.imageBytes||(edit_&&qint64(w)*h>24000000)||!QStringList{"end_of_content","height_cap","stopped","lost_track","time_limit"}.contains(reason)){terminate(bad);return;}
+ if(QFileInfo(path).absolutePath()!=directory_||bytes<33||bytes>op_.settings.limits.imageBytes||w<1||h<1||qint64(w)*h>op_.settings.limits.imagePixels||cap<1||cap>requestedCap_||h>cap||qint64(w)*h*4>op_.settings.limits.imageBytes||(edit_&&qint64(w)*h>EditorJob::admissionPixels)||!QStringList{"end_of_content","height_cap","stopped","lost_track","time_limit"}.contains(reason)){terminate(bad);return;}
  const int fd=::open(QFile::encodeName(path).constData(),O_RDONLY|O_NOFOLLOW|O_CLOEXEC|O_NONBLOCK);struct stat st{};
  if(fd<0){terminate(bad);return;}QFile file;if(!file.open(fd,QIODevice::ReadOnly,QFileDevice::AutoCloseHandle)){::close(fd);terminate(bad);return;}
  if(fstat(fd,&st)||!S_ISREG(st.st_mode)||st.st_uid!=getuid()||st.st_size!=bytes){terminate(bad);return;}

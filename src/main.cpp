@@ -18,6 +18,7 @@
 #include "app/UiProcessController.h"
 #include "app/UploadClient.h"
 #include "app/RecordingHelperBackend.h"
+#include "app/ScrollHelperBackend.h"
 #include "app/SetupService.h"
 #include "app/StorageLocations.h"
 #include "ui/Appearance.h"
@@ -303,8 +304,14 @@ int main(int argc,char* argv[]) {
   QObject::connect(&appearance,&putgd::Appearance::changed,&appearance,follow);
  }
  operations.setRecordingBackend(std::move(recordingBackend));
- // SCROLL BACKEND INTEGRATION: construct ScrollHelperBackend here when putgd-record is present.
- operations.setScrollBackend(std::make_unique<putgd::UnavailableScrollBackend>());
+ if(QFileInfo(QCoreApplication::applicationDirPath()+"/putgd-record").isExecutable()){
+  auto scrollBackend=std::make_unique<putgd::ScrollHelperBackend>();
+  auto* scrollHelper=scrollBackend.get();
+  const auto followScroll=[&appearance,scrollHelper]{scrollHelper->setAppearance(putgd::Theme::name(appearance.scheme()));};
+  followScroll();
+  QObject::connect(&appearance,&putgd::Appearance::changed,&appearance,followScroll);
+  operations.setScrollBackend(std::move(scrollBackend));
+ }else operations.setScrollBackend(std::make_unique<putgd::UnavailableScrollBackend>());
 #ifdef PUTGD_NATIVE_GNOME
  // GNOME keeps clients from placing their own windows: the Shell extension
  // selects recording regions, frames them and moves the control bar.

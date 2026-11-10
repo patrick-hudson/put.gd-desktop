@@ -80,6 +80,7 @@
 #include "ui/RegionOverlay.h"
 #include "ui/CountdownPill.h"
 #include "record/Overlays.h"
+#include "record/ScrollBar.h"
 #endif
 using namespace putgd;
 using namespace putgd::test;
@@ -800,6 +801,14 @@ int main(int argc,char** argv){
   ready.findChild<QPushButton*>("keepRecording")->click();ready.setState("paused");if(auto* cancel=ready.findChild<QPushButton*>("cancel"))cancel->click();if(!ready.confirming()||!shot(ready,"42-record-paused-discard-confirm"))return 2;
   ready.findChild<QPushButton*>("keepRecording")->click();ready.setState("ready");ready.setRetained(0);ready.fitTo(QRect(0,0,1024,768));if(!shot(ready,"37-record-ready-narrow"))return 2;
   ready.hide();
+  {
+   record::ScrollBar scroll;
+   for(const auto& state:QStringList{"ready","scrollingToTop","capturing","finishing"}){
+    scroll.setState(state);scroll.setHeight(state=="ready"?0:12340);scroll.show();
+    if(!shot(scroll,"scroll-bar-"+state))return 2;
+   }
+   scroll.hide();
+  }
   // #1364: the microphone toggle with its meter, the state without a microphone, and a recording that lost it.
   {
    auto withMicrophone=bar;withMicrophone.microphoneAvailable=true;withMicrophone.microphoneLabel="Example USB Microphone";

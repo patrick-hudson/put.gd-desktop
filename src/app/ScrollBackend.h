@@ -68,7 +68,8 @@ public:
     // could not go outside), then `start`. With autoStart true there the bar
     // stays hidden for the whole capture.
     virtual void control(const QString& id, const QString& command, const QJsonObject& params, Reply) = 0;
-    // Releases helper and staging ownership for the id.
+    // A finished PNG survives helper exit. The resident validates and admits it,
+    // routes it, then removes it. Releases helper ownership for the id.
     virtual void discard(const QString& id) = 0;
     // The process that owns the session's windows (the bar), or 0.
     virtual qint64 processId(const QString&) const { return 0; }
