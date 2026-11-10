@@ -17,6 +17,7 @@ let finalWrite: Promise<void> | undefined;
 let activeRequest: JsonObject | undefined;
 let deadlineExpired = false;
 let uploadProgress: ReturnType<typeof createProgressReporter> | undefined;
+let sessions = false;
 function writeFinal(value: JsonObject): Promise<void> {
     return finalWrite ??= (async () => { await uploadProgress?.finish(); await writeJson(value); })();
 }
@@ -118,11 +119,23 @@ async function findCandidate(ctx: Context, request: JsonObject): Promise<NodeEnt
     }
     return found;
 }
+// In a session, the destination read made for a name check also serves the one upload that
+// follows it within ten seconds. The two are halves of one creation: the service decides a
+// collision, and an upload already outlasts its own destination read by its whole transfer.
+let checkedDestination: { key: string; at: number; folder: NodeEntity } | undefined;
+// Destinations this session has read: their folder keys are in the process, so a name
+// query can run beside the destination read instead of after it.
+const readDestinations = new Set<string>();
+const destinationKey = (request: JsonObject) => JSON.stringify([request.destination.credentials.reference, configured(request)]);
 export async function checkName(ctx: Context, request: JsonObject) {
     try {
-        const folder = await destinationFolder(ctx, request);
         const candidate = name(request.candidate);
-        const available = await ctx.sdk.getAvailableName(folder.uid, candidate, NodeType.File);
+        const beside = sessions && readDestinations.has(destinationKey(request))
+            ? ctx.sdk.getAvailableName(configured(request).folderUid, candidate, NodeType.File) : undefined;
+        beside?.catch(() => {});
+        const folder = await destinationFolder(ctx, request);
+        if (sessions) { checkedDestination = { key: destinationKey(request), at: performance.now(), folder }; readDestinations.add(destinationKey(request)); }
+        const available = await (beside ?? ctx.sdk.getAvailableName(folder.uid, candidate, NodeType.File));
         if (typeof available !== 'string' || !available) return status('inconclusive');
         return status(available === candidate ? 'absent' : 'present', {
             objectReference: reference(request), concurrencyToken: '' });
@@ -168,7 +181,11 @@ export async function upload(ctx: Context, request: JsonObject): Promise<JsonObj
         throw new ProtocolError('invalid_request');
     uploadProgress = createProgressReporter();
     await uploadProgress.phase('preparing');
-    const folder = await destinationFolder(ctx, request);
+    const checked = checkedDestination;
+    checkedDestination = undefined;
+    if (!ctx.auth.isLoggedIn()) throw new ProtocolError('authentication_required');
+    const folder = checked && checked.key === destinationKey(request) && performance.now() - checked.at < 10000
+        ? checked.folder : await destinationFolder(ctx, request);
     const file = await open(artifact.path, constants.O_RDONLY | constants.O_NOFOLLOW);
     try {
         const initial = await file.stat();
@@ -260,9 +277,8 @@ export async function createFolder(ctx: Context, request: JsonObject): Promise<J
 // provider holds one for an operation's name check, upload and link. The signed-in account
 // and one Drive client are kept between them; every request still makes its own destination
 // and ownership reads from the service, and has its own deadline and cancellation.
-const SESSION_METHODS = new Set(['checkName', 'upload', 'stat', 'reconcile', 'share']);
+const SESSION_METHODS = new Set(['warm', 'checkName', 'upload', 'stat', 'reconcile', 'share']);
 let session: { reference: string; account: Awaited<ReturnType<typeof openAccount>>; clientUid?: string; ctx: Context } | undefined;
-let sessions = false;
 async function context(request: JsonObject) {
     if (!sessions) return initialize(request);
     const reference = request.destination.credentials.reference, clientUid = publicationClientUid(request);
@@ -305,7 +321,15 @@ async function run(request: JsonObject): Promise<JsonObject> {
             throw new ProtocolError('keychain_unavailable');
         } finally { options.password = undefined; }
     }
+    if (request.method === 'warm' && !sessions) throw new ProtocolError('unsupported_request');
     const ctx = await context(request);
+    // A session started ahead of its first request signs in, opens its connections and reads
+    // the account. It changes nothing, and the requests after it still make their own reads.
+    if (request.method === 'warm') {
+        if (!request.destination.settings.folderUid) await accountRoot(ctx, request, !!request.destination.settings.accountRootUid);
+        else { await destinationFolder(ctx, request); readDestinations.add(destinationKey(request)); }
+        return {};
+    }
     if (request.method === 'connect') {
         // Reconnect never replaces a valid session in place. A new login uses a new reference.
         const action = connectAction(ctx.auth.isLoggedIn(), ctx.accountReferenceExists);

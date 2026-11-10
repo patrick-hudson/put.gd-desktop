@@ -40,25 +40,40 @@ mutation dispatch preserves `unknown`; cancellation is distinguished from expiry
 
 `--session` answers several requests for one account from one process, a JSON
 line each (the same 128 KiB bound), until the caller closes stdin. It accepts
-`checkName`, `upload`, `stat`, `reconcile` and `share` only, all with the same
-keychain reference; anything else is `unsupported_request`. Each request has its
+`warm`, `checkName`, `upload`, `stat`, `reconcile` and `share` only, all with the
+same keychain reference; anything else is `unsupported_request`. `warm` signs
+in, opens the connections and reads the account and the configured folder; it
+changes nothing and answers `{}`. Each request has its
 own deadline, cancellation signal, progress lines and single completion line.
 The process keeps the signed-in account, its connections and one Drive client
 between requests. An upload for a publication other than the client's gets a
 new client, so its drafts keep that publication's client identity. The first
 good answers for My files and its root share serve the process's later
-clients; no other response is kept. Every request still reads its destination
-and ownership from the service. A passed
+clients, and the root share is read as soon as My files names it; no other
+response is kept. The clients share the two caches. Requests still read their
+destination and ownership from the service, with one exception: the destination
+read made for a name check also serves the one upload that follows it within
+ten seconds. Once a session has read a destination, a name query for it runs
+beside the destination read instead of after it. A passed
 deadline answers and ends the process. A request past the size bound is refused
 and nothing after it is read.
 
 The application holds one session around an operation's name check, upload and
 link for a destination, on that operation's thread, and holds the account lock
-for as long as the helper lives. It asks a kept helper again only after a clean
+for as long as the helper lives. It starts that helper when the action is
+invoked (`StorageProvider::anticipate`), with a `warm` request, so the sign-in
+overlaps choosing and capturing the content. Starting ahead never waits for the
+account lock or the runtime's hash; an Edit & upload starts nothing ahead. The
+next request for the account takes the waiting helper after reading the
+warm-up's answer; a warm-up that was refused, unclear or late ends that helper
+and the request starts its own. A helper nobody used ends when its action
+does: it is left to finish what it is doing, since a helper killed during a
+session refresh loses the account. It asks a kept helper again only after a clean
 answer (`ok:true` with an empty `result.error`) and only while the helper is
 running and silent; otherwise it ends that helper and starts another for the
-next request. History and setup actions use `--stdio`. One 64 KiB publish makes
-13 requests in a session.
+next request. History and setup actions use `--stdio`. After the warm-up, one
+64 KiB publish makes 8 requests: two for the name check, one for the upload and
+five for the link.
 
 The application checks the bundled runtime's SHA-512 before it starts a helper.
 Hashing the 110 MB file takes most of a second, so one verdict stands while the

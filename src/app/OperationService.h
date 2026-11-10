@@ -252,6 +252,9 @@ private:
  QQueue<std::shared_ptr<PendingCopy>> copies_;
  std::shared_ptr<PendingCopy> currentCopy_;
  QSet<QString> clipboardImports_;
+ // What a provider readied ahead of an operation's requests (StorageProvider::anticipate), by operation.
+ void anticipate(const Operation&);
+ QHash<QString,std::shared_ptr<void>> anticipated_;
  quint64 uploadCopyEpoch_=0;
  QString root_;
  QJsonObject locations_;

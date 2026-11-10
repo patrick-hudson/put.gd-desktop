@@ -114,6 +114,11 @@ public:
  // the handle is released. Requests made on the calling thread meanwhile use it. Release
  // the handle on that thread; a provider with nothing to keep returns none.
  virtual std::shared_ptr<void> openSession(const Destination&) { return {}; }
+ // A hint that requests to this destination are about to follow: an action that uploads
+ // there was just invoked. The provider may get ready ahead of them (Proton starts and
+ // signs in a helper). Never waits, and is callable from any thread; whatever it readied
+ // and no request used ends when the handle is released.
+ virtual std::shared_ptr<void> anticipate(const Destination&) { return {}; }
  // Providers may adopt longer execution budgets on explicit retry, without changing destination identity.
  virtual std::optional<int> retryRequestTimeout(const Destination&,const QJsonObject&) const { return {}; }
  virtual QString defaultPublicationMode(const Destination&) const { return "share"; }

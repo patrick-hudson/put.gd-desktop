@@ -12,7 +12,7 @@ export function publicationClientUid(request: JsonObject): string | undefined {
     return 'putgd-' + createHash('sha256').update(JSON.stringify([text(request.destination.credentials.reference), text(request.publicationId)])).digest('hex');
 }
 export const METHODS = new Set(['connect', 'inspectAccount', 'createFolder', 'storeSharePassword',
-    'checkName', 'upload', 'stat', 'reconcile', 'share', 'remove']);
+    'checkName', 'upload', 'stat', 'reconcile', 'share', 'remove', 'warm']);
 export type JsonObject = Record<string, any>;
 export class ProtocolError extends Error {
     constructor(public readonly code: string) { super(code); }

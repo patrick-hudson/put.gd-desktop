@@ -487,28 +487,37 @@ test('a refused keychain session write reports keychain_unavailable without prov
 
 test('a session shares only good My files and root share answers between its clients', async () => {
     const calls: string[] = [];
-    let status = 200, myFiles: unknown = { Share: { ShareID: 'root-share' } };
+    let status = 200, myFiles: unknown = { Share: { ShareID: 'root-share' } }, hold: Promise<void> | undefined;
     const inner = {
         fetchBlob: async () => new Response('blob'),
-        fetchJson: async (options: { url: string; method: string }) => {
-            const path = new URL(options.url).pathname; calls.push(options.method + ' ' + path);
-            const body = path.endsWith('/my-files') ? myFiles : { path, serial: calls.length };
-            return new Response(JSON.stringify(body), { status, headers: { 'x-synthetic': String(calls.length) } });
+        fetchJson: async (options: { url: string; method: string; signal?: AbortSignal }) => {
+            const path = new URL(options.url).pathname; calls.push(options.method + ' ' + path + (options.signal ? ' signalled' : ''));
+            const serial = calls.length;
+            if (path.endsWith('/root-share')) await hold;
+            const body = path.endsWith('/my-files') ? myFiles : { path, serial };
+            return new Response(JSON.stringify(body), { status, headers: { 'x-synthetic': String(serial) } });
         },
     };
     const reads = new SharedAccountReads(inner as any);
-    const get = (path: string, method = 'GET') => reads.fetchJson({ url: 'https://synthetic.invalid/' + path, method } as any);
+    const signal = new AbortController().signal;
+    const get = (path: string, method = 'GET') => reads.fetchJson({ url: 'https://synthetic.invalid/' + path, method, signal } as any);
     // Before My files names the root share, no share answer is kept: any of them may change.
     await get('drive/shares/root-share'); await get('drive/shares/root-share');
     expect(calls.length).toBe(2);
     // A refused or malformed My files answer is passed on and asked again.
     status = 500; expect((await get('drive/v2/shares/my-files')).status).toBe(500);
-    status = 200; myFiles = { Share: {} }; await get('drive/v2/shares/my-files');
+    status = 200; myFiles = { Share: {} }; expect(await (await get('drive/v2/shares/my-files')).json()).toEqual({ Share: {} });
+    expect(calls.length).toBe(4);
+    // A good one is kept, and the root share it names is read at once, free of the request's signal.
     myFiles = { Share: { ShareID: 'root-share' } };
+    let release = () => {}; hold = new Promise(resolve => { release = resolve; });
     const first = await get('drive/v2/shares/my-files'), second = await get('drive/v2/shares/my-files');
-    expect(calls.length).toBe(5);
+    expect(calls.slice(4)).toEqual(['GET /drive/v2/shares/my-files signalled', 'GET /drive/shares/root-share']);
     expect(await second.json()).toEqual(await first.json()); expect(second.headers.get('x-synthetic')).toBe('5');
-    const root = await (await get('drive/shares/root-share')).json();
+    // A client that asks while that read is under way waits for it instead of asking again.
+    const waiting = get('drive/shares/root-share'); release();
+    const root = await (await waiting).json();
+    expect(root).toEqual({ path: '/drive/shares/root-share', serial: 6 });
     expect(await (await get('drive/shares/root-share')).json()).toEqual(root);
     expect(calls.length).toBe(6);
     // Another share, another method and every other read still reach the service each time.

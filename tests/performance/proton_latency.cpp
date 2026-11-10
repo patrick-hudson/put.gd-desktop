@@ -46,11 +46,17 @@ int main(int argc,char** argv){
  payload.setPermissions(QFile::ReadOwner|QFile::WriteOwner);const QByteArray bytes(payloadBytes,'p');if(payload.write(bytes)!=bytes.size())return 2;payload.close();
  const auto journalPath=QDir(output.absoluteFilePath()).filePath("publication.json");
  if(journal(journalPath,{{"candidate",candidate},{"publicationId",id},{"destination",destination.toJson()},{"phase","prepared"}}))return 2;
- // One helper answers the name check, upload and link, as in an application operation.
- // PUTGD_PROBE_SEPARATE_HELPERS=1 gives every request a helper of its own, as History actions have.
- const auto session=qEnvironmentVariableIntValue("PUTGD_PROBE_SEPARATE_HELPERS")?std::shared_ptr<void>{}:provider.openSession(destination);
  // A running resident has checked the runtime's hash in the background by its first upload.
  provider.prepare();QThread::msleep(1500);
+ // As in an application operation: the provider hears of the upload when the action is
+ // invoked, PUTGD_PROBE_LEAD_MS (default 1500) before the content is ready, and one helper
+ // then answers the name check, upload and link. PUTGD_PROBE_SEPARATE_HELPERS=1 gives
+ // every request a helper of its own instead, as History actions have.
+ const bool separate=qEnvironmentVariableIntValue("PUTGD_PROBE_SEPARATE_HELPERS");
+ bool leadSet=false;const int lead=qEnvironmentVariableIntValue("PUTGD_PROBE_LEAD_MS",&leadSet);
+ const auto ahead=separate||(leadSet&&lead<0)?std::shared_ptr<void>{}:provider.anticipate(destination);
+ if(ahead)QThread::msleep(leadSet?lead:1500);
+ const auto session=separate?std::shared_ptr<void>{}:provider.openSession(destination);
  QElapsedTimer elapsed;elapsed.start();NameCheck check;provider.checkName(destination,candidate,[&](auto result){check=result;});report("checkName",elapsed.elapsed(),check.status,check.error);if(check.status!="absent"||check.error)return 1;
  Artifact artifact;artifact.id=id;artifact.path=payload.fileName();artifact.name=candidate;artifact.mime="application/octet-stream";artifact.category="other";artifact.bytes=bytes.size();artifact.sha256=QString::fromLatin1(QCryptographicHash::hash(bytes,QCryptographicHash::Sha256).toHex());
  UploadRequest upload;upload.destination=destination;upload.artifact=artifact;upload.candidate=candidate;upload.publicationId=id;upload.condition="absent";upload.objectReference=check.objectReference;

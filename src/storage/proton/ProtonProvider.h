@@ -2,6 +2,10 @@
 #include "core/StorageProvider.h"
 #include <QProcessEnvironment>
 #include <atomic>
+#include <condition_variable>
+#include <map>
+#include <memory>
+#include <mutex>
 #include <thread>
 namespace putgd {
 class ProtonProvider final : public StorageProvider {
@@ -11,6 +15,7 @@ public:
  static constexpr int MaximumRequestTimeoutMs=86400000;
  static QJsonObject defaults();
  std::optional<int> retryRequestTimeout(const Destination&,const QJsonObject&) const override;
+ ProtonProvider();
  ~ProtonProvider() override;
  void shutdown(){stopping_.store(true);}
  // Checks the bundled runtime's hash on a thread of its own, ahead of the first request,
@@ -19,6 +24,7 @@ public:
  ProviderCapabilities capabilities(const Destination&) const override;
  QString defaultPublicationMode(const Destination&) const override;
  std::shared_ptr<void> openSession(const Destination&) override;
+ std::shared_ptr<void> anticipate(const Destination&) override;
  QString serializationKey(const Destination&,const QJsonObject&,const QString&) const override;
  Error validateSettings(const QJsonObject&) const override;
  Error validateCredentials(const QJsonObject&) const override;
@@ -40,6 +46,12 @@ private:
  // One account's helper, kept between the requests its owning thread makes.
  struct Session;
  std::shared_ptr<Session> session(const QString& reference) const;
+ std::unique_ptr<Helper> start(const QString& reference,bool lines,int lockWaitMs,bool mayHash,const std::shared_ptr<std::atomic_bool>& cancelled,Error&);
+ std::unique_ptr<Helper> takeStandby(const QString& reference);
+ void retire(std::unique_ptr<Helper>);
+ // Helpers started ahead of a request, by keychain reference, until a request takes one.
+ std::mutex standbyMutex_;std::map<QString,std::unique_ptr<Helper>> standby_;
+ std::mutex retiringMutex_;std::condition_variable retired_;int retiring_=0;
  QJsonObject call(const QString&,const Destination&,QJsonObject,Error&,
                  std::shared_ptr<std::atomic_bool> = {},SetupEvent={},bool* outcomeUncertain=nullptr,
                  std::function<void(const UploadProgress&)> progress={});

@@ -379,6 +379,8 @@ private slots:
   PUTGD_TRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(),0);
   HistoryStore store(operations.databasePath());QCOMPARE(store.operation(id).items[0].uploadStatus,QString("uploaded"));
   QCOMPARE(provider->sessionsOpened.load(),1);QCOMPARE(provider->sessionsOpen.load(),0);
+  // The provider heard of the upload when the action was invoked, and holds nothing for it now.
+  QCOMPARE(provider->anticipations.load(),1);QCOMPARE(provider->anticipationsHeld.load(),0);
   QVERIFY(provider->checks.load()>=1);QCOMPARE(provider->uploads.load(),1);QCOMPARE(provider->requestsOutsideSession.load(),0);
  }
  void regionSelectionModeReachesTheSource() {

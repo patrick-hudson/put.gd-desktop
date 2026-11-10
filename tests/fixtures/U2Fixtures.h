@@ -42,6 +42,9 @@ public:
  // and how many requests ran outside one or off the thread that opened it.
  std::atomic_int sessionsOpened{0},sessionsOpen{0},requestsOutsideSession{0};std::atomic<std::thread::id> sessionThread{};
  std::shared_ptr<void> openSession(const Destination&) override {++sessionsOpened;++sessionsOpen;sessionThread=std::this_thread::get_id();return std::shared_ptr<void>(this,[this](void*){--sessionsOpen;});}
+ // What the provider was asked to ready ahead of an operation, and how much of it is still held.
+ std::atomic_int anticipations{0},anticipationsHeld{0};
+ std::shared_ptr<void> anticipate(const Destination&) override {++anticipations;++anticipationsHeld;return std::shared_ptr<void>(this,[this](void*){--anticipationsHeld;});}
  void countRequest() {if(concurrency==1&&(sessionsOpen.load()!=1||sessionThread.load()!=std::this_thread::get_id()))++requestsOutsideSession;}
  QHash<QString,QString> deletionResults;std::function<void(const DeleteRequest&)> checkpointObserver;
  static QString fileId(const QString& candidate) {return "opaque:α/%?#:"+QString::fromLatin1(QCryptographicHash::hash(candidate.toUtf8(),QCryptographicHash::Sha256).toHex());}

@@ -11,6 +11,14 @@ if sys.argv[1:] == ['--session']:
         request, served = json.loads(line), served + 1
         case = request['destination']['settings'].get('fixture', 'session')
         answer = {'status': 'absent', 'objectReference': {'pid': os.getpid(), 'served': served}, 'concurrencyToken': '', 'error': {}}
+        if request['method'] == 'warm':
+            # A helper started ahead of its first request; the test finds it by this file.
+            with open(request['destination']['settings']['pidFile'], 'w') as started:
+                started.write(str(os.getpid()))
+            time.sleep(0.3)
+            refused = {'ok': False, 'error': {'code': 'authentication_required', 'message': 'Synthetic', 'details': {}}}
+            print(json.dumps(refused if case == 'warm-refused' else {'ok': True, 'result': {}}), flush=True)
+            continue
         if case == 'timeout':
             time.sleep(3)
         if case == 'session-error':

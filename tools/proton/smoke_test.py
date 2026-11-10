@@ -25,6 +25,7 @@ def main():
              (json.dumps({**request, 'requestTimeoutMs': 86400000}).encode(), 'unsupported_safe_removal'),
              (json.dumps({**request, 'requestTimeoutMs': 86400001}).encode(), 'invalid_request'),
              (json.dumps({**request, 'requestTimeoutMs': 999}).encode(), 'invalid_request'),
+             (json.dumps({**request, 'method': 'warm'}).encode(), 'unsupported_request'),
              (b'{}{}', 'invalid_request'), (b'\xff', 'invalid_request'),
              (b'x' * (128 * 1024 + 1), 'invalid_request'),
              (json.dumps({**request, 'destination': {**destination, 'credentials': {'mode': 'unsafe_file', 'reference': 'smoke'}}}).encode(), 'keychain_required'),
