@@ -303,13 +303,15 @@ frame is copied and the cursor blended into the copy. The compositor sends no
 frame for a cursor that moves over a still screen, so the helper pushes the
 last frame again with the cursor at its new place, at most 60 times a second.
 A press is placed at the pointer position the helper holds when it arrives.
-A recording never loses its cursor to this: when the pointer is on the output
-at `prepare` and its picture does not arrive, the capture is reopened with the
-compositor's painted cursor (then there is no pointer position and no
-highlights); a pointer that comes onto the output before its picture has been
-delivered is drawn as a plain arrow until it has; and an output without a
-hardware cursor already has the cursor in the frames the compositor hands
-out.
+A recording never loses its cursor to this. At `prepare` the capture is
+reopened with the compositor's painted cursor, as in a recording without
+highlights (then there is no pointer position, no rings, and the first press
+puts the reason in `progress.clickHighlightsError`), in two cases: the pointer
+is on the output and its picture does not arrive; or no output at all reports
+the pointer, which is what a compositor without a hardware cursor looks like.
+A pointer that is on another output keeps tracking, and one that comes onto the
+recorded output before its picture has been delivered is drawn as a plain arrow
+until it has.
 
 What this leaves out, each for a reason in the compositor:
 
@@ -318,7 +320,8 @@ What this leaves out, each for a reason in the compositor:
 | A **window** recording | wlroots' window capture source (`types/ext_image_capture_source_v1/scene.c`) has no `get_pointer_cursor`, so `create_pointer_cursor_session` leaves the session inert (`types/wlr_ext_image_copy_capture_v1.c`); the output's cursor session reports output pixels, and labwc gives no window geometry to map them. `prepare` refuses with `click_target_unsupported` |
 | A press on Budgie's panel or another layer-shell surface, or on an X11 override-redirect window | Only an `All` bind matches there (`node_type_contains`, `src/common/node-type.c`), and labwc swallows the press for an `All` bind |
 | A press with another modifier combination | labwc compares modifiers exactly; put.gd binds the six sets listed above |
-| A press while the application under the pointer hides the cursor, or on an output without a hardware cursor plane | The cursor source reports only a visible hardware cursor. With no position ever reported, `inspect` says so in `progress.clickHighlightsError` |
+| A press while the application under the pointer hides the cursor | The cursor source reports only a visible hardware cursor; the press gets no ring |
+| A compositor without a hardware cursor | No output reports the pointer: the recording keeps the compositor's painted cursor and has no rings; `progress.clickHighlightsError` says there is no pointer position |
 | A turned output | Its recording keeps the compositor's painted cursor; `clickHighlightsError` says there is no pointer position |
 
 The clip otherwise matches a Budgie recording without highlights: the same

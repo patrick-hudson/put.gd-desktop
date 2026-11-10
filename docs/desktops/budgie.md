@@ -190,8 +190,9 @@ halves; the design and the upstream sources are in
   no window geometry); presses on the panel and other layer-shell surfaces
   (only a bind that would swallow the press matches there); presses with a
   modifier combination other than those above; presses while the application
-  hides the pointer; an output without a hardware cursor, or a turned one
-  (`progress.clickHighlightsError` says there is no pointer position).
+  hides the pointer; a session without a hardware cursor, or a turned output
+  (the recording then keeps the compositor's painted cursor and
+  `progress.clickHighlightsError` says there is no pointer position).
 
 `labwc_bridge_contract` covers the edit of `rc.xml` and the bus entry, and
 `budgie_labwc_integration` runs the binds in a real headless labwc: a press over
