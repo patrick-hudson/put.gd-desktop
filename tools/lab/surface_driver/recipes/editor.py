@@ -231,6 +231,7 @@ def step_numbers(ctx):
         numbers = lambda: sorted(s['number'] for s in _inspect(ctx, op)['shapes'] if s['kind'] == 'step')
         ctx.wait(lambda: numbers() == [1, 2] or None, 'two clicks place steps 1 and 2')
         ctx.expect(_inspect(ctx, op)['view']['nextStepNumber'] == 3, 'Next number follows the highest step')
+        ctx.keys('Escape')
         ctx.click('stepNumber', window='editor')
         ctx.keys('Ctrl+A')
         ctx.type_text('10')
