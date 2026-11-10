@@ -76,6 +76,18 @@ private:
  FileDialog* chooser_=nullptr;
  QToolButton *filtersToggle_=nullptr,*clearFilters_=nullptr,*detailsBack_=nullptr,*detailsClose_=nullptr;QWidget *selectionBar_=nullptr,*emptyState_=nullptr;QLabel *selectionCount_=nullptr,*selectionLinkHint_=nullptr,*emptyBody_=nullptr;QPushButton *copyLinks_=nullptr,*deleteSelected_=nullptr,*resetView_=nullptr,*retryLoading_=nullptr,*remove_=nullptr;bool compact_=false,detailsOpen_=false,detailsFromGallery_=false,restoreDetailsOpen_=false,restoreScroll_=false;int galleryScroll_=0,listScroll_=0;
  QListWidget* categories_=nullptr;QWidget *footerBar_=nullptr,*footerRow_=nullptr;QWidget* columns_=nullptr;bool restoringCategory_=false;
+ // The page heading's count note (P1), the pager's position (P2) and the sidebar's totals (P9).
+ void updateCountNote();void updatePager();void updateCategoryCounts();QString countNote()const;QJsonObject pageState()const;
+ void goToPage(int page);int pageCount()const;int pagerTotal_=0;
+ // Details (P6): wanted stays as chosen (and across sessions) in the wide list;
+ // the gallery and compact window open the pane on request.
+ bool detailsWanted_=true;void setDetailsWanted(bool);void toggleDetails();bool paneVisible()const;void closeDetails();
+ QToolButton *detailsToggle_=nullptr,*selectionDetailsClose_=nullptr,*selectionClear_=nullptr;QLabel *selectionNote_=nullptr,*pagePosition_=nullptr;
+ // Filters as chips (P8): each opens its own editor; the panel stays for every filter at once.
+ QAction* allFilters_=nullptr;QWidget* filterChips_=nullptr;void updateFilterChips();std::function<void(const QString&,QWidget*)> editFilter_;
+ struct FilterEntry {QString key,label,value;};QList<FilterEntry> filterEntries()const;void setFilter(const QString& key,const QString& value);
+ // Whether the selection bar replaces the header's heading and tools (P7).
+ bool selectionHeader()const;
  // Runs once the selected file's detail arrives (true) or fails (false).
  std::function<void(bool)> afterDetail_;std::function<void()> fitFilters_;
 };

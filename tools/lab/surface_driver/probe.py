@@ -1081,7 +1081,7 @@ def selector_matches(row, selector, candidates):
 
     The live objectName wins. Labels come from the selector itself (text:/
     text-glob:) and from every catalog candidate's aliases, accessibleName,
-    toolTip and text, so "List" also finds "Show history as a list".
+    toolTip and text, so "Gallery" also finds "Gallery view".
     Rectangle/layout equality is never a substitute for runtime state.
     """
     name, live = row.get('objectName'), label(row.get('name'))

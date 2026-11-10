@@ -1172,6 +1172,10 @@ void Style::drawButtonLabel(const QStyleOption* option, const QString& rawText, 
     const qreal group = iconWidth + (hasIcon && !shown.isEmpty() ? 8 : 0) + textWidth;
     const bool leftAligned = flushButton(widget) || name == "link" || name == "version" || (widget && widget->property("alignLeft").toBool());
     qreal x = leftAligned ? body.left() : body.left() + (body.width() - group) / 2.0;
+    // uiIconTrailing: the glyph follows the label ("Next ›").
+    const bool trailingIcon = hasIcon && !shown.isEmpty() && widget && widget->property("uiIconTrailing").toBool();
+    const qreal textX = trailingIcon ? x : x + (hasIcon ? iconWidth + (shown.isEmpty() ? 0 : 8) : 0);
+    if (trailingIcon) x += textWidth + 8;
     if (hasIcon) {
         const bool enabled = option->state & State_Enabled;
         const QRectF target(std::round(x), body.top() + (body.height() - iconSize.height()) / 2.0 - (widget ? scaled(widget->property("uiIconRaise").toInt()) : 0), iconSize.width(), iconSize.height());
@@ -1195,8 +1199,8 @@ void Style::drawButtonLabel(const QStyleOption* option, const QString& rawText, 
             p->drawPixmap(badge.topLeft(), Ui::icon("alert", t().warning).pixmap(badge.size(), dpr(widget)));
             p->restore();
         }
-        x += iconWidth + (shown.isEmpty() ? 0 : 8);
     }
+    x = textX;
     if (!shown.isEmpty()) {
         p->save();
         p->setFont(f);
@@ -2100,7 +2104,9 @@ NavigationDelegate::NavigationDelegate(QObject* parent, int rowHeight) : QStyled
 QSize NavigationDelegate::sizeHint(const QStyleOptionViewItem& option, const QModelIndex& index) const {
     const bool two = !index.data(SecondLineRole).toString().isEmpty();
     const QFontMetrics metrics(Ui::font());
-    const bool wrap = index.data(WrapLabelRole).toBool() && QFontMetrics(Ui::labelFont(true)).horizontalAdvance(index.data().toString()) > option.rect.width() - scaled(Metric::icon) - 38;
+    const auto trailing = index.data(TrailingRole).toString();
+    const int trailingWidth = trailing.isEmpty() ? 0 : QFontMetrics(Ui::font(Type::caption)).horizontalAdvance(trailing) + space(Space::s);
+    const bool wrap = index.data(WrapLabelRole).toBool() && QFontMetrics(Ui::labelFont(true)).horizontalAdvance(index.data().toString()) > option.rect.width() - scaled(Metric::icon) - 38 - trailingWidth;
     const int natural = wrap ? 2 * metrics.height() + 16 : two ? metrics.height() + QFontMetrics(Ui::font(Type::metadata)).height() + 22 : metrics.height() + 16;
     return {option.rect.width(), std::max(scaled(two && rowHeight_ < Metric::destinationRow ? Metric::destinationRow : rowHeight_), natural)};
 }
@@ -2122,7 +2128,14 @@ void NavigationDelegate::paint(QPainter* p, const QStyleOptionViewItem& option, 
     }
     const auto first = index.data(Qt::DisplayRole).toString(), second = index.data(SecondLineRole).toString();
     const QColor ink = !enabled ? c.textDisabled : selected ? c.text : c.textSecondary;
-    const QRectF text(x, box.top(), box.right() - 10 - x, box.height());
+    qreal right = box.right() - 10;
+    if (const auto trailing = index.data(TrailingRole).toString(); !trailing.isEmpty()) {
+        const auto font = Ui::font(Type::caption);
+        const qreal width = QFontMetricsF(font).horizontalAdvance(trailing);
+        paintText(*p, QRectF(right - width, box.top(), width, box.height()), trailing, !enabled ? c.textDisabled : index.data(TrailingDangerRole).toBool() ? c.danger : c.textMuted, font, Qt::AlignRight | Qt::AlignVCenter, Qt::ElideNone);
+        right -= width + space(Space::s);
+    }
+    const QRectF text(x, box.top(), right - x, box.height());
     if (second.isEmpty() && index.data(WrapLabelRole).toBool()) {
         const auto labelFont = (selected ? Ui::labelFont(true) : Ui::font(Type::body));
         const QFontMetrics metrics(labelFont);
