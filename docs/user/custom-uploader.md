@@ -147,7 +147,8 @@ changes three things compared with S3:
   offers no deletion and says why.
 
 A request that never reached the server (`http_connect_failed`) stored nothing. A
-definite refusal (401, 403, 413, 429, another 4xx or 5xx) is recorded as a plain
+definite refusal (401, 403, 413, 429, or any other 4xx or 5xx except 408, 502 and 504,
+which are unknown as above) is recorded as a plain
 failure, with the server's message. put.gd takes the server at its word there: a server
 that stores a file and then answers with an error leaves a copy put.gd does not know
 of, so look on the server before retrying if a second copy would matter.
