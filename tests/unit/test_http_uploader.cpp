@@ -447,6 +447,32 @@ private slots:
         QCOMPARE(nameStoredValues(address + "&again=" + QString(t).replace("-", "%2D"), stored), QString());
         QCOMPARE(nameStoredValues("https://h.example.test/delete/7", stored), QString());
     }
+    // #1393: whether a reply is whole is read off what it declared and what arrived.
+    void aReplyShorterThanItDeclaredIsIncomplete() {
+        using Headers = QList<QPair<QByteArray, QByteArray>>;
+        // Fulfilled, or more than fulfilled: whole.
+        QCOMPARE(incompleteReply(200, "POST", Headers{{"Content-Length", "243"}}, 243), QString());
+        QCOMPARE(incompleteReply(200, "POST", Headers{{"content-length", "0"}}, 0), QString());
+        // Short, by one byte or by all of them, on any status that carries a body.
+        QCOMPARE(incompleteReply(200, "POST", Headers{{"Content-Type", "application/json"}, {"Content-Length", "243"}}, 162), QString("it ended after 162 of 243 bytes"));
+        QCOMPARE(incompleteReply(201, "POST", Headers{{"Location", "https://h.example.test/a.png"}, {"CONTENT-LENGTH", " 64 "}}, 0), QString("it ended after 0 of 64 bytes"));
+        QCOMPARE(incompleteReply(200, "GET", Headers{{"Content-Length", "10"}}, 9), QString("it ended after 9 of 10 bytes"));
+        QVERIFY(!incompleteReply(500, "PUT", Headers{{"Content-Length", "10"}}, 9).isEmpty());
+        // The same length said twice is one length.
+        QVERIFY(!incompleteReply(200, "POST", Headers{{"Content-Length", "10, 10"}}, 9).isEmpty());
+        QVERIFY(!incompleteReply(200, "POST", Headers{{"Content-Length", "10"}, {"Content-Length", "10"}}, 9).isEmpty());
+        // No length to hold it against: no header, no number, two different ones, or a
+        // chunked reply, whose end is the transport's to report.
+        QCOMPARE(incompleteReply(200, "POST", Headers{{"Content-Type", "text/plain"}}, 5), QString());
+        QCOMPARE(incompleteReply(200, "POST", Headers{{"Content-Length", "many"}}, 5), QString());
+        QCOMPARE(incompleteReply(200, "POST", Headers{{"Content-Length", "-1"}}, 5), QString());
+        QCOMPARE(incompleteReply(200, "POST", Headers{{"Content-Length", "10"}, {"Content-Length", "12"}}, 5), QString());
+        QCOMPARE(incompleteReply(200, "POST", Headers{{"Content-Length", "10"}, {"Transfer-Encoding", "chunked"}}, 5), QString());
+        QCOMPARE(incompleteReply(200, "POST", Headers{{"transfer-encoding", "gzip, Chunked"}, {"Content-Length", "10"}}, 5), QString());
+        // Replies that carry no body, whatever their headers say.
+        for (const int status : {100, 101, 204, 304}) QCOMPARE(incompleteReply(status, "POST", Headers{{"Content-Length", "10"}}, 0), QString());
+        QCOMPARE(incompleteReply(200, "HEAD", Headers{{"Content-Length", "10"}}, 0), QString());
+    }
     void thisMachineInEverySpelling_data() {
         QTest::addColumn<QString>("host");
         QTest::addColumn<bool>("loopback");

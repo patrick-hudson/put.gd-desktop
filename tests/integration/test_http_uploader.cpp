@@ -445,6 +445,45 @@ private slots:
         QCOMPARE(f.stored(), 1);
         // Exactly one request each: the worker never sends an upload twice by itself.
         QCOMPARE(f.events("upload").size(), 2);
+        // The same for an upload that has no body to send, its text travelling in the
+        // address: the transport would repeat such a request by itself.
+        f.reset();
+        auto bare = f.destination;
+        bare.settings = f.settings("json");
+        bare.settings["requestMethod"] = "GET";
+        bare.settings["body"] = "none";
+        bare.settings["parameters"] = rows({plainRow("content", "{input}"), plainRow("name", "{filename}")});
+        QVERIFY2(!http::validateSettings(bare.settings), qPrintable(http::validateSettings(bare.settings).message));
+        f.rules({{{"call", "upload"}, {"store", true}, {"drop", true}}});
+        lost = f.upload(f.text(), bare);
+        QVERIFY2(lost.status == "unknown", qPrintable(lost.status + " " + lost.receipt.directUrl + " " + lost.error.code));
+        QCOMPARE(lost.error.code, QString("http_outcome_unknown"));
+        QCOMPARE(f.events("upload").size(), 1);
+        QCOMPARE(f.stored(), 1);
+        // Such a request counts as sent while its reply is awaited: a server that takes
+        // longer than the connect timeout to answer it is not a failed connection.
+        f.reset();
+        bare.settings["connectTimeoutMs"] = 1000;
+        f.rules({{{"call", "upload"}, {"store", true}, {"delay", 2}}});
+        const auto slowBare = f.upload(f.text(), bare);
+        QVERIFY2(slowBare.status == "uploaded", qPrintable(slowBare.status + " " + slowBare.error.code + ": " + slowBare.error.message));
+        // And one that never answers is a request that was sent: unknown, not a failure.
+        bare.settings["requestTimeoutMs"] = 2000;
+        f.rules({{{"call", "upload"}, {"store", true}, {"delay", 4}}});
+        const auto silentBare = f.upload(f.text(), bare);
+        QVERIFY2(silentBare.status == "unknown", qPrintable(silentBare.status + " " + silentBare.error.code + ": " + silentBare.error.message));
+        QVERIFY2(silentBare.error.message.contains("request timeout"), qPrintable(silentBare.error.message));
+        // A server that is not there at all is still a plain failure: nothing was sent.
+        f.reset();
+        QTcpServer closed;
+        QVERIFY(closed.listen(QHostAddress::LocalHost));
+        bare.settings["requestUrl"] = QString("http://127.0.0.1:%1/upload/json").arg(closed.serverPort());
+        closed.close();
+        const auto absent = f.upload(f.text(), bare);
+        QVERIFY2(absent.status == "failed", qPrintable(absent.status + " " + absent.error.code + ": " + absent.error.message));
+        QCOMPARE(absent.error.code, QString("http_connect_failed"));
+        QCOMPARE(f.events("upload").size(), 0);
+        f.reset();
         // A gateway that gave up says nothing about what was stored.
         for (const int status : {408, 502, 504}) {
             f.rules({{{"call", "upload"}, {"store", true}, {"status", status}}});
@@ -828,8 +867,11 @@ private slots:
     void aReplyCutOffAfterItsStatusLineIsUnknown_data() {
         QTest::addColumn<QString>("style");
         QTest::addColumn<QString>("cut");
+        // A Content-Length that is not fulfilled, a reset in the body, and the same for a
+        // chunked reply: every byte of the body without the chunk that ends it, and a
+        // reset inside a chunk.
         for (const auto* style : {"text", "json"})
-            for (const auto* cut : {"length", "reset"}) QTest::newRow(qPrintable(QString("%1-%2").arg(style, cut))) << style << cut;
+            for (const auto* cut : {"length", "reset", "chunk", "chunk-reset"}) QTest::newRow(qPrintable(QString("%1-%2").arg(style, cut))) << style << cut;
         // A reply that is headers only has no body to reset in the middle of.
         QTest::newRow("header-length") << "header" << "length";
     }
@@ -848,6 +890,38 @@ private slots:
         QVERIFY2(result.error.message.contains("cut off") && result.error.message.contains("second copy"), qPrintable(result.error.message));
         QVERIFY(result.receipt.directUrl.isEmpty());
         QCOMPARE(f.stored(), 1);
+    }
+    // #1393. The short reply is already waiting when the client has sent the last byte of
+    // the file. Qt, still finishing the request it wrote, takes the close that follows for
+    // a dead connection, tries to send the request again, cannot, and reports that (error
+    // 205), after it has handed over the status line, the headers and the bytes that came.
+    // Under load the rows above took that path now and then, and a short reply that held
+    // a whole link was recorded as an upload. This rule makes the server do it every
+    // time. Whatever the transport reports, a reply shorter than the length it declared
+    // is not a reply.
+    void aShortReplyThatWaitedWhileTheFileWasSentIsUnknown() {
+        HttpFixture f;
+        f.reset();
+        // The reply's JSON is whole and names a link; its Content-Length promises 64 bytes more.
+        const QJsonObject body{{"files", QJsonArray{QJsonObject{{"url", f.base + "/f/synthetic/shot.png"}}}}};
+        f.rules({{{"call", "upload"}, {"early", true}, {"drain", true}, {"status", 200}, {"cut", "length"}, {"body", body}}});
+        // Large enough that the reply arrives while the file is still being sent.
+        const auto result = f.upload(f.artifact("large.bin", QByteArray(16 * 1024 * 1024, 'x'), "application/octet-stream", "files"));
+        QVERIFY2(result.status == "unknown", qPrintable(result.status + " " + result.receipt.directUrl + " " + result.error.code + ": " + result.error.message));
+        QCOMPARE(result.error.code, QString("http_outcome_unknown"));
+        QVERIFY2(result.error.message.contains("second copy"), qPrintable(result.error.message));
+        QVERIFY(result.receipt.directUrl.isEmpty());
+        QCOMPARE(f.events("upload").size(), 1);
+    }
+    // A whole reply sent chunked is a reply like any other.
+    void aChunkedReplyIsRead() {
+        HttpFixture f;
+        f.reset();
+        f.rules({{{"call", "upload"}, {"store", true}, {"chunked", true}}});
+        const auto result = f.upload(f.image());
+        QVERIFY2(result.status == "uploaded", qPrintable(result.status + " " + result.error.code + ": " + result.error.message));
+        QCOMPARE(f.fetch(result.receipt.directUrl).first, 200);
+        QVERIFY(result.receipt.objectReference["deletionUrl"].toString().contains("/delete/"));
     }
     // Server text that is kept (a message, an excerpt, a content type) has every spelling
     // of a stored value removed: as sent, percent-encoded, and as PHP writes JSON.

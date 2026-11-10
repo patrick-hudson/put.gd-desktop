@@ -78,6 +78,14 @@ QString storedValueIn(const QString& address, const QHash<QString, QString>& val
 // stored, "{secret:key}", with everything else escaped. Empty when none stands there
 // exactly, or when one would remain in another spelling or in part.
 QString nameStoredValues(const QString& address, const QHash<QString, QString>& values);
+// Why a reply whose status line and headers arrived is not a whole reply, or empty.
+// Judged from what the server declared and what arrived, never from what the transport
+// has or has not reported by the time the reply is read: `received` is the number of
+// body bytes as they came over the wire (the worker asks for replies uncompressed). A
+// Content-Length that was not fulfilled says so. A chunked reply declares no length;
+// whether it got its last chunk is the transport's to say. A reply with neither ends
+// when the connection does, and cannot be told from one that was cut.
+QString incompleteReply(int status, const QByteArray& verb, const QList<QPair<QByteArray, QByteArray>>& headers, qint64 received);
 // Scheme, host and port of a destination's request URL: where its values may go.
 QUrl requestOrigin(const QJsonObject& settings);
 // This machine, in any spelling an address can use: localhost, 127.0.0.0/8 (decimal,
