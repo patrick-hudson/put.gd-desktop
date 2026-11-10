@@ -222,6 +222,36 @@ resolves a window recording from it and the helper passes the id to Mutter's
 recordings". The synthetic `gnome_ui_ownership_contract` covers these methods;
 it is not graphical acceptance.
 
+Recording protocol 3 (`recordingVersion: 3`, extension version 21) reports
+pointer button presses for click highlights. `WatchClicks()` starts and
+`UnwatchClicks()` stops the watch; each press of the left, middle or right
+button is the signal `Click(json)` with `{x, y, button, window?: {identity,
+rect}}` in logical desktop coordinates, sent to the unique bus name of the
+resident that asked and to nobody else. A disable, a lock or the resident
+leaving the bus ends the watch.
+
+Mutter's own event filter runs before any the extension can add and stops the
+events it delivers to an application, so a stage `captured-event` handler and
+an extension `Clutter.Event.add_filter` never see a click on a window (measured
+on Shell 50.6: 0 of 10 each). What Mutter does on every such press is stamp the
+window's user time, synchronously, while the press is still Clutter's current
+event. The extension connects `notify::user-time` on every window (and on each
+new one) and reads button, position and time from
+`Clutter.get_current_event()`; a key press stamps the user time too and is told
+apart by the event's type. Presses on the Shell's own actors (panel, overview,
+window decorations it draws) arrive at the stage's `captured-event`, and one
+press seen by both hooks is reported once. Ten injected clicks from 50 ms down
+to 0 ms long were all reported. Nothing is grabbed, consumed or polled.
+
+The resident watches from Record to Stop (`RecordingClicks`,
+`src/core/RecordingClicks.h`) and needs `recordingVersion >= 3`: with an older
+extension loaded, `recording.capabilities` reports `clickHighlights.available:
+false` with `helper_outdated` or `helper_incompatible`, and a recording that
+has the remembered preference on starts without rings. The route is
+`gnome-shell-extension`, the rings are drawn by the recorder into the clip, and
+all four targets have them; see
+[Microphone and click highlights](../design/recording/microphone-and-clicks.md).
+
 ## UI ownership recovery test
 
 When the final UI process exits, the adapter clears its registered PID. If that

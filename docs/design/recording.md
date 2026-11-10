@@ -64,6 +64,18 @@ quoted above and elsewhere are headings on these pages.
 - [History posters](recording/history-posters.md): History poster frames; Previews made on selection.
 - [Packages and codecs](recording/packages-and-codecs.md): Packages and codecs; AppImage runtime.
 - [Agent control and tests](recording/agent-control-and-tests.md): Agent and MCP control; Verification.
+- [Microphone and click highlights](recording/microphone-and-clicks.md): Microphone (rules, device, capture and mix, measurements); Click highlights (routes per desktop, drawing, why Budgie has none).
+
+## Microphone and click highlights
+
+A recording can carry the microphone, alone or mixed with the system audio into its one
+audio track, and can draw a ring at the pointer on each click
+([#1364](https://github.com/patrick-hudson/put.gd-desktop/issues/1364)). The microphone is
+opened only while the bar's toggle is on and released at Stop; the monitor of an output is
+never used as one. Click highlights exist on X11, GNOME, Hyprland and KDE Plasma (where
+KWin's own effect draws them, for monitor and region recordings). **Budgie on labwc has
+none**: labwc gives put.gd no pointer clicks. The full contract and the proof for each
+desktop are on the [topic page](recording/microphone-and-clicks.md).
 
 ## AppImage runtime
 

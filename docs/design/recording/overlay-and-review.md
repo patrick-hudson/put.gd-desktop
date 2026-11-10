@@ -44,9 +44,16 @@ when its size changes.
 
 The control bar shows a state dot (green ready, red recording, amber paused),
 a green Record button before capture and a red Stop button during it,
-the retained time, the target, a system-audio checkbox and a format/codec
+the retained time, the target, a system-audio checkbox, a microphone
+checkbox with a level meter (#1364) and a format/codec
 choice (editable only before Record; GIF/WebP disable audio), and Record,
-Pause/Resume, Stop and Cancel. From Record on the checkbox is locked but still
+Pause/Resume, Stop and Cancel. The microphone checkbox is off by default and
+remembered; ticked, it opens the input and the meter beside it shows its level,
+before and during the recording. With no input to open (none connected, or the
+system default is an output's monitor) it is unavailable and its tooltip says
+why. From Record on the bar's facts name what is recorded (**With system
+audio**, **With microphone**, **System audio and microphone**, **Click
+highlights**) and, if the input goes away, **Microphone disconnected**. From Record on the checkbox is locked but still
 shows whether the clip records system audio: ticked with the app theme's
 check on a muted fill, or empty, with a tooltip saying which (#120; before,
 the locked box was drawn empty either way). Its actions run in the helper and are reported
@@ -63,7 +70,9 @@ mouse actions; the recording global shortcut is the keyboard stop route (see
 the dashboard rail and the global shortcut (`actions.record.shortcut`, unbound
 by default; recorded in Settings → Shortcuts like the others). With no active
 recording it runs `recording.prepare` for a dragged region with the default
-configuration (MP4, no audio; the bar changes both before Record). With one
+configuration (MP4, no system audio; the bar changes both before Record), the
+remembered microphone toggle and the click-highlight preference
+([Microphone and click highlights](microphone-and-clicks.md)). With one
 active, mode `open` (the tray and the rail) raises the bar or review window,
 and mode `toggle` (the shortcut) starts a `ready` session, stops a `recording`
 or `paused` one, and otherwise raises. The reply carries the step taken
@@ -190,12 +199,12 @@ backend.
 
 | Event | Meaning |
 | --- | --- |
-| `progress {durationUs, bytes, paused, encoder, audioEncoder, frameRate, frameRateReduced?, framesDelivered, framesCaptured}` / `{exportFraction}` | retained time and file size while recording (once a second); export progress (at most ten a second, so a fast GPU export stays inside the control channel's frame rate) |
+| `progress {durationUs, bytes, paused, encoder, audioEncoder, audioSources, recordingMicrophone, microphoneLost?, frameRate, frameRateReduced?, framesDelivered, framesCaptured}` / `{exportFraction}` | retained time and file size while recording (once a second); export progress (at most ten a second, so a fast GPU export stays inside the control channel's frame rate) |
 | `selecting {selector: x11\|kde-layer-shell}` | the helper's region selector is open; `recording.select` can complete it |
 | `started`, `paused`, `resumed` | the bar's Record / Pause / Resume |
 | `stopped {durationUs, canvas, reason: user\|budget}` | the clip is finalized and under review; after `budget` the resident sends the helper `notice {text}`, which the review window shows as its banner |
 | `cancelled` | Cancel on the bar, Discard in the review, the window closed |
-| `configChanged {config}` | format/codec/audio changed on the bar (ready) or the format changed in review |
+| `configChanged {config, microphoneRequested?}` | format/codec/audio changed on the bar (ready) or the format changed in review; `microphoneRequested` is the Microphone toggle as the user left it, which the resident remembers |
 | `edit {revision, commands}` | a review-window proposal at the revision it displayed |
 | `uploadRequested {revision}`, `saveCopyRequested {path, revision}` | the review's Upload / Save copy |
 | `failed {error}` | the pipeline or helper failed; the operation ends `failed` without an upload |

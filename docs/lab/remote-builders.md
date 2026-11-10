@@ -343,6 +343,27 @@ tools for that are `tools/lab/cover_player.py` and `tools/lab/record_run.py`
   (for example `--rect 0,0,960,540`) to pass the frame gate. `--vnc-port 0`
   skips the precheck, in disposable guests only. See the script's docstring for
   the options.
+- `virtual_mic.py` gives a host or guest a simulated microphone, because a real
+  one is never recorded in the lab: `create` loads a null sink and remaps its
+  monitor into a real input (`module-null-sink`, `module-remap-source`; a bare
+  monitor would not do, put.gd never offers one), `tone` plays into it,
+  `unplug` unloads the input while a recording runs, and `remove` unloads
+  every module it loaded by its exact id and restores the previous default
+  source and sink by name. `--system-sink` adds a private default output so
+  system audio can be checked without sound from the speakers. It keeps a state
+  file, so `remove` after a failed run still cleans up.
+- `record_run.py --mic virtual|muted|default|NAME` records with a microphone:
+  `virtual` creates the simulated one, plays the `--av-marker` clip's bursts
+  into it and removes it afterwards; `muted` does the same with the bar's
+  toggle off (the clip must hold none of it); `default` asks for the system
+  default, which on the builders is a monitor and must be refused.
+  `--system on|off|tone` adds system audio (`tone`: a quiet 440 Hz on the
+  private output), `--unplug-at S` removes the microphone S seconds in, and
+  `--marker-motion` keeps a bar moving so the motion gate has something to
+  see. `--av-sync` then measures the microphone's bursts against the flashes
+  (`putgd-record --av-sync CLIP --tone 1000 --tone 440` also reports each
+  tone's level). Use `--lead 6`: the first pairs after Record can sit a frame
+  or two off while the audio branch settles.
 
 Two traps when you drive a private resident in a desktop session (#214, #198):
 

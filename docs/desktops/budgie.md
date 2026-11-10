@@ -153,6 +153,43 @@ with the protocol named, and no chooser ever shows. Details are in
 - The ready ring, dimming and control bar are layer surfaces outside the
   recorded rectangle. A monitor recording includes the bar, as on KWin 6.3.
 
+### No click highlights
+
+Budgie is the one desktop where recordings cannot highlight clicks.
+`recording.capabilities` reports `clickHighlights {available: false, route:
+"none", reason: "labwc_no_click_events"}`, **Settings → Capture → Screen
+recording** shows the switch with that explanation, **Desktop support details**
+lists it, and a `prepare` that asks for them is refused with
+`recording_unsupported`. The microphone works as on every other desktop.
+
+labwc has no IPC, no script interface and no event stream, so a click would
+have to come from two separate pieces, and each was tried on labwc 0.20.2
+(Fedora 45 Budgie guest):
+
+- **The press.** A `<mousebind>` in `rc.xml` with context `Client` that keeps
+  `Focus` and `Raise` and adds `Execute` runs a command on every press without
+  taking the press from the window: four clicks from 60 ms down to 0 ms long
+  each ran the command and each reached the terminal under the pointer. But
+  `rc.xml` belongs to Budgie's `labwc-bridge`, which holds the file in memory
+  and writes it back at the next setting it mirrors, without entries it did not
+  write: one natural-scroll toggle in Budgie's settings removed the bind. The
+  bridge offers put.gd key bindings (see **Shortcuts**) and no mouse binding,
+  and this adapter never writes `rc.xml`.
+- **The position.** A command run by a mousebind carries no coordinates, and a
+  Wayland client learns the pointer's position only over its own surfaces. The
+  one place labwc reports it is an `ext-image-copy-capture` pointer cursor
+  session, and that session goes silent (`leave`) as soon as any capture
+  session asks for a painted cursor: wlroots then locks software cursors, and
+  its cursor source reads the hardware cursor only
+  (`types/ext_image_capture_source_v1/output.c`). Every put.gd recording on
+  Budgie asks for a painted cursor. Measured: positions followed the pointer
+  until that capture session was created, then `leave` and nothing more.
+
+What would change this: a mouse binding in `labwc-bridge`'s settings, or a
+pointer position that survives a painted-cursor capture. The probes are kept
+with the round's evidence (`click-route-probes`); the design is in
+[Microphone and click highlights](../design/recording/microphone-and-clicks.md).
+
 ## Budgie 11
 
 Budgie 11 has no release and no installable session. The adapter works from

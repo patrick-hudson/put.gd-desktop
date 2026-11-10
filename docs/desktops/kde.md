@@ -87,6 +87,42 @@ Image-transfer FDs are nonblocking, bounded, timeout-controlled, and closed on
 cancellation. Metadata validates image type, dimensions, stride, format, scale,
 and exact transfer size. No source pixels enter diagnostics.
 
+## Recording click highlights
+
+KWin gives pointer buttons to effects only. A KWin script has `callDBus` but no
+button signal; a scripted effect can connect `effects.mouseChanged` but has no
+D-Bus call to pass a press on (KWin `scripting/scriptedeffect.cpp`,
+`scripting.cpp`), and neither can draw into a screencast. So on Plasma the ring
+is KWin's own: for the length of a recording put.gd switches on KWin's Mouse
+Click Animation effect (`mouseclick`), and KWin draws the rings on the screen,
+where every monitor, desktop and region stream carries them.
+
+- **On.** At Record the resident asks `org.kde.kwin.Effects` whether the effect
+  is loaded, loads it (`loadEffect`), and invokes its global shortcut
+  (`org.kde.kglobalaccel` `invokeShortcut("ToggleMouseClick")` on the KWin
+  component). The effect starts switched off whenever it is loaded and KWin has
+  no call that reads whether it is on, so an effect the user had loaded is
+  unloaded and loaded again first; that leaves it in a known state.
+- **Off.** At Stop, or however the capture ends, the shortcut is invoked again
+  and the effect is unloaded, unless it was loaded before the recording: then it
+  stays loaded and switched off.
+- **Limits.** The rings are on the screen while recording, in KWin's colours
+  and size, not put.gd's. A window stream carries the window alone, so a window
+  recording has none: `clickHighlights.targets` is `monitor`, `desktop`,
+  `region`, and a window `prepare` that asks for them is refused with
+  `click_target_unsupported`. Presses reach put.gd on no path, so the clip's
+  rings are exactly what KWin drew.
+
+`recording.capabilities` reports `route: "kwin-mouseclick-effect"`, `drawnBy:
+"compositor"`; without KWin's `Effects` interface or KGlobalAccel on the
+session bus it reports `kwin_unavailable`, and a load or toggle that fails
+during a recording is `progress.clickHighlightsError`
+(`click_effect_unavailable`) while the recording goes on. Plasma X11 uses the
+X11 route instead ([Cinnamon / X11](cinnamon.md)). Measured on KWin 6.8.2: a
+frame of an output screencast taken while clicking shows the rings with the
+effect on and none with it off. The design is in
+[Microphone and click highlights](../design/recording/microphone-and-clicks.md).
+
 ## Clipboard and shortcuts
 
 Data control imports `text/uri-list`, supported image MIME types, and UTF-8 plain

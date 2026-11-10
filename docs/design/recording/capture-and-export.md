@@ -12,7 +12,12 @@ Dimensions shrink to even values rather than growing into unselected pixels.
 
 The live pipeline is `ximagesrc → queue (leaky) → videoconvert → videorate →
 queue → H.264 encoder → h264parse → matroskamux` with `pulsesrc
-device=@DEFAULT_MONITOR@ → AAC` when system audio is requested (#6, PR #981).
+device=@DEFAULT_MONITOR@ → AAC` when system audio is requested (#6, PR #981),
+a second `pulsesrc` on the input device when the microphone is, and
+`audiomixer` in front of the AAC encoder when both are
+([Microphone](microphone-and-clicks.md#capture-and-mix), #1364). Click
+highlights are drawn into the frames on the encoder's input
+([Drawing](microphone-and-clicks.md#drawing)).
 Capture, conversion and encoding run in their own threads: the capture queue
 leaks its oldest frame rather than block the source when the stages behind it
 fall behind, `videorate` restores the constant rate, and a frame the queue
@@ -177,7 +182,9 @@ does and prints the encoder, frame count, bytes and wall time, and
 order for such timing runs; `putgd-record --motion CLIP [SAMPLES]` prints the
 mean frame difference between frames sampled across a clip (about 0.01 for a
 still picture), so a recording test can require that it captured movement.
-For system audio, `putgd-record --av-marker OUT.mkv SECONDS` writes a
+`putgd-record --microphones [DEVICE]` prints the inputs a recording can narrate
+from, as `recording.microphones` returns them.
+For system audio and the microphone, `putgd-record --av-marker OUT.mkv SECONDS [--moving]` writes a
 synthetic marker clip (MJPEG and PCM in Matroska, built-in FFmpeg encoders
 only): black 1280×720 frames with a white flash and a 1 kHz tone burst, both
 100 ms, at the start of every second. Play it in the recorded area with
@@ -186,7 +193,14 @@ one demux pass, finds the flash onsets (mean luma rising edges) and burst
 onsets (2 ms RMS envelope), pairs each flash with the nearest burst within
 half a period and prints JSON with every offset (`offsetsMs`, audio minus
 video, positive when the sound is late), `medianMs` and `spreadMs`; the
-marker itself measures 0 ms. The resident never runs these diagnostic modes
+marker itself measures 0 ms. `--moving` adds a white bar that sweeps across
+the picture, so a recording of the marker also scores motion; the offsets are
+the same. `--av-sync CLIP --tone HZ` (repeatable) adds `tones {"<hz>":
+{medianAmplitude, maxAmplitude, activeFraction, blocks}}`, the level of that
+tone in 50 ms blocks of the mono mix across the whole track (a full-scale sine
+in both channels reads 1.41), and then a clip without flashes, bursts or an
+audio stream still answers, with `error` naming what was missing: that is how a
+run shows that a tone is absent as well as present. The resident never runs these diagnostic modes
 or reads what they write.
 
 The AppImage's own helper runs all of these on its working clips and on saved

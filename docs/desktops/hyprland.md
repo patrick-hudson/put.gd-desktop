@@ -206,6 +206,33 @@ OpenH264. In the software-rendered lab VM the desktop itself draws about 8
 frames per second at 1920x1080, and recordings keep that pace; system audio and
 A/V sync (median -19 ms) were measured there too.
 
+### Click highlights
+
+Hyprland reports pointer buttons to binds. From Record to Stop the resident
+holds three runtime binds on the bare mouse buttons (`mouse:272`, `mouse:273`,
+`mouse:274`), written through `eval` like the shortcut binds and never into a
+file. They are `non_consuming` and `ignore_mods`, so the click still reaches
+the window under the pointer whatever modifiers are held (measured: a terminal
+under the pointer received every click). Their Lua callback reads the cursor
+position and sends `putgd-click <token> <button> <x> <y>` as a custom event on
+the event socket (`custom>>`), which the resident reads; no process starts per
+click.
+
+The callback does nothing unless the global `putgd_clicks` holds this
+recording's token, so a bind a crash left behind is inert and another program's
+custom events are ignored. At Stop the token is cleared and the binds are
+removed with `hl.unbind`, by this adapter's rule: only on a chord nothing else
+holds, never through a bind handle. Where the user has a bind of their own on a
+bare mouse button, put.gd's stays, inert, until Hyprland next reloads its
+configuration. The binds carry the description `put.gd: click highlight`.
+
+`recording.capabilities` reports `route: "hyprland-mouse-binds"`, `drawnBy:
+"recorder"` for all four targets, or `hyprland_ipc_unavailable` /
+`hyprland_lua_unavailable` with the reason. Measured on Hyprland 0.56.2: four
+clicks from 50 ms down to 0 ms long, left and right, all arrived with their
+positions, and the bind count was the same before and after (251). The design
+is in [Microphone and click highlights](../design/recording/microphone-and-clicks.md).
+
 ## Clipboard, tray, notifications and files
 
 - Clipboard import works while put.gd is unfocused; results copy as

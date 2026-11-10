@@ -130,7 +130,8 @@ shows it as `target.identity` and `window {identity, title, appId, rect}`.
   `RecordingWindows` (the Alt+Tab list, the focused window `active`) with
   Mutter's window ids, and the helper calls Mutter's `RecordWindow` with
   `window-id` and an embedded cursor. Own windows: the extension's
-  `_residentWindow` rule. The extension's `metadata.json` version is 19: an
+  `_residentWindow` rule. The extension's `metadata.json` version rose to 19 with
+  this protocol (it is 21 now, with protocol 3 for click highlights): an
   older extension still loaded after a package upgrade makes a window
   recording fail `helper_outdated` instead of falling back to the picker, and
   `recording.windows` answers the same. Its message says to log out and back in,
