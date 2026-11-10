@@ -593,7 +593,7 @@ ScrollStitcher::Search ScrollStitcher::search(const FrameSignatures& cur, int to
     // every rival is mostly not: content that repeats exactly keeps rivals
     // that are exact too and stays ambiguous, and so does a step whose
     // overlap is mostly an in-place change.
-    if (topSet.size() <= 256) {
+    {
       int exactD = INT_MIN;
       double exactBest = -1;
       bool decided = true;

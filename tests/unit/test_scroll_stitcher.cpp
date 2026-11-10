@@ -449,12 +449,15 @@ void testAmbiguity() {
 // Lines of text that differ in a few characters only, all of them short: the
 // numbered lines of a log, a listing or a plain text file in a wide window.
 // `distinct` false: every line the same (content that repeats exactly).
-Image numberedLines(int width, int lines, int pitch, bool distinct) {
+Image numberedLines(int width, int lines, int pitch, bool distinct, bool rule = false) {
   Image img(width, lines * pitch + 8, kBg);
+  // A vertical rule down the page, as an editor draws beside its line numbers or at its right margin.
+  if (rule)
+    for (int y = 0; y < img.h; ++y) img.at(400, y) = 0xC8C8C8;
   for (int i = 0; i < lines; ++i) {
     const int y = 4 + i * pitch;
     Rng same(77);  // the words every line shares
-    drawTextLine(img, y, 130, std::min(width - 8, 330), same);
+    drawTextLine(img, y, 130, std::min(width - 8, 310), same);  // with the digits: ink in two of eight bands
     if (!distinct) continue;
     // The line's number: four digit cells, each a small pattern of its digit.
     int n = i;
@@ -497,6 +500,25 @@ void testNumberedLines() {
     // The page did not move; a caret-sized change is in the frame.
     Pair still = pairStep(rend, 500, 500, kNoHint);
     report("numbered lines, no movement", still.r.status == StepStatus::NoMovement, fmt("%s", toString(still.r.status)));
+  }
+  {
+    // The same beside a vertical rule (gnome-text-editor and Kate both draw
+    // one). The rule is equal in every row, so under the tolerant rule every
+    // offset at all explains the frame, hundreds of candidates, and the exact
+    // rule has to judge them all: with the rule cut off at 256 candidates the
+    // real editors ended as "lost track" on their first step.
+    const Image doc = numberedLines(W, 400, pitch, true, true);
+    Renderer rend(doc, vs);
+    int ok = 0, total = 0;
+    std::string det;
+    for (int d : {13, 36, 38, 450}) {
+      Pair n = pairStep(rend, 500, 500 + d, kNoHint);
+      ++total;
+      const bool good = n.r.status == StepStatus::Appended && n.r.offset == d && !n.r.lowConfidence;
+      ok += good;
+      if (!good) det += fmt(" d%d:%s/%d", d, toString(n.r.status), n.r.offset);
+    }
+    report("numbered lines beside a vertical rule, no hint", ok == total, fmt("%d/%d verified at the true offset%s", ok, total, det.c_str()));
   }
   {
     // Lines that are all the same repeat exactly: no pixel tells the offsets
