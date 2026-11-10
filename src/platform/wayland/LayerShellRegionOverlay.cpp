@@ -166,6 +166,9 @@ void LayerShellRegionOverlay::release(QPointF p){if(!dragging_||finished_)return
 void LayerShellRegionOverlay::accept(){
  if(finished_)return;
  dragging_=false;
+ // A software cursor is a separate compositor surface: clearing the widget
+ // does not clear it. Hide it before the transparent frame and its fence.
+ for(auto* surface:surfaces_)surface->setCursor(Qt::BlankCursor);
 #ifdef PUTGD_NATIVE_REGION
  // KWin animates closing surfaces on real GPUs, starting from the last frame it
  // rendered for them, and ScreenShot2 renders that animation. So first commit

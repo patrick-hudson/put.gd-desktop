@@ -6,6 +6,7 @@
 #include "ui/RegionSelection.h"
 #include <QtTest>
 #include <QApplication>
+#include <QCursor>
 #include <QDir>
 #include <QScopeGuard>
 #include <QScreen>
@@ -21,6 +22,22 @@ class WaylandRegionOverlayTest final:public QObject {
   return nullptr;
  }
 private slots:
+ void acceptingSelectionHidesEveryCursorBeforeResult(){
+  for(bool keyboard:{false,true}){
+   LayerShellRegionOverlay overlay({});
+   auto* left=add(overlay,QRectF(0,0,640,480));auto* right=add(overlay,QRectF(640,0,600,400));
+   QVERIFY(left);QVERIFY(right);
+   QCOMPARE(left->cursor().shape(),Qt::CrossCursor);QCOMPARE(right->cursor().shape(),Qt::CrossCursor);
+   int results=0;
+   connect(&overlay,&LayerShellRegionOverlay::selected,this,[&]{
+    ++results;
+    QCOMPARE(left->cursor().shape(),Qt::BlankCursor);QCOMPARE(right->cursor().shape(),Qt::BlankCursor);
+   });
+   if(keyboard)QTest::keyClick(left,Qt::Key_Return);
+   else{QTest::mousePress(left,Qt::LeftButton,{},QPoint(30,40));QTest::mouseRelease(left,Qt::LeftButton,{},QPoint(230,180));}
+   QCOMPARE(results,1);
+  }
+ }
  void resolvedOutcomeIsVisibleAndAccessible(){
   for(const QString outcome:{QString("Uploads right away to Team Drive · Shared link"),QString("Saves locally"),QString("Opens the image editor")}){
    LayerShellRegionOverlay overlay({},nullptr,false,outcome);auto* surface=add(overlay,QRectF(0,0,800,600));QVERIFY(surface);
