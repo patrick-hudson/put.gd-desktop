@@ -587,15 +587,20 @@ def create_server(adapter: CliAdapter) -> MCPServer:
 
     @server.tool(annotations=effect)
     async def copy_history_link(id: str) -> Json:
-        """Write the stored direct URL to clipboard; no upload or target reconstruction."""
-        return await adapter.call('history.copyLink', {'id': id}) if identifier(id) else invalid()
+        """Copy the recorded link. Expired S3 presigned and B2 authorized links refresh from the saved receipt and original cached credentials before copying. credential_setup_required never opens a keyring prompt; explicitly unlock saved credentials first."""
+        return await adapter.call('history.copyLink', {'id': id}, timeout=645) if identifier(id) else invalid()
+
+    @server.tool(annotations=effect)
+    async def unlock_history_link_credentials(id: str) -> Json:
+        """Explicitly unlock the original saved keychain reference for an expired S3/B2 History link. The desktop keyring may prompt. This never copies or refreshes the link; call copy_history_link afterwards."""
+        return await adapter.call('history.unlockLinkCredentials', {'id': id}, timeout=315) if identifier(id) else invalid()
 
     @server.tool(annotations=effect)
     async def copy_history_links(ids: list[str]) -> Json:
-        """Write several stored direct URLs to the clipboard, one per line in the order given, as History's Copy links does for a selection; link_unavailable (with historyId) copies nothing. No upload or target reconstruction."""
+        """Write several stored direct URLs to the clipboard, one per line in the order given, as History's Copy links does for a selection; expired S3/B2 links refresh using their saved destinations and cached credentials. link_unavailable (with historyId) copies nothing. No upload."""
         if not ids or len(ids) > 1000 or len(set(ids)) != len(ids) or any(not identifier(id, 128) for id in ids):
             return invalid()
-        return await adapter.call('history.copyLinks', {'ids': ids})
+        return await adapter.call('history.copyLinks', {'ids': ids}, timeout=645)
 
     @server.tool(annotations=ToolAnnotations(read_only_hint=False, destructive_hint=False, open_world_hint=True))
     async def open_history_link(id: str) -> Json:

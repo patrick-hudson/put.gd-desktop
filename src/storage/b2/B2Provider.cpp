@@ -217,3 +217,16 @@ void B2Provider::testDestination(const Destination& destination, DurableCheckpoi
     reply(r, e);
 }
 }
+
+namespace putgd {
+void B2Provider::refreshLink(const StorageReceipt& receipt, std::function<void(StatResult)> reply) {
+    Error e;const auto result=call("refreshLink",receipt.destination,{{"receipt",receipt.toJson()}},e);
+    reply({e?"unknown":result["status"].toString("unknown"),StorageReceipt::fromJson(result["receipt"].toObject()),e});
+}
+}
+
+namespace putgd {
+void B2Provider::unlockLinkCredentials(const StorageReceipt& receipt,std::function<void(Error)> reply) {
+    credentials_.unlock(receipt.destination.profileId,receipt.destination.credentialReference,std::move(reply));
+}
+}

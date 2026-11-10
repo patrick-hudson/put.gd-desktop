@@ -25,26 +25,54 @@ concurrency:
   cancel-in-progress: ${{ !inputs.release_tag }}
 env:
   # Ubuntu containers name one archive host, so an outage there fails every
-  # retry. List others, serving hosts first (an open port is not enough: a host
-  # can accept connections and then stall). APT fails over file by
+  # retry. Rank alternatives by bounded download throughput, including mirrors
+  # that answer HTTP 200 but deliver packages too slowly. APT fails over file by
   # file and still verifies everything against the Ubuntu keyring.
   PUTGD_UBUNTU_MIRRORS: |
     apt_root=${PUTGD_APT_ROOT:-/etc/apt}
     sources=$(grep -lE 'http://archive\.ubuntu\.com/ubuntu' "$apt_root"/sources.list "$apt_root"/sources.list.d/* 2>/dev/null || true)
     if [ -n "$sources" ]; then
-      up=() down=()
-      for host in us.archive.ubuntu.com mirrors.edge.kernel.org azure.archive.ubuntu.com archive.ubuntu.com; do
-        probe="exec 3<>/dev/tcp/$host/80; printf 'HEAD /ubuntu/dists/noble/InRelease HTTP/1.0\r\nHost: $host\r\n\r\n' >&3; head -n 1 <&3 | grep -q ' 200 '"
-        if timeout 8 bash -c "$probe" 2>/dev/null; then up+=("$host"); else down+=("$host"); fi
+      probe_dir=$(mktemp -d)
+      # Four sequential probes: <= 12.8 s, <= 8 MiB of response bodies.
+      # 1 MiB/s fetches 483 MiB in ~8 minutes, leaving room in the 20-minute step.
+      floor=1048576
+      for endpoint in ${PUTGD_UBUNTU_MIRROR_HOSTS:-us.archive.ubuntu.com mirrors.edge.kernel.org azure.archive.ubuntu.com archive.ubuntu.com}; do
+        host=${endpoint%%:*}; port=${endpoint#*:}; [ "$port" != "$endpoint" ] || port=80
+        start=$(date +%s%N)
+        # Sample a base noble package: cached indexes can be fast while pool
+      # downloads crawl. This version remains referenced by noble/main.
+      # HTTP/1.0 avoids chunked encoding. Range bounds cooperative servers;
+        # head also bounds servers that ignore Range. A partial body at timeout
+        # is measured too, so a live trickle cannot pass as a fast mirror.
+        timeout --kill-after=0.2s 3s bash -c '
+          exec 3<>/dev/tcp/$1/$2 || exit 1
+          printf "GET /ubuntu/pool/main/g/glibc/libc6_2.39-0ubuntu8_amd64.deb HTTP/1.0\r\nHost: %s\r\nRange: bytes=0-2097151\r\n\r\n" "$1" >&3
+          IFS= read -r status <&3
+          case "$status" in *" 200 "*|*" 206 "*) ;; *) exit 1;; esac
+          while IFS= read -r line <&3; do [ "$line" != $'"'"'\r'"'"' ] || break; done
+          head -c 2097152 <&3 > "$3"
+        ' _ "$host" "$port" "$probe_dir/body" 2>/dev/null || true
+        elapsed=$(( ($(date +%s%N) - start) / 1000000 ))
+        [ "$elapsed" -gt 0 ] || elapsed=1
+        bytes=0
+        [ ! -f "$probe_dir/body" ] || bytes=$(wc -c < "$probe_dir/body")
+        speed=$(( bytes * 1000 / elapsed ))
+        tier=2; label=unavailable
+        if [ "$speed" -ge "$floor" ]; then tier=0; label=fast
+        elif [ "$speed" -gt 0 ]; then tier=1; label=below-floor; fi
+        echo "Ubuntu mirror throughput: $endpoint $speed B/s ($bytes bytes in $elapsed ms; $label; floor=$floor B/s)"
+        printf '%d %d %s\n' "$tier" "$speed" "$endpoint" >> "$probe_dir/rank"
+        rm -f "$probe_dir/body"
       done
       priority=0
       : > "$apt_root/putgd-mirrors.txt"
-      for host in "${up[@]}" "${down[@]}"; do
+      while read -r tier speed endpoint; do
         priority=$((priority + 1))
-        printf 'http://%s/ubuntu/\tpriority:%d\n' "$host" "$priority" >> "$apt_root/putgd-mirrors.txt"
-      done
+        printf 'http://%s/ubuntu/\tpriority:%d\n' "$endpoint" "$priority" >> "$apt_root/putgd-mirrors.txt"
+      done < <(LC_ALL=C sort -s -k1,1n -k2,2nr "$probe_dir/rank")
+      rm -f "$probe_dir/rank"
+      rmdir "$probe_dir"
       sed -i -E "s#http://archive\.ubuntu\.com/ubuntu/?#mirror+file:$apt_root/putgd-mirrors.txt#" $sources
-      echo "Ubuntu mirrors reachable: ${up[*]:-none}"
     fi
 
 jobs:

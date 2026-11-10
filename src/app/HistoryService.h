@@ -13,6 +13,7 @@ public:
  void preview(const QString&,JsonReply,bool retry=false);
  void clear(JsonReply);
  void copyImage(const QString&,JsonReply);
+ void unlockLinkCredentials(const QString&,JsonReply);
  void copyLink(const QString&,JsonReply);
  // Several stored links at once, one per line in selection order: all of
  // them, or none when any is no longer available.
@@ -27,6 +28,7 @@ public:
 signals:
  void changed();
 private:
+ QJsonObject copyableLink(const QString&,Error&);
  void notifyChanged();
  QJsonObject prepare(const QStringList&,Error&) const;
  void expireConfigured();

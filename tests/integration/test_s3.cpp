@@ -2,12 +2,48 @@
 #include "fixtures/U2Fixtures.h"
 #include <thread>
 #include <QBuffer>
+#include <QUrlQuery>
 #include <mutex>
 #include "fixtures/Waits.h"
 using namespace putgd::test;
 class S3Test : public QObject {
     Q_OBJECT
 private slots:
+    void presignedLinksUseEndpointAndNoPublicAcl_data() {
+        QTest::addColumn<bool>("r2AuthorizationError");QTest::newRow("access-denied")<<false;QTest::newRow("r2-missing-authorization")<<true;
+    }
+    void presignedLinksUseEndpointAndNoPublicAcl() {
+        QFETCH(bool,r2AuthorizationError);
+        S3Fixture f;f.reset({{"private",true},{"versioning","Enabled"},{"unsignedAuthError",r2AuthorizationError}});
+        f.destination.settings["linkMode"]="presigned";
+        f.destination.settings["linkValidityDays"]=3;
+        f.destination.settings["aclMode"]="public-read";
+        f.destination.settings["publicUrlBase"]="https://cdn.example.invalid";
+        const auto uploaded=f.upload(f.request("private é.txt"));
+        QCOMPARE(uploaded.status,QString("uploaded"));
+        const QUrl signedUrl(uploaded.receipt.directUrl);
+        QCOMPARE(signedUrl.host(),QString("127.0.0.1"));
+        QVERIFY(signedUrl.hasQuery());
+        QCOMPARE(QUrlQuery(signedUrl).queryItemValue("versionId"),uploaded.receipt.objectReference["versionId"].toString());
+        const auto fetch=[&](const QUrl& url){QTcpSocket peer;peer.connectToHost(url.host(),quint16(url.port()));if(!peer.waitForConnected(5000))return QByteArray{};
+            const auto target=url.path(QUrl::FullyEncoded)+(url.hasQuery()?"?"+url.query(QUrl::FullyEncoded):QString{});
+            peer.write("GET "+target.toUtf8()+" HTTP/1.1\r\nHost: "+url.authority().toUtf8()+"\r\nConnection: close\r\n\r\n");peer.waitForBytesWritten(5000);
+            QByteArray data;while(peer.waitForReadyRead(5000))data+=peer.readAll();data+=peer.readAll();return data;};
+        const auto response=fetch(signedUrl);QVERIFY(response.startsWith("HTTP/1.1 200"));QVERIFY(response.endsWith("synthetic payload"));
+        auto unsignedUrl=signedUrl;unsignedUrl.setQuery(QString{});QVERIFY(fetch(unsignedUrl).startsWith(r2AuthorizationError?"HTTP/1.1 400":"HTTP/1.1 403"));
+        QVERIFY(!f.events("PUT")[0].toObject()["headers"].toObject().contains("x-amz-acl"));
+        const auto expiry=QDateTime::fromString(uploaded.receipt.objectReference["linkExpiresAt"].toString(),Qt::ISODateWithMs);
+        QVERIFY(expiry>QDateTime::currentDateTimeUtc().addDays(2));
+        const auto renewed=f.await<StatResult>([&](auto cb){f.provider.refreshLink(uploaded.receipt,cb);});
+        QCOMPARE(renewed.status,QString("own"));
+        QCOMPARE(renewed.receipt.destination.toJson(),uploaded.receipt.destination.toJson());
+        QCOMPARE(renewed.receipt.publicationId,uploaded.receipt.publicationId);
+        bool done=false;Error error;QJsonObject result;
+        f.provider.testDestination(f.destination,[](auto,auto ack){ack({});},[&](auto value,auto e){result=value;error=e;done=true;});
+        PUTGD_TRY_VERIFY(done);QVERIFY2(!error,qPrintable(error.code));
+        QVERIFY(result["presignedReachable"].toBool());QVERIFY(result["unsignedDenied"].toBool());
+    }
+
     void stalledPreflightCancelsPromptlyAndRetries() {
         S3Fixture f;
         // Longer than the cancellation bound: a timeout or released HEAD cannot pass.

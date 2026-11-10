@@ -16,6 +16,7 @@
 #include "ui/MainWindow.h"
 #include "ui/Ui.h"
 #include "fixtures/UiSessionFixture.h"
+#include "storage/s3/S3Provider.h"
 #include "app/DiagnosticsBundle.h"
 #include <QFile>
 #include <QFileDialog>
@@ -143,6 +144,14 @@ class HistoryGui:public QObject {
  static int operationRow(QListView* list,const QString& id){auto* model=qobject_cast<HistoryModel*>(list->model());for(int row=0;row<model->rowCount();++row)if(model->record(row)["operationId"]==id)return row;return -1;}
  static bool rowMenuAction(QListView* list,const QString& text){
   list->window()->activateWindow();list->setFocus();putgd::test::settle(20);auto triggered=std::make_shared<bool>(false);QTimer::singleShot(0,list,[triggered,text]{for(auto* widget:QApplication::topLevelWidgets())if(auto* menu=qobject_cast<QMenu*>(widget);menu&&menu->isVisible()){for(auto* action:menu->actions())if(action->text()==text&&action->isEnabled()){action->trigger();*triggered=true;break;}menu->close();}});list->setFocus();QTest::keyClick(list,Qt::Key_Menu);QCoreApplication::processEvents();return *triggered;
+ }
+ static Operation expiredS3Link(const Settings& settings,const QString& id){
+  Operation op;op.id=id;op.created=QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs);op.state="completed";op.settings=settings;
+  OperationItem item;item.artifact.id=id+"-item";item.artifact.name=id+".txt";item.uploadStatus="uploaded";item.remoteStatus="present";
+  auto profile=Settings::developmentTemplate()["profiles"].toArray().first().toObject();auto storage=profile["settings"].toObject();storage["linkMode"]="presigned";
+  item.receipt.destination={"s3","original-profile","original-revision",storage,{{"mode","keychain"},{"reference","synthetic-not-loaded"}}};
+  item.receipt.objectReference={{"schemaVersion",1},{"key","private.txt"},{"versionId",""},{"sha256",QString(64,'a')},{"bytes",0},{"linkExpiresAt","2000-01-01T00:00:00.000Z"}};item.receipt.publicationId="synthetic";item.receipt.concurrencyToken="etag";item.receipt.directUrl="https://example.invalid/private?X-Amz-Signature=expired";op.items={item};
+  return op;
  }
 private slots:
 
@@ -650,6 +659,42 @@ private slots:
   PUTGD_TRY_VERIFY(status->text().contains("Link: "+outcome));if(outcome=="failed")QVERIFY(status->text().contains("Synthetic sharing failure"));
   PUTGD_TRY_VERIFY((outcome=="shared"?reopened.findChild<QLineEdit*>("historyLink")->isVisible():readableStatus(reopened.findChild<QLabel*>("historyOutcome")->text()).contains("Sharing failed")));QVERIFY(status->text().contains("Link: "+outcome));
   QCOMPARE(provider->mutations.load(),1);QCOMPARE(provider->storage.uploads.load(),1);QCOMPARE(source.reads,1);QCOMPARE(source.copies,0);
+ }
+ void expiredCopyEntryPointsOfferUnlockForTheirOwnItem_data(){
+  QTest::addColumn<QString>("entry");for(const auto& entry:QStringList{"button","row","menu"})QTest::newRow(qPrintable(entry))<<entry;
+ }
+ void expiredCopyEntryPointsOfferUnlockForTheirOwnItem(){
+  QFETCH(QString,entry);QTemporaryDir d;CredentialStore secrets;ProviderRegistry registry;registry.add("s3",std::make_shared<S3Provider>(secrets));
+  SettingsService settings(d.filePath("config.json"));QVERIFY(settings.save(Settings::defaults(),{}));Source source;OperationService operations(d.filePath("data"),settings,registry,source);PUTGD_TRY_VERIFY(operations.ready());
+  {HistoryStore store(operations.databasePath());QVERIFY(!store.saveOperation(expiredS3Link(settings.snapshot(),"expired")));}
+  HistoryService history(operations);UiSessionFixture fixture(settings,operations,history);QStringList copies,unlocks;
+  fixture.client.beforeDispatch=[&](const QString& method,const QJsonObject& params){if(method=="history.copyLink")copies.append(params["id"].toString());if(method=="history.unlockLinkCredentials"){unlocks.append(params["id"].toString());fixture.client.failOnce[method]={"synthetic_unlock","Explicit unlock observed",{}};}};
+  HistoryWindow window(fixture.session);window.resize(900,700);window.show();auto* list=window.findChild<QListView*>("historyList");PUTGD_TRY_COMPARE(list->model()->rowCount(),1);
+  auto* copy=window.findChild<QPushButton*>("copyHistoryLink");auto* unlock=window.findChild<QPushButton*>("historyUnlockLinkCredentials");
+  // Row copies must not depend on an inspector detail reply winning the race.
+  fixture.client.replyDelayMs["history.detail"]=700;
+  if(entry=="button"){inspectRow(list,0);PUTGD_TRY_VERIFY(copy->isEnabled());copy->click();}
+  else if(entry=="row"){selectRow(list,0);auto* primary=window.findChild<QToolButton*>("historyRowPrimary");PUTGD_TRY_VERIFY(primary->isVisible());primary->click();}
+  else{selectRow(list,0);QVERIFY(rowMenuAction(list,"Copy link"));}
+  PUTGD_TRY_COMPARE(copies,QStringList{"expired-item"});PUTGD_TRY_VERIFY(unlock->isVisible());QVERIFY(unlocks.isEmpty());QCOMPARE(source.copies,0);
+  // A later detail reply for this same item must retain the bound unlock action.
+  PUTGD_VERIFY_STEADY(unlock->isVisible(),750);QVERIFY(unlocks.isEmpty());unlock->click();PUTGD_TRY_COMPARE(unlocks,QStringList{"expired-item"});
+ }
+ void expiredCopyIgnoresReplyAfterSelectionChanges_data(){expiredCopyEntryPointsOfferUnlockForTheirOwnItem_data();}
+ void expiredCopyIgnoresReplyAfterSelectionChanges(){
+  QFETCH(QString,entry);QTemporaryDir d;CredentialStore secrets;ProviderRegistry registry;registry.add("s3",std::make_shared<S3Provider>(secrets));
+  SettingsService settings(d.filePath("config.json"));QVERIFY(settings.save(Settings::defaults(),{}));Source source;OperationService operations(d.filePath("data"),settings,registry,source);PUTGD_TRY_VERIFY(operations.ready());
+  {HistoryStore store(operations.databasePath());QVERIFY(!store.saveOperation(expiredS3Link(settings.snapshot(),"first")));QVERIFY(!store.saveOperation(expiredS3Link(settings.snapshot(),"second")));}
+  HistoryService history(operations);UiSessionFixture fixture(settings,operations,history);QStringList copies,unlocks;
+  fixture.client.beforeDispatch=[&](const QString& method,const QJsonObject& params){if(method=="history.copyLink")copies.append(params["id"].toString());if(method=="history.unlockLinkCredentials"){unlocks.append(params["id"].toString());fixture.client.failOnce[method]={"synthetic_unlock","Explicit unlock observed",{}};}};
+  fixture.client.replyDelayMs["history.copyLink"]=350;HistoryWindow window(fixture.session);window.resize(900,700);window.show();auto* list=window.findChild<QListView*>("historyList");PUTGD_TRY_COMPARE(list->model()->rowCount(),2);
+  const int first=operationRow(list,"first"),second=operationRow(list,"second");inspectRow(list,first);auto* copy=window.findChild<QPushButton*>("copyHistoryLink");PUTGD_TRY_VERIFY(copy->isEnabled());
+  if(entry!="button")window.command({{"action","closeDetails"}},[](Error e,QJsonObject){QVERIFY(!e);});
+  if(entry=="button")copy->click();else if(entry=="row"){auto* primary=window.findChild<QToolButton*>("historyRowPrimary");PUTGD_TRY_VERIFY(primary->isVisible());primary->click();}else QVERIFY(rowMenuAction(list,"Copy link"));
+  PUTGD_TRY_COMPARE(copies,QStringList{"first-item"});inspectRow(list,second);PUTGD_TRY_COMPARE(window.findChild<QLabel*>("historyTitle")->text(),QString("second.txt"));
+  auto* unlock=window.findChild<QPushButton*>("historyUnlockLinkCredentials");PUTGD_VERIFY_STEADY(unlock->isHidden(),450);QVERIFY(unlocks.isEmpty());QCOMPARE(source.copies,0);
+  // A hidden/stale button can never fall back to whichever detail is current.
+  unlock->click();PUTGD_VERIFY_STEADY(unlocks.isEmpty(),30);
  }
  void linkRowShowsTheConfirmedExpiry(){
   // History's link row says when the link expires, and that it expired once it has (#253).
