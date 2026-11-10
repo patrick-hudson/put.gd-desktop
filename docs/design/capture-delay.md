@@ -109,9 +109,10 @@ screen), so nothing was captured."). The wait is that long because a busy compos
 answers late: one second was missed once by a software-rendered guest that was
 starting a browser.
 
-An immediate capture has no countdown to witness it. On Budgie one requested by an
-agent while gtklock is up gets what labwc is showing, which is the lock screen and
-nothing behind it; this was so before #1363 and labwc offers no state to refuse on
+Budgie also requires fresh transparent layer-surface frames before and after each
+actual pixel copy, including immediate agent requests, monitor capture and repeated
+regions. If either frame is withheld, its pixels are discarded with `session_locked`;
+this conservatively refuses an unlocked display that is blanked or powered off too
 ([Budgie](../desktops/budgie.md)).
 
 ## Repeat last region
