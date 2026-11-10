@@ -398,6 +398,13 @@ tools for that are `tools/lab/cover_player.py` and `tools/lab/record_run.py`
   the default input for the run, to show that a moved system-audio stream never
   lands on it. The recording must go on and hold the whole time recorded;
   `afterOutputGone.recordedFrom` names the source the recorder reads afterwards.
+  `--delayed-capture desktop:3` (or `monitor`, and 5 or 10) checks a delayed
+  capture and a recording in one resident session: `action.invoke` with
+  `delaySeconds` before `recording.prepare` and again after the recording is
+  cancelled. Each capture must end `completed` no sooner than its delay, saved
+  to the run's private archive and at least half cover colour
+  (`delayedCaptures` in the results); with `--frames` a frame of each countdown
+  is kept and `countdownPixels` counts what the pill changed at the top centre.
 - `record_run.py --click S,X,Y[,BUTTON]` (repeatable) presses a button at a
   desktop pixel S seconds into each recording, as real input through the
   desktop's VNC tile (`--click-vnc HOST:PORT` in a guest: QEMU's VNC on the VM
