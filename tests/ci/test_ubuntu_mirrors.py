@@ -37,6 +37,10 @@ class UbuntuMirrors(unittest.TestCase):
 
     def server(self, delay=0):
         class Handler(http.server.BaseHTTPRequestHandler):
+            def do_HEAD(self):
+                self.send_response(200)
+                self.end_headers()
+
             def do_GET(self):
                 self.send_response(200)
                 self.send_header('Content-Length', str(2 * 1024 * 1024))
@@ -62,8 +66,11 @@ class UbuntuMirrors(unittest.TestCase):
 
     def run_snippet(self, hosts):
         env = dict(os.environ, PUTGD_APT_ROOT=str(self.apt),
-                   PUTGD_UBUNTU_MIRROR_HOSTS=' '.join(hosts))
-        return subprocess.run(['bash', '-euo', 'pipefail', '-c', snippet(WORKFLOWS[0])],
+                   PUTGD_UBUNTU_MIRROR_HOSTS=' '.join(hosts)).replace('/dev/tcp/$host/80', '/dev/tcp/${host%:*}/${host##*:}')
+        script = snippet(WORKFLOWS[0]).replace(
+            'us.archive.ubuntu.com mirrors.edge.kernel.org azure.archive.ubuntu.com archive.ubuntu.com',
+            ' '.join(hosts)).replace('/dev/tcp/$host/80', '/dev/tcp/${host%:*}/${host##*:}')
+        return subprocess.run(['bash', '-euo', 'pipefail', '-c', script],
                               env=env, check=True, timeout=16,
                               capture_output=True, text=True).stdout
 
