@@ -226,3 +226,27 @@ budget acceptance and out-of-range rejection without an account; complete
 1,048,337-byte stdout drain passed. Four upstream Crypto/Bun type errors remain;
 no helper/test type diagnostics remain. Live large-file recovery and release
 acceptance are recorded separately in `docs/history/proton-drive-verification.md`.
+
+
+## Fewer requests per helper call (2026-11-10)
+
+Every helper call repeated the account and folder reads one request at a time,
+and the SDK fetched each parent again because entity metadata used NullCache.
+The helper now keeps node metadata in a second bounded request cache, reads the
+account root, folder and file in one batch that the cache never answers, starts
+the user and address reads together, and enables the SDK's single-request
+upload for files under 128 KiB.
+
+Timed on d69 against the live test account with the source helper, one helper
+per stage as the application runs it, three alternating runs each:
+
+| Payload | Before: name check + upload + share link | After |
+| --- | --- | --- |
+| 64 KiB | 17.9, 15.8, 13.7 s | 7.4, 6.5, 6.0 s |
+| 1 MiB | 16.5, 18.4, 23.2 s | 9.4, 9.0, 8.5 s |
+
+Requests for the 64 KiB publish fell from 38 (6 + 13 + 19) to 20 (5 + 6 + 9).
+Every run ended `absent`, `uploaded`, `shared` and `revoked`; sharing requires
+the ownership check to read back the publication marker, so the small-file
+request stores it. 50 helper tests pass. Type checking reports only the three
+upstream Crypto stream declaration errors.

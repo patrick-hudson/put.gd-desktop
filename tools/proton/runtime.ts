@@ -10,7 +10,7 @@ import { AccountApiError } from 'proton-drive-sdk-account';
 import { writeJson } from './stdout';
 import { createProgressReporter } from './progress';
 
-type Context = { sdk: ProtonDriveClient; auth: Awaited<ReturnType<typeof initialize>>['auth'] };
+type Context = Pick<Awaited<ReturnType<typeof initialize>>, 'sdk' | 'auth' | 'fresh' | 'warm'>;
 const controller = new AbortController();
 let mutationStarted = false;
 let finalWrite: Promise<void> | undefined;
@@ -52,6 +52,7 @@ async function readRequest(): Promise<JsonObject> {
 }
 export async function accountRoot(ctx: Context, request: JsonObject, configuredRequired = true) {
     if (!ctx.auth.isLoggedIn()) throw new ProtocolError('authentication_required');
+    ctx.warm();
     let root: NodeEntity;
     try { root = await ctx.sdk.getMyFilesRootFolder(); }
     catch (error) {
@@ -61,13 +62,35 @@ export async function accountRoot(ctx: Context, request: JsonObject, configuredR
     if (configuredRequired && root.uid !== text(request.destination.settings.accountRootUid)) throw new ProtocolError('account_changed');
     return root;
 }
-export async function destinationFolder(ctx: Context, request: JsonObject) {
+// One batched read from the service, never from this request's cache (see `fresh`).
+// A node the service does not return is absent from the result.
+async function readNodes(ctx: Context, uids: string[]): Promise<Map<string, NodeEntity>> {
+    const nodes = new Map<string, NodeEntity>();
+    await ctx.fresh(async () => {
+        for await (const node of ctx.sdk.iterateNodes([...new Set(uids)], controller.signal))
+            if (!('missingUid' in node)) nodes.set(node.uid, node);
+    });
+    return nodes;
+}
+// The configured folder, checked against the account, with any `further` nodes: one
+// batch for all of them instead of a request each.
+export async function readDestination(ctx: Context, request: JsonObject, further: string[] = []) {
+    if (!ctx.auth.isLoggedIn()) throw new ProtocolError('authentication_required');
+    const { accountRootUid, folderUid } = configured(request);
+    ctx.warm();
+    let nodes = new Map<string, NodeEntity>(), failed: unknown;
+    try { nodes = await readNodes(ctx, [accountRootUid, folderUid, ...further]); }
+    catch (error) { failed = error; }
+    // The service names My files, not the configured UID: another root is another account.
     const root = await accountRoot(ctx, request);
-    const { folderUid } = configured(request);
-    const folder = folderUid === root.uid ? root : await ctx.sdk.getNode(folderUid);
-    if (folder.type !== NodeType.Folder || folder.trashTime || folder.errors?.length || !folder.name.ok ||
-        (folder.uid !== root.uid && folder.parentUid !== root.uid)) throw new ProtocolError('destination_unavailable');
-    return folder;
+    if (failed) throw failed;
+    const folder = nodes.get(folderUid);
+    if (!nodes.has(root.uid) || !folder || folder.type !== NodeType.Folder || folder.trashTime || folder.errors?.length ||
+        !folder.name.ok || (folder.uid !== root.uid && folder.parentUid !== root.uid)) throw new ProtocolError('destination_unavailable');
+    return { folder, nodes };
+}
+export async function destinationFolder(ctx: Context, request: JsonObject) {
+    return (await readDestination(ctx, request)).folder;
 }
 export async function inspectAccount(ctx: Context, request: JsonObject): Promise<JsonObject> {
     const root = await accountRoot(ctx, request, !!request.destination.settings.accountRootUid);
@@ -108,16 +131,15 @@ export async function checkName(ctx: Context, request: JsonObject) {
 export async function stat(ctx: Context, request: JsonObject) {
     const proof = receipt(request), ref = proof.objectReference;
     try {
-        await destinationFolder(ctx, request);
-        let node: NodeEntity;
-        try { node = await ctx.sdk.getNode(ref.nodeUid); }
-        catch {
-            // A denied lookup is not absence. Only a complete folder list proves missing here.
+        const node = (await readDestination(ctx, request, [ref.nodeUid])).nodes.get(ref.nodeUid);
+        if (!node) {
+            // An unanswered lookup is not absence. Only a complete folder list proves missing here.
             for await (const uid of ctx.sdk.iterateFolderChildrenNodeUids(ref.folderUid, undefined, controller.signal))
                 if (uid === ref.nodeUid) return status('unknown');
             return status('missing');
         }
-        return status(classifyNode(node, ref, proof.publicationId), { ...(classifyNode(node, ref, proof.publicationId) === 'own' ? { receipt: proof } : {}) });
+        const ownership = classifyNode(node, ref, proof.publicationId);
+        return status(ownership, ownership === 'own' ? { receipt: proof } : {});
     } catch (error) { return status('unknown', { error: serviceFailure(error, 'operation_unknown', ctx.auth.isLoggedIn()) }); }
 }
 async function reconcile(ctx: Context, request: JsonObject) {

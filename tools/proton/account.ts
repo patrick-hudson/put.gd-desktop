@@ -4,8 +4,7 @@ import path from 'node:path';
 import { CryptoProxy } from '@protontech/crypto';
 import { Api as CryptoApi } from '@protontech/crypto/proxy/endpoint/api.ts';
 import { computeKeyPassword, generateKeySalt, getRandomSrpVerifier, getSrp } from '@protontech/crypto/srp';
-import { ProtonDriveClient, OpenPGPCryptoWithCryptoProxy, type ProtonDriveCryptoCache } from '@protontech/drive-sdk';
-import { NullCache } from '@protontech/drive-sdk/cache';
+import { FeatureFlags, ProtonDriveClient, OpenPGPCryptoWithCryptoProxy, type ProtonDriveCryptoCache } from '@protontech/drive-sdk';
 import { Telemetry } from '@protontech/drive-sdk/telemetry';
 import { ApiClient, initAccount } from 'proton-drive-sdk-account';
 import { Credentials } from './upstream/cli/src/credentials/credentials';
@@ -18,7 +17,7 @@ import { getOrGenerateClientUid } from './upstream/cli/src/clientUid';
 import { processDriveRequirementHeaders, SUPPORTED_REQUIREMENT_MASK_BY_SCOPE } from './upstream/cli/src/api/apiRequirements';
 import { createServerTimeAfterResponseHook } from './upstream/cli/src/api/serverTimeHook';
 import { ProtocolError, publicationClientUid, type JsonObject } from './protocol';
-import { RequestCryptoCache } from './crypto-cache';
+import { RequestCache } from './crypto-cache';
 export const APP_VERSION = 'external-drive-put_gd@0.1.1-alpha';
 export const SDK_VERSION = 'js@0.23.0';
 export const SECRET_SERVICE = 'ch.proton.drive/putgd';
@@ -30,7 +29,7 @@ export async function privateDataDirectory(): Promise<string> {
         await realpath(input) !== path.resolve(input)) throw new ProtocolError('unsafe_data_directory');
     return input;
 }
-export function createCryptoCache(): ProtonDriveCryptoCache { return new RequestCryptoCache(); }
+export function createCryptoCache(): ProtonDriveCryptoCache { return new RequestCache(); }
 // A refused session write (no default keyring collection, or a locked one) is a
 // keychain failure, not a generic operation failure (#252). libsecret stores
 // through the Secret Service 'default' alias; the provider decides its target.
@@ -74,12 +73,27 @@ export async function initialize(request: JsonObject) {
             accountUrl: 'account.proton.me' });
     } catch { throw new ProtocolError('keychain_unavailable'); }
     const clientUid = publicationClientUid(request) ?? await getOrGenerateClientUid({ appDir: dataDir, clientUidPrefix: 'putgd' } as any, logger);
+    const entities = new RequestCache<string>();
     const sdk = new ProtonDriveClient({ config: { baseUrl: 'drive-api.proton.me', clientUid },
         httpClient: new HTTPClient(apiClient), telemetry, account: new DriveAccountAdapter(account.addresses),
         srpModule: account.srp, openPGPCryptoModule: new OpenPGPCryptoWithCryptoProxy(CryptoProxy),
-        // No persisted entities, decrypted keys or names. Entity reads reach the API;
-        // parent keys may be reused only inside this bounded request.
-        entitiesCache: new NullCache(), cryptoCache: createCryptoCache(),
-        featureFlagProvider: { isEnabled: async () => false } });
-    return { sdk, auth: account.auth, accountReferenceExists };
+        // No persisted entities, decrypted keys or names: both caches live in this request's
+        // memory. Ownership and destination checks read past the entity cache (`fresh`).
+        entitiesCache: entities, cryptoCache: createCryptoCache(),
+        // One request carries a file under 128 KiB, as in Proton's own CLI at this pin.
+        featureFlagProvider: { isEnabled: async flag => flag === FeatureFlags.DriveSmallFileUpload } });
+    let warmed = false;
+    return { sdk, auth: account.auth, accountReferenceExists,
+        fresh: <R>(read: () => Promise<R>) => entities.fresh(read),
+        // Loads the user and address keys every request needs beside its first Drive read.
+        // The account code asks for the user, then the addresses: both reads start here at
+        // once, and its first address read is answered by the one already under way.
+        warm: () => {
+            if (warmed) return;
+            warmed = true;
+            const api = account.accountApi, read = api.addresses.bind(api), early = read();
+            early.catch(() => {});
+            api.addresses = () => { api.addresses = read; return early; };
+            void account.addresses.getOwnPrimaryAddress().catch(() => {});
+        } };
 }

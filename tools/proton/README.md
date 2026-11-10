@@ -59,7 +59,8 @@ write, during Connect or a token refresh, reports `keychain_unavailable`.
 Upload accepts only `condition:"absent"`, plus `candidate`, `publicationId`,
 and `artifact:{path,name,mime,bytes,sha256}`. It hashes and streams the same open
 regular file, rejects a final symlink, and provides expected size/SHA-1 to the
-SDK. Encrypted additional metadata stores publication ID and SHA-256. Receipts
+SDK. A file under 128 KiB goes in the SDK's single small-file request, enabled
+as in Proton's own CLI at this pin; larger files stream 4 MiB blocks. Encrypted additional metadata stores publication ID and SHA-256. Receipts
 contain exact SDK completion node/revision IDs, the revision concurrency token,
 and SHA-256 inside `objectReference`. Upload never overwrites an existing file
 or uploads a revision. Uncertain mutations return `unknown` for reconciliation.
@@ -82,9 +83,16 @@ Denial never proves absence. Name checks return `absent`,
 query; lookup failures remain inconclusive. Atomic SDK creation still decides
 collisions, and missing-file reconciliation still requires a complete listing.
 
-Each request uses a bounded 64-entry SDK crypto-key cache. It has no disk or
-cross-request lifetime. Entity metadata uses NullCache, preserving fresh
-server identity/revision reads before and after sharing.
+Each request has two bounded 64-entry caches in memory, one for SDK crypto keys
+and one for node metadata. Neither is written to disk or outlives the request.
+The helper's own destination and ownership checks never read the metadata
+cache: each one is a batched service read of the account root, the configured
+folder and, for stat and sharing, the file, during which the cache answers
+nothing. The SDK reuses what that read returned for its own parent and key
+lookups, which were a request each before. Sharing still reads the file from
+the service before and after the mutation. The user and address keys load
+beside the first Drive read. One 64 KiB publish made 38 requests before these
+changes and makes 20 with them.
 
 Share takes the receipt and `options:{action:"create"|"revoke"|"inspect",
 expirationDays,passwordReference}`. The caller persists its mutation checkpoint

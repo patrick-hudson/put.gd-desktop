@@ -1,5 +1,6 @@
 import { expect, test } from 'bun:test';
 import { createCryptoCache } from './account';
+import { RequestCache } from './crypto-cache';
 test('request crypto cache retains keys until explicit invalidation', async () => {
     const cache = createCryptoCache(), value = {};
     await cache.setEntity('synthetic-node-key', value);
@@ -29,4 +30,20 @@ test('request crypto cache replacement, tagged enumeration and clearing preserve
     expect(await collect('old')).toEqual([]); expect((await collect('new')).length).toBe(1);
     await cache.clear(); await expect(cache.getEntity('key')).rejects.toThrow();
     expect(await collect('new')).toEqual([]);
+});
+test('a fresh read is never answered from the cache, and what it stored answers afterwards', async () => {
+    const cache = new RequestCache<string>();
+    await cache.setEntity('node', 'before', ['tag']);
+    const tagged = async () => { const entries = []; for await (const entry of cache.iterateEntitiesByTag('tag')) entries.push(entry); return entries; };
+    await cache.fresh(async () => {
+        await expect(cache.getEntity('node')).rejects.toThrow();
+        for await (const entry of cache.iterateEntities(['node'])) expect(entry.ok).toBe(false);
+        expect(await tagged()).toEqual([]);
+        await cache.setEntity('node', 'after', ['tag']);
+    });
+    expect(await cache.getEntity('node')).toBe('after');
+    expect((await tagged()).length).toBe(1);
+    // A failed read answers again afterwards too.
+    await expect(cache.fresh(async () => { throw new Error('synthetic'); })).rejects.toThrow('synthetic');
+    expect(await cache.getEntity('node')).toBe('after');
 });
