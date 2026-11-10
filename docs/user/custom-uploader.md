@@ -228,9 +228,13 @@ does not know of.
 | Other 5xx, before the request was complete | `http_upload_interrupted`, or `http_server_error` where the status was read |
 | Other 4xx | `http_request_refused` |
 
-The status line decides first. A 4xx other than 408 is a refusal even when the rest of
-its reply was cut short, and a 5xx follows its own rows; whether a reply arrived whole
-matters for a 2xx, the only kind that could otherwise count as an upload.
+The status line decides first. A 4xx other than 408 that answers the upload request
+itself is a refusal even when the rest of its reply was cut short, and a 5xx follows
+its own rows; whether a reply arrived whole matters for a 2xx, the only kind that could
+otherwise count as an upload. One exception: after a 301, 302 or 303 the reply is
+fetched from the address the server named, and any status but a 2xx from there, a 4xx
+included, is an unknown outcome (`http_outcome_unknown`). The upload request had
+already been answered, so the file may be stored.
 
 Text from the server is shown on one line, bounded, with every credential of the
 destination ([what counts](#what-counts-as-a-credential)) removed, however the server
@@ -289,7 +293,9 @@ Confirming it journals the intent, then sends one GET of the recorded deletion U
   after, and a server that answers 200 while the link still serves the same bytes gets
   `http_delete_unconfirmed`, not "deleted". A check whose reply was cut short, before
   or after the deletion, is held against the other as far as it came: a link that still
-  answers with the bytes it had is `http_delete_unconfirmed` as well.
+  answers with the bytes it had is `http_delete_unconfirmed` as well, and so is one
+  whose check brought none of the file (the message then says that the check shows
+  nothing either way).
 - A lost reply leaves the deletion unknown; **Retry** asks the server again and finds
   the file gone. A redirect that put.gd does not follow is unknown too: the server
   received the request. A deletion URL that names a stored value follows no redirect
@@ -313,10 +319,14 @@ rather than silently repeated. An upload that has no body (**Body** None, its te
 the address) is sent with an empty one for the same reason, so such a request carries
 `Content-Length: 0`. Qt reports nothing about connecting or sending for a request like
 that over plain HTTP. So that the destination's **Connect timeout** still holds, the
-worker first asks the server for a connection of its own within that timeout: a server
-that gives none fails the upload as `http_connect_failed`, and nothing was sent. A
-server that gives one is sent the request, which then counts as sent, and from there
-only the request timeout applies. HTTP/1.1 is used, so "was it sent" has one answer.
+worker first asks the server for a connection of its own within that timeout, and makes
+the request only when it got one: a server that gives none fails the upload as
+`http_connect_failed`, and nothing was sent. A server that gives one is sent the
+request, which then counts as sent, and from there only the request timeout applies.
+Through an HTTP proxy (`http_proxy`) there is no server to ask, since the proxy takes
+the request: there the check is left out, the connect timeout does not apply to such
+an upload, and one that is stopped or times out is an unknown outcome. HTTP/1.1 is
+used, so "was it sent" has one answer.
 
 Whether a reply arrived whole is not left to what Qt reports either. When a connection
 ends under a reply, Qt reports a closed connection or, when it was still finishing the
