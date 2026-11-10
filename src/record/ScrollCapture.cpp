@@ -164,6 +164,7 @@ void ScrollCapture::removeFiles() {
     QFile::remove(staging_ + "/scroll.png");
 }
 void ScrollCapture::release() {
+    escape_.stop();
     tap_.stop();
     imageCopy_.reset();
     mutter_.close();
@@ -467,6 +468,8 @@ void ScrollCapture::begin(const FrameTap::Source& source, Reply reply) {
     showBar();
     debugLog(QStringLiteral("scroll: capturing %1,%2 %3x%4 with %5").arg(rect_.x()).arg(rect_.y()).arg(rect_.width()).arg(rect_.height()).arg(injector_->name()));
     worker_ = std::thread(&ScrollCapture::work, job_);
+    // Escape on X11 is Stop: the image so far is kept.
+    if (surfaceMode() == SurfaceMode::X11) escape_.start([this] { if (state_ == State::Capturing && !stopRequested_ && !cancelRequested_) stop([](Error, QJsonObject) {}); });
     reply({}, {{"state", "capturing"}, {"rect", rectJson(rect_)}});
 }
 

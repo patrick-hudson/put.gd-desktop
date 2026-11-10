@@ -5,6 +5,7 @@
 #include "Overlays.h"
 #include "ScrollBar.h"
 #include "ScrollInjector.h"
+#include "X11EscapeWatch.h"
 #ifdef PUTGD_RECORD_KDE_SCREENCAST
 #include "KdeScreencast.h"
 #endif
@@ -32,7 +33,8 @@ namespace putgd::record {
 // autoStart, selection}, select {rect}, start, stop, cancel, overlay {visible}.
 // Events: selected, progress, finished, cancelled, failed (ScrollBackend.h).
 // Only wheel steps and pointer motion are injected, only while capturing, and
-// nothing after stop, cancel or the end of the control pipe.
+// nothing after stop, cancel or the end of the control pipe. Stop is the bar's
+// button, the `stop` command and, on X11, Escape.
 class ScrollCapture final : public QObject {
     Q_OBJECT
 public:
@@ -89,6 +91,8 @@ private:
     std::unique_ptr<ImageCopySource> imageCopy_;
     std::unique_ptr<ScrollInjector> injector_;
     FrameTap tap_;
+    // X11: Escape stops the capture and keeps the image, whatever has the focus.
+    X11EscapeWatch escape_;
     std::shared_ptr<Job> job_;
     std::thread worker_;
 };

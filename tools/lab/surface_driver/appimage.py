@@ -90,7 +90,7 @@ def sync_entries(root, socket_path, cleanup=False):
     for path in (data / 'applications').glob('putgd-record-appimage-*.desktop'):
         entry, argv = read_entry(path)
         if argv == [str(executable.with_name('putgd-record'))]:
-            assert entry.get('X-KDE-Wayland-Interfaces') == 'zkde_screencast_unstable_v1'
+            assert entry.get('X-KDE-Wayland-Interfaces') == 'zkde_screencast_unstable_v1,org_kde_kwin_fake_input'
             matches.append(path)
     applications.mkdir(parents=True, exist_ok=True)
     assert applications.resolve() == applications and applications.stat().st_uid == uid

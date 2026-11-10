@@ -15,6 +15,7 @@
 #include "platform/budgie/LabwcBridgeBackend.h"
 #include "platform/wayland/ClipboardKeeper.h"
 #include "platform/wayland/ImageCopyCapture.h"
+#include "platform/wayland/VirtualPointer.h"
 #include "platform/wayland/WaylandOutputs.h"
 #include <QDBusConnection>
 #include <QDir>
@@ -554,6 +555,59 @@ private slots:
   QVERIFY2(received,seen.constData());
   PUTGD_COMPARE_STEADY(presses.size(),reported,500);
   QFile after(config_+"/rc.xml");QVERIFY(after.open(QIODevice::ReadOnly));QCOMPARE(after.readAll(),original);
+ }
+ // #1376: the scroll capture's wheel on labwc. The product's virtual pointer, mapped to the window's
+ // output, goes over the fixture window and turns the wheel: each notch reaches the window as one
+ // wheel step of a mouse (the wheel as the source, 15 with a discrete step of 1), down and up, and
+ // nothing it sends is a button press. The lab tool's `axis` sends the same over the whole layout.
+ void aWheelNotchFromTheVirtualPointerReachesTheWindow(){
+  ImageCopyCapture capture;QVERIFY(waitFor([&]{return capture.outputsAvailable();}));
+  QRect green;QPoint origin;QString seenOn;QSize extent;
+  const auto find=[&]{
+   for(const auto& frame:layout_){
+    QImage image;Error failure;bool done=false;
+    capture.captureOutput(frame.identity,ResourceLimits{},[&](QImage result,Error error){image=std::move(result);failure=error;done=true;});
+    if(!waitFor([&]{return done;})||failure)continue;
+    QRect found;for(int y=0;y<image.height();y+=4)for(int x=0;x<image.width();x+=4)if(rgb(image,x,y)==qRgb(0,160,0))found=found.united(QRect(x,y,1,1));
+    if(found.width()>100&&found.height()>60){green=found;origin=frame.logicalRect.toRect().topLeft();seenOn=frame.identity;extent=image.size();return true;}
+   }
+   return false;
+  };
+  QVERIFY2(waitFor(find,8000),"the fixture window shows on no output");
+  const auto facts=VirtualPointer::probe();
+  QVERIFY2(facts.available,qPrintable(facts.reason));QCOMPARE(facts.outputs,int(layout_.size()));
+  VirtualPointer pointer;QString why;
+  QVERIFY2(pointer.open(seenOn,&why),qPrintable(why));QVERIFY(pointer.isOpen());
+  (void)fixture_.readAllStandardOutput();
+  QByteArray seen;
+  const auto count=[&](const char* line){seen+=fixture_.readAllStandardOutput();return seen.count(line);};
+  const auto park=[&]{return pointer.moveTo(uint32_t(green.center().x()),uint32_t(green.center().y()),uint32_t(extent.width()),uint32_t(extent.height()));};
+  // The window binds the pointer only after the seat has announced this new device: as the capture
+  // loop does, the pointer is put there, given a moment and put there again before the first notch,
+  // and a first notch that still found no pointer under it is sent again.
+  bool down=false;
+  for(int attempt=0;attempt<3&&!down;++attempt){
+   QVERIFY(park());
+   putgd::test::settle(300);
+   const bool again=park();QVERIFY(again);
+   const int before=count("wheel -120\n");
+   QVERIFY(pointer.wheel(1));
+   down=waitFor([&]{return count("wheel -120\n")>before;},3000);
+  }
+  QVERIFY2(down,(labwc_.readAll()+seen).constData());
+  // Three notches up are three steps the other way.
+  const int up=count("wheel 120\n");
+  QVERIFY(pointer.wheel(-3));
+  QVERIFY2(waitFor([&]{return count("wheel 120\n")>=up+3;},5000),seen.constData());
+  // The lab tool, over the whole layout: two notches down.
+  const auto tool=QDir(QStringLiteral(PUTGD_SOURCE_DIR)).filePath("tools/lab/wayland_pointer.py");
+  const QRectF all=bounds();const QPoint at=origin+green.center()-all.topLeft().toPoint();
+  const int before=count("wheel -120\n");
+  QProcess axis;axis.start("python3",{"-I",tool,"axis",QString::number(at.x()),QString::number(at.y()),"2","--extent",QString::number(int(all.width())),QString::number(int(all.height()))});
+  QVERIFY(axis.waitForFinished(8000));QCOMPARE(axis.exitCode(),0);
+  QVERIFY2(waitFor([&]{return count("wheel -120\n")>=before+2;},5000),seen.constData());
+  // Wheel and motion only: the window saw no button.
+  QCOMPARE(count("press"),0);
  }
  // The layer-shell selector in putgd-region, driven by a virtual pointer drag:
  // exact size, only the fixture's pixels (no outline), live and screenshot first.

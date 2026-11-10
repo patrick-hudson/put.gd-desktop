@@ -23,7 +23,9 @@
 #include <QUuid>
 #include <memory>
 #include <xcb/xcb.h>
+#include <xcb/xcb_keysyms.h>
 #include <xcb/xinput.h>
+#include <xcb/xtest.h>
 
 using namespace putgd;
 namespace ruler = putgd::test::ruler;
@@ -307,6 +309,34 @@ private slots:
         QVERIFY(capture.files().isEmpty());
         PUTGD_VERIFY_STEADY(!capture.has("finished"), 400);
         QCOMPARE(capture.control("stop").error.code, QString("scroll_state"));
+        QVERIFY(capture.leave());
+    }
+    // Escape on X11, whatever window has the keyboard: Stop, with the image kept.
+    void escapeStopsAndKeepsTheImage() {
+        Fixture fixture;
+        QVERIFY(fixture.start({"--rows=600", "--notch=100"}));
+        Capture capture;
+        capture.prepare({{"rect", rectJson(page)}, {"maxHeight", 30000}, {"fromTop", false}, {"autoStart", true}});
+        QVERIFY(putgd::test::waitFor([&] { return capture.last("progress")["height"].toInt() > 1200 || capture.ended(); }, 60000));
+        QVERIFY(!capture.ended());
+        // The test's own key press: the helper sends keys never.
+        xcb_connection_t* connection = xcb_connect(nullptr, nullptr);
+        QVERIFY(connection && !xcb_connection_has_error(connection));
+        xcb_key_symbols_t* symbols = xcb_key_symbols_alloc(connection);
+        xcb_keycode_t* codes = xcb_key_symbols_get_keycode(symbols, 0xff1b);
+        QVERIFY(codes && codes[0] != XCB_NO_SYMBOL);
+        xcb_test_fake_input(connection, XCB_KEY_PRESS, codes[0], XCB_CURRENT_TIME, XCB_NONE, 0, 0, 0);
+        xcb_test_fake_input(connection, XCB_KEY_RELEASE, codes[0], XCB_CURRENT_TIME, XCB_NONE, 0, 0, 0);
+        xcb_flush(connection);
+        free(codes);
+        xcb_key_symbols_free(symbols);
+        QVERIFY(putgd::test::waitFor([&] { return capture.ended(); }, 30000));
+        xcb_disconnect(connection);
+        const auto finished = capture.last("finished");
+        QCOMPARE(finished["endReason"].toString(), QString("stopped"));
+        const int height = finished["height"].toInt();
+        QVERIFY(height > 1200 && height < 600 * ruler::rowHeight);
+        exact(capture, 0, 0, 0, (height - 1) / ruler::rowHeight, (height - 1) % ruler::rowHeight);
         QVERIFY(capture.leave());
     }
     void theSelectorTakesARectangleFromSelect() {

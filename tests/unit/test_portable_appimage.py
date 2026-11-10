@@ -98,7 +98,10 @@ exit 0
         self.assertEqual(completed.returncode, 0)
         receipt = self.receipt.read_text()
         self.assertIn('Exec="' + str(self.app / "usr/bin/putgd-record") + '"', receipt)
-        self.assertIn("X-KDE-Wayland-Interfaces=zkde_screencast_unstable_v1", receipt)
+        # The screencast for recordings, and the fake input a scrolling capture
+        # turns the wheel with (#1376): KWin through 6.7 offers each only to the
+        # executable of an entry that lists it.
+        self.assertIn("X-KDE-Wayland-Interfaces=zkde_screencast_unstable_v1,org_kde_kwin_fake_input\n", receipt)
         self.assertNotIn("ScreenShot2", receipt)
         self.assertTrue(receipt.endswith("600\n"))
         self.assertEqual(list((self.data / "applications").glob("putgd-*appimage-*.desktop")), [])
@@ -462,6 +465,17 @@ class DeploymentRejectionTest(unittest.TestCase):
         (self.app / "usr/lib/libva.so.2").write_bytes(b"\x7fELFsynthetic")
         with self.assertRaisesRegex(ValueError, "Host-provided libraries were bundled"):
             portable.audit_media(self.app, media, json.dumps(good))
+
+    def test_recorder_needs_the_bundled_xtest_library(self):
+        # #1376: a scrolling capture's wheel steps on X11 go through libxcb-xtest,
+        # which the hosts the image runs on need not have.
+        with self.assertRaisesRegex(ValueError, "libxcb-xtest.so.0"):
+            portable.audit_scroll_input(self.app)
+        (self.app / "usr/lib").mkdir(parents=True)
+        (self.app / "usr/lib/libxcb-xtest.so.0").write_bytes(b"\x7fELFsynthetic")
+        self.assertEqual(portable.audit_scroll_input(self.app), "libxcb-xtest.so.0")
+        with self.assertRaisesRegex(ValueError, "outside AppDir"):
+            self.run_audit(dependencies="libxcb-xtest.so.0 => /usr/lib/libxcb-xtest.so.0 (0x1234)\n")
 
     def test_host_qt_or_aws_dependency_is_rejected(self):
         for library in ("libQt6Core.so.6", "libaws-cpp-sdk-core.so"):

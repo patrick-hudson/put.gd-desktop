@@ -197,11 +197,13 @@ if [ -n "$kde" ]; then
     permission_entry=$(umask 077; mktemp "$applications/putgd-appimage-XXXXXXXX.desktop")
     printf '[Desktop Entry]\nType=Application\nName=put.gd AppImage capture\nExec="%s"\nIcon=putgd\nNoDisplay=true\nX-KDE-DBUS-Restricted-Interfaces=org.kde.KWin.ScreenShot2\nX-PutGD-AppImage-Owner=%s\n' \
         "$(desktop_escape "$appdir/usr/bin/putgd")" "$owner" >"$permission_entry"
-    # KWin offers its screencast protocol only to an executable whose own
-    # entry lists it, so the mounted recorder gets a second entry.
+    # KWin offers its screencast protocol, and through Plasma 6.7 its fake
+    # input protocol (the scrolling capture's wheel, #1376), only to an
+    # executable whose own entry lists them, so the mounted recorder gets a
+    # second entry.
     if [ -x "$appdir/usr/bin/putgd-record" ]; then
         record_entry=$(umask 077; mktemp "$applications/putgd-record-appimage-XXXXXXXX.desktop")
-        printf '[Desktop Entry]\nType=Application\nName=put.gd AppImage screen recorder\nExec="%s"\nIcon=putgd\nNoDisplay=true\nX-KDE-Wayland-Interfaces=zkde_screencast_unstable_v1\nX-PutGD-AppImage-Owner=%s\n' \
+        printf '[Desktop Entry]\nType=Application\nName=put.gd AppImage screen recorder\nExec="%s"\nIcon=putgd\nNoDisplay=true\nX-KDE-Wayland-Interfaces=zkde_screencast_unstable_v1,org_kde_kwin_fake_input\nX-PutGD-AppImage-Owner=%s\n' \
             "$(desktop_escape "$appdir/usr/bin/putgd-record")" "$owner" >"$record_entry"
     fi
     if ! host_cache; then
