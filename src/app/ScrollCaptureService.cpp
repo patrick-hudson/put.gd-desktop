@@ -67,8 +67,8 @@ void ScrollCaptureService::complete(QJsonObject r){
  if(reason=="height_cap"){const auto note=QString("Stopped at %1 px. The page continues below.").arg(QLocale(QLocale::English).toString(cap));op_.note=note;view_["note"]=note;emit warning(id_,note);}
  results_[id_]=view_;if(results_.size()>32)results_.erase(results_.begin());auto op=op_;const auto id=id_;id_.clear();pending_.clear();if(shell_)shell_->hideFrame();
  ClipboardPayload payload;if(edit_){payload.kind="files";payload.files={path};}else{payload.kind="png";payload.bytes=png;payload.mime="image/png";}
- QPointer<ScrollCaptureService> g(this);host_.admit(op,std::move(payload),[g,id,path]{if(g)QMetaObject::invokeMethod(g,[g,id,path]{if(g){g->backend_->discard(id);QFile::remove(path);RecordingService::discardStaging(g->root_+"/"+id);QDir().rmdir(g->root_+"/"+id);}},Qt::QueuedConnection);});
+ QPointer<ScrollCaptureService> g(this);host_.admit(op,std::move(payload),[g,id,path]{if(g)QMetaObject::invokeMethod(g,[g,id,path]{if(g){g->backend_->discard(id);QFile::remove(path);QDir(g->root_+"/"+id).removeRecursively();}},Qt::QueuedConnection);});
 }
-void ScrollCaptureService::terminate(Error e,bool cancelled){if(!active())return;const auto id=id_;op_.error=e;view_["error"]=e.toJson();op_.cancelled=cancelled;op_.state=cancelled?"cancelled":"failed";update(op_.state);results_[id]=view_;id_.clear();pending_.clear();if(shell_){shell_->cancelSelection();shell_->hideFrame();}backend_->discard(id);RecordingService::discardStaging(directory_);QDir().rmdir(directory_);host_.finish(op_);}
+void ScrollCaptureService::terminate(Error e,bool cancelled){if(!active())return;const auto id=id_;op_.error=e;view_["error"]=e.toJson();op_.cancelled=cancelled;op_.state=cancelled?"cancelled":"failed";update(op_.state);results_[id]=view_;id_.clear();pending_.clear();if(shell_){shell_->cancelSelection();shell_->hideFrame();}backend_->discard(id);QDir(directory_).removeRecursively();host_.finish(op_);}
 void ScrollCaptureService::shutdown(){if(active())terminate({"cancelled","Resident stopped",{}},true);}
 }
