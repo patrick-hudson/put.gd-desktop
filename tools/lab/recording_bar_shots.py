@@ -33,6 +33,7 @@ import argparse
 import json
 import os
 from pathlib import Path
+import signal
 import subprocess
 import sys
 import time
@@ -65,6 +66,7 @@ def main():
     socket = Path(env['XDG_RUNTIME_DIR']) / 'putgd' / 'session.sock'
     host, _, port = a.vnc.rpartition(':')
     mic_state = run / 'virtual-mic.json'
+    tone = None
     report = {'host': os.uname().nodename, 'desktop': desktop, 'session': env.get('XDG_SESSION_TYPE'), 'build': build.identity, 'states': {}}
 
     def cli(method, params=None, timeout=60):
@@ -94,6 +96,15 @@ def main():
             client.screenshot(str(run / 'shots' / (name + '.png')))
         finally:
             client.close()
+
+    def stop_tone():
+        # The tone is a gst-launch under virtual_mic.py: the whole group goes, and before the simulated microphone
+        # does, or the sound server would move the orphaned tone to the real default output.
+        nonlocal tone
+        if tone and tone.poll() is None:
+            os.killpg(tone.pid, signal.SIGTERM)
+            tone.wait(10)
+        tone = None
 
     def wait_ready(rid):
         deadline = time.monotonic() + 90
@@ -134,16 +145,22 @@ def main():
 
     # A resident's first start with a fresh configuration opens Settings by itself: let that happen, give the
     # configuration its revision, and take the pictures from a second start, which opens nothing.
+    def keep_local():
+        # A fresh configuration has no output; local copies stay inside the run.
+        settings = cli('settings.get')
+        if not ((settings.get('document') or {}).get('archive') or {}).get('keepUploads'):
+            cli('settings.patch', {'patch': {'archive': {'keepUploads': True, 'root': str(run / 'archive')}, 'preferences': {'notifications': False}},
+                                   'expectedRevision': (settings.get('metadata') or {}).get('observedRevision')})
+
     resident, _ = start()
     try:
-        settings = cli('settings.get')
-        cli('settings.patch', {'patch': {'archive': {'keepUploads': True, 'root': str(run / 'archive')}, 'preferences': {'notifications': False}},
-                               'expectedRevision': (settings.get('metadata') or {}).get('observedRevision')})
+        keep_local()
+        time.sleep(1.0)
     finally:
         quit_resident(resident)
     resident, capabilities = start()
+    keep_local()
     report['capabilities'] = {k: v for k, v in capabilities.items() if k in ('audio', 'clickHighlights', 'acquisition', 'targets')}
-    tone = None
     try:
         rect = [int(v) for v in a.rect.split(',')]
         for state in a.states.split(','):
@@ -151,8 +168,7 @@ def main():
             if state in ('off', 'on') and not mic_state.exists():
                 virtual_mic('create', '--name', 'putgd_lab_%d' % os.getpid(), '--state', str(mic_state))
             if state == 'none' and mic_state.exists():
-                if tone:
-                    tone.terminate(); tone.wait(5); tone = None
+                stop_tone()
                 virtual_mic('remove', '--state', str(mic_state))
                 mic_state.unlink(missing_ok=True)
             if state == 'settings':
@@ -165,7 +181,8 @@ def main():
             if state == 'on' and tone is None:
                 # A steady tone into the simulated microphone: the meter then shows a level in a still frame.
                 tone = subprocess.Popen([sys.executable, str(HERE / 'virtual_mic.py'), 'tone', '--state', str(mic_state), '--to', 'mic', '--hz', '440',
-                                         '--volume', '0.25', '--seconds', '120'], env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                                         '--volume', '0.25', '--seconds', '120'], env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                                        start_new_session=True)
                 time.sleep(1.0)
             entry['microphones'] = cli('recording.microphones', {'device': device} if device else {})
             audio = {'system': False, 'microphone': state == 'on'}
@@ -186,8 +203,7 @@ def main():
                 time.sleep(0.8)
             report['states'][state] = entry
     finally:
-        if tone:
-            tone.terminate()
+        stop_tone()
         if mic_state.exists():
             try:
                 virtual_mic('remove', '--state', str(mic_state))

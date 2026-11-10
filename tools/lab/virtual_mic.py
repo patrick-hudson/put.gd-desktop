@@ -22,6 +22,7 @@ PulseAudio; needs `pactl`, and `gst-launch-1.0` for `tone`.
 import argparse
 import json
 import os
+import signal
 import subprocess
 import sys
 
@@ -120,8 +121,13 @@ def tone(args):
     if not sink:
         raise SystemExit('no %s sink in this state; create it with --system-sink' % args.to)
     buffers = int(args.seconds * 44100 / 1024)
-    return subprocess.call(['gst-launch-1.0', '-q', 'audiotestsrc', 'freq=%g' % args.hz, 'volume=%g' % args.volume,
-                            'num-buffers=%d' % buffers, '!', 'audioconvert', '!', 'pulsesink', 'device=' + sink])
+    player = subprocess.Popen(['gst-launch-1.0', '-q', 'audiotestsrc', 'freq=%g' % args.hz, 'volume=%g' % args.volume,
+                               'num-buffers=%d' % buffers, '!', 'audioconvert', '!', 'pulsesink', 'device=' + sink])
+    # The player ends with this command: left alone it would outlive its sink, and the sound server
+    # would move it to the real default output.
+    for number in (signal.SIGTERM, signal.SIGINT, signal.SIGHUP):
+        signal.signal(number, lambda *_: player.terminate())
+    return player.wait()
 
 
 def main(argv=None):

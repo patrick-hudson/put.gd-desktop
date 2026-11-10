@@ -19,8 +19,9 @@ const QString service = QStringLiteral("org.putgd.App.Budgie");
 const QString objectPath = QStringLiteral("/org/putgd/Clicks");
 constexpr qint64 maximumRcBytes = 4 * 1024 * 1024;
 constexpr int settleMs = 80;
-// How long labwc is given to read rc.xml again before the capture starts.
-constexpr int reconfigureMs = 150;
+// How long labwc is given to read rc.xml again before the capture starts. A reconfigure shows on screen as
+// the pointer turning into the default arrow for about 130 ms (measured on labwc 0.20.2) and nothing else.
+constexpr int reconfigureMs = 250;
 
 struct Button { const char* name; int number; };
 constexpr Button buttons[] = {{"Left", 1}, {"Middle", 2}, {"Right", 3}};
