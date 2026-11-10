@@ -11,6 +11,7 @@
       "videocrop",
       "audioconvert",
       "audioresample",
+      "audiomixer",
       "ximagesrc",
       "pipewire",
       "pulseaudio",
@@ -35,7 +36,9 @@
       "h264parse",
       "aacparse",
       "voaacenc",
-      "x264enc"
+      "x264enc",
+      "audiomixer",
+      "identity"
     ]
   },
   "hostLibraries": [
