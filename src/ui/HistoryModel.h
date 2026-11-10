@@ -13,13 +13,33 @@ class HistoryModel final:public QAbstractListModel {
 public:
  enum Role { RecordRole=Qt::UserRole+1, SubtitleRole, DayRole, ThumbnailRole, ActiveRole, FailedRole, ProgressRole, PrimaryActionRole,
   // The History list's Destination and Created columns (2026-10-26).
-  OutputRole, CreatedRole };
+  OutputRole, CreatedRole,
+  // Day sections: SectionRole is the section a row belongs to ("In progress",
+  // "Today", "Saturday, November 7 · continued"); DayRole is the same text on
+  // the row that starts a section and empty on the others. DayCountRole is
+  // that section's stored files within the query ("14 items"), empty while
+  // unknown. CreatedTipRole is the full timestamp behind the time column.
+  SectionRole, DayCountRole, CreatedTipRole };
  explicit HistoryModel(UiSession&,QObject* parent=nullptr);
  int rowCount(const QModelIndex& parent={})const override;
  QVariant data(const QModelIndex&,int role=Qt::DisplayRole)const override;
  void setQuery(const UiHistoryQuery&);void refresh();QJsonObject record(int)const;bool linkAvailable(int)const;
  bool busy()const{return queryBusy_;}
  qint64 total()const{return total_;}const UiHistoryQuery& query()const{return query_;}
+ // Stored files the page holds (history.list records, not grouped rows).
+ int filesReturned()const{return records_.size();}
+ // Failed uploads: no day sections; the time column carries the date.
+ bool daySections()const{return query_.uploadStatus!="failed";}
+ // history.counts for the page shown: totals per category (all, images,
+ // videos, text+other, failed) ignoring the search and filters, empty until
+ // known; and the stored files of each day on the page within the query.
+ QJsonObject categoryTotals()const{return categoryTotals_;}
+ QJsonArray dayCounts()const;
+ // The day the page starts with continues from the previous page.
+ bool continuedDay()const{return continued_.isValid();}
+ // One long date form for the details pane and tooltips; the time column's text.
+ static QString longTimestamp(const QDateTime&);
+ static QString timeColumn(const QDateTime&,bool withDate);
  void setShowCancelled(bool);bool showCancelled()const{return showCancelled_;}int hiddenCancelled()const{return hiddenCancelled_;}
  QJsonArray activeOperations()const;static int operationProgress(const QJsonObject&);
  void releaseThumbnails();
@@ -47,9 +67,11 @@ public:
  static bool failed(const QJsonObject&);static bool retryUpload(const QJsonObject&);static bool retryLocalSave(const QJsonObject&);static bool copyLocalResult(const QJsonObject&);
  // One stored file whose original remote target delete.prepare can accept.
  static bool remoteDeletable(const QJsonObject& file);
-signals:void activityChanged();void busyChanged(bool);void loaded();void error(const QString&);
+signals:void activityChanged();void busyChanged(bool);void loaded();void error(const QString&);void countsChanged();
 private:
  void rebuild();void loadThumbnail(const QString&)const;void nextThumbnail()const;bool scanDestinations()const;
+ // One counts request per change of the page's files (never per progress update).
+ void requestCounts();QString section(int row)const;QString destination(int row)const;
  // What the row offers and whether it failed: fixed until the next rebuild.
  struct RowFacts {bool active=false,failed=false;QString primary;bool operator==(const RowFacts&)const=default;};
  static RowFacts rowFacts(const QJsonObject&);
@@ -57,6 +79,7 @@ private:
  // Per row, kept with rows_: the parsed local creation time and facts that
  // every paint asks for many times (#1064).
  UiSession& history_;UiHistoryQuery query_;QList<QJsonObject> rows_;QList<QDateTime> createdAt_;QList<RowFacts> facts_;mutable QStringList dayLabels_;mutable QDate dayLabelsFor_;bool multipleDestinations_=false;QJsonArray records_,operations_;qint64 total_=0;quint64 request_=0;
+ QJsonObject categoryTotals_;QHash<QDate,qint64> dayCounts_;QDate continued_;QString countsKey_;quint64 countsRequest_=0;
  bool queryBusy_=false,loadInFlight_=false,loadPending_=false,showCancelled_=false;int hiddenCancelled_=0;
  mutable QCache<QString,QImage> thumbnails_{8192};mutable QStringList thumbnailQueue_;mutable QSet<QString> thumbnailRequested_;mutable bool thumbnailLoading_=false;mutable quint64 thumbnailGeneration_=0;qint64 timesMinute_=0;
 };

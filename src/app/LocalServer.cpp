@@ -306,9 +306,16 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
  }
  // Drives the open History page: filters, selection and the compact details view.
  if(method=="ui.history") {
-  static const QStringList actions{"inspect","clearFilters","retryLoading","copyDeletionDetails","select","clearSelection","openDetails","closeDetails","expandPreview","closePreview","retryPreview","showSavedCopy","copySavedPath","dismissSavedCopy","cancelAll","confirmCancelAll","keepUploading"};const auto action=p["action"].toString();
-  if(!fields(p,{"action"},{"scope","ids"})||!actions.contains(action)||(p.contains("scope")&&(action!="clearFilters"||!QStringList{"filters","all"}.contains(p["scope"].toString())))
-     ||(action=="select")!=p.contains("ids")||(p.contains("ids")&&(!p["ids"].isArray()||p["ids"].toArray().isEmpty()||p["ids"].toArray().size()>1000))){reply(invalid(),{});return;}
+  static const QStringList actions{"inspect","clearFilters","retryLoading","copyDeletionDetails","select","clearSelection","openDetails","closeDetails","toggleDetails","nextPage","previousPage","goToPage","setFilter","removeFilter","showCategory","setView","copySelectedLinks","deleteSelected","cancelConfirmation","expandPreview","closePreview","retryPreview","showSavedCopy","copySavedPath","dismissSavedCopy","cancelAll","confirmCancelAll","keepUploading"};const auto action=p["action"].toString();
+  static const QStringList filterKeys{"from","to","mime","profileId","uploadStatus","localStatus","remoteStatus","exactRemoteStatus","includeCanceled"};
+  // Each parameter belongs to exactly the actions that take it.
+  if(!fields(p,{"action"},{"scope","ids","page","key","value","category","view"})||!actions.contains(action)||(p.contains("scope")&&(action!="clearFilters"||!QStringList{"filters","all"}.contains(p["scope"].toString())))
+     ||(action=="select")!=p.contains("ids")||(p.contains("ids")&&(!p["ids"].isArray()||p["ids"].toArray().isEmpty()||p["ids"].toArray().size()>1000))
+     ||(action=="goToPage")!=p.contains("page")||(p.contains("page")&&(!p["page"].isDouble()||std::floor(p["page"].toDouble())!=p["page"].toDouble()||p["page"].toDouble()<1||p["page"].toDouble()>INT_MAX))
+     ||(action=="setFilter"||action=="removeFilter")!=p.contains("key")||(p.contains("key")&&!filterKeys.contains(p["key"].toString()))
+     ||(action=="setFilter")!=p.contains("value")||(p.contains("value")&&(!p["value"].isString()||p["value"].toString().size()>256))
+     ||(action=="showCategory")!=p.contains("category")||(p.contains("category")&&!QStringList{"all","images","videos","text+other","failed"}.contains(p["category"].toString()))
+     ||(action=="setView")!=p.contains("view")||(p.contains("view")&&!QStringList{"list","gallery"}.contains(p["view"].toString()))){reply(invalid(),{});return;}
   for(const auto& id:p["ids"].toArray())if(!id.isString()||id.toString().isEmpty()||id.toString().size()>138){reply(invalid(),{});return;}
   if(!uiCommand_){reply({"ui_unavailable","This resident has no graphical interface",{}},{});return;}
   uiCommand_("history",p,std::move(reply));return;
