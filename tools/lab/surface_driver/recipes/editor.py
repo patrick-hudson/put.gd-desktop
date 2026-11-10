@@ -175,8 +175,8 @@ def _draw(ctx, op, kind='redact', key=None):
     shape = state['shapes'][0]
     ctx.expect(shape['kind'] == kind, 'drag creates the chosen kind')
     slack = math.ceil(100 / state['view']['zoomPercent']) + 1
-    if kind == 'arrow':
-        ctx.expect(all(abs(a-b) <= slack for a,b in zip(shape['from']+shape['to'], [340,20,600,140])), 'arrow endpoints follow mouse drag')
+    if kind in ('arrow', 'line'):
+        ctx.expect(all(abs(a-b) <= slack for a,b in zip(shape['from']+shape['to'], [340,20,600,140])), kind+' endpoints follow mouse drag')
     else:
         ctx.expect(all(abs(a-b) <= slack for a,b in zip(shape['rect'], [340,20,260,120])), 'mouse mark image geometry')
     ctx.expect(state['canUndo'], 'drawing adds undo history')
@@ -207,6 +207,66 @@ def annotation_tools(ctx):
         _tool(ctx, op, 'select')
         _tool(ctx, op, 'select', 'V')
         _frame(ctx, 'after', '26-editor-selected')
+
+
+@recipe('editor.tool-line', 'editor.tool-ellipse', 'editor.tool-pen', needs=IMAGE)
+def shape_tools(ctx):
+    """#1362: each tool chosen by its key, drawn by a real drag and undone."""
+    with _session(ctx) as op:
+        for kind, key, reference in [('line','L','30e-editor-line-selected'), ('ellipse','E','30d-editor-ellipse'), ('pen','P','30b-editor-pen')]:
+            _draw(ctx, op, kind)
+            _frame(ctx, kind, reference)
+            ctx.keys('Ctrl+Z')
+            _tool(ctx, op, kind, key)
+            ctx.expect(not _inspect(ctx, op)['shapes'], 'undo restores the empty document')
+
+
+@recipe('editor.tool-step', 'editor.step-number', needs=IMAGE)
+def step_numbers(ctx):
+    """#1362: clicks drop 1, 2; the Next number field restarts counting at 10."""
+    with _session(ctx) as op:
+        _tool(ctx, op, 'step', 'N')
+        for x, y in [(100, 80), (220, 80)]:
+            ctx.click_at(*_point(ctx, op, x, y))
+        numbers = lambda: sorted(s['number'] for s in _inspect(ctx, op)['shapes'] if s['kind'] == 'step')
+        ctx.wait(lambda: numbers() == [1, 2] or None, 'two clicks place steps 1 and 2')
+        ctx.expect(_inspect(ctx, op)['view']['nextStepNumber'] == 3, 'Next number follows the highest step')
+        ctx.keys('Escape')
+        ctx.click('stepNumber', window='editor')
+        ctx.keys('Ctrl+A')
+        ctx.type_text('10')
+        ctx.keys('Return')
+        ctx.wait(lambda: _inspect(ctx, op)['view']['nextStepNumber'] == 10 or None, 'typed Next number applies')
+        ctx.click_at(*_point(ctx, op, 340, 200))
+        ctx.wait(lambda: numbers() == [1, 2, 10] or None, 'the next click places step 10')
+        _frame(ctx, 'steps', '30-editor-step')
+        ctx.keys('Ctrl+Z')
+        ctx.wait(lambda: numbers() == [1, 2] or None, 'undo removes step 10')
+
+
+@recipe('editor.blur-style', needs=IMAGE)
+def pixelate(ctx):
+    """#1362: Pixelate is a style of Blur, with the same reversibility warning."""
+    with _session(ctx) as op:
+        _tool(ctx, op, 'blur', 'B')
+        ctx.click('blurStylePixelate', window='editor')
+        ctx.expect(_inspect(ctx, op)['view']['style']['blurStyle'] == 'pixelate', 'Pixelate style chosen by its button')
+        shape = _draw(ctx, op, 'blur')
+        ctx.expect(shape.get('style') == 'pixelate', 'the drawn blur is a pixelation')
+        _frame(ctx, 'pixelate', '30f-editor-pixelate')
+        ctx.click('blurStyleBlur', window='editor')
+
+
+@recipe('editor.copy-image', needs=IMAGE)
+def copy_image(ctx):
+    """#1362: Ctrl+Shift+C copies the sanitized PNG; the edit stays open and unsaved."""
+    with _session(ctx) as op:
+        _draw(ctx, op)
+        ctx.keys('Ctrl+Shift+C')
+        ctx.wait(lambda: (_inspect(ctx, op)['view'].get('lastCopy') or {}).get('status') == 'copied' or None, 'Copy image reports copied')
+        _frame(ctx, 'copied', '30h-editor-image-copied')
+        state = _inspect(ctx, op)
+        ctx.expect(state['phase'] == 'editing' and len(state['shapes']) == 1, 'copying keeps the edit open')
 
 
 @recipe('editor.tool-blur', 'editor.blur-warning', needs=IMAGE)
