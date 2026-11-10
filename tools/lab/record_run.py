@@ -38,6 +38,10 @@ numbers, identities, host load and the kernel's GPU hang count for the run.
                 [--click S,X,Y[,BUTTON] ...] [--click-highlights on|off]
                 [--click-vnc HOST:PORT]
 
+A window target without --identity records the focused window, which is the cover;
+on X11, where a window is named by its id, the driver reads that id from the root
+window (`xprop`) and passes it.
+
 PATH is an AppImage (extracted once under DIR for its putgd-cli) or a directory
 holding `putgd` and `putgd-cli` (an installed package: /usr/bin). APPDIR is an
 extracted AppImage whose putgd-record reports `pairTimesS` (#143 or later).
@@ -634,6 +638,9 @@ class Driver:
             target = {'kind': a.target}
             if a.identity:
                 target['identity'] = a.identity
+            elif a.target == 'window' and self.env.get('XDG_SESSION_TYPE') == 'x11':
+                # X11 names a window by its id, and the cover has the focus.
+                target['identity'] = self.active_x11_window()
             if a.rect:
                 target['rect'] = a.rect
             sound = fmt not in ANIMATIONS
@@ -692,6 +699,7 @@ class Driver:
                 result['clickHighlightsError'] = (self.cli(build, 'recording.inspect', {'id': rid}).get('progress') or {}).get('clickHighlightsError')
             # The recording clock's share of the time since Record: what the clip must hold.
             result['recordedS'] = round(time.monotonic() - started - max(0, a.pause_for), 3)
+            result['microphoneLostAtStop'] = (self.cli(build, 'recording.inspect', {'id': rid}).get('progress') or {}).get('microphoneLost')
             try:
                 stopped = self.cli(build, 'recording.stop', {'id': rid}, timeout=60)
             except RunError as error:
@@ -750,6 +758,14 @@ class Driver:
                     result['clips'][kind]['destroyed'] = True
         return result
 
+    def active_x11_window(self):
+        """The focused window's X id, as `recording.prepare` takes it for a window target on X11."""
+        out = subprocess.run(['xprop', '-root', '_NET_ACTIVE_WINDOW'], env=self.env, capture_output=True, text=True).stdout
+        found = re.search(r'window id # (0x[0-9a-fA-F]+)', out)
+        if not found or int(found.group(1), 16) == 0:
+            raise RunError('no focused X11 window to record: %s' % (out.strip() or 'xprop printed nothing'))
+        return found.group(1)
+
     def clip_problems(self, result, sound):
         """What a finished round's clip gets wrong that no offset shows: too short, or the wrong sound in it."""
         a = self.args
@@ -776,8 +792,11 @@ class Driver:
         # The quiet tone is recorded at about 0.017; nothing near that may come from an output that is not recorded.
         if a.system == 'leak' and tone is not None and tone > 0.0085:
             problems.append("an output's sound is in the clip (440 Hz peak %.4f)" % tone)
-        if a.unplug_at is not None and self.mic_state and not (result.get('afterUnplug') or {}).get('microphoneLost'):
-            problems.append('the recording did not say that the microphone was lost')
+        if a.unplug_at is not None and self.mic_state:
+            if not (result.get('afterUnplug') or {}).get('microphoneLost'):
+                problems.append('the recording did not say that the microphone was lost')
+        elif result.get('microphoneLostAtStop'):
+            problems.append('the recording says the microphone was lost, and nothing removed it')
         return problems
 
     def gpu_hangs(self, since):

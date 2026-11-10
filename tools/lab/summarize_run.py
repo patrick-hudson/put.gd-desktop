@@ -20,7 +20,7 @@ def main():
             print('   microphones', {k: entry['microphones'].get(k) for k in ('available', 'reason', 'defaultIsMonitor')}, 'device', (entry['microphones'].get('device') or {}).get('id'))
         if entry.get('problems'):
             print('   PROBLEMS: %s' % '; '.join(entry['problems']))
-        for key in ('error', 'recordedS', 'afterUnplug', 'unpluggedAtS', 'captureStepMs', 'exportMinusWorkingMs', 'clickHighlightsError'):
+        for key in ('error', 'recordedS', 'microphoneLostAtStop', 'afterUnplug', 'unpluggedAtS', 'captureStepMs', 'exportMinusWorkingMs', 'clickHighlightsError'):
             if entry.get(key) is not None:
                 print('   %s %s' % (key, entry[key]))
         if entry.get('clickHighlights'):
