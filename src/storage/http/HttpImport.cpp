@@ -8,6 +8,9 @@
 #include <QPointer>
 #include <QRegularExpression>
 #include <QSet>
+#include <QTimer>
+#include <memory>
+#include <utility>
 namespace putgd::http {
 namespace {
 // Every secret a destination can have fits one credential-store entry: three row lists,
@@ -21,6 +24,13 @@ Error invalid(const QString& message) { return {"invalid_request", message, {}};
 QSet<const void*>& importing() {
     static QSet<const void*> busy;
     return busy;
+}
+// Keychain entries whose write outlived its deadline. The import that asked gave up and
+// released its turn, but the entry is not free until the secret store has answered:
+// only then is what it wrote, if anything, removed again.
+QSet<QString>& unsettled() {
+    static QSet<QString> names;
+    return names;
 }
 // A profile ID from the uploader's name: lower-case letters, digits and hyphens.
 QString slug(const QString& name) {
@@ -51,7 +61,7 @@ Error namedCredentials(const QJsonObject& profile, const QMap<QString, QString>&
     }
     return {};
 }
-void importUploaderFile(SettingsService& settings, CredentialStore& credentials, const QJsonObject& params, std::function<void(Error, QJsonObject)> reply) {
+void importUploaderFile(SettingsService& settings, CredentialStore& credentials, const QJsonObject& params, std::function<void(Error, QJsonObject)> reply, std::chrono::milliseconds storeDeadline) {
     static const QStringList allowed{"path", "expectedRevision", "label", "profileId", "credentialMode", "allowInsecureHttp"};
     for (auto it = params.begin(); it != params.end(); ++it) if (!allowed.contains(it.key())) { reply(invalid("Unknown import field"), {}); return; }
     const auto path = params["path"].toString();
@@ -98,17 +108,31 @@ void importUploaderFile(SettingsService& settings, CredentialStore& credentials,
     if (profiles.size() >= 32) { reply({"config_invalid", "There are already 32 destinations; remove one first", {}}, {}); return; }
     QStringList ids;
     for (const auto& value : profiles) ids.append(value.toObject()["id"].toString());
+    // Nothing to store means nothing to unlock later: no keychain entry is named.
+    const bool keychain = mode == "keychain" && !imported.secrets.isEmpty();
+    // The keychain entry of an ID is the import's to write, and to remove again when the
+    // destination cannot be saved, only while no destination names it. A destination can
+    // name another ID's entry (it was made by hand, or its ID was changed); writing or
+    // removing that entry would change that destination's credentials.
+    const auto entry = [](const QString& candidate) { return "putgd/http/" + candidate; };
+    const auto taken = [&](const QString& candidate) {
+        if (!keychain) return false;
+        for (const auto& value : profiles) if (value.toObject()["credentials"].toObject()["reference"].toString() == entry(candidate)) return true;
+        return unsettled().contains(entry(candidate));
+    };
     auto id = params["profileId"].toString();
     if (!id.isEmpty() && ids.contains(id)) { reply({"profile_exists", "A destination with this ID already exists", {}}, {}); return; }
+    if (!id.isEmpty() && taken(id)) {
+        reply({"credential_reference_in_use", "The keychain entry this ID would use (" + entry(id) + ") already belongs to another destination, or is still being written. Choose another ID.", {}}, {});
+        return;
+    }
     if (id.isEmpty()) {
         const auto base = slug(imported.name);
         id = base;
-        for (int n = 2; ids.contains(id); ++n) id = base + "-" + QString::number(n);
+        for (int n = 2; ids.contains(id) || taken(id); ++n) id = base + "-" + QString::number(n);
     }
     const auto label = params.contains("label") ? params["label"].toString().trimmed() : imported.name.isEmpty() ? QStringLiteral("Custom uploader") : imported.name;
-    // Nothing to store means nothing to unlock later: no keychain entry is named.
-    const bool keychain = mode == "keychain" && !imported.secrets.isEmpty();
-    const QJsonObject reference = keychain ? QJsonObject{{"mode", "keychain"}, {"reference", "putgd/http/" + id}} : QJsonObject{{"mode", "session"}, {"reference", QJsonValue::Null}};
+    const QJsonObject reference = keychain ? QJsonObject{{"mode", "keychain"}, {"reference", entry(id)}} : QJsonObject{{"mode", "session"}, {"reference", QJsonValue::Null}};
     profiles.append(QJsonObject{{"id", id}, {"label", label}, {"provider", providerId}, {"settings", imported.settings}, {"credentials", reference}});
     QJsonArray stored;
     for (auto it = imported.secrets.cbegin(); it != imported.secrets.cend(); ++it) stored.append(secretLabel(it.key()));
@@ -125,20 +149,46 @@ void importUploaderFile(SettingsService& settings, CredentialStore& credentials,
         importing().remove(turn);
         reply(error, result);
     };
-    auto addProfile = [guarded, store, profiles, expected, result, finish, id, reference, storesValues](Error stored) mutable {
+    // A secret store can wait on a prompt that nobody answers. The import waits for it
+    // this long, here and when it removes what it stored; then it gives its turn back.
+    struct Wait { bool storing = true, abandoned = false; };
+    const auto wait = std::make_shared<Wait>();
+    const auto name = reference["reference"].toString();
+    auto addProfile = [guarded, store, profiles, expected, result, finish, id, reference, storesValues, wait, name, storeDeadline](Error stored) mutable {
+        if (wait->abandoned) {
+            // The store answered after the import had given up. No destination was made,
+            // so what it wrote is removed, and only then is the entry free again.
+            if (stored || !store) { unsettled().remove(name); return; }
+            store->erase(id, reference, [name](Error) { unsettled().remove(name); });
+            return;
+        }
+        wait->storing = false;
         if (stored) { finish(stored, {}); return; }
         if (!guarded) { finish({"operation_cancelled", "The application is stopping", {}}, {}); return; }
-        guarded->patchAsync({{"profiles", profiles}}, expected, [guarded, store, result, finish, id, reference, storesValues](Result saved) mutable {
+        guarded->patchAsync({{"profiles", profiles}}, expected, [guarded, store, result, finish, id, reference, storesValues, storeDeadline](Result saved) mutable {
+            if (saved.error && saved.written) {
+                // The write went through and only reading the configuration back failed:
+                // the destination is in the file, and it needs what was stored for it.
+                auto failed = saved.error;
+                failed.message = "The destination was saved, but the configuration could not be read back: " + failed.message;
+                failed.details["destinationWritten"] = true;
+                finish(failed, {});
+                return;
+            }
             if (saved.error) {
                 // The destination was not created, so what this import stored for it goes
                 // too: nothing is left under a reference no destination shows.
                 auto failed = saved.error;
-                if (!storesValues || !store) { finish(failed, {}); return; }
-                store->erase(id, reference, [failed, finish](Error cleanup) mutable {
+                if (!storesValues || !store || !guarded) { finish(failed, {}); return; }
+                const auto answered = std::make_shared<bool>(false);
+                auto cleaned = [failed, finish, answered](Error cleanup) mutable {
+                    if (std::exchange(*answered, true)) return;
                     // Said only when the entry could not be removed.
                     if (cleanup) failed.details["credentialsStored"] = true;
                     finish(failed, {});
-                });
+                };
+                QTimer::singleShot(storeDeadline, guarded.data(), [cleaned]() mutable { cleaned({"credential_store_timeout", "The secret store did not answer in time", {}}); });
+                store->erase(id, reference, cleaned);
                 return;
             }
             if (guarded) result["metadata"] = guarded->metadata();
@@ -149,6 +199,13 @@ void importUploaderFile(SettingsService& settings, CredentialStore& credentials,
     if (!storesValues) { addProfile(Error{}); return; }
     Credentials value;
     value.values = imported.secrets;
+    if (keychain)
+        QTimer::singleShot(storeDeadline, &settings, [wait, finish, name] {
+            if (!wait->storing) return;
+            wait->abandoned = true;
+            unsettled().insert(name);
+            finish({"credential_store_timeout", "The system keychain did not answer in time, so nothing was imported. Unlock the keychain, or import with credentials for this session only, and try again.", {}}, {});
+        });
     credentials.save(id, reference, std::move(value), addProfile);
 }
 }

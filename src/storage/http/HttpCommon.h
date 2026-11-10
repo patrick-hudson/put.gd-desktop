@@ -45,32 +45,50 @@ bool loopbackHost(const QString& host);
 bool transportAllowed(const QUrl&, bool allowInsecureHttp);
 // A redirect stays on the same host when the host name matches and HTTPS is not given up.
 bool sameHost(const QUrl& from, const QUrl& to);
+// Text from a server as one line: line breaks and tabs become a space, control
+// characters go. What is shown is cleaned of stored values after this, never before: a
+// value echoed around a control character reads as the value once that character is gone.
+QString singleLine(const QString&);
 // Text from a server shown to the user: one line, bounded, control characters removed.
 QString boundedMessage(const QString&, int maximum = 300);
 
-// A server may repeat what it was sent. The helpers below find a destination's stored
-// values in text that came back, in the spellings a server writes them: as sent,
-// percent-encoded in any mixture, and JSON-escaped ("/" as "\/", as PHP does). A value
-// counts from four characters, and each word of eight or more counts by itself, so the
-// token of "Bearer <token>" is found alone. Shorter values are switches such as "1".
+// A server may repeat what it was sent. The helpers below find a destination's
+// credentials in text that came back, in the spellings a server writes them: as sent,
+// percent-encoded in any mixture, JSON-escaped ("/" as "\/", as PHP does), in base64,
+// and around characters that do not show.
 //
-// Server text made fit to keep: every spelling of every stored value replaced. When one
+// Not every stored value is a credential. An imported argument such as a folder name is
+// stored like a token, and a link that repeats that word is an ordinary link. Looked
+// for is what is credential-like: the value (from four characters, and its words of
+// eight or more) of a row whose name says so ("Authorization", "api_key", "token",
+// "password", "cookie" and the like) and of every other secret value; a key-like run
+// inside any value (sixteen or more letters and digits, or twenty or more with "-" and
+// "_", holding a letter and a digit), so a key in a stored JSON body or a cookie is
+// found by itself; and a value the stored text itself names as a credential
+// ("password":"…", token=…). Ordinary words and short settings are not looked for.
+//
+// Server text made fit to keep: every spelling of every credential replaced. When one
 // survives in a spelling this cannot rewrite, the whole text is withheld.
 QString scrubStoredValues(const QString& text, const QHash<QString, QString>& values);
-// The credential-store key of a stored value that an address holds after its host, or
-// empty. The host is where the address points and is no secret. Here a value counts
-// from six characters, as on import, and one under sixteen must stand as a whole word:
-// "upload" stored as an argument does not make every link under /uploads/ suspect.
+// The credential-store key of a credential that an address holds after its host, or
+// empty. The host is where the address points and is no secret. A credential under
+// sixteen characters must stand as a whole word.
 QString storedValueIn(const QString& address, const QHash<QString, QString>& values);
-// The address as a template that names each stored value standing in it exactly as
-// stored, "{secret:key}", with everything else escaped. Empty when no value stands
-// there exactly, or when one would remain in another spelling.
+// The address as a template that names each credential standing in it exactly as
+// stored, "{secret:key}", with everything else escaped. Empty when none stands there
+// exactly, or when one would remain in another spelling or in part.
 QString nameStoredValues(const QString& address, const QHash<QString, QString>& values);
 // Scheme, host and port of a destination's request URL: where its values may go.
 QUrl requestOrigin(const QJsonObject& settings);
 // This machine, in any spelling an address can use: localhost, 127.0.0.0/8 (decimal,
-// octal, hex or as one number), ::1, the unspecified address.
+// octal, hex or as one number), ::1, the unspecified address, and an IPv4 one of these
+// inside an IPv6 address ("::ffff:7f00:1").
 bool loopbackAddress(const QString& host);
+// Where a name leads is the resolver's to say, not its spelling's: "ip6-localhost", the
+// machine's own host name and a public name that answers 127.0.0.1 all lead here.
+// `resolved` is what the host resolves to (empty for a literal address) and `own` the
+// addresses of this machine's interfaces.
+bool leadsToThisMachine(const QString& host, const QStringList& resolved, const QStringList& own);
 // An address the reply named, judged against the request's own. Empty when usable.
 // It may not carry user information ("https://shown@real/" goes to "real"), and it may
 // point at this machine only when the request itself does.
@@ -79,12 +97,13 @@ QString returnedAddressProblem(const QUrl& address, const QUrl& origin);
 // A .sxcu file read into destination settings. Every header, parameter and argument
 // value and the Data body are secrets: they are returned in `secrets` (credential-store
 // key → value) and never appear in `settings`, except a value that is exactly
-// {filename} or {input}. A secret of six characters or more that the file repeats as
-// literal text after the host of the request URL or the deletion URL, as some services
-// end their deletion URL with the token, becomes {secret:key} there. Shorter values are
-// switches such as "true" and stay as written. A long run of letters and digits left in
-// those two addresses becomes a secret value of its own. A link that repeats a secret
-// is refused; a thumbnail URL or error message that does is left out with a note.
+// {filename} or {input}. A credential (see above: not every stored value is one) that
+// the file repeats as literal text after the host of the request URL or the deletion
+// URL, as some services end their deletion URL with the token, becomes {secret:key}
+// there. An ordinary word that a row also holds stays as written. A long run of letters
+// and digits left in those two addresses becomes a secret value of its own, with a
+// note. A link that repeats a credential is refused; a thumbnail URL or error message
+// that does is left out with a note.
 // Nothing here is written anywhere.
 // The note an import carries when its address is plain HTTP to another machine.
 QString plainHttpNote();

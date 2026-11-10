@@ -20,7 +20,9 @@ request path names, so one process plays every case:
   /upload/loop    302 to itself
 
 The token is checked where /__reset says: {"auth": "header" | "query" | "argument" | "none"}.
-A refused token is echoed in the error body, as some servers do.
+A refused token is echoed in the error body, as some servers do: as offered, or as
+{"echo": "percent" | "control"} says (percent-encoded, or with a control character
+in the middle of it).
 
 Control: POST /__reset {auth, token}, POST /__rules {rules}, GET /__state.
 A rule: {"call": "upload" | "delete" | "file", "status", "body", "remaining", "delay" (seconds),
@@ -31,11 +33,16 @@ An upload rule can also bend the reply the way a careless or hostile server woul
   "echo": "url" | "thumb" | "delete"   that address repeats the credential the request offered
   "encoding": "raw" | "percent"        how it is repeated (default raw)
   "elsewhere": "url" | "thumb" | "delete"   that address is on another host name
+  "elsewhereHost": "192.0.2.1"         the other host, as plain http on its default port
+                                       (default: this listener as "localhost")
   "userinfo": "url"                    that address carries user information
   "php": true                          JSON written as PHP's json_encode does, with a
                                        backslash before every "/"
   "cut": "length" | "reset"            the reply ends early: a Content-Length it does not
                                        fulfil, or a reset in the middle of the body
+  "early": true                        with "status": the reply is sent before the body is
+                                       read, and the connection then closes with most of
+                                       the file never taken
 """
 import hashlib, json, os, socket, sys, threading, time, urllib.parse, uuid
 from email.parser import BytesParser
@@ -110,6 +117,23 @@ class Handler(BaseHTTPRequestHandler):
                     rule['remaining'] = rule.get('remaining', 1) - 1
                     return rule
         return {}
+
+    def early(self):
+        """An upload rule that answers before the body arrives, or None."""
+        with lock:
+            rule = next((r for r in state['rules'] if r.get('call') == 'upload' and r.get('early') and r.get('remaining', 1) > 0), None)
+            if rule is None:
+                return None
+            rule['remaining'] = rule.get('remaining', 1) - 1
+
+        def answer():
+            self.record('upload', {'early': True})
+            self.reply(rule['status'], rule.get('body', {'error': 'synthetic early failure'}))
+            self.wfile.flush()
+            # The client has the whole reply before this side goes away, unread body and all.
+            time.sleep(1.0)
+            self.close_connection = True
+        return answer
 
     def body(self):
         length = int(self.headers.get('Content-Length') or 0)
@@ -196,6 +220,9 @@ class Handler(BaseHTTPRequestHandler):
                 state['rules'] = json.loads(self.body())['rules']
             return self.reply(200, {})
         if self.path.startswith('/upload/'):
+            early = self.early()
+            if early:
+                return early()
             return self.upload(self.body())
         parts = self.path.strip('/').split('/')
         if parts[0] == 'confirm' and len(parts) == 3:
@@ -269,6 +296,9 @@ class Handler(BaseHTTPRequestHandler):
             with lock:
                 self.php = bool(state.get('php'))
                 echoed = urllib.parse.quote(offered, safe='') if state.get('echo') == 'percent' else offered
+                if state.get('echo') == 'control':
+                    middle = len(offered) // 2
+                    echoed = offered[:middle] + '\x01' + offered[middle:]
             return self.reply(401, {'error': 'token %s is not valid' % echoed})
         # These redirects ask for the request again, or loop: nothing is stored here.
         if style in ('moved', 'moved-away'):
@@ -294,7 +324,8 @@ class Handler(BaseHTTPRequestHandler):
         first = links['files'][0]
         credential = offered[len('Bearer '):] if offered.startswith('Bearer ') else offered
         if rule.get('elsewhere') in first:
-            first[rule['elsewhere']] = first[rule['elsewhere']].replace(self.origin(), self.origin(OTHER_HOST), 1)
+            other = 'http://' + rule['elsewhereHost'] if rule.get('elsewhereHost') else self.origin(OTHER_HOST)
+            first[rule['elsewhere']] = first[rule['elsewhere']].replace(self.origin(), other, 1)
         if rule.get('echo') in first:
             first[rule['echo']] += '?key=' + (urllib.parse.quote(credential, safe='') if rule.get('encoding') == 'percent' else credential)
         if rule.get('userinfo') in first:

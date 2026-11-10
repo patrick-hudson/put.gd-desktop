@@ -40,7 +40,17 @@ ProviderCapabilities HttpUploaderProvider::receiptCapabilities(const StorageRece
     auto caps = capabilities(receipt.destination);
     // Deletion depends on what this upload's reply carried, not on today's settings.
     caps.remove = !receipt.objectReference["deletionUrl"].toString().isEmpty();
-    if (!caps.remove) caps.removeUnavailable = "This upload came back without a deletion URL, so put.gd cannot delete it from the server. Delete it on the server itself.";
+    if (!caps.remove) {
+        // One came back and was not kept: say that, and why, not that none came back.
+        const auto leftOut = receipt.objectReference["deletionUrlLeftOut"].toString();
+        caps.removeUnavailable = leftOut == "other_host"
+            ? "The server returned a deletion URL on another host than this destination's request URL. It would take a stored value of this destination there, so put.gd did not keep it and cannot delete this upload from the server. Delete it on the server itself."
+            : leftOut == "stored_value"
+            ? "The server returned a deletion URL that repeats a credential of this destination where put.gd cannot keep it by name, so it was not kept and put.gd cannot delete this upload from the server. Delete it on the server itself."
+            : leftOut == "unusable"
+            ? "The server returned a deletion URL that this destination does not use: plain HTTP it does not allow, an address on this computer, or one with a user name in it. put.gd cannot delete this upload from the server. Delete it on the server itself."
+            : "This upload came back without a deletion URL, so put.gd cannot delete it from the server. Delete it on the server itself.";
+    }
     return caps;
 }
 // A diagnostics package shows which fields a destination sets, never a value: a row

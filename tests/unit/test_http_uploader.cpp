@@ -246,9 +246,9 @@ private slots:
                          {"DeletionURL", "https://media.example.test/delete/{json:images.id}/" + key}};
         const auto result = importSxcu(sxcu(file));
         QVERIFY2(!result.error, qPrintable(result.error.message));
-        // The host is no key, a placeholder's own text is left alone, and a path segment
-        // that is a stored value is named.
-        QCOMPARE(result.settings["requestUrl"].toString(), QString("https://media.example.test/upload/{secret:arguments/folder}"));
+        // The host is no key, a placeholder's own text is left alone, and an ordinary word
+        // that a row also holds ("images", the folder) stays an ordinary word.
+        QCOMPARE(result.settings["requestUrl"].toString(), QString("https://media.example.test/upload/images"));
         QCOMPARE(result.settings["responseUrl"].toString(), QString("https://media.example.test/{json:images.url}"));
         QCOMPARE(result.settings["deletionUrl"].toString(), QString("https://media.example.test/delete/{json:images.id}/{secret:arguments/token}"));
         // What would be shown or recorded is left out and said so, without the value.
@@ -300,15 +300,17 @@ private slots:
     // Review of #1371: a server can repeat a stored value in any spelling.
     void serverTextLosesEverySpellingOfAStoredValue() {
         const QString spelled = "pg-synthetic/value+with=signs&01";
-        const QHash<QString, QString> stored{{"headers/Authorization", "Bearer " + spelled}, {"arguments/mode", "json"}, {"arguments/flag", "1"}};
+        const QHash<QString, QString> stored{{"headers/Authorization", "Bearer " + spelled}, {"arguments/mode", "json"}, {"arguments/flag", "1"}, {"arguments/pin", "k4x9"}};
         const auto percent = QString::fromLatin1(QUrl::toPercentEncoding(spelled));
         for (const auto& spelling : QStringList{spelled, percent, percent.toLower(), QString(spelled).replace("/", "\\/"), QString(spelled).replace("/", "%2f"), QString(spelled).replace("+", "%2B").replace("/", "\\/")}) {
             const auto scrubbed = scrubStoredValues("refused: " + spelling + " is not valid", stored);
             QVERIFY2(!scrubbed.contains(spelling) && !scrubbed.contains(spelled), qPrintable(scrubbed));
             QCOMPARE(scrubbed, QString("refused: <redacted> is not valid"));
         }
-        // The whole stored value goes as one, and a four-character one goes too; "1" is no secret.
-        QCOMPARE(scrubStoredValues("Bearer " + spelled + " sent bad json at line 1", stored), QString("<redacted> sent bad <redacted> at line 1"));
+        // The whole stored value goes as one. A setting such as "json" or "1" is no credential
+        // and stays readable; a four-character value of a row named like a credential goes.
+        QCOMPARE(scrubStoredValues("Bearer " + spelled + " sent bad json at line 1", stored), QString("<redacted> sent bad json at line 1"));
+        QCOMPARE(scrubStoredValues("pin k4x9 is wrong", stored), QString("pin <redacted> is wrong"));
         // Encoded twice: there is nothing to rewrite in place, so the text is withheld.
         const auto twice = QString::fromLatin1(QUrl::toPercentEncoding(percent));
         const auto withheld = scrubStoredValues("refused: " + twice, stored);
@@ -323,7 +325,9 @@ private slots:
         QTest::newRow("clean") << "https://cdn.example.test/u/a.png" << "";
         QTest::newRow("host is where it points") << "https://media.example.test/u/a.png" << "";
         QTest::newRow("inside a longer word") << "https://h.example.test/uploads/a.png" << "";
-        QTest::newRow("a whole word") << "https://h.example.test/upload/a.png" << "arguments/kind";
+        QTest::newRow("an ordinary stored word") << "https://h.example.test/upload/a.png" << "";
+        QTest::newRow("a short credential as a whole word") << "https://h.example.test/a.png?p=k4x9" << "arguments/pin";
+        QTest::newRow("a short credential inside a word") << "https://h.example.test/xk4x9y.png" << "";
         QTest::newRow("under six characters") << "https://h.example.test/a.png?public=true" << "";
         QTest::newRow("query value") << "https://h.example.test/get?k=" + t + "&file=a" << "arguments/token";
         QTest::newRow("long value anywhere") << "https://h.example.test/x" + t + "y/a.png" << "arguments/token";
@@ -338,8 +342,94 @@ private slots:
         QFETCH(QString, address);
         QFETCH(QString, key);
         const QHash<QString, QString> stored{{"arguments/token", token}, {"arguments/kind", "upload"}, {"arguments/flag", "true"}, {"arguments/domain", "media.example.test"},
-                                             {"headers/Authorization", "Bearer pg-synthetic/value+with=signs&01"}};
+                                             {"arguments/pin", "k4x9"}, {"headers/Authorization", "Bearer pg-synthetic/value+with=signs&01"}};
         QCOMPARE(storedValueIn(address, stored), key);
+    }
+    // Second review of #1371. What is looked for is what is credential-like, not every
+    // stored value: an imported argument such as a folder name is stored by default, and
+    // a link that repeats it is an ordinary link. A key inside a stored body or a cookie
+    // is found although it is only part of what is stored.
+    void onlyCredentialsAreLookedFor() {
+        const QString inBody = "putgdsyntheticbodypart0001", inCookie = "putgdsyntheticcookie0002";
+        const QHash<QString, QString> stored{{"arguments/folder", "screenshots"}, {"arguments/album", "holiday-pictures"}, {"headers/X-Format", "random-name"},
+                                             {"data", "{\"apikey\":\"" + inBody + "\",\"folder\":\"shots\",\"password\":\"hunter2x\"}"},
+                                             {"headers/Cookie", "session=" + inCookie + "; path=/"}};
+        // Ordinary words pass, in an address and in a server's message.
+        QCOMPARE(storedValueIn("https://h.example.test/screenshots/abc.png", stored), QString());
+        QCOMPARE(storedValueIn("https://h.example.test/u/holiday-pictures/random-name.png", stored), QString());
+        QCOMPARE(scrubStoredValues("folder screenshots not found", stored), QString("folder screenshots not found"));
+        // A key that is part of a stored body or of a cookie is found by itself.
+        QCOMPARE(storedValueIn("https://h.example.test/f/a.png?k=" + inBody, stored), QString("data"));
+        QCOMPARE(storedValueIn("https://h.example.test/f/" + inCookie + "/a.png", stored), QString("headers/Cookie"));
+        QCOMPARE(scrubStoredValues("key " + inBody + " is not valid", stored), QString("key <redacted> is not valid"));
+        QCOMPARE(scrubStoredValues("session " + inCookie + " expired", stored), QString("session <redacted> expired"));
+        // So is a short value that the stored text itself names as a credential.
+        QCOMPARE(scrubStoredValues("wrong password hunter2x", stored), QString("wrong password <redacted>"));
+        QCOMPARE(storedValueIn("https://h.example.test/f/a.png?p=hunter2x", stored), QString("data"));
+        // A name decides only when it says "credential": an author is not an authorization,
+        // keywords are not a key, and a switch under a credential's name is a switch.
+        const QHash<QString, QString> named{{"arguments/author", "alice"}, {"arguments/keywords", "holiday"}, {"headers/Authorization", "tk91"}, {"parameters/api_key", "zq84"},
+                                            {"arguments/upload_token", "true"}, {"data", "{\"use_token\": true, \"token_ttl\": 3600, \"auth\": \"Bearer w7m2\"}"}};
+        QCOMPARE(storedValueIn("https://h.example.test/alice/holiday/true/3600/a.png", named), QString());
+        QCOMPARE(storedValueIn("https://h.example.test/a.png?a=tk91", named), QString("headers/Authorization"));
+        QCOMPARE(storedValueIn("https://h.example.test/zq84/a.png", named), QString("parameters/api_key"));
+        QCOMPARE(scrubStoredValues("author alice sent Bearer w7m2 with keywords holiday, ttl 3600, true", named), QString("author alice sent <redacted> with keywords holiday, ttl 3600, true"));
+        // The token of "Bearer <token>" is found alone, however short.
+        QCOMPARE(scrubStoredValues("token w7m2 is not valid", named), QString("token <redacted> is not valid"));
+        // And a key written in base64, either alphabet, wherever it starts in the text.
+        for (const auto& prefix : QStringList{"", "a", "ab"})
+            for (const auto options : {QByteArray::Base64Encoding, QByteArray::Base64UrlEncoding}) {
+                const auto encoded = QString::fromLatin1((prefix + inBody + "!").toUtf8().toBase64(options | QByteArray::OmitTrailingEquals));
+                QVERIFY2(!storedValueIn("https://h.example.test/f/a.png?k=" + encoded, stored).isEmpty(), qPrintable(encoded));
+                QVERIFY2(!scrubStoredValues("refused " + encoded, stored).contains(encoded), qPrintable(encoded));
+            }
+    }
+    // The import follows the same rule: a row's ordinary word may stand in the link.
+    void importKeepsOrdinaryWordsOrdinary() {
+        const QJsonObject file{{"Version", "17.0.0"}, {"DestinationType", "ImageUploader"}, {"RequestMethod", "POST"}, {"RequestURL", "https://media.example.test/upload/screenshots"},
+                               {"Body", "MultipartFormData"}, {"FileFormName", "file"}, {"Arguments", QJsonObject{{"folder", "screenshots"}, {"token", token}}},
+                               {"URL", "https://media.example.test/screenshots/{json:name}"}, {"ThumbnailURL", "https://media.example.test/screenshots/thumb/{json:name}"},
+                               {"DeletionURL", "https://media.example.test/screenshots/delete/{json:id}"}};
+        const auto result = importSxcu(sxcu(file));
+        QVERIFY2(!result.error, qPrintable(result.error.message));
+        QCOMPARE(result.settings["requestUrl"].toString(), QString("https://media.example.test/upload/screenshots"));
+        QCOMPARE(result.settings["responseUrl"].toString(), QString("https://media.example.test/screenshots/{json:name}"));
+        QCOMPARE(result.settings["thumbnailUrl"].toString(), QString("https://media.example.test/screenshots/thumb/{json:name}"));
+        QCOMPARE(result.settings["deletionUrl"].toString(), QString("https://media.example.test/screenshots/delete/{json:id}"));
+        // The folder is still stored, as every imported argument is: it is only not looked for.
+        QCOMPARE(result.secrets.value("arguments/folder"), QString("screenshots"));
+        // A part of a credential written out in an address, here the token of "Bearer <token>",
+        // cannot be named by its row. It becomes a stored value of its own, and the note says so.
+        const QJsonObject bearer{{"Version", "17.0.0"}, {"DestinationType", "ImageUploader"}, {"RequestMethod", "POST"}, {"RequestURL", "https://media.example.test/upload"},
+                                 {"Body", "MultipartFormData"}, {"FileFormName", "file"}, {"Headers", QJsonObject{{"Authorization", QString("Bearer ") + token}}},
+                                 {"URL", "{json:url}"}, {"DeletionURL", QString("https://media.example.test/delete/{json:id}?t=") + token}};
+        const auto parted = importSxcu(sxcu(bearer));
+        QVERIFY2(!parted.error, qPrintable(parted.error.message));
+        QCOMPARE(parted.settings["deletionUrl"].toString(), QString("https://media.example.test/delete/{json:id}?t={secret:secrets/deletion-key}"));
+        QCOMPARE(parted.secrets.value("secrets/deletion-key"), QString(token));
+        QVERIFY(!QJsonDocument(parted.settings).toJson().contains(token));
+        QVERIFY2(parted.notes.join(' ').contains("taken for a key and is now stored as deletion-key"), qPrintable(parted.notes.join(' ')));
+        QVERIFY2(!validateSettings(parted.settings), qPrintable(validateSettings(parted.settings).message));
+    }
+    // An address with no path ends its host at "?" or "#": what follows is scanned too.
+    void importScansAnAddressWithNoPath() {
+        const QString run = "0123456789abcdef0123";
+        QJsonObject file{{"Version", "17.0.0"}, {"DestinationType", "ImageUploader"}, {"RequestMethod", "POST"}, {"RequestURL", "https://media.example.test/upload"},
+                         {"Body", "Binary"}, {"URL", "{json:url}"}, {"DeletionURL", QString("https://i.example.test?k=") + run}};
+        auto result = importSxcu(sxcu(file));
+        QVERIFY2(!result.error, qPrintable(result.error.message));
+        QCOMPARE(result.settings["deletionUrl"].toString(), QString("https://i.example.test?k={secret:secrets/deletion-key}"));
+        QCOMPARE(result.secrets.value("secrets/deletion-key"), run);
+        QVERIFY(!QJsonDocument(result.settings).toJson().contains(run.toUtf8()));
+        file["DeletionURL"] = QString("https://i.example.test#") + run;
+        result = importSxcu(sxcu(file));
+        QVERIFY(!QJsonDocument(result.settings).toJson().contains(run.toUtf8()));
+        // A stored token repeated right after the host is named there as well.
+        file["Arguments"] = QJsonObject{{"token", token}};
+        file["Body"] = "MultipartFormData";
+        file["DeletionURL"] = QString("https://i.example.test?t=") + token;
+        result = importSxcu(sxcu(file));
+        QCOMPARE(result.settings["deletionUrl"].toString(), QString("https://i.example.test?t={secret:arguments/token}"));
     }
     void deletionAddressNamesAStoredValueOnlyWhenItIsExact() {
         const QString t = token;
@@ -361,15 +451,31 @@ private slots:
         QTest::addColumn<QString>("host");
         QTest::addColumn<bool>("loopback");
         for (const auto* host : {"localhost", "LOCALHOST", "localhost.", "api.localhost", "127.0.0.1", "127.9.8.7", "127.1", "2130706433", "0x7f000001", "0177.0.0.1", "0x7f.1",
-                                 "::1", "[::1]", "0:0:0:0:0:0:0:1", "::", "0.0.0.0", "0", "::ffff:127.0.0.1"})
+                                 "::1", "[::1]", "0:0:0:0:0:0:0:1", "::", "0.0.0.0", "0", "::ffff:127.0.0.1",
+                                 // The same mapped address written in hexadecimal groups, and in full.
+                                 "::ffff:7f00:1", "[::ffff:7f00:1]", "0:0:0:0:0:ffff:7f00:1", "::FFFF:7F00:0001", "::ffff:0:0", "::7f00:1", "::127.0.0.1"})
             QTest::newRow(host) << host << true;
-        for (const auto* host : {"192.168.1.5", "example.test", "128.0.0.1", "1.2.3.4", "::2", "2001:db8::1", "localhost.example.test", "notlocalhost", "127.0.0.1.example.test", ""})
+        for (const auto* host : {"192.168.1.5", "example.test", "128.0.0.1", "1.2.3.4", "::2", "2001:db8::1", "localhost.example.test", "notlocalhost", "127.0.0.1.example.test", "",
+                                 "::ffff:c0a8:105", "::ffff:192.168.1.5", "2001:db8::7f00:1", "::ffff:7f00:1:1", "1::1"})
             QTest::newRow(*host ? host : "empty") << host << false;
     }
     void thisMachineInEverySpelling() {
         QFETCH(QString, host);
         QFETCH(bool, loopback);
         QCOMPARE(loopbackAddress(host), loopback);
+    }
+    // Where a name leads is the resolver's answer, not its spelling: these all lead here.
+    void namesThatResolveToThisMachine() {
+        const QStringList own{"127.0.0.1", "::1", "192.168.68.74", "fe80::1c2d:3e4f:5a6b:7c8d%enp3s0", "2001:db8:5::74"};
+        // name, what it resolves to, whether that is this machine
+        const QList<std::tuple<QString, QStringList, bool>> cases{
+            {"ip6-localhost", {"::1"}, true}, {"ip6-loopback", {"::1"}, true}, {"localhost4", {"127.0.0.1"}, true}, {"localhost6", {"::1"}, true},
+            {"localhost.localdomain", {"127.0.0.1"}, true}, {"mint-builder", {"127.0.1.1"}, true}, {"localtest.me", {"127.0.0.1"}, true},
+            {"mapped.example.test", {"::ffff:7f00:1"}, true}, {"lan-name.example.test", {"192.168.68.74"}, true}, {"v6-name.example.test", {"2001:0db8:0005:0000:0000:0000:0000:0074"}, true},
+            {"link-local.example.test", {"fe80::1c2d:3e4f:5a6b:7c8d"}, true}, {"one-of-two.example.test", {"203.0.113.9", "127.0.0.1"}, true}, {"zero.example.test", {"0.0.0.0"}, true},
+            {"192.168.68.74", {}, true}, {"[2001:db8:5::74]", {}, true}, {"::ffff:192.168.68.74", {}, true},
+            {"cdn.example.test", {"203.0.113.9", "2001:db8:9::1"}, false}, {"192.168.68.75", {}, false}, {"other.example.test", {"192.168.68.75"}, false}, {"unresolved.example.test", {}, false}};
+        for (const auto& [host, resolved, here] : cases) QVERIFY2(leadsToThisMachine(host, resolved, own) == here, qPrintable(host));
     }
     void addressesAReplyMayName() {
         const QUrl far("https://public.example.test"), near("http://127.0.0.1:9000");
@@ -378,6 +484,9 @@ private slots:
         QVERIFY(returnedAddressProblem(QUrl("http://127.0.0.1:8080/admin"), far).contains("this computer"));
         QVERIFY(returnedAddressProblem(QUrl("http://localhost:8080/admin"), far).contains("this computer"));
         QVERIFY(returnedAddressProblem(QUrl("http://[::1]:8080/admin"), far).contains("this computer"));
+        // However the URL class writes a mapped address back, it is this computer.
+        QVERIFY2(returnedAddressProblem(QUrl("http://[::ffff:7f00:1]:8080/admin"), far).contains("this computer"), qPrintable(QUrl("http://[::ffff:7f00:1]:8080/admin").host()));
+        QVERIFY2(returnedAddressProblem(QUrl("http://[0:0:0:0:0:ffff:127.0.0.1]/admin"), far).contains("this computer"), qPrintable(QUrl("http://[0:0:0:0:0:ffff:127.0.0.1]/admin").host()));
         // A destination on this machine may be answered with addresses on this machine.
         QVERIFY(returnedAddressProblem(QUrl("http://localhost:8080/f/a.png"), near).isEmpty());
         QCOMPARE(requestOrigin({{"requestUrl", "https://media.example.test:8443/api/{filename}"}}), QUrl("https://media.example.test:8443"));

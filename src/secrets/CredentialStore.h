@@ -26,10 +26,12 @@ public:
     void forget(const QString& profileId, const QJsonObject& reference);
     std::optional<Credentials> cached(const QString& profileId, const QJsonObject& reference) const;
     void unlock(const QString& profileId, const QJsonObject& reference, std::function<void(Error)>);
-    void save(const QString& profileId, const QJsonObject& reference, Credentials, std::function<void(Error)>);
+    // save and erase can wait on the secret store for as long as its prompt stays open.
+    // Virtual so a test can stand in a store that never answers.
+    virtual void save(const QString& profileId, const QJsonObject& reference, Credentials, std::function<void(Error)>);
     // Removes what save stored: the cached values at once, and the secret-store entry
     // of a keychain reference. An entry that is not there is not an error.
-    void erase(const QString& profileId, const QJsonObject& reference, std::function<void(Error)>);
+    virtual void erase(const QString& profileId, const QJsonObject& reference, std::function<void(Error)>);
 private:
     static QString cacheKey(const QString&, const QJsonObject&);
     void remember(const QString&, Credentials);

@@ -19,9 +19,12 @@
 #include <QElapsedTimer>
 #include <QEventLoop>
 #include <QFile>
+#include <QHostAddress>
+#include <QHostInfo>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QNetworkAccessManager>
+#include <QNetworkInterface>
 #include <QNetworkReply>
 #include <QRegularExpression>
 #include <QTemporaryDir>
@@ -168,6 +171,7 @@ struct Exchange {
     bool deadline = false;     // past the connect or request deadline
     bool cut = false;          // a status line arrived, then the connection broke: the reply is incomplete
     QString detail;            // bounded transport description, never request data
+    QString blocked;           // why the address was not fetched at all; nothing was sent
     QString header(const char* name) const {
         for (const auto& [key, value] : headers) if (key.compare(name, Qt::CaseInsensitive) == 0) return QString::fromUtf8(value);
         return {};
@@ -195,7 +199,47 @@ public:
     // Whether a reply may send this client to the machine it runs on: only when the
     // destination's own request URL is there.
     void setOrigin(const QUrl& origin) { origin_ = origin; }
-    bool mayFollow(const QUrl& target) const { return returnedAddressProblem(target, origin_).isEmpty(); }
+    // Where a host leads: its spelling can say "this machine", and so can what it
+    // resolves to ("ip6-localhost", the machine's own name, a public name that answers
+    // 127.0.0.1). Looked up once per host, within the connect timeout. Qt keeps a lookup
+    // for a minute, so the request that follows normally goes to the addresses judged
+    // here; a resolver that changes its answer in between is not excluded by this.
+    enum class Where { Elsewhere, Here, Unresolved };
+    Where where(const QString& host) {
+        if (const auto known = where_.constFind(host); known != where_.cend()) return *known;
+        QStringList resolved;
+        if (QHostAddress literal; !literal.setAddress(host) && !loopbackAddress(host)) {
+            QEventLoop loop;
+            QHostInfo info;
+            bool done = false;
+            const int lookup = QHostInfo::lookupHost(host, &loop, [&](const QHostInfo& result) { info = result; done = true; loop.quit(); });
+            QTimer deadline;
+            deadline.setSingleShot(true);
+            QObject::connect(&deadline, &QTimer::timeout, &loop, &QEventLoop::quit);
+            deadline.start(connectMs_);
+            if (!done) loop.exec();
+            if (!done) { QHostInfo::abortHostLookup(lookup); return Where::Unresolved; }
+            if (info.error() != QHostInfo::NoError || info.addresses().isEmpty()) return where_[host] = Where::Unresolved;
+            for (const auto& address : info.addresses()) resolved.append(address.toString());
+        }
+        QStringList own;
+        for (const auto& address : QNetworkInterface::allAddresses()) own.append(address.toString());
+        return where_[host] = leadsToThisMachine(host, resolved, own) ? Where::Here : Where::Elsewhere;
+    }
+    // Why an address that a reply named is not fetched, or empty. It follows the
+    // destination's transport rule (plain HTTP only where the destination allows it), it
+    // carries no user name, and it leads to this machine only when the destination's own
+    // request URL does. `unresolved`: its host could not be looked up, which may pass.
+    QString fetchProblem(const QUrl& url, bool allowInsecure, bool* unresolved = nullptr) {
+        if (unresolved) *unresolved = false;
+        if (!url.isValid() || url.host().isEmpty() || !QStringList{"http", "https"}.contains(url.scheme())) return QStringLiteral("it is not an address put.gd can open");
+        if (!transportAllowed(url, allowInsecure)) return QStringLiteral("it uses plain HTTP, which this destination does not allow");
+        if (const auto problem = returnedAddressProblem(url, origin_); !problem.isEmpty()) return problem;
+        const auto leads = where(url.host());
+        if (leads == Where::Unresolved) { if (unresolved) *unresolved = true; return QStringLiteral("its host could not be looked up"); }
+        if (leads == Where::Here && where(origin_.host()) != Where::Here) return QStringLiteral("it points at this computer");
+        return {};
+    }
     // One request, no redirects followed. `sent` reports body bytes the transport has read.
     Exchange send(const QByteArray& verb, const QUrl& url, const Headers& headers, Body* body = nullptr, const std::function<void(qint64)>& sent = {}) {
         QNetworkRequest request(url);
@@ -255,14 +299,29 @@ public:
         return out;
     }
     // A GET that follows redirects and sends nothing but the address: the returned link
-    // and the deletion URL. Plain HTTP follows the destination's transport rule.
-    Exchange get(QUrl url, bool allowInsecure, QString* refused = nullptr) {
+    // and the deletion URL. Every address on the way is one a reply named and is judged
+    // by fetchProblem. `stay`: the address carries a stored value, which goes to its own
+    // host or nowhere, so no redirect to another host is followed either: the server
+    // could have written the value into the address it redirects to.
+    Exchange get(QUrl url, bool allowInsecure, QString* refused = nullptr, bool stay = false) {
         Exchange out;
+        out.url = url;
+        bool unresolved = false;
+        if (const auto problem = fetchProblem(url, allowInsecure, &unresolved); !problem.isEmpty()) {
+            if (unresolved) out.detail = QStringLiteral("host not found");
+            else out.blocked = problem;
+            return out;
+        }
+        const auto first = url;
         for (int hop = 0; hop <= maximumRedirects; ++hop) {
             out = send("GET", url, {});
             if (!QList<int>{301, 302, 303, 307, 308}.contains(out.status)) return out;
             const auto target = url.resolved(QUrl(out.header("location")));
-            if (!target.isValid() || !transportAllowed(target, allowInsecure) || (url.scheme() == "https" && target.scheme() != "https") || !mayFollow(target)) {
+            if (stay && target.isValid() && !sameHost(first, target)) {
+                if (refused) *refused = QStringLiteral("it redirects to another host, where put.gd does not send this destination's stored value");
+                return out;
+            }
+            if (!target.isValid() || (url.scheme() == "https" && target.scheme() != "https") || !fetchProblem(target, allowInsecure).isEmpty()) {
                 if (refused) *refused = QStringLiteral("it redirects to an address put.gd does not follow");
                 return out;
             }
@@ -275,6 +334,7 @@ private:
     QNetworkAccessManager nam_;
     int connectMs_, requestMs_;
     QUrl origin_;
+    QHash<QString, Where> where_;
 };
 
 struct Hashes { QByteArray sha256; qint64 bytes = 0; };
@@ -386,9 +446,18 @@ private:
         line["event"] = "progress";
         emitLine(line);
     }
-    // Server text may repeat what it was sent, as sent or encoded: a stored value never
-    // leaves in a message. Only the start of a long text is ever shown.
-    QString scrub(const QString& text) const { return scrubStoredValues(text.left(64 * 1024), secrets_); }
+    // Server text made fit to show: one line, no credential of this destination in any
+    // spelling, at most `maximum` characters. In that order. A value echoed around a
+    // control character reads as the value once the character is dropped, so the line is
+    // made first; and the text is cut last, so a value is never cut in half and shown.
+    // Only the start of a long text is cleaned, and enough of it that the place where it
+    // was cut is out of sight.
+    QString shown(const QString& text, int maximum = 300) const {
+        for (qsizetype window = 64 * 1024;; window *= 4) {
+            const auto cleaned = scrubStoredValues(singleLine(text.left(window)), secrets_);
+            if (window >= text.size() || cleaned.size() > maximum) return boundedMessage(cleaned, maximum);
+        }
+    }
     // A row's value: from settings, or from the credential store for a secret row.
     bool rowValue(const QString& list, const QJsonObject& row, const RequestValues& values, QString& out, Error& error) const {
         const auto name = row["name"].toString();
@@ -513,7 +582,7 @@ private:
     }
     // What the server said about a refusal, where the destination names it: ": text", or ".".
     QString said(const ResponseValues& values) const {
-        const auto text = settings()["errorMessage"].toString().isEmpty() ? QString() : boundedMessage(scrub(renderResponse(settings()["errorMessage"].toString(), values)));
+        const auto text = settings()["errorMessage"].toString().isEmpty() ? QString() : shown(renderResponse(settings()["errorMessage"].toString(), values));
         return text.isEmpty() ? QStringLiteral(".") : ": " + text;
     }
     Error refusal(const Exchange& r, const QString& stage, const ResponseValues& values) const {
@@ -554,7 +623,8 @@ private:
                 error = {"http_redirect_refused", "The server redirects to an unencrypted address; put.gd does not follow it.", details};
                 return r;
             }
-            if (const auto problem = returnedAddressProblem(target, origin_); !problem.isEmpty()) {
+            // Asked with plain HTTP let through: the transport rule was applied just above.
+            if (const auto problem = client_.fetchProblem(target, true); !problem.isEmpty()) {
                 error = {"http_redirect_refused", "The server redirects to an address put.gd does not follow: " + problem + ".", details};
                 return r;
             }
@@ -562,7 +632,7 @@ private:
             if (r.status == 307 || r.status == 308) {
                 // The server asks for the same request elsewhere: only on its own host.
                 if (configured && !same) {
-                    error = {"http_redirect_refused", "The server redirected the upload to another host (" + boundedMessage(scrub(target.host()), 96) +
+                    error = {"http_redirect_refused", "The server redirected the upload to another host (" + shown(target.host(), 96) +
                              "). put.gd does not send the file or this destination's credentials there. If that address is right, set it as the request URL.", details};
                     return r;
                 }
@@ -669,18 +739,21 @@ private:
             error = {"http_response_unreadable", QString("The server accepted the upload (HTTP %1), but ").arg(r.status) +
                      (why.isEmpty() ? QStringLiteral("its reply has no link where this destination looks for one.") : "the link in its reply cannot be used: " + why + ".") +
                      " The file may be stored on the server. Check the URL value under Response, then Retry; that sends the file again.",
-                     {{"requestStage", "response"}, {"httpStatus", r.status}, {"replyBytes", double(r.body.size())}, {"contentType", boundedMessage(scrub(r.header("content-type")), 96)}}};
+                     {{"requestStage", "response"}, {"httpStatus", r.status}, {"replyBytes", double(r.body.size())}, {"contentType", shown(r.header("content-type"), 96)}}};
             QJsonObject out{{"status", "unknown"}};
-            if (request_["includeReply"].toBool()) out["replyExcerpt"] = boundedMessage(scrub(values.body), 600);
+            if (request_["includeReply"].toBool()) out["replyExcerpt"] = shown(values.body, 600);
             return out;
         }
         // A server can repeat what it was sent inside the link it hands back. Such a
-        // link is not recorded, copied or shown: it would carry the value wherever it goes.
+        // link is not recorded, copied or shown: it would carry the credential wherever
+        // it goes. Sending the file again ends the same way, and the message says so.
         if (const auto key = storedValueIn(link, secrets_); !key.isEmpty()) {
             uncertain = true;
-            error = {"http_link_holds_secret", QString("The server accepted the upload (HTTP %1), but the link it returned contains a stored value of this destination (%2). "
-                     "put.gd does not record or copy such a link. The file may be stored on the server; Retry sends it again. "
-                     "If that value is not a credential, clear Secret on its row.").arg(r.status).arg(secretLabel(key)),
+            const bool row = !key.startsWith(extraSecretsList() + '/') && key != dataSecretKey();
+            error = {"http_link_holds_secret", QString("The server accepted the upload (HTTP %1), but the link it returned contains a credential of this destination (%2). "
+                     "put.gd does not record or copy such a link. The file is probably stored on the server, and Retry would send it again with the same result. "
+                     "If that value is not a credential, %3; otherwise change what the server puts in its links.").arg(r.status).arg(secretLabel(key))
+                     .arg(row ? QStringLiteral("clear Secret on its row") : key == dataSecretKey() ? QStringLiteral("take it out of the request body") : QStringLiteral("write it into the address itself and remove it from Other secret values")),
                      {{"requestStage", "response"}, {"httpStatus", r.status}, {"storedValue", secretLabel(key)}}};
             return {{"status", "unknown"}};
         }
@@ -693,38 +766,54 @@ private:
         // A thumbnail that repeats a stored value is left out.
         if (const auto thumbnail = address(renderResponse(settings()["thumbnailUrl"].toString(), values), false); !thumbnail.isEmpty() && storedValueIn(thumbnail, secrets_).isEmpty())
             receipt.objectReference["thumbnailUrl"] = thumbnail;
-        if (const auto deletion = deletionRecord(values, address); !deletion.isEmpty()) receipt.objectReference["deletionUrl"] = deletion;
+        // Why a deletion URL that came back was not kept is recorded in its place, so
+        // History can say that instead of "none came back".
+        const auto deletion = deletionRecord(values, address);
+        if (!deletion.recorded.isEmpty()) receipt.objectReference["deletionUrl"] = deletion.recorded;
+        else if (!deletion.leftOut.isEmpty()) receipt.objectReference["deletionUrlLeftOut"] = deletion.leftOut;
         return {{"status", "uploaded"}, {"receipt", receipt.toJson()}};
     }
-    // The deletion URL as the receipt keeps it: an address with no stored value in it, or
-    // a template that names each one ("{secret:key}", filled in when the deletion is
-    // sent). Empty when there is none, when it breaks the transport rule, when a stored
-    // value would have to be written out, or when one would be sent to another host than
-    // the request URL's: the upload stands and deletion is unavailable for it.
+    // The deletion URL as the receipt keeps it: an address with no credential in it, or a
+    // template that names each one ("{secret:key}", filled in when the deletion is sent).
+    // Not kept (`leftOut` says why) when it breaks the transport rule or is no address
+    // ("unusable"), when a credential would have to be written out ("stored_value"), or
+    // when one would be sent to another host than the request URL's ("other_host"): the
+    // upload stands and deletion is unavailable for it.
+    struct Deletion { QString recorded, leftOut; };
     template <typename Address>
-    QString deletionRecord(const ResponseValues& values, const Address& address) const {
+    Deletion deletionRecord(const ResponseValues& values, const Address& address) const {
         const auto pattern = settings()["deletionUrl"].toString();
         if (pattern.isEmpty()) return {};
         // Judged as it would be sent.
         auto filledValues = values;
         filledValues.secrets = &secrets_;
-        const auto filled = address(renderResponse(pattern, filledValues), true, nullptr);
-        if (filled.isEmpty()) return {};
+        const auto rendered = renderResponse(pattern, filledValues).trimmed();
+        if (rendered.isEmpty()) return {};
+        // What the reply itself gave, with the stored values it names rendered as nothing.
+        const auto fromReply = renderResponse(pattern, values).trimmed();
+        const auto filled = address(rendered, true, nullptr);
+        if (filled.isEmpty()) {
+            // Text that is no address at all ("null", say) is no deletion URL either.
+            const QUrl shape(rendered, QUrl::TolerantMode);
+            const bool anAddress = rendered.size() <= 4096 && (rendered.startsWith('/') || (shape.isValid() && !shape.host().isEmpty() && QStringList{"http", "https"}.contains(shape.scheme())));
+            return {{}, anAddress ? QStringLiteral("unusable") : QString()};
+        }
         QString recorded;
         if (!secretReferences(pattern).isEmpty()) {
-            // The template names its stored values. What it reads from the reply (the
-            // names rendered as nothing) must not repeat one beside them.
-            if (!storedValueIn(renderResponse(pattern, values).trimmed(), secrets_).isEmpty()) return {};
+            // The template names its stored values. What it reads from the reply must not
+            // repeat a credential beside them.
+            if (!storedValueIn(fromReply, secrets_).isEmpty()) return {{}, QStringLiteral("stored_value")};
             auto symbolic = values;
             symbolic.keepSecrets = true;
             recorded = renderResponse(pattern, symbolic).trimmed();
-        } else if (storedValueIn(filled, secrets_).isEmpty()) return filled;
-        // The reply wrote a stored value into the address: it is recorded by name where
-        // it stands exactly as stored, and not at all otherwise.
+        } else if (storedValueIn(filled, secrets_).isEmpty()) return {filled, {}};
+        // The reply wrote a credential into the address: it is recorded by name where it
+        // stands exactly as stored, and not at all otherwise.
         else recorded = nameStoredValues(filled, secrets_);
+        if (recorded.isEmpty()) return {{}, QStringLiteral("stored_value")};
         // A stored value goes to the request's own host or nowhere.
-        if (recorded.isEmpty() || !sameHost(origin_, QUrl(filled))) return {};
-        return recorded;
+        if (!sameHost(origin_, QUrl(filled))) return {{}, QStringLiteral("other_host")};
+        return {recorded, {}};
     }
     // One GET of the deletion URL the upload returned, after its intent is journaled.
     QJsonObject remove(Error& error, bool& uncertain) {
@@ -747,14 +836,25 @@ private:
             }
         const bool named = !secretReferences(recorded).isEmpty();
         const QUrl url(named ? renderResponse(recorded, stored) : recorded, QUrl::StrictMode);
-        const bool usable = url.isValid() && !url.host().isEmpty() && transportAllowed(url, allowInsecure()) && returnedAddressProblem(url, origin_).isEmpty();
-        // A stored value goes to the destination's own host or nowhere, whatever a record says.
-        if (usable && named && !sameHost(origin_, url)) {
-            error = {"http_delete_unsupported", "This upload's deletion URL is on another host than its destination. put.gd does not send a stored value there, so it cannot delete this upload from the server.", {}};
+        if (recorded.isEmpty()) {
+            error = {"http_delete_unsupported", "This upload came back without a deletion URL, so put.gd cannot delete it from the server.", {}};
             return {{"status", "unsupported_safe_removal"}, {"progress", progress}};
         }
-        if (!usable) {
-            error = {"http_delete_unsupported", "This upload came back without a deletion URL, so put.gd cannot delete it from the server.", {}};
+        // The recorded address is one a reply named: it is judged again before anything
+        // is sent, and a name that leads to this machine is found by looking it up.
+        bool unresolved = false;
+        const auto unusable = client_.fetchProblem(url, allowInsecure(), &unresolved);
+        if (unresolved) {
+            error = {"http_connect_failed", "The server could not be reached (host not found). Nothing was deleted.", {{"requestStage", "delete"}}};
+            return {{"status", "failed"}, {"progress", progress}};
+        }
+        if (!unusable.isEmpty()) {
+            error = {"http_delete_unsupported", "This upload's deletion URL cannot be used: " + unusable + ". put.gd cannot delete this upload from the server.", {}};
+            return {{"status", "unsupported_safe_removal"}, {"progress", progress}};
+        }
+        // A stored value goes to the destination's own host or nowhere, whatever a record says.
+        if (named && !sameHost(origin_, url)) {
+            error = {"http_delete_unsupported", "This upload's deletion URL is on another host than its destination. put.gd does not send a stored value there, so it cannot delete this upload from the server.", {}};
             return {{"status", "unsupported_safe_removal"}, {"progress", progress}};
         }
         if (cancelled.load()) { error = stoppedError(); return {{"status", "failed"}, {"progress", progress}}; }
@@ -765,12 +865,14 @@ private:
             if (auto e = checkpoint(progress)) { error = e; return QJsonObject{{"status", "unknown"}, {"progress", progress}}; }
             return QJsonObject{{"status", status}, {"progress", progress}};
         };
-        // What the link serves now, to tell afterwards whether the file really went.
+        // What the link serves now, to tell afterwards whether the file really went. The
+        // link is fetched under the same rules as any address a reply named; one that
+        // may not be fetched is simply not compared.
         const QUrl link(expected.directUrl, QUrl::StrictMode);
-        const auto before = link.isValid() && !link.host().isEmpty() && returnedAddressProblem(link, origin_).isEmpty() ? client_.get(link, true) : Exchange{};
+        const auto before = client_.get(link, allowInsecure());
         if (cancelled.load()) { error = stoppedError(); return {{"status", "failed"}, {"progress", progress}}; }
         QString refused;
-        auto r = client_.get(url, allowInsecure(), &refused);
+        auto r = client_.get(url, allowInsecure(), &refused, named);
         QJsonObject details{{"requestStage", "delete"}, {"httpStatus", r.status}};
         if (!refused.isEmpty()) {
             // The server received the request and answered with a redirect that is not
@@ -793,7 +895,7 @@ private:
             // A server can answer politely and delete nothing. If the link served the
             // file before and serves the very same bytes now, it is still there.
             if (before.status >= 200 && before.status < 300) {
-                const auto after = client_.get(link, true);
+                const auto after = client_.get(link, allowInsecure());
                 if (after.status >= 200 && after.status < 300 && after.body == before.body) {
                     error = {"http_delete_unconfirmed", QString("The server answered the deletion request (HTTP %1), but the link still serves the file. Nothing is confirmed deleted. "
                              "This server may want the deletion confirmed on its own page, or may serve a cached copy for a while; try again later or delete it on the server.").arg(r.status), details};
@@ -851,9 +953,13 @@ private:
         const auto receipt = StorageReceipt::fromJson(uploaded["receipt"].toObject());
         out["link"] = receipt.directUrl;
         out["deletionOffered"] = receipt.objectReference.contains("deletionUrl");
+        const auto leftOut = receipt.objectReference["deletionUrlLeftOut"].toString();
         if (auto e = checkpoint({{"schemaVersion", 1}, {"phase", "uploaded"}, {"receipt", receipt.toJson()}})) { error = e; return out; }
+        if (!leftOut.isEmpty()) out["deletionLeftOut"] = leftOut;
+        // The link is opened as the destination's own rule allows: plain HTTP only where
+        // the destination allows it, and this machine only when the destination is here.
         QString refused;
-        const auto fetched = client_.get(QUrl(receipt.directUrl, QUrl::StrictMode), true, &refused);
+        const auto fetched = client_.get(QUrl(receipt.directUrl, QUrl::StrictMode), allowInsecure(), &refused);
         out["linkStatus"] = fetched.status;
         out["publicReachable"] = fetched.status >= 200 && fetched.status < 300;
         out["linkReturnsFile"] = fetched.body == bytes;
@@ -866,6 +972,10 @@ private:
             out["cleanupStatus"] = removed["status"];
         } else out["cleanupStatus"] = "unsupported";
         if (cleanup) error = cleanup;
+        else if (!fetched.blocked.isEmpty())
+            error = {"public_url_unreachable", "The upload worked, but put.gd did not open the returned link: " + fetched.blocked + ". " +
+                     (fetched.blocked.contains("plain HTTP") ? QStringLiteral("Turn on Allow plain HTTP for this destination, or have the server return an https link.") : QStringLiteral("Check the URL value under Response.")),
+                     {{"httpStatus", 0}}};
         else if (!out["publicReachable"].toBool())
             error = {"public_url_unreachable", fetched.status ? QString("The upload worked, but the returned link did not open (HTTP %1). Check the URL value under Response.").arg(fetched.status)
                                                               : "The upload worked, but the returned link did not open (" + (refused.isEmpty() ? fetched.detail : refused) + "). Check the URL value under Response.",

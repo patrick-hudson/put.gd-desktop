@@ -764,6 +764,10 @@ private slots:
         QVERIFY2(uploaded.status == "uploaded", qPrintable(uploaded.error.code + ": " + uploaded.error.message));
         QVERIFY2(!uploaded.receipt.objectReference.contains("deletionUrl"), qPrintable(uploaded.receipt.objectReference["deletionUrl"].toString()));
         QVERIFY(!f.provider.receiptCapabilities(uploaded.receipt).remove);
+        // And History says why, instead of claiming that none came back.
+        const auto why = f.provider.receiptCapabilities(uploaded.receipt).removeUnavailable;
+        QVERIFY2(why.contains("another host") && !why.contains("without a deletion URL"), qPrintable(why));
+        QVERIFY(!QJsonDocument(uploaded.receipt.toJson()).toJson().contains(key.toUtf8()));
         // Test connection deletes what it uploaded only when that stays on the host.
         QJsonObject tested;
         Error error;
@@ -896,6 +900,245 @@ private slots:
         QCOMPARE(result.progress["phase"].toString(), QString("delete_intent"));
         f.rules({});
         QCOMPARE(f.remove(uploaded.receipt, result.progress).status, QString("removed"));
+    }
+    // Second review of #1371. An imported argument such as a folder is stored by default.
+    // A link that repeats that ordinary word is an ordinary link, not an unknown outcome
+    // that leaves another copy on the server at every retry.
+    void anOrdinaryStoredWordInTheLinkIsNoSecret() {
+        HttpFixture f;
+        f.reset();
+        auto destination = f.destination;
+        destination.settings["arguments"] = rows({secretRow("folder")});
+        f.store({{"headers/Authorization", "Bearer " + token}, {"arguments/folder", "screenshots"}});
+        const auto result = f.upload(f.artifact("screenshots.png", "\x89PNG synthetic image bytes", "image/png", "images"), destination);
+        QVERIFY2(result.status == "uploaded", qPrintable(result.status + " " + result.error.code + ": " + result.error.message));
+        QVERIFY2(result.receipt.directUrl.endsWith("/screenshots.png"), qPrintable(result.receipt.directUrl));
+        QCOMPARE(f.events("upload")[0].toObject()["fields"].toObject()["folder"].toString(), QString("screenshots"));
+    }
+    // The other half: a key that is only part of a stored value, here inside a stored JSON
+    // body, is found when the server writes it into the link.
+    void aKeyEchoedOutOfAStoredBodyIsFound() {
+        const QString part = "putgdsyntheticbodypart0001";
+        HttpFixture f;
+        f.reset({{"auth", "argument"}, {"token", part}});
+        auto destination = f.destination;
+        auto s = f.settings("json");
+        s["headers"] = QJsonArray{};
+        s["body"] = "json";
+        s["dataSecret"] = true;
+        QVERIFY2(!http::validateSettings(s), qPrintable(http::validateSettings(s).message));
+        destination.settings = s;
+        f.store({{"data", "{\"key\":\"" + part + "\",\"content\":\"{input}\",\"name\":\"{filename}\"}"}});
+        f.rules({{{"call", "upload"}, {"store", true}, {"echo", "url"}}});
+        const auto result = f.upload(f.text(), destination);
+        const auto kept = QJsonDocument(QJsonObject{{"receipt", result.receipt.toJson()}, {"error", result.error.toJson()}}).toJson();
+        QVERIFY2(!kept.contains(part.toUtf8()), kept.constData());
+        QCOMPARE(result.status, QString("unknown"));
+        QCOMPARE(result.error.code, QString("http_link_holds_secret"));
+        QVERIFY2(result.error.message.contains("request body"), qPrintable(result.error.message));
+        QCOMPARE(f.stored(), 1);
+    }
+    // A value echoed with a control character inside it must not come back together when
+    // the message is made fit to show.
+    void aStoredValueEchoedAroundAControlCharacterIsScrubbed() {
+        HttpFixture f;
+        f.reset({{"echo", "control"}});
+        f.store({{"headers/Authorization", "Bearer wrong-" + token}});
+        const auto refused = f.upload(f.image());
+        QCOMPARE(refused.error.code, QString("http_authentication_failed"));
+        const auto kept = refused.error.message + QString::fromUtf8(QJsonDocument(refused.error.details).toJson());
+        QVERIFY2(!kept.contains(token) && !kept.contains("synthetic-uploader"), qPrintable(kept));
+    }
+    // Test connection opens the returned link under the destination's own transport rule:
+    // a plain-HTTP link on another machine is not fetched unless plain HTTP is allowed.
+    void testConnectionOpensAPlainHttpLinkOnlyWhenAllowed() {
+        HttpFixture f;
+        f.reset();
+        auto destination = f.destination;
+        destination.settings["connectTimeoutMs"] = 1000;
+        // 192.0.2.1 is a documentation address: nothing answers there.
+        f.rules({{{"call", "upload"}, {"store", true}, {"elsewhere", "url"}, {"elsewhereHost", "192.0.2.1"}}});
+        QJsonObject tested;
+        Error error;
+        f.provider.testDestination(destination, [](const QJsonObject&, std::function<void(Error)> ack) { ack({}); }, [&](QJsonObject r, Error e) { tested = r; error = e; });
+        QCOMPARE(tested["uploadStatus"].toString(), QString("uploaded"));
+        QCOMPARE(error.code, QString("public_url_unreachable"));
+        QVERIFY2(error.message.contains("plain HTTP"), qPrintable(error.message));
+        QVERIFY(!tested["publicReachable"].toBool());
+        // What it uploaded is still removed.
+        QCOMPARE(tested["cleanupStatus"].toString(), QString("removed"));
+        QCOMPARE(f.stored(), 0);
+    }
+    // A deletion URL that names a stored value is sent to the destination's own host and
+    // follows no redirect away from it: the server could write the value into Location.
+    void aDeletionThatNamesAStoredValueFollowsNoRedirectToAnotherHost() {
+        HttpFixture f;
+        f.reset();
+        const QString part = "putgd-synthetic-delete-part-0002";
+        auto destination = f.destination;
+        destination.settings["secrets"] = rows({secretRow("delete-part")});
+        destination.settings["deletionUrl"] = "{json:files[0].delete}?k={secret:secrets/delete-part}";
+        f.store({{"headers/Authorization", "Bearer " + token}, {"secrets/delete-part", part}});
+        const auto uploaded = f.upload(f.image(), destination);
+        QVERIFY2(uploaded.status == "uploaded", qPrintable(uploaded.error.code + ": " + uploaded.error.message));
+        f.rules({{{"call", "delete"}, {"status", 302}, {"location", QString(f.base).replace("127.0.0.1", "localhost") + "/delete/moved/away?k=" + part}}});
+        const auto result = f.remove(uploaded.receipt);
+        const auto requests = f.events("delete");
+        for (const auto& request : requests)
+            QVERIFY2(!request.toObject()["headers"].toObject()["host"].toString().startsWith("localhost"), QJsonDocument(request.toObject()).toJson().constData());
+        QCOMPARE(requests.size(), 1);
+        QCOMPARE(result.status, QString("unknown"));
+        QCOMPARE(result.error.code, QString("http_outcome_unknown"));
+        QVERIFY2(result.error.message.contains("another host"), qPrintable(result.error.message));
+        // On its own host a redirect is followed as before.
+        const auto again = f.upload(f.image(), destination);
+        f.rules({{{"call", "delete"}, {"store", true}, {"status", 302}, {"location", f.base + "/__state"}}});
+        QCOMPARE(f.remove(again.receipt).status, QString("removed"));
+    }
+    // A server that answers 5xx before it has the whole file has stored nothing: a plain
+    // failure, with no talk of a second copy. (After the whole file it is unknown: above.)
+    // Qt's HTTP/1.1 client reads no reply while it is still sending, so what it reports
+    // is the connection that ended under the upload; a client that did read the early
+    // status would report the server's error. Either is a definite failure.
+    void aServerErrorBeforeTheWholeFileIsACleanFailure() {
+        HttpFixture f;
+        f.reset();
+        f.rules({{{"call", "upload"}, {"early", true}, {"status", 500}, {"body", QJsonObject{{"error", "no room"}}}}});
+        // More than a connection's buffers hold, so the file cannot have left whole.
+        const auto result = f.upload(f.artifact("large.bin", QByteArray(48 * 1024 * 1024, 'x'), "application/octet-stream", "files"));
+        QVERIFY2(result.status == "failed", qPrintable(result.status + " " + result.error.code + ": " + result.error.message));
+        QVERIFY2(result.error.code == "http_upload_interrupted" || result.error.code == "http_server_error", qPrintable(result.error.code + ": " + result.error.message));
+        QVERIFY2(!result.error.message.contains("second copy") && !result.error.message.contains("may be stored"), qPrintable(result.error.message));
+        if (result.error.code == "http_server_error") QCOMPARE(result.error.details["httpStatus"].toInt(), 500);
+        QVERIFY(result.receipt.directUrl.isEmpty());
+        QCOMPARE(f.events("upload").size(), 1);
+        QCOMPARE(f.stored(), 0);
+    }
+    // An import never stores under, or cleans up, a keychain entry that another
+    // destination already names.
+    void anImportDoesNotTakeAnotherDestinationsKeychainEntry() {
+        QTemporaryDir dir;
+        CredentialStore credentials;
+        ProviderRegistry registry;
+        registry.add("custom-http", std::make_shared<HttpUploaderProvider>(credentials));
+        SettingsService settings(dir.filePath("config.json"), [&](auto id, auto value) { return registry.validate(id, value); });
+        auto document = putgd::test::configuration(dir.path(), true);
+        auto existing = http::defaults();
+        existing["requestUrl"] = "https://first.example.test/upload";
+        document["profiles"] = QJsonArray{QJsonObject{{"id", "first"}, {"label", "First"}, {"provider", "custom-http"}, {"settings", existing},
+                                                      {"credentials", QJsonObject{{"mode", "keychain"}, {"reference", "putgd/http/shared"}}}}};
+        QVERIFY2(settings.save(document, {}), "the starting configuration was refused");
+        const auto path = dir.filePath("uploader.sxcu");
+        {
+            QFile out(path);
+            QVERIFY(out.open(QIODevice::WriteOnly));
+            out.write(QJsonDocument(QJsonObject{{"Version", "17.0.0"}, {"Name", "Uploader"}, {"DestinationType", "ImageUploader"}, {"RequestMethod", "POST"},
+                                                {"RequestURL", "https://media.example.test/upload"}, {"Headers", QJsonObject{{"Authorization", token}}},
+                                                {"Body", "MultipartFormData"}, {"FileFormName", "file"}, {"URL", "{json:url}"}}).toJson());
+        }
+        bool done = false;
+        Error error;
+        http::importUploaderFile(settings, credentials, {{"path", path}, {"expectedRevision", settings.metadata()["observedRevision"].toString()}, {"credentialMode", "keychain"}, {"profileId", "shared"}},
+                                 [&](Error e, QJsonObject) { error = e; done = true; });
+        QVERIFY(waitFor([&] { return done; }, 10000));
+        QCOMPARE(error.code, QString("credential_reference_in_use"));
+        QCOMPARE(settings.document()["profiles"].toArray().size(), 1);
+        QVERIFY(!credentials.cached("shared", {{"mode", "keychain"}, {"reference", "putgd/http/shared"}}).has_value());
+    }
+    // A keychain prompt that nobody answers ends the import after its deadline, and the
+    // next import is taken. The entry it was writing stays spoken for until the keychain
+    // answers after all; what it wrote then is removed, since no destination was made.
+    void anUnansweredKeychainDoesNotBlockLaterImports() {
+        struct Stalled : CredentialStore {
+            std::function<void(Error)> pending;
+            QStringList erased;
+            void save(const QString& profile, const QJsonObject& reference, Credentials value, std::function<void(Error)> reply) override {
+                if (reference["mode"] == "keychain") pending = reply;
+                else CredentialStore::save(profile, reference, std::move(value), reply);
+            }
+            void erase(const QString&, const QJsonObject& reference, std::function<void(Error)> reply) override { erased.append(reference["reference"].toString()); reply({}); }
+        } credentials;
+        QTemporaryDir dir;
+        ProviderRegistry registry;
+        registry.add("custom-http", std::make_shared<HttpUploaderProvider>(credentials));
+        SettingsService settings(dir.filePath("config.json"), [&](auto id, auto value) { return registry.validate(id, value); });
+        QVERIFY(settings.save(putgd::test::configuration(dir.path(), true), {}));
+        const auto path = dir.filePath("uploader.sxcu");
+        {
+            QFile out(path);
+            QVERIFY(out.open(QIODevice::WriteOnly));
+            out.write(QJsonDocument(QJsonObject{{"Version", "17.0.0"}, {"Name", "Uploader"}, {"DestinationType", "ImageUploader"}, {"RequestMethod", "POST"},
+                                                {"RequestURL", "https://media.example.test/upload"}, {"Headers", QJsonObject{{"Authorization", token}}},
+                                                {"Body", "MultipartFormData"}, {"FileFormName", "file"}, {"URL", "{json:url}"}}).toJson());
+        }
+        struct Outcome { bool done = false; Error error; };
+        const auto import = [&](const QString& id, const QString& mode, Outcome& outcome) {
+            http::importUploaderFile(settings, credentials, {{"path", path}, {"expectedRevision", settings.metadata()["observedRevision"].toString()}, {"credentialMode", mode}, {"profileId", id}},
+                                     [&outcome](Error e, QJsonObject) { outcome.error = e; outcome.done = true; }, std::chrono::milliseconds(300));
+        };
+        Outcome stalled, busy, next, again, later;
+        import("stalled", "keychain", stalled);
+        // While it waits, the turn is its own.
+        import("other", "session", busy);
+        QCOMPARE(busy.error.code, QString("import_busy"));
+        QVERIFY(waitFor([&] { return stalled.done; }, 10000));
+        QCOMPARE(stalled.error.code, QString("credential_store_timeout"));
+        QVERIFY(settings.document()["profiles"].toArray().isEmpty());
+        // The next import is taken, and saved.
+        import("next", "session", next);
+        QVERIFY(waitFor([&] { return next.done; }, 10000));
+        QVERIFY2(!next.error, qPrintable(next.error.code + ": " + next.error.message));
+        // The entry the first one was writing is still spoken for.
+        import("stalled", "keychain", again);
+        QVERIFY(waitFor([&] { return again.done; }, 10000));
+        QCOMPARE(again.error.code, QString("credential_reference_in_use"));
+        // The keychain answers after all: what it wrote is removed, and the ID is free again.
+        QVERIFY(credentials.pending);
+        std::exchange(credentials.pending, {})(Error{});
+        QCOMPARE(credentials.erased, QStringList({"putgd/http/stalled"}));
+        import("stalled", "keychain", later);
+        QVERIFY(credentials.pending);
+        credentials.pending(Error{});
+        QVERIFY(waitFor([&] { return later.done; }, 10000));
+        QVERIFY2(!later.error, qPrintable(later.error.code + ": " + later.error.message));
+        QCOMPARE(settings.document()["profiles"].toArray().size(), 2);
+    }
+    // When the destination was written and only reading the configuration back failed,
+    // the destination exists: its stored values stay, and the reply says what happened.
+    void aWrittenDestinationKeepsItsValuesWhenOnlyTheReadBackFails() {
+        QTemporaryDir dir;
+        CredentialStore credentials;
+        ProviderRegistry registry;
+        registry.add("custom-http", std::make_shared<HttpUploaderProvider>(credentials));
+        // The first check of the new destination is the write's; the second is the read-back's.
+        int checks = 0;
+        SettingsService settings(dir.filePath("config.json"), [&](auto id, auto value) { return ++checks >= 2 ? Error{"config_invalid", "synthetic read-back failure", {}} : registry.validate(id, value); });
+        QVERIFY(settings.save(putgd::test::configuration(dir.path(), true), {}));
+        const auto path = dir.filePath("uploader.sxcu");
+        {
+            QFile out(path);
+            QVERIFY(out.open(QIODevice::WriteOnly));
+            out.write(QJsonDocument(QJsonObject{{"Version", "17.0.0"}, {"Name", "Uploader"}, {"DestinationType", "ImageUploader"}, {"RequestMethod", "POST"},
+                                                {"RequestURL", "https://media.example.test/upload"}, {"Headers", QJsonObject{{"Authorization", token}}},
+                                                {"Body", "MultipartFormData"}, {"FileFormName", "file"}, {"URL", "{json:url}"}}).toJson());
+        }
+        const QJsonObject session{{"mode", "session"}, {"reference", QJsonValue::Null}};
+        bool done = false;
+        Error error;
+        http::importUploaderFile(settings, credentials, {{"path", path}, {"expectedRevision", settings.metadata()["observedRevision"].toString()}, {"credentialMode", "session"}, {"profileId", "uploader"}},
+                                 [&](Error e, QJsonObject) { error = e; done = true; });
+        QVERIFY(waitFor([&] { return done; }, 10000));
+        QVERIFY(checks >= 2);
+        QVERIFY2(error.message.contains("synthetic read-back failure"), qPrintable(error.code + ": " + error.message));
+        // The destination is in the file, so what it needs is still stored.
+        QFile written(dir.filePath("config.json"));
+        QVERIFY(written.open(QIODevice::ReadOnly));
+        const auto onDisk = QJsonDocument::fromJson(written.readAll()).object()["profiles"].toArray();
+        QCOMPARE(onDisk.size(), 1);
+        QCOMPARE(onDisk[0].toObject()["id"].toString(), QString("uploader"));
+        QVERIFY2(credentials.cached("uploader", session).has_value(), "the written destination lost its stored values");
+        QCOMPARE(credentials.cached("uploader", session)->values.value("headers/Authorization"), token);
+        QVERIFY(error.details["destinationWritten"].toBool());
     }
     // Two imports in flight must not share a destination's stored values: the second is
     // refused while the first is being saved, whether the ID was given or derived.
