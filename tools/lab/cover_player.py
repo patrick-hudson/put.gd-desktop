@@ -353,7 +353,8 @@ def play(args):
         rect, size = result
         if rect == target['rect'] and size == target['rect'][2:]:
             state['covered'] = True
-            hide_pointer(window, Gdk)
+            if not args.pointer:
+                hide_pointer(window, Gdk)
             emit(ok=True, state='covered', output=target['names'], rect=target['rect'], monitorIndex=index)
             if args.media_now:
                 start_media()
@@ -478,6 +479,8 @@ def main(argv=None):
     p.add_argument('--audio-device')
     p.add_argument('--title', default='put.gd lab cover')
     p.add_argument('--place-timeout', type=int, default=10)
+    p.add_argument('--pointer', action='store_true',
+                   help="keep the pointer visible over the cover (click runs: labwc reports a pointer's position only while it is shown)")
     c = sub.add_parser('precheck')
     c.add_argument('--port', type=int, required=True, help="the host's loopback VNC port showing the real desktop")
     c.add_argument('--output')

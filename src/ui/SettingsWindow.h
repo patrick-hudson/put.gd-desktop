@@ -160,7 +160,11 @@ private:
  QLineEdit *root_,*profileId_,*profileLabel_,*reference_,*access_,*secret_,*token_;QComboBox *profile_,*credentialMode_,*acl_,*naming_,*collision_,*addressing_,*regionChoices_,*regionSelection_,*recordingFrameRate_,*recordingMicrophone_,*uploadClipboard_,*appearance_;QPlainTextEdit* providerJson_;QCheckBox *keep_,*notifications_,*login_,*unlockAtStartup_,*fileManagerMenu_,*recordingClicks_;
  // #1364: Capture → Screen recording's microphone choice and click highlights
  // ask the resident what the sound server and the desktop offer right now.
- void refreshRecordingInputs();void showRecordingMicrophones(const QJsonObject& microphones);void showClickHighlights(const QJsonObject& capability);
+ void refreshRecordingInputs();
+public:
+ // What `recording.microphones` and the capability's `clickHighlights` answered; public for the UI catalog.
+ void showRecordingMicrophones(const QJsonObject& microphones);void showClickHighlights(const QJsonObject& capability);
+private:
  QLabel *recordingMicrophoneStatus_=nullptr,*recordingClicksStatus_=nullptr;QComboBox* fileManagerFolders_;
 };
 }

@@ -12,6 +12,14 @@ namespace putgd::record {
 // pulse layer). The monitor of an output is never in the list and is never
 // opened as a microphone: recording it would add the computer's own playback a
 // second time. Listing connects to the sound server and opens no device.
+// `stream-properties` for every pulsesrc that opens a microphone. PipeWire's session manager moves a
+// stream whose device disappears to the default input, and where nothing is plugged in that is an
+// output's monitor: the recording would go on with the computer's own sound in place of a voice.
+// `node.dont-reconnect` (what PA_STREAM_DONT_MOVE becomes in PipeWire's PulseAudio layer) leaves the
+// stream unlinked instead (measured with PipeWire 1.4.2 and WirePlumber 0.5.8: the pinned stream has no
+// source after the device is removed, an unpinned one is on the monitor). PulseAudio itself ignores
+// the property; there the pipeline's own check of the stream's device drops the audio.
+inline constexpr const char* pinnedStream = "props,node.dont-reconnect=(string)true";
 struct Microphone {
     QString id;     // the source name pulsesrc opens
     QString label;  // the device's description

@@ -9,6 +9,7 @@
 #include <QTimer>
 #include <memory>
 #include <algorithm>
+#include <chrono>
 #include <cmath>
 #include <utility>
 
@@ -513,6 +514,9 @@ void RecordingService::watchClicks(Session& s, std::function<void()> then) {
     if (*once) QTimer::singleShot(clickWatchWaitMs, this, proceed);
     clicks_->watchClicks(s.target.toJson(), [guard, current](QJsonObject click) {
         if (!guard) return;
+        // When the desktop reported it (CLOCK_MONOTONIC, shared with the helper): the ring is drawn at
+        // this moment of the clip however long the press takes to reach the helper's pipeline.
+        if (!click.contains("atUs")) click["atUs"] = double(std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now().time_since_epoch()).count());
         QMetaObject::invokeMethod(guard, [guard, current, click] {
             // Presses while paused are not part of the clip.
             if (!current() || guard->session_->state != "recording") return;

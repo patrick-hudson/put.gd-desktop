@@ -539,6 +539,8 @@ void ControlBar::refresh() {
     audio_->setToolTip(config_.silent() ? QStringLiteral("GIF and WebP are silent") : ready ? QStringLiteral("Include the sound the computer plays") : withSound ? QStringLiteral("System audio is being recorded") : QStringLiteral("System audio is not being recorded"));
     const bool narrated = config_.audio.microphone && !config_.silent();
     microphone_->setEnabled(ready && options_.microphoneAvailable && !config_.silent());
+    // Without one the toggle says so itself; why is in its tooltip.
+    microphone_->setText(options_.microphoneAvailable ? QStringLiteral("Microphone") : QStringLiteral("No microphone"));
     Ui::setLocked(microphone_, !microphone_->isEnabled());
     microphone_->blockSignals(true);
     microphone_->setChecked(microphoneIntent_);

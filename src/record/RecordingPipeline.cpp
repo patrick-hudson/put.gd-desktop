@@ -80,7 +80,11 @@ QString audioDescription(const QString& name) {
 // clock, and waits `latency` for a late branch before it mixes without it.
 const char* mixFormat = "audio/x-raw,format=F32LE,layout=interleaved,rate=48000,channels=2";
 QString captureBranch(const char* source, const char* tap, const QString& device) {
-    return QStringLiteral(" pulsesrc name=%1 device=%2 ! audioconvert ! audioresample ! %3 ! identity name=%4 silent=true").arg(QString::fromLatin1(source), shellQuote(device), QString::fromLatin1(mixFormat), QString::fromLatin1(tap));
+    // The microphone's stream is pinned to its device (see pinnedStream in Microphones.h): when the
+    // device goes, the sound server leaves the stream unlinked instead of moving it to the default
+    // input, which may be an output's monitor. System audio keeps the server's own routing.
+    const QString pin = QByteArrayView(source) == "msrc" ? QStringLiteral(" stream-properties=\"%1\"").arg(QLatin1String(pinnedStream)) : QString();
+    return QStringLiteral(" pulsesrc name=%1 device=%2%5 ! audioconvert ! audioresample ! %3 ! identity name=%4 silent=true").arg(QString::fromLatin1(source), shellQuote(device), QString::fromLatin1(mixFormat), QString::fromLatin1(tap), pin);
 }
 QString audioEncodeBranch(const QString& audioEncoder) {
     return QStringLiteral(" ! audioconvert ! audio/x-raw,rate=48000,channels=2 ! %1 name=aenc ! aacparse ! queue name=aq max-size-buffers=0 max-size-bytes=0 max-size-time=2000000000 ! mux.").arg(audioDescription(audioEncoder));
@@ -378,11 +382,13 @@ void RecordingPipeline::drawClicks(RecordingPipeline* self, GstPad* pad, GstBuff
     // A ring's frame is a picture of its own, not a repeat to skip.
     GST_BUFFER_FLAG_UNSET(buffer, GST_BUFFER_FLAG_GAP);
 }
-void RecordingPipeline::addClick(QPointF canvasPoint, int button) {
+void RecordingPipeline::addClick(QPointF canvasPoint, int button, qint64 ageNs) {
     if (!pipeline_ || stopping_ || timeline_.paused()) return;
     const gint64 now = runningTime();
     if (now < 0) return;
-    clicks_.add(canvasPoint, button, now);
+    // A press reported `ageNs` ago belongs that much earlier in the clip; frames that old are still on
+    // their way to the encoder (capture queue, rate, convert), so most of its ring is still drawn.
+    clicks_.add(canvasPoint, button, std::max<gint64>(0, now - std::clamp<qint64>(ageNs, 0, 2'000'000'000)));
 }
 
 GstPadProbeReturn RecordingPipeline::tapAudio(GstPad* pad, GstPadProbeInfo* info, gpointer user) {
@@ -394,7 +400,7 @@ GstPadProbeReturn RecordingPipeline::tapAudio(GstPad* pad, GstPadProbeInfo* info
     // The sound server can move a stream whose source went away to another
     // one, the default, which may be an output's monitor: that is not this
     // microphone, so nothing more of it is recorded.
-    if (tap->meter && tap->source && (seen % 25) == 24) {
+    if (tap->meter && tap->source && (seen % 5) == 4) {
         gchar* current = nullptr;
         g_object_get(tap->source, "current-device", &current, nullptr);
         const bool moved = current && *current && tap->device != current;

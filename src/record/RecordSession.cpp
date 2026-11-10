@@ -1,4 +1,6 @@
 #include "RecordSession.h"
+#include <algorithm>
+#include <chrono>
 #include "EffectiveAudio.h"
 #include "DebugLog.h"
 #include "MediaProbe.h"
@@ -281,7 +283,7 @@ void RecordSession::command(const QString& command, const QJsonObject& params, R
         }
         const QPointF inCanvas = QPointF(at) - (portalCrop_.isValid() ? QPointF(portalCrop_.topLeft()) : QPointF());
         const int button = params["button"].toInt();
-        if (config_.clickHighlights && pipeline_.running() && button >= 1 && button <= 3 && QRectF(QPointF(), QSizeF(resolved_.canvas)).contains(inCanvas)) pipeline_.addClick(inCanvas, button);
+        if (config_.clickHighlights && pipeline_.running() && button >= 1 && button <= 3 && QRectF(QPointF(), QSizeF(resolved_.canvas)).contains(inCanvas)) pipeline_.addClick(inCanvas, button, clickAge(params));
         reply({}, {});
         return;
     }
@@ -290,7 +292,7 @@ void RecordSession::command(const QString& command, const QJsonObject& params, R
         const auto rect = params["window"].toObject()["rect"].toArray();
         const QRectF window = rect.size() == 4 ? QRectF(rect[0].toDouble(), rect[1].toDouble(), rect[2].toDouble(), rect[3].toDouble()) : QRectF();
         if (target_.kind != "window" || params["window"].toObject()["identity"].toString() == target_.identity || target_.identity.isEmpty())
-            click(QPointF(params["x"].toDouble(), params["y"].toDouble()), params["button"].toInt(), window);
+            click(QPointF(params["x"].toDouble(), params["y"].toDouble()), params["button"].toInt(), window, clickAge(params));
         reply({}, {});
         return;
     }
@@ -329,13 +331,19 @@ void RecordSession::startClicks() {
     if (!x11Clicks_.start(resolved_.window, [guard](QPointF at, int button) { if (guard) guard->click(at, button, guard->resolved_.window ? QRectF(QPointF(0, 0), QSizeF(guard->resolved_.canvas)) : QRectF()); }, &failure))
         debugLog("clicks: the X server gives no raw button events: " + failure);
 }
-void RecordSession::click(QPointF desktop, int button, const QRectF& window) {
+// How long ago the desktop reported a press: `atUs` is the resident's CLOCK_MONOTONIC stamp.
+qint64 RecordSession::clickAge(const QJsonObject& params) {
+    if (!params["atUs"].isDouble()) return 0;
+    const auto nowUs = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
+    return std::clamp<qint64>(nowUs - qint64(params["atUs"].toDouble()), 0, 2'000'000) * 1000;
+}
+void RecordSession::click(QPointF desktop, int button, const QRectF& window, qint64 ageNs) {
     if (!config_.clickHighlights || !pipeline_.running() || button < 1 || button > 3) return;
     // What the frames show: the recorded window where one is recorded, else the recorded area.
     const QRectF area = target_.kind == "window" ? window : QRectF(resolved_.rect);
     QPointF at;
     if (!mapClick(desktop, area, resolved_.canvas, &at)) return;
-    pipeline_.addClick(at, button);
+    pipeline_.addClick(at, button, ageNs);
 }
 void RecordSession::updateMicrophoneMonitor() {
     // The input is open for the meter only while the toggle is on and nothing

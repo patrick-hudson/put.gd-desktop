@@ -8,12 +8,12 @@
 #include <vector>
 
 namespace putgd::record {
-Error measureClicks(const QString& clip, const QList<ExpectedClick>& clicks, QJsonObject& result, int windowMs, int box, int floor) {
+Error measureClicks(const QString& clip, const QList<ClickWatch>& clicks, QJsonObject& result, int box, int floor) {
     qint64 durationUs = 0;
     QSize canvas;
     if (auto error = probeClip(clip, durationUs, canvas)) return error;
     struct Watch {
-        ExpectedClick click;
+        ClickWatch click;
         QRect area;
         QImage first;
         qint64 firstMs = -1, lastMs = -1, peakMs = -1;
@@ -27,7 +27,7 @@ Error measureClicks(const QString& clip, const QList<ExpectedClick>& clicks, QJs
         watch.click = click;
         watch.area = QRect(click.x - box, click.y - box, 2 * box + 1, 2 * box + 1).intersected(QRect(QPoint(0, 0), canvas));
         if (watch.area.isEmpty()) return {"invalid_request", QStringLiteral("The press at %1,%2 is outside the %3x%4 clip").arg(click.x).arg(click.y).arg(canvas.width()).arg(canvas.height()), {}};
-        startMs = std::min(startMs, std::max<qint64>(0, click.ms - windowMs));
+        startMs = std::min(startMs, std::max<qint64>(0, click.fromMs));
         watches.push_back(watch);
     }
     FrameSequence frames;
@@ -40,9 +40,9 @@ Error measureClicks(const QString& clip, const QList<ExpectedClick>& clicks, QJs
         const qint64 ms = frameUs / 1000;
         bool later = false;
         for (auto& watch : watches) {
-            if (ms > watch.click.ms + windowMs + 1200) continue;
+            if (ms > watch.click.toMs) continue;
             later = true;
-            if (ms < watch.click.ms - windowMs) continue;
+            if (ms < watch.click.fromMs) continue;
             const QImage part = image.copy(watch.area).convertToFormat(QImage::Format_RGB32);
             if (watch.first.isNull()) { watch.first = part; continue; }
             if (part.size() != watch.first.size()) continue;
@@ -73,12 +73,11 @@ Error measureClicks(const QString& clip, const QList<ExpectedClick>& clicks, QJs
     QJsonArray list;
     int seen = 0;
     for (const auto& watch : watches) {
-        QJsonObject entry{{"ms", double(watch.click.ms)}, {"x", watch.click.x}, {"y", watch.click.y}, {"seen", watch.firstMs >= 0}, {"frames", watch.frames}};
+        QJsonObject entry{{"fromMs", double(watch.click.fromMs)}, {"toMs", double(watch.click.toMs)}, {"x", watch.click.x}, {"y", watch.click.y}, {"seen", watch.firstMs >= 0}, {"frames", watch.frames}};
         if (watch.firstMs >= 0) {
             ++seen;
             entry["firstMs"] = double(watch.firstMs);
             entry["lastMs"] = double(watch.lastMs);
-            entry["offsetMs"] = double(watch.firstMs - watch.click.ms);
             entry["lengthMs"] = double(watch.lastMs - watch.firstMs);
             entry["peak"] = watch.peak;
             entry["peakMs"] = double(watch.peakMs);
@@ -88,7 +87,7 @@ Error measureClicks(const QString& clip, const QList<ExpectedClick>& clicks, QJs
         }
         list.append(entry);
     }
-    result = QJsonObject{{"clicks", list}, {"seen", seen}, {"expected", int(clicks.size())}, {"canvas", QJsonArray{canvas.width(), canvas.height()}}, {"durationMs", double(durationUs / 1000)}};
+    result = QJsonObject{{"watches", list}, {"seen", seen}, {"count", int(clicks.size())}, {"canvas", QJsonArray{canvas.width(), canvas.height()}}, {"durationMs", double(durationUs / 1000)}};
     return {};
 }
 }

@@ -123,7 +123,7 @@ bool MicrophoneMonitor::open(const QString& device, QString* failure) {
     if (pipeline_ && device_ == device) return true;
     close();
     if (device.isEmpty() || recording::monitorSourceName(device)) { if (failure) *failure = QStringLiteral("no microphone"); return false; }
-    const QString description = QStringLiteral("pulsesrc name=msrc device=%1 client-name=\"put.gd recording\" ! audioconvert ! audio/x-raw,format=F32LE,layout=interleaved,channels=1 ! fakesink name=sink sync=false async=false").arg(quoted(device));
+    const QString description = QStringLiteral("pulsesrc name=msrc device=%1 client-name=\"put.gd recording\" stream-properties=\"%2\" ! audioconvert ! audio/x-raw,format=F32LE,layout=interleaved,channels=1 ! fakesink name=sink sync=false async=false").arg(quoted(device), QLatin1String(pinnedStream));
     GError* error = nullptr;
     GstElement* pipeline = gst_parse_launch(description.toUtf8().constData(), &error);
     if (!pipeline || error) {

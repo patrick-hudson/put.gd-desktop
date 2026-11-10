@@ -14,8 +14,9 @@ the exact ids `load-module` printed, never by name or pattern.
 
 `create --system-sink` also adds a second null sink and makes it the default
 output, so "system audio" played during the run goes nowhere audible and is
-what put.gd's system-audio capture records; `remove` puts the previous default
-back by name. Works with PipeWire's PulseAudio layer (1.0.5 and later) and
+what put.gd's system-audio capture records; `--monitor-default` makes that
+output's monitor the default input, the state a desktop without a microphone
+is in; `remove` puts the previous defaults back by name. Works with PipeWire's PulseAudio layer (1.0.5 and later) and
 PulseAudio; needs `pactl`, and `gst-launch-1.0` for `tone`.
 """
 import argparse
@@ -52,6 +53,12 @@ def create(args):
             state['systemSink'] = system
         if args.default:
             pactl('set-default-source', source)
+            state['madeDefault'] = True
+        if args.monitor_default:
+            if not args.system_sink:
+                raise SystemExit('--monitor-default needs --system-sink')
+            # The state a desktop without a microphone is in: the default input is an output's monitor.
+            pactl('set-default-source', state['systemSink'] + '.monitor')
             state['madeDefault'] = True
     except BaseException:
         remove_modules(state)
@@ -125,6 +132,7 @@ def main(argv=None):
     c.add_argument('--state')
     c.add_argument('--system-sink', action='store_true', help='also a private default output for system audio')
     c.add_argument('--default', action='store_true', help='make the simulated microphone the default input for the run')
+    c.add_argument('--monitor-default', action='store_true', help="make the private output's monitor the default input (with --system-sink)")
     for name in ('remove', 'unplug', 'tone'):
         child = sub.add_parser(name)
         child.add_argument('--state', required=True)

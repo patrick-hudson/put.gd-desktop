@@ -98,7 +98,8 @@ private:
     void startClicks();
     // A press in desktop coordinates (and, for a window recording, the window's
     // rectangle at that moment): drawn where it falls in the picture.
-    void click(QPointF desktop, int button, const QRectF& window);
+    void click(QPointF desktop, int button, const QRectF& window, qint64 ageNs = 0);
+    static qint64 clickAge(const QJsonObject& params);
     MicrophoneMonitor monitor_;
     QTimer levelTimer_;
     void updateMicrophoneMonitor();

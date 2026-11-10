@@ -1275,14 +1275,14 @@ void SettingsWindow::showRecordingMicrophones(const QJsonObject& microphones){
  loading_=wasLoading;
  // What the bar's toggle would do right now with this choice.
  const bool available=microphones["available"].toBool();
- recordingMicrophoneStatus_->setText(available?QStringLiteral("Records from %1.").arg(microphones["device"].toObject()["label"].toString()):QStringLiteral("No microphone available: %1").arg(microphones["message"].toString("no input device was found.")));
+ recordingMicrophoneStatus_->setText(available?QStringLiteral("Records from %1.").arg(microphones["device"].toObject()["label"].toString()):QStringLiteral("No microphone available: %1").arg(microphones["message"].toString("no input device was found.").replace(QStringLiteral("choose a device in Settings"),QStringLiteral("choose a device above"))));
  recordingMicrophoneStatus_->setProperty("microphoneAvailable",available);
  recordingMicrophoneStatus_->show();
 }
 void SettingsWindow::showClickHighlights(const QJsonObject& capability){
  const bool available=capability["available"].toBool();
  const QString route=capability["route"].toString();
- const QString how=route=="kwin-mouseclick-effect"?QStringLiteral("KWin's Mouse Click Animation effect, switched on while recording; monitor and region recordings"):route=="x11-xinput2"?QStringLiteral("drawn by put.gd from the X server's button events"):route=="gnome-shell-extension"?QStringLiteral("drawn by put.gd from the Shell extension's click reports"):route=="hyprland-mouse-binds"?QStringLiteral("drawn by put.gd from Hyprland mouse binds that pass the click on"):QStringLiteral("drawn by put.gd");
+ const QString how=route=="kwin-mouseclick-effect"?QStringLiteral("KWin's Mouse Click Animation effect, switched on while recording; monitor and region recordings"):route=="x11-xinput2"?QStringLiteral("drawn by put.gd from the X server's button events"):route=="gnome-shell-extension"?QStringLiteral("drawn by put.gd from the Shell extension's click reports"):route=="hyprland-mouse-binds"?QStringLiteral("drawn by put.gd from Hyprland mouse binds that pass the click on"):route=="labwc-mouse-binds"?QStringLiteral("drawn by put.gd from labwc mouse binds added while recording, for clicks on windows; monitor and region recordings"):QStringLiteral("drawn by put.gd");
  const QString text=available?"Available · "+how:"Unavailable · "+capability["message"].toString("this desktop reports no pointer clicks");
  if(auto* value=capabilities_->findChild<QLabel*>("desktopSupportClickHighlights")){value->setText(text);value->show();if(auto* label=capabilities_->findChild<QLabel*>("desktopSupportClickHighlightsLabel"))label->show();}
  recordingClicks_->setEnabled(available||recordingClicks_->isChecked());

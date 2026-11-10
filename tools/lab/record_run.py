@@ -53,7 +53,10 @@ default input, expecting the refusal where that is an output's monitor;
 leaves put.gd's microphone off, so the clip must not hold them.
 `--system off` records no system audio; `--system tone` moves the default
 output to a private null sink and plays a quiet 440 Hz tone into it, so the
-clip must hold the microphone's bursts and that tone. `--unplug-at S` removes
+clip must hold the microphone's bursts and that tone. `--system leak` plays the
+same tone without recording system audio and makes that output's monitor the
+default input: the clip must hold no 440 Hz at all, also after `--unplug-at`
+has pulled the microphone and the sound server has moved its stream there. `--unplug-at S` removes
 the simulated microphone S seconds into each recording, which must still end
 with a playable clip. Each clip's entry then has `tones` (band levels at 440 Hz
 and at the marker's 1 kHz) beside the A/V offsets. --real-data-home lets an AppImage use
@@ -65,14 +68,18 @@ up to --prepare-timeout.
 Click runs (#1364). Each `--click S,X,Y[,BUTTON]` presses BUTTON (left, middle
 or right) at desktop pixel X,Y, S seconds after Record, as real pointer input
 through the desktop's VNC tile (the pointer is moved there 2.5 s earlier, so
-space presses at least 3.5 s apart and keep them on the cover's plain colour,
+space presses at least 4 s apart and keep them on the cover's plain colour,
 away from the video). The recording is prepared with `clickHighlights: true`
 (`--click-highlights off`: without, and then no ring may appear). Afterwards
-`putgd-record --click-check` looks for a ring at each press in clip pixels:
-every press seen (or none, when off), its centre within 4 pixels of the press,
-the time between two rings equal to the time between their presses within two
-frames, and each ring within the start call's length of where it should be.
-`clickCheck` in the round's result holds the numbers, and one frame at the
+`putgd-record --click-check` measures the clip at each press's place, in clip
+pixels: first when the pointer arrived there (the recording shows the pointer,
+and the cover keeps it visible for these runs), then what appeared afterwards
+against a frame with the pointer resting. Every press must have a ring (or
+none, when off), centred within 4 pixels of the press (within the measured box
+where the compositor draws it: KWin adds a label), and showing between one
+frame before and 250 ms after the press, counted from the pointer's arrival in
+the same clip, so the clip's own start does not matter. `clickCheck` in the
+round's result holds the numbers (`delayMs` per ring), and one frame at the
 first ring's peak is kept beside the other frames. Not together with a pause.
 In a guest, QEMU's VNC is on the host: `--vnc-port 0 --click-vnc 10.0.2.2:59NN`.
 """
@@ -93,6 +100,8 @@ import time
 
 HERE = Path(__file__).resolve().parent
 FRAME_MS = 1000 / 30
+# How long before each scripted press the pointer is moved to its place.
+CLICK_LEAD_S = 2.5
 ANIMATIONS = ('gif', 'webp')
 SESSION_VARIABLES = ('DISPLAY', 'XAUTHORITY', 'DBUS_SESSION_BUS_ADDRESS', 'XDG_SESSION_TYPE', 'XDG_CURRENT_DESKTOP',
                      'WAYLAND_DISPLAY', 'XDG_SESSION_DESKTOP', 'DESKTOP_SESSION', 'KDE_FULL_SESSION', 'KDE_SESSION_VERSION',
@@ -110,12 +119,12 @@ def log(message):
 def session_environment():
     """The desktop session's environment for clients started from SSH."""
     uid = os.getuid()
-    for process in ('plasmashell', 'gnome-shell', 'cinnamon', 'quickshell'):
+    for process in ('plasmashell', 'gnome-shell', 'cinnamon', 'quickshell', 'budgie-panel'):
         pids = subprocess.run(['pgrep', '-u', str(uid), '-x', process], capture_output=True, text=True).stdout.split()
         if pids:
             break
     else:
-        raise RunError('no desktop session process (plasmashell, gnome-shell, cinnamon, quickshell) for this user')
+        raise RunError('no desktop session process (plasmashell, gnome-shell, cinnamon, quickshell, budgie-panel) for this user')
     pairs = Path('/proc/%s/environ' % pids[0]).read_bytes().decode(errors='replace').split('\0')
     found = dict(pair.split('=', 1) for pair in pairs if '=' in pair)
     runtime = '/run/user/%d' % uid
@@ -286,17 +295,20 @@ class Driver:
 
     def open_microphone(self):
         a = self.args
-        if a.mic not in ('virtual', 'muted') and a.system != 'tone':
+        if a.mic not in ('virtual', 'muted') and a.system not in ('tone', 'leak'):
             return None
         self.mic_state = self.run / 'virtual-mic.json'
         create = ['create', '--name', 'putgd_lab_%d' % os.getpid(), '--state', str(self.mic_state)]
-        if a.system == 'tone':
+        if a.system in ('tone', 'leak'):
             create.append('--system-sink')
+        if a.system == 'leak':
+            # The default input becomes that output's monitor: what a pulled microphone's stream is moved to.
+            create.append('--monitor-default')
         state = self.virtual_mic(*create)
         if a.mic in ('virtual', 'muted'):
             # The marker's bursts are the simulated voice: they play into the microphone's sink, not the speakers.
             a.audio_device = state['sink']
-        if a.system == 'tone':
+        if a.system in ('tone', 'leak'):
             self.tone = subprocess.Popen([sys.executable, str(HERE / 'virtual_mic.py'), 'tone', '--state', str(self.mic_state),
                                           '--seconds', '3600'], env=self.env, start_new_session=True,
                                          stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
@@ -334,11 +346,12 @@ class Driver:
         client = rfb.RFB(int(port), host=host or '127.0.0.1')
         try:
             for seconds, x, y, button in self.clicks():
-                time.sleep(max(0, started + seconds - 2.5 - time.monotonic()))
+                time.sleep(max(0, started + seconds - CLICK_LEAD_S - time.monotonic()))
                 client.pointer(x, y)
+                moved = time.monotonic() - started
                 time.sleep(max(0, started + seconds - time.monotonic()))
                 client.pointer_button(x, y, button, True)
-                sent.append({'s': round(time.monotonic() - started, 3), 'x': x, 'y': y, 'button': button})
+                sent.append({'s': round(time.monotonic() - started, 3), 'movedS': round(moved, 3), 'x': x, 'y': y, 'button': button})
                 time.sleep(0.06)
                 client.pointer_button(x, y, button, False)
         except Exception as error:  # the run goes on; the check then reports the missing rings
@@ -346,45 +359,67 @@ class Driver:
         finally:
             client.close()
 
-    def click_check(self, clip, sent, start_call_s, canvas, name):
-        """Rings in the clip against the presses sent: place, spacing and time."""
+    def click_watches(self, clip, watches):
+        result = self.helper('--click-check', clip, *['%d,%d,%d,%d' % watch for watch in watches])
+        try:
+            return json.loads(result.stdout).get('watches') or []
+        except ValueError:
+            raise RunError('click-check: ' + (result.stdout + result.stderr).strip()[-300:])
+
+    def click_check(self, clip, sent, start_call_s, canvas, name, highlights=None):
+        """Rings in the clip against the presses sent: place and time, each measured from the pointer's own arrival in the clip."""
         a = self.args
         presses = [entry for entry in sent if 'error' not in entry]
         errors = [entry['error'] for entry in sent if 'error' in entry]
-        area = [int(v) for v in a.rect.split(',')] if a.target == 'region' else list(self.cover_rect)
-        scale = (canvas or {}).get('width', area[2]) / area[2]
-        expected = []
-        for press in presses:
-            # Clip time zero lies inside the start call; aim at its middle.
-            expected.append((int((press['s'] + start_call_s / 2) * 1000), round((press['x'] - area[0]) * scale), round((press['y'] - area[1]) * scale)))
-        if not expected:
+        if not presses:
             return {'ok': False, 'error': errors or 'no press was sent'}
-        result = self.helper('--click-check', clip, *['%d,%d,%d' % entry for entry in expected])
-        try:
-            measured = json.loads(result.stdout)
-        except ValueError:
-            return {'ok': False, 'error': (result.stdout + result.stderr).strip()[-300:]}
-        rings = measured.get('clicks') or []
-        check = {'highlights': a.click_highlights, 'startCallMs': round(start_call_s * 1000), 'presses': presses, 'rings': rings,
-                 'seen': measured.get('seen'), 'expected': measured.get('expected')}
+        area = [int(v) for v in a.rect.split(',')] if a.target == 'region' else list(self.cover_rect)
+        # inspect's canvas is [width, height] in clip pixels.
+        width = canvas[0] if isinstance(canvas, (list, tuple)) and canvas else (canvas or {}).get('width', area[2])
+        scale = width / area[2]
+        places = [(round((press['x'] - area[0]) * scale), round((press['y'] - area[1]) * scale)) for press in presses]
+        check = {'highlights': a.click_highlights, 'startCallMs': round(start_call_s * 1000), 'presses': presses}
         if errors:
             check['sendErrors'] = errors
+        try:
+            # 1. When the pointer arrived at each place. The clip's zero lies somewhere inside the start call, so the
+            #    span starts a second before the earliest moment the move can be at and ends just before the press.
+            spans = [(max(0, int(press['movedS'] * 1000) - 1000), int((press['s'] + start_call_s) * 1000) - 300, *place) for press, place in zip(presses, places)]
+            arrivals = self.click_watches(clip, spans)
+            check['pointer'] = [{k: w.get(k) for k in ('seen', 'firstMs', 'peak')} for w in arrivals]
+            # 2. What appears there afterwards, against a frame with the pointer already resting: the ring.
+            rings = []
+            for press, place, arrival in zip(presses, places, arrivals):
+                if not arrival.get('seen'):
+                    rings.append({'seen': False, 'reason': 'the pointer was not seen arriving'})
+                    continue
+                lead = (press['s'] - press['movedS']) * 1000
+                ring = self.click_watches(clip, [(int(arrival['firstMs'] + 400), int(arrival['firstMs'] + lead + 1300), *place)])[0]
+                if ring.get('seen'):
+                    # How long after the press the ring showed: the press came `lead` after the move.
+                    ring['delayMs'] = round(ring['firstMs'] - arrival['firstMs'] - lead)
+                rings.append(ring)
+        except RunError as error:
+            check.update(ok=False, error=str(error))
+            return check
+        check['rings'] = rings
+        seen = [(press, ring) for press, ring in zip(presses, rings) if ring.get('seen')]
+        check.update(seen=len(seen), expected=len(presses))
         if a.click_highlights == 'off':
-            check['ok'] = measured.get('seen') == 0 and not errors
+            check['ok'] = not seen and not errors
             return check
         problems = []
-        seen = [(press, ring) for press, ring in zip(presses, rings) if ring.get('seen')]
         if len(seen) != len(presses):
             problems.append('%d of %d presses have a ring' % (len(seen), len(presses)))
-        slack = start_call_s * 500
+        # A ring put.gd draws is centred on the press. KWin's own effect also writes the button's name beside
+        # its ring, so what changed there is centred somewhere inside the measured box, not on the press.
+        reach = 48 if (highlights or {}).get('drawnBy') == 'compositor' else 4
         for press, ring in seen:
-            if abs(ring['dx']) > 4 or abs(ring['dy']) > 4:
+            if abs(ring['dx']) > reach or abs(ring['dy']) > reach:
                 problems.append('ring %.1f,%.1f px from the press at %d,%d' % (ring['dx'], ring['dy'], press['x'], press['y']))
-            if not -slack - 70 <= ring['offsetMs'] <= slack + 200:
-                problems.append('ring %d ms from the press at %.2f s' % (ring['offsetMs'], press['s']))
-        check['spacingErrorsMs'] = [round((ring['firstMs'] - seen[0][1]['firstMs']) - (press['s'] - seen[0][0]['s']) * 1000)
-                                    for press, ring in seen[1:]]
-        problems += ['spacing off by %d ms' % error for error in check['spacingErrorsMs'] if abs(error) > 70]
+            # One frame early (the pointer's arrival is itself seen a frame late at worst) to a quarter of a second late.
+            if not -70 <= ring['delayMs'] <= 250:
+                problems.append('ring %d ms after the press at %.2f s' % (ring['delayMs'], press['s']))
         check['ok'] = not problems and not errors
         if problems:
             check['problems'] = problems
@@ -466,7 +501,7 @@ class Driver:
             marker = self.run / 'marker.mkv'
             if not marker.is_file():
                 # With a microphone in the run every clip must show motion too: the marker gets a sweeping bar.
-                extra = ['--moving'] if a.mic != 'off' or a.system == 'tone' or a.marker_motion else []
+                extra = ['--moving'] if a.mic != 'off' or a.system in ('tone', 'leak') or a.marker_motion or a.click else []
                 self.helper('--av-marker', marker, 60, *extra).check_returncode()
             command += ['--media', str(marker)]
         elif a.video == 'pattern':
@@ -477,6 +512,9 @@ class Driver:
             command += ['--video-size', a.video_size]
         if a.audio_device:
             command += ['--audio-device', a.audio_device]
+        if a.click:
+            # labwc reports where the pointer is only while it is shown; the cover otherwise hides it.
+            command += ['--pointer']
         self.cover = subprocess.Popen(command, env=dict(self.env, GTK_USE_PORTAL='0', NO_AT_BRIDGE='1'),
                                       stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True,
                                       stderr=open(self.run / 'logs' / 'cover.log', 'a'), start_new_session=True)
@@ -586,7 +624,7 @@ class Driver:
             if a.rect:
                 target['rect'] = a.rect
             sound = fmt not in ANIMATIONS
-            audio = {'system': sound and a.system != 'off'}
+            audio = {'system': sound and a.system not in ('off', 'leak')}
             if a.mic not in ('off', 'muted') and sound:
                 audio['microphone'] = True
                 if self.microphone_device():
@@ -662,7 +700,7 @@ class Driver:
                 entry['error'] = 'missing'
             else:
                 entry.update(bytes=clip.stat().st_size, motion=self.motion(clip))
-                if sound and (a.mic != 'off' or a.system == 'tone'):
+                if sound and (a.mic != 'off' or a.system in ('tone', 'leak')):
                     entry['tones'] = self.tones(clip)
                 if a.video == 'marker' and sound:
                     measured = self.av_sync(clip)
@@ -675,7 +713,7 @@ class Driver:
         if a.click:
             for kind, clip in (('working', working), ('export', copy)):
                 if clip.is_file():
-                    result['clips'][kind]['clickCheck'] = self.click_check(clip, sent, started - asked, result.get('canvas'), '%s-%s' % (name, kind))
+                    result['clips'][kind]['clickCheck'] = self.click_check(clip, sent, started - asked, result.get('canvas'), '%s-%s' % (name, kind), result.get('clickHighlights'))
         w, e = result['clips']['working'], result['clips']['export']
         if 'pauseClipS' in result and w.get('pairTimesS'):
             result['captureStepMs'] = capture_step(w['pairTimesS'], w['offsetsMs'], result['pauseClipS'])
@@ -774,7 +812,8 @@ def main(argv=None):
     parser.add_argument('--min-pairs', type=int, default=8)
     parser.add_argument('--frames', action='store_true', help='keep one cover-checked frame of each saved copy')
     parser.add_argument('--mic', default='off', help="off, virtual (a simulated microphone made for the run), muted (simulated and playing, not recorded), default, or a source name")
-    parser.add_argument('--system', choices=('on', 'off', 'tone'), default='on', help='system audio: recorded, not recorded, or a quiet 440 Hz tone on a private default output')
+    parser.add_argument('--system', choices=('on', 'off', 'tone', 'leak'), default='on',
+                        help="system audio: recorded, not recorded, a quiet 440 Hz tone on a private default output, or 'leak': that tone playing but not recorded, with the output's monitor as the default input (the clip must hold none of it)")
     parser.add_argument('--unplug-at', type=float, help='remove the simulated microphone this many seconds into each recording')
     parser.add_argument('--precheck-wait', type=float, default=1.5, help='seconds between placing the cover and checking it')
     parser.add_argument('--no-notifications', action='store_true', help="turn the run's own put.gd notifications off (private config), so none covers the cover")

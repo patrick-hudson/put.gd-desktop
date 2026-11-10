@@ -101,7 +101,7 @@ public:
     QString microphoneLostReason() const { return microphoneLostReason_; }
     // #1364: a click at this canvas position now; drawn as a ring into the
     // frames from here on. Ignored unless a capture is running.
-    void addClick(QPointF canvasPoint, int button);
+    void addClick(QPointF canvasPoint, int button, qint64 ageNs = 0);
     ClickOverlay& clicks() { return clicks_; }
     // The microphone's peak level since the last call, 0..1, for the bar's meter.
     float takeMicrophoneLevel() { return microphone_.level.take(); }

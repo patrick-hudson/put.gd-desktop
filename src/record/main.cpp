@@ -155,23 +155,24 @@ int main(int argc, char** argv) {
         return 0;
     }
     if (argc >= 4 && std::strcmp(argv[1], "--click-check") == 0) {
-        // Lab diagnostic (#1364): is a click ring in the clip at each scripted
-        // press? `MS,X,Y` per press, in clip time and clip pixels; prints one
-        // JSON object and exits 3 when a press has no ring.
+        // Lab diagnostic (#1364): what changes near a place in the clip between
+        // two times, against the first frame of that span: a pointer arriving, a
+        // click ring. `FROM_MS,TO_MS,X,Y` per watch, in clip time and clip pixels;
+        // prints one JSON object.
         QCoreApplication app(argc, argv);
-        QList<record::ExpectedClick> clicks;
+        QList<record::ClickWatch> watches;
         for (int i = 3; i < argc; ++i) {
             const auto parts = QString::fromLocal8Bit(argv[i]).split(',');
-            bool ok[3] = {};
-            record::ExpectedClick click;
-            if (parts.size() == 3) { click.ms = parts[0].toLongLong(&ok[0]); click.x = parts[1].toInt(&ok[1]); click.y = parts[2].toInt(&ok[2]); }
-            if (!ok[0] || !ok[1] || !ok[2]) { std::fprintf(stderr, "usage: --click-check CLIP MS,X,Y...\n"); return 2; }
-            clicks.append(click);
+            bool ok[4] = {};
+            record::ClickWatch watch;
+            if (parts.size() == 4) { watch.fromMs = parts[0].toLongLong(&ok[0]); watch.toMs = parts[1].toLongLong(&ok[1]); watch.x = parts[2].toInt(&ok[2]); watch.y = parts[3].toInt(&ok[3]); }
+            if (!ok[0] || !ok[1] || !ok[2] || !ok[3] || watch.toMs <= watch.fromMs) { std::fprintf(stderr, "usage: --click-check CLIP FROM_MS,TO_MS,X,Y...\n"); return 2; }
+            watches.append(watch);
         }
         QJsonObject result;
-        if (auto error = record::measureClicks(QString::fromLocal8Bit(argv[2]), clicks, result)) { std::fprintf(stderr, "%s: %s\n", qPrintable(error.code), qPrintable(error.message)); return 1; }
+        if (auto error = record::measureClicks(QString::fromLocal8Bit(argv[2]), watches, result)) { std::fprintf(stderr, "%s: %s\n", qPrintable(error.code), qPrintable(error.message)); return 1; }
         std::printf("%s\n", QJsonDocument(result).toJson(QJsonDocument::Compact).constData());
-        return result["seen"].toInt() == result["expected"].toInt() ? 0 : 3;
+        return 0;
     }
     if (argc >= 4 && std::strcmp(argv[1], "--export") == 0) {
         // Lab diagnostic: export a working clip the way the review does and
