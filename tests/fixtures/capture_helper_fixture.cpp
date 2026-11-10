@@ -90,9 +90,9 @@ int main(int argc,char** argv){
    if(mode=="observe-cursor"&&bootstrap["cursor"].toObject()["observe"].toBool()){
     auto image=identity;image["width"]=2;image["height"]=2;image["xhot"]=1;image["yhot"]=1;image["pixels"]=QString::fromLatin1(QByteArray(16,char(0xff)).toBase64());control.send("cursor_image",image);
    }
-   if(mode=="preview-cancel"||mode=="preview-error"){
-    terminal=true;auto reply=identity;reply["code"]=mode=="preview-cancel"?"cancelled":"capture_geometry";
-    reply["reason"]=mode=="preview-cancel"?QString{}:QString("Synthetic selection outside the layout");reply["details"]=mode=="preview-cancel"?QJsonObject{}:QJsonObject{{"stage","select"},{"check","fixture_selection"},{"selection",QJsonArray{0,1080,100,100}}};
+   if(mode=="preview-cancel"||mode=="preview-error"||mode=="preview-locked"){
+    terminal=true;auto reply=identity;reply["code"]=mode=="preview-cancel"?"cancelled":mode=="preview-locked"?"session_locked":"capture_geometry";
+    reply["reason"]=mode=="preview-cancel"?QString{}:mode=="preview-locked"?QString("The screen was locked when the capture delay ended, so nothing was captured."):QString("Synthetic selection outside the layout");reply["details"]=mode=="preview-error"?QJsonObject{{"stage","select"},{"check","fixture_selection"},{"selection",QJsonArray{0,1080,100,100}}}:QJsonObject{};
     control.send(mode=="preview-cancel"?"cancelled":"error",reply);
     // Keep the child alive briefly so tests distinguish early notification from
     // final process completion. The controller must retain the ticket's error.

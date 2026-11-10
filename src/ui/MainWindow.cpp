@@ -197,11 +197,11 @@ MainWindow::MainWindow(UiSession& session,QWidget* parent):QMainWindow(parent),s
    auto* delays=options->addMenu("Capture delay: none");delays->setObjectName("captureDelayMenu"+action);auto* group=new QActionGroup(delays);
    for(const int seconds:Settings::captureDelayChoices()){
     auto* choice=delays->addAction(seconds?QStringLiteral("%1 seconds").arg(seconds):QStringLiteral("None"));choice->setCheckable(true);choice->setData(seconds);choice->setObjectName(QStringLiteral("captureDelay%1").arg(seconds));group->addAction(choice);
-    connect(choice,&QAction::triggered,this,[this,seconds]{
+    connect(choice,&QAction::triggered,this,[this,seconds,action]{
      auto document=session_.document();auto preferences=document["preferences"].toObject();
      if(preferences["captureDelaySeconds"].toInt()==seconds)return;
      preferences["captureDelaySeconds"]=seconds;document["preferences"]=preferences;
-     session_.saveAsync(document,session_.revision(),[this](Result result){if(!result)showActionFailure("region",result.error);});
+     session_.saveAsync(document,session_.revision(),[this,action](Result result){if(!result)showActionFailure(action,result.error);});
     });
    }
    auto showDelay=[this,delays]{const int delay=session_.document()["preferences"].toObject()["captureDelaySeconds"].toInt();delays->setTitle(delay>0?QStringLiteral("Capture delay: %1 seconds").arg(delay):QStringLiteral("Capture delay: none"));for(auto* choice:delays->actions())choice->setChecked(choice->data().toInt()==delay);};

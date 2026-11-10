@@ -184,7 +184,7 @@ void CaptureProcessController::receive(const QString& type,const QJsonObject& pa
   ready_=true;QPointer<CaptureProcessController> guard(this);sendPreview();if(guard&&beginRequested_)sendBegin();return;
  }
  if(type=="error"||type=="cancelled"){
-  const auto code=payload["code"].toString();const QStringList allowed{"cancelled","display_changed","capture_target","capture_unavailable","capture_geometry","capture_failed","capture_timeout","input_excessive","image_limit","encoding_failed","capture_io"};
+  const auto code=payload["code"].toString();const QStringList allowed{"cancelled","display_changed","capture_target","capture_unavailable","capture_geometry","capture_failed","capture_timeout","input_excessive","image_limit","encoding_failed","capture_io","session_locked","delay_unavailable"};
   const auto reason=payload["reason"].toString();const auto details=payload["details"].toObject();
   if(!ready_||payload.size()!=5||!allowed.contains(code)||!payload["reason"].isString()||!payload["details"].isObject()||reason.size()>CaptureControl::reasonChars||QJsonDocument(details).toJson(QJsonDocument::Compact).size()>CaptureControl::detailBytes){fail(unavailable("capture_protocol","error_frame"));return;}
   // Keep the helper's own reason and details: they name the failed check and

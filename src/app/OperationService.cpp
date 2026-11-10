@@ -333,6 +333,11 @@ void OperationService::invokeCapture(const QString& requestedAction,JsonReply re
   else QMetaObject::invokeMethod(owner,std::move(release),Qt::QueuedConnection);
  };
  SourceAdapter::PreparedAcquisition acquisition;
+ // A delayed capture prepares nothing until its countdown ends, so no adapter
+ // holds its reservation yet. When the operation ends before the acquisition is
+ // ever started (a cancel in that gap, a failed journal save), nothing else would
+ // release it, and every later interactive capture would be busy_selecting.
+ std::function<void()> releaseUnused;
  if(source=="file"){
   // A file is read and decoded by the editor stage; no native source is involved.
   acquisition=[sourcePath](const ResourceLimits&,std::function<void(PayloadResult)> deliver){ClipboardPayload payload;payload.kind="files";payload.files={sourcePath};deliver({payload,{}});};
@@ -348,6 +353,7 @@ void OperationService::invokeCapture(const QString& requestedAction,JsonReply re
    // (in screenshot-first mode, before the freeze). Nothing is prepared, shown
    // or read until both journal saves are durable and the countdown has ended.
    const auto outcome=source_.captureOutcome();
+   releaseUnused=released;
    acquisition=[owner,source,delay,screenshotFirst,outcome,earlyTerminal=std::function<void(Error)>(std::move(earlyTerminal)),released=std::function<void()>(std::move(released))](const ResourceLimits& limits,std::function<void(PayloadResult)> deliver) mutable {
     if(!owner){deliver({{},{"source_unavailable","Desktop adapter closed",{}}});return;}
     owner->source_.delayed(delay,[owner,source,screenshotFirst,outcome,limits,earlyTerminal=std::move(earlyTerminal),released=std::move(released),deliver=std::move(deliver)](Error error) mutable {
@@ -364,20 +370,21 @@ void OperationService::invokeCapture(const QString& requestedAction,JsonReply re
    source_.setCaptureDelay(0);
   }
  }
- const auto path=databasePath();background([path,op](Error& e) {HistoryStore store(path);e=store.saveOperation(op);return op.publicJson();},[this,op,flag,reply,acquisition,earlyError](Error e,QJsonObject result) mutable {
-  if(e) {abandonUploadCopies(op.id);releaseActive(op.id);if(selectingId_==op.id&&!preparedOwners_.contains(op.id))selectingId_.clear();if(editingId_==op.id){editor_.reset();editingId_.clear();}reply(e,{});return;}
+ const auto path=databasePath();background([path,op](Error& e) {HistoryStore store(path);e=store.saveOperation(op);return op.publicJson();},[this,op,flag,reply,acquisition,earlyError,releaseUnused](Error e,QJsonObject result) mutable {
+  if(e) {if(releaseUnused)releaseUnused();abandonUploadCopies(op.id);releaseActive(op.id);if(selectingId_==op.id&&!preparedOwners_.contains(op.id))selectingId_.clear();if(editingId_==op.id){editor_.reset();editingId_.clear();}reply(e,{});return;}
   observe(op.publicJson());reply({},{{"operationId",op.id},{"operation",result}});emit changed(op.id);emit observationsChanged();
   logging::info(logOperation(),"Operation accepted",{{"operationId",op.id},{"action",op.action},{"output",op.destination.providerId.isEmpty()?"local":"upload"},{"provider",op.destination.providerId},{"profileId",op.destination.profileId}});
   // Acceptance stays durable and observable before acquiring pixels. Region
   // preview may already be visible; a terminal event skips the remaining work.
-  QTimer::singleShot(0,this,[this,op,flag,acquisition,earlyError]() mutable {
-   if(flag->load()) {op.state="cancelled";op.cancelled=true;finish(op);return;}
-   if(*earlyError) {op.error=*earlyError;op.cancelled=op.error.code=="cancelled"||op.error.code=="source_cancelled";op.state=op.cancelled?"cancelled":"failed";finish(op);return;}
-   op.state="acquiring";op.phase="acquiring";const auto path=databasePath();background([path,op](Error& e) {HistoryStore store(path);e=store.saveOperation(op);return QJsonObject{};},[this,op,flag,acquisition,earlyError](Error e,QJsonObject) mutable {
-    if(e) {op.error=e;op.state="failed";finish(op);return;}
+  QTimer::singleShot(0,this,[this,op,flag,acquisition,earlyError,releaseUnused]() mutable {
+   // The release comes before finish(), which frees the selection only once no owner is left.
+   if(flag->load()) {if(releaseUnused)releaseUnused();op.state="cancelled";op.cancelled=true;finish(op);return;}
+   if(*earlyError) {if(releaseUnused)releaseUnused();op.error=*earlyError;op.cancelled=op.error.code=="cancelled"||op.error.code=="source_cancelled";op.state=op.cancelled?"cancelled":"failed";finish(op);return;}
+   op.state="acquiring";op.phase="acquiring";const auto path=databasePath();background([path,op](Error& e) {HistoryStore store(path);e=store.saveOperation(op);return QJsonObject{};},[this,op,flag,acquisition,earlyError,releaseUnused](Error e,QJsonObject) mutable {
+    if(e) {if(releaseUnused)releaseUnused();op.error=e;op.state="failed";finish(op);return;}
     observe(op.publicJson());
-    if(flag->load()) {op.state="cancelled";op.cancelled=true;finish(op);return;}
-    if(*earlyError) {op.error=*earlyError;op.cancelled=op.error.code=="cancelled"||op.error.code=="source_cancelled";op.state=op.cancelled?"cancelled":"failed";finish(op);return;}
+    if(flag->load()) {if(releaseUnused)releaseUnused();op.state="cancelled";op.cancelled=true;finish(op);return;}
+    if(*earlyError) {if(releaseUnused)releaseUnused();op.error=*earlyError;op.cancelled=op.error.code=="cancelled"||op.error.code=="source_cancelled";op.state=op.cancelled?"cancelled":"failed";finish(op);return;}
     QPointer<OperationService> guarded(this);
     acquisition(op.settings.limits,[guarded,op,flag](PayloadResult r) {
      if(!guarded)return;

@@ -123,6 +123,21 @@ private slots:
   f.source.deferCountdown=false;f.source.events.clear();
   QCOMPARE(f.run("monitor")["state"].toString(),QString("completed"));
  }
+ // A delayed capture reserves the selection before any adapter holds it. Cancelled
+ // in the gap before its countdown starts, it must give the reservation back.
+ void cancellingBeforeTheCountdownStartsFreesTheSelection() {
+  Fixture f;f.source.deferCountdown=true;
+  QString id;int replies=0,cancelled=0;
+  f.operations->invoke("desktop",[&](Error,QJsonObject accepted){id=accepted["operationId"].toString();++replies;if(!id.isEmpty())f.operations->cancel(id,[&](Error,QJsonObject){++cancelled;});},{{"delaySeconds",5}});
+  PUTGD_TRY_COMPARE(replies,1);PUTGD_TRY_COMPARE(cancelled,1);
+  const auto operation=f.finished(id);
+  QCOMPARE(operation["state"].toString(),QString("cancelled"));
+  // The countdown never started and nothing was prepared.
+  QVERIFY(f.source.events.isEmpty());QVERIFY(!f.source.pendingCountdown);
+  f.source.deferCountdown=false;
+  Error busy;const auto next=f.run("monitor",{},&busy);
+  QCOMPARE(busy.code,QString());QCOMPARE(next["state"].toString(),QString("completed"));
+ }
  void repeatIsARegionCaptureOfTheRememberedRectangle() {
   Fixture f;
   // Nothing to repeat yet: refused with the adapter's message, nothing stored.
