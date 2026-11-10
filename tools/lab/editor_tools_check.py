@@ -132,7 +132,12 @@ def clipboard_png():
     if env.get('DISPLAY') and shutil.which('xclip'):
         attempts.append(['xclip', '-selection', 'clipboard', '-t', 'image/png', '-o'])
     for command in attempts:
-        done = subprocess.run(command, capture_output=True, timeout=20)
+        try:
+            done = subprocess.run(command, capture_output=True, timeout=5)
+        except subprocess.TimeoutExpired:
+            # GNOME may not serve an unfocused Wayland data-device reader;
+            # let its XWayland clipboard bridge provide the independent read.
+            continue
         if done.returncode == 0 and done.stdout.startswith(b'\x89PNG'):
             return done.stdout, command[0]
     return None, ' / '.join(c[0] for c in attempts) or 'no wl-paste or xclip'
