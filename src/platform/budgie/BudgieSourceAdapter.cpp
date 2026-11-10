@@ -5,7 +5,7 @@
 #include <QJsonArray>
 namespace putgd {
 namespace {
-Error visibilityError(){return {"session_locked","The screen is locked, blanked, or cannot present a capture visibility probe",{}};}
+Error visibilityError(){return {"session_locked","The screen is locked, blanked or not responding. Unlock it and try again.",{}};}
 const QString cleanupMessage="Region helper exited before confirming surface cleanup; restart put.gd before capturing again";
 struct WindowSnapshot {QImage image;Error error;bool done=false;std::function<void(PayloadResult)> accepted;ResourceLimits acceptedLimits;};
 PayloadResult imageResult(const QImage& image,const ResourceLimits& limits,Error error={}){
