@@ -92,10 +92,14 @@ another build than the resident. It reads no pixels and takes no target.
 ### A locked screen
 
 A delay that ends on a locked screen captures nothing: the operation fails with
-`session_locked`. Each adapter asks when the countdown ends: the Cinnamon and
-freedesktop screensaver services and logind's `LockedHint` everywhere, Hyprland's
-own `locked` request as well, and on GNOME the extension, which also drops every
-request the moment the Shell locks.
+`session_locked`. Each adapter checks when the countdown ends: Cinnamon and
+freedesktop screensaver services and logind's `LockedHint` where available,
+Hyprland's own `locked` request as well, and on GNOME the extension, which also
+drops every request the moment the Shell locks. Budgie uses the visibility
+witness described below. A delayed live-region request on GNOME checks
+`Main.sessionMode.isLocked` directly at expiry: screensaver/logind services are not
+queried on its successful path, so a service reporting locked does not refuse that
+request when the Shell itself remains unlocked.
 
 Not every locker reports its state: Budgie's gtklock sets no `LockedHint` and offers
 no service to ask, and Omarchy's lock leaves the hint off too. So on Plasma, Budgie
@@ -109,10 +113,12 @@ screen), so nothing was captured."). The wait is that long because a busy compos
 answers late: one second was missed once by a software-rendered guest that was
 starting a browser.
 
-An immediate capture has no countdown to witness it. On Budgie one requested by an
-agent while gtklock is up gets what labwc is showing, which is the lock screen and
-nothing behind it; this was so before #1363 and labwc offers no state to refuse on
-([Budgie](../desktops/budgie.md)).
+Budgie also requires fresh transparent layer-surface frames before and after each
+output-copy batch or window copy, including immediate agent requests, monitor capture
+and repeated regions. If either frame is withheld, the pixels are discarded with `session_locked`;
+this conservatively refuses an unlocked display that is blanked or powered off too
+([Budgie](../desktops/budgie.md)). labwc offers no client-held lock boundary, so an
+entire lock-and-unlock between the two visibility frames cannot be detected.
 
 ## Repeat last region
 
