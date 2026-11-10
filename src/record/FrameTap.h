@@ -5,6 +5,7 @@
 #include <QSize>
 #include <QString>
 #include <atomic>
+#include <condition_variable>
 #include <gst/gst.h>
 #include <mutex>
 #include <vector>
@@ -14,9 +15,12 @@ class ImageCopySource;
 // The scroll capture's frame source (#1376): the recording helper's live
 // sources (ximagesrc, a PipeWire screen-cast node, ext-image-copy-capture
 // through appsrc) into `videoconvert ! BGRx ! appsink`. No videorate and no
-// videoscale: the stitcher needs the compositor's pixels untouched. The loop
-// pulls on its own thread; each returned frame is this object's copy, so no
-// compositor buffer is held while the loop works on it.
+// videoscale: the stitcher needs the compositor's pixels untouched. Every
+// frame is copied out on the stream's own thread into a latest-frame mailbox
+// and its buffer released at once: a compositor's PipeWire stream has only a
+// few buffers, and one that finds none free skips the frame, which a loop
+// that takes frames only while it waits then never sees (KWin 6.3, real
+// desktop run of 2026-11-10). The loop reads the mailbox on its own thread.
 class FrameTap final : public RunFrames {
 public:
     struct Source {
@@ -42,6 +46,10 @@ public:
     bool running() const { return pipeline_ != nullptr; }
     // RunFrames, on the loop's thread.
     std::optional<RunFrame> nextFrame(int timeoutMs) override;
+    // ximagesrc grabs the screen for every frame: the next one. A PipeWire
+    // stream is linked anew, and the compositor's first frame on a new link
+    // is the screen as it is. The image-copy source's session opens once: nothing.
+    std::optional<RunFrame> freshFrame(int timeoutMs) override;
     bool lost() const override { return lost_.load(); }
     QString lostReason() const;
     QSize frameSize() const { return QSize(width_.load(), height_.load()); }
@@ -50,10 +58,21 @@ public:
     static int64_t nowMs();
 private:
     void noteBus();
+    // The sink's new-sample callback, on a streaming thread.
+    static GstFlowReturn arrived(GstElement* sink, gpointer self);
+    void take(GstSample* sample);
     GstElement* pipeline_ = nullptr;
     GstElement* sink_ = nullptr;
     ImageCopySource* imageCopy_ = nullptr;
-    std::vector<uint8_t> frame_;
+    Source source_;
+    // The mailbox: the newest frame, its size and arrival time, and a count
+    // that says whether the loop has had it. frame_ is what the loop was given.
+    std::mutex mailbox_;
+    std::condition_variable fresh_;
+    std::vector<uint8_t> latest_, frame_;
+    int latestWidth_ = 0, latestHeight_ = 0;
+    int64_t latestAt_ = 0;
+    quint64 arrivedCount_ = 0, givenCount_ = 0;
     std::atomic<bool> lost_{false};
     std::atomic<int> width_{0}, height_{0};
     std::atomic<qint64> frames_{0};

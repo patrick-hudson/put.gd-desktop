@@ -3,7 +3,9 @@
 // wheel and by nothing else. Options: a sticky header and footer, smooth
 // scrolling, pixels per notch, a starting row and a tail that loads late.
 // It prints `ready X Y W H` once it has painted, then `position N` whenever
-// the scroll position settles. Test input only; never desktop proof.
+// the scroll position settles. On a Wayland desktop a client cannot place its
+// own window, so `--fullscreen` fills one output instead and the capture takes
+// a full-width band of it. Test input only; never desktop proof.
 #include "fixtures/ScrollRuler.h"
 #include <QApplication>
 #include <QCommandLineParser>
@@ -38,9 +40,12 @@ public:
 protected:
     void wheelEvent(QWheelEvent* event) override {
         // One notch is 120 units of angle delta; a positive delta scrolls up.
-        const int notches = -event->angleDelta().y() / 120;
-        if (!notches) return;
-        target_ = std::clamp(target_ + notches * notch, 0, maxScroll());
+        // In proportion, as applications scroll: a desktop may deliver a
+        // fraction of a notch or several at once (XWayland turns KWin's 15.0
+        // into one and a half).
+        const int pixels = -event->angleDelta().y() * notch / 120;
+        if (!pixels) return;
+        target_ = std::clamp(target_ + pixels, 0, maxScroll());
         if (smooth) {
             animation_.stop();
             animation_.setDuration(160);
@@ -114,7 +119,8 @@ int main(int argc, char** argv) {
     QCommandLineParser parser;
     parser.addOptions({{"geometry", "X,Y,W,H in desktop pixels", "rect", "100,60,640,600"}, {"rows", "rows on the page", "n", "60"}, {"notch", "pixels per wheel notch", "px", "100"},
         {"header", "sticky header height", "px", "0"}, {"footer", "sticky footer height", "px", "0"}, {"start", "the row at the top at start", "row", "0"},
-        {"lazy-tail", "rows that load only after the end was reached", "n", "0"}, {"lazy-ms", "how long the tail takes", "ms", "250"}, {"smooth", "animate each scroll"}});
+        {"lazy-tail", "rows that load only after the end was reached", "n", "0"}, {"lazy-ms", "how long the tail takes", "ms", "250"}, {"smooth", "animate each scroll"},
+        {"fullscreen", "fill the output instead of taking --geometry"}});
     parser.process(app);
     const auto geometry = parser.value("geometry").split(',');
     if (geometry.size() != 4) return 2;
@@ -128,6 +134,10 @@ int main(int argc, char** argv) {
     page.smooth = parser.isSet("smooth");
     page.setGeometry(geometry[0].toInt(), geometry[1].toInt(), geometry[2].toInt(), geometry[3].toInt());
     page.start(parser.value("start").toInt());
-    page.show();
+    if (parser.isSet("fullscreen")) {
+        // An ordinary window for the compositor to make full screen.
+        page.setWindowFlags(Qt::Window);
+        page.showFullScreen();
+    } else page.show();
     return app.exec();
 }

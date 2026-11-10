@@ -24,7 +24,7 @@ QString FrameTap::describe(const Source& source) {
     // The newest frames only: a slow loop never makes the source wait.
     description += QStringLiteral(" ! queue name=cq leaky=downstream max-size-buffers=2 max-size-bytes=0 max-size-time=0");
     if (source.crop.isValid() && !source.streamSize.isEmpty()) description += cropDescription(source.streamSize, source.crop);
-    description += QStringLiteral(" ! videoconvert ! video/x-raw,format=BGRx ! appsink name=tap max-buffers=2 drop=true sync=false");
+    description += QStringLiteral(" ! videoconvert ! video/x-raw,format=BGRx ! appsink name=tap max-buffers=2 drop=true sync=false emit-signals=true enable-last-sample=false");
     return description;
 }
 
@@ -42,10 +42,13 @@ Error FrameTap::start(const Source& source) {
     }
     sink_ = gst_bin_get_by_name(GST_BIN(pipeline), "tap");
     pipeline_ = pipeline;
+    source_ = source;
     lost_.store(false);
     frames_.store(0);
     width_.store(0);
     height_.store(0);
+    { std::lock_guard lock(mailbox_); arrivedCount_ = givenCount_ = 0; }
+    if (sink_) g_signal_connect(sink_, "new-sample", G_CALLBACK(&FrameTap::arrived), this);
     { std::lock_guard lock(mutex_); reason_.clear(); }
     if (source.imageCopy) {
         // The capture thread pushes into appsrc; it is stopped before the pipeline.
@@ -62,6 +65,22 @@ Error FrameTap::start(const Source& source) {
         return {"scroll_unavailable", "The frame source could not be started" + (reason.isEmpty() ? QString() : ": " + reason), {{"reason", "frame_source_unavailable"}}};
     }
     return {};
+}
+
+std::optional<RunFrame> FrameTap::freshFrame(int timeoutMs) {
+    if (!pipeline_ || source_.imageCopy) return std::nullopt;
+    if (source_.pipewireNode) {
+        const Source source = source_;
+        const qint64 given = frames_.load();
+        stop();
+        if (start(source)) return std::nullopt;
+        frames_.store(given);
+    } else {
+        // What is in the mailbox was grabbed before now.
+        std::lock_guard lock(mailbox_);
+        givenCount_ = arrivedCount_;
+    }
+    return nextFrame(timeoutMs);
 }
 
 void FrameTap::stop() {
@@ -101,39 +120,56 @@ void FrameTap::noteBus() {
     gst_object_unref(bus);
 }
 
-std::optional<RunFrame> FrameTap::nextFrame(int timeoutMs) {
-    if (!pipeline_ || !sink_) return std::nullopt;
-    GstSample* sample = gst_app_sink_try_pull_sample(GST_APP_SINK(sink_), GstClockTime(std::max(0, timeoutMs)) * GST_MSECOND);
-    // The newest one waiting: the loop compares each frame with the one before
-    // it, and an older frame in between tells it nothing more.
-    while (sample) {
-        GstSample* newer = gst_app_sink_try_pull_sample(GST_APP_SINK(sink_), 0);
-        if (!newer) break;
+GstFlowReturn FrameTap::arrived(GstElement* sink, gpointer self) {
+    if (GstSample* sample = gst_app_sink_pull_sample(GST_APP_SINK(sink))) {
+        static_cast<FrameTap*>(self)->take(sample);
         gst_sample_unref(sample);
-        sample = newer;
     }
-    if (!sample) { noteBus(); return std::nullopt; }
-    std::optional<RunFrame> result;
+    return GST_FLOW_OK;
+}
+
+// Copies the frame into the mailbox; the compositor's buffer is free again when this returns.
+void FrameTap::take(GstSample* sample) {
     GstVideoInfo info;
     GstVideoFrame frame;
     GstCaps* caps = gst_sample_get_caps(sample);
     GstBuffer* buffer = gst_sample_get_buffer(sample);
-    if (caps && buffer && gst_video_info_from_caps(&info, caps) && GST_VIDEO_INFO_FORMAT(&info) == GST_VIDEO_FORMAT_BGRx && gst_video_frame_map(&frame, &info, buffer, GST_MAP_READ)) {
-        const int width = GST_VIDEO_FRAME_WIDTH(&frame), height = GST_VIDEO_FRAME_HEIGHT(&frame);
-        const auto* data = static_cast<const uint8_t*>(GST_VIDEO_FRAME_PLANE_DATA(&frame, 0));
-        const int stride = GST_VIDEO_FRAME_PLANE_STRIDE(&frame, 0);
-        if (width > 0 && height > 0 && data && stride >= width * 4) {
-            const size_t row = size_t(width) * 4;
-            frame_.resize(row * size_t(height));
-            for (int y = 0; y < height; ++y) std::memcpy(frame_.data() + row * size_t(y), data + ptrdiff_t(stride) * y, row);
-            width_.store(width);
-            height_.store(height);
-            frames_.fetch_add(1);
-            result = RunFrame{scroll::FrameView{frame_.data(), width, height, std::ptrdiff_t(row)}, nowMs()};
-        }
-        gst_video_frame_unmap(&frame);
+    if (!caps || !buffer || !gst_video_info_from_caps(&info, caps) || GST_VIDEO_INFO_FORMAT(&info) != GST_VIDEO_FORMAT_BGRx || !gst_video_frame_map(&frame, &info, buffer, GST_MAP_READ)) return;
+    const int width = GST_VIDEO_FRAME_WIDTH(&frame), height = GST_VIDEO_FRAME_HEIGHT(&frame);
+    const auto* data = static_cast<const uint8_t*>(GST_VIDEO_FRAME_PLANE_DATA(&frame, 0));
+    const int stride = GST_VIDEO_FRAME_PLANE_STRIDE(&frame, 0);
+    if (width > 0 && height > 0 && data && stride >= width * 4) {
+        const size_t row = size_t(width) * 4;
+        std::lock_guard lock(mailbox_);
+        latest_.resize(row * size_t(height));
+        for (int y = 0; y < height; ++y) std::memcpy(latest_.data() + row * size_t(y), data + ptrdiff_t(stride) * y, row);
+        latestWidth_ = width;
+        latestHeight_ = height;
+        latestAt_ = nowMs();
+        ++arrivedCount_;
+        if (debugLogEnabled()) debugLog(QStringLiteral("scroll tap buffer: t=%1").arg(latestAt_ % 1000000));
+        fresh_.notify_all();
     }
-    gst_sample_unref(sample);
-    return result;
+    gst_video_frame_unmap(&frame);
+}
+
+// The newest frame the loop has not had yet, or nothing after the timeout.
+std::optional<RunFrame> FrameTap::nextFrame(int timeoutMs) {
+    if (!pipeline_ || !sink_) return std::nullopt;
+    std::unique_lock lock(mailbox_);
+    if (!fresh_.wait_for(lock, std::chrono::milliseconds(std::max(0, timeoutMs)), [this] { return arrivedCount_ != givenCount_; })) {
+        lock.unlock();
+        noteBus();
+        return std::nullopt;
+    }
+    givenCount_ = arrivedCount_;
+    // The loop's copy: the mailbox takes the next frame while the loop works on this one.
+    std::swap(frame_, latest_);
+    const int width = latestWidth_, height = latestHeight_;
+    const int64_t at = latestAt_;
+    width_.store(width);
+    height_.store(height);
+    frames_.fetch_add(1);
+    return RunFrame{scroll::FrameView{frame_.data(), width, height, std::ptrdiff_t(width) * 4}, at};
 }
 }

@@ -43,7 +43,8 @@ public:
     ~ScrollCapture() override;
     void command(const QString& command, const QJsonObject& params, Reply);
     // The control pipe closed or the helper is leaving: from here not even the
-    // pointer's way back is injected, and the staging files are removed.
+    // pointer's way back is injected, and the files of a capture that had not
+    // finished are removed. A finished PNG stays for the resident.
     void abandon();
 signals:
     void event(const QJsonObject&);

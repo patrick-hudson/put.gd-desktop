@@ -967,18 +967,19 @@ void testPointerRules() {
     runSession(c);
   }
   {
-    // Nothing scrolls anywhere: three positions, three single notches, then the error.
+    // Nothing scrolls anywhere: three positions, two single notches at each
+    // (one wheel step can be lost on a real desktop), then the error.
     SessCfg c = base("nothing scrolls at any park position");
     c.app.wheelArea = {W, V, 1, 1};
     c.expect = RunResult::NoMovement;
     c.expectFull = false;
-    c.extraName = "threeSingleNotches";
+    c.extraName = "sixSingleNotches";
     c.extra = [](const RunStats& s, const FakeApp& a) {
       int wheels = 0;
       bool single = true;
       for (const auto& e : a.events)
         if (e.kind == 's') { ++wheels; single = single && e.a == 1; }
-      return wheels == 3 && single && s.parkPosition == 2;
+      return wheels == 6 && single && s.parkPosition == 2;
     };
     runSession(c);
   }
@@ -1001,12 +1002,29 @@ void testPointerRules() {
     runSession(c);
   }
   {
-    // Step 0 on a page already at the top: nothing moves, and the capture goes on.
+    // Step 0 on a page already at the top: nothing moves, twice, and the capture goes on.
     SessCfg c = base("scroll to top first, already at the top");
     c.so.fromTop = true;
-    c.extraName = "oneStepUp";
-    c.extra = [](const RunStats& s, const FakeApp&) { return s.reachedTop && !s.toTopMoved && s.toTopSteps == 1; };
+    c.extraName = "twoStepsUp";
+    c.extra = [](const RunStats& s, const FakeApp&) { return s.reachedTop && !s.toTopMoved && s.toTopSteps == 2; };
     runSession(c);
+  }
+  {
+    // The first wheel step of the capture goes nowhere, as on a real desktop
+    // right after the pointer arrived: neither "nothing scrolls" nor "already
+    // at the top" is concluded from one still step.
+    SessCfg c = base("first wheel step lost, plain");
+    c.app.dropInjection = 0;
+    c.extraName = "parkPosition==0";
+    c.extra = [](const RunStats& s, const FakeApp&) { return s.parkPosition == 0; };
+    runSession(c);
+    SessCfg t = base("first wheel step lost, scroll to top first");
+    t.so.fromTop = true;
+    t.app.startPos = 2600;
+    t.app.dropInjection = 0;
+    t.extraName = "reachedTop";
+    t.extra = [](const RunStats& s, const FakeApp&) { return s.reachedTop && s.toTopMoved; };
+    runSession(t);
   }
   {
     // From-top off: the image starts at the row that was on screen.
@@ -1036,6 +1054,28 @@ void testPointerRules() {
     const Cmp c = compare(img, run.stats().outputRows, tail, c0, c1);
     report("session from-top off, starts at the row on screen", res == RunResult::EndOfContent && c.mismatches == 0 && c.heightOk,
            fmt("%s, rows %d of %d, first bad %d", toString(res), run.stats().outputRows, tail.h, c.firstBad));
+  }
+  {
+    // A stream that goes quiet while the application scrolls on (KWin's region
+    // stream did, on a real desktop) looks like content that stopped moving.
+    // The loop asks for a fresh frame before it makes anything of stillness:
+    // the capture goes on and is exact, from the first step or from a later one.
+    for (int from : {0, 5}) {
+      SessCfg c = base(from ? "stream goes quiet at the sixth step" : "stream goes quiet at the first step");
+      c.app.quietFromInjection = from;
+      c.extraName = "quietStreamSeen";
+      c.extra = [](const RunStats& s, const FakeApp& a) { return s.quietStream >= 1 && a.freshFrames >= 1; };
+      runSession(c);
+    }
+    // A source with no fresh frame to give is believed as before. The stream
+    // is quiet for good here, so what the loop saw is all it can report: the
+    // image is an exact prefix, never something else.
+    SessCfg c = base("stream goes quiet, no fresh frame to ask for");
+    c.app.quietFromInjection = 5;
+    c.app.quietHasFresh = false;
+    c.expectFull = false;
+    c.known = true;
+    runSession(c);
   }
   {
     // Stop is honoured before the next injection: nothing is sent after it.

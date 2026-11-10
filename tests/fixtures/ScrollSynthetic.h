@@ -141,6 +141,12 @@ struct FakeAppSpec {
   Rect wheelArea{0, 0, 0, 0};
   bool pointerHover = false;
   int startPos = 0;
+  // A damage-driven stream that goes quiet: from this injection on it sends no
+  // frame although the application scrolls, until a fresh frame is asked for
+  // (KWin's region stream on a real desktop). quietHasFresh false: the source
+  // has no fresh frame to give.
+  int quietFromInjection = -1;
+  bool quietHasFresh = true;
 };
 
 class FakeApp : public putgd::record::RunInjector, public putgd::record::RunFrames {
@@ -149,6 +155,8 @@ class FakeApp : public putgd::record::RunInjector, public putgd::record::RunFram
   bool scroll(int notches) override;
   bool movePointer(int x, int y) override;
   std::optional<putgd::record::RunFrame> nextFrame(int timeoutMs) override;
+  std::optional<putgd::record::RunFrame> freshFrame(int timeoutMs) override;
+  int freshFrames = 0;
 
   const Renderer& renderer() const { return renderer_; }
   int positionNow() { return int(std::lround(posAt(clock_.nowMs()))); }
@@ -189,6 +197,7 @@ class FakeApp : public putgd::record::RunInjector, public putgd::record::RunFram
   int frameIndex_ = 0;
   Image scratch_, delivered_;
   bool haveDelivered_ = false;
+  bool quiet_ = false;
 };
 
 }  // namespace synth

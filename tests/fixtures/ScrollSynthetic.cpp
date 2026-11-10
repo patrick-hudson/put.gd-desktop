@@ -253,6 +253,7 @@ void FakeApp::update(int64_t t) {
 bool FakeApp::scroll(int n) {
   const int idx = injections++;
   events.push_back({'s', n, 0});
+  if (spec_.quietFromInjection >= 0 && idx == spec_.quietFromInjection) quiet_ = true;
   if (spec_.cancelFlag && spec_.cancelAfterInjections >= 0 && idx >= spec_.cancelAfterInjections)
     spec_.cancelFlag->store(true);
   if (idx == spec_.failInjection) return false;
@@ -286,8 +287,20 @@ bool FakeApp::scroll(int n) {
   return true;
 }
 
+std::optional<putgd::record::RunFrame> FakeApp::freshFrame(int timeoutMs) {
+  if (!spec_.quietHasFresh) return std::nullopt;
+  ++freshFrames;
+  quiet_ = false;  // a new link: the stream sends again
+  haveDelivered_ = false;
+  return nextFrame(timeoutMs);
+}
+
 std::optional<putgd::record::RunFrame> FakeApp::nextFrame(int timeoutMs) {
   const int64_t limit = clock_.nowMs() + std::max(0, timeoutMs);
+  if (quiet_) {
+    clock_.set(limit);
+    return std::nullopt;
+  }
   for (;;) {
     const int64_t t = lastFrameT_ < 0 ? clock_.nowMs()
                                       : std::max(lastFrameT_ + spec_.frameIntervalMs, clock_.nowMs());

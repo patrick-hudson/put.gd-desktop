@@ -38,6 +38,11 @@ struct RunFrames {
     virtual std::optional<RunFrame> nextFrame(int timeoutMs) = 0;
     // The source ended and no more frames will come.
     virtual bool lost() const { return false; }
+    // A frame grabbed anew from the screen, whatever the stream has or has not
+    // sent since: a damage-driven stream can go quiet while the screen changes
+    // (KWin's region stream did, on a real desktop), and a quiet stream looks
+    // exactly like content that stopped moving. Nothing when the source cannot.
+    virtual std::optional<RunFrame> freshFrame(int timeoutMs) { (void)timeoutMs; return std::nullopt; }
 };
 struct RunClock {
     virtual ~RunClock() = default;
@@ -95,7 +100,7 @@ enum class RunResult {
     Stopped,         // the stop flag
     TimeLimit,
     LostTrack,       // a step could not be matched or recovered; the image so far is exact
-    NoMovement,      // nothing scrolled at any park position
+    NoMovement,      // nothing scrolled at any park position (two single notches at each)
     InjectorFailed,
     NoFrames,        // the source never delivered a frame
     SourceLost,
@@ -112,6 +117,7 @@ struct RunStats {
     int retries = 0, scrollBacks = 0, halvings = 0;
     int endConfirmations = 0, falseEnds = 0, reversed = 0;
     int lowConfidenceSteps = 0, settleTimeouts = 0, framesSeen = 0;
+    int quietStream = 0;         // a fresh frame showed movement the stream had not sent
     int toTopSteps = 0;
     bool toTopMoved = false, reachedTop = false;
     int parkPosition = 0;        // 0 centre and a third down, 1 near the right edge, 2 two thirds down
@@ -136,6 +142,9 @@ private:
     int planNotches() const;
     bool inject(int notches);
     bool park();
+    // Before a conclusion drawn from stillness: whether a fresh frame agrees
+    // with the last one seen. When it does not, it becomes the last frame.
+    bool screenIsAsSeen();
     bool stopped() const { return stop_ && stop_->load(); }
     std::optional<RunResult> waitFailure(Wait);
     std::optional<RunResult> scrollToTop();

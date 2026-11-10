@@ -61,6 +61,27 @@ bool ScrollRun::inject(int notches) {
     return injector_.scroll(notches);
 }
 
+bool ScrollRun::screenIsAsSeen() {
+    if (!haveFrame_) return true;
+    std::optional<RunFrame> fresh = source_.freshFrame(opts_.firstFrameTimeoutMs);
+    if (!fresh) return true;  // the source has no such thing: the stream is believed
+    ++stats_.framesSeen;
+    tmpSig_.compute(fresh->view, opts_.stitch);
+    bool same = lastSig_.height == tmpSig_.height && lastSig_.width == tmpSig_.width;
+    if (same) {
+        int top = 0, bottom = tmpSig_.height;
+        if (stitcher_.hasFrame()) {
+            top = stitcher_.movingBandTop();
+            bottom = stitcher_.movingBandBottom();
+        }
+        same = !scroll::framesDiffer(lastSig_, tmpSig_, top, bottom, opts_.stitch, opts_.settleMaxChangedRows);
+    }
+    std::swap(lastSig_, tmpSig_);
+    last_ = fresh->view;
+    if (!same) ++stats_.quietStream;
+    return same;
+}
+
 void ScrollRun::progress(bool toTop) {
     if (!opts_.onProgress) return;
     opts_.onProgress({toTop, stitcher_.hasFrame() ? stitcher_.outputHeight() : 0, stats_.steps, stats_.pxPerNotch});
@@ -165,6 +186,10 @@ std::optional<RunResult> ScrollRun::scrollToTop() {
     settledSig_ = lastSig_;
     progress(true);
     const int64_t begin = clock_.nowMs();
+    // A wheel step can go nowhere (the first one after the pointer arrives was
+    // lost on Plasma; real desktop run of 2026-11-10), so one still step is not
+    // the top: like the end of the content, it takes two in a row.
+    int still = 0;
     while (clock_.nowMs() - begin < opts_.toTopLimitMs) {
         if (!inject(-opts_.toTopNotches)) {
             if (!stopped()) stats_.lastError = "injector refused the scroll-to-top event";
@@ -174,9 +199,21 @@ std::optional<RunResult> ScrollRun::scrollToTop() {
         if (auto f = waitFailure(waitSettled(opts_.stepTimeoutMs))) return f;
         if (settledSig_.height != lastSig_.height || settledSig_.width != lastSig_.width) return RunResult::LayoutChanged;
         if (!scroll::framesDiffer(settledSig_, lastSig_, 0, lastSig_.height, opts_.stitch, opts_.settleMaxChangedRows)) {
-            stats_.reachedTop = true;
-            break;
+            if (++still >= 2) {
+                // The stream may only have gone quiet: look at the screen itself.
+                if (!screenIsAsSeen()) {
+                    still = 0;
+                    stats_.toTopMoved = true;
+                    settledSig_ = lastSig_;
+                    continue;
+                }
+                stats_.reachedTop = true;
+                break;
+            }
+            clock_.sleepMs(opts_.endConfirmDelayMs);
+            continue;
         }
+        still = 0;
         stats_.toTopMoved = true;
         settledSig_ = lastSig_;
         progress(true);
@@ -214,7 +251,13 @@ RunResult ScrollRun::run(const std::atomic<bool>* stop) {
 
     int notches = 1;
     bool endPending = false, moved = false;
-    int oneNotchFailures = 0;
+    // The step before this one showed no movement. If this one moves, the
+    // earlier wheel step may have arrived late and be part of what is seen, so
+    // the distance says nothing about one notch. (Seen on Plasma through
+    // XWayland: a burst of notches landed after the settle time; real desktop
+    // run of 2026-11-10.)
+    bool afterStill = false;
+    int oneNotchFailures = 0, stillAtPark = 0;
 
     for (;;) {
         if (stopped()) return finishWith(RunResult::Stopped);
@@ -276,6 +319,21 @@ RunResult ScrollRun::run(const std::atomic<bool>* stop) {
             continue;
         }
 
+        // Stillness is checked against a fresh frame before anything is made of
+        // it (the end of the content, "nothing scrolls"): a stream that went
+        // quiet must not end a capture as if it were complete. Checked at the
+        // first still step already, while the content is one step away and
+        // still overlaps what was stitched.
+        if (r.status == StepStatus::NoMovement && !screenIsAsSeen()) {
+            afterStill = true;  // several wheel steps are in this frame: it measures none of them
+            r = stitcher_.addFrame(last_, lastSig_, kNoHint);
+            if (opts_.onStep) opts_.onStep(r, kNoHint, 0);
+            if (r.status == StepStatus::NoMatch || r.status == StepStatus::Ambiguous) {
+                stats_.lastError = "the frame stream went quiet and the content moved past the overlap meanwhile";
+                return finishWith(RunResult::LostTrack);
+            }
+        }
+
         switch (r.status) {
             case StepStatus::Appended: {
                 if (endPending) ++stats_.falseEnds;
@@ -285,7 +343,8 @@ RunResult ScrollRun::run(const std::atomic<bool>* stop) {
                 if (r.lowConfidence) ++stats_.lowConfidenceSteps;
                 // Learn px-per-notch from verified steps; a low-confidence step only
                 // teaches it when nothing is known yet (and it had pixel evidence).
-                const bool learn = r.lowConfidence ? (hint < 0 && r.evidenceRows > 0) : true;
+                const bool learn = !afterStill && (r.lowConfidence ? (hint < 0 && r.evidenceRows > 0) : true);
+                afterStill = false;
                 if (learn && r.offset > 0 && (hint < 0 || r.offset >= opts_.shortStepFraction * hint)) {
                     const double px = double(r.offset) / notches;
                     stats_.pxPerNotch = px;
@@ -305,14 +364,18 @@ RunResult ScrollRun::run(const std::atomic<bool>* stop) {
                 return finishWith(RunResult::LimitReached);
             case StepStatus::NoMovement:
                 if (opts_.pointer && !moved && !stats_.toTopMoved) {
-                    // Rule 7: the first notch moved nothing here. The centre may be a
-                    // part that does not scroll: try the two other park positions.
+                    // Rule 7: the first notch moved nothing here. A single step can
+                    // be lost, so each place gets a second one; then the centre may
+                    // be a part that does not scroll: try the two other park positions.
+                    afterStill = true;
+                    clock_.sleepMs(opts_.endConfirmDelayMs);
+                    if (++stillAtPark < 2) break;
+                    stillAtPark = 0;
                     if (stats_.parkPosition >= 2) {
                         stats_.lastError = "nothing under the selection scrolled at any park position";
                         return finishWith(RunResult::NoMovement);
                     }
                     ++stats_.parkPosition;
-                    clock_.sleepMs(opts_.endConfirmDelayMs);
                     break;
                 }
                 if (endPending) {
@@ -321,6 +384,7 @@ RunResult ScrollRun::run(const std::atomic<bool>* stop) {
                 }
                 // Possibly the end, a dropped event or a slow lazy load: confirm once.
                 endPending = true;
+                afterStill = true;
                 clock_.sleepMs(opts_.endConfirmDelayMs);
                 break;
             case StepStatus::Reversed:

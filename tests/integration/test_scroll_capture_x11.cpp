@@ -74,8 +74,18 @@ struct Capture {
         (void)putgd::test::waitFor([&] { return reply->done; }, 40000);
         return *reply;
     }
-    // The helper left with a normal exit.
+    // The helper left with a normal exit; a finished PNG is still there for the resident.
     bool leave() {
+        const QString png = last("finished")["path"].toString();
+        if (!png.isEmpty() && !leaveKeepsPng(png)) return false;
+        return left();
+    }
+    bool leaveKeepsPng(const QString& png) {
+        if (!QFileInfo::exists(png)) return false;
+        backend.discard(id);
+        return putgd::test::waitFor([&] { return !backend.diagnostics()["active"].toBool(); }, 10000) && QFileInfo::exists(png);
+    }
+    bool left() {
         backend.discard(id);
         return putgd::test::waitFor([&] { return !backend.diagnostics()["active"].toBool(); }, 10000) && backend.diagnostics()["lastExit"].toObject()["status"].toString() == "normal" && backend.diagnostics()["lastExit"].toObject()["code"].toInt() == 0;
     }

@@ -67,9 +67,25 @@ struct Primed final : RunFrames {
     Primed(RunFrames& source, RunFrame frame, const std::atomic<bool>& lostElsewhere) : inner(source), first(frame), gone(lostElsewhere) {}
     std::optional<RunFrame> nextFrame(int timeoutMs) override {
         if (first) { RunFrame frame = *first; first.reset(); frame.timestampMs = FrameTap::nowMs(); return frame; }
-        return inner.nextFrame(timeoutMs);
+        auto frame = inner.nextFrame(timeoutMs);
+        // Lab timeline: when each frame arrived and whether its picture changed
+        // (a sum over every sixteenth row; never the pixels).
+        if (frame && debugLogEnabled()) {
+            quint64 sum = 0;
+            for (int y = 0; y < frame->view.height; y += 16) { const uint8_t* row = frame->view.row(y); for (int x = 0; x < frame->view.width * 4; x += 4) sum = sum * 31 + row[x] + (row[x + 1] << 8) + (row[x + 2] << 16); }
+            debugLog(QStringLiteral("scroll frame: t=%1 %2").arg(frame->timestampMs % 1000000).arg(sum == lastSum ? QStringLiteral("same") : QStringLiteral("changed")));
+            lastSum = sum;
+        }
+        return frame;
     }
+    quint64 lastSum = 0;
     bool lost() const override { return gone.load() || inner.lost(); }
+    std::optional<RunFrame> freshFrame(int timeoutMs) override {
+        first.reset();
+        auto frame = inner.freshFrame(timeoutMs);
+        if (debugLogEnabled()) debugLog(QStringLiteral("scroll fresh frame: %1").arg(frame ? QStringLiteral("t=%1").arg(frame->timestampMs % 1000000) : QStringLiteral("none")));
+        return frame;
+    }
 };
 const char* endReason(RunResult result) {
     switch (result) {
@@ -87,8 +103,18 @@ struct ScrollCapture::Gate final : RunInjector {
     ScrollInjector* injector = nullptr;
     // Closed for good at stop, cancel and the end of the control pipe.
     std::atomic<bool> armed{true};
-    bool scroll(int notches) override { return armed.load() && injector->scroll(notches); }
-    bool movePointer(int x, int y) override { return armed.load() && injector->movePointer(QPoint(x, y)); }
+    bool scroll(int notches) override {
+        if (!armed.load()) return false;
+        const bool sent = injector->scroll(notches);
+        if (debugLogEnabled()) debugLog(QStringLiteral("scroll inject: t=%1 wheel %2 %3").arg(FrameTap::nowMs() % 1000000).arg(notches).arg(sent ? "sent" : "refused"));
+        return sent;
+    }
+    bool movePointer(int x, int y) override {
+        if (!armed.load()) return false;
+        const bool sent = injector->movePointer(QPoint(x, y));
+        if (debugLogEnabled()) debugLog(QStringLiteral("scroll inject: t=%1 pointer %2,%3 %4").arg(FrameTap::nowMs() % 1000000).arg(x).arg(y).arg(sent ? "sent" : "refused"));
+        return sent;
+    }
     bool waitReady(const std::atomic<bool>& stop) override { return armed.load() && injector->waitReady(stop); }
 };
 // What the main thread and the worker share for one capture.
@@ -155,7 +181,9 @@ void ScrollCapture::abandon() {
     job_.reset();
     closeSelector();
     release();
-    removeFiles();
+    // A finished image stays: the resident owns the staging directory and takes
+    // the PNG from it, often after it has asked this helper to leave.
+    if (state_ != State::Done) removeFiles();
     if (state_ != State::Done && state_ != State::Failed) state_ = State::Cancelled;
 }
 void ScrollCapture::removeFiles() {

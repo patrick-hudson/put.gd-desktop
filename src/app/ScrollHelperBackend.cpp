@@ -99,7 +99,7 @@ void ScrollHelperBackend::finishProbe() {
             probeOutput_.append(process->readAllStandardError());
             probeOutput_.finished(process->exitCode(), process->exitStatus(), running);
         }
-        if (result["reason"].isString()) logging::warning(logRecording(), "Scrolling capture is unavailable", {{"reason", result["reason"]}});
+        if (result.value("reason").isString()) logging::warning(logRecording(), "Scrolling capture is unavailable", {{"reason", result.value("reason")}});
         process->deleteLater();
     }
     cached_ = result;
