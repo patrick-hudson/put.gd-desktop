@@ -59,9 +59,10 @@ Methods and parameters:
 | `upload.files` | `paths` (absolute, 1–10,000), optional `profileId`, optional `installation` (`system` or `appimage`; a file manager's client sends it and another installation's resident refuses with `installation_mismatch`). Answers within 120 s after checking every file ([file-manager-upload.md](../design/file-manager-upload.md)) |
 | `editor.open` | optional `source` region (default)/window/desktop/clipboard/file, `path` (absolute, file only) |
 | `editor.inspect`, `.submit`, `.cancel`, `.raise` | operation `id` of the open editor |
-| `editor.apply` | `id`, `commands` array (1–100); atomic |
+| `editor.apply` | `id`, `commands` array (1–100); atomic; shapes redact, blur (`style` blur/pixelate), arrow, line, rectangle, ellipse, pen, step, text, highlight |
 | `editor.preview` | `id`, optional `maxEdge` 64–1600; base64 sanitized PNG |
 | `editor.saveCopy` | `id`, absolute `.png` `path`, optional `overwrite` |
+| `editor.copy` | `id`; Copy image: the sanitized PNG on the clipboard, no upload or History item; returns `copied`, `bytes`, `sha256`, `width`, `height` |
 | `editor.fileDialog` | `id`, `action` (`open`, `inspect`, `cancel`); the editor's **Save a copy…** chooser and its state ([file-dialogs.md](../design/file-dialogs.md)) |
 | `operation.recent` | empty object; configured recent-activity bound |
 | `operation.inspect`, `.cancel`, `.retry`, `.copy`, `.retryLocalSave` | `id`; `.cancel` also takes an optional `itemId` (an item's `artifact.id`) to cancel one file of an active batch while the others continue. That item ends `cancelled` and the next Retry uploads it |

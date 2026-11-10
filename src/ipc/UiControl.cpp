@@ -9,6 +9,8 @@ bool knownType(const QString& type){
  static const QStringList types{"bootstrap","ready","incompatible","activate","shown","activationFailed","invalidated","observed","checkpoint","checkpointAccepted","checkpointRejected","closeRequested","closeAccepted","closeRejected","closeCancel","closeCancelled","closeConfirmed","shutdown","focusChanged","shortcutRecording","shortcutRecordingChanged",
   // Image editor helper: progress, agent commands and their results.
   "editing","finalizing","command","commandResult",
+  // Image editor Copy image: the helper staged a sanitized PNG; the resident answers.
+  "copyImage","copyResult",
   // Recording helper: unsolicited progress/stop/failure notifications, and
   // the interface scheme its overlays follow while it runs (#198).
   "event","appearance",

@@ -92,9 +92,10 @@ such as `session_unavailable` and `config_conflict` retain their original envelo
 | `clear_logs` | logs.clear | Deletes every persistent log file and starts a new one; uploads, history, settings and saved diagnostics packages stay. `inspect` reports the log under `diagnostics.logging` ([diagnostics.md](../design/diagnostics.md)) |
 | `open_editor` | optional source region/window/desktop/clipboard/file, path → editor.open | Opens the visible editor (Capture region & edit); uploads nothing yet. History's **Edit again** is `source: file` with the item's `local.path` from `history.list` or `history.detail` |
 | `get_editor` | id → editor.inspect | Image size, crop, shapes, undo/redo, phase |
-| `edit_image` | id, commands → editor.apply | Atomic redact/blur/arrow/rectangle/highlight/text/crop/undo/redo, shown live |
+| `edit_image` | id, commands → editor.apply | Atomic redact/blur (or pixelate)/arrow/line/rectangle/ellipse/pen/step/highlight/text/crop/undo/redo, shown live |
 | `preview_editor` | id, optional max_edge → editor.preview | Returns the sanitized result as an MCP image plus metadata |
 | `save_editor_copy` | id, path, optional overwrite → editor.saveCopy | Writes the sanitized PNG to a file; no upload |
+| `copy_editor_image` | id → editor.copy | Copy image: the same sanitized PNG on the desktop clipboard; no upload, no History item |
 | `editor_file_dialog` | id, action open/inspect/cancel → editor.fileDialog | The editor's **Save a copy…** chooser as the button opens it, its state, or a cancel; a file picked there gets the sanitized PNG |
 | `submit_editor` | id → editor.submit | Sends only the sanitized result through the configured output |
 | `cancel_editor` / `raise_editor` | id → editor.cancel / editor.raise | Discard without upload / ask to bring the window forward; `raised: false`, `reason: activation_refused` when the desktop keeps it back (#911) |
