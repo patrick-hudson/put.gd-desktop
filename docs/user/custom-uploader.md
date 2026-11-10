@@ -219,7 +219,7 @@ does not know of.
 | 2xx with a link | Uploaded. The link is one absolute `http(s)` address, or a path from the server's root. |
 | 2xx without a usable link | Unknown: `http_response_unreadable`. Check the URL value under Response. |
 | 2xx whose link repeats a credential | Unknown: `http_link_holds_secret`. The link is not recorded or copied. |
-| A reply shorter than its `Content-Length`, a chunked reply without its last chunk, a connection that closed or reset under the reply | Unknown: `http_outcome_unknown` |
+| A 2xx reply shorter than its `Content-Length`, a chunked 2xx reply without its last chunk, a connection that closed or reset under a 2xx reply | Unknown: `http_outcome_unknown` |
 | 401, 403 | `http_authentication_failed` |
 | 413 | `http_too_large` |
 | 429 | `http_rate_limited` |
@@ -227,6 +227,10 @@ does not know of.
 | Other 5xx, after the whole request was sent | Unknown: `http_outcome_unknown`, with the server's message |
 | Other 5xx, before the request was complete | `http_upload_interrupted`, or `http_server_error` where the status was read |
 | Other 4xx | `http_request_refused` |
+
+The status line decides first. A 4xx other than 408 is a refusal even when the rest of
+its reply was cut short, and a 5xx follows its own rows; whether a reply arrived whole
+matters for a 2xx, the only kind that could otherwise count as an upload.
 
 Text from the server is shown on one line, bounded, with every credential of the
 destination ([what counts](#what-counts-as-a-credential)) removed, however the server
@@ -283,9 +287,9 @@ Confirming it journals the intent, then sends one GET of the recorded deletion U
   back to the same host, put.gd submits it, as XBackBone needs.
 - The deletion counts only when it is verified: put.gd fetches the link before and
   after, and a server that answers 200 while the link still serves the same bytes gets
-  `http_delete_unconfirmed`, not "deleted". Only whole replies are compared: a link
-  whose reply was cut short afterwards proves nothing, and is `http_delete_unconfirmed`
-  as well.
+  `http_delete_unconfirmed`, not "deleted". A check whose reply was cut short, before
+  or after the deletion, is held against the other as far as it came: a link that still
+  answers with the bytes it had is `http_delete_unconfirmed` as well.
 - A lost reply leaves the deletion unknown; **Retry** asks the server again and finds
   the file gone. A redirect that put.gd does not follow is unknown too: the server
   received the request. A deletion URL that names a stored value follows no redirect

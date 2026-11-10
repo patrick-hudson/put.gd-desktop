@@ -52,7 +52,7 @@ filenames, history URLs, authorization values or credential references.
 | `http_link_holds_secret` | The server accepted the upload but put a credential of the destination into the link it returned; put.gd neither records nor copies that link, and **Retry upload** would send the file again with the same result. If the named value is not a credential, clear **Secret** on its row (for a value under **Other secret values**, write it back into the address); otherwise the server's reply is at fault ([what counts as a credential](custom-uploader.md#what-counts-as-a-credential)) |
 | `http_delete_unsupported` | The upload has no deletion URL put.gd may use: none came back, or the one that did is on another host and would need a stored value, uses plain HTTP the destination does not allow, or points at this computer. History says which; delete it on the server |
 | `public_url_unreachable` (custom uploader) | Test connection uploaded the file but could not open the returned link. When the link is plain HTTP and **Allow plain HTTP** is off, put.gd does not open it and says so |
-| `http_delete_refused`, `http_delete_unconfirmed` | The server refused the deletion, or answered while the link still serves the file or while the check of the link was cut short; nothing is recorded as deleted. Try again later or delete it on the server |
+| `http_delete_refused`, `http_delete_unconfirmed` | The server refused the deletion, or answered while the link still serves the file (also when a check of the link was cut short and its bytes match as far as they came); nothing is recorded as deleted. Try again later or delete it on the server |
 
 ## GNOME 50 setup states
 
