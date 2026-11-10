@@ -300,8 +300,8 @@ GstPadProbeReturn RecordingPipeline::stampFrame(GstPad* pad, GstPadProbeInfo* in
         buffer = gst_buffer_make_writable(buffer);
         if (!buffer) { GST_PAD_PROBE_INFO_DATA(info) = nullptr; return GST_PAD_PROBE_DROP; }
     }
-    // The mark was for the lock above; nothing downstream is to read it.
-    GST_BUFFER_FLAG_UNSET(buffer, GST_BUFFER_FLAG_DROPPABLE);
+    // The mark was for the lock above; nothing downstream is to read it. Other sources' frames are left as they came.
+    if (clock->ownFrames) GST_BUFFER_FLAG_UNSET(buffer, GST_BUFFER_FLAG_DROPPABLE);
     gst_buffer_replace(&clock->lastKept, buffer);
     GST_PAD_PROBE_INFO_DATA(info) = buffer;
     GST_BUFFER_PTS(buffer) = GST_BUFFER_DTS(buffer) = GstClockTime(frame.running);
