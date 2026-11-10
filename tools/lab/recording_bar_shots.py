@@ -12,8 +12,10 @@ desktop, taken through the desktop's VNC tile, as DIR/shots/STATE.png:
             the bar's Microphone toggle is off
   on        the same with the toggle on and a tone playing into the simulated
             microphone, so the meter beside the toggle shows a level
-  none      the simulated microphone is gone: the toggle reads "No microphone"
-            (on a host whose default input is an output's monitor, or has none)
+  none      the simulated microphone is gone: the toggle reads "No microphone".
+            Where the host's default input is a real device, the default is made
+            an output's monitor for this state (and put back): the real device
+            is never opened
   settings  Settings is open; where it scrolls is up to the caller (the frame is
             taken after --settings-wait seconds, during which the caller may
             drive the window through the same VNC tile)
@@ -67,6 +69,7 @@ def main():
     socket = Path(env['XDG_RUNTIME_DIR']) / 'putgd' / 'session.sock'
     host, _, port = a.vnc.rpartition(':')
     mic_state = run / 'virtual-mic.json'
+    none_state = run / 'no-microphone.json'
     tone = None
     report = {'host': os.uname().nodename, 'desktop': desktop, 'session': env.get('XDG_SESSION_TYPE'), 'build': build.identity, 'states': {}}
 
@@ -168,17 +171,23 @@ def main():
             entry = {}
             if state in ('off', 'on') and not mic_state.exists():
                 virtual_mic('create', '--name', 'putgd_lab_%d' % os.getpid(), '--state', str(mic_state))
-            if state == 'none' and mic_state.exists():
-                stop_tone()
-                virtual_mic('remove', '--state', str(mic_state))
-                mic_state.unlink(missing_ok=True)
+            if state == 'none':
+                if mic_state.exists():
+                    stop_tone()
+                    virtual_mic('remove', '--state', str(mic_state))
+                    mic_state.unlink(missing_ok=True)
+                default = subprocess.run(['pactl', 'get-default-source'], env=env, capture_output=True, text=True).stdout.strip()
+                if default and not default.endswith('.monitor') and default != '@DEFAULT_SOURCE@':
+                    # This host's default input is a real device. For the picture the default becomes an output's
+                    # monitor, the state of a desktop with nothing plugged in; the real device is never opened.
+                    virtual_mic('create', '--name', 'putgd_lab_none_%d' % os.getpid(), '--state', str(none_state), '--system-sink', '--monitor-default')
             if state == 'settings':
                 cli('ui.show', {'view': 'settings'})
                 time.sleep(a.settings_wait)
                 frame(state)
                 report['states'][state] = {'shown': 'settings'}
                 continue
-            device = json.loads(mic_state.read_text())['source'] if mic_state.exists() else None
+            device = json.loads(mic_state.read_text())['source'] if mic_state.exists() and state != 'none' else None
             if state == 'on' and tone is None:
                 # A steady tone into the simulated microphone: the meter then shows a level in a still frame.
                 tone = subprocess.Popen([sys.executable, str(HERE / 'virtual_mic.py'), 'tone', '--state', str(mic_state), '--to', 'mic', '--hz', '440',
@@ -205,11 +214,12 @@ def main():
             report['states'][state] = entry
     finally:
         stop_tone()
-        if mic_state.exists():
-            try:
-                virtual_mic('remove', '--state', str(mic_state))
-            except record_run.RunError as error:
-                report['microphoneCleanup'] = str(error)
+        for created in (none_state, mic_state):
+            if created.exists():
+                try:
+                    virtual_mic('remove', '--state', str(created))
+                except record_run.RunError as error:
+                    report['microphoneCleanup'] = str(error)
         quit_resident(resident)
         (run / 'shots.json').write_text(json.dumps(report, indent=2) + '\n')
     print(json.dumps({'shots': sorted(p.name for p in (run / 'shots').glob('*.png')), 'report': str(run / 'shots.json')}))
