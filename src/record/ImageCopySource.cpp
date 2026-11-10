@@ -65,7 +65,7 @@ struct ImageCopySource::Impl {
  std::atomic<qint64> frames{0},keepalives{0},constraintChanges{0};bool ended=false;
  Error failure;
  // Own cursor (#1364): the session has no painted cursor; this draws it from the cursor session.
- bool ownCursor=false,seatPointer=false;wl_seat* seat=nullptr;wl_pointer* pointerDevice=nullptr;
+ bool ownCursor=false,cursorHidden=false,seatPointer=false;wl_seat* seat=nullptr;wl_pointer* pointerDevice=nullptr;
  ext_image_copy_capture_cursor_session_v1* cursorSession=nullptr;ext_image_copy_capture_session_v1* cursorCapture=nullptr;ext_image_copy_capture_frame_v1* cursorFrame=nullptr;
  QSize cursorSize,cursorPendingSize;QList<uint32_t> cursorPendingFormats;uint32_t cursorFormat=0;bool cursorConstraints=false,cursorReallocate=false,cursorEnded=false;
  wl_buffer* cursorBuffer=nullptr;void* cursorData=MAP_FAILED;size_t cursorBytes=0;QSize cursorBufferSize;
@@ -251,7 +251,7 @@ struct ImageCopySource::Impl {
  Error startSession(){
   if(session){ext_image_copy_capture_session_v1_destroy(session);session=nullptr;}
   constraints=false;pendingFormats.clear();pendingSize={};
-  session=ext_image_copy_capture_manager_v1_create_session(copy,source,ownCursor?0u:uint32_t(EXT_IMAGE_COPY_CAPTURE_MANAGER_V1_OPTIONS_PAINT_CURSORS));
+  session=ext_image_copy_capture_manager_v1_create_session(copy,source,ownCursor||cursorHidden?0u:uint32_t(EXT_IMAGE_COPY_CAPTURE_MANAGER_V1_OPTIONS_PAINT_CURSORS));
   static const ext_image_copy_capture_session_v1_listener listener={&Impl::sessionSize,&Impl::sessionFormat,[](void*,ext_image_copy_capture_session_v1*,wl_array*){},[](void*,ext_image_copy_capture_session_v1*,uint32_t,wl_array*){},&Impl::sessionDone,&Impl::sessionStopped};
   ext_image_copy_capture_session_v1_add_listener(session,&listener,this);
   QElapsedTimer clock;clock.start();
@@ -492,8 +492,9 @@ ImageCopySource::Facts ImageCopySource::probe(){
 }
 ImageCopySource::ImageCopySource():d_(std::make_unique<Impl>()){}
 ImageCopySource::~ImageCopySource()=default;
-Error ImageCopySource::open(const Target& target,QSize* size,QString* identity,QString* appId,bool pointer,bool* pointerOpened){
+Error ImageCopySource::open(const Target& target,QSize* size,QString* identity,QString* appId,bool pointer,bool* pointerOpened,bool cursorHidden){
  if(pointerOpened)*pointerOpened=false;
+ d_->cursorHidden=cursorHidden;if(cursorHidden)pointer=false;
  QString reason;
  if(!d_->connect(&reason))return {"recording_unavailable",reason,{{"protocol","ext-image-copy-capture-v1"}}};
  reason=target.window?d_->windowReason():d_->outputReason();

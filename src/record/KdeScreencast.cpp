@@ -11,7 +11,9 @@
 
 namespace putgd::record {
 struct KdeScreencast::Impl {
-    struct Output { wl_output* native = nullptr; zxdg_output_v1* xdg = nullptr; uint32_t id = 0; QString name; QRect logical; };
+    // mode: the current mode's size in the output's own pixels, as wl_output reports it (before its transform).
+    struct Output { wl_output* native = nullptr; zxdg_output_v1* xdg = nullptr; uint32_t id = 0; QString name; QRect logical; QSize mode; int32_t transform = 0; };
+    static uint32_t pointerMode(bool hidden) { return hidden ? ZKDE_SCREENCAST_UNSTABLE_V1_POINTER_HIDDEN : ZKDE_SCREENCAST_UNSTABLE_V1_POINTER_EMBEDDED; }
     KdeScreencast& q;
     wl_display* display = nullptr;
     wl_registry* registry = nullptr;
@@ -30,8 +32,8 @@ struct KdeScreencast::Impl {
     static void xdg_done(void*, zxdg_output_v1*) {}
     static void xdg_name(void* data, zxdg_output_v1*, const char* name) { static_cast<Output*>(data)->name = QString::fromUtf8(name); }
     static void xdg_description(void*, zxdg_output_v1*, const char*) {}
-    static void wl_geometry(void*, wl_output*, int32_t, int32_t, int32_t, int32_t, int32_t, const char*, const char*, int32_t) {}
-    static void wl_mode(void*, wl_output*, uint32_t, int32_t, int32_t, int32_t) {}
+    static void wl_geometry(void* data, wl_output*, int32_t, int32_t, int32_t, int32_t, int32_t, const char*, const char*, int32_t transform) { static_cast<Output*>(data)->transform = transform; }
+    static void wl_mode(void* data, wl_output*, uint32_t flags, int32_t width, int32_t height, int32_t) { if (flags & WL_OUTPUT_MODE_CURRENT) static_cast<Output*>(data)->mode = QSize(width, height); }
     static void wl_done(void*, wl_output*) {}
     static void wl_scale(void*, wl_output*, int32_t) {}
     static void wl_name(void* data, wl_output*, const char* name) { auto* o = static_cast<Output*>(data); if (o->name.isEmpty()) o->name = QString::fromUtf8(name); }
@@ -123,7 +125,7 @@ bool KdeScreencast::available(QJsonObject& facts, QString* reason) {
     return true;
 }
 
-void KdeScreencast::streamOutput(const QString& name, Done done) {
+void KdeScreencast::streamOutput(const QString& name, Done done, bool pointerHidden) {
     QJsonObject facts;
     QString reason;
     if (!available(facts, &reason)) { done({"recording_unsupported", "KWin screen casting is unavailable: " + reason, {}}, {}); return; }
@@ -133,29 +135,50 @@ void KdeScreencast::streamOutput(const QString& name, Done done) {
     if (!chosen) { done({"recording_target", "No connected output has this name", {{"identity", name}}}, {}); return; }
     d_->pending = {0, chosen->logical, chosen->name};
     d_->done = std::move(done);
-    d_->stream = zkde_screencast_unstable_v1_stream_output(d_->screencast, chosen->native, ZKDE_SCREENCAST_UNSTABLE_V1_POINTER_EMBEDDED);
+    d_->stream = zkde_screencast_unstable_v1_stream_output(d_->screencast, chosen->native, Impl::pointerMode(pointerHidden));
     d_->listen(d_->stream);
 }
 
-void KdeScreencast::streamRegion(const QRect& logical, Done done) {
+double KdeScreencast::regionScale(const QRect& logical) {
+    QJsonObject facts;
+    if (!available(facts)) return 1.0;
+    if (d_->screencastVersion >= 5) return 0.0;
+    // The output under the region's centre, else the one sharing most of it.
+    const Impl::Output* chosen = nullptr;
+    qint64 best = 0;
+    for (const auto* output : d_->outputs) {
+        if (output->logical.contains(logical.center())) { chosen = output; break; }
+        const QRect piece = output->logical.intersected(logical);
+        if (qint64(piece.width()) * piece.height() > best) { best = qint64(piece.width()) * piece.height(); chosen = output; }
+    }
+    if (!chosen || chosen->logical.width() < 1 || chosen->mode.isEmpty()) return 1.0;
+    // A turned output's mode is its panel's: width and height change places.
+    const bool turned = chosen->transform == WL_OUTPUT_TRANSFORM_90 || chosen->transform == WL_OUTPUT_TRANSFORM_270 || chosen->transform == WL_OUTPUT_TRANSFORM_FLIPPED_90 || chosen->transform == WL_OUTPUT_TRANSFORM_FLIPPED_270;
+    const double scale = double(turned ? chosen->mode.height() : chosen->mode.width()) / chosen->logical.width();
+    return scale >= 0.5 && scale <= 8.0 ? scale : 1.0;
+}
+
+void KdeScreencast::streamRegion(const QRect& logical, Done done, bool pointerHidden, bool outputScale) {
     QJsonObject facts;
     QString reason;
     if (!available(facts, &reason)) { done({"recording_unsupported", "KWin screen casting is unavailable: " + reason, {}}, {}); return; }
     if (d_->done || d_->stream) { done({"recording_state", "A KWin screen cast is already open", {}}, {}); return; }
     d_->pending = {0, logical, {}};
     d_->done = std::move(done);
-    d_->stream = zkde_screencast_unstable_v1_stream_region(d_->screencast, logical.x(), logical.y(), uint32_t(logical.width()), uint32_t(logical.height()), wl_fixed_from_int(1), ZKDE_SCREENCAST_UNSTABLE_V1_POINTER_EMBEDDED);
+    const double scale = outputScale ? regionScale(logical) : 1.0;
+    if (outputScale) debugLog(QStringLiteral("kde screencast: region at scale %1 (0 = KWin's choice), pointer %2").arg(scale).arg(pointerHidden ? "hidden" : "embedded"));
+    d_->stream = zkde_screencast_unstable_v1_stream_region(d_->screencast, logical.x(), logical.y(), uint32_t(logical.width()), uint32_t(logical.height()), wl_fixed_from_double(scale), Impl::pointerMode(pointerHidden));
     d_->listen(d_->stream);
 }
 
-void KdeScreencast::streamWindow(const QString& uuid, const QRect& logical, Done done) {
+void KdeScreencast::streamWindow(const QString& uuid, const QRect& logical, Done done, bool pointerHidden) {
     QJsonObject facts;
     QString reason;
     if (!available(facts, &reason)) { done({"recording_unsupported", "KWin screen casting is unavailable: " + reason, {}}, {}); return; }
     if (d_->done || d_->stream) { done({"recording_state", "A KWin screen cast is already open", {}}, {}); return; }
     d_->pending = {0, logical, QStringLiteral("window %1").arg(uuid)};
     d_->done = std::move(done);
-    d_->stream = zkde_screencast_unstable_v1_stream_window(d_->screencast, uuid.toUtf8().constData(), ZKDE_SCREENCAST_UNSTABLE_V1_POINTER_EMBEDDED);
+    d_->stream = zkde_screencast_unstable_v1_stream_window(d_->screencast, uuid.toUtf8().constData(), Impl::pointerMode(pointerHidden));
     d_->listen(d_->stream);
 }
 

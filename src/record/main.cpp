@@ -2,7 +2,10 @@
 // one per recording session and speaks UiControl frames over private pipes;
 // `--capabilities` prints the media inventory and exits. The helper owns the
 // live GStreamer capture, the private working clip, frame previews and the
-// FFmpeg export; only control metadata crosses the pipes.
+// FFmpeg export; only control metadata crosses the pipes. A bootstrap with
+// `session: "scroll"` makes it a scroll-capture session instead (#1376): the
+// same selectors and sources, frames into a stitcher, one PNG at the end.
+// `--scroll-capabilities` prints what that session would use on this desktop.
 #include "MediaProbe.h"
 #include "Microphones.h"
 #include "BundledRuntime.h"
@@ -13,6 +16,8 @@
 #include "ClickCheck.h"
 #include "AppIdentity.h"
 #include "RecordSession.h"
+#include "ScrollCapture.h"
+#include "ScrollInjectors.h"
 #include "ipc/UiControl.h"
 #include "core/BuildInfo.h"
 #include "ipc/StdioDevice.h"
@@ -25,6 +30,7 @@
 #include <QImage>
 #include <QCoreApplication>
 #include <atomic>
+#include <memory>
 #include <QElapsedTimer>
 #include <QGuiApplication>
 #include <gst/gst.h>
@@ -50,6 +56,15 @@ int main(int argc, char** argv) {
     if (argc == 2 && std::strcmp(argv[1], "--capabilities") == 0) {
         QCoreApplication app(argc, argv);
         const auto json = QJsonDocument(record::probeMedia()).toJson(QJsonDocument::Compact);
+        std::fwrite(json.constData(), 1, size_t(json.size()), stdout);
+        std::fputc('\n', stdout);
+        return 0;
+    }
+    if (argc == 2 && std::strcmp(argv[1], "--scroll-capabilities") == 0) {
+        // #1376: the frame source, injector and selector a scroll capture would
+        // use here. Opens no capture source, shows nothing and sends no input.
+        QCoreApplication app(argc, argv);
+        const auto json = QJsonDocument(record::probeScroll()).toJson(QJsonDocument::Compact);
         std::fwrite(json.constData(), 1, size_t(json.size()), stdout);
         std::fputc('\n', stdout);
         return 0;
@@ -238,8 +253,12 @@ int main(int argc, char** argv) {
     QJsonObject envelope;
     bool ready = false;
     record::RecordSession session;
-    QObject::connect(&pipes, &QIODevice::readChannelFinished, &app, [&] { app.exit(5); });
-    QObject::connect(&control, &UiControl::failed, &app, [&] { app.exit(3); });
+    // A scroll-capture session, made at bootstrap when the resident asks for one.
+    std::unique_ptr<record::ScrollCapture> scroll;
+    // The resident is gone or broke the protocol: a scroll capture injects
+    // nothing more from here, not even the pointer's way back.
+    QObject::connect(&pipes, &QIODevice::readChannelFinished, &app, [&] { if (scroll) scroll->abandon(); app.exit(5); });
+    QObject::connect(&control, &UiControl::failed, &app, [&] { if (scroll) scroll->abandon(); app.exit(3); });
     auto result = [&](const QString& requestId, const QJsonObject& value) {
         auto frame = envelope;
         frame["requestId"] = requestId;
@@ -256,16 +275,22 @@ int main(int argc, char** argv) {
         frame["details"] = error.details;
         control.send("commandResult", frame);
     };
-    QObject::connect(&session, &record::RecordSession::event, &app, [&](const QJsonObject& payload) {
+    const auto forward = [&](const QJsonObject& payload) {
         if (!ready) return;
         auto frame = envelope;
         for (auto it = payload.begin(); it != payload.end(); ++it) frame[it.key()] = it.value();
         control.send("event", frame);
-    });
+    };
+    QObject::connect(&session, &record::RecordSession::event, &app, forward);
     QObject::connect(&control, &UiControl::frame, &app, [&](const QString& type, const QString&, const QJsonObject& payload) {
         if (type == "bootstrap") {
             if (ready || payload["role"].toString() != "record" || !payload["nonce"].isString() || !payload["generation"].isString() || !payload["build"].isObject()) { app.exit(3); return; }
+            if (payload.contains("session") && payload["session"].toString() != "scroll") { app.exit(3); return; }
             envelope = {{"role", "record"}, {"nonce", payload["nonce"]}, {"generation", payload["generation"]}};
+            if (payload["session"].toString() == "scroll") {
+                scroll = std::make_unique<record::ScrollCapture>();
+                QObject::connect(scroll.get(), &record::ScrollCapture::event, &app, forward);
+            }
             // #198: the interface's resolved scheme; the overlays follow it.
             Theme::setScheme(payload["appearance"].toObject()["scheme"].toString() == "light" ? Theme::Scheme::Light : Theme::Scheme::Dark);
             ready = true;
@@ -284,9 +309,17 @@ int main(int argc, char** argv) {
         }
         if (type != "command" || !payload["requestId"].isString() || !payload["command"].isString() || !payload["params"].isObject()) { app.exit(3); return; }
         const auto requestId = payload["requestId"].toString(), command = payload["command"].toString();
+        if (scroll) {
+            record::debugLog("scroll command " + command);
+            scroll->command(command, payload["params"].toObject(), [requestId, command, &result, &failure](Error error, QJsonObject value) { record::debugLog("scroll result " + command + (error ? " error " + error.code + " " + error.message : QString(" ok"))); if (error) failure(requestId, error); else result(requestId, value); });
+            return;
+        }
         if (command == "capabilities") { result(requestId, record::probeMedia()); return; }
         record::debugLog("command " + command);
         session.command(command, payload["params"].toObject(), [requestId, command, &result, &failure](Error error, QJsonObject value) { record::debugLog("result " + command + (error ? " error " + error.code + " " + error.message : QString(" ok"))); if (error) failure(requestId, error); else result(requestId, value); });
     });
-    return app.exec();
+    const int code = app.exec();
+    // Before the control channel goes: the worker ends and nothing more is injected.
+    scroll.reset();
+    return code;
 }

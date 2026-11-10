@@ -12,6 +12,12 @@ if(PUTGD_RECORDING AND CMAKE_SYSTEM_NAME STREQUAL "Linux")
     target_sources(putgd-record PRIVATE src/record/ImageCopySource.cpp ${putgd_capture_protocol_sources})
     target_include_directories(putgd-record PRIVATE src "${protocol_dir}")
     target_link_libraries(putgd-record PRIVATE PkgConfig::PUTGD_WAYLAND PkgConfig::PUTGD_XCB_XINPUT)
+    # Scroll capture (#1376), the helper's second session kind: the same sources
+    # into a frame tap and a stitcher, and one injector per desktop (XTest, Mutter
+    # RemoteDesktop, KWin fake input, a wlroots virtual pointer).
+    target_sources(putgd-record PRIVATE src/core/ScrollStitcher.cpp src/record/ScrollRun.cpp src/record/FrameTap.cpp src/record/ScrollBar.cpp
+      src/record/ScrollCapture.cpp src/record/ScrollInjectors.cpp src/record/X11ScrollInjector.cpp src/platform/wayland/VirtualPointer.cpp)
+    target_link_libraries(putgd-record PRIVATE PkgConfig::PUTGD_XCB_XTEST)
     target_link_libraries(putgd-record PRIVATE putgd_build_options putgd_build_identity putgd_ui_control putgd_dialog_attachment putgd_x11_native_snapshot putgd_host_open putgd_visual putgd_fonts putgd_file_dialog Qt6::Core Qt6::Gui Qt6::Widgets Qt6::DBus PkgConfig::PUTGD_GST PkgConfig::PUTGD_AV PkgConfig::PUTGD_XCB)
     if(TARGET putgd_kde)
       # KWin's screencast protocol (vendored XML) for the dialog-free KDE path.
@@ -22,6 +28,15 @@ if(PUTGD_RECORDING AND CMAKE_SYSTEM_NAME STREQUAL "Linux")
       add_custom_command(OUTPUT "${protocol_dir}/zkde-screencast-unstable-v1-protocol.c"
         COMMAND "${PUTGD_WAYLAND_SCANNER}" private-code "${kde_screencast_protocol}" "${protocol_dir}/zkde-screencast-unstable-v1-protocol.c"
         DEPENDS "${kde_screencast_protocol}" VERBATIM)
+      # KWin's fake input protocol (vendored XML, plasma-wayland-protocols): the scroll capture's wheel on Plasma.
+      set(kde_fake_input_protocol "${CMAKE_CURRENT_SOURCE_DIR}/src/platform/kde/protocols/fake-input.xml")
+      add_custom_command(OUTPUT "${protocol_dir}/fake-input-client-protocol.h"
+        COMMAND "${PUTGD_WAYLAND_SCANNER}" client-header "${kde_fake_input_protocol}" "${protocol_dir}/fake-input-client-protocol.h"
+        DEPENDS "${kde_fake_input_protocol}" VERBATIM)
+      add_custom_command(OUTPUT "${protocol_dir}/fake-input-protocol.c"
+        COMMAND "${PUTGD_WAYLAND_SCANNER}" private-code "${kde_fake_input_protocol}" "${protocol_dir}/fake-input-protocol.c"
+        DEPENDS "${kde_fake_input_protocol}" VERBATIM)
+      target_sources(putgd-record PRIVATE src/record/KdeFakeInput.cpp "${protocol_dir}/fake-input-client-protocol.h" "${protocol_dir}/fake-input-protocol.c")
       target_sources(putgd-record PRIVATE src/record/KdeScreencast.cpp
         "${protocol_dir}/zkde-screencast-unstable-v1-client-protocol.h" "${protocol_dir}/zkde-screencast-unstable-v1-protocol.c"
         "${protocol_dir}/xdg-output-unstable-v1-client-protocol.h" "${protocol_dir}/xdg-output-unstable-v1-protocol.c")

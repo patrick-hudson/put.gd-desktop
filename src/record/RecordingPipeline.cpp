@@ -3,6 +3,7 @@
 #include <QPointer>
 #include "DebugLog.h"
 #include "WaylandAcquisition.h"
+#include "SourceDescription.h"
 #include "core/RecordingModel.h"
 #include <QFile>
 #include <QFileInfo>
@@ -475,9 +476,9 @@ bool RecordingPipeline::launch(const Options& options, const QString& encoder, c
     if (options.imageCopy) {
         // The stream's caps follow the source; a window that changes size is
         // scaled, borders added, into the size it started at.
-        description = QStringLiteral("appsrc name=src is-live=true format=time do-timestamp=false leaky-type=downstream max-buffers=2 caps=\"%1\" ! videoscale ! video/x-raw,width=%2,height=%3,pixel-aspect-ratio=1/1")
-            .arg(options.imageCopy->caps()).arg(options.rect.width()).arg(options.rect.height()) + captureQueue();
-        if (options.crop.isValid()) description += QStringLiteral(" ! videocrop left=%1 top=%2 right=%3 bottom=%4").arg(options.crop.x()).arg(options.crop.y()).arg(std::max(0, options.rect.width() - options.crop.x() - options.crop.width())).arg(std::max(0, options.rect.height() - options.crop.y() - options.crop.height()));
+        description = imageCopySourceDescription(options.imageCopy->caps()) + QStringLiteral(" ! videoscale ! video/x-raw,width=%1,height=%2,pixel-aspect-ratio=1/1")
+            .arg(options.rect.width()).arg(options.rect.height()) + captureQueue();
+        if (options.crop.isValid()) description += cropDescription(options.rect.size(), options.crop);
         description += convert();
     } else if (options.pipewireNode) {
         // The stream arrives at the compositor's pace; videorate after the
@@ -489,7 +490,7 @@ bool RecordingPipeline::launch(const Options& options, const QString& encoder, c
         const QString labCaps = qEnvironmentVariable("PUTGD_RECORD_PIPEWIRE_UNTHROTTLED_CAPS");
         description = pipewireSourceDescription(frameSource.isEmpty() ? QStringLiteral("pipewiresrc") : frameSource, options.pipewireNode, options.pipewireFd, frameSource.isEmpty())
             + (unthrottled ? (labCaps.isEmpty() ? pipewireUnthrottledCaps() : QStringLiteral(" ! ") + labCaps) : QString()) + captureQueue();
-        if (options.crop.isValid()) description += QStringLiteral(" ! videocrop left=%1 top=%2 right=%3 bottom=%4").arg(options.crop.x()).arg(options.crop.y()).arg(std::max(0, options.rect.width() - options.crop.x() - options.crop.width())).arg(std::max(0, options.rect.height() - options.crop.y() - options.crop.height()));
+        if (options.crop.isValid()) description += cropDescription(options.rect.size(), options.crop);
         // A window stream: square pixels, the window's place in each frame
         // (Mutter), then its frames, whatever their size after a resize,
         // letterboxed into the canvas. Without the square-pixel filter a
@@ -505,8 +506,8 @@ bool RecordingPipeline::launch(const Options& options, const QString& encoder, c
         // output contiguously regardless, which shortened a recording by every
         // skipped frame (a 10 s capture played in 7 s on a three-monitor X11
         // desktop). videorate fills the gaps with repeats, as on Wayland.
-        if (options.window) description = QStringLiteral("ximagesrc name=src xid=%1 use-damage=false show-pointer=true ! video/x-raw,framerate=%2/1").arg(options.window).arg(options.fps) + captureQueue() + convert();
-        else description = QStringLiteral("ximagesrc name=src use-damage=false show-pointer=true startx=%1 starty=%2 endx=%3 endy=%4 ! video/x-raw,framerate=%5/1").arg(options.rect.x()).arg(options.rect.y()).arg(options.rect.x() + options.rect.width() - 1).arg(options.rect.y() + options.rect.height() - 1).arg(options.fps) + captureQueue() + convert();
+        // Recordings draw the cursor in; the scroll capture's frame tap does not.
+        description = x11SourceDescription(options.rect, options.window, options.fps, true) + captureQueue() + convert();
     }
     // The pause probes sit on the encoders' sink pads (raw frames and samples):
     // dropping encoded buffers would leave P-frames whose references are gone,

@@ -85,6 +85,8 @@ include(cmake/Proton.cmake)
 include(cmake/B2Tests.cmake)
 # The custom HTTP uploader tests.
 include(cmake/HttpTests.cmake)
+# The scroll-capture stitcher, control loop and helper session tests.
+include(cmake/TestsScroll.cmake)
 # Package metadata.
 include(cmake/NativeMetadata.cmake)
 # Test labels and scheduling; last, once every test is registered.

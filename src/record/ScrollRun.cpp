@@ -1,0 +1,340 @@
+#include "ScrollRun.h"
+#include <algorithm>
+#include <cmath>
+#include <cstdlib>
+#include <utility>
+
+namespace putgd::record {
+using scroll::kNoHint;
+using scroll::StepResult;
+using scroll::StepStatus;
+
+const char* toString(RunResult r) {
+    switch (r) {
+        case RunResult::EndOfContent: return "EndOfContent";
+        case RunResult::LimitReached: return "LimitReached";
+        case RunResult::Stopped: return "Stopped";
+        case RunResult::TimeLimit: return "TimeLimit";
+        case RunResult::LostTrack: return "LostTrack";
+        case RunResult::NoMovement: return "NoMovement";
+        case RunResult::InjectorFailed: return "InjectorFailed";
+        case RunResult::NoFrames: return "NoFrames";
+        case RunResult::SourceLost: return "SourceLost";
+        case RunResult::LayoutChanged: return "LayoutChanged";
+        case RunResult::NotReady: return "NotReady";
+    }
+    return "?";
+}
+
+ScrollRun::ScrollRun(RunInjector& injector, RunFrames& source, RunClock& clock, RunOptions opts, scroll::RowSink sink)
+    : injector_(injector), source_(source), clock_(clock), opts_(std::move(opts)), stitcher_(opts_.stitch, std::move(sink)) {}
+
+// Rule 2: the horizontal centre, a third of the way down. Rule 7's two other
+// places for a region whose centre does not scroll: near the right edge, then
+// two thirds down.
+RunPoint ScrollRun::parkPoint(int position, int width, int height) {
+    if (position == 1) return {std::max(0, width - std::max(12, width / 8)), height / 3};
+    if (position == 2) return {width / 2, 2 * height / 3};
+    return {width / 2, height / 3};
+}
+
+bool ScrollRun::park() {
+    const RunPoint at = parkPoint(stats_.parkPosition, last_.width, last_.height);
+    return injector_.movePointer(at.x, at.y);
+}
+
+// The pointer's place is asserted again before every injection: the user may
+// have moved the mouse, and the wheel goes to whatever is under the pointer.
+bool ScrollRun::inject(int notches) {
+    if (stopped()) return false;
+    if (opts_.pointer && haveFrame_) {
+        if (!park()) return false;
+        if (parked_ != stats_.parkPosition) {
+            // It just arrived here: let the application see it enter, then say it again.
+            parked_ = stats_.parkPosition;
+            clock_.sleepMs(opts_.pointerSettleMs);
+            if (stopped() || !park()) return false;
+        }
+    }
+    if (stopped()) return false;
+    stats_.notchesInjected += std::abs(notches);
+    return injector_.scroll(notches);
+}
+
+void ScrollRun::progress(bool toTop) {
+    if (!opts_.onProgress) return;
+    opts_.onProgress({toTop, stitcher_.hasFrame() ? stitcher_.outputHeight() : 0, stats_.steps, stats_.pxPerNotch});
+}
+
+RunResult ScrollRun::finishWith(RunResult r) {
+    // A refused injection after Stop is the stop, not an injector failure.
+    if (r == RunResult::InjectorFailed && stopped()) r = RunResult::Stopped;
+    stitcher_.finish();
+    stats_.elapsedMs = clock_.nowMs() - startMs_;
+    stats_.outputRows = stitcher_.hasFrame() ? stitcher_.outputHeight() : 0;
+    return r;
+}
+
+std::optional<RunResult> ScrollRun::waitFailure(Wait w) {
+    switch (w) {
+        case Wait::Stopped: return RunResult::Stopped;
+        case Wait::TimeLimit: return RunResult::TimeLimit;
+        case Wait::NoFrame: stats_.lastError = "the frame source delivered no frame"; return RunResult::NoFrames;
+        case Wait::Lost: stats_.lastError = "the frame source ended"; return RunResult::SourceLost;
+        case Wait::Settled: case Wait::TimedOut: break;
+    }
+    return std::nullopt;
+}
+
+// Settled = no frame changed versus its predecessor for settleMs. "Changed" is
+// decided on row signatures of the moving band: more than settleMaxChangedRows
+// rows fail the loose same-y rule, more than the strict budget changed at all,
+// or any margin row (scrollbar) changed. A caret, spinner or hover effect
+// confined to two of eight bands therefore never keeps the frame "moving".
+ScrollRun::Wait ScrollRun::waitSettled(int timeoutMs) {
+    const int64_t start = clock_.nowMs();
+    const int64_t deadline = start + timeoutMs;
+    int64_t lastChange = start;  // at least settleMs after the injection
+    for (;;) {
+        if (stopped()) return Wait::Stopped;
+        const int64_t now = clock_.nowMs();
+        if (now - startMs_ >= opts_.totalTimeLimitMs) return Wait::TimeLimit;
+        if (haveFrame_ && now - lastChange >= opts_.settleMs) return Wait::Settled;
+        if (source_.lost()) return Wait::Lost;
+        if (now >= deadline) {
+            if (!haveFrame_) return Wait::NoFrame;
+            ++stats_.settleTimeouts;
+            return Wait::TimedOut;
+        }
+        const int64_t wakeAt = haveFrame_ ? std::min(lastChange + opts_.settleMs, deadline) : deadline;
+        const int wait = int(std::max<int64_t>(1, wakeAt - now));
+        std::optional<RunFrame> f = source_.nextFrame(wait);
+        if (!f) continue;
+        ++stats_.framesSeen;
+        tmpSig_.compute(f->view, opts_.stitch);
+        bool changed = true;
+        if (haveFrame_ && lastSig_.height == tmpSig_.height && lastSig_.width == tmpSig_.width) {
+            int top = 0, bottom = tmpSig_.height;
+            if (stitcher_.hasFrame()) {
+                top = stitcher_.movingBandTop();
+                bottom = stitcher_.movingBandBottom();
+            }
+            changed = scroll::framesDiffer(lastSig_, tmpSig_, top, bottom, opts_.stitch, opts_.settleMaxChangedRows);
+        }
+        if (changed) lastChange = std::max(lastChange, f->timestampMs);
+        std::swap(lastSig_, tmpSig_);
+        last_ = f->view;
+        haveFrame_ = true;
+    }
+}
+
+int ScrollRun::planNotches() const {
+    const double px = stats_.pxPerNotch;
+    if (px <= 0) return 1;
+    const int band = stitcher_.movingBandBottom() - stitcher_.movingBandTop();
+    double maxPx = opts_.maxStepFraction * band;
+    double targetPx = opts_.targetStepFraction * band;
+    if (opts_.pointer) {
+        // Rule 4: the appended rows are the frame's last rows; keep them below
+        // the parked pointer so a hover effect under it never reaches the image.
+        const RunPoint at = parkPoint(stats_.parkPosition, last_.width, last_.height);
+        maxPx = std::min(maxPx, double(std::max(0, stitcher_.movingBandBottom() - at.y - opts_.hoverMarginRows)));
+        targetPx = std::min(targetPx, maxPx);
+    }
+    // Keep informative rows of the reference in the overlap when it has any, so
+    // that a blank/flat lower part does not force a hint-only (blind) step.
+    const int evidence = stitcher_.maxEvidenceStep();
+    if (evidence >= 0) {
+        maxPx = std::min(maxPx, double(evidence));
+        targetPx = std::min(targetPx, maxPx);
+    } else if (stats_.minPxPerNotch > 0 && stats_.maxPxPerNotch > 1.03 * stats_.minPxPerNotch) {
+        // Blind (hint-only) step and the app's px-per-notch varies: keep it to one
+        // notch so the unverifiable error stays as small as possible.
+        return 1;
+    }
+    int n = int(std::lround(targetPx / px));
+    n = std::max(1, n);
+    while (n > 1 && n * px > maxPx) --n;
+    n = std::min({n, notchCap_, opts_.maxNotchesPerStep});
+    return std::max(1, n);
+}
+
+// Step 0. No stitching here, only frame comparison: the capture has not begun.
+std::optional<RunResult> ScrollRun::scrollToTop() {
+    if (auto f = waitFailure(waitSettled(opts_.firstFrameTimeoutMs))) return f;
+    settledSig_ = lastSig_;
+    progress(true);
+    const int64_t begin = clock_.nowMs();
+    while (clock_.nowMs() - begin < opts_.toTopLimitMs) {
+        if (!inject(-opts_.toTopNotches)) {
+            if (!stopped()) stats_.lastError = "injector refused the scroll-to-top event";
+            return stopped() ? RunResult::Stopped : RunResult::InjectorFailed;
+        }
+        ++stats_.toTopSteps;
+        if (auto f = waitFailure(waitSettled(opts_.stepTimeoutMs))) return f;
+        if (settledSig_.height != lastSig_.height || settledSig_.width != lastSig_.width) return RunResult::LayoutChanged;
+        if (!scroll::framesDiffer(settledSig_, lastSig_, 0, lastSig_.height, opts_.stitch, opts_.settleMaxChangedRows)) {
+            stats_.reachedTop = true;
+            break;
+        }
+        stats_.toTopMoved = true;
+        settledSig_ = lastSig_;
+        progress(true);
+    }
+    return std::nullopt;
+}
+
+RunResult ScrollRun::run(const std::atomic<bool>* stop) {
+    stop_ = stop;
+    startMs_ = clock_.nowMs();
+    notchCap_ = opts_.maxNotchesPerStep;
+    static const std::atomic<bool> never{false};
+    if (!injector_.waitReady(stop ? *stop : never)) {
+        if (!stopped()) stats_.lastError = "the modifier keys were never released";
+        return finishWith(stopped() ? RunResult::Stopped : RunResult::NotReady);
+    }
+    if (opts_.fromTop)
+        if (auto f = scrollToTop()) return finishWith(*f);
+
+    // Rule 1: the first frame is grabbed with the pointer outside the region.
+    if (opts_.pointer && opts_.away) {
+        if (stopped()) return finishWith(RunResult::Stopped);
+        if (!injector_.movePointer(opts_.away->x, opts_.away->y)) {
+            stats_.lastError = "injector refused the pointer motion";
+            return finishWith(RunResult::InjectorFailed);
+        }
+        parked_ = -1;
+    }
+    if (auto f = waitFailure(waitSettled(opts_.firstFrameTimeoutMs))) return finishWith(*f);
+    if (stitcher_.addFrame(last_, lastSig_, kNoHint).status != StepStatus::First) {
+        stats_.lastError = "the first frame was refused";
+        return finishWith(RunResult::NoFrames);
+    }
+    progress(false);
+
+    int notches = 1;
+    bool endPending = false, moved = false;
+    int oneNotchFailures = 0;
+
+    for (;;) {
+        if (stopped()) return finishWith(RunResult::Stopped);
+        if (clock_.nowMs() - startMs_ >= opts_.totalTimeLimitMs) return finishWith(RunResult::TimeLimit);
+
+        if (!inject(notches)) {
+            stats_.lastError = "injector refused the scroll event";
+            return finishWith(RunResult::InjectorFailed);
+        }
+        ++stats_.steps;
+        if (auto f = waitFailure(waitSettled(opts_.stepTimeoutMs))) return finishWith(*f);
+        const int hint = stats_.pxPerNotch > 0 ? int(std::lround(stats_.pxPerNotch * notches)) : kNoHint;
+        const int unc = hint < 0 ? 0 : int(std::ceil(notches * (stats_.maxPxPerNotch - stats_.minPxPerNotch)));
+        StepResult r = stitcher_.addFrame(last_, lastSig_, hint, unc);
+        if (opts_.onStep) opts_.onStep(r, hint, notches);
+
+        if (r.status == StepStatus::NoMatch || r.status == StepStatus::Ambiguous) {
+            // 1) Transient: the frame may not have been final (late repaint, overlay).
+            ++stats_.retries;
+            if (auto f = waitFailure(waitSettled(opts_.stepTimeoutMs))) return finishWith(*f);
+            r = stitcher_.addFrame(last_, lastSig_, hint, unc);
+            if (opts_.onStep) opts_.onStep(r, hint, notches);
+        }
+        if (r.status == StepStatus::NoMatch || r.status == StepStatus::Ambiguous) {
+            const bool ambiguous = r.status == StepStatus::Ambiguous;
+            if (ambiguous && hint < 0) {
+                stats_.lastError = "first step is ambiguous (periodic or blank content) and no px-per-notch is known";
+                return finishWith(RunResult::LostTrack);
+            }
+            if (!opts_.allowScrollBack) {
+                stats_.lastError = "step could not be matched; scrolling further down cannot reconnect to the "
+                                   "last stitched frame without scrolling back";
+                return finishWith(RunResult::LostTrack);
+            }
+            // 2) Scroll back by the same amount, re-find the reference, halve the step.
+            if (!inject(-notches)) {
+                stats_.lastError = "injector refused the scroll-back event";
+                return finishWith(RunResult::InjectorFailed);
+            }
+            ++stats_.scrollBacks;
+            if (auto f = waitFailure(waitSettled(opts_.stepTimeoutMs))) return finishWith(*f);
+            const StepResult back = stitcher_.addFrame(last_, lastSig_, 0);
+            if (opts_.onStep) opts_.onStep(back, 0, -notches);
+            if (back.status != StepStatus::NoMovement && back.status != StepStatus::Appended && back.status != StepStatus::Reversed) {
+                stats_.lastError = std::string("after scrolling back the last stitched frame was not found (") + scroll::toString(back.status) + ")";
+                return finishWith(back.status == StepStatus::LimitReached ? RunResult::LimitReached
+                                  : back.status == StepStatus::InvalidFrame ? RunResult::LayoutChanged : RunResult::LostTrack);
+            }
+            if (back.status == StepStatus::Reversed) ++stats_.reversed;
+            if (notches == 1 && ++oneNotchFailures >= 2) {
+                stats_.lastError = "a single notch scrolls further than the overlap allows; enlarge the region";
+                return finishWith(RunResult::LostTrack);
+            }
+            notchCap_ = std::max(1, notches / 2);
+            verifiedRun_ = 0;
+            ++stats_.halvings;
+            notches = planNotches();
+            progress(false);
+            continue;
+        }
+
+        switch (r.status) {
+            case StepStatus::Appended: {
+                if (endPending) ++stats_.falseEnds;
+                endPending = false;
+                moved = true;
+                oneNotchFailures = 0;
+                if (r.lowConfidence) ++stats_.lowConfidenceSteps;
+                // Learn px-per-notch from verified steps; a low-confidence step only
+                // teaches it when nothing is known yet (and it had pixel evidence).
+                const bool learn = r.lowConfidence ? (hint < 0 && r.evidenceRows > 0) : true;
+                if (learn && r.offset > 0 && (hint < 0 || r.offset >= opts_.shortStepFraction * hint)) {
+                    const double px = double(r.offset) / notches;
+                    stats_.pxPerNotch = px;
+                    stats_.minPxPerNotch = stats_.minPxPerNotch > 0 ? std::min(stats_.minPxPerNotch, px) : px;
+                    stats_.maxPxPerNotch = std::max(stats_.maxPxPerNotch, px);
+                }
+                // A halved cap recovers after a run of verified steps.
+                if (!r.lowConfidence && ++verifiedRun_ >= 3 && notchCap_ < opts_.maxNotchesPerStep) {
+                    notchCap_ = std::min(opts_.maxNotchesPerStep, notchCap_ * 2);
+                    verifiedRun_ = 0;
+                }
+                if (r.lowConfidence) verifiedRun_ = 0;
+                notches = planNotches();
+                break;
+            }
+            case StepStatus::LimitReached:
+                return finishWith(RunResult::LimitReached);
+            case StepStatus::NoMovement:
+                if (opts_.pointer && !moved && !stats_.toTopMoved) {
+                    // Rule 7: the first notch moved nothing here. The centre may be a
+                    // part that does not scroll: try the two other park positions.
+                    if (stats_.parkPosition >= 2) {
+                        stats_.lastError = "nothing under the selection scrolled at any park position";
+                        return finishWith(RunResult::NoMovement);
+                    }
+                    ++stats_.parkPosition;
+                    clock_.sleepMs(opts_.endConfirmDelayMs);
+                    break;
+                }
+                if (endPending) {
+                    ++stats_.endConfirmations;
+                    return finishWith(RunResult::EndOfContent);
+                }
+                // Possibly the end, a dropped event or a slow lazy load: confirm once.
+                endPending = true;
+                clock_.sleepMs(opts_.endConfirmDelayMs);
+                break;
+            case StepStatus::Reversed:
+                moved = true;
+                ++stats_.reversed;
+                break;
+            case StepStatus::InvalidFrame:
+                stats_.lastError = "the frame size changed";
+                return finishWith(RunResult::LayoutChanged);
+            default:
+                stats_.lastError = std::string("stitcher returned ") + scroll::toString(r.status);
+                return finishWith(RunResult::LostTrack);
+        }
+        progress(false);
+    }
+}
+}

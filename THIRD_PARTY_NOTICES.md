@@ -41,7 +41,13 @@ unmodified with their copyright and license text, and installed as
 `share/doc/putgd/wayland-hyprland-toplevel-mapping-v1.xml`. `wlr-layer-shell-unstable-v1.xml`
 from wlr-protocols (commit `b010a03648b88d143236de193bddbfea0c08bc84`, Copyright 2017 Drew
 DeVault) is vendored unmodified the same way and installed as
-`share/doc/putgd/wayland-wlr-layer-shell-unstable-v1.xml`.
+`share/doc/putgd/wayland-wlr-layer-shell-unstable-v1.xml`. The two protocols a scrolling
+capture sends its wheel steps through are vendored the same way:
+`wlr-virtual-pointer-unstable-v1.xml` from wlr-protocols (last changed in commit
+`c11408942e2fb54d41dadb84cdf844331076ae11`, Copyright 2019 Josef Gajdusek, MIT-style), installed as
+`share/doc/putgd/wayland-wlr-virtual-pointer-unstable-v1.xml`, and KWin's `fake-input.xml` from
+plasma-wayland-protocols 1.17.0 (Copyright 2015 Martin Gräßlin, LGPL-2.1-or-later), installed as
+`share/doc/putgd/wayland-fake-input.xml`.
 
 The GNOME integration imports the installed Shell/GJS/Mutter APIs; it does not bundle
 a replacement GNOME runtime. The KDE integration links the distro LayerShellQt

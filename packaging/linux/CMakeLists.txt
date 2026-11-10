@@ -121,6 +121,11 @@ putgd_install_snapshot("${PROJECT_SOURCE_DIR}/src/platform/wayland/protocols/hyp
   "${CMAKE_INSTALL_DATADIR}/doc/putgd" RENAME wayland-hyprland-toplevel-mapping-v1.xml)
 putgd_install_snapshot("${PROJECT_SOURCE_DIR}/src/platform/kde/protocols/zkde-screencast-unstable-v1.xml"
   "${CMAKE_INSTALL_DATADIR}/doc/putgd" RENAME wayland-zkde-screencast-unstable-v1.xml)
+# Scrolling capture (#1376): the wheel goes through these on wlroots compositors and on KWin.
+putgd_install_snapshot("${PROJECT_SOURCE_DIR}/src/platform/wayland/protocols/wlr-virtual-pointer-unstable-v1.xml"
+  "${CMAKE_INSTALL_DATADIR}/doc/putgd" RENAME wayland-wlr-virtual-pointer-unstable-v1.xml)
+putgd_install_snapshot("${PROJECT_SOURCE_DIR}/src/platform/kde/protocols/fake-input.xml"
+  "${CMAKE_INSTALL_DATADIR}/doc/putgd" RENAME wayland-fake-input.xml)
 # SDK license must come from the exact source tree provisioned by the build contract.
 set(PUTGD_AWS_SOURCE_DIR "${PROJECT_SOURCE_DIR}/build/dependencies/aws-sdk-cpp" CACHE PATH "Pinned official SDK source")
 if(NOT EXISTS "${PUTGD_AWS_SOURCE_DIR}/LICENSE")

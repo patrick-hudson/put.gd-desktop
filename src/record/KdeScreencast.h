@@ -22,11 +22,20 @@ public:
     // Connects and lists outputs; fills {version, outputs:[{name, logical}]}. False without the global.
     bool available(QJsonObject& facts, QString* reason = nullptr);
     // Empty name: the first output. The logical rectangle must lie on the outputs.
-    void streamOutput(const QString& name, Done);
-    void streamRegion(const QRect& logical, Done);
+    // Recordings embed the pointer in the frames; pointerHidden leaves it out.
+    void streamOutput(const QString& name, Done, bool pointerHidden = false);
+    // A recording's region stream is one frame pixel per logical pixel. With
+    // outputScale the frames are the output's own pixels (the scroll capture,
+    // #1376): from protocol version 5 a scale of 0.0 lets KWin take the highest
+    // scale in the region; before that the scale of the output under the
+    // region's centre is passed.
+    void streamRegion(const QRect& logical, Done, bool pointerHidden = false, bool outputScale = false);
+    // The scale an outputScale region stream of this rectangle asks for
+    // (0 from version 5, where KWin chooses).
+    double regionScale(const QRect& logical);
     // The window's frame size follows it: KWin renegotiates the stream on a resize.
     // `logical` is the window's frame rectangle when the stream was requested.
-    void streamWindow(const QString& uuid, const QRect& logical, Done);
+    void streamWindow(const QString& uuid, const QRect& logical, Done, bool pointerHidden = false);
     void close();
 signals:
     // KWin ended a stream that was already running (a streamed window closed).

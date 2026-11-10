@@ -4,6 +4,8 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   pkg_check_modules(PUTGD_XCB REQUIRED IMPORTED_TARGET xcb xcb-randr xcb-keysyms xcb-xfixes xcb-render)
   # XInput2 raw key events let shortcuts fire while a menu holds the keyboard (#341).
   pkg_check_modules(PUTGD_XCB_XINPUT REQUIRED IMPORTED_TARGET xcb-xinput)
+  # XTest sends the scroll capture's wheel steps and pointer motion on X11 (#1376).
+  pkg_check_modules(PUTGD_XCB_XTEST REQUIRED IMPORTED_TARGET xcb-xtest)
   # The screen-lock query (session and system bus) and the countdown helper
   # supervisor, shared by every desktop adapter (#1363).
   add_library(putgd_session_lock STATIC src/platform/SessionLock.cpp src/platform/CountdownProcess.cpp)
@@ -73,7 +75,9 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   # Vendored, unmodified capture and toplevel protocols: ext-image-copy-capture
   # with its output and toplevel sources, and both toplevel lists.
   set(putgd_capture_protocol_sources)
-  foreach(protocol_name ext-image-copy-capture-v1 ext-image-capture-source-v1 ext-foreign-toplevel-list-v1 wlr-foreign-toplevel-management-unstable-v1)
+  # wlr-virtual-pointer (wlr-protocols, unmodified): the scroll capture's wheel
+  # steps and pointer placement on labwc and Hyprland (#1376).
+  foreach(protocol_name ext-image-copy-capture-v1 ext-image-capture-source-v1 ext-foreign-toplevel-list-v1 wlr-foreign-toplevel-management-unstable-v1 wlr-virtual-pointer-unstable-v1)
     set(protocol_xml "${CMAKE_CURRENT_SOURCE_DIR}/src/platform/wayland/protocols/${protocol_name}.xml")
     add_custom_command(OUTPUT "${protocol_dir}/${protocol_name}-client-protocol.h"
       COMMAND "${PUTGD_WAYLAND_SCANNER}" client-header "${protocol_xml}" "${protocol_dir}/${protocol_name}-client-protocol.h"

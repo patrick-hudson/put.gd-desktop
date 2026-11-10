@@ -112,6 +112,16 @@ QList<QRect> screenRects() {
 // actions use the shared neutral role.
 
 }
+QList<QRect> barScreens() { return screenRects(); }
+QRect barLogicalRect(const QRect& root) { return fromRootSpan(root); }
+void barToLayer(QWidget* widget, QScreen* screen, const QRect& logical, bool keyboard) {
+#ifdef PUTGD_RECORD_LAYER_SHELL
+    toLayer(widget, screen, logical, keyboard);
+#else
+    Q_UNUSED(screen); Q_UNUSED(keyboard);
+    widget->setGeometry(logical);
+#endif
+}
 
 namespace {
 // The microphone's level beside its toggle: a short bar that follows the

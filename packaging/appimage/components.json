@@ -23,6 +23,8 @@
         {"name": "IBM Plex Mono Regular", "license": "OFL-1.1",
          "licenseText": "usr/share/doc/putgd/fonts/OFL-mono.txt"},
         {"name": "zkde-screencast-unstable-v1 protocol bindings", "license": "LGPL-2.1-or-later",
+         "licenseText": "usr/share/doc/putgd/bundled-licenses/distro-common/LGPL-2.1"},
+        {"name": "KWin fake-input protocol bindings", "license": "LGPL-2.1-or-later",
          "licenseText": "usr/share/doc/putgd/bundled-licenses/distro-common/LGPL-2.1"}
       ],
       "note": "The Wayland protocol files beside the notices keep the copyright and permission text of the protocols whose generated client bindings are compiled into put.gd."
