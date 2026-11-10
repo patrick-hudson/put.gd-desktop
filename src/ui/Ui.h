@@ -205,6 +205,10 @@ class NavigationDelegate final : public QStyledItemDelegate {
 public:
     static constexpr int SecondLineRole = Qt::UserRole + 40;
     static constexpr int WrapLabelRole = Qt::UserRole + 41;
+    // A short muted count at the row's right edge (History's category totals);
+    // TrailingDangerRole paints it in the error colour.
+    static constexpr int TrailingRole = Qt::UserRole + 42;
+    static constexpr int TrailingDangerRole = Qt::UserRole + 43;
     explicit NavigationDelegate(QObject* parent, int rowHeight = Metric::navRow);
     QSize sizeHint(const QStyleOptionViewItem&, const QModelIndex&) const override;
     void paint(QPainter*, const QStyleOptionViewItem&, const QModelIndex&) const override;

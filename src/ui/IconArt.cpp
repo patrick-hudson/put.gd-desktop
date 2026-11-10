@@ -3,6 +3,7 @@
 #include <QPainter>
 #include <QPainterPath>
 #include <QTransform>
+#include <utility>
 
 namespace putgd::IconArt {
 namespace {
@@ -238,6 +239,15 @@ QImage symbol(const QString& name,const QColor& color,int scale,const QColor& se
   QPainterPath eye;eye.moveTo(2,12);eye.cubicTo(7,4,17,4,22,12);eye.cubicTo(17,20,7,20,2,12);eye.closeSubpath();p.drawPath(eye);p.drawEllipse(QPointF(12,12),3,3);
  } else if(name=="view-list") {
   for(int y:{5,12,19}){p.drawPoint(QPointF(4,y));p.drawLine(9,y,21,y);}
+ } else if(name=="view-grid") {
+  // History's gallery: four tiles, the first washed like a selected one.
+  QPainterPath first;first.addRoundedRect(QRectF(3.9,3.9,7.2,7.2),1.6,1.6);wash(first);
+  for(const auto& corner:{QPointF(3.9,3.9),QPointF(12.9,3.9),QPointF(3.9,12.9),QPointF(12.9,12.9)})p.drawRoundedRect(QRectF(corner,QSizeF(7.2,7.2)),1.6,1.6);
+ } else if(name=="panel-right") {
+  // The details pane beside a list: the pane side is washed.
+  QPainterPath pane;pane.addRoundedRect(QRectF(14,4,7,16),1.5,1.5);wash(pane);rounded(2.9,4,18.2,16);p.drawLine(14,4,14,20);
+ } else if(name=="filter") {
+  for(const auto& [y,inset]:{std::pair<qreal,qreal>{6,3},{12,6},{18,9}})p.drawLine(QPointF(inset,y),QPointF(24-inset,y));
  } else if(name=="view-detail") {
   rounded(3,3,18,18);p.drawLine(3,9,21,9);p.drawLine(3,15,21,15);p.drawLine(10,3,10,21);
  } else if(name=="play") {
