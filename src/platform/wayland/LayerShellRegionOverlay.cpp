@@ -250,6 +250,7 @@ namespace {
 class CountdownDismissal final:public QObject {
 public:
  CountdownDismissal(CountdownPill& pill,std::function<void(bool,bool)> done):QObject(&pill),pill_(pill),done_(std::move(done)){}
+ ~CountdownDismissal() override{if(fence_){wl_callback_destroy(fence_);fence_=nullptr;}}
  void start(){
   pill_.blank();
   auto* window=pill_.windowHandle();
