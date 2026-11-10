@@ -152,43 +152,51 @@ with the protocol named, and no chooser ever shows. Details are in
   (`target_closed`) and keeps the clip.
 - The ready ring, dimming and control bar are layer surfaces outside the
   recorded rectangle. A monitor recording includes the bar, as on KWin 6.3.
+- The cursor is painted by the compositor, except in a recording with click
+  highlights, where the recorder draws it (below).
 
-### No click highlights
+### Click highlights
 
-Budgie is the one desktop where recordings cannot highlight clicks.
-`recording.capabilities` reports `clickHighlights {available: false, route:
-"none", reason: "labwc_no_click_events"}`, **Settings → Capture → Screen
-recording** shows the switch with that explanation, **Desktop support details**
-lists it, and a `prepare` that asks for them is refused with
-`recording_unsupported`. The microphone works as on every other desktop.
+Recordings of a monitor, the desktop or a region can draw a ring at each click
+(`recording.capabilities`: `clickHighlights {available: true, route:
+"labwc-mouse-binds", drawnBy: "recorder", targets: [monitor, desktop,
+region]}`). labwc has no event interface, so a press reaches put.gd in two
+halves; the design and the upstream sources are in
+[Microphone and click highlights](../design/recording/microphone-and-clicks.md#budgie-two-halves).
 
-labwc has no IPC, no script interface and no event stream, so a click would
-have to come from two separate pieces, and each was tried on labwc 0.20.2
-(Fedora 45 Budgie guest):
+- **The press.** From Record to Stop, `rc.xml` carries put.gd's own
+  `<context name="Client" putgd="click-highlights">` and `<context
+  name="Titlebar" putgd="click-highlights">` with `Press` binds on the three
+  buttons (in `Client` also with Shift, Ctrl, Alt, Super and Ctrl+Shift). Each
+  keeps the actions of the bind it replaces (the user's own, or labwc's default
+  `Focus` and `Raise`) and adds an `Execute` that calls
+  `org.putgd.App.Budgie.Click` on the session bus. labwc reads the file again
+  on `SIGHUP`, which shows as the pointer turning into the default arrow for
+  about 130 ms and nothing else; the binds go in a quarter of a second before
+  the capture starts and come out after it has stopped. The press still
+  reaches the window.
+- **The file is Budgie's.** `labwc-bridge` rewrites `rc.xml` from its own tree
+  at the next setting it mirrors. While recording, the resident puts its binds
+  back; otherwise it removes any it finds, also at start after a crash. Nothing
+  but elements carrying `putgd="click-highlights"` is added or removed, and the
+  file after a recording is the file before it. This is the one place the
+  adapter writes `rc.xml`: Budgie's settings offer key bindings (see
+  **Shortcuts**) and no mouse binding.
+- **The position.** The recording is captured without the compositor's painted
+  cursor; `putgd-record` reads the pointer from the capture's cursor session
+  and draws the cursor into the frames itself, so the clip still shows it.
+- **Not highlighted.** A window recording (`prepare` refuses click highlights
+  for it: a window capture has no cursor session in wlroots, and labwc reports
+  no window geometry); presses on the panel and other layer-shell surfaces
+  (only a bind that would swallow the press matches there); presses with a
+  modifier combination other than those above; presses while the application
+  hides the pointer; an output without a hardware cursor, or a turned one
+  (`progress.clickHighlightsError` says there is no pointer position).
 
-- **The press.** A `<mousebind>` in `rc.xml` with context `Client` that keeps
-  `Focus` and `Raise` and adds `Execute` runs a command on every press without
-  taking the press from the window: four clicks from 60 ms down to 0 ms long
-  each ran the command and each reached the terminal under the pointer. But
-  `rc.xml` belongs to Budgie's `labwc-bridge`, which holds the file in memory
-  and writes it back at the next setting it mirrors, without entries it did not
-  write: one natural-scroll toggle in Budgie's settings removed the bind. The
-  bridge offers put.gd key bindings (see **Shortcuts**) and no mouse binding,
-  and this adapter never writes `rc.xml`.
-- **The position.** A command run by a mousebind carries no coordinates, and a
-  Wayland client learns the pointer's position only over its own surfaces. The
-  one place labwc reports it is an `ext-image-copy-capture` pointer cursor
-  session, and that session goes silent (`leave`) as soon as any capture
-  session asks for a painted cursor: wlroots then locks software cursors, and
-  its cursor source reads the hardware cursor only
-  (`types/ext_image_capture_source_v1/output.c`). Every put.gd recording on
-  Budgie asks for a painted cursor. Measured: positions followed the pointer
-  until that capture session was created, then `leave` and nothing more.
-
-What would change this: a mouse binding in `labwc-bridge`'s settings, or a
-pointer position that survives a painted-cursor capture. The probes are kept
-with the round's evidence (`click-route-probes`); the design is in
-[Microphone and click highlights](../design/recording/microphone-and-clicks.md).
+`labwc_bridge_contract` covers the edit of `rc.xml` and the bus entry, and
+`budgie_labwc_integration` runs the binds in a real headless labwc: a press over
+a window reaches both put.gd and the window, and after the recording the file
+is as it was.
 
 ## Budgie 11
 

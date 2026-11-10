@@ -363,7 +363,24 @@ tools for that are `tools/lab/cover_player.py` and `tools/lab/record_run.py`
   see. `--av-sync` then measures the microphone's bursts against the flashes
   (`putgd-record --av-sync CLIP --tone 1000 --tone 440` also reports each
   tone's level). Use `--lead 6`: the first pairs after Record can sit a frame
-  or two off while the audio branch settles.
+  or two off while the audio branch settles. `--system leak` plays the tone on
+  a private output whose monitor is the default input, without recording
+  system audio: the clip must hold none of it, also after `--unplug-at`.
+  `summarize_run.py RESULTS.json` prints a run on one screen.
+- `record_run.py --click S,X,Y[,BUTTON]` (repeatable) presses a button at a
+  desktop pixel S seconds into each recording, as real input through the
+  desktop's VNC tile (`--click-vnc HOST:PORT` in a guest: QEMU's VNC on the VM
+  host is `10.0.2.2:59NN` from inside), with `clickHighlights` on. The clip is
+  then measured with `putgd-record --click-check CLIP FROM_MS,TO_MS,X,Y`, which
+  reports what changes near a place between two times against the first frame
+  of that span: first the pointer arriving there, then the ring appearing over
+  the resting pointer. The ring's delay after the press is counted from the
+  pointer's arrival in the same clip, so the recording's own start does not
+  enter. Add `--system tone` on a builder: the marker's sound then plays into a
+  private output instead of the speakers.
+- `recording_bar_shots.py` saves frames of the desktop with the recording bar's
+  microphone states on screen (toggle off; on, with a level on the meter; no
+  microphone) and, with `settings`, Settings, for PR pictures.
 
 Two traps when you drive a private resident in a desktop session (#214, #198):
 

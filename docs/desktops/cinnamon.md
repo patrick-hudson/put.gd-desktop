@@ -60,7 +60,9 @@ every client that asks: nothing is grabbed, the click reaches its window
 unchanged, and presses inside another client's window or under its pointer grab
 are still reported. At each press the helper asks the server where the pointer
 is and, for a window recording, where the window is now, so the ring stays on a
-window that has moved. The selection exists from Record to Stop.
+window that has moved. The selection exists from Record to Stop. The ring is
+drawn on a copy of the frame in plain memory, which matters here: X11 recordings
+on Intel use a VA encoder, whose own surfaces cannot be drawn on in place.
 
 `recording.capabilities` reports `clickHighlights {available: true, route:
 "x11-xinput2", drawnBy: "recorder"}` for monitor, desktop, region and window

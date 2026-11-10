@@ -64,7 +64,7 @@ quoted above and elsewhere are headings on these pages.
 - [History posters](recording/history-posters.md): History poster frames; Previews made on selection.
 - [Packages and codecs](recording/packages-and-codecs.md): Packages and codecs; AppImage runtime.
 - [Agent control and tests](recording/agent-control-and-tests.md): Agent and MCP control; Verification.
-- [Microphone and click highlights](recording/microphone-and-clicks.md): Microphone (rules, device, capture and mix, measurements); Click highlights (routes per desktop, drawing, why Budgie has none).
+- [Microphone and click highlights](recording/microphone-and-clicks.md): Microphone (rules, device, capture and mix, measurements); Click highlights (routes per desktop, drawing, Budgie's two halves).
 
 ## Microphone and click highlights
 
@@ -72,10 +72,12 @@ A recording can carry the microphone, alone or mixed with the system audio into 
 audio track, and can draw a ring at the pointer on each click
 ([#1364](https://github.com/patrick-hudson/put.gd-desktop/issues/1364)). The microphone is
 opened only while the bar's toggle is on and released at Stop; the monitor of an output is
-never used as one. Click highlights exist on X11, GNOME, Hyprland and KDE Plasma (where
-KWin's own effect draws them, for monitor and region recordings). **Budgie on labwc has
-none**: labwc gives put.gd no pointer clicks. The full contract and the proof for each
-desktop are on the [topic page](recording/microphone-and-clicks.md).
+never used as one. Click highlights exist on every supported desktop: X11, GNOME and
+Hyprland for every target; KDE Plasma (KWin's own effect draws them) and Budgie on labwc
+(mouse binds for the length of the recording, the pointer's place from the recorder's own
+capture) for monitor, desktop and region recordings. The full contract, what each desktop
+leaves out and the proof for each route are on the
+[topic page](recording/microphone-and-clicks.md).
 
 ## AppImage runtime
 

@@ -224,7 +224,8 @@ custom events are ignored. At Stop the token is cleared and the binds are
 removed with `hl.unbind`, by this adapter's rule: only on a chord nothing else
 holds, never through a bind handle. Where the user has a bind of their own on a
 bare mouse button, put.gd's stays, inert, until Hyprland next reloads its
-configuration. The binds carry the description `put.gd: click highlight`.
+configuration; the next recording reuses it and binds only the buttons that
+have none of put.gd's, so a kept bind is never doubled. The binds carry the description `put.gd: click highlight`.
 
 `recording.capabilities` reports `route: "hyprland-mouse-binds"`, `drawnBy:
 "recorder"` for all four targets, or `hyprland_ipc_unavailable` /

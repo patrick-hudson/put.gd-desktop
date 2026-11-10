@@ -22,7 +22,7 @@ child's pipes, mirroring the capture and editor helpers:
   or `{..., ok: false, code, message, details}`; commands are `capabilities`,
   `prepare`, `start`, `pause`, `resume`, `stop`, `cancel`, `raise`, `overlay`,
   `preview`, `export`, `review` (the review window's controls, #283) and
-  `click` (a pointer press the desktop reported, for click highlights, #1364). Deadlines (`recording::helper*Ms` in
+  `click` (a pointer press the desktop reported, for click highlights, #1364: `{x, y, button, window?}`, or `{button, pointer: true}` for the helper to place at its capture's pointer). Deadlines (`recording::helper*Ms` in
   `src/app/RecordingBackend.h`): 15 s per command, 30 s for `stop`, 600 s for
   `prepare` (a hands-on drag selection or OS consent), 600 s for `export`; a missed deadline is
   `recording_helper_timeout` and leaves the session where it was. The session

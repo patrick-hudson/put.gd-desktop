@@ -34,7 +34,10 @@ WebP stay silent.
   missing. put.gd does not pick another input in its place.
 - **A microphone that goes away does not end the recording.** The clip goes on,
   silent on that input from there; the bar says **Microphone disconnected** and
-  `recording.inspect` reports `progress.microphoneLost`.
+  `recording.inspect` reports `progress.microphoneLost`. Its stream is never
+  moved to another input: see [Capture and mix](#capture-and-mix).
+- **Without one, the bar says so.** The toggle reads **No microphone** and is
+  off; its tooltip and `recordingMicrophone.unavailable` give the reason.
 
 ### Device
 
@@ -107,12 +110,24 @@ only video frames.
 **Loss.** Three things can happen to an input that goes away, and each ends the
 same way. The source element can fail: its error is not the recording's, the
 source sends EOS down its own branch, and the mixer and the muxer go on with
-what is left. The sound server can move the stream to another source, the
-default, which may be a monitor: the tap compares the source's
-`current-device` with the one it opened four times a second and drops
-everything from the first difference. Or the stream can stay connected to
-nothing, with no error and no buffers: an open microphone delivers buffers all
-the time, silence included, so two seconds without one counts as lost. A
+what is left. The sound server would move the stream to another source, the
+default, which on a desktop without a microphone is an output's monitor: the
+recording would go on with the computer's own sound in place of a voice. So
+every `pulsesrc` that opens a microphone (the recording's and the ready
+state's meter) carries the stream property `node.dont-reconnect`, which is
+what `PA_STREAM_DONT_MOVE` becomes in PipeWire's PulseAudio layer: the session
+manager then never moves the stream when its device goes. Measured by removing
+a simulated microphone under a pinned and an unpinned `pulsesrc`: the unpinned
+stream ended up on the default input every time; the pinned one was left
+without a source (PipeWire 1.4.2 with WirePlumber 0.5.8, and 1.6.2 with
+0.5.13) or was ended with an error (1.0.5 with 0.4.17, and 1.6.9 with 0.5.18).
+Both are handled: the source's error is the microphone's loss, not the
+recording's; and a stream connected to nothing gives no buffers, where an open
+microphone delivers them all the time, silence included, so two seconds without
+one counts as lost.
+PulseAudio itself ignores the property: there the tap compares the source's
+`current-device` with the one it opened twenty times a second and drops
+everything from the first difference. A
 microphone that cannot be opened at Record (unplugged since the session was
 prepared) starts the recording without it and reports the same way.
 
@@ -178,19 +193,30 @@ message?}`, and **Settings → Advanced → Desktop support details** shows it.
 | GNOME | `gnome-shell-extension` | The put.gd Shell extension (recording protocol 3, extension version 21), see [GNOME](../../desktops/gnome.md) | put.gd, into the clip only | monitor, desktop, region, window |
 | Hyprland | `hyprland-mouse-binds` | Non-consuming runtime mouse binds whose Lua callback reports on the event socket, see [Hyprland](../../desktops/hyprland.md) | put.gd, into the clip only | monitor, desktop, region, window |
 | KDE Plasma | `kwin-mouseclick-effect` | Nothing reaches put.gd; KWin's own Mouse Click Animation effect is switched on for the recording, see [Plasma](../../desktops/kde.md) | KWin, on the screen and so in the stream | monitor, desktop, region |
-| Budgie 10.10 (labwc) | `none` | **Not offered**: see below and [Budgie](../../desktops/budgie.md) | | |
+| Budgie 10.10 (labwc) | `labwc-mouse-binds` | That a button went down: mouse binds in labwc's `rc.xml` for the length of the recording, which call the resident over the session bus. Where: the recording helper's own capture, which reads the pointer from a cursor session; see [below](#budgie-two-halves) and [Budgie](../../desktops/budgie.md) | put.gd, into the clip only | monitor, desktop, region |
 
 A `prepare` that asks for click highlights where they are unavailable, or for a
 target kind the route does not cover, is refused with `recording_unsupported`,
 `details.field` `clickHighlights` and `details.reason` (the capability's
-reason, or `click_target_unsupported`). The remembered preference is not a
-request: where the desktop has no route the recording starts without rings.
+reason, or `click_target_unsupported`, with the capability's
+`targetReasons[kind]` as the message where it has one). The remembered
+preference is not a request: where the desktop has no route the recording
+starts without rings.
+
+Two desktops leave window recordings out, each for a reason in the compositor:
+on Plasma KWin draws the rings on the screen and a window stream carries the
+window alone; on Budgie a window capture has no pointer position (below).
 
 ### Drawing
 
 Where put.gd draws, the ring is rendered into the frames on the encoder's input
 (`src/record/ClickOverlay.*`), after `videorate`, so nothing appears on the
-screen and the compositor's capture rules cannot hide it. The press's position
+screen and the compositor's capture rules cannot hide it. A ring's frame is
+first copied into plain memory and drawn there, never in place: the frame may
+share its pixels with the one before it, and with a VA encoder it lives in the
+encoder's own surface pool, where a surface mapped to change a few pixels came
+back holding nothing else (a green frame with the ring on it, measured with
+`vah264lpenc` on Intel). The press's position
 is mapped from desktop coordinates into the recorded picture
 (`mapClick`): the recorded area for a monitor, desktop or region, and the
 window's own rectangle at that press for a window recording; a press outside is
@@ -209,40 +235,95 @@ On X11 the helper reads the presses itself. Elsewhere the desktop reports them
 to the resident (`RecordingClicks`, `src/core/RecordingClicks.h`), which starts
 watching at Record, keeps watching across a pause and stops when the capture
 stops however it ends; each press goes to the helper as a `click {x, y, button,
-window?}` command. Nothing is watched before Record or after Stop, no route
-grabs the pointer and no route consumes an event. When the desktop cannot start
-the watch, the recording goes on without rings and `inspect` reports
-`progress.clickHighlightsError`.
+window?}` command, or as `click {button, pointer: true}` from a route that
+knows only that a button went down (Budgie): the helper then places it at its
+capture's pointer position. The resident stamps each press when the desktop
+reports it (`atUs`, `CLOCK_MONOTONIC`, which the helper shares) and the ring is
+drawn at that moment of the clip, however long the command takes to reach the
+pipeline; frames that old are still on their way to the encoder. Nothing is watched before Record or after Stop, no
+route grabs the pointer and no route consumes an event. When the desktop cannot
+start the watch, or the helper has no pointer position for a press it is asked
+to place, the recording goes on without rings and `inspect` reports
+`progress.clickHighlightsError`. Where starting the watch shows on screen, the
+watch starts first and the capture once the desktop has answered, within
+1.5 s: a labwc reconfigure turns the pointer into the default arrow for about
+130 ms (measured on labwc 0.20.2, in a recording across a `SIGHUP`; window
+decorations and everything else stayed as they were), so Budgie's binds are in
+place a quarter of a second before the first frame.
 
-### Why Budgie has none
+### Budgie: two halves
 
 labwc, Budgie 10.10's compositor, has no IPC, no script interface and no event
-stream. Two pieces would be needed, and neither is usable:
+stream. A press reaches put.gd in two halves.
 
-- **Events.** labwc's one hook is a `<mousebind>` in `rc.xml` that runs a
-  command. A `Client`-context bind that keeps `Focus` and `Raise` and adds
-  `Execute` does fire on every press without taking it from the window
-  (measured on labwc 0.20.2: four clicks, 60 ms to 0 ms long, each ran the
-  command and each reached the terminal under the pointer). But `rc.xml`
-  belongs to Budgie's `labwc-bridge`, which keeps the file in memory and writes
-  it back without foreign entries at the next setting it mirrors (measured: one
-  natural-scroll toggle removed the bind), and offers put.gd key bindings only.
-  put.gd's Budgie adapter writes through Budgie's settings, never into
-  `rc.xml`.
-- **Position.** A command run by a mousebind carries no coordinates, and
-  Wayland tells a client the pointer's position only over its own surfaces. The
-  one place labwc reports it is an `ext-image-copy-capture` pointer cursor
-  session, and that goes silent (`leave`) the moment a capture session asks for
-  a painted cursor, because wlroots then locks software cursors and its cursor
-  source reads only the hardware cursor
-  (`types/ext_image_capture_source_v1/output.c`). Every put.gd recording on
-  Budgie asks for a painted cursor. Measured on the same guest: positions
-  followed the pointer until that session was created, then `leave` and nothing
-  more.
+**That a button went down.** labwc's one hook is a `<mousebind>` in `rc.xml`
+that runs a command. For the length of a recording the resident adds
+(`src/platform/budgie/BudgieClicks.*`) binds on Left, Middle and Right `Press`
+in the `Client` context (bare, and with Shift, Ctrl, Alt, Super and Ctrl+Shift:
+labwc compares a press's modifiers with a bind's exactly) and in the `Titlebar`
+context, each running
 
-So the capability reports `available: false`, `reason: labwc_no_click_events`,
-and the Settings switch says the same. The microphone works on Budgie as
-elsewhere.
+    dbus-send --session --type=method_call --dest=org.putgd.App.Budgie
+      /org/putgd/Clicks org.putgd.App.Budgie.Click uint32:<button>
+
+the way put.gd's key bindings call `Trigger`: no put.gd path is written and no
+put.gd process starts. Then it sends labwc `SIGHUP`, which is what `labwc
+--reconfigure` does.
+
+- A bind in the `Client` or `Titlebar` context does not take the press from the
+  window: labwc swallows a press only for `Frame` and `All` binds
+  (`process_press_mousebinding` in labwc's `src/input/cursor.c`).
+- A later bind replaces an earlier one with the same context, button, event and
+  modifiers (`mousebind_the_same`, `src/config/mousebind.c`). So each of
+  put.gd's binds carries the actions of the bind it stands in for: the user's
+  own, copied as written, or labwc's default `Focus` and `Raise` where the file
+  asks for `<default />`.
+- `rc.xml` belongs to Budgie's `labwc-bridge`, which parses it once, keeps the
+  tree in memory and writes it back at the next setting it mirrors
+  (`labwc_bridge/config.py`), without anything added since. So the resident
+  watches the file: while a recording wants clicks, binds the bridge dropped
+  are put back and labwc reads the file again; at every other time, and when
+  the resident starts, binds found there are taken out (after a crash, or
+  written back by a bridge that happened to read the file during a recording).
+  Every element put.gd adds carries `putgd="click-highlights"`, which labwc
+  ignores and the bridge's XML round trip keeps, so they are found whatever the
+  file's layout; nothing else in the file changes, and removing them gives back
+  the user's file byte for byte.
+
+**Where.** The command carries no position, and Wayland tells a client the
+pointer's place only over its own surfaces. labwc reports it in one place: an
+`ext-image-copy-capture` pointer cursor session, which wlroots feeds from the
+output's hardware cursor (`types/ext_image_capture_source_v1/output.c`), and
+which goes silent as soon as a capture session asks for a painted cursor,
+because wlroots then locks software cursors. So a recording with click
+highlights captures **without** a painted cursor and the helper draws the
+cursor itself (`ImageCopySource`, `pointer`): the cursor session gives the
+position and hotspot, its own capture session the cursor's picture, and each
+frame is copied and the cursor blended into the copy. The compositor sends no
+frame for a cursor that moves over a still screen, so the helper pushes the
+last frame again with the cursor at its new place, at most 60 times a second.
+A press is placed at the pointer position the helper holds when it arrives.
+A recording never loses its cursor to this: when the pointer is on the output
+at `prepare` and its picture does not arrive, the capture is reopened with the
+compositor's painted cursor (then there is no pointer position and no
+highlights); a pointer that comes onto the output before its picture has been
+delivered is drawn as a plain arrow until it has; and an output without a
+hardware cursor already has the cursor in the frames the compositor hands
+out.
+
+What this leaves out, each for a reason in the compositor:
+
+| Not highlighted | Why |
+| --- | --- |
+| A **window** recording | wlroots' window capture source (`types/ext_image_capture_source_v1/scene.c`) has no `get_pointer_cursor`, so `create_pointer_cursor_session` leaves the session inert (`types/wlr_ext_image_copy_capture_v1.c`); the output's cursor session reports output pixels, and labwc gives no window geometry to map them. `prepare` refuses with `click_target_unsupported` |
+| A press on Budgie's panel or another layer-shell surface, or on an X11 override-redirect window | Only an `All` bind matches there (`node_type_contains`, `src/common/node-type.c`), and labwc swallows the press for an `All` bind |
+| A press with another modifier combination | labwc compares modifiers exactly; put.gd binds the six sets listed above |
+| A press while the application under the pointer hides the cursor, or on an output without a hardware cursor plane | The cursor source reports only a visible hardware cursor. With no position ever reported, `inspect` says so in `progress.clickHighlightsError` |
+| A turned output | Its recording keeps the compositor's painted cursor; `clickHighlightsError` says there is no pointer position |
+
+The clip otherwise matches a Budgie recording without highlights: the same
+cursor picture, taken from the compositor's own cursor buffer, at the same
+place.
 
 ### Route proofs
 
@@ -250,6 +331,7 @@ elsewhere.
 | --- | --- |
 | Cinnamon 6.6.9 (Mint 22.3, physical) | `xinput test-xi2 --root` received `RawButtonPress` and `RawButtonRelease` for clicks made inside another client's window |
 | GNOME Shell 50.6 (private headless Shell on Fedora 44) | Ten injected clicks over a GTK4 window, 50 ms to 0 ms long: `notify::user-time` fired for all ten with the button, position and event time; `captured-event` on the stage and an extension's `Clutter.Event.add_filter` saw none (Mutter's own filter, added first, stops events it delivers to a client); polling `global.get_pointer()` every 4 ms saw six and missed every 0 ms click |
+| KWin 6.3.6 (Debian 13) | `Effects.supportInformation("mouseclick")` reports `enabled: false` after a load, `enabled: true` after the shortcut and `false` after it again |
 | KWin 6.8.2 (Aurora, physical) | With the effect loaded and toggled on over D-Bus, a frame of an output screencast taken while clicking shows the rings; with it off, none. A scripted effect can connect `effects.mouseChanged` but has no `callDBus`; a script has `callDBus` but no button signal (KWin `scripting/scriptedeffect.cpp`, `scripting.cpp`) |
 | Hyprland 0.56.2 (Omarchy 4.5 guest) | Four clicks, 50 ms to 0 ms long, left and right, arrived as `custom>>` events with press, release and position; `j/binds` showed the binds `non_consuming`; a terminal under the pointer still received every click; binds removed, 251 before and after |
-| labwc 0.20.2 (Fedora 45 Budgie guest) | As above: the mousebind fires but is overwritten; the cursor session stops at the first painted-cursor capture |
+| labwc 0.20.2 (Fedora 45 Budgie guest) | A `Client` bind with `Focus`, `Raise` and `Execute`: four clicks, 60 ms to 0 ms long, each ran the command and each reached the terminal under the pointer. One natural-scroll toggle in Budgie's settings removed the bind from `rc.xml` (the bridge's rewrite). A cursor session's positions followed the pointer until a capture session with a painted cursor was created, then `leave` and nothing more |
