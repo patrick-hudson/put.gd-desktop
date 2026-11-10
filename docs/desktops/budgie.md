@@ -5,6 +5,8 @@ screencast service of its own. put.gd captures through standard Wayland
 protocols on its own connections: no ScreenCast portal, no picker, no `grim` or
 `slurp`. Shortcuts use Budgie's labwc bridge, or the GlobalShortcuts portal
 where a desktop offers it ([Shortcuts](#shortcuts)).
+On Budgie 10.10/labwc, screenshots are refused with `session_locked` while the display is blanked or powered off even if the session is unlocked; keep the display awake for unattended captures.
+
 Budgie 10.9 is an X11 desktop and uses the existing X11 adapter. Budgie 11
 (Magpie on Mir) is unreleased; see [Budgie 11](#budgie-11).
 
