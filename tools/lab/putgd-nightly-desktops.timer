@@ -1,8 +1,8 @@
 [Unit]
-Description=Check the newest untested nightly daily at 10:30 UTC
+Description=Check the newest untested nightly daily at 12:30 UTC
 
 [Timer]
-OnCalendar=*-*-* 10:30:00 UTC
+OnCalendar=*-*-* 12:30:00 UTC
 Persistent=true
 Unit=putgd-nightly-desktops.service
 

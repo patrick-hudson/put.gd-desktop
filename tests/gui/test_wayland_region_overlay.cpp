@@ -6,11 +6,13 @@
 #include "ui/RegionSelection.h"
 #include <QtTest>
 #include <QApplication>
+#include <QCursor>
 #include <QDir>
 #include <QScopeGuard>
 #include <QScreen>
 #include <QTemporaryDir>
 #include <QWindow>
+#include <functional>
 namespace putgd {
 class WaylandRegionOverlayTest final:public QObject {
  Q_OBJECT
@@ -21,6 +23,39 @@ class WaylandRegionOverlayTest final:public QObject {
   return nullptr;
  }
 private slots:
+ void acceptingSelectionHidesEveryCursorBeforeResult(){
+  for(bool keyboard:{false,true}){
+   LayerShellRegionOverlay overlay({});
+   auto* left=add(overlay,QRectF(0,0,640,480));auto* right=add(overlay,QRectF(640,0,600,400));
+   QVERIFY(left);QVERIFY(right);
+   QCOMPARE(left->cursor().shape(),Qt::CrossCursor);QCOMPARE(right->cursor().shape(),Qt::CrossCursor);
+   // CursorChange is synchronous: observe the actual update before the
+   // transparent clearing commit or dismissal can begin, not just at selected.
+   class CursorWitness final:public QObject {
+   public:
+    std::function<void(QWidget*)> changed;
+    bool eventFilter(QObject* object,QEvent* event) override{
+     if(event->type()==QEvent::CursorChange)changed(qobject_cast<QWidget*>(object));
+     return false;
+    }
+   } witness;
+   QSet<QWidget*> changedSurfaces;
+   witness.changed=[&](QWidget* surface){
+    changedSurfaces.insert(surface);QCOMPARE(surface->cursor().shape(),Qt::BlankCursor);
+    QVERIFY(!overlay.finished_);QVERIFY(!overlay.clearing_);QVERIFY(!overlay.dismissing_);
+   };
+   left->installEventFilter(&witness);right->installEventFilter(&witness);
+   int results=0;
+   connect(&overlay,&LayerShellRegionOverlay::selected,this,[&]{
+    ++results;
+    QCOMPARE(left->cursor().shape(),Qt::BlankCursor);QCOMPARE(right->cursor().shape(),Qt::BlankCursor);
+   });
+   if(keyboard)QTest::keyClick(left,Qt::Key_Return);
+   else{QTest::mousePress(left,Qt::LeftButton,{},QPoint(30,40));QTest::mouseRelease(left,Qt::LeftButton,{},QPoint(230,180));}
+   QCOMPARE(results,1);
+   QCOMPARE(changedSurfaces,QSet<QWidget*>({left,right}));
+  }
+ }
  void resolvedOutcomeIsVisibleAndAccessible(){
   for(const QString outcome:{QString("Uploads right away to Team Drive · Shared link"),QString("Saves locally"),QString("Opens the image editor")}){
    LayerShellRegionOverlay overlay({},nullptr,false,outcome);auto* surface=add(overlay,QRectF(0,0,800,600));QVERIFY(surface);

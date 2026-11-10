@@ -1,10 +1,12 @@
 #include "BudgieSourceAdapter.h"
 #include "platform/wayland/CaptureCompose.h"
+#include "platform/wayland/SurfaceVisibility.h"
 #include "platform/SessionLock.h"
 #include <QCoreApplication>
 #include <QJsonArray>
 namespace putgd {
 namespace {
+Error visibilityError(){return {"session_locked","The screen is locked, blanked or not responding. Unlock it and try again.",{}};}
 const QString cleanupMessage="Region helper exited before confirming surface cleanup; restart put.gd before capturing again";
 struct WindowSnapshot {QImage image;Error error;bool done=false;std::function<void(PayloadResult)> accepted;ResourceLimits acceptedLimits;};
 PayloadResult imageResult(const QImage& image,const ResourceLimits& limits,Error error={}){
@@ -13,6 +15,13 @@ PayloadResult imageResult(const QImage& image,const ResourceLimits& limits,Error
  if(qint64(image.width())*image.height()>limits.imagePixels||image.sizeInBytes()>limits.imageBytes)return {{},{"input_excessive","Capture exceeds accepted operation resource limits",{}}};
  ClipboardPayload payload;payload.kind="image";payload.mime="image/png";payload.image=image;return {payload,{}};
 }
+}
+// labwc exposes no client-held session-lock boundary. Witness both sides of
+// the copy and discard its pixels if the final frame is withheld. Only a lock
+// and unlock entirely between these witnesses can escape this bounded check.
+void BudgieSourceAdapter::queryVisibility(std::function<void(bool)> reply){
+ if(visibilityQuery_)visibilityQuery_(std::move(reply));
+ else querySurfaceVisible(this,capture_.connection(),std::move(reply));
 }
 bool BudgieSourceAdapter::ownAppId(const QString& appId){return putgdAppId(appId);}
 BudgieSourceAdapter::BudgieSourceAdapter(QObject* parent):QObject(parent){
@@ -74,11 +83,23 @@ SourceAdapter::PreparedAcquisition BudgieSourceAdapter::prepareAcquisition(const
    else{snapshot->error=std::move(error);if(!snapshot->error)snapshot->image=std::move(image);}
    if(snapshot->accepted){auto cb=std::move(snapshot->accepted);cb(imageResult(snapshot->image,snapshot->acceptedLimits,snapshot->error));}
   };
-  capture_.freezeActive([guard,complete,limits](ImageCopyCapture::Toplevel target,Error error){
+  capture_.freezeActive([guard,complete,limits,generation](ImageCopyCapture::Toplevel target,Error error){
    if(error){if(error.code=="capture_target"&&error.message.startsWith("No window"))error={"target_unavailable","Focus an external window and invoke the window shortcut or CLI",error.details};complete({},std::move(error));return;}
    if(!guard){complete({},{"cancelled","Window acquisition cancelled",{}});return;}
    if(ownAppId(target.appId)){complete({},{"target_unavailable","Focus an external window and invoke the window shortcut or CLI",{}});return;}
-   guard->capture_.captureToplevel(target.identifier,limits,complete);
+   guard->queryVisibility([guard,complete,limits,generation,id=target.identifier](bool visible){
+    if(!guard||guard->generation_!=generation){complete({},{"cancelled","Window acquisition cancelled",{}});return;}
+    if(!visible){complete({},visibilityError());return;}
+    guard->capture_.captureToplevel(id,limits,[guard,generation,complete](QImage image,Error error){
+     if(error){complete({},std::move(error));return;}
+     if(!guard||guard->generation_!=generation){complete({},{"cancelled","Window acquisition cancelled",{}});return;}
+     guard->queryVisibility([guard,generation,complete,image=std::move(image)](bool visible)mutable{
+      if(!guard||guard->generation_!=generation){complete({},{"cancelled","Window acquisition cancelled",{}});return;}
+      if(!visible){complete({},visibilityError());return;}
+      complete(std::move(image),{});
+     });
+    });
+   });
   });
   return [guard,snapshot,generation](const ResourceLimits& limits,std::function<void(PayloadResult)> cb){if(!guard||guard->generation_!=generation){cb({{},{"cancelled","Window acquisition cancelled",{}}});return;}if(snapshot->done)cb(imageResult(snapshot->image,limits,snapshot->error));else{snapshot->acceptedLimits=limits;snapshot->accepted=std::move(cb);}};
  }
@@ -141,7 +162,11 @@ void BudgieSourceAdapter::countdown(int seconds,std::function<void(Error)> reply
  if(region_.busy()){reply({"busy_selecting","Region selection is already active",{}});return;}
  countdown_.start(seconds,captureAppearance_,std::move(reply));
 }
-void BudgieSourceAdapter::sessionLocked(std::function<void(bool)> reply){querySessionLocked(this,std::move(reply));}
+void BudgieSourceAdapter::sessionLocked(std::function<void(bool)> reply){
+ // Countdown expiry must use the same real visibility signal before target
+ // freezing; gtklock does not set logind or publish a screensaver query.
+ queryVisibility([reply=std::move(reply)](bool visible){reply(!visible);});
+}
 SourceAdapter::PreparedAcquisition BudgieSourceAdapter::prepareAcquisition(const QString& action,const ResourceLimits& acceptedLimits,std::function<void(Error)> terminal,std::function<void()> released){
 #if defined(PUTGD_HAVE_LAYER_SHELL) && QT_VERSION >= QT_VERSION_CHECK(6,5,0)
  // A live selection shows before the journal saves; its pixels still wait.
@@ -226,6 +251,23 @@ void BudgieSourceAdapter::selectFrozen(QList<CaptureFrame> frozen,quint64 revisi
  });
 }
 void BudgieSourceAdapter::captureFrames(QList<CaptureFrame> frames,QList<CaptureFrame> frozen,quint64 revision,ResourceLimits limits,std::function<void(QList<CaptureFrame>,Error)> cb){
+ QPointer<BudgieSourceAdapter> guard(this);const auto generation=generation_;
+ queryVisibility([guard,generation,frames=std::move(frames),frozen=std::move(frozen),revision,limits,cb=std::move(cb)](bool visible)mutable{
+  if(!guard||guard->generation_!=generation){cb({},{"cancelled","Desktop capture cancelled",{}});return;}
+  if(!visible){cb({},visibilityError());return;}
+  guard->captureVisibleFrames(std::move(frames),frozen,revision,limits,[guard,generation,frozen,revision,cb=std::move(cb)](QList<CaptureFrame> frames,Error error)mutable{
+   if(error){cb({},std::move(error));return;}
+   if(!guard||guard->generation_!=generation){cb({},{"cancelled","Desktop capture cancelled",{}});return;}
+   guard->queryVisibility([guard,generation,frozen,revision,frames=std::move(frames),cb=std::move(cb)](bool visible)mutable{
+    if(!guard||guard->generation_!=generation){cb({},{"cancelled","Desktop capture cancelled",{}});return;}
+    if(!visible){cb({},visibilityError());return;}
+    if(!guard->unchanged(frozen,revision)){cb({},{"display_changed","Display layout changed during acquisition",{}});return;}
+    cb(std::move(frames),{});
+   });
+  });
+ });
+}
+void BudgieSourceAdapter::captureVisibleFrames(QList<CaptureFrame> frames,QList<CaptureFrame> frozen,quint64 revision,ResourceLimits limits,std::function<void(QList<CaptureFrame>,Error)> cb){
  // frames: the outputs to read; frozen: the whole layout, which must not change.
  struct Batch {QList<CaptureFrame> frames,frozenLayout;qint64 bytes=0,pixels=0;int index=0;std::function<void(QList<CaptureFrame>,Error)> reply;std::function<void()> next;};
  auto batch=std::make_shared<Batch>();batch->frames=std::move(frames);batch->frozenLayout=std::move(frozen);batch->reply=std::move(cb);QPointer<BudgieSourceAdapter> guard(this);const auto generation=generation_;std::weak_ptr<Batch> weak=batch;

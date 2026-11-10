@@ -1,10 +1,10 @@
 name: Nightly
-# Daily at 08:23 UTC on the default branch (nightly), or on demand. `plan` tags
+# Daily at 10:23 UTC on the default branch (nightly), or on demand. `plan` tags
 # nightly HEAD; when that exact source is already a verified public nightly it
 # skips, and nothing else runs. GitHub can delay scheduled runs.
 on:
   schedule:
-    - cron: '23 8 * * *'
+    - cron: '23 10 * * *'
   workflow_dispatch:
 permissions:
   contents: read

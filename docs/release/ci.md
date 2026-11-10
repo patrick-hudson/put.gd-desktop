@@ -12,7 +12,7 @@ dropped on 2026-10-31; CI no longer compiles or provisions Windows.
 | --- | --- | --- |
 | `ci.yml` | every pull request, pushes to `nightly`, manual runs; called by nightly and release | contracts, Linux tests, clang ASan/UBSan core tests, packages, the AppImage's pipewiresrc on PipeWire 1.6; on `nightly` pushes, cache pruning |
 | `package.yml` | called by `ci.yml` | five native packages, AppImage, their SBOMs and vulnerability scan, and with a tag the collected `release-assets` |
-| `nightly.yml` | 08:23 UTC daily and manual | skip unchanged source, or tag, test, package and publish a nightly, then notify put.gd-site; re-scan the latest stable release's SBOMs |
+| `nightly.yml` | 10:23 UTC daily and manual | skip unchanged source, or tag, test, package and publish a nightly, then notify put.gd-site; re-scan the latest stable release's SBOMs |
 | `release.yml` | pushes to `main` and manual | tag the stable merge commit, test, package and stage a draft |
 | `renovate.yml` | 04:17 UTC Mondays and manual; pull requests that change it | open dependency-update pull requests against `nightly`; on pull requests, a read-only lookup ([dependency updates](#dependency-updates)) |
 

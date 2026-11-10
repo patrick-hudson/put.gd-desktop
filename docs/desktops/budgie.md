@@ -5,6 +5,8 @@ screencast service of its own. put.gd captures through standard Wayland
 protocols on its own connections: no ScreenCast portal, no picker, no `grim` or
 `slurp`. Shortcuts use Budgie's labwc bridge, or the GlobalShortcuts portal
 where a desktop offers it ([Shortcuts](#shortcuts)).
+On Budgie 10.10/labwc, screenshots are refused with `session_locked` while the display is blanked or powered off even if the session is unlocked; keep the display awake for unattended captures.
+
 Budgie 10.9 is an X11 desktop and uses the existing X11 adapter. Budgie 11
 (Magpie on Mir) is unreleased; see [Budgie 11](#budgie-11).
 
@@ -112,9 +114,10 @@ labwc has no lock query, and Budgie's locker (gtklock, started through
 screensaver service. The countdown is its own witness instead: its last frame must
 be presented before it leaves, and labwc presents no client surface under a session
 lock, so a delay that ends on a locked or blanked screen is refused with
-`session_locked`. An immediate capture requested by an agent while gtklock is up
-still completes, with a picture of the lock screen and nothing behind it: labwc
-gives a client nothing to refuse on. See
+`session_locked`. Immediate desktop, window, monitor and repeated-region captures
+require a fresh transparent layer-surface frame both before and after their output-copy
+batch or window copy; if gtklock withholds either frame, put.gd discards the pixels and returns
+`session_locked`. This also protects requests made by an agent. See
 [capture monitor, delay and repeat](../design/capture-delay.md).
 
 ## Shortcuts

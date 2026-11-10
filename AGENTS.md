@@ -35,7 +35,7 @@ SSH builds and VMs on the builders are shared; heavy work stays off the workstat
 The full rules, including one coordinator per session family, are in
 `docs/lab/remote-builders.md` under "Sharing the lab between concurrent sessions".
 The automatic nightly desktop check runs from a d69 timer across all five
-builders and posts to pinned issue #1003. Release lab leases before 10:15 UTC
+builders and posts to pinned issue #1003. Release lab leases before 12:15 UTC
 for that check; see the same sharing rules.
 Linux goldens are not kept on the workstation. They live on the
 Fedora and Debian builders and in a private S3 bucket. Find, copy and restore
