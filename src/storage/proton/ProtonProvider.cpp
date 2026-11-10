@@ -81,6 +81,15 @@ struct ProtonProvider::Helper {
  bool lines=false;
  // It was sent a warm-up request whose answer has not been read yet.
  bool warming=false;
+ // Which helper started ahead this is: an address can be used again, a number is not.
+ quint64 serial=0;
+ // Lets a helper nobody will ask again end by itself. It finishes what it is doing first:
+ // a helper killed while it refreshes the session loses the account. `hurry` ends the wait.
+ void finish(const std::function<bool()>& hurry){
+  process.closeInput();
+  for(int waited=0;waited<30000&&!hurry()&&!process.waitForFinished(50);waited+=50){}
+  if(process.running()){process.kill();process.waitForFinished(5000);}
+ }
  explicit Helper(const QString& lockPath):lock(lockPath),root(QDir::tempPath()+"/putgd-proton-XXXXXX"){}
  // A helper waiting for a request ends when its input closes.
  ~Helper(){
@@ -144,15 +153,13 @@ std::unique_ptr<ProtonProvider::Helper> ProtonProvider::start(const QString& ref
  if(!started->process.start(runtimePath(),{lines?"--session":"--stdio"},helperEnvironment(host::environment(),started->root.path()))){error={"proton_runtime_start","The bundled Proton runtime could not start",{}};return {};}
  return started;
 }
-// Ends a helper nobody will ask again, without making the caller wait for it. It finishes
-// what it is doing first: a helper killed while it refreshes the session loses the account.
+// Ends a helper nobody will ask again, without making the caller wait for it.
 void ProtonProvider::retire(std::unique_ptr<Helper> helper) {
  if(!helper)return;
  helper->process.closeInput();
  {std::lock_guard lock(retiringMutex_);++retiring_;}
  std::thread([this,helper=std::move(helper)]() mutable {
-  for(int waited=0;waited<30000&&!stopping_.load()&&!helper->process.waitForFinished(50);waited+=50){}
-  if(helper->process.running()){helper->process.kill();helper->process.waitForFinished(5000);}
+  helper->finish([this]{return stopping_.load();});
   helper.reset();
   std::lock_guard lock(retiringMutex_);--retiring_;retired_.notify_all();
  }).detach();
@@ -170,11 +177,12 @@ std::shared_ptr<void> ProtonProvider::anticipate(const Destination& destination)
  Error unused;auto helper=start(reference,true,0,false,{},unused);if(!helper)return {};
  const auto warm=QJsonDocument(QJsonObject{{"schemaVersion",1},{"method","warm"},{"destination",destination.toJson()}}).toJson(QJsonDocument::Compact)+'\n';
  if(helper->process.write(warm,0)!=warm.size()){helper->process.kill();return {};}
- helper->warming=true;const auto* mine=helper.get();
+ static std::atomic<quint64> serials{0};
+ helper->warming=true;const auto mine=helper->serial=++serials;
  {std::lock_guard lock(standbyMutex_);standby_[reference]=std::move(helper);}
  return std::shared_ptr<void>(this,[this,reference,mine](void*){
   std::unique_ptr<Helper> unused;
-  {std::lock_guard lock(standbyMutex_);const auto found=standby_.find(reference);if(found!=standby_.end()&&found->second.get()==mine){unused=std::move(found->second);standby_.erase(found);}}
+  {std::lock_guard lock(standbyMutex_);const auto found=standby_.find(reference);if(found!=standby_.end()&&found->second->serial==mine){unused=std::move(found->second);standby_.erase(found);}}
   retire(std::move(unused));
  });
 }
@@ -251,8 +259,8 @@ QJsonObject ProtonProvider::call(const QString& method,const Destination& destin
  if(!kept||!kept->helper){
   auto ready=takeStandby(reference["reference"].toString());
   if(ready&&!carried){
-   // Account setup takes the account for itself: the waiting helper ends first.
-   retire(std::move(ready));
+   // Account setup takes the account for itself, once the waiting helper has ended.
+   ready->finish([&]{return stopping_.load()||(cancelled&&cancelled->load());});ready.reset();
   }else if(ready){
    // Its warm-up answer comes before ours. One that is late, refused or unclear ends that helper.
    const bool usable=!ready->warming||settled(ready->process,qMin(timeout,30000),[&]{return stopping_.load()||(cancelled&&cancelled->load());});
