@@ -110,10 +110,11 @@ answers late: one second was missed once by a software-rendered guest that was
 starting a browser.
 
 Budgie also requires fresh transparent layer-surface frames before and after each
-actual pixel copy, including immediate agent requests, monitor capture and repeated
-regions. If either frame is withheld, its pixels are discarded with `session_locked`;
+output-copy batch or window copy, including immediate agent requests, monitor capture
+and repeated regions. If either frame is withheld, the pixels are discarded with `session_locked`;
 this conservatively refuses an unlocked display that is blanked or powered off too
-([Budgie](../desktops/budgie.md)).
+([Budgie](../desktops/budgie.md)). labwc offers no client-held lock boundary, so an
+entire lock-and-unlock between the two visibility frames cannot be detected.
 
 ## Repeat last region
 

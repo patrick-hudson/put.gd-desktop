@@ -115,8 +115,8 @@ screensaver service. The countdown is its own witness instead: its last frame mu
 be presented before it leaves, and labwc presents no client surface under a session
 lock, so a delay that ends on a locked or blanked screen is refused with
 `session_locked`. Immediate desktop, window, monitor and repeated-region captures
-require a fresh transparent layer-surface frame both before and after their pixel
-copy; if gtklock withholds either frame, put.gd discards the pixels and returns
+require a fresh transparent layer-surface frame both before and after their output-copy
+batch or window copy; if gtklock withholds either frame, put.gd discards the pixels and returns
 `session_locked`. This also protects requests made by an agent. See
 [capture monitor, delay and repeat](../design/capture-delay.md).
 
