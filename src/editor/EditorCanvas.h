@@ -10,8 +10,8 @@ namespace putgd::editor {
 enum class Tool {Select,Redact,Blur,Crop,Arrow,Rectangle,Highlight,Text,Step,Pen,Ellipse,Line};
 struct ToolStyle {QColor color=QColor(220,38,38);int width=4;int strength=12;bool pixelate=false;int fontPixels=28;QString fontFamily;int stepPixels=defaultStepPixels;};
 
-// Interactive view of one EditDocument. The base raster is painted directly
-// from the document; only bounded display-resolution blur tiles are cached.
+// Interactive view of one EditDocument. Cache one sanitized source window when
+// masks intersect it, plus bounded display-resolution effect tiles.
 class EditorCanvas final:public QWidget {
  Q_OBJECT
 public:
@@ -77,6 +77,7 @@ signals:
 protected:
  void paintEvent(QPaintEvent*) override;
  void resizeEvent(QResizeEvent*) override;
+ void hideEvent(QHideEvent*) override;
  void mousePressEvent(QMouseEvent*) override;
  void mouseMoveEvent(QMouseEvent*) override;
  void mouseReleaseEvent(QMouseEvent*) override;
@@ -111,6 +112,9 @@ private:
  void placeTextEditor();
  void placeTextWarning();
  void beginText(const QPointF& imagePoint,const Shape* existing);
+ QList<QRect> visibleMasks(const QRect&) const;
+ QImage sanitizedView(const QRect&);
+ void clearSanitizedView();
  const QImage& blurTile(const Shape&);
  const QImage& highlightTile(const Shape&);
  const QImage& cachedTile(const Shape&,const QString& key,QImage (EditDocument::*render)(const Shape&,double) const);
@@ -125,6 +129,7 @@ private:
  QPointF press_,last_;Shape original_;
  QRect cropDraft_,cropOriginal_;
  quint64 selected_=0;
+ QImage sanitizedView_;QRect sanitizedArea_,sanitizedCrop_;QList<QRect> sanitizedMasks_;
  struct Tile {QString key;QImage image;quint64 used=0;};
  QHash<quint64,Tile> tiles_;qint64 cacheBytes_=0;quint64 tick_=0;
  QWidget* textWarning_=nullptr;

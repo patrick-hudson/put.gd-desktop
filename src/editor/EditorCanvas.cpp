@@ -337,6 +337,25 @@ QRect EditorCanvas::resized(QRect r,int handle,const QPoint& d,const QRect& boun
  return r.normalized();
 }
 
+QList<QRect> EditorCanvas::visibleMasks(const QRect& area) const {
+ QList<QRect> masks;
+ for(const auto& shape:doc_.shapes())if(shape.kind==Shape::Kind::Redact&&shape.rect.intersects(area))masks.append(shape.rect);
+ return masks;
+}
+void EditorCanvas::clearSanitizedView(){sanitizedView_={};sanitizedArea_={};sanitizedCrop_={};sanitizedMasks_.clear();}
+QImage EditorCanvas::sanitizedView(const QRect& area){
+ const auto masks=visibleMasks(area);
+ if(masks.isEmpty()){clearSanitizedView();return doc_.previewSource(area);}
+ if(sanitizedView_.isNull()||sanitizedArea_!=area||sanitizedCrop_!=doc_.crop()||sanitizedMasks_!=masks){
+  // Release the previous raster before allocating its replacement. At most
+  // one source window is retained (4 bytes/pixel, at most 96 MB at 24 MP).
+  clearSanitizedView();sanitizedView_=doc_.previewSource(area);
+  sanitizedArea_=area;sanitizedCrop_=doc_.crop();sanitizedMasks_=masks;
+ }
+ return sanitizedView_;
+}
+void EditorCanvas::hideEvent(QHideEvent* event){clearSanitizedView();QWidget::hideEvent(event);}
+
 const QImage& EditorCanvas::blurTile(const Shape& shape){
  QString key=QString("%1%2/").arg(shape.pixelate?"P":"B").arg(shape.strength);
  for(const auto& other:doc_.shapes())if(other.kind==Shape::Kind::Redact&&other.rect.intersects(shape.rect))key+=QString(";%1,%2,%3,%4").arg(other.rect.x()).arg(other.rect.y()).arg(other.rect.width()).arg(other.rect.height());
@@ -366,6 +385,9 @@ const QImage& EditorCanvas::cachedTile(const Shape& shape,const QString& prefix,
 }
 
 void EditorCanvas::documentChanged(){
+ // Unrelated annotation drags keep the sanitized source; mask/crop edits,
+ // including undo and removal while hidden, immediately release stale pixels.
+ if(!sanitizedView_.isNull()&&(sanitizedCrop_!=doc_.crop()||sanitizedMasks_!=visibleMasks(sanitizedArea_)))clearSanitizedView();
  if(!doc_.find(selected_)){selected_=0;emit selectionChanged();}
  bool steps=false;for(const auto& shape:doc_.shapes())steps=steps||shape.kind==Shape::Kind::Step;
  nextStep_=steps?doc_.nextStepNumber():stepStart_;
@@ -387,7 +409,7 @@ void EditorCanvas::paintEvent(QPaintEvent*){
   // Include the filter's neighbours, and cover secrets before filtering.
   // Overpainting after scaling cannot remove their contribution at mask edges.
   const auto area=source.toAlignedRect().adjusted(-1,-1,1,1).intersected(doc_.imageRect());
-  const auto sanitized=doc_.previewSource(area);
+  const auto sanitized=sanitizedView(area);
   painter.drawImage(visible,sanitized,source.translated(-area.topLeft()));
  }
  painter.save();painter.setClipRect(target);

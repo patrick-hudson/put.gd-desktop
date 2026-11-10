@@ -79,6 +79,23 @@ private slots:
   // including the filtered edge and tiles overlapping the redaction.
   QCOMPARE(render(Qt::magenta),render(Qt::green));
  }
+ void sanitizedViewTracksMaskCropAndViewChanges(){
+  QImage image(800,500,QImage::Format_RGB32);image.fill(Qt::magenta);EditDocument doc(image);
+  EditorCanvas canvas(doc);canvas.resize(540,360);canvas.show();canvas.setZoom(0.83);
+  auto render=[](EditorCanvas& view){QImage result(view.size(),QImage::Format_RGB32);view.render(&result);return result;};
+  double zoom=0.83;auto verify=[&]{
+   canvas.documentChanged();canvas.fit();canvas.setZoom(zoom);EditorCanvas fresh(doc);fresh.resize(canvas.size());fresh.show();fresh.setZoom(zoom);
+   QCOMPARE(render(canvas),render(fresh));
+  };
+  Shape mask;mask.kind=Shape::Kind::Redact;mask.rect={101,79,157,113};mask.id=doc.add(mask);verify();
+  mask.rect.translate(21,17);QVERIFY(doc.replace(mask));verify();
+  QVERIFY(doc.setCrop({30,20,700,450}));verify();
+  zoom=0.29;verify();
+  QVERIFY(doc.remove(mask.id));verify();
+  QVERIFY(doc.undo());verify();
+  canvas.hide();canvas.show();verify();
+ }
+
  void propertyHeadingFitsAndKeepsItsSelectionAccessible(){
   {EditDocument doc(canvasImage());EditorWindow window(doc);}
   const auto previous=QApplication::font();auto restore=qScopeGuard([previous]{QApplication::setFont(previous);});
