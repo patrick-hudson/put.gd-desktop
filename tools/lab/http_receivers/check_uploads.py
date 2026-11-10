@@ -43,6 +43,10 @@ def synthetic_png(width=96, height=64):
     return b'\x89PNG\r\n\x1a\n' + chunk(b'IHDR', struct.pack('>IIBBBBB', width, height, 8, 2, 0, 0, 0)) + chunk(b'IDAT', zlib.compress(rows)) + chunk(b'IEND', b'')
 
 
+# Errors putgd-cli makes itself after the request left: the resident's answer is not known.
+UNANSWERED = ('transport_failed', 'response_too_large', 'invalid_response')
+
+
 class Resident:
     def __init__(self, cli, socket):
         self.command = [cli] + (['--socket', socket] if socket else [])
@@ -110,8 +114,14 @@ def check(resident, sxcu, mode, payload, keep, allow_http, imported_profiles):
     imported_profiles.append(profile)
     imported = resident.call('settings.importUploader', request)
     if not imported['ok']:
-        # A refusal created nothing, so there is nothing of this run's to remove.
-        imported_profiles.remove(profile)
+        if imported['error']['code'] in UNANSWERED:
+            # putgd-cli got no usable answer, which is not a refusal: the resident may still
+            # finish the import. The destination stays tracked, and this waits for it to
+            # appear so that the cleanup at the end finds it.
+            resident.until('settings.get', {}, lambda result: any(entry['id'] == profile for entry in result['document']['profiles']), 30)
+        else:
+            # A refusal created nothing, so there is nothing of this run's to remove.
+            imported_profiles.remove(profile)
         report['error'] = 'import: ' + imported['error']['code'] + ': ' + imported['error']['message']
         return report
     report['label'], report['storedValues'], report['notes'] = imported['result']['label'], imported['result']['storedValues'], imported['result']['notes']
