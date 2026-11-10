@@ -162,7 +162,11 @@ void BudgieSourceAdapter::countdown(int seconds,std::function<void(Error)> reply
  if(region_.busy()){reply({"busy_selecting","Region selection is already active",{}});return;}
  countdown_.start(seconds,captureAppearance_,std::move(reply));
 }
-void BudgieSourceAdapter::sessionLocked(std::function<void(bool)> reply){querySessionLocked(this,std::move(reply));}
+void BudgieSourceAdapter::sessionLocked(std::function<void(bool)> reply){
+ // Countdown expiry must use the same real visibility signal before target
+ // freezing; gtklock does not set logind or publish a screensaver query.
+ queryVisibility([reply=std::move(reply)](bool visible){reply(!visible);});
+}
 SourceAdapter::PreparedAcquisition BudgieSourceAdapter::prepareAcquisition(const QString& action,const ResourceLimits& acceptedLimits,std::function<void(Error)> terminal,std::function<void()> released){
 #if defined(PUTGD_HAVE_LAYER_SHELL) && QT_VERSION >= QT_VERSION_CHECK(6,5,0)
  // A live selection shows before the journal saves; its pixels still wait.

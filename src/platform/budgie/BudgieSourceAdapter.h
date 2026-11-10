@@ -38,8 +38,8 @@ public:
  void bindShortcuts(const QHash<QString,QString>&);
  void setUiProcess(qint64 pid) override {uiProcess_=pid>0?pid:0;}
  // Delayed capture (#1363): putgd-region's countdown mode draws the pill on the
- // overlay layer. labwc has no lock query; logind's hint and the freedesktop
- // screensaver service answer where the desktop's locker sets them.
+ // overlay layer. Expiry uses the same visibility witness as pixel reads;
+ // gtklock does not set logind's hint or publish a screensaver query.
  void countdown(int seconds,std::function<void(Error)>) override;
  void sessionLocked(std::function<void(bool)>) override;
  void setResourceLimits(const ResourceLimits& limits){limits_=limits;}
@@ -66,7 +66,6 @@ private:
  // After a delayed live selection: a locked screen captures nothing.
  void lockGate(int delay,std::function<void(Error)>);
  std::optional<RegionMemory> lastRegion_;
- CursorOutputProbe pointer_;
  CountdownProcess countdown_{QStringLiteral("putgd-region")};
  void captureScreens(QList<CaptureFrame>,quint64,QRectF,ResourceLimits,std::function<void(PayloadResult)>);
  void captureVisibleFrames(QList<CaptureFrame>,QList<CaptureFrame>,quint64,ResourceLimits,std::function<void(QList<CaptureFrame>,Error)>);
@@ -75,7 +74,8 @@ private:
  void compose(QList<CaptureFrame>,QList<CaptureFrame>,quint64,QRectF,const ResourceLimits&,std::function<void(PayloadResult)>);
  ResourceLimits limits_;
  qint64 uiProcess_=0;
- ImageCopyCapture capture_;DataControlClipboard clipboard_;BudgieShortcuts shortcuts_;
+ // Resolve capture's inherited socket before other clients can consume it.
+ ImageCopyCapture capture_;CursorOutputProbe pointer_;DataControlClipboard clipboard_;BudgieShortcuts shortcuts_;
  WaylandOutputs outputs_;WaylandRegionProcess region_;
  QList<QThread*> workers_;quint64 generation_=0;
 };

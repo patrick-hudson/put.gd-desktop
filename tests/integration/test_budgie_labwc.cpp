@@ -165,6 +165,34 @@ private slots:
   querySurfaceVisible(&context,capture.connection(),[&](bool result){visible=result;done=true;});
   QVERIFY(waitFor([&]{return done;},1000));QVERIFY(!visible);QVERIFY(!capture.outputsAvailable());
  }
+ void captureConnectionReconnectsOnlyAfterPixelConnectionLoss_data(){QTest::addColumn<bool>("inherited");QTest::newRow("display path")<<false;QTest::newRow("inherited socket")<<true;}
+ void captureConnectionReconnectsOnlyAfterPixelConnectionLoss(){
+  QFETCH(bool,inherited);QTemporaryDir directory("/tmp/pg-peer-XXXXXX");QVERIFY(directory.isValid());
+  const auto path=directory.filePath("display");QVERIFY(path.toUtf8().size()<=107);
+  const auto display=qgetenv("WAYLAND_DISPLAY"),socket=qgetenv("WAYLAND_SOCKET");
+  auto restore=qScopeGuard([&]{qputenv("WAYLAND_DISPLAY",display);if(socket.isNull())qunsetenv("WAYLAND_SOCKET");else qputenv("WAYLAND_SOCKET",socket);});
+  qputenv("WAYLAND_DISPLAY",path.toUtf8());qunsetenv("WAYLAND_SOCKET");
+  QProcess server;auto cleanup=qScopeGuard([&]{if(server.state()!=QProcess::NotRunning){server.terminate();server.waitForFinished(3000);}});
+  const auto start=[&]{server.start(QCoreApplication::applicationDirPath()+"/putgd-session-lock-fixture",{"--listen",path});return waitFor([&]{return server.readAllStandardOutput().contains("ready");},3000);};
+  QVERIFY(start());CaptureConnection source;auto* original=source.connect();QVERIFY(original);
+  if(inherited)qputenv("WAYLAND_SOCKET",QByteArray::number(wl_display_get_fd(original)));
+  CaptureConnection connection;auto* first=connection.connect();QVERIFY(first);wl_display_disconnect(first);wl_display_disconnect(original);
+  server.terminate();QVERIFY(server.waitForFinished(3000));QVERIFY(start());
+  // A witness cannot silently change servers while capture still has its pin.
+  auto* wrong=connection.connect();if(wrong)wl_display_disconnect(wrong);QVERIFY(!wrong);
+  connection.disconnected();auto* restarted=connection.connect();
+  if(restarted)wl_display_disconnect(restarted);
+  QCOMPARE(restarted!=nullptr,!inherited);
+ }
+ void countdownLockQueryUsesVisibility(){
+  BudgieSourceAdapter adapter;QVERIFY(waitFor([&]{return adapter.capabilities()["capture"].toObject()["desktop"].toObject()["available"].toBool();}));
+  QProcess locker;auto cleanup=qScopeGuard([&]{if(locker.state()!=QProcess::NotRunning){locker.terminate();locker.waitForFinished(3000);}});
+  locker.start(QCoreApplication::applicationDirPath()+"/putgd-session-lock-fixture",{});QVERIFY(waitFor([&]{return locker.readAllStandardOutput().contains("locked");},5000));
+  bool done=false,locked=false;adapter.sessionLocked([&](bool value){locked=value;done=true;});
+  QVERIFY(waitFor([&]{return done;},5000));QVERIFY(locked);
+  locker.terminate();QVERIFY(locker.waitForFinished(3000));done=false;
+  adapter.sessionLocked([&](bool value){locked=value;done=true;});QVERIFY(waitFor([&]{return done;},5000));QVERIFY(!locked);
+ }
  void lockedWindowAfterFreezeIsRefused(){
   BudgieSourceAdapter adapter;ImageCopyCapture probe;
   QVERIFY(waitFor([&]{return probe.outputsAvailable();}));
@@ -461,12 +489,12 @@ private slots:
  // reports it, with no surface mapped.
  void monitorUnderThePointer(){
   QVERIFY(layoutRestored());
-  BudgieSourceAdapter adapter;QVERIFY(waitFor([&]{return adapter.capabilities()["capture"].toObject()["monitor"].toObject()["available"].toBool();}));
+  BudgieSourceAdapter adapter;int witnesses=0;BudgieCaptureTestAccess::visibility(adapter,[&](auto reply){++witnesses;BudgieCaptureTestAccess::query(adapter,std::move(reply));});QVERIFY(waitFor([&]{return adapter.capabilities()["capture"].toObject()["monitor"].toObject()["available"].toBool();}));
   const auto origin=bounds().topLeft();
   for(int round=0;round<2;++round)for(int index=0;index<layout_.size();++index){
    const auto& frame=layout_[index];const auto at=frame.logicalRect.center()-origin+QPointF(round*37,round*-21);
    QVERIFY(pointer({"move",QString::number(int(at.x())),QString::number(int(at.y()))}));
-   const auto result=acquire(adapter,"monitor");QVERIFY2(!result.error,qPrintable(result.error.code+": "+result.error.message+" "+QString::fromUtf8(QJsonDocument(result.error.details).toJson(QJsonDocument::Compact))));
+   const int before=witnesses;const auto result=acquire(adapter,"monitor");QCOMPARE(witnesses-before,2);QVERIFY2(!result.error,qPrintable(result.error.code+": "+result.error.message+" "+QString::fromUtf8(QJsonDocument(result.error.details).toJson(QJsonDocument::Compact))));
    QCOMPARE(result.payload.image.size(),frame.nativeRect.size());
    QCOMPARE(rgb(result.payload.image,10,10),qRgb(255,255,255));
    QCOMPARE(rgb(result.payload.image,result.payload.image.width()/2,result.payload.image.height()-5),outputColours[index]);
@@ -475,7 +503,7 @@ private slots:
   // the second; the hotspot still decides.
   const auto edge=layout_.first().logicalRect.topRight()-origin+QPointF(-1,300);
   QVERIFY(pointer({"move",QString::number(int(edge.x())),QString::number(int(edge.y()))}));
-  const auto result=acquire(adapter,"monitor");QVERIFY2(!result.error,qPrintable(result.error.message));
+  const int before=witnesses;const auto result=acquire(adapter,"monitor");QCOMPARE(witnesses-before,2);QVERIFY2(!result.error,qPrintable(result.error.message));
   QCOMPARE(rgb(result.payload.image,result.payload.image.width()/2,result.payload.image.height()-5),outputColours[0]);
  }
  // Repeat last region (#1363): the same rectangle with no selector, refused
@@ -483,7 +511,7 @@ private slots:
  void repeatLastRegion(){
   if(!QFile::exists(QCoreApplication::applicationDirPath()+"/putgd-region"))QSKIP("putgd-region was not built");
   QVERIFY(layoutRestored());
-  BudgieSourceAdapter adapter;QVERIFY(waitFor([&]{return adapter.capabilities()["capture"].toObject()["region"].toObject()["available"].toBool();}));
+  BudgieSourceAdapter adapter;int witnesses=0;BudgieCaptureTestAccess::visibility(adapter,[&](auto reply){++witnesses;BudgieCaptureTestAccess::query(adapter,std::move(reply));});QVERIFY(waitFor([&]{return adapter.capabilities()["capture"].toObject()["region"].toObject()["available"].toBool();}));
   QCOMPARE(acquire(adapter,"repeat").error.code,QString("repeat_unavailable"));
   QCOMPARE(adapter.capabilities()["capture"].toObject()["repeat"].toObject()["remembered"].toBool(),false);
   // A region on the second output, across its colour and nothing else.
@@ -495,7 +523,7 @@ private slots:
   QVERIFY(dragged);QVERIFY2(!region.error,qPrintable(region.error.message));QCOMPARE(region.payload.image.size(),QSize(180,90));
   QCOMPARE(adapter.capabilities()["capture"].toObject()["repeat"].toObject()["remembered"].toBool(),true);
   for(int round=0;round<2;++round){
-   const auto repeat=acquire(adapter,"repeat");QVERIFY2(!repeat.error,qPrintable(repeat.error.message));
+   const int before=witnesses;const auto repeat=acquire(adapter,"repeat");QCOMPARE(witnesses-before,2);QVERIFY2(!repeat.error,qPrintable(repeat.error.message));
    QCOMPARE(repeat.payload.image.size(),QSize(180,90));
    QCOMPARE(repeat.payload.image.convertToFormat(QImage::Format_RGB32),region.payload.image.convertToFormat(QImage::Format_RGB32));
    QCOMPARE(rgb(repeat.payload.image,90,45),outputColours[layout_.size()-1]);
@@ -549,7 +577,7 @@ private slots:
  void delayedRegionCountsDownAfterSelection(){
   if(!QFile::exists(QCoreApplication::applicationDirPath()+"/putgd-region"))QSKIP("putgd-region was not built");
   QVERIFY(layoutRestored());
-  BudgieSourceAdapter adapter;QVERIFY(waitFor([&]{return adapter.capabilities()["capture"].toObject()["region"].toObject()["available"].toBool();}));
+  BudgieSourceAdapter adapter;int witnesses=0;BudgieCaptureTestAccess::visibility(adapter,[&](auto reply){++witnesses;BudgieCaptureTestAccess::query(adapter,std::move(reply));});QVERIFY(waitFor([&]{return adapter.capabilities()["capture"].toObject()["region"].toObject()["available"].toBool();}));
   const QPoint start=(layout_.first().logicalRect.topLeft()-bounds().topLeft()).toPoint()+QPoint(80,200);
   adapter.setCaptureDelay(3);
   PayloadResult result;bool done=false;QElapsedTimer clock;
@@ -559,7 +587,7 @@ private slots:
   // undelayed case does. The result can't come sooner than the delay after that.
   bool dragged=false;clock.start();
   QVERIFY(waitFor([&]{if(done)return true;dragged|=pointer({"drag",QString::number(start.x()),QString::number(start.y()),QString::number(start.x()+200),QString::number(start.y()+150)});return done;},30000));
-  QVERIFY(dragged);QVERIFY2(!result.error,qPrintable(result.error.code+": "+result.error.message));
+  QVERIFY(dragged);QCOMPARE(witnesses,3);QVERIFY2(!result.error,qPrintable(result.error.code+": "+result.error.message));
   QVERIFY2(clock.elapsed()>=2900,qPrintable(QString::number(clock.elapsed())));
   QCOMPARE(result.payload.image.size(),QSize(200,150));
   const auto image=result.payload.image.convertToFormat(QImage::Format_RGB32);

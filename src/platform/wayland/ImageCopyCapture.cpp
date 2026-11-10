@@ -100,7 +100,7 @@ struct ImageCopyCapture::Impl:QObject {
  void lost(){
   // Never inside dispatch or cancelAll(): both walk objects that a nested cancel would delete.
   if(dispatching||cancelling){if(!lossPending){lossPending=true;QTimer::singleShot(0,this,[this]{lossPending=false;lost();});}return;}
-  cancelAll({"capture_failed","The Wayland compositor connection for image capture was lost",{}});reset();error="The Wayland compositor connection for image capture was lost";notify();
+  cancelAll({"capture_failed","The Wayland compositor connection for image capture was lost",{}});reset();connection.disconnected();error="The Wayland compositor connection for image capture was lost";notify();
  }
  void reset(){
   if(readNotifier){auto* retired=readNotifier;readNotifier=nullptr;retired->setEnabled(false);retired->disconnect(this);retired->deleteLater();}

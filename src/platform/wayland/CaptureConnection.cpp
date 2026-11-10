@@ -9,6 +9,7 @@ namespace putgd {
 CaptureConnection::CaptureConnection(){
  const auto inherited=qgetenv("WAYLAND_SOCKET");
  if(!inherited.isNull()){
+  inherited_=true;
   bool valid=false;const int fd=inherited.toInt(&valid);if(!valid||fd<0)return;
   sockaddr_un address{};socklen_t size=sizeof address;ucred peer{};socklen_t peerSize=sizeof peer;
   // A named inherited connection can be reopened and authenticated. Anonymous
@@ -23,6 +24,7 @@ CaptureConnection::CaptureConnection(){
   if(!path_.startsWith('/')){const auto runtime=qgetenv("XDG_RUNTIME_DIR");if(runtime.isEmpty()){path_.clear();return;}path_=runtime+'/'+path_;}
  }
 }
+void CaptureConnection::disconnected(){if(!inherited_)serverPid_=-1;}
 wl_display* CaptureConnection::connect() const{
  sockaddr_un address{};address.sun_family=AF_UNIX;
  if(path_.isEmpty()||path_.contains('\0')||size_t(path_.size())>=sizeof address.sun_path)return nullptr;
