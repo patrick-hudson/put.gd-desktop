@@ -21,11 +21,13 @@ env:
   # that answer HTTP 200 but deliver packages too slowly. APT fails over file by
   # file and still verifies everything against the Ubuntu keyring, but it goes
   # back to the first mirror for every file. A mirror can probe fast and then
-  # stall on real downloads, so putgd_apt_install bounds each attempt and moves
-  # the first mirror to the end of the list before the next one.
+  # stall on real downloads, so putgd_apt_install bounds each attempt, keeps
+  # what it downloaded, and demotes a first mirror that delivered too little.
   PUTGD_UBUNTU_MIRRORS: |
     apt_root=${PUTGD_APT_ROOT:-/etc/apt}
-    sources=$(grep -lE 'http://archive\.ubuntu\.com/ubuntu' "$apt_root"/sources.list "$apt_root"/sources.list.d/* 2>/dev/null || true)
+    # security.ubuntu.com too: the mirrors carry the -security pocket, and that
+    # host has stalled together with archive.ubuntu.com.
+    sources=$(grep -lE 'http://(archive|security)\.ubuntu\.com/ubuntu' "$apt_root"/sources.list "$apt_root"/sources.list.d/* 2>/dev/null || true)
     if [ -n "$sources" ]; then
       probe_dir=$(mktemp -d)
       # Four sequential probes: <= 12.8 s, <= 8 MiB of response bodies.
@@ -65,32 +67,49 @@ env:
         priority=$((priority + 1))
         printf 'http://%s/ubuntu/\tpriority:%d\n' "$endpoint" "$priority" >> "$apt_root/putgd-mirrors.txt"
       done < <(LC_ALL=C sort -s -k1,1n -k2,2nr "$probe_dir/rank")
+      awk '$1 < 2' "$probe_dir/rank" | wc -l > "$apt_root/putgd-mirrors.txt.usable"
       rm -f "$probe_dir/rank"
       rmdir "$probe_dir"
-      sed -i -E "s#http://archive\.ubuntu\.com/ubuntu/?#mirror+file:$apt_root/putgd-mirrors.txt#" $sources
+      sed -i -E "s#http://(archive|security)\.ubuntu\.com/ubuntu/?#mirror+file:$apt_root/putgd-mirrors.txt#" $sources
     fi
+    # Move the first mirror behind the others that answered the probe. Mirrors
+    # that gave nothing stay last: rotating one to the front costs 40 s a file.
     putgd_demote_mirror() {
-      local list=${PUTGD_APT_ROOT:-/etc/apt}/putgd-mirrors.txt first
+      local list=${PUTGD_APT_ROOT:-/etc/apt}/putgd-mirrors.txt usable first
       [ -s "$list" ] || return 0
+      usable=$(cat "$list.usable" 2>/dev/null || true)
+      [ "${usable:-0}" -gt 0 ] || usable=$(wc -l < "$list")
+      [ "$usable" -gt 1 ] || return 0
       first=$(head -n 1 "$list" | cut -f1)
-      { tail -n +2 "$list" | cut -f1; echo "$first"; } | awk '{ printf "%s\tpriority:%d\n", $0, NR }' > "$list.new"
+      cut -f1 "$list" | awk -v n="$usable" 'NR == 1 { first = $0; next } { print } NR == n { print first }' |
+        awk '{ printf "%s\tpriority:%d\n", $0, NR }' > "$list.new"
       mv "$list.new" "$list"
-      echo "Ubuntu mirror moved to the end of the list: $first"
+      echo "Ubuntu mirror moved behind the other usable mirrors: $first"
     }
     # putgd_apt_install [OPTION|PACKAGE]...: apt-get update and install with the
-    # caller's apt=() options. Three attempts of at most 6 minutes each; packages
-    # already downloaded stay in the cache, so a later attempt resumes.
+    # caller's apt=() options, in three attempts of at most 6 minutes each.
+    # Downloads go to their own directory: Docker images delete apt's default
+    # archives after every update, which would discard a stopped attempt's
+    # progress. An attempt that fetched under 128 MiB demotes its first mirror.
     putgd_apt_install() {
-      local attempt limit=${PUTGD_APT_ATTEMPT_SECONDS:-360} deadline left
+      local attempt limit=${PUTGD_APT_ATTEMPT_SECONDS:-360} deadline left updated= before fetched
+      local archives=${PUTGD_APT_ARCHIVES:-/var/cache/putgd-apt}
+      mkdir -p "$archives/partial"
       for attempt in 1 2 3; do
         deadline=$((SECONDS + limit))
-        if timeout --kill-after=30s "$limit" apt-get update "${apt[@]}"; then
+        before=$(du -sk "$archives" | cut -f1)
+        if [ -n "$updated" ] || timeout --kill-after=30s "$limit" apt-get update "${apt[@]}"; then
+          updated=1
           left=$((deadline - SECONDS)); [ "$left" -gt 0 ] || left=1
-          ! DEBIAN_FRONTEND=noninteractive timeout --kill-after=30s "$left" apt-get install -y "${apt[@]}" "$@" || return 0
+          if DEBIAN_FRONTEND=noninteractive timeout --kill-after=30s "$left" apt-get install -y "${apt[@]}" -o "Dir::Cache::Archives=$archives/" "$@"; then
+            apt-get clean -o "Dir::Cache::Archives=$archives/" || true
+            return 0
+          fi
         fi
-        echo "::warning::Package install: attempt $attempt of 3 failed or ran over $limit s"
+        fetched=$(( $(du -sk "$archives" | cut -f1) - before ))
+        echo "::warning::Package install: attempt $attempt of 3 failed or ran over $limit s after fetching $((fetched / 1024)) MiB"
         [ "$attempt" != 3 ] || break
-        putgd_demote_mirror
+        [ "$fetched" -ge "${PUTGD_APT_PROGRESS_KB:-131072}" ] || putgd_demote_mirror
         # A stopped attempt can leave dpkg half done; apt-get refuses to install until it is finished.
         timeout --kill-after=30s 120 dpkg --configure -a || true
       done
