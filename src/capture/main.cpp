@@ -117,6 +117,11 @@ int main(int argc,char** argv){
  const auto build=QJsonDocument::fromJson(putgd::buildManifestJson()).object();QString nonce,generation,path,device,inode;QJsonObject frozen;putgd::ResourceLimits limits;
  putgd::CaptureArtifactLease artifact;putgd::X11Target target;
  quint32 preparedCursor=0;bool cacheCursor=false,observeCursor=false;
+ // Qt 6.11 asks QAccessible::isActive() from QWindow's destructor, which
+ // creates the AT-SPI bridge even for an unmapped window. Keep the cursor
+ // warm-up alive through bootstrap so its destruction cannot start the bridge
+ // ahead of selection. It owns no visible surface or input grab.
+ std::unique_ptr<QWindow> cursorWarmup;
  bool bootstrapped=false,ready=false,begun=false,settled=false,resultSent=false,cancelled=false;
  bool previewed=false,selectionStarted=false,acquisitionQueued=false,acquisitionStarted=false;quint32 previewCursor=0;
  std::optional<putgd::RegionSelectionResult> selection;std::optional<QRectF> selectedRect;QThread* encoder=nullptr;
@@ -210,7 +215,7 @@ int main(int argc,char** argv){
    if(!error&&target.action=="region"&&!preparedCursor&&seed.isEmpty()){
     // Populate Qt's native themed-cursor cache without mapping a window,
     // acquiring input or reading desktop pixels. This can overlap journal IO.
-    QWindow cursor;cursor.setSurfaceType(QSurface::RasterSurface);
+    cursorWarmup=std::make_unique<QWindow>();auto& cursor=*cursorWarmup;cursor.setSurfaceType(QSurface::RasterSurface);
     QSurfaceFormat format;format.setAlphaBufferSize(8);cursor.setFormat(format);
     cursor.setFlags(Qt::FramelessWindowHint|Qt::WindowDoesNotAcceptFocus|Qt::WindowTransparentForInput);
     // NativeRegionOverlay embeds its cursor under a fromWinId() wrapper.
