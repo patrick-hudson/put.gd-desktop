@@ -397,14 +397,79 @@ QRect EditDocument::highlightWindow(const Shape& shape) const {
  return window;
 }
 
-QImage EditDocument::previewSource(const QRect& area) const {
- if(area.isEmpty()||!base_.rect().contains(area))return {};
- const QImage view(base_.constScanLine(area.top())+qsizetype(area.left())*qsizetype(sizeof(QRgb)),area.width(),area.height(),base_.bytesPerLine(),base_.format());
- bool masked=false;for(const auto& shape:state_.shapes)if(shape.kind==Shape::Kind::Redact&&shape.rect.intersects(area)){masked=true;break;}
- if(!masked)return view;
- auto image=view.copy();QPainter painter(&image);painter.setCompositionMode(QPainter::CompositionMode_Source);
- for(const auto& shape:state_.shapes)if(shape.kind==Shape::Kind::Redact)painter.fillRect(shape.rect.intersected(area).translated(-area.topLeft()),Qt::black);
- return image;
+void EditDocument::paintPreviewSource(QPainter& painter,const QRectF& target,const QRectF& source,
+ const std::function<void(QPainter&,const QRectF&)>& backdrop,const QRect& samplingBounds) const {
+ if(target.isEmpty()||source.isEmpty())return;
+ const QRect bounds=samplingBounds.isEmpty()?base_.rect():samplingBounds.intersected(base_.rect());if(bounds.isEmpty())return;
+ const QImage view(base_.constScanLine(bounds.top())+qsizetype(bounds.left())*sizeof(QRgb),bounds.width(),bounds.height(),base_.bytesPerLine(),base_.format());
+ const auto origin=bounds.topLeft();const auto localSource=source.translated(-origin);
+ const double sx=target.width()/source.width(),sy=target.height()/source.height();
+ const QTransform logical(sx,0,0,sy,target.x()-localSource.x()*sx,target.y()-localSource.y()*sy);
+ // Share one source-to-target transform across the base and every patch.
+ // Re-deriving a scale from each patch's rectangle changes fixed-point
+ // sampling phase (especially at fractional zoom on a high-DPI backing store).
+ painter.save();painter.setClipRect(target,Qt::IntersectClip);painter.setWorldTransform(logical,true);
+ painter.drawImage(QPointF(0,0),view);painter.restore();
+ auto masks=redactionRects();if(masks.isEmpty())return;
+ for(auto& mask:masks)mask.translate(-origin);
+ const auto device=logical*painter.deviceTransform();const auto fromDevice=device.inverted();
+ const auto deviceToLogical=painter.deviceTransform().inverted();
+ const auto painted=painter.hasClipping()?target.intersected(painter.clipBoundingRect()):target;
+ const auto viewport=painter.deviceTransform().mapRect(painted).toAlignedRect();
+ // Restrict work to edge bands. The interior is opaque black; only pixels
+ // near a mask edge can mix a covered source sample into a neighbour.
+ painter.save();painter.setClipRect(target,Qt::IntersectClip);
+ for(const auto& mask:masks)painter.fillRect(logical.mapRect(QRectF(mask)),Qt::black);
+ const int stepX=std::clamp(int(1020*std::abs(device.m11())),1,64);
+ const int stepY=std::clamp(int(1020*std::abs(device.m22())),1,64);
+ for(const auto& mask:masks){
+  const QRect box=device.mapRect(QRectF(mask)).toAlignedRect();
+  const bool smooth=painter.testRenderHint(QPainter::SmoothPixmapTransform);
+  const int fringeX=smooth?int(std::ceil(std::abs(device.m11())/2))+1:1;
+  const int fringeY=smooth?int(std::ceil(std::abs(device.m22())/2))+1:1;
+  // At high DPI a logical downscale can still magnify source pixels on the
+  // backing store. Include both sides of the full device-space filter reach.
+  const auto outer=box.adjusted(-fringeX,-fringeY,fringeX,fringeY),inner=box.adjusted(fringeX,fringeY,-fringeX,-fringeY);
+  QList<QRect> bands;
+  if(inner.isEmpty())bands.append(outer);
+  else bands={QRect(outer.x(),outer.y(),outer.width(),inner.y()-outer.y()),
+              QRect(outer.x(),inner.y()+inner.height(),outer.width(),outer.y()+outer.height()-inner.y()-inner.height()),
+              QRect(outer.x(),inner.y(),inner.x()-outer.x(),inner.height()),
+              QRect(inner.x()+inner.width(),inner.y(),outer.x()+outer.width()-inner.x()-inner.width(),inner.height())};
+  for(auto band:bands){
+   band=band.intersected(viewport);
+   for(int y=band.y();y<band.y()+band.height();y+=stepY)for(int x=band.x();x<band.x()+band.width();x+=stepX){
+    const int left=viewport.x()+((x-viewport.x())/4)*4;
+    const int right=std::min(viewport.x()+viewport.width(),viewport.x()+((x+std::min(stepX,band.x()+band.width()-x)-viewport.x()+3)/4)*4);
+    // Match the full span's four-pixel SIMD groups, avoiding a different
+    // scalar filter precision at the ends of a narrow edge patch.
+    const QRect pixels(left,y,right-left,std::min(stepY,band.y()+band.height()-y));
+    // Qt's smooth painter samples the two adjacent source pixels per axis.
+    // Two source pixels of halo keep the filter footprint off patch borders.
+    const auto area=fromDevice.mapRect(QRectF(pixels)).toAlignedRect().adjusted(-2,-2,2,2).intersected(view.rect());
+    if(area.isEmpty())continue;
+    const QPoint position=area.topLeft()+origin;
+    const QImage raw(base_.constScanLine(position.y())+qsizetype(position.x())*sizeof(QRgb),area.width(),area.height(),base_.bytesPerLine(),base_.format());
+    auto patch=raw.copy();
+    {QPainter cover(&patch);cover.setCompositionMode(QPainter::CompositionMode_Source);
+     for(const auto& other:masks)cover.fillRect(other.intersected(area).translated(-area.topLeft()),Qt::black);}
+    const auto clip=deviceToLogical.mapRect(QRectF(pixels));
+    painter.save();painter.setClipRect(clip,Qt::IntersectClip);
+    // Restore the backdrop before replacing a filtered alpha edge, rather
+    // than blending it over the already-filtered, unsanitized base a second time.
+    if(backdrop)backdrop(painter,clip);
+    else{painter.setCompositionMode(QPainter::CompositionMode_Source);painter.fillRect(clip,Qt::transparent);}
+    painter.setCompositionMode(QPainter::CompositionMode_SourceOver);
+    painter.setWorldTransform(logical,true);painter.drawImage(QPointF(area.topLeft()),patch);painter.restore();
+   }
+  }
+ }
+ painter.restore();
+}
+QImage EditDocument::previewSource(const QRect& area,const QSize& displaySize) const {
+ QImage image(displaySize,base_.format());if(image.isNull())return {};
+ image.fill(Qt::transparent);QPainter painter(&image);painter.setRenderHint(QPainter::SmoothPixmapTransform);
+ paintPreviewSource(painter,QRectF(image.rect()),QRectF(area),{},area);return image;
 }
 
 QImage EditDocument::highlightPreview(const Shape& shape,double scale) const {
@@ -419,9 +484,7 @@ QImage EditDocument::highlightPreview(const Shape& shape,double scale) const {
  constexpr double previewPixels=1.5e6;
  scale=std::min({1.0,scale,std::sqrt(previewPixels/(double(window.width())*window.height()))});
  const QSize target(std::max(1,int(std::lround(window.width()*scale))),std::max(1,int(std::lround(window.height()*scale))));
- const auto view=previewSource(window);
- auto preview=target==window.size()?view.copy():view.scaled(target,Qt::IgnoreAspectRatio,Qt::SmoothTransformation);
- preview=preview.convertToFormat(base_.format());
+ auto preview=previewSource(window,target);
  const double sx=double(target.width())/window.width(),sy=double(target.height())/window.height();
  auto mapped=[&](const QRect& rect){return QRectF((rect.left()-window.left())*sx,(rect.top()-window.top())*sy,rect.width()*sx,rect.height()*sy).toAlignedRect();};
  {
@@ -444,9 +507,7 @@ QImage EditDocument::blurPreview(const Shape& shape,double scale) const {
  scale=std::min({1.0,scale,std::sqrt(previewPixels/(double(area.width())*area.height()))});
  const QSize target(std::max(1,int(std::lround(area.width()*scale))),std::max(1,int(std::lround(area.height()*scale))));
  if(shape.pixelate){QImage preview(target,base_.format());if(preview.isNull())return {};pixelatePreview(preview,area,shape);return preview;}
- const auto view=previewSource(area);
- auto preview=target==area.size()?view.copy():view.scaled(target,Qt::IgnoreAspectRatio,Qt::SmoothTransformation);
- preview=preview.convertToFormat(base_.format());
+ auto preview=previewSource(area,target);
  const double sx=double(target.width())/area.width(),sy=double(target.height())/area.height();
  {
   QPainter painter(&preview);painter.setCompositionMode(QPainter::CompositionMode_Source);
