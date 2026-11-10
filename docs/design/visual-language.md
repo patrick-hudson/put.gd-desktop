@@ -90,10 +90,11 @@ separate 32 px target; combo-box and menu chevrons use a 26 px zone.
 The main header starts at 56 px, the command band at about 60 px including
 padding, and the status band at 40 px. These are component baselines, not reasons
 to break a supported small-screen or large-text layout. History uses 76 px base
-rows with 80 × 50 thumbnails, expanding for complete failure text when needed.
-Reserve space for row actions before laying out text. When an inline action
-would leave too little room for the item name, place actions in a stable footer
-below the text. Hover and selection must not change the row height.
+rows with 96 × 60 thumbnails and 28 px row actions, expanding for complete
+failure text when needed. Reserve space for row actions before laying out text.
+When an inline action would leave too little room for the item name, place
+actions in a stable footer below the text. Hover and selection must not change
+the row height.
 
 Use one hairline between adjacent regions. Prefer flat sections and aligned form
 rows to nested cards, oversized pills, gradients or ornamental shadows. Give
@@ -182,7 +183,73 @@ future captures. It is not a destination filter or an active-transfer indicator.
 
 Retain list and gallery views, search, filters, paging, multi-selection,
 multi-file inspection, cancelled-item visibility, progress, cancellation,
-diagnostics and maintenance. Show actions from actual capabilities and receipts:
+diagnostics and maintenance.
+
+The page heading is the category at the 22 px page size (20 px in a narrow
+header) with a muted count note beside it: `236 items`, or `12 of 168 items`
+while a search or filter narrows the category. The note counts stored files,
+never grouped rows or live activity without a file; it is blank while a query
+loads and falls back to `12 matching items` when the category total is unknown.
+The sidebar shows each category's unfiltered total; Failed uploads uses the error
+colour and hides a zero. Both come from one `history.counts` request per change of
+the page's files, never per progress update.
+
+Rows sit in day sections: a 16 px semibold heading in sentence case (`Today`,
+`Yesterday`, `Saturday, November 7`, with the year only when it is not the
+current one) and a muted count of that day's stored files within the query.
+Every day after the first has a hairline and 12 px of extra space above it. Work
+in progress sorts first under `In progress`; a day that began on the previous
+page says `· continued`. The heading of the day at the top of the viewport stays
+pinned over its rows, takes no clicks, and keyboard movement never leaves the
+current row under it. Failed uploads has no day sections; its time column shows
+the date as well.
+
+A wide row reads, left to right: the thumbnail (with a hairline ring in the dark
+scheme), the name in Medium weight, and one detail line in the order kind · size
+· destination · state. State words are never cut; the destination elides first
+and goes rather than shrink below its first word, then the size and file count
+go. A failure line is body size and names where the upload was going (`Upload to
+Proton Drive failed · Connection interrupted`); it wraps rather than elides.
+Right of the text come the row's labelled recovery action (Retry upload, Retry
+local save, Retry deletion), a right-aligned time column (relative for the last
+hour, else the locale's short time; full timestamp in its tooltip) measured from
+the widest text it can show, and a slot reserved for copy and more. A row with a
+recovery action keeps more visible; hover never moves anything. The keyboard-
+current selected row carries the sidebar's 2 px accent bar. Below 480 px of row
+body the time moves into the detail line and the actions collapse to one menu.
+
+The gallery tile caption is the same three lines everywhere: the name on up to
+two lines, then the detail line with the time at its right. A failed tile gives
+one line to the name and two to the failure, ending with `Details in ⋯` when the
+text cannot fit; a row of tiles grows together only when neither fits. Copy link
+and more sit on the picture's top-right corner over a scrim, a recovery action on
+its lower-left; day sections start new rows of tiles under the same headings.
+
+The pager is one row under the list, a hairline above, grouped at the right 24 px
+inside the list's edge: `Page 2 of 5 · items 51–100 of 236`, Previous and Next
+(Alt+Left and Alt+Right). It is absent on a single page, blank and disabled while
+a page loads, and a deletion that empties the last page steps back to it.
+
+The details pane always has a title row with the file name (or `3 selected
+files`) and a close button; Esc closes it. In the wide list it shows whenever
+details are wanted and something is selected; once closed it stays closed,
+across sessions, until Enter, a double-click or the header's details toggle asks
+for it. The gallery and the compact window open it on request over the current
+selection. With the pane closed and two or more rows selected, the selection bar
+replaces the header's heading and tools: `3 selected` at the page size, a note
+with size and upload states (and an active search), Copy N links, Delete from
+destination…, more and Clear selection, then the view switch and details toggle;
+in a narrow header Delete folds into more first and Copy links last.
+
+Active filters are 36 px chips under the header, aligned with the heading, at
+most two lines: each opens its filter's own editor and has its own remove
+button; `+N more` opens the panel of every filter; Clear filters ends the row.
+Filter opens the add-filter menu directly. The view switch is the list and grid
+glyphs in the shared segmented control; Manage holds history maintenance and
+becomes `⋯` in a narrow header, as does Filter's word when the heading would
+otherwise need its own row.
+
+Show actions from actual capabilities and receipts:
 Copy link requires a valid stored link; editing requires supported retained
 image bytes; retry requires the corresponding retained artifact. Remote deletion
 and clearing local history are separate operations with exact effects. An empty

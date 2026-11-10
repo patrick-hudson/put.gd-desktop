@@ -61,6 +61,20 @@ The checker and catalog retain stable synthetic inputs for inspection:
   frames 150 ms apart are identical. `reveal()` scrolls from the top once
   pending layout settles.
 
+## History states
+
+The stock catalog fixture has eight History items. A second seeded history of 68
+images over six days, with two failed uploads, renders the states that need
+several pages and days: `history-pages` (heading with its count, sidebar counts,
+day sections and the pager), `history-pinned-day` (a pinned day heading),
+`history-details-closed` (the pane closed with a selection), `history-selection-header`
+(the selection bar in the header), `history-page-continued` (page 2 starting
+with a `· continued` day), `history-filter-chips` and `history-filter-chips-more`
+(one line, and two lines with `+N more` in the 1060 × 680 window) and
+`history-gallery-days` (gallery captions and day sections). `history-in-progress`
+shows the `In progress` section; `47-history-filtering` the blank count while a
+query loads and `43-history-no-matches` the `0 of N items` note.
+
 ## Reviewing a UI change
 
 Inspect the published `ui-catalog` artifact when changing the UI. Moved,
