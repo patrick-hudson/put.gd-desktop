@@ -255,8 +255,10 @@ public:
   // just committed has fired: the compositor has rendered the empty frame.
   window->installEventFilter(this);window->requestUpdate();
   // A frame callback comes within a frame or two on a screen that is on and
-  // unlocked. None for a whole second means this surface is not being shown.
-  QTimer::singleShot(1000,this,[this]{unmap();});
+  // unlocked, and late on a compositor that is busy: a software-rendered guest
+  // starting a browser took over a second once. None for three seconds means
+  // this surface is not being shown.
+  QTimer::singleShot(3000,this,[this]{unmap();});
  }
 protected:
  bool eventFilter(QObject* watched,QEvent* event)override{
