@@ -30,6 +30,8 @@ public:
     // message? (why, for details) and selection: "helper"|"shell"|"none" (who
     // selects the region here), and before its first probe has answered the
     // reasons scroll_not_probed, scroll_probe_pending and scroll_probe_failed.
+    // These probe states are transient: refresh before deciding availability
+    // and do not present them as a permanent desktop failure.
     virtual QJsonObject capabilities() const = 0;
     // Makes capabilities() current (a lazy helper probe); never starts capture.
     virtual void refreshCapabilities(std::function<void()> done) { done(); }
