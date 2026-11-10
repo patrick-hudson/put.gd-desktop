@@ -1064,6 +1064,8 @@
         "lowSpeedTimeSeconds"
       ],
       "properties": {
+        "linkMode": {"enum": ["public", "presigned"], "default": "public"},
+        "linkValidityDays": {"type": "integer", "minimum": 1, "maximum": 7, "default": 7},
         "bucket": {
           "type": "string",
           "maxLength": 63,

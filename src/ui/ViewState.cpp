@@ -6,7 +6,7 @@
 #include <cmath>
 namespace putgd {
 namespace {
-const QStringList s3Keys{"bucket","region","endpoint","objectPrefix","storageClass","aclMode","publicUrlBase","addressing","connectTimeoutMs","requestTimeoutMs","lowSpeedBytesPerSecond","lowSpeedTimeSeconds"};
+const QStringList s3Keys{"linkMode","linkValidityDays","bucket","region","endpoint","objectPrefix","storageClass","aclMode","publicUrlBase","addressing","connectTimeoutMs","requestTimeoutMs","lowSpeedBytesPerSecond","lowSpeedTimeSeconds"};
 const QStringList protonKeys{"accountRootUid","folderUid","folderName","shareByDefault","linkExpirationDays","sharePasswordReference","requestTimeoutMs"};
 const QStringList b2Keys{"apiUrl","bucket","objectPrefix","linkMode","linkValidityDays","publicUrlBase","connectTimeoutMs","requestTimeoutMs"};
 const QStringList& providerKeys(const QString& provider){return provider=="s3"?s3Keys:provider=="backblaze-b2"?b2Keys:protonKeys;}

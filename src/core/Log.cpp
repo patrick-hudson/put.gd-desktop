@@ -71,7 +71,7 @@ QString redactSecretShapes(QString text) {
 }
 bool sensitiveKey(const QString& key) {
  static const QStringList keys{"password","passphrase","passwd","secret","secretkey","secretaccesskey","awssecretaccesskey","accesskey","accesskeyid",
-  "awsaccesskeyid","sessiontoken","awssessiontoken","securitytoken","token","accesstoken","refreshtoken","authorization","credentials","cookie",
+  "awsaccesskeyid","sessiontoken","awssessiontoken","securitytoken","token","accesstoken","refreshtoken","authorization","credentials","cookie","xamzsignature","xamzcredential","xamzsecuritytoken",
   "sharepassword","privatekey","clipboard","clipboardtext","text","content","contents","payload"};
  auto normalized=key.toLower();normalized.remove('_');normalized.remove('-');
  return keys.contains(normalized);

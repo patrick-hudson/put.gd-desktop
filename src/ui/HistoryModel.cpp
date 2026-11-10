@@ -46,7 +46,7 @@ QString HistoryModel::dayLabel(int row)const{
 HistoryModel::RowFacts HistoryModel::rowFacts(const QJsonObject& r){
  RowFacts facts;facts.active=active(r);facts.failed=failed(r);
  if(facts.active)return facts;
- if(r["remoteStatus"]=="failed"&&!r["deleteOperationId"].toString().isEmpty())facts.primary="Retry deletion";else if(copyLocalResult(r))facts.primary="Copy result";else if(retryUpload(r))facts.primary="Retry upload";else if(retryLocalSave(r))facts.primary="Retry local save";else if(r["linkAvailable"].toBool())facts.primary="Copy link";
+ if(r["remoteStatus"]=="failed"&&!r["deleteOperationId"].toString().isEmpty())facts.primary="Retry deletion";else if(copyLocalResult(r))facts.primary="Copy result";else if(retryUpload(r))facts.primary="Retry upload";else if(retryLocalSave(r))facts.primary="Retry local save";else if(r["linkAvailable"].toBool()||r["linkRefreshable"].toBool())facts.primary="Copy link";
  return facts;
 }
 QString HistoryModel::fileSize(qint64 bytes){return ByteSize::fileSummary(bytes);}

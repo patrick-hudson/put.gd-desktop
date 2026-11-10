@@ -86,6 +86,10 @@ public:
   lanes_={};trace_={};
   UploadResult value;if(error||!s3wire::decode(result,value))value={noEffects(error)?"failed":"unknown",{},error?error:uncertain()};callback(std::move(value));
  }
+ void refreshLink(const StorageReceipt& receipt,std::function<void(StatResult)> callback)override{
+  QJsonObject result;auto error=run("refreshLink",receipt.toJson(),receipt.destination,{}, {},result);
+  StatResult value;if(error||!s3wire::decode(result,value))value={"unknown",{},error?error:uncertain()};callback(std::move(value));
+ }
  void stat(const StorageReceipt& receipt,std::function<void(StatResult)> callback)override{
   QJsonObject result;auto error=run("stat",receipt.toJson(),receipt.destination,{}, {},result);
   StatResult value;if(error||!s3wire::decode(result,value))value={"unknown",{},error?error:uncertain()};callback(std::move(value));
