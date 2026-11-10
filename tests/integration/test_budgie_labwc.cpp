@@ -1,3 +1,4 @@
+#include <QScopeGuard>
 // The Budgie adapter and the shared Wayland capture code against a real
 // headless labwc (#1275): WLR_BACKENDS=headless WLR_RENDERER=pixman, two
 // outputs, and a known-colour client. Headless results support the desktop
@@ -84,6 +85,24 @@ private slots:
  void cleanupTestCase(){
   if(fixture_.state()!=QProcess::NotRunning){fixture_.terminate();if(!fixture_.waitForFinished(3000))fixture_.kill();}
   if(labwc_.state()!=QProcess::NotRunning){labwc_.terminate();if(!labwc_.waitForFinished(3000))labwc_.kill();}
+ }
+ void lockedDesktopCaptureIsRefused(){
+  BudgieSourceAdapter adapter;
+  QVERIFY(waitFor([&]{return adapter.capabilities()["capture"].toObject()["desktop"].toObject()["available"].toBool();}));
+  QProcess locker;locker.start(QCoreApplication::applicationDirPath()+"/putgd-session-lock-fixture",{});
+  auto cleanup=qScopeGuard([&]{if(locker.state()!=QProcess::NotRunning){locker.terminate();locker.waitForFinished(3000);}});
+  QVERIFY(locker.waitForStarted(3000));
+  QVERIFY(waitFor([&]{return locker.readAllStandardOutput().contains("locked");},5000));
+  PayloadResult result;bool done=false;
+  adapter.acquire("desktop",ResourceLimits{},[&](PayloadResult value){result=std::move(value);done=true;});
+  QVERIFY(waitFor([&]{return done;},5000));
+  QCOMPARE(result.error.code,QString("session_locked"));
+  QVERIFY(result.payload.image.isNull());
+  locker.terminate();QVERIFY(locker.waitForFinished(3000));QCOMPARE(locker.exitCode(),0);
+  done=false;
+  adapter.acquire("desktop",ResourceLimits{},[&](PayloadResult value){result=std::move(value);done=true;});
+  QVERIFY(waitFor([&]{return done;},5000));
+  QVERIFY2(!result.error,qPrintable(result.error.message));QVERIFY(!result.payload.image.isNull());
  }
  void protocolsAdvertised(){
   ImageCopyCapture capture;QVERIFY(waitFor([&]{return capture.outputsAvailable();}));

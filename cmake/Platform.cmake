@@ -124,9 +124,14 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   add_custom_command(OUTPUT "${protocol_dir}/xdg-shell-protocol.c"
     COMMAND "${PUTGD_WAYLAND_SCANNER}" private-code "${xdg_shell_protocol}" "${protocol_dir}/xdg-shell-protocol.c"
     DEPENDS "${xdg_shell_protocol}" VERBATIM)
+  # Shared visibility probes and Hyprland's catcher use the same layer protocol.
+  list(FILTER putgd_hyprland_protocol_sources EXCLUDE REGEX "wlr-layer-shell")
+  target_sources(putgd_wayland PRIVATE src/platform/wayland/SurfaceVisibility.cpp
+    "${protocol_dir}/wlr-layer-shell-unstable-v1-client-protocol.h"
+    "${protocol_dir}/wlr-layer-shell-unstable-v1-protocol.c" "${protocol_dir}/xdg-shell-protocol.c")
   add_library(putgd_hyprland STATIC src/platform/hyprland/HyprlandIpc.cpp src/platform/hyprland/HyprlandShortcuts.cpp
     src/platform/hyprland/HyprlandSourceAdapter.cpp src/platform/hyprland/HyprlandWayland.cpp src/platform/hyprland/PressCatcher.cpp src/platform/hyprland/ToplevelMapping.cpp
-    ${putgd_hyprland_protocol_sources} "${protocol_dir}/xdg-shell-protocol.c" "${protocol_dir}/ext-foreign-toplevel-list-v1-client-protocol.h")
+    ${putgd_hyprland_protocol_sources} "${protocol_dir}/ext-foreign-toplevel-list-v1-client-protocol.h")
   target_include_directories(putgd_hyprland PRIVATE "${protocol_dir}")
   target_link_libraries(putgd_hyprland PUBLIC putgd_wayland PRIVATE PkgConfig::PUTGD_WAYLAND PkgConfig::PUTGD_XKBCOMMON Threads::Threads)
   if(Qt6_VERSION VERSION_GREATER_EQUAL "6.5")

@@ -1,9 +1,11 @@
 #include "BudgieSourceAdapter.h"
 #include "platform/wayland/CaptureCompose.h"
+#include "platform/wayland/SurfaceVisibility.h"
 #include <QCoreApplication>
 #include <QJsonArray>
 namespace putgd {
 namespace {
+Error visibilityError(){return {"session_locked","The screen is locked, blanked, or cannot present a capture visibility probe",{}};}
 const QString cleanupMessage="Region helper exited before confirming surface cleanup; restart put.gd before capturing again";
 struct WindowSnapshot {QImage image;Error error;bool done=false;std::function<void(PayloadResult)> accepted;ResourceLimits acceptedLimits;};
 PayloadResult imageResult(const QImage& image,const ResourceLimits& limits,Error error={}){
@@ -68,11 +70,15 @@ SourceAdapter::PreparedAcquisition BudgieSourceAdapter::prepareAcquisition(const
    else{snapshot->error=std::move(error);if(!snapshot->error)snapshot->image=std::move(image);}
    if(snapshot->accepted){auto cb=std::move(snapshot->accepted);cb(imageResult(snapshot->image,snapshot->acceptedLimits,snapshot->error));}
   };
-  capture_.freezeActive([guard,complete,limits](ImageCopyCapture::Toplevel target,Error error){
+  capture_.freezeActive([guard,complete,limits,generation](ImageCopyCapture::Toplevel target,Error error){
    if(error){if(error.code=="capture_target"&&error.message.startsWith("No window"))error={"target_unavailable","Focus an external window and invoke the window shortcut or CLI",error.details};complete({},std::move(error));return;}
    if(!guard){complete({},{"cancelled","Window acquisition cancelled",{}});return;}
    if(ownAppId(target.appId)){complete({},{"target_unavailable","Focus an external window and invoke the window shortcut or CLI",{}});return;}
-   guard->capture_.captureToplevel(target.identifier,limits,complete);
+   querySurfaceVisible(guard,[guard,complete,limits,generation,id=target.identifier](bool visible){
+    if(!guard||guard->generation_!=generation){complete({},{"cancelled","Window acquisition cancelled",{}});return;}
+    if(!visible){complete({},visibilityError());return;}
+    guard->capture_.captureToplevel(id,limits,complete);
+   });
   });
   return [guard,snapshot,generation](const ResourceLimits& limits,std::function<void(PayloadResult)> cb){if(!guard||guard->generation_!=generation){cb({{},{"cancelled","Window acquisition cancelled",{}}});return;}if(snapshot->done)cb(imageResult(snapshot->image,limits,snapshot->error));else{snapshot->acceptedLimits=limits;snapshot->accepted=std::move(cb);}};
  }
@@ -153,6 +159,14 @@ void BudgieSourceAdapter::selectFrozen(QList<CaptureFrame> frozen,quint64 revisi
  });
 }
 void BudgieSourceAdapter::captureFrames(QList<CaptureFrame> frames,QList<CaptureFrame> frozen,quint64 revision,ResourceLimits limits,std::function<void(QList<CaptureFrame>,Error)> cb){
+ QPointer<BudgieSourceAdapter> guard(this);const auto generation=generation_;
+ querySurfaceVisible(this,[guard,generation,frames=std::move(frames),frozen=std::move(frozen),revision,limits,cb=std::move(cb)](bool visible)mutable{
+  if(!guard||guard->generation_!=generation){cb({},{"cancelled","Desktop capture cancelled",{}});return;}
+  if(!visible){cb({},visibilityError());return;}
+  guard->captureVisibleFrames(std::move(frames),std::move(frozen),revision,limits,std::move(cb));
+ });
+}
+void BudgieSourceAdapter::captureVisibleFrames(QList<CaptureFrame> frames,QList<CaptureFrame> frozen,quint64 revision,ResourceLimits limits,std::function<void(QList<CaptureFrame>,Error)> cb){
  // frames: the outputs to read; frozen: the whole layout, which must not change.
  struct Batch {QList<CaptureFrame> frames,frozenLayout;qint64 bytes=0,pixels=0;int index=0;std::function<void(QList<CaptureFrame>,Error)> reply;std::function<void()> next;};
  auto batch=std::make_shared<Batch>();batch->frames=std::move(frames);batch->frozenLayout=std::move(frozen);batch->reply=std::move(cb);QPointer<BudgieSourceAdapter> guard(this);const auto generation=generation_;std::weak_ptr<Batch> weak=batch;
