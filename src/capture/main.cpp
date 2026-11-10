@@ -3,6 +3,7 @@
 #include "ipc/CaptureControl.h"
 #include "platform/x11/CaptureCursorPolicy.h"
 #include <QLibrary>
+#include <QLibraryInfo>
 #include "platform/x11/CaptureArtifactLease.h"
 #include "ipc/StdioDevice.h"
 #include "ui/Theme.h"
@@ -117,10 +118,9 @@ int main(int argc,char** argv){
  const auto build=QJsonDocument::fromJson(putgd::buildManifestJson()).object();QString nonce,generation,path,device,inode;QJsonObject frozen;putgd::ResourceLimits limits;
  putgd::CaptureArtifactLease artifact;putgd::X11Target target;
  quint32 preparedCursor=0;bool cacheCursor=false,observeCursor=false;
- // Qt 6.11 asks QAccessible::isActive() from QWindow's destructor, which
- // creates the AT-SPI bridge even for an unmapped window. Keep the cursor
- // warm-up alive through bootstrap so its destruction cannot start the bridge
- // ahead of selection. It owns no visible surface or input grab.
+ // Qt 6.11+ calls QAccessible::isActive() from QWindow destruction. Only
+ // those runtimes need a warm-up kept alive past bootstrap; older runtimes
+ // retain the original stack-window lifetime and startup path.
  std::unique_ptr<QWindow> cursorWarmup;
  bool bootstrapped=false,ready=false,begun=false,settled=false,resultSent=false,cancelled=false;
  bool previewed=false,selectionStarted=false,acquisitionQueued=false,acquisitionStarted=false;quint32 previewCursor=0;
@@ -215,14 +215,21 @@ int main(int argc,char** argv){
    if(!error&&target.action=="region"&&!preparedCursor&&seed.isEmpty()){
     // Populate Qt's native themed-cursor cache without mapping a window,
     // acquiring input or reading desktop pixels. This can overlap journal IO.
-    cursorWarmup=std::make_unique<QWindow>();auto& cursor=*cursorWarmup;cursor.setSurfaceType(QSurface::RasterSurface);
-    QSurfaceFormat format;format.setAlphaBufferSize(8);cursor.setFormat(format);
-    cursor.setFlags(Qt::FramelessWindowHint|Qt::WindowDoesNotAcceptFocus|Qt::WindowTransparentForInput);
-    // NativeRegionOverlay embeds its cursor under a fromWinId() wrapper.
-    // Qt selects that wrapper's screen from a default QWindow geometry, and
-    // cursor caches are per screen. Use the same default screen selection here;
-    // warming the first RandR output can warm an unrelated cache instead.
-    cursor.create();cursor.setCursor(Qt::CrossCursor);
+    const auto warmCursor=[](QWindow& cursor){
+     cursor.setSurfaceType(QSurface::RasterSurface);
+     QSurfaceFormat format;format.setAlphaBufferSize(8);cursor.setFormat(format);
+     cursor.setFlags(Qt::FramelessWindowHint|Qt::WindowDoesNotAcceptFocus|Qt::WindowTransparentForInput);
+     // NativeRegionOverlay embeds its cursor under a fromWinId() wrapper.
+     // Qt selects that wrapper's screen from a default QWindow geometry, and
+     // cursor caches are per screen. Use the same default screen selection here;
+     // warming the first RandR output can warm an unrelated cache instead.
+     cursor.create();cursor.setCursor(Qt::CrossCursor);
+    };
+    // Select by the loaded Qt, not the build headers: an older native package
+    // may run on a newer library. Preserve nightly's destruction on Qt <6.11.
+    if(QLibraryInfo::version()>=QVersionNumber(6,11,0)){
+     cursorWarmup=std::make_unique<QWindow>();warmCursor(*cursorWarmup);
+    }else{QWindow cursor;warmCursor(cursor);}
    }
    ready=true;auto reply=envelope();reply["build"]=build;reply["cursor"]=seed;control.send("ready",reply);
    if(error){if(!error.details.contains("stage"))error.details["stage"]="prepare";finish(error);return;}
