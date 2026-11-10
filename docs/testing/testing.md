@@ -266,7 +266,10 @@ was once recorded as an upload; the rule produces it on every run, where load pr
 it in about one run in forty. `lostAndLateRepliesAreUnknown` checks that an upload
 with no body is sent once when its reply is lost, is not failed by the connect timeout
 while its reply is slow, is unknown when no reply comes, and is a plain failure when
-the server is absent. Run the suite under contention with the builder stress lane,
+the server is absent; `anUnreachableServerFailsABodilessUploadWithinTheConnectTimeout`
+that the connect timeout holds for it against an address that never answers.
+`aReplyCompressedRegardlessIsSaidToBe` covers a server that compresses although asked
+not to. Run the suite under contention with the builder stress lane,
 `tools/ci/stress_suite.py`, after a change to the worker's reply handling.
 
 Two things these suites cannot show on one machine, because the scripted receiver is

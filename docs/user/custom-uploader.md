@@ -196,6 +196,12 @@ changes three things compared with S3:
   chunked reply declares no length; there put.gd goes by the connection, and one that
   ended without its last chunk is incomplete too. A reply with neither a length nor
   chunks ends when the connection does, and cannot be told from one that was cut.
+- **A server that compresses its reply regardless.** put.gd does not unpack a reply.
+  One that arrives compressed although it was asked for as it is still counts as whole
+  or cut by its length on the wire, and a link in a reply header is used as it is. A
+  link that was to be read from the compressed body cannot be: the upload is an unknown
+  outcome (`http_response_unreadable`), and the message says that the server compressed
+  its reply. Turn compression off for the upload address on the server.
 - **Deletion works by the deletion URL the upload returned.** Without one, History
   offers no deletion and says why.
 
@@ -301,10 +307,12 @@ otherwise send a request again by itself when a connection closes before the rep
 with a body it cannot rewind, it reports an error instead, and the upload is unknown
 rather than silently repeated. An upload that has no body (**Body** None, its text in
 the address) is sent with an empty one for the same reason, so such a request carries
-`Content-Length: 0`. Qt reports nothing about sending a request like that, so it counts
-as sent whenever that cannot be ruled out, and over plain HTTP an unreachable server
-fails after Qt's own connect timeout, not the destination's. HTTP/1.1 is used, so "was
-it sent" has one answer.
+`Content-Length: 0`. Qt reports nothing about connecting or sending for a request like
+that over plain HTTP. So that the destination's **Connect timeout** still holds, the
+worker first asks the server for a connection of its own within that timeout: a server
+that gives none fails the upload as `http_connect_failed`, and nothing was sent. A
+server that gives one is sent the request, which then counts as sent, and from there
+only the request timeout applies. HTTP/1.1 is used, so "was it sent" has one answer.
 
 Whether a reply arrived whole is not left to what Qt reports either. When a connection
 ends under a reply, Qt reports a closed connection or, when it was still finishing the
