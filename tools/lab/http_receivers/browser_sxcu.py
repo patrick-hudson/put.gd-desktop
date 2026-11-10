@@ -159,6 +159,10 @@ def main():
         browser = playwright.chromium.launch()
         for name, base in receivers.items():
             context = browser.new_context(accept_downloads=True, viewport={'width': 1400, 'height': 1100})
+            # A refresh that fails must not leave the previous file to be mistaken for a new one.
+            previous = os.path.join(STATE, 'sxcu', name + '.sxcu')
+            if os.path.exists(previous):
+                os.remove(previous)
             try:
                 path = {'zipline': zipline, 'chibisafe': chibisafe, 'xbackbone': xbackbone}[name](context, base)
                 print(json.dumps({'receiver': name, 'sxcu': os.path.basename(path), 'fields': describe(path)}))

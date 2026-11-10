@@ -571,6 +571,8 @@ class CustomUploaderResidentTests(unittest.IsolatedAsyncioTestCase):
             self.fail('PUTGD_CLI and PUTGD_APP must select the built production putgd-cli and putgd')
         repository = Path(__file__).resolve().parents[2]
         self.directory = tempfile.TemporaryDirectory(prefix='putgd-mcp-')
+        # Registered before anything starts: a cleanup also runs when the rest of this setup fails.
+        self.addAsyncCleanup(self.stop_processes)
         self.root = Path(self.directory.name)
         runtime = self.root / 'rt'
         runtime.mkdir(mode=0o700)
@@ -590,7 +592,7 @@ class CustomUploaderResidentTests(unittest.IsolatedAsyncioTestCase):
             await asyncio.sleep(.05)
         self.assertTrue(Path(self.socket).exists(), 'Private resident did not start')
 
-    async def asyncTearDown(self):
+    async def stop_processes(self):
         for process in (getattr(self, 'resident', None), getattr(self, 'receiver', None)):
             if process is not None and process.poll() is None:
                 process.terminate()

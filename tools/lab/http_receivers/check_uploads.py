@@ -8,18 +8,23 @@ deletion URL, and finally check that no upload token is in any file under the re
 configuration, data and state folders.
 
   python3 check_uploads.py --cli /usr/bin/putgd-cli --sxcu-dir ~/putgd-lab/sxcu \\
-      [--socket PATH] [--credential-mode session|keychain] [--keep]
+      [--socket PATH] [--credential-mode session|keychain] [--allow-insecure-http] [--keep]
 
 The resident is the one putgd-cli reaches (the desktop's own, or a private one named by
---socket and the XDG_* variables of this process). Session mode stores nothing in the
-desktop keyring. Imported destinations are removed again unless --keep is given. The
-report on stdout has names, states and links, never a token. Exit 0 when every receiver
-passed.
+--socket and the XDG_* variables of this process). The lab receivers speak plain HTTP on
+the lab network: --allow-insecure-http says so for each imported destination, and
+without it such a file is imported but its uploads are refused. Session mode stores
+nothing in the desktop keyring; keychain mode leaves one keyring entry per destination
+(putgd/http/rx-<name>), as put.gd does when a destination is removed in Settings.
+Destinations this run imported are removed again unless --keep is given, also when the
+run stops early. The report on stdout has names, states and links, never a token. Exit 0
+when every receiver passed.
 """
 import argparse
 import json
 import os
 from pathlib import Path
+import re
 import struct
 import subprocess
 import sys
@@ -69,17 +74,26 @@ def fetch(link):
 
 
 def tokens(path):
-    """Every header, parameter and argument value of a .sxcu that is not a bare placeholder."""
-    document = json.loads(Path(path).read_text())
+    """Every value of a .sxcu that put.gd stores as a secret: header, parameter and argument
+    values that are not a bare placeholder, the Data body, and key-like runs in its addresses."""
+    document = {key.lower(): value for key, value in json.loads(Path(path).read_text()).items()}
     found = []
-    for section in ('Headers', 'Parameters', 'Arguments'):
+    for section in ('headers', 'parameters', 'arguments'):
         for value in (document.get(section) or {}).values():
             if isinstance(value, str) and len(value) >= 8 and value.strip().lower() not in ('{filename}', '{input}', '$filename$', '$input$'):
                 found.append(value)
+    if isinstance(document.get('data'), str) and len(document['data']) >= 8:
+        found.append(document['data'])
+    for field in ('requesturl', 'deletionurl'):
+        address = document.get(field) if isinstance(document.get(field), str) else ''
+        path_start = address.find('/', address.find('://') + 3) if '://' in address else 0
+        for run in re.findall(r'[A-Za-z0-9_-]{20,}', address[max(path_start, 0):]):
+            if re.search(r'[0-9]', run) and re.search(r'[A-Za-z]', run):
+                found.append(run)
     return found
 
 
-def check(resident, sxcu, mode, payload, keep):
+def check(resident, sxcu, mode, payload, keep, allow_http, imported_profiles):
     name = Path(sxcu).stem
     profile = 'rx-' + name
     report = {'receiver': name, 'profileId': profile}
@@ -87,11 +101,15 @@ def check(resident, sxcu, mode, payload, keep):
     if any(entry['id'] == profile for entry in document['profiles']):
         report['error'] = 'a destination named %s already exists; remove it first' % profile
         return report
-    imported = resident.call('settings.importUploader', {'path': str(sxcu), 'expectedRevision': resident.revision(), 'profileId': profile,
-                                                         'credentialMode': mode, 'allowInsecureHttp': True})
+    request = {'path': str(sxcu), 'expectedRevision': resident.revision(), 'profileId': profile, 'credentialMode': mode}
+    if allow_http:
+        request['allowInsecureHttp'] = True
+    imported = resident.call('settings.importUploader', request)
     if not imported['ok']:
         report['error'] = 'import: ' + imported['error']['code'] + ': ' + imported['error']['message']
         return report
+    # Only what this run created is removed afterwards.
+    imported_profiles.append(profile)
     report['label'], report['storedValues'], report['notes'] = imported['result']['label'], imported['result']['storedValues'], imported['result']['notes']
     settings = next(entry for entry in resident.call('settings.get')['result']['document']['profiles'] if entry['id'] == profile)['settings']
     report['deletionUrl'], report['accepts'] = settings['deletionUrl'], settings['accepts']
@@ -132,10 +150,13 @@ def check(resident, sxcu, mode, payload, keep):
 
 
 def remove_profiles(resident, profiles):
+    """Removes the named destinations; returns what went wrong, or None."""
     document = resident.call('settings.get')['result']['document']
     kept = [entry for entry in document['profiles'] if entry['id'] not in profiles]
-    if len(kept) != len(document['profiles']):
-        resident.call('settings.patch', {'patch': {'profiles': kept}, 'expectedRevision': resident.revision()})
+    if len(kept) == len(document['profiles']):
+        return None
+    patched = resident.call('settings.patch', {'patch': {'profiles': kept}, 'expectedRevision': resident.revision()})
+    return None if patched['ok'] else patched['error']['code'] + ': ' + patched['error']['message']
 
 
 def files_with(root, needles):
@@ -157,6 +178,8 @@ def main():
     parser.add_argument('--sxcu-dir', required=True)
     parser.add_argument('--socket')
     parser.add_argument('--credential-mode', choices=('session', 'keychain'), default='session')
+    parser.add_argument('--allow-insecure-http', action='store_true',
+                        help='let each imported destination send its file and token over plain HTTP (the lab receivers need it)')
     parser.add_argument('--keep', action='store_true', help='leave the imported destinations and uploads in place')
     options = parser.parse_args()
     resident = Resident(options.cli, options.socket)
@@ -164,23 +187,35 @@ def main():
     if not files:
         parser.error('no .sxcu files in ' + options.sxcu_dir)
     secrets = [value for path in files for value in tokens(path)]
-    with tempfile.TemporaryDirectory(prefix='putgd-rx-') as temporary:
-        payload = Path(temporary) / 'putgd-receiver-check.png'
-        payload.write_bytes(synthetic_png())
-        reports = [check(resident, path, options.credential_mode, payload, options.keep) for path in files]
-    # A diagnostics package is made from the same resident; it is scanned with the rest.
-    locations = resident.call('diagnostics')['result'].get('locations', {})
-    roots = [entry['path'] for entry in locations.values() if isinstance(entry, dict) and entry.get('path')]
-    state = os.environ.get('XDG_STATE_HOME') or str(Path.home() / '.local/state')
-    roots.append(str(Path(state) / 'putgd'))
-    with tempfile.TemporaryDirectory(prefix='putgd-rx-diag-') as temporary:
-        package = resident.call('diagnostics.bundle', {'output': str(Path(temporary) / 'package.zip'), 'includeNames': True})
-        leaked = files_with(temporary, secrets) + [path for root in roots for path in files_with(root, secrets)]
-        packaged = package['ok']
-    if not options.keep:
-        remove_profiles(resident, {report['profileId'] for report in reports})
+    imported, reports, roots, leaked, packaged, cleanup = [], [], [], [], False, None
+    try:
+        with tempfile.TemporaryDirectory(prefix='putgd-rx-') as temporary:
+            payload = Path(temporary) / 'putgd-receiver-check.png'
+            payload.write_bytes(synthetic_png())
+            for path in files:
+                reports.append(check(resident, path, options.credential_mode, payload, options.keep, options.allow_insecure_http, imported))
+        # A diagnostics package is made from the same resident; it is scanned with the rest.
+        locations = resident.call('diagnostics')['result'].get('locations', {})
+        roots = [entry['path'] for entry in locations.values() if isinstance(entry, dict) and entry.get('path')]
+        state = os.environ.get('XDG_STATE_HOME') or str(Path.home() / '.local/state')
+        roots.append(str(Path(state) / 'putgd'))
+        with tempfile.TemporaryDirectory(prefix='putgd-rx-diag-') as temporary:
+            package = resident.call('diagnostics.bundle', {'output': str(Path(temporary) / 'package.zip'), 'includeNames': True})
+            leaked = files_with(temporary, secrets) + [path for root in roots for path in files_with(root, secrets)]
+            packaged = package['ok']
+    finally:
+        # Also after a timeout or an unreadable reply: nothing this run imported stays behind.
+        if not options.keep and imported:
+            try:
+                cleanup = remove_profiles(resident, set(imported))
+            except (OSError, ValueError, KeyError, subprocess.SubprocessError) as error:
+                cleanup = type(error).__name__
+            if cleanup:
+                print('could not remove the imported destinations: ' + cleanup, file=sys.stderr)
     summary = {'receivers': reports, 'scannedRoots': roots, 'diagnosticsPackageScanned': packaged, 'filesHoldingAToken': leaked,
-               'passed': all(report.get('passed') for report in reports) and not leaked and packaged}
+               'cleanupError': cleanup, 'passed': all(report.get('passed') for report in reports) and not leaked and packaged and not cleanup}
+    if options.credential_mode == 'keychain' and imported:
+        summary['keyringEntriesLeft'] = ['putgd/http/' + profile for profile in imported]
     for value in secrets:
         if value in json.dumps(summary):
             raise SystemExit('refusing to print a report that holds a token')

@@ -17,6 +17,7 @@ copies a .sxcu file to the desktop it is testing. Images are pinned by digest. N
 reachable from outside the address given to --bind; ports 18361-18363.
 """
 import argparse
+import ipaddress
 import json
 import os
 from pathlib import Path
@@ -82,16 +83,44 @@ def base(bind, name):
 
 
 def answers(url, seconds=120):
+    """The receiver's HTTP status once it answers for itself; its last 5xx, or 0, at the deadline."""
     deadline = time.monotonic() + seconds
+    last = 0
     while time.monotonic() < deadline:
         try:
             with urllib.request.urlopen(url, timeout=5) as reply:
                 return reply.status
         except urllib.error.HTTPError as error:
-            return error.code
+            # 5xx is a proxy or an app that is still starting: keep waiting.
+            if error.code < 500:
+                return error.code
+            last = error.code
         except OSError:
-            time.sleep(2)
-    return 0
+            pass
+        time.sleep(2)
+    return last
+
+
+def published(name):
+    """The address an existing pod publishes its port on, or '' when that cannot be read."""
+    infra = podman('pod', 'inspect', PODS[name], '--format', '{{.InfraContainerID}}', check=False)
+    for line in (podman('port', infra, check=False) if infra else '').splitlines():
+        # "3000/tcp -> 192.168.68.71:18361"
+        address = line.rpartition('-> ')[2].rpartition(':')[0]
+        if address:
+            return address.strip('[]')
+    return ''
+
+
+def lab_address(text):
+    """--bind as given when it is loopback or a private (lab network) address; exits otherwise."""
+    try:
+        address = ipaddress.ip_address(text)
+    except ValueError:
+        raise SystemExit('--bind takes one IP address of this builder, such as 127.0.0.1 or its lab-network address')
+    if address.is_unspecified or not (address.is_loopback or address.is_private):
+        raise SystemExit('--bind %s would publish the receivers and their admin pages beyond the lab network; use 127.0.0.1 or a private address' % text)
+    return text
 
 
 def run(pod, name, image, *options):
@@ -109,6 +138,9 @@ def up(bind):
     for name, (host, inside) in PORTS.items():
         if not exists('pod', PODS[name]):
             podman('pod', 'create', '--name', PODS[name], '-p', '%s:%d:%d' % (bind, host, inside))
+        elif published(name) not in ('', bind):
+            # The .sxcu files would name an address the receiver does not listen on.
+            raise SystemExit('the %s receiver already listens on %s: run "down" first, or use --bind %s' % (name, published(name), published(name)))
     database = generated('zipline.dbpw', 12)
     run(PODS['zipline'], 'putgd-rx-zipline-db', 'postgres', '--env-file',
         environment('zipline-db.env', {'POSTGRES_USER': 'zipline', 'POSTGRES_PASSWORD': database, 'POSTGRES_DB': 'zipline'}),
@@ -178,13 +210,14 @@ def main():
     options = parser.parse_args()
     if options.command != 'down' and not options.bind:
         parser.error('--bind is required')
+    if options.command == 'down':
+        return down(options.purge)
+    bind = lab_address(options.bind)
     if options.command == 'up':
-        return up(options.bind)
+        return up(bind)
     if options.command == 'sxcu':
-        return sxcu(options.bind)
-    if options.command == 'status':
-        return status(options.bind)
-    return down(options.purge)
+        return sxcu(bind)
+    return status(bind)
 
 
 if __name__ == '__main__':
