@@ -405,6 +405,11 @@ tools for that are `tools/lab/cover_player.py` and `tools/lab/record_run.py`
   to the run's private archive and at least half cover colour
   (`delayedCaptures` in the results); with `--frames` a frame of each countdown
   is kept and `countdownPixels` counts what the pill changed at the top centre.
+  A run with `--unplug-at` and more than one recording (formats, rounds,
+  builds) plugs the simulated microphone in again before each later one. A run
+  with `--output-gone-at` is one recording (`--rounds 1`, one format, one
+  build): the private output is not made again, so anything more is refused
+  before the run starts.
 - `record_run.py --click S,X,Y[,BUTTON]` (repeatable) presses a button at a
   desktop pixel S seconds into each recording, as real input through the
   desktop's VNC tile (`--click-vnc HOST:PORT` in a guest: QEMU's VNC on the VM
