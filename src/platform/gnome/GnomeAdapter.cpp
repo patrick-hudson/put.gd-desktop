@@ -237,13 +237,28 @@ void GnomeAdapter::countdown(int seconds,std::function<void(Error)> reply){
   if(countdownId_==id)countdownId_.clear();
   if(!error&&generation!=generation_)error={"cancelled","Capture countdown cancelled",{}};
   if(!error&&(result["version"].toInt()!=gnome::protocolVersion||result["requestId"].toString()!=id))error={"bridge_protocol","GNOME countdown identity is invalid",{}};
-  reply(std::move(error));
+  lockAware(std::move(error),reply);
  },(seconds+15)*1000);
+}
+// The Shell disables its extensions when it locks, and that can beat the
+// extension's own session_locked answer: the request then fails as a helper that
+// went away. On a locked session that is the lock, not a broken helper. logind's
+// hint follows the lock screen's own animation, so the question is asked for up
+// to two seconds before the helper's error stands.
+void GnomeAdapter::lockAware(Error error,std::function<void(Error)> reply,int attempt){
+ if(!error||error.code=="cancelled"||error.code=="session_locked"||stopping_){reply(std::move(error));return;}
+ QTimer::singleShot(500,this,[this,error=std::move(error),reply=std::move(reply),attempt]{
+  querySessionLocked(this,[this,error,reply,attempt](bool locked){
+   if(locked)reply(SourceAdapter::lockedError());else if(attempt<3)lockAware(error,reply,attempt+1);else reply(error);
+  });
+ });
 }
 void GnomeAdapter::sessionLocked(std::function<void(bool)> reply){querySessionLocked(this,std::move(reply));}
 void GnomeAdapter::acquire(const QString& action,const ResourceLimits& limits,std::function<void(PayloadResult)> reply){prepareAcquisition(action)(limits,std::move(reply));}
 void GnomeAdapter::start(const QString& id,const QString& action,const ResourceLimits& limits,std::function<void(PayloadResult)> reply,const QString& outcome,bool screenshotFirst,int delaySeconds,const std::optional<RegionMemory>& repeat){
  if(!prepared_.removeOne(id)){reply({{},{"bridge_protocol","GNOME preparation expired or was cancelled",{}}});return;}
+ // A delayed live region counts down inside Acquire: the same lock question as countdown().
+ if(delaySeconds>0){auto inner=std::move(reply);reply=[this,inner=std::move(inner)](PayloadResult result){if(!result.error){inner(std::move(result));return;}lockAware(std::move(result.error),[inner](Error error){inner({{},std::move(error)});});};}
  auto transfer=std::make_shared<Transfer>();transfer->id=id;transfer->outcome=outcome;transfer->action=action;transfer->delaySeconds=delaySeconds;if(repeat){transfer->area=repeat->area;transfer->layoutKey=repeat->layoutKey;}transfer->screenshotFirst=screenshotFirst;transfer->limits=limits;transfer->reply=std::move(reply);transfer->generation=generation_;transfers_[id]=transfer;
  // Only clipboard imports choose among image types; screen captures are PNG.
  // Listing Qt's readers instantiates every installed image plugin (30 plugins,

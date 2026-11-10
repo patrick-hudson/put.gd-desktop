@@ -68,6 +68,8 @@ private:
  using Reply=std::function<void(Error,QJsonObject)>;
  // Capture version 2: monitor, repeat and the countdown need the packaged extension.
  Error captureVersionError()const;
+ // A helper that drops out of a counting request on a locked session is the lock.
+ void lockAware(Error,std::function<void(Error)>,int attempt=0);
  // Repeat last region (#1363): the rectangle and the extension's layout key of
  // the last region capture, in this process's memory only.
  struct RegionMemory {QJsonArray area;QString layoutKey;};

@@ -896,8 +896,16 @@ export default class PutgdExtension extends Extension {
         this._enabled = false;
         this._trayTooltip?.disable();
         this._trayTooltip = null;
-        for (const id of this._requests.keys())
-            this._drop(id, 'helper_unavailable', 'GNOME extension disabled');
+        // The Shell disables extensions when it locks, sometimes before the
+        // session handler above has run: a counting request then ends on a
+        // locked screen, which is not a helper that broke.
+        const locked = Main.sessionMode.isLocked;
+        for (const [id, request] of [...this._requests]) {
+            if (locked && request.countdown)
+                this._drop(id, 'session_locked', 'The screen was locked when the capture delay ended, so nothing was captured.');
+            else
+                this._drop(id, 'helper_unavailable', 'GNOME extension disabled');
+        }
         this._hideRecordingFrame();
         this._unbind();
         if (this._ownerSignal)

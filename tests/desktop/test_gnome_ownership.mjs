@@ -783,6 +783,18 @@ print('PASS recording bar placement prefers below, above, another monitor, then 
         assert.equal(chrome.length, 0);
         assert.equal((await bridge(extension, 'CountdownAsync', [id(), JSON.stringify({seconds: 4})])).error.code, 'bridge_protocol');
         print('PASS a countdown that ends on a locked screen answers session_locked');
+        // The Shell disables extensions when it locks, and may do so before the
+        // extension's own session handler runs: still the lock, not a broken helper.
+        const disabledByLock = id();
+        const lockedOut = bridge(extension, 'CountdownAsync', [disabledByLock, JSON.stringify({seconds: 10, appearance: {tokens}})]); await flush();
+        assert.equal(chrome.length, 1);
+        // What disable() releases besides the requests.
+        Object.assign(extension, {_bindings: new Map(), _dbus: {emit_signal() {}, unexport() {}}});
+        context.Main.sessionMode.isLocked = true;
+        extension.disable();
+        assert.equal((await lockedOut).error.code, 'session_locked'); assert.equal(chrome.length, 0);
+        context.Main.sessionMode.isLocked = false;
+        print('PASS a lock that disables the extension mid-countdown answers session_locked');
     }
     {
         // A live region: area first, then the countdown, then the pixels.
