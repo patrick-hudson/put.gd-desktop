@@ -21,11 +21,15 @@ Run on the builder that hosts the receivers, from a checkout:
 python3 tools/lab/http_receivers/receivers.py up --bind 192.168.68.71
 python3 tools/lab/http_receivers/receivers.py status --bind 192.168.68.71
 python3 tools/lab/http_receivers/receivers.py sxcu --bind 192.168.68.71     # fetch the files again
-python3 tools/lab/http_receivers/receivers.py down [--purge]
+python3 tools/lab/http_receivers/receivers.py down
 ```
 
+`down --purge` also removes the volumes, the passwords and the `.sxcu` files.
+
 - `--bind` is the one address the receivers listen on: the builder's lab-network
-  address, or `127.0.0.1`. An unspecified address such as `0.0.0.0` and any public
+  address, or `127.0.0.1`. On `127.0.0.1` only a resident on that same builder reaches
+  them; a desktop or VM elsewhere needs the lab-network address. An unspecified address
+  such as `0.0.0.0` and any public
   address are refused, because each receiver has an admin page. Receivers that already
   run on another address are refused too: run `down` first.
 - `up` creates one pod per receiver (`putgd-rx-zipline`, `putgd-rx-chibisafe`,
@@ -36,8 +40,8 @@ python3 tools/lab/http_receivers/receivers.py down [--purge]
 - State is in `~/putgd-lab/http-receivers` (mode 0700): generated admin passwords,
   container env files, and `sxcu/zipline.sxcu`, `sxcu/chibisafe.sxcu`,
   `sxcu/xbackbone.sxcu` (mode 0600). Secrets are in env files, never on a command line.
-- `down` removes the pods and keeps the volumes and files; `down --purge` also removes
-  the volumes, the passwords and the `.sxcu` files, each by name.
+- `down` removes the pods and keeps the volumes and files; `--purge` removes those too,
+  each by name.
 
 The `.sxcu` files hold upload tokens. Copy them to the desktop under test with `scp`,
 into a folder of mode 0700, and do not print them. `d69` runs the owner's own versitygw
@@ -50,9 +54,12 @@ in a folder:
 
 ```sh
 python3 tools/lab/http_receivers/check_uploads.py --cli /usr/bin/putgd-cli \
-    --sxcu-dir ~/putgd-lab/sxcu --allow-insecure-http [--socket PATH] \
-    [--credential-mode session|keychain] [--keep]
+    --sxcu-dir ~/putgd-lab/sxcu --allow-insecure-http
 ```
+
+Options: `--socket PATH` names a private resident's socket, `--credential-mode keychain`
+stores in the desktop keyring instead of the session, and `--keep` leaves the imported
+destinations and uploads in place.
 
 It imports the file with `settings.importUploader`, reads which values are stored, runs
 Test connection, uploads a synthetic PNG and fetches its link, deletes it from History

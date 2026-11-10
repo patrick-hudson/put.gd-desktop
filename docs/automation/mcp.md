@@ -156,7 +156,8 @@ prompt for credentials or issue provider requests.
 After the app build and locked helper setup, run:
 
 ```sh
-PUTGD_CLI="$PWD/build/dev/putgd-cli" uv run --project tools/mcp --locked \
+PUTGD_CLI="$PWD/build/dev/putgd-cli" PUTGD_APP="$PWD/build/dev/putgd" \
+  uv run --project tools/mcp --locked \
   python -m unittest discover -s tests/integration -p test_mcp.py -v
 ```
 
@@ -168,8 +169,8 @@ a slow `recording.stop` (answered after 16 s) outlasting the CLI's ordinary wait
 It does not prove real compositor, GUI, provider network effects, public links or native
 clipboard behavior. The C++ service suites separately verify resident business behavior.
 
-`CustomUploaderResidentTests` in the same file needs `PUTGD_APP` as well, the built
-`putgd`. It starts a private resident (offscreen, its own XDG folders) and the scripted
+`CustomUploaderResidentTests` in the same file is why the command sets `PUTGD_APP`, the
+built `putgd`, as well. It starts a private resident (offscreen, its own XDG folders) and the scripted
 loopback receiver `tests/fixtures/http_uploader_server.py`, then works a custom uploader
 through the helper alone: import a `.sxcu`, read the stored names, Test connection,
 upload, a lost reply and its explicit retry (two copies on the receiver), deletion, and

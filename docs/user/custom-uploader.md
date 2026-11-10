@@ -53,7 +53,10 @@ destination has and where its request goes (scheme and host), never a value, a p
 a reply template's text.
 
 Values under six characters, such as `true` or `json`, are stored as secrets like the
-rest but are not replaced inside addresses.
+rest but are not replaced inside addresses: replacing every `1` or `json` would rewrite
+the address. If a file repeats a value that short in its request URL or deletion URL,
+that text stays in the address and so in `config.json`. Check the addresses of such a
+file before importing it, and move the value to **Other secret values** by hand.
 
 ## Settings
 
@@ -80,7 +83,7 @@ are at most 128 KB, and at most 96 KB in one imported file.
 
 ## Placeholders
 
-Request values (the request URL, row values and the body text) take:
+Request values (the request URL and row values) take:
 
 | Placeholder | Stands for |
 | --- | --- |
@@ -89,6 +92,10 @@ Request values (the request URL, row values and the body text) take:
 | `{random:a\|b\|c}` | One of the choices. |
 | `{base64:text}` | The text in Base64. |
 | `{secret:key}` | A stored value of this destination, by its credential-store name: `headers/<name>`, `parameters/<name>`, `arguments/<name>`, `secrets/<name>` or `data`. This placeholder is put.gd's own. |
+
+The body text is JSON or XML with braces of its own, so only `{filename}` and `{input}`
+are replaced in it, escaped for that format; everything else is sent as written. A body
+that holds a key is stored as one secret value (**Secret** beside Body text).
 
 Reply values (URL, Thumbnail URL, Deletion URL, Error message) take `{filename}`,
 `{random}`, `{base64}` and:
@@ -139,8 +146,11 @@ changes three things compared with S3:
 - **Deletion works by the deletion URL the upload returned.** Without one, History
   offers no deletion and says why.
 
-A request that never reached the server (`http_connect_failed`) or that the server
-refused with a definite status is a plain failure; nothing was stored.
+A request that never reached the server (`http_connect_failed`) stored nothing. A
+definite refusal (401, 403, 413, 429, another 4xx or 5xx) is recorded as a plain
+failure, with the server's message. put.gd takes the server at its word there: a server
+that stores a file and then answers with an error leaves a copy put.gd does not know
+of, so look on the server before retrying if a second copy would matter.
 
 | Reply | Result |
 | --- | --- |

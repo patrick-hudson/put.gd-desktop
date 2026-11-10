@@ -38,7 +38,7 @@ filenames, history URLs, authorization values or credential references.
 | `http_text_only`, `http_type_unsupported` | This uploader does not take that kind of file; choose another destination, or change its body type or **Uploads** |
 | `http_connect_failed`, `http_upload_interrupted` | Nothing was stored; check the address and the network, then retry |
 | `http_authentication_failed` | The server refused the stored values (401/403); enter them again and store them |
-| `http_too_large`, `http_rate_limited`, `http_server_error`, `http_request_refused` | The server refused the upload with that status; nothing was stored. Its own message follows when the destination has an Error message value |
+| `http_too_large`, `http_rate_limited`, `http_server_error`, `http_request_refused` | The server refused the upload with that status, and put.gd records a failure. Its own message follows when the destination has an Error message value. A server that stores a file and then answers with an error leaves a copy put.gd does not know of |
 | `http_redirect_refused` | The server redirected to another host, to plain HTTP, or too often; put.gd did not follow. Set the address it named as the request URL if that is right |
 | `http_outcome_unknown`, `http_response_unreadable` | The upload was sent and may be on the server; put.gd cannot check. Look on the server, or **Retry upload**, which sends the file again and may leave a second copy. For an unreadable reply, fix the URL value under Response first |
 | `http_delete_unsupported` | The upload came back without a deletion URL; delete it on the server |
