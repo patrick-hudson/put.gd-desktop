@@ -78,6 +78,11 @@ such as `session_unavailable` and `config_conflict` retain their original envelo
 | `create_diagnostics_bundle` | optional operation_id, since, include_names, output, preview, notify, upload, profile_id, copy_link → diagnostics.bundle | Saves a redacted diagnostics package (.zip, at most 20 MiB) locally and returns its path. `preview` reports the contents without writing; `notify` shows the saved notification with Show in folder; with upload, also sends it to a working destination and returns its link or `uploadError` ([diagnostics.md](../design/diagnostics.md#uploading-a-package)); waits up to 630 s then |
 | `get_diagnostics_upload_target` | optional profile_id → diagnostics.uploadTarget | Whether a package can upload now, where, and the sharing warning; runs Test connection ([diagnostics.md](../design/diagnostics.md#uploading-a-package)) |
 | `show_diagnostics_package` | absolute path → diagnostics.reveal | Opens the file manager with a saved package selected; without one, the portal's OpenDirectory or `gio open` on its folder; any path `create_diagnostics_bundle` saved in this resident works, whatever its name ([diagnostics.md](../design/diagnostics.md#settings-and-notifications)) |
+| `import_custom_uploader` | absolute path, expected_revision, optional label, profile_id, credential_mode keychain/session, allow_insecure_http → settings.importUploader | Adds a ShareX `.sxcu` file as a Custom uploader (HTTP) destination. The resident reads the file; its values are stored in the chosen mode and the reply has names only ([custom uploader](../user/custom-uploader.md)) |
+| `get_destination_credentials` | profile_id, expected_revision → setup.credentialHint | Which credentials a saved destination has loaded, never a value; for a custom uploader `storedValues` and `missingValues` |
+| `test_destination` | profile_id, expected_revision → setup.testDestination | Starts Test connection and returns its `setupId`. A custom uploader's test uploads a synthetic file with its request, opens the returned link and deletes the file only when the reply carried a deletion URL |
+| `get_setup_job` | id → setup.inspect | A setup job's `kind`, `profileId`, `state`, `error` and `result`; poll it until `state` leaves `running` |
+| `drive_custom_uploader` | action inspect/import/openImport/closeImport/store/test, optional absolute path, profile_id → ui.customUploader | Drives the Custom uploader (HTTP) form in the open Destinations page as a user does: reads the form (names and flags, never a value), imports a `.sxcu` into the window, opens or closes the import dialog, and presses Store and Test |
 | `settings_diagnostics` | action, optional enabled, include_names, folder, operation_id, upload → ui.diagnostics | Drives Settings → Advanced → Diagnostics in the open window: inspect, setDebugLogging, clearLogs, openPackage, setPackage (upload ticks "Also upload and copy a link" once `package.uploadTarget` is available), savePackage, showInFolder, closePackage ([cli.md](cli.md)) |
 | `get_update_status` | → update.status | The daily update check: this build's channel and package, the setting, the channel followed (`channelSource`: a DEB/RPM follows its repository, with the commands that move it in `action.otherChannel`), the last result, the next check and the last error ([updates.md](../design/updates.md)) |
 | `check_for_updates` | → update.check | Checks now, as **Check now** does; nothing is downloaded or installed ([updates.md](../design/updates.md)) |
@@ -154,7 +159,8 @@ prompt for credentials or issue provider requests.
 After the app build and locked helper setup, run:
 
 ```sh
-PUTGD_CLI="$PWD/build/dev/putgd-cli" uv run --project tools/mcp --locked \
+PUTGD_CLI="$PWD/build/dev/putgd-cli" PUTGD_APP="$PWD/build/dev/putgd" \
+  uv run --project tools/mcp --locked \
   python -m unittest discover -s tests/integration -p test_mcp.py -v
 ```
 
@@ -165,6 +171,14 @@ spaces in paths, metadata-only inspection, expected-revision conflict forwarding
 a slow `recording.stop` (answered after 16 s) outlasting the CLI's ordinary wait.
 It does not prove real compositor, GUI, provider network effects, public links or native
 clipboard behavior. The C++ service suites separately verify resident business behavior.
+
+`CustomUploaderResidentTests` in the same file is why the command sets `PUTGD_APP`, the
+built `putgd`, as well. It starts a private resident (offscreen, its own XDG folders) and the scripted
+loopback receiver `tests/fixtures/http_uploader_server.py`, then works a custom uploader
+through the helper alone: import a `.sxcu`, read the stored names, Test connection,
+upload, a lost reply and its explicit retry (two copies on the receiver), deletion, and
+two diagnostics packages. It ends by scanning everything the resident wrote for the
+synthetic token.
 
 The native CLI, graphical lab runner and development-package commands are implemented.
 Use [vm-lab.md](../lab/vm-lab.md) for disposable overlays and native scenarios,

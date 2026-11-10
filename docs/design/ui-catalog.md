@@ -9,6 +9,14 @@ There is no pixel-comparison gate or committed reference-image set. The catalog
 is synthetic: it proves design and widget behaviour, not desktop support
 (see [the visual language](visual-language.md)).
 
+An inventory row for a field carries its `echo` mode, and `sensitive: true` when the
+field is masked or its widget sets the `putgdSensitive` property (a body text kept
+secret, #1361). The surface driver's secret-control gate counts such a row beside the
+controls whose names match its pattern, and compares every capture with
+`tools/lab/surface_driver/secret-states.json`. A change that adds such a control to a
+capture regenerates that pin in the same commit:
+`python3 -m tools.lab.surface_driver.gate write-pin build/dev/ui-catalog/dark`.
+
 ## Running it
 
 ```sh
