@@ -32,6 +32,8 @@ private slots:
  backend->stopEmpty=true;
  auto empty=call("scroll.prepare",{{"rect",QJsonArray{0,0,64,64}}});const auto emptyId=empty.second["id"].toString();QVERIFY(!emptyId.isEmpty());QVERIFY(!call("scroll.start",{{"id",emptyId}}).first);call("scroll.stop",{{"id",emptyId}});QCOMPARE(call("scroll.inspect",{{"id",emptyId}}).second["state"].toString(),QString("cancelled"));{HistoryStore store(operations.databasePath());QVERIFY(store.operation(emptyId).items.isEmpty());}
  ScrollShellFixture shell;operations.scroll().setShell(&shell);auto next=call("scroll.prepare");const auto nextId=next.second["id"].toString();QVERIFY(!nextId.isEmpty());QVERIFY(!call("scroll.select",{{"id",nextId},{"rect",QJsonArray{0,0,64,64}}}).first);QCOMPARE(shell.cancels,1);QVERIFY(!call("scroll.cancel",{{"id",nextId}}).first);QCOMPARE(call("scroll.inspect",{{"id",nextId}}).second["state"].toString(),QString("cancelled"));
+ backend->commands.clear();auto interactive=call("action.invoke",{{"action","scroll"}});const auto interactiveId=interactive.second["id"].toString();QVERIFY(!interactiveId.isEmpty());QVERIFY(!backend->preparedParams["autoStart"].toBool());QCOMPARE(backend->preparedParams["selection"].toString(),QString("shell"));QVERIFY(bool(shell.selection));auto selected=std::exchange(shell.selection,{});selected({},{{"rect",QJsonArray{0,0,64,64}}});QVERIFY(waitFor([&]{return backend->commands.contains("start");}));QCOMPARE(backend->commands,QStringList({"select","overlay","start"}));QVERIFY(!call("scroll.cancel",{{"id",interactiveId}}).first);
+
  }
 };
 QTEST_GUILESS_MAIN(ScrollTest)
