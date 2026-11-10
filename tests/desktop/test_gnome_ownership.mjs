@@ -563,7 +563,7 @@ print('PASS recording bar placement prefers below, above, another monitor, then 
     extension._dbus = {emit_signal() {}};
     let uuid = 0;
     GLib.uuid_string_random ??= () => `00000000-0000-0000-0001-${String(++uuid).padStart(12, '0')}`;
-    for (const action of ['region', 'edit', 'record']) {
+    for (const action of ['region', 'edit', 'record', 'scroll']) {
         const own = menu(':1.60');
         context.Main.panel.menuManager = {activeMenu: own};
         await extension._hotkey(action);
@@ -670,7 +670,7 @@ print('PASS recording bar placement prefers below, above, another monitor, then 
     assert.equal(own.activeExcluded, true);
     assert.deepEqual(own.windows.map(w => [w.identity, w.active]), [['42', false], ['43', false]]);
     globalThis.Config = {PACKAGE_VERSION: '50.0'};
-    extension.metadata = {version: 19};
+    extension.metadata = {version: 22};
     assert.equal((await bridge(extension, 'HelloAsync', [])).recordingVersion, 3);
     print('PASS RecordingWindows lists external windows, marks the focused one and leaves out put.gd\'s own');
 }
@@ -787,7 +787,7 @@ print('PASS recording bar placement prefers below, above, another monitor, then 
     };
     {
         const {extension} = fixture();
-        extension.metadata = {version: 20};
+        extension.metadata = {version: 22};
         assert.equal((await bridge(extension, 'HelloAsync', [])).captureVersion, 2);
     }
     {

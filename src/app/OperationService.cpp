@@ -116,6 +116,13 @@ OperationService::OperationService(QString root,SettingsService& settings,Provid
  };
  host.finish=[this](Operation op){finish(op);};
  host.remember=[this](const QJsonObject& preferences){settings_.patchAsync({{"preferences",preferences}},settings_.revision(),[](Result){});};
+ auto scrollHost=host;
+ scrollHost.accept=[this](Operation& op){return acceptScroll(op);};
+ scrollHost.admit=[this,admit=host.admit](Operation op,ClipboardPayload payload,std::function<void()> released){
+  if(op.action=="edit") {editingId_=op.id;editor_=std::make_shared<EditorSession>();scrollEditorReleases_[op.id]=std::move(released);startEditing(op,active_.value(op.id),std::move(payload));}
+  else admit(op,std::move(payload),std::move(released));
+ };
+ scroll_=std::make_unique<ScrollCaptureService>(root_+"/scroll",std::move(scrollHost),this);
  recording_=std::make_unique<RecordingService>(root_+"/recording",std::move(host),this);
  connect(recording_.get(),&RecordingService::changed,this,[this](const QString& id){emit changed(id);emit observationsChanged();});
  cleanupTimer_.setInterval(cleanupSchedule_.intervalMs);
@@ -166,7 +173,7 @@ OperationService::OperationService(QString root,SettingsService& settings,Provid
  });
 }
 OperationService::~OperationService() {shutdown();}
-void OperationService::shutdown() {if(stopping_)return;stopping_=true;posterCancel_->store(true);cleanupTimer_.stop();if(cleanupStop_)cleanupStop_->store(true);heapReclamationTimer_.stop();imagePageTimer_.stop();observationTimer_.stop();for(auto flag:active_) flag->store(true);{std::lock_guard lock(itemCancelsMutex_);for(const auto& items:itemCancels_)for(const auto& flag:items)flag->store(true);}uploadSlots_.close();if(recording_)recording_->shutdown();if(editor_)editor_->cancel();invalidateCopyEligibility();source_.cancelAcquisition();for(auto* thread:threads_) {thread->wait();delete thread;}threads_.clear();}
+void OperationService::shutdown() {if(stopping_)return;stopping_=true;posterCancel_->store(true);cleanupTimer_.stop();if(cleanupStop_)cleanupStop_->store(true);heapReclamationTimer_.stop();imagePageTimer_.stop();observationTimer_.stop();for(auto flag:active_) flag->store(true);{std::lock_guard lock(itemCancelsMutex_);for(const auto& items:itemCancels_)for(const auto& flag:items)flag->store(true);}uploadSlots_.close();if(scroll_)scroll_->shutdown();if(recording_)recording_->shutdown();if(editor_)editor_->cancel();invalidateCopyEligibility();source_.cancelAcquisition();for(auto* thread:threads_) {thread->wait();delete thread;}threads_.clear();}
 bool OperationService::heapReclamationIdle() const {
  return !stopping_&&threads_.isEmpty()&&queue_.isEmpty()&&running_==0&&active_.isEmpty()&&copies_.isEmpty()&&!currentCopy_&&selectingId_.isEmpty()&&payloadBytes_->load()==0&&!(recording_&&recording_->active());
 }
@@ -269,6 +276,8 @@ void OperationService::invoke(const QString& action,JsonReply reply,const QJsonO
  if(!ready_) {reply(startupError_?startupError_:Error{"initializing","Journal recovery is in progress",{}},{});return;}
  // Screen recording is its own session: the tray opens or raises it, a global
  // shortcut toggles it (prepare, start, stop) so the keyboard can end a recording.
+ if(action=="scroll"||(action=="edit"&&options["source"]=="scroll")){if((action=="scroll"&&!options.isEmpty())||(action=="edit"&&options.size()!=1)){reply({"invalid_request","Invalid scroll action parameters",{}},{});return;}scroll_->invoke(action=="edit",reply);return;}
+ if(scroll_->active()){reply({"scroll_active","A scrolling capture is active",{{"operationId",scroll_->activeId()}}},{});return;}
  if(action==Settings::recordingActionName()) {
   const auto mode=options["mode"].toString("open");
   if((!options.isEmpty()&&!(options.size()==1&&options.contains("mode")))||(mode!="open"&&mode!="toggle")){reply({"invalid_request","The record action takes mode open or toggle",{}},{});return;}
@@ -575,15 +584,25 @@ void OperationService::setCaptureDelayPreference(int seconds) {
  settings_.patchAsync({{"preferences",QJsonObject{{"captureDelaySeconds",seconds}}}},settings_.revision(),[](Result){});
 }
 // Recording shares the editor's exclusivity: one interactive private review at a time.
+Error OperationService::acceptScroll(Operation& op) {
+ if(recording_->active())return {"recording_active","A recording is active",{}};
+ const auto action=op.action;
+ auto e=acceptRecording(op);if(e)return e;
+ op.action=action;const auto route=op.settings.actions.value(action);op.destination={};
+ if(route.destination=="upload"&&!route.profileId.isEmpty()){const auto profile=op.settings.profiles.value(route.profileId);op.destination={profile["provider"].toString(),route.profileId,settings_.revision(),profile["settings"].toObject(),profile["credentials"].toObject()};}
+ return {};
+}
 Error OperationService::acceptRecording(Operation& op) {
+ if(scroll_&&scroll_->active())return {"scroll_active","A scrolling capture is active",{}};
  if(!ready_)return startupError_?startupError_:Error{"initializing","Journal recovery is in progress",{}};
  if(editor_)return {"editor_active","An edit is open; finish or cancel it before recording",{{"operationId",editingId_}}};
  if(!selectingId_.isEmpty())return {"busy_selecting","Another interactive acquisition is active",{}};
  auto snapshot=settings_.snapshot();if(active_.size()>=snapshot.limits.pendingOperations+snapshot.limits.concurrentUploads)return {"queue_full","Pending operation limit reached",{}};
- const auto route=snapshot.actions.value(Settings::recordingActionName());
+ const auto acceptedAction=op.action.isEmpty()?Settings::recordingActionName():op.action;
+ const auto route=snapshot.actions.value(acceptedAction);
  const bool upload=route.destination=="upload"&&!route.profileId.isEmpty();
  if(!upload&&!snapshot.archive.keepUploads)return {"output_required","No output is enabled. Choose a destination or turn on Keep a local copy in Settings → Capture.",{}};
- op.id=uuid();op.action=Settings::recordingActionName();op.settings=snapshot;op.settingsRevision=settings_.revision();op.created=QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs);op.invocation=upload?++invocation_:invalidateCopyEligibility();op.clipboardRevision=source_.clipboardRevision();
+ op.id=uuid();op.action=acceptedAction;op.settings=snapshot;op.settingsRevision=settings_.revision();op.created=QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs);op.invocation=upload?++invocation_:invalidateCopyEligibility();op.clipboardRevision=source_.clipboardRevision();
  if(upload) {const auto profile=snapshot.profiles.value(route.profileId);op.destination={profile["provider"].toString(),route.profileId,settings_.revision(),profile["settings"].toObject(),profile["credentials"].toObject()};}
  auto flag=std::make_shared<std::atomic_bool>(false);active_.insert(op.id,flag);if(upload)beginUploadCopies(op,false);
 #ifdef __GLIBC__
@@ -892,6 +911,7 @@ void OperationService::releaseActive(const QString& id) {
  else active_.remove(id);
 }
 void OperationService::finish(Operation op,JsonReply reply) {
+ if(scrollEditorReleases_.contains(op.id))scrollEditorReleases_.take(op.id)();
  clipboardImports_.remove(op.id);pumpCopies();
  // Its link is copied only when asked for (diagnostics.bundle copyLink).
  if(op.action==diagnosticsAction&&op.copyStatus=="pending")op.copyStatus="suppressed";
@@ -1030,6 +1050,7 @@ void OperationService::cancel(const QString& id,JsonReply reply,const QString& i
  }
  // A recording session lives in the recording service, not the upload queue:
  // cancelling its operation ends the capture or review and discards the clip.
+ if(scroll_&&scroll_->activeId()==id){scroll_->command("cancel",{{"id",id}},std::move(reply));return;}
  if(recording_&&recording_->activeId()==id){recording_->command("cancel",{{"id",id}},[reply,id](Error error,QJsonObject){reply(error,error?QJsonObject{}:QJsonObject{{"operationId",id},{"cancellationRequested",true},{"effect","The recording and its working clip are discarded"}});});return;}
  if(active_.contains(id)) {active_[id]->store(true);{std::lock_guard lock(itemCancelsMutex_);for(const auto& flag:itemCancels_.value(id))flag->store(true);}uploadSlots_.wake();interruptUploadCopy(id);if(selectingId_==id)source_.cancelAcquisition();if(editingId_==id&&editor_)editor_->cancel();
   for(int index=0;index<queue_.size();++index)if(queue_[index].op.id==id){auto job=queue_.takeAt(index);job.payload={};job.payloadLease.reset();job.op.cancelled=true;job.op.state="cancelled";finish(job.op);break;}
@@ -1199,12 +1220,13 @@ QJsonObject OperationService::capabilities() const {
 #else
  const bool editor=false;
 #endif
- return {{"source",source_.capabilities()},{"providers",providers_.capabilities()},
+ auto sourceCapabilities=source_.capabilities();sourceCapabilities["scroll"]=scroll_->capabilities();
+ return {{"source",sourceCapabilities},{"providers",providers_.capabilities()},
   {"editor",QJsonObject{{"available",editor},{"admissionPixels",double(EditorJob::admissionPixels)},{"open",!editingId_.isEmpty()},
-   {"sources",QJsonArray{"region","window","desktop","clipboard","file"}},{"fileFormats",QJsonArray{"png","jpeg"}},{"output","png"},
+   {"sources",QJsonArray{"region","window","desktop","clipboard","file","scroll"}},{"fileFormats",QJsonArray{"png","jpeg"}},{"output","png"},
    {"shapes",QJsonArray{"redact","blur","arrow","rectangle","text","highlight","step","pen","ellipse","line"}},{"blurStyles",QJsonArray{"blur","pixelate"}},
    {"commands",QJsonArray{"inspect","apply","preview","saveCopy","copy","fileDialog","view","submit","cancel","raise"}}}},
-  {"recording",recording_->capabilities()}};
+  {"scroll",scroll_->capabilities()},{"recording",recording_->capabilities()}};
 }
 QJsonObject OperationService::diagnostics() const {
 #ifdef __GLIBC__

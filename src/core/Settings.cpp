@@ -52,13 +52,13 @@ QJsonObject Settings::effectiveArtifactLimits() const {
             {"pendingArtifactBytes", value(limits.pendingArtifactBytes)}};
 }
 
-QStringList Settings::actionNames() { return {"region", "window", "desktop", "clipboard", "edit", "monitor"}; }
+QStringList Settings::actionNames() { return {"region", "window", "desktop", "clipboard", "edit", "monitor", "scroll"}; }
 QStringList Settings::requiredActionNames() { return {"region", "window", "desktop", "clipboard"}; }
 QString Settings::recordingActionName() { return QStringLiteral("record"); }
 QString Settings::repeatActionName() { return QStringLiteral("repeat"); }
 QStringList Settings::invocableActionNames() { return actionNames() << recordingActionName() << repeatActionName(); }
-QStringList Settings::presentationOrder() { return {"region", "window", "monitor", "desktop", "edit", "record", "clipboard"}; }
-QStringList Settings::shortcutOrder() { return {"region", "repeat", "window", "monitor", "desktop", "edit", "record", "clipboard"}; }
+QStringList Settings::presentationOrder() { return {"region", "window", "monitor", "desktop", "edit", "record", "scroll", "clipboard"}; }
+QStringList Settings::shortcutOrder() { return {"region", "repeat", "window", "monitor", "desktop", "edit", "record", "scroll", "clipboard"}; }
 QList<int> Settings::captureDelayChoices() { return {0, 3, 5, 10}; }
 bool Settings::delayableAction(const QString& action) { return QStringList{"region", "window", "monitor", "desktop", "repeat"}.contains(action); }
 
@@ -80,6 +80,7 @@ QJsonObject Settings::normalized(const QJsonObject& original) {
     // user assigns a key explicitly. Edit copies the route; record keeps
     // following it (a shortcut-only entry) until a document routes it itself.
     bool changed = false;
+    if (!actions.contains("scroll")) { auto a=actions["region"].toObject(); a["shortcut"]=QString{}; actions["scroll"]=a; changed=true; }
     if (!actions.contains("edit")) {
         auto inherited = actions["region"].toObject();
         inherited["shortcut"] = QString{};
@@ -140,7 +141,7 @@ QJsonObject Settings::defaults() {
             {"clipboardTextBytes", 16777216.0}, {"imagePixels", 100000000.0}, {"imageBytes", 536870912.0}}},
         {"retention", QJsonObject{{"failedArtifactDays", 7}, {"recentActivityLimit", 100},
             {"previewCacheBytes", 268435456.0}, {"historyRetentionDays", QJsonValue::Null}}},
-        {"preferences", QJsonObject{{"notifications", true}, {"launchAtLogin", false}, {"uploadClipboardBehavior", "each_link"}}}};
+        {"preferences", QJsonObject{{"scrollCaptureMaxHeight",30000},{"scrollCaptureFromTop",true},{"notifications", true}, {"launchAtLogin", false}, {"uploadClipboardBehavior", "each_link"}}}};
 }
 
 QJsonObject Settings::developmentTemplate() {
@@ -285,7 +286,7 @@ Error Settings::validate(const QJsonObject& original, const ProfileValidator& va
         return invalid("/retention/logBytes", ByteSize::labels("Log storage is 1 MiB to 1 GiB."));
     const auto preferences = doc["preferences"].toObject();
     QStringList preferenceKeys{"notifications", "launchAtLogin"};
-    for (const auto* optional : {"uploadClipboardBehavior", "regionSelectionMode", "captureDelaySeconds", "recordingFrameRate", "recordingMicrophone", "recordingMicrophoneDevice", "recordingClickHighlights", "unlockCredentialsAtStartup", "editorRecentColors", "diagnostics", "appearance", "updates", "fileManagerFolders", "fileManagerMenu"})
+    for (const auto* optional : {"scrollCaptureMaxHeight", "scrollCaptureFromTop", "uploadClipboardBehavior", "regionSelectionMode", "captureDelaySeconds", "recordingFrameRate", "recordingMicrophone", "recordingMicrophoneDevice", "recordingClickHighlights", "unlockCredentialsAtStartup", "editorRecentColors", "diagnostics", "appearance", "updates", "fileManagerFolders", "fileManagerMenu"})
         if (preferences.contains(optional)) preferenceKeys.append(optional);
     if (!doc["preferences"].isObject() || !keys(preferences, preferenceKeys) ||
         !preferences["notifications"].isBool() || !preferences["launchAtLogin"].isBool())
@@ -332,6 +333,8 @@ Error Settings::validate(const QJsonObject& original, const ProfileValidator& va
     }
     if (preferences.contains("uploadClipboardBehavior") && !choice(preferences["uploadClipboardBehavior"], {"each_link", "list"}))
         return invalid("/preferences/uploadClipboardBehavior", "Choose each_link or list for upload clipboard behavior.");
+    if (preferences.contains("scrollCaptureMaxHeight") && !integer(preferences["scrollCaptureMaxHeight"],2000,60000)) return invalid("/preferences/scrollCaptureMaxHeight", "Choose 2000 to 60000 pixels.");
+    if (preferences.contains("scrollCaptureFromTop") && !preferences["scrollCaptureFromTop"].isBool()) return invalid("/preferences/scrollCaptureFromTop", "Choose true or false.");
     if (preferences.contains("regionSelectionMode") && !choice(preferences["regionSelectionMode"], {"live", "screenshot_first"}))
         return invalid("/preferences/regionSelectionMode", "Choose live or screenshot_first for region selection.");
     if (preferences.contains("captureDelaySeconds") && !(preferences["captureDelaySeconds"].isDouble() && integer(preferences["captureDelaySeconds"], 0, 10) && captureDelayChoices().contains(preferences["captureDelaySeconds"].toInt())))
@@ -420,6 +423,8 @@ Settings Settings::fromValidated(const QJsonObject& original) {
     settings.logBytes = retention["logBytes"].toInteger(52428800LL);
     settings.debugLogging = doc["preferences"].toObject()["diagnostics"].toObject()["debugLogging"].toBool();
     settings.uploadClipboardBehavior = doc["preferences"].toObject()["uploadClipboardBehavior"].toString("each_link");
+    settings.scrollCaptureMaxHeight = doc["preferences"].toObject()["scrollCaptureMaxHeight"].toInt(30000);
+    settings.scrollCaptureFromTop = doc["preferences"].toObject()["scrollCaptureFromTop"].toBool(true);
     settings.regionSelectionMode = doc["preferences"].toObject()["regionSelectionMode"].toString("live");
     settings.recordingFrameRate = doc["preferences"].toObject()["recordingFrameRate"].toInt(30);
     settings.recordingMicrophone = doc["preferences"].toObject()["recordingMicrophone"].toBool(false);

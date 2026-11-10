@@ -42,6 +42,8 @@ public:
     // After finished, cancelled or failed the backend injects nothing more for the id.
     virtual void setEventSink(Event) = 0;
     // params: {rect?: [x, y, w, h] logical desktop pixels, maxHeight, fromTop,
+    //          imagePixels, imageBytes (resident snapshot budgets; imagePixels also
+    //          includes the editor admission limit on that route),
     //          autoStart, selection: "helper"|"shell"}.
     // With no rect and selection "helper" the helper opens its region selector;
     // with selection "shell" (GNOME) the resident selects through RecordingShell

@@ -46,7 +46,7 @@ def safe_patch(value: Any) -> bool:
         isinstance(value, float) and math.isfinite(value))
 
 
-EDITOR_SOURCES = {'region', 'window', 'desktop', 'clipboard', 'file'}
+EDITOR_SOURCES = {'scroll', 'region', 'window', 'desktop', 'clipboard', 'file'}
 # Delayed capture (#1363): the delays action.invoke accepts and the actions that take one.
 DELAY_SECONDS = {0, 3, 5, 10}
 DELAYABLE_ACTIONS = {'region', 'window', 'monitor', 'desktop', 'repeat'}
@@ -231,7 +231,7 @@ def create_server(adapter: CliAdapter) -> MCPServer:
     @server.tool(annotations=effect)
     async def perform_action(action: str, delay_seconds: int | None = None) -> Json:
         """Acquire region/window/monitor/desktop/clipboard, then configured local save or public upload; may copy result. `monitor` captures the monitor the pointer is on. `repeat` captures the rectangle of the last region capture again with no selector (repeat_unavailable when there is none yet, repeat_layout_changed when the monitors changed since); its operation is a region capture. delay_seconds (3, 5 or 10; region, window, monitor, desktop and repeat only) shows a cancellable countdown first: a region is selected before it runs, every other target is taken when it ends, and a screen that is locked at that moment captures nothing (session_locked). cancel_operation ends a countdown. `edit` opens the editor after a region selection instead; use open_editor for other sources. `record` starts a screen recording from a dragged region (or raises the active one); drive it with the recording tools."""
-        if action not in {'region', 'window', 'monitor', 'desktop', 'repeat', 'clipboard', 'edit', 'record'}:
+        if action not in {'region', 'window', 'monitor', 'desktop', 'repeat', 'clipboard', 'edit', 'record', 'scroll'}:
             return invalid()
         params: Json = {'action': action}
         if delay_seconds is not None:
@@ -375,6 +375,35 @@ def create_server(adapter: CliAdapter) -> MCPServer:
     async def raise_editor(id: str) -> Json:
         """Bring the open editor window to the front."""
         return await adapter.call('editor.raise', {'id': id}) if identifier(id) else invalid()
+
+    @server.tool(annotations=effect)
+    async def prepare_scroll_capture(rect: list[int] | None = None, max_height: int | None = None) -> Json:
+        """Prepare a scrolling region. Start explicitly after selection."""
+        if rect is not None and (len(rect) != 4 or any(type(n) is not int for n in rect) or rect[2] < 64 or rect[3] < 64):
+            return invalid()
+        if max_height is not None and (type(max_height) is not int or not 2000 <= max_height <= 60000):
+            return invalid()
+        params: Json = {}
+        if rect is not None:
+            params['rect'] = rect
+        if max_height is not None:
+            params['maxHeight'] = max_height
+        return await adapter.call('scroll.prepare', params)
+
+    @server.tool(annotations=effect)
+    async def control_scroll_capture(id: str, command: str, rect: list[int] | None = None) -> Json:
+        """Select, start, stop (keep image), or cancel (discard) a scroll capture."""
+        if not identifier(id) or command not in {'select', 'start', 'stop', 'cancel'} or (command == 'select') != (rect is not None):
+            return invalid()
+        params: Json = {'id': id}
+        if rect is not None:
+            params['rect'] = rect
+        return await adapter.call('scroll.' + command, params)
+
+    @server.tool(annotations=read)
+    async def get_scroll_capture(id: str) -> Json:
+        """Inspect progress and endReason/truncated. Only end_of_content means complete."""
+        return await adapter.call('scroll.inspect', {'id': id}) if identifier(id) else invalid()
 
     @server.tool(annotations=read)
     async def get_recording_capabilities() -> Json:
