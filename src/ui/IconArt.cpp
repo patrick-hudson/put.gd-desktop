@@ -184,6 +184,20 @@ QImage symbol(const QString& name,const QColor& color,int scale,const QColor& se
   line(color,1.8);p.drawLine(4,20,20,4);p.drawLine(11,4,20,4);p.drawLine(20,4,20,13);
  } else if(name=="rectangle") {
   line(color,1.8);rounded(4,5,16,14,1);
+ } else if(name=="ellipse") {
+  // The rectangle's frame, rounded fully: a horizontal body overshooting to 19.
+  line(color,1.8);p.drawEllipse(QRectF(2.5,5,19,14));
+ } else if(name=="line") {
+  // The arrow's diagonal without a head; filled ends say "two points".
+  line(color,1.8);p.drawLine(QPointF(6,18),QPointF(18,6));
+  fill(color);p.drawEllipse(QPointF(5,19),2.2,2.2);p.drawEllipse(QPointF(19,5),2.2,2.2);
+ } else if(name=="pen") {
+  // A freehand stroke: one relaxed S, distinct from the highlight's marker.
+  line(color,1.8);QPainterPath stroke;stroke.moveTo(3,17);stroke.cubicTo(5,8,10,7,11.5,13);stroke.cubicTo(13,19,18,19,21,7);p.drawPath(stroke);
+ } else if(name=="step") {
+  // A numbered marker: a ring holding a 1.
+  line(color,1.8);p.drawEllipse(QRectF(2.5,2.5,19,19));
+  QPainterPath one;one.moveTo(9.5,9);one.lineTo(12.5,7);one.lineTo(12.5,17);p.drawPath(one);p.drawLine(QPointF(9.5,17),QPointF(15.5,17));
  } else if(name=="highlight") {
   line(color,1.8);QPainterPath marker;
   marker.moveTo(16,3);marker.lineTo(21,8);marker.lineTo(12,18);marker.lineTo(6,12);marker.closeSubpath();

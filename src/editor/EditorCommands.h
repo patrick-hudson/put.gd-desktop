@@ -14,6 +14,8 @@ QJsonObject shapeJson(const Shape&);
 QJsonObject state(const EditDocument&);
 // Validates every command before changing the document. Commands are
 // add {shape}, update {shapeId, shape}, remove {shapeId}, crop {rect},
+// (shapes: redact, blur with style blur/pixelate, arrow, line, rectangle,
+// ellipse, pen, step, text, highlight),
 // resetCrop, undo and redo. Each change remains one ordinary undo step.
 // On error the document is unchanged and `code` names the first problem.
 bool apply(EditDocument&,const QJsonArray& commands,QJsonArray& created,QString& code,QString& message);
