@@ -410,6 +410,12 @@ tools for that are `tools/lab/cover_player.py` and `tools/lab/record_run.py`
   with `--output-gone-at` is one recording (`--rounds 1`, one format, one
   build): the private output is not made again, so anything more is refused
   before the run starts.
+  `--hide-bar` hides put.gd's recording bar at Ready (`recording.overlay
+  {visible: false}`). A whole-monitor recording on a one-monitor desktop has
+  the bar's Stop handle in the clip (`overlay.overlayPlacement` `handle` in the
+  round's entry), and with `--frames` the frame gate can take it for something
+  that is not the cover and delete the clips; a clip deleted that way is listed
+  under `problems`, with this option named.
 - `record_run.py --click S,X,Y[,BUTTON]` (repeatable) presses a button at a
   desktop pixel S seconds into each recording, as real input through the
   desktop's VNC tile (`--click-vnc HOST:PORT` in a guest: QEMU's VNC on the VM
