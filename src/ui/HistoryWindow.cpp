@@ -1184,10 +1184,12 @@ void HistoryWindow::updateFooterLayout(){
  const QList<QWidget*> controls{filtersToggle_,views,detailsToggle_,management};
  const auto controlWidth=[&]{int width=0;for(auto* control:controls)width+=qMax(control->minimumWidth(),control->sizeHint().width());return width;};
  // Filter keeps its word while the heading still fits beside the tools; then it keeps its glyph and chevron.
- filtersToggle_->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
+ filtersToggle_->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);count_->setMinimumWidth(0);
  if(available<180+controlWidth()+int(controls.size())*gap+findChild<QWidget*>("historyHeadingGroup")->minimumSizeHint().width()+space(Space::l))filtersToggle_->setToolButtonStyle(Qt::ToolButtonIconOnly);
  const int required=180+controlWidth()+int(controls.size())*gap;
- const bool details=compact_&&detailsOpen_,selecting=selectionHeader()&&!details,wrap=!selecting&&required>available;auto* heading=findChild<QWidget*>("historyHeadingGroup");const bool headingRow=!selecting&&available<required+heading->minimumSizeHint().width()+space(Space::l);const int toolRow=headingRow&&!details?1:0;
+ const bool details=compact_&&detailsOpen_,selecting=selectionHeader()&&!details,wrap=!selecting&&required>available;auto* heading=findChild<QWidget*>("historyHeadingGroup");
+ // The count note gives way before the heading takes a row of its own: it elides in what is left (its tooltip has the whole text).
+ const bool headingRow=!selecting&&available<required+heading_->minimumSizeHint().width()+space(Space::l),noteElides=!headingRow&&available<required+heading->minimumSizeHint().width()+space(Space::l);if(noteElides)count_->setMinimumWidth(1);const int toolRow=headingRow&&!details?1:0;
  // A heading on its own row needs room for its text, rather than a control target.
  heading->setFixedHeight(headingRow?qMax(Ui::Metric::control,heading->layout()->totalMinimumSize().height()):Ui::scaled(Ui::Metric::control));
  while(auto* item=tools->takeAt(0))delete item;for(int i=0;i<7;++i)tools->setColumnStretch(i,0);
@@ -1201,7 +1203,7 @@ void HistoryWindow::updateFooterLayout(){
  if(wrap){int row=toolRow+1,used=0,columns=0;column=0;for(auto* control:controls){if(control->isHidden())continue;const int width=qMax(control->minimumWidth(),control->sizeHint().width()),before=column?gap:0;if(column&&used+before+width>available){++row;column=0;used=0;}tools->addWidget(control,row,column++,Qt::AlignLeft);columns=qMax(columns,column);used+=(used?gap:0)+width;}column=qMax(1,columns);tools->addWidget(search,toolRow,0,1,column);tools->setColumnStretch(column-1,1);}
  else{tools->addWidget(search,toolRow,column);tools->setColumnStretch(column++,1);int others=0;for(auto* control:controls)if(!control->isHidden()){tools->addWidget(control,toolRow,column++);others+=qMax(control->minimumWidth(),control->sizeHint().width());}
   // A heading beside search keeps its words: search gives way down to its placeholder first.
-  if(!headingRow&&!details){const int full=heading_->sizeHint().width(),extra=heading->sizeHint().width()-full,room=available-others-(column-1)*tools->horizontalSpacing()-extra;if(room-full<180){const int floor=qMin(180,search->fontMetrics().horizontalAdvance(search->placeholderText())+Ui::scaled(24));searchMinimum=qMax(floor,room-full);heading_->setMinimumWidth(qMax(0,qMin(full,room-searchMinimum)));}}}
+  if(!headingRow&&!details){const int full=heading_->sizeHint().width(),extra=noteElides?heading->layout()->spacing()+1:heading->sizeHint().width()-full,room=available-others-(column-1)*tools->horizontalSpacing()-extra;if(room-full<180){const int floor=qMin(180,search->fontMetrics().horizontalAdvance(search->placeholderText())+Ui::scaled(24));searchMinimum=qMax(floor,room-full);heading_->setMinimumWidth(qMax(0,qMin(full,room-searchMinimum)));}}}
  }
  search->setMinimumWidth(searchMinimum);
  // Empty spanned columns still consume spacing in QGridLayout.
