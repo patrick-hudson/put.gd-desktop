@@ -25,6 +25,9 @@
 #include <QJsonDocument>
 #include <QNetworkAccessManager>
 #include <QNetworkInterface>
+#include <QNetworkProxy>
+#include <QNetworkProxyFactory>
+#include <QNetworkProxyQuery>
 #include <QNetworkReply>
 #include <QRegularExpression>
 #include <QTcpSocket>
@@ -249,6 +252,55 @@ public:
     }
     // One request, no redirects followed. `sent` reports body bytes the transport has read.
     Exchange send(const QByteArray& verb, const QUrl& url, const Headers& headers, Body* body = nullptr, const std::function<void(qint64)>& sent = {}) {
+        // A request with an empty body. Qt writes its headers as soon as the connection is
+        // up and says nothing about it: no "request sent", no upload progress. Over TLS
+        // the handshake tells that the connection is up. Over plain HTTP nothing does
+        // until the reply, and a server that cannot be reached looks like one that is slow
+        // to answer. So that the destination's connect timeout still holds there, the
+        // server is first asked for a connection of its own, within that timeout, and
+        // only when it gave one is the request made at all: nothing is under way while
+        // the answer is awaited, so "could not connect" means that nothing was sent.
+        // Through a proxy there is no server to ask (the proxy takes the request, and
+        // may refuse a bare connection): such a request is not checked, has no connect
+        // deadline, and counts as sent once it is stopped or times out.
+        const bool empty = body && body->total() == 0;
+        const bool blind = empty && url.scheme() == "http";
+        const auto proxies = blind ? QNetworkProxyFactory::proxyForQuery(QNetworkProxyQuery(url)) : QList<QNetworkProxy>{};
+        const bool unseen = blind && !proxies.isEmpty() && proxies.first().type() != QNetworkProxy::NoProxy;
+        Exchange out;
+        out.url = url;
+        if (blind && !unseen) {
+            QTcpSocket probe;
+            probe.setProxy(QNetworkProxy::NoProxy);
+            QEventLoop wait;
+            QTimer tick;
+            QElapsedTimer since;
+            since.start();
+            QObject::connect(&probe, &QTcpSocket::connected, &wait, &QEventLoop::quit);
+            QObject::connect(&probe, &QTcpSocket::errorOccurred, &wait, &QEventLoop::quit);
+            QObject::connect(&tick, &QTimer::timeout, &wait, [&] {
+                if (cancelled.load()) out.stopped = true;
+                else if (since.elapsed() > connectMs_) out.deadline = true;
+                if (out.stopped || out.deadline) wait.quit();
+            });
+            tick.start(50);
+            probe.connectToHost(url.host(), quint16(url.port(80)));
+            if (probe.state() != QAbstractSocket::ConnectedState && probe.error() == QAbstractSocket::UnknownSocketError) wait.exec();
+            tick.stop();
+            if (probe.state() != QAbstractSocket::ConnectedState) {
+                // Nothing was sent: the request does not exist yet.
+                out.detail = out.stopped ? QStringLiteral("cancelled") : out.deadline ? QStringLiteral("could not connect within the connect timeout")
+                           : probe.error() == QAbstractSocket::ConnectionRefusedError ? QStringLiteral("connection refused")
+                           : probe.error() == QAbstractSocket::HostNotFoundError ? QStringLiteral("host not found")
+                           : probe.error() == QAbstractSocket::NetworkError ? QStringLiteral("the network is unavailable")
+                           : probe.error() == QAbstractSocket::SocketTimeoutError ? QStringLiteral("timed out") : QStringLiteral("network error %1").arg(int(probe.error()));
+                probe.abort();
+                return out;
+            }
+            probe.abort();
+            // The server takes connections: from here on only the request deadline counts.
+            out.connected = true;
+        }
         QNetworkRequest request(url);
         request.setAttribute(QNetworkRequest::RedirectPolicyAttribute, QNetworkRequest::ManualRedirectPolicy);
         // HTTP/1.1: one request on one connection, so "was it sent" has a plain answer.
@@ -267,48 +319,6 @@ public:
         } else reply = nam_.sendCustomRequest(request, verb);
         QEventLoop loop;
         bool requestSent = false;
-        // A request with an empty body. Qt writes its headers as soon as the connection is
-        // up and says nothing about it: no "request sent", no upload progress. Over TLS
-        // the handshake tells that the connection is up. Over plain HTTP nothing does
-        // until the reply, and a server that cannot be reached looks like one that is slow
-        // to answer. So that the destination's connect timeout still holds there, the
-        // server is first asked for a connection of its own, within that timeout, and
-        // only a server that gave one is sent the request.
-        const bool empty = body && body->total() == 0;
-        const bool blind = empty && url.scheme() == "http";
-        Exchange out;
-        out.url = url;
-        if (blind) {
-            QTcpSocket probe;
-            QEventLoop wait;
-            QTimer tick;
-            QElapsedTimer since;
-            since.start();
-            QObject::connect(&probe, &QTcpSocket::connected, &wait, &QEventLoop::quit);
-            QObject::connect(&probe, &QTcpSocket::errorOccurred, &wait, &QEventLoop::quit);
-            QObject::connect(&tick, &QTimer::timeout, &wait, [&] {
-                if (cancelled.load()) out.stopped = true;
-                else if (since.elapsed() > connectMs_) out.deadline = true;
-                if (out.stopped || out.deadline) wait.quit();
-            });
-            tick.start(50);
-            probe.connectToHost(url.host(), quint16(url.port(80)));
-            if (probe.state() != QAbstractSocket::ConnectedState && probe.error() == QAbstractSocket::UnknownSocketError) wait.exec();
-            tick.stop();
-            if (probe.state() != QAbstractSocket::ConnectedState) {
-                // Nothing was sent.
-                out.detail = out.stopped ? QStringLiteral("cancelled") : out.deadline ? QStringLiteral("could not connect within the connect timeout")
-                           : probe.error() == QAbstractSocket::ConnectionRefusedError ? QStringLiteral("connection refused")
-                           : probe.error() == QAbstractSocket::HostNotFoundError ? QStringLiteral("host not found")
-                           : probe.error() == QAbstractSocket::NetworkError ? QStringLiteral("the network is unavailable")
-                           : probe.error() == QAbstractSocket::SocketTimeoutError ? QStringLiteral("timed out") : QStringLiteral("network error %1").arg(int(probe.error()));
-                probe.abort();
-                return out;
-            }
-            probe.abort();
-            // The server takes connections: from here on only the request deadline counts.
-            out.connected = true;
-        }
         QObject::connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
         QObject::connect(reply, &QNetworkReply::requestSent, &loop, [&] { requestSent = true; out.connected = true; ++out.sends; });
         QObject::connect(reply, &QNetworkReply::encrypted, &loop, [&] { out.connected = true; });
@@ -329,7 +339,7 @@ public:
         QObject::connect(&poll, &QTimer::timeout, &loop, [&] {
             if (out.stopped || out.deadline) return;
             if (cancelled.load()) { out.stopped = true; reply->abort(); }
-            else if (clock.elapsed() > requestMs_ || (!out.connected && clock.elapsed() > connectMs_)) { out.deadline = true; reply->abort(); }
+            else if (clock.elapsed() > requestMs_ || (!out.connected && !unseen && clock.elapsed() > connectMs_)) { out.deadline = true; reply->abort(); }
         });
         poll.start();
         if (!reply->isFinished()) loop.exec();
@@ -342,8 +352,10 @@ public:
         // it does not, so the request counts as sent when a reply came, when the connection
         // closed under it or Qt wanted to send it again, and when it was stopped or timed
         // out after the connection was up (the TLS handshake, or the connection check
-        // above): an outcome is reported as unknown sooner than as "nothing was stored".
+        // above) or could not be seen (a proxy): an outcome is reported as unknown sooner
+        // than as "nothing was stored".
         const auto ended = reply->error();
+        if (unseen && (out.stopped || out.deadline)) out.connected = true;
         if (empty) out.reached = out.status != 0 || ended == QNetworkReply::RemoteHostClosedError || ended == QNetworkReply::ContentReSendError || ((out.stopped || out.deadline) && out.connected);
         else out.reached = body ? body->consumed() : requestSent;
         if (out.status == 0 || out.stopped || out.deadline) {
@@ -1005,9 +1017,14 @@ private:
                 const auto common = qMin(before.body.size(), after.body.size());
                 const bool same = partial ? before.body.left(common) == after.body.left(common) : after.body == before.body;
                 if (after.status >= 200 && after.status < 300 && same) {
-                    error = {"http_delete_unconfirmed", QString("The server answered the deletion request (HTTP %1), but the link still serves the file%2. Nothing is confirmed deleted. "
-                             "This server may want the deletion confirmed on its own page, or may serve a cached copy for a while; try again later or delete it on the server.").arg(r.status)
-                             .arg(partial ? QStringLiteral(", as far as the check of the link got before its reply was cut off") : QString()), details};
+                    // With nothing to compare (a check cut off before any of the file came)
+                    // the link still answers, and that is all that is known.
+                    error = partial && common == 0
+                        ? Error{"http_delete_unconfirmed", QString("The server answered the deletion request (HTTP %1), and the link still answers, but the check of the link was cut off before any of the file came, "
+                                "so it shows nothing either way. Nothing is confirmed deleted; try again later or delete it on the server.").arg(r.status), details}
+                        : Error{"http_delete_unconfirmed", QString("The server answered the deletion request (HTTP %1), but the link still serves the file%2. Nothing is confirmed deleted. "
+                                "This server may want the deletion confirmed on its own page, or may serve a cached copy for a while; try again later or delete it on the server.").arg(r.status)
+                                .arg(partial ? QStringLiteral(", as far as the check of the link got before its reply was cut off") : QString()), details};
                     return {{"status", "failed"}, {"progress", progress}};
                 }
             }

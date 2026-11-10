@@ -42,6 +42,8 @@ An upload rule can also bend the reply the way a careless or hostile server woul
                                        fulfil, or a reset in the middle of the body
          "chunk" | "chunk-reset"       the same for a chunked reply: every byte of the body
                                        but no last chunk, or a reset inside a chunk
+         "headers"                     the headers with the body's true length, and then
+                                       not one byte of the body
   "chunked": true                      a whole reply sent chunked, last chunk and all
   "gzip": true                         the reply's body compressed, whatever the request's
                                        Accept-Encoding asked for
@@ -122,6 +124,10 @@ class Handler(BaseHTTPRequestHandler):
                 if cut == 'chunk':
                     self.wfile.flush()
                     self.close_connection = True
+                return
+            if cut == 'headers':
+                self.wfile.flush()
+                self.close_connection = True
                 return
             if cut == 'reset':
                 self.wfile.write(body[:max(1, len(body) * 2 // 3)])

@@ -978,6 +978,34 @@ private slots:
         QCOMPARE(result.error.code, QString("http_connect_failed"));
         QVERIFY2(clock.elapsed() < 10000, qPrintable(QString::number(clock.elapsed())));
     }
+    // Through a proxy there is no server to ask for a connection: the proxy takes the
+    // request, and may refuse a bare connection. The connection check is left out there,
+    // so a server only the proxy can reach is not failed for being out of direct reach.
+    // The scripted receiver plays the proxy; the address behind it never answers.
+    void aProxiedBodilessUploadIsNotJudgedByADirectConnection() {
+        HttpFixture f;
+        f.reset();
+        auto bare = f.destination;
+        bare.settings = f.settings("json");
+        bare.settings["requestMethod"] = "GET";
+        bare.settings["body"] = "none";
+        bare.settings["parameters"] = rows({plainRow("content", "{input}"), plainRow("name", "{filename}")});
+        bare.settings["requestUrl"] = "http://192.0.2.1/upload/json";
+        bare.settings["allowInsecureHttp"] = true;
+        bare.settings["connectTimeoutMs"] = 1000;
+        // The link is returned on the same far host, so that it is one the reply may name.
+        f.rules({{{"call", "upload"}, {"store", true}, {"elsewhere", "url"}, {"elsewhereHost", "192.0.2.1"}}});
+        // Only the worker is to see the proxy: this process talks to the receiver itself.
+        const auto proxyBefore = qgetenv("http_proxy"), noProxyBefore = qgetenv("no_proxy");
+        qputenv("http_proxy", f.base.toUtf8());
+        qunsetenv("no_proxy");
+        const auto result = f.upload(f.text(), bare);
+        if (proxyBefore.isEmpty()) qunsetenv("http_proxy"); else qputenv("http_proxy", proxyBefore);
+        if (!noProxyBefore.isEmpty()) qputenv("no_proxy", noProxyBefore);
+        QVERIFY2(result.status == "uploaded", qPrintable(result.status + " " + result.error.code + ": " + result.error.message));
+        QCOMPARE(f.events("upload").size(), 1);
+        QCOMPARE(f.stored(), 1);
+    }
     // Server text that is kept (a message, an excerpt, a content type) has every spelling
     // of a stored value removed: as sent, percent-encoded, and as PHP writes JSON.
     void serverTextIsScrubbedInEverySpelling() {
@@ -1294,6 +1322,15 @@ private slots:
         QCOMPARE(result.error.code, QString("http_delete_unconfirmed"));
         QVERIFY2(result.error.message.contains("cut off"), qPrintable(result.error.message));
         QCOMPARE(f.stored(), 1);
+        QVERIFY2(result.error.message.contains("still serves the file"), qPrintable(result.error.message));
+        // A check that brought none of the file has nothing to compare: the link still
+        // answers, and the message says no more than that.
+        const QJsonObject bare{{"call", "file"}, {"cut", "headers"}};
+        if (before) f.rules({bare, whole});
+        else f.rules({whole, bare});
+        const auto blank = f.remove(uploaded.receipt);
+        QCOMPARE(blank.error.code, QString("http_delete_unconfirmed"));
+        QVERIFY2(blank.error.message.contains("shows nothing either way") && !blank.error.message.contains("still serves the file"), qPrintable(blank.error.message));
         // Where the file really went, a cut-short check before the deletion does not hide it.
         const auto real = f.upload(f.image());
         f.rules({cut});
