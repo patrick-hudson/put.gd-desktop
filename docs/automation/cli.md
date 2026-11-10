@@ -55,7 +55,7 @@ Methods and parameters:
 
 | Method | Parameters |
 |---|---|
-| `action.invoke` | `action`: region, window, desktop, clipboard, edit, record; `edit` also accepts `source` and `path` as `editor.open`; only `record` accepts `mode`: `open` (default) or `toggle` ([recording](../design/recording/overlay-and-review.md#tray-and-shortcut)) |
+| `action.invoke` | `action`: region, window, monitor, desktop, repeat, clipboard, edit, record. `monitor` captures the monitor the pointer is on; `repeat` captures the rectangle of the last region capture again with no selector, and its operation is a `region` capture (`repeat_unavailable` with nothing remembered, `repeat_layout_changed` after the monitors changed). region, window, monitor, desktop and repeat accept `delaySeconds`: 0 (default, immediate, no countdown), 3, 5 or 10. With 3, 5 or 10 the reply still comes at once with the operation ID, a countdown shows for that long, and `operation.cancel` ends it ([capture monitor, delay and repeat](../design/capture-delay.md)). `edit` also accepts `source` and `path` as `editor.open`; only `record` accepts `mode`: `open` (default) or `toggle` ([recording](../design/recording/overlay-and-review.md#tray-and-shortcut)) |
 | `upload.files` | `paths` (absolute, 1–10,000), optional `profileId`, optional `installation` (`system` or `appimage`; a file manager's client sends it and another installation's resident refuses with `installation_mismatch`). Answers within 120 s after checking every file ([file-manager-upload.md](../design/file-manager-upload.md)) |
 | `editor.open` | optional `source` region (default)/window/desktop/clipboard/file, `path` (absolute, file only) |
 | `editor.inspect`, `.submit`, `.cancel`, `.raise` | operation `id` of the open editor |

@@ -212,6 +212,38 @@ handle from Record on; the extension follows the bar's size changes and keeps
 it in the corner (or, for a bar outside, on its monitor). Details are in `docs/design/recording.md`, "Wayland
 selection, bounds and bar".
 
+Capture version 2 (`captureVersion: 2` in `Hello`, extension version 20, #1363)
+adds Capture monitor, Repeat last region and the capture countdown:
+
+- `Prepare(id, "monitor")` freezes `global.display.get_current_monitor()`, the
+  monitor the pointer is on, with the request, and `Acquire` reads that monitor
+  alone with `screenshot_area`, at its native size.
+- A region's `Acquire` metadata carries its `selection` and a `layoutKey` (each
+  monitor's connectors, logical rectangle, scale and rotation). The resident keeps
+  both in memory; `Prepare(id, "repeat")` then `Acquire` with that `area` and
+  `layoutKey` captures the rectangle again, reading only the monitors it lies on,
+  and refuses with `repeat_layout_changed` when the key no longer matches.
+- `Countdown(id, {seconds, appearance})` draws the countdown as a reactive label
+  in the Shell's chrome (`addTopChrome` with `trackFullscreen` only: Shell 50 throws
+  on any chrome parameter it does not know), at the top centre of the pointer's
+  monitor and below the top bar. It takes no grab and no focus; a click on it cancels, `Release(id)`
+  removes it, and its actor is destroyed before the method answers, so a capture
+  that follows cannot contain it. A live region's `Acquire` takes `delaySeconds`
+  instead and shows the same countdown after the selection and before the pixels.
+- A lock ends a counting request with `session_locked`. The Shell disables its
+  extensions when it locks, sometimes before the extension's own session handler
+  runs; the extension answers `session_locked` from `disable()` too, and the
+  resident asks logind whether the session is locked (for up to two seconds)
+  before it lets a helper error from a counting request stand.
+
+While an extension older than the packaged one is loaded, window and desktop
+screenshots work as before and a region capture is refused with `helper_outdated`,
+as it already was for any older loaded extension. `monitor`, `repeat` and any
+delayed capture answer `helper_outdated` too until the next login loads the
+packaged one, and Desktop support details shows **Monitor capture** and **Delayed
+capture** rows with that reason.
+See [capture monitor, delay and repeat](../design/capture-delay.md).
+
 Recording protocol 2 (`recordingVersion: 2`, extension version 19) adds
 `RecordingWindows()`: the Alt+Tab list (`get_tab_list(NORMAL_ALL)`) as
 `{identity: Mutter window id, title, appId, rect, active, minimized}` with

@@ -117,7 +117,9 @@ the last accepted in-memory settings and the bad file so it can be corrected.
 | Field | Meaning and default |
 | --- | --- |
 | `schemaVersion` | `1` |
-| `actions` | Exactly `region`, `window`, `desktop`, `clipboard`, plus optional `edit` (Capture region & edit). An absent `edit` inherits the region route with no shortcut; saved documents include it |
+| `actions` | Exactly `region`, `window`, `desktop`, `clipboard`, plus optional `edit` (Capture region & edit), `monitor` (Capture monitor) and `repeat` (Repeat last region). An absent `edit` inherits the region route with no shortcut and an absent `monitor` copies the desktop route with no shortcut; saved documents include both |
+| `actions.monitor` | Capture monitor (#1363): the monitor the pointer is on, at its native size. A full action like `desktop`, with its own `destination`, `profileId`, `shortcut` and optional `publicationMode`, so output routing and per-action exceptions treat it like the other captures |
+| `actions.repeat` | Repeat last region (#1363): a shortcut-only entry `{shortcut}`. It captures the rectangle of the last region capture again with the `region` action's output, and never has a route of its own. Absent entries read as no key |
 | Each action's `destination` | `upload` by default; `local` disables uploads; `default` inherits `captureDefaults` |
 | Each action's `profileId` | A configured profile ID, or `null` until destination setup |
 | Each action's `shortcut` | One Qt PortableText combination; empty means unbound; independent of output inheritance |
@@ -153,6 +155,7 @@ the last accepted in-memory settings and the bad file so it can be corrected.
 | `retention.logBytes` | Optional, default 50 MiB (1 MiB–1 GiB): total size of persistent log files; the oldest go first |
 | `preferences.uploadClipboardBehavior` | `each_link` (default, including when absent in older configurations) copies every successful upload link individually; `list` copies an ordered list once overlapping uploads settle |
 | `preferences.regionSelectionMode` | Optional, default `live` (also when absent): region screenshots select over the live desktop, and an open menu must close first (#341). `screenshot_first` captures every monitor before the selector opens; you drag over that frozen frame, open menus included, and the result is cut from it with no second capture (#629). put.gd's own tray menu closes before either mode starts, on GNOME too (#924). Applies to Capture region and Capture region & edit; recording always selects live. Settings → Capture → Region selection, `settings.patch` and MCP `patch_configuration` set it |
+| `preferences.captureDelaySeconds` | Optional integer, `0` (default, also when absent), `3`, `5` or `10`: the delay the tray's and the dashboard's Capture region, Capture window, Capture monitor, Capture desktop and Repeat last region wait before capturing, with a countdown that can be cancelled. Chosen in the tray's **Capture delay** submenu and in the capture buttons' context menu; Settings has no control for it. A shortcut capture is always immediate, and `action.invoke` (CLI, MCP `perform_action`) takes its own `delaySeconds` and ignores this preference. `settings.patch` and MCP `patch_configuration` set it. See [capture delay](capture-delay.md) |
 | `preferences.recordingFrameRate` | Optional integer, `30` (default when absent) or `60`. Settings → Capture → Screen recording → Frame rate, `settings.patch` and MCP `patch_configuration` set it. New recordings use it when `recording.prepare` omits `fps`; an explicit `fps` wins. See [adaptive rate and progress](recording/session-contract.md#frame-rate) |
 | `preferences.fileManagerFolders` | Optional, `zip` (default, also when absent) or `files`: how a folder chosen with Upload with put.gd in a file manager, or passed to `upload.files` (CLI, MCP `upload_files`), uploads, as one `<folder>.zip` or file by file (`limits.maxFiles` counts the expanded files). Settings → General → File manager → Folders. See [file-manager-upload.md](file-manager-upload.md#folders) |
 | `preferences.fileManagerMenu` | Optional boolean, default `true`: the AppImage's per-user Upload with put.gd entries; `false` removes the files it wrote. DEB/RPM entries are system files and always on. See [file-manager-upload.md](file-manager-upload.md#turning-it-on) |
@@ -195,8 +198,8 @@ default. This extension remains schema version 1; older strict readers that do n
 it reject the new field, so use matching application/CLI/MCP versions.
 
 The first three shortcuts default to `Ctrl+Shift+1`, `Ctrl+Shift+2`, and `Ctrl+Shift+3`.
-Clipboard sharing, Capture region & edit and screen recording start unbound, allowing
-explicit setup on GNOME. The recording key toggles a recording (start a ready one, stop
+Clipboard sharing, Capture region & edit, Capture monitor, Repeat last region and screen
+recording start unbound, allowing explicit setup on GNOME. The recording key toggles a recording (start a ready one, stop
 a running one) so the keyboard can end a capture without reaching for the bar. Availability and
 actual shortcut bindings must be reported by the native adapter; configuration validation
 does not claim a successful grab or resolve conflicts by taking another app's binding.
