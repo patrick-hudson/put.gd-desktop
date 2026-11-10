@@ -277,7 +277,11 @@ void HistoryModel::requestCounts(){
  // The page's files decide every count; live progress never does.
  QStringList key{query_.search,query_.category,query_.mime,query_.profileId,query_.uploadStatus,query_.localStatus,query_.remoteStatus,query_.from,query_.to,QString::number(query_.offset),QString::number(query_.limit),QString::number(total_),QDate::currentDate().toString(Qt::ISODate)};
  for(const auto& value:std::as_const(records_)){const auto file=value.toObject();key<<file["id"].toString()+'/'+file["uploadStatus"].toString();}
- const auto joined=key.join(QChar(0x1f));if(joined==countsKey_)return;countsKey_=joined;
+ // Totals also move when something outside this page changes (an upload into
+ // another category, expiry): an operation changing state is part of the key,
+ // and a count older than half a minute is asked for again on the next refresh.
+ for(const auto& value:std::as_const(operations_)){const auto operation=value.toObject();key<<operation["id"].toString()+'/'+operation["state"].toString();}
+ const auto joined=key.join(QChar(0x1f));if(joined==countsKey_&&countsAge_.isValid()&&countsAge_.elapsed()<30000)return;countsKey_=joined;countsAge_.start();
  QList<QDate> dates;QDateTime first;
  for(int row=0;row<rows_.size();++row){if(facts_.at(row).active)continue;const auto date=createdAt_.at(row).date();if(!first.isValid())first=createdAt_.at(row);if(date.isValid()&&!dates.contains(date))dates.append(date);}
  QJsonArray days;if(daySections())for(const auto& date:std::as_const(dates).mid(0,64))days.append(QJsonObject{{"from",QDateTime(date,QTime(0,0)).toUTC().toString(Qt::ISODateWithMs)},{"to",QDateTime(date,QTime(23,59,59,999)).toUTC().toString(Qt::ISODateWithMs)}});
@@ -285,7 +289,7 @@ void HistoryModel::requestCounts(){
  QJsonObject params{{"search",query.search},{"category",query.category},{"mime",query.mime},{"profileId",query.profileId},{"uploadStatus",query.uploadStatus},{"localStatus",query.localStatus},{"remoteStatus",query.remoteStatus},{"from",query.from},{"to",query.to},{"days",days}};
  history_.request("history.counts",params,this,[g=QPointer<HistoryModel>(this),seq,dates,query,first](Error e,QJsonObject data){
   if(!g||g->countsRequest_!=seq)return;
-  if(e){g->categoryTotals_={};g->dayCounts_.clear();g->continued_={};g->dayLabelsFor_={};emit g->countsChanged();return;}
+  if(e){g->countsKey_.clear();g->categoryTotals_={};g->dayCounts_.clear();g->continued_={};g->dayLabelsFor_={};emit g->countsChanged();return;}
   g->categoryTotals_=data["categories"].toObject();g->dayCounts_.clear();const auto counts=data["days"].toArray();for(int i=0;i<counts.size()&&i<dates.size();++i)g->dayCounts_.insert(dates[i],counts[i].toInteger());
   auto finish=[g](const QDate& continued){g->continued_=continued;g->dayLabelsFor_={};if(g->rowCount())emit g->dataChanged(g->index(0),g->index(g->rowCount()-1),{DayRole,SectionRole,DayCountRole});emit g->countsChanged();};
   // Whether the first day began on an earlier page: the stored file just before this page.
