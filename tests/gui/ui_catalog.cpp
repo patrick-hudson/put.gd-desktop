@@ -78,6 +78,7 @@
 #include "record/ReviewWindow.h"
 #include "fixtures/ReviewLayout.h"
 #include "ui/RegionOverlay.h"
+#include "ui/CountdownPill.h"
 #include "record/Overlays.h"
 #endif
 using namespace putgd;
@@ -105,6 +106,10 @@ QJsonObject inventory(QWidget& root){
  QJsonArray controls,keys;
  auto rectOf=[&](QWidget* w){const auto tl=w->mapTo(&root,QPoint());return QJsonArray{tl.x(),tl.y(),w->width(),w->height()};};
  auto add=[&](QWidget* w,const QString& kind,const QString& text,QJsonObject extra={}){QJsonObject c{{"name",w->objectName()},{"class",QString::fromLatin1(w->metaObject()->className())},{"kind",kind},{"text",text},{"rect",rectOf(w)},{"enabled",w->isEnabled()}};for(auto it=extra.begin();it!=extra.end();++it)c[it.key()]=it.value();controls.append(c);};
+#ifdef PUTGD_CATALOG_REVIEW
+ // CountdownPill handles cancellation on its root rather than on a child button.
+ if(dynamic_cast<CountdownPill*>(&root))add(&root,"button",root.accessibleDescription());
+#endif
  if(auto* menu=qobject_cast<QMenu*>(&root))for(auto* a:menu->actions()){if(a->isSeparator())continue;const auto r=menu->actionGeometry(a);controls.append(QJsonObject{{"name",a->objectName()},{"class","QAction"},{"kind","menu-item"},{"text",a->text()},{"rect",QJsonArray{r.x(),r.y(),r.width(),r.height()}},{"enabled",a->isEnabled()},{"submenu",a->menu()!=nullptr}});}
  for(auto* w:root.findChildren<QWidget*>()){
   // Same native window only: a child dialog's coordinates are not this capture's.
@@ -802,6 +807,8 @@ int main(int argc,char** argv){
   RegionOverlay screenshot({selectionFrame},nullptr,"Uploads right away to Team Drive · Shared link");screenshot.start();
   for(auto* w:QApplication::topLevelWidgets())if(w->isVisible()&&w->objectName()=="putgd-region-overlay"){if(!shot(*w,"46-region-entire-display"))return 2;QTest::keyClick(w,Qt::Key_Right);if(!shot(*w,"44-region-keyboard"))return 2;RegionHintFade::setElapsedForTesting(regionHintHoldMs+regionHintFadeMs);QTest::mousePress(w,Qt::LeftButton,{},QPoint(w->width()/2-200,8));QTest::mouseMove(w,QPoint(w->width()/2+200,220));if(!shot(*w,"44a-region-badge-outside-selection"))return 2;break;}
   screenshot.cancel();
+  // Delayed capture (#1363): the countdown pill, as every desktop's surface draws it.
+  {CountdownPill countdown(5,[](bool){});countdown.setWindowFlags(Qt::FramelessWindowHint);countdown.show();if(!shot(countdown,"46a-capture-countdown"))return 2;}
   RegionHintFade::setElapsedForTesting(0);
   record::SelectionOverlay selector;selector.start();
   for(auto* w:QApplication::topLevelWidgets())if(w->isVisible()&&w->objectName()=="putgd-record-select"){if(!shot(*w,"47-record-entire-display"))return 2;QTest::keyClick(w,Qt::Key_Right);if(!shot(*w,"45-record-region-keyboard"))return 2;RegionHintFade::setElapsedForTesting(regionHintHoldMs+regionHintFadeMs);QTest::mousePress(w,Qt::LeftButton,{},QPoint(w->width()/2-200,8));QTest::mouseMove(w,QPoint(w->width()/2+200,220));if(!shot(*w,"45a-record-badge-outside-selection"))return 2;break;}

@@ -27,6 +27,8 @@ public:
  void setUpdateLabel(const QString& label);
  void setCommands(const QHash<QString,QString>& shortcuts,const QString& uploadStatus,int uploads=1,bool failed=false,const QString& recording = {},const QString& attention = "Failed uploads");
  void setOutput(const QString& summary,const QStringList& details);
+ // The capture delay the radio submenu shows as chosen (#1363): 0, 3, 5 or 10.
+ void setCaptureDelay(int seconds);
  void notify(const QString& title, const QString& message, bool warning = false, const QUrl& link = {},
              const QList<NotificationAction>& actions = {});
  // expire_timeout for a notification on this server (GetServerInformation name):

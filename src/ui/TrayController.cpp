@@ -21,6 +21,7 @@
 #include <QCursor>
 #include <QCoreApplication>
 #include <QAction>
+#include <QActionGroup>
 #include <QKeySequence>
 #include <QMenu>
 #include <QWidgetAction>
@@ -193,6 +194,7 @@ TrayController::TrayController(OperationService& operations,
    activationToken_ = token;
    const auto clear = qScopeGuard([guard = QPointer<TrayController>(this)] { if (guard) guard->activationToken_.clear(); });
    if (Settings::invocableActionNames().contains(action)) invokeAction(action);
+   else if (action.startsWith("delay-")) operations_.setCaptureDelayPreference(action.mid(6).toInt());
    else if (action == "cancel-upload") cancelUploads();
    else if (action == "failed-uploads") acknowledgeFailures();
    else if (action == "edit-clipboard") invokeAction("edit", false, {{"source", "clipboard"}});
@@ -220,8 +222,17 @@ TrayController::TrayController(OperationService& operations,
   entry->setData(action);entry->setProperty("commandLabel",label);
   connect(entry, &QAction::triggered, this, [this, action] { invokeAction(action); });
  };
- const QHash<QString,QString> labels{{"region","Capture region"},{"window","Capture window"},{"desktop","Capture desktop"},{"edit","Capture region && edit"},{"record","Record screen"},{"clipboard","Upload clipboard"}};
- for(const auto& action:Settings::presentationOrder())capture(action,labels.value(action));
+ const QHash<QString,QString> labels{{"region","Capture region"},{"repeat","Repeat last region"},{"window","Capture window"},{"monitor","Capture monitor"},{"desktop","Capture desktop"},{"edit","Capture region && edit"},{"record","Record screen"},{"clipboard","Upload clipboard"}};
+ for(const auto& action:Settings::shortcutOrder()){
+  capture(action,labels.value(action));
+  if(action!="desktop")continue;
+  // The capture delay (#1363): a radio group that the capture entries above use.
+  delayMenu_=menu_->addMenu("Capture delay");delayMenu_->menuAction()->setObjectName("trayCaptureDelay");auto* group=new QActionGroup(delayMenu_);
+  for(const int seconds:Settings::captureDelayChoices()){
+   auto* choice=delayMenu_->addAction(seconds?QStringLiteral("%1 seconds").arg(seconds):QStringLiteral("None"));choice->setCheckable(true);choice->setData(seconds);choice->setObjectName(QStringLiteral("trayCaptureDelay%1").arg(seconds));group->addAction(choice);
+   connect(choice,&QAction::triggered,this,[this,seconds]{operations_.setCaptureDelayPreference(seconds);});
+  }
+ }
  // Other editor sources stay one level down so the menu does not grow.
  auto* editImage = menu_->addMenu("Edit image");
  editImage->menuAction()->setData("edit-sources");auto* before=menu_->actions().value(menu_->actions().indexOf(editImage->menuAction()));for(auto* entry:menu_->actions())if(entry->data()=="record")before=entry;menu_->insertMenu(before,editImage);
@@ -268,6 +279,10 @@ TrayController::TrayController(OperationService& operations,
  connect(&calendar_,&TrayCalendar::glyphChanged,this,&TrayController::refreshActivity);
  connect(&operations_,&OperationService::operationError,this,[this](const QString& id,QJsonObject operation){operation["id"]=id;latchFailure({"archive_failed","Local save failed",{}},operation);});
  connect(&operations_,&OperationService::storageActivityChanged,this,&TrayController::refreshActivity);
+ // Not every tray host asks before it shows the menu (Cinnamon's does not), so the
+ // output summary, the shortcuts and the capture delay follow the configuration
+ // when it changes, not when the menu opens.
+ connect(&operations_,&OperationService::settingsAccepted,this,&TrayController::refreshMenu);
  connect(&operations_, &OperationService::observationsChanged, this, &TrayController::refreshActivity);
  refreshActivity();
  connect(&operations_, &OperationService::resultReady, this, [this](const QString& id) {
@@ -426,9 +441,9 @@ void TrayController::cancelUploads() {
 }
 void TrayController::acknowledgeFailures(){const auto view=attentionView_;failedItems_.clear();errorPending_=false;attentionOperation_.clear();refreshActivity();showView(view);}
 void TrayController::refreshMenu() {
- QHash<QString,QString> shortcuts;const auto settings=operations_.settingsSnapshot();const auto shortcutStatus=operations_.shortcutStatus();const auto bindings=shortcutStatus["bindings"].toObject();for(const auto& action:Settings::presentationOrder()){const auto binding=bindings[action].toObject();if(!shortcutStatus["available"].toBool()||!binding["bound"].toBool()||!binding["error"].toString().isEmpty()||!binding["error"].toObject().isEmpty()||binding["requested"].toString()!=settings.actions.value(action).shortcut)continue;QStringList actual;if(binding["actual"].isString())actual<<binding["actual"].toString();else for(const auto& value:binding["actual"].toArray())actual<<value.toString();actual.removeAll(QString{});if(!actual.isEmpty())shortcuts.insert(action,actual.first());}
+ QHash<QString,QString> shortcuts;const auto settings=operations_.settingsSnapshot();const auto shortcutStatus=operations_.shortcutStatus();const auto bindings=shortcutStatus["bindings"].toObject();for(const auto& action:Settings::shortcutOrder()){const auto binding=bindings[action].toObject();if(!shortcutStatus["available"].toBool()||!binding["bound"].toBool()||!binding["error"].toString().isEmpty()||!binding["error"].toObject().isEmpty()||binding["requested"].toString()!=settings.actions.value(action).shortcut)continue;QStringList actual;if(binding["actual"].isString())actual<<binding["actual"].toString();else for(const auto& value:binding["actual"].toArray())actual<<value.toString();actual.removeAll(QString{});if(!actual.isEmpty())shortcuts.insert(action,actual.first());}
  const auto outputName=[&](const QString& action){const auto route=settings.actions.value(action);if(route.destination=="local"||route.profileId.isEmpty())return settings.archive.keepUploads?QString("Local only"):QString("Nothing is saved or uploaded");const auto profile=settings.profiles.value(route.profileId);const bool privateUpload=route.publicationMode=="private"||(route.publicationMode=="default"&&profile["provider"]=="proton-drive"&&!profile["settings"].toObject()["shareByDefault"].toBool(true));return QString(privateUpload?"Private upload":"Shared link")+" · "+profile["label"].toString()+(settings.archive.keepUploads?" + local copy":"");};
- const QHash<QString,QString> labels{{"region","Capture region"},{"window","Capture window"},{"desktop","Capture desktop"},{"edit","Capture region & edit"},{"record","Record screen"},{"clipboard","Upload clipboard"}};QStringList outputs;const auto first=outputName("region");bool mixed=false;for(const auto& action:Settings::presentationOrder()){const auto output=outputName(action);mixed|=output!=first;outputs<<labels.value(action)+": "+output;}const auto output=mixed?QString("Mixed outputs"):first;
+ const QHash<QString,QString> labels{{"region","Capture region"},{"window","Capture window"},{"monitor","Capture monitor"},{"desktop","Capture desktop"},{"edit","Capture region & edit"},{"record","Record screen"},{"clipboard","Upload clipboard"}};QStringList outputs;const auto first=outputName("region");bool mixed=false;for(const auto& action:Settings::presentationOrder()){const auto output=outputName(action);mixed|=output!=first;outputs<<labels.value(action)+": "+output;}const auto output=mixed?QString("Mixed outputs"):first;
  const auto attention=attentionLabel_=="Failed uploads"?QString("Failed uploads (%1)").arg(failedItems_.size()):attentionLabel_;
  int files=0,uploads=0;bool uploading=false;for(const auto& value:operations_.activeObservations()){
   const auto op=value.toObject();if(op["destination"].toObject()["providerId"].toString().isEmpty()||(op["action"]=="record"&&!recordingHandedOver(op)))continue;uploading=true;++uploads;
@@ -437,12 +452,13 @@ void TrayController::refreshMenu() {
  QString recording;for(const auto& value:operations_.activeObservations()){const auto op=value.toObject();if(op["action"]=="record"&&op["state"]=="recording")recording=phaseLabel(op);}
  const auto status=!uploading?QString{}:files?QString("Uploading %1 %2…").arg(files).arg(files==1?"file":"files"):QString("Preparing upload…");
 #ifdef Q_OS_LINUX
- if(native_){native_->setOutput(output,outputs);native_->setCommands(shortcuts,status,uploads,errorPending_,recording,attention);return;}
+ if(native_){native_->setOutput(output,outputs);native_->setCaptureDelay(settings.captureDelaySeconds);native_->setCommands(shortcuts,status,uploads,errorPending_,recording,attention);return;}
 #endif
  if(!menu_)return;
  outputSummary_->setText(QString(output).replace('&',QStringLiteral("&&")));int outputIndex=0;for(auto* entry:outputMenu_->actions())entry->setText(outputs.value(outputIndex++));
  for(auto* entry:menu_->actions())if(entry->property("commandLabel").isValid()){const auto key=QKeySequence(shortcuts.value(entry->data().toString())).toString(QKeySequence::NativeText);entry->setText(entry->property("commandLabel").toString()+(entry->data()=="record"&&!recording.isEmpty()?" — "+recording:QString{})+(key.isEmpty()?QString{}:"\t"+key));}
  // Tab-separated menu text displays a shortcut without registering another key handler.
+ if(delayMenu_){const int delay=settings.captureDelaySeconds;delayMenu_->setTitle(delay>0?QStringLiteral("Capture delay: %1 seconds").arg(delay):QStringLiteral("Capture delay: none"));for(auto* choice:delayMenu_->actions())choice->setChecked(choice->data().toInt()==delay);}
  failedUploads_->setProperty("operationId",attentionOperation_);failedUploads_->setText(attention);failedUploads_->setVisible(errorPending_);cancelUpload_->setText(uploads>1?"Cancel all uploads…":"Cancel upload");
  uploadStatus_->setText(status);for(auto* entry:{uploadStatus_,menu_->findChild<QAction*>("trayStatusSeparator"),cancelUpload_,uploadSeparator_})entry->setVisible(uploading);
 }
@@ -541,7 +557,7 @@ void TrayController::showView(const QString& view) {
 void TrayController::invokeShortcut(const QString& action) {
  // This tray's own open menu holds the keyboard and mouse a selection needs,
  // so close it first. A desktop or window capture keeps it in the picture (#341).
- if (menu_ && menu_->isVisible() && action != "desktop" && action != "window") menu_->hide();
+ if (menu_ && menu_->isVisible() && !QStringList{"desktop", "window", "monitor", "repeat"}.contains(action)) menu_->hide();
  invokeAction(action, true);
 }
 void TrayController::invokeAction(const QString& action, bool fromShortcut, const QJsonObject& options) {
@@ -549,6 +565,9 @@ void TrayController::invokeAction(const QString& action, bool fromShortcut, cons
  auto effective = action == Settings::recordingActionName() && options.isEmpty() ? QJsonObject{{"mode", fromShortcut ? "toggle" : "open"}} : options;
  // A click's token raises the editor that is already open (#657).
  if (action == "edit" && !activationToken_.isEmpty()) effective["activationToken"] = activationToken_;
+ // The tray's captures start after the chosen delay (#1363); a shortcut never waits.
+ if (!fromShortcut && Settings::delayableAction(action) && !effective.contains("delaySeconds"))
+  if (const int delay = operations_.settingsSnapshot().captureDelaySeconds; delay > 0) effective["delaySeconds"] = delay;
  operations_.invoke(action, [guard = QPointer<TrayController>(this), fromShortcut,action](Error error, QJsonObject) {
   if (guard && error) {
    qWarning("Action rejected: %s", qPrintable(error.code));

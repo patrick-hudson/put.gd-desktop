@@ -16,7 +16,7 @@ protected:
  qint64 readData(char* target,qint64 n)override{const auto count=qMin(n,qint64(input.size()));std::memcpy(target,input.constData(),size_t(count));input.remove(0,count);return count;}
  qint64 writeData(const char* source,qint64 n)override{output.append(source,n);return n;}
 };
-QJsonObject frozen(){return {{"schemaVersion",1},{"action","desktop"},{"window","0"},{"windowRect",QJsonArray{}},{"layout",QJsonObject{{"outputs",QJsonArray{QJsonObject{{"identity","monitor"},{"native",QJsonArray{0,0,640,480}},{"rotation",1}}}},{"configuration","1"},{"root",QJsonArray{0,0,640,480}},{"scale",QString(64,'a')}}}};}
+QJsonObject frozen(){return {{"schemaVersion",1},{"action","desktop"},{"window","0"},{"windowRect",QJsonArray{}},{"area",QJsonArray{}},{"selection",QJsonArray{}},{"selectionLayout",QJsonArray{}},{"layout",QJsonObject{{"outputs",QJsonArray{QJsonObject{{"identity","monitor"},{"native",QJsonArray{0,0,640,480}},{"rotation",1}}}},{"configuration","1"},{"root",QJsonArray{0,0,640,480}},{"scale",QString(64,'a')}}}};}
 class CaptureControlTests final:public QObject {
  Q_OBJECT
 private slots:
@@ -37,6 +37,26 @@ private slots:
  }
  void excessiveFrameStopsBeforeDelivery(){Duplex pipe;putgd::CaptureControl control(pipe);int failed=0,frames=0;connect(&control,&putgd::CaptureControl::failed,this,[&](putgd::Error){++failed;});connect(&control,&putgd::CaptureControl::frame,this,[&]{++frames;});pipe.feed(QByteArray(putgd::CaptureControl::maximumFrameBytes,'x'));QCOMPARE(failed,1);QCOMPARE(frames,0);QVERIFY(!control.send("ready",{}));}
  void unknownTypesCannotBecomeCommands(){Duplex pipe;putgd::CaptureControl control(pipe);pipe.feed("{\"version\":1,\"sequence\":\"1\",\"type\":\"delete\",\"payload\":{}}\n");QVERIFY(!control.send("ready",{}));QVERIFY(pipe.output.isEmpty());}
+ // Capture monitor carries its output's native rectangle and a repeat its logical
+ // selection (#1363); no other action may carry either.
+ void monitorAndRepeatSnapshotsCarryTheirArea(){
+  auto monitor=frozen();monitor["action"]="monitor";QVERIFY(putgd::X11NativeSnapshot::validate(monitor));
+  monitor["area"]=QJsonArray{0,0,640,480};QVERIFY(!putgd::X11NativeSnapshot::validate(monitor));
+  monitor["area"]=QJsonArray{0,0,0,480};QVERIFY(putgd::X11NativeSnapshot::validate(monitor));
+  const QJsonArray monitors{QJsonObject{{"identity","monitor"},{"logical",QJsonArray{0,0,640,480}},{"native",QJsonArray{0,0,640,480}},{"rotation",0}}};
+  QVERIFY(putgd::X11NativeSnapshot::describes(monitors));QVERIFY(!putgd::X11NativeSnapshot::describes({}));
+  auto repeat=frozen();repeat["action"]="repeat";QVERIFY(putgd::X11NativeSnapshot::validate(repeat));
+  repeat["selection"]=QJsonArray{10.5,20,300,200};QVERIFY(putgd::X11NativeSnapshot::validate(repeat));
+  // A repeat names the monitors its rectangle was chosen on, and only a repeat does.
+  repeat["selectionLayout"]=monitors;QVERIFY(!putgd::X11NativeSnapshot::validate(repeat));
+  auto unnamed=repeat;unnamed["selectionLayout"]=QJsonArray{QJsonObject{{"identity",""},{"logical",QJsonArray{0,0,640,480}},{"native",QJsonArray{0,0,640,480}},{"rotation",0}}};QVERIFY(putgd::X11NativeSnapshot::validate(unnamed));
+  auto strayLayout=frozen();strayLayout["selectionLayout"]=monitors;QVERIFY(putgd::X11NativeSnapshot::validate(strayLayout));
+  repeat["selection"]=QJsonArray{10,20,0,200};QVERIFY(putgd::X11NativeSnapshot::validate(repeat));
+  repeat["selection"]=QJsonArray{10,20,300};QVERIFY(putgd::X11NativeSnapshot::validate(repeat));
+  auto desktop=frozen();desktop["area"]=QJsonArray{0,0,640,480};QVERIFY(putgd::X11NativeSnapshot::validate(desktop));
+  desktop=frozen();desktop["selection"]=QJsonArray{0,0,10,10};QVERIFY(putgd::X11NativeSnapshot::validate(desktop));
+  desktop=frozen();desktop.remove("area");QVERIFY(putgd::X11NativeSnapshot::validate(desktop));
+ }
  void validSnapshotRejectsMalformedOrDuplicateIdentity(){auto value=frozen();QVERIFY(!putgd::X11NativeSnapshot::validate(value));value["window"]="4294967296";QVERIFY(putgd::X11NativeSnapshot::validate(value));value=frozen();value["action"]="window";QVERIFY(putgd::X11NativeSnapshot::validate(value));value=frozen();auto layout=value["layout"].toObject();auto outputs=layout["outputs"].toArray();outputs.append(outputs.first());layout["outputs"]=outputs;value["layout"]=layout;QVERIFY(putgd::X11NativeSnapshot::validate(value));value=frozen();layout=value["layout"].toObject();layout["scale"]=QString(64,'z');value["layout"]=layout;QVERIFY(putgd::X11NativeSnapshot::validate(value));}
 };
 QTEST_GUILESS_MAIN(CaptureControlTests)

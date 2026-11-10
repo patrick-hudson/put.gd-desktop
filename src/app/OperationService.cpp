@@ -91,6 +91,7 @@ QJsonObject UnavailableSource::capabilities() const {return {{"region",false},{"
 void UnavailableSource::acquire(const QString&,const ResourceLimits&,std::function<void(PayloadResult)> cb) {cb({{},unsupported()});}
 void UnavailableSource::copy(const CopyPayload&,std::function<void(Error)> cb) {cb(unsupported());}
 OperationService::OperationService(QString root,SettingsService& settings,ProviderRegistry& providers,SourceAdapter& source,QObject* parent):QObject(parent),root_(std::move(root)),settings_(settings),providers_(providers),source_(source),heapReclamationTimer_(this),observationTimer_(this),installation_(host::installationClass()) {
+ connect(&settings_,&SettingsService::accepted,this,[this](const QString&){emit settingsAccepted();});
  observationTimer_.setSingleShot(true);observationTimer_.setInterval(250);
  connect(&observationTimer_,&QTimer::timeout,this,[this]{
   QSet<QString> ids;{std::lock_guard lock(observationsMutex_);ids=std::exchange(observationsDirty_,{});observationScheduled_=false;}
@@ -273,10 +274,23 @@ void OperationService::invoke(const QString& action,JsonReply reply,const QJsonO
   if(editor_){reply({"editor_active","An edit is open; finish or cancel it before recording",{{"operationId",editingId_}}},{});return;}
   recording_->invoke(mode,reply);return;
  }
+ return invokeCapture(action,std::move(reply),options,activationToken);
+}
+void OperationService::invokeCapture(const QString& requestedAction,JsonReply reply,const QJsonObject& requested,const QString& activationToken) {
+ // Repeat last region (#1363) is a region capture of a remembered rectangle: it
+ // has its own key and entry, and the region action's output, name and history.
+ const bool repeat=requestedAction==Settings::repeatActionName();
+ const QString action=repeat?QStringLiteral("region"):requestedAction;
  if(!Settings::actionNames().contains(action)) {reply({"invalid_action","Unknown sharing action",{}},{});return;}
+ // delaySeconds (#1363): region, window, monitor and desktop captures and a
+ // repeat can start after 3, 5 or 10 seconds; 0 is immediate.
+ auto stripped=requested;const auto delayValue=stripped.take("delaySeconds");
+ const QJsonObject options=stripped; // const: operator[] must not insert
+ const int delay=delayValue.toInt();
+ if(!delayValue.isUndefined()&&(!Settings::delayableAction(requestedAction)||!delayValue.isDouble()||delayValue.toDouble()!=delay||!Settings::captureDelayChoices().contains(delay))){reply({"invalid_request","delaySeconds is 0, 3, 5 or 10, for region, window, monitor, desktop and repeat captures",{}},{});return;}
  // Edit & upload acquires from a chosen source, by default the native region
- // selector; every other action is its own source and takes no options.
- const auto source=action=="edit"?options["source"].toString("region"):action;
+ // selector; every other action is its own source and takes no other options.
+ const auto source=repeat?requestedAction:action=="edit"?options["source"].toString("region"):action;
  const auto sourcePath=options["path"].toString();
  if((action!="edit"&&!options.isEmpty())||(action=="edit"&&(!QStringList{"region","window","desktop","clipboard","file"}.contains(source)||(source=="file")!=options.contains("path")||(source=="file"&&!QDir::isAbsolutePath(sourcePath))))){reply({"invalid_request","Edit sources are region, window, desktop, clipboard, or file with an absolute path",{}},{});return;}
  if(action=="edit"&&editor_){editor_->request("raise",activationToken.isEmpty()?QJsonObject{}:QJsonObject{{"activationToken",activationToken}},[](Error,QJsonObject){});reply({"editor_active","An edit is already open; finish or cancel it first",{{"operationId",editingId_}}},{});return;}
@@ -319,6 +333,11 @@ void OperationService::invoke(const QString& action,JsonReply reply,const QJsonO
   else QMetaObject::invokeMethod(owner,std::move(release),Qt::QueuedConnection);
  };
  SourceAdapter::PreparedAcquisition acquisition;
+ // A delayed capture prepares nothing until its countdown ends, so no adapter
+ // holds its reservation yet. When the operation ends before the acquisition is
+ // ever started (a cancel in that gap, a failed journal save), nothing else would
+ // release it, and every later interactive capture would be busy_selecting.
+ std::function<void()> releaseUnused;
  if(source=="file"){
   // A file is read and decoded by the editor stage; no native source is involved.
   acquisition=[sourcePath](const ResourceLimits&,std::function<void(PayloadResult)> deliver){ClipboardPayload payload;payload.kind="files";payload.files={sourcePath};deliver({payload,{}});};
@@ -326,23 +345,48 @@ void OperationService::invoke(const QString& action,JsonReply reply,const QJsonO
  }else {
   const auto output=uploadReviewOptions(op,providers_);
   source_.setCaptureOutcome(action=="edit"?QStringLiteral("Opens the image editor"):upload?QStringLiteral("Uploads right away to %1 · %2").arg(output["destination"].toString(),output["sharingMode"]=="private"?QStringLiteral("Private upload"):QStringLiteral("Shared link")):QStringLiteral("Saves locally"));
-  source_.setRegionScreenshotFirst(snapshot.regionSelectionMode=="screenshot_first");
-  acquisition=source_.prepareAcquisition(source,snapshot.limits,std::move(earlyTerminal),std::move(released));
+  const bool screenshotFirst=snapshot.regionSelectionMode=="screenshot_first";
+  source_.setRegionScreenshotFirst(screenshotFirst);
+  if(delay>0&&!(source=="region"&&!screenshotFirst)) {
+   // The countdown runs first and the target is frozen when it ends: the window
+   // then active, the monitor then under the pointer, the screen as it then is
+   // (in screenshot-first mode, before the freeze). Nothing is prepared, shown
+   // or read until both journal saves are durable and the countdown has ended.
+   const auto outcome=source_.captureOutcome();
+   releaseUnused=released;
+   acquisition=[owner,source,delay,screenshotFirst,outcome,flag,earlyTerminal=std::function<void(Error)>(std::move(earlyTerminal)),released=std::function<void()>(std::move(released))](const ResourceLimits& limits,std::function<void(PayloadResult)> deliver) mutable {
+    if(!owner){deliver({{},{"source_unavailable","Desktop adapter closed",{}}});return;}
+    owner->source_.delayed(delay,[owner,source,screenshotFirst,outcome,limits,flag,earlyTerminal=std::move(earlyTerminal),released=std::move(released),deliver=std::move(deliver)](Error error) mutable {
+     // A cancel that arrives after the countdown, while the lock is being asked
+     // about, finds nothing to stop: it must still keep every pixel unread.
+     if(!owner||owner->stopping_||flag->load()){if(released)released();deliver({{},{"cancelled","Capture cancelled",{}}});return;}
+     if(error){if(released)released();deliver({{},std::move(error)});return;}
+     owner->source_.setCaptureOutcome(outcome);owner->source_.setRegionScreenshotFirst(screenshotFirst);owner->source_.setCaptureDelay(0);
+     owner->source_.prepareAcquisition(source,limits,std::move(earlyTerminal),std::move(released))(limits,std::move(deliver));
+    });
+   };
+  }else {
+   // A live region is chosen first; its adapter then counts down before the pixels.
+   source_.setCaptureDelay(delay);
+   acquisition=source_.prepareAcquisition(source,snapshot.limits,std::move(earlyTerminal),std::move(released));
+   source_.setCaptureDelay(0);
+  }
  }
- const auto path=databasePath();background([path,op](Error& e) {HistoryStore store(path);e=store.saveOperation(op);return op.publicJson();},[this,op,flag,reply,acquisition,earlyError](Error e,QJsonObject result) mutable {
-  if(e) {abandonUploadCopies(op.id);releaseActive(op.id);if(selectingId_==op.id&&!preparedOwners_.contains(op.id))selectingId_.clear();if(editingId_==op.id){editor_.reset();editingId_.clear();}reply(e,{});return;}
+ const auto path=databasePath();background([path,op](Error& e) {HistoryStore store(path);e=store.saveOperation(op);return op.publicJson();},[this,op,flag,reply,acquisition,earlyError,releaseUnused](Error e,QJsonObject result) mutable {
+  if(e) {if(releaseUnused)releaseUnused();abandonUploadCopies(op.id);releaseActive(op.id);if(selectingId_==op.id&&!preparedOwners_.contains(op.id))selectingId_.clear();if(editingId_==op.id){editor_.reset();editingId_.clear();}reply(e,{});return;}
   observe(op.publicJson());reply({},{{"operationId",op.id},{"operation",result}});emit changed(op.id);emit observationsChanged();
   logging::info(logOperation(),"Operation accepted",{{"operationId",op.id},{"action",op.action},{"output",op.destination.providerId.isEmpty()?"local":"upload"},{"provider",op.destination.providerId},{"profileId",op.destination.profileId}});
   // Acceptance stays durable and observable before acquiring pixels. Region
   // preview may already be visible; a terminal event skips the remaining work.
-  QTimer::singleShot(0,this,[this,op,flag,acquisition,earlyError]() mutable {
-   if(flag->load()) {op.state="cancelled";op.cancelled=true;finish(op);return;}
-   if(*earlyError) {op.error=*earlyError;op.cancelled=op.error.code=="cancelled"||op.error.code=="source_cancelled";op.state=op.cancelled?"cancelled":"failed";finish(op);return;}
-   op.state="acquiring";op.phase="acquiring";const auto path=databasePath();background([path,op](Error& e) {HistoryStore store(path);e=store.saveOperation(op);return QJsonObject{};},[this,op,flag,acquisition,earlyError](Error e,QJsonObject) mutable {
-    if(e) {op.error=e;op.state="failed";finish(op);return;}
+  QTimer::singleShot(0,this,[this,op,flag,acquisition,earlyError,releaseUnused]() mutable {
+   // The release comes before finish(), which frees the selection only once no owner is left.
+   if(flag->load()) {if(releaseUnused)releaseUnused();op.state="cancelled";op.cancelled=true;finish(op);return;}
+   if(*earlyError) {if(releaseUnused)releaseUnused();op.error=*earlyError;op.cancelled=op.error.code=="cancelled"||op.error.code=="source_cancelled";op.state=op.cancelled?"cancelled":"failed";finish(op);return;}
+   op.state="acquiring";op.phase="acquiring";const auto path=databasePath();background([path,op](Error& e) {HistoryStore store(path);e=store.saveOperation(op);return QJsonObject{};},[this,op,flag,acquisition,earlyError,releaseUnused](Error e,QJsonObject) mutable {
+    if(e) {if(releaseUnused)releaseUnused();op.error=e;op.state="failed";finish(op);return;}
     observe(op.publicJson());
-    if(flag->load()) {op.state="cancelled";op.cancelled=true;finish(op);return;}
-    if(*earlyError) {op.error=*earlyError;op.cancelled=op.error.code=="cancelled"||op.error.code=="source_cancelled";op.state=op.cancelled?"cancelled":"failed";finish(op);return;}
+    if(flag->load()) {if(releaseUnused)releaseUnused();op.state="cancelled";op.cancelled=true;finish(op);return;}
+    if(*earlyError) {if(releaseUnused)releaseUnused();op.error=*earlyError;op.cancelled=op.error.code=="cancelled"||op.error.code=="source_cancelled";op.state=op.cancelled?"cancelled":"failed";finish(op);return;}
     QPointer<OperationService> guarded(this);
     acquisition(op.settings.limits,[guarded,op,flag](PayloadResult r) {
      if(!guarded)return;
@@ -524,6 +568,10 @@ void OperationService::copyEditedImage(const QString& id,QByteArray png,std::fun
 void OperationService::rememberEditorColors(const QStringList& colors) {
  if(colors==settings_.snapshot().editorRecentColors||!settings_.metadata()["validation"].toObject()["ok"].toBool())return;
  settings_.patchAsync({{"preferences",QJsonObject{{"editorRecentColors",QJsonArray::fromStringList(colors)}}}},settings_.revision(),[](Result){});
+}
+void OperationService::setCaptureDelayPreference(int seconds) {
+ if(!Settings::captureDelayChoices().contains(seconds)||seconds==settings_.snapshot().captureDelaySeconds||!settings_.metadata()["validation"].toObject()["ok"].toBool())return;
+ settings_.patchAsync({{"preferences",QJsonObject{{"captureDelaySeconds",seconds}}}},settings_.revision(),[](Result){});
 }
 // Recording shares the editor's exclusivity: one interactive private review at a time.
 Error OperationService::acceptRecording(Operation& op) {

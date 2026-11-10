@@ -9,6 +9,9 @@
 #include "platform/wayland/ImageCopyCapture.h"
 #include "platform/wayland/RegionProcess.h"
 #include "platform/wayland/WaylandOutputs.h"
+#include "platform/wayland/CaptureExtras.h"
+#include "platform/CountdownProcess.h"
+#include <optional>
 #include <QJsonArray>
 #include <QPointer>
 #include <QElapsedTimer>
@@ -39,6 +42,11 @@ public:
  void setShortcutRecording(bool active,std::function<void(Error)> reply){shortcuts_.setPaused(active,std::move(reply));}
  void bindShortcuts(const QHash<QString,QString>& desired){shortcuts_.bind(desired);}
  void setUiProcess(qint64 pid) override {uiProcess_=pid>0?pid:0;}
+ // Delayed capture (#1363): putgd-region's countdown mode draws the pill on the
+ // overlay layer; Hyprland's own "locked" request answers the lock check, with
+ // logind's hint and the freedesktop screensaver service beside it.
+ void countdown(int seconds,std::function<void(Error)>) override;
+ void sessionLocked(std::function<void(bool)>) override;
  void setResourceLimits(const ResourceLimits& limits){limits_=limits;}
  // Windows from Hyprland's IPC (j/clients, j/activewindow): identity is the
  // stableId, which is the ext-foreign-toplevel identifier the recorder streams.
@@ -63,7 +71,15 @@ signals:
 private:
  QList<CaptureFrame> layout()const{return outputs_.layout();}
  bool unchanged(const QList<CaptureFrame>&,quint64)const;
- void capture(QString,QList<CaptureFrame>,quint64,ResourceLimits,std::function<void(PayloadResult)>,const QString& outcome,bool screenshotFirst=false);
+ void capture(QString,QList<CaptureFrame>,quint64,ResourceLimits,std::function<void(PayloadResult)>,const QString& outcome,bool screenshotFirst=false,int delay=0);
+ // Capture monitor and Repeat last region (#1363): a known logical rectangle, no selector.
+ void captureArea(QList<CaptureFrame>,quint64,QRectF,ResourceLimits,std::function<void(PayloadResult)>);
+ // Remembers a region once it was captured, for Repeat last region.
+ std::function<void(PayloadResult)> remembering(QRectF,QList<CaptureFrame>,std::function<void(PayloadResult)>);
+ // After a delayed live selection: a locked screen captures nothing.
+ void lockGate(int delay,std::function<void(Error)>);
+ std::optional<RegionMemory> lastRegion_;
+ CountdownProcess countdown_{QStringLiteral("putgd-region")};
  void captureScreens(QList<CaptureFrame>,quint64,QRectF,ResourceLimits,std::function<void(PayloadResult)>);
  // frames: the outputs to read; frozen: the whole layout, which must not change.
  void captureFrames(QList<CaptureFrame> frames,QList<CaptureFrame> frozen,quint64,ResourceLimits,std::function<void(QList<CaptureFrame>,Error)>);
