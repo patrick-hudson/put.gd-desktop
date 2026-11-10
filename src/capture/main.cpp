@@ -2,7 +2,9 @@
 #include "platform/x11/X11NativeSnapshot.h"
 #include "ipc/CaptureControl.h"
 #include "platform/x11/CaptureCursorPolicy.h"
+#include "platform/CountdownProcess.h"
 #include <QLibrary>
+#include <QLibraryInfo>
 #include "platform/x11/CaptureArtifactLease.h"
 #include "ipc/StdioDevice.h"
 #include "ui/Theme.h"
@@ -99,6 +101,22 @@ int main(int argc,char** argv){
   std::printf("%s\n",putgd::buildManifestJson());return 0;
  }
  if(argc==2&&(std::strcmp(argv[1],"--version")==0||std::strcmp(argv[1],"-v")==0)){std::printf("putgd-capture %s\n",putgd::buildVersion());return 0;}
+ // Countdown mode (#1363): the delay's pill and nothing else; see CountdownProcess.
+ if(argc>1&&std::strcmp(argv[1],putgd::CountdownProcess::argument)==0){
+  if(argc!=5)return 2;
+  if(std::strcmp(argv[4],putgd::buildVersion())!=0)return putgd::CountdownProcess::buildExit;
+  bool numeric=false;const int seconds=QByteArray(argv[2]).toInt(&numeric);
+  if(!numeric||seconds<1||!putgd::Settings::captureDelayChoices().contains(seconds))return 2;
+  QGuiApplication::setDesktopSettingsAware(false);qunsetenv("QT_QPA_PLATFORMTHEME");qunsetenv("QT_STYLE_OVERRIDE");
+  int count=1;QApplication app(count,argv);app.setQuitOnLastWindowClosed(false);QCoreApplication::setApplicationName("putgd-capture");
+  putgd::Theme::setScheme(std::strcmp(argv[3],"light")==0?putgd::Theme::Scheme::Light:putgd::Theme::Scheme::Dark);
+  putgd::X11SourceAdapter source(nullptr,true);
+  source.countdown(seconds,[&app](putgd::Error error){
+   const int status=!error?0:error.code=="cancelled"?putgd::CountdownProcess::cancelledExit:1;
+   QTimer::singleShot(0,&app,[&app,status]{app.exit(status);});
+  });
+  return QCoreApplication::exec();
+ }
  putgd::UiControlPipes handles;if(!handles.valid())return 2;
  // This X11 helper paints native overlays and a compact instruction badge. Avoid initializing
  // GTK/style plugins on every screenshot; the separate
@@ -117,8 +135,14 @@ int main(int argc,char** argv){
  const auto build=QJsonDocument::fromJson(putgd::buildManifestJson()).object();QString nonce,generation,path,device,inode;QJsonObject frozen;putgd::ResourceLimits limits;
  putgd::CaptureArtifactLease artifact;putgd::X11Target target;
  quint32 preparedCursor=0;bool cacheCursor=false,observeCursor=false;
+ // Qt 6.11+ calls QAccessible::isActive() from QWindow destruction. Only
+ // those runtimes need a warm-up kept alive past bootstrap; older runtimes
+ // retain the original stack-window lifetime and startup path.
+ std::unique_ptr<QWindow> cursorWarmup;
  bool bootstrapped=false,ready=false,begun=false,settled=false,resultSent=false,cancelled=false;
  bool previewed=false,selectionStarted=false,acquisitionQueued=false,acquisitionStarted=false;quint32 previewCursor=0;
+ // Delayed region (#1363): the countdown runs between selection and pixels.
+ int delaySeconds=0;bool delayPending=false;
  std::optional<putgd::RegionSelectionResult> selection;std::optional<QRectF> selectedRect;QThread* encoder=nullptr;
  QTimer deadline;deadline.setSingleShot(true);deadline.start(10000);
  const auto envelope=[&]{return QJsonObject{{"nonce",nonce},{"generation",generation}};};
@@ -144,13 +168,13 @@ int main(int argc,char** argv){
  // Selection may finish before durable BEGIN. Retain geometry only until both
  // gates are satisfied; this is the sole route to pixels and the PNG encoder.
  const auto acquireWhenAuthorized=[&]{
-  if(!begun||settled||cancelled||acquisitionStarted||acquisitionQueued||(target.action=="region"&&!selection))return;
+  if(!begun||settled||cancelled||acquisitionStarted||acquisitionQueued||delayPending||(target.action=="region"&&!selection))return;
   acquisitionQueued=true;
   // Drain the complete buffered command batch before reading pixels. A BEGIN
   // followed by CANCEL/EOF/protocol failure must invalidate this queued join.
   QTimer::singleShot(0,&app,[&]{
   acquisitionQueued=false;
-  if(!begun||settled||cancelled||acquisitionStarted||(target.action=="region"&&!selection))return;
+  if(!begun||settled||cancelled||acquisitionStarted||delayPending||(target.action=="region"&&!selection))return;
   putgd::Error changed;if(!native.unchanged(frozen,changed)){finish(changed);return;}
   acquisitionStarted=true;
   auto acquired=[&](putgd::PayloadResult result){
@@ -167,7 +191,11 @@ int main(int argc,char** argv){
      BoundedFile file(std::min(acceptedLimits.maxFileBytes,pixels*4+pixels*4/1000+encoded->height+65536));if(!file.open(fd,QIODevice::ReadWrite,QFileDevice::AutoCloseHandle)){::close(fd);fail("capture_io","artifact_open");return;}
      if(!image.save(&file,"PNG")||!file.flush()){fail(file.exceeded()?"input_excessive":"encoding_failed",file.exceeded()?"png_budget":"png_write");return;}image={};encoded->bytes=file.size();if(encoded->bytes<45||encoded->bytes>acceptedLimits.maxFileBytes||encoded->bytes>pixels*4+pixels*4/1000+encoded->height+65536){fail("input_excessive","png_bytes");return;}file.seek(0);QCryptographicHash hash(QCryptographicHash::Sha256);if(!hash.addData(&file)){fail("capture_io","artifact_hash");return;}encoded->hash=QString::fromLatin1(hash.result().toHex());
     });
-    auto* worker=encoder;QObject::connect(worker,&QThread::finished,&app,[&,worker,encoded]{encoder=nullptr;worker->deleteLater();if(settled||cancelled)return;if(encoded->error){finish(encoded->error);return;}putgd::Error changed;if(!native.unchanged(frozen,changed)){finish(changed);return;}resultSent=true;auto reply=envelope();reply["bytes"]=QString::number(encoded->bytes);reply["sha256"]=encoded->hash;reply["width"]=encoded->width;reply["height"]=encoded->height;control.send("result",reply);deadline.start(10000);});worker->start();
+    auto* worker=encoder;QObject::connect(worker,&QThread::finished,&app,[&,worker,encoded]{encoder=nullptr;worker->deleteLater();if(settled||cancelled)return;if(encoded->error){finish(encoded->error);return;}putgd::Error changed;if(!native.unchanged(frozen,changed)){finish(changed);return;}resultSent=true;auto reply=envelope();reply["bytes"]=QString::number(encoded->bytes);reply["sha256"]=encoded->hash;reply["width"]=encoded->width;reply["height"]=encoded->height;
+     // The resident remembers a captured region for Repeat last region (#1363).
+     // with the monitors it was chosen on: name, logical and native rectangle, rotation.
+     if(target.action=="region"&&selectedRect){reply["selection"]=rectangle(*selectedRect);reply["layout"]=putgd::describeLayout(target.layout);}
+     control.send("result",reply);deadline.start(10000);});worker->start();
    };
   if(target.action=="region"){
    const auto selected=*selection;selection.reset();selectedRect=selected.rectangle;
@@ -185,12 +213,24 @@ int main(int argc,char** argv){
    // A completed early selection owns no input or surfaces. Bound how long its
    // geometry may await durable authorization; no capture is implicit at expiry.
    if(!begun)deadline.start(10000);
+   if(delaySeconds){
+    // Area first, then the countdown, then the pixels. A locked screen at
+    // expiry captures nothing; a click on the pill cancels.
+    delayPending=true;deadline.start((delaySeconds+20)*1000);
+    source.delayed(delaySeconds,[&](putgd::Error error){
+     if(settled||cancelled)return;
+     if(error){selection.reset();if(!error.details.contains("stage"))error.details["stage"]="countdown";finish(error);return;}
+     delayPending=false;deadline.start(begun?120000:10000);
+     acquireWhenAuthorized();
+    });
+    return;
+   }
    acquireWhenAuthorized();
   });
  };
  QObject::connect(&control,&putgd::CaptureControl::frame,&app,[&](const QString& type,const QJsonObject& payload){
   if(type=="bootstrap"){
-   if(bootstrapped||payload.size()!=9+int(payload.contains("outcome"))+int(payload.contains("regionMode"))+int(payload.contains("appearance"))||(payload.contains("regionMode")&&payload["regionMode"]!="screenshot_first")||payload["build"].toObject()!=build||!payload["nonce"].isString()||QUuid(payload["nonce"].toString()).isNull()||!payload["generation"].isString()||!payload["path"].isString()||!payload["device"].isString()||!payload["inode"].isString()||!payload["limits"].isObject()||(payload.contains("outcome")&&(!payload["outcome"].isString()||payload["outcome"].toString().size()>256))){rejectProtocol();return;}
+   if(bootstrapped||payload.size()!=9+int(payload.contains("outcome"))+int(payload.contains("regionMode"))+int(payload.contains("appearance"))+int(payload.contains("delay"))||(payload.contains("regionMode")&&payload["regionMode"]!="screenshot_first")||payload["build"].toObject()!=build||!payload["nonce"].isString()||QUuid(payload["nonce"].toString()).isNull()||!payload["generation"].isString()||!payload["path"].isString()||!payload["device"].isString()||!payload["inode"].isString()||!payload["limits"].isObject()||(payload.contains("outcome")&&(!payload["outcome"].isString()||payload["outcome"].toString().size()>256))){rejectProtocol();return;}
    if(payload.contains("appearance")&&(!payload["appearance"].isObject()||(!payload["appearance"].toObject().isEmpty()&&payload["appearance"]["scheme"]!="light"&&payload["appearance"]["scheme"]!="dark"))){rejectProtocol();return;}
    putgd::Theme::setScheme(payload["appearance"]["scheme"]=="light"?putgd::Theme::Scheme::Light:putgd::Theme::Scheme::Dark);
    nonce=payload["nonce"].toString();generation=payload["generation"].toString();bool ok=false;const auto g=generation.toULongLong(&ok);if(!ok||!g||QString::number(g)!=generation){rejectProtocol();return;}
@@ -205,19 +245,28 @@ int main(int argc,char** argv){
    bootstrapped=true;putgd::Error error;target=native.resolve(frozen,resolver,error);target.outcome=payload["outcome"].toString();
    // Screenshot first (#629) reads pixels, so its selection waits for BEGIN.
    target.screenshotFirst=target.action=="region"&&payload["regionMode"]=="screenshot_first";
+   // Only a live region counts down here; every other delay ends before this helper starts.
+   if(payload.contains("delay")){const auto delay=payload["delay"];if(!delay.isDouble()||delay.toDouble()!=delay.toInt()||delay.toInt()<1||!putgd::Settings::captureDelayChoices().contains(delay.toInt())||frozen["action"]!="region"||target.screenshotFirst){rejectProtocol();return;}delaySeconds=delay.toInt();}
    QJsonObject seed;
    if(!error&&target.action=="region"&&!preparedCursor&&cacheCursor&&putgd::NativeRegionOverlay::supportsLayout(target.layout))seed=nativeCursorSeed();
    if(!error&&target.action=="region"&&!preparedCursor&&seed.isEmpty()){
     // Populate Qt's native themed-cursor cache without mapping a window,
     // acquiring input or reading desktop pixels. This can overlap journal IO.
-    QWindow cursor;cursor.setSurfaceType(QSurface::RasterSurface);
-    QSurfaceFormat format;format.setAlphaBufferSize(8);cursor.setFormat(format);
-    cursor.setFlags(Qt::FramelessWindowHint|Qt::WindowDoesNotAcceptFocus|Qt::WindowTransparentForInput);
-    // NativeRegionOverlay embeds its cursor under a fromWinId() wrapper.
-    // Qt selects that wrapper's screen from a default QWindow geometry, and
-    // cursor caches are per screen. Use the same default screen selection here;
-    // warming the first RandR output can warm an unrelated cache instead.
-    cursor.create();cursor.setCursor(Qt::CrossCursor);
+    const auto warmCursor=[](QWindow& cursor){
+     cursor.setSurfaceType(QSurface::RasterSurface);
+     QSurfaceFormat format;format.setAlphaBufferSize(8);cursor.setFormat(format);
+     cursor.setFlags(Qt::FramelessWindowHint|Qt::WindowDoesNotAcceptFocus|Qt::WindowTransparentForInput);
+     // NativeRegionOverlay embeds its cursor under a fromWinId() wrapper.
+     // Qt selects that wrapper's screen from a default QWindow geometry, and
+     // cursor caches are per screen. Use the same default screen selection here;
+     // warming the first RandR output can warm an unrelated cache instead.
+     cursor.create();cursor.setCursor(Qt::CrossCursor);
+    };
+    // Select by the loaded Qt, not the build headers: an older native package
+    // may run on a newer library. Preserve nightly's destruction on Qt <6.11.
+    if(QLibraryInfo::version()>=QVersionNumber(6,11,0)){
+     cursorWarmup=std::make_unique<QWindow>();warmCursor(*cursorWarmup);
+    }else{QWindow cursor;warmCursor(cursor);}
    }
    ready=true;auto reply=envelope();reply["build"]=build;reply["cursor"]=seed;control.send("ready",reply);
    if(error){if(!error.details.contains("stage"))error.details["stage"]="prepare";finish(error);return;}

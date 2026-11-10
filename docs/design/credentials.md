@@ -25,11 +25,52 @@ startup read.
 requires explicit entry again. `forget` revokes future cache access. Already-sent
 requests drain using their original client/credential generation.
 
+A custom HTTP uploader (#1361) stores named values instead of a key pair: one entry
+holds a map from credential-store name to value, where a name is `headers/<name>`,
+`parameters/<name>`, `arguments/<name>`, `secrets/<name>` or `data` (the request body).
+One entry holds at most 160 values and 128 KB in all, names included; setup and the
+store apply the same limits. `setup.storeCredentials` takes `{"values":{name:value}}`
+for such a destination, checks each name against the saved settings, and merges: a
+value typed now replaces the stored one and the others are kept from the loaded entry.
+A missing value answers `credential_incomplete` with the names. `setup.credentialHint`
+answers `storedValues` and `missingValues`, names only. An imported `.sxcu` file's
+values are held in the Settings window, or stored straight to the chosen mode by
+`settings.importUploader`, and reach no file on the way
+([custom uploader](../user/custom-uploader.md#what-an-import-does-with-secrets)).
+Its keychain reference is `putgd/http/<profile id>`. Imports are serialized: a second
+`settings.importUploader` that arrives while one is between its first check and its
+saved profile answers `import_busy`, so two files can never store their values under
+one reference. When the profile could not be saved, `CredentialStore::erase` removes
+what the import stored, from the cache and from the secret store; `credentialsStored`
+in the error's details is set only if that removal itself failed. Three edges:
+
+- The keychain entry of an ID is the import's to write and to remove only while no
+  destination names it. A destination can name another ID's entry, so an import whose
+  entry is already named is refused with `credential_reference_in_use` (a derived ID
+  moves on to the next free one) before anything is stored.
+- `SettingsService` reports a completed write in `Result::written`. An error with
+  `written` set means the profile is in `config.json` and only the read-back failed:
+  the import keeps the stored values and answers with `destinationWritten` in the
+  error's details.
+- The secret store can wait on a prompt that nobody answers. The import waits
+  `importStoreDeadline` (two minutes) for the save, and again for a cleanup erase, then
+  answers `credential_store_timeout` and gives its turn back. The entry stays reserved
+  until the store answers after all; what it wrote then is erased.
+
+What is looked for as a credential in a server's replies and addresses is narrower
+than what is stored: see
+[What counts as a credential](../user/custom-uploader.md#what-counts-as-a-credential).
+
 Configuration stores `{"mode":"keychain","reference":"putgd/profile-name"}` or
 `{"mode":"session","reference":null}`. Receipts preserve this reference to restore
-access to an original destination. They never preserve keys or tokens.
-No secret is written to configuration, operation journals, payload spools, the
-persistent log or exported diagnostics. The log redacts authorization headers, session
+access to an original destination. They never preserve access keys, secret keys or session tokens. Expiring S3/B2
+download URLs are bearer secrets retained as History links; they do not serve as
+object identity and their query values never enter logs or diagnostics.
+Access keys, secret keys and session tokens are never written to configuration,
+operation journals, payload spools, the persistent log or exported diagnostics.
+Operation journals, destination-test journals and the History database can retain
+bearer download links in receipts; treat those private records as sensitive.
+The log redacts authorization headers, session
 tokens, presigned query strings, share-link fragments and secret-shaped values when it
 writes each record, and the AWS SDK never logs above Warn (Info with debug logging),
 so request headers are not logged ([diagnostics.md](diagnostics.md#redaction)).
@@ -38,6 +79,13 @@ includes keychain data ([diagnostics.md](diagnostics.md#diagnostics-package)). K
 this implementation does not promise locked or securely wiped process memory.
 
 The explicit GUI **Show** action can read an unlocked saved S3 secret access key through `setup.revealCredentialSecret`. It returns only that secret from the resident cache for the saved profile and accepted/observed revision; it does no keychain IO. If the cache is empty, unlock saved credentials explicitly first. The CLI rejects this method and the MCP helper does not expose it. The UI holds the revealed value read-only until Hide, a destination/provider change, page hide, close, reload, or credential clearing. Revealed saved values never become credential drafts, setup job records, snapshots, diagnostics, or checkpoints.
+
+Copying an expired S3/B2 History link reads only cached credentials. A missing
+cache returns `credential_setup_required` and offers **Unlock saved credentials**;
+History never unlocks as part of copying or browsing. The separate explicit
+`history.unlockLinkCredentials` action (also available through CLI/MCP) reads only
+the saved receipt's original keychain reference. A later copy performs renewal.
+Session credentials must be entered again through Destinations after restart.
 
 A GUI setup form can use `save`, `unlock`, `cached` and `forget`, followed by
 `S3Provider::readiness` and explicit `testDestination`. Callbacks from the provider

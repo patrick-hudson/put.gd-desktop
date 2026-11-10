@@ -15,6 +15,18 @@ from jsonschema import Draft202012Validator, ValidationError
 
 
 class ConfigurationSchema(unittest.TestCase):
+    def test_s3_presigned_link_settings(self):
+        root = Path(__file__).resolve().parents[2]
+        schema = json.loads((root / 'schemas/config.schema.json').read_text())
+        validator = Draft202012Validator(schema['$defs']['s3Settings'])
+        settings = json.loads((root / 'config/development.example.json').read_text())['profiles'][0]['settings']
+        self.assertTrue(validator.is_valid(settings))  # legacy destinations omit both fields
+        for mode in ('public', 'presigned'):
+            for days in (1, 7):
+                self.assertTrue(validator.is_valid(settings | {'linkMode': mode, 'linkValidityDays': days}))
+        for key, value in [('linkMode', 'authorized'), ('linkMode', None), ('linkValidityDays', 0), ('linkValidityDays', 8), ('linkValidityDays', 1.5), ('linkValidityDays', '3')]:
+            self.assertFalse(validator.is_valid(settings | {key: value}))
+
     def test_capture_defaults_and_explicit_exceptions(self):
         root = Path(__file__).resolve().parents[2]
         schema = json.loads((root / 'schemas/config.schema.json').read_text())

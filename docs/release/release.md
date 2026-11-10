@@ -42,7 +42,7 @@ asset layouts and remain verifiable.
 
 ### Nightly
 
-`.github/workflows/nightly.yml` runs at 05:23 UTC on `nightly` and on demand
+`.github/workflows/nightly.yml` runs at 08:23 UTC on `nightly` and on demand
 (`gh workflow run nightly.yml --ref nightly`). GitHub can delay scheduled work;
 this is not a delivery-time guarantee. Its `plan` job derives the nightly tag for
 `nightly` HEAD. When that exact source is already a complete, verified public

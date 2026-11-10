@@ -896,7 +896,7 @@ with n.controller_shutdown(workers):
         self.assertIsNone(nightly.select_release(releases,[latest]))
         self.assertEqual(nightly.select_release(releases,[latest],True)['tag_name'],latest)
         timer=(nightly.ROOT/'tools/lab/putgd-nightly-desktops.timer').read_text()
-        self.assertIn('OnCalendar=*-*-* 07:30:00 UTC',timer)
+        self.assertIn('OnCalendar=*-*-* 10:30:00 UTC',timer)
         self.assertNotIn('*:00,30',timer)
 
     def test_all_five_hosts_are_dispatched_concurrently(self):

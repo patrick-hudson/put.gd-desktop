@@ -5,6 +5,9 @@
 #include "ipc/CaptureControl.h"
 #include "ipc/StdioDevice.h"
 #include "ui/Theme.h"
+#include "ui/CountdownPill.h"
+#include "platform/CountdownProcess.h"
+#include "core/Settings.h"
 #include "core/BuildInfo.h"
 #include <QApplication>
 #include <QJsonDocument>
@@ -18,6 +21,7 @@
 #include <functional>
 #include <thread>
 #include <cerrno>
+#include <utility>
 #if defined(PUTGD_HAVE_LAYER_SHELL) && QT_VERSION >= QT_VERSION_CHECK(6,5,0)
 #include <wayland-client.h>
 #define PUTGD_REGION_TEARDOWN_FENCE 1
@@ -41,7 +45,16 @@ int main(int argc,char** argv) {
  if(argc==2 && (std::strcmp(argv[1],"--version")==0 || std::strcmp(argv[1],"-v")==0)) {
   std::printf("putgd-region %s\n",putgd::buildVersion()); return 0;
  }
- putgd::UiControlPipes handles; if(!handles.valid()) return 2;
+ // Countdown mode (#1363): the delay's pill and nothing else; see CountdownProcess.
+ const bool countdownMode=argc>1&&std::strcmp(argv[1],putgd::CountdownProcess::argument)==0;
+ int countdownSeconds=0;
+ if(countdownMode) {
+  if(argc!=5) return 2;
+  if(std::strcmp(argv[4],putgd::buildVersion())!=0) return putgd::CountdownProcess::buildExit;
+  bool numeric=false; countdownSeconds=QByteArray(argv[2]).toInt(&numeric);
+  if(!numeric||countdownSeconds<1||!putgd::Settings::captureDelayChoices().contains(countdownSeconds)) return 2;
+ }
+ putgd::UiControlPipes handles; if(!countdownMode&&!handles.valid()) return 2;
  // This helper paints its own surfaces and pills from the app theme. Plasma's
  // platform theme would load KDE Frameworks, Qt Quick and Mesa on every region
  // press, 90 ms of the hotkey on Kubuntu's native package, for one thing the
@@ -53,8 +66,27 @@ int main(int argc,char** argv) {
   qunsetenv("QT_QPA_PLATFORMTHEME");
   qunsetenv("QT_STYLE_OVERRIDE");
  }
- QApplication app(argc,argv); app.setQuitOnLastWindowClosed(false);
+ int applicationArguments=countdownMode?1:argc;
+ QApplication app(applicationArguments,argv); app.setQuitOnLastWindowClosed(false);
  if(plasmaFont) QGuiApplication::setFont(putgd::kdeDesktopFont(putgd::kdeGlobalsPaths()));
+ if(countdownMode) {
+  app.setDesktopFileName("putgd-region"); QCoreApplication::setApplicationName("putgd-region");
+  putgd::Theme::setScheme(std::strcmp(argv[3],"light")==0?putgd::Theme::Scheme::Light:putgd::Theme::Scheme::Dark);
+  if(!QGuiApplication::platformName().startsWith("wayland")) return 1;
+  std::unique_ptr<putgd::CountdownPill> pill;
+  pill=std::make_unique<putgd::CountdownPill>(countdownSeconds,[&](bool expired) {
+   // Outside the pill's own event handler: take its surface down, and report
+   // the result only once the compositor has.
+   QTimer::singleShot(0,&app,[&,expired] {
+    // A cancelled countdown is followed by no capture: the pill just goes.
+    if(!expired) { pill.reset(); app.exit(putgd::CountdownProcess::cancelledExit); return; }
+    putgd::hideLayerShellCountdown(*pill,[&](bool acknowledged,bool presented) { pill.reset(); app.exit(!acknowledged?4:presented?0:putgd::CountdownProcess::hiddenExit); });
+   });
+  });
+  if(!putgd::showLayerShellCountdown(*pill)) return 1;
+  pill->start();
+  return app.exec();
+ }
  // Load the pill font while this process waits for its bootstrap; a surface does
  // not wait for it to map.
  std::thread fonts=putgd::LayerShellRegionOverlay::preloadFonts();
@@ -67,6 +99,8 @@ int main(int argc,char** argv) {
  const auto build=QJsonDocument::fromJson(putgd::buildManifestJson()).object();
  QString nonce,generation; QList<putgd::CaptureFrame> frozen;
  std::unique_ptr<putgd::LayerShellRegionOverlay> selector;QString outcome;bool screenshotFirst=false;QList<putgd::CaptureFrame> backdrop;
+ // Delayed region (#1363): the pill shows between selection and the result.
+ std::unique_ptr<putgd::CountdownPill> pill;int delaySeconds=0;
  bool bootstrapped=false,ready=false,begun=false,resultSent=false,settled=false,teardownPending=false,deferKeyboard=false;
  QTimer teardownDeadline;teardownDeadline.setSingleShot(true);
  std::function<void(bool)> teardownReply;
@@ -80,7 +114,7 @@ int main(int argc,char** argv) {
 #ifdef PUTGD_REGION_TEARDOWN_FENCE
   if(teardownFence){wl_callback_destroy(teardownFence);teardownFence=nullptr;}
 #endif
-  selector.reset(); control.stop(); app.exit(status);
+  selector.reset(); pill.reset(); control.stop(); app.exit(status);
  };
  std::function<void(bool)> completeTeardown=[&](bool acknowledged){
   teardownDeadline.stop();
@@ -91,7 +125,7 @@ int main(int argc,char** argv) {
  };
  const auto teardown=[&](std::function<void(bool)> reply){
   if(settled||teardownPending)return;
-  teardownPending=true;deadline.stop();const bool hadSelector=bool(selector);selector.reset();teardownReply=std::move(reply);
+  teardownPending=true;deadline.stop();const bool hadSelector=bool(selector)||bool(pill);selector.reset();pill.reset();teardownReply=std::move(reply);
   if(!hadSelector){completeTeardown(true);return;}
 #ifdef PUTGD_REGION_TEARDOWN_FENCE
   // Destruction queues hide/destroy requests on the SAME Qt connection that
@@ -133,7 +167,7 @@ int main(int argc,char** argv) {
  QObject::connect(&control,&putgd::CaptureControl::frame,&app,[&](const QString& type,const QJsonObject& payload){
   if(settled||teardownPending) return;
   if(type=="bootstrap") {
-   if(bootstrapped || payload.size()!=4+int(payload.contains("outcome"))+int(payload.contains("frozen"))+int(payload.contains("appearance"))+int(payload.contains("deferKeyboard")) || payload["build"].toObject()!=build ||
+   if(bootstrapped || payload.size()!=4+int(payload.contains("outcome"))+int(payload.contains("frozen"))+int(payload.contains("appearance"))+int(payload.contains("deferKeyboard"))+int(payload.contains("delay")) || payload["build"].toObject()!=build ||
       (payload.contains("frozen")&&(!payload["frozen"].isObject()||payload["frozen"].toObject().size()!=2||!payload["frozen"]["fd"].isDouble()||!payload["frozen"]["frames"].isArray())) ||
       !payload["nonce"].isString() || QUuid(payload["nonce"].toString()).isNull() ||
       !payload["generation"].isString() || !payload["layout"].isArray() || (payload.contains("outcome")&&(!payload["outcome"].isString()||payload["outcome"].toString().size()>256))) { close(4); return; }
@@ -143,6 +177,12 @@ int main(int argc,char** argv) {
    if(!numeric || !number || QString::number(number)!=g) { close(4); return; }
    if(payload.contains("deferKeyboard")&&payload["deferKeyboard"]!=true){close(4);return;}
    deferKeyboard=payload.contains("deferKeyboard");
+   // Only a live selection counts down here; a frozen one was delayed before its freeze.
+   if(payload.contains("delay")) {
+    const auto delay=payload["delay"];
+    if(!delay.isDouble()||delay.toDouble()!=delay.toInt()||delay.toInt()<1||!putgd::Settings::captureDelayChoices().contains(delay.toInt())||payload.contains("frozen")) { close(4); return; }
+    delaySeconds=delay.toInt();
+   }
    outcome=payload["outcome"].toString();nonce=payload["nonce"].toString(); generation=g; bootstrapped=true;
    putgd::Error error; frozen=putgd::waylandRegionLayout(payload["layout"].toArray(),error);
    if(error) { close(4); return; }
@@ -189,9 +229,35 @@ int main(int argc,char** argv) {
      if(!putgd::waylandRegionLayoutsMatch(frozen,layout())) { fail("display_changed"); return; }
      putgd::Error error; const auto encoded=putgd::waylandRegionRectangle(rectangle);
      putgd::waylandRegionRectangle(encoded,frozen,error); if(error) { fail("capture_geometry"); return; }
-     selector.reset(); resultSent=true; auto message=envelope(); message["rectangle"]=encoded;
-     if(!control.send("result",message)) { close(4); return; }
-     deadline.start(10000);
+     selector.reset();
+     const auto report=[&,encoded] {
+      resultSent=true; auto message=envelope(); message["rectangle"]=encoded;
+      if(!control.send("result",message)) { close(4); return; }
+      deadline.start(10000);
+     };
+     if(!delaySeconds) { report(); return; }
+     // Area first, then the countdown: the result leaves only after the pill's
+     // surface is gone, so the resident's capture cannot contain it.
+     QScreen* display=nullptr;
+     for(auto* screen:QGuiApplication::screens()) if(QRectF(screen->geometry()).contains(rectangle.center())) display=screen;
+     deadline.start((delaySeconds+20)*1000);
+     pill=std::make_unique<putgd::CountdownPill>(delaySeconds,[&,report](bool expired) {
+      QTimer::singleShot(0,&app,[&,report,expired] {
+       if(settled || teardownPending || resultSent || !pill) return;
+       if(!expired) { fail("cancelled"); return; }
+       putgd::hideLayerShellCountdown(*pill,[&,report](bool acknowledged,bool presented) {
+        if(settled || teardownPending || resultSent) return;
+        pill.reset();
+        if(!acknowledged) { close(4); return; }
+        // Not on screen when the delay ran out: locked or blanked, so no capture.
+        if(!presented) { fail("session_locked"); return; }
+        if(!putgd::waylandRegionLayoutsMatch(frozen,layout())) { fail("display_changed"); return; }
+        report();
+       });
+      });
+     });
+     if(!putgd::showLayerShellCountdown(*pill,display)) { fail("region_unavailable"); return; }
+     pill->start();
     });
    });
    selector->setDeferKeyboard(deferKeyboard);

@@ -36,6 +36,9 @@
 #include "storage/s3/S3Provider.h"
 #include "storage/proton/ProtonProvider.h"
 #include "storage/b2/B2Provider.h"
+#include "storage/http/HttpImport.h"
+#include "storage/http/HttpProvider.h"
+#include "ui/CustomUploaderPanel.h"
 #include <QSpinBox>
 #include <QStyleOptionSpinBox>
 #include <QMimeData>

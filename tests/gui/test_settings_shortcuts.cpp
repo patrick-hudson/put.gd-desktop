@@ -15,7 +15,7 @@ private slots:
   editor->cancelRecording();PUTGD_TRY_COMPARE(input->width(),idleWidth);PUTGD_VERIFY_STEADY(input->width()==idleWidth,100);
  }
  void shortcutDisplayAndClearingFollowItsValue(){
-  ShortcutEditor editor;editor.setActions(Settings::defaults()["actions"].toObject());editor.show();QStringList order;for(auto* button:editor.findChildren<QPushButton*>())if(button->objectName().startsWith("record"))order<<button->objectName().mid(6).chopped(8).toLower();QCOMPARE(order,Settings::presentationOrder());
+  ShortcutEditor editor;editor.setActions(Settings::defaults()["actions"].toObject());editor.show();QStringList order;for(auto* button:editor.findChildren<QPushButton*>())if(button->objectName().startsWith("record"))order<<button->objectName().mid(6).chopped(8).toLower();QCOMPARE(order,Settings::shortcutOrder());
   for(const auto& action:Settings::presentationOrder()){auto* input=editor.editors().value(action);auto* clear=editor.findChild<QPushButton*>("clear"+action.left(1).toUpper()+action.mid(1)+"Shortcut");QVERIFY(input->isReadOnly());QVERIFY(!input->hasFrame());QVERIFY(clear->parentWidget()->isAncestorOf(input));QCOMPARE(clear->isEnabled(),!input->text().isEmpty());input->setText("Ctrl+1");QVERIFY(clear->isEnabled());QVERIFY(!clear->isHidden());QCOMPARE(clear->iconSize(),QSize(Ui::scaled(12),Ui::scaled(12)));QVERIFY(!clear->icon().isNull());clear->click();QVERIFY(input->text().isEmpty());QVERIFY(!clear->isEnabled());QVERIFY(clear->isHidden());QCOMPARE(input->placeholderText(),QString("Not set"));}
  }
  void shortcutRefreshIsOnlyOfferedWhileWaitingOrFailed(){

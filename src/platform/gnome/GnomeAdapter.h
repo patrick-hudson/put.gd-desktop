@@ -8,6 +8,7 @@
 #include <QJsonArray>
 #include <QPointer>
 #include <QTimer>
+#include <optional>
 namespace putgd {
 // Also the recording shell: the extension's selector, frame actors and bar
 // placement; and the window list for window recordings (Mutter's window ids).
@@ -27,6 +28,10 @@ public:
  void bindShortcuts(const QHash<QString,QString>&);
  void setUiProcess(qint64) override;
  void invalidateCopyEligibility() override;
+ // Delayed capture (#1363): the extension draws the countdown as a Shell actor;
+ // a lock drops it with session_locked.
+ void countdown(int seconds,std::function<void(Error)>) override;
+ void sessionLocked(std::function<void(bool)>) override;
  bool selectsRegions()const override;
  Error regionError()const override;
  // The loaded extension is older than the packaged one: a log-out loads it.
@@ -69,7 +74,16 @@ private:
  void emitSetupNotice(const gnome::SetupStatus&);
  RecordingClicks::Sink clickSink_;
  using Reply=std::function<void(Error,QJsonObject)>;
- struct Transfer {QString id,outcome;bool screenshotFirst=false;ResourceLimits limits;QJsonObject metadata;QByteArray bytes;std::function<void(PayloadResult)> reply;quint64 generation=0;};
+ // Capture version 2: monitor, repeat and the countdown need the packaged extension.
+ Error captureVersionError()const;
+ // A helper that drops out of a counting request on a locked session is the lock.
+ void lockAware(Error,std::function<void(Error)>,int attempt=0);
+ // Repeat last region (#1363): the rectangle and the extension's layout key of
+ // the last region capture, in this process's memory only.
+ struct RegionMemory {QJsonArray area;QString layoutKey;};
+ std::optional<RegionMemory> lastRegion_;
+ QString countdownId_;
+ struct Transfer {QString id,outcome,action;int delaySeconds=0;QJsonArray area;QString layoutKey;bool screenshotFirst=false;ResourceLimits limits;QJsonObject metadata;QByteArray bytes;std::function<void(PayloadResult)> reply;quint64 generation=0;};
  void discover();
  void followOwner(const QString&);
  void helperUnavailable(const Error&);
@@ -77,7 +91,7 @@ private:
  void invalidateShortcutBindings();
  void call(const QString& method,const QVariantList&,Reply,int timeout=5000);
  QJsonObject sync(const QString& method,const QVariantList&,Error&,int timeout=1000);
- void start(const QString& id,const QString& action,const ResourceLimits&,std::function<void(PayloadResult)>,const QString& outcome,bool screenshotFirst=false);
+ void start(const QString& id,const QString& action,const ResourceLimits&,std::function<void(PayloadResult)>,const QString& outcome,bool screenshotFirst=false,int delaySeconds=0,const std::optional<RegionMemory>& repeat={});
  void requestTransfer(const std::shared_ptr<Transfer>&,const QJsonArray& imageMimes);
  void read(const std::shared_ptr<Transfer>&);
  void decode(const std::shared_ptr<Transfer>&);

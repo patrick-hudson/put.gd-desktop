@@ -47,6 +47,9 @@ def safe_patch(value: Any) -> bool:
 
 
 EDITOR_SOURCES = {'region', 'window', 'desktop', 'clipboard', 'file'}
+# Delayed capture (#1363): the delays action.invoke accepts and the actions that take one.
+DELAY_SECONDS = {0, 3, 5, 10}
+DELAYABLE_ACTIONS = {'region', 'window', 'monitor', 'desktop', 'repeat'}
 EDITOR_OPS = {'add', 'update', 'remove', 'crop', 'resetCrop', 'undo', 'redo'}
 # The editor window's view and selection controls, one per drive_editor call.
 EDITOR_VIEW_ACTIONS = {'inspect', 'tool', 'select', 'selectNext', 'selectPrevious', 'selectAffectedText', 'removeMark', 'place', 'geometry', 'applyCrop',
@@ -226,11 +229,17 @@ def create_server(adapter: CliAdapter) -> MCPServer:
         return await adapter.call('ui.viewState', {})
 
     @server.tool(annotations=effect)
-    async def perform_action(action: str) -> Json:
-        """Acquire region/window/desktop/clipboard, then configured local save or public upload; may copy result. `edit` opens the editor after a region selection instead; use open_editor for other sources. `record` starts a screen recording from a dragged region (or raises the active one); drive it with the recording tools."""
-        if action not in {'region', 'window', 'desktop', 'clipboard', 'edit', 'record'}:
+    async def perform_action(action: str, delay_seconds: int | None = None) -> Json:
+        """Acquire region/window/monitor/desktop/clipboard, then configured local save or public upload; may copy result. `monitor` captures the monitor the pointer is on. `repeat` captures the rectangle of the last region capture again with no selector (repeat_unavailable when there is none yet, repeat_layout_changed when the monitors changed since); its operation is a region capture. delay_seconds (3, 5 or 10; region, window, monitor, desktop and repeat only) shows a cancellable countdown first: a region is selected before it runs, every other target is taken when it ends, and a screen that is locked at that moment captures nothing (session_locked). cancel_operation ends a countdown. `edit` opens the editor after a region selection instead; use open_editor for other sources. `record` starts a screen recording from a dragged region (or raises the active one); drive it with the recording tools."""
+        if action not in {'region', 'window', 'monitor', 'desktop', 'repeat', 'clipboard', 'edit', 'record'}:
             return invalid()
-        return await adapter.call('action.invoke', {'action': action})
+        params: Json = {'action': action}
+        if delay_seconds is not None:
+            if type(delay_seconds) is not int or delay_seconds not in DELAY_SECONDS or action not in DELAYABLE_ACTIONS:
+                return invalid()
+            params['delaySeconds'] = delay_seconds
+        # The resident answers when the operation is accepted, before any countdown.
+        return await adapter.call('action.invoke', params)
 
     @server.tool(annotations=effect)
     async def upload_files(paths: list[str], profile_id: str | None = None) -> Json:
@@ -613,15 +622,20 @@ def create_server(adapter: CliAdapter) -> MCPServer:
 
     @server.tool(annotations=effect)
     async def copy_history_link(id: str) -> Json:
-        """Write the stored direct URL to clipboard; no upload or target reconstruction."""
-        return await adapter.call('history.copyLink', {'id': id}) if identifier(id) else invalid()
+        """Copy the recorded link. Expired S3 presigned and B2 authorized links refresh from the saved receipt and original cached credentials before copying. credential_setup_required never opens a keyring prompt; explicitly unlock saved credentials first."""
+        return await adapter.call('history.copyLink', {'id': id}, timeout=645) if identifier(id) else invalid()
+
+    @server.tool(annotations=effect)
+    async def unlock_history_link_credentials(id: str) -> Json:
+        """Explicitly unlock the original saved keychain reference for an expired S3/B2 History link. The desktop keyring may prompt. This never copies or refreshes the link; call copy_history_link afterwards."""
+        return await adapter.call('history.unlockLinkCredentials', {'id': id}, timeout=315) if identifier(id) else invalid()
 
     @server.tool(annotations=effect)
     async def copy_history_links(ids: list[str]) -> Json:
-        """Write several stored direct URLs to the clipboard, one per line in the order given, as History's Copy links does for a selection; link_unavailable (with historyId) copies nothing. No upload or target reconstruction."""
+        """Write several stored direct URLs to the clipboard, one per line in the order given, as History's Copy links does for a selection; expired S3/B2 links refresh using their saved destinations and cached credentials. link_unavailable (with historyId) copies nothing. No upload."""
         if not ids or len(ids) > 1000 or len(set(ids)) != len(ids) or any(not identifier(id, 128) for id in ids):
             return invalid()
-        return await adapter.call('history.copyLinks', {'ids': ids})
+        return await adapter.call('history.copyLinks', {'ids': ids}, timeout=645)
 
     @server.tool(annotations=ToolAnnotations(read_only_hint=False, destructive_hint=False, open_world_hint=True))
     async def open_history_link(id: str) -> Json:
@@ -768,6 +782,56 @@ def create_server(adapter: CliAdapter) -> MCPServer:
         if profile_id is not None:
             params['profileId'] = profile_id
         return await adapter.call('ui.moveDestination', params)
+
+    @server.tool(annotations=ToolAnnotations(read_only_hint=False, destructive_hint=False, open_world_hint=False))
+    async def import_custom_uploader(path: str, expected_revision: str, label: str | None = None, profile_id: str | None = None,
+                                     credential_mode: str = 'keychain', allow_insecure_http: bool = False) -> Json:
+        """Add a ShareX custom uploader file (.sxcu) as a Custom uploader (HTTP) destination (#1361). path is absolute; the resident reads the file itself, so its token never passes through this tool, a command line or the reply. Header, parameter and argument values become secrets: credential_mode keychain (default) saves them in the system keychain, session keeps them until put.gd exits; the configuration gets names only. A value that is exactly {filename} or {input} stays in settings. URL shorteners and URL sharing services are refused (sxcu_unsupported_type), as are interactive placeholders such as {select} and {prompt}. A plain-HTTP address beyond loopback needs allow_insecure_http true. The reply names the new profileId, storedValues (names only) and notes on what was adapted. To create one by hand use patch_configuration with provider custom-http; secret values then need Settings or this import."""
+        if (not identifier(path, 4096) or not path.startswith('/') or not isinstance(expected_revision, str) or len(expected_revision) > 256 or
+                credential_mode not in {'keychain', 'session'} or type(allow_insecure_http) is not bool or
+                (label is not None and not identifier(label, 128)) or (profile_id is not None and not identifier(profile_id, 64))):
+            return invalid()
+        params: Json = {'path': path, 'expectedRevision': expected_revision, 'credentialMode': credential_mode}
+        if allow_insecure_http:
+            params['allowInsecureHttp'] = True
+        if label is not None:
+            params['label'] = label
+        if profile_id is not None:
+            params['profileId'] = profile_id
+        # A locked keyring shows its own unlock prompt before the values are saved.
+        return await adapter.call('settings.importUploader', params, timeout=130)
+
+    @server.tool(annotations=read)
+    async def get_destination_credentials(profile_id: str, expected_revision: str) -> Json:
+        """Read which credentials a saved destination has loaded, never a value: available, mode (keychain/session), and for a Custom uploader (HTTP) storedValues and missingValues, the credential-store names of its secret headers, parameters and fields (such as headers/Authorization). For S3 and Backblaze B2: a four-character key ID prefix and whether a secret and token are stored. Does no keychain IO; a locked keychain reads as not available."""
+        if not identifier(profile_id, 64) or not isinstance(expected_revision, str) or len(expected_revision) > 256:
+            return invalid()
+        return await adapter.call('setup.credentialHint', {'profileId': profile_id, 'expectedRevision': expected_revision})
+
+    @server.tool(annotations=effect)
+    async def test_destination(profile_id: str, expected_revision: str) -> Json:
+        """Start Test connection for a saved destination and return its setupId; poll get_setup_job until state leaves running. S3 and Backblaze B2 upload a synthetic file, open its link and remove it. A Custom uploader (HTTP) uploads a synthetic file with its request, opens the returned link, and deletes the file only when the reply carried a deletion URL: its result has uploadStatus, link, publicReachable, deletionOffered and cleanupStatus (removed, or unsupported when the test file stays on the server), and replyExcerpt when the reply had no link where the destination looks. Needs loaded credentials."""
+        if not identifier(profile_id, 64) or not isinstance(expected_revision, str) or len(expected_revision) > 256:
+            return invalid()
+        return await adapter.call('setup.testDestination', {'profileId': profile_id, 'expectedRevision': expected_revision})
+
+    @server.tool(annotations=read)
+    async def get_setup_job(id: str) -> Json:
+        """Read a setup job started by test_destination or the Settings window: kind, profileId, state (running/completed/failed), error and result. Jobs live in the resident's memory only."""
+        return await adapter.call('setup.inspect', {'id': id}) if identifier(id) else invalid()
+
+    @server.tool(annotations=effect)
+    async def drive_custom_uploader(action: str, path: str | None = None, profile_id: str | None = None) -> Json:
+        """Drive the Custom uploader (HTTP) form in the open Destinations page as a user does (#1361); profile_id selects that destination first. inspect reads the form: request fields, each header/parameter/field row with secret, typed and stored flags, typedSecrets and missingSecrets by name, the notice and whether Store is enabled; never a value. import (absolute path) reads a .sxcu file into the form as Import .sxcu… does: its secret values wait in masked fields in the window until store. openImport / closeImport show or dismiss the import dialog. store presses Store credentials (keychain or session, as the form's Credential storage says). test presses Test upload and link. Open Destinations first (ui.show destinations)."""
+        if (action not in {'inspect', 'import', 'openImport', 'closeImport', 'store', 'test'} or (action == 'import') != (path is not None) or
+                (path is not None and (not identifier(path, 4096) or not path.startswith('/'))) or (profile_id is not None and not identifier(profile_id, 64))):
+            return invalid()
+        params: Json = {'action': action}
+        if path is not None:
+            params['path'] = path
+        if profile_id is not None:
+            params['profileId'] = profile_id
+        return await adapter.call('ui.customUploader', params)
 
     @server.tool(annotations=ToolAnnotations(read_only_hint=False, destructive_hint=True, open_world_hint=False))
     async def settings_diagnostics(action: str, enabled: bool | None = None, include_names: bool | None = None,

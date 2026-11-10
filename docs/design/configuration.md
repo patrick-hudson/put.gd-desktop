@@ -284,6 +284,21 @@ so Test connection fails there; use the `backblaze-b2` provider instead. See
 Credentials are a keychain or session reference to the application key ID and key.
 See [Backblaze B2](../user/b2.md).
 
+`custom-http` profiles (#1361) hold exactly `requestMethod`, `requestUrl`,
+`allowInsecureHttp`, `body`, `fileFormName`, `headers`, `parameters`, `arguments`,
+`secrets`, `data`, `dataSecret`, `accepts`, `connectTimeoutMs`, `requestTimeoutMs`,
+`responseUrl`, `thumbnailUrl`, `deletionUrl` and `errorMessage`. A row of `headers`,
+`parameters` or `arguments` is `{"name":"Authorization","secret":true}` or
+`{"name":"format","secret":false,"value":"json"}`: a secret row never has a value in
+configuration, and `secrets` rows are always a name with `"secret":true`. With
+`dataSecret` true, `data` is empty. `{secret:key}` may appear in `requestUrl`, a row
+value and `deletionUrl` only, and must name a value the profile stores. `data` is sent
+as written apart from `{filename}` and `{input}`; a body that holds a key is made
+secret as a whole with `dataSecret`. `requestUrl` is HTTPS, or HTTP to a literal
+loopback host, or any HTTP with `allowInsecureHttp`. Validation performs no network or
+secret-store IO. Credentials are a keychain or session reference to the named values.
+See [Custom uploader](../user/custom-uploader.md#settings).
+
 `connectTimeoutMs` bounds connection setup. `requestTimeoutMs` maps to the SDK whole
 Curl-request timeout (`httpRequestTimeoutMs`). `lowSpeedBytesPerSecond` maps to the
 SDK low-speed limit, and `lowSpeedTimeSeconds` maps to its low-speed duration

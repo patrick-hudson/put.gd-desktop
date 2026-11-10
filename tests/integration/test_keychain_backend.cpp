@@ -17,6 +17,7 @@ public:
     QByteArray stored;
     int opens = 0;
     int writes = 0;
+    int removes = 0;
 public slots:
     QString networkWallet() { return "isolated-synthetic-wallet"; }
     int open(const QString&, qlonglong, const QString&) {
@@ -34,6 +35,11 @@ public slots:
     }
     int entryType(int, const QString&, const QString&, const QString&) { return 2; }
     QByteArray readEntry(int, const QString&, const QString&, const QString&) { return stored; }
+    int removeEntry(int, const QString&, const QString&, const QString&) {
+        ++removes;
+        stored.clear();
+        return 0;
+    }
 };
 class KeychainBackendTest : public QObject {
     Q_OBJECT
@@ -99,6 +105,31 @@ private slots:
         PUTGD_TRY_VERIFY(done);
         QVERIFY2(!error, qPrintable(error.code));
         QCOMPARE(store.cached("profile", reference)->sessionToken, QString("synthetic-token"));
+    }
+    // What an import stored for a destination that was then not created is taken out
+    // of the secret store again, not only out of the cache (#1361).
+    void eraseRemovesTheEntryAndTheCache() {
+        wallet.mode = "ready";
+        CredentialStore store;
+        QJsonObject reference{{"mode", "keychain"}, {"reference", "synthetic-reference"}};
+        bool done = false;
+        Error error;
+        Credentials named;
+        named.values = {{"headers/Authorization", "synthetic-named-value"}};
+        store.save("profile", reference, named, [&](auto result) { error = result; done = true; });
+        PUTGD_TRY_VERIFY(done);
+        QVERIFY2(!error, qPrintable(error.code));
+        QVERIFY(store.cached("profile", reference));
+        QVERIFY(wallet.stored.contains("synthetic-named-value"));
+        const auto removesBefore = wallet.removes;
+        done = false;
+        store.erase("profile", reference, [&](auto result) { error = result; done = true; });
+        // The cache is empty at once; the entry goes when the store has answered.
+        QVERIFY(!store.cached("profile", reference));
+        PUTGD_TRY_VERIFY(done);
+        QVERIFY2(!error, qPrintable(error.code));
+        QCOMPARE(wallet.removes, removesBefore + 1);
+        QVERIFY(wallet.stored.isEmpty());
     }
 };
 QTEST_GUILESS_MAIN(KeychainBackendTest)

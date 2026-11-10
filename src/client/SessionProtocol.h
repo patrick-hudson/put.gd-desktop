@@ -19,6 +19,9 @@ inline constexpr int desktopSetupRecheckReplyMs = 90000;
 // upload.files stats every selected file, and every file in a selected folder,
 // before it answers (#1105): slow over GVfs or KIOFuse.
 inline constexpr int uploadFilesReplyMs = 120000;
+// settings.importUploader stores the file's secret values first; a locked keyring
+// shows its own unlock prompt, which a person has to answer (#1361).
+inline constexpr int uploaderImportReplyMs = 120000;
 namespace SessionProtocol {
 inline constexpr qsizetype maximumRequest = 1024 * 1024;
 inline constexpr qsizetype maximumResponse = 16 * 1024 * 1024;

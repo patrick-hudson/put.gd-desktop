@@ -1,4 +1,4 @@
-#include "X11SessionLock.h"
+#include "SessionLock.h"
 #include <QDBusConnection>
 #include <QDBusMessage>
 #include <QDBusPendingCallWatcher>

@@ -414,8 +414,22 @@ private slots:
   tray.setCommands({},"Uploading a file",1,true,"Recording paused","Local save needs attention");QCOMPARE(property(22,"label").toString(),QString("Local save needs attention"));QVERIFY(property(16,"label").toString().contains("Recording paused"));QVERIFY(property(22,"visible").toBool());QVERIFY(property(19,"visible").toBool());
   const auto reply=call("/Menu","com.canonical.dbusmenu","GetLayout",{0,-1,QStringList{}});const auto layout=qdbus_cast<WireLayout>(reply.arguments().at(1));bool found=false;for(const auto& child:layout.children){const auto item=qdbus_cast<WireLayout>(child.variant());if(item.id==16){found=true;QVERIFY(item.props["label"].toString().contains("Recording paused"));}}QVERIFY(found);
  }
+ // The capture delay (#1363): the chosen value shows in the submenu's label and
+ // radio states, and a click on a choice asks the controller for it.
+ void captureDelayIsARadioSubmenu(){
+  NativeTray tray;PUTGD_TRY_VERIFY(tray.available());QSignalSpy actions(&tray,&NativeTray::actionActivated);
+  auto property=[&](int id,const QString& name){return qdbus_cast<QDBusVariant>(call("/Menu","com.canonical.dbusmenu","GetProperty",{id,name}).arguments().first()).variant();};
+  QCOMPARE(property(33,"label").toString(),QString("Capture delay: none"));QCOMPARE(property(34,"toggle-state").toInt(),1);
+  tray.setCaptureDelay(5);
+  QCOMPARE(property(33,"label").toString(),QString("Capture delay: 5 seconds"));
+  for(int id=34;id<=37;++id){QCOMPARE(property(id,"toggle-type").toString(),QString("radio"));QCOMPARE(property(id,"toggle-state").toInt(),id==36?1:0);}
+  click(37);PUTGD_TRY_COMPARE(actions.size(),1);QCOMPARE(actions.first().first().toString(),QString("delay-10"));
+  click(34);PUTGD_TRY_COMPARE(actions.size(),2);QCOMPARE(actions.last().first().toString(),QString("delay-0"));
+  // The new commands are ordinary entries with their own actions.
+  click(31);click(32);PUTGD_TRY_COMPARE(actions.size(),4);QCOMPARE(actions[2].first().toString(),QString("monitor"));QCOMPARE(actions[3].first().toString(),QString("repeat"));
+ }
  void outputSummaryExportsPerActionDetailsAndRecovery(){
-  NativeTray tray;PUTGD_TRY_VERIFY(tray.available());QSignalSpy actions(&tray,&NativeTray::actionActivated);QStringList details;for(const auto& action:Settings::presentationOrder())details<<action+": synthetic output";tray.setOutput("Mixed outputs",details);auto reply=call("/Menu","com.canonical.dbusmenu","GetLayout",{23,-1,QStringList{}});const auto output=qdbus_cast<WireLayout>(reply.arguments().at(1));QCOMPARE(output.props["label"].toString(),QString("Mixed outputs"));QCOMPARE(output.children.size(),6);for(int i=0;i<6;++i){const auto row=qdbus_cast<WireLayout>(output.children[i].variant());QCOMPARE(row.props["label"].toString(),details[i]);QVERIFY(!row.props["enabled"].toBool());click(row.id);}QVERIFY(actions.isEmpty());click(30);PUTGD_TRY_COMPARE(actions.size(),1);QCOMPARE(actions.first().first().toString(),QString("capture-settings"));
+  NativeTray tray;PUTGD_TRY_VERIFY(tray.available());QSignalSpy actions(&tray,&NativeTray::actionActivated);QStringList details;for(const auto& action:Settings::presentationOrder())details<<action+": synthetic output";tray.setOutput("Mixed outputs",details);auto reply=call("/Menu","com.canonical.dbusmenu","GetLayout",{23,-1,QStringList{}});const auto output=qdbus_cast<WireLayout>(reply.arguments().at(1));QCOMPARE(output.props["label"].toString(),QString("Mixed outputs"));QCOMPARE(output.children.size(),7);for(int i=0;i<7;++i){const auto row=qdbus_cast<WireLayout>(output.children[i].variant());QCOMPARE(row.props["label"].toString(),details[i]);QVERIFY(!row.props["enabled"].toBool());click(row.id);}QVERIFY(actions.isEmpty());click(30);PUTGD_TRY_COMPARE(actions.size(),1);QCOMPARE(actions.first().first().toString(),QString("capture-settings"));
  }
  void coreOnlyBrandPropertiesAndActualLayoutWire() {
   NativeTray tray; QVERIFY(!tray.availabilityKnown()); PUTGD_TRY_VERIFY(tray.availabilityKnown()); PUTGD_TRY_VERIFY(tray.available()); QCOMPARE(watcher.registrations.size(), 1);
@@ -437,21 +451,30 @@ private slots:
   }
   reply = call("/Menu", "com.canonical.dbusmenu", "GetLayout", {0, -1, QStringList{}});
   QCOMPARE(reply.signature(), QString("u(ia{sv}av)")); QCOMPARE(reply.arguments().at(0).toUInt(), uint(1));
-  auto layout = qdbus_cast<WireLayout>(reply.arguments().at(1)); QCOMPARE(layout.id, 0); QCOMPARE(layout.children.size(), 21);for(int i=0;i<3;++i){QVERIFY(!qdbus_cast<WireLayout>(layout.children[i].variant()).props["visible"].toBool());}layout.children.erase(layout.children.begin(),layout.children.begin()+5);
+  auto layout = qdbus_cast<WireLayout>(reply.arguments().at(1)); QCOMPARE(layout.id, 0); QCOMPARE(layout.children.size(), 24);for(int i=0;i<3;++i){QVERIFY(!qdbus_cast<WireLayout>(layout.children[i].variant()).props["visible"].toBool());}layout.children.erase(layout.children.begin(),layout.children.begin()+5);
   QCOMPARE(layout.props["children-display"].toString(), QString("submenu"));
   bool quitLabel=false;for(const auto& child:layout.children){const auto item=qdbus_cast<WireLayout>(child.variant());if(item.id==12){QCOMPARE(item.props["label"].toString(),QString("Quit put.gd"));quitLabel=true;}}QVERIFY(quitLabel);
-  // Capture entries first: region, region & edit, window, desktop, screen recording, then the editor sources and the clipboard upload.
-  const QStringList order{"Capture region", "Capture window", "Capture desktop", "Capture region & edit", "Edit image", "Record screen", "Upload clipboard"};
+  // Capture entries first: the screenshots with Repeat last region and the capture
+  // delay (#1363), then region & edit with the editor sources, screen recording and the clipboard upload.
+  const QStringList order{"Capture region", "Repeat last region", "Capture window", "Capture monitor", "Capture desktop", "Capture delay: none", "Capture region & edit", "Edit image", "Record screen", "Upload clipboard"};
   for (int i = 0; i < order.size(); ++i) QCOMPARE(qdbus_cast<WireLayout>(layout.children.at(i).variant()).props["label"].toString(), order[i]);
-  QCOMPARE(qdbus_cast<WireLayout>(layout.children.at(5).variant()).id, 16);
-  for(int i=0;i<3;++i)QCOMPARE(qdbus_cast<WireLayout>(layout.children.at(9+i).variant()).props["label"].toString(),QStringList({"History","Destinations","Settings"})[i]);
+  QCOMPARE(qdbus_cast<WireLayout>(layout.children.at(8).variant()).id, 16);
+  for(int i=0;i<3;++i)QCOMPARE(qdbus_cast<WireLayout>(layout.children.at(12+i).variant()).props["label"].toString(),QStringList({"History","Destinations","Settings"})[i]);
+  // The capture delay is a radio group one level down, None chosen until told otherwise.
+  const auto delay = qdbus_cast<WireLayout>(layout.children.at(5).variant());
+  QCOMPARE(delay.id, 33); QCOMPARE(delay.props["children-display"].toString(), QString("submenu")); QCOMPARE(delay.children.size(), 4);
+  for (int i = 0; i < 4; ++i) {
+   const auto choice = qdbus_cast<WireLayout>(delay.children.at(i).variant());
+   QCOMPARE(choice.id, 34 + i); QCOMPARE(choice.props["label"].toString(), QStringList({"None", "3 seconds", "5 seconds", "10 seconds"})[i]);
+   QCOMPARE(choice.props["toggle-type"].toString(), QString("radio")); QCOMPARE(choice.props["toggle-state"].toInt(), i == 0 ? 1 : 0);
+  }
   // Other editor sources sit in one submenu.
-  const auto editImage = qdbus_cast<WireLayout>(layout.children.at(4).variant());
+  const auto editImage = qdbus_cast<WireLayout>(layout.children.at(7).variant());
   QCOMPARE(editImage.id, 13); QCOMPARE(editImage.props["children-display"].toString(), QString("submenu"));
   QCOMPARE(editImage.children.size(), 2);
   QCOMPARE(qdbus_cast<WireLayout>(editImage.children.at(0).variant()).props["label"].toString(), QString("Edit clipboard image"));
   QCOMPARE(qdbus_cast<WireLayout>(editImage.children.at(1).variant()).props["label"].toString(), QString("Edit an image file…"));
-  QCOMPARE(qdbus_cast<WireLayout>(layout.children.at(7).variant()).props["type"].toString(), QString("separator"));
+  QCOMPARE(qdbus_cast<WireLayout>(layout.children.at(10).variant()).props["type"].toString(), QString("separator"));
   // Depth 1 lists the submenu header without expanding it.
   layout = qdbus_cast<WireLayout>(call("/Menu", "com.canonical.dbusmenu", "GetLayout", {0, 1, QStringList{}}).arguments().at(1));
   QVERIFY(qdbus_cast<WireLayout>(layout.children.at(9).variant()).children.isEmpty());

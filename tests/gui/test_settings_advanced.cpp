@@ -258,6 +258,8 @@ private slots:
   QVERIFY(!desktopButton->property("captureBadge").toBool());QVERIFY(!desktopButton->toolTip().contains("unavailable"));
   window.navigate("settings");window.findChild<QTabWidget*>("settingsTabs")->setCurrentIndex(3);window.show();window.findChild<QToolButton*>("desktopSupportDetailsToggle")->setChecked(true);
   auto* gap=window.findChild<QLabel*>("desktopSupportWindowGap");QVERIFY(gap);PUTGD_TRY_VERIFY(gap->isVisible());QCOMPARE(gap->text(),"Unavailable · "+reason);PUTGD_TRY_VERIFY2(gap->height()>=gap->heightForWidth(gap->width()),qPrintable(QString("the reason is clipped: %1 < %2").arg(gap->height()).arg(gap->heightForWidth(gap->width()))));QVERIFY(window.findChild<QLabel*>("desktopSupportWindowGapLabel")->isVisible());QVERIFY(!window.findChild<QLabel*>("desktopSupportDesktopGap")->isVisible());
+  // The reason wraps at the width of its column, not at a narrow hint of its own.
+  PUTGD_TRY_VERIFY2(gap->width()>=window.findChild<QWidget*>("desktopSupportDetails")->width()/2,qPrintable(QString("the reason is %1 px wide in a %2 px panel").arg(gap->width()).arg(window.findChild<QWidget*>("desktopSupportDetails")->width())));
   // The desktop gains window capture (a compositor update, a new session): both go back to normal.
   details["capabilities"]=QJsonObject{{"source",QJsonObject{{"adapter","budgie-wayland"},{"capture",QJsonObject{{"region",QJsonObject{{"available",true}}},{"window",QJsonObject{{"available",true}}},{"desktop",QJsonObject{{"available",true}}}}}}}};
   fixture.session.refreshSnapshot();PUTGD_TRY_COMPARE(fixture.session.diagnostics(),details);PUTGD_TRY_VERIFY(!gap->isVisible());PUTGD_TRY_VERIFY(!windowButton->property("captureBadge").toBool());QVERIFY(!windowButton->toolTip().contains(reason));

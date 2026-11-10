@@ -52,6 +52,12 @@ public:
 class LoggingContract final:public QObject {
  Q_OBJECT
 private slots:
+ void presignedBearerFieldsAreRedacted() {
+  const auto value=logging::redact(QJsonObject{{"X-Amz-Signature","signature-canary"},{"X-Amz-Credential","credential-canary"},{"X-Amz-Security-Token","session-canary"},{"url","https://s3.example/bucket/object?X-Amz-Signature=url-canary&X-Amz-Credential=key-canary"}});
+  const auto encoded=QJsonDocument(value.toObject()).toJson();
+  for(const auto* secret:{"signature-canary","credential-canary","session-canary","url-canary","key-canary"})QVERIFY(!encoded.contains(secret));
+ }
+
  void cleanup() {logging::close();logging::setDebug(false);}
  void redactionRemovesSecretsButKeepsDiagnosis() {
   const QStringList inputs{

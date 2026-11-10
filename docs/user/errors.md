@@ -32,6 +32,23 @@ filenames, history URLs, authorization values or credential references.
 | `storage_busy` | Quit the other or earlier put.gd process that holds the data folder, then start put.gd again; nothing was moved |
 | `storage_migration_failed` | Fix access to the reported folders and start put.gd again; the move resumes from its staging folder and nothing was removed |
 | `storage_unavailable` | Make the user configuration and data folders resolvable and writable |
+| `sxcu_invalid`, `sxcu_unreadable` | The file is not a ShareX custom uploader, or could not be read; export it again from the service |
+| `import_busy` | Another `.sxcu` import is still being saved; import again when it has finished. Nothing of this file was stored |
+| `credential_reference_in_use` | The keychain entry this import's ID would use (`putgd/http/<ID>`) already belongs to another destination, or is still being written; choose another ID. Nothing was stored |
+| `credential_store_timeout` | The system keychain did not answer an import within two minutes, usually an unanswered prompt; nothing was imported. Unlock the keychain, or import with credentials for this session only |
+| `sxcu_unsupported`, `sxcu_unsupported_type` | The message says which part put.gd does not take (a URL shortener, an interactive placeholder, a credential repeated in the link, another method); set the destination up by hand without it ([custom uploader](custom-uploader.md)) |
+| `http_settings_invalid`, `http_insecure_url` | Fix the named field of the custom uploader; for a plain `http://` address beyond loopback, turn on **Allow plain HTTP for this destination** or use `https://` |
+| `http_text_only`, `http_type_unsupported` | This uploader does not take that kind of file; choose another destination, or change its body type or **Uploads** |
+| `http_connect_failed`, `http_upload_interrupted` | Nothing was stored; check the address and the network, then retry |
+| `http_authentication_failed` | The server refused the stored values (401/403); enter them again and store them |
+| `http_too_large`, `http_rate_limited`, `http_request_refused` | The server refused the upload with a 4xx status, and put.gd records a failure. Its own message follows when the destination has an Error message value |
+| `http_server_error` | The server answered 5xx before the request was complete; nothing of it was accepted. put.gd's HTTP client reads no reply while it is still sending, so such a server usually shows as `http_upload_interrupted`. A 5xx after the whole request is `http_outcome_unknown` |
+| `http_redirect_refused` | The server redirected to another host, to plain HTTP, or too often; put.gd did not follow. Set the address it named as the request URL if that is right |
+| `http_outcome_unknown`, `http_response_unreadable` | The upload was sent and may be on the server; put.gd cannot check. This includes a 5xx that arrived after the whole request was sent and a reply that was cut off. Look on the server, or **Retry upload**, which sends the file again and may leave a second copy. For an unreadable reply, fix the URL value under Response first |
+| `http_link_holds_secret` | The server accepted the upload but put a credential of the destination into the link it returned; put.gd neither records nor copies that link, and **Retry upload** would send the file again with the same result. If the named value is not a credential, clear **Secret** on its row (for a value under **Other secret values**, write it back into the address); otherwise the server's reply is at fault ([what counts as a credential](custom-uploader.md#what-counts-as-a-credential)) |
+| `http_delete_unsupported` | The upload has no deletion URL put.gd may use: none came back, or the one that did is on another host and would need a stored value, uses plain HTTP the destination does not allow, or points at this computer. History says which; delete it on the server |
+| `public_url_unreachable` (custom uploader) | Test connection uploaded the file but could not open the returned link. When the link is plain HTTP and **Allow plain HTTP** is off, put.gd does not open it and says so |
+| `http_delete_refused`, `http_delete_unconfirmed` | The server refused the deletion, or answered while the link still serves the file; nothing is recorded as deleted. Try again later or delete it on the server |
 
 ## GNOME 50 setup states
 

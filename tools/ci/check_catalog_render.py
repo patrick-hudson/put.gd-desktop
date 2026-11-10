@@ -117,6 +117,16 @@ def render_problem(directory):
     missing = [name for name in images + captures if not name or not (Path(directory) / name).is_file()]
     if missing:
         return 'images listed in manifest.json are missing: ' + ', '.join(map(str, missing[:10]))
+    if '46a-capture-countdown.png' in images:
+        try:
+            pill = json.loads((Path(directory) / '46a-capture-countdown.controls.json').read_text())
+        except (OSError, ValueError):
+            return 'countdown cancel inventory is missing or unreadable'
+        bounds = [0, 0, pill.get('width'), pill.get('height')]
+        if not any(c.get('name') == 'captureCountdown' and c.get('kind') == 'button'
+                   and c.get('enabled') is True and c.get('rect') == bounds
+                   for c in pill.get('controls', [])):
+            return 'countdown cancel control does not cover the full pill'
     return ''
 
 

@@ -15,6 +15,9 @@ public:
  QString socketPath() const {return server_.fullServerName();}
  QString residentEpoch() const {return residentEpoch_;}
  void setSetupService(SetupService* service) {setup_=service;}
+ // settings.importUploader (#1361): a provider adds a destination from a file the
+ // resident reads itself, so the file's credentials never cross the socket.
+ void setUploaderImport(std::function<void(const QJsonObject&,JsonReply)> handler) {uploaderImport_=std::move(handler);}
  void setDiagnosticsBundles(DiagnosticsBundles* bundles) {bundles_=bundles;}
  void setUpdateService(UpdateService* updates) {updates_=updates;}
  void setUiDiagnostics(std::function<QJsonObject()> callback) {uiDiagnostics_=std::move(callback);}
@@ -38,6 +41,7 @@ private:
  void accept();
  std::function<void(const QString&,std::function<void(Error)>)> uiActivation_;
  std::function<void(const QString&,const QJsonObject&,JsonReply)> uiCommand_;
+ std::function<void(const QJsonObject&,JsonReply)> uploaderImport_;
  std::function<QJsonObject()> uiDiagnostics_,uiViewState_;
  std::function<void()> uiQuit_;
  std::function<void(const QJsonObject&)> diagnosticsSaved_;
