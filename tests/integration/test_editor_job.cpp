@@ -13,6 +13,8 @@
 #include <QScopeGuard>
 #include <QTest>
 #include <thread>
+#include <mutex>
+#include <atomic>
 #include <csignal>
 #include <sys/resource.h>
 #include <unistd.h>
@@ -129,6 +131,93 @@ private slots:
   QFile copyFile(copy);QVERIFY(copyFile.open(QIODevice::ReadOnly));QCOMPARE(copyFile.readAll(),result.png);
   QCOMPARE(filesUnder(staging),0);QCOMPARE(session->phase(),QString("closed"));
   QCOMPARE(ask(*session,"inspect").error.code,QString("editor_finalizing"));
+ }
+
+ // #1362: Copy image hands the resident the same sanitized PNG as Save a copy
+ // and Upload; the helper's staged copy never stays behind.
+ void copyImageHandsTheSanitizedPngToTheClipboardOnly(){
+  QTemporaryDir root;const auto staging=root.filePath("editing");const QRect secret(40,30,80,40);
+  auto session=std::make_shared<EditorSession>();EditorResult result;
+  std::mutex mutex;QList<QByteArray> clipboard;Error refuse;
+  session->setCopyHandler([&](QByteArray png,std::function<void(Error)> done){Error answer;{std::lock_guard lock(mutex);clipboard.append(png);answer=refuse;}done(answer);});
+  std::thread worker([&]{auto image=noise({320,200},53);result=EditorJob(staging,PUTGD_PRODUCT_UI_PATH).run(image,"Upload to synthetic destination",64*1024*1024,session);});
+  auto joined=qScopeGuard([&]{session->cancel();if(worker.joinable())worker.join();});
+  QVERIFY(waitPhase(*session,"editing"));
+  const QJsonArray commands{
+   QJsonObject{{"op","add"},{"shape",QJsonObject{{"kind","step"},{"at",QJsonArray{200,150}}}}},
+   QJsonObject{{"op","add"},{"shape",QJsonObject{{"kind","pen"},{"points",QJsonArray{QJsonArray{20,150},QJsonArray{80,120},QJsonArray{140,160}}}}}},
+   QJsonObject{{"op","add"},{"shape",QJsonObject{{"kind","ellipse"},{"rect",QJsonArray{160,40,100,60}}}}},
+   QJsonObject{{"op","add"},{"shape",QJsonObject{{"kind","line"},{"from",QJsonArray{10,190}},{"to",QJsonArray{300,190}}}}},
+   QJsonObject{{"op","add"},{"shape",QJsonObject{{"kind","blur"},{"rect",QJsonArray{180,110,100,40}},{"style","pixelate"},{"strength",10}}}},
+   QJsonObject{{"op","add"},{"shape",QJsonObject{{"kind","redact"},{"rect",QJsonArray{secret.x(),secret.y(),secret.width(),secret.height()}}}}}};
+  auto applied=ask(*session,"apply",{{"commands",commands}});QVERIFY2(!applied.error,qPrintable(applied.error.message));
+  QCOMPARE(applied.result["state"].toObject()["shapes"].toArray()[0].toObject()["number"].toInt(),1);
+  QCOMPARE(ask(*session,"copy",{{"format","png"}}).error.code,QString("invalid_request"));
+  auto copied=ask(*session,"copy");QVERIFY2(!copied.error,qPrintable(copied.error.code+": "+copied.error.message));
+  QVERIFY(copied.result["copied"].toBool());QCOMPARE(copied.result["width"].toInt(),320);
+  QByteArray png;{std::lock_guard lock(mutex);QCOMPARE(clipboard.size(),1);png=clipboard.first();}
+  QVERIFY(!inspectSanitizedPng(png));QCOMPARE(copied.result["bytes"].toDouble(),double(png.size()));
+  QCOMPARE(copied.result["sha256"].toString(),QString::fromLatin1(QCryptographicHash::hash(png,QCryptographicHash::Sha256).toHex()));
+  const auto pasted=QImage::fromData(png,"PNG").convertToFormat(QImage::Format_RGB32);
+  for(int y=secret.top();y<=secret.bottom();++y)for(int x=secret.left();x<=secret.right();++x)QCOMPARE(pasted.pixel(x,y),qRgb(0,0,0));
+  // Nothing of the copy stays in private staging: only the input and the empty output.
+  QCOMPARE(filesUnder(staging),2);
+  auto view=ask(*session,"view");QCOMPARE(view.result["lastCopy"].toObject()["status"].toString(),QString("copied"));QVERIFY(!view.result["copying"].toBool());
+  // The same bytes as Save a copy.
+  auto saved=ask(*session,"saveCopy",{{"path",root.filePath("saved.png")}});QVERIFY2(!saved.error,qPrintable(saved.error.message));QCOMPARE(saved.result["sha256"],copied.result["sha256"]);
+  // A clipboard refusal reaches the agent and the window; editing goes on.
+  {std::lock_guard lock(mutex);refuse={"clipboard_unavailable","No clipboard owner",{}};}
+  auto failed=ask(*session,"copy");QCOMPARE(failed.error.code,QString("clipboard_unavailable"));
+  view=ask(*session,"view");QCOMPARE(view.result["lastCopy"].toObject()["status"].toString(),QString("failed"));QCOMPARE(view.result["message"].toObject()["tone"].toString(),QString("error"));
+  QCOMPARE(filesUnder(staging),2);QCOMPARE(session->phase(),QString("editing"));
+  // Upload hands off exactly the copied PNG.
+  QVERIFY(!ask(*session,"submit").error);worker.join();
+  QVERIFY2(!result.error,qPrintable(result.error.code));QCOMPARE(result.png,png);
+ }
+ // A command that outlives its deadline answers editor_timeout; the helper's
+ // late answer must not end the edit (a large Copy image or Save a copy).
+ void lateAnswersAfterATimeoutKeepTheEditorOpen(){
+  QTemporaryDir root;auto session=std::make_shared<EditorSession>();EditorResult result;std::atomic_int copies{0};
+  session->setCopyHandler([&](QByteArray,std::function<void(Error)> done){++copies;done({});});
+  std::thread worker([&]{auto image=noise({4000,3000},61);result=EditorJob(root.filePath("editing"),PUTGD_PRODUCT_UI_PATH,20000,120000,50).run(image,"Synthetic",256*1024*1024,session);});
+  auto joined=qScopeGuard([&]{session->cancel();if(worker.joinable())worker.join();});
+  QVERIFY(waitPhase(*session,"editing"));
+  QCOMPARE(ask(*session,"copy").error.code,QString("editor_timeout"));
+  // The copy still lands, and the editor keeps answering afterwards.
+  for(int i=0;i<300&&copies.load()==0;++i)QTest::qSleep(50);
+  QCOMPARE(copies.load(),1);
+  Answer view;for(int i=0;i<100;++i){view=ask(*session,"view");if(!view.error&&!view.result["copying"].toBool())break;QTest::qSleep(50);}
+  QVERIFY2(!view.error,qPrintable(view.error.code));QCOMPARE(view.result["lastCopy"].toObject()["status"].toString(),QString("copied"));
+  QCOMPARE(session->phase(),QString("editing"));
+  QVERIFY(!ask(*session,"cancel").error);worker.join();QCOMPARE(result.error.code,QString("cancelled"));
+ }
+ // The clipboard stalls past the helper's copy deadline: the copy fails and the
+ // window frees up, a retry is refused while the first is still delivering,
+ // the late result is ignored, and copying works again afterwards.
+ void stalledClipboardFailsTheCopyAndKeepsEditing(){
+  qputenv("PUTGD_TEST_EDITOR_COPY_DEADLINE_MS","400");auto restore=qScopeGuard([]{qunsetenv("PUTGD_TEST_EDITOR_COPY_DEADLINE_MS");});
+  QTemporaryDir root;auto session=std::make_shared<EditorSession>();EditorResult result;
+  std::mutex mutex;std::function<void(Error)> held;std::atomic_int delivered{0};
+  session->setCopyHandler([&](QByteArray,std::function<void(Error)> done){std::lock_guard lock(mutex);if(!held){held=std::move(done);return;}++delivered;done({});});
+  std::thread worker([&]{auto image=noise({160,100},67);result=EditorJob(root.filePath("editing"),PUTGD_PRODUCT_UI_PATH).run(image,"Synthetic",64*1024*1024,session);});
+  auto joined=qScopeGuard([&]{session->cancel();if(worker.joinable())worker.join();});
+  QVERIFY(waitPhase(*session,"editing"));
+  QCOMPARE(ask(*session,"copy").error.code,QString("editor_timeout"));
+  QVERIFY(!ask(*session,"view").result["copying"].toBool());
+  QCOMPARE(ask(*session,"copy").error.code,QString("editor_busy"));
+  QCOMPARE(session->phase(),QString("editing"));QCOMPARE(filesUnder(root.filePath("editing")),2);
+  {std::lock_guard lock(mutex);QVERIFY(bool(held));held({});}
+  Answer copied;for(int i=0;i<40;++i){copied=ask(*session,"copy");if(copied.error.code!="editor_busy")break;QTest::qSleep(50);}
+  QVERIFY2(!copied.error,qPrintable(copied.error.code));QCOMPARE(delivered.load(),1);
+  QVERIFY(!ask(*session,"cancel").error);worker.join();QCOMPARE(result.error.code,QString("cancelled"));
+ }
+ void copyImageWithoutAClipboardFailsAndKeepsEditing(){
+  QTemporaryDir root;auto session=std::make_shared<EditorSession>();EditorResult result;
+  std::thread worker([&]{auto image=noise({64,48},57);result=EditorJob(root.filePath("editing"),PUTGD_PRODUCT_UI_PATH).run(image,"Synthetic",64*1024*1024,session);});
+  auto joined=qScopeGuard([&]{session->cancel();if(worker.joinable())worker.join();});
+  QVERIFY(waitPhase(*session,"editing"));
+  QCOMPARE(ask(*session,"copy").error.code,QString("clipboard_unavailable"));
+  QVERIFY(!ask(*session,"cancel").error);worker.join();QCOMPARE(result.error.code,QString("cancelled"));
  }
  // An oversized result is recoverable: nothing is handed off, editing and
  // the resident's phase resume, inspect says why, and a smaller result uploads.

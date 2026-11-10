@@ -145,15 +145,15 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
   operations_.invoke("edit",reply,p);return;
  }
  // Agent control of the one open editor; the helper validates each command.
- if(QStringList{"editor.inspect","editor.apply","editor.preview","editor.saveCopy","editor.fileDialog","editor.submit","editor.cancel","editor.raise"}.contains(method)) {
+ if(QStringList{"editor.inspect","editor.apply","editor.preview","editor.saveCopy","editor.copy","editor.fileDialog","editor.submit","editor.cancel","editor.raise"}.contains(method)) {
   if(!string(p,"id")){reply(invalid(),{});return;}
   auto params=p;params.remove("id");operations_.editorCommand(p["id"].toString(),method.mid(7),params,reply);return;
  }
  // The editor window's view and selection controls, one per call; the helper checks the values.
  if(method=="editor.view") {
-  static const QStringList actions{"inspect","tool","select","selectNext","selectPrevious","selectAffectedText","removeMark","place","geometry","applyCrop","cancelCrop","zoom","fit","actualSize","pan","showSavedCopy","copySavedPath","dismissSavedCopy","discard","keepEditing","confirmDiscard","keyboardHelp","geometryDetails","saveDetails","propertiesWidth"};
-  if(!fields(p,{"id"},{"action","tool","shapeId","rect","percent","delta","pixels"})||!string(p,"id")||(p.contains("action")&&(!string(p,"action",32)||!actions.contains(p["action"].toString())))
-     ||(p.contains("tool")&&!string(p,"tool",16))||(p.contains("shapeId")&&!p["shapeId"].isNull()&&!p["shapeId"].isDouble())
+  static const QStringList actions{"inspect","tool","select","selectNext","selectPrevious","selectAffectedText","removeMark","place","geometry","applyCrop","cancelCrop","zoom","fit","actualSize","pan","showSavedCopy","copySavedPath","dismissSavedCopy","discard","keepEditing","confirmDiscard","keyboardHelp","geometryDetails","saveDetails","propertiesWidth","blurStyle","stepNumber"};
+  if(!fields(p,{"id"},{"action","tool","shapeId","rect","percent","delta","pixels","style","number"})||!string(p,"id")||(p.contains("action")&&(!string(p,"action",32)||!actions.contains(p["action"].toString())))
+     ||(p.contains("tool")&&!string(p,"tool",16))||(p.contains("style")&&!string(p,"style",16))||(p.contains("number")&&!p["number"].isDouble())||(p.contains("shapeId")&&!p["shapeId"].isNull()&&!p["shapeId"].isDouble())
      ||(p.contains("rect")&&(!p["rect"].isArray()||p["rect"].toArray().size()!=4))||(p.contains("percent")&&!p["percent"].isDouble())||(p.contains("pixels")&&!p["pixels"].isDouble())
      ||(p.contains("delta")&&(!p["delta"].isArray()||p["delta"].toArray().size()!=2))){reply(invalid(),{});return;}
   auto params=p;params.remove("id");operations_.editorCommand(p["id"].toString(),"view",params,reply);return;
