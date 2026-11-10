@@ -31,6 +31,10 @@ namespace putgd::record {
 // (CLOCK_MONOTONIC); RecordingPipeline's cadence lock stamps them.
 class ImageCopySource {
 public:
+ // With its own cursor (#1364) the source also pushes frames that only move the cursor over unchanged
+ // content, at most this often (60 a second), flagged GST_BUFFER_FLAG_DROPPABLE: the cadence lock gives
+ // such a frame a slot only at the slot's time, so it never takes one from the screen's next change.
+ static constexpr qint64 cursorIntervalNs=16'000'000;
  struct Target {bool window=false;QString identity;};  // window with no identity: the active window now
  // pointer: an output's pointer cursor session can be asked for (a seat with a pointer).
  struct Facts {bool available=false,windows=false,pointer=false;int outputs=0;QString reason,windowReason;QJsonObject protocols;};

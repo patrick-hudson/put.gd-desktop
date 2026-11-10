@@ -272,11 +272,14 @@ GstPadProbeReturn RecordingPipeline::stampFrame(GstPad* pad, GstPadProbeInfo* in
     if (!clock->compositorTimes) {
         frame = pipewireFrameTime(-1, 0, running, clock->previous);
         if (clock->locked) {
-            qint64 locked = lockedFrameTime(running, clock->previous, clock->lock);
+            // The image-copy source's cursor-only frame (#1364) is the recorder's own and waits
+            // for its slot's time, so the screen's next change keeps the slot (see FrameLock).
+            const bool own = clock->ownFrames && GST_BUFFER_FLAG_IS_SET(buffer, GST_BUFFER_FLAG_DROPPABLE);
+            qint64 locked = lockedFrameTime(running, clock->previous, clock->lock, own);
             // A change right after a passed repeat takes the next slot rather
             // than waiting for the next keepalive (or missing a clip stopped first).
-            if (locked < 0 && clock->lastWasRepeat && !same) { locked = clock->previous + clock->lock.periodNs; ++clock->afterRepeat; }
-            if (locked < 0) { ++clock->early; return GST_PAD_PROBE_DROP; }
+            if (locked < 0 && clock->lastWasRepeat && !same && !own) { locked = clock->previous + clock->lock.periodNs; ++clock->afterRepeat; }
+            if (locked < 0) { ++clock->early; if (own) ++clock->ownHeld; return GST_PAD_PROBE_DROP; }
             if (clock->previous >= 0 && locked != clock->previous + clock->lock.periodNs) ++clock->resyncs;
             frame.running = locked;
         }
@@ -297,6 +300,8 @@ GstPadProbeReturn RecordingPipeline::stampFrame(GstPad* pad, GstPadProbeInfo* in
         buffer = gst_buffer_make_writable(buffer);
         if (!buffer) { GST_PAD_PROBE_INFO_DATA(info) = nullptr; return GST_PAD_PROBE_DROP; }
     }
+    // The mark was for the lock above; nothing downstream is to read it.
+    GST_BUFFER_FLAG_UNSET(buffer, GST_BUFFER_FLAG_DROPPABLE);
     gst_buffer_replace(&clock->lastKept, buffer);
     GST_PAD_PROBE_INFO_DATA(info) = buffer;
     GST_BUFFER_PTS(buffer) = GST_BUFFER_DTS(buffer) = GstClockTime(frame.running);
@@ -553,7 +558,8 @@ bool RecordingPipeline::launch(const Options& options, const QString& encoder, c
     frameClock_.compositorTimes = qEnvironmentVariable("PUTGD_RECORD_PIPEWIRE_TIMESTAMPS") == "compositor";
     // =arrival: raw arrival times (the default before #6), for lab A/B runs.
     frameClock_.locked = qEnvironmentVariable("PUTGD_RECORD_PIPEWIRE_TIMESTAMPS") != "arrival";
-    frameClock_.lock = frameLock(options.fps);
+    frameClock_.lock = frameLock(options.fps, options.imageCopy ? ImageCopySource::cursorIntervalNs : 0);
+    frameClock_.ownFrames = options.imageCopy != nullptr;
     frameClock_.gate = &gate_;
     gate_.periodNs = GST_SECOND / options.fps; gate_.delivered = 0; gate_.kept = 0; gate_.lastKept = -1; gate_.toleranceNs = GST_SECOND / options.fps / 2;
     // Lab A/B: PUTGD_RECORD_ENCODE_REPEATS=on keeps encoding videorate's repeats after a step.
@@ -1030,8 +1036,8 @@ void RecordingPipeline::tearDown() {
     // old a compositor frame time was when the frame reached the source pad.
     debugLog(QStringLiteral("timestamps: clock %1, video lateness %2, audio lateness %3, frame age %4, arrival-stamped frames %5, audio re-anchored %6 times")
                  .arg(clockName_, video_.lateness.text(), audio_.lateness.text(), frameClock_.age.text()).arg(frameClock_.arrival).arg(audio_.clock.corrections() + microphone_.clock.corrections() + system_.clock.corrections()));
-    debugLog(QStringLiteral("frames: %1 reached the video encoder, %2 leaked at the capture queue; source arrivals %3 (interval %4), %5 with a repeated compositor time, contents %6 new / %7 same dropped, cadence lock %8 early dropped / %9 resyncs / %10 changes slotted after a repeat")
-                 .arg(video_.passed.load()).arg(dropped_.load()).arg(frameClock_.interval.count + (frameClock_.lastArrival >= 0 ? 1 : 0)).arg(frameClock_.interval.text()).arg(frameClock_.repeatedPts).arg(frameClock_.distinctContents).arg(frameClock_.sameContents).arg(frameClock_.early).arg(frameClock_.resyncs).arg(frameClock_.afterRepeat));
+    debugLog(QStringLiteral("frames: %1 reached the video encoder, %2 leaked at the capture queue; source arrivals %3 (interval %4), %5 with a repeated compositor time, contents %6 new / %7 same dropped, cadence lock %8 early dropped (%11 of them cursor-only frames) / %9 resyncs / %10 changes slotted after a repeat")
+                 .arg(video_.passed.load()).arg(dropped_.load()).arg(frameClock_.interval.count + (frameClock_.lastArrival >= 0 ? 1 : 0)).arg(frameClock_.interval.text()).arg(frameClock_.repeatedPts).arg(frameClock_.distinctContents).arg(frameClock_.sameContents).arg(frameClock_.early).arg(frameClock_.resyncs).arg(frameClock_.afterRepeat).arg(frameClock_.ownHeld));
     if (clicks_.received()) debugLog(QStringLiteral("clicks: %1 received, rings drawn into %2 frames").arg(clicks_.received()).arg(clicks_.drawn()));
     if (!microphone_.drift.isEmpty()) debugLog("audio tap microphone (buffer:ms from contiguous@ms): " + microphone_.drift.join(' '));
     if (!system_.drift.isEmpty()) debugLog("audio tap system (buffer:ms from contiguous@ms): " + system_.drift.join(' '));

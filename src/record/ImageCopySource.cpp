@@ -29,8 +29,7 @@ namespace {
 constexpr int ringSize=4;
 constexpr qint64 keepaliveNs=1'000'000'000;
 constexpr int openTimeoutMs=3000;
-// A moving cursor over a still screen: at most this often (60 a second).
-constexpr qint64 cursorIntervalNs=16'000'000;
+constexpr qint64 cursorIntervalNs=ImageCopySource::cursorIntervalNs;
 constexpr int cursorSettleMs=400;
 qint64 monotonicNs(){timespec t{};clock_gettime(CLOCK_MONOTONIC,&t);return qint64(t.tv_sec)*1'000'000'000+t.tv_nsec;}
 QString text(const char* value){return QString::fromUtf8(value,int(strnlen(value,4096)));}
@@ -377,7 +376,7 @@ struct ImageCopySource::Impl {
   ext_image_copy_capture_session_v1_add_listener(cursorCapture,&capture,this);
  }
  // A copy of the newest frame with the cursor drawn where the cursor session says it is.
- void pushComposed(qint64 pts){
+ void pushComposed(qint64 pts,bool cursorOnly=false){
   if(!clean)return;
   const int w=clean->dims.width(),h=clean->dims.height();const size_t bytes=size_t(w)*4*size_t(h);
   auto* pixels=static_cast<uint32_t*>(g_try_malloc(bytes));if(!pixels)return;
@@ -413,6 +412,8 @@ struct ImageCopySource::Impl {
   lastPts=std::max(pts,lastPts+1);GST_BUFFER_PTS(buffer)=GstClockTime(lastPts);
   if(last)gst_buffer_unref(last);
   last=gst_buffer_ref(buffer);
+  // The recorder's own frame, for the cadence lock. The reference kept for a keepalive stays unflagged.
+  if(cursorOnly){buffer=gst_buffer_make_writable(buffer);GST_BUFFER_FLAG_SET(buffer,GST_BUFFER_FLAG_DROPPABLE);}
   push(buffer);
  }
  void ready(){
@@ -461,7 +462,7 @@ struct ImageCopySource::Impl {
    }
    if(ownCursor){
     pumpCursor();
-    if(cursorDirty&&clean&&monotonicNs()-lastPush>=cursorIntervalNs){cursorDirty=false;cursorPushes.fetch_add(1);pushComposed(monotonicNs());}
+    if(cursorDirty&&clean&&monotonicNs()-lastPush>=cursorIntervalNs){cursorDirty=false;cursorPushes.fetch_add(1);pushComposed(monotonicNs(),true);}
    }
    if(!frame&&constraints&&!reallocate)if(auto* slot=freeSlot())capture(slot);
    if(last&&monotonicNs()-lastPush>=keepaliveNs)keepalive();

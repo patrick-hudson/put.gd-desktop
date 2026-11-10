@@ -1,4 +1,5 @@
 #pragma once
+#include <algorithm>
 #include <QRect>
 #include <QSize>
 #include <QProcessEnvironment>
@@ -54,9 +55,23 @@ inline QString pipewireUnthrottledCaps() { return QStringLiteral(" ! video/x-raw
 // later resynchronises to its arrival. Stamps therefore follow arrivals on
 // average (the audio offset #86 measured stays) and sit on the grid between
 // resyncs. `previous` -1 takes the arrival.
-struct FrameLock { qint64 periodNs = 0; qint64 toleranceNs = 0; };
-inline FrameLock frameLock(int fps) { const qint64 period = fps > 0 ? 1'000'000'000 / fps : 0; return {period, period * 7 / 10}; }
-qint64 lockedFrameTime(qint64 arrivalRunning, qint64 previous, const FrameLock& lock);
+//
+// A frame the recorder made itself (#1364: the image-copy source redraws the
+// cursor over unchanged content, at most every `ownIntervalNs`) is not an
+// extra, but it must not take a slot as early as a captured frame may: a moving
+// cursor would then hold every slot `tolerance` before its time, the screen's
+// next change would always arrive "early" for the slot after and be dropped,
+// and its content would show a period late (about 30 ms at 30 frames a second,
+// for as long as the pointer moves). Such a frame takes a slot only from
+// `ownEarlyNs` before the slot's time: nothing at the usual rates, and just
+// enough at 50 or 60 a second that one of them always lands inside the slot.
+struct FrameLock { qint64 periodNs = 0; qint64 toleranceNs = 0; qint64 ownEarlyNs = 0; };
+inline FrameLock frameLock(int fps, qint64 ownIntervalNs = 0) {
+    const qint64 period = fps > 0 ? 1'000'000'000 / fps : 0, tolerance = period * 7 / 10;
+    // A quarter over the pace covers a push that came late.
+    return {period, tolerance, std::max<qint64>(0, ownIntervalNs * 5 / 4 - tolerance)};
+}
+qint64 lockedFrameTime(qint64 arrivalRunning, qint64 previous, const FrameLock& lock, bool ownFrame = false);
 
 // The videocrop margins that cut `region` (a frame's PipeWire crop region,
 // buffer pixels) out of a frame of `frame` size. A region that is empty or

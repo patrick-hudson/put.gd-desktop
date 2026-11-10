@@ -160,7 +160,7 @@ private:
     // advancing through videorate.
     // A passed repeat must not cost a changed frame its slot: a change arriving
     // early after a repeat takes the next slot instead of being dropped.
-    struct FrameClock { RateGate* gate = nullptr; gint64 previous = -1, arrival = 0, headerPts = -1, repeatedPts = 0, lastArrival = -1, lastPassed = -1; GstBuffer* lastKept = nullptr; gint64 distinctContents = 0, sameContents = 0, early = 0, resyncs = 0, afterRepeat = 0; bool compositorTimes = false, locked = true, lastWasRepeat = false; Spread age, interval; FrameLock lock; };
+    struct FrameClock { RateGate* gate = nullptr; gint64 previous = -1, arrival = 0, headerPts = -1, repeatedPts = 0, lastArrival = -1, lastPassed = -1; GstBuffer* lastKept = nullptr; gint64 distinctContents = 0, sameContents = 0, early = 0, resyncs = 0, afterRepeat = 0, ownHeld = 0; bool compositorTimes = false, locked = true, lastWasRepeat = false, ownFrames = false; Spread age, interval; FrameLock lock; };
     static GstPadProbeReturn probe(GstPad*, GstPadProbeInfo*, gpointer);
     // One capture branch before the mix (or the microphone alone): keeps a
     // runaway device clock out of the mixer (#129), feeds the level meter and
