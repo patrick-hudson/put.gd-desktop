@@ -92,10 +92,11 @@ another build than the resident. It reads no pixels and takes no target.
 ### A locked screen
 
 A delay that ends on a locked screen captures nothing: the operation fails with
-`session_locked`. Each adapter asks when the countdown ends: the Cinnamon and
-freedesktop screensaver services and logind's `LockedHint` everywhere, Hyprland's
-own `locked` request as well, and on GNOME the extension, which also drops every
-request the moment the Shell locks.
+`session_locked`. Each adapter checks when the countdown ends: Cinnamon and
+freedesktop screensaver services and logind's `LockedHint` where available,
+Hyprland's own `locked` request as well, and on GNOME the extension, which also
+drops every request the moment the Shell locks. Budgie uses the visibility
+witness described below.
 
 Not every locker reports its state: Budgie's gtklock sets no `LockedHint` and offers
 no service to ask, and Omarchy's lock leaves the hint off too. So on Plasma, Budgie
