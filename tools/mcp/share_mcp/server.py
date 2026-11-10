@@ -72,7 +72,12 @@ REVIEW_SPEEDS = {0.5, 1, 2, 4}
 # The put.gd window's file choosers (#259) and the actions on each.
 FILE_DIALOGS = {'editImage', 'historySaveAs', 'outputFolder', 'diagnosticsFolder'}
 FILE_DIALOG_ACTIONS = {'open', 'inspect', 'cancel'}
-HISTORY_ACTIONS = {'inspect', 'copyDeletionDetails', 'retryLoading', 'clearFilters', 'select', 'clearSelection', 'openDetails', 'closeDetails', 'expandPreview', 'closePreview', 'retryPreview', 'showSavedCopy', 'copySavedPath', 'dismissSavedCopy', 'cancelAll', 'confirmCancelAll', 'keepUploading'}
+HISTORY_ACTIONS = {'inspect', 'copyDeletionDetails', 'retryLoading', 'clearFilters', 'select', 'clearSelection', 'openDetails', 'closeDetails', 'toggleDetails',
+                   'nextPage', 'previousPage', 'goToPage', 'setFilter', 'removeFilter', 'showCategory', 'setView', 'copySelectedLinks', 'deleteSelected',
+                   'cancelConfirmation', 'expandPreview', 'closePreview', 'retryPreview', 'showSavedCopy', 'copySavedPath', 'dismissSavedCopy', 'cancelAll',
+                   'confirmCancelAll', 'keepUploading'}
+HISTORY_FILTER_KEYS = {'from', 'to', 'mime', 'profileId', 'uploadStatus', 'localStatus', 'remoteStatus', 'exactRemoteStatus', 'includeCanceled'}
+HISTORY_CATEGORIES = {'all', 'images', 'videos', 'text+other', 'failed'}
 OUTPUT_FOLDER_FIELDS = {'root', 'images', 'videos', 'text', 'other'}
 # A backstop above the CLI's own bounded wait, whose longest case is 3 s to connect,
 # 3 s to send and 45 s for recording.stop (LocalServer::replyDeadlineMs).
@@ -606,6 +611,26 @@ def create_server(adapter: CliAdapter) -> MCPServer:
         return await adapter.call('history.list', params)
 
     @server.tool(annotations=read)
+    async def count_history(search: str | None = None, category: str | None = None,
+                            mime: str | None = None, profile_id: str | None = None,
+                            upload_status: str | None = None, local_status: str | None = None,
+                            remote_status: str | None = None, from_date: str | None = None,
+                            to_date: str | None = None, days: list[dict[str, str]] | None = None) -> Json:
+        """Count offline history as History's page does: categories (all, images, videos, text+other, failed) totals every stored file regardless of the filters; total counts the files matching the filters (list_history's filters, no paging); days gives the matching files in each {from, to} ISO time range (at most 64, in order)."""
+        params = {k: v for k, v in {'search': search, 'category': category, 'mime': mime, 'profileId': profile_id,
+                  'uploadStatus': upload_status, 'localStatus': local_status, 'remoteStatus': remote_status,
+                  'from': from_date, 'to': to_date}.items() if v is not None}
+        if any(not isinstance(v, str) or len(v) > 256 for v in params.values()):
+            return invalid()
+        if days is not None:
+            if (not isinstance(days, list) or len(days) > 64 or
+                    any(not isinstance(day, dict) or set(day) != {'from', 'to'} or
+                        any(not isinstance(day[key], str) or not 0 < len(day[key]) <= 64 for key in ('from', 'to')) for day in days)):
+                return invalid()
+            params['days'] = days
+        return await adapter.call('history.counts', params)
+
+    @server.tool(annotations=read)
     async def get_history_entry(id: str) -> Json:
         """Read stored original receipt, local-copy status and independent remote-deletion status."""
         return await adapter.call('history.detail', {'id': id}) if identifier(id) else invalid()
@@ -873,17 +898,28 @@ def create_server(adapter: CliAdapter) -> MCPServer:
         return await adapter.call('ui.fileDialog', params)
 
     @server.tool(annotations=ToolAnnotations(read_only_hint=False, destructive_hint=False, open_world_hint=False))
-    async def drive_history(action: str, scope: str | None = None, ids: list[str] | None = None) -> Json:
-        """Drive the open History page as its controls do and read its state. action: inspect; copyDeletionDetails (copy the exact preparation shown by an open deletion confirmation, without deleting); retryLoading (retry the current history query after a load failure; canRetryLoading reports availability); clearFilters (Clear filters; scope all also clears the search and shows All items, as the empty view's reset does); select (ids: history, operation or row IDs on the page shown, selected together); clearSelection; openDetails or closeDetails (the inspector over the list in the compact layout). Returns the applied query, activeFilters, filtersLabel ("Filters · N"), selectedIds, selectedRows, selectionActions (copyLinks, delete, clearSelection), deletableIds, layout (split or compact), detailsOpen and inspectorVisible. retryPreview retries a failed preview from retained source (canRetryPreview reports availability). expandPreview/closePreview open or close the selected image or recording poster in a larger dialog; canExpandPreview and previewExpanded report availability and state. dismissSavedCopy hides the saved-copy strip without losing its path; savedCopyVisible and copyJob (id, filename, path, status, error) report feedback and pending work. showSavedCopy/copySavedPath reveal or copy the last saved copy path (savedPath; savedCopyFolder reports the folder result). cancelAll opens the same confirmation as Cancel all (N)…; inspect cancelAllConfirmation.operationIds, then confirmCancelAll or keepUploading. Only those captured operation IDs are canceled; newer uploads stay running. selectionSummary includes counts, total bytes, destinations and upload-state tallies. Delete selected files with delete_history_uploads using deletableIds."""
+    async def drive_history(action: str, scope: str | None = None, ids: list[str] | None = None, page: int | None = None,
+                            key: str | None = None, value: str | None = None, category: str | None = None,
+                            view: str | None = None) -> Json:
+        """Drive the open History page as its controls do and read its state. action: inspect; copyDeletionDetails (copy the exact preparation shown by an open deletion confirmation, without deleting); cancelConfirmation (Cancel on an open deletion confirmation); retryLoading (retry the current history query after a load failure; canRetryLoading reports availability); clearFilters (Clear filters; scope all also clears the search and shows All items, as the empty view's reset does); setFilter (key, value: add or change one filter chip; key from, to (ISO date or time), mime, profileId, uploadStatus, localStatus, remoteStatus (available, deleted, needs_attention or an exact state), exactRemoteStatus or includeCanceled ("true")); removeFilter (key: a chip's remove button); showCategory (category all, images, videos, text+other or failed); setView (view list or gallery); select (ids: history, operation or row IDs on the page shown, selected together); clearSelection; openDetails, closeDetails or toggleDetails (the details pane: in the wide list these set detailsWanted, which persists and is honoured whenever something is selected; in the gallery and the compact layout they open or close the pane over the current selection, one row or several); nextPage, previousPage or goToPage (page, 1-based) as Previous/Next do. copySelectedLinks and deleteSelected run the selection bar's Copy links and Delete from destination… (deleteSelected opens the same confirmation for deletableIds; answer it with cancelConfirmation, or delete with delete_history_uploads). Returns the applied query, heading and countLabel ("236 items", "12 of 168 items", empty while loading), categoryTotals (all, images, videos, text+other, failed), days (each day on the page: day, heading, files within the query), page (page, pageCount, firstItem, lastItem, total, limit, offset, loading), activeFilters, filterChips (key, label, value), foldedFilters, filtersPanelOpen, filtersLabel, selectedIds, selectedRows, selectionHeader, selectionActions (copyLinks, delete, clearSelection), deletableIds, deletionConfirmationOpen, layout (split or compact), detailsWanted, detailsOpen and inspectorVisible. retryPreview retries a failed preview from retained source (canRetryPreview reports availability). expandPreview/closePreview open or close the selected image or recording poster in a larger dialog; canExpandPreview and previewExpanded report availability and state. dismissSavedCopy hides the saved-copy strip without losing its path; savedCopyVisible and copyJob (id, filename, path, status, error) report feedback and pending work. showSavedCopy/copySavedPath reveal or copy the last saved copy path (savedPath; savedCopyFolder reports the folder result). cancelAll opens the same confirmation as Cancel all (N)…; inspect cancelAllConfirmation.operationIds, then confirmCancelAll or keepUploading. Only those captured operation IDs are canceled; newer uploads stay running. selectionSummary includes counts, total bytes, destinations and upload-state tallies. Delete selected files with delete_history_uploads using deletableIds."""
         if action not in HISTORY_ACTIONS or (scope is not None and (action != 'clearFilters' or scope not in {'filters', 'all'})):
             return invalid()
         if (action == 'select') != (ids is not None) or (ids is not None and (not ids or len(ids) > 1000 or any(not identifier(id, 138) for id in ids))):
             return invalid()
+        if (action == 'goToPage') != (page is not None) or (page is not None and (type(page) is not int or not 1 <= page <= 2147483647)):
+            return invalid()
+        if (action in {'setFilter', 'removeFilter'}) != (key is not None) or (key is not None and key not in HISTORY_FILTER_KEYS):
+            return invalid()
+        if (action == 'setFilter') != (value is not None) or (value is not None and (not isinstance(value, str) or len(value) > 256)):
+            return invalid()
+        if (action == 'showCategory') != (category is not None) or (category is not None and category not in HISTORY_CATEGORIES):
+            return invalid()
+        if (action == 'setView') != (view is not None) or (view is not None and view not in {'list', 'gallery'}):
+            return invalid()
         params: Json = {'action': action}
-        if scope is not None:
-            params['scope'] = scope
-        if ids is not None:
-            params['ids'] = ids
+        for name, argument in (('scope', scope), ('ids', ids), ('page', page), ('key', key), ('value', value), ('category', category), ('view', view)):
+            if argument is not None:
+                params[name] = argument
         return await adapter.call('ui.history', params)
 
     @server.tool(annotations=ToolAnnotations(read_only_hint=False, destructive_hint=False, open_world_hint=False))
