@@ -5,6 +5,8 @@
 #include <wayland-client.h>
 #include <poll.h>
 #include <sys/mman.h>
+#include <sys/socket.h>
+#include <sys/un.h>
 #include <unistd.h>
 #include <cerrno>
 #include <cstring>
@@ -14,6 +16,19 @@
 #undef namespace
 namespace putgd {
 namespace {
+wl_display* connectFreshDisplay(){
+ // Always open a separate client, never reuse WAYLAND_SOCKET's owned stream.
+ auto path=qgetenv("WAYLAND_DISPLAY");if(path.isEmpty())path="wayland-0";
+ if(!path.startsWith('/')){const auto runtime=qgetenv("XDG_RUNTIME_DIR");if(runtime.isEmpty())return nullptr;path=runtime+'/'+path;}
+ sockaddr_un address{};address.sun_family=AF_UNIX;
+ if(size_t(path.size())>=sizeof address.sun_path)return nullptr;
+ std::memcpy(address.sun_path,path.constData(),size_t(path.size()));
+ const int fd=::socket(AF_UNIX,SOCK_STREAM|SOCK_CLOEXEC|SOCK_NONBLOCK,0);if(fd<0)return nullptr;
+ // Linux AF_UNIX returns EAGAIN for a full listen backlog. Refuse immediately
+ // rather than blocking the event loop before its setup timer can run.
+ if(::connect(fd,reinterpret_cast<const sockaddr*>(&address),sizeof address)<0){::close(fd);return nullptr;}
+ return wl_display_connect_to_fd(fd); // libwayland owns fd, including on failure.
+}
 class Visibility final:public QObject {
  wl_display* display_=nullptr;wl_registry* registry_=nullptr;wl_compositor* compositor_=nullptr;
  wl_shm* shm_=nullptr;zwlr_layer_shell_v1* shell_=nullptr;zwlr_layer_surface_v1* layer_=nullptr;
@@ -67,7 +82,7 @@ class Visibility final:public QObject {
 public:
  Visibility(QObject* context,std::function<void(bool)> reply):QObject(context),reply_(std::move(reply)){
   timeout_.setSingleShot(true);connect(&timeout_,&QTimer::timeout,this,[this]{finish(false);});timeout_.start(5000);
-  display_=wl_display_connect(nullptr);if(!display_){finish(false);return;}
+  display_=connectFreshDisplay();if(!display_){finish(false);return;}
   registry_=wl_display_get_registry(display_);
   static const wl_registry_listener globals{
    [](void* data,wl_registry* registry,uint32_t id,const char* name,uint32_t){auto* self=static_cast<Visibility*>(data);

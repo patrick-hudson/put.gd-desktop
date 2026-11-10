@@ -88,6 +88,19 @@ private slots:
   if(fixture_.state()!=QProcess::NotRunning){fixture_.terminate();if(!fixture_.waitForFinished(3000))fixture_.kill();}
   if(labwc_.state()!=QProcess::NotRunning){labwc_.terminate();if(!labwc_.waitForFinished(3000))labwc_.kill();}
  }
+ void visibilityRefusesFullConnectionBacklogWithoutBlocking(){
+  QTemporaryDir directory("/tmp/pg-vis-XXXXXX");QVERIFY(directory.isValid());
+  const auto path=directory.path()+"/display";QVERIFY(path.toUtf8().size()<=107);
+  QProcess listener;listener.start(QCoreApplication::applicationDirPath()+"/putgd-session-lock-fixture",{"--backlog",path});
+  auto stop=qScopeGuard([&]{if(listener.state()!=QProcess::NotRunning){listener.terminate();listener.waitForFinished(3000);}});
+  QVERIFY(listener.waitForStarted(3000));QVERIFY(waitFor([&]{return listener.readAllStandardOutput().contains("ready");}));
+  const auto previous=qgetenv("WAYLAND_DISPLAY");auto restore=qScopeGuard([&]{qputenv("WAYLAND_DISPLAY",previous);});
+  qputenv("WAYLAND_DISPLAY",path.toUtf8());
+  bool done=false,visible=true;QObject context;QElapsedTimer elapsed;elapsed.start();
+  querySurfaceVisible(&context,[&](bool result){visible=result;done=true;});
+  QVERIFY2(elapsed.elapsed()<1000,"Connecting must not block the event-loop thread");
+  QVERIFY(waitFor([&]{return done;},1000));QVERIFY(!visible);
+ }
  void visibilityAllowsSlowCompositorSetup(){
   // Pause only our private child compositor, reproducing setup queued behind
   // the first software-rendered window without consuming the frame deadline.

@@ -7,6 +7,8 @@
 #include <stdio.h>
 #include <string.h>
 #include <sys/mman.h>
+#include <sys/socket.h>
+#include <sys/un.h>
 #include <unistd.h>
 static volatile sig_atomic_t stop;
 static struct ext_session_lock_manager_v1* manager;
@@ -34,7 +36,19 @@ static void configured(void* data,struct ext_session_lock_surface_v1* lock,uint3
  wl_surface_attach(surface,buffer,0,0);wl_surface_damage(surface,0,0,width,height);
  static const struct wl_callback_listener listener={frame};wl_callback_add_listener(wl_surface_frame(surface),&listener,NULL);wl_surface_commit(surface);
 }
-int main(void){
+int main(int argc,char** argv){
+ if(argc==3&&!strcmp(argv[1],"--backlog")){
+  struct sockaddr_un address={.sun_family=AF_UNIX};
+  if(strlen(argv[2])>=sizeof address.sun_path)return 4;
+  strcpy(address.sun_path,argv[2]);
+  int listener=socket(AF_UNIX,SOCK_STREAM|SOCK_CLOEXEC,0);
+  if(listener<0||bind(listener,(struct sockaddr*)&address,sizeof address)<0||listen(listener,0)<0)return 5;
+  int filler=socket(AF_UNIX,SOCK_STREAM|SOCK_CLOEXEC|SOCK_NONBLOCK,0);
+  if(filler<0||connect(filler,(struct sockaddr*)&address,sizeof address)<0)return 6;
+  puts("ready");fflush(stdout);
+  // Release even a regressed blocking client, so its timing assertion can fail.
+  usleep(2500000);close(filler);close(listener);return 0;
+ }
  signal(SIGTERM,stopped);signal(SIGINT,stopped);
  struct wl_display* display=wl_display_connect(NULL);if(!display)return 1;
  struct wl_registry* registry=wl_display_get_registry(display);
