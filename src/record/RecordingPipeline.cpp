@@ -85,12 +85,13 @@ QString captureBranch(const char* source, const char* tap, const QString& device
     // input, which may be an output's monitor. System audio keeps the server's own routing.
     //
     // The microphone is never the pipeline's clock. An audio source offers its own clock, counted in
-    // the samples it has read, and a pipeline takes it when nothing nearer the sinks offers one: on X11
-    // and with wlroots frames, where the video source has none, that was the microphone. A microphone
-    // that goes away reads no more samples, so its clock stopped, the video source waited for a frame
-    // time that never came and the clip ended where the microphone did (measured on Mint 22, PipeWire
-    // 1.0.5: 6.2 s kept of 14 s recorded). Without the offer the pipeline runs on the system audio's
-    // clock or the system clock, as a recording without a microphone does, and this source follows it.
+    // the samples it has read, and a pipeline takes it when nothing nearer the sinks offers one. PipeWire
+    // and image-copy pipelines are given the system clock in launch(); an X11 one is not, and ximagesrc
+    // has no clock, so a recording with the microphone alone ran on the microphone's. A microphone that
+    // goes away reads no more samples: its clock stopped, ximagesrc waited for a frame time that never
+    // came and the clip ended where the microphone did (measured on Mint 22, PipeWire 1.0.5: 6.2 s kept
+    // of 14 s recorded). Without the offer an X11 pipeline runs on the system audio's clock or the system
+    // clock, as a recording without a microphone does, and this source follows it.
     const QString pin = QByteArrayView(source) == "msrc" ? QStringLiteral(" provide-clock=false stream-properties=\"%1\"").arg(QLatin1String(pinnedStream)) : QString();
     return QStringLiteral(" pulsesrc name=%1 device=%2%5 ! audioconvert ! audioresample ! %3 ! identity name=%4 silent=true").arg(QString::fromLatin1(source), shellQuote(device), QString::fromLatin1(mixFormat), QString::fromLatin1(tap), pin);
 }

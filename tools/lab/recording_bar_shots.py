@@ -2,7 +2,7 @@
 """Frames of a real desktop showing the recording bar's microphone states and Settings (#1364).
 
   recording_bar_shots.py --run DIR --build LABEL=PATH [--rect X,Y,W,H] [--vnc HOST:PORT]
-                         [--states off,on,none,settings] [--hold 2.5]
+                         [--states off,on,none,settings,support] [--hold 2.5]
 
 Starts the build's resident with a private profile (as record_run.py does) and,
 for each state, puts put.gd's own surface on screen and saves one frame of the
@@ -19,6 +19,9 @@ desktop, taken through the desktop's VNC tile, as DIR/shots/STATE.png:
   settings  Settings is open; where it scrolls is up to the caller (the frame is
             taken after --settings-wait seconds, during which the caller may
             drive the window through the same VNC tile)
+  support   Settings is open with Advanced → Desktop support details expanded
+            (`ui.diagnostics` setDesktopDetails, the way an agent opens it): the
+            Click highlights row says what this desktop does and what it leaves out
 
 A real microphone is never opened: the simulated one comes from virtual_mic.py
 and is removed by its module ids when the run ends, also after a failure.
@@ -181,11 +184,14 @@ def main():
                     # This host's default input is a real device. For the picture the default becomes an output's
                     # monitor, the state of a desktop with nothing plugged in; the real device is never opened.
                     virtual_mic('create', '--name', 'putgd_lab_none_%d' % os.getpid(), '--state', str(none_state), '--system-sink', '--monitor-default')
-            if state == 'settings':
+            if state in ('settings', 'support'):
                 cli('ui.show', {'view': 'settings'})
+                if state == 'support':
+                    time.sleep(1.5)
+                    entry['diagnostics'] = cli('ui.diagnostics', {'action': 'setDesktopDetails', 'enabled': True})
                 time.sleep(a.settings_wait)
                 frame(state)
-                report['states'][state] = {'shown': 'settings'}
+                report['states'][state] = dict(entry, shown=state)
                 continue
             device = json.loads(mic_state.read_text())['source'] if mic_state.exists() and state != 'none' else None
             if state == 'on' and tone is None:
