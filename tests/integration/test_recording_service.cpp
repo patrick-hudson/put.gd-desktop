@@ -887,6 +887,10 @@ private slots:
   id=h.prepareReady({{"clickHighlights",true}});QVERIFY(!h.rec("start",{{"id",id}}).error);
   PUTGD_TRY_VERIFY(h.rec("inspect",{{"id",id}}).result["progress"].toObject()["clickHighlightsError"].toString().contains("KWin"));
   QCOMPARE(h.state(id),QString("recording"));
+  // The helper's progress reports, several a second while recording, replace one another; the reason stays.
+  h.backend->sink({{"id",id},{"event","progress"},{"durationUs",2000000.0},{"bytes",4321.0}});
+  PUTGD_TRY_COMPARE(h.rec("inspect",{{"id",id}}).result["progress"].toObject()["bytes"].toDouble(),4321.0);
+  QVERIFY(h.rec("inspect",{{"id",id}}).result["progress"].toObject()["clickHighlightsError"].toString().contains("KWin"));
   // A watch that failed is not asked again: not at the next transition, not at a resume.
   const auto asked=clicks.watches;
   QVERIFY(!h.rec("pause",{{"id",id}}).error);QVERIFY(!h.rec("resume",{{"id",id}}).error);
@@ -920,6 +924,11 @@ private slots:
   clicks.sink({{"button",1},{"pointer",true}});
   PUTGD_TRY_VERIFY(h.rec("inspect",{{"id",id}}).result["progress"].toObject()["clickHighlightsError"].toString().contains("pointer position"));
   QCOMPARE(h.state(id),QString("recording"));
+  // It is still there after the helper's next progress report (measured on Budgie without a hardware cursor:
+  // the reason was gone from inspect within the second, because each report replaced the whole object).
+  h.backend->sink({{"id",id},{"event","progress"},{"durationUs",5000000.0},{"bytes",9876.0}});
+  PUTGD_TRY_COMPARE(h.rec("inspect",{{"id",id}}).result["progress"].toObject()["bytes"].toDouble(),9876.0);
+  QVERIFY(h.rec("inspect",{{"id",id}}).result["progress"].toObject()["clickHighlightsError"].toString().contains("pointer position"));
   QVERIFY(!h.rec("cancel",{{"id",id}}).error);h.backend->clickError={};
   // Where starting the watch shows on screen, it starts before the capture does.
   clicks.capability["beforeCapture"]=true;QVERIFY(!h.rec("capabilities").result["clickHighlights"].toObject().contains("beforeCapture"));

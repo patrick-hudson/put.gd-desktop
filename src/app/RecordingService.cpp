@@ -304,7 +304,12 @@ void RecordingService::handleEvent(const QJsonObject& event) {
         auto progress = event;
         progress.remove("id");
         progress.remove("event");
+        // The helper reports several times a second and each report replaces the last. What the service
+        // itself learned about this recording (why its clicks are not highlighted) is not the helper's to
+        // report, and stays.
+        const auto clickError = s.progress.value("clickHighlightsError");
         s.progress = progress;
+        if (!clickError.isUndefined()) s.progress["clickHighlightsError"] = clickError;
         qint64 duration = 0;
         if (integer(event["durationUs"], 0, recording::maximumClipUs, &duration)) s.duration = duration;
         host_.observe(s.op);
