@@ -77,6 +77,10 @@ exits 0 when every receiver passed and nothing held a token.
 - Destinations the run imported are removed again unless `--keep` is given, also when
   the run stops early. A destination named `rx-<name>` that already exists is reported
   and left alone.
+- An import that `putgd-cli` could not get an answer for (`transport_failed`,
+  `response_too_large`, `invalid_response`) is not a refusal: the resident may still
+  finish it. The run reports the error, waits up to 30 seconds for the destination to
+  appear, and removes it with the others.
 - Every upload link goes to the clipboard, as every put.gd upload does. On a physical
   desktop, hold the desktop lock.
 
