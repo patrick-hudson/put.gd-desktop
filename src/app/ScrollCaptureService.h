@@ -25,6 +25,7 @@ private:
  void prepare(QJsonObject,bool edit,bool autoStart,JsonReply);
  void event(QJsonObject);
  void complete(QJsonObject);
+ void rememberResult();
  void terminate(Error,bool cancelled=false);
  void update(QString);
  QString root_,id_,directory_,pending_;
@@ -32,9 +33,11 @@ private:
  Operation op_;
  QJsonObject view_;
  QHash<QString,QJsonObject> results_;
+ QStringList resultOrder_;
  std::unique_ptr<ScrollBackend> backend_;
  RecordingShell* shell_=nullptr;
  int requestedCap_=30000;
+ bool shellSelecting_=false;
  bool edit_=false;
 };
 }

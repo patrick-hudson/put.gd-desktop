@@ -123,11 +123,11 @@ constexpr Entry entries[] {
  // radio submenu (33, choices 34 to 37) and Capture monitor's output row (38).
  {"Capture monitor", "monitor", 0}, {"Repeat last region", "repeat", 0},
  {"Capture delay", "", 0}, {"None", "delay-0", 33}, {"3 seconds", "delay-3", 33}, {"5 seconds", "delay-5", 33}, {"10 seconds", "delay-10", 33},
- {"", "", 23}, {"Capture scrolling region", "scroll", 0}
+ {"", "", 23}, {"Capture scrolling region", "scroll", 0}, {"", "", 23}
 };
 constexpr int delayMenuId = 33, firstDelayId = 34, lastDelayId = 37, extraOutputId = 38;
-// Capture output's rows: 23 is the summary, 24 to 29 and 38 one action each.
-int outputRow(int id) { return id >= 23 && id <= 29 ? id - 23 : id == extraOutputId ? 7 : -1; }
+// Capture output rows: 23 is the summary; 24–29, 38 and 40 are action rows.
+int outputRow(int id) { return id >= 23 && id <= 29 ? id - 23 : id == extraOutputId ? 7 : id == 40 ? 8 : -1; }
 constexpr int updateId = 17, uploadStatusId = 19, cancelUploadId = 20, uploadSeparatorId = 21;
 constexpr int entryCount = sizeof(entries) / sizeof(entries[0]);
 QList<int> childrenOf(int id) {

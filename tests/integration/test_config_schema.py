@@ -211,8 +211,9 @@ class ConfigurationSchema(unittest.TestCase):
                     self.assertEqual([error.message for error in errors], [])
                     inherited = copy.deepcopy(document)
                     inherited['captureDefaults'] = {'destination': 'local', 'profileId': None, 'publicationMode': 'default'}
-                    for action in inherited['actions'].values():
-                        action.update(destination='default', profileId=None, publicationMode='default')
+                    for name, action in inherited['actions'].items():
+                        if name != 'repeat':  # Repeat is always a shortcut-only entry.
+                            action.update(destination='default', profileId=None, publicationMode='default')
                     validator.validate(inherited)
                     checked = subprocess.run([cli, '--socket', str(socket), 'settings.validate', json.dumps({'document': inherited})], env=environment,
                         check=True, capture_output=True, text=True, timeout=20)

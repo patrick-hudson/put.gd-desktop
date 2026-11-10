@@ -612,6 +612,7 @@ Error OperationService::acceptRecording(Operation& op) {
  return {};
 }
 void OperationService::recordingCommand(const QString& command,const QJsonObject& params,JsonReply reply) {
+ if(command=="prepare"&&scroll_->active()){reply({"scroll_active","A scrolling capture is active",{{"operationId",scroll_->activeId()}}},{});return;}
  // recording.prepare opens the recording selector; the other commands drive the session it opened.
  if(command=="prepare")emit explicitRequest();
  if(!ready_&&command!="capabilities"&&command!="windows"&&command!="microphones") {reply(startupError_?startupError_:Error{"initializing","Journal recovery is in progress",{}},{});return;}

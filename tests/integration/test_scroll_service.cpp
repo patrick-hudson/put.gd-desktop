@@ -5,7 +5,16 @@
 #include <QSignalSpy>
 #include <QProcess>
 #include <QJsonDocument>
+#include <utility>
 using namespace putgd;using namespace putgd::test;
+struct ScrollShellFixture final:RecordingShell {
+ Reply selection;int cancels=0;
+ bool selectsRegions()const override{return true;}
+ void selectRegion(Reply reply)override{selection=std::move(reply);}
+ void cancelSelection()override{++cancels;auto reply=std::exchange(selection,{});if(reply)reply({"cancelled","Selection cancelled",{}},{});}
+ void showFrame(const QJsonObject&,Reply reply)override{reply({},{});}
+ void hideFrame()override{}
+};
 class ScrollTest:public QObject {
  Q_OBJECT
 private slots:
@@ -20,7 +29,7 @@ private slots:
  QCOMPARE(call("action.invoke",{{"action","region"}}).first.code,QString("scroll_active"));QCOMPARE(call("recording.prepare",{{"target",QJsonObject{{"kind","region"}}},{"format","mp4"}}).first.code,QString("scroll_active"));
  QVERIFY(!call("scroll.start",{{"id",id}}).first);QSignalSpy warning(&operations.scroll(),&ScrollCaptureService::warning);call("scroll.stop",{{"id",id}});auto result=call("scroll.inspect",{{"id",id}}).second;
  QCOMPARE(result["state"].toString(),bad.isEmpty()?QString("done"):QString("failed"));if(bad.isEmpty()){QCOMPARE(warning.size(),1);QVERIFY(result["note"].toString().contains("30,000"));QCOMPARE(result["endReason"].toString(),QString("height_cap"));QVERIFY(result["truncated"].toBool());HistoryStore store(operations.databasePath());QVERIFY(waitFor([&]{return !store.operation(id).items.isEmpty();}));QCOMPARE(store.operation(id).note,result["note"].toString());}
- auto next=call("scroll.prepare");const auto nextId=next.second["id"].toString();QVERIFY(!nextId.isEmpty());QVERIFY(!call("scroll.select",{{"id",nextId},{"rect",QJsonArray{0,0,64,64}}}).first);QVERIFY(!call("scroll.cancel",{{"id",nextId}}).first);QCOMPARE(call("scroll.inspect",{{"id",nextId}}).second["state"].toString(),QString("cancelled"));
+ ScrollShellFixture shell;operations.scroll().setShell(&shell);auto next=call("scroll.prepare");const auto nextId=next.second["id"].toString();QVERIFY(!nextId.isEmpty());QVERIFY(!call("scroll.select",{{"id",nextId},{"rect",QJsonArray{0,0,64,64}}}).first);QCOMPARE(shell.cancels,1);QVERIFY(!call("scroll.cancel",{{"id",nextId}}).first);QCOMPARE(call("scroll.inspect",{{"id",nextId}}).second["state"].toString(),QString("cancelled"));
  }
 };
 QTEST_GUILESS_MAIN(ScrollTest)

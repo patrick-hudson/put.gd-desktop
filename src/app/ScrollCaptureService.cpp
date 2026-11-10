@@ -38,7 +38,7 @@ void ScrollCaptureService::prepare(QJsonObject p,bool edit,bool autoStart,JsonRe
  requestedCap_=p["maxHeight"].toInt();const auto id=id_;QPointer<ScrollCaptureService> g(this);
  host_.persist(op_,[g,id,p,reply](Error e){if(!g)return;if(g->id_!=id){reply({"cancelled","Scrolling capture ended",{}},{});return;}if(e){g->terminate(e);reply(e,{});return;}
  g->backend_->prepare(id,p,g->directory_,[g,id,p,reply](Error e,QJsonObject result){if(!g)return;QMetaObject::invokeMethod(g,[g,id,p,e,result,reply]{if(!g)return;if(g->id_!=id){reply({"cancelled","Scrolling capture ended",{}},{});return;}if(e){g->terminate(e);reply(e,{});return;}g->update(result["state"].toString("selecting"));if(p.contains("rect"))g->view_["rect"]=p["rect"];reply({},g->view_);
- if(g->shell_&&!p.contains("rect")){g->shell_->selectRegion([g,id](Error e,QJsonObject r){if(!g||g->id_!=id)return;if(e){g->terminate(e,e.code=="cancelled");return;}g->command("select",{{"id",id},{"rect",r["rect"]}},[](Error,QJsonObject){});});}
+ if(g->shell_&&!p.contains("rect")){g->shellSelecting_=true;g->shell_->selectRegion([g,id](Error e,QJsonObject r){if(!g||g->id_!=id||!g->shellSelecting_)return;g->shellSelecting_=false;if(e){g->terminate(e,e.code=="cancelled");return;}g->command("select",{{"id",id},{"rect",r["rect"]}},[](Error,QJsonObject){});});}
  },Qt::QueuedConnection);});});
 }
 void ScrollCaptureService::command(const QString& cmd,const QJsonObject& p,JsonReply reply){
@@ -50,6 +50,7 @@ void ScrollCaptureService::command(const QString& cmd,const QJsonObject& p,JsonR
  if(cmd=="inspect"){reply({},view_);return;}
  if(!pending_.isEmpty()){reply({"scroll_busy","A scroll command is pending",{}},{});return;}
  const auto state=view_["state"].toString();if((cmd=="start"&&state!="ready")||(cmd=="select"&&state!="selecting")||(cmd=="stop"&&state!="capturing")){reply({"scroll_state","Command is unavailable in this state",{}},{});return;}
+ if(cmd=="select"&&shellSelecting_){shellSelecting_=false;shell_->cancelSelection();}
  pending_=cmd;if(cmd=="stop")update("finishing");QPointer<ScrollCaptureService> g(this);
  auto controlParams=p;controlParams.remove("id");
  backend_->control(id,cmd,controlParams,[g,id,cmd,p,reply](Error e,QJsonObject r){if(!g)return;QMetaObject::invokeMethod(g,[g,id,cmd,p,e,r,reply]{if(!g)return;if(g->id_!=id){if(g->results_.contains(id))reply({},g->results_[id]);else reply({"scroll_not_found","Session ended",{}},{});return;}g->pending_.clear();if(e){g->terminate(e);reply(e,{});return;}if(cmd=="cancel")g->terminate({},true);else if(cmd=="stop")g->complete(r);else {if(cmd=="select")g->view_["rect"]=p["rect"];g->update(r["state"].toString(cmd=="start"?"capturing":"ready"));}reply({},g->results_.contains(id)?g->results_[id]:g->view_);},Qt::QueuedConnection);});
@@ -65,10 +66,11 @@ void ScrollCaptureService::complete(QJsonObject r){
  const auto png=file.read(bytes+1);if(png.size()!=bytes||!png.startsWith(QByteArray::fromHex("89504e470d0a1a0a0000000d49484452"))||qFromBigEndian<quint32>(png.constData()+16)!=quint32(w)||qFromBigEndian<quint32>(png.constData()+20)!=quint32(h)||QString::fromLatin1(QCryptographicHash::hash(png,QCryptographicHash::Sha256).toHex())!=r["sha256"].toString()){terminate(bad);return;}
  r.remove("path");r["truncated"]=reason!="end_of_content";view_["result"]=r;view_["endReason"]=reason;view_["truncated"]=reason!="end_of_content";view_["height"]=h;view_["bytes"]=double(bytes);view_["stats"]=r["stats"];const auto stats=r["stats"].toObject();for(auto i=stats.begin();i!=stats.end();++i)view_[i.key()]=i.value();update("done");
  if(reason=="height_cap"){const auto note=QString("Stopped at %1 px. The page continues below.").arg(QLocale(QLocale::English).toString(cap));op_.note=note;view_["note"]=note;emit warning(id_,note);}
- results_[id_]=view_;if(results_.size()>32)results_.erase(results_.begin());auto op=op_;const auto id=id_;id_.clear();pending_.clear();if(shell_)shell_->hideFrame();
+ rememberResult();auto op=op_;const auto id=id_;id_.clear();pending_.clear();if(shell_)shell_->hideFrame();
  ClipboardPayload payload;if(edit_){payload.kind="files";payload.files={path};}else{payload.kind="png";payload.bytes=png;payload.mime="image/png";}
  QPointer<ScrollCaptureService> g(this);host_.admit(op,std::move(payload),[g,id,path]{if(g)QMetaObject::invokeMethod(g,[g,id,path]{if(g){g->backend_->discard(id);QFile::remove(path);QDir(g->root_+"/"+id).removeRecursively();}},Qt::QueuedConnection);});
 }
-void ScrollCaptureService::terminate(Error e,bool cancelled){if(!active())return;const auto id=id_;op_.error=e;view_["error"]=e.toJson();op_.cancelled=cancelled;op_.state=cancelled?"cancelled":"failed";update(op_.state);results_[id]=view_;id_.clear();pending_.clear();if(shell_){shell_->cancelSelection();shell_->hideFrame();}backend_->discard(id);QDir(directory_).removeRecursively();host_.finish(op_);}
+void ScrollCaptureService::terminate(Error e,bool cancelled){if(!active())return;const auto id=id_;op_.error=e;view_["error"]=e.toJson();op_.cancelled=cancelled;op_.state=cancelled?"cancelled":"failed";update(op_.state);rememberResult();id_.clear();pending_.clear();shellSelecting_=false;if(shell_){shell_->cancelSelection();shell_->hideFrame();}backend_->discard(id);QDir(directory_).removeRecursively();host_.finish(op_);}
+void ScrollCaptureService::rememberResult(){results_[id_]=view_;resultOrder_.append(id_);while(resultOrder_.size()>32)results_.remove(resultOrder_.takeFirst());}
 void ScrollCaptureService::shutdown(){if(active())terminate({"cancelled","Resident stopped",{}},true);}
 }
