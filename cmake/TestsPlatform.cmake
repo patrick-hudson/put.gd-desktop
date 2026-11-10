@@ -125,7 +125,17 @@
 # The Budgie adapter and shared Wayland capture against a real headless labwc
 # (#1275). It skips where labwc is not installed; the Ubuntu 26.04 CI leg has it.
 if(BUILD_TESTING AND TARGET putgd_budgie)
+  set(session_lock_xml "${PUTGD_WAYLAND_PROTOCOLS_DIR}/staging/ext-session-lock/ext-session-lock-v1.xml")
+  add_custom_command(OUTPUT "${protocol_dir}/ext-session-lock-v1-client-protocol.h" "${protocol_dir}/ext-session-lock-v1-protocol.c"
+    COMMAND "${PUTGD_WAYLAND_SCANNER}" client-header "${session_lock_xml}" "${protocol_dir}/ext-session-lock-v1-client-protocol.h"
+    COMMAND "${PUTGD_WAYLAND_SCANNER}" private-code "${session_lock_xml}" "${protocol_dir}/ext-session-lock-v1-protocol.c"
+    DEPENDS "${session_lock_xml}" VERBATIM)
+  add_executable(putgd-session-lock-fixture tests/fixtures/session_lock.c
+    "${protocol_dir}/ext-session-lock-v1-client-protocol.h" "${protocol_dir}/ext-session-lock-v1-protocol.c")
+  target_include_directories(putgd-session-lock-fixture PRIVATE "${protocol_dir}")
+  target_link_libraries(putgd-session-lock-fixture PRIVATE PkgConfig::PUTGD_WAYLAND)
   add_executable(test_budgie_labwc tests/integration/test_budgie_labwc.cpp)
+  add_dependencies(test_budgie_labwc putgd-session-lock-fixture)
   target_link_libraries(test_budgie_labwc PRIVATE putgd_budgie Qt6::Test)
   target_compile_definitions(test_budgie_labwc PRIVATE PUTGD_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
   if(TARGET putgd-region)
