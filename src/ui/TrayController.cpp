@@ -279,6 +279,10 @@ TrayController::TrayController(OperationService& operations,
  connect(&calendar_,&TrayCalendar::glyphChanged,this,&TrayController::refreshActivity);
  connect(&operations_,&OperationService::operationError,this,[this](const QString& id,QJsonObject operation){operation["id"]=id;latchFailure({"archive_failed","Local save failed",{}},operation);});
  connect(&operations_,&OperationService::storageActivityChanged,this,&TrayController::refreshActivity);
+ // Not every tray host asks before it shows the menu (Cinnamon's does not), so the
+ // output summary, the shortcuts and the capture delay follow the configuration
+ // when it changes, not when the menu opens.
+ connect(&operations_,&OperationService::settingsAccepted,this,&TrayController::refreshMenu);
  connect(&operations_, &OperationService::observationsChanged, this, &TrayController::refreshActivity);
  refreshActivity();
  connect(&operations_, &OperationService::resultReady, this, [this](const QString& id) {

@@ -660,6 +660,13 @@ private slots:
   QVERIFY(delay); QCOMPARE(delay->actions().size(), 4);
   QStringList choices; for (auto* choice : delay->actions()) { QVERIFY(choice->isCheckable()); choices.append(choice->text()); }
   QCOMPARE(choices, QStringList({"None", "3 seconds", "5 seconds", "10 seconds"}));
+  // A choice shows in the menu as soon as it is saved, with no capture and without the
+  // menu being asked to show: Cinnamon's tray never asks.
+  QCOMPARE(delay->title(), QString("Capture delay: none")); QVERIFY(settings.save(Settings::defaults(), {}));
+  delay->actions().at(2)->trigger();
+  PUTGD_TRY_COMPARE(delay->title(), QString("Capture delay: 5 seconds")); QVERIFY(delay->actions().at(2)->isChecked()); QVERIFY(!delay->actions().at(0)->isChecked());
+  delay->actions().at(0)->trigger();
+  PUTGD_TRY_COMPARE(delay->title(), QString("Capture delay: none"));
   // Other editor sources sit in one submenu; a file opens the main window's picker.
   QMenu* editImage = nullptr; for (auto* action : menu->actions()) if (action->menu() && action->text() == "Edit image") editImage = action->menu();
   QVERIFY(editImage); QCOMPARE(editImage->actions().size(), 2);

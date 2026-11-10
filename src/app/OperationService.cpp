@@ -91,6 +91,7 @@ QJsonObject UnavailableSource::capabilities() const {return {{"region",false},{"
 void UnavailableSource::acquire(const QString&,const ResourceLimits&,std::function<void(PayloadResult)> cb) {cb({{},unsupported()});}
 void UnavailableSource::copy(const CopyPayload&,std::function<void(Error)> cb) {cb(unsupported());}
 OperationService::OperationService(QString root,SettingsService& settings,ProviderRegistry& providers,SourceAdapter& source,QObject* parent):QObject(parent),root_(std::move(root)),settings_(settings),providers_(providers),source_(source),heapReclamationTimer_(this),observationTimer_(this),installation_(host::installationClass()) {
+ connect(&settings_,&SettingsService::accepted,this,[this](const QString&){emit settingsAccepted();});
  observationTimer_.setSingleShot(true);observationTimer_.setInterval(250);
  connect(&observationTimer_,&QTimer::timeout,this,[this]{
   QSet<QString> ids;{std::lock_guard lock(observationsMutex_);ids=std::exchange(observationsDirty_,{});observationScheduled_=false;}

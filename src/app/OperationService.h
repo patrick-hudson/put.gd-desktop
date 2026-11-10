@@ -139,6 +139,9 @@ signals:
  // One notification for a live observation batch, independent of durable results.
  void observationsChanged();
  void storageActivityChanged();
+ // The accepted configuration changed (Settings, the tray, a patch): what a menu
+ // shows from it is stale until it is read again.
+ void settingsAccepted();
  // An attempt failed outside normal terminal-result delivery (e.g. local retry).
  // Deliver its durable snapshot with the signal: inspecting it asynchronously
  // can report an already acknowledged failure after a subsequent retry.
