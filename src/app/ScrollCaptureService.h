@@ -1,6 +1,7 @@
 #pragma once
 #include "ScrollBackend.h"
 #include "RecordingService.h"
+#include <QElapsedTimer>
 #include <QHash>
 namespace putgd {
 // One private scroll session. The operation journal is committed before the
@@ -19,8 +20,17 @@ public:
  void command(const QString&,const QJsonObject&,JsonReply);
  void invoke(bool edit,JsonReply);
  void shutdown();
+ // Capturing begins no sooner than this long from now: whoever heard
+ // preparing() and took something off the screen (put.gd's own notifications)
+ // gives it the time to go. `start` and `select` wait, they are not refused.
+ void holdStart(int ms);
 signals:
  void warning(const QString& id,const QString& message);
+ // A session was accepted; nothing has been captured yet. Emitted before the
+ // backend is asked, so a listener can clear the screen of put.gd's own things.
+ void preparing();
+ // The session reached its end (done, failed or cancelled).
+ void ended();
 private:
  void prepare(QJsonObject,bool edit,bool autoStart,JsonReply);
  void prepareProbed(QJsonObject,bool,bool,JsonReply);
@@ -40,6 +50,10 @@ private:
  RecordingShell* shell_=nullptr;
  int requestedCap_=30000;
  bool shellPlacing_=false;
+ // `start` asked for while the Shell was still placing the bar (GNOME): it
+ // runs when the placement is done. And the hold of holdStart().
+ JsonReply startWaiting_;
+ QElapsedTimer clock_;qint64 notBefore_=0;bool held_=false;
  bool shellAutoStart_=false;
  bool shellSelecting_=false;
  bool edit_=false;

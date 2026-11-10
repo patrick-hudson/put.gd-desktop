@@ -171,6 +171,20 @@ TrayController::TrayController(OperationService& operations,
  : QObject(parent), operations_(operations), openView_(std::move(openView)),
    quit_(std::move(quit)) {
  connect(&operations_.scroll(),&ScrollCaptureService::warning,this,[this](const QString&,const QString& message){notifyMessage("scroll_height_cap","put.gd — scrolling capture stopped",message,true);});
+ // put.gd's own notices stay out of a scroll capture: those on screen are
+ // closed and given time to go, later ones wait for the capture's end.
+ static constexpr int noticeCloseMs=500;
+ connect(&operations_.scroll(),&ScrollCaptureService::preparing,this,[this]{
+  holdNotices_=true;
+  if(const int closed=closeOwnNotifications()){
+   operations_.scroll().holdStart(noticeCloseMs);
+   logging::info(logUi(),"Notifications closed for a scroll capture",{{"count",closed}});
+  }
+ });
+ connect(&operations_.scroll(),&ScrollCaptureService::ended,this,[this]{
+  holdNotices_=false;
+  for(const auto& n:std::exchange(heldNotices_,{}))notifyMessage(n.code,n.title,n.message,n.warning,n.link,n.diagnosticsOperation,n.revealPath,n.diagnosticsLabel);
+ },Qt::QueuedConnection);
  // A recording that ended itself on its byte budget says why (#225).
  connect(&operations_.recording(),&RecordingService::budgetStopped,this,[this](const QString&,const QJsonObject& stop) {
   if(available())notifyMessage("recording_budget_stopped","put.gd — recording stopped",stop["message"].toString(),true);
@@ -596,8 +610,28 @@ void TrayController::openNotificationLink(const QUrl& link) {
  openLink(link,"notification-link");
 }
 #endif
+int TrayController::closeOwnNotifications() {
+#ifdef Q_OS_LINUX
+ if(native_)return native_->closeNotifications();
+ auto bus=QDBusConnection::sessionBus();
+ const auto open=std::exchange(trayOpen_,{});
+ if(!bus.isConnected())return 0;
+ for(const uint id:open){
+  trayActions_.remove(id);
+  auto close=QDBusMessage::createMethodCall("org.freedesktop.Notifications","/org/freedesktop/Notifications","org.freedesktop.Notifications","CloseNotification");
+  close<<id;bus.asyncCall(close);
+ }
+ return int(open.size());
+#else
+ return 0;
+#endif
+}
 void TrayController::notifyMessage(const QString& code, const QString& title, const QString& message, bool warning,const QUrl& link,const QString& diagnosticsOperation,const QString& revealPath,const QString& diagnosticsLabel) {
  Q_UNUSED(link);Q_UNUSED(diagnosticsOperation);Q_UNUSED(revealPath);Q_UNUSED(diagnosticsLabel);
+ if(holdNotices_&&operations_.scroll().active()){
+  if(heldNotices_.size()<32)heldNotices_.append({code,title,message,warning,link,diagnosticsOperation,revealPath,diagnosticsLabel});
+  return;
+ }
  // Each toast, so "a toast appeared" can be matched to its cause (#250). The
  // text can name files: diagnostics packages hash it unless --include-names.
  QJsonObject fields{{"notificationId",qint64(++notifications_)},{"summary",code},{"title",title},{"notificationText",message},{"warning",warning}};
@@ -680,6 +714,7 @@ void TrayController::sendTrayMessage(const QString& title, const QString& messag
   --trayMessagesInFlight_;p->deleteLater();
   const QDBusPendingReply<uint> reply=*p;
   if(reply.isValid()&&!values.isEmpty())trayActions_.insert(reply.value(),values);
+  if(reply.isValid()){trayOpen_.append(reply.value());if(trayOpen_.size()>16)trayOpen_.removeFirst();}
   const auto error=p->error().type();
   if(error==QDBusError::ServiceUnknown||error==QDBusError::UnknownObject||error==QDBusError::UnknownInterface||error==QDBusError::UnknownMethod)fallback();
  });

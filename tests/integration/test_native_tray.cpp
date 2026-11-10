@@ -2,7 +2,9 @@
 #include "ui/Theme.h"
 #include "ui/TrayController.h"
 #include "fixtures/U2Fixtures.h"
+#include "fixtures/FakeScrollBackend.h"
 #include "core/Log.h"
+#include <QJsonArray>
 #include <QJsonDocument>
 #include <QDBusArgument>
 #include <QDBusContext>
@@ -750,6 +752,38 @@ private slots:
   emit operations.incompleteUploadsKept({{"count",2},{"message","Automatic cleanup could not cancel 2 incomplete uploads in bucket synthetic."}});
   PUTGD_TRY_COMPARE(notifications.values.size(),before+2);QCOMPARE(notifications.values.last()["summary"].toString(),QString("put.gd — incomplete uploads left"));
   QCOMPARE(notifications.values.last()["body"].toString(),QString("Automatic cleanup could not cancel 2 incomplete uploads in bucket synthetic."));
+ }
+ void scrollCaptureClosesOwnNoticesAndHoldsNewOnes() {
+  // #1376: a notice of put.gd's own that is on screen while a scroll capture
+  // reads frames ends up in the picture (the height-cap warning of one capture
+  // was stitched into the next, on Plasma and GNOME). Preparing a capture
+  // closes the notices put.gd has open and holds the start while they go;
+  // notices that come up during the capture are shown when it has ended.
+  QTemporaryDir directory;ProviderRegistry providers;SettingsService settings(directory.filePath("config.json"));QVERIFY(settings.save(configuration(directory.path(),true),{}));Source source;
+  OperationService operations(directory.filePath("data"),settings,providers,source);
+  auto fake=std::make_unique<FakeScrollBackend>();auto* backend=fake.get();operations.setScrollBackend(std::move(fake));PUTGD_TRY_VERIFY(operations.ready());
+  TrayController controller(operations,[](const QString&){},[]{});PUTGD_TRY_VERIFY(controller.available());const auto before=notifications.values.size();
+  emit operations.recording().budgetStopped("synthetic",{{"reason","disk_space"},{"message","Synthetic first notice."}});
+  PUTGD_TRY_COMPARE(notifications.values.size(),before+1);const uint open=uint(notifications.values.size());putgd::test::settle(50);
+  notifications.closed.clear();QString id;Error refused;bool answered=false;
+  operations.scroll().command("prepare",{{"rect",QJsonArray{0,0,64,64}}},[&](Error e,QJsonObject r){refused=e;id=r["id"].toString();answered=true;});
+  PUTGD_TRY_VERIFY(answered);QVERIFY2(!refused,qPrintable(refused.message));QVERIFY(!id.isEmpty());
+  PUTGD_TRY_COMPARE(notifications.closed,QList<uint>{open});
+  // The start waits for the closed notice to leave the screen.
+  QElapsedTimer since;since.start();bool started=false;
+  operations.scroll().command("start",{{"id",id}},[&](Error,QJsonObject){started=true;});
+  QVERIFY(!backend->started);PUTGD_TRY_VERIFY(started);QVERIFY(backend->started);QVERIFY2(since.elapsed()>=400,qPrintable(QString::number(since.elapsed())));
+  // A notice while the capture runs is kept back.
+  emit operations.recording().budgetStopped("synthetic",{{"reason","disk_space"},{"message","Synthetic second notice."}});
+  putgd::test::settle(150);QCOMPARE(notifications.values.size(),before+1);
+  bool cancelled=false;operations.scroll().command("cancel",{{"id",id}},[&](Error,QJsonObject){cancelled=true;});PUTGD_TRY_VERIFY(cancelled);
+  PUTGD_TRY_COMPARE(notifications.values.size(),before+2);QCOMPARE(notifications.values.last()["body"].toString(),QString("Synthetic second notice."));
+  // With nothing open, nothing is closed and the start is not held.
+  emit notifications.NotificationClosed(uint(notifications.values.size()),2);putgd::test::settle(50);notifications.closed.clear();answered=false;backend->started=false;
+  operations.scroll().command("prepare",{{"rect",QJsonArray{0,0,64,64}}},[&](Error e,QJsonObject r){refused=e;id=r["id"].toString();answered=true;});
+  PUTGD_TRY_VERIFY(answered);QVERIFY(!refused);since.restart();started=false;
+  operations.scroll().command("start",{{"id",id}},[&](Error,QJsonObject){started=true;});PUTGD_TRY_VERIFY(started);QVERIFY(since.elapsed()<300);QVERIFY(notifications.closed.isEmpty());
+  cancelled=false;operations.scroll().command("cancel",{{"id",id}},[&](Error,QJsonObject){cancelled=true;});PUTGD_TRY_VERIFY(cancelled);
  }
  void coreControllerRoutesAllFourActionsWithoutViews() {
   QTemporaryDir directory; QVERIFY(directory.isValid()); ProviderRegistry providers;

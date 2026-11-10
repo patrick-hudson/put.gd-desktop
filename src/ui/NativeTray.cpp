@@ -271,6 +271,7 @@ private:
  quint64 notificationGeneration_ = 0;
  QString notificationServer_; // GetServerInformation's name, empty until it answers
  QSet<uint> residentNotifications_; // sent resident (#151): put.gd closes them once used
+ QSet<uint> openNotifications_;     // every one sent and not reported closed
  int uploads_=0;bool failed_=false;QString updateLabel_,uploadStatus_,attentionLabel_="Failed uploads";QHash<QString,QString> shortcuts_;
  QStringList outputs_;
  int delay_=0;
@@ -278,6 +279,9 @@ private:
  QString activationToken_;
  QElapsedTimer activationTokenAge_;
  void closeNotification(uint id);
+public:
+ int closeNotifications();
+private:
  std::unique_ptr<TrayExport> item_, menu_;
  NativeImages icons_;
  QColor color_ = Theme::trayTints(false).idle;
@@ -324,7 +328,7 @@ NativeTrayPrivate::NativeTrayPrivate(NativeTray* owner, QDBusConnection bus)
  connect(&notificationWatcher_,&QDBusServiceWatcher::serviceOwnerChanged,this,[this](const QString&,const QString& oldOwner,const QString&) {
   notificationServer_.clear();queryNotificationServer();
   if(oldOwner.isEmpty())return;
-  ++notificationGeneration_;notificationLinks_.clear();notificationActions_.clear();
+  ++notificationGeneration_;notificationLinks_.clear();notificationActions_.clear();openNotifications_.clear();
  });
  bus_.connect(notificationService,notificationPath,notificationService,"ActionInvoked",this,SLOT(notificationActivated(uint,QString)));
  bus_.connect(notificationService,notificationPath,notificationService,"NotificationClosed",this,SLOT(notificationClosed(uint,uint)));
@@ -530,7 +534,18 @@ void NativeTrayPrivate::notify(const QString& title, const QString& message, boo
   if(!link.isEmpty())notificationLinks_.insert(result.value(),link);
   if(!values.isEmpty())notificationActions_.insert(result.value(),values);
   if(resident)residentNotifications_.insert(result.value());
+  // A server keeps what it showed in a list; the newest few are what can still be on screen.
+  if(openNotifications_.size()<64)openNotifications_.insert(result.value());
  });
+}
+int NativeTrayPrivate::closeNotifications() {
+ const auto open=std::exchange(openNotifications_,{});
+ for(const uint id:open){
+  notificationLinks_.remove(id);notificationActions_.remove(id);residentNotifications_.remove(id);
+  auto call=QDBusMessage::createMethodCall(notificationService,notificationPath,notificationService,"CloseNotification");
+  call<<id;bus_.asyncCall(call,callTimeoutMs);
+ }
+ return int(open.size());
 }
 // A resident notification isn't removed by its server when used; put.gd closes it.
 void NativeTrayPrivate::closeNotification(uint id) {
@@ -554,7 +569,7 @@ void NativeTrayPrivate::notificationActivated(uint id,const QString& action) {
   if(guard)emit guard->notificationActivated(link);
  });
 }
-void NativeTrayPrivate::notificationClosed(uint id,uint) {notificationLinks_.remove(id);notificationActions_.remove(id);residentNotifications_.remove(id);}
+void NativeTrayPrivate::notificationClosed(uint id,uint) {notificationLinks_.remove(id);notificationActions_.remove(id);residentNotifications_.remove(id);openNotifications_.remove(id);}
 void NativeTrayPrivate::setActivity(const QColor& color,const QString& description,int percent,int recording,const QString& title,IconArt::TrayGlyph glyph) {
  percent=qBound(-2,percent,100);
  const bool iconChanged=color!=color_||percent!=percent_||recording!=recording_||glyph!=glyph_;
@@ -748,6 +763,7 @@ void NativeTrayPrivate::setUpdateLabel(const QString& label) {
  signal.setArguments({menuRevision_, 0}); bus_.send(signal);
 }
 void NativeTray::notify(const QString& title, const QString& message, bool warning, const QUrl& link, const QList<NotificationAction>& actions) { d_->notify(title, message, warning, link, actions); }
+int NativeTray::closeNotifications() { return d_->closeNotifications(); }
 }
 #include "NativeTray.moc"
 

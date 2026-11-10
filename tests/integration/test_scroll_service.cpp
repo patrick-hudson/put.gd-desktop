@@ -5,14 +5,17 @@
 #include <QSignalSpy>
 #include <QProcess>
 #include <QJsonDocument>
+#include <QElapsedTimer>
 #include <utility>
 using namespace putgd;using namespace putgd::test;
 struct ScrollShellFixture final:RecordingShell {
  Reply selection;int cancels=0;
+ // holdFrames: the Shell is still placing the bar; `placed` answers when the test says so.
+ bool holdFrames=false;Reply placed;
  bool selectsRegions()const override{return true;}
  void selectRegion(Reply reply)override{selection=std::move(reply);}
  void cancelSelection()override{++cancels;auto reply=std::exchange(selection,{});if(reply)reply({"cancelled","Selection cancelled",{}},{});}
- void showFrame(const QJsonObject&,Reply reply)override{reply({},{});}
+ void showFrame(const QJsonObject& frame,Reply reply)override{if(holdFrames&&frame["state"]=="ready"&&!placed){placed=std::move(reply);return;}reply({},{});}
  void hideFrame()override{}
 };
 class ScrollTest:public QObject {
@@ -33,6 +36,30 @@ private slots:
  auto empty=call("scroll.prepare",{{"rect",QJsonArray{0,0,64,64}}});const auto emptyId=empty.second["id"].toString();QVERIFY(!emptyId.isEmpty());QVERIFY(!call("scroll.start",{{"id",emptyId}}).first);call("scroll.stop",{{"id",emptyId}});QCOMPARE(call("scroll.inspect",{{"id",emptyId}}).second["state"].toString(),QString("cancelled"));{HistoryStore store(operations.databasePath());QVERIFY(store.operation(emptyId).items.isEmpty());}
  ScrollShellFixture shell;operations.scroll().setShell(&shell);auto next=call("scroll.prepare");const auto nextId=next.second["id"].toString();QVERIFY(!nextId.isEmpty());QVERIFY(!call("scroll.select",{{"id",nextId},{"rect",QJsonArray{0,0,64,64}}}).first);QCOMPARE(shell.cancels,1);QVERIFY(!call("scroll.cancel",{{"id",nextId}}).first);QCOMPARE(call("scroll.inspect",{{"id",nextId}}).second["state"].toString(),QString("cancelled"));
  backend->commands.clear();auto interactive=call("action.invoke",{{"action","scroll"}});const auto interactiveId=interactive.second["id"].toString();QVERIFY(!interactiveId.isEmpty());QVERIFY(!backend->preparedParams["autoStart"].toBool());QCOMPARE(backend->preparedParams["selection"].toString(),QString("shell"));QVERIFY(bool(shell.selection));auto selected=std::exchange(shell.selection,{});selected({},{{"rect",QJsonArray{0,0,64,64}}});QVERIFY(waitFor([&]{return backend->commands.contains("start");}));QCOMPARE(backend->commands,QStringList({"select","overlay","start"}));QVERIFY(!call("scroll.cancel",{{"id",interactiveId}}).first);
+ // GNOME answers `ready` while the Shell still places the bar (real desktop,
+ // 2026-11-10: an immediate scroll.start got scroll_busy). The start waits
+ // for the placement and then runs; a second one meanwhile is refused, and a
+ // session that ends meanwhile ends the waiting start with it.
+ backend->commands.clear();backend->started=false;shell.holdFrames=true;
+ auto placing=call("scroll.prepare",{{"rect",QJsonArray{0,0,64,64}}});const auto placingId=placing.second["id"].toString();QVERIFY(!placingId.isEmpty());QCOMPARE(placing.second["state"].toString(),QString("ready"));QVERIFY(bool(shell.placed));
+ QProcess early;early.start(PUTGD_CLI_PATH,{"--socket",server.socketPath(),"scroll.start",QString::fromUtf8(QJsonDocument(QJsonObject{{"id",placingId}}).toJson(QJsonDocument::Compact))});
+ QTest::qWait(400);QCOMPARE(early.state(),QProcess::Running);QVERIFY(!backend->started);
+ QCOMPARE(call("scroll.start",{{"id",placingId}}).first.code,QString("scroll_busy"));
+ std::exchange(shell.placed,{})({},{});QVERIFY(waitFor([&]{return early.state()==QProcess::NotRunning;}));
+ const auto earlyReply=QJsonDocument::fromJson(early.readAllStandardOutput()).object();QVERIFY2(earlyReply["error"].toObject()["code"].toString().isEmpty(),qPrintable(QJsonDocument(earlyReply).toJson()));QCOMPARE(earlyReply["result"].toObject()["state"].toString(),QString("capturing"));
+ QVERIFY(backend->started);QCOMPARE(backend->commands,QStringList({"overlay","start"}));QVERIFY(!call("scroll.cancel",{{"id",placingId}}).first);
+ backend->commands.clear();backend->started=false;
+ auto ending=call("scroll.prepare",{{"rect",QJsonArray{0,0,64,64}}});const auto endingId=ending.second["id"].toString();QVERIFY(!endingId.isEmpty());QVERIFY(bool(shell.placed));
+ QProcess waiting;waiting.start(PUTGD_CLI_PATH,{"--socket",server.socketPath(),"scroll.start",QString::fromUtf8(QJsonDocument(QJsonObject{{"id",endingId}}).toJson(QJsonDocument::Compact))});
+ QTest::qWait(300);QCOMPARE(waiting.state(),QProcess::Running);QVERIFY(!call("scroll.cancel",{{"id",endingId}}).first);QVERIFY(waitFor([&]{return waiting.state()==QProcess::NotRunning;}));
+ QCOMPARE(QJsonDocument::fromJson(waiting.readAllStandardOutput()).object()["error"].toObject()["code"].toString(),QString("cancelled"));QVERIFY(!backend->started);
+ std::exchange(shell.placed,{})({},{});shell.holdFrames=false;
+ // holdStart: whoever cleared the screen for the capture gets its time; start waits, it is not refused.
+ operations.scroll().setShell(nullptr);backend->commands.clear();backend->started=false;
+ QMetaObject::Connection hold=connect(&operations.scroll(),&ScrollCaptureService::preparing,&operations,[&]{operations.scroll().holdStart(600);});QSignalSpy ended(&operations.scroll(),&ScrollCaptureService::ended);
+ auto held=call("scroll.prepare",{{"rect",QJsonArray{0,0,64,64}}});const auto heldId=held.second["id"].toString();QVERIFY(!heldId.isEmpty());QElapsedTimer since;since.start();
+ QVERIFY(!call("scroll.start",{{"id",heldId}}).first);QVERIFY(backend->started);QVERIFY2(since.elapsed()>=450,qPrintable(QString::number(since.elapsed())));
+ QCOMPARE(ended.size(),0);QVERIFY(!call("scroll.cancel",{{"id",heldId}}).first);QCOMPARE(ended.size(),1);disconnect(hold);
 
  }
 };

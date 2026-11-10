@@ -97,6 +97,7 @@ private:
  int trayMessagesInFlight_ = 0;
  // Its buttons, by notification id: the server shows them and reports the click.
  QHash<uint,QHash<QString,QString>> trayActions_;
+ QList<uint> trayOpen_; // the newest few it sent, for closeOwnNotifications()
  bool trayActionsConnected_ = false;
  QMetaObject::Connection trayRestartClick_; // Qt's balloon has one click signal, whichever balloon is showing
  Q_SLOT void trayNotificationAction(uint id, const QString& key);
@@ -108,6 +109,15 @@ private:
  // `code` names the notification in the log, which records each one (#250).
  void notifyMessage(const QString& code, const QString& title, const QString& message, bool warning, const QUrl& link = {}, const QString& diagnosticsOperation = {}, const QString& revealPath = {}, const QString& diagnosticsLabel = {});
  quint64 notifications_ = 0;
+ // A scroll capture reads the screen for seconds, and a notice of put.gd's own
+ // on it ends up in the picture (#1376; seen on Plasma and GNOME). When one is
+ // prepared, the notices put.gd has open are closed and the capture is held a
+ // moment while they go; notices that come up while it runs are kept back
+ // and shown when it has ended. Other applications' notices are not put.gd's to close.
+ struct HeldNotice { QString code, title, message; bool warning = false; QUrl link; QString diagnosticsOperation, revealPath, diagnosticsLabel; };
+ QList<HeldNotice> heldNotices_;
+ bool holdNotices_ = false;
+ int closeOwnNotifications();
  std::function<void(const QString&,JsonReply)> saveDiagnostics_;
  void refreshActivity();void refreshMenu();void cancelUploads();
  void flashError();void acknowledgeFailures();

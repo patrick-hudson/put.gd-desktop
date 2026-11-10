@@ -31,6 +31,10 @@ public:
  void setCaptureDelay(int seconds);
  void notify(const QString& title, const QString& message, bool warning = false, const QUrl& link = {},
              const QList<NotificationAction>& actions = {});
+ // Closes every notification this tray sent that its server has not reported
+ // closed (CloseNotification), buttons and links with them; how many it asked for.
+ // A scroll capture clears the screen of put.gd's own notices this way (#1376).
+ int closeNotifications();
  // expire_timeout for a notification on this server (GetServerInformation name):
  // 10 s, or 0 (until used or dismissed) for buttons the server would otherwise lose.
  static int notificationTimeoutMs(const QString& server, bool actions);
