@@ -190,10 +190,13 @@ MainWindow::MainWindow(UiSession& session,QWidget* parent):QMainWindow(parent),s
   if(Settings::delayableAction(action)){
    button->setContextMenuPolicy(Qt::CustomContextMenu);
    auto* options=new QMenu(button);options->setObjectName("captureOptionsMenu"+action);
-   if(action=="region"){auto* repeat=options->addAction(Ui::icon("refresh"),"Repeat last region");repeat->setObjectName("repeatLastRegion");connect(repeat,&QAction::triggered,this,[this]{const auto reason=unavailableOutput(session_.document(),"region");if(reason.isEmpty())emit actionRequested(Settings::repeatActionName());else showActionFailure("region",{"output_required",reason,{}});});options->addSeparator();}
-   auto* heading=options->addSection("Capture delay");heading->setObjectName("captureDelayHeading");auto* group=new QActionGroup(options);
+   if(action=="region"){auto* repeat=options->addAction(Ui::icon("refresh"),"Repeat last region");repeat->setObjectName("repeatLastRegion");connect(repeat,&QAction::triggered,this,[this]{const auto reason=unavailableOutput(session_.document(),"region");if(reason.isEmpty())emit actionRequested(Settings::repeatActionName());else showActionFailure("region",{"output_required",reason,{}});});}
+   // A submenu named like the tray's ("Capture delay: 3 seconds"): a section
+   // heading is not drawn by every style, and bare "None / 3 seconds" rows say
+   // nothing about what they set.
+   auto* delays=options->addMenu("Capture delay: none");delays->setObjectName("captureDelayMenu"+action);auto* group=new QActionGroup(delays);
    for(const int seconds:Settings::captureDelayChoices()){
-    auto* choice=options->addAction(seconds?QStringLiteral("%1 seconds").arg(seconds):QStringLiteral("None"));choice->setCheckable(true);choice->setData(seconds);choice->setObjectName(QStringLiteral("captureDelay%1").arg(seconds));group->addAction(choice);
+    auto* choice=delays->addAction(seconds?QStringLiteral("%1 seconds").arg(seconds):QStringLiteral("None"));choice->setCheckable(true);choice->setData(seconds);choice->setObjectName(QStringLiteral("captureDelay%1").arg(seconds));group->addAction(choice);
     connect(choice,&QAction::triggered,this,[this,seconds]{
      auto document=session_.document();auto preferences=document["preferences"].toObject();
      if(preferences["captureDelaySeconds"].toInt()==seconds)return;
@@ -201,7 +204,8 @@ MainWindow::MainWindow(UiSession& session,QWidget* parent):QMainWindow(parent),s
      session_.saveAsync(document,session_.revision(),[this](Result result){if(!result)showActionFailure("region",result.error);});
     });
    }
-   connect(options,&QMenu::aboutToShow,options,[this,options]{const int delay=session_.document()["preferences"].toObject()["captureDelaySeconds"].toInt();for(auto* choice:options->actions())if(choice->isCheckable())choice->setChecked(choice->data().toInt()==delay);});
+   auto showDelay=[this,delays]{const int delay=session_.document()["preferences"].toObject()["captureDelaySeconds"].toInt();delays->setTitle(delay>0?QStringLiteral("Capture delay: %1 seconds").arg(delay):QStringLiteral("Capture delay: none"));for(auto* choice:delays->actions())choice->setChecked(choice->data().toInt()==delay);};
+   connect(options,&QMenu::aboutToShow,delays,showDelay);showDelay();
    connect(button,&QWidget::customContextMenuRequested,options,[options,button](const QPoint& at){options->popup(button->mapToGlobal(at));});
   }
  }
@@ -262,7 +266,7 @@ MainWindow::MainWindow(UiSession& session,QWidget* parent):QMainWindow(parent),s
   auto outputName=[&](const QJsonObject& output){const bool local=document["archive"].toObject()["keepUploads"].toBool();if(output["destination"]=="local"||output["profileId"].toString().isEmpty())return local?QString("Local only"):QString("Nothing is saved or uploaded");for(const auto& value:document["profiles"].toArray()){const auto profile=value.toObject();if(profile["id"]!=output["profileId"])continue;const auto mode=output["publicationMode"].toString("default");const bool privateUpload=mode=="private"||(mode=="default"&&profile["provider"]=="proton-drive"&&!profile["settings"].toObject()["shareByDefault"].toBool(true));return (privateUpload?(profile["provider"]=="proton-drive"?QString("Private upload"):QString("Private upload unavailable")):QString("Shared link"))+" · "+profile["label"].toString()+(local?QString(" + local copy"):QString{});}return QString("Choose a destination");};
   const auto defaults=document.contains("captureDefaults")?document["captureDefaults"].toObject():Settings::effectiveAction(document,"region");
   const auto defaultName=outputName(defaults);QStringList details{"Default output: "+defaultName+(!document["archive"].toObject()["keepUploads"].toBool()&&defaults["destination"]=="upload"&&!defaults["profileId"].toString().isEmpty()?QString(" · No local copy"):QString{})};bool mixed=false;
-  const QHash<QString,QString> labels{{"region","Capture region"},{"window","Capture window"},{"desktop","Capture desktop"},{"edit","Capture region & edit"},{"clipboard","Upload clipboard"},{"record","Record screen"}};
+  const QHash<QString,QString> labels{{"region","Capture region"},{"window","Capture window"},{"monitor","Capture monitor"},{"desktop","Capture desktop"},{"edit","Capture region & edit"},{"clipboard","Upload clipboard"},{"record","Record screen"}};
   QHash<QString,QAction*> groupedEntries;QHash<QString,QStringList> groupedNames;
   for(const auto& action:Settings::presentationOrder()){
    const auto route=Settings::effectiveAction(document,action);const auto output=outputName(route);

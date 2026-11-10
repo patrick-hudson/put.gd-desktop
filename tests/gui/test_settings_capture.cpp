@@ -225,6 +225,33 @@ private slots:
   QFETCH(bool,mixed);Fonts::load();Ui::apply(*qApp);
   const auto original=qApp->font();auto restore=qScopeGuard([&]{qApp->setFont(original);});auto font=original;font.setPixelSize(21);qApp->setFont(font);QTemporaryDir dir;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});if(mixed){auto doc=threeDestinations();auto profiles=doc["profiles"].toArray();auto profile=profiles[0].toObject();profile["provider"]="proton-drive";profile["settings"]=ProtonProvider::defaults();profiles[0]=profile;doc["profiles"]=profiles;auto archive=doc["archive"].toObject();archive["keepUploads"]=false;doc["archive"]=archive;doc["captureDefaults"]=QJsonObject{{"destination","local"},{"profileId",QJsonValue::Null},{"publicationMode","default"}};auto actions=doc["actions"].toObject();for(const auto& name:Settings::presentationOrder()){auto action=actions[name].toObject();if(!action.contains("shortcut"))action["shortcut"]="";action["destination"]=name=="region"||name=="record"?"upload":"default";action["profileId"]=name=="region"||name=="record"?profile["id"]:QJsonValue(QJsonValue::Null);action["publicationMode"]=name=="region"?"private":"default";actions[name]=action;}doc["actions"]=actions;QVERIFY(service.save(doc,{}));}CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.resize(1060,680);window.show();putgd::test::settle(30);auto* grid=qobject_cast<QGridLayout*>(window.findChild<QWidget*>("commandBand")->layout());QVERIFY(grid);QCOMPARE(grid->rowCount(),1);QCOMPARE(window.width(),1060);for(auto* button:window.findChildren<QToolButton*>("captureActionButton")){if(button->property("captureAction")=="edit")QVERIFY(button->text().startsWith("Capture region && edit"));if(QStringList{"region","window","desktop","edit"}.contains(button->property("captureAction").toString()))QCOMPARE(button->toolButtonStyle(),Qt::ToolButtonTextBesideIcon);else if(button->toolButtonStyle()==Qt::ToolButtonIconOnly)QVERIFY(!button->toolTip().isEmpty()&&!button->accessibleName().isEmpty());QVERIFY(!button->text().contains(" · "));if(button->property("captureAction")=="window")QVERIFY(button->text()=="Window"||button->text()=="Capture window");if(button->property("captureAction")=="desktop")QVERIFY(button->text()=="Desktop"||button->text()=="Capture desktop");QVERIFY(window.rect().contains(QRect(button->mapTo(&window,QPoint()),button->size())));QVERIFY(button->width()>=button->sizeHint().width());}
  }
+ // With room for every label the band names each command in full. Capture monitor
+ // (#1363) once kept the short label of the narrowest stage here.
+ void wideBandNamesEveryCommandInFull(){
+  Fonts::load();Ui::apply(*qApp);QTemporaryDir dir;SettingsService service(dir.filePath("config.json"));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.resize(1900,800);window.show();putgd::test::settle(30);
+  const QHash<QString,QString> full{{"region","Capture region"},{"window","Capture window"},{"monitor","Capture monitor"},{"desktop","Capture desktop"},{"edit","Capture region && edit"},{"record","Record screen"},{"clipboard","Upload clipboard"}};
+  int seen=0;for(auto* button:window.findChildren<QToolButton*>("captureActionButton")){const auto action=button->property("captureAction").toString();QVERIFY2(full.contains(action),qPrintable(action));QCOMPARE(button->text(),full.value(action));QCOMPARE(button->toolButtonStyle(),Qt::ToolButtonTextBesideIcon);++seen;}
+  QCOMPARE(seen,7);
+ }
+ // The screenshot buttons' context menu (#1363): Repeat last region on Capture
+ // region only, and the capture delay as a named submenu that saves the preference.
+ void captureButtonsOfferRepeatAndANamedDelayMenu(){
+  QTemporaryDir dir;SettingsService service(dir.filePath("config.json"));QVERIFY(service.save(Settings::defaults(),{}));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.resize(1440,800);window.show();
+  for(const auto& action:QStringList{"region","window","monitor","desktop"}){
+   auto* options=window.findChild<QMenu*>("captureOptionsMenu"+action);QVERIFY2(options,qPrintable(action));
+   QCOMPARE(options->findChild<QAction*>("repeatLastRegion")!=nullptr,action=="region");
+   auto* delays=window.findChild<QMenu*>("captureDelayMenu"+action);QVERIFY(delays);QVERIFY(options->actions().contains(delays->menuAction()));
+   QStringList texts;for(auto* choice:delays->actions()){QVERIFY(choice->isCheckable());texts<<choice->text();}
+   QCOMPARE(texts,QStringList({"None","3 seconds","5 seconds","10 seconds"}));
+   emit options->aboutToShow();QCOMPARE(delays->title(),QString("Capture delay: none"));QVERIFY(delays->findChild<QAction*>("captureDelay0")->isChecked());
+  }
+  QVERIFY(!window.findChild<QMenu*>("captureOptionsMenuedit")&&!window.findChild<QMenu*>("captureOptionsMenuclipboard")&&!window.findChild<QMenu*>("captureOptionsMenurecord"));
+  window.findChild<QMenu*>("captureDelayMenudesktop")->findChild<QAction*>("captureDelay5")->trigger();
+  PUTGD_TRY_VERIFY(fixture.session.document()["preferences"].toObject()["captureDelaySeconds"].toInt()==5);
+  // One preference: every button's menu shows it.
+  auto* region=window.findChild<QMenu*>("captureOptionsMenuregion");emit region->aboutToShow();
+  auto* delays=window.findChild<QMenu*>("captureDelayMenuregion");QCOMPARE(delays->title(),QString("Capture delay: 5 seconds"));QVERIFY(delays->findChild<QAction*>("captureDelay5")->isChecked());QVERIFY(!delays->findChild<QAction*>("captureDelay0")->isChecked());
+ }
  void captureExceptionSummaryPrecedesTheChevron_data(){QTest::addColumn<int>("pixels");QTest::newRow("normal")<<14;QTest::newRow("large")<<21;}
  void captureExceptionSummaryPrecedesTheChevron(){
   Fonts::load();Ui::apply(*qApp);QFETCH(int,pixels);const auto original=qApp->font();auto restore=qScopeGuard([&]{qApp->setFont(original);});auto font=original;font.setPixelSize(pixels);qApp->setFont(font);QTemporaryDir dir;SettingsService service(dir.filePath("config.json"));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.showCaptureSettings();window.resize(1060,680);window.show();auto* toggle=window.findChild<QToolButton*>("captureExceptionsToggle");auto* summary=window.findChild<QLabel*>("captureExceptionsSummary");QVERIFY(summary);
