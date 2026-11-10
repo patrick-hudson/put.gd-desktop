@@ -33,7 +33,7 @@ reply, at most 16 MiB: 15 s for most methods. Screen-recording commands that the
 resident answers only after the recording helper wait 15 s past the helper's own
 deadline, so its `recording_helper_timeout` still arrives: 45 s for
 `recording.stop` and `action.invoke` (a record toggle can stop), and 30 s for
-`recording.capabilities`, `prepare`, `select`,
+`recording.capabilities`, `microphones`, `prepare`, `select`,
 `start`, `pause`, `resume`, `raise`, `overlay` and `preview`. Work that can take longer
 replies when it starts: `recording.prepare` with `state: preparing`, and
 `recording.saveCopy` and `recording.upload` with `state: exporting`; poll

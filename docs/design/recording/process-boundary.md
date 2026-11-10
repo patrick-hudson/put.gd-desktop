@@ -21,7 +21,8 @@ child's pipes, mirroring the capture and editor helpers:
 - `command {requestId, command, params}` → `commandResult {requestId, ok, result}`
   or `{..., ok: false, code, message, details}`; commands are `capabilities`,
   `prepare`, `start`, `pause`, `resume`, `stop`, `cancel`, `raise`, `overlay`,
-  `preview`, `export` and `review` (the review window's controls, #283). Deadlines (`recording::helper*Ms` in
+  `preview`, `export`, `review` (the review window's controls, #283) and
+  `click` (a pointer press the desktop reported, for click highlights, #1364: `{x, y, button, window?}`, or `{button, pointer: true}` for the helper to place at its capture's pointer). Deadlines (`recording::helper*Ms` in
   `src/app/RecordingBackend.h`): 15 s per command, 30 s for `stop`, 600 s for
   `prepare` (a hands-on drag selection or OS consent), 600 s for `export`; a missed deadline is
   `recording_helper_timeout` and leaves the session where it was. The session
@@ -51,6 +52,11 @@ child's pipes, mirroring the capture and editor helpers:
   Discard use this graceful teardown path. Only control metadata crosses the
   pipes: frames, audio and files stay in the helper and its private staging.
 
+`putgd-record --microphones [device]` is a transient run of its own, never
+cached, that lists the inputs a recording can narrate from and says which one
+the device name (or the system default) resolves to; it asks the sound server
+and opens no device ([Microphone](microphone-and-clicks.md#device)).
+
 `putgd-record --capabilities` is a separate transient run whose JSON the backend
 caches for the resident's lifetime (a failed probe is retried after a minute).
 It never opens a capture source, audio device or portal session. The result
@@ -58,7 +64,10 @@ carries `session` (x11/wayland/none), the GStreamer version and element
 inventory (`ximagesrc`, `pipewiresrc`, `pulsesrc`, the H.264 encoders in
 preference order, muxers, `webpenc` animation support), the FFmpeg library
 versions with encoders, muxers and filters, the derived `formats`/`codecs`
-the export side can produce, `liveCapture {source, encoder, audio}` and the
+the export side can produce, `liveCapture {source, encoder, audio}`,
+`audio {system, microphone}` (whether the elements for each exist; whether a
+microphone is connected is the `--microphones` question), on X11
+`clickHighlights` (XInput 2.1 raw button events) and the
 honest `available`/`reason` pair. Registry presence is not proof (stock
 Fedora's FFmpeg lists `h264_vaapi` while its free Intel driver has no H.264
 encode profile, and its `openh264enc` loads a placeholder library), so the

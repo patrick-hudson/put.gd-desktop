@@ -343,6 +343,103 @@ tools for that are `tools/lab/cover_player.py` and `tools/lab/record_run.py`
   (for example `--rect 0,0,960,540`) to pass the frame gate. `--vnc-port 0`
   skips the precheck, in disposable guests only. See the script's docstring for
   the options.
+- `virtual_mic.py` gives a host or guest a simulated microphone, because a real
+  one is never recorded in the lab: `create` loads a null sink and remaps its
+  monitor into a real input (`module-null-sink`, `module-remap-source`; a bare
+  monitor would not do, put.gd never offers one), `tone` plays into it,
+  `unplug` unloads the input while a recording runs, and `remove` unloads
+  every module it loaded by its exact id and restores the previous default
+  source and sink by name. `--system-sink` adds a private default output so
+  system audio can be checked without sound from the speakers. It keeps a state
+  file, so `remove` after a failed run still cleans up. `create` checks the
+  microphone before it hands it over (a tone into the sink must come out of the
+  source, read with `parec`; a silent source is made again, up to six times) and
+  loads a loopback into a third, silent sink that keeps the source in use for
+  the run: on PipeWire 1.0.5 (Mint 22, Ubuntu 24.04) a remapped source left
+  without a reader sometimes passes pure silence to every later reader. `unplug`
+  and `remove` unload that loopback before the source, so it can never be moved
+  to a real input. `create --unplugged` makes the microphone's sink alone and
+  `plug [--default]` loads the source later, the way a microphone is plugged in
+  (`--default`: it becomes the default input). `unplug-output [--fallback]`
+  removes the private output system audio is recorded from: with `--fallback`
+  another private output is made the default first; without it the command
+  refuses while a real output exists, because what plays into the removed one
+  would be moved there and heard.
+- `record_run.py --mic virtual|muted|default|NAME` records with a microphone:
+  `virtual` creates the simulated one, plays the `--av-marker` clip's bursts
+  into it and removes it afterwards; `muted` does the same with the bar's
+  toggle off (the clip must hold none of it); `default` asks for the system
+  default, which on the builders is a monitor and must be refused.
+  `--system on|off|tone` adds system audio (`tone`: a quiet 440 Hz on the
+  private output), `--unplug-at S` removes the microphone S seconds in, and
+  `--marker-motion` keeps a bar moving so the motion gate has something to
+  see. `--av-sync` then measures the microphone's bursts against the flashes
+  (`putgd-record --av-sync CLIP --tone 1000 --tone 440` also reports each
+  tone's level). Use `--lead 6`: the first pairs after Record can sit a frame
+  or two off while the audio branch settles. `--system leak` plays the tone on
+  a private output whose monitor is the default input, without recording
+  system audio: the clip must hold none of it, also after `--unplug-at`.
+  A round lists `problems`, and the run exits 1, when its clip is more than
+  1.5 s shorter than the time recorded, lacks the simulated microphone's bursts,
+  holds them with the toggle off, holds the unrecorded output's tone, says the
+  microphone was lost when nothing removed it, or does not say so after
+  `--unplug-at`. `summarize_run.py RESULTS.json` prints a run on one screen.
+  `--mic late` prepares with no microphone to open and, while the bar is at
+  Ready, plugs the simulated one in as the default input, switches it on with
+  `recording.audio`, pulls it and plugs it in again: `recording.inspect` must
+  follow each step within eight seconds (`readyFollow` in the results, a frame
+  of the desktop per step with `--frames`), and the clip recorded afterwards
+  must hold the bursts. `--output-gone-at S` (with `--system tone`) removes the
+  recorded output S seconds in: with `--output-fallback` another private output
+  takes over; without it nothing is left, which on a machine with a sound card
+  needs `--cards-off` (every card's profile off for the run, written to
+  `RUN/cards.json` first and put back with the defaults afterwards, so no lab
+  sound can reach a real output). `--mic-default` makes the simulated microphone
+  the default input for the run, to show that a moved system-audio stream never
+  lands on it. The recording must go on and hold the whole time recorded;
+  `afterOutputGone.recordedFrom` names the source the recorder reads afterwards.
+  `--delayed-capture desktop:3` (or `monitor`, and 5 or 10) checks a delayed
+  capture and a recording in one resident session: `action.invoke` with
+  `delaySeconds` before `recording.prepare` and again after the recording is
+  cancelled. Each capture must end `completed` no sooner than its delay, saved
+  to the run's private archive and at least half cover colour
+  (`delayedCaptures` in the results); with `--frames` a frame of each countdown
+  is kept and `countdownPixels` counts what the pill changed at the top centre.
+  A run with `--unplug-at` and more than one recording (formats, rounds,
+  builds) plugs the simulated microphone in again before each later one. A run
+  with `--output-gone-at` is one recording (`--rounds 1`, one format, one
+  build): the private output is not made again, so anything more is refused
+  before the run starts.
+  `--hide-bar` hides put.gd's recording bar at Ready (`recording.overlay
+  {visible: false}`). A whole-monitor recording on a one-monitor desktop has
+  the bar's Stop handle in the clip (`overlay.overlayPlacement` `handle` in the
+  round's entry), and with `--frames` the frame gate can take it for something
+  that is not the cover and delete the clips; a clip deleted that way is listed
+  under `problems`, with this option named.
+  On Hyprland a `--delayed-capture` run holds `misc:on_focus_under_fullscreen`
+  at 0 as a window run does: the review window opens before the second
+  capture and would otherwise take the cover's full-screen state.
+- `record_run.py --click S,X,Y[,BUTTON]` (repeatable) presses a button at a
+  desktop pixel S seconds into each recording, as real input through the
+  desktop's VNC tile (`--click-vnc HOST:PORT` in a guest: QEMU's VNC on the VM
+  host is `10.0.2.2:59NN` from inside), with `clickHighlights` on. The clip is
+  then measured with `putgd-record --click-check CLIP FROM_MS,TO_MS,X,Y`, which
+  reports what changes near a place between two times against the first frame
+  of that span: first the pointer arriving there, then the ring appearing over
+  the resting pointer. The ring's delay after the press is counted from the
+  pointer's arrival in the same clip, so the recording's own start does not
+  enter. Add `--system tone` on a builder: the marker's sound then plays into a
+  private output instead of the speakers. A window run (`--target window`)
+  records the cover: on Wayland the focused window; on X11 the cover's window
+  found by its process id (a cover started from a shell does not get the focus
+  on Cinnamon); on Hyprland with `misc:on_focus_under_fullscreen` held at 0 for
+  the run and put back afterwards, because at 1 (Omarchy's value) put.gd's
+  controls take the cover's full-screen state when they open, the cover is
+  tiled out of sight and the presses land outside the recorded window.
+- `recording_bar_shots.py` saves frames of the desktop with the recording bar's
+  microphone states on screen (toggle off; on, with a level on the meter; no
+  microphone) and, with `settings`, Settings, or with `support`, Settings with
+  Desktop support details open (through `ui.diagnostics`), for PR pictures.
 
 Two traps when you drive a private resident in a desktop session (#214, #198):
 

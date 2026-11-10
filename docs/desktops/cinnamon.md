@@ -71,6 +71,35 @@ Clipboard import requests supported X11 selection targets without waiting synchr
 
 Shortcut setup uses checked XCB passive grabs and reports disabled, unmapped, unsupported, or conflicting bindings individually. Successful grabs include the active Caps Lock, Num Lock, and Scroll Lock modifier combinations. Keyboard mapping changes refresh requested bindings and update actual status. ASCII letter shortcuts do not require an implicit Shift; shifted printable symbols use their actual keymap modifier. Missing modifiers and unsupported symbol levels report explicit binding failures. Conflicting grabs are released without stealing another client's shortcut.
 
+## Recording click highlights
+
+On X11 the recording helper reads button presses itself; nothing in the adapter
+or in Cinnamon is involved. `putgd-record` opens an X connection of its own and
+selects XInput 2.1 raw button presses on the root window
+(`XCB_INPUT_XI_EVENT_MASK_RAW_BUTTON_PRESS`). Raw events are copies sent to
+every client that asks: nothing is grabbed, the click reaches its window
+unchanged, and presses inside another client's window or under its pointer grab
+are still reported. At each press the helper asks the server where the pointer
+is and, for a window recording, where the window is now, so the ring stays on a
+window that has moved. The selection exists from Record to Stop. The ring is
+drawn on a copy of the frame in plain memory, which matters here: X11 recordings
+on Intel use a VA encoder, whose own surfaces cannot be drawn on in place.
+Measured on Cinnamon 6.6.9 (Mint 22.3): three presses, three rings, within 1 px
+of the press and one frame of it, in monitor, region and window recordings.
+
+An X11 recording's microphone never provides the pipeline's clock: `ximagesrc`
+has none, and a recording with the microphone alone used to run on the
+microphone's, which stops when the microphone is unplugged and took the rest of
+the clip with it. See
+[The clock](../design/recording/microphone-and-clicks.md#capture-and-mix).
+
+`recording.capabilities` reports `clickHighlights {available: true, route:
+"x11-xinput2", drawnBy: "recorder"}` for monitor, desktop, region and window
+recordings. An X server without XInput 2.1 reports `xinput2_unavailable`, and a
+`prepare` that asks for click highlights there is refused. The same route
+serves every X11 session, Plasma X11 included. The design is in
+[Microphone and click highlights](../design/recording/microphone-and-clicks.md).
+
 ## Evidence boundary
 
 The automated X11 tests run in a disposable Xvfb display with synthetic clipboard ownership and pixels. They do not establish Cinnamon focus behavior, a physical monitor layout, real global keys, clipboard paste into an independent desktop app, live S3 public links, or release timing.

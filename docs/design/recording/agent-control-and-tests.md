@@ -7,11 +7,13 @@ Part of [Screen recording](../recording.md).
 | Tool | Session method |
 | --- | --- |
 | `get_recording_capabilities` | `recording.capabilities` |
-| `prepare_recording` | `recording.prepare` |
+| `list_recording_microphones` | `recording.microphones` |
+| `prepare_recording` (with `microphone`, `microphone_device`, `click_highlights`) | `recording.prepare` |
 | `control_recording` (start/pause/resume/stop/cancel/raise) | `recording.<command>` |
 | `get_recording` | `recording.inspect` |
 | `select_recording_region` | `recording.select` |
 | `set_recording_overlay` | `recording.overlay` |
+| `set_recording_audio` | `recording.audio` |
 | `edit_recording` | `recording.edit` |
 | `preview_recording` (MCP image) | `recording.preview` |
 | `drive_recording_review` | `recording.review` |
@@ -67,3 +69,25 @@ Part of [Screen recording](../recording.md).
   a bar whose process is not the resident's child.
 - `tests/integration/test_config_schema.py`: optional `record` action,
   template and limits.
+- #1364: `recording_model_contract` (the live microphone, its device name and
+  `clickHighlights`); `recording_service_integration` (a microphone alone and
+  mixed, refusal without an input or with a monitor as the default, the
+  remembered toggle never blocking the record action, loss mid-recording, the
+  click watch from Record to Stop with a fake desktop);
+  `recording_helper_integration` (`--microphones` asked afresh, broken answers
+  reading as no microphone); `bar_placement_contract` (the toggle, the meter
+  and the facts); `click_overlay_contract`
+  (`tests/unit/test_click_overlay.cpp`: the ring's pixels in I420 and NV12 and
+  where a desktop click lands in the picture); `hyprland_contracts` (the bind
+  script, token, unbind rule and which buttons still need a bind);
+  `gnome_ui_ownership_contract` (the extension's click watch);
+  `kwin_click_effect_contract` (`tests/integration/test_kwin_click_effect.cpp`:
+  against a scripted KWin and KGlobalAccel, the effect comes back exactly as it
+  was from each starting state, also after Record followed at once by Stop);
+  `labwc_bridge_contract` (Budgie's mouse binds: `rc.xml` with them added and
+  taken out byte for byte, the actions each bind stands in for, put back after
+  the bridge's rewrite, removed after a crash, the D-Bus entry);
+  `budgie_labwc_integration` (in a real headless labwc: a press over a window
+  reaches put.gd and the window; the recorder's own-cursor capture keeps its
+  frames); `export_av_sync_contract` (tone levels and the moving marker). None
+  of these records a real microphone.

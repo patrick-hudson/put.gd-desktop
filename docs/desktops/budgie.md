@@ -182,6 +182,56 @@ with the protocol named, and no chooser ever shows. Details are in
   (`target_closed`) and keeps the clip.
 - The ready ring, dimming and control bar are layer surfaces outside the
   recorded rectangle. A monitor recording includes the bar, as on KWin 6.3.
+- The cursor is painted by the compositor, except in a recording with click
+  highlights, where the recorder draws it (below).
+
+### Click highlights
+
+Recordings of a monitor, the desktop or a region can draw a ring at each click
+(`recording.capabilities`: `clickHighlights {available: true, route:
+"labwc-mouse-binds", drawnBy: "recorder", targets: [monitor, desktop,
+region]}`). labwc has no event interface, so a press reaches put.gd in two
+halves; the design and the upstream sources are in
+[Microphone and click highlights](../design/recording/microphone-and-clicks.md#budgie-two-halves).
+
+- **The press.** From Record to Stop, `rc.xml` carries put.gd's own
+  `<context name="Client" putgd="click-highlights">` and `<context
+  name="Titlebar" putgd="click-highlights">` with `Press` binds on the three
+  buttons (in `Client` also with Shift, Ctrl, Alt, Super and Ctrl+Shift). Each
+  keeps the actions of the bind it replaces (the user's own, or labwc's default
+  `Focus` and `Raise`) and adds an `Execute` that calls
+  `org.putgd.App.Budgie.Click` on the session bus. labwc reads the file again
+  on `SIGHUP`, which shows as the pointer turning into the default arrow for
+  about 130 ms and nothing else; the binds go in a quarter of a second before
+  the capture starts and come out after it has stopped. The press still
+  reaches the window.
+- **The file is Budgie's.** `labwc-bridge` rewrites `rc.xml` from its own tree
+  at the next setting it mirrors. While recording, the resident puts its binds
+  back; otherwise it removes any it finds, also at start after a crash. Nothing
+  but elements carrying `putgd="click-highlights"` is added or removed, and the
+  file after a recording is the file before it. This is the one place the
+  adapter writes `rc.xml`: Budgie's settings offer key bindings (see
+  **Shortcuts**) and no mouse binding.
+- **The position.** The recording is captured without the compositor's painted
+  cursor; `putgd-record` reads the pointer from the capture's cursor session
+  and draws the cursor into the frames itself, so the clip still shows it.
+- **Not highlighted.** A window recording (`prepare` refuses click highlights
+  for it: a window capture has no cursor session in wlroots, and labwc reports
+  no window geometry); presses on the panel and other layer-shell surfaces
+  (only a bind that would swallow the press matches there); presses with a
+  modifier combination other than those above; presses while the application
+  hides the pointer; a session without a hardware cursor, or a turned output
+  (the recording then keeps the compositor's painted cursor and
+  `progress.clickHighlightsError` says there is no pointer position; measured
+  on labwc 0.20.2 started with `WLR_NO_HARDWARE_CURSORS=1`: the cursor is in
+  the clip, no ring is drawn, and `inspect` gives the reason). Settings →
+  Advanced → Desktop support details names the window-recording limit in its
+  Click highlights row.
+
+`labwc_bridge_contract` covers the edit of `rc.xml` and the bus entry, and
+`budgie_labwc_integration` runs the binds in a real headless labwc: a press over
+a window reaches both put.gd and the window, and after the recording the file
+is as it was.
 
 ## Budgie 11
 

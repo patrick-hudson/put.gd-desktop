@@ -38,6 +38,12 @@ command above. Debian 13 has its own release DEB
 Ubuntu DEBs link FFmpeg 6.1 (24.04) or 8.0 (26.04), so neither installs there
 now that the helper is packaged.
 
+The microphone needs `pulsesrc` (plugins-good) and, for the mix with system
+audio, `audiomixer` (plugins-base); both packages are already dependencies of
+the DEB, RPM and Arch packages, and the AppImage bundles both plugins. Where
+either is missing the probe reports `audio.microphone: false` with
+`microphone_elements_missing`.
+
 ### AppImage runtime
 
 The AppImage builds `putgd-record` against a pinned upstream FFmpeg
@@ -59,7 +65,7 @@ and every release publishes the corresponding source as
 GStreamer comes from the Ubuntu 24.04 builder: the core libraries, the plugins
 the live pipeline uses (`coreelements`, `videotestsrc` for the probe,
 `videoconvertscale`, `videorate`, `videocrop`, `audioconvert`, `audioresample`,
-`ximagesrc`, `pipewire`, `pulseaudio`, `matroska`, `audioparsers`,
+`audiomixer` (the microphone's mix with system audio, #1364), `ximagesrc`, `pipewire`, `pulseaudio`, `matroska`, `audioparsers`,
 `videoparsersbad`, `va`, `vaapi`, `x264`, `voaacenc`) and `gst-plugin-scanner`
 under `usr/libexec/gstreamer-1.0/`. VA-API (`libva*`), PipeWire's client
 library, the NVIDIA libraries and any OpenH264 stay the host's: libva must
