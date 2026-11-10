@@ -226,6 +226,7 @@ private:
  void beginUploadCopies(const Operation&,bool importing=false);
  void startEditing(Operation,std::shared_ptr<std::atomic_bool>,ClipboardPayload);
  QString editorDestination(const Operation&) const;
+ void copyEditedImage(const QString& id,QByteArray png,std::function<void(Error)> done);
  void abandonUploadCopies(const QString&);
  // A batch item finished its upload stage, with or without a link (each_link ordering).
  void uploadItemSettled(const QString&,int);

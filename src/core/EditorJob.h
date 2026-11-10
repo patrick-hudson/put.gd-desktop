@@ -32,9 +32,17 @@ public:
  struct Pending {QString command;QJsonObject params;Reply reply;};
  QList<Pending> take();
  void setPhase(const QString&);
+ // Copy image: the resident puts the helper's checked PNG on the clipboard
+ // and calls `done` once (from any thread); the worker relays the outcome.
+ using CopyHandler=std::function<void(QByteArray png,std::function<void(Error)> done)>;
+ void setCopyHandler(CopyHandler);
+ CopyHandler copyHandler() const;
+ void finishCopy(Error);
+ std::optional<Error> takeCopyResult();
 private:
  mutable std::mutex mutex_;
  QList<Pending> queue_;
+ CopyHandler copyHandler_;std::optional<Error> copyResult_;
  QString phase_="starting",pendingAppearance_;
  std::atomic_bool cancelled_{false};
 };
@@ -48,6 +56,8 @@ class EditorJob final {
 public:
  static constexpr qint64 admissionPixels=24000000;
  static constexpr int maximumQueuedCommands=16;
+ // The largest edited PNG the editor hands to the clipboard.
+ static constexpr qint64 maximumCopyBytes=128LL*1024*1024;
  EditorJob(QString stagingRoot,QString helperPath={},int startupTimeoutMs=20000,int finalizeTimeoutMs=120000,int commandTimeoutMs=8000);
  // Custom colors the editor offers as quick picks; it reports them back.
  EditorJob& withRecentColors(QStringList colors){recentColors_=std::move(colors);return *this;}
