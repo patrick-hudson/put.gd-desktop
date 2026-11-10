@@ -145,8 +145,10 @@ written to the configuration, the journal or the logs.
 `{available, seconds: [3, 5, 10], indicator}` with the reason when a desktop cannot
 show the countdown. Settings → Advanced → Desktop support details shows a **Monitor
 capture** or **Delayed capture** row when one is unavailable. On GNOME an extension
-loaded before these existed answers `helper_outdated` until the next login loads the
-packaged one ([GNOME](../desktops/gnome.md)).
+loaded before these existed answers `helper_outdated` for them until the next login
+loads the packaged one; window and desktop screenshots keep working meanwhile and a
+region capture is refused as with any older loaded extension
+([GNOME](../desktops/gnome.md)).
 
 ## Errors
 
@@ -173,7 +175,10 @@ packaged one ([GNOME](../desktops/gnome.md)).
 - `gui_settings_capture`: the capture buttons' context menu (Repeat last region on
   Capture region only, the named delay submenu, one preference for every button) and
   the band's full labels at a width that fits them.
-- `tests/integration/test_mcp.py`: `perform_action` with `monitor`, `repeat` and
-  `delay_seconds` against the real resident.
+- `tests/integration/test_mcp.py`: the MCP helper's side only, against a stand-in
+  resident socket: `perform_action` maps `monitor`, `repeat` and `delay_seconds` to
+  `action.invoke`, and refuses a delay that is not 3, 5 or 10 or sits on an action
+  that takes none before anything is sent. The captures themselves are covered by the
+  suites above and by the desktop acceptance.
 - Desktop acceptance, with a two-monitor run per desktop, is in the
   [acceptance matrix](../testing/acceptance-matrix.md).

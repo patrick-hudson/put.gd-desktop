@@ -94,8 +94,9 @@ resolution. KWin gives Wayland clients no pointer position and ScreenShot2's
 "active screen" follows a user option, so the resident asks KWin itself: a one-shot
 KWin script, loaded the way the window list is, reads `workspace.cursorPos` and
 calls the resident back on its own bus name; only the owner of `org.kde.KWin` is
-believed. The request starts at invocation, so the output is frozen then. It adds
-about 0.1 s. Repeat last region reads the outputs its remembered rectangle lies on
+believed. For an immediate capture the request starts at invocation, so the output
+is frozen then; for a delayed one it starts when the countdown ends. It adds about
+0.1 s. Repeat last region reads the outputs its remembered rectangle lies on
 and composes it as a selected region is.
 
 A delayed capture shows its countdown as an overlay layer surface of `putgd-region`

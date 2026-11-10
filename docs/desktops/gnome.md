@@ -236,10 +236,12 @@ adds Capture monitor, Repeat last region and the capture countdown:
   resident asks logind whether the session is locked (for up to two seconds)
   before it lets a helper error from a counting request stand.
 
-An extension loaded before version 20 keeps region, window and desktop screenshots
-working as before; `monitor`, `repeat` and any delayed capture answer
-`helper_outdated` until the next login loads the packaged one, and Desktop support
-details shows **Monitor capture** and **Delayed capture** rows with that reason.
+While an extension older than the packaged one is loaded, window and desktop
+screenshots work as before and a region capture is refused with `helper_outdated`,
+as it already was for any older loaded extension. `monitor`, `repeat` and any
+delayed capture answer `helper_outdated` too until the next login loads the
+packaged one, and Desktop support details shows **Monitor capture** and **Delayed
+capture** rows with that reason.
 See [capture monitor, delay and repeat](../design/capture-delay.md).
 
 Recording protocol 2 (`recordingVersion: 2`, extension version 19) adds

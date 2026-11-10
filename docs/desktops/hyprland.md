@@ -111,7 +111,8 @@ captures the new geometry without a restart
 ## Capture monitor, delay and repeat
 
 - **Capture monitor** (#1363): the output that contains the position `j/cursorpos`
-  reports, read whole at native density. The request is sent at invocation.
+  reports, read whole at native density. The request is sent at invocation, or when
+  the countdown ends for a delayed capture.
 - **Repeat last region**: the remembered rectangle, from the outputs it lies on.
 - **Delayed capture**: the countdown is an overlay layer surface of `putgd-region`
   with the scope `putgd-capture-countdown` and no keyboard interactivity. put.gd's
