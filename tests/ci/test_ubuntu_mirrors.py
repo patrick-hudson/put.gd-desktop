@@ -66,7 +66,7 @@ class UbuntuMirrors(unittest.TestCase):
 
     def run_snippet(self, hosts):
         env = dict(os.environ, PUTGD_APT_ROOT=str(self.apt),
-                   PUTGD_UBUNTU_MIRROR_HOSTS=' '.join(hosts)).replace('/dev/tcp/$host/80', '/dev/tcp/${host%:*}/${host##*:}')
+                   PUTGD_UBUNTU_MIRROR_HOSTS=' '.join(hosts))
         script = snippet(WORKFLOWS[0]).replace(
             'us.archive.ubuntu.com mirrors.edge.kernel.org azure.archive.ubuntu.com archive.ubuntu.com',
             ' '.join(hosts)).replace('/dev/tcp/$host/80', '/dev/tcp/${host%:*}/${host##*:}')
