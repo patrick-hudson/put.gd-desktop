@@ -4,6 +4,7 @@
 #include "Ui.h"
 #include "BlurRadius.h"
 #include "platform/HostOpen.h"
+#include <QAccessible>
 #include <QAction>
 #include <QApplication>
 #include <QClipboard>
@@ -87,7 +88,7 @@ private:
 QLabel* fieldLabel(const QString& text,QWidget* parent){auto* label=new QLabel(text,parent);Ui::role(label,"caption");return label;}
 QWidget* column(QWidget* parent,QVBoxLayout*& layout){auto* widget=new QWidget(parent);layout=new QVBoxLayout(widget);layout->setContentsMargins(0,0,0,0);layout->setSpacing(Ui::space(Space::s));return widget;}
 // Tool names in editor.view, in Tool order.
-const QStringList toolNames{"select","redact","blur","crop","arrow","rectangle","highlight","text"};
+const QStringList toolNames{"select","redact","blur","crop","arrow","rectangle","highlight","text","step","pen","ellipse","line"};
 QJsonValue rectValue(const std::optional<QRect>& r){if(!r)return QJsonValue();return QJsonArray{r->x(),r->y(),r->width(),r->height()};}
 bool integerIn(const QJsonValue& value,double minimum,double maximum,int& out){
  if(!value.isDouble())return false;const double number=value.toDouble();
@@ -106,12 +107,19 @@ EditorWindow::EditorWindow(editor::EditDocument& doc,QWidget* parent):QWidget(pa
  header_=Ui::WindowHeader::install(this,root);header_->setDocument("Edit image","Not uploaded");
 
  auto* toolbar=new Ui::Surface("bg",Qt::BottomEdge,this);toolbar->setObjectName("editorToolbar");toolbar->setSizePolicy(QSizePolicy::Ignored,QSizePolicy::Fixed);toolbar->installEventFilter(this);
- auto* tools=new QHBoxLayout(toolbar);tools->setContentsMargins(Ui::space(Space::m),Ui::space(Space::s),Ui::space(Space::m),Ui::space(Space::s));tools->setSpacing(Ui::space(Space::xs));
+ // Tools at the left, history and zoom at the right; when even folded tools
+ // and no gaps cannot hold both on one row (large text, a narrow window),
+ // history and zoom move to a second row instead of squeezing a label.
+ toolbarGrid_=new QGridLayout(toolbar);toolbarGrid_->setContentsMargins(Ui::space(Space::m),Ui::space(Space::s),Ui::space(Space::m),Ui::space(Space::s));toolbarGrid_->setHorizontalSpacing(0);toolbarGrid_->setVerticalSpacing(Ui::space(Space::xs));
+ auto* tools=new QHBoxLayout;tools->setContentsMargins(0,0,0,0);tools->setSpacing(Ui::space(Space::xs));toolsLayout_=tools;
+ auto* history=new QHBoxLayout;history->setContentsMargins(0,0,0,0);history->setSpacing(Ui::space(Space::xs));actionsLayout_=history;
+ toolbarGrid_->addLayout(tools,0,0);toolbarGrid_->setColumnStretch(1,1);toolbarGrid_->addLayout(history,0,2);
  tools_=new QButtonGroup(this);tools_->setExclusive(true);
  // The tool is Redact; the marks it makes are redactions.
  struct Entry{Tool tool;const char* icon;const char* label;const char* key;const char* detail;};
  const Entry entries[]={{Tool::Select,"select","Select and move","V",""},{Tool::Crop,"crop","Crop","C",""},
-  {Tool::Arrow,"annotate-arrow","Arrow","A",""},{Tool::Rectangle,"rectangle","Rectangle","R",""},{Tool::Highlight,"highlight","Highlight","H",""},{Tool::Text,"text","Text","T",""},
+  {Tool::Arrow,"annotate-arrow","Arrow","A",""},{Tool::Line,"line","Line","L",""},{Tool::Rectangle,"rectangle","Rectangle","R",""},{Tool::Ellipse,"ellipse","Ellipse","E",""},
+  {Tool::Pen,"pen","Pen","P",""},{Tool::Highlight,"highlight","Highlight","H",""},{Tool::Text,"text","Text","T",""},{Tool::Step,"step","Step number","N",""},
   {Tool::Redact,"redact","Redact","X","covers with an opaque redaction"},{Tool::Blur,"blur","Blur","B","a visual effect only"}};
  for(const auto& entry:entries){
   if(entry.tool==Tool::Redact){tools->addSpacing(Ui::space(Space::xs));tools->addWidget(separator(toolbar));tools->addSpacing(Ui::space(Space::xs));}
@@ -123,12 +131,12 @@ EditorWindow::EditorWindow(editor::EditDocument& doc,QWidget* parent):QWidget(pa
   auto* shortcut=new QShortcut(QKeySequence(QString::fromLatin1(entry.key)),this);shortcut->setContext(Qt::WindowShortcut);
   connect(shortcut,&QShortcut::activated,this,[this,tool=entry.tool]{if(!busy_&&!canvas_->editingText())selectTool(tool);});
  }
- tools->addStretch(1);tools->addSpacing(Ui::space(Space::xs));tools->addWidget(separator(toolbar));tools->addSpacing(Ui::space(Space::xs));
- auto toolButton=[&](const char* icon,const QString& tip){auto* button=new QToolButton(toolbar);button->setIcon(Ui::icon(icon));button->setProperty("uiIconBase",QSize(20,20));button->setIconSize(QSize(Ui::scaled(20),Ui::scaled(20)));button->setFixedSize(Ui::scaled(36),Ui::scaled(36));button->setFocusPolicy(Qt::StrongFocus);button->setToolTip(tip);button->setAccessibleName(tip);Ui::role(button,"quiet");tools->addWidget(button);return button;};
+ history->addSpacing(Ui::space(Space::xs));actionsSeparator_=separator(toolbar);history->addWidget(actionsSeparator_);history->addSpacing(Ui::space(Space::xs));
+ auto toolButton=[&](const char* icon,const QString& tip){auto* button=new QToolButton(toolbar);button->setIcon(Ui::icon(icon));button->setProperty("uiIconBase",QSize(20,20));button->setIconSize(QSize(Ui::scaled(20),Ui::scaled(20)));button->setFixedSize(Ui::scaled(36),Ui::scaled(36));button->setFocusPolicy(Qt::StrongFocus);button->setToolTip(tip);button->setAccessibleName(tip);Ui::role(button,"quiet");history->addWidget(button);return button;};
  undo_=toolButton("undo","Undo (Ctrl+Z)");redo_=toolButton("redo","Redo (Ctrl+Shift+Z)");
- tools->addSpacing(Ui::space(Space::xs));tools->addWidget(separator(toolbar));tools->addSpacing(Ui::space(Space::xs));
+ history->addSpacing(Ui::space(Space::xs));history->addWidget(separator(toolbar));history->addSpacing(Ui::space(Space::xs));
  // One zoom menu reports the live percentage; document size stays in the footer.
- status_=new QToolButton(toolbar);status_->setObjectName("editorZoom");status_->setAccessibleName("Zoom");status_->setToolButtonStyle(Qt::ToolButtonTextOnly);status_->setPopupMode(QToolButton::InstantPopup);status_->setFocusPolicy(Qt::StrongFocus);Ui::role(status_,"quiet");tools->addWidget(status_);
+ status_=new QToolButton(toolbar);status_->setObjectName("editorZoom");status_->setAccessibleName("Zoom");status_->setToolButtonStyle(Qt::ToolButtonTextOnly);status_->setPopupMode(QToolButton::InstantPopup);status_->setFocusPolicy(Qt::StrongFocus);Ui::role(status_,"quiet");history->addWidget(status_);
  auto* zoomMenu=new QMenu(status_);auto* zoomChoices=new QActionGroup(zoomMenu);zoomChoices->setExclusive(true);
  for(const int percent:{0,50,100,200}){auto* action=zoomMenu->addAction(percent?QString("%1%").arg(percent):QStringLiteral("Fit"));action->setCheckable(true);action->setData(percent);zoomChoices->addAction(action);connect(action,&QAction::triggered,this,[this,percent]{if(percent)canvas_->setZoom(percent/100.0);else canvas_->fit();});}
  zoomMenu->addSeparator();
@@ -190,7 +198,29 @@ EditorWindow::EditorWindow(editor::EditDocument& doc,QWidget* parent):QWidget(pa
  properties->addWidget(widthRow_);
  auto* blurRadius=new BlurRadius(editor::EditDocument::minimumBlur,editor::EditDocument::maximumBlur,12,false,panel);blurRow_=blurRadius;Ui::role(blurRadius->label(),"caption");blurRadius->layout()->setSpacing(Ui::space(Space::s));
  strength_=blurRadius->slider();strength_->setObjectName("blurStrength");strengthValue_=blurRadius->spinBox();strengthValue_->setObjectName("blurStrengthValue");
+ // Blur or Pixelate: two looks of the same visual effect, neither a redaction.
+ blurStyleRow_=column(panel,layout);blurStyleRow_->setObjectName("editorBlurStyle");layout->addWidget(fieldLabel("Style",blurStyleRow_));
+ {
+  auto* track=new Ui::SegmentTrack(blurStyleRow_);track->setObjectName("blurStyleTrack");track->setAccessibleName("Blur style");auto* group=new QButtonGroup(this);group->setExclusive(true);
+  blurStyle_=new QToolButton(track);blurStyle_->setObjectName("blurStyleBlur");blurStyle_->setText("Blur");blurStyle_->setAccessibleName("Blur style: blur");
+  pixelateStyle_=new QToolButton(track);pixelateStyle_->setObjectName("blurStylePixelate");pixelateStyle_->setText("Pixelate");pixelateStyle_->setAccessibleName("Blur style: pixelate");
+  for(auto* button:{blurStyle_,pixelateStyle_}){button->setCheckable(true);button->setFocusPolicy(Qt::StrongFocus);group->addButton(button);track->addButton(button);}
+  blurStyle_->setChecked(true);
+  auto* row=new QHBoxLayout;row->setContentsMargins(0,0,0,0);row->addWidget(track);row->addStretch(1);layout->addLayout(row);
+  connect(group,&QButtonGroup::buttonClicked,this,[this]{syncStyle(true);});
+ }
+ properties->addWidget(blurStyleRow_);
  properties->addWidget(blurRow_);
+ // Step: the number the next click places, or the selected step's number.
+ stepRow_=column(panel,layout);stepRow_->setObjectName("editorStep");stepLabel_=fieldLabel("Next number",stepRow_);layout->addWidget(stepLabel_);
+ stepNumber_=new QSpinBox(stepRow_);stepNumber_->setObjectName("stepNumber");stepNumber_->setRange(1,editor::maximumStepNumber);stepNumber_->setKeyboardTracking(false);stepNumber_->setAccessibleName("Next step number");stepLabel_->setBuddy(stepNumber_);
+ {auto* row=new QHBoxLayout;row->setContentsMargins(0,0,0,0);row->addWidget(stepNumber_);row->addStretch(1);layout->addLayout(row);}
+ properties->addWidget(stepRow_);
+ connect(stepNumber_,&QSpinBox::valueChanged,this,[this](int value){
+  if(syncingStep_||busy_)return;
+  if(const auto* shape=doc_.find(canvas_->selected());shape&&shape->kind==editor::Shape::Kind::Step){auto next=*shape;next.number=value;if(doc_.replace(next)){canvas_->documentChanged();refresh();}return;}
+  canvas_->setNextStepNumber(value);refresh();
+ });
  textRow_=column(panel,layout);layout->addWidget(fieldLabel("Font",textRow_));
  font_=new QFontComboBox(textRow_);font_->setObjectName("textFont");font_->setAccessibleName("Font");font_->setCurrentFont(QFont());font_->setSizeAdjustPolicy(QComboBox::AdjustToMinimumContentsLengthWithIcon);font_->setMinimumContentsLength(8);layout->addWidget(font_);
  layout->addWidget(fieldLabel("Size in image pixels",textRow_));
@@ -221,7 +251,7 @@ EditorWindow::EditorWindow(editor::EditDocument& doc,QWidget* parent):QWidget(pa
  remove_=new QPushButton(heading);remove_->setObjectName("removeMark");remove_->setAccessibleName("Remove mark");remove_->setProperty("uiDensity","compact");remove_->setIcon(Ui::icon("remove"));remove_->setProperty("uiIconBase",QSize(20,20));remove_->setIconSize(QSize(Ui::scaled(20),Ui::scaled(20)));remove_->setFixedSize(Ui::scaled(28),Ui::scaled(28));remove_->setToolTip("Remove the selected mark (Delete)");Ui::role(remove_,"quiet");remove_->installEventFilter(this);titleRow->addWidget(remove_,0,Qt::AlignTop);
  auto* keyboardHelp=new QToolButton(panel);keyboardHelp->setObjectName("editorKeyboardHelp");keyboardHelp->setProperty("uiFlush",true);keyboardHelp->setText("Keyboard help");keyboardHelp->setAccessibleName("Keyboard help");Ui::disclosure(keyboardHelp);properties->addWidget(keyboardHelp,0,Qt::AlignLeft);
  auto* keyboardText=new KeyboardHelp(panel);keyboardText->setObjectName("editorKeyboardHelpText");
- const QList<QPair<QString,QString>> shortcuts{{"[ / ]","Cycle marks"},{"Arrows","Move"},{"Shift+arrows","Resize"},{"Ctrl+arrows","Move 10 px"},{"Ctrl+Shift+arrows","Resize 10 px"},{"Tab","Focus properties"},{"Delete","Remove mark"},{"Escape","Deselect"},{"Insert","Place mark"},{"Ctrl+Z","Undo"},{"Ctrl+Shift+Z","Redo"}};
+ const QList<QPair<QString,QString>> shortcuts{{"[ / ]","Cycle marks"},{"Arrows","Move"},{"Shift+arrows","Resize"},{"Ctrl+arrows","Move 10 px"},{"Ctrl+Shift+arrows","Resize 10 px"},{"Tab","Focus properties"},{"Delete","Remove mark"},{"Escape","Deselect"},{"Insert","Place mark"},{"Shift+drag","Square, circle, 45° line"},{"Ctrl+Z","Undo"},{"Ctrl+Shift+Z","Redo"},{"Ctrl+Shift+C","Copy image"}};
  QStringList keyboardSummary;
  for(const auto& [keys,description]:shortcuts){auto* key=new QLabel(keys,keyboardText);Ui::setMono(key);Ui::role(key,"secondary");auto* meaning=new QLabel(description,keyboardText);meaning->setWordWrap(true);Ui::role(meaning,"secondary");keyboardText->addShortcut(key,meaning);keyboardSummary.append(keys+": "+description);}
  keyboardText->setAccessibleName("Keyboard help");keyboardText->setProperty("text",keyboardSummary.join('\n'));keyboardText->hide();properties->addWidget(keyboardText);
@@ -241,7 +271,7 @@ EditorWindow::EditorWindow(editor::EditDocument& doc,QWidget* parent):QWidget(pa
  noticeText_=new QLabel(notice_);noticeText_->setObjectName("editorPreparationReason");noticeText_->setTextFormat(Qt::PlainText);noticeText_->setWordWrap(true);Ui::role(noticeText_,"secondary");noticeLayout->addWidget(noticeText_,0,0,1,3);noticeLayout->setColumnStretch(2,1);
  keepEditing_=new QPushButton("Keep editing",notice_);keepEditing_->setObjectName("keepEditing");noticeLayout->addWidget(keepEditing_,1,0);
  saveInstead_=new QPushButton("Save a copy…",notice_);saveInstead_->setObjectName("saveCopyInstead");saveInstead_->setToolTip("Save the edited image to a file instead (Ctrl+S)");noticeLayout->addWidget(saveInstead_,1,1);
- notice_->hide();footerGrid_->addWidget(notice_,0,0,1,4);
+ notice_->hide();footerGrid_->addWidget(notice_,0,0,1,5);
  // Elision keeps the actions reachable; keyboard activation reveals the name.
  destination_=new Ui::ElidedLabel(document);destination_->setElideMode(Qt::ElideRight);destination_->setRevealable(true);destination_->setObjectName("editorDestination");destination_->setTextFormat(Qt::PlainText);Ui::role(destination_,"meta");
  destination_->setTextInteractionFlags(Qt::TextSelectableByMouse|Qt::TextSelectableByKeyboard);destination_->setFocusPolicy(Qt::StrongFocus);destination_->hide();documentLayout->addWidget(destination_);
@@ -280,9 +310,12 @@ EditorWindow::EditorWindow(editor::EditDocument& doc,QWidget* parent):QWidget(pa
  folderError_=new Ui::ElidedLabel(saveFeedback_);folderError_->setText("Couldn't open the folder. Use Copy path instead.");folderError_->setObjectName("editorFolderError");folderError_->setTextFormat(Qt::PlainText);Ui::role(folderError_,"body");folderError_->hide();resultRow->addWidget(folderError_,1);feedback->addWidget(result,0,0);feedback->addWidget(actions,0,1);
 
  message_=new QLabel(result);message_->setSizePolicy(QSizePolicy::Ignored,QSizePolicy::Preferred);message_->hide();resultRow->insertWidget(0,message_,1);
- save_=new QPushButton("Save a copy…",footer);save_->setObjectName("editorSaveCopy");save_->setIcon(Ui::icon("save"));save_->setProperty("uiIconBase",QSize(20,20));save_->setIconSize(QSize(Ui::scaled(20),Ui::scaled(20)));save_->setToolTip("Save the edited image to a file (Ctrl+S)");footerGrid_->addWidget(save_,2,1);
- cancel_=new QPushButton("Cancel",footer);cancel_->setObjectName("editorCancel");Ui::role(cancel_,"quiet");footerGrid_->addWidget(cancel_,2,2);
- upload_=new QPushButton("Upload",uploadGroup);upload_->setObjectName("editorUpload");upload_->setIcon(Ui::icon("upload"));upload_->setProperty("uiIconBase",QSize(20,20));upload_->setIconSize(QSize(Ui::scaled(20),Ui::scaled(20)));Ui::role(upload_,"primary");upload_->setToolTip("Upload the finished, sanitized image (Ctrl+Enter). The source file is not uploaded.");upload_->setAutoDefault(false);uploadRow->addWidget(upload_);footerGrid_->addWidget(uploadGroup,2,3);
+ // Copy image: the same sanitized PNG as Upload and Save a copy, on the
+ // clipboard; nothing uploads and History gains nothing.
+ copyImage_=new QPushButton("Copy image",footer);copyImage_->setObjectName("editorCopyImage");copyImage_->setIcon(Ui::icon("copy"));copyImage_->setProperty("uiIconBase",QSize(20,20));copyImage_->setIconSize(QSize(Ui::scaled(20),Ui::scaled(20)));Ui::role(copyImage_,"quiet");copyImage_->setToolTip("Copy the edited image to the clipboard (Ctrl+Shift+C). Nothing is uploaded.");copyImage_->setAccessibleDescription(copyImage_->toolTip());
+ save_=new QPushButton("Save a copy…",footer);save_->setObjectName("editorSaveCopy");save_->setIcon(Ui::icon("save"));save_->setProperty("uiIconBase",QSize(20,20));save_->setIconSize(QSize(Ui::scaled(20),Ui::scaled(20)));save_->setToolTip("Save the edited image to a file (Ctrl+S)");footerGrid_->addWidget(copyImage_,2,1);footerGrid_->addWidget(save_,2,2);
+ cancel_=new QPushButton("Cancel",footer);cancel_->setObjectName("editorCancel");Ui::role(cancel_,"quiet");footerGrid_->addWidget(cancel_,2,3);
+ upload_=new QPushButton("Upload",uploadGroup);upload_->setObjectName("editorUpload");upload_->setIcon(Ui::icon("upload"));upload_->setProperty("uiIconBase",QSize(20,20));upload_->setIconSize(QSize(Ui::scaled(20),Ui::scaled(20)));Ui::role(upload_,"primary");upload_->setToolTip("Upload the finished, sanitized image (Ctrl+Enter). The source file is not uploaded.");upload_->setAutoDefault(false);uploadRow->addWidget(upload_);footerGrid_->addWidget(uploadGroup,2,4);
  root->addWidget(footer);
 
  connect(tools_,&QButtonGroup::idClicked,this,[this](int id){selectTool(Tool(id));});
@@ -295,6 +328,8 @@ EditorWindow::EditorWindow(editor::EditDocument& doc,QWidget* parent):QWidget(pa
    if(shape->kind==editor::Shape::Kind::Highlight)highlightColor_=shape->color;else if(shape->kind!=editor::Shape::Kind::Redact&&shape->kind!=editor::Shape::Kind::Blur)annotationColor_=shape->color;
    width_->blockSignals(true);textSize_->blockSignals(true);font_->blockSignals(true);strength_->blockSignals(true);
    width_->setCurrentIndex(std::max(0,width_->findData(shape->width)));textSize_->setValue(shape->fontPixels);strength_->setValue(shape->strength);strengthValue_->setValue(shape->strength);
+   if(shape->kind==editor::Shape::Kind::Blur)(shape->pixelate?pixelateStyle_:blurStyle_)->setChecked(true);
+   if(shape->kind==editor::Shape::Kind::Step)stepPixels_=shape->rect.width();
    if(shape->kind==editor::Shape::Kind::Text)font_->setCurrentFont(shape->fontFamily.isEmpty()?QFont():QFont(shape->fontFamily));
    width_->blockSignals(false);textSize_->blockSignals(false);font_->blockSignals(false);strength_->blockSignals(false);
    syncStyle(false);return;
@@ -329,10 +364,12 @@ EditorWindow::EditorWindow(editor::EditDocument& doc,QWidget* parent):QWidget(pa
  bind(standard(QKeySequence::Undo,{QKeySequence("Ctrl+Z")}),undo);bind(standard(QKeySequence::Redo,{QKeySequence("Ctrl+Shift+Z"),QKeySequence("Ctrl+Y")}),redo);
  bind(standard(QKeySequence::Save),[this]{if(!busy_)saveCopy();});
  // Upload is never plain Enter, which completes text entry and crops.
- auto submit=[this]{if(busy_||savingCopy_)return;finishPendingEdits();emit uploadRequested();};
+ auto submit=[this]{if(busy_||savingCopy_||copying_)return;finishPendingEdits();emit uploadRequested();};
  bind({QKeySequence("Ctrl+Return"),QKeySequence("Ctrl+Enter")},submit);
  connect(upload_,&QPushButton::clicked,this,submit);
  connect(save_,&QPushButton::clicked,this,&EditorWindow::saveCopy);
+ connect(copyImage_,&QPushButton::clicked,this,&EditorWindow::requestCopy);
+ bind({QKeySequence("Ctrl+Shift+C")},[this]{requestCopy();});
  connect(chooser_,&FileDialog::stateChanged,this,[this]{if(auto* dialog=chooser_->fallbackDialog())dialog->setDefaultSuffix("png");});
  connect(cancel_,&QPushButton::clicked,this,&EditorWindow::requestCancel);
 
@@ -406,7 +443,7 @@ void EditorWindow::placeDestination(){
  const auto margins=footerGrid_->contentsMargins();const int spacing=footerGrid_->horizontalSpacing();
  auto* uploadGroup=findChild<QWidget*>("editorUploadGroup");sharingMode_->setMinimumWidth(sharingMode_->sizeHint().width());
  int room=width()-margins.left()-margins.right()-uploadGroup->sizeHint().width()-spacing;
- for(auto* button:{save_,cancel_})if(!button->isHidden())room-=button->sizeHint().width()+spacing;
+ for(auto* button:{copyImage_,save_,cancel_})if(!button->isHidden())room-=button->sizeHint().width()+spacing;
  auto* documentLayout=static_cast<QHBoxLayout*>(document_->layout());
  documentLayout->setContentsMargins(0,0,Ui::space(Space::xl)-spacing,0);documentLayout->invalidate();
  const bool above=document_->sizeHint().width()>room;
@@ -414,7 +451,7 @@ void EditorWindow::placeDestination(){
  documentLayout->setContentsMargins(0,0,above?0:Ui::space(Space::xl)-spacing,0);documentLayout->setStretch(2,above?1:0);documentLayout->setStretch(3,above?0:1);documentLayout->invalidate();
  const int slot=Ui::scaled(Ui::Metric::control);
  footerGrid_->setRowMinimumHeight(1,above?slot:0);document_->setMinimumHeight(slot);
- footerGrid_->removeWidget(document_);footerGrid_->addWidget(document_,above?1:2,0,1,above?4:1);
+ footerGrid_->removeWidget(document_);footerGrid_->addWidget(document_,above?1:2,0,1,above?5:1);
  // Reflow the footer before its new row can squeeze the sharing controls.
  footerGrid_->activate();layout()->activate();
  const bool feedback=saveFeedbackVisible_&&!busy_&&!savingCopy_;
@@ -434,11 +471,27 @@ void EditorWindow::placeDestination(){
 }
 void EditorWindow::placeTools(){
  auto apply=[&](bool allLabels){for(auto it=toolButtons_.cbegin();it!=toolButtons_.cend();++it){auto* button=it.value();const bool label=allLabels||it.key()==int(Tool::Redact)||it.key()==int(Tool::Blur);button->setMinimumWidth(0);button->setMaximumWidth(QWIDGETSIZE_MAX);button->setToolButtonStyle(label?Qt::ToolButtonTextBesideIcon:Qt::ToolButtonIconOnly);if(!label)button->setFixedWidth(Ui::scaled(36));}};
+ auto* toolbar=findChild<QWidget*>("editorToolbar");const auto margins=toolbarGrid_->contentsMargins();
+ const int room=toolbar->width()-margins.left()-margins.right();
+ auto spacing=[&](int gap){toolsLayout_->setSpacing(gap);actionsLayout_->setSpacing(gap);toolsLayout_->invalidate();actionsLayout_->invalidate();};
+ auto wrap=[&](bool below){
+  if(toolbarWrapped_==below)return;
+  toolbarWrapped_=below;toolbarGrid_->removeItem(actionsLayout_);
+  if(below)toolbarGrid_->addLayout(actionsLayout_,1,0,1,3,Qt::AlignRight);else toolbarGrid_->addLayout(actionsLayout_,0,2);
+  // A wrapped row starts at its own edge, without the dividing rule.
+  actionsSeparator_->setVisible(!below);toolbarGrid_->invalidate();
+ };
+ // One row's width whatever the current placement: a wrapped row hides its rule.
+ auto oneRow=[&]{return toolsLayout_->sizeHint().width()+actionsLayout_->sizeHint().width()+(actionsSeparator_->isHidden()?actionsSeparator_->sizeHint().width()+actionsLayout_->spacing():0);};
  // Measure every label in the current font before folding the ordinary tools.
- apply(true);auto* toolbar=findChild<QWidget*>("editorToolbar");toolbar->layout()->setSpacing(Ui::space(Space::xs));
- if(toolbar->layout()->sizeHint().width()>toolbar->width())apply(false);
+ apply(true);spacing(Ui::space(Space::xs));
+ if(oneRow()>room)apply(false);
  // Compact large text keeps both privacy labels before spending space on gaps.
- if(toolbar->layout()->sizeHint().width()>toolbar->width())toolbar->layout()->setSpacing(0);
+ if(oneRow()>room)spacing(0);
+ // Then history and zoom take a second row, and the gaps come back if they fit.
+ const bool below=oneRow()>room;
+ if(below){spacing(Ui::space(Space::xs));if(toolsLayout_->sizeHint().width()>room)spacing(0);}
+ wrap(below);
 }
 void EditorWindow::placeSaveFeedback(){
  if(!saveFeedback_||saveFeedback_->isHidden())return;
@@ -506,7 +559,7 @@ void EditorWindow::syncStyle(bool applyToSelection){
  editor::ToolStyle style;
  const auto* shape=doc_.find(canvas_->selected());
  const bool highlight=canvas_->tool()==Tool::Highlight||(shape&&shape->kind==editor::Shape::Kind::Highlight);
- style.color=highlight?highlightColor_:annotationColor_;style.width=width_->currentData().toInt();style.fontPixels=textSize_->value();style.fontFamily=font_->currentFont().family();style.strength=strength_->value();
+ style.color=highlight?highlightColor_:annotationColor_;style.width=width_->currentData().toInt();style.fontPixels=textSize_->value();style.fontFamily=font_->currentFont().family();style.strength=strength_->value();style.pixelate=pixelateStyle_->isChecked();style.stepPixels=stepPixels_;
  if(shape&&shape->kind==editor::Shape::Kind::Redact)style.color=Qt::black;
  canvas_->setStyle(style);if(applyToSelection)canvas_->applyStyleToSelection();
  // An exclusive group cannot uncheck everything, which a color off the palette needs.
@@ -519,10 +572,27 @@ void EditorWindow::syncStyle(bool applyToSelection){
 void EditorWindow::refresh(){
  const auto tool=canvas_->tool();const auto* shape=doc_.find(canvas_->selected());
  auto kind=[&](editor::Shape::Kind k){return shape&&shape->kind==k;};
- const bool annotation=tool==Tool::Arrow||tool==Tool::Rectangle||tool==Tool::Text||tool==Tool::Highlight||kind(editor::Shape::Kind::Arrow)||kind(editor::Shape::Kind::Rectangle)||kind(editor::Shape::Kind::Text)||kind(editor::Shape::Kind::Highlight);
+ using Kind=editor::Shape::Kind;
+ const bool annotation=(shape&&shape->kind!=Kind::Redact&&shape->kind!=Kind::Blur)
+  ||tool==Tool::Arrow||tool==Tool::Rectangle||tool==Tool::Text||tool==Tool::Highlight||tool==Tool::Line||tool==Tool::Ellipse||tool==Tool::Pen||tool==Tool::Step;
  colorRow_->setVisible(annotation&&tool!=Tool::Crop);
- widthRow_->setVisible(tool!=Tool::Crop&&(tool==Tool::Arrow||tool==Tool::Rectangle||kind(editor::Shape::Kind::Arrow)||kind(editor::Shape::Kind::Rectangle)));
- blurRow_->setVisible(tool!=Tool::Crop&&(tool==Tool::Blur||kind(editor::Shape::Kind::Blur)));
+ const bool stroked=tool==Tool::Arrow||tool==Tool::Rectangle||tool==Tool::Line||tool==Tool::Ellipse||tool==Tool::Pen||kind(Kind::Arrow)||kind(Kind::Rectangle)||kind(Kind::Line)||kind(Kind::Ellipse)||kind(Kind::Pen);
+ widthRow_->setVisible(tool!=Tool::Crop&&stroked);
+ const bool blur=tool!=Tool::Crop&&(tool==Tool::Blur||kind(Kind::Blur));const bool pixelate=pixelateStyle_->isChecked();
+ blurRow_->setVisible(blur);blurStyleRow_->setVisible(blur);
+ {
+  // Pixelation is the same visual effect as blur, with the same warning.
+  auto* radius=static_cast<BlurRadius*>(blurRow_);const auto name=pixelate?QStringLiteral("Block size"):QStringLiteral("Blur radius");
+  if(radius->label()->text()!=name){radius->label()->setText(name);strengthValue_->setAccessibleName(name);strength_->setAccessibleName(name);
+   const auto description=QString("%1 in image pixels, %2 to %3").arg(name).arg(editor::EditDocument::minimumBlur).arg(editor::EditDocument::maximumBlur);strengthValue_->setAccessibleDescription(description);strengthValue_->setToolTip(description);strength_->setAccessibleDescription(description);}
+  blurWarning_->findChild<QLabel*>("editorToolWarning")->setText(pixelate?QStringLiteral("Pixelation may be reversible."):Ui::blurWarningText());
+ }
+ {
+  const bool selectedStep=kind(Kind::Step)&&tool!=Tool::Crop;
+  stepRow_->setVisible(tool!=Tool::Crop&&(tool==Tool::Step||selectedStep));
+  stepLabel_->setText(selectedStep?QStringLiteral("Number"):QStringLiteral("Next number"));stepNumber_->setAccessibleName(selectedStep?QStringLiteral("Step number"):QStringLiteral("Next step number"));
+  syncingStep_=true;stepNumber_->setValue(selectedStep?shape->number:canvas_->nextStepNumber());syncingStep_=false;
+ }
  textRow_->setVisible(tool!=Tool::Crop&&(tool==Tool::Text||kind(editor::Shape::Kind::Text)));
  cropRow_->setVisible(tool==Tool::Crop);
  blurWarning_->setVisible(tool!=Tool::Crop&&(tool==Tool::Blur||kind(editor::Shape::Kind::Blur)));
@@ -530,22 +600,27 @@ void EditorWindow::refresh(){
  hint_->setVisible(!hint_->text().isEmpty());
  {
   // The panel names the tool (or the selected mark) and how to use it.
-  static const QStringList titles{"Select","Redact","Blur","Crop","Arrow","Rectangle","Highlight","Text"};
-  static const QStringList help{"Click a mark to select it.","Drag over private information to cover it with a redaction, an opaque black box.","Drag over an area to blur it.","Drag to choose the area to keep, or set it below, then apply the crop.","Drag from the tail to the point of the arrow.","Drag to frame a detail with an outline.","Drag across text to highlight it; the box snaps to the lines. Click a word, double-click a line, Shift-click to add a word. Hold Alt for a free box.","Click the image to place a label. Enter finishes the text."};
+  static const QStringList titles{"Select","Redact","Blur","Crop","Arrow","Rectangle","Highlight","Text","Step number","Pen","Ellipse","Line"};
+  static const QStringList help{"Click a mark to select it.","Drag over private information to cover it with a redaction, an opaque black box.","Drag over an area to blur it.","Drag to choose the area to keep, or set it below, then apply the crop.","Drag from the tail to the point of the arrow.","Drag to frame a detail with an outline.","Drag across text to highlight it; the box snaps to the lines. Click a word, double-click a line, Shift-click to add a word. Hold Alt for a free box.","Click the image to place a label. Enter finishes the text.",
+   "Click to drop the next numbered step. Numbers count up; set the next one below.","Drag to draw freehand.","Drag to circle a detail with an outline. Hold Shift for a circle.","Drag to draw a straight line. Hold Shift to keep it at 45°."};
   int index=int(tool);QString title=titles.value(index);
+  if(tool==Tool::Blur&&pixelate)title=QStringLiteral("Pixelate");
   // A selected mark names itself, whichever tool picked it up.
-  if(shape&&tool!=Tool::Crop){const QHash<int,QString> kinds{{int(editor::Shape::Kind::Redact),"Redaction"},{int(editor::Shape::Kind::Blur),"Blur"},{int(editor::Shape::Kind::Arrow),"Arrow"},{int(editor::Shape::Kind::Rectangle),"Rectangle"},{int(editor::Shape::Kind::Highlight),"Highlight"},{int(editor::Shape::Kind::Text),"Text"}};title=kinds.value(int(shape->kind),"Mark");}
-  toolTitle_->setText(title);toolTitle_->setAccessibleName(title+(shape&&tool!=Tool::Crop?" selected":" tool"));toolHelp_->setText(shape&&tool!=Tool::Crop?QStringLiteral("Drag to move it."):help.value(index));
+  if(shape&&tool!=Tool::Crop){const QHash<int,QString> kinds{{int(editor::Shape::Kind::Redact),"Redaction"},{int(editor::Shape::Kind::Blur),"Blur"},{int(editor::Shape::Kind::Arrow),"Arrow"},{int(editor::Shape::Kind::Rectangle),"Rectangle"},{int(editor::Shape::Kind::Highlight),"Highlight"},{int(editor::Shape::Kind::Text),"Text"},
+   {int(Kind::Step),"Step"},{int(Kind::Pen),"Pen stroke"},{int(Kind::Ellipse),"Ellipse"},{int(Kind::Line),"Line"}};title=kinds.value(int(shape->kind),"Mark");if(shape->kind==Kind::Blur&&shape->pixelate)title=QStringLiteral("Pixelation");}
+  toolTitle_->setText(title);toolTitle_->setAccessibleName(title+(shape&&tool!=Tool::Crop?" selected":" tool"));toolHelp_->setText(shape&&tool!=Tool::Crop?QStringLiteral("Drag to move it."):tool==Tool::Blur&&pixelate?QStringLiteral("Drag over an area to pixelate it."):help.value(index));
   const auto bounds=doc_.crop();documentInfo_->setText(QString("Document %1 × %2 px · %3").arg(bounds.width()).arg(bounds.height()).arg(doc_.modified()?"Edited":"Unchanged"));
  }
  {
   static const QHash<int,QPair<const char*,const char*>> placing{{int(Tool::Redact),{"Place redaction","redact"}},{int(Tool::Blur),{"Place blur","blur"}},{int(Tool::Arrow),{"Place arrow","annotate-arrow"}},
-   {int(Tool::Rectangle),{"Place rectangle","rectangle"}},{int(Tool::Highlight),{"Place highlight","highlight"}},{int(Tool::Text),{"Place text label","text"}}};
-  const auto entry=placing.value(int(tool));placeRow_->setVisible(entry.first);
+   {int(Tool::Rectangle),{"Place rectangle","rectangle"}},{int(Tool::Highlight),{"Place highlight","highlight"}},{int(Tool::Text),{"Place text label","text"}},
+   {int(Tool::Step),{"Place step","step"}},{int(Tool::Pen),{"Place pen stroke","pen"}},{int(Tool::Ellipse),{"Place ellipse","ellipse"}},{int(Tool::Line),{"Place line","line"}}};
+  auto entry=placing.value(int(tool));placeRow_->setVisible(entry.first);
+  if(entry.first&&tool==Tool::Blur&&pixelate)entry={"Place pixelation","blur"};
   if(entry.first){place_->setText(QString::fromUtf8(entry.first));place_->setIcon(Ui::icon(entry.second));place_->setToolTip(QString("%1 in the middle of the image, without the pointer (Insert)").arg(QString::fromUtf8(entry.first)));}
  }
  syncGeometry();syncSaved();remove_->setVisible(shape&&tool!=Tool::Crop);
- bool options=false;for(auto* row:{colorRow_,widthRow_,blurRow_,textRow_,cropRow_,geometryRow_})options=options||!row->isHidden();
+ bool options=false;for(auto* row:{colorRow_,widthRow_,blurRow_,textRow_,cropRow_,geometryRow_,stepRow_})options=options||!row->isHidden();
  optionsRule_->setVisible(options);
  undo_->setEnabled(!busy_&&doc_.canUndo());redo_->setEnabled(!busy_&&doc_.canRedo());
  // Cancel asks about discarding edits once there are any; it says so.
@@ -563,19 +638,20 @@ void EditorWindow::syncGeometry(){
  const auto geometry=canvas_->selectionGeometry();geometryRow_->setVisible(geometry.has_value());
  if(!geometry)return;
  const auto* shape=canvas_->cropPending()?nullptr:doc_.find(canvas_->selected());
- const bool arrow=shape&&shape->kind==editor::Shape::Kind::Arrow,text=shape&&shape->kind==editor::Shape::Kind::Text;
+ const bool arrow=shape&&shape->twoPoint(),line=shape&&shape->kind==editor::Shape::Kind::Line,text=shape&&shape->kind==editor::Shape::Kind::Text,step=shape&&shape->kind==editor::Shape::Kind::Step;
  geometryTitle_->setVisible(canvas_->cropPending());geometryDisclosure_->setVisible(!canvas_->cropPending());
  geometryFields_->setVisible(canvas_->cropPending()||geometryDisclosure_->isChecked());
  static const QStringList boxLabels{"X","Y","Width","Height"},arrowLabels{"Tail X","Tail Y","Head X","Head Y"};
  static const QStringList boxNames{"X position","Y position","Width","Height"},arrowNames{"Arrow tail X","Arrow tail Y","Arrow head X","Arrow head Y"};
+ static const QStringList lineLabels{"Start X","Start Y","End X","End Y"},lineNames{"Line start X","Line start Y","Line end X","Line end Y"},stepLabels{"X","Y","Size","Size"},stepNames{"X position","Y position","Diameter","Diameter"};
  const auto r=*geometry;const int values[4]={r.x(),r.y(),arrow?r.x()+r.width():r.width(),arrow?r.y()+r.height():r.height()};
  const auto image=doc_.size();const int extent=std::max(image.width(),image.height());
  syncingGeometry_=true;
  for(int i=0;i<4;++i){
   auto* box=geometry_[i];
-  geometryLabels_[i]->setText((arrow?arrowLabels:boxLabels)[i]);box->setAccessibleName((arrow?arrowNames:boxNames)[i]+" in image pixels");
-  // Text follows its size control; only its position is edited here.
-  const bool shown=i<2||!text;geometryLabels_[i]->setVisible(shown);box->setVisible(shown);
+  geometryLabels_[i]->setText((line?lineLabels:arrow?arrowLabels:step?stepLabels:boxLabels)[i]);box->setAccessibleName((line?lineNames:arrow?arrowNames:step?stepNames:boxNames)[i]+" in image pixels");
+  // Text follows its size control; only its position is edited here. A step's one size is its diameter.
+  const bool shown=(i<2||!text)&&!(step&&i==3);geometryLabels_[i]->setVisible(shown);box->setVisible(shown);
   // The range always holds the true value, even for marks partly off the image.
   const int low=(i<2||arrow)?-extent:1,high=2*extent;
   box->setRange(std::min(low,values[i]),std::max(high,values[i]));
@@ -587,8 +663,8 @@ void EditorWindow::syncGeometry(){
 void EditorWindow::applyGeometry(){
  if(syncingGeometry_||busy_)return;
  const auto* shape=canvas_->cropPending()?nullptr:doc_.find(canvas_->selected());
- const bool arrow=shape&&shape->kind==editor::Shape::Kind::Arrow;
- const int x=geometry_[0]->value(),y=geometry_[1]->value(),a=geometry_[2]->value(),b=geometry_[3]->value();
+ const bool arrow=shape&&shape->twoPoint();const bool step=shape&&shape->kind==editor::Shape::Kind::Step;
+ const int x=geometry_[0]->value(),y=geometry_[1]->value(),a=geometry_[2]->value(),b=step?a:geometry_[3]->value();
  // A refused value (empty, or off the image) snaps back to the current one.
  if(!canvas_->setSelectionGeometry(arrow?QRect(x,y,a-x,b-y):QRect(x,y,a,b)))syncGeometry();
 }
@@ -602,7 +678,7 @@ QString EditorWindow::pngCopyPath(const QString& path){
  return path.endsWith(".png",Qt::CaseInsensitive)?path:path+".png";
 }
 bool EditorWindow::saveCopy(){
- if(busy_||savingCopy_||chooser_->isOpen())return false;
+ if(busy_||savingCopy_||copying_||chooser_->isOpen())return false;
  finishPendingEdits();
  auto folder=QStandardPaths::writableLocation(QStandardPaths::PicturesLocation);if(folder.isEmpty())folder=QDir::homePath();
  chooseCopy(QDir(folder).filePath("put.gd-edit-"+QDateTime::currentDateTime().toString("yyyy-MM-dd-HH-mm-ss")+".png"));
@@ -634,7 +710,7 @@ void EditorWindow::setSavingCopy(bool saving){
  placeDestination();
 }
 bool EditorWindow::writeCopy(const QString& path,CopyDone done){
- if(busy_||savingCopy_)return false;
+ if(busy_||savingCopy_||copying_)return false;
  finishPendingEdits();
  const auto target=pngCopyPath(path);const auto generation=doc_.generation();
  // Qt's image/list copies detach on mutation; no live document reaches the worker.
@@ -656,6 +732,44 @@ bool EditorWindow::writeCopy(const QString& path,CopyDone done){
  });
  connect(thread,&QThread::finished,thread,&QObject::deleteLater);
  thread->start();return true;
+}
+
+bool EditorWindow::requestCopy(){
+ if(busy_||savingCopy_||copying_)return false;
+ emit copyRequested();return true;
+}
+bool EditorWindow::exportForCopy(ExportDone done,std::function<QString(const QByteArray&)> stage){
+ if(busy_||savingCopy_||copying_)return false;
+ finishPendingEdits();
+ // The same snapshot and render as Save a copy, off the GUI thread.
+ auto snapshot=doc_.snapshotForExport();
+ copying_=true;lastCopy_={{"status","copying"}};
+ for(auto* button:{save_,saveInstead_,chooseAnother_,upload_,cancel_,copyImage_})button->setEnabled(false);
+ copyImage_->setMinimumWidth(copyImage_->sizeHint().width());copyImage_->setText("Copying…");
+ struct Result {QByteArray png;QSize size;QString staged;};
+ auto result=std::make_shared<Result>();
+ auto* thread=QThread::create([snapshot=std::move(snapshot),result,stage=std::move(stage)]{result->png=snapshot.exportPng();result->size=snapshot.crop().size();if(stage&&!result->png.isEmpty())result->staged=stage(result->png);});
+ // The window joins this worker before it goes, so `stage` never outlives the
+ // host's staging; a callback for a closed window is never made.
+ copyThread_=thread;
+ connect(thread,&QThread::finished,this,[result,done=std::move(done)]{if(done)done(result->png,result->size,result->staged);});
+ connect(thread,&QThread::finished,thread,&QObject::deleteLater);
+ thread->start();return true;
+}
+void EditorWindow::showCopied(){
+ copying_=false;lastCopy_={{"status","copied"}};
+ for(auto* button:{save_,saveInstead_,chooseAnother_,upload_,cancel_,copyImage_})button->setEnabled(!busy_);
+ // Brief confirmation on the button itself; its width holds still.
+ copyImage_->setText("Image copied");copyImage_->setAccessibleName("Image copied");
+ QAccessibleEvent event(copyImage_,QAccessible::NameChanged);QAccessible::updateAccessibility(&event);
+ const auto generation=++copyFeedback_;
+ QTimer::singleShot(1600,copyImage_,[this,generation]{if(generation!=copyFeedback_||copying_)return;copyImage_->setText("Copy image");copyImage_->setAccessibleName("Copy image");});
+}
+void EditorWindow::showCopyFailed(const QString& reason){
+ copying_=false;lastCopy_={{"status","failed"},{"reason",reason}};++copyFeedback_;
+ for(auto* button:{save_,saveInstead_,chooseAnother_,upload_,cancel_,copyImage_})button->setEnabled(!busy_);
+ copyImage_->setText("Copy image");copyImage_->setAccessibleName("Copy image");
+ setFailure("Couldn't copy the image: "+reason);
 }
 
 void EditorWindow::showSaved(const QString& path){
@@ -762,7 +876,8 @@ QJsonObject EditorWindow::viewState() const {
   {"geometry",rectValue(canvas_->selectionGeometry())},{"cropPending",canvas_->cropPending()},{"selection",canvas_->selectionSummary()},
   {"zoomPercent",std::round(canvas_->zoom()*1000)/10},{"fitted",canvas_->fitted()},{"visibleRect",rectValue(canvas_->visibleImageRect())},
   {"propertiesWidth",side_->width()},{"canvasSize",QJsonArray{canvas_->width(),canvas_->height()}},{"editingText",canvas_->editingText()},{"textOutsideImage",canvas_->textOutsideImage()},{"busy",busy_},{"savingCopy",savingCopy_},
-  {"style",QJsonObject{{"color",style.color.name()},{"width",style.width},{"strength",style.strength},{"fontPixels",style.fontPixels},{"font",style.fontFamily}}},
+  {"style",QJsonObject{{"color",style.color.name()},{"width",style.width},{"strength",style.strength},{"blurStyle",style.pixelate?"pixelate":"blur"},{"fontPixels",style.fontPixels},{"font",style.fontFamily},{"stepSize",style.stepPixels}}},
+  {"nextStepNumber",canvas_->nextStepNumber()},{"copying",copying_},{"lastCopy",lastCopy_.isEmpty()?QJsonValue():QJsonValue(lastCopy_)},
   {"message",message.isEmpty()?QJsonValue():QJsonValue(message)},{"lastSave",save.isEmpty()?QJsonValue():QJsonValue(save)},
   {"saveFeedbackVisible",saveFeedbackVisible_&&!busy_&&!savingCopy_},{"saveDetailsOpen",saveError_->fullTextPopup()&&saveError_->fullTextPopup()->isVisible()},
   {"lastShowInFolder",lastShowInFolder_.isEmpty()?QJsonValue():QJsonValue(lastShowInFolder_)},{"lastCopiedPath",lastCopiedPath_.isEmpty()?QJsonValue():QJsonValue(lastCopiedPath_)},
@@ -796,7 +911,7 @@ QJsonObject EditorWindow::viewCommand(const QJsonObject& params,QString& code,QS
   if(!only({}))return fail("invalid_request","geometryDetails has no other parameters");
   geometryDisclosure_->toggle();
  }else if(action=="tool"){
-  if(!only({"tool"})||!toolNames.contains(params["tool"].toString()))return fail("invalid_request","tool must be select, redact, blur, crop, arrow, rectangle, highlight or text");
+  if(!only({"tool"})||!toolNames.contains(params["tool"].toString()))return fail("invalid_request","tool must be select, redact, blur, crop, arrow, line, rectangle, ellipse, pen, highlight, text or step");
   selectTool(Tool(toolNames.indexOf(params["tool"].toString())));
  }else if(action=="select"){
   if(!only({"shapeId"})||!params.contains("shapeId"))return fail("invalid_request","select needs shapeId, or null to clear the selection");
@@ -817,8 +932,17 @@ QJsonObject EditorWindow::viewCommand(const QJsonObject& params,QString& code,QS
   if(!only({}))return fail("invalid_request","place has no other parameters");
   // Text needs typing; agents add labels with editor.apply.
   const auto tool=canvas_->tool();
-  if(tool==Tool::Select||tool==Tool::Crop||tool==Tool::Text)return fail("invalid_request","Choose redact, blur, arrow, rectangle or highlight first; add text with editor.apply");
+  if(tool==Tool::Select||tool==Tool::Crop||tool==Tool::Text)return fail("invalid_request","Choose redact, blur, arrow, line, rectangle, ellipse, pen, highlight or step first; add text with editor.apply");
   canvas_->placeMark();
+ }else if(action=="blurStyle"){
+  // The Blur / Pixelate choice, as its buttons set it (and restyle a selected blur).
+  if(!only({"style"})||!QStringList{"blur","pixelate"}.contains(params["style"].toString()))return fail("invalid_request","blurStyle needs style blur or pixelate");
+  (params["style"]=="pixelate"?pixelateStyle_:blurStyle_)->click();
+ }else if(action=="stepNumber"){
+  // The Next number field (or a selected step's Number), as typed there.
+  int number=0;if(!only({"number"})||!integerIn(params["number"],1,editor::maximumStepNumber,number))return fail("invalid_request","stepNumber needs number from 1 to 999");
+  if(stepRow_->isHidden())return fail("invalid_request","Choose the Step tool or select a step first");
+  stepNumber_->setValue(number);
  }else if(action=="geometry"){
   const auto r=params["rect"].toArray();int v[4]={};
   if(!only({"rect"})||!params["rect"].isArray()||r.size()!=4)return fail("invalid_request","geometry needs rect [x, y, width, height]");
@@ -857,12 +981,12 @@ QJsonObject EditorWindow::viewCommand(const QJsonObject& params,QString& code,QS
   // As Cancel / Discard… does: asks first when there are edits.
   if(!only({}))return fail("invalid_request","discard has no other parameters");
   requestCancel();if(busy_)return viewState();
- }else return fail("invalid_request","action must be inspect, tool, select, removeMark, selectNext, selectPrevious, selectAffectedText, place, geometry, applyCrop, cancelCrop, zoom, fit, actualSize, pan, propertiesWidth, keyboardHelp, geometryDetails, showSavedCopy, copySavedPath, saveDetails, dismissSavedCopy, discard, keepEditing or confirmDiscard");
+ }else return fail("invalid_request","action must be inspect, tool, select, removeMark, selectNext, selectPrevious, selectAffectedText, place, geometry, applyCrop, cancelCrop, zoom, fit, actualSize, pan, propertiesWidth, blurStyle, stepNumber, keyboardHelp, geometryDetails, showSavedCopy, copySavedPath, saveDetails, dismissSavedCopy, discard, keepEditing or confirmDiscard");
  refresh();return viewState();
 }
 
 void EditorWindow::requestCancel(){
- if(busy_||savingCopy_)return;
+ if(busy_||savingCopy_||copying_)return;
  if(discard_){discard_->raise();discard_->activateWindow();return;}
  if(!doc_.modified()){emit cancelRequested();return;}
  const auto text=QString("Discard your edits and close the editor?\nNothing has been uploaded. Your marks and crop will be lost%1.").arg(lastSave_["status"]=="saved"?"; copies you saved stay":"");
@@ -886,4 +1010,5 @@ void EditorWindow::closeEvent(QCloseEvent* event){
 void EditorWindow::showEvent(QShowEvent* event){
  QWidget::showEvent(event);if(!shown_){shown_=true;placeProperties();canvas_->fit();canvas_->setFocus();}
 }
+EditorWindow::~EditorWindow(){if(copyThread_)copyThread_->wait();}
 }

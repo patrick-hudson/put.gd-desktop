@@ -458,6 +458,15 @@ void OperationService::startEditing(Operation op,std::shared_ptr<std::atomic_boo
  auto image=std::make_shared<QImage>(payload.kind=="image"?std::move(payload.image):QImage());
  const auto file=payload.kind=="files"?payload.files.first():QString();payload={};
  auto edited=std::make_shared<EditorResult>();
+ // Copy image: the editor's checked PNG goes to the clipboard through the
+ // native adapter as an explicit copy. It is not an artifact, a history item
+ // or an upload input, and nothing of it is kept here after delivery.
+ session->setCopyHandler([owner=QPointer<OperationService>(this),id=op.id](QByteArray png,std::function<void(Error)> done){
+  QMetaObject::invokeMethod(QCoreApplication::instance(),[owner,id,png=std::move(png),done=std::move(done)]() mutable {
+   if(!owner||owner->stopping_){done({"editor_closed","The editor closed before the image was copied",{}});return;}
+   owner->copyEditedImage(id,std::move(png),std::move(done));
+  },Qt::QueuedConnection);
+ });
  background([path,op](Error& e){HistoryStore store(path);e=store.saveOperation(op);return QJsonObject{};},[=,this](Error e,QJsonObject) mutable {
   if(e){op.error=e;op.state="failed";finish(op);return;}
   observe(op.publicJson());emit changed(op.id);emit observationsChanged();
@@ -496,6 +505,19 @@ void OperationService::startEditing(Operation op,std::shared_ptr<std::atomic_boo
     });
   });
  });
+}
+void OperationService::copyEditedImage(const QString& id,QByteArray png,std::function<void(Error)> done) {
+ if(editingId_!=id){done({"editor_closed","The editor closed before the image was copied",{}});return;}
+ // An explicit copy supersedes pending automatic link copies, like history.copyImage.
+ const auto ticket=invalidateCopyEligibility();const auto bytes=png.size();
+#ifdef __GLIBC__
+ heapReclamationPending_=true;
+#endif
+ CopyPayload payload;payload.kind="image";payload.encodedImage=std::move(png);
+ deliverCopy(payload,[id,bytes,done=std::move(done)](Error error){
+  if(!error)logging::info(logOperation(),"Edited image copied",{{"operationId",id},{"bytes",double(bytes)}});
+  done(error);
+ },[this,ticket]{return ticket==invocation_;});
 }
 // Custom colors picked in the editor persist as a settings preference. A
 // conflicting concurrent save simply loses this update; colors are a convenience.
@@ -1131,8 +1153,8 @@ QJsonObject OperationService::capabilities() const {
  return {{"source",source_.capabilities()},{"providers",providers_.capabilities()},
   {"editor",QJsonObject{{"available",editor},{"admissionPixels",double(EditorJob::admissionPixels)},{"open",!editingId_.isEmpty()},
    {"sources",QJsonArray{"region","window","desktop","clipboard","file"}},{"fileFormats",QJsonArray{"png","jpeg"}},{"output","png"},
-   {"shapes",QJsonArray{"redact","blur","arrow","rectangle","text","highlight"}},
-   {"commands",QJsonArray{"inspect","apply","preview","saveCopy","fileDialog","view","submit","cancel","raise"}}}},
+   {"shapes",QJsonArray{"redact","blur","arrow","rectangle","text","highlight","step","pen","ellipse","line"}},{"blurStyles",QJsonArray{"blur","pixelate"}},
+   {"commands",QJsonArray{"inspect","apply","preview","saveCopy","copy","fileDialog","view","submit","cancel","raise"}}}},
   {"recording",recording_->capabilities()}};
 }
 QJsonObject OperationService::diagnostics() const {

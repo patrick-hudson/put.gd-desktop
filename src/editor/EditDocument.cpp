@@ -32,6 +32,13 @@ void boxLine(QRgb* line,int count,qsizetype step,int radius,std::vector<QRgb>& s
  }
 }
 QColor contrast(const QColor& color){return color.lightnessF()>0.6?QColor(20,20,20):QColor(255,255,255);}
+// A step's label and rim: white while it keeps the 3:1 large-text contrast on
+// the disc (red, blue, black), else near-black (yellow, orange, green, white).
+QColor stepInk(const QColor& color){
+ auto channel=[](double c){return c<=0.04045?c/12.92:std::pow((c+0.055)/1.055,2.4);};
+ const double luminance=0.2126*channel(color.redF())+0.7152*channel(color.greenF())+0.0722*channel(color.blueF());
+ return 1.05/(luminance+0.05)>=3.0?QColor(255,255,255):QColor(20,20,20);
+}
 QPainterPath textPath(const Shape& shape){
  const auto font=textFont(shape.fontFamily,shape.fontPixels);QPainterPath path;
  path.addText(QPointF(shape.rect.left(),shape.rect.top()+QFontMetrics(font).ascent()),font,shape.text);return path;
@@ -40,9 +47,79 @@ QPainterPath textPath(const Shape& shape){
 
 QRect Shape::bounds() const {
  if(kind==Kind::Arrow){const int pad=std::max(12,width*5);return normalizedBox(from,to).adjusted(-pad,-pad,pad,pad);}
- if(kind==Kind::Rectangle){const int pad=width;return rect.adjusted(-pad,-pad,pad,pad);}
+ if(kind==Kind::Line){const int pad=width;return normalizedBox(from,to).adjusted(-pad,-pad,pad,pad);}
+ if(kind==Kind::Pen){const int pad=width;return box().adjusted(-pad,-pad,pad,pad);}
+ if(kind==Kind::Rectangle||kind==Kind::Ellipse){const int pad=width;return rect.adjusted(-pad,-pad,pad,pad);}
+ if(kind==Kind::Step){const int pad=std::max(2,rect.width()/12);return rect.adjusted(-pad,-pad,pad,pad);}
  if(kind==Kind::Text){const int pad=std::max(2,fontPixels/6);return rect.adjusted(-pad,-pad,pad,pad);}
  return rect;
+}
+QRect Shape::box() const {
+ if(twoPoint())return normalizedBox(from,to);
+ if(kind!=Kind::Pen)return rect;
+ if(points.isEmpty())return {};
+ int left=points.first().x(),right=left,top=points.first().y(),bottom=top;
+ for(const auto& p:points){left=std::min(left,p.x());right=std::max(right,p.x());top=std::min(top,p.y());bottom=std::max(bottom,p.y());}
+ return QRect(QPoint(left,top),QPoint(right,bottom));
+}
+
+QPainterPath stepLabelPath(const Shape& shape){
+ const auto label=QString::number(shape.number);const int d=shape.rect.width();
+ // Three digits get a smaller face so they stay inside the circle.
+ const auto font=textFont({},std::max(4,int(std::lround(d*(label.size()>2?0.40:label.size()>1?0.48:0.56)))));
+ QPainterPath path;path.addText(QPointF(0,0),font,label);
+ const auto ink=path.boundingRect();
+ return path.translated(QRectF(shape.rect).center()-ink.center());
+}
+QPainterPath strokePath(const QList<QPoint>& points){
+ QPainterPath path;if(points.isEmpty())return path;
+ path.moveTo(points.first());
+ if(points.size()==1){path.lineTo(QPointF(points.first())+QPointF(0.01,0));return path;}
+ // Quadratic segments through the midpoints keep corners soft without
+ // overshooting the points the user drew.
+ for(qsizetype i=1;i+1<points.size();++i)path.quadTo(points[i],(QPointF(points[i])+QPointF(points[i+1]))/2);
+ path.lineTo(points.last());return path;
+}
+namespace {
+double segmentDistance(const QPointF& p,const QPointF& a,const QPointF& b){
+ const QPointF ab=b-a;const double length=QPointF::dotProduct(ab,ab);
+ if(length<=0)return QLineF(p,a).length();
+ const double t=std::clamp(QPointF::dotProduct(p-a,ab)/length,0.0,1.0);
+ return QLineF(p,a+t*ab).length();
+}
+void simplify(const std::vector<QPointF>& points,size_t first,size_t last,double tolerance,std::vector<bool>& keep){
+ double worst=0;size_t index=first;
+ for(size_t i=first+1;i<last;++i){const double d=segmentDistance(points[i],points[first],points[last]);if(d>worst){worst=d;index=i;}}
+ if(worst>tolerance){keep[index]=true;simplify(points,first,index,tolerance,keep);simplify(points,index,last,tolerance,keep);}
+}
+}
+QList<QPoint> limitStroke(QList<QPoint> points){
+ // Thin the interior evenly rather than cutting the end: a long live drag
+ // keeps following the pointer, and both ends stay where they were drawn.
+ while(points.size()>maximumPenPoints){QList<QPoint> fewer;fewer.reserve(points.size()/2+2);for(qsizetype i=0;i<points.size();++i)if(i%2==0||i==points.size()-1)fewer.append(points[i]);points=std::move(fewer);}
+ return points;
+}
+QList<QPoint> smoothStroke(const QList<QPoint>& raw){
+ if(raw.size()<3)return raw;
+ // A five-point moving average (shorter at the ends) evens out hand jitter;
+ // the first and last points stay where the stroke began and ended.
+ std::vector<QPointF> smooth(size_t(raw.size()));
+ for(qsizetype i=0;i<raw.size();++i){
+  const qsizetype reach=std::min<qsizetype>({2,i,raw.size()-1-i});QPointF sum;
+  for(qsizetype j=i-reach;j<=i+reach;++j)sum+=QPointF(raw[j]);
+  smooth[size_t(i)]=sum/double(2*reach+1);
+ }
+ std::vector<bool> keep(smooth.size(),false);keep.front()=keep.back()=true;
+ simplify(smooth,0,smooth.size()-1,0.5,keep);
+ QList<QPoint> result;
+ for(size_t i=0;i<smooth.size();++i)if(keep[i]){const QPoint p(int(std::lround(smooth[i].x())),int(std::lround(smooth[i].y())));if(result.isEmpty()||result.last()!=p)result.append(p);}
+ return limitStroke(std::move(result));
+}
+QList<QPoint> fitStroke(const QList<QPoint>& points,const QRect& from,const QRect& box){
+ QList<QPoint> result;result.reserve(points.size());
+ const double sx=from.width()>1?double(box.width()-1)/(from.width()-1):1,sy=from.height()>1?double(box.height()-1)/(from.height()-1):1;
+ for(const auto& p:points)result.append(QPoint(box.left()+int(std::lround((p.x()-from.left())*sx)),box.top()+int(std::lround((p.y()-from.top())*sy))));
+ return result;
 }
 
 EditDocument::EditDocument(const QImage& source){
@@ -67,7 +144,7 @@ QRectF textOutputBounds(const Shape& shape){
 }
 qint64 EditDocument::bytesOf(const State& state){
  qint64 total=qint64(sizeof(State))+qint64(state.shapes.size())*qint64(sizeof(Shape));
- for(const auto& shape:state.shapes)total+=qint64(shape.text.size()+shape.fontFamily.size())*qint64(sizeof(QChar));
+ for(const auto& shape:state.shapes)total+=qint64(shape.text.size()+shape.fontFamily.size())*qint64(sizeof(QChar))+qint64(shape.points.size())*qint64(sizeof(QPoint));
  return total;
 }
 
@@ -84,12 +161,14 @@ quint64 EditDocument::add(Shape shape){
  shape.id=nextId_++;
  shape.text.truncate(maximumTextCharacters);
  shape.strength=std::clamp(shape.strength,minimumBlur,maximumBlur);
+ shape.number=std::clamp(shape.number,1,maximumStepNumber);
+ shape.points=limitStroke(std::move(shape.points));
  auto before=state_;state_.shapes.append(shape);++generation_;if(!gesture_)push(std::move(before));
  return shape.id;
 }
 bool EditDocument::replace(const Shape& changed){
  for(qsizetype i=0;i<state_.shapes.size();++i)if(state_.shapes.at(i).id==changed.id){
-  auto next=changed;next.text.truncate(maximumTextCharacters);next.strength=std::clamp(next.strength,minimumBlur,maximumBlur);
+  auto next=changed;next.text.truncate(maximumTextCharacters);next.strength=std::clamp(next.strength,minimumBlur,maximumBlur);next.number=std::clamp(next.number,1,maximumStepNumber);next.points=limitStroke(std::move(next.points));
   if(state_.shapes.at(i)==next)return false;
   // Copy first, then write through the list: it detaches from the snapshot.
   // (A reference taken before the copy wrote into both, losing the step.)
@@ -134,6 +213,50 @@ void EditDocument::blurInPlace(QImage& image,const QRect& requested,int radius){
  }
 }
 
+void EditDocument::pixelateInPlace(QImage& image,const QRect& requested,const QPoint& origin,int block){
+ const auto area=clampRect(requested,image.rect());
+ if(area.isEmpty()||block<1||image.depth()!=32)return;
+ // Blocks sit on the shape's own grid, so a crop never shifts them; each
+ // averages only the pixels it covers inside the area, as blur reads.
+ auto floorDiv=[](int a,int b){return a>=0?a/b:-((-a+b-1)/b);};
+ const int firstColumn=floorDiv(area.left()-origin.x(),block),lastColumn=floorDiv(area.right()-origin.x(),block);
+ const int columns=lastColumn-firstColumn+1;
+ std::vector<qint64> sums(size_t(columns)*4);std::vector<QRgb> colors(static_cast<size_t>(columns));
+ for(int rowTop=origin.y()+floorDiv(area.top()-origin.y(),block)*block;rowTop<=area.bottom();rowTop+=block){
+  const int top=std::max(rowTop,area.top()),bottom=std::min(rowTop+block-1,area.bottom());
+  std::fill(sums.begin(),sums.end(),0);
+  for(int y=top;y<=bottom;++y){const auto* line=reinterpret_cast<const QRgb*>(image.constScanLine(y));for(int x=area.left();x<=area.right();++x){const auto c=size_t(floorDiv(x-origin.x(),block)-firstColumn)*4;const auto p=line[x];sums[c]+=qAlpha(p);sums[c+1]+=qRed(p);sums[c+2]+=qGreen(p);sums[c+3]+=qBlue(p);}}
+  for(int column=0;column<columns;++column){
+   const int left=std::max(origin.x()+(firstColumn+column)*block,area.left()),right=std::min(origin.x()+(firstColumn+column+1)*block-1,area.right());
+   const qint64 count=qint64(right-left+1)*(bottom-top+1);const auto c=size_t(column)*4;
+   colors[size_t(column)]=count>0?qRgba(int(sums[c+1]/count),int(sums[c+2]/count),int(sums[c+3]/count),int(sums[c]/count)):0;
+  }
+  for(int y=top;y<=bottom;++y){auto* line=reinterpret_cast<QRgb*>(image.scanLine(y));for(int x=area.left();x<=area.right();++x)line[x]=colors[size_t(floorDiv(x-origin.x(),block)-firstColumn)];}
+ }
+}
+
+void EditDocument::pixelatePreview(QImage& target,const QRect& window,const Shape& shape) const {
+ const auto full=clampRect(shape.rect,state_.crop),area=full.intersected(window);if(area.isEmpty()||target.isNull())return;
+ // Block colours come from full-resolution pixels (the redacted base): every
+ // whole block the window touches, so the preview shows the export's blocks
+ // at any zoom, even where the window cuts a block.
+ const int b=std::max(1,shape.strength);const auto origin=shape.rect.topLeft();
+ auto down=[b](int v,int o){const int d=v-o;return o+(d>=0?d/b:-((-d+b-1)/b))*b;};
+ const QRect grown=QRect(QPoint(down(area.left(),origin.x()),down(area.top(),origin.y())),QPoint(down(area.right(),origin.x())+b-1,down(area.bottom(),origin.y())+b-1)).intersected(full);
+ QImage blocks(grown.size(),base_.format());if(blocks.isNull())return;
+ for(int y=0;y<grown.height();++y)std::memcpy(blocks.scanLine(y),base_.constScanLine(grown.top()+y)+qsizetype(grown.left())*qsizetype(sizeof(QRgb)),size_t(grown.width())*sizeof(QRgb));
+ {QPainter painter(&blocks);painter.setCompositionMode(QPainter::CompositionMode_Source);for(const auto& other:state_.shapes)if(other.kind==Shape::Kind::Redact){const auto overlap=other.rect.intersected(grown);if(!overlap.isEmpty())painter.fillRect(overlap.translated(-grown.topLeft()),Qt::black);}}
+ pixelateInPlace(blocks,blocks.rect(),origin-grown.topLeft(),b);
+ // Sample the block raster onto the preview's pixels.
+ const double sx=double(target.width())/window.width(),sy=double(target.height())/window.height();
+ const QRect mapped=QRectF((area.left()-window.left())*sx,(area.top()-window.top())*sy,area.width()*sx,area.height()*sy).toAlignedRect().intersected(target.rect());
+ for(int ty=mapped.top();ty<=mapped.bottom();++ty){
+  const int iy=std::clamp(int(std::floor(window.top()+(ty+0.5)/sy)),area.top(),area.bottom())-grown.top();
+  auto* out=reinterpret_cast<QRgb*>(target.scanLine(ty));const auto* in=reinterpret_cast<const QRgb*>(blocks.constScanLine(iy));
+  for(int tx=mapped.left();tx<=mapped.right();++tx)out[tx]=in[std::clamp(int(std::floor(window.left()+(tx+0.5)/sx)),area.left(),area.right())-grown.left()];
+ }
+}
+
 void EditDocument::applyRedactions(QImage& image,const QRect& within) const {
  // Integer source-pixel rectangles, painted with Source composition and no
  // antialiasing, replace every covered value with opaque black.
@@ -165,6 +288,28 @@ void EditDocument::paintAnnotation(QPainter& painter,const Shape& shape,const QP
   if(line.length()>head)painter.drawLine(QLineF(shape.from,base));
   painter.setPen(Qt::NoPen);painter.setBrush(shape.color);painter.drawPolygon(QPolygonF{tip,left,right});break;
  }
+ case Shape::Kind::Ellipse:{
+  QPen pen(shape.color,shape.width);painter.setPen(pen);painter.setBrush(Qt::NoBrush);
+  painter.drawEllipse(QRectF(shape.rect).adjusted(shape.width/2.0,shape.width/2.0,-shape.width/2.0,-shape.width/2.0));break;
+ }
+ case Shape::Kind::Line:{
+  if(shape.from==shape.to)break;
+  painter.setPen(QPen(shape.color,shape.width,Qt::SolidLine,Qt::RoundCap,Qt::RoundJoin));painter.drawLine(QLineF(shape.from,shape.to));break;
+ }
+ case Shape::Kind::Pen:{
+  if(shape.points.isEmpty())break;
+  painter.setPen(QPen(shape.color,shape.width,Qt::SolidLine,Qt::RoundCap,Qt::RoundJoin));painter.setBrush(Qt::NoBrush);painter.drawPath(strokePath(shape.points));break;
+ }
+ case Shape::Kind::Step:{
+  // A filled disc in the colour with a contrasting rim and label, so it
+  // reads on light and dark content alike.
+  const QRectF disc(shape.rect);if(disc.width()<1)break;
+  const double rim=std::max(1.5,disc.width()/16.0);
+  const auto ink=stepInk(shape.color);
+  painter.setPen(QPen(ink,rim));painter.setBrush(shape.color);painter.drawEllipse(disc.adjusted(rim/2,rim/2,-rim/2,-rim/2));
+  const auto path=frozenText?*frozenText:stepLabelPath(shape);
+  painter.setPen(Qt::NoPen);painter.setBrush(ink);painter.drawPath(path);break;
+ }
  case Shape::Kind::Text:{
   if(shape.text.isEmpty())break;
   const auto path=frozenText?*frozenText:textPath(shape);
@@ -182,7 +327,7 @@ EditDocument EditDocument::snapshotForExport() const {
  const QFont defaultFont;
  if(textPathsGeneration_!=generation_||textPathsFont_!=defaultFont){
   textPaths_.clear();textPathsGeneration_=generation_;textPathsFont_=defaultFont;
-  for(const auto& shape:state_.shapes)if(shape.kind==Shape::Kind::Text)textPaths_.insert(shape.id,textPath(shape));
+  for(const auto& shape:state_.shapes){if(shape.kind==Shape::Kind::Text)textPaths_.insert(shape.id,textPath(shape));else if(shape.kind==Shape::Kind::Step)textPaths_.insert(shape.id,stepLabelPath(shape));}
  }
  // A worker keeps the GUI's resolved outlines regardless of its default font.
  auto snapshot=*this;snapshot.textPathsFrozen_=true;return snapshot;
@@ -199,7 +344,10 @@ QImage EditDocument::render() const {
  // same pixels the canvas preview reads; they tint the blurred result.
  QList<std::pair<QRect,highlight::Plan>> highlights;
  for(const auto& shape:state_.shapes)if(shape.kind==Shape::Kind::Highlight){const auto area=clampRect(shape.rect,crop).translated(-crop.topLeft());if(!area.isEmpty())highlights.append({area,highlight::plan(out,area,{},shape.color)});}
- for(const auto& shape:state_.shapes)if(shape.kind==Shape::Kind::Blur)blurInPlace(out,shape.rect.translated(-crop.topLeft()),shape.strength);
+ for(const auto& shape:state_.shapes)if(shape.kind==Shape::Kind::Blur){
+  if(shape.pixelate)pixelateInPlace(out,shape.rect.translated(-crop.topLeft()),shape.rect.topLeft()-crop.topLeft(),shape.strength);
+  else blurInPlace(out,shape.rect.translated(-crop.topLeft()),shape.strength);
+ }
  if(highlights.size()==1)highlight::apply(out,highlights.first().first,highlights.first().second);
  else if(!highlights.isEmpty()){
   // Each highlight tints the pre-highlight pixels, and the later one wins
@@ -225,6 +373,11 @@ QByteArray EditDocument::exportPng() const {
  return encoded;
 }
 
+int EditDocument::nextStepNumber() const {
+ int highest=0;for(const auto& shape:state_.shapes)if(shape.kind==Shape::Kind::Step)highest=std::max(highest,shape.number);
+ return std::min(highest+1,maximumStepNumber);
+}
+
 QList<QRect> EditDocument::redactionRects() const {
  QList<QRect> rects;for(const auto& shape:state_.shapes)if(shape.kind==Shape::Kind::Redact)rects.append(clampRect(shape.rect,base_.rect()));return rects;
 }
@@ -235,6 +388,8 @@ QRect EditDocument::highlightWindow(const Shape& shape) const {
  const auto area=clampRect(shape.rect,state_.crop);QRect window=area;
  if(area.isEmpty())return window;
  for(const auto& other:state_.shapes)if(other.kind==Shape::Kind::Blur){
+  // A pixelation reads its blocks from the base, not from this window.
+  if(other.pixelate)continue;
   const int reach=3*std::max(1,other.strength/2)+1;
   const auto overlap=clampRect(other.rect,state_.crop).intersected(area.adjusted(-reach,-reach,reach,reach));
   if(!overlap.isEmpty()&&other.rect.intersects(area))window|=overlap;
@@ -263,7 +418,10 @@ QImage EditDocument::highlightPreview(const Shape& shape,double scale) const {
   QPainter painter(&preview);painter.setCompositionMode(QPainter::CompositionMode_Source);
   for(const auto& other:state_.shapes)if(other.kind==Shape::Kind::Redact){const auto overlap=other.rect.intersected(window);if(!overlap.isEmpty())painter.fillRect(mapped(overlap),Qt::black);}
  }
- for(const auto& other:state_.shapes)if(other.kind==Shape::Kind::Blur){const auto overlap=clampRect(other.rect,state_.crop).intersected(window);if(!overlap.isEmpty())blurInPlace(preview,mapped(overlap),std::max(1,int(std::lround(other.strength*std::min(sx,sy)))));}
+ for(const auto& other:state_.shapes)if(other.kind==Shape::Kind::Blur){
+  const auto overlap=clampRect(other.rect,state_.crop).intersected(window);if(overlap.isEmpty())continue;
+  if(other.pixelate)pixelatePreview(preview,window,other);else blurInPlace(preview,mapped(overlap),std::max(1,int(std::lround(other.strength*std::min(sx,sy)))));
+ }
  highlight::apply(preview,mapped(area),plan);
  const auto cut=mapped(area).intersected(preview.rect());
  return cut==preview.rect()?preview:preview.copy(cut);
@@ -275,6 +433,7 @@ QImage EditDocument::blurPreview(const Shape& shape,double scale) const {
  constexpr double previewPixels=1.5e6;
  scale=std::min({1.0,scale,std::sqrt(previewPixels/(double(area.width())*area.height()))});
  const QSize target(std::max(1,int(std::lround(area.width()*scale))),std::max(1,int(std::lround(area.height()*scale))));
+ if(shape.pixelate){QImage preview(target,base_.format());if(preview.isNull())return {};pixelatePreview(preview,area,shape);return preview;}
  const QImage view(base_.constScanLine(area.top())+qsizetype(area.left())*qsizetype(sizeof(QRgb)),area.width(),area.height(),base_.bytesPerLine(),base_.format());
  auto preview=target==area.size()?view.copy():view.scaled(target,Qt::IgnoreAspectRatio,Qt::SmoothTransformation);
  preview=preview.convertToFormat(base_.format());

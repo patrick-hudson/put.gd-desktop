@@ -231,7 +231,7 @@ class ProductionCliTests(unittest.IsolatedAsyncioTestCase):
                             'copy_result', 'cancel_operation', 'list_history', 'get_history_entry',
                             'make_history_preview', 'copy_history_link', 'copy_history_links', 'open_history_link', 'delete_history_uploads', 'reload_configuration',
                             'patch_configuration', 'open_editor', 'get_editor', 'edit_image',
-                            'preview_editor', 'save_editor_copy', 'submit_editor', 'cancel_editor',
+                            'preview_editor', 'save_editor_copy', 'copy_editor_image', 'submit_editor', 'cancel_editor',
                             'raise_editor', 'get_recording_capabilities', 'list_recording_windows', 'prepare_recording', 'control_recording',
                             'get_recording', 'select_recording_region', 'set_recording_overlay', 'edit_recording', 'preview_recording', 'drive_recording_review',
                             'save_recording_copy', 'upload_recording', 'reorder_destinations', 'move_destination',
@@ -283,6 +283,11 @@ class ProductionCliTests(unittest.IsolatedAsyncioTestCase):
                     ('drive_editor', {'id': 'synthetic-operation', 'action': 'pan', 'delta': [1.5, 2]}),
                     ('drive_editor', {'id': 'synthetic-operation', 'action': 'propertiesWidth', 'pixels': 199}),
                     ('drive_editor', {'id': 'synthetic-operation', 'action': 'propertiesWidth', 'pixels': 10001}),
+                    ('drive_editor', {'id': 'synthetic-operation', 'action': 'blurStyle', 'style': 'mosaic'}),
+                    ('drive_editor', {'id': 'synthetic-operation', 'action': 'stepNumber', 'number': 0}),
+                    ('drive_editor', {'id': 'synthetic-operation', 'action': 'stepNumber', 'number': 1000}),
+                    ('drive_editor', {'id': 'synthetic-operation', 'action': 'tool', 'tool': 'spray'}),
+                    ('copy_editor_image', {'id': ''}),
                 ]:
                     rejected = await session.call_tool(name, args)
                     self.assertFalse(rejected.is_error, rejected)
@@ -413,6 +418,22 @@ class ProductionCliTests(unittest.IsolatedAsyncioTestCase):
                         {'op': 'crop', 'rect': [0, 0, 100, 50]}, {'op': 'undo'}]}),
                     ('save_editor_copy', {'id': 'synthetic-operation', 'path': '/synthetic/copy.png'}, 'editor.saveCopy', {'id': 'synthetic-operation', 'path': '/synthetic/copy.png'}),
                     ('save_editor_copy', {'id': 'synthetic-operation', 'path': '/synthetic/copy.png', 'overwrite': True}, 'editor.saveCopy', {'id': 'synthetic-operation', 'path': '/synthetic/copy.png', 'overwrite': True}),
+                    ('copy_editor_image', {'id': 'synthetic-operation'}, 'editor.copy', {'id': 'synthetic-operation'}),
+                    ('edit_image', {'id': 'synthetic-operation', 'commands': [
+                        {'op': 'add', 'shape': {'kind': 'step', 'at': [40, 40], 'number': 3, 'size': 48, 'color': '#3b82f6'}},
+                        {'op': 'add', 'shape': {'kind': 'pen', 'points': [[1, 2], [5, 9], [12, 4]], 'width': 8}},
+                        {'op': 'add', 'shape': {'kind': 'ellipse', 'rect': [10, 10, 60, 30]}},
+                        {'op': 'add', 'shape': {'kind': 'line', 'from': [0, 0], 'to': [40, 40], 'width': 2}},
+                        {'op': 'add', 'shape': {'kind': 'blur', 'rect': [1, 1, 20, 20], 'style': 'pixelate', 'strength': 8}}]},
+                     'editor.apply', {'id': 'synthetic-operation', 'commands': [
+                        {'op': 'add', 'shape': {'kind': 'step', 'at': [40, 40], 'number': 3, 'size': 48, 'color': '#3b82f6'}},
+                        {'op': 'add', 'shape': {'kind': 'pen', 'points': [[1, 2], [5, 9], [12, 4]], 'width': 8}},
+                        {'op': 'add', 'shape': {'kind': 'ellipse', 'rect': [10, 10, 60, 30]}},
+                        {'op': 'add', 'shape': {'kind': 'line', 'from': [0, 0], 'to': [40, 40], 'width': 2}},
+                        {'op': 'add', 'shape': {'kind': 'blur', 'rect': [1, 1, 20, 20], 'style': 'pixelate', 'strength': 8}}]}),
+                    ('drive_editor', {'id': 'synthetic-operation', 'action': 'tool', 'tool': 'step'}, 'editor.view', {'id': 'synthetic-operation', 'action': 'tool', 'tool': 'step'}),
+                    ('drive_editor', {'id': 'synthetic-operation', 'action': 'blurStyle', 'style': 'pixelate'}, 'editor.view', {'id': 'synthetic-operation', 'action': 'blurStyle', 'style': 'pixelate'}),
+                    ('drive_editor', {'id': 'synthetic-operation', 'action': 'stepNumber', 'number': 12}, 'editor.view', {'id': 'synthetic-operation', 'action': 'stepNumber', 'number': 12}),
                     ('submit_editor', {'id': 'synthetic-operation'}, 'editor.submit', {'id': 'synthetic-operation'}),
                     ('cancel_editor', {'id': 'synthetic-operation'}, 'editor.cancel', {'id': 'synthetic-operation'}),
                     ('raise_editor', {'id': 'synthetic-operation'}, 'editor.raise', {'id': 'synthetic-operation'}),

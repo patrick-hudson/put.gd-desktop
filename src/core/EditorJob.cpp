@@ -11,6 +11,8 @@
 #include <QFile>
 #include <QFileInfo>
 #include <QHash>
+#include <QSet>
+#include <QScopeGuard>
 #include <QImageWriter>
 #include <QJsonArray>
 #include <QJsonDocument>
@@ -42,6 +44,10 @@ QString EditorSession::takeAppearance(){std::lock_guard lock(mutex_);return std:
 QString EditorSession::phase() const {std::lock_guard lock(mutex_);return phase_;}
 void EditorSession::setPhase(const QString& phase){std::lock_guard lock(mutex_);phase_=phase;}
 QList<EditorSession::Pending> EditorSession::take(){std::lock_guard lock(mutex_);return std::exchange(queue_,{});}
+void EditorSession::setCopyHandler(CopyHandler handler){std::lock_guard lock(mutex_);copyHandler_=std::move(handler);}
+EditorSession::CopyHandler EditorSession::copyHandler() const {std::lock_guard lock(mutex_);return copyHandler_;}
+void EditorSession::finishCopy(Error error){std::lock_guard lock(mutex_);copyResult_=std::move(error);}
+std::optional<Error> EditorSession::takeCopyResult(){std::lock_guard lock(mutex_);return std::exchange(copyResult_,std::nullopt);}
 
 namespace {
 // At most six distinct lowercase #rrggbb strings, as the settings validator accepts.
@@ -158,9 +164,37 @@ EditorResult EditorJob::supervise(const std::function<bool(QFile&)>& stage,const
  request["appearance"]=appearance_=="light"?QStringLiteral("light"):QStringLiteral("dark");
  QProcess process;process.setProcessChannelMode(QProcess::SeparateChannels);process.setReadChannel(QProcess::StandardOutput);
  UiControl control(process);
- bool ready=false,editing=false,finalizing=false,checkpoint=false,protocolFailed=false;QJsonObject reply;qint64 stderrBytes=0;
+ bool ready=false,editing=false,finalizing=false,checkpoint=false,protocolFailed=false,copying=false;QString copyId;QJsonObject reply;qint64 stderrBytes=0;
+ // Copy image: the helper staged copy.png in this private directory. Read it
+ // through the pinned identities, check it is the sanitized PNG it announced,
+ // remove it, then hand the bytes to the clipboard. Never kept or uploaded.
+ // The staging directory stays pinned by descriptor: copy.png is opened and
+ // removed through it, so a replaced path cannot redirect the handoff.
+ const int stagingFd=::open(QFile::encodeName(directory.path()).constData(),O_RDONLY|O_CLOEXEC|O_NOFOLLOW|O_DIRECTORY);
+ const auto closeStaging=qScopeGuard([stagingFd]{if(stagingFd>=0)::close(stagingFd);});
+ struct stat stagingIdentity{};const bool stagingPinned=stagingFd>=0&&!::fstat(stagingFd,&stagingIdentity)&&sameFile(stagingIdentity,directoryIdentity);
+ const auto takeCopy=[&](const QJsonObject& payload,QByteArray& bytes)->Error{
+  const Error invalid{"edit_output_invalid","The editor returned an image that is not a sanitized PNG",{}};
+  qint64 count=0;const auto hash=payload["sha256"].toString();
+  struct stat identity{};
+  if(!stagingPinned)return {"editor_io","The editor's private staging is not available",{}};
+  const int fd=::openat(stagingFd,"copy.png",O_RDONLY|O_CLOEXEC|O_NOFOLLOW|O_NONBLOCK);
+  ::unlinkat(stagingFd,"copy.png",0);
+  if(fd<0)return {"editor_io","The edited image for the clipboard is missing",{}};
+  QFile file;if(!file.open(fd,QIODevice::ReadOnly,QFileDevice::AutoCloseHandle)){::close(fd);return {"editor_io","The edited image for the clipboard is missing",{}};}
+  if(::fstat(fd,&identity)||!S_ISREG(identity.st_mode)||identity.st_uid!=getuid()||(identity.st_mode&0777)!=0600)return {"editor_io","The edited image for the clipboard is not private",{}};
+  if(!number(payload["bytes"],count)||count<1||count>maximumCopyBytes||identity.st_size!=count||hash.size()!=64||QByteArray::fromHex(hash.toLatin1()).toHex()!=hash.toLatin1())return invalid;
+  bytes=file.read(count+1);
+  if(bytes.size()!=count||QString::fromLatin1(QCryptographicHash::hash(bytes,QCryptographicHash::Sha256).toHex())!=hash)return invalid;
+  // The same pixel admission as the upload handoff, before any adapter decodes it.
+  QSize size;if(inspectSanitizedPng(bytes,&size)||size.width()!=payload["width"].toInt()||size.height()!=payload["height"].toInt()||qint64(size.width())*size.height()>admissionPixels)return invalid;
+  return {};
+ };
  struct Outstanding {EditorSession::Reply reply;qint64 deadline=0;};
  QHash<QString,Outstanding> outstanding;
+ // Requests answered with editor_timeout: the helper may still finish them
+ // (a large Save a copy or Copy image); its late answer is dropped, not fatal.
+ QSet<QString> expired;
  QElapsedTimer clock,phaseClock;clock.start();phaseClock.start();
  QObject::connect(&control,&UiControl::failed,&process,[&](Error){protocolFailed=true;});
  HelperOutput helperOutput("putgd-ui --edit-image",logUi());
@@ -179,10 +213,28 @@ EditorResult EditorJob::supervise(const std::function<bool(QFile&)>& stage,const
   if(type=="editing"&&finalizing&&!checkpoint&&payload.size()==3){finalizing=false;session->setPhase("editing");phaseClock.restart();return;}
   if(type=="commandResult"&&editing){
    const auto id=payload["requestId"].toString();const auto found=outstanding.constFind(id);
+   if(found==outstanding.cend()&&payload["ok"].isBool()&&expired.remove(id))return;
    if(found==outstanding.cend()||!payload["ok"].isBool()){protocolFailed=true;return;}
    const auto callback=found->reply;outstanding.remove(id);
    if(payload["ok"].toBool()){if(payload.size()!=6||!payload["result"].isObject()){protocolFailed=true;return;}callback({},payload["result"].toObject());}
    else{if(payload.size()!=7||!payload["code"].isString()||!payload["message"].isString()){protocolFailed=true;return;}callback({payload["code"].toString().left(64),payload["message"].toString().left(512),{}},{});}
+   return;
+  }
+  if(type=="copyImage"&&editing&&!finalizing&&!checkpoint){
+   if(payload.size()!=8||!payload["width"].isDouble()||!payload["height"].isDouble()||!payload["copyId"].isString()||payload["copyId"].toString().size()>64){protocolFailed=true;return;}
+   if(copying){
+    // The helper gave up on an earlier copy that the clipboard still holds:
+    // refuse this one (its staged file goes too) and keep the edit open.
+    if(stagingPinned)::unlinkat(stagingFd,"copy.png",0);
+    auto frame=envelope(nonce);frame["copyId"]=payload["copyId"];frame["ok"]=false;frame["code"]="editor_busy";frame["message"]="The previous copy is still being delivered to the clipboard";
+    if(control.send("copyResult",frame).isEmpty())protocolFailed=true;
+    return;
+   }
+   copying=true;copyId=payload["copyId"].toString();QByteArray bytes;auto error=takeCopy(payload,bytes);
+   const auto handler=session->copyHandler();
+   if(!error&&!handler)error={"clipboard_unavailable","The clipboard is not available",{}};
+   if(error){session->finishCopy(error);return;}
+   handler(std::move(bytes),[session](Error result){session->finishCopy(std::move(result));});
    return;
   }
   if(type=="checkpoint"&&ready&&!checkpoint&&payload["ok"].isBool()){
@@ -220,6 +272,11 @@ EditorResult EditorJob::supervise(const std::function<bool(QFile&)>& stage,const
    const auto scheme=session->takeAppearance();
    if(!scheme.isEmpty()){auto frame=envelope(nonce);frame["scheme"]=scheme;if(control.send("appearance",frame).isEmpty()){protocolFailed=true;break;}}
   }
+  if(copying)if(const auto copied=session->takeCopyResult()){
+   copying=false;auto frame=envelope(nonce);frame["copyId"]=copyId;frame["ok"]=!*copied;
+   if(*copied){frame["code"]=copied->code.left(64);frame["message"]=copied->message.left(256);}
+   if(!checkpoint&&control.send("copyResult",frame).isEmpty()){protocolFailed=true;break;}
+  }
   for(auto& pending:session->take()){
    if(!editing||finalizing||checkpoint){pending.reply(failure("editor_finalizing"),{});continue;}
    const auto id=QUuid::createUuid().toString(QUuid::WithoutBraces);
@@ -227,7 +284,7 @@ EditorResult EditorJob::supervise(const std::function<bool(QFile&)>& stage,const
    if(control.send("command",frame).isEmpty()){protocolFailed=true;pending.reply(failure("editor_protocol"),{});break;}
    outstanding.insert(id,{std::move(pending.reply),clock.elapsed()+commandTimeoutMs_});
   }
-  for(auto it=outstanding.begin();it!=outstanding.end();){if(clock.elapsed()>it->deadline){it->reply({"editor_timeout","The editor did not answer this command in time",{}},{});it=outstanding.erase(it);}else ++it;}
+  for(auto it=outstanding.begin();it!=outstanding.end();){if(clock.elapsed()>it->deadline){it->reply({"editor_timeout","The editor did not answer this command in time",{}},{});if(expired.size()<256)expired.insert(it.key());it=outstanding.erase(it);}else ++it;}
   process.waitForReadyRead(50);
  }
  for(auto& pending:outstanding)pending.reply({"editor_closed","The editor closed before answering",{}},{});
