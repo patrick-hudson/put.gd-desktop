@@ -37,6 +37,8 @@ def pactl(*arguments, check=True):
 
 
 def create(args):
+    if args.monitor_default and not args.system_sink:
+        raise SystemExit('--monitor-default needs --system-sink')
     state = {'name': args.name, 'modules': {}, 'defaultSource': pactl('get-default-source', check=False),
              'defaultSink': pactl('get-default-sink', check=False)}
     sink, source = args.name + '_sink', args.name + '_mic'
@@ -50,18 +52,19 @@ def create(args):
             system = args.name + '_system'
             state['modules']['system'] = int(pactl('load-module', 'module-null-sink', 'sink_name=' + system,
                                                    'sink_properties=device.description=' + args.name + '-system'))
-            pactl('set-default-sink', system)
+            # Noted before each change, so a failure half way still puts the default back.
             state['systemSink'] = system
+            pactl('set-default-sink', system)
         if args.default:
+            state['madeDefault'] = True
             pactl('set-default-source', source)
-            state['madeDefault'] = True
         if args.monitor_default:
-            if not args.system_sink:
-                raise SystemExit('--monitor-default needs --system-sink')
             # The state a desktop without a microphone is in: the default input is an output's monitor.
-            pactl('set-default-source', state['systemSink'] + '.monitor')
             state['madeDefault'] = True
+            pactl('set-default-source', state['systemSink'] + '.monitor')
     except BaseException:
+        # Whatever was changed before the failure is put back: the defaults by name, the modules by id.
+        restore_defaults(state)
         remove_modules(state)
         raise
     write(args.state, state)

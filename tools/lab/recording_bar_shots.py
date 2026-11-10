@@ -160,9 +160,9 @@ def main():
     finally:
         quit_resident(resident)
     resident, capabilities = start()
-    keep_local()
     report['capabilities'] = {k: v for k, v in capabilities.items() if k in ('audio', 'clickHighlights', 'acquisition', 'targets')}
     try:
+        keep_local()
         rect = [int(v) for v in a.rect.split(',')]
         for state in a.states.split(','):
             entry = {}
