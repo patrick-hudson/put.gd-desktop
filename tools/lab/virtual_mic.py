@@ -12,28 +12,76 @@ the exact ids `load-module` printed, never by name or pattern.
   virtual_mic.py unplug --state FILE                        unloads only the source (a microphone pulled mid-recording)
   virtual_mic.py tone --state FILE [--hz 440] [--volume 0.012] [--seconds 60] [--to system|mic]
 
+`create` checks the microphone before it hands it over: a second of tone goes
+into the sink and must come out of the source, and a loopback into a third,
+silent sink then keeps the source in use for the whole run. PipeWire 1.0.5
+(Mint 22, Ubuntu 24.04) needs both: there a remapped source that was left
+without a reader sometimes passes pure silence to every later reader, while
+the sink's monitor carries the sound (measured on m74: 7 of 14 recordings
+silent, an independent `parec` on the source silent with them). A source that
+fails the check is made again, up to six times; the state says how many it
+took (`attempts`) and what the last check heard (`heardPeak`).
+
 `create --system-sink` also adds a second null sink and makes it the default
 output, so "system audio" played during the run goes nowhere audible and is
 what put.gd's system-audio capture records; `--monitor-default` makes that
 output's monitor the default input, the state a desktop without a microphone
 is in; `remove` puts the previous defaults back by name. Works with PipeWire's PulseAudio layer (1.0.5 and later) and
-PulseAudio; needs `pactl`, and `gst-launch-1.0` for `tone`.
+PulseAudio; needs `pactl`, `gst-launch-1.0` for `tone` and the check, and `parec` for the check
+(without it the microphone is handed over unchecked and the state says `heardPeak: null`).
 """
 import argparse
+import array
 import json
 import os
 import signal
 import subprocess
 import sys
+import time
+
+
+def sound_env():
+    env = dict(os.environ)
+    env.setdefault('XDG_RUNTIME_DIR', '/run/user/%d' % os.getuid())
+    return env
 
 
 def pactl(*arguments, check=True):
-    env = dict(os.environ)
-    env.setdefault('XDG_RUNTIME_DIR', '/run/user/%d' % os.getuid())
-    result = subprocess.run(['pactl', *arguments], capture_output=True, text=True, env=env)
+    result = subprocess.run(['pactl', *arguments], capture_output=True, text=True, env=sound_env())
     if check and result.returncode != 0:
         raise SystemExit('pactl %s failed: %s' % (' '.join(arguments), result.stderr.strip()))
     return result.stdout.strip()
+
+
+def heard_peak(sink, source):
+    """The largest sample read from the source while a tone plays into the sink (16-bit scale), or None without `parec`."""
+    env = sound_env()
+    # Three seconds of tone into the null sink: nothing audible. Two seconds are read back, from half a second in,
+    # so a slow start of either process (a software-rendered guest) still overlaps.
+    player = subprocess.Popen(['gst-launch-1.0', '-q', 'audiotestsrc', 'freq=1000', 'volume=0.2', 'num-buffers=130', '!', 'audioconvert', '!',
+                               'pulsesink', 'device=' + sink], env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    try:
+        time.sleep(0.5)
+        try:
+            heard = subprocess.run(['parec', '-d', source, '--format=s16le', '--rate=48000', '--channels=1', '--latency-msec=50'], env=env,
+                                   capture_output=True, timeout=2.0).stdout
+        except subprocess.TimeoutExpired as expired:
+            heard = expired.stdout or b''
+        except FileNotFoundError:
+            return None
+    finally:
+        player.terminate()
+        player.wait(10)
+    samples = array.array('h')
+    samples.frombytes(heard[:len(heard) // 2 * 2])
+    return max((abs(value) for value in samples), default=0)
+
+
+def load_microphone(state, sink, source, hold):
+    """The remapped source and the loopback that keeps it in use."""
+    state['modules']['source'] = int(pactl('load-module', 'module-remap-source', 'master=' + sink + '.monitor',
+                                           'source_name=' + source, 'source_properties=device.description=' + state['name'] + '-microphone'))
+    state['modules']['hold'] = int(pactl('load-module', 'module-loopback', 'source=' + source, 'sink=' + hold, 'latency_msec=100'))
 
 
 def create(args):
@@ -41,12 +89,21 @@ def create(args):
         raise SystemExit('--monitor-default needs --system-sink')
     state = {'name': args.name, 'modules': {}, 'defaultSource': pactl('get-default-source', check=False),
              'defaultSink': pactl('get-default-sink', check=False)}
-    sink, source = args.name + '_sink', args.name + '_mic'
+    sink, source, hold = args.name + '_sink', args.name + '_mic', args.name + '_hold'
     try:
         state['modules']['sink'] = int(pactl('load-module', 'module-null-sink', 'sink_name=' + sink,
                                              'sink_properties=device.description=' + args.name + '-sink'))
-        state['modules']['source'] = int(pactl('load-module', 'module-remap-source', 'master=' + sink + '.monitor',
-                                               'source_name=' + source, 'source_properties=device.description=' + args.name + '-microphone'))
+        state['modules']['holdSink'] = int(pactl('load-module', 'module-null-sink', 'sink_name=' + hold,
+                                                 'sink_properties=device.description=' + args.name + '-hold'))
+        for attempt in range(1, 7):
+            load_microphone(state, sink, source, hold)
+            state.update(attempts=attempt, heardPeak=heard_peak(sink, source))
+            # The check's tone is at 0.2 of full scale, about 6500 here.
+            if state['heardPeak'] is None or state['heardPeak'] > 500:
+                break
+            remove_modules(state, only=('hold', 'source'))
+        else:
+            raise SystemExit('the simulated microphone passes no sound on this sound server (6 tries)')
         state.update(sink=sink, source=source)
         if args.system_sink:
             system = args.name + '_system'
@@ -72,9 +129,11 @@ def create(args):
 
 
 def remove_modules(state, only=None):
-    for key in ('source', 'system', 'sink'):
+    # The loopback goes before its source: left behind, the sound server would move it to the default
+    # input, and a real microphone is never opened in the lab.
+    for key in ('hold', 'source', 'holdSink', 'system', 'sink'):
         ident = state['modules'].get(key)
-        if ident is None or (only and key != only):
+        if ident is None or (only and key not in only):
             continue
         pactl('unload-module', str(ident), check=False)
         state['modules'][key] = None
@@ -113,7 +172,7 @@ def remove(args):
 
 def unplug(args):
     state = load(args.state)
-    remove_modules(state, only='source')
+    remove_modules(state, only=('hold', 'source'))
     write(args.state, state)
     print(json.dumps({'unplugged': state.get('source')}))
 
