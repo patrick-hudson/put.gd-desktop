@@ -870,7 +870,7 @@ private slots:
   PUTGD_TRY_COMPARE(h.backend->clicks.size(),1);QCOMPARE(h.backend->clicks.last()["x"].toInt(),640);QCOMPARE(h.backend->clicks.last()["button"].toInt(),1);
   // Paused: the watch stays, the presses are not part of the clip.
   QVERIFY(!h.rec("pause",{{"id",id}}).error);QCOMPARE(clicks.unwatches,0);
-  clicks.sink({{"x",10},{"y",10},{"button",3}});QTest::qWait(60);QCOMPARE(h.backend->clicks.size(),1);
+  clicks.sink({{"x",10},{"y",10},{"button",3}});PUTGD_COMPARE_STEADY(h.backend->clicks.size(),1,60);
   QVERIFY(!h.rec("resume",{{"id",id}}).error);
   clicks.sink({{"x",20},{"y",30},{"button",3}});PUTGD_TRY_COMPARE(h.backend->clicks.size(),2);
   QVERIFY(!h.rec("stop",{{"id",id}}).error);
