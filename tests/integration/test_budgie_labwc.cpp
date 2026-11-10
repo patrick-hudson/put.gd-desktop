@@ -1,5 +1,9 @@
 #include <QScopeGuard>
 #include "platform/wayland/SurfaceVisibility.h"
+#include "platform/wayland/CaptureConnection.h"
+#include <wayland-client.h>
+#include <sys/socket.h>
+#include <unistd.h>
 #include <signal.h>
 // The Budgie adapter and the shared Wayland capture code against a real
 // headless labwc (#1275): WLR_BACKENDS=headless WLR_RENDERER=pixman, two
@@ -25,6 +29,12 @@
 #endif
 #include <cstdlib>
 
+namespace putgd {
+struct BudgieCaptureTestAccess {
+ static void visibility(BudgieSourceAdapter& adapter,std::function<void(std::function<void(bool)>)> query){adapter.visibilityQuery_=std::move(query);}
+ static void query(BudgieSourceAdapter& adapter,std::function<void(bool)> reply){querySurfaceVisible(&adapter,adapter.capture_.connection(),std::move(reply));}
+};
+}
 using namespace putgd;
 namespace {
 const QList<QRgb> outputColours{qRgb(200,40,40),qRgb(40,40,200),qRgb(200,200,40),qRgb(40,200,200)};
@@ -96,8 +106,8 @@ private slots:
   QVERIFY(listener.waitForStarted(3000));QVERIFY(waitFor([&]{return listener.readAllStandardOutput().contains("ready");}));
   const auto previous=qgetenv("WAYLAND_DISPLAY");auto restore=qScopeGuard([&]{qputenv("WAYLAND_DISPLAY",previous);});
   qputenv("WAYLAND_DISPLAY",path.toUtf8());
-  bool done=false,visible=true;QObject context;QElapsedTimer elapsed;elapsed.start();
-  querySurfaceVisible(&context,[&](bool result){visible=result;done=true;});
+  CaptureConnection connection;bool done=false,visible=true;QObject context;QElapsedTimer elapsed;elapsed.start();
+  querySurfaceVisible(&context,connection,[&](bool result){visible=result;done=true;});
   QVERIFY2(elapsed.elapsed()<1000,"Connecting must not block the event-loop thread");
   QVERIFY(waitFor([&]{return done;},1000));QVERIFY(!visible);
  }
@@ -108,9 +118,76 @@ private slots:
   QVERIFY(::kill(pid,SIGSTOP)==0);
   auto resume=qScopeGuard([&]{::kill(pid,SIGCONT);});
   QTimer::singleShot(1200,this,[pid]{::kill(pid,SIGCONT);});
-  bool done=false,visible=false;QObject context;
-  querySurfaceVisible(&context,[&](bool result){visible=result;done=true;});
+  CaptureConnection connection;bool done=false,visible=false;QObject context;
+  querySurfaceVisible(&context,connection,[&](bool result){visible=result;done=true;});
   QVERIFY(waitFor([&]{return done;},5000));QVERIFY(visible);
+ }
+ void visibilityUsesCaptureCompositor(){
+  auto* inherited=wl_display_connect(nullptr);QVERIFY(inherited);
+  auto disconnect=qScopeGuard([&]{wl_display_disconnect(inherited);});
+  const auto display=qgetenv("WAYLAND_DISPLAY"),socket=qgetenv("WAYLAND_SOCKET");
+  auto restore=qScopeGuard([&]{qputenv("WAYLAND_DISPLAY",display);if(socket.isNull())qunsetenv("WAYLAND_SOCKET");else qputenv("WAYLAND_SOCKET",socket);});
+  qputenv("WAYLAND_SOCKET",QByteArray::number(wl_display_get_fd(inherited)));
+  qputenv("WAYLAND_DISPLAY",runtime_.filePath("wrong-compositor").toUtf8());
+  ImageCopyCapture capture;QVERIFY(waitFor([&]{return capture.outputsAvailable();}));
+  bool done=false,visible=false;QObject context;
+  querySurfaceVisible(&context,capture.connection(),[&](bool result){visible=result;done=true;});
+  QVERIFY(waitFor([&]{return done;},5000));QVERIFY(visible);
+  QImage image;Error error;done=false;
+  capture.captureOutput(layout_.first().identity,ResourceLimits{},[&](QImage result,Error failure){image=std::move(result);error=std::move(failure);done=true;});
+  QVERIFY(waitFor([&]{return done;}));QVERIFY2(!error,qPrintable(error.message));QVERIFY(!image.isNull());
+ }
+ void anonymousInheritedConnectionRefusesRatherThanProbingAnotherSession(){
+  int sockets[2];QVERIFY(::socketpair(AF_UNIX,SOCK_STREAM|SOCK_CLOEXEC,0,sockets)==0);
+  auto close=qScopeGuard([&]{::close(sockets[0]);::close(sockets[1]);});
+  const auto previous=qgetenv("WAYLAND_SOCKET");auto restore=qScopeGuard([&]{if(previous.isNull())qunsetenv("WAYLAND_SOCKET");else qputenv("WAYLAND_SOCKET",previous);});
+  qputenv("WAYLAND_SOCKET",QByteArray::number(sockets[0]));
+  ImageCopyCapture capture;bool done=false,visible=true;QObject context;
+  querySurfaceVisible(&context,capture.connection(),[&](bool result){visible=result;done=true;});
+  QVERIFY(waitFor([&]{return done;},1000));QVERIFY(!visible);QVERIFY(!capture.outputsAvailable());
+ }
+ void lockedWindowAfterFreezeIsRefused(){
+  BudgieSourceAdapter adapter;ImageCopyCapture probe;
+  QVERIFY(waitFor([&]{return probe.outputsAvailable();}));
+  if(!probe.windowsAvailable())QSKIP("Compositor has no window capture source");
+  QProcess locker;bool locked=false;int witnesses=0;
+  auto cleanup=qScopeGuard([&]{if(locker.state()!=QProcess::NotRunning){locker.terminate();locker.waitForFinished(3000);}});
+  // The first witness is requested only after freezeActive succeeded. Hold
+  // that continuation until our real session-lock surfaces have mapped.
+  BudgieCaptureTestAccess::visibility(adapter,[&](auto reply){
+   ++witnesses;locker.start(QCoreApplication::applicationDirPath()+"/putgd-session-lock-fixture",{});
+   locked=waitFor([&]{return locker.readAllStandardOutput().contains("locked");},5000);
+   BudgieCaptureTestAccess::query(adapter,std::move(reply));
+  });
+  PayloadResult result;bool done=false;
+  adapter.prepareAcquisition("window")(ResourceLimits{},[&](PayloadResult value){result=std::move(value);done=true;});
+  QVERIFY(waitFor([&]{return done;},10000));QVERIFY(locked);QCOMPARE(witnesses,1);
+  QCOMPARE(result.error.code,QString("session_locked"));QVERIFY(result.payload.image.isNull());
+ }
+ void lockDuringCopyIsRefused_data(){QTest::addColumn<QString>("action");QTest::newRow("output batch")<<QString("desktop");QTest::newRow("frozen window")<<QString("window");}
+ void lockDuringCopyIsRefused(){
+  QFETCH(QString,action);BudgieSourceAdapter adapter;ImageCopyCapture probe;
+  QVERIFY(waitFor([&]{return probe.outputsAvailable();}));
+  if(action=="window"&&!probe.windowsAvailable())QSKIP("Compositor has no window capture source");
+  QVERIFY(waitFor([&]{return adapter.capabilities()["capture"].toObject()["desktop"].toObject()["available"].toBool();}));
+  QProcess locker;bool locked=false;int witnesses=0;
+  auto cleanup=qScopeGuard([&]{if(locker.state()!=QProcess::NotRunning){locker.terminate();locker.waitForFinished(3000);}});
+  BudgieCaptureTestAccess::visibility(adapter,[&](auto reply){
+   const bool first=++witnesses==1;
+   BudgieCaptureTestAccess::query(adapter,[&,first,reply=std::move(reply)](bool visible)mutable{
+    if(first&&visible){
+     // Deliver the successful pre-copy witness only after locking, forcing
+     // the copy to overlap a lock. The second real witness must discard it.
+     locker.start(QCoreApplication::applicationDirPath()+"/putgd-session-lock-fixture",{});
+     locked=waitFor([&]{return locker.readAllStandardOutput().contains("locked");},5000);
+    }
+    reply(visible);
+   });
+  });
+  PayloadResult result;bool done=false;
+  adapter.prepareAcquisition(action)(ResourceLimits{},[&](PayloadResult value){result=std::move(value);done=true;});
+  QVERIFY(waitFor([&]{return done;},10000));QVERIFY(locked);QCOMPARE(witnesses,2);
+  QCOMPARE(result.error.code,QString("session_locked"));QVERIFY(result.payload.image.isNull());
  }
  void lockedDesktopCaptureIsRefused(){
   BudgieSourceAdapter adapter;

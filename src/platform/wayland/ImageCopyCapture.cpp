@@ -1,4 +1,5 @@
 #include "ImageCopyCapture.h"
+#include "CaptureConnection.h"
 #include "WaylandTransform.h"
 #include "ext-image-copy-capture-v1-client-protocol.h"
 #include "ext-image-capture-source-v1-client-protocol.h"
@@ -57,7 +58,7 @@ struct ImageCopyCapture::Impl:QObject {
   QSize size,batchSize,allocated;QList<uint32_t> formats,batchFormats;bool batchReady=false;
   QImage::Format imageFormat=QImage::Format_Invalid;uint32_t transform=WL_OUTPUT_TRANSFORM_NORMAL;int retries=0;QTimer* timer=nullptr;
  };
- ImageCopyCapture& q;
+ ImageCopyCapture& q;CaptureConnection connection;
  wl_display* display=nullptr;wl_registry* registry=nullptr;wl_shm* shm=nullptr;
  ext_image_copy_capture_manager_v1* copy=nullptr;ext_output_image_capture_source_manager_v1* outputSources=nullptr;
  ext_foreign_toplevel_image_capture_source_manager_v1* windowSources=nullptr;ext_foreign_toplevel_list_v1* extList=nullptr;zwlr_foreign_toplevel_manager_v1* wlrList=nullptr;
@@ -74,7 +75,7 @@ struct ImageCopyCapture::Impl:QObject {
  // Connection --------------------------------------------------------------
  void open(){
   if(closing||display)return;
-  display=wl_display_connect(nullptr);
+  display=connection.connect();
   if(!display){error="Cannot connect to the Wayland compositor for image capture";return;}
   registry=wl_display_get_registry(display);static const wl_registry_listener listener={global,removed};wl_registry_add_listener(registry,&listener,this);
   const auto fd=wl_display_get_fd(display);readNotifier=new QSocketNotifier(fd,QSocketNotifier::Read,this);writeNotifier=new QSocketNotifier(fd,QSocketNotifier::Write,this);writeNotifier->setEnabled(false);
@@ -360,4 +361,5 @@ void ImageCopyCapture::freezeActive(std::function<void(Toplevel,Error)> reply){d
 void ImageCopyCapture::captureOutput(const QString& name,const ResourceLimits& limits,Reply reply){d_->start(false,name,limits,std::move(reply));}
 void ImageCopyCapture::captureToplevel(const QString& identifier,const ResourceLimits& limits,Reply reply){d_->start(true,identifier,limits,std::move(reply));}
 void ImageCopyCapture::cancel(){d_->cancelAll({"cancelled","Image capture cancelled",{}});}
+const CaptureConnection& ImageCopyCapture::connection() const{return d_->connection;}
 }

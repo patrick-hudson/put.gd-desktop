@@ -43,6 +43,10 @@ public:
 signals:
  void actionRequested(const QString&);void capabilitiesChanged();
 private:
+ friend struct BudgieCaptureTestAccess;
+ // Private visibility seam lets the real-compositor test pause after freeze/copy.
+ std::function<void(std::function<void(bool)>)> visibilityQuery_;
+ void queryVisibility(std::function<void(bool)>);
  QList<CaptureFrame> layout()const{return outputs_.layout();}
  bool unchanged(const QList<CaptureFrame>&,quint64)const;
  void capture(QString,QList<CaptureFrame>,quint64,ResourceLimits,std::function<void(PayloadResult)>,const QString& outcome,bool screenshotFirst=false);

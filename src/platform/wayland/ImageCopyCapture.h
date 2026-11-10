@@ -10,6 +10,7 @@
 #include <optional>
 
 namespace putgd {
+class CaptureConnection;
 // Screen and window pixels through ext-image-copy-capture-v1 on an independent,
 // Core-compatible Wayland connection. Nothing here names a compositor: every
 // capability comes from the advertised globals, so any compositor that offers
@@ -34,6 +35,7 @@ public:
  // Per-protocol facts: which globals exist, at which versions, and why a
  // capture kind is unavailable.
  QJsonObject status() const;
+ const CaptureConnection& connection() const;
  bool outputsAvailable(QString* reason=nullptr) const;
  bool windowsAvailable(QString* reason=nullptr) const;
  QList<Toplevel> toplevels() const;

@@ -86,7 +86,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   add_library(putgd_wayland STATIC src/platform/wayland/AsyncFdReader.cpp
     src/platform/wayland/ClipboardKeeper.cpp src/platform/wayland/DataControlClipboard.cpp src/platform/wayland/DataControlSourceAdapter.cpp
     src/platform/wayland/LayerShellRegionOverlay.cpp src/platform/wayland/WaylandOutputs.cpp
-    src/platform/wayland/ImageCopyCapture.cpp src/platform/wayland/PortalGlobalShortcuts.cpp src/platform/wayland/ShortcutBackend.h src/platform/wayland/WaylandTransform.h
+    src/platform/wayland/ImageCopyCapture.cpp src/platform/wayland/CaptureConnection.cpp src/platform/wayland/PortalGlobalShortcuts.cpp src/platform/wayland/ShortcutBackend.h src/platform/wayland/WaylandTransform.h
     ${putgd_capture_protocol_sources}
     "${protocol_dir}/ext-data-control-v1-client-protocol.h" "${protocol_dir}/ext-data-control-v1-protocol.c"
     "${protocol_dir}/wlr-data-control-unstable-v1-client-protocol.h" "${protocol_dir}/wlr-data-control-unstable-v1-protocol.c"
