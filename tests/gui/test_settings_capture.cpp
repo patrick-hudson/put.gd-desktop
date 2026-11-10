@@ -252,6 +252,19 @@ private slots:
   auto* region=window.findChild<QMenu*>("captureOptionsMenuregion");emit region->aboutToShow();
   auto* delays=window.findChild<QMenu*>("captureDelayMenuregion");QCOMPARE(delays->title(),QString("Capture delay: 5 seconds"));QVERIFY(delays->findChild<QAction*>("captureDelay5")->isChecked());QVERIFY(!delays->findChild<QAction*>("captureDelay0")->isChecked());
  }
+ // Capturing from the rail checkpoints the UI before hiding it. A saved delay
+ // is a classified nonsecret preference, so that checkpoint must remain valid.
+ void captureDelaySurvivesTheUiCheckpoint_data(){QTest::addColumn<int>("seconds");for(int seconds:Settings::captureDelayChoices())QTest::newRow(qPrintable(QString::number(seconds)))<<seconds;}
+ void captureDelaySurvivesTheUiCheckpoint(){
+  QFETCH(int,seconds);QTemporaryDir dir;SettingsService service(dir.filePath("config.json"));QVERIFY(service.save(Settings::defaults(),{}));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.show();
+  window.findChild<QMenu*>("captureDelayMenumonitor")->findChild<QAction*>(QStringLiteral("captureDelay%1").arg(seconds))->trigger();
+  if(seconds)PUTGD_TRY_COMPARE(service.document()["preferences"].toObject()["captureDelaySeconds"].toInt(),seconds);
+  const auto saved=window.settings()->saveViewState();QVERIFY2(!saved.contains("stateError"),qPrintable(saved["stateError"].toString()));
+  const QJsonObject checkpoint{{"schemaVersion",1},{"settings",saved},{"main",window.saveViewState()}};QVERIFY(!validateUiState(checkpoint));
+  MainWindow restored(fixture.session);QVERIFY(restored.settings()->restoreViewState(saved));
+  auto bad=saved;auto draft=bad["draft"].toObject();auto preferences=draft["preferences"].toObject();preferences["unclassifiedCaptureSetting"]="synthetic";draft["preferences"]=preferences;bad["draft"]=draft;
+  QVERIFY(validateUiState({{"schemaVersion",1},{"settings",bad}}));
+ }
  void captureExceptionSummaryPrecedesTheChevron_data(){QTest::addColumn<int>("pixels");QTest::newRow("normal")<<14;QTest::newRow("large")<<21;}
  void captureExceptionSummaryPrecedesTheChevron(){
   Fonts::load();Ui::apply(*qApp);QFETCH(int,pixels);const auto original=qApp->font();auto restore=qScopeGuard([&]{qApp->setFont(original);});auto font=original;font.setPixelSize(pixels);qApp->setFont(font);QTemporaryDir dir;SettingsService service(dir.filePath("config.json"));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.showCaptureSettings();window.resize(1060,680);window.show();auto* toggle=window.findChild<QToolButton*>("captureExceptionsToggle");auto* summary=window.findChild<QLabel*>("captureExceptionsSummary");QVERIFY(summary);
