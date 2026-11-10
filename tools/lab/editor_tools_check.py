@@ -28,6 +28,7 @@ pasted clipboard image are kept there. Nothing is uploaded without --submit.
 import argparse, base64, hashlib, json, os, shutil, struct, subprocess, sys, time, zlib
 from pathlib import Path
 
+OVERLAP_TOKEN = (900, 570, 200, 100)
 TOKEN = (300, 214, 420, 36)  # the fake token box the redaction covers
 
 
@@ -38,12 +39,12 @@ def png(width, height, pixel):
     return b'\x89PNG\r\n\x1a\n' + chunk(b'IHDR', struct.pack('>IIBBBBB', width, height, 8, 2, 0, 0, 0)) + chunk(b'IDAT', zlib.compress(rows, 6)) + chunk(b'IEND', b'')
 
 
-def synthetic(path):
+def synthetic(path, variant=False):
     # A light page with panels, text-like bars and a magenta "token" that
     # must never survive the redaction.
     def pixel(x, y):
-        if TOKEN[0] <= x < TOKEN[0] + TOKEN[2] and TOKEN[1] <= y < TOKEN[1] + TOKEN[3]:
-            return (255, 0, 255) if (x // 6 + y // 6) % 2 else (40, 0, 40)
+        if any(rx <= x < rx + rw and ry <= y < ry + rh for rx, ry, rw, rh in (TOKEN, OVERLAP_TOKEN)):
+            return (0, 255, 255) if variant else (255, 0, 255)
         if y < 56:
             return (36, 40, 48)
         if 80 <= y < 680 and 60 <= x < 1140:
@@ -148,19 +149,22 @@ def main():
         state = d.ok('editor.inspect', {'id': op})
         d.check('opened at full size', (state['width'], state['height']) == (1200, 760), state.get('width'))
         add = lambda shape: {'op': 'add', 'shape': shape}
-        created = d.ok('editor.apply', {'id': op, 'commands': [
+        commands = [
             add({'kind': 'redact', 'rect': list(TOKEN)}),
             add({'kind': 'step', 'at': [120, 140]}),
             add({'kind': 'step', 'at': [120, 280], 'color': '#facc15'}),
             add({'kind': 'step', 'at': [120, 420], 'color': '#3b82f6', 'size': 56}),
             add({'kind': 'pen', 'width': 4, 'color': '#dc2626', 'points': [[160 + 30 * i, 600 + (18 if i % 2 else -18)] for i in range(14)]}),
-            add({'kind': 'ellipse', 'rect': [700, 120, 380, 180], 'width': 4}),
+            add({'kind': 'ellipse', 'rect': [760, 120, 320, 180], 'width': 4}),
             add({'kind': 'line', 'from': [180, 520], 'to': [1000, 520], 'color': '#22c55e', 'width': 4}),
             add({'kind': 'blur', 'rect': [700, 360, 380, 140], 'style': 'pixelate', 'strength': 12}),
-        ]})['created']
+            add({'kind': 'redact', 'rect': list(OVERLAP_TOKEN)}),
+            add({'kind': 'rectangle', 'rect': [940, 590, 80, 40], 'color': '#ff0000', 'width': 4}),
+        ]
+        created = d.ok('editor.apply', {'id': op, 'commands': commands})['created']
         shapes = {s['id']: s for s in d.ok('editor.inspect', {'id': op})['shapes']}
         kinds = [shapes[i]['kind'] for i in created]
-        d.check('every new kind was created', kinds == ['redact', 'step', 'step', 'step', 'pen', 'ellipse', 'line', 'blur'], kinds)
+        d.check('every new kind was created', kinds == ['redact', 'step', 'step', 'step', 'pen', 'ellipse', 'line', 'blur', 'redact', 'rectangle'], kinds)
         d.check('steps count up from 1', [shapes[i]['number'] for i in created[1:4]] == [1, 2, 3])
         d.check('pixelate style kept', shapes[created[7]]['style'] == 'pixelate')
         # The window's own controls.
@@ -200,6 +204,11 @@ def main():
         leaks = [(x, y) for y in range(TOKEN[1], TOKEN[1] + TOKEN[3]) for x in range(TOKEN[0], TOKEN[0] + TOKEN[2])
                  if rows[y][x * channels:x * channels + 3] != b'\x00\x00\x00']
         d.check('redacted token is black in the paste', not leaks, leaks[:5])
+        overlap = {rows[y][x * channels:x * channels + 3]
+                   for y in range(OVERLAP_TOKEN[1], OVERLAP_TOKEN[1] + OVERLAP_TOKEN[3])
+                   for x in range(OVERLAP_TOKEN[0], OVERLAP_TOKEN[0] + OVERLAP_TOKEN[2])}
+        d.check('annotation over second redaction contains only black and its own red',
+                overlap == {b'\x00\x00\x00', b'\xff\x00\x00'}, sorted(p.hex() for p in overlap))
         saved = d.ok('editor.saveCopy', {'id': op, 'path': str(out / 'saved-copy.png'), 'overwrite': True})
         d.check('Save a copy is the same PNG', saved['sha256'] == copied['sha256'])
         view = d.ok('editor.view', {'id': op, 'action': 'inspect'})
@@ -219,6 +228,15 @@ def main():
             d.check('upload completed', state == 'completed', state)
         elif not args.keep_open:
             d.ok('editor.cancel', {'id': op})
+        if not args.keep_open:
+            variant = out / 'synthetic-variant.png'; synthetic(variant, variant=True)
+            other = d.ok('editor.open', {'source': 'file', 'path': str(variant)})['operationId']
+            try:
+                d.ok('editor.apply', {'id': other, 'commands': commands})
+                result = d.ok('editor.saveCopy', {'id': other, 'path': str(out / 'variant-copy.png'), 'overwrite': True})
+                d.check('sources differing only beneath redactions export identical bytes', result['sha256'] == copied['sha256'])
+            finally:
+                d.ok('editor.cancel', {'id': other})
         d.log['ok'] = True
     finally:
         # A failed run leaves no editor open unless asked to.
