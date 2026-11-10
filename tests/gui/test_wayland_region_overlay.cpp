@@ -12,6 +12,7 @@
 #include <QScreen>
 #include <QTemporaryDir>
 #include <QWindow>
+#include <functional>
 namespace putgd {
 class WaylandRegionOverlayTest final:public QObject {
  Q_OBJECT
@@ -28,6 +29,22 @@ private slots:
    auto* left=add(overlay,QRectF(0,0,640,480));auto* right=add(overlay,QRectF(640,0,600,400));
    QVERIFY(left);QVERIFY(right);
    QCOMPARE(left->cursor().shape(),Qt::CrossCursor);QCOMPARE(right->cursor().shape(),Qt::CrossCursor);
+   // CursorChange is synchronous: observe the actual update before the
+   // transparent clearing commit or dismissal can begin, not just at selected.
+   class CursorWitness final:public QObject {
+   public:
+    std::function<void(QWidget*)> changed;
+    bool eventFilter(QObject* object,QEvent* event) override{
+     if(event->type()==QEvent::CursorChange)changed(qobject_cast<QWidget*>(object));
+     return false;
+    }
+   } witness;
+   QSet<QWidget*> changedSurfaces;
+   witness.changed=[&](QWidget* surface){
+    changedSurfaces.insert(surface);QCOMPARE(surface->cursor().shape(),Qt::BlankCursor);
+    QVERIFY(!overlay.finished_);QVERIFY(!overlay.clearing_);QVERIFY(!overlay.dismissing_);
+   };
+   left->installEventFilter(&witness);right->installEventFilter(&witness);
    int results=0;
    connect(&overlay,&LayerShellRegionOverlay::selected,this,[&]{
     ++results;
@@ -36,6 +53,7 @@ private slots:
    if(keyboard)QTest::keyClick(left,Qt::Key_Return);
    else{QTest::mousePress(left,Qt::LeftButton,{},QPoint(30,40));QTest::mouseRelease(left,Qt::LeftButton,{},QPoint(230,180));}
    QCOMPARE(results,1);
+   QCOMPARE(changedSurfaces,QSet<QWidget*>({left,right}));
   }
  }
  void resolvedOutcomeIsVisibleAndAccessible(){
