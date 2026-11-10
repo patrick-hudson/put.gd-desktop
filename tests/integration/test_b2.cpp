@@ -394,6 +394,18 @@ private slots:
         const auto auth = f.events("b2_get_download_authorization")[0].toObject()["body"].toObject();
         QCOMPARE(auth["fileNamePrefix"].toString(), QString("prefix é/private.png"));
         QCOMPARE(auth["validDurationInSeconds"].toInt(), 3 * 86400);
+        auto expired=uploaded.receipt;expired.objectReference["linkExpiresAt"]="2000-01-01T00:00:00.000Z";
+        const auto fresh=f.await<StatResult>([&](auto cb){f.provider.refreshLink(expired,cb);});
+        QCOMPARE(fresh.status,QString("own"));QVERIFY(!fresh.error);
+        QCOMPARE(fresh.receipt.destination.toJson(),expired.destination.toJson());
+        auto original=expired.objectReference,renewed=fresh.receipt.objectReference;original.remove("linkExpiresAt");renewed.remove("linkExpiresAt");QCOMPARE(original,renewed);
+        QVERIFY(QDateTime::fromString(fresh.receipt.objectReference["linkExpiresAt"].toString(),Qt::ISODateWithMs)>QDateTime::currentDateTimeUtc());
+        QCOMPARE(f.events("b2_get_download_authorization").size(),2);
+        // A retained old version is not proof that a filename-based link still serves it.
+        const auto recorded=f.versions().first().toObject();auto replacement=recorded;replacement["fileId"]="newer-foreign-version";replacement["fileInfo"]=QJsonObject{};
+        f.reset({{"versions",QJsonArray{recorded,replacement}}});
+        const auto refused=f.await<StatResult>([&](auto cb){f.provider.refreshLink(expired,cb);});
+        QCOMPARE(refused.status,QString("foreign"));QVERIFY(f.events("b2_get_download_authorization").isEmpty());
     }
     void testConnectionPublicAndAuthorized() {
         B2Fixture f;

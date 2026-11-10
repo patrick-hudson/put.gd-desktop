@@ -6,6 +6,7 @@
 #include "editor/EditorCommands.h"
 #include "platform/HostOpen.h"
 #include <QApplication>
+#include <QPainter>
 #include <QAccessible>
 #ifdef Q_OS_LINUX
 #include <QDBusConnection>
@@ -58,6 +59,70 @@ class EditorWindowTest:public QObject {
  static QImage canvasImage(){QImage image(400,260,QImage::Format_RGB32);image.fill(QColor("#20242c"));return image;}
  static void add(EditDocument& doc,const QJsonObject& shape){QJsonArray created;QString code,message;QVERIFY2(Commands::apply(doc,{QJsonObject{{"op","add"},{"shape",shape}}},created,code,message),qPrintable(message));}
 private slots:
+ void redactionEdgesNeverSampleCoveredContent_data(){
+  QTest::addColumn<double>("zoom");QTest::addColumn<QString>("effect");
+  for(double zoom:{0.83,0.29,0.51,0.67})for(const auto& effect:{"none","blur","pixelate","highlight"})
+   QTest::newRow(qPrintable(QString("%1-%2").arg(zoom).arg(effect)))<<zoom<<QString(effect);
+ }
+ void redactionEdgesNeverSampleCoveredContent(){
+  QFETCH(double,zoom);QFETCH(QString,effect);
+  const QRect secret(101,79,157,113);
+  auto render=[&](const QColor& color){
+   QImage image(600,400,QImage::Format_RGB32);image.fill(Qt::white);
+   {QPainter painter(&image);painter.fillRect(secret,color);}
+   EditDocument doc(image);add(doc,{{"kind","redact"},{"rect",QJsonArray{secret.x(),secret.y(),secret.width(),secret.height()}}});
+   if(effect!="none"){QJsonObject shape{{"kind",effect=="highlight"?"highlight":"blur"},{"rect",QJsonArray{90,65,190,145}}};if(effect!="highlight")shape["style"]=effect=="pixelate"?"pixelate":"blur";add(doc,shape);}
+   EditorCanvas canvas(doc);canvas.resize(540,360);canvas.show();canvas.setZoom(zoom);
+   QImage result(canvas.size(),QImage::Format_RGB32);canvas.render(&result);return result;
+  };
+  // Changing only covered pixels must never change even one displayed pixel,
+  // including the filtered edge and tiles overlapping the redaction.
+  QCOMPARE(render(Qt::magenta),render(Qt::green));
+ }
+ void maskEdgesMatchScaledExport_data(){
+  QTest::addColumn<double>("zoom");QTest::addColumn<double>("dpr");QTest::addColumn<bool>("alpha");QTest::addColumn<bool>("cropped");
+  for(double zoom:{0.29,0.83,1.37})for(double dpr:{1.0,1.5,2.0})for(bool alpha:{false,true})for(bool cropped:{false,true})
+   QTest::newRow(qPrintable(QString("%1-%2-%3-%4").arg(zoom).arg(dpr).arg(alpha).arg(cropped)))<<zoom<<dpr<<alpha<<cropped;
+ }
+ void maskEdgesMatchScaledExport(){
+  QFETCH(double,zoom);QFETCH(double,dpr);QFETCH(bool,alpha);QFETCH(bool,cropped);
+  const QRect crop=cropped?QRect(70,40,450,300):QRect(0,0,600,400);
+  QImage image(600,400,QImage::Format_ARGB32_Premultiplied);image.fill(Qt::green);
+  {QPainter painter(&image);painter.setCompositionMode(QPainter::CompositionMode_Source);painter.fillRect(crop,QColor(240,180,210,alpha?100:255));}
+  EditDocument doc(image);doc.setCrop(crop);add(doc,{{"kind","redact"},{"rect",QJsonArray{201,149,157,113}}});
+  EditDocument exported(doc.render());
+  auto render=[&](EditDocument& document){EditorCanvas canvas(document);canvas.resize(540,360);canvas.show();canvas.setZoom(zoom);QImage result(QSize(540,360)*dpr,QImage::Format_RGB32);result.setDevicePixelRatio(dpr);canvas.render(&result);return result;};
+  const auto actual=render(doc),expected=render(exported);
+  auto changed=image;{QPainter painter(&changed);painter.fillRect(QRect(201,149,157,113),Qt::green);}
+  EditDocument other(changed);other.setCrop(crop);add(other,{{"kind","redact"},{"rect",QJsonArray{201,149,157,113}}});
+  QCOMPARE(actual,render(other)); // Covered-content invariance stays byte-exact at every DPR.
+  // Clipped/full-span Qt filtering can round a channel by one, with one
+  // further step for alpha compositing. Only the export comparison permits
+  // this; covered-content invariance above remains byte-exact.
+  const int rounding=alpha?2:1;
+  for(int y=0;y<actual.height();++y)for(int x=0;x<actual.width();++x){
+   const auto a=actual.pixelColor(x,y),b=expected.pixelColor(x,y);
+   QVERIFY(std::abs(a.red()-b.red())<=rounding&&std::abs(a.green()-b.green())<=rounding&&std::abs(a.blue()-b.blue())<=rounding);
+  }
+ }
+
+ void sanitizedViewTracksMaskCropAndViewChanges(){
+  QImage image(800,500,QImage::Format_RGB32);image.fill(Qt::magenta);EditDocument doc(image);
+  EditorCanvas canvas(doc);canvas.resize(540,360);canvas.show();canvas.setZoom(0.83);
+  auto render=[](EditorCanvas& view){QImage result(view.size(),QImage::Format_RGB32);view.render(&result);return result;};
+  double zoom=0.83;auto verify=[&]{
+   canvas.documentChanged();canvas.fit();canvas.setZoom(zoom);EditorCanvas fresh(doc);fresh.resize(canvas.size());fresh.show();fresh.setZoom(zoom);
+   QCOMPARE(render(canvas),render(fresh));
+  };
+  Shape mask;mask.kind=Shape::Kind::Redact;mask.rect={101,79,157,113};mask.id=doc.add(mask);verify();
+  mask.rect.translate(21,17);QVERIFY(doc.replace(mask));verify();
+  QVERIFY(doc.setCrop({30,20,700,450}));verify();
+  zoom=0.29;verify();
+  QVERIFY(doc.remove(mask.id));verify();
+  QVERIFY(doc.undo());verify();
+  canvas.hide();canvas.show();verify();
+ }
+
  void propertyHeadingFitsAndKeepsItsSelectionAccessible(){
   {EditDocument doc(canvasImage());EditorWindow window(doc);}
   const auto previous=QApplication::font();auto restore=qScopeGuard([previous]{QApplication::setFont(previous);});
@@ -134,9 +199,10 @@ private slots:
   const auto previous=QApplication::font();auto restore=qScopeGuard([previous]{QApplication::setFont(previous);});const auto base=Ui::font();
   for(const bool enlarged:{false,true}){
    auto current=base;if(enlarged)current.setPixelSize(qRound(base.pixelSize()*1.5));QApplication::setFont(current);
-   EditDocument doc(canvasImage());EditorWindow window(doc);window.resize(1800,820);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
-   auto* toolbar=window.findChild<QWidget*>("editorToolbar");const int fullWidth=toolbar->layout()->sizeHint().width();
-   for(const int width:{1800,fullWidth,fullWidth-1,900}){
+   // Twelve labelled tools need more than 1800 px at 150 % text.
+   EditDocument doc(canvasImage());EditorWindow window(doc);window.resize(2600,820);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
+   auto* toolbar=window.findChild<QWidget*>("editorToolbar");const int fullWidth=toolbar->layout()->sizeHint().width();QVERIFY(fullWidth<2600);
+   for(const int width:{2600,fullWidth,fullWidth-1,900}){
     window.resize(width,820);QApplication::processEvents();int tools=0;
     const bool allLabels=width>=fullWidth;
     for(auto* button:toolbar->findChildren<QToolButton*>()){
@@ -147,11 +213,11 @@ private slots:
      QVERIFY(!button->text().isEmpty());QVERIFY(!button->accessibleName().isEmpty());QVERIFY(!button->toolTip().isEmpty());
      if(allLabels||privacy)QVERIFY(button->width()>=button->sizeHint().width());
     }
-    QCOMPARE(tools,8);
+    QCOMPARE(tools,12);
     QList<QToolButton*> ordered;for(auto* button:toolbar->findChildren<QToolButton*>())if(button->isCheckable())ordered.append(button);
     std::sort(ordered.begin(),ordered.end(),[](auto* left,auto* right){return left->x()<right->x();});
-    QCOMPARE(ordered.at(6)->accessibleName(),QString("Redact"));QCOMPARE(ordered.at(7)->accessibleName(),QString("Blur"));
-    QVERIFY(ordered.at(6)->x()>ordered.at(5)->geometry().right()+8);
+    QCOMPARE(ordered.at(10)->accessibleName(),QString("Redact"));QCOMPARE(ordered.at(11)->accessibleName(),QString("Blur"));
+    QVERIFY(ordered.at(10)->x()>ordered.at(9)->geometry().right()+8);
    }
   }
  }
@@ -285,8 +351,8 @@ private slots:
   QString code,message;auto state=window.viewCommand({{"action","keyboardHelp"}},code,message);
   QVERIFY2(code.isEmpty(),qPrintable(message));QVERIFY(state["keyboardHelp"].toObject()["open"].toBool());
   auto* help=window.findChild<QToolButton*>("editorKeyboardHelp");auto* text=window.findChild<QWidget*>("editorKeyboardHelpText");
-  QVERIFY(help&&text&&text->isVisible());QVERIFY(text->property("text").toString().contains("Ctrl+arrows: Move 10 px"));QVERIFY(text->property("text").toString().contains("Ctrl+Shift+arrows: Resize 10 px"));auto* grid=qobject_cast<QGridLayout*>(text->layout());QVERIFY(grid);QCOMPARE(grid->verticalSpacing(),Ui::space(Ui::Space::s));QCOMPARE(grid->count(),11);
-  for(int row=0;row<11;++row){auto* pair=grid->itemAtPosition(row,0)->widget();auto* meaning=qobject_cast<QLabel*>(pair->layout()->itemAt(0)->widget());auto* key=qobject_cast<QLabel*>(pair->layout()->itemAt(1)->widget());QVERIFY(key&&meaning);QCOMPARE(key->font().family(),Ui::monoFamily());QCOMPARE(meaning->font().family(),Ui::uiFamily());}QCOMPARE(help->accessibleDescription(),QString("Expanded"));
+  QVERIFY(help&&text&&text->isVisible());QVERIFY(text->property("text").toString().contains("Ctrl+arrows: Move 10 px"));QVERIFY(text->property("text").toString().contains("Ctrl+Shift+arrows: Resize 10 px"));auto* grid=qobject_cast<QGridLayout*>(text->layout());QVERIFY(grid);QCOMPARE(grid->verticalSpacing(),Ui::space(Ui::Space::s));QCOMPARE(grid->count(),13);
+  for(int row=0;row<13;++row){auto* pair=grid->itemAtPosition(row,0)->widget();auto* meaning=qobject_cast<QLabel*>(pair->layout()->itemAt(0)->widget());auto* key=qobject_cast<QLabel*>(pair->layout()->itemAt(1)->widget());QVERIFY(key&&meaning);QCOMPARE(key->font().family(),Ui::monoFamily());QCOMPARE(meaning->font().family(),Ui::uiFamily());}QCOMPARE(help->accessibleDescription(),QString("Expanded"));
   QApplication::processEvents();auto* scroll=window.findChild<QScrollArea*>("editorPropertiesScroll");
   if(text->height()<=scroll->viewport()->height())QVERIFY(scroll->viewport()->rect().contains(QRect(text->mapTo(scroll->viewport(),QPoint()),text->size())));
   else for(auto* label:text->findChildren<QLabel*>()){scroll->ensureWidgetVisible(label);QApplication::processEvents();QVERIFY(scroll->viewport()->rect().contains(QRect(label->mapTo(scroll->viewport(),QPoint()),label->size())));}
@@ -667,6 +733,55 @@ private slots:
   QString code,message;window.viewCommand({{"action","showSavedCopy"}},code,message);QCOMPARE(code,QString("editor_no_saved_copy"));
  }
  // Agents drive the window's own view and selection controls (editor.view).
+ // #1362: the four new tools, the Blur / Pixelate style, step numbering and Copy image.
+ void newToolsHaveKeysPropertiesAndCopyImage(){
+  EditDocument doc(canvasImage());EditorWindow window(doc);window.resize(1000,700);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
+  QString code,message;auto view=[&](const QJsonObject& params){code.clear();return window.viewCommand(params,code,message);};
+  // Keys pick the tools, and each tool button names its key.
+  for(const auto& [key,tool,name]:{std::tuple{Qt::Key_N,Tool::Step,"step"},std::tuple{Qt::Key_P,Tool::Pen,"pen"},std::tuple{Qt::Key_E,Tool::Ellipse,"ellipse"},std::tuple{Qt::Key_L,Tool::Line,"line"}}){
+   window.canvas().setFocus();QTest::keyClick(&window.canvas(),key);QCOMPARE(window.canvas().tool(),tool);QCOMPARE(view({{"action","inspect"}})["tool"].toString(),QString(name));
+  }
+  // Line, ellipse and pen show colour and width; a step shows colour and its number.
+  auto* width=window.findChild<QWidget*>("lineWidth");auto* step=window.findChild<QWidget*>("editorStep");auto* style=window.findChild<QWidget*>("editorBlurStyle");QVERIFY(width&&step&&style);
+  for(const auto* tool:{"line","ellipse","pen"}){view({{"action","tool"},{"tool",tool}});QVERIFY(width->isVisible());QVERIFY(!step->isVisible());}
+  view({{"action","tool"},{"tool","step"}});QVERIFY(step->isVisible());QVERIFY(!width->isVisible());
+  auto* number=window.findChild<QSpinBox*>("stepNumber");QCOMPARE(number->value(),1);
+  auto state=view({{"action","stepNumber"},{"number",4}});QVERIFY2(code.isEmpty(),qPrintable(message));QCOMPARE(state["nextStepNumber"].toInt(),4);
+  view({{"action","place"}});QCOMPARE(doc.shapes().last().number,4);QCOMPARE(number->value(),4);
+  // With the step selected the field edits its number, as one undo step.
+  view({{"action","stepNumber"},{"number",9}});QCOMPARE(doc.shapes().last().number,9);QVERIFY(doc.undo());window.documentEdited();QCOMPARE(doc.shapes().last().number,4);
+  view({{"action","select"},{"shapeId",QJsonValue()}});QCOMPARE(number->value(),5);
+  // Pixelate is a style of Blur, with the same reversibility warning.
+  view({{"action","tool"},{"tool","blur"}});QVERIFY(style->isVisible());
+  auto* warning=window.findChild<QLabel*>("editorToolWarning");QVERIFY(warning&&warning->isVisible());QCOMPARE(warning->text(),Ui::blurWarningText());
+  state=view({{"action","blurStyle"},{"style","pixelate"}});QCOMPARE(state["style"].toObject()["blurStyle"].toString(),QString("pixelate"));
+  QVERIFY(warning->isVisible());QCOMPARE(warning->text(),QString("Pixelation may be reversible."));
+  QCOMPARE(window.findChild<Ui::ElidedLabel*>("editorToolTitle")->text(),QString("Pixelate"));
+  view({{"action","place"}});QVERIFY(doc.shapes().last().pixelate);
+  view({{"action","blurStyle"},{"style","blur"}});QVERIFY(!doc.shapes().last().pixelate);
+  view({{"action","blurStyle"},{"style","mosaic"}});QCOMPARE(code,QString("invalid_request"));
+  view({{"action","tool"},{"tool","arrow"}});view({{"action","stepNumber"},{"number",2}});QCOMPARE(code,QString("invalid_request"));
+  // Copy image: the button and Ctrl+Shift+C ask the host; the window exports the same PNG as Save a copy.
+  QSignalSpy requested(&window,&EditorWindow::copyRequested);
+  auto* copy=window.findChild<QPushButton*>("editorCopyImage");QVERIFY(copy&&copy->isVisible());copy->click();QCOMPARE(requested.count(),1);
+  QTest::keyClick(&window,Qt::Key_C,Qt::ControlModifier|Qt::ShiftModifier);QCOMPARE(requested.count(),2);
+  QByteArray exported;bool finished=false;QVERIFY(window.exportForCopy([&](const QByteArray& png,const QSize& size,const QString&){exported=png;finished=size==doc.crop().size();}));
+  QVERIFY(window.copying());QVERIFY(!copy->isEnabled());QVERIFY(!window.findChild<QPushButton*>("editorUpload")->isEnabled());QVERIFY(!window.exportForCopy({}));QVERIFY(!window.saveCopy());
+  QVERIFY(putgd::test::waitFor([&]{return finished;},10000));window.showCopied();
+  QVERIFY(!window.copying());QCOMPARE(copy->text(),QString("Image copied"));QCOMPARE(view({{"action","inspect"}})["lastCopy"].toObject()["status"].toString(),QString("copied"));
+  QTemporaryDir dir;QString reason;QCOMPARE(writeCopy(window,dir.filePath("same.png"),reason),exported);
+  window.exportForCopy([](const QByteArray&,const QSize&,const QString&){});window.showCopyFailed("no clipboard owner");
+  state=view({{"action","inspect"}});QCOMPARE(state["lastCopy"].toObject()["status"].toString(),QString("failed"));QCOMPARE(state["message"].toObject()["tone"].toString(),QString("error"));
+  window.allowClose();
+ }
+ // Twelve tools fit at the editor's smallest window; the privacy labels fold last.
+ void toolbarWithTwelveToolsFitsAtTheMinimumWidth(){
+  EditDocument doc(canvasImage());EditorWindow window(doc);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
+  window.resize(window.minimumSizeHint().width(),620);QApplication::processEvents();
+  auto* toolbar=window.findChild<QWidget*>("editorToolbar");QVERIFY(toolbar);
+  for(auto* button:toolbar->findChildren<QToolButton*>()){if(!button->isVisible())continue;QVERIFY2(toolbar->rect().contains(button->geometry()),qPrintable(button->toolTip()+" is clipped at "+QString::number(window.width())));}
+  window.allowClose();
+ }
  void viewCommandsDriveTheWindowControls(){
   EditDocument doc(canvasImage());EditorWindow window(doc);window.resize(1000,700);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
   QString code,message;auto view=[&](const QJsonObject& params){code.clear();return window.viewCommand(params,code,message);};

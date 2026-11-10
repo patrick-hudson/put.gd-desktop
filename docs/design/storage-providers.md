@@ -3,8 +3,9 @@
 Implement `StorageProvider` and register it in `ProviderRegistry`. Settings validation
 must be pure and must not read source content, unlock secrets or contact the network.
 No profile is accepted without its registered validator. The production registry has
-no test provider. S3 implementation belongs exclusively under `src/storage/s3/`, and
-Backblaze B2's under `src/storage/b2/` ([b2.md](../user/b2.md)).
+no test provider. S3 implementation belongs exclusively under `src/storage/s3/`,
+Backblaze B2's under `src/storage/b2/` ([b2.md](../user/b2.md)) and the custom HTTP
+uploader's under `src/storage/http/` ([custom-uploader.md](../user/custom-uploader.md)).
 
 All network methods complete through a callback exactly once, including cancellation,
 permission failure, timeout and ambiguous outcomes. Callbacks may run on provider
@@ -33,12 +34,35 @@ required safeguards fail explicitly. `checkName` returns absent, present or inco
 an opaque target reference and an opaque precondition. Denied/time-limited checks are
 never treated as available names. Conditional PUT is the final race protection.
 
+A destination whose server names each upload declares `serverNamesObjects` (#1361).
+It has no name to check, so `checkName` answers absent with a fresh nonce and contacts
+nothing, and the required conditional-create safeguard does not apply. `stat` and
+`reconcile` answer unknown with `unsupported_capability`: an upload whose outcome is
+unknown stays unknown, History says a retry may leave a second copy, and only an
+explicit retry sends the file again. `referenceDelete` means deletion addresses exactly
+what the upload returned (a deletion URL), so there is nothing to stat first.
+`receiptCapabilities(receipt)` answers for one recorded upload rather than for today's
+settings: an upload that came back without a deletion URL reports no removal, with the
+reason in `removeUnavailable`. `safeRemoval()` is true for a provider that can delete
+by such a reference or under the conditional and versioned safeguards above.
+`diagnosticSettings` is what a diagnostics package may show of a profile's settings;
+the custom uploader reduces rows to names and addresses to scheme and host.
+
 A version-1 receipt preserves provider/profile/revision, original non-secret destination,
-credential-store/session reference, versioned opaque object reference, concurrency token,
-publication marker and direct URL as separate fields. Core/history/CLI never parse the
+credential-store/session reference, versioned opaque object reference (including link
+expiry when present), concurrency token, publication marker and direct URL as separate fields. Core/history/CLI never parse the
 URL, assume bucket/key/ETag fields, or reroute through current profiles. Upload results
 are uploaded, collision, failed or unknown. Reconciliation is own, foreign, missing or
 unknown and must inspect the saved publication identity before any retry/rename.
+
+`refreshLink` is an explicit copy-time operation. S3 and B2 verify the saved
+publication and use only its original destination and cached credential reference;
+they never unlock credentials. History commits a changed URL and `linkExpiresAt`
+only after checking that every other receipt field still matches. `stat` leaves an expiring link’s saved URL and expiry unchanged, so deletion
+identity remains stable. B2 also checks that its filename-based download URL still serves the recorded file version before issuing another token.
+`unlockLinkCredentials` is a separate explicit user action on the credential
+store's owning thread; it may ask the desktop keyring to unlock the original
+saved reference even when that profile no longer exists in current settings.
 
 Deletion receives the exact receipt, persistent deletion operation ID and versioned
 opaque progress. Before each driver network step call `DurableCheckpoint`, then await

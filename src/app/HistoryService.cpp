@@ -21,15 +21,47 @@ void HistoryService::expireConfigured() {
  const auto before=QDateTime::currentDateTimeUtc().addDays(-days).toString(Qt::ISODateWithMs),path=operations_.databasePath();operations_.background([before,path](Error& e) {HistoryStore store(path);e=store.expireBefore(before);return QJsonObject{};},[this](Error e,QJsonObject) {if(!e)notifyChanged();});
 }
 void HistoryService::list(const HistoryQuery& query,JsonReply reply) {if(!operations_.ready()){reply({"initializing","Wait for resident journal recovery",{}},{});return;}const auto path=operations_.databasePath();operations_.background([path,query](Error& e) {HistoryStore store(path);auto page=store.list(query);e=page.error;return page.toJson();},std::move(reply));}
-void HistoryService::detail(const QString& id,JsonReply reply) {if(!operations_.ready()){reply({"initializing","Wait for resident journal recovery",{}},{});return;}const auto path=operations_.databasePath();operations_.background([this,path,id](Error& e) {HistoryStore store(path);auto data=store.detail(id,&e);if(!e){auto receipt=StorageReceipt::fromJson(data["receipt"].toObject());auto provider=operations_.providers().find(receipt.destination.providerId);if(provider)data["capabilities"]=provider->capabilities(receipt.destination).toJson();}return data;},reply);}
+void HistoryService::detail(const QString& id,JsonReply reply) {if(!operations_.ready()){reply({"initializing","Wait for resident journal recovery",{}},{});return;}const auto path=operations_.databasePath();operations_.background([this,path,id](Error& e) {HistoryStore store(path);auto data=store.detail(id,&e);if(!e){auto receipt=StorageReceipt::fromJson(data["receipt"].toObject());auto provider=operations_.providers().find(receipt.destination.providerId);if(provider)data["capabilities"]=provider->receiptCapabilities(receipt).toJson();
+  // No receipt yet (a failed upload, or one whose outcome is unknown): the operation's destination says what its provider can do.
+  else{Error ignored;const auto operation=store.operation(data["operationId"].toString(),&ignored);if(!ignored)if(auto planned=operations_.providers().find(operation.destination.providerId))data["capabilities"]=planned->capabilities(operation.destination).toJson();}}return data;},reply);}
 void HistoryService::preview(const QString& id,JsonReply reply,bool retry) {operations_.makePreview(id,std::move(reply),retry);}
 void HistoryService::clear(JsonReply reply) {if(!operations_.ready()){reply({"initializing","Wait for resident journal recovery",{}},{});return;}const auto path=operations_.databasePath();operations_.background([path](Error& e) {HistoryStore store(path);e=store.clear();return QJsonObject{{"cleared",!e},{"pendingDeletionTargetsRetained",true}};},[this,reply=std::move(reply)](Error e,QJsonObject result){if(!e)notifyChanged();reply(e,result);});}
 void HistoryService::copyImage(const QString& id,JsonReply reply) {if(!operations_.ready()){reply({"initializing","Wait for resident journal recovery",{}},{});return;}operations_.copyHistoryImage(id,std::move(reply));}
+QJsonObject HistoryService::copyableLink(const QString& id,Error& e) {
+
+  HistoryStore store(operations_.databasePath());auto data=store.detail(id,&e);if(e)return QJsonObject{};
+  if(data["linkRefreshable"].toBool()) {
+   auto receipt=StorageReceipt::fromJson(data["receipt"].toObject());auto provider=operations_.providers().find(receipt.destination.providerId);
+   if(!provider){e={"provider_unavailable","Restore access to the original destination",{}};return QJsonObject{};}
+   auto lock=operations_.objectLock(receipt.destination,receipt.objectReference,{});std::unique_lock guard(*lock);
+   data=store.detail(id,&e);if(e)return QJsonObject{};
+   if(data["linkRefreshable"].toBool()) {
+    receipt=StorageReceipt::fromJson(data["receipt"].toObject());
+    auto result=awaitProvider<StatResult>([&](auto cb){provider->refreshLink(receipt,cb);});
+    if(result.error||result.status!="own"){e=result.error?result.error:Error{"link_refresh_failed","The original uploaded object is no longer available",{}};return QJsonObject{};}
+    if((e=store.refreshLink(id,receipt,result.receipt)))return QJsonObject{};
+    data=store.detail(id,&e);
+   }
+  }
+  return data;
+
+}
+void HistoryService::unlockLinkCredentials(const QString& id,JsonReply reply) {
+ detail(id,[this,reply](Error e,QJsonObject data){
+  if(e){reply(e,{});return;}
+  const auto receipt=StorageReceipt::fromJson(data["receipt"].toObject());
+  auto provider=operations_.providers().find(receipt.destination.providerId);
+  if(!data["linkRefreshable"].toBool()||!provider||receipt.destination.credentialReference["mode"]!="keychain"){reply({"credential_setup_required","Restore the original destination credentials in Settings",{}},{});return;}
+  provider->unlockLinkCredentials(receipt,[reply](Error e){reply(e,{{"unlocked",!e}});});
+ });
+}
 void HistoryService::copyLink(const QString& id,JsonReply reply) {
+ if(!operations_.ready()){reply({"initializing","Wait for resident journal recovery",{}},{});return;}
  const auto ticket=operations_.invalidateCopyEligibility();
- detail(id,[this,id,reply,ticket](Error e,QJsonObject data) {
+ operations_.background([this,id](Error& e) {return copyableLink(id,e); },[this,id,reply,ticket](Error e,QJsonObject data) {
   if(e){reply(e,{});return;}
   if(!data["linkAvailable"].toBool()){reply({"link_unavailable","This recorded link is no longer available",{}},{});return;}
+  notifyChanged();
   operations_.copyHistoryUrl(data["receipt"].toObject()["directUrl"].toString(),[this,id,reply](Error e,QJsonObject result) {
    if(e||!result["copied"].toBool()){reply(e,result);return;}
    const auto path=operations_.databasePath();
@@ -44,9 +76,9 @@ void HistoryService::copyLink(const QString& id,JsonReply reply) {
 void HistoryService::copyLinks(const QStringList& ids,JsonReply reply) {
  if(!operations_.ready()){reply({"initializing","Wait for resident journal recovery",{}},{});return;}
  const auto ticket=operations_.invalidateCopyEligibility();const auto path=operations_.databasePath();
- operations_.background([path,ids](Error& e) {
-  HistoryStore store(path);QStringList urls;
-  for(const auto& id:ids){const auto data=store.detail(id,&e);if(e)return QJsonObject{};if(!data["linkAvailable"].toBool()){e={"link_unavailable","This recorded link is no longer available",{{"historyId",id}}};return QJsonObject{};}urls.append(data["receipt"].toObject()["directUrl"].toString());}
+ operations_.background([this,ids](Error& e) {
+  QStringList urls;
+  for(const auto& id:ids){const auto data=copyableLink(id,e);if(e)return QJsonObject{};if(!data["linkAvailable"].toBool()){e={"link_unavailable","This recorded link is no longer available",{{"historyId",id}}};return QJsonObject{};}urls.append(data["receipt"].toObject()["directUrl"].toString());}
   return QJsonObject{{"text",urls.join('\n')}};
  },[this,ids,reply,ticket](Error e,QJsonObject links) {
   if(e){reply(e,{});return;}
@@ -68,7 +100,7 @@ QJsonObject HistoryService::prepare(const QStringList& ids,Error& e) const {
   const auto remote=data["remoteStatus"].toString();if(remote=="pending"||remote=="deleting"||remote=="unknown"||remote=="changed"||remote=="hidden_version_retained") {e={"delete_target_changed","Resolve or retry the existing deletion identity",{{"historyId",id}}};return {};}
   auto receipt=StorageReceipt::fromJson(data["receipt"].toObject());if(auto error=receipt.validate()) {e=error;return {};}
   auto provider=operations_.providers().find(receipt.destination.providerId);if(!provider) {e={"provider_unavailable","Restore access to the original destination",{{"historyId",id}}};return {};}
-  auto caps=provider->capabilities(receipt.destination);if(!caps.remove||!caps.stat||(!caps.conditionalDelete&&!caps.versionAddressing)||caps.deletionEffect.isEmpty()) {e={"unsupported_capability","This provider can't safely delete this recorded object",{{"historyId",id}}};return {};}
+  auto caps=provider->receiptCapabilities(receipt);if(!caps.safeRemoval()) {e={"unsupported_capability",caps.removeUnavailable.isEmpty()?QStringLiteral("This provider can't safely delete this recorded object"):caps.removeUnavailable,{{"historyId",id}}};return {};}
   targets.append(QJsonObject{{"historyId",id},{"receipt",receipt.toJson()},{"effect",caps.deletionEffect}});
  }
  const auto digest=QString::fromLatin1(QCryptographicHash::hash(QJsonDocument(targets).toJson(QJsonDocument::Compact),QCryptographicHash::Sha256).toHex());
@@ -156,11 +188,13 @@ void HistoryService::runDelete(QJsonObject doc,std::shared_ptr<std::atomic_bool>
    const auto receipt=StorageReceipt::fromJson(item["receipt"].toObject());auto provider=operations_.providers().find(receipt.destination.providerId);
    Error e;QString outcome;QJsonObject progress=item["progress"].toObject();
    if(!provider) {e={"provider_unavailable","Restore access to the recorded destination",{}};outcome="failed";}
-   else if(!provider->capabilities(receipt.destination).remove||!provider->capabilities(receipt.destination).stat||(!provider->capabilities(receipt.destination).conditionalDelete&&!provider->capabilities(receipt.destination).versionAddressing)) {e={"unsupported_capability","This provider can't safely delete this recorded target",{}};outcome="failed";}
+   else if(!provider->receiptCapabilities(receipt).safeRemoval()) {e={"unsupported_capability","This provider can't safely delete this recorded target",{}};outcome="failed";}
    else {
     auto lock=operations_.objectLock(receipt.destination,receipt.objectReference,{});std::unique_lock guard(*lock);
     const bool driverReconciles=provider->reconcilesDeleteProgress() && progress.contains("phase");
-    auto stat=driverReconciles ? StatResult{"own",receipt,{}} : awaitProvider<StatResult>([&](auto cb) {provider->stat(receipt,cb);});
+    // A reference the upload returned addresses exactly that upload: there is nothing to stat (#1361).
+    const bool byReference=provider->receiptCapabilities(receipt).referenceDelete;
+    auto stat=driverReconciles||byReference ? StatResult{"own",receipt,{}} : awaitProvider<StatResult>([&](auto cb) {provider->stat(receipt,cb);});
     if(stat.status=="missing")outcome="already_missing";
     else if(stat.status=="foreign")outcome="changed";
     else if(stat.status!="own"||stat.error) {outcome="unknown";e=stat.error?stat.error:Error{"delete_unknown","Couldn't reconcile the recorded object identity",{}};}

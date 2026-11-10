@@ -7,11 +7,11 @@
 #include <optional>
 
 namespace putgd::editor {
-enum class Tool {Select,Redact,Blur,Crop,Arrow,Rectangle,Highlight,Text};
-struct ToolStyle {QColor color=QColor(220,38,38);int width=4;int strength=12;int fontPixels=28;QString fontFamily;};
+enum class Tool {Select,Redact,Blur,Crop,Arrow,Rectangle,Highlight,Text,Step,Pen,Ellipse,Line};
+struct ToolStyle {QColor color=QColor(220,38,38);int width=4;int strength=12;bool pixelate=false;int fontPixels=28;QString fontFamily;int stepPixels=defaultStepPixels;};
 
-// Interactive view of one EditDocument. The base raster is painted directly
-// from the document; only bounded display-resolution blur tiles are cached.
+// Interactive view of one EditDocument. The base stays in the document; only
+// bounded display-resolution effect tiles are retained.
 class EditorCanvas final:public QWidget {
  Q_OBJECT
 public:
@@ -65,6 +65,10 @@ public:
  // the keys that act on it.
  QString selectionSummary() const;
  qint64 cachedBlurBytes() const {return cacheBytes_;}
+ // The label the next step gets: one more than the last one placed, or the
+ // number set here. Undo, redo and agent edits recount from the highest step.
+ int nextStepNumber() const {return nextStep_;}
+ void setNextStepNumber(int);
 signals:
  void changed();
  void viewChanged();
@@ -97,6 +101,7 @@ private:
  int selectionHandleAt(const Shape&,const QPointF& widgetPoint) const;
  Shape boundedText(const Shape& original,Shape requested,int handle=4) const;
  Shape scaledText(const Shape& original,int handle,const QPointF& imagePoint) const;
+ Shape scaledStep(const Shape& original,int handle,const QPointF& imagePoint) const;
  quint64 shapeAt(const QPointF& imagePoint) const;
  quint64 grabAt(const QPointF& imagePoint) const;
  void updateHoverCursor(const QPointF& widgetPoint,Qt::KeyboardModifiers);
@@ -124,5 +129,6 @@ private:
  QHash<quint64,Tile> tiles_;qint64 cacheBytes_=0;quint64 tick_=0;
  QWidget* textWarning_=nullptr;
  QPointer<QLineEdit> textEditor_;QPointF textAnchor_;quint64 textShape_=0;
+ int nextStep_=1,stepStart_=1;
 };
 }

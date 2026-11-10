@@ -2,6 +2,41 @@
 class SettingsGui:public SettingsGuiFixture {
  Q_OBJECT
 private slots:
+ void s3PresignedFormPersistsAndExplainsAccess(){
+  QTemporaryDir dir;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});auto doc=threeDestinations();auto profiles=doc["profiles"].toArray();auto profile=profiles[1].toObject();auto storage=profile["settings"].toObject();storage["publicUrlBase"]="https://cdn.example.invalid";storage["endpoint"]="https://s3.example.invalid";storage["addressing"]="path";profile["settings"]=storage;profiles[1]=profile;doc["profiles"]=profiles;QVERIFY(service.save(doc,{}));
+  CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.navigate("destinations");window.show();
+  window.findChild<QListWidget*>("destinationList")->setCurrentRow(1);
+  auto* mode=window.findChild<QComboBox*>("b2LinkMode");PUTGD_TRY_VERIFY(mode->isVisible());
+  QVERIFY(mode->findData("presigned")>=0);mode->setCurrentIndex(mode->findData("presigned"));emit mode->activated(mode->currentIndex());
+  auto* days=window.findChild<QSpinBox*>("b2LinkDays");PUTGD_TRY_VERIFY(days->isVisible());days->setValue(2);emit days->editingFinished();
+  PUTGD_TRY_COMPARE(service.document()["profiles"].toArray()[1].toObject()["settings"].toObject()["linkMode"].toString(),QString("presigned"));
+  PUTGD_TRY_COMPARE(service.document()["profiles"].toArray()[1].toObject()["settings"].toObject()["linkValidityDays"].toInt(),2);
+  QVERIFY(!window.findChild<QComboBox*>("s3AclMode")->isVisible());QVERIFY(!window.findChild<QLineEdit*>("s3PublicUrlBase")->isVisible());
+  auto* example=window.findChild<QLabel*>("linkExample");QVERIFY(example);QVERIFY(example->text().startsWith("https://s3.example.invalid/"));QVERIFY(!example->text().contains("cdn.example.invalid"));QVERIFY(example->text().endsWith("?X-Amz-Signature=…"));QVERIFY(example->isVisible());
+  QCOMPARE(service.document()["profiles"].toArray()[1].toObject()["settings"].toObject()["publicUrlBase"].toString(),QString("https://cdn.example.invalid"));
+  mode->setCurrentIndex(mode->findData("public"));emit mode->activated(mode->currentIndex());PUTGD_TRY_VERIFY(example->text().startsWith("https://cdn.example.invalid/"));QVERIFY(!example->text().contains("X-Amz-Signature"));QVERIFY(example->isVisible());
+ }
+ void switchingLegacyS3ToPresignedSavesDependencies_data(){
+  QTest::addColumn<QString>("acl");QTest::addColumn<bool>("hasDays");
+  for(const auto& acl:QStringList{"omit","public-read"})for(bool days:{false,true})QTest::newRow(qPrintable(acl+(days?"-explicit-days":"-legacy")))<<acl<<days;
+ }
+ void switchingLegacyS3ToPresignedSavesDependencies(){
+  QFETCH(QString,acl);QFETCH(bool,hasDays);QTemporaryDir dir;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});auto doc=threeDestinations();auto profiles=doc["profiles"].toArray();auto p=profiles[1].toObject();auto storage=p["settings"].toObject();storage["aclMode"]=acl;storage.remove("linkMode");storage.remove("linkValidityDays");if(hasDays)storage["linkValidityDays"]=3;p["settings"]=storage;profiles[1]=p;doc["profiles"]=profiles;QVERIFY(service.save(doc,{}));
+  CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.navigate("destinations");window.show();window.findChild<QListWidget*>("destinationList")->setCurrentRow(1);
+  // An unrelated queued edit must survive the mode's dependent leaf edits.
+  auto* label=window.findChild<QLineEdit*>("destinationLabel");label->setText("Retained label");emit label->editingFinished();auto* mode=window.findChild<QComboBox*>("b2LinkMode");mode->setCurrentIndex(mode->findData("presigned"));emit mode->activated(mode->currentIndex());
+  PUTGD_TRY_COMPARE(service.document()["profiles"].toArray()[1].toObject()["settings"].toObject()["linkMode"].toString(),QString("presigned"));
+  auto saved=service.document()["profiles"].toArray()[1].toObject();QCOMPARE(saved["settings"].toObject()["linkValidityDays"].toInt(),hasDays?3:7);QCOMPARE(saved["settings"].toObject()["aclMode"].toString(),acl);QCOMPARE(saved["label"].toString(),QString("Retained label"));QVERIFY(!window.settings()->changesUnsaved());
+  bool tested=false;fixture.setup.setProviderSetup([&](const QString& kind,const Destination&,const QJsonObject&,JsonReply reply,auto){tested|=kind=="testDestination";reply({},{});});window.findChild<QPushButton*>("testDestination")->click();PUTGD_TRY_VERIFY(tested);
+  mode->setCurrentIndex(mode->findData("public"));emit mode->activated(mode->currentIndex());PUTGD_TRY_COMPARE(service.document()["profiles"].toArray()[1].toObject()["settings"].toObject()["linkMode"].toString(),QString("public"));QCOMPARE(window.findChild<QComboBox*>("s3AclMode")->currentData().toString(),acl);QVERIFY(!window.settings()->changesUnsaved());
+ }
+ void b2ModeSavesItsDomainDependency(){
+  QTemporaryDir dir;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});auto doc=threeDestinations();auto profiles=doc["profiles"].toArray();auto p=profiles[1].toObject();p["provider"]="backblaze-b2";auto storage=b2::defaults();storage["bucket"]="synthetic";storage["publicUrlBase"]="https://cdn.example.invalid";p["settings"]=storage;profiles[1]=p;doc["profiles"]=profiles;QVERIFY(service.save(doc,{}));
+  CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.navigate("destinations");window.show();window.findChild<QListWidget*>("destinationList")->setCurrentRow(1);auto* mode=window.findChild<QComboBox*>("b2LinkMode");mode->setCurrentIndex(mode->findData("authorized"));emit mode->activated(mode->currentIndex());
+  PUTGD_TRY_VERIFY(service.document()["profiles"].toArray()[1].toObject()["settings"].toObject()["publicUrlBase"].isNull());
+  bool tested=false;fixture.setup.setProviderSetup([&](const QString& kind,const Destination&,const QJsonObject&,JsonReply reply,auto){tested|=kind=="testDestination";reply({},{});});window.findChild<QPushButton*>("testDestination")->click();PUTGD_TRY_VERIFY(tested);
+  mode->setCurrentIndex(mode->findData("public"));emit mode->activated(mode->currentIndex());PUTGD_TRY_COMPARE(service.document()["profiles"].toArray()[1].toObject()["settings"].toObject()["linkMode"].toString(),QString("public"));auto* domain=window.findChild<QLineEdit*>("s3PublicUrlBase");QCOMPARE(service.document()["profiles"].toArray()[1].toObject()["settings"].toObject()["publicUrlBase"],domain->text().isEmpty()?QJsonValue(QJsonValue::Null):QJsonValue(domain->text()));
+ }
  void disclosureIconsSurviveEveryToggleAndProviderChange(){
   QTemporaryDir dir;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(service.save(threeDestinations(),{}));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.navigate("settings");window.show();
   for(auto* toggle:window.settings()->findChildren<QToolButton*>())if(toggle->property("uiDisclosure").toBool()){toggle->setChecked(false);const auto closed=toggle->icon().pixmap(toggle->iconSize()).toImage();toggle->setChecked(true);QCOMPARE(toggle->arrowType(),Qt::NoArrow);QVERIFY(!toggle->icon().isNull());QVERIFY(toggle->icon().pixmap(toggle->iconSize()).toImage()!=closed);toggle->setChecked(false);QCOMPARE(toggle->icon().pixmap(toggle->iconSize()).toImage(),closed);}
@@ -392,6 +427,99 @@ private slots:
     if(profile==0){auto* provider=window.findChild<QComboBox*>("storageProvider");provider->setCurrentIndex(provider->findData("backblaze-b2"));PUTGD_TRY_VERIFY(!window.findChild<QLineEdit*>("credentialSessionToken")->isVisible());auto* mode=window.findChild<QComboBox*>("b2LinkMode");PUTGD_TRY_VERIFY(mode->isVisible());for(const auto sharing:{"authorized","public"}){mode->setCurrentIndex(mode->findData(sharing));QMetaObject::invokeMethod(mode,"activated",Q_ARG(int,mode->currentIndex()));PUTGD_TRY_COMPARE(window.findChild<QSpinBox*>("b2LinkDays")->isVisible(),QString(sharing)=="authorized");QCOMPARE(scroll->horizontalScrollBar()->maximum(),0);if(QString(sharing)=="authorized"){auto* days=window.findChild<QSpinBox*>("b2LinkDays");QCOMPARE(days->suffix(),QString(" days"));QVERIFY(!days->parentWidget()->findChild<QLabel*>("b2LinkDaysUnit"));}}auto* access=window.findChild<QLineEdit*>("credentialAccessKey");QCOMPARE(access->accessibleName(),QString("Application key ID"));QLabel* caption=nullptr;for(auto* text:column->findChildren<QLabel*>())if(text->buddy()==access)caption=text;QVERIFY(caption);QCOMPARE(caption->text(),QString("Application key ID"));provider->setCurrentIndex(provider->findData("s3"));PUTGD_TRY_VERIFY(window.findChild<QLineEdit*>("credentialSessionToken")->isVisible());QCOMPARE(caption->text(),QString("Access key ID"));}
     advanced->setChecked(true);PUTGD_TRY_COMPARE(scroll->horizontalScrollBar()->maximum(),0);advanced->setChecked(false);
    }}
+ }
+ // #1361: importing a .sxcu fills the Custom uploader form. Its token waits in a masked
+ // field of the window; the configuration, the settings draft and the UI checkpoint get
+ // names only, before and after it is stored.
+ void customUploaderImportKeepsItsTokenOutOfSettingsAndCheckpoints(){
+  const QByteArray token="PUTGD-SYNTHETIC-GUI-TOKEN-0123456789abcdef";
+  QTemporaryDir dir;CredentialStore secrets;ProviderRegistry registry;
+  registry.add("s3",std::make_shared<S3Provider>(secrets));registry.add("custom-http",std::make_shared<HttpUploaderProvider>(secrets));
+  SettingsService service(dir.filePath("config.json"),[&](auto id,auto values){return registry.validate(id,values);},nullptr,[&](auto id,auto reference){return registry.validateCredentials(id,reference);});
+  QVERIFY(service.save(Settings::developmentTemplate(),{}));
+  UiSessionFixture fixture(service,secrets);fixture.setup.setNamedCredentials(http::namedCredentials);
+  MainWindow window(fixture.session);window.navigate("destinations");window.show();
+  auto* provider=window.findChild<QComboBox*>("storageProvider");
+  QVERIFY(provider->findData("custom-http")>=0);
+  provider->setCurrentIndex(provider->findData("custom-http"));
+  const auto saved=[&]{return service.document()["profiles"].toArray()[0].toObject();};
+  PUTGD_TRY_COMPARE(saved()["provider"].toString(),QString("custom-http"));
+  // A new one is saved with its defaults and says what it still needs.
+  QCOMPARE(saved()["settings"].toObject(),http::defaults());
+  auto* panel=window.findChild<CustomUploaderPanel*>("customUploaderEditor");QVERIFY(panel&&panel->isVisible());
+  QVERIFY(!window.findChild<QLineEdit*>("credentialAccessKey")->isVisible());
+  QVERIFY(window.settings()->destinationRowLines(0).join(' ').contains("Needs a request URL"));
+  auto* mode=window.findChild<QComboBox*>("credentialMode");mode->setCurrentIndex(mode->findData("session"));emit mode->activated(mode->currentIndex());
+  PUTGD_TRY_COMPARE(saved()["credentials"].toObject()["mode"].toString(),QString("session"));
+  // The file repeats its token in the deletion URL, as XBackBone's does.
+  const QByteArray file="{\"Version\":\"16.1.0\",\"Name\":\"Lab media\",\"DestinationType\":\"ImageUploader, FileUploader\",\"RequestMethod\":\"POST\",\"RequestURL\":\"https://media.example.test/upload\",\"Body\":\"MultipartFormData\",\"Arguments\":{\"file\":\"{filename}\",\"token\":\""+token+"\"},\"FileFormName\":\"upload\",\"URL\":\"{json:url}\",\"DeletionURL\":\"{json:url}/delete/"+token+"\"}";
+  QVERIFY(!panel->importBytes(file));
+  PUTGD_TRY_COMPARE(saved()["settings"].toObject()["requestUrl"].toString(),QString("https://media.example.test/upload"));
+  const auto settings=saved()["settings"].toObject();
+  QCOMPARE(settings["arguments"].toArray(),QJsonArray({QJsonObject{{"name","file"},{"secret",false},{"value","{filename}"}},QJsonObject{{"name","token"},{"secret",true}}}));
+  QCOMPARE(settings["deletionUrl"].toString(),QString("{json:url}/delete/{secret:arguments/token}"));
+  QCOMPARE(settings["accepts"].toArray(),QJsonArray({"image","file"}));
+  // Held in the window, masked, and nowhere else.
+  QCOMPARE(panel->typedSecrets().value("arguments/token"),QString::fromLatin1(token));
+  auto* value=window.findChild<QLineEdit*>("uploaderFieldValue1");QVERIFY(value);
+  QCOMPARE(value->echoMode(),QLineEdit::Password);
+  QVERIFY(window.settings()->hasCredentialInputs());
+  QVERIFY(window.findChild<QLabel*>("uploaderNotice")->text().contains("1 secret value is held in this window"));
+  // A value typed or imported but not stored is not "ready": the list says what is missing.
+  PUTGD_TRY_VERIFY(window.settings()->destinationRowLines(0).join(' ').contains("Needs credentials"));
+  // "Add credentials…" goes to a field of this form, not to the hidden S3 keys: the
+  // value that is still missing, or the store button when every value is typed.
+  auto* addCredentials=window.findChild<QPushButton*>("addDestinationCredentials");QVERIFY(addCredentials&&addCredentials->isVisible());
+  const auto held=panel->typedSecrets();panel->clearTypedSecrets();
+  addCredentials->click();PUTGD_TRY_COMPARE(QApplication::focusWidget(),static_cast<QWidget*>(value));
+  panel->setTypedSecrets(held);
+  addCredentials->click();PUTGD_TRY_COMPARE(QApplication::focusWidget(),static_cast<QWidget*>(window.findChild<QPushButton*>("storeCredentials")));
+  QFile config(dir.filePath("config.json"));QVERIFY(config.open(QIODevice::ReadOnly));QVERIFY(!config.readAll().contains(token));config.close();
+  const auto checkpoint=window.settings()->saveViewState();
+  QVERIFY2(!checkpoint.contains("stateError"),qPrintable(checkpoint["stateError"].toString()));
+  QVERIFY(!QJsonDocument(checkpoint).toJson().contains(token));
+  QVERIFY(!QJsonDocument(panel->state()).toJson().contains(token));
+  QCOMPARE(panel->missingSecrets(),QStringList());
+  // Stored for the session: the field empties and shows the value as stored.
+  auto* store=window.findChild<QPushButton*>("storeCredentials");PUTGD_TRY_VERIFY(store->isEnabled());store->click();
+  PUTGD_TRY_VERIFY(window.findChild<QLabel*>("storedCredentialHint")->text().contains("1 stored"));
+  PUTGD_TRY_VERIFY(panel->typedSecrets().isEmpty());
+  QVERIFY(value->text().isEmpty());QVERIFY(value->placeholderText().contains("stored"));
+  PUTGD_TRY_VERIFY(window.settings()->destinationRowLines(0).join(' ').contains("Ready to test"));
+  const auto cached=secrets.cached("development-s3",saved()["credentials"].toObject());
+  QVERIFY(cached);QCOMPARE(cached->values.value("arguments/token"),QString::fromLatin1(token));
+  QVERIFY(!window.settings()->hasCredentialInputs());
+  QVERIFY(config.open(QIODevice::ReadOnly));QVERIFY(!config.readAll().contains(token));config.close();
+  QVERIFY(!QJsonDocument(window.settings()->saveViewState()).toJson().contains(token));
+  // Plain HTTP beyond loopback is refused beside the address until the destination allows it.
+  auto* url=window.findChild<QLineEdit*>("uploaderUrl");url->setText("http://media.example.test/upload");emit url->editingFinished();
+  auto* problem=window.findChild<QLabel*>("uploaderUrlError");QVERIFY(problem);
+  PUTGD_TRY_VERIFY(problem->isVisible()&&problem->text().contains("plain HTTP"));
+  QCOMPARE(saved()["settings"].toObject()["requestUrl"].toString(),QString("https://media.example.test/upload"));
+  auto* allow=window.findChild<QCheckBox*>("uploaderAllowHttp");QVERIFY(allow->isVisible());allow->click();
+  PUTGD_TRY_COMPARE(saved()["settings"].toObject()["requestUrl"].toString(),QString("http://media.example.test/upload"));
+  QCOMPARE(saved()["settings"].toObject()["allowInsecureHttp"].toBool(),true);
+  PUTGD_TRY_VERIFY(!problem->isVisible());
+  // The deletion URL names this value, so it cannot stop being a secret: the change is
+  // refused beside the form and the saved row stays as it was.
+  auto* secret=window.findChild<QCheckBox*>("uploaderFieldSecret1");secret->click();
+  auto* refused=window.findChild<QLabel*>("uploaderSecretsError");QVERIFY(refused);
+  PUTGD_TRY_VERIFY(refused->isVisible()&&refused->text().contains("does not store"));
+  QCOMPARE(saved()["settings"].toObject()["arguments"].toArray()[1].toObject(),QJsonObject({{"name","token"},{"secret",true}}));
+  // The wheel scrolls the form: a timeout under the pointer keeps its value and takes no focus.
+  auto* timeout=window.findChild<QSpinBox*>("uploaderConnectTimeout");QVERIFY(timeout);const int seconds=timeout->value();
+  QCOMPARE(timeout->focusPolicy(),Qt::StrongFocus);
+  for(const auto delta:{120,-120}){QWheelEvent event(QPointF(5,5),timeout->mapToGlobal(QPoint(5,5)),QPoint{},QPoint{0,delta},Qt::NoButton,Qt::NoModifier,Qt::NoScrollPhase,false);QApplication::sendEvent(timeout,&event);QCOMPARE(timeout->value(),seconds);}
+  // A saved timeout finer than a second survives the form until its own field is changed.
+  auto fine=panel->settings();fine["connectTimeoutMs"]=1500;panel->setSettings(fine);
+  QCOMPARE(panel->settings()["connectTimeoutMs"].toInt(),1500);
+  timeout->setValue(2);QCOMPARE(panel->settings()["connectTimeoutMs"].toInt(),2000);
+  // An import into a destination that already allows plain HTTP keeps the switch and says so.
+  const QByteArray plain="{\"Version\":\"16.1.0\",\"Name\":\"Plain\",\"DestinationType\":\"ImageUploader\",\"RequestMethod\":\"POST\",\"RequestURL\":\"http://media.example.test/upload\",\"Body\":\"MultipartFormData\",\"FileFormName\":\"file\",\"URL\":\"{json:url}\"}";
+  QVERIFY(!panel->importBytes(plain));
+  QVERIFY(allow->isChecked());
+  const auto notice=window.findChild<QLabel*>("uploaderNotice")->text();
+  QVERIFY2(notice.contains("as allowed for it")&&!notice.contains("Turn on Allow plain HTTP"),qPrintable(notice));
  }
 
 };

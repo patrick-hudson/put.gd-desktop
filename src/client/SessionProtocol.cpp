@@ -22,6 +22,7 @@ int deadlineMs(const QString& method) {
     if (method == "history.preview") return historyPreviewReplyMs + transportMarginMilliseconds;
     if (method == "desktop.setup.recheck") return desktopSetupRecheckReplyMs + transportMarginMilliseconds;
     if (method == "upload.files") return uploadFilesReplyMs + transportMarginMilliseconds;
+    if (method == "settings.importUploader") return uploaderImportReplyMs + transportMarginMilliseconds;
     return deadlineMilliseconds;
 }
 

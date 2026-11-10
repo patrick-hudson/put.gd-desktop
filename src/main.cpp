@@ -6,6 +6,8 @@
 #include "core/RunMarker.h"
 #include "storage/s3/S3Provider.h"
 #include "storage/b2/B2Provider.h"
+#include "storage/http/HttpImport.h"
+#include "storage/http/HttpProvider.h"
 #include "storage/proton/ProtonProvider.h"
 #include "app/LocalServer.h"
 #include "app/DiagnosticsBundle.h"
@@ -242,6 +244,7 @@ int main(int argc,char* argv[]) {
  auto s3=std::make_shared<putgd::S3Provider>(credentials);providers.add("s3",s3);
  auto proton=std::make_shared<putgd::ProtonProvider>();providers.add("proton-drive",proton);
  auto b2=std::make_shared<putgd::B2Provider>(credentials);providers.add("backblaze-b2",b2);
+ auto http=std::make_shared<putgd::HttpUploaderProvider>(credentials);providers.add(putgd::http::providerId,http);
  putgd::SettingsService settings(locations.configPath(),[&providers](const auto& id,const auto& value) {return providers.validate(id,value);},nullptr,[&providers](const auto& id,const auto& value){return providers.validateCredentials(id,value);});
  std::unique_ptr<putgd::SourceAdapter> source;
  std::function<void()> bindSource;
@@ -376,12 +379,28 @@ int main(int argc,char* argv[]) {
    const QJsonObject profile{{"provider",destination.providerId},{"settings",destination.settings},{"credentials",destination.credentialReference}};
    tester(destination.profileId,profile,[reply=std::move(reply)](putgd::Error error){reply(error,{});});return;
   }
+  // A custom uploader's test says what it did: the link it got and whether the
+  // server offered deletion (#1361). The helper call blocks, so it runs on a worker.
+  if(kind=="testDestination"&&destination.providerId==putgd::http::providerId){
+   const auto path=dataRoot+"/destination-tests/"+QUuid::createUuid().toString(QUuid::WithoutBraces)+".json";
+   auto checkpoint=[path](const QJsonObject& data,std::function<void(putgd::Error)> ack){ack(checkpointFile(path,data));};
+   operations.background([http,destination,checkpoint](putgd::Error& error){
+    QJsonObject out;http->testDestination(destination,checkpoint,[&](QJsonObject result,putgd::Error e){out=result;error=e;});return out;
+   },[path,reply=std::move(reply)](putgd::Error error,QJsonObject result){
+    auto journalError=checkpointFile(path,{{"schemaVersion",1},{"phase","finished"},{"result",result},{"error",error.toJson()}});
+    if(!error&&journalError)error=journalError;
+    reply(error,result);
+   });
+   return;
+  }
   if(destination.providerId!="proton-drive"){reply({"setup_unsupported","This provider has no account setup",{}},{});return;}
   const auto method=kind=="connectAccount"?QString("connect"):kind=="storeSharePassword"?QString("storeSharePassword"):kind;
   operations.background([proton,method,destination,input,event](putgd::Error& error){return proton->setup(method,destination,input,error,event);},std::move(reply));
  };
  setup.setProviderSetup(providerSetup);
+ setup.setNamedCredentials(putgd::http::namedCredentials);
  server.setSetupService(&setup);
+ server.setUploaderImport([&settings,&credentials](const QJsonObject& params,putgd::JsonReply reply){putgd::http::importUploaderFile(settings,credentials,params,std::move(reply));});
  // A diagnostics package uploads only to a destination whose Test connection
  // passes now, with the credentials already loaded (#123).
  // A Test connection that passes in Settings clears an earlier failed upload's block.

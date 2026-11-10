@@ -20,7 +20,7 @@ except ModuleNotFoundError:
 RESIDENT_FORBIDDEN_NEEDED = re.compile(r"^lib(Qt6Network|ssl|crypto|gtk)")
 # The interface helper reaches the resident over a native Unix socket (#1161).
 UI_FORBIDDEN_NEEDED = re.compile(r"^libQt6Network")
-PROGRAMS = ("putgd", "putgd-cli", "putgd-ui", "putgd-capture", "putgd-s3-worker", "putgd-b2-worker", "putgd-launcher")
+PROGRAMS = ("putgd", "putgd-cli", "putgd-ui", "putgd-capture", "putgd-s3-worker", "putgd-b2-worker", "putgd-http-worker", "putgd-launcher")
 SDK_LICENSES = ("aws-sdk-LICENSE", "aws-crt-cpp-LICENSE", *(
     "aws-crt-cpp-crt-" + name + "-LICENSE" for name in (
         "aws-c-auth", "aws-c-cal", "aws-c-common", "aws-c-compression", "aws-c-event-stream",
@@ -170,7 +170,7 @@ def audit_tree(root: Path, expected_manifest=None, *, require_kde=False, require
         identity = json.loads(command([str(path), "--version-json"], env=env))
         if identity != result["manifest"]:
             raise ValueError(f"Compiled build manifest mismatch: {name}")
-        if name not in ("putgd-s3-worker", "putgd-b2-worker"):
+        if name not in ("putgd-s3-worker", "putgd-b2-worker", "putgd-http-worker"):
             version = command([str(path), "--version"], env=env)
             if version != name + " " + result["manifest"]["version"]:
                 raise ValueError(f"Compiled version mismatch: {name}")

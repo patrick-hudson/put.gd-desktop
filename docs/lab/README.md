@@ -22,4 +22,5 @@ Physical builders, disposable VMs, goldens and cloud workers.
 - [Omarchy VM golden](omarchy-vm.md): the Arch and Hyprland golden, its unattended LUKS unlock and guest traps.
 - [Boat candidates](boat-candidates.md): exact candidate builds in disposable Boat workers.
 - [Boat snapshots](boat-snapshots.md): snapshot recipes and package targets.
+- [HTTP receivers](http-receivers.md): Zipline, Chibisafe and XBackBone in containers, their own `.sxcu` files and the upload check for the custom uploader.
 - [Lab storage and retention](lab-storage.md): capacity checks and storage retention.

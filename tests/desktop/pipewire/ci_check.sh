@@ -16,9 +16,14 @@ if [ "${1:-}" = --install ]; then
     export DEBIAN_FRONTEND=noninteractive
     eval "${PUTGD_UBUNTU_MIRRORS:-}"
     apt=(-o Acquire::Retries=3 -o Acquire::http::Timeout=20 -o Acquire::https::Timeout=20)
-    apt-get update "${apt[@]}"
-    apt-get install -y "${apt[@]}" --no-install-recommends pipewire-bin gstreamer1.0-tools libpipewire-0.3-dev \
-        gcc g++ pkg-config qt6-base-dev
+    packages=(--no-install-recommends pipewire-bin gstreamer1.0-tools libpipewire-0.3-dev gcc g++ pkg-config qt6-base-dev)
+    # CI's mirror block also defines the bounded, mirror-rotating install.
+    if declare -F putgd_apt_install >/dev/null; then
+        putgd_apt_install "${packages[@]}"
+    else
+        apt-get update "${apt[@]}"
+        apt-get install -y "${apt[@]}" "${packages[@]}"
+    fi
 fi
 [ $# -eq 1 ] || { sed -n 2,10p "$0"; exit 64; }
 plugins=$(cd "$1/usr/lib/gstreamer-1.0" && pwd)

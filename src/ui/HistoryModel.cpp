@@ -46,7 +46,7 @@ QString HistoryModel::dayLabel(int row)const{
 HistoryModel::RowFacts HistoryModel::rowFacts(const QJsonObject& r){
  RowFacts facts;facts.active=active(r);facts.failed=failed(r);
  if(facts.active)return facts;
- if(r["remoteStatus"]=="failed"&&!r["deleteOperationId"].toString().isEmpty())facts.primary="Retry deletion";else if(copyLocalResult(r))facts.primary="Copy result";else if(retryUpload(r))facts.primary="Retry upload";else if(retryLocalSave(r))facts.primary="Retry local save";else if(r["linkAvailable"].toBool())facts.primary="Copy link";
+ if(r["remoteStatus"]=="failed"&&!r["deleteOperationId"].toString().isEmpty())facts.primary="Retry deletion";else if(copyLocalResult(r))facts.primary="Copy result";else if(retryUpload(r))facts.primary="Retry upload";else if(retryLocalSave(r))facts.primary="Retry local save";else if(r["linkAvailable"].toBool()||r["linkRefreshable"].toBool())facts.primary="Copy link";
  return facts;
 }
 QString HistoryModel::fileSize(qint64 bytes){return ByteSize::fileSummary(bytes);}
@@ -165,7 +165,7 @@ QVariant HistoryModel::data(const QModelIndex& i,int role)const{
   const auto profileId=r["profileId"].toString(op["destination"].toObject()["profileId"].toString());
   for(const auto& value:history_.document()["profiles"].toArray())if(value.toObject()["id"]==profileId&&!profileId.isEmpty())return value.toObject()["label"].toString();
   const auto provider=r["receipt"].toObject()["destination"].toObject()["providerId"].toString();
-  if(provider=="proton-drive")return QStringLiteral("Proton Drive");if(provider=="backblaze-b2")return QStringLiteral("Backblaze B2");if(provider=="s3")return QStringLiteral("S3 destination");
+  if(provider=="proton-drive")return QStringLiteral("Proton Drive");if(provider=="backblaze-b2")return QStringLiteral("Backblaze B2");if(provider=="custom-http")return QStringLiteral("Custom uploader");if(provider=="s3")return QStringLiteral("S3 destination");
   return r["local"].toObject()["status"]=="saved"?QStringLiteral("This device"):QString{};
  }
  if(role==SubtitleRole){if(data(i,FailedRole).toBool()||active(r)||op["state"]=="cancelled"||(r["uploadStatus"]=="local_only"&&localCopyUnavailable(r)))return statusText(r);const auto remote=remoteStateText(r);auto text=friendlyAction(op["action"].toString(r["category"].toString()))+" · "+fileSize(r["bytes"].toInteger());if(!remote.isEmpty())text+=" · "+remote;else{if(op["copyStatus"]=="copied")text+=r["uploadStatus"]=="local_only"?" · Copied to clipboard":" · Shared link";else if(op["copyStatus"]=="failed")text+=r["uploadStatus"]=="local_only"?" · Couldn't copy result":" · Couldn't copy link";else if(op["copyStatus"]=="suppressed")text+=r["uploadStatus"]=="local_only"?" · Result not copied":" · Link not copied";}const auto time=relative(createdAt_.at(i.row()));if(!time.isEmpty())text+=" · "+time;if(r["records"].toArray().size()>1)text+=QString(" · %1 files").arg(r["records"].toArray().size());return text;}

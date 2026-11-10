@@ -51,8 +51,10 @@ EDITOR_OPS = {'add', 'update', 'remove', 'crop', 'resetCrop', 'undo', 'redo'}
 # The editor window's view and selection controls, one per drive_editor call.
 EDITOR_VIEW_ACTIONS = {'inspect', 'tool', 'select', 'selectNext', 'selectPrevious', 'selectAffectedText', 'removeMark', 'place', 'geometry', 'applyCrop',
                        'cancelCrop', 'zoom', 'fit', 'actualSize', 'pan', 'showSavedCopy', 'copySavedPath', 'dismissSavedCopy', 'discard',
-                       'keepEditing', 'confirmDiscard', 'keyboardHelp', 'geometryDetails', 'saveDetails', 'propertiesWidth'}
-EDITOR_TOOLS = {'select', 'redact', 'blur', 'crop', 'arrow', 'rectangle', 'highlight', 'text'}
+                       'keepEditing', 'confirmDiscard', 'keyboardHelp', 'geometryDetails', 'saveDetails', 'propertiesWidth',
+                       'blurStyle', 'stepNumber'}
+EDITOR_TOOLS = {'select', 'redact', 'blur', 'crop', 'arrow', 'line', 'rectangle', 'ellipse', 'pen', 'highlight', 'text', 'step'}
+EDITOR_BLUR_STYLES = {'blur', 'pixelate'}
 RECORDING_TARGETS = {'monitor', 'desktop', 'region', 'window'}
 RECORDING_FORMATS = {'mp4', 'webm', 'gif', 'webp'}
 RECORDING_CODECS = {'h264', 'h265', 'vp9'}
@@ -261,7 +263,7 @@ def create_server(adapter: CliAdapter) -> MCPServer:
 
     @server.tool(annotations=ToolAnnotations(read_only_hint=False, destructive_hint=False, open_world_hint=False))
     async def edit_image(id: str, commands: list[Json]) -> Json:
-        """Apply 1-100 edits atomically in the open editor, shown live in its window. Ops: add {shape}, update {shapeId, shape}, remove {shapeId}, crop {rect}, resetCrop, undo, redo. Shapes use source-image pixels: redact/blur/rectangle/highlight {kind, rect:[x,y,w,h]}, arrow {kind, from:[x,y], to:[x,y]}, text {kind, at:[x,y], text}; optional color '#RRGGBB' (not redact/blur), width 1-64, strength 2-64 (blur), fontPixels 8-200 and font family name or '' for the default (text). A redaction removes the pixels it covers; blur is only a visual effect."""
+        """Apply 1-100 edits atomically in the open editor, shown live in its window. Ops: add {shape}, update {shapeId, shape}, remove {shapeId}, crop {rect}, resetCrop, undo, redo. Shapes use source-image pixels: redact/blur/rectangle/ellipse/highlight {kind, rect:[x,y,w,h]}, arrow/line {kind, from:[x,y], to:[x,y]}, pen {kind, points:[[x,y],...] 1-2000}, step {kind, at:[x,y] centre, optional number 1-999 (default one more than the highest step) and size 16-256 diameter}, text {kind, at:[x,y], text}; optional color '#RRGGBB' (not redact/blur), width 1-64 (arrow, line, rectangle, ellipse, pen), strength 2-64 and style 'blur' or 'pixelate' (blur; strength is the block size when pixelated), fontPixels 8-200 and font family name or '' for the default (text). A redaction removes the pixels it covers; blur and pixelate are only visual effects."""
         if not identifier(id) or not safe_commands(commands):
             return invalid()
         return await adapter.call('editor.apply', {'id': id, 'commands': commands})
@@ -294,6 +296,11 @@ def create_server(adapter: CliAdapter) -> MCPServer:
         return await adapter.call('editor.saveCopy', params)
 
     @server.tool(annotations=effect)
+    async def copy_editor_image(id: str) -> Json:
+        """Copy image (Ctrl+Shift+C): put the same sanitized PNG that Upload and save_editor_copy produce on the desktop clipboard, replacing what it held. Nothing is uploaded and no history item is created; returns copied, bytes, sha256, width and height."""
+        return await adapter.call('editor.copy', {'id': id}) if identifier(id) else invalid()
+
+    @server.tool(annotations=effect)
     async def submit_editor(id: str) -> Json:
         """Finalize the open edit and send only the sanitized result through the configured destination (may publish a public link and copy it). Inspect the operation afterwards."""
         return await adapter.call('editor.submit', {'id': id}) if identifier(id) else invalid()
@@ -313,8 +320,9 @@ def create_server(adapter: CliAdapter) -> MCPServer:
     @server.tool(annotations=ToolAnnotations(read_only_hint=False, destructive_hint=False, open_world_hint=False))
     async def drive_editor(id: str, action: str, tool: str | None = None, shape_id: int | None = None,
                            rect: list[int] | None = None, percent: float | None = None,
-                           delta: list[int] | None = None, pixels: int | None = None) -> Json:
-        """Work the open editor window's view and selection controls as a user does, one action per call; each reply is the window's view: tool, selectedShapeId, geometry [x,y,w,h] of the selection or pending crop (an arrow's tail at x,y and head at x+w,y+h), cropPending, the accessible selection summary, zoomPercent, fitted, visibleRect (image pixels shown), canvasSize, geometryDetails {open, visible}, propertiesWidth (logical pixels), editingText, busy, the tool style, the footer message, lastSave (saved/failed, stage chooser/write, path, reason; a saved copy's current is false once the draft changed after it), lastShowInFolder, lastCopiedPath, saveFeedbackVisible, saveDetailsOpen, cancelLabel (Cancel, or Discard… once there are edits), destination, preparationFailure and discardConfirmation {open, text}. Actions: inspect, tool {tool select|redact|blur|crop|arrow|rectangle|highlight|text}, select {shape_id, or none to clear}, selectNext / selectPrevious (] and [; Tab leaves the canvas with the selection kept), selectAffectedText (cycle annotation text clipped by the saved image or pending crop, preserving that crop), removeMark (Remove mark / Delete, one undoable step on the selection), place (the current drawing tool's mark centred at a quarter of the image, Insert), geometry {rect [x,y,w,h] in image pixels for the selection or the pending crop; one undo step}, applyCrop / cancelCrop, zoom {percent 2-3200}, fit, actualSize, pan {delta [dx,dy] canvas pixels}, propertiesWidth {pixels 200-10000, capped at one third of the window}, showSavedCopy (Show in folder for the last saved copy), geometryDetails (toggle Position and size for annotation marks; crop fields stay visible), keyboardHelp (toggle the named keyboard help disclosure), copySavedPath (Copy path: its full path to the clipboard), saveDetails (toggle the save failure's full path and reason), dismissSavedCopy (dismiss the footer feedback, keeping its saved path), discard (the Cancel / Discard… button: closes at once without edits, else opens the discard confirmation), keepEditing (answers that confirmation, or dismisses a preparation failure) and confirmDiscard (discards; nothing uploads). Other actions wait while the confirmation is open. Other shape edits go through edit_image; nothing uploads; cancel_editor still discards without asking."""
+                           delta: list[int] | None = None, pixels: int | None = None,
+                           style: str | None = None, number: int | None = None) -> Json:
+        """Work the open editor window's view and selection controls as a user does, one action per call; each reply is the window's view: tool, selectedShapeId, geometry [x,y,w,h] of the selection or pending crop (an arrow's tail at x,y and head at x+w,y+h), cropPending, the accessible selection summary, zoomPercent, fitted, visibleRect (image pixels shown), canvasSize, geometryDetails {open, visible}, propertiesWidth (logical pixels), editingText, busy, the tool style (with blurStyle and stepSize), nextStepNumber, copying, lastCopy (copying/copied/failed with reason), the footer message, lastSave (saved/failed, stage chooser/write, path, reason; a saved copy's current is false once the draft changed after it), lastShowInFolder, lastCopiedPath, saveFeedbackVisible, saveDetailsOpen, cancelLabel (Cancel, or Discard… once there are edits), destination, preparationFailure and discardConfirmation {open, text}. Actions: inspect, tool {tool select|redact|blur|crop|arrow|line|rectangle|ellipse|pen|highlight|text|step}, blurStyle {style blur|pixelate: the Blur tool's Style buttons, restyling a selected blur}, stepNumber {number 1-999: the Step tool's Next number, or a selected step's Number}, select {shape_id, or none to clear}, selectNext / selectPrevious (] and [; Tab leaves the canvas with the selection kept), selectAffectedText (cycle annotation text clipped by the saved image or pending crop, preserving that crop), removeMark (Remove mark / Delete, one undoable step on the selection), place (the current drawing tool's mark centred at a quarter of the image, Insert), geometry {rect [x,y,w,h] in image pixels for the selection or the pending crop; one undo step}, applyCrop / cancelCrop, zoom {percent 2-3200}, fit, actualSize, pan {delta [dx,dy] canvas pixels}, propertiesWidth {pixels 200-10000, capped at one third of the window}, showSavedCopy (Show in folder for the last saved copy), geometryDetails (toggle Position and size for annotation marks; crop fields stay visible), keyboardHelp (toggle the named keyboard help disclosure), copySavedPath (Copy path: its full path to the clipboard), saveDetails (toggle the save failure's full path and reason), dismissSavedCopy (dismiss the footer feedback, keeping its saved path), discard (the Cancel / Discard… button: closes at once without edits, else opens the discard confirmation), keepEditing (answers that confirmation, or dismisses a preparation failure) and confirmDiscard (discards; nothing uploads). Other actions wait while the confirmation is open. Other shape edits go through edit_image; nothing uploads; cancel_editor still discards without asking."""
         if not identifier(id) or action not in EDITOR_VIEW_ACTIONS:
             return invalid()
         params: Json = {'id': id, 'action': action}
@@ -344,6 +352,14 @@ def create_server(adapter: CliAdapter) -> MCPServer:
             if type(pixels) is not int or not 200 <= pixels <= 10000:
                 return invalid()
             params['pixels'] = pixels
+        if style is not None:
+            if style not in EDITOR_BLUR_STYLES:
+                return invalid()
+            params['style'] = style
+        if number is not None:
+            if type(number) is not int or not 1 <= number <= 999:
+                return invalid()
+            params['number'] = number
         return await adapter.call('editor.view', params)
 
     @server.tool(annotations=ToolAnnotations(read_only_hint=False, destructive_hint=False, open_world_hint=False))
@@ -562,15 +578,20 @@ def create_server(adapter: CliAdapter) -> MCPServer:
 
     @server.tool(annotations=effect)
     async def copy_history_link(id: str) -> Json:
-        """Write the stored direct URL to clipboard; no upload or target reconstruction."""
-        return await adapter.call('history.copyLink', {'id': id}) if identifier(id) else invalid()
+        """Copy the recorded link. Expired S3 presigned and B2 authorized links refresh from the saved receipt and original cached credentials before copying. credential_setup_required never opens a keyring prompt; explicitly unlock saved credentials first."""
+        return await adapter.call('history.copyLink', {'id': id}, timeout=645) if identifier(id) else invalid()
+
+    @server.tool(annotations=effect)
+    async def unlock_history_link_credentials(id: str) -> Json:
+        """Explicitly unlock the original saved keychain reference for an expired S3/B2 History link. The desktop keyring may prompt. This never copies or refreshes the link; call copy_history_link afterwards."""
+        return await adapter.call('history.unlockLinkCredentials', {'id': id}, timeout=315) if identifier(id) else invalid()
 
     @server.tool(annotations=effect)
     async def copy_history_links(ids: list[str]) -> Json:
-        """Write several stored direct URLs to the clipboard, one per line in the order given, as History's Copy links does for a selection; link_unavailable (with historyId) copies nothing. No upload or target reconstruction."""
+        """Write several stored direct URLs to the clipboard, one per line in the order given, as History's Copy links does for a selection; expired S3/B2 links refresh using their saved destinations and cached credentials. link_unavailable (with historyId) copies nothing. No upload."""
         if not ids or len(ids) > 1000 or len(set(ids)) != len(ids) or any(not identifier(id, 128) for id in ids):
             return invalid()
-        return await adapter.call('history.copyLinks', {'ids': ids})
+        return await adapter.call('history.copyLinks', {'ids': ids}, timeout=645)
 
     @server.tool(annotations=ToolAnnotations(read_only_hint=False, destructive_hint=False, open_world_hint=True))
     async def open_history_link(id: str) -> Json:
@@ -717,6 +738,56 @@ def create_server(adapter: CliAdapter) -> MCPServer:
         if profile_id is not None:
             params['profileId'] = profile_id
         return await adapter.call('ui.moveDestination', params)
+
+    @server.tool(annotations=ToolAnnotations(read_only_hint=False, destructive_hint=False, open_world_hint=False))
+    async def import_custom_uploader(path: str, expected_revision: str, label: str | None = None, profile_id: str | None = None,
+                                     credential_mode: str = 'keychain', allow_insecure_http: bool = False) -> Json:
+        """Add a ShareX custom uploader file (.sxcu) as a Custom uploader (HTTP) destination (#1361). path is absolute; the resident reads the file itself, so its token never passes through this tool, a command line or the reply. Header, parameter and argument values become secrets: credential_mode keychain (default) saves them in the system keychain, session keeps them until put.gd exits; the configuration gets names only. A value that is exactly {filename} or {input} stays in settings. URL shorteners and URL sharing services are refused (sxcu_unsupported_type), as are interactive placeholders such as {select} and {prompt}. A plain-HTTP address beyond loopback needs allow_insecure_http true. The reply names the new profileId, storedValues (names only) and notes on what was adapted. To create one by hand use patch_configuration with provider custom-http; secret values then need Settings or this import."""
+        if (not identifier(path, 4096) or not path.startswith('/') or not isinstance(expected_revision, str) or len(expected_revision) > 256 or
+                credential_mode not in {'keychain', 'session'} or type(allow_insecure_http) is not bool or
+                (label is not None and not identifier(label, 128)) or (profile_id is not None and not identifier(profile_id, 64))):
+            return invalid()
+        params: Json = {'path': path, 'expectedRevision': expected_revision, 'credentialMode': credential_mode}
+        if allow_insecure_http:
+            params['allowInsecureHttp'] = True
+        if label is not None:
+            params['label'] = label
+        if profile_id is not None:
+            params['profileId'] = profile_id
+        # A locked keyring shows its own unlock prompt before the values are saved.
+        return await adapter.call('settings.importUploader', params, timeout=130)
+
+    @server.tool(annotations=read)
+    async def get_destination_credentials(profile_id: str, expected_revision: str) -> Json:
+        """Read which credentials a saved destination has loaded, never a value: available, mode (keychain/session), and for a Custom uploader (HTTP) storedValues and missingValues, the credential-store names of its secret headers, parameters and fields (such as headers/Authorization). For S3 and Backblaze B2: a four-character key ID prefix and whether a secret and token are stored. Does no keychain IO; a locked keychain reads as not available."""
+        if not identifier(profile_id, 64) or not isinstance(expected_revision, str) or len(expected_revision) > 256:
+            return invalid()
+        return await adapter.call('setup.credentialHint', {'profileId': profile_id, 'expectedRevision': expected_revision})
+
+    @server.tool(annotations=effect)
+    async def test_destination(profile_id: str, expected_revision: str) -> Json:
+        """Start Test connection for a saved destination and return its setupId; poll get_setup_job until state leaves running. S3 and Backblaze B2 upload a synthetic file, open its link and remove it. A Custom uploader (HTTP) uploads a synthetic file with its request, opens the returned link, and deletes the file only when the reply carried a deletion URL: its result has uploadStatus, link, publicReachable, deletionOffered and cleanupStatus (removed, or unsupported when the test file stays on the server), and replyExcerpt when the reply had no link where the destination looks. Needs loaded credentials."""
+        if not identifier(profile_id, 64) or not isinstance(expected_revision, str) or len(expected_revision) > 256:
+            return invalid()
+        return await adapter.call('setup.testDestination', {'profileId': profile_id, 'expectedRevision': expected_revision})
+
+    @server.tool(annotations=read)
+    async def get_setup_job(id: str) -> Json:
+        """Read a setup job started by test_destination or the Settings window: kind, profileId, state (running/completed/failed), error and result. Jobs live in the resident's memory only."""
+        return await adapter.call('setup.inspect', {'id': id}) if identifier(id) else invalid()
+
+    @server.tool(annotations=effect)
+    async def drive_custom_uploader(action: str, path: str | None = None, profile_id: str | None = None) -> Json:
+        """Drive the Custom uploader (HTTP) form in the open Destinations page as a user does (#1361); profile_id selects that destination first. inspect reads the form: request fields, each header/parameter/field row with secret, typed and stored flags, typedSecrets and missingSecrets by name, the notice and whether Store is enabled; never a value. import (absolute path) reads a .sxcu file into the form as Import .sxcu… does: its secret values wait in masked fields in the window until store. openImport / closeImport show or dismiss the import dialog. store presses Store credentials (keychain or session, as the form's Credential storage says). test presses Test upload and link. Open Destinations first (ui.show destinations)."""
+        if (action not in {'inspect', 'import', 'openImport', 'closeImport', 'store', 'test'} or (action == 'import') != (path is not None) or
+                (path is not None and (not identifier(path, 4096) or not path.startswith('/'))) or (profile_id is not None and not identifier(profile_id, 64))):
+            return invalid()
+        params: Json = {'action': action}
+        if path is not None:
+            params['path'] = path
+        if profile_id is not None:
+            params['profileId'] = profile_id
+        return await adapter.call('ui.customUploader', params)
 
     @server.tool(annotations=ToolAnnotations(read_only_hint=False, destructive_hint=True, open_world_hint=False))
     async def settings_diagnostics(action: str, enabled: bool | None = None, include_names: bool | None = None,

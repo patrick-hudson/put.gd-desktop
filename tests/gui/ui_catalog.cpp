@@ -12,6 +12,8 @@
 #include "ui/SettingsWindow.h"
 #include "platform/HostOpen.h"
 #include "storage/proton/ProtonProvider.h"
+#include "storage/http/HttpImport.h"
+#include "ui/CustomUploaderPanel.h"
 #include "ui/Ui.h"
 #include "ui/EditorWindow.h"
 #include "editor/EditorCommands.h"
@@ -108,8 +110,11 @@ QJsonObject inventory(QWidget& root){
   // Same native window only: a child dialog's coordinates are not this capture's.
   if(w->window()!=root.window()||!w->isVisibleTo(&root)||w->width()<=0||w->height()<=0||w->visibleRegion().isEmpty())continue;
   if(auto* b=qobject_cast<QAbstractButton*>(w)){QJsonObject extra{{"checkable",b->isCheckable()},{"checked",b->isChecked()}};if(!b->shortcut().isEmpty())extra["shortcut"]=b->shortcut().toString(QKeySequence::PortableText);QString text=b->text();if(auto* t=qobject_cast<QToolButton*>(b);t&&t->defaultAction()&&text.isEmpty())text=t->defaultAction()->text();if(text.isEmpty())text=b->toolTip();add(w,"button",text,extra);}
-  else if(auto* e=qobject_cast<QLineEdit*>(w)){if(qobject_cast<QAbstractSpinBox*>(w->parentWidget())||qobject_cast<QComboBox*>(w->parentWidget()))continue;add(w,"field",e->placeholderText().isEmpty()?e->toolTip():e->placeholderText(),{{"readOnly",e->isReadOnly()},{"echo",int(e->echoMode())}});}
-  else if(qobject_cast<QPlainTextEdit*>(w)||qobject_cast<QTextEdit*>(w))add(w,"text-area",w->toolTip());
+  else if(auto* e=qobject_cast<QLineEdit*>(w)){if(qobject_cast<QAbstractSpinBox*>(w->parentWidget())||qobject_cast<QComboBox*>(w->parentWidget()))continue;QJsonObject extra{{"readOnly",e->isReadOnly()},{"echo",int(e->echoMode())}};
+    // A masked field holds a secret whatever it is called: the surface driver's classifier reads this.
+    if(e->echoMode()!=QLineEdit::Normal||w->property("putgdSensitive").toBool())extra["sensitive"]=true;
+    add(w,"field",e->placeholderText().isEmpty()?e->toolTip():e->placeholderText(),extra);}
+  else if(qobject_cast<QPlainTextEdit*>(w)||qobject_cast<QTextEdit*>(w))add(w,"text-area",w->toolTip(),w->property("putgdSensitive").toBool()?QJsonObject{{"sensitive",true}}:QJsonObject{});
   else if(auto* c=qobject_cast<QComboBox*>(w))add(w,"choice",c->currentText(),{{"count",c->count()}});
   else if(auto* s=qobject_cast<QAbstractSpinBox*>(w))add(w,"stepper",s->text());
   else if(auto* s=qobject_cast<QAbstractSlider*>(w)){if(qobject_cast<QScrollBar*>(w))continue;add(w,"slider",w->toolTip(),{{"value",s->value()},{"min",s->minimum()},{"max",s->maximum()}});}
@@ -243,9 +248,9 @@ QImage iconSpecimen(){
 // real 20 px rows (the editor toolbar, and Recording review's mask tools that
 // share the redact glyph) at 1:1 and magnified 3x without smoothing.
 QImage editorIcons(){
- const auto& t=Theme::current();const int rowHeight=Ui::scaled(20)+16;QImage image(1800,112+3*(3*rowHeight+32),QImage::Format_RGB32);image.fill(t.surface);QPainter p(&image);
+ const auto& t=Theme::current();const int rowHeight=Ui::scaled(20)+16;QImage image(2400,112+3*(3*rowHeight+32),QImage::Format_RGB32);image.fill(t.surface);QPainter p(&image);
  QFont small=p.font();small.setPixelSize(11);p.setFont(small);p.setPen(t.textMuted);
- const QStringList names{"edit","select","redact","blur","crop","annotate-arrow","rectangle","highlight","text","undo","redo","remove","save"};
+ const QStringList names{"edit","select","redact","blur","crop","annotate-arrow","line","rectangle","ellipse","pen","highlight","text","step","undo","redo","remove","save","copy"};
  for(int i=0;i<names.size();++i){const int x=12+i*86;Ui::icon(names[i]).paint(&p,QRect(x+23,14,40,40));p.drawText(QRect(x,60,86,20),Qt::AlignCenter,names[i]);}
  auto row=[&](const QStringList& icons,int step){
   const int glyph=Ui::scaled(20);step=std::max(step,glyph+12);QImage strip(16+icons.size()*step,glyph+16,QImage::Format_RGB32);strip.fill(t.bg);QPainter q(&strip);
@@ -253,8 +258,8 @@ QImage editorIcons(){
   return strip;
  };
  int y=112;auto show=[&](const QString& title,const QImage& strip){p.drawText(QPoint(12,y-6),title);p.drawImage(QPoint(12,y),strip);p.drawImage(QPoint(32+strip.width(),y),strip.scaled(strip.size()*3,Qt::IgnoreAspectRatio,Qt::FastTransformation));y+=3*strip.height()+32;};
- show("Editor toolbar, 20 px (1:1, then 3x)",row({"select","redact","blur","crop","|","annotate-arrow","rectangle","highlight","text"},40));
- show("Editor view tools | document actions",row({"undo","redo","refresh","remove","|","save","upload"},32));
+ show("Editor toolbar, 20 px (1:1, then 3x)",row({"select","crop","|","annotate-arrow","line","rectangle","ellipse","pen","highlight","text","step","|","redact","blur"},40));
+ show("Editor view tools | document actions",row({"undo","redo","refresh","remove","|","copy","save","upload"},32));
  show("Recording review mask tools, 20 px",row({"blur","redact","|","mask-in","mask-out","remove"},32));
  return image;
 }
@@ -346,7 +351,7 @@ int main(int argc,char** argv){
  // No production provider or capture action is used. Credentials below are
  // synthetic and stored only in the fixture session, never the OS keychain.
  ProviderRegistry registry;Source source;OperationService operations(data.filePath("data"),settings,registry,source);if(!waitUntil([&]{return operations.ready();})){qCritical("Synthetic resident did not initialize");return 2;}
- const auto now=QDateTime::currentDateTimeUtc();{HistoryStore ledger(operations.databasePath());for(int i=0;i<8;++i){const auto path=data.filePath(QString("synthetic-preview-%1.png").arg(i));if(!syntheticCapture(i).save(path))return 2;Operation op;op.id=QString("synthetic-preview-operation-%1").arg(i);op.action=i==5?"window":i==6?"clipboard":i==7?"desktop":"region";op.created=now.addSecs(i==7?-86400:-110-i*18).toString(Qt::ISODateWithMs);op.state=i==3?"partial":"completed";op.copyStatus=i==0?"copied":"not_requested";op.settings=settings.snapshot();op.destination.providerId="proton-drive";op.destination.profileId="synthetic-proton";op.destination.profileRevision="synthetic-revision";op.destination.settings=config["profiles"].toArray().first().toObject()["settings"].toObject();OperationItem item;item.artifact.id=QString("synthetic-preview-file-%1").arg(i);item.artifact.name=i==1?"Quarterly-release-readiness-review-with-accessibility-and-localisation-notes-final-v12.png":i==5?"Window — Design review.png":i==6?"Clipboard image.png":i==7?"Desktop.png":"Screenshot "+now.addSecs(-110-i*18).toLocalTime().toString("HH:mm:ss")+".png";item.artifact.mime="image/png";item.artifact.category="images";item.artifact.bytes=QFileInfo(path).size();item.artifact.previewPath=path;item.local.status=i==2?"disabled":"saved";item.local.path=i==2?QString{}:path;item.uploadStatus=i==3?"failed":"uploaded";item.remoteStatus="present";item.shareStatus="shared";item.receipt.destination=op.destination;item.receipt.publicationId="synthetic-publication";item.receipt.objectReference=QJsonObject{{"fileUid","synthetic-file"}};item.receipt.directUrl="https://drive.proton.me/urls/synthetic-preview#example";if(i==3){item.error={"synthetic_network","Connection interrupted. Try again.",{}};item.receipt={};item.shareStatus="not_requested";item.remoteStatus="not_requested";}op.items.append(item);if(ledger.saveOperation(op))return 2;}
+ const auto now=QDateTime::currentDateTimeUtc();{HistoryStore ledger(operations.databasePath());for(int i=0;i<8;++i){const auto path=data.filePath(QString("synthetic-preview-%1.png").arg(i));if(!syntheticCapture(i).save(path))return 2;Operation op;op.id=QString("synthetic-preview-operation-%1").arg(i);op.action=i==5?"window":i==6?"clipboard":i==7?"desktop":"region";op.created=now.addSecs(i==7?-86400:-110-i*18).toString(Qt::ISODateWithMs);op.state=i==3?"partial":"completed";op.copyStatus=i==0?"copied":"not_requested";op.settings=settings.snapshot();op.destination.providerId="proton-drive";op.destination.profileId="synthetic-proton";op.destination.profileRevision="synthetic-revision";op.destination.settings=config["profiles"].toArray().first().toObject()["settings"].toObject();OperationItem item;item.artifact.id=QString("synthetic-preview-file-%1").arg(i);item.artifact.name=i==1?"Quarterly-release-readiness-review-with-accessibility-and-localisation-notes-final-v12.png":i==5?"Window — Design review.png":i==6?"Clipboard image.png":i==7?"Desktop.png":"Screenshot "+now.addSecs(-110-i*18).toLocalTime().toString("HH:mm:ss")+".png";item.artifact.mime="image/png";item.artifact.category="images";item.artifact.bytes=QFileInfo(path).size();item.artifact.previewPath=path;item.local.status=i==2?"disabled":"saved";item.local.path=i==2?QString{}:path;item.uploadStatus=i==3?"failed":"uploaded";item.remoteStatus="present";item.shareStatus="shared";item.receipt.destination=op.destination;item.receipt.publicationId="synthetic-publication";item.receipt.objectReference=QJsonObject{{"fileUid","synthetic-file"}};item.receipt.directUrl="https://drive.proton.me/urls/synthetic-preview#example";if(i==0)item.receipt.objectReference["linkExpiresAt"]=now.addDays(3).toString(Qt::ISODateWithMs);if(i==3){item.error={"synthetic_network","Connection interrupted. Try again.",{}};item.receipt={};item.shareStatus="not_requested";item.remoteStatus="not_requested";}op.items.append(item);if(ledger.saveOperation(op))return 2;}
   Operation cancelled;cancelled.id="synthetic-cancelled";cancelled.action="region";cancelled.created=now.addSecs(-500).toString(Qt::ISODateWithMs);cancelled.state="cancelled";cancelled.cancelled=true;cancelled.settings=settings.snapshot();if(ledger.saveOperation(cancelled))return 2;
  }
  HistoryService history(operations);UiSessionFixture fixture(settings,operations,history);
@@ -425,6 +430,22 @@ int main(int argc,char** argv){
   const auto file=model->record(0)["records"].toArray().first().toObject();QJsonObject deletion{{"id","synthetic-preview-deletion"},{"state","completed"},{"items",QJsonArray{QJsonObject{{"historyId",file["id"]},{"receipt",file["receipt"]},{"status","failed"},{"error",QJsonObject{{"code","synthetic_failure"},{"message","Connection interrupted. Retry deletion when the destination is available."}}}}}}};{HistoryStore ledger(operations.databasePath());if(ledger.saveDeletion(deletion))return 2;}page->refresh();if(!waitUntil([&]{return model->record(0)["deleteOperationId"]=="synthetic-preview-deletion";}))return 2;
   list->selectionModel()->select(list->model()->index(0,0),QItemSelectionModel::ClearAndSelect|QItemSelectionModel::Rows);list->setCurrentIndex(list->model()->index(0,0));if(!waitUntil([&]{return !window.findChild<QPushButton*>("retryHistoryDeletion")->isHidden();}))return 2;auto* inspector=window.findChild<QScrollArea*>("historyInspectorScroll");inspector->verticalScrollBar()->setValue(0);if(!save("48-history-deletion-recovery"))return 2;
   auto settled=deletion["items"].toArray().first().toObject();settled["status"]="present";settled["error"]=QJsonObject{};deletion["items"]=QJsonArray{settled};{HistoryStore ledger(operations.databasePath());if(ledger.saveDeletion(deletion))return 2;}page->refresh();if(!waitUntil([&]{return window.findChild<QPushButton*>("retryHistoryDeletion")->isHidden();}))return 2;inspector->verticalScrollBar()->setValue(0);
+
+  // An expired S3 receipt can offer explicit original-keychain unlock; no keyring IO in this synthetic render.
+  {Operation expired;expired.id="synthetic-expired-s3";expired.created="2000-01-01T00:00:00.000Z";expired.state="completed";expired.settings=settings.snapshot();
+   OperationItem item;item.artifact.id="synthetic-expired-s3-file";item.artifact.name="Private screenshot.png";item.artifact.mime="image/png";item.artifact.category="images";item.artifact.previewPath=data.filePath("synthetic-preview-0.png");item.artifact.bytes=QFileInfo(item.artifact.previewPath).size();item.local={};item.local.status="saved";item.local.path=item.artifact.previewPath;item.uploadStatus="uploaded";item.remoteStatus="present";
+   auto profile=config["profiles"].toArray()[1].toObject();auto storage=profile["settings"].toObject();storage["linkMode"]="presigned";
+   item.receipt.destination={"s3","synthetic-archive","synthetic-revision",storage,{{"mode","keychain"},{"reference","synthetic-original-reference"}}};item.receipt.publicationId="synthetic-expired-publication";item.receipt.concurrencyToken="synthetic-etag";item.receipt.objectReference={{"schemaVersion",1},{"key","private.png"},{"versionId",""},{"sha256",QString(64,'a')},{"bytes",double(item.artifact.bytes)},{"linkExpiresAt","2000-01-02T00:00:00.000Z"}};item.receipt.directUrl="https://expired.example.invalid/private.png?X-Amz-Signature=synthetic-expired";expired.destination=item.receipt.destination;expired.items={item};
+   {HistoryStore ledger(operations.databasePath());if(ledger.saveOperation(expired))return 2;}window.history()->refresh();if(!waitUntil([&]{return list->model()->rowCount()==9;}))return 2;
+   window.history()->command({{"action","select"},{"ids",QJsonArray{item.artifact.id}}},[](Error,QJsonObject){});window.history()->command({{"action","openDetails"}},[](Error,QJsonObject){});
+   if(!waitUntil([&]{return window.findChild<QPushButton*>("copyHistoryLink")->text()=="Refresh and copy link";}))return 2;
+   fixture.client.failOnce["history.copyLink"]={"credential_setup_required","Credentials are not loaded for this original destination. Choose Unlock saved credentials.",{}};window.findChild<QPushButton*>("copyHistoryLink")->click();if(!waitUntil([&]{return window.findChild<QPushButton*>("historyUnlockLinkCredentials")->isVisible();}))return 2;
+   if(!save("s3-history-expired-unlock"))return 2;
+   {HistoryStore ledger(operations.databasePath());if(ledger.expireBefore("2001-01-01T00:00:00.000Z"))return 2;}window.history()->refresh();if(!waitUntil([&]{return list->model()->rowCount()==8;}))return 2;
+   list->selectionModel()->select(list->model()->index(0,0),QItemSelectionModel::ClearAndSelect|QItemSelectionModel::Rows);list->setCurrentIndex(list->model()->index(0,0));
+   if(!waitUntil([&]{return !window.findChild<QLabel*>("historyPreview")->pixmap().isNull();}))return 2;
+   for(auto* label:window.history()->findChildren<QLabel*>())if(label->accessibleName()=="History status"){label->clear();label->hide();}
+  }
  }window.navigate("destinations");auto* destinations=window.findChild<QListWidget*>("destinationList");if(!destinations)return 2;destinations->setCurrentRow(0);if(!waitUntil([&]{return bool(loadFolders);}))return 2;loadFolders({},{{"accountRootUid","synthetic-root"},{"accountEmail","designer@example.invalid"},{"folders",QJsonArray{QJsonObject{{"uid","synthetic-folder"},{"name","put.gd"}}}}});if(!waitUntil([&]{return window.findChild<QLabel*>("protonAccountStatus")->text().contains("designer@example.invalid");}))return 2;if(!save("03-destinations-proton"))return 2;{const auto size=window.size();auto* scroll=window.findChild<QScrollArea*>("destinationScroll");for(const bool compact:{false,true}){if(compact)window.resize(1060,680);reveal(scroll,window.findChild<QWidget*>("protonKeepPrivate"),40);if(!save(compact?"settings-radio-choices-compact":"settings-radio-choices"))return 2;}window.resize(size);scroll->verticalScrollBar()->setValue(0);}window.findChild<QPushButton*>("inspectProtonAccount")->click();if(!waitUntil([&]{return window.findChild<QLabel*>("protonFolderStatus")->isVisible();})||!save("16-proton-loading-folders"))return 2;loadFolders({},{{"accountRootUid","synthetic-root"},{"folders",QJsonArray{QJsonObject{{"uid","synthetic-folder"},{"name","put.gd"}}}}});if(!waitUntil([&]{return !window.findChild<QLabel*>("protonFolderStatus")->isVisible();}))return 2;destinations->setCurrentRow(1);if(!save("04-destinations-s3"))return 2;
  {const auto size=window.size();auto* action=window.findChild<QPushButton*>("addDestinationCredentials");if(action&&action->isVisible()){window.resize(1060,680);window.activateWindow();action->click();if(!waitUntil([&]{return window.findChild<QLineEdit*>("credentialAccessKey")->hasFocus();})||!save("settings-add-credentials-focus"))return 2;window.resize(size);window.findChild<QScrollArea*>("destinationScroll")->verticalScrollBar()->setValue(0);}}
  window.navigate("settings");auto* tabs=window.findChild<QTabWidget*>("settingsTabs");if(!tabs)return 2;tabs->setCurrentIndex(3);if(!save("05-settings-advanced"))return 2;{auto* support=window.findChild<QToolButton*>("desktopSupportDetailsToggle");support->setChecked(true);auto* scroll=qobject_cast<QScrollArea*>(tabs->currentWidget());putgd::test::settle(50);scroll->ensureWidgetVisible(window.findChild<QWidget*>("desktopSupportDetails"),0,20);if(!save("settings-desktop-support-expanded"))return 2;support->setChecked(false);scroll->verticalScrollBar()->setValue(0);}window.findChild<QToolButton*>("resourceLimitsToggle")->setChecked(true);if(!save("settings-resource-limits-expanded"))return 2;{auto* help=window.findChild<QToolButton*>("historyRetentionChoiceHelp");if(!help)return 2;help->setChecked(true);auto* scroll=qobject_cast<QScrollArea*>(tabs->currentWidget());putgd::test::settle(50);scroll->ensureWidgetVisible(window.findChild<QLabel*>("historyRetentionChoiceHelpText"),0,20);if(!save("settings-retention-help"))return 2;help->setChecked(false);scroll->verticalScrollBar()->setValue(0);}window.findChild<QToolButton*>("resourceLimitsToggle")->setChecked(false);
@@ -436,6 +457,7 @@ int main(int argc,char** argv){
  window.resize(1060,680);window.navigate("history");if(!save("10-history-compact")||window.width()!=1060||window.height()!=680)return 2;{window.history()->command({{"action","openDetails"}},[](Error,QJsonObject){});window.activateWindow();putgd::test::settle(30);auto* focusedPreview=window.findChild<QLabel*>("historyPreview");focusedPreview->setFocus(Qt::TabFocusReason);if(!waitUntil([&]{return focusedPreview->hasFocus();}))return 2;if(!save("10a-history-compact-preview-focus"))return 2;window.history()->command({{"action","closeDetails"}},[](Error,QJsonObject){});}window.findChild<QToolButton*>("historyManagementExpanded")->setChecked(true);if(!save("46-history-maintenance-compact"))return 2;{auto* menu=window.findChild<QMenu*>("historyManagementMenu");if(!menu||!menu->isVisible())return 2;const auto image=steadyGrab(*menu);if(!image.save(QDir(output).filePath("57-history-management-menu.png")))return 2;captures.append(QJsonObject{{"file","57-history-management-menu.png"},{"width",image.width()},{"height",image.height()}});}window.findChild<QToolButton*>("historyManagementExpanded")->setChecked(false);
  // Actual SettingsWindow actions build these dialogs; no copied dialog text.
  window.navigate("destinations");destinations->setCurrentRow(1);
+ {auto* mode=window.findChild<QComboBox*>("b2LinkMode");mode->setCurrentIndex(mode->findData("presigned"));emit mode->activated(mode->currentIndex());if(!save("s3-presigned-links"))return 2;mode->setCurrentIndex(mode->findData("public"));emit mode->activated(mode->currentIndex());}
  auto captureQuestion=[&](const QString& name,const std::function<void()>& open){
   bool captured=false;QTimer timer;timer.setSingleShot(true);QObject::connect(&timer,&QTimer::timeout,&app,[&]{
    if(auto* dialog=qobject_cast<QDialog*>(QApplication::activeModalWidget())){captured=saveDialog(output,name,*dialog,captures);dialog->reject();}
@@ -491,6 +513,27 @@ int main(int argc,char** argv){
   auto* hint=window.findChild<QWidget*>("b2LinkDaysHint");
   if(!save("settings-b2-stepper-1060",scrollPose(destinationScroll,hint,40,true)))return 2;
   mode->setCurrentIndex(mode->findData("public"));provider->setCurrentIndex(provider->findData("s3"));
+ }
+ // #1361: the custom uploader form: new, filled from an imported .sxcu with its token
+ // masked, and with its values stored for the session. The token is synthetic.
+ {
+  fixture.setup.setNamedCredentials(putgd::http::namedCredentials);
+  auto* provider=window.findChild<QComboBox*>("storageProvider");provider->setCurrentIndex(provider->findData("custom-http"));
+  auto* uploader=window.findChild<CustomUploaderPanel*>("customUploaderEditor");if(!uploader||!waitUntil([&]{return window.settings()->flushAutosave()&&uploader->isVisible();}))return 2;
+  auto* storage=window.findChild<QComboBox*>("credentialMode");storage->setCurrentIndex(storage->findData("session"));if(!waitUntil([&]{return window.settings()->flushAutosave();}))return 2;
+  destinationScroll->verticalScrollBar()->setValue(0);if(!save("settings-uploader-new"))return 2;
+  const QByteArray file="{\"Version\":\"17.0.0\",\"Name\":\"Example files\",\"DestinationType\":\"ImageUploader, TextUploader, FileUploader\",\"RequestMethod\":\"POST\",\"RequestURL\":\"https://files.example.test/api/upload\",\"Headers\":{\"authorization\":\"PUTGD-SYNTHETIC-CATALOG-TOKEN-not-real\"},\"Body\":\"MultipartFormData\",\"Arguments\":{\"name\":\"{filename}\"},\"FileFormName\":\"file\",\"URL\":\"{json:files[0].url}\",\"DeletionURL\":\"{json:files[0].delete}\",\"ErrorMessage\":\"{json:error}\"}";
+  if(uploader->importBytes(file)||!waitUntil([&]{return window.settings()->flushAutosave();}))return 2;
+  destinationScroll->verticalScrollBar()->setValue(0);if(!save("settings-uploader-imported"))return 2;
+  if(!save("settings-uploader-response",scrollPose(destinationScroll,window.findChild<QWidget*>("uploaderErrorMessage"),40)))return 2;
+  window.findChild<QPushButton*>("storeCredentials")->click();if(!waitUntil([&]{return window.findChild<QLabel*>("storedCredentialHint")->text().contains("1 stored");}))return 2;
+  if(!save("settings-uploader-stored",scrollPose(destinationScroll,window.findChild<QWidget*>("uploaderHeaders"),120,true)))return 2;
+  if(!save("settings-uploader-credentials",scrollPose(destinationScroll,window.findChild<QWidget*>("credentialsEditor"),40)))return 2;
+  uploader->openImport();auto* dialog=window.findChild<QDialog*>("importSxcuDialog");if(!dialog||!waitUntil([&]{return dialog->isVisible();}))return 2;
+  {putgd::test::settle(150);const auto image=steadyGrab(*dialog);if(!image.save(QDir(output).filePath("settings-uploader-import-dialog.png")))return 2;captures.append(QJsonObject{{"file","settings-uploader-import-dialog.png"},{"width",image.width()},{"height",image.height()}});}
+  dialog->reject();provider->setCurrentIndex(provider->findData("s3"));if(!waitUntil([&]{return window.settings()->flushAutosave();}))return 2;
+  // The session slot belongs to the destination, not the service: put the S3 keys back for the captures below.
+  window.findChild<QLineEdit*>("credentialAccessKey")->setText("EXAM-synthetic-preview-access");window.findChild<QLineEdit*>("credentialSecretKey")->setText("synthetic-preview-secret");window.findChild<QPushButton*>("storeCredentials")->click();if(!waitUntil([&]{return window.findChild<QLabel*>("storedCredentialHint")->text().contains("EXAM");}))return 2;
  }
  window.navigate("settings");tabs->setCurrentIndex(0);if(!save("settings-general-compact"))return 2;window.findChild<QToolButton*>("updatePrivacyDetails")->setChecked(true);if(auto* scroll=qobject_cast<QScrollArea*>(tabs->currentWidget()))scroll->ensureWidgetVisible(window.findChild<QWidget*>("updatePrivacyFields"),0,40);if(!save("settings-update-privacy"))return 2;window.findChild<QToolButton*>("updatePrivacyDetails")->setChecked(false);tabs->setCurrentIndex(2);if(!save("settings-shortcuts-compact"))return 2;tabs->setCurrentIndex(3);if(!save("11-advanced-compact"))return 2;window.navigate("destinations");destinations->setCurrentRow(0);destinationScroll->verticalScrollBar()->setValue(0);if(!save("12-proton-compact"))return 2;{auto* advanced=window.findChild<QToolButton*>("advancedSettings");advanced->setChecked(true);putgd::test::settle(100);destinationScroll->ensureWidgetVisible(window.findChild<QWidget*>("protonRequestTimeout"),0,40);if(!save("settings-proton-steppers-1060"))return 2;advanced->setChecked(false);}destinations->setCurrentRow(1);{auto* label=window.findChild<QLineEdit*>("destinationLabel");if(!label)return 2;const auto original=label->text();label->selectAll();label->insert(QString("Production screenshots for customer support — ").repeated(3).left(120));destinationScroll->verticalScrollBar()->setValue(0);if(!save("17-destination-long-name-compact"))return 2;if(!waitUntil([&]{return window.settings()->flushAutosave()&&window.findChild<QLabel*>("storedCredentialHint")->text().contains("EXAM");}))return 2;if(!save("18-destination-credentials-compact",scrollPose(destinationScroll,window.findChild<QWidget*>("credentialActions"),40)))return 2;label->selectAll();label->insert(original);destinationScroll->verticalScrollBar()->setValue(0);}
  window.navigate("settings");tabs->setCurrentIndex(1);if(!save("13-capture-compact"))return 2;window.findChild<QToolButton*>("categoryFoldersToggle")->setChecked(true);putgd::test::settle(100);if(auto* scroll=qobject_cast<QScrollArea*>(tabs->currentWidget()))scroll->ensureWidgetVisible(window.findChild<QWidget*>("folderOther"),0,24);if(!save("settings-category-folders"))return 2;window.findChild<QToolButton*>("categoryFoldersToggle")->setChecked(false);if(auto* scroll=qobject_cast<QScrollArea*>(tabs->currentWidget()))scroll->verticalScrollBar()->setValue(0);window.findChild<QToolButton*>("captureExceptionsToggle")->setChecked(true);if(!save("14-capture-exceptions-compact"))return 2;{auto* scroll=qobject_cast<QScrollArea*>(tabs->currentWidget());putgd::test::settle(100);scroll->ensureWidgetVisible(window.findChild<QWidget*>("captureRowRegion"),0,80);if(!save("settings-exceptions-compact"))return 2;scroll->verticalScrollBar()->setValue(0);}
@@ -614,6 +657,35 @@ int main(int argc,char** argv){
   editor.setDestination("Private upload to Project archive");
   const auto clean=editor.viewState();if(!clean["preparationFailure"].isNull()||clean["saveFeedbackVisible"].toBool()||!clean["message"].isNull())return 2;
   editor.selectTool(editor::Tool::Arrow);editor.setRecentColors({"#123456","#abcdef"});if(!grab("29b-editor-recent-colours"))return 2;
+  editor.allowClose();editor.close();
+ }
+ {
+  // #1362: step numbers, pen, ellipse, line, pixelate and Copy image.
+  editor::EditDocument doc(syntheticCapture(2));QJsonArray created;QString code,message;
+  const QJsonArray edits{
+   QJsonObject{{"op","add"},{"shape",QJsonObject{{"kind","step"},{"at",QJsonArray{90,112}}}}},
+   QJsonObject{{"op","add"},{"shape",QJsonObject{{"kind","step"},{"at",QJsonArray{360,236}},{"color","#facc15"}}}},
+   QJsonObject{{"op","add"},{"shape",QJsonObject{{"kind","step"},{"at",QJsonArray{636,236}},{"color","#3b82f6"}}}},
+   QJsonObject{{"op","add"},{"shape",QJsonObject{{"kind","ellipse"},{"rect",QJsonArray{600,186,300,150}}}}},
+   QJsonObject{{"op","add"},{"shape",QJsonObject{{"kind","line"},{"from",QJsonArray{61,470}},{"to",QJsonArray{640,470}},{"color","#22c55e"}}}},
+   QJsonObject{{"op","add"},{"shape",QJsonObject{{"kind","pen"},{"width",4},{"points",QJsonArray{QJsonArray{70,520},QJsonArray{110,500},QJsonArray{150,530},QJsonArray{195,505},QJsonArray{240,526},QJsonArray{290,498},QJsonArray{340,520}}}}}},
+   QJsonObject{{"op","add"},{"shape",QJsonObject{{"kind","blur"},{"rect",QJsonArray{337,194,256,130}},{"style","pixelate"},{"strength",14}}}}};
+  if(!editor::Commands::apply(doc,edits,created,code,message)){qCritical("%s",qPrintable(message));return 2;}
+  EditorWindow editor(doc);editor.setDestination("Private upload to Project archive");editor.resize(1180,820);editor.show();
+  auto grab=[&](const QString& name){putgd::test::settle(450);app.processEvents();if(!checkSteppers(editor))return false;const auto image=steadyGrab(editor);const auto path=QDir(output).filePath(name+".png");if(!image.save(path))return false;if(!native.step(editor,name)||!writeInventory(output,name,editor))return false;captures.append(QJsonObject{{"file",name+".png"},{"controls",name+".controls.json"},{"width",image.width()},{"height",image.height()}});return true;};
+  editor.selectTool(editor::Tool::Step);if(!grab("30-editor-step"))return 2;
+  editor.selectTool(editor::Tool::Select);editor.canvas().select(quint64(created[1].toDouble()));if(!grab("30a-editor-step-selected"))return 2;
+  editor.selectTool(editor::Tool::Pen);if(!grab("30b-editor-pen"))return 2;
+  editor.selectTool(editor::Tool::Select);editor.canvas().select(quint64(created[5].toDouble()));if(!grab("30c-editor-pen-selected"))return 2;
+  editor.selectTool(editor::Tool::Ellipse);if(!grab("30d-editor-ellipse"))return 2;
+  editor.selectTool(editor::Tool::Select);editor.canvas().select(quint64(created[4].toDouble()));if(!grab("30e-editor-line-selected"))return 2;
+  editor.selectTool(editor::Tool::Blur);editor.viewCommand({{"action","blurStyle"},{"style","pixelate"}},code,message);if(!code.isEmpty()||!grab("30f-editor-pixelate"))return 2;
+  editor.selectTool(editor::Tool::Select);editor.canvas().select(quint64(created[6].toDouble()));if(!grab("30g-editor-pixelate-selected"))return 2;
+  editor.canvas().select(0);editor.showCopied();if(!grab("30h-editor-image-copied"))return 2;
+  editor.exportForCopy([](const QByteArray&,const QSize&,const QString&){});editor.showCopyFailed("the clipboard is not available");if(!grab("30i-editor-copy-failed"))return 2;
+  editor.viewCommand({{"action","dismissSavedCopy"}},code,message);
+  editor.selectTool(editor::Tool::Line);editor.resize(900,620);if(!grab("30j-editor-compact-toolbar"))return 2;
+  editor.resize(editor.minimumSizeHint().width(),620);if(!grab("30k-editor-minimum-width"))return 2;
   editor.allowClose();editor.close();
  }
  {

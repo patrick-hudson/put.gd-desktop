@@ -21,6 +21,8 @@ public:
     Error validateSettings(const QJsonObject&) const override;
     void checkName(const Destination&, const QString&, std::function<void(NameCheck)>, std::shared_ptr<std::atomic_bool> cancellation = {}) override;
     void upload(const UploadRequest&, std::function<void(UploadResult)>) override;
+    void unlockLinkCredentials(const StorageReceipt&, std::function<void(Error)>) override;
+    void refreshLink(const StorageReceipt&, std::function<void(StatResult)>) override;
     void stat(const StorageReceipt&, std::function<void(StatResult)>) override;
     void reconcile(const UploadRequest&, std::function<void(StatResult)>) override;
     void remove(const DeleteRequest&, DurableCheckpoint, std::function<void(DeleteResult)>) override;

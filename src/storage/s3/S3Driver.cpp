@@ -1,5 +1,6 @@
 #include "core/ByteSize.h"
 #include "S3Driver.h"
+#include <QXmlStreamReader>
 #include "S3SdkContext.h"
 #include "PublicUrl.h"
 #include "SdkRuntime.h"
@@ -173,7 +174,7 @@ template<class E> bool ambiguous(const E& error) {
 // its response bounded even when a public endpoint returns unexpected content.
 class SyntheticResponseStream final : public Aws::IOStream {
     class Buffer final : public std::streambuf {
-        std::array<char, 128> bytes_{};
+        std::array<char, 4096> bytes_{};
     protected:
         pos_type seekoff(off_type offset, std::ios_base::seekdir direction,
                          std::ios_base::openmode mode) override {
@@ -191,7 +192,7 @@ public:
     explicit SyntheticResponseStream(qsizetype limit) : Aws::IOStream(nullptr), buffer_(limit) { rdbuf(&buffer_); }
     QByteArray bytes() const { return buffer_.bytes(); }
 };
-bool publicFixtureMatches(const StorageReceipt& published, const QByteArray& expected) {
+bool publicFixtureMatches(const StorageReceipt& published, const QByteArray& expected, int* status = nullptr, bool* authorizationRequired = nullptr) {
     Aws::Client::ClientConfiguration config(false, "legacy", true);
     config.verifySSL = true;
     useHostCaFile(config);
@@ -207,9 +208,19 @@ bool publicFixtureMatches(const StorageReceipt& published, const QByteArray& exp
     // Passing the already encoded public path would escape each '%' twice.
     uri.SetPath(aws(publicUrl.path(QUrl::FullyDecoded)));
     auto request = Aws::Http::CreateHttpRequest(uri, Aws::Http::HttpMethod::HTTP_GET,
-        [limit = expected.size() + 1] { return Aws::New<SyntheticResponseStream>("putgd-public-fixture", limit); });
+        [limit = authorizationRequired ? qsizetype(4096) : expected.size() + 1] { return Aws::New<SyntheticResponseStream>("putgd-public-fixture", limit); });
     // CreateHttpRequest/MakeRequest do not apply an AWS signer or credentials.
     auto response = client->MakeRequest(request);
+    if(status)*status=response?int(response->GetResponseCode()):0;
+    if(authorizationRequired){
+        *authorizationRequired=false;
+        if(response&&int(response->GetResponseCode())==400)if(auto* body=dynamic_cast<SyntheticResponseStream*>(&response->GetResponseBody())){
+            QXmlStreamReader xml(body->bytes());QString code,message;
+            while(!xml.atEnd()){xml.readNext();if(xml.isStartElement()&&xml.name()==QLatin1String("Code"))code=xml.readElementText();else if(xml.isStartElement()&&xml.name()==QLatin1String("Message"))message=xml.readElementText();}
+            // R2's S3 API refuses an unauthenticated GET with this structured 400.
+            *authorizationRequired=!xml.hasError()&&code=="InvalidArgument"&&message.contains("Authorization",Qt::CaseInsensitive);
+        }
+    }
     if (!response || response->GetResponseCode() != Aws::Http::HttpResponseCode::OK) return false;
     auto* body = dynamic_cast<SyntheticResponseStream*>(&response->GetResponseBody());
     return body && body->bytes() == expected;
@@ -240,6 +251,28 @@ StorageReceipt receipt(const Destination& destination, const QString& key, const
     result.concurrencyToken = etag;
     result.directUrl = publicObjectUrl(destination.settings, key);
     return result;
+}
+// Called only in the SDK worker, using the receipt's saved destination and identity.
+void signLink(Client& client, StorageReceipt& value) {
+    if (value.destination.settings.value("linkMode") != "presigned") return;
+    const auto seconds = value.destination.settings.value("linkValidityDays").toInt(7) * 86400;
+    auto version=value.objectReference["versionId"].toString();
+    if(!version.isEmpty()&&version!="null") {
+        Aws::S3::Model::GetBucketVersioningRequest request;request.SetBucket(aws(value.destination.settings["bucket"].toString()));
+        const auto status=client.GetBucketVersioning(request);
+        // R2 returns an opaque write ID but has no version addressing.
+        if(status.IsSuccess()&&status.GetResult().GetStatus()==Aws::S3::Model::BucketVersioningStatus::NOT_SET)version.clear();
+    }
+    if(version.isEmpty())value.directUrl=qt(client.GeneratePresignedUrl(aws(value.destination.settings["bucket"].toString()),
+        aws(value.objectReference["key"].toString()),Aws::Http::HttpMethod::HTTP_GET,seconds));
+    else {
+        auto settings=value.destination.settings;settings["publicUrlBase"]=QJsonValue::Null;
+        const QUrl url(publicObjectUrl(settings,value.objectReference["key"].toString()));
+        Aws::Http::URI uri(aws(url.toString(QUrl::FullyEncoded)));uri.SetPath(aws(url.path(QUrl::FullyDecoded)));
+        uri.AddQueryStringParameter("versionId",aws(version));
+        value.directUrl=qt(client.Aws::Client::AWSClient::GeneratePresignedUrl(uri,Aws::Http::HttpMethod::HTTP_GET,seconds));
+    }
+    value.objectReference["linkExpiresAt"] = QDateTime::currentDateTimeUtc().addSecs(seconds).toString(Qt::ISODateWithMs);
 }
 StatResult inspect(Client& client, const StorageReceipt& expected, bool current = false) {
     const auto key = expected.objectReference["key"].toString();
@@ -482,7 +515,7 @@ UploadResult multipartUpload(Client& client, const UploadRequest& request, const
         create.SetKey(aws(key));
         create.SetContentType(aws(request.artifact.mime));
         create.SetStorageClass(Aws::S3::Model::StorageClassMapper::GetStorageClassForName(aws(settings["storageClass"].toString())));
-        if (settings["aclMode"] == "public-read") create.SetACL(Aws::S3::Model::ObjectCannedACL::public_read);
+        if (settings.value("linkMode") != "presigned" && settings["aclMode"] == "public-read") create.SetACL(Aws::S3::Model::ObjectCannedACL::public_read);
         create.AddMetadata("putgd-publication", aws(request.publicationId));
         create.AddMetadata("putgd-sha256", aws(request.artifact.sha256));
         for (int attempt = 0; attempt < 3 && uploadId.isEmpty(); ++attempt) {
@@ -736,7 +769,7 @@ QJsonObject multipartProbe(Client& client, const Destination& destination, const
     create.SetKey(aws(key));
     create.SetContentType("text/plain");
     create.SetStorageClass(Aws::S3::Model::StorageClassMapper::GetStorageClassForName(aws(destination.settings["storageClass"].toString())));
-    if (destination.settings["aclMode"] == "public-read") create.SetACL(Aws::S3::Model::ObjectCannedACL::public_read);
+    if (destination.settings.value("linkMode") != "presigned" && destination.settings["aclMode"] == "public-read") create.SetACL(Aws::S3::Model::ObjectCannedACL::public_read);
     create.AddMetadata("putgd-publication", aws(QUuid::createUuid().toString(QUuid::WithoutBraces)));
     QElapsedTimer timer;
     timer.start();
@@ -867,7 +900,14 @@ void NetworkS3Driver::stat(const StorageReceipt& expected, std::function<void(St
         // The recorded ID names the only object the key can hold; keep the receipt as recorded.
         if (found.status == "own") found.receipt.objectReference["versionId"] = expected.objectReference["versionId"];
     }
+    if (found.status == "own" && expected.destination.settings.value("linkMode")=="presigned") found.receipt=expected;
     reply(found);
+}
+void NetworkS3Driver::refreshLink(const StorageReceipt& expected,std::function<void(StatResult)> reply) {
+    stat(expected,[this,reply](StatResult found){
+        if(found.status=="own")if(auto client=state_->client(found.receipt.destination))signLink(*client,found.receipt);
+        reply(found);
+    });
 }
 void NetworkS3Driver::reconcile(const UploadRequest& request, std::function<void(StatResult)> reply) {
     if (auto error = state_->readiness(request.destination)) {
@@ -881,9 +921,17 @@ void NetworkS3Driver::reconcile(const UploadRequest& request, std::function<void
         reply({"unknown", {}, accessError()});
         return;
     }
-    reply(inspect(*client, expected, true));
+    auto found = inspect(*client, expected, true);
+    if (found.status == "own") signLink(*client, found.receipt);
+    reply(found);
 }
 void NetworkS3Driver::upload(const UploadRequest& request, std::function<void(UploadResult)> reply) {
+    reply = [this, destination=request.destination, completion=std::move(reply)](UploadResult result) {
+        if (result.status == "uploaded") {
+            if (auto client = state_->client(destination)) signLink(*client, result.receipt);
+        }
+        completion(std::move(result));
+    };
     auto report = [&](const QString& phase, qint64 transferred) {
         // Informational callbacks cannot affect the publication result. Curl's
         // data-sent handler counts request-body bytes read, not HTTP framing or
@@ -941,7 +989,7 @@ void NetworkS3Driver::upload(const UploadRequest& request, std::function<void(Up
         put.SetContentLength(request.artifact.bytes);
         put.SetContentType(aws(request.artifact.mime));
         put.SetStorageClass(Aws::S3::Model::StorageClassMapper::GetStorageClassForName(aws(request.destination.settings["storageClass"].toString())));
-        if (request.destination.settings["aclMode"] == "public-read") put.SetACL(Aws::S3::Model::ObjectCannedACL::public_read);
+        if (request.destination.settings.value("linkMode") != "presigned" && request.destination.settings["aclMode"] == "public-read") put.SetACL(Aws::S3::Model::ObjectCannedACL::public_read);
         if (request.condition == "absent") put.SetIfNoneMatch("*");
         else put.SetIfMatch(aws(request.concurrencyToken));
         put.AddMetadata("putgd-publication", aws(request.publicationId));
@@ -1345,8 +1393,15 @@ void NetworkS3Driver::testDestination(const Destination& destination, DurableChe
                 reply({{"uploadStatus", "uploaded"}, {"receipt", uploaded.receipt.toJson()}}, error);
                 return;
             }
-            const bool reachable = publicFixtureMatches(uploaded.receipt, bytes);
+            const bool signedReachable = publicFixtureMatches(uploaded.receipt, bytes);
+            const bool presigned=uploaded.receipt.destination.settings.value("linkMode")=="presigned";
+            bool unsignedDenied=true;
+            if(presigned){auto unsignedReceipt=uploaded.receipt;auto settings=unsignedReceipt.destination.settings;settings["publicUrlBase"]=QJsonValue::Null;
+                unsignedReceipt.directUrl=publicObjectUrl(settings,unsignedReceipt.objectReference["key"].toString());
+                int status=0;bool authorizationRequired=false;publicFixtureMatches(unsignedReceipt,bytes,&status,&authorizationRequired);unsignedDenied=status==401||status==403||authorizationRequired;}
+            const bool reachable=signedReachable&&unsignedDenied;
             QJsonObject result{{"uploadStatus", "uploaded"}, {"publicReachable", reachable}, {"receipt", uploaded.receipt.toJson()}};
+            if(presigned){result["presignedReachable"]=signedReachable;result["unsignedDenied"]=unsignedDenied;}
             DeleteRequest removeRequest{QUuid::createUuid().toString(QUuid::WithoutBraces), uploaded.receipt, {}, {}};
             remove(removeRequest, save, [this, destination = uploaded.receipt.destination, save, result, reachable, reply](DeleteResult removed) mutable {
                 result["cleanupStatus"] = removed.status;
@@ -1371,7 +1426,7 @@ void NetworkS3Driver::testDestination(const Destination& destination, DurableChe
                     return;
                 }
                 if (reachable) { reply(result, removed.error); return; }
-                Error error{"public_url_unreachable", "The test upload succeeded, but its public link did not return the test file. Check Link domain and the bucket public-read policy or ACL settings.", {}};
+                Error error{"public_url_unreachable", destination.settings.value("linkMode")=="presigned"?"The test upload succeeded, but private link access did not match the destination. The signed URL must work and unsigned access must be denied. Check the bucket access policy and endpoint.":"The test upload succeeded, but its public link did not return the test file. Check Link domain and the bucket public-read policy or ACL settings.", {}};
                 if (removed.error) error.message += " Cleanup also failed: " + removed.error.message;
                 else if (removed.status != "removed" && removed.status != "missing") error.message += " Test cleanup is incomplete; inspect the recorded test target before retrying.";
                 reply(result, error);

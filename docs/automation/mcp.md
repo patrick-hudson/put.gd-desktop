@@ -66,7 +66,9 @@ such as `session_unavailable` and `config_conflict` retain their original envelo
 | `list_history` | optional pagination/filters → history.list | Offline local metadata. `category: "text+other"` selects History's **Other files** aggregate (stored `text` and `other`); every other category keeps exact matching ([CLI semantics](cli.md)) |
 | `get_history_entry` | id → history.detail | Original receipt/local-copy/deletion state |
 | `make_history_preview` | id → history.preview | Makes a missing image preview or video poster (never made, failed or cleaned up) from the retained file or an unchanged local copy; returns `previewPath` and `state` `ready`/`made`, or why there is none ([recording.md](../design/recording/history-posters.md#previews-made-on-selection)) |
-| `copy_history_link` | id → history.copyLink | Writes stored direct URL to clipboard |
+| `copy_history_link` | id → history.copyLink | Copies the recorded link; expired S3 presigned/B2 authorized links refresh from their saved destination and cached credentials first. Never unlocks the keyring |
+| `unlock_history_link_credentials` | id → history.unlockLinkCredentials | Explicitly unlocks the original saved credential reference for an expired link; the desktop keyring may prompt. Call copy separately afterwards |
+| `copy_history_links` | ids → history.copyLinks | Renews expired S3/B2 links and copies them in selection order. Failures before the clipboard write copy nothing; a later recording error or transport timeout can occur after the clipboard was written |
 | `open_history_link` | id → history.openLink | Opens the stored direct URL in the default browser exactly as clicking the link-ready notification does: the XDG portal's OpenURI, else `gio open` with the host's environment ([diagnostics.md](../design/diagnostics.md#opening-links-and-folders-on-the-host)). Returns `route` (`portal`/`launcher`), `opened` and `fallbackFrom`; `link_not_opened` when nothing opened it |
 | `delete_history_uploads` | nonempty ids; optional acknowledgement | Omitted acknowledgement prepares effects; exact returned acknowledgement confirms remote deletion |
 | `reload_configuration` | settings.reload | Validates/reloads existing file; no source/provider activity |
@@ -76,6 +78,11 @@ such as `session_unavailable` and `config_conflict` retain their original envelo
 | `create_diagnostics_bundle` | optional operation_id, since, include_names, output, preview, notify, upload, profile_id, copy_link → diagnostics.bundle | Saves a redacted diagnostics package (.zip, at most 20 MiB) locally and returns its path. `preview` reports the contents without writing; `notify` shows the saved notification with Show in folder; with upload, also sends it to a working destination and returns its link or `uploadError` ([diagnostics.md](../design/diagnostics.md#uploading-a-package)); waits up to 630 s then |
 | `get_diagnostics_upload_target` | optional profile_id → diagnostics.uploadTarget | Whether a package can upload now, where, and the sharing warning; runs Test connection ([diagnostics.md](../design/diagnostics.md#uploading-a-package)) |
 | `show_diagnostics_package` | absolute path → diagnostics.reveal | Opens the file manager with a saved package selected; without one, the portal's OpenDirectory or `gio open` on its folder; any path `create_diagnostics_bundle` saved in this resident works, whatever its name ([diagnostics.md](../design/diagnostics.md#settings-and-notifications)) |
+| `import_custom_uploader` | absolute path, expected_revision, optional label, profile_id, credential_mode keychain/session, allow_insecure_http → settings.importUploader | Adds a ShareX `.sxcu` file as a Custom uploader (HTTP) destination. The resident reads the file; its values are stored in the chosen mode and the reply has names only ([custom uploader](../user/custom-uploader.md)) |
+| `get_destination_credentials` | profile_id, expected_revision → setup.credentialHint | Which credentials a saved destination has loaded, never a value; for a custom uploader `storedValues` and `missingValues` |
+| `test_destination` | profile_id, expected_revision → setup.testDestination | Starts Test connection and returns its `setupId`. A custom uploader's test uploads a synthetic file with its request, opens the returned link and deletes the file only when the reply carried a deletion URL |
+| `get_setup_job` | id → setup.inspect | A setup job's `kind`, `profileId`, `state`, `error` and `result`; poll it until `state` leaves `running` |
+| `drive_custom_uploader` | action inspect/import/openImport/closeImport/store/test, optional absolute path, profile_id → ui.customUploader | Drives the Custom uploader (HTTP) form in the open Destinations page as a user does: reads the form (names and flags, never a value), imports a `.sxcu` into the window, opens or closes the import dialog, and presses Store and Test |
 | `settings_diagnostics` | action, optional enabled, include_names, folder, operation_id, upload → ui.diagnostics | Drives Settings → Advanced → Diagnostics in the open window: inspect, setDebugLogging, clearLogs, openPackage, setPackage (upload ticks "Also upload and copy a link" once `package.uploadTarget` is available), savePackage, showInFolder, closePackage ([cli.md](cli.md)) |
 | `get_update_status` | → update.status | The daily update check: this build's channel and package, the setting, the channel followed (`channelSource`: a DEB/RPM follows its repository, with the commands that move it in `action.otherChannel`), the last result, the next check and the last error ([updates.md](../design/updates.md)) |
 | `check_for_updates` | → update.check | Checks now, as **Check now** does; nothing is downloaded or installed ([updates.md](../design/updates.md)) |
@@ -87,9 +94,10 @@ such as `session_unavailable` and `config_conflict` retain their original envelo
 | `clear_logs` | logs.clear | Deletes every persistent log file and starts a new one; uploads, history, settings and saved diagnostics packages stay. `inspect` reports the log under `diagnostics.logging` ([diagnostics.md](../design/diagnostics.md)) |
 | `open_editor` | optional source region/window/desktop/clipboard/file, path → editor.open | Opens the visible editor (Capture region & edit); uploads nothing yet. History's **Edit again** is `source: file` with the item's `local.path` from `history.list` or `history.detail` |
 | `get_editor` | id → editor.inspect | Image size, crop, shapes, undo/redo, phase |
-| `edit_image` | id, commands → editor.apply | Atomic redact/blur/arrow/rectangle/highlight/text/crop/undo/redo, shown live |
+| `edit_image` | id, commands → editor.apply | Atomic redact/blur (or pixelate)/arrow/line/rectangle/ellipse/pen/step/highlight/text/crop/undo/redo, shown live |
 | `preview_editor` | id, optional max_edge → editor.preview | Returns the sanitized result as an MCP image plus metadata |
 | `save_editor_copy` | id, path, optional overwrite → editor.saveCopy | Writes the sanitized PNG to a file; no upload |
+| `copy_editor_image` | id → editor.copy | Copy image: the same sanitized PNG on the desktop clipboard; no upload, no History item |
 | `editor_file_dialog` | id, action open/inspect/cancel → editor.fileDialog | The editor's **Save a copy…** chooser as the button opens it, its state, or a cancel; a file picked there gets the sanitized PNG |
 | `submit_editor` | id → editor.submit | Sends only the sanitized result through the configured output |
 | `cancel_editor` / `raise_editor` | id → editor.cancel / editor.raise | Discard without upload / ask to bring the window forward; `raised: false`, `reason: activation_refused` when the desktop keeps it back (#911) |
@@ -153,7 +161,8 @@ prompt for credentials or issue provider requests.
 After the app build and locked helper setup, run:
 
 ```sh
-PUTGD_CLI="$PWD/build/dev/putgd-cli" uv run --project tools/mcp --locked \
+PUTGD_CLI="$PWD/build/dev/putgd-cli" PUTGD_APP="$PWD/build/dev/putgd" \
+  uv run --project tools/mcp --locked \
   python -m unittest discover -s tests/integration -p test_mcp.py -v
 ```
 
@@ -164,6 +173,14 @@ spaces in paths, metadata-only inspection, expected-revision conflict forwarding
 a slow `recording.stop` (answered after 16 s) outlasting the CLI's ordinary wait.
 It does not prove real compositor, GUI, provider network effects, public links or native
 clipboard behavior. The C++ service suites separately verify resident business behavior.
+
+`CustomUploaderResidentTests` in the same file is why the command sets `PUTGD_APP`, the
+built `putgd`, as well. It starts a private resident (offscreen, its own XDG folders) and the scripted
+loopback receiver `tests/fixtures/http_uploader_server.py`, then works a custom uploader
+through the helper alone: import a `.sxcu`, read the stored names, Test connection,
+upload, a lost reply and its explicit retry (two copies on the receiver), deletion, and
+two diagnostics packages. It ends by scanning everything the resident wrote for the
+synthetic token.
 
 The native CLI, graphical lab runner and development-package commands are implemented.
 Use [vm-lab.md](../lab/vm-lab.md) for disposable overlays and native scenarios,
@@ -180,3 +197,5 @@ behavior. The source55 Cinnamon live S3 check used the production CLI and GUI,
 so it does not establish MCP cloud parity. Each new build also needs current display/failure cases, full compositor
 release gates and release lifecycle evidence. [verification.md](../testing/verification.md) records the
 source-specific checks and outstanding acceptance.
+
+Use `patch_configuration` to set S3 `linkMode` (`public` or `presigned`) and `linkValidityDays` (integer 1–7). The resident validates these settings. Presigned URLs are bearer secrets: do not put tool-returned links in logs or review material.

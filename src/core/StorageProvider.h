@@ -16,6 +16,17 @@ struct ProviderCapabilities {
  // Largest object the provider accepts in one upload; zero when it reports no
  // fixed limit (a server may still refuse a file for quota or plan reasons).
  qint64 maximumObjectBytes=0;
+ // The server names what it stores (a custom HTTP uploader, #1361): the proposed name
+ // is only sent along, the collision policy does not apply, and an upload whose
+ // outcome is unknown cannot be checked, so an explicit Retry sends it again.
+ bool serverNamesObjects=false;
+ // Deletion goes through a reference the upload itself returned and addresses exactly
+ // that upload, so it needs no stat, precondition or version.
+ bool referenceDelete=false;
+ // Why this recorded upload cannot be deleted, when remove is false for it alone.
+ QString removeUnavailable;
+ // Whether a recorded object can be deleted without risking another object.
+ bool safeRemoval() const {return remove&&!deletionEffect.isEmpty()&&(referenceDelete||(stat&&(conditionalDelete||versionAddressing)));}
  QJsonObject toJson() const;
 };
 struct NameCheck {
@@ -84,6 +95,12 @@ bool shareResultMatchesReceipt(const ShareResult&,const StorageReceipt&);
 class StorageProvider {
 public:
  virtual ~StorageProvider()=default;
+ // Explicit user action only: never called by refreshLink or background history reads.
+ virtual void unlockLinkCredentials(const StorageReceipt&,std::function<void(Error)> reply) {reply({"link_refresh_unsupported","No saved link credentials are available",{}});}
+ // Explicit copy-time renewal. Implementations use only this saved receipt and cached credentials.
+ virtual void refreshLink(const StorageReceipt& receipt,std::function<void(StatResult)> reply) {
+  reply({"unknown",receipt,{"link_refresh_unsupported","This provider cannot refresh an expiring link",{}}});
+ }
  // True when uploads reliably report preparing/uploading/finalizing phases.
  // Such uploads become active only upon uploading/finalizing; telemetry remains optional.
  virtual bool reportsUploadProgress() const { return false; }
@@ -101,6 +118,12 @@ public:
  // Bounded non-secret resource counters only; no settings, payloads or credentials.
  virtual QJsonObject diagnostics() const { return {}; }
  virtual ProviderCapabilities capabilities(const Destination&) const=0;
+ // The capabilities of one recorded upload, for a provider where they depend on
+ // what that upload returned (its deletion URL) and not on the destination alone.
+ virtual ProviderCapabilities receiptCapabilities(const StorageReceipt& receipt) const { return capabilities(receipt.destination); }
+ // A profile's settings as a diagnostics package may carry them. Settings hold no
+ // credentials; a provider whose settings carry free-form values drops those too.
+ virtual QJsonObject diagnosticSettings(const QJsonObject& settings) const { return settings; }
  virtual QString serializationKey(const Destination&,const QJsonObject& objectReference,const QString& candidate) const=0;
  virtual Error validateSettings(const QJsonObject&) const=0;
  virtual Error validateCredentials(const QJsonObject&) const { return {}; }

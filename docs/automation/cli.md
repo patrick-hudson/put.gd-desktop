@@ -59,14 +59,16 @@ Methods and parameters:
 | `upload.files` | `paths` (absolute, 1–10,000), optional `profileId`, optional `installation` (`system` or `appimage`; a file manager's client sends it and another installation's resident refuses with `installation_mismatch`). Answers within 120 s after checking every file ([file-manager-upload.md](../design/file-manager-upload.md)) |
 | `editor.open` | optional `source` region (default)/window/desktop/clipboard/file, `path` (absolute, file only) |
 | `editor.inspect`, `.submit`, `.cancel`, `.raise` | operation `id` of the open editor |
-| `editor.apply` | `id`, `commands` array (1–100); atomic |
+| `editor.apply` | `id`, `commands` array (1–100); atomic; shapes redact, blur (`style` blur/pixelate), arrow, line, rectangle, ellipse, pen, step, text, highlight |
 | `editor.preview` | `id`, optional `maxEdge` 64–1600; base64 sanitized PNG |
 | `editor.saveCopy` | `id`, absolute `.png` `path`, optional `overwrite` |
+| `editor.copy` | `id`; Copy image: the sanitized PNG on the clipboard, no upload or History item; returns `copied`, `bytes`, `sha256`, `width`, `height` |
 | `editor.fileDialog` | `id`, `action` (`open`, `inspect`, `cancel`); the editor's **Save a copy…** chooser and its state ([file-dialogs.md](../design/file-dialogs.md)) |
 | `operation.recent` | empty object; configured recent-activity bound |
 | `operation.inspect`, `.cancel`, `.retry`, `.copy`, `.retryLocalSave` | `id`; `.cancel` also takes an optional `itemId` (an item's `artifact.id`) to cancel one file of an active batch while the others continue. That item ends `cancelled` and the next Retry uploads it |
 | `history.list` | optional limit, offset, search, category, mime, profileId, uploadStatus, localStatus, remoteStatus, from, to |
-| `history.detail`, `history.copyLink`, `history.copyImage` | history `id` |
+| `history.detail`, `history.copyLink`, `history.copyImage` | history `id`; detail includes `linkExpiresAt` and, for expired S3/B2 links, `linkRefreshable`. Copy refreshes an expired link from the original receipt and cached credentials before copying; it never unlocks the keyring. Missing credentials return `credential_setup_required` |
+| `history.unlockLinkCredentials` | history `id`; explicit keyring unlock for an expired link’s original saved credential reference. May prompt through the desktop keyring. Then call `history.copyLink` separately |
 | `history.openLink` | history `id`; opens the stored link in the default browser as the link-ready notification does, and returns `route` (`portal` or `launcher`), `opened` and `fallbackFrom`. `link_unavailable` for a removed or expired link, `link_not_opened` when nothing could open it ([diagnostics.md](../design/diagnostics.md#opening-links-and-folders-on-the-host)) |
 | `history.preview` | history `id`; makes a missing image preview or video poster from the retained artifact or an unchanged local copy and returns `state` (`ready` or `made`), `previewPath` and `source`, or why there is none; waits up to 45 s ([recording.md](../design/recording/history-posters.md#previews-made-on-selection)) |
 | `history.clear`, `cache.clear` | empty object; `cache.clear` returns `removedOperations`, `abortedUploads` and `incompleteUploads` (at most 100 `{operationId, itemId, error, reported}` entries whose multipart abort S3 refused; `reported` is true once the user was told about that upload), and `incompleteUploadNotice` when the pass kept uploads nobody was told about yet (`count`, `bytes`, `buckets`, `labels`, `providers`, `error`, `hint`, `message`); it also returns `trigger: manual`, `elapsedMs` and `finished`. The same cleanup runs on its own hourly (#202): `diagnostics.result.artifactCleanup` reports `running`, `automatic`, `intervalMs`, the `last` outcome (`trigger: automatic`, plus `more` when a pass stopped at its batch of 50 and `stopped` when a Retry or shutdown cut it short) and `incompleteUploadNotice`, the latest notice since the resident started (#226) |
@@ -85,6 +87,10 @@ Methods and parameters:
 | `settings.validate` | complete `document` |
 | `settings.patch` | recursive `patch`, `expectedRevision`; null is a value |
 | `settings.reorderProfiles` | `order` (every profile ID exactly once), `expectedRevision`; display order only |
+| `settings.importUploader` | `path` of a ShareX `.sxcu` file (the CLI makes a relative one absolute), `expectedRevision`, optional `label`, `profileId`, `credentialMode` (`keychain`, the default, or `session`) and `allowInsecureHttp`; adds a Custom uploader (HTTP) destination, one import at a time (`import_busy` for a second one in flight). The resident reads the file itself, stores its values in the chosen mode and answers `profileId`, `label`, `provider`, `credentials.mode`, `storedValues` (names only) and `notes`, never a value ([custom uploader](../user/custom-uploader.md)) |
+| `setup.credentialHint` | `profileId`, `expectedRevision`; which credentials a destination has loaded, never a value: for a custom uploader `storedValues` and `missingValues` by credential-store name |
+| `setup.testDestination` | `profileId`, `expectedRevision`; starts Test connection and answers a `setupId` |
+| `setup.inspect` | setup `id`; `kind`, `profileId`, `state` (`running`, `completed`, `failed`), `error` and `result`. For a custom uploader the result has `kind`, `uploadStatus`, `link`, `linkStatus`, `deletionOffered` and `cleanupStatus` (`removed`, or `unsupported` when the reply carried no deletion URL) |
 | `capabilities`, `diagnostics` | empty object |
 | `desktop.setup` | empty object; the per-user desktop setup state: `ready`, `login_required` or a [specific reason](../user/errors.md#gnome-50-setup-states) on GNOME Wayland (`unsupported_shell` for a GNOME other than 50); `not_applicable` for adapters with no per-user setup, including other desktops and GNOME on X11 |
 | `desktop.setup.recheck` | empty object; run that setup again and return its state |
@@ -92,6 +98,7 @@ Methods and parameters:
 | `ui.moveDestination` | `direction` up/down, optional `profileId`; drives the open Settings window |
 | `ui.diagnostics` | `action` (`inspect`, `setDebugLogging`, `clearLogs`, `openPackage`, `setPackage`, `savePackage`, `showInFolder`, `closePackage`), with `enabled`, `includeNames`, absolute `folder`, `upload` or `operation` where they apply; drives Settings → Advanced → Diagnostics |
 | `ui.historySaveDiagnostics` | operation or history `id`; clicks **Save diagnostics for this upload** on that failed History row |
+| `ui.customUploader` | `action` (`inspect`, `import` with an absolute `path`, `openImport`, `closeImport`, `store`, `test`), optional `profileId` to select that destination first; drives the Custom uploader (HTTP) form in the open Destinations page as a user does. `inspect` answers the form's fields, each row with `secret`, `typed` and `stored` flags, `typedSecrets` and `missingSecrets` by name, the notice and the stored hint, never a value. `import` fills the form from the file and leaves its values in the window; `store` and `test` press the form's own buttons |
 | `ui.fileDialog` | `dialog` (`editImage`, `historySaveAs`, `outputFolder`, `diagnosticsFolder`), `action` (`open`, `inspect`, `cancel`), optional `field` (`root`, `images`, `videos`, `text`, `other`; `outputFolder` only) or history/operation `id` (`historySaveAs` only); opens a chooser in the open window as its button does and answers with its state ([file-dialogs.md](../design/file-dialogs.md)) |
 
 Editor methods, command shapes and error codes are specified in
@@ -238,7 +245,7 @@ no payloads or addresses; measure RSS separately using the
 [whole-workload measurement guidance](../design/memory-strategy.md#measure-the-complete-workload).
 Other allocators report unsupported and keep the existing cleanup behavior.
 
-`setup.storeCredentials` is rejected by the CLI before connecting to the resident (`credentials_require_settings`). Enter access keys in Settings; use credential references in agent configuration. The authenticated local Settings transport retains its credential-entry endpoint.
+`setup.storeCredentials` is rejected by the CLI before connecting to the resident (`credentials_require_settings`). Enter access keys in Settings; use credential references in agent configuration. The authenticated local Settings transport retains its credential-entry endpoint. A custom uploader's token never needs that path from an agent: `settings.importUploader` takes the path of the `.sxcu` file and the resident reads it, so the token is in no argument, reply or log.
 
 Proton link management uses `history.share`, `history.revokeLink` and
 `history.inspectLink` with an exact history `id`. They return `shareOperationId`;
@@ -256,3 +263,5 @@ snapshot remains unchanged. Retry retains the original publication ID and
 reconciles before another upload.
 
 `history.copyImage` copies the selected retained original image through the resident clipboard adapter, so it remains available after closing History. It accepts only a history ID; input is limited to 32 MiB and 16 million pixels, with a bounded full-size PNG conversion. Changed or unavailable originals are rejected.
+
+S3 destination settings accept `linkMode: "public"` (default) or `"presigned"` and integer `linkValidityDays` from 1 to 7 (default 7) through `settings.patch`. Presigned mode ignores the custom link domain and omits public ACLs. History copy renewal does not use the current profile.

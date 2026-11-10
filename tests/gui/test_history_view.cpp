@@ -16,6 +16,7 @@
 #include "ui/MainWindow.h"
 #include "ui/Ui.h"
 #include "fixtures/UiSessionFixture.h"
+#include "storage/s3/S3Provider.h"
 #include "app/DiagnosticsBundle.h"
 #include <QFile>
 #include <QFileDialog>
@@ -116,6 +117,19 @@ public:
   });
  }
 };
+// #1361: a destination whose server names each upload, as a custom HTTP uploader does.
+class ServerNamedProvider final:public StorageProvider {
+public:
+ OpaqueProvider storage;
+ ProviderCapabilities capabilities(const Destination& d)const override{auto c=storage.capabilities(d);c.serverNamesObjects=true;return c;}
+ QString serializationKey(const Destination& d,const QJsonObject& ref,const QString& name)const override{return storage.serializationKey(d,ref,name);}
+ Error validateSettings(const QJsonObject& s)const override{return storage.validateSettings(s);}
+ void checkName(const Destination& d,const QString& name,std::function<void(NameCheck)> reply, std::shared_ptr<std::atomic_bool> cancellation = {})override{storage.checkName(d,name,std::move(reply),cancellation);}
+ void upload(const UploadRequest& request,std::function<void(UploadResult)> reply)override{storage.upload(request,std::move(reply));}
+ void stat(const StorageReceipt& receipt,std::function<void(StatResult)> reply)override{storage.stat(receipt,std::move(reply));}
+ void reconcile(const UploadRequest& request,std::function<void(StatResult)> reply)override{storage.reconcile(request,std::move(reply));}
+ void remove(const DeleteRequest& request,DurableCheckpoint checkpoint,std::function<void(DeleteResult)> reply)override{storage.remove(request,std::move(checkpoint),std::move(reply));}
+};
 class HistoryCopyFailureSource final:public SourceAdapter {
 public:quint64 revision=0;bool fail=true;int reads=0,copies=0;
  quint64 clipboardRevision()const override{return revision;}QJsonObject capabilities()const override{return {{"clipboard",true}};}
@@ -143,6 +157,14 @@ class HistoryGui:public QObject {
  static int operationRow(QListView* list,const QString& id){auto* model=qobject_cast<HistoryModel*>(list->model());for(int row=0;row<model->rowCount();++row)if(model->record(row)["operationId"]==id)return row;return -1;}
  static bool rowMenuAction(QListView* list,const QString& text){
   list->window()->activateWindow();list->setFocus();putgd::test::settle(20);auto triggered=std::make_shared<bool>(false);QTimer::singleShot(0,list,[triggered,text]{for(auto* widget:QApplication::topLevelWidgets())if(auto* menu=qobject_cast<QMenu*>(widget);menu&&menu->isVisible()){for(auto* action:menu->actions())if(action->text()==text&&action->isEnabled()){action->trigger();*triggered=true;break;}menu->close();}});list->setFocus();QTest::keyClick(list,Qt::Key_Menu);QCoreApplication::processEvents();return *triggered;
+ }
+ static Operation expiredS3Link(const Settings& settings,const QString& id){
+  Operation op;op.id=id;op.created=QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs);op.state="completed";op.settings=settings;
+  OperationItem item;item.artifact.id=id+"-item";item.artifact.name=id+".txt";item.uploadStatus="uploaded";item.remoteStatus="present";
+  auto profile=Settings::developmentTemplate()["profiles"].toArray().first().toObject();auto storage=profile["settings"].toObject();storage["linkMode"]="presigned";
+  item.receipt.destination={"s3","original-profile","original-revision",storage,{{"mode","keychain"},{"reference","synthetic-not-loaded"}}};
+  item.receipt.objectReference={{"schemaVersion",1},{"key","private.txt"},{"versionId",""},{"sha256",QString(64,'a')},{"bytes",0},{"linkExpiresAt","2000-01-01T00:00:00.000Z"}};item.receipt.publicationId="synthetic";item.receipt.concurrencyToken="etag";item.receipt.directUrl="https://example.invalid/private?X-Amz-Signature=expired";op.items={item};
+  return op;
  }
 private slots:
 
@@ -488,6 +510,25 @@ private slots:
   HistoryService history(operations);UiSessionFixture fixture(settings,operations,history);HistoryWindow window(fixture.session);window.resize(1500,700);window.show();auto* list=window.findChild<QListView*>("historyList");PUTGD_TRY_COMPARE(list->model()->rowCount(),24);window.findChild<QToolButton*>("historyGridMode")->click();selectRow(list,8);list->scrollTo(list->model()->index(8,0));putgd::test::settle(30);list->verticalScrollBar()->setValue(list->verticalScrollBar()->maximum()/2);const int scroll=list->verticalScrollBar()->value();QVERIFY(scroll>0);
   auto command=[&](const QString& action){QJsonObject state;window.command({{"action",action}},[&](Error e,QJsonObject value){if(e)qWarning()<<e.message;state=value;});return state;};QVERIFY(command("openDetails")["detailsOpen"].toBool());QCOMPARE(command("inspect")["detailsOrigin"].toString(),QString("gallery"));QVERIFY(command("openDetails")["detailsOpen"].toBool());QCOMPARE(command("inspect")["detailsOrigin"].toString(),QString("gallery"));QCOMPARE(list->viewMode(),QListView::IconMode);QVERIFY(window.historyState()["gridMode"].toBool());QCOMPARE(!list->isVisible(),window.historyState()["layout"]=="compact");QCOMPARE(window.findChild<QWidget*>("historyViewMode")->isVisible(),window.historyState()["layout"]=="split");const auto saved=window.saveViewState();QVERIFY(!validateUiState({{"schemaVersion",1},{"history",saved}}));command("closeDetails");PUTGD_TRY_VERIFY(list->isVisible());PUTGD_TRY_COMPARE(list->verticalScrollBar()->value(),scroll);QVERIFY(window.restoreViewState(saved));PUTGD_TRY_VERIFY(!window.historyState()["busy"].toBool());PUTGD_TRY_VERIFY(window.historyState()["detailsOpen"].toBool());QCOMPARE(window.findChild<QToolButton*>("historyDetailsBack")->text(),QString("Back to gallery"));command("closeDetails");PUTGD_TRY_VERIFY(list->isVisible());PUTGD_TRY_COMPARE(list->verticalScrollBar()->value(),scroll);QVERIFY(window.findChild<QToolButton*>("historyGridMode")->isChecked());window.findChild<QToolButton*>("historyListMode")->click();if(window.historyState()["layout"]=="split")PUTGD_TRY_VERIFY(list->width()>window.width()-Ui::scaled(Ui::Metric::historySidebar)-Ui::scaled(420));
  }
+ // #1361: an upload whose reply was lost cannot be looked up where the server names it. History
+ // says a retry may leave a second copy, and only while such an item is the selection.
+ void unknownUploadWhereTheServerNamesItWarnsOfASecondCopy(){
+  QTemporaryDir d;ProviderRegistry registry;registry.add("opaque",std::make_shared<ServerNamedProvider>());SettingsService settings(d.filePath("config.json"),[&](auto id,auto doc){return registry.validate(id,doc);});QVERIFY(settings.save(configuration(d.path()),{}));Source source;OperationService operations(d.filePath("data"),settings,registry,source);PUTGD_TRY_VERIFY(operations.ready());
+  {HistoryStore ledger(operations.databasePath());int minute=0;
+   for(const auto* id:{"unknown","settled"}){Operation op;op.id=id;op.created=QString("2020-01-01T00:0%1:00.000Z").arg(minute++);op.state="completed";op.settings=settings.snapshot();op.destination={"opaque","test","revision",{{"workspace","fixture-workspace"}},{}};OperationItem item;item.artifact.id=QString(id)+"-file";item.artifact.name=id;item.artifact.category="images";item.artifact.mime="image/png";item.uploadStatus=QString(id)=="unknown"?"unknown":"local_only";item.local.status="saved";item.local.path=d.filePath(QString(id)+"-original");op.items.append(item);QVERIFY(!ledger.saveOperation(op));}}
+  HistoryService history(operations);UiSessionFixture fixture(settings,operations,history);HistoryWindow window(fixture.session);window.resize(1440,900);window.show();auto* list=window.findChild<QListView*>("historyList");PUTGD_TRY_COMPARE(list->model()->rowCount(),2);
+  QLabel* status=nullptr;for(auto* label:window.findChildren<QLabel*>())if(label->accessibleName()=="History status")status=label;QVERIFY(status);
+  const auto row=[&](const QString& name){for(int i=0;i<list->model()->rowCount();++i)if(list->model()->index(i,0).data().toString()==name)return i;return -1;};
+  QVERIFY(row("unknown")>=0&&row("settled")>=0);
+  selectRow(list,row("unknown"));
+  PUTGD_TRY_VERIFY(status->isVisible()&&status->text().contains("may leave a second copy"));QVERIFY(status->text().contains("outcome is unknown")&&status->text().contains("cannot be asked"));
+  selectRow(list,row("settled"));
+  PUTGD_TRY_VERIFY(!status->text().contains("second copy"));
+  selectRow(list,row("unknown"));
+  PUTGD_TRY_VERIFY(status->text().contains("may leave a second copy"));
+  list->selectionModel()->clearSelection();
+  PUTGD_TRY_VERIFY(!status->text().contains("second copy"));
+ }
  void managementMenuDoesNotConsumeListHeight(){
   QTemporaryDir d;SettingsService settings(d.filePath("config.json"));CredentialStore secrets;UiSessionFixture fixture(settings,secrets);HistoryWindow window(fixture.session);window.resize(1060,500);window.show();auto* list=window.findChild<QListView*>("historyList");const int height=list->height();auto* toggle=window.findChild<QToolButton*>("historyManagementExpanded");toggle->click();auto* menu=window.findChild<QMenu*>("historyManagementMenu");QVERIFY(menu&&menu->isVisible());QCOMPARE(list->height(),height);QCOMPARE(menu->actions().size(),2);menu->close();QVERIFY(!toggle->isChecked());
  }
@@ -650,6 +691,42 @@ private slots:
   PUTGD_TRY_VERIFY(status->text().contains("Link: "+outcome));if(outcome=="failed")QVERIFY(status->text().contains("Synthetic sharing failure"));
   PUTGD_TRY_VERIFY((outcome=="shared"?reopened.findChild<QLineEdit*>("historyLink")->isVisible():readableStatus(reopened.findChild<QLabel*>("historyOutcome")->text()).contains("Sharing failed")));QVERIFY(status->text().contains("Link: "+outcome));
   QCOMPARE(provider->mutations.load(),1);QCOMPARE(provider->storage.uploads.load(),1);QCOMPARE(source.reads,1);QCOMPARE(source.copies,0);
+ }
+ void expiredCopyEntryPointsOfferUnlockForTheirOwnItem_data(){
+  QTest::addColumn<QString>("entry");for(const auto& entry:QStringList{"button","row","menu"})QTest::newRow(qPrintable(entry))<<entry;
+ }
+ void expiredCopyEntryPointsOfferUnlockForTheirOwnItem(){
+  QFETCH(QString,entry);QTemporaryDir d;CredentialStore secrets;ProviderRegistry registry;registry.add("s3",std::make_shared<S3Provider>(secrets));
+  SettingsService settings(d.filePath("config.json"));QVERIFY(settings.save(Settings::defaults(),{}));Source source;OperationService operations(d.filePath("data"),settings,registry,source);PUTGD_TRY_VERIFY(operations.ready());
+  {HistoryStore store(operations.databasePath());QVERIFY(!store.saveOperation(expiredS3Link(settings.snapshot(),"expired")));}
+  HistoryService history(operations);UiSessionFixture fixture(settings,operations,history);QStringList copies,unlocks;
+  fixture.client.beforeDispatch=[&](const QString& method,const QJsonObject& params){if(method=="history.copyLink")copies.append(params["id"].toString());if(method=="history.unlockLinkCredentials"){unlocks.append(params["id"].toString());fixture.client.failOnce[method]={"synthetic_unlock","Explicit unlock observed",{}};}};
+  HistoryWindow window(fixture.session);window.resize(900,700);window.show();auto* list=window.findChild<QListView*>("historyList");PUTGD_TRY_COMPARE(list->model()->rowCount(),1);
+  auto* copy=window.findChild<QPushButton*>("copyHistoryLink");auto* unlock=window.findChild<QPushButton*>("historyUnlockLinkCredentials");
+  // Row copies must not depend on an inspector detail reply winning the race.
+  fixture.client.replyDelayMs["history.detail"]=700;
+  if(entry=="button"){inspectRow(list,0);PUTGD_TRY_VERIFY(copy->isEnabled());copy->click();}
+  else if(entry=="row"){selectRow(list,0);auto* primary=window.findChild<QToolButton*>("historyRowPrimary");PUTGD_TRY_VERIFY(primary->isVisible());primary->click();}
+  else{selectRow(list,0);QVERIFY(rowMenuAction(list,"Copy link"));}
+  PUTGD_TRY_COMPARE(copies,QStringList{"expired-item"});PUTGD_TRY_VERIFY(unlock->isVisible());QVERIFY(unlocks.isEmpty());QCOMPARE(source.copies,0);
+  // A later detail reply for this same item must retain the bound unlock action.
+  PUTGD_VERIFY_STEADY(unlock->isVisible(),750);QVERIFY(unlocks.isEmpty());unlock->click();PUTGD_TRY_COMPARE(unlocks,QStringList{"expired-item"});
+ }
+ void expiredCopyIgnoresReplyAfterSelectionChanges_data(){expiredCopyEntryPointsOfferUnlockForTheirOwnItem_data();}
+ void expiredCopyIgnoresReplyAfterSelectionChanges(){
+  QFETCH(QString,entry);QTemporaryDir d;CredentialStore secrets;ProviderRegistry registry;registry.add("s3",std::make_shared<S3Provider>(secrets));
+  SettingsService settings(d.filePath("config.json"));QVERIFY(settings.save(Settings::defaults(),{}));Source source;OperationService operations(d.filePath("data"),settings,registry,source);PUTGD_TRY_VERIFY(operations.ready());
+  {HistoryStore store(operations.databasePath());QVERIFY(!store.saveOperation(expiredS3Link(settings.snapshot(),"first")));QVERIFY(!store.saveOperation(expiredS3Link(settings.snapshot(),"second")));}
+  HistoryService history(operations);UiSessionFixture fixture(settings,operations,history);QStringList copies,unlocks;
+  fixture.client.beforeDispatch=[&](const QString& method,const QJsonObject& params){if(method=="history.copyLink")copies.append(params["id"].toString());if(method=="history.unlockLinkCredentials"){unlocks.append(params["id"].toString());fixture.client.failOnce[method]={"synthetic_unlock","Explicit unlock observed",{}};}};
+  fixture.client.replyDelayMs["history.copyLink"]=350;HistoryWindow window(fixture.session);window.resize(900,700);window.show();auto* list=window.findChild<QListView*>("historyList");PUTGD_TRY_COMPARE(list->model()->rowCount(),2);
+  const int first=operationRow(list,"first"),second=operationRow(list,"second");inspectRow(list,first);auto* copy=window.findChild<QPushButton*>("copyHistoryLink");PUTGD_TRY_VERIFY(copy->isEnabled());
+  if(entry!="button")window.command({{"action","closeDetails"}},[](Error e,QJsonObject){QVERIFY(!e);});
+  if(entry=="button")copy->click();else if(entry=="row"){auto* primary=window.findChild<QToolButton*>("historyRowPrimary");PUTGD_TRY_VERIFY(primary->isVisible());primary->click();}else QVERIFY(rowMenuAction(list,"Copy link"));
+  PUTGD_TRY_COMPARE(copies,QStringList{"first-item"});inspectRow(list,second);PUTGD_TRY_COMPARE(window.findChild<QLabel*>("historyTitle")->text(),QString("second.txt"));
+  auto* unlock=window.findChild<QPushButton*>("historyUnlockLinkCredentials");PUTGD_VERIFY_STEADY(unlock->isHidden(),450);QVERIFY(unlocks.isEmpty());QCOMPARE(source.copies,0);
+  // A hidden/stale button can never fall back to whichever detail is current.
+  unlock->click();PUTGD_VERIFY_STEADY(unlocks.isEmpty(),30);
  }
  void linkRowShowsTheConfirmedExpiry(){
   // History's link row says when the link expires, and that it expired once it has (#253).
