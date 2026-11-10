@@ -14,7 +14,7 @@
 #include <QUrl>
 class QAction;class QToolButton;class QTabWidget;class QListWidget;class QSpinBox;class QDoubleSpinBox;class QTimer;class QComboBox;class QLineEdit;class QCheckBox;class QLabel;class QPushButton;class QPlainTextEdit;class QDialog;class QFormLayout;class QGridLayout;class QProgressBar;
 namespace putgd {
-class ShortcutEditor;namespace Ui{class Banner;}
+class ShortcutEditor;class CustomUploaderPanel;namespace Ui{class Banner;}
 class SettingsWindow final:public RetainedWindow {
  Q_OBJECT
 public:
@@ -50,6 +50,10 @@ public:
  // field root|images|videos|text|other) and the package dialog's Choose folder…
  // (diagnosticsFolder): action open|inspect|cancel, answered with the chooser's state.
  void fileDialogCommand(const QString& dialog,const QString& action,const QString& field,std::function<void(Error,QJsonObject)> reply);
+ // #1361: drives the custom uploader form the way a user does: action inspect,
+ // import (path: the .sxcu file is read into the form; its secrets wait there
+ // until stored), store (the Store credentials button) or test.
+ void uploaderCommand(const QJsonObject& params,std::function<void(Error,QJsonObject)> reply);
  // How those choosers ended, as their buttons handle it: a chosen folder is
  // used, a cancel changes nothing, a failure shows its reason beside the
  // originating row with Try again (tests drive failures through here).
@@ -137,7 +141,11 @@ private:
  void rememberCredentialInputs();void restoreCredentialInputs();void clearCurrentCredentialInputs();
  void toggleCredentialSecret(bool shown);void resetCredentialSecretDisplay();
  QPushButton* showSecret_=nullptr;bool savedSecretShown_=false;quint64 secretRevealSerial_=0;
- struct CredentialInputs {QString access,secret,token,password;};
+ // values: a custom uploader's typed secret values by credential-store key (#1361).
+ struct CredentialInputs {QString access,secret,token,password;QMap<QString,QString> values={};bool empty()const{return access.isEmpty()&&secret.isEmpty()&&token.isEmpty()&&password.isEmpty()&&values.isEmpty();}};
+ // Settings → Destinations → Custom uploader (HTTP): its form, and ui.customUploader
+ // for agents (inspect, import a .sxcu file into the form, open or close its dialog).
+ CustomUploaderPanel* uploader_=nullptr;
  QVector<QHash<QString,CredentialInputs>> credentialDrafts_;
  QHash<QString,CredentialInputs> provisionalCredentials_;
  QJsonObject provisionalProfile_;

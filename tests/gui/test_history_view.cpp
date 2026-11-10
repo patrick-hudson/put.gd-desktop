@@ -117,6 +117,19 @@ public:
   });
  }
 };
+// #1361: a destination whose server names each upload, as a custom HTTP uploader does.
+class ServerNamedProvider final:public StorageProvider {
+public:
+ OpaqueProvider storage;
+ ProviderCapabilities capabilities(const Destination& d)const override{auto c=storage.capabilities(d);c.serverNamesObjects=true;return c;}
+ QString serializationKey(const Destination& d,const QJsonObject& ref,const QString& name)const override{return storage.serializationKey(d,ref,name);}
+ Error validateSettings(const QJsonObject& s)const override{return storage.validateSettings(s);}
+ void checkName(const Destination& d,const QString& name,std::function<void(NameCheck)> reply, std::shared_ptr<std::atomic_bool> cancellation = {})override{storage.checkName(d,name,std::move(reply),cancellation);}
+ void upload(const UploadRequest& request,std::function<void(UploadResult)> reply)override{storage.upload(request,std::move(reply));}
+ void stat(const StorageReceipt& receipt,std::function<void(StatResult)> reply)override{storage.stat(receipt,std::move(reply));}
+ void reconcile(const UploadRequest& request,std::function<void(StatResult)> reply)override{storage.reconcile(request,std::move(reply));}
+ void remove(const DeleteRequest& request,DurableCheckpoint checkpoint,std::function<void(DeleteResult)> reply)override{storage.remove(request,std::move(checkpoint),std::move(reply));}
+};
 class HistoryCopyFailureSource final:public SourceAdapter {
 public:quint64 revision=0;bool fail=true;int reads=0,copies=0;
  quint64 clipboardRevision()const override{return revision;}QJsonObject capabilities()const override{return {{"clipboard",true}};}
@@ -496,6 +509,25 @@ private slots:
   {HistoryStore ledger(operations.databasePath());for(int i=0;i<24;++i){Operation op;op.id=QString("gallery-%1").arg(i);op.created=QString("2020-01-01T00:%1:00.000Z").arg(i,2,10,QChar('0'));op.state="completed";op.settings=settings.snapshot();OperationItem item;item.artifact.id=op.id+"-file";item.artifact.name="Gallery item.txt";item.uploadStatus="local_only";op.items.append(item);QVERIFY(!ledger.saveOperation(op));}}
   HistoryService history(operations);UiSessionFixture fixture(settings,operations,history);HistoryWindow window(fixture.session);window.resize(1500,700);window.show();auto* list=window.findChild<QListView*>("historyList");PUTGD_TRY_COMPARE(list->model()->rowCount(),24);window.findChild<QToolButton*>("historyGridMode")->click();selectRow(list,8);list->scrollTo(list->model()->index(8,0));putgd::test::settle(30);list->verticalScrollBar()->setValue(list->verticalScrollBar()->maximum()/2);const int scroll=list->verticalScrollBar()->value();QVERIFY(scroll>0);
   auto command=[&](const QString& action){QJsonObject state;window.command({{"action",action}},[&](Error e,QJsonObject value){if(e)qWarning()<<e.message;state=value;});return state;};QVERIFY(command("openDetails")["detailsOpen"].toBool());QCOMPARE(command("inspect")["detailsOrigin"].toString(),QString("gallery"));QVERIFY(command("openDetails")["detailsOpen"].toBool());QCOMPARE(command("inspect")["detailsOrigin"].toString(),QString("gallery"));QCOMPARE(list->viewMode(),QListView::IconMode);QVERIFY(window.historyState()["gridMode"].toBool());QCOMPARE(!list->isVisible(),window.historyState()["layout"]=="compact");QCOMPARE(window.findChild<QWidget*>("historyViewMode")->isVisible(),window.historyState()["layout"]=="split");const auto saved=window.saveViewState();QVERIFY(!validateUiState({{"schemaVersion",1},{"history",saved}}));command("closeDetails");PUTGD_TRY_VERIFY(list->isVisible());PUTGD_TRY_COMPARE(list->verticalScrollBar()->value(),scroll);QVERIFY(window.restoreViewState(saved));PUTGD_TRY_VERIFY(!window.historyState()["busy"].toBool());PUTGD_TRY_VERIFY(window.historyState()["detailsOpen"].toBool());QCOMPARE(window.findChild<QToolButton*>("historyDetailsBack")->text(),QString("Back to gallery"));command("closeDetails");PUTGD_TRY_VERIFY(list->isVisible());PUTGD_TRY_COMPARE(list->verticalScrollBar()->value(),scroll);QVERIFY(window.findChild<QToolButton*>("historyGridMode")->isChecked());window.findChild<QToolButton*>("historyListMode")->click();if(window.historyState()["layout"]=="split")PUTGD_TRY_VERIFY(list->width()>window.width()-Ui::scaled(Ui::Metric::historySidebar)-Ui::scaled(420));
+ }
+ // #1361: an upload whose reply was lost cannot be looked up where the server names it. History
+ // says a retry may leave a second copy, and only while such an item is the selection.
+ void unknownUploadWhereTheServerNamesItWarnsOfASecondCopy(){
+  QTemporaryDir d;ProviderRegistry registry;registry.add("opaque",std::make_shared<ServerNamedProvider>());SettingsService settings(d.filePath("config.json"),[&](auto id,auto doc){return registry.validate(id,doc);});QVERIFY(settings.save(configuration(d.path()),{}));Source source;OperationService operations(d.filePath("data"),settings,registry,source);PUTGD_TRY_VERIFY(operations.ready());
+  {HistoryStore ledger(operations.databasePath());int minute=0;
+   for(const auto* id:{"unknown","settled"}){Operation op;op.id=id;op.created=QString("2020-01-01T00:0%1:00.000Z").arg(minute++);op.state="completed";op.settings=settings.snapshot();op.destination={"opaque","test","revision",{{"workspace","fixture-workspace"}},{}};OperationItem item;item.artifact.id=QString(id)+"-file";item.artifact.name=id;item.artifact.category="images";item.artifact.mime="image/png";item.uploadStatus=QString(id)=="unknown"?"unknown":"local_only";item.local.status="saved";item.local.path=d.filePath(QString(id)+"-original");op.items.append(item);QVERIFY(!ledger.saveOperation(op));}}
+  HistoryService history(operations);UiSessionFixture fixture(settings,operations,history);HistoryWindow window(fixture.session);window.resize(1440,900);window.show();auto* list=window.findChild<QListView*>("historyList");PUTGD_TRY_COMPARE(list->model()->rowCount(),2);
+  QLabel* status=nullptr;for(auto* label:window.findChildren<QLabel*>())if(label->accessibleName()=="History status")status=label;QVERIFY(status);
+  const auto row=[&](const QString& name){for(int i=0;i<list->model()->rowCount();++i)if(list->model()->index(i,0).data().toString()==name)return i;return -1;};
+  QVERIFY(row("unknown")>=0&&row("settled")>=0);
+  selectRow(list,row("unknown"));
+  PUTGD_TRY_VERIFY(status->isVisible()&&status->text().contains("may leave a second copy"));QVERIFY(status->text().contains("outcome is unknown")&&status->text().contains("cannot be asked"));
+  selectRow(list,row("settled"));
+  PUTGD_TRY_VERIFY(!status->text().contains("second copy"));
+  selectRow(list,row("unknown"));
+  PUTGD_TRY_VERIFY(status->text().contains("may leave a second copy"));
+  list->selectionModel()->clearSelection();
+  PUTGD_TRY_VERIFY(!status->text().contains("second copy"));
  }
  void managementMenuDoesNotConsumeListHeight(){
   QTemporaryDir d;SettingsService settings(d.filePath("config.json"));CredentialStore secrets;UiSessionFixture fixture(settings,secrets);HistoryWindow window(fixture.session);window.resize(1060,500);window.show();auto* list=window.findChild<QListView*>("historyList");const int height=list->height();auto* toggle=window.findChild<QToolButton*>("historyManagementExpanded");toggle->click();auto* menu=window.findChild<QMenu*>("historyManagementMenu");QVERIFY(menu&&menu->isVisible());QCOMPARE(list->height(),height);QCOMPARE(menu->actions().size(),2);menu->close();QVERIFY(!toggle->isChecked());

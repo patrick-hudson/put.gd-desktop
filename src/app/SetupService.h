@@ -15,6 +15,13 @@ public:
  ~SetupService() override;
  using ProviderSetup=std::function<void(const QString&,const Destination&,const QJsonObject&,JsonReply,std::function<void(QJsonObject)>)>;
  void setProviderSetup(ProviderSetup handler){providerSetup_=std::move(handler);}
+ // A provider whose credentials are named values instead of a key pair (a custom
+ // HTTP uploader, #1361). Given a saved profile and typed values, it fills `names`
+ // with the credential-store keys the profile's settings need and checks the values;
+ // setup_unsupported for any other provider. storeCredentials then merges the typed
+ // values over the cached ones and stores the set.
+ using NamedCredentials=std::function<Error(const QJsonObject& profile,const QMap<QString,QString>& values,QStringList* names)>;
+ void setNamedCredentials(NamedCredentials handler){namedCredentials_=std::move(handler);}
  void start(const QString& kind,const QString& profileId,const QString& expectedRevision,const QJsonObject& input,JsonReply);
  void inspect(const QString& id,JsonReply);
  void credentialHint(const QString& profileId,const QString& expectedRevision,JsonReply);
@@ -43,6 +50,8 @@ private:
  CredentialStore& credentials_;
  DestinationTester tester_;
  ProviderSetup providerSetup_;
+ NamedCredentials namedCredentials_;
+ bool usesCredentialStore(const QJsonObject& profile) const;
  QHash<QString,QJsonObject> jobs_;
  QQueue<QString> completed_;
  QSet<QString> active_;

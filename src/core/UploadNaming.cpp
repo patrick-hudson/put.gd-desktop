@@ -130,7 +130,8 @@ QList<NamedItem> UploadNaming::batch(const QList<Artifact>& artifacts, const QSt
   auto name = candidate(artifact, mode, false, maximumBytes);
   const int index = result.size();
   result.append({name, "pending"});
-  if (groups.contains(name)) {
+  // "keep": the destination names what it stores, so equal names are separate objects.
+  if (groups.contains(name) && policy != "keep") {
    if (policy == "overwrite") {
     result[index].status = "conflict";
     for (const int previous : groups[name]) result[previous].status = "conflict";

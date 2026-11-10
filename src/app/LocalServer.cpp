@@ -74,6 +74,7 @@ int LocalServer::replyDeadlineMs(const QString& method) {
  if(method=="history.unlockLinkCredentials")return 300000;
  // Checking a large folder over GVfs or KIOFuse stats every file before the reply.
  if(method=="upload.files")return uploadFilesReplyMs;
+ if(method=="settings.importUploader")return uploaderImportReplyMs;
  // Setup runs gsettings and waits for the Shell, each with its own bound.
  if(method=="desktop.setup.recheck")return desktopSetupRecheckReplyMs;
  // The checker child has 40 s of its own (#293).
@@ -128,6 +129,15 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
   if(!fields(p,{"direction"},{"profileId"})||!QStringList{"up","down"}.contains(p["direction"].toString())||(p.contains("profileId")&&!string(p,"profileId",64))){reply(invalid(),{});return;}
   if(!uiCommand_){reply({"ui_unavailable","This resident has no graphical interface",{}},{});return;}
   uiCommand_("moveDestination",p,std::move(reply));return;
+ }
+ // #1361: drives the Custom uploader form in the open Destinations page the way a
+ // user does. import reads a .sxcu file into the form, where its secret values wait,
+ // masked, until store; the reply is the form's state and never carries a value.
+ if(method=="ui.customUploader") {
+  static const QStringList actions{"inspect","import","openImport","closeImport","store","test"};const auto action=p["action"].toString();
+  if(!fields(p,{"action"},{"path","profileId"})||!actions.contains(action)||(action=="import")!=p.contains("path")||(p.contains("path")&&(!string(p,"path",4096)||!QDir::isAbsolutePath(p["path"].toString())))||(p.contains("profileId")&&!string(p,"profileId",64))){reply(invalid(),{});return;}
+  if(!uiCommand_){reply({"ui_unavailable","This resident has no graphical interface",{}},{});return;}
+  uiCommand_("customUploader",p,std::move(reply));return;
  }
  if(method=="action.invoke") {
   if(!fields(p,{"action"},{"source","path","mode"})||!string(p,"action")||(p.contains("source")&&!string(p,"source",32))||(p.contains("path")&&!string(p,"path",4096))||(p.contains("mode")&&(p["action"]!="record"||!string(p,"mode",16)))){reply(invalid(),{});return;}
@@ -324,6 +334,10 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
   QJsonObject document;if(auto error=Settings::reorderProfiles(settings_.document(),p["order"].toArray(),document)) {reply(error,{});return;}
   if(document==settings_.document()) {reply({},{{"changed",false},{"metadata",settings_.metadata()}});return;}
   QPointer<LocalServer> guarded(this);settings_.saveAsync(document,p["expectedRevision"].toString(),[guarded,reply](Result result) {if(guarded)reply(result.error,{{"changed",true},{"metadata",guarded->settings_.metadata()}});});return;
+ }
+ if(method=="settings.importUploader") {
+  if(!uploaderImport_) {reply({"import_unavailable","This resident cannot import an uploader file",{}},{});return;}
+  uploaderImport_(p,std::move(reply));return;
  }
  if(method=="settings.importDevelopment") {
   if(!fields(p,{"expectedRevision"})||!p["expectedRevision"].isString()) {reply(invalid(),{});return;}
