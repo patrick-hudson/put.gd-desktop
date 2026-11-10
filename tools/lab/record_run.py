@@ -37,6 +37,7 @@ numbers, identities, host load and the kernel's GPU hang count for the run.
                 [--mic off|virtual|NAME] [--system on|off|tone] [--unplug-at S]
                 [--click S,X,Y[,BUTTON] ...] [--click-highlights on|off]
                 [--click-vnc HOST:PORT] [--delayed-capture desktop:3]
+                [--hide-bar]
 
 A window target without --identity records the focused window, which on Wayland
 is the cover. On X11 a window is named by its id and a cover started from a shell
@@ -66,6 +67,12 @@ in while the bar is at Ready (as the default input), switches it on with
 follow every step (`readyFollow` in the round's entry, with the seconds each
 took and, with --frames, a frame of the desktop per step), and the clip that is
 then recorded must hold the bursts.
+`--hide-bar` hides put.gd's recording bar at Ready (`recording.overlay
+{visible: false}`). Where the bar cannot sit outside the recorded area (a whole
+monitor on a one-monitor desktop) its Stop handle is in the clip
+(`overlay.overlayPlacement` `handle` in the round's entry), and with --frames
+the frame gate can take it for something that is not the cover and delete the
+clips; that is listed under `problems` now, with this option named.
 `--delayed-capture desktop:3` checks that a delayed capture (#1363) and a
 recording work in one resident session: before `recording.prepare` and again
 after the recording is cancelled it calls `action.invoke` with `delaySeconds`,
@@ -795,6 +802,11 @@ class Driver:
             result['canvas'] = ready.get('canvas')
             if a.mic == 'late':
                 result['readyFollow'] = self.follow_at_ready(build, rid, name)
+            if a.hide_bar:
+                # Where the bar cannot sit outside the recorded area (a whole monitor) its Stop handle is in the
+                # clip, and the frame gate cannot tell it from a desktop's own panel. Hidden, it stays hidden.
+                self.cli(build, 'recording.overlay', {'id': rid, 'visible': False})
+                result['barHidden'] = True
             time.sleep(a.lead)
             asked = time.monotonic()
             self.cli(build, 'recording.start', {'id': rid})
@@ -858,6 +870,7 @@ class Driver:
             self.cli(build, 'recording.saveCopy', {'id': rid, 'path': str(copy), 'overwrite': True})
             done = self.wait_state(build, rid, ('reviewing',), 600)
             result['export'] = (done.get('lastExport') or {}).get('status')
+            result['overlay'] = {key: done[key] for key in ('overlayExcluded', 'overlayPlacement') if key in done}
             self.cli(build, 'recording.cancel', {'id': rid})
             if a.delayed_capture:
                 result['delayedCaptures'].append(self.delayed_capture(build, name, 'after'))
@@ -908,6 +921,11 @@ class Driver:
                 for kind, clip in (('working', working), ('export', copy)):
                     clip.unlink(missing_ok=True)
                     result['clips'][kind]['destroyed'] = True
+                problem = "the clip's frame is not the cover (%s); the clips were deleted" % result['frame'].get('reason')
+                if (result.get('overlay') or {}).get('overlayPlacement') == 'handle' and not a.hide_bar:
+                    problem += ". put.gd's own Stop handle is in this clip (overlayPlacement handle): --hide-bar records without it"
+                result.setdefault('problems', []).append(problem)
+                log('problems: %s' % problem)
         return result
 
     def hyprctl(self, *arguments):
@@ -1243,6 +1261,8 @@ def main(argv=None):
                         help='press BUTTON (left, middle, right) at desktop pixel X,Y, S seconds into each recording, and check the clip for its ring')
     parser.add_argument('--click-highlights', choices=('on', 'off'), default='on', help='off: record the presses without click highlights; no ring may appear')
     parser.add_argument('--click-vnc', metavar='HOST:PORT', help="the VNC server that shows this desktop (default: this host's --vnc-port)")
+    parser.add_argument('--hide-bar', action='store_true',
+                        help="hide put.gd's recording bar before Record (recording.overlay), for a whole-monitor clip without its Stop handle")
     parser.add_argument('--delayed-capture', metavar='ACTION:SECONDS', type=parse_delayed_capture,
                         help='in each round, in the resident session that records: a delayed capture (desktop or monitor; 3, 5 or 10 s) before the recording and again after it')
     parser.add_argument('--keep-unpaired', action='store_true', help="keep clips without marker pairs (runs where the microphone is off or unplugged)")
