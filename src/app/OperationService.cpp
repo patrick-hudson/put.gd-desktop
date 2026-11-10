@@ -354,10 +354,12 @@ void OperationService::invokeCapture(const QString& requestedAction,JsonReply re
    // or read until both journal saves are durable and the countdown has ended.
    const auto outcome=source_.captureOutcome();
    releaseUnused=released;
-   acquisition=[owner,source,delay,screenshotFirst,outcome,earlyTerminal=std::function<void(Error)>(std::move(earlyTerminal)),released=std::function<void()>(std::move(released))](const ResourceLimits& limits,std::function<void(PayloadResult)> deliver) mutable {
+   acquisition=[owner,source,delay,screenshotFirst,outcome,flag,earlyTerminal=std::function<void(Error)>(std::move(earlyTerminal)),released=std::function<void()>(std::move(released))](const ResourceLimits& limits,std::function<void(PayloadResult)> deliver) mutable {
     if(!owner){deliver({{},{"source_unavailable","Desktop adapter closed",{}}});return;}
-    owner->source_.delayed(delay,[owner,source,screenshotFirst,outcome,limits,earlyTerminal=std::move(earlyTerminal),released=std::move(released),deliver=std::move(deliver)](Error error) mutable {
-     if(!owner||owner->stopping_){if(released)released();deliver({{},{"cancelled","Capture cancelled",{}}});return;}
+    owner->source_.delayed(delay,[owner,source,screenshotFirst,outcome,limits,flag,earlyTerminal=std::move(earlyTerminal),released=std::move(released),deliver=std::move(deliver)](Error error) mutable {
+     // A cancel that arrives after the countdown, while the lock is being asked
+     // about, finds nothing to stop: it must still keep every pixel unread.
+     if(!owner||owner->stopping_||flag->load()){if(released)released();deliver({{},{"cancelled","Capture cancelled",{}}});return;}
      if(error){if(released)released();deliver({{},std::move(error)});return;}
      owner->source_.setCaptureOutcome(outcome);owner->source_.setRegionScreenshotFirst(screenshotFirst);owner->source_.setCaptureDelay(0);
      owner->source_.prepareAcquisition(source,limits,std::move(earlyTerminal),std::move(released))(limits,std::move(deliver));

@@ -9,15 +9,15 @@ namespace {
 // Records the order of countdown, lock query, preparation and acquisition.
 class DelaySource final:public SourceAdapter {
 public:
- QStringList events;QList<int> preparedDelays;bool locked=false,deferCountdown=false,remembered=false;
- std::function<void(Error)> pendingCountdown;int cancels=0;
+ QStringList events;QList<int> preparedDelays;bool locked=false,deferCountdown=false,deferLock=false,remembered=false;
+ std::function<void(Error)> pendingCountdown;std::function<void(bool)> pendingLock;int cancels=0;
  quint64 clipboardRevision() const override {return 0;}
  QJsonObject capabilities() const override {return {};}
  void countdown(int seconds,std::function<void(Error)> reply) override {
   events<<QStringLiteral("countdown:%1").arg(seconds);
   if(deferCountdown)pendingCountdown=std::move(reply);else reply({});
  }
- void sessionLocked(std::function<void(bool)> reply) override {events<<"locked?";reply(locked);}
+ void sessionLocked(std::function<void(bool)> reply) override {events<<"locked?";if(deferLock)pendingLock=std::move(reply);else reply(locked);}
  PreparedAcquisition prepareAcquisition(const QString& action) override {
   events<<"prepare:"+action;preparedDelays<<captureDelay_;
   Error error;if(action=="repeat"&&!remembered)error=noLastRegion();
@@ -137,6 +137,22 @@ private slots:
   f.source.deferCountdown=false;
   Error busy;const auto next=f.run("monitor",{},&busy);
   QCOMPARE(busy.code,QString());QCOMPARE(next["state"].toString(),QString("completed"));
+ }
+ // The countdown is over and the lock is being asked about: nothing is left for a
+ // cancel to stop, and still no target may be frozen and no pixel read.
+ void cancellingDuringTheLockQueryReadsNothing() {
+  Fixture f;f.source.deferLock=true;
+  QString id;int replies=0,cancelled=0;
+  f.operations->invoke("monitor",[&](Error,QJsonObject accepted){id=accepted["operationId"].toString();++replies;},{{"delaySeconds",3}});
+  PUTGD_TRY_COMPARE(replies,1);PUTGD_TRY_VERIFY(bool(f.source.pendingLock));
+  f.operations->cancel(id,[&](Error,QJsonObject){++cancelled;});PUTGD_TRY_COMPARE(cancelled,1);
+  std::exchange(f.source.pendingLock,{})(false);
+  const auto operation=f.finished(id);
+  QCOMPARE(operation["state"].toString(),QString("cancelled"));
+  QCOMPARE(f.source.events,QStringList({"countdown:3","locked?"}));
+  QVERIFY(operation["items"].toArray().isEmpty());
+  f.source.deferLock=false;f.source.events.clear();
+  QCOMPARE(f.run("monitor")["state"].toString(),QString("completed"));
  }
  void repeatIsARegionCaptureOfTheRememberedRectangle() {
   Fixture f;
