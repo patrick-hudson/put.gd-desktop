@@ -8,6 +8,7 @@
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QSaveFile>
+#include <QThread>
 #include <QUuid>
 #include <cstdio>
 #ifdef Q_OS_UNIX
@@ -32,7 +33,9 @@ int main(int argc,char** argv){
  const auto doc=QJsonDocument::fromJson(config.readAll()).object();Destination destination;int selected=0;
  for(const auto& value:doc["profiles"].toArray()){const auto profile=value.toObject();if(profile["provider"]!="proton-drive")continue;++selected;destination={"proton-drive",profile["id"].toString(),"latency-probe",profile["settings"].toObject(),profile["credentials"].toObject()};}
  ProtonProvider provider;
- if(selected!=1||!destination.settings["folderName"].toString().startsWith("put.gd-")||provider.validateSettings(destination.settings)||provider.validateCredentials(destination.credentialReference))return 2;
+ const auto folderName=destination.settings["folderName"].toString();
+ // An isolated test folder: a `put.gd-` one, or a builder's lab session folder.
+ if(selected!=1||!(folderName.startsWith("put.gd-")||folderName.startsWith("putgd-lab-"))||provider.validateSettings(destination.settings)||provider.validateCredentials(destination.credentialReference))return 2;
  const QFileInfo output(arguments[2]);if(!output.isDir()||output.isSymLink()||output.canonicalFilePath()!=output.absoluteFilePath()||output.permissions()&(QFile::ReadGroup|QFile::WriteGroup|QFile::ExeGroup|QFile::ReadOther|QFile::WriteOther|QFile::ExeOther))return 2;
  #ifdef Q_OS_UNIX
  if(output.ownerId()!=getuid())return 2;
@@ -43,6 +46,11 @@ int main(int argc,char** argv){
  payload.setPermissions(QFile::ReadOwner|QFile::WriteOwner);const QByteArray bytes(payloadBytes,'p');if(payload.write(bytes)!=bytes.size())return 2;payload.close();
  const auto journalPath=QDir(output.absoluteFilePath()).filePath("publication.json");
  if(journal(journalPath,{{"candidate",candidate},{"publicationId",id},{"destination",destination.toJson()},{"phase","prepared"}}))return 2;
+ // One helper answers the name check, upload and link, as in an application operation.
+ // PUTGD_PROBE_SEPARATE_HELPERS=1 gives every request a helper of its own, as History actions have.
+ const auto session=qEnvironmentVariableIntValue("PUTGD_PROBE_SEPARATE_HELPERS")?std::shared_ptr<void>{}:provider.openSession(destination);
+ // A running resident has checked the runtime's hash in the background by its first upload.
+ provider.prepare();QThread::msleep(1500);
  QElapsedTimer elapsed;elapsed.start();NameCheck check;provider.checkName(destination,candidate,[&](auto result){check=result;});report("checkName",elapsed.elapsed(),check.status,check.error);if(check.status!="absent"||check.error)return 1;
  Artifact artifact;artifact.id=id;artifact.path=payload.fileName();artifact.name=candidate;artifact.mime="application/octet-stream";artifact.category="other";artifact.bytes=bytes.size();artifact.sha256=QString::fromLatin1(QCryptographicHash::hash(bytes,QCryptographicHash::Sha256).toHex());
  UploadRequest upload;upload.destination=destination;upload.artifact=artifact;upload.candidate=candidate;upload.publicationId=id;upload.condition="absent";upload.objectReference=check.objectReference;

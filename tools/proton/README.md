@@ -23,7 +23,7 @@ the runtime. See [the source catalog](notices/SOURCES.json) and
 Crypto source 2.2.0 and the npm 2.2.0 bootstrap now match; the public source
 commit and full dependency graph are locked. Historical 2.0.0/2.0.1 provenance
 remains in [the provenance record](notices/CRYPTO-PROVENANCE.md). Supported command
-lines are `--version` and `--stdio` only.
+lines are `--version`, `--stdio` and `--session` only.
 
 `--stdio` consumes exactly one UTF-8 JSON request (maximum 128 KiB) until EOF;
 the caller closes stdin. It emits at most one `{"event":"auth","url":...}`
@@ -37,6 +37,34 @@ text. Secrets and account names never appear on the command line. The required
 to 120 seconds and is bounded to 1–86,400 seconds (24 hours); login can use 600 seconds.
 Deadline errors carry a generic reason and the request budget. A deadline after
 mutation dispatch preserves `unknown`; cancellation is distinguished from expiry.
+
+`--session` answers several requests for one account from one process, a JSON
+line each (the same 128 KiB bound), until the caller closes stdin. It accepts
+`checkName`, `upload`, `stat`, `reconcile` and `share` only, all with the same
+keychain reference; anything else is `unsupported_request`. Each request has its
+own deadline, cancellation signal, progress lines and single completion line.
+The process keeps the signed-in account, its connections and one Drive client
+between requests. An upload for a publication other than the client's gets a
+new client, so its drafts keep that publication's client identity. The first
+good answers for My files and its root share serve the process's later
+clients; no other response is kept. Every request still reads its destination
+and ownership from the service. A passed
+deadline answers and ends the process. A request past the size bound is refused
+and nothing after it is read.
+
+The application holds one session around an operation's name check, upload and
+link for a destination, on that operation's thread, and holds the account lock
+for as long as the helper lives. It asks a kept helper again only after a clean
+answer (`ok:true` with an empty `result.error`) and only while the helper is
+running and silent; otherwise it ends that helper and starts another for the
+next request. History and setup actions use `--stdio`. One 64 KiB publish makes
+13 requests in a session.
+
+The application checks the bundled runtime's SHA-512 before it starts a helper.
+Hashing the 110 MB file takes most of a second, so one verdict stands while the
+file's device, inode, size, modification and change times are unchanged, and a
+resident with a Proton destination runs the first check in the background
+shortly after it starts.
 
 Every request carries `schemaVersion:1`, `method`, and `destination` containing
 `providerId:"proton-drive"`, `profileId`, `profileRevision`, `settings` and
@@ -83,16 +111,17 @@ Denial never proves absence. Name checks return `absent`,
 query; lookup failures remain inconclusive. Atomic SDK creation still decides
 collisions, and missing-file reconciliation still requires a complete listing.
 
-Each request has two bounded 64-entry caches in memory, one for SDK crypto keys
-and one for node metadata. Neither is written to disk or outlives the request.
+Each Drive client has two bounded 64-entry caches in memory, one for SDK crypto keys
+and one for node metadata. Neither is written to disk or outlives the process.
 The helper's own destination and ownership checks never read the metadata
 cache: each one is a batched service read of the account root, the configured
 folder and, for stat and sharing, the file, during which the cache answers
 nothing. The SDK reuses what that read returned for its own parent and key
 lookups, which were a request each before. Sharing still reads the file from
 the service before and after the mutation. The user and address keys load
-beside the first Drive read. One 64 KiB publish made 38 requests before these
-changes and makes 20 with them.
+beside the first Drive read, and a new link's SRP modulus beside the share's
+creation. One 64 KiB publish made 38 requests before these changes and makes
+20 with them from three `--stdio` helpers.
 
 Share takes the receipt and `options:{action:"create"|"revoke"|"inspect",
 expirationDays,passwordReference}`. The caller persists its mutation checkpoint
@@ -126,7 +155,10 @@ live account or graphical desktop acceptance.
 probe using the production C++ adapter and bundled helper. Its required arguments are
 the configuration file and a new, owned private output directory. An optional
 third argument selects synthetic payload bytes (1–67,108,864; default 65,536). The config must
-contain exactly one Proton profile with an isolated `put.gd-` test folder. Resolve
+contain exactly one Proton profile with an isolated `put.gd-` test folder or a
+builder's `putgd-lab-` session folder. It holds one session around its requests,
+as an operation does; `PUTGD_PROBE_SEPARATE_HELPERS=1` gives each request a
+helper of its own. Resolve
 and preflight the actual keychain D-Bus Unix socket with
 `tools/diagnostics/check_socket_paths.py --socket` before running; set `TMPDIR` to
 the new short output directory. No put.gd session socket is created by this probe.

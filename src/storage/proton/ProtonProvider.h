@@ -2,6 +2,7 @@
 #include "core/StorageProvider.h"
 #include <QProcessEnvironment>
 #include <atomic>
+#include <thread>
 namespace putgd {
 class ProtonProvider final : public StorageProvider {
 public:
@@ -10,9 +11,14 @@ public:
  static constexpr int MaximumRequestTimeoutMs=86400000;
  static QJsonObject defaults();
  std::optional<int> retryRequestTimeout(const Destination&,const QJsonObject&) const override;
+ ~ProtonProvider() override;
  void shutdown(){stopping_.store(true);}
+ // Checks the bundled runtime's hash on a thread of its own, ahead of the first request,
+ // which otherwise waits most of a second for it. Later calls do nothing.
+ void prepare();
  ProviderCapabilities capabilities(const Destination&) const override;
  QString defaultPublicationMode(const Destination&) const override;
+ std::shared_ptr<void> openSession(const Destination&) override;
  QString serializationKey(const Destination&,const QJsonObject&,const QString&) const override;
  Error validateSettings(const QJsonObject&) const override;
  Error validateCredentials(const QJsonObject&) const override;
@@ -30,9 +36,13 @@ public:
  // Explicit account actions run on the application worker, never during validation.
  QJsonObject setup(const QString&,const Destination&,const QJsonObject&,Error&,SetupEvent={});
 private:
+ struct Helper;
+ // One account's helper, kept between the requests its owning thread makes.
+ struct Session;
+ std::shared_ptr<Session> session(const QString& reference) const;
  QJsonObject call(const QString&,const Destination&,QJsonObject,Error&,
                  std::shared_ptr<std::atomic_bool> = {},SetupEvent={},bool* outcomeUncertain=nullptr,
                  std::function<void(const UploadProgress&)> progress={});
- std::atomic_int active_{0};std::atomic_bool stopping_{false};
+ std::atomic_int active_{0};std::atomic_bool stopping_{false},prepared_{false};std::thread verifier_;
 };
 }

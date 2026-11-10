@@ -6,7 +6,7 @@ import { createHash } from 'node:crypto';
 import { MemberRole, NodeType, RevisionState, NodeWithSameNameExistsValidationError, RateLimitedError, ServerError, ValidationError, type NodeEntity } from '@protontech/drive-sdk';
 import { checkName, createFolder, destinationFolder, readDestination, inspectAccount, stat, upload, share, serviceFailure } from './runtime';
 import { ProtocolError, makeReceipt, type JsonObject } from './protocol';
-import { saveToKeychain } from './account';
+import { SharedAccountReads, saveToKeychain } from './account';
 import { Credentials } from './upstream/cli/src/credentials/credentials';
 import { AccountApiError, ApiClient } from 'proton-drive-sdk-account';
 
@@ -52,7 +52,8 @@ function context(options: { rootUid?: string; listedUids?: string[]; listThrows?
     const calls: Call[] = [];
     let listCompleted = false;
     const ctx = { auth: { isLoggedIn: () => true }, fresh: (read: () => Promise<unknown>) => read(),
-        warm: () => { calls.push({ method: 'warm', args: [] }); }, sdk: {
+        warm: () => { calls.push({ method: 'warm', args: [] }); },
+        modulusAhead: () => { calls.push({ method: 'modulus', args: [] }); return () => { calls.push({ method: 'modulus-unused', args: [] }); }; }, sdk: {
         // The batched read: the root as the service names it, and each node the single-node
         // stub answers. A node whose lookup the stub refuses is absent from the batch.
         iterateNodes: async function* (uids: string[]) {
@@ -482,4 +483,35 @@ test('a refused keychain session write reports keychain_unavailable without prov
     let saved = 0;
     await saveToKeychain(async () => { ++saved; });
     expect(saved).toBe(1);
+});
+
+test('a session shares only good My files and root share answers between its clients', async () => {
+    const calls: string[] = [];
+    let status = 200, myFiles: unknown = { Share: { ShareID: 'root-share' } };
+    const inner = {
+        fetchBlob: async () => new Response('blob'),
+        fetchJson: async (options: { url: string; method: string }) => {
+            const path = new URL(options.url).pathname; calls.push(options.method + ' ' + path);
+            const body = path.endsWith('/my-files') ? myFiles : { path, serial: calls.length };
+            return new Response(JSON.stringify(body), { status, headers: { 'x-synthetic': String(calls.length) } });
+        },
+    };
+    const reads = new SharedAccountReads(inner as any);
+    const get = (path: string, method = 'GET') => reads.fetchJson({ url: 'https://synthetic.invalid/' + path, method } as any);
+    // Before My files names the root share, no share answer is kept: any of them may change.
+    await get('drive/shares/root-share'); await get('drive/shares/root-share');
+    expect(calls.length).toBe(2);
+    // A refused or malformed My files answer is passed on and asked again.
+    status = 500; expect((await get('drive/v2/shares/my-files')).status).toBe(500);
+    status = 200; myFiles = { Share: {} }; await get('drive/v2/shares/my-files');
+    myFiles = { Share: { ShareID: 'root-share' } };
+    const first = await get('drive/v2/shares/my-files'), second = await get('drive/v2/shares/my-files');
+    expect(calls.length).toBe(5);
+    expect(await second.json()).toEqual(await first.json()); expect(second.headers.get('x-synthetic')).toBe('5');
+    const root = await (await get('drive/shares/root-share')).json();
+    expect(await (await get('drive/shares/root-share')).json()).toEqual(root);
+    expect(calls.length).toBe(6);
+    // Another share, another method and every other read still reach the service each time.
+    for (let i = 0; i < 2; i++) { await get('drive/shares/file-share'); await get('drive/shares/root-share', 'DELETE'); await get('drive/v2/volumes/v/links', 'POST'); }
+    expect(calls.length).toBe(12);
 });

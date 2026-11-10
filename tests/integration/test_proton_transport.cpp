@@ -15,6 +15,7 @@
 #include <QTest>
 #include <QUuid>
 #include <unistd.h>
+#include <signal.h>
 #include <sys/stat.h>
 #include <cerrno>
 #include <QFileInfo>
@@ -190,6 +191,47 @@ private slots:
   QVERIFY(QFile::remove(received));
   provider.reconcile(request,[&](StatResult value){result=value;});
   QCOMPARE(result.error.code,QString("operation_cancelled"));QVERIFY(!QFileInfo::exists(received));QCOMPARE(provider.diagnostics()["activeHelpers"].toInt(),0);
+ }
+ static NameCheck ask(ProtonProvider& provider,Destination d,const QString& fixture="session") {
+  d.settings["fixture"]=fixture;NameCheck result;provider.checkName(d,"synthetic.txt",[&](NameCheck value){result=value;});return result;
+ }
+ static bool running(const QJsonValue& pid) {return ::kill(pid_t(pid.toInteger()),0)==0;}
+ void sessionKeepsOneHelperUntilItIsReleased(){
+  ProtonProvider provider;const auto d=destination("session");
+  QJsonValue pid;
+  {
+   const auto session=provider.openSession(d);QVERIFY(session);QVERIFY(!provider.openSession(d));
+   const auto first=ask(provider,d),second=ask(provider,d);pid=first.objectReference["pid"];
+   QCOMPARE(first.status,QString("absent"));QCOMPARE(first.objectReference["served"].toInt(),1);
+   QCOMPARE(second.objectReference["pid"],pid);QCOMPARE(second.objectReference["served"].toInt(),2);
+   QVERIFY(running(pid));QCOMPARE(provider.diagnostics()["activeHelpers"].toInt(),0);
+   // The account stays locked for as long as the helper is kept: two helpers must never
+   // refresh one rotating session. A request from another thread is refused undispatched.
+   NameCheck other;std::jthread([&]{other=ask(provider,d);}).join();
+   QCOMPARE(other.status,QString("inconclusive"));QCOMPARE(other.error.code,QString("proton_account_busy"));
+  }
+  // Releasing the session ends its helper and frees the account: the next request has a
+  // helper of its own, which the synthetic peer answers as a disconnected account.
+  PUTGD_TRY_VERIFY(!running(pid));
+  QCOMPARE(ask(provider,d).error.code,QString("authentication_required"));
+ }
+ void sessionReplacesAHelperAfterAnythingButACleanAnswer_data(){
+  QTest::addColumn<QString>("fixture");QTest::addColumn<QString>("status");QTest::addColumn<QString>("code");
+  QTest::newRow("error")<<"session-error"<<"inconclusive"<<"rate_limited";
+  QTest::newRow("exit")<<"session-exit"<<"absent"<<"";
+  QTest::newRow("chatter")<<"session-chatter"<<"absent"<<"";
+  QTest::newRow("deadline")<<"timeout"<<"inconclusive"<<"proton_request_timeout";
+ }
+ void sessionReplacesAHelperAfterAnythingButACleanAnswer(){
+  QFETCH(QString,fixture);QFETCH(QString,status);QFETCH(QString,code);
+  ProtonProvider provider;const auto d=destination("session");const auto session=provider.openSession(d);
+  const auto first=ask(provider,d),second=ask(provider,d,fixture);
+  QCOMPARE(second.status,status);QCOMPARE(second.error.code,code);
+  // The helper exits, or says a stray line, after its answer was accepted.
+  if(fixture=="session-exit"||fixture=="session-chatter")putgd::test::settle(600);
+  const auto third=ask(provider,d);QCOMPARE(third.status,QString("absent"));
+  QVERIFY(third.objectReference["pid"]!=first.objectReference["pid"]);QCOMPARE(third.objectReference["served"].toInt(),1);
+  PUTGD_TRY_VERIFY(!running(first.objectReference["pid"]));QCOMPARE(provider.diagnostics()["activeHelpers"].toInt(),0);
  }
  void accountBusyNeverDispatches(){
   ProtonProvider provider;auto d=destination();const auto root=QString("/tmp/putgd-proton-accounts-%1").arg(getuid());QVERIFY(::mkdir(QFile::encodeName(root).constData(),0700)==0||errno==EEXIST);const QFileInfo info(root);QVERIFY(info.isDir()&&!info.isSymLink());QCOMPARE(info.ownerId(),uint(getuid()));QVERIFY(!(info.permissions()&(QFile::ReadGroup|QFile::WriteGroup|QFile::ExeGroup|QFile::ReadOther|QFile::WriteOther|QFile::ExeOther)));

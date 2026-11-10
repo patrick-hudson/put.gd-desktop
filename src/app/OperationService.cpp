@@ -674,11 +674,12 @@ Operation OperationService::run(Job job) {
  // A provider that takes one request at a time (Proton locks its account) is leased
  // to this operation for all of its provider work, preflight to sharing.
  const bool parallel=provider->maximumConcurrentRequests(op.destination)>1;
- struct Lease{std::shared_ptr<DestinationLease> held;~Lease(){if(held)held->release();}} lease;
+ // What the provider keeps between this operation's requests ends before the lease passes on.
+ struct Lease{std::shared_ptr<DestinationLease> held;std::shared_ptr<void> session;~Lease(){session.reset();if(held)held->release();}} lease;
  if(!parallel) {
   const auto destination=destinationLease(op.destination);op.phase="queued";observe(op.publicJson());
   if(!destination->acquire([&job]{return job.cancelled->load();})){op.cancelled=true;op.state="cancelled";save();return op;}
-  lease.held=destination;
+  lease.held=destination;lease.session=provider->openSession(op.destination);
  }
  op.state="running";op.phase="preflight";if(!save())return op;
  // Check all pending names before the first PUT, including opaque references that

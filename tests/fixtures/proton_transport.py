@@ -4,6 +4,24 @@ import json
 import os
 import sys
 import time
+if sys.argv[1:] == ['--session']:
+    # One process answers every request line until its input closes.
+    served = 0
+    for line in sys.stdin.buffer:
+        request, served = json.loads(line), served + 1
+        case = request['destination']['settings'].get('fixture', 'session')
+        answer = {'status': 'absent', 'objectReference': {'pid': os.getpid(), 'served': served}, 'concurrencyToken': '', 'error': {}}
+        if case == 'timeout':
+            time.sleep(3)
+        if case == 'session-error':
+            answer = {'status': 'inconclusive', 'error': {'code': 'rate_limited', 'message': 'Synthetic limit', 'details': {}}}
+        print(json.dumps({'ok': True, 'result': answer}), flush=True)
+        if case == 'session-exit':
+            sys.exit(0)
+        if case == 'session-chatter':
+            time.sleep(0.3)
+            print(json.dumps({'ok': True, 'result': answer}), flush=True)
+    sys.exit(0)
 request = json.loads(sys.stdin.buffer.readline())
 case = request['destination']['settings'].get('fixture', 'auth')
 if case == 'inspect-account':

@@ -368,6 +368,19 @@ private slots:
    QTest::newRow(qPrintable(mode+"-user-change"))<<3<<true<<mode;
   }
  }
+ void oneRequestAtATimeDestinationGetsASessionAroundTheOperation() {
+  // The provider may keep a helper for the whole operation only if every request
+  // runs inside the session, on the thread that opened it, and the session then ends.
+  QTemporaryDir d;ProviderRegistry registry;auto provider=std::make_shared<OpaqueProvider>();registry.add("opaque",provider);
+  SettingsService settings(d.filePath("config.json"),[&](auto id,auto doc){return registry.validate(id,doc);});
+  QVERIFY(settings.save(configuration(d.path()),{}));Source source;source.payload=textPayload();
+  OperationService operations(d.filePath("data"),settings,registry,source);PUTGD_TRY_VERIFY(operations.ready());
+  QString id;operations.invoke("clipboard",[&](Error e,QJsonObject r){QVERIFY(!e);id=r["operationId"].toString();});
+  PUTGD_TRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(),0);
+  HistoryStore store(operations.databasePath());QCOMPARE(store.operation(id).items[0].uploadStatus,QString("uploaded"));
+  QCOMPARE(provider->sessionsOpened.load(),1);QCOMPARE(provider->sessionsOpen.load(),0);
+  QVERIFY(provider->checks.load()>=1);QCOMPARE(provider->uploads.load(),1);QCOMPARE(provider->requestsOutsideSession.load(),0);
+ }
  void regionSelectionModeReachesTheSource() {
   // #629: each invocation hands the accepted mode to the desktop adapter.
   QTemporaryDir d;ProviderRegistry registry;auto provider=std::make_shared<OpaqueProvider>();registry.add("opaque",provider);
