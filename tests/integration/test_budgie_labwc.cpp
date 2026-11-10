@@ -186,8 +186,8 @@ private slots:
   });
   PayloadResult result;bool done=false;
   adapter.prepareAcquisition(action)(ResourceLimits{},[&](PayloadResult value){result=std::move(value);done=true;});
-  QVERIFY(waitFor([&]{return done;},10000));QVERIFY(locked);QCOMPARE(witnesses,2);
-  QCOMPARE(result.error.code,QString("session_locked"));QVERIFY(result.payload.image.isNull());
+  QVERIFY(waitFor([&]{return done;},10000));QVERIFY(locked);
+  QCOMPARE(result.error.code,QString("session_locked"));QVERIFY(result.payload.image.isNull());QCOMPARE(witnesses,2);
  }
  void lockedDesktopCaptureIsRefused(){
   BudgieSourceAdapter adapter;
