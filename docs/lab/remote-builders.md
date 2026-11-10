@@ -417,10 +417,10 @@ waiting for the lock, over a probe process left behind by a finished test.
   VMs or encoding runs there. Git, editing, reading and a single
   short test are fine.
 
-The automatic nightly desktop check runs from d69's timer at 07:30 UTC on all
+The automatic nightly desktop check runs from d69's timer at 10:30 UTC on all
 five builders, using the holder name `nightly-desktops`, and posts to pinned
 [issue #1003](https://github.com/patrick-hudson/put.gd-desktop/issues/1003).
-Release manual desktop leases by 07:15 UTC so the check can acquire them.
+Release manual desktop leases by 10:15 UTC so the check can acquire them.
 
 ### Desktop locks
 
