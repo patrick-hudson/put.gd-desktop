@@ -10,8 +10,8 @@ namespace putgd::editor {
 enum class Tool {Select,Redact,Blur,Crop,Arrow,Rectangle,Highlight,Text,Step,Pen,Ellipse,Line};
 struct ToolStyle {QColor color=QColor(220,38,38);int width=4;int strength=12;bool pixelate=false;int fontPixels=28;QString fontFamily;int stepPixels=defaultStepPixels;};
 
-// Interactive view of one EditDocument. The base raster is painted directly
-// from the document; only bounded display-resolution blur tiles are cached.
+// Interactive view of one EditDocument. The base stays in the document; only
+// bounded display-resolution effect tiles are retained.
 class EditorCanvas final:public QWidget {
  Q_OBJECT
 public:

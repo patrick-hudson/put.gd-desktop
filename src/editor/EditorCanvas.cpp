@@ -382,9 +382,12 @@ void EditorCanvas::paintEvent(QPaintEvent*){
  // Paint only the visible source rectangle; never allocate a scaled full frame.
  const QRectF visible=target.intersected(QRectF(rect()));
  if(!visible.isEmpty()){
-  const QRectF source(toImage(visible.topLeft()),toImage(visible.bottomRight()));
   painter.setRenderHint(QPainter::SmoothPixmapTransform,scale_<1.0);
-  painter.drawImage(visible,doc_.base(),source);
+  painter.save();painter.setClipRect(visible,Qt::IntersectClip);
+  doc_.paintPreviewSource(painter,target,QRectF(bounds),[&](QPainter& p,const QRectF& patch){
+   p.fillRect(patch,canvasBackground());
+   if(!target.adjusted(4,4,-4,-4).contains(patch))Ui::paintImageShadow(p,target);
+  },bounds);painter.restore();
  }
  painter.save();painter.setClipRect(target);
  painter.translate(offset_);painter.scale(scale_,scale_);painter.translate(-QPointF(bounds.topLeft()));
@@ -392,7 +395,6 @@ void EditorCanvas::paintEvent(QPaintEvent*){
  // redactions, then blurs (whose tiles hold the redactions they cover,
  // blurred), then highlights (which tint the blurred result), then the drawn
  // annotations.
- for(const auto& shape:doc_.shapes())if(shape.kind==Shape::Kind::Redact)painter.fillRect(shape.rect,Qt::black);
  for(const auto& shape:doc_.shapes())if(shape.kind==Shape::Kind::Blur){const auto& tile=blurTile(shape);const auto area=shape.rect.intersected(doc_.crop());if(!tile.isNull())painter.drawImage(QRectF(area),tile);}
  for(const auto& shape:doc_.shapes())if(shape.kind==Shape::Kind::Highlight){const auto& tile=highlightTile(shape);const auto area=shape.rect.intersected(doc_.crop());if(!tile.isNull())painter.drawImage(QRectF(area),tile);}
  for(const auto& shape:doc_.shapes())if(shape.kind!=Shape::Kind::Redact&&shape.kind!=Shape::Kind::Blur&&shape.kind!=Shape::Kind::Highlight&&!(textEditor_&&shape.id==textShape_))EditDocument::paintAnnotation(painter,shape);

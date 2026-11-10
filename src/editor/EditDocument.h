@@ -8,6 +8,7 @@
 #include <QPoint>
 #include <QRect>
 #include <QString>
+#include <functional>
 
 namespace putgd::editor {
 // One editable mark. All geometry is in source-image pixels, independent of
@@ -71,6 +72,10 @@ public:
  // reader metadata. Callers must already have admitted the pixel count.
  explicit EditDocument(const QImage& base);
  const QImage& base() const {return base_;}
+ // Axis-aligned display sampling, with sanitized edge patches and no retained source copy.
+ void paintPreviewSource(QPainter&,const QRectF& target,const QRectF& source,
+                         const std::function<void(QPainter&,const QRectF&)>& backdrop={},const QRect& samplingBounds={}) const;
+ QImage previewSource(const QRect& area,const QSize& displaySize) const;
  QSize size() const {return base_.size();}
  QRect imageRect() const {return base_.rect();}
  QRect crop() const {return state_.crop;}
