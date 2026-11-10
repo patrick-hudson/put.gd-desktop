@@ -42,7 +42,24 @@ Its keychain reference is `putgd/http/<profile id>`. Imports are serialized: a s
 saved profile answers `import_busy`, so two files can never store their values under
 one reference. When the profile could not be saved, `CredentialStore::erase` removes
 what the import stored, from the cache and from the secret store; `credentialsStored`
-in the error's details is set only if that removal itself failed.
+in the error's details is set only if that removal itself failed. Three edges:
+
+- The keychain entry of an ID is the import's to write and to remove only while no
+  destination names it. A destination can name another ID's entry, so an import whose
+  entry is already named is refused with `credential_reference_in_use` (a derived ID
+  moves on to the next free one) before anything is stored.
+- `SettingsService` reports a completed write in `Result::written`. An error with
+  `written` set means the profile is in `config.json` and only the read-back failed:
+  the import keeps the stored values and answers with `destinationWritten` in the
+  error's details.
+- The secret store can wait on a prompt that nobody answers. The import waits
+  `importStoreDeadline` (two minutes) for the save, and again for a cleanup erase, then
+  answers `credential_store_timeout` and gives its turn back. The entry stays reserved
+  until the store answers after all; what it wrote then is erased.
+
+What is looked for as a credential in a server's replies and addresses is narrower
+than what is stored: see
+[What counts as a credential](../user/custom-uploader.md#what-counts-as-a-credential).
 
 Configuration stores `{"mode":"keychain","reference":"putgd/profile-name"}` or
 `{"mode":"session","reference":null}`. Receipts preserve this reference to restore

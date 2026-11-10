@@ -34,20 +34,34 @@ or `Data`. put.gd treats every such value as a secret:
   or `{input}`. Clear **Secret** on a row to keep an ordinary value, such as a format
   name, in the configuration instead.
 - The `Data` body of a JSON or XML uploader is one secret value.
-- A stored value that the file repeats as literal text in the request URL or the
+- A credential that the file repeats as literal text in the request URL or the
   deletion URL is replaced there by its name, `{secret:arguments/token}`. XBackBone
   ends its deletion URL with the upload token; put.gd records that URL with the name
-  and fills the value in only when the deletion is sent.
+  and fills the value in only when the deletion is sent. An ordinary word that a row
+  also holds, such as a folder name, stays as written (see
+  [What counts as a credential](#what-counts-as-a-credential)).
 - A run of letters and digits left after the host of the request URL or the deletion
   URL is taken for a key and moves to **Other secret values** (`secrets/url-key`,
   `secrets/deletion-key`): sixteen characters or more of letters and digits alone, as a
-  hex key is, or twenty or more with `-` and `_` among them. No rule finds every key.
-  A shorter part that mixes letters and digits stays as written, and the import notes
-  say where it is (its position, never its text) so you can move it yourself.
+  hex key is, or twenty or more with `-` and `_` among them. The host ends at the path,
+  or at `?` or `#` when the address has no path. No rule can tell a key from an album
+  or a user ID of the same shape, so the import notes say when a run was moved: if it is
+  an ID that the server's links repeat, write it back into the address and remove it
+  from **Other secret values**. A shorter part that mixes letters and digits stays as
+  written, and the notes say where it is (its position, never its text) so you can move
+  it yourself.
 - Imports are taken one at a time. A second one that arrives while the first is still
   being saved is refused with `import_busy`; a destination that could not be saved
-  leaves no stored values behind.
-- A stored value may not appear in the link, which is shared and recorded in History.
+  leaves no stored values behind. When the destination was written and only reading
+  the configuration back failed, it exists: its values stay, and the error says so
+  (`destinationWritten`).
+- In keychain mode the values go to the entry `putgd/http/<ID>`. An import is refused
+  with `credential_reference_in_use` when another destination already names that
+  entry, so it never overwrites or removes another destination's credentials; a derived
+  ID skips to the next free one. The import waits two minutes for the keychain. A
+  prompt that nobody answers ends it with `credential_store_timeout` and lets the next
+  import in; if the keychain answers later, what it wrote is removed again.
+- A credential may not appear in the link, which is shared and recorded in History.
   A file whose `URL` repeats one is refused, and the message names the row. A
   `ThumbnailURL` or `ErrorMessage` that repeats one is left out, with a note.
 
@@ -58,11 +72,35 @@ logs, History or a diagnostics package. A diagnostics package shows which rows a
 destination has and where its request goes (scheme and host), never a value, a path or
 a reply template's text.
 
-Values under six characters, such as `true` or `json`, are stored as secrets like the
-rest but are not replaced inside addresses: replacing every `1` or `json` would rewrite
-the address. If a file repeats a value that short in its request URL or deletion URL,
-that text stays in the address and so in `config.json`. Check the addresses of such a
-file before importing it, and move the value to **Other secret values** by hand.
+### What counts as a credential
+
+Every imported value is stored as a secret, because a file does not say which of its
+values is the token. That does not make every stored value a credential. An argument
+`folder: screenshots` is stored like a token, yet a link `https://host/screenshots/a.png`
+is an ordinary link. So when put.gd looks for a destination's secrets in an address or
+in a server's message, it looks for what is credential-like:
+
+- **The value of a row whose name says so**: a name that contains `auth` (not
+  `author`), `token`, `key` (not `keyword`), `secret`, `password`, `cookie`, `session`,
+  `signature` and the like. Every value under **Other secret values** counts too. The
+  value counts from four characters, each of its words from eight, and the token after
+  `Bearer`, `Basic`, `Digest` or `Token` by itself.
+- **A key-like run inside any value**: sixteen or more letters and digits, or twenty or
+  more with `-` and `_`, holding at least one letter and one digit. A key inside a
+  stored JSON body or a cookie (`session=…; path=/`) is found by itself.
+- **A value the stored text itself names as a credential**: `"password":"…"`,
+  `token=…`, `<secret>…</secret>`, from four characters.
+
+Ordinary words, switches such as `true` or `json`, and short settings are not looked
+for. A credential that is none of the above, such as a six-letter password in a header
+named `X-Upload`, is not recognised: store it under a name that says what it is, or
+under **Other secret values**. In the other direction, a long ID that is no credential
+(an album UUID in a header) is taken for a key; if the server's links repeat it, clear
+**Secret** on its row.
+
+Credentials shorter than four characters are stored like the others but are not hidden
+in server messages or looked for in addresses: hiding every `1` or `on` would leave
+nothing to read.
 
 ## Settings
 
@@ -156,52 +194,64 @@ changes three things compared with S3:
 
 A request that never reached the server (`http_connect_failed`) stored nothing. A 4xx
 other than 408 is a refusal and is recorded as a plain failure, with the server's
-message; so is a 5xx that arrived before the request was complete. put.gd takes the
-server at its word there: a server that stores a file and then answers 4xx leaves a
-copy put.gd does not know of.
+message; so is a failure before the request was complete. A server that answers 5xx
+while the file is still on its way is such a failure: put.gd's HTTP client reads no
+reply while it is sending, so it reports the connection that ended under the upload
+(`http_upload_interrupted`), and nothing was stored. put.gd takes the server at its
+word on a 4xx: a server that stores a file and then answers 4xx leaves a copy put.gd
+does not know of.
 
 | Reply | Result |
 | --- | --- |
 | 2xx with a link | Uploaded. The link is one absolute `http(s)` address, or a path from the server's root. |
 | 2xx without a usable link | Unknown: `http_response_unreadable`. Check the URL value under Response. |
-| 2xx whose link repeats a stored value | Unknown: `http_link_holds_secret`. The link is not recorded or copied. |
+| 2xx whose link repeats a credential | Unknown: `http_link_holds_secret`. The link is not recorded or copied. |
 | A reply cut off after its first line | Unknown: `http_outcome_unknown` |
 | 401, 403 | `http_authentication_failed` |
 | 413 | `http_too_large` |
 | 429 | `http_rate_limited` |
 | 408, 502, 504 | Unknown: `http_outcome_unknown` |
 | Other 5xx, after the whole request was sent | Unknown: `http_outcome_unknown`, with the server's message |
-| Other 5xx, before the request was complete | `http_server_error` |
+| Other 5xx, before the request was complete | `http_upload_interrupted`, or `http_server_error` where the status was read |
 | Other 4xx | `http_request_refused` |
 
-Text from the server is shown on one line, bounded, with every stored value of the
-destination removed, however the server spells it: as sent, percent-encoded, or as PHP
-writes JSON. A word of eight characters or more inside a value, such as the token of
-`Bearer <token>`, is removed by itself too. Values shorter than four characters are
-stored like the others but are not hidden in server messages: hiding every `1` or `on`
-would leave nothing to read.
+Text from the server is shown on one line, bounded, with every credential of the
+destination ([what counts](#what-counts-as-a-credential)) removed, however the server
+spells it: as sent, percent-encoded, as PHP writes JSON, in base64, or with a control
+character inside it. The line is made first, the credentials are removed from it, and
+only then is it cut to length. A spelling that cannot be removed in place withholds
+the whole text.
 
 **Addresses a reply returns.** The link, the thumbnail and the deletion URL come from
 the server, so each is checked before it is kept:
 
-- An address that repeats a stored value is never recorded, copied or shown. This
-  applies to values of six characters or more, after the address's host, in any of the
-  spellings above; a value under sixteen characters counts only as a whole word, so
-  `upload` stored as a form field does not make every link under `/uploads/` suspect.
-  A link that holds one makes the upload an unknown outcome (`http_link_holds_secret`):
-  the file is probably on the server, and the message names the row. If that value is
-  not a credential, clear **Secret** on its row. A thumbnail that holds one is dropped.
+- An address that repeats a credential is never recorded, copied or shown. This
+  applies after the address's host, in any of the spellings above; a credential under
+  sixteen characters counts only as a whole word. A link that holds one makes the
+  upload an unknown outcome (`http_link_holds_secret`): the file is probably on the
+  server, and the message names the row. Retry would send the file again and end the
+  same way, so change the destination first: if that value is not a credential, clear
+  **Secret** on its row (or, for a value under **Other secret values**, write it back
+  into the address). A thumbnail that holds one is dropped.
 - A deletion URL that holds one is recorded with the value's name, `{secret:key}`,
-  when the value stands there exactly as stored, and is dropped otherwise. A deletion
+  when the value stands there exactly as stored, and is not kept otherwise. A deletion
   URL that names a stored value, from its template or this way, must be on the request
   URL's own host: a stored value is never sent anywhere else, so for an upload whose
-  deletion address is on another host, deletion is unavailable.
+  deletion address is on another host, deletion is unavailable. History then says that
+  a deletion URL came back and why it was not kept.
 - An address with a user name in it (`https://shown@real/`) is not used: it shows one
   host and goes to another.
-- An address on this computer (`localhost`, `127.0.0.1` in any spelling, `::1`) is used
-  only when the destination's own request URL is on this computer, so a public server
-  cannot point Test connection or a deletion at a local service. Redirects follow the
-  same rule.
+- An address on this computer (`localhost`, `127.0.0.1` in any spelling, `::1`,
+  `::ffff:7f00:1`) is used only when the destination's own request URL is on this
+  computer, so a public server cannot point Test connection or a deletion at a local
+  service. Redirects follow the same rule. Before put.gd fetches an address a reply
+  named, it also looks the host up: a name that resolves to this computer
+  (`ip6-localhost`, the machine's own host name, a public name that answers
+  `127.0.0.1`) or to one of its network addresses is refused the same way.
+- put.gd fetches such an address (the link in Test connection, the link and the
+  deletion URL in a deletion) under the destination's own transport rule: plain HTTP
+  only when **Allow plain HTTP** is on, or to this computer. Test connection says so
+  when it did not open a plain-HTTP link.
 - `{responseurl}` is where a redirect led. Without a redirect it is empty: the
   request's own address, secret parameters included, is never a link.
 
@@ -223,7 +273,9 @@ Confirming it journals the intent, then sends one GET of the recorded deletion U
   `http_delete_unconfirmed`, not "deleted".
 - A lost reply leaves the deletion unknown; **Retry** asks the server again and finds
   the file gone. A redirect that put.gd does not follow is unknown too: the server
-  received the request.
+  received the request. A deletion URL that names a stored value follows no redirect
+  to another host, since the server could have written the value into the address it
+  redirects to.
 - Zipline and Chibisafe return no deletion URL, so their uploads are deleted on the
   server itself.
 

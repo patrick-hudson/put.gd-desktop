@@ -228,7 +228,13 @@ The custom HTTP uploader (#1361) is tested in four layers:
   the link, the thumbnail or the deletion URL (as sent, percent-encoded, or as PHP
   writes JSON), names another host or a user name in an address, answers 5xx after it
   has the file, and cuts its reply short. Two imports in flight and an import whose
-  save fails are covered there as well.
+  save fails are covered there as well. From the second review: an ordinary stored word
+  in the link is no secret while a key echoed out of a stored JSON body is; a value
+  echoed around a control character; a plain-HTTP link that Test connection must not
+  open unasked; a deletion that names a stored value and is redirected to another
+  host; a 5xx sent before the file has arrived (a 48 MB file, so it cannot have left
+  whole); and the import's edges (a keychain entry another destination names, a
+  read-back that fails after the write, a secret store that never answers).
 - `customUploaderImportKeepsItsTokenOutOfSettingsAndCheckpoints` in
   `gui_settings_destinations` drives the form: import, masked rows, store, and the
   token's absence from `config.json` and every checkpoint.
@@ -243,4 +249,13 @@ The custom HTTP uploader (#1361) is tested in four layers:
 Some Qt Network versions repeat a request that has no body when the connection closes
 before the reply, and some do not. The deletion test accepts both: either the repeated
 request finds the file gone, or the lost reply is reported as unknown and the explicit
-retry finds it gone.
+retry finds it gone. In the same way the early-5xx test accepts either definite
+failure: Qt's HTTP/1.1 client reads no reply while it is still sending, so it reports
+`http_upload_interrupted`; a client that read the status would report
+`http_server_error`.
+
+Two things these suites cannot show on one machine, because the scripted receiver is
+on loopback and a loopback destination may be answered with loopback addresses: the
+refusal of a returned address that is, or resolves to, this computer. Both are covered
+by tables in `http_uploader_rules` (`thisMachineInEverySpelling`,
+`namesThatResolveToThisMachine`, `addressesAReplyMayName`).
