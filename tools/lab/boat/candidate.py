@@ -189,6 +189,8 @@ def recipe(target, packages, ci):
     common += 'export CCACHE_DIR=$PWD/build/ccache CCACHE_BASEDIR=$PWD CCACHE_MAXSIZE=256M\n'
     common += 'export CMAKE_C_COMPILER_LAUNCHER=ccache CMAKE_CXX_COMPILER_LAUNCHER=ccache\n'
     common += 'export PUTGD_SDK_JOBS=$(nproc) npm_config_fetch_retries=5 RELEASE_TAG=\n'
+    # The install steps eval this workflow-level block; it also defines their install helpers.
+    common += 'export PUTGD_UBUNTU_MIRRORS=' + shlex.quote((packages.get('env') or {}).get('PUTGD_UBUNTU_MIRRORS', '')) + '\n'
     common += '(\n' + step(native, 'Bootstrap checkout tools', {'matrix.name': target}) + ')\n'
     common += 'git config --global --add safe.directory "$PWD"\n'
     if target in matrix:
