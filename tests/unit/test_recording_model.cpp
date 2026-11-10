@@ -122,9 +122,36 @@ private slots:
         QVERIFY(!recording::parseConfig(json, copy));
         QVERIFY(!copy.adaptiveFps);
         QCOMPARE(recording::parseConfig({{"format", "mp4"}, {"adaptiveFps", 1}}, config).code, QString("invalid_request"));
-        // Silent formats cannot include audio; the microphone is reserved and refused.
+        // Silent formats cannot include audio, from the computer or the microphone.
         QCOMPARE(recording::parseConfig({{"format", "gif"}, {"audio", QJsonObject{{"system", true}}}}, config).code, QString("invalid_request"));
-        QCOMPARE(recording::parseConfig({{"format", "mp4"}, {"audio", QJsonObject{{"microphone", true}}}}, config).code, QString("recording_unsupported"));
+        QCOMPARE(recording::parseConfig({{"format", "webp"}, {"audio", QJsonObject{{"microphone", true}}}}, config).details["field"].toString(), QString("audio.microphone"));
+        // #1364: the microphone is live, alone or with system audio, with an optional device.
+        QVERIFY(!recording::parseConfig({{"format", "mp4"}, {"audio", QJsonObject{{"microphone", true}}}}, config));
+        QVERIFY(config.audio.microphone && !config.audio.system && config.audio.any() && config.audio.microphoneDevice.isEmpty());
+        QVERIFY(!config.toJson()["audio"].toObject().contains("microphoneDevice"));
+        QVERIFY(!recording::parseConfig({{"format", "webm"}, {"audio", QJsonObject{{"system", true}, {"microphone", true}, {"microphoneDevice", "alsa_input.usb-Mic-00.mono"}}}, {"clickHighlights", true}}, config));
+        QVERIFY(config.audio.system && config.audio.microphone && config.clickHighlights);
+        QCOMPARE(config.audio.microphoneDevice, QString("alsa_input.usb-Mic-00.mono"));
+        {
+            // The configuration round-trips to the helper and back.
+            auto wire = config.toJson();
+            wire.remove("mime");
+            RecordingConfig back;
+            QVERIFY(!recording::parseConfig(wire, back));
+            QVERIFY(back.audio.system && back.audio.microphone && back.clickHighlights);
+            QCOMPARE(back.audio.microphoneDevice, config.audio.microphoneDevice);
+        }
+        QCOMPARE(recording::parseConfig({{"format", "mp4"}, {"audio", QJsonObject{{"microphone", "yes"}}}}, config).code, QString("invalid_request"));
+        QCOMPARE(recording::parseConfig({{"format", "mp4"}, {"audio", QJsonObject{{"microphoneDevice", 7}}}}, config).details["field"].toString(), QString("audio.microphoneDevice"));
+        QCOMPARE(recording::parseConfig({{"format", "mp4"}, {"audio", QJsonObject{{"microphoneDevice", "two\nlines"}}}}, config).code, QString("invalid_request"));
+        QCOMPARE(recording::parseConfig({{"format", "mp4"}, {"audio", QJsonObject{{"microphoneDevice", QString(257, 'x')}}}}, config).code, QString("invalid_request"));
+        QCOMPARE(recording::parseConfig({{"format", "mp4"}, {"clickHighlights", 1}}, config).details["field"].toString(), QString("clickHighlights"));
+        QVERIFY(!recording::parseConfig({{"format", "mp4"}}, config));
+        QVERIFY(!config.audio.any() && !config.clickHighlights);
+        // An output's monitor is never a microphone, by its name.
+        QVERIFY(recording::monitorSourceName("alsa_output.pci-0000_00_1f.3.analog-stereo.monitor"));
+        QVERIFY(recording::monitorSourceName("@DEFAULT_MONITOR@"));
+        QVERIFY(!recording::monitorSourceName("alsa_input.pci-0000_00_1f.3.analog-stereo"));
         QCOMPARE(recording::parseConfig({{"format", "mp4"}, {"audio", QJsonObject{{"device", "x"}}}}, config).code, QString("invalid_request"));
         QCOMPARE(recording::parseConfig({{"format", "mp4"}, {"maxEdge", 8}}, config).code, QString("invalid_request"));
         QCOMPARE(recording::parseConfig({{"format", "mp4"}, {"bitrate", 1}}, config).code, QString("invalid_request"));

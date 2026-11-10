@@ -1011,6 +1011,23 @@
           "default": 30,
           "description": "Frames per second for screen recordings that don't ask for a rate. 60 is smoother and takes about twice the conversion and encoding work; while a recording runs, put.gd lowers the rate (60 to 30, 30 to 15) when the computer can't keep up. Omitted means 30."
         },
+        "recordingMicrophone": {
+          "type": "boolean",
+          "default": false,
+          "description": "The microphone toggle on the recording bar, remembered between recordings started from the tray, the dashboard or the shortcut. The microphone is opened only while the toggle is on and released when the recording stops. Omitted means off."
+        },
+        "recordingMicrophoneDevice": {
+          "type": "string",
+          "maxLength": 256,
+          "pattern": "^[^\\u0000-\\u001f\\u007f]*$",
+          "default": "",
+          "description": "The input device recordings narrate from, by its sound-server source name as recording.microphones lists it. Empty or omitted means the system default input. The monitor of an output is never used as a microphone."
+        },
+        "recordingClickHighlights": {
+          "type": "boolean",
+          "default": false,
+          "description": "Draw a ring at the pointer on each click in recordings, where the desktop offers the clicks (recording.capabilities reports it). Omitted means off."
+        },
         "fileManagerFolders": {
           "enum": [
             "zip",

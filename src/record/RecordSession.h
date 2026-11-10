@@ -3,6 +3,9 @@
 #include "Overlays.h"
 #include "PortalScreenCast.h"
 #include "MutterScreenCast.h"
+#include "Microphones.h"
+#include "ClickOverlay.h"
+#include "X11Clicks.h"
 #ifdef PUTGD_RECORD_KDE_SCREENCAST
 #include "KdeScreencast.h"
 #endif
@@ -84,6 +87,35 @@ private:
     QString staging_, workingClip_;
     qint64 durationUs_ = 0;
     bool audioCaptured_ = false;
+    // #1364: what the clip's audio track holds, the input the session resolved
+    // at prepare, and the meter's open microphone before Record. The device is
+    // open only while the bar's toggle is on and closed when the capture ends.
+    bool capturedSystem_ = false, capturedMicrophone_ = false;
+    MicrophoneChoice microphone_;
+    // Click highlights (#1364): on X11 the helper reads presses from the X
+    // server; elsewhere the resident sends what the desktop reported (`click`).
+    X11ClickSource x11Clicks_;
+    void startClicks();
+    // A press in desktop coordinates (and, for a window recording, the window's
+    // rectangle at that moment): drawn where it falls in the picture.
+    void click(QPointF desktop, int button, const QRectF& window, qint64 ageNs = 0);
+    static qint64 clickAge(const QJsonObject& params);
+    MicrophoneMonitor monitor_;
+    QTimer levelTimer_;
+    void updateMicrophoneMonitor();
+    void closeMicrophone();
+    // While the bar is at Ready the session follows the sound server's inputs (#1364): a microphone
+    // plugged in after `prepare` can be used without starting over, and one that is pulled is no longer
+    // offered. Asked once a second; listing opens no device.
+    void followMicrophones();
+    std::function<MicrophoneList()> listMicrophones_ = &listMicrophones;
+    QTimer microphoneWatch_;
+    // An audio command (recording.audio) changes the toggles for this session only: it is not the
+    // user's choice to remember.
+    bool commandedAudio_ = false;
+    // Reads what the finished capture recorded.
+    void noteCaptured();
+    QJsonObject audioSources() const { return {{"system", capturedSystem_}, {"microphone", capturedMicrophone_}}; }
     bool prepared_ = false, recorded_ = false, overlayExcluded_ = true, cancelled_ = false, starting_ = false;
     // recording.overlay {visible: false} keeps the bar hidden across state changes until raise.
     bool barHidden_ = false;
@@ -100,6 +132,7 @@ private:
     bool portalTarget_ = false;
     std::unique_ptr<ImageCopySource> imageCopy_;
     QSize imageCopySize_;
+    bool imageCopyPointer_ = false;  // the source draws the cursor and knows where it is (#1364)
     // A window target resolved by the resident: {rect: logical frame [x,y,w,h], title}.
     QJsonObject window_;
     bool targetClosed_ = false;

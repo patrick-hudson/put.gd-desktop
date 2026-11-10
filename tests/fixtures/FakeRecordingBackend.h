@@ -16,27 +16,57 @@ public:
  QJsonObject unavailableDetails; // merged into capabilities when unavailable (message, hint)
  QJsonObject probedDetails; // merged into capabilities whatever the availability (targets, targetReasons)
  QJsonObject capabilities() const override {auto caps=baseCapabilities();if(!available)for(auto it=unavailableDetails.begin();it!=unavailableDetails.end();++it)caps[it.key()]=it.value();for(auto it=probedDetails.begin();it!=probedDetails.end();++it)caps[it.key()]=it.value();return caps;}
- QJsonObject baseCapabilities() const {return {{"available",available},{"reason",available?QString():QString("fake_off")},{"targets",QJsonArray{"monitor","desktop","region","window"}},{"formats",QJsonArray{"mp4","webm","gif","webp"}},{"codecs",QJsonObject{{"mp4",QJsonArray{"h264","h265"}},{"webm",QJsonArray{"vp9"}}}},{"audio",QJsonObject{{"system",true},{"microphone",false}}},{"overlayExclusion",QJsonObject{{"region",true}}}};}
+ QJsonObject baseCapabilities() const {return {{"available",available},{"reason",available?QString():QString("fake_off")},{"targets",QJsonArray{"monitor","desktop","region","window"}},{"formats",QJsonArray{"mp4","webm","gif","webp"}},{"codecs",QJsonObject{{"mp4",QJsonArray{"h264","h265"}},{"webm",QJsonArray{"vp9"}}}},{"audio",QJsonObject{{"system",true},{"microphone",microphoneSupported}}},{"overlayExclusion",QJsonObject{{"region",true}}}};}
  void setEventSink(Event e) override {sink=std::move(e);}
+ // #1364: microphoneSupported is the helper probe's answer (the elements exist);
+ // microphoneList is what the sound server offers right now, as `--microphones` prints it.
+ bool microphoneSupported=false;int microphoneQueries=0;QString lastMicrophoneQuery;
+ QJsonObject microphoneList{{"available",false},{"reason","no_microphone"},{"message","No microphone is connected."},{"devices",QJsonArray{}},{"defaultIsMonitor",false}};
+ void microphones(const QString& device,Reply reply) override {++microphoneQueries;lastMicrophoneQuery=device;reply({},microphoneList);}
+ QList<QJsonObject> clicks;Error clickError;  // clickError: the helper could not place a press
  // placement: the overlayPlacement the helper reports ("compositor" asks the resident's shell); deferPrepare keeps the reply for the test.
  QString placement;qint64 pid=0;bool deferPrepare=false;Reply pendingPrepare;RecordingTarget lastTarget;
  void prepare(const QString&,const RecordingTarget& target,const RecordingConfig& config,const QString& dir,Reply reply,const QJsonObject& reviewOptions = {}) override {
   lastReviewOptions=reviewOptions;log<<"prepare";staging=dir;lastConfig=config;lastTarget=target;
   QJsonObject result{{"canvas",QJsonArray{1280,720}},{"rect",target.rect.isEmpty()?QJsonArray{300,250,1280,720}:QJsonArray{target.rect.x(),target.rect.y(),target.rect.width(),target.rect.height()}},{"overlayExcluded",placement.isEmpty()||placement=="outside"}};
   if(!placement.isEmpty())result["overlayPlacement"]=placement;
+  // The bar records the microphone only when one can be opened.
+  if(microphoneSupported){auto audio=config.audio.toJson();audio["microphone"]=config.audio.microphone&&microphoneList["available"].toBool();result["audio"]=audio;}
   if(deferPrepare){pendingPrepare=[reply,result](Error error,QJsonObject){reply(error,error?QJsonObject{}:result);};return;}
   reply({},result);
  }
  qint64 processId(const QString&) const override {return pid;}
  // review: the window's answer; onReview may first emit what the window proposes (an edit event), as the helper does.
  std::function<void(const QJsonObject&)> onReview;
- void control(const QString&,const QString& command,const QJsonObject& params,Reply reply) override {
-  log<<command;lastControlParams=params;
+ Error audioError;QString controlId;  // audioError: the helper refuses the audio command (no microphone to switch on)
+ void control(const QString& id,const QString& command,const QJsonObject& params,Reply reply) override {
+  log<<command;lastControlParams=params;controlId=id;
   if(command=="review"){if(onReview)onReview(params);reply({},{{"action",params["action"]},{"playheadUs",3000000.0},{"visible",true}});return;}
   if(command=="cancel"){++cancels;reply({},{});return;}
   if(command=="start"&&failStart){reply({"recording_start_failed","Synthetic source refused",{}},{});return;}
-  if(command=="start"){capturedSystemAudio=captureSystemAudio&&lastConfig.audio.system;reply({},{{"audioEncoder",capturedSystemAudio?QString("synthetic-aac"):QString()}});return;}
-  if(command=="stop"){if(deferStop){pendingStop=std::move(reply);return;}reply({},{{"durationUs",double(durationUs)},{"canvas",QJsonArray{1280,720}},{"audioEncoder",capturedSystemAudio?QString("synthetic-aac"):QString()}});return;}
+  if(command=="click"){clicks.append(params);reply(clickError,{});return;}
+  // recording.audio: the helper sets the bar's toggles, says so in events and answers with what it will record.
+  if(command=="audio"){
+   if(audioError){reply(audioError,{});return;}
+   auto audio=lastConfig.audio;
+   if(params["system"].isBool())audio.system=params["system"].toBool();
+   if(params["microphone"].isBool())audio.microphone=params["microphone"].toBool();
+   lastConfig.audio=audio;
+   if(sink){sink({{"id",controlId},{"event","configChanged"},{"config",lastConfig.toJson()}});sink({{"id",controlId},{"event","progress"},{"recordingMicrophone",QJsonObject{{"requested",audio.microphone},{"effective",audio.microphone},{"available",true}}}});}
+   reply({},{{"audio",audio.toJson()}});return;
+  }
+  if(command=="start"){
+   capturedSystemAudio=captureSystemAudio&&lastConfig.audio.system;
+   QJsonObject result{{"audioEncoder",capturedSystemAudio||capturedMicrophone()?QString("synthetic-aac"):QString()}};
+   if(microphoneSupported)result["audioSources"]=QJsonObject{{"system",capturedSystemAudio},{"microphone",capturedMicrophone()}};
+   reply({},result);return;
+  }
+  if(command=="stop"){
+   if(deferStop){pendingStop=std::move(reply);return;}
+   QJsonObject result{{"durationUs",double(durationUs)},{"canvas",QJsonArray{1280,720}},{"audioEncoder",capturedSystemAudio||capturedMicrophone()?QString("synthetic-aac"):QString()}};
+   if(microphoneSupported)result["audioSources"]=QJsonObject{{"system",capturedSystemAudio},{"microphone",capturedMicrophone()}};
+   reply({},result);return;
+  }
   reply({},{});
  }
  void preview(const QString&,const RecordingEdit& edit,const RecordingConfig&,qint64 time,int,Reply reply) override {++previews;lastEdit=edit;lastPreviewTime=time;reply({},{{"png",QString::fromLatin1(QByteArray("\x89PNG\r\n\x1a\n",8).toBase64())}});}
@@ -51,6 +81,7 @@ public:
  }
  void discard(const QString&) override {++discards;}
  bool captureSystemAudio=true,capturedSystemAudio=false;
+ bool capturedMicrophone()const{return microphoneSupported&&lastConfig.audio.microphone&&microphoneList["available"].toBool();}
  bool deferStop=false;Reply pendingStop;
  int editsPushed=0;RecordingEdit pushedEdit;
  QJsonObject pushedLimits,lastControlParams;RecordingConfig pushedConfig;

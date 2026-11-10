@@ -1,6 +1,7 @@
 #pragma once
 #include "core/RecordingModel.h"
 #include "core/RecordingWindows.h"
+#include <QJsonArray>
 #include <functional>
 #include <memory>
 
@@ -22,6 +23,14 @@ public:
     virtual ~RecordingBackend() = default;
     // {available, reason?, targets, formats, codecs, audio:{system,microphone}, overlayExclusion}
     virtual QJsonObject capabilities() const = 0;
+    // #1364: the inputs a recording can narrate from and the one `device` (a
+    // source name; empty for the system default input) resolves to:
+    // {available, reason?, message?, device?: {id, label}, devices: [{id, label,
+    // default}], defaultIsMonitor}. Asks the sound server and opens no device.
+    virtual void microphones(const QString& device, Reply reply) {
+        Q_UNUSED(device);
+        reply({}, {{"available", false}, {"reason", "microphone_unsupported"}, {"message", "Microphone recording is not available on this installation."}, {"devices", QJsonArray{}}, {"defaultIsMonitor", false}});
+    }
     // Makes capabilities() current (a lazy helper probe); never starts capture.
     virtual void refreshCapabilities(std::function<void()> done) { done(); }
     // Unsolicited events: {"id", "event": "stopped"|"failed"|"progress", ...}.

@@ -76,6 +76,13 @@ struct Settings {
     // and the dashboard start region, window, monitor and desktop captures after
     // this delay; shortcuts stay immediate and session requests name their own.
     int captureDelaySeconds = 0;
+    // #1364: preferences.recordingMicrophone remembers the bar's microphone
+    // toggle (off until the user turns it on); recordingMicrophoneDevice names
+    // the input to open, empty for the system default; recordingClickHighlights
+    // draws a ring at the pointer on each click, off by default.
+    bool recordingMicrophone = false;
+    QString recordingMicrophoneDevice;
+    bool recordingClickHighlights = false;
     // preferences.appearance.theme (#60): system, dark or light.
     QString appearanceTheme = "system";
     bool notifications = true;

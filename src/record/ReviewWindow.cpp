@@ -1226,9 +1226,18 @@ void ReviewTimeline::keyPressEvent(QKeyEvent* e) {
     }
 }
 
+QString ReviewWindow::audioName() const {
+    if (options_.microphoneRecorded) return options_.systemRecorded ? QStringLiteral("System audio and microphone") : QStringLiteral("Microphone");
+    return QStringLiteral("System audio");
+}
+void ReviewWindow::applyAudio() {
+    const bool keep = effectiveAudio(config_, options_.audioRecorded, audioIntent_);
+    config_.audio.system = keep && (options_.systemRecorded || !options_.microphoneRecorded);
+    config_.audio.microphone = keep && options_.microphoneRecorded;
+}
 ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config, QWidget* parent) : QWidget(parent, Qt::Window), options_(options), config_(config), frameTimer_(this) {
-    audioIntent_ = config_.audio.system;
-    config_.audio.system = effectiveAudio(config_, options_.audioRecorded, audioIntent_);
+    audioIntent_ = config_.audio.any();
+    applyAudio();
     setObjectName("putgd-review");
     setWindowTitle("Review recording");
     // The app's painted controls (#198: in the interface's scheme).
@@ -1741,7 +1750,7 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
         if (value.size() != 2 || (value[0] == config_.format && value[1] == config_.codec)) return;
         config_.format = value[0];
         config_.codec = value[1];
-        config_.audio.system = effectiveAudio(config_, options_.audioRecorded, audioIntent_);
+        applyAudio();
         emit configChanged(config_);
         refreshLabels();
     });
@@ -1875,9 +1884,9 @@ void ReviewWindow::setEdit(const RecordingEdit& edit) {
     frameTimer_.start();
 }
 void ReviewWindow::setConfig(const RecordingConfig& config) {
-    if (!config.silent()) audioIntent_ = config.audio.system;
+    if (!config.silent()) audioIntent_ = config.audio.any();
     config_ = config;
-    config_.audio.system = effectiveAudio(config_, options_.audioRecorded, audioIntent_);
+    applyAudio();
     for (int i = 0; i < format_->count(); ++i) { const auto value = format_->itemData(i).toStringList(); if (value.size() == 2 && value[0] == config.format && value[1] == config.codec) { format_->blockSignals(true); format_->setCurrentIndex(i); format_->blockSignals(false); } }
     format_->setToolTip(format_->currentData(Qt::ToolTipRole).toString());
     format_->setAccessibleDescription(format_->currentText() + "\n" + format_->toolTip());
@@ -2012,10 +2021,10 @@ void ReviewWindow::refreshLabels() {
     if (mask) { strength_->blockSignals(true); strength_->setValue(mask->strength); strength_->blockSignals(false); }
     // Preview and export audio stay together, independently of the destination.
     const bool includesAudio = effectiveAudio(config_, options_.audioRecorded, audioIntent_);
-    const QString audio = (!options_.audioRecorded ? QStringLiteral("No audio recorded") : config_.silent() ? QStringLiteral("No audio in %1").arg(config_.format.toUpper()) : includesAudio ? QStringLiteral("System audio included") : QStringLiteral("Audio off in export")) + QStringLiteral(" · Silent preview");
+    const QString audio = (!options_.audioRecorded ? QStringLiteral("No audio recorded") : config_.silent() ? QStringLiteral("No audio in %1").arg(config_.format.toUpper()) : includesAudio ? QStringLiteral("%1 included").arg(audioName()) : QStringLiteral("Audio off in export")) + QStringLiteral(" · Silent preview");
     audio_->setText(QStringLiteral("Silent preview"));
     audio_->setProperty("summary", audio);
-    audio_->setToolTip(!options_.audioRecorded ? QStringLiteral("No system audio was recorded") : config_.silent() ? QStringLiteral("System audio was recorded; %1 exports are silent. Choose MP4 or WebM to keep it.").arg(config_.format.toUpper()) : includesAudio ? QStringLiteral("The export keeps the recorded system audio; the preview is silent") : QStringLiteral("System audio is turned off for this export"));
+    audio_->setToolTip(!options_.audioRecorded ? QStringLiteral("No system audio was recorded") : config_.silent() ? QStringLiteral("%1 was recorded; %2 exports are silent. Choose MP4 or WebM to keep it.").arg(audioName(), config_.format.toUpper()) : includesAudio ? QStringLiteral("The export keeps the recorded %1; the preview is silent").arg(audioName().toLower()) : QStringLiteral("%1 is turned off for this export").arg(audioName()));
     audio_->setAccessibleName(QStringLiteral("Audio: ") + audio);
     formatAdvice_->setVisible(config_.format == "mp4" && config_.codec == "h265");
     exportAudio_->setAccessibleName(audio);
@@ -2455,7 +2464,7 @@ void ReviewWindow::placeDestination() {
     destination_->setRevealText("Destination: " + options_.destination + "\nSharing: " + (options_.sharingMode == "private" ? "Private upload" : "Shared link") + "\n\n" + formatLabel(config_.format, config_.codec) + "\n" + formatHint(config_.format, config_.codec) + "\n" + audio_->property("summary").toString());
     destination_->setToolTip(options_.uploadSummary);
     destination_->setAccessibleName(options_.uploadSummary);
-    exportAudio_->setText(effectiveAudio(config_, options_.audioRecorded, audioIntent_) ? QStringLiteral("System audio") : !options_.audioRecorded ? QStringLiteral("No audio recorded") : config_.silent() ? QStringLiteral("Silent %1").arg(config_.format.toUpper()) : QStringLiteral("Audio off"));
+    exportAudio_->setText(effectiveAudio(config_, options_.audioRecorded, audioIntent_) ? audioName() : !options_.audioRecorded ? QStringLiteral("No audio recorded") : config_.silent() ? QStringLiteral("Silent %1").arg(config_.format.toUpper()) : QStringLiteral("Audio off"));
     const auto details = "Destination: " + options_.destination + "\nSharing: " + (options_.sharingMode == "private" ? "Private upload" : "Shared link") + "\n\n" + options_.uploadSummary + "\n" + formatLabel(config_.format, config_.codec) + "\n" + formatHint(config_.format, config_.codec) + "\n" + audio_->property("summary").toString();
     destinationFull_->setText(details);
     destinationMenu_->setText(destination_->text());

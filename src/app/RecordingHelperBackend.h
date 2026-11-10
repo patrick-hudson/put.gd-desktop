@@ -25,6 +25,8 @@ public:
     void setTimeouts(int startupMs, int commandMs, int prepareMs, int exportMs);
     QJsonObject capabilities() const override;
     void refreshCapabilities(std::function<void()> done) override;
+    // A transient `putgd-record --microphones [device]` run, never cached: inputs come and go.
+    void microphones(const QString& device, Reply reply) override;
     void setEventSink(Event sink) override { sink_ = std::move(sink); }
     void prepare(const QString& id, const RecordingTarget&, const RecordingConfig&, const QString& stagingDirectory, Reply, const QJsonObject& reviewOptions = {}) override;
     void control(const QString& id, const QString& command, const QJsonObject& params, Reply) override;

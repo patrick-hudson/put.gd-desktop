@@ -131,6 +131,39 @@ private slots:
         QVERIFY(!writeAvMarker(gapped_, 4, 110, 500, 60));
         QVERIFY(std::abs(median(gapped_)) <= 1.0);
     }
+    // #1364: the level of a tone across the track tells a recorded microphone
+    // from an absent one, the sweeping bar leaves the marker's sync where it
+    // was, and a clip without the marker still answers when tones are asked for.
+    void tonesAreMeasuredAndTheMovingMarkerStaysInSync() {
+        QJsonObject result;
+        QVERIFY(!measureAvSync(clip_, result, {1000.0, 440.0}));
+        const auto tones = result["tones"].toObject();
+        // The marker's bursts are 100 ms of every second at 8000/32768 full scale (both channels, summed to mono).
+        QVERIFY2(std::abs(tones["1000"].toObject()["maxAmplitude"].toDouble() - 0.345) < 0.02, qPrintable(QString::number(tones["1000"].toObject()["maxAmplitude"].toDouble())));
+        QVERIFY(tones["1000"].toObject()["activeFraction"].toDouble() > 0.05 && tones["1000"].toObject()["activeFraction"].toDouble() < 0.2);
+        QCOMPARE(tones["1000"].toObject()["medianAmplitude"].toDouble(), 0.0);
+        // No 440 Hz tone: only what the bursts' edges leak into that band.
+        QVERIFY(tones["440"].toObject()["maxAmplitude"].toDouble() < 0.02);
+        QCOMPARE(tones["440"].toObject()["medianAmplitude"].toDouble(), 0.0);
+        QVERIFY(result["audioStream"].toBool() && result["pairs"].toInt() >= 3);
+        // Without tones the result is what it always was.
+        QJsonObject plain;
+        QVERIFY(!measureAvSync(clip_, plain));
+        QVERIFY(!plain.contains("tones"));
+        const QString moving = dir_.filePath("moving.mkv");
+        QVERIFY(!writeAvMarker(moving, 4, 0, -1, 0, true));
+        QVERIFY(std::abs(median(moving)) <= 1.0);
+        // A clip exported without sound: no audio stream, reported rather than failed.
+        QString skip;
+        if (exportClip("silent-tones.mp4", "mp4", "h264", false, 0, &skip)) {
+            QJsonObject silent;
+            QVERIFY(!measureAvSync(dir_.filePath("silent-tones.mp4"), silent, {1000.0}));
+            QVERIFY(!silent["audioStream"].toBool());
+            QCOMPARE(silent["error"].toString(), QString("av_sync_no_audio"));
+            QCOMPARE(silent["tones"].toObject()["1000"].toObject()["maxAmplitude"].toDouble(), 0.0);
+            QCOMPARE(measureAvSync(dir_.filePath("silent-tones.mp4"), silent).code, QString("av_sync_no_audio"));
+        }
+    }
     void exportsWithSoundKeepTheAudioStart_data() {
         QTest::addColumn<QString>("format");
         QTest::addColumn<QString>("codec");

@@ -10,7 +10,8 @@ private slots:
   for(auto* key:panel->findChildren<QLabel*>())if(key->property("desktopSupportKey").toBool()){
    int row,column,rowSpan,columnSpan;grid->getItemPosition(grid->indexOf(key),&row,&column,&rowSpan,&columnSpan);auto* item=grid->itemAtPosition(row,1);QVERIFY(item);auto* value=qobject_cast<QLabel*>(item->widget());QVERIFY(value);
    for(auto* label:{key,value}){QCOMPARE(label->alignment(),Qt::AlignLeft|Qt::AlignBottom);QVERIFY(label->minimumHeight()>=Ui::lineHeight(Ui::Type::body));}
-   QCOMPARE(key->geometry().bottom(),value->geometry().bottom());
+   // A one-line value shares its key's baseline; one that wraps (#1364: the click highlights' route) keeps its key beside its first line.
+   if(value->height()>key->height())QCOMPARE(key->geometry().top(),value->geometry().top());else QCOMPARE(key->geometry().bottom(),value->geometry().bottom());
   }
   auto* label=window.findChild<QLabel*>("configPathLabel");const int wide=label->width();window.resize(1060,680);PUTGD_VERIFY_STEADY(label->width()<=wide,30);for(auto* key:panel->findChildren<QLabel*>())if(key->property("desktopSupportKey").toBool())QVERIFY(key->height()>=key->heightForWidth(key->width()));
   for(const auto& name:{"showConfigInFolder","openConfigEditor","reloadSettings","copyConfigPath","refreshDesktopSupport","copyDesktopDetails"}){auto* action=window.findChild<QPushButton*>(name);QCOMPARE(action->property("visualRole").toString(),QString("textAction"));QCOMPARE(action->font().weight(),QFont::Normal);QCOMPARE(action->font().pixelSize(),Ui::scaled(14));}
@@ -262,6 +263,29 @@ private slots:
   // The desktop gains window capture (a compositor update, a new session): both go back to normal.
   details["capabilities"]=QJsonObject{{"source",QJsonObject{{"adapter","budgie-wayland"},{"capture",QJsonObject{{"region",QJsonObject{{"available",true}}},{"window",QJsonObject{{"available",true}}},{"desktop",QJsonObject{{"available",true}}}}}}}};
   fixture.session.refreshSnapshot();PUTGD_TRY_COMPARE(fixture.session.diagnostics(),details);PUTGD_TRY_VERIFY(!gap->isVisible());PUTGD_TRY_VERIFY(!windowButton->property("captureBadge").toBool());QVERIFY(!windowButton->toolTip().contains(reason));
+ }
+ void clickHighlightsRowNamesTheRecordingsLeftOut(){
+  // #1364: a desktop that draws click rings, but not in window recordings, says so in Desktop support details
+  // with the adapter's reason, and the row shows all of it: the value has its column and its wrapped height.
+  QTemporaryDir dir;SettingsService service(dir.filePath("config.json"));QVERIFY(service.save(Settings::defaults(),{}));CredentialStore secrets;UiSessionFixture fixture(service,secrets);
+  MainWindow window(fixture.session);window.navigate("settings");window.findChild<QTabWidget*>("settingsTabs")->setCurrentIndex(3);window.show();window.findChild<QToolButton*>("desktopSupportDetailsToggle")->setChecked(true);
+  const QString reason="A window recording on labwc has no pointer position: the compositor's window capture source has no cursor source, and labwc reports no window geometry.";
+  auto* row=window.findChild<QLabel*>("desktopSupportClickHighlights");QVERIFY(row);PUTGD_TRY_VERIFY(row->isVisible());
+  // The window asks the session once when it opens; this fixture has no route. Its answer lands first.
+  PUTGD_TRY_VERIFY2(row->text().startsWith("Unavailable"),qPrintable(row->text()));
+  PUTGD_TRY_VERIFY2(row->height()>=row->heightForWidth(row->width()),qPrintable(QString("the row is clipped: %1 < %2").arg(row->height()).arg(row->heightForWidth(row->width()))));
+  window.settings()->showClickHighlights({{"available",true},{"route","labwc-mouse-binds"},{"drawnBy","recorder"},{"targets",QJsonArray{"monitor","desktop","region"}},{"targetReasons",QJsonObject{{"window",reason}}}});
+  PUTGD_COMPARE_STEADY(row->text(),"Available · drawn by put.gd from labwc mouse binds added while recording, for clicks on windows\nNot in window recordings: "+reason,200);
+  auto* panel=window.findChild<QWidget*>("desktopSupportDetails");QVERIFY(panel);
+  PUTGD_TRY_VERIFY2(row->width()>panel->width()/2,qPrintable(QString("the value is %1 px wide in a %2 px panel").arg(row->width()).arg(panel->width())));
+  PUTGD_TRY_VERIFY2(row->height()>=row->heightForWidth(row->width()),qPrintable(QString("the row is clipped: %1 < %2").arg(row->height()).arg(row->heightForWidth(row->width()))));
+  // A desktop that leaves nothing out adds nothing.
+  window.settings()->showClickHighlights({{"available",true},{"route","x11-xinput2"},{"drawnBy","recorder"},{"targets",QJsonArray{"monitor","desktop","region","window"}}});
+  QCOMPARE(row->text(),QString("Available · drawn by put.gd from the X server's button events"));
+  // A desktop without any route gives its reason, whole.
+  window.settings()->showClickHighlights({{"available",false},{"message","This desktop reports no pointer clicks to put.gd, and nothing here can be made to."}});
+  QCOMPARE(row->text(),QString("Unavailable · This desktop reports no pointer clicks to put.gd, and nothing here can be made to."));
+  PUTGD_TRY_VERIFY2(row->height()>=row->heightForWidth(row->width()),qPrintable(QString("the row is clipped: %1 < %2").arg(row->height()).arg(row->heightForWidth(row->width()))));
  }
  void diagnosticConfigurationStaysInsideDesktopDetails(){
   QTemporaryDir dir;SettingsService service(dir.filePath("config.json"));QVERIFY(service.save(Settings::defaults(),{}));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.navigate("settings");window.findChild<QTabWidget*>("settingsTabs")->setCurrentIndex(3);window.resize(1440,1100);window.show();auto* body=window.findChild<QWidget*>("desktopSupportDetails");auto* path=window.findChild<Ui::ElidedLabel*>("configPath");QVERIFY(path&&body->isAncestorOf(path));QVERIFY(path->isHidden()||!path->isVisible());window.findChild<QToolButton*>("desktopSupportDetailsToggle")->setChecked(true);QVERIFY(path->isVisible());QCOMPARE(path->text(),service.path());for(auto* key:body->findChildren<QLabel*>())if(key->wordWrap()&&!key->isHidden())PUTGD_TRY_VERIFY2(key->height()>=key->heightForWidth(key->width()),qPrintable(key->text()));auto* label=window.findChild<QLabel*>("configPathLabel");QVERIFY(label&&label->buddy()==path);const auto top=[&](QWidget* widget){return widget->mapTo(body,QPoint()).y();};PUTGD_TRY_VERIFY(qAbs(top(label)-top(path))<=2);PUTGD_TRY_VERIFY(label->mapTo(body,QPoint(label->width(),0)).x()+Ui::space(Ui::Space::l)<=path->mapTo(body,QPoint()).x());for(const auto& name:{"showConfigInFolder","openConfigEditor","reloadSettings"}){auto* button=window.findChild<QPushButton*>(name);QVERIFY(button->property("uiFlush").toBool());QVERIFY(top(button)>top(path));QVERIFY(button->mapTo(body,QPoint()).x()>=path->mapTo(body,QPoint()).x());}for(const auto& key:QStringList{"accepted","observed"})QVERIFY(window.findChild<QLabel*>(key+"Revision")->isHidden());QVERIFY(body->isAncestorOf(window.findChild<QPushButton*>("copyDesktopDetails")));QVERIFY(body->isAncestorOf(window.findChild<QPushButton*>("showConfigInFolder")));

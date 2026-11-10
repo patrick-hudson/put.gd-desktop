@@ -1,4 +1,5 @@
 #pragma once
+#include <optional>
 #include "core/Error.h"
 #include "core/RecordingModel.h"
 #include <QJsonObject>
@@ -99,7 +100,12 @@ private:
 class ControlBar final : public QWidget {
     Q_OBJECT
 public:
-    struct Options { QString targetLabel; QStringList formats; QJsonObject codecs; bool audioSupported = false; };
+    struct Options {
+        QString targetLabel; QStringList formats; QJsonObject codecs; bool audioSupported = false;
+        // #1364: whether an input can be opened, its name, and otherwise why not.
+        bool microphoneAvailable = false; QString microphoneLabel, microphoneUnavailable;
+        bool clickHighlights = false;
+    };
     explicit ControlBar(const Options&, const RecordingConfig&, QWidget* parent = nullptr);
     // X11: positions the bar around rootRect (root pixels) on any screen;
     // returns false when it had to sit inside it.
@@ -126,6 +132,22 @@ public:
     bool requestedAudio() const { return audioIntent_; }
     bool effectiveAudio() const { return config_.audio.system; }
     QJsonObject audioState() const { return {{"requested", requestedAudio()}, {"effective", effectiveAudio()}}; }
+    // The microphone toggle: what the user asked for and what is (or will be) recorded.
+    bool requestedMicrophone() const { return microphoneIntent_; }
+    bool effectiveMicrophone() const { return config_.audio.microphone; }
+    QJsonObject microphoneState() const;
+    // The input's newest peak level, 0..1, for the meter beside the toggle.
+    void setMicrophoneLevel(float level);
+    float microphoneLevel() const;
+    // The microphone went away during the recording; the bar says so.
+    void setMicrophoneLost(const QString& reason);
+    // The input the toggle would open changed while the bar is at Ready: a microphone was plugged
+    // in or pulled, or the default input changed. The toggle, its text and what will be recorded
+    // follow; what the user asked for is kept, so a remembered choice takes effect again once there
+    // is a microphone. Emits configChanged when what will be recorded changed.
+    void setMicrophone(bool available, const QString& label, const QString& unavailable);
+    // The toggles set as a click sets them (recording.audio); an absent value leaves its toggle alone.
+    void chooseAudio(std::optional<bool> system, std::optional<bool> microphone);
 signals:
     void recordRequested();
     void pauseRequested();
@@ -152,7 +174,10 @@ private:
     // The largest size the full bar takes in any state; placement decides with it.
     QSize widestSize();
     RecordingConfig config_;
-    bool audioIntent_ = false;
+    bool audioIntent_ = false, microphoneIntent_ = false;
+    QString microphoneLost_;
+    QCheckBox* microphone_ = nullptr;
+    QWidget* meter_ = nullptr;
     Options options_;
     QString state_ = "ready";
     Placed placed_ = Placed::None;

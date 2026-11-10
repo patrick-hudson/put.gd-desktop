@@ -3,6 +3,7 @@
 #include <QPointer>
 #include "DebugLog.h"
 #include "WaylandAcquisition.h"
+#include "core/RecordingModel.h"
 #include <QFile>
 #include <QFileInfo>
 #include <QJsonArray>
@@ -17,7 +18,7 @@
 
 namespace putgd::record {
 namespace {
-struct ProbeContext { const PauseTimeline* timeline; void* rebase; bool audio; void* repeats = nullptr; };
+struct ProbeContext { const PauseTimeline* timeline; void* rebase; bool audio; void* repeats = nullptr; RecordingPipeline* pipeline = nullptr; };
 QString shellQuote(const QString& value) { QString s = value; s.replace('\\', "\\\\").replace('"', "\\\""); return '"' + s + '"'; }
 int bitrateKbps(const QSize& size, int fps) {
     // About 0.1 bit per pixel per frame, bounded for tiny and huge canvases.
@@ -71,6 +72,31 @@ QString encoderFormat(const QString& name) { return name.startsWith("va") ? QStr
 QString audioDescription(const QString& name) {
     if (name == "avenc_aac" || name == "fdkaacenc" || name == "voaacenc") return name + " bitrate=128000";
     return name;
+}
+// #1364: the microphone, alone or mixed with the system audio. Each capture
+// branch is converted to one fixed raw format and passes a tap (clock guard,
+// level meter, the gate that silences a lost microphone); audiomixer places
+// the two by their timestamps, which both sources take from the pipeline
+// clock, and waits `latency` for a late branch before it mixes without it.
+const char* mixFormat = "audio/x-raw,format=F32LE,layout=interleaved,rate=48000,channels=2";
+QString captureBranch(const char* source, const char* tap, const QString& device) {
+    // The microphone's stream is pinned to its device (see pinnedStream in Microphones.h): when the
+    // device goes, the sound server leaves the stream unlinked instead of moving it to the default
+    // input, which may be an output's monitor. System audio keeps the server's own routing.
+    //
+    // The microphone is never the pipeline's clock. An audio source offers its own clock, counted in
+    // the samples it has read, and a pipeline takes it when nothing nearer the sinks offers one. PipeWire
+    // and image-copy pipelines are given the system clock in launch(); an X11 one is not, and ximagesrc
+    // has no clock, so a recording with the microphone alone ran on the microphone's. A microphone that
+    // goes away reads no more samples: its clock stopped, ximagesrc waited for a frame time that never
+    // came and the clip ended where the microphone did (measured on Mint 22, PipeWire 1.0.5: 6.2 s kept
+    // of 14 s recorded). Without the offer an X11 pipeline runs on the system audio's clock or the system
+    // clock, as a recording without a microphone does, and this source follows it.
+    const QString pin = QByteArrayView(source) == "msrc" ? QStringLiteral(" provide-clock=false stream-properties=\"%1\"").arg(QLatin1String(pinnedStream)) : QString();
+    return QStringLiteral(" pulsesrc name=%1 device=%2%5 ! audioconvert ! audioresample ! %3 ! identity name=%4 silent=true").arg(QString::fromLatin1(source), shellQuote(device), QString::fromLatin1(mixFormat), QString::fromLatin1(tap), pin);
+}
+QString audioEncodeBranch(const QString& audioEncoder) {
+    return QStringLiteral(" ! audioconvert ! audio/x-raw,rate=48000,channels=2 ! %1 name=aenc ! aacparse ! queue name=aq max-size-buffers=0 max-size-bytes=0 max-size-time=2000000000 ! mux.").arg(audioDescription(audioEncoder));
 }
 // The element's running time now, or -1 before it has a clock.
 gint64 runningNow(GstElement* element) {
@@ -157,12 +183,19 @@ GstPadProbeReturn RecordingPipeline::probe(GstPad* pad, GstPadProbeInfo* info, g
     if (rebase->firstPassed.load() < 0) rebase->firstPassed.store(shifted);
     rebase->lastPassed.store(shifted);
     // After the adaptive rate stepped down, videorate's repeats (its GAP-flagged
-    // duplicates of the last kept frame) stay out of the encoder (#1045).
+    // duplicates of the last kept frame) stay out of the encoder (#1045). While a
+    // click's ring is opening they are frames of its animation and are kept (#1364).
     auto* repeats = static_cast<RepeatSkip*>(context->repeats);
-    if (repeats && repeats->dropping.load() && GST_BUFFER_FLAG_IS_SET(buffer, GST_BUFFER_FLAG_GAP)) { repeats->skipped.fetch_add(1); return GST_PAD_PROBE_DROP; }
+    const bool ring = context->pipeline && context->pipeline->clicks_.active(pts);
+    if (repeats && repeats->dropping.load() && !ring && GST_BUFFER_FLAG_IS_SET(buffer, GST_BUFFER_FLAG_GAP)) { repeats->skipped.fetch_add(1); return GST_PAD_PROBE_DROP; }
     buffer = gst_buffer_make_writable(buffer);
     GST_PAD_PROBE_INFO_DATA(info) = buffer;
     if (!buffer) return GST_PAD_PROBE_DROP;
+    if (ring) {
+        // The ring's own picture takes the frame's place (and its reference).
+        buffer = drawClicks(context->pipeline, pad, buffer, pts);
+        GST_PAD_PROBE_INFO_DATA(info) = buffer;
+    }
     GST_BUFFER_PTS(buffer) = GstClockTime(shifted);
     if (GST_BUFFER_DTS_IS_VALID(buffer)) GST_BUFFER_DTS(buffer) = GstClockTime(std::max<gint64>(0, gint64(GST_BUFFER_DTS(buffer)) - offset));
     rebase->passed.fetch_add(1);
@@ -239,11 +272,14 @@ GstPadProbeReturn RecordingPipeline::stampFrame(GstPad* pad, GstPadProbeInfo* in
     if (!clock->compositorTimes) {
         frame = pipewireFrameTime(-1, 0, running, clock->previous);
         if (clock->locked) {
-            qint64 locked = lockedFrameTime(running, clock->previous, clock->lock);
+            // The image-copy source's cursor-only frame (#1364) is the recorder's own and waits
+            // for its slot's time, so the screen's next change keeps the slot (see FrameLock).
+            const bool own = clock->ownFrames && GST_BUFFER_FLAG_IS_SET(buffer, GST_BUFFER_FLAG_DROPPABLE);
+            qint64 locked = lockedFrameTime(running, clock->previous, clock->lock, own);
             // A change right after a passed repeat takes the next slot rather
             // than waiting for the next keepalive (or missing a clip stopped first).
-            if (locked < 0 && clock->lastWasRepeat && !same) { locked = clock->previous + clock->lock.periodNs; ++clock->afterRepeat; }
-            if (locked < 0) { ++clock->early; return GST_PAD_PROBE_DROP; }
+            if (locked < 0 && clock->lastWasRepeat && !same && !own) { locked = clock->previous + clock->lock.periodNs; ++clock->afterRepeat; }
+            if (locked < 0) { ++clock->early; if (own) ++clock->ownHeld; return GST_PAD_PROBE_DROP; }
             if (clock->previous >= 0 && locked != clock->previous + clock->lock.periodNs) ++clock->resyncs;
             frame.running = locked;
         }
@@ -264,6 +300,8 @@ GstPadProbeReturn RecordingPipeline::stampFrame(GstPad* pad, GstPadProbeInfo* in
         buffer = gst_buffer_make_writable(buffer);
         if (!buffer) { GST_PAD_PROBE_INFO_DATA(info) = nullptr; return GST_PAD_PROBE_DROP; }
     }
+    // The mark was for the lock above; nothing downstream is to read it. Other sources' frames are left as they came.
+    if (clock->ownFrames) GST_BUFFER_FLAG_UNSET(buffer, GST_BUFFER_FLAG_DROPPABLE);
     gst_buffer_replace(&clock->lastKept, buffer);
     GST_PAD_PROBE_INFO_DATA(info) = buffer;
     GST_BUFFER_PTS(buffer) = GST_BUFFER_DTS(buffer) = GstClockTime(frame.running);
@@ -325,7 +363,108 @@ GstPadProbeReturn RecordingPipeline::gateFrame(GstPad*, GstPadProbeInfo* info, g
     return GST_PAD_PROBE_OK;
 }
 
-bool RecordingPipeline::launch(const Options& options, const QString& encoder, const QString& audioEncoder, bool unthrottled, QString& failure) {
+GstBuffer* RecordingPipeline::drawClicks(RecordingPipeline* self, GstPad* pad, GstBuffer* buffer, gint64 runningNs) {
+    auto& frame = self->clickFrame_;
+    GstCaps* caps = gst_pad_get_current_caps(pad);
+    GstVideoInfo video;
+    const bool described = caps && gst_video_info_from_caps(&video, caps);
+    if (caps) gst_caps_unref(caps);
+    if (!described) return buffer;
+    if (!frame.known) {
+        // Once per capture, on the streaming thread: the encoder's negotiated input.
+        frame.width = GST_VIDEO_INFO_WIDTH(&video);
+        frame.height = GST_VIDEO_INFO_HEIGHT(&video);
+        frame.nv12 = GST_VIDEO_INFO_FORMAT(&video) == GST_VIDEO_FORMAT_NV12;
+        frame.known = true;
+        frame.drawable = frame.nv12 || GST_VIDEO_INFO_FORMAT(&video) == GST_VIDEO_FORMAT_I420;
+    }
+    if (!frame.drawable) return buffer;
+    // A ring's frame is a picture of its own in plain memory: the frame is copied out and the rings
+    // are drawn on the copy. Drawing in place is not safe. The frame may share its pixels with the
+    // one before it (a repeat), and it may live in the encoder's own memory: a VA encoder hands its
+    // surface pool to the converter, and a surface mapped to change a few pixels came back holding
+    // nothing else (a green frame with the ring on it, measured with vah264lpenc on Intel).
+    GstVideoFrame source;
+    if (!gst_video_frame_map(&source, &video, buffer, GST_MAP_READ)) return buffer;
+    GstBuffer* picture = gst_buffer_new_allocate(nullptr, GST_VIDEO_INFO_SIZE(&video), nullptr);
+    GstVideoFrame mapped;
+    if (!picture || !gst_video_frame_map(&mapped, &video, picture, GST_MAP_WRITE)) {
+        gst_video_frame_unmap(&source);
+        if (picture) gst_buffer_unref(picture);
+        return buffer;
+    }
+    const bool copied = gst_video_frame_copy(&mapped, &source);
+    gst_video_frame_unmap(&source);
+    if (!copied) {
+        gst_video_frame_unmap(&mapped);
+        gst_buffer_unref(picture);
+        return buffer;
+    }
+    const ClickOverlay::Plane luma{static_cast<std::uint8_t*>(GST_VIDEO_FRAME_PLANE_DATA(&mapped, 0)), GST_VIDEO_FRAME_PLANE_STRIDE(&mapped, 0), frame.width, frame.height, 1, 1, 1};
+    const int chromaWidth = (frame.width + 1) / 2, chromaHeight = (frame.height + 1) / 2;
+    if (frame.nv12) {
+        auto* interleaved = static_cast<std::uint8_t*>(GST_VIDEO_FRAME_PLANE_DATA(&mapped, 1));
+        const int stride = GST_VIDEO_FRAME_PLANE_STRIDE(&mapped, 1);
+        self->clicks_.draw(luma, {interleaved, stride, chromaWidth, chromaHeight, 2, 2, 2}, {interleaved + 1, stride, chromaWidth, chromaHeight, 2, 2, 2}, runningNs);
+    } else {
+        self->clicks_.draw(luma, {static_cast<std::uint8_t*>(GST_VIDEO_FRAME_PLANE_DATA(&mapped, 1)), GST_VIDEO_FRAME_PLANE_STRIDE(&mapped, 1), chromaWidth, chromaHeight, 1, 2, 2},
+                           {static_cast<std::uint8_t*>(GST_VIDEO_FRAME_PLANE_DATA(&mapped, 2)), GST_VIDEO_FRAME_PLANE_STRIDE(&mapped, 2), chromaWidth, chromaHeight, 1, 2, 2}, runningNs);
+    }
+    gst_video_frame_unmap(&mapped);
+    // Times and flags come along; the original's layout metadata describes its own memory and stays behind.
+    gst_buffer_copy_into(picture, buffer, GstBufferCopyFlags(GST_BUFFER_COPY_FLAGS | GST_BUFFER_COPY_TIMESTAMPS), 0, -1);
+    // A ring's frame is a picture of its own, not a repeat to skip.
+    GST_BUFFER_FLAG_UNSET(picture, GST_BUFFER_FLAG_GAP);
+    gst_buffer_unref(buffer);
+    return picture;
+}
+void RecordingPipeline::addClick(QPointF canvasPoint, int button, qint64 ageNs) {
+    if (!pipeline_ || stopping_ || timeline_.paused()) return;
+    const gint64 now = runningTime();
+    if (now < 0) return;
+    // A press reported `ageNs` ago belongs that much earlier in the clip; frames that old are still on
+    // their way to the encoder (capture queue, rate, convert), so most of its ring is still drawn.
+    clicks_.add(canvasPoint, button, std::max<gint64>(0, now - std::clamp<qint64>(ageNs, 0, 2'000'000'000)));
+}
+
+GstPadProbeReturn RecordingPipeline::tapAudio(GstPad* pad, GstPadProbeInfo* info, gpointer user) {
+    auto* tap = static_cast<AudioTap*>(user);
+    GstBuffer* buffer = GST_PAD_PROBE_INFO_BUFFER(info);
+    if (!buffer) return GST_PAD_PROBE_OK;
+    if (tap->lost.load()) return GST_PAD_PROBE_DROP;
+    const gint64 seen = tap->buffers.fetch_add(1);
+    // The sound server can move a stream whose source went away to another
+    // one, the default, which may be an output's monitor: that is not this
+    // microphone, so nothing more of it is recorded.
+    if (tap->meter && tap->source && (seen % 5) == 4) {
+        gchar* current = nullptr;
+        g_object_get(tap->source, "current-device", &current, nullptr);
+        const bool moved = current && *current && tap->device != current;
+        g_free(current);
+        if (moved) { tap->lost.store(true); return GST_PAD_PROBE_DROP; }
+    }
+    if (GST_BUFFER_PTS_IS_VALID(buffer) && GST_BUFFER_DURATION_IS_VALID(buffer) && tap->count < 400) {
+        const gint64 at = gint64(GST_BUFFER_PTS(buffer));
+        if (tap->first < 0) { tap->first = at; tap->expected = at; }
+        const gint64 index = tap->count++;
+        if (index < 12 || index % 25 == 0) tap->drift.append(QStringLiteral("%1:%2@%3").arg(index).arg(double(at - tap->expected) / 1e6, 0, 'f', 1).arg(double(at) / 1e6, 0, 'f', 0));
+        tap->expected += gint64(GST_BUFFER_DURATION(buffer));
+    }
+    if (GST_BUFFER_PTS_IS_VALID(buffer)) {
+        const gint64 pts = gint64(GST_BUFFER_PTS(buffer));
+        const gint64 guarded = tap->clock.apply(pts, GST_BUFFER_DURATION_IS_VALID(buffer) ? gint64(GST_BUFFER_DURATION(buffer)) : 0, runningNow(pad));
+        if (guarded != pts) {
+            buffer = gst_buffer_make_writable(buffer);
+            GST_PAD_PROBE_INFO_DATA(info) = buffer;
+            if (!buffer) return GST_PAD_PROBE_DROP;
+            GST_BUFFER_PTS(buffer) = GstClockTime(std::max<gint64>(0, guarded));
+        }
+    }
+    if (tap->meter) return LevelMeter::probe(pad, info, &tap->level);
+    return GST_PAD_PROBE_OK;
+}
+
+bool RecordingPipeline::launch(const Options& options, const QString& encoder, const QString& audioEncoder, bool unthrottled, QString& failure, QString* failedElement) {
     const QSize encoded = options.canvas.isValid() ? options.canvas : options.crop.isValid() ? options.crop.size() : options.rect.size();
     const int kbps = bitrateKbps(encoded, options.fps);
     QString description;
@@ -375,7 +514,14 @@ bool RecordingPipeline::launch(const Options& options, const QString& encoder, c
     // videorate after the conversion holds the configured rate for both sources.
     description += QStringLiteral(" ! videorate ! video/x-raw,format=%1,framerate=%2/1").arg(encoderFormat(encoder)).arg(options.fps) + encodeQueue() + QStringLiteral(" ! %1 name=venc ! h264parse ! queue name=vq max-size-buffers=0 max-size-bytes=0 max-size-time=2000000000 ! matroskamux name=mux ! filesink name=sink location=%2")
         .arg(encoderDescription(encoder, kbps, options.fps, encoded), shellQuote(options.output));
-    if (options.audio && !audioEncoder.isEmpty())
+    const bool mixed = options.audio && options.microphone && !audioEncoder.isEmpty();
+    if (mixed)
+        description += QStringLiteral(" audiomixer name=amix latency=150000000") + audioEncodeBranch(audioEncoder)
+            + captureBranch("asrc", "atap", options.audioDevice) + QStringLiteral(" ! queue name=asq max-size-buffers=0 max-size-bytes=0 max-size-time=1000000000 ! amix.")
+            + captureBranch("msrc", "mtap", options.microphoneDevice) + QStringLiteral(" ! queue name=msq max-size-buffers=0 max-size-bytes=0 max-size-time=1000000000 ! amix.");
+    else if (options.microphone && !audioEncoder.isEmpty())
+        description += captureBranch("msrc", "mtap", options.microphoneDevice) + audioEncodeBranch(audioEncoder);
+    else if (options.audio && !audioEncoder.isEmpty())
         description += QStringLiteral(" pulsesrc name=asrc device=%1 ! audioconvert ! audioresample ! audio/x-raw,rate=48000,channels=2 ! %2 name=aenc ! aacparse ! queue name=aq max-size-buffers=0 max-size-bytes=0 max-size-time=2000000000 ! mux.")
             .arg(shellQuote(options.audioDevice), audioDescription(audioEncoder));
     GError* error = nullptr;
@@ -383,6 +529,28 @@ bool RecordingPipeline::launch(const Options& options, const QString& encoder, c
     if (!pipeline || error) { failure = error ? QString::fromUtf8(error->message) : QStringLiteral("parse failed"); if (error) g_error_free(error); if (pipeline) gst_object_unref(pipeline); return false; }
     video_.firstPassed = -1; video_.lastPassed = -1; video_.passed = 0; video_.lateness = {}; video_.clock.reset();
     audio_.firstPassed = -1; audio_.lastPassed = -1; audio_.passed = 0; audio_.lateness = {}; audio_.clock.reset();
+    for (AudioTap* tap : {&microphone_, &system_}) { tap->clock.reset(); tap->level.take(); tap->lost.store(false); tap->source = nullptr; tap->device.clear(); tap->buffers.store(0); tap->first = -1; tap->expected = 0; tap->count = 0; tap->drift.clear(); }
+    microphone_.meter = true;
+    clicks_.clear();
+    clickFrame_ = {};
+    microphoneLostReason_.clear();
+    microphoneSeen_ = 0;
+    microphoneQuiet_.invalidate();
+    // The taps: the pipeline owns the elements; the pointers are dropped at teardown.
+    auto tap = [&](const char* element, const char* source, AudioTap& state, const QString& device) {
+        GstElement* identity = gst_bin_get_by_name(GST_BIN(pipeline), element);
+        if (!identity) return;
+        if (GstPad* pad = gst_element_get_static_pad(identity, "src")) { gst_pad_add_probe(pad, GST_PAD_PROBE_TYPE_BUFFER, &RecordingPipeline::tapAudio, &state, nullptr); gst_object_unref(pad); }
+        gst_object_unref(identity);
+        if (GstElement* capture = gst_bin_get_by_name(GST_BIN(pipeline), source)) {
+            // Only a source that reports its current device can tell a moved stream.
+            if (g_object_class_find_property(G_OBJECT_GET_CLASS(capture), "current-device")) state.source = capture;
+            gst_object_unref(capture);
+        }
+        state.device = device.toUtf8();
+    };
+    tap("mtap", "msrc", microphone_, options.microphoneDevice);
+    tap("atap", "asrc", system_, options.audioDevice);
     timeline_.reset();
     timeline_.setFrameRate(options.fps);
     gst_buffer_replace(&frameClock_.lastKept, nullptr);
@@ -390,7 +558,8 @@ bool RecordingPipeline::launch(const Options& options, const QString& encoder, c
     frameClock_.compositorTimes = qEnvironmentVariable("PUTGD_RECORD_PIPEWIRE_TIMESTAMPS") == "compositor";
     // =arrival: raw arrival times (the default before #6), for lab A/B runs.
     frameClock_.locked = qEnvironmentVariable("PUTGD_RECORD_PIPEWIRE_TIMESTAMPS") != "arrival";
-    frameClock_.lock = frameLock(options.fps);
+    frameClock_.lock = frameLock(options.fps, options.imageCopy ? ImageCopySource::cursorIntervalNs : 0);
+    frameClock_.ownFrames = options.imageCopy != nullptr;
     frameClock_.gate = &gate_;
     gate_.periodNs = GST_SECOND / options.fps; gate_.delivered = 0; gate_.kept = 0; gate_.lastKept = -1; gate_.toleranceNs = GST_SECOND / options.fps / 2;
     // Lab A/B: PUTGD_RECORD_ENCODE_REPEATS=on keeps encoding videorate's repeats after a step.
@@ -432,13 +601,13 @@ bool RecordingPipeline::launch(const Options& options, const QString& encoder, c
         GstElement* queue = gst_bin_get_by_name(GST_BIN(pipeline), element);
         if (!queue) return false;
         GstPad* pad = gst_element_get_static_pad(queue, "sink");
-        auto* context = new ProbeContext{&timeline_, &rebase, &rebase == &audio_, &rebase == &audio_ ? nullptr : &repeatSkip_};
+        auto* context = new ProbeContext{&timeline_, &rebase, &rebase == &audio_, &rebase == &audio_ ? nullptr : &repeatSkip_, &rebase == &audio_ ? nullptr : this};
         gst_pad_add_probe(pad, GST_PAD_PROBE_TYPE_BUFFER, &RecordingPipeline::probe, context, [](gpointer data) { delete static_cast<ProbeContext*>(data); });
         gst_object_unref(pad);
         gst_object_unref(queue);
         return true;
     };
-    if (!attach("venc", video_) || (options.audio && !audioEncoder.isEmpty() && !attach("aenc", audio_))) { failure = "probe attach failed"; gst_object_unref(pipeline); return false; }
+    if (!attach("venc", video_) || ((options.audio || options.microphone) && !audioEncoder.isEmpty() && !attach("aenc", audio_))) { failure = "probe attach failed"; gst_object_unref(pipeline); return false; }
     if (repeatSkip_.restamps) if (GstElement* venc = gst_bin_get_by_name(GST_BIN(pipeline), "venc")) {
         if (GstPad* pad = gst_element_get_static_pad(venc, "src")) { gst_pad_add_probe(pad, GST_PAD_PROBE_TYPE_BUFFER, &RecordingPipeline::restoreEncodedTime, &repeatSkip_, nullptr); gst_object_unref(pad); }
         gst_object_unref(venc);
@@ -458,6 +627,7 @@ bool RecordingPipeline::launch(const Options& options, const QString& encoder, c
             GError* e = nullptr; gchar* debug = nullptr;
             gst_message_parse_error(message, &e, &debug);
             failure += QStringLiteral(": %1 (%2)").arg(e ? QString::fromUtf8(e->message) : QString(), QString::fromUtf8(GST_OBJECT_NAME(GST_MESSAGE_SRC(message))));
+            if (failedElement) *failedElement = QString::fromUtf8(GST_OBJECT_NAME(GST_MESSAGE_SRC(message)));
             if (e) g_error_free(e);
             g_free(debug);
             gst_message_unref(message);
@@ -484,6 +654,7 @@ bool RecordingPipeline::launch(const Options& options, const QString& encoder, c
             GError* e = nullptr; gchar* debug = nullptr;
             gst_message_parse_error(message, &e, &debug);
             failure = QStringLiteral("%1: %2").arg(encoder, e ? QString::fromUtf8(e->message) : QString());
+            if (failedElement && GST_MESSAGE_SRC(message)) *failedElement = QString::fromUtf8(GST_OBJECT_NAME(GST_MESSAGE_SRC(message)));
             if (e) g_error_free(e);
             g_free(debug);
             failed = true;
@@ -497,7 +668,7 @@ bool RecordingPipeline::launch(const Options& options, const QString& encoder, c
     gst_object_unref(bus);
     if (failed) { debugLog("start failed: " + failure); gst_element_set_state(pipeline, GST_STATE_NULL); gst_object_unref(pipeline); QFile::remove(options.output); return false; }
     if (GstClock* clock = gst_pipeline_get_clock(GST_PIPELINE(pipeline))) { clockName_ = QString::fromUtf8(G_OBJECT_TYPE_NAME(clock)); gst_object_unref(clock); }
-    debugLog("started with " + encoder + (audioEncoder.isEmpty() ? QString() : " + " + audioEncoder) + " on " + clockName_ + (options.pipewireNode ? (unthrottled ? QStringLiteral(", max_framerate unthrottled") : QStringLiteral(", max_framerate throttled")) : QString()));
+    debugLog("started with " + encoder + (audioEncoder.isEmpty() ? QString() : " + " + audioEncoder + (mixed ? QStringLiteral(" (system audio and microphone mixed)") : options.microphone ? QStringLiteral(" (microphone)") : QStringLiteral(" (system audio)"))) + " on " + clockName_ + (options.pipewireNode ? (unthrottled ? QStringLiteral(", max_framerate unthrottled") : QStringLiteral(", max_framerate throttled")) : QString()));
     if (options.imageCopy) {
         GstElement* source = gst_bin_get_by_name(GST_BIN(pipeline), "src");
         QPointer<RecordingPipeline> guard(this);
@@ -523,8 +694,30 @@ Error RecordingPipeline::start(const Options& options) {
     storageClock_.invalidate();
     stopping_ = false;
     QStringList failures;
-    QString audioEncoder = options.audio && !options.audioEncoders.isEmpty() ? options.audioEncoders.first() : QString();
-    if (options.audio && audioEncoder.isEmpty()) return {"recording_unsupported", "No AAC encoder is available for system audio", {}};
+    const bool sound = options.audio || options.microphone;
+    QString audioEncoder = sound && !options.audioEncoders.isEmpty() ? options.audioEncoders.first() : QString();
+    if (sound && audioEncoder.isEmpty()) return {"recording_unsupported", "No AAC encoder is available for the recording's audio", {}};
+    if (options.microphone && (options.microphoneDevice.isEmpty() || recording::monitorSourceName(options.microphoneDevice))) return {"invalid_request", "The microphone must name an input device", {}};
+    bool microphoneFailed = false;
+    if (launchAny(options, audioEncoder, failures, &microphoneFailed)) return {};
+    if (options.microphone && microphoneFailed) {
+        // The microphone could not be opened (unplugged since the session was
+        // prepared, or refused by the sound server): record without it rather
+        // than not at all, and say so.
+        Options without = options;
+        without.microphone = false;
+        const QString reason = failures.isEmpty() ? QStringLiteral("The microphone could not be opened") : failures.last();
+        debugLog("microphone: could not be opened (" + reason + "); recording without it");
+        failures.clear();
+        if (launchAny(without, without.audio ? audioEncoder : QString(), failures, nullptr)) {
+            microphone_.lost.store(true);
+            microphoneLostReason_ = QStringLiteral("The microphone could not be opened; the recording has no microphone audio.");
+            return {};
+        }
+    }
+    return {"recording_start_failed", "No H.264 encoder could start the capture", {{"attempts", QJsonArray::fromStringList(failures)}}};
+}
+bool RecordingPipeline::launchAny(const Options& options, const QString& audioEncoder, QStringList& failures, bool* microphoneFailed) {
     // A PipeWire stream first asks for max_framerate 0/1; a compositor that
     // refuses it (Mutter's range starts at 1/1) gets the plain request. Owned
     // here: a conditional between two braced lists leaves the loop reading arrays
@@ -532,12 +725,21 @@ Error RecordingPipeline::start(const Options& options) {
     const QList<bool> requests = options.pipewireNode ? QList<bool>{true, false} : QList<bool>{false};
     for (const auto& encoder : options.encoders) {
         for (const bool unthrottled : requests) {
-            QString failure;
-            if (launch(options, encoder, audioEncoder, unthrottled, failure)) { encoder_ = encoder; audioEncoder_ = audioEncoder; bus_.start(); return {}; }
+            QString failure, element;
+            if (launch(options, encoder, audioEncoder, unthrottled, failure, &element)) { encoder_ = encoder; audioEncoder_ = audioEncoder; bus_.start(); return true; }
             failures.append(failure);
+            // The microphone fails the same way with every video encoder.
+            if (element == "msrc") { if (microphoneFailed) *microphoneFailed = true; return false; }
         }
     }
-    return {"recording_start_failed", "No H.264 encoder could start the capture", {{"attempts", QJsonArray::fromStringList(failures)}}};
+    return false;
+}
+void RecordingPipeline::loseMicrophone(const QString& reason) {
+    const bool first = !microphone_.lost.exchange(true) || microphoneLostReason_.isEmpty();
+    if (!first) return;
+    microphoneLostReason_ = reason;
+    debugLog("microphone: lost during the recording (" + reason + "); the clip goes on without it");
+    emit microphoneGone(reason);
 }
 gint64 RecordingPipeline::runningTime() const { return pipeline_ ? runningNow(pipeline_) : -1; }
 Error RecordingPipeline::pause() {
@@ -567,6 +769,9 @@ qint64 RecordingPipeline::framesDropped() const { return dropped_.load(); }
 QJsonObject RecordingPipeline::status() const {
     QJsonObject status{{"durationUs", double(retainedUs())}, {"bytes", double(fileBytes())}, {"paused", timeline_.paused()}, {"encoder", encoder_}, {"audioEncoder", audioEncoder_},
             {"framesEncoded", double(framesEncoded())}, {"framesDropped", double(framesDropped())}};
+    // What the audio track holds, and a microphone that went away mid-recording (#1364).
+    status["audioSources"] = QJsonObject{{"system", recordsSystemAudio()}, {"microphone", recordsMicrophone()}};
+    if (microphone_.lost.load()) status["microphoneLost"] = microphoneLostReason_.isEmpty() ? QStringLiteral("The microphone was disconnected; the rest of the recording has no microphone audio.") : microphoneLostReason_;
     // What the source delivered (a compositor sends what changed, at most its
     // own pace, #983), the frames kept for the clip before videorate's repeats,
     // the rate kept now and, after the adaptive rate lowered it, when and why.
@@ -596,7 +801,7 @@ void RecordingPipeline::stop(std::function<void(Error, qint64)> done) {
     // EOS once the other branch's EOS lets the muxer drain it, and no wait reaches
     // the main thread.
     QList<GstPad*> entries;
-    for (const char* name : {"asrc", "src"}) {
+    for (const char* name : {"asrc", "msrc", "src"}) {
         GstElement* source = gst_bin_get_by_name(GST_BIN(pipeline_), name);
         GstPad* pad = source ? gst_element_get_static_pad(source, "src") : nullptr;
         if (GstPad* peer = pad ? gst_pad_get_peer(pad) : nullptr) entries.append(peer);
@@ -650,6 +855,18 @@ void RecordingPipeline::poll() {
             emit failed({"recording_failed", "Capture failed: the compositor refused the stream twice", {}});
             return;
         }
+        // #1364: a microphone that goes away must not end or damage the recording.
+        // Its source then sends EOS down its own branch; the mixer and the muxer go
+        // on with what is left, and the rest of the clip is silent on that input.
+        if (GST_MESSAGE_SRC(message) && QByteArrayView(GST_OBJECT_NAME(GST_MESSAGE_SRC(message))) == "msrc") {
+            const QString reason = QStringLiteral("The microphone was disconnected; the rest of the recording has no microphone audio.");
+            debugLog(QStringLiteral("microphone: source error: %1").arg(e ? QString::fromUtf8(e->message) : QString()));
+            if (e) g_error_free(e);
+            g_free(debug);
+            gst_message_unref(message);
+            loseMicrophone(reason);
+            continue;
+        }
         Error error{"recording_failed", QStringLiteral("Capture failed: %1").arg(e ? QString::fromUtf8(e->message) : QString()), {{"debug", QString::fromUtf8(debug ? debug : "").left(512)}}};
         // A window stream's source failing (the window closed, or an old
         // pipewiresrc refusing KWin's renegotiation after a resize) leaves the
@@ -691,6 +908,17 @@ void RecordingPipeline::poll() {
         return;
     }
     gst_object_unref(bus);
+    // The tap saw the stream moved to another source: report it once.
+    if (microphone_.lost.load() && microphoneLostReason_.isEmpty() && options_.microphone)
+        loseMicrophone(QStringLiteral("The microphone was disconnected; the rest of the recording has no microphone audio."));
+    // A source that went away can also leave its stream connected to nothing:
+    // no error and no buffers. An open microphone delivers buffers all the
+    // time, silence included, so two seconds without one means it is gone.
+    if (options_.microphone && !microphone_.lost.load() && !stopping_) {
+        const gint64 seen = microphone_.buffers.load();
+        if (seen != microphoneSeen_ || !microphoneQuiet_.isValid()) { microphoneSeen_ = seen; microphoneQuiet_.start(); }
+        else if (seen > 0 && microphoneQuiet_.elapsed() > 2000) loseMicrophone(QStringLiteral("The microphone was disconnected; the rest of the recording has no microphone audio."));
+    }
     if (budgetSignalled_ || stopping_) return;
     observeRate();
     const bool byteLimit = budget_ > 0 && fileBytes() >= budget_;
@@ -779,7 +1007,7 @@ bool RecordingPipeline::reopenSource() {
 bool RecordingPipeline::relaunchThrottled() {
     tearDown();
     const auto options = options_;
-    const QString audioEncoder = options.audio && !options.audioEncoders.isEmpty() ? options.audioEncoders.first() : QString();
+    const QString audioEncoder = (options.audio || options.microphone) && !options.audioEncoders.isEmpty() ? options.audioEncoders.first() : QString();
     for (const auto& encoder : options.encoders) {
         QString failure;
         if (launch(options, encoder, audioEncoder, false, failure)) { encoder_ = encoder; audioEncoder_ = audioEncoder; bus_.start(); return true; }
@@ -801,14 +1029,18 @@ void RecordingPipeline::tearDown() {
     gst_buffer_replace(&frameClock_.lastKept, nullptr);
     if (cropFollow_.changes || sourceReopens_) debugLog(QStringLiteral("window stream: crop changed %1 times, source reopened %2 times").arg(cropFollow_.changes).arg(sourceReopens_));
     cropFollow_ = {};
+    microphone_.source = system_.source = nullptr;
     sourceLost_ = false;
     sourceReopens_ = 0;
     // Lateness: running time at the encoder minus the buffer's time; age: how
     // old a compositor frame time was when the frame reached the source pad.
     debugLog(QStringLiteral("timestamps: clock %1, video lateness %2, audio lateness %3, frame age %4, arrival-stamped frames %5, audio re-anchored %6 times")
-                 .arg(clockName_, video_.lateness.text(), audio_.lateness.text(), frameClock_.age.text()).arg(frameClock_.arrival).arg(audio_.clock.corrections()));
-    debugLog(QStringLiteral("frames: %1 reached the video encoder, %2 leaked at the capture queue; source arrivals %3 (interval %4), %5 with a repeated compositor time, contents %6 new / %7 same dropped, cadence lock %8 early dropped / %9 resyncs / %10 changes slotted after a repeat")
-                 .arg(video_.passed.load()).arg(dropped_.load()).arg(frameClock_.interval.count + (frameClock_.lastArrival >= 0 ? 1 : 0)).arg(frameClock_.interval.text()).arg(frameClock_.repeatedPts).arg(frameClock_.distinctContents).arg(frameClock_.sameContents).arg(frameClock_.early).arg(frameClock_.resyncs).arg(frameClock_.afterRepeat));
+                 .arg(clockName_, video_.lateness.text(), audio_.lateness.text(), frameClock_.age.text()).arg(frameClock_.arrival).arg(audio_.clock.corrections() + microphone_.clock.corrections() + system_.clock.corrections()));
+    debugLog(QStringLiteral("frames: %1 reached the video encoder, %2 leaked at the capture queue; source arrivals %3 (interval %4), %5 with a repeated compositor time, contents %6 new / %7 same dropped, cadence lock %8 early dropped (%11 of them cursor-only frames) / %9 resyncs / %10 changes slotted after a repeat")
+                 .arg(video_.passed.load()).arg(dropped_.load()).arg(frameClock_.interval.count + (frameClock_.lastArrival >= 0 ? 1 : 0)).arg(frameClock_.interval.text()).arg(frameClock_.repeatedPts).arg(frameClock_.distinctContents).arg(frameClock_.sameContents).arg(frameClock_.early).arg(frameClock_.resyncs).arg(frameClock_.afterRepeat).arg(frameClock_.ownHeld));
+    if (clicks_.received()) debugLog(QStringLiteral("clicks: %1 received, rings drawn into %2 frames").arg(clicks_.received()).arg(clicks_.drawn()));
+    if (!microphone_.drift.isEmpty()) debugLog("audio tap microphone (buffer:ms from contiguous@ms): " + microphone_.drift.join(' '));
+    if (!system_.drift.isEmpty()) debugLog("audio tap system (buffer:ms from contiguous@ms): " + system_.drift.join(' '));
     if (repeatSkip_.skipped.load()) debugLog(QStringLiteral("repeats: %1 skipped before the encoder").arg(repeatSkip_.skipped.load()));
     stopping_ = false;
 }

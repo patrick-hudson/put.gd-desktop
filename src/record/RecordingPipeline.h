@@ -1,5 +1,7 @@
 #pragma once
 #include "AdaptiveRate.h"
+#include "ClickOverlay.h"
+#include "Microphones.h"
 #include "PauseTimeline.h"
 #include "RecordingStorage.h"
 #include "WaylandAcquisition.h"
@@ -56,8 +58,12 @@ public:
         bool reopenableSource = false;
         int fps = 30;
         bool adaptive = true;        // lower the rate when the machine cannot keep up (AdaptiveRate)
-        bool audio = false;
+        bool audio = false;          // system audio: the default sink's monitor
         QString audioDevice;         // PulseAudio/PipeWire source name (sink monitor)
+        // #1364: an input device, alone or mixed with the system audio into the
+        // clip's one audio track. The name is a source the session resolved; never a monitor.
+        bool microphone = false;
+        QString microphoneDevice;
         QString output;              // working clip path (.mkv)
         qint64 budgetBytes = 0;      // stop automatically near this file size; 0 = none
         QStringList encoders;        // preference order of GStreamer H.264 encoders
@@ -86,6 +92,19 @@ public:
     qint64 fileBytes() const;
     QString encoder() const { return encoder_; }
     QString audioEncoder() const { return audioEncoder_; }
+    // What the clip's audio track holds: the sources that were opened.
+    bool recordsSystemAudio() const { return !audioEncoder_.isEmpty() && options_.audio; }
+    bool recordsMicrophone() const { return !audioEncoder_.isEmpty() && options_.microphone; }
+    // The microphone went away (unplugged, or the sound server moved the stream
+    // to another source): the clip goes on and that input is silent from there.
+    bool microphoneLost() const { return microphone_.lost.load(); }
+    QString microphoneLostReason() const { return microphoneLostReason_; }
+    // #1364: a click at this canvas position now; drawn as a ring into the
+    // frames from here on. Ignored unless a capture is running.
+    void addClick(QPointF canvasPoint, int button, qint64 ageNs = 0);
+    ClickOverlay& clicks() { return clicks_; }
+    // The microphone's peak level since the last call, 0..1, for the bar's meter.
+    float takeMicrophoneLevel() { return microphone_.level.take(); }
     // Frames that reached the video encoder, and frames the capture queue had
     // to leak because conversion or encoding fell behind the frame rate.
     qint64 framesEncoded() const;
@@ -101,6 +120,8 @@ signals:
     void budgetReached(QJsonObject details);
     // The image-copy source ended: its window closed or its output went away.
     void imageCopyLost(putgd::Error);
+    // The microphone stopped delivering; the recording continues without it.
+    void microphoneGone(QString reason);
 private:
     friend class RecordingStorageContract;
     friend class RecordingPipelineThroughput;
@@ -139,8 +160,27 @@ private:
     // advancing through videorate.
     // A passed repeat must not cost a changed frame its slot: a change arriving
     // early after a repeat takes the next slot instead of being dropped.
-    struct FrameClock { RateGate* gate = nullptr; gint64 previous = -1, arrival = 0, headerPts = -1, repeatedPts = 0, lastArrival = -1, lastPassed = -1; GstBuffer* lastKept = nullptr; gint64 distinctContents = 0, sameContents = 0, early = 0, resyncs = 0, afterRepeat = 0; bool compositorTimes = false, locked = true, lastWasRepeat = false; Spread age, interval; FrameLock lock; };
+    struct FrameClock { RateGate* gate = nullptr; gint64 previous = -1, arrival = 0, headerPts = -1, repeatedPts = 0, lastArrival = -1, lastPassed = -1; GstBuffer* lastKept = nullptr; gint64 distinctContents = 0, sameContents = 0, early = 0, resyncs = 0, afterRepeat = 0, ownHeld = 0; bool compositorTimes = false, locked = true, lastWasRepeat = false, ownFrames = false; Spread age, interval; FrameLock lock; };
     static GstPadProbeReturn probe(GstPad*, GstPadProbeInfo*, gpointer);
+    // One capture branch before the mix (or the microphone alone): keeps a
+    // runaway device clock out of the mixer (#129), feeds the level meter and
+    // drops everything once the microphone is gone or moved to another source.
+    struct AudioTap { AudioClockGuard clock; LevelMeter level; std::atomic<bool> lost{false}; bool meter = false; GstElement* source = nullptr; QByteArray device; std::atomic<gint64> buffers{0};
+        // Lab statistic: each buffer's time against a contiguous run from the first one.
+        gint64 first = -1, expected = 0, count = 0; QStringList drift; };
+    static GstPadProbeReturn tapAudio(GstPad*, GstPadProbeInfo*, gpointer);
+    AudioTap microphone_, system_;
+    ClickOverlay clicks_;
+    // The encoder's input format, read from its caps for the ring's planes.
+    struct ClickFrame { bool known = false, drawable = false; int width = 0, height = 0; bool nv12 = false; };
+    ClickFrame clickFrame_;
+    // The buffer to encode in the frame's place: its own picture with the rings drawn, or the frame itself when that cannot be made. Takes the reference.
+    static GstBuffer* drawClicks(RecordingPipeline* self, GstPad* pad, GstBuffer* buffer, gint64 runningNs);
+    QString microphoneLostReason_;
+    // The poll's watch for a microphone that stopped delivering buffers.
+    gint64 microphoneSeen_ = 0;
+    QElapsedTimer microphoneQuiet_;
+    void loseMicrophone(const QString& reason);
     static GstPadProbeReturn restoreEncodedTime(GstPad*, GstPadProbeInfo*, gpointer);
     static GstPadProbeReturn stampFrame(GstPad*, GstPadProbeInfo*, gpointer);
     static GstPadProbeReturn gateFrame(GstPad*, GstPadProbeInfo*, gpointer);
@@ -158,7 +198,10 @@ private:
     // One adaptive-rate window a second while recording (not paused or stopping).
     void observeRate();
     // unthrottled: a PipeWire source asks the compositor for max_framerate 0/1 (see pipewireUnthrottledCaps).
-    bool launch(const Options&, const QString& encoder, const QString& audioEncoder, bool unthrottled, QString& failure);
+    // failedElement names the element whose error ended a failed launch, when one did.
+    bool launch(const Options&, const QString& encoder, const QString& audioEncoder, bool unthrottled, QString& failure, QString* failedElement = nullptr);
+    // Tries every encoder (and PipeWire request) for these options.
+    bool launchAny(const Options&, const QString& audioEncoder, QStringList& failures, bool* microphoneFailed);
     void poll();
     void tearDown();
     RecordingStorage storage() const;

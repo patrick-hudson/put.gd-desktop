@@ -27,7 +27,12 @@ struct RecordingTarget {
 };
 struct RecordingAudio {
     bool system = false;      // the computer's playback (default sink monitor)
-    bool microphone = false;  // reserved; not offered by this delivery
+    bool microphone = false;  // an input device, mixed with the system audio into the one track (#1364)
+    // The input to open: a PulseAudio/PipeWire source name, or empty for the
+    // system default input. Never an output's monitor.
+    QString microphoneDevice;
+    bool any() const { return system || microphone; }
+    QJsonObject toJson() const;
 };
 struct RecordingConfig {
     QString format = "mp4";  // mp4 | webm | gif | webp
@@ -35,6 +40,8 @@ struct RecordingConfig {
     int fps = 30;            // 1..60 capture rate; animations may export at a lower rate
     bool adaptiveFps = true; // the helper may lower the capture rate when the machine can't keep up (#984)
     RecordingAudio audio;
+    // A ring at the pointer on every click, rendered into the clip (#1364).
+    bool clickHighlights = false;
     std::optional<int> maxEdge;  // explicit user downscale of the output's long edge
     qint64 budgetBytes = 0;      // set by the resident: stop before the admitted file limit
     QString mime() const;
@@ -79,11 +86,15 @@ bool terminal(const QString& state);
 // Which session states accept which command; an invalid pair is recording_state.
 Error checkTransition(const QString& state, const QString& command);
 Error parseTarget(const QJsonValue&, RecordingTarget&);
-// Accepts {format, codec?, fps?, adaptiveFps?, audio?: {system?, microphone?}, maxEdge?}.
+// Accepts {format, codec?, fps?, adaptiveFps?, audio?: {system?, microphone?, microphoneDevice?}, clickHighlights?, maxEdge?}.
 Error parseConfig(const QJsonObject&, RecordingConfig&);
 // Applies setTrim/resetTrim/addMask/updateMask/removeMask atomically; on error
 // the edit is unchanged. Success advances the revision once.
 Error applyEditCommands(RecordingEdit&, const QJsonArray& commands, qint64 durationUs, const QSize& canvas, int fps);
+// A source name for audio.microphoneDevice: a string of at most 256 characters without control characters (empty: the default input).
+bool validMicrophoneDevice(const QJsonValue&);
+// An output's monitor by its name; it is never opened as a microphone.
+bool monitorSourceName(const QString& name);
 // Nearest frame boundary at the given rate; the export side rounds identically.
 qint64 alignToFrame(qint64 us, int fps);
 // Animation exports must fit the configured duration and dimension budget.

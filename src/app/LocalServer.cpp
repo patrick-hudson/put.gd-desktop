@@ -64,7 +64,7 @@ int LocalServer::replyDeadlineMs(const QString& method) {
  constexpr int base=15000;
  // A record toggle can stop the helper through action.invoke as well.
  if(method=="recording.stop"||method=="action.invoke")return recording::helperStopMs+base;
- if(QStringList{"recording.capabilities","recording.prepare","recording.select","recording.start","recording.pause","recording.resume","recording.raise","recording.overlay","recording.preview","recording.review"}.contains(method))return recording::helperCommandMs+base;
+ if(QStringList{"recording.capabilities","recording.microphones","recording.prepare","recording.select","recording.start","recording.pause","recording.resume","recording.raise","recording.overlay","recording.audio","recording.preview","recording.review"}.contains(method))return recording::helperCommandMs+base;
  // Reading the logs and compressing up to 20 MiB stays well inside 45 s; an
  // upload adds the destination test and the upload itself (#123).
  if(method=="diagnostics.bundle")return diagnosticsBundleReplyMs;
@@ -109,7 +109,7 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
  if(!request["schemaVersion"].isDouble()||request["schemaVersion"].toDouble()!=1) {reply({"unsupported_version","Request schemaVersion must be 1",{}},{});return;}
  if(request["session"].toString()!=socketPath()) {reply({"wrong_session","Request targets a different resident session",{}},{});return;}
  const auto method=request["method"].toString();const auto p=request["params"].toObject();
- if(!operations_.ready()&&(method.startsWith("operation.")||method.startsWith("history.")||method.startsWith("delete.")||method=="cache.clear"||(method.startsWith("recording.")&&method!="recording.capabilities"&&method!="recording.windows"))) {reply({"initializing","Wait for resident journal recovery",{}},{});return;}
+ if(!operations_.ready()&&(method.startsWith("operation.")||method.startsWith("history.")||method.startsWith("delete.")||method=="cache.clear"||(method.startsWith("recording.")&&method!="recording.capabilities"&&method!="recording.windows"&&method!="recording.microphones"))) {reply({"initializing","Wait for resident journal recovery",{}},{});return;}
  if(method=="ui.quit") {
   if(!p.isEmpty()){reply(invalid(),{});return;}
   if(!uiQuit_){reply({"ui_unavailable","This resident has no application quit handler",{}},{});return;}
@@ -173,8 +173,9 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
  // Screen recording: one session, backend-neutral; the service validates semantics.
  if(method=="recording.capabilities") {if(!p.isEmpty())reply(invalid(),{});else operations_.recordingCommand("capabilities",{},reply);return;}
  if(method=="recording.windows") {if(!p.isEmpty())reply(invalid(),{});else operations_.recordingCommand("windows",{},reply);return;}
+ if(method=="recording.microphones") {if(!fields(p,{},{"device"})||(p.contains("device")&&!string(p,"device",256))){reply(invalid(),{});return;}operations_.recordingCommand("microphones",p,reply);return;}
  if(method=="recording.prepare") {
-  if(!fields(p,{"target","format"},{"codec","fps","adaptiveFps","audio","maxEdge"})||!p["target"].isObject()||!string(p,"format",8)||(p.contains("codec")&&!string(p,"codec",8))||(p.contains("audio")&&!p["audio"].isObject())||(p.contains("adaptiveFps")&&!p["adaptiveFps"].isBool())){reply(invalid(),{});return;}
+  if(!fields(p,{"target","format"},{"codec","fps","adaptiveFps","audio","clickHighlights","maxEdge"})||!p["target"].isObject()||!string(p,"format",8)||(p.contains("codec")&&!string(p,"codec",8))||(p.contains("audio")&&!p["audio"].isObject())||(p.contains("adaptiveFps")&&!p["adaptiveFps"].isBool())||(p.contains("clickHighlights")&&!p["clickHighlights"].isBool())){reply(invalid(),{});return;}
   operations_.recordingCommand("prepare",p,reply);return;
  }
  if(QStringList{"recording.start","recording.pause","recording.resume","recording.stop","recording.cancel","recording.inspect","recording.raise"}.contains(method)) {
@@ -183,6 +184,8 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
  }
  if(method=="recording.select") {if(!fields(p,{"id","rect"})||!string(p,"id")||!p["rect"].isArray()||p["rect"].toArray().size()!=4){reply(invalid(),{});return;}operations_.recordingCommand("select",p,reply);return;}
  if(method=="recording.overlay") {if(!fields(p,{"id","visible"})||!string(p,"id")||!p["visible"].isBool()){reply(invalid(),{});return;}operations_.recordingCommand("overlay",p,reply);return;}
+ // #1364: the ready bar's audio toggles. At least one of the two, each a boolean.
+ if(method=="recording.audio") {if(!fields(p,{"id"},{"system","microphone"})||!string(p,"id")||(!p.contains("system")&&!p.contains("microphone"))||(p.contains("system")&&!p["system"].isBool())||(p.contains("microphone")&&!p["microphone"].isBool())){reply(invalid(),{});return;}operations_.recordingCommand("audio",p,reply);return;}
  if(method=="recording.edit") {if(!fields(p,{"id","revision","commands"})||!string(p,"id")||!p["revision"].isDouble()||!p["commands"].isArray()||p["commands"].toArray().size()>100){reply(invalid(),{});return;}operations_.recordingCommand("edit",p,reply);return;}
  if(method=="recording.preview") {if(!fields(p,{"id","time"},{"maxEdge"})||!string(p,"id")||!p["time"].isDouble()||(p.contains("maxEdge")&&!p["maxEdge"].isDouble())){reply(invalid(),{});return;}operations_.recordingCommand("preview",p,reply);return;}
  if(method=="recording.review") {

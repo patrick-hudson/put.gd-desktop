@@ -9,11 +9,14 @@
 // headless labwc (#1275): WLR_BACKENDS=headless WLR_RENDERER=pixman, two
 // outputs, and a known-colour client. Headless results support the desktop
 // acceptance rows; they never replace them. Skips when labwc is not installed.
+#include "platform/budgie/BudgieClicks.h"
+#include "platform/budgie/BudgieShortcuts.h"
 #include "platform/budgie/BudgieSourceAdapter.h"
 #include "platform/budgie/LabwcBridgeBackend.h"
 #include "platform/wayland/ClipboardKeeper.h"
 #include "platform/wayland/ImageCopyCapture.h"
 #include "platform/wayland/WaylandOutputs.h"
+#include <QDBusConnection>
 #include <QDir>
 #include <QFile>
 #include <QProcess>
@@ -29,6 +32,7 @@
 #endif
 #include <QElapsedTimer>
 #include <QJsonDocument>
+#include <csignal>
 #include <cstdlib>
 
 namespace putgd {
@@ -452,6 +456,104 @@ private slots:
   QSignalSpy changed(&adapter,&BudgieSourceAdapter::capabilitiesChanged);QVERIFY(putgd::test::waitForSignal(changed));
   PayloadResult result;bool done=false;prepared(ResourceLimits{},[&](PayloadResult r){result=std::move(r);done=true;});
   QVERIFY(waitFor([&]{return done;}));QCOMPARE(result.error.code,QString("display_changed"));
+ }
+ // The recorder's own-cursor capture (#1364) is asked for where no output reports the pointer (a headless
+ // output has no hardware cursor): the source falls back to the compositor's painted cursor and its frames flow.
+ // It runs before any test has made a pointer device: once one has moved onto an output that output reports
+ // the pointer, and the source rightly goes on tracking it instead.
+ void aRecordingWithoutAPointerPositionKeepsTheCompositorsCursor(){
+#ifndef PUTGD_TEST_IMAGE_COPY_SOURCE
+  QSKIP("built without GStreamer");
+#else
+  gst_init(nullptr,nullptr);
+  const auto name=layout_.first().identity;
+  QVERIFY(record::ImageCopySource::probe().available);
+  record::ImageCopySource source;QSize size;QString identity;bool pointerOpened=false;
+  const auto error=source.open({false,name},&size,&identity,nullptr,true,&pointerOpened);QVERIFY2(!error,qPrintable(error.message));
+  // A headless output has no hardware cursor, so no output reports the pointer: the recording keeps the
+  // compositor's painted cursor and has no pointer position.
+  QVERIFY(!pointerOpened);QPoint nowhere;QVERIFY(!source.pointer(&nowhere));
+  GError* parseError=nullptr;
+  GstElement* pipeline=gst_parse_launch(QStringLiteral("appsrc name=src is-live=true format=time caps=\"%1\" ! videoconvert ! video/x-raw,format=BGRx ! appsink name=sink max-buffers=2 drop=true sync=false").arg(source.caps()).toUtf8().constData(),&parseError);
+  QVERIFY2(pipeline,parseError?parseError->message:"no pipeline");
+  auto cleanup=qScopeGuard([&]{source.stop();gst_element_set_state(pipeline,GST_STATE_NULL);gst_object_unref(pipeline);});
+  GstElement* appsrc=gst_bin_get_by_name(GST_BIN(pipeline),"src");GstElement* sink=gst_bin_get_by_name(GST_BIN(pipeline),"sink");
+  QVERIFY(gst_element_set_state(pipeline,GST_STATE_PLAYING)!=GST_STATE_CHANGE_FAILURE);
+  source.attach(appsrc,[](Error){});gst_object_unref(appsrc);
+  QImage image;int frames=0;
+  QVERIFY(waitFor([&]{
+   GstSample* sample=gst_app_sink_try_pull_sample(GST_APP_SINK(sink),200*GST_MSECOND);if(!sample)return false;
+   GstMapInfo map;GstBuffer* buffer=gst_sample_get_buffer(sample);GstStructure* caps=gst_caps_get_structure(gst_sample_get_caps(sample),0);int w=0,h=0;gst_structure_get_int(caps,"width",&w);gst_structure_get_int(caps,"height",&h);
+   if(gst_buffer_map(buffer,&map,GST_MAP_READ)){image=QImage(map.data,w,h,w*4,QImage::Format_RGB32).copy();gst_buffer_unmap(buffer,&map);++frames;}
+   // The keepalive resends the composed frame: wait for a second one.
+   gst_sample_unref(sample);return frames>=2;},15000));
+  gst_object_unref(sink);
+  QCOMPARE(image.size(),layout_.first().nativeRect.size());
+  QCOMPARE(rgb(image,10,10),qRgb(255,255,255));QCOMPARE(rgb(image,image.width()-10,10),qRgb(0,0,0));QCOMPARE(rgb(image,image.width()/2,image.height()-5),outputColours[0]);
+  QVERIFY(!source.status().contains("cursor"));
+#endif
+ }
+ // Click highlights (#1364): in a real labwc, put.gd's mouse binds run on a press over a window
+ // and the window still receives the press.
+ void aPressOverAWindowReachesPutgdAndTheWindow(){
+  const auto pointer=QDir(QStringLiteral(PUTGD_SOURCE_DIR)).filePath("tools/lab/wayland_pointer.py");
+  if(QStandardPaths::findExecutable("dbus-send").isEmpty())QSKIP("dbus-send is not installed");
+  if(!QDBusConnection::sessionBus().isConnected())QSKIP("no session bus");
+  // Where labwc has the fixture's green window now. Which output a new window lands on is the compositor's
+  // choice (labwc 0.9.3 on Ubuntu 26.04 does not put it on the first), and its first frame after the display
+  // changes of the tests before this one can lag: every output is looked at until the window shows.
+  ImageCopyCapture capture;QVERIFY(waitFor([&]{return capture.outputsAvailable();}));
+  QRect green;QPoint origin;QString seenOn;
+  const auto find=[&]{
+   for(const auto& frame:layout_){
+    QImage image;Error failure;bool done=false;
+    capture.captureOutput(frame.identity,ResourceLimits{},[&](QImage result,Error error){image=std::move(result);failure=error;done=true;});
+    if(!waitFor([&]{return done;})||failure)continue;
+    QRect found;for(int y=0;y<image.height();y+=4)for(int x=0;x<image.width();x+=4)if(rgb(image,x,y)==qRgb(0,160,0))found=found.united(QRect(x,y,1,1));
+    if(found.width()>100&&found.height()>60){green=found;origin=frame.logicalRect.toRect().topLeft();seenOn=frame.identity;return true;}
+   }
+   return false;
+  };
+  QVERIFY2(waitFor(find,8000),"the fixture window shows on no output");
+  qInfo()<<"fixture window on"<<seenOn<<green;
+  QRectF bounds;for(const auto& frame:layout_)bounds=bounds.united(frame.logicalRect);
+  const QPoint at=origin+green.center()-bounds.topLeft().toPoint();
+  auto click=[&](const QString& button){QProcess tool;tool.start("python3",{"-I",pointer,"click",QString::number(at.x()),QString::number(at.y()),"--extent",QString::number(int(bounds.width())),QString::number(int(bounds.height())),"--button",button});return tool.waitForFinished(5000)&&tool.exitCode()==0;};
+  QFile rc(config_+"/rc.xml");QVERIFY(rc.open(QIODevice::ReadOnly));const QByteArray original=rc.readAll();rc.close();
+  auto reconfigure=[&]{::kill(pid_t(labwc_.processId()),SIGHUP);putgd::test::settle(400);};
+  auto restore=qScopeGuard([&]{QFile file(config_+"/rc.xml");if(file.open(QIODevice::WriteOnly|QIODevice::Truncate))file.write(original);file.close();reconfigure();});
+  BudgieShortcuts shortcuts;BudgieClicks clicks(nullptr,config_+"/rc.xml");
+  QVERIFY2(clicks.clickCapability()["available"].toBool(),qPrintable(clicks.clickCapability()["message"].toString()));
+  QList<int> presses;Error replied{"unanswered","",{}};
+  clicks.watchClicks({{"kind","monitor"}},[&](QJsonObject press){if(press["pointer"].toBool())presses.append(press["button"].toInt());},[&](Error error,QJsonObject){replied=error;});
+  QVERIFY2(!replied,qPrintable(replied.message));
+  // The resident sends labwc SIGHUP itself; with the test's own rc.xml path the test does.
+  reconfigure();
+  (void)fixture_.readAllStandardOutput();
+  // A press put.gd received is one the window received too: a Client-context bind does not swallow it.
+  // The pointer is a virtual device made for each click, the seat's only one. The compositor's binds see
+  // its press at once; the window sees it only after its client has bound the pointer the seat has just
+  // announced. The tool waits for that, and a step whose press the window still missed is pressed again.
+  QByteArray seen;
+  const auto windowPresses=[&](const char* line){seen+=fixture_.readAllStandardOutput();return seen.count(line);};
+  const auto pressBoth=[&](const QString& button,int number,const char* line){
+   for(int attempt=0;attempt<3;++attempt){
+    const int reported=presses.size(),received=windowPresses(line);
+    if(!click(button)||!waitFor([&]{return presses.size()>reported;},8000)||presses.last()!=number)return false;
+    if(waitFor([&]{return windowPresses(line)>received;},3000))return true;
+   }
+   return false;
+  };
+  QVERIFY2(pressBoth("left",1,"press 1"),(labwc_.readAll()+seen).constData());
+  QVERIFY2(pressBoth("right",3,"press 2"),seen.constData());
+  // After the recording the binds are gone from the file and from labwc: the window still gets a press,
+  // put.gd no longer does.
+  clicks.unwatchClicks();reconfigure();
+  const int reported=presses.size();bool received=false;
+  for(int attempt=0;attempt<3&&!received;++attempt){const int before=windowPresses("press 1");QVERIFY(click("left"));received=waitFor([&]{return windowPresses("press 1")>before;},3000);}
+  QVERIFY2(received,seen.constData());
+  PUTGD_COMPARE_STEADY(presses.size(),reported,500);
+  QFile after(config_+"/rc.xml");QVERIFY(after.open(QIODevice::ReadOnly));QCOMPARE(after.readAll(),original);
  }
  // The layer-shell selector in putgd-region, driven by a virtual pointer drag:
  // exact size, only the fixture's pixels (no outline), live and screenshot first.

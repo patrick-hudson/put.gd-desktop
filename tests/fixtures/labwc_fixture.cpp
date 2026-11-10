@@ -2,8 +2,10 @@
 // output gets a background layer surface in its own colour with a white square
 // at its logical top-left and a black one at its top-right, so a capture shows
 // both its pixels and its orientation. One toplevel window is solid green.
-// Prints "ready" once every surface has drawn.
+// Prints "ready" once every surface has drawn, and "press N" (Qt's button
+// number) for each button press the window receives.
 #include <QApplication>
+#include <QMouseEvent>
 #include <QPainter>
 #include <QScreen>
 #include <QTimer>
@@ -27,6 +29,7 @@ protected:
   if(marks_){painter.fillRect(QRect(0,0,64,64),Qt::white);painter.fillRect(QRect(width()-32,0,32,32),Qt::black);}
   ++painted;
  }
+ void mousePressEvent(QMouseEvent* event) override{if(!marks_){std::printf("press %d\n",int(event->button()));std::fflush(stdout);}}
 private:
  QColor fill_;bool marks_;
 };

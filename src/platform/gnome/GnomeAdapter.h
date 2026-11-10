@@ -1,6 +1,7 @@
 #pragma once
 #include "app/RecordingBackend.h"
 #include "core/SourceAdapter.h"
+#include "core/RecordingClicks.h"
 #include "platform/gnome/GnomeExtensionSetup.h"
 #include <QDBusConnection>
 #include <QDBusServiceWatcher>
@@ -11,7 +12,7 @@
 namespace putgd {
 // Also the recording shell: the extension's selector, frame actors and bar
 // placement; and the window list for window recordings (Mutter's window ids).
-class GnomeAdapter final:public QObject,public SourceAdapter,public RecordingShell,public RecordingWindows {
+class GnomeAdapter final:public QObject,public SourceAdapter,public RecordingShell,public RecordingWindows,public RecordingClicks {
  Q_OBJECT
 public:
  explicit GnomeAdapter(QObject* parent=nullptr);
@@ -46,6 +47,11 @@ public:
  void hideFrame() override;
  // Recording protocol 2: the extension's RecordingWindows, without put.gd's own.
  void listWindows(RecordingWindows::Reply) override;
+ // Recording protocol 3 (#1364): the extension reports pointer button presses
+ // for click highlights, to this resident's bus name only.
+ QJsonObject clickCapability()const override;
+ void watchClicks(const QJsonObject& target,RecordingClicks::Sink,RecordingClicks::Reply) override;
+ void unwatchClicks() override;
 signals:
  void actionRequested(const QString&);
  void capabilitiesChanged();
@@ -55,6 +61,7 @@ signals:
  void setupNotice(const QString& code,const QString& message);
 private slots:
  void helperAction(const QString& action,const QString& ticket);
+ void helperClick(const QString& json);
  void helperClipboardChanged(qulonglong revision);
  void helperChanged();
 private:
@@ -65,6 +72,7 @@ private:
  gnome::SetupStatus currentSetup()const;
  Error helperAvailabilityError(bool fallback=false)const;
  void emitSetupNotice(const gnome::SetupStatus&);
+ RecordingClicks::Sink clickSink_;
  using Reply=std::function<void(Error,QJsonObject)>;
  // Capture version 2: monitor, repeat and the countdown need the packaged extension.
  Error captureVersionError()const;

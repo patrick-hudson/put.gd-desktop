@@ -113,7 +113,9 @@ void GnomeAdapter::followOwner(const QString& owner){
  if(owner_==owner)return;
  // Signals stay subscribed while the Shell keeps its connection, so none can be
  // lost between an extension disable and the next enable.
- if(!owner_.isEmpty()){bus_.disconnect(owner_,path,interface,"Action",this,SLOT(helperAction(QString,QString)));bus_.disconnect(owner_,path,interface,"ClipboardChanged",this,SLOT(helperClipboardChanged(qulonglong)));bus_.disconnect(owner_,path,interface,"CapabilitiesChanged",this,SLOT(helperChanged()));}
+ if(!owner_.isEmpty()){bus_.disconnect(owner_,path,interface,"Action",this,SLOT(helperAction(QString,QString)));bus_.disconnect(owner_,path,interface,"ClipboardChanged",this,SLOT(helperClipboardChanged(qulonglong)));bus_.disconnect(owner_,path,interface,"CapabilitiesChanged",this,SLOT(helperChanged()));bus_.disconnect(owner_,path,interface,"Click",this,SLOT(helperClick(QString)));}
+ // A Shell that went away took its click watch with it.
+ clickSink_={};
  owner_=owner;
  if(!owner_.isEmpty()){bus_.connect(owner_,path,interface,"Action",this,SLOT(helperAction(QString,QString)));bus_.connect(owner_,path,interface,"ClipboardChanged",this,SLOT(helperClipboardChanged(qulonglong)));bus_.connect(owner_,path,interface,"CapabilitiesChanged",this,SLOT(helperChanged()));}
 }
@@ -358,6 +360,42 @@ void GnomeAdapter::listWindows(RecordingWindows::Reply reply){
   }
   reply({},{{"windows",windows},{"activeExcluded",result["activeExcluded"].toBool()}});
  });
+}
+QJsonObject GnomeAdapter::clickCapability()const{
+ const QJsonArray targets{"monitor","desktop","region","window"};
+ QJsonObject capability{{"route","gnome-shell-extension"},{"drawnBy","recorder"},{"targets",targets}};
+ Error error;
+ if(outdated())error=recordingShellError();
+ else if(!ready_)error=helperAvailabilityError(true);
+ else if(helper_["recordingVersion"].toInt()<3)error={"helper_incompatible","Update the put.gd GNOME extension to highlight clicks",{}};
+ capability["available"]=!error;
+ if(error){capability["reason"]=error.code;capability["message"]=error.message;}
+ return capability;
+}
+void GnomeAdapter::watchClicks(const QJsonObject&,RecordingClicks::Sink sink,RecordingClicks::Reply reply){
+ const auto capability=clickCapability();
+ if(!capability["available"].toBool()){reply({capability["reason"].toString("helper_unavailable"),capability["message"].toString("The GNOME extension cannot report clicks"),{}},{});return;}
+ clickSink_=std::move(sink);
+ bus_.connect(owner_,path,interface,"Click",this,SLOT(helperClick(QString)));
+ call("WatchClicks",{},[this,reply](Error error,QJsonObject result){if(error)unwatchClicks();reply(error,result);});
+}
+void GnomeAdapter::unwatchClicks(){
+ if(!clickSink_)return;
+ clickSink_={};
+ if(owner_.isEmpty())return;
+ bus_.disconnect(owner_,path,interface,"Click",this,SLOT(helperClick(QString)));
+ if(ready_&&!stopping_)call("UnwatchClicks",{},[](Error,QJsonObject){});
+}
+void GnomeAdapter::helperClick(const QString& json){
+ // From the Shell's own connection (the signal match names it); bounded and typed before use.
+ if(!clickSink_||json.size()>512)return;
+ const auto click=QJsonDocument::fromJson(json.toUtf8()).object();
+ const int button=click["button"].toInt();
+ if(!click["x"].isDouble()||!click["y"].isDouble()||button<1||button>3)return;
+ QJsonObject out{{"x",click["x"].toInt()},{"y",click["y"].toInt()},{"button",button}};
+ const auto window=click["window"].toObject();const auto rect=window["rect"].toArray();
+ if(window["identity"].isString()&&window["identity"].toString().size()<=32&&rect.size()==4)out["window"]=QJsonObject{{"identity",window["identity"].toString()},{"rect",rect}};
+ clickSink_(out);
 }
 void GnomeAdapter::release(const QString& id){if(!owner_.isEmpty()&&!stopping_)call("Release",{id},[](Error,QJsonObject){});}
 void GnomeAdapter::cancelAll(const QString& code,const QString& message){

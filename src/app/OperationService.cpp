@@ -115,6 +115,7 @@ OperationService::OperationService(QString root,SettingsService& settings,Provid
   enqueue(std::move(job));
  };
  host.finish=[this](Operation op){finish(op);};
+ host.remember=[this](const QJsonObject& preferences){settings_.patchAsync({{"preferences",preferences}},settings_.revision(),[](Result){});};
  recording_=std::make_unique<RecordingService>(root_+"/recording",std::move(host),this);
  connect(recording_.get(),&RecordingService::changed,this,[this](const QString& id){emit changed(id);emit observationsChanged();});
  cleanupTimer_.setInterval(cleanupSchedule_.intervalMs);
@@ -594,7 +595,7 @@ Error OperationService::acceptRecording(Operation& op) {
 void OperationService::recordingCommand(const QString& command,const QJsonObject& params,JsonReply reply) {
  // recording.prepare opens the recording selector; the other commands drive the session it opened.
  if(command=="prepare")emit explicitRequest();
- if(!ready_&&command!="capabilities"&&command!="windows") {reply(startupError_?startupError_:Error{"initializing","Journal recovery is in progress",{}},{});return;}
+ if(!ready_&&command!="capabilities"&&command!="windows"&&command!="microphones") {reply(startupError_?startupError_:Error{"initializing","Journal recovery is in progress",{}},{});return;}
  recording_->command(command,params,std::move(reply));
 }
 void OperationService::editorCommand(const QString& id,const QString& command,const QJsonObject& params,JsonReply reply) {
