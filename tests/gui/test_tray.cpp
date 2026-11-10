@@ -654,7 +654,19 @@ private slots:
   QVERIFY(actionNamed(tray, "Capture region && edit"));
   // Capture entries come first in a fixed order, then the editor sources and the clipboard upload.
   QStringList texts; for (auto* action : menu->actions()) { if(!action->isVisible())continue;if (action->property("commandLabel").isValid()||action->data()=="edit-sources") texts.append(action->text().section('\t',0,0)); }
-  QCOMPARE(texts, QStringList({"Capture region", "Capture window", "Capture desktop", "Capture region && edit", "Edit image", "Record screen", "Upload clipboard"}));
+  QCOMPARE(texts, QStringList({"Capture region", "Repeat last region", "Capture window", "Capture monitor", "Capture desktop", "Capture region && edit", "Edit image", "Record screen", "Upload clipboard"}));
+  // The capture delay (#1363) is a radio submenu after the screenshots; None is chosen in a fresh profile.
+  QMenu* delay = nullptr; for (auto* action : menu->actions()) if (action->menu() && action->objectName() == "trayCaptureDelay") delay = action->menu();
+  QVERIFY(delay); QCOMPARE(delay->actions().size(), 4);
+  QStringList choices; for (auto* choice : delay->actions()) { QVERIFY(choice->isCheckable()); choices.append(choice->text()); }
+  QCOMPARE(choices, QStringList({"None", "3 seconds", "5 seconds", "10 seconds"}));
+  // A choice shows in the menu as soon as it is saved, with no capture and without the
+  // menu being asked to show: Cinnamon's tray never asks.
+  QCOMPARE(delay->title(), QString("Capture delay: none")); QVERIFY(settings.save(Settings::defaults(), {}));
+  delay->actions().at(2)->trigger();
+  PUTGD_TRY_COMPARE(delay->title(), QString("Capture delay: 5 seconds")); QVERIFY(delay->actions().at(2)->isChecked()); QVERIFY(!delay->actions().at(0)->isChecked());
+  delay->actions().at(0)->trigger();
+  PUTGD_TRY_COMPARE(delay->title(), QString("Capture delay: none"));
   // Other editor sources sit in one submenu; a file opens the main window's picker.
   QMenu* editImage = nullptr; for (auto* action : menu->actions()) if (action->menu() && action->text() == "Edit image") editImage = action->menu();
   QVERIFY(editImage); QCOMPARE(editImage->actions().size(), 2);

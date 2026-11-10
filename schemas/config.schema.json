@@ -406,6 +406,82 @@
             }
           ],
           "description": "Edit & upload: native region selection, then the on-demand editor. Optional; when absent it inherits the region output route with no shortcut."
+        },
+        "monitor": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "destination",
+            "profileId",
+            "shortcut"
+          ],
+          "properties": {
+            "destination": {
+              "enum": [
+                "upload",
+                "local",
+                "default"
+              ]
+            },
+            "profileId": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "shortcut": {
+              "type": "string",
+              "maxLength": 128
+            },
+            "publicationMode": {
+              "type": "string",
+              "enum": [
+                "default",
+                "share",
+                "private"
+              ],
+              "default": "default"
+            }
+          },
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "destination": {
+                    "const": "default"
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "profileId": {
+                    "type": "null"
+                  },
+                  "publicationMode": {
+                    "const": "default"
+                  }
+                }
+              }
+            }
+          ],
+          "description": "Capture monitor: the monitor under the pointer, at its native size. Optional; when absent it copies the desktop output route with no shortcut."
+        },
+        "repeat": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["shortcut"],
+          "properties": {
+            "shortcut": {
+              "type": "string",
+              "maxLength": 128
+            }
+          },
+          "description": "Repeat last region: a shortcut only. It captures the rectangle of the last region capture again, with the region action's output. Optional; when absent it has no shortcut."
         }
       }
     },
@@ -921,6 +997,11 @@
           ],
           "default": "live",
           "description": "How region capture shows the screen while you drag. live keeps the desktop updating (an open menu must close first); screenshot_first captures every monitor before the selector opens and cuts the region from that frozen frame, so open menus are included. Recording region selection is always live. Omitted means live."
+        },
+        "captureDelaySeconds": {
+          "enum": [0, 3, 5, 10],
+          "default": 0,
+          "description": "Seconds the tray and the dashboard wait before a region, window, monitor or desktop capture, or a repeat of the last region. A countdown shows meanwhile and can be cancelled. Shortcut captures are always immediate, and session requests pass their own delaySeconds. Omitted means 0."
         },
         "recordingFrameRate": {
           "enum": [
@@ -1587,6 +1668,31 @@
             },
             "required": [
               "edit"
+            ]
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "captureDefaults"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "actions": {
+            "properties": {
+              "monitor": {
+                "properties": {
+                  "destination": {
+                    "const": "default"
+                  }
+                }
+              }
+            },
+            "required": [
+              "monitor"
             ]
           }
         }

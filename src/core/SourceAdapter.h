@@ -14,6 +14,9 @@ struct CopyPayload { QString kind,text;QStringList files;QByteArray encodedImage
 // thread, including after cancellation; services marshal and lifetime-guard them.
 // cancelAcquisition requests cancellation and need not synchronously drain callbacks.
 // The adapter outlives its services and never reads clipboard payloads for revision queries.
+// Capture actions are region, window, desktop, monitor (the output under the
+// pointer when the action is prepared) and repeat (the rectangle of the last
+// region capture, kept in the adapter's memory only; no selector).
 class SourceAdapter {
 public:
  using PreparedAcquisition=std::function<void(const ResourceLimits&,std::function<void(PayloadResult)>)>;
@@ -26,6 +29,34 @@ public:
  // Region screenshots only (#629): freeze every monitor before selection and
  // cut the result from those frames. Recording selection always stays live.
  void setRegionScreenshotFirst(bool frozen) { regionScreenshotFirst_=frozen; }
+ QString captureOutcome() const { return captureOutcome_; }
+ // Delayed capture (#1363), in seconds. Only a live region reads it, when it is
+ // prepared: the area is chosen first, then the countdown runs, then the pixels
+ // are read. Every other delayed capture counts down before its target is
+ // frozen, through delayed().
+ void setCaptureDelay(int seconds) { captureDelay_=seconds>0?seconds:0; }
+ // Shows the countdown and answers once it has ended and nothing of it is left
+ // on screen: {} at expiry, cancelled when the user dismissed it or the
+ // acquisition was cancelled, or why this desktop cannot show one. It reads no
+ // pixels and freezes no target.
+ virtual void countdown(int,std::function<void(Error)> reply) { reply({"delay_unavailable","Delayed capture is not available on this desktop",{}}); }
+ // Whether the session's screen is locked now. A desktop with no way to tell
+ // answers false; its capture path then decides.
+ virtual void sessionLocked(std::function<void(bool)> reply) { reply(false); }
+ // countdown(), then the lock check: a delay that expires on a locked screen
+ // captures nothing.
+ void delayed(int seconds,std::function<void(Error)> reply) {
+  countdown(seconds,[this,reply=std::move(reply)](Error error) mutable {
+   if(error){reply(std::move(error));return;}
+   sessionLocked([reply=std::move(reply)](bool locked) mutable {
+    reply(locked?lockedError():Error{});
+   });
+  });
+ }
+ static Error lockedError() { return {"session_locked","The screen was locked when the capture delay ended, so nothing was captured.",{}}; }
+ // Repeat last region (#1363): refusals shared by every adapter.
+ static Error noLastRegion() { return {"repeat_unavailable","There is no region to repeat yet. Capture a region first.",{}}; }
+ static Error lastRegionLayoutChanged() { return {"repeat_layout_changed","The monitor layout changed since the last region capture. Capture a region again.",{}}; }
  virtual quint64 clipboardRevision() const=0;
  virtual QJsonObject capabilities() const=0;
  // Freeze native target identity/layout on the session thread before persistence
@@ -74,5 +105,6 @@ protected:
  QJsonObject captureAppearance_;
  QString captureOutcome_;
  bool regionScreenshotFirst_=false;
+ int captureDelay_=0;
 };
 }

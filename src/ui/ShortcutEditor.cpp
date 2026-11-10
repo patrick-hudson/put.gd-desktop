@@ -72,10 +72,10 @@ ShortcutEditor::ShortcutEditor(QWidget* parent):QWidget(parent) {
  recordingStatus_=new QLabel(this);recordingStatus_->setObjectName("shortcutRecordingStatus");recordingStatus_->setAccessibleName("Shortcut recording status");recordingStatus_->setWordWrap(true);Ui::role(recordingStatus_,"status");layout->addWidget(recordingStatus_);recordingStatus_->hide();
  auto* card=new Ui::Surface("surface");card->setProperty("preferenceCard",true);card->setObjectName("shortcutPreferenceCard");auto* cardBox=new QVBoxLayout(card);cardBox->setContentsMargins(0,0,0,0);cardBox->setSpacing(0);auto* form=new QFormLayout;Ui::styleForm(form);form->setHorizontalSpacing(0);form->setVerticalSpacing(0);cardBox->addLayout(form);layout->addWidget(card);
  // The command names the main window, menu and tray use.
- const QHash<QString,QString> labels{{"region","Capture region"},{"window","Capture window"},{"desktop","Capture desktop"},{"clipboard","Upload clipboard"},{"edit","Capture region & edit"},{"record","Record screen"}};
+ const QHash<QString,QString> labels{{"region","Capture region"},{"repeat","Repeat last region"},{"window","Capture window"},{"monitor","Capture monitor"},{"desktop","Capture desktop"},{"clipboard","Upload clipboard"},{"edit","Capture region & edit"},{"record","Record screen"}};
  auto* helpToggle=new QToolButton(this);helpToggle->setObjectName("shortcutHelpToggle");helpToggle->setText("How shortcuts work");Ui::disclosure(helpToggle);helpToggle->setProperty("uiFlush",true);auto* help=new QLabel("Click a shortcut field, press one key with optional modifiers, then release all keys. Escape cancels; × turns the shortcut off. Changes save automatically. Your desktop confirms each binding and reports conflicts below.",this);help->setObjectName("shortcutHelp");help->setWordWrap(true);Ui::role(help,"muted");help->hide();connect(helpToggle,&QToolButton::toggled,this,[help](bool open){help->setVisible(open);});
  const auto defaultActions=Settings::defaults()["actions"].toObject();
- for(const auto& action:Settings::presentationOrder()) {
+ for(const auto& action:Settings::shortcutOrder()) {
   auto* field=new QWidget(this);auto* fieldLayout=new QVBoxLayout(field);fieldLayout->setContentsMargins(0,0,0,0);fieldLayout->setSpacing(space(Space::s));
   auto* row=new QHBoxLayout;fieldLayout->addLayout(row);
   auto* input=new QLineEdit(field);input->setObjectName("shortcut"+title(action));input->setAccessibleName(action+" shortcut");input->setReadOnly(true);input->setFrame(false);input->setPlaceholderText("Not set");input->setAccessibleDescription("Click a shortcut field, press one key with modifiers, then release all keys. Escape cancels. Changes save automatically.");editors_[action]=input;
@@ -197,7 +197,7 @@ bool ShortcutEditor::eventFilter(QObject* object,QEvent* event){
 QJsonObject ShortcutEditor::actions(const QJsonObject& base) const {auto actions=base;for(auto it=editors_.begin();it!=editors_.end();++it){auto action=actions[it.key()].toObject();action["shortcut"]=it.value()->text();actions[it.key()]=action;}return actions;}
 void ShortcutEditor::setStatus(const QJsonObject& status) {
  const auto bindings=status["bindings"].toObject();bool unreported=false,attention=false;
- for(const auto& action:Settings::presentationOrder()) {
+ for(const auto& action:Settings::shortcutOrder()) {
   auto* label=bindingStates_[action];const auto presentation=bindingPresentation(status,bindings[action].toObject());label->setText(presentation.text);label->setProperty("bindingTone",presentation.tone);Ui::role(label,"binding");const auto entry=bindings[action].toObject();
   // KDE registers Ctrl+Shift+1 as Ctrl+! (its "effective" chord). Hide the line
   // when the desktop holds what was asked of it, not only the literal draft.

@@ -118,15 +118,23 @@ constexpr Entry entries[] {
  // Hidden until a stable update is available; its label names the version (#293).
  {"Update available", "update", 0}, {"Destinations", "destinations", 0},
  {"Upload status", "", 0}, {"Cancel upload", "cancel-upload", 0}, {"", "", 0}, {"Failed uploads", "failed-uploads", 0},
- {"Capture output", "", 0}, {"", "", 23}, {"", "", 23}, {"", "", 23}, {"", "", 23}, {"", "", 23}, {"", "", 23}, {"Change output…", "capture-settings", 0}
+ {"Capture output", "", 0}, {"", "", 23}, {"", "", 23}, {"", "", 23}, {"", "", 23}, {"", "", 23}, {"", "", 23}, {"Change output…", "capture-settings", 0},
+ // #1363, from 31: Capture monitor, Repeat last region, the capture delay's
+ // radio submenu (33, choices 34 to 37) and Capture monitor's output row (38).
+ {"Capture monitor", "monitor", 0}, {"Repeat last region", "repeat", 0},
+ {"Capture delay", "", 0}, {"None", "delay-0", 33}, {"3 seconds", "delay-3", 33}, {"5 seconds", "delay-5", 33}, {"10 seconds", "delay-10", 33},
+ {"", "", 23}
 };
+constexpr int delayMenuId = 33, firstDelayId = 34, lastDelayId = 37, extraOutputId = 38;
+// Capture output's rows: 23 is the summary, 24 to 29 and 38 one action each.
+int outputRow(int id) { return id >= 23 && id <= 29 ? id - 23 : id == extraOutputId ? 7 : -1; }
 constexpr int updateId = 17, uploadStatusId = 19, cancelUploadId = 20, uploadSeparatorId = 21;
 constexpr int entryCount = sizeof(entries) / sizeof(entries[0]);
 QList<int> childrenOf(int id) {
  QList<int> result;
  if (id == 0) {
   result.append({uploadStatusId,cancelUploadId,uploadSeparatorId,23,30});
-  for(const auto& action:Settings::presentationOrder())for(int child=1;child<=entryCount;++child)if(QLatin1String(entries[child-1].action)==action){result.append(child);if(action=="edit")result.append(13);}
+  for(const auto& action:Settings::shortcutOrder())for(int child=1;child<=entryCount;++child)if(QLatin1String(entries[child-1].action)==action){result.append(child);if(action=="edit")result.append(13);if(action=="desktop")result.append(delayMenuId);}
   result.append({6,22,8,18,7,17,10,11,12});
  }
  else for (int i = 1; i <= entryCount; ++i) if (entries[i-1].parent == id) result.append(i);
@@ -138,12 +146,12 @@ bool validNames(const QStringList& names) {
  for (const auto& name : names) if (name.size() > 128) return false;
  return true;
 }
-QVariantMap menuProperties(int id, const QStringList& names = {}, const QString& update = {}, const QHash<QString,QString>& shortcuts = {}, const QString& upload = {},int uploads=1,bool failed=false,const QString& recording={},const QString& attention="Failed uploads",const QStringList& outputs={}) {
+QVariantMap menuProperties(int id, const QStringList& names = {}, const QString& update = {}, const QHash<QString,QString>& shortcuts = {}, const QString& upload = {},int uploads=1,bool failed=false,const QString& recording={},const QString& attention="Failed uploads",const QStringList& outputs={},int delay=0) {
  QVariantMap props;
  if (id == 0 || !childrenOf(id).isEmpty()) props.insert("children-display", "submenu");
  if (id != 0) {
   const auto& e = entries[id-1];
-  if (id>=23&&id<=29){props.insert("label",outputs.value(id-23));if(id!=23)props.insert("enabled",false);}
+  if (outputRow(id)>=0){props.insert("label",outputs.value(outputRow(id)));if(id!=23)props.insert("enabled",false);}
   else if (!*e.label) props.insert("type", "separator");
   else props.insert("label", id == updateId && !update.isEmpty() ? update : QString::fromUtf8(e.label));
   // Always explicit: Plasma's and GNOME's hosts update a known item only with the
@@ -154,8 +162,11 @@ QVariantMap menuProperties(int id, const QStringList& names = {}, const QString&
   if(id==cancelUploadId){props.insert("enabled",!upload.isEmpty());props.insert("label",uploads>1?"Cancel all uploads…":"Cancel upload");}
   if(id==22){props.insert("visible",failed);props.insert("label",attention);}
   if(id==16&&!recording.isEmpty())props.insert("label","Record screen — "+recording);
+  // The capture delay (#1363): the submenu names the choice, its rows are a radio group.
+  if(id==delayMenuId)props.insert("label",delay>0?QStringLiteral("Capture delay: %1 seconds").arg(delay):QStringLiteral("Capture delay: none"));
+  if(id>=firstDelayId&&id<=lastDelayId){props.insert("toggle-type","radio");props.insert("toggle-state",QString::fromLatin1(e.action).mid(6).toInt()==delay?1:0);}
   const QKeySequence shortcut(shortcuts.value(QString::fromLatin1(e.action)));
-  if(Settings::presentationOrder().contains(QString::fromLatin1(e.action))){
+  if(Settings::shortcutOrder().contains(QString::fromLatin1(e.action))){
    QList<QStringList> keys;for(int i=0;i<shortcut.count();++i){const auto chord=shortcut[i];const auto modifiers=chord.keyboardModifiers();QStringList parts;if(modifiers&Qt::ControlModifier)parts<<"Control";if(modifiers&Qt::AltModifier)parts<<"Alt";if(modifiers&Qt::ShiftModifier)parts<<"Shift";if(modifiers&Qt::MetaModifier)parts<<"Super";parts<<QKeySequence(chord.key()).toString(QKeySequence::PortableText);keys.append(parts);}
    // An unbound action sends no shortcut: libdbusmenu rejects an empty one ("too many keys", #1294).
    if(!keys.isEmpty())props.insert("shortcut",QVariant::fromValue(keys));
@@ -166,11 +177,11 @@ QVariantMap menuProperties(int id, const QStringList& names = {}, const QString&
  }
  return props;
 }
-NativeLayout menuLayout(int id, int depth, const QStringList& names, const QString& update,const QHash<QString,QString>& shortcuts,const QString& upload,int uploads,bool failed,const QString& recording,const QString& attention,const QStringList& outputs) {
- NativeLayout result{id, menuProperties(id, names, update, shortcuts, upload,uploads,failed,recording,attention,outputs), {}};
+NativeLayout menuLayout(int id, int depth, const QStringList& names, const QString& update,const QHash<QString,QString>& shortcuts,const QString& upload,int uploads,bool failed,const QString& recording,const QString& attention,const QStringList& outputs,int delay) {
+ NativeLayout result{id, menuProperties(id, names, update, shortcuts, upload,uploads,failed,recording,attention,outputs,delay), {}};
  // depth -1 expands every level; 0 returns this item alone.
  if (depth != 0) for (int child : childrenOf(id))
-  result.children.append(QDBusVariant(QVariant::fromValue(menuLayout(child, depth < 0 ? depth : depth - 1, names, update, shortcuts, upload,uploads,failed,recording,attention,outputs))));
+  result.children.append(QDBusVariant(QVariant::fromValue(menuLayout(child, depth < 0 ? depth : depth - 1, names, update, shortcuts, upload,uploads,failed,recording,attention,outputs,delay))));
  return result;
 }
 // A minimal PNG (RGBA, no filtering) for the named-icon file below. QImageWriter would load every
@@ -237,6 +248,8 @@ public:
  int uploadCount()const{return uploads_;}bool failed()const{return failed_;}const QString& recordingText()const{return recordingText_;}const QString& attentionLabel()const{return attentionLabel_;}
  const QHash<QString,QString>& shortcuts()const{return shortcuts_;}
  const QStringList& outputs()const{return outputs_;}
+ int delay()const{return delay_;}
+ void setDelay(int seconds);
  void setOutput(const QString& summary,const QStringList& details);
  const QString& uploadStatus()const{return uploadStatus_;}
 private slots:
@@ -260,6 +273,7 @@ private:
  QSet<uint> residentNotifications_; // sent resident (#151): put.gd closes them once used
  int uploads_=0;bool failed_=false;QString updateLabel_,uploadStatus_,attentionLabel_="Failed uploads";QHash<QString,QString> shortcuts_;
  QStringList outputs_;
+ int delay_=0;
  uint menuRevision_ = 1;
  QString activationToken_;
  QElapsedTimer activationTokenAge_;
@@ -652,19 +666,19 @@ bool TrayExport::handleMessage(const QDBusMessage& m, const QDBusConnection& bus
   const int id = args.at(0).toInt(), depth = args.at(1).toInt();
   const auto names = qdbus_cast<QStringList>(args.at(2));
   if (!knownId(id) || depth < -1 || !validNames(names)) return error();
-  return reply({owner_->menuRevision(), QVariant::fromValue(menuLayout(id, depth, names, owner_->updateLabel(),owner_->shortcuts(),owner_->uploadStatus(),owner_->uploadCount(),owner_->failed(),owner_->recordingText(),owner_->attentionLabel(),owner_->outputs()))});
+  return reply({owner_->menuRevision(), QVariant::fromValue(menuLayout(id, depth, names, owner_->updateLabel(),owner_->shortcuts(),owner_->uploadStatus(),owner_->uploadCount(),owner_->failed(),owner_->recordingText(),owner_->attentionLabel(),owner_->outputs(),owner_->delay()))});
  }
  if (member == "GetGroupProperties" && sig == "aias") {
   auto ids = qdbus_cast<QList<int>>(args.at(0)); const auto names = qdbus_cast<QStringList>(args.at(1));
   if (ids.size() > 64 || !validNames(names)) return error();
   if (ids.isEmpty()) for (int id = 0; id <= entryCount; ++id) ids.append(id);
   NativePropertyList values;
-  for (int id : ids) if (knownId(id)) values.append({id, menuProperties(id, names, owner_->updateLabel(),owner_->shortcuts(),owner_->uploadStatus(),owner_->uploadCount(),owner_->failed(),owner_->recordingText(),owner_->attentionLabel(),owner_->outputs())});
+  for (int id : ids) if (knownId(id)) values.append({id, menuProperties(id, names, owner_->updateLabel(),owner_->shortcuts(),owner_->uploadStatus(),owner_->uploadCount(),owner_->failed(),owner_->recordingText(),owner_->attentionLabel(),owner_->outputs(),owner_->delay())});
   return reply({QVariant::fromValue(values)});
  }
  if (member == "GetProperty" && sig == "is") {
   int id = args.at(0).toInt(); if (!knownId(id)) return error();
-  const auto name = args.at(1).toString(); if (name.size() > 128) return error(); auto props = menuProperties(id, {}, owner_->updateLabel(),owner_->shortcuts(),owner_->uploadStatus(),owner_->uploadCount(),owner_->failed(),owner_->recordingText(),owner_->attentionLabel(),owner_->outputs());
+  const auto name = args.at(1).toString(); if (name.size() > 128) return error(); auto props = menuProperties(id, {}, owner_->updateLabel(),owner_->shortcuts(),owner_->uploadStatus(),owner_->uploadCount(),owner_->failed(),owner_->recordingText(),owner_->attentionLabel(),owner_->outputs(),owner_->delay());
   // Defaults are omitted from layouts but must resolve for explicit queries.
   const QVariantMap defaults{{"type", "standard"}, {"label", ""}, {"enabled", true}, {"visible", true},
    {"icon-name", ""}, {"icon-data", QByteArray{}}, {"shortcut", QVariant::fromValue(QList<QStringList>{})},
@@ -717,7 +731,7 @@ void NativeTrayPrivate::setCommands(const QHash<QString,QString>& shortcuts,cons
  QSet<int> hadShortcut;for(int id=1;id<=entryCount;++id)if(knownId(id)&&menuProperties(id,{"shortcut"},updateLabel_,shortcuts_).contains("shortcut"))hadShortcut.insert(id);
  shortcuts_=shortcuts;uploadStatus_=upload;uploads_=uploads;failed_=failed;recordingText_=recording;attentionLabel_=attention;++menuRevision_;
  NativePropertyList changed;NativeRemovedList removed;
- for(int id=1;id<=entryCount;++id)if(knownId(id)){changed.append({id,menuProperties(id,{"label","visible","enabled","shortcut"},updateLabel_,shortcuts_,uploadStatus_,uploads_,failed_,recordingText_,attentionLabel_,outputs_)});if(hadShortcut.contains(id)&&!changed.last().properties.contains("shortcut"))removed.append({id,{"shortcut"}});}
+ for(int id=1;id<=entryCount;++id)if(knownId(id)){changed.append({id,menuProperties(id,{"label","visible","enabled","shortcut"},updateLabel_,shortcuts_,uploadStatus_,uploads_,failed_,recordingText_,attentionLabel_,outputs_,delay_)});if(hadShortcut.contains(id)&&!changed.last().properties.contains("shortcut"))removed.append({id,{"shortcut"}});}
  auto properties=QDBusMessage::createSignal("/Menu",menuInterface,"ItemsPropertiesUpdated");properties.setArguments({QVariant::fromValue(changed),QVariant::fromValue(removed)});bus_.send(properties);
  auto signal=QDBusMessage::createSignal("/Menu",menuInterface,"LayoutUpdated");signal.setArguments({menuRevision_,0});bus_.send(signal);
 }
@@ -739,5 +753,7 @@ void NativeTray::notify(const QString& title, const QString& message, bool warni
 
 namespace putgd {
 void NativeTray::setOutput(const QString& summary,const QStringList& details){d_->setOutput(summary,details);}
+void NativeTray::setCaptureDelay(int seconds){d_->setDelay(seconds);}
+void NativeTrayPrivate::setDelay(int seconds){if(seconds==delay_)return;delay_=seconds;++menuRevision_;auto signal=QDBusMessage::createSignal("/Menu",menuInterface,"LayoutUpdated");signal.setArguments({menuRevision_,0});bus_.send(signal);}
 void NativeTrayPrivate::setOutput(const QString& summary,const QStringList& details){QStringList values{summary};values.append(details);if(values==outputs_)return;outputs_=values;++menuRevision_;auto signal=QDBusMessage::createSignal("/Menu",menuInterface,"LayoutUpdated");signal.setArguments({menuRevision_,0});bus_.send(signal);}
 }

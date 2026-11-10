@@ -24,6 +24,7 @@ QDBusMessage scripting(const QString& method, const QVariantList& arguments) {
 struct KWinWindows::Request {
     Own own;
     Reply reply;
+    std::function<void(Error, QPointF)> pointer;
     QString plugin;
     std::unique_ptr<QTemporaryFile> script;
     QTimer* timer = nullptr;
@@ -56,6 +57,15 @@ QString kwinWindowListScript(const QString& service, const QString& token) {
              QString::fromUtf8(QJsonDocument(QJsonArray{token}).toJson(QJsonDocument::Compact)).mid(1).chopped(1));
 }
 
+QString kwinPointerScript(const QString& service, const QString& token) {
+    return QStringLiteral(R"JS((function () {
+    const p = workspace.cursorPos;
+    callDBus(%1, "%2", "org.putgd.KWinWindows", "Windows", %3, JSON.stringify([p.x, p.y]));
+})();
+)JS").arg(QString::fromUtf8(QJsonDocument(QJsonArray{service}).toJson(QJsonDocument::Compact)).mid(1).chopped(1), QString::fromLatin1(objectPath),
+             QString::fromUtf8(QJsonDocument(QJsonArray{token}).toJson(QJsonDocument::Compact)).mid(1).chopped(1));
+}
+
 QJsonObject kwinRecordingWindows(const QJsonArray& raw, const KWinWindows::Own& own) {
     QJsonArray windows;
     bool activeExcluded = false;
@@ -73,22 +83,36 @@ QJsonObject kwinRecordingWindows(const QJsonArray& raw, const KWinWindows::Own& 
 }
 
 void KWinWindows::list(Own own, Reply reply) {
-    auto bus = QDBusConnection::sessionBus();
-    if (!bus.isConnected()) { reply({"helper_unavailable", "The session bus is unavailable", {}}, {}); return; }
-    if (!registered_) registered_ = bus.registerObject(objectPath, this, QDBusConnection::ExportAllSlots);
-    if (!registered_) { reply({"helper_unavailable", "Cannot receive KWin's window list", {}}, {}); return; }
     const auto token = QUuid::createUuid().toString(QUuid::WithoutBraces);
     auto request = std::make_shared<Request>();
     request->own = std::move(own);
     request->reply = std::move(reply);
     request->plugin = "putgd-recording-windows-" + token;
+    run(token, std::move(request), kwinWindowListScript(QDBusConnection::sessionBus().baseService(), token));
+}
+
+void KWinWindows::pointer(std::function<void(Error, QPointF)> reply) {
+    const auto token = QUuid::createUuid().toString(QUuid::WithoutBraces);
+    auto request = std::make_shared<Request>();
+    request->pointer = std::move(reply);
+    request->reply = [](Error, QJsonObject) {};
+    request->plugin = "putgd-pointer-" + token;
+    run(token, std::move(request), kwinPointerScript(QDBusConnection::sessionBus().baseService(), token));
+}
+
+void KWinWindows::run(const QString& token, std::shared_ptr<Request> request, const QString& script) {
+    auto bus = QDBusConnection::sessionBus();
+    const auto refuse = [&request](Error error) { if (request->pointer) request->pointer(std::move(error), {}); else request->reply(std::move(error), {}); };
+    if (!bus.isConnected()) { refuse({"helper_unavailable", "The session bus is unavailable", {}}); return; }
+    if (!registered_) registered_ = bus.registerObject(objectPath, this, QDBusConnection::ExportAllSlots);
+    if (!registered_) { refuse({"helper_unavailable", "Cannot receive KWin's answer", {}}); return; }
     // KWin reads the script from a file; a private one under the runtime directory.
     const auto directory = QStandardPaths::writableLocation(QStandardPaths::RuntimeLocation) + "/putgd";
     QDir().mkpath(directory);
     QFile::setPermissions(directory, QFile::ReadOwner | QFile::WriteOwner | QFile::ExeOwner);
     request->script = std::make_unique<QTemporaryFile>(directory + "/kwin-windows-XXXXXX.js");
-    if (!request->script->open() || request->script->write(kwinWindowListScript(bus.baseService(), token).toUtf8()) < 0 || !request->script->flush()) {
-        request->reply({"helper_unavailable", "Cannot write the KWin window-list script", {}}, {});
+    if (!request->script->open() || request->script->write(script.toUtf8()) < 0 || !request->script->flush()) {
+        refuse({"helper_unavailable", "Cannot write the KWin script", {}});
         return;
     }
     request->timer = new QTimer(this);
@@ -128,6 +152,12 @@ void KWinWindows::finish(const QString& token, Error error, const QJsonArray& ra
     if (!request) return;
     if (request->timer) request->timer->deleteLater();
     QDBusConnection::sessionBus().asyncCall(scripting("unloadScript", {request->plugin}));
+    if (request->pointer) {
+        // [x, y] in KWin's logical layout.
+        if (!error && !(raw.size() == 2 && raw[0].isDouble() && raw[1].isDouble())) error = {"bridge_protocol", "KWin returned an invalid pointer position", {}};
+        request->pointer(error, error ? QPointF() : QPointF(raw[0].toDouble(), raw[1].toDouble()));
+        return;
+    }
     if (error) { request->reply(error, {}); return; }
     request->reply({}, kwinRecordingWindows(raw, request->own));
 }

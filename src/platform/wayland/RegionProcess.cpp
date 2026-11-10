@@ -1,4 +1,5 @@
 #include "RegionProcess.h"
+#include "platform/SessionLock.h"
 #include "core/BuildInfo.h"
 #include <QCoreApplication>
 #include <QJsonDocument>
@@ -86,7 +87,9 @@ void WaylandRegionProcess::start(const QList<CaptureFrame>& frames,std::function
  connect(control_,&CaptureControl::failed,this,[this,child,epoch](Error error){
   if(process_==child && generation_==epoch) fail(std::move(error));
  });
- connect(child,&QProcess::started,this,[this,child,epoch,layout,outcome,frozen,appearance]{
+ // A live selection counts down in the helper, after the area is chosen (#1363).
+ const int delay=pixels.isEmpty()?std::exchange(delaySeconds_,0):0; delaySeconds_=0; delayMs_=delay*1000;
+ connect(child,&QProcess::started,this,[this,child,epoch,layout,outcome,frozen,appearance,delay]{
   if(process_!=child || generation_!=epoch) return;
   launchPid_=child->processId(); launchStartTicks_=processStartTicks(launchPid_);
   output_.started(launchPid_,{{"generation",QString::number(generation_)}});
@@ -94,6 +97,7 @@ void WaylandRegionProcess::start(const QList<CaptureFrame>& frames,std::function
   QJsonObject bootstrap{{"appearance",appearance},{"build",build()},{"nonce",nonce_},{"generation",QString::number(generation_)},{"layout",layout},{"outcome",outcome}};
   if(frozen.fd>=0) bootstrap["frozen"]=QJsonObject{{"fd",frozen.fd},{"frames",frozen.frames}};
   if(deferKeyboard_) bootstrap["deferKeyboard"]=true;
+  if(delay>0) bootstrap["delay"]=delay;
   // The child holds its own copy now.
   closeFrozen();
   if(!control_->send("bootstrap",bootstrap)) fail(unavailable("capture_protocol"));
@@ -178,20 +182,21 @@ void WaylandRegionProcess::receive(const QString& type,const QJsonObject& payloa
   const bool sent=control_->send("begin",{{"nonce",nonce_},{"generation",QString::number(generation_)}});
   if(!guard) return;
   if(!sent) { fail(unavailable("capture_protocol")); return; }
-  deadline_.start(120000);
+  deadline_.start(120000+delayMs_);
   const auto pending=std::exchange(pendingPointer_,{});
   for(const auto& [kind,point]:pending){ sendPointer(kind,point); if(!guard||!process_||terminal_) return; }
   return;
  }
  if(type=="cancelled" || type=="error") {
   const auto code=payload["code"].toString();
-  const QStringList allowed{"cancelled","display_changed","region_unavailable","capture_geometry","capture_timeout"};
+  const QStringList allowed{"cancelled","display_changed","region_unavailable","capture_geometry","capture_timeout","session_locked"};
   if(!ready_ || resultReceived_ || payload.size()!=3 || !allowed.contains(code) ||
      (type=="cancelled")!=(code=="cancelled")) {
    fail(unavailable("capture_protocol")); return;
   }
   terminal_=teardownCertified_=true;
-  if(!failure_) failure_=unavailable(code);
+  // The countdown's last frame never reached the screen (#1363): nothing is captured.
+  if(!failure_) failure_=code=="session_locked"?countdownNotShown():unavailable(code);
   deadline_.stop(); if(!stopDeadline_.isActive()) stopDeadline_.start(2000); return;
  }
  if(type=="result") {
