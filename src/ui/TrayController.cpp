@@ -170,6 +170,7 @@ TrayController::TrayController(OperationService& operations,
                                std::function<void()> quit, QObject* parent)
  : QObject(parent), operations_(operations), openView_(std::move(openView)),
    quit_(std::move(quit)) {
+ connect(&operations_.scroll(),&ScrollCaptureService::warning,this,[this](const QString&,const QString& message){notifyMessage("scroll_height_cap","put.gd — scrolling capture stopped",message,true);});
  // A recording that ended itself on its byte budget says why (#225).
  connect(&operations_.recording(),&RecordingService::budgetStopped,this,[this](const QString&,const QJsonObject& stop) {
   if(available())notifyMessage("recording_budget_stopped","put.gd — recording stopped",stop["message"].toString(),true);
@@ -222,7 +223,7 @@ TrayController::TrayController(OperationService& operations,
   entry->setData(action);entry->setProperty("commandLabel",label);
   connect(entry, &QAction::triggered, this, [this, action] { invokeAction(action); });
  };
- const QHash<QString,QString> labels{{"region","Capture region"},{"repeat","Repeat last region"},{"window","Capture window"},{"monitor","Capture monitor"},{"desktop","Capture desktop"},{"edit","Capture region && edit"},{"record","Record screen"},{"clipboard","Upload clipboard"}};
+ const QHash<QString,QString> labels{{"region","Capture region"},{"repeat","Repeat last region"},{"window","Capture window"},{"monitor","Capture monitor"},{"desktop","Capture desktop"},{"edit","Capture region && edit"},{"scroll","Capture scrolling region"},{"record","Record screen"},{"clipboard","Upload clipboard"}};
  for(const auto& action:Settings::shortcutOrder()){
   capture(action,labels.value(action));
   if(action!="desktop")continue;
@@ -422,7 +423,7 @@ void TrayController::retintMenu() {
  const auto tint=Theme::trayTints(panel_.light()).idle;
  // Menu entry IDs name actions, not glyphs: map each one, so an ID without its
  // own IconArt glyph never falls back to the generic file.
- static const QHash<QString,QString> glyphs{{"region","region"},{"edit","edit"},{"edit-sources","edit"},{"window","window"},{"desktop","desktop"},{"record","record"},{"clipboard","clipboard"},{"preferences","preferences"},{"history","history"},{"destinations","destinations"},{"update","download"}};
+ static const QHash<QString,QString> glyphs{{"region","region"},{"edit","edit"},{"edit-sources","edit"},{"window","window"},{"desktop","desktop"},{"scroll","scroll"},{"record","record"},{"clipboard","clipboard"},{"preferences","preferences"},{"history","history"},{"destinations","destinations"},{"update","download"}};
  for(auto* action:menu_->actions())if(const auto glyph=glyphs.value(action->data().toString());!glyph.isEmpty())action->setIcon(Ui::icon(glyph,tint));
 }
 QJsonObject TrayController::trayTint()const {
@@ -443,7 +444,7 @@ void TrayController::acknowledgeFailures(){const auto view=attentionView_;failed
 void TrayController::refreshMenu() {
  QHash<QString,QString> shortcuts;const auto settings=operations_.settingsSnapshot();const auto shortcutStatus=operations_.shortcutStatus();const auto bindings=shortcutStatus["bindings"].toObject();for(const auto& action:Settings::shortcutOrder()){const auto binding=bindings[action].toObject();if(!shortcutStatus["available"].toBool()||!binding["bound"].toBool()||!binding["error"].toString().isEmpty()||!binding["error"].toObject().isEmpty()||binding["requested"].toString()!=settings.actions.value(action).shortcut)continue;QStringList actual;if(binding["actual"].isString())actual<<binding["actual"].toString();else for(const auto& value:binding["actual"].toArray())actual<<value.toString();actual.removeAll(QString{});if(!actual.isEmpty())shortcuts.insert(action,actual.first());}
  const auto outputName=[&](const QString& action){const auto route=settings.actions.value(action);if(route.destination=="local"||route.profileId.isEmpty())return settings.archive.keepUploads?QString("Local only"):QString("Nothing is saved or uploaded");const auto profile=settings.profiles.value(route.profileId);const bool privateUpload=route.publicationMode=="private"||(route.publicationMode=="default"&&profile["provider"]=="proton-drive"&&!profile["settings"].toObject()["shareByDefault"].toBool(true));return QString(privateUpload?"Private upload":"Shared link")+" · "+profile["label"].toString()+(settings.archive.keepUploads?" + local copy":"");};
- const QHash<QString,QString> labels{{"region","Capture region"},{"window","Capture window"},{"monitor","Capture monitor"},{"desktop","Capture desktop"},{"edit","Capture region & edit"},{"record","Record screen"},{"clipboard","Upload clipboard"}};QStringList outputs;const auto first=outputName("region");bool mixed=false;for(const auto& action:Settings::presentationOrder()){const auto output=outputName(action);mixed|=output!=first;outputs<<labels.value(action)+": "+output;}const auto output=mixed?QString("Mixed outputs"):first;
+ const QHash<QString,QString> labels{{"region","Capture region"},{"window","Capture window"},{"monitor","Capture monitor"},{"desktop","Capture desktop"},{"edit","Capture region & edit"},{"scroll","Capture scrolling region"},{"record","Record screen"},{"clipboard","Upload clipboard"}};QStringList outputs;const auto first=outputName("region");bool mixed=false;for(const auto& action:Settings::presentationOrder()){const auto output=outputName(action);mixed|=output!=first;outputs<<labels.value(action)+": "+output;}const auto output=mixed?QString("Mixed outputs"):first;
  const auto attention=attentionLabel_=="Failed uploads"?QString("Failed uploads (%1)").arg(failedItems_.size()):attentionLabel_;
  int files=0,uploads=0;bool uploading=false;for(const auto& value:operations_.activeObservations()){
   const auto op=value.toObject();if(op["destination"].toObject()["providerId"].toString().isEmpty()||(op["action"]=="record"&&!recordingHandedOver(op)))continue;uploading=true;++uploads;

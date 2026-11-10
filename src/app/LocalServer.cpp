@@ -1,6 +1,7 @@
 #include "core/ByteSize.h"
 #include "LocalServer.h"
 #include "RecordingBackend.h"
+#include "ScrollBackend.h"
 #include "client/SessionProtocol.h"
 #include "core/BuildInfo.h"
 #include "core/Log.h"
@@ -63,6 +64,8 @@ Result LocalServer::listen(const QString& supplied) {
 int LocalServer::replyDeadlineMs(const QString& method) {
  constexpr int base=15000;
  // A record toggle can stop the helper through action.invoke as well.
+ if(method=="scroll.stop")return scroll::helperStopMs+base;
+ if(method.startsWith("scroll."))return scroll::helperStartupMs+scroll::helperCommandMs+base;
  if(method=="recording.stop"||method=="action.invoke")return recording::helperStopMs+base;
  if(QStringList{"recording.capabilities","recording.microphones","recording.prepare","recording.select","recording.start","recording.pause","recording.resume","recording.raise","recording.overlay","recording.audio","recording.preview","recording.review"}.contains(method))return recording::helperCommandMs+base;
  // Reading the logs and compressing up to 20 MiB stays well inside 45 s; an
@@ -170,6 +173,7 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
      ||(p.contains("delta")&&(!p["delta"].isArray()||p["delta"].toArray().size()!=2))){reply(invalid(),{});return;}
   auto params=p;params.remove("id");operations_.editorCommand(p["id"].toString(),"view",params,reply);return;
  }
+ if(method.startsWith("scroll.")){operations_.scrollCommand(method.mid(7),p,reply);return;}
  // Screen recording: one session, backend-neutral; the service validates semantics.
  if(method=="recording.capabilities") {if(!p.isEmpty())reply(invalid(),{});else operations_.recordingCommand("capabilities",{},reply);return;}
  if(method=="recording.windows") {if(!p.isEmpty())reply(invalid(),{});else operations_.recordingCommand("windows",{},reply);return;}

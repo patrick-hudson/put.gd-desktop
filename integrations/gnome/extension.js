@@ -27,7 +27,7 @@ const CHUNK = 65536;
 // monitor (#1363) is the monitor under the pointer, frozen at Prepare; repeat is
 // a rectangle the resident remembered, passed to Acquire with its layout key.
 const SOURCES = ['region', 'window', 'desktop', 'clipboard', 'monitor', 'repeat'];
-const ACTIONS = [...SOURCES, 'edit', 'record'];
+const ACTIONS = [...SOURCES, 'edit', 'record', 'scroll'];
 const DELAYS = [3, 5, 10];
 const XML = `<node><interface name="${IFACE}">
 <method name="Hello"><arg type="s" direction="out"/></method>
@@ -1147,7 +1147,7 @@ export default class PutgdExtension extends Extension {
             if (!['desktop', 'window', 'monitor', 'repeat'].includes(action))
                 this._closeTrayMenu(sender);
             // Recording selects its own region later; only the key press is relayed.
-            if (action === 'record') {
+            if (action === 'record' || action === 'scroll') {
                 if (this._enabled)
                     this._dbus.emit_signal('Action', new GLib.Variant('(ss)', [action, id]));
                 return;

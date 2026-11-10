@@ -64,7 +64,7 @@ bool HistoryModel::scanDestinations()const{
  return false;
 }
 QString HistoryModel::commonDestination()const{return rows_.isEmpty()||multipleDestinations()?QString{}:data(index(0),OutputRole).toString();}
-QString HistoryModel::friendlyAction(const QString& action){if(action=="region")return "Region";if(action=="window")return "Window";if(action=="desktop")return "Full desktop";if(action=="monitor")return "Monitor";if(action=="clipboard")return "Clipboard";if(action=="files")return "File manager";if(action=="edit")return "Region & edit";if(action=="record")return "Recording";if(action=="images"||action=="image")return "Image";if(action=="text")return "Text";if(action=="videos"||action=="video")return "Video";return "File";}
+QString HistoryModel::friendlyAction(const QString& action){if(action=="region")return "Region";if(action=="window")return "Window";if(action=="desktop")return "Full desktop";if(action=="monitor")return "Monitor";if(action=="clipboard")return "Clipboard";if(action=="files")return "File manager";if(action=="edit")return "Region & edit";if(action=="scroll")return "Scrolling region";if(action=="record")return "Recording";if(action=="images"||action=="image")return "Image";if(action=="text")return "Text";if(action=="videos"||action=="video")return "Video";return "File";}
 bool HistoryModel::storedNothing(const QJsonObject& r){return r["records"].toArray().isEmpty()&&r["operation"].toObject()["items"].toArray().isEmpty();}
 QString HistoryModel::failureLabel(const QJsonObject& r){
  if(localSaveFailed(r)&&r["uploadStatus"]!="failed")return "Local save failed";
@@ -99,7 +99,7 @@ QString HistoryModel::remoteStateText(const QJsonObject& r){
 }
 bool HistoryModel::localCopyUnavailable(const QJsonObject& r){return (r["local"].toObject()["status"]=="saved"||r["uploadStatus"]=="local_only")&&!QFileInfo(r["local"].toObject()["path"].toString()).isFile();}
 QString HistoryModel::statusText(const QJsonObject& r){
- const auto op=r["operation"].toObject();const auto state=op["state"].toString();const auto phase=op["phase"].toString();
+ const auto op=r["operation"].toObject();if(!op["note"].toString().isEmpty())return op["note"].toString();const auto state=op["state"].toString();const auto phase=op["phase"].toString();
  if(active(r)){
   if(op["action"]=="record"){
    if(phase=="preparing")return "Setting up the recording…";

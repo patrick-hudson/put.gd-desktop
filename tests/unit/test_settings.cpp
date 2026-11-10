@@ -393,6 +393,14 @@ private slots:
         QCOMPARE(unchanged, bytes);
     }
 #endif
+    void scrollingPreferencesAndRoute() {
+        auto doc=putgd::Settings::defaults();
+        const auto settings=putgd::Settings::fromValidated(doc);
+        QCOMPARE(settings.scrollCaptureMaxHeight,30000);QVERIFY(settings.scrollCaptureFromTop);
+        QVERIFY(settings.actions["scroll"].shortcut.isEmpty());
+        auto p=doc["preferences"].toObject();p["scrollCaptureMaxHeight"]=60001;doc["preferences"]=p;QVERIFY(putgd::Settings::validate(doc));
+        p["scrollCaptureMaxHeight"]=2000;doc["preferences"]=p;QVERIFY(!putgd::Settings::validate(doc));
+    }
     void recordingProjectionFollowsRegionExceptionsAndPreservesTheDocument() {
         auto document = putgd::Settings::developmentTemplate();
         document["captureDefaults"] = QJsonObject{{"destination", "upload"}, {"profileId", "development-s3"}, {"publicationMode", "share"}};

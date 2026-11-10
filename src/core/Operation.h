@@ -27,6 +27,7 @@ struct Operation {
  Settings settings; Destination destination;
  QList<OperationItem> items;
  quint64 invocation=0,clipboardRevision=0;
+ QString note;
  QString copyStatus="pending";
  bool cancelled=false;
  QString phase="accepted";

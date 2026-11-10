@@ -404,6 +404,7 @@ private slots:
   const auto helper=source.capabilities()["helper"].toObject();
   QVERIFY(helper["outdated"].toBool());QCOMPARE(helper["packagedExtensionVersion"].toInt(),putgd::gnome::extensionVersion);
   QVERIFY(!source.selectsRegions());
+  if(loadedVersion>=19){QVERIFY(source.scrollShell()->selectsRegions());QVERIFY(!source.scrollShell()->regionError());}
   Error error;bool done=false;source.selectRegion([&](Error value,QJsonObject){error=value;done=true;});QVERIFY(done);
   QCOMPARE(error.code,QString("helper_outdated"));QVERIFY2(error.message.contains("log out and back in"),qPrintable(error.message));
   // Non-region acquisition remains available with the loaded extension.

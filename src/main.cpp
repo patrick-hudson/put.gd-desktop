@@ -303,9 +303,12 @@ int main(int argc,char* argv[]) {
   QObject::connect(&appearance,&putgd::Appearance::changed,&appearance,follow);
  }
  operations.setRecordingBackend(std::move(recordingBackend));
+ // SCROLL BACKEND INTEGRATION: construct ScrollHelperBackend here when putgd-record is present.
+ operations.setScrollBackend(std::make_unique<putgd::UnavailableScrollBackend>());
 #ifdef PUTGD_NATIVE_GNOME
  // GNOME keeps clients from placing their own windows: the Shell extension
  // selects recording regions, frames them and moves the control bar.
+ if(gnome)operations.scroll().setShell(gnome->scrollShell());
  if(gnome)operations.recording().setShell(gnome);
  // Window recordings follow a window Mutter names by id (#1278).
  if(gnome)operations.recording().setWindows(gnome);
@@ -529,6 +532,7 @@ int main(int argc,char* argv[]) {
 #endif
  // An AppImage update install or restart waits for recordings and uploads (#293 phase 3).
  updates.setBusy([&]()->QString{
+  if(operations.scroll().active())return "A scrolling capture is running; install the update when it has finished";
   if(operations.recording().active())return "A recording is running; install the update when it has finished";
   if(!operations.activeObservations().isEmpty()||operations.storageActive())return "An upload is running; install the update when it has finished";
   return {};
