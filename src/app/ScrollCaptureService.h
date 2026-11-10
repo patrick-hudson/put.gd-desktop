@@ -39,6 +39,7 @@ private:
  std::unique_ptr<ScrollBackend> backend_;
  RecordingShell* shell_=nullptr;
  int requestedCap_=30000;
+ bool shellPlacing_=false;
  bool shellAutoStart_=false;
  bool shellSelecting_=false;
  bool edit_=false;

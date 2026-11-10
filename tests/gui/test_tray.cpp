@@ -654,7 +654,7 @@ private slots:
   QVERIFY(actionNamed(tray, "Capture region && edit"));
   // Capture entries come first in a fixed order, then the editor sources and the clipboard upload.
   QStringList texts; for (auto* action : menu->actions()) { if(!action->isVisible())continue;if (action->property("commandLabel").isValid()||action->data()=="edit-sources") texts.append(action->text().section('\t',0,0)); }
-  QCOMPARE(texts, QStringList({"Capture region", "Repeat last region", "Capture window", "Capture monitor", "Capture desktop", "Capture region && edit", "Edit image", "Record screen", "Upload clipboard"}));
+  QCOMPARE(texts, QStringList({"Capture region", "Repeat last region", "Capture window", "Capture monitor", "Capture desktop", "Capture region && edit", "Edit image", "Record screen", "Capture scrolling region", "Upload clipboard"}));
   // The capture delay (#1363) is a radio submenu after the screenshots; None is chosen in a fresh profile.
   QMenu* delay = nullptr; for (auto* action : menu->actions()) if (action->menu() && action->objectName() == "trayCaptureDelay") delay = action->menu();
   QVERIFY(delay); QCOMPARE(delay->actions().size(), 4);
