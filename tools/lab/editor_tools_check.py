@@ -88,6 +88,7 @@ def decode(data):
 class Driver:
     def __init__(self, cli, socket, out):
         self.cli, self.socket, self.out = cli, socket, out
+        self.cancelled_editors = set()
         self.log = {'schemaVersion': 1, 'scenario': 'editor-tools-1362', 'ok': False, 'checks': {}, 'calls': []}
 
     def call(self, method, params=None, retry_starting=True):
@@ -95,9 +96,14 @@ class Driver:
         for _ in range(200):
             done = subprocess.run(args, input=json.dumps(params or {}), capture_output=True, text=True, timeout=60)
             reply = json.loads(done.stdout or '{}')
-            if retry_starting and not reply.get('ok') and reply.get('error', {}).get('code') == 'editor_starting':
+            error = reply.get('error', {})
+            own_closing_editor = (method == 'editor.open' and error.get('code') == 'editor_active'
+                                  and error.get('details', {}).get('operationId') in self.cancelled_editors)
+            if retry_starting and not reply.get('ok') and (error.get('code') == 'editor_starting' or own_closing_editor):
                 time.sleep(0.1); continue
             break
+        if method == 'editor.cancel' and reply.get('ok'):
+            self.cancelled_editors.add(params['id'])
         logged = json.loads(json.dumps(reply))
         if isinstance(logged.get('result'), dict) and 'png' in logged['result']:
             logged['result']['png'] = '<%d base64 chars>' % len(logged['result']['png'])
@@ -228,15 +234,24 @@ def main():
             d.check('upload completed', state == 'completed', state)
         elif not args.keep_open:
             d.ok('editor.cancel', {'id': op})
-        if not args.keep_open:
+        if args.submit or not args.keep_open:
+            # Step glyphs are frozen on creation using the helper's current font
+            # environment. Compare geometry-only annotations across helpers so
+            # font discovery cannot masquerade as a source-pixel difference.
+            invariant_commands = [c for c in commands if c['shape']['kind'] != 'step']
+            invariant_commands += [add({'kind': 'blur', 'rect': list(TOKEN), 'style': 'blur', 'strength': 12}),
+                                   add({'kind': 'blur', 'rect': list(OVERLAP_TOKEN), 'style': 'pixelate', 'strength': 12})]
             variant = out / 'synthetic-variant.png'; synthetic(variant, variant=True)
-            other = d.ok('editor.open', {'source': 'file', 'path': str(variant)})['operationId']
-            try:
-                d.ok('editor.apply', {'id': other, 'commands': commands})
-                result = d.ok('editor.saveCopy', {'id': other, 'path': str(out / 'variant-copy.png'), 'overwrite': True})
-                d.check('sources differing only beneath redactions export identical bytes', result['sha256'] == copied['sha256'])
-            finally:
-                d.ok('editor.cancel', {'id': other})
+            digests = []
+            for label, path in (('baseline', source), ('variant', variant)):
+                other = d.ok('editor.open', {'source': 'file', 'path': str(path)})['operationId']
+                try:
+                    d.ok('editor.apply', {'id': other, 'commands': invariant_commands})
+                    result = d.ok('editor.saveCopy', {'id': other, 'path': str(out / (label + '-invariance.png')), 'overwrite': True})
+                    digests.append(result['sha256'])
+                finally:
+                    d.ok('editor.cancel', {'id': other})
+            d.check('sources differing only beneath redactions export identical bytes', digests[0] == digests[1], digests)
         d.log['ok'] = True
     finally:
         # A failed run leaves no editor open unless asked to.
