@@ -26,6 +26,16 @@ private slots:
         QVERIFY(!store.cached("profile", {{"mode", "unknown"}, {"reference", QJsonValue::Null}}));
         store.forget("profile", session);
         QVERIFY(!store.cached("profile", session));
+        // erase is forget for a session reference, and says so through its reply.
+        store.setSession("profile", {"synthetic-key", "synthetic-secret", {}});
+        bool erased = false;
+        Error error;
+        store.erase("profile", session, [&](auto result) { error = result; erased = true; });
+        QVERIFY(erased);
+        QVERIFY(!error);
+        QVERIFY(!store.cached("profile", session));
+        store.erase("profile", {{"mode", "unknown"}}, [&](auto result) { error = result; });
+        QCOMPARE(error.code, QString("credential_setup_required"));
     }
     void unavailableStoreDoesNotFallBackOrCache() {
         QTemporaryDir root;

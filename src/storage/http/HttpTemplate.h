@@ -64,6 +64,9 @@ struct ResponseValues {
 // Renders a response value; a placeholder that finds nothing renders as empty text.
 QString renderResponse(const QString& text, const ResponseValues&);
 
+// Literal text written so that a template renders it back unchanged.
+QString escapeTemplate(const QString& text);
+
 // The supported JSON path subset: an optional leading "$", then .name, ['name'], ["name"]
 // and [index] steps. Returns false for anything else (wildcards, "..", filters, slices).
 bool jsonPathSupported(const QString& path);

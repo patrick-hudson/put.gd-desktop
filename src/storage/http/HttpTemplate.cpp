@@ -453,6 +453,7 @@ QString templateProblem(const QString& text, TemplateUse use) {
     return checkNodes(nodes, use);
 }
 bool usesOldSyntax(const QString& text) { return oldPlaceholder().match(text).hasMatch(); }
+QString escapeTemplate(const QString& text) { return escaped(text); }
 namespace {
 void collectSecrets(const Template& nodes, QStringList& out) {
     for (const auto& node : nodes) {

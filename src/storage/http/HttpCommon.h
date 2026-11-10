@@ -1,5 +1,6 @@
 #pragma once
 #include "core/Error.h"
+#include <QHash>
 #include <QJsonObject>
 #include <QMap>
 #include <QString>
@@ -46,6 +47,34 @@ bool transportAllowed(const QUrl&, bool allowInsecureHttp);
 bool sameHost(const QUrl& from, const QUrl& to);
 // Text from a server shown to the user: one line, bounded, control characters removed.
 QString boundedMessage(const QString&, int maximum = 300);
+
+// A server may repeat what it was sent. The helpers below find a destination's stored
+// values in text that came back, in the spellings a server writes them: as sent,
+// percent-encoded in any mixture, and JSON-escaped ("/" as "\/", as PHP does). A value
+// counts from four characters, and each word of eight or more counts by itself, so the
+// token of "Bearer <token>" is found alone. Shorter values are switches such as "1".
+//
+// Server text made fit to keep: every spelling of every stored value replaced. When one
+// survives in a spelling this cannot rewrite, the whole text is withheld.
+QString scrubStoredValues(const QString& text, const QHash<QString, QString>& values);
+// The credential-store key of a stored value that an address holds after its host, or
+// empty. The host is where the address points and is no secret. Here a value counts
+// from six characters, as on import, and one under sixteen must stand as a whole word:
+// "upload" stored as an argument does not make every link under /uploads/ suspect.
+QString storedValueIn(const QString& address, const QHash<QString, QString>& values);
+// The address as a template that names each stored value standing in it exactly as
+// stored, "{secret:key}", with everything else escaped. Empty when no value stands
+// there exactly, or when one would remain in another spelling.
+QString nameStoredValues(const QString& address, const QHash<QString, QString>& values);
+// Scheme, host and port of a destination's request URL: where its values may go.
+QUrl requestOrigin(const QJsonObject& settings);
+// This machine, in any spelling an address can use: localhost, 127.0.0.0/8 (decimal,
+// octal, hex or as one number), ::1, the unspecified address.
+bool loopbackAddress(const QString& host);
+// An address the reply named, judged against the request's own. Empty when usable.
+// It may not carry user information ("https://shown@real/" goes to "real"), and it may
+// point at this machine only when the request itself does.
+QString returnedAddressProblem(const QUrl& address, const QUrl& origin);
 
 // A .sxcu file read into destination settings. Every header, parameter and argument
 // value and the Data body are secrets: they are returned in `secrets` (credential-store

@@ -7,6 +7,7 @@
 #include <QJsonArray>
 #include <QPointer>
 #include <QRegularExpression>
+#include <QSet>
 namespace putgd::http {
 namespace {
 // Every secret a destination can have fits one credential-store entry: three row lists,
@@ -14,6 +15,13 @@ namespace {
 static_assert(4 * maximumRows + 1 <= maximumNamedValues);
 static_assert(maximumSecretBytes <= maximumNamedValueChars);
 Error invalid(const QString& message) { return {"invalid_request", message, {}}; }
+// One import at a time for a configuration, from its first check to its saved profile.
+// Two in flight would both find their destination ID free, store their values under
+// the same reference, and leave the one that is saved holding the other file's token.
+QSet<const void*>& importing() {
+    static QSet<const void*> busy;
+    return busy;
+}
 // A profile ID from the uploader's name: lower-case letters, digits and hyphens.
 QString slug(const QString& name) {
     QString out;
@@ -55,6 +63,10 @@ void importUploaderFile(SettingsService& settings, CredentialStore& credentials,
         (params.contains("profileId") && (!params["profileId"].isString() || !identifier.match(params["profileId"].toString()).hasMatch())) ||
         !QStringList{"keychain", "session"}.contains(mode) || (params.contains("allowInsecureHttp") && !params["allowInsecureHttp"].isBool())) {
         reply(invalid("Give an absolute path, the expected revision, and optionally label, profileId, credentialMode and allowInsecureHttp"), {});
+        return;
+    }
+    if (importing().contains(&settings)) {
+        reply({"import_busy", "Another uploader is still being imported. Try again when it has finished.", {}}, {});
         return;
     }
     const auto metadata = settings.metadata();
@@ -104,22 +116,37 @@ void importUploaderFile(SettingsService& settings, CredentialStore& credentials,
                        {"storedValues", stored}, {"notes", QJsonArray::fromStringList(imported.notes)}};
     const auto expected = params["expectedRevision"].toString();
     QPointer<SettingsService> guarded(&settings);
-    auto addProfile = [guarded, profiles, expected, result, reply, id](Error stored) mutable {
-        if (stored) { reply(stored, {}); return; }
-        if (!guarded) { reply({"operation_cancelled", "The application is stopping", {}}, {}); return; }
-        guarded->patchAsync({{"profiles", profiles}}, expected, [guarded, result, reply, id](Result saved) mutable {
+    QPointer<CredentialStore> store(&credentials);
+    const void* const turn = &settings;
+    importing().insert(turn);
+    const bool storesValues = !imported.secrets.isEmpty();
+    // Every way out gives the turn back before it answers.
+    const auto finish = [turn, reply](Error error, QJsonObject result) {
+        importing().remove(turn);
+        reply(error, result);
+    };
+    auto addProfile = [guarded, store, profiles, expected, result, finish, id, reference, storesValues](Error stored) mutable {
+        if (stored) { finish(stored, {}); return; }
+        if (!guarded) { finish({"operation_cancelled", "The application is stopping", {}}, {}); return; }
+        guarded->patchAsync({{"profiles", profiles}}, expected, [guarded, store, result, finish, id, reference, storesValues](Result saved) mutable {
             if (saved.error) {
-                // The stored values stay under this destination's own reference; importing again replaces them.
-                saved.error.details["credentialsStored"] = true;
-                reply(saved.error, {});
+                // The destination was not created, so what this import stored for it goes
+                // too: nothing is left under a reference no destination shows.
+                auto failed = saved.error;
+                if (!storesValues || !store) { finish(failed, {}); return; }
+                store->erase(id, reference, [failed, finish](Error cleanup) mutable {
+                    // Said only when the entry could not be removed.
+                    if (cleanup) failed.details["credentialsStored"] = true;
+                    finish(failed, {});
+                });
                 return;
             }
             if (guarded) result["metadata"] = guarded->metadata();
             logging::info(logApp(), "Custom uploader imported", {{"profileId", id}, {"storedValues", result["storedValues"].toArray().size()}, {"credentialMode", result["credentials"].toObject()["mode"]}});
-            reply({}, result);
+            finish({}, result);
         });
     };
-    if (imported.secrets.isEmpty()) { addProfile(Error{}); return; }
+    if (!storesValues) { addProfile(Error{}); return; }
     Credentials value;
     value.values = imported.secrets;
     credentials.save(id, reference, std::move(value), addProfile);

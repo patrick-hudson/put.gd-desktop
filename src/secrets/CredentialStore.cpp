@@ -126,4 +126,22 @@ void CredentialStore::save(const QString& profile, const QJsonObject& reference,
     });
     job->start();
 }
+void CredentialStore::erase(const QString& profile, const QJsonObject& reference, std::function<void(Error)> reply) {
+    if (cacheKey(profile, reference).isEmpty()) {
+        reply({"credential_setup_required", "Select a credential reference", {}});
+        return;
+    }
+    forget(profile, reference);
+    if (reference["mode"] != "keychain") {
+        reply({});
+        return;
+    }
+    auto* job = new QKeychain::DeletePasswordJob("putgd", this);
+    job->setInsecureFallback(false);
+    job->setKey(reference["reference"].toString());
+    connect(job, &QKeychain::Job::finished, this, [reply](QKeychain::Job* base) {
+        reply(base->error() == QKeychain::EntryNotFound ? Error{} : storeError(base));
+    });
+    job->start();
+}
 }

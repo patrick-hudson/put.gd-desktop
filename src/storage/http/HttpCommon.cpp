@@ -6,6 +6,7 @@
 #include <QJsonDocument>
 #include <QRegularExpression>
 #include <QSet>
+#include <QUrl>
 #include <QUrlQuery>
 #include <algorithm>
 namespace putgd::http {
@@ -132,6 +133,195 @@ QString boundedMessage(const QString& input, int maximum) {
         if (out.size() >= maximum) { out = out.left(maximum - 1) + QChar(0x2026); break; }
     }
     return out.trimmed();
+}
+
+namespace {
+// What to look for of one stored value: the value from `minimum` characters on, and each
+// of its words of eight or more.
+QStringList needles(const QString& value, int minimum = 4) {
+    QStringList out;
+    if (value.size() >= minimum) out.append(value);
+    for (const auto& word : value.split(' ', Qt::SkipEmptyParts)) if (word.size() >= 8 && !out.contains(word)) out.append(word);
+    return out;
+}
+// One pattern for every mixture of spellings: each character as itself, as its
+// percent-encoded bytes (either case), or as JSON writes it.
+QString eitherCase(const QByteArray& hex) {
+    QString out;
+    for (const auto digit : hex) out += (digit >= 'a' && digit <= 'f') ? QString("[%1%2]").arg(QChar(digit)).arg(QChar(digit).toUpper()) : QString(QChar(digit));
+    return out;
+}
+QRegularExpression spellings(const QString& needle) {
+    QString pattern;
+    for (const auto c : needle) {
+        QString encoded;
+        for (const auto byte : QString(c).toUtf8()) encoded += "%" + eitherCase(QByteArray(1, byte).toHex());
+        QStringList forms{QRegularExpression::escape(QString(c)), encoded};
+        if (c == '/') forms.append(QStringLiteral("\\\\/"));
+        if (c == '"') forms.append(QStringLiteral("\\\\\""));
+        if (c == '\\') forms.append(QStringLiteral("\\\\\\\\"));
+        if (c == ' ') forms.append(QStringLiteral("\\+"));
+        if (c.unicode() > 0x7e) forms.append("\\\\u" + eitherCase(QByteArray::number(c.unicode(), 16).rightJustified(4, '0')));
+        pattern += "(?:" + forms.join('|') + ")";
+    }
+    return QRegularExpression(pattern);
+}
+QString jsonUnescaped(const QString& text) {
+    QString out;
+    out.reserve(text.size());
+    for (qsizetype i = 0; i < text.size(); ++i) {
+        if (text[i] == '\\' && i + 1 < text.size()) {
+            const auto next = text[i + 1];
+            if (next == '/' || next == '"' || next == '\\') { out += next; ++i; continue; }
+            if (next == 'u' && i + 5 < text.size()) {
+                bool ok = false;
+                const auto code = text.mid(i + 2, 4).toUShort(&ok, 16);
+                if (ok) { out += QChar(code); i += 5; continue; }
+            }
+        }
+        out += text[i];
+    }
+    return out;
+}
+// The text as it reads once its escapes are undone, in the orders a server nests them.
+QStringList readings(const QString& text) {
+    QStringList out{text};
+    const auto add = [&](const QString& reading) { if (!out.contains(reading)) out.append(reading); };
+    add(jsonUnescaped(text));
+    // Percent-encoding undone, up to three layers deep, with "+" read as a space too.
+    for (int layer = 0; layer < 3; ++layer)
+        for (const auto& reading : QStringList(out)) {
+            add(QUrl::fromPercentEncoding(reading.toUtf8()));
+            add(QUrl::fromPercentEncoding(QString(reading).replace('+', ' ').toUtf8()));
+        }
+    return out;
+}
+bool wordAt(const QString& text, qsizetype start, qsizetype length) {
+    const auto inside = [&](qsizetype i) { return i >= 0 && i < text.size() && text[i].isLetterOrNumber(); };
+    return !inside(start - 1) && !inside(start + length);
+}
+// Whether the needle stands in the text: anywhere when it is long, as a whole word otherwise.
+bool stands(const QString& text, const QString& needle) {
+    for (auto at = text.indexOf(needle); at >= 0; at = text.indexOf(needle, at + 1))
+        if (needle.size() >= 16 || wordAt(text, at, needle.size())) return true;
+    return false;
+}
+// Longer needles are matched as written only: a pattern for them would be enormous.
+constexpr qsizetype longestPattern = 256;
+// In an address a value counts from six characters, as it does when a file is imported:
+// "true" or "json" stored as a row value must not make every link that says so suspect.
+constexpr int addressMinimum = 6;
+qsizetype afterAuthority(const QString& address) {
+    const auto authority = address.indexOf("://");
+    if (authority < 0) return 0;
+    const auto path = address.indexOf(QRegularExpression("[/?#]"), authority + 3);
+    return path < 0 ? address.size() : path;
+}
+}
+QString scrubStoredValues(const QString& input, const QHash<QString, QString>& values) {
+    static const QString mark = QStringLiteral("<redacted>");
+    auto text = input;
+    QStringList all;
+    for (const auto& value : values) for (const auto& needle : needles(value)) if (!all.contains(needle)) all.append(needle);
+    std::sort(all.begin(), all.end(), [](const QString& a, const QString& b) { return a.size() > b.size(); });
+    for (const auto& needle : all) {
+        if (needle.size() <= longestPattern) text.replace(spellings(needle), mark);
+        else text.replace(needle, mark);
+    }
+    // A spelling that could not be rewritten in place (a value encoded twice, say).
+    for (const auto& reading : readings(text))
+        for (const auto& needle : all) if (reading.contains(needle)) return QStringLiteral("<withheld: the server's text repeats a stored value>");
+    return text;
+}
+QString storedValueIn(const QString& address, const QHash<QString, QString>& values) {
+    const auto tail = address.mid(afterAuthority(address));
+    if (tail.isEmpty()) return {};
+    auto keys = values.keys();
+    std::sort(keys.begin(), keys.end());
+    const auto texts = readings(tail);
+    for (const auto& key : keys)
+        for (const auto& needle : needles(values.value(key), addressMinimum)) {
+            for (const auto& reading : texts) if (stands(reading, needle)) return key;
+            if (needle.size() > longestPattern) continue;
+            // Mixed spellings no single reading undoes.
+            for (auto it = spellings(needle).globalMatch(tail); it.hasNext();) {
+                const auto match = it.next();
+                if (needle.size() >= 16 || wordAt(tail, match.capturedStart(), match.capturedLength())) return key;
+            }
+        }
+    return {};
+}
+QString nameStoredValues(const QString& address, const QHash<QString, QString>& values) {
+    QList<QPair<QString, QString>> exact; // value → key, longest first
+    auto keys = values.keys();
+    std::sort(keys.begin(), keys.end());
+    for (const auto& key : keys) if (values.value(key).size() >= addressMinimum && stands(address, values.value(key))) exact.append({values.value(key), key});
+    std::sort(exact.begin(), exact.end(), [](const auto& a, const auto& b) { return a.first.size() > b.first.size(); });
+    if (exact.isEmpty()) return {};
+    const auto from = afterAuthority(address);
+    QString out = escapeTemplate(address.left(from)), rest = address.left(from);
+    bool named = false;
+    for (qsizetype i = from; i < address.size();) {
+        bool matched = false;
+        for (const auto& [value, key] : exact) {
+            if (!QStringView(address).mid(i).startsWith(value) || (value.size() < 16 && !wordAt(address, i, value.size()))) continue;
+            out += "{secret:" + escapeTemplate(key) + "}";
+            i += value.size();
+            matched = named = true;
+            break;
+        }
+        if (matched) continue;
+        out += escapeTemplate(QString(address[i]));
+        rest += address[i];
+        ++i;
+    }
+    // Whatever is left as text must hold none of them in any other spelling.
+    if (!named || !storedValueIn(rest, values).isEmpty()) return {};
+    return out;
+}
+QUrl requestOrigin(const QJsonObject& settings) {
+    const auto text = settings["requestUrl"].toString();
+    const auto authority = text.indexOf("://");
+    if (authority < 0) return {};
+    const auto path = text.indexOf(QRegularExpression("[/?#]"), authority + 3);
+    return QUrl(path < 0 ? text : text.left(path), QUrl::StrictMode);
+}
+bool loopbackAddress(const QString& name) {
+    auto host = name.trimmed().toLower();
+    if (host.startsWith('[') && host.endsWith(']')) host = host.mid(1, host.size() - 2);
+    while (host.endsWith('.')) host.chop(1);
+    if (host.isEmpty()) return false;
+    if (host == "localhost" || host.endsWith(".localhost")) return true;
+    if (host.contains(':')) {
+        // IPv6: the loopback and unspecified addresses, and an IPv4 one mapped into it.
+        const auto mapped = host.lastIndexOf(':');
+        if (host.mid(mapped + 1).contains('.')) return host.startsWith("::ffff:") && loopbackAddress(host.mid(mapped + 1));
+        QStringList groups = host.split(':');
+        bool zero = true;
+        for (qsizetype i = 0; i + 1 < groups.size(); ++i) if (!groups[i].isEmpty() && groups[i].toUInt(nullptr, 16) != 0) zero = false;
+        const auto last = groups.last().isEmpty() ? 0u : groups.last().toUInt(nullptr, 16);
+        return zero && last <= 1;
+    }
+    // IPv4 as the resolver reads it: one to four parts, each decimal, octal or hex.
+    const auto parts = host.split('.');
+    if (parts.size() > 4) return false;
+    quint64 address = 0;
+    for (qsizetype i = 0; i < parts.size(); ++i) {
+        bool ok = false;
+        const auto& part = parts[i];
+        const quint64 number = part.startsWith("0x") ? part.mid(2).toULongLong(&ok, 16) : part.size() > 1 && part.startsWith('0') ? part.toULongLong(&ok, 8) : part.toULongLong(&ok, 10);
+        if (!ok) return false;
+        const bool lastPart = i == parts.size() - 1;
+        const quint64 limit = lastPart ? (quint64(1) << (8 * (5 - parts.size()))) : 256;
+        if (number >= limit) return false;
+        address = lastPart ? (address << (8 * (5 - parts.size()))) | number : (address << 8) | number;
+    }
+    return address == 0 || (address >> 24) == 127;
+}
+QString returnedAddressProblem(const QUrl& address, const QUrl& origin) {
+    if (!address.userInfo().isEmpty()) return QStringLiteral("it carries a user name, which hides where it really goes");
+    if (loopbackAddress(address.host()) && !loopbackAddress(origin.host())) return QStringLiteral("it points at this computer");
+    return {};
 }
 
 Error validateSettings(const QJsonObject& s) {
@@ -447,10 +637,11 @@ SxcuImport readSxcu(const QByteArray& json) {
     };
     QJsonArray extra;
     bool tooManyKeys = false;
-    // A long opaque run of letters and digits left in an address is treated as a key:
-    // it moves to a secret value of its own.
+    // An opaque run of letters and digits left in an address is treated as a key and
+    // moves to a secret value of its own: sixteen characters or more of letters and
+    // digits alone (a hex key), or twenty or more with "-" and "_" among them.
     const auto opaque = [&](QString value, const QString& name, qsizetype from) {
-        static const QRegularExpression run("[A-Za-z0-9_-]{20,}"), digit("[0-9]"), letter("[A-Za-z]");
+        static const QRegularExpression run("(?<![A-Za-z0-9_-])(?:[A-Za-z0-9_-]{20,}|[A-Za-z0-9]{16,})(?![A-Za-z0-9_-])"), digit("[0-9]"), letter("[A-Za-z]");
         const auto next = [&] {
             for (auto it = run.globalMatch(value, from); it.hasNext();) {
                 const auto match = it.next();
@@ -504,6 +695,28 @@ SxcuImport readSxcu(const QByteArray& json) {
         settings["deletionUrl"] = deletion;
     }
     if (tooManyKeys) { out.error = sxcuError("sxcu_unsupported", "The file's addresses hold more key-like values than a destination can store."); return out; }
+    // No rule finds every key. A shorter part that mixes letters and digits stays as
+    // written, and the note says where it is, never what it is.
+    const auto keptParts = [&](const QString& address) {
+        static const QRegularExpression keyLike("^(?=.*[0-9])(?=.*[A-Za-z])[A-Za-z0-9_-]{6,}$"), separator("[/?&=#]");
+        QString plain;
+        int depth = 0;
+        for (const auto c : address.mid(afterHost(address))) {
+            if (c == '{') ++depth;
+            plain += depth > 0 ? QChar('{') : c;
+            if (c == '}' && depth > 0) --depth;
+        }
+        QStringList positions;
+        int position = 0;
+        for (const auto& part : plain.split(separator, Qt::SkipEmptyParts)) {
+            ++position;
+            if (keyLike.match(part).hasMatch()) positions.append(QString::number(position));
+        }
+        return positions;
+    };
+    for (const auto& [key, what] : QList<QPair<const char*, QString>>{{"requestUrl", "request URL"}, {"deletionUrl", "deletion URL"}})
+        if (const auto positions = keptParts(settings[key].toString()); !positions.isEmpty())
+            out.notes.append(QString("The %1 keeps part %2 after its host as written. If that is a key, move it to Other secret values and write {secret:secrets/name} in its place.").arg(what, positions.join(" and ")));
     settings[extraSecretsList()] = extra;
     for (const auto& [key, sxcuName] : QList<QPair<const char*, const char*>>{{"responseUrl", "URL"}, {"thumbnailUrl", "ThumbnailURL"}, {"deletionUrl", "DeletionURL"}, {"errorMessage", "ErrorMessage"}}) {
         const auto value = settings[key].toString();

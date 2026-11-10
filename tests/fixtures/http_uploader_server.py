@@ -25,7 +25,17 @@ A refused token is echoed in the error body, as some servers do.
 Control: POST /__reset {auth, token}, POST /__rules {rules}, GET /__state.
 A rule: {"call": "upload" | "delete" | "file", "status", "body", "remaining", "delay" (seconds),
 "drop": true (close without a reply), "store": true (store first; with drop or status this is a
-reply lost after the file was stored)}.
+reply lost after the file was stored), "location" (a Location header for a status reply)}.
+
+An upload rule can also bend the reply the way a careless or hostile server would:
+  "echo": "url" | "thumb" | "delete"   that address repeats the credential the request offered
+  "encoding": "raw" | "percent"        how it is repeated (default raw)
+  "elsewhere": "url" | "thumb" | "delete"   that address is on another host name
+  "userinfo": "url"                    that address carries user information
+  "php": true                          JSON written as PHP's json_encode does, with a
+                                       backslash before every "/"
+  "cut": "length" | "reset"            the reply ends early: a Content-Length it does not
+                                       fulfil, or a reset in the middle of the body
 """
 import hashlib, json, os, socket, sys, threading, time, urllib.parse, uuid
 from email.parser import BytesParser
@@ -56,17 +66,30 @@ class Handler(BaseHTTPRequestHandler):
 
     def reply(self, code, body=b'', content_type='application/json', headers=None):
         if isinstance(body, (dict, list)):
-            body = json.dumps(body).encode()
+            body = json.dumps(body)
+            if getattr(self, 'php', False):
+                body = body.replace('/', '\\/')
+            body = body.encode()
         elif isinstance(body, str):
             body = body.encode()
+        cut = getattr(self, 'cut', None)
         try:
             self.send_response(code)
             self.send_header('Content-Type', content_type)
-            self.send_header('Content-Length', str(len(body)))
+            # "length": more is promised than is sent before the connection closes.
+            self.send_header('Content-Length', str(len(body) + (64 if cut == 'length' else 0)))
             for name, value in (headers or {}).items():
                 self.send_header(name, value)
             self.end_headers()
+            if cut == 'reset':
+                self.wfile.write(body[:max(1, len(body) * 2 // 3)])
+                self.wfile.flush()
+                time.sleep(0.2)
+                return self.drop()
             self.wfile.write(body)
+            if cut == 'length':
+                self.wfile.flush()
+                self.close_connection = True
         except (BrokenPipeError, ConnectionResetError):
             # The client gave up waiting: a late reply has nowhere to go.
             self.close_connection = True
@@ -108,6 +131,7 @@ class Handler(BaseHTTPRequestHandler):
         return event
 
     def do_GET(self):
+        self.php, self.cut = False, None  # one connection serves several requests
         parsed = urllib.parse.urlsplit(self.path)
         parts = parsed.path.strip('/').split('/')
         if parsed.path == '/__state':
@@ -153,17 +177,18 @@ class Handler(BaseHTTPRequestHandler):
             if rule.get('drop'):
                 return self.drop()
             if rule.get('status'):
-                return self.reply(rule['status'], rule.get('body', ''))
+                return self.reply(rule['status'], rule.get('body', ''), headers={'Location': rule['location']} if rule.get('location') else None)
             return self.reply(200, {'deleted': True}) if valid else self.reply(404, {'error': 'no such file'})
         self.reply(404, {'error': 'unknown path'})
 
     def do_POST(self):
+        self.php, self.cut = False, None
         if self.path == '/__reset':
             options = json.loads(self.body() or b'{}')
             with lock:
                 state.clear()
                 state.update(fresh())
-                state.update({k: options[k] for k in ('auth', 'token') if k in options})
+                state.update({k: options[k] for k in ('auth', 'token', 'php', 'echo') if k in options})
                 blobs.clear()
             return self.reply(200, {})
         if self.path == '/__rules':
@@ -241,7 +266,10 @@ class Handler(BaseHTTPRequestHandler):
                                        'fileBytes': len(content), 'fileType': file_type, 'sha256': hashlib.sha256(content).hexdigest()})
         if auth != 'none' and offered not in (token, 'Bearer ' + token):
             event['refused'] = True
-            return self.reply(401, {'error': 'token %s is not valid' % offered})
+            with lock:
+                self.php = bool(state.get('php'))
+                echoed = urllib.parse.quote(offered, safe='') if state.get('echo') == 'percent' else offered
+            return self.reply(401, {'error': 'token %s is not valid' % echoed})
         # These redirects ask for the request again, or loop: nothing is stored here.
         if style in ('moved', 'moved-away'):
             target = '%s/upload/json%s' % (self.origin(OTHER_HOST if style == 'moved-away' else None), ('?' + parsed.query) if parsed.query else '')
@@ -263,11 +291,19 @@ class Handler(BaseHTTPRequestHandler):
                                        'deleteKind': style if style in ('confirm', 'pretend') else 'delete'}
             links = self.links(file_id)
         event['stored'] = file_id
+        first = links['files'][0]
+        credential = offered[len('Bearer '):] if offered.startswith('Bearer ') else offered
+        if rule.get('elsewhere') in first:
+            first[rule['elsewhere']] = first[rule['elsewhere']].replace(self.origin(), self.origin(OTHER_HOST), 1)
+        if rule.get('echo') in first:
+            first[rule['echo']] += '?key=' + (urllib.parse.quote(credential, safe='') if rule.get('encoding') == 'percent' else credential)
+        if rule.get('userinfo') in first:
+            first[rule['userinfo']] = first[rule['userinfo']].replace('http://', 'http://trusted.example@', 1)
+        self.php, self.cut = bool(rule.get('php')), rule.get('cut')
         if rule.get('drop'):
             return self.drop()
         if rule.get('status'):
             return self.reply(rule['status'], rule.get('body', {'error': 'synthetic failure'}), rule.get('type', 'application/json'))
-        first = links['files'][0]
         if style in ('json', 'confirm', 'pretend'):
             return self.reply(200, links)
         if style == 'xml':
