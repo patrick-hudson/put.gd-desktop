@@ -316,18 +316,19 @@ class Driver:
 
     def close_microphone(self):
         # Whatever the tone does, the simulated devices are removed afterwards.
-        if self.tone and self.tone.poll() is None:
-            try:
-                os.killpg(self.tone.pid, signal.SIGTERM)
-                self.tone.wait(10)
-            except ProcessLookupError:
-                pass
-            except subprocess.TimeoutExpired:
-                os.killpg(self.tone.pid, signal.SIGKILL)
-                self.tone.wait(5)
-        if self.mic_state and self.mic_state.is_file():
-            return self.virtual_mic('remove', '--state', str(self.mic_state))
-        return None
+        try:
+            if self.tone and self.tone.poll() is None:
+                try:
+                    os.killpg(self.tone.pid, signal.SIGTERM)
+                    self.tone.wait(10)
+                except subprocess.TimeoutExpired:
+                    os.killpg(self.tone.pid, signal.SIGKILL)
+                    self.tone.wait(5)
+        except (ProcessLookupError, subprocess.TimeoutExpired) as error:
+            log('the tone player did not end cleanly: %s' % error)
+        finally:
+            removed = self.virtual_mic('remove', '--state', str(self.mic_state)) if self.mic_state and self.mic_state.is_file() else None
+        return removed
 
     def microphone_device(self):
         a = self.args

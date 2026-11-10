@@ -329,9 +329,9 @@ private slots:
   PUTGD_COMPARE_STEADY(presses.size(),2,500);
   QFile after(config_+"/rc.xml");QVERIFY(after.open(QIODevice::ReadOnly));QCOMPARE(after.readAll(),original);
  }
- // The recorder's own-cursor capture (#1364): frames flow without a painted cursor, and the
- // source says whether the compositor reports the pointer (a headless output has no hardware cursor).
- void recordingWithItsOwnCursorKeepsItsFrames(){
+ // The recorder's own-cursor capture (#1364) is asked for where no output reports the pointer (a headless
+ // output has no hardware cursor): the source falls back to the compositor's painted cursor and its frames flow.
+ void aRecordingWithoutAPointerPositionKeepsTheCompositorsCursor(){
 #ifndef PUTGD_TEST_IMAGE_COPY_SOURCE
   QSKIP("built without GStreamer");
 #else
@@ -340,7 +340,9 @@ private slots:
   QVERIFY(record::ImageCopySource::probe().available);
   record::ImageCopySource source;QSize size;QString identity;bool pointerOpened=false;
   const auto error=source.open({false,name},&size,&identity,nullptr,true,&pointerOpened);QVERIFY2(!error,qPrintable(error.message));
-  QCOMPARE(pointerOpened,record::ImageCopySource::probe().pointer);
+  // A headless output has no hardware cursor, so no output reports the pointer: the recording keeps the
+  // compositor's painted cursor and has no pointer position.
+  QVERIFY(!pointerOpened);QPoint nowhere;QVERIFY(!source.pointer(&nowhere));
   GError* parseError=nullptr;
   GstElement* pipeline=gst_parse_launch(QStringLiteral("appsrc name=src is-live=true format=time caps=\"%1\" ! videoconvert ! video/x-raw,format=BGRx ! appsink name=sink max-buffers=2 drop=true sync=false").arg(source.caps()).toUtf8().constData(),&parseError);
   QVERIFY2(pipeline,parseError?parseError->message:"no pipeline");
@@ -358,9 +360,7 @@ private slots:
   gst_object_unref(sink);
   QCOMPARE(image.size(),layout_.first().nativeRect.size());
   QCOMPARE(rgb(image,10,10),qRgb(255,255,255));QCOMPARE(rgb(image,image.width()-10,10),qRgb(0,0,0));QCOMPARE(rgb(image,image.width()/2,image.height()-5),outputColours[0]);
-  QCOMPARE(source.status().contains("cursor"),pointerOpened);
-  // No hardware cursor here, so no position: a press then has no place, and says so.
-  QPoint at;if(!source.pointer(&at))qInfo()<<"no pointer position on this output (headless: no hardware cursor)";
+  QVERIFY(!source.status().contains("cursor"));
 #endif
  }
  // The layer-shell selector in putgd-region, driven by a virtual pointer drag:

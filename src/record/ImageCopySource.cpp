@@ -269,6 +269,26 @@ struct ImageCopySource::Impl {
   freeCursorBuffer();
   cursorIn=false;cursorPixels.clear();setPointer(false,{});
  }
+ // Whether any output but `recorded` reports the pointer (two round trips; nothing is kept).
+ bool pointerOnAnotherOutput(wl_output* recorded){
+  struct Probe {ext_image_capture_source_v1* source=nullptr;ext_image_copy_capture_cursor_session_v1* cursor=nullptr;bool in=false;};
+  std::vector<std::unique_ptr<Probe>> probes;
+  static const ext_image_copy_capture_cursor_session_v1_listener listener={
+   [](void* d,ext_image_copy_capture_cursor_session_v1*){static_cast<Probe*>(d)->in=true;},[](void* d,ext_image_copy_capture_cursor_session_v1*){static_cast<Probe*>(d)->in=false;},
+   [](void*,ext_image_copy_capture_cursor_session_v1*,int32_t,int32_t){},[](void*,ext_image_copy_capture_cursor_session_v1*,int32_t,int32_t){}};
+  for(const auto& o:outputs){
+   if(o.native==recorded)continue;
+   auto probe=std::make_unique<Probe>();
+   probe->source=ext_output_image_capture_source_manager_v1_create_source(outputSources,o.native);
+   probe->cursor=ext_image_copy_capture_manager_v1_create_pointer_cursor_session(copy,probe->source,pointerDevice);
+   ext_image_copy_capture_cursor_session_v1_add_listener(probe->cursor,&listener,probe.get());
+   probes.push_back(std::move(probe));
+  }
+  if(!probes.empty())for(int i=0;i<2;++i)if(wl_display_roundtrip(display)<0)break;
+  bool found=false;
+  for(auto& probe:probes){found|=probe->in;ext_image_copy_capture_cursor_session_v1_destroy(probe->cursor);ext_image_capture_source_v1_destroy(probe->source);}
+  return found;
+ }
  // A plain arrow, hotspot at its tip, for a pointer whose picture the compositor has not delivered
  // (yet): a recording never shows clicks around nothing.
  static const std::vector<uint32_t>& arrow(QSize* size){
@@ -477,6 +497,7 @@ Error ImageCopySource::open(const Target& target,QSize* size,QString* identity,Q
  if(!d_->connect(&reason))return {"recording_unavailable",reason,{{"protocol","ext-image-copy-capture-v1"}}};
  reason=target.window?d_->windowReason():d_->outputReason();
  if(!reason.isEmpty())return {target.window?"recording_unsupported":"recording_unavailable",reason,{{"protocol","ext-image-copy-capture-v1"}}};
+ wl_output* recorded=nullptr;
  if(target.window){
   QList<WaylandToplevel> ext,wlr;for(auto* w:d_->extWindows)if(w->done)ext.append(w->current);for(auto* w:d_->wlrWindows)if(w->done)wlr.append(w->current);
   WaylandToplevel chosen;
@@ -492,6 +513,7 @@ Error ImageCopySource::open(const Target& target,QSize* size,QString* identity,Q
   if(!output)return {"recording_target","No output has this name",{{"identity",target.identity}}};
   d_->source=ext_output_image_capture_source_manager_v1_create_source(d_->outputSources,output);
   for(const auto& o:d_->outputs)if(o.native==output)d_->transform=o.transform;
+  recorded=output;
   if(identity)*identity=name;
  }
  if(!d_->source)return {"recording_target","The recording source could not be created",{}};
@@ -509,10 +531,15 @@ Error ImageCopySource::open(const Target& target,QSize* size,QString* identity,Q
    d_->pumpCursor();
    if(!d_->cursorPixels.empty()||(trips>=2&&!d_->cursorIn))break;
   }
-  // The pointer is on this output and its picture did not come: this compositor cannot give it, so
-  // the compositor paints the cursor as in any other recording, and the stream has no pointer position.
-  // A pointer that is elsewhere proves nothing: it may come to this output later.
-  if(d_->cursorIn&&d_->cursorPixels.empty()){
+  // The recording never loses its cursor to this. Two cases hand it back to the compositor, which
+  // then paints it as in any other recording (and the stream has no pointer position):
+  // the pointer is on this output and its picture did not come; or no output reports the pointer at
+  // all, which is what a compositor without a hardware cursor looks like (its cursor source reads
+  // only that). A pointer that is on another output proves nothing: it may come to this one later.
+  const bool noPicture=d_->cursorIn&&d_->cursorPixels.empty();
+  const bool nowhere=!d_->cursorIn&&!d_->pointerOnAnotherOutput(recorded);
+  if(noPicture||nowhere){
+   debugLog(QStringLiteral("image copy: the compositor paints the cursor (%1)").arg(noPicture?"the pointer's picture did not arrive":"no output reports the pointer"));
    d_->closeCursor();d_->ownCursor=false;
    if(auto e=d_->startSession())return e;
   }
