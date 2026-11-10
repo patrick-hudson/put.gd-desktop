@@ -64,8 +64,9 @@ class Visibility final:public QObject {
   static const wl_callback_listener frame{[](void* data,wl_callback*,uint32_t){static_cast<Visibility*>(data)->finish(true);}};
   wl_callback_add_listener(callback_,&frame,this);
   // Registry/configure can wait behind the first software-rendered window.
-  // Give the actual visibility witness its own deadline after setup finishes.
-  timeout_.start(1000);wl_surface_commit(surface_);flush();
+  // Give busy software renderers three seconds for the actual frame witness
+  // after setup (five seconds maximum), for an eight-second total bound.
+  timeout_.start(3000);wl_surface_commit(surface_);flush();
  }
  void ready(){
   if(!compositor_||!shm_||!shell_){finish(false);return;}
