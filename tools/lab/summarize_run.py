@@ -27,6 +27,11 @@ def main():
             m = step.get('microphone') or {}
             print('   ready %-8s available %-5s effective %-5s requested %-5s %s%s' % (step.get('step'), m.get('available'), m.get('effective'), m.get('requested'),
                                                                                     m.get('device') or m.get('unavailable') or '', '' if step.get('waitedS') is None else ' | after %.1f s' % step['waitedS']))
+        for capture in entry.get('delayedCaptures') or []:
+            print('   delayed %s %s the recording: %s after %s s (delay %s) | saved %s %s | cover %s | countdown pixels %s%s' % (
+                capture.get('action'), capture.get('when'), capture.get('state'), capture.get('tookS'), capture.get('delaySeconds'),
+                (capture.get('local') or {}).get('status'), capture.get('size'), (capture.get('cover') or {}).get('fraction'),
+                capture.get('countdownPixels'), ' | ' + json.dumps(capture['error']) if capture.get('error') else ''))
         if entry.get('clickHighlights'):
             print('   clickHighlights', {k: entry['clickHighlights'].get(k) for k in ('available', 'route', 'drawnBy', 'targets', 'reason')})
         for kind, clip in (entry.get('clips') or {}).items():

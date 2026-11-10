@@ -36,7 +36,7 @@ numbers, identities, host load and the kernel's GPU hang count for the run.
                 [--pause-for 3] [--after 8] [--prepare-timeout 120] [--frames]
                 [--mic off|virtual|NAME] [--system on|off|tone] [--unplug-at S]
                 [--click S,X,Y[,BUTTON] ...] [--click-highlights on|off]
-                [--click-vnc HOST:PORT]
+                [--click-vnc HOST:PORT] [--delayed-capture desktop:3]
 
 A window target without --identity records the focused window, which on Wayland
 is the cover. On X11 a window is named by its id and a cover started from a shell
@@ -66,6 +66,13 @@ in while the bar is at Ready (as the default input), switches it on with
 follow every step (`readyFollow` in the round's entry, with the seconds each
 took and, with --frames, a frame of the desktop per step), and the clip that is
 then recorded must hold the bursts.
+`--delayed-capture desktop:3` checks that a delayed capture (#1363) and a
+recording work in one resident session: before `recording.prepare` and again
+after the recording is cancelled it calls `action.invoke` with `delaySeconds`,
+and the capture must end `completed` no sooner than its delay, saved to the
+run's private archive and at least half cover colour (`delayedCaptures` in the
+round's entry). With --frames a frame of the desktop is kept from each
+countdown and `countdownPixels` counts what the pill changed at the top centre.
 `--system off` records no system audio; `--system tone` moves the default
 output to a private null sink and plays a quiet 440 Hz tone into it, so the
 clip must hold the microphone's bursts and that tone. `--system leak` plays the
@@ -204,6 +211,13 @@ def export_shift(working, exported, pause_s):
     if not after_w or not after_e:
         return None
     return round(statistics.median(after_e) - statistics.median(after_w), 1)
+
+
+def parse_delayed_capture(text):
+    action, _, seconds = text.partition(':')
+    if action not in ('desktop', 'monitor') or seconds not in ('3', '5', '10'):
+        raise argparse.ArgumentTypeError('ACTION:SECONDS is desktop or monitor, and 3, 5 or 10')
+    return text
 
 
 def frame_edges(target, rect, output):
@@ -735,6 +749,8 @@ class Driver:
         caps = self.start_resident(build)
         copy = self.run / 'out' / ('%s.%s' % (name, fmt))
         try:
+            if a.delayed_capture:
+                result['delayedCaptures'] = [self.delayed_capture(build, name, 'before')]
             result['acquisition'] = caps.get('acquisition')
             # The first usable live encoder is the one the recording uses.
             result['liveEncoders'] = (caps.get('gstreamer') or {}).get('usableH264Encoders')
@@ -834,6 +850,8 @@ class Driver:
             done = self.wait_state(build, rid, ('reviewing',), 600)
             result['export'] = (done.get('lastExport') or {}).get('status')
             self.cli(build, 'recording.cancel', {'id': rid})
+            if a.delayed_capture:
+                result['delayedCaptures'].append(self.delayed_capture(build, name, 'after'))
         finally:
             self.stop_resident(build)
             if a.mic == 'late' and self.mic_state and json.loads(self.mic_state.read_text()).get('plugged'):
@@ -870,6 +888,7 @@ class Driver:
             if e.get('pairTimesS'):
                 result['exportMinusWorkingMs'] = export_shift(w, e, result['pauseClipS'])
         problems = self.clip_problems(result, sound)
+        problems += [problem for capture in result.get('delayedCaptures') or [] for problem in capture.pop('problems')]
         if problems:
             result['problems'] = problems
             log('problems: %s' % '; '.join(problems))
@@ -931,6 +950,87 @@ class Driver:
         finally:
             client.close()
         return True
+
+    def delayed_capture(self, build, name, when):
+        """A delayed capture in the resident session the round's recording uses (#1363 beside #1364).
+
+        `action.invoke {action, delaySeconds}` answers at once, the countdown runs for that long and the capture is
+        saved to the run's private archive. It must end `completed` no sooner than its delay, with one saved image
+        that is at least half cover colour (otherwise the image is deleted unopened). With --frames one frame of
+        the desktop is kept from the countdown (RUN/frames/NAME-countdown-WHEN.png) and one from after it, and
+        `countdownPixels` counts what differs between them in the top-centre band where the pill sits."""
+        action, _, seconds = self.args.delayed_capture.partition(':')
+        seconds = int(seconds)
+        entry = {'when': when, 'action': action, 'delaySeconds': seconds, 'problems': []}
+        began = time.monotonic()
+        operation = self.cli(build, 'action.invoke', {'action': action, 'delaySeconds': seconds})
+        entry['acceptedAfterS'] = round(time.monotonic() - began, 2)
+        frames = self.run / 'frames'
+        during = frames / ('%s-countdown-%s.png' % (name, when))
+        if self.args.frames:
+            time.sleep(1.0)
+            entry['countdownFrame'] = during.name if self.desktop_frame(during) else None
+        info = {}
+        while time.monotonic() - began < seconds + 45:
+            info = self.cli(build, 'operation.inspect', {'id': operation.get('id')})
+            info = info.get('operation') or info
+            if info.get('state') in ('completed', 'stored', 'partial', 'failed', 'cancelled', 'interrupted'):
+                break
+            time.sleep(0.25)
+        entry['tookS'] = round(time.monotonic() - began, 2)
+        entry['state'] = info.get('state')
+        items = info.get('items') or [{}]
+        error = info.get('error') or items[0].get('error') or {}
+        if error.get('code'):
+            entry['error'] = {'code': error.get('code'), 'message': error.get('message')}
+        if entry['state'] != 'completed':
+            entry['problems'].append('the delayed %s capture %s the recording ended %s (%s)' % (action, when, entry['state'], error.get('code')))
+            return entry
+        if entry['tookS'] < seconds:
+            entry['problems'].append('the delayed %s capture %s the recording took %.1f s of a %d s delay' % (action, when, entry['tookS'], seconds))
+        local = items[0].get('local') or {}
+        saved = Path(local.get('path') or '')
+        entry['local'] = {'status': local.get('status'), 'file': saved.name}
+        if local.get('status') != 'saved' or not saved.is_file():
+            entry['problems'].append('the delayed capture %s the recording was not saved' % when)
+            return entry
+        check = ['check-frame', str(saved), '--min-fraction', '0.5']
+        with open(saved, 'rb') as image:
+            header = image.read(24)
+        size = [int.from_bytes(header[16:20], 'big'), int.from_bytes(header[20:24], 'big')]
+        entry['size'] = size
+        if self.cover_rect and size != list(self.cover_rect[2:]):
+            # A desktop of several outputs: only the cover's own output is judged.
+            check += ['--rect', ','.join(str(v) for v in self.cover_rect), '--edges', 'none']
+        checked = subprocess.run([sys.executable, str(HERE / 'cover_player.py'), *check], capture_output=True, text=True)
+        entry['cover'] = json.loads(checked.stdout or '{"ok": false}')
+        if not entry['cover'].get('ok'):
+            saved.unlink()
+            entry['local']['file'] = None
+            entry['problems'].append('the delayed capture %s the recording is not of the cover; deleted unopened' % when)
+        if self.args.frames and entry.get('countdownFrame'):
+            after = frames / ('%s-countdown-%s-after.png' % (name, when))
+            time.sleep(0.5)
+            if self.desktop_frame(after):
+                entry['afterFrame'] = after.name
+                entry['countdownPixels'] = self.pill_pixels(during, after)
+                if entry['countdownPixels'] == 0:
+                    entry['problems'].append('no countdown was on screen during the delay %s the recording' % when)
+        return entry
+
+    def pill_pixels(self, during, after):
+        """How many pixels of the top-centre band of the cover's output differ between two desktop frames; None without Pillow."""
+        try:
+            from PIL import Image, ImageChops
+        except ImportError:
+            return None
+        first, second = Image.open(during).convert('RGB'), Image.open(after).convert('RGB')
+        if first.size != second.size:
+            return None
+        x, y, w, h = self.cover_rect or (0, 0, *first.size)
+        band = (x + w // 4, y, x + w - w // 4, y + h // 7)
+        difference = ImageChops.difference(first.crop(band), second.crop(band)).convert('L').point(lambda v: 255 if v > 48 else 0)
+        return sum(1 for v in difference.getdata() if v)
 
     def follow_at_ready(self, build, rid, name):
         """At Ready: a microphone is plugged in, switched on, pulled and plugged in again; the bar must follow each.
@@ -1130,6 +1230,8 @@ def main(argv=None):
                         help='press BUTTON (left, middle, right) at desktop pixel X,Y, S seconds into each recording, and check the clip for its ring')
     parser.add_argument('--click-highlights', choices=('on', 'off'), default='on', help='off: record the presses without click highlights; no ring may appear')
     parser.add_argument('--click-vnc', metavar='HOST:PORT', help="the VNC server that shows this desktop (default: this host's --vnc-port)")
+    parser.add_argument('--delayed-capture', metavar='ACTION:SECONDS', type=parse_delayed_capture,
+                        help='in each round, in the resident session that records: a delayed capture (desktop or monitor; 3, 5 or 10 s) before the recording and again after it')
     parser.add_argument('--keep-unpaired', action='store_true', help="keep clips without marker pairs (runs where the microphone is off or unplugged)")
     parser.add_argument('--real-data-home', action='store_true',
                         help="use the user's data directory (an AppImage's KWin screencast entry); moved into --run afterwards")
