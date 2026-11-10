@@ -40,11 +40,22 @@ An upload rule can also bend the reply the way a careless or hostile server woul
                                        backslash before every "/"
   "cut": "length" | "reset"            the reply ends early: a Content-Length it does not
                                        fulfil, or a reset in the middle of the body
+         "chunk" | "chunk-reset"       the same for a chunked reply: every byte of the body
+                                       but no last chunk, or a reset inside a chunk
+         "headers"                     the headers with the body's true length, and then
+                                       not one byte of the body
+  "chunked": true                      a whole reply sent chunked, last chunk and all
+  "gzip": true                         the reply's body compressed, whatever the request's
+                                       Accept-Encoding asked for
   "early": true                        with "status": the reply is sent before the body is
                                        read, and the connection then closes with most of
                                        the file never taken
+  "drain": true                        with "early": the file is then taken whole, and the
+                                       connection closes a moment later. With "cut", the
+                                       short reply is already there when the client has
+                                       sent its last byte
 """
-import hashlib, json, os, socket, sys, threading, time, urllib.parse, uuid
+import gzip, hashlib, json, os, socket, sys, threading, time, urllib.parse, uuid
 from email.parser import BytesParser
 from email.policy import HTTP
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -80,14 +91,44 @@ class Handler(BaseHTTPRequestHandler):
         elif isinstance(body, str):
             body = body.encode()
         cut = getattr(self, 'cut', None)
+        chunked = cut in ('chunk', 'chunk-reset') or getattr(self, 'chunked', False)
+        packed = getattr(self, 'gzip', False)
+        if packed:
+            body = gzip.compress(body)
         try:
             self.send_response(code)
             self.send_header('Content-Type', content_type)
-            # "length": more is promised than is sent before the connection closes.
-            self.send_header('Content-Length', str(len(body) + (64 if cut == 'length' else 0)))
+            if packed:
+                self.send_header('Content-Encoding', 'gzip')
+            if chunked:
+                self.send_header('Transfer-Encoding', 'chunked')
+            else:
+                # "length": more is promised than is sent before the connection closes.
+                self.send_header('Content-Length', str(len(body) + (64 if cut == 'length' else 0)))
             for name, value in (headers or {}).items():
                 self.send_header(name, value)
             self.end_headers()
+            if chunked:
+                def chunk(data):
+                    return b'%x\r\n' % len(data) + data + b'\r\n'
+                half = max(1, len(body) // 2)
+                first, second = body[:half], body[half:] or b' '
+                if cut == 'chunk-reset':
+                    # The second chunk says its whole length and brings half of it.
+                    self.wfile.write(chunk(first) + b'%x\r\n' % len(second) + second[:max(1, len(second) // 2)])
+                    self.wfile.flush()
+                    time.sleep(0.2)
+                    return self.drop()
+                # "chunk": every byte of the body is there, and the chunk that ends it is not.
+                self.wfile.write(chunk(first) + chunk(second) + (b'' if cut == 'chunk' else b'0\r\n\r\n'))
+                if cut == 'chunk':
+                    self.wfile.flush()
+                    self.close_connection = True
+                return
+            if cut == 'headers':
+                self.wfile.flush()
+                self.close_connection = True
+                return
             if cut == 'reset':
                 self.wfile.write(body[:max(1, len(body) * 2 // 3)])
                 self.wfile.flush()
@@ -128,10 +169,18 @@ class Handler(BaseHTTPRequestHandler):
 
         def answer():
             self.record('upload', {'early': True})
+            self.cut = rule.get('cut')
             self.reply(rule['status'], rule.get('body', {'error': 'synthetic early failure'}))
             self.wfile.flush()
-            # The client has the whole reply before this side goes away, unread body and all.
-            time.sleep(1.0)
+            if rule.get('drain'):
+                # The reply is under way while the file still arrives. All of the file is
+                # taken, so the client finishes sending with the reply already waiting,
+                # and the connection ends only after it has had time to read that reply.
+                self.body()
+                time.sleep(0.5)
+            else:
+                # The client has the whole reply before this side goes away, unread body and all.
+                time.sleep(1.0)
             self.close_connection = True
         return answer
 
@@ -147,7 +196,7 @@ class Handler(BaseHTTPRequestHandler):
 
     def record(self, call, extra=None):
         parsed = urllib.parse.urlsplit(self.path)
-        kept = {k.lower(): v for k, v in self.headers.items() if k.lower() in ('authorization', 'content-type', 'user-agent', 'host') or k.lower().startswith('x-')}
+        kept = {k.lower(): v for k, v in self.headers.items() if k.lower() in ('authorization', 'content-type', 'content-length', 'accept-encoding', 'user-agent', 'host') or k.lower().startswith('x-')}
         event = {'call': call, 'method': self.command, 'path': parsed.path, 'query': dict(urllib.parse.parse_qsl(parsed.query, keep_blank_values=True)), 'headers': kept}
         event.update(extra or {})
         with lock:
@@ -155,7 +204,7 @@ class Handler(BaseHTTPRequestHandler):
         return event
 
     def do_GET(self):
-        self.php, self.cut = False, None  # one connection serves several requests
+        self.php, self.cut, self.chunked, self.gzip = False, None, False, False  # one connection serves several requests
         parsed = urllib.parse.urlsplit(self.path)
         parts = parsed.path.strip('/').split('/')
         if parsed.path == '/__state':
@@ -168,6 +217,8 @@ class Handler(BaseHTTPRequestHandler):
             rule = self.rule('file')
             if rule.get('status'):
                 return self.reply(rule['status'], rule.get('body', ''))
+            # A "file" rule may cut the file's own reply short, as an upload rule does.
+            self.cut = rule.get('cut')
             with lock:
                 entry = state['files'].get(parts[1])
             if not entry or entry.get('deleted'):
@@ -206,7 +257,7 @@ class Handler(BaseHTTPRequestHandler):
         self.reply(404, {'error': 'unknown path'})
 
     def do_POST(self):
-        self.php, self.cut = False, None
+        self.php, self.cut, self.chunked, self.gzip = False, None, False, False
         if self.path == '/__reset':
             options = json.loads(self.body() or b'{}')
             with lock:
@@ -330,7 +381,7 @@ class Handler(BaseHTTPRequestHandler):
             first[rule['echo']] += '?key=' + (urllib.parse.quote(credential, safe='') if rule.get('encoding') == 'percent' else credential)
         if rule.get('userinfo') in first:
             first[rule['userinfo']] = first[rule['userinfo']].replace('http://', 'http://trusted.example@', 1)
-        self.php, self.cut = bool(rule.get('php')), rule.get('cut')
+        self.php, self.cut, self.chunked, self.gzip = bool(rule.get('php')), rule.get('cut'), bool(rule.get('chunked')), bool(rule.get('gzip'))
         if rule.get('drop'):
             return self.drop()
         if rule.get('status'):

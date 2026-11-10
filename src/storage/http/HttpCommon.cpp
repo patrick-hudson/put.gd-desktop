@@ -373,6 +373,25 @@ QString nameStoredValues(const QString& address, const QHash<QString, QString>& 
     if (!named || !storedValueIn(rest, values).isEmpty()) return {};
     return out;
 }
+QString incompleteReply(int status, const QByteArray& verb, const QList<QPair<QByteArray, QByteArray>>& headers, qint64 received) {
+    // These carry no body, whatever their headers say.
+    if (verb.compare("HEAD", Qt::CaseInsensitive) == 0 || (status >= 100 && status < 200) || status == 204 || status == 304) return {};
+    qint64 declared = -1;
+    for (const auto& [name, value] : headers) {
+        // Chunked wins over a Content-Length beside it, and declares no length.
+        if (name.compare("transfer-encoding", Qt::CaseInsensitive) == 0 && value.toLower().contains("chunked")) return {};
+        if (name.compare("content-length", Qt::CaseInsensitive) != 0) continue;
+        // "5, 5" is one length said twice. Two different ones, or no number, is no length.
+        for (const auto& part : value.split(',')) {
+            bool ok = false;
+            const auto length = part.trimmed().toLongLong(&ok);
+            if (!ok || length < 0 || (declared >= 0 && length != declared)) return {};
+            declared = length;
+        }
+    }
+    if (declared < 0 || received >= declared) return {};
+    return QStringLiteral("it ended after %1 of %2 bytes").arg(received).arg(declared);
+}
 QUrl requestOrigin(const QJsonObject& settings) {
     const auto text = settings["requestUrl"].toString();
     const auto authority = text.indexOf("://");

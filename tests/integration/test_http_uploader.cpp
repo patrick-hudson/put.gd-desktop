@@ -445,6 +445,45 @@ private slots:
         QCOMPARE(f.stored(), 1);
         // Exactly one request each: the worker never sends an upload twice by itself.
         QCOMPARE(f.events("upload").size(), 2);
+        // The same for an upload that has no body to send, its text travelling in the
+        // address: the transport would repeat such a request by itself.
+        f.reset();
+        auto bare = f.destination;
+        bare.settings = f.settings("json");
+        bare.settings["requestMethod"] = "GET";
+        bare.settings["body"] = "none";
+        bare.settings["parameters"] = rows({plainRow("content", "{input}"), plainRow("name", "{filename}")});
+        QVERIFY2(!http::validateSettings(bare.settings), qPrintable(http::validateSettings(bare.settings).message));
+        f.rules({{{"call", "upload"}, {"store", true}, {"drop", true}}});
+        lost = f.upload(f.text(), bare);
+        QVERIFY2(lost.status == "unknown", qPrintable(lost.status + " " + lost.receipt.directUrl + " " + lost.error.code));
+        QCOMPARE(lost.error.code, QString("http_outcome_unknown"));
+        QCOMPARE(f.events("upload").size(), 1);
+        QCOMPARE(f.stored(), 1);
+        // Such a request counts as sent while its reply is awaited: a server that takes
+        // longer than the connect timeout to answer it is not a failed connection.
+        f.reset();
+        bare.settings["connectTimeoutMs"] = 1000;
+        f.rules({{{"call", "upload"}, {"store", true}, {"delay", 2}}});
+        const auto slowBare = f.upload(f.text(), bare);
+        QVERIFY2(slowBare.status == "uploaded", qPrintable(slowBare.status + " " + slowBare.error.code + ": " + slowBare.error.message));
+        // And one that never answers is a request that was sent: unknown, not a failure.
+        bare.settings["requestTimeoutMs"] = 2000;
+        f.rules({{{"call", "upload"}, {"store", true}, {"delay", 4}}});
+        const auto silentBare = f.upload(f.text(), bare);
+        QVERIFY2(silentBare.status == "unknown", qPrintable(silentBare.status + " " + silentBare.error.code + ": " + silentBare.error.message));
+        QVERIFY2(silentBare.error.message.contains("request timeout"), qPrintable(silentBare.error.message));
+        // A server that is not there at all is still a plain failure: nothing was sent.
+        f.reset();
+        QTcpServer closed;
+        QVERIFY(closed.listen(QHostAddress::LocalHost));
+        bare.settings["requestUrl"] = QString("http://127.0.0.1:%1/upload/json").arg(closed.serverPort());
+        closed.close();
+        const auto absent = f.upload(f.text(), bare);
+        QVERIFY2(absent.status == "failed", qPrintable(absent.status + " " + absent.error.code + ": " + absent.error.message));
+        QCOMPARE(absent.error.code, QString("http_connect_failed"));
+        QCOMPARE(f.events("upload").size(), 0);
+        f.reset();
         // A gateway that gave up says nothing about what was stored.
         for (const int status : {408, 502, 504}) {
             f.rules({{{"call", "upload"}, {"store", true}, {"status", status}}});
@@ -828,8 +867,11 @@ private slots:
     void aReplyCutOffAfterItsStatusLineIsUnknown_data() {
         QTest::addColumn<QString>("style");
         QTest::addColumn<QString>("cut");
+        // A Content-Length that is not fulfilled, a reset in the body, and the same for a
+        // chunked reply: every byte of the body without the chunk that ends it, and a
+        // reset inside a chunk.
         for (const auto* style : {"text", "json"})
-            for (const auto* cut : {"length", "reset"}) QTest::newRow(qPrintable(QString("%1-%2").arg(style, cut))) << style << cut;
+            for (const auto* cut : {"length", "reset", "chunk", "chunk-reset"}) QTest::newRow(qPrintable(QString("%1-%2").arg(style, cut))) << style << cut;
         // A reply that is headers only has no body to reset in the middle of.
         QTest::newRow("header-length") << "header" << "length";
     }
@@ -847,6 +889,121 @@ private slots:
         QCOMPARE(result.error.code, QString("http_outcome_unknown"));
         QVERIFY2(result.error.message.contains("cut off") && result.error.message.contains("second copy"), qPrintable(result.error.message));
         QVERIFY(result.receipt.directUrl.isEmpty());
+        QCOMPARE(f.stored(), 1);
+    }
+    // #1393. The short reply is already waiting when the client has sent the last byte of
+    // the file. Qt, still finishing the request it wrote, takes the close that follows for
+    // a dead connection, tries to send the request again, cannot, and reports that (error
+    // 205), after it has handed over the status line, the headers and the bytes that came.
+    // Under load the rows above took that path now and then, and a short reply that held
+    // a whole link was recorded as an upload. This rule makes the server do it every
+    // time. Whatever the transport reports, a reply shorter than the length it declared
+    // is not a reply.
+    void aShortReplyThatWaitedWhileTheFileWasSentIsUnknown() {
+        HttpFixture f;
+        f.reset();
+        // The reply's JSON is whole and names a link; its Content-Length promises 64 bytes more.
+        const QJsonObject body{{"files", QJsonArray{QJsonObject{{"url", f.base + "/f/synthetic/shot.png"}}}}};
+        f.rules({{{"call", "upload"}, {"early", true}, {"drain", true}, {"status", 200}, {"cut", "length"}, {"body", body}}});
+        // Large enough that the reply arrives while the file is still being sent.
+        const auto result = f.upload(f.artifact("large.bin", QByteArray(16 * 1024 * 1024, 'x'), "application/octet-stream", "files"));
+        QVERIFY2(result.status == "unknown", qPrintable(result.status + " " + result.receipt.directUrl + " " + result.error.code + ": " + result.error.message));
+        QCOMPARE(result.error.code, QString("http_outcome_unknown"));
+        QVERIFY2(result.error.message.contains("second copy"), qPrintable(result.error.message));
+        QVERIFY(result.receipt.directUrl.isEmpty());
+        QCOMPARE(f.events("upload").size(), 1);
+    }
+    // A whole reply sent chunked is a reply like any other.
+    void aChunkedReplyIsRead() {
+        HttpFixture f;
+        f.reset();
+        f.rules({{{"call", "upload"}, {"store", true}, {"chunked", true}}});
+        const auto result = f.upload(f.image());
+        QVERIFY2(result.status == "uploaded", qPrintable(result.status + " " + result.error.code + ": " + result.error.message));
+        QCOMPARE(f.fetch(result.receipt.directUrl).first, 200);
+        QVERIFY(result.receipt.objectReference["deletionUrl"].toString().contains("/delete/"));
+    }
+    // Replies are asked for as they are, so that their length is the one on the wire. A
+    // server that compresses regardless sends a reply that arrives whole and cannot be
+    // read: an unknown outcome that says so, never a link out of noise. Where the link is
+    // in a header the body does not matter, and a compressed reply that is cut short is
+    // cut short like any other.
+    void aReplyCompressedRegardlessIsSaidToBe() {
+        HttpFixture f;
+        f.reset();
+        const auto plain = f.upload(f.image());
+        QCOMPARE(plain.status, QString("uploaded"));
+        QCOMPARE(f.events("upload")[0].toObject()["headers"].toObject()["accept-encoding"].toString(), QString("identity"));
+        f.rules({{{"call", "upload"}, {"store", true}, {"gzip", true}}});
+        const auto packed = f.upload(f.image());
+        QVERIFY2(packed.status == "unknown", qPrintable(packed.status + " " + packed.receipt.directUrl + " " + packed.error.code));
+        QCOMPARE(packed.error.code, QString("http_response_unreadable"));
+        QVERIFY2(packed.error.message.contains("compressed its reply (gzip)") && packed.error.message.contains("may be stored"), qPrintable(packed.error.message));
+        QVERIFY(packed.receipt.directUrl.isEmpty());
+        // The link in a header: the body is not needed.
+        auto header = f.destination;
+        header.settings = f.settings("header");
+        header.settings["responseUrl"] = "{header:Location}";
+        f.rules({{{"call", "upload"}, {"store", true}, {"gzip", true}}});
+        const auto located = f.upload(f.image(), header);
+        QVERIFY2(located.status == "uploaded", qPrintable(located.status + " " + located.error.code + ": " + located.error.message));
+        // Compressed and short of its length: cut off, under the one code.
+        f.rules({{{"call", "upload"}, {"store", true}, {"gzip", true}, {"cut", "length"}}});
+        const auto shortOne = f.upload(f.image());
+        QCOMPARE(shortOne.status, QString("unknown"));
+        QCOMPARE(shortOne.error.code, QString("http_outcome_unknown"));
+        QCOMPARE(f.stored(), 4);
+    }
+    // The destination's connect timeout holds for an upload with no body as well. Qt
+    // reports nothing about connecting for such a request over plain HTTP, so the worker
+    // asks the server for a connection first; one that gives none within the timeout is
+    // a plain failure, and nothing was sent.
+    void anUnreachableServerFailsABodilessUploadWithinTheConnectTimeout() {
+        HttpFixture f;
+        auto bare = f.destination;
+        bare.settings = f.settings("json");
+        bare.settings["requestMethod"] = "GET";
+        bare.settings["body"] = "none";
+        bare.settings["parameters"] = rows({plainRow("content", "{input}"), plainRow("name", "{filename}")});
+        // 192.0.2.1 is a documentation address: no connection is ever made there.
+        bare.settings["requestUrl"] = "http://192.0.2.1/upload/json";
+        bare.settings["allowInsecureHttp"] = true;
+        bare.settings["connectTimeoutMs"] = 1000;
+        bare.settings["requestTimeoutMs"] = 30000;
+        QVERIFY2(!http::validateSettings(bare.settings), qPrintable(http::validateSettings(bare.settings).message));
+        QElapsedTimer clock;
+        clock.start();
+        const auto result = f.upload(f.text(), bare);
+        QVERIFY2(result.status == "failed", qPrintable(result.status + " " + result.error.code + ": " + result.error.message));
+        QCOMPARE(result.error.code, QString("http_connect_failed"));
+        QVERIFY2(clock.elapsed() < 10000, qPrintable(QString::number(clock.elapsed())));
+    }
+    // Through a proxy there is no server to ask for a connection: the proxy takes the
+    // request, and may refuse a bare connection. The connection check is left out there,
+    // so a server only the proxy can reach is not failed for being out of direct reach.
+    // The scripted receiver plays the proxy; the address behind it never answers.
+    void aProxiedBodilessUploadIsNotJudgedByADirectConnection() {
+        HttpFixture f;
+        f.reset();
+        auto bare = f.destination;
+        bare.settings = f.settings("json");
+        bare.settings["requestMethod"] = "GET";
+        bare.settings["body"] = "none";
+        bare.settings["parameters"] = rows({plainRow("content", "{input}"), plainRow("name", "{filename}")});
+        bare.settings["requestUrl"] = "http://192.0.2.1/upload/json";
+        bare.settings["allowInsecureHttp"] = true;
+        bare.settings["connectTimeoutMs"] = 1000;
+        // The link is returned on the same far host, so that it is one the reply may name.
+        f.rules({{{"call", "upload"}, {"store", true}, {"elsewhere", "url"}, {"elsewhereHost", "192.0.2.1"}}});
+        // Only the worker is to see the proxy: this process talks to the receiver itself.
+        const auto proxyBefore = qgetenv("http_proxy"), noProxyBefore = qgetenv("no_proxy");
+        qputenv("http_proxy", f.base.toUtf8());
+        qunsetenv("no_proxy");
+        const auto result = f.upload(f.text(), bare);
+        if (proxyBefore.isEmpty()) qunsetenv("http_proxy"); else qputenv("http_proxy", proxyBefore);
+        if (!noProxyBefore.isEmpty()) qputenv("no_proxy", noProxyBefore);
+        QVERIFY2(result.status == "uploaded", qPrintable(result.status + " " + result.error.code + ": " + result.error.message));
+        QCOMPARE(f.events("upload").size(), 1);
         QCOMPARE(f.stored(), 1);
     }
     // Server text that is kept (a message, an excerpt, a content type) has every spelling
@@ -1139,6 +1296,46 @@ private slots:
         QVERIFY2(credentials.cached("uploader", session).has_value(), "the written destination lost its stored values");
         QCOMPARE(credentials.cached("uploader", session)->values.value("headers/Authorization"), token);
         QVERIFY(error.details["destinationWritten"].toBool());
+    }
+    // A deletion is confirmed by what the link serves before and after. A check whose
+    // reply was cut short is held against the other as far as it came: a link that still
+    // answers with the bytes it had is not a deleted file, whichever of the two was cut.
+    void aDeletionIsNotConfirmedByALinkCheckThatWasCutShort_data() {
+        QTest::addColumn<bool>("before");
+        QTest::newRow("the check before the deletion") << true;
+        QTest::newRow("the check after the deletion") << false;
+    }
+    void aDeletionIsNotConfirmedByALinkCheckThatWasCutShort() {
+        QFETCH(bool, before);
+        HttpFixture f;
+        f.reset();
+        // This receiver answers the deletion politely and deletes nothing.
+        auto destination = f.destination;
+        destination.settings = f.settings("pretend");
+        const auto uploaded = f.upload(f.image(), destination);
+        QVERIFY2(uploaded.status == "uploaded", qPrintable(uploaded.error.code + ": " + uploaded.error.message));
+        const QJsonObject whole{{"call", "file"}}, cut{{"call", "file"}, {"cut", "length"}};
+        if (before) f.rules({cut, whole});
+        else f.rules({whole, cut});
+        const auto result = f.remove(uploaded.receipt);
+        QVERIFY2(result.status == "failed", qPrintable(result.status + " " + result.error.code + ": " + result.error.message));
+        QCOMPARE(result.error.code, QString("http_delete_unconfirmed"));
+        QVERIFY2(result.error.message.contains("cut off"), qPrintable(result.error.message));
+        QCOMPARE(f.stored(), 1);
+        QVERIFY2(result.error.message.contains("still serves the file"), qPrintable(result.error.message));
+        // A check that brought none of the file has nothing to compare: the link still
+        // answers, and the message says no more than that.
+        const QJsonObject bare{{"call", "file"}, {"cut", "headers"}};
+        if (before) f.rules({bare, whole});
+        else f.rules({whole, bare});
+        const auto blank = f.remove(uploaded.receipt);
+        QCOMPARE(blank.error.code, QString("http_delete_unconfirmed"));
+        QVERIFY2(blank.error.message.contains("shows nothing either way") && !blank.error.message.contains("still serves the file"), qPrintable(blank.error.message));
+        // Where the file really went, a cut-short check before the deletion does not hide it.
+        const auto real = f.upload(f.image());
+        f.rules({cut});
+        QCOMPARE(f.remove(real.receipt).status, QString("removed"));
+        QCOMPARE(f.stored(), 1);
     }
     // Two imports in flight must not share a destination's stored values: the second is
     // refused while the first is being saved, whether the ID was given or derived.

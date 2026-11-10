@@ -25,8 +25,12 @@
 #include <QJsonDocument>
 #include <QNetworkAccessManager>
 #include <QNetworkInterface>
+#include <QNetworkProxy>
+#include <QNetworkProxyFactory>
+#include <QNetworkProxyQuery>
 #include <QNetworkReply>
 #include <QRegularExpression>
+#include <QTcpSocket>
 #include <QTemporaryDir>
 #include <QTimer>
 #include <QUrl>
@@ -105,10 +109,11 @@ Error checkpoint(const QJsonObject& journal) {
 }
 Error stoppedError() { return {"cancelled", "Upload cancelled", {}}; }
 
-// The request body: bytes before the file, the file, bytes after it. It can be read
-// exactly once. Qt Network silently sends a request again when the server closes the
-// connection before replying; a body it cannot rewind turns that into an error, so no
-// upload is ever repeated behind put.gd's back.
+// The request body: bytes before the file, the file, bytes after it; or nothing at all,
+// for a request that has no body. It can be read exactly once. Qt Network silently sends
+// a request again when the server closes the connection before replying; a body it
+// cannot rewind turns that into an error, so no upload is ever repeated behind put.gd's
+// back. That is why a request without a body is sent with an empty one.
 class Body final : public QIODevice {
 public:
     Body(QByteArray before, const QString& path, qint64 fileBytes, QByteArray after)
@@ -123,7 +128,11 @@ public:
     qint64 bytesAvailable() const override { return (total() - read_) + QIODevice::bytesAvailable(); }
     bool atEnd() const override { return read_ >= total() && QIODevice::bytesAvailable() == 0; }
     bool reset() override { return false; }
-    qint64 size() const override { return total(); }
+    // Never zero. Newer Qt drops an upload device of size zero from a request whose
+    // method expects no body, and with it the one thing that keeps the request from
+    // being sent again. What is sent is the Content-Length set on the request: for an
+    // empty body that is 0, and Qt then reads nothing from here.
+    qint64 size() const override { return qMax<qint64>(total(), 1); }
     // Every byte has been handed to the transport: the server may have the whole request.
     bool consumed() const { return read_ >= total(); }
     qint64 fileOffset() const { return before_.size(); }
@@ -169,7 +178,8 @@ struct Exchange {
     bool connected = false;    // the connection was up before the request ended
     bool stopped = false;      // cancelled
     bool deadline = false;     // past the connect or request deadline
-    bool cut = false;          // a status line arrived, then the connection broke: the reply is incomplete
+    bool cut = false;          // a status line arrived, but not the whole reply
+    qint64 received = 0;       // body bytes that arrived, counted past the ones kept
     QString detail;            // bounded transport description, never request data
     QString blocked;           // why the address was not fetched at all; nothing was sent
     QString header(const char* name) const {
@@ -242,11 +252,64 @@ public:
     }
     // One request, no redirects followed. `sent` reports body bytes the transport has read.
     Exchange send(const QByteArray& verb, const QUrl& url, const Headers& headers, Body* body = nullptr, const std::function<void(qint64)>& sent = {}) {
+        // A request with an empty body. Qt writes its headers as soon as the connection is
+        // up and says nothing about it: no "request sent", no upload progress. Over TLS
+        // the handshake tells that the connection is up. Over plain HTTP nothing does
+        // until the reply, and a server that cannot be reached looks like one that is slow
+        // to answer. So that the destination's connect timeout still holds there, the
+        // server is first asked for a connection of its own, within that timeout, and
+        // only when it gave one is the request made at all: nothing is under way while
+        // the answer is awaited, so "could not connect" means that nothing was sent.
+        // Through a proxy there is no server to ask (the proxy takes the request, and
+        // may refuse a bare connection): such a request is not checked, has no connect
+        // deadline, and counts as sent once it is stopped or times out.
+        const bool empty = body && body->total() == 0;
+        const bool blind = empty && url.scheme() == "http";
+        const auto proxies = blind ? QNetworkProxyFactory::proxyForQuery(QNetworkProxyQuery(url)) : QList<QNetworkProxy>{};
+        const bool unseen = blind && !proxies.isEmpty() && proxies.first().type() != QNetworkProxy::NoProxy;
+        Exchange out;
+        out.url = url;
+        if (blind && !unseen) {
+            QTcpSocket probe;
+            probe.setProxy(QNetworkProxy::NoProxy);
+            QEventLoop wait;
+            QTimer tick;
+            QElapsedTimer since;
+            since.start();
+            QObject::connect(&probe, &QTcpSocket::connected, &wait, &QEventLoop::quit);
+            QObject::connect(&probe, &QTcpSocket::errorOccurred, &wait, &QEventLoop::quit);
+            QObject::connect(&tick, &QTimer::timeout, &wait, [&] {
+                if (cancelled.load()) out.stopped = true;
+                else if (since.elapsed() > connectMs_) out.deadline = true;
+                if (out.stopped || out.deadline) wait.quit();
+            });
+            tick.start(50);
+            probe.connectToHost(url.host(), quint16(url.port(80)));
+            if (probe.state() != QAbstractSocket::ConnectedState && probe.error() == QAbstractSocket::UnknownSocketError) wait.exec();
+            tick.stop();
+            if (probe.state() != QAbstractSocket::ConnectedState) {
+                // Nothing was sent: the request does not exist yet.
+                out.detail = out.stopped ? QStringLiteral("cancelled") : out.deadline ? QStringLiteral("could not connect within the connect timeout")
+                           : probe.error() == QAbstractSocket::ConnectionRefusedError ? QStringLiteral("connection refused")
+                           : probe.error() == QAbstractSocket::HostNotFoundError ? QStringLiteral("host not found")
+                           : probe.error() == QAbstractSocket::NetworkError ? QStringLiteral("the network is unavailable")
+                           : probe.error() == QAbstractSocket::SocketTimeoutError ? QStringLiteral("timed out") : QStringLiteral("network error %1").arg(int(probe.error()));
+                probe.abort();
+                return out;
+            }
+            probe.abort();
+            // The server takes connections: from here on only the request deadline counts.
+            out.connected = true;
+        }
         QNetworkRequest request(url);
         request.setAttribute(QNetworkRequest::RedirectPolicyAttribute, QNetworkRequest::ManualRedirectPolicy);
         // HTTP/1.1: one request on one connection, so "was it sent" has a plain answer.
         request.setAttribute(QNetworkRequest::Http2AllowedAttribute, false);
         request.setRawHeader("User-Agent", QByteArray("put.gd/") + buildVersion());
+        // Replies are asked for as they are. Qt would otherwise ask for a compressed
+        // reply, unpack it and take its Content-Length away, and the bytes that arrived
+        // could no longer be held against the length the server declared.
+        request.setRawHeader("Accept-Encoding", "identity");
         for (const auto& [name, value] : headers) request.setRawHeader(name, value);
         QNetworkReply* reply = nullptr;
         if (body) {
@@ -255,18 +318,20 @@ public:
             reply = nam_.sendCustomRequest(request, verb, body);
         } else reply = nam_.sendCustomRequest(request, verb);
         QEventLoop loop;
-        Exchange out;
-        out.url = url;
         bool requestSent = false;
         QObject::connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
         QObject::connect(reply, &QNetworkReply::requestSent, &loop, [&] { requestSent = true; out.connected = true; ++out.sends; });
         QObject::connect(reply, &QNetworkReply::encrypted, &loop, [&] { out.connected = true; });
         QObject::connect(reply, &QNetworkReply::metaDataChanged, &loop, [&] { out.connected = true; });
-        QObject::connect(reply, &QNetworkReply::uploadProgress, &loop, [&](qint64 bytes, qint64) { if (bytes > 0) out.connected = true; if (sent) sent(bytes); });
-        QObject::connect(reply, &QNetworkReply::readyRead, &loop, [&] {
-            const auto chunk = reply->readAll();
-            if (out.body.size() < maximumReplyBytes) out.body.append(chunk.left(maximumReplyBytes - out.body.size()));
+        QObject::connect(reply, &QNetworkReply::uploadProgress, &loop, [&](qint64 bytes, qint64) {
+            if (bytes > 0) out.connected = true;
+            if (sent) sent(bytes);
         });
+        const auto take = [&](const QByteArray& chunk) {
+            out.received += chunk.size();
+            if (out.body.size() < maximumReplyBytes) out.body.append(chunk.left(maximumReplyBytes - out.body.size()));
+        };
+        QObject::connect(reply, &QNetworkReply::readyRead, &loop, [&] { take(reply->readAll()); });
         QTimer poll;
         poll.setInterval(50);
         QElapsedTimer clock;
@@ -274,26 +339,52 @@ public:
         QObject::connect(&poll, &QTimer::timeout, &loop, [&] {
             if (out.stopped || out.deadline) return;
             if (cancelled.load()) { out.stopped = true; reply->abort(); }
-            else if (clock.elapsed() > requestMs_ || (!out.connected && clock.elapsed() > connectMs_)) { out.deadline = true; reply->abort(); }
+            else if (clock.elapsed() > requestMs_ || (!out.connected && !unseen && clock.elapsed() > connectMs_)) { out.deadline = true; reply->abort(); }
         });
         poll.start();
         if (!reply->isFinished()) loop.exec();
         poll.stop();
         out.status = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
-        const auto rest = reply->readAll();
-        if (out.body.size() < maximumReplyBytes) out.body.append(rest.left(maximumReplyBytes - out.body.size()));
+        take(reply->readAll());
         out.headers = reply->rawHeaderPairs();
-        out.reached = body ? body->consumed() : requestSent;
+        // Whether the server may have the whole request. With a body: every byte of it was
+        // handed to the transport. Without one Qt says when it was sent. With an empty one
+        // it does not, so the request counts as sent when a reply came, when the connection
+        // closed under it or Qt wanted to send it again, and when it was stopped or timed
+        // out after the connection was up (the TLS handshake, or the connection check
+        // above) or could not be seen (a proxy): an outcome is reported as unknown sooner
+        // than as "nothing was stored".
+        const auto ended = reply->error();
+        if (unseen && (out.stopped || out.deadline)) out.connected = true;
+        if (empty) out.reached = out.status != 0 || ended == QNetworkReply::RemoteHostClosedError || ended == QNetworkReply::ContentReSendError || ((out.stopped || out.deadline) && out.connected);
+        else out.reached = body ? body->consumed() : requestSent;
         if (out.status == 0 || out.stopped || out.deadline) {
             // An aborted reply has no usable status even when headers had arrived.
             if (out.stopped || out.deadline) out.status = 0;
             out.detail = out.stopped ? QStringLiteral("cancelled") : out.deadline ? (out.connected ? QStringLiteral("no reply within the request timeout") : QStringLiteral("could not connect within the connect timeout"))
                                                                                   : transportReason(reply->error());
-        } else if (const auto failure = reply->error(); failure != QNetworkReply::NoError && (int(failure) < 200 || failure == QNetworkReply::ProtocolFailure)) {
-            // A transport or proxy failure after the status line (an HTTP error status
-            // has a code of its own, 201 and up): what arrived of the reply is not all of it.
-            out.cut = true;
-            out.detail = transportReason(failure);
+        } else {
+            // Whether the whole reply arrived. First by what arrived: a body shorter than
+            // the length its own headers declared is not all of it, whatever the transport
+            // has or has not reported by now. What Qt reports for a connection that ends
+            // under a reply depends on where its own bookkeeping stood when it noticed.
+            // Still catching up on the request it had just written, it takes the close for
+            // a dead connection, tries to send the request again, and reports that as
+            // ContentReSendError, after it has handed over the status line, the headers
+            // and the bytes that did arrive (#1393). So, second: for a status that is not
+            // itself an error, any error at all means the reply did not end as a reply
+            // should. That is also the only word there is on a chunked reply, whose last
+            // chunk Qt does not show; an HTTP error status has an error code of its own.
+            const auto failure = reply->error();
+            const bool ofStatus = out.status >= 400 && int(failure) > 200 && failure != QNetworkReply::ContentReSendError && failure != QNetworkReply::ProtocolUnknownError &&
+                                  failure != QNetworkReply::ProtocolFailure;
+            if (const auto shortfall = incompleteReply(out.status, verb, out.headers, out.received); !shortfall.isEmpty()) {
+                out.cut = true;
+                out.detail = shortfall;
+            } else if (failure != QNetworkReply::NoError && !ofStatus) {
+                out.cut = true;
+                out.detail = failure == QNetworkReply::ContentReSendError ? QStringLiteral("the connection closed before the reply was complete") : transportReason(failure);
+            }
         }
         reply->deleteLater();
         return out;
@@ -581,8 +672,17 @@ private:
         return true;
     }
     // What the server said about a refusal, where the destination names it: ": text", or ".".
+    // The coding of a reply's body when the server compressed it although it was asked not
+    // to, or empty. The worker does not unpack: such a body is bytes, not text to read.
+    static QString compressed(const Headers& headers) {
+        for (const auto& [name, value] : headers)
+            if (name.compare("content-encoding", Qt::CaseInsensitive) == 0)
+                if (const auto coding = QString::fromLatin1(value).trimmed().toLower(); !coding.isEmpty() && coding != "identity") return coding;
+        return {};
+    }
     QString said(const ResponseValues& values) const {
-        const auto text = settings()["errorMessage"].toString().isEmpty() ? QString() : shown(renderResponse(settings()["errorMessage"].toString(), values));
+        const auto text = settings()["errorMessage"].toString().isEmpty() || !compressed(values.headers).isEmpty() ? QString()
+                        : shown(renderResponse(settings()["errorMessage"].toString(), values));
         return text.isEmpty() ? QStringLiteral(".") : ": " + text;
     }
     Error refusal(const Exchange& r, const QString& stage, const ResponseValues& values) const {
@@ -606,8 +706,13 @@ private:
         Exchange r;
         for (int hop = 0;; ++hop) {
             std::unique_ptr<Body> body;
-            if (configured && plan.body) {
-                body = std::make_unique<Body>(plan.before, plan.file ? artifact.path : QString(), artifact.bytes, plan.after);
+            if (configured) {
+                // The configured request always goes out through a Body, an empty one when
+                // the request has no body of its own (its text travels in the address).
+                // Without one, Qt repeats the request by itself when the connection closes
+                // before the reply, and a server that had stored the file stores it twice.
+                body = plan.body ? std::make_unique<Body>(plan.before, plan.file ? artifact.path : QString(), artifact.bytes, plan.after)
+                                 : std::make_unique<Body>(QByteArray(), QString(), 0, QByteArray());
                 if (!body->open(QIODevice::ReadOnly)) { error = {"artifact_invalid", "Retained artifact is unavailable", {}}; return {}; }
             }
             const bool reports = configured && plan.file;
@@ -708,7 +813,7 @@ private:
         if (r.cut) {
             // Whatever its first bytes look like, a reply that ended early is not a reply.
             uncertain = true;
-            error = {"http_outcome_unknown", QString("The server's reply was cut off after its first line (HTTP %1; %2).").arg(r.status).arg(r.detail) + resend,
+            error = {"http_outcome_unknown", QString("The server's reply was cut off before it was complete (HTTP %1; %2).").arg(r.status).arg(r.detail) + resend,
                      {{"requestStage", "response"}, {"httpStatus", r.status}, {"transport", r.detail}}};
             return {{"status", "unknown"}};
         }
@@ -736,12 +841,20 @@ private:
         const auto link = address(pattern.isEmpty() ? values.body : renderResponse(pattern, values), false, &why);
         if (link.isEmpty()) {
             uncertain = true;
-            error = {"http_response_unreadable", QString("The server accepted the upload (HTTP %1), but ").arg(r.status) +
-                     (why.isEmpty() ? QStringLiteral("its reply has no link where this destination looks for one.") : "the link in its reply cannot be used: " + why + ".") +
-                     " The file may be stored on the server. Check the URL value under Response, then Retry; that sends the file again.",
-                     {{"requestStage", "response"}, {"httpStatus", r.status}, {"replyBytes", double(r.body.size())}, {"contentType", shown(r.header("content-type"), 96)}}};
+            // A server that compresses its reply although it was asked not to: the reply
+            // arrived whole and cannot be read, which is said as what it is.
+            const auto coding = compressed(r.headers);
+            if (!coding.isEmpty() && why.isEmpty())
+                error = {"http_response_unreadable", QString("The server accepted the upload (HTTP %1), but it compressed its reply (%2) although put.gd asks for replies as they are, and put.gd does not unpack them. "
+                         "The file may be stored on the server; Retry sends it again. Turn off compression for this address on the server, or put the link in a reply header.").arg(r.status).arg(shown(coding, 32)),
+                         {{"requestStage", "response"}, {"httpStatus", r.status}, {"replyBytes", double(r.body.size())}, {"contentEncoding", shown(coding, 32)}}};
+            else
+                error = {"http_response_unreadable", QString("The server accepted the upload (HTTP %1), but ").arg(r.status) +
+                         (why.isEmpty() ? QStringLiteral("its reply has no link where this destination looks for one.") : "the link in its reply cannot be used: " + why + ".") +
+                         " The file may be stored on the server. Check the URL value under Response, then Retry; that sends the file again.",
+                         {{"requestStage", "response"}, {"httpStatus", r.status}, {"replyBytes", double(r.body.size())}, {"contentType", shown(r.header("content-type"), 96)}}};
             QJsonObject out{{"status", "unknown"}};
-            if (request_["includeReply"].toBool()) out["replyExcerpt"] = shown(values.body, 600);
+            if (request_["includeReply"].toBool() && coding.isEmpty()) out["replyExcerpt"] = shown(values.body, 600);
             return out;
         }
         // A server can repeat what it was sent inside the link it hands back. Such a
@@ -894,11 +1007,24 @@ private:
         if (r.status >= 200 && r.status < 400) {
             // A server can answer politely and delete nothing. If the link served the
             // file before and serves the very same bytes now, it is still there.
+            // Two whole replies are the same file when their bytes are. A reply that was
+            // cut short, before or after, is held against the other as far as it came:
+            // a link that still answers with the bytes it had is not a deleted file, and
+            // a check that was cut short proves nothing either way.
             if (before.status >= 200 && before.status < 300) {
                 const auto after = client_.get(link, allowInsecure());
-                if (after.status >= 200 && after.status < 300 && after.body == before.body) {
-                    error = {"http_delete_unconfirmed", QString("The server answered the deletion request (HTTP %1), but the link still serves the file. Nothing is confirmed deleted. "
-                             "This server may want the deletion confirmed on its own page, or may serve a cached copy for a while; try again later or delete it on the server.").arg(r.status), details};
+                const bool partial = before.cut || after.cut;
+                const auto common = qMin(before.body.size(), after.body.size());
+                const bool same = partial ? before.body.left(common) == after.body.left(common) : after.body == before.body;
+                if (after.status >= 200 && after.status < 300 && same) {
+                    // With nothing to compare (a check cut off before any of the file came)
+                    // the link still answers, and that is all that is known.
+                    error = partial && common == 0
+                        ? Error{"http_delete_unconfirmed", QString("The server answered the deletion request (HTTP %1), and the link still answers, but the check of the link was cut off before any of the file came, "
+                                "so it shows nothing either way. Nothing is confirmed deleted; try again later or delete it on the server.").arg(r.status), details}
+                        : Error{"http_delete_unconfirmed", QString("The server answered the deletion request (HTTP %1), but the link still serves the file%2. Nothing is confirmed deleted. "
+                                "This server may want the deletion confirmed on its own page, or may serve a cached copy for a while; try again later or delete it on the server.").arg(r.status)
+                                .arg(partial ? QStringLiteral(", as far as the check of the link got before its reply was cut off") : QString()), details};
                     return {{"status", "failed"}, {"progress", progress}};
                 }
             }
@@ -961,8 +1087,9 @@ private:
         QString refused;
         const auto fetched = client_.get(QUrl(receipt.directUrl, QUrl::StrictMode), allowInsecure(), &refused);
         out["linkStatus"] = fetched.status;
-        out["publicReachable"] = fetched.status >= 200 && fetched.status < 300;
-        out["linkReturnsFile"] = fetched.body == bytes;
+        // A reply that was cut short is not the link opening.
+        out["publicReachable"] = fetched.status >= 200 && fetched.status < 300 && !fetched.cut;
+        out["linkReturnsFile"] = !fetched.cut && fetched.body == bytes;
         Error cleanup;
         if (receipt.objectReference.contains("deletionUrl")) {
             request_["receipt"] = receipt.toJson();
@@ -976,6 +1103,8 @@ private:
             error = {"public_url_unreachable", "The upload worked, but put.gd did not open the returned link: " + fetched.blocked + ". " +
                      (fetched.blocked.contains("plain HTTP") ? QStringLiteral("Turn on Allow plain HTTP for this destination, or have the server return an https link.") : QStringLiteral("Check the URL value under Response.")),
                      {{"httpStatus", 0}}};
+        else if (fetched.cut && fetched.status >= 200 && fetched.status < 300)
+            error = {"public_url_unreachable", QString("The upload worked, but the returned link's reply was cut off (HTTP %1; %2). Test again.").arg(fetched.status).arg(fetched.detail), {{"httpStatus", fetched.status}}};
         else if (!out["publicReachable"].toBool())
             error = {"public_url_unreachable", fetched.status ? QString("The upload worked, but the returned link did not open (HTTP %1). Check the URL value under Response.").arg(fetched.status)
                                                               : "The upload worked, but the returned link did not open (" + (refused.isEmpty() ? fetched.detail : refused) + "). Check the URL value under Response.",
