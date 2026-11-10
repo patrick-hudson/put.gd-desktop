@@ -17,6 +17,7 @@
 #include <sys/mman.h>
 #include <sys/syscall.h>
 #include <unistd.h>
+#include <algorithm>
 #include <cerrno>
 #include <cstring>
 #include <ctime>
@@ -28,6 +29,9 @@ namespace {
 constexpr int ringSize=4;
 constexpr qint64 keepaliveNs=1'000'000'000;
 constexpr int openTimeoutMs=3000;
+// A moving cursor over a still screen: at most this often (60 a second).
+constexpr qint64 cursorIntervalNs=16'000'000;
+constexpr int cursorSettleMs=400;
 qint64 monotonicNs(){timespec t{};clock_gettime(CLOCK_MONOTONIC,&t);return qint64(t.tv_sec)*1'000'000'000+t.tv_nsec;}
 QString text(const char* value){return QString::fromUtf8(value,int(strnlen(value,4096)));}
 const char* gstFormat(uint32_t format){
@@ -61,6 +65,18 @@ struct ImageCopySource::Impl {
  std::function<void(Error)> lost;std::thread thread;std::atomic_bool stopping{false};
  std::atomic<qint64> frames{0},keepalives{0},constraintChanges{0};bool ended=false;
  Error failure;
+ // Own cursor (#1364): the session has no painted cursor; this draws it from the cursor session.
+ bool ownCursor=false,seatPointer=false;wl_seat* seat=nullptr;wl_pointer* pointerDevice=nullptr;
+ ext_image_copy_capture_cursor_session_v1* cursorSession=nullptr;ext_image_copy_capture_session_v1* cursorCapture=nullptr;ext_image_copy_capture_frame_v1* cursorFrame=nullptr;
+ QSize cursorSize,cursorPendingSize;QList<uint32_t> cursorPendingFormats;uint32_t cursorFormat=0;bool cursorConstraints=false,cursorReallocate=false,cursorEnded=false;
+ wl_buffer* cursorBuffer=nullptr;void* cursorData=MAP_FAILED;size_t cursorBytes=0;QSize cursorBufferSize;
+ // The cursor's picture, premultiplied, already in the frame's channel order.
+ std::vector<uint32_t> cursorPixels;QSize cursorImage;
+ bool cursorIn=false,cursorDirty=false;QPoint cursorAt,cursorHot;qint64 cursorRetry=0,lastPts=0;
+ // The newest captured frame, kept out of the ring so a cursor move can be drawn onto a fresh copy of it.
+ Slot* clean=nullptr;
+ mutable std::mutex pointerLock;bool pointerIn=false,pointerEver=false;QPoint pointerAt;
+ std::atomic<qint64> cursorImages{0},cursorPushes{0};
  ~Impl(){close();}
  void close(){
   stopping=true;wakeUp();
@@ -68,8 +84,15 @@ struct ImageCopySource::Impl {
   if(appsrc){gst_object_unref(appsrc);appsrc=nullptr;}
   if(last){gst_buffer_unref(last);last=nullptr;}
   if(frame){ext_image_copy_capture_frame_v1_destroy(frame);frame=nullptr;}
+  if(cursorFrame){ext_image_copy_capture_frame_v1_destroy(cursorFrame);cursorFrame=nullptr;}
+  if(cursorCapture){ext_image_copy_capture_session_v1_destroy(cursorCapture);cursorCapture=nullptr;}
+  if(cursorSession){ext_image_copy_capture_cursor_session_v1_destroy(cursorSession);cursorSession=nullptr;}
+  freeCursorBuffer();
+  if(pointerDevice){wl_pointer_destroy(pointerDevice);pointerDevice=nullptr;}
+  if(seat){wl_seat_destroy(seat);seat=nullptr;}
   if(session){ext_image_copy_capture_session_v1_destroy(session);session=nullptr;}
   if(source){ext_image_capture_source_v1_destroy(source);source=nullptr;}
+  dropClean();
   retireSlots();
   for(auto* w:extWindows){ext_foreign_toplevel_handle_v1_destroy(static_cast<ext_foreign_toplevel_handle_v1*>(w->native));delete w;}extWindows.clear();
   for(auto* w:wlrWindows){zwlr_foreign_toplevel_handle_v1_destroy(static_cast<zwlr_foreign_toplevel_handle_v1*>(w->native));delete w;}wlrWindows.clear();
@@ -94,6 +117,11 @@ struct ImageCopySource::Impl {
   auto* self=static_cast<Impl*>(data);const QByteArray name(interface);
   auto bind=[&](const wl_interface* i,uint32_t wanted){const auto v=std::min(version,wanted);self->versions[QString::fromLatin1(i->name)]=int(v);return wl_registry_bind(registry,id,i,v);};
   if(name==wl_shm_interface.name&&!self->shm)self->shm=static_cast<wl_shm*>(bind(&wl_shm_interface,1));
+  else if(name==wl_seat_interface.name&&!self->seat){
+   self->seat=static_cast<wl_seat*>(wl_registry_bind(registry,id,&wl_seat_interface,1));
+   static const wl_seat_listener listener={[](void* d,wl_seat*,uint32_t capabilities){static_cast<Impl*>(d)->seatPointer=capabilities&WL_SEAT_CAPABILITY_POINTER;},[](void*,wl_seat*,const char*){}};
+   wl_seat_add_listener(self->seat,&listener,self);
+  }
   else if(name==ext_image_copy_capture_manager_v1_interface.name&&!self->copy)self->copy=static_cast<ext_image_copy_capture_manager_v1*>(bind(&ext_image_copy_capture_manager_v1_interface,1));
   else if(name==ext_output_image_capture_source_manager_v1_interface.name&&!self->outputSources)self->outputSources=static_cast<ext_output_image_capture_source_manager_v1*>(bind(&ext_output_image_capture_source_manager_v1_interface,1));
   else if(name==ext_foreign_toplevel_image_capture_source_manager_v1_interface.name&&!self->windowSources)self->windowSources=static_cast<ext_foreign_toplevel_image_capture_source_manager_v1*>(bind(&ext_foreign_toplevel_image_capture_source_manager_v1_interface,1));
@@ -173,7 +201,7 @@ struct ImageCopySource::Impl {
  static void sessionStopped(void* d,ext_image_copy_capture_session_v1*){auto* s=static_cast<Impl*>(d);s->ended=true;s->fail({"recording_target","The recorded window or output is gone; the recording up to here was kept",{}});}
  void fail(Error error){if(!failure)failure=std::move(error);}
  bool allocate(){
-  retireSlots();
+  dropClean();retireSlots();
   const int stride=size.width()*4;const size_t bytes=size_t(stride)*size_t(size.height());
   for(int i=0;i<ringSize;++i){
    const int fd=int(::syscall(SYS_memfd_create,"putgd-record-frame",MFD_CLOEXEC));
@@ -220,10 +248,127 @@ struct ImageCopySource::Impl {
   if(gst_app_src_push_buffer(GST_APP_SRC(appsrc),buffer)!=GST_FLOW_OK)stopping=true;
   lastPush=monotonicNs();
  }
+ // Own cursor ------------------------------------------------------------------
+ void dropClean(){if(clean){release(clean);clean=nullptr;}}
+ void freeCursorBuffer(){
+  if(cursorBuffer){wl_buffer_destroy(cursorBuffer);cursorBuffer=nullptr;}
+  if(cursorData!=MAP_FAILED){munmap(cursorData,cursorBytes);cursorData=MAP_FAILED;}
+ }
+ void setPointer(bool in,QPoint at){std::lock_guard guard(pointerLock);pointerIn=in;pointerEver|=in;pointerAt=at;}
+ static void cursorEnter(void* d,ext_image_copy_capture_cursor_session_v1*){auto* s=static_cast<Impl*>(d);s->cursorIn=true;s->cursorDirty=true;s->setPointer(true,s->cursorAt);}
+ static void cursorLeave(void* d,ext_image_copy_capture_cursor_session_v1*){auto* s=static_cast<Impl*>(d);s->cursorIn=false;s->cursorDirty=true;s->setPointer(false,s->cursorAt);}
+ static void cursorPosition(void* d,ext_image_copy_capture_cursor_session_v1*,int32_t x,int32_t y){auto* s=static_cast<Impl*>(d);s->cursorAt=QPoint(x,y);s->cursorDirty=true;s->setPointer(s->cursorIn,s->cursorAt);}
+ static void cursorHotspot(void* d,ext_image_copy_capture_cursor_session_v1*,int32_t x,int32_t y){auto* s=static_cast<Impl*>(d);s->cursorHot=QPoint(x,y);s->cursorDirty=true;}
+ static void cursorExtent(void* d,ext_image_copy_capture_session_v1*,uint32_t w,uint32_t h){static_cast<Impl*>(d)->cursorPendingSize=QSize(int(std::min<uint32_t>(w,1024)),int(std::min<uint32_t>(h,1024)));}
+ static void cursorShmFormat(void* d,ext_image_copy_capture_session_v1*,uint32_t f){auto* s=static_cast<Impl*>(d);if(s->cursorPendingFormats.size()<64)s->cursorPendingFormats.append(f);}
+ static void cursorDone(void* d,ext_image_copy_capture_session_v1*){
+  auto* s=static_cast<Impl*>(d);
+  // A cursor needs its alpha: ARGB or ABGR, nothing else.
+  const auto offered=s->cursorPendingFormats;s->cursorPendingFormats.clear();
+  const bool argb=offered.contains(uint32_t(WL_SHM_FORMAT_ARGB8888)),abgr=offered.contains(uint32_t(WL_SHM_FORMAT_ABGR8888));
+  if((!argb&&!abgr)||s->cursorPendingSize.isEmpty()){s->cursorConstraints=false;return;}
+  s->cursorSize=s->cursorPendingSize;s->cursorFormat=uint32_t(argb?WL_SHM_FORMAT_ARGB8888:WL_SHM_FORMAT_ABGR8888);
+  s->cursorConstraints=true;s->cursorReallocate=true;
+ }
+ static void cursorStopped(void* d,ext_image_copy_capture_session_v1*){static_cast<Impl*>(d)->cursorEnded=true;}
+ bool allocateCursor(){
+  freeCursorBuffer();
+  const int stride=cursorSize.width()*4;cursorBytes=size_t(stride)*size_t(cursorSize.height());
+  const int fd=int(::syscall(SYS_memfd_create,"putgd-record-cursor",MFD_CLOEXEC));
+  if(fd<0||ftruncate(fd,off_t(cursorBytes))<0){if(fd>=0)::close(fd);return false;}
+  cursorData=mmap(nullptr,cursorBytes,PROT_READ|PROT_WRITE,MAP_SHARED,fd,0);
+  if(cursorData==MAP_FAILED){::close(fd);return false;}
+  auto* pool=wl_shm_create_pool(shm,fd,int32_t(cursorBytes));::close(fd);
+  cursorBuffer=wl_shm_pool_create_buffer(pool,0,cursorSize.width(),cursorSize.height(),stride,cursorFormat);wl_shm_pool_destroy(pool);
+  cursorBufferSize=cursorSize;cursorReallocate=false;return true;
+ }
+ void cursorReady(){
+  ext_image_copy_capture_frame_v1_destroy(cursorFrame);cursorFrame=nullptr;
+  if(cursorData==MAP_FAILED)return;
+  // Into the frame's channel order once, so drawing is one blend per pixel.
+  const bool frameBgr=format==WL_SHM_FORMAT_XRGB8888||format==WL_SHM_FORMAT_ARGB8888,cursorBgr=cursorFormat==WL_SHM_FORMAT_ARGB8888;
+  const size_t count=size_t(cursorBufferSize.width())*size_t(cursorBufferSize.height());
+  cursorPixels.resize(count);std::memcpy(cursorPixels.data(),cursorData,count*4);
+  if(frameBgr!=cursorBgr)for(auto& pixel:cursorPixels)pixel=(pixel&0xff00ff00u)|((pixel&0x00ff0000u)>>16)|((pixel&0x000000ffu)<<16);
+  cursorImage=cursorBufferSize;cursorDirty=true;cursorImages.fetch_add(1);
+ }
+ void cursorFailed(uint32_t reason){
+  ext_image_copy_capture_frame_v1_destroy(cursorFrame);cursorFrame=nullptr;
+  if(reason==EXT_IMAGE_COPY_CAPTURE_FRAME_V1_FAILURE_REASON_STOPPED)cursorEnded=true;
+  // New constraints follow a size change; anything else is tried again shortly, never in a tight loop.
+  else cursorRetry=monotonicNs()+200'000'000;
+ }
+ // Keeps one cursor frame asked for: the compositor answers when the cursor's picture changes.
+ void pumpCursor(){
+  if(!cursorCapture||cursorEnded||cursorFrame||!cursorConstraints||monotonicNs()<cursorRetry)return;
+  if(cursorReallocate&&!allocateCursor()){cursorEnded=true;return;}
+  cursorFrame=ext_image_copy_capture_session_v1_create_frame(cursorCapture);
+  static const ext_image_copy_capture_frame_v1_listener listener={
+   [](void*,ext_image_copy_capture_frame_v1*,uint32_t){},[](void*,ext_image_copy_capture_frame_v1*,int32_t,int32_t,int32_t,int32_t){},
+   [](void*,ext_image_copy_capture_frame_v1*,uint32_t,uint32_t,uint32_t){},
+   [](void* d,ext_image_copy_capture_frame_v1*){static_cast<Impl*>(d)->cursorReady();},
+   [](void* d,ext_image_copy_capture_frame_v1*,uint32_t reason){static_cast<Impl*>(d)->cursorFailed(reason);}};
+  ext_image_copy_capture_frame_v1_add_listener(cursorFrame,&listener,this);
+  ext_image_copy_capture_frame_v1_attach_buffer(cursorFrame,cursorBuffer);
+  ext_image_copy_capture_frame_v1_damage_buffer(cursorFrame,0,0,cursorBufferSize.width(),cursorBufferSize.height());
+  ext_image_copy_capture_frame_v1_capture(cursorFrame);
+ }
+ void openCursor(){
+  pointerDevice=wl_seat_get_pointer(seat);
+  cursorSession=ext_image_copy_capture_manager_v1_create_pointer_cursor_session(copy,source,pointerDevice);
+  static const ext_image_copy_capture_cursor_session_v1_listener listener={&Impl::cursorEnter,&Impl::cursorLeave,&Impl::cursorPosition,&Impl::cursorHotspot};
+  ext_image_copy_capture_cursor_session_v1_add_listener(cursorSession,&listener,this);
+  cursorCapture=ext_image_copy_capture_cursor_session_v1_get_capture_session(cursorSession);
+  static const ext_image_copy_capture_session_v1_listener capture={&Impl::cursorExtent,&Impl::cursorShmFormat,[](void*,ext_image_copy_capture_session_v1*,wl_array*){},[](void*,ext_image_copy_capture_session_v1*,uint32_t,wl_array*){},&Impl::cursorDone,&Impl::cursorStopped};
+  ext_image_copy_capture_session_v1_add_listener(cursorCapture,&capture,this);
+ }
+ // A copy of the newest frame with the cursor drawn where the cursor session says it is.
+ void pushComposed(qint64 pts){
+  if(!clean)return;
+  const int w=clean->dims.width(),h=clean->dims.height();const size_t bytes=size_t(w)*4*size_t(h);
+  auto* pixels=static_cast<uint32_t*>(g_try_malloc(bytes));if(!pixels)return;
+  std::memcpy(pixels,clean->data,bytes);
+  if(cursorIn&&!cursorPixels.empty()){
+   const int left=cursorAt.x()-cursorHot.x(),top=cursorAt.y()-cursorHot.y(),cw=cursorImage.width(),ch=cursorImage.height();
+   for(int y=std::max(0,-top);y<ch&&top+y<h;++y){
+    const uint32_t* from=cursorPixels.data()+size_t(y)*size_t(cw);uint32_t* row=pixels+size_t(top+y)*size_t(w);
+    for(int x=std::max(0,-left);x<cw&&left+x<w;++x){
+     const uint32_t s=from[x],a=s>>24;
+     if(!a)continue;
+     if(a==255){row[left+x]=s;continue;}
+     // Premultiplied source over the frame, one channel at a time.
+     const uint32_t d=row[left+x],k=255-a;
+     auto over=[s,d,k](int shift){return std::min<uint32_t>(((s>>shift)&0xff)+(((d>>shift)&0xff)*k+127)/255,255)<<shift;};
+     row[left+x]=0xff000000u|over(16)|over(8)|over(0);
+    }
+   }
+  }
+  GstBuffer* buffer=nullptr;
+  if(transform==WL_OUTPUT_TRANSFORM_NORMAL)buffer=gst_buffer_new_wrapped_full(GstMemoryFlags(0),pixels,bytes,0,bytes,pixels,g_free);
+  else{
+   const QImage view(reinterpret_cast<const uchar*>(pixels),w,h,w*4,QImage::Format_RGB32);
+   auto* image=new QImage(waylandUpright(view,transform));g_free(pixels);
+   buffer=gst_buffer_new_wrapped_full(GST_MEMORY_FLAG_READONLY,image->bits(),size_t(image->sizeInBytes()),0,size_t(image->sizeInBytes()),image,[](gpointer data){delete static_cast<QImage*>(data);});
+  }
+  if(const auto upright=waylandUprightSize(clean->dims,transform);upright!=declared)setCaps(upright);
+  // A cursor frame is stamped now, a captured one when it was shown: never backwards.
+  lastPts=std::max(pts,lastPts+1);GST_BUFFER_PTS(buffer)=GstClockTime(lastPts);
+  if(last)gst_buffer_unref(last);
+  last=gst_buffer_ref(buffer);
+  push(buffer);
+ }
  void ready(){
   ext_image_copy_capture_frame_v1_destroy(frame);frame=nullptr;auto* slot=inFlight;inFlight=nullptr;
   if(!slot)return;
   transform=frameTransform;
+  if(ownCursor){
+   dropClean();
+   {std::lock_guard guard(shared->lock);slot->busy=true;}
+   clean=slot;cursorDirty=false;frames.fetch_add(1);
+   const qint64 now=monotonicNs();
+   pushComposed(presentation>0&&presentation<=now?presentation:now);
+   return;
+  }
   GstBuffer* buffer=nullptr;
   if(transform==WL_OUTPUT_TRANSFORM_NORMAL){
    {std::lock_guard guard(shared->lock);slot->busy=true;}
@@ -256,6 +401,10 @@ struct ImageCopySource::Impl {
     setCaps(waylandUprightSize(size,transform));
     if(last){gst_buffer_unref(last);last=nullptr;}
    }
+   if(ownCursor){
+    pumpCursor();
+    if(cursorDirty&&clean&&monotonicNs()-lastPush>=cursorIntervalNs){cursorDirty=false;cursorPushes.fetch_add(1);pushComposed(monotonicNs());}
+   }
    if(!frame&&constraints&&!reallocate)if(auto* slot=freeSlot())capture(slot);
    if(last&&monotonicNs()-lastPush>=keepaliveNs)keepalive();
    if(wl_display_flush(display)<0&&errno!=EAGAIN){fail({"recording_target","The Wayland connection for recording was lost",{}});break;}
@@ -263,7 +412,8 @@ struct ImageCopySource::Impl {
    if(ended)break;
    int wake=-1;{std::lock_guard guard(shared->lock);wake=shared->wake;}
    pollfd fds[2]={{wl_display_get_fd(display),POLLIN,0},{wake,POLLIN,0}};
-   const int count=poll(fds,2,100);
+   // A cursor move waiting for its turn is drawn when the interval is over, not at the next event.
+   const int count=poll(fds,2,ownCursor&&cursorDirty&&clean?int(std::clamp<qint64>((cursorIntervalNs-(monotonicNs()-lastPush))/1'000'000,1,16)):100);
    if(count>0&&(fds[0].revents&POLLIN)){if(wl_display_read_events(display)<0){fail({"recording_target","The Wayland connection for recording was lost",{}});break;}}
    else wl_display_cancel_read(display);
    if(fds[1].revents&POLLIN){uint64_t value=0;(void)!::read(wake,&value,sizeof value);}
@@ -276,14 +426,15 @@ ImageCopySource::Facts ImageCopySource::probe(){
  Facts facts;Impl impl;QString reason;
  if(!impl.connect(&reason)){facts.reason=reason;facts.windowReason=reason;return facts;}
  for(auto it=impl.versions.cbegin();it!=impl.versions.cend();++it)facts.protocols[it.key()]=it.value();
- facts.outputs=int(impl.outputs.size());
+ facts.outputs=int(impl.outputs.size());facts.pointer=impl.copy&&impl.seat&&impl.seatPointer;
  facts.reason=impl.outputReason();facts.available=facts.reason.isEmpty();
  facts.windowReason=impl.windowReason();facts.windows=facts.windowReason.isEmpty();
  return facts;
 }
 ImageCopySource::ImageCopySource():d_(std::make_unique<Impl>()){}
 ImageCopySource::~ImageCopySource()=default;
-Error ImageCopySource::open(const Target& target,QSize* size,QString* identity,QString* appId){
+Error ImageCopySource::open(const Target& target,QSize* size,QString* identity,QString* appId,bool pointer,bool* pointerOpened){
+ if(pointerOpened)*pointerOpened=false;
  QString reason;
  if(!d_->connect(&reason))return {"recording_unavailable",reason,{{"protocol","ext-image-copy-capture-v1"}}};
  reason=target.window?d_->windowReason():d_->outputReason();
@@ -306,7 +457,10 @@ Error ImageCopySource::open(const Target& target,QSize* size,QString* identity,Q
   if(identity)*identity=name;
  }
  if(!d_->source)return {"recording_target","The recording source could not be created",{}};
- d_->session=ext_image_copy_capture_manager_v1_create_session(d_->copy,d_->source,EXT_IMAGE_COPY_CAPTURE_MANAGER_V1_OPTIONS_PAINT_CURSORS);
+ // The cursor is this source's to draw only for an upright output on a seat with a pointer:
+ // a window source has no cursor session in wlroots, and a turned output's is not handled here.
+ d_->ownCursor=pointer&&!target.window&&d_->seat&&d_->seatPointer&&d_->transform==WL_OUTPUT_TRANSFORM_NORMAL;
+ d_->session=ext_image_copy_capture_manager_v1_create_session(d_->copy,d_->source,d_->ownCursor?0u:uint32_t(EXT_IMAGE_COPY_CAPTURE_MANAGER_V1_OPTIONS_PAINT_CURSORS));
  static const ext_image_copy_capture_session_v1_listener listener={&Impl::sessionSize,&Impl::sessionFormat,[](void*,ext_image_copy_capture_session_v1*,wl_array*){},[](void*,ext_image_copy_capture_session_v1*,uint32_t,wl_array*){},&Impl::sessionDone,&Impl::sessionStopped};
  ext_image_copy_capture_session_v1_add_listener(d_->session,&listener,d_.get());
  QElapsedTimer clock;clock.start();
@@ -317,7 +471,28 @@ Error ImageCopySource::open(const Target& target,QSize* size,QString* identity,Q
  {std::lock_guard guard(d_->shared->lock);d_->shared->wake=eventfd(0,EFD_CLOEXEC|EFD_NONBLOCK);}
  d_->declared=waylandUprightSize(d_->size,d_->transform);
  if(size)*size=d_->declared;
+ if(d_->ownCursor){
+  // The first frames should already carry the cursor: wait, briefly, until the
+  // cursor session has said where it is and its picture has arrived, or that it is elsewhere.
+  d_->openCursor();
+  QElapsedTimer settle;settle.start();
+  for(int trips=0;settle.elapsed()<cursorSettleMs;++trips){
+   if(wl_display_roundtrip(d_->display)<0)return {"recording_unavailable","The Wayland connection failed",{}};
+   d_->pumpCursor();
+   if(!d_->cursorPixels.empty()||(trips>=2&&!d_->cursorIn))break;
+  }
+  if(pointerOpened)*pointerOpened=true;
+ }
  return {};
+}
+bool ImageCopySource::pointer(QPoint* at,bool* ever)const{
+ if(ever)*ever=false;
+ if(!d_->ownCursor)return false;
+ std::lock_guard guard(d_->pointerLock);
+ if(ever)*ever=d_->pointerEver;
+ if(!d_->pointerIn)return false;
+ if(at)*at=d_->pointerAt;
+ return true;
 }
 QString ImageCopySource::caps()const{return d_->capsFor(d_->declared);}
 void ImageCopySource::attach(GstElement* appsrc,std::function<void(Error)> lost){
@@ -325,8 +500,14 @@ void ImageCopySource::attach(GstElement* appsrc,std::function<void(Error)> lost)
  d_->appsrc=GST_ELEMENT(gst_object_ref(appsrc));d_->lost=std::move(lost);
  d_->thread=std::thread([impl=d_.get()]{impl->run();});
 }
-void ImageCopySource::stop(){d_->stopping=true;d_->wakeUp();if(d_->thread.joinable())d_->thread.join();if(d_->last){gst_buffer_unref(d_->last);d_->last=nullptr;}}
+void ImageCopySource::stop(){d_->stopping=true;d_->wakeUp();if(d_->thread.joinable())d_->thread.join();if(d_->last){gst_buffer_unref(d_->last);d_->last=nullptr;}d_->dropClean();}
 QJsonObject ImageCopySource::status()const{
- return {{"acquisition","wlr-capture"},{"frames",double(d_->frames.load())},{"keepalives",double(d_->keepalives.load())},{"sizeChanges",double(d_->constraintChanges.load())},{"width",d_->size.width()},{"height",d_->size.height()},{"transform",int(d_->transform)}};
+ QJsonObject status{{"acquisition","wlr-capture"},{"frames",double(d_->frames.load())},{"keepalives",double(d_->keepalives.load())},{"sizeChanges",double(d_->constraintChanges.load())},{"width",d_->size.width()},{"height",d_->size.height()},{"transform",int(d_->transform)}};
+ if(d_->ownCursor){
+  // moves: frames pushed for a cursor move alone; images: cursor pictures received.
+  std::lock_guard guard(d_->pointerLock);
+  status["cursor"]=QJsonObject{{"drawnBy","recorder"},{"onOutput",d_->pointerIn},{"seen",d_->pointerEver},{"images",double(d_->cursorImages.load())},{"moves",double(d_->cursorPushes.load())}};
+ }
+ return status;
 }
 }

@@ -123,7 +123,10 @@ private:
     QJsonObject clickCapability() const;
     // Click highlights run from Record to Stop: the desktop's presses go to the
     // helper, which draws them (or the compositor's own effect is switched on).
-    void watchClicks(Session&);
+    // then: runs once the desktop has answered (or after clickWatchWaitMs), whether or not it could watch.
+    void watchClicks(Session&, std::function<void()> then = {});
+    void startCapture(const QString& id, JsonReply);
+    static constexpr int clickWatchWaitMs = 1500;
     void unwatchClicks();
     // What a capture reported it records: {audioSources: {system, microphone}}, or
     // only audioEncoder from a backend that predates the microphone.

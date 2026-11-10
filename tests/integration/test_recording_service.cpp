@@ -55,9 +55,9 @@ struct Harness {
 // A desktop that reports clicks (the GNOME extension, Hyprland binds) or draws them itself (KWin).
 struct FakeClicks final:RecordingClicks {
  QJsonObject capability{{"available",true},{"route","fake-desktop"},{"drawnBy","recorder"},{"targets",QJsonArray{"monitor","desktop","region"}}};
- Sink sink;int watches=0,unwatches=0;QJsonObject lastTarget;Error error;
+ Sink sink;int watches=0,unwatches=0;qsizetype startsSeenAtWatch=-1;QJsonObject lastTarget;Error error;std::function<void()> onWatch;
  QJsonObject clickCapability() const override {return capability;}
- void watchClicks(const QJsonObject& target,Sink s,Reply reply) override {++watches;lastTarget=target;if(error){reply(error,{});return;}sink=std::move(s);reply({},{});}
+ void watchClicks(const QJsonObject& target,Sink s,Reply reply) override {++watches;lastTarget=target;if(onWatch)onWatch();if(error){reply(error,{});return;}sink=std::move(s);reply({},{});}
  void unwatchClicks() override {++unwatches;sink={};}
 };
 struct FakeWindows final:RecordingWindows {
@@ -890,12 +890,48 @@ private slots:
   QVERIFY(!h.rec("cancel",{{"id",id}}).error);
   clicks.error={};
   // The remembered preference is not a request: where the desktop has no route the record action still works.
-  clicks.capability={{"available",false},{"route","none"},{"targets",QJsonArray{}},{"reason","labwc_no_click_events"},{"message","Budgie's compositor gives put.gd no pointer clicks."}};
+  clicks.capability={{"available",false},{"route","none"},{"targets",QJsonArray{}},{"reason","click_route_missing"},{"message","This desktop gives put.gd no pointer clicks."}};
   auto doc=h.settings.document();auto prefs=doc["preferences"].toObject();prefs["recordingClickHighlights"]=true;doc["preferences"]=prefs;QVERIFY(h.settings.save(doc,h.settings.revision()));
   const auto invoked=call(*h.server,"action.invoke",{{"action","record"}});QVERIFY2(!invoked.error,qPrintable(invoked.error.message));
   id=invoked.result["recordingId"].toString();PUTGD_TRY_COMPARE(h.state(id),QString("ready"));
   QVERIFY(!h.rec("inspect",{{"id",id}}).result["config"].toObject()["clickHighlights"].toBool());
   QVERIFY(!h.rec("cancel",{{"id",id}}).error);
+  prefs["recordingClickHighlights"]=false;doc=h.settings.document();doc["preferences"]=prefs;QVERIFY(h.settings.save(doc,h.settings.revision()));
+  // A route that learns only that a button went down (labwc) needs the helper's pointer position.
+  clicks.capability={{"available",true},{"route","labwc-mouse-binds"},{"drawnBy","recorder"},{"needsPointer",true},{"targets",QJsonArray{"monitor","desktop","region"}},{"targetReasons",QJsonObject{{"window","No pointer position for a window here."}}}};
+  auto reported=h.rec("capabilities").result["clickHighlights"].toObject();
+  QCOMPARE(reported["available"].toBool(),false);QCOMPARE(reported["reason"].toString(),QString("pointer_position_unavailable"));QVERIFY(!reported.contains("needsPointer"));
+  h.backend->probedDetails["wlrCapture"]=QJsonObject{{"available",true},{"pointer",true}};
+  reported=h.rec("capabilities").result["clickHighlights"].toObject();QVERIFY(reported["available"].toBool());QVERIFY(!reported.contains("needsPointer"));
+  // The target's own reason is the refusal's message.
+  refused=h.rec("prepare",{{"target",QJsonObject{{"kind","window"}}},{"format","mp4"},{"clickHighlights",true}});
+  QCOMPARE(refused.error.details["reason"].toString(),QString("click_target_unsupported"));QCOMPARE(refused.error.message,QString("No pointer position for a window here."));
+  id=h.prepareReady({{"clickHighlights",true}});QVERIFY(!h.rec("start",{{"id",id}}).error);
+  const auto before=h.backend->clicks.size();
+  clicks.sink({{"button",3},{"pointer",true}});PUTGD_TRY_COMPARE(h.backend->clicks.size(),before+1);
+  QVERIFY(h.backend->clicks.last()["pointer"].toBool());QCOMPARE(h.backend->clicks.last()["button"].toInt(),3);
+  QVERIFY(!h.rec("inspect",{{"id",id}}).result["progress"].toObject().contains("clickHighlightsError"));
+  // The helper could not place a press: inspect says so, the recording goes on.
+  h.backend->clickError={"pointer_position_unavailable","The compositor reports no pointer position for this recording",{}};
+  clicks.sink({{"button",1},{"pointer",true}});
+  PUTGD_TRY_VERIFY(h.rec("inspect",{{"id",id}}).result["progress"].toObject()["clickHighlightsError"].toString().contains("pointer position"));
+  QCOMPARE(h.state(id),QString("recording"));
+  QVERIFY(!h.rec("cancel",{{"id",id}}).error);h.backend->clickError={};
+  // Where starting the watch shows on screen, it starts before the capture does.
+  clicks.capability["beforeCapture"]=true;QVERIFY(!h.rec("capabilities").result["clickHighlights"].toObject().contains("beforeCapture"));
+  clicks.onWatch=[&]{clicks.startsSeenAtWatch=h.backend->log.count("start");};
+  auto starts=h.backend->log.count("start");const auto watched=clicks.watches;
+  id=h.prepareReady({{"clickHighlights",true}});
+  const auto started=h.rec("start",{{"id",id}});QVERIFY2(!started.error,qPrintable(started.error.message));
+  PUTGD_TRY_COMPARE(h.state(id),QString("recording"));
+  QCOMPARE(clicks.watches,watched+1);QCOMPARE(clicks.startsSeenAtWatch,starts);QCOMPARE(h.backend->log.count("start"),starts+1);
+  QVERIFY(!h.rec("cancel",{{"id",id}}).error);
+  // The desktop could not watch: the recording still starts, and says why it has no highlights.
+  clicks.error={"labwc_config_read_only","Cannot write labwc's configuration",{}};
+  id=h.prepareReady({{"clickHighlights",true}});QVERIFY(!h.rec("start",{{"id",id}}).error);
+  PUTGD_TRY_COMPARE(h.state(id),QString("recording"));
+  QVERIFY(h.rec("inspect",{{"id",id}}).result["progress"].toObject()["clickHighlightsError"].toString().contains("labwc"));
+  QVERIFY(!h.rec("cancel",{{"id",id}}).error);clicks.error={};clicks.onWatch={};h.backend->probedDetails.remove("wlrCapture");
   h.operations->recording().setClicks(nullptr);
  }
  void windowTargetsResolveFromTheDesktopWindowList(){

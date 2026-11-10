@@ -35,6 +35,8 @@ numbers, identities, host load and the kernel's GPU hang count for the run.
                 [--output NAME] [--vnc-port 5900] [--lead 2] [--pause-at 8]
                 [--pause-for 3] [--after 8] [--prepare-timeout 120] [--frames]
                 [--mic off|virtual|NAME] [--system on|off|tone] [--unplug-at S]
+                [--click S,X,Y[,BUTTON] ...] [--click-highlights on|off]
+                [--click-vnc HOST:PORT]
 
 PATH is an AppImage (extracted once under DIR for its putgd-cli) or a directory
 holding `putgd` and `putgd-cli` (an installed package: /usr/bin). APPDIR is an
@@ -59,6 +61,20 @@ KWin's screencast protocol (its entry must be in the user's own data dir). The s
 build, so one portal approval with restoring allowed covers the whole run.
 When `prepare` waits for a portal picker, the driver says so and keeps waiting
 up to --prepare-timeout.
+
+Click runs (#1364). Each `--click S,X,Y[,BUTTON]` presses BUTTON (left, middle
+or right) at desktop pixel X,Y, S seconds after Record, as real pointer input
+through the desktop's VNC tile (the pointer is moved there 2.5 s earlier, so
+space presses at least 3.5 s apart and keep them on the cover's plain colour,
+away from the video). The recording is prepared with `clickHighlights: true`
+(`--click-highlights off`: without, and then no ring may appear). Afterwards
+`putgd-record --click-check` looks for a ring at each press in clip pixels:
+every press seen (or none, when off), its centre within 4 pixels of the press,
+the time between two rings equal to the time between their presses within two
+frames, and each ring within the start call's length of where it should be.
+`clickCheck` in the round's result holds the numbers, and one frame at the
+first ring's peak is kept beside the other frames. Not together with a pause.
+In a guest, QEMU's VNC is on the host: `--vnc-port 0 --click-vnc 10.0.2.2:59NN`.
 """
 import argparse
 import hashlib
@@ -72,6 +88,7 @@ import signal
 import statistics
 import subprocess
 import sys
+import threading
 import time
 
 HERE = Path(__file__).resolve().parent
@@ -299,6 +316,84 @@ class Driver:
             return json.loads(self.mic_state.read_text())['source']
         return None if a.mic in ('off', 'default') else a.mic
 
+    def clicks(self):
+        """--click entries as (seconds, x, y, button), in time order."""
+        entries = []
+        for text in self.args.click:
+            parts = text.split(',')
+            if len(parts) not in (3, 4) or (len(parts) == 4 and parts[3] not in ('left', 'middle', 'right')):
+                raise RunError('--click wants S,X,Y[,left|middle|right]: %s' % text)
+            entries.append((float(parts[0]), int(parts[1]), int(parts[2]), parts[3] if len(parts) == 4 else 'left'))
+        return sorted(entries)
+
+    def press_clicks(self, started, sent):
+        """Presses each --click at its time after `started` (monotonic) through the VNC tile; appends what was sent."""
+        sys.path.insert(0, str(HERE))
+        import rfb
+        host, _, port = (self.args.click_vnc or '127.0.0.1:%d' % self.args.vnc_port).rpartition(':')
+        client = rfb.RFB(int(port), host=host or '127.0.0.1')
+        try:
+            for seconds, x, y, button in self.clicks():
+                time.sleep(max(0, started + seconds - 2.5 - time.monotonic()))
+                client.pointer(x, y)
+                time.sleep(max(0, started + seconds - time.monotonic()))
+                client.pointer_button(x, y, button, True)
+                sent.append({'s': round(time.monotonic() - started, 3), 'x': x, 'y': y, 'button': button})
+                time.sleep(0.06)
+                client.pointer_button(x, y, button, False)
+        except Exception as error:  # the run goes on; the check then reports the missing rings
+            sent.append({'error': '%s: %s' % (type(error).__name__, error)})
+        finally:
+            client.close()
+
+    def click_check(self, clip, sent, start_call_s, canvas, name):
+        """Rings in the clip against the presses sent: place, spacing and time."""
+        a = self.args
+        presses = [entry for entry in sent if 'error' not in entry]
+        errors = [entry['error'] for entry in sent if 'error' in entry]
+        area = [int(v) for v in a.rect.split(',')] if a.target == 'region' else list(self.cover_rect)
+        scale = (canvas or {}).get('width', area[2]) / area[2]
+        expected = []
+        for press in presses:
+            # Clip time zero lies inside the start call; aim at its middle.
+            expected.append((int((press['s'] + start_call_s / 2) * 1000), round((press['x'] - area[0]) * scale), round((press['y'] - area[1]) * scale)))
+        if not expected:
+            return {'ok': False, 'error': errors or 'no press was sent'}
+        result = self.helper('--click-check', clip, *['%d,%d,%d' % entry for entry in expected])
+        try:
+            measured = json.loads(result.stdout)
+        except ValueError:
+            return {'ok': False, 'error': (result.stdout + result.stderr).strip()[-300:]}
+        rings = measured.get('clicks') or []
+        check = {'highlights': a.click_highlights, 'startCallMs': round(start_call_s * 1000), 'presses': presses, 'rings': rings,
+                 'seen': measured.get('seen'), 'expected': measured.get('expected')}
+        if errors:
+            check['sendErrors'] = errors
+        if a.click_highlights == 'off':
+            check['ok'] = measured.get('seen') == 0 and not errors
+            return check
+        problems = []
+        seen = [(press, ring) for press, ring in zip(presses, rings) if ring.get('seen')]
+        if len(seen) != len(presses):
+            problems.append('%d of %d presses have a ring' % (len(seen), len(presses)))
+        slack = start_call_s * 500
+        for press, ring in seen:
+            if abs(ring['dx']) > 4 or abs(ring['dy']) > 4:
+                problems.append('ring %.1f,%.1f px from the press at %d,%d' % (ring['dx'], ring['dy'], press['x'], press['y']))
+            if not -slack - 70 <= ring['offsetMs'] <= slack + 200:
+                problems.append('ring %d ms from the press at %.2f s' % (ring['offsetMs'], press['s']))
+        check['spacingErrorsMs'] = [round((ring['firstMs'] - seen[0][1]['firstMs']) - (press['s'] - seen[0][0]['s']) * 1000)
+                                    for press, ring in seen[1:]]
+        problems += ['spacing off by %d ms' % error for error in check['spacingErrorsMs'] if abs(error) > 70]
+        check['ok'] = not problems and not errors
+        if problems:
+            check['problems'] = problems
+        if seen:
+            frame = self.run / 'frames' / (name + '-click.png')
+            if self.helper('--preview', clip, int(seen[0][1]['peakMs'] * 1000), frame).returncode == 0 and frame.is_file():
+                check['frame'] = frame.name
+        return check
+
     def tones(self, clip):
         result = self.helper('--av-sync', clip, '--tone', 440, '--tone', 1000)
         try:
@@ -503,13 +598,23 @@ class Driver:
                 listed = self.cli(build, 'recording.microphones', {'device': audio['microphoneDevice']} if audio.get('microphoneDevice') else {})
                 result['microphones'] = {'available': listed.get('available'), 'reason': listed.get('reason'), 'device': listed.get('device'),
                                          'devices': [d.get('id') for d in listed.get('devices') or []], 'defaultIsMonitor': listed.get('defaultIsMonitor')}
-            prepared = self.cli(build, 'recording.prepare', {'target': target, 'format': fmt, 'fps': 30, 'audio': audio})
+            request = {'target': target, 'format': fmt, 'fps': 30, 'audio': audio}
+            if a.click:
+                result['clickHighlights'] = caps.get('clickHighlights')
+                if a.click_highlights == 'on':
+                    request['clickHighlights'] = True
+            prepared = self.cli(build, 'recording.prepare', request)
             rid = prepared['recordingId']
             ready = self.wait_state(build, rid, ('ready',), a.prepare_timeout)
             result['canvas'] = ready.get('canvas')
             time.sleep(a.lead)
+            asked = time.monotonic()
             self.cli(build, 'recording.start', {'id': rid})
             started = time.monotonic()
+            sent, clicker = [], None
+            if a.click:
+                clicker = threading.Thread(target=self.press_clicks, args=(started, sent), daemon=True)
+                clicker.start()
             time.sleep(0.5)
             # Where the control bar went once recording: outside the recorded pixels, or a handle inside them.
             placed = self.cli(build, 'recording.inspect', {'id': rid})
@@ -531,6 +636,9 @@ class Driver:
                 time.sleep(a.pause_for)
                 self.cli(build, 'recording.resume', {'id': rid})
             time.sleep(a.after)
+            if clicker:
+                clicker.join(30)
+                result['clickHighlightsError'] = (self.cli(build, 'recording.inspect', {'id': rid}).get('progress') or {}).get('clickHighlightsError')
             try:
                 stopped = self.cli(build, 'recording.stop', {'id': rid}, timeout=60)
             except RunError as error:
@@ -564,6 +672,10 @@ class Driver:
                         clip.unlink()  # no marker: the clip may show something else
                         entry['destroyed'] = True
             result['clips'][kind] = entry
+        if a.click:
+            for kind, clip in (('working', working), ('export', copy)):
+                if clip.is_file():
+                    result['clips'][kind]['clickCheck'] = self.click_check(clip, sent, started - asked, result.get('canvas'), '%s-%s' % (name, kind))
         w, e = result['clips']['working'], result['clips']['export']
         if 'pauseClipS' in result and w.get('pairTimesS'):
             result['captureStepMs'] = capture_step(w['pairTimesS'], w['offsetsMs'], result['pauseClipS'])
@@ -667,6 +779,10 @@ def main(argv=None):
     parser.add_argument('--precheck-wait', type=float, default=1.5, help='seconds between placing the cover and checking it')
     parser.add_argument('--no-notifications', action='store_true', help="turn the run's own put.gd notifications off (private config), so none covers the cover")
     parser.add_argument('--marker-motion', action='store_true', help='add a sweeping bar to the marker clip so marker recordings also score motion')
+    parser.add_argument('--click', action='append', default=[], metavar='S,X,Y[,BUTTON]',
+                        help='press BUTTON (left, middle, right) at desktop pixel X,Y, S seconds into each recording, and check the clip for its ring')
+    parser.add_argument('--click-highlights', choices=('on', 'off'), default='on', help='off: record the presses without click highlights; no ring may appear')
+    parser.add_argument('--click-vnc', metavar='HOST:PORT', help="the VNC server that shows this desktop (default: this host's --vnc-port)")
     parser.add_argument('--keep-unpaired', action='store_true', help="keep clips without marker pairs (runs where the microphone is off or unplugged)")
     parser.add_argument('--real-data-home', action='store_true',
                         help="use the user's data directory (an AppImage's KWin screencast entry); moved into --run afterwards")

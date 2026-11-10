@@ -122,6 +122,7 @@ private:
     bool portalTarget_ = false;
     std::unique_ptr<ImageCopySource> imageCopy_;
     QSize imageCopySize_;
+    bool imageCopyPointer_ = false;  // the source draws the cursor and knows where it is (#1364)
     // A window target resolved by the resident: {rect: logical frame [x,y,w,h], title}.
     QJsonObject window_;
     bool targetClosed_ = false;

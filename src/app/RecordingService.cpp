@@ -6,6 +6,8 @@
 #include <QFileInfo>
 #include <QJsonArray>
 #include <QMetaObject>
+#include <QTimer>
+#include <memory>
 #include <algorithm>
 #include <cmath>
 #include <utility>
@@ -464,35 +466,72 @@ void RecordingService::command(const QString& command, const QJsonObject& params
     }
     commandSession(command, params, std::move(reply));
 }
+void RecordingService::startCapture(const QString& id, JsonReply reply) {
+    if (!session_ || session_->op.id != id) { reply({"recording_missing", "The recording is gone", {}}, {}); return; }
+    auto& s = *session_;
+    backend_->control(s.op.id, "start", {}, marshal(s.generation, [this, reply](Error error, QJsonObject result) {
+        auto& s = *session_;
+        if (error) { fail(error); reply(error, {}); return; }
+        for (auto it = result.begin(); it != result.end(); ++it) s.progress[it.key()] = it.value();
+        noteCaptured(s, result, true);
+        transition(s, "recording");
+        reply({}, publicJson(s));
+    }));
+}
 QJsonObject RecordingService::clickCapability() const {
-    if (clicks_) return clicks_->clickCapability();
+    if (clicks_) {
+        auto capability = clicks_->clickCapability();
+        capability.remove("beforeCapture");
+        // A route that learns only that a button went down (labwc) takes the place from the helper's capture.
+        if (capability.take("needsPointer").toBool() && capability["available"].toBool() && !backend_->capabilities()["wlrCapture"].toObject()["pointer"].toBool()) {
+            capability["available"] = false;
+            capability["targets"] = QJsonArray{};
+            capability["reason"] = "pointer_position_unavailable";
+            capability["message"] = "The compositor offers no pointer cursor session here, so put.gd cannot tell where a click was.";
+        }
+        return capability;
+    }
     // X11: the helper's own probe (XInput2 raw button events).
     const auto probed = backend_->capabilities()["clickHighlights"].toObject();
     if (!probed.isEmpty()) return probed;
     return {{"available", false}, {"route", "none"}, {"drawnBy", "recorder"}, {"targets", QJsonArray{}}, {"reason", "click_route_missing"},
             {"message", "This desktop gives put.gd no pointer clicks, so recordings cannot highlight them."}};
 }
-void RecordingService::watchClicks(Session& s) {
-    if (!s.config.clickHighlights || !clicks_ || clicksWatched_) return;
+void RecordingService::watchClicks(Session& s, std::function<void()> then) {
+    if (!s.config.clickHighlights || !clicks_ || clicksWatched_) { if (then) then(); return; }
     clicksWatched_ = true;
     const auto generation = s.generation;
     QPointer<RecordingService> guard(this);
     auto current = [guard, generation] { return guard && !guard->stopping_ && guard->session_ && guard->session_->generation == generation; };
+    // `then` runs once, when the desktop has answered or after a bounded wait: Record never hangs on it.
+    auto once = std::make_shared<std::function<void()>>(std::move(then));
+    auto proceed = [guard, current, once] {
+        if (!*once) return;
+        const auto next = std::exchange(*once, {});
+        if (guard && current()) next();
+    };
+    if (*once) QTimer::singleShot(clickWatchWaitMs, this, proceed);
     clicks_->watchClicks(s.target.toJson(), [guard, current](QJsonObject click) {
         if (!guard) return;
         QMetaObject::invokeMethod(guard, [guard, current, click] {
             // Presses while paused are not part of the clip.
             if (!current() || guard->session_->state != "recording") return;
-            guard->backend_->control(guard->session_->op.id, "click", click, [](Error, QJsonObject) {});
+            guard->backend_->control(guard->session_->op.id, "click", click, [guard, current](Error error, QJsonObject) {
+                // The helper could not place the press (no pointer position): say so once; the recording goes on.
+                if (guard && error && current() && !guard->session_->progress.contains("clickHighlightsError")) guard->session_->progress["clickHighlightsError"] = error.message;
+            });
         }, Qt::QueuedConnection);
-    }, [guard, current](Error error, QJsonObject) {
-        if (!guard || !error) return;
-        QMetaObject::invokeMethod(guard, [guard, current, error] {
+    }, [guard, current, proceed](Error error, QJsonObject) {
+        if (!guard) return;
+        QMetaObject::invokeMethod(guard, [guard, current, error, proceed] {
             if (!current()) return;
-            // The recording goes on without highlights; inspect says why.
-            logging::warning(logRecording(), "Click highlights are unavailable for this recording", {{"operationId", guard->session_->op.id}, {"error", logging::errorFields(error)}});
-            guard->session_->progress["clickHighlightsError"] = error.message;
-            guard->unwatchClicks();
+            if (error) {
+                // The recording goes on without highlights; inspect says why.
+                logging::warning(logRecording(), "Click highlights are unavailable for this recording", {{"operationId", guard->session_->op.id}, {"error", logging::errorFields(error)}});
+                guard->session_->progress["clickHighlightsError"] = error.message;
+                guard->unwatchClicks();
+            }
+            proceed();
         }, Qt::QueuedConnection);
     });
 }
@@ -527,7 +566,7 @@ void RecordingService::prepareSession(const QJsonObject& params, JsonReply reply
             const bool here = clicks["available"].toBool();
             if (!here || !clicks["targets"].toArray().contains(s.target.kind)) {
                 if (!remembered) {
-                    reply({"recording_unsupported", here ? QStringLiteral("Click highlights are not available for a %1 recording on this desktop").arg(s.target.kind)
+                    reply({"recording_unsupported", here ? clicks["targetReasons"].toObject()[s.target.kind].toString(QStringLiteral("Click highlights are not available for a %1 recording on this desktop").arg(s.target.kind))
                                                          : clicks["message"].toString("Click highlights are not available on this desktop"),
                            {{"field", "clickHighlights"}, {"reason", here ? QStringLiteral("click_target_unsupported") : clicks["reason"].toString("click_route_missing")}}}, {});
                     return;
@@ -735,6 +774,14 @@ void RecordingService::commandSession(const QString& command, const QJsonObject&
         s.pending = command;
         if (command == "start") transition(s, "starting"), s.pending = command;
         if (command == "stop") transition(s, "stopping"), s.pending = command;
+        // Where starting the click watch shows on screen (labwc reads its configuration again),
+        // it is started first and the capture only once the desktop has answered.
+        if (command == "start" && clicks_ && s.config.clickHighlights && clicks_->clickCapability()["beforeCapture"].toBool()) {
+            const auto id = s.op.id;
+            watchClicks(s, [this, id, reply] { startCapture(id, reply); });
+            return;
+        }
+        if (command == "start") { startCapture(s.op.id, reply); return; }
         backend_->control(s.op.id, command, {}, marshal(s.generation, [this, command, reply](Error error, QJsonObject result) {
             auto& s = *session_;
             // A budget stop can reach review before this command's reply. Keep

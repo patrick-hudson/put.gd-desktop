@@ -317,9 +317,8 @@ int main(int argc,char* argv[]) {
 #endif
 #ifdef PUTGD_NATIVE_BUDGIE
  if(budgie)operations.recording().setWindows(budgie);
- // Click highlights (#1364) have no route on labwc; the capability says why.
- static putgd::BudgieClicks budgieClicks;
- if(budgie)operations.recording().setClicks(&budgieClicks);
+ // Click highlights (#1364): labwc mouse binds for the length of a recording; the helper knows the pointer's place.
+ if(budgie)operations.recording().setClicks(new putgd::BudgieClicks(QCoreApplication::instance()));
 #endif
 #ifdef PUTGD_NATIVE_HYPRLAND
  // Window recordings follow a window by Hyprland's stableId, put.gd's own refused by PID (#1275).

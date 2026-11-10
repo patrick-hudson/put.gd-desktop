@@ -23,7 +23,7 @@ public:
  bool microphoneSupported=false;int microphoneQueries=0;QString lastMicrophoneQuery;
  QJsonObject microphoneList{{"available",false},{"reason","no_microphone"},{"message","No microphone is connected."},{"devices",QJsonArray{}},{"defaultIsMonitor",false}};
  void microphones(const QString& device,Reply reply) override {++microphoneQueries;lastMicrophoneQuery=device;reply({},microphoneList);}
- QList<QJsonObject> clicks;
+ QList<QJsonObject> clicks;Error clickError;  // clickError: the helper could not place a press
  // placement: the overlayPlacement the helper reports ("compositor" asks the resident's shell); deferPrepare keeps the reply for the test.
  QString placement;qint64 pid=0;bool deferPrepare=false;Reply pendingPrepare;RecordingTarget lastTarget;
  void prepare(const QString&,const RecordingTarget& target,const RecordingConfig& config,const QString& dir,Reply reply,const QJsonObject& reviewOptions = {}) override {
@@ -43,7 +43,7 @@ public:
   if(command=="review"){if(onReview)onReview(params);reply({},{{"action",params["action"]},{"playheadUs",3000000.0},{"visible",true}});return;}
   if(command=="cancel"){++cancels;reply({},{});return;}
   if(command=="start"&&failStart){reply({"recording_start_failed","Synthetic source refused",{}},{});return;}
-  if(command=="click"){clicks.append(params);reply({},{});return;}
+  if(command=="click"){clicks.append(params);reply(clickError,{});return;}
   if(command=="start"){
    capturedSystemAudio=captureSystemAudio&&lastConfig.audio.system;
    QJsonObject result{{"audioEncoder",capturedSystemAudio||capturedMicrophone()?QString("synthetic-aac"):QString()}};

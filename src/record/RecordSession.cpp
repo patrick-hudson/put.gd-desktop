@@ -268,6 +268,23 @@ void RecordSession::command(const QString& command, const QJsonObject& params, R
         else reply({}, result.state);
         return;
     }
+    if (command == "click" && params["pointer"].toBool()) {
+        // #1364: a press whose place only this helper knows (labwc): the capture's own pointer position, in stream pixels.
+        QPoint at;
+        bool ever = false;
+        if (!imageCopy_ || !imageCopyPointer_ || !imageCopy_->pointer(&at, &ever)) {
+            // Off this output, or hidden by the application under it: no ring for this press, and nothing wrong.
+            // Never reported at all (an output without a hardware cursor): the recording has no highlights, and says so.
+            if (ever) reply({}, {});
+            else reply({"pointer_position_unavailable", "The compositor has reported no pointer position for this recording (labwc reports it only for an output with a hardware cursor), so clicks cannot be highlighted", {}}, {});
+            return;
+        }
+        const QPointF inCanvas = QPointF(at) - (portalCrop_.isValid() ? QPointF(portalCrop_.topLeft()) : QPointF());
+        const int button = params["button"].toInt();
+        if (config_.clickHighlights && pipeline_.running() && button >= 1 && button <= 3 && QRectF(QPointF(), QSizeF(resolved_.canvas)).contains(inCanvas)) pipeline_.addClick(inCanvas, button);
+        reply({}, {});
+        return;
+    }
     if (command == "click") {
         // #1364: a press the desktop reported to the resident, in logical desktop pixels.
         const auto rect = params["window"].toObject()["rect"].toArray();
@@ -610,7 +627,10 @@ void RecordSession::prepareImageCopy(Reply reply) {
     if (screen) { source.identity = screen->name(); shared = screen->geometry(); }
     imageCopy_ = std::make_unique<ImageCopySource>();
     QSize size; QString identity, appId;
-    if (auto e = imageCopy_->open(source, &size, &identity, &appId)) { imageCopy_.reset(); reply(e, {}); return; }
+    // #1364: with click highlights the pointer's place has to come from this source (labwc tells
+    // nobody else), so it draws the cursor itself; a window source has no cursor to read.
+    imageCopyPointer_ = false;
+    if (auto e = imageCopy_->open(source, &size, &identity, &appId, config_.clickHighlights && !source.window, &imageCopyPointer_)) { imageCopy_.reset(); reply(e, {}); return; }
     imageCopySize_ = size;
     portalTarget_ = true;
     portalCrop_ = {};

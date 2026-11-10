@@ -19,7 +19,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import wayland_toplevels as wire  # noqa: E402  (the shared wire helpers)
 
-BUTTONS = {'left': 0x110, 'right': 0x111}
+BUTTONS = {'left': 0x110, 'right': 0x111, 'middle': 0x112}
 
 
 class Pointer(wire.Client):

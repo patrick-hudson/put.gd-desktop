@@ -101,7 +101,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   # Budgie 10.10 (labwc) and Magpie: capture, toplevels and data control from
   # the shared Wayland code; the labwc bridge and D-Bus trigger are Budgie's.
   add_library(putgd_budgie STATIC src/platform/budgie/BudgieSourceAdapter.cpp src/platform/budgie/BudgieShortcuts.cpp
-    src/platform/budgie/LabwcBridgeBackend.cpp)
+    src/platform/budgie/LabwcBridgeBackend.cpp src/platform/budgie/BudgieClicks.cpp)
   target_link_libraries(putgd_budgie PUBLIC putgd_wayland Qt6::DBus PRIVATE PkgConfig::PUTGD_XKBCOMMON)
   # Hyprland (Omarchy and other Hyprland sessions): the shared capture, outputs,
   # data control and region helper; Hyprland's IPC, toplevel mapping check and

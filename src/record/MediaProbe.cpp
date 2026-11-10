@@ -186,6 +186,8 @@ QJsonObject probeMedia() {
         QJsonObject facts{{"available", imageCopy.available}, {"windows", imageCopy.windows}, {"outputs", imageCopy.outputs}, {"protocols", imageCopy.protocols}, {"elements", imageCopyElements}};
         if (!imageCopy.available) facts["reason"] = imageCopy.reason;
         if (!imageCopy.windows) facts["windowReason"] = imageCopy.windowReason;
+        // #1364: a pointer cursor session can be asked for; click highlights on labwc take the press's place from it.
+        facts["pointer"] = imageCopy.pointer;
         result["wlrCapture"] = facts;
         acquisition = "wlr-capture";
     } else if (session == "wayland" && pipewire.isEmpty()) {
