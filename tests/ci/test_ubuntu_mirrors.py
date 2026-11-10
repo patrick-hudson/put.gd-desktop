@@ -158,7 +158,7 @@ class UbuntuMirrors(unittest.TestCase):
         status, output, calls = self.install('echo "apt-get $*" >> "$CALLS"')
         self.assertEqual(status, 0)
         archives = f'-o Dir::Cache::Archives={self.archives}/'
-        self.assertEqual(calls, ['apt-get update -o Test=1',
+        self.assertEqual(calls, ['apt-get update --error-on=any -o Test=1',
                                  f'apt-get install -y -o Test=1 {archives} --no-install-recommends one two',
                                  f'apt-get clean {archives}'])
         self.assertEqual(self.mirror_hosts(), ['a', 'b', 'c'])

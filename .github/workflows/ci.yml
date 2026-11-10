@@ -106,7 +106,7 @@ env:
       for attempt in 1 2 3; do
         deadline=$((SECONDS + limit))
         before=$(du -sk "$archives" | cut -f1)
-        if [ -n "$updated" ] || timeout --kill-after=30s "$limit" apt-get update "${apt[@]}"; then
+        if [ -n "$updated" ] || timeout --kill-after=30s "$limit" apt-get update --error-on=any "${apt[@]}"; then
           updated=1
           left=$((deadline - SECONDS)); [ "$left" -gt 0 ] || left=1
           if DEBIAN_FRONTEND=noninteractive timeout --kill-after=30s "$left" apt-get install -y "${apt[@]}" -o "Dir::Cache::Archives=$archives/" "$@"; then
