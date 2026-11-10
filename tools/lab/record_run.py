@@ -73,6 +73,10 @@ and the capture must end `completed` no sooner than its delay, saved to the
 run's private archive and at least half cover colour (`delayedCaptures` in the
 round's entry). With --frames a frame of the desktop is kept from each
 countdown and `countdownPixels` counts what the pill changed at the top centre.
+A run with `--unplug-at` and more than one recording (formats, rounds, builds)
+plugs the simulated microphone in again before each later one. A run with
+`--output-gone-at` is one recording: the private output is not made again, so
+more than one --build, --format or round is refused before anything starts.
 `--system off` records no system audio; `--system tone` moves the default
 output to a private null sink and plays a quiet 440 Hz tone into it, so the
 clip must hold the microphone's bursts and that tone. `--system leak` plays the
@@ -746,6 +750,11 @@ class Driver:
         name = '%s-%s-%d' % (build.label, fmt, number)
         result = {'build': build.label, 'round': number, 'format': fmt,
                   'started': time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())}
+        if a.unplug_at is not None and a.mic != 'late' and self.mic_state and json.loads(self.mic_state.read_text()).get('plugged') is False:
+            # An earlier recording of this run pulled the simulated microphone; this one starts with it again
+            # (the same `plug` a --mic late run uses, with its sound check).
+            self.virtual_mic('plug', '--state', str(self.mic_state), *(['--default'] if a.mic_default else []))
+            result['microphonePluggedInAgain'] = True
         caps = self.start_resident(build)
         copy = self.run / 'out' / ('%s.%s' % (name, fmt))
         try:
@@ -1239,7 +1248,11 @@ def main(argv=None):
     parser.add_argument('--keep-unpaired', action='store_true', help="keep clips without marker pairs (runs where the microphone is off or unplugged)")
     parser.add_argument('--real-data-home', action='store_true',
                         help="use the user's data directory (an AppImage's KWin screencast entry); moved into --run afterwards")
-    return Driver(parser.parse_args(argv)).main()
+    args = parser.parse_args(argv)
+    if args.output_gone_at is not None and args.rounds * len(args.format) * len(args.build) != 1:
+        # The private output is not made again, so a second recording would have nothing to record from.
+        parser.error('--output-gone-at removes the run\'s private output for good: one --build, one --format and --rounds 1 per run')
+    return Driver(args).main()
 
 
 if __name__ == '__main__':
