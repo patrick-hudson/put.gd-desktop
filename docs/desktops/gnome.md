@@ -230,7 +230,11 @@ adds Capture monitor, Repeat last region and the capture countdown:
   removes it, and its actor is destroyed before the method answers, so a capture
   that follows cannot contain it. A live region's `Acquire` takes `delaySeconds`
   instead and shows the same countdown after the selection and before the pixels.
-- A lock ends a counting request with `session_locked`.
+- A lock ends a counting request with `session_locked`. The Shell disables its
+  extensions when it locks, sometimes before the extension's own session handler
+  runs; the extension answers `session_locked` from `disable()` too, and the
+  resident asks logind whether the session is locked (for up to two seconds)
+  before it lets a helper error from a counting request stand.
 
 An extension loaded before version 20 keeps region, window and desktop screenshots
 working as before; `monitor`, `repeat` and any delayed capture answer
