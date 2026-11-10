@@ -52,6 +52,14 @@ struct Harness {
 }
 
 // KWin or the GNOME extension listing windows (or failing to).
+// A desktop that reports clicks (the GNOME extension, Hyprland binds) or draws them itself (KWin).
+struct FakeClicks final:RecordingClicks {
+ QJsonObject capability{{"available",true},{"route","fake-desktop"},{"drawnBy","recorder"},{"targets",QJsonArray{"monitor","desktop","region"}}};
+ Sink sink;int watches=0,unwatches=0;QJsonObject lastTarget;Error error;
+ QJsonObject clickCapability() const override {return capability;}
+ void watchClicks(const QJsonObject& target,Sink s,Reply reply) override {++watches;lastTarget=target;if(error){reply(error,{});return;}sink=std::move(s);reply({},{});}
+ void unwatchClicks() override {++unwatches;sink={};}
+};
 struct FakeWindows final:RecordingWindows {
  QJsonArray windows;bool activeExcluded=false;Error error;int lists=0;
  void listWindows(Reply reply) override {++lists;if(error)reply(error,{});else reply({},{{"windows",windows},{"activeExcluded",activeExcluded}});}
@@ -739,6 +747,157 @@ private slots:
  // #1278: on KDE and GNOME Wayland a window target is resolved from the desktop's
  // window list before the helper starts: the active external window, or the
  // identity recording.windows listed; put.gd's own windows are never recorded.
+ // #1364: audio.microphone is live. A request for it needs an input that can be
+ // opened now (never an output's monitor); the device comes from the request,
+ // else Settings, else the system default; the clip's track is then the
+ // microphone, alone or with the system audio, and stays that through review.
+ void microphoneIsRecordedAloneOrMixedAndRefusedWithoutAnInput(){
+  Harness h;PUTGD_TRY_VERIFY(h.operations->ready());
+  // An installation whose recorder cannot record an input at all.
+  QCOMPARE(h.rec("prepare",{{"target",region()},{"format","mp4"},{"audio",QJsonObject{{"microphone",true}}}}).error.details["reason"].toString(),QString("microphone_elements_missing"));
+  h.backend->microphoneSupported=true;
+  // No input connected, or the default source is an output's monitor: refused with the reason, nothing accepted.
+  auto refused=h.rec("prepare",{{"target",region()},{"format","mp4"},{"audio",QJsonObject{{"microphone",true}}}});
+  QCOMPARE(refused.error.code,QString("recording_unsupported"));QCOMPARE(refused.error.details["reason"].toString(),QString("no_microphone"));QCOMPARE(refused.error.details["field"].toString(),QString("audio.microphone"));
+  h.backend->microphoneList={{"available",false},{"reason","default_is_monitor"},{"message","The system's default input is the monitor of an output, not a microphone."},{"devices",QJsonArray{QJsonObject{{"id","alsa_input.pci"},{"label","Built-in"},{"default",false}}}},{"defaultIsMonitor",true}};
+  refused=h.rec("prepare",{{"target",region()},{"format","mp4"},{"audio",QJsonObject{{"microphone",true}}}});
+  QCOMPARE(refused.error.details["reason"].toString(),QString("default_is_monitor"));QVERIFY(refused.error.message.contains("monitor"));
+  QVERIFY(h.rec("capabilities").result["active"].isNull());
+  auto caps=h.rec("capabilities").result["audio"].toObject();
+  QVERIFY(!caps["microphone"].toBool());QCOMPARE(caps["microphoneReason"].toString(),QString("default_is_monitor"));QVERIFY(caps["microphoneMessage"].toString().contains("monitor"));
+  // recording.microphones lists the inputs and answers for one device.
+  const auto listed=h.rec("microphones");QVERIFY(!listed.error);QCOMPARE(listed.result["devices"].toArray().size(),1);QVERIFY(listed.result["defaultIsMonitor"].toBool());
+  QCOMPARE(h.rec("microphones",{{"device","bad\nname"}}).error.code,QString("invalid_request"));
+  QCOMPARE(h.rec("microphones",{{"extra",1}}).error.code,QString("invalid_request"));
+  // GIF and WebP stay silent.
+  QCOMPARE(h.rec("prepare",{{"target",region()},{"format","gif"},{"audio",QJsonObject{{"microphone",true}}}}).error.code,QString("invalid_request"));
+  // A microphone is connected: alone, the track is the microphone.
+  h.backend->microphoneList={{"available",true},{"device",QJsonObject{{"id","mic-usb"},{"label","USB microphone"}}},{"devices",QJsonArray{QJsonObject{{"id","mic-usb"},{"label","USB microphone"},{"default",true}}}},{"defaultIsMonitor",false}};
+  caps=h.rec("capabilities").result["audio"].toObject();QVERIFY(caps["microphone"].toBool());QCOMPARE(caps["microphoneDevice"].toObject()["id"].toString(),QString("mic-usb"));QVERIFY(!caps.contains("microphoneReason"));
+  auto id=h.prepareReady({{"audio",QJsonObject{{"microphone",true}}}});QVERIFY(!id.isEmpty());
+  QVERIFY(h.backend->lastConfig.audio.microphone&&!h.backend->lastConfig.audio.system&&h.backend->lastConfig.audio.microphoneDevice.isEmpty());
+  QVERIFY(!h.rec("start",{{"id",id}}).error);
+  QCOMPARE(h.rec("inspect",{{"id",id}}).result["progress"].toObject()["audioSources"].toObject(),QJsonObject({{"system",false},{"microphone",true}}));
+  // A microphone that goes away mid-recording is reported; the recording goes on.
+  h.backend->sink({{"id",id},{"event","progress"},{"durationUs",3000000.0},{"microphoneLost","The microphone was disconnected; the rest of the recording has no microphone audio."}});
+  PUTGD_TRY_VERIFY(h.rec("inspect",{{"id",id}}).result["progress"].toObject()["microphoneLost"].toString().contains("disconnected"));
+  QCOMPARE(h.state(id),QString("recording"));
+  auto stopped=h.rec("stop",{{"id",id}});QVERIFY(!stopped.error);
+  auto audio=stopped.result["config"].toObject()["audio"].toObject();QVERIFY(audio["microphone"].toBool()&&!audio["system"].toBool());
+  // In review only the output changes: a silent format drops the track, MP4 brings it back.
+  h.backend->sink({{"id",id},{"event","configChanged"},{"config",QJsonObject{{"format","gif"},{"codec",""},{"fps",30},{"audio",QJsonObject{{"system",false},{"microphone",true}}}}}});
+  PUTGD_TRY_COMPARE(h.rec("inspect",{{"id",id}}).result["config"].toObject()["format"].toString(),QString("gif"));
+  QVERIFY(!h.rec("inspect",{{"id",id}}).result["config"].toObject()["audio"].toObject()["microphone"].toBool());
+  h.backend->sink({{"id",id},{"event","configChanged"},{"config",QJsonObject{{"format","mp4"},{"codec","h264"},{"fps",30},{"audio",QJsonObject{{"system",true},{"microphone",false}}}}}});
+  PUTGD_TRY_COMPARE(h.rec("inspect",{{"id",id}}).result["config"].toObject()["format"].toString(),QString("mp4"));
+  audio=h.rec("inspect",{{"id",id}}).result["config"].toObject()["audio"].toObject();QVERIFY(audio["microphone"].toBool()&&!audio["system"].toBool());
+  QVERIFY(!h.rec("cancel",{{"id",id}}).error);
+  // Mixed with system audio; the request's own device wins over the one in Settings.
+  auto doc=h.settings.document();auto prefs=doc["preferences"].toObject();prefs["recordingMicrophoneDevice"]="mic-settings";doc["preferences"]=prefs;QVERIFY(h.settings.save(doc,h.settings.revision()));
+  id=h.prepareReady({{"audio",QJsonObject{{"system",true},{"microphone",true}}}});QVERIFY(!id.isEmpty());
+  QCOMPARE(h.backend->lastConfig.audio.microphoneDevice,QString("mic-settings"));QCOMPARE(h.backend->lastMicrophoneQuery,QString("mic-settings"));
+  QVERIFY(!h.rec("start",{{"id",id}}).error);
+  QCOMPARE(h.rec("inspect",{{"id",id}}).result["progress"].toObject()["audioSources"].toObject(),QJsonObject({{"system",true},{"microphone",true}}));
+  stopped=h.rec("stop",{{"id",id}});audio=stopped.result["config"].toObject()["audio"].toObject();QVERIFY(audio["microphone"].toBool()&&audio["system"].toBool());
+  QVERIFY(!h.rec("cancel",{{"id",id}}).error);
+  id=h.prepareReady({{"audio",QJsonObject{{"microphone",true},{"microphoneDevice","mic-request"}}}});QVERIFY(!id.isEmpty());
+  QCOMPARE(h.backend->lastConfig.audio.microphoneDevice,QString("mic-request"));QCOMPARE(h.backend->lastMicrophoneQuery,QString("mic-request"));
+  QVERIFY(!h.rec("cancel",{{"id",id}}).error);
+  // Without the toggle nothing asks the sound server and nothing is recorded from an input.
+  const int queries=h.backend->microphoneQueries;
+  id=h.prepareReady({{"audio",QJsonObject{{"system",true}}}});QVERIFY(!id.isEmpty());QCOMPARE(h.backend->microphoneQueries,queries);QVERIFY(!h.backend->lastConfig.audio.microphone);
+  QVERIFY(!h.rec("start",{{"id",id}}).error);
+  QCOMPARE(h.rec("inspect",{{"id",id}}).result["progress"].toObject()["audioSources"].toObject(),QJsonObject({{"system",true},{"microphone",false}}));
+  QVERIFY(!h.rec("cancel",{{"id",id}}).error);
+ }
+ // The bar's microphone toggle is remembered: the tray, dashboard and shortcut
+ // entry asks for it, the bar's change is saved, and without a microphone that
+ // entry still prepares a recording, with the toggle unavailable.
+ void theMicrophoneToggleIsRememberedAndNeverBlocksTheRecordAction(){
+  Harness h;PUTGD_TRY_VERIFY(h.operations->ready());
+  h.backend->microphoneSupported=true;
+  h.backend->microphoneList={{"available",true},{"device",QJsonObject{{"id","mic-usb"},{"label","USB microphone"}}},{"devices",QJsonArray{QJsonObject{{"id","mic-usb"},{"label","USB microphone"},{"default",true}}}},{"defaultIsMonitor",false}};
+  // Off by default.
+  auto invoked=call(*h.server,"action.invoke",{{"action","record"}});QVERIFY(!invoked.error);
+  auto id=invoked.result["recordingId"].toString();PUTGD_TRY_COMPARE(h.state(id),QString("ready"));
+  QVERIFY(!h.backend->lastConfig.audio.microphone);
+  // The user ticks Microphone on the bar: saved for the next recording.
+  h.backend->sink({{"id",id},{"event","configChanged"},{"config",QJsonObject{{"format","mp4"},{"codec","h264"},{"fps",30},{"audio",QJsonObject{{"system",false},{"microphone",true}}}}},{"microphoneRequested",true}});
+  PUTGD_TRY_VERIFY(h.settings.snapshot().recordingMicrophone);
+  QVERIFY(h.rec("inspect",{{"id",id}}).result["config"].toObject()["audio"].toObject()["microphone"].toBool());
+  QVERIFY(!h.rec("cancel",{{"id",id}}).error);
+  invoked=call(*h.server,"action.invoke",{{"action","record"}});QVERIFY(!invoked.error);id=invoked.result["recordingId"].toString();PUTGD_TRY_COMPARE(h.state(id),QString("ready"));
+  QVERIFY(h.backend->lastConfig.audio.microphone);QVERIFY(h.rec("inspect",{{"id",id}}).result["config"].toObject()["audio"].toObject()["microphone"].toBool());
+  QVERIFY(!h.rec("cancel",{{"id",id}}).error);
+  // The microphone was unplugged since: the action still opens a recording, without it.
+  h.backend->microphoneList={{"available",false},{"reason","no_microphone"},{"message","No microphone is connected."},{"devices",QJsonArray{}},{"defaultIsMonitor",false}};
+  invoked=call(*h.server,"action.invoke",{{"action","record"}});QVERIFY2(!invoked.error,qPrintable(invoked.error.message));id=invoked.result["recordingId"].toString();PUTGD_TRY_COMPARE(h.state(id),QString("ready"));
+  QVERIFY(!h.rec("inspect",{{"id",id}}).result["config"].toObject()["audio"].toObject()["microphone"].toBool());
+  QVERIFY(h.settings.snapshot().recordingMicrophone);  // still the user's choice
+  // Unticking it is remembered too.
+  h.backend->sink({{"id",id},{"event","configChanged"},{"config",QJsonObject{{"format","mp4"},{"codec","h264"},{"fps",30},{"audio",QJsonObject{{"system",false},{"microphone",false}}}}},{"microphoneRequested",false}});
+  PUTGD_TRY_VERIFY(!h.settings.snapshot().recordingMicrophone);
+  QVERIFY(!h.rec("cancel",{{"id",id}}).error);
+ }
+ // #1364: click highlights run from Record to Stop. The desktop's presses go to
+ // the helper while recording (not while paused), the watch ends with the
+ // capture however it ends, and a desktop or target without them is refused.
+ void clickHighlightsFollowTheCaptureAndAreRefusedWhereUnavailable(){
+  Harness h;PUTGD_TRY_VERIFY(h.operations->ready());
+  // No desktop route and no X11 probe: unavailable, with the reason.
+  auto caps=h.rec("capabilities").result["clickHighlights"].toObject();QVERIFY(!caps["available"].toBool());QCOMPARE(caps["reason"].toString(),QString("click_route_missing"));
+  auto refused=h.rec("prepare",{{"target",region()},{"format","mp4"},{"clickHighlights",true}});
+  QCOMPARE(refused.error.code,QString("recording_unsupported"));QCOMPARE(refused.error.details["field"].toString(),QString("clickHighlights"));QCOMPARE(refused.error.details["reason"].toString(),QString("click_route_missing"));
+  QCOMPARE(h.rec("prepare",{{"target",region()},{"format","mp4"},{"clickHighlights","yes"}}).error.code,QString("invalid_request"));
+  // X11: the helper's own probe answers and the helper reads the presses itself.
+  h.backend->probedDetails["clickHighlights"]=QJsonObject{{"available",true},{"route","x11-xinput2"},{"drawnBy","recorder"},{"targets",QJsonArray{"monitor","desktop","region","window"}}};
+  QCOMPARE(h.rec("capabilities").result["clickHighlights"].toObject()["route"].toString(),QString("x11-xinput2"));
+  auto id=h.prepareReady({{"clickHighlights",true}});QVERIFY(!id.isEmpty());QVERIFY(h.backend->lastConfig.clickHighlights);
+  QVERIFY(h.rec("inspect",{{"id",id}}).result["config"].toObject()["clickHighlights"].toBool());
+  QVERIFY(!h.rec("cancel",{{"id",id}}).error);
+  h.backend->probedDetails.remove("clickHighlights");
+  // A desktop that reports clicks.
+  FakeClicks clicks;h.operations->recording().setClicks(&clicks);
+  QCOMPARE(h.rec("capabilities").result["clickHighlights"].toObject()["route"].toString(),QString("fake-desktop"));
+  // Not for a window here.
+  refused=h.rec("prepare",{{"target",QJsonObject{{"kind","window"}}},{"format","mp4"},{"clickHighlights",true}});
+  QCOMPARE(refused.error.details["reason"].toString(),QString("click_target_unsupported"));
+  id=h.prepareReady({{"clickHighlights",true}});QVERIFY(!id.isEmpty());
+  QCOMPARE(clicks.watches,0);  // nothing is watched before Record
+  QVERIFY(!h.rec("start",{{"id",id}}).error);
+  QCOMPARE(clicks.watches,1);QCOMPARE(clicks.lastTarget["kind"].toString(),QString("region"));
+  clicks.sink({{"x",640},{"y",360},{"button",1}});
+  PUTGD_TRY_COMPARE(h.backend->clicks.size(),1);QCOMPARE(h.backend->clicks.last()["x"].toInt(),640);QCOMPARE(h.backend->clicks.last()["button"].toInt(),1);
+  // Paused: the watch stays, the presses are not part of the clip.
+  QVERIFY(!h.rec("pause",{{"id",id}}).error);QCOMPARE(clicks.unwatches,0);
+  clicks.sink({{"x",10},{"y",10},{"button",3}});QTest::qWait(60);QCOMPARE(h.backend->clicks.size(),1);
+  QVERIFY(!h.rec("resume",{{"id",id}}).error);
+  clicks.sink({{"x",20},{"y",30},{"button",3}});PUTGD_TRY_COMPARE(h.backend->clicks.size(),2);
+  QVERIFY(!h.rec("stop",{{"id",id}}).error);
+  QCOMPARE(clicks.unwatches,1);QVERIFY(!clicks.sink);
+  QVERIFY(!h.rec("cancel",{{"id",id}}).error);QCOMPARE(clicks.unwatches,1);
+  // A cancel mid-recording ends the watch too, and so does a helper failure.
+  id=h.prepareReady({{"clickHighlights",true}});QVERIFY(!h.rec("start",{{"id",id}}).error);QCOMPARE(clicks.watches,2);
+  QVERIFY(!h.rec("cancel",{{"id",id}}).error);QCOMPARE(clicks.unwatches,2);
+  id=h.prepareReady({{"clickHighlights",true}});QVERIFY(!h.rec("start",{{"id",id}}).error);QCOMPARE(clicks.watches,3);
+  h.backend->sink({{"id",id},{"event","failed"},{"error",QJsonObject{{"code","recording_failed"},{"message","synthetic"}}}});
+  PUTGD_TRY_COMPARE(clicks.unwatches,3);
+  // The desktop cannot start the watch: the recording goes on, and inspect says why.
+  clicks.error={"click_effect_unavailable","KWin could not load its Mouse Click Animation effect.",{}};
+  id=h.prepareReady({{"clickHighlights",true}});QVERIFY(!h.rec("start",{{"id",id}}).error);
+  PUTGD_TRY_VERIFY(h.rec("inspect",{{"id",id}}).result["progress"].toObject()["clickHighlightsError"].toString().contains("KWin"));
+  QCOMPARE(h.state(id),QString("recording"));
+  QVERIFY(!h.rec("cancel",{{"id",id}}).error);
+  clicks.error={};
+  // The remembered preference is not a request: where the desktop has no route the record action still works.
+  clicks.capability={{"available",false},{"route","none"},{"targets",QJsonArray{}},{"reason","labwc_no_click_events"},{"message","Budgie's compositor gives put.gd no pointer clicks."}};
+  auto doc=h.settings.document();auto prefs=doc["preferences"].toObject();prefs["recordingClickHighlights"]=true;doc["preferences"]=prefs;QVERIFY(h.settings.save(doc,h.settings.revision()));
+  const auto invoked=call(*h.server,"action.invoke",{{"action","record"}});QVERIFY2(!invoked.error,qPrintable(invoked.error.message));
+  id=invoked.result["recordingId"].toString();PUTGD_TRY_COMPARE(h.state(id),QString("ready"));
+  QVERIFY(!h.rec("inspect",{{"id",id}}).result["config"].toObject()["clickHighlights"].toBool());
+  QVERIFY(!h.rec("cancel",{{"id",id}}).error);
+  h.operations->recording().setClicks(nullptr);
+ }
  void windowTargetsResolveFromTheDesktopWindowList(){
   Harness h;PUTGD_TRY_VERIFY(h.operations->ready());HistoryStore journal(h.operations->databasePath());
   QCOMPARE(h.rec("windows").error.code,QString("recording_unsupported"));QVERIFY(!h.rec("capabilities").result["windowList"].toBool());

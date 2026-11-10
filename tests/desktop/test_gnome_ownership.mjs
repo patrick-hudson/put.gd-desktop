@@ -671,6 +671,86 @@ print('PASS recording bar placement prefers below, above, another monitor, then 
     assert.deepEqual(own.windows.map(w => [w.identity, w.active]), [['42', false], ['43', false]]);
     globalThis.Config = {PACKAGE_VERSION: '50.0'};
     extension.metadata = {version: 19};
-    assert.equal((await bridge(extension, 'HelloAsync', [])).recordingVersion, 2);
+    assert.equal((await bridge(extension, 'HelloAsync', [])).recordingVersion, 3);
     print('PASS RecordingWindows lists external windows, marks the focused one and leaves out put.gd\'s own');
+}
+{
+    // Recording protocol 3 (#1364): presses for click highlights. A press over a
+    // client window is read from Clutter's current event when Mutter stamps the
+    // window's user time; a key press stamps it too and is not a click. Presses
+    // on the Shell's own actors come from the stage. The signal goes to the
+    // resident's own bus name, and nothing stays connected after Unwatch.
+    const {extension} = fixture();
+    const sent = [];
+    context.Gio.DBus.session.emit_signal = (destination, path, iface, name, variant) => sent.push({destination, path, iface, name, click: JSON.parse(variant.value[0])});
+    const connectable = extra => {
+        const signals = new Map();
+        let next = 1;
+        return Object.assign(extra, {
+            connect(name, handler) { signals.set(next, [name, handler]); return next++; },
+            disconnect(id) { signals.delete(id); },
+            emit(name, ...args) { let result; for (const [signal, handler] of [...signals.values()]) if (signal === name) result = handler(...args); return result; },
+            connected: () => signals.size,
+        });
+    };
+    const window = (id, x) => connectable({get_id: () => id, get_frame_rect: () => ({x, y: 30, width: 800, height: 600})});
+    const editor = window(42, 100), late = window(43, 500);
+    connectable(context.global.display);
+    context.global.stage = connectable({});
+    context.global.get_window_actors = () => [{meta_window: editor}];
+    let current = null;
+    context.Clutter.get_current_event = () => current;
+    context.Clutter.EventType.KEY_PRESS = 2;
+    const press = (button, x, y, time) => ({type: () => context.Clutter.EventType.BUTTON_PRESS, get_button: () => button, get_coords: () => [x, y], get_time: () => time});
+    assert.deepEqual(await bridge(extension, 'WatchClicksAsync', []), {version: 1});
+    assert.equal(editor.connected(), 2);
+    assert.equal(context.global.display.connected(), 1);
+    assert.equal(context.global.stage.connected(), 1);
+    current = press(1, 640.4, 360.6, 1000);
+    editor.emit('notify::user-time');
+    assert.deepEqual(sent, [{destination: resident, path: '/org/gnome/Shell/Extensions/Putgd', iface: 'org.putgd.Gnome50', name: 'Click',
+        click: {x: 640, y: 361, button: 1, window: {identity: '42', rect: [100, 30, 800, 600]}}}]);
+    // A key press stamps the user time as well; so does a stamp outside any event.
+    current = {type: () => context.Clutter.EventType.KEY_PRESS};
+    editor.emit('notify::user-time');
+    current = null;
+    editor.emit('notify::user-time');
+    assert.equal(sent.length, 1);
+    // A window opened during the recording is watched from then on.
+    context.global.display.emit('window-created', context.global.display, late);
+    current = press(3, 700, 200, 1100);
+    late.emit('notify::user-time');
+    assert.deepEqual(sent[1].click, {x: 700, y: 200, button: 3, window: {identity: '43', rect: [500, 30, 800, 600]}});
+    // The Shell's own actors (the panel, the overview): no window, and the event still propagates.
+    current = null;
+    assert.equal(context.global.stage.emit('captured-event', context.global.stage, press(1, 30, 12, 1200)), context.Clutter.EVENT_PROPAGATE);
+    assert.deepEqual(sent[2].click, {x: 30, y: 12, button: 1});
+    // One press seen by both hooks is one click; the wheel and other buttons are none.
+    current = press(2, 300, 300, 1300);
+    context.global.stage.emit('captured-event', context.global.stage, current);
+    editor.emit('notify::user-time');
+    assert.equal(sent.length, 4);
+    assert.equal(sent[3].click.button, 2);
+    current = press(4, 300, 300, 1400);
+    editor.emit('notify::user-time');
+    current = press(0, 300, 300, 1500);
+    editor.emit('notify::user-time');
+    assert.equal(sent.length, 4);
+    // A closed window lets go of its handlers; Unwatch lets go of the rest.
+    editor.emit('unmanaged');
+    assert.equal(editor.connected(), 0);
+    assert.deepEqual(await bridge(extension, 'UnwatchClicksAsync', []), {});
+    assert.equal(late.connected(), 0);
+    assert.equal(context.global.display.connected(), 0);
+    assert.equal(context.global.stage.connected(), 0);
+    assert.equal(extension._clicks, null);
+    // Watching again replaces the earlier watch, and the lock and disable paths end it.
+    await bridge(extension, 'WatchClicksAsync', []);
+    await bridge(extension, 'WatchClicksAsync', []);
+    assert.equal(context.global.stage.connected(), 1);
+    extension._unwatchClicks();
+    assert.equal(context.global.stage.connected(), 0);
+    extension._unwatchClicks();
+    delete context.Gio.DBus.session.emit_signal;
+    print('PASS WatchClicks reports presses over windows and Shell actors to the resident only, and Unwatch disconnects everything');
 }

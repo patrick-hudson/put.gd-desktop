@@ -353,7 +353,7 @@ def create_server(adapter: CliAdapter) -> MCPServer:
 
     @server.tool(annotations=read)
     async def get_recording_capabilities() -> Json:
-        """Read screen-recording support: availability, target kinds, formats/codecs, audio sources, the active recording ID, limits and the microsecond time unit. Starts nothing and shows no prompt."""
+        """Read screen-recording support: availability, target kinds, formats/codecs, audio {system, microphone, microphoneDevice | microphoneReason, microphoneMessage} (microphone is true only while an input that is not an output's monitor can be opened right now), clickHighlights {available, route, drawnBy: recorder|compositor, targets, reason?, message?}, the active recording ID, limits and the microsecond time unit. Starts nothing, opens no device and shows no prompt."""
         return await adapter.call('recording.capabilities', {})
 
     @server.tool(annotations=read)
@@ -361,10 +361,19 @@ def create_server(adapter: CliAdapter) -> MCPServer:
         """List the windows a window recording can follow on KDE Plasma, GNOME Wayland and Budgie (labwc 0.20+, Magpie on Mir 2.29+): [{identity, title, appId, rect: [x,y,w,h] (empty on Budgie, whose protocols give no geometry), active, minimized}] and activeExcluded (the focused window is put.gd's own, which is never listed or recorded). Pass an identity as prepare_recording target {kind: window, identity}; without one the active window is recorded. recording_unsupported elsewhere (X11 takes an X window ID). Starts nothing and shows no prompt."""
         return await adapter.call('recording.windows', {})
 
+    @server.tool(annotations=read)
+    async def list_recording_microphones(device: str | None = None) -> Json:
+        """List the inputs a recording can narrate from: devices [{id, label, default}] (never the monitor of an output), defaultIsMonitor, and for `device` (a listed id; omitted: preferences.recordingMicrophoneDevice, else the system default input) available with device {id, label}, or reason and message when there is nothing to open (no_microphone, default_is_monitor, microphone_missing, microphone_is_monitor). Asks the sound server; opens no device and records nothing. Choose a device for the recording bar with patch_configuration preferences.recordingMicrophoneDevice, or per recording with prepare_recording microphone_device."""
+        if device is not None and (type(device) is not str or len(device) > 256 or any(ord(c) < 32 or ord(c) == 127 for c in device)):
+            return invalid()
+        return await adapter.call('recording.microphones', {} if device is None else {'device': device})
+
     @server.tool(annotations=effect)
     async def prepare_recording(target: Json, format: str, codec: str | None = None, fps: int | None = None,
-                                system_audio: bool = False, max_edge: int | None = None, adaptive_fps: bool | None = None) -> Json:
-        """Create one recording session in the ready state: target {kind: monitor|desktop|region|window, identity?, rect?: [x,y,w,h]} (a window target without an identity is the focused external window; identities come from list_recording_windows on KDE/GNOME Wayland and Budgie (labwc 0.20+, Magpie), and the stream follows that window when it moves, resizes or is covered, ending the recording into review when it closes), format mp4|webm|gif|webp, optional codec (mp4: h264|h265, webm: vp9), fps 1-60 (omitted: preferences.recordingFrameRate, 30 by default), adaptive_fps (default true: the recorder lowers the rate, 60 to 30 to 15, when the machine can't keep up; get_recording progress then shows frameRate and frameRateReduced {from, to, reason, atUs}), system_audio (MP4/WebM only; the computer's playback, never a microphone) and max_edge to downscale the output. Shows the ready bounds/controls and may ask the user for OS consent; nothing is captured until control_recording start. Returns recordingId = operationId; poll get_recording until state is ready. Refused with disk_space_insufficient (details freeBytes, reserveBytes, requiredBytes, shortfallBytes) when the disk can't hold a recording that lasts; nothing is accepted then."""
+                                system_audio: bool = False, max_edge: int | None = None, adaptive_fps: bool | None = None,
+                                microphone: bool = False, microphone_device: str | None = None,
+                                click_highlights: bool = False) -> Json:
+        """Create one recording session in the ready state: target {kind: monitor|desktop|region|window, identity?, rect?: [x,y,w,h]} (a window target without an identity is the focused external window; identities come from list_recording_windows on KDE/GNOME Wayland and Budgie (labwc 0.20+, Magpie), and the stream follows that window when it moves, resizes or is covered, ending the recording into review when it closes), format mp4|webm|gif|webp, optional codec (mp4: h264|h265, webm: vp9), fps 1-60 (omitted: preferences.recordingFrameRate, 30 by default), adaptive_fps (default true: the recorder lowers the rate, 60 to 30 to 15, when the machine can't keep up; get_recording progress then shows frameRate and frameRateReduced {from, to, reason, atUs}), system_audio (MP4/WebM only; the computer's playback), microphone (MP4/WebM only; mixed with the system audio into the clip's one track, from microphone_device or the device chosen in Settings or the system default input, never an output's monitor; the device is opened while the bar's toggle is on, a level meter shows it is live, and it is released at stop; refused with recording_unsupported and details.reason when no microphone is available, see list_recording_microphones; one that goes away mid-recording leaves the clip running and get_recording progress.microphoneLost says so), click_highlights (a ring at the pointer on each click, rendered into the clip; recording_unsupported with details.reason where get_recording_capabilities clickHighlights says it is unavailable or not for this target kind) and max_edge to downscale the output. Shows the ready bounds/controls and may ask the user for OS consent; nothing is captured until control_recording start. Returns recordingId = operationId; poll get_recording until state is ready. Refused with disk_space_insufficient (details freeBytes, reserveBytes, requiredBytes, shortfallBytes) when the disk can't hold a recording that lasts; nothing is accepted then."""
         if not safe_recording_target(target) or format not in RECORDING_FORMATS:
             return invalid()
         if codec is not None and codec not in RECORDING_CODECS:
@@ -375,6 +384,11 @@ def create_server(adapter: CliAdapter) -> MCPServer:
             return invalid()
         if type(system_audio) is not bool or (max_edge is not None and (type(max_edge) is not int or not 16 <= max_edge <= 8192)):
             return invalid()
+        if type(microphone) is not bool or type(click_highlights) is not bool:
+            return invalid()
+        if microphone_device is not None and (type(microphone_device) is not str or not microphone_device or len(microphone_device) > 256
+                                              or any(ord(c) < 32 or ord(c) == 127 for c in microphone_device) or not microphone):
+            return invalid()
         params: Json = {'target': target, 'format': format}
         if codec is not None:
             params['codec'] = codec
@@ -382,8 +396,17 @@ def create_server(adapter: CliAdapter) -> MCPServer:
             params['fps'] = fps
         if adaptive_fps is not None:
             params['adaptiveFps'] = adaptive_fps
+        audio: Json = {}
         if system_audio:
-            params['audio'] = {'system': True}
+            audio['system'] = True
+        if microphone:
+            audio['microphone'] = True
+            if microphone_device is not None:
+                audio['microphoneDevice'] = microphone_device
+        if audio:
+            params['audio'] = audio
+        if click_highlights:
+            params['clickHighlights'] = True
         if max_edge is not None:
             params['maxEdge'] = max_edge
         return await adapter.call('recording.prepare', params)

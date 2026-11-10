@@ -5,6 +5,7 @@
 #include "MutterScreenCast.h"
 #include "Microphones.h"
 #include "ClickOverlay.h"
+#include "X11Clicks.h"
 #ifdef PUTGD_RECORD_KDE_SCREENCAST
 #include "KdeScreencast.h"
 #endif

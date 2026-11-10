@@ -157,6 +157,10 @@ private:
  QUrl pendingProtonUrl_;QString pendingProtonSetup_;QPushButton* protonBrowserRetry_=nullptr;bool protonBrowserOpening_=false;
  QString protonAccountUid_,protonAccountEmail_;QSet<QString> folderRequests_;bool protonBrowserOpened_=false;
  std::function<void()> updateProviderVisibility_;
- QLineEdit *root_,*profileId_,*profileLabel_,*reference_,*access_,*secret_,*token_;QComboBox *profile_,*credentialMode_,*acl_,*naming_,*collision_,*addressing_,*regionChoices_,*regionSelection_,*recordingFrameRate_,*uploadClipboard_,*appearance_;QPlainTextEdit* providerJson_;QCheckBox *keep_,*notifications_,*login_,*unlockAtStartup_,*fileManagerMenu_;QComboBox* fileManagerFolders_;
+ QLineEdit *root_,*profileId_,*profileLabel_,*reference_,*access_,*secret_,*token_;QComboBox *profile_,*credentialMode_,*acl_,*naming_,*collision_,*addressing_,*regionChoices_,*regionSelection_,*recordingFrameRate_,*recordingMicrophone_,*uploadClipboard_,*appearance_;QPlainTextEdit* providerJson_;QCheckBox *keep_,*notifications_,*login_,*unlockAtStartup_,*fileManagerMenu_,*recordingClicks_;
+ // #1364: Capture → Screen recording's microphone choice and click highlights
+ // ask the resident what the sound server and the desktop offer right now.
+ void refreshRecordingInputs();void showRecordingMicrophones(const QJsonObject& microphones);void showClickHighlights(const QJsonObject& capability);
+ QLabel *recordingMicrophoneStatus_=nullptr,*recordingClicksStatus_=nullptr;QComboBox* fileManagerFolders_;
 };
 }

@@ -192,6 +192,28 @@ private slots:
   PUTGD_TRY_VERIFY(!h.backend->diagnostics()["active"].toBool());
  }
  // A monitor plugged or unplugged changes what an image-copy session can record.
+ // #1364: the inputs come from a transient `--microphones` run of the helper,
+ // asked afresh every time (inputs come and go while the resident runs), and a
+ // broken answer reads as no microphone, never as one.
+ void microphonesAreAskedOfTheHelperAfresh(){
+  const auto restore=qScopeGuard([]{qunsetenv("PUTGD_TEST_RECORD_MICROPHONES");});
+  qputenv("PUTGD_TEST_RECORD_MICROPHONES","fixture-mic");
+  Harness h;PUTGD_TRY_VERIFY(h.operations->ready());
+  auto listed=h.rec("microphones");QVERIFY(!listed.error);
+  QVERIFY(listed.result["available"].toBool());QCOMPARE(listed.result["device"].toObject()["id"].toString(),QString("fixture-mic"));QCOMPARE(listed.result["devices"].toArray().size(),1);
+  QVERIFY(h.rec("capabilities").result["audio"].toObject()["microphone"].toBool());
+  // A device by name; one that is not connected says so.
+  listed=h.rec("microphones",{{"device","other-mic"}});QVERIFY(!listed.result["available"].toBool());QCOMPARE(listed.result["reason"].toString(),QString("microphone_missing"));QCOMPARE(listed.result["asked"].toString(),QString("other-mic"));
+  // Unplugged since: the next question knows, with no restart.
+  qputenv("PUTGD_TEST_RECORD_MICROPHONES","monitor");
+  listed=h.rec("microphones");QVERIFY(!listed.result["available"].toBool());QCOMPARE(listed.result["reason"].toString(),QString("default_is_monitor"));QVERIFY(listed.result["defaultIsMonitor"].toBool());
+  const auto audio=h.rec("capabilities").result["audio"].toObject();QVERIFY(!audio["microphone"].toBool());QCOMPARE(audio["microphoneReason"].toString(),QString("default_is_monitor"));
+  QCOMPARE(h.rec("prepare",{{"target",QJsonObject{{"kind","desktop"}}},{"format","mp4"},{"audio",QJsonObject{{"microphone",true}}}}).error.details["reason"].toString(),QString("default_is_monitor"));
+  for(const auto* broken:{"garbage","fails"}){
+   qputenv("PUTGD_TEST_RECORD_MICROPHONES",broken);
+   listed=h.rec("microphones");QVERIFY(!listed.error);QVERIFY(!listed.result["available"].toBool());QCOMPARE(listed.result["reason"].toString(),QString("microphone_probe_failed"));
+  }
+ }
  void imageCopyProbesFollowTheOutputs(){
   const auto cleanup=qScopeGuard([]{qunsetenv("PUTGD_TEST_RECORD_PROBE_TAG");});
   qputenv("PUTGD_TEST_RECORD_PROBE_TAG","first");qputenv("PUTGD_TEST_RECORD_MODE","probe-wlr-capture");

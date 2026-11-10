@@ -1,7 +1,7 @@
 #include "MediaProbe.h"
 #include "ImageCopySource.h"
 #include "Microphones.h"
-#include "ClickOverlay.h"
+#include "X11Clicks.h"
 #include "EncoderCheck.h"
 #include "core/RecordingModel.h"
 #include "platform/NativeSession.h"

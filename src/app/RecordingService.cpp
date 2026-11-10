@@ -431,6 +431,15 @@ void RecordingService::command(const QString& command, const QJsonObject& params
         const bool remembered = std::exchange(rememberedPreferences_, false);
         backend_->refreshCapabilities([self, reply, params, probed, remembered] {
             if (!self || self->stopping_ || std::exchange(*probed, true)) return;
+            {
+                // A malformed request is refused as that, before anything is asked of the sound server.
+                RecordingTarget target;
+                RecordingConfig config;
+                auto fields = params;
+                fields.remove("target");
+                if (auto error = recording::parseTarget(params["target"], target)) { reply(error, {}); return; }
+                if (auto error = recording::parseConfig(fields, config)) { reply(error, {}); return; }
+            }
             // A recording that asks for the microphone needs one now. The remembered
             // toggle is not a request: without a microphone the bar shows it
             // unavailable and the recording goes on without narration.

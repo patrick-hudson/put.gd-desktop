@@ -525,7 +525,7 @@ Error OperationService::acceptRecording(Operation& op) {
 void OperationService::recordingCommand(const QString& command,const QJsonObject& params,JsonReply reply) {
  // recording.prepare opens the recording selector; the other commands drive the session it opened.
  if(command=="prepare")emit explicitRequest();
- if(!ready_&&command!="capabilities"&&command!="windows") {reply(startupError_?startupError_:Error{"initializing","Journal recovery is in progress",{}},{});return;}
+ if(!ready_&&command!="capabilities"&&command!="windows"&&command!="microphones") {reply(startupError_?startupError_:Error{"initializing","Journal recovery is in progress",{}},{});return;}
  recording_->command(command,params,std::move(reply));
 }
 void OperationService::editorCommand(const QString& id,const QString& command,const QJsonObject& params,JsonReply reply) {

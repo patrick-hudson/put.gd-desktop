@@ -26,9 +26,26 @@ int main(int argc, char** argv) {
         if (mode == "probe-fails") return 9;
         const QJsonObject caps{{"schemaVersion", 1}, {"available", true}, {"targets", QJsonArray{"monitor", "desktop", "region", "window"}},
             {"formats", QJsonArray{"mp4", "webm", "gif", "webp"}}, {"codecs", QJsonObject{{"mp4", QJsonArray{"h264", "h265"}}, {"webm", QJsonArray{"vp9"}}}},
-            {"audio", QJsonObject{{"system", true}, {"microphone", false}}}, {"overlayExclusion", QJsonObject{{"region", true}}}, {"fixture", mode},
+            {"audio", QJsonObject{{"system", true}, {"microphone", qEnvironmentVariableIsSet("PUTGD_TEST_RECORD_MICROPHONES")}}}, {"overlayExclusion", QJsonObject{{"region", true}}}, {"fixture", mode},
             {"probeTag", qEnvironmentVariable("PUTGD_TEST_RECORD_PROBE_TAG")}, {"acquisition", mode == "probe-wlr-capture" ? QStringLiteral("wlr-capture") : QStringLiteral("x11")}};
         const auto json = QJsonDocument(caps).toJson(QJsonDocument::Compact);
+        std::fwrite(json.constData(), 1, size_t(json.size()), stdout);
+        std::fputc('\n', stdout);
+        return 0;
+    }
+    if (argc >= 2 && std::strcmp(argv[1], "--microphones") == 0) {
+        // #1364: the product helper asks the sound server; the fixture answers from the environment.
+        const auto offered = qEnvironmentVariable("PUTGD_TEST_RECORD_MICROPHONES");
+        if (offered == "garbage") { std::printf("not json\n"); return 0; }
+        if (offered == "fails") return 9;
+        const QString wanted = argc >= 3 ? QString::fromLocal8Bit(argv[2]) : QString();
+        QJsonObject list{{"defaultIsMonitor", offered == "monitor"}, {"devices", offered.isEmpty() || offered == "monitor" ? QJsonArray{} : QJsonArray{QJsonObject{{"id", offered}, {"label", "Fixture microphone"}, {"default", true}}}}};
+        const bool available = !offered.isEmpty() && offered != "monitor" && (wanted.isEmpty() || wanted == offered);
+        list["available"] = available;
+        if (available) list["device"] = QJsonObject{{"id", offered}, {"label", "Fixture microphone"}};
+        else { list["reason"] = offered == "monitor" ? "default_is_monitor" : wanted.isEmpty() ? "no_microphone" : "microphone_missing"; list["message"] = "No fixture microphone"; }
+        list["asked"] = wanted;
+        const auto json = QJsonDocument(list).toJson(QJsonDocument::Compact);
         std::fwrite(json.constData(), 1, size_t(json.size()), stdout);
         std::fputc('\n', stdout);
         return 0;

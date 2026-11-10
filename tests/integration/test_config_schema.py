@@ -66,6 +66,19 @@ class ConfigurationSchema(unittest.TestCase):
         for rate in (0, 15, 24, 59, 61, 30.5, '60', None):
             self.assertFalse(validator.is_valid(legacy | {'recordingFrameRate': rate}))
 
+    def test_recording_microphone_and_click_preferences(self):
+        # #1364: all optional; the device is a source name without control characters.
+        schema = json.loads((Path(__file__).resolve().parents[2] / 'schemas/config.schema.json').read_text())
+        validator = Draft202012Validator(schema['properties']['preferences'])
+        legacy = {'notifications': True, 'launchAtLogin': False}
+        for extra in ({'recordingMicrophone': True}, {'recordingMicrophone': False}, {'recordingClickHighlights': True},
+                      {'recordingMicrophoneDevice': ''}, {'recordingMicrophoneDevice': 'alsa_input.usb-Mic-00.mono-fallback'},
+                      {'recordingMicrophone': True, 'recordingMicrophoneDevice': 'putgd_lab_mic', 'recordingClickHighlights': False}):
+            self.assertTrue(validator.is_valid(legacy | extra), extra)
+        for extra in ({'recordingMicrophone': 1}, {'recordingMicrophone': 'yes'}, {'recordingClickHighlights': None},
+                      {'recordingMicrophoneDevice': 7}, {'recordingMicrophoneDevice': 'x' * 257}, {'recordingMicrophoneDevice': 'two\nlines'}):
+            self.assertFalse(validator.is_valid(legacy | extra), extra)
+
     def test_update_check_preferences(self):
         # #293: optional; check and channel each optional inside it.
         schema = json.loads((Path(__file__).resolve().parents[2] / 'schemas/config.schema.json').read_text())
