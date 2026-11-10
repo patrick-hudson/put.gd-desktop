@@ -62,7 +62,8 @@ put.gd stores as a secret. The report has names, states and links, never a token
 exits 0 when every receiver passed and nothing held a token.
 
 - The receivers speak plain HTTP on the lab network, so `--allow-insecure-http` is
-  needed; without it the files import and their uploads are refused.
+  needed; without it each import is refused with `http_insecure_url` and nothing of the
+  file is stored.
 - Session mode (the default) stores nothing in the desktop keyring. Keychain mode leaves
   one keyring entry per destination, `putgd/http/rx-<name>`, as put.gd itself does when
   a destination is removed; the report lists them.
