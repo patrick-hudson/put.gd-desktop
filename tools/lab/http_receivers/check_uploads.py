@@ -13,9 +13,10 @@ configuration, data and state folders.
 The resident is the one putgd-cli reaches (the desktop's own, or a private one named by
 --socket and the XDG_* variables of this process). The lab receivers speak plain HTTP on
 the lab network: --allow-insecure-http says so for each imported destination, and
-without it such a file is imported but its uploads are refused. Session mode stores
-nothing in the desktop keyring; keychain mode leaves one keyring entry per destination
-(putgd/http/rx-<name>), as put.gd does when a destination is removed in Settings.
+without it such a file is refused at import (http_insecure_url) and nothing of it is
+stored. Session mode stores nothing in the desktop keyring; keychain mode leaves one
+keyring entry per destination (putgd/http/rx-<name>), as put.gd does when a destination
+is removed in Settings.
 Destinations this run imported are removed again unless --keep is given, also when the
 run stops early. The report on stdout has names, states and links, never a token. Exit 0
 when every receiver passed.

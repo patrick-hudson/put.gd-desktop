@@ -430,6 +430,8 @@ private slots:
   QCOMPARE(value->echoMode(),QLineEdit::Password);
   QVERIFY(window.settings()->hasCredentialInputs());
   QVERIFY(window.findChild<QLabel*>("uploaderNotice")->text().contains("1 secret value is held in this window"));
+  // A value typed or imported but not stored is not "ready": the list says what is missing.
+  PUTGD_TRY_VERIFY(window.settings()->destinationRowLines(0).join(' ').contains("Needs credentials"));
   QFile config(dir.filePath("config.json"));QVERIFY(config.open(QIODevice::ReadOnly));QVERIFY(!config.readAll().contains(token));config.close();
   const auto checkpoint=window.settings()->saveViewState();
   QVERIFY2(!checkpoint.contains("stateError"),qPrintable(checkpoint["stateError"].toString()));
@@ -441,6 +443,7 @@ private slots:
   PUTGD_TRY_VERIFY(window.findChild<QLabel*>("storedCredentialHint")->text().contains("1 stored"));
   PUTGD_TRY_VERIFY(panel->typedSecrets().isEmpty());
   QVERIFY(value->text().isEmpty());QVERIFY(value->placeholderText().contains("stored"));
+  PUTGD_TRY_VERIFY(window.settings()->destinationRowLines(0).join(' ').contains("Ready to test"));
   const auto cached=secrets.cached("development-s3",saved()["credentials"].toObject());
   QVERIFY(cached);QCOMPARE(cached->values.value("arguments/token"),QString::fromLatin1(token));
   QVERIFY(!window.settings()->hasCredentialInputs());
