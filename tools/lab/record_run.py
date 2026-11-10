@@ -45,8 +45,9 @@ does not get the focus (on Cinnamon the desktop window keeps it), so the driver
 finds the cover's window by its process id in the window manager's list (`xprop`)
 and passes that id. On Hyprland a full-screen window's state passes to the next
 window that opens (`misc:on_focus_under_fullscreen` 1), so put.gd's controls would
-hide the cover: for a window run the driver sets that option to 0 and puts the
-previous value back when the cover closes.
+hide the cover: for a window run, and for a --delayed-capture run (the review
+window opens before its second capture), the driver sets that option to 0 and
+puts the previous value back when the cover closes.
 
 PATH is an AppImage (extracted once under DIR for its putgd-cli) or a directory
 holding `putgd` and `putgd-cli` (an installed package: /usr/bin). APPDIR is an
@@ -1183,7 +1184,8 @@ class Driver:
                 self.stop_resident(build)
             report['microphone'] = self.open_microphone()
             report['cover'] = self.open_cover()
-            if a.target == 'window' and self.env.get('HYPRLAND_INSTANCE_SIGNATURE'):
+            # A window run, and a run whose second delayed capture comes after the review window has opened.
+            if (a.target == 'window' or a.delayed_capture) and self.env.get('HYPRLAND_INSTANCE_SIGNATURE'):
                 report['cover']['hyprland'] = self.keep_cover_fullscreen_on_hyprland()
             for number in range(1, a.rounds + 1):
                 for fmt in a.format:
