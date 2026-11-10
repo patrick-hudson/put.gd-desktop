@@ -231,7 +231,11 @@ holding 60 distinct contents. A frame identical to the previous kept one
 render) is dropped before the copy, and the rest take cadence-locked stamps:
 each new frame takes the slot one period after the previous stamp as long as
 it arrived within 0.7 of a period of that slot, an earlier extra is dropped
-and a later one resynchronises to its arrival (`lockedFrameTime`). Stamps
+and a later one resynchronises to its arrival (`lockedFrameTime`). A frame
+the recorder made itself (the image-copy source's cursor-only frame, #1364)
+takes a slot only at the slot's own time, so it never takes one from the
+screen's next change
+([microphone and click highlights](microphone-and-clicks.md)). Stamps
 follow arrivals on average, so the audio offset #86 measured stays, and sit
 on the grid between resyncs; raw arrivals under the same jitter cost five
 frames a second in `videorate`. `PUTGD_RECORD_PIPEWIRE_TIMESTAMPS=arrival`

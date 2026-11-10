@@ -393,6 +393,18 @@ position and hotspot, its own capture session the cursor's picture, and each
 frame is copied and the cursor blended into the copy. The compositor sends no
 frame for a cursor that moves over a still screen, so the helper pushes the
 last frame again with the cursor at its new place, at most 60 times a second.
+Those cursor-only frames are flagged for the cadence lock
+([Wayland recording](wayland.md)), which gives one a slot only at the slot's
+own time. Taken for captured frames they held every slot up to 23 ms early
+(at 30 frames a second), the screen's next change then always arrived early
+for the slot after, was dropped and showed with a later frame: about 31 ms
+late on average and up to 48 ms, the picture behind the sound for as long as
+the pointer moved. With the rule a change is 8 ms late on average and at most
+24 ms, the lock's own rounding to the grid (`wayland_acquisition_contract`
+drives `lockedFrameTime` with a screen that changes every 137 ms under a
+moving cursor). At 50 and 60 frames a second the slot is no longer than the
+cursor's pace, so a cursor-only frame may come 6 and 8 ms before the slot's
+time, enough for one to land in every slot.
 A press is placed at the pointer position the helper holds when it arrives.
 A recording never loses its cursor to this. At `prepare` the capture is
 reopened with the compositor's painted cursor, as in a recording without

@@ -416,6 +416,9 @@ tools for that are `tools/lab/cover_player.py` and `tools/lab/record_run.py`
   round's entry), and with `--frames` the frame gate can take it for something
   that is not the cover and delete the clips; a clip deleted that way is listed
   under `problems`, with this option named.
+  On Hyprland a `--delayed-capture` run holds `misc:on_focus_under_fullscreen`
+  at 0 as a window run does: the review window opens before the second
+  capture and would otherwise take the cover's full-screen state.
 - `record_run.py --click S,X,Y[,BUTTON]` (repeatable) presses a button at a
   desktop pixel S seconds into each recording, as real input through the
   desktop's VNC tile (`--click-vnc HOST:PORT` in a guest: QEMU's VNC on the VM
