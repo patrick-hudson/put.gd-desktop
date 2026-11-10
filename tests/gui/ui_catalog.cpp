@@ -104,6 +104,10 @@ QJsonObject inventory(QWidget& root){
  QJsonArray controls,keys;
  auto rectOf=[&](QWidget* w){const auto tl=w->mapTo(&root,QPoint());return QJsonArray{tl.x(),tl.y(),w->width(),w->height()};};
  auto add=[&](QWidget* w,const QString& kind,const QString& text,QJsonObject extra={}){QJsonObject c{{"name",w->objectName()},{"class",QString::fromLatin1(w->metaObject()->className())},{"kind",kind},{"text",text},{"rect",rectOf(w)},{"enabled",w->isEnabled()}};for(auto it=extra.begin();it!=extra.end();++it)c[it.key()]=it.value();controls.append(c);};
+#ifdef PUTGD_CATALOG_REVIEW
+ // CountdownPill handles cancellation on its root rather than on a child button.
+ if(dynamic_cast<CountdownPill*>(&root))add(&root,"button",root.accessibleDescription());
+#endif
  if(auto* menu=qobject_cast<QMenu*>(&root))for(auto* a:menu->actions()){if(a->isSeparator())continue;const auto r=menu->actionGeometry(a);controls.append(QJsonObject{{"name",a->objectName()},{"class","QAction"},{"kind","menu-item"},{"text",a->text()},{"rect",QJsonArray{r.x(),r.y(),r.width(),r.height()}},{"enabled",a->isEnabled()},{"submenu",a->menu()!=nullptr}});}
  for(auto* w:root.findChildren<QWidget*>()){
   // Same native window only: a child dialog's coordinates are not this capture's.
