@@ -36,14 +36,19 @@ WebP stay silent.
   silent on that input from there; the bar says **Microphone disconnected** and
   `recording.inspect` reports `progress.microphoneLost`. Nothing of another
   input is recorded in its place: with PipeWire the stream is pinned to its
-  device and is never moved; under PulseAudio itself, which may move it, the
-  recording drops the stream's audio from the moment its device changes. See
+  device and is never moved. Under PulseAudio itself, which may move it, the
+  recording looks at the stream's device every fifth buffer (50 ms apart) and
+  drops the stream's audio from the first look that finds another device, so
+  up to 50 ms of the other input can be in the clip before the cut. See
   [Capture and mix](#capture-and-mix).
 - **Without one, the bar says so.** The toggle reads **No microphone**, its box
   is empty and it cannot be ticked; its tooltip and
   `recordingMicrophone.unavailable` give the reason. What the user chose last
   time (`requested`) is kept apart from what is recorded (`effective`), so the
-  choice is there again once a microphone is.
+  choice is there again once a microphone is. Which input the toggle would open
+  is settled once, at `prepare`: a microphone connected while the bar is
+  already at **Ready to record** is not picked up by that session. Cancel and
+  prepare again to use it.
 
 ### Device
 
@@ -145,8 +150,9 @@ recording's; and a stream connected to nothing gives no buffers, where an open
 microphone delivers them all the time, silence included, so two seconds without
 one counts as lost.
 PulseAudio itself ignores the property: there the tap compares the source's
-`current-device` with the one it opened twenty times a second and drops
-everything from the first difference. A
+`current-device` with the one it opened at every fifth buffer, twenty times a
+second, and drops everything from the first difference; what the moved stream
+delivered in the up to 50 ms before that look is in the clip. A
 microphone that cannot be opened at Record (unplugged since the session was
 prepared) starts the recording without it and reports the same way.
 

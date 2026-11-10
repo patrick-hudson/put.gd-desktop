@@ -54,10 +54,9 @@ system default is an output's monitor) it reads **No microphone**, its box is
 empty and unavailable, and its tooltip says why; the remembered choice is
 kept. From Record on the bar's facts name what is recorded (**With system
 audio**, **With microphone**, **System audio and microphone**, **Click
-highlights**) and, if the input goes away, **Microphone disconnected**. From Record on the checkbox is locked but still
-shows whether the clip records system audio: ticked with the app theme's
-check on a muted fill, or empty, with a tooltip saying which (#120; before,
-the locked box was drawn empty either way). Its actions run in the helper and are reported
+highlights**) and, if the input goes away, **Microphone disconnected**. From
+Record on the two checkboxes are hidden: what the clip records can no longer be
+changed, and the facts line says it. Its actions run in the helper and are reported
 to the resident as events (`started`, `paused`, `resumed`, `stopped` with
 reason `user`, `cancelled`, `configChanged`), which the service applies to the
 same state machine the CLI drives; `recording.overlay` hides or shows the bar
