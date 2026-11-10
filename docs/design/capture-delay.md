@@ -96,7 +96,10 @@ A delay that ends on a locked screen captures nothing: the operation fails with
 freedesktop screensaver services and logind's `LockedHint` where available,
 Hyprland's own `locked` request as well, and on GNOME the extension, which also
 drops every request the moment the Shell locks. Budgie uses the visibility
-witness described below.
+witness described below. A delayed live-region request on GNOME checks
+`Main.sessionMode.isLocked` directly at expiry: screensaver/logind services are not
+queried on its successful path, so a service reporting locked does not refuse that
+request when the Shell itself remains unlocked.
 
 Not every locker reports its state: Budgie's gtklock sets no `LockedHint` and offers
 no service to ask, and Omarchy's lock leaves the hint off too. So on Plasma, Budgie
