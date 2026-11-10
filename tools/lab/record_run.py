@@ -963,7 +963,10 @@ class Driver:
         seconds = int(seconds)
         entry = {'when': when, 'action': action, 'delaySeconds': seconds, 'problems': []}
         began = time.monotonic()
-        operation = self.cli(build, 'action.invoke', {'action': action, 'delaySeconds': seconds})
+        accepted = self.cli(build, 'action.invoke', {'action': action, 'delaySeconds': seconds})
+        operation = accepted.get('operationId') or (accepted.get('operation') or {}).get('id')
+        if not operation:
+            raise RunError('action.invoke gave no operation: %s' % json.dumps(accepted)[:300])
         entry['acceptedAfterS'] = round(time.monotonic() - began, 2)
         frames = self.run / 'frames'
         during = frames / ('%s-countdown-%s.png' % (name, when))
@@ -972,9 +975,9 @@ class Driver:
             entry['countdownFrame'] = during.name if self.desktop_frame(during) else None
         info = {}
         while time.monotonic() - began < seconds + 45:
-            info = self.cli(build, 'operation.inspect', {'id': operation.get('id')})
-            info = info.get('operation') or info
-            if info.get('state') in ('completed', 'stored', 'partial', 'failed', 'cancelled', 'interrupted'):
+            info = self.cli(build, 'operation.inspect', {'id': operation})
+            # `stored` is on the way: the capture is acquired and not yet saved.
+            if info.get('state') in ('completed', 'partial', 'failed', 'cancelled', 'interrupted'):
                 break
             time.sleep(0.25)
         entry['tookS'] = round(time.monotonic() - began, 2)
@@ -1005,9 +1008,10 @@ class Driver:
         checked = subprocess.run([sys.executable, str(HERE / 'cover_player.py'), *check], capture_output=True, text=True)
         entry['cover'] = json.loads(checked.stdout or '{"ok": false}')
         if not entry['cover'].get('ok'):
-            saved.unlink()
+            # check-frame deletes what it does not pass.
+            saved.unlink(missing_ok=True)
             entry['local']['file'] = None
-            entry['problems'].append('the delayed capture %s the recording is not of the cover; deleted unopened' % when)
+            entry['problems'].append('the delayed capture %s the recording is not of the cover (%s); deleted unopened' % (when, entry['cover'].get('reason')))
         if self.args.frames and entry.get('countdownFrame'):
             after = frames / ('%s-countdown-%s-after.png' % (name, when))
             time.sleep(0.5)
