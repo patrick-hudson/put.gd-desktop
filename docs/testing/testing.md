@@ -223,7 +223,12 @@ The custom HTTP uploader (#1361) is tested in four layers:
   the scripted loopback receiver `tests/fixtures/http_uploader_server.py`. It covers the
   body types, reply styles, where the token travels, refusals, lost and late replies,
   redirects, deletion with its checkpoint, confirmation page and verification, Test
-  connection, and History with an explicit retry that leaves two copies.
+  connection, and History with an explicit retry that leaves two copies. The receiver
+  also plays a careless or hostile server: it repeats the credential it was sent in
+  the link, the thumbnail or the deletion URL (as sent, percent-encoded, or as PHP
+  writes JSON), names another host or a user name in an address, answers 5xx after it
+  has the file, and cuts its reply short. Two imports in flight and an import whose
+  save fails are covered there as well.
 - `customUploaderImportKeepsItsTokenOutOfSettingsAndCheckpoints` in
   `gui_settings_destinations` drives the form: import, masked rows, store, and the
   token's absence from `config.json` and every checkpoint.

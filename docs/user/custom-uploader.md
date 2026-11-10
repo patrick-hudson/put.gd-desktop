@@ -38,9 +38,15 @@ or `Data`. put.gd treats every such value as a secret:
   deletion URL is replaced there by its name, `{secret:arguments/token}`. XBackBone
   ends its deletion URL with the upload token; put.gd records that URL with the name
   and fills the value in only when the deletion is sent.
-- A long run of letters and digits (20 or more, with both) left in the path of the
-  request URL or in the deletion URL is taken for a key and moves to **Other secret
-  values** (`secrets/url-key`, `secrets/deletion-key`).
+- A run of letters and digits left after the host of the request URL or the deletion
+  URL is taken for a key and moves to **Other secret values** (`secrets/url-key`,
+  `secrets/deletion-key`): sixteen characters or more of letters and digits alone, as a
+  hex key is, or twenty or more with `-` and `_` among them. No rule finds every key.
+  A shorter part that mixes letters and digits stays as written, and the import notes
+  say where it is (its position, never its text) so you can move it yourself.
+- Imports are taken one at a time. A second one that arrives while the first is still
+  being saved is refused with `import_busy`; a destination that could not be saved
+  leaves no stored values behind.
 - A stored value may not appear in the link, which is shared and recorded in History.
   A file whose `URL` repeats one is refused, and the message names the row. A
   `ThumbnailURL` or `ErrorMessage` that repeats one is left out, with a note.
@@ -107,7 +113,7 @@ Reply values (URL, Thumbnail URL, Deletion URL, Error message) take `{filename}`
 | `{regex:pattern\|group}` | A match in the reply; the group is a number or a name. `{regex:text\|pattern\|group}` reads other text. |
 | `{header:name}` | A reply header. |
 | `{response}` | The whole reply. |
-| `{responseurl}` | The address that answered, after redirects. |
+| `{responseurl}` | The address a redirect led to; empty when there was no redirect. |
 | `{secret:key}` | In the Deletion URL only, and on its own, not inside another placeholder. |
 
 A backslash keeps the next character as written (`\{`), so a regular expression
@@ -139,33 +145,65 @@ changes three things compared with S3:
 
 - **No name check and no overwrite.** Two uploads of the same file are two uploads.
 - **A lost reply is an unknown outcome.** When the request was sent and no usable reply
-  came back (the connection closed, a gateway answered 408, 502 or 504, or a 2xx reply
-  had no link where the destination looks for one), History shows the upload as
-  unknown and says that the file may be on the server. **Retry upload** sends the file
-  again and may leave a second copy there. put.gd never repeats an upload by itself.
+  came back, History shows the upload as unknown and says that the file may be on the
+  server. That covers a connection that closed, a reply cut off after its first line, a
+  gateway's 408, 502 or 504, any other 5xx that arrived after the whole request had
+  been sent (a 500, a 503, Cloudflare's 524), and a 2xx reply with no usable link.
+  **Retry upload** sends the file again and may leave a second copy there. put.gd never
+  repeats an upload by itself.
 - **Deletion works by the deletion URL the upload returned.** Without one, History
   offers no deletion and says why.
 
-A request that never reached the server (`http_connect_failed`) stored nothing. A
-definite refusal (401, 403, 413, 429, or any other 4xx or 5xx except 408, 502 and 504,
-which are unknown as above) is recorded as a plain
-failure, with the server's message. put.gd takes the server at its word there: a server
-that stores a file and then answers with an error leaves a copy put.gd does not know
-of, so look on the server before retrying if a second copy would matter.
+A request that never reached the server (`http_connect_failed`) stored nothing. A 4xx
+other than 408 is a refusal and is recorded as a plain failure, with the server's
+message; so is a 5xx that arrived before the request was complete. put.gd takes the
+server at its word there: a server that stores a file and then answers 4xx leaves a
+copy put.gd does not know of.
 
 | Reply | Result |
 | --- | --- |
 | 2xx with a link | Uploaded. The link is one absolute `http(s)` address, or a path from the server's root. |
-| 2xx without a link | Unknown: `http_response_unreadable`. Check the URL value under Response. |
+| 2xx without a usable link | Unknown: `http_response_unreadable`. Check the URL value under Response. |
+| 2xx whose link repeats a stored value | Unknown: `http_link_holds_secret`. The link is not recorded or copied. |
+| A reply cut off after its first line | Unknown: `http_outcome_unknown` |
 | 401, 403 | `http_authentication_failed` |
 | 413 | `http_too_large` |
 | 429 | `http_rate_limited` |
 | 408, 502, 504 | Unknown: `http_outcome_unknown` |
-| Other 5xx | `http_server_error` |
+| Other 5xx, after the whole request was sent | Unknown: `http_outcome_unknown`, with the server's message |
+| Other 5xx, before the request was complete | `http_server_error` |
 | Other 4xx | `http_request_refused` |
 
-Text from the server is shown on one line, bounded, with any stored value of the
-destination removed.
+Text from the server is shown on one line, bounded, with every stored value of the
+destination removed, however the server spells it: as sent, percent-encoded, or as PHP
+writes JSON. A word of eight characters or more inside a value, such as the token of
+`Bearer <token>`, is removed by itself too. Values shorter than four characters are
+stored like the others but are not hidden in server messages: hiding every `1` or `on`
+would leave nothing to read.
+
+**Addresses a reply returns.** The link, the thumbnail and the deletion URL come from
+the server, so each is checked before it is kept:
+
+- An address that repeats a stored value is never recorded, copied or shown. This
+  applies to values of six characters or more, after the address's host, in any of the
+  spellings above; a value under sixteen characters counts only as a whole word, so
+  `upload` stored as a form field does not make every link under `/uploads/` suspect.
+  A link that holds one makes the upload an unknown outcome (`http_link_holds_secret`):
+  the file is probably on the server, and the message names the row. If that value is
+  not a credential, clear **Secret** on its row. A thumbnail that holds one is dropped.
+- A deletion URL that holds one is recorded with the value's name, `{secret:key}`,
+  when the value stands there exactly as stored, and is dropped otherwise. A deletion
+  URL that names a stored value, from its template or this way, must be on the request
+  URL's own host: a stored value is never sent anywhere else, so for an upload whose
+  deletion address is on another host, deletion is unavailable.
+- An address with a user name in it (`https://shown@real/`) is not used: it shows one
+  host and goes to another.
+- An address on this computer (`localhost`, `127.0.0.1` in any spelling, `::1`) is used
+  only when the destination's own request URL is on this computer, so a public server
+  cannot point Test connection or a deletion at a local service. Redirects follow the
+  same rule.
+- `{responseurl}` is where a redirect led. Without a redirect it is empty: the
+  request's own address, secret parameters included, is never a link.
 
 **Redirects.** A 301, 302 or 303 is followed with a GET that carries no body; the
 destination's headers and values are sent only to the host that was asked. A 307 or
@@ -184,7 +222,8 @@ Confirming it journals the intent, then sends one GET of the recorded deletion U
   after, and a server that answers 200 while the link still serves the same bytes gets
   `http_delete_unconfirmed`, not "deleted".
 - A lost reply leaves the deletion unknown; **Retry** asks the server again and finds
-  the file gone.
+  the file gone. A redirect that put.gd does not follow is unknown too: the server
+  received the request.
 - Zipline and Chibisafe return no deletion URL, so their uploads are deleted on the
   server itself.
 

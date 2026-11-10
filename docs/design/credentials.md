@@ -37,7 +37,12 @@ answers `storedValues` and `missingValues`, names only. An imported `.sxcu` file
 values are held in the Settings window, or stored straight to the chosen mode by
 `settings.importUploader`, and reach no file on the way
 ([custom uploader](../user/custom-uploader.md#what-an-import-does-with-secrets)).
-Its keychain reference is `putgd/http/<profile id>`.
+Its keychain reference is `putgd/http/<profile id>`. Imports are serialized: a second
+`settings.importUploader` that arrives while one is between its first check and its
+saved profile answers `import_busy`, so two files can never store their values under
+one reference. When the profile could not be saved, `CredentialStore::erase` removes
+what the import stored, from the cache and from the secret store; `credentialsStored`
+in the error's details is set only if that removal itself failed.
 
 Configuration stores `{"mode":"keychain","reference":"putgd/profile-name"}` or
 `{"mode":"session","reference":null}`. Receipts preserve this reference to restore
