@@ -43,6 +43,8 @@ An upload rule can also bend the reply the way a careless or hostile server woul
          "chunk" | "chunk-reset"       the same for a chunked reply: every byte of the body
                                        but no last chunk, or a reset inside a chunk
   "chunked": true                      a whole reply sent chunked, last chunk and all
+  "gzip": true                         the reply's body compressed, whatever the request's
+                                       Accept-Encoding asked for
   "early": true                        with "status": the reply is sent before the body is
                                        read, and the connection then closes with most of
                                        the file never taken
@@ -51,7 +53,7 @@ An upload rule can also bend the reply the way a careless or hostile server woul
                                        short reply is already there when the client has
                                        sent its last byte
 """
-import hashlib, json, os, socket, sys, threading, time, urllib.parse, uuid
+import gzip, hashlib, json, os, socket, sys, threading, time, urllib.parse, uuid
 from email.parser import BytesParser
 from email.policy import HTTP
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -88,9 +90,14 @@ class Handler(BaseHTTPRequestHandler):
             body = body.encode()
         cut = getattr(self, 'cut', None)
         chunked = cut in ('chunk', 'chunk-reset') or getattr(self, 'chunked', False)
+        packed = getattr(self, 'gzip', False)
+        if packed:
+            body = gzip.compress(body)
         try:
             self.send_response(code)
             self.send_header('Content-Type', content_type)
+            if packed:
+                self.send_header('Content-Encoding', 'gzip')
             if chunked:
                 self.send_header('Transfer-Encoding', 'chunked')
             else:
@@ -183,7 +190,7 @@ class Handler(BaseHTTPRequestHandler):
 
     def record(self, call, extra=None):
         parsed = urllib.parse.urlsplit(self.path)
-        kept = {k.lower(): v for k, v in self.headers.items() if k.lower() in ('authorization', 'content-type', 'user-agent', 'host') or k.lower().startswith('x-')}
+        kept = {k.lower(): v for k, v in self.headers.items() if k.lower() in ('authorization', 'content-type', 'content-length', 'accept-encoding', 'user-agent', 'host') or k.lower().startswith('x-')}
         event = {'call': call, 'method': self.command, 'path': parsed.path, 'query': dict(urllib.parse.parse_qsl(parsed.query, keep_blank_values=True)), 'headers': kept}
         event.update(extra or {})
         with lock:
@@ -191,7 +198,7 @@ class Handler(BaseHTTPRequestHandler):
         return event
 
     def do_GET(self):
-        self.php, self.cut, self.chunked = False, None, False  # one connection serves several requests
+        self.php, self.cut, self.chunked, self.gzip = False, None, False, False  # one connection serves several requests
         parsed = urllib.parse.urlsplit(self.path)
         parts = parsed.path.strip('/').split('/')
         if parsed.path == '/__state':
@@ -242,7 +249,7 @@ class Handler(BaseHTTPRequestHandler):
         self.reply(404, {'error': 'unknown path'})
 
     def do_POST(self):
-        self.php, self.cut, self.chunked = False, None, False
+        self.php, self.cut, self.chunked, self.gzip = False, None, False, False
         if self.path == '/__reset':
             options = json.loads(self.body() or b'{}')
             with lock:
@@ -366,7 +373,7 @@ class Handler(BaseHTTPRequestHandler):
             first[rule['echo']] += '?key=' + (urllib.parse.quote(credential, safe='') if rule.get('encoding') == 'percent' else credential)
         if rule.get('userinfo') in first:
             first[rule['userinfo']] = first[rule['userinfo']].replace('http://', 'http://trusted.example@', 1)
-        self.php, self.cut, self.chunked = bool(rule.get('php')), rule.get('cut'), bool(rule.get('chunked'))
+        self.php, self.cut, self.chunked, self.gzip = bool(rule.get('php')), rule.get('cut'), bool(rule.get('chunked')), bool(rule.get('gzip'))
         if rule.get('drop'):
             return self.drop()
         if rule.get('status'):

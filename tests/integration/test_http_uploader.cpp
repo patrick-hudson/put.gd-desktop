@@ -923,6 +923,61 @@ private slots:
         QCOMPARE(f.fetch(result.receipt.directUrl).first, 200);
         QVERIFY(result.receipt.objectReference["deletionUrl"].toString().contains("/delete/"));
     }
+    // Replies are asked for as they are, so that their length is the one on the wire. A
+    // server that compresses regardless sends a reply that arrives whole and cannot be
+    // read: an unknown outcome that says so, never a link out of noise. Where the link is
+    // in a header the body does not matter, and a compressed reply that is cut short is
+    // cut short like any other.
+    void aReplyCompressedRegardlessIsSaidToBe() {
+        HttpFixture f;
+        f.reset();
+        const auto plain = f.upload(f.image());
+        QCOMPARE(plain.status, QString("uploaded"));
+        QCOMPARE(f.events("upload")[0].toObject()["headers"].toObject()["accept-encoding"].toString(), QString("identity"));
+        f.rules({{{"call", "upload"}, {"store", true}, {"gzip", true}}});
+        const auto packed = f.upload(f.image());
+        QVERIFY2(packed.status == "unknown", qPrintable(packed.status + " " + packed.receipt.directUrl + " " + packed.error.code));
+        QCOMPARE(packed.error.code, QString("http_response_unreadable"));
+        QVERIFY2(packed.error.message.contains("compressed its reply (gzip)") && packed.error.message.contains("may be stored"), qPrintable(packed.error.message));
+        QVERIFY(packed.receipt.directUrl.isEmpty());
+        // The link in a header: the body is not needed.
+        auto header = f.destination;
+        header.settings = f.settings("header");
+        header.settings["responseUrl"] = "{header:Location}";
+        f.rules({{{"call", "upload"}, {"store", true}, {"gzip", true}}});
+        const auto located = f.upload(f.image(), header);
+        QVERIFY2(located.status == "uploaded", qPrintable(located.status + " " + located.error.code + ": " + located.error.message));
+        // Compressed and short of its length: cut off, under the one code.
+        f.rules({{{"call", "upload"}, {"store", true}, {"gzip", true}, {"cut", "length"}}});
+        const auto shortOne = f.upload(f.image());
+        QCOMPARE(shortOne.status, QString("unknown"));
+        QCOMPARE(shortOne.error.code, QString("http_outcome_unknown"));
+        QCOMPARE(f.stored(), 4);
+    }
+    // The destination's connect timeout holds for an upload with no body as well. Qt
+    // reports nothing about connecting for such a request over plain HTTP, so the worker
+    // asks the server for a connection first; one that gives none within the timeout is
+    // a plain failure, and nothing was sent.
+    void anUnreachableServerFailsABodilessUploadWithinTheConnectTimeout() {
+        HttpFixture f;
+        auto bare = f.destination;
+        bare.settings = f.settings("json");
+        bare.settings["requestMethod"] = "GET";
+        bare.settings["body"] = "none";
+        bare.settings["parameters"] = rows({plainRow("content", "{input}"), plainRow("name", "{filename}")});
+        // 192.0.2.1 is a documentation address: no connection is ever made there.
+        bare.settings["requestUrl"] = "http://192.0.2.1/upload/json";
+        bare.settings["allowInsecureHttp"] = true;
+        bare.settings["connectTimeoutMs"] = 1000;
+        bare.settings["requestTimeoutMs"] = 30000;
+        QVERIFY2(!http::validateSettings(bare.settings), qPrintable(http::validateSettings(bare.settings).message));
+        QElapsedTimer clock;
+        clock.start();
+        const auto result = f.upload(f.text(), bare);
+        QVERIFY2(result.status == "failed", qPrintable(result.status + " " + result.error.code + ": " + result.error.message));
+        QCOMPARE(result.error.code, QString("http_connect_failed"));
+        QVERIFY2(clock.elapsed() < 10000, qPrintable(QString::number(clock.elapsed())));
+    }
     // Server text that is kept (a message, an excerpt, a content type) has every spelling
     // of a stored value removed: as sent, percent-encoded, and as PHP writes JSON.
     void serverTextIsScrubbedInEverySpelling() {
