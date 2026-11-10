@@ -4,7 +4,8 @@ put.gd is a Linux desktop capture and sharing app. It captures a region, window
 or desktop, uploads clipboard images, text and local files, and accepts files or
 folders from a file manager. It can edit a still image or record the screen,
 review the result privately, then upload only after an explicit action. Output
-can stay local, go to S3-compatible storage, Backblaze B2 or Proton Drive, and
+can stay local, go to S3-compatible storage, Backblaze B2, Proton Drive or a
+custom HTTP uploader, and
 appear in searchable local history with the resulting link copied to the
 clipboard. Global shortcuts and the tray keep these actions available while
 the main window is closed. See the [user guide](../user/user-guide.md) for everyday use.
@@ -31,12 +32,14 @@ packages use dynamically linked distribution Qt. See
 | `putgd-record` | Recording, overlays, private review, previews and export | Resident control pipes; X11 or Wayland/PipeWire acquisition; private media files | Temporary recording session; also bounded poster jobs |
 | `putgd-s3-worker` | Official AWS C++ SDK requests and private S3 module | Private framed pipes, durable-checkpoint acknowledgements and credential requests; S3 HTTPS | New Linux process per driver call |
 | `putgd-b2-worker` | Native B2 HTTP and transfer work | Private newline JSON input, progress, checkpoints and result; B2 HTTPS | New process per request |
+| `putgd-http-worker` | The one request of a custom HTTP uploader: upload, deletion or Test connection | Private newline JSON input carrying the stored values, progress, a deletion checkpoint and result; HTTPS, or HTTP where the destination allows it | New process per request |
 | `putgd-proton-runtime` | Packaged official-SDK integration for Proton account, file and sharing work | Private helper protocol, secret service and Proton APIs | On demand from the Proton provider; separately provisioned package input |
 | `putgd-ui-catalog` | Synthetic UI catalog renderer | Test fixtures to rendered catalog images | Test build/CI, outside the resident |
 | `putgd-desktop-fixture` | Independent synthetic capture/paste witness | Lab commands, synthetic windows and artifacts | Opt-in development lab package |
 
 Executable definitions: [cmake/Executables.cmake](../../cmake/Executables.cmake),
 [recording helper](../../cmake/Recording.cmake), [B2 rules](../../cmake/B2.cmake),
+custom uploader rules (`cmake/Http.cmake`),
 [Proton packaging](../../cmake/Proton.cmake) and
 [Linux packaging](../../packaging/linux/CMakeLists.txt). Recording is built when
 `PUTGD_RECORDING` and its GStreamer/FFmpeg dependencies are available; shipping
@@ -93,6 +96,7 @@ X11/Wayland combinations specified by the [acceptance matrix](../testing/accepta
 | --- | --- | --- |
 | S3 (`s3`) | Official AWS C++ SDK; AWS and compatible services with the required conditional-write semantics. Destination settings select bucket, endpoint, naming and URL behavior. Exact receipts and guarded version-aware removal preserve object identity. | [S3](../user/s3.md) |
 | Backblaze B2 (`backblaze-b2`) | Native b2api v3, public or expiring authorized links, version-ID receipts and removal. Collision handling includes a documented concurrent-name exposure window; explicit overwrite is refused. | [B2](../user/b2.md) |
+| Custom uploader (`custom-http`) | One HTTP request described in Settings or imported from a ShareX `.sxcu` file, with placeholders that read the reply. Row values are secrets kept in the credential store. The server names each upload: no name check, an unknown outcome when a reply is lost, a resend only on explicit Retry, and deletion through the returned deletion URL, verified against the link. | [Custom uploader](../user/custom-uploader.md) |
 | Proton Drive (`proton-drive`) | Privately packaged official-SDK helper; browser account connection, selected My files folder, private uploads or explicit share links, optional link expiry/password. Third-party integration maintained by put.gd. | [Proton Drive](../user/proton-drive.md) |
 
 `StorageProvider` and `ProviderRegistry` keep core, UI, history and desktop code
@@ -211,6 +215,7 @@ and earlier results establish their stated scope; hardware gates use the require
 | [CLI](../automation/cli.md) | Session JSON methods and client behavior. |
 | [Configuration](configuration.md) | Schema, roots, migration, routing and retention. |
 | [Credentials](credentials.md) | Secret-store references, setup and cache lifecycle. |
+| [Custom uploader](../user/custom-uploader.md) | One described HTTP request, `.sxcu` import, placeholders, secrets and deletion. |
 | [Cinnamon/X11](../desktops/cinnamon.md) | X11 capture, clipboard and shortcut behavior. |
 | [GNOME](../desktops/gnome.md) | Shell extension setup and authenticated bridge. |
 | [KDE](../desktops/kde.md) | KWin permissions, data control and region selection. |
@@ -219,6 +224,7 @@ and earlier results establish their stated scope; hardware gates use the require
 | [Evidence retention](../testing/evidence-retention.md) | Preserve, archive and restore verification evidence. |
 | [File dialogs](file-dialogs.md) | Portal chooser behavior and automation. |
 | [File-manager upload](file-manager-upload.md) | Menu installation, folder handling and destination choice. |
+| [HTTP receivers](../lab/http-receivers.md) | Zipline, Chibisafe and XBackBone in containers for custom uploader checks. |
 | [Image editor](image-editor.md) | Editing tools, sanitized output and explicit submission. |
 | [Image worker](image-worker.md) | Private codec jobs, file validation and resource bounds. |
 | [Lab storage](../lab/lab-storage.md) | Storage inventory, retention and disposable-run cleanup. |

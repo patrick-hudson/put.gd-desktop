@@ -25,6 +25,20 @@ startup read.
 requires explicit entry again. `forget` revokes future cache access. Already-sent
 requests drain using their original client/credential generation.
 
+A custom HTTP uploader (#1361) stores named values instead of a key pair: one entry
+holds a map from credential-store name to value, where a name is `headers/<name>`,
+`parameters/<name>`, `arguments/<name>`, `secrets/<name>` or `data` (the request body).
+One entry holds at most 160 values and 128 KB in all, names included; setup and the
+store apply the same limits. `setup.storeCredentials` takes `{"values":{name:value}}`
+for such a destination, checks each name against the saved settings, and merges: a
+value typed now replaces the stored one and the others are kept from the loaded entry.
+A missing value answers `credential_incomplete` with the names. `setup.credentialHint`
+answers `storedValues` and `missingValues`, names only. An imported `.sxcu` file's
+values are held in the Settings window, or stored straight to the chosen mode by
+`settings.importUploader`, and reach no file on the way
+([custom uploader](../user/custom-uploader.md#what-an-import-does-with-secrets)).
+Its keychain reference is `putgd/http/<profile id>`.
+
 Configuration stores `{"mode":"keychain","reference":"putgd/profile-name"}` or
 `{"mode":"session","reference":null}`. Receipts preserve this reference to restore
 access to an original destination. They never preserve keys or tokens.

@@ -211,3 +211,31 @@ ctest --preset dev -R '^gui_settings_'
 from `test_gui_settings_credentials` under `dbus-run-session`, with its own
 60 second timeout. Historical evidence retains the original `gui_settings`
 name and runtime.
+
+### Custom uploader suites
+
+The custom HTTP uploader (#1361) is tested in four layers:
+
+- `http_uploader_rules` (unit, no network or files): table tests of the placeholder
+  parser in both generations, the JSON path and XPath subsets, `.sxcu` import including
+  older and legacy files, and the settings rules.
+- `http_uploader_integration`: the production provider and `putgd-http-worker` against
+  the scripted loopback receiver `tests/fixtures/http_uploader_server.py`. It covers the
+  body types, reply styles, where the token travels, refusals, lost and late replies,
+  redirects, deletion with its checkpoint, confirmation page and verification, Test
+  connection, and History with an explicit retry that leaves two copies.
+- `customUploaderImportKeepsItsTokenOutOfSettingsAndCheckpoints` in
+  `gui_settings_destinations` drives the form: import, masked rows, store, and the
+  token's absence from `config.json` and every checkpoint.
+  `unknownUploadWhereTheServerNamesItWarnsOfASecondCopy` in `gui_history_view` covers
+  the History notice. `CustomUploaderResidentTests` in `tests/integration/test_mcp.py`
+  does the same through the MCP helper against a real private resident
+  ([mcp.md](../automation/mcp.md#headless-contract-checks-and-remaining-acceptance)).
+- Real receivers: [HTTP receivers](../lab/http-receivers.md) runs Zipline, Chibisafe and
+  XBackBone in containers on a builder and drives a resident against the `.sxcu` file
+  each of them generates. This layer is a lab run, not a CTest entry.
+
+Some Qt Network versions repeat a request that has no body when the connection closes
+before the reply, and some do not. The deletion test accepts both: either the repeated
+request finds the file gone, or the lost reply is reported as unknown and the explicit
+retry finds it gone.

@@ -32,6 +32,17 @@ filenames, history URLs, authorization values or credential references.
 | `storage_busy` | Quit the other or earlier put.gd process that holds the data folder, then start put.gd again; nothing was moved |
 | `storage_migration_failed` | Fix access to the reported folders and start put.gd again; the move resumes from its staging folder and nothing was removed |
 | `storage_unavailable` | Make the user configuration and data folders resolvable and writable |
+| `sxcu_invalid`, `sxcu_unreadable` | The file is not a ShareX custom uploader, or could not be read; export it again from the service |
+| `sxcu_unsupported`, `sxcu_unsupported_type` | The message says which part put.gd does not take (a URL shortener, an interactive placeholder, a secret repeated in the link, another method); set the destination up by hand without it ([custom uploader](custom-uploader.md)) |
+| `http_settings_invalid`, `http_insecure_url` | Fix the named field of the custom uploader; for a plain `http://` address beyond loopback, turn on **Allow plain HTTP for this destination** or use `https://` |
+| `http_text_only`, `http_type_unsupported` | This uploader does not take that kind of file; choose another destination, or change its body type or **Uploads** |
+| `http_connect_failed`, `http_upload_interrupted` | Nothing was stored; check the address and the network, then retry |
+| `http_authentication_failed` | The server refused the stored values (401/403); enter them again and store them |
+| `http_too_large`, `http_rate_limited`, `http_server_error`, `http_request_refused` | The server refused the upload with that status; nothing was stored. Its own message follows when the destination has an Error message value |
+| `http_redirect_refused` | The server redirected to another host, to plain HTTP, or too often; put.gd did not follow. Set the address it named as the request URL if that is right |
+| `http_outcome_unknown`, `http_response_unreadable` | The upload was sent and may be on the server; put.gd cannot check. Look on the server, or **Retry upload**, which sends the file again and may leave a second copy. For an unreadable reply, fix the URL value under Response first |
+| `http_delete_unsupported` | The upload came back without a deletion URL; delete it on the server |
+| `http_delete_refused`, `http_delete_unconfirmed` | The server refused the deletion, or answered while the link still serves the file; nothing is recorded as deleted. Try again later or delete it on the server |
 
 ## GNOME 50 setup states
 

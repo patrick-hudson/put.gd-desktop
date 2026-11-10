@@ -85,6 +85,10 @@ Methods and parameters:
 | `settings.validate` | complete `document` |
 | `settings.patch` | recursive `patch`, `expectedRevision`; null is a value |
 | `settings.reorderProfiles` | `order` (every profile ID exactly once), `expectedRevision`; display order only |
+| `settings.importUploader` | `path` of a ShareX `.sxcu` file (the CLI makes a relative one absolute), `expectedRevision`, optional `label`, `profileId`, `credentialMode` (`keychain`, the default, or `session`) and `allowInsecureHttp`; adds a Custom uploader (HTTP) destination. The resident reads the file itself, stores its values in the chosen mode and answers `profileId`, `label`, `provider`, `credentials.mode`, `storedValues` (names only) and `notes`, never a value ([custom uploader](../user/custom-uploader.md)) |
+| `setup.credentialHint` | `profileId`, `expectedRevision`; which credentials a destination has loaded, never a value: for a custom uploader `storedValues` and `missingValues` by credential-store name |
+| `setup.testDestination` | `profileId`, `expectedRevision`; starts Test connection and answers a `setupId` |
+| `setup.inspect` | setup `id`; `kind`, `profileId`, `state` (`running`, `completed`, `failed`), `error` and `result`. For a custom uploader the result has `kind`, `uploadStatus`, `link`, `linkStatus`, `deletionOffered` and `cleanupStatus` (`removed`, or `unsupported` when the reply carried no deletion URL) |
 | `capabilities`, `diagnostics` | empty object |
 | `desktop.setup` | empty object; the per-user desktop setup state: `ready`, `login_required` or a [specific reason](../user/errors.md#gnome-50-setup-states) on GNOME Wayland (`unsupported_shell` for a GNOME other than 50); `not_applicable` for adapters with no per-user setup, including other desktops and GNOME on X11 |
 | `desktop.setup.recheck` | empty object; run that setup again and return its state |
@@ -92,6 +96,7 @@ Methods and parameters:
 | `ui.moveDestination` | `direction` up/down, optional `profileId`; drives the open Settings window |
 | `ui.diagnostics` | `action` (`inspect`, `setDebugLogging`, `clearLogs`, `openPackage`, `setPackage`, `savePackage`, `showInFolder`, `closePackage`), with `enabled`, `includeNames`, absolute `folder`, `upload` or `operation` where they apply; drives Settings → Advanced → Diagnostics |
 | `ui.historySaveDiagnostics` | operation or history `id`; clicks **Save diagnostics for this upload** on that failed History row |
+| `ui.customUploader` | `action` (`inspect`, `import` with an absolute `path`, `openImport`, `closeImport`, `store`, `test`), optional `profileId` to select that destination first; drives the Custom uploader (HTTP) form in the open Destinations page as a user does. `inspect` answers the form's fields, each row with `secret`, `typed` and `stored` flags, `typedSecrets` and `missingSecrets` by name, the notice and the stored hint, never a value. `import` fills the form from the file and leaves its values in the window; `store` and `test` press the form's own buttons |
 | `ui.fileDialog` | `dialog` (`editImage`, `historySaveAs`, `outputFolder`, `diagnosticsFolder`), `action` (`open`, `inspect`, `cancel`), optional `field` (`root`, `images`, `videos`, `text`, `other`; `outputFolder` only) or history/operation `id` (`historySaveAs` only); opens a chooser in the open window as its button does and answers with its state ([file-dialogs.md](../design/file-dialogs.md)) |
 
 Editor methods, command shapes and error codes are specified in
@@ -238,7 +243,7 @@ no payloads or addresses; measure RSS separately using the
 [whole-workload measurement guidance](../design/memory-strategy.md#measure-the-complete-workload).
 Other allocators report unsupported and keep the existing cleanup behavior.
 
-`setup.storeCredentials` is rejected by the CLI before connecting to the resident (`credentials_require_settings`). Enter access keys in Settings; use credential references in agent configuration. The authenticated local Settings transport retains its credential-entry endpoint.
+`setup.storeCredentials` is rejected by the CLI before connecting to the resident (`credentials_require_settings`). Enter access keys in Settings; use credential references in agent configuration. The authenticated local Settings transport retains its credential-entry endpoint. A custom uploader's token never needs that path from an agent: `settings.importUploader` takes the path of the `.sxcu` file and the resident reads it, so the token is in no argument, reply or log.
 
 Proton link management uses `history.share`, `history.revokeLink` and
 `history.inspectLink` with an exact history `id`. They return `shareOperationId`;
