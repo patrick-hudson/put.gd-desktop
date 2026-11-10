@@ -6,6 +6,7 @@
 #include "editor/EditorCommands.h"
 #include "platform/HostOpen.h"
 #include <QApplication>
+#include <QPainter>
 #include <QAccessible>
 #ifdef Q_OS_LINUX
 #include <QDBusConnection>
@@ -58,6 +59,26 @@ class EditorWindowTest:public QObject {
  static QImage canvasImage(){QImage image(400,260,QImage::Format_RGB32);image.fill(QColor("#20242c"));return image;}
  static void add(EditDocument& doc,const QJsonObject& shape){QJsonArray created;QString code,message;QVERIFY2(Commands::apply(doc,{QJsonObject{{"op","add"},{"shape",shape}}},created,code,message),qPrintable(message));}
 private slots:
+ void redactionEdgesNeverSampleCoveredContent_data(){
+  QTest::addColumn<double>("zoom");QTest::addColumn<QString>("effect");
+  for(double zoom:{0.83,0.29,0.51,0.67})for(const auto& effect:{"none","blur","pixelate","highlight"})
+   QTest::newRow(qPrintable(QString("%1-%2").arg(zoom).arg(effect)))<<zoom<<QString(effect);
+ }
+ void redactionEdgesNeverSampleCoveredContent(){
+  QFETCH(double,zoom);QFETCH(QString,effect);
+  const QRect secret(101,79,157,113);
+  auto render=[&](const QColor& color){
+   QImage image(600,400,QImage::Format_RGB32);image.fill(Qt::white);
+   {QPainter painter(&image);painter.fillRect(secret,color);}
+   EditDocument doc(image);add(doc,{{"kind","redact"},{"rect",QJsonArray{secret.x(),secret.y(),secret.width(),secret.height()}}});
+   if(effect!="none"){QJsonObject shape{{"kind",effect=="highlight"?"highlight":"blur"},{"rect",QJsonArray{90,65,190,145}}};if(effect!="highlight")shape["style"]=effect=="pixelate"?"pixelate":"blur";add(doc,shape);}
+   EditorCanvas canvas(doc);canvas.resize(540,360);canvas.show();canvas.setZoom(zoom);
+   QImage result(canvas.size(),QImage::Format_RGB32);canvas.render(&result);return result;
+  };
+  // Changing only covered pixels must never change even one displayed pixel,
+  // including the filtered edge and tiles overlapping the redaction.
+  QCOMPARE(render(Qt::magenta),render(Qt::green));
+ }
  void propertyHeadingFitsAndKeepsItsSelectionAccessible(){
   {EditDocument doc(canvasImage());EditorWindow window(doc);}
   const auto previous=QApplication::font();auto restore=qScopeGuard([previous]{QApplication::setFont(previous);});

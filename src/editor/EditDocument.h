@@ -71,6 +71,8 @@ public:
  // reader metadata. Callers must already have admitted the pixel count.
  explicit EditDocument(const QImage& base);
  const QImage& base() const {return base_;}
+ // Source pixels sanitized before any preview resampling; coordinates stay in image pixels.
+ QImage previewSource(const QRect& area) const;
  QSize size() const {return base_.size();}
  QRect imageRect() const {return base_.rect();}
  QRect crop() const {return state_.crop;}

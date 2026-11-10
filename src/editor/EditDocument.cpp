@@ -397,6 +397,16 @@ QRect EditDocument::highlightWindow(const Shape& shape) const {
  return window;
 }
 
+QImage EditDocument::previewSource(const QRect& area) const {
+ if(area.isEmpty()||!base_.rect().contains(area))return {};
+ const QImage view(base_.constScanLine(area.top())+qsizetype(area.left())*qsizetype(sizeof(QRgb)),area.width(),area.height(),base_.bytesPerLine(),base_.format());
+ bool masked=false;for(const auto& shape:state_.shapes)if(shape.kind==Shape::Kind::Redact&&shape.rect.intersects(area)){masked=true;break;}
+ if(!masked)return view;
+ auto image=view.copy();QPainter painter(&image);painter.setCompositionMode(QPainter::CompositionMode_Source);
+ for(const auto& shape:state_.shapes)if(shape.kind==Shape::Kind::Redact)painter.fillRect(shape.rect.intersected(area).translated(-area.topLeft()),Qt::black);
+ return image;
+}
+
 QImage EditDocument::highlightPreview(const Shape& shape,double scale) const {
  const auto area=clampRect(shape.rect,state_.crop);if(area.isEmpty())return {};
  // The plan reads full-resolution pixels (sampled); only the tint runs on the
@@ -409,7 +419,7 @@ QImage EditDocument::highlightPreview(const Shape& shape,double scale) const {
  constexpr double previewPixels=1.5e6;
  scale=std::min({1.0,scale,std::sqrt(previewPixels/(double(window.width())*window.height()))});
  const QSize target(std::max(1,int(std::lround(window.width()*scale))),std::max(1,int(std::lround(window.height()*scale))));
- const QImage view(base_.constScanLine(window.top())+qsizetype(window.left())*qsizetype(sizeof(QRgb)),window.width(),window.height(),base_.bytesPerLine(),base_.format());
+ const auto view=previewSource(window);
  auto preview=target==window.size()?view.copy():view.scaled(target,Qt::IgnoreAspectRatio,Qt::SmoothTransformation);
  preview=preview.convertToFormat(base_.format());
  const double sx=double(target.width())/window.width(),sy=double(target.height())/window.height();
@@ -434,7 +444,7 @@ QImage EditDocument::blurPreview(const Shape& shape,double scale) const {
  scale=std::min({1.0,scale,std::sqrt(previewPixels/(double(area.width())*area.height()))});
  const QSize target(std::max(1,int(std::lround(area.width()*scale))),std::max(1,int(std::lround(area.height()*scale))));
  if(shape.pixelate){QImage preview(target,base_.format());if(preview.isNull())return {};pixelatePreview(preview,area,shape);return preview;}
- const QImage view(base_.constScanLine(area.top())+qsizetype(area.left())*qsizetype(sizeof(QRgb)),area.width(),area.height(),base_.bytesPerLine(),base_.format());
+ const auto view=previewSource(area);
  auto preview=target==area.size()?view.copy():view.scaled(target,Qt::IgnoreAspectRatio,Qt::SmoothTransformation);
  preview=preview.convertToFormat(base_.format());
  const double sx=double(target.width())/area.width(),sy=double(target.height())/area.height();

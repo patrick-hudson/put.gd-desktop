@@ -384,7 +384,11 @@ void EditorCanvas::paintEvent(QPaintEvent*){
  if(!visible.isEmpty()){
   const QRectF source(toImage(visible.topLeft()),toImage(visible.bottomRight()));
   painter.setRenderHint(QPainter::SmoothPixmapTransform,scale_<1.0);
-  painter.drawImage(visible,doc_.base(),source);
+  // Include the filter's neighbours, and cover secrets before filtering.
+  // Overpainting after scaling cannot remove their contribution at mask edges.
+  const auto area=source.toAlignedRect().adjusted(-1,-1,1,1).intersected(doc_.imageRect());
+  const auto sanitized=doc_.previewSource(area);
+  painter.drawImage(visible,sanitized,source.translated(-area.topLeft()));
  }
  painter.save();painter.setClipRect(target);
  painter.translate(offset_);painter.scale(scale_,scale_);painter.translate(-QPointF(bounds.topLeft()));
