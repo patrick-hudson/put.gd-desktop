@@ -62,6 +62,7 @@ def main(argv=None):
     parser.add_argument('--steps', type=int, default=12)
     parser.add_argument('--step-ms', type=int, default=16)
     parser.add_argument('--button', choices=sorted(BUTTONS), default='left')
+    parser.add_argument('--settle-ms', type=int, default=300, help='click: the wait between the motion and the press')
     parser.add_argument('--display')
     args = parser.parse_args(argv)
     expected = 4 if args.action == 'drag' else 2
@@ -75,7 +76,15 @@ def main(argv=None):
             p.motion(args.coords[0], args.coords[1], width, height)
         elif args.action == 'click':
             p.motion(args.coords[0], args.coords[1], width, height)
+            # A client binds wl_pointer only once the seat has announced a pointer, and this device is the
+            # seat's first: a press sent right behind it reaches the compositor's own binds and not the
+            # client under it. The compositor takes the device and the motion first, then the client gets
+            # time to bind and to take the enter.
+            p.sync()
+            time.sleep(args.settle_ms / 1000)
             p.button(BUTTONS[args.button], True)
+            p.sync()
+            time.sleep(0.05)
             p.button(BUTTONS[args.button], False)
         else:
             x1, y1, x2, y2 = args.coords

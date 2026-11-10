@@ -17,8 +17,9 @@ into the sink and must come out of the source, and a loopback into a third,
 silent sink then keeps the source in use for the whole run. PipeWire 1.0.5
 (Mint 22, Ubuntu 24.04) needs both: there a remapped source that was left
 without a reader sometimes passes pure silence to every later reader, while
-the sink's monitor carries the sound (measured on m74: 7 of 14 recordings
-silent, an independent `parec` on the source silent with them). A source that
+the sink's monitor carries the sound (measured on m74: 12 of 21 recordings
+silent, an independent `parec` on the source silent with them; 10 of 10
+carry the sound since). A source that
 fails the check is made again, up to six times; the state says how many it
 took (`attempts`) and what the last check heard (`heardPeak`).
 
