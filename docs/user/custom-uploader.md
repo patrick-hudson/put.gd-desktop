@@ -184,11 +184,18 @@ changes three things compared with S3:
 - **No name check and no overwrite.** Two uploads of the same file are two uploads.
 - **A lost reply is an unknown outcome.** When the request was sent and no usable reply
   came back, History shows the upload as unknown and says that the file may be on the
-  server. That covers a connection that closed, a reply cut off after its first line, a
-  gateway's 408, 502 or 504, any other 5xx that arrived after the whole request had
-  been sent (a 500, a 503, Cloudflare's 524), and a 2xx reply with no usable link.
-  **Retry upload** sends the file again and may leave a second copy there. put.gd never
-  repeats an upload by itself.
+  server. That covers a connection that closed, a reply that ended before it was
+  complete, a gateway's 408, 502 or 504, any other 5xx that arrived after the whole
+  request had been sent (a 500, a 503, Cloudflare's 524), and a 2xx reply with no usable
+  link. **Retry upload** sends the file again and may leave a second copy there. put.gd
+  never repeats an upload by itself.
+- **A reply is whole by its own length.** put.gd counts the bytes of a reply and holds
+  them against the `Content-Length` the server declared: a reply that is shorter is not
+  a reply, even when the part that came holds a whole link. It asks for replies
+  uncompressed (`Accept-Encoding: identity`), so that length is the one on the wire. A
+  chunked reply declares no length; there put.gd goes by the connection, and one that
+  ended without its last chunk is incomplete too. A reply with neither a length nor
+  chunks ends when the connection does, and cannot be told from one that was cut.
 - **Deletion works by the deletion URL the upload returned.** Without one, History
   offers no deletion and says why.
 
@@ -206,7 +213,7 @@ does not know of.
 | 2xx with a link | Uploaded. The link is one absolute `http(s)` address, or a path from the server's root. |
 | 2xx without a usable link | Unknown: `http_response_unreadable`. Check the URL value under Response. |
 | 2xx whose link repeats a credential | Unknown: `http_link_holds_secret`. The link is not recorded or copied. |
-| A reply cut off after its first line | Unknown: `http_outcome_unknown` |
+| A reply shorter than its `Content-Length`, a chunked reply without its last chunk, a connection that closed or reset under the reply | Unknown: `http_outcome_unknown` |
 | 401, 403 | `http_authentication_failed` |
 | 413 | `http_too_large` |
 | 429 | `http_rate_limited` |
@@ -270,7 +277,9 @@ Confirming it journals the intent, then sends one GET of the recorded deletion U
   back to the same host, put.gd submits it, as XBackBone needs.
 - The deletion counts only when it is verified: put.gd fetches the link before and
   after, and a server that answers 200 while the link still serves the same bytes gets
-  `http_delete_unconfirmed`, not "deleted".
+  `http_delete_unconfirmed`, not "deleted". Only whole replies are compared: a link
+  whose reply was cut short afterwards proves nothing, and is `http_delete_unconfirmed`
+  as well.
 - A lost reply leaves the deletion unknown; **Retry** asks the server again and finds
   the file gone. A redirect that put.gd does not follow is unknown too: the server
   received the request. A deletion URL that names a stored value follows no redirect
@@ -290,7 +299,18 @@ deletion, and one result. A closed input cancels.
 The request body is sent from a device that can be read only once. Qt Network would
 otherwise send a request again by itself when a connection closes before the reply;
 with a body it cannot rewind, it reports an error instead, and the upload is unknown
-rather than silently repeated. HTTP/1.1 is used, so "was it sent" has one answer.
+rather than silently repeated. An upload that has no body (**Body** None, its text in
+the address) is sent with an empty one for the same reason, so such a request carries
+`Content-Length: 0`. Qt reports nothing about sending a request like that, so it counts
+as sent whenever that cannot be ruled out, and over plain HTTP an unreachable server
+fails after Qt's own connect timeout, not the destination's. HTTP/1.1 is used, so "was
+it sent" has one answer.
+
+Whether a reply arrived whole is not left to what Qt reports either. When a connection
+ends under a reply, Qt reports a closed connection or, when it was still finishing the
+request it had written, a request it could not send again, after it has handed over
+the status line and the bytes that came. The worker goes by the reply's own length
+first, and takes any transport error on a successful status as an incomplete reply.
 
 ## Verification
 

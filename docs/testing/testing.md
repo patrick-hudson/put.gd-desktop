@@ -254,6 +254,21 @@ failure: Qt's HTTP/1.1 client reads no reply while it is still sending, so it re
 `http_upload_interrupted`; a client that read the status would report
 `http_server_error`.
 
+Whether a reply is whole is tested without relying on timing (#1393). The rows of
+`aReplyCutOffAfterItsStatusLineIsUnknown` cut a reply by an unfulfilled
+`Content-Length`, a reset in the body, a chunked reply without its last chunk and a
+reset inside a chunk, and expect one outcome and one code for all of them.
+`aShortReplyThatWaitedWhileTheFileWasSentIsUnknown` makes the receiver send a short
+reply while the file is still arriving and close afterwards. That is the order of
+events in which Qt reports a request it could not send again (error 205) where it
+normally reports a closed connection, and in which a short reply holding a whole link
+was once recorded as an upload; the rule produces it on every run, where load produced
+it in about one run in forty. `lostAndLateRepliesAreUnknown` checks that an upload
+with no body is sent once when its reply is lost, is not failed by the connect timeout
+while its reply is slow, is unknown when no reply comes, and is a plain failure when
+the server is absent. Run the suite under contention with the builder stress lane,
+`tools/ci/stress_suite.py`, after a change to the worker's reply handling.
+
 Two things these suites cannot show on one machine, because the scripted receiver is
 on loopback and a loopback destination may be answered with loopback addresses: the
 refusal of a returned address that is, or resolves to, this computer. Both are covered
