@@ -125,6 +125,73 @@ class UbuntuMirrors(unittest.TestCase):
         self.assertEqual(output.count('below-floor'), 2)
         self.assertIn('mirror+file:', (self.apt / 'sources.list').read_text())
 
+    def install(self, apt_get, seconds=30):
+        """Run putgd_apt_install against a fake apt-get; returns (exit status, output, apt-get calls)."""
+        for name, body in (('apt-get', apt_get), ('dpkg', 'echo "dpkg $*" >> "$CALLS"')):
+            tool = self.bin / name
+            tool.write_text('#!/bin/bash\n' + body + '\n')
+            tool.chmod(0o755)
+        calls = self.root / 'calls'
+        calls.touch()
+        env = dict(os.environ, PUTGD_APT_ROOT=str(self.apt), PUTGD_UBUNTU_MIRROR_HOSTS='',
+                   PUTGD_APT_ATTEMPT_SECONDS=str(seconds), CALLS=str(calls),
+                   PATH=f'{self.bin}:{os.environ["PATH"]}')
+        script = 'apt=(-o Test=1)\n' + snippet(WORKFLOWS[0]) + 'putgd_apt_install --no-install-recommends one two\n'
+        result = subprocess.run(['bash', '-euo', 'pipefail', '-c', script], env=env, timeout=30,
+                                capture_output=True, text=True)
+        return result.returncode, result.stdout, calls.read_text().splitlines()
+
+    def write_mirrors(self, *hosts):
+        (self.apt / 'putgd-mirrors.txt').write_text(
+            ''.join(f'http://{host}/ubuntu/\tpriority:{n}\n' for n, host in enumerate(hosts, 1)))
+
+    def test_install_passes_first_time_without_touching_the_mirror_list(self):
+        self.write_mirrors('a', 'b', 'c')
+        status, output, calls = self.install('echo "apt-get $*" >> "$CALLS"')
+        self.assertEqual(status, 0)
+        self.assertEqual(calls, ['apt-get update -o Test=1', 'apt-get install -y -o Test=1 --no-install-recommends one two'])
+        self.assertEqual(self.mirrors(), [f'http://{host}/ubuntu/' for host in 'abc'])
+        self.assertNotIn('::warning::', output)
+
+    def test_stalled_first_mirror_is_stopped_and_moved_to_the_end(self):
+        self.write_mirrors('stalls', 'b', 'c')
+        # Like a mirror that probed fast and then hangs on package downloads.
+        status, output, calls = self.install(
+            'echo "apt-get $1 $(head -n 1 "$PUTGD_APT_ROOT/putgd-mirrors.txt" | cut -f1)" >> "$CALLS"\n'
+            '[ "$1" != install ] || ! head -n 1 "$PUTGD_APT_ROOT/putgd-mirrors.txt" | grep -q stalls || exec sleep 20', seconds=1)
+        self.assertEqual(status, 0)
+        self.assertEqual(calls, ['apt-get update http://stalls/ubuntu/', 'apt-get install http://stalls/ubuntu/',
+                                 'dpkg --configure -a',
+                                 'apt-get update http://b/ubuntu/', 'apt-get install http://b/ubuntu/'])
+        self.assertEqual((self.apt / 'putgd-mirrors.txt').read_text(),
+                         'http://b/ubuntu/\tpriority:1\nhttp://c/ubuntu/\tpriority:2\nhttp://stalls/ubuntu/\tpriority:3\n')
+        self.assertIn('Ubuntu mirror moved to the end of the list: http://stalls/ubuntu/', output)
+        self.assertEqual(output.count('::warning::Package install: attempt'), 1)
+
+    def test_install_fails_after_three_attempts_each_on_a_different_first_mirror(self):
+        self.write_mirrors('a', 'b', 'c')
+        status, output, calls = self.install(
+            'echo "apt-get $1 $(head -n 1 "$PUTGD_APT_ROOT/putgd-mirrors.txt" | cut -f1)" >> "$CALLS"; exit 100')
+        self.assertEqual(status, 1)
+        self.assertEqual([call for call in calls if call.startswith('apt-get')],
+                         [f'apt-get update http://{host}/ubuntu/' for host in 'abc'])
+        self.assertEqual(output.count('::warning::Package install: attempt'), 3)
+
+    def test_install_retries_without_a_mirror_list(self):
+        # Debian containers and Ubuntu images without archive.ubuntu.com have no list to rotate.
+        status, output, calls = self.install(
+            'echo "apt-get $1" >> "$CALLS"; [ "$(grep -c "apt-get update" "$CALLS")" -gt 1 ]')
+        self.assertEqual(status, 0)
+        self.assertEqual(calls, ['apt-get update', 'dpkg --configure -a', 'apt-get update', 'apt-get install'])
+        self.assertFalse((self.apt / 'putgd-mirrors.txt').exists())
+
+    def test_ubuntu_jobs_install_through_the_bounded_helper(self):
+        ci = WORKFLOWS[0].read_text()
+        self.assertEqual(ci.count('putgd_apt_install "${packages[@]}"') + ci.count('putgd_apt_install build-essential clang'), 2)
+        self.assertNotIn('apt-get install', ci.split('\njobs:\n')[1])
+        self.assertIn('putgd_demote_mirror\n', WORKFLOWS[1].read_text().split('\njobs:\n')[1])
+        self.assertIn('putgd_apt_install "${packages[@]}"', (ROOT / 'tests/desktop/pipewire/ci_check.sh').read_text())
+
     def test_non_ubuntu_sources_are_left_alone(self):
         source = self.apt / 'sources.list'
         original = 'deb http://deb.debian.org/debian trixie main\n'

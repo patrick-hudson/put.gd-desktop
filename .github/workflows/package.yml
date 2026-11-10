@@ -19,14 +19,17 @@ env:
   # Ubuntu containers name one archive host, so an outage there fails every
   # retry. Rank alternatives by bounded download throughput, including mirrors
   # that answer HTTP 200 but deliver packages too slowly. APT fails over file by
-  # file and still verifies everything against the Ubuntu keyring.
+  # file and still verifies everything against the Ubuntu keyring, but it goes
+  # back to the first mirror for every file. A mirror can probe fast and then
+  # stall on real downloads, so putgd_apt_install bounds each attempt and moves
+  # the first mirror to the end of the list before the next one.
   PUTGD_UBUNTU_MIRRORS: |
     apt_root=${PUTGD_APT_ROOT:-/etc/apt}
     sources=$(grep -lE 'http://archive\.ubuntu\.com/ubuntu' "$apt_root"/sources.list "$apt_root"/sources.list.d/* 2>/dev/null || true)
     if [ -n "$sources" ]; then
       probe_dir=$(mktemp -d)
       # Four sequential probes: <= 12.8 s, <= 8 MiB of response bodies.
-      # 1 MiB/s fetches 483 MiB in ~8 minutes, leaving room in the 20-minute step.
+      # 1 MiB/s fetches 483 MiB in ~8 minutes, within two of the three install attempts.
       floor=1048576
       for endpoint in ${PUTGD_UBUNTU_MIRROR_HOSTS:-us.archive.ubuntu.com mirrors.edge.kernel.org azure.archive.ubuntu.com archive.ubuntu.com}; do
         host=${endpoint%%:*}; port=${endpoint#*:}; [ "$port" != "$endpoint" ] || port=80
@@ -66,6 +69,33 @@ env:
       rmdir "$probe_dir"
       sed -i -E "s#http://archive\.ubuntu\.com/ubuntu/?#mirror+file:$apt_root/putgd-mirrors.txt#" $sources
     fi
+    putgd_demote_mirror() {
+      local list=${PUTGD_APT_ROOT:-/etc/apt}/putgd-mirrors.txt first
+      [ -s "$list" ] || return 0
+      first=$(head -n 1 "$list" | cut -f1)
+      { tail -n +2 "$list" | cut -f1; echo "$first"; } | awk '{ printf "%s\tpriority:%d\n", $0, NR }' > "$list.new"
+      mv "$list.new" "$list"
+      echo "Ubuntu mirror moved to the end of the list: $first"
+    }
+    # putgd_apt_install [OPTION|PACKAGE]...: apt-get update and install with the
+    # caller's apt=() options. Three attempts of at most 6 minutes each; packages
+    # already downloaded stay in the cache, so a later attempt resumes.
+    putgd_apt_install() {
+      local attempt limit=${PUTGD_APT_ATTEMPT_SECONDS:-360} deadline left
+      for attempt in 1 2 3; do
+        deadline=$((SECONDS + limit))
+        if timeout --kill-after=30s "$limit" apt-get update "${apt[@]}"; then
+          left=$((deadline - SECONDS)); [ "$left" -gt 0 ] || left=1
+          ! DEBIAN_FRONTEND=noninteractive timeout --kill-after=30s "$left" apt-get install -y "${apt[@]}" "$@" || return 0
+        fi
+        echo "::warning::Package install: attempt $attempt of 3 failed or ran over $limit s"
+        [ "$attempt" != 3 ] || break
+        putgd_demote_mirror
+        # A stopped attempt can leave dpkg half done; apt-get refuses to install until it is finished.
+        timeout --kill-after=30s 120 dpkg --configure -a || true
+      done
+      return 1
+    }
 
 jobs:
   native:
@@ -118,6 +148,7 @@ jobs:
               bounded dnf install -y --setopt=retries=10 --setopt=timeout=60 --setopt=minrate=1000 $([ "$attempt" = 1 ] || echo --refresh) git ca-certificates && exit 0
             fi
             echo "::warning::Package install (bootstrap): attempt $attempt of 3 failed"
+            putgd_demote_mirror
             [ "$attempt" != 1 ] || printf '### Package install retries (native (%s) bootstrap)\n\n| Attempt | Outcome |\n| --- | --- |\n' '${{ matrix.name }}' >> "$GITHUB_STEP_SUMMARY"
             echo "| $attempt of 3 | failed |" >> "$GITHUB_STEP_SUMMARY"
             [ "$attempt" = 3 ] || sleep $((attempt * 30))
