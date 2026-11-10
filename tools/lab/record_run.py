@@ -38,9 +38,11 @@ numbers, identities, host load and the kernel's GPU hang count for the run.
                 [--click S,X,Y[,BUTTON] ...] [--click-highlights on|off]
                 [--click-vnc HOST:PORT]
 
-A window target without --identity records the focused window, which is the cover;
-on X11, where a window is named by its id, the driver reads that id from the root
-window (`xprop`) and passes it.
+A window target without --identity records the focused window, which on Wayland
+is the cover. On X11 a window is named by its id and a cover started from a shell
+does not get the focus (on Cinnamon the desktop window keeps it), so the driver
+finds the cover's window by its process id in the window manager's list (`xprop`)
+and passes that id.
 
 PATH is an AppImage (extracted once under DIR for its putgd-cli) or a directory
 holding `putgd` and `putgd-cli` (an installed package: /usr/bin). APPDIR is an
@@ -639,8 +641,8 @@ class Driver:
             if a.identity:
                 target['identity'] = a.identity
             elif a.target == 'window' and self.env.get('XDG_SESSION_TYPE') == 'x11':
-                # X11 names a window by its id, and the cover has the focus.
-                target['identity'] = self.active_x11_window()
+                # X11 names a window by its id; the cover is found by its process, not by the focus.
+                target['identity'] = self.cover_x11_window()
             if a.rect:
                 target['rect'] = a.rect
             sound = fmt not in ANIMATIONS
@@ -758,13 +760,14 @@ class Driver:
                     result['clips'][kind]['destroyed'] = True
         return result
 
-    def active_x11_window(self):
-        """The focused window's X id, as `recording.prepare` takes it for a window target on X11."""
-        out = subprocess.run(['xprop', '-root', '_NET_ACTIVE_WINDOW'], env=self.env, capture_output=True, text=True).stdout
-        found = re.search(r'window id # (0x[0-9a-fA-F]+)', out)
-        if not found or int(found.group(1), 16) == 0:
-            raise RunError('no focused X11 window to record: %s' % (out.strip() or 'xprop printed nothing'))
-        return found.group(1)
+    def cover_x11_window(self):
+        """The cover's X window id, as `recording.prepare` takes it for a window target on X11."""
+        listed = subprocess.run(['xprop', '-root', '_NET_CLIENT_LIST'], env=self.env, capture_output=True, text=True).stdout
+        for ident in re.findall(r'0x[0-9a-fA-F]+', listed.partition('#')[2]):
+            owner = re.search(r'= (\d+)', subprocess.run(['xprop', '-id', ident, '_NET_WM_PID'], env=self.env, capture_output=True, text=True).stdout)
+            if owner and self.cover and int(owner.group(1)) == self.cover.pid:
+                return ident
+        raise RunError("the cover's window is not in the window manager's list: %s" % (listed.strip() or 'xprop printed nothing'))
 
     def clip_problems(self, result, sound):
         """What a finished round's clip gets wrong that no offset shows: too short, or the wrong sound in it."""
