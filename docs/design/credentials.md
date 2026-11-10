@@ -30,8 +30,11 @@ Configuration stores `{"mode":"keychain","reference":"putgd/profile-name"}` or
 access to an original destination. They never preserve access keys, secret keys or session tokens. Expiring S3/B2
 download URLs are bearer secrets retained as History links; they do not serve as
 object identity and their query values never enter logs or diagnostics.
-No secret is written to configuration, operation journals, payload spools, the
-persistent log or exported diagnostics. The log redacts authorization headers, session
+Access keys, secret keys and session tokens are never written to configuration,
+operation journals, payload spools, the persistent log or exported diagnostics.
+Operation journals, destination-test journals and the History database can retain
+bearer download links in receipts; treat those private records as sensitive.
+The log redacts authorization headers, session
 tokens, presigned query strings, share-link fragments and secret-shaped values when it
 writes each record, and the AWS SDK never logs above Warn (Info with debug logging),
 so request headers are not logged ([diagnostics.md](diagnostics.md#redaction)).

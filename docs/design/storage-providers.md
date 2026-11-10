@@ -34,8 +34,8 @@ an opaque target reference and an opaque precondition. Denied/time-limited check
 never treated as available names. Conditional PUT is the final race protection.
 
 A version-1 receipt preserves provider/profile/revision, original non-secret destination,
-credential-store/session reference, versioned opaque object reference, concurrency token,
-publication marker and direct URL as separate fields. Core/history/CLI never parse the
+credential-store/session reference, versioned opaque object reference (including link
+expiry when present), concurrency token, publication marker and direct URL as separate fields. Core/history/CLI never parse the
 URL, assume bucket/key/ETag fields, or reroute through current profiles. Upload results
 are uploaded, collision, failed or unknown. Reconciliation is own, foreign, missing or
 unknown and must inspect the saved publication identity before any retry/rename.
