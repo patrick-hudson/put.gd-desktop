@@ -294,15 +294,25 @@ private slots:
   const auto pointer=QDir(QStringLiteral(PUTGD_SOURCE_DIR)).filePath("tools/lab/wayland_pointer.py");
   if(QStandardPaths::findExecutable("dbus-send").isEmpty())QSKIP("dbus-send is not installed");
   if(!QDBusConnection::sessionBus().isConnected())QSKIP("no session bus");
-  // Where labwc put the fixture's green window on the first output.
+  // Where labwc has the fixture's green window now. Which output a new window lands on is the compositor's
+  // choice (labwc 0.9.3 on Ubuntu 26.04 does not put it on the first), and its first frame after the display
+  // changes of the tests before this one can lag: every output is looked at until the window shows.
   ImageCopyCapture capture;QVERIFY(waitFor([&]{return capture.outputsAvailable();}));
-  QImage image;Error failure;bool done=false;
-  capture.captureOutput(layout_.first().identity,ResourceLimits{},[&](QImage result,Error error){image=std::move(result);failure=error;done=true;});
-  QVERIFY(waitFor([&]{return done;}));QVERIFY2(!failure,qPrintable(failure.message));
-  QRect green;for(int y=0;y<image.height();y+=4)for(int x=0;x<image.width();x+=4)if(rgb(image,x,y)==qRgb(0,160,0))green=green.united(QRect(x,y,1,1));
-  QVERIFY2(green.width()>100&&green.height()>60,"the fixture window is not on the first output");
+  QRect green;QPoint origin;QString seenOn;
+  const auto find=[&]{
+   for(const auto& frame:layout_){
+    QImage image;Error failure;bool done=false;
+    capture.captureOutput(frame.identity,ResourceLimits{},[&](QImage result,Error error){image=std::move(result);failure=error;done=true;});
+    if(!waitFor([&]{return done;})||failure)continue;
+    QRect found;for(int y=0;y<image.height();y+=4)for(int x=0;x<image.width();x+=4)if(rgb(image,x,y)==qRgb(0,160,0))found=found.united(QRect(x,y,1,1));
+    if(found.width()>100&&found.height()>60){green=found;origin=frame.logicalRect.toRect().topLeft();seenOn=frame.identity;return true;}
+   }
+   return false;
+  };
+  QVERIFY2(waitFor(find,8000),"the fixture window shows on no output");
+  qInfo()<<"fixture window on"<<seenOn<<green;
   QRectF bounds;for(const auto& frame:layout_)bounds=bounds.united(frame.logicalRect);
-  const QPoint at=layout_.first().logicalRect.toRect().topLeft()+green.center()-bounds.topLeft().toPoint();
+  const QPoint at=origin+green.center()-bounds.topLeft().toPoint();
   auto click=[&](const QString& button){QProcess tool;tool.start("python3",{"-I",pointer,"click",QString::number(at.x()),QString::number(at.y()),"--extent",QString::number(int(bounds.width())),QString::number(int(bounds.height())),"--button",button});return tool.waitForFinished(5000)&&tool.exitCode()==0;};
   QFile rc(config_+"/rc.xml");QVERIFY(rc.open(QIODevice::ReadOnly));const QByteArray original=rc.readAll();rc.close();
   auto reconfigure=[&]{::kill(pid_t(labwc_.processId()),SIGHUP);putgd::test::settle(400);};

@@ -42,7 +42,10 @@ A window target without --identity records the focused window, which on Wayland
 is the cover. On X11 a window is named by its id and a cover started from a shell
 does not get the focus (on Cinnamon the desktop window keeps it), so the driver
 finds the cover's window by its process id in the window manager's list (`xprop`)
-and passes that id.
+and passes that id. On Hyprland a full-screen window's state passes to the next
+window that opens (`misc:on_focus_under_fullscreen` 1), so put.gd's controls would
+hide the cover: for a window run the driver sets that option to 0 and puts the
+previous value back when the cover closes.
 
 PATH is an AppImage (extracted once under DIR for its putgd-cli) or a directory
 holding `putgd` and `putgd-cli` (an installed package: /usr/bin). APPDIR is an
@@ -272,6 +275,7 @@ class Driver:
         self.cover = None
         self.resident = None
         self.cover_rect = None
+        self.hyprland_focus_before = None
         self.mic_state = None
         self.tone = None
 
@@ -570,13 +574,19 @@ class Driver:
         return json.loads(line) if line.strip() else {'ok': False, 'reason': 'cover exited %s' % self.cover.poll()}
 
     def close_cover(self):
-        if self.cover and self.cover.poll() is None:
-            try:
-                self.cover.stdin.write('quit\n'); self.cover.stdin.flush()
-                self.cover.wait(10)
-            except (OSError, subprocess.TimeoutExpired):
-                os.killpg(self.cover.pid, signal.SIGTERM)
-                self.cover.wait(10)
+        try:
+            if self.cover and self.cover.poll() is None:
+                try:
+                    self.cover.stdin.write('quit\n'); self.cover.stdin.flush()
+                    self.cover.wait(10)
+                except (OSError, subprocess.TimeoutExpired):
+                    os.killpg(self.cover.pid, signal.SIGTERM)
+                    self.cover.wait(10)
+        finally:
+            # Hyprland's own setting, changed for a window run, goes back whatever happened to the cover.
+            if self.hyprland_focus_before is not None:
+                self.set_hyprland_focus_option(self.hyprland_focus_before)
+                self.hyprland_focus_before = None
 
     # -- resident ------------------------------------------------------------
     def start_resident(self, build):
@@ -760,6 +770,37 @@ class Driver:
                     result['clips'][kind]['destroyed'] = True
         return result
 
+    def hyprctl(self, *arguments):
+        return subprocess.run(['hyprctl', *arguments], env=self.env, capture_output=True, text=True).stdout.strip()
+
+    def hyprland_focus_option(self):
+        try:
+            return json.loads(self.hyprctl('getoption', 'misc:on_focus_under_fullscreen', '-j')).get('int')
+        except ValueError:
+            return None
+
+    def set_hyprland_focus_option(self, value):
+        # Hyprland with a Lua configuration takes it through `eval`; older ones through `keyword`.
+        if self.hyprctl('eval', 'hl.config({ misc = { on_focus_under_fullscreen = %d } })' % value) != 'ok':
+            self.hyprctl('keyword', 'misc:on_focus_under_fullscreen', str(value))
+        return self.hyprland_focus_option()
+
+    def keep_cover_fullscreen_on_hyprland(self):
+        """For a window recording on Hyprland: a window that opens no longer takes the cover's full-screen state.
+
+        With `misc:on_focus_under_fullscreen` at 1 (Omarchy's value) put.gd's recording controls take the
+        full-screen state when they open and the cover is tiled out of sight beside them: the presses would
+        land on the controls, outside the recorded window, and rightly draw nothing. 0 leaves the cover as it
+        is; the previous value is put back when the cover closes."""
+        before = self.hyprland_focus_option()
+        if before is None:
+            raise RunError('Hyprland did not report misc:on_focus_under_fullscreen')
+        during = self.set_hyprland_focus_option(0)
+        if during != 0:
+            raise RunError('misc:on_focus_under_fullscreen stayed at %s' % during)
+        self.hyprland_focus_before = before
+        return {'onFocusUnderFullscreen': {'before': before, 'during': during}}
+
     def cover_x11_window(self):
         """The cover's X window id, as `recording.prepare` takes it for a window target on X11."""
         listed = subprocess.run(['xprop', '-root', '_NET_CLIENT_LIST'], env=self.env, capture_output=True, text=True).stdout
@@ -826,6 +867,8 @@ class Driver:
                 self.stop_resident(build)
             report['microphone'] = self.open_microphone()
             report['cover'] = self.open_cover()
+            if a.target == 'window' and self.env.get('HYPRLAND_INSTANCE_SIGNATURE'):
+                report['cover']['hyprland'] = self.keep_cover_fullscreen_on_hyprland()
             for number in range(1, a.rounds + 1):
                 for fmt in a.format:
                     for build in builds:
