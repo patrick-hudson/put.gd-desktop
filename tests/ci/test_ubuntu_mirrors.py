@@ -45,12 +45,14 @@ class UbuntuMirrors(unittest.TestCase):
                 self.send_response(200)
                 self.send_header('Content-Length', str(2 * 1024 * 1024))
                 self.end_headers()
+                # Indexes can be cached and fast even on a slow package mirror.
+                payload_delay = 0 if self.path.startswith("/ubuntu/dists/") else delay
                 try:
                     for _ in range(256):
                         self.wfile.write(b'x' * 8192)
                         self.wfile.flush()
-                        if delay:
-                            time.sleep(delay)
+                        if payload_delay:
+                            time.sleep(payload_delay)
                 except (BrokenPipeError, ConnectionResetError):
                     pass
 

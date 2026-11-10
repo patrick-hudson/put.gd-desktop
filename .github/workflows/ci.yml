@@ -39,12 +39,14 @@ env:
       for endpoint in ${PUTGD_UBUNTU_MIRROR_HOSTS:-us.archive.ubuntu.com mirrors.edge.kernel.org azure.archive.ubuntu.com archive.ubuntu.com}; do
         host=${endpoint%%:*}; port=${endpoint#*:}; [ "$port" != "$endpoint" ] || port=80
         start=$(date +%s%N)
-        # HTTP/1.0 avoids chunked encoding. Range bounds cooperative servers;
+        # Sample a base noble package: cached indexes can be fast while pool
+      # downloads crawl. This version remains referenced by noble/main.
+      # HTTP/1.0 avoids chunked encoding. Range bounds cooperative servers;
         # head also bounds servers that ignore Range. A partial body at timeout
         # is measured too, so a live trickle cannot pass as a fast mirror.
         timeout --kill-after=0.2s 3s bash -c '
           exec 3<>/dev/tcp/$1/$2 || exit 1
-          printf "GET /ubuntu/dists/noble/main/binary-amd64/Packages.xz HTTP/1.0\r\nHost: %s\r\nRange: bytes=0-2097151\r\n\r\n" "$1" >&3
+          printf "GET /ubuntu/pool/main/g/glibc/libc6_2.39-0ubuntu8_amd64.deb HTTP/1.0\r\nHost: %s\r\nRange: bytes=0-2097151\r\n\r\n" "$1" >&3
           IFS= read -r status <&3
           case "$status" in *" 200 "*|*" 206 "*) ;; *) exit 1;; esac
           while IFS= read -r line <&3; do [ "$line" != $'"'"'\r'"'"' ] || break; done
