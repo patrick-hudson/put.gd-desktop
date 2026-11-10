@@ -1,4 +1,6 @@
 #include <QScopeGuard>
+#include "platform/wayland/SurfaceVisibility.h"
+#include <signal.h>
 // The Budgie adapter and the shared Wayland capture code against a real
 // headless labwc (#1275): WLR_BACKENDS=headless WLR_RENDERER=pixman, two
 // outputs, and a known-colour client. Headless results support the desktop
@@ -85,6 +87,17 @@ private slots:
  void cleanupTestCase(){
   if(fixture_.state()!=QProcess::NotRunning){fixture_.terminate();if(!fixture_.waitForFinished(3000))fixture_.kill();}
   if(labwc_.state()!=QProcess::NotRunning){labwc_.terminate();if(!labwc_.waitForFinished(3000))labwc_.kill();}
+ }
+ void visibilityAllowsSlowCompositorSetup(){
+  // Pause only our private child compositor, reproducing setup queued behind
+  // the first software-rendered window without consuming the frame deadline.
+  const auto pid=static_cast<pid_t>(labwc_.processId());QVERIFY(pid>0);
+  QVERIFY(::kill(pid,SIGSTOP)==0);
+  auto resume=qScopeGuard([&]{::kill(pid,SIGCONT);});
+  QTimer::singleShot(1200,this,[pid]{::kill(pid,SIGCONT);});
+  bool done=false,visible=false;QObject context;
+  querySurfaceVisible(&context,[&](bool result){visible=result;done=true;});
+  QVERIFY(waitFor([&]{return done;},5000));QVERIFY(visible);
  }
  void lockedDesktopCaptureIsRefused(){
   BudgieSourceAdapter adapter;

@@ -47,7 +47,10 @@ class Visibility final:public QObject {
   wl_surface_attach(surface_,buffer_,0,0);wl_surface_damage(surface_,0,0,1,1);
   callback_=wl_surface_frame(surface_);
   static const wl_callback_listener frame{[](void* data,wl_callback*,uint32_t){static_cast<Visibility*>(data)->finish(true);}};
-  wl_callback_add_listener(callback_,&frame,this);wl_surface_commit(surface_);flush();
+  wl_callback_add_listener(callback_,&frame,this);
+  // Registry/configure can wait behind the first software-rendered window.
+  // Give the actual visibility witness its own deadline after setup finishes.
+  timeout_.start(1000);wl_surface_commit(surface_);flush();
  }
  void ready(){
   if(!compositor_||!shm_||!shell_){finish(false);return;}
@@ -63,7 +66,7 @@ class Visibility final:public QObject {
  }
 public:
  Visibility(QObject* context,std::function<void(bool)> reply):QObject(context),reply_(std::move(reply)){
-  timeout_.setSingleShot(true);connect(&timeout_,&QTimer::timeout,this,[this]{finish(false);});timeout_.start(1000);
+  timeout_.setSingleShot(true);connect(&timeout_,&QTimer::timeout,this,[this]{finish(false);});timeout_.start(5000);
   display_=wl_display_connect(nullptr);if(!display_){finish(false);return;}
   registry_=wl_display_get_registry(display_);
   static const wl_registry_listener globals{
