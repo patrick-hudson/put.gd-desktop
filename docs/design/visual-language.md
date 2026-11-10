@@ -232,9 +232,10 @@ a page loads, and a deletion that empties the last page steps back to it.
 
 The details pane always has a title row with the file name (or `3 selected
 files`) and a close button; Esc closes it. In the wide list it shows whenever
-details are wanted and something is selected; once closed it stays closed,
-across sessions, until Enter, a double-click or the header's details toggle asks
-for it. The gallery and the compact window open it on request over the current
+details are wanted and something is selected; once closed it stays closed
+until Enter, a double-click or the header's details toggle asks for it. That
+choice lives in the view state: it survives closing and reopening the window
+while put.gd runs and starts as shown after put.gd restarts. The gallery and the compact window open it on request over the current
 selection. With the pane closed and two or more rows selected, the selection bar
 replaces the header's heading and tools: `3 selected` at the page size, a note
 with size and upload states (and an active search), Copy N links, Delete from
