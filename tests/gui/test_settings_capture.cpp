@@ -197,6 +197,32 @@ private slots:
   initial.findChild<QCheckBox*>("keepUploadCopies")->setChecked(false);auto* add=initial.findChild<QPushButton*>("chooseCaptureDestination");PUTGD_TRY_VERIFY(add->isVisible());QCOMPARE(add->text(),QString("Add a destination…"));
   add->click();QCOMPARE(initial.findChild<QTabBar*>("mainNavigation")->currentIndex(),1);
  }
+ void scrollCapabilityBadgesDescribeDesktopSupport_data(){
+  QTest::addColumn<QString>("reason");QTest::addColumn<bool>("badge");
+  QTest::newRow("helper-missing")<<QString("recording_helper_missing")<<false;
+  QTest::newRow("not-probed")<<QString("scroll_not_probed")<<false;
+  QTest::newRow("probe-pending")<<QString("scroll_probe_pending")<<false;
+  QTest::newRow("probe-failed")<<QString("scroll_probe_failed")<<false;
+  QTest::newRow("injection-unavailable")<<QString("injection_unavailable")<<true;
+ }
+ void scrollCapabilityBadgesDescribeDesktopSupport(){
+  QFETCH(QString,reason);QFETCH(bool,badge);
+  QTemporaryDir dir;SettingsService service(dir.filePath("config.json"));auto doc=Settings::defaults();auto archive=doc["archive"].toObject();archive["keepUploads"]=true;doc["archive"]=archive;QVERIFY(service.save(doc,{}));CredentialStore secrets;UiSessionFixture fixture(service,secrets);
+  fixture.operations().setScrollBackend(std::make_unique<UnavailableScrollBackend>(reason));
+  fixture.operations().setRecordingBackend(std::make_unique<UnavailableRecordingBackend>());
+  fixture.server.setUiDiagnostics([&]{return QJsonObject{{"capabilities",fixture.operations().capabilities()}};});
+  fixture.session.refreshSnapshot();PUTGD_TRY_COMPARE(fixture.session.diagnostics()["capabilities"].toObject()["scroll"].toObject()["reason"].toString(),reason);
+  MainWindow window(fixture.session);QToolButton* scroll=nullptr;QToolButton* record=nullptr;
+  for(auto* button:window.findChildren<QToolButton*>("captureActionButton")){if(button->property("captureAction")=="scroll")scroll=button;if(button->property("captureAction")=="record")record=button;}
+  QVERIFY(scroll);QVERIFY(record);QVERIFY(scroll->isEnabled());QCOMPARE(scroll->property("captureBadge").toBool(),badge);QVERIFY(!record->property("captureBadge").toBool());
+  QCOMPARE(scroll->toolTip().contains("Scrolling capture is unavailable: "+reason),badge);
+  if(reason=="recording_helper_missing"){
+   QCOMPARE(scroll->property("captureUnavailable"),record->property("captureUnavailable"));
+   Error failure;bool replied=false;fixture.operations().scrollCommand("prepare",{},[&](Error error,QJsonObject){failure=error;replied=true;});
+   PUTGD_TRY_VERIFY(replied);
+   QCOMPARE(failure.code,QString("scroll_unavailable"));QCOMPARE(failure.details["reason"].toString(),reason);
+  }
+ }
  void unavailableCaptureActionsOpenOutputRecovery(){
   QTemporaryDir dir;SettingsService service(dir.filePath("config.json"));auto doc=Settings::defaults();auto archive=doc["archive"].toObject();archive["keepUploads"]=false;doc["archive"]=archive;QVERIFY(service.save(doc,{}));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.show();QSignalSpy invoked(&window,&MainWindow::actionRequested);QSignalSpy edited(&window,&MainWindow::editRequested);auto* pages=window.findChild<QTabBar*>("mainNavigation");
   for(auto* button:window.findChildren<QToolButton*>("captureActionButton")){QVERIFY(button->isEnabled());QVERIFY(button->focusPolicy()&Qt::TabFocus);QVERIFY(!button->property("captureBadge").toBool());QVERIFY(button->accessibleDescription().contains("New captures have no output."));QVERIFY(button->toolTip().contains("New captures have no output."));for(int activation=0;activation<4;++activation){window.navigate("history");button->setFocus();PUTGD_TRY_VERIFY(button->hasFocus());if(activation==0)QTest::mouseClick(button,Qt::LeftButton,Qt::NoModifier,QPoint(8,button->height()/2));else if(activation<3)QTest::keyClick(button,activation==1?Qt::Key_Space:Qt::Key_Return);else button->click();QCOMPARE(pages->currentIndex(),2);QCOMPARE(window.findChild<QTabWidget*>("settingsTabs")->currentIndex(),1);PUTGD_TRY_VERIFY(window.findChild<QComboBox*>("defaultCaptureDestination")->hasFocus());QVERIFY(window.findChild<QLabel*>("actionRecoveryError")->text().contains("New captures have no output."));QVERIFY(window.findChild<QWidget*>("actionRecoveryNotification")->isHidden());QVERIFY(window.findChild<QWidget*>("commandOutputWarning")->isHidden());QVERIFY(window.findChild<QWidget*>("captureOutputBlock")->isVisible());}}

@@ -110,7 +110,9 @@ QString unavailableOutput(const QJsonObject& document,const QString& action){
 }
 // Why the desktop can't run this action's capture, from the adapter's capabilities (#1295); empty when it can or nothing is reported.
 QString unavailableSource(const QJsonObject& diagnostics,const QString& action){
- if(action=="scroll"){const auto c=diagnostics["capabilities"].toObject()["scroll"].toObject();if(c.contains("available")&&!c["available"].toBool()&&!QStringList{"scroll_not_probed","scroll_probe_pending","scroll_probe_failed"}.contains(c["reason"].toString()))return "Scrolling capture is unavailable: "+c["reason"].toString();return {};}
+ // An absent optional helper follows Record: invocation reports the installation gap.
+ // The badge describes desktop support, rather than optional build contents.
+ if(action=="scroll"){const auto c=diagnostics["capabilities"].toObject()["scroll"].toObject();if(c.contains("available")&&!c["available"].toBool()&&!QStringList{"recording_helper_missing","scroll_not_probed","scroll_probe_pending","scroll_probe_failed"}.contains(c["reason"].toString()))return "Scrolling capture is unavailable: "+c["reason"].toString();return {};}
  const auto kind=action=="edit"?QString("region"):action;if(!QStringList{"region","window","desktop","monitor"}.contains(kind))return {};
  // capture.<kind> where the adapter reports it, else the older top-level source.<kind> (as Settings reads it).
  const auto source=diagnostics.value("capabilities").toObject().value("source").toObject();const auto capture=source.value("capture").toObject();
