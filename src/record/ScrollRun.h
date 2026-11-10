@@ -38,10 +38,13 @@ struct RunFrames {
     virtual std::optional<RunFrame> nextFrame(int timeoutMs) = 0;
     // The source ended and no more frames will come.
     virtual bool lost() const { return false; }
-    // A frame grabbed anew from the screen, whatever the stream has or has not
-    // sent since: a damage-driven stream can go quiet while the screen changes
-    // (KWin's region stream did, on a real desktop), and a quiet stream looks
-    // exactly like content that stopped moving. Nothing when the source cannot.
+    // A frame grabbed from the screen after this call began, whatever the
+    // stream has or has not sent since: a damage-driven stream sends nothing
+    // while the screen is still, delivers a single repaint late or not at all
+    // (KWin's region stream, on a real desktop), and so looks exactly like
+    // content that stopped moving. This is the loop's only proof of stillness:
+    // without it a capture never ends as "end of content". Nothing when the
+    // source cannot give one.
     virtual std::optional<RunFrame> freshFrame(int timeoutMs) { (void)timeoutMs; return std::nullopt; }
 };
 struct RunClock {
@@ -61,12 +64,22 @@ struct RunOptions {
     scroll::StitchOptions stitch;
     int settleMs = 120;               // no change in the moving band for this long = settled
     int settleMaxChangedRows = 2;
+    // How long the picture gets to begin to change after an injection before
+    // the step counts as still. An application repaints when it gets to it and
+    // a compositor's stream delivers that repaint later still (KWin 6.3: 40 to
+    // 120 ms after the application painted), so stillness inside the settle
+    // time alone says nothing. The wait is the larger of responseMs and
+    // responseFactor times the slowest response this run has seen, at most
+    // responseMaxMs.
+    int responseMs = 500;
+    double responseFactor = 3.0;
+    int responseMaxMs = 3000;
     int stepTimeoutMs = 1500;         // hard limit per settle wait
     int firstFrameTimeoutMs = 2000;
     double targetStepFraction = 0.60; // of the moving band
     double maxStepFraction = 0.75;
     int maxNotchesPerStep = 64;
-    int endConfirmDelayMs = 400;      // wait before the confirming injection at a suspected end
+    int endConfirmDelayMs = 400;      // a still step is at least this old before the confirming injection
     int totalTimeLimitMs = 180000;
     bool allowScrollBack = true;
     double shortStepFraction = 0.7;   // offset < this * hint: a final, partial step; keep px-per-notch
@@ -88,6 +101,9 @@ struct RunOptions {
     bool fromTop = false;
     int toTopNotches = 10;
     int toTopLimitMs = 15000;
+    // After a way up that moved the page: this many single steps down may move
+    // nothing (an overscrolled view takes them) before the capture gives up.
+    int stillStepsAfterTop = 8;
     // Every stitch attempt with the hint and notches used (diagnostics, tests).
     std::function<void(const scroll::StepResult&, int hint, int notches)> onStep;
     // After the first frame and after every step; called on the loop's thread.
@@ -99,7 +115,7 @@ enum class RunResult {
     LimitReached,    // maxOutputRows
     Stopped,         // the stop flag
     TimeLimit,
-    LostTrack,       // a step could not be matched or recovered; the image so far is exact
+    LostTrack,       // a step could not be matched or recovered, or the end could not be proven; the image so far is exact
     NoMovement,      // nothing scrolled at any park position (two single notches at each)
     InjectorFailed,
     NoFrames,        // the source never delivered a frame
@@ -118,6 +134,10 @@ struct RunStats {
     int endConfirmations = 0, falseEnds = 0, reversed = 0;
     int lowConfidenceSteps = 0, settleTimeouts = 0, framesSeen = 0;
     int quietStream = 0;         // a fresh frame showed movement the stream had not sent
+    int freshFrames = 0;         // fresh frames asked for and had
+    int unprovenStill = 0;       // still steps for which no fresh frame could be had
+    int maxResponseMs = 0;       // the slowest injection-to-first-change seen on a moving step
+    bool stoppedAtTop = false;   // Stop arrived while scrolling to the top: the image is the viewport then
     int toTopSteps = 0;
     bool toTopMoved = false, reachedTop = false;
     int parkPosition = 0;        // 0 centre and a third down, 1 near the right edge, 2 two thirds down
@@ -138,16 +158,22 @@ public:
     static RunPoint parkPoint(int position, int width, int height);
 private:
     enum class Wait { Settled, TimedOut, Stopped, TimeLimit, NoFrame, Lost };
-    Wait waitSettled(int timeoutMs);
+    // quietMs: with no change at all since the call began, this long counts as
+    // settled (the response wait after an injection); 0: the settle time.
+    Wait waitSettled(int timeoutMs, int quietMs = 0);
+    int responseWaitMs() const;
     int planNotches() const;
     bool inject(int notches);
     bool park();
     // Before a conclusion drawn from stillness: whether a fresh frame agrees
-    // with the last one seen. When it does not, it becomes the last frame.
-    bool screenIsAsSeen();
-    bool stopped() const { return stop_ && stop_->load(); }
+    // with the last one seen. Moved: it does not, and it is now the last frame.
+    // Unknown: the source gave none, so nothing is proven.
+    enum class Screen { Same, Moved, Unknown };
+    Screen screenIsAsSeen();
+    bool stopped() const { return !ignoreStop_ && stop_ && stop_->load(); }
     std::optional<RunResult> waitFailure(Wait);
     std::optional<RunResult> scrollToTop();
+    RunResult viewportAfterStop();
     void progress(bool toTop);
     RunResult finishWith(RunResult);
 
@@ -164,5 +190,8 @@ private:
     scroll::FrameSignatures lastSig_, tmpSig_, settledSig_;
     int notchCap_ = 0, verifiedRun_ = 0;
     int parked_ = -1;  // the park position the pointer was last put at, -1 elsewhere
+    // The last waitSettled: when its first changed frame arrived (-1: none did).
+    int64_t firstChangeMs_ = -1;
+    bool ignoreStop_ = false;  // the one settled frame taken after Stop during scroll-to-top
 };
 }

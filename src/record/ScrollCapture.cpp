@@ -40,6 +40,12 @@ Error stateError(const QString& message) { return {"scroll_state", message, {}};
 Error unavailable(const QString& reason, const QString& message) { return {"scroll_unavailable", message, {{"reason", reason}}}; }
 // How long the first frame may take, and the pointer's rest outside the region.
 constexpr int firstFrameMs = 3000, awayMargin = 16;
+// KWin's region stream (seen on 6.3.6, real desktop runs of 2026-11-10) holds
+// back or drops a frame that no further damage follows: after one isolated
+// repaint the loop saw the old picture for 500 ms and more, four or five steps
+// in a capture. With damage somewhere on the output every 30 ms it sent every
+// repaint within 90 ms.
+constexpr int heartbeatMs = 30;
 // The PNG writer may fail before its output exceeds the accepted bound, and
 // stops at once when the capture is discarded.
 class BoundedFile final : public QFile {
@@ -147,6 +153,7 @@ ScrollCapture::ScrollCapture(QObject* parent) : QObject(parent), bounds_(this) {
     connect(&kde_, &KdeScreencast::lost, this, [this] { if (job_) job_->sourceGone.store(true); });
 #endif
     auto layoutChanged = [this] { if (job_ && state_ == State::Capturing) { job_->layoutChanged.store(true); job_->stop.store(true); } };
+    connect(&heartbeat_, &QTimer::timeout, this, [this] { bounds_.beat(); });
     connect(qGuiApp, &QGuiApplication::screenAdded, this, layoutChanged);
     connect(qGuiApp, &QGuiApplication::screenRemoved, this, layoutChanged);
 }
@@ -192,6 +199,7 @@ void ScrollCapture::removeFiles() {
     QFile::remove(staging_ + "/scroll.png");
 }
 void ScrollCapture::release() {
+    heartbeat_.stop();
     escape_.stop();
     tap_.stop();
     imageCopy_.reset();
@@ -492,6 +500,10 @@ void ScrollCapture::begin(const FrameTap::Source& source, Reply reply) {
     job_->fromTop = fromTop_;
     job_->endedByDesktop = [this] { return mutter_.closedByCompositor(); };
     state_ = State::Capturing;
+    if (frames_ == "kde-screencast" && surfaceMode() == SurfaceMode::LayerShell) {
+        bounds_.showHeartbeat(screen_.topLeft());
+        heartbeat_.start(heartbeatMs);
+    }
     if (bar_) bar_->setState(fromTop_ ? QStringLiteral("scrollingToTop") : QStringLiteral("capturing"));
     showBar();
     debugLog(QStringLiteral("scroll: capturing %1,%2 %3x%4 with %5").arg(rect_.x()).arg(rect_.y()).arg(rect_.width()).arg(rect_.height()).arg(injector_->name()));
@@ -538,6 +550,9 @@ void ScrollCapture::finish(std::shared_ptr<Outcome> outcome) {
     release();
     debugLog(QStringLiteral("scroll: ended %1, %2 rows, %3 steps, %4 px per notch, %5 ms%6").arg(QString::fromLatin1(toString(outcome->result))).arg(outcome->stats.outputRows).arg(outcome->stats.steps).arg(outcome->stats.pxPerNotch).arg(outcome->stats.elapsedMs)
                  .arg(outcome->stats.lastError.empty() ? QString() : QStringLiteral(" (%1)").arg(QString::fromStdString(outcome->stats.lastError))));
+    // How the frame source behaved: fresh frames asked for, those that showed
+    // movement the stream had not sent, still steps left unproven, the slowest response.
+    debugLog(QStringLiteral("scroll: source fresh %1, quiet %2, unproven %3, slowest response %4 ms, retries %5, scroll-backs %6").arg(outcome->stats.freshFrames).arg(outcome->stats.quietStream).arg(outcome->stats.unprovenStill).arg(outcome->stats.maxResponseMs).arg(outcome->stats.retries).arg(outcome->stats.scrollBacks));
     auto stopReply = std::exchange(stopReply_, {});
     auto cancelReply = std::exchange(cancelReply_, {});
     if (cancelRequested_) {

@@ -60,6 +60,11 @@ public:
  // Starts pushing frames; lost() runs on the capture thread when the source
  // ends (the window closed, the output went away, the compositor stopped it).
  void attach(GstElement* appsrc,std::function<void(Error)> lost);
+ // Any thread, while attached: the capture session is opened anew, and the first frame of a new session
+ // is the source as it is then, whether or not it changed (the scroll capture's proof that a still
+ // picture is the screen, #1376). Frames of the new session carry the returned number as their buffer
+ // offset (GST_BUFFER_OFFSET); earlier frames carry a smaller one.
+ quint64 refresh();
  void stop();
  QJsonObject status()const;
 private:

@@ -83,6 +83,12 @@ public:
     ~BoundsOverlay() override;
     void showBounds(const QRect& rootRect);
     void setDimmed(bool dimmed);
+    // A clear one-pixel surface at `at`, committed again on every beat(): damage
+    // on its output that changes no pixel. KWin's region stream delivers a
+    // repaint reliably only when more damage follows it, so the scroll capture
+    // keeps one coming while it reads frames (#1376). Gone with hideAll().
+    void showHeartbeat(const QPoint& at);
+    void beat();
     void hideAll();
     QRect rect() const { return rect_; }
 private:
@@ -91,7 +97,7 @@ private:
     void addDim(const QColor& color);
     static inline const QColor dimColor{0, 0, 0, 110};
     QRect rect_;
-    QList<QWidget*> ring_, dim_;
+    QList<QWidget*> ring_, dim_, heart_;
     bool dimmed_ = false;
 };
 

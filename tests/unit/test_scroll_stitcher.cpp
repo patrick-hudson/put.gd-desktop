@@ -1,6 +1,8 @@
 // The scroll stitcher and the control loop against a synthetic application
 // (#1376): the research prototype's suite, trimmed to a few seconds, plus the
-// loop's pointer rules and its scroll-to-top step. `--full` (or
+// loop's pointer rules and its scroll-to-top step, and the cases the real
+// desktops taught (a stream that goes quiet, a slow application, numbered
+// lines, an overscrolled view, Stop on the way up). `--full` (or
 // PUTGD_SCROLL_STITCHER_FULL=1) runs the prototype's seed counts and sweeps.
 // Plain checks with a summary table; exit code 1 on any unexpected failure.
 // A wrong stitch is a valid-looking image, so every case compares pixels.
@@ -444,6 +446,104 @@ void testAmbiguity() {
   }
 }
 
+// Lines of text that differ in a few characters only, all of them short: the
+// numbered lines of a log, a listing or a plain text file in a wide window.
+// `distinct` false: every line the same (content that repeats exactly).
+Image numberedLines(int width, int lines, int pitch, bool distinct) {
+  Image img(width, lines * pitch + 8, kBg);
+  for (int i = 0; i < lines; ++i) {
+    const int y = 4 + i * pitch;
+    Rng same(77);  // the words every line shares
+    drawTextLine(img, y, 130, std::min(width - 8, 330), same);
+    if (!distinct) continue;
+    // The line's number: four digit cells, each a small pattern of its digit.
+    int n = i;
+    for (int cell = 3; cell >= 0; --cell, n /= 10) {
+      Rng digit(1000 + uint64_t(n % 10));
+      drawTextLine(img, y, 70 + cell * 12, 70 + cell * 12 + 9, digit);
+    }
+  }
+  return img;
+}
+
+void testNumberedLines() {
+  std::printf("\n[stitcher] numbered lines (near-periodic text)\n");
+  const int W = 1200, V = 700, pitch = 18;
+  ViewportSpec vs;
+  vs.width = W;
+  vs.height = V;
+  {
+    // Real frames of a GTK 4 text view (KWin, 2026-11-10): at the true offset
+    // every informative row is equal bit for bit, at the rivals a line pitch
+    // away under 6% are. The tolerant rule alone called the step ambiguous.
+    const Image doc = numberedLines(W, 400, pitch, true);
+    Renderer rend(doc, vs);
+    int ok = 0, total = 0;
+    std::string det;
+    for (int d : {13, 36, 38, 90, 450}) {
+      for (int p0 : {0, 500, 2000}) {
+        Pair n = pairStep(rend, p0, p0 + d, kNoHint);
+        ++total;
+        const bool good = n.r.status == StepStatus::Appended && n.r.offset == d && !n.r.lowConfidence;
+        ok += good;
+        if (!good) det += fmt(" p%d d%d:%s/%d", p0, d, toString(n.r.status), n.r.offset);
+      }
+    }
+    report("numbered lines, no hint: the exact offset", ok == total, fmt("%d/%d verified at the true offset%s", ok, total, det.c_str()));
+    // A wrong hint one line away does not win over the pixels.
+    Pair w = pairStep(rend, 500, 538, 38 + pitch);
+    report("numbered lines, hint one line off", w.r.status == StepStatus::Appended && w.r.offset == 38 && !w.r.lowConfidence,
+           fmt("%s offset=%d lowConf=%d", toString(w.r.status), w.r.offset, w.r.lowConfidence));
+    // The page did not move; a caret-sized change is in the frame.
+    Pair still = pairStep(rend, 500, 500, kNoHint);
+    report("numbered lines, no movement", still.r.status == StepStatus::NoMovement, fmt("%s", toString(still.r.status)));
+  }
+  {
+    // Lines that are all the same repeat exactly: no pixel tells the offsets
+    // apart, and the step stays ambiguous (never a guess).
+    const Image doc = numberedLines(W, 400, pitch, false);
+    Renderer rend(doc, vs);
+    Pair n = pairStep(rend, 500, 538, kNoHint);
+    report("identical lines, no hint", n.r.status == StepStatus::Ambiguous && n.untouched, fmt("%s, output untouched=%d", toString(n.r.status), n.untouched));
+    Pair h = pairStep(rend, 500, 538, 38);
+    report("identical lines, exact hint", h.r.status == StepStatus::Appended && h.r.offset == 38 && h.r.lowConfidence,
+           fmt("%s offset=%d lowConf=%d", toString(h.r.status), h.r.offset, h.r.lowConfidence));
+  }
+  {
+    // The whole file through the loop, as the real text views scroll: 37.5 px
+    // a step (GTK 4 on KWin; whole pixels on screen), and 72 and 90 px in
+    // turn (a Qt text view's four and five lines).
+    for (int kind = 0; kind < 2; ++kind) {
+      const Image doc = numberedLines(W, 300, pitch, true);
+      FakeAppSpec as;
+      as.pxPerNotch = kind ? 81 : 37.5;
+      as.jitter = kind ? 0.111 : 0.0;
+      FakeClock clock;
+      FakeApp app(doc, vs, as, clock);
+      RunOptions so;
+      so.pointer = true;
+      so.away = RunPoint{-12, V / 3};
+      so.fromTop = true;
+      int wrong = 0, refPos = 0;
+      so.onStep = [&](const StepResult& r, int, int) {
+        const int pos = app.framePositions.empty() ? 0 : app.framePositions.back();
+        const bool accepted = r.status == StepStatus::Appended || r.status == StepStatus::Reversed || r.status == StepStatus::LimitReached;
+        if (accepted && r.offset != pos - refPos) ++wrong;
+        if (accepted || r.status == StepStatus::NoMovement) refPos = pos;
+      };
+      ScrollRun run(app, app, clock, so);
+      const RunResult res = run.run();
+      const std::vector<uint8_t> img = run.stitcher().takeImage();
+      int c0, c1;
+      comparedColumns(W, so.stitch, c0, c1);
+      const Cmp c = compare(img, run.stats().outputRows, doc, c0, c1);
+      report(kind ? "session numbered lines, 72 to 90 px a step" : "session numbered lines, 37.5 px a step",
+             res == RunResult::EndOfContent && c.mismatches == 0 && c.heightOk && wrong == 0 && run.stats().steps < 60,
+             fmt("%s, rows %d of %d, steps %d, wrong offsets %d, first bad %d", toString(res), run.stats().outputRows, doc.h, run.stats().steps, wrong, c.firstBad));
+    }
+  }
+}
+
 void testEndsAndBounce() {
   std::printf("\n[stitcher] end, bounce, negative offsets, limits, in-place changes\n");
   DocSpec ds;
@@ -619,8 +719,14 @@ void runSession(SessCfg cfg) {
   FakeApp app(doc.img, vs, cfg.app, clock);
   // Ground truth per stitch attempt: classify wrong offsets by confidence.
   int refPos = 0, wrongVerified = 0, wrongPartial = 0, wrongBlind = 0, blind = 0;
-  cfg.so.onStep = [&](const StepResult& r, int, int) {
+  // PUTGD_SCROLL_STITCHER_TRACE=<part of a session's name>: every stitch attempt of those sessions.
+  const char* traced = std::getenv("PUTGD_SCROLL_STITCHER_TRACE");
+  const bool trace = traced && cfg.name.find(traced) != std::string::npos;
+  cfg.so.onStep = [&](const StepResult& r, int hint, int notches) {
     const int pos = app.framePositions.empty() ? 0 : app.framePositions.back();
+    if (trace)
+      std::printf("    trace %s: t=%lld %s offset %d (true %d) hint %d notches %d score %.2f evidence %d appended %d fixed %d/%d%s\n", cfg.name.c_str(), (long long)clock.nowMs(),
+                  toString(r.status), r.offset, pos - refPos, hint, notches, r.score, r.evidenceRows, r.appendedRows, r.fixedTop, r.fixedBottom, r.lowConfidence ? " low" : "");
     const bool accepted = r.status == StepStatus::Appended || r.status == StepStatus::Reversed ||
                           r.status == StepStatus::LimitReached;
     if (accepted && r.lowConfidence && r.evidenceRows == 0) ++blind;
@@ -880,7 +986,10 @@ void testSessions() {
             wb += g_lastWrongBlind;
             if (g_rows.back().pass) ok++;
             else if (g_lastWrongVerified == 0 && g_lastWrongPartial == 0 && g_lastWrongBlind > 0) ++badOnlyBlind;
-            else if (g_lastSafeStop) ++safeStops;
+            else if (g_lastSafeStop) {
+              ++safeStops;
+              bad += " [stopped early: " + g_rows.back().name + ": " + g_rows.back().detail + "]";
+            }
             else bad += " [" + g_rows.back().name + ": " + g_rows.back().detail + "]";
             g_rows.resize(before);  // fold into one summary row
           }
@@ -1067,15 +1176,110 @@ void testPointerRules() {
       c.extra = [](const RunStats& s, const FakeApp& a) { return s.quietStream >= 1 && a.freshFrames >= 1; };
       runSession(c);
     }
-    // A source with no fresh frame to give is believed as before. The stream
-    // is quiet for good here, so what the loop saw is all it can report: the
-    // image is an exact prefix, never something else.
-    SessCfg c = base("stream goes quiet, no fresh frame to ask for");
-    c.app.quietFromInjection = 5;
-    c.app.quietHasFresh = false;
+    // The rule the real-desktop round asked for: a stream that goes quiet is
+    // never proof that the content ended. With no fresh frame to be had, the
+    // capture ends as "lost track" with the exact rows it has, whenever the
+    // stream stops: mid-page, or from the very first step.
+    for (int from : {5, 1, 0}) {
+      SessCfg c = base(from == 5 ? "quiet stream, no fresh frame: never end of content" : from ? "quiet stream from the second step, no fresh frame" : "quiet stream from the first step, no fresh frame");
+      c.app.quietFromInjection = from;
+      c.app.quietHasFresh = false;
+      c.expectFull = false;
+      // Nothing was ever seen to scroll: that is "no movement", an error with no image.
+      c.expect = from ? RunResult::LostTrack : RunResult::NoMovement;
+      c.extraName = "notEndOfContent,unproven";
+      c.extra = [](const RunStats& s, const FakeApp& a) { return a.freshFrames == 0 && s.unprovenStill >= 1 && s.outputRows < 3485; };
+      runSession(c);
+    }
+    // The same without the pointer rules (the prototype's loop).
+    SessCfg plain;
+    plain.name = "quiet stream, no fresh frame, no pointer rules";
+    plain.app.quietFromInjection = 4;
+    plain.app.quietHasFresh = false;
+    plain.expect = RunResult::LostTrack;
+    plain.expectFull = false;
+    runSession(plain);
+  }
+  {
+    // An application that takes its time. The old loop called a step still
+    // 120 ms after the wheel event; a page that repaints later than that (a
+    // slow painter, a busy desktop, KWin's stream delivering a repaint late)
+    // then looked like the end. The page is given time to begin to move, and
+    // the image is whole and exact.
+    for (int delay : {150, 300, 900}) {
+      SessCfg c = base(delay == 150 ? "application answers after 150 ms" : delay == 300 ? "application answers after 300 ms" : "application answers after 900 ms");
+      c.app.reactionDelayMs = delay;
+      runSession(c);
+      SessCfg t = base(delay == 150 ? "answers after 150 ms, scroll to top first" : delay == 300 ? "answers after 300 ms, scroll to top first" : "answers after 900 ms, scroll to top first");
+      t.app.reactionDelayMs = delay;
+      t.so.fromTop = true;
+      t.app.startPos = 1700;
+      runSession(t);
+    }
+  }
+  {
+    // A view that swallows the first steps down after wheel-up steps against
+    // its top (GTK 4, overscrolled by up to 100 px; 37.5 px a step). After a
+    // way up that moved the page, two still steps were reported as the end of
+    // a 1,500-line file on a real desktop. From the top, and from halfway down.
+    for (int start : {0, 2600}) {
+      SessCfg c = base(start ? "overscrolled view, page opened halfway down" : "overscrolled view, page at its top");
+      c.px = 37.5;
+      c.app.pxPerNotch = 37.5;
+      c.app.overscrollPx = 100;
+      c.app.startPos = start;
+      c.so.fromTop = true;
+      c.extraName = "parkPosition==0";
+      c.extra = [](const RunStats& s, const FakeApp&) { return s.parkPosition == 0; };
+      runSession(c);
+    }
+    // A page that scrolled up and then never down: not the end, and not an error either.
+    SessCfg c = base("page scrolls up and then not down");
+    c.app.overscrollPx = 100000;
+    c.app.startPos = 2600;
+    c.so.fromTop = true;
+    c.expect = RunResult::LostTrack;
     c.expectFull = false;
-    c.known = true;
+    c.extraName = "oneViewport";
+    c.extra = [&](const RunStats& s, const FakeApp&) { return s.outputRows == V; };
     runSession(c);
+  }
+  {
+    // Stop while the page is still on its way to the top: the image is the
+    // viewport as it came to rest, and nothing is injected after the flag.
+    static std::atomic<bool> stop{false};
+    DocSpec ds;
+    ds.viewport = V;
+    ds.width = W;
+    Document doc = makeDocument(ds);
+    ViewportSpec vs;
+    vs.width = W;
+    vs.height = V;
+    FakeAppSpec as;
+    as.pxPerNotch = 53;
+    as.startPos = 2600;
+    as.cancelAfterInjections = 1;  // the second wheel-up step sets the flag
+    as.cancelFlag = &stop;
+    FakeClock clock;
+    FakeApp app(doc.img, vs, as, clock);
+    RunOptions so;
+    so.pointer = true;
+    so.away = away;
+    so.fromTop = true;
+    ScrollRun run(app, app, clock, so);
+    const RunResult res = run.run(&stop);
+    const std::vector<uint8_t> img = run.stitcher().takeImage();
+    const int at = app.positionNow();
+    int wheels = 0;
+    for (const auto& e : app.events) wheels += e.kind == 's';
+    int c0, c1;
+    comparedColumns(W, so.stitch, c0, c1);
+    Image view(W, V);
+    if (at >= 0 && at + V <= doc.img.h) std::memcpy(view.px.data(), doc.img.row(at), size_t(W) * V * 4);
+    const Cmp c = compare(img, run.stats().outputRows, view, c0, c1);
+    report("session stop during scroll to top keeps the viewport",
+           res == RunResult::Stopped && run.stats().stoppedAtTop && run.stats().outputRows == V && c.mismatches == 0 && c.heightOk && wheels == 2 && app.events.back().kind == 's' && at > 0 && at < 2600,
+           fmt("%s, rows %d, page at %d, wheel events %d, first bad %d", toString(res), run.stats().outputRows, at, wheels, c.firstBad));
   }
   {
     // Stop is honoured before the next injection: nothing is sent after it.
@@ -1103,6 +1307,7 @@ int main(int argc, char** argv) {
   testSticky();
   testNoise();
   testAmbiguity();
+  testNumberedLines();
   testEndsAndBounce();
   testMemory();
   testSessions();

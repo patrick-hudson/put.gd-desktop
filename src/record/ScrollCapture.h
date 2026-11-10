@@ -13,6 +13,7 @@
 #include <QJsonObject>
 #include <QObject>
 #include <QRect>
+#include <QTimer>
 #include <atomic>
 #include <functional>
 #include <memory>
@@ -84,6 +85,8 @@ private:
     SelectionOverlay* selection_ = nullptr;
     LayerShellRegionOverlay* layerSelection_ = nullptr;
     BoundsOverlay bounds_;
+    // KWin: damage on the region's output every heartbeatMs while frames are read (BoundsOverlay::showHeartbeat).
+    QTimer heartbeat_;
     ScrollBar* bar_ = nullptr;
     MutterScreenCast mutter_;
 #ifdef PUTGD_RECORD_KDE_SCREENCAST

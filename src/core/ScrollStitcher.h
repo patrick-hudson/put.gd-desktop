@@ -34,6 +34,12 @@ struct StitchOptions {
   int noMoveMaxStrictRows = -1;      // same-y rows changed at all tolerated; -1 = max(48, height/10)
   double hintTolerance = 0.25;       // hint tie-break accepts a candidate within max(px, frac*hint)
   int hintTolerancePx = 8;
+  // Candidates tied under the tolerant rule (lines of text that differ in a
+  // few characters): one wins when at least exactTieMinFraction of its
+  // informative rows are equal bit for bit and no rival outside +-1 has more
+  // than exactTieMaxRival of its own.
+  double exactTieMinFraction = 0.80;
+  double exactTieMaxRival = 0.50;
 };
 
 // Per-row signatures of one frame. This is the only per-frame state the

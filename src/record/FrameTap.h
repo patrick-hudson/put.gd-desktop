@@ -46,9 +46,11 @@ public:
     bool running() const { return pipeline_ != nullptr; }
     // RunFrames, on the loop's thread.
     std::optional<RunFrame> nextFrame(int timeoutMs) override;
-    // ximagesrc grabs the screen for every frame: the next one. A PipeWire
-    // stream is linked anew, and the compositor's first frame on a new link
-    // is the screen as it is. The image-copy source's session opens once: nothing.
+    // A frame grabbed after the call began. ximagesrc grabs the screen for
+    // every frame: one that arrives a frame interval later. A PipeWire stream
+    // is linked anew, and the compositor's first frame on a new link is the
+    // screen as it is. The image-copy source opens a new capture session,
+    // whose first frame is copied whether or not the source changed.
     std::optional<RunFrame> freshFrame(int timeoutMs) override;
     bool lost() const override { return lost_.load(); }
     QString lostReason() const;
@@ -72,6 +74,7 @@ private:
     std::vector<uint8_t> latest_, frame_;
     int latestWidth_ = 0, latestHeight_ = 0;
     int64_t latestAt_ = 0;
+    guint64 latestSession_ = 0;  // image-copy: the capture session the newest frame came from
     quint64 arrivedCount_ = 0, givenCount_ = 0;
     std::atomic<bool> lost_{false};
     std::atomic<int> width_{0}, height_{0};

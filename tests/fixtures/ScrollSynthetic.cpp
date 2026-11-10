@@ -267,7 +267,17 @@ bool FakeApp::scroll(int n) {
   const double cur = posAt(start);
   const double mult = std::abs(n) >= spec_.accelMinNotches ? spec_.accelFactor : 1.0;
   const double jit = spec_.jitter > 0 ? 1.0 + spec_.jitter * (2 * rng_.unit() - 1) : 1.0;
-  double nt = std::round(target_ + n * spec_.pxPerNotch * mult * jit);
+  double delta = n * spec_.pxPerNotch * mult * jit;
+  if (spec_.overscrollPx > 0) {
+    if (delta > 0 && overscroll_ > 0) {
+      const double used = std::min(overscroll_, delta);
+      overscroll_ -= used;
+      delta -= used;
+    } else if (delta < 0 && target_ + delta < 0) {
+      overscroll_ = std::min<double>(spec_.overscrollPx, overscroll_ - (target_ + delta));
+    }
+  }
+  double nt = std::round(target_ + delta);
   const int dur = rng_.range(spec_.animMinMs, spec_.animMaxMs);
   const double hi = maxScroll();
   nt = std::max(0.0, nt);

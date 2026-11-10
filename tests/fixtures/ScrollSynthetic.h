@@ -147,6 +147,10 @@ struct FakeAppSpec {
   // has no fresh frame to give.
   int quietFromInjection = -1;
   bool quietHasFresh = true;
+  // Wheel-up against the top is remembered, up to this many pixels, and the
+  // next steps down are spent on it before the page moves: a GTK 4 scrolled
+  // view fed a continuous axis (KWin's fake input) does this with 100 px.
+  int overscrollPx = 0;
 };
 
 class FakeApp : public putgd::record::RunInjector, public putgd::record::RunFrames {
@@ -198,6 +202,7 @@ class FakeApp : public putgd::record::RunInjector, public putgd::record::RunFram
   Image scratch_, delivered_;
   bool haveDelivered_ = false;
   bool quiet_ = false;
+  double overscroll_ = 0;
 };
 
 }  // namespace synth

@@ -455,16 +455,21 @@ StepResult ScrollStitcher::addFrame(const FrameView& f, const FrameSignatures& c
 int ScrollStitcher::maxEvidenceStep() const {
   if (!hasRef_) return -1;
   const int top = movingBandTop(), bottom = movingBandBottom();
-  const int need = opts_.minOverlapRows + opts_.minOverlapRows / 2;
-  // Count rows with ink in more bands than the noise tolerance: a caret or
-  // spinner on a blank row is non-flat but never provides evidence.
+  // In thirds of a row. A row with ink in more bands than the noise tolerance
+  // counts whole. A row with ink in fewer (a short line of text) matches only
+  // when it is equal bit for bit, and a caret or spinner on a blank row looks
+  // the same and never matches, so such rows count a third: a block of short
+  // lines is evidence, a caret is not.
+  const int need = 3 * (opts_.minOverlapRows + opts_.minOverlapRows / 2);
   const uint32_t all = opts_.bands >= 32 ? ~0u : ((1u << opts_.bands) - 1);
   const int tol = tolerance(opts_, opts_.bands);
   const int partial = std::max(8, opts_.minOverlapRows / 2);
-  int count = 0, partialY = -1;
+  int count = 0, wide = 0, partialY = -1;
   for (int y = bottom - 1; y >= top; --y) {
-    count += std::popcount(~ref_.flatBandMask[y] & all) > tol ? 1 : 0;
-    if (count == partial && partialY < 0) partialY = y;
+    const int inked = std::popcount(~ref_.flatBandMask[y] & all);
+    count += inked > tol ? 3 : inked > 0 ? 1 : 0;
+    wide += inked > tol ? 1 : 0;
+    if (wide == partial && partialY < 0) partialY = y;
     if (count >= need) return y - top;
   }
   // Fewer rows than wanted: still keep the lowest `partial` of them in the
@@ -577,6 +582,52 @@ ScrollStitcher::Search ScrollStitcher::search(const FrameSignatures& cur, int to
     out.score = sb;
     out.evidence = evidence(bestD);
     out.status = StepStatus::Ambiguous;
+    // The rivals pass the tolerant rule alike. That rule takes a row whose
+    // difference is confined to two bands for the same row, which is right
+    // for a hover effect and wrong for text whose lines differ in a few
+    // characters (numbered lines, a log, a table): every multiple of the
+    // line pitch then explains the frame. The pixels themselves still tell
+    // them apart: at the true offset the informative rows are equal bit for
+    // bit, at such a rival a line's rows are not. The exact rule decides only
+    // when one candidate (with its +-1 neighbours) is nearly all exact and
+    // every rival is mostly not: content that repeats exactly keeps rivals
+    // that are exact too and stays ambiguous, and so does a step whose
+    // overlap is mostly an in-place change.
+    if (topSet.size() <= 256) {
+      int exactD = INT_MIN;
+      double exactBest = -1;
+      bool decided = true;
+      std::vector<double> fraction(topSet.size(), 0.0);
+      for (size_t i = 0; i < topSet.size(); ++i) {
+        const int d = topSet[i];
+        const int y0 = top + std::max(0, -d), y1 = bottom - std::max(0, d);
+        int equal = 0, informative = 0;
+        for (int y = y0; y < y1; ++y) {
+          if (ref_.rowFlat[y + d] && cur.rowFlat[y]) continue;
+          ++informative;
+          equal += ref_.rowHash[y + d] == cur.rowHash[y];
+        }
+        if (informative < opts_.minOverlapRows) {
+          decided = false;  // a candidate the exact rule cannot judge
+          break;
+        }
+        fraction[i] = double(equal) / informative;
+        if (fraction[i] > exactBest) {
+          exactBest = fraction[i];
+          exactD = d;
+        }
+      }
+      decided = decided && exactBest >= opts_.exactTieMinFraction;
+      for (size_t i = 0; decided && i < topSet.size(); ++i)
+        if (std::abs(topSet[i] - exactD) > 1 && fraction[i] > opts_.exactTieMaxRival) decided = false;
+      if (decided) {
+        out.status = StepStatus::Appended;
+        out.d = exactD;
+        out.score = scoreOf(exactD);
+        out.evidence = evidence(exactD);
+        return out;
+      }
+    }
     if (!hasHint) return out;
     int c1 = topSet.front();
     for (int d : topSet)

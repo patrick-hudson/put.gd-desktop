@@ -68,19 +68,37 @@ Error FrameTap::start(const Source& source) {
 }
 
 std::optional<RunFrame> FrameTap::freshFrame(int timeoutMs) {
-    if (!pipeline_ || source_.imageCopy) return std::nullopt;
+    if (!pipeline_) return std::nullopt;
+    const int64_t began = nowMs();
+    if (source_.imageCopy) {
+        // A new capture session: its first frame is copied whether or not the
+        // source changed. Frames of the old session are passed over.
+        const quint64 session = source_.imageCopy->refresh();
+        std::unique_lock lock(mailbox_);
+        if (!fresh_.wait_for(lock, std::chrono::milliseconds(std::max(0, timeoutMs)), [&] { return arrivedCount_ != givenCount_ && latestSession_ >= session && latestSession_ != GST_BUFFER_OFFSET_NONE; })) return std::nullopt;
+        lock.unlock();
+        return nextFrame(0);
+    }
     if (source_.pipewireNode) {
         const Source source = source_;
         const qint64 given = frames_.load();
         stop();
         if (start(source)) return std::nullopt;
         frames_.store(given);
-    } else {
-        // What is in the mailbox was grabbed before now.
-        std::lock_guard lock(mailbox_);
-        givenCount_ = arrivedCount_;
+        return nextFrame(timeoutMs);
     }
-    return nextFrame(timeoutMs);
+    // ximagesrc grabs the screen for every frame. What is in the mailbox, and
+    // a frame already on its way, were grabbed before now: the one wanted
+    // arrives a whole frame interval after the call began.
+    { std::lock_guard lock(mailbox_); givenCount_ = arrivedCount_; }
+    const int interval = 1000 / std::max(1, source_.fps) + 1;
+    for (;;) {
+        const int left = timeoutMs - int(nowMs() - began);
+        if (left <= 0) return std::nullopt;
+        auto frame = nextFrame(left);
+        if (!frame) return std::nullopt;
+        if (frame->timestampMs - began >= interval) return frame;
+    }
 }
 
 void FrameTap::stop() {
@@ -146,8 +164,16 @@ void FrameTap::take(GstSample* sample) {
         latestWidth_ = width;
         latestHeight_ = height;
         latestAt_ = nowMs();
+        latestSession_ = GST_BUFFER_OFFSET(buffer);
         ++arrivedCount_;
-        if (debugLogEnabled()) debugLog(QStringLiteral("scroll tap buffer: t=%1").arg(latestAt_ % 1000000));
+        if (debugLogEnabled()) {
+            // Lab timeline: every buffer the stream delivered, with a sum over
+            // every sixteenth row (never the pixels), so a buffer that shows
+            // the old picture again can be told from one that shows a new one.
+            quint64 sum = 0;
+            for (int y = 0; y < height; y += 16) { const uint8_t* line = latest_.data() + row * size_t(y); for (size_t x = 0; x < row; x += 4) sum = sum * 31 + line[x] + (line[x + 1] << 8) + (line[x + 2] << 16); }
+            debugLog(QStringLiteral("scroll tap buffer: t=%1 sum=%2").arg(latestAt_ % 1000000).arg(sum % 100000));
+        }
         fresh_.notify_all();
     }
     gst_video_frame_unmap(&frame);

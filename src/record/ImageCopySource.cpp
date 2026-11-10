@@ -62,7 +62,9 @@ struct ImageCopySource::Impl {
  std::vector<Slot*> ring;Slot* inFlight=nullptr;
  GstElement* appsrc=nullptr;GstBuffer* last=nullptr;qint64 lastPush=0,presentation=-1;
  std::function<void(Error)> lost;std::thread thread;std::atomic_bool stopping{false};
- std::atomic<qint64> frames{0},keepalives{0},constraintChanges{0};bool ended=false;
+ std::atomic<qint64> frames{0},keepalives{0},constraintChanges{0},restarts{0};bool ended=false;
+ // refresh(): the session the loop wants and the one whose frames are being pushed (each buffer's offset).
+ std::atomic<quint64> refreshWanted{0};quint64 generation=0;
  Error failure;
  // Own cursor (#1364): the session has no painted cursor; this draws it from the cursor session.
  bool ownCursor=false,cursorHidden=false,seatPointer=false;wl_seat* seat=nullptr;wl_pointer* pointerDevice=nullptr;
@@ -248,12 +250,24 @@ struct ImageCopySource::Impl {
   lastPush=monotonicNs();
  }
  // The capture session, with the compositor painting the cursor unless this source draws it; waits for its constraints.
- Error startSession(){
+ void createSession(){
   if(session){ext_image_copy_capture_session_v1_destroy(session);session=nullptr;}
   constraints=false;pendingFormats.clear();pendingSize={};
   session=ext_image_copy_capture_manager_v1_create_session(copy,source,ownCursor||cursorHidden?0u:uint32_t(EXT_IMAGE_COPY_CAPTURE_MANAGER_V1_OPTIONS_PAINT_CURSORS));
   static const ext_image_copy_capture_session_v1_listener listener={&Impl::sessionSize,&Impl::sessionFormat,[](void*,ext_image_copy_capture_session_v1*,wl_array*){},[](void*,ext_image_copy_capture_session_v1*,uint32_t,wl_array*){},&Impl::sessionDone,&Impl::sessionStopped};
   ext_image_copy_capture_session_v1_add_listener(session,&listener,this);
+ }
+ // A frame is copied only when the source changed since the session's last one, so a still screen sends
+ // nothing; the first frame of a new session is the source as it is. On the capture thread.
+ void restartSession(quint64 wanted){
+  if(frame){ext_image_copy_capture_frame_v1_destroy(frame);frame=nullptr;}
+  inFlight=nullptr;
+  createSession();
+  if(last){gst_buffer_unref(last);last=nullptr;}
+  generation=wanted;restarts.fetch_add(1);
+ }
+ Error startSession(){
+  createSession();
   QElapsedTimer clock;clock.start();
   while(!constraints&&!failure&&clock.elapsed()<openTimeoutMs)if(wl_display_roundtrip(display)<0)return {"recording_unavailable","The Wayland connection failed",{}};
   if(failure)return failure;
@@ -442,6 +456,7 @@ struct ImageCopySource::Impl {
   if(const auto upright=waylandUprightSize(slot->dims,transform);upright!=declared)setCaps(upright);
   const qint64 now=monotonicNs();
   GST_BUFFER_PTS(buffer)=GstClockTime(presentation>0&&presentation<=now?presentation:now);
+  GST_BUFFER_OFFSET(buffer)=generation;
   frames.fetch_add(1);
   if(last)gst_buffer_unref(last);
   last=gst_buffer_ref(buffer);
@@ -454,6 +469,7 @@ struct ImageCopySource::Impl {
  }
  void run(){
   while(!stopping&&!ended){
+   if(const quint64 wanted=refreshWanted.load();wanted!=generation)restartSession(wanted);
    if(reallocate&&!frame){
     if(!allocate()){fail({"recording_io","Cannot allocate capture buffers",{}});break;}
     // The stream's caps follow the source's new size; the pipeline scales into the canvas.
@@ -568,6 +584,7 @@ void ImageCopySource::attach(GstElement* appsrc,std::function<void(Error)> lost)
  d_->appsrc=GST_ELEMENT(gst_object_ref(appsrc));d_->lost=std::move(lost);
  d_->thread=std::thread([impl=d_.get()]{impl->run();});
 }
+quint64 ImageCopySource::refresh(){const quint64 wanted=d_->refreshWanted.fetch_add(1)+1;d_->wakeUp();return wanted;}
 void ImageCopySource::stop(){d_->stopping=true;d_->wakeUp();if(d_->thread.joinable())d_->thread.join();if(d_->last){gst_buffer_unref(d_->last);d_->last=nullptr;}d_->dropClean();}
 QJsonObject ImageCopySource::status()const{
  QJsonObject status{{"acquisition","wlr-capture"},{"frames",double(d_->frames.load())},{"keepalives",double(d_->keepalives.load())},{"sizeChanges",double(d_->constraintChanges.load())},{"width",d_->size.width()},{"height",d_->size.height()},{"transform",int(d_->transform)}};
