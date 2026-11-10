@@ -492,7 +492,8 @@ private slots:
   QStringList reachable;QToolButton* region=nullptr;
   for(auto* button:window.findChildren<QToolButton*>("captureActionButton")){if(button->isVisible())reachable<<button->property("captureAction").toString();if(button->property("captureAction")=="region")region=button;if(button->toolButtonStyle()==Qt::ToolButtonIconOnly)QVERIFY(!button->accessibleName().isEmpty()&&!button->toolTip().isEmpty());}
   QVERIFY(region&&!region->menu());QCOMPARE(region->toolButtonStyle(),Qt::ToolButtonTextBesideIcon);
-  for(const auto& name:Settings::invocableActionNames())QVERIFY2(reachable.contains(name),qPrintable(name+" unreachable at "+QString::number(size.width())));
+  // Every action with a button: Repeat last region lives in Capture region's context menu.
+  for(const auto& name:Settings::presentationOrder())QVERIFY2(reachable.contains(name),qPrintable(name+" unreachable at "+QString::number(size.width())));
   // The band's controls neither overlap nor leave it; the status band shows the whole version line.
   const auto problem=[&]()->QString{
    QWidgetList items;for(auto* child:band->findChildren<QWidget*>(Qt::FindDirectChildrenOnly))if(child->isVisible()&&!child->isWindow())items<<child;

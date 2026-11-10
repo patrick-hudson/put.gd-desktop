@@ -7,6 +7,7 @@
 #include <QStandardPaths>
 #include "FileDialog.h"
 #include <QMenu>
+#include <QActionGroup>
 #include <QWidgetAction>
 #include <QTextDocument>
 #include <QTextBlock>
@@ -109,13 +110,13 @@ QString unavailableOutput(const QJsonObject& document,const QString& action){
 }
 // Why the desktop can't run this action's capture, from the adapter's capabilities (#1295); empty when it can or nothing is reported.
 QString unavailableSource(const QJsonObject& diagnostics,const QString& action){
- const auto kind=action=="edit"?QString("region"):action;if(!QStringList{"region","window","desktop"}.contains(kind))return {};
+ const auto kind=action=="edit"?QString("region"):action;if(!QStringList{"region","window","desktop","monitor"}.contains(kind))return {};
  // capture.<kind> where the adapter reports it, else the older top-level source.<kind> (as Settings reads it).
  const auto source=diagnostics.value("capabilities").toObject().value("source").toObject();const auto capture=source.value("capture").toObject();
  const QJsonValue value=capture.contains(kind)?capture.value(kind):source.value(kind);const auto status=value.toObject();
  if(!value.isObject()||status["available"].toBool(true))return {};
  const auto error=status["error"];const auto message=error.isObject()?error.toObject()["message"].toString():error.toString();
- const QHash<QString,QString> names{{"region","Region capture"},{"window","Window capture"},{"desktop","Desktop capture"}};
+ const QHash<QString,QString> names{{"region","Region capture"},{"window","Window capture"},{"desktop","Desktop capture"},{"monitor","Monitor capture"}};
  return names.value(kind)+" is unavailable on this desktop"+(message.isEmpty()?QString("."):QString(": ")+message);
 }
 // Only compact output and build metadata belong in the status band.
@@ -134,8 +135,8 @@ protected:
 MainWindow::MainWindow(UiSession& session,QWidget* parent):QMainWindow(parent),session_(session){
  chooser_=new FileDialog(this);
  setObjectName("putgdMainWindow");setWindowTitle("put.gd");setWindowIcon(Ui::icon("brand"));resize(1320,880);setMinimumSize(1060,680);
- const QHash<QString,QString> labels{{"region","Capture region"},{"window","Capture window"},{"desktop","Capture desktop"},{"clipboard","Upload clipboard"},{"edit","Capture region & edit"},{"record","Record screen"}};
- const QHash<QString,QString> glyphs{{"region","region"},{"window","window"},{"desktop","desktop"},{"clipboard","clipboard"},{"edit","edit"},{"record","record"}};
+ const QHash<QString,QString> labels{{"region","Capture region"},{"window","Capture window"},{"monitor","Capture monitor"},{"desktop","Capture desktop"},{"clipboard","Upload clipboard"},{"edit","Capture region & edit"},{"record","Record screen"}};
+ const QHash<QString,QString> glyphs{{"region","region"},{"window","window"},{"monitor","monitor"},{"desktop","desktop"},{"clipboard","clipboard"},{"edit","edit"},{"record","record"}};
  // The application menu holds only what the window does not already show:
  // help, updates, About and Quit. Capture commands live in the command band
  // and the pages in the header's navigation, once each.
@@ -154,15 +155,15 @@ MainWindow::MainWindow(UiSession& session,QWidget* parent):QMainWindow(parent),s
  tabs_=new Ui::Segmented(header);tabs_->setObjectName("mainNavigation");tabs_->setAccessibleName("Main navigation");for(const auto* label:{"History","Destinations","Settings"})tabs_->addTab(label);header->setCentre(tabs_);
  // The command band: capture and upload actions, lead first.
  band_=new QWidget(chrome);band_->setObjectName("commandBand");band_->setAccessibleName("Capture and upload actions");band_->installEventFilter(this);auto* bandRow=new QGridLayout(band_);bandRow->setContentsMargins(space(Space::m),space(Space::s),space(Space::m),space(Space::s));bandRow->setSpacing(space(Space::s));chromeBox->addWidget(band_);
- const QHash<QString,QString> explanations{{"region","Drag to select an area of your screen. Press Escape to cancel."},{"window","Capture the focused external app window, including its frame where supported."},{"desktop","Capture all enabled monitors, including desktop panels."},{"clipboard","Upload copied local files, an image, or plain text, in that order. Text URLs are uploaded as text."},{"edit","Select a region, then redact, blur, crop or annotate it. Nothing uploads until you choose Upload.\n\nUse its menu to edit the clipboard image or an image file instead, or drop a PNG or JPEG on this button."},{"record","Drag to select an area, then use the floating bar to record, pause and stop. Stop opens a review window; nothing uploads until you choose Upload there."}};
+ const QHash<QString,QString> explanations{{"region","Drag to select an area of your screen. Press Escape to cancel."},{"window","Capture the focused external app window, including its frame where supported."},{"monitor","Capture the monitor the pointer is on, at its native size."},{"desktop","Capture all enabled monitors, including desktop panels."},{"clipboard","Upload copied local files, an image, or plain text, in that order. Text URLs are uploaded as text."},{"edit","Select a region, then redact, blur, crop or annotate it. Nothing uploads until you choose Upload.\n\nUse its menu to edit the clipboard image or an image file instead, or drop a PNG or JPEG on this button."},{"record","Drag to select an area, then use the floating bar to record, pause and stop. Stop opens a review window; nothing uploads until you choose Upload there."}};
  const auto actionHelp=[&]{QStringList help;for(const auto& action:Settings::presentationOrder())help<<labels.value(action)+": "+explanations.value(action);help<<"Each button starts that action after finished settings edits are saved. Screen captures close this window to keep it out of the capture; clipboard uploads keep it open. Store or clear unfinished credentials before a screen capture. Settings → Capture selects the upload destination, and Keep a local copy independently enables local saving. Both can be enabled. With neither enabled, capture actions are unavailable. Shared uploads copy a link; private uploads create no link. Select the output summary in the status bar to see each action's output behavior. Results and recovery actions appear in History.";return help.join("\n\n");}();
  // Three groups, each action once: the screenshots (Capture region is the
  // lead), then editing and recording, and at the far end the clipboard
  // upload, which captures nothing. Hairlines separate the groups.
  const auto bandOrder=Settings::presentationOrder();
  for(const auto& action:bandOrder){
-  if(action=="edit"){auto* divider=Ui::rule(band_,Qt::Vertical);divider->setObjectName("commandBandDivider");divider->setFixedHeight(Ui::scaled(20));bandRow->addWidget(divider,0,3,Qt::AlignCenter);}
-  if(action=="clipboard")bandRow->setColumnStretch(6,1);
+  if(action=="edit"){auto* divider=Ui::rule(band_,Qt::Vertical);divider->setObjectName("commandBandDivider");divider->setFixedHeight(Ui::scaled(20));bandRow->addWidget(divider,0,4,Qt::AlignCenter);}
+  if(action=="clipboard")bandRow->setColumnStretch(7,1);
   auto* button=new EditSourceButton(band_);button->setText(QString(labels.value(action)).replace('&',QStringLiteral("&&")));button->setFocusPolicy(Qt::StrongFocus);button->setIconSize(QSize(Ui::scaled(Ui::Metric::icon),Ui::scaled(Ui::Metric::icon)));button->setIcon(Ui::icon(glyphs.value(action)));button->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);Ui::role(button,action=="region"?"lead":"quiet");button->setObjectName("captureActionButton");button->setProperty("captureAction",action);button->setAccessibleName(labels.value(action));
   if(action=="edit"){
    // The button captures a region to edit; its menu edits an image that
@@ -183,7 +184,30 @@ MainWindow::MainWindow(UiSession& session,QWidget* parent):QMainWindow(parent),s
    button->setAccessibleDescription(gaps.isEmpty()?explanations.value(action):(action=="edit"?"Region capture unavailable: "+gaps+" Existing images can still be edited.":"Unavailable: "+gaps));
    button->setToolTip(button->accessibleName()+(key.isEmpty()?QString{}:QString(" · ")+key)+(output.isEmpty()?QString{}:QString("\n")+output)+(source.isEmpty()?QString{}:QString("\n")+source));
   };
-  connect(&session_,&UiSession::accepted,button,update);captureButtonUpdates_.append(update);update();connect(button,&QToolButton::clicked,this,[this,action]{const auto reason=unavailableOutput(session_.document(),action);if(reason.isEmpty())emit actionRequested(action);else showActionFailure(action,{"output_required",reason,{}});});bandRow->addWidget(button,0,action=="region"?0:action=="window"?1:action=="desktop"?2:action=="edit"?4:action=="record"?5:7,Qt::AlignLeft);actionButtons_<<button;
+  connect(&session_,&UiSession::accepted,button,update);captureButtonUpdates_.append(update);update();connect(button,&QToolButton::clicked,this,[this,action]{const auto reason=unavailableOutput(session_.document(),action);if(reason.isEmpty())emit actionRequested(action);else showActionFailure(action,{"output_required",reason,{}});});bandRow->addWidget(button,0,action=="region"?0:action=="window"?1:action=="monitor"?2:action=="desktop"?3:action=="edit"?5:action=="record"?6:8,Qt::AlignLeft);actionButtons_<<button;
+  // The screenshots' context menu (#1363): the capture delay the dashboard and
+  // the tray use, as a radio group, and Repeat last region on Capture region.
+  if(Settings::delayableAction(action)){
+   button->setContextMenuPolicy(Qt::CustomContextMenu);
+   auto* options=new QMenu(button);options->setObjectName("captureOptionsMenu"+action);
+   if(action=="region"){auto* repeat=options->addAction(Ui::icon("refresh"),"Repeat last region");repeat->setObjectName("repeatLastRegion");connect(repeat,&QAction::triggered,this,[this]{const auto reason=unavailableOutput(session_.document(),"region");if(reason.isEmpty())emit actionRequested(Settings::repeatActionName());else showActionFailure("region",{"output_required",reason,{}});});}
+   // A submenu named like the tray's ("Capture delay: 3 seconds"): a section
+   // heading is not drawn by every style, and bare "None / 3 seconds" rows say
+   // nothing about what they set.
+   auto* delays=options->addMenu("Capture delay: none");delays->setObjectName("captureDelayMenu"+action);auto* group=new QActionGroup(delays);
+   for(const int seconds:Settings::captureDelayChoices()){
+    auto* choice=delays->addAction(seconds?QStringLiteral("%1 seconds").arg(seconds):QStringLiteral("None"));choice->setCheckable(true);choice->setData(seconds);choice->setObjectName(QStringLiteral("captureDelay%1").arg(seconds));group->addAction(choice);
+    connect(choice,&QAction::triggered,this,[this,seconds,action]{
+     auto document=session_.document();auto preferences=document["preferences"].toObject();
+     if(preferences["captureDelaySeconds"].toInt()==seconds)return;
+     preferences["captureDelaySeconds"]=seconds;document["preferences"]=preferences;
+     session_.saveAsync(document,session_.revision(),[this,action](Result result){if(!result)showActionFailure(action,result.error);});
+    });
+   }
+   auto showDelay=[this,delays]{const int delay=session_.document()["preferences"].toObject()["captureDelaySeconds"].toInt();delays->setTitle(delay>0?QStringLiteral("Capture delay: %1 seconds").arg(delay):QStringLiteral("Capture delay: none"));for(auto* choice:delays->actions())choice->setChecked(choice->data().toInt()==delay);};
+   connect(options,&QMenu::aboutToShow,delays,showDelay);showDelay();
+   connect(button,&QWidget::customContextMenuRequested,options,[options,button](const QPoint& at){options->popup(button->mapToGlobal(at));});
+  }
  }
  connect(helpAction,&QAction::triggered,this,[this,actionHelp]{Ui::showHelp("Capture actions",actionHelp,this);});
  outputWarning_=new Ui::Surface("surface",Qt::BottomEdge,center);outputWarning_->setObjectName("commandOutputWarning");auto* warningRow=new QHBoxLayout(outputWarning_);warningRow->setContentsMargins(space(Space::l),space(Space::s),space(Space::m),space(Space::s));warningRow->setSpacing(space(Space::m));outputWarningText_=new QLabel(outputWarning_);outputWarningText_->setObjectName("commandOutputWarningText");outputWarningText_->setTextFormat(Qt::PlainText);outputWarningText_->setWordWrap(true);outputWarningText_->installEventFilter(this);Ui::role(outputWarningText_,"body");auto* warningGlyph=new QLabel(outputWarning_);warningGlyph->setObjectName("commandOutputWarningGlyph");auto refreshGlyph=[warningGlyph]{const int size=Ui::scaled(18);warningGlyph->setFixedSize(size,size);warningGlyph->setPixmap(Ui::icon("alert",Theme::current().warning).pixmap(size,size));};connect(&Theme::Notifier::instance(),&Theme::Notifier::changed,warningGlyph,refreshGlyph);refreshGlyph();warningRow->addSpacing(warningGlyph->width()+space(Space::m));warningRow->addWidget(outputWarningText_,1,Qt::AlignVCenter);auto* chooseOutput=new QPushButton("Change output",outputWarning_);chooseOutput->setObjectName("chooseCommandOutput");chooseOutput->setToolTip("Open Settings → Capture to choose the output");warningRow->addWidget(chooseOutput);connect(chooseOutput,&QPushButton::clicked,this,[this]{navigate("settings");QStringList affected;for(const auto& action:Settings::presentationOrder())if(!unavailableOutput(session_.document(),action).isEmpty())affected<<action;settings_->showCaptureSettings(affected);});layout->addWidget(outputWarning_);connect(&session_,&UiSession::accepted,this,&MainWindow::updateAvailability);updateAvailability();
@@ -242,7 +266,7 @@ MainWindow::MainWindow(UiSession& session,QWidget* parent):QMainWindow(parent),s
   auto outputName=[&](const QJsonObject& output){const bool local=document["archive"].toObject()["keepUploads"].toBool();if(output["destination"]=="local"||output["profileId"].toString().isEmpty())return local?QString("Local only"):QString("Nothing is saved or uploaded");for(const auto& value:document["profiles"].toArray()){const auto profile=value.toObject();if(profile["id"]!=output["profileId"])continue;const auto mode=output["publicationMode"].toString("default");const bool privateUpload=mode=="private"||(mode=="default"&&profile["provider"]=="proton-drive"&&!profile["settings"].toObject()["shareByDefault"].toBool(true));return (privateUpload?(profile["provider"]=="proton-drive"?QString("Private upload"):QString("Private upload unavailable")):QString("Shared link"))+" · "+profile["label"].toString()+(local?QString(" + local copy"):QString{});}return QString("Choose a destination");};
   const auto defaults=document.contains("captureDefaults")?document["captureDefaults"].toObject():Settings::effectiveAction(document,"region");
   const auto defaultName=outputName(defaults);QStringList details{"Default output: "+defaultName+(!document["archive"].toObject()["keepUploads"].toBool()&&defaults["destination"]=="upload"&&!defaults["profileId"].toString().isEmpty()?QString(" · No local copy"):QString{})};bool mixed=false;
-  const QHash<QString,QString> labels{{"region","Capture region"},{"window","Capture window"},{"desktop","Capture desktop"},{"edit","Capture region & edit"},{"clipboard","Upload clipboard"},{"record","Record screen"}};
+  const QHash<QString,QString> labels{{"region","Capture region"},{"window","Capture window"},{"monitor","Capture monitor"},{"desktop","Capture desktop"},{"edit","Capture region & edit"},{"clipboard","Upload clipboard"},{"record","Record screen"}};
   QHash<QString,QAction*> groupedEntries;QHash<QString,QStringList> groupedNames;
   for(const auto& action:Settings::presentationOrder()){
    const auto route=Settings::effectiveAction(document,action);const auto output=outputName(route);
@@ -333,11 +357,14 @@ void MainWindow::fitBand(){
  // A short window keeps one 4 px inset around the measured navigation track.
  if(auto* header=findChild<Ui::WindowHeader*>("windowHeader"))header->setFixedHeight(height()<Ui::scaled(720)?qMax(Ui::scaled(48),tabs_->sizeHint().height()+2*space(Space::xs)):Ui::scaled(Ui::Metric::header));
  auto* grid=static_cast<QGridLayout*>(band_->layout());
- auto apply=[this,grid](int stage){grid->setHorizontalSpacing(space(stage>=2?Space::xs:Space::s));grid->setContentsMargins(space(Space::m),space(Space::s),space(Space::m),space(Space::s));for(auto* button:actionButtons_){button->setMinimumWidth(0);}for(auto* button:actionButtons_){const auto action=button->property("captureAction").toString();button->setProperty("uiTight",stage>=2);const bool secondary=action=="record"||action=="clipboard";button->setToolButtonStyle((stage>=4&&action=="clipboard")||(stage>=5&&action=="record")||(stage==6&&(action=="window"||action=="desktop"))?Qt::ToolButtonIconOnly:Qt::ToolButtonTextBesideIcon);const auto label=stage&&(action=="window"||action=="desktop")?(action=="window"?QString("Window"):QString("Desktop")):stage>=3&&secondary?(action=="record"?QString("Record"):QString("Clipboard")):button->property("commandLabel").toString();if(!label.isEmpty())button->setText(QString(label).replace('&',QStringLiteral("&&")));button->setMinimumWidth(button->sizeHint().width());}grid->invalidate();grid->activate();};
+ auto apply=[this,grid](int stage){grid->setHorizontalSpacing(space(stage>=2?Space::xs:Space::s));grid->setContentsMargins(space(Space::m),space(Space::s),space(Space::m),space(Space::s));for(auto* button:actionButtons_){button->setMinimumWidth(0);}for(auto* button:actionButtons_){const auto action=button->property("captureAction").toString();button->setProperty("uiTight",stage>=2);const bool secondary=action=="record"||action=="clipboard";button->setToolButtonStyle((stage>=4&&action=="monitor")||(stage>=5&&action=="clipboard")||(stage>=6&&action=="record")||(stage==7&&(action=="window"||action=="desktop"))?Qt::ToolButtonIconOnly:Qt::ToolButtonTextBesideIcon);const auto label=stage&&(action=="window"||action=="desktop"||action=="monitor")?(action=="window"?QString("Window"):action=="monitor"?QString("Monitor"):QString("Desktop")):stage>=3&&secondary?(action=="record"?QString("Record"):QString("Clipboard")):button->property("commandLabel").toString();if(!label.isEmpty())button->setText(QString(label).replace('&',QStringLiteral("&&")));button->setMinimumWidth(button->sizeHint().width());}grid->invalidate();grid->activate();};
  // Shorten before dropping; drop decoration before target, filename, outcome or output facts.
+ // Capture monitor (#1363) is the first to keep only its icon, so the labels the
+ // band had before it stay as long as they did: the region and edit commands in
+ // full, Window and Desktop, then Record.
  // The shortest ladder stage defines the true minimum at enlarged text sizes.
- apply(6);setMinimumWidth(qMax(1060,grid->minimumSize().width()));
- int stage=0;for(;stage<7;++stage){apply(stage);if(grid->sizeHint().width()<=band_->width()||stage==6)break;}
+ apply(7);setMinimumWidth(qMax(1060,grid->minimumSize().width()));
+ int stage=0;for(;stage<8;++stage){apply(stage);if(grid->sizeHint().width()<=band_->width()||stage==7)break;}
  for(auto* button:actionButtons_)button->setMinimumWidth(button->sizeHint().width());bandStage_=stage;fittingBand_=false;
 }
 void MainWindow::updateAvailability(){

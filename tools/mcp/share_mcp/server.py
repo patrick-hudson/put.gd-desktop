@@ -47,6 +47,9 @@ def safe_patch(value: Any) -> bool:
 
 
 EDITOR_SOURCES = {'region', 'window', 'desktop', 'clipboard', 'file'}
+# Delayed capture (#1363): the delays action.invoke accepts and the actions that take one.
+DELAY_SECONDS = {0, 3, 5, 10}
+DELAYABLE_ACTIONS = {'region', 'window', 'monitor', 'desktop', 'repeat'}
 EDITOR_OPS = {'add', 'update', 'remove', 'crop', 'resetCrop', 'undo', 'redo'}
 # The editor window's view and selection controls, one per drive_editor call.
 EDITOR_VIEW_ACTIONS = {'inspect', 'tool', 'select', 'selectNext', 'selectPrevious', 'selectAffectedText', 'removeMark', 'place', 'geometry', 'applyCrop',
@@ -226,11 +229,17 @@ def create_server(adapter: CliAdapter) -> MCPServer:
         return await adapter.call('ui.viewState', {})
 
     @server.tool(annotations=effect)
-    async def perform_action(action: str) -> Json:
-        """Acquire region/window/desktop/clipboard, then configured local save or public upload; may copy result. `edit` opens the editor after a region selection instead; use open_editor for other sources. `record` starts a screen recording from a dragged region (or raises the active one); drive it with the recording tools."""
-        if action not in {'region', 'window', 'desktop', 'clipboard', 'edit', 'record'}:
+    async def perform_action(action: str, delay_seconds: int | None = None) -> Json:
+        """Acquire region/window/monitor/desktop/clipboard, then configured local save or public upload; may copy result. `monitor` captures the monitor the pointer is on. `repeat` captures the rectangle of the last region capture again with no selector (repeat_unavailable when there is none yet, repeat_layout_changed when the monitors changed since); its operation is a region capture. delay_seconds (3, 5 or 10; region, window, monitor, desktop and repeat only) shows a cancellable countdown first: a region is selected before it runs, every other target is taken when it ends, and a screen that is locked at that moment captures nothing (session_locked). cancel_operation ends a countdown. `edit` opens the editor after a region selection instead; use open_editor for other sources. `record` starts a screen recording from a dragged region (or raises the active one); drive it with the recording tools."""
+        if action not in {'region', 'window', 'monitor', 'desktop', 'repeat', 'clipboard', 'edit', 'record'}:
             return invalid()
-        return await adapter.call('action.invoke', {'action': action})
+        params: Json = {'action': action}
+        if delay_seconds is not None:
+            if type(delay_seconds) is not int or delay_seconds not in DELAY_SECONDS or action not in DELAYABLE_ACTIONS:
+                return invalid()
+            params['delaySeconds'] = delay_seconds
+        # The resident answers when the operation is accepted, before any countdown.
+        return await adapter.call('action.invoke', params)
 
     @server.tool(annotations=effect)
     async def upload_files(paths: list[str], profile_id: str | None = None) -> Json:

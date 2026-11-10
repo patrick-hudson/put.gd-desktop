@@ -140,7 +140,7 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
   uiCommand_("customUploader",p,std::move(reply));return;
  }
  if(method=="action.invoke") {
-  if(!fields(p,{"action"},{"source","path","mode"})||!string(p,"action")||(p.contains("source")&&!string(p,"source",32))||(p.contains("path")&&!string(p,"path",4096))||(p.contains("mode")&&(p["action"]!="record"||!string(p,"mode",16)))){reply(invalid(),{});return;}
+  if(!fields(p,{"action"},{"source","path","mode","delaySeconds"})||!string(p,"action")||(p.contains("source")&&!string(p,"source",32))||(p.contains("path")&&!string(p,"path",4096))||(p.contains("mode")&&(p["action"]!="record"||!string(p,"mode",16)))){reply(invalid(),{});return;}
   auto options=p;options.remove("action");operations_.invoke(p["action"].toString(),reply,options);return;
  }
  // "Upload with put.gd" from a file manager (#1105): absolute paths only; the

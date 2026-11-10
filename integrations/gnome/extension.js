@@ -24,8 +24,11 @@ const SNI_WATCHER_PATH = '/StatusNotifierWatcher';
 const CHUNK = 65536;
 // Capture sources the Shell can prepare; Edit & upload binds its own key and
 // prepares a native region selection.
-const SOURCES = ['region', 'window', 'desktop', 'clipboard'];
+// monitor (#1363) is the monitor under the pointer, frozen at Prepare; repeat is
+// a rectangle the resident remembered, passed to Acquire with its layout key.
+const SOURCES = ['region', 'window', 'desktop', 'clipboard', 'monitor', 'repeat'];
 const ACTIONS = [...SOURCES, 'edit', 'record'];
+const DELAYS = [3, 5, 10];
 const XML = `<node><interface name="${IFACE}">
 <method name="Hello"><arg type="s" direction="out"/></method>
 <method name="SetUiProcess"><arg type="u" direction="in"/><arg type="s" direction="out"/></method>
@@ -34,6 +37,7 @@ const XML = `<node><interface name="${IFACE}">
 <method name="Prepare"><arg type="s" direction="in"/><arg type="s" direction="in"/><arg type="s" direction="out"/></method>
 <method name="Preview"><arg type="s" direction="in"/><arg type="s" direction="in"/><arg type="s" direction="out"/></method>
 <method name="Acquire"><arg type="s" direction="in"/><arg type="s" direction="in"/><arg type="s" direction="out"/></method>
+<method name="Countdown"><arg type="s" direction="in"/><arg type="s" direction="in"/><arg type="s" direction="out"/></method>
 <method name="Read"><arg type="s" direction="in"/><arg type="t" direction="in"/><arg type="u" direction="in"/><arg type="s" direction="out"/></method>
 <method name="Release"><arg type="s" direction="in"/><arg type="s" direction="out"/></method>
 <method name="BeginCopy"><arg type="s" direction="in"/><arg type="s" direction="in"/><arg type="t" direction="in"/><arg type="s" direction="out"/></method>
@@ -77,7 +81,70 @@ function limitsFrom(json) {
         'bridge_protocol', 'Invalid capture outcome');
     check(value.regionMode === undefined || value.regionMode === 'screenshot_first',
         'bridge_protocol', 'Invalid region selection mode');
+    // Capture version 2 (#1363): a delay for a live region, and a repeat's area.
+    check(value.delaySeconds === undefined || DELAYS.includes(value.delaySeconds),
+        'bridge_protocol', 'Invalid capture delay');
+    check(value.area === undefined || (Array.isArray(value.area) && value.area.length === 4 &&
+        value.area.every(n => Number.isFinite(n) && Math.abs(n) <= 1e7) && value.area[2] > 0 && value.area[3] > 0),
+    'bridge_protocol', 'Invalid repeat area');
+    check(value.layoutKey === undefined || (typeof value.layoutKey === 'string' && value.layoutKey.length <= 2048),
+        'bridge_protocol', 'Invalid repeat layout');
     return value;
+}
+// Delayed capture (#1363): the countdown pill. A reactive label in the Shell's
+// chrome, at the top centre of one monitor: it takes no grab and no focus, so
+// the window underneath keeps its hover and key state, and a click on it
+// cancels. finished resolves true at expiry and false on a click or cancel(),
+// with the actor already destroyed, so a capture that follows cannot contain it.
+class CaptureCountdown {
+    constructor(seconds, monitor, appearance = {}) {
+        this._remaining = seconds;
+        // The resident resolves System/Dark/Light and supplies the app tokens.
+        const style = RegionSelection.pillStyle(appearance.tokens ??
+            RegionSelection.pillTokens(new Gio.Settings({schema_id: 'org.gnome.desktop.interface'}).get_string('color-scheme')));
+        this._label = new St.Label({reactive: true, track_hover: true, text: CaptureCountdown.text(seconds), style,
+            accessible_name: 'Capture countdown'});
+        this._label.connect('button-release-event', () => {
+            this._settle(false);
+            return Clutter.EVENT_STOP;
+        });
+        // Shell 50 picks reactive chrome by itself; its chrome parameters are only
+        // trackFullscreen and affectsStruts, and any other name throws.
+        Main.layoutManager.addTopChrome(this._label, {trackFullscreen: false});
+        const [, width] = this._label.get_preferred_width(-1);
+        // Below the top bar on the monitor that has it.
+        const bar = monitor.index === Main.layoutManager.primaryIndex ? Main.panel.height : 0;
+        this._label.set_position(Math.round(monitor.x + (monitor.width - width) / 2), monitor.y + bar + 24);
+        this.finished = new Promise(resolve => { this._resolve = resolve; });
+        this._timer = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 1000, () => {
+            if (--this._remaining > 0) {
+                this._label.set_text(CaptureCountdown.text(this._remaining));
+                return GLib.SOURCE_CONTINUE;
+            }
+            this._timer = 0;
+            this._settle(true);
+            return GLib.SOURCE_REMOVE;
+        });
+    }
+    static text(remaining) {
+        return `Capturing in ${remaining} · Click to cancel`;
+    }
+    _settle(expired) {
+        if (!this._resolve)
+            return;
+        if (this._timer)
+            GLib.source_remove(this._timer);
+        this._timer = 0;
+        Main.layoutManager.removeChrome(this._label);
+        this._label.destroy();
+        this._label = null;
+        const resolve = this._resolve;
+        this._resolve = null;
+        resolve(expired);
+    }
+    cancel() {
+        this._settle(false);
+    }
 }
 // The recording helper's control bar, a frameless Qt window the Shell places.
 const RECORDING_BAR_TITLE = 'put.gd recording controls';
@@ -786,14 +853,19 @@ export default class PutgdExtension extends Extension {
         });
         this._layoutSignal = Main.layoutManager.connect('monitors-changed', () => {
             for (const [id, request] of this._requests) {
-                if (request.action && request.action !== 'clipboard')
+                if (request.action && request.action !== 'clipboard' && request.action !== 'countdown')
                     this._drop(id, 'display_changed', 'Display layout changed during capture');
             }
         });
         this._sessionSignal = Main.sessionMode.connect('updated', () => {
             if (Main.sessionMode.isLocked) {
-                for (const id of this._requests.keys())
-                    this._drop(id, 'helper_unavailable', 'GNOME session locked');
+                // A delay that ends on a locked screen captures nothing (#1363).
+                for (const [id, request] of this._requests) {
+                    if (request.countdown)
+                        this._drop(id, 'session_locked', 'The screen was locked when the capture delay ended, so nothing was captured.');
+                    else
+                        this._drop(id, 'helper_unavailable', 'GNOME session locked');
+                }
                 this._hideRecordingFrame();
             }
         });
@@ -824,8 +896,16 @@ export default class PutgdExtension extends Extension {
         this._enabled = false;
         this._trayTooltip?.disable();
         this._trayTooltip = null;
-        for (const id of this._requests.keys())
-            this._drop(id, 'helper_unavailable', 'GNOME extension disabled');
+        // The Shell disables extensions when it locks, sometimes before the
+        // session handler above has run: a counting request then ends on a
+        // locked screen, which is not a helper that broke.
+        const locked = Main.sessionMode.isLocked;
+        for (const [id, request] of [...this._requests]) {
+            if (locked && request.countdown)
+                this._drop(id, 'session_locked', 'The screen was locked when the capture delay ended, so nothing was captured.');
+            else
+                this._drop(id, 'helper_unavailable', 'GNOME extension disabled');
+        }
         this._hideRecordingFrame();
         this._unbind();
         if (this._ownerSignal)
@@ -915,6 +995,10 @@ export default class PutgdExtension extends Extension {
             request.selector = null;
             this._selector = null;
         }
+        if (request.countdown) {
+            request.countdown.cancel();
+            request.countdown = null;
+        }
         request.data = null;
         request.parts = null;
         request.window = null;
@@ -956,7 +1040,7 @@ export default class PutgdExtension extends Extension {
     HelloAsync(_args, invocation) {
         this._run(invocation, () => ({version: 1, shellMajor: Number(Config.PACKAGE_VERSION.split('.')[0]),
             extensionVersion: this.metadata.version, clipboardRevision: this._revision, uiProcessVersion: 1,
-            recordingVersion: 2, previewVersion: 1}));
+            recordingVersion: 2, previewVersion: 1, captureVersion: 2}));
     }
 
     InvalidateCopyAsync(_args, invocation) {
@@ -997,9 +1081,53 @@ export default class PutgdExtension extends Extension {
             request.actor = actor;
             request.frame = rectangle(window.get_frame_rect());
         }
+        // The monitor under the pointer, frozen with the request like a window's focus.
+        if (action === 'monitor')
+            request.monitor = global.display.get_current_monitor();
         request.layout = action === 'clipboard' ? null : await this._layout(request.cancellable);
         this._alive(request);
+        if (action === 'monitor')
+            check(request.layout[request.monitor], 'capture_target', 'The pointer is not over a monitor');
         return {version: 1, requestId: id};
+    }
+
+    // What "the same layout" means for Repeat last region: each monitor's
+    // connectors, logical rectangle, scale and rotation, in the Shell's order.
+    _layoutKey(layout) {
+        return JSON.stringify(layout.map(m => [m.identity, m.logical, m.density, m.rotation]));
+    }
+
+    // Shows the countdown for a request and waits for it. A click cancels the
+    // request; a drop (Release, lock, disable) ends the countdown through _drop.
+    async _countdown(request, seconds, monitor, appearance) {
+        check(!request.countdown, 'bridge_protocol', 'A countdown is already running for this request');
+        const countdown = new CaptureCountdown(seconds, monitor, appearance);
+        request.countdown = countdown;
+        request.stage = 'countdown';
+        const expired = await countdown.finished;
+        if (request.countdown === countdown)
+            request.countdown = null;
+        this._alive(request);
+        check(expired, 'cancelled', 'Capture countdown cancelled');
+        check(!Main.sessionMode.isLocked, 'session_locked', 'The screen was locked when the capture delay ended, so nothing was captured.');
+    }
+
+    // Delayed capture (#1363) for everything but a live region: the countdown
+    // alone, before the resident prepares the capture. It freezes no target and
+    // reads no pixels.
+    CountdownAsync([id, json], invocation) {
+        this._run(invocation, async sender => {
+            check(json.length <= 4096, 'bridge_protocol', 'Countdown options exceed the control-message limit');
+            const options = JSON.parse(json);
+            check(DELAYS.includes(options.seconds), 'bridge_protocol', 'Invalid capture delay');
+            const request = this._new(id, sender);
+            request.action = 'countdown';
+            const monitor = Main.layoutManager.monitors[global.display.get_current_monitor()] ?? Main.layoutManager.primaryMonitor;
+            check(monitor, 'capture_geometry', 'No enabled monitor is available');
+            await this._countdown(request, options.seconds, monitor, options.appearance ?? {});
+            this._finish(id);
+            return {version: 1, requestId: id};
+        });
     }
 
     async _hotkey(action) {
@@ -1010,7 +1138,7 @@ export default class PutgdExtension extends Extension {
                 new GLib.VariantType('(s)'), Gio.DBusCallFlags.NONE, 1000, null).deep_unpack()[0];
             // A selection needs the pointer and keyboard put.gd's open tray menu
             // holds, and must not show that menu (#924).
-            if (action !== 'desktop' && action !== 'window')
+            if (!['desktop', 'window', 'monitor', 'repeat'].includes(action))
                 this._closeTrayMenu(sender);
             // Recording selects its own region later; only the key press is relayed.
             if (action === 'record') {
@@ -1170,6 +1298,7 @@ export default class PutgdExtension extends Extension {
             const right = request.layout.map(m => m.logical[0] + m.logical[2]);
             const bottom = request.layout.map(m => m.logical[1] + m.logical[3]);
             selection = [Math.min(...xs), Math.min(...ys), Math.max(...right) - Math.min(...xs), Math.max(...bottom) - Math.min(...ys)];
+            const selection0 = selection;
             if (request.action === 'region') {
                 let selected;
                 if (request.preview) {
@@ -1202,12 +1331,39 @@ export default class PutgdExtension extends Extension {
                 }
                 check(selected, 'cancelled', 'GNOME region selection cancelled');
                 selection = rectangle(selected);
+                // Area first, then the countdown, then the pixels (#1363). Screenshot
+                // first never counts down here: its delay ran before the freeze.
+                if (limits.delaySeconds && !frozen) {
+                    const centre = [selection[0] + selection[2] / 2, selection[1] + selection[3] / 2];
+                    const monitors = Main.layoutManager.monitors;
+                    const monitor = monitors.find(m => centre[0] >= m.x && centre[0] < m.x + m.width && centre[1] >= m.y && centre[1] < m.y + m.height) ?? monitors[0];
+                    await this._countdown(request, limits.delaySeconds, monitor, request.limits.appearance ?? {});
+                    check(!this._selector, 'busy_selecting', 'Another GNOME region selection is active');
+                    check(JSON.stringify(await this._layout(request.cancellable)) === JSON.stringify(request.layout),
+                        'display_changed', 'Display layout changed during the capture delay');
+                    this._alive(request);
+                }
+            } else if (request.action === 'monitor') {
+                selection = request.layout[request.monitor].logical;
+            } else if (request.action === 'repeat') {
+                // The resident remembered this rectangle with the layout it was chosen on.
+                check(limits.area && limits.layoutKey, 'repeat_unavailable', 'There is no region to repeat yet. Capture a region first.');
+                check(limits.layoutKey === this._layoutKey(request.layout),
+                    'repeat_layout_changed', 'The monitor layout changed since the last region capture. Capture a region again.');
+                selection = limits.area;
+                check(selection[0] >= selection0[0] && selection[1] >= selection0[1] &&
+                    selection[0] + selection[2] <= selection0[0] + selection0[2] && selection[1] + selection[3] <= selection0[1] + selection0[3],
+                'capture_geometry', 'The remembered region lies outside the desktop');
             }
             // selectAsync removes its actors and modal grab before resolving.
             // Live selection reads the desktop now; Screenshot first cuts each
             // monitor from the frozen stage texture, with no second capture.
+            // One monitor and a repeat read only the monitors they lie on.
+            const whole = request.action !== 'monitor' && request.action !== 'repeat';
             for (const monitor of request.layout) {
                 const [x, y, width, height] = monitor.logical;
+                if (!whole && !overlaps(selection, monitor.logical))
+                    continue;
                 const density = frozen ? frozen.scale : monitor.density;
                 const estimated = Math.ceil(width * density) * Math.ceil(height * density);
                 check(estimated <= limits.imagePixels - pixelCount && estimated * 4 <= limits.imageBytes - pixelCount * 4,
@@ -1245,6 +1401,9 @@ export default class PutgdExtension extends Extension {
             offset += part.length;
         }
         request.metadata = {version: 1, requestId: request.id, mime: 'application/x-putgd-capture', bytes: total, frames, selection};
+        // The resident keeps a region's rectangle and this key for Repeat last region.
+        if (request.action === 'region')
+            request.metadata.layoutKey = this._layoutKey(request.layout);
         request.actor = request.window = null;
         return request.metadata;
     }

@@ -38,7 +38,7 @@ QList<QJsonObject> cursorTrace(const QString& path){
 }
 }
 
-QJsonObject snapshot(){return {{"schemaVersion",1},{"action","desktop"},{"window","0"},{"windowRect",QJsonArray{}},{"layout",QJsonObject{{"outputs",QJsonArray{QJsonObject{{"identity","monitor"},{"native",QJsonArray{0,0,640,480}},{"rotation",1}}}},{"configuration","1"},{"root",QJsonArray{0,0,640,480}},{"scale",QString(64,'a')}}}};}
+QJsonObject snapshot(){return {{"schemaVersion",1},{"action","desktop"},{"window","0"},{"windowRect",QJsonArray{}},{"area",QJsonArray{}},{"selection",QJsonArray{}},{"selectionLayout",QJsonArray{}},{"layout",QJsonObject{{"outputs",QJsonArray{QJsonObject{{"identity","monitor"},{"native",QJsonArray{0,0,640,480}},{"rotation",1}}}},{"configuration","1"},{"root",QJsonArray{0,0,640,480}},{"scale",QString(64,'a')}}}};}
 namespace {
 QJsonObject regionSnapshot(char fingerprint){auto result=snapshot();result["action"]="region";auto layout=result["layout"].toObject();layout["scale"]=QString(64,QChar(fingerprint));result["layout"]=layout;return result;}
 }
@@ -427,6 +427,8 @@ private slots:
   QTest::addColumn<QByteArray>("mode");QTest::addColumn<QString>("code");
   QTest::newRow("escape")<<QByteArray("preview-cancel")<<QString("cancelled");
   QTest::newRow("display-error")<<QByteArray("preview-error")<<QString("capture_geometry");
+  // A delayed live region whose countdown ends on a locked screen (#1363): the lock, not a protocol fault.
+  QTest::newRow("locked-at-expiry")<<QByteArray("preview-locked")<<QString("session_locked");
  }
  void earlyPreviewTerminalIsReportedOnceAndRetained(){
   QFETCH(QByteArray,mode);QFETCH(QString,code);
@@ -436,7 +438,9 @@ private slots:
   auto ticket=controller.prepare(regionSnapshot(),{},[&](putgd::Error error){terminal=std::move(error);aliveAtNotification=controller.busy()&&controller.processId()>0;++early;});
   PUTGD_TRY_COMPARE(early,1);QCOMPARE(terminal.code,code);QVERIFY(aliveAtNotification);QVERIFY(!controller.preparedReady());
   // The helper's own reason and geometry reach the operation's error (#331).
-  if(code!="cancelled"){QCOMPARE(terminal.message,QString("Synthetic selection outside the layout"));QCOMPARE(terminal.details["check"].toString(),QString("fixture_selection"));QCOMPARE(terminal.details["selection"].toArray(),(QJsonArray{0,1080,100,100}));}
+  if(code=="capture_geometry"){QCOMPARE(terminal.message,QString("Synthetic selection outside the layout"));QCOMPARE(terminal.details["check"].toString(),QString("fixture_selection"));QCOMPARE(terminal.details["selection"].toArray(),(QJsonArray{0,1080,100,100}));}
+  // The lock keeps its own code and wording; it is not reported as a protocol fault.
+  else if(code=="session_locked")QCOMPARE(terminal.message,QString("The screen was locked when the capture delay ended, so nothing was captured."));
   else QVERIFY(terminal.details.isEmpty());
   // BEGIN must deliver the latched failure even while the old helper is exiting,
   // and cannot authorize a pixel read or start another child.
@@ -508,6 +512,7 @@ private slots:
   QTest::addColumn<QByteArray>("mode");QTest::addColumn<QString>("code");
   QTest::newRow("escape")<<QByteArray("preview-cancel")<<QString("cancelled");
   QTest::newRow("display-error")<<QByteArray("preview-error")<<QString("capture_geometry");
+  QTest::newRow("locked-at-expiry")<<QByteArray("preview-locked")<<QString("session_locked");
  }
  void terminalAfterBeginRequestUsesOnlyAcquisitionCallback(){
   QFETCH(QByteArray,mode);QFETCH(QString,code);qputenv("PUTGD_TEST_CAPTURE_MODE",mode);

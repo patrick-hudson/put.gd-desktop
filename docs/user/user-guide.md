@@ -2,7 +2,7 @@
 
 Open put.gd to reach one window with **History**, **Destinations**, and **Settings**. The tray's **Settings and setup** and **Upload history** commands open that window, and clicking the tray icon opens History, which also shows current work. (The tray's former **Recent activity** command opened the same History page and has been removed.) Closing the window keeps the tray and accepted work running. The launcher reopens it. The tray pane and its capture commands are unchanged.
 
-The left rail starts **Capture region**, **Capture window**, **Capture desktop**, **Upload clipboard**, or **Record screen** after finished settings edits are saved. The tray lists the same captures in this order: Capture Region, Capture Region & Edit, Capture Window, Capture Desktop, Capture Screen Recording, then Edit Image (from the clipboard or a file) and Upload Clipboard. Screen captures close this window to keep it out of the capture. Clipboard imports keep it open. A save failure keeps the window open; retry saving and start the action again. Store or clear unfinished credential entry before a screen capture. Region capture supports Escape to cancel. Window capture targets the focused external app where supported; desktop capture includes enabled monitors and panels. Clipboard import prefers copied local files, then an image, then plain text. Text URLs are imported as text. **Edit & upload** selects a region and opens a small editor first; see [Edit before uploading](#edit-before-uploading). The information button and action tooltips explain the selected action and its saved output. Capture is also available through global shortcuts and the CLI.
+The left rail starts **Capture region**, **Capture window**, **Capture monitor**, **Capture desktop**, **Upload clipboard**, or **Record screen** after finished settings edits are saved. The tray lists the same captures in this order: Capture Region, Repeat Last Region, Capture Window, Capture Monitor, Capture Desktop and the Capture Delay choice, then Capture Region & Edit, Edit Image (from the clipboard or a file), Capture Screen Recording and Upload Clipboard. Screen captures close this window to keep it out of the capture. Clipboard imports keep it open. A save failure keeps the window open; retry saving and start the action again. Store or clear unfinished credential entry before a screen capture. Region capture supports Escape to cancel. Window capture targets the focused external app where supported; monitor capture takes the one monitor the pointer is on, at its full size; desktop capture includes enabled monitors and panels. See [One monitor, a delay, or the same region again](#one-monitor-a-delay-or-the-same-region-again). Clipboard import prefers copied local files, then an image, then plain text. Text URLs are imported as text. **Edit & upload** selects a region and opens a small editor first; see [Edit before uploading](#edit-before-uploading). The information button and action tooltips explain the selected action and its saved output. Capture is also available through global shortcuts and the CLI.
 
 ## GNOME 50: log out once
 
@@ -30,6 +30,36 @@ In **Settings → General → Local copies**, **Keep a local copy** controls loc
 | None | Off | Report an output error before capturing or importing |
 
 Local image results copy image MIME, text results copy text, and file results use local file URIs. Private uploads create no share link and do not change the clipboard. An upload failure does not turn an upload-only action into local saving; local-save and upload recovery remain separate. Existing files, accepted operations, and historical receipts are preserved when outputs change.
+
+## One monitor, a delay, or the same region again
+
+**Capture monitor** takes the monitor your pointer is on, at its full size. On a desk
+with several monitors, Capture desktop gives one very wide picture of all of them;
+this is the one in between. It has its own output and its own shortcut, both set like
+the other captures' (the shortcut starts unassigned).
+
+**Capture delay** waits 3, 5 or 10 seconds before a region, window, monitor or desktop
+capture, and before Repeat last region, so you can open a menu, hover a button or hold
+a key first. Choose it in the
+tray's **Capture delay** submenu, or right-click one of those capture buttons in the
+window and open **Capture delay** there; the choice stays until you set it back to None. A small pill at the top of the
+screen counts down. It doesn't take the keyboard and you can keep working around it;
+click it to cancel, and nothing is captured. It is never in the picture.
+
+- For a region you choose the area first; the countdown runs afterwards. With
+  **Screenshot first** region selection, the countdown runs first and the screen is
+  frozen when it ends.
+- A delayed window or monitor capture takes the window that is active, or the monitor
+  under the pointer, when the countdown ends.
+- A capture started with a keyboard shortcut is always immediate.
+- If the screen is locked when the countdown ends, nothing is captured.
+
+**Repeat last region** captures the same rectangle as your last region capture, with
+no selection step: handy for a series of the same area. It's in the tray, in the
+right-click menu of **Capture region**, and has its own shortcut (unassigned to begin
+with). It uses Capture region's output. put.gd forgets the rectangle when it quits,
+and says so instead of capturing when there is nothing to repeat yet or the monitors
+have changed since.
 
 ## Upload from your file manager
 
@@ -81,7 +111,7 @@ Accepted external changes refresh a clean form. A dirty draft instead reports th
 
 **Settings → Capture → File names** keeps the original names of copied files by default, or uses random names/custom templates. Capture, clipboard-image, clipboard-text, and copied-and-uploaded-file (**Copied & uploaded files**) patterns have separate help. Local collisions preserve files by adding a suffix. Remote collision policy supports rename, skip, or explicit guarded overwrite where the provider supports it; skip never copies an unrelated existing URL.
 
-**Settings → Shortcuts** records one combination per action. Press Record, enter a chord, then release all keys. Escape cancels and Clear removes the assignment. Moving focus or closing also cancels recording. Global shortcuts are paused during recording so an existing chord cannot trigger a capture. Accepted changes save automatically. A chord with Shift on a digit or punctuation key is saved by its unshifted key: pressing Ctrl+Shift+4 on a US keyboard saves `Ctrl+Shift+4`, not `Ctrl+Shift+$`. Each row reports conflicts, unsupported keys and any binding other than the one put.gd asked the desktop for; a row with no status line is bound as requested. Configured text alone does not prove a binding. CLI callers use Qt PortableText such as `Ctrl+1`. Capture shortcuts also work while a menu is open, put.gd's tray menu or another app's. **Capture desktop** includes the open menu. **Capture window** includes only what lies over the active window, and on GNOME and Plasma a window's own menus are not part of it. **Capture region** on X11 starts once the menu closes: press Esc or click outside the menu within 3 seconds. Otherwise put.gd says why it could not start, and you press the shortcut again. On GNOME the region selector opens over the open menu, so you can select it. Plasma closes the menu when the selector opens. A locked screen never captures. On Budgie 10.10/labwc, a blanked or powered-off display also refuses screenshots with `session_locked` even when unlocked; keep the display awake for unattended captures.
+**Settings → Shortcuts** records one combination per action. Press Record, enter a chord, then release all keys. Escape cancels and Clear removes the assignment. Moving focus or closing also cancels recording. Global shortcuts are paused during recording so an existing chord cannot trigger a capture. Accepted changes save automatically. A chord with Shift on a digit or punctuation key is saved by its unshifted key: pressing Ctrl+Shift+4 on a US keyboard saves `Ctrl+Shift+4`, not `Ctrl+Shift+$`. Each row reports conflicts, unsupported keys and any binding other than the one put.gd asked the desktop for; a row with no status line is bound as requested. Configured text alone does not prove a binding. CLI callers use Qt PortableText such as `Ctrl+1`. Capture shortcuts also work while a menu is open, put.gd's tray menu or another app's. **Capture desktop** includes the open menu. **Capture window** includes only what lies over the active window, and on GNOME and Plasma a window's own menus are not part of it. **Capture region** on X11 starts once the menu closes: press Esc or click outside the menu within 3 seconds. Otherwise put.gd says why it could not start, and you press the shortcut again. On GNOME the region selector opens over the open menu, so you can select it. Plasma closes the menu when the selector opens. A locked screen never captures, including an agent request or a delay that ends while locked. On Budgie 10.10/labwc, a blanked or powered-off display also refuses screenshots with `session_locked` even when unlocked; keep the display awake for unattended captures.
 
 General contains notifications, launch at login, Appearance (Match the desktop, Dark or Light, applied as soon as you pick it; see [appearance](../design/appearance.md)) and Local copies. Advanced contains upload/image limits, queued-image memory, thumbnail cache and retention controls, **Diagnostics** (debug logging, logs, Create diagnostics package…; see [diagnostics](../design/diagnostics.md)) directly above Config file, plus desktop support details. **Reset all to defaults** resets only the limits. Blank history retention means forever. Each setting has keyboard-accessible help. Tray, notifications, launch at login, capture, clipboard and shortcuts depend on the actual desktop support reported there.
 

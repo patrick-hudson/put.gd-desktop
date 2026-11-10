@@ -108,7 +108,7 @@ private slots:
  void editRailButtonOffersOtherSourcesWithoutGrowingTheRail(){
   QTemporaryDir dir;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(service.save(configuration(dir.path(),true),{}));
   CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);
-  QCOMPARE(window.findChildren<QToolButton*>("captureActionButton").size(),Settings::invocableActionNames().size());
+  QCOMPARE(window.findChildren<QToolButton*>("captureActionButton").size(),Settings::presentationOrder().size());
   QToolButton* record=nullptr;for(auto* button:window.findChildren<QToolButton*>("captureActionButton"))if(button->property("captureAction")=="record")record=button;QVERIFY(record);
   QToolButton* edit=nullptr;for(auto* button:window.findChildren<QToolButton*>("captureActionButton"))if(button->property("captureAction")=="edit")edit=button;
   // The other sources are the split button's menu, a right-click or a drop;

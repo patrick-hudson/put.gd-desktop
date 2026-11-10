@@ -1,5 +1,6 @@
 #include "BudgieSourceAdapter.h"
 #include "platform/wayland/CaptureCompose.h"
+#include "platform/SessionLock.h"
 #include <QCoreApplication>
 #include <QJsonArray>
 namespace putgd {
@@ -48,9 +49,14 @@ QJsonObject BudgieSourceAdapter::capabilities()const{
  region["available"]=false;region["error"]="Native region selection requires current distro per-window LayerShellQt and Qt 6.5 or later";
 #endif
  if(region_.cleanupRequired()){for(auto* status:{&region,&window,&desktop}){(*status)["available"]=false;(*status)["error"]=cleanupMessage;(*status)["code"]="capture_cleanup_pending";}}
- const QJsonObject helper=region_.diagnostics();region["helper"]=helper;
+ const QJsonObject helper=region_.diagnostics();
+ // One monitor and a repeat read outputs as a desktop capture does; neither needs
+ // the selector. The pointer's output comes from a cursor session of the same protocol.
+ auto monitor=desktop;monitor["pointer"]="ext-image-copy-capture-cursor-session";auto repeat=desktop;repeat["remembered"]=lastRegion_.has_value();
+ QJsonObject delay{{"available",region["available"].toBool()},{"seconds",QJsonArray{3,5,10}},{"indicator","layer-surface"}};if(!region["available"].toBool())delay["error"]=region["error"];
+ region["helper"]=helper;
  return {{"adapter","budgie-wayland"},{"resident","qt-core"},{"captureHelper",helper},{"outputs",outputs},{"imageCopy",pixels},
-  {"capture",QJsonObject{{"region",region},{"window",window},{"desktop",desktop}}},{"clipboard",clipboard_.status()},
+  {"capture",QJsonObject{{"region",region},{"window",window},{"desktop",desktop},{"monitor",monitor},{"repeat",repeat}}},{"delay",delay},{"clipboard",clipboard_.status()},
   {"shortcuts",shortcuts_.capabilities()}};
 }
 SourceAdapter::PreparedAcquisition BudgieSourceAdapter::prepareAcquisition(const QString& action){
@@ -77,24 +83,86 @@ SourceAdapter::PreparedAcquisition BudgieSourceAdapter::prepareAcquisition(const
   return [guard,snapshot,generation](const ResourceLimits& limits,std::function<void(PayloadResult)> cb){if(!guard||guard->generation_!=generation){cb({{},{"cancelled","Window acquisition cancelled",{}}});return;}if(snapshot->done)cb(imageResult(snapshot->image,limits,snapshot->error));else{snapshot->acceptedLimits=limits;snapshot->accepted=std::move(cb);}};
  }
  const auto frozen=layout();const auto revision=outputs_.revision();
- return [guard,action,frozen,revision,outcome=captureOutcome_,screenshot=action=="region"&&regionScreenshotFirst_](const ResourceLimits& limits,std::function<void(PayloadResult)> cb){if(!guard){cb({{},{"source_unavailable","Desktop adapter closed",{}}});return;}guard->capture(action,frozen,revision,limits,std::move(cb),outcome,screenshot);};
+ if(action=="monitor"){
+  // The pointer's output is frozen now, at invocation, as a window's focus is.
+  struct PointerSnapshot {QRectF selection;Error error;bool done=false;std::function<void()> ready;};
+  auto snapshot=std::make_shared<PointerSnapshot>();const auto generation=generation_;
+  pointer_.probe([snapshot,frozen](QList<CursorOutputProbe::Position> positions,Error error){
+   snapshot->done=true;
+   if(error)snapshot->error=std::move(error);
+   else{
+    // The cursor image can straddle two outputs; the hotspot lies in one buffer.
+    const CaptureFrame* found=nullptr;
+    for(const auto& position:positions)for(const auto& frame:frozen)if(frame.identity==position.output&&QRect(QPoint(),frame.nativeRect.size()).contains(position.buffer))found=&frame;
+    if(found)snapshot->selection=found->logicalRect;else snapshot->error={"capture_target","The pointer is not over a monitor",{}};
+   }
+   if(auto ready=std::exchange(snapshot->ready,{}))ready();
+  });
+  return [guard,snapshot,frozen,revision,generation](const ResourceLimits& limits,std::function<void(PayloadResult)> cb){
+   auto proceed=[guard,snapshot,frozen,revision,generation,limits,cb=std::move(cb)]()mutable{
+    if(!guard||guard->generation_!=generation){cb({{},{"cancelled","Monitor capture cancelled",{}}});return;}
+    if(snapshot->error){cb({{},snapshot->error});return;}
+    guard->captureArea(frozen,revision,snapshot->selection,limits,std::move(cb));
+   };
+   if(snapshot->done)proceed();else snapshot->ready=std::move(proceed);
+  };
+ }
+ if(action=="repeat"){
+  Error error;QRectF selection;
+  if(!lastRegion_)error=noLastRegion();
+  else if(!sameOutputLayout(lastRegion_->layout,frozen))error=lastRegionLayoutChanged();
+  else selection=lastRegion_->rectangle;
+  return [guard,frozen,revision,error,selection](const ResourceLimits& limits,std::function<void(PayloadResult)> cb){
+   if(error){cb({{},error});return;}
+   if(!guard){cb({{},{"source_unavailable","Desktop adapter closed",{}}});return;}
+   guard->captureArea(frozen,revision,selection,limits,std::move(cb));
+  };
+ }
+ return [guard,action,frozen,revision,outcome=captureOutcome_,screenshot=action=="region"&&regionScreenshotFirst_,delay=action=="region"&&!regionScreenshotFirst_?captureDelay_:0](const ResourceLimits& limits,std::function<void(PayloadResult)> cb){if(!guard){cb({{},{"source_unavailable","Desktop adapter closed",{}}});return;}guard->capture(action,frozen,revision,limits,std::move(cb),outcome,screenshot,delay);};
 }
+void BudgieSourceAdapter::captureArea(QList<CaptureFrame> frozen,quint64 revision,QRectF selection,ResourceLimits limits,std::function<void(PayloadResult)> cb){
+ if(region_.cleanupRequired()){cb({{},{"capture_cleanup_pending",cleanupMessage,{}}});return;}
+ if(region_.busy()){cb({{},{"busy_selecting","Region selection is already active",{}}});return;}
+ if(frozen.isEmpty()||!unchanged(frozen,revision)){cb({{},{"display_changed","Display layout changed after invocation",{}}});return;}
+ captureScreens(std::move(frozen),revision,selection,limits,std::move(cb));
+}
+std::function<void(PayloadResult)> BudgieSourceAdapter::remembering(QRectF selection,QList<CaptureFrame> layout,std::function<void(PayloadResult)> cb){
+ QPointer<BudgieSourceAdapter> guard(this);for(auto& frame:layout)frame.pixels={};
+ return [guard,selection,layout=std::move(layout),cb=std::move(cb)](PayloadResult result)mutable{
+  if(guard&&!result.error)guard->lastRegion_=RegionMemory{selection,std::move(layout)};
+  cb(std::move(result));
+ };
+}
+void BudgieSourceAdapter::lockGate(int delay,std::function<void(Error)> next){
+ if(delay<=0){next({});return;}
+ sessionLocked([next=std::move(next)](bool locked){next(locked?lockedError():Error{});});
+}
+void BudgieSourceAdapter::countdown(int seconds,std::function<void(Error)> reply){
+ if(region_.busy()){reply({"busy_selecting","Region selection is already active",{}});return;}
+ countdown_.start(seconds,captureAppearance_,std::move(reply));
+}
+void BudgieSourceAdapter::sessionLocked(std::function<void(bool)> reply){querySessionLocked(this,std::move(reply));}
 SourceAdapter::PreparedAcquisition BudgieSourceAdapter::prepareAcquisition(const QString& action,const ResourceLimits& acceptedLimits,std::function<void(Error)> terminal,std::function<void()> released){
 #if defined(PUTGD_HAVE_LAYER_SHELL) && QT_VERSION >= QT_VERSION_CHECK(6,5,0)
  // A live selection shows before the journal saves; its pixels still wait.
  const auto frozen=action=="region"&&!regionScreenshotFirst_?layout():QList<CaptureFrame>{};
  const auto revision=outputs_.revision();
  if(!frozen.isEmpty()&&!region_.busy()&&!region_.cleanupRequired()&&unchanged(frozen,revision)){
-  QPointer<BudgieSourceAdapter> guard(this);const auto generation=generation_;
+  QPointer<BudgieSourceAdapter> guard(this);const auto generation=generation_;const int delay=captureDelay_;
+  region_.setDelaySeconds(delay);
   auto ticket=region_.prepare(frozen,captureOutcome_,captureAppearance_,std::move(terminal),std::move(released));
-  return [guard,ticket,frozen,revision,acceptedLimits,generation](const ResourceLimits& limits,std::function<void(PayloadResult)> cb){
+  return [guard,ticket,frozen,revision,acceptedLimits,generation,delay](const ResourceLimits& limits,std::function<void(PayloadResult)> cb){
    if(!guard){cb({{},{"source_unavailable","Desktop adapter closed",{}}});return;}
    if(limits.imagePixels!=acceptedLimits.imagePixels||limits.imageBytes!=acceptedLimits.imageBytes||limits.maxFileBytes!=acceptedLimits.maxFileBytes){guard->region_.discard(ticket);cb({{},{"input_excessive","Prepared capture limits changed",{}}});return;}
-   guard->region_.begin(ticket,[guard,frozen,revision,limits,generation,cb=std::move(cb)](QRectF selection,Error error)mutable{
+   guard->region_.begin(ticket,[guard,frozen,revision,limits,generation,delay,cb=std::move(cb)](QRectF selection,Error error)mutable{
     if(!guard||guard->generation_!=generation){cb({{},{"cancelled","Desktop capture cancelled",{}}});return;}
     if(error){cb({{},std::move(error)});return;}
-    if(!guard->unchanged(frozen,revision)){cb({{},{"display_changed","Display layout changed during region selection",{}}});return;}
-    guard->captureScreens(frozen,revision,selection,limits,std::move(cb));
+    guard->lockGate(delay,[guard,frozen,revision,limits,generation,selection,cb=std::move(cb)](Error locked)mutable{
+     if(!guard||guard->generation_!=generation){cb({{},{"cancelled","Desktop capture cancelled",{}}});return;}
+     if(locked){cb({{},std::move(locked)});return;}
+     if(!guard->unchanged(frozen,revision)){cb({{},{"display_changed","Display layout changed during region selection",{}}});return;}
+     guard->captureScreens(frozen,revision,selection,limits,guard->remembering(selection,frozen,std::move(cb)));
+    });
    });
   };
  }
@@ -105,7 +173,7 @@ SourceAdapter::PreparedAcquisition BudgieSourceAdapter::prepareAcquisition(const
  return prepareAcquisition(action);
 }
 void BudgieSourceAdapter::acquire(const QString& action,const ResourceLimits& limits,std::function<void(PayloadResult)> cb){prepareAcquisition(action)(limits,std::move(cb));}
-void BudgieSourceAdapter::capture(QString action,QList<CaptureFrame> frozen,quint64 revision,ResourceLimits limits,std::function<void(PayloadResult)> cb,const QString& outcome,bool screenshotFirst){
+void BudgieSourceAdapter::capture(QString action,QList<CaptureFrame> frozen,quint64 revision,ResourceLimits limits,std::function<void(PayloadResult)> cb,const QString& outcome,bool screenshotFirst,int delay){
  if(action!="region"&&action!="desktop"){cb({{},{"source_unsupported","Unknown capture action",{}}});return;}
  if(region_.cleanupRequired()){cb({{},{"capture_cleanup_pending",cleanupMessage,{}}});return;}
 #if !defined(PUTGD_HAVE_LAYER_SHELL) || QT_VERSION < QT_VERSION_CHECK(6,5,0)
@@ -116,11 +184,16 @@ void BudgieSourceAdapter::capture(QString action,QList<CaptureFrame> frozen,quin
  if(action=="region"&&screenshotFirst){selectFrozen(std::move(frozen),revision,limits,std::move(cb),outcome);return;}
  if(action=="region"){
   const auto generation=generation_;QPointer<BudgieSourceAdapter> guard(this);
-  region_.start(frozen,[guard,frozen,revision,limits,generation,cb=std::move(cb)](QRectF selection,Error error)mutable{
+  region_.setDelaySeconds(delay);
+  region_.start(frozen,[guard,frozen,revision,limits,generation,delay,cb=std::move(cb)](QRectF selection,Error error)mutable{
    if(!guard||guard->generation_!=generation){cb({{},{"cancelled","Desktop capture cancelled",{}}});return;}
    if(error){cb({{},std::move(error)});return;}
-   if(!guard->unchanged(frozen,revision)){cb({{},{"display_changed","Display layout changed during region selection",{}}});return;}
-   guard->captureScreens(frozen,revision,selection,limits,std::move(cb));
+   guard->lockGate(delay,[guard,frozen,revision,limits,generation,selection,cb=std::move(cb)](Error locked)mutable{
+    if(!guard||guard->generation_!=generation){cb({{},{"cancelled","Desktop capture cancelled",{}}});return;}
+    if(locked){cb({{},std::move(locked)});return;}
+    if(!guard->unchanged(frozen,revision)){cb({{},{"display_changed","Display layout changed during region selection",{}}});return;}
+    guard->captureScreens(frozen,revision,selection,limits,guard->remembering(selection,frozen,std::move(cb)));
+   });
   },outcome,{},captureAppearance_);
   return;
  }
@@ -148,7 +221,7 @@ void BudgieSourceAdapter::selectFrozen(QList<CaptureFrame> frozen,quint64 revisi
    if(!guard||guard->generation_!=generation){(*reply)({{},{"cancelled","Desktop capture cancelled",{}}});return;}
    if(error){(*reply)({{},std::move(error)});return;}
    if(!guard->unchanged(layout,revision)){(*reply)({{},{"display_changed","Display layout changed during region selection",{}}});return;}
-   guard->compose(std::move(*pixels),layout,revision,selection,limits,std::move(*reply));
+   guard->compose(std::move(*pixels),layout,revision,selection,limits,guard->remembering(selection,layout,std::move(*reply)));
   },outcome,*pixels,guard->captureAppearance_);
  });
 }
@@ -187,7 +260,7 @@ void BudgieSourceAdapter::compose(QList<CaptureFrame> frames,QList<CaptureFrame>
  connect(worker,&QThread::finished,this,[this,worker,generation,frozen=std::move(frozen),revision,result,cb=std::move(cb)]()mutable{workers_.removeOne(worker);worker->deleteLater();if(generation!=generation_)cb({{},{"cancelled","Capture acquisition cancelled",{}}});else if(!unchanged(frozen,revision))cb({{},{"display_changed","Display layout changed during capture composition",{}}});else cb(std::move(*result));});
  worker->start();
 }
-void BudgieSourceAdapter::cancelAcquisition(){++generation_;capture_.cancel();clipboard_.cancel();region_.cancel();}
+void BudgieSourceAdapter::cancelAcquisition(){countdown_.cancel();pointer_.cancel();++generation_;capture_.cancel();clipboard_.cancel();region_.cancel();}
 void BudgieSourceAdapter::copy(const CopyPayload& payload,std::function<void(Error)> cb){clipboard_.copy(payload,std::move(cb));}
 void BudgieSourceAdapter::invalidateCopyEligibility(){clipboard_.invalidateCopyEligibility();}
 void BudgieSourceAdapter::bindShortcuts(const QHash<QString,QString>& desired){shortcuts_.bind(desired);}

@@ -2,6 +2,7 @@
 #include "X11Reply.h"
 #include "X11WindowOwner.h"
 #include <QGuiApplication>
+#include <QJsonObject>
 #include <QScreen>
 #include <QWindow>
 #include <QPixmap>
@@ -9,6 +10,11 @@
 #include <cstring>
 namespace putgd {
 namespace {using x11::reply;Error targetError(){return {"capture_target","Focused external window is unavailable or changed",{}};}}
+QJsonArray describeLayout(const QList<CaptureFrame>& frames){
+ QJsonArray out;
+ for(const auto& frame:frames)out.append(QJsonObject{{"identity",frame.identity},{"logical",QJsonArray{frame.logicalRect.x(),frame.logicalRect.y(),frame.logicalRect.width(),frame.logicalRect.height()}},{"native",QJsonArray{frame.nativeRect.x(),frame.nativeRect.y(),frame.nativeRect.width(),frame.nativeRect.height()}},{"rotation",frame.rotation}});
+ return out;
+}
 X11Capture::X11Capture(QObject* parent):QObject(parent) {
  if(QGuiApplication::platformName()!="xcb")return;
  connection_=xcb_connect(nullptr,nullptr);if(xcb_connection_has_error(connection_))return;
@@ -83,6 +89,13 @@ X11Target X11Capture::freeze(const QString& action,Error& error) {
   }
   if(target.logicalSelection.isEmpty())error=targetError();
  }
+ if(action=="monitor") {
+  // The output under the pointer, frozen at invocation.
+  auto pointer=reply(xcb_query_pointer_reply(connection_,xcb_query_pointer(connection_,root_),nullptr));
+  target.logicalSelection={};
+  if(pointer&&pointer->same_screen)for(const auto& f:target.layout)if(f.nativeRect.contains(pointer->root_x,pointer->root_y)){target.nativeArea=f.nativeRect;target.logicalSelection=f.logicalRect;break;}
+  if(target.nativeArea.isNull())error={"capture_target","The pointer is not over a monitor",{}};
+ }
  return target;
 }
 bool X11Capture::unchanged(const X11Target& target,Error& error) {
@@ -95,7 +108,9 @@ bool X11Capture::unchanged(const X11Target& target,Error& error) {
 QList<CaptureFrame> X11Capture::frames(const X11Target& target,Error& error) {
  if(!unchanged(target,error))return {};
  QList<CaptureFrame> frames=target.layout;
- for(auto& frame:frames){QScreen* screen=nullptr;for(auto* s:QGuiApplication::screens())if(s->name()==frame.identity){screen=s;break;}if(!screen){error={"display_changed","Monitor disappeared before capture",{}};return {};}
+ // A window or one monitor needs only the outputs it lies on.
+ const QRect crop=target.window?target.nativeWindowRect:target.nativeArea;
+ for(auto& frame:frames){if(!crop.isNull()&&!frame.nativeRect.intersects(crop))continue;QScreen* screen=nullptr;for(auto* s:QGuiApplication::screens())if(s->name()==frame.identity){screen=s;break;}if(!screen){error={"display_changed","Monitor disappeared before capture",{}};return {};}
   // Qt's X11 root-window capture returns visible pixels including panels and
   // occlusion and excludes the cursor. Cinnamon region callers use the native
   // compositor scene after selection; generic X11 callers remove their surfaces.
@@ -103,10 +118,10 @@ QList<CaptureFrame> X11Capture::frames(const X11Target& target,Error& error) {
   if(frame.pixels.isNull()||frame.pixels.size()!=frame.nativeRect.size()){error={"capture_geometry","Native frame dimensions disagree with monitor geometry",{}};return {};}
  }
  if(!unchanged(target,error))return {};
- if(target.window){
+ if(!crop.isNull()){
   QList<CaptureFrame> cropped;
   for(auto frame:frames){
-   const auto intersection=frame.nativeRect.intersected(target.nativeWindowRect);
+   const auto intersection=frame.nativeRect.intersected(crop);
    if(intersection.isEmpty())continue;
    frame.pixels=frame.pixels.copy(intersection.translated(-frame.nativeRect.topLeft()));
    frame.logicalRect=QRectF(frame.logicalRect.x()+(intersection.x()-frame.nativeRect.x())/frame.density,frame.logicalRect.y()+(intersection.y()-frame.nativeRect.y())/frame.density,intersection.width()/frame.density,intersection.height()/frame.density);

@@ -1,6 +1,6 @@
 # The payload, history, operations, storage and CLI contract loops.
 # Included inside if(BUILD_TESTING) in the top-level CMakeLists.txt.
-  foreach(contract payload archive upload_naming history operations recording_model)
+  foreach(contract payload archive upload_naming history operations recording_model capture_delay)
     add_executable(test_${contract} tests/unit/test_${contract}.cpp)
     target_link_libraries(test_${contract} PRIVATE putgd_app Qt6::Test)
     target_include_directories(test_${contract} PRIVATE tests)
