@@ -3,20 +3,21 @@ import { open } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { Readable } from 'node:stream';
 import { MemberRole, NodeType, NodeWithSameNameExistsValidationError, RateLimitedError, ServerError, ValidationError, type NodeEntity, type ProtonDriveClient } from '@protontech/drive-sdk';
-import { APP_VERSION, SDK_VERSION, SECRET_SERVICE, initialize, privateDataDirectory } from './account';
+import { APP_VERSION, SDK_VERSION, SECRET_SERVICE, initialize, openAccount, openClient, privateDataDirectory } from './account';
 import { MAX_REQUEST_BYTES, ProtocolError, classifyNode, configured, days, failure, hash, makeReceipt,
-    name, object, parseRequest, receipt, reference, shareOutcome, connectAction, text, requestTimeout, type JsonObject } from './protocol';
+    name, object, parseRequest, publicationClientUid, receipt, reference, shareOutcome, connectAction, text, requestTimeout, type JsonObject } from './protocol';
 import { AccountApiError } from 'proton-drive-sdk-account';
 import { writeJson } from './stdout';
 import { createProgressReporter } from './progress';
 
-type Context = { sdk: ProtonDriveClient; auth: Awaited<ReturnType<typeof initialize>>['auth'] };
-const controller = new AbortController();
+type Context = Awaited<ReturnType<typeof initialize>>;
+let controller = new AbortController();
 let mutationStarted = false;
 let finalWrite: Promise<void> | undefined;
 let activeRequest: JsonObject | undefined;
 let deadlineExpired = false;
 let uploadProgress: ReturnType<typeof createProgressReporter> | undefined;
+let sessions = false;
 function writeFinal(value: JsonObject): Promise<void> {
     return finalWrite ??= (async () => { await uploadProgress?.finish(); await writeJson(value); })();
 }
@@ -52,6 +53,7 @@ async function readRequest(): Promise<JsonObject> {
 }
 export async function accountRoot(ctx: Context, request: JsonObject, configuredRequired = true) {
     if (!ctx.auth.isLoggedIn()) throw new ProtocolError('authentication_required');
+    ctx.warm();
     let root: NodeEntity;
     try { root = await ctx.sdk.getMyFilesRootFolder(); }
     catch (error) {
@@ -61,13 +63,35 @@ export async function accountRoot(ctx: Context, request: JsonObject, configuredR
     if (configuredRequired && root.uid !== text(request.destination.settings.accountRootUid)) throw new ProtocolError('account_changed');
     return root;
 }
-export async function destinationFolder(ctx: Context, request: JsonObject) {
+// One batched read from the service, never from this request's cache (see `fresh`).
+// A node the service does not return is absent from the result.
+async function readNodes(ctx: Context, uids: string[]): Promise<Map<string, NodeEntity>> {
+    const nodes = new Map<string, NodeEntity>();
+    await ctx.fresh(async () => {
+        for await (const node of ctx.sdk.iterateNodes([...new Set(uids)], controller.signal))
+            if (!('missingUid' in node)) nodes.set(node.uid, node);
+    });
+    return nodes;
+}
+// The configured folder, checked against the account, with any `further` nodes: one
+// batch for all of them instead of a request each.
+export async function readDestination(ctx: Context, request: JsonObject, further: string[] = []) {
+    if (!ctx.auth.isLoggedIn()) throw new ProtocolError('authentication_required');
+    const { accountRootUid, folderUid } = configured(request);
+    ctx.warm();
+    let nodes = new Map<string, NodeEntity>(), failed: unknown;
+    try { nodes = await readNodes(ctx, [accountRootUid, folderUid, ...further]); }
+    catch (error) { failed = error; }
+    // The service names My files, not the configured UID: another root is another account.
     const root = await accountRoot(ctx, request);
-    const { folderUid } = configured(request);
-    const folder = folderUid === root.uid ? root : await ctx.sdk.getNode(folderUid);
-    if (folder.type !== NodeType.Folder || folder.trashTime || folder.errors?.length || !folder.name.ok ||
-        (folder.uid !== root.uid && folder.parentUid !== root.uid)) throw new ProtocolError('destination_unavailable');
-    return folder;
+    if (failed) throw failed;
+    const folder = nodes.get(folderUid);
+    if (!nodes.has(root.uid) || !folder || folder.type !== NodeType.Folder || folder.trashTime || folder.errors?.length ||
+        !folder.name.ok || (folder.uid !== root.uid && folder.parentUid !== root.uid)) throw new ProtocolError('destination_unavailable');
+    return { folder, nodes };
+}
+export async function destinationFolder(ctx: Context, request: JsonObject) {
+    return (await readDestination(ctx, request)).folder;
 }
 export async function inspectAccount(ctx: Context, request: JsonObject): Promise<JsonObject> {
     const root = await accountRoot(ctx, request, !!request.destination.settings.accountRootUid);
@@ -95,11 +119,23 @@ async function findCandidate(ctx: Context, request: JsonObject): Promise<NodeEnt
     }
     return found;
 }
+// In a session, the destination read made for a name check also serves the one upload that
+// follows it within ten seconds. The two are halves of one creation: the service decides a
+// collision, and an upload already outlasts its own destination read by its whole transfer.
+let checkedDestination: { key: string; at: number; folder: NodeEntity } | undefined;
+// Destinations this session has read: their folder keys are in the process, so a name
+// query can run beside the destination read instead of after it.
+const readDestinations = new Set<string>();
+const destinationKey = (request: JsonObject) => JSON.stringify([request.destination.credentials.reference, configured(request)]);
 export async function checkName(ctx: Context, request: JsonObject) {
     try {
-        const folder = await destinationFolder(ctx, request);
         const candidate = name(request.candidate);
-        const available = await ctx.sdk.getAvailableName(folder.uid, candidate, NodeType.File);
+        const beside = sessions && readDestinations.has(destinationKey(request))
+            ? ctx.sdk.getAvailableName(configured(request).folderUid, candidate, NodeType.File) : undefined;
+        beside?.catch(() => {});
+        const folder = await destinationFolder(ctx, request);
+        if (sessions) { checkedDestination = { key: destinationKey(request), at: performance.now(), folder }; readDestinations.add(destinationKey(request)); }
+        const available = await (beside ?? ctx.sdk.getAvailableName(folder.uid, candidate, NodeType.File));
         if (typeof available !== 'string' || !available) return status('inconclusive');
         return status(available === candidate ? 'absent' : 'present', {
             objectReference: reference(request), concurrencyToken: '' });
@@ -108,16 +144,15 @@ export async function checkName(ctx: Context, request: JsonObject) {
 export async function stat(ctx: Context, request: JsonObject) {
     const proof = receipt(request), ref = proof.objectReference;
     try {
-        await destinationFolder(ctx, request);
-        let node: NodeEntity;
-        try { node = await ctx.sdk.getNode(ref.nodeUid); }
-        catch {
-            // A denied lookup is not absence. Only a complete folder list proves missing here.
+        const node = (await readDestination(ctx, request, [ref.nodeUid])).nodes.get(ref.nodeUid);
+        if (!node) {
+            // An unanswered lookup is not absence. Only a complete folder list proves missing here.
             for await (const uid of ctx.sdk.iterateFolderChildrenNodeUids(ref.folderUid, undefined, controller.signal))
                 if (uid === ref.nodeUid) return status('unknown');
             return status('missing');
         }
-        return status(classifyNode(node, ref, proof.publicationId), { ...(classifyNode(node, ref, proof.publicationId) === 'own' ? { receipt: proof } : {}) });
+        const ownership = classifyNode(node, ref, proof.publicationId);
+        return status(ownership, ownership === 'own' ? { receipt: proof } : {});
     } catch (error) { return status('unknown', { error: serviceFailure(error, 'operation_unknown', ctx.auth.isLoggedIn()) }); }
 }
 async function reconcile(ctx: Context, request: JsonObject) {
@@ -146,7 +181,11 @@ export async function upload(ctx: Context, request: JsonObject): Promise<JsonObj
         throw new ProtocolError('invalid_request');
     uploadProgress = createProgressReporter();
     await uploadProgress.phase('preparing');
-    const folder = await destinationFolder(ctx, request);
+    const checked = checkedDestination;
+    checkedDestination = undefined;
+    if (!ctx.auth.isLoggedIn()) throw new ProtocolError('authentication_required');
+    const folder = checked && checked.key === destinationKey(request) && performance.now() - checked.at < 10000
+        ? checked.folder : await destinationFolder(ctx, request);
     const file = await open(artifact.path, constants.O_RDONLY | constants.O_NOFOLLOW);
     try {
         const initial = await file.stat();
@@ -203,12 +242,14 @@ export async function share(ctx: Context, request: JsonObject) {
         catch { throw new ProtocolError('keychain_unavailable'); }
         if (!customPassword) throw new ProtocolError('keychain_unavailable');
     }
+    let modulusUnused = () => {};
     try {
         const uid = proof.objectReference.nodeUid;
         let info;
         if (options.action === 'inspect') info = await ctx.sdk.getSharingInfo(uid);
         else {
             mutationStarted = true;
+            if (options.action === 'create') modulusUnused = ctx.modulusAhead();
             info = options.action === 'revoke' ? await ctx.sdk.unshareNode(uid, { urlAccess: 'remove' }) :
                 await ctx.sdk.shareNode(uid, { urlAccess: { role: MemberRole.Viewer, customPassword,
                     expiration: expirationDays ? new Date(Date.now() + expirationDays * 86400000) : undefined } });
@@ -221,7 +262,7 @@ export async function share(ctx: Context, request: JsonObject) {
         const result = shareOutcome(proof, options.action, '', 'unknown');
         result.error = deadlineExpired ? deadlineError() : serviceFailure(error, 'operation_unknown', ctx.auth.isLoggedIn());
         return result;
-    } finally { customPassword = undefined; }
+    } finally { customPassword = undefined; modulusUnused(); }
 }
 export async function createFolder(ctx: Context, request: JsonObject): Promise<JsonObject> {
     const folderName = name(request.options?.name ?? request.candidate);
@@ -231,6 +272,35 @@ export async function createFolder(ctx: Context, request: JsonObject): Promise<J
         const folder = await ctx.sdk.createFolder(root.uid, folderName);
         return { uid: folder.uid, name: folderName, accountRootUid: root.uid };
     } catch { throw new ProtocolError('folder_creation_unknown'); }
+}
+// `--session` answers one account's requests, a line each, until its input closes: the
+// provider holds one for an operation's name check, upload and link. The signed-in account
+// and one Drive client are kept between them; every request still makes its own destination
+// and ownership reads from the service, and has its own deadline and cancellation.
+const SESSION_METHODS = new Set(['warm', 'checkName', 'upload', 'stat', 'reconcile', 'share']);
+let session: { reference: string; account: Awaited<ReturnType<typeof openAccount>>; clientUid?: string; ctx: Context } | undefined;
+async function context(request: JsonObject) {
+    if (!sessions) return initialize(request);
+    const reference = request.destination.credentials.reference, clientUid = publicationClientUid(request);
+    if (session && session.reference !== reference) throw new ProtocolError('invalid_request');
+    // Only a request with another publication's client identity needs another client.
+    if (session && (clientUid === undefined || clientUid === session.clientUid)) return session.ctx;
+    const account = session?.account ?? await openAccount(request);
+    session = { reference, account, clientUid, ctx: await openClient(account, request) };
+    return session.ctx;
+}
+async function* requestLines(): AsyncGenerator<Buffer> {
+    let pending: Buffer = Buffer.alloc(0);
+    for await (const chunk of process.stdin) {
+        pending = Buffer.concat([pending, Buffer.from(chunk)]);
+        for (;;) {
+            const end = pending.indexOf(10), line = end < 0 ? pending : pending.subarray(0, end);
+            // A request past the bound is refused, and nothing after it is read.
+            if (line.length > MAX_REQUEST_BYTES) { yield line; return; }
+            if (end < 0) break;
+            yield line; pending = pending.subarray(end + 1);
+        }
+    }
 }
 async function run(request: JsonObject): Promise<JsonObject> {
     if (request.method === 'remove') throw new ProtocolError('unsupported_safe_removal');
@@ -251,7 +321,15 @@ async function run(request: JsonObject): Promise<JsonObject> {
             throw new ProtocolError('keychain_unavailable');
         } finally { options.password = undefined; }
     }
-    const ctx = await initialize(request);
+    if (request.method === 'warm' && !sessions) throw new ProtocolError('unsupported_request');
+    const ctx = await context(request);
+    // A session started ahead of its first request signs in, opens its connections and reads
+    // the account. It changes nothing, and the requests after it still make their own reads.
+    if (request.method === 'warm') {
+        if (!request.destination.settings.folderUid) await accountRoot(ctx, request, !!request.destination.settings.accountRootUid);
+        else { await destinationFolder(ctx, request); readDestinations.add(destinationKey(request)); }
+        return {};
+    }
     if (request.method === 'connect') {
         // Reconnect never replaces a valid session in place. A new login uses a new reference.
         const action = connectAction(ctx.auth.isLoggedIn(), ctx.accountReferenceExists);
@@ -286,17 +364,14 @@ async function timeout() {
     } else await writeFinal({ ok: false, error: deadlineError() });
     process.exit(0);
 }
-if (import.meta.main) {
-if (process.argv.length === 3 && process.argv[2] === '--version') {
-    await writeJson({ schemaVersion: 1, runtime: 'putgd-proton-runtime', appVersion: APP_VERSION,
-        sdkVersion: SDK_VERSION, bunVersion: Bun.version, protocolVersion: 1 });
-} else if (process.argv.length === 3 && process.argv[2] === '--stdio') {
-    let timer = setTimeout(timeout, 10000);
+// Reads, runs and answers one request. `wait` bounds the read; the request's own deadline
+// bounds the rest. A passed deadline answers and ends the process (see `timeout`).
+async function serve(read: () => Promise<JsonObject>, wait?: number) {
+    let timer = wait === undefined ? undefined : setTimeout(timeout, wait);
     try {
-        activeRequest = await readRequest();
+        activeRequest = await read();
         clearTimeout(timer);
-        const timeoutMs = requestTimeout(activeRequest);
-        timer = setTimeout(timeout, timeoutMs);
+        timer = setTimeout(timeout, requestTimeout(activeRequest));
         const result = await run(activeRequest);
         clearTimeout(timer);
         await writeFinal(success(result));
@@ -304,6 +379,25 @@ if (process.argv.length === 3 && process.argv[2] === '--version') {
         clearTimeout(timer);
         await writeFinal({ ok: false, error: deadlineExpired ? deadlineError() : serviceFailure(error, mutationStarted ? 'operation_unknown' : 'operation_failed') });
     } finally { clearTimeout(timer); controller.abort(); }
+}
+if (import.meta.main) {
+if (process.argv.length === 3 && process.argv[2] === '--version') {
+    await writeJson({ schemaVersion: 1, runtime: 'putgd-proton-runtime', appVersion: APP_VERSION,
+        sdkVersion: SDK_VERSION, bunVersion: Bun.version, protocolVersion: 1 });
+} else if (process.argv.length === 3 && process.argv[2] === '--stdio') {
+    await serve(readRequest, 10000);
+    process.exit(0);
+} else if (process.argv.length === 3 && process.argv[2] === '--session') {
+    sessions = true;
+    for await (const line of requestLines()) {
+        controller = new AbortController(); mutationStarted = false; finalWrite = undefined;
+        activeRequest = undefined; deadlineExpired = false; uploadProgress = undefined;
+        await serve(async () => {
+            const request = parseRequest(line);
+            if (!SESSION_METHODS.has(request.method)) throw new ProtocolError('unsupported_request');
+            return request;
+        });
+    }
     process.exit(0);
 } else {
     await writeFinal({ ok: false, error: failure('unsupported_request') }); process.exitCode = 2;

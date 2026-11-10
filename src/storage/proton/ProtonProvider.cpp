@@ -1,3 +1,4 @@
+#include "HelperProcess.h"
 #include "OutputBudget.h"
 #include "ProtonProvider.h"
 #include "core/HostEnvironment.h"
@@ -10,7 +11,6 @@
 #include <QJsonDocument>
 #include <QJsonArray>
 #include <QLocale>
-#include <QProcess>
 #include <QProcessEnvironment>
 #include <QRegularExpression>
 #include <QTemporaryDir>
@@ -23,7 +23,12 @@
 #include <sys/stat.h>
 #include <cerrno>
 #endif
+#include <functional>
 #include <future>
+#include <map>
+#include <memory>
+#include <mutex>
+#include <optional>
 
 namespace putgd {
 namespace {
@@ -37,11 +42,149 @@ QString runtimePath() {
  if(app==QString::fromUtf8(PUTGD_PROTON_BUILD_APP_DIR))return QString::fromUtf8(PUTGD_PROTON_BUILD_RUNTIME);
  return QDir(app).filePath(PUTGD_PROTON_INSTALL_RELATIVE);
 }
-bool runtimeVerified() {
+bool runtimeHashMatches() {
  QFile file(runtimePath());QCryptographicHash hash(QCryptographicHash::Sha512);
  return !QString::fromUtf8(PUTGD_PROTON_RUNTIME_SHA512).isEmpty() && file.open(QIODevice::ReadOnly)
    && hash.addData(&file) && hash.result().toHex()==QByteArray(PUTGD_PROTON_RUNTIME_SHA512);
 }
+// Hashing the runtime (about 110 MB) takes most of a second, so one verdict stands for
+// as long as the file is the same one: a replaced or rewritten file has another inode,
+// size or change time, and is hashed again. A caller waits for a hash already under way,
+// unless it may not hash: it then learns only whether the file is already known good.
+bool runtimeVerified(bool mayHash=true) {
+#ifdef Q_OS_UNIX
+ struct Identity {
+  dev_t device=0;ino_t inode=0;off_t size=0;timespec modified{},changed{};
+  bool operator==(const Identity& other) const {return device==other.device&&inode==other.inode&&size==other.size&&modified.tv_sec==other.modified.tv_sec&&modified.tv_nsec==other.modified.tv_nsec&&changed.tv_sec==other.changed.tv_sec&&changed.tv_nsec==other.changed.tv_nsec;}
+ };
+ const auto identify=[](Identity& identity){
+  struct stat info;if(::stat(QFile::encodeName(runtimePath()).constData(),&info)!=0)return false;
+  identity={info.st_dev,info.st_ino,info.st_size,info.st_mtim,info.st_ctim};return true;
+ };
+ static std::mutex mutex;static std::optional<Identity> verified;
+ std::unique_lock lock(mutex,std::defer_lock);
+ if(mayHash)lock.lock();else if(!lock.try_lock())return false;
+ Identity before,after;if(!identify(before))return false;
+ if(verified&&*verified==before)return true;
+ if(!mayHash||!runtimeHashMatches())return false;
+ // Only a file that stayed the same while it was hashed is remembered.
+ if(identify(after)&&after==before)verified=after;
+ return true;
+#else
+ return mayHash&&runtimeHashMatches();
+#endif
+}
+}
+struct ProtonProvider::Helper {
+ QLockFile lock;QTemporaryDir root;HelperProcess process;
+ // It answers request lines in turn (--session) instead of one request to the end of its input.
+ bool lines=false;
+ // It was sent a warm-up request whose answer has not been read yet.
+ bool warming=false;
+ // Which helper started ahead this is: an address can be used again, a number is not.
+ quint64 serial=0;
+ // Lets a helper nobody will ask again end by itself. It finishes what it is doing first:
+ // a helper killed while it refreshes the session loses the account. `hurry` ends the wait.
+ void finish(const std::function<bool()>& hurry){
+  process.closeInput();
+  for(int waited=0;waited<30000&&!hurry()&&!process.waitForFinished(50);waited+=50){}
+  if(process.running()){process.kill();process.waitForFinished(5000);}
+ }
+ explicit Helper(const QString& lockPath):lock(lockPath),root(QDir::tempPath()+"/putgd-proton-XXXXXX"){}
+ // A helper waiting for a request ends when its input closes.
+ ~Helper(){
+  if(!process.running())return;
+  process.closeInput();if(!process.waitForFinished(2000)){process.kill();process.waitForFinished(5000);}
+ }
+};
+struct ProtonProvider::Session {QString reference;std::unique_ptr<Helper> helper;};
+namespace {
+// One session per provider and thread: an operation's requests all run on its own thread.
+QHash<const ProtonProvider*,std::weak_ptr<void>>& threadSessions() {thread_local QHash<const ProtonProvider*,std::weak_ptr<void>> sessions;return sessions;}
+// Reads a waiting helper's warm-up answer. True when it is clean and nothing follows it.
+bool settled(HelperProcess& process,int milliseconds,const std::function<bool()>& abandoned) {
+ QElapsedTimer waited;waited.start();QByteArray answer;
+ while(!answer.contains('\n')){
+  if(!process.outputOpen()||waited.elapsed()>milliseconds||abandoned())return false;
+  process.waitForReadable(100);answer+=process.read(64*1024);if(answer.size()>=64*1024)return false;
+ }
+ const auto value=QJsonDocument::fromJson(answer.left(answer.indexOf('\n'))).object();
+ return answer.endsWith('\n')&&answer.count('\n')==1&&value.size()==2&&value["ok"].toBool()&&value["result"].isObject()&&value["result"].toObject()["error"].toObject().isEmpty();
+}
+}
+ProtonProvider::ProtonProvider()=default;
+ProtonProvider::~ProtonProvider() {
+ stopping_.store(true);
+ if(verifier_.joinable())verifier_.join();
+ std::map<QString,std::unique_ptr<Helper>> unused;
+ {std::lock_guard lock(standbyMutex_);unused.swap(standby_);}
+ for(auto& entry:unused)retire(std::move(entry.second));
+ std::unique_lock lock(retiringMutex_);retired_.wait(lock,[this]{return retiring_==0;});
+}
+void ProtonProvider::prepare() {
+ if(prepared_.exchange(true))return;
+ verifier_=std::thread([]{runtimeVerified();});
+}
+std::shared_ptr<void> ProtonProvider::openSession(const Destination& destination) {
+ const auto reference=destination.credentialReference["reference"].toString();
+ if(reference.isEmpty()||threadSessions().value(this).lock())return {};
+ auto opened=std::make_shared<Session>();opened->reference=reference;threadSessions().insert(this,opened);return opened;
+}
+std::shared_ptr<ProtonProvider::Session> ProtonProvider::session(const QString& reference) const {
+ auto current=std::static_pointer_cast<Session>(threadSessions().value(this).lock());
+ return current&&current->reference==reference?current:nullptr;
+}
+std::unique_ptr<ProtonProvider::Helper> ProtonProvider::start(const QString& reference,bool lines,int lockWaitMs,bool mayHash,const std::shared_ptr<std::atomic_bool>& cancelled,Error& error) {
+ if(!runtimeVerified(mayHash)){error={"proton_runtime_unavailable","Install a matching put.gd package with the bundled Proton runtime",{}};return {};}
+ // Separate helper processes share a rotating auth session. Serialize each
+ // helper's whole life by keychain reference, including setup and token refresh.
+ const auto lockRoot=QString("/tmp/putgd-proton-accounts-%1").arg(getuid());
+ // mkdir is atomic and does not follow a pre-existing /tmp symlink.
+ if(::mkdir(QFile::encodeName(lockRoot).constData(),0700)!=0&&errno!=EEXIST){error={"proton_lock_unavailable","Private account coordination is unavailable",{}};return {};}
+ const QFileInfo lockInfo(lockRoot);
+ if(lockInfo.ownerId()!=getuid()||lockInfo.permissions()&(QFile::ReadGroup|QFile::WriteGroup|QFile::ExeGroup|QFile::ReadOther|QFile::WriteOther|QFile::ExeOther)){error={"proton_lock_unavailable","Account coordination directory is not private",{}};return {};}
+ if(!lockInfo.isDir()||lockInfo.isSymLink()||lockInfo.canonicalFilePath()!=lockInfo.absoluteFilePath()){error={"proton_lock_unavailable","Account coordination directory is invalid",{}};return {};}
+ const auto accountKey=QString::fromLatin1(QCryptographicHash::hash(reference.toUtf8(),QCryptographicHash::Sha256).toHex());
+ auto started=std::make_unique<Helper>(QDir(lockRoot).filePath(accountKey+".lock"));started->lock.setStaleLockTime(0);started->lines=lines;
+ if(!started->lock.tryLock(lockWaitMs)){error={"proton_account_busy","Another request is using this Proton account; wait and retry",{}};return {};}
+ if(stopping_.load()||(cancelled&&cancelled->load())){error={"operation_cancelled","Request cancelled before the helper started",{}};return {};}
+ if(!started->root.isValid()){error={"proton_private_storage","Private helper storage is unavailable",{}};return {};}
+ QFile::setPermissions(started->root.path(),QFile::ReadOwner|QFile::WriteOwner|QFile::ExeOwner);
+ if(!started->process.start(runtimePath(),{lines?"--session":"--stdio"},helperEnvironment(host::environment(),started->root.path()))){error={"proton_runtime_start","The bundled Proton runtime could not start",{}};return {};}
+ return started;
+}
+// Ends a helper nobody will ask again, without making the caller wait for it.
+void ProtonProvider::retire(std::unique_ptr<Helper> helper) {
+ if(!helper)return;
+ helper->process.closeInput();
+ {std::lock_guard lock(retiringMutex_);++retiring_;}
+ std::thread([this,helper=std::move(helper)]() mutable {
+  helper->finish([this]{return stopping_.load();});
+  helper.reset();
+  std::lock_guard lock(retiringMutex_);--retiring_;retired_.notify_all();
+ }).detach();
+}
+std::unique_ptr<ProtonProvider::Helper> ProtonProvider::takeStandby(const QString& reference) {
+ std::lock_guard lock(standbyMutex_);
+ const auto found=standby_.find(reference);if(found==standby_.end())return {};
+ auto helper=std::move(found->second);standby_.erase(found);return helper;
+}
+std::shared_ptr<void> ProtonProvider::anticipate(const Destination& destination) {
+ const auto reference=destination.credentialReference["reference"].toString();
+ if(stopping_.load()||destination.credentialReference["mode"]!="keychain"||reference.isEmpty())return {};
+ {std::lock_guard lock(standbyMutex_);if(standby_.count(reference))return {};}
+ // Never waits: not for the account, and not for the runtime's hash if it is not known yet.
+ Error unused;auto helper=start(reference,true,0,false,{},unused);if(!helper)return {};
+ const auto warm=QJsonDocument(QJsonObject{{"schemaVersion",1},{"method","warm"},{"destination",destination.toJson()}}).toJson(QJsonDocument::Compact)+'\n';
+ if(helper->process.write(warm,0)!=warm.size()){helper->process.kill();return {};}
+ static std::atomic<quint64> serials{0};
+ helper->warming=true;const auto mine=helper->serial=++serials;
+ {std::lock_guard lock(standbyMutex_);standby_[reference]=std::move(helper);}
+ return std::shared_ptr<void>(this,[this,reference,mine](void*){
+  std::unique_ptr<Helper> unused;
+  {std::lock_guard lock(standbyMutex_);const auto found=standby_.find(reference);if(found!=standby_.end()&&found->second->serial==mine){unused=std::move(found->second);standby_.erase(found);}}
+  retire(std::move(unused));
+ });
 }
 QProcessEnvironment ProtonProvider::helperEnvironment(const QProcessEnvironment& host,const QString& dataDirectory) {
  auto env=host;for(const auto& key:env.keys())if(key.startsWith("PROTON_DRIVE_")||key.startsWith("PUTGD_PROTON_"))env.remove(key);
@@ -96,52 +239,58 @@ QJsonObject ProtonProvider::diagnostics() const {return {{"activeHelpers",active
 QJsonObject ProtonProvider::call(const QString& method,const Destination& destination,QJsonObject params,Error& error,std::shared_ptr<std::atomic_bool> cancelled,SetupEvent event,bool* outcomeUncertain,std::function<void(const UploadProgress&)> progress) {
  if(outcomeUncertain)*outcomeUncertain=false;
  if(stopping_.load()){error={"operation_cancelled","The application is stopping",{}};return {};}
- if(!runtimeVerified()){error={"proton_runtime_unavailable","Install a matching put.gd package with the bundled Proton runtime",{}};return {};}
  const auto reference=destination.credentialReference;
  if(reference["mode"]!="keychain"||reference["reference"].toString().isEmpty()){error={"proton_credentials_invalid","Proton requires an explicit account keychain reference",{}};return {};}
- // Separate helper processes share a rotating auth session. Serialize the
- // whole request by keychain reference, including setup and token refresh.
-#ifdef Q_OS_UNIX
- const auto lockRoot=QString("/tmp/putgd-proton-accounts-%1").arg(getuid());
-#else
- const auto lockRoot=QDir::homePath()+"/AppData/Local/putgd/proton-accounts";
-#endif
-#ifdef Q_OS_UNIX
- // mkdir is atomic and does not follow a pre-existing /tmp symlink.
- if(::mkdir(QFile::encodeName(lockRoot).constData(),0700)!=0&&errno!=EEXIST){error={"proton_lock_unavailable","Private account coordination is unavailable",{}};return {};}
-#else
- if(!QDir().mkpath(lockRoot)){error={"proton_lock_unavailable","Private account coordination is unavailable",{}};return {};}
-#endif
- const QFileInfo lockInfo(lockRoot);
-#ifdef Q_OS_UNIX
- if(lockInfo.ownerId()!=getuid()||lockInfo.permissions()&(QFile::ReadGroup|QFile::WriteGroup|QFile::ExeGroup|QFile::ReadOther|QFile::WriteOther|QFile::ExeOther)){error={"proton_lock_unavailable","Account coordination directory is not private",{}};return {};}
-#endif
- if(!lockInfo.isDir()||lockInfo.isSymLink()||lockInfo.canonicalFilePath()!=lockInfo.absoluteFilePath()){error={"proton_lock_unavailable","Account coordination directory is invalid",{}};return {};}
- const auto accountKey=QString::fromLatin1(QCryptographicHash::hash(reference["reference"].toString().toUtf8(),QCryptographicHash::Sha256).toHex());
- QLockFile accountLock(QDir(lockRoot).filePath(accountKey+".lock"));accountLock.setStaleLockTime(0);
- if(!accountLock.tryLock(2000)){error={"proton_account_busy","Another request is using this Proton account; wait and retry",{}};return {};}
- if(stopping_.load()||(cancelled&&cancelled->load())){error={"operation_cancelled","Request cancelled before the helper started",{}};return {};}
- QTemporaryDir privateRoot(QDir::tempPath()+"/putgd-proton-XXXXXX");
- if(!privateRoot.isValid()){error={"proton_private_storage","Private helper storage is unavailable",{}};return {};}
- QFile::setPermissions(privateRoot.path(),QFile::ReadOwner|QFile::WriteOwner|QFile::ExeOwner);
+ // An open session's helper answers this request too, if it is still running. A helper
+ // started ahead (see anticipate) is used next. Any other request starts its own.
+ const bool carried=QStringList{"checkName","upload","stat","reconcile","share"}.contains(method);
+ const auto kept=carried?session(reference["reference"].toString()):nullptr;
+ std::unique_ptr<Helper> single;
+ // A kept helper that ended, or said anything since its last answer, is not asked again.
+ if(kept&&kept->helper){
+  auto& waiting=kept->helper->process;
+  if(waiting.waitForReadable(0)||!waiting.outputOpen()||!waiting.running()){
+   if(waiting.running()){waiting.kill();waiting.waitForFinished(5000);}
+   kept->helper.reset();
+  }
+ }
+ QElapsedTimer elapsed;elapsed.start();
+ const int timeout=method=="connect"?600000:params["requestTimeoutMs"].toInt(destination.settings["requestTimeoutMs"].toInt(120000));
+ if(!kept||!kept->helper){
+  auto ready=takeStandby(reference["reference"].toString());
+  if(ready&&!carried){
+   // Account setup takes the account for itself, once the waiting helper has ended.
+   ready->finish([&]{return stopping_.load()||(cancelled&&cancelled->load());});ready.reset();
+  }else if(ready){
+   // Its warm-up answer comes before ours. One that is late, refused or unclear ends that helper.
+   const bool usable=!ready->warming||settled(ready->process,qMin(timeout,30000),[&]{return stopping_.load()||(cancelled&&cancelled->load());});
+   if(usable&&ready->process.running())ready->warming=false;
+   else{ready->process.kill();ready->process.waitForFinished(5000);ready.reset();}
+  }
+  if(!ready)ready=start(reference["reference"].toString(),kept!=nullptr,2000,true,cancelled,error);
+  if(!ready)return {};
+  (kept?kept->helper:single)=std::move(ready);
+ }
+ if(stopping_.load()||(cancelled&&cancelled->load())){error={"operation_cancelled","Request cancelled before it was sent",{}};return {};}
+ auto& helper=*(kept?kept->helper:single);auto& process=helper.process;
+ // A helper is asked again only after a clean answer; anything else ends it.
+ const auto end=[&]{if(kept)kept->helper.reset();};
  params["schemaVersion"]=1;params["method"]=method;params["destination"]=destination.toJson();
- QProcess process;process.setProcessEnvironment(helperEnvironment(host::environment(),privateRoot.path()));process.setProcessChannelMode(QProcess::SeparateChannels);
  ++active_;struct Release{std::atomic_int& count;~Release(){--count;}} release{active_};
- process.start(runtimePath(),{"--stdio"});
- if(!process.waitForStarted(5000)){error={"proton_runtime_start","The bundled Proton runtime could not start",{}};return {};}
  auto bytes=QJsonDocument(params).toJson(QJsonDocument::Compact);bytes.append('\n');
- if(bytes.size()>128*1024){process.kill();process.waitForFinished(5000);error={"proton_protocol","Helper request exceeded its bound",{}};return {};}
+ elapsed.restart(); // The request's deadline runs from its dispatch.
+ if(bytes.size()>128*1024){process.kill();process.waitForFinished(5000);end();error={"proton_protocol","Helper request exceeded its bound",{}};return {};}
  // Once any request bytes are handed to the helper, a lost or malformed
  // completion cannot establish whether a remote mutation ran.
  const auto delivered=process.write(bytes);if(outcomeUncertain)*outcomeUncertain=delivered>0;
- if(delivered!=bytes.size()){process.kill();process.waitForFinished(5000);error={"proton_result_unknown","Helper request could not be delivered",{}};return {};}
- process.closeWriteChannel();bytes.fill('\0');bytes.clear();
- QElapsedTimer elapsed;elapsed.start();QByteArray pending;QJsonObject final;bool gotResult=false,gotAuth=false;ProtonOutputBudget outputBudget;
- const int timeout=method=="connect"?600000:params["requestTimeoutMs"].toInt(destination.settings["requestTimeoutMs"].toInt(120000));
+ if(delivered!=bytes.size()){process.kill();process.waitForFinished(5000);end();error={"proton_result_unknown","Helper request could not be delivered",{}};return {};}
+ if(!helper.lines)process.closeInput();
+ bytes.fill('\0');bytes.clear();
+ QByteArray pending;QJsonObject final;bool gotResult=false,gotAuth=false;ProtonOutputBudget outputBudget;
  const auto consume=[&]{
   // The first violation decides the outcome; output left after a kill is not parsed.
   if(error)return;
-  process.readAllStandardError();process.setReadChannel(QProcess::StandardOutput);auto chunk=process.read(ProtonOutputBudget::MaximumBurstBytes+1);pending+=chunk;
+  auto chunk=process.read(ProtonOutputBudget::MaximumBurstBytes+1);pending+=chunk;
   if(pending.size()>ProtonOutputBudget::MaximumBurstBytes||!outputBudget.consume(chunk.size(),elapsed.elapsed())){error={"proton_protocol","Helper response exceeded its bound",{}};return;}
   while(pending.contains('\n')){
    const auto line=pending.left(pending.indexOf('\n'));pending.remove(0,line.size()+1);QJsonParseError parse;const auto doc=QJsonDocument::fromJson(line,&parse);
@@ -158,16 +307,20 @@ QJsonObject ProtonProvider::call(const QString& method,const Destination& destin
    else{final=value;gotResult=true;}
   }
  };
- while(process.state()!=QProcess::NotRunning){
-  process.waitForReadyRead(100);consume();if(error){process.kill();break;}
+ while(process.running()){
+  process.waitForReadable(100);consume();if(error){process.kill();break;}
+  // A helper that answers in turn has answered, and waits for its next request.
+  if(helper.lines&&gotResult)break;
   if(stopping_.load()||(cancelled&&cancelled->load())){error={"proton_result_unknown","The request was cancelled after dispatch; reconcile its saved identity before retrying",{{"reason",stopping_.load()?"shutdown":"cancelled"}}};process.kill();break;}
   if(elapsed.elapsed()>timeout){error={"proton_request_timeout",QString("Proton exceeded the configured %1-second request deadline; the outcome is unknown. Reconcile its saved identity before retrying.").arg(timeout/1000.0),{{"reason","deadline"},{"timeoutMs",timeout},{"method",method}}};process.kill();break;}
  }
- process.waitForFinished(5000);consume();
+ const bool waiting=helper.lines&&!error&&gotResult&&process.running();
+ if(!waiting){process.waitForFinished(5000);consume();}
  if(!pending.trimmed().isEmpty()&&!error)error={"proton_protocol","Incomplete helper response",{}};
  pending.fill('\0');pending.clear();
- if(error)return {};
- if(!gotResult||process.exitStatus()!=QProcess::NormalExit||process.exitCode()!=0){error={"proton_result_unknown","The helper ended without a confirmed result",{}};return {};}
+ if(error){if(process.running()){process.kill();process.waitForFinished(5000);}end();return {};}
+ if(!gotResult||(!waiting&&!process.exitedCleanly())){end();error={"proton_result_unknown","The helper ended without a confirmed result",{}};return {};}
+ if(!final["ok"].toBool()||!final["result"].toObject()["error"].toObject().isEmpty())end();
  if(!final["ok"].toBool()){
   error=parseError(final["error"].toObject());if(!error)error={"proton_failed","Proton operation failed",{}};
   // Only protocol-defined pre-mutation failures prove no remote side effect.

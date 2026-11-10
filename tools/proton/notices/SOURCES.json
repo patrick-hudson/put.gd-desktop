@@ -4,7 +4,7 @@
   "distributionReady": true,
   "published": true,
   "distributionRequirement": "Retain public availability of this current corresponding-source transport and deliver the current application source and catalog beside installers. Earlier SDK/Crypto/Bun transports remain historical.",
-  "helperSha256": "9fd4d72f86352cfcf2c8b6ba1db4102ed6f7b22660077698c700989e9fda8586",
+  "helperSha256": "3a5167cbe44c854b53d10a40e1e91f5094dc2d1cf4f950213dcb970b21324d48",
   "sourcePins": {
     "sdk": "8a44654aece1609f0f7218be51c205103945abd8",
     "crypto": "68b93b7d2cadd043cd08203710af382706ed1458",
@@ -19,13 +19,16 @@
     "bunOfflineSourceReplayVerified": true,
     "openpgpPreferredJsExactRebuildVerified": true,
     "openpgpModifiedCompiledRoundtripVerified": true,
-    "nativeBunRelinkVerified": true,
+    "nativeBunRelinkVerified": false,
     "argon2WasmRebuildVerified": true,
-    "finalPackageAcceptanceVerified": true,
-    "nativeCompiledHelperSourceSelectionVerified": true,
+    "finalPackageAcceptanceVerified": false,
+    "nativeCompiledHelperSourceSelectionVerified": false,
     "argon2ModifiedCompiledCryptoVerified": true
   },
-  "openGates": [],
+  "openGates": [
+    "Fresh Bun 1.4.4 native modification/relink verification for this helper; the retained receipt describes helper 9fd4d72f8635",
+    "Fresh final-helper desktop functional/resource and actual package acceptance (P6); the retained receipt describes helper 9fd4d72f8635"
+  ],
   "artifacts": [
     {
       "filename": "putgd-proton-build-controls.tar.gz",
@@ -110,17 +113,17 @@
       {
         "source": "tools/proton/runtime.ts",
         "destination": "build-source/runtime.ts",
-        "sha256": "db3858fca53262970442805fa4ff1ad5c254a2f9c96a70954897e20962a3ca98"
+        "sha256": "32db7988dac152d6ab9cbbab171ca2b18f640483d632b515314d28a33d40b501"
       },
       {
         "source": "tools/proton/runtime.test.ts",
         "destination": "build-source/runtime.test.ts",
-        "sha256": "83ee273493b7edca7f0f66091786a253300e21dec290eb6fe7abf9379d14e724"
+        "sha256": "0a9a26dc05d09b2c844fe998863994cdf16daf6ad407e49f0523df035f842b10"
       },
       {
         "source": "tools/proton/protocol.ts",
         "destination": "build-source/protocol.ts",
-        "sha256": "25cca19b3baea0d77ffaf27e2a230f43ef33885f256dd373b89092e5a0d1c5ec"
+        "sha256": "e3cf2dd0d1ca7ac8341f844ee551278cf8e4478cc79cbd58be536b3a672a14ad"
       },
       {
         "source": "tools/proton/protocol.test.ts",
@@ -130,12 +133,17 @@
       {
         "source": "tools/proton/account.ts",
         "destination": "build-source/account.ts",
-        "sha256": "65f98bf072ea82c4a60150ec310e586dded805b1cf54424907d8712fb27b50de"
+        "sha256": "c22f2a73f412f82da3af1b69059576dd5b542dd402e12303e9a6884006268e03"
       },
       {
         "source": "tools/proton/crypto-cache.ts",
         "destination": "build-source/crypto-cache.ts",
-        "sha256": "ce92f727d394362cf0f85684c358e5d345e6cf7acdc32e518da6ab7e962c57b1"
+        "sha256": "309443fcc79cb8368446b75f17f3e92ff1e71701d11de299db11690299b62378"
+      },
+      {
+        "source": "tools/proton/crypto-cache.test.ts",
+        "destination": "build-source/crypto-cache.test.ts",
+        "sha256": "3aafad815c917def328be1ed6b6d1f1b4c9c4bee596b0a0eb9b29c404d047593"
       },
       {
         "source": "tools/proton/stdout.ts",
