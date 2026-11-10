@@ -131,7 +131,7 @@ class Workflows(unittest.TestCase):
 
     def test_nightly_is_scheduled_skips_unchanged_source_and_gates_publication_on_ci(self):
         nightly = workflow('nightly.yml')
-        self.assertIn("schedule:\n    - cron: '23 8 * * *'", nightly)
+        self.assertIn("schedule:\n    - cron: '23 10 * * *'", nightly)
         self.assertIn('  workflow_dispatch:\n', nightly)
         self.assertNotIn('  push:', nightly)
         self.assertIn('group: nightly-publication\n  cancel-in-progress: false', nightly)
