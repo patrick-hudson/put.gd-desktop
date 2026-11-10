@@ -1,6 +1,7 @@
 #include <QCursor>
 #include "ui/SelectionOutline.h"
 #include "ui/RegionSelection.h"
+#include "ui/CountdownPill.h"
 #include "LayerShellRegionOverlay.h"
 #include "RegionProtocol.h"
 #include <QGuiApplication>
@@ -218,5 +219,81 @@ void LayerShellRegionOverlay::cancel(Error error){
 #endif
  }else finish();
  emit cancelled(error);
+}
+#ifdef PUTGD_NATIVE_REGION
+namespace {
+// "The output the compositor picks": wantsToBeOnActiveScreen where LayerShellQt
+// has it (6.6), the screen configuration it replaced before that.
+template<class Layer> void placeOnActiveScreen(Layer* layer){
+ if constexpr(requires{layer->setWantsToBeOnActiveScreen(true);})layer->setWantsToBeOnActiveScreen(true);
+ else layer->setScreenConfiguration(Layer::ScreenFromCompositor);
+}
+}
+#endif
+bool showLayerShellCountdown(QWidget& pill,QScreen* screen){
+#ifdef PUTGD_NATIVE_REGION
+ pill.winId();auto* layer=pill.windowHandle()?LayerShellQt::Window::get(pill.windowHandle()):nullptr;if(!layer)return false;
+ // Hyprland's no_anim rule names this scope, so the pill leaves in one step.
+ layer->setScope("putgd-capture-countdown");layer->setLayer(LayerShellQt::Window::LayerOverlay);
+ layer->setAnchors(LayerShellQt::Window::AnchorTop);layer->setMargins(QMargins(0,Ui::space(Ui::Space::l),0,0));
+ layer->setKeyboardInteractivity(LayerShellQt::Window::KeyboardInteractivityNone);
+ if(screen)pill.windowHandle()->setScreen(screen);
+ else placeOnActiveScreen(layer);
+ pill.show();return true;
+#else
+ Q_UNUSED(pill);Q_UNUSED(screen);return false;
+#endif
+}
+#ifdef PUTGD_NATIVE_REGION
+namespace {
+// One pill's removal: blank frame rendered, unmap, display sync.
+class CountdownDismissal final:public QObject {
+public:
+ CountdownDismissal(CountdownPill& pill,std::function<void(bool,bool)> done):QObject(&pill),pill_(pill),done_(std::move(done)){}
+ void start(){
+  pill_.blank();
+  auto* window=pill_.windowHandle();
+  if(!window){unmap();return;}
+  // Qt Wayland withholds requestUpdate() until the frame callback of the buffer
+  // just committed has fired: the compositor has rendered the empty frame.
+  window->installEventFilter(this);window->requestUpdate();
+  // A frame callback comes within a frame or two on a screen that is on and
+  // unlocked, and late on a compositor that is busy: a software-rendered guest
+  // starting a browser took over a second once. None for three seconds means
+  // this surface is not being shown.
+  QTimer::singleShot(3000,this,[this]{unmap();});
+ }
+protected:
+ bool eventFilter(QObject* watched,QEvent* event)override{
+  if(event->type()==QEvent::UpdateRequest&&!unmapped_){presented_=true;QTimer::singleShot(0,this,[this]{unmap();});}
+  return QObject::eventFilter(watched,event);
+ }
+private:
+ void unmap(){
+  if(unmapped_)return;
+  unmapped_=true;pill_.hide();
+  auto* native=qGuiApp->nativeInterface<QNativeInterface::QWaylandApplication>();
+  fence_=native?wl_display_sync(native->display()):nullptr;
+  if(!fence_){finish(false);return;}
+  static const wl_callback_listener listener{[](void* data,wl_callback*,uint32_t){static_cast<CountdownDismissal*>(data)->finish(true);}};
+  wl_callback_add_listener(fence_,&listener,this);wl_display_flush(native->display());
+  QTimer::singleShot(1000,this,[this]{finish(false);});
+ }
+ void finish(bool acknowledged){
+  if(!done_)return;
+  auto done=std::exchange(done_,{});
+  if(fence_){wl_callback_destroy(fence_);fence_=nullptr;}
+  deleteLater();done(acknowledged,presented_);
+ }
+ CountdownPill& pill_;std::function<void(bool,bool)> done_;wl_callback* fence_=nullptr;bool unmapped_=false,presented_=false;
+};
+}
+#endif
+void hideLayerShellCountdown(CountdownPill& pill,std::function<void(bool,bool)> done){
+#ifdef PUTGD_NATIVE_REGION
+ (new CountdownDismissal(pill,std::move(done)))->start();
+#else
+ pill.hide();done(false,false);
+#endif
 }
 }

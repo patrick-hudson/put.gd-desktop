@@ -13,7 +13,7 @@
 namespace putgd {
 namespace {
 const QString ownPrefix=QStringLiteral("put.gd: ");
-const QHash<QString,QString> labels{{"region","Region capture"},{"window","Window capture"},{"desktop","Desktop capture"},
+const QHash<QString,QString> labels{{"region","Region capture"},{"window","Window capture"},{"desktop","Desktop capture"},{"monitor","Monitor capture"},{"repeat","Repeat last region"},
  {"edit","Region capture and edit"},{"record","Record screen"},{"clipboard","Upload clipboard"}};
 // Qt keys whose xkb keysym name is not the character itself.
 const QHash<int,QString> namedKeys{{Qt::Key_Print,"Print"},{Qt::Key_Escape,"Escape"},{Qt::Key_Tab,"Tab"},{Qt::Key_Backspace,"BackSpace"},
@@ -244,7 +244,7 @@ QString HyprlandShortcuts::bindScript(const QString& action,const Chord& chord){
 }
 QString HyprlandShortcuts::unbindScript(const Chord& chord){return QStringLiteral("hl.unbind(%1)").arg(HyprlandIpc::luaString(hyprlandKeys(chord)));}
 QString HyprlandShortcuts::layerRuleScript(){
- return QStringLiteral("hl.layer_rule({ match = { namespace = \"^putgd-(region-selector|region-catcher|record)$\" }, no_anim = true })");
+ return QStringLiteral("hl.layer_rule({ match = { namespace = \"^putgd-(region-selector|region-catcher|record|capture-countdown)$\" }, no_anim = true })");
 }
 HyprlandShortcuts::Plan HyprlandShortcuts::plan(const QJsonArray& binds,const QHash<QString,QString>& desired){
  Plan out;

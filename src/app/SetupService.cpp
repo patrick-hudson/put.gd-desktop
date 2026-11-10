@@ -1,4 +1,5 @@
 #include "SetupService.h"
+#include <QJsonArray>
 #include <QPointer>
 #include <QUuid>
 
@@ -9,6 +10,13 @@ bool validInput(const QString& kind,const QJsonObject& input) {
  if(kind=="createFolder")return input.size()==1&&input["name"].isString()&&!input["name"].toString().isEmpty()&&input["name"].toString().size()<=255;
  if(kind=="storeSharePassword")return input.size()==2&&input["password"].isString()&&input["password"].toString().size()<=4096&&input["reference"].isString()&&!input["reference"].toString().isEmpty()&&input["reference"].toString().size()<=256;
  if(kind!="storeCredentials")return input.isEmpty();
+ // Named values of a custom HTTP uploader: {"values":{key:value}}; the provider checks them.
+ if(input.size()==1&&input.contains("values")) {
+  const auto values=input["values"].toObject();
+  if(!input["values"].isObject()||values.size()>maximumNamedValues)return false;
+  for(auto it=values.begin();it!=values.end();++it)if(it.key().isEmpty()||it.key().size()>300||!it.value().isString()||it.value().toString().size()>65536)return false;
+  return true;
+ }
  if(input.size()<2||input.size()>3)return false;
  for(auto it=input.begin();it!=input.end();++it)
   if(it.key()!="accessKey"&&it.key()!="secretKey"&&it.key()!="sessionToken")return false;
@@ -17,6 +25,13 @@ bool validInput(const QString& kind,const QJsonObject& input) {
  return !input.contains("sessionToken")||(input["sessionToken"].isString()&&input["sessionToken"].toString().size()<=16384);
 }
 QString activeKey(const QString& profileId,const QString& kind) {return profileId+"/"+kind;}
+}
+// Destinations whose credentials live in put.gd's credential store: S3, Backblaze B2
+// (#282), and a provider with named values when its settings need any (#1361).
+bool SetupService::usesCredentialStore(const QJsonObject& profile) const {
+ if(profile["provider"]=="s3"||profile["provider"]=="backblaze-b2")return true;
+ QStringList names;
+ return namedCredentials_&&!namedCredentials_(profile,{},&names)&&!names.isEmpty();
 }
 SetupService::SetupService(SettingsService& settings,CredentialStore& credentials,DestinationTester tester,QObject* parent)
  :QObject(parent),settings_(settings),credentials_(credentials),tester_(std::move(tester)),completion_(std::make_shared<CompletionContext>()) {
@@ -65,7 +80,24 @@ void SetupService::start(const QString& kind,const QString& profileId,const QStr
   };
   providerSetup_(kind,destination,input,std::move(finish),std::move(event));
  }else if(kind=="storeCredentials") {
-  Credentials value{input["accessKey"].toString(),input["secretKey"].toString(),input["sessionToken"].toString()};
+  QStringList names;
+  const bool named=namedCredentials_&&!namedCredentials_(profile,{},&names);
+  if(named!=input.contains("values")) {complete({"credential_invalid",named?"This destination stores named values, not an access key":"This destination stores an access key and secret key",{}});return;}
+  Credentials value;
+  if(named) {
+   QMap<QString,QString> typed;const auto values=input["values"].toObject();
+   for(auto it=values.begin();it!=values.end();++it)typed.insert(it.key(),it.value().toString());
+   if(auto error=namedCredentials_(profile,typed,&names)) {complete(error);return;}
+   // Values typed now replace stored ones; the rest are kept from the loaded set.
+   const auto cached=credentials_.cached(profileId,reference);QStringList missing;
+   for(const auto& name:names) {
+    if(typed.contains(name))value.values.insert(name,typed.value(name));
+    else if(cached&&cached->values.contains(name))value.values.insert(name,cached->values.value(name));
+    else missing.append(name);
+   }
+   if(!missing.isEmpty()) {complete({"credential_incomplete","Enter every secret value of this destination, or unlock its saved credentials first",{{"missing",QJsonArray::fromStringList(missing)}}});return;}
+   if(value.values.isEmpty()) {complete({"credential_invalid","This destination has no secret values to store",{}});return;}
+  }else value={input["accessKey"].toString(),input["secretKey"].toString(),input["sessionToken"].toString()};
   credentials_.save(profileId,reference,std::move(value),complete);
  }else if(kind=="unlockCredentials")credentials_.unlock(profileId,reference,complete);
  else if(tester_)tester_(profileId,profile,complete);
@@ -78,8 +110,7 @@ QStringList SetupService::unlockSavedCredentials() {
  if(!snapshot.unlockCredentialsAtStartup||!settings_.metadata()["validation"].toObject()["ok"].toBool())return started;
  for(auto it=snapshot.profiles.cbegin();it!=snapshot.profiles.cend();++it){
   const auto reference=it.value()["credentials"].toObject();
-  // Destinations whose keys live in put.gd's credential store: S3 and Backblaze B2 (#282).
-  if((it.value()["provider"]!="s3"&&it.value()["provider"]!="backblaze-b2")||reference["mode"]!="keychain"||credentials_.cached(it.key(),reference))continue;
+  if(!usesCredentialStore(it.value())||reference["mode"]!="keychain"||credentials_.cached(it.key(),reference))continue;
   start("unlockCredentials",it.key(),settings_.revision(),{},[&](Error error,QJsonObject result){if(!error)started.append(result["setupId"].toString());});
  }
  for(const auto& id:started)if(jobs_.value(id)["state"]=="running")startupUnlocks_.insert(id);
@@ -98,6 +129,13 @@ void SetupService::credentialHint(const QString& profileId,const QString& expect
  const auto cached=credentials_.cached(profileId,reference);
  QJsonObject hint{{"available",bool(cached)},{"mode",reference["mode"]}};
  if(cached){hint["accessKeyHint"]=cached->accessKey.size()>4?cached->accessKey.left(4)+QString::fromUtf8("…"):QString::fromUtf8("••••");hint["secretStored"]=!cached->secretKey.isEmpty();hint["tokenStored"]=!cached->sessionToken.isEmpty();}
+ // Named values: which of the names the settings need are loaded, never a value.
+ QStringList names;
+ if(namedCredentials_&&!namedCredentials_(profile,{},&names)) {
+  QJsonArray stored,missing;
+  for(const auto& name:names)(cached&&cached->values.contains(name)?stored:missing).append(name);
+  hint["storedValues"]=stored;hint["missingValues"]=missing;hint.remove("accessKeyHint");hint.remove("secretStored");hint.remove("tokenStored");
+ }
  reply({},hint);
 }
 void SetupService::revealCredentialSecret(const QString& profileId,const QString& expectedRevision,JsonReply reply) {

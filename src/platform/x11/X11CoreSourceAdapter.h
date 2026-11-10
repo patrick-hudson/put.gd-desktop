@@ -4,6 +4,8 @@
 #include "X11Clipboard.h"
 #include "X11Shortcuts.h"
 #include "CaptureProcessController.h"
+#include "platform/CountdownProcess.h"
+#include <optional>
 namespace putgd {
 class X11CoreSourceAdapter final:public QObject,public SourceAdapter {
  Q_OBJECT
@@ -23,6 +25,9 @@ public:
  void setShortcutRecording(bool active,std::function<void(Error)> reply){shortcuts_.setRecording(active,std::move(reply));}
  void bindShortcuts(const QHash<QString,QString>&);
  void setUiProcess(qint64 pid)override{uiProcess_=pid>0?pid:0;}
+ // Delayed capture (#1363): putgd-capture's countdown mode draws the pill.
+ void countdown(int seconds,std::function<void(Error)>)override;
+ void sessionLocked(std::function<void(bool)>)override;
 signals:
  void actionRequested(const QString&);
  void capabilitiesChanged();
@@ -30,6 +35,13 @@ signals:
  void displayLost();
 private:
  bool crosshairHeld_=false;
+ // Freezes the action's target; repeat needs the remembered region on an unchanged layout.
+ QJsonObject freeze(const QString& action,Error&);
+ // Remembers a region the helper captured, for Repeat last region (resident memory only).
+ std::function<void(PayloadResult)> remembering(const QJsonObject& frozen,std::function<void(PayloadResult)>);
+ struct RegionMemory {QJsonArray selection,layout;};
+ std::optional<RegionMemory> lastRegion_;
+ CountdownProcess countdown_{QStringLiteral("putgd-capture")};
  X11NativeSnapshot capture_;X11Clipboard clipboard_;X11Shortcuts shortcuts_;CaptureProcessController helper_;qint64 uiProcess_=0;
 };
 }

@@ -72,6 +72,10 @@ struct Settings {
     // second for recordings that don't ask for a rate; the recorder may still
     // lower it while a recording runs when the machine can't keep up.
     int recordingFrameRate = 30;
+    // preferences.captureDelaySeconds (#1363): 0 (default), 3, 5 or 10. The tray
+    // and the dashboard start region, window, monitor and desktop captures after
+    // this delay; shortcuts stay immediate and session requests name their own.
+    int captureDelaySeconds = 0;
     // preferences.appearance.theme (#60): system, dark or light.
     QString appearanceTheme = "system";
     bool notifications = true;
@@ -115,7 +119,16 @@ struct Settings {
     static QStringList requiredActionNames();
     // The optional recording route; absent documents inherit the region route.
     static QString recordingActionName();
-    // Adds absent edit and record actions inheriting the region route without a shortcut.
+    // Repeat last region (#1363): a shortcut only, always on the region route.
+    static QString repeatActionName();
+    // Shortcut rows and tray entries: presentationOrder() plus Repeat last region.
+    static QStringList shortcutOrder();
+    // Delays a capture can start after, in seconds; 0 is immediate.
+    static QList<int> captureDelayChoices();
+    // Captures that take delaySeconds: region, window, monitor, desktop and repeat.
+    static bool delayableAction(const QString& action);
+    // Adds absent edit and record actions inheriting the region route without a shortcut,
+    // an absent monitor action copying the desktop route, and an absent repeat key.
     static QJsonObject normalized(const QJsonObject&);
     // The document with its profiles in the given ID order. The order must name
     // every profile exactly once; nothing else in the document changes.

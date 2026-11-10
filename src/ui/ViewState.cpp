@@ -10,6 +10,9 @@ const QStringList s3Keys{"linkMode","linkValidityDays","bucket","region","endpoi
 const QStringList protonKeys{"accountRootUid","folderUid","folderName","shareByDefault","linkExpirationDays","sharePasswordReference","requestTimeoutMs"};
 const QStringList b2Keys{"apiUrl","bucket","objectPrefix","linkMode","linkValidityDays","publicUrlBase","connectTimeoutMs","requestTimeoutMs"};
 const QStringList& providerKeys(const QString& provider){return provider=="s3"?s3Keys:provider=="backblaze-b2"?b2Keys:protonKeys;}
+// A custom HTTP uploader (#1361) keeps lists of rows. A row marked secret may carry
+// its name only, so a typed or imported token can never ride in a checkpoint.
+const QStringList uploaderScalars{"allowInsecureHttp","body","connectTimeoutMs","data","dataSecret","deletionUrl","errorMessage","fileFormName","requestMethod","requestTimeoutMs","requestUrl","responseUrl","thumbnailUrl"};
 const QStringList limitKeys{"maxFiles","pendingOperations","concurrentUploads","maxFileBytes","maxBatchBytes","pendingArtifactBytes","pendingImageBytes","clipboardTextBytes","imagePixels","imageBytes","recordingAnimationSeconds","recordingAnimationEdge"};
 const QStringList retentionKeys{"failedArtifactDays","recentActivityLimit","previewCacheBytes","historyRetentionDays"};
 const QStringList filterKeys{"search","category","mime","profileId","uploadStatus","localStatus","remoteStatus","from","to"};
@@ -29,7 +32,7 @@ bool appearanceDraft(const QJsonValue& value){
 }
 bool preferencesDraft(const QJsonValue& value){
  auto object=value.toObject();const auto colors=object.take("editorRecentColors");const auto diagnostics=object.take("diagnostics");const auto appearance=object.take("appearance");const auto updates=object.take("updates");
- return value.isObject()&&scalars(object,{"notifications","launchAtLogin","uploadClipboardBehavior","regionSelectionMode","recordingFrameRate","unlockCredentialsAtStartup","fileManagerFolders","fileManagerMenu"})&&(colors.isUndefined()||stringArray(colors,6))
+ return value.isObject()&&scalars(object,{"notifications","launchAtLogin","uploadClipboardBehavior","regionSelectionMode","captureDelaySeconds","recordingFrameRate","unlockCredentialsAtStartup","fileManagerFolders","fileManagerMenu"})&&(colors.isUndefined()||stringArray(colors,6))
   &&(diagnostics.isUndefined()||scalars(diagnostics,{"debugLogging","packageFolder"}))&&(appearance.isUndefined()||appearanceDraft(appearance))&&(updates.isUndefined()||scalars(updates,{"check","channel"}));
 }
 bool stringArray(const QJsonValue& value,int maximum){if(!value.isArray()||value.toArray().size()>maximum)return false;for(auto v:value.toArray())if(!v.isString())return false;return true;}
@@ -47,17 +50,42 @@ bool rawS3(const QString& text){
   space();if(i==text.size())return true;if(text[i]=='}'){++i;space();return i==text.size();}if(text[i++]!=',')return false;
  }
 }
+bool uploaderSettings(const QJsonValue& value){
+ if(!value.isObject())return false;
+ auto settings=value.toObject();
+ const auto accepts=settings.take("accepts");
+ if(!accepts.isUndefined()&&!stringArray(accepts,3))return false;
+ for(const auto* list:{"headers","parameters","arguments"}){
+  const auto rows=settings.take(list);
+  if(rows.isUndefined())continue;
+  if(!rows.isArray()||rows.toArray().size()>32)return false;
+  for(const auto& entry:rows.toArray()){
+   const auto row=entry.toObject();
+   if(!entry.isObject()||!row["name"].isString()||!row["secret"].isBool())return false;
+   if(row["secret"].toBool()?row.size()!=2:(row.size()!=3||!row["value"].isString()))return false;
+  }
+ }
+ // Other secret values: names only.
+ if(const auto extra=settings.take("secrets");!extra.isUndefined()){
+  if(!extra.isArray()||extra.toArray().size()>32)return false;
+  for(const auto& entry:extra.toArray()){const auto row=entry.toObject();if(!entry.isObject()||row.size()!=2||!row["name"].isString()||row["secret"]!=true)return false;}
+ }
+ // A secret request body has no text in settings.
+ if(settings["dataSecret"].toBool()&&!settings["data"].toString().isEmpty())return false;
+ return scalars(settings,uploaderScalars);
+}
+bool providerSettings(const QString& provider,const QJsonValue& settings){return provider=="custom-http"?uploaderSettings(settings):scalars(settings,providerKeys(provider));}
 bool safeProfile(const QJsonValue& value){
  if(!fields(value,{"id","label","provider","settings","credentials"}))return false;
  const auto profile=value.toObject();const auto provider=profile["provider"].toString();
- return profile["id"].isString()&&profile["label"].isString()&&QStringList{"s3","proton-drive","backblaze-b2"}.contains(provider)
-  &&scalars(profile["settings"],providerKeys(provider))&&scalars(profile["credentials"],{"mode","reference"});
+ return profile["id"].isString()&&profile["label"].isString()&&QStringList{"s3","proton-drive","backblaze-b2","custom-http"}.contains(provider)
+  &&providerSettings(provider,profile["settings"])&&scalars(profile["credentials"],{"mode","reference"});
 }
 bool safeDocument(const QJsonValue& value){
  if(!fields(value,{"schemaVersion","actions","profiles","archive","naming","limits","retention","preferences","captureDefaults"}))return false;
  const auto d=value.toObject();
  if(d.contains("captureDefaults")&&!scalars(d["captureDefaults"],{"destination","profileId","publicationMode"}))return false;
- if(d["schemaVersion"]!=1||!fields(d["actions"],{"region","window","desktop","clipboard","edit","record"}))return false;
+ if(d["schemaVersion"]!=1||!fields(d["actions"],{"region","window","desktop","clipboard","edit","record","monitor","repeat"}))return false;
  for(auto action:d["actions"].toObject())if(!scalars(action,{"destination","profileId","shortcut","publicationMode"}))return false;
  if(!d["profiles"].isArray()||d["profiles"].toArray().size()>32)return false;
  for(auto v:d["profiles"].toArray())if(!safeProfile(v))return false;
@@ -84,12 +112,12 @@ bool profileEditor(const QJsonValue& value,bool includeProviders=true){
  if(!scalars(editor["s3"],s3Keys,true)||!rawS3(editor["providerJson"].toString()))return false;
  if(editor.contains("proton")&&!protonEditor(editor["proton"]))return false;
  if(!editor.contains("providers"))return true;
- if(!fields(editor["providers"],{"s3","proton-drive","backblaze-b2"}))return false;
+ if(!fields(editor["providers"],{"s3","proton-drive","backblaze-b2","custom-http"}))return false;
  const auto providers=editor["providers"].toObject();
  for(auto it=providers.begin();it!=providers.end();++it){
   if(!fields(it.value(),{"settings","credentials","editor"}))return false;
   const auto retained=it.value().toObject();
-  if(!scalars(retained["settings"],providerKeys(it.key()))||!scalars(retained["credentials"],{"mode","reference"})
+  if(!providerSettings(it.key(),retained["settings"])||!scalars(retained["credentials"],{"mode","reference"})
      ||!retained["editor"].isObject()||!profileEditor(retained["editor"],false))return false;
  }
  return true;
@@ -98,7 +126,7 @@ bool profileEditor(const QJsonValue& value,bool includeProviders=true){
 // Derived, read-only presentation of Settings → Capture for CLI/MCP readers;
 // restoring a view recomputes it from the draft.
 bool captureRouting(const QJsonValue& value){
- if(!fields(value,{"default","region","window","desktop","clipboard","edit","record"})||!value.toObject().contains("default"))return false;
+ if(!fields(value,{"default","region","window","desktop","clipboard","edit","record","monitor"})||!value.toObject().contains("default"))return false;
  const auto routes=value.toObject();
  for(auto it=routes.begin();it!=routes.end();++it){
   const bool action=it.key()!="default";const QStringList text{"profileId","destination","publicationMode","sharing","effectivePublicationMode","status"};QStringList flags{"destinationEnabled","sharingEnabled"};if(action)flags.append("inherited");

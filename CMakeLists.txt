@@ -42,6 +42,8 @@ include(cmake/Executables.cmake)
 include(cmake/Recording.cmake)
 # The Backblaze B2 destination.
 include(cmake/B2.cmake)
+# The custom HTTP uploader destination.
+include(cmake/Http.cmake)
 # The crash handler and debug splitting for every product binary.
 include(cmake/ProductBinaries.cmake)
 # The file-manager menu plugins.
@@ -81,6 +83,8 @@ include(cmake/TestsRegionCapture.cmake)
 include(cmake/Proton.cmake)
 # The Backblaze B2 tests.
 include(cmake/B2Tests.cmake)
+# The custom HTTP uploader tests.
+include(cmake/HttpTests.cmake)
 # Package metadata.
 include(cmake/NativeMetadata.cmake)
 # Test labels and scheduling; last, once every test is registered.

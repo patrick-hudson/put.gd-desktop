@@ -9,6 +9,7 @@
 #include <QSet>
 namespace putgd {
 class CinnamonRegionCapture;
+class CountdownPill;
 class X11CompositorSettle;
 // Selection carries geometry only; desktop pixels require a separate acquisition.
 struct RegionSelectionResult {
@@ -30,6 +31,12 @@ public:
  void acquireFrozen(const X11Target&,const ResourceLimits&,std::function<void(PayloadResult)>);
  void selectRegionFrozen(const X11Target&,const ResourceLimits&,std::function<void(RegionSelectionResult)>);
  void acquireSelectedRegionFrozen(const X11Target&,const RegionSelectionResult&,const ResourceLimits&,std::function<void(PayloadResult)>);
+ // Repeat last region (#1363): a region capture of target.logicalSelection, no selector.
+ void acquireRepeatFrozen(const X11Target&,const ResourceLimits&,std::function<void(PayloadResult)>);
+ // Delayed capture (#1363): an override-redirect pill on the pointer's monitor,
+ // then a wait for the compositor to present its removal.
+ void countdown(int seconds,std::function<void(Error)>) override;
+ void sessionLocked(std::function<void(bool)>) override;
  void setResidentRegionCursor(quint32 cursor){residentRegionCursor_=cursor;}
  // See NativeRegionOverlay::setPointerHandoff. A selector without native
  // surfaces asks for the pointer at once.
@@ -67,6 +74,10 @@ private:
  quint64 generation_=0;
  quint64 selectedGeneration_=0;
  X11Target selectedTarget_;
+ struct RegionMemory {QRectF rectangle;QList<CaptureFrame> layout;};
+ std::optional<RegionMemory> lastRegion_;
+ static bool sameLayout(const QList<CaptureFrame>&,const QList<CaptureFrame>&);
+ QPointer<CountdownPill> countdown_;
  // Pixels a Screenshot first selection was drawn over; consumed once.
  QList<CaptureFrame> frozenFrames_;
 };

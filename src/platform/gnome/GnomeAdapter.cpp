@@ -1,4 +1,5 @@
 #include "GnomeAdapter.h"
+#include "platform/SessionLock.h"
 #include <algorithm>
 #include <atomic>
 #include <memory>
@@ -185,7 +186,13 @@ QJsonObject GnomeAdapter::capabilities()const{
  auto window=capture;if(uiProcessError_){window["available"]=false;window["error"]=uiProcessError_.toJson();}
  auto clipboard=QJsonObject{{"available",ready_},{"types",QJsonArray{"files","image","text"}},{"import","bounded-mutter-selection"},{"result","st-clipboard-only"}};
  if(!ready_)clipboard["error"]=helperError.toJson();
- return {{"adapter","gnome-wayland"},{"helper",QJsonObject{{"available",ready_},{"uuid","putgd@put.gd"},{"protocol",gnome::protocolVersion},{"shellMajor",helper_["shellMajor"]},{"extensionVersion",helper_["extensionVersion"]},{"packagedExtensionVersion",gnome::extensionVersion},{"outdated",outdated()},{"recordingVersion",helper_["recordingVersion"].toInt()},{"error",helperError.toJson()},{"setup",currentSetup().toJson()}}},{"capture",QJsonObject{{"region",capture},{"window",window},{"desktop",capture}}},{"clipboard",clipboard},{"shortcuts",QJsonObject{{"available",ready_},{"bindings",bindings_}}}};
+ // Monitor, repeat and the countdown came with capture version 2 (#1363): an
+ // extension loaded before them is reported until the next login loads it.
+ auto monitor=capture;const auto versionError=ready_?captureVersionError():Error{};
+ if(versionError){monitor["available"]=false;monitor["error"]=versionError.toJson();}
+ auto repeat=monitor;repeat["remembered"]=lastRegion_.has_value();
+ QJsonObject delay{{"available",monitor["available"].toBool()},{"seconds",QJsonArray{3,5,10}},{"indicator","shell-actor"}};if(!monitor["available"].toBool())delay["error"]=monitor["error"];
+ return {{"adapter","gnome-wayland"},{"helper",QJsonObject{{"available",ready_},{"uuid","putgd@put.gd"},{"protocol",gnome::protocolVersion},{"shellMajor",helper_["shellMajor"]},{"extensionVersion",helper_["extensionVersion"]},{"packagedExtensionVersion",gnome::extensionVersion},{"outdated",outdated()},{"recordingVersion",helper_["recordingVersion"].toInt()},{"captureVersion",helper_["captureVersion"].toInt(1)},{"error",helperError.toJson()},{"setup",currentSetup().toJson()}}},{"capture",QJsonObject{{"region",capture},{"window",window},{"desktop",capture},{"monitor",monitor},{"repeat",repeat}}},{"delay",delay},{"clipboard",clipboard},{"shortcuts",QJsonObject{{"available",ready_},{"bindings",bindings_}}}};
 }
 SourceAdapter::PreparedAcquisition GnomeAdapter::prepareAcquisition(const QString& action){
  QPointer<GnomeAdapter> guard(this);const bool hotkey=!hotkeyPrepared_[action].isEmpty();const auto id=hotkey?hotkeyPrepared_[action].takeFirst():uuid();Error error;
@@ -194,6 +201,9 @@ SourceAdapter::PreparedAcquisition GnomeAdapter::prepareAcquisition(const QStrin
  // Both region modes require the packaged appearance protocol; an older
  // loaded extension silently ignores its tokens. Ask for re-login before preparing.
  else if(action=="region"&&outdated()){error=recordingShellError();if(hotkey)release(id);}
+ // Monitor and repeat exist only in capture version 2; a repeat needs its region.
+ else if((action=="monitor"||action=="repeat")&&captureVersionError()){error=captureVersionError();if(hotkey)release(id);}
+ else if(action=="repeat"&&!lastRegion_){error=noLastRegion();if(hotkey)release(id);}
  else if(!hotkey){const auto result=sync("Prepare",{id,action},error);if(!error&&(result["version"].toInt()!=gnome::protocolVersion||result["requestId"].toString()!=id))error={"bridge_protocol","GNOME preparation identity is invalid",{}};if(!error){prepared_.append(id);QTimer::singleShot(120000,this,[this,id]{if(prepared_.removeOne(id))release(id);});}}
  if(hotkey&&!error)prepared_.append(id);
  // Show a live selection at the press; Acquire waits for the journal and takes
@@ -210,12 +220,46 @@ SourceAdapter::PreparedAcquisition GnomeAdapter::prepareAcquisition(const QStrin
    QMetaObject::invokeMethod(guard,[guard,id]{if(guard&&guard->prepared_.removeOne(id))guard->release(id);},Qt::QueuedConnection);
   });
  }
- return [guard,id,action,error,outcome=captureOutcome_,screenshot=action=="region"&&regionScreenshotFirst_,started,preview](const ResourceLimits& limits,std::function<void(PayloadResult)> reply){started->store(true);if(error){reply({{},error});return;}if(!guard){reply({{},{"source_unavailable","GNOME adapter closed",{}}});return;}guard->start(id,action,limits,std::move(reply),outcome,screenshot);};
+ return [guard,id,action,error,outcome=captureOutcome_,screenshot=action=="region"&&regionScreenshotFirst_,started,preview,delay=action=="region"&&!regionScreenshotFirst_?captureDelay_:0,repeat=action=="repeat"?lastRegion_:std::optional<RegionMemory>{}](const ResourceLimits& limits,std::function<void(PayloadResult)> reply){started->store(true);if(error){reply({{},error});return;}if(!guard){reply({{},{"source_unavailable","GNOME adapter closed",{}}});return;}guard->start(id,action,limits,std::move(reply),outcome,screenshot,delay,repeat);};
 }
+Error GnomeAdapter::captureVersionError()const{
+ if(!ready_)return helperAvailabilityError(true);
+ if(helper_["captureVersion"].toInt(1)>=2)return {};
+ // The setup state decides the wording: "log out" only when a login would help.
+ return {"helper_outdated",outdated()?currentSetup().message:QStringLiteral("Update the put.gd GNOME extension to capture one monitor, repeat a region or delay a capture"),{{"loaded",helper_["extensionVersion"].toInt()},{"packaged",gnome::extensionVersion}}};
+}
+void GnomeAdapter::countdown(int seconds,std::function<void(Error)> reply){
+ if(const auto error=captureVersionError()){reply(error);return;}
+ if(!countdownId_.isEmpty()){reply({"busy_selecting","Another capture countdown is running",{}});return;}
+ const auto id=uuid();countdownId_=id;const auto generation=generation_;
+ // The Shell draws the pill, removes it and answers; a click on it answers cancelled.
+ call("Countdown",{id,json({{"seconds",seconds},{"appearance",captureAppearance_}})},[this,id,generation,reply=std::move(reply)](Error error,QJsonObject result){
+  if(countdownId_==id)countdownId_.clear();
+  if(!error&&generation!=generation_)error={"cancelled","Capture countdown cancelled",{}};
+  if(!error&&(result["version"].toInt()!=gnome::protocolVersion||result["requestId"].toString()!=id))error={"bridge_protocol","GNOME countdown identity is invalid",{}};
+  lockAware(std::move(error),reply);
+ },(seconds+15)*1000);
+}
+// The Shell disables its extensions when it locks, and that can beat the
+// extension's own session_locked answer: the request then fails as a helper that
+// went away. On a locked session that is the lock, not a broken helper. logind's
+// hint follows the lock screen's own animation, so the question is asked for up
+// to two seconds before the helper's error stands.
+void GnomeAdapter::lockAware(Error error,std::function<void(Error)> reply,int attempt){
+ if(!error||error.code=="cancelled"||error.code=="session_locked"||stopping_){reply(std::move(error));return;}
+ QTimer::singleShot(500,this,[this,error=std::move(error),reply=std::move(reply),attempt]{
+  querySessionLocked(this,[this,error,reply,attempt](bool locked){
+   if(locked)reply(SourceAdapter::lockedError());else if(attempt<3)lockAware(error,reply,attempt+1);else reply(error);
+  });
+ });
+}
+void GnomeAdapter::sessionLocked(std::function<void(bool)> reply){querySessionLocked(this,std::move(reply));}
 void GnomeAdapter::acquire(const QString& action,const ResourceLimits& limits,std::function<void(PayloadResult)> reply){prepareAcquisition(action)(limits,std::move(reply));}
-void GnomeAdapter::start(const QString& id,const QString& action,const ResourceLimits& limits,std::function<void(PayloadResult)> reply,const QString& outcome,bool screenshotFirst){
+void GnomeAdapter::start(const QString& id,const QString& action,const ResourceLimits& limits,std::function<void(PayloadResult)> reply,const QString& outcome,bool screenshotFirst,int delaySeconds,const std::optional<RegionMemory>& repeat){
  if(!prepared_.removeOne(id)){reply({{},{"bridge_protocol","GNOME preparation expired or was cancelled",{}}});return;}
- auto transfer=std::make_shared<Transfer>();transfer->id=id;transfer->outcome=outcome;transfer->screenshotFirst=screenshotFirst;transfer->limits=limits;transfer->reply=std::move(reply);transfer->generation=generation_;transfers_[id]=transfer;
+ // A delayed live region counts down inside Acquire: the same lock question as countdown().
+ if(delaySeconds>0){auto inner=std::move(reply);reply=[this,inner=std::move(inner)](PayloadResult result){if(!result.error){inner(std::move(result));return;}lockAware(std::move(result.error),[inner](Error error){inner({{},std::move(error)});});};}
+ auto transfer=std::make_shared<Transfer>();transfer->id=id;transfer->outcome=outcome;transfer->action=action;transfer->delaySeconds=delaySeconds;if(repeat){transfer->area=repeat->area;transfer->layoutKey=repeat->layoutKey;}transfer->screenshotFirst=screenshotFirst;transfer->limits=limits;transfer->reply=std::move(reply);transfer->generation=generation_;transfers_[id]=transfer;
  // Only clipboard imports choose among image types; screen captures are PNG.
  // Listing Qt's readers instantiates every installed image plugin (30 plugins,
  // 12 MiB with KDE's kimageformats), so the transient image job lists them,
@@ -240,6 +284,9 @@ void GnomeAdapter::requestTransfer(const std::shared_ptr<Transfer>& transfer,con
  QJsonObject bounds{{"appearance",captureAppearance_},{"outcome",transfer->outcome},{"imageMimes",imageMimes},{"textBytes",double(limits.clipboardTextBytes)},{"imageBytes",double(limits.imageBytes)},{"imagePixels",double(limits.imagePixels)},{"maxFiles",limits.maxFiles}};
  // Screenshot first (#629): the Shell freezes the stage before selecting.
  if(transfer->screenshotFirst)bounds["regionMode"]="screenshot_first";
+ // Capture version 2 (#1363): a live region's delay, and a repeat's remembered area.
+ if(transfer->delaySeconds>0&&!transfer->screenshotFirst)bounds["delaySeconds"]=transfer->delaySeconds;
+ if(transfer->action=="repeat"){bounds["area"]=transfer->area;bounds["layoutKey"]=transfer->layoutKey;}
  call("Acquire",{transfer->id,json(bounds)},[this,transfer](Error error,QJsonObject metadata){
   if(!transfers_.contains(transfer->id))return;
   const auto bytes=metadata["bytes"].toDouble(-1);const auto bound=std::max(transfer->limits.clipboardTextBytes,transfer->limits.imageBytes);
@@ -260,7 +307,11 @@ void GnomeAdapter::read(const std::shared_ptr<Transfer>& transfer){
 }
 void GnomeAdapter::decode(const std::shared_ptr<Transfer>& transfer){
  auto result=std::make_shared<PayloadResult>();auto* worker=QThread::create([transfer,result]{*result=gnome::decodeTransfer(transfer->metadata,transfer->bytes,transfer->id,transfer->limits);});workers_.append(worker);
- connect(worker,&QThread::finished,this,[this,worker,transfer,result]{workers_.removeOne(worker);worker->deleteLater();if(!transfers_.remove(transfer->id))return;auto reply=std::move(transfer->reply);if(transfer->generation!=generation_)reply({{},{"cancelled","GNOME acquisition cancelled",{}}});else reply(std::move(*result));});worker->start();
+ connect(worker,&QThread::finished,this,[this,worker,transfer,result]{workers_.removeOne(worker);worker->deleteLater();if(!transfers_.remove(transfer->id))return;auto reply=std::move(transfer->reply);if(transfer->generation!=generation_){reply({{},{"cancelled","GNOME acquisition cancelled",{}}});return;}
+  // Repeat last region remembers a region that was captured, here in memory only.
+  const auto selection=transfer->metadata["selection"].toArray();const auto key=transfer->metadata["layoutKey"].toString();
+  if(!result->error&&transfer->action=="region"&&selection.size()==4&&!key.isEmpty())lastRegion_=RegionMemory{selection,key};
+  reply(std::move(*result));});worker->start();
 }
 // Recording protocol 1 adds SelectArea, ShowRecordingFrame and HideRecordingFrame.
 bool GnomeAdapter::selectsRegions()const{return ready_&&!outdated()&&helper_["recordingVersion"].toInt()>=1;}
@@ -314,7 +365,11 @@ void GnomeAdapter::cancelAll(const QString& code,const QString& message){
  const auto prepared=std::move(prepared_);prepared_.clear();for(const auto& id:prepared)release(id);
  auto transfers=std::move(transfers_);transfers_.clear();for(const auto& transfer:transfers){release(transfer->id);auto reply=std::move(transfer->reply);if(reply)reply({{},{code,message,{}}});}
 }
-void GnomeAdapter::cancelAcquisition(){cancelAll("cancelled","GNOME acquisition cancelled");}
+void GnomeAdapter::cancelAcquisition(){
+ // Releasing the countdown's request removes its pill; its call then answers cancelled.
+ if(!countdownId_.isEmpty())release(std::exchange(countdownId_,{}));
+ cancelAll("cancelled","GNOME acquisition cancelled");
+}
 void GnomeAdapter::copy(const CopyPayload& payload,std::function<void(Error)> answer){
  auto reply=[answer=std::move(answer)](Error e){logging::debug(logClipboard(),"Native copy finished",{{"writer","gnome-helper"},{"ok",!e},{"code",e.code}});answer(std::move(e));};
  if(!ready_){reply({"clipboard_unavailable","GNOME helper cannot own CLIPBOARD",{}});return;}

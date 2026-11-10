@@ -10,7 +10,7 @@
 using namespace putgd;
 using test::loadedImagePlugins;
 namespace {
-QJsonObject desktopSnapshot(){return {{"schemaVersion",1},{"action","desktop"},{"window","0"},{"windowRect",QJsonArray{}},{"layout",QJsonObject{{"outputs",QJsonArray{QJsonObject{{"identity","monitor"},{"native",QJsonArray{0,0,640,480}},{"rotation",1}}}},{"configuration","1"},{"root",QJsonArray{0,0,640,480}},{"scale",QString(64,'a')}}}};}
+QJsonObject desktopSnapshot(){return {{"schemaVersion",1},{"action","desktop"},{"window","0"},{"windowRect",QJsonArray{}},{"area",QJsonArray{}},{"selection",QJsonArray{}},{"selectionLayout",QJsonArray{}},{"layout",QJsonObject{{"outputs",QJsonArray{QJsonObject{{"identity","monitor"},{"native",QJsonArray{0,0,640,480}},{"rotation",1}}}},{"configuration","1"},{"root",QJsonArray{0,0,640,480}},{"scale",QString(64,'a')}}}};}
 }
 // Writes the hand-encoded PNG as Cinnamon would, so this process never encodes.
 class CinnamonPngFixture final:public QObject,protected QDBusContext {

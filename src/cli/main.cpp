@@ -50,6 +50,12 @@ int main(int argc,char** argv) {
   if(parser.isSet("output"))options["output"]=QDir::cleanPath(QDir::current().absoluteFilePath(parser.value("output")));
   params=QJsonDocument(options);
  }
+ // settings.importUploader (#1361): the resident reads the .sxcu file itself and has
+ // its own working folder, so a relative path is resolved here. The file's contents
+ // never pass through this process.
+ if(args[0]=="settings.importUploader"&&params.object()["path"].isString()&&!params.object()["path"].toString().isEmpty()) {
+  auto object=params.object();object["path"]=QDir::cleanPath(QDir::current().absoluteFilePath(object["path"].toString()));params=QJsonDocument(object);
+ }
  const auto path=parser.isSet("socket")?parser.value("socket"):putgd::LocalServer::defaultSocketPath();QLocalSocket socket;socket.connectToServer(path);
  if(!socket.waitForConnected(3000))return error("session_unavailable","Start the resident put.gd app in this user session");
  QJsonObject request{{"schemaVersion",1},{"requestId",id},{"session",path},{"method",args[0]},{"params",params.object()}};
