@@ -231,7 +231,11 @@ have none of put.gd's, so a kept bind is never doubled. The binds carry the desc
 "recorder"` for all four targets, or `hyprland_ipc_unavailable` /
 `hyprland_lua_unavailable` with the reason. Measured on Hyprland 0.56.2: four
 clicks from 50 ms down to 0 ms long, left and right, all arrived with their
-positions, and the bind count was the same before and after (251). The design
+positions, and the bind count was the same before and after (251). In
+recordings there (26.1110.4459): three presses, three rings, within 0.6 px of
+the press, in monitor, region and window recordings; a window recording maps
+each press through the window's place at that press, so a press outside the
+recorded window draws nothing. The design
 is in [Microphone and click highlights](../design/recording/microphone-and-clicks.md).
 
 ## Clipboard, tray, notifications and files

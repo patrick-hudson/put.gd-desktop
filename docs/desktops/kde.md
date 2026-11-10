@@ -118,8 +118,11 @@ where every monitor, desktop and region stream carries them.
   and size, not put.gd's. A window stream carries the window alone, so a window
   recording has none: `clickHighlights.targets` is `monitor`, `desktop`,
   `region`, and a window `prepare` that asks for them is refused with
-  `click_target_unsupported`. Presses reach put.gd on no path, so the clip's
-  rings are exactly what KWin drew.
+  `click_target_unsupported`. Settings → Advanced → Desktop support details
+  names this in its Click highlights row. Presses reach put.gd on no path, so
+  the clip's rings are exactly what KWin drew. Measured in recordings on Plasma
+  6.3.6 and 6.6.6: three presses, three rings with KWin's button label, in
+  monitor and region recordings, none with the setting off.
 
 `recording.capabilities` reports `route: "kwin-mouseclick-effect"`, `drawnBy:
 "compositor"`; without KWin's `Effects` interface or KGlobalAccel on the

@@ -63,6 +63,14 @@ is and, for a window recording, where the window is now, so the ring stays on a
 window that has moved. The selection exists from Record to Stop. The ring is
 drawn on a copy of the frame in plain memory, which matters here: X11 recordings
 on Intel use a VA encoder, whose own surfaces cannot be drawn on in place.
+Measured on Cinnamon 6.6.9 (Mint 22.3): three presses, three rings, within 1 px
+of the press and one frame of it, in monitor, region and window recordings.
+
+An X11 recording's microphone never provides the pipeline's clock: `ximagesrc`
+has none, and a recording with the microphone alone used to run on the
+microphone's, which stops when the microphone is unplugged and took the rest of
+the clip with it. See
+[The clock](../design/recording/microphone-and-clicks.md#capture-and-mix).
 
 `recording.capabilities` reports `clickHighlights {available: true, route:
 "x11-xinput2", drawnBy: "recorder"}` for monitor, desktop, region and window

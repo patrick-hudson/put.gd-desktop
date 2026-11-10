@@ -351,7 +351,14 @@ tools for that are `tools/lab/cover_player.py` and `tools/lab/record_run.py`
   every module it loaded by its exact id and restores the previous default
   source and sink by name. `--system-sink` adds a private default output so
   system audio can be checked without sound from the speakers. It keeps a state
-  file, so `remove` after a failed run still cleans up.
+  file, so `remove` after a failed run still cleans up. `create` checks the
+  microphone before it hands it over (a tone into the sink must come out of the
+  source, read with `parec`; a silent source is made again, up to six times) and
+  loads a loopback into a third, silent sink that keeps the source in use for
+  the run: on PipeWire 1.0.5 (Mint 22, Ubuntu 24.04) a remapped source left
+  without a reader sometimes passes pure silence to every later reader. `unplug`
+  and `remove` unload that loopback before the source, so it can never be moved
+  to a real input.
 - `record_run.py --mic virtual|muted|default|NAME` records with a microphone:
   `virtual` creates the simulated one, plays the `--av-marker` clip's bursts
   into it and removes it afterwards; `muted` does the same with the bar's
@@ -366,7 +373,11 @@ tools for that are `tools/lab/cover_player.py` and `tools/lab/record_run.py`
   or two off while the audio branch settles. `--system leak` plays the tone on
   a private output whose monitor is the default input, without recording
   system audio: the clip must hold none of it, also after `--unplug-at`.
-  `summarize_run.py RESULTS.json` prints a run on one screen.
+  A round lists `problems`, and the run exits 1, when its clip is more than
+  1.5 s shorter than the time recorded, lacks the simulated microphone's bursts,
+  holds them with the toggle off, holds the unrecorded output's tone, says the
+  microphone was lost when nothing removed it, or does not say so after
+  `--unplug-at`. `summarize_run.py RESULTS.json` prints a run on one screen.
 - `record_run.py --click S,X,Y[,BUTTON]` (repeatable) presses a button at a
   desktop pixel S seconds into each recording, as real input through the
   desktop's VNC tile (`--click-vnc HOST:PORT` in a guest: QEMU's VNC on the VM
@@ -377,10 +388,17 @@ tools for that are `tools/lab/cover_player.py` and `tools/lab/record_run.py`
   the resting pointer. The ring's delay after the press is counted from the
   pointer's arrival in the same clip, so the recording's own start does not
   enter. Add `--system tone` on a builder: the marker's sound then plays into a
-  private output instead of the speakers.
+  private output instead of the speakers. A window run (`--target window`)
+  records the cover: on Wayland the focused window; on X11 the cover's window
+  found by its process id (a cover started from a shell does not get the focus
+  on Cinnamon); on Hyprland with `misc:on_focus_under_fullscreen` held at 0 for
+  the run and put back afterwards, because at 1 (Omarchy's value) put.gd's
+  controls take the cover's full-screen state when they open, the cover is
+  tiled out of sight and the presses land outside the recorded window.
 - `recording_bar_shots.py` saves frames of the desktop with the recording bar's
   microphone states on screen (toggle off; on, with a level on the meter; no
-  microphone) and, with `settings`, Settings, for PR pictures.
+  microphone) and, with `settings`, Settings, or with `support`, Settings with
+  Desktop support details open (through `ui.diagnostics`), for PR pictures.
 
 Two traps when you drive a private resident in a desktop session (#214, #198):
 

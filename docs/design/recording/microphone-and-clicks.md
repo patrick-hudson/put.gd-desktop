@@ -113,6 +113,19 @@ pause probe sits on the AAC encoder's input, after the mix, so one paused
 interval still moves both tracks by the same time; the adaptive rate changes
 only video frames.
 
+**The clock.** The microphone source never provides the pipeline's clock
+(`provide-clock=false`). An audio source offers a clock that counts the samples
+it has read, and a pipeline takes it when nothing nearer the sinks offers one.
+PipeWire and image-copy pipelines are given the system clock when they are
+built; an X11 pipeline is not, and `ximagesrc` has no clock, so a recording
+with the microphone alone ran on the microphone's. When that microphone went
+away it read no more samples, its clock stopped, `ximagesrc` waited for a frame
+time that never came, and the clip ended where the microphone did while the
+recording still said it was running: 6.2 s kept of 14 s recorded on Cinnamon
+(Mint 22.3, PipeWire 1.0.5). Without the offer an X11 pipeline runs on the
+system audio's clock or the system clock, as a recording without a microphone
+does, and the microphone follows it; the same run then keeps 14.4 s of 14.2 s.
+
 **Loss.** Three things can happen to an input that goes away, and each ends the
 same way. The source element can fail: its error is not the recording's, the
 source sends EOS down its own branch, and the mixer and the muxer go on with
@@ -157,26 +170,50 @@ track **System audio**, **Microphone** or **System audio and microphone**.
 
 ### Measured
 
-Physical GNOME Wayland (Fedora 44, Mutter 50.6, `mutter-screencast`, OpenH264
-and `avenc_aac`), scratch build of the #1364 branch at `32a9a763e` plus the
-change, a simulated microphone (a null sink remapped into a source; no real
-microphone), region 1280×720, driven by `tools/lab/record_run.py`:
+This pull request's CI packages, installed on each desktop, a simulated
+microphone (a null sink remapped into a source; no real microphone), driven by
+`tools/lab/record_run.py` over its marker (a white flash with a 1 kHz burst
+once a second). Audio minus video, the analyzer's median over 13 to 17 flashes;
+one frame at 30 fps is 33.3 ms. The number in brackets is the build
+(26.1110.*N*).
 
-| Run | Result |
-| --- | --- |
-| Microphone only, MP4 | Bursts 16.0 ms after the flash (13 pairs; working clip 15.7 ms); motion score 18.1 |
-| Microphone and system audio, 25 s, MP4, two runs | 12 ms and 4 ms (25 pairs each); both tones present |
-| The same across a 3 s pause, MP4 / WebM | Median −12 ms / −2.7 ms; step at the pause 0.4 ms / 0.0 ms; export against working clip −0.7 ms / −0.2 ms |
-| Toggle off, bursts still playing into the simulated microphone | No 1 kHz in the clip (level 0.000); the system tone present |
-| Simulated microphone unloaded 6 s in | Recording went on to 18.8 s, 565 frames, none dropped; microphone audio to 6.8 s, silence after; exports and decodes |
+| Desktop | Microphone alone, MP4 / WebM | Mixed with system audio, across a 3 s pause | Unplugged 6 s in |
+| --- | --- | --- | --- |
+| Cinnamon 6.6.9, X11 (Mint 22.3, PipeWire 1.0.5) [4437] | 0 ms / −5 ms | +7 ms, step at the pause 0.3 ms | 14.4 s kept of 14.2 s recorded |
+| GNOME 50.6 (Fedora 44, PipeWire 1.6.9) [4436] | +26 ms / −2 ms | +25 ms, step 0.3 ms | 14.8 s of about 14.2 s |
+| KDE Plasma 6.3.6 (Debian 13, PipeWire 1.4.2) [4437] | +15 ms / −5 ms | +1 ms, step −0.4 ms | 14.4 s of 14.2 s |
+| KDE Plasma 6.6.6 (Kubuntu 26.04, PipeWire 1.6.2) [4437] | +21 ms / +2 ms | +20 ms, step 0.0 ms | 14.9 s of 14.2 s |
+| Hyprland 0.56.2 (Omarchy guest, PipeWire 1.6.9) [4459] | −20 ms / −15 ms | −18 ms, step 0.2 ms | 15.8 s of 14.3 s |
+| Budgie 10.10.3, labwc 0.20.2 (Fedora 45 guest, PipeWire 1.6.9) [4437] | +37 ms / +73 ms | +35 ms, step −0.1 ms | 15.7 s of 14.2 s |
 
-One frame at 30 fps is 33.3 ms. Single pairs sit one frame either side of the
-median in every marker run, with or without the microphone: the marker's 30 fps
-and the capture's frame grid slip by a whole frame now and then. Within about
-5 s of Record, pairs can sit one or two frames off when the recording starts
-2 s after `prepare`; with 6 s between them they do not, so the acceptance runs
-use `--lead 6`. Both capture branches' timestamps were exactly contiguous in
-every run (the helper's debug log prints them).
+On every desktop: with the toggle off and the bursts still playing into the
+simulated microphone, the clip holds no 1 kHz (peak at most 0.0004 of full
+scale, against 0.35 when recorded); after the unplug the recording reports
+`microphoneLost`, the clip holds the bursts up to the unplug and none of a tone
+that plays on an unrecorded output whose monitor is the default input; a
+request for a default input that is an output's monitor is refused with the
+reason (not run on the GNOME machine, whose default input is a real device the
+lab never opens).
+
+Single flashes sit one frame either side of the median in every marker run,
+with or without the microphone: the marker's 30 fps and the capture's frame
+grid slip by a whole frame now and then. Within about 5 s of Record, pairs can
+sit one or two frames off when the recording starts 2 s after `prepare`; with
+6 s between them they do not, so the runs use `--lead 6`. The two guests are
+QEMU machines with software rendering: their system-audio recordings sit
+about +25 ms (Budgie) and −15 ms (Hyprland) too, so the microphone adds little
+to what the guest's own picture path does. The clip can be a little longer than
+the driver's count of the time recorded: its first frame is taken while the
+start call is still running.
+
+The lab's simulated microphone itself failed on PipeWire 1.0.5: a remapped
+source left without a reader sometimes passed pure silence to every later
+reader, while the sink's monitor carried the sound (12 of 21 recordings on
+Cinnamon; an independent `parec` on the source, joined four seconds into such a
+recording, read silence too; the recorder was fed buffers throughout and never
+called the microphone lost). `virtual_mic.py` now checks the source for sound
+when it makes it and keeps it in use with a loopback into a silent sink: 10 of
+10 since.
 
 ## Click highlights
 
@@ -212,6 +249,11 @@ starts without rings.
 Two desktops leave window recordings out, each for a reason in the compositor:
 on Plasma KWin draws the rings on the screen and a window stream carries the
 window alone; on Budgie a window capture has no pointer position (below).
+**Desktop support details** says so in its Click highlights row, after the
+route: "Not in window recordings:" and the adapter's reason
+(`targetReasons.window`). The row's value takes its whole column and its
+wrapped height; before 26.1110.4459 it was cut off after one or two short
+lines.
 
 ### Drawing
 
@@ -250,7 +292,10 @@ pipeline; frames that old are still on their way to the encoder. Nothing is watc
 route grabs the pointer and no route consumes an event. When the desktop cannot
 start the watch, or the helper has no pointer position for a press it is asked
 to place, the recording goes on without rings and `inspect` reports
-`progress.clickHighlightsError`. Where starting the watch shows on screen, the
+`progress.clickHighlightsError`. That field is the service's own: the helper's
+progress reports, several a second, replace one another and leave it in place
+(before 26.1110.4465 each report replaced the whole object and the reason was
+gone within the second). Where starting the watch shows on screen, the
 watch starts first and the capture once the desktop has answered, within
 1.5 s: a labwc reconfigure turns the pointer into the default arrow for about
 130 ms (measured on labwc 0.20.2, in a recording across a `SIGHUP`; window
@@ -331,8 +376,19 @@ What this leaves out, each for a reason in the compositor:
 | A turned output | Its recording keeps the compositor's painted cursor; `clickHighlightsError` says there is no pointer position |
 
 The clip otherwise matches a Budgie recording without highlights: the same
-cursor picture, taken from the compositor's own cursor buffer, at the same
-place.
+cursor picture, taken from the compositor's own cursor buffer. Measured in two
+region recordings with the pointer at rest at the same place (labwc 0.20.2,
+26.1110.4465): 56 dark pixels in each cursor, the drawn one a pixel right and a
+pixel down of the painted one, because the cursor session reports the pointer in
+whole pixels.
+
+Without a hardware cursor (labwc started with `WLR_NO_HARDWARE_CURSORS=1`, the
+same guest and build): the helper logs that the compositor paints the cursor,
+the clip shows the cursor at all three press places, no ring is drawn, each
+press is answered `pointer_position_unavailable`, and `recording.inspect` holds
+"The compositor has reported no pointer position for this recording (labwc
+reports it only for an output with a hardware cursor), so clicks cannot be
+highlighted".
 
 ### Route proofs
 

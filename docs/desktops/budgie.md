@@ -192,7 +192,11 @@ halves; the design and the upstream sources are in
   modifier combination other than those above; presses while the application
   hides the pointer; a session without a hardware cursor, or a turned output
   (the recording then keeps the compositor's painted cursor and
-  `progress.clickHighlightsError` says there is no pointer position).
+  `progress.clickHighlightsError` says there is no pointer position; measured
+  on labwc 0.20.2 started with `WLR_NO_HARDWARE_CURSORS=1`: the cursor is in
+  the clip, no ring is drawn, and `inspect` gives the reason). Settings →
+  Advanced → Desktop support details names the window-recording limit in its
+  Click highlights row.
 
 `labwc_bridge_contract` covers the edit of `rc.xml` and the bus entry, and
 `budgie_labwc_integration` runs the binds in a real headless labwc: a press over
