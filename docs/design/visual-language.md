@@ -208,7 +208,8 @@ A wide row reads, left to right: the thumbnail (with a hairline ring in the dark
 scheme), the name in Medium weight, and one detail line in the order kind · size
 · destination · state. State words are never cut; the destination elides first
 and goes rather than shrink below its first word, then the size and file count
-go. A failure line is body size and names where the upload was going (`Upload to
+go, and last the kind by the destination's rule, so no stub such as `Re…` is
+left. A failure line is body size and names where the upload was going (`Upload to
 Proton Drive failed · Connection interrupted`); it wraps rather than elides.
 Right of the text come the row's labelled recovery action (Retry upload, Retry
 local save, Retry deletion), a right-aligned time column (relative for the last
