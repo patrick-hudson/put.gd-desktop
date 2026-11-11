@@ -189,7 +189,12 @@ TrayController::TrayController(OperationService& operations,
   }
  });
  connect(&operations_.scroll(),&ScrollCaptureService::ended,this,[this]{
+  if(operations_.scroll().active())return;
   holdNotices_=false;
+#ifdef Q_OS_LINUX
+  for(const auto& n:std::exchange(heldTrayMessages_,{}))sendTrayMessage(n.title,n.message,n.warning,n.actions,n.transient);
+#endif
+  for(const auto& managers:std::exchange(heldFileManagerNotices_,{}))notifyFileManagerMenu(managers);
   for(const auto& n:std::exchange(heldNotices_,{}))notifyMessage(n.code,n.title,n.message,n.warning,n.link,n.diagnosticsOperation,n.revealPath,n.diagnosticsLabel);
  },Qt::QueuedConnection);
  // A recording that ended itself on its byte budget says why (#225).
@@ -620,17 +625,29 @@ void TrayController::openNotificationLink(const QUrl& link) {
 int TrayController::closeOwnNotifications(std::function<void()> gone) {
 #ifdef Q_OS_LINUX
  if(native_)return native_->closeNotifications(std::move(gone));
+ ++trayNoticeGeneration_;
  auto bus=QDBusConnection::sessionBus();
  const auto open=std::exchange(trayOpen_,{});
- if(!bus.isConnected())return 0;
- for(const uint id:open){
-  trayActions_.remove(id);
-  auto close=QDBusMessage::createMethodCall("org.freedesktop.Notifications","/org/freedesktop/Notifications","org.freedesktop.Notifications","CloseNotification");
-  close<<id;bus.asyncCall(close);
+ const bool balloon=std::exchange(trayBalloon_,false);
+ if(balloon&&tray_){
+  // Qt's X11 fallback removes its balloon when its tray icon is hidden.
+  const bool visible=tray_->isVisible();tray_->hide();if(visible)tray_->show();disconnect(trayRestartClick_);
  }
- // This path does not follow the server's NotificationClosed: asked is taken for gone.
- if(!open.isEmpty()&&gone)QTimer::singleShot(0,this,gone);
- return int(open.size());
+ if(!bus.isConnected()&&!balloon)return 0;
+ for(const uint id:open)closeTrayNotification(id);
+ const int pending=trayMessagesInFlight_+trayClosesInFlight_+int(balloon);
+ if(pending){
+  const auto id=operations_.scroll().activeId();
+  operations_.scroll().holdStart(5000,true);
+  auto* waiting=new QTimer(this);waiting->setInterval(50);
+  connect(waiting,&QTimer::timeout,this,[this,waiting,id,gone]{
+   if(operations_.scroll().activeId()!=id){waiting->stop();waiting->deleteLater();return;}
+   if(trayMessagesInFlight_||trayClosesInFlight_){operations_.scroll().holdStart(5000,true);return;}
+   waiting->stop();waiting->deleteLater();if(gone)gone();
+  });
+  waiting->start();
+ }
+ return pending;
 #else
  Q_UNUSED(gone);
  return 0;
@@ -667,8 +684,39 @@ void TrayController::notifyMessage(const QString& code, const QString& title, co
 // request without waiting; only a bus with no notification server falls back to
 // Qt, whose tray then shows the message itself.
 // The urgency is a D-Bus byte: GNOME Shell shows no banner for an int or for 0 (#1105).
+void TrayController::closeTrayNotification(uint id,int attempt) {
+ if(trayKnownClosed_.contains(id)){trayClosingIds_.removeAll(id);return;}
+ if(!trayClosingIds_.contains(id))trayClosingIds_.append(id);
+ trayActions_.remove(id);
+ auto close=QDBusMessage::createMethodCall("org.freedesktop.Notifications","/org/freedesktop/Notifications","org.freedesktop.Notifications","CloseNotification");
+ close<<id;++trayClosesInFlight_;
+ auto* pending=new QDBusPendingCallWatcher(QDBusConnection::sessionBus().asyncCall(close,1000),this);
+ connect(pending,&QDBusPendingCallWatcher::finished,this,[this,id,attempt](QDBusPendingCallWatcher* p){
+  const QDBusPendingReply<> reply=*p;p->deleteLater();
+  if(reply.isError()&&!trayKnownClosed_.contains(id)&&operations_.scroll().active()){
+   if(attempt>=2){
+    --trayClosesInFlight_;trayClosingIds_.removeAll(id);trayOpen_.append(id);
+    operations_.scroll().failPreparation({"notification_close_failed","A put.gd notification could not be closed. Dismiss it and try capture again.",{}});
+    return;
+   }
+   QTimer::singleShot(500,this,[this,id,attempt]{--trayClosesInFlight_;if(operations_.scroll().active())closeTrayNotification(id,attempt+1);else {trayClosingIds_.removeAll(id);if(!trayKnownClosed_.contains(id))trayOpen_.append(id);}});
+   return;
+  }
+  --trayClosesInFlight_;trayClosingIds_.removeAll(id);if(reply.isError()&&!trayKnownClosed_.contains(id))trayOpen_.append(id);
+ });
+}
+void TrayController::trayNotificationClosed(uint id,uint reason) {
+ Q_UNUSED(reason);
+ trayOpen_.removeAll(id);trayActions_.remove(id);
+ if(trayClosingIds_.contains(id)||trayMessagesInFlight_){
+  if(!trayKnownClosed_.contains(id))trayKnownClosed_.append(id);
+  if(trayKnownClosed_.size()>256)trayKnownClosed_.removeFirst();
+ }
+}
 void TrayController::showTrayMessage(const QString& title, const QString& message, bool warning, const QList<NotificationAction>& actions) {
+ if(!trayMessagesInFlight_&&!trayClosesInFlight_)trayKnownClosed_.clear();
  auto bus=QDBusConnection::sessionBus();
+ if(!trayClosedConnected_&&bus.isConnected())trayClosedConnected_=bus.connect("org.freedesktop.Notifications","/org/freedesktop/Notifications","org.freedesktop.Notifications","NotificationClosed",this,SLOT(trayNotificationClosed(uint,uint)));
  // A warning is transient only where the server would restore it after a restart (#1298): ask its name first.
  if(warning&&bus.isConnected()){
   auto* named=new QDBusPendingCallWatcher(bus.asyncCall(QDBusMessage::createMethodCall("org.freedesktop.Notifications","/org/freedesktop/Notifications","org.freedesktop.Notifications","GetServerInformation")),this);
@@ -693,10 +741,11 @@ void TrayController::askCapabilities(const QString& title, const QString& messag
  });
 }
 void TrayController::sendTrayMessage(const QString& title, const QString& message, bool warning, const QList<NotificationAction>& actions, bool transient) {
+ if(holdNotices_){if(heldTrayMessages_.size()<32)heldTrayMessages_.append({title,message,warning,actions,transient});return;}
  static constexpr int balloonMs=30000;
  const auto fallback=[this,tray=QPointer<QSystemTrayIcon>(tray_),title,message,warning,actions]{
-  if(!tray)return;
-  disconnect(trayRestartClick_);
+  if(!tray||holdNotices_)return;
+  trayBalloon_=true;disconnect(trayRestartClick_);
   const auto icon=warning?QSystemTrayIcon::Warning:QSystemTrayIcon::Information;
   if(actions.isEmpty()){tray->showMessage(title,message,icon);return;}
   // No notification server, as on a plain LXDE: Qt's balloon has no buttons, so a click on it restarts.
@@ -718,11 +767,17 @@ void TrayController::sendTrayMessage(const QString& title, const QString& messag
   if(!trayActionsConnected_)trayActionsConnected_=bus.connect("org.freedesktop.Notifications","/org/freedesktop/Notifications","org.freedesktop.Notifications","ActionInvoked",this,SLOT(trayNotificationAction(uint,QString)));
  }
  call.setArguments({QCoreApplication::applicationName(),uint(0),QString(warning?"dialog-warning":"dialog-information"),title,message,names,hints,values.isEmpty()?10000:0});
+ const auto generation=trayNoticeGeneration_;
  ++trayMessagesInFlight_;
  auto* pending=new QDBusPendingCallWatcher(bus.asyncCall(call),this);
- connect(pending,&QDBusPendingCallWatcher::finished,this,[this,fallback,values](QDBusPendingCallWatcher* p) {
+ connect(pending,&QDBusPendingCallWatcher::finished,this,[this,fallback,values,generation](QDBusPendingCallWatcher* p) {
   --trayMessagesInFlight_;p->deleteLater();
   const QDBusPendingReply<uint> reply=*p;
+  if(generation!=trayNoticeGeneration_||holdNotices_){
+   if(reply.isValid())closeTrayNotification(reply.value());
+   return;
+  }
+  if(reply.isValid()&&trayKnownClosed_.contains(reply.value()))return;
   if(reply.isValid()&&!values.isEmpty())trayActions_.insert(reply.value(),values);
   if(reply.isValid()){trayOpen_.append(reply.value());if(trayOpen_.size()>16)trayOpen_.removeFirst();}
   const auto error=p->error().type();
@@ -785,6 +840,7 @@ QString fileManagerName(const QString& name){
 }
 }
 void TrayController::notifyFileManagerMenu(const QStringList& restartable) {
+ if(holdNotices_){heldFileManagerNotices_.append(restartable);return;}
  QString message=QStringLiteral("Upload with put.gd is now in your file manager's right-click menu.");
  if(!restartable.isEmpty()){
   // Short, what matters first: some servers cut a body at about 80 characters.

@@ -621,6 +621,20 @@ void testEndsAndBounce() {
   {
     ViewportSpec v2 = vs;
     v2.caret = v2.anim = false;
+    v2.footerH = 80;
+    Renderer r2(doc.img, v2);
+    StitchOptions o;
+    o.maxOutputRows = 20;
+    Drive d = drive(r2, {0, 100}, true, o);
+    Image first; r2.render(0, 0, first);
+    Image prefix(v2.width, 20, kBg);
+    std::copy_n(first.px.begin(), prefix.px.size(), prefix.px.begin());
+    const auto cmp = compare(d.img, d.outH, prefix, 0, v2.width);
+    report("footer larger than output cap", cmp.heightOk && cmp.mismatches == 0, fmt("height=%d, exact prefix=%d", d.outH, cmp.heightOk && cmp.mismatches == 0));
+  }
+  {
+    ViewportSpec v2 = vs;
+    v2.caret = v2.anim = false;
     Renderer r2(doc.img, v2);
     Image a, b;
     r2.render(600, 0, a);
@@ -1467,6 +1481,67 @@ void testSessions() {
   }
 }
 
+void testReviewFrameProofs() {
+  {
+    DocSpec ds; ds.width = 480; ds.viewport = 600;
+    const auto doc = makeDocument(ds);
+    ViewportSpec vs; vs.width = 480; vs.height = 600;
+    FakeClock clock; FakeAppSpec spec;
+    spec.startPos = 1500; spec.pxPerNotch = 53;
+    spec.wheelArea = {360, 0, 120, 600};
+    FakeApp app(doc.img, vs, spec, clock);
+    RunOptions opts; opts.fromTop = true; opts.pointer = true; opts.away = RunPoint{-12, 200};
+    ScrollRun run(app, app, clock, opts);
+    const auto result = run.run();
+    const auto image = run.stitcher().takeImage();
+    int c0, c1; comparedColumns(480, opts.stitch, c0, c1);
+    const auto cmp = compare(image, run.stats().outputRows, app.renderer().expected(doc.img.h), c0, c1);
+    report("from top resolves right-edge target before stitching", result == RunResult::EndOfContent && run.stats().reachedTop && run.stats().toTopMoved && run.stats().parkPosition == 1 && cmp.heightOk && cmp.mismatches == 0,
+           fmt("%s, rows=%d, exact=%d", toString(result), run.stats().outputRows, cmp.heightOk && cmp.mismatches == 0));
+  }
+  struct Source : RunFrames, RunInjector {
+    FakeClock clock;
+    Image original{480, 600, kBg}, changed{480, 600, kBg};
+    bool resize = false, retry = false;
+    int wheels = 0, reads = 0, fresh = 0;
+    Source() {
+      original = marginNumberedLines(480, 100, 18, false);
+      changed = original;
+      std::fill(changed.px.begin(), changed.px.end(), uint8_t(127));
+    }
+    bool scroll(int) override { ++wheels; reads = 0; return true; }
+    bool movePointer(int, int) override { return true; }
+    std::optional<RunFrame> nextFrame(int ms) override {
+      clock.sleepMs(ms);
+      ++reads;
+      auto v = (retry && wheels == 2 ? changed : original).view();
+      if (resize && wheels) v.height = 100;
+      return RunFrame{v, clock.nowMs()};
+    }
+    std::optional<RunFrame> freshFrame(int) override {
+      ++fresh;
+      if (wheels >= 2) return std::nullopt;
+      return RunFrame{original.view(), clock.nowMs()};
+    }
+  };
+  {
+    Source source; source.resize = true;
+    ScrollRun run(source, source, source.clock);
+    const auto result = run.run();
+    report("resized stream fails with LayoutChanged", result == RunResult::LayoutChanged && source.reads == 1, fmt("%s, reads after resize=%d", toString(result), source.reads));
+  }
+  {
+    Source source; source.retry = true;
+    RunOptions opts; opts.pointer = false;
+    opts.onStep = [&](const StepResult& r, int, int) {
+      if (r.status == StepStatus::NoMatch || r.status == StepStatus::Ambiguous) source.retry = false;
+    };
+    ScrollRun run(source, source, source.clock, opts);
+    const auto result = run.run();
+    report("retry stillness needs fresh proof", result != RunResult::EndOfContent && source.fresh >= 2, toString(result));
+  }
+}
+
 // ------------------------------------------------------------------ pointer rules, scroll to top
 
 // The loop's own rules about the pointer (the issue's "Control loop" section),
@@ -2085,6 +2160,7 @@ int main(int argc, char** argv) {
   testMemory();
   testSessions();
   testPointerRules();
+  testReviewFrameProofs();
 
   int pass = 0, fail = 0, known = 0;
   std::printf("\n==================== summary ====================\n");

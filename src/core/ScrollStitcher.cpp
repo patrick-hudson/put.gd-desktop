@@ -271,7 +271,7 @@ void ScrollStitcher::emitRaw(const uint8_t* row) {
 
 void ScrollStitcher::emitRows(const FrameView& f, int y0, int y1) {
   if (y1 <= y0) return;
-  const long long reserve = moved_ ? std::max(estBot_, 0) : 0;
+  const long long reserve = moved_ ? std::min(std::max(estBot_, 0), opts_.maxOutputRows) : 0;
   const long long allowed = std::max(0LL, opts_.maxOutputRows - reserve - bodyRows_);
   long long n = y1 - y0;
   if (n > allowed) {
@@ -298,6 +298,10 @@ void ScrollStitcher::storeFooter(const FrameView& f) {
     std::memcpy(&footer_[size_t(i) * width_ * 4], f.row(height_ - footerRows_ + i), size_t(width_) * 4);
 }
 
+void ScrollStitcher::restartBeforeMovement() {
+  if (!moved_ && !finished_) *this = ScrollStitcher(opts_, std::move(sink_));
+}
+
 void ScrollStitcher::finish() {
   if (finished_ || !hasRef_) {
     finished_ = true;
@@ -306,7 +310,7 @@ void ScrollStitcher::finish() {
   if (!moved_) {
     flushPending(height_);
   } else {
-    const int rows = std::max(estBot_, 0);
+    const int rows = int(std::min<long long>(std::max(estBot_, 0), std::max(0LL, opts_.maxOutputRows - bodyRows_)));
     const int skip = footerRows_ - rows;  // footer_ may hold more rows than the final estimate
     for (int i = 0; i < rows; ++i) emitRaw(&footer_[size_t(skip + i) * width_ * 4]);
   }
@@ -457,6 +461,12 @@ StepResult ScrollStitcher::addFrame(const FrameView& f, const FrameSignatures& c
     }
     estTop_ = top;
     estBot_ = bot;
+    if (!moved_ && bot >= opts_.maxOutputRows) {
+      flushPending(H);  // the cap cannot hold the footer: keep the first viewport's prefix
+      limited_ = finished_ = true;
+      r.status = StepStatus::LimitReached;
+      return r;
+    }
     if (!moved_) {
       moved_ = true;
       flushPending(H - bot);  // first frame minus its (now known) footer
@@ -471,6 +481,12 @@ StepResult ScrollStitcher::addFrame(const FrameView& f, const FrameSignatures& c
   } else {
     estTop_ = top;
     estBot_ = bot;
+    if (!moved_ && bot >= opts_.maxOutputRows) {
+      flushPending(H);  // the cap cannot hold the footer: keep the first viewport's prefix
+      limited_ = finished_ = true;
+      r.status = StepStatus::LimitReached;
+      return r;
+    }
     if (!moved_) {
       moved_ = true;
       flushPending(H - bot);

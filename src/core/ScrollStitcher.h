@@ -149,6 +149,8 @@ class ScrollStitcher {
 
   // Emits the remaining rows (first frame if nothing moved, then the footer).
   void finish();
+  // A new scroll target before any body was emitted: discard only the pending viewport.
+  void restartBeforeMovement();
 
   int outputWidth() const { return width_; }
   int outputHeight() const;  // rows emitted so far + pending + footer

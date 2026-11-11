@@ -117,7 +117,6 @@ QJsonObject probeScroll() {
         // The portal screen cast is never used for a scroll capture.
         refuse("frame_source_unavailable", session == "wayland" ? QStringLiteral("This desktop has no dialog-free frame stream") : QStringLiteral("No display session"));
     }
-    if (selection == "none") refuse("region_unavailable", QStringLiteral("This desktop has no region selector for a scroll capture"));
     result["frames"] = frames;
     result["injector"] = injector;
     result["selection"] = selection;

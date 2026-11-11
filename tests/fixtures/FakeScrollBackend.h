@@ -10,12 +10,15 @@ struct FakeScrollBackend final:ScrollBackend {
  void refreshCapabilities(std::function<void()> done)override{++probes;probed=true;done();}
  Event sink;QString directory;QString corruption;bool stopEmpty=false;bool heightCap=false;
  // The finished object of the next stop: its endReason when set, and topReached: false with it.
+ QString holdCommand;Reply heldCommand;
  QString endReason;bool topMissed=false;int discarded=0;bool started=false;
- QJsonObject capabilities()const override{return {{"available",probed},{"injector","fake"},{"frames","fake"}};}
+ QString selector; // the probe's "selection" when set ("none": a build with no region selector)
+ QJsonObject capabilities()const override{QJsonObject c{{"available",probed},{"injector","fake"},{"frames","fake"}};if(!selector.isEmpty())c["selection"]=selector;return c;}
  void setEventSink(Event s)override{sink=std::move(s);}
  void prepare(const QString& id,const QJsonObject& p,const QString& d,Reply reply)override{preparedParams=p;if(onPrepare)onPrepare(id);directory=d;reply({},{{"state",p.contains("rect")?"ready":"selecting"}});}
  void control(const QString&,const QString& cmd,const QJsonObject&,Reply reply)override{
   commands.append(cmd);
+  if(cmd==holdCommand){heldCommand=std::move(reply);return;}
   if(cmd=="stop"&&stopEmpty){reply({"cancelled","No frame yet",{}},{});return;}
   if(cmd=="stop") {QImage image(64,64,QImage::Format_RGB32);image.fill(Qt::blue);const auto path=directory+"/result.png";image.save(path);QFile f(path);f.open(QIODevice::ReadOnly);auto png=f.readAll();QJsonObject finished{{"path",path},{"bytes",png.size()+(corruption=="size"?1:0)},{"sha256",corruption=="hash"?QString("bad"):QString::fromLatin1(QCryptographicHash::hash(png,QCryptographicHash::Sha256).toHex())},{"width",corruption=="ihdr"?65:64},{"height",64},{"endReason",!endReason.isEmpty()?endReason:QString(heightCap?"height_cap":"stopped")},{"appliedMaxHeight",30000},{"truncated",true}};if(topMissed)finished["topReached"]=false;reply({},finished);return;}
   if(cmd=="start")started=true;

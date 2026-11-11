@@ -94,11 +94,18 @@ private:
  void showTrayMessage(const QString& title, const QString& message, bool warning, const QList<NotificationAction>& actions);
  void askCapabilities(const QString& title, const QString& message, bool warning, const QList<NotificationAction>& actions, bool transient);
  void sendTrayMessage(const QString& title, const QString& message, bool warning, const QList<NotificationAction>& actions, bool transient);
- int trayMessagesInFlight_ = 0;
+ struct HeldTrayMessage { QString title,message; bool warning; QList<NotificationAction> actions; bool transient; };
+ QList<HeldTrayMessage> heldTrayMessages_;
+ void closeTrayNotification(uint id,int attempt=0);
+ int trayMessagesInFlight_ = 0, trayClosesInFlight_ = 0;
  // Its buttons, by notification id: the server shows them and reports the click.
  QHash<uint,QHash<QString,QString>> trayActions_;
+ bool trayBalloon_ = false;
+ quint64 trayNoticeGeneration_ = 0;
  QList<uint> trayOpen_; // the newest few it sent, for closeOwnNotifications()
- bool trayActionsConnected_ = false;
+ bool trayActionsConnected_ = false, trayClosedConnected_ = false;
+ QList<uint> trayKnownClosed_,trayClosingIds_;
+ Q_SLOT void trayNotificationClosed(uint id,uint reason);
  QMetaObject::Connection trayRestartClick_; // Qt's balloon has one click signal, whichever balloon is showing
  Q_SLOT void trayNotificationAction(uint id, const QString& key);
 #endif
@@ -116,6 +123,7 @@ private:
  // and shown when it has ended. Other applications' notices are not put.gd's to close.
  struct HeldNotice { QString code, title, message; bool warning = false; QUrl link; QString diagnosticsOperation, revealPath, diagnosticsLabel; };
  QList<HeldNotice> heldNotices_;
+ QList<QStringList> heldFileManagerNotices_;
  bool holdNotices_ = false;
  // `gone`: see NativeTray::closeNotifications.
  int closeOwnNotifications(std::function<void()> gone={});

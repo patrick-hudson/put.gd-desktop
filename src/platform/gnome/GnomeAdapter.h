@@ -71,7 +71,7 @@ private:
  class ScrollShell final:public RecordingShell {
  public:
   explicit ScrollShell(GnomeAdapter& owner):owner_(owner){}
-  bool selectsRegions()const override{return owner_.ready_&&owner_.helper_["recordingVersion"].toInt()>=1;}
+  bool selectsRegions()const override{return owner_.ready_&&owner_.helper_["recordingVersion"].toInt()>=1&&owner_.helper_["extensionVersion"].toInt()>=22;}
   Error regionError()const override{return selectsRegions()?Error{}:owner_.regionError();}
   void selectRegion(Reply reply)override{owner_.selectRegionImpl(std::move(reply),true);}
   void cancelSelection()override{owner_.cancelSelection();}
