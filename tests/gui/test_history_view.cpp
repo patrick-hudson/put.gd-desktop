@@ -1241,7 +1241,9 @@ private slots:
   // The query closed the gallery's details, so the selection bar is due there; it
   // takes the header once search gives up the keyboard. The wide list keeps its pane.
   PUTGD_TRY_COMPARE(window.historyState()["selectedRows"].toInt(),2);QVERIFY(!window.historyState()["selectionHeader"].toBool());auto* bar=window.findChild<QWidget*>("historySelectionBar");QVERIFY(bar);PUTGD_TRY_COMPARE(bar->isVisible(),!gallery);
-  list->setFocus(Qt::TabFocusReason);PUTGD_TRY_COMPARE(window.historyState()["selectionHeader"].toBool(),gallery);QCOMPARE(search->isVisible(),!gallery);QVERIFY(bar->isVisible());
+  // Return applies the query and ends the edit, so Qt reports nothing more when the keyboard leaves.
+  QTest::keyClick(search,Qt::Key_Return);PUTGD_TRY_VERIFY(!window.historyState()["busy"].toBool());PUTGD_TRY_COMPARE(window.historyState()["selectedRows"].toInt(),2);QVERIFY(search->hasFocus());
+  list->setFocus(Qt::TabFocusReason);PUTGD_TRY_COMPARE(window.historyState()["selectionHeader"].toBool(),gallery);PUTGD_TRY_COMPARE(search->isVisible(),!gallery);PUTGD_TRY_VERIFY(bar->isVisible());
  }
  // A real Menu key on xcb and Wayland: the plugin posts a keyboard context-menu
  // event to the window, and the key press that follows matches the row shortcut
