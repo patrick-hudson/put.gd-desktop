@@ -112,7 +112,7 @@ QString unavailableOutput(const QJsonObject& document,const QString& action){
 QString unavailableSource(const QJsonObject& diagnostics,const QString& action){
  // An absent optional helper follows Record: invocation reports the installation gap.
  // The badge describes desktop support, rather than optional build contents.
- if(action=="scroll"){const auto c=diagnostics["capabilities"].toObject()["scroll"].toObject();if(c.contains("available")&&!c["available"].toBool()&&!QStringList{"recording_helper_missing","scroll_not_probed","scroll_probe_pending","scroll_probe_failed"}.contains(c["reason"].toString()))return "Scrolling capture is unavailable: "+c["reason"].toString();return {};}
+ if(action=="scroll"){const auto c=diagnostics["capabilities"].toObject()["scroll"].toObject();if(c.contains("available")&&!c["available"].toBool()&&!QStringList{"recording_helper_missing","scroll_not_probed","scroll_probe_pending","scroll_probe_failed"}.contains(c["reason"].toString()))return "Scrolling capture is unavailable: "+c["reason"].toString();if(c["available"].toBool()&&c["selection"]=="none")return "Scrolling capture is unavailable: region_unavailable";return {};}
  const auto kind=action=="edit"?QString("region"):action;if(!QStringList{"region","window","desktop","monitor"}.contains(kind))return {};
  // capture.<kind> where the adapter reports it, else the older top-level source.<kind> (as Settings reads it).
  const auto source=diagnostics.value("capabilities").toObject().value("source").toObject();const auto capture=source.value("capture").toObject();

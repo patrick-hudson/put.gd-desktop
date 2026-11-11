@@ -31,6 +31,14 @@ private slots:
   PUTGD_VERIFY_STEADY(!backend->started,250);PUTGD_TRY_VERIFY(backend->started);QVERIFY(since.elapsed()>=500);
   bool cancelled=false;operations.scroll().command("cancel",{{"id",id}},[&](Error e,QJsonObject){QVERIFY(!e);cancelled=true;});PUTGD_TRY_VERIFY(cancelled);
  }
+ void noSelectorNeedsARectangle(){
+  QTemporaryDir dir("/tmp/sc-XXXXXX");SettingsService settings(dir.filePath("config.json"));QVERIFY(settings.save(configuration(dir.path(),true),{}));ProviderRegistry providers;Source source;
+  OperationService operations(dir.filePath("data"),settings,providers,source);auto fake=std::make_unique<FakeScrollBackend>();auto* backend=fake.get();backend->selector="none";operations.setScrollBackend(std::move(fake));PUTGD_TRY_VERIFY(operations.ready());
+  bool refused=false;operations.scroll().invoke(false,[&](Error e,QJsonObject){QCOMPARE(e.code,QString("scroll_unavailable"));QCOMPARE(e.details["reason"].toString(),QString("region_unavailable"));refused=true;});PUTGD_TRY_VERIFY(refused);
+  QVERIFY(backend->preparedParams.isEmpty());QVERIFY(!operations.scroll().active());
+  QString id;operations.scroll().command("prepare",{{"rect",QJsonArray{0,0,64,64}}},[&](Error e,QJsonObject r){QVERIFY(!e);id=r["id"].toString();});PUTGD_TRY_VERIFY(!id.isEmpty());
+  bool cancelled=false;operations.scroll().command("cancel",{{"id",id}},[&](Error e,QJsonObject){QVERIFY(!e);cancelled=true;});PUTGD_TRY_VERIFY(cancelled);
+ }
  void cancelPendingCommand_data(){QTest::addColumn<QString>("command");QTest::newRow("start")<<QString("start");QTest::newRow("stop")<<QString("stop");}
  void cancelPendingCommand(){
   QFETCH(QString,command);QTemporaryDir dir("/tmp/sc-XXXXXX");SettingsService settings(dir.filePath("config.json"));QVERIFY(settings.save(configuration(dir.path(),true),{}));

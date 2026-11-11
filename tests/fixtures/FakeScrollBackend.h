@@ -12,7 +12,8 @@ struct FakeScrollBackend final:ScrollBackend {
  // The finished object of the next stop: its endReason when set, and topReached: false with it.
  QString holdCommand;Reply heldCommand;
  QString endReason;bool topMissed=false;int discarded=0;bool started=false;
- QJsonObject capabilities()const override{return {{"available",probed},{"injector","fake"},{"frames","fake"}};}
+ QString selector; // the probe's "selection" when set ("none": a build with no region selector)
+ QJsonObject capabilities()const override{QJsonObject c{{"available",probed},{"injector","fake"},{"frames","fake"}};if(!selector.isEmpty())c["selection"]=selector;return c;}
  void setEventSink(Event s)override{sink=std::move(s);}
  void prepare(const QString& id,const QJsonObject& p,const QString& d,Reply reply)override{preparedParams=p;if(onPrepare)onPrepare(id);directory=d;reply({},{{"state",p.contains("rect")?"ready":"selecting"}});}
  void control(const QString&,const QString& cmd,const QJsonObject&,Reply reply)override{
