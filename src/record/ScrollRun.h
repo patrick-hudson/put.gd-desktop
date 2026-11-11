@@ -171,7 +171,7 @@ enum class RunResult {
     LimitReached,    // maxOutputRows
     Stopped,         // the stop flag
     TimeLimit,
-    LostTrack,       // a step could not be matched or recovered, or the end could not be proven; the image so far is exact
+    LostTrack,       // a step could not be matched or recovered, the end could not be proven, or the layout inside the frame changed; the image so far is exact
     NoMovement,      // nothing scrolled at any park position (two single notches at each)
     InjectorFailed,
     NoFrames,        // the source never delivered a frame
@@ -210,7 +210,7 @@ struct RunStats {
 
 class ScrollRun {
 public:
-    ScrollRun(RunInjector&, RunFrames&, RunClock&, RunOptions = {}, scroll::RowSink = {});
+    ScrollRun(RunInjector&, RunFrames&, RunClock&, RunOptions = {}, scroll::RowSink = {}, scroll::RowTakeBack = {});
     // Runs to completion. The stitcher is finished on every path, so the image
     // so far never has a gap. `stop` ends the loop before its next injection.
     RunResult run(const std::atomic<bool>* stop = nullptr);

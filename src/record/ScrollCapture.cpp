@@ -671,7 +671,12 @@ void ScrollCapture::work(std::shared_ptr<Job> job) {
             if (spoolFailed || spool.write(reinterpret_cast<const char*>(row), bytes) != bytes) spoolFailed = true;
             else ++rows;
         };
-        ScrollRun run(job->gate, frames, clock, options, sink);
+        // The layout rule takes the last rows back (ScrollStitcher::barVerdict).
+        const scroll::RowTakeBack takeBack = [&](long long taken) {
+            rows = std::max<qint64>(0, rows - taken);
+            if (!spoolFailed && (!spool.resize(rows * qint64(width) * 4) || !spool.seek(rows * qint64(width) * 4))) spoolFailed = true;
+        };
+        ScrollRun run(job->gate, frames, clock, options, sink, takeBack);
         if (!spoolFailed) result = run.run(&job->stop);
         stats = run.stats();
         // X11: the pointer goes back where the user had it, unless the pipe closed.

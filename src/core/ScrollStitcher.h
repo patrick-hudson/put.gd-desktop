@@ -57,6 +57,19 @@ struct StitchOptions {
   // and rows went missing from an image reported as complete.)
   int sliverMinRows = 36;
   double sliverFraction = 0.125;
+  // The layout rule (see ScrollStitcher::columnsChanged and barVerdict). A
+  // band of columns counts as steady while at most
+  // layoutSteadyFraction of the overlap's rows are neither where the page
+  // moved them nor where they were; a steady band with at least
+  // layoutBrokenFraction of such rows in one step was repainted as a whole.
+  // And a run of rows that newly stays put at the bottom of the frame is a bar
+  // over the page, not the page, when at least layoutStaticMinRows of the rows
+  // that should have scrolled out of it contradict it and they outnumber the
+  // rows that did come out of it by more than layoutStaticRatio to one.
+  double layoutSteadyFraction = 0.10;
+  double layoutBrokenFraction = 0.90;
+  int layoutStaticMinRows = 4;
+  int layoutStaticRatio = 3;
 };
 
 // Per-row signatures of one frame. This is the only per-frame state the
@@ -112,6 +125,7 @@ enum class StepStatus {
   Ambiguous,     // several offsets explain the frame equally well; output and reference untouched
   LimitReached,  // maxOutputRows reached; output truncated at the limit
   InvalidFrame,  // size changed, null data, or finish() already called
+  LayoutChanged, // the page's place inside the frame changed (the layout rule); the output ends with the rows from before, and no later frame is taken
 };
 const char* toString(StepStatus);
 
@@ -128,14 +142,18 @@ struct StepResult {
   int candidatesEvaluated = 0;
 };
 
-// Receives each final output row once, top to bottom. Rows are never revised.
+// Receives each output row once, top to bottom. Rows are never revised.
 using RowSink = std::function<void(const uint8_t* bgrxRow, int width)>;
+// The one exception: the layout rule (ScrollStitcher::barVerdict) takes back
+// the last `rows` rows the sink was given, before any row after them. A sink
+// that comes without it keeps those rows; its image is then not cut back.
+using RowTakeBack = std::function<void(long long rows)>;
 
 inline constexpr int kNoHint = -1;  // any negative hint means "unknown"
 
 class ScrollStitcher {
  public:
-  explicit ScrollStitcher(StitchOptions opts = {}, RowSink sink = {});
+  explicit ScrollStitcher(StitchOptions opts = {}, RowSink sink = {}, RowTakeBack takeBack = {});
 
   // hint: expected offset in px (>= 0), or negative for unknown.
   StepResult addFrame(const FrameView& settledFrame, int expectedOffsetHint = kNoHint);
@@ -183,6 +201,11 @@ class ScrollStitcher {
   };
   Search search(const FrameSignatures& cur, int top, int bottom, int hint, int unc) const;
   int marginVerdict(const FrameSignatures& cur, int top, int bottom, const std::vector<int>& candidates, bool exact) const;
+  bool columnsChanged(const FrameSignatures& cur, int top, int bottom, int d, uint32_t& steady) const;
+  enum class Bar { Is, IsNot, Open };
+  Bar barVerdict(const FrameSignatures& cur, int top, int bot, int stayed, int d) const;
+  bool takeBackTo(long long rows);
+  StepResult layoutChanged(StepResult r, bool takeBack);
   void emitRows(const FrameView& f, int y0, int y1);
   void emitRaw(const uint8_t* row);
   void storeFooter(const FrameView& f);
@@ -190,6 +213,7 @@ class ScrollStitcher {
 
   StitchOptions opts_;
   RowSink sink_;
+  RowTakeBack takeBack_;
   std::vector<uint8_t> image_;     // internal mode output
   std::vector<uint8_t> pending_;   // copy of the first frame until the first movement
   std::vector<uint8_t> footer_;    // bottom rows of the reference frame (>= estBot_ rows)
@@ -200,6 +224,13 @@ class ScrollStitcher {
   long long refOrigin_ = 0;        // body row of reference frame row 0
   long long bodyRows_ = 0;         // body rows emitted (or pending) so far
   int estTop_ = -1, estBot_ = -1;  // fixed header/footer estimates, -1 unknown
+  // The layout rule's memory: the bands every proved step so far left steady;
+  // how many body rows were out before the last step that showed no new
+  // static run at the bottom (rows up to there cannot be a bar's); and how
+  // many the first frame gave, before the page had moved at all.
+  uint32_t steadyBands_ = 0;
+  bool haveSteady_ = false, changed_ = false;
+  long long provedRows_ = 0, firstRows_ = -1;
 };
 
 }  // namespace putgd::scroll

@@ -8,6 +8,9 @@ namespace putgd::record {
 using scroll::kNoHint;
 using scroll::StepResult;
 using scroll::StepStatus;
+namespace {
+const char* const layoutNote = "the layout inside the selection changed during the capture; the image ends with the rows from before the change";
+}
 
 const char* toString(RunResult r) {
     switch (r) {
@@ -27,8 +30,8 @@ const char* toString(RunResult r) {
     return "?";
 }
 
-ScrollRun::ScrollRun(RunInjector& injector, RunFrames& source, RunClock& clock, RunOptions opts, scroll::RowSink sink)
-    : injector_(injector), source_(source), clock_(clock), opts_(std::move(opts)), stitcher_(opts_.stitch, std::move(sink)) {}
+ScrollRun::ScrollRun(RunInjector& injector, RunFrames& source, RunClock& clock, RunOptions opts, scroll::RowSink sink, scroll::RowTakeBack takeBack)
+    : injector_(injector), source_(source), clock_(clock), opts_(std::move(opts)), stitcher_(opts_.stitch, std::move(sink), std::move(takeBack)) {}
 
 // Rule 2: the horizontal centre, a third of the way down. Rule 7's two other
 // places for a region whose centre does not scroll: near the right edge, then
@@ -544,7 +547,7 @@ RunResult ScrollRun::run(const std::atomic<bool>* stop) {
                 }
             }
             if (back.status != StepStatus::NoMovement && back.status != StepStatus::Appended && back.status != StepStatus::Reversed) {
-                stats_.lastError = std::string("after scrolling back the last stitched frame was not found (") + scroll::toString(back.status) + ")";
+                stats_.lastError = back.status == StepStatus::LayoutChanged ? layoutNote : std::string("after scrolling back the last stitched frame was not found (") + scroll::toString(back.status) + ")";
                 return finishWith(back.status == StepStatus::LimitReached ? RunResult::LimitReached
                                   : back.status == StepStatus::InvalidFrame ? RunResult::LayoutChanged : RunResult::LostTrack);
             }
@@ -665,6 +668,11 @@ RunResult ScrollRun::run(const std::atomic<bool>* stop) {
             case StepStatus::InvalidFrame:
                 stats_.lastError = "the frame size changed";
                 return finishWith(RunResult::LayoutChanged);
+            case StepStatus::LayoutChanged:
+                // The frames kept their size, so the display did not change:
+                // what was proved before is an exact image and is kept.
+                stats_.lastError = layoutNote;
+                return finishWith(RunResult::LostTrack);
             default:
                 stats_.lastError = std::string("stitcher returned ") + scroll::toString(r.status);
                 return finishWith(RunResult::LostTrack);

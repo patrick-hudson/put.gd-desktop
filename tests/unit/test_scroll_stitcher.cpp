@@ -1144,6 +1144,241 @@ void testProof() {
   }
 }
 
+// ------------------------------------------------------------------ the layout inside the rectangle changes
+
+// What the captured rectangle shows when the page's viewport is only a part of
+// it: the document from row `pos` in the viewport's rectangle, the window's
+// background everywhere else.
+struct ViewRect {
+  int x = 0, y = 0, w = 0, h = 0;
+};
+constexpr uint32_t kWindowBg = 0x666666;
+Image layoutFrame(const Image& doc, int W, int V, int pos, ViewRect v) {
+  Image f(W, V, kWindowBg);
+  for (int y = 0; y < v.h && pos + y < doc.h; ++y)
+    std::memcpy(&f.at(v.x, v.y + y), doc.row(pos + y), size_t(std::min(v.w, doc.w)) * 4);
+  return f;
+}
+void shrinkTo(Image& f, ViewRect v) {
+  for (int y = 0; y < f.h; ++y)
+    for (int x = 0; x < f.w; ++x)
+      if (x < v.x || x >= v.x + v.w || y < v.y || y >= v.y + v.h) f.at(x, y) = kWindowBg;
+}
+// The first output row that is not the document's row of that number, over
+// every column; -1 when the image is the document's first rows and nothing else.
+int firstForeignRow(const std::vector<uint8_t>& img, int outH, const Image& doc) {
+  if (img.size() != size_t(doc.w) * size_t(std::max(outH, 0)) * 4) return 0;
+  for (int y = 0; y < outH; ++y)
+    if (y >= doc.h || std::memcmp(&img[size_t(y) * doc.w * 4], doc.row(y), size_t(doc.w) * 4) != 0) return y;
+  return -1;
+}
+
+struct LayoutDrive {
+  std::string trace;
+  int outH = 0, foreign = -1;
+  int acceptedAfter = 0;   // frames from the change on that the stitcher took for the page going on
+  bool changeSaid = false;
+};
+// Frames at `pos`, the full rectangle until frame `changeAt`, the viewport
+// `after` from there on; hints are the true distances, as a loop that knows
+// its wheel would give them.
+LayoutDrive driveLayout(const Image& doc, int W, int V, const std::vector<int>& pos, size_t changeAt, ViewRect after) {
+  LayoutDrive d;
+  ScrollStitcher st;
+  int refPos = pos[0];
+  for (size_t i = 0; i < pos.size(); ++i) {
+    const Image f = layoutFrame(doc, W, V, pos[i], i < changeAt ? ViewRect{0, 0, W, V} : after);
+    const StepResult r = st.addFrame(f.view(), i ? pos[i] - refPos : kNoHint);
+    d.trace += fmt(" %d:%s/%d+%d", pos[i], toString(r.status), r.offset, r.appendedRows);
+    const bool accepted = r.status == StepStatus::Appended || r.status == StepStatus::NoMovement || r.status == StepStatus::Reversed;
+    if (accepted || r.status == StepStatus::First) refPos = pos[i];
+    if (i >= changeAt && accepted) ++d.acceptedAfter;
+    if (r.status == StepStatus::LayoutChanged) d.changeSaid = true;
+  }
+  st.finish();
+  d.outH = st.outputHeight();
+  d.foreign = firstForeignRow(st.takeImage(), d.outH, doc);
+  return d;
+}
+
+struct LayoutSession {
+  RunResult result = RunResult::NoFrames;
+  int outH = 0, foreign = -1, steps = 0;
+  std::string error;
+  std::vector<uint8_t> img;
+  bool sinkAgrees = false;  // the rows a sink was left with are the image
+};
+// The control loop on the ruler: `overlay` paints what is beside the page. The
+// rows go to a sink, as in the helper, with the rule's way to take rows back.
+LayoutSession layoutSession(const Image& doc, int W, int V, double px, std::function<void(Image&, int)> overlay, bool fromTop = false, int startPos = 0) {
+  ViewportSpec vs;
+  vs.width = W;
+  vs.height = V;
+  FakeAppSpec spec;
+  spec.pxPerNotch = px;
+  spec.overlay = std::move(overlay);
+  spec.startPos = startPos;
+  FakeClock clock;
+  FakeApp app(doc, vs, spec, clock);
+  RunOptions opts;
+  opts.fromTop = fromTop;
+  const char* traced = std::getenv("PUTGD_SCROLL_STITCHER_TRACE");
+  if (traced && std::strstr("layout", traced))
+    opts.onStep = [&](const StepResult& r, int hint, int notches) {
+      std::printf("    trace layout: t=%lld pos %d %s offset %d hint %d notches %d score %.2f evidence %d appended %d fixed %d/%d\n", (long long)clock.nowMs(), app.framePositions.empty() ? 0 : app.framePositions.back(),
+                  toString(r.status), r.offset, hint, notches, r.score, r.evidenceRows, r.appendedRows, r.fixedTop, r.fixedBottom);
+    };
+  LayoutSession s;
+  ScrollRun run(app, app, clock, opts, [&](const uint8_t* row, int width) { s.img.insert(s.img.end(), row, row + size_t(width) * 4); },
+                [&](long long rows) { s.img.resize(s.img.size() - size_t(rows) * W * 4); });
+  s.result = run.run();
+  s.outH = run.stats().outputRows;
+  s.steps = run.stats().steps;
+  s.error = run.stats().lastError;
+  s.sinkAgrees = s.img.size() == size_t(W) * size_t(s.outH) * 4;
+  s.foreign = s.sinkAgrees ? firstForeignRow(s.img, s.outH, doc) : 0;
+  return s;
+}
+
+// Acceptance of 2026-11-11 (GNOME and Plasma): a 24,000 px ruler in a 960x600
+// rectangle, and the window under the rectangle resized while the capture ran.
+// The frames kept their size; the page's viewport inside them did not. Rows
+// from before and after such a change are not one picture of one page.
+void testLayoutChange() {
+  std::printf("\n[stitcher] the page's viewport changes inside a frame of constant size\n");
+  const int W = 960, V = 600;
+  const Image doc = vmRuler(W, 120);  // 4,800 rows
+  struct Change {
+    const char* name;
+    ViewRect after;
+  } changes[] = {{"narrower and shorter", {0, 0, 760, 500}}, {"narrower", {0, 0, 760, 600}}, {"shorter", {0, 0, 960, 500}},
+                 {"narrower by less than a band", {0, 0, 880, 600}}, {"shorter from the top", {0, 100, 960, 500}}};
+  for (const Change& ch : changes)
+    for (int step : {40, 60, 240, 360}) {
+      std::vector<int> pos{0, 60};
+      while (pos.back() + step + V <= 3000) pos.push_back(pos.back() + step);
+      const size_t changeAt = 5;
+      const LayoutDrive d = driveLayout(doc, W, V, pos, changeAt, ch.after);
+      const int before = pos[changeAt - 1] + V;
+      // Nothing but the document's first rows, and none of them from after the
+      // change (a frame that shows less of the page shows other rows of it).
+      // A band that comes up at the top hides rows that are in the image
+      // already: whatever becomes of the run, no row of it is foreign.
+      const bool fromTop = ch.after.y > 0;
+      report(fmt("viewport %s after 4 steps, step %d", ch.name, step), d.foreign < 0 && (fromTop || (d.outH <= before && d.outH >= pos[changeAt - 2] + V && d.changeSaid)),
+             fmt("%d rows (%d before the change), first foreign row %d, %d frames accepted after it, said %d;%s", d.outH, before, d.foreign, d.acceptedAfter, d.changeSaid, d.trace.substr(0, 400).c_str()));
+    }
+  {
+    // The way back after a refused step shows the new layout where the last
+    // stitched frame was: that is not "the reference found again".
+    for (const Change& ch : changes) {
+      ScrollStitcher st;
+      const ViewRect full{0, 0, W, V};
+      st.addFrame(layoutFrame(doc, W, V, 0, full).view(), kNoHint);
+      st.addFrame(layoutFrame(doc, W, V, 60, full).view(), kNoHint);
+      st.addFrame(layoutFrame(doc, W, V, 420, full).view(), 360);
+      const int before = st.outputHeight();
+      const StepResult back = st.addFrame(layoutFrame(doc, W, V, 420, ch.after).view(), 0);
+      const StepResult on = st.addFrame(layoutFrame(doc, W, V, 780, ch.after).view(), 360);
+      st.finish();
+      const int outH = st.outputHeight();
+      const int foreign = firstForeignRow(st.takeImage(), outH, doc);
+      report(fmt("viewport %s where the page stands: not the reference", ch.name), foreign < 0 && outH <= before && on.status != StepStatus::Appended,
+             fmt("in place %s, next %s/%d, %d rows (%d before), first foreign row %d", toString(back.status), toString(on.status), on.offset, outH, before, foreign));
+    }
+  }
+
+  std::printf("\n[session] the page's viewport changes during the capture\n");
+  for (const Change& ch : changes)
+    for (double px : {40.0, 60.0, 100.0})
+      for (int at : {3, 9}) {
+        const ViewRect after = ch.after;
+        const LayoutSession s = layoutSession(doc, W, V, px, [after, at](Image& f, int injections) {
+          if (injections >= at) shrinkTo(f, after);
+        });
+        const bool fromTop = ch.after.y > 0;
+        report(fmt("session viewport %s at wheel event %d, px=%g", ch.name, at, px), s.foreign < 0 && s.outH >= V && (fromTop || (s.result == RunResult::LostTrack && s.outH < doc.h)),
+               fmt("%s, %d rows of %d, first foreign row %d, steps %d [%s]", toString(s.result), s.outH, doc.h, s.foreign, s.steps, s.error.c_str()));
+      }
+
+  std::printf("\n[session] what is not a change of layout\n");
+  {
+    // The rectangle is larger than the page's viewport from the first frame:
+    // margins and a band below it that never move.
+    const ViewRect view{60, 0, 800, 520};
+    const LayoutSession s = layoutSession(doc, W, V, 60, [view](Image& f, int) {
+      Image page = f;
+      std::fill(f.px.begin(), f.px.end(), kWindowBg);
+      for (int y = 0; y < view.h; ++y) std::memcpy(&f.at(view.x, view.y + y), page.row(y), size_t(view.w) * 4);
+    });
+    // The page as that viewport shows it (the fake page scrolls as far as a
+    // full viewport would, so its last rows are never seen), between the
+    // margins, then the band.
+    Image want(W, doc.h, kWindowBg);
+    for (int y = 0; y < doc.h - (V - view.h); ++y) std::memcpy(&want.at(view.x, y), doc.row(y), size_t(view.w) * 4);
+    const int bad = s.sinkAgrees ? firstForeignRow(s.img, s.outH, want) : 0;
+    report("session margins and a band that were always there", s.result == RunResult::EndOfContent && s.outH == doc.h && bad < 0,
+           fmt("%s, %d rows, first wrong row %d, steps %d [%s]", toString(s.result), s.outH, bad, s.steps, s.error.c_str()));
+  }
+  {
+    // The acceptance run itself (2026-11-11): the capture began at the end of
+    // the page with scroll-to-top on, and the window was resized while the
+    // page was on its way up, before the capture's first frame. Every frame
+    // that was stitched showed the new layout, so there is no change to see:
+    // the image is the page as the rectangle showed it from then on, every row
+    // once, between the window's background. That is a whole capture.
+    const ViewRect view{0, 0, 760, 500};
+    const LayoutSession s = layoutSession(doc, W, V, 60, [view](Image& f, int injections) {
+      if (injections >= 2) shrinkTo(f, view);
+    }, true, 4000);
+    Image want(W, doc.h, kWindowBg);
+    for (int y = 0; y < doc.h - (V - view.h); ++y) std::memcpy(&want.at(0, y), doc.row(y), size_t(view.w) * 4);
+    const int bad = s.sinkAgrees ? firstForeignRow(s.img, s.outH, want) : 0;
+    report("session viewport resized on the way to the top: the layout the capture saw", s.result == RunResult::EndOfContent && s.outH == doc.h && bad < 0,
+           fmt("%s, %d rows, first wrong row %d, steps %d [%s]", toString(s.result), s.outH, bad, s.steps, s.error.c_str()));
+  }
+  for (int at : {1, 2}) {
+    // A bar the page pins to the bottom once it has scrolled: not in the first
+    // frame, in every frame after wheel event `at`.
+    const int bar = 40;
+    Image footer(W, bar, 0x806020);
+    Rng rng(5);
+    drawTextLine(footer, 12, 40, 600, rng, 0xFFFFFF);
+    LayoutSession s = layoutSession(doc, W, V, 60, [&](Image& f, int injections) {
+      if (injections >= at) std::memcpy(&f.at(0, V - bar), footer.row(0), size_t(W) * bar * 4);
+    });
+    if (at == 1 && s.sinkAgrees && s.outH == doc.h) {
+      // The document as far as the bar lets it be seen, then the bar, once.
+      Image want(W, doc.h);
+      std::memcpy(want.px.data(), doc.row(0), size_t(W) * (doc.h - bar) * 4);
+      std::memcpy(&want.at(0, doc.h - bar), footer.row(0), size_t(W) * bar * 4);
+      s.foreign = firstForeignRow(s.img, s.outH, want);
+    }
+    if (at == 1)
+      report("session a bar pinned from the first scroll on", s.result == RunResult::EndOfContent && s.foreign < 0 && s.outH == doc.h,
+             fmt("%s, %d rows of %d, first foreign row %d, steps %d [%s]", toString(s.result), s.outH, doc.h, s.foreign, s.steps, s.error.c_str()));
+    else
+      report("session a bar pinned after rows were taken from under it", s.result == RunResult::LostTrack && s.foreign < 0 && s.outH < doc.h,
+             fmt("%s, %d rows of %d, first foreign row %d, steps %d [%s]", toString(s.result), s.outH, doc.h, s.foreign, s.steps, s.error.c_str()));
+  }
+  {
+    // A scrollbar in the side margin that fades in with the first wheel event
+    // and out again a while after the last, and a text cursor that blinks.
+    int lastInjections = -1, framesSince = 0;
+    const LayoutSession s = layoutSession(doc, W, V, 60, [&](Image& f, int injections) {
+      framesSince = injections == lastInjections ? framesSince + 1 : 0;
+      lastInjections = injections;
+      if (injections >= 2 && framesSince < 12)
+        for (int y = 100 + injections * 5; y < 220 + injections * 5 && y < f.h; ++y)
+          for (int x = W - 12; x < W - 2; ++x) f.at(x, y) = 0x9A9A9A;
+      if ((framesSince / 5) % 2 == 0)
+        for (int y = 300; y < 316; ++y) f.at(500, y) = 0x000000;
+    });
+    report("session a scrollbar that fades and a cursor that blinks", s.result == RunResult::EndOfContent && s.outH == doc.h,
+           fmt("%s, %d rows of %d, steps %d [%s]", toString(s.result), s.outH, doc.h, s.steps, s.error.c_str()));
+  }
+}
+
 // ------------------------------------------------------------------ session tests
 
 struct SessCfg {
@@ -2161,6 +2396,7 @@ int main(int argc, char** argv) {
   testSessions();
   testPointerRules();
   testReviewFrameProofs();
+  testLayoutChange();
 
   int pass = 0, fail = 0, known = 0;
   std::printf("\n==================== summary ====================\n");
