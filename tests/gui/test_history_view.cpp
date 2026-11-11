@@ -1209,6 +1209,28 @@ private slots:
   PUTGD_TRY_COMPARE(model->rowCount(),1);PUTGD_TRY_COMPARE(window.historyState()["selectedRows"].toInt(),1);QCOMPARE(window.historyState()["selectedIds"].toArray(),(QJsonArray{chosen[0]}));PUTGD_TRY_VERIFY(!bar->isVisible());QVERIFY(!window.historyState()["selectionHeader"].toBool());QVERIFY(search->isVisible());
   prepared.clear();QCOMPARE(drive({{"action","deleteSelected"}}).first.code,QString("history_selection_invalid"));PUTGD_VERIFY_STEADY(prepared.isEmpty(),50);
  }
+ // Typing in search while several rows are selected and the details pane shows
+ // them: each pause applies the query, which reloads the page and restores the
+ // selection. Search must stay shown and focused throughout, or the keystrokes
+ // after the first pause leave the field.
+ void searchKeepsFocusWhileTheSelectionIsRestored(){
+  QTemporaryDir d;ProviderRegistry registry;auto provider=std::make_shared<OpaqueProvider>();registry.add("opaque",provider);SettingsService settings(d.filePath("config.json"),[&](auto id,auto doc){return registry.validate(id,doc);});QVERIFY(settings.save(configuration(d.path()),{}));Source source;source.payload=textPayload();OperationService operations(d.filePath("data"),settings,registry,source);PUTGD_TRY_VERIFY(operations.ready());
+  for(int i=0;i<3;++i){operations.invoke("clipboard",[](Error e,QJsonObject){QVERIFY(!e);});PUTGD_TRY_COMPARE(provider->uploads.load(),i+1);PUTGD_TRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(),0);}
+  HistoryService history(operations);UiSessionFixture fixture(settings,operations,history);HistoryWindow window(fixture.session);window.resize(Ui::scaled(1500),900);window.show();auto* list=window.findChild<QListView*>("historyList");auto* model=qobject_cast<HistoryModel*>(list->model());PUTGD_TRY_COMPARE(model->rowCount(),3);
+  QVERIFY(window.historyState()["detailsWanted"].toBool());
+  const QStringList chosen{model->record(0)["id"].toString(),model->record(1)["id"].toString()};
+  bool answered=false;window.command({{"action","select"},{"ids",QJsonArray::fromStringList(chosen)}},[&](Error e,QJsonObject){QVERIFY(!e);answered=true;});PUTGD_TRY_VERIFY(answered);
+  PUTGD_TRY_VERIFY(window.historyState()["inspectorVisible"].toBool());QVERIFY(!window.historyState()["selectionHeader"].toBool());
+  const auto first=model->record(0)["name"].toString(),second=model->record(1)["name"].toString();QVERIFY(first.size()>2&&second.startsWith(first.left(2)));
+  auto* search=window.findChild<QLineEdit*>("historySearch");window.activateWindow();search->setFocus(Qt::OtherFocusReason);PUTGD_TRY_VERIFY(search->hasFocus());
+  struct HideWatch:QObject{int hides=0;bool eventFilter(QObject*,QEvent* event)override{if(event->type()==QEvent::Hide)++hides;return false;}} watch;search->installEventFilter(&watch);
+  QTest::keyClicks(search,first.left(1));
+  PUTGD_TRY_COMPARE(window.historyState()["query"].toObject()["search"].toString(),first.left(1));PUTGD_TRY_VERIFY(!window.historyState()["busy"].toBool());PUTGD_TRY_COMPARE(window.historyState()["selectedRows"].toInt(),2);
+  QCOMPARE(watch.hides,0);QVERIFY(search->isVisible());QVERIFY(search->hasFocus());
+  QTest::keyClicks(search,first.mid(1,1));QCOMPARE(search->text(),first.left(2));
+  PUTGD_TRY_COMPARE(window.historyState()["query"].toObject()["search"].toString(),first.left(2));PUTGD_TRY_VERIFY(!window.historyState()["busy"].toBool());
+  QCOMPARE(watch.hides,0);QVERIFY(search->hasFocus());search->removeEventFilter(&watch);
+ }
  // A real Menu key on xcb and Wayland: the plugin posts a keyboard context-menu
  // event to the window, and the key press that follows matches the row shortcut
  // while the first menu is open. It must open one menu for the selected row (#835).

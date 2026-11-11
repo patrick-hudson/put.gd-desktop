@@ -1267,7 +1267,13 @@ void HistoryWindow::toggleDetails(){
  const bool overlay=grid_->isChecked()||compact_;const bool selected=!table_->selectionModel()->selectedRows().isEmpty();
  if(overlay&&selected){if(paneVisible())setDetailsOpen(false);else openSelectedDetails();}else setDetailsWanted(!detailsWanted_);
 }
-bool HistoryWindow::selectionHeader()const{return table_->selectionModel()->selectedRows().size()>1&&!paneVisible();}
+bool HistoryWindow::selectionHeader()const{
+ // In the wide list the pane's own rule decides, not its momentary visibility: a
+ // query hides the pane while it loads and restores the selection, and swapping the
+ // header then would hide a focused search mid-word and send later keys elsewhere.
+ const bool pane=grid_->isChecked()||compact_?paneVisible():detailsWanted_;
+ return table_->selectionModel()->selectedRows().size()>1&&!pane;
+}
 QList<HistoryWindow::FilterEntry> HistoryWindow::filterEntries()const{
  const auto& q=model_->query();QList<FilterEntry> entries;
  const auto choice=[this](const char* name,const QString& value){const auto* combo=findChild<QComboBox*>(name);const int index=combo?combo->findData(value):-1;return index>=0?combo->itemText(index):value;};
