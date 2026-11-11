@@ -109,9 +109,8 @@ QPainterPath treeSilhouette() {
  stand.lineTo(17.5,21);stand.quadTo(17.5,23.25,15.25,23.25);stand.lineTo(8.75,23.25);stand.quadTo(6.5,23.25,6.5,21);stand.closeSubpath();
  return tree.united(star).united(stand);
 }
-const QPainterPath& glyphOutline(TrayGlyph glyph,bool small=false) {
- static const QPainterPath mark=arrow().united(tray()),bird=turkeySilhouette(),tinyBird=smallTurkey(false),fir=treeSilhouette();
- if(small&&glyph==TrayGlyph::Turkey)return tinyBird;
+const QPainterPath& glyphOutline(TrayGlyph glyph) {
+ static const QPainterPath mark=arrow().united(tray()),bird=turkeySilhouette(),fir=treeSilhouette();
  return glyph==TrayGlyph::Turkey?bird:glyph==TrayGlyph::Tree?fir:mark;
 }
 const QPainterPath& glyphShape(TrayGlyph glyph,bool small=false) {

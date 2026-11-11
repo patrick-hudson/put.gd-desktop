@@ -4,8 +4,8 @@
 #include <QString>
 
 namespace putgd::IconArt {
-// Seasonal tray artwork: the turkey keeps the mark's bowl; the tree uses a
-// shallow stand. A badge always draws on the ordinary mark.
+// Seasonal tray artwork uses a smaller bowl or stand. A badge always draws
+// on the ordinary mark.
 enum class TrayGlyph {Mark,Turkey,Tree};
 // What one tray frame shows.
 struct TrayIcon {QColor color;int percent=-1,recording=0;TrayGlyph glyph=TrayGlyph::Mark;};
