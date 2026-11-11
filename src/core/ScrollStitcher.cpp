@@ -298,6 +298,10 @@ void ScrollStitcher::storeFooter(const FrameView& f) {
     std::memcpy(&footer_[size_t(i) * width_ * 4], f.row(height_ - footerRows_ + i), size_t(width_) * 4);
 }
 
+void ScrollStitcher::restartBeforeMovement() {
+  if (!moved_ && !finished_) *this = ScrollStitcher(opts_, std::move(sink_));
+}
+
 void ScrollStitcher::finish() {
   if (finished_ || !hasRef_) {
     finished_ = true;

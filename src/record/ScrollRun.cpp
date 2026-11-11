@@ -339,12 +339,6 @@ std::optional<RunResult> ScrollRun::wayToTop() {
                     settledSig_ = lastSig_;
                     continue;
                 }
-                if (screen == Screen::Same && !stats_.toTopMoved && opts_.pointer && stats_.parkPosition < 2) {
-                    ++stats_.parkPosition;
-                    still = 0;
-                    continue;
-                }
-                if (!stats_.toTopMoved) stats_.parkPosition = 0;
                 stats_.reachedTop = screen == Screen::Same;
                 if (!stats_.reachedTop) stats_.toTopGaveUp = "the frame source gave no fresh frame after the last steps up, so the top of the page is not proven";
                 break;
@@ -494,6 +488,7 @@ RunResult ScrollRun::run(const std::atomic<bool>* stop) {
             }
         };
         checkStillness();
+        if (layoutChanged_) return finishWith(RunResult::LayoutChanged);
 
         if (r.status == StepStatus::NoMatch || r.status == StepStatus::Ambiguous) {
             // 1) Transient: the frame may not have been final (late repaint, overlay).
@@ -502,6 +497,7 @@ RunResult ScrollRun::run(const std::atomic<bool>* stop) {
             r = stitcher_.addFrame(last_, lastSig_, hint, unc);
             if (opts_.onStep) opts_.onStep(r, hint, notches);
             checkStillness();
+            if (layoutChanged_) return finishWith(RunResult::LayoutChanged);
         }
 
         if (r.status == StepStatus::NoMatch || r.status == StepStatus::Ambiguous) {
@@ -628,6 +624,21 @@ RunResult ScrollRun::run(const std::atomic<bool>* stop) {
                         return finishWith(RunResult::NoMovement);
                     }
                     ++stats_.parkPosition;
+                    if (opts_.fromTop) {
+                        stats_.reachedTop = false;
+                        stitcher_.restartBeforeMovement();
+                        if (auto f = scrollToTop()) return finishWith(*f == RunResult::Stopped ? viewportAfterStop() : *f);
+                        // No downward step was committed: replace the pending first
+                        // viewport with the top proved at the new pointer target.
+                        if (opts_.away) {
+                            if (stopped()) return finishWith(RunResult::Stopped);
+                            if (!injector_.movePointer(opts_.away->x, opts_.away->y)) return finishWith(RunResult::InjectorFailed);
+                            parked_ = -1;
+                        }
+                        if (auto f = waitFailure(waitSettled(opts_.firstFrameTimeoutMs))) return finishWith(*f);
+                        referenceWidth_ = last_.width; referenceHeight_ = last_.height;
+                        if (stitcher_.addFrame(last_, lastSig_, kNoHint).status != StepStatus::First) return finishWith(RunResult::NoFrames);
+                    }
                     break;
                 }
                 if (endPending) {
