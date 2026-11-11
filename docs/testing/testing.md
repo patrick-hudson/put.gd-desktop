@@ -326,7 +326,10 @@ design is in [scrolling capture](../design/scroll-capture.md).
   that the AppImage bundles `libxcb-xtest.so.0`.
 - Settings, schema, UI and MCP: `tests/unit/test_settings.cpp` (preferences, bounds, the `scroll` route),
   `tests/integration/test_config_schema.py`, `tests/gui/test_settings_capture.cpp` (the two Settings controls, the
-  capability badge), and `tests/integration/test_mcp.py` (the three tools, `scroll` in `perform_action`, forwarding parity).
+  capability badge), and `tests/integration/test_mcp.py` (the three tools, `scroll` in `perform_action`, forwarding parity,
+  every end reason named by `get_scroll_capture`, and a `top_not_reached` view passed through unchanged).
+  That file is not a CTest entry: run it with the MCP SDK's Python and `PUTGD_CLI` and `PUTGD_APP` set
+  to the built `putgd-cli` and `putgd`.
 
 `test_scroll_capture_driver` (`tests/fixtures/scroll_capture_driver.cpp`) is a lab tool, not a test:
 it runs one capture through the production backend and helper without a resident, and
