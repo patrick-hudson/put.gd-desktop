@@ -199,8 +199,9 @@ QByteArray pngBytes(const QImage& source) {
 }
 NativeImages brandIcon(const IconArt::TrayIcon& icon=IconArt::TrayIcon{Theme::trayTints(false).idle}) {
  NativeImages result;
- for (int scale : {1, 2, 3}) {
-  const auto image=IconArt::liftTray(icon,scale);
+ QList<int> sizes{24,48,72};if(icon.glyph==IconArt::TrayGlyph::Turkey&&!icon.recording&&icon.percent!=-2)sizes.append(16);
+ for (int size : sizes) {
+  const auto image=IconArt::liftTrayAtSize(icon,size);
   NativeImage wire{image.width(), image.height(), QByteArray(image.width() * image.height() * 4, '\0')};
   for (int y = 0; y < image.height(); ++y) for (int x = 0; x < image.width(); ++x) {
    const auto pixel = image.pixel(x, y); const int pos = (y * image.width() + x) * 4;
