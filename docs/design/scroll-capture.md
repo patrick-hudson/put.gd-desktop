@@ -8,9 +8,9 @@ same route as a region capture. It is
 in the [user guide](../user/user-guide.md#capture-a-scrolling-region); this page is the
 contract.
 
-It never asks the application how long its content is. It finds the bottom by reaching
-it, and says so when it could not: only the end reason `end_of_content` means the whole
-scroll area is in the image.
+It never asks the application how long its content is. It finds the top and the bottom by
+reaching them, and says so when it could not: only the end reason `end_of_content` means
+the whole scroll area, top to bottom, is in the image.
 
 ## Workflow
 
@@ -69,7 +69,8 @@ The contract in `ScrollBackend.h`:
   `scroll.inspect` returns.
 - Events, each with the session id: `selected {rect}`; `progress {state: scrollingToTop |
   capturing, height, steps, pixelsPerNotch}`; `finished {path, bytes, sha256, width,
-  height, endReason, truncated, appliedMaxHeight, stats}`; `cancelled`; `failed {error}`.
+  height, endReason, truncated, appliedMaxHeight, topReached?, stats}`; `cancelled`;
+  `failed {error}`.
   After `finished`, `cancelled` or `failed` the helper injects nothing more for that id.
 - Deadlines: 10 s for the helper to start, 15 s per command, 30 s for `stop`, 180 s for
   the capture itself. A missed deadline is `scroll_helper_failed` with the check
@@ -140,15 +141,35 @@ set. The AppImage also carries `libxcb-xtest.so.0` for the X11 route.
 `ScrollRun` runs on a worker thread and blocks. Its waits are in slices of at most 100 ms,
 so Stop is seen soon.
 
-1. **Scroll to the top** (`scrollCaptureFromTop`). Wheel up in steps of 10 notches until
-   two settled frames in a row are the same. Two, because one wheel step can go nowhere. A fresh
-   frame grabbed from the screen has to agree, because a damage-driven stream that sends nothing
-   looks the same as a page at rest. At most 15 s, inside the 180 s total. No
-   stitching happens here. Where the desktop can say the wheel has come to rest (KWin), it
-   does, so that an overscrolled GTK 4 view springs back. If nothing moved at all the
-   capture goes on, and step 7 decides whether the region scrolls. Where the frames show a
-   painted pointer (Hyprland, labwc) the pointer waits outside the rectangle between the
-   wheel steps up, so the viewport that Stop keeps has no arrow in it.
+1. **Scroll to the top** (`scrollCaptureFromTop`). Wheel up until the top is proved: two
+   checked steps of 10 notches in a row that moved nothing (two, because one wheel step
+   can go nowhere), and a fresh frame grabbed from the screen that agrees, because a
+   damage-driven stream that sends nothing looks the same as a page at rest. No stitching
+   happens here.
+   - *Pace.* Every fourth step is a check: the picture settles and is compared with the
+     picture at the check before. The steps between are sent as soon as a frame from after
+     the wheel step differs from the one before it. While checks find movement the steps
+     double, 10, 20, then 40 notches. A larger step that moved nothing counts for
+     nothing (an application may clamp or refuse a large wheel event): the step goes back
+     to 10. A check that finds the page where the last one found it, although the steps
+     between looked like movement, makes every later step a check.
+   - *Time.* The way up takes what the page needs, at most 90 s (half the 180 s total, so
+     a capture can still follow). It had 15 s until fix round 4: a 27,000 px text view
+     needed 17 s on a Hyprland guest, and the capture then began at line 78 and was
+     reported as `end_of_content`.
+   - *Giving up.* The way up ends without proof when its time is over, when no check has
+     found the picture at rest for 15 s (a video or an animation cannot be told from a
+     page that still scrolls), or when the source gives no fresh frame for the proof.
+     The capture then goes on from where the page is, and the result says so: its
+     `topReached` is false, and an end of the content is reported as `top_not_reached`,
+     never as `end_of_content` (see [End reasons](#end-reasons)). The helper's log has
+     `scroll: way to the top N steps, M ms, top proved` or `top not proved (why)`.
+
+   Where the desktop can say the wheel has come to rest (KWin), it does, so that an
+   overscrolled GTK 4 view springs back. If nothing moved at all the capture goes on, and
+   step 7 decides whether the region scrolls. Where the frames show a painted pointer
+   (Hyprland, labwc) the pointer waits outside the rectangle between the wheel steps up,
+   so the viewport that Stop keeps has no arrow in it.
 2. **First frame**, with the pointer outside the region on its output and off the bar, so no
    hover effect is in it. With no such place the pointer stays where it is, except where
    the frames show a painted pointer: it then goes to the bottom right corner.
@@ -184,7 +205,7 @@ so Stop is seen soon.
 9. **Stops.** End of content, height cap, Stop, Cancel, 180 s, injector refusal, source
    lost, frame size changed, modifier keys held. Stop at any point keeps the image;
    Stop on the way to the top keeps the viewport on screen at that moment (one
-   frame, confirmed by a second look).
+   frame, confirmed by a second look), with `topReached: false`.
 
 ## What counts as proved
 
@@ -239,16 +260,25 @@ resident has admitted them.
 
 ## End reasons
 
-`finished` carries `endReason` and `truncated`; `scroll.inspect` and the MCP result report
-them so an agent can tell a complete capture from a partial one.
+`finished` carries `endReason` and `truncated`, and `topReached: false` when the
+scroll-to-top step was asked for and did not prove the top; `scroll.inspect` and the MCP
+result report them so an agent can tell a complete capture from a partial one.
 
 | `endReason` | `truncated` | Meaning |
 | --- | --- | --- |
-| `end_of_content` | false | The content stopped moving, proved by a fresh frame: the whole scroll area is in the image |
+| `end_of_content` | false | The content stopped moving, proved by a fresh frame, and with scroll-to-top on the top was proved too: the whole scroll area is in the image, top to bottom. (With scroll-to-top off it is everything from where the content was scrolled to.) |
+| `top_not_reached` | true | The capture reached the end of the content, but the scroll-to-top step had not proved the top, so the image starts partway down. It is kept and routed, a warning notification "put.gd — scrolling capture incomplete" says "Could not reach the top of the page. The image starts partway down.", and History carries the same note. `topReached` is false and `result.note` says why the way up ended. The rows it has are exact |
 | `height_cap` | true | The cap was reached first. The image is kept and routed, a warning notification says "Stopped at 30,000 px. The page continues below.", and History carries the same note. A warning, not a failure: the rows so far are exact |
 | `stopped` | true | The user stopped it (the bar, the shortcut again, Esc on X11, `scroll.stop`) |
 | `lost_track` | true | A step could not be matched or recovered, or the end could not be proved. The image so far is exact and `result.note` says why |
 | `time_limit` | true | The 180 s limit ended it. The image so far is exact |
+
+`topReached: false` goes with any of them except `end_of_content`: a capture that ended by
+Stop, the height cap, `lost_track` or the time limit after an unproved top keeps its own
+end reason and carries the flag, with no extra warning. The field is absent when the top
+was proved and when scroll-to-top is off. The resident refuses a helper result that says
+`end_of_content` with `topReached: false`, or `top_not_reached` without it
+(`scroll_output_invalid`).
 
 A capture that keeps nothing fails instead: `scroll_no_movement` (nothing under the
 selection scrolled at any park position), `capture_timeout` (no frame in 3 s, or modifier

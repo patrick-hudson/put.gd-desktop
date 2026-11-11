@@ -290,7 +290,9 @@ design is in [scrolling capture](../design/scroll-capture.md).
   regions, near-periodic text, numbered lines whose digits sit in the side margin, a short line scrolled
   under a painted pointer, a jump past the whole viewport that must not be accepted on a sliver of
   rows, a stream that goes quiet or answers late, scroll to the top (overscroll, Stop on the way up
-  with and without a painted pointer), end proof by a fresh frame, recovery and the limits.
+  with and without a painted pointer, a way up longer than the old 15 s that still reaches the top,
+  a top that is not reached in its time or on a page that never rests and must not end as
+  `EndOfContent`), end proof by a fresh frame, recovery and the limits.
   `--full` (or `PUTGD_SCROLL_STITCHER_FULL=1`) runs the research prototype's seed counts and sweeps.
   It is in the contract lists of `cmake/TestPolicy.cmake`.
 - `scroll_service_integration` (`tests/integration/test_scroll_service.cpp`): `ScrollCaptureService`,
@@ -298,8 +300,9 @@ design is in [scrolling capture](../design/scroll-capture.md).
   journal entry before the first frame, `scroll_active` for a screenshot or a recording started during one,
   `scroll_busy` and `scroll_not_found`, a fake GNOME Shell that selects the region and places the bar
   (`select`, `overlay`, `start` in order), Stop keeps and Cancel discards, the cap warning and the
-  History note, a start held for put.gd's own notices to go, and admission refusing a wrong hash, size
-  or IHDR.
+  History note, `top_not_reached` (kept, warned, noted, `topReached: false`, also after Stop and the
+  cap; `end_of_content` with an unproved top refused), a start held for put.gd's own notices to go,
+  and admission refusing a wrong hash, size or IHDR.
 - `scroll_capture_x11` (`tests/integration/test_scroll_capture_x11.cpp`): the real `putgd-record` on a
   private Xvfb display against `tests/fixtures/scroll_page_fixture.cpp`, a window of 40 px rows each
   painted as a bar code with its number, through `ximagesrc` and XTest. The PNG must decode to every row once and in

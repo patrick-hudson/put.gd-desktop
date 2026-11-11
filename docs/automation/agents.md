@@ -90,6 +90,8 @@ To take a scrolling capture as an agent, read `scroll.capabilities` first (`avai
 `frames`), then `scroll.prepare` with a `rect` (or none, for the selector), `scroll.start`, poll
 `scroll.inspect` until `state` is `done`, `failed` or `cancelled`, and read `endReason`: only
 `end_of_content` is a complete capture, and a `lost_track` or `height_cap` image is exact but partial.
+`top_not_reached` (and `topReached: false` on any other end) says the image starts partway down the
+page, because the scroll to the top could not be finished.
 The tool and method forms are in [CLI](cli.md#scrolling-capture) and [MCP](mcp.md#tools-and-effects).
 It sends real wheel events to a live desktop, so run it only at a window you opened for the test, with
 the pointer and keyboard left alone, and never on a physical desktop without its lease.

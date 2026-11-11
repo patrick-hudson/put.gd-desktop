@@ -289,13 +289,17 @@ A scrolling capture ([design](../design/scroll-capture.md)) is driven by seven s
 The view is `{id, operationId, state, rect?, height, steps, pixelsPerNotch}` while running, with
 `state` `preparing`, `selecting`, `ready`, `capturing` (including the way to the top) or
 `finishing`. After the end it also carries what the helper reported: `state: "done"`,
-`endReason` (`end_of_content`, `height_cap`, `stopped`, `lost_track`, `time_limit`), `truncated`
-(false only for `end_of_content`), `height`, `bytes`, `stats {steps, pixelsPerNotch, lowConfidenceSteps,
-elapsedMs}` (also flat), `result` (the helper's descriptor without its path: `sha256`, `width`,
-`height`, `appliedMaxHeight`, and `note` for a `lost_track`) and, for `height_cap`, `note`: the warning
-text. A failed or cancelled session has `state` `failed` or `cancelled` and `error`. Inspect
-`operation.inspect` with the same `id` for the upload and the link. Only `end_of_content` means the
-whole scroll area is in the image.
+`endReason` (`end_of_content`, `height_cap`, `stopped`, `lost_track`, `time_limit`,
+`top_not_reached`), `truncated` (false only for `end_of_content`), `height`, `bytes`, `stats {steps,
+pixelsPerNotch, lowConfidenceSteps, elapsedMs}` (also flat), `result` (the helper's descriptor
+without its path: `sha256`, `width`, `height`, `appliedMaxHeight`, and `note` for a `lost_track` or a
+`top_not_reached`) and, for `height_cap` and `top_not_reached`, `note`: the warning text. With
+**Scroll to the top first** on, a capture whose scroll to the top did not prove the top carries
+`topReached: false` (in the view and in `result`), whatever ended it; when it then reached the end
+of the content its `endReason` is `top_not_reached`, and the image starts partway down. The field is
+absent otherwise. A failed or cancelled session has `state` `failed` or `cancelled` and `error`.
+Inspect `operation.inspect` with the same `id` for the upload and the link. Only `end_of_content`
+means the whole scroll area, top to bottom, is in the image.
 
 ```sh
 putgd-cli scroll.capabilities

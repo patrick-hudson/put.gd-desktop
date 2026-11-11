@@ -58,7 +58,10 @@ filenames, history URLs, authorization values or credential references.
 
 These come from [scrolling capture](../design/scroll-capture.md). A capture that ends with a
 partial image is not a failure: it is the result's `endReason` (`height_cap`, `stopped`,
-`lost_track`, `time_limit`) and the image so far is exact and kept.
+`lost_track`, `time_limit`, `top_not_reached`) and the image it has is exact and kept.
+`top_not_reached` means the scroll to the top could not be finished, so the image starts
+partway down the page; its warning says "Could not reach the top of the page. The image
+starts partway down."
 
 | Code | `details` | User action |
 |---|---|---|
