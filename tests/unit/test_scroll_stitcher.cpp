@@ -621,6 +621,16 @@ void testEndsAndBounce() {
   {
     ViewportSpec v2 = vs;
     v2.caret = v2.anim = false;
+    v2.footerH = 80;
+    Renderer r2(doc.img, v2);
+    StitchOptions o;
+    o.maxOutputRows = 20;
+    Drive d = drive(r2, {0, 100}, true, o);
+    report("footer larger than output cap", d.outH <= 20 && d.img.size() <= size_t(20 * v2.width * 4), fmt("height=%d", d.outH));
+  }
+  {
+    ViewportSpec v2 = vs;
+    v2.caret = v2.anim = false;
     Renderer r2(doc.img, v2);
     Image a, b;
     r2.render(600, 0, a);
@@ -1467,6 +1477,50 @@ void testSessions() {
   }
 }
 
+void testReviewFrameProofs() {
+  struct Source : RunFrames, RunInjector {
+    FakeClock clock;
+    Image original{480, 600, kBg}, changed{480, 600, kBg};
+    bool resize = false, retry = false;
+    int wheels = 0, reads = 0, fresh = 0;
+    Source() {
+      original = marginNumberedLines(480, 100, 18, false);
+      changed = original;
+      std::fill(changed.px.begin(), changed.px.end(), uint8_t(127));
+    }
+    bool scroll(int) override { ++wheels; reads = 0; return true; }
+    bool movePointer(int, int) override { return true; }
+    std::optional<RunFrame> nextFrame(int ms) override {
+      clock.sleepMs(ms);
+      ++reads;
+      auto v = (retry && wheels == 2 ? changed : original).view();
+      if (resize && wheels) v.height = 100;
+      return RunFrame{v, clock.nowMs()};
+    }
+    std::optional<RunFrame> freshFrame(int) override {
+      ++fresh;
+      if (wheels >= 2) return std::nullopt;
+      return RunFrame{original.view(), clock.nowMs()};
+    }
+  };
+  {
+    Source source; source.resize = true;
+    ScrollRun run(source, source, source.clock);
+    const auto result = run.run();
+    report("resized stream fails with LayoutChanged", result == RunResult::LayoutChanged && source.reads == 1, fmt("%s, reads after resize=%d", toString(result), source.reads));
+  }
+  {
+    Source source; source.retry = true;
+    RunOptions opts; opts.pointer = false;
+    opts.onStep = [&](const StepResult& r, int, int) {
+      if (r.status == StepStatus::NoMatch || r.status == StepStatus::Ambiguous) source.retry = false;
+    };
+    ScrollRun run(source, source, source.clock, opts);
+    const auto result = run.run();
+    report("retry stillness needs fresh proof", result != RunResult::EndOfContent && source.fresh >= 2, toString(result));
+  }
+}
+
 // ------------------------------------------------------------------ pointer rules, scroll to top
 
 // The loop's own rules about the pointer (the issue's "Control loop" section),
@@ -1503,6 +1557,15 @@ void testPointerRules() {
       }
       return ok && wheels > 3;
     };
+    runSession(c);
+  }
+  {
+    SessCfg c = base("from top resolves right-edge target before first frame");
+    c.app.wheelArea = {W - W / 4, 0, W / 4, V};
+    c.app.startPos = 1500;
+    c.so.fromTop = true;
+    c.extraName = "top proven at effective target";
+    c.extra = [](const RunStats& s, const FakeApp&) { return s.reachedTop && s.toTopMoved && s.parkPosition == 1; };
     runSession(c);
   }
   {
@@ -2085,6 +2148,7 @@ int main(int argc, char** argv) {
   testMemory();
   testSessions();
   testPointerRules();
+  testReviewFrameProofs();
 
   int pass = 0, fail = 0, known = 0;
   std::printf("\n==================== summary ====================\n");

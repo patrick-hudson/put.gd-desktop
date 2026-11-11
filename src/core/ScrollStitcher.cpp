@@ -271,7 +271,7 @@ void ScrollStitcher::emitRaw(const uint8_t* row) {
 
 void ScrollStitcher::emitRows(const FrameView& f, int y0, int y1) {
   if (y1 <= y0) return;
-  const long long reserve = moved_ ? std::max(estBot_, 0) : 0;
+  const long long reserve = moved_ ? std::min(std::max(estBot_, 0), opts_.maxOutputRows) : 0;
   const long long allowed = std::max(0LL, opts_.maxOutputRows - reserve - bodyRows_);
   long long n = y1 - y0;
   if (n > allowed) {
@@ -306,7 +306,7 @@ void ScrollStitcher::finish() {
   if (!moved_) {
     flushPending(height_);
   } else {
-    const int rows = std::max(estBot_, 0);
+    const int rows = int(std::min<long long>(std::max(estBot_, 0), std::max(0LL, opts_.maxOutputRows - bodyRows_)));
     const int skip = footerRows_ - rows;  // footer_ may hold more rows than the final estimate
     for (int i = 0; i < rows; ++i) emitRaw(&footer_[size_t(skip + i) * width_ * 4]);
   }

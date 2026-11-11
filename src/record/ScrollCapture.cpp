@@ -281,6 +281,7 @@ void ScrollCapture::prepare(const QJsonObject& params, Reply reply) {
     if ((selection != "helper" && selection != "shell") || (params.contains("rect") && rectFromJson(params["rect"]).isEmpty()) || !std::isfinite(maxHeight) || maxHeight < 1 || !std::isfinite(maxPixels) || maxPixels < 0) {
         reply({"invalid_request", "Invalid scroll capture request", {}}, {}); return;
     }
+    if (!params.contains("rect") && selection != "shell" && probe["selection"] == "none") { reply(unavailable("region_unavailable", "This desktop has no region selector for a scroll capture"), {}); return; }
     id_ = params["id"].toString();
     staging_ = staging;
     frames_ = probe["frames"].toString();

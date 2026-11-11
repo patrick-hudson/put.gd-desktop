@@ -194,7 +194,7 @@ struct ImageCopySource::Impl {
   // Constraints come as a batch ended by done, in any order within it.
   const auto offered=s->pendingFormats;s->pendingFormats.clear();
   if(!found||s->pendingSize.isEmpty()){s->ended=true;s->fail({"recording_unsupported","The compositor offers no 32-bit shared-memory capture format",{{"formats",int(offered.size())},{"width",s->pendingSize.width()},{"height",s->pendingSize.height()}}});return;}
-  const bool changed=s->constraints&&(s->pendingSize!=s->size||chosen!=s->format);
+  const bool changed=(s->constraints||!s->ring.empty())&&(s->pendingSize!=s->size||chosen!=s->format);
   s->size=s->pendingSize;s->format=chosen;s->formats=offered;
   if(changed){s->reallocate=true;s->constraintChanges.fetch_add(1);}
   s->constraints=true;

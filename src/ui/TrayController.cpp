@@ -189,7 +189,9 @@ TrayController::TrayController(OperationService& operations,
   }
  });
  connect(&operations_.scroll(),&ScrollCaptureService::ended,this,[this]{
+  if(operations_.scroll().active())return;
   holdNotices_=false;
+  for(const auto& managers:std::exchange(heldFileManagerNotices_,{}))notifyFileManagerMenu(managers);
   for(const auto& n:std::exchange(heldNotices_,{}))notifyMessage(n.code,n.title,n.message,n.warning,n.link,n.diagnosticsOperation,n.revealPath,n.diagnosticsLabel);
  },Qt::QueuedConnection);
  // A recording that ended itself on its byte budget says why (#225).
@@ -620,6 +622,7 @@ void TrayController::openNotificationLink(const QUrl& link) {
 int TrayController::closeOwnNotifications(std::function<void()> gone) {
 #ifdef Q_OS_LINUX
  if(native_)return native_->closeNotifications(std::move(gone));
+ ++trayNoticeGeneration_;
  auto bus=QDBusConnection::sessionBus();
  const auto open=std::exchange(trayOpen_,{});
  if(!bus.isConnected())return 0;
@@ -693,9 +696,10 @@ void TrayController::askCapabilities(const QString& title, const QString& messag
  });
 }
 void TrayController::sendTrayMessage(const QString& title, const QString& message, bool warning, const QList<NotificationAction>& actions, bool transient) {
+ if(holdNotices_)return;
  static constexpr int balloonMs=30000;
  const auto fallback=[this,tray=QPointer<QSystemTrayIcon>(tray_),title,message,warning,actions]{
-  if(!tray)return;
+  if(!tray||holdNotices_)return;
   disconnect(trayRestartClick_);
   const auto icon=warning?QSystemTrayIcon::Warning:QSystemTrayIcon::Information;
   if(actions.isEmpty()){tray->showMessage(title,message,icon);return;}
@@ -718,11 +722,19 @@ void TrayController::sendTrayMessage(const QString& title, const QString& messag
   if(!trayActionsConnected_)trayActionsConnected_=bus.connect("org.freedesktop.Notifications","/org/freedesktop/Notifications","org.freedesktop.Notifications","ActionInvoked",this,SLOT(trayNotificationAction(uint,QString)));
  }
  call.setArguments({QCoreApplication::applicationName(),uint(0),QString(warning?"dialog-warning":"dialog-information"),title,message,names,hints,values.isEmpty()?10000:0});
+ const auto generation=trayNoticeGeneration_;
  ++trayMessagesInFlight_;
  auto* pending=new QDBusPendingCallWatcher(bus.asyncCall(call),this);
- connect(pending,&QDBusPendingCallWatcher::finished,this,[this,fallback,values](QDBusPendingCallWatcher* p) {
+ connect(pending,&QDBusPendingCallWatcher::finished,this,[this,fallback,values,generation](QDBusPendingCallWatcher* p) {
   --trayMessagesInFlight_;p->deleteLater();
   const QDBusPendingReply<uint> reply=*p;
+  if(generation!=trayNoticeGeneration_||holdNotices_){
+   if(reply.isValid()){
+    auto close=QDBusMessage::createMethodCall("org.freedesktop.Notifications","/org/freedesktop/Notifications","org.freedesktop.Notifications","CloseNotification");
+    close<<reply.value();QDBusConnection::sessionBus().asyncCall(close);
+   }
+   return;
+  }
   if(reply.isValid()&&!values.isEmpty())trayActions_.insert(reply.value(),values);
   if(reply.isValid()){trayOpen_.append(reply.value());if(trayOpen_.size()>16)trayOpen_.removeFirst();}
   const auto error=p->error().type();
@@ -785,6 +797,7 @@ QString fileManagerName(const QString& name){
 }
 }
 void TrayController::notifyFileManagerMenu(const QStringList& restartable) {
+ if(holdNotices_){heldFileManagerNotices_.append(restartable);return;}
  QString message=QStringLiteral("Upload with put.gd is now in your file manager's right-click menu.");
  if(!restartable.isEmpty()){
   // Short, what matters first: some servers cut a body at about 80 characters.

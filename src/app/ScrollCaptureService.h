@@ -49,7 +49,7 @@ private:
  QString root_,id_,directory_,pending_;
  Host host_;
  Operation op_;
- QJsonObject view_;
+ QJsonObject view_,shownFrame_;
  QHash<QString,QJsonObject> results_;
  QStringList resultOrder_;
  std::unique_ptr<ScrollBackend> backend_;

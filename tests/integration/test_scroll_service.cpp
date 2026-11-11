@@ -21,6 +21,27 @@ struct ScrollShellFixture final:RecordingShell {
 class ScrollTest:public QObject {
  Q_OBJECT
 private slots:
+ void cancelPendingCommand_data(){QTest::addColumn<QString>("command");QTest::newRow("start")<<QString("start");QTest::newRow("stop")<<QString("stop");}
+ void cancelPendingCommand(){
+  QFETCH(QString,command);QTemporaryDir dir("/tmp/sc-XXXXXX");SettingsService settings(dir.filePath("config.json"));QVERIFY(settings.save(configuration(dir.path(),true),{}));
+  ScrollCaptureService::Host host;host.settings=[&]{return settings.snapshot();};host.accept=[&](Operation& op){op.id="pending";op.settings=settings.snapshot();return Error{};};host.persist=[](const Operation&,auto done){done({});};host.observe=[](const Operation&){};host.finish=[](Operation){};
+  ScrollCaptureService service(dir.filePath("staging"),host);auto fake=std::make_unique<FakeScrollBackend>();auto* backend=fake.get();service.setBackend(std::move(fake));
+  QString id;service.command("prepare",{{"rect",QJsonArray{0,0,64,64}}},[&](Error e,QJsonObject r){QVERIFY(!e);id=r["id"].toString();});PUTGD_TRY_VERIFY(!id.isEmpty());
+  if(command=="stop"){bool started=false;service.command("start",{{"id",id}},[&](Error e,QJsonObject){QVERIFY(!e);started=true;});PUTGD_TRY_VERIFY(started);}
+  backend->holdCommand=command;bool pendingAnswered=false;service.command(command,{{"id",id}},[&](Error,QJsonObject){pendingAnswered=true;});QVERIFY(bool(backend->heldCommand));
+  bool cancelled=false;service.command("cancel",{{"id",id}},[&](Error e,QJsonObject r){QVERIFY(!e);QCOMPARE(r["state"].toString(),QString("cancelled"));cancelled=true;});PUTGD_TRY_VERIFY(cancelled);QVERIFY(!service.active());
+  std::exchange(backend->heldCommand,{})({},{{"state","capturing"}});PUTGD_TRY_VERIFY(pendingAnswered);QVERIFY(!service.active());
+ }
+ void helperReleasedBeforeAdmission(){
+  QTemporaryDir dir("/tmp/sc-XXXXXX");SettingsService settings(dir.filePath("config.json"));QVERIFY(settings.save(configuration(dir.path(),true),{}));
+  ScrollCaptureService::Host host;host.settings=[&]{return settings.snapshot();};host.accept=[&](Operation& op){op.id="admission";op.settings=settings.snapshot();return Error{};};host.persist=[](const Operation&,auto done){done({});};host.observe=[](const Operation&){};host.finish=[](Operation){};
+  auto fake=std::make_unique<FakeScrollBackend>();auto* backend=fake.get();bool admitted=false;std::function<void()> release;
+  host.admit=[&](Operation,ClipboardPayload payload,auto released){QCOMPARE(backend->discarded,1);QVERIFY(!payload.bytes.isEmpty());release=std::move(released);admitted=true;};
+  ScrollCaptureService service(dir.filePath("staging"),host);service.setBackend(std::move(fake));QString id;
+  service.command("prepare",{{"rect",QJsonArray{0,0,64,64}}},[&](Error e,QJsonObject r){QVERIFY(!e);id=r["id"].toString();});PUTGD_TRY_VERIFY(!id.isEmpty());
+  bool started=false;service.command("start",{{"id",id}},[&](Error e,QJsonObject){QVERIFY(!e);started=true;});PUTGD_TRY_VERIFY(started);
+  service.command("stop",{{"id",id}},[](Error e,QJsonObject){QVERIFY(!e);});PUTGD_TRY_VERIFY(admitted);QVERIFY(!service.active());release();
+ }
  void lifecycle_data(){QTest::addColumn<QString>("bad");for(const auto& s:QStringList{"","hash","size","ihdr"})QTest::newRow(qPrintable(s.isEmpty()?"valid":s))<<s;}
  void lifecycle(){
  QFETCH(QString,bad);QTemporaryDir dir("/tmp/ps-XXXXXX");ProviderRegistry registry;SettingsService settings(dir.filePath("config.json"));auto doc=configuration(dir.path(),true);QVERIFY(settings.save(doc,{}));Source source;OperationService operations(dir.filePath("data"),settings,registry,source);HistoryService history(operations);LocalServer server(settings,operations,history);

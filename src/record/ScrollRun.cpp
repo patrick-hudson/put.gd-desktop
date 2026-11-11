@@ -83,6 +83,7 @@ ScrollRun::Screen ScrollRun::screenIsAsSeen() {
     }
     ++stats_.framesSeen;
     ++stats_.freshFrames;
+    if (stitcher_.hasFrame() && (fresh->view.width != referenceWidth_ || fresh->view.height != referenceHeight_)) { layoutChanged_ = true; return Screen::Unknown; }
     tmpSig_.compute(fresh->view, opts_.stitch);
     bool same = lastSig_.height == tmpSig_.height && lastSig_.width == tmpSig_.width;
     if (same) {
@@ -119,6 +120,7 @@ RunResult ScrollRun::finishWith(RunResult r) {
     if (r == RunResult::InjectorFailed && stopped()) r = RunResult::Stopped;
     // "End of content" says the whole scroll area, top to bottom.
     if (r == RunResult::EndOfContent && opts_.fromTop && !stats_.reachedTop) r = RunResult::TopNotReached;
+    if (layoutChanged_) r = RunResult::LayoutChanged;
     stitcher_.finish();
     stats_.elapsedMs = clock_.nowMs() - startMs_;
     stats_.outputRows = stitcher_.hasFrame() ? stitcher_.outputHeight() : 0;
@@ -130,6 +132,7 @@ std::optional<RunResult> ScrollRun::waitFailure(Wait w) {
         case Wait::Stopped: return RunResult::Stopped;
         case Wait::TimeLimit: return RunResult::TimeLimit;
         case Wait::NoFrame: stats_.lastError = "the frame source delivered no frame"; return RunResult::NoFrames;
+        case Wait::LayoutChanged: return RunResult::LayoutChanged;
         case Wait::Lost: stats_.lastError = "the frame source ended"; return RunResult::SourceLost;
         case Wait::Settled: case Wait::TimedOut: case Wait::Changed: break;
     }
@@ -171,6 +174,7 @@ ScrollRun::Wait ScrollRun::waitSettled(int timeoutMs, int quietMs) {
         const int wait = int(std::clamp<int64_t>(wakeAt - now, 1, 100));
         std::optional<RunFrame> f = source_.nextFrame(wait);
         if (!f) continue;
+        if (stitcher_.hasFrame() && (f->view.width != referenceWidth_ || f->view.height != referenceHeight_)) return Wait::LayoutChanged;
         ++stats_.framesSeen;
         if (lastFrameMs_ >= 0 && f->timestampMs > lastFrameMs_ && f->timestampMs - lastFrameMs_ <= opts_.cadenceIdleMs)
             cadenceMs_ = std::max(0.9 * cadenceMs_, double(f->timestampMs - lastFrameMs_));
@@ -335,6 +339,12 @@ std::optional<RunResult> ScrollRun::wayToTop() {
                     settledSig_ = lastSig_;
                     continue;
                 }
+                if (screen == Screen::Same && !stats_.toTopMoved && opts_.pointer && stats_.parkPosition < 2) {
+                    ++stats_.parkPosition;
+                    still = 0;
+                    continue;
+                }
+                if (!stats_.toTopMoved) stats_.parkPosition = 0;
                 stats_.reachedTop = screen == Screen::Same;
                 if (!stats_.reachedTop) stats_.toTopGaveUp = "the frame source gave no fresh frame after the last steps up, so the top of the page is not proven";
                 break;
@@ -417,6 +427,7 @@ RunResult ScrollRun::run(const std::atomic<bool>* stop) {
         parked_ = -1;
     }
     if (auto f = waitFailure(waitSettled(opts_.firstFrameTimeoutMs))) return finishWith(*f);
+    referenceWidth_ = last_.width; referenceHeight_ = last_.height;
     if (stitcher_.addFrame(last_, lastSig_, kNoHint).status != StepStatus::First) {
         stats_.lastError = "the first frame was refused";
         return finishWith(RunResult::NoFrames);
@@ -469,17 +480,20 @@ RunResult ScrollRun::run(const std::atomic<bool>* stop) {
         // nothing must not end a capture as if it were complete. Checked at
         // the first still step already, while the content is one step away
         // and still overlaps what was stitched.
-        Screen screen = Screen::Same;
-        if (r.status == StepStatus::NoMovement) {
-            screen = screenIsAsSeen();
-            if (screen == Screen::Moved) {
-                firstChange = -1;  // when it moved is not known
-                r = stitcher_.addFrame(last_, lastSig_, hint, unc);
-                if (opts_.onStep) opts_.onStep(r, hint, notches);
-                // The fresh frame differs in place only: it is the proof that nothing scrolled.
-                if (r.status == StepStatus::NoMovement) screen = Screen::Same;
+        Screen screen = Screen::Unknown;
+        const auto checkStillness = [&] {
+            if (r.status == StepStatus::NoMovement) {
+                screen = screenIsAsSeen();
+                if (screen == Screen::Moved) {
+                    firstChange = -1;  // when it moved is not known
+                    r = stitcher_.addFrame(last_, lastSig_, hint, unc);
+                    if (opts_.onStep) opts_.onStep(r, hint, notches);
+                    // The fresh frame differs in place only: it is the proof that nothing scrolled.
+                    if (r.status == StepStatus::NoMovement) screen = Screen::Same;
+                }
             }
-        }
+        };
+        checkStillness();
 
         if (r.status == StepStatus::NoMatch || r.status == StepStatus::Ambiguous) {
             // 1) Transient: the frame may not have been final (late repaint, overlay).
@@ -487,7 +501,9 @@ RunResult ScrollRun::run(const std::atomic<bool>* stop) {
             if (auto f = waitFailure(waitSettled(opts_.stepTimeoutMs))) return finishWith(*f);
             r = stitcher_.addFrame(last_, lastSig_, hint, unc);
             if (opts_.onStep) opts_.onStep(r, hint, notches);
+            checkStillness();
         }
+
         if (r.status == StepStatus::NoMatch || r.status == StepStatus::Ambiguous) {
             const bool ambiguous = r.status == StepStatus::Ambiguous;
             if (ambiguous && stats_.pxPerNotch <= 0) {

@@ -97,6 +97,7 @@ private:
  int trayMessagesInFlight_ = 0;
  // Its buttons, by notification id: the server shows them and reports the click.
  QHash<uint,QHash<QString,QString>> trayActions_;
+ quint64 trayNoticeGeneration_ = 0;
  QList<uint> trayOpen_; // the newest few it sent, for closeOwnNotifications()
  bool trayActionsConnected_ = false;
  QMetaObject::Connection trayRestartClick_; // Qt's balloon has one click signal, whichever balloon is showing
@@ -116,6 +117,7 @@ private:
  // and shown when it has ended. Other applications' notices are not put.gd's to close.
  struct HeldNotice { QString code, title, message; bool warning = false; QUrl link; QString diagnosticsOperation, revealPath, diagnosticsLabel; };
  QList<HeldNotice> heldNotices_;
+ QList<QStringList> heldFileManagerNotices_;
  bool holdNotices_ = false;
  // `gone`: see NativeTray::closeNotifications.
  int closeOwnNotifications(std::function<void()> gone={});

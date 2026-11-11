@@ -219,7 +219,7 @@ public:
     // The park positions of rule 2 and rule 7 for a frame of this size.
     static RunPoint parkPoint(int position, int width, int height);
 private:
-    enum class Wait { Settled, TimedOut, Stopped, TimeLimit, NoFrame, Lost, Changed };
+    enum class Wait { Settled, TimedOut, Stopped, TimeLimit, NoFrame, Lost, Changed, LayoutChanged };
     // quietMs: with no change at all since the call began, this long counts as
     // settled (the response wait after an injection); 0: the settle time.
     Wait waitSettled(int timeoutMs, int quietMs = 0);
@@ -252,6 +252,8 @@ private:
     RunStats stats_;
     const std::atomic<bool>* stop_ = nullptr;
     int64_t startMs_ = 0;
+    int referenceWidth_ = 0, referenceHeight_ = 0;
+    bool layoutChanged_ = false;
     bool haveFrame_ = false;
     scroll::FrameView last_{};
     scroll::FrameSignatures lastSig_, tmpSig_, settledSig_, beforeSig_;

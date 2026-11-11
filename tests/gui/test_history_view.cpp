@@ -490,6 +490,15 @@ private slots:
   {HistoryStore ledger(operations.databasePath());Operation op;op.id="preview-retry";op.created="2020-01-01T00:00:00.000Z";op.state="completed";op.settings=settings.snapshot();OperationItem item;item.artifact.id="preview-retry-file";item.artifact.name="retry.png";item.artifact.mime="image/png";item.artifact.category="images";item.artifact.previewPath=path;item.uploadStatus="local_only";op.items.append(item);QVERIFY(!ledger.saveOperation(op));}
   HistoryService history(operations);UiSessionFixture fixture(settings,operations,history);HistoryWindow window(fixture.session);window.resize(1600,900);window.show();auto* list=window.findChild<QListView*>("historyList");PUTGD_TRY_COMPARE(list->model()->rowCount(),1);selectRow(list,0);auto* retry=window.findChild<QPushButton*>("retryHistoryPreview");PUTGD_TRY_VERIFY(retry->isVisible());QVERIFY(window.findChild<QLabel*>("historyPreview")->text().contains("couldn't be read"));QImage image(32,32,QImage::Format_RGB32);image.fill(Qt::green);QVERIFY(image.save(path));retry->click();PUTGD_TRY_VERIFY(!window.findChild<QLabel*>("historyPreview")->pixmap().isNull());QVERIFY(retry->isHidden());QCOMPARE(list->selectionModel()->selectedRows().size(),1);
  }
+ void scrollNoteKeepsFailuresVisible(){
+  const QString note="Stopped at 30,000 px. The page continues below.";
+  QJsonObject op{{"action","scroll"},{"state","failed"},{"note",note}};
+  const auto text=HistoryModel::statusText({{"operation",op},{"uploadStatus","failed"}});
+  QVERIFY(text.startsWith("Upload failed"));QVERIFY(text.endsWith(note));
+  op["state"]="completed";
+  const auto local=HistoryModel::statusText({{"operation",op},{"uploadStatus","local_only"},{"local",QJsonObject{{"status","failed"}}}});
+  QVERIFY(local.startsWith("Local save failed"));QVERIFY(local.endsWith(note));
+ }
  void recordingsHavePhaseSpecificStatus(){
   for(const auto& [phase,label]:QList<std::pair<QString,QString>>{{"preparing","Setting up the recording…"},{"ready","Ready to record"},{"recording","Recording"},{"paused","Recording paused"},{"stopping","Stopping the recording…"},{"reviewing","Review recording"},{"exporting","Saving a recording copy…"},{"encoding","Encoding recording…"}})QCOMPARE(HistoryModel::statusText({{"operation",QJsonObject{{"action","record"},{"state","recording"},{"phase",phase}}}}),label);
  }

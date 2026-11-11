@@ -757,6 +757,17 @@ private slots:
   PUTGD_TRY_COMPARE(notifications.values.size(),before+2);QCOMPARE(notifications.values.last()["summary"].toString(),QString("put.gd — incomplete uploads left"));
   QCOMPARE(notifications.values.last()["body"].toString(),QString("Automatic cleanup could not cancel 2 incomplete uploads in bucket synthetic."));
  }
+ void scrollNoticesStayHeldAcrossLateEnded(){
+  QTemporaryDir directory;ProviderRegistry providers;SettingsService settings(directory.filePath("config.json"));QVERIFY(settings.save(configuration(directory.path(),true),{}));Source source;
+  OperationService operations(directory.filePath("data"),settings,providers,source);operations.setScrollBackend(std::make_unique<FakeScrollBackend>());PUTGD_TRY_VERIFY(operations.ready());
+  TrayController controller(operations,[](const QString&){},[]{});PUTGD_TRY_VERIFY(controller.available());const auto before=notifications.values.size();QString id;
+  operations.scroll().command("prepare",{{"rect",QJsonArray{0,0,64,64}}},[&](Error e,QJsonObject r){QVERIFY(!e);id=r["id"].toString();});PUTGD_TRY_VERIFY(!id.isEmpty());
+  emit operations.scroll().ended();putgd::test::settle(50);
+  controller.notifyFileManagerMenu({"pcmanfm"});controller.notifyFailure({"synthetic","Held failure",{}});
+  PUTGD_COMPARE_STEADY(notifications.values.size(),before,100);
+  bool cancelled=false;operations.scroll().command("cancel",{{"id",id}},[&](Error e,QJsonObject){QVERIFY(!e);cancelled=true;});PUTGD_TRY_VERIFY(cancelled);
+  PUTGD_TRY_COMPARE(notifications.values.size(),before+2);
+ }
  void scrollCaptureClosesOwnNoticesAndHoldsNewOnes() {
   // #1376: a notice of put.gd's own that is on screen while a scroll capture
   // reads frames ends up in the picture (the height-cap warning of one capture
