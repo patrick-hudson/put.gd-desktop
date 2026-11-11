@@ -96,6 +96,7 @@ struct RunOptions {
     int endConfirmDelayMs = 400;      // a still step is at least this old before the confirming injection
     int totalTimeLimitMs = 180000;
     bool allowScrollBack = true;
+    int extraScrollBacks = 2;         // ways back sent again when the first did not reach the last stitched frame
     double shortStepFraction = 0.7;   // offset < this * hint: a final, partial step; keep px-per-notch
     // Pointer rules. With `pointer` off the loop never moves the pointer (the
     // prototype's behaviour, and what the synthetic tests use).

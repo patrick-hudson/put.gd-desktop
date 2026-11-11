@@ -390,6 +390,22 @@ StepResult ScrollStitcher::addFrame(const FrameView& f, const FrameSignatures& c
     while (t < H && same(t)) ++t;
     int b = 0;
     while (b < H - t && same(H - 1 - b)) ++b;
+    if (!strictRuns) {
+      // Rows that pass the tolerant rule are fixed rows only while few of them
+      // changed at all. Short lines that scrolled pass it everywhere, and a
+      // small change in place among them (the mouse pointer a compositor
+      // paints into the frames) was then taken for the whole difference: the
+      // step counted as "changed in place" and its rows were never appended
+      // (three lines missing from a Qt text view on Hyprland, lab guest of
+      // 2026-11-10). The runs are then measured by exact equality.
+      const int changedInRuns = countStrictChangedRows(ref_, cur, 0, t) + countStrictChangedRows(ref_, cur, H - b, H);
+      if (changedInRuns > strictChangeBudget(opts_, H)) {
+        t = 0;
+        while (t < H && ref_.rowHash[t] == cur.rowHash[t]) ++t;
+        b = 0;
+        while (b < H - t && ref_.rowHash[H - 1 - b] == cur.rowHash[H - 1 - b]) ++b;
+      }
+    }
     // Over-estimates (content that happened to be identical under a header) only
     // shrink over later steps: the estimate is the minimum over moving steps.
     top = estTop_ >= 0 ? std::min(estTop_, t) : t;

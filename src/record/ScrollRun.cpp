@@ -421,6 +421,24 @@ RunResult ScrollRun::run(const std::atomic<bool>* stop) {
                 back = stitcher_.addFrame(last_, lastSig_, 0);
                 if (opts_.onStep) opts_.onStep(back, 0, -notches);
             }
+            // Wheel steps of an earlier burst may have landed after their
+            // settle time (a slow guest), and the page is then further down
+            // than one way back reaches: the same way back again, and the
+            // pixels alone say where the page is (no hint).
+            for (int again = 0; again < opts_.extraScrollBacks && (back.status == StepStatus::NoMatch || back.status == StepStatus::Ambiguous); ++again) {
+                if (!inject(-notches)) {
+                    stats_.lastError = "injector refused the scroll-back event";
+                    return finishWith(RunResult::InjectorFailed);
+                }
+                ++stats_.scrollBacks;
+                if (auto f = waitFailure(waitSettled(opts_.stepTimeoutMs, responseWaitMs()))) return finishWith(*f);
+                back = stitcher_.addFrame(last_, lastSig_, kNoHint);
+                if (opts_.onStep) opts_.onStep(back, kNoHint, -notches);
+                if ((back.status == StepStatus::NoMatch || back.status == StepStatus::Ambiguous) && screenIsAsSeen() == Screen::Moved) {
+                    back = stitcher_.addFrame(last_, lastSig_, kNoHint);
+                    if (opts_.onStep) opts_.onStep(back, kNoHint, -notches);
+                }
+            }
             if (back.status != StepStatus::NoMovement && back.status != StepStatus::Appended && back.status != StepStatus::Reversed) {
                 stats_.lastError = std::string("after scrolling back the last stitched frame was not found (") + scroll::toString(back.status) + ")";
                 return finishWith(back.status == StepStatus::LimitReached ? RunResult::LimitReached

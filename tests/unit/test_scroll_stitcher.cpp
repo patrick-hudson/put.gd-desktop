@@ -899,6 +899,54 @@ void testMarginRule() {
 void testProof() {
   std::printf("\n[stitcher] an offset is appended only when the pixels prove it\n");
   {
+    // A Qt text view on Hyprland (lab guest, 2026-11-10): numbered lines 14 px
+    // apart in a 940 px frame, the page three lines further down, and the
+    // mouse pointer the compositor painted into the second frame. Every row
+    // but the pointer's passed the tolerant rule at the same place (the lines
+    // differ in their digits only), the step was called a change in place,
+    // and three lines were missing from an image reported as complete.
+    const int W = 940, V = 600, pitch = 14;
+    Image doc(W, 400 * pitch + 8, kBg);
+    for (int i = 0; i < 400; ++i) {
+      Rng same(77);
+      drawTextLine(doc, 6 + i * pitch, 110, 300, same);
+      int n = i;
+      for (int cell = 3; cell >= 0; --cell, n /= 10) {
+        Rng digit(1000 + uint64_t(n % 10));
+        drawTextLine(doc, 6 + i * pitch, 60 + cell * 10, 60 + cell * 10 + 8, digit);
+      }
+    }
+    ViewportSpec vs;
+    vs.width = W;
+    vs.height = V;
+    Renderer rend(doc, vs);
+    auto pointer = [](Image& f) {
+      for (int y = 0; y < 20; ++y)
+        for (int x = 0; x <= y * 12 / 20; ++x) f.at(470 + x, 200 + y) = x == 0 || x == y * 12 / 20 ? 0xFFFFFF : 0x000000;
+    };
+    int ok = 0, total = 0;
+    std::string det;
+    for (int p : {0, 700, 2000})
+      for (int d : {14, 42, 336}) {
+        Image a, b;
+        rend.render(p, 0, a);
+        rend.render(p + d, 1, b);
+        pointer(b);
+        const Pair n = pairFrames(a, b, kNoHint);
+        ++total;
+        const bool good = n.r.status == StepStatus::Appended && n.r.offset == d && n.outAfter == n.outBefore + d;
+        ok += good;
+        if (!good) det += fmt(" p%d d%d:%s/%d", p, d, toString(n.r.status), n.r.offset);
+      }
+    report("short lines scrolled under a painted pointer: not a change in place", ok == total, fmt("%d/%d appended at the true offset%s", ok, total, det.c_str()));
+    Image a, b;
+    rend.render(700, 0, a);
+    rend.render(700, 1, b);
+    pointer(b);
+    const Pair still = pairFrames(a, b, kNoHint);
+    report("short lines, only the pointer appeared: no movement", still.r.status == StepStatus::NoMovement && still.untouched, fmt("%s", toString(still.r.status)));
+  }
+  {
     // The frames of the neon guest's third browser run (KWin 6.8.1, build
     // 289a61189), positions from its helper log: 0, 35, the end (no match),
     // back at 0, 625 (a frame from the middle of the animation), the end.

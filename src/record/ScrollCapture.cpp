@@ -140,6 +140,8 @@ struct ScrollCapture::Job {
     int maxHeight = 0;
     qint64 maxPixels = 0;
     bool fromTop = false;
+    // The frames may show the mouse pointer although none was asked for (ext-image-copy-capture).
+    bool paintedPointer = false;
     std::function<bool()> endedByDesktop;
     std::atomic<bool> stop{false}, discard{false}, sourceGone{false}, layoutChanged{false};
 };
@@ -504,6 +506,7 @@ void ScrollCapture::begin(const FrameTap::Source& source, Reply reply) {
     job_->maxHeight = maxHeight_;
     job_->maxPixels = maxPixels_;
     job_->fromTop = fromTop_;
+    job_->paintedPointer = frames_ == "image-copy";
     job_->endedByDesktop = [this] { return mutter_.closedByCompositor(); };
     state_ = State::Capturing;
     if (frames_ == "kde-screencast" && surfaceMode() == SurfaceMode::LayerShell) {
@@ -631,6 +634,16 @@ void ScrollCapture::work(std::shared_ptr<Job> job) {
             if (!job->screen.contains(candidate) || job->bar.contains(candidate)) continue;
             options.away = RunPoint{int(std::lround((candidate.x() - r.left()) * sx)), int(std::lround((candidate.y() - r.top()) * sy))};
             break;
+        }
+        if (job->paintedPointer) {
+            // A compositor that paints the pointer into the frames whatever was
+            // asked (Hyprland 0.56 did; lab guest of 2026-11-10): rows are kept
+            // further below the parked pointer than a hover effect needs, and
+            // with no place outside the rectangle the first frame is read with
+            // the pointer in the bottom right corner, where an arrow lies off
+            // the screen.
+            options.hoverMarginRows = std::max(options.hoverMarginRows, int(std::lround(48 * sy)));
+            if (!options.away) options.away = RunPoint{width - 1, height - 1};
         }
         options.onProgress = [owner, job](const RunProgress& progress) {
             QMetaObject::invokeMethod(owner, [owner, job, progress] {
