@@ -121,6 +121,12 @@ struct ScrollCapture::Gate final : RunInjector {
         if (debugLogEnabled()) debugLog(QStringLiteral("scroll inject: t=%1 pointer %2,%3 %4").arg(FrameTap::nowMs() % 1000000).arg(x).arg(y).arg(sent ? "sent" : "refused"));
         return sent;
     }
+    bool rest() override {
+        if (!armed.load()) return false;
+        const bool sent = injector->rest();
+        if (sent && debugLogEnabled()) debugLog(QStringLiteral("scroll inject: t=%1 wheel rest sent").arg(FrameTap::nowMs() % 1000000));
+        return sent;
+    }
     bool waitReady(const std::atomic<bool>& stop) override { return armed.load() && injector->waitReady(stop); }
 };
 // What the main thread and the worker share for one capture.

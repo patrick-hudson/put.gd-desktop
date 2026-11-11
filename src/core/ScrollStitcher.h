@@ -40,6 +40,23 @@ struct StitchOptions {
   // than exactTieMaxRival of its own.
   double exactTieMinFraction = 0.80;
   double exactTieMaxRival = 0.50;
+  // The margin rule (see ScrollStitcher::marginVerdict): a rival is disproved
+  // only by at least this many informative margin rows.
+  int marginRivalMinRows = 8;
+  // What the pixels must show before an offset counts as proved (not merely
+  // consistent). Matched rows that are all alike prove nothing however many
+  // there are (24 rows of one stripe pattern match any other 24), so the
+  // matched rows must hold this many different ones.
+  int minDistinctRows = 24;
+  // And an overlap that is a sliver at the far end of the search range is what
+  // a jump past the whole viewport leaves by coincidence: the loop never plans
+  // a step that keeps less than a quarter of the band, so a candidate whose
+  // overlap is under max(sliverMinRows, band * sliverFraction) rows is proof
+  // of nothing by itself. (Both rules: lab guests of 2026-11-10, where a page
+  // that had moved 975 px in an 800 px viewport was matched on 25 rows at 775
+  // and rows went missing from an image reported as complete.)
+  int sliverMinRows = 36;
+  double sliverFraction = 0.125;
 };
 
 // Per-row signatures of one frame. This is the only per-frame state the
@@ -53,11 +70,12 @@ class FrameSignatures {
   std::vector<uint64_t> bandHash;          // height * bands, exact pixel hash per band
   std::vector<uint64_t> edgeHash;          // height * bands, hash of edge x positions per band
   std::vector<uint64_t> rowHash;           // combination of all band hashes
-  std::vector<uint64_t> marginHash;        // hash of the ignored margin columns
+  std::vector<uint64_t> sideHash;          // height * 2: hash of the ignored left and right margin columns
   std::vector<uint32_t> flatBandMask;      // bit k: band k is one colour
   std::vector<uint32_t> edgeBandMask;      // bit k: band k has at least one edge
   std::vector<uint32_t> flatColor;         // colour of a flat row
   std::vector<uint8_t> rowFlat;            // whole compared row is one colour
+  std::vector<uint8_t> sideFlat;           // bit 0: the left margin is one colour (or empty); bit 1: the right
 
   size_t bytes() const;
 };
@@ -162,6 +180,7 @@ class ScrollStitcher {
     int evaluated = 0;
   };
   Search search(const FrameSignatures& cur, int top, int bottom, int hint, int unc) const;
+  int marginVerdict(const FrameSignatures& cur, int top, int bottom, const std::vector<int>& candidates) const;
   void emitRows(const FrameView& f, int y0, int y1);
   void emitRaw(const uint8_t* row);
   void storeFooter(const FrameView& f);

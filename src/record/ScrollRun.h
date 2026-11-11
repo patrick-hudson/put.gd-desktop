@@ -23,6 +23,10 @@ struct RunInjector {
     // Positive scrolls the content down. False when the event could not be sent.
     virtual bool scroll(int notches) = 0;
     virtual bool movePointer(int x, int y) = 0;
+    // The wheel has come to rest: said to the desktop where it can be said
+    // (KWin's fake input: an axis stop). True when something was sent, so the
+    // picture may change once more. See ScrollRun::scrollToTop.
+    virtual bool rest() { return false; }
     // Before the first injection. X11 waits here until the modifier keys are up
     // (Ctrl plus wheel zooms); false when they never were, or `stop` was set.
     virtual bool waitReady(const std::atomic<bool>& stop) { (void)stop; return true; }
@@ -64,6 +68,16 @@ struct RunOptions {
     scroll::StitchOptions stitch;
     int settleMs = 120;               // no change in the moving band for this long = settled
     int settleMaxChangedRows = 2;
+    // A stream that delivers a frame only every 150 ms or so (a slow guest)
+    // shows two frames of one scroll animation further apart than settleMs,
+    // and the first of them was taken for the settled picture: the distance
+    // per notch learned from it was wrong and the rest of the movement landed
+    // in the next step (lab guests, 2026-11-10). The settle time is therefore
+    // at least settleCadenceFactor times the longest recent gap between two
+    // frames, at most settleMaxMs. Gaps over cadenceIdleMs are a stream at rest.
+    double settleCadenceFactor = 2.0;
+    int settleMaxMs = 600;
+    int cadenceIdleMs = 400;
     // How long the picture gets to begin to change after an injection before
     // the step counts as still. An application repaints when it gets to it and
     // a compositor's stream delivers that repaint later still (KWin 6.3: 40 to
@@ -104,6 +118,9 @@ struct RunOptions {
     // After a way up that moved the page: this many single steps down may move
     // nothing (an overscrolled view takes them) before the capture gives up.
     int stillStepsAfterTop = 8;
+    // Stop on the way to the top: fresh frames asked for, at most, until one
+    // agrees with the frame before it.
+    int stopLooks = 6;
     // Asked when the stop flag ends the way to the top: true when no image is
     // wanted (Cancel), so the loop does not wait for the viewport to settle.
     std::function<bool()> discarded;
@@ -141,6 +158,7 @@ struct RunStats {
     int unprovenStill = 0;       // still steps for which no fresh frame could be had
     int maxResponseMs = 0;       // the slowest injection-to-first-change seen on a moving step
     bool stoppedAtTop = false;   // Stop arrived while scrolling to the top: the image is the viewport then
+    bool stopViewportProven = false;  // that viewport is a fresh frame a second look agreed with
     int toTopSteps = 0;
     bool toTopMoved = false, reachedTop = false;
     int parkPosition = 0;        // 0 centre and a third down, 1 near the right edge, 2 two thirds down
@@ -173,7 +191,8 @@ private:
     // Unknown: the source gave none, so nothing is proven.
     enum class Screen { Same, Moved, Unknown };
     Screen screenIsAsSeen();
-    bool stopped() const { return !ignoreStop_ && stop_ && stop_->load(); }
+    // After Stop on the way to the top only a discarded capture (Cancel) ends the last waits.
+    bool stopped() const { return afterStop_ ? (opts_.discarded && opts_.discarded()) : (stop_ && stop_->load()); }
     std::optional<RunResult> waitFailure(Wait);
     std::optional<RunResult> scrollToTop();
     RunResult viewportAfterStop();
@@ -195,6 +214,11 @@ private:
     int parked_ = -1;  // the park position the pointer was last put at, -1 elsewhere
     // The last waitSettled: when its first changed frame arrived (-1: none did).
     int64_t firstChangeMs_ = -1;
-    bool ignoreStop_ = false;  // the one settled frame taken after Stop during scroll-to-top
+    // The stream's cadence: when the last frame arrived, and the longest recent gap between two.
+    int64_t lastFrameMs_ = -1;
+    double cadenceMs_ = 0;
+    int settleNeedMs() const;
+    bool afterStop_ = false;   // the viewport is being taken after Stop during scroll-to-top
+    int64_t lastInjectMs_ = -1;  // when the last wheel step was sent
 };
 }

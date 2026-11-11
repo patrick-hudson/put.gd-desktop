@@ -702,8 +702,320 @@ void testMemory() {
     for (int y = 10; y + 16 < H; y += 16) drawTextLine(f, y, 30, W - 30, rng);
     FrameSignatures s;
     s.compute(f.view(), {});
-    report(fmt("signature bytes %dx%d", W, H), s.bytes() == size_t(H) * 157,
+    report(fmt("signature bytes %dx%d", W, H), s.bytes() == size_t(H) * 166,
            fmt("%zu bytes = %.0f B/row (frame itself %zu bytes)", s.bytes(), double(s.bytes()) / H, size_t(W) * H * 4));
+  }
+}
+
+// ------------------------------------------------------------------ margin rule and proof
+
+// A wide window of short numbered lines, as an editor or a terminal shows a
+// file: the digits (four cells from x = 33) lie inside the ignored side margin
+// of a 1,900 px frame (76 px), and the words every line shares fill the first
+// of the eight bands and no other. `words` false: nothing right of the margin.
+// `proportional`: the digits have widths of their own, as in a proportional
+// font, so the words stand a pixel or two further left or right from line to
+// line, and two lines are alike right of the margin when their numbers are
+// made of the same digits (0784 and 0874).
+Image marginNumberedLines(int width, int lines, int pitch, bool distinct, bool words = true, bool proportional = false) {
+  Image img(width, lines * pitch + 8, kBg);
+  for (int i = 0; i < lines; ++i) {
+    const int y = 4 + i * pitch;
+    Rng same(77);
+    int shift = 0;
+    if (proportional)
+      for (int n = i, cell = 0; cell < 4; ++cell, n /= 10) shift += (n % 10) % 3;
+    if (words) drawTextLine(img, y, 84 + shift, 230 + shift, same);
+    Rng row(55);  // "Row", the same on every line
+    drawTextLine(img, y, 5, 28, row);
+    if (!distinct) continue;
+    int n = i;
+    for (int cell = 3; cell >= 0; --cell, n /= 10) {
+      Rng digit(1000 + uint64_t(n % 10));
+      drawTextLine(img, y, 33 + cell * 7, 33 + cell * 7 + 6, digit);
+    }
+  }
+  return img;
+}
+
+// Two frames given as images.
+Pair pairFrames(const Image& a, const Image& b, int hint, int unc = 0) {
+  ScrollStitcher st;
+  FrameSignatures sa, sb;
+  sa.compute(a.view(), st.options());
+  sb.compute(b.view(), st.options());
+  st.addFrame(a.view(), sa, kNoHint);
+  Pair pr;
+  pr.outBefore = st.outputHeight();
+  pr.r = st.addFrame(b.view(), sb, hint, unc);
+  pr.outAfter = st.outputHeight();
+  pr.untouched = pr.outBefore == pr.outAfter;
+  return pr;
+}
+
+// The bar-coded ruler page of the lab guests (ruler-vm.html) at 1280 px: rows
+// of 40 lines, two separator lines, 28 lines of the row's number as 16 cells,
+// ten fine lines.
+Image vmRuler(int width, int rows) {
+  Image img(width, rows * 40, 0xFAFAFA);
+  const int cw = (width - 76) / 16;
+  for (int y = 0; y < img.h; ++y) {
+    const int row = y / 40, line = y % 40;
+    uint32_t b;
+    if (line < 2) b = 65535;
+    else if (line < 30) b = uint32_t(row);
+    else {
+      uint32_t x = uint32_t(row) * 2654435761u + uint32_t(line) * 40503u + 0x9e3779b9u;
+      x ^= x >> 15; x *= 0x2c1b3c6du; x ^= x >> 12; x *= 0x297a2d39u; x ^= x >> 15;
+      b = x & 65535;
+      if (b == 0 || b == 65535) b = 0x5a5au ^ uint32_t(line);
+    }
+    for (int k = 0; k < 16; ++k)
+      if ((b >> (15 - k)) & 1)
+        for (int x = 64 + k * cw; x < 64 + (k + 1) * cw; ++x) img.at(x, y) = 0x101010;
+  }
+  return img;
+}
+
+void testMarginRule() {
+  std::printf("\n[stitcher] wide selection, short lines: the margins decide\n");
+  const int W = 1900, V = 700, pitch = 18;
+  ViewportSpec vs;
+  vs.width = W;
+  vs.height = V;
+  {
+    // Real frames of a full-width Qt text view (Plasma, 2026-11-10): the
+    // compared columns were equal at every multiple of the line pitch, the
+    // digits lay in the margin, and the first step ended the capture.
+    const Image doc = marginNumberedLines(W, 400, pitch, true);
+    Renderer rend(doc, vs);
+    int ok = 0, total = 0;
+    std::string det;
+    for (int d : {13, 36, 38, 76, 90, 450}) {
+      for (int p0 : {0, 500, 2000}) {
+        Pair n = pairStep(rend, p0, p0 + d, kNoHint);
+        ++total;
+        const bool good = n.r.status == StepStatus::Appended && n.r.offset == d && !n.r.lowConfidence;
+        ok += good;
+        if (!good) det += fmt(" p%d d%d:%s/%d", p0, d, toString(n.r.status), n.r.offset);
+      }
+    }
+    report("line numbers in the side margin, no hint: the exact offset", ok == total, fmt("%d/%d verified at the true offset%s", ok, total, det.c_str()));
+    // Frames alike in every compared column (a step of whole lines): still the true offset, and never "no movement".
+    Pair whole = pairStep(rend, 504, 504 + 72, kNoHint);
+    report("line numbers in the side margin, a step of whole lines", whole.r.status == StepStatus::Appended && whole.r.offset == 72 && !whole.r.lowConfidence,
+           fmt("%s offset=%d lowConf=%d", toString(whole.r.status), whole.r.offset, whole.r.lowConfidence));
+    Pair back = pairStep(rend, 504 + 72, 504, kNoHint);
+    report("line numbers in the side margin, whole lines back", back.r.status == StepStatus::Reversed && back.r.offset == -72,
+           fmt("%s offset=%d", toString(back.r.status), back.r.offset));
+    Pair wrong = pairStep(rend, 500, 538, 38 + pitch);
+    report("line numbers in the side margin, hint one line off", wrong.r.status == StepStatus::Appended && wrong.r.offset == 38 && !wrong.r.lowConfidence,
+           fmt("%s offset=%d lowConf=%d", toString(wrong.r.status), wrong.r.offset, wrong.r.lowConfidence));
+    Pair still = pairStep(rend, 500, 500, kNoHint);
+    report("line numbers in the side margin, no movement", still.r.status == StepStatus::NoMovement, fmt("%s", toString(still.r.status)));
+  }
+  {
+    // Nothing but the numbers, all of it inside the margin: the compared columns are blank.
+    const Image doc = marginNumberedLines(W, 400, pitch, true, false);
+    Renderer rend(doc, vs);
+    int ok = 0, total = 0;
+    std::string det;
+    for (int d : {13, 36, 90, 450}) {
+      Pair n = pairStep(rend, 500, 500 + d, kNoHint);
+      ++total;
+      const bool good = n.r.status == StepStatus::Appended && n.r.offset == d && !n.r.lowConfidence;
+      ok += good;
+      if (!good) det += fmt(" d%d:%s/%d", d, toString(n.r.status), n.r.offset);
+    }
+    report("all the ink inside the side margin, no hint", ok == total, fmt("%d/%d verified at the true offset%s", ok, total, det.c_str()));
+  }
+  {
+    // What the margins must not decide. Lines that are all the same, numbers
+    // and all: nothing tells the offsets apart.
+    const Image same = marginNumberedLines(W, 400, pitch, false);
+    Renderer rend(same, vs);
+    Pair n = pairStep(rend, 500, 538, kNoHint);
+    report("identical lines in a wide window, no hint", n.r.status == StepStatus::Ambiguous && n.untouched, fmt("%s, output untouched=%d", toString(n.r.status), n.untouched));
+    // A fixed side bar inside the margin (marks every 10 px, the same in both
+    // frames) beside lines that repeat: it lines up with itself at 20 px and
+    // says nothing about the page, which moved 38.
+    Image a, b;
+    rend.render(500, 0, a);
+    rend.render(538, 1, b);
+    for (Image* f : {&a, &b})
+      for (int y = 0; y < V; ++y)
+        for (int x = 60; x < 72; ++x) f->at(x, y) = (y % 10) < 3 ? 0x404040 : 0xD0D0D0;
+    Pair bar = pairFrames(a, b, kNoHint);
+    report("a fixed side bar in the margin proves nothing", bar.r.status == StepStatus::Ambiguous && bar.untouched, fmt("%s offset=%d", toString(bar.r.status), bar.r.offset));
+    // A scrollbar thumb in the right margin that moved with the page: a long
+    // one, and a short one that lines up with itself exactly at a rival offset
+    // (34 px the other way). Forty rows that are all alike prove nothing.
+    for (int length : {300, 40}) {
+      rend.render(500, 0, a);
+      rend.render(538, 1, b);
+      int at = 100;
+      for (Image* f : {&a, &b}) {
+        for (int y = at; y < at + length; ++y)
+          for (int x = W - 10; x < W - 2; ++x) f->at(x, y) = 0x808080;
+        at += 34;
+      }
+      Pair thumb = pairFrames(a, b, kNoHint);
+      report(length > 100 ? "a long scrollbar thumb in the margin proves nothing" : "a short scrollbar thumb in the margin proves nothing", thumb.r.status == StepStatus::Ambiguous && thumb.untouched,
+             fmt("%s offset=%d", toString(thumb.r.status), thumb.r.offset));
+    }
+  }
+  {
+    // The whole file through the loop, full width compared: every line number
+    // is in the image once. 37.5 px a step (GTK 4), and 72 to 90 (Qt).
+    for (int kind = 0; kind < 2; ++kind) {
+      const Image doc = marginNumberedLines(W, 300, pitch, true);
+      FakeAppSpec as;
+      as.pxPerNotch = kind ? 81 : 37.5;
+      as.jitter = kind ? 0.111 : 0.0;
+      FakeClock clock;
+      FakeApp app(doc, vs, as, clock);
+      RunOptions so;
+      so.pointer = true;
+      so.away = RunPoint{-12, V / 3};
+      so.fromTop = true;
+      int wrong = 0, refPos = 0;
+      so.onStep = [&](const StepResult& r, int, int) {
+        const int pos = app.framePositions.empty() ? 0 : app.framePositions.back();
+        const bool accepted = r.status == StepStatus::Appended || r.status == StepStatus::Reversed || r.status == StepStatus::LimitReached;
+        if (accepted && r.offset != pos - refPos) ++wrong;
+        if (accepted || r.status == StepStatus::NoMovement) refPos = pos;
+      };
+      ScrollRun run(app, app, clock, so);
+      const RunResult res = run.run();
+      const std::vector<uint8_t> img = run.stitcher().takeImage();
+      const Cmp c = compare(img, run.stats().outputRows, doc, 0, W);
+      report(kind ? "session wide window of numbered lines, 72 to 90 px a step" : "session wide window of numbered lines, 37.5 px a step",
+             res == RunResult::EndOfContent && c.mismatches == 0 && c.heightOk && wrong == 0 && run.stats().steps < 60,
+             fmt("%s, rows %d of %d, steps %d, wrong offsets %d, first bad %d", toString(res), run.stats().outputRows, doc.h, run.stats().steps, wrong, c.firstBad));
+    }
+  }
+}
+
+void testProof() {
+  std::printf("\n[stitcher] an offset is appended only when the pixels prove it\n");
+  {
+    // The frames of the neon guest's third browser run (KWin 6.8.1, build
+    // 289a61189), positions from its helper log: 0, 35, the end (no match),
+    // back at 0, 625 (a frame from the middle of the animation), the end.
+    // The last pair has no overlap at all (975 px in an 800 px viewport); 25
+    // rows of row 35's number stripes matched row 40's at 775 and 200 px
+    // went missing from an image reported as complete.
+    const int W = 1280, V = 800;
+    const Image doc = vmRuler(W, 60);
+    auto frame = [&](int pos) {
+      Image f(W, V);
+      std::memcpy(f.px.data(), doc.row(pos), size_t(W) * V * 4);
+      return f;
+    };
+    ScrollStitcher st;
+    std::string trace;
+    auto step = [&](int pos, int hint, int unc = 0) {
+      const Image f = frame(pos);
+      const StepResult r = st.addFrame(f.view(), hint);
+      (void)unc;
+      trace += fmt(" %d:%s/%d", pos, toString(r.status), r.offset);
+      return r;
+    };
+    step(0, kNoHint);
+    const StepResult first = step(35, kNoHint);
+    const StepResult far = step(1600, 490);
+    const StepResult back = step(0, 0);
+    const StepResult mid = step(625, 245);
+    const int before = st.outputHeight();
+    const StepResult end = step(1600, 446);
+    const bool refused = end.status != StepStatus::Appended && end.status != StepStatus::Reversed && st.outputHeight() == before;
+    st.finish();
+    const std::vector<uint8_t> img = st.takeImage();
+    Image prefix(W, st.outputHeight());
+    std::memcpy(prefix.px.data(), doc.row(0), size_t(W) * prefix.h * 4);
+    const Cmp c = compare(img, st.outputHeight(), prefix, 0, W);
+    report("guest replay: a jump past the viewport is not matched on a sliver",
+           first.status == StepStatus::Appended && first.offset == 35 && far.status == StepStatus::NoMatch && back.status == StepStatus::Reversed && back.offset == -35 &&
+               mid.status == StepStatus::Appended && mid.offset == 625 && refused && c.mismatches == 0 && c.heightOk && st.outputHeight() == 625 + V,
+           fmt("steps%s; image %d rows, first bad %d", trace.c_str(), st.outputHeight(), c.firstBad));
+    // The same for every pair of ruler positions further apart than the
+    // viewport allows, whatever the loop expected: never an offset.
+    int accepted = 0, pairs = 0;
+    std::string det;
+    for (int p = 0; p + V <= doc.h; p += 120)
+      for (int phase : {0, 25})
+        for (int q = p + phase + 780; q + V <= doc.h; q += 20)
+          for (int hint : {kNoHint, 446}) {
+            const Pair n = pairFrames(frame(p + phase), frame(q), hint);
+            ++pairs;
+            if (n.r.status == StepStatus::Appended || n.r.status == StepStatus::Reversed || !n.untouched) {
+              ++accepted;
+              if (det.size() < 200) det += fmt(" %d->%d hint %d: %s/%d", p + phase, q, hint, toString(n.r.status), n.r.offset);
+            }
+          }
+    report("ruler: no pair further apart than the viewport is ever matched", accepted == 0 && pairs > 300, fmt("%d of %d pairs accepted%s", accepted, pairs, det.c_str()));
+    // And the ruler still stitches at every distance the loop plans (up to three quarters of the viewport).
+    int ok = 0, total = 0;
+    for (int p : {0, 35, 625, 990})
+      for (int d : {1, 35, 147, 206, 480, 600}) {
+        const Pair n = pairFrames(frame(p), frame(p + d), kNoHint);
+        ++total;
+        const bool good = n.r.status == StepStatus::Appended && n.r.offset == d && !n.r.lowConfidence;
+        ok += good;
+        if (!good) det += fmt(" p%d d%d:%s/%d", p, d, toString(n.r.status), n.r.offset);
+      }
+    report("ruler: planned distances are verified", ok == total, fmt("%d/%d%s", ok, total, det.c_str()));
+  }
+  {
+    // After a real Plasma run (2026-11-10): a GTK 4 text view of numbered
+    // lines, 1900 x 1080, the page 637 px further down, and a stack of
+    // notification popups that stayed where it was (rows 261 to 993, in two of
+    // the eight bands). At the true offset the rows under and beside the
+    // popups are not equal bit for bit; 983 px the other way the overlap was
+    // 97 rows clear of them, the exact rule called that proved, and 90 lines
+    // went missing, twice, from an image reported as complete. Here the same
+    // geometry: the margins prove the true offset, and nothing else is taken.
+    const int W = 1900, V = 1080, pitch = 18;
+    ViewportSpec vs;
+    vs.width = W;
+    vs.height = V;
+    auto withPopups = [&](const Image& doc, int pos) {
+      Renderer rend(doc, vs);
+      Image f;
+      rend.render(pos, 0, f);
+      Rng rng(9);
+      for (int y = 261; y < 993; ++y)
+        for (int x = 1544; x < 1823; ++x) f.at(x, y) = rng.next() % 5 ? 0x2E2C29 : 0xEFEFEF;
+      return f;
+    };
+    {
+      // From line 784 down, as in the run: 90 lines on, 0874 to 0879 are the
+      // same digits as 0784 to 0789.
+      const Image doc = marginNumberedLines(W, 1500, pitch, true, true, true);
+      int ok = 0, total = 0;
+      std::string det;
+      for (int p : {784 * pitch + 4, 3000, 20000})
+        for (int hint : {kNoHint, 638}) {
+          const Pair n = pairFrames(withPopups(doc, p), withPopups(doc, p + 637), hint, 17);
+          ++total;
+          const bool good = n.r.status == StepStatus::Appended && n.r.offset == 637;
+          ok += good;
+          if (!good) det += fmt(" p%d hint %d:%s/%d", p, hint, toString(n.r.status), n.r.offset);
+        }
+      report("desktop replay: popups over numbered lines, the true offset", ok == total, fmt("%d/%d%s", ok, total, det.c_str()));
+    }
+    {
+      // Without the numbers nothing proves an offset: never one the other way.
+      const Image doc = marginNumberedLines(W, 1500, pitch, false);
+      const Pair n = pairFrames(withPopups(doc, 3000), withPopups(doc, 3637), kNoHint);
+      // A hint that may be 17 px off cannot choose between lines 18 px apart; an exact one can, with low confidence.
+      const Pair u = pairFrames(withPopups(doc, 3000), withPopups(doc, 3637), 638, 17);
+      const Pair h = pairFrames(withPopups(doc, 3000), withPopups(doc, 3637), 638, 0);
+      report("desktop replay: popups over identical lines, no hint", n.r.status == StepStatus::Ambiguous && n.untouched, fmt("%s offset=%d", toString(n.r.status), n.r.offset));
+      report("desktop replay: popups over identical lines, uncertain hint", u.r.status == StepStatus::Ambiguous && u.untouched, fmt("%s offset=%d", toString(u.r.status), u.r.offset));
+      report("desktop replay: popups over identical lines, exact hint", h.r.status == StepStatus::Appended && h.r.offset == 637 && h.r.lowConfidence,
+             fmt("%s offset=%d lowConf=%d", toString(h.r.status), h.r.offset, h.r.lowConfidence));
+    }
   }
 }
 
@@ -1304,6 +1616,98 @@ void testPointerRules() {
            fmt("%s, rows %d, page at %d, wheel events %d, first bad %d", toString(res), run.stats().outputRows, at, wheels, c.firstBad));
   }
   {
+    // The same on a stream that has gone quiet (KWin's region stream sent
+    // nothing for two batches of wheel steps and Stop returned the viewport
+    // from before them; real desktop run of 2026-11-10): the image is a frame
+    // grabbed from the screen after the last step, where the page then is.
+    for (int fresh = 1; fresh >= 0; --fresh) {
+      static std::atomic<bool> stop;
+      stop.store(false);
+      DocSpec ds;
+      ds.viewport = V;
+      ds.width = W;
+      Document doc = makeDocument(ds);
+      ViewportSpec vs;
+      vs.width = W;
+      vs.height = V;
+      FakeAppSpec as;
+      as.pxPerNotch = 53;
+      as.startPos = 2600;
+      as.reactionDelayMs = 200;        // the page answers after Stop has arrived
+      as.quietFromInjection = 0;       // and the stream sends nothing from the first step on
+      as.quietHasFresh = fresh;
+      as.cancelAfterInjections = 1;
+      as.cancelFlag = &stop;
+      FakeClock clock;
+      FakeApp app(doc.img, vs, as, clock);
+      RunOptions so;
+      so.pointer = true;
+      so.away = away;
+      so.fromTop = true;
+      ScrollRun run(app, app, clock, so);
+      const RunResult res = run.run(&stop);
+      const std::vector<uint8_t> img = run.stitcher().takeImage();
+      const int at = app.positionNow();
+      int wheels = 0;
+      for (const auto& e : app.events) wheels += e.kind == 's';
+      Image view(W, V);
+      if (at >= 0 && at + V <= doc.img.h) std::memcpy(view.px.data(), doc.img.row(at), size_t(W) * V * 4);
+      const Cmp c = compare(img, run.stats().outputRows, view, 0, W);
+      if (fresh)
+        report("session stop during scroll to top, quiet stream: the viewport on the screen",
+               res == RunResult::Stopped && run.stats().stoppedAtTop && run.stats().stopViewportProven && run.stats().outputRows == V && c.mismatches == 0 && c.heightOk && wheels == 2 &&
+                   app.events.back().kind == 's' && at == 2600 - 2 * 10 * 53 && app.freshFrames >= 2,
+               fmt("%s, rows %d, page at %d, wheel events %d, fresh frames %d, first bad %d", toString(res), run.stats().outputRows, at, wheels, app.freshFrames, c.firstBad));
+      else
+        // No fresh frame to be had: the last picture seen is kept and not called proven.
+        report("session stop during scroll to top, quiet stream without a fresh frame: unproven",
+               res == RunResult::Stopped && run.stats().outputRows == V && !run.stats().stopViewportProven && wheels == 2, fmt("%s, rows %d, proven %d", toString(res), run.stats().outputRows, run.stats().stopViewportProven));
+    }
+  }
+  {
+    // Where the desktop can be told that the wheel has stopped, the view
+    // springs back before the first frame and no step down is spent on the
+    // overscroll: one rest, after the last step up and before the first down.
+    SessCfg c = base("overscrolled view, wheel rest after the way up");
+    c.px = 37.5;
+    c.app.pxPerNotch = 37.5;
+    c.app.overscrollPx = 100;
+    c.app.restEndsOverscroll = true;
+    c.app.startPos = 2600;
+    c.so.fromTop = true;
+    c.extraName = "oneRestBetweenUpAndDown,noStillSteps";
+    c.extra = [](const RunStats& s, const FakeApp& a) {
+      int rests = 0, restAt = -1, lastUp = -1, firstDown = -1;
+      for (size_t i = 0; i < a.events.size(); ++i) {
+        const auto& e = a.events[i];
+        if (e.kind == 'r') { ++rests; restAt = int(i); }
+        if (e.kind == 's' && e.a < 0 && firstDown < 0) lastUp = int(i);
+        if (e.kind == 's' && e.a > 0 && firstDown < 0) firstDown = int(i);
+      }
+      return rests == 1 && lastUp < restAt && restAt < firstDown && s.steps <= 16;
+    };
+    runSession(c);
+  }
+  {
+    // A slow guest: a frame every 170 ms, the page answers after 350 ms, a
+    // scroll animation of 300 to 500 ms, and more distance per notch in a
+    // burst. The picture between two frames of one animation is not settled.
+    for (double accel : {1.0, 2.2}) {
+      SessCfg c = base(accel > 1 ? "slow stream, 170 ms a frame, bursts scroll further" : "slow stream, 170 ms a frame");
+      c.V = 800;
+      c.app.frameIntervalMs = 170;
+      c.app.reactionDelayMs = 350;
+      c.app.animMinMs = 300;
+      c.app.animMaxMs = 500;
+      c.app.accelFactor = accel;
+      c.so.fromTop = true;
+      c.app.startPos = 900;
+      c.extraName = "pxPerNotchSteady";
+      c.extra = [accel](const RunStats& s, const FakeApp&) { return accel > 1 || (s.minPxPerNotch > 50 && s.maxPxPerNotch < 56); };
+      runSession(c);
+    }
+  }
+  {
     // Stop is honoured before the next injection: nothing is sent after it.
     static std::atomic<bool> stop{false};
     SessCfg c = base("stop: no injection after the flag");
@@ -1330,6 +1734,8 @@ int main(int argc, char** argv) {
   testNoise();
   testAmbiguity();
   testNumberedLines();
+  testMarginRule();
+  testProof();
   testEndsAndBounce();
   testMemory();
   testSessions();

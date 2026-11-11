@@ -358,6 +358,39 @@ private slots:
         QCOMPARE(fixture.position(), at);
         QVERIFY(capture.leave());
     }
+    // The image after such a Stop is the viewport on the screen, not the last
+    // picture the loop had seen: an application that answers a wheel step 350
+    // ms later has not painted the last steps when Stop arrives right behind
+    // them, and the old picture was written 120 ms later (on a real Plasma
+    // desktop the stream had sent nothing for two batches; round of
+    // 2026-11-10). Stop is sent as soon as wheel steps were seen, several
+    // times over, so that it falls inside that window.
+    void stopOnTheWayToTheTopReturnsTheViewportOnTheScreen() {
+        for (int round = 0; round < 3; ++round) {
+            Fixture fixture;
+            QVERIFY(fixture.start({"--rows=600", "--notch=100", "--start=500", "--answer-ms=350"}));
+            RawInput input;
+            QVERIFY(input.open());
+            Capture capture;
+            capture.prepare({{"rect", rectJson(page)}, {"maxHeight", 30000}, {"fromTop", true}, {"autoStart", true}});
+            // The second batch of wheel steps has just been sent (round 0), or the third, or the fourth.
+            QVERIFY(putgd::test::waitFor([&] { input.read(); return input.wheel >= 10 * (round + 2) || capture.ended(); }, 30000));
+            const auto stopped = capture.control("stop");
+            QVERIFY2(!stopped.error, qPrintable(stopped.error.code + ": " + stopped.error.message));
+            QCOMPARE(stopped.result["endReason"].toString(), QString("stopped"));
+            QCOMPARE(stopped.result["height"].toInt(), page.height());
+            // Where the page came to rest: every step sent before Stop was answered.
+            input.read();
+            const int wheel = input.wheel;
+            putgd::test::settle(600);
+            const int at = fixture.position();
+            QCOMPARE(at, 500 * ruler::rowHeight - wheel * 100);
+            exact(capture, 0, 0, at / ruler::rowHeight, (at + page.height() - 1) / ruler::rowHeight, (at + page.height() - 1) % ruler::rowHeight);
+            input.read();
+            QCOMPARE(input.wheel, wheel);
+            QVERIFY(capture.leave());
+        }
+    }
     // Escape on X11, whatever window has the keyboard: Stop, with the image kept.
     void escapeStopsAndKeepsTheImage() {
         Fixture fixture;

@@ -151,6 +151,9 @@ struct FakeAppSpec {
   // next steps down are spent on it before the page moves: a GTK 4 scrolled
   // view fed a continuous axis (KWin's fake input) does this with 100 px.
   int overscrollPx = 0;
+  // The injector can say that the wheel has stopped (RunInjector::rest), and
+  // the view then springs back from its overscroll (KWin's axis stop).
+  bool restEndsOverscroll = false;
 };
 
 class FakeApp : public putgd::record::RunInjector, public putgd::record::RunFrames {
@@ -158,6 +161,7 @@ class FakeApp : public putgd::record::RunInjector, public putgd::record::RunFram
   FakeApp(const Image& doc, ViewportSpec vs, FakeAppSpec spec, FakeClock& clock);
   bool scroll(int notches) override;
   bool movePointer(int x, int y) override;
+  bool rest() override;
   std::optional<putgd::record::RunFrame> nextFrame(int timeoutMs) override;
   std::optional<putgd::record::RunFrame> freshFrame(int timeoutMs) override;
   int freshFrames = 0;
@@ -168,7 +172,7 @@ class FakeApp : public putgd::record::RunInjector, public putgd::record::RunFram
   int injections = 0;
   int maxPositionSeen = 0;
   int overscrollFrames = 0;
-  // Every injected event in order: 'm' x y (pointer) or 's' notches 0 (wheel).
+  // Every injected event in order: 'm' x y (pointer), 's' notches 0 (wheel) or 'r' 0 0 (wheel rest).
   struct Event {
     char kind;
     int a, b;

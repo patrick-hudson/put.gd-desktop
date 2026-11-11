@@ -74,7 +74,8 @@ void FrameSignatures::compute(const FrameView& f, const StitchOptions& o) {
   bandHash.resize(hb);
   edgeHash.resize(hb);
   rowHash.resize(size_t(height));
-  marginHash.resize(size_t(height));
+  sideHash.resize(size_t(height) * 2);
+  sideFlat.resize(size_t(height));
   flatBandMask.resize(size_t(height));
   edgeBandMask.resize(size_t(height));
   flatColor.resize(size_t(height));
@@ -143,11 +144,25 @@ void FrameSignatures::compute(const FrameView& f, const StitchOptions& o) {
       if (!flat || first != rowFirst) allFlat = false;
       rh = (rh ^ bh[k]) * kFnvPrime;
     }
-    uint64_t mh = kFnvOffset;
-    for (int x = 0; x < colStart; ++x) mh = (mh ^ loadPx(r, x)) * kFnvPrime;
-    for (int x = colEnd; x < width; ++x) mh = (mh ^ loadPx(r, x)) * kFnvPrime;
+    // The margins, each on its own: what a scrollbar does in one must not
+    // hide what the other shows (line numbers, the start of short lines).
+    uint64_t left = kFnvOffset, right = kFnvOffset;
+    uint32_t leftDiff = 0, rightDiff = 0;
+    const uint32_t leftFirst = colStart > 0 ? loadPx(r, 0) : 0, rightFirst = colEnd < width ? loadPx(r, colEnd) : 0;
+    for (int x = 0; x < colStart; ++x) {
+      const uint32_t v = loadPx(r, x);
+      left = (left ^ v) * kFnvPrime;
+      leftDiff |= v ^ leftFirst;
+    }
+    for (int x = colEnd; x < width; ++x) {
+      const uint32_t v = loadPx(r, x);
+      right = (right ^ v) * kFnvPrime;
+      rightDiff |= v ^ rightFirst;
+    }
     rowHash[y] = fmix64(rh);
-    marginHash[y] = mh;
+    sideHash[size_t(y) * 2] = left;
+    sideHash[size_t(y) * 2 + 1] = right;
+    sideFlat[y] = uint8_t((leftDiff == 0 ? 1 : 0) | (rightDiff == 0 ? 2 : 0));
     flatBandMask[y] = flatMask;
     edgeBandMask[y] = edgeMask;
     flatColor[y] = rowFirst;
@@ -156,8 +171,8 @@ void FrameSignatures::compute(const FrameView& f, const StitchOptions& o) {
 }
 
 size_t FrameSignatures::bytes() const {
-  return (bandHash.size() + edgeHash.size() + rowHash.size() + marginHash.size()) * 8 +
-         (flatBandMask.size() + edgeBandMask.size() + flatColor.size()) * 4 + rowFlat.size();
+  return (bandHash.size() + edgeHash.size() + rowHash.size() + sideHash.size()) * 8 +
+         (flatBandMask.size() + edgeBandMask.size() + flatColor.size()) * 4 + rowFlat.size() + sideFlat.size();
 }
 
 bool sameRowLoose(const FrameSignatures& a, int ya, const FrameSignatures& b, int yb,
@@ -194,9 +209,7 @@ bool framesDiffer(const FrameSignatures& a, const FrameSignatures& b, int y0, in
 
 bool marginsChanged(const FrameSignatures& a, const FrameSignatures& b) {
   if (a.height != b.height) return true;
-  for (int y = 0; y < a.height; ++y)
-    if (a.marginHash[y] != b.marginHash[y]) return true;
-  return false;
+  return a.sideHash != b.sideHash;
 }
 
 int classifyRowPair(const FrameSignatures& p, int yp, const FrameSignatures& c, int yc,
@@ -362,9 +375,11 @@ StepResult ScrollStitcher::addFrame(const FrameView& f, const FrameSignatures& c
     r.score = score;
     return r;
   };
-  // Identical frames are NoMovement unless the margin (scrollbar) moved and the
-  // caller expects movement: then the hint is tested against the pixels.
-  if (identical && !(margin && hint > 0)) return noMovement(1.0);
+  // Identical frames are NoMovement unless a margin changed (a scrollbar moved,
+  // or line numbers scrolled beside lines that are all alike): then the pixels
+  // decide, the margin rule and the caller's hint among them. Without a hint
+  // only an offset the pixels prove counts; anything else is NoMovement below.
+  if (identical && !margin) return noMovement(1.0);
 
   int top, bot;
   if (identical) {
@@ -412,7 +427,9 @@ StepResult ScrollStitcher::addFrame(const FrameView& f, const FrameSignatures& c
     return r;
   }
   const int d = s.d;
-  if (d == 0 || (identical && d < 0)) return noMovement(s.score);  // in-place change only
+  // In-place change only. Frames alike in the compared columns say "moved
+  // back" only when the pixels proved it (the margin rule), not on a hint.
+  if (d == 0 || (identical && d < 0 && s.lowConfidence)) return noMovement(s.score);
 
   if (d > 0) {
     const long long curOrigin = refOrigin_ + d;
@@ -476,6 +493,82 @@ int ScrollStitcher::maxEvidenceStep() const {
   // overlap so the next step has partial evidence (useful when content enters
   // at the bottom below a tall flat region).
   return partialY >= 0 ? partialY - top : -1;
+}
+
+// The margin rule. The side margins are left out of the row comparison because
+// a scrollbar lives there, and in a wide selection so do the line numbers of an
+// editor or the first characters of short lines: the only columns that differ
+// from line to line, while the compared columns repeat with the line pitch
+// (a full-width Qt text view of 1,500 numbered lines ended as "lost track" on
+// its first step; real desktop run of 2026-11-10). Among candidates the
+// compared columns cannot tell apart, one is proved by a margin when
+//  - that margin's rows did not stay where they were (a fixed side bar or a
+//    scrollbar is equal at the same y and proves nothing about the page),
+//  - at the candidate at least exactTieMinFraction of the margin's informative
+//    rows, and at least minOverlapRows of them, are equal bit for bit, their
+//    compared columns the same under the tolerant rule,
+//  - and at every rival outside +-1 at most exactTieMaxRival are, counted over
+//    at least marginRivalMinRows informative rows.
+// The two margins are judged apart and must not contradict each other.
+// Returns INT_MIN when no offset is proved.
+int ScrollStitcher::marginVerdict(const FrameSignatures& cur, int top, int bottom,
+                                  const std::vector<int>& candidates) const {
+  if (candidates.size() < 2) return INT_MIN;
+  int verdict = INT_MIN;
+  std::vector<double> fraction(candidates.size());
+  for (int side = 0; side < 2; ++side) {
+    const uint8_t bit = uint8_t(1u << side);
+    // Rows of the overlap at offset d in which this margin shows anything, and
+    // how many of them are equal (with their compared columns when asked).
+    auto count = [&](int d, bool wholeRow, int& informative) {
+      const int y0 = top + std::max(0, -d), y1 = bottom - std::max(0, d);
+      int equal = 0;
+      informative = 0;
+      for (int y = y0; y < y1; ++y) {
+        if ((ref_.sideFlat[y + d] & bit) && (cur.sideFlat[y] & bit)) continue;
+        ++informative;
+        equal += ref_.sideHash[size_t(y + d) * 2 + side] == cur.sideHash[size_t(y) * 2 + side] &&
+                 (!wholeRow || sameRowLoose(ref_, y + d, cur, y, opts_));
+      }
+      return equal;
+    };
+    int informative = 0;
+    const int still = count(0, false, informative);
+    if (informative < opts_.minOverlapRows || still > opts_.exactTieMaxRival * informative) continue;
+    int bestD = INT_MIN, bestRows = 0;
+    double best = -1;
+    bool judged = true;
+    for (size_t i = 0; judged && i < candidates.size(); ++i) {
+      const int equal = count(candidates[i], true, informative);
+      if (informative < std::min(opts_.marginRivalMinRows, opts_.minOverlapRows)) judged = false;
+      else if ((fraction[i] = double(equal) / informative) > best) {
+        best = fraction[i];
+        bestD = candidates[i];
+        bestRows = informative;
+      }
+    }
+    if (!judged || best < opts_.exactTieMinFraction || bestRows < opts_.minOverlapRows) continue;
+    for (size_t i = 0; judged && i < candidates.size(); ++i)
+      if (std::abs(candidates[i] - bestD) > 1 && fraction[i] > opts_.exactTieMaxRival) judged = false;
+    if (!judged) continue;
+    // The winner's equal margin rows must be different rows, and its overlap
+    // more than a sliver, like any other proof.
+    {
+      const int M = bottom - top;
+      if (M - std::abs(bestD) < std::max(opts_.sliverMinRows, int(M * opts_.sliverFraction))) continue;
+      std::vector<uint64_t> rows;
+      const int y0 = top + std::max(0, -bestD), y1 = bottom - std::max(0, bestD);
+      for (int y = y0; y < y1; ++y)
+        if (!((ref_.sideFlat[y + bestD] & bit) && (cur.sideFlat[y] & bit)) &&
+            ref_.sideHash[size_t(y + bestD) * 2 + side] == cur.sideHash[size_t(y) * 2 + side])
+          rows.push_back(cur.sideHash[size_t(y) * 2 + side]);
+      std::sort(rows.begin(), rows.end());
+      if (int(std::unique(rows.begin(), rows.end()) - rows.begin()) < opts_.minDistinctRows) continue;
+    }
+    if (verdict != INT_MIN && std::abs(verdict - bestD) > 1) return INT_MIN;
+    if (verdict == INT_MIN) verdict = bestD;
+  }
+  return verdict;
 }
 
 ScrollStitcher::Search ScrollStitcher::search(const FrameSignatures& cur, int top, int bottom,
@@ -550,6 +643,22 @@ ScrollStitcher::Search ScrollStitcher::search(const FrameSignatures& cur, int to
   };
   auto evidence = [&](int d) { return mm[size_t(d + Dmax)] + cc[size_t(d + Dmax)]; };
   auto closeness = [&](int d) { return hasHint ? std::abs(d - hint) : std::abs(d); };
+  // Proof, as opposed to consistency (see StitchOptions::minDistinctRows).
+  auto sliver = [&](int d) { return M - std::abs(d) < std::max(opts_.sliverMinRows, int(M * opts_.sliverFraction)); };
+  auto proved = [&](int d) {
+    if (sliver(d)) return false;
+    std::vector<uint64_t> rows;
+    const int y0 = top + std::max(0, -d), y1 = bottom - std::max(0, d);
+    for (int y = y0; y < y1; ++y)
+      if (classifyRowPair(ref_, y + d, cur, y, opts_) > 0) rows.push_back(cur.rowHash[y]);
+    std::sort(rows.begin(), rows.end());
+    return int(std::unique(rows.begin(), rows.end()) - rows.begin()) >= opts_.minDistinctRows;
+  };
+  // A candidate the pixels agree with but do not prove is taken only when the
+  // caller's hint says the same, and then with low confidence.
+  auto nearHint = [&](int d) {
+    return hasHint && std::abs(d - hint) <= std::max(opts_.hintTolerancePx, int(std::lround(opts_.hintTolerance * hint)));
+  };
 
   int bestD = INT_MIN;
   for (int d = -Dmax; d <= Dmax; ++d) {
@@ -572,10 +681,18 @@ ScrollStitcher::Search ScrollStitcher::search(const FrameSignatures& cur, int to
     bool rivals = false;
     for (int d : topSet) rivals |= std::abs(d - bestD) > 1;
     if (!rivals) {
-      out.status = StepStatus::Appended;
       out.d = bestD;
       out.score = sb;
       out.evidence = evidence(bestD);
+      // No movement needs no proof; an offset does.
+      if (bestD == 0 || proved(bestD)) {
+        out.status = StepStatus::Appended;
+      } else if (nearHint(bestD)) {
+        out.status = StepStatus::Appended;
+        out.lowConfidence = true;
+      } else {
+        out.status = StepStatus::Ambiguous;
+      }
       return out;
     }
     out.d = bestD;
@@ -620,6 +737,11 @@ ScrollStitcher::Search ScrollStitcher::search(const FrameSignatures& cur, int to
       decided = decided && exactBest >= opts_.exactTieMinFraction;
       for (size_t i = 0; decided && i < topSet.size(); ++i)
         if (std::abs(topSet[i] - exactD) > 1 && fraction[i] > opts_.exactTieMaxRival) decided = false;
+      // Exact rows in a sliver, or rows that are all alike, are a coincidence
+      // waiting to happen (a static overlay spoils the true offset's rows and
+      // a rival 90 lines away wins on five clean ones; real desktop run of
+      // 2026-11-10).
+      decided = decided && (exactD == 0 || proved(exactD));
       if (decided) {
         out.status = StepStatus::Appended;
         out.d = exactD;
@@ -627,6 +749,14 @@ ScrollStitcher::Search ScrollStitcher::search(const FrameSignatures& cur, int to
         out.evidence = evidence(exactD);
         return out;
       }
+    }
+    // The compared columns cannot tell the rivals apart; the margins may.
+    if (const int d = marginVerdict(cur, top, bottom, topSet); d != INT_MIN) {
+      out.status = StepStatus::Appended;
+      out.d = d;
+      out.score = scoreOf(d);
+      out.evidence = evidence(d);
+      return out;
     }
     if (!hasHint) return out;
     int c1 = topSet.front();
@@ -665,6 +795,20 @@ ScrollStitcher::Search ScrollStitcher::search(const FrameSignatures& cur, int to
     }
   }
   out.score = bestRejected;
+  {
+    // Nothing informative in the compared columns (a wide selection whose only
+    // ink is at its left edge): the margins may still prove one offset.
+    std::vector<int> free;
+    for (int d = -Dmax; d <= Dmax; ++d)
+      if (state[size_t(d + Dmax)] == 1 && cc[size_t(d + Dmax)] + ff[size_t(d + Dmax)] == 0) free.push_back(d);
+    if (const int d = marginVerdict(cur, top, bottom, free); d != INT_MIN) {
+      out.status = StepStatus::Appended;
+      out.d = d;
+      out.score = 1.0;
+      out.evidence = evidence(d);
+      return out;
+    }
+  }
   if (hasHint) {
     // Partial evidence: conflict-free candidates with some matched informative
     // rows (fewer than minOverlapRows). Accepted only next to the hint and only
@@ -714,7 +858,7 @@ ScrollStitcher::Search ScrollStitcher::search(const FrameSignatures& cur, int to
         const size_t i = size_t(d + Dmax);
         if (state[i] == 1 && cc[i] + ff[i] == 0 && mm[i] > 0 && std::abs(d - c1) > 1) unique = false;
       }
-      if (unique) {
+      if (unique && !sliver(c1)) {
         out.status = StepStatus::Appended;
         out.d = c1;
         out.score = 1.0;

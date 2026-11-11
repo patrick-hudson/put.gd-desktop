@@ -58,6 +58,7 @@ bool ScrollRun::inject(int notches) {
     }
     if (stopped()) return false;
     stats_.notchesInjected += std::abs(notches);
+    lastInjectMs_ = clock_.nowMs();
     return injector_.scroll(notches);
 }
 
@@ -90,6 +91,11 @@ ScrollRun::Screen ScrollRun::screenIsAsSeen() {
 int ScrollRun::responseWaitMs() const {
     const int learned = int(std::lround(opts_.responseFactor * stats_.maxResponseMs));
     return std::clamp(std::max(opts_.responseMs, learned), opts_.settleMs, std::max(opts_.settleMs, opts_.responseMaxMs));
+}
+
+int ScrollRun::settleNeedMs() const {
+    const int byCadence = int(std::lround(opts_.settleCadenceFactor * cadenceMs_));
+    return std::clamp(byCadence, opts_.settleMs, std::max(opts_.settleMs, opts_.settleMaxMs));
 }
 
 void ScrollRun::progress(bool toTop) {
@@ -127,16 +133,19 @@ std::optional<RunResult> ScrollRun::waitFailure(Wait w) {
 // only quietMs without one counts as settled.
 ScrollRun::Wait ScrollRun::waitSettled(int timeoutMs, int quietMs) {
     const int64_t start = clock_.nowMs();
-    const int quiet = std::max(quietMs, opts_.settleMs);
+    const int quiet = std::max(quietMs, settleNeedMs());
     const int64_t deadline = start + std::max(timeoutMs, quiet);
     int64_t lastChange = start;  // at least settleMs after the injection
     bool responded = false;
     firstChangeMs_ = -1;
+    // The cadence is measured between frames taken one after the other in one
+    // wait; the time the loop spent elsewhere between two waits is not a gap.
+    lastFrameMs_ = -1;
     for (;;) {
         if (stopped()) return Wait::Stopped;
         const int64_t now = clock_.nowMs();
         if (now - startMs_ >= opts_.totalTimeLimitMs) return Wait::TimeLimit;
-        const int need = responded ? opts_.settleMs : quiet;
+        const int need = responded ? settleNeedMs() : quiet;
         if (haveFrame_ && now - lastChange >= need) return Wait::Settled;
         if (source_.lost()) return Wait::Lost;
         if (now >= deadline) {
@@ -150,6 +159,9 @@ ScrollRun::Wait ScrollRun::waitSettled(int timeoutMs, int quietMs) {
         std::optional<RunFrame> f = source_.nextFrame(wait);
         if (!f) continue;
         ++stats_.framesSeen;
+        if (lastFrameMs_ >= 0 && f->timestampMs > lastFrameMs_ && f->timestampMs - lastFrameMs_ <= opts_.cadenceIdleMs)
+            cadenceMs_ = std::max(0.9 * cadenceMs_, double(f->timestampMs - lastFrameMs_));
+        lastFrameMs_ = f->timestampMs;
         tmpSig_.compute(f->view, opts_.stitch);
         bool changed = true;
         if (haveFrame_ && lastSig_.height == tmpSig_.height && lastSig_.width == tmpSig_.width) {
@@ -248,19 +260,45 @@ std::optional<RunResult> ScrollRun::scrollToTop() {
         settledSig_ = lastSig_;
         progress(true);
     }
+    // Wheel steps against the top can leave the view overscrolled, with its
+    // edge effect in the picture and the first steps down spent on it (GTK 4
+    // fed a continuous axis). Where the desktop can be told that the wheel has
+    // stopped, the view springs back before the first frame is taken.
+    if (stats_.toTopSteps > 0 && !stopped() && injector_.rest()) {
+        lastInjectMs_ = clock_.nowMs();
+        if (auto f = waitFailure(waitSettled(opts_.stepTimeoutMs, responseWaitMs()))) return f;
+    }
     return std::nullopt;
 }
 
 // Stop while the page was scrolling to its top: nothing more is injected, and
-// the picture as it comes to rest is the image (one viewport, wherever the
-// page then is). The pointer stays where it was parked, so a hover effect
-// under it can be in this image; moving it away would be an injection after Stop.
+// the picture on the screen when it has come to rest is the image (one
+// viewport, wherever the page then is). The last wheel steps may not have
+// reached the screen yet, so they get their response time; and what the stream
+// last sent may be older than what the screen shows (KWin's region stream sent
+// nothing at all for two batches of wheel steps, and Stop returned the viewport
+// from before them; real desktop run of 2026-11-10), so the image is a frame
+// grabbed from the screen after the last injection that a second look agrees
+// with. The pointer stays where it was parked, so a hover effect under it can
+// be in this image; moving it away would be an injection after Stop.
 RunResult ScrollRun::viewportAfterStop() {
     if (!haveFrame_ || (opts_.discarded && opts_.discarded())) return RunResult::Stopped;
-    ignoreStop_ = true;
-    const Wait w = waitSettled(opts_.stepTimeoutMs);
-    ignoreStop_ = false;
+    afterStop_ = true;
+    const int sinceInjection = lastInjectMs_ < 0 ? responseWaitMs() : int(clock_.nowMs() - lastInjectMs_);
+    Wait w = waitSettled(opts_.stepTimeoutMs, std::max(0, responseWaitMs() - sinceInjection));
+    // A fresh frame that differs from the last one seen is itself only one
+    // look at a page that may still be moving: it is asked again until two
+    // agree, a few times at most.
+    bool proven = false;
+    for (int look = 0; !proven && (w == Wait::Settled || w == Wait::TimedOut) && look < opts_.stopLooks; ++look) {
+        const Screen screen = screenIsAsSeen();
+        if (screen == Screen::Unknown) break;
+        proven = screen == Screen::Same;
+        if (!proven) w = waitSettled(opts_.stepTimeoutMs);
+    }
+    afterStop_ = false;
     if (w != Wait::Settled && w != Wait::TimedOut) return RunResult::Stopped;
+    stats_.stopViewportProven = proven;
     if (stitcher_.addFrame(last_, lastSig_, kNoHint).status == StepStatus::First) stats_.stoppedAtTop = true;
     return RunResult::Stopped;
 }

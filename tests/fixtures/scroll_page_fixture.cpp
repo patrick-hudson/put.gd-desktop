@@ -1,7 +1,8 @@
 // The scroll-capture fixture window (#1376): a frameless window at a fixed
 // place showing the bar-coded ruler page of ScrollRuler.h, scrolled by the
 // wheel and by nothing else. Options: a sticky header and footer, smooth
-// scrolling, pixels per notch, a starting row and a tail that loads late.
+// scrolling, pixels per notch, a starting row, a tail that loads late, and an
+// application that answers the wheel late (`--answer-ms`).
 // It prints `ready X Y W H` once it has painted, then `position N` whenever
 // the scroll position settles. On a Wayland desktop a client cannot place its
 // own window, so `--fullscreen` fills one output instead and the capture takes
@@ -22,7 +23,7 @@ namespace ruler = putgd::test::ruler;
 
 class Page final : public QWidget {
 public:
-    int rows = 60, notch = 100, header = 0, footer = 0, lazyRows = 0, lazyMs = 250;
+    int rows = 60, notch = 100, header = 0, footer = 0, lazyRows = 0, lazyMs = 250, answerMs = 0;
     bool smooth = false;
     explicit Page() : QWidget(nullptr, Qt::FramelessWindowHint | Qt::X11BypassWindowManagerHint | Qt::WindowDoesNotAcceptFocus) {
         setAttribute(Qt::WA_OpaquePaintEvent);
@@ -32,6 +33,8 @@ public:
         connect(&animation_, &QVariantAnimation::finished, this, [this] { settled(); });
         lazy_.setSingleShot(true);
         connect(&lazy_, &QTimer::timeout, this, [this] { loaded_ = true; update(); });
+        answer_.setSingleShot(true);
+        connect(&answer_, &QTimer::timeout, this, [this] { setPosition(target_); settled(); });
     }
     void start(int row) {
         loaded_ = lazyRows <= 0;
@@ -52,6 +55,9 @@ protected:
             animation_.setStartValue(position_);
             animation_.setEndValue(target_);
             animation_.start();
+        } else if (answerMs > 0) {
+            // The page moves this long after the last wheel step of a burst.
+            answer_.start(answerMs);
         } else {
             setPosition(target_);
             settled();
@@ -109,7 +115,7 @@ private:
         if (!loaded_ && position_ >= maxScroll() && !lazy_.isActive()) lazy_.start(lazyMs);
     }
     QVariantAnimation animation_;
-    QTimer lazy_;
+    QTimer lazy_, answer_;
     int position_ = 0, target_ = 0;
     bool loaded_ = true, announced_ = false;
 };
@@ -119,7 +125,7 @@ int main(int argc, char** argv) {
     QCommandLineParser parser;
     parser.addOptions({{"geometry", "X,Y,W,H in desktop pixels", "rect", "100,60,640,600"}, {"rows", "rows on the page", "n", "60"}, {"notch", "pixels per wheel notch", "px", "100"},
         {"header", "sticky header height", "px", "0"}, {"footer", "sticky footer height", "px", "0"}, {"start", "the row at the top at start", "row", "0"},
-        {"lazy-tail", "rows that load only after the end was reached", "n", "0"}, {"lazy-ms", "how long the tail takes", "ms", "250"}, {"smooth", "animate each scroll"},
+        {"lazy-tail", "rows that load only after the end was reached", "n", "0"}, {"lazy-ms", "how long the tail takes", "ms", "250"}, {"smooth", "animate each scroll"}, {"answer-ms", "move this long after the wheel", "ms", "0"},
         {"fullscreen", "fill the output instead of taking --geometry"}});
     parser.process(app);
     const auto geometry = parser.value("geometry").split(',');
@@ -132,6 +138,7 @@ int main(int argc, char** argv) {
     page.lazyRows = parser.value("lazy-tail").toInt();
     page.lazyMs = parser.value("lazy-ms").toInt();
     page.smooth = parser.isSet("smooth");
+    page.answerMs = parser.value("answer-ms").toInt();
     page.setGeometry(geometry[0].toInt(), geometry[1].toInt(), geometry[2].toInt(), geometry[3].toInt());
     page.start(parser.value("start").toInt());
     if (parser.isSet("fullscreen")) {

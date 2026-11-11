@@ -229,6 +229,13 @@ bool FakeApp::movePointer(int x, int y) {
   return true;
 }
 
+bool FakeApp::rest() {
+  if (!spec_.restEndsOverscroll) return false;
+  events.push_back({'r', 0, 0});
+  overscroll_ = 0;
+  return true;
+}
+
 int FakeApp::maxScroll() const { return renderer_.maxScroll(docLen()); }
 
 double FakeApp::posAt(int64_t t) const {

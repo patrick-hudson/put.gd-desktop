@@ -28,6 +28,10 @@ struct ScrollInjector {
     // Positive scrolls the content down. One unit is one wheel notch where the
     // desktop has such a thing; the loop measures what a unit really moved.
     virtual bool scroll(int units) = 0;
+    // The wheel has come to rest. Only where the desktop's wheel steps arrive
+    // as a gesture that never ends otherwise (KWin's fake input); true when
+    // something was sent.
+    virtual bool rest() { return false; }
     // X11 only: put the pointer back where the user had it.
     virtual void restorePointer() {}
     // X11 only: wait until Ctrl, Shift, Alt and Super are up (Ctrl plus wheel

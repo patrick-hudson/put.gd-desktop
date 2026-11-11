@@ -81,4 +81,11 @@ bool KdeFakeInput::scroll(int units) {
         org_kde_kwin_fake_input_axis(d_->fake, WL_POINTER_AXIS_VERTICAL_SCROLL, wl_fixed_from_double(units > 0 ? notchValue : -notchValue));
     return d_->sync();
 }
+bool KdeFakeInput::rest() {
+    if (!d_->reason.isEmpty()) return false;
+    std::lock_guard lock(d_->mutex);
+    if (!d_->authenticate()) return false;
+    org_kde_kwin_fake_input_axis(d_->fake, WL_POINTER_AXIS_VERTICAL_SCROLL, 0);
+    return d_->sync();
+}
 }
