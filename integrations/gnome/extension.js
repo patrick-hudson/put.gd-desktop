@@ -205,6 +205,37 @@ function barPlacement(rect, size, areas, allowOutside = true, gap = 10) {
     return {rect: inside, outside: !overlaps(inside, rect)};
 }
 
+// The helper's bar window for as long as the Shell may touch it. A Meta.Window
+// object outlives its window: JS still holds it after Mutter has unmanaged the
+// window (the helper hid its bar, exited or was killed), and its actor stays
+// listed while the close animation runs. Moving such a window crashes the
+// Shell, and a Shell crash ends a Wayland session: meta_window_move_frame()
+// asks the window's surface for its toplevel window, gets none and reads
+// through NULL (GNOME Shell 50.6, SIGSEGV in meta_window_update_monitor,
+// 2026-11-11, #1376). `live` therefore turns false the moment Mutter starts to
+// unmanage the window, and no Meta.Window method is called on a bar that is
+// not live.
+class BarWindow {
+    constructor(window) {
+        this.window = window;
+        this.live = true;
+        this.onGone = null;
+        this._ids = ['unmanaging', 'unmanaged'].map(signal => window.connect(signal, () => {
+            this.release();
+            this.onGone?.();
+        }));
+    }
+    connect(signal, handler) {
+        if (this.live)
+            this._ids.push(this.window.connect(signal, handler));
+    }
+    release() {
+        this.live = false;
+        for (const id of this._ids.splice(0))
+            this.window.disconnect(id);
+    }
+}
+
 // The ready ring just outside the recorded rectangle and, while recording, dim
 // strips over everything else except the bar. Plain non-reactive Shell actors:
 // input passes through them and none overlaps the recorded pixels, so the area
@@ -872,6 +903,7 @@ export default class PutgdExtension extends Extension {
         this._selector = null;
         this._revision = 1;
         this._copyEpoch = 0;
+        this._frameEpoch = 0;
         this._uiProcess = 0;
         this._uiProcessOwner = null;
         this._selection = global.display.get_selection();
@@ -1653,89 +1685,106 @@ export default class PutgdExtension extends Extension {
         }
     }
 
-    // Only a control bar owned by a direct child of the authenticated resident.
+    // Only a control bar owned by a direct child of the authenticated resident,
+    // and never a window Mutter has already unmanaged: its actor is still
+    // listed while it fades out.
     _recordingBar(sender, pid) {
         const resident = this._clientPid(sender);
-        const bars = global.get_window_actors().map(actor => actor.meta_window).filter(window =>
+        const bars = global.get_window_actors().filter(actor => !actor.is_destroyed()).map(actor => actor.meta_window).filter(window =>
             window && window.get_title() === RECORDING_BAR_TITLE && (!pid || window.get_pid() === pid) &&
             this._parentPid(window.get_pid()) === resident);
         return bars.length === 1 ? bars[0] : null;
     }
 
-    async _placeRecordingBar(sender, pid, rect) {
-        let window = this._recordingBar(sender, pid);
-        // Qt maps the bar a frame after the helper shows it.
-        for (let waited = 0; !window && waited < 2000; waited += 50) {
-            await new Promise(resolve => GLib.timeout_add(GLib.PRIORITY_DEFAULT, 50, () => {
-                resolve();
-                return GLib.SOURCE_REMOVE;
-            }));
-            check(this._enabled, 'helper_unavailable', 'GNOME extension disabled');
-            window = this._recordingBar(sender, pid);
-        }
-        if (!window)
-            return {placed: false, outside: false};
+    // `current` throws once the frame has been hidden or the extension
+    // disabled: the resident answers "ready" before the bar is placed, so a
+    // cancel, a quit or a killed helper can arrive during any wait below.
+    async _placeRecordingBar(sender, pid, rect, current) {
         const pause = ms => new Promise(resolve => GLib.timeout_add(GLib.PRIORITY_DEFAULT, ms, () => {
             resolve();
             return GLib.SOURCE_REMOVE;
         }));
-        // Mutter places a new window when it is first shown and would undo an
-        // earlier move: wait until it is shown, then confirm the position stays.
-        for (let waited = 0; window.is_hidden() && waited < 1000; waited += 50)
+        const none = {placed: false, outside: false};
+        let window = this._recordingBar(sender, pid);
+        // Qt maps the bar a frame after the helper shows it.
+        for (let waited = 0; !window && waited < 2000; waited += 50) {
             await pause(50);
-        const frame = window.get_frame_rect();
-        const areas = Main.layoutManager.monitors.map((_monitor, index) => rectangle(Main.layoutManager.getWorkAreaForMonitor(index)));
-        // A later state of the same frame keeps the first decision, so a bar
-        // that had to sit inside stays in the corner as its handle.
-        const earlier = this._barFollow?.window === window && this._barFollow.rect.every((v, i) => v === rect[i]) ? this._barFollow : null;
-        const target = barPlacement(rect, [frame.width, frame.height], areas, earlier ? earlier.outside : true);
-        if (!window.is_above())
-            window.make_above();
-        let actual = null;
-        for (let attempt = 0; attempt < 5; attempt++) {
-            window.move_frame(true, target.rect[0], target.rect[1]);
-            await pause(100);
-            check(this._enabled, 'helper_unavailable', 'GNOME extension disabled');
-            actual = rectangle(window.get_frame_rect());
-            if (actual[0] === target.rect[0] && actual[1] === target.rect[1])
-                break;
+            current();
+            window = this._recordingBar(sender, pid);
         }
-        this._followRecordingBar(window, rect, earlier ? earlier.outside : target.outside);
-        return {placed: true, outside: !overlaps(actual, rect), rect: actual};
+        if (!window)
+            return none;
+        // Watched from here on, before the first wait; a bar that is already
+        // followed keeps its watch.
+        const followed = this._barFollow?.bar.window === window && this._barFollow.bar.live ? this._barFollow : null;
+        const bar = followed?.bar ?? new BarWindow(window);
+        try {
+            // Mutter places a new window when it is first shown and would undo an
+            // earlier move: wait until it is shown, then confirm the position stays.
+            for (let waited = 0; bar.live && window.is_hidden() && waited < 1000; waited += 50) {
+                await pause(50);
+                current();
+            }
+            if (!bar.live)
+                return none;
+            const frame = window.get_frame_rect();
+            const areas = Main.layoutManager.monitors.map((_monitor, index) => rectangle(Main.layoutManager.getWorkAreaForMonitor(index)));
+            // A later state of the same frame keeps the first decision, so a bar
+            // that had to sit inside stays in the corner as its handle.
+            const earlier = followed?.rect.every((v, i) => v === rect[i]) ? followed : null;
+            const target = barPlacement(rect, [frame.width, frame.height], areas, earlier ? earlier.outside : true);
+            if (!window.is_above())
+                window.make_above();
+            let actual = null;
+            for (let attempt = 0; attempt < 5; attempt++) {
+                window.move_frame(true, target.rect[0], target.rect[1]);
+                await pause(100);
+                current();
+                if (!bar.live)
+                    return none;
+                actual = rectangle(window.get_frame_rect());
+                if (actual[0] === target.rect[0] && actual[1] === target.rect[1])
+                    break;
+            }
+            this._followRecordingBar(bar, rect, earlier ? earlier.outside : target.outside);
+            return {placed: true, outside: !overlaps(actual, rect), rect: actual};
+        } finally {
+            if (this._barFollow?.bar !== bar)
+                bar.release();
+        }
     }
 
     // The helper resizes its bar when the state changes (wider while recording,
     // a handle when it has to sit inside); place it again on every size change
     // so it never runs past its monitor and the dim strips keep its hole.
-    _followRecordingBar(window, rect, outside) {
-        if (this._barFollow?.window !== window) {
+    _followRecordingBar(bar, rect, outside) {
+        if (this._barFollow?.bar.window !== bar.window || !this._barFollow.bar.live) {
             this._unfollowRecordingBar();
-            const id = window.connect('size-changed', () => this._replaceRecordingBar());
-            this._barFollow = {window, id};
+            const follow = this._barFollow = {bar};
+            bar.connect('size-changed', () => this._replaceRecordingBar());
+            bar.onGone = () => {
+                if (this._barFollow === follow)
+                    this._barFollow = null;
+            };
         }
         Object.assign(this._barFollow, {rect, outside});
     }
 
     _replaceRecordingBar() {
         const follow = this._barFollow;
-        if (!follow || !this._enabled)
+        if (!follow || !follow.bar.live || !this._enabled)
             return;
-        const frame = follow.window.get_frame_rect();
+        const window = follow.bar.window;
+        const frame = window.get_frame_rect();
         const areas = Main.layoutManager.monitors.map((_monitor, index) => rectangle(Main.layoutManager.getWorkAreaForMonitor(index)));
         const target = barPlacement(follow.rect, [frame.width, frame.height], areas, follow.outside);
         if (frame.x !== target.rect[0] || frame.y !== target.rect[1])
-            follow.window.move_frame(true, target.rect[0], target.rect[1]);
+            window.move_frame(true, target.rect[0], target.rect[1]);
         this._recordingFrame?.moveBar(target.rect);
     }
 
     _unfollowRecordingBar() {
-        if (!this._barFollow)
-            return;
-        try {
-            this._barFollow.window.disconnect(this._barFollow.id);
-        } catch {
-            // The window is already gone.
-        }
+        this._barFollow?.bar.release();
         this._barFollow = null;
     }
 
@@ -1749,7 +1798,14 @@ export default class PutgdExtension extends Extension {
                 (frame.pid === undefined || (Number.isSafeInteger(frame.pid) && frame.pid >= 0)) &&
                 (frame.beat === undefined || typeof frame.beat === 'boolean'),
             'bridge_protocol', 'Invalid recording frame');
-            const bar = await this._placeRecordingBar(sender, frame.pid || 0, rect);
+            // HideRecordingFrame, a lock, a vanished resident and disable() all end
+            // a placement that is still waiting: it must not move the bar or
+            // bring the frame and its beat back after they were taken down.
+            const epoch = this._frameEpoch;
+            const bar = await this._placeRecordingBar(sender, frame.pid || 0, rect, () => {
+                check(this._enabled, 'helper_unavailable', 'GNOME extension disabled');
+                check(epoch === this._frameEpoch, 'cancelled', 'The recording frame was hidden while its bar was placed');
+            });
             check(this._enabled && !Main.sessionMode.isLocked, 'helper_unavailable', 'GNOME user session is unavailable');
             this._recordingFrame ??= new RecordingFrame();
             this._recordingFrame.show(rect, frame.kind, frame.state !== 'ready', bar.placed ? bar.rect : null, frame.beat === true);
@@ -1871,6 +1927,7 @@ export default class PutgdExtension extends Extension {
     }
 
     _hideRecordingFrame() {
+        this._frameEpoch = (this._frameEpoch ?? 0) + 1;
         this._unfollowRecordingBar();
         this._recordingFrame?.destroy();
         this._recordingFrame = null;
